@@ -877,8 +877,7 @@ process_module_int2(Globals, ReadWhy2, ModuleName, ParseTreeInt2,
         ),
         IndirectIntSpec = indirect_int2(ParseTreeInt2, ReadWhy2),
         module_and_imports_add_indirect_int_spec(IndirectIntSpec,
-            !ModuleAndImports),
-        module_and_imports_add_indirect_dep(ModuleName, !ModuleAndImports)
+            !ModuleAndImports)
     ;
         ReadWhy2 = rwi2_opt,
         IntForOptSpec = for_opt_int2(ParseTreeInt2, ReadWhy2),

@@ -232,8 +232,6 @@
     module_name::out) is det.
 :- pred module_and_imports_get_maybe_top_module(module_and_imports::in,
     maybe_top_module::out) is det.
-:- pred module_and_imports_get_indirect_deps(module_and_imports::in,
-    set(module_name)::out) is det.
 :- pred module_and_imports_get_parse_tree_module_src(module_and_imports::in,
     parse_tree_module_src::out) is det.
 :- pred module_and_imports_get_ancestor_int_specs(module_and_imports::in,
@@ -257,8 +255,6 @@
 :- pred module_and_imports_get_grabbed_file_map(module_and_imports::in,
     grabbed_file_map::out) is det.
 
-:- pred module_and_imports_set_indirect_deps(set(module_name)::in,
-    module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_set_maybe_timestamp_map(
     maybe(module_timestamp_map)::in,
     module_and_imports::in, module_and_imports::out) is det.
@@ -297,9 +293,6 @@
 %
 % Predicates for adding information to module_and_imports structures.
 %
-
-:- pred module_and_imports_add_indirect_dep(module_name::in,
-    module_and_imports::in, module_and_imports::out) is det.
 
 :- pred module_and_imports_add_ancestor_int_spec(ancestor_int_spec::in,
     module_and_imports::in, module_and_imports::out) is det.
@@ -343,7 +336,7 @@
     %
 :- pred module_and_imports_d_file(module_and_imports::in,
     file_name::out, module_name::out, maybe_top_module::out,
-    set(module_name)::out, aug_compilation_unit::out) is det.
+    aug_compilation_unit::out) is det.
 
     % Return the results recorded in the module_and_imports structure.
     %
@@ -472,15 +465,9 @@
                 % The name of the top-level module in the above source file.
                 mai_source_file_module_name :: module_name,
 
-                % XXX CLEANUP The following fields, up to but not including
-                % mai_src, should not be needed, being available in mai_src.
-
                 % The modules included in the same source file. This field
                 % is only set for the top-level module in each file.
                 mai_maybe_top_module    :: maybe_top_module,
-
-                % The set of modules it indirectly imports.
-                mai_indirect_deps       :: set(module_name),
 
                 % The contents of the module and its imports.
                 mai_src                 :: parse_tree_module_src,
@@ -661,7 +648,6 @@ maybe_nested_init_module_and_imports(FileName, SourceFileModuleName,
 
 init_module_and_imports(SourceFileName, SourceFileModuleName, MaybeTopModule,
         Specs, Errors, ParseTreeModuleSrc, ModuleAndImports) :-
-    set.init(IndirectDeps),
     map.init(VersionNumbers),
     map.init(AncestorIntSpecs),
     map.init(DirectIntSpecs),
@@ -674,7 +660,7 @@ init_module_and_imports(SourceFileName, SourceFileModuleName, MaybeTopModule,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
-        SourceFileModuleName, MaybeTopModule, IndirectDeps,
+        SourceFileModuleName, MaybeTopModule,
         ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
         VersionNumbers, MaybeTimestampMap, Specs, Errors,
@@ -685,7 +671,6 @@ init_module_and_imports(SourceFileName, SourceFileModuleName, MaybeTopModule,
 make_module_and_imports(SourceFileName, SourceFileModuleName,
         ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap,
         ModuleAndImports) :-
-    set.init(IndirectDeps),
     map.init(VersionNumbers),
     map.init(AncestorSpecs),
     map.init(DirectIntSpecs),
@@ -699,7 +684,7 @@ make_module_and_imports(SourceFileName, SourceFileModuleName,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
-        SourceFileModuleName, MaybeTopModule, IndirectDeps,
+        SourceFileModuleName, MaybeTopModule,
         ParseTreeModuleSrc, AncestorSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
         VersionNumbers, MaybeTimestampMap, Specs, Errors,
@@ -792,26 +777,6 @@ module_and_imports_get_maybe_top_module(ModuleAndImports, X) :-
             impure set_accesses(Accesses)
         ),
         X = ModuleAndImports ^ mai_maybe_top_module
-    ).
-module_and_imports_get_indirect_deps(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Method = ModuleAndImports ^ mai_construction_method,
-            (
-                Method = mcm_init,
-                Fields0 = Accesses0 ^ mfk_init,
-                Fields = Fields0 ^ mf_indirect_deps := accessed,
-                Accesses = Accesses0 ^ mfk_init := Fields
-            ;
-                Method = mcm_make,
-                Fields0 = Accesses0 ^ mfk_make,
-                Fields = Fields0 ^ mf_indirect_deps := accessed,
-                Accesses = Accesses0 ^ mfk_make := Fields
-            ),
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_indirect_deps
     ).
 module_and_imports_get_parse_tree_module_src(ModuleAndImports, X) :-
     promise_pure (
@@ -1083,8 +1048,6 @@ module_and_imports_get_grabbed_file_map(ModuleAndImports, X) :-
 :- pred module_and_imports_set_specs(list(error_spec)::in,
     module_and_imports::in, module_and_imports::out) is det.
 
-module_and_imports_set_indirect_deps(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_indirect_deps := X.
 module_and_imports_set_ancestor_int_specs(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_ancestor_int_specs := X.
 module_and_imports_set_direct_int_specs(X, !ModuleAndImports) :-
@@ -1223,13 +1186,6 @@ module_and_imports_do_we_need_timestamps(ModuleAndImports,
 
 %---------------------------------------------------------------------------%
 
-module_and_imports_add_indirect_dep(ModuleName, !ModuleAndImports) :-
-    module_and_imports_get_indirect_deps(!.ModuleAndImports, IndirectDeps0),
-    set.insert(ModuleName, IndirectDeps0, IndirectDeps),
-    module_and_imports_set_indirect_deps(IndirectDeps, !ModuleAndImports).
-
-%---------------------%
-
 module_and_imports_add_ancestor_int_spec(X, !ModuleAndImports) :-
     module_and_imports_get_ancestor_int_specs(!.ModuleAndImports, Map0),
     X = ancestor_int0(PT0, _),
@@ -1331,8 +1287,7 @@ module_and_imports_add_specs_errors(NewSpecs, NewErrors, !ModuleAndImports) :-
 %---------------------------------------------------------------------------%
 
 module_and_imports_d_file(ModuleAndImports,
-        SourceFileName, SourceFileModuleName, MaybeTopModule, IndirectDeps,
-        AugCompUnit) :-
+        SourceFileName, SourceFileModuleName, MaybeTopModule, AugCompUnit) :-
     % XXX CLEANUP Several of the outputs are part of the parse_tree_module_src
     % in AugCompUnit.
     module_and_imports_get_version_numbers_map(ModuleAndImports,
@@ -1342,7 +1297,6 @@ module_and_imports_d_file(ModuleAndImports,
     module_and_imports_get_source_file_module_name(ModuleAndImports,
         SourceFileModuleName),
     module_and_imports_get_maybe_top_module(ModuleAndImports, MaybeTopModule),
-    module_and_imports_get_indirect_deps(ModuleAndImports, IndirectDeps),
     module_and_imports_get_parse_tree_module_src(ModuleAndImports,
         ParseTreeModuleSrc),
     module_and_imports_get_ancestor_int_specs(ModuleAndImports,
