@@ -519,80 +519,15 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
 read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
         ModuleDepFile, Term, Result, !Info, !IO) :-
     ( if
-        atom_term(Term, "module", ModuleArgs),
-        ModuleArgs = [
-            VersionNumberTerm,
-            SourceFileTerm,
-            SourceFileModuleNameTerm,
-            ParentsTerm,                % XXX Redundant term
-            IntDepsTerm,
-            ImpDepsTerm,
-            ChildrenTerm,
-            NestedSubModulesTerm,
-            FactDepsTerm,
-            ForeignLanguagesTerm,
-            ForeignImportsTerm,
-            ContainsForeignExportTerm,
-            _HasMainTerm
-            | ModuleArgsTail
-        ],
-
-        version_number_term(VersionNumberTerm, Version),
-        string_term(SourceFileTerm, SourceFileName),
-        try_parse_sym_name_and_no_args(SourceFileModuleNameTerm,
-            SourceFileModuleName),
-
-        sym_names_term(ParentsTerm, Parents),
-        sym_names_term(IntDepsTerm, IntDeps),
-        sym_names_term(ImpDepsTerm, ImpDeps),
-        sym_names_term(ChildrenTerm, Children),
-        sym_names_term(NestedSubModulesTerm, NestedSubModules0),
-
-        braces_term(fact_dep_term, FactDepsTerm, FactDeps),
-        braces_term(foreign_language_term, ForeignLanguagesTerm,
-            ForeignLanguages),
-        braces_term(foreign_import_term, ForeignImportsTerm, ForeignImports),
-
-        contains_foreign_export_term(ContainsForeignExportTerm,
-            ContainsForeignExport),
-
-        (
-            Version = module_dep_file_v1,
-            ModuleArgsTail = [],
-            ForeignIncludes = []
-        ;
-            Version = module_dep_file_v2,
-            ModuleArgsTail = [ForeignIncludesTerm],
-            braces_term(foreign_include_term, ForeignIncludesTerm,
-                ForeignIncludes)
-        )
+        parse_module_summary_file(ModuleName, ModuleDir, Term, ModuleSummary)
     then
-        ( if ModuleName = SourceFileModuleName then
-            MaybeTopModule = top_module(set.list_to_set(NestedSubModules0))
-        else
-            MaybeTopModule = not_top_module,
-            expect(unify(NestedSubModules0, []), $pred,
-                "NestedSubModules0 != []")
-        ),
-        set.list_to_set(Parents, ParentsSet),
-        AncestorsSet = get_ancestors_set(ModuleName),
-        expect(set.equal(ParentsSet, AncestorsSet), $pred,
-            "ParentsSet != AncestorsSet"),
-        ContainsForeignCode =
-            foreign_code_langs_known(set.list_to_set(ForeignLanguages)),
-        ModuleSummary = module_dep_summary(SourceFileName, ModuleDir,
-            SourceFileModuleName, ModuleName, set.list_to_set(Children),
-            MaybeTopModule,
-            set.list_to_set(IntDeps), set.list_to_set(ImpDeps),
-            set.list_to_set(FactDeps), set.list_to_set(ForeignImports),
-            set.list_to_set(ForeignIncludes),
-            ContainsForeignCode, ContainsForeignExport),
         ModuleDepInfo = module_dep_info_summary(ModuleSummary),
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
 
         % Discard the module dependencies if the module is a local module
         % but the source file no longer exists.
         ( if ModuleDir = dir.this_directory then
+            SourceFileName = ModuleSummary ^ mds_source_file_name,
             check_regular_file_exists(SourceFileName, SourceFileExists, !IO),
             (
                 SourceFileExists = ok
@@ -616,13 +551,14 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
             % dependencies for all modules in the source file will be remade
             % (make_module_dependencies expects to be given the top-level
             % module in the source file).
+            MaybeTopModule = ModuleSummary ^ mds_maybe_top_module,
             NestedSubModules =
                 get_nested_children_list_of_top_module(MaybeTopModule),
             list.foldl2(
                 read_module_dependencies_2(Globals,
                     do_not_rebuild_module_deps, SearchDirs),
                 NestedSubModules, !Info, !IO),
-            ( if some_bad_module_dependency(!.Info, NestedSubModules0) then
+            ( if some_bad_module_dependency(!.Info, NestedSubModules) then
                 Result = error("error in nested submodules")
             else
                 Result = ok
@@ -635,6 +571,88 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
         Result = error("failed to parse term")
     ).
 
+%-----------------------------------------------------------------------------%
+
+:- pred parse_module_summary_file(module_name::in, dir_name::in, term::in,
+    module_dep_summary::out) is semidet.
+
+parse_module_summary_file(ModuleName, ModuleDir, Term, ModuleSummary) :-
+    atom_term(Term, "module", ModuleArgs),
+    ModuleArgs = [
+        VersionNumberTerm,
+        SourceFileTerm,
+        SourceFileModuleNameTerm,
+        ParentsTerm,                % XXX Redundant term
+        IntDepsTerm,
+        ImpDepsTerm,
+        ChildrenTerm,
+        NestedSubModulesTerm,
+        FactDepsTerm,
+        ForeignLanguagesTerm,
+        ForeignImportsTerm,
+        ContainsForeignExportTerm,
+        _HasMainTerm                % XXX Redundant term
+        | ModuleArgsTail
+    ],
+
+    version_number_term(VersionNumberTerm, Version),
+    string_term(SourceFileTerm, SourceFileName),
+    try_parse_sym_name_and_no_args(SourceFileModuleNameTerm,
+        SourceFileModuleName),
+
+    sym_names_term(ParentsTerm, Parents),
+    sym_names_term(IntDepsTerm, IntDeps),
+    sym_names_term(ImpDepsTerm, ImpDeps),
+    sym_names_term(ChildrenTerm, Children),
+    sym_names_term(NestedSubModulesTerm, NestedSubModules0),
+
+    braces_term(fact_dep_term, FactDepsTerm, FactDeps),
+    braces_term(foreign_language_term, ForeignLanguagesTerm,
+        ForeignLanguages),
+    braces_term(foreign_import_term, ForeignImportsTerm, ForeignImports),
+
+    contains_foreign_export_term(ContainsForeignExportTerm,
+        ContainsForeignExport),
+
+    (
+        Version = module_dep_file_v1,
+        ModuleArgsTail = [],
+        ForeignIncludes = []
+    ;
+        Version = module_dep_file_v2,
+        ModuleArgsTail = [ForeignIncludesTerm],
+        braces_term(foreign_include_term, ForeignIncludesTerm,
+            ForeignIncludes)
+    ),
+
+    require_det (
+        ( if ModuleName = SourceFileModuleName then
+            MaybeTopModule = top_module(set.list_to_set(NestedSubModules0))
+        else
+            MaybeTopModule = not_top_module,
+            expect(unify(NestedSubModules0, []), $pred,
+                "NestedSubModules0 != []")
+        ),
+        set.list_to_set(Parents, ParentsSet),
+        AncestorsSet = get_ancestors_set(ModuleName),
+        expect(set.equal(ParentsSet, AncestorsSet), $pred,
+            "ParentsSet != AncestorsSet"),
+        ContainsForeignCode =
+            foreign_code_langs_known(set.list_to_set(ForeignLanguages)),
+        ModuleSummary = module_dep_summary(SourceFileName, ModuleDir,
+            SourceFileModuleName, ModuleName, set.list_to_set(Children),
+            MaybeTopModule,
+            set.list_to_set(IntDeps), set.list_to_set(ImpDeps),
+            set.list_to_set(FactDeps), set.list_to_set(ForeignImports),
+            set.list_to_set(ForeignIncludes),
+            ContainsForeignCode, ContainsForeignExport)
+    ).
+
+:- pred atom_term(term::in, string::out, list(term)::out) is semidet.
+
+atom_term(Term, Atom, Args) :-
+    Term = term.functor(term.atom(Atom), Args, _).
+
 :- pred version_number_term(term::in, module_dep_file_version::out) is semidet.
 
 version_number_term(Term, Version) :-
@@ -645,11 +663,6 @@ version_number_term(Term, Version) :-
 
 string_term(Term, String) :-
     Term = term.functor(term.string(String), [], _).
-
-:- pred atom_term(term::in, string::out, list(term)::out) is semidet.
-
-atom_term(Term, Atom, Args) :-
-    Term = term.functor(term.atom(Atom), Args, _).
 
 :- pred braces_term(pred(term, U), term, list(U)).
 :- mode braces_term(in(pred(in, out) is semidet), in, out) is semidet.
@@ -697,6 +710,8 @@ foreign_include_term(Term, ForeignInclude) :-
 contains_foreign_export_term(Term, ContainsForeignExport) :-
     atom_term(Term, Atom, []),
     contains_foreign_export_to_string(ContainsForeignExport, Atom).
+
+%-----------------------------------------------------------------------------%
 
 :- pred some_bad_module_dependency(make_info::in, list(module_name)::in)
     is semidet.
@@ -758,15 +773,15 @@ read_module_dependencies_remake(Globals, RebuildModuleDeps, ModuleName,
 
 read_module_dependencies_remake_msg(RebuildModuleDeps, ModuleDepsFile, Msg,
         !IO) :-
-    io.format("** Error reading file `%s': %s", [s(ModuleDepsFile), s(Msg)],
-        !IO),
     (
         RebuildModuleDeps = do_rebuild_module_deps,
-        io.write_string(" ...rebuilding\n", !IO)
+        RebuildSuffix = " ...rebuilding"
     ;
         RebuildModuleDeps = do_not_rebuild_module_deps,
-        io.nl(!IO)
-    ).
+        RebuildSuffix = ""
+    ),
+    io.format("** Error reading file `%s': %s%s\n",
+        [s(ModuleDepsFile), s(Msg), s(RebuildSuffix)], !IO).
 
     % The module_name given must be the top level module in the source file.
     % get_module_dependencies ensures this by making the dependencies
