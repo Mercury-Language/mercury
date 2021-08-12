@@ -63,3 +63,15 @@ is_sorted([A, B | Rest]) :-
 "
     Y = X;
 ").
+:- pragma foreign_proc("C#",
+    impure_copy(X::in, Y::out),
+    [will_not_call_mercury, thread_safe],
+"
+    Y = X;
+").
+:- pragma foreign_proc("Java",
+    impure_copy(X::in, Y::out),
+    [will_not_call_mercury, thread_safe],
+"
+    Y = X;
+").
