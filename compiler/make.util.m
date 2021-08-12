@@ -159,6 +159,9 @@
 :- pred debug_file_msg(globals::in, target_file::in, string::in,
     io::di, io::uo) is det.
 
+:- pred dependency_file_to_file_name(globals::in, dependency_file::in,
+    string::out, io::di, io::uo) is det.
+
 :- pred make_write_dependency_file(globals::in, dependency_file::in,
     io::di, io::uo) is det.
 
@@ -176,8 +179,10 @@
 :- pred make_write_target_file(globals::in, target_file::in,
     io::di, io::uo) is det.
 
-:- pred make_write_target_file_wrapped(globals::in, string::in,
-    target_file::in, string::in, io::di, io::uo) is det.
+:- pred make_write_target_file_wrapped(globals::in,
+    string::in, target_file::in, string::in, io::di, io::uo) is det.
+:- pred make_write_target_file_wrapped(io.text_output_stream::in, globals::in,
+    string::in, target_file::in, string::in, io::di, io::uo) is det.
 
     % Write a message "Making <filename>" if `--verbose-make' is set.
     %
@@ -523,9 +528,7 @@ make_remove_file(Globals, VerboseOption, FileName, !Info, !IO) :-
 :- pred report_remove_file(string::in, io::di, io::uo) is det.
 
 report_remove_file(FileName, !IO) :-
-    io.write_string("Removing ", !IO),
-    io.write_string(FileName, !IO),
-    io.nl(!IO).
+    io.format("Removing %s\n", [s(FileName)], !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -904,22 +907,26 @@ verbose_make_msg_option(Globals, Option, P, !IO) :-
 debug_file_msg(Globals, TargetFile, Msg, !IO) :-
     debug_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            make_write_target_file(Globals, TargetFile, !IO),
-            io.write_string(": ", !IO),
-            io.write_string(Msg, !IO),
-            io.nl(!IO)
+            get_make_target_file_name(Globals, TargetFile, FileName, !IO),
+            io.format("%s: %s\n", [s(FileName), s(Msg)], !IO)
         ), !IO).
 
-make_write_dependency_file(Globals, dep_target(TargetFile), !IO) :-
-    make_write_target_file(Globals, TargetFile, !IO).
-make_write_dependency_file(_Globals, dep_file(FileName), !IO) :-
+dependency_file_to_file_name(Globals, DepFile, FileName, !IO) :-
+    (
+        DepFile = dep_target(TargetFile),
+        get_make_target_file_name(Globals, TargetFile, FileName, !IO)
+    ;
+        DepFile = dep_file(FileName)
+    ).
+
+make_write_dependency_file(Globals, DepFile, !IO) :-
+    dependency_file_to_file_name(Globals, DepFile, FileName, !IO),
     io.write_string(FileName, !IO).
 
 make_write_dependency_file_list(_, [], !IO).
 make_write_dependency_file_list(Globals, [DepFile | DepFiles], !IO) :-
-    io.write_string("\t", !IO),
-    make_write_dependency_file(Globals, DepFile, !IO),
-    io.nl(!IO),
+    dependency_file_to_file_name(Globals, DepFile, FileName, !IO),
+    io.format("\t%s\n", [s(FileName)], !IO),
     make_write_dependency_file_list(Globals, DepFiles, !IO).
 
 get_make_target_file_name(Globals, TargetFile, FileName, !IO) :-
@@ -944,6 +951,20 @@ make_write_target_file_wrapped(Globals, Prefix, TargetFile, Suffix, !IO) :-
         io.write_string(Prefix ++ FileName ++ Suffix, !IO)
     ).
 
+make_write_target_file_wrapped(Stream, Globals, Prefix, TargetFile, Suffix,
+        !IO) :-
+    get_make_target_file_name(Globals, TargetFile, FileName, !IO),
+    ( if
+        Prefix = "",
+        Suffix = ""
+    then
+        io.write_string(Stream, FileName, !IO)
+    else
+        % Try to write this with one call to avoid interleaved output when
+        % doing parallel builds.
+        io.write_string(Stream, Prefix ++ FileName ++ Suffix, !IO)
+    ).
+
 maybe_make_linked_target_message(Globals, TargetFile, !IO) :-
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
@@ -960,10 +981,8 @@ maybe_make_target_message(Globals, TargetFile, !IO) :-
 maybe_make_target_message_to_stream(Globals, OutputStream, TargetFile, !IO) :-
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            io.set_output_stream(OutputStream, OldOutputStream, !IO),
-            make_write_target_file_wrapped(Globals, "Making ", TargetFile,
-                "\n", !IO),
-            io.set_output_stream(OldOutputStream, _, !IO)
+            make_write_target_file_wrapped(OutputStream, Globals,
+                "Making ", TargetFile, "\n", !IO)
         ), !IO).
 
 maybe_reanalyse_modules_message(Globals, !IO) :-
@@ -989,9 +1008,8 @@ maybe_warn_up_to_date_target(Globals, Target, !Info, !IO) :-
     (
         Warn = yes,
         ( if set.member(Target, CmdLineTargets0) then
-            io.write_string("** Nothing to be done for `", !IO),
-            make_write_module_or_linked_target(Globals, Target, !IO),
-            io.write_string("'.\n", !IO)
+            module_or_linked_target_file_name(Globals, Target, FileName, !IO),
+            io.format("** Nothing to be done for `%s'.\n", [s(FileName)], !IO)
         else
             true
         )
@@ -1004,24 +1022,23 @@ maybe_warn_up_to_date_target(Globals, Target, !Info, !IO) :-
 maybe_symlink_or_copy_linked_target_message(Globals, Target, !IO) :-
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            io.write_string("Made symlink/copy of ", !IO),
-            make_write_module_or_linked_target(Globals, Target, !IO),
-            io.write_string("\n", !IO)
+            module_or_linked_target_file_name(Globals, Target, FileName, !IO),
+            io.format("Made symlink/copy of %s\n", [s(FileName)], !IO)
         ), !IO).
 
-:- pred make_write_module_or_linked_target(globals::in,
-    pair(module_name, target_type)::in, io::di, io::uo) is det.
+:- pred module_or_linked_target_file_name(globals::in,
+    pair(module_name, target_type)::in, string::out, io::di, io::uo) is det.
 
-make_write_module_or_linked_target(Globals, ModuleName - TargetType, !IO) :-
+module_or_linked_target_file_name(Globals, ModuleName - TargetType,
+        FileName, !IO) :-
     (
         TargetType = module_target(ModuleTargetType),
         TargetFile = target_file(ModuleName, ModuleTargetType),
-        make_write_target_file(Globals, TargetFile, !IO)
+        get_make_target_file_name(Globals, TargetFile, FileName, !IO)
     ;
         TargetType = linked_target(LinkedTargetType),
         linked_target_file_name(Globals, ModuleName, LinkedTargetType,
-            FileName, !IO),
-        io.write_string(FileName, !IO)
+            FileName, !IO)
     ;
         TargetType = misc_target(_),
         unexpected($pred, "misc_target")
