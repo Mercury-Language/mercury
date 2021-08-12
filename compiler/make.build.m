@@ -252,8 +252,8 @@ build_with_module_options_args_invoked(Globals, InvokedByMmcMake, ModuleName,
 
 %---------------------%
 
-build_with_output_redirect(Globals, ModuleName, Build, Succeeded, !Info,
-        !IO) :-
+build_with_output_redirect(Globals, ModuleName, Build, Succeeded,
+        !Info, !IO) :-
     prepare_to_redirect_output(ModuleName, RedirectResult, !Info, !IO),
     (
         RedirectResult = no,
@@ -380,11 +380,9 @@ make_write_error_char(FullOutputStream, PartialOutputStream, Char,
         )
     else if !.LinesRemaining = 0 then
         io.output_stream_name(FullOutputStream, FullOutputFileName, !IO),
-        io.write_string(PartialOutputStream, "... error log truncated, see `",
-            !IO),
-        io.write_string(PartialOutputStream, FullOutputFileName, !IO),
-        io.write_string(PartialOutputStream, "' for the complete log.\n", !IO),
-        % Only write the above message once.
+        io.format(PartialOutputStream,
+            "... error log truncated, see `%s' for the complete log.\n",
+            [s(FullOutputFileName)], !IO),
         !:LinesRemaining = -1
     else
         true
@@ -400,8 +398,7 @@ write_error_opening_file(FileName, Error, !IO) :-
 :- pred write_error_creating_temp_file(string::in, io::di, io::uo) is det.
 
 write_error_creating_temp_file(ErrorMessage, !IO) :-
-    io.write_string(ErrorMessage, !IO),
-    io.nl(!IO).
+    io.write_string(ErrorMessage ++ "\n", !IO).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
