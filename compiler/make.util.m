@@ -65,11 +65,14 @@
     maybe_error(timestamp)::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-    % Return the oldest of the timestamps if both are of the form
-    % `ok(Timestamp)', returning `error(Error)' otherwise.
+    % If any of the inputs contain an error, return the first error.
+    % XXX We should return all errors, not just the first.
+    % If none of the inputs contain an error, return the oldest timestamp.
     %
-:- func find_oldest_timestamp(maybe_error(timestamp),
-    maybe_error(timestamp)) = maybe_error(timestamp).
+:- pred find_error_or_older_ok_timestamp(maybe_error(timestamp)::in,
+    maybe_error(timestamp)::in, maybe_error(timestamp)::out) is det.
+:- pred find_error_or_oldest_ok_timestamp(list(maybe_error(timestamp))::in,
+    maybe_error(timestamp)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -484,14 +487,30 @@ get_search_directories(Globals, TargetType, SearchDirs) :-
         SearchDirs = [dir.this_directory]
     ).
 
-find_oldest_timestamp(error(_) @ MaybeTimestamp, _) = MaybeTimestamp.
-find_oldest_timestamp(ok(_), error(_) @ MaybeTimestamp) = MaybeTimestamp.
-find_oldest_timestamp(ok(Timestamp1), ok(Timestamp2)) = ok(Timestamp) :-
-    ( if compare((<), Timestamp1, Timestamp2) then
-        Timestamp = Timestamp1
-    else
-        Timestamp = Timestamp2
+find_error_or_older_ok_timestamp(MaybeTimestampA, MaybeTimestampB,
+        MaybeTimestamp) :-
+    (
+        MaybeTimestampA = error(_),
+        MaybeTimestamp = MaybeTimestampA
+    ;
+        MaybeTimestampA = ok(TimestampA),
+        (
+            MaybeTimestampB = error(_),
+            MaybeTimestamp = MaybeTimestampB
+        ;
+            MaybeTimestampB = ok(TimestampB),
+            ( if compare((<), TimestampA, TimestampB) then
+                Timestamp = TimestampA
+            else
+                Timestamp = TimestampB
+            ),
+            MaybeTimestamp = ok(Timestamp)
+        )
     ).
+
+find_error_or_oldest_ok_timestamp(MaybeTimestamps, MaybeTimestamp) :-
+    list.foldl(find_error_or_older_ok_timestamp, MaybeTimestamps,
+        ok(newest_timestamp), MaybeTimestamp).
 
 %---------------------------------------------------------------------------%
 
