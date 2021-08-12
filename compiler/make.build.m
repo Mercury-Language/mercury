@@ -17,7 +17,7 @@
 
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.process_util.
+:- import_module libs.maybe_succeeded.
 
 %---------------------------------------------------------------------------%
 
@@ -164,6 +164,7 @@
 :- implementation.
 
 :- import_module libs.handle_options.
+:- import_module libs.process_util.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
 

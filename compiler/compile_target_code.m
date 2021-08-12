@@ -19,7 +19,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.file_util.
-:- import_module libs.process_util.
+:- import_module libs.maybe_succeeded.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_imports.

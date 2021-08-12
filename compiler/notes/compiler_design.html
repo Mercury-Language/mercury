@@ -2176,6 +2176,10 @@ string_encoding.m: defines utility predicates related to string encodings.
 file_util.m contains utility predicates dealing with files,
 such as searching for a file in a list of directories.
 <li>
+maybe_succeeded.m defines a type
+that records the success or failure of operations,
+and some operations on that type.
+<li>
 process_util.m contains predicates
 that deal with process creation and signal handling.
 This module is mainly used by make.m and its submodules.
@@ -2183,7 +2187,7 @@ This module is mainly used by make.m and its submodules.
 timestamp.m contains an ADT representing timestamps.
 It is used by smart recompilation and `mmc --make'.
 <li>
-graph_color.m does graph colouring.
+graph_colour.m does graph colouring.
 This is used by the LLDS back-end for register allocation.
 <li>
 int_emu.m emulates `int' operations for a given number of bits per int.

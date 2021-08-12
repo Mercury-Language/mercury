@@ -20,8 +20,8 @@
 :- import_module mdbcomp.sym_name.
 :- import_module libs.
 :- import_module libs.file_util.
-:- import_module libs.process_util.
 :- import_module libs.globals.
+:- import_module libs.maybe_succeeded.
 :- import_module parse_tree.file_names.
 
 :- import_module list.
@@ -218,6 +218,7 @@
 
 :- import_module libs.compute_grade.    % for grade_directory_component
 :- import_module libs.options.
+:- import_module libs.process_util.
 :- import_module parse_tree.java_names.
 
 :- import_module bool.

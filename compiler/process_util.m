@@ -17,20 +17,11 @@
 :- module libs.process_util.
 :- interface.
 
+:- import_module libs.maybe_succeeded.
+
 :- import_module bool.
 :- import_module io.
-:- import_module list.
 :- import_module maybe.
-
-%-----------------------------------------------------------------------------%
-
-:- type maybe_succeeded
-    --->    did_not_succeed
-    ;       succeeded.
-
-:- func maybe_succeeded `and` maybe_succeeded = maybe_succeeded.
-
-:- func and_list(list(maybe_succeeded)) = maybe_succeeded.
 
 %-----------------------------------------------------------------------------%
 
@@ -137,20 +128,9 @@
 
 :- implementation.
 
+:- import_module list.
 :- import_module require.   % Required by non-C grades.
 :- import_module string.
-
-%-----------------------------------------------------------------------------%
-
-SucceededA `and` SucceededB =
-    ( if SucceededA = succeeded, SucceededB = succeeded then
-        succeeded
-    else
-        did_not_succeed
-    ).
-
-and_list(Succeededs) = AllSucceeded :-
-    AllSucceeded = list.foldl(and, Succeededs, succeeded).
 
 %-----------------------------------------------------------------------------%
 

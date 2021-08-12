@@ -16,7 +16,7 @@
 :- module make.program_target.
 :- interface.
 
-:- import_module libs.process_util.
+:- import_module libs.maybe_succeeded.
 
 %-----------------------------------------------------------------------------%
 
@@ -47,6 +47,7 @@
 :- import_module libs.
 :- import_module libs.check_libgrades.
 :- import_module libs.compute_grade.
+:- import_module libs.process_util.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.

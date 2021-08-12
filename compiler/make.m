@@ -70,9 +70,9 @@
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
 :- import_module libs.handle_options.
+:- import_module libs.maybe_succeeded.
 :- import_module libs.md5.
 :- import_module libs.options.
-:- import_module libs.process_util.
 :- import_module libs.timestamp.
 :- import_module make.build.
 :- import_module make.dependencies.

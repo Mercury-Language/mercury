@@ -22,7 +22,7 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
-:- import_module libs.process_util.
+:- import_module libs.maybe_succeeded.
 :- import_module make.dependencies.
 :- import_module parse_tree.
 :- import_module parse_tree.module_imports.
@@ -87,6 +87,7 @@
 :- implementation.
 
 :- import_module analysis.
+:- import_module libs.process_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_foreign.

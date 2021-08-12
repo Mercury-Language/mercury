@@ -20,14 +20,14 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.passes_aux.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module libs.
+:- import_module libs.maybe_succeeded.
 :- import_module libs.op_mode.
-:- import_module libs.process_util.
 :- import_module ll_backend.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 
 :- import_module bool.
 :- import_module io.
