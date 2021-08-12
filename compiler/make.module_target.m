@@ -77,9 +77,8 @@
     % Find the foreign code files generated when a module is processed.
     % The `pic' field is only used for C foreign code.
     %
-:- pred external_foreign_code_files(globals::in, pic::in,
-    module_dep_info::in, list(foreign_code_file)::out, io::di, io::uo)
-    is det.
+:- pred external_foreign_code_files(globals::in, pic::in, module_dep_info::in,
+    list(foreign_code_file)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -188,8 +187,8 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
         make_module_target_extra_options(ExtraOptions, Globals,
             dep_target(NestedTargetFile), Succeeded, !Info, !IO)
     else
-        touched_files(Globals, TargetFile, CompilationTaskType,
-            TouchedTargetFiles, TouchedFiles, !Info, !IO),
+        find_files_maybe_touched_by_task(Globals, TargetFile,
+            CompilationTaskType, TouchedTargetFiles, TouchedFiles, !Info, !IO),
         list.foldl(update_target_status(deps_status_being_built),
             TouchedTargetFiles, !Info),
 
@@ -407,8 +406,8 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
                 build_target_2(ModuleName, Task, MaybeArgFileName,
                     ModuleDepInfo)),
             Cleanup, Succeeded, !Info, !IO),
-        record_made_target_2(Globals, Succeeded, TargetFile,
-            TouchedTargetFiles, TouchedFiles, !Info, !IO),
+        record_made_target_given_maybe_touched_files(Globals, Succeeded,
+            TargetFile, TouchedTargetFiles, TouchedFiles, !Info, !IO),
         get_real_milliseconds(Time, !IO),
 
         globals.lookup_bool_option(Globals, show_make_times, ShowMakeTimes),
@@ -738,17 +737,17 @@ target_is_java :-
 
 record_made_target(Globals, TargetFile, CompilationTask, Succeeded,
         !Info, !IO) :-
-    touched_files(Globals, TargetFile, CompilationTask, TouchedTargetFiles,
-        TouchedFiles, !Info, !IO),
-    record_made_target_2(Globals, Succeeded, TargetFile, TouchedTargetFiles,
-        TouchedFiles, !Info, !IO).
+    find_files_maybe_touched_by_task(Globals, TargetFile, CompilationTask,
+        TouchedTargetFiles, TouchedFiles, !Info, !IO),
+    record_made_target_given_maybe_touched_files(Globals, Succeeded,
+        TargetFile, TouchedTargetFiles, TouchedFiles, !Info, !IO).
 
-:- pred record_made_target_2(globals::in, maybe_succeeded::in, target_file::in,
-    list(target_file)::in, list(file_name)::in, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred record_made_target_given_maybe_touched_files(globals::in,
+    maybe_succeeded::in, target_file::in, list(target_file)::in,
+    list(file_name)::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
-record_made_target_2(Globals, Succeeded, TargetFile, TouchedTargetFiles,
-        OtherTouchedFiles, !Info, !IO) :-
+record_made_target_given_maybe_touched_files(Globals, Succeeded, TargetFile,
+        TouchedTargetFiles, OtherTouchedFiles, !Info, !IO) :-
     (
         Succeeded = succeeded,
         TargetStatus = deps_status_up_to_date
@@ -811,9 +810,7 @@ delete_timestamp(Globals, TouchedFile, !Timestamps) :-
     trace [io(!IO)] (
         debug_make_msg(Globals,
             ( pred(!.IO::di, !:IO::uo) is det :-
-                io.write_string("Deleting timestamp for ", !IO),
-                io.write_string(TouchedFile, !IO),
-                io.nl(!IO)
+                io.format("Deleting timestamp for %s\n", [s(TouchedFile)], !IO)
             ), !IO)
     ),
     map.delete(TouchedFile, !Timestamps).
@@ -896,16 +893,16 @@ compilation_task(Target) = Result :-
 
     % Find the files which could be touched by a compilation task.
     %
-:- pred touched_files(globals::in, target_file::in, compilation_task_type::in,
-    list(target_file)::out, list(file_name)::out,
+:- pred find_files_maybe_touched_by_task(globals::in, target_file::in,
+    compilation_task_type::in, list(target_file)::out, list(file_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-touched_files(Globals, TargetFile, Task, TouchedTargetFiles, TouchedFileNames,
-        !Info, !IO) :-
+find_files_maybe_touched_by_task(Globals, TargetFile, Task,
+        TouchedTargetFiles, TouchedFileNames, !Info, !IO) :-
     (
         Task = process_module(ModuleTask),
-        touched_files_process_module(Globals, TargetFile, ModuleTask,
-            TouchedTargetFiles, TouchedFileNames, !Info, !IO)
+        find_files_maybe_touched_by_process_module(Globals, TargetFile,
+            ModuleTask, TouchedTargetFiles, TouchedFileNames, !Info, !IO)
     ;
         Task = target_code_to_object_code(_),
         TouchedTargetFiles = [TargetFile],
@@ -927,13 +924,13 @@ touched_files(Globals, TargetFile, Task, TouchedTargetFiles, TouchedFileNames,
         TouchedFileNames = [FactTableObjectFile]
     ).
 
-:- pred touched_files_process_module(globals::in, target_file::in,
-    module_compilation_task_type::in, list(target_file)::out,
+:- pred find_files_maybe_touched_by_process_module(globals::in,
+    target_file::in, module_compilation_task_type::in, list(target_file)::out,
     list(file_name)::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
-        TouchedFileNames, !Info, !IO) :-
+find_files_maybe_touched_by_process_module(Globals, TargetFile, Task,
+        TouchedTargetFiles, TouchedFileNames, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
         !Info, !IO),
