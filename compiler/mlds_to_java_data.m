@@ -623,8 +623,8 @@ output_int_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
         ;
             ( Type = int_type_uint8,    Cast = "(byte)",    Mask = "0xff"
             ; Type = int_type_uint16,   Cast = "(short)",   Mask = "0xffff"
-            ; Type = int_type_uint32,   Cast = "(int)",     Mask = "0xffffffff"
-            ; Type = int_type_uint,     Cast = "(int)",     Mask = "0xffffffff"
+            ; Type = int_type_uint32,   Cast = "(int)",     Mask = "0xffffffffL"
+            ; Type = int_type_uint,     Cast = "(int)",     Mask = "0xffffffffL"
             ),
             io.format(Stream, "(%s ", [s(Cast)], !IO),
             output_basic_binop_with_mask_for_java(Info, Stream,
