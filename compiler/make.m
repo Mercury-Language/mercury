@@ -44,7 +44,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_write_module_dep_file(globals::in, module_and_imports::in,
+:- pred make_write_module_dep_file(globals::in, module_imports_and_baggage::in,
     io::di, io::uo) is det.
 
 :- func make_module_dep_file_extension = other_ext is det.
@@ -305,8 +305,9 @@
 
 %-----------------------------------------------------------------------------%
 
-make_write_module_dep_file(Globals, Imports, !IO) :-
-    make.module_dep_file.write_module_dep_file(Globals, Imports, !IO).
+make_write_module_dep_file(Globals, ModuleImportsAndBaggage, !IO) :-
+    make.module_dep_file.write_module_dep_file(Globals,
+        ModuleImportsAndBaggage, !IO).
 
 make_module_dep_file_extension = other_ext(".module_dep").
 

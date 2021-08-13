@@ -60,7 +60,7 @@
     % and I am pretty sure that the original author (fjh) does not know
     % anymore either :-(
     %
-:- pred write_dependency_file(globals::in, module_and_imports::in,
+:- pred write_dependency_file(globals::in, module_imports_and_baggage::in,
     maybe_intermod_deps::in, set(module_name)::in,
     maybe(list(module_name))::in, io::di, io::uo) is det.
 
@@ -151,11 +151,12 @@
 
 %---------------------------------------------------------------------------%
 
-write_dependency_file(Globals, ModuleAndImports, IntermodDeps, AllDeps,
+write_dependency_file(Globals, ModuleImportsAndBaggage, IntermodDeps, AllDeps,
         MaybeTransOptDeps, !IO) :-
     % To avoid problems with concurrent updates of `.d' files during
     % parallel makes, we first create the file with a temporary name,
     % and then rename it to the desired name when we have finished.
+    ModuleImportsAndBaggage = module_imports_and_baggage(_, ModuleAndImports),
     module_and_imports_get_module_name(ModuleAndImports, ModuleName),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".d")), ModuleName, DependencyFileName, !IO),
@@ -190,7 +191,7 @@ write_dependency_file(Globals, ModuleAndImports, IntermodDeps, AllDeps,
             report_error(ErrorStream, Message, !IO)
         ;
             Result = ok(DepStream),
-            generate_d_file(Globals, ModuleAndImports, IntermodDeps,
+            generate_d_file(Globals, ModuleImportsAndBaggage, IntermodDeps,
                 AllDeps, MaybeTransOptDeps, MmakeFile, !IO),
             write_mmakefile(DepStream, MmakeFile, !IO),
             io.close_output(DepStream, !IO),
@@ -260,15 +261,19 @@ write_dependency_file(Globals, ModuleAndImports, IntermodDeps, AllDeps,
     % apparently there is no documentation of *which* mmake rules for Java
     % are required by --use-mmc-make.
     %
-:- pred generate_d_file(globals::in, module_and_imports::in,
+:- pred generate_d_file(globals::in, module_imports_and_baggage::in,
     maybe_intermod_deps::in,
     set(module_name)::in, maybe(list(module_name))::in,
     mmakefile::out, io::di, io::uo) is det.
 
-generate_d_file(Globals, ModuleAndImports, IntermodDeps,
+generate_d_file(Globals, ModuleImportsAndBaggage, IntermodDeps,
         AllDeps, MaybeTransOptDeps, !:MmakeFile, !IO) :-
-    module_and_imports_d_file(ModuleAndImports,
-        SourceFileName, SourceFileModuleName, MaybeTopModule, AugCompUnit),
+    ModuleImportsAndBaggage =
+        module_imports_and_baggage(Baggage, ModuleAndImports),
+    SourceFileName = Baggage ^ mb_source_file_name,
+    SourceFileModuleName = Baggage ^ mb_source_file_module_name,
+    MaybeTopModule = Baggage ^ mb_maybe_top_module,
+    module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit),
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameString = sym_name_to_string(ModuleName),
@@ -1260,7 +1265,9 @@ generate_dependencies_write_d_file(Globals, Dep,
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
         TransOptOrder, _DepsMap, !IO) :-
     % XXX The fact that _DepsMap is unused here may be a bug.
-    Dep = deps(_, ModuleAndImports),
+    Dep = deps(_, ModuleImportsAndBaggage),
+    ModuleImportsAndBaggage =
+        module_imports_and_baggage(Baggage, ModuleAndImports),
 
     % Look up the interface/implementation/indirect dependencies
     % for this module from the respective dependency graphs,
@@ -1310,10 +1317,10 @@ generate_dependencies_write_d_file(Globals, Dep,
     % Note that even if a fatal error occured for one of the files
     % that the current Module depends on, a .d file is still produced,
     % even though it probably contains incorrect information.
-    module_and_imports_get_errors(ModuleAndImports, Errors),
+    Errors = Baggage ^ mb_errors,
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_empty(FatalErrors) then
-        write_dependency_file(Globals, ModuleAndImports, IntermodDeps,
+        write_dependency_file(Globals, ModuleImportsAndBaggage, IntermodDeps,
             IndirectOptDeps, yes(TransOptDeps), !IO)
     else
         true
@@ -1396,7 +1403,8 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     % The modules for which we need to generate .int0 files.
     ModulesWithSubModules = list.filter(
         ( pred(Module::in) is semidet :-
-            map.lookup(DepsMap, Module, deps(_, ModuleAndImports)),
+            map.lookup(DepsMap, Module, deps(_, ModuleImportsAndBaggage)),
+            ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
             module_and_imports_get_parse_tree_module_src(ModuleAndImports,
                 ParseTreeModuleSrc),
             IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
@@ -1670,8 +1678,9 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
 select_ok_modules([], _, []).
 select_ok_modules([Module | Modules0], DepsMap, Modules) :-
     select_ok_modules(Modules0, DepsMap, ModulesTail),
-    map.lookup(DepsMap, Module, deps(_, ModuleAndImports)),
-    module_and_imports_get_errors(ModuleAndImports, Errors),
+    map.lookup(DepsMap, Module, deps(_, ModuleImportsAndBaggage)),
+    Baggage = ModuleImportsAndBaggage ^ miab_baggage,
+    Errors = Baggage ^ mb_errors,
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_empty(FatalErrors) then
         Modules = [Module | ModulesTail]
@@ -1702,7 +1711,8 @@ get_fact_table_file_names(DepsMap, Modules, FactTableFileNames) :-
 
 get_fact_table_file_names(_DepsMap, [], !FactTableFileNames).
 get_fact_table_file_names(DepsMap, [Module | Modules], !FactTableFileNames) :-
-    map.lookup(DepsMap, Module, deps(_, ModuleAndImports)),
+    map.lookup(DepsMap, Module, deps(_, ModuleImportsAndBaggage)),
+    ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
     % Handle object files for fact tables.
     module_and_imports_get_fact_tables(ModuleAndImports, FactTableFileNames),
     % Handle object files for foreign code.
@@ -2079,7 +2089,8 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
     ( if
         Intermod = yes,
         some [ModuleAndImports] (
-            map.member(DepsMap, _, deps(_, ModuleAndImports)),
+            map.member(DepsMap, _, deps(_, ModuleImportsAndBaggage)),
+            ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
             module_and_imports_get_parse_tree_module_src(ModuleAndImports,
                 ParseTreeModuleSrc),
             IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
@@ -2392,8 +2403,9 @@ remove_files_cmd(Files) =
 
 get_source_file(DepsMap, ModuleName, FileName) :-
     map.lookup(DepsMap, ModuleName, Deps),
-    Deps = deps(_, ModuleAndImports),
-    module_and_imports_get_source_file_name(ModuleAndImports, SourceFileName),
+    Deps = deps(_, ModuleImportsAndBaggage),
+    Baggage = ModuleImportsAndBaggage ^ miab_baggage,
+    SourceFileName = Baggage ^ mb_source_file_name,
     ( if string.remove_suffix(SourceFileName, ".m", SourceFileBase) then
         FileName = SourceFileBase
     else

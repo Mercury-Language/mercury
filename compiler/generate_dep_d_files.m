@@ -123,9 +123,8 @@ build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
         do_not_search, always_read_module(dont_return_timestamp), _,
         ParseTreeSrc, Specs0, ReadModuleErrors, !IO),
     ParseTreeSrc = parse_tree_src(ModuleName, _, _),
-    parse_tree_src_to_module_and_imports_list(Globals, FileNameDotM,
-        ParseTreeSrc, ReadModuleErrors, Specs0, Specs,
-        _RawCompUnits, ModuleAndImportsList),
+    parse_tree_src_to_module_imports_and_baggage_list(Globals, FileNameDotM,
+        ParseTreeSrc, ReadModuleErrors, Specs0, Specs, ModuleAndImportsList),
     get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
     write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
     map.init(DepsMap0),
@@ -149,8 +148,10 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
 
     % Check whether we could read the main `.m' file.
     map.lookup(DepsMap, ModuleName, ModuleDep),
-    ModuleDep = deps(_, ModuleAndImports),
-    module_and_imports_get_errors(ModuleAndImports, Errors),
+    ModuleDep = deps(_, ModuleImportsAndBaggage),
+    ModuleImportsAndBaggage =
+        module_imports_and_baggage(Baggage, _ModuleAndImports),
+    Errors = Baggage ^ mb_errors,
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_non_empty(FatalErrors) then
         ModuleNameStr = sym_name_to_string(ModuleName),
@@ -167,8 +168,7 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
             Mode = output_d_file_only
         ;
             Mode = output_all_dependencies,
-            module_and_imports_get_source_file_name(ModuleAndImports,
-                SourceFileName),
+            SourceFileName = Baggage ^ mb_source_file_name,
             generate_dependencies_write_dv_file(Globals, SourceFileName,
                 ModuleName, DepsMap, !IO),
             generate_dependencies_write_dep_file(Globals, SourceFileName,
@@ -267,11 +267,12 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
 deps_list_to_deps_graph([], _, !IntDepsGraph, !ImplDepsGraph).
 deps_list_to_deps_graph([Deps | DepsList], DepsMap,
         !IntDepsGraph, !ImplDepsGraph) :-
-    Deps = deps(_, ModuleAndImports),
-    module_and_imports_get_errors(ModuleAndImports, ModuleErrors),
+    Deps = deps(_, ModuleImportsAndBaggage),
+    Baggage = ModuleImportsAndBaggage ^ miab_baggage,
+    ModuleErrors = Baggage ^ mb_errors,
     set.intersect(ModuleErrors, fatal_read_module_errors, FatalModuleErrors),
     ( if set.is_empty(FatalModuleErrors) then
-        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
         add_module_dep_info_to_deps_graph(ModuleDepInfo,
             lookup_module_and_imports_in_deps_map(DepsMap),
             !IntDepsGraph, !ImplDepsGraph)

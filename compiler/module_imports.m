@@ -142,12 +142,6 @@
     % the presence of a gf_src entry for module A will tell us that there is
     % no point in reading in A.int2.
     %
-    % XXX CLEANUP This data structure should be generalized to allow it
-    % to record e.g. both the .m file and the .int file for the module
-    % being compiled. It should also be generalized to record both plain
-    % and transitive optimization files, which will also require the ability
-    % to record more than one file for a single module.
-    %
 :- type grabbed_file_map == map(module_name, grabbed_file).
 
 %---------------------------------------------------------------------------%
@@ -176,6 +170,44 @@
 :- type module_and_imports.
 
 %---------------------------------------------------------------------------%
+
+:- type module_baggage
+    --->    module_baggage(
+                % The name of the source file and directory
+                % containing the module source.
+                % XXX I (zs) don't see source_file_dir being set to
+                % anything but dir.this_directory.
+                mb_source_file_name         :: file_name,
+                mb_source_file_dir          :: dir_name,
+
+                % The name of the top-level module in the above source file.
+                mb_source_file_module_name  :: module_name,
+
+                % The modules included in the same source file. This field
+                % is only set for the top-level module in each file.
+                mb_maybe_top_module         :: maybe_top_module,
+
+                % If we are doing smart recompilation, we need to keep
+                % the timestamps of the modules read in.
+                mb_maybe_timestamp_map      :: maybe(module_timestamp_map),
+
+                mb_grabbed_file_map         :: grabbed_file_map,
+
+                % Whether an error has been encountered when reading in
+                % this module.
+                mb_specs                    :: list(error_spec),
+                mb_errors                   :: read_module_errors
+            ).
+
+%---------------------------------------------------------------------------%
+
+:- type module_imports_and_baggage
+    --->    module_imports_and_baggage(
+                miab_baggage    :: module_baggage,
+                miab_mai        :: module_and_imports
+            ).
+
+%---------------------------------------------------------------------------%
 %
 % The predicates that create module_and_imports structures.
 %
@@ -190,17 +222,16 @@
     % structures it builds are not fully complete; only the fields
     % needed for that task are filled in.
     %
-:- pred parse_tree_src_to_module_and_imports_list(globals::in, file_name::in,
-    parse_tree_src::in, read_module_errors::in,
+:- pred parse_tree_src_to_module_imports_and_baggage_list(globals::in,
+    file_name::in, parse_tree_src::in, read_module_errors::in,
     list(error_spec)::in, list(error_spec)::out,
-    list(parse_tree_module_src)::out, list(module_and_imports)::out) is det.
+    list(module_imports_and_baggage)::out) is det.
 
 :- pred rebuild_module_and_imports_for_dep_file(
+    module_baggage::in, module_baggage::out,
     module_and_imports::in, module_and_imports::out) is det.
 
-    % init_module_and_imports(SourceFileName, SourceFileModuleName,
-    %     ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap, Specs, Errors,
-    %     ModuleAndImports):
+    % init_module_and_imports(ParseTreeModuleSrc, ModuleAndImports):
     %
     % Initialize a module_and_imports structure.
     %
@@ -213,10 +244,7 @@
     % will extract the augmented compilation unit from the updated
     % module_and_imports structure.
     %
-:- pred init_module_and_imports(file_name::in, module_name::in,
-    parse_tree_module_src::in, maybe_top_module::in,
-    maybe(module_timestamp_map)::in,
-    list(error_spec)::in, read_module_errors::in,
+:- pred init_module_and_imports(parse_tree_module_src::in,
     module_and_imports::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -224,14 +252,6 @@
 % Getter and setter predicates for the module_and_imports structure.
 %
 
-:- pred module_and_imports_get_source_file_name(module_and_imports::in,
-    file_name::out) is det.
-:- pred module_and_imports_get_source_file_dir(module_and_imports::in,
-    dir_name::out) is det.
-:- pred module_and_imports_get_source_file_module_name(module_and_imports::in,
-    module_name::out) is det.
-:- pred module_and_imports_get_maybe_top_module(module_and_imports::in,
-    maybe_top_module::out) is det.
 :- pred module_and_imports_get_parse_tree_module_src(module_and_imports::in,
     parse_tree_module_src::out) is det.
 :- pred module_and_imports_get_ancestor_int_specs(module_and_imports::in,
@@ -248,23 +268,6 @@
     map(module_name, int_for_opt_spec)::out) is det.
 :- pred module_and_imports_get_type_repn_specs(module_and_imports::in,
     map(module_name, type_repn_spec)::out) is det.
-:- pred module_and_imports_get_maybe_timestamp_map(module_and_imports::in,
-    maybe(module_timestamp_map)::out) is det.
-:- pred module_and_imports_get_errors(module_and_imports::in,
-    read_module_errors::out) is det.
-:- pred module_and_imports_get_grabbed_file_map(module_and_imports::in,
-    grabbed_file_map::out) is det.
-
-:- pred module_and_imports_set_maybe_timestamp_map(
-    maybe(module_timestamp_map)::in,
-    module_and_imports::in, module_and_imports::out) is det.
-    % XXX It should NOT be necessary to set the read_module_errors field;
-    % the predicates below that only *add* to the set of errors
-    % should be sufficient.
-:- pred module_and_imports_set_errors(read_module_errors::in,
-    module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_set_grabbed_file_map(grabbed_file_map::in,
-    module_and_imports::in, module_and_imports::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -286,9 +289,6 @@
 :- pred module_and_imports_get_foreign_include_file_infos(
     module_and_imports::in, set(foreign_include_file_info)::out) is det.
 
-:- pred module_and_imports_do_we_need_timestamps(module_and_imports::in,
-    maybe_return_timestamp::out) is det.
-
 %---------------------------------------------------------------------------%
 %
 % Predicates for adding information to module_and_imports structures.
@@ -309,21 +309,8 @@
 :- pred module_and_imports_add_type_repn_spec(type_repn_spec::in,
     module_and_imports::in, module_and_imports::out) is det.
 
-:- pred module_and_imports_add_grabbed_file(module_name::in, grabbed_file::in,
-    module_and_imports::in, module_and_imports::out) is det.
-
 :- pred module_and_imports_maybe_add_module_version_numbers(
     module_name::in, maybe_version_numbers::in,
-    module_and_imports::in, module_and_imports::out) is det.
-
-:- pred module_and_imports_add_specs(list(error_spec)::in,
-    module_and_imports::in, module_and_imports::out) is det.
-
-:- pred module_and_imports_add_interface_error(read_module_errors::in,
-    module_and_imports::in, module_and_imports::out) is det.
-
-:- pred module_and_imports_add_specs_errors(
-    list(error_spec)::in, read_module_errors::in,
     module_and_imports::in, module_and_imports::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -331,26 +318,15 @@
 % The predicates that return the contents of module_and_imports structures.
 %
 
-    % Return the parts of the given module_and_imports structure
-    % that we need to put into an automatically generated .d file.
-    %
-:- pred module_and_imports_d_file(module_and_imports::in,
-    file_name::out, module_name::out, maybe_top_module::out,
-    aug_compilation_unit::out) is det.
-
     % Return the results recorded in the module_and_imports structure.
     %
-    % There is no predicate to return *just* the items, since that would
-    % allow callers to forget to retrieve and print the error messages.
-    %
 :- pred module_and_imports_get_aug_comp_unit(module_and_imports::in,
-    aug_compilation_unit::out, list(error_spec)::out, read_module_errors::out)
-    is det.
+    aug_compilation_unit::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- type module_dep_info
-    --->    module_dep_info_imports(module_and_imports)
+    --->    module_dep_info_imports(module_imports_and_baggage)
     ;       module_dep_info_summary(module_dep_summary).
 
 :- type module_dep_summary
@@ -431,20 +407,10 @@
     %
     % XXX The above comment is very old, and almost certainly out of date.
     %
+    % XXX This type now contains exactly the same info as an
+    % aug_compilation_unit, and will be retired soon in favour of that type.
 :- type module_and_imports
     --->    module_and_imports(
-                % The name of the source file and directory
-                % containing the module source.
-                mai_source_file_name    :: file_name,
-                mai_source_file_dir     :: dir_name,
-
-                % The name of the top-level module in the above source file.
-                mai_source_file_module_name :: module_name,
-
-                % The modules included in the same source file. This field
-                % is only set for the top-level module in each file.
-                mai_maybe_top_module    :: maybe_top_module,
-
                 % The contents of the module and its imports.
                 mai_src                 :: parse_tree_module_src,
                 mai_ancestor_int_specs  :: map(module_name, ancestor_int_spec),
@@ -477,18 +443,7 @@
                 % invocation that does code generation.
                 mai_type_repn_specs     :: map(module_name, type_repn_spec),
 
-                mai_version_numbers_map :: module_version_numbers_map,
-
-                % If we are doing smart recompilation, we need to keep
-                % the timestamps of the modules read in.
-                mai_maybe_timestamp_map :: maybe(module_timestamp_map),
-
-                % Whether an error has been encountered when reading in
-                % this module.
-                mai_specs               :: list(error_spec),
-                mai_errors              :: read_module_errors,
-
-                mai_grabbed_file_map    :: grabbed_file_map
+                mai_version_numbers_map :: module_version_numbers_map
             ).
 
 %---------------------------------------------------------------------------%
@@ -513,9 +468,8 @@ get_nested_children_list_of_top_module(MaybeTopModule) = Modules :-
 
 %---------------------------------------------------------------------------%
 
-parse_tree_src_to_module_and_imports_list(Globals, SourceFileName,
-        ParseTreeSrc, ReadModuleErrors, !Specs,
-        ParseTreeModuleSrcs, ModuleAndImportsList) :-
+parse_tree_src_to_module_imports_and_baggage_list(Globals, SourceFileName,
+        ParseTreeSrc, ReadModuleErrors, !Specs, ModuleImportsAndBaggageList) :-
     split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
         ParseTreeModuleSrcs, !Specs),
     ParseTreeSrc = parse_tree_src(TopModuleName, _, _),
@@ -523,41 +477,48 @@ parse_tree_src_to_module_and_imports_list(Globals, SourceFileName,
         list.map(parse_tree_module_src_project_name, ParseTreeModuleSrcs)),
     MAISpecs0 = [],
     list.map(
-        maybe_nested_init_module_and_imports(SourceFileName,
+        maybe_nested_init_module_imports_and_baggage(SourceFileName,
             TopModuleName, AllModuleNames, MAISpecs0, ReadModuleErrors),
-        ParseTreeModuleSrcs, ModuleAndImportsList).
+        ParseTreeModuleSrcs, ModuleImportsAndBaggageList).
 
-rebuild_module_and_imports_for_dep_file(ModuleAndImports0, ModuleAndImports) :-
-    % Make sure all the required fields are filled in.
-    % XXX ITEM_LIST Why build a NEW ModuleAndImports? Wouldn't modifying
-    % ModuleAndImports0 be easier and clearer?
-    module_and_imports_get_aug_comp_unit(ModuleAndImports0,
-        AugCompUnit, Specs, _Errors),
-    AugCompUnit = aug_compilation_unit(_ModuleVersionNumbers,
-        ParseTreeModuleSrc,
-        _AncestorIntSpecs, _DirectIntSpecs, _IndirectIntSpecs,
-        _PlainOpts, _TransOpts, _IntForOptSpecs, _TypeRepnSpecs),
-    module_and_imports_get_source_file_name(ModuleAndImports0,
-        SourceFileName),
-    module_and_imports_get_source_file_module_name(ModuleAndImports0,
-        SourceFileModuleName),
-    module_and_imports_get_maybe_top_module(ModuleAndImports0,
-        MaybeTopModule),
+rebuild_module_and_imports_for_dep_file(Baggage0, Baggage,
+        ModuleAndImports0, ModuleAndImports) :-
+    Baggage0 = module_baggage(SourceFileName, _SourceFileDir,
+        SourceFileModuleName, MaybeTopModule, _MaybeTimestampMap,
+        _GrabbedFileMap, Specs, _Errors),
+    ModuleAndImports0 = module_and_imports(ParseTreeModuleSrc,
+        _, _, _, _, _, _, _, _),
+
     MaybeTimestampMap = maybe.no,
-    set.init(ReadModuleErrors0),
-    init_module_and_imports(SourceFileName, SourceFileModuleName,
-        ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap,
-        Specs, ReadModuleErrors0, ModuleAndImports).
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+    GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
+    set.init(Errors),
+    Baggage = module_baggage(SourceFileName, dir.this_directory,
+        SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
+        GrabbedFileMap, Specs, Errors),
+
+    map.init(AncestorIntSpecs),
+    map.init(DirectIntSpecs),
+    map.init(IndirectIntSpecs),
+    map.init(PlainOpts),
+    map.init(TransOpts),
+    map.init(IntForOptSpecs),
+    map.init(TypeRepnSpecs),
+    map.init(VersionNumbers),
+    ModuleAndImports = module_and_imports(ParseTreeModuleSrc,
+        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs, VersionNumbers).
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_nested_init_module_and_imports(file_name::in,
+:- pred maybe_nested_init_module_imports_and_baggage(file_name::in,
     module_name::in, set(module_name)::in,
     list(error_spec)::in, read_module_errors::in,
-    parse_tree_module_src::in, module_and_imports::out) is det.
+    parse_tree_module_src::in, module_imports_and_baggage::out) is det.
 
-maybe_nested_init_module_and_imports(FileName, SourceFileModuleName,
-        AllModuleNames, Specs, Errors, ParseTreeModuleSrc, ModuleAndImports) :-
+maybe_nested_init_module_imports_and_baggage(SourceFileName,
+        SourceFileModuleName, AllModuleNames, Specs, Errors,
+        ParseTreeModuleSrc, ModuleImportsAndBaggage) :-
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ( if ModuleName = SourceFileModuleName then
         set.delete(ModuleName, AllModuleNames, NestedModuleNames),
@@ -566,14 +527,15 @@ maybe_nested_init_module_and_imports(FileName, SourceFileModuleName,
         MaybeTopModule = not_top_module
     ),
     MaybeTimestampMap = maybe.no,
-    init_module_and_imports(FileName, SourceFileModuleName,
-        ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap, Specs, Errors,
-        ModuleAndImports).
+    GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
+    Baggage = module_baggage(SourceFileName, dir.this_directory,
+        SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
+        GrabbedFileMap, Specs, Errors),
+    init_module_and_imports(ParseTreeModuleSrc, ModuleAndImports),
+    ModuleImportsAndBaggage =
+        module_imports_and_baggage(Baggage, ModuleAndImports).
 
-init_module_and_imports(SourceFileName, SourceFileModuleName,
-        ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap, Specs, Errors,
-        ModuleAndImports) :-
-    map.init(VersionNumbers),
+init_module_and_imports(ParseTreeModuleSrc, ModuleAndImports) :-
     map.init(AncestorIntSpecs),
     map.init(DirectIntSpecs),
     map.init(IndirectIntSpecs),
@@ -581,58 +543,17 @@ init_module_and_imports(SourceFileName, SourceFileModuleName,
     map.init(TransOpts),
     map.init(IntForOptSpecs),
     map.init(TypeRepnSpecs),
-    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
-    ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
-        SourceFileModuleName, MaybeTopModule,
-        ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
-        VersionNumbers, MaybeTimestampMap, Specs, Errors, GrabbedFileMap).
+    map.init(VersionNumbers),
+    ModuleAndImports = module_and_imports(ParseTreeModuleSrc,
+        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs, VersionNumbers).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- pred module_and_imports_get_version_numbers_map(module_and_imports::in,
     module_version_numbers_map::out) is det.
-:- pred module_and_imports_get_specs(module_and_imports::in,
-    list(error_spec)::out) is det.
 
-module_and_imports_get_source_file_name(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Accesses = Accesses0 ^ mf_source_file_name := accessed,
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_source_file_name
-    ).
-module_and_imports_get_source_file_dir(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Accesses = Accesses0 ^ mf_source_file_dir := accessed,
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_source_file_dir
-    ).
-module_and_imports_get_source_file_module_name(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Accesses = Accesses0 ^ mf_source_file_module_name := accessed,
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_source_file_module_name
-    ).
-module_and_imports_get_maybe_top_module(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Accesses = Accesses0 ^ mf_maybe_top_module := accessed,
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_maybe_top_module
-    ).
 module_and_imports_get_parse_tree_module_src(ModuleAndImports, X) :-
     promise_pure (
         trace [compile_time(flag("mai-stats"))] (
@@ -714,35 +635,6 @@ module_and_imports_get_version_numbers_map(ModuleAndImports, X) :-
         ),
         X = ModuleAndImports ^ mai_version_numbers_map
     ).
-module_and_imports_get_maybe_timestamp_map(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Accesses = Accesses0 ^ mf_maybe_timestamp_map := accessed,
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_maybe_timestamp_map
-    ).
-module_and_imports_get_specs(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Accesses = Accesses0 ^ mf_specs := accessed,
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_specs
-    ).
-module_and_imports_get_errors(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Accesses = Accesses0 ^ mf_errors := accessed,
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_errors
-    ).
-module_and_imports_get_grabbed_file_map(ModuleAndImports, X) :-
-    X = ModuleAndImports ^ mai_grabbed_file_map.
 
 :- pred module_and_imports_set_ancestor_int_specs(
     map(module_name, ancestor_int_spec)::in,
@@ -768,8 +660,6 @@ module_and_imports_get_grabbed_file_map(ModuleAndImports, X) :-
 :- pred module_and_imports_set_version_numbers_map(
     module_version_numbers_map::in,
     module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_set_specs(list(error_spec)::in,
-    module_and_imports::in, module_and_imports::out) is det.
 
 module_and_imports_set_ancestor_int_specs(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_ancestor_int_specs := X.
@@ -787,14 +677,6 @@ module_and_imports_set_type_repn_specs(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_type_repn_specs := X.
 module_and_imports_set_version_numbers_map(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_version_numbers_map := X.
-module_and_imports_set_maybe_timestamp_map(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_maybe_timestamp_map := X.
-module_and_imports_set_specs(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_specs := X.
-module_and_imports_set_errors(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_errors := X.
-module_and_imports_set_grabbed_file_map(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_grabbed_file_map := X.
 
 %---------------------------------------------------------------------------%
 
@@ -899,14 +781,6 @@ module_and_imports_get_foreign_include_file_infos(ModuleAndImports, FIFOs) :-
         ParseTreeModuleSrc),
     get_foreign_include_file_infos(ParseTreeModuleSrc, FIFOs).
 
-module_and_imports_do_we_need_timestamps(ModuleAndImports,
-        MaybeReturnTimestamp) :-
-    module_and_imports_get_maybe_timestamp_map(ModuleAndImports,
-        MaybeTimestampMap),
-    ( MaybeTimestampMap = yes(_), MaybeReturnTimestamp = do_return_timestamp
-    ; MaybeTimestampMap = no,     MaybeReturnTimestamp = dont_return_timestamp
-    ).
-
 %---------------------------------------------------------------------------%
 
 module_and_imports_add_ancestor_int_spec(X, !ModuleAndImports) :-
@@ -961,17 +835,6 @@ module_and_imports_add_type_repn_spec(X, !ModuleAndImports) :-
 
 %---------------------%
 
-module_and_imports_add_grabbed_file(ModuleName, FileWhy, !ModuleAndImports) :-
-    module_and_imports_get_grabbed_file_map(!.ModuleAndImports,
-        GrabbedFileMap0),
-    % We could be adding a new entry to the map, or overwriting an existing
-    % entry.
-    map.set(ModuleName, FileWhy, GrabbedFileMap0, GrabbedFileMap),
-    module_and_imports_set_grabbed_file_map(GrabbedFileMap,
-        !ModuleAndImports).
-
-%---------------------%
-
 module_and_imports_maybe_add_module_version_numbers(ModuleName,
         MaybeVersionNumbers, !ModuleAndImports) :-
     (
@@ -986,85 +849,26 @@ module_and_imports_maybe_add_module_version_numbers(ModuleName,
             !ModuleAndImports)
     ).
 
-%---------------------%
-
-module_and_imports_add_specs(NewSpecs, !ModuleAndImports) :-
-    module_and_imports_get_specs(!.ModuleAndImports, Specs0),
-    Specs = NewSpecs ++ Specs0,
-    module_and_imports_set_specs(Specs, !ModuleAndImports).
-
-module_and_imports_add_interface_error(InterfaceErrors, !ModuleAndImports) :-
-    module_and_imports_get_errors(!.ModuleAndImports, Errors0),
-    set.union(Errors0, InterfaceErrors, Errors),
-    module_and_imports_set_errors(Errors, !ModuleAndImports).
-
-module_and_imports_add_specs_errors(NewSpecs, NewErrors, !ModuleAndImports) :-
-    module_and_imports_get_specs(!.ModuleAndImports, Specs0),
-    module_and_imports_get_errors(!.ModuleAndImports, Errors0),
-    Specs = NewSpecs ++ Specs0,
-    set.union(Errors0, NewErrors, Errors),
-    module_and_imports_set_specs(Specs, !ModuleAndImports),
-    module_and_imports_set_errors(Errors, !ModuleAndImports).
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-module_and_imports_d_file(ModuleAndImports,
-        SourceFileName, SourceFileModuleName, MaybeTopModule, AugCompUnit) :-
-    % XXX CLEANUP Several of the outputs are part of the parse_tree_module_src
-    % in AugCompUnit.
-    module_and_imports_get_version_numbers_map(ModuleAndImports,
-        ModuleVersionNumbers),
-    module_and_imports_get_source_file_name(ModuleAndImports,
-        SourceFileName),
-    module_and_imports_get_source_file_module_name(ModuleAndImports,
-        SourceFileModuleName),
-    module_and_imports_get_maybe_top_module(ModuleAndImports, MaybeTopModule),
-    module_and_imports_get_parse_tree_module_src(ModuleAndImports,
-        ParseTreeModuleSrc),
-    module_and_imports_get_ancestor_int_specs(ModuleAndImports,
-        AncestorIntSpecs),
-    module_and_imports_get_direct_int_specs(ModuleAndImports, DirectIntSpecs),
-    module_and_imports_get_indirect_int_specs(ModuleAndImports,
-        IndirectIntSpecs),
-    module_and_imports_get_plain_opts(ModuleAndImports, PlainOpts),
-    module_and_imports_get_trans_opts(ModuleAndImports, TransOpts),
-    module_and_imports_get_int_for_opt_specs(ModuleAndImports, IntForOptSpecs),
-    module_and_imports_get_type_repn_specs(ModuleAndImports, TypeRepnSpecs),
-    AugCompUnit = aug_compilation_unit(ModuleVersionNumbers,
+module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit) :-
+    ModuleAndImports = module_and_imports(ParseTreeModuleSrc,
+        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
+        VersionNumbersMap),
+    AugCompUnit = aug_compilation_unit(VersionNumbersMap,
         ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs).
-
-module_and_imports_get_aug_comp_unit(ModuleAndImports,
-        AugCompUnit, Specs, Errors) :-
-    module_and_imports_get_version_numbers_map(ModuleAndImports,
-        ModuleVersionNumbers),
-    module_and_imports_get_parse_tree_module_src(ModuleAndImports,
-        ParseTreeModuleSrc),
-    module_and_imports_get_ancestor_int_specs(ModuleAndImports,
-        AncestorIntSpecs),
-    module_and_imports_get_direct_int_specs(ModuleAndImports,
-        DirectIntSpecs),
-    module_and_imports_get_indirect_int_specs(ModuleAndImports,
-        IndirectIntSpecs),
-    module_and_imports_get_plain_opts(ModuleAndImports, PlainOpts),
-    module_and_imports_get_trans_opts(ModuleAndImports, TransOpts),
-    module_and_imports_get_int_for_opt_specs(ModuleAndImports,
-        IntForOptSpecs),
-    module_and_imports_get_type_repn_specs(ModuleAndImports, TypeRepnSpecs),
-    AugCompUnit = aug_compilation_unit(ModuleVersionNumbers,
-        ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs),
-    module_and_imports_get_specs(ModuleAndImports, Specs),
-    module_and_imports_get_errors(ModuleAndImports, Errors).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 module_dep_info_get_source_file_name(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
-        module_and_imports_get_source_file_name(ModuleAndImports, X)
+        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
+        Baggage = ModuleImportsAndBaggage ^ miab_baggage,
+        X = Baggage ^ mb_source_file_name
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_source_file_name
@@ -1072,8 +876,9 @@ module_dep_info_get_source_file_name(ModuleDepInfo, X) :-
 
 module_dep_info_get_source_file_dir(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
-        module_and_imports_get_source_file_dir(ModuleAndImports, X)
+        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
+        Baggage = ModuleImportsAndBaggage ^ miab_baggage,
+        X = Baggage ^ mb_source_file_dir
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_source_file_dir
@@ -1081,8 +886,9 @@ module_dep_info_get_source_file_dir(ModuleDepInfo, X) :-
 
 module_dep_info_get_source_file_module_name(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
-        module_and_imports_get_source_file_module_name(ModuleAndImports, X)
+        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
+        Baggage = ModuleImportsAndBaggage ^ miab_baggage,
+        X = Baggage ^ mb_source_file_module_name
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_source_file_module_name
@@ -1090,7 +896,8 @@ module_dep_info_get_source_file_module_name(ModuleDepInfo, X) :-
 
 module_dep_info_get_module_name(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
+        ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
         module_and_imports_get_module_name(ModuleAndImports, X)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -1099,7 +906,8 @@ module_dep_info_get_module_name(ModuleDepInfo, X) :-
 
 module_dep_info_get_children(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
+        ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
         module_and_imports_get_children(ModuleAndImports, Xs),
         set.list_to_set(Xs, X)
     ;
@@ -1109,8 +917,9 @@ module_dep_info_get_children(ModuleDepInfo, X) :-
 
 module_dep_info_get_maybe_top_module(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
-        module_and_imports_get_maybe_top_module(ModuleAndImports, X)
+        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
+        Baggage = ModuleImportsAndBaggage ^ miab_baggage,
+        X = Baggage ^ mb_maybe_top_module
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_maybe_top_module
@@ -1118,7 +927,8 @@ module_dep_info_get_maybe_top_module(ModuleDepInfo, X) :-
 
 module_dep_info_get_int_deps(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
+        ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
         module_and_imports_get_int_imp_deps(ModuleAndImports, X, _)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -1127,7 +937,8 @@ module_dep_info_get_int_deps(ModuleDepInfo, X) :-
 
 module_dep_info_get_imp_deps(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
+        ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
         module_and_imports_get_int_imp_deps(ModuleAndImports, _, X)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -1136,7 +947,8 @@ module_dep_info_get_imp_deps(ModuleDepInfo, X) :-
 
 module_dep_info_get_fact_tables(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
+        ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
         module_and_imports_get_fact_tables(ModuleAndImports, X)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -1145,7 +957,8 @@ module_dep_info_get_fact_tables(ModuleDepInfo, X) :-
 
 module_dep_info_get_fims(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
+        ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
         module_and_imports_get_fim_specs(ModuleAndImports, X)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -1154,7 +967,8 @@ module_dep_info_get_fims(ModuleDepInfo, X) :-
 
 module_dep_info_get_foreign_include_files(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
+        ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
         module_and_imports_get_foreign_include_file_infos(ModuleAndImports, X)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),

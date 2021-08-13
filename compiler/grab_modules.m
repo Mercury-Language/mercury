@@ -83,7 +83,7 @@
     %
 :- pred grab_qual_imported_modules_augment(globals::in, file_name::in,
     module_name::in, maybe(timestamp)::in, maybe_top_module::in,
-    parse_tree_module_src::in, module_and_imports::out,
+    parse_tree_module_src::in, module_baggage::out, module_and_imports::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
@@ -102,7 +102,7 @@
     %
 :- pred grab_unqual_imported_modules_make_int(globals::in,
     file_name::in, module_name::in,
-    parse_tree_module_src::in, module_and_imports::out,
+    parse_tree_module_src::in, module_baggage::out, module_and_imports::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
@@ -110,6 +110,7 @@
     % the items for this module.
     %
 :- pred grab_plain_opt_and_int_for_opt_files(globals::in, bool::out,
+    module_baggage::in, module_baggage::out,
     module_and_imports::in, module_and_imports::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
@@ -120,6 +121,7 @@
     % the items in ModuleAndImports.
     %
 :- pred grab_trans_opt_files(globals::in, list(module_name)::in, bool::out,
+    module_baggage::in, module_baggage::out,
     module_and_imports::in, module_and_imports::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
@@ -143,6 +145,7 @@
 :- import_module parse_tree.prog_data_foreign.
 
 :- import_module cord.
+:- import_module dir.
 :- import_module map.
 :- import_module one_or_more.
 :- import_module require.
@@ -155,7 +158,8 @@
 
 grab_qual_imported_modules_augment(Globals, SourceFileName,
         SourceFileModuleName, MaybeTimestamp, MaybeTopModule,
-        ParseTreeModuleSrc0, !:ModuleAndImports, !HaveReadModuleMaps, !IO) :-
+        ParseTreeModuleSrc0, !:Baggage, !:ModuleAndImports,
+        !HaveReadModuleMaps, !IO) :-
     % The predicates grab_imported_modules and grab_unqual_imported_modules
     % have quite similar tasks. Please keep the corresponding parts of these
     % two predicates in sync.
@@ -187,11 +191,21 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
             MaybeTimestampMap = no
         ),
 
-        Specs = [],
-        set.init(Errors),
-        init_module_and_imports(SourceFileName, SourceFileModuleName,
-            ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap,
-            Specs, Errors, !:ModuleAndImports),
+        Specs0 = [],
+        set.init(Errors0),
+        init_module_and_imports(ParseTreeModuleSrc, !:ModuleAndImports),
+        GrabbedFileMap0 =
+            map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
+        % XXX If setting the SourceFileDir field to dir.this_directory
+        % always reflects the actual location of the source file,
+        % then storing the directory name is redundant. If sometimes
+        % it does not, then this is a bug. Either way, there is something
+        % wrong here.
+        % XXX Check whether any code actually *uses* the value in this field.
+        !:Baggage = module_baggage(SourceFileName, dir.this_directory,
+            SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
+            GrabbedFileMap0, Specs0, Errors0),
+
         !:Specs = [],
 
         SrcMap0 = !.HaveReadModuleMaps ^ hrmm_module_src,
@@ -220,7 +234,7 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
         grab_module_int0_files(Globals,
             "ancestors", rwi0_section,
             Ancestors, IntImports2, IntImports, IntUses2, IntUses,
-            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
 
         % Get the .int files of the modules imported using `import_module'.
         set.init(!:IntIndirectImported),
@@ -231,24 +245,24 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
             "int_imported", rwi1_int_import,
             set.to_sorted_list(IntImports),
             !IntIndirectImported, !IntImpIndirectImported,
-            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
         grab_module_int1_files(Globals,
             "imp_imported", rwi1_imp_import,
             ImpImports,
             !ImpIndirectImported, !ImpImpIndirectImported,
-            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
 
         % Get the .int files of the modules imported using `use_module'.
         grab_module_int1_files(Globals,
             "int_used", rwi1_int_use,
             set.to_sorted_list(IntUses),
             !IntIndirectImported, !IntImpIndirectImported,
-            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
         grab_module_int1_files(Globals,
             "imp_used", rwi1_imp_use,
             ImpUses,
             !ImpIndirectImported, !ImpImpIndirectImported,
-            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
 
         % Get the .int files of the modules imported using `use_module'
         % in the interface and `import_module' in the implementation.
@@ -256,17 +270,17 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
             "int_used_imp_imported", rwi1_int_use_imp_import,
             IntUseImpImports,
             !IntIndirectImported, !IntImpIndirectImported,
-            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
 
         % Get the .int2 files of the modules imported in .int files.
         grab_module_int2_files_transitively(Globals,
             "int_indirect_imported", rwi2_int_use,
             !.IntIndirectImported, !IntImpIndirectImported,
-            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
         grab_module_int2_files_transitively(Globals,
             "imp_indirect_imported", rwi2_imp_use,
             !.ImpIndirectImported, !ImpImpIndirectImported,
-            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
 
         % Get the .int2 files of the modules indirectly imported
         % the implementation sections of .int/.int2 files.
@@ -279,11 +293,11 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
         grab_module_int2_files_and_impls_transitively(Globals,
             "int_imp_indirect_imported", rwi2_abstract,
             !.IntImpIndirectImported,
-            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
         grab_module_int2_files_and_impls_transitively(Globals,
             "imp_imp_indirect_imported", rwi2_abstract,
             !.ImpImpIndirectImported,
-            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
 
         globals.lookup_bool_option(Globals, experiment3, Experiment3),
         (
@@ -299,26 +313,27 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
             % of its ancestors.
             process_module_int1(Globals, rwi1_type_repn,
                 ModuleName, _SelfParseTreeInt1,
-                !HaveReadModuleMaps, !ModuleAndImports, !IO),
-            list.map_foldl3(process_module_int1(Globals, rwi1_type_repn),
+                !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
+            list.map_foldl4(process_module_int1(Globals, rwi1_type_repn),
                 get_ancestors(ModuleName), _AncestorParseTreeInt1s,
-                !HaveReadModuleMaps, !ModuleAndImports, !IO)
+                !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO)
         ),
 
-        module_and_imports_get_aug_comp_unit(!.ModuleAndImports,
-            AugCompUnit, _, _),
+        module_and_imports_get_aug_comp_unit(!.ModuleAndImports, AugCompUnit),
         AllImportedOrUsed = set.union_list([IntImports, IntUses,
             set.list_to_set(ImpImports), set.list_to_set(ImpUses),
             set.list_to_set(IntUseImpImports)]),
         check_imports_accessibility(AugCompUnit, AllImportedOrUsed, !Specs),
-        module_and_imports_add_specs(!.Specs, !ModuleAndImports)
+        Specs1 = !.Baggage ^ mb_specs,
+        Specs = !.Specs ++ Specs1,
+        !Baggage ^ mb_specs := Specs
     ).
 
 %---------------------------------------------------------------------------%
 
 grab_unqual_imported_modules_make_int(Globals, SourceFileName,
-        SourceFileModuleName, ParseTreeModuleSrc0, !:ModuleAndImports,
-        !HaveReadModuleMaps, !IO) :-
+        SourceFileModuleName, ParseTreeModuleSrc0,
+        !:Baggage, !:ModuleAndImports, !HaveReadModuleMaps, !IO) :-
     % The predicates grab_imported_modules and grab_unqual_imported_modules
     % have quite similar tasks. Please keep the corresponding parts of these
     % two predicates in sync.
@@ -353,11 +368,20 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         ),
         MaybeTimestampMap = no,
 
-        Specs = [],
-        set.init(Errors),
-        init_module_and_imports(SourceFileName, SourceFileModuleName,
-            ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap,
-            Specs, Errors, !:ModuleAndImports),
+        Specs0 = [],
+        set.init(Errors0),
+        init_module_and_imports(ParseTreeModuleSrc, !:ModuleAndImports),
+        GrabbedFileMap0 =
+            map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
+        % XXX If setting the SourceFileDir field to dir.this_directory
+        % always reflects the actual location of the source file,
+        % then storing the directory name is redundant. If sometimes
+        % it does not, then this is a bug. Either way, there is something
+        % wrong here.
+        % XXX Check whether any code actually *uses* the value in this field.
+        !:Baggage = module_baggage(SourceFileName, dir.this_directory,
+            SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
+            GrabbedFileMap0, Specs0, Errors0),
 
         ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
         SrcMap0 = !.HaveReadModuleMaps ^ hrmm_module_src,
@@ -369,7 +393,7 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         grab_module_int0_files(Globals,
             "unqual_ancestors", rwi0_section,
             Ancestors, set.init, AncestorImports, set.init, AncestorUses,
-            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
 
         % Get the .int3 files of the modules imported using `import_module'.
         set.init(!:IntIndirectImported),
@@ -377,44 +401,53 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         grab_module_int3_files(Globals,
             "unqual_parent_imported", rwi3_direct_ancestor_import,
             set.to_sorted_list(AncestorImports),
-            !IntIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !IntIndirectImported, !HaveReadModuleMaps,
+            !Baggage, !ModuleAndImports, !IO),
         grab_module_int3_files(Globals,
             "unqual_int_imported", rwi3_direct_int_import,
             set.to_sorted_list(IntImports),
-            !IntIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !IntIndirectImported, !HaveReadModuleMaps,
+            !Baggage, !ModuleAndImports, !IO),
         grab_module_int3_files(Globals,
             "unqual_imp_imported", rwi3_direct_imp_import,
             set.to_sorted_list(ImpImports),
-            !ImpIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !ImpIndirectImported, !HaveReadModuleMaps,
+            !Baggage, !ModuleAndImports, !IO),
 
         % Get the .int3 files of the modules imported using `use_module'.
         grab_module_int3_files(Globals,
             "unqual_parent_used", rwi3_direct_ancestor_use,
             set.to_sorted_list(AncestorUses),
-            !IntIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !IntIndirectImported, !HaveReadModuleMaps,
+            !Baggage, !ModuleAndImports, !IO),
         grab_module_int3_files(Globals,
             "unqual_int_used", rwi3_direct_int_use,
             set.to_sorted_list(IntUses),
-            !IntIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !IntIndirectImported, !HaveReadModuleMaps,
+            !Baggage, !ModuleAndImports, !IO),
         grab_module_int3_files(Globals,
             "unqual_imp_used", rwi3_direct_imp_use,
             set.to_sorted_list(ImpUses),
-            !ImpIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !ImpIndirectImported, !HaveReadModuleMaps,
+            !Baggage, !ModuleAndImports, !IO),
 
         % Get the .int3 files of the modules imported using `use_module'
         % in the interface and `import_module' in the implementation.
         grab_module_int3_files(Globals,
             "unqual_int_used_imp_imported", rwi3_direct_int_use_imp_import,
             set.to_sorted_list(IntUsesImpImports),
-            !IntIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !IntIndirectImported, !HaveReadModuleMaps,
+            !Baggage, !ModuleAndImports, !IO),
 
         % Get the .int3 files of the modules imported in .int3 files.
         grab_module_int3_files_transitively(Globals,
             "unqual_int_indirect_imported", rwi3_indirect_int_use,
-            !.IntIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !.IntIndirectImported, !HaveReadModuleMaps,
+            !Baggage, !ModuleAndImports, !IO),
         grab_module_int3_files_transitively(Globals,
             "unqual_imp_indirect_imported", rwi3_indirect_imp_use,
-            !.ImpIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO)
+            !.ImpIndirectImported, !HaveReadModuleMaps,
+            !Baggage, !ModuleAndImports, !IO)
     ).
 
 :- pred dump_modules(io.text_output_stream::in, set(module_name)::in,
@@ -429,7 +462,7 @@ dump_modules(Stream, ModuleNames, !IO) :-
 %---------------------------------------------------------------------------%
 
 grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
-        !ModuleAndImports, !HaveReadModuleMaps, !IO) :-
+        !Baggage, !ModuleAndImports, !HaveReadModuleMaps, !IO) :-
     % Read in the .opt files for imported and ancestor modules.
     module_and_imports_get_parse_tree_module_src(!.ModuleAndImports,
         ParseTreeModuleSrc),
@@ -490,7 +523,7 @@ grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
 
     list.foldl(module_and_imports_add_plain_opt, ParseTreePlainOpts,
         !ModuleAndImports),
-    module_and_imports_add_specs(OptSpecs, !ModuleAndImports),
+    module_baggage_add_specs(OptSpecs, !Baggage),
 
     % Read .int0 files required by the `.opt' files, except the ones
     % we have already read as ancestors of ModuleName,
@@ -509,7 +542,7 @@ grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
         "opt_int0s", rwi0_opt,
         set.to_sorted_list(OptOnlyModuleAncestors),
         set.init, OptAncestorImports, set.init, OptAncestorUses,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
 
     % Figure out which .int files are implicitly needed by the .opt files.
     combine_implicit_needs(cord.list(ImplicitNeedsCord), AllImplicitNeeds),
@@ -522,16 +555,16 @@ grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
         "opt_new_deps", rwi1_opt,
         set.to_sorted_list(NewDeps),
         set.init, NewIndirectDeps, set.init, NewImplIndirectDeps,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
     grab_module_int2_files_and_impls_transitively(Globals,
         "opt_new_indirect_deps", rwi2_opt,
         set.union(NewIndirectDeps, NewImplIndirectDeps),
-        !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
 
     % Figure out whether anything went wrong.
     % XXX We should try to put all the relevant error indications into
     % !ModuleAndImports, and let our caller figure out what to do with them.
-    module_and_imports_get_errors(!.ModuleAndImports, ModuleErrors),
+    ModuleErrors = !.Baggage ^ mb_errors,
     ( if
         ( set.is_non_empty(ModuleErrors)
         ; OptError = yes
@@ -545,7 +578,7 @@ grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
 %---------------------------------------------------------------------------%
 
 grab_trans_opt_files(Globals, TransOptModuleNames, FoundError,
-        !ModuleAndImports, !HaveReadModuleMaps, !IO) :-
+        !Baggage, !ModuleAndImports, !HaveReadModuleMaps, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Reading .trans_opt files..\n", !IO),
     maybe_flush_output(Verbose, !IO),
@@ -556,9 +589,9 @@ grab_trans_opt_files(Globals, TransOptModuleNames, FoundError,
         [], TransOptSpecs, no, FoundError, !IO),
     list.foldl(module_and_imports_add_trans_opt,
         cord.list(ParseTreeTransOptsCord), !ModuleAndImports),
-    module_and_imports_add_specs(TransOptSpecs, !ModuleAndImports),
+    module_baggage_add_specs(TransOptSpecs, !Baggage),
     % XXX why ignore any existing errors?
-    module_and_imports_set_errors(set.init, !ModuleAndImports),
+    !Baggage ^ mb_errors := set.init,
 
     maybe_write_string(Verbose, "% Done.\n", !IO).
 
@@ -575,55 +608,60 @@ grab_trans_opt_files(Globals, TransOptModuleNames, FoundError,
 :- pred grab_module_int2_files_and_impls_transitively(globals::in,
     string::in, read_why_int2::in, set(module_name)::in,
     have_read_module_maps::in, have_read_module_maps::out,
+    module_baggage::in, module_baggage::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
 grab_module_int2_files_and_impls_transitively(Globals, Why, ReadWhy2,
-        Modules, !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
+        Modules, !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO) :-
     grab_module_int2_files_transitively(Globals, Why, ReadWhy2,
         Modules, set.init, ImpIndirectImports,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
     ( if set.is_empty(ImpIndirectImports) then
         true
     else
         grab_module_int2_files_and_impls_transitively(Globals, Why, ReadWhy2,
-            ImpIndirectImports, !HaveReadModuleMaps, !ModuleAndImports, !IO)
+            ImpIndirectImports, !HaveReadModuleMaps,
+            !Baggage, !ModuleAndImports, !IO)
     ).
 
 :- pred grab_module_int2_files_transitively(globals::in, string::in,
     read_why_int2::in, set(module_name)::in,
     set(module_name)::in, set(module_name)::out,
     have_read_module_maps::in, have_read_module_maps::out,
+    module_baggage::in, module_baggage::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
 grab_module_int2_files_transitively(Globals, Why, ReadWhy2,
         Modules, !ImpIndirectImports,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO) :-
     grab_module_int2_files(Globals, Why, ReadWhy2, set.to_sorted_list(Modules),
         set.init, IndirectImports, !ImpIndirectImports,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
     ( if set.is_empty(IndirectImports) then
         true
     else
         grab_module_int2_files_transitively(Globals, Why, ReadWhy2,
             IndirectImports, !ImpIndirectImports,
-            !HaveReadModuleMaps, !ModuleAndImports, !IO)
+            !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO)
     ).
 
 :- pred grab_module_int3_files_transitively(globals::in, string::in,
     read_why_int3::in, set(module_name)::in,
     have_read_module_maps::in, have_read_module_maps::out,
+    module_baggage::in, module_baggage::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
 grab_module_int3_files_transitively(Globals, Why, ReadWhy3,
-        Modules, !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
+        Modules, !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO) :-
     grab_module_int3_files(Globals, Why, ReadWhy3, set.to_sorted_list(Modules),
         set.init, IndirectImports,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
     ( if set.is_empty(IndirectImports) then
         true
     else
         grab_module_int3_files_transitively(Globals, Why, ReadWhy3,
-            IndirectImports, !HaveReadModuleMaps, !ModuleAndImports, !IO)
+            IndirectImports, !HaveReadModuleMaps,
+            !Baggage, !ModuleAndImports, !IO)
     ).
 
 :- pred grab_module_int0_files(globals::in, string::in, read_why_int0::in,
@@ -631,19 +669,20 @@ grab_module_int3_files_transitively(Globals, Why, ReadWhy3,
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
     have_read_module_maps::in, have_read_module_maps::out,
+    module_baggage::in, module_baggage::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
 grab_module_int0_files(_Globals, _Why, _ReadWhy0, [],
         !DirectImports, !DirectUses,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO).
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO).
 grab_module_int0_files(Globals, Why, ReadWhy0, [ModuleName | ModuleNames],
         !DirectImports, !DirectUses,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
-    ( if should_read_interface(!.ModuleAndImports, ModuleName, ifk_int0) then
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO) :-
+    ( if should_read_interface(!.Baggage, ModuleName, ifk_int0) then
         maybe_log_augment_decision(Why, ifk_int0, ReadWhy0, ModuleName,
             decided_to_read, !IO),
         process_module_int0(Globals, ReadWhy0, ModuleName, ParseTreeInt0,
-            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
         map.keys_as_set(ParseTreeInt0 ^ pti0_int_imports, IntImports),
         map.keys_as_set(ParseTreeInt0 ^ pti0_imp_imports, ImpImports),
         map.keys_as_set(ParseTreeInt0 ^ pti0_int_uses, IntUses),
@@ -658,26 +697,27 @@ grab_module_int0_files(Globals, Why, ReadWhy0, [ModuleName | ModuleNames],
     ),
     grab_module_int0_files(Globals, Why, ReadWhy0, ModuleNames,
         !DirectImports, !DirectUses,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO).
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO).
 
 :- pred grab_module_int1_files(globals::in, string::in, read_why_int1::in,
     list(module_name)::in,
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
     have_read_module_maps::in, have_read_module_maps::out,
+    module_baggage::in, module_baggage::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
 grab_module_int1_files(_Globals, _Why, _ReadWhy1, [],
         !IntIndirectImports, !ImpIndirectImports,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO).
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO).
 grab_module_int1_files(Globals, Why, ReadWhy1, [ModuleName | ModuleNames],
         !IntIndirectImports, !ImpIndirectImports,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
-    ( if should_read_interface(!.ModuleAndImports, ModuleName, ifk_int1) then
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO) :-
+    ( if should_read_interface(!.Baggage, ModuleName, ifk_int1) then
         maybe_log_augment_decision(Why, ifk_int1, ReadWhy1, ModuleName,
             decided_to_read, !IO),
         process_module_int1(Globals, ReadWhy1, ModuleName, ParseTreeInt1,
-            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
         map.keys_as_set(ParseTreeInt1 ^ pti1_int_uses, IntUses),
         map.keys_as_set(ParseTreeInt1 ^ pti1_imp_uses, ImpUses),
         set.union(IntUses, !IntIndirectImports),
@@ -688,26 +728,27 @@ grab_module_int1_files(Globals, Why, ReadWhy1, [ModuleName | ModuleNames],
     ),
     grab_module_int1_files(Globals, Why, ReadWhy1, ModuleNames,
         !IntIndirectImports, !ImpIndirectImports,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO).
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO).
 
 :- pred grab_module_int2_files(globals::in, string::in, read_why_int2::in,
     list(module_name)::in,
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
     have_read_module_maps::in, have_read_module_maps::out,
+    module_baggage::in, module_baggage::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
 grab_module_int2_files(_Globals, _Why, _ReadWhy2, [],
         !IntIndirectImports, !ImpIndirectImports,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO).
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO).
 grab_module_int2_files(Globals, Why, ReadWhy2, [ModuleName | ModuleNames],
         !IntIndirectImports, !ImpIndirectImports,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
-    ( if should_read_interface(!.ModuleAndImports, ModuleName, ifk_int2) then
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO) :-
+    ( if should_read_interface(!.Baggage, ModuleName, ifk_int2) then
         maybe_log_augment_decision(Why, ifk_int2, ReadWhy2, ModuleName,
             decided_to_read, !IO),
         process_module_int2(Globals, ReadWhy2, ModuleName, ParseTreeInt2,
-            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
         map.keys_as_set(ParseTreeInt2 ^ pti2_int_uses, IntUses),
         set.union(IntUses, !IntIndirectImports)
     else
@@ -716,23 +757,26 @@ grab_module_int2_files(Globals, Why, ReadWhy2, [ModuleName | ModuleNames],
     ),
     grab_module_int2_files(Globals, Why, ReadWhy2, ModuleNames,
         !IntIndirectImports, !ImpIndirectImports,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO).
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO).
 
 :- pred grab_module_int3_files(globals::in, string::in, read_why_int3::in,
     list(module_name)::in,
     set(module_name)::in, set(module_name)::out,
     have_read_module_maps::in, have_read_module_maps::out,
+    module_baggage::in, module_baggage::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
 grab_module_int3_files(_Globals, _Why, _ReadWhy3, [],
-        !IntIndirectImports, !HaveReadModuleMaps, !ModuleAndImports, !IO).
+        !IntIndirectImports, !HaveReadModuleMaps,
+        !Baggage, !ModuleAndImports, !IO).
 grab_module_int3_files(Globals, Why, ReadWhy3, [ModuleName | ModuleNames],
-        !IntIndirectImports, !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
-    ( if should_read_interface(!.ModuleAndImports, ModuleName, ifk_int3) then
+        !IntIndirectImports, !HaveReadModuleMaps,
+        !Baggage, !ModuleAndImports, !IO) :-
+    ( if should_read_interface(!.Baggage, ModuleName, ifk_int3) then
         maybe_log_augment_decision(Why, ifk_int3, ReadWhy3, ModuleName,
             decided_to_read, !IO),
         process_module_int3(Globals, ReadWhy3, ModuleName, ParseTreeInt3,
-            !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO),
         map.keys_as_set(ParseTreeInt3 ^ pti3_int_imports, Imports),
         set.union(Imports, !IntIndirectImports)
     else
@@ -740,13 +784,14 @@ grab_module_int3_files(Globals, Why, ReadWhy3, [ModuleName | ModuleNames],
             decided_not_to_read, !IO)
     ),
     grab_module_int3_files(Globals, Why, ReadWhy3, ModuleNames,
-        !IntIndirectImports, !HaveReadModuleMaps, !ModuleAndImports, !IO).
+        !IntIndirectImports, !HaveReadModuleMaps,
+        !Baggage, !ModuleAndImports, !IO).
 
-:- pred should_read_interface(module_and_imports::in, module_name::in,
+:- pred should_read_interface(module_baggage::in, module_name::in,
     int_file_kind::in) is semidet.
 
-should_read_interface(ModuleAndImports, ModuleName, FileKind) :-
-    module_and_imports_get_grabbed_file_map(ModuleAndImports, GrabbedFileMap),
+should_read_interface(Baggage, ModuleName, FileKind) :-
+    GrabbedFileMap = Baggage ^ mb_grabbed_file_map,
     ( if map.search(GrabbedFileMap, ModuleName, OldGrabbedFile) then
         OldFileKind = grabbed_file_to_file_kind(OldGrabbedFile),
         ( if compare((<), fk_int(FileKind), OldFileKind) then
@@ -773,18 +818,17 @@ grabbed_file_to_file_kind(GrabbedWhy) = FileKind :-
 :- pred process_module_int0(globals::in, read_why_int0::in, module_name::in,
     parse_tree_int0::out,
     have_read_module_maps::in, have_read_module_maps::out,
+    module_baggage::in, module_baggage::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
 process_module_int0(Globals, ReadWhy0, ModuleName, ParseTreeInt0,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
-    module_and_imports_do_we_need_timestamps(!.ModuleAndImports,
-        ReturnTimestamp),
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO) :-
+    do_we_need_timestamps(!.Baggage, ReturnTimestamp),
     maybe_read_module_int0(Globals, do_search, ModuleName, _FileName,
         ReturnTimestamp, MaybeTimestamp, ParseTreeInt0, Specs, Errors,
         !HaveReadModuleMaps, !IO),
     GrabbedFile = gf_int0(ParseTreeInt0, ReadWhy0),
-    module_and_imports_add_grabbed_file(ModuleName, GrabbedFile,
-        !ModuleAndImports),
+    module_baggage_add_grabbed_file(ModuleName, GrabbedFile, !Baggage),
     (
         ReadWhy0 = rwi0_section,
         AncestorIntSpec = ancestor_int0(ParseTreeInt0, ReadWhy0),
@@ -797,26 +841,25 @@ process_module_int0(Globals, ReadWhy0, ModuleName, ParseTreeInt0,
             !ModuleAndImports)
     ),
     maybe_record_interface_timestamp(ModuleName, ifk_int0,
-        recomp_avail_int_import, MaybeTimestamp, !ModuleAndImports),
-    module_and_imports_add_specs_errors(Specs, Errors, !ModuleAndImports),
+        recomp_avail_int_import, MaybeTimestamp, !Baggage),
+    module_baggage_add_specs_errors(Specs, Errors, !Baggage),
     module_and_imports_maybe_add_module_version_numbers(ModuleName,
         ParseTreeInt0 ^ pti0_maybe_version_numbers, !ModuleAndImports).
 
 :- pred process_module_int1(globals::in, read_why_int1::in, module_name::in,
     parse_tree_int1::out,
     have_read_module_maps::in, have_read_module_maps::out,
+    module_baggage::in, module_baggage::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
 process_module_int1(Globals, ReadWhy1, ModuleName, ParseTreeInt1,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
-    module_and_imports_do_we_need_timestamps(!.ModuleAndImports,
-        ReturnTimestamp),
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO) :-
+    do_we_need_timestamps(!.Baggage, ReturnTimestamp),
     maybe_read_module_int1(Globals, do_search, ModuleName, _FileName,
         ReturnTimestamp, MaybeTimestamp, ParseTreeInt1, Specs, Errors,
         !HaveReadModuleMaps, !IO),
     GrabbedFile = gf_int1(ParseTreeInt1, ReadWhy1),
-    module_and_imports_add_grabbed_file(ModuleName, GrabbedFile,
-        !ModuleAndImports),
+    module_baggage_add_grabbed_file(ModuleName, GrabbedFile, !Baggage),
     (
         (
             ReadWhy1 = rwi1_int_import,
@@ -837,14 +880,14 @@ process_module_int1(Globals, ReadWhy1, ModuleName, ParseTreeInt1,
         DirectIntSpec = direct_int1(ParseTreeInt1, ReadWhy1),
         module_and_imports_add_direct_int_spec(DirectIntSpec,
             !ModuleAndImports),
-        module_and_imports_add_specs_errors(Specs, Errors, !ModuleAndImports)
+        module_baggage_add_specs_errors(Specs, Errors, !Baggage)
     ;
         ReadWhy1 = rwi1_opt,
         RecompAvail = recomp_avail_imp_use,
         IntForOptSpec = for_opt_int1(ParseTreeInt1, ReadWhy1),
         module_and_imports_add_int_for_opt_spec(IntForOptSpec,
             !ModuleAndImports),
-        module_and_imports_add_specs_errors(Specs, Errors, !ModuleAndImports)
+        module_baggage_add_specs_errors(Specs, Errors, !Baggage)
     ;
         ReadWhy1 = rwi1_type_repn,
         RecompAvail = recomp_avail_int_import,
@@ -855,25 +898,24 @@ process_module_int1(Globals, ReadWhy1, ModuleName, ParseTreeInt1,
         % is compiled to target code.
     ),
     maybe_record_interface_timestamp(ModuleName, ifk_int1, RecompAvail,
-        MaybeTimestamp, !ModuleAndImports),
+        MaybeTimestamp, !Baggage),
     module_and_imports_maybe_add_module_version_numbers(ModuleName,
         ParseTreeInt1 ^ pti1_maybe_version_numbers, !ModuleAndImports).
 
 :- pred process_module_int2(globals::in, read_why_int2::in, module_name::in,
     parse_tree_int2::out,
     have_read_module_maps::in, have_read_module_maps::out,
+    module_baggage::in, module_baggage::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
 process_module_int2(Globals, ReadWhy2, ModuleName, ParseTreeInt2,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
-    module_and_imports_do_we_need_timestamps(!.ModuleAndImports,
-        ReturnTimestamp),
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO) :-
+    do_we_need_timestamps(!.Baggage, ReturnTimestamp),
     maybe_read_module_int2(Globals, do_search, ModuleName, _FileName,
         ReturnTimestamp, MaybeTimestamp, ParseTreeInt2, Specs, Errors,
         !HaveReadModuleMaps, !IO),
     GrabbedFile = gf_int2(ParseTreeInt2, ReadWhy2),
-    module_and_imports_add_grabbed_file(ModuleName, GrabbedFile,
-        !ModuleAndImports),
+    module_baggage_add_grabbed_file(ModuleName, GrabbedFile, !Baggage),
     (
         ( ReadWhy2 = rwi2_int_use
         ; ReadWhy2 = rwi2_imp_use
@@ -889,26 +931,25 @@ process_module_int2(Globals, ReadWhy2, ModuleName, ParseTreeInt2,
             !ModuleAndImports)
     ),
     maybe_record_interface_timestamp(ModuleName, ifk_int2,
-        recomp_avail_imp_use, MaybeTimestamp, !ModuleAndImports),
-    module_and_imports_add_specs_errors(Specs, Errors, !ModuleAndImports),
+        recomp_avail_imp_use, MaybeTimestamp, !Baggage),
+    module_baggage_add_specs_errors(Specs, Errors, !Baggage),
     module_and_imports_maybe_add_module_version_numbers(ModuleName,
         ParseTreeInt2 ^ pti2_maybe_version_numbers, !ModuleAndImports).
 
 :- pred process_module_int3(globals::in, read_why_int3::in, module_name::in,
     parse_tree_int3::out,
     have_read_module_maps::in, have_read_module_maps::out,
+    module_baggage::in, module_baggage::out,
     module_and_imports::in, module_and_imports::out, io::di, io::uo) is det.
 
 process_module_int3(Globals, ReadWhy3, ModuleName, ParseTreeInt3,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
-    module_and_imports_do_we_need_timestamps(!.ModuleAndImports,
-        ReturnTimestamp),
+        !HaveReadModuleMaps, !Baggage, !ModuleAndImports, !IO) :-
+    do_we_need_timestamps(!.Baggage, ReturnTimestamp),
     maybe_read_module_int3(Globals, do_search, ModuleName, _FileName,
         ReturnTimestamp, MaybeTimestamp, ParseTreeInt3, Specs, Errors,
         !HaveReadModuleMaps, !IO),
     GrabbedFile = gf_int3(ParseTreeInt3, ReadWhy3),
-    module_and_imports_add_grabbed_file(ModuleName, GrabbedFile,
-        !ModuleAndImports),
+    module_baggage_add_grabbed_file(ModuleName, GrabbedFile, !Baggage),
     (
         (
             ReadWhy3 = rwi3_direct_ancestor_import,
@@ -948,8 +989,8 @@ process_module_int3(Globals, ReadWhy3, ModuleName, ParseTreeInt3,
             !ModuleAndImports)
     ),
     maybe_record_interface_timestamp(ModuleName, ifk_int3, RecompAvail,
-        MaybeTimestamp, !ModuleAndImports),
-    module_and_imports_add_specs_errors(Specs, Errors, !ModuleAndImports).
+        MaybeTimestamp, !Baggage),
+    module_baggage_add_specs_errors(Specs, Errors, !Baggage).
 
 %---------------------------------------------------------------------------%
 
@@ -985,28 +1026,64 @@ maybe_log_augment_decision(Why, IntFileKind, ReadWhy, ModuleName, Read, !IO) :-
 
 :- pred maybe_record_interface_timestamp(module_name::in, int_file_kind::in,
     recomp_avail::in, maybe(timestamp)::in,
-    module_and_imports::in, module_and_imports::out) is det.
+    module_baggage::in, module_baggage::out) is det.
 
 maybe_record_interface_timestamp(ModuleName, IntFileKind, RecompAvail,
-        MaybeTimestamp, !ModuleAndImports) :-
-    module_and_imports_get_maybe_timestamp_map(!.ModuleAndImports,
-        MaybeTimestampMap),
+        MaybeTimestamp, !Baggage) :-
+    MaybeTimestampMap = !.Baggage ^ mb_maybe_timestamp_map,
     (
         MaybeTimestampMap = yes(TimestampMap0),
         (
             MaybeTimestamp = yes(Timestamp),
             FileKind = fk_int(IntFileKind),
-            TimestampInfo =
-                module_timestamp(FileKind, Timestamp, RecompAvail),
+            TimestampInfo = module_timestamp(FileKind, Timestamp, RecompAvail),
             map.set(ModuleName, TimestampInfo, TimestampMap0, TimestampMap),
-            module_and_imports_set_maybe_timestamp_map(yes(TimestampMap),
-                !ModuleAndImports)
+            !Baggage ^ mb_maybe_timestamp_map := yes(TimestampMap)
         ;
             MaybeTimestamp = no
         )
     ;
         MaybeTimestampMap = no
     ).
+
+:- pred do_we_need_timestamps(module_baggage::in,
+    maybe_return_timestamp::out) is det.
+
+do_we_need_timestamps(Baggage, MaybeReturnTimestamp) :-
+    MaybeTimestampMap = Baggage ^ mb_maybe_timestamp_map,
+    ( MaybeTimestampMap = yes(_), MaybeReturnTimestamp = do_return_timestamp
+    ; MaybeTimestampMap = no,     MaybeReturnTimestamp = dont_return_timestamp
+    ).
+
+:- pred module_baggage_add_grabbed_file(module_name::in, grabbed_file::in,
+    module_baggage::in, module_baggage::out) is det.
+
+module_baggage_add_grabbed_file(ModuleName, FileWhy, !Baggage) :-
+    GrabbedFileMap0 = !.Baggage ^ mb_grabbed_file_map,
+    % We could be adding a new entry to the map, or overwriting an existing
+    % entry. XXX Why would we overwrite an entry?
+    map.set(ModuleName, FileWhy, GrabbedFileMap0, GrabbedFileMap),
+    !Baggage ^ mb_grabbed_file_map := GrabbedFileMap.
+
+:- pred module_baggage_add_specs(list(error_spec)::in,
+    module_baggage::in, module_baggage::out) is det.
+
+module_baggage_add_specs(NewSpecs, !Baggage) :-
+    Specs0 = !.Baggage ^ mb_specs,
+    Specs = NewSpecs ++ Specs0,
+    !Baggage ^ mb_specs := Specs.
+
+:- pred module_baggage_add_specs_errors(
+    list(error_spec)::in, read_module_errors::in,
+    module_baggage::in, module_baggage::out) is det.
+
+module_baggage_add_specs_errors(NewSpecs, NewErrors, !Baggage) :-
+    Specs0 = !.Baggage ^ mb_specs,
+    Errors0 = !.Baggage ^ mb_errors,
+    Specs = NewSpecs ++ Specs0,
+    set.union(Errors0, NewErrors, Errors),
+    !Baggage ^ mb_specs := Specs,
+    !Baggage ^ mb_errors := Errors.
 
 %---------------------------------------------------------------------------%
 

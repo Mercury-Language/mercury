@@ -36,7 +36,7 @@
     maybe_module_dep_info::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-:- pred write_module_dep_file(globals::in, module_and_imports::in,
+:- pred write_module_dep_file(globals::in, module_imports_and_baggage::in,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -306,15 +306,21 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
 
 %-----------------------------------------------------------------------------%
 
-write_module_dep_file(Globals, ModuleAndImports0, !IO) :-
-    rebuild_module_and_imports_for_dep_file(
+write_module_dep_file(Globals, ModuleImportsAndBaggage0, !IO) :-
+    ModuleImportsAndBaggage0 =
+        module_imports_and_baggage(Baggage0, ModuleAndImports0),
+    rebuild_module_and_imports_for_dep_file(Baggage0, Baggage,
         ModuleAndImports0, ModuleAndImports),
-    do_write_module_dep_file(Globals, ModuleAndImports, !IO).
+    ModuleImportsAndBaggage =
+        module_imports_and_baggage(Baggage, ModuleAndImports),
+    do_write_module_dep_file(Globals, ModuleImportsAndBaggage, !IO).
 
-:- pred do_write_module_dep_file(globals::in, module_and_imports::in,
+:- pred do_write_module_dep_file(globals::in, module_imports_and_baggage::in,
     io::di, io::uo) is det.
 
-do_write_module_dep_file(Globals, ModuleAndImports, !IO) :-
+do_write_module_dep_file(Globals, ModuleImportsAndBaggage, !IO) :-
+    ModuleImportsAndBaggage =
+        module_imports_and_baggage(Baggage, ModuleAndImports),
     module_and_imports_get_module_name(ModuleAndImports, ModuleName),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(make_module_dep_file_extension),
@@ -323,7 +329,7 @@ do_write_module_dep_file(Globals, ModuleAndImports, !IO) :-
     (
         ProgDepResult = ok(ProgDepStream),
         do_write_module_dep_file_to_stream(ProgDepStream, Globals,
-            ModuleAndImports, !IO),
+            Baggage, ModuleAndImports, !IO),
         io.close_output(ProgDepStream, !IO)
     ;
         ProgDepResult = error(Error),
@@ -334,14 +340,15 @@ do_write_module_dep_file(Globals, ModuleAndImports, !IO) :-
     ).
 
 :- pred do_write_module_dep_file_to_stream(io.text_output_stream::in,
-    globals::in, module_and_imports::in, io::di, io::uo) is det.
+    globals::in, module_baggage::in, module_and_imports::in,
+    io::di, io::uo) is det.
 
-do_write_module_dep_file_to_stream(Stream, Globals, ModuleAndImports, !IO) :-
+do_write_module_dep_file_to_stream(Stream, Globals, Baggage, ModuleAndImports,
+        !IO) :-
     Version = module_dep_file_v2,
     version_number(Version, VersionNumber),
-    module_and_imports_get_source_file_name(ModuleAndImports, SourceFileName),
-    module_and_imports_get_source_file_module_name(ModuleAndImports,
-        SourceFileModuleName),
+    SourceFileName = Baggage ^ mb_source_file_name,
+    SourceFileModuleName = Baggage ^ mb_source_file_module_name,
     SourceFileModuleNameStr =
         mercury_bracketed_sym_name_to_string(SourceFileModuleName),
     module_and_imports_get_module_name(ModuleAndImports, ModuleName),
@@ -351,7 +358,7 @@ do_write_module_dep_file_to_stream(Stream, Globals, ModuleAndImports, !IO) :-
         IntDepSet, ImpDepSet),
     set.to_sorted_list(IntDepSet, IntDeps),
     set.to_sorted_list(ImpDepSet, ImpDeps),
-    module_and_imports_get_maybe_top_module(ModuleAndImports, MaybeTopModule),
+    MaybeTopModule = Baggage ^ mb_maybe_top_module,
     NestedSubModules = get_nested_children_list_of_top_module(MaybeTopModule),
     module_and_imports_get_fact_tables(ModuleAndImports, FactTableFilesSet),
     FactTableFiles = set.to_sorted_list(FactTableFilesSet),
@@ -849,9 +856,13 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             !Info ^ mki_module_dependencies := ModuleDepMap
         ;
             FatalReadError = no,
-            parse_tree_src_to_module_and_imports_list(Globals, SourceFileName,
-                ParseTreeSrc, ReadModuleErrors, Specs0, Specs,
-                ParseTreeModuleSrcs, ModuleAndImportsList),
+            parse_tree_src_to_module_imports_and_baggage_list(Globals,
+                SourceFileName, ParseTreeSrc, ReadModuleErrors, Specs0, Specs,
+                ModuleImportsAndBaggageList),
+            ParseTreeModuleSrcs = list.map(
+                ( func(module_imports_and_baggage(_, MAI)) = PTMS :-
+                    module_and_imports_get_parse_tree_module_src(MAI, PTMS)
+                ), ModuleImportsAndBaggageList),
             SubModuleNames = list.map(parse_tree_module_src_project_name,
                  ParseTreeModuleSrcs),
 
@@ -862,7 +873,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             io.set_output_stream(OldOutputStream, _, !IO),
 
             list.foldl(make_info_add_module_and_imports_as_dep,
-                ModuleAndImportsList, !Info),
+                ModuleImportsAndBaggageList, !Info),
 
             % If there were no errors, write out the `.int3' file
             % while we have the contents of the module. The `int3' file
@@ -887,7 +898,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                 ( pred(succeeded::out, MakeInfo::in, MakeInfo::out,
                         IO0::di, IO::uo) is det :-
                     list.foldl(do_write_module_dep_file(Globals),
-                        ModuleAndImportsList, IO0, IO)
+                        ModuleImportsAndBaggageList, IO0, IO)
                 ),
                 cleanup_module_dep_files(Globals, SubModuleNames),
                 _Succeeded, !Info, !IO),
@@ -901,12 +912,13 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         MaybeErrorStream = no
     ).
 
-:- pred make_info_add_module_and_imports_as_dep(module_and_imports::in,
+:- pred make_info_add_module_and_imports_as_dep(module_imports_and_baggage::in,
     make_info::in, make_info::out) is det.
 
-make_info_add_module_and_imports_as_dep(ModuleAndImports, !Info) :-
+make_info_add_module_and_imports_as_dep(ModuleImportsAndBaggage, !Info) :-
+    ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
     module_and_imports_get_module_name(ModuleAndImports, ModuleName),
-    ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+    ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
     MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
     ModuleDeps0 = !.Info ^ mki_module_dependencies,
     % XXX Could this be map.det_insert?
