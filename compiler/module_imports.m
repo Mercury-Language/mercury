@@ -429,31 +429,7 @@
     % we add ancestor modules and imported modules to their respective fields
     % as we process the interface files for those imported or ancestor modules.
     %
-    % The mai_int_deps and mai_imp_deps fields record, for each imported
-    % module name, the list of contexts in which those imports occur.
-    % (Most modules are imported just once, but you may import a module
-    % more than once.) The contexts are used when printing error messages
-    % about unexpected module names,which most of the time are about
-    % unexpected module *qualifications* of those module names.
-    % When "mmc --generate-dependencies" first finds an import of module a.c,
-    % and then later finds that c.m contains module b.c, not module a.c,
-    % and the name a.c happens to b correct (which is usually the case after
-    % moving module c from package a to package b), the programmer will
-    % probably want to know *where* he/she needs to change a.c to b.c.
-    %
-    % Since ":- include_module" declarations act similarly in establishing
-    % such expectations, the mai_children and mai_public_children fields
-    % also record their contexts. Every child module should have exactly one
-    % include_module declaration for it, but we record a *list* of contexts
-    % for each child module anyway, to allow them to be treated the same way
-    % as the mai_int_deps and mai_imp_deps fields.
-    %
-    % For some imports (e.g. implicit imports), there is no valid context
-    % we can record. For those, we record term.dummy_context_init instead.
-    % (We can't record no context at all, since one_or_more_map, and its
-    % predecessor multi_map, both require at least one for each key in the map.
-    % We *do* want to keep a record of every imported module, even if
-    % we have no context for the import.)
+    % XXX The above comment is very old, and almost certainly out of date.
     %
 :- type module_and_imports
     --->    module_and_imports(
