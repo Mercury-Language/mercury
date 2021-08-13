@@ -49,11 +49,19 @@
     %
 :- type time_t.
 
-    % The `tm' type is a concrete type that represents calendar
-    % times, broken down into their constituent components.
-    % Comparison (via compare/3) of `tm' values whose `tm_dst'
-    % components are identical is equivalent to comparison of
-    % the times those `tm' values represent.
+    % The `tm' type is a concrete type that represents calendar times, broken
+    % down into their constituent components. Comparison (via compare/3) of
+    % `tm' values whose `tm_dst' components are identical is equivalent to
+    % comparison of the times those `tm' values represent.
+    %
+    % Whether leap seconds are supported depends on the target language.
+    % Currently, only C supports leap seconds, while Java and C# do not.
+    % For target languages that do not support leap seconds:
+    % - predicates in this module producing a `tm' value as an output will
+    % never set its `tm_sec' component to a value beyond 59;
+    % - predicates in this module taking a `tm_sec' value as an input will
+    % throw a time_error/1 exception if the value of the `tm_sec' component
+    % is beyond 59.
     %
 :- type tm
     --->    tm(
