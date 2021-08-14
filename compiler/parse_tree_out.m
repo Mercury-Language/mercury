@@ -252,7 +252,7 @@ mercury_output_parse_tree_module_src(Info, Stream, ParseTreeModuleSrc, !IO) :-
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, _ModuleContext,
         IntIncludeMap, ImpIncludeMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
-        IntFIMSpecMap, ImpFIMSpecMap, MaybeImplicitFIMLangs,
+        IntFIMSpecMap, ImpFIMSpecMap, SelfFIMLangs,
 
         IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
         IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
@@ -282,18 +282,11 @@ mercury_output_parse_tree_module_src(Info, Stream, ParseTreeModuleSrc, !IO) :-
     list.foldl(mercury_output_module_decl(Stream, "use_module"),
         map.keys(IntUseMap), !IO),
     list.foldl(mercury_output_fim_spec(Stream), map.keys(IntFIMSpecMap), !IO),
-    (
-        MaybeImplicitFIMLangs = no,
-        io.write_string(Stream,
-            "% implicit FIM self-import languages not set\n", !IO)
-    ;
-        MaybeImplicitFIMLangs = yes(ImplicitFIMLangs),
-        ImplicitFIMLangStrs = list.map(mercury_foreign_language_to_string,
-            set.to_sorted_list(ImplicitFIMLangs)),
-        io.format(Stream,
-            "%% implicit FIM self-import languages: %s\n",
-           [s(join_list(", ", ImplicitFIMLangStrs))], !IO)
-    ),
+    SelfFIMLangStrs = list.map(mercury_foreign_language_to_string,
+        set.to_sorted_list(SelfFIMLangs)),
+    io.format(Stream,
+        "%% implicit FIM self-import languages: %s\n",
+       [s(string.join_list(", ", SelfFIMLangStrs))], !IO),
     list.foldl(mercury_output_item_type_defn(Info, Stream),
         IntTypeDefnsAbs, !IO),
     list.foldl(mercury_output_item_type_defn(Info, Stream),

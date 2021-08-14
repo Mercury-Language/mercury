@@ -83,9 +83,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred convert_parse_tree_module_src_to_raw_comp_unit(
-    parse_tree_module_src::in, raw_compilation_unit::out) is det.
-
 :- pred check_convert_raw_comp_unit_to_module_src(globals::in,
     raw_compilation_unit::in, parse_tree_module_src::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -1452,96 +1449,6 @@ classify_trans_opt_items([Item | Items], !TermInfos, !Term2Infos,
 
 %---------------------------------------------------------------------------%
 
-convert_parse_tree_module_src_to_raw_comp_unit(ParseTreeModuleSrc,
-        RawCompUnit) :-
-    ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
-        _IntInclMap, _ImpInclMap, InclMap,
-        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, _ImportUseMap,
-        IntFIMSpecMap, ImpFIMSpecMap, MaybeImplicitFIMLangs,
-
-        IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
-        IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises, _IntBadPreds,
-
-        ImpTypeDefnsAbs, ImpTypeDefnsMer, ImpTypeDefnsForeign,
-        ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances,
-        ImpPredDecls, ImpModeDecls, ImpClauses,
-        ImpForeignEnums, ImpForeignExportEnums,
-        ImpDeclPragmas, ImpImplPragmas, ImpPromises,
-        ImpInitialises, ImpFinalises, ImpMutables),
-
-    include_map_to_item_includes(InclMap, IntIncls, ImpIncls),
-
-    map.foldl(acc_avails_with_contexts(import_decl),
-        IntImportMap, [], IntAvails0),
-    map.foldl(acc_avails_with_contexts(use_decl),
-        IntUseMap, IntAvails0, IntAvails1),
-    map.foldl(acc_avails_with_contexts(import_decl),
-        ImpImportMap, [], ImpAvails0),
-    map.foldl(acc_avails_with_contexts(use_decl),
-        ImpUseMap, ImpAvails0, ImpAvails1),
-    list.sort(IntAvails1, IntAvails),
-    list.sort(ImpAvails1, ImpAvails),
-
-    (
-        MaybeImplicitFIMLangs = no,
-        IntFIMs = list.map(fim_spec_to_item, map.keys(IntFIMSpecMap))
-    ;
-        MaybeImplicitFIMLangs = yes(ImplicitFIMLangs),
-        % Do not generate both an explicit and an implicit FIM for the same
-        % fim_spec.
-        ImplicitFIMSpecs =
-            set.map(fim_module_lang_to_spec(ModuleName), ImplicitFIMLangs),
-        set.union(map.keys_as_set(IntFIMSpecMap), ImplicitFIMSpecs,
-            IntFIMSpecs),
-        IntFIMs = list.map(fim_spec_to_item, set.to_sorted_list(IntFIMSpecs))
-    ),
-    ImpFIMs = list.map(fim_spec_to_item, map.keys(ImpFIMSpecMap)),
-
-    IntItems =
-        list.map(wrap_type_defn_item, IntTypeDefnsAbs) ++
-        list.map(wrap_type_defn_item, IntTypeDefnsMer) ++
-        list.map(wrap_type_defn_item, IntTypeDefnsForeign) ++
-        list.map(wrap_inst_defn_item, IntInstDefns) ++
-        list.map(wrap_mode_defn_item, IntModeDefns) ++
-        list.map(wrap_typeclass_item, IntTypeClasses) ++
-        list.map(wrap_instance_item, IntInstances) ++
-        list.map(wrap_pred_decl_item, IntPredDecls) ++
-        list.map(wrap_mode_decl_item, IntModeDecls) ++
-        list.map(wrap_decl_pragma_item, IntDeclPragmas) ++
-        list.map(wrap_promise_item, IntPromises),
-
-    ImpItems =
-        list.map(wrap_type_defn_item, ImpTypeDefnsAbs) ++
-        list.map(wrap_type_defn_item, ImpTypeDefnsMer) ++
-        list.map(wrap_type_defn_item, ImpTypeDefnsForeign) ++
-        list.map(wrap_inst_defn_item, ImpInstDefns) ++
-        list.map(wrap_mode_defn_item, ImpModeDefns) ++
-        list.map(wrap_typeclass_item, ImpTypeClasses) ++
-        list.map(wrap_instance_item, ImpInstances) ++
-        list.map(wrap_pred_decl_item, ImpPredDecls) ++
-        list.map(wrap_mode_decl_item, ImpModeDecls) ++
-        list.map(wrap_clause, ImpClauses) ++
-        list.map(wrap_foreign_enum_item, ImpForeignEnums) ++
-        list.map(wrap_foreign_export_enum_item, ImpForeignExportEnums) ++
-        list.map(wrap_decl_pragma_item, ImpDeclPragmas) ++
-        list.map(wrap_impl_pragma_item, ImpImplPragmas) ++
-        list.map(wrap_promise_item, ImpPromises) ++
-        list.map(wrap_initialise_item, ImpInitialises) ++
-        list.map(wrap_finalise_item, ImpFinalises) ++
-        list.map(wrap_mutable_item, ImpMutables),
-
-    make_and_add_item_block(ModuleName, ms_interface,
-        IntIncls, IntAvails, IntFIMs, IntItems, [], SrcItemBlocks0),
-    make_and_add_item_block(ModuleName, ms_implementation,
-        ImpIncls, ImpAvails, ImpFIMs, ImpItems, SrcItemBlocks0, SrcItemBlocks),
-
-    RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
-        SrcItemBlocks).
-
-%---------------------------------------------------------------------------%
-
 check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         ParseTreeModuleSrc, !Specs) :-
     RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
@@ -1554,9 +1461,7 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     one_or_more_map.init(ImpUseMap0),
     map.init(ImpFIMSpecMap0),
 
-    IntContents0 = init_item_contents,
     IntImplicitAvailNeeds0 = init_implicit_avail_needs,
-    ImpContents0 = init_item_contents,
     ImpImplicitAvailNeeds0 = init_implicit_avail_needs,
 
     classify_src_items_in_blocks(ItemBlocks,
@@ -1571,7 +1476,6 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         [], RevIntDeclPragmas, [], RevIntImplPragmas,
         set.init, IntBadClausePreds, [], RevIntPromises,
         [], RevIntInitialises, [], RevIntFinalises, [], RevIntMutables,
-        IntContents0, IntContents,
         IntImplicitAvailNeeds0, IntImplicitAvailNeeds,
 
         [], ImpIncls,
@@ -1585,8 +1489,9 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         [], RevImpForeignEnums, [], RevImpForeignExportEnums,
         [], RevImpDeclPragmas, [], RevImpImplPragmas, [], RevImpPromises,
         [], RevImpInitialises0, [], RevImpFinalises0, [], RevImpMutables0,
-        ImpContents0, ImpContents,
         ImpImplicitAvailNeeds0, ImpImplicitAvailNeeds,
+
+        set.init, SelfFIMLangs,
         !Specs),
 
     classify_include_modules(IntIncls, ImpIncls, IntInclMap, ImpInclMap,
@@ -1669,30 +1574,11 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         IntImpFIMSpecs),
     set.foldl2(report_int_imp_fim(IntFIMSpecMap), IntImpFIMSpecs,
         ImpFIMSpecMap1, ImpFIMSpecMap, !Specs),
-    % XXX CLEANUP This field should be filled in here, to make it available
-    % on all paths that use a parse_tree_module_src. At the moment,
-    % the field is filled in *only* in grab_unqual_imported_modules_make_int,
-    % but not all compiler invocations call that predicate.
-    MaybeImplicitFIMLangs = maybe.no,
-
-    % XXX CLEANUP We could include the information in {Int,Imp}Contents,
-    % minus the parts that are subject to the calls to expect below,
-    % in the ParseTreeModuleSrc, to avoid the need to compute it again later.
-    IntContents = item_contents(IntForeignIncludeFilesCord,
-        IntFactTablesSet, _IntLangSet, IntForeignExportLangs),
-    ImpContents = item_contents(_ImpForeignIncludeFilesCord,
-        _ImpFactTablesSet, _ImpLangSet, _ImpForeignExportLangs),
-    expect(cord.is_empty(IntForeignIncludeFilesCord), $pred,
-        "interface has foreign include files"),
-    expect(set.is_empty(IntFactTablesSet), $pred,
-        "interface has fact tables"),
-    expect(set.is_empty(IntForeignExportLangs), $pred,
-        "interface has foreign export languages"),
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         IntInclMap, ImpInclMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
-        IntFIMSpecMap, ImpFIMSpecMap, MaybeImplicitFIMLangs,
+        IntFIMSpecMap, ImpFIMSpecMap, SelfFIMLangs,
 
         IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
         IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
@@ -2170,7 +2056,6 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     list(item_initialise_info)::in, list(item_initialise_info)::out,
     list(item_finalise_info)::in, list(item_finalise_info)::out,
     list(item_mutable_info)::in, list(item_mutable_info)::out,
-    item_contents::in, item_contents::out,
     implicit_avail_needs::in, implicit_avail_needs::out,
     list(item_include)::in, list(item_include)::out,
     module_names_contexts::in, module_names_contexts::out,
@@ -2195,8 +2080,8 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     list(item_initialise_info)::in, list(item_initialise_info)::out,
     list(item_finalise_info)::in, list(item_finalise_info)::out,
     list(item_mutable_info)::in, list(item_mutable_info)::out,
-    item_contents::in, item_contents::out,
     implicit_avail_needs::in, implicit_avail_needs::out,
+    set(foreign_language)::in, set(foreign_language)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 classify_src_items_in_blocks([],
@@ -2208,7 +2093,7 @@ classify_src_items_in_blocks([],
         !RevIntDeclPragmas, !RevIntImplPragmas,
         !IntBadClausePreds, !RevIntPromises,
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
-        !IntContents, !IntImplicitAvailNeeds,
+        !IntImplicitAvailNeeds,
         !ImpIncls, !ImpImportMap, !ImpUseMap, !ImpFIMSpecMap,
         !RevImpTypeDefnsAbs, !RevImpTypeDefnsMer, !RevImpTypeDefnsForeign,
         !RevImpInstDefns, !RevImpModeDefns,
@@ -2217,7 +2102,7 @@ classify_src_items_in_blocks([],
         !RevImpForeignEnums, !RevImpForeignExportEnums,
         !RevImpDeclPragmas, !RevImpImplPragmas, !RevImpPromises,
         !RevImpInitialises, !RevImpFinalises, !RevImpMutables,
-        !ImpContents, !ImpImplicitAvailNeeds, !Specs).
+        !ImpImplicitAvailNeeds, !SelfFIMLangs, !Specs).
 classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !IntIncls, !IntImportMap, !IntUseMap, !IntFIMSpecMap,
         !RevIntTypeDefnsAbs, !RevIntTypeDefnsMer, !RevIntTypeDefnsForeign,
@@ -2227,7 +2112,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !RevIntDeclPragmas, !RevIntImplPragmas,
         !IntBadClausePreds, !RevIntPromises,
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
-        !IntContents, !IntImplicitAvailNeeds,
+        !IntImplicitAvailNeeds,
         !ImpIncls, !ImpImportMap, !ImpUseMap, !ImpFIMSpecMap,
         !RevImpTypeDefnsAbs, !RevImpTypeDefnsMer, !RevImpTypeDefnsForeign,
         !RevImpInstDefns, !RevImpModeDefns,
@@ -2236,7 +2121,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !RevImpForeignEnums, !RevImpForeignExportEnums,
         !RevImpDeclPragmas, !RevImpImplPragmas, !RevImpPromises,
         !RevImpInitialises, !RevImpFinalises, !RevImpMutables,
-        !ImpContents, !ImpImplicitAvailNeeds, !Specs) :-
+        !ImpImplicitAvailNeeds, !SelfFIMLangs, !Specs) :-
     ItemBlock = item_block(_, Section, Incls, Avails, FIMs, Items),
     (
         Section = ms_interface,
@@ -2251,7 +2136,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
             !RevIntPredDecls, !RevIntModeDecls,
             !RevIntDeclPragmas, !RevIntImplPragmas, !IntBadClausePreds,
             !RevIntPromises, !RevIntInitialises, !RevIntFinalises,
-            !RevIntMutables, !IntContents, !IntImplicitAvailNeeds, !Specs)
+            !RevIntMutables, !IntImplicitAvailNeeds, !SelfFIMLangs, !Specs)
     ;
         Section = ms_implementation,
         !:ImpIncls = !.ImpIncls ++ Incls,
@@ -2266,7 +2151,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
             !RevImpForeignEnums, !RevImpForeignExportEnums,
             !RevImpDeclPragmas, !RevImpImplPragmas, !RevImpPromises,
             !RevImpInitialises, !RevImpFinalises, !RevImpMutables,
-            !ImpContents, !ImpImplicitAvailNeeds, !Specs)
+            !ImpImplicitAvailNeeds, !SelfFIMLangs, !Specs)
     ),
     classify_src_items_in_blocks(ItemBlocks,
         !IntIncls, !IntImportMap, !IntUseMap, !IntFIMSpecMap,
@@ -2277,7 +2162,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !RevIntDeclPragmas, !RevIntImplPragmas,
         !IntBadClausePreds, !RevIntPromises,
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
-        !IntContents, !IntImplicitAvailNeeds,
+        !IntImplicitAvailNeeds,
         !ImpIncls, !ImpImportMap, !ImpUseMap, !ImpFIMSpecMap,
         !RevImpTypeDefnsAbs, !RevImpTypeDefnsMer, !RevImpTypeDefnsForeign,
         !RevImpInstDefns, !RevImpModeDefns,
@@ -2286,7 +2171,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !RevImpForeignEnums, !RevImpForeignExportEnums,
         !RevImpDeclPragmas, !RevImpImplPragmas, !RevImpPromises,
         !RevImpInitialises, !RevImpFinalises, !RevImpMutables,
-        !ImpContents, !ImpImplicitAvailNeeds, !Specs).
+        !ImpImplicitAvailNeeds, !SelfFIMLangs, !Specs).
 
 :- pred classify_foreign_import_module(item_fim::in,
     map(fim_spec, prog_context)::in, map(fim_spec, prog_context)::out,
@@ -2331,8 +2216,8 @@ classify_foreign_import_module(ItemFIM, !FIMSpecMap, !Specs) :-
     list(item_initialise_info)::in, list(item_initialise_info)::out,
     list(item_finalise_info)::in, list(item_finalise_info)::out,
     list(item_mutable_info)::in, list(item_mutable_info)::out,
-    item_contents::in, item_contents::out,
     implicit_avail_needs::in, implicit_avail_needs::out,
+    set(foreign_language)::in, set(foreign_language)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 classify_src_items_int([],
@@ -2341,14 +2226,14 @@ classify_src_items_int([],
         !RevTypeClasses, !RevInstances, !RevPredDecls, !RevModeDecls,
         !RevDeclPragmas, !RevImplPragmas, !BadClausePreds,
         !RevPromises, !RevInitialises, !RevFinalises, !RevMutables,
-        !Contents, !ImplicitAvailNeeds, !Specs).
+        !ImplicitAvailNeeds, !SelfFIMLangs, !Specs).
 classify_src_items_int([Item | Items],
         !RevTypeDefnsAbs, !RevTypeDefnsMer, !RevTypeDefnsForeign,
         !RevInstDefns, !RevModeDefns,
         !RevTypeClasses, !RevInstances, !RevPredDecls, !RevModeDecls,
         !RevDeclPragmas, !RevImplPragmas, !BadClausePreds,
         !RevPromises, !RevInitialises, !RevFinalises, !RevMutables,
-        !Contents, !ImplicitAvailNeeds, !Specs) :-
+        !ImplicitAvailNeeds, !SelfFIMLangs, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
         ItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn, _, _, _),
@@ -2367,7 +2252,8 @@ classify_src_items_int([Item | Items],
             !:RevTypeDefnsMer = [ItemTypeDefnInfo | !.RevTypeDefnsMer]
         ;
             TypeDefn = parse_tree_foreign_type(DetailsForeign),
-            accumulate_contents_foreign_type(DetailsForeign, !Contents),
+            DetailsForeign = type_details_foreign(ForeignType, _, _),
+            set.insert(foreign_type_language(ForeignType), !SelfFIMLangs),
             !:RevTypeDefnsForeign = [ItemTypeDefnInfo | !.RevTypeDefnsForeign]
         )
     ;
@@ -2506,7 +2392,7 @@ classify_src_items_int([Item | Items],
         !RevTypeClasses, !RevInstances, !RevPredDecls, !RevModeDecls,
         !RevDeclPragmas, !RevImplPragmas,
         !BadClausePreds, !RevPromises, !RevInitialises, !RevFinalises,
-        !RevMutables, !Contents, !ImplicitAvailNeeds, !Specs).
+        !RevMutables, !ImplicitAvailNeeds, !SelfFIMLangs, !Specs).
 
 :- pred classify_src_items_imp(list(item)::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
@@ -2528,8 +2414,8 @@ classify_src_items_int([Item | Items],
     list(item_initialise_info)::in, list(item_initialise_info)::out,
     list(item_finalise_info)::in, list(item_finalise_info)::out,
     list(item_mutable_info)::in, list(item_mutable_info)::out,
-    item_contents::in, item_contents::out,
     implicit_avail_needs::in, implicit_avail_needs::out,
+    set(foreign_language)::in, set(foreign_language)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 classify_src_items_imp([],
@@ -2540,7 +2426,7 @@ classify_src_items_imp([],
         !RevForeignEnums, !RevForeignExportEnums,
         !RevDeclPragmas, !RevImplPragmas, !RevPromises,
         !RevInitialises, !RevFinalises, !RevMutables,
-        !Contents, !ImplicitAvailNeeds, !Specs).
+        !ImplicitAvailNeeds, !SelfFIMLangs, !Specs).
 classify_src_items_imp([Item | Items],
         !RevTypeDefnsAbs, !RevTypeDefnsMer, !RevTypeDefnsForeign,
         !RevInstDefns, !RevModeDefns,
@@ -2549,7 +2435,7 @@ classify_src_items_imp([Item | Items],
         !RevForeignEnums, !RevForeignExportEnums,
         !RevDeclPragmas, !RevImplPragmas, !RevPromises,
         !RevInitialises, !RevFinalises, !RevMutables,
-        !Contents, !ImplicitAvailNeeds, !Specs) :-
+        !ImplicitAvailNeeds, !SelfFIMLangs, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
         ItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn, _, _, _),
@@ -2568,7 +2454,8 @@ classify_src_items_imp([Item | Items],
             !:RevTypeDefnsMer = [ItemTypeDefnInfo | !.RevTypeDefnsMer]
         ;
             TypeDefn = parse_tree_foreign_type(DetailsForeign),
-            accumulate_contents_foreign_type(DetailsForeign, !Contents),
+            DetailsForeign = type_details_foreign(ForeignType, _, _),
+            set.insert(foreign_type_language(ForeignType), !SelfFIMLangs),
             !:RevTypeDefnsForeign = [ItemTypeDefnInfo | !.RevTypeDefnsForeign]
         )
     ;
@@ -2587,7 +2474,6 @@ classify_src_items_imp([Item | Items],
         !:RevInstances = [ItemInstanceInfo | !.RevInstances]
     ;
         Item = item_pred_decl(ItemPredDeclInfo),
-        % We want to check for `main/2' *only* in the interface section.
         !:RevPredDecls = [ItemPredDeclInfo | !.RevPredDecls]
     ;
         Item = item_mode_decl(ItemModeDeclInfo),
@@ -2600,7 +2486,7 @@ classify_src_items_imp([Item | Items],
     ;
         Item = item_foreign_enum(ItemForeignEnumInfo),
         ItemForeignEnumInfo = item_foreign_enum_info(Lang, _, _, _, _),
-        accumulate_ic_lang(Lang, !Contents),
+        set.insert(Lang, !SelfFIMLangs),
         !:RevForeignEnums = [ItemForeignEnumInfo | !.RevForeignEnums]
     ;
         Item = item_foreign_export_enum(ItemFEEInfo),
@@ -2615,37 +2501,20 @@ classify_src_items_imp([Item | Items],
         (
             (
                 ImplPragma = impl_pragma_foreign_code(FCInfo),
-                FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude)
+                FCInfo = pragma_info_foreign_code(Lang, _)
             ;
                 ImplPragma = impl_pragma_foreign_decl(FDInfo),
-                FDInfo = pragma_info_foreign_decl(Lang, _, LiteralOrInclude)
+                FDInfo = pragma_info_foreign_decl(Lang, _, _)
             ),
-            (
-                LiteralOrInclude = floi_literal(_)
-            ;
-                LiteralOrInclude = floi_include_file(FileName),
-                InclFile = foreign_include_file_info(Lang, FileName),
-                FIFOs0 = !.Contents ^ ic_fifos,
-                FIFOs = cord.snoc(FIFOs0, InclFile),
-                !Contents ^ ic_fifos := FIFOs
-            ),
-            accumulate_ic_lang(Lang, !Contents)
+            set.insert(Lang, !SelfFIMLangs)
         ;
             ImplPragma = impl_pragma_foreign_proc_export(FPEInfo),
             FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _),
-            % XXX Why do we need this?
-            accumulate_foreign_export_lang(Lang, !Contents),
-            accumulate_ic_lang(Lang, !Contents)
+            set.insert(Lang, !SelfFIMLangs)
         ;
             ImplPragma = impl_pragma_foreign_proc(FPInfo),
             FPInfo = pragma_info_foreign_proc(Attrs, _, _, _, _, _, _),
-            accumulate_ic_lang(get_foreign_language(Attrs), !Contents)
-        ;
-            ImplPragma = impl_pragma_fact_table(FactTableInfo),
-            FactTableInfo = pragma_info_fact_table(_PredNameArity, FileName),
-            FactTables0 = !.Contents ^ ic_fact_tables,
-            set.insert(FileName, FactTables0, FactTables),
-            !Contents ^ ic_fact_tables := FactTables
+            set.insert(get_foreign_language(Attrs), !SelfFIMLangs)
         ;
             ImplPragma = impl_pragma_tabled(TableInfo),
             TableInfo = pragma_info_tabled(_, _, MaybeAttributes),
@@ -2666,6 +2535,7 @@ classify_src_items_imp([Item | Items],
         ;
             ( ImplPragma = impl_pragma_mode_check_clauses(_)
             ; ImplPragma = impl_pragma_external_proc(_)
+            ; ImplPragma = impl_pragma_fact_table(_)
             ; ImplPragma = impl_pragma_inline(_)
             ; ImplPragma = impl_pragma_no_inline(_)
             ; ImplPragma = impl_pragma_consider_used(_)
@@ -2691,20 +2561,13 @@ classify_src_items_imp([Item | Items],
         !:RevPromises = [ItemPromiseInfo | !.RevPromises]
     ;
         Item = item_initialise(ItemInitialiseInfo),
-        % XXX Why do we need this?
-        list.foldl(accumulate_foreign_export_lang, all_foreign_languages,
-            !Contents),
         !:RevInitialises = [ItemInitialiseInfo | !.RevInitialises]
     ;
         Item = item_finalise(ItemFinaliseInfo),
-        % XXX Why do we need this?
-        list.foldl(accumulate_foreign_export_lang, all_foreign_languages,
-            !Contents),
         !:RevFinalises = [ItemFinaliseInfo | !.RevFinalises]
     ;
         Item = item_mutable(ItemMutableInfo),
-        % XXX Why do we need this?
-        list.foldl(accumulate_ic_lang, all_foreign_languages, !Contents),
+        set.insert_list(all_foreign_languages, !SelfFIMLangs),
         acc_implicit_avail_needs_in_mutable(ItemMutableInfo,
             !ImplicitAvailNeeds),
         !:RevMutables = [ItemMutableInfo | !.RevMutables]
@@ -2724,7 +2587,7 @@ classify_src_items_imp([Item | Items],
         !RevForeignEnums, !RevForeignExportEnums,
         !RevDeclPragmas, !RevImplPragmas, !RevPromises,
         !RevInitialises, !RevFinalises, !RevMutables,
-        !Contents, !ImplicitAvailNeeds, !Specs).
+        !ImplicitAvailNeeds, !SelfFIMLangs, !Specs).
 
 :- pred acc_implicit_avail_needs_solver_type(type_details_solver::in,
     implicit_avail_needs::in, implicit_avail_needs::out) is det.
@@ -2736,13 +2599,6 @@ acc_implicit_avail_needs_solver_type(DetailsSolver, !ImplicitAvailNeeds) :-
         _GroundInst, _AnyInst, MutableItems),
     list.foldl(acc_implicit_avail_needs_in_mutable, MutableItems,
         !ImplicitAvailNeeds).
-
-:- pred accumulate_contents_foreign_type(type_details_foreign_generic::in,
-    item_contents::in, item_contents::out) is det.
-
-accumulate_contents_foreign_type(DetailsForeign, !Contents) :-
-    DetailsForeign = type_details_foreign(ForeignType, _, _),
-    accumulate_ic_lang(foreign_type_language(ForeignType), !Contents).
 
 :- pred acc_implicit_avail_needs_in_instance(item_instance_info::in,
     implicit_avail_needs::in, implicit_avail_needs::out) is det.
@@ -2766,22 +2622,6 @@ acc_implicit_avail_needs_in_promise(ItemPromiseInfo, !ImplicitAvailNeeds) :-
     ItemPromiseInfo = item_promise_info(_PromiseType, Goal, _VarSet,
         _UnivQuantVars, _Context, _SeqNum),
     acc_implicit_avail_needs_in_goal(Goal, !ImplicitAvailNeeds).
-
-:- pred accumulate_ic_lang(foreign_language::in,
-    item_contents::in, item_contents::out) is det.
-
-accumulate_ic_lang(Lang, !Contents) :-
-    Langs0 = !.Contents ^ ic_langs,
-    set.insert(Lang, Langs0, Langs),
-    !Contents ^ ic_langs := Langs.
-
-:- pred accumulate_foreign_export_lang(foreign_language::in,
-    item_contents::in, item_contents::out) is det.
-
-accumulate_foreign_export_lang(Lang, !Contents) :-
-    FELangs0 = !.Contents ^ ic_foreign_export_langs,
-    set.insert(Lang, FELangs0, FELangs),
-    !Contents ^ ic_foreign_export_langs := FELangs.
 
 %---------------------------------------------------------------------------%
 

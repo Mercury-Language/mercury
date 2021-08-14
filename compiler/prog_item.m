@@ -290,20 +290,7 @@
                 % The set of foreign languages for which this module
                 % should have implicit foreign_import_module declaration
                 % for itself.
-                %
-                % XXX CLEANUP This field should simply contain a set
-                % of foreign languages, but currently,
-                % check_convert_raw_comp_unit_to_module_src creates
-                % this structure when it does not have a valid value
-                % for this field (which we now record as a `no').
-                % The field is then filled in (and thus set to `yes(...)')
-                % *later* by code in grab_unqual_imported_modules_make_int.
-                % However, grab_unqual_imported_modules_make_int is not
-                % called on all compiler invocations, so this field can remain
-                % in its not-filled-in state. This legacy of the traditional
-                % split between how compiler invocations that generate code
-                % and those that don't should be fixed.
-                ptms_implicit_fim_langs     :: maybe(set(foreign_language)),
+                ptms_implicit_fim_langs     :: set(foreign_language),
 
                 % XXX The type, inst and mode definitions should be in
                 % {type,inst,mode}_ctor_defn_maps. We already have code
@@ -2793,7 +2780,7 @@ init_empty_parse_tree_module_src(ModuleName, ModuleNameContext) =
     parse_tree_module_src(ModuleName, ModuleNameContext,
         map.init, map.init, map.init,
         map.init, map.init, map.init, map.init, map.init,
-        map.init, map.init, maybe.no,
+        map.init, map.init, set.init,
         [], [], [], [], [], [], [], [], [], [], [], set.init,
         [], [], [], [], [], [], [], [], [], [], [], [],
         [], [], [], [], [], []

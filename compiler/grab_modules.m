@@ -172,14 +172,9 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
         % Construct the initial module import structure.
         ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
 
-        get_foreigns_fact_tables(ParseTreeModuleSrc0, Contents),
-        Contents = item_contents(_ForeignIncludeFilesCord, _FactTablesSet,
-            LangSet, _ForeignExportLangs),
-        set.to_sorted_list(LangSet, Langs),
-
         ImpFIMs0 = ParseTreeModuleSrc0 ^ ptms_imp_fims,
-        list.foldl(add_implicit_fim_for_module(ModuleName), Langs,
-            ImpFIMs0, ImpFIMs),
+        set.foldl(add_implicit_fim_for_module(ModuleName),
+            ParseTreeModuleSrc0 ^ ptms_implicit_fim_langs, ImpFIMs0, ImpFIMs),
         ParseTreeModuleSrc = ParseTreeModuleSrc0 ^ ptms_imp_fims := ImpFIMs,
 
         (
@@ -326,7 +321,7 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
 %---------------------------------------------------------------------------%
 
 grab_unqual_imported_modules_make_int(Globals, SourceFileName,
-        SourceFileModuleName, ParseTreeModuleSrc0,
+        SourceFileModuleName, ParseTreeModuleSrc,
         !:Baggage, !:ModuleAndImports, !HaveReadModuleMaps, !IO) :-
     % The predicates grab_imported_modules and grab_unqual_imported_modules
     % have quite similar tasks. Please keep the corresponding parts of these
@@ -336,7 +331,7 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
 
     some [!IntIndirectImported, !ImpIndirectImported]
     (
-        ImportAndOrUseMap = ParseTreeModuleSrc0 ^ ptms_import_use_map,
+        ImportAndOrUseMap = ParseTreeModuleSrc ^ ptms_import_use_map,
         import_and_or_use_map_to_module_name_contexts(ImportAndOrUseMap,
             IntImportMap, IntUseMap, ImpImportMap, ImpUseMap,
             IntUseImpImportMap),
@@ -347,13 +342,7 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         map.keys_as_set(IntUseImpImportMap, IntUsesImpImports),
         set.insert(mercury_public_builtin_module, IntImports0, IntImports),
 
-        get_foreigns_fact_tables(ParseTreeModuleSrc0, Contents),
-        Contents = item_contents(_ForeignInclFiles, _FactTables,
-            LangSet, _ForeignExportLangs),
-        ParseTreeModuleSrc = ParseTreeModuleSrc0 ^ ptms_implicit_fim_langs
-            := yes(LangSet),
-
-        ( if ParseTreeModuleSrc0 ^ ptms_module_name = SourceFileModuleName then
+        ( if ParseTreeModuleSrc ^ ptms_module_name = SourceFileModuleName then
             % We lie about the set of modules nested inside this one;
             % the lie will be correct only by accident.
             MaybeTopModule = top_module(set.init)

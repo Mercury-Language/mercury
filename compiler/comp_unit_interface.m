@@ -341,7 +341,7 @@ generate_private_interface_int0(AugCompUnit, ParseTreeInt0, !Specs) :-
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         IntInclMap, ImpInclMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
-        IntFIMSpecMap, ImpFIMSpecMap, MaybeImplicitFIMLangs,
+        IntFIMSpecMap, ImpFIMSpecMap, SelfFIMLangs,
 
         IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
         IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances0,
@@ -357,16 +357,16 @@ generate_private_interface_int0(AugCompUnit, ParseTreeInt0, !Specs) :-
 
     map.keys_as_set(IntFIMSpecMap, IntFIMSpecs0),
     map.keys_as_set(ImpFIMSpecMap, ImpFIMSpecs0),
-    % Add the implicit FIMs, if any, to the interface.
-    (
-        MaybeImplicitFIMLangs = yes(ImplicitFIMLangs),
-        set.union(
-            set.map(fim_module_lang_to_spec(ModuleName), ImplicitFIMLangs),
-            IntFIMSpecs0, IntFIMSpecs)
-    ;
-        MaybeImplicitFIMLangs = no,
-        IntFIMSpecs = IntFIMSpecs0
-    ),
+    % Add implicit self FIMs for the SelfFIMLangs to the interface.
+    % XXX In grab_qual_imported_modules_augment, we add them to the
+    % *implementation* section.
+    % XXX Should we have two sets of implicit self FIM languages,
+    % those whose self FIMs are to be added to the interface section, and
+    % those whose self FIMs are to be added to the implementation section,
+    % based on the section of the itme that needs the self FIM?
+    set.union(
+        set.map(fim_module_lang_to_spec(ModuleName), SelfFIMLangs),
+        IntFIMSpecs0, IntFIMSpecs),
     % Make the implementation FIMs disjoint from the interface FIMs.
     set.difference(ImpFIMSpecs0, IntFIMSpecs, ImpFIMSpecs),
 
@@ -480,7 +480,7 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         IntInclMap, ImpInclMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap0,
-        IntFIMSpecMap, ImpFIMSpecMap, MaybeImplicitFIMLangs,
+        IntFIMSpecMap, ImpFIMSpecMap, SelfFIMLangs,
 
         IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
         IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
@@ -595,20 +595,12 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
         ImpForeignEnums0, [], ImpForeignEnums,
         ImpImplicitFIMLangs2, ImpImplicitFIMLangs),
 
-    % MaybeImplicitFIMLangs should have been filled in by
-    % grab_unqual_imported_modules.
-    % XXX Find out and document the relationship between that value
+    % XXX Find out and document the relationship between SelfFIMLangs
     % and the value of IntImplicitFIMLangs computed just above.
     % I (zs) strongly suspect that one of these is a subset of the other,
     % and therefore redundant.
-    (
-        MaybeImplicitFIMLangs = no,
-        unexpected($pred, "MaybeImplicitFIMLangs = no")
-    ;
-        MaybeImplicitFIMLangs = yes(ImplicitFIMLangs)
-    ),
     set.foldl(add_self_fim(ModuleName),
-        set.union(IntImplicitFIMLangs, ImplicitFIMLangs),
+        set.union(IntImplicitFIMLangs, SelfFIMLangs),
         IntExplicitFIMSpecs, IntFIMSpecs),
     set.foldl(add_self_fim(ModuleName), ImpImplicitFIMLangs,
         ImpExplicitFIMSpecs, ImpFIMSpecs0),
