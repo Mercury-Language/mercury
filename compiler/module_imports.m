@@ -175,16 +175,34 @@
     --->    module_baggage(
                 % The name of the source file and directory
                 % containing the module source.
-                % XXX I (zs) don't see source_file_dir being set to
-                % anything but dir.this_directory.
+                %
+                % Currently, the source_file dir field is *always* set
+                % to dir.this_directory, so strictly speaking, this field
+                % is redundant. However, there arguments for keeping it.
+                %
+                % 1. In the future, we may want to support reading in
+                %    source files from places other than the current dir.
+                %
+                % 2. The source_file_dir field in the module_dep_summary
+                %    structure is set by searching for a .module_dep summary
+                %    file in a search path, so its contents need not be
+                %    the current directory. Keeping it here as well
+                %    is consistent with that.
+                %
+                % 3. A typical compiler execution creates few values
+                %    of this type, so the cost of keeping this field
+                %    is negligible.
                 mb_source_file_name         :: file_name,
                 mb_source_file_dir          :: dir_name,
 
                 % The name of the top-level module in the above source file.
                 mb_source_file_module_name  :: module_name,
 
-                % The modules included in the same source file. This field
-                % is only set for the top-level module in each file.
+                % The other modules included in the same source file,
+                % if this module is the top-level module in its file.
+                %
+                % Invariant: this is top_module(...) if and only if
+                % source_file_name = source_file_module_name.
                 mb_maybe_top_module         :: maybe_top_module,
 
                 % If we are doing smart recompilation, we need to keep

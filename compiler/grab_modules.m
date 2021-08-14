@@ -196,12 +196,6 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
         init_module_and_imports(ParseTreeModuleSrc, !:ModuleAndImports),
         GrabbedFileMap0 =
             map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
-        % XXX If setting the SourceFileDir field to dir.this_directory
-        % always reflects the actual location of the source file,
-        % then storing the directory name is redundant. If sometimes
-        % it does not, then this is a bug. Either way, there is something
-        % wrong here.
-        % XXX Check whether any code actually *uses* the value in this field.
         !:Baggage = module_baggage(SourceFileName, dir.this_directory,
             SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
             GrabbedFileMap0, Specs0, Errors0),
@@ -373,12 +367,6 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         init_module_and_imports(ParseTreeModuleSrc, !:ModuleAndImports),
         GrabbedFileMap0 =
             map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
-        % XXX If setting the SourceFileDir field to dir.this_directory
-        % always reflects the actual location of the source file,
-        % then storing the directory name is redundant. If sometimes
-        % it does not, then this is a bug. Either way, there is something
-        % wrong here.
-        % XXX Check whether any code actually *uses* the value in this field.
         !:Baggage = module_baggage(SourceFileName, dir.this_directory,
             SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
             GrabbedFileMap0, Specs0, Errors0),
