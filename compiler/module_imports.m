@@ -242,8 +242,8 @@
     % Initialize an augmented compilation unit structure. Put the given
     % ParseTreeModuleSrc into it, and leave the rest of the structure empty.
     % Our caller is the expected to fill in (i.e. augment) the structure
-    % by calling the aug_compilation_unit_add_X predicates below to add
-    % the parse trees of the interface and optimization files needed
+    % by calling the aug_compilation_unit_add_X predicates in grab_modules.
+    % to add the parse trees of the interface and optimization files needed
     % to compile ParseTreeModuleSrc.
     %
 :- pred init_aug_compilation_unit(parse_tree_module_src::in,
@@ -260,30 +260,6 @@
     set(module_name)::out) is det.
 :- pred aug_compilation_unit_get_int_imp_deps(aug_compilation_unit::in,
     set(module_name)::out, set(module_name)::out) is det.
-
-%---------------------------------------------------------------------------%
-%
-% Predicates for adding information to aug_compilation_unit structures.
-%
-
-:- pred aug_compilation_unit_add_ancestor_int_spec(ancestor_int_spec::in,
-    aug_compilation_unit::in, aug_compilation_unit::out) is det.
-:- pred aug_compilation_unit_add_direct_int_spec(direct_int_spec::in,
-    aug_compilation_unit::in, aug_compilation_unit::out) is det.
-:- pred aug_compilation_unit_add_indirect_int_spec(indirect_int_spec::in,
-    aug_compilation_unit::in, aug_compilation_unit::out) is det.
-:- pred aug_compilation_unit_add_plain_opt(parse_tree_plain_opt::in,
-    aug_compilation_unit::in, aug_compilation_unit::out) is det.
-:- pred aug_compilation_unit_add_trans_opt(parse_tree_trans_opt::in,
-    aug_compilation_unit::in, aug_compilation_unit::out) is det.
-:- pred aug_compilation_unit_add_int_for_opt_spec(int_for_opt_spec::in,
-    aug_compilation_unit::in, aug_compilation_unit::out) is det.
-:- pred aug_compilation_unit_add_type_repn_spec(type_repn_spec::in,
-    aug_compilation_unit::in, aug_compilation_unit::out) is det.
-
-:- pred aug_compilation_unit_maybe_add_module_version_numbers(
-    module_name::in, maybe_version_numbers::in,
-    aug_compilation_unit::in, aug_compilation_unit::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -527,74 +503,6 @@ section_import_and_or_use_int_imp(SectionImportUse) = Section :-
         ; SectionImportUse = imp_use(_)
         ),
         Section = ms_implementation
-    ).
-
-%---------------------------------------------------------------------------%
-
-aug_compilation_unit_add_ancestor_int_spec(X, !AugCompUnit) :-
-    Map0 = !.AugCompUnit ^ acu_ancestor_int_specs,
-    X = ancestor_int0(PT0, _),
-    MN = PT0 ^ pti0_module_name,
-    map.det_insert(MN, X, Map0, Map),
-    !AugCompUnit ^ acu_ancestor_int_specs := Map.
-
-aug_compilation_unit_add_direct_int_spec(X, !AugCompUnit) :-
-    Map0 = !.AugCompUnit ^ acu_direct_int_specs,
-    ( X = direct_int1(PT1, _), MN = PT1 ^ pti1_module_name
-    ; X = direct_int3(PT3, _), MN = PT3 ^ pti3_module_name
-    ),
-    map.det_insert(MN, X, Map0, Map),
-    !AugCompUnit ^ acu_direct_int_specs := Map.
-
-aug_compilation_unit_add_indirect_int_spec(X, !AugCompUnit) :-
-    Map0 = !.AugCompUnit ^ acu_indirect_int_specs,
-    ( X = indirect_int2(PT2, _), MN = PT2 ^ pti2_module_name
-    ; X = indirect_int3(PT3, _), MN = PT3 ^ pti3_module_name
-    ),
-    map.det_insert(MN, X, Map0, Map),
-    !AugCompUnit ^ acu_indirect_int_specs := Map.
-
-aug_compilation_unit_add_plain_opt(X, !AugCompUnit) :-
-    Map0 = !.AugCompUnit ^ acu_plain_opts,
-    MN = X ^ ptpo_module_name,
-    map.det_insert(MN, X, Map0, Map),
-    !AugCompUnit ^ acu_plain_opts := Map.
-
-aug_compilation_unit_add_trans_opt(X, !AugCompUnit) :-
-    Map0 = !.AugCompUnit ^ acu_trans_opts,
-    MN = X ^ ptto_module_name,
-    map.det_insert(MN, X, Map0, Map),
-    !AugCompUnit ^ acu_trans_opts := Map.
-
-aug_compilation_unit_add_int_for_opt_spec(X, !AugCompUnit) :-
-    Map0 = !.AugCompUnit ^ acu_int_for_opt_specs,
-    ( X = for_opt_int0(PT0, _), MN = PT0 ^ pti0_module_name
-    ; X = for_opt_int1(PT1, _), MN = PT1 ^ pti1_module_name
-    ; X = for_opt_int2(PT2, _), MN = PT2 ^ pti2_module_name
-    ),
-    map.det_insert(MN, X, Map0, Map),
-    !AugCompUnit ^ acu_int_for_opt_specs := Map.
-
-aug_compilation_unit_add_type_repn_spec(X, !AugCompUnit) :-
-    Map0 = !.AugCompUnit ^ acu_type_repn_specs,
-    X = type_repn_spec_int1(PT1), MN = PT1 ^ pti1_module_name,
-    map.det_insert(MN, X, Map0, Map),
-    !AugCompUnit ^ acu_type_repn_specs := Map.
-
-%---------------------%
-
-aug_compilation_unit_maybe_add_module_version_numbers(ModuleName,
-        MaybeVersionNumbers, !AugCompUnit) :-
-    (
-        MaybeVersionNumbers = no_version_numbers
-    ;
-        MaybeVersionNumbers = version_numbers(VersionNumbers),
-        ModuleVersionNumbersMap0 =
-            !.AugCompUnit ^ acu_module_version_numbers_map,
-        map.det_insert(ModuleName, VersionNumbers,
-            ModuleVersionNumbersMap0, ModuleVersionNumbersMap),
-        !AugCompUnit ^ acu_module_version_numbers_map :=
-            ModuleVersionNumbersMap
     ).
 
 %---------------------------------------------------------------------------%
