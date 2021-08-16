@@ -140,9 +140,10 @@ separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
         Initialises, Finalises, Mutables,
         TypeRepnMap, ForeignEnums, ForeignExportEnums,
         PragmasDecl, PragmasImpl, PragmasGen, Clauses, IntBadPreds) :-
-    AugCompUnit = aug_compilation_unit(_ModuleVersionNumbers,
-        ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs),
+    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
+        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
+        _ModuleVersionNumbers),
     % We start with an empty cord for each kind of item.
     % Then for each file we have read in, we append to this cord
     % all the items of that kind in that file to the list,

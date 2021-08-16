@@ -37,7 +37,7 @@
 :- type deps
     --->    deps(
                 have_processed,
-                module_imports_and_baggage
+                burdened_aug_comp_unit
             ).
 
 :- type have_processed
@@ -83,7 +83,7 @@
     %
     % XXX This shouldn't need to be exported.
     %
-:- pred insert_into_deps_map(module_imports_and_baggage::in,
+:- pred insert_into_deps_map(burdened_aug_comp_unit::in,
     deps_map::in, deps_map::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -106,10 +106,10 @@
 get_submodule_kind(ModuleName, DepsMap) = Kind :-
     Ancestors = get_ancestors(ModuleName),
     ( if list.last(Ancestors, Parent) then
-        map.lookup(DepsMap, ModuleName, deps(_, ModuleImportsAndBaggage)),
+        map.lookup(DepsMap, ModuleName, deps(_, BurdenedAugCompUnit)),
         map.lookup(DepsMap, Parent, deps(_, ParentImportsAndBaggage)),
-        ModuleBaggage = ModuleImportsAndBaggage ^ miab_baggage,
-        ParentBaggage = ParentImportsAndBaggage ^ miab_baggage,
+        ModuleBaggage = BurdenedAugCompUnit ^ bacu_baggage,
+        ParentBaggage = ParentImportsAndBaggage ^ bacu_baggage,
         ModuleFileName = ModuleBaggage ^ mb_source_file_name,
         ParentFileName = ParentBaggage ^ mb_source_file_name,
         ( if ModuleFileName = ParentFileName then
@@ -167,17 +167,16 @@ generate_deps_map_step(Globals, Search, Module, ExpectationContexts,
     % and public children to the list of dependencies we need to generate,
     % and mark it as having been processed.
     % XXX Why only the *public* children?
-    Deps0 = deps(Done0, ModuleImportsAndBaggage),
+    Deps0 = deps(Done0, BurdenedAugCompUnit),
     (
         Done0 = not_yet_processed,
-        Deps = deps(already_processed, ModuleImportsAndBaggage),
+        Deps = deps(already_processed, BurdenedAugCompUnit),
         map.det_update(Module, Deps, !DepsMap),
-        ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
+        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
         % We could keep a list of the modules we have already processed
         % and subtract it from the sets of modules we add here, but doing that
         % actually leads to a small slowdown.
-        module_and_imports_get_parse_tree_module_src(ModuleAndImports,
-            ParseTreeModuleSrc),
+        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
 
         ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
         AncestorModuleNames = get_ancestors_set(ModuleName),
@@ -297,10 +296,11 @@ lookup_or_find_dependencies(Globals, Search, ModuleName, ExpectationContexts,
         map.lookup(!.DepsMap, ModuleName, Deps)
     ).
 
-insert_into_deps_map(ModuleImportsAndBaggage, !DepsMap) :-
-    ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
-    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
-    Deps = deps(not_yet_processed, ModuleImportsAndBaggage),
+insert_into_deps_map(BurdenedAugCompUnit, !DepsMap) :-
+    AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
+    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+    Deps = deps(not_yet_processed, BurdenedAugCompUnit),
     map.set(ModuleName, Deps, !DepsMap).
 
     % Read a module to determine the (direct) dependencies of that module
@@ -309,20 +309,20 @@ insert_into_deps_map(ModuleImportsAndBaggage, !DepsMap) :-
     %
 :- pred read_dependencies(globals::in, maybe_search::in,
     module_name::in, expectation_contexts::in,
-    list(module_imports_and_baggage)::out,
+    list(burdened_aug_comp_unit)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 read_dependencies(Globals, Search, ModuleName, ExpectationContexts,
-        ModuleImportsAndBaggageList, !Specs, !IO) :-
+        BurdenedAugCompUnitList, !Specs, !IO) :-
     % XXX If SrcSpecs contains error messages, the parse tree may not be
     % complete, and the rest of this predicate may work on incorrect data.
     read_module_src(Globals, "Getting dependencies for module",
         ignore_errors, Search, ModuleName, ExpectationContexts,
         SourceFileName, always_read_module(dont_return_timestamp), _,
         ParseTreeSrc, SrcSpecs, SrcReadModuleErrors, !IO),
-    parse_tree_src_to_module_imports_and_baggage_list(Globals, SourceFileName,
+    parse_tree_src_to_burdened_aug_comp_unit_list(Globals, SourceFileName,
         ParseTreeSrc, SrcReadModuleErrors, SrcSpecs, Specs,
-        ModuleImportsAndBaggageList),
+        BurdenedAugCompUnitList),
     !:Specs = Specs ++ !.Specs.
 
 %---------------------------------------------------------------------------%

@@ -329,8 +329,8 @@ make_typeclass_abstract_for_int3(OrigTypeClass) = TypeClass :-
 %---------------------------------------------------------------------------%
 
 generate_private_interface_int0(AugCompUnit, ParseTreeInt0, !Specs) :-
-    AugCompUnit = aug_compilation_unit(ModuleVersionNumbers,
-        ParseTreeModuleSrc, _, _, _, _, _, _, _),
+    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
+        _, _, _, _, _, _, _, ModuleVersionNumbers),
 
     ( if map.search(ModuleVersionNumbers, ModuleName, VersionNumbers) then
         MaybeVersionNumbers = version_numbers(VersionNumbers)
@@ -474,8 +474,8 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
         ImpTypeDefns, TypeCtorRepnMap, ParseTreeInt1, !Specs) :-
     % We return some of our intermediate results to our caller, for use
     % in constructing the .int2 file.
-    AugCompUnit = aug_compilation_unit(_, ParseTreeModuleSrc,
-        _, DirectIntSpecs, IndirectIntSpecs, _, _, _, _),
+    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
+        _, DirectIntSpecs, IndirectIntSpecs, _, _, _, _, _),
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         IntInclMap, ImpInclMap, InclMap,
@@ -1725,8 +1725,8 @@ generate_interface_int2(AugCompUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
         ImpTypeDefns, TypeCtorRepnMap, ParseTreeInt2) :-
-    AugCompUnit = aug_compilation_unit(_, ParseTreeModuleSrc,
-        _, _, _, _, _, _, _),
+    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
+        _, _, _, _, _, _, _, _),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameContext = ParseTreeModuleSrc ^ ptms_module_name_context,
 

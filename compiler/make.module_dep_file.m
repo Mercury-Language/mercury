@@ -36,7 +36,7 @@
     maybe_module_dep_info::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-:- pred write_module_dep_file(globals::in, module_imports_and_baggage::in,
+:- pred write_module_dep_file(globals::in, burdened_aug_comp_unit::in,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -306,22 +306,22 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
 
 %-----------------------------------------------------------------------------%
 
-write_module_dep_file(Globals, ModuleImportsAndBaggage0, !IO) :-
-    ModuleImportsAndBaggage0 =
-        module_imports_and_baggage(Baggage0, ModuleAndImports0),
-    rebuild_module_and_imports_for_dep_file(Baggage0, Baggage,
+write_module_dep_file(Globals, BurdenedAugCompUnit0, !IO) :-
+    BurdenedAugCompUnit0 =
+        burdened_aug_comp_unit(Baggage0, ModuleAndImports0),
+    rebuild_burdened_aug_comp_unit_for_dep_file(Baggage0, Baggage,
         ModuleAndImports0, ModuleAndImports),
-    ModuleImportsAndBaggage =
-        module_imports_and_baggage(Baggage, ModuleAndImports),
-    do_write_module_dep_file(Globals, ModuleImportsAndBaggage, !IO).
+    BurdenedAugCompUnit =
+        burdened_aug_comp_unit(Baggage, ModuleAndImports),
+    do_write_module_dep_file(Globals, BurdenedAugCompUnit, !IO).
 
-:- pred do_write_module_dep_file(globals::in, module_imports_and_baggage::in,
+:- pred do_write_module_dep_file(globals::in, burdened_aug_comp_unit::in,
     io::di, io::uo) is det.
 
-do_write_module_dep_file(Globals, ModuleImportsAndBaggage, !IO) :-
-    ModuleImportsAndBaggage =
-        module_imports_and_baggage(Baggage, ModuleAndImports),
-    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
+do_write_module_dep_file(Globals, BurdenedAugCompUnit, !IO) :-
+    BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
+    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(make_module_dep_file_extension),
         ModuleName, ProgDepFile, !IO),
@@ -329,7 +329,7 @@ do_write_module_dep_file(Globals, ModuleImportsAndBaggage, !IO) :-
     (
         ProgDepResult = ok(ProgDepStream),
         do_write_module_dep_file_to_stream(ProgDepStream, Globals,
-            Baggage, ModuleAndImports, !IO),
+            Baggage, AugCompUnit, !IO),
         io.close_output(ProgDepStream, !IO)
     ;
         ProgDepResult = error(Error),
@@ -340,10 +340,10 @@ do_write_module_dep_file(Globals, ModuleImportsAndBaggage, !IO) :-
     ).
 
 :- pred do_write_module_dep_file_to_stream(io.text_output_stream::in,
-    globals::in, module_baggage::in, module_and_imports::in,
+    globals::in, module_baggage::in, aug_compilation_unit::in,
     io::di, io::uo) is det.
 
-do_write_module_dep_file_to_stream(Stream, Globals, Baggage, ModuleAndImports,
+do_write_module_dep_file_to_stream(Stream, Globals, Baggage, AugCompUnit,
         !IO) :-
     Version = module_dep_file_v2,
     version_number(Version, VersionNumber),
@@ -351,19 +351,17 @@ do_write_module_dep_file_to_stream(Stream, Globals, Baggage, ModuleAndImports,
     SourceFileModuleName = Baggage ^ mb_source_file_module_name,
     SourceFileModuleNameStr =
         mercury_bracketed_sym_name_to_string(SourceFileModuleName),
-    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
+    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     Ancestors = set.to_sorted_list(get_ancestors_set(ModuleName)),
-    module_and_imports_get_children(ModuleAndImports, Children),
-    module_and_imports_get_int_imp_deps(ModuleAndImports,
-        IntDepSet, ImpDepSet),
+    aug_compilation_unit_get_children(AugCompUnit, Children),
+    aug_compilation_unit_get_int_imp_deps(AugCompUnit, IntDepSet, ImpDepSet),
     set.to_sorted_list(IntDepSet, IntDeps),
     set.to_sorted_list(ImpDepSet, ImpDeps),
     MaybeTopModule = Baggage ^ mb_maybe_top_module,
     NestedSubModules = get_nested_children_list_of_top_module(MaybeTopModule),
-    module_and_imports_get_fact_tables(ModuleAndImports, FactTableFilesSet),
-    FactTableFiles = set.to_sorted_list(FactTableFilesSet),
-    module_and_imports_get_parse_tree_module_src(ModuleAndImports,
-        ParseTreeModuleSrc),
+    get_fact_tables(ParseTreeModuleSrc, FactTableFilesSet),
+    set.to_sorted_list(FactTableFilesSet, FactTableFiles),
     globals.get_backend_foreign_languages(Globals, BackendLangsList),
     BackendLangs = set.list_to_set(BackendLangsList), 
     get_foreign_code_langs(ParseTreeModuleSrc, CodeLangs),
@@ -377,7 +375,7 @@ do_write_module_dep_file_to_stream(Stream, Globals, Baggage, ModuleAndImports,
     else
         ContainsForeignExport = contains_foreign_export
     ),
-    get_fims(ParseTreeModuleSrc, FIMSpecs),
+    get_fim_specs(ParseTreeModuleSrc, FIMSpecs),
     get_foreign_include_file_infos(ParseTreeModuleSrc, ForeignIncludeFiles),
     FIMSpecStrs = list.map(fim_spec_to_string, set.to_sorted_list(FIMSpecs)),
     FIFOStrs = list.map(foreign_include_file_info_to_string,
@@ -856,13 +854,13 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             !Info ^ mki_module_dependencies := ModuleDepMap
         ;
             FatalReadError = no,
-            parse_tree_src_to_module_imports_and_baggage_list(Globals,
+            parse_tree_src_to_burdened_aug_comp_unit_list(Globals,
                 SourceFileName, ParseTreeSrc, ReadModuleErrors, Specs0, Specs,
-                ModuleImportsAndBaggageList),
+                BurdenedAugCompUnitList),
             ParseTreeModuleSrcs = list.map(
-                ( func(module_imports_and_baggage(_, MAI)) = PTMS :-
-                    module_and_imports_get_parse_tree_module_src(MAI, PTMS)
-                ), ModuleImportsAndBaggageList),
+                ( func(burdened_aug_comp_unit(_, ACU)) = PTMS :-
+                    PTMS = ACU ^ acu_module_src
+                ), BurdenedAugCompUnitList),
             SubModuleNames = list.map(parse_tree_module_src_project_name,
                  ParseTreeModuleSrcs),
 
@@ -873,7 +871,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             io.set_output_stream(OldOutputStream, _, !IO),
 
             list.foldl(make_info_add_module_and_imports_as_dep,
-                ModuleImportsAndBaggageList, !Info),
+                BurdenedAugCompUnitList, !Info),
 
             % If there were no errors, write out the `.int3' file
             % while we have the contents of the module. The `int3' file
@@ -898,7 +896,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                 ( pred(succeeded::out, MakeInfo::in, MakeInfo::out,
                         IO0::di, IO::uo) is det :-
                     list.foldl(do_write_module_dep_file(Globals),
-                        ModuleImportsAndBaggageList, IO0, IO)
+                        BurdenedAugCompUnitList, IO0, IO)
                 ),
                 cleanup_module_dep_files(Globals, SubModuleNames),
                 _Succeeded, !Info, !IO),
@@ -912,13 +910,14 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         MaybeErrorStream = no
     ).
 
-:- pred make_info_add_module_and_imports_as_dep(module_imports_and_baggage::in,
+:- pred make_info_add_module_and_imports_as_dep(burdened_aug_comp_unit::in,
     make_info::in, make_info::out) is det.
 
-make_info_add_module_and_imports_as_dep(ModuleImportsAndBaggage, !Info) :-
-    ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
-    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
-    ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
+make_info_add_module_and_imports_as_dep(BurdenedAugCompUnit, !Info) :-
+    AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
+    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+    ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
     MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
     ModuleDeps0 = !.Info ^ mki_module_dependencies,
     % XXX Could this be map.det_insert?

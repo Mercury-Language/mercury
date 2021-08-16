@@ -60,7 +60,7 @@
     % and I am pretty sure that the original author (fjh) does not know
     % anymore either :-(
     %
-:- pred write_dependency_file(globals::in, module_imports_and_baggage::in,
+:- pred write_dependency_file(globals::in, burdened_aug_comp_unit::in,
     maybe_intermod_deps::in, set(module_name)::in,
     maybe(list(module_name))::in, io::di, io::uo) is det.
 
@@ -151,13 +151,14 @@
 
 %---------------------------------------------------------------------------%
 
-write_dependency_file(Globals, ModuleImportsAndBaggage, IntermodDeps, AllDeps,
+write_dependency_file(Globals, BurdenedAugCompUnit, IntermodDeps, AllDeps,
         MaybeTransOptDeps, !IO) :-
     % To avoid problems with concurrent updates of `.d' files during
     % parallel makes, we first create the file with a temporary name,
     % and then rename it to the desired name when we have finished.
-    ModuleImportsAndBaggage = module_imports_and_baggage(_, ModuleAndImports),
-    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
+    BurdenedAugCompUnit = burdened_aug_comp_unit(_, AugCompUnit),
+    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".d")), ModuleName, DependencyFileName, !IO),
     io.make_temp_file(dir.dirname(DependencyFileName), "tmp_d", "",
@@ -191,7 +192,7 @@ write_dependency_file(Globals, ModuleImportsAndBaggage, IntermodDeps, AllDeps,
             report_error(ErrorStream, Message, !IO)
         ;
             Result = ok(DepStream),
-            generate_d_file(Globals, ModuleImportsAndBaggage, IntermodDeps,
+            generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
                 AllDeps, MaybeTransOptDeps, MmakeFile, !IO),
             write_mmakefile(DepStream, MmakeFile, !IO),
             io.close_output(DepStream, !IO),
@@ -261,19 +262,18 @@ write_dependency_file(Globals, ModuleImportsAndBaggage, IntermodDeps, AllDeps,
     % apparently there is no documentation of *which* mmake rules for Java
     % are required by --use-mmc-make.
     %
-:- pred generate_d_file(globals::in, module_imports_and_baggage::in,
+:- pred generate_d_file(globals::in, burdened_aug_comp_unit::in,
     maybe_intermod_deps::in,
     set(module_name)::in, maybe(list(module_name))::in,
     mmakefile::out, io::di, io::uo) is det.
 
-generate_d_file(Globals, ModuleImportsAndBaggage, IntermodDeps,
+generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
         AllDeps, MaybeTransOptDeps, !:MmakeFile, !IO) :-
-    ModuleImportsAndBaggage =
-        module_imports_and_baggage(Baggage, ModuleAndImports),
+    BurdenedAugCompUnit =
+        burdened_aug_comp_unit(Baggage, AugCompUnit),
     SourceFileName = Baggage ^ mb_source_file_name,
     SourceFileModuleName = Baggage ^ mb_source_file_module_name,
     MaybeTopModule = Baggage ^ mb_maybe_top_module,
-    module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit),
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameString = sym_name_to_string(ModuleName),
@@ -845,16 +845,17 @@ construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
 construct_foreign_import_rules(Globals, AugCompUnit, IntermodDeps,
         SourceFileModuleName, ObjFileName, PicObjFileName,
         MmakeRulesForeignImports, !IO) :-
-    AugCompUnit = aug_compilation_unit(_, ParseTreeModuleSrc,
+    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
         AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, _TransOpts, IntForOptSpecs, _TypeRepnSpecs),
+        PlainOpts, _TransOpts, IntForOptSpecs, _TypeRepnSpecs,
+        _ModuleVersionNumber),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     (
         IntermodDeps = intermod_deps(_, _, _, ForeignImportedModuleNamesSet)
     ;
         IntermodDeps = no_intermod_deps,
         some [!FIMSpecs] (
-            get_fims(ParseTreeModuleSrc, !:FIMSpecs),
+            get_fim_specs(ParseTreeModuleSrc, !:FIMSpecs),
             map.foldl_values(gather_fim_specs_in_ancestor_int_spec,
                 AncestorIntSpecs, !FIMSpecs),
             map.foldl_values(gather_fim_specs_in_direct_int_spec,
@@ -1265,15 +1266,15 @@ generate_dependencies_write_d_file(Globals, Dep,
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
         TransOptOrder, _DepsMap, !IO) :-
     % XXX The fact that _DepsMap is unused here may be a bug.
-    Dep = deps(_, ModuleImportsAndBaggage),
-    ModuleImportsAndBaggage =
-        module_imports_and_baggage(Baggage, ModuleAndImports),
+    Dep = deps(_, BurdenedAugCompUnit),
+    BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
 
     % Look up the interface/implementation/indirect dependencies
     % for this module from the respective dependency graphs,
     % and save them in the module_and_imports structure.
 
-    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
+    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
         IndirectOptDeps),
 
@@ -1320,7 +1321,7 @@ generate_dependencies_write_d_file(Globals, Dep,
     Errors = Baggage ^ mb_errors,
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_empty(FatalErrors) then
-        write_dependency_file(Globals, ModuleImportsAndBaggage, IntermodDeps,
+        write_dependency_file(Globals, BurdenedAugCompUnit, IntermodDeps,
             IndirectOptDeps, yes(TransOptDeps), !IO)
     else
         true
@@ -1403,10 +1404,9 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     % The modules for which we need to generate .int0 files.
     ModulesWithSubModules = list.filter(
         ( pred(Module::in) is semidet :-
-            map.lookup(DepsMap, Module, deps(_, ModuleImportsAndBaggage)),
-            ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
-            module_and_imports_get_parse_tree_module_src(ModuleAndImports,
-                ParseTreeModuleSrc),
+            map.lookup(DepsMap, Module, deps(_, BurdenedAugCompUnit)),
+            AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
+            ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
             IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
             not map.is_empty(IncludeMap)
         ), Modules),
@@ -1678,8 +1678,8 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
 select_ok_modules([], _, []).
 select_ok_modules([Module | Modules0], DepsMap, Modules) :-
     select_ok_modules(Modules0, DepsMap, ModulesTail),
-    map.lookup(DepsMap, Module, deps(_, ModuleImportsAndBaggage)),
-    Baggage = ModuleImportsAndBaggage ^ miab_baggage,
+    map.lookup(DepsMap, Module, deps(_, BurdenedAugCompUnit)),
+    Baggage = BurdenedAugCompUnit ^ bacu_baggage,
     Errors = Baggage ^ mb_errors,
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_empty(FatalErrors) then
@@ -1706,15 +1706,17 @@ get_fact_table_file_names(DepsMap, Modules, FactTableFileNames) :-
         set.init, FactTableFileNamesSet),
     set.to_sorted_list(FactTableFileNamesSet, FactTableFileNames).
 
+    % Gather file names of fact tables.
+    %
 :- pred get_fact_table_file_names(deps_map::in, list(module_name)::in,
     set(file_name)::in, set(file_name)::out) is det.
 
 get_fact_table_file_names(_DepsMap, [], !FactTableFileNames).
 get_fact_table_file_names(DepsMap, [Module | Modules], !FactTableFileNames) :-
-    map.lookup(DepsMap, Module, deps(_, ModuleImportsAndBaggage)),
-    ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
-    % Handle object files for fact tables.
-    module_and_imports_get_fact_tables(ModuleAndImports, FactTableFileNames),
+    map.lookup(DepsMap, Module, deps(_, BurdenedAugCompUnit)),
+    AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
+    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+    get_fact_tables(ParseTreeModuleSrc, FactTableFileNames),
     % Handle object files for foreign code.
     % NOTE: currently none of the backends support foreign code
     % in a non target language.
@@ -2089,10 +2091,9 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
     ( if
         Intermod = yes,
         some [ModuleAndImports] (
-            map.member(DepsMap, _, deps(_, ModuleImportsAndBaggage)),
-            ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
-            module_and_imports_get_parse_tree_module_src(ModuleAndImports,
-                ParseTreeModuleSrc),
+            map.member(DepsMap, _, deps(_, BurdenedAugCompUnit)),
+            AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
+            ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
             IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
             not map.is_empty(IncludeMap)
         )
@@ -2403,8 +2404,8 @@ remove_files_cmd(Files) =
 
 get_source_file(DepsMap, ModuleName, FileName) :-
     map.lookup(DepsMap, ModuleName, Deps),
-    Deps = deps(_, ModuleImportsAndBaggage),
-    Baggage = ModuleImportsAndBaggage ^ miab_baggage,
+    Deps = deps(_, BurdenedAugCompUnit),
+    Baggage = BurdenedAugCompUnit ^ bacu_baggage,
     SourceFileName = Baggage ^ mb_source_file_name,
     ( if string.remove_suffix(SourceFileName, ".m", SourceFileBase) then
         FileName = SourceFileBase

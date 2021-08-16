@@ -196,7 +196,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred get_fims(parse_tree_module_src::in, set(fim_spec)::out) is det.
+:- pred get_fim_specs(parse_tree_module_src::in, set(fim_spec)::out) is det.
 
 :- pred get_fact_tables(parse_tree_module_src::in, set(string)::out) is det.
 
@@ -349,9 +349,10 @@ combine_implicit_needs_acc([Head | Tail], !NeedTabling,
 
 acc_implicit_avail_needs_in_aug_compilation_unit(AugCompUnit,
         !ImplicitAvailNeeds) :-
-    AugCompUnit = aug_compilation_unit(_MaybeVersionNumbers,
-        ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs, _TypeRepnSpecs),
+    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
+        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        PlainOpts, TransOpts, IntForOptSpecs, _TypeRepnSpecs,
+        _MaybeVersionNumbers),
     acc_implicit_avail_needs_in_parse_tree_module_src(ParseTreeModuleSrc,
         !ImplicitAvailNeeds),
     map.foldl_values(acc_implicit_avail_needs_in_ancestor_int_spec,
@@ -1199,7 +1200,7 @@ get_foreigns_fact_tables(ParseTreeModuleSrc, !:Contents) :-
 
 %---------------------%
 
-get_fims(ParseTreeModuleSrc, FIMSpecs) :-
+get_fim_specs(ParseTreeModuleSrc, FIMSpecs) :-
     map.keys_as_set(ParseTreeModuleSrc ^ ptms_int_fims, IntFIMSpecs),
     map.keys_as_set(ParseTreeModuleSrc ^ ptms_imp_fims, ImpFIMSpecs),
     some [!SelfImportLangs] (

@@ -44,7 +44,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_write_module_dep_file(globals::in, module_imports_and_baggage::in,
+:- pred make_write_module_dep_file(globals::in, burdened_aug_comp_unit::in,
     io::di, io::uo) is det.
 
 :- func make_module_dep_file_extension = other_ext is det.
@@ -305,9 +305,9 @@
 
 %-----------------------------------------------------------------------------%
 
-make_write_module_dep_file(Globals, ModuleImportsAndBaggage, !IO) :-
+make_write_module_dep_file(Globals, BurdenedAugCompUnit, !IO) :-
     make.module_dep_file.write_module_dep_file(Globals,
-        ModuleImportsAndBaggage, !IO).
+        BurdenedAugCompUnit, !IO).
 
 make_module_dep_file_extension = other_ext(".module_dep").
 
@@ -717,7 +717,7 @@ make_track_flags_files_2(Globals, ModuleName, Succeeded,
 option_table_hash(AllOptionArgs, Hash, !IO) :-
     % This code is part of the --track-flags implementation. We hash the
     % options in the updated globals because they include module-specific
-    % options.The hash is then compared with the hash in a MODULE.track_flags
+    % options. The hash is then compared with the hash in a MODULE.track_flags
     % file, which is updated if it differs. The new timestamp will later force
     % the module to be recompiled if necessary, but that's later. We are not
     % compiling the module immediately, so this is the only use we have for

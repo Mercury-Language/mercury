@@ -172,11 +172,10 @@ write_private_interface_file_int0(Globals, SourceFileName,
         !HaveReadModuleMaps, !IO) :-
     ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
     grab_unqual_imported_modules_make_int(Globals, SourceFileName,
-        SourceFileModuleName, ParseTreeModuleSrc0, Baggage, ModuleAndImports,
+        SourceFileModuleName, ParseTreeModuleSrc0, Baggage, AugCompUnit1,
         !HaveReadModuleMaps, !IO),
 
     % Check whether we succeeded.
-    module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit1),
     GetSpecs = Baggage ^ mb_specs,
     GetErrors = Baggage ^ mb_errors,
     GetSpecsEffectivelyErrors =
@@ -235,11 +234,10 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
 
     % Get the .int3 files for imported modules.
     grab_unqual_imported_modules_make_int(Globals, SourceFileName,
-        SourceFileModuleName, IntParseTreeModuleSrc, Baggage, ModuleAndImports,
+        SourceFileModuleName, IntParseTreeModuleSrc, Baggage, AugCompUnit1,
         !HaveReadModuleMaps, !IO),
 
     % Check whether we succeeded.
-    module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit1),
     GetSpecs = Baggage ^ mb_specs,
     GetErrors = Baggage ^ mb_errors,
     GetSpecsEffectivelyErrors =

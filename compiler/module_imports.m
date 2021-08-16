@@ -31,7 +31,6 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
 
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -163,14 +162,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % The `module_and_imports' structure holds information about
-    % a module and the modules that it imports. We build this structure up
-    % as we go along.
-    %
-:- type module_and_imports.
-
-%---------------------------------------------------------------------------%
-
 :- type module_baggage
     --->    module_baggage(
                 % The name of the source file and directory
@@ -178,7 +169,7 @@
                 %
                 % Currently, the source_file dir field is *always* set
                 % to dir.this_directory, so strictly speaking, this field
-                % is redundant. However, there arguments for keeping it.
+                % is redundant. However, there are arguments for keeping it.
                 %
                 % 1. In the future, we may want to support reading in
                 %    source files from places other than the current dir.
@@ -219,16 +210,13 @@
 
 %---------------------------------------------------------------------------%
 
-:- type module_imports_and_baggage
-    --->    module_imports_and_baggage(
-                miab_baggage    :: module_baggage,
-                miab_mai        :: module_and_imports
+:- type burdened_aug_comp_unit
+    --->    burdened_aug_comp_unit(
+                bacu_baggage    :: module_baggage,
+                bacu_acu        :: aug_compilation_unit
             ).
 
 %---------------------------------------------------------------------------%
-%
-% The predicates that create module_and_imports structures.
-%
 
     % This predicate is used by
     %
@@ -236,115 +224,71 @@
     %   generate_dep_d_files.m
     %   make.module_dep_file.m
     %
-    % for building dependency maps between modules. The module_and_imports
-    % structures it builds are not fully complete; only the fields
-    % needed for that task are filled in.
+    % for building dependency maps between modules. The aug_compilation_units
+    % it builds are not fully complete; only the fields needed for that task
+    % are filled in.
     %
-:- pred parse_tree_src_to_module_imports_and_baggage_list(globals::in,
+:- pred parse_tree_src_to_burdened_aug_comp_unit_list(globals::in,
     file_name::in, parse_tree_src::in, read_module_errors::in,
     list(error_spec)::in, list(error_spec)::out,
-    list(module_imports_and_baggage)::out) is det.
+    list(burdened_aug_comp_unit)::out) is det.
 
-:- pred rebuild_module_and_imports_for_dep_file(
+:- pred rebuild_burdened_aug_comp_unit_for_dep_file(
     module_baggage::in, module_baggage::out,
-    module_and_imports::in, module_and_imports::out) is det.
+    aug_compilation_unit::in, aug_compilation_unit::out) is det.
 
-    % init_module_and_imports(ParseTreeModuleSrc, ModuleAndImports):
+    % init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit):
     %
-    % Initialize a module_and_imports structure.
+    % Initialize an augmented compilation unit structure. Put the given
+    % ParseTreeModuleSrc into it, and leave the rest of the structure empty.
+    % Our caller is the expected to fill in (i.e. augment) the structure
+    % by calling the aug_compilation_unit_add_X predicates below to add
+    % the parse trees of the interface and optimization files needed
+    % to compile ParseTreeModuleSrc.
     %
-    % We do this just after we have read in a parse_tree_module_src.
-    % Later code, mostly in grab_modules.m but in some other modules as well,
-    % then calls the module_and_imports_{add,set}_* predicates above
-    % to record more information (mostly from read-in interface files)
-    % to the module_and_imports structure. When all such modifications
-    % are done, the module_and_imports_get_aug_comp_unit predicate
-    % will extract the augmented compilation unit from the updated
-    % module_and_imports structure.
-    %
-:- pred init_module_and_imports(parse_tree_module_src::in,
-    module_and_imports::out) is det.
-
-%---------------------------------------------------------------------------%
-%
-% Getter and setter predicates for the module_and_imports structure.
-%
-
-:- pred module_and_imports_get_parse_tree_module_src(module_and_imports::in,
-    parse_tree_module_src::out) is det.
-:- pred module_and_imports_get_ancestor_int_specs(module_and_imports::in,
-    map(module_name, ancestor_int_spec)::out) is det.
-:- pred module_and_imports_get_direct_int_specs(module_and_imports::in,
-    map(module_name, direct_int_spec)::out) is det.
-:- pred module_and_imports_get_indirect_int_specs(module_and_imports::in,
-    map(module_name, indirect_int_spec)::out) is det.
-:- pred module_and_imports_get_plain_opts(module_and_imports::in,
-    map(module_name, parse_tree_plain_opt)::out) is det.
-:- pred module_and_imports_get_trans_opts(module_and_imports::in,
-    map(module_name, parse_tree_trans_opt)::out) is det.
-:- pred module_and_imports_get_int_for_opt_specs(module_and_imports::in,
-    map(module_name, int_for_opt_spec)::out) is det.
-:- pred module_and_imports_get_type_repn_specs(module_and_imports::in,
-    map(module_name, type_repn_spec)::out) is det.
-
-%---------------------------------------------------------------------------%
-%
-% Predicates for getting information from module_and_imports structures.
-%
-
-:- pred module_and_imports_get_module_name(module_and_imports::in,
-    module_name::out) is det.
-:- pred module_and_imports_get_children(module_and_imports::in,
-    list(module_name)::out) is det.
-:- pred module_and_imports_get_children_set(module_and_imports::in,
-    set(module_name)::out) is det.
-:- pred module_and_imports_get_int_imp_deps(module_and_imports::in,
-    set(module_name)::out, set(module_name)::out) is det.
-:- pred module_and_imports_get_fact_tables(module_and_imports::in,
-    set(string)::out) is det.
-:- pred module_and_imports_get_fim_specs(module_and_imports::in,
-    set(fim_spec)::out) is det.
-:- pred module_and_imports_get_foreign_include_file_infos(
-    module_and_imports::in, set(foreign_include_file_info)::out) is det.
-
-%---------------------------------------------------------------------------%
-%
-% Predicates for adding information to module_and_imports structures.
-%
-
-:- pred module_and_imports_add_ancestor_int_spec(ancestor_int_spec::in,
-    module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_add_direct_int_spec(direct_int_spec::in,
-    module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_add_indirect_int_spec(indirect_int_spec::in,
-    module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_add_plain_opt(parse_tree_plain_opt::in,
-    module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_add_trans_opt(parse_tree_trans_opt::in,
-    module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_add_int_for_opt_spec(int_for_opt_spec::in,
-    module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_add_type_repn_spec(type_repn_spec::in,
-    module_and_imports::in, module_and_imports::out) is det.
-
-:- pred module_and_imports_maybe_add_module_version_numbers(
-    module_name::in, maybe_version_numbers::in,
-    module_and_imports::in, module_and_imports::out) is det.
-
-%---------------------------------------------------------------------------%
-%
-% The predicates that return the contents of module_and_imports structures.
-%
-
-    % Return the results recorded in the module_and_imports structure.
-    %
-:- pred module_and_imports_get_aug_comp_unit(module_and_imports::in,
+:- pred init_aug_compilation_unit(parse_tree_module_src::in,
     aug_compilation_unit::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Predicates for getting information from aug_compilation_units.
+%
+
+:- pred aug_compilation_unit_get_children(aug_compilation_unit::in,
+    list(module_name)::out) is det.
+:- pred aug_compilation_unit_get_children_set(aug_compilation_unit::in,
+    set(module_name)::out) is det.
+:- pred aug_compilation_unit_get_int_imp_deps(aug_compilation_unit::in,
+    set(module_name)::out, set(module_name)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Predicates for adding information to aug_compilation_unit structures.
+%
+
+:- pred aug_compilation_unit_add_ancestor_int_spec(ancestor_int_spec::in,
+    aug_compilation_unit::in, aug_compilation_unit::out) is det.
+:- pred aug_compilation_unit_add_direct_int_spec(direct_int_spec::in,
+    aug_compilation_unit::in, aug_compilation_unit::out) is det.
+:- pred aug_compilation_unit_add_indirect_int_spec(indirect_int_spec::in,
+    aug_compilation_unit::in, aug_compilation_unit::out) is det.
+:- pred aug_compilation_unit_add_plain_opt(parse_tree_plain_opt::in,
+    aug_compilation_unit::in, aug_compilation_unit::out) is det.
+:- pred aug_compilation_unit_add_trans_opt(parse_tree_trans_opt::in,
+    aug_compilation_unit::in, aug_compilation_unit::out) is det.
+:- pred aug_compilation_unit_add_int_for_opt_spec(int_for_opt_spec::in,
+    aug_compilation_unit::in, aug_compilation_unit::out) is det.
+:- pred aug_compilation_unit_add_type_repn_spec(type_repn_spec::in,
+    aug_compilation_unit::in, aug_compilation_unit::out) is det.
+
+:- pred aug_compilation_unit_maybe_add_module_version_numbers(
+    module_name::in, maybe_version_numbers::in,
+    aug_compilation_unit::in, aug_compilation_unit::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- type module_dep_info
-    --->    module_dep_info_imports(module_imports_and_baggage)
+    --->    module_dep_info_imports(burdened_aug_comp_unit)
     ;       module_dep_info_summary(module_dep_summary).
 
 :- type module_dep_summary
@@ -388,10 +332,6 @@
     set(foreign_include_file_info)::out) is det.
 
 %---------------------------------------------------------------------------%
-
-:- pred write_mai_stats(io.output_stream::in, io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -405,64 +345,7 @@
 :- import_module cord.
 :- import_module dir.
 :- import_module one_or_more.
-:- import_module string.
 :- import_module term.
-
-%---------------------------------------------------------------------------%
-
-    % When generating the dependencies (for `--generate-dependencies'), the
-    % two fields that hold the direct imports do not include the imports via
-    % ancestors when the module is first read in; the ancestor imports are
-    % added later, once all the modules have been read in. Similarly the
-    % indirect imports field is initially set to the empty list and filled
-    % in later.
-    %
-    % When compiling or when making interface files, the same sort of thing
-    % applies: initially all the fields containing module names except the
-    % public children field are set to contain no modules, and then
-    % we add ancestor modules and imported modules to their respective fields
-    % as we process the interface files for those imported or ancestor modules.
-    %
-    % XXX The above comment is very old, and almost certainly out of date.
-    %
-    % XXX This type now contains exactly the same info as an
-    % aug_compilation_unit, and will be retired soon in favour of that type.
-:- type module_and_imports
-    --->    module_and_imports(
-                % The contents of the module and its imports.
-                mai_src                 :: parse_tree_module_src,
-                mai_ancestor_int_specs  :: map(module_name, ancestor_int_spec),
-                mai_direct_int_specs    :: map(module_name, direct_int_spec),
-                mai_indirect_int_specs  :: map(module_name, indirect_int_spec),
-                % Implicitly everything in both plain and trans opt files
-                % is in a single section.
-                mai_plain_opts          :: map(module_name,
-                                            parse_tree_plain_opt),
-                mai_trans_opts          :: map(module_name,
-                                            parse_tree_trans_opt),
-                % Implicitly everything in int_for_opt interface files
-                % is treated the same whether it is in the interface or the
-                % implementation section.
-                mai_int_for_opt_specs   :: map(module_name, int_for_opt_spec),
-
-                % The contents of the .int file of the module whose augmented
-                % compilation unit we will build from this module_and_imports
-                % structure. We will use *only* the type representation items
-                % from this .int file.
-                %
-                % The type of this field is has the same structure as the
-                % preceding fields so that we can use the same techniques
-                % to fill it, but it has only two legal states: empty,
-                % and containing one type_repn_spec containing this .int file,
-                % before and after the reading in of that type_repn_spec.
-                %
-                % XXX TYPE_REPN Check that both mmake and mmc --make know
-                % that they need to build this .int file before any compiler
-                % invocation that does code generation.
-                mai_type_repn_specs     :: map(module_name, type_repn_spec),
-
-                mai_version_numbers_map :: module_version_numbers_map
-            ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -486,8 +369,8 @@ get_nested_children_list_of_top_module(MaybeTopModule) = Modules :-
 
 %---------------------------------------------------------------------------%
 
-parse_tree_src_to_module_imports_and_baggage_list(Globals, SourceFileName,
-        ParseTreeSrc, ReadModuleErrors, !Specs, ModuleImportsAndBaggageList) :-
+parse_tree_src_to_burdened_aug_comp_unit_list(Globals, SourceFileName,
+        ParseTreeSrc, ReadModuleErrors, !Specs, BurdenedAugCompUnitList) :-
     split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
         ParseTreeModuleSrcs, !Specs),
     ParseTreeSrc = parse_tree_src(TopModuleName, _, _),
@@ -495,16 +378,16 @@ parse_tree_src_to_module_imports_and_baggage_list(Globals, SourceFileName,
         list.map(parse_tree_module_src_project_name, ParseTreeModuleSrcs)),
     MAISpecs0 = [],
     list.map(
-        maybe_nested_init_module_imports_and_baggage(SourceFileName,
+        maybe_nested_init_burdened_aug_comp_unit(SourceFileName,
             TopModuleName, AllModuleNames, MAISpecs0, ReadModuleErrors),
-        ParseTreeModuleSrcs, ModuleImportsAndBaggageList).
+        ParseTreeModuleSrcs, BurdenedAugCompUnitList).
 
-rebuild_module_and_imports_for_dep_file(Baggage0, Baggage,
-        ModuleAndImports0, ModuleAndImports) :-
+rebuild_burdened_aug_comp_unit_for_dep_file(Baggage0, Baggage,
+        AugCompUnit0, AugCompUnit) :-
     Baggage0 = module_baggage(SourceFileName, _SourceFileDir,
         SourceFileModuleName, MaybeTopModule, _MaybeTimestampMap,
         _GrabbedFileMap, Specs, _Errors),
-    ModuleAndImports0 = module_and_imports(ParseTreeModuleSrc,
+    AugCompUnit0 = aug_compilation_unit(ParseTreeModuleSrc,
         _, _, _, _, _, _, _, _),
 
     MaybeTimestampMap = maybe.no,
@@ -523,20 +406,20 @@ rebuild_module_and_imports_for_dep_file(Baggage0, Baggage,
     map.init(IntForOptSpecs),
     map.init(TypeRepnSpecs),
     map.init(VersionNumbers),
-    ModuleAndImports = module_and_imports(ParseTreeModuleSrc,
+    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
         AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs, VersionNumbers).
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_nested_init_module_imports_and_baggage(file_name::in,
+:- pred maybe_nested_init_burdened_aug_comp_unit(file_name::in,
     module_name::in, set(module_name)::in,
     list(error_spec)::in, read_module_errors::in,
-    parse_tree_module_src::in, module_imports_and_baggage::out) is det.
+    parse_tree_module_src::in, burdened_aug_comp_unit::out) is det.
 
-maybe_nested_init_module_imports_and_baggage(SourceFileName,
+maybe_nested_init_burdened_aug_comp_unit(SourceFileName,
         SourceFileModuleName, AllModuleNames, Specs, Errors,
-        ParseTreeModuleSrc, ModuleImportsAndBaggage) :-
+        ParseTreeModuleSrc, BurdenedAugCompUnit) :-
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ( if ModuleName = SourceFileModuleName then
         set.delete(ModuleName, AllModuleNames, NestedModuleNames),
@@ -549,11 +432,10 @@ maybe_nested_init_module_imports_and_baggage(SourceFileName,
     Baggage = module_baggage(SourceFileName, dir.this_directory,
         SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
         GrabbedFileMap, Specs, Errors),
-    init_module_and_imports(ParseTreeModuleSrc, ModuleAndImports),
-    ModuleImportsAndBaggage =
-        module_imports_and_baggage(Baggage, ModuleAndImports).
+    init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit),
+    BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit).
 
-init_module_and_imports(ParseTreeModuleSrc, ModuleAndImports) :-
+init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit) :-
     map.init(AncestorIntSpecs),
     map.init(DirectIntSpecs),
     map.init(IndirectIntSpecs),
@@ -562,162 +444,25 @@ init_module_and_imports(ParseTreeModuleSrc, ModuleAndImports) :-
     map.init(IntForOptSpecs),
     map.init(TypeRepnSpecs),
     map.init(VersionNumbers),
-    ModuleAndImports = module_and_imports(ParseTreeModuleSrc,
+    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
         AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs, VersionNumbers).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred module_and_imports_get_version_numbers_map(module_and_imports::in,
-    module_version_numbers_map::out) is det.
-
-module_and_imports_get_parse_tree_module_src(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Accesses = Accesses0 ^ mf_src := accessed,
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_src
-    ).
-module_and_imports_get_ancestor_int_specs(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Accesses = Accesses0 ^ mf_ancestor_int_specs := accessed,
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_ancestor_int_specs
-    ).
-module_and_imports_get_direct_int_specs(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Accesses = Accesses0 ^ mf_direct_int_specs := accessed,
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_direct_int_specs
-    ).
-module_and_imports_get_indirect_int_specs(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Accesses = Accesses0 ^ mf_indirect_int_specs := accessed,
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_indirect_int_specs
-    ).
-module_and_imports_get_plain_opts(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Accesses = Accesses0 ^ mf_plain_opts := accessed,
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_plain_opts
-    ).
-module_and_imports_get_trans_opts(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Accesses = Accesses0 ^ mf_trans_opts := accessed,
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_trans_opts
-    ).
-module_and_imports_get_int_for_opt_specs(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Accesses = Accesses0 ^ mf_int_for_opt_specs := accessed,
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_int_for_opt_specs
-    ).
-module_and_imports_get_type_repn_specs(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Accesses = Accesses0 ^ mf_type_repn_specs := accessed,
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_type_repn_specs
-    ).
-module_and_imports_get_version_numbers_map(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Accesses = Accesses0 ^ mf_version_numbers_map := accessed,
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_version_numbers_map
-    ).
-
-:- pred module_and_imports_set_ancestor_int_specs(
-    map(module_name, ancestor_int_spec)::in,
-    module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_set_direct_int_specs(
-    map(module_name, direct_int_spec)::in,
-    module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_set_indirect_int_specs(
-    map(module_name, indirect_int_spec)::in,
-    module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_set_plain_opts(
-    map(module_name, parse_tree_plain_opt)::in,
-    module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_set_trans_opts(
-    map(module_name, parse_tree_trans_opt)::in,
-    module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_set_int_for_opt_specs(
-    map(module_name, int_for_opt_spec)::in,
-    module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_set_type_repn_specs(
-    map(module_name, type_repn_spec)::in,
-    module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_set_version_numbers_map(
-    module_version_numbers_map::in,
-    module_and_imports::in, module_and_imports::out) is det.
-
-module_and_imports_set_ancestor_int_specs(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_ancestor_int_specs := X.
-module_and_imports_set_direct_int_specs(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_direct_int_specs := X.
-module_and_imports_set_indirect_int_specs(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_indirect_int_specs := X.
-module_and_imports_set_plain_opts(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_plain_opts := X.
-module_and_imports_set_trans_opts(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_trans_opts := X.
-module_and_imports_set_int_for_opt_specs(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_int_for_opt_specs := X.
-module_and_imports_set_type_repn_specs(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_type_repn_specs := X.
-module_and_imports_set_version_numbers_map(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_version_numbers_map := X.
-
-%---------------------------------------------------------------------------%
-
-module_and_imports_get_module_name(ModuleAndImports, ModuleName) :-
-    module_and_imports_get_parse_tree_module_src(ModuleAndImports,
-        ParseTreeModuleSrc),
-    ModuleName = ParseTreeModuleSrc ^ ptms_module_name.
-
-module_and_imports_get_children(ModuleAndImports, Children) :-
-    module_and_imports_get_parse_tree_module_src(ModuleAndImports,
-        ParseTreeModuleSrc),
+aug_compilation_unit_get_children(AugCompUnit, Children) :-
+    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
     Children = map.keys(IncludeMap).
 
-module_and_imports_get_children_set(ModuleAndImports, Children) :-
-    module_and_imports_get_parse_tree_module_src(ModuleAndImports,
-        ParseTreeModuleSrc),
+aug_compilation_unit_get_children_set(AugCompUnit, Children) :-
+    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
     Children = map.keys_as_set(IncludeMap).
 
-module_and_imports_get_int_imp_deps(ModuleAndImports, IntDeps, ImpDeps) :-
-    module_and_imports_get_parse_tree_module_src(ModuleAndImports,
-        ParseTreeModuleSrc),
+aug_compilation_unit_get_int_imp_deps(AugCompUnit, IntDeps, ImpDeps) :-
+    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     ImportUseMap = ParseTreeModuleSrc ^ ptms_import_use_map,
     map.foldl2(add_module_dep, ImportUseMap,
         set.init, IntDeps, set.init, ImpDeps).
@@ -784,108 +529,81 @@ section_import_and_or_use_int_imp(SectionImportUse) = Section :-
         Section = ms_implementation
     ).
 
-module_and_imports_get_fact_tables(ModuleAndImports, FactTables) :-
-    module_and_imports_get_parse_tree_module_src(ModuleAndImports,
-        ParseTreeModuleSrc),
-    get_fact_tables(ParseTreeModuleSrc, FactTables).
-
-module_and_imports_get_fim_specs(ModuleAndImports, FIMSpecs) :-
-    module_and_imports_get_parse_tree_module_src(ModuleAndImports,
-        ParseTreeModuleSrc),
-    get_fims(ParseTreeModuleSrc, FIMSpecs).
-
-module_and_imports_get_foreign_include_file_infos(ModuleAndImports, FIFOs) :-
-    module_and_imports_get_parse_tree_module_src(ModuleAndImports,
-        ParseTreeModuleSrc),
-    get_foreign_include_file_infos(ParseTreeModuleSrc, FIFOs).
-
 %---------------------------------------------------------------------------%
 
-module_and_imports_add_ancestor_int_spec(X, !ModuleAndImports) :-
-    module_and_imports_get_ancestor_int_specs(!.ModuleAndImports, Map0),
+aug_compilation_unit_add_ancestor_int_spec(X, !AugCompUnit) :-
+    Map0 = !.AugCompUnit ^ acu_ancestor_int_specs,
     X = ancestor_int0(PT0, _),
     MN = PT0 ^ pti0_module_name,
     map.det_insert(MN, X, Map0, Map),
-    module_and_imports_set_ancestor_int_specs(Map, !ModuleAndImports).
+    !AugCompUnit ^ acu_ancestor_int_specs := Map.
 
-module_and_imports_add_direct_int_spec(X, !ModuleAndImports) :-
-    module_and_imports_get_direct_int_specs(!.ModuleAndImports, Map0),
+aug_compilation_unit_add_direct_int_spec(X, !AugCompUnit) :-
+    Map0 = !.AugCompUnit ^ acu_direct_int_specs,
     ( X = direct_int1(PT1, _), MN = PT1 ^ pti1_module_name
     ; X = direct_int3(PT3, _), MN = PT3 ^ pti3_module_name
     ),
     map.det_insert(MN, X, Map0, Map),
-    module_and_imports_set_direct_int_specs(Map, !ModuleAndImports).
+    !AugCompUnit ^ acu_direct_int_specs := Map.
 
-module_and_imports_add_indirect_int_spec(X, !ModuleAndImports) :-
-    module_and_imports_get_indirect_int_specs(!.ModuleAndImports, Map0),
+aug_compilation_unit_add_indirect_int_spec(X, !AugCompUnit) :-
+    Map0 = !.AugCompUnit ^ acu_indirect_int_specs,
     ( X = indirect_int2(PT2, _), MN = PT2 ^ pti2_module_name
     ; X = indirect_int3(PT3, _), MN = PT3 ^ pti3_module_name
     ),
     map.det_insert(MN, X, Map0, Map),
-    module_and_imports_set_indirect_int_specs(Map, !ModuleAndImports).
+    !AugCompUnit ^ acu_indirect_int_specs := Map.
 
-module_and_imports_add_plain_opt(X, !ModuleAndImports) :-
-    module_and_imports_get_plain_opts(!.ModuleAndImports, Map0),
+aug_compilation_unit_add_plain_opt(X, !AugCompUnit) :-
+    Map0 = !.AugCompUnit ^ acu_plain_opts,
     MN = X ^ ptpo_module_name,
     map.det_insert(MN, X, Map0, Map),
-    module_and_imports_set_plain_opts(Map, !ModuleAndImports).
+    !AugCompUnit ^ acu_plain_opts := Map.
 
-module_and_imports_add_trans_opt(X, !ModuleAndImports) :-
-    module_and_imports_get_trans_opts(!.ModuleAndImports, Map0),
+aug_compilation_unit_add_trans_opt(X, !AugCompUnit) :-
+    Map0 = !.AugCompUnit ^ acu_trans_opts,
     MN = X ^ ptto_module_name,
     map.det_insert(MN, X, Map0, Map),
-    module_and_imports_set_trans_opts(Map, !ModuleAndImports).
+    !AugCompUnit ^ acu_trans_opts := Map.
 
-module_and_imports_add_int_for_opt_spec(X, !ModuleAndImports) :-
-    module_and_imports_get_int_for_opt_specs(!.ModuleAndImports, Map0),
+aug_compilation_unit_add_int_for_opt_spec(X, !AugCompUnit) :-
+    Map0 = !.AugCompUnit ^ acu_int_for_opt_specs,
     ( X = for_opt_int0(PT0, _), MN = PT0 ^ pti0_module_name
     ; X = for_opt_int1(PT1, _), MN = PT1 ^ pti1_module_name
     ; X = for_opt_int2(PT2, _), MN = PT2 ^ pti2_module_name
     ),
     map.det_insert(MN, X, Map0, Map),
-    module_and_imports_set_int_for_opt_specs(Map, !ModuleAndImports).
+    !AugCompUnit ^ acu_int_for_opt_specs := Map.
 
-module_and_imports_add_type_repn_spec(X, !ModuleAndImports) :-
-    module_and_imports_get_type_repn_specs(!.ModuleAndImports, Map0),
+aug_compilation_unit_add_type_repn_spec(X, !AugCompUnit) :-
+    Map0 = !.AugCompUnit ^ acu_type_repn_specs,
     X = type_repn_spec_int1(PT1), MN = PT1 ^ pti1_module_name,
     map.det_insert(MN, X, Map0, Map),
-    module_and_imports_set_type_repn_specs(Map, !ModuleAndImports).
+    !AugCompUnit ^ acu_type_repn_specs := Map.
 
 %---------------------%
 
-module_and_imports_maybe_add_module_version_numbers(ModuleName,
-        MaybeVersionNumbers, !ModuleAndImports) :-
+aug_compilation_unit_maybe_add_module_version_numbers(ModuleName,
+        MaybeVersionNumbers, !AugCompUnit) :-
     (
         MaybeVersionNumbers = no_version_numbers
     ;
         MaybeVersionNumbers = version_numbers(VersionNumbers),
-        module_and_imports_get_version_numbers_map(!.ModuleAndImports,
-            ModuleVersionNumbersMap0),
+        ModuleVersionNumbersMap0 =
+            !.AugCompUnit ^ acu_module_version_numbers_map,
         map.det_insert(ModuleName, VersionNumbers,
             ModuleVersionNumbersMap0, ModuleVersionNumbersMap),
-        module_and_imports_set_version_numbers_map(ModuleVersionNumbersMap,
-            !ModuleAndImports)
+        !AugCompUnit ^ acu_module_version_numbers_map :=
+            ModuleVersionNumbersMap
     ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-module_and_imports_get_aug_comp_unit(ModuleAndImports, AugCompUnit) :-
-    ModuleAndImports = module_and_imports(ParseTreeModuleSrc,
-        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
-        VersionNumbersMap),
-    AugCompUnit = aug_compilation_unit(VersionNumbersMap,
-        ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 module_dep_info_get_source_file_name(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
-        Baggage = ModuleImportsAndBaggage ^ miab_baggage,
+        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
+        Baggage = BurdenedAugCompUnit ^ bacu_baggage,
         X = Baggage ^ mb_source_file_name
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -894,8 +612,8 @@ module_dep_info_get_source_file_name(ModuleDepInfo, X) :-
 
 module_dep_info_get_source_file_dir(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
-        Baggage = ModuleImportsAndBaggage ^ miab_baggage,
+        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
+        Baggage = BurdenedAugCompUnit ^ bacu_baggage,
         X = Baggage ^ mb_source_file_dir
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -904,8 +622,8 @@ module_dep_info_get_source_file_dir(ModuleDepInfo, X) :-
 
 module_dep_info_get_source_file_module_name(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
-        Baggage = ModuleImportsAndBaggage ^ miab_baggage,
+        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
+        Baggage = BurdenedAugCompUnit ^ bacu_baggage,
         X = Baggage ^ mb_source_file_module_name
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -914,9 +632,10 @@ module_dep_info_get_source_file_module_name(ModuleDepInfo, X) :-
 
 module_dep_info_get_module_name(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
-        ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
-        module_and_imports_get_module_name(ModuleAndImports, X)
+        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
+        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
+        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+        X = ParseTreeModuleSrc ^ ptms_module_name
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_module_name
@@ -924,9 +643,9 @@ module_dep_info_get_module_name(ModuleDepInfo, X) :-
 
 module_dep_info_get_children(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
-        ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
-        module_and_imports_get_children(ModuleAndImports, Xs),
+        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
+        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
+        aug_compilation_unit_get_children(AugCompUnit, Xs),
         set.list_to_set(Xs, X)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -935,8 +654,8 @@ module_dep_info_get_children(ModuleDepInfo, X) :-
 
 module_dep_info_get_maybe_top_module(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
-        Baggage = ModuleImportsAndBaggage ^ miab_baggage,
+        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
+        Baggage = BurdenedAugCompUnit ^ bacu_baggage,
         X = Baggage ^ mb_maybe_top_module
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -945,9 +664,9 @@ module_dep_info_get_maybe_top_module(ModuleDepInfo, X) :-
 
 module_dep_info_get_int_deps(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
-        ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
-        module_and_imports_get_int_imp_deps(ModuleAndImports, X, _)
+        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
+        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
+        aug_compilation_unit_get_int_imp_deps(AugCompUnit, X, _)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_int_deps
@@ -955,9 +674,9 @@ module_dep_info_get_int_deps(ModuleDepInfo, X) :-
 
 module_dep_info_get_imp_deps(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
-        ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
-        module_and_imports_get_int_imp_deps(ModuleAndImports, _, X)
+        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
+        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
+        aug_compilation_unit_get_int_imp_deps(AugCompUnit, _, X)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_imp_deps
@@ -965,9 +684,10 @@ module_dep_info_get_imp_deps(ModuleDepInfo, X) :-
 
 module_dep_info_get_fact_tables(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
-        ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
-        module_and_imports_get_fact_tables(ModuleAndImports, X)
+        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
+        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
+        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+        get_fact_tables(ParseTreeModuleSrc, X)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_fact_table_file_names
@@ -975,9 +695,10 @@ module_dep_info_get_fact_tables(ModuleDepInfo, X) :-
 
 module_dep_info_get_fims(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
-        ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
-        module_and_imports_get_fim_specs(ModuleAndImports, X)
+        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
+        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
+        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+        get_fim_specs(ParseTreeModuleSrc, X)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_fims
@@ -985,95 +706,14 @@ module_dep_info_get_fims(ModuleDepInfo, X) :-
 
 module_dep_info_get_foreign_include_files(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(ModuleImportsAndBaggage),
-        ModuleAndImports = ModuleImportsAndBaggage ^ miab_mai,
-        module_and_imports_get_foreign_include_file_infos(ModuleAndImports, X)
+        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
+        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
+        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+        get_foreign_include_file_infos(ParseTreeModuleSrc, X)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_foreign_include_files
     ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- type maybe_accessed
-    --->    not_accessed
-    ;       accessed.
-
-:- type mai_fields
-    --->    mai_fields(
-                mf_source_file_name             :: maybe_accessed,
-                mf_source_file_dir              :: maybe_accessed,
-                mf_source_file_module_name      :: maybe_accessed,
-                mf_maybe_top_module             :: maybe_accessed,
-
-                mf_src                          :: maybe_accessed,
-                mf_ancestor_int_specs           :: maybe_accessed,
-                mf_direct_int_specs             :: maybe_accessed,
-                mf_indirect_int_specs           :: maybe_accessed,
-                mf_plain_opts                   :: maybe_accessed,
-                mf_trans_opts                   :: maybe_accessed,
-                mf_int_for_opt_specs            :: maybe_accessed,
-                mf_type_repn_specs              :: maybe_accessed,
-
-                mf_version_numbers_map          :: maybe_accessed,
-                mf_maybe_timestamp_map          :: maybe_accessed,
-
-                mf_specs                        :: maybe_accessed,
-                mf_errors                       :: maybe_accessed
-            ).
-
-:- func init_mai_fields = mai_fields.
-
-init_mai_fields =
-    mai_fields(not_accessed, not_accessed, not_accessed, not_accessed,
-
-        not_accessed, not_accessed, not_accessed, not_accessed,
-        not_accessed, not_accessed, not_accessed, not_accessed,
-
-        not_accessed, not_accessed, not_accessed, not_accessed).
-
-:- mutable(accesses, mai_fields, init_mai_fields, ground, [untrailed]).
-
-write_mai_stats(Stream, !IO) :-
-    promise_pure (
-        semipure get_accesses(Accesses),
-        write_mai_fields_stats(Stream, Accesses, !IO)
-    ).
-
-:- pred write_mai_fields_stats(io.output_stream::in, mai_fields::in,
-    io::di, io::uo) is det.
-
-write_mai_fields_stats(Stream, Fields, !IO) :-
-    Fields = mai_fields(SrcFileName, SrcFileDir, SrcFileModuleName,
-        MaybeTopModule, ParseTreeModuleSrc,
-        AncestorSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
-        VersionNumbersMap, MaybeTimestampMap, Specs, Errors),
-    io.format(Stream,
-        "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n",
-        [s(acc_str(SrcFileName)),
-        s(acc_str(SrcFileDir)),
-        s(acc_str(SrcFileModuleName)),
-        s(acc_str(MaybeTopModule)),
-        s(acc_str(ParseTreeModuleSrc)),
-        s(acc_str(AncestorSpecs)),
-        s(acc_str(DirectIntSpecs)),
-        s(acc_str(IndirectIntSpecs)),
-        s(acc_str(PlainOpts)),
-        s(acc_str(TransOpts)),
-        s(acc_str(IntForOptSpecs)),
-        s(acc_str(TypeRepnSpecs)),
-        s(acc_str(VersionNumbersMap)),
-        s(acc_str(MaybeTimestampMap)),
-        s(acc_str(Specs)),
-        s(acc_str(Errors))],
-        !IO).
-
-:- func acc_str(maybe_accessed) = string.
-
-acc_str(not_accessed) = "n".
-acc_str(accessed) = "a".
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.module_imports.

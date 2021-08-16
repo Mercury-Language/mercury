@@ -146,16 +146,6 @@ real_main(!IO) :-
     trace [compile_time(flag("file_name_translations")), io(!TIO)] (
         write_translations_record_if_any(!TIO)
     ),
-    trace [compile_time(flag("mai-stats")), io(!TIO)] (
-        io.open_append("/tmp/MODULE_AND_IMPORTS", Result, !TIO),
-        (
-            Result = ok(Stream),
-            write_mai_stats(Stream, !TIO),
-            io.close_output(Stream, !TIO)
-        ;
-            Result = error(_)
-        )
-    ),
     close_any_specific_compiler_streams(!IO).
 
     % Expand @File arguments.
@@ -1689,28 +1679,27 @@ augment_and_process_module(Globals, OpModeAugment, SourceFileName,
     ),
     grab_qual_imported_modules_augment(Globals, SourceFileName,
         SourceFileModuleName, MaybeTimestamp, MaybeTopModule,
-        ParseTreeModuleSrc, Baggage, ModuleAndImports,
-        !HaveReadModuleMaps, !IO),
+        ParseTreeModuleSrc, Baggage, AugCompUnit, !HaveReadModuleMaps, !IO),
     !:Specs = Baggage ^ mb_specs ++ !.Specs,
     Errors = Baggage ^ mb_errors,
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_empty(FatalErrors) then
         process_augmented_module(Globals, OpModeAugment,
-            Baggage, ModuleAndImports, FindTimestampFiles, ExtraObjFiles,
+            Baggage, AugCompUnit, FindTimestampFiles, ExtraObjFiles,
             no_prev_dump, _, !Specs, !HaveReadModuleMaps, !IO)
     else
         ExtraObjFiles = []
     ).
 
 :- pred process_augmented_module(globals::in, op_mode_augment::in,
-    module_baggage::in, module_and_imports::in,
+    module_baggage::in, aug_compilation_unit::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     list(string)::out, dump_info::in, dump_info::out,
     list(error_spec)::in, list(error_spec)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
-process_augmented_module(Globals0, OpModeAugment, Baggage, ModuleAndImports,
+process_augmented_module(Globals0, OpModeAugment, Baggage, AugCompUnit,
         FindTimestampFiles, ExtraObjFiles,
         !DumpInfo, !Specs, !HaveReadModuleMaps, !IO) :-
     (
@@ -1744,7 +1733,7 @@ process_augmented_module(Globals0, OpModeAugment, Baggage, ModuleAndImports,
         WriteDFile = write_d_file
     ),
     pre_hlds_pass(Globals, OpModeAugment, WriteDFile,
-        Baggage, ModuleAndImports, HLDS1, QualInfo, MaybeTimestampMap,
+        Baggage, AugCompUnit, HLDS1, QualInfo, MaybeTimestampMap,
         UndefTypes, UndefModes, PreHLDSErrors,
         !DumpInfo, !Specs, !HaveReadModuleMaps, !IO),
     frontend_pass(OpModeAugment, QualInfo, UndefTypes, UndefModes,
@@ -1836,14 +1825,14 @@ disable_warning_options(Globals0, Globals) :-
     ;       write_d_file.
 
 :- pred pre_hlds_pass(globals::in, op_mode_augment::in, maybe_write_d_file::in,
-    module_baggage::in, module_and_imports::in, module_info::out,
+    module_baggage::in, aug_compilation_unit::in, module_info::out,
     make_hlds_qual_info::out, maybe(module_timestamp_map)::out,
     bool::out, bool::out, bool::out,
     dump_info::in, dump_info::out, list(error_spec)::in, list(error_spec)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
-pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, Baggage0, ModuleAndImports0,
+pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, Baggage0, AugCompUnit0,
         HLDS1, QualInfo, MaybeTimestampMap, UndefTypes, UndefModes,
         FoundSemanticError, !DumpInfo, !Specs, !HaveReadModuleMaps, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -1862,7 +1851,8 @@ pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, Baggage0, ModuleAndImports0,
         WriteDFile = WriteDFile0
     ),
 
-    module_and_imports_get_module_name(ModuleAndImports0, ModuleName),
+    ParseTreeModuleSrc = AugCompUnit0 ^ acu_module_src,
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     (
         WriteDFile = do_not_write_d_file,
         MaybeTransOptDeps = no
@@ -1880,11 +1870,10 @@ pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, Baggage0, ModuleAndImports0,
     % Errors in .opt and .trans_opt files result in software errors.
     maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
         MaybeTransOptDeps, IntermodError,
-        Baggage0, Baggage1, ModuleAndImports0, ModuleAndImports1,
+        Baggage0, Baggage1, AugCompUnit0, AugCompUnit1,
         !HaveReadModuleMaps, !IO),
     MaybeTimestampMap = Baggage1 ^ mb_maybe_timestamp_map,
 
-    module_and_imports_get_aug_comp_unit(ModuleAndImports1, AugCompUnit1),
     % We pay attention to IntermodError instead of _Error. XXX Is this right?
     !:Specs = Baggage1 ^ mb_specs ++ !.Specs,
 
@@ -1975,16 +1964,16 @@ pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, Baggage0, ModuleAndImports0,
         WriteDFile = write_d_file,
         module_info_get_all_deps(HLDS0, AllDeps),
         % XXX When creating the .d and .module_dep files, why are we using
-        % ModuleImportsAndBaggage0 instead of ModuleImportsAndBaggage1?
-        ModuleImportsAndBaggage0 =
-            module_imports_and_baggage(Baggage0, ModuleAndImports0),
-        write_dependency_file(Globals, ModuleImportsAndBaggage0,
+        % BurdenedAugCompUnit0 instead of BurdenedAugCompUnit1?
+        BurdenedAugCompUnit0 =
+            burdened_aug_comp_unit(Baggage0, AugCompUnit0),
+        write_dependency_file(Globals, BurdenedAugCompUnit0,
             no_intermod_deps, AllDeps, MaybeTransOptDeps, !IO),
         globals.lookup_bool_option(Globals,
             generate_mmc_make_module_dependencies, OutputMMCMakeDeps),
         (
             OutputMMCMakeDeps = yes,
-            make_write_module_dep_file(Globals, ModuleImportsAndBaggage0, !IO)
+            make_write_module_dep_file(Globals, BurdenedAugCompUnit0, !IO)
         ;
             OutputMMCMakeDeps = no
         )
@@ -2123,12 +2112,12 @@ read_dependency_file_get_modules(TransOptDeps, !IO) :-
 :- pred maybe_grab_plain_and_trans_opt_files(globals::in, op_mode_augment::in,
     bool::in, maybe(list(module_name))::in, bool::out,
     module_baggage::in, module_baggage::out,
-    module_and_imports::in, module_and_imports::out,
+    aug_compilation_unit::in, aug_compilation_unit::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
 maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
-        MaybeTransOptDeps, Error, !Baggage, !ModuleAndImports,
+        MaybeTransOptDeps, Error, !Baggage, !AugCompUnit,
         !HaveReadModuleMaps, !IO) :-
     globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
     globals.lookup_bool_option(Globals, use_opt_files, UseOptInt),
@@ -2145,7 +2134,7 @@ maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
         maybe_write_string(Verbose, "% Reading .opt files...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         grab_plain_opt_and_int_for_opt_files(Globals, PlainOptError,
-            !Baggage, !ModuleAndImports, !HaveReadModuleMaps, !IO),
+            !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO),
         maybe_write_string(Verbose, "% Done.\n", !IO)
     else
         PlainOptError = no
@@ -2157,11 +2146,12 @@ maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
             % When creating the trans_opt file, only import the
             % trans_opt files which are lower in the ordering.
             grab_trans_opt_files(Globals, TransOptDeps, TransOptError,
-                !Baggage, !ModuleAndImports, !HaveReadModuleMaps, !IO)
+                !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO)
         ;
             MaybeTransOptDeps = no,
             TransOptError = no,
-            module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
+            ParseTreeModuleSrc = !.AugCompUnit ^ acu_module_src,
+            ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
             globals.lookup_bool_option(Globals, warn_missing_trans_opt_deps,
                 WarnNoTransOptDeps),
             (
@@ -2198,8 +2188,7 @@ maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
             % the .opt or .trans opt file, then import the trans_opt files
             % for all the modules that are imported (or used), and for all
             % ancestor modules.
-            module_and_imports_get_parse_tree_module_src(!.ModuleAndImports,
-                ParseTreeModuleSrc),
+            ParseTreeModuleSrc = !.AugCompUnit ^ acu_module_src,
             ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
             Ancestors = get_ancestors_set(ModuleName),
             Deps0 = map.keys_as_set(ParseTreeModuleSrc ^ ptms_import_use_map),
@@ -2212,7 +2201,7 @@ maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
             TransOptFiles = set.union_list([Ancestors, Deps]),
             set.to_sorted_list(TransOptFiles, TransOptFilesList),
             grab_trans_opt_files(Globals, TransOptFilesList, TransOptError,
-                !Baggage, !ModuleAndImports, !HaveReadModuleMaps, !IO)
+                !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO)
         ;
             TransOpt = no,
             TransOptError = no

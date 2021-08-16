@@ -990,10 +990,6 @@
 % two types, each specific to one of these invocation kinds.
 :- type aug_compilation_unit
     --->    aug_compilation_unit(
-                % The module_version_numbers records in all the imported
-                % interface files.
-                acu_module_version_numbers_map  :: module_version_numbers_map,
-
                 % The source code of the module.
                 acu_module_src                  :: parse_tree_module_src,
 
@@ -1027,7 +1023,11 @@
                 % Interface files that we read in only for the type
                 % representation information they contain
                 acu_type_repn_specs             :: map(module_name,
-                                                    type_repn_spec)
+                                                    type_repn_spec),
+
+                % The module_version_numbers records in all the imported
+                % interface files.
+                acu_module_version_numbers_map  :: module_version_numbers_map
             ).
 
 :- type ancestor_int_spec
