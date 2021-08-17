@@ -1679,12 +1679,10 @@ some_type_defn_is_non_abstract([Defn | Defns]) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % generate_interface_int2(Globals, AugMakeIntUnit,
-    %   IntIncludeMap, IntImportUseMap,
+    % generate_interface_int2(AugMakeIntUnit, IntImportUseMap,
     %   IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
-    %   IntTypeDefnItems, IntInstDefns, IntModeDefns,
-    %   IntTypeClasses, IntInstances, ImpTypeDefnItems, TypeCtorCheckedMap,
-    %   ParseTreeInt2):
+    %   IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
+    %   ImpTypeDefns, TypeCtorRepnMap, ParseTreeInt2):
     %
     % The input arguments should be the relevant parts of the .int1 file
     % computed by our parent.
