@@ -207,7 +207,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module set_tree234.
-:- import_module solutions.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -389,7 +388,7 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity,
         MissingImportModules = []
     else
         MainPieces = [words("error: undefined"),
-            qual_pf_sym_name_orig_arity(PFSymNameArity)],
+            qual_pf_sym_name_orig_arity(PFSymNameArity), suffix("."), nl],
         (
             PredSymName = qualified(ModuleQualifier, _),
             maybe_report_missing_import_addendum(ClauseContext,
@@ -397,7 +396,7 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity,
             OrdinaryPieces = MainPieces ++ AddeddumPices
         ;
             PredSymName = unqualified(_),
-            OrdinaryPieces = MainPieces ++ [suffix("."), nl],
+            OrdinaryPieces = MainPieces,
             MissingImportModules = []
         ),
         ( if
@@ -477,7 +476,7 @@ report_error_func_instead_of_pred(Context) = Msg :-
 :- func find_possible_pf_missing_module_qualifiers(predicate_table,
     pred_or_func, sym_name) = list(module_name).
 
-find_possible_pf_missing_module_qualifiers(PredicateTable, 
+find_possible_pf_missing_module_qualifiers(PredicateTable,
         PredOrFunc, SymName) = ModuleNames :-
     predicate_table_lookup_pf_raw_name(PredicateTable, PredOrFunc,
         unqualify_name(SymName), PredIds),
@@ -1739,7 +1738,7 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
         QualMsgs = []
     else
         Pieces1 = [words("error: undefined symbol"),
-            qual_cons_id_and_maybe_arity(Functor)],
+            qual_cons_id_and_maybe_arity(Functor), suffix("."), nl],
         ( if
             Functor = cons(Constructor, _, _),
             Constructor = qualified(ModQual, _)
@@ -1752,7 +1751,7 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
             maybe_report_missing_import_addendum(ClauseContext,
                 unqualified("list"), Pieces2, MissingImportModules)
         else
-            Pieces2 = [suffix("."), nl],
+            Pieces2 = [],
             MissingImportModules = []
         ),
         FunctorComps = [always(Pieces1 ++ Pieces2)],
@@ -2461,62 +2460,64 @@ maybe_report_missing_import_addendum(ClauseContext, ModuleQualifier,
     ( if set.is_empty(MatchingVisibleModules) then
         % The module qualifier does not match any of the visible modules,
         % so we report that the module has not been imported.
-        Pieces = [nl, words("(the module"), qual_sym_name(ModuleQualifier),
-            words("has not been imported)."), nl],
+        Pieces = [nl, words("(The module"), qual_sym_name(ModuleQualifier),
+            words("has not been imported.)"), nl],
         MissingImportModules = [ModuleQualifier]
     else
         % The module qualifier matches one or more of the visible modules.
         % But maybe the user forgot to import the parent module(s) of that
         % module...
-        solutions.solutions(
-            get_unimported_parent(VisibleModules, MatchingVisibleModules),
-            UnimportedParents),
+        find_unimported_ancestors(VisibleModules, MatchingVisibleModules,
+            UnimportedAncestorsSet),
+        set.to_sorted_list(UnimportedAncestorsSet, UnimportedAncestors),
         (
-            UnimportedParents = [_ | _],
-            Pieces = [nl | report_unimported_parents(UnimportedParents)],
+            UnimportedAncestors = [_ | _],
+            Pieces = report_unimported_ancestors(UnimportedAncestors),
             % Since ModuleQualifier has unimported parents, its own import,
             % if any, has no effect.
             ModuleQualifierList = sym_name_to_list(ModuleQualifier),
-            AddParent =
-                ( func(ParentMN) = MN :-
-                    ParentMNList = sym_name_to_list(ParentMN),
-                    FullList = ParentMNList ++ ModuleQualifierList,
+            AddAncestor =
+                ( func(AncestorMN) = MN :-
+                    AncestorMNList = sym_name_to_list(AncestorMN),
+                    FullList = AncestorMNList ++ ModuleQualifierList,
                     det_list_to_sym_name(FullList, MN)
                 ),
             MissingImportModules =
-                [ModuleQualifier | list.map(AddParent, UnimportedParents)]
+                [ModuleQualifier | list.map(AddAncestor, UnimportedAncestors)]
         ;
-            UnimportedParents = [],
-            Pieces = [suffix("."), nl],
+            UnimportedAncestors = [],
+            Pieces = [],
             MissingImportModules = []
         )
     ).
 
-    % Nondeterministically return all the possible parent modules
-    % of a module in MatchingModuleNames which are not imported
-    % (i.e. not visible).
+    % Return all the ancestors of modules in MatchingModuleNames
+    % which are not imported (i.e. not visible).
     %
-:- pred get_unimported_parent(set(module_name)::in, set(module_name)::in,
-   module_name::out) is nondet.
+:- pred find_unimported_ancestors(set(module_name)::in, set(module_name)::in,
+    set(module_name)::out) is det.
 
-get_unimported_parent(VisibleModules, MatchingModuleNames, UnimportedParent) :-
-    % ZZZ set.map get_ancestors_set, power union, difference
-    set.member(MatchingModuleName, MatchingModuleNames),
-    ParentModules = get_ancestors(MatchingModuleName),
-    list.member(UnimportedParent, ParentModules),
-    not set.contains(VisibleModules, UnimportedParent).
+find_unimported_ancestors(VisibleModules, MatchingModuleNames,
+        UnimportedAncestors) :-
+    MatchingModuleNamesAncestorSets =
+        set.map(get_ancestors_set, MatchingModuleNames),
+    set.power_union(MatchingModuleNamesAncestorSets,
+        MatchingModuleNamesAncestors),
+    set.difference(MatchingModuleNamesAncestors, VisibleModules,
+        UnimportedAncestors).
 
-:- func report_unimported_parents(list(module_name)) = list(format_component).
+:- func report_unimported_ancestors(list(module_name))
+    = list(format_component).
 
-report_unimported_parents(UnimportedParents) = Pieces :-
-    UnimportedParentDescs = list.map(describe_sym_name, UnimportedParents),
-    AllUnimportedParents = list_to_pieces(UnimportedParentDescs),
-    ( if AllUnimportedParents = [_] then
-        Pieces = [words("(the possible parent module")]
-            ++ AllUnimportedParents ++ [words("has not been imported)."), nl]
+report_unimported_ancestors(UnimportedAncestors) = Pieces :-
+    UnimportedAncestorDescs = list.map(describe_sym_name, UnimportedAncestors),
+    AllUnimportedAncestors = list_to_pieces(UnimportedAncestorDescs),
+    ( if AllUnimportedAncestors = [_] then
+        Pieces = [words("(The possible parent module")] ++
+            AllUnimportedAncestors ++ [words("has not been imported.)"), nl]
     else
-        Pieces = [words("(the possible parent modules")]
-            ++ AllUnimportedParents ++ [words("have not been imported)."), nl]
+        Pieces = [words("(The possible parent modules")] ++
+            AllUnimportedAncestors ++ [words("have not been imported.)"), nl]
     ).
 
 %---------------------------------------------------------------------------%

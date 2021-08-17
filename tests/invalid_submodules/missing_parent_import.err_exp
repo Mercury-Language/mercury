@@ -5,10 +5,10 @@ missing_parent_import.m:028:   prevents access to the `:- import_module' and
 missing_parent_import.m:028:   `:- use_module' declarations for its child
 missing_parent_import.m:028:   modules `children.child' and `children.child2'.
 missing_parent_import.m:035: In clause for predicate `main'/2:
-missing_parent_import.m:035:   error: undefined predicate `child.hello'/2
-missing_parent_import.m:035:   (the possible parent module `children' has not
-missing_parent_import.m:035:   been imported).
+missing_parent_import.m:035:   error: undefined predicate `child.hello'/2.
+missing_parent_import.m:035:   (The possible parent module `children' has not
+missing_parent_import.m:035:   been imported.)
 missing_parent_import.m:038: In clause for predicate `main'/2:
-missing_parent_import.m:038:   error: undefined predicate `child2.hello'/2
-missing_parent_import.m:038:   (the possible parent module `children' has not
-missing_parent_import.m:038:   been imported).
+missing_parent_import.m:038:   error: undefined predicate `child2.hello'/2.
+missing_parent_import.m:038:   (The possible parent module `children' has not
+missing_parent_import.m:038:   been imported.)
