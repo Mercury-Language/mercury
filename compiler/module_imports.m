@@ -225,29 +225,16 @@
     %   make.module_dep_file.m
     %
     % for building dependency maps between modules. The aug_compilation_units
-    % it builds are not fully complete; only the fields needed for that task
-    % are filled in.
+    % it builds have only one field filled in, the one containing
+    % the parse_tree_module_src.
+    %
+    % XXX Do the callers fill in the other fields, or do they need *only*
+    % the parse_tree_module_src? If the latter, we should return only *that*.
     %
 :- pred parse_tree_src_to_burdened_aug_comp_unit_list(globals::in,
     file_name::in, parse_tree_src::in, read_module_errors::in,
     list(error_spec)::in, list(error_spec)::out,
     list(burdened_aug_comp_unit)::out) is det.
-
-:- pred rebuild_burdened_aug_comp_unit_for_dep_file(
-    module_baggage::in, module_baggage::out,
-    aug_compilation_unit::in, aug_compilation_unit::out) is det.
-
-    % init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit):
-    %
-    % Initialize an augmented compilation unit structure. Put the given
-    % ParseTreeModuleSrc into it, and leave the rest of the structure empty.
-    % Our caller is the expected to fill in (i.e. augment) the structure
-    % by calling the aug_compilation_unit_add_X predicates in grab_modules.
-    % to add the parse trees of the interface and optimization files needed
-    % to compile ParseTreeModuleSrc.
-    %
-:- pred init_aug_compilation_unit(parse_tree_module_src::in,
-    aug_compilation_unit::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -358,36 +345,6 @@ parse_tree_src_to_burdened_aug_comp_unit_list(Globals, SourceFileName,
             TopModuleName, AllModuleNames, MAISpecs0, ReadModuleErrors),
         ParseTreeModuleSrcs, BurdenedAugCompUnitList).
 
-rebuild_burdened_aug_comp_unit_for_dep_file(Baggage0, Baggage,
-        AugCompUnit0, AugCompUnit) :-
-    Baggage0 = module_baggage(SourceFileName, _SourceFileDir,
-        SourceFileModuleName, MaybeTopModule, _MaybeTimestampMap,
-        _GrabbedFileMap, Specs, _Errors),
-    AugCompUnit0 = aug_compilation_unit(ParseTreeModuleSrc,
-        _, _, _, _, _, _, _, _),
-
-    MaybeTimestampMap = maybe.no,
-    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
-    set.init(Errors),
-    Baggage = module_baggage(SourceFileName, dir.this_directory,
-        SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
-        GrabbedFileMap, Specs, Errors),
-
-    map.init(AncestorIntSpecs),
-    map.init(DirectIntSpecs),
-    map.init(IndirectIntSpecs),
-    map.init(PlainOpts),
-    map.init(TransOpts),
-    map.init(IntForOptSpecs),
-    map.init(TypeRepnSpecs),
-    map.init(VersionNumbers),
-    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
-        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs, VersionNumbers).
-
-%---------------------------------------------------------------------------%
-
 :- pred maybe_nested_init_burdened_aug_comp_unit(file_name::in,
     module_name::in, set(module_name)::in,
     list(error_spec)::in, read_module_errors::in,
@@ -410,19 +367,6 @@ maybe_nested_init_burdened_aug_comp_unit(SourceFileName,
         GrabbedFileMap, Specs, Errors),
     init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit),
     BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit).
-
-init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit) :-
-    map.init(AncestorIntSpecs),
-    map.init(DirectIntSpecs),
-    map.init(IndirectIntSpecs),
-    map.init(PlainOpts),
-    map.init(TransOpts),
-    map.init(IntForOptSpecs),
-    map.init(TypeRepnSpecs),
-    map.init(VersionNumbers),
-    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
-        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs, VersionNumbers).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

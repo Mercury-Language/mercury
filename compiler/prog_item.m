@@ -1030,6 +1030,18 @@
                 acu_module_version_numbers_map  :: module_version_numbers_map
             ).
 
+    % init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit):
+    %
+    % Initialize an augmented compilation unit structure. Put the given
+    % ParseTreeModuleSrc into it, and leave the rest of the structure empty.
+    % Our caller is the expected to fill in (i.e. augment) the structure
+    % by calling the aug_compilation_unit_add_X predicates in grab_modules.
+    % to add the parse trees of the interface and optimization files needed
+    % to compile ParseTreeModuleSrc.
+    %
+:- pred init_aug_compilation_unit(parse_tree_module_src::in,
+    aug_compilation_unit::out) is det.
+
 :- type ancestor_int_spec
     --->    ancestor_int0(parse_tree_int0, read_why_int0).
 
@@ -2785,6 +2797,19 @@ init_empty_parse_tree_module_src(ModuleName, ModuleNameContext) =
         [], [], [], [], [], [], [], [], [], [], [], [],
         [], [], [], [], [], []
     ).
+
+init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit) :-
+    map.init(AncestorIntSpecs),
+    map.init(DirectIntSpecs),
+    map.init(IndirectIntSpecs),
+    map.init(PlainOpts),
+    map.init(TransOpts),
+    map.init(IntForOptSpecs),
+    map.init(TypeRepnSpecs),
+    map.init(VersionNumbers),
+    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
+        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs, VersionNumbers).
 
 %---------------------------------------------------------------------------%
 %

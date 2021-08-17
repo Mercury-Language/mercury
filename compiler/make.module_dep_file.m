@@ -307,12 +307,34 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
 %-----------------------------------------------------------------------------%
 
 write_module_dep_file(Globals, BurdenedAugCompUnit0, !IO) :-
-    BurdenedAugCompUnit0 =
-        burdened_aug_comp_unit(Baggage0, ModuleAndImports0),
-    rebuild_burdened_aug_comp_unit_for_dep_file(Baggage0, Baggage,
-        ModuleAndImports0, ModuleAndImports),
-    BurdenedAugCompUnit =
-        burdened_aug_comp_unit(Baggage, ModuleAndImports),
+    BurdenedAugCompUnit0 = burdened_aug_comp_unit(Baggage0, AugCompUnit0),
+    Baggage0 = module_baggage(SourceFileName, _SourceFileDir,
+        SourceFileModuleName, MaybeTopModule, _MaybeTimestampMap,
+        _GrabbedFileMap, Specs, _Errors),
+    AugCompUnit0 = aug_compilation_unit(ParseTreeModuleSrc,
+        _, _, _, _, _, _, _, _),
+
+    MaybeTimestampMap = maybe.no,
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+    GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
+    set.init(Errors),
+    Baggage = module_baggage(SourceFileName, dir.this_directory,
+        SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
+        GrabbedFileMap, Specs, Errors),
+
+    map.init(AncestorIntSpecs),
+    map.init(DirectIntSpecs),
+    map.init(IndirectIntSpecs),
+    map.init(PlainOpts),
+    map.init(TransOpts),
+    map.init(IntForOptSpecs),
+    map.init(TypeRepnSpecs),
+    map.init(VersionNumbers),
+    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
+        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs, VersionNumbers),
+
+    BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
     do_write_module_dep_file(Globals, BurdenedAugCompUnit, !IO).
 
 :- pred do_write_module_dep_file(globals::in, burdened_aug_comp_unit::in,
