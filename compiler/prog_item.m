@@ -983,12 +983,6 @@
                 rcu_raw_item_blocks             :: list(raw_item_block)
             ).
 
-% XXX CLEANUP We fill in the module_and_imports structure, from which
-% aug_compilation_unit is quite directly derived, differently when
-% the compiler is invoked to generate .int[012] files than when it is
-% invoked to generate target language code. We should consider splitting
-% both the module_and_imports and aug_compilation_unit types into
-% two types, each specific to one of these invocation kinds.
 :- type aug_compilation_unit
     --->    aug_compilation_unit(
                 % The source code of the module.
@@ -1002,12 +996,12 @@
                                                     ancestor_int_spec),
 
                 % The interface files of directly imported modules.
-                acu_direct_int_specs            :: map(module_name,
-                                                    direct_int_spec),
+                acu_direct_int1_specs           :: map(module_name,
+                                                    direct_int1_spec),
 
                 % The interface files of indirectly imported modules.
-                acu_indirect_int_specs          :: map(module_name,
-                                                    indirect_int_spec),
+                acu_indirect_int2_specs         :: map(module_name,
+                                                    indirect_int2_spec),
 
                 % The optimization files of directly or indirectly
                 % imported modules.
@@ -1031,6 +1025,29 @@
                 acu_module_version_numbers_map  :: module_version_numbers_map
             ).
 
+:- type aug_make_int_unit
+    --->    aug_make_int_unit(
+                % The source code of the module.
+                amiu_module_src                 :: parse_tree_module_src,
+
+                % The interface files of the ancestors of this module.
+                % (The read_why_int0 is always implicitly rwi0_section.)
+                amiu_ancestor_int_specs         :: map(module_name,
+                                                    parse_tree_int0),
+
+                % The interface files of directly imported modules.
+                amiu_direct_int3_specs          :: map(module_name,
+                                                    direct_int3_spec),
+
+                % The interface files of indirectly imported modules.
+                amiu_indirect_int3_specs        :: map(module_name,
+                                                    indirect_int3_spec),
+
+                % The module_version_numbers records in all the imported
+                % interface files.
+                amiu_module_version_numbers_map :: module_version_numbers_map
+            ).
+
     % init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit):
     %
     % Initialize an augmented compilation unit structure. Put the given
@@ -1046,13 +1063,17 @@
 :- type ancestor_int_spec
     --->    ancestor_int0(parse_tree_int0, read_why_int0).
 
-:- type direct_int_spec
-    --->    direct_int1(parse_tree_int1, read_why_int1)
-    ;       direct_int3(parse_tree_int3, read_why_int3).
+:- type direct_int1_spec
+    --->    direct_int1(parse_tree_int1, read_why_int1).
 
-:- type indirect_int_spec
-    --->    indirect_int2(parse_tree_int2, read_why_int2)
-    ;       indirect_int3(parse_tree_int3, read_why_int3).
+:- type direct_int3_spec
+    --->    direct_int3(parse_tree_int3, read_why_int3).
+
+:- type indirect_int2_spec
+    --->    indirect_int2(parse_tree_int2, read_why_int2).
+
+:- type indirect_int3_spec
+    --->    indirect_int3(parse_tree_int3, read_why_int3).
 
 :- type int_for_opt_spec
     --->    for_opt_int0(parse_tree_int0, read_why_int0)

@@ -303,7 +303,6 @@
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.split_parse_tree_src.
-:- import_module recompilation.
 
 :- import_module cord.
 :- import_module dir.

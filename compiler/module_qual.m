@@ -121,6 +121,10 @@
     maybe_found_undef_mode::out, maybe_found_undef_typeclass::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+:- pred module_qualify_aug_make_int_unit(globals::in,
+    aug_make_int_unit::in, aug_make_int_unit::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
     % module_qualify_parse_tree_int3(Globals, ParseTreeInt0, ParseTreeInt,
     %   !Specs):
     %
@@ -259,7 +263,7 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
         EventSpecMap0, EventSpecMap, EventSpecFileName, !:Info,
         UndefTypes, UndefInsts, UndefModes, UndefTypeClasses, !Specs) :-
     AugCompUnit0 = aug_compilation_unit(ParseTreeModuleSrc0,
-        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        AncestorIntSpecs, DirectInt1Specs, IndirectInt2Specs,
         PlainOptSpecs, TransOptSpecs, IntForOptSpecs, TypeRepnSpecs,
         ModuleVersionNumbers),
 
@@ -268,12 +272,12 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
     collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc0, !Info),
     list.foldl(collect_mq_info_in_ancestor_int_spec,
         map.values(AncestorIntSpecs), !Info),
-    list.foldl(collect_mq_info_in_direct_int_spec,
-        map.values(DirectIntSpecs), !Info),
+    list.foldl(collect_mq_info_in_direct_int1_spec,
+        map.values(DirectInt1Specs), !Info),
     module_qualify_parse_tree_module_src(
         ParseTreeModuleSrc0, ParseTreeModuleSrc, !Info, !Specs),
     AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
-        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        AncestorIntSpecs, DirectInt1Specs, IndirectInt2Specs,
         PlainOptSpecs, TransOptSpecs, IntForOptSpecs, TypeRepnSpecs,
         ModuleVersionNumbers),
 
@@ -285,6 +289,31 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
     mq_info_get_found_undef_inst(!.Info, UndefInsts),
     mq_info_get_found_undef_mode(!.Info, UndefModes),
     mq_info_get_found_undef_typeclass(!.Info, UndefTypeClasses),
+    maybe_report_qual_errors(Globals, !.Info, ModuleName, !Specs).
+
+%---------------------%
+
+module_qualify_aug_make_int_unit(Globals, AugMakeIntUnit0, AugMakeIntUnit,
+        !Specs) :-
+    AugMakeIntUnit0 = aug_make_int_unit(ParseTreeModuleSrc0,
+        AncestorInt0s, DirectInt3Specs, IndirectInt3Specs,
+        ModuleVersionNumbers),
+
+    some [!Info] (
+        ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
+        init_mq_info(Globals, ModuleName, should_report_errors, !:Info),
+        collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc0, !Info),
+        list.foldl(collect_mq_info_in_parse_tree_int0(rwi0_section),
+            map.values(AncestorInt0s), !Info),
+        list.foldl(collect_mq_info_in_direct_int3_spec,
+            map.values(DirectInt3Specs), !Info),
+        module_qualify_parse_tree_module_src(
+            ParseTreeModuleSrc0, ParseTreeModuleSrc, !Info, !Specs),
+        AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc,
+            AncestorInt0s, DirectInt3Specs, IndirectInt3Specs,
+            ModuleVersionNumbers),
+        maybe_report_qual_errors(Globals, !.Info, ModuleName, !Specs)
+    ).
 
     % Warn about any unused module imports in the interface.
     % There is a special case involving type class instances that
@@ -310,11 +339,16 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
     % imported module that exports a type class instance is used in
     % the interface of the importing module, except if the importing
     % module itself exports _no_ type class instances.
-    mq_info_get_as_yet_unused_interface_modules(!.Info, UnusedImportsMap0),
-    mq_info_get_exported_instances_flag(!.Info, ModuleExportsInstances),
+    %
+:- pred maybe_report_qual_errors(globals::in, mq_info::in, module_name::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_report_qual_errors(Globals, Info, ModuleName, !Specs) :-
+    mq_info_get_as_yet_unused_interface_modules(Info, UnusedImportsMap0),
+    mq_info_get_exported_instances_flag(Info, ModuleExportsInstances),
     (
         ModuleExportsInstances = yes,
-        mq_info_get_imported_instance_modules(!.Info, InstanceImports),
+        mq_info_get_imported_instance_modules(Info, InstanceImports),
         map.delete_list(set.to_sorted_list(InstanceImports),
             UnusedImportsMap0, UnusedImportsMap)
     ;
@@ -331,6 +365,8 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
         list.foldl(warn_unused_interface_import(ModuleName), UnusedImports,
             !Specs)
     ).
+
+%---------------------%
 
 module_qualify_parse_tree_int3(Globals, OrigParseTreeInt3, ParseTreeInt3,
         !Specs) :-

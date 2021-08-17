@@ -70,7 +70,7 @@
     io::di, io::uo) is det.
 
     % write_private_interface_file_int0(Globals, SourceFileName,
-    %   SourceFileModuleName, CompUnit, MaybeTimestamp,
+    %   SourceFileModuleName, MaybeTimestamp, ParseTreeModuleSrc0,
     %   !HaveReadModuleMaps, !IO):
     %
     % Given a source file name, the timestamp of the source file, and the
@@ -79,28 +79,18 @@
     % declarations in the module, including those in the `implementation'
     % section; it is used when compiling submodules.)
     %
-    % XXX The comment on the predicate definition used to read:
-    % Read in the .int3 files that the current module depends on, and use
-    % these to qualify all the declarations as much as possible. Then write
-    % out the .int0 file.
-    %
 :- pred write_private_interface_file_int0(globals::in, file_name::in,
     module_name::in, maybe(timestamp)::in, parse_tree_module_src::in,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
     % write_interface_file_int1_int2(Globals, SourceFileName,
-    %   SourceFileModuleName, CompUnit, MaybeTimestamp,
+    %   SourceFileModuleName, MaybeTimestamp, ParseTreeModuleSrc0,
     %   !HaveReadModuleMaps, !IO):
     %
     % Given a source file name, the timestamp of the source file, and the
     % representation of a module in that file, output the long (`.int')
     % and short (`.int2') interface files for the module.
-    %
-    % XXX The comment on the predicate definition used to read:
-    % Read in the .int3 files that the current module depends on, and use these
-    % to qualify all items in the interface as much as possible. Then write out
-    % the .int and .int2 files.
     %
 :- pred write_interface_file_int1_int2(globals::in, file_name::in,
     module_name::in, maybe(timestamp)::in, parse_tree_module_src::in,
@@ -129,7 +119,6 @@
 :- import_module bool.
 :- import_module list.
 :- import_module getopt.
-:- import_module map.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -172,7 +161,7 @@ write_private_interface_file_int0(Globals, SourceFileName,
         !HaveReadModuleMaps, !IO) :-
     ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
     grab_unqual_imported_modules_make_int(Globals, SourceFileName,
-        SourceFileModuleName, ParseTreeModuleSrc0, Baggage, AugCompUnit1,
+        SourceFileModuleName, ParseTreeModuleSrc0, Baggage, AugMakeIntUnit1,
         !HaveReadModuleMaps, !IO),
 
     % Check whether we succeeded.
@@ -186,18 +175,18 @@ write_private_interface_file_int0(Globals, SourceFileName,
     then
         % Module-qualify all items.
         % XXX ITEM_LIST We don't need grab_unqual_imported_modules
-        % to include in ModuleAndImports and thus in AugCompUnit1
+        % to include in ModuleAndImports and thus in AugMakeIntUnit1
         % any items that (a) generate_private_interface_int0 below
         % will throw away, and (b) which don't help the module qualification
         % of the items that it keeps.
-        module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit,
-            map.init, _EventSpecMap, "", _, _, _, _, _, [], QualSpecs),
+        module_qualify_aug_make_int_unit(Globals,
+            AugMakeIntUnit1, AugMakeIntUnit, [], QualSpecs),
         filter_interface_generation_specs(Globals,
             GetSpecs ++ QualSpecs, EffectiveGetQualSpecs, !IO),
         (
             EffectiveGetQualSpecs = [],
             % Construct the `.int0' file.
-            generate_private_interface_int0(AugCompUnit, ParseTreeInt0,
+            generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0,
                 [], GenerateSpecs),
             filter_interface_generation_specs(Globals,
                 EffectiveGetQualSpecs ++ GenerateSpecs, Specs, !IO),
@@ -234,7 +223,7 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
 
     % Get the .int3 files for imported modules.
     grab_unqual_imported_modules_make_int(Globals, SourceFileName,
-        SourceFileModuleName, IntParseTreeModuleSrc, Baggage, AugCompUnit1,
+        SourceFileModuleName, IntParseTreeModuleSrc, Baggage, AugMakeIntUnit1,
         !HaveReadModuleMaps, !IO),
 
     % Check whether we succeeded.
@@ -247,14 +236,14 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
         set.is_empty(GetErrors)
     then
         % Module-qualify all items.
-        module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit,
-            map.init, _, "", _, _, _, _, _, [], QualSpecs),
+        module_qualify_aug_make_int_unit(Globals,
+            AugMakeIntUnit1, AugMakeIntUnit, [], QualSpecs),
         filter_interface_generation_specs(Globals,
             GetSpecs ++ QualSpecs, EffectiveGetQualSpecs, !IO),
         (
             EffectiveGetQualSpecs = [],
             % Construct the `.int' and `.int2' files.
-            generate_interfaces_int1_int2(Globals, AugCompUnit,
+            generate_interfaces_int1_int2(Globals, AugMakeIntUnit,
                 ParseTreeInt1, ParseTreeInt2, [], GenerateSpecs),
             filter_interface_generation_specs(Globals,
                 EffectiveGetQualSpecs ++ GenerateSpecs, Specs, !IO),

@@ -57,10 +57,14 @@
 
 :- pred mercury_output_ancestor_int_spec(merc_out_info::in,
     io.text_output_stream::in, ancestor_int_spec::in, io::di, io::uo) is det.
-:- pred mercury_output_direct_int_spec(merc_out_info::in,
-    io.text_output_stream::in, direct_int_spec::in, io::di, io::uo) is det.
-:- pred mercury_output_indirect_int_spec(merc_out_info::in,
-    io.text_output_stream::in, indirect_int_spec::in, io::di, io::uo) is det.
+:- pred mercury_output_direct_int1_spec(merc_out_info::in,
+    io.text_output_stream::in, direct_int1_spec::in, io::di, io::uo) is det.
+:- pred mercury_output_direct_int3_spec(merc_out_info::in,
+    io.text_output_stream::in, direct_int3_spec::in, io::di, io::uo) is det.
+:- pred mercury_output_indirect_int2_spec(merc_out_info::in,
+    io.text_output_stream::in, indirect_int2_spec::in, io::di, io::uo) is det.
+:- pred mercury_output_indirect_int3_spec(merc_out_info::in,
+    io.text_output_stream::in, indirect_int3_spec::in, io::di, io::uo) is det.
 :- pred mercury_output_int_for_opt_spec(merc_out_info::in,
     io.text_output_stream::in, int_for_opt_spec::in, io::di, io::uo) is det.
 :- pred mercury_output_type_repn_spec(merc_out_info::in,
@@ -425,23 +429,21 @@ mercury_output_ancestor_int_spec(Info, Stream, AncestorIntSpec, !IO) :-
     AncestorIntSpec = ancestor_int0(ParseTreeInt0, _),
     mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO).
 
-mercury_output_direct_int_spec(Info, Stream, DirectIntSpec, !IO) :-
-    (
-        DirectIntSpec = direct_int1(ParseTreeInt1, _),
-        mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO)
-    ;
-        DirectIntSpec = direct_int3(ParseTreeInt3, _),
-        mercury_output_parse_tree_int3(Info, Stream, ParseTreeInt3, !IO)
-    ).
+mercury_output_direct_int1_spec(Info, Stream, DirectInt1Spec, !IO) :-
+    DirectInt1Spec = direct_int1(ParseTreeInt1, _),
+    mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO).
 
-mercury_output_indirect_int_spec(Info, Stream, IndirectIntSpec, !IO) :-
-    (
-        IndirectIntSpec = indirect_int2(ParseTreeInt2, _),
-        mercury_output_parse_tree_int2(Info, Stream, ParseTreeInt2, !IO)
-    ;
-        IndirectIntSpec = indirect_int3(ParseTreeInt3, _),
-        mercury_output_parse_tree_int3(Info, Stream, ParseTreeInt3, !IO)
-    ).
+mercury_output_direct_int3_spec(Info, Stream, DirectInt3Spec, !IO) :-
+    DirectInt3Spec = direct_int3(ParseTreeInt3, _),
+    mercury_output_parse_tree_int3(Info, Stream, ParseTreeInt3, !IO).
+
+mercury_output_indirect_int2_spec(Info, Stream, IndirectInt2Spec, !IO) :-
+    IndirectInt2Spec = indirect_int2(ParseTreeInt2, _),
+    mercury_output_parse_tree_int2(Info, Stream, ParseTreeInt2, !IO).
+
+mercury_output_indirect_int3_spec(Info, Stream, IndirectInt3Spec, !IO) :-
+    IndirectInt3Spec = indirect_int3(ParseTreeInt3, _),
+    mercury_output_parse_tree_int3(Info, Stream, ParseTreeInt3, !IO).
 
 mercury_output_int_for_opt_spec(Info, Stream, ForOptIntSpec, !IO) :-
     (

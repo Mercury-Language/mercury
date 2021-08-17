@@ -350,17 +350,17 @@ combine_implicit_needs_acc([Head | Tail], !NeedTabling,
 acc_implicit_avail_needs_in_aug_compilation_unit(AugCompUnit,
         !ImplicitAvailNeeds) :-
     AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
-        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        AncestorIntSpecs, DirectInt1Specs, IndirectInt2Specs,
         PlainOpts, TransOpts, IntForOptSpecs, _TypeRepnSpecs,
         _MaybeVersionNumbers),
     acc_implicit_avail_needs_in_parse_tree_module_src(ParseTreeModuleSrc,
         !ImplicitAvailNeeds),
     map.foldl_values(acc_implicit_avail_needs_in_ancestor_int_spec,
         AncestorIntSpecs, !ImplicitAvailNeeds),
-    map.foldl_values(acc_implicit_avail_needs_in_direct_int_spec,
-        DirectIntSpecs, !ImplicitAvailNeeds),
-    map.foldl_values(acc_implicit_avail_needs_in_indirect_int_spec,
-        IndirectIntSpecs, !ImplicitAvailNeeds),
+    map.foldl_values(acc_implicit_avail_needs_in_direct_int1_spec,
+        DirectInt1Specs, !ImplicitAvailNeeds),
+    map.foldl_values(acc_implicit_avail_needs_in_indirect_int2_spec,
+        IndirectInt2Specs, !ImplicitAvailNeeds),
     map.foldl_values(acc_implicit_avail_needs_in_int_for_opt_spec,
         IntForOptSpecs, !ImplicitAvailNeeds),
     map.foldl_values(acc_implicit_avail_needs_in_parse_tree_plain_opt,
@@ -426,35 +426,23 @@ acc_implicit_avail_needs_in_ancestor_int_spec(AncestorIntSpec,
     acc_implicit_avail_needs_in_parse_tree_int0(ParseTreeInt0,
         !ImplicitAvailNeeds).
 
-:- pred acc_implicit_avail_needs_in_direct_int_spec(direct_int_spec::in,
+:- pred acc_implicit_avail_needs_in_direct_int1_spec(direct_int1_spec::in,
     implicit_avail_needs::in, implicit_avail_needs::out) is det.
 
-acc_implicit_avail_needs_in_direct_int_spec(DirectIntSpec,
+acc_implicit_avail_needs_in_direct_int1_spec(DirectInt1Spec,
         !ImplicitAvailNeeds) :-
-    (
-        DirectIntSpec = direct_int1(ParseTreeInt1, _),
-        acc_implicit_avail_needs_in_parse_tree_int1(ParseTreeInt1,
-            !ImplicitAvailNeeds)
-    ;
-        DirectIntSpec = direct_int3(ParseTreeInt3, _),
-        acc_implicit_avail_needs_in_parse_tree_int3(ParseTreeInt3,
-            !ImplicitAvailNeeds)
-    ).
+    DirectInt1Spec = direct_int1(ParseTreeInt1, _),
+    acc_implicit_avail_needs_in_parse_tree_int1(ParseTreeInt1,
+        !ImplicitAvailNeeds).
 
-:- pred acc_implicit_avail_needs_in_indirect_int_spec(indirect_int_spec::in,
+:- pred acc_implicit_avail_needs_in_indirect_int2_spec(indirect_int2_spec::in,
     implicit_avail_needs::in, implicit_avail_needs::out) is det.
 
-acc_implicit_avail_needs_in_indirect_int_spec(IndirectIntSpec,
+acc_implicit_avail_needs_in_indirect_int2_spec(IndirectInt2Spec,
         !ImplicitAvailNeeds) :-
-    (
-        IndirectIntSpec = indirect_int2(ParseTreeInt2, _),
-        acc_implicit_avail_needs_in_parse_tree_int2(ParseTreeInt2,
-            !ImplicitAvailNeeds)
-    ;
-        IndirectIntSpec = indirect_int3(ParseTreeInt3, _),
-        acc_implicit_avail_needs_in_parse_tree_int3(ParseTreeInt3,
-            !ImplicitAvailNeeds)
-    ).
+    IndirectInt2Spec = indirect_int2(ParseTreeInt2, _),
+    acc_implicit_avail_needs_in_parse_tree_int2(ParseTreeInt2,
+        !ImplicitAvailNeeds).
 
 :- pred acc_implicit_avail_needs_in_int_for_opt_spec(int_for_opt_spec::in,
     implicit_avail_needs::in, implicit_avail_needs::out) is det.
@@ -549,22 +537,6 @@ acc_implicit_avail_needs_in_parse_tree_int2(ParseTreeInt2,
 
     map.foldl_values(acc_implicit_avail_needs_in_type_ctor_add_defns,
         ImpTypeDefnMap, !ImplicitAvailNeeds).
-
-:- pred acc_implicit_avail_needs_in_parse_tree_int3(
-    parse_tree_int3::in,
-    implicit_avail_needs::in, implicit_avail_needs::out) is det.
-
-acc_implicit_avail_needs_in_parse_tree_int3(ParseTreeInt3,
-        !ImplicitAvailNeeds) :-
-    ParseTreeInt3 = parse_tree_int3(_ModuleName, _ModuleNameContext,
-        _IntInclMap, _InclMap, _IntImportMap, _ImportUseMap,
-        IntTypeDefnMap, _IntInstDefnMap, _IntModeDefnMap,
-        _IntTypeClasses, IntInstances, _IntTypeRepnMap),
-
-    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_add_defns,
-        IntTypeDefnMap, !ImplicitAvailNeeds),
-    list.foldl(acc_implicit_avail_needs_in_instance,
-        IntInstances, !ImplicitAvailNeeds).
 
 :- pred acc_implicit_avail_needs_in_parse_tree_plain_opt(
     parse_tree_plain_opt::in,

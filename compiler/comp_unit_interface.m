@@ -38,13 +38,13 @@
 
 %---------------------------------------------------------------------------%
 
-    % generate_private_interface_int0(AugCompUnit, ParseTreeInt0):
+    % generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0):
     %
     % Generate the private interface of a module (its .int0 file), which
     % makes available some not-generally-available items to the other modules
     % nested inside it.
     %
-:- pred generate_private_interface_int0(aug_compilation_unit::in,
+:- pred generate_private_interface_int0(aug_make_int_unit::in,
     parse_tree_int0::out, list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -94,7 +94,7 @@
 
     % Generate the contents for the .int and .int2 files.
     %
-:- pred generate_interfaces_int1_int2(globals::in, aug_compilation_unit::in,
+:- pred generate_interfaces_int1_int2(globals::in, aug_make_int_unit::in,
     parse_tree_int1::out, parse_tree_int2::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -328,9 +328,9 @@ make_typeclass_abstract_for_int3(OrigTypeClass) = TypeClass :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_private_interface_int0(AugCompUnit, ParseTreeInt0, !Specs) :-
-    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
-        _, _, _, _, _, _, _, ModuleVersionNumbers),
+generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
+    AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, _, _, _,
+        ModuleVersionNumbers),
 
     ( if map.search(ModuleVersionNumbers, ModuleName, VersionNumbers) then
         MaybeVersionNumbers = version_numbers(VersionNumbers)
@@ -446,18 +446,18 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_interfaces_int1_int2(Globals, AugCompUnit,
+generate_interfaces_int1_int2(Globals, AugMakeIntUnit,
         ParseTreeInt1, ParseTreeInt2, !Specs) :-
-    generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
+    generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
         ImpTypeDefns, TypeCtorRepnMap, ParseTreeInt1, !Specs),
-    generate_interface_int2(AugCompUnit, IntImportUseMap,
+    generate_interface_int2(AugMakeIntUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
         ImpTypeDefns, TypeCtorRepnMap, ParseTreeInt2).
 
-:- pred generate_interface_int1(globals::in, aug_compilation_unit::in,
+:- pred generate_interface_int1(globals::in, aug_make_int_unit::in,
     module_names_contexts::out, set(fim_spec)::out, set(fim_spec)::out,
     list(item_type_defn_info)::out,
     list(item_inst_defn_info)::out, list(item_mode_defn_info)::out,
@@ -466,14 +466,14 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     type_ctor_repn_map::out, parse_tree_int1::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
+generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
         ImpTypeDefns, TypeCtorRepnMap, ParseTreeInt1, !Specs) :-
     % We return some of our intermediate results to our caller, for use
     % in constructing the .int2 file.
-    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
-        _, DirectIntSpecs, IndirectIntSpecs, _, _, _, _, _),
+    AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc,
+        _, DirectIntSpecs, IndirectIntSpecs, _),
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         IntInclMap, ImpInclMap, InclMap,
@@ -1694,7 +1694,7 @@ some_type_defn_is_non_abstract([Defn | Defns]) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % generate_interface_int2(Globals, AugCompUnit,
+    % generate_interface_int2(Globals, AugMakeIntUnit,
     %   IntIncludeMap, IntImportUseMap,
     %   IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
     %   IntTypeDefnItems, IntInstDefns, IntModeDefns,
@@ -1704,7 +1704,7 @@ some_type_defn_is_non_abstract([Defn | Defns]) :-
     % The input arguments should be the relevant parts of the .int1 file
     % computed by our parent.
     %
-:- pred generate_interface_int2(aug_compilation_unit::in,
+:- pred generate_interface_int2(aug_make_int_unit::in,
     module_names_contexts::in, set(fim_spec)::in, set(fim_spec)::in,
     list(item_type_defn_info)::in,
     list(item_inst_defn_info)::in, list(item_mode_defn_info)::in,
@@ -1712,12 +1712,11 @@ some_type_defn_is_non_abstract([Defn | Defns]) :-
     list(item_type_defn_info)::in, type_ctor_repn_map::in,
     parse_tree_int2::out) is det.
 
-generate_interface_int2(AugCompUnit, IntImportUseMap,
+generate_interface_int2(AugMakeIntUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
         ImpTypeDefns, TypeCtorRepnMap, ParseTreeInt2) :-
-    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
-        _, _, _, _, _, _, _, _),
+    AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, _, _, _, _),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameContext = ParseTreeModuleSrc ^ ptms_module_name_context,
 

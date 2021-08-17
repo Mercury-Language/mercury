@@ -102,7 +102,7 @@
     %
 :- pred grab_unqual_imported_modules_make_int(globals::in,
     file_name::in, module_name::in,
-    parse_tree_module_src::in, module_baggage::out, aug_compilation_unit::out,
+    parse_tree_module_src::in, module_baggage::out, aug_make_int_unit::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
@@ -224,7 +224,7 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
         % XXX grab_unqual_imported_modules_make_int treats AncestorImported and
         % AncestorUsed slightly differently from !.IntImported and !.IntUsed.
         Ancestors = get_ancestors(ModuleName),
-        grab_module_int0_files(Globals,
+        grab_module_int0_files_for_acu(Globals,
             "ancestors", rwi0_section,
             Ancestors, IntImports2, IntImports, IntUses2, IntUses,
             !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO),
@@ -325,7 +325,7 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
 
 grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         SourceFileModuleName, ParseTreeModuleSrc,
-        !:Baggage, !:AugCompUnit, !HaveReadModuleMaps, !IO) :-
+        !:Baggage, !:AugMakeIntUnit, !HaveReadModuleMaps, !IO) :-
     % The predicates grab_imported_modules and grab_unqual_imported_modules
     % have quite similar tasks. Please keep the corresponding parts of these
     % two predicates in sync.
@@ -356,7 +356,7 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
 
         Specs0 = [],
         set.init(Errors0),
-        init_aug_compilation_unit(ParseTreeModuleSrc, !:AugCompUnit),
+        init_aug_make_int_unit(ParseTreeModuleSrc, !:AugMakeIntUnit),
         GrabbedFileMap0 =
             map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
         !:Baggage = module_baggage(SourceFileName, dir.this_directory,
@@ -370,10 +370,10 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
 
         % Get the .int0 files of the ancestor modules.
         Ancestors = get_ancestors(ModuleName),
-        grab_module_int0_files(Globals,
-            "unqual_ancestors", rwi0_section,
+        grab_module_int0_files_for_amiu(Globals,
+            "unqual_ancestors",
             Ancestors, set.init, AncestorImports, set.init, AncestorUses,
-            !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO),
+            !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO),
 
         % Get the .int3 files of the modules imported using `import_module'.
         set.init(!:IntIndirectImported),
@@ -382,34 +382,34 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             "unqual_parent_imported", rwi3_direct_ancestor_import,
             set.to_sorted_list(AncestorImports),
             !IntIndirectImported, !HaveReadModuleMaps,
-            !Baggage, !AugCompUnit, !IO),
+            !Baggage, !AugMakeIntUnit, !IO),
         grab_module_int3_files(Globals,
             "unqual_int_imported", rwi3_direct_int_import,
             set.to_sorted_list(IntImports),
             !IntIndirectImported, !HaveReadModuleMaps,
-            !Baggage, !AugCompUnit, !IO),
+            !Baggage, !AugMakeIntUnit, !IO),
         grab_module_int3_files(Globals,
             "unqual_imp_imported", rwi3_direct_imp_import,
             set.to_sorted_list(ImpImports),
             !ImpIndirectImported, !HaveReadModuleMaps,
-            !Baggage, !AugCompUnit, !IO),
+            !Baggage, !AugMakeIntUnit, !IO),
 
         % Get the .int3 files of the modules imported using `use_module'.
         grab_module_int3_files(Globals,
             "unqual_parent_used", rwi3_direct_ancestor_use,
             set.to_sorted_list(AncestorUses),
             !IntIndirectImported, !HaveReadModuleMaps,
-            !Baggage, !AugCompUnit, !IO),
+            !Baggage, !AugMakeIntUnit, !IO),
         grab_module_int3_files(Globals,
             "unqual_int_used", rwi3_direct_int_use,
             set.to_sorted_list(IntUses),
             !IntIndirectImported, !HaveReadModuleMaps,
-            !Baggage, !AugCompUnit, !IO),
+            !Baggage, !AugMakeIntUnit, !IO),
         grab_module_int3_files(Globals,
             "unqual_imp_used", rwi3_direct_imp_use,
             set.to_sorted_list(ImpUses),
             !ImpIndirectImported, !HaveReadModuleMaps,
-            !Baggage, !AugCompUnit, !IO),
+            !Baggage, !AugMakeIntUnit, !IO),
 
         % Get the .int3 files of the modules imported using `use_module'
         % in the interface and `import_module' in the implementation.
@@ -417,17 +417,17 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             "unqual_int_used_imp_imported", rwi3_direct_int_use_imp_import,
             set.to_sorted_list(IntUsesImpImports),
             !IntIndirectImported, !HaveReadModuleMaps,
-            !Baggage, !AugCompUnit, !IO),
+            !Baggage, !AugMakeIntUnit, !IO),
 
         % Get the .int3 files of the modules imported in .int3 files.
         grab_module_int3_files_transitively(Globals,
             "unqual_int_indirect_imported", rwi3_indirect_int_use,
             !.IntIndirectImported, !HaveReadModuleMaps,
-            !Baggage, !AugCompUnit, !IO),
+            !Baggage, !AugMakeIntUnit, !IO),
         grab_module_int3_files_transitively(Globals,
             "unqual_imp_indirect_imported", rwi3_indirect_imp_use,
             !.ImpIndirectImported, !HaveReadModuleMaps,
-            !Baggage, !AugCompUnit, !IO)
+            !Baggage, !AugMakeIntUnit, !IO)
     ).
 
 :- pred dump_modules(io.text_output_stream::in, set(module_name)::in,
@@ -517,7 +517,7 @@ grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
     OptOnlyModuleAncestors =
         set.difference(OptModuleAncestors, OldModuleAndAncestors),
 
-    grab_module_int0_files(Globals,
+    grab_module_int0_files_for_acu(Globals,
         "opt_int0s", rwi0_opt,
         set.to_sorted_list(OptOnlyModuleAncestors),
         set.init, OptAncestorImports, set.init, OptAncestorUses,
@@ -628,39 +628,41 @@ grab_module_int2_files_transitively(Globals, Why, ReadWhy2,
     read_why_int3::in, set(module_name)::in,
     have_read_module_maps::in, have_read_module_maps::out,
     module_baggage::in, module_baggage::out,
-    aug_compilation_unit::in, aug_compilation_unit::out, io::di, io::uo) is det.
+    aug_make_int_unit::in, aug_make_int_unit::out, io::di, io::uo) is det.
 
 grab_module_int3_files_transitively(Globals, Why, ReadWhy3,
-        Modules, !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO) :-
+        Modules, !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO) :-
     grab_module_int3_files(Globals, Why, ReadWhy3, set.to_sorted_list(Modules),
         set.init, IndirectImports,
-        !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO),
+        !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO),
     ( if set.is_empty(IndirectImports) then
         true
     else
         grab_module_int3_files_transitively(Globals, Why, ReadWhy3,
             IndirectImports, !HaveReadModuleMaps,
-            !Baggage, !AugCompUnit, !IO)
+            !Baggage, !AugMakeIntUnit, !IO)
     ).
 
-:- pred grab_module_int0_files(globals::in, string::in, read_why_int0::in,
-    list(module_name)::in,
+:- pred grab_module_int0_files_for_acu(globals::in,
+    string::in, read_why_int0::in, list(module_name)::in,
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     module_baggage::in, module_baggage::out,
-    aug_compilation_unit::in, aug_compilation_unit::out, io::di, io::uo) is det.
+    aug_compilation_unit::in, aug_compilation_unit::out,
+    io::di, io::uo) is det.
 
-grab_module_int0_files(_Globals, _Why, _ReadWhy0, [],
+grab_module_int0_files_for_acu(_Globals, _Why, _ReadWhy0, [],
         !DirectImports, !DirectUses,
         !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO).
-grab_module_int0_files(Globals, Why, ReadWhy0, [ModuleName | ModuleNames],
-        !DirectImports, !DirectUses,
+grab_module_int0_files_for_acu(Globals, Why, ReadWhy0,
+        [ModuleName | ModuleNames], !DirectImports, !DirectUses,
         !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO) :-
     ( if should_read_interface(!.Baggage, ModuleName, ifk_int0) then
         maybe_log_augment_decision(Why, ifk_int0, ReadWhy0, ModuleName,
             decided_to_read, !IO),
-        process_module_int0(Globals, ReadWhy0, ModuleName, ParseTreeInt0,
+        process_module_int0_for_acu(Globals, ReadWhy0,
+            ModuleName, ParseTreeInt0,
             !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO),
         map.keys_as_set(ParseTreeInt0 ^ pti0_int_imports, IntImports),
         map.keys_as_set(ParseTreeInt0 ^ pti0_imp_imports, ImpImports),
@@ -674,9 +676,46 @@ grab_module_int0_files(Globals, Why, ReadWhy0, [ModuleName | ModuleNames],
         maybe_log_augment_decision(Why, ifk_int0, ReadWhy0, ModuleName,
             decided_not_to_read, !IO)
     ),
-    grab_module_int0_files(Globals, Why, ReadWhy0, ModuleNames,
+    grab_module_int0_files_for_acu(Globals, Why, ReadWhy0, ModuleNames,
         !DirectImports, !DirectUses,
         !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO).
+
+:- pred grab_module_int0_files_for_amiu(globals::in,
+    string::in, list(module_name)::in,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    module_baggage::in, module_baggage::out,
+    aug_make_int_unit::in, aug_make_int_unit::out,
+    io::di, io::uo) is det.
+
+grab_module_int0_files_for_amiu(_Globals, _Why, [],
+        !DirectImports, !DirectUses,
+        !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO).
+grab_module_int0_files_for_amiu(Globals, Why,
+        [ModuleName | ModuleNames], !DirectImports, !DirectUses,
+        !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO) :-
+    ReadWhy0 = rwi0_section,
+    ( if should_read_interface(!.Baggage, ModuleName, ifk_int0) then
+        maybe_log_augment_decision(Why, ifk_int0, ReadWhy0, ModuleName,
+            decided_to_read, !IO),
+        process_module_int0_for_amiu(Globals, ModuleName, ParseTreeInt0,
+            !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO),
+        map.keys_as_set(ParseTreeInt0 ^ pti0_int_imports, IntImports),
+        map.keys_as_set(ParseTreeInt0 ^ pti0_imp_imports, ImpImports),
+        map.keys_as_set(ParseTreeInt0 ^ pti0_int_uses, IntUses),
+        map.keys_as_set(ParseTreeInt0 ^ pti0_imp_uses, ImpUses),
+        set.union(IntImports, !DirectImports),
+        set.union(ImpImports, !DirectImports),
+        set.union(IntUses, !DirectUses),
+        set.union(ImpUses, !DirectUses)
+    else
+        maybe_log_augment_decision(Why, ifk_int0, ReadWhy0, ModuleName,
+            decided_not_to_read, !IO)
+    ),
+    grab_module_int0_files_for_amiu(Globals, Why, ModuleNames,
+        !DirectImports, !DirectUses,
+        !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO).
 
 :- pred grab_module_int1_files(globals::in, string::in, read_why_int1::in,
     list(module_name)::in,
@@ -743,19 +782,19 @@ grab_module_int2_files(Globals, Why, ReadWhy2, [ModuleName | ModuleNames],
     set(module_name)::in, set(module_name)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     module_baggage::in, module_baggage::out,
-    aug_compilation_unit::in, aug_compilation_unit::out, io::di, io::uo) is det.
+    aug_make_int_unit::in, aug_make_int_unit::out, io::di, io::uo) is det.
 
 grab_module_int3_files(_Globals, _Why, _ReadWhy3, [],
         !IntIndirectImports, !HaveReadModuleMaps,
-        !Baggage, !AugCompUnit, !IO).
+        !Baggage, !AugMakeIntUnit, !IO).
 grab_module_int3_files(Globals, Why, ReadWhy3, [ModuleName | ModuleNames],
         !IntIndirectImports, !HaveReadModuleMaps,
-        !Baggage, !AugCompUnit, !IO) :-
+        !Baggage, !AugMakeIntUnit, !IO) :-
     ( if should_read_interface(!.Baggage, ModuleName, ifk_int3) then
         maybe_log_augment_decision(Why, ifk_int3, ReadWhy3, ModuleName,
             decided_to_read, !IO),
         process_module_int3(Globals, ReadWhy3, ModuleName, ParseTreeInt3,
-            !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO),
+            !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO),
         map.keys_as_set(ParseTreeInt3 ^ pti3_int_imports, Imports),
         set.union(Imports, !IntIndirectImports)
     else
@@ -764,7 +803,7 @@ grab_module_int3_files(Globals, Why, ReadWhy3, [ModuleName | ModuleNames],
     ),
     grab_module_int3_files(Globals, Why, ReadWhy3, ModuleNames,
         !IntIndirectImports, !HaveReadModuleMaps,
-        !Baggage, !AugCompUnit, !IO).
+        !Baggage, !AugMakeIntUnit, !IO).
 
 :- pred should_read_interface(module_baggage::in, module_name::in,
     int_file_kind::in) is semidet.
@@ -794,14 +833,14 @@ grabbed_file_to_file_kind(GrabbedWhy) = FileKind :-
 
 %---------------------------------------------------------------------------%
 
-:- pred process_module_int0(globals::in, read_why_int0::in, module_name::in,
-    parse_tree_int0::out,
+:- pred process_module_int0_for_acu(globals::in, read_why_int0::in,
+    module_name::in, parse_tree_int0::out,
     have_read_module_maps::in, have_read_module_maps::out,
     module_baggage::in, module_baggage::out,
     aug_compilation_unit::in, aug_compilation_unit::out,
     io::di, io::uo) is det.
 
-process_module_int0(Globals, ReadWhy0, ModuleName, ParseTreeInt0,
+process_module_int0_for_acu(Globals, ReadWhy0, ModuleName, ParseTreeInt0,
         !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO) :-
     do_we_need_timestamps(!.Baggage, ReturnTimestamp),
     maybe_read_module_int0(Globals, do_search, ModuleName, _FileName,
@@ -824,6 +863,28 @@ process_module_int0(Globals, ReadWhy0, ModuleName, ParseTreeInt0,
     module_baggage_add_specs_errors(Specs, Errors, !Baggage),
     aug_compilation_unit_maybe_add_module_version_numbers(ModuleName,
         ParseTreeInt0 ^ pti0_maybe_version_numbers, !AugCompUnit).
+
+:- pred process_module_int0_for_amiu(globals::in,
+    module_name::in, parse_tree_int0::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    module_baggage::in, module_baggage::out,
+    aug_make_int_unit::in, aug_make_int_unit::out,
+    io::di, io::uo) is det.
+
+process_module_int0_for_amiu(Globals, ModuleName, ParseTreeInt0,
+        !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO) :-
+    do_we_need_timestamps(!.Baggage, ReturnTimestamp),
+    maybe_read_module_int0(Globals, do_search, ModuleName, _FileName,
+        ReturnTimestamp, MaybeTimestamp, ParseTreeInt0, Specs, Errors,
+        !HaveReadModuleMaps, !IO),
+    GrabbedFile = gf_int0(ParseTreeInt0, rwi0_section),
+    module_baggage_add_grabbed_file(ModuleName, GrabbedFile, !Baggage),
+    aug_make_int_unit_add_ancestor_int(ParseTreeInt0, !AugMakeIntUnit),
+    maybe_record_interface_timestamp(ModuleName, ifk_int0,
+        recomp_avail_int_import, MaybeTimestamp, !Baggage),
+    module_baggage_add_specs_errors(Specs, Errors, !Baggage),
+    aug_make_int_unit_maybe_add_module_version_numbers(ModuleName,
+        ParseTreeInt0 ^ pti0_maybe_version_numbers, !AugMakeIntUnit).
 
 :- pred process_module_int1(globals::in, read_why_int1::in, module_name::in,
     parse_tree_int1::out,
@@ -858,7 +919,7 @@ process_module_int1(Globals, ReadWhy1, ModuleName, ParseTreeInt1,
             RecompAvail = recomp_avail_int_use_imp_import
         ),
         DirectIntSpec = direct_int1(ParseTreeInt1, ReadWhy1),
-        aug_compilation_unit_add_direct_int_spec(DirectIntSpec, !AugCompUnit),
+        aug_compilation_unit_add_direct_int1_spec(DirectIntSpec, !AugCompUnit),
         module_baggage_add_specs_errors(Specs, Errors, !Baggage)
     ;
         ReadWhy1 = rwi1_opt,
@@ -901,7 +962,7 @@ process_module_int2(Globals, ReadWhy2, ModuleName, ParseTreeInt2,
         ; ReadWhy2 = rwi2_abstract
         ),
         IndirectIntSpec = indirect_int2(ParseTreeInt2, ReadWhy2),
-        aug_compilation_unit_add_indirect_int_spec(IndirectIntSpec,
+        aug_compilation_unit_add_indirect_int2_spec(IndirectIntSpec,
             !AugCompUnit)
     ;
         ReadWhy2 = rwi2_opt,
@@ -918,11 +979,11 @@ process_module_int2(Globals, ReadWhy2, ModuleName, ParseTreeInt2,
     parse_tree_int3::out,
     have_read_module_maps::in, have_read_module_maps::out,
     module_baggage::in, module_baggage::out,
-    aug_compilation_unit::in, aug_compilation_unit::out,
+    aug_make_int_unit::in, aug_make_int_unit::out,
     io::di, io::uo) is det.
 
 process_module_int3(Globals, ReadWhy3, ModuleName, ParseTreeInt3,
-        !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO) :-
+        !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO) :-
     do_we_need_timestamps(!.Baggage, ReturnTimestamp),
     maybe_read_module_int3(Globals, do_search, ModuleName, _FileName,
         ReturnTimestamp, MaybeTimestamp, ParseTreeInt3, Specs, Errors,
@@ -953,7 +1014,7 @@ process_module_int3(Globals, ReadWhy3, ModuleName, ParseTreeInt3,
             RecompAvail = recomp_avail_int_use_imp_import
         ),
         DirectIntSpec = direct_int3(ParseTreeInt3, ReadWhy3),
-        aug_compilation_unit_add_direct_int_spec(DirectIntSpec, !AugCompUnit)
+        aug_make_int_unit_add_direct_int3_spec(DirectIntSpec, !AugMakeIntUnit)
     ;
         (
             ReadWhy3 = rwi3_indirect_int_use,
@@ -963,8 +1024,8 @@ process_module_int3(Globals, ReadWhy3, ModuleName, ParseTreeInt3,
             RecompAvail = recomp_avail_imp_use
         ),
         IndirectIntSpec = indirect_int3(ParseTreeInt3, ReadWhy3),
-        aug_compilation_unit_add_indirect_int_spec(IndirectIntSpec,
-            !AugCompUnit)
+        aug_make_int_unit_add_indirect_int3_spec(IndirectIntSpec,
+            !AugMakeIntUnit)
     ),
     maybe_record_interface_timestamp(ModuleName, ifk_int3, RecompAvail,
         MaybeTimestamp, !Baggage),
@@ -1254,8 +1315,8 @@ append_one_or_more(A, B, AB) :-
     %
 :- pred record_includes_imports_uses(parse_tree_module_src::in,
     map(module_name, ancestor_int_spec)::in,
-    map(module_name, direct_int_spec)::in,
-    map(module_name, indirect_int_spec)::in,
+    map(module_name, direct_int1_spec)::in,
+    map(module_name, indirect_int2_spec)::in,
     map(module_name, parse_tree_plain_opt)::in,
     map(module_name, parse_tree_trans_opt)::in,
     map(module_name, int_for_opt_spec)::in,
@@ -1283,11 +1344,11 @@ record_includes_imports_uses(ParseTreeModuleSrc,
         AncestorIntSpecs, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
     map.foldl5_values(
-        record_includes_imports_uses_in_direct_int_spec(Ancestors),
+        record_includes_imports_uses_in_direct_int1_spec(Ancestors),
         DirectIntSpecs, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
     map.foldl5_values(
-        record_includes_imports_uses_in_indirect_int_spec(Ancestors),
+        record_includes_imports_uses_in_indirect_int2_spec(Ancestors),
         IndirectIntSpecs, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
     map.foldl5_values(
@@ -1356,51 +1417,37 @@ record_includes_imports_uses_in_ancestor_int_spec(Ancestors,
         ParseTreeInt0, ReadWhyInt0, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap).
 
-:- pred record_includes_imports_uses_in_direct_int_spec(set(module_name)::in,
-    direct_int_spec::in,
+:- pred record_includes_imports_uses_in_direct_int1_spec(
+    set(module_name)::in, direct_int1_spec::in,
     set(module_name)::in, set(module_name)::out,
     module_inclusion_map::in, module_inclusion_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out) is det.
 
-record_includes_imports_uses_in_direct_int_spec(Ancestors,
+record_includes_imports_uses_in_direct_int1_spec(Ancestors,
         DirectSpec, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
-    (
-        DirectSpec = direct_int1(ParseTreeInt1, ReadWhyInt1),
-        record_includes_imports_uses_in_parse_tree_int1(Ancestors,
-            ParseTreeInt1, ReadWhyInt1, !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap)
-    ;
-        DirectSpec = direct_int3(ParseTreeInt3, ReadWhyInt3),
-        record_includes_imports_uses_in_parse_tree_int3(Ancestors,
-            ParseTreeInt3, ReadWhyInt3, !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap)
-    ).
+    DirectSpec = direct_int1(ParseTreeInt1, ReadWhyInt1),
+    record_includes_imports_uses_in_parse_tree_int1(Ancestors,
+        ParseTreeInt1, ReadWhyInt1, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap).
 
-:- pred record_includes_imports_uses_in_indirect_int_spec(set(module_name)::in,
-    indirect_int_spec::in,
+:- pred record_includes_imports_uses_in_indirect_int2_spec(
+    set(module_name)::in, indirect_int2_spec::in,
     set(module_name)::in, set(module_name)::out,
     module_inclusion_map::in, module_inclusion_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out) is det.
 
-record_includes_imports_uses_in_indirect_int_spec(Ancestors,
+record_includes_imports_uses_in_indirect_int2_spec(Ancestors,
         IndirectSpec, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
-    (
-        IndirectSpec = indirect_int2(ParseTreeInt2, ReadWhyInt2),
-        record_includes_imports_uses_in_parse_tree_int2(Ancestors,
-            ParseTreeInt2, ReadWhyInt2, !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap)
-    ;
-        IndirectSpec = indirect_int3(ParseTreeInt3, ReadWhyInt3),
-        record_includes_imports_uses_in_parse_tree_int3(Ancestors,
-            ParseTreeInt3, ReadWhyInt3, !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap)
-    ).
+    IndirectSpec = indirect_int2(ParseTreeInt2, ReadWhyInt2),
+    record_includes_imports_uses_in_parse_tree_int2(Ancestors,
+        ParseTreeInt2, ReadWhyInt2, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap).
 
 :- pred record_includes_imports_uses_in_int_for_opt_spec(set(module_name)::in,
     int_for_opt_spec::in,
@@ -1528,28 +1575,6 @@ record_includes_imports_uses_in_parse_tree_int2(Ancestors,
         ReadWhyInt2 = rwi2_abstract,
         record_includes_acc(abstract_section, IntIncls, !InclMap)
     ),
-    expect_not(set.contains(Ancestors, ModuleName), $pred,
-        "processing the .int2 file of an ancestor").
-
-:- pred record_includes_imports_uses_in_parse_tree_int3(set(module_name)::in,
-    parse_tree_int3::in, read_why_int3::in,
-    set(module_name)::in, set(module_name)::out,
-    module_inclusion_map::in, module_inclusion_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out) is det.
-
-record_includes_imports_uses_in_parse_tree_int3(Ancestors,
-        ParseTreeInt3, _ReadWhyInt3, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
-    ParseTreeInt3 = parse_tree_int3(ModuleName, _,
-        _IntInclMap, ParseTreeInclMap, _, _, _, _, _, _, _, _),
-    set.insert(ModuleName, !ReadModules),
-    include_map_to_item_includes(ParseTreeInclMap, IntIncls, ImpIncls),
-    expect(unify(ImpIncls, []), $pred, "ImpIncls != []"),
-    % All possible values of ReadWhyInt3 call for treating the file's
-    % interface as non-abstract.
-    record_includes_acc(non_abstract_section, IntIncls, !InclMap),
     expect_not(set.contains(Ancestors, ModuleName), $pred,
         "processing the .int2 file of an ancestor").
 
@@ -2155,9 +2180,9 @@ update_opt_error_status(Globals, WarnOption, FileName,
 
 :- pred aug_compilation_unit_add_ancestor_int_spec(ancestor_int_spec::in,
     aug_compilation_unit::in, aug_compilation_unit::out) is det.
-:- pred aug_compilation_unit_add_direct_int_spec(direct_int_spec::in,
+:- pred aug_compilation_unit_add_direct_int1_spec(direct_int1_spec::in,
     aug_compilation_unit::in, aug_compilation_unit::out) is det.
-:- pred aug_compilation_unit_add_indirect_int_spec(indirect_int_spec::in,
+:- pred aug_compilation_unit_add_indirect_int2_spec(indirect_int2_spec::in,
     aug_compilation_unit::in, aug_compilation_unit::out) is det.
 :- pred aug_compilation_unit_add_plain_opt(parse_tree_plain_opt::in,
     aug_compilation_unit::in, aug_compilation_unit::out) is det.
@@ -2180,21 +2205,17 @@ aug_compilation_unit_add_ancestor_int_spec(X, !AugCompUnit) :-
     map.det_insert(MN, X, Map0, Map),
     !AugCompUnit ^ acu_ancestor_int_specs := Map.
 
-aug_compilation_unit_add_direct_int_spec(X, !AugCompUnit) :-
-    Map0 = !.AugCompUnit ^ acu_direct_int_specs,
-    ( X = direct_int1(PT1, _), MN = PT1 ^ pti1_module_name
-    ; X = direct_int3(PT3, _), MN = PT3 ^ pti3_module_name
-    ),
+aug_compilation_unit_add_direct_int1_spec(X, !AugCompUnit) :-
+    Map0 = !.AugCompUnit ^ acu_direct_int1_specs,
+    X = direct_int1(PT1, _), MN = PT1 ^ pti1_module_name,
     map.det_insert(MN, X, Map0, Map),
-    !AugCompUnit ^ acu_direct_int_specs := Map.
+    !AugCompUnit ^ acu_direct_int1_specs := Map.
 
-aug_compilation_unit_add_indirect_int_spec(X, !AugCompUnit) :-
-    Map0 = !.AugCompUnit ^ acu_indirect_int_specs,
-    ( X = indirect_int2(PT2, _), MN = PT2 ^ pti2_module_name
-    ; X = indirect_int3(PT3, _), MN = PT3 ^ pti3_module_name
-    ),
+aug_compilation_unit_add_indirect_int2_spec(X, !AugCompUnit) :-
+    Map0 = !.AugCompUnit ^ acu_indirect_int2_specs,
+    X = indirect_int2(PT2, _), MN = PT2 ^ pti2_module_name,
     map.det_insert(MN, X, Map0, Map),
-    !AugCompUnit ^ acu_indirect_int_specs := Map.
+    !AugCompUnit ^ acu_indirect_int2_specs := Map.
 
 aug_compilation_unit_add_plain_opt(X, !AugCompUnit) :-
     Map0 = !.AugCompUnit ^ acu_plain_opts,
@@ -2234,6 +2255,65 @@ aug_compilation_unit_maybe_add_module_version_numbers(ModuleName,
         map.det_insert(ModuleName, VersionNumbers,
             ModuleVersionNumbersMap0, ModuleVersionNumbersMap),
         !AugCompUnit ^ acu_module_version_numbers_map :=
+            ModuleVersionNumbersMap
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred init_aug_make_int_unit(parse_tree_module_src::in,
+    aug_make_int_unit::out) is det.
+
+init_aug_make_int_unit(ParseTreeModuleSrc, AugMakeIntUnit) :-
+    map.init(AncestorIntSpecs),
+    map.init(DirectIntSpecs),
+    map.init(IndirectIntSpecs),
+    map.init(VersionNumbers),
+    AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc,
+        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs, VersionNumbers).
+
+%---------------------%
+
+:- pred aug_make_int_unit_add_ancestor_int(parse_tree_int0::in,
+    aug_make_int_unit::in, aug_make_int_unit::out) is det.
+:- pred aug_make_int_unit_add_direct_int3_spec(direct_int3_spec::in,
+    aug_make_int_unit::in, aug_make_int_unit::out) is det.
+:- pred aug_make_int_unit_add_indirect_int3_spec(indirect_int3_spec::in,
+    aug_make_int_unit::in, aug_make_int_unit::out) is det.
+:- pred aug_make_int_unit_maybe_add_module_version_numbers(
+    module_name::in, maybe_version_numbers::in,
+    aug_make_int_unit::in, aug_make_int_unit::out) is det.
+
+%---------------------%
+
+aug_make_int_unit_add_ancestor_int(PT0, !AugMakeIntUnit) :-
+    Map0 = !.AugMakeIntUnit ^ amiu_ancestor_int_specs,
+    MN = PT0 ^ pti0_module_name,
+    map.det_insert(MN, PT0, Map0, Map),
+    !AugMakeIntUnit ^ amiu_ancestor_int_specs := Map.
+
+aug_make_int_unit_add_direct_int3_spec(X, !AugMakeIntUnit) :-
+    Map0 = !.AugMakeIntUnit ^ amiu_direct_int3_specs,
+    X = direct_int3(PT3, _), MN = PT3 ^ pti3_module_name,
+    map.det_insert(MN, X, Map0, Map),
+    !AugMakeIntUnit ^ amiu_direct_int3_specs := Map.
+
+aug_make_int_unit_add_indirect_int3_spec(X, !AugMakeIntUnit) :-
+    Map0 = !.AugMakeIntUnit ^ amiu_indirect_int3_specs,
+    X = indirect_int3(PT3, _), MN = PT3 ^ pti3_module_name,
+    map.det_insert(MN, X, Map0, Map),
+    !AugMakeIntUnit ^ amiu_indirect_int3_specs := Map.
+
+aug_make_int_unit_maybe_add_module_version_numbers(ModuleName,
+        MaybeVersionNumbers, !AugMakeIntUnit) :-
+    (
+        MaybeVersionNumbers = no_version_numbers
+    ;
+        MaybeVersionNumbers = version_numbers(VersionNumbers),
+        ModuleVersionNumbersMap0 =
+            !.AugMakeIntUnit ^ amiu_module_version_numbers_map,
+        map.det_insert(ModuleName, VersionNumbers,
+            ModuleVersionNumbersMap0, ModuleVersionNumbersMap),
+        !AugMakeIntUnit ^ amiu_module_version_numbers_map :=
             ModuleVersionNumbersMap
     ).
 

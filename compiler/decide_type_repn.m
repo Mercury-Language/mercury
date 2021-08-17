@@ -153,8 +153,8 @@
 
 :- pred decide_repns_for_all_types_for_int1(globals::in, module_name::in,
     type_ctor_checked_map::in,
-    map(module_name, direct_int_spec)::in,
-    map(module_name, indirect_int_spec)::in,
+    map(module_name, direct_int3_spec)::in,
+    map(module_name, indirect_int3_spec)::in,
     type_ctor_repn_map::out, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -651,10 +651,10 @@ maybe_add_word_aligned_repn_item(ExportedTypes, TypeCtor, !RepnMap) :-
 
 decide_repns_for_all_types_for_int1(Globals, _ModuleName, TypeCtorCheckedMap,
         DirectSpecMap, IndirectSpecMap, !:Int1RepnMap, Specs) :-
-    map.foldl4_values(record_type_repns_in_direct_int_spec,
+    map.foldl4_values(record_type_repns_in_direct_int3_spec,
         DirectSpecMap, map.init, EqvRepnMap0, map.init, SubtypeMap0,
         map.init, SimpleDuMap0, set_tree234.init, WordAlignedTypeCtorsC0),
-    map.foldl4_values(record_type_repns_in_indirect_int_spec,
+    map.foldl4_values(record_type_repns_in_indirect_int3_spec,
         IndirectSpecMap,
         EqvRepnMap0, EqvRepnMap1,
         SubtypeMap0, SubtypeMap1,
@@ -686,39 +686,29 @@ item_type_repn_info_eqv_to_eqv_type_body(ItemTypeRepnInfoEqv, EqvBody) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred record_type_repns_in_direct_int_spec(direct_int_spec::in,
+:- pred record_type_repns_in_direct_int3_spec(direct_int3_spec::in,
     eqv_repn_map::in, eqv_repn_map::out,
     subtype_repn_map::in, subtype_repn_map::out,
     simple_du_map::in, simple_du_map::out,
     word_aligned_type_ctors_c::in, word_aligned_type_ctors_c::out) is det.
 
-record_type_repns_in_direct_int_spec(DirectIntSpec,
+record_type_repns_in_direct_int3_spec(DirectInt3Spec,
         !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC) :-
-    (
-        DirectIntSpec = direct_int1(_, _),
-        unexpected($pred, "direct_int1")
-    ;
-        DirectIntSpec = direct_int3(ParseTreeInt3, _ReadWhy3),
-        record_type_repns_in_parse_tree_int3(ParseTreeInt3,
-            !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC)
-    ).
+    DirectInt3Spec = direct_int3(ParseTreeInt3, _ReadWhy3),
+    record_type_repns_in_parse_tree_int3(ParseTreeInt3,
+        !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC).
 
-:- pred record_type_repns_in_indirect_int_spec(indirect_int_spec::in,
+:- pred record_type_repns_in_indirect_int3_spec(indirect_int3_spec::in,
     eqv_repn_map::in, eqv_repn_map::out,
     subtype_repn_map::in, subtype_repn_map::out,
     simple_du_map::in, simple_du_map::out,
     word_aligned_type_ctors_c::in, word_aligned_type_ctors_c::out) is det.
 
-record_type_repns_in_indirect_int_spec(IndirectIntSpec,
+record_type_repns_in_indirect_int3_spec(IndirectInt3Spec,
         !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC) :-
-    (
-        IndirectIntSpec = indirect_int2(_, _),
-        unexpected($pred, "direct_int2")
-    ;
-        IndirectIntSpec = indirect_int3(ParseTreeInt3, _ReadWhy3),
-        record_type_repns_in_parse_tree_int3(ParseTreeInt3,
-            !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC)
-    ).
+    IndirectInt3Spec = indirect_int3(ParseTreeInt3, _ReadWhy3),
+    record_type_repns_in_parse_tree_int3(ParseTreeInt3,
+        !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC).
 
 :- pred record_type_repns_in_parse_tree_int3(parse_tree_int3::in,
     eqv_repn_map::in, eqv_repn_map::out,

@@ -141,7 +141,7 @@ separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
         TypeRepnMap, ForeignEnums, ForeignExportEnums,
         PragmasDecl, PragmasImpl, PragmasGen, Clauses, IntBadPreds) :-
     AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
-        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        AncestorIntSpecs, DirectInt1Specs, IndirectInt2Specs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
         _ModuleVersionNumbers),
     % We start with an empty cord for each kind of item.
@@ -165,8 +165,8 @@ separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
             cord.init, cord.init, cord.init, []),
         acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc),
         map.foldl_values(acc_ancestor_int_spec, AncestorIntSpecs, !Acc),
-        map.foldl_values(acc_direct_int_spec, DirectIntSpecs, !Acc),
-        map.foldl_values(acc_indirect_int_spec, IndirectIntSpecs, !Acc),
+        map.foldl_values(acc_direct_int1_spec, DirectInt1Specs, !Acc),
+        map.foldl_values(acc_indirect_int2_spec, IndirectInt2Specs, !Acc),
         map.foldl_values(acc_parse_tree_plain_opt, PlainOpts, !Acc),
         map.foldl_values(acc_parse_tree_trans_opt, TransOpts, !Acc),
         map.foldl_values(acc_int_for_opt_spec, IntForOptSpecs, !Acc),
@@ -266,29 +266,19 @@ acc_ancestor_int_spec(AncestorIntSpec, !Acc) :-
     AncestorIntSpec = ancestor_int0(ParseTreeInt0, ReadWhy0),
     acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc).
 
-:- pred acc_direct_int_spec(direct_int_spec::in,
+:- pred acc_direct_int1_spec(direct_int1_spec::in,
     item_accumulator::in, item_accumulator::out) is det.
 
-acc_direct_int_spec(DirectIntSpec, !Acc) :-
-    (
-        DirectIntSpec = direct_int1(ParseTreeInt1, ReadWhy1),
-        acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc)
-    ;
-        DirectIntSpec = direct_int3(ParseTreeInt3, ReadWhy3),
-        acc_parse_tree_int3(ParseTreeInt3, ReadWhy3, !Acc)
-    ).
+acc_direct_int1_spec(DirectInt1Spec, !Acc) :-
+    DirectInt1Spec = direct_int1(ParseTreeInt1, ReadWhy1),
+    acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc).
 
-:- pred acc_indirect_int_spec(indirect_int_spec::in,
+:- pred acc_indirect_int2_spec(indirect_int2_spec::in,
     item_accumulator::in, item_accumulator::out) is det.
 
-acc_indirect_int_spec(IndirectIntSpec, !Acc) :-
-    (
-        IndirectIntSpec = indirect_int2(ParseTreeInt2, ReadWhy2),
-        acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc)
-    ;
-        IndirectIntSpec = indirect_int3(ParseTreeInt3, ReadWhy3),
-        acc_parse_tree_int3(ParseTreeInt3, ReadWhy3, !Acc)
-    ).
+acc_indirect_int2_spec(IndirectInt2Spec, !Acc) :-
+    IndirectInt2Spec = indirect_int2(ParseTreeInt2, ReadWhy2),
+    acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc).
 
 :- pred acc_int_for_opt_spec(int_for_opt_spec::in,
     item_accumulator::in, item_accumulator::out) is det.
@@ -822,115 +812,6 @@ acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc) :-
 
     !Acc ^ ia_avails := AccAvails,
     !Acc ^ ia_fims := AccFIMs,
-    !Acc ^ ia_type_defns_abs := AccTypeDefnsAbs,
-    !Acc ^ ia_type_defns_mer := AccTypeDefnsMer,
-    !Acc ^ ia_type_defns_for := AccTypeDefnsFor,
-    !Acc ^ ia_inst_defns := AccInstDefns,
-    !Acc ^ ia_mode_defns := AccModeDefns,
-    !Acc ^ ia_typeclasses := AccTypeClasses,
-    !Acc ^ ia_instances := AccInstances,
-    !Acc ^ ia_type_repns := AccTypeRepns.
-
-%---------------------%
-
-:- pred acc_parse_tree_int3(parse_tree_int3::in,
-    read_why_int3::in, item_accumulator::in, item_accumulator::out) is det.
-
-acc_parse_tree_int3(ParseTreeInt3, ReadWhy3, !Acc) :-
-    (
-        ReadWhy3 = rwi3_direct_ancestor_import,
-        IntImportLocn = import_locn_import_by_ancestor,
-        IntNeedQual = may_be_unqualified
-    ;
-        ReadWhy3 = rwi3_direct_int_import,
-        IntImportLocn = import_locn_interface,
-        IntNeedQual = may_be_unqualified
-    ;
-        ReadWhy3 = rwi3_direct_imp_import,
-        IntImportLocn = import_locn_implementation,
-        IntNeedQual = may_be_unqualified
-    ;
-        ReadWhy3 = rwi3_direct_ancestor_use,
-        IntImportLocn = import_locn_import_by_ancestor,
-        IntNeedQual = must_be_qualified
-    ;
-        ReadWhy3 = rwi3_direct_int_use,
-        IntImportLocn = import_locn_interface,
-        IntNeedQual = must_be_qualified
-    ;
-        ReadWhy3 = rwi3_direct_imp_use,
-        IntImportLocn = import_locn_implementation,
-        IntNeedQual = must_be_qualified
-    ;
-        ReadWhy3 = rwi3_direct_int_use_imp_import,
-        IntImportLocn = import_locn_interface,
-        IntNeedQual = may_be_unqualified
-        % XXX ITEM_LIST Either this should be something like
-        % must_be_qualified_in_interface, or the job of IntNeedQual should
-        % be split into, with IntNeedQualInInterface = must_be_qualified,
-        % and IntNeedQualInImplementation = may_be_unqualified.
-    ;
-        ReadWhy3 = rwi3_indirect_int_use,
-        IntImportLocn = import_locn_interface,
-        IntNeedQual = must_be_qualified
-        % XXX ITEM_LIST We should use only the subset of the items in this file
-        % that caused it to be indirectly imported.
-    ;
-        ReadWhy3 = rwi3_indirect_imp_use,
-        IntImportLocn = import_locn_implementation,
-        IntNeedQual = must_be_qualified
-        % XXX ITEM_LIST We should use only the subset of the items in this file
-        % that caused it to be indirectly imported.
-    ),
-    IntItemImport = item_import_int_concrete(IntImportLocn),
-    IntItemMercuryStatus = item_defined_in_other_module(IntItemImport),
-    IntSectionInfo = sec_info(IntItemMercuryStatus, IntNeedQual),
-
-    ParseTreeInt3 = parse_tree_int3(ModuleName, _ModuleNameContext,
-        _IntInclMap, _InclMap, _IntImportMap, ImportUseMap,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
-        IntTypeClasses, IntInstances, IntTypeRepnMap),
-
-    AccAvails0 = !.Acc ^ ia_avails,
-    AccTypeDefnsAbs0 = !.Acc ^ ia_type_defns_abs,
-    AccTypeDefnsMer0 = !.Acc ^ ia_type_defns_mer,
-    AccTypeDefnsFor0 = !.Acc ^ ia_type_defns_for,
-    AccInstDefns0 = !.Acc ^ ia_inst_defns,
-    AccModeDefns0 = !.Acc ^ ia_mode_defns,
-    AccTypeClasses0 = !.Acc ^ ia_typeclasses,
-    AccInstances0 = !.Acc ^ ia_instances,
-    AccTypeRepns0 = !.Acc ^ ia_type_repns,
-
-    import_and_or_use_map_to_item_avails(do_not_include_implicit,
-        ImportUseMap, IntAvails, ImpAvails),
-    expect(unify(ImpAvails, []), $pred, "ImpAvails != []"),
-    acc_ims_avails(IntItemMercuryStatus, IntAvails, AccAvails0, AccAvails),
-    % XXX IntTypeDefnMap has the different kind of type definitions
-    % already separated. However, taking advantage of that fact
-    % to optimize the separation would be unwise, since the *proper* fix
-    % is to merge IntTypeDefnMap into a single type_ctor_checked_map
-    % extended with section information.
-    TypeDefns = type_ctor_defn_map_to_type_defns(IntTypeDefnMap),
-    separate_type_defns_abs_mer_for(TypeDefns,
-        [], TypeDefnsAbs, [], TypeDefnsMer, [], TypeDefnsFor),
-    acc_sec_list(IntSectionInfo, TypeDefnsAbs,
-        AccTypeDefnsAbs0, AccTypeDefnsAbs),
-    acc_sec_list(IntSectionInfo, TypeDefnsMer,
-        AccTypeDefnsMer0, AccTypeDefnsMer),
-    acc_sec_list(IntSectionInfo, TypeDefnsFor,
-        AccTypeDefnsFor0, AccTypeDefnsFor),
-    InstDefns = inst_ctor_defn_map_to_inst_defns(IntInstDefnMap),
-    acc_ims_list(IntItemMercuryStatus, InstDefns, AccInstDefns0, AccInstDefns),
-    ModeDefns = mode_ctor_defn_map_to_mode_defns(IntModeDefnMap),
-    acc_ims_list(IntItemMercuryStatus, ModeDefns, AccModeDefns0, AccModeDefns),
-    acc_sec_list(IntSectionInfo, IntTypeClasses,
-        AccTypeClasses0, AccTypeClasses),
-    acc_ims_list(IntItemMercuryStatus, IntInstances,
-        AccInstances0, AccInstances),
-    AccTypeRepns = [ModuleName - int_type_ctor_repns(ifk_int3, IntTypeRepnMap)
-        | AccTypeRepns0],
-
-    !Acc ^ ia_avails := AccAvails,
     !Acc ^ ia_type_defns_abs := AccTypeDefnsAbs,
     !Acc ^ ia_type_defns_mer := AccTypeDefnsMer,
     !Acc ^ ia_type_defns_for := AccTypeDefnsFor,

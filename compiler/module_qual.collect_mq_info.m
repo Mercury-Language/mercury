@@ -45,10 +45,15 @@
     mq_info::in, mq_info::out) is det.
 :- pred collect_mq_info_in_ancestor_int_spec(ancestor_int_spec::in,
     mq_info::in, mq_info::out) is det.
-:- pred collect_mq_info_in_direct_int_spec(direct_int_spec::in,
+:- pred collect_mq_info_in_direct_int1_spec(direct_int1_spec::in,
     mq_info::in, mq_info::out) is det.
-:- pred collect_mq_info_in_parse_tree_int3(int3_role::in, parse_tree_int3::in,
+:- pred collect_mq_info_in_direct_int3_spec(direct_int3_spec::in,
     mq_info::in, mq_info::out) is det.
+
+:- pred collect_mq_info_in_parse_tree_int0(read_why_int0::in,
+    parse_tree_int0::in, mq_info::in, mq_info::out) is det.
+:- pred collect_mq_info_in_parse_tree_int3(int3_role::in,
+    parse_tree_int3::in, mq_info::in, mq_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -234,24 +239,20 @@ collect_mq_info_in_src_avail_map_entry(Section, ModuleName, Contexts,
 
 collect_mq_info_in_ancestor_int_spec(AncestorIntSpec, !Info) :-
     AncestorIntSpec = ancestor_int0(ParseTreeInt0, ReadWhy0),
-    collect_mq_info_in_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Info).
+    collect_mq_info_in_parse_tree_int0(ReadWhy0, ParseTreeInt0, !Info).
 
-collect_mq_info_in_direct_int_spec(DirectIntSpec, !Info) :-
-    (
-        DirectIntSpec = direct_int1(ParseTreeInt1, ReadWhy1),
-        collect_mq_info_in_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Info)
-    ;
-        DirectIntSpec = direct_int3(ParseTreeInt3, ReadWhy3),
-        collect_mq_info_in_parse_tree_int3(int3_as_direct_int(ReadWhy3),
-            ParseTreeInt3, !Info)
-    ).
+collect_mq_info_in_direct_int1_spec(DirectInt1Spec, !Info) :-
+    DirectInt1Spec = direct_int1(ParseTreeInt1, ReadWhy1),
+    collect_mq_info_in_parse_tree_int1(ReadWhy1, ParseTreeInt1, !Info).
+
+collect_mq_info_in_direct_int3_spec(DirectInt3Spec, !Info) :-
+    DirectInt3Spec = direct_int3(ParseTreeInt3, ReadWhy3),
+    Role = int3_as_direct_int(ReadWhy3),
+    collect_mq_info_in_parse_tree_int3(Role, ParseTreeInt3, !Info).
 
 %---------------------------------------------------------------------------%
 
-:- pred collect_mq_info_in_parse_tree_int0(parse_tree_int0::in,
-    read_why_int0::in, mq_info::in, mq_info::out) is det.
-
-collect_mq_info_in_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Info) :-
+collect_mq_info_in_parse_tree_int0(ReadWhy0, ParseTreeInt0, !Info) :-
     trace [compile_time(flag("debug_collect_mq_info")), io(!IO)] (
         get_mq_debug_output_stream(!.Info, DebugStream, !IO),
         io.format(DebugStream, "collect_mq_info_in_parse_tree_int0: %s ",
@@ -341,10 +342,10 @@ collect_mq_info_in_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred collect_mq_info_in_parse_tree_int1(parse_tree_int1::in,
-    read_why_int1::in, mq_info::in, mq_info::out) is det.
+:- pred collect_mq_info_in_parse_tree_int1(read_why_int1::in,
+    parse_tree_int1::in, mq_info::in, mq_info::out) is det.
 
-collect_mq_info_in_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Info) :-
+collect_mq_info_in_parse_tree_int1(ReadWhy1, ParseTreeInt1, !Info) :-
     trace [compile_time(flag("debug_collect_mq_info")), io(!IO)] (
         get_mq_debug_output_stream(!.Info, DebugStream, !IO),
         io.format(DebugStream, "collect_mq_info_in_parse_tree_int1: %s ",

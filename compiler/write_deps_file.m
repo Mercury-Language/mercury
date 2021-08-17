@@ -281,7 +281,7 @@ generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
     (
         IntermodDeps = no_intermod_deps,
         map.keys_as_set(ParseTreeModuleSrc ^ ptms_import_use_map, LongDeps0),
-        IndirectIntSpecs = AugCompUnit ^ acu_indirect_int_specs,
+        IndirectIntSpecs = AugCompUnit ^ acu_indirect_int2_specs,
         map.keys_as_set(IndirectIntSpecs, IndirectDeps)
     ;
         IntermodDeps = intermod_deps(IntDeps, ImpDeps, IndirectDeps, _FIMDeps),
@@ -846,7 +846,7 @@ construct_foreign_import_rules(Globals, AugCompUnit, IntermodDeps,
         SourceFileModuleName, ObjFileName, PicObjFileName,
         MmakeRulesForeignImports, !IO) :-
     AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
-        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        AncestorIntSpecs, DirectInt1Specs, IndirectInt2Specs,
         PlainOpts, _TransOpts, IntForOptSpecs, _TypeRepnSpecs,
         _ModuleVersionNumber),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
@@ -858,10 +858,10 @@ construct_foreign_import_rules(Globals, AugCompUnit, IntermodDeps,
             get_fim_specs(ParseTreeModuleSrc, !:FIMSpecs),
             map.foldl_values(gather_fim_specs_in_ancestor_int_spec,
                 AncestorIntSpecs, !FIMSpecs),
-            map.foldl_values(gather_fim_specs_in_direct_int_spec,
-                DirectIntSpecs, !FIMSpecs),
-            map.foldl_values(gather_fim_specs_in_indirect_int_spec,
-                IndirectIntSpecs, !FIMSpecs),
+            map.foldl_values(gather_fim_specs_in_direct_int1_spec,
+                DirectInt1Specs, !FIMSpecs),
+            map.foldl_values(gather_fim_specs_in_indirect_int2_spec,
+                IndirectInt2Specs, !FIMSpecs),
             map.foldl_values(gather_fim_specs_in_parse_tree_plain_opt,
                 PlainOpts, !FIMSpecs),
             % .trans_opt files cannot contain FIMs.
@@ -1083,29 +1083,19 @@ gather_fim_specs_in_ancestor_int_spec(AncestorIntSpec, !FIMSpecs) :-
     AncestorIntSpec = ancestor_int0(ParseTreeInt0, _ReadWhy0),
     gather_fim_specs_in_parse_tree_int0(ParseTreeInt0, !FIMSpecs).
 
-:- pred gather_fim_specs_in_direct_int_spec(direct_int_spec::in,
+:- pred gather_fim_specs_in_direct_int1_spec(direct_int1_spec::in,
     set(fim_spec)::in, set(fim_spec)::out) is det.
 
-gather_fim_specs_in_direct_int_spec(DirectIntSpec, !FIMSpecs) :-
-    (
-        DirectIntSpec = direct_int1(ParseTreeInt1, _ReadWhy1),
-        gather_fim_specs_in_parse_tree_int1(ParseTreeInt1, !FIMSpecs)
-    ;
-        DirectIntSpec = direct_int3(_ParseTreeInt3, _ReadWhy3)
-        % .int3 files cannot contain FIMs.
-    ).
+gather_fim_specs_in_direct_int1_spec(DirectInt1Spec, !FIMSpecs) :-
+    DirectInt1Spec = direct_int1(ParseTreeInt1, _ReadWhy1),
+    gather_fim_specs_in_parse_tree_int1(ParseTreeInt1, !FIMSpecs).
 
-:- pred gather_fim_specs_in_indirect_int_spec(indirect_int_spec::in,
+:- pred gather_fim_specs_in_indirect_int2_spec(indirect_int2_spec::in,
     set(fim_spec)::in, set(fim_spec)::out) is det.
 
-gather_fim_specs_in_indirect_int_spec(IndirectIntSpec, !FIMSpecs) :-
-    (
-        IndirectIntSpec = indirect_int2(ParseTreeInt2, _ReadWhy2),
-        gather_fim_specs_in_parse_tree_int2(ParseTreeInt2, !FIMSpecs)
-    ;
-        IndirectIntSpec = indirect_int3(_ParseTreeInt3, _ReadWhy3)
-        % .int3 files cannot contain FIMs.
-    ).
+gather_fim_specs_in_indirect_int2_spec(IndirectInt2Spec, !FIMSpecs) :-
+    IndirectInt2Spec = indirect_int2(ParseTreeInt2, _ReadWhy2),
+    gather_fim_specs_in_parse_tree_int2(ParseTreeInt2, !FIMSpecs).
 
 :- pred gather_fim_specs_in_int_for_opt_spec(int_for_opt_spec::in,
     set(fim_spec)::in, set(fim_spec)::out) is det.

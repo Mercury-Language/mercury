@@ -193,7 +193,7 @@
 expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
         TypeEqvMap, !:UsedModules, !RecompInfo, !:Specs) :-
     AugCompUnit0 = aug_compilation_unit(ParseTreeModuleSrc0,
-        AncestorIntSpecs0, DirectIntSpecs0, IndirectIntSpecs0,
+        AncestorIntSpecs0, DirectInt1Specs0, IndirectInt2Specs0,
         PlainOpts0, TransOpts0, IntForOptSpecs0, TypeRepnSpecs0,
         ModuleVersionNumbers),
     ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
@@ -207,10 +207,11 @@ expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
         map.foldl2_values(build_eqv_maps_in_ancestor_int_spec,
             AncestorIntSpecs0,
             !TypeEqvMap, !InstEqvMap),
-        map.foldl2_values(build_eqv_maps_in_direct_int_spec, DirectIntSpecs0,
+        map.foldl2_values(build_eqv_maps_in_direct_int1_spec,
+            DirectInt1Specs0,
             !TypeEqvMap, !InstEqvMap),
-        map.foldl2_values(build_eqv_maps_in_indirect_int_spec,
-            IndirectIntSpecs0,
+        map.foldl2_values(build_eqv_maps_in_indirect_int2_spec,
+            IndirectInt2Specs0,
             !TypeEqvMap, !InstEqvMap),
         map.foldl2_values(build_eqv_maps_in_parse_tree_plain_opt, PlainOpts0,
             !TypeEqvMap, !InstEqvMap),
@@ -235,11 +236,11 @@ expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
         AncestorIntSpecs0, AncestorIntSpecs,
         !RecompInfo, !UsedModules, !Specs),
     map.map_values_foldl3(
-        replace_in_direct_int_spec(ModuleName, TypeEqvMap, InstEqvMap),
-        DirectIntSpecs0, DirectIntSpecs, !RecompInfo, !UsedModules, !Specs),
+        replace_in_direct_int1_spec(ModuleName, TypeEqvMap, InstEqvMap),
+        DirectInt1Specs0, DirectInt1Specs, !RecompInfo, !UsedModules, !Specs),
     map.map_values_foldl3(
-        replace_in_indirect_int_spec(ModuleName, TypeEqvMap, InstEqvMap),
-        IndirectIntSpecs0, IndirectIntSpecs,
+        replace_in_indirect_int2_spec(ModuleName, TypeEqvMap, InstEqvMap),
+        IndirectInt2Specs0, IndirectInt2Specs,
         !RecompInfo, !UsedModules, !Specs),
     map.map_values_foldl3(
         replace_in_parse_tree_trans_opt(ModuleName, TypeEqvMap, InstEqvMap),
@@ -255,7 +256,7 @@ expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
     % but it may be worth while checking whether this is really so.
     TypeRepnSpecs = TypeRepnSpecs0,
     AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
-        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        AncestorIntSpecs, DirectInt1Specs, IndirectInt2Specs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
         ModuleVersionNumbers),
 
@@ -306,37 +307,25 @@ build_eqv_maps_in_ancestor_int_spec(AncestorIntSpec,
     build_eqv_maps_in_parse_tree_int0(ReadWhy0, ParseTreeInt0,
         !TypeEqvMap, !InstEqvMap).
 
-:- pred build_eqv_maps_in_direct_int_spec(direct_int_spec::in,
+:- pred build_eqv_maps_in_direct_int1_spec(direct_int1_spec::in,
     type_eqv_map::in, type_eqv_map::out,
     inst_eqv_map::in, inst_eqv_map::out) is det.
 
-build_eqv_maps_in_direct_int_spec(DirectIntSpec,
+build_eqv_maps_in_direct_int1_spec(DirectIntSpec,
         !TypeEqvMap, !InstEqvMap) :-
-    (
-        DirectIntSpec = direct_int1(ParseTreeInt1, ReadWhy1),
-        build_eqv_maps_in_parse_tree_int1(ReadWhy1, ParseTreeInt1,
-            !TypeEqvMap, !InstEqvMap)
-    ;
-        DirectIntSpec = direct_int3(ParseTreeInt3, ReadWhy3),
-        build_eqv_maps_in_parse_tree_int3(ReadWhy3, ParseTreeInt3,
-            !TypeEqvMap, !InstEqvMap)
-    ).
+    DirectIntSpec = direct_int1(ParseTreeInt1, ReadWhy1),
+    build_eqv_maps_in_parse_tree_int1(ReadWhy1, ParseTreeInt1,
+        !TypeEqvMap, !InstEqvMap).
 
-:- pred build_eqv_maps_in_indirect_int_spec(indirect_int_spec::in,
+:- pred build_eqv_maps_in_indirect_int2_spec(indirect_int2_spec::in,
     type_eqv_map::in, type_eqv_map::out,
     inst_eqv_map::in, inst_eqv_map::out) is det.
 
-build_eqv_maps_in_indirect_int_spec(IndirectIntSpec,
+build_eqv_maps_in_indirect_int2_spec(IndirectIntSpec,
         !TypeEqvMap, !InstEqvMap) :-
-    (
-        IndirectIntSpec = indirect_int2(ParseTreeInt2, ReadWhy2),
-        build_eqv_maps_in_parse_tree_int2(ReadWhy2, ParseTreeInt2,
-            !TypeEqvMap, !InstEqvMap)
-    ;
-        IndirectIntSpec = indirect_int3(ParseTreeInt3, ReadWhy3),
-        build_eqv_maps_in_parse_tree_int3(ReadWhy3, ParseTreeInt3,
-            !TypeEqvMap, !InstEqvMap)
-    ).
+    IndirectIntSpec = indirect_int2(ParseTreeInt2, ReadWhy2),
+    build_eqv_maps_in_parse_tree_int2(ReadWhy2, ParseTreeInt2,
+        !TypeEqvMap, !InstEqvMap).
 
 :- pred build_eqv_maps_in_int_for_opt_spec(int_for_opt_spec::in,
     type_eqv_map::in, type_eqv_map::out,
@@ -423,21 +412,6 @@ build_eqv_maps_in_parse_tree_int2(ReadWhy2, ParseTreeInt2,
         list.foldl(build_eqv_maps_in_inst_ctor_all_defns,
             map.values(ParseTreeInt2 ^ pti2_int_inst_defns), !InstEqvMap)
     ).
-
-:- pred build_eqv_maps_in_parse_tree_int3(read_why_int3::in,
-    parse_tree_int3::in,
-    type_eqv_map::in, type_eqv_map::out,
-    inst_eqv_map::in, inst_eqv_map::out) is det.
-
-build_eqv_maps_in_parse_tree_int3(_ReadWhy3, ParseTreeInt3,
-        !TypeEqvMap, !InstEqvMap) :-
-    % All possible values of _ReadWhy3 call for things in the interface section
-    % to be imported in a non-abstract form. There is no implementation
-    % section.
-    list.foldl(build_eqv_maps_in_type_ctor_all_defns,
-        map.values(ParseTreeInt3 ^ pti3_int_type_defns), !TypeEqvMap),
-    list.foldl(build_eqv_maps_in_inst_ctor_all_defns,
-        map.values(ParseTreeInt3 ^ pti3_int_inst_defns), !InstEqvMap).
 
 %---------------------%
 
@@ -643,48 +617,34 @@ replace_in_ancestor_int_spec(ModuleName, TypeEqvMap, InstEqvMap,
         OrigParseTree0, ParseTree0, !RecompInfo, !UsedModules, !Specs),
     AncestorIntSpec = ancestor_int0(ParseTree0, ReadWhy0).
 
-:- pred replace_in_direct_int_spec(module_name::in,
+:- pred replace_in_direct_int1_spec(module_name::in,
     type_eqv_map::in, inst_eqv_map::in,
-    direct_int_spec::in, direct_int_spec::out,
+    direct_int1_spec::in, direct_int1_spec::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_modules::in, used_modules::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-replace_in_direct_int_spec(ModuleName, TypeEqvMap, InstEqvMap,
+replace_in_direct_int1_spec(ModuleName, TypeEqvMap, InstEqvMap,
         DirectIntSpec0, DirectIntSpec, !RecompInfo, !UsedModules, !Specs) :-
-    (
-        DirectIntSpec0 = direct_int1(OrigParseTree1, ReadWhy1),
-        replace_in_parse_tree_int1(ModuleName, TypeEqvMap, InstEqvMap,
-            OrigParseTree1, ParseTree1, !RecompInfo, !UsedModules, !Specs),
-        DirectIntSpec = direct_int1(ParseTree1, ReadWhy1)
-    ;
-        DirectIntSpec0 = direct_int3(OrigParseTree3, ReadWhy3),
-        replace_in_parse_tree_int3(ModuleName, TypeEqvMap, InstEqvMap,
-            OrigParseTree3, ParseTree3, !RecompInfo, !UsedModules, !Specs),
-        DirectIntSpec = direct_int3(ParseTree3, ReadWhy3)
-    ).
+    DirectIntSpec0 = direct_int1(OrigParseTree1, ReadWhy1),
+    replace_in_parse_tree_int1(ModuleName, TypeEqvMap, InstEqvMap,
+        OrigParseTree1, ParseTree1, !RecompInfo, !UsedModules, !Specs),
+    DirectIntSpec = direct_int1(ParseTree1, ReadWhy1).
 
-:- pred replace_in_indirect_int_spec(module_name::in,
+:- pred replace_in_indirect_int2_spec(module_name::in,
     type_eqv_map::in, inst_eqv_map::in,
-    indirect_int_spec::in, indirect_int_spec::out,
+    indirect_int2_spec::in, indirect_int2_spec::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_modules::in, used_modules::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-replace_in_indirect_int_spec(ModuleName, TypeEqvMap, InstEqvMap,
+replace_in_indirect_int2_spec(ModuleName, TypeEqvMap, InstEqvMap,
         IndirectIntSpec0, IndirectIntSpec,
         !RecompInfo, !UsedModules, !Specs) :-
-    (
-        IndirectIntSpec0 = indirect_int2(OrigParseTree2, ReadWhy2),
-        replace_in_parse_tree_int2(ModuleName, TypeEqvMap, InstEqvMap,
-            OrigParseTree2, ParseTree2, !RecompInfo, !UsedModules, !Specs),
-        IndirectIntSpec = indirect_int2(ParseTree2, ReadWhy2)
-    ;
-        IndirectIntSpec0 = indirect_int3(OrigParseTree3, ReadWhy3),
-        replace_in_parse_tree_int3(ModuleName, TypeEqvMap, InstEqvMap,
-            OrigParseTree3, ParseTree3, !RecompInfo, !UsedModules, !Specs),
-        IndirectIntSpec = indirect_int3(ParseTree3, ReadWhy3)
-    ).
+    IndirectIntSpec0 = indirect_int2(OrigParseTree2, ReadWhy2),
+    replace_in_parse_tree_int2(ModuleName, TypeEqvMap, InstEqvMap,
+        OrigParseTree2, ParseTree2, !RecompInfo, !UsedModules, !Specs),
+    IndirectIntSpec = indirect_int2(ParseTree2, ReadWhy2).
 
 :- pred replace_in_int_for_opt_spec(module_name::in,
     type_eqv_map::in, inst_eqv_map::in,
@@ -901,44 +861,6 @@ replace_in_parse_tree_int2(ModuleName, TypeEqvMap, InstEqvMap,
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap,
         ImpTypeDefnMap).
-
-:- pred replace_in_parse_tree_int3(module_name::in,
-    type_eqv_map::in, inst_eqv_map::in,
-    parse_tree_int3::in, parse_tree_int3::out,
-    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_modules::in, used_modules::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-replace_in_parse_tree_int3(ModuleName, TypeEqvMap, InstEqvMap,
-        OrigParseTreeInt3, ParseTreeInt3, !RecompInfo, !UsedModules, !Specs) :-
-    MaybeRecord = dont_record_sym_name_use,
-    OrigParseTreeInt3 = parse_tree_int3(IntModuleName, IntModuleNameContext,
-        IntInclMap, InclMap, IntImportMap, ImportUseMap,
-        IntTypeDefnMap0, IntInstDefnMap0, IntModeDefnMap0,
-        IntTypeClasses0, IntInstances0, IntTypeRepnMap0),
-
-    map.map_values_foldl3(
-        replace_in_type_ctor_all_defns(ModuleName, MaybeRecord,
-            TypeEqvMap, InstEqvMap),
-        IntTypeDefnMap0, IntTypeDefnMap,
-        !RecompInfo, !UsedModules, !Specs),
-    IntInstDefnMap = IntInstDefnMap0, % XXX See the comment at module top.
-    IntModeDefnMap = IntModeDefnMap0, % XXX See the comment at module top.
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        replace_in_typeclass_info, IntTypeClasses0, IntTypeClasses,
-        !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        replace_in_instance_info, IntInstances0, IntInstances,
-        !RecompInfo, !UsedModules, !Specs),
-    map.map_values_foldl3(
-        replace_in_type_repn_info(ModuleName, MaybeRecord, TypeEqvMap),
-        IntTypeRepnMap0, IntTypeRepnMap,
-        !RecompInfo, !UsedModules, !Specs),
-
-    ParseTreeInt3 = parse_tree_int3(IntModuleName, IntModuleNameContext,
-        IntInclMap, InclMap, IntImportMap, ImportUseMap,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
-        IntTypeClasses, IntInstances, IntTypeRepnMap).
 
 :- pred replace_in_parse_tree_plain_opt(module_name::in,
     type_eqv_map::in, inst_eqv_map::in,
