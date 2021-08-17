@@ -19,8 +19,6 @@
 
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
 
@@ -100,25 +98,12 @@
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-%
-% XXX ITEM_LIST
-% The predicates in rest of the interface should not be needed at all.
-%
-
-    % This predicate is exported for use by modules.m.
-    %
-    % XXX ITEM_LIST When the predicate above is deleted, this function
-    % should not be needed in this module anymore either, and so it should be
-    % moved elsewhere.
-    %
-:- func make_foreign_import(module_name, foreign_language) = item_fim.
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module libs.options.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.check_parse_tree_type_defns.
 :- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.decide_type_repn.
@@ -2464,13 +2449,6 @@ make_typeclass_abstract(TypeClass) =
 
 make_instance_abstract(Instance) =
     Instance ^ ci_method_instances := instance_body_abstract.
-
-%---------------------------------------------------------------------------%
-% The rest of this module should not be needed.
-%---------------------------------------------------------------------------%
-
-make_foreign_import(ModuleName, Lang) = FIM :-
-    FIM = item_fim(Lang, ModuleName, term.context_init, item_no_seq_num).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.comp_unit_interface.
