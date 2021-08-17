@@ -289,8 +289,9 @@
 
                 % The set of foreign languages for which this module
                 % should have implicit foreign_import_module declaration
-                % for itself.
-                ptms_implicit_fim_langs     :: set(foreign_language),
+                % for itself, in the interface and implementation respectively.
+                ptms_int_self_fim_langs     :: set(foreign_language),
+                ptms_imp_self_fim_langs     :: set(foreign_language),
 
                 % XXX The type, inst and mode definitions should be in
                 % {type,inst,mode}_ctor_defn_maps. We already have code
@@ -2792,7 +2793,7 @@ init_empty_parse_tree_module_src(ModuleName, ModuleNameContext) =
     parse_tree_module_src(ModuleName, ModuleNameContext,
         map.init, map.init, map.init,
         map.init, map.init, map.init, map.init, map.init,
-        map.init, map.init, set.init,
+        map.init, map.init, set.init, set.init,
         [], [], [], [], [], [], [], [], [], [], [], set.init,
         [], [], [], [], [], [], [], [], [], [], [], [],
         [], [], [], [], [], []

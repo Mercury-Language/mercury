@@ -332,7 +332,7 @@ acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc) :-
     ParseTreeModuleSrc = parse_tree_module_src(_ModuleName, _ModuleNameContext,
         _IntInclMap, _ImpInclMap, InclMap,
         _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, ImportUseMap,
-        IntFIMSpecMap, ImpFIMSpecMap, _MaybeImplicitFIMLangs,
+        IntFIMSpecMap, ImpFIMSpecMap, _IntSelfFIMLangs, _ImpSelfFIMLangs,
 
         IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsFor,
         IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,

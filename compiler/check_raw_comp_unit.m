@@ -61,7 +61,7 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs) :-
         ParseTreeModuleSrc = parse_tree_module_src(ModuleName,
             ModuleNameContext, IntIncls, _ImpIncls, _InclMap,
             _IntImports, _IntUses, _ImpImports, _ImpUses, _ImportUseMap,
-            _IntFIMs, _ImpFIMs, _ImplicitFIMLangs,
+            _IntFIMs, _ImpFIMs, _IntSelfFIMLangs, _ImpSelfFIMLangs,
             IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsFor,
             IntInstDefns, IntModeDefns,
             IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,

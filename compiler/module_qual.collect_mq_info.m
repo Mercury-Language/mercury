@@ -135,7 +135,7 @@ collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc, !Info) :-
     ParseTreeModuleSrc = parse_tree_module_src(_ModuleName, _ModuleNameContext,
         _IntInclMap, _ImpInclMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, _ImportUseMap,
-        _IntFIMSpecMap, _ImpFIMSpecMap, _MaybeImplicitFIMLangs,
+        _IntFIMSpecMap, _ImpFIMSpecMap, _IntSelfFIMLangs, _ImpSelfFIMLangs,
 
         IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
         IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,

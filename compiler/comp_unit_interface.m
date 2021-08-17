@@ -150,7 +150,7 @@ generate_short_interface_int3(Globals, ParseTreeModuleSrc, ParseTreeInt3,
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         _IntIncls0, _ImpIncls, OrigInclMap,
         _IntImports, _IntUses, _ImpImports, _ImpUses, OrigImportUseMap,
-        _IntFIMs, _ImpFIMs, _ImplicitFIMLangs,
+        _IntFIMSpecMap, _ImpFIMSpecMap, _IntSelfFIMLangs, _ImpSelfFIMLangs,
 
         OrigIntTypeDefnsAbs, OrigIntTypeDefnsMer, OrigIntTypeDefnsFor,
         OrigIntInstDefns, OrigIntModeDefns,
@@ -341,7 +341,7 @@ generate_private_interface_int0(AugCompUnit, ParseTreeInt0, !Specs) :-
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         IntInclMap, ImpInclMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
-        IntFIMSpecMap, ImpFIMSpecMap, SelfFIMLangs,
+        IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
         IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances0,
@@ -357,18 +357,16 @@ generate_private_interface_int0(AugCompUnit, ParseTreeInt0, !Specs) :-
 
     map.keys_as_set(IntFIMSpecMap, IntFIMSpecs0),
     map.keys_as_set(ImpFIMSpecMap, ImpFIMSpecs0),
-    % Add implicit self FIMs for the SelfFIMLangs to the interface.
-    % XXX In grab_qual_imported_modules_augment, we add them to the
-    % *implementation* section.
-    % XXX Should we have two sets of implicit self FIM languages,
-    % those whose self FIMs are to be added to the interface section, and
-    % those whose self FIMs are to be added to the implementation section,
-    % based on the section of the itme that needs the self FIM?
+    % Add implicit self FIMs for the {Int,Imp}SelfFIMLangs
+    % to their respective sections.
     set.union(
-        set.map(fim_module_lang_to_spec(ModuleName), SelfFIMLangs),
+        set.map(fim_module_lang_to_spec(ModuleName), IntSelfFIMLangs),
         IntFIMSpecs0, IntFIMSpecs),
+    set.union(
+        set.map(fim_module_lang_to_spec(ModuleName), ImpSelfFIMLangs),
+        ImpFIMSpecs0, ImpFIMSpecs1),
     % Make the implementation FIMs disjoint from the interface FIMs.
-    set.difference(ImpFIMSpecs0, IntFIMSpecs, ImpFIMSpecs),
+    set.difference(ImpFIMSpecs1, IntFIMSpecs, ImpFIMSpecs),
 
     IntInstances = list.map(make_instance_abstract, IntInstances0),
     ImpInstances = list.map(make_instance_abstract, ImpInstances0),
@@ -408,7 +406,7 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName,
         ModuleNameContext, IntInclMap, ImpInclMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
-        IntFIMSpecMap, ImpFIMSpecMap, MaybeImplicitFIMLangs,
+        IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsFor,
         IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
@@ -434,7 +432,7 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
     IntParseTreeModuleSrc = parse_tree_module_src(ModuleName,
         ModuleNameContext, IntInclMap, ImpInclMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
-        IntFIMSpecMap, ImpFIMSpecMap, MaybeImplicitFIMLangs,
+        IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsFor,
         IntInstDefns, IntModeDefns, IntTypeClasses, IntInstancesAbstract,
@@ -480,7 +478,7 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         IntInclMap, ImpInclMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap0,
-        IntFIMSpecMap, ImpFIMSpecMap, SelfFIMLangs,
+        IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, _IntSelfFIMLangs,
 
         IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
         IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
@@ -513,8 +511,7 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
         IntTypeDefnsAbs ++ IntTypeDefnsMer ++ IntTypeDefnsForeign,
     OrigImpTypeDefns =
         ImpTypeDefnsAbs ++ ImpTypeDefnsMer ++ ImpTypeDefnsForeign,
-    list.foldl2(record_type_defn_int, IntTypeDefns,
-        set.init, IntImplicitFIMLangs,
+    list.foldl(record_type_defn_int, IntTypeDefns,
         one_or_more_map.init, IntTypesMap),
     list.foldl(record_type_defn_imp, OrigImpTypeDefns,
         one_or_more_map.init, ImpTypesMap),
@@ -523,8 +520,19 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
 
     list.foldl(record_modules_needed_by_typeclass_imp, ImpTypeClasses,
         set.init, ImpModulesNeededByTypeClassDefns),
+    % Note that _ImpSelfFIMLangs above contains the set of foreign languages
+    % for which an implicit self FIM is needed by anything in the
+    % implementation section of the *source file*. We are now starting to
+    % compute the set of foreign languages for which an implicit self FIM
+    % is needed by anything in the implementation section *of the interface
+    % file we are constructing*, which will be a *subset* of _ImpSelfFIMLangs.
+    % XXX Using _ImpSelfFIMLangs from ParseTreeModuleSrc instead of the value
+    % of ImpSelfFIMLangs we compute here and below would therefore be
+    % an overapproximation, but I (zs) don't think the cost in code complexity
+    % of avoiding this overapproximation is worth the negligible benefits
+    % it gets us.
     list.foldl(record_implicit_fim_lang_for_foreign_enum_imp, ImpForeignEnums0,
-        set.init, ImpImplicitFIMLangs1),
+        set.init, ImpSelfFIMLangs1),
 
     BothTypesMap = one_or_more_map.merge(IntTypesMap, ImpTypesMap),
     % Compute the set of type_ctors whose definitions in the implementation
@@ -585,7 +593,7 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
         maybe_add_maybe_abstract_type_defns(BothTypesMap, IntTypesMap,
             NeededImpTypeCtors),
         ImpTypesMap, [], ImpTypeDefns,
-        ImpImplicitFIMLangs1, ImpImplicitFIMLangs2),
+        ImpSelfFIMLangs1, ImpSelfFIMLangs2),
 
     % Figure out which of the foreign enum items we deleted from ImpItems0
     % we want to add back to the implementation section.
@@ -593,16 +601,15 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
     % foreign_import_module items.
     list.foldl2(add_foreign_enum_item_if_needed(IntTypesMap),
         ImpForeignEnums0, [], ImpForeignEnums,
-        ImpImplicitFIMLangs2, ImpImplicitFIMLangs),
+        ImpSelfFIMLangs2, ImpSelfFIMLangs),
 
     % XXX Find out and document the relationship between SelfFIMLangs
     % and the value of IntImplicitFIMLangs computed just above.
     % I (zs) strongly suspect that one of these is a subset of the other,
     % and therefore redundant.
-    set.foldl(add_self_fim(ModuleName),
-        set.union(IntImplicitFIMLangs, SelfFIMLangs),
+    set.foldl(add_self_fim(ModuleName), IntSelfFIMLangs,
         IntExplicitFIMSpecs, IntFIMSpecs),
-    set.foldl(add_self_fim(ModuleName), ImpImplicitFIMLangs,
+    set.foldl(add_self_fim(ModuleName), ImpSelfFIMLangs,
         ImpExplicitFIMSpecs, ImpFIMSpecs0),
     set.difference(ImpFIMSpecs0, IntFIMSpecs, ImpFIMSpecs),
 
@@ -712,24 +719,11 @@ make_imports_into_uses(ImpNeededModules, ModuleName, Explicit0, Explicit) :-
 :- type type_defn_pair == pair(type_ctor, item_type_defn_info).
 
 :- pred record_type_defn_int(item_type_defn_info::in,
-    set(foreign_language)::in, set(foreign_language)::out,
     type_defn_map::in, type_defn_map::out) is det.
 
-record_type_defn_int(ItemTypeDefn, !IntImplicitFIMLangs, !IntTypesMap) :-
-    ItemTypeDefn = item_type_defn_info(Name, TypeParams, TypeDefn, _, _, _),
+record_type_defn_int(ItemTypeDefn, !IntTypesMap) :-
+    ItemTypeDefn = item_type_defn_info(Name, TypeParams, _, _, _, _),
     TypeCtor = type_ctor(Name, list.length(TypeParams)),
-    (
-        TypeDefn = parse_tree_foreign_type(DetailsForeign),
-        DetailsForeign = type_details_foreign(ForeignType, _, _),
-        Lang = foreign_type_language(ForeignType),
-        set.insert(Lang, !IntImplicitFIMLangs)
-    ;
-        ( TypeDefn = parse_tree_abstract_type(_)
-        ; TypeDefn = parse_tree_du_type(_)
-        ; TypeDefn = parse_tree_eqv_type(_)
-        ; TypeDefn = parse_tree_solver_type(_)
-        )
-    ),
     one_or_more_map.add(TypeCtor, ItemTypeDefn, !IntTypesMap).
 
 :- pred record_type_defn_imp(item_type_defn_info::in,
