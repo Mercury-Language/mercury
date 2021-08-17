@@ -503,9 +503,6 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
     % modules that we need access to due to references in typeclass
     % definition items.
 
-    map.keys_as_set(IntFIMSpecMap, IntExplicitFIMSpecs),
-    map.keys_as_set(ImpFIMSpecMap, ImpExplicitFIMSpecs),
-
     % XXX CLEANUP This code does many unneeded tests.
     IntTypeDefns =
         IntTypeDefnsAbs ++ IntTypeDefnsMer ++ IntTypeDefnsForeign,
@@ -515,24 +512,6 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
         one_or_more_map.init, IntTypesMap),
     list.foldl(record_type_defn_imp, OrigImpTypeDefns,
         one_or_more_map.init, ImpTypesMap),
-
-    list.filter(keep_promise_item_int, IntPromises0, IntPromises),
-
-    list.foldl(record_modules_needed_by_typeclass_imp, ImpTypeClasses,
-        set.init, ImpModulesNeededByTypeClassDefns),
-    % Note that _ImpSelfFIMLangs above contains the set of foreign languages
-    % for which an implicit self FIM is needed by anything in the
-    % implementation section of the *source file*. We are now starting to
-    % compute the set of foreign languages for which an implicit self FIM
-    % is needed by anything in the implementation section *of the interface
-    % file we are constructing*, which will be a *subset* of _ImpSelfFIMLangs.
-    % XXX Using _ImpSelfFIMLangs from ParseTreeModuleSrc instead of the value
-    % of ImpSelfFIMLangs we compute here and below would therefore be
-    % an overapproximation, but I (zs) don't think the cost in code complexity
-    % of avoiding this overapproximation is worth the negligible benefits
-    % it gets us.
-    list.foldl(record_implicit_fim_lang_for_foreign_enum_imp, ImpForeignEnums0,
-        set.init, ImpSelfFIMLangs1),
 
     BothTypesMap = one_or_more_map.merge(IntTypesMap, ImpTypesMap),
     % Compute the set of type_ctors whose definitions in the implementation
@@ -545,6 +524,8 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
     % section.
     get_requirements_of_imp_exported_types(IntTypesMap, ImpTypesMap,
         BothTypesMap, NeededImpTypeCtors, ImpModulesNeededByTypeDefns),
+    list.foldl(record_modules_needed_by_typeclass_imp, ImpTypeClasses,
+        set.init, ImpModulesNeededByTypeClassDefns),
     set.union(ImpModulesNeededByTypeClassDefns, ImpModulesNeededByTypeDefns,
         ImpNeededModules),
 
@@ -586,17 +567,31 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
         %     "Int and Imp ImportUseModuleNames intersect")
     ),
 
-    % Compute the list of type definitions we deleted from ImpItems0
-    % that we want to add back to the implementation section,
-    % possibly in their abstract form.
+    map.keys_as_set(IntFIMSpecMap, IntExplicitFIMSpecs),
+    map.keys_as_set(ImpFIMSpecMap, ImpExplicitFIMSpecs),
+    % Note that _ImpSelfFIMLangs above contains the set of foreign languages
+    % for which an implicit self FIM is needed by anything in the
+    % implementation section of the *source file*. We are now starting to
+    % compute the set of foreign languages for which an implicit self FIM
+    % is needed by anything in the implementation section *of the interface
+    % file we are constructing*, which will be a *subset* of _ImpSelfFIMLangs.
+    % XXX Using _ImpSelfFIMLangs from ParseTreeModuleSrc instead of the value
+    % of ImpSelfFIMLangs we compute here and below would therefore be
+    % an overapproximation, but I (zs) don't think the cost in code complexity
+    % of avoiding this overapproximation is worth the negligible benefits
+    % it gets us.
+    list.foldl(record_implicit_fim_lang_for_foreign_enum_imp, ImpForeignEnums0,
+        set.init, ImpSelfFIMLangs1),
+    % Compute the list of type definitions we deleted from the implementation
+    % section that we want to add back, possibly in their abstract form.
     map.foldl2(
         maybe_add_maybe_abstract_type_defns(BothTypesMap, IntTypesMap,
             NeededImpTypeCtors),
         ImpTypesMap, [], ImpTypeDefns,
         ImpSelfFIMLangs1, ImpSelfFIMLangs2),
 
-    % Figure out which of the foreign enum items we deleted from ImpItems0
-    % we want to add back to the implementation section.
+    % Figure out which of the foreign enum items we deleted from
+    % the implementation section we want to add back.
     % Record the needs of these foreign enum items for
     % foreign_import_module items.
     list.foldl2(add_foreign_enum_item_if_needed(IntTypesMap),
@@ -635,6 +630,8 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
             TypeCtorRepnMap, RepnSpecs),
         !:Specs = !.Specs ++ RepnSpecs
     ),
+
+    list.filter(keep_promise_item_int, IntPromises0, IntPromises),
 
     DummyMaybeVersionNumbers = no_version_numbers,
     % XXX TODO
@@ -1738,10 +1735,14 @@ generate_interface_int2(AugCompUnit, IntImportUseMap,
             !UnqualSymNames, !UsedModuleNames,
             cord.init, ShortIntTypeDefnsCord,
             set.init, ShortIntImplicitFIMLangs),
+        get_int2_items_from_int1_imp_types(ImpTypeDefns,
+            set.init, ShortImpImplicitFIMLangs),
+
         get_int2_items_from_int1_int_inst_defn(IntInstDefns,
             !UnqualSymNames, !UsedModuleNames),
         get_int2_items_from_int1_int_mode_defn(IntModeDefns,
             !UnqualSymNames, !UsedModuleNames),
+
         get_int2_items_from_int1_int_typeclass(IntTypeClasses,
             !UnqualSymNames, !UsedModuleNames,
             cord.init, ShortIntTypeClassesCord),
@@ -1758,9 +1759,6 @@ generate_interface_int2(AugCompUnit, IntImportUseMap,
         UnqualSymNames = !.UnqualSymNames,
         UsedModuleNames = !.UsedModuleNames
     ),
-
-    get_int2_items_from_int1_imp_types(ImpTypeDefns,
-        set.init, ShortImpImplicitFIMLangs),
 
     % We compute ShortIntUseMap from IntImportUseMap. IntImportUseMap
     % is the set of modules imported *or used* in the interface section
