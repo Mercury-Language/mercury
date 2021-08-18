@@ -1660,7 +1660,7 @@ get_environment_var_map(EnvVarMap, !IO) :-
 
 :- pragma foreign_proc("C",
     get_environment_var_assoc_list(EnvVarAL0::in, EnvVarAL::out,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io],
 "
     MR_Word cur_env = EnvVarAL0;
@@ -1673,27 +1673,36 @@ get_environment_var_map(EnvVarMap, !IO) :-
     }
 
     EnvVarAL = cur_env;
-    IO = IO0;
 ").
 
-/*
-Commented out until this has been tested.
 :- pragma foreign_proc("Java",
     get_environment_var_assoc_list(EnvVarAL0::in, EnvVarAL::out,
-        IO0::di, IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io],
+        _IO0::di, _IO::uo),
+    [may_call_mercury, promise_pure],
 "
-    Map<String, String> env = System.getenv();
-    for (String name : env.keySet()) {
-        String value = env.get(name);
-        MC_record_env_var_and_value(name, value, EnvVarAL0, EnvVarAL);
-        EnvVarAL0 = EnvVarAL;
+    EnvVarAL = EnvVarAL0;
+    java.util.Map<String, String> env = java.lang.System.getenv();
+    for (java.util.Map.Entry<String, String> entry : env.entrySet()) {
+        String name = entry.getKey();
+        String value = entry.getValue();
+        EnvVarAL = MC_record_env_var_and_value(name, value, EnvVarAL);
     }
-    IO = IO0;
 ").
-*/
 
-get_environment_var_assoc_list(_, [], !IO).
+:- pragma foreign_proc("C#",
+    get_environment_var_assoc_list(EnvVarAL0::in, EnvVarAL::out,
+        _IO0::di, _IO::uo),
+    [may_call_mercury, promise_pure],
+"
+    EnvVarAL = EnvVarAL0;
+    System.Collections.IDictionary env =
+        System.Environment.GetEnvironmentVariables();
+    foreach (System.Collections.DictionaryEntry entry in env) {
+        string name = (string) entry.Key;
+        string value = (string) entry.Value;
+        EnvVarAL = MC_record_env_var_and_value(name, value, EnvVarAL);
+    }
+").
 
 :- pred record_env_var_equal_value(string::in,
     env_var_assoc_list::in, env_var_assoc_list::out) is det.
@@ -1714,6 +1723,8 @@ record_env_var_equal_value(EnvVarNameEqValue, !EnvVarAL) :-
 :- pred record_env_var_and_value(string::in, string::in,
     env_var_assoc_list::in, env_var_assoc_list::out) is det.
 :- pragma foreign_export("C#", record_env_var_and_value(in, in, in, out),
+    "MC_record_env_var_and_value").
+:- pragma foreign_export("Java", record_env_var_and_value(in, in, in, out),
     "MC_record_env_var_and_value").
 
 record_env_var_and_value(EnvVarName, EnvVarValue, !EnvVarAL) :-
