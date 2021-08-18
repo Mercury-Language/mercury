@@ -113,6 +113,22 @@
 
 %---------------------------------------------------------------------------%
 
+    % Values of this type map the names of environment variables
+    % to their values.
+    %
+:- type env_var_map == map(string, string).
+
+    % Return a map containing all the environment variables in the current
+    % environment, together with their values.
+    %
+    % XXX Unused right now, but should enable us to avoid passing around
+    % I/O states just to check whether an environment variable specifies
+    % some options for a module.
+    %
+:- pred get_environment_var_map(env_var_map::out, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
     % dump_options_file(ErrorStream, FileName, Vars, !IO):
     %
     % Write out the given database given by Vars to a file named FileName,
@@ -1627,6 +1643,81 @@ lookup_variable_value(Variables, VarName, Value, !UndefVarNames, !IO) :-
             !:UndefVarNames = [VarName | !.UndefVarNames]
         )
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_import_module("C", io).   % for char **environ
+
+get_environment_var_map(EnvVarMap, !IO) :-
+    get_environment_var_assoc_list([], EnvVarAL, !IO),
+    map.from_assoc_list(EnvVarAL, EnvVarMap).
+
+:- type env_var_assoc_list == assoc_list(string, string).
+
+:- pred get_environment_var_assoc_list(
+    env_var_assoc_list::in, env_var_assoc_list::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    get_environment_var_assoc_list(EnvVarAL0::in, EnvVarAL::out,
+        IO0::di, IO::uo),
+    [may_call_mercury, promise_pure, tabled_for_io],
+"
+    MR_Word cur_env = EnvVarAL0;
+    MR_Word next_env;
+    int     i;
+
+    for (i = 0; environ[i] != NULL; i++) {
+        MC_record_env_var_equal_value(environ[i], cur_env, &next_env);
+        cur_env = next_env;
+    }
+
+    EnvVarAL = cur_env;
+    IO = IO0;
+").
+
+/*
+Commented out until this has been tested.
+:- pragma foreign_proc("Java",
+    get_environment_var_assoc_list(EnvVarAL0::in, EnvVarAL::out,
+        IO0::di, IO::uo),
+    [may_call_mercury, promise_pure, tabled_for_io],
+"
+    Map<String, String> env = System.getenv();
+    for (String name : env.keySet()) {
+        String value = env.get(name);
+        MC_record_env_var_and_value(name, value, EnvVarAL0, EnvVarAL);
+        EnvVarAL0 = EnvVarAL;
+    }
+    IO = IO0;
+").
+*/
+
+get_environment_var_assoc_list(_, [], !IO).
+
+:- pred record_env_var_equal_value(string::in,
+    env_var_assoc_list::in, env_var_assoc_list::out) is det.
+:- pragma foreign_export("C", record_env_var_equal_value(in, in, out),
+    "MC_record_env_var_equal_value").
+
+record_env_var_equal_value(EnvVarNameEqValue, !EnvVarAL) :-
+    ( if
+        sub_string_search(EnvVarNameEqValue, "=", IndexOfEq),
+        string.split(EnvVarNameEqValue, IndexOfEq, EnvVarName, EqEnvVarValue),
+        string.first_char(EqEnvVarValue, _Eq, EnvVarValue)
+    then
+        !:EnvVarAL = [EnvVarName - EnvVarValue | !.EnvVarAL]
+    else
+        unexpected($pred, "No = in environment entry")
+    ).
+
+:- pred record_env_var_and_value(string::in, string::in,
+    env_var_assoc_list::in, env_var_assoc_list::out) is det.
+:- pragma foreign_export("C#", record_env_var_and_value(in, in, in, out),
+    "MC_record_env_var_and_value").
+
+record_env_var_and_value(EnvVarName, EnvVarValue, !EnvVarAL) :-
+    !:EnvVarAL = [EnvVarName - EnvVarValue | !.EnvVarAL].
 
 %---------------------------------------------------------------------------%
 
