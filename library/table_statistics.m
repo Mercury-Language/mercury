@@ -155,6 +155,20 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
+:- interface.
+
+% The compiler, when implementing the "statistics" attribute of a
+% tabling pragma, can introduce calls to MR_get_tabling_stats.
+% This means that this C function is effectively part of the interface
+% of this module. However, this fact is an implementation detail
+% that is of concern only to implementors, which is why we do not
+% want it includes in the automaticallu generated documentation
+% of this module.
+:- pragma foreign_import_module("C", table_statistics).
+
+%---------------------------------------------------------------------------%
+
+:- implementation.
 
 :- import_module bool.
 :- import_module float.
@@ -162,6 +176,8 @@
 :- import_module require.
 :- import_module string.
 :- import_module table_builtin.
+
+%---------------------------------------------------------------------------%
 
 :- pred get_tabling_stats(ml_proc_table_info::in, proc_table_statistics::out,
     io::di, io::uo) is det.
