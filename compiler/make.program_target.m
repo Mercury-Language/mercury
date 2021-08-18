@@ -122,26 +122,40 @@ make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions, Succeeded,
         IntermodAnalysis),
     (
         IntermodAnalysis = yes,
-        make_misc_target_builder(MainModuleName - misc_target_build_analyses,
-            Globals, ExtraOptions, IntermodAnalysisSucceeded, !Info, !IO)
+        make_misc_target_builder(Globals, MainModuleName,
+            misc_target_build_analyses, IntermodAnalysisSucceeded, !Info, !IO)
     ;
         IntermodAnalysis = no,
         IntermodAnalysisSucceeded = succeeded
     ),
     (
         IntermodAnalysisSucceeded = succeeded,
-        build_with_module_options(Globals, MainModuleName, ExtraOptions,
-            make_linked_target_2(LinkedTargetFile), Succeeded, !Info, !IO)
+        DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
+        OptionVariables = !.Info ^ mki_options_variables,
+        OptionArgs = !.Info ^ mki_option_args,
+        setup_for_build_with_module_options(Globals, invoked_by_mmc_make,
+            MainModuleName, DetectedGradeFlags, OptionVariables, OptionArgs,
+            ExtraOptions, MayBuild, !IO),
+        (
+            MayBuild = may_build(_AllOptionArgs, BuildGlobals, _Warnings),
+            make_linked_target_2(BuildGlobals, LinkedTargetFile,
+                Succeeded, !Info, !IO)
+        ;
+            MayBuild = may_not_build(Specs),
+            get_error_output_stream(Globals, MainModuleName, ErrorStream, !IO),
+            write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
+            Succeeded = did_not_succeed
+        )
     ;
         IntermodAnalysisSucceeded = did_not_succeed,
         Succeeded = did_not_succeed
     ).
 
-:- pred make_linked_target_2(linked_target_file::in,
-    globals::in, list(string)::in, maybe_succeeded::out,
+:- pred make_linked_target_2(globals::in, linked_target_file::in,
+    maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_linked_target_2(LinkedTargetFile, Globals, _, Succeeded, !Info, !IO) :-
+make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
     LinkedTargetFile = linked_target_file(MainModuleName, FileType),
     find_reachable_local_modules(Globals, MainModuleName, DepsSucceeded,
         AllModules, !Info, !IO),
@@ -175,8 +189,8 @@ make_linked_target_2(LinkedTargetFile, Globals, _, Succeeded, !Info, !IO) :-
         get_target_modules(Globals, IntermediateTargetType, AllModulesList,
             ObjModulesAlpha, !Info, !IO),
         order_target_modules(Globals, ObjModulesAlpha, ObjModules, !Info, !IO),
-        remove_nested_modules(Globals, ObjModules, ObjModulesNonnested, !Info,
-            !IO),
+        remove_nested_modules(Globals, ObjModules, ObjModulesNonnested,
+            !Info, !IO),
         IntermediateTargetsNonnested =
             make_dependency_list(ObjModulesNonnested, IntermediateTargetType),
         ObjTargets = make_dependency_list(ObjModules, ObjectTargetType),
@@ -743,15 +757,29 @@ delete_java_class_timestamps(FileName, MaybeTimestamp, !Timestamps) :-
 
 make_misc_target(Globals, MainModuleName - TargetType, Succeeded,
         !Info, !IO) :-
-    build_with_module_options(Globals, MainModuleName, [],
-        make_misc_target_builder(MainModuleName - TargetType),
-        Succeeded, !Info, !IO).
+    DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
+    OptionVariables = !.Info ^ mki_options_variables,
+    OptionArgs = !.Info ^ mki_option_args,
+    ExtraOptions = [],
+    setup_for_build_with_module_options(Globals, invoked_by_mmc_make,
+        MainModuleName, DetectedGradeFlags, OptionVariables, OptionArgs,
+        ExtraOptions, MayBuild, !IO),
+    (
+        MayBuild = may_build(_AllOptionArgs, BuildGlobals, _Warnings),
+        make_misc_target_builder(BuildGlobals, MainModuleName,
+            TargetType, Succeeded, !Info, !IO)
+    ;
+        MayBuild = may_not_build(Specs),
+        get_error_output_stream(Globals, MainModuleName, ErrorStream, !IO),
+        write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
+        Succeeded = did_not_succeed
+    ).
 
-:- pred make_misc_target_builder(pair(module_name, misc_target_type)::in,
-    globals::in, list(string)::in, maybe_succeeded::out,
+:- pred make_misc_target_builder(globals::in, module_name::in,
+    misc_target_type::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_misc_target_builder(MainModuleName - TargetType, Globals, _, Succeeded,
+make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
         !Info, !IO) :-
     % Don't rebuild .module_dep files when cleaning up.
     RebuildModuleDeps = !.Info ^ mki_rebuild_module_deps,
