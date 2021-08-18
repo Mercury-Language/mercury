@@ -1666,9 +1666,18 @@ get_environment_var_map(EnvVarMap, !IO) :-
     MR_Word cur_env = EnvVarAL0;
     MR_Word next_env;
     int     i;
+    char    **environ_vars;
 
-    for (i = 0; environ[i] != NULL; i++) {
-        MC_record_env_var_equal_value(environ[i], cur_env, &next_env);
+    // See the comments about the enivorn global in library/io.m
+    // for an explanation of this.
+    #if defined(MR_MAC_OSX)
+        environ_vars = (*_NSGetEnviron());
+    #else
+        environ_vars = environ;
+    #endif
+
+    for (i = 0; environ_vars[i] != NULL; i++) {
+        MC_record_env_var_equal_value(environ_vars[i], cur_env, &next_env);
         cur_env = next_env;
     }
 
