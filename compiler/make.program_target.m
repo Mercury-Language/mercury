@@ -264,11 +264,20 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
         then
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             setup_checking_for_interrupt(Cookie, !IO),
-            build_with_output_redirect(Globals, MainModuleName,
+            prepare_to_redirect_output(MainModuleName, RedirectResult,
+                !Info, !IO),
+            (
+                RedirectResult = no,
+                Succeeded0 = did_not_succeed
+            ;
+                RedirectResult = yes(ErrorStream),
                 build_linked_target(MainModuleName, FileType,
                     OutputFileName, MaybeTimestamp, AllModules, ObjModules,
-                    CompilationTarget, PIC, DepsSucceeded, BuildDepsResult),
-                Succeeded0, !Info, !IO),
+                    CompilationTarget, PIC, DepsSucceeded, BuildDepsResult,
+                    Globals, ErrorStream, Succeeded0, !Info, !IO),
+                unredirect_output(Globals, MainModuleName, ErrorStream,
+                    !Info, !IO)
+            ),
             Cleanup = linked_target_cleanup(Globals, MainModuleName,
                 FileType, OutputFileName),
             teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
@@ -726,8 +735,16 @@ build_java_files(Globals, MainModuleName, ModuleNames, Succeeded,
             ext_other(other_ext(".java"))),
         ModuleNames, JavaFiles, !IO),
     % We redirect errors to a file named after the main module.
-    build_with_output_redirect(Globals, MainModuleName,
-        build_java_files_2(JavaFiles), Succeeded, !Info, !IO).
+    prepare_to_redirect_output(MainModuleName, RedirectResult, !Info, !IO),
+    (
+        RedirectResult = no,
+        Succeeded = did_not_succeed
+    ;
+        RedirectResult = yes(ErrorStream),
+        build_java_files_2(JavaFiles, Globals, ErrorStream, Succeeded,
+            !Info, !IO),
+        unredirect_output(Globals, MainModuleName, ErrorStream, !Info, !IO)
+    ).
 
 :- pred build_java_files_2(list(string)::in, globals::in, io.output_stream::in,
     maybe_succeeded::out,
