@@ -18,6 +18,8 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.maybe_succeeded.
+:- import_module parse_tree.
+:- import_module parse_tree.error_util.
 
 %---------------------------------------------------------------------------%
 
@@ -27,32 +29,39 @@
 :- type build(T) == build(T, make_info).
 :- inst build == (pred(in, in, out, in, out, di, uo) is det).
 
-    % build_with_module_options(Globals, ModuleName, ExtraArgs, Builder,
-    %   Succeeded, !Info, !IO).
+    % build_with_module_options(Globals, ModuleName, ExtraOptions,
+    %   Build, Succeeded, Info0, Info, !IO):
     %
-    % Perform the given closure after updating the option_table in the globals
+    % Invoke Build given closure after updating the option_table in the globals
     % to contain the module-specific options for the specified module and
     % the extra options given in the ExtraArgs.
     % Adds `--invoked-by-mmc-make' and `--use-subdirs' to the option list.
+    % InvokedByMmcMake is implicitly invoked_by_mmc_make.
+    % XXX Document the semantics of Info: when is it set to Info0?
     %
 :- pred build_with_module_options(globals::in, module_name::in,
     list(string)::in, build(list(string))::in(build), maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % build_with_module_options_args(Globals, ModuleName, OptionsVariables,
-    %   OptionArgs, ExtraArgs, Builder, Succeeded, !Info, !IO).
-    %
-    % Perform the given closure after updating the option_table in the globals
-    % to contain the module-specific options for the specified module and
-    % the extra options given in ExtraArgs and OptionArgs.
-    % Does not add `--invoked-by-mmc-make' and `--use-subdirs' to the
-    % option list.
-    %
-:- pred build_with_module_options_args(globals::in, module_name::in,
+%---------------------%
+
+:- type may_build
+    --->    may_not_build(list(error_spec))
+    ;       may_build(list(string), globals, list(error_spec)).
+            % The globals we have set up for the build,
+            % all the arguments for the build, and
+            % any warnings (not errors) we got while updating the globals.
+            % To the extent that any of these warnings reflect problems
+            % on the command line supplied by the programmer, they should
+            % have been reported before we started building any targets.
+            % Any *other* warnings are the responsibility of (the code
+            % invoked by) setup_for_build_with_module_options, so
+            % there is no point in reporting it to the programmer .
+
+:- pred setup_for_build_with_module_options(globals::in,
+    maybe_invoked_by_mmc_make::in, module_name::in,
     list(string)::in, options_variables::in,
-    list(string)::in, list(string)::in,
-    build(list(string), Info1, Info2)::in(build), maybe_succeeded::out,
-    Info1::in, maybe(Info2)::out, io::di, io::uo) is det.
+    list(string)::in, list(string)::in, may_build::out, io::di, io::uo) is det.
 
 %---------------------%
 
@@ -165,7 +174,6 @@
 
 :- import_module libs.handle_options.
 :- import_module libs.process_util.
-:- import_module parse_tree.
 :- import_module parse_tree.file_names.
 
 :- import_module bool.
@@ -179,43 +187,59 @@
 
 %---------------------------------------------------------------------------%
 
-build_with_module_options(Globals, ModuleName, ExtraOptions, Build, Succeeded,
-        !Info, !IO) :-
-    build_with_module_options_args_invoked(Globals, invoked_by_mmc_make,
-        ModuleName, !.Info ^ mki_detected_grade_flags,
-        !.Info ^ mki_options_variables, !.Info ^ mki_option_args,
-        ExtraOptions, Build, Succeeded, !.Info, MaybeInfo, !IO),
+build_with_module_options(Globals, ModuleName, ExtraOptions,
+        Build, Succeeded, Info0, Info, !IO) :-
+    build_with_module_options_args(Globals, invoked_by_mmc_make,
+        ModuleName, Info0 ^ mki_detected_grade_flags,
+        Info0 ^ mki_options_variables, Info0 ^ mki_option_args,
+        ExtraOptions, Build, Succeeded, Info0, MaybeInfo, !IO),
     (
-        MaybeInfo = yes(!:Info)
+        MaybeInfo = yes(Info)
     ;
-        MaybeInfo = no
+        MaybeInfo = no,
+        Info = Info0
     ).
 
-build_with_module_options_args(Globals, ModuleName,
-        DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
-        Build, Succeeded, !Info, !IO) :-
-    build_with_module_options_args_invoked(Globals, not_invoked_by_mmc_make,
-        ModuleName, DetectedGradeFlags, OptionVariables,
-        OptionArgs, ExtraOptions, Build, Succeeded, !Info, !IO).
-
-:- pred build_with_module_options_args_invoked(globals::in,
+:- pred build_with_module_options_args(globals::in,
     maybe_invoked_by_mmc_make::in, module_name::in,
     list(string)::in, options_variables::in,
     list(string)::in, list(string)::in,
-    build(list(string), Info1, Info2)::in(build),
-    maybe_succeeded::out, Info1::in, maybe(Info2)::out, io::di, io::uo) is det.
+    build(list(string), Info1, Info2)::in(build), maybe_succeeded::out,
+    Info1::in, maybe(Info2)::out, io::di, io::uo) is det.
 
-build_with_module_options_args_invoked(Globals, InvokedByMmcMake, ModuleName,
-        DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions, Build,
-        Succeeded, Info0, MaybeInfo, !IO) :-
+build_with_module_options_args(Globals, InvokedByMmcMake, ModuleName,
+        DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
+        Build, Succeeded, Info0, MaybeInfo, !IO) :-
+    setup_for_build_with_module_options(Globals, InvokedByMmcMake, ModuleName,
+        DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
+        MayBuild, !IO),
+    (
+        MayBuild = may_build(AllOptionArgs, BuildGlobals, _Warnings),
+        Build(BuildGlobals, AllOptionArgs, Succeeded, Info0, Info, !IO),
+        MaybeInfo = yes(Info)
+    ;
+        MayBuild = may_not_build(Specs),
+        % A similar reasoning applies to Specs as to _Warnings above,
+        % with the exception that this prevents the compiler from doing
+        % its job, so we *have* to report it to the programmer, even if
+        % the problem is not his/her fault.
+        % XXX Push this as far up the call chain as possible.
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+        write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
+        % XXX Returning both of these is redundant.
+        Succeeded = did_not_succeed,
+        MaybeInfo = no
+    ).
+
+setup_for_build_with_module_options(Globals, InvokedByMmcMake, ModuleName,
+        DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
+        MayBuild, !IO) :-
     lookup_mmc_module_options(OptionVariables, ModuleName, ModuleOptionArgs,
         LookupSpecs, !IO),
-    write_error_specs_ignore(Globals, LookupSpecs, !IO),
     LookupErrors = contains_errors(Globals, LookupSpecs),
     (
         LookupErrors = yes,
-        MaybeInfo = no,
-        Succeeded = did_not_succeed
+        MayBuild = may_not_build(LookupSpecs)
     ;
         LookupErrors = no,
         % --invoked-by-mmc-make disables reading DEFAULT_MCFLAGS from the
@@ -232,22 +256,16 @@ build_with_module_options_args_invoked(Globals, InvokedByMmcMake, ModuleName,
             UseSubdirs = [],
             InvokedByMake = []
         ),
-
         AllOptionArgs = InvokedByMake ++ DetectedGradeFlags ++
             ModuleOptionArgs ++ OptionArgs ++ ExtraOptions ++ UseSubdirs,
         handle_given_options(AllOptionArgs, _, _,
             OptionSpecs, BuildGlobals, !IO),
         (
             OptionSpecs = [_ | _],
-            Succeeded = did_not_succeed,
-            MaybeInfo = no,
-            get_error_output_stream(BuildGlobals, ModuleName,
-                ErrorStream, !IO),
-            usage_errors(ErrorStream, BuildGlobals, OptionSpecs, !IO)
+            MayBuild = may_not_build(LookupSpecs ++ OptionSpecs)
         ;
             OptionSpecs = [],
-            Build(BuildGlobals, AllOptionArgs, Succeeded, Info0, Info, !IO),
-            MaybeInfo = yes(Info)
+            MayBuild = may_build(AllOptionArgs, BuildGlobals, LookupSpecs)
         )
     ).
 

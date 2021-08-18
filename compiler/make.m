@@ -36,6 +36,16 @@
 
 %-----------------------------------------------------------------------------%
 
+    % We export this type so that mercury_compile_main.m can tell
+    % the code it calls in this package that the call did *not* come from
+    % the code of mmc --make itself.
+    %
+:- type maybe_invoked_by_mmc_make
+    --->    not_invoked_by_mmc_make
+    ;       invoked_by_mmc_make.
+
+%-----------------------------------------------------------------------------%
+
 :- type make_info.
 
 :- type rebuild_module_deps
@@ -84,6 +94,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.module_cmds.
 :- import_module parse_tree.read_modules.
 
 :- import_module bool.
@@ -295,10 +306,6 @@
                 linked_tf_type      :: linked_target_type
             ).
 
-:- type maybe_invoked_by_mmc_make
-    --->    not_invoked_by_mmc_make
-    ;       invoked_by_mmc_make.
-
 :- type maybe_keep_going
     --->    do_not_keep_going
     ;       do_keep_going.
@@ -393,7 +400,6 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
             ( pred(Target::in) is semidet :-
                 not string.suffix(Target, ".depend")
             ), Targets),
-
         % Classify the remaining targets.
         list.map(classify_target(Globals), NonDependTargets,
             ClassifiedTargets),
@@ -401,10 +407,16 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
         ShouldRebuildModuleDeps = do_rebuild_module_deps,
         globals.lookup_int_option(Globals, analysis_repeat, AnalysisRepeat),
 
+        map.init(ModuleDependencies),
+        map.init(FileTimestamps),
+        map.init(SearchFileNameCache),
+        set.init(ErrorFileModules),
+        MaybeImportingModule = maybe.no,
+        MaybeStdoutLock = maybe.no,
         MakeInfo0 = make_info(
-            map.init,               % Module dependencies.
-            map.init,               % File timestamps.
-            map.init,               % Search filename cache.
+            ModuleDependencies,
+            FileTimestamps,
+            SearchFileNameCache,
             DetectedGradeFlags,
             OptionArgs,
             Variables,
@@ -417,11 +429,11 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
             init_cached_foreign_imports,
             ShouldRebuildModuleDeps,
             KeepGoing,
-            set.init,
-            no,
+            ErrorFileModules,
+            MaybeImportingModule,
             set.list_to_set(ClassifiedTargets),
             AnalysisRepeat,
-            no,
+            MaybeStdoutLock,
             init_have_read_module_maps
         ),
 
@@ -429,12 +441,7 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
         % was not set.
         foldl2_maybe_stop_at_error(KeepGoing, make_target, Globals,
             ClassifiedTargets, Succeeded, MakeInfo0, _MakeInfo, !IO),
-        (
-            Succeeded = did_not_succeed,
-            io.set_exit_status(1, !IO)
-        ;
-            Succeeded = succeeded
-        )
+        maybe_set_exit_status(Succeeded, !IO)
     ).
 
 :- func report_target_with_dir_component(string, string) = error_spec.

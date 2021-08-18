@@ -113,7 +113,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module unit.
 
 %---------------------------------------------------------------------------%
 
@@ -833,7 +832,8 @@ do_op_mode_args(Globals, OpModeArgs, FileNamesFromStdin, DetectedGradeFlags,
         OptionVariables, OptionArgs, Args, !HaveReadModuleMaps, !IO) :-
     (
         FileNamesFromStdin = yes,
-        process_compiler_stdin_args(Globals, OpModeArgs,
+        io.stdin_stream(StdIn, !IO),
+        process_compiler_stdin_args(Globals, StdIn, OpModeArgs,
             DetectedGradeFlags, OptionVariables, OptionArgs,
             cord.empty, ModulesToLinkCord, cord.empty, ExtraObjFilesCord,
             !HaveReadModuleMaps, !IO)
@@ -871,11 +871,32 @@ do_op_mode_args(Globals, OpModeArgs, FileNamesFromStdin, DetectedGradeFlags,
                     ProgressStream, !IO),
                 get_error_output_stream(Globals, MainModuleName,
                     ErrorStream, !IO),
-                compile_with_module_options(Globals, MainModuleName,
-                    DetectedGradeFlags, OptionVariables, OptionArgs,
+                globals.lookup_bool_option(Globals, invoked_by_mmc_make,
+                    InvokedByMake),
+                (
+                    InvokedByMake = yes,
+                    % `mmc --make' has already set up the options.
                     link_module_list(ProgressStream, ErrorStream,
-                        ModulesToLink, ExtraObjFiles),
-                    Succeeded, !IO)
+                        ModulesToLink, ExtraObjFiles, Globals, Succeeded, !IO)
+                ;
+                    InvokedByMake = no,
+                    setup_for_build_with_module_options(Globals,
+                        not_invoked_by_mmc_make, MainModuleName,
+                        DetectedGradeFlags, OptionVariables, OptionArgs, [],
+                        MayBuild, !IO),
+                    (
+                        MayBuild = may_not_build(SetupSpecs),
+                        write_error_specs_ignore(ErrorStream, Globals,
+                            SetupSpecs, !IO),
+                        Succeeded = did_not_succeed
+                    ;
+                        MayBuild = may_build(_AllOptionArgs, BuildGlobals,
+                            _Warnings),
+                        link_module_list(ProgressStream, ErrorStream,
+                            ModulesToLink, ExtraObjFiles, BuildGlobals,
+                            Succeeded, !IO)
+                    )
+                )
             ),
             maybe_set_exit_status(Succeeded, !IO)
         else
@@ -933,49 +954,25 @@ maybe_print_delayed_error_messages(Globals, !IO) :-
         )
     ).
 
-:- type compile == pred(globals, maybe_succeeded, io, io).
-:- inst compile == (pred(in, out, di, uo) is det).
-
-:- pred compile_with_module_options(globals::in, module_name::in,
-    list(string)::in, options_variables::in, list(string)::in,
-    compile::in(compile), maybe_succeeded::out, io::di, io::uo) is det.
-
-compile_with_module_options(Globals, ModuleName, DetectedGradeFlags,
-        OptionVariables, OptionArgs, Compile, Succeeded, !IO) :-
-    globals.lookup_bool_option(Globals, invoked_by_mmc_make, InvokedByMake),
-    (
-        InvokedByMake = yes,
-        % `mmc --make' has already set up the options.
-        Compile(Globals, Succeeded, !IO)
-    ;
-        InvokedByMake = no,
-        Builder =
-            ( pred(BuildGlobals::in, _::in, Succeeded0::out, X::in, X::out,
-                    IO0::di, IO::uo) is det :-
-                Compile(BuildGlobals, Succeeded0, IO0, IO)
-            ),
-        build_with_module_options_args(Globals, ModuleName, DetectedGradeFlags,
-            OptionVariables, OptionArgs, [], Builder, Succeeded, unit, _, !IO)
-    ).
-
 %---------------------------------------------------------------------------%
 
-:- pred process_compiler_stdin_args(globals::in, op_mode_args::in,
-    list(string)::in, options_variables::in, list(string)::in,
+:- pred process_compiler_stdin_args(globals::in, io.text_input_stream::in,
+    op_mode_args::in, list(string)::in,
+    options_variables::in, list(string)::in,
     cord(string)::in, cord(string)::out,
     cord(string)::in, cord(string)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
-process_compiler_stdin_args(Globals, OpModeArgs, DetectedGradeFlags,
-        OptionVariables, OptionArgs, !Modules, !ExtraObjFiles,
-        !HaveReadModuleMaps, !IO) :-
-    ( if is_empty(!.Modules) then
+process_compiler_stdin_args(Globals, StdIn, OpModeArgs,
+        DetectedGradeFlags, OptionVariables, OptionArgs,
+        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !IO) :-
+    ( if cord.is_empty(!.Modules) then
         true
     else
         garbage_collect(!IO)
     ),
-    io.read_line_as_string(FileResult, !IO),
+    io.read_line_as_string(StdIn, FileResult, !IO),
     (
         FileResult = ok(Line),
         Arg = string.rstrip(Line),
@@ -984,16 +981,18 @@ process_compiler_stdin_args(Globals, OpModeArgs, DetectedGradeFlags,
             !HaveReadModuleMaps, !IO),
         !:Modules = !.Modules ++ cord.from_list(ArgModules),
         !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
-        process_compiler_stdin_args(Globals, OpModeArgs, DetectedGradeFlags,
-            OptionVariables, OptionArgs, !Modules, !ExtraObjFiles,
-            !HaveReadModuleMaps, !IO)
+        process_compiler_stdin_args(Globals, StdIn, OpModeArgs,
+            DetectedGradeFlags, OptionVariables, OptionArgs,
+            !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !IO)
     ;
         FileResult = eof
     ;
         FileResult = error(Error),
         io.error_message(Error, Msg),
-        io.write_string("Error reading module name: ", !IO),
-        io.write_string(Msg, !IO),
+        io.stderr_stream(StdErr, !IO),
+        io.format(StdErr,
+            "Error reading module name from standard input: %s\n",
+            [s(Msg)], !IO),
         io.set_exit_status(1, !IO)
     ).
 
@@ -1049,57 +1048,37 @@ process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
     globals.lookup_bool_option(Globals, invoked_by_mmc_make, InvokedByMake),
     (
         InvokedByMake = no,
+        ModuleName = file_or_module_to_module_name(FileOrModule),
         ExtraOptions = [],
-        DummyInput = unit,
-        build_with_module_options_args(Globals,
-            file_or_module_to_module_name(FileOrModule),
-            DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
-            process_compiler_arg_build(OpModeArgs, FileOrModule, OptionArgs,
-                !.HaveReadModuleMaps),
-            _Succeeded, DummyInput, MaybeTuple, !IO),
-        % XXX Why do we ignore _Succeeded? We know it is set to `yes'
-        % by process_compiler_arg_build, but this could be overridden by
-        % build_with_module_options_args if it finds *other* kinds of problems.
-        % However, enabling the following line did not yield any aborts.
-        % expect(unify(Succeeded, yes), $pred, "Succeeded != yes"),
+        setup_for_build_with_module_options(Globals, not_invoked_by_mmc_make,
+            ModuleName, DetectedGradeFlags, OptionVariables,
+            OptionArgs, ExtraOptions, MayBuild, !IO),
         (
-            MaybeTuple = yes(Tuple),
-            Tuple = {ModulesToLink, ExtraObjFiles, !:HaveReadModuleMaps}
-        ;
-            MaybeTuple = no,
+            MayBuild = may_not_build(SetupSpecs),
+            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+            write_error_specs_ignore(ErrorStream, Globals, SetupSpecs, !IO),
             ModulesToLink = [],
             ExtraObjFiles = []
+        ;
+            MayBuild = may_build(_AllOptionArgs, BuildGlobals, _Warnings),
+            maybe_check_libraries_are_installed(Globals,
+                LibgradeCheckSucceeded, !IO),
+            (
+                LibgradeCheckSucceeded = succeeded,
+                do_process_compiler_arg(BuildGlobals, OpModeArgs, OptionArgs,
+                    FileOrModule, ModulesToLink, ExtraObjFiles,
+                    !HaveReadModuleMaps, !IO)
+            ;
+                LibgradeCheckSucceeded = did_not_succeed,
+                ModulesToLink = [],
+                ExtraObjFiles = []
+            )
         )
     ;
         InvokedByMake = yes,
         % `mmc --make' has already set up the options.
         do_process_compiler_arg(Globals, OpModeArgs, OptionArgs, FileOrModule,
             ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO)
-    ).
-
-:- pred process_compiler_arg_build(op_mode_args::in, file_or_module::in,
-    list(string)::in, have_read_module_maps::in,
-    globals::in, list(string)::in, maybe_succeeded::out,
-    unit::in, {list(string), list(string), have_read_module_maps}::out,
-    io::di, io::uo) is det.
-
-process_compiler_arg_build(OpModeArgs, FileOrModule, OptionArgs,
-        HaveReadModuleMaps0, Globals, _, Succeeded,
-        _DummyInput, {Modules, ExtraObjFiles, HaveReadModuleMaps},
-        !IO) :-
-    maybe_check_libraries_are_installed(Globals, LibgradeCheckSucceeded, !IO),
-    (
-        LibgradeCheckSucceeded = succeeded,
-        do_process_compiler_arg(Globals, OpModeArgs, OptionArgs, FileOrModule,
-            Modules, ExtraObjFiles,
-            HaveReadModuleMaps0, HaveReadModuleMaps, !IO),
-        Succeeded = succeeded
-    ;
-        LibgradeCheckSucceeded = did_not_succeed,
-        Modules = [],
-        ExtraObjFiles = [],
-        Succeeded = did_not_succeed,
-        HaveReadModuleMaps = HaveReadModuleMaps0
     ).
 
 :- func version_numbers_return_timestamp(bool) = maybe_return_timestamp.
