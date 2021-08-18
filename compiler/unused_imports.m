@@ -190,11 +190,11 @@ maybe_warn_about_avail(TopModuleName,
         else
             AnywhereWarning = no
         ),
-        % Do not generate a report that a module is unused in the interface
-        % if we have generated a report that it is unused *anywhere*.
         ( if
             Section = ms_interface,
             set.member(ModuleName, UnusedInterfaceImports),
+            % Do not generate a report that a module is unused in the interface
+            % if we have generated a report that it is unused *anywhere*.
             AnywhereWarning = no
         then
             InterfaceSpec = generate_unused_warning(TopModuleName,
