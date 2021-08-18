@@ -162,7 +162,7 @@
 % This means that this C function is effectively part of the interface
 % of this module. However, this fact is an implementation detail
 % that is of concern only to implementors, which is why we do not
-% want it includes in the automaticallu generated documentation
+% want it includes in the automatically generated documentation
 % of this module.
 :- pragma foreign_import_module("C", table_statistics).
 
