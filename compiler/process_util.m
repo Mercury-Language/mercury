@@ -25,27 +25,45 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type build0(Info) == pred(maybe_succeeded, Info, Info, io, io).
-:- inst build0 == (pred(out, in, out, di, uo) is det).
-
 :- type post_signal_cleanup(Info) == pred(Info, Info, io, io).
 :- inst post_signal_cleanup == (pred(in, out, di, uo) is det).
 
-    % build_with_check_for_interrupt(VeryVerbose, Build, Cleanup, Succeeded,
-    %   !Info, !IO):
+:- type signal_action.
+
+    % These two predicates should always be called in pairs, surrounding
+    % an action whose execution we wish to monitor for signals that would
+    % normally kill the process (SIGINT, SIGTERM, SIGHUP, and SIGQUIT).
+    % The intended usage is:
     %
-    % Apply `Build' with signal handlers installed to check for signals
-    % which would normally kill the process. If a signal occurs call `Cleanup',
-    % then restore signal handlers to their defaults and reraise the signal
-    % to kill the current process. An action being performed in a child process
-    % by call_in_forked_process will be killed if a fatal signal (SIGINT,
-    % SIGTERM, SIGHUP or SIGQUIT) is received by the current process.
-    % An action being performed within the current process or by system()
-    % will run to completion, with the interrupt being taken immediately
-    % afterwards.
+    %   setup_checking_for_interrupt(Cookie, !IO),
+    %   <some action that returns Succeeded0>
+    %   teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
+    %       Succeeded0, Succeeded, !Info, !IO)
     %
-:- pred build_with_check_for_interrupt(bool::in, build0(Info)::in(build0),
-    post_signal_cleanup(Info)::in(post_signal_cleanup), maybe_succeeded::out,
+    % As its name says, the setup predicate starts listening for
+    % the above signals. If some has arrived during the action, then
+    % the teardown predicate will
+    %
+    % - call Cleanup,
+    % - restore the signal handlers to their defaults, and
+    % - reraise the received signal to kill the current process.
+    %
+    % An old comment, which I (zs) doubt is up-to-date, says:
+    %
+    % An action being performed in a child process by call_in_forked_process
+    % will be killed if a fatal signal (SIGINT, SIGTERM, SIGHUP or SIGQUIT)
+    % is received by the current process. An action being performed within
+    % the current process or by system() will run to completion,
+    % with the interrupt being taken immediately afterwards.
+    %
+    % The only thing callers should use the Cookie output of the setup
+    % predicate for is to pass it back (once) to the teardown predicate.
+    %
+:- pred setup_checking_for_interrupt(signal_action::out,
+    io::di, io::uo) is det.
+:- pred teardown_checking_for_interrupt(bool::in, signal_action::in,
+    post_signal_cleanup(Info)::in(post_signal_cleanup),
+    maybe_succeeded::in, maybe_succeeded::out,
     Info::in, Info::out, io::di, io::uo) is det.
 
     % raise_signal(Signal).
@@ -134,10 +152,11 @@
 
 %-----------------------------------------------------------------------------%
 
-build_with_check_for_interrupt(VeryVerbose, Build, Cleanup, Succeeded,
-        !Info, !IO) :-
-    setup_signal_handlers(MaybeSigIntHandler, !IO),
-    Build(Succeeded0, !Info, !IO),
+setup_checking_for_interrupt(MaybeSigIntHandler, !IO) :-
+    setup_signal_handlers(MaybeSigIntHandler, !IO).
+
+teardown_checking_for_interrupt(VeryVerbose, MaybeSigIntHandler, Cleanup,
+        Succeeded0, Succeeded, !Info, !IO) :-
     restore_signal_handlers(MaybeSigIntHandler, !IO),
     check_for_signal(Signalled, Signal, !IO),
     ( if Signalled = 1 then
@@ -156,7 +175,6 @@ build_with_check_for_interrupt(VeryVerbose, Build, Cleanup, Succeeded,
             VeryVerbose = no
         ),
         Cleanup(!Info, !IO),
-
         % The signal handler has been restored to the default,
         % so this should kill us.
         raise_signal(Signal, !IO)
@@ -230,8 +248,8 @@ setup_signal_handlers(signal_action, !IO).
 "
     MC_signalled = MR_FALSE;
 
-    // mdb sets up a SIGINT handler, so we should restore
-    // it after we're done.
+    // mdb sets up a SIGINT handler, so we should restore it
+    // after we are done.
     MR_get_signal_action(SIGINT, &SigintHandler,
         ""error getting SIGINT handler"");
     MC_SETUP_SIGNAL_HANDLER(SIGINT, MC_mercury_compile_signal_handler);

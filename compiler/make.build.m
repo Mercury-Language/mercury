@@ -527,11 +527,13 @@ foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
                 JobCtl, !.Info),
             2 .. Jobs, [], Pids, !IO),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-        build_with_check_for_interrupt(VeryVerbose,
-            worker_loop(Globals, KeepGoing, MakeTarget, Targets, JobCtl,
-                succeeded),
-            worker_loop_signal_cleanup(JobCtl, Pids), Succeeded0, !Info, !IO),
-        list.foldl2(reap_worker_process, Pids, Succeeded0, Succeeded, !IO),
+        setup_checking_for_interrupt(Cookie, !IO),
+        worker_loop(Globals, KeepGoing, MakeTarget, Targets, JobCtl,
+            succeeded, Succeeded0, !Info, !IO),
+        Cleanup = worker_loop_signal_cleanup(JobCtl, Pids),
+        teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
+            Succeeded0, Succeeded1, !Info, !IO),
+        list.foldl2(reap_worker_process, Pids, Succeeded1, Succeeded, !IO),
         !Info ^ mki_maybe_stdout_lock := no,
         destroy_job_ctl(JobCtl, !IO)
     ;
@@ -561,13 +563,15 @@ start_worker_process(Globals, KeepGoing, MakeTarget, Targets, JobCtl, Info,
     list(T)::in, job_ctl::in, Info::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-child_worker(Globals, KeepGoing, MakeTarget, Targets, JobCtl, Info0,
+child_worker(Globals, KeepGoing, MakeTarget, Targets, JobCtl, !.Info,
         Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    build_with_check_for_interrupt(VeryVerbose,
-        worker_loop(Globals, KeepGoing, MakeTarget, Targets, JobCtl,
-            succeeded),
-        worker_loop_signal_cleanup(JobCtl, []), Succeeded, Info0, _Info, !IO).
+    setup_checking_for_interrupt(Cookie, !IO),
+    worker_loop(Globals, KeepGoing, MakeTarget, Targets, JobCtl,
+        succeeded, Succeeded0, !Info, !IO),
+    Cleanup = worker_loop_signal_cleanup(JobCtl, []),
+    teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
+        Succeeded0, Succeeded, !.Info, _Info, !IO).
 
 :- pred worker_loop(globals::in, maybe_keep_going::in,
     foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),

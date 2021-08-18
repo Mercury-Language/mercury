@@ -903,25 +903,24 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                 Target = target_file(ModuleName, module_target_int3),
                 maybe_make_target_message_to_stream(Globals, OldOutputStream,
                     Target, !IO),
-                build_with_check_for_interrupt(VeryVerbose,
-                    build_with_module_options(Globals, ModuleName,
-                        ["--make-short-interface"],
-                        make_int3_files(ErrorStream, ParseTreeModuleSrcs)
-                    ),
-                    cleanup_int3_files(Globals, SubModuleNames),
-                    Succeeded, !Info, !IO)
+                setup_checking_for_interrupt(CookieMSI, !IO),
+                build_with_module_options(Globals, ModuleName,
+                    ["--make-short-interface"],
+                    make_int3_files(ErrorStream, ParseTreeModuleSrcs),
+                    Succeeded0, !Info, !IO),
+                CleanupMSI = cleanup_int3_files(Globals, SubModuleNames),
+                teardown_checking_for_interrupt(VeryVerbose, CookieMSI,
+                    CleanupMSI, Succeeded0, Succeeded, !Info, !IO)
             else
                 Succeeded = did_not_succeed
             ),
 
-            build_with_check_for_interrupt(VeryVerbose,
-                ( pred(succeeded::out, MakeInfo::in, MakeInfo::out,
-                        IO0::di, IO::uo) is det :-
-                    list.foldl(do_write_module_dep_file(Globals),
-                        BurdenedAugCompUnitList, IO0, IO)
-                ),
-                cleanup_module_dep_files(Globals, SubModuleNames),
-                _Succeeded, !Info, !IO),
+            setup_checking_for_interrupt(CookieWMDF, !IO),
+            list.foldl(do_write_module_dep_file(Globals),
+                BurdenedAugCompUnitList, !IO),
+            CleanupWMDF = cleanup_module_dep_files(Globals, SubModuleNames),
+            teardown_checking_for_interrupt(VeryVerbose, CookieWMDF,
+                CleanupWMDF, succeeded, _Succeeded, !Info, !IO),
 
             MadeTarget = target_file(ModuleName, module_target_int3),
             record_made_target(Globals, MadeTarget,

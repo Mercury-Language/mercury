@@ -378,7 +378,7 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
     then
         % We need a temporary file to pass the arguments to the mmc process
         % which will do the compilation. It is created here (not in invoke_mmc)
-        % so it can be cleaned up by build_with_check_for_interrupt.
+        % so it can be cleaned up by teardown_checking_for_interrupt.
         io.make_temp_file(ArgFileNameResult, !IO),
         (
             ArgFileNameResult = ok(ArgFileName),
@@ -400,12 +400,13 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         Cleanup = cleanup_files(Globals, MaybeArgFileName,
             TouchedTargetFiles, TouchedFiles),
-        build_with_check_for_interrupt(VeryVerbose,
-            build_with_module_options_and_output_redirect(Globals, ModuleName,
-                ExtraOptions ++ TaskOptions,
-                build_target_2(ModuleName, Task, MaybeArgFileName,
-                    ModuleDepInfo)),
-            Cleanup, Succeeded, !Info, !IO),
+        setup_checking_for_interrupt(Cookie, !IO),
+        build_with_module_options_and_output_redirect(Globals, ModuleName,
+            ExtraOptions ++ TaskOptions,
+            build_target_2(ModuleName, Task, MaybeArgFileName, ModuleDepInfo),
+            Succeeded0, !Info, !IO),
+        teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
+            Succeeded0, Succeeded, !Info, !IO),
         record_made_target_given_maybe_touched_files(Globals, Succeeded,
             TargetFile, TouchedTargetFiles, TouchedFiles, !Info, !IO),
         get_real_milliseconds(Time, !IO),
@@ -690,7 +691,7 @@ invoke_mmc(Globals, ProgressStream, ErrorStream,
     % This code is only called if fork() doesn't work, so there is no point
     % checking whether the shell actually has this limitation.
     % The temporary file is created by the caller so that it will be removed
-    % by build_with_check_for_interrupt if an interrupt occurs.
+    % by teardown_checking_for_interrupt if an interrupt occurs.
     (
         MaybeArgFileName = yes(ArgFileName)
     ;

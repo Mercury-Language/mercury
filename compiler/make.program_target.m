@@ -263,15 +263,16 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
             BuildDepsResult \= deps_error
         then
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-            build_with_check_for_interrupt(VeryVerbose,
-                build_with_output_redirect(Globals, MainModuleName,
-                    build_linked_target(MainModuleName, FileType,
-                        OutputFileName, MaybeTimestamp, AllModules, ObjModules,
-                        CompilationTarget, PIC, DepsSucceeded, BuildDepsResult)
-                    ),
-                linked_target_cleanup(Globals, MainModuleName, FileType,
-                    OutputFileName),
-                Succeeded, !Info, !IO)
+            setup_checking_for_interrupt(Cookie, !IO),
+            build_with_output_redirect(Globals, MainModuleName,
+                build_linked_target(MainModuleName, FileType,
+                    OutputFileName, MaybeTimestamp, AllModules, ObjModules,
+                    CompilationTarget, PIC, DepsSucceeded, BuildDepsResult),
+                Succeeded0, !Info, !IO),
+            Cleanup = linked_target_cleanup(Globals, MainModuleName,
+                FileType, OutputFileName),
+            teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
+                Succeeded0, Succeeded, !Info, !IO)
         else
             Succeeded = did_not_succeed
         )
@@ -940,6 +941,9 @@ collect_modules_with_children(Globals, ModuleName, !ParentModules,
 
 %-----------------------------------------------------------------------------%
 
+:- type build0(Info) == pred(maybe_succeeded, Info, Info, io, io).
+:- inst build0 == (pred(out, in, out, di, uo) is det).
+
     % If `--analysis-file-cache' is enabled, create a temporary directory for
     % holding analysis cache files and pass that to child processes.
     % After P is finished, remove the cache directory completely.
@@ -977,8 +981,11 @@ maybe_with_analysis_cache_dir(Globals, P, Succeeded, !Info, !IO) :-
             !Info ^ mki_option_args :=
                 OrigOptionArgs ++ [CacheDirOption, CacheDir],
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-            build_with_check_for_interrupt(VeryVerbose, P,
-                remove_cache_dir(Globals, CacheDir), Succeeded, !Info, !IO),
+            setup_checking_for_interrupt(Cookie, !IO),
+            P(Succeeded1, !Info, !IO),
+            Cleanup = remove_cache_dir(Globals, CacheDir),
+            teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
+                Succeeded1, Succeeded, !Info, !IO),
             remove_cache_dir(Globals, CacheDir, !Info, !IO),
             !Info ^ mki_option_args := OrigOptionArgs
         ;
@@ -1485,11 +1492,10 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
 
         % Building the library in the new grade is done in a separate process
         % to make it easier to stop and clean up on an interrupt.
-        Cleanup = maybe_make_grade_clean(LibGlobals, CleanAfter, ModuleName,
-            AllModules),
         globals.lookup_bool_option(LibGlobals, very_verbose, VeryVerbose),
-        build_with_check_for_interrupt(VeryVerbose,
-            ( pred(GradeSucceeded::out, MInfo::in, MInfo::out,
+        setup_checking_for_interrupt(Cookie, !IO),
+        Build =
+            ( pred(GradeSucceeded::out, MInfo::in,
                     !.IO::di, !:IO::uo) is det :-
                 call_in_forked_process(
                     ( pred(GradeSucceeded0::out, !.IO::di, !:IO::uo) is det :-
@@ -1497,7 +1503,12 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
                             ModuleName, AllModules, MInfo, CleanAfter,
                             GradeSucceeded0, !IO)
                     ), GradeSucceeded, !IO)
-            ), Cleanup, Succeeded, !Info, !IO)
+            ),
+        Build(Succeeded0, !.Info, !IO),
+        Cleanup = maybe_make_grade_clean(LibGlobals, CleanAfter, ModuleName,
+            AllModules),
+        teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
+            Succeeded0, Succeeded, !Info, !IO)
     ).
 
 :- func remove_grade_dependent_targets(dependency_file, dependency_status,
