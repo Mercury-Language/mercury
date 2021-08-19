@@ -919,8 +919,12 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                     Succeeded0 = did_not_succeed
                 ;
                     MayBuild = may_build(_AllOptions, BuildGlobals, _Warnings),
-                    make_int3_files(ErrorStream, ParseTreeModuleSrcs,
-                        BuildGlobals, Succeeded0, !Info, !IO)
+                    % Printing progress to the current output stream
+                    % preserves old behavior.
+                    % XXX Our caller should pass us ProgressStream.
+                    io.output_stream(ProgressStream, !IO),
+                    make_int3_files(ProgressStream, ErrorStream, BuildGlobals,
+                        ParseTreeModuleSrcs, Succeeded0, !Info, !IO)
                 ),
 
                 CleanupMSI = cleanup_int3_files(Globals, SubModuleNames),
@@ -960,16 +964,16 @@ make_info_add_module_and_imports_as_dep(BurdenedAugCompUnit, !Info) :-
     map.set(ModuleName, MaybeModuleDepInfo, ModuleDeps0, ModuleDeps),
     !Info ^ mki_module_dependencies := ModuleDeps.
 
-:- pred make_int3_files(io.output_stream::in,
-    list(parse_tree_module_src)::in, globals::in, maybe_succeeded::out,
+:- pred make_int3_files(io.text_output_stream::in, io.text_output_stream::in,
+    globals::in, list(parse_tree_module_src)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_int3_files(ErrorStream, ParseTreeModuleSrcs, Globals, Succeeded,
-        !Info, !IO) :-
-    io.set_output_stream(ErrorStream, OutputStream, !IO),
-    list.foldl(write_short_interface_file_int3(Globals),
+make_int3_files(ProgressStream, ErrorStream, Globals,
+        ParseTreeModuleSrcs, Succeeded, !Info, !IO) :-
+    list.foldl(
+        write_short_interface_file_int3(ProgressStream, ErrorStream, Globals),
         ParseTreeModuleSrcs, !IO),
-    io.set_output_stream(OutputStream, _, !IO),
+    % XXX Get write_short_interface_file_int3 to return whether it succeeded.
     io.get_exit_status(ExitStatus, !IO),
     Succeeded = ( if ExitStatus = 0 then succeeded else did_not_succeed ).
 

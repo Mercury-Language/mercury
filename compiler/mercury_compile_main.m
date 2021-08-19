@@ -905,18 +905,23 @@ do_op_mode_args(Globals, OpModeArgs, FileNamesFromStdin, DetectedGradeFlags,
     else
         true
     ),
-    maybe_print_delayed_error_messages(Globals, !IO),
+    % This output is not specific to any module.
+    % NOTE I (zs) am not sure whether there *can* be any delayed error messages
+    % at this point.
+    io.stderr_stream(StdErr, !IO),
+    maybe_print_delayed_error_messages(StdErr, Globals, !IO),
     globals.lookup_bool_option(Globals, statistics, Statistics),
     (
         Statistics = yes,
-        io.report_stats("full_memory_stats", !IO)
+        io.report_stats(StdErr, "full_memory_stats", !IO)
     ;
         Statistics = no
     ).
 
-:- pred maybe_print_delayed_error_messages(globals::in, io::di, io::uo) is det.
+:- pred maybe_print_delayed_error_messages(io.text_output_stream::in,
+    globals::in, io::di, io::uo) is det.
 
-maybe_print_delayed_error_messages(Globals, !IO) :-
+maybe_print_delayed_error_messages(ErrorStream, Globals, !IO) :-
     % Pick up the values of these flags, and then reset them
     % for the next module.
     globals.io_get_some_errors_were_context_limited(Limited, !IO),
@@ -932,14 +937,14 @@ maybe_print_delayed_error_messages(Globals, !IO) :-
         Limited = no_errors_were_context_limited
     ;
         Limited = some_errors_were_context_limited,
-        io.write_string("Some error messages were suppressed " ++
+        io.write_string(ErrorStream, "Some error messages were suppressed " ++
             "by `--limit-error-contexts' options.\n", !IO),
-        io.write_string("You can see the suppressed messages " ++
+        io.write_string(ErrorStream, "You can see the suppressed messages " ++
             "if you recompile without these options.\n", !IO)
     ),
 
-    % If we found some errors, but the user didn't enable the `-E'
-    % (`--verbose-errors') option, give them a hint about it.
+    % If we found some errors with verbose-only components, but the user
+    % did not enable the `-E' (`--verbose-errors') option, tell them about it.
     (
         ExtraErrorInfo = no_extra_error_info
     ;
@@ -947,8 +952,8 @@ maybe_print_delayed_error_messages(Globals, !IO) :-
         globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
         (
             VerboseErrors = no,
-            io.write_string("For more information, recompile with `-E'.\n",
-                !IO)
+            io.write_string(ErrorStream,
+                "For more information, recompile with `-E'.\n", !IO)
         ;
             VerboseErrors = yes
         )
@@ -1164,7 +1169,11 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
             module_name_to_file_name(Globals, $pred, do_create_dirs,
                 ext_other(other_ext(".ugly")),
                 ModuleName, OutputFileName, !IO),
-            output_parse_tree_src(Globals, OutputFileName, ParseTreeSrc, !IO)
+            get_progress_output_stream(Globals, ModuleName, ProgressStream,
+                !IO),
+            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+            output_parse_tree_src(ProgressStream, ErrorStream, Globals,
+                OutputFileName, ParseTreeSrc, !IO)
         ),
         ModulesToLink = [],
         ExtraObjFiles = []
@@ -1223,24 +1232,27 @@ do_process_compiler_arg_make_interface(Globals0, InterfaceFile, FileOrModule,
         split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
             ParseTreeModuleSrcs, ReadSpecs, ReadSplitSpecs),
         filter_interface_generation_specs(Globals, ReadSplitSpecs, Specs, !IO),
-        write_error_specs_ignore(Globals, Specs, !IO),
-        maybe_print_delayed_error_messages(Globals, !IO),
+        get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+        write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
+        maybe_print_delayed_error_messages(ErrorStream, Globals, !IO),
         (
             InterfaceFile = omif_int0,
             list.foldl2(
-                write_private_interface_file_int0(Globals0,
-                    FileName, ModuleName, MaybeTimestamp),
+                write_private_interface_file_int0(ProgressStream, ErrorStream,
+                    Globals0, FileName, ModuleName, MaybeTimestamp),
                 ParseTreeModuleSrcs, !HaveReadModuleMaps, !IO)
         ;
             InterfaceFile = omif_int1_int2,
             list.foldl2(
-                write_interface_file_int1_int2(Globals0,
-                    FileName, ModuleName, MaybeTimestamp),
+                write_interface_file_int1_int2(ProgressStream, ErrorStream,
+                    Globals0, FileName, ModuleName, MaybeTimestamp),
                 ParseTreeModuleSrcs, !HaveReadModuleMaps, !IO)
         ;
             InterfaceFile = omif_int3,
             list.foldl(
-                write_short_interface_file_int3(Globals0),
+                write_short_interface_file_int3(ProgressStream, ErrorStream,
+                    Globals0),
                 ParseTreeModuleSrcs, !IO)
         )
     ).
