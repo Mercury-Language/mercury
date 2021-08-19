@@ -904,10 +904,25 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                 maybe_make_target_message_to_stream(Globals, OldOutputStream,
                     Target, !IO),
                 setup_checking_for_interrupt(CookieMSI, !IO),
-                build_with_module_options(Globals, ModuleName,
-                    ["--make-short-interface"],
-                    make_int3_files(ErrorStream, ParseTreeModuleSrcs),
-                    Succeeded0, !Info, !IO),
+
+                DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
+                OptionVariables = !.Info ^ mki_options_variables,
+                OptionArgs = !.Info ^ mki_option_args,
+                ExtraOptions = ["--make-short-interface"],
+                setup_for_build_with_module_options(Globals,
+                    invoked_by_mmc_make, ModuleName, DetectedGradeFlags,
+                    OptionVariables, OptionArgs, ExtraOptions, MayBuild, !IO),
+                (
+                    MayBuild = may_not_build(MSISpecs),
+                    write_error_specs_ignore(ErrorStream, Globals,
+                        MSISpecs, !IO),
+                    Succeeded0 = did_not_succeed
+                ;
+                    MayBuild = may_build(_AllOptions, BuildGlobals, _Warnings),
+                    make_int3_files(ErrorStream, ParseTreeModuleSrcs,
+                        BuildGlobals, Succeeded0, !Info, !IO)
+                ),
+
                 CleanupMSI = cleanup_int3_files(Globals, SubModuleNames),
                 teardown_checking_for_interrupt(VeryVerbose, CookieMSI,
                     CleanupMSI, Succeeded0, Succeeded, !Info, !IO)
@@ -946,11 +961,10 @@ make_info_add_module_and_imports_as_dep(BurdenedAugCompUnit, !Info) :-
     !Info ^ mki_module_dependencies := ModuleDeps.
 
 :- pred make_int3_files(io.output_stream::in,
-    list(parse_tree_module_src)::in, globals::in, list(string)::in,
-    maybe_succeeded::out,
+    list(parse_tree_module_src)::in, globals::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_int3_files(ErrorStream, ParseTreeModuleSrcs, Globals, _, Succeeded,
+make_int3_files(ErrorStream, ParseTreeModuleSrcs, Globals, Succeeded,
         !Info, !IO) :-
     io.set_output_stream(ErrorStream, OutputStream, !IO),
     list.foldl(write_short_interface_file_int3(Globals),

@@ -29,20 +29,6 @@
 :- type build(T) == build(T, make_info).
 :- inst build == (pred(in, in, out, in, out, di, uo) is det).
 
-    % build_with_module_options(Globals, ModuleName, ExtraOptions,
-    %   Build, Succeeded, Info0, Info, !IO):
-    %
-    % Invoke Build given closure after updating the option_table in the globals
-    % to contain the module-specific options for the specified module and
-    % the extra options given in the ExtraArgs.
-    % Adds `--invoked-by-mmc-make' and `--use-subdirs' to the option list.
-    % InvokedByMmcMake is implicitly invoked_by_mmc_make.
-    % XXX Document the semantics of Info: when is it set to Info0?
-    %
-:- pred build_with_module_options(globals::in, module_name::in,
-    list(string)::in, build(list(string))::in(build), maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
 %---------------------%
 
 :- type may_build
@@ -56,8 +42,28 @@
             % have been reported before we started building any targets.
             % Any *other* warnings are the responsibility of (the code
             % invoked by) setup_for_build_with_module_options, so
-            % there is no point in reporting it to the programmer .
+            % there is no point in reporting it to the programmer.
 
+    % setup_for_build_with_module_options(Globals, InvokedByMmcMake,
+    %   ModuleName, DetectedGradeFlags, OptionVariables, OptionArgs,
+    %   ExtraOptions, MayBuild, !Info, !IO):
+    %
+    % Set up for building some compiler-generated file for ModuleName,
+    % Return, in MayBuild, the full argument list for that compiler invocation,
+    % containing module-specific options from OptionVariables and OptionArgs,
+    % and including ExtraOptions, adding `--use-subdirs' and
+    % `--invoked-by-mmc-make' to the option list. (The latter presumably
+    % dependent on the value of the second arg).
+    %
+    % Return next to it a version of the globals structure that results
+    % from this full argument list.
+    %
+    % XXX Most, maybe all, callers seem to ignore the full argument list,
+    % using only the build globals derived from it,
+    %
+    % XXX The type of ExtraOptions should be assoc_list(option, option_data),
+    % or possibly just a maybe(op_mode). not list(string),
+    %
 :- pred setup_for_build_with_module_options(globals::in,
     maybe_invoked_by_mmc_make::in, module_name::in,
     list(string)::in, options_variables::in,
@@ -180,50 +186,6 @@
 
 %---------------------------------------------------------------------------%
 
-build_with_module_options(Globals, ModuleName, ExtraOptions,
-        Build, Succeeded, Info0, Info, !IO) :-
-    build_with_module_options_args(Globals, invoked_by_mmc_make,
-        ModuleName, Info0 ^ mki_detected_grade_flags,
-        Info0 ^ mki_options_variables, Info0 ^ mki_option_args,
-        ExtraOptions, Build, Succeeded, Info0, MaybeInfo, !IO),
-    (
-        MaybeInfo = yes(Info)
-    ;
-        MaybeInfo = no,
-        Info = Info0
-    ).
-
-:- pred build_with_module_options_args(globals::in,
-    maybe_invoked_by_mmc_make::in, module_name::in,
-    list(string)::in, options_variables::in,
-    list(string)::in, list(string)::in,
-    build(list(string), Info1, Info2)::in(build), maybe_succeeded::out,
-    Info1::in, maybe(Info2)::out, io::di, io::uo) is det.
-
-build_with_module_options_args(Globals, InvokedByMmcMake, ModuleName,
-        DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
-        Build, Succeeded, Info0, MaybeInfo, !IO) :-
-    setup_for_build_with_module_options(Globals, InvokedByMmcMake, ModuleName,
-        DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
-        MayBuild, !IO),
-    (
-        MayBuild = may_build(AllOptionArgs, BuildGlobals, _Warnings),
-        Build(BuildGlobals, AllOptionArgs, Succeeded, Info0, Info, !IO),
-        MaybeInfo = yes(Info)
-    ;
-        MayBuild = may_not_build(Specs),
-        % A similar reasoning applies to Specs as to _Warnings above,
-        % with the exception that this prevents the compiler from doing
-        % its job, so we *have* to report it to the programmer, even if
-        % the problem is not his/her fault.
-        % XXX Push this as far up the call chain as possible.
-        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-        write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
-        % XXX Returning both of these is redundant.
-        Succeeded = did_not_succeed,
-        MaybeInfo = no
-    ).
-
 setup_for_build_with_module_options(Globals, InvokedByMmcMake, ModuleName,
         DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
         MayBuild, !IO) :-
@@ -266,9 +228,27 @@ setup_for_build_with_module_options(Globals, InvokedByMmcMake, ModuleName,
 
 build_with_module_options_and_output_redirect(Globals, ModuleName,
         ExtraOptions, Build, Succeeded, !Info, !IO) :-
-    build_with_module_options(Globals, ModuleName, ExtraOptions,
-        build_with_module_options_and_output_redirect_2(ModuleName, Build),
-        Succeeded, !Info, !IO).
+    DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
+    OptionVariables = !.Info ^ mki_options_variables,
+    OptionArgs = !.Info ^ mki_option_args,
+    setup_for_build_with_module_options(Globals, invoked_by_mmc_make,
+        ModuleName, DetectedGradeFlags, OptionVariables, OptionArgs,
+        ExtraOptions, MayBuild, !IO),
+    (
+        MayBuild = may_build(AllOptionArgs, BuildGlobals, _Warnings),
+        build_with_module_options_and_output_redirect_2(ModuleName, Build,
+            BuildGlobals, AllOptionArgs, Succeeded, !Info, !IO)
+    ;
+        MayBuild = may_not_build(Specs),
+        % A similar reasoning applies to Specs as to _Warnings above,
+        % with the exception that this prevents the compiler from doing
+        % its job, so we *have* to report it to the programmer, even if
+        % the problem is not his/her fault.
+        % XXX Push this as far up the call chain as possible.
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+        write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
+        Succeeded = did_not_succeed
+    ).
 
 :- pred build_with_module_options_and_output_redirect_2(module_name::in,
     build2(list(string), io.text_output_stream)::in(build2), globals::in,
