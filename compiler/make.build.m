@@ -23,14 +23,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- type build(T, Info1, Info2) ==
-    pred(globals, T, maybe_succeeded, Info1, Info2, io, io).
-:- type build(T, Info) == build(T, Info, Info).
-:- type build(T) == build(T, make_info).
-:- inst build == (pred(in, in, out, in, out, di, uo) is det).
-
-%---------------------%
-
 :- type may_build
     --->    may_not_build(list(error_spec))
     ;       may_build(list(string), globals, list(error_spec)).
@@ -68,18 +60,6 @@
     maybe_invoked_by_mmc_make::in, module_name::in,
     list(string)::in, options_variables::in,
     list(string)::in, list(string)::in, may_build::out, io::di, io::uo) is det.
-
-%---------------------%
-
-:- type build2(T, U) ==
-    pred(globals, T, U, maybe_succeeded, make_info, make_info, io, io).
-:- inst build2 == (pred(in, in, in, out, in, out, di, uo) is det).
-
-:- pred build_with_module_options_and_output_redirect(globals::in,
-    module_name::in, list(string)::in,
-    build2(list(string), io.text_output_stream)::in(build2),
-    maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------%
 
@@ -223,60 +203,6 @@ setup_for_build_with_module_options(Globals, InvokedByMmcMake, ModuleName,
             MayBuild = may_build(AllOptionArgs, BuildGlobals, LookupSpecs)
         )
     ).
-
-%---------------------%
-
-build_with_module_options_and_output_redirect(Globals, ModuleName,
-        ExtraOptions, Build, Succeeded, !Info, !IO) :-
-    DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
-    OptionVariables = !.Info ^ mki_options_variables,
-    OptionArgs = !.Info ^ mki_option_args,
-    setup_for_build_with_module_options(Globals, invoked_by_mmc_make,
-        ModuleName, DetectedGradeFlags, OptionVariables, OptionArgs,
-        ExtraOptions, MayBuild, !IO),
-    (
-        MayBuild = may_build(AllOptionArgs, BuildGlobals, _Warnings),
-        build_with_module_options_and_output_redirect_2(ModuleName, Build,
-            BuildGlobals, AllOptionArgs, Succeeded, !Info, !IO)
-    ;
-        MayBuild = may_not_build(Specs),
-        % A similar reasoning applies to Specs as to _Warnings above,
-        % with the exception that this prevents the compiler from doing
-        % its job, so we *have* to report it to the programmer, even if
-        % the problem is not his/her fault.
-        % XXX Push this as far up the call chain as possible.
-        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-        write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
-        Succeeded = did_not_succeed
-    ).
-
-:- pred build_with_module_options_and_output_redirect_2(module_name::in,
-    build2(list(string), io.text_output_stream)::in(build2), globals::in,
-    list(string)::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-build_with_module_options_and_output_redirect_2(ModuleName, Build, Globals,
-        AllOptions, Succeeded, !Info, !IO) :-
-
-    prepare_to_redirect_output(ModuleName, RedirectResult, !Info, !IO),
-    (
-        RedirectResult = no,
-        Succeeded = did_not_succeed
-    ;
-        RedirectResult = yes(ErrorStream),
-        build_with_module_options_and_output_redirect_3(AllOptions, Build,
-            Globals, ErrorStream, Succeeded, !Info, !IO),
-        unredirect_output(Globals, ModuleName, ErrorStream, !Info, !IO)
-    ).
-
-:- pred build_with_module_options_and_output_redirect_3(list(string)::in,
-    build2(list(string), io.text_output_stream)::in(build2), globals::in,
-    io.text_output_stream::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-build_with_module_options_and_output_redirect_3(AllOptions, Build, Globals,
-        ErrorStream, Succeeded, !Info, !IO) :-
-    Build(Globals, AllOptions, ErrorStream, Succeeded, !Info, !IO).
 
 %---------------------------------------------------------------------------%
 

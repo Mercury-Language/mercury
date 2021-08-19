@@ -371,6 +371,7 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
     maybe_make_target_message(Globals, TargetFile, !IO),
     TargetFile = target_file(ModuleName, _TargetType),
     CompilationTask = task_and_options(Task, TaskOptions),
+    ExtraAndTaskOptions = ExtraOptions ++ TaskOptions,
     ( if
         Task = process_module(ModuleTask),
         forkable_module_compilation_task_type(ModuleTask) = yes,
@@ -401,10 +402,31 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
         Cleanup = cleanup_files(Globals, MaybeArgFileName,
             TouchedTargetFiles, TouchedFiles),
         setup_checking_for_interrupt(Cookie, !IO),
-        build_with_module_options_and_output_redirect(Globals, ModuleName,
-            ExtraOptions ++ TaskOptions,
-            build_target_2(ModuleName, Task, MaybeArgFileName, ModuleDepInfo),
-            Succeeded0, !Info, !IO),
+        DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
+        OptionVariables = !.Info ^ mki_options_variables,
+        OptionArgs = !.Info ^ mki_option_args,
+        setup_for_build_with_module_options(Globals, invoked_by_mmc_make,
+            ModuleName, DetectedGradeFlags, OptionVariables, OptionArgs,
+            ExtraAndTaskOptions, MayBuild, !IO),
+        (
+            MayBuild = may_build(AllOptionArgs, BuildGlobals, _Warnings),
+            prepare_to_redirect_output(ModuleName, RedirectResult, !Info, !IO),
+            (
+                RedirectResult = no,
+                Succeeded0 = did_not_succeed
+            ;
+                RedirectResult = yes(ErrorStream),
+                build_target_2(ModuleName, Task, MaybeArgFileName,
+                    ModuleDepInfo, BuildGlobals, AllOptionArgs, ErrorStream,
+                    Succeeded0, !Info, !IO),
+                unredirect_output(Globals, ModuleName, ErrorStream, !Info, !IO)
+            )
+        ;
+            MayBuild = may_not_build(Specs),
+            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+            write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
+            Succeeded0 = did_not_succeed
+        ),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
             Succeeded0, Succeeded, !Info, !IO),
         record_made_target_given_maybe_touched_files(Globals, Succeeded,
