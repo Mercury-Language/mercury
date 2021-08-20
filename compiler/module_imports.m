@@ -241,10 +241,6 @@
 % Predicates for getting information from aug_compilation_units.
 %
 
-:- pred aug_compilation_unit_get_children(aug_compilation_unit::in,
-    list(module_name)::out) is det.
-:- pred aug_compilation_unit_get_children_set(aug_compilation_unit::in,
-    set(module_name)::out) is det.
 :- pred aug_compilation_unit_get_int_imp_deps(aug_compilation_unit::in,
     set(module_name)::out, set(module_name)::out) is det.
 
@@ -333,15 +329,21 @@ get_nested_children_list_of_top_module(MaybeTopModule) = Modules :-
 
 parse_tree_src_to_burdened_aug_comp_unit_list(Globals, SourceFileName,
         ParseTreeSrc, ReadModuleErrors, !Specs, BurdenedAugCompUnitList) :-
+    % XXX This predicate and augment_and_process_all_submodules
+    % do very similar jobs. See whether we can unify the two.
     split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
         ParseTreeModuleSrcs, !Specs),
     ParseTreeSrc = parse_tree_src(TopModuleName, _, _),
     AllModuleNames = set.list_to_set(
         list.map(parse_tree_module_src_project_name, ParseTreeModuleSrcs)),
-    MAISpecs0 = [],
+    BaggageSpecs0 = [],
+    % XXX This will create a separate grabbed_file_map in each element
+    % or BurdenedAugCompUnitList. It would be better for our caller
+    % to thread a single grabbed_file_map through the augment processing
+    % of all its aug_compilation_units.
     list.map(
         maybe_nested_init_burdened_aug_comp_unit(SourceFileName,
-            TopModuleName, AllModuleNames, MAISpecs0, ReadModuleErrors),
+            TopModuleName, AllModuleNames, BaggageSpecs0, ReadModuleErrors),
         ParseTreeModuleSrcs, BurdenedAugCompUnitList).
 
 :- pred maybe_nested_init_burdened_aug_comp_unit(file_name::in,
@@ -369,16 +371,6 @@ maybe_nested_init_burdened_aug_comp_unit(SourceFileName,
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-
-aug_compilation_unit_get_children(AugCompUnit, Children) :-
-    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
-    IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
-    Children = map.keys(IncludeMap).
-
-aug_compilation_unit_get_children_set(AugCompUnit, Children) :-
-    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
-    IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
-    Children = map.keys_as_set(IncludeMap).
 
 aug_compilation_unit_get_int_imp_deps(AugCompUnit, IntDeps, ImpDeps) :-
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
@@ -496,8 +488,9 @@ module_dep_info_get_children(ModuleDepInfo, X) :-
     (
         ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
         AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-        aug_compilation_unit_get_children(AugCompUnit, Xs),
-        set.list_to_set(Xs, X)
+        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+        IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
+        X = map.keys_as_set(IncludeMap)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_children
