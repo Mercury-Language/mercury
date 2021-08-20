@@ -949,8 +949,8 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
                 Goal, !Info)
         )
     ;
-        GoalExpr0 = unify(XVar, Y, Mode, Unification, UnifyContext),
-        polymorphism_process_unify(XVar, Y, Mode, Unification, UnifyContext,
+        GoalExpr0 = unify(LHSVar, RHS, Mode, Unification, UnifyContext),
+        polymorphism_process_unify(LHSVar, RHS, Mode, Unification, UnifyContext,
             GoalInfo0, Goal, !Info)
     ;
         % The rest of the cases just process goals recursively.
@@ -1165,21 +1165,21 @@ polymorphism_process_fgti_goals([Goal0 | Goals0], !ConstructOrderMarkedGoals,
     OldInfo = !.Info,
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     ( if
-        GoalExpr0 = unify(XVarPrime, Y, ModePrime, UnificationPrime,
+        GoalExpr0 = unify(LHSVarPrime, RHS, ModePrime, UnificationPrime,
             UnifyContextPrime),
-        Y = rhs_functor(ConsIdPrime, _, YVarsPrime)
+        RHS = rhs_functor(ConsIdPrime, _, RHSVarsPrime)
     then
-        XVar = XVarPrime,
+        LHSVar = LHSVarPrime,
         Mode = ModePrime,
         Unification = UnificationPrime,
         UnifyContext = UnifyContextPrime,
         ConsId = ConsIdPrime,
-        YVars = YVarsPrime
+        RHSVars = RHSVarsPrime
     else
         unexpected($pred,
             "from_ground_term_initial conjunct is not functor unify")
     ),
-    polymorphism_process_unify_functor(XVar, ConsId, YVars, Mode,
+    polymorphism_process_unify_functor(LHSVar, ConsId, RHSVars, Mode,
         Unification, UnifyContext, GoalInfo0, Goal, Changed, !Info),
     (
         Changed = no,
@@ -1199,10 +1199,10 @@ polymorphism_process_fgti_goals([Goal0 | Goals0], !ConstructOrderMarkedGoals,
             expect(unify(Goal0, Goal), $pred,
                 "Goal0 != Goal")
         ),
-        MarkedGoal = fgt_kept_goal(Goal0, XVar, YVars)
+        MarkedGoal = fgt_kept_goal(Goal0, LHSVar, RHSVars)
     ;
         Changed = yes,
-        MarkedGoal = fgt_broken_goal(Goal, XVar, YVars),
+        MarkedGoal = fgt_broken_goal(Goal, LHSVar, RHSVars),
         !:InvariantsStatus = fgt_invariants_broken
     ),
     !:ConstructOrderMarkedGoals = [MarkedGoal | !.ConstructOrderMarkedGoals],
@@ -1215,10 +1215,10 @@ polymorphism_process_fgti_goals([Goal0 | Goals0], !ConstructOrderMarkedGoals,
     unify_mode::in, unification::in, unify_context::in, hlds_goal_info::in,
     hlds_goal::out, poly_info::in, poly_info::out) is det.
 
-polymorphism_process_unify(XVar, Y, Mode, Unification0, UnifyContext,
+polymorphism_process_unify(LHSVar, RHS0, Mode, Unification0, UnifyContext,
         GoalInfo0, Goal, !Info) :-
     (
-        Y = rhs_var(_YVar),
+        RHS0 = rhs_var(_RHSVar),
 
         % Var-var unifications (simple_test, assign, or complicated_unify)
         % are basically left unchanged. Complicated unifications will
@@ -1233,17 +1233,17 @@ polymorphism_process_unify(XVar, Y, Mode, Unification0, UnifyContext,
         % requantifying things.
 
         poly_info_get_var_types(!.Info, VarTypes),
-        lookup_var_type(VarTypes, XVar, Type),
+        lookup_var_type(VarTypes, LHSVar, Type),
         unification_typeinfos(Type, Unification0, Unification,
             GoalInfo0, GoalInfo, _Changed, !Info),
-        Goal = hlds_goal(unify(XVar, Y, Mode, Unification, UnifyContext),
+        Goal = hlds_goal(unify(LHSVar, RHS0, Mode, Unification, UnifyContext),
             GoalInfo)
     ;
-        Y = rhs_functor(ConsId, _, Args),
-        polymorphism_process_unify_functor(XVar, ConsId, Args, Mode,
+        RHS0 = rhs_functor(ConsId, _, Args),
+        polymorphism_process_unify_functor(LHSVar, ConsId, Args, Mode,
             Unification0, UnifyContext, GoalInfo0, Goal, _Changed, !Info)
     ;
-        Y = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             ArgVars0, LambdaVars, Modes, Det, LambdaGoal0),
 
         % For lambda expressions, we must recursively traverse the lambda goal.
@@ -1264,7 +1264,7 @@ polymorphism_process_unify(XVar, Y, Mode, Unification0, UnifyContext,
             LambdaGoal1, LambdaGoal, NonLocalTypeInfos, !Info),
         set_of_var.to_sorted_list(NonLocalTypeInfos, NonLocalTypeInfosList),
         ArgVars = NonLocalTypeInfosList ++ ArgVars0,
-        Y1 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             ArgVars, LambdaVars, Modes, Det, LambdaGoal),
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
         set_of_var.union(NonLocals0, NonLocalTypeInfos, NonLocals),
@@ -1273,7 +1273,7 @@ polymorphism_process_unify(XVar, Y, Mode, Unification0, UnifyContext,
         % Complicated (in-in) argument unifications are impossible for lambda
         % expressions, so we don't need to worry about adding the type_infos
         % that would be required for such unifications.
-        Goal = hlds_goal(unify(XVar, Y1, Mode, Unification0, UnifyContext),
+        Goal = hlds_goal(unify(LHSVar, RHS, Mode, Unification0, UnifyContext),
             GoalInfo)
     ).
 
