@@ -116,6 +116,11 @@
     import_and_or_use_map::in,
     list(item_avail)::out, list(item_avail)::out) is det.
 
+:- pred import_and_or_use_map_to_explicit_int_imp_import_use_maps(
+    import_and_or_use_map::in,
+    module_names_contexts::out, module_names_contexts::out,
+    module_names_contexts::out, module_names_contexts::out) is det.
+
     % import_and_or_use_map_to_module_name_contexts(ImportUseMap,
     %   IntImports, IntUses, ImpImports, ImpUses, IntUsesImpImports).
     %
@@ -902,6 +907,59 @@ get_explicit_avails(ModuleName, Explicit, IntAvails, ImpAvails) :-
         ImpAvail = avail_import(avail_import_info(ModuleName, ImpContext, SN)),
         IntAvails = [IntAvail],
         ImpAvails = [ImpAvail]
+    ).
+
+%---------------------%
+
+import_and_or_use_map_to_explicit_int_imp_import_use_maps(ImportUseMap,
+        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap) :-
+    map.foldl4(import_and_or_use_map_to_explicit_int_imp_import_use_maps_acc,
+        ImportUseMap,
+        map.init, IntImportMap,
+        map.init, IntUseMap,
+        map.init, ImpImportMap,
+        map.init, ImpUseMap).
+
+:- pred import_and_or_use_map_to_explicit_int_imp_import_use_maps_acc(
+    module_name::in,
+    maybe_implicit_import_and_or_use::in,
+    module_names_contexts::in, module_names_contexts::out,
+    module_names_contexts::in, module_names_contexts::out,
+    module_names_contexts::in, module_names_contexts::out,
+    module_names_contexts::in, module_names_contexts::out) is det.
+
+import_and_or_use_map_to_explicit_int_imp_import_use_maps_acc(ModuleName,
+        ImportAndOrUse,
+        !IntImportMap, !IntUseMap, !ImpImportMap, !ImpUseMap) :-
+    (
+        ImportAndOrUse = explicit_avail(Explicit0),
+        MaybeExplicit = yes(Explicit0)
+    ;
+        ImportAndOrUse = implicit_avail(_Implicit, MaybeExplicit)
+    ),
+    (
+        MaybeExplicit = no
+    ;
+        MaybeExplicit = yes(Explicit),
+        (
+            Explicit = int_import(Context),
+            map.det_insert(ModuleName, one_or_more(Context, []), !IntImportMap)
+        ;
+            Explicit = int_use(Context),
+            map.det_insert(ModuleName, one_or_more(Context, []), !IntUseMap)
+        ;
+            Explicit = imp_import(Context),
+            map.det_insert(ModuleName, one_or_more(Context, []), !ImpImportMap)
+        ;
+            Explicit = imp_use(Context),
+            map.det_insert(ModuleName, one_or_more(Context, []), !ImpUseMap)
+        ;
+            Explicit = int_use_imp_import(IntContext, ImpContext),
+            map.det_insert(ModuleName, one_or_more(IntContext, []),
+                !IntUseMap),
+            map.det_insert(ModuleName, one_or_more(ImpContext, []),
+                !ImpImportMap)
+        )
     ).
 
 %---------------------%

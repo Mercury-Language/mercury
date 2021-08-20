@@ -325,7 +325,7 @@ generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         IntInclMap, ImpInclMap, InclMap,
-        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
+        _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
@@ -340,6 +340,8 @@ generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
         ImpDeclPragmas, _ImpImplPragmas, ImpPromises,
         _ImpInitialises, _ImpFinalises, ImpMutables),
 
+    import_and_or_use_map_to_explicit_int_imp_import_use_maps(ImportUseMap,
+        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap),
     map.keys_as_set(IntFIMSpecMap, IntFIMSpecs0),
     map.keys_as_set(ImpFIMSpecMap, ImpFIMSpecs0),
     % Add implicit self FIMs for the {Int,Imp}SelfFIMLangs
@@ -534,9 +536,12 @@ generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
         map.init(ImpImportUseMap)
     else
         one_or_more_map.select(ImpImportUseMap1, ImpNeededModules,
-            ImpImportUseMap)
+            ImpImportUseMap0),
+        map.keys(IntImportUseMap, IntImportUseModules),
+        list.foldl(one_or_more_map.delete, IntImportUseModules,
+            ImpImportUseMap0, ImpImportUseMap)
         % This sanity check is commented out, because it causes the failure
-        % of tests/valid/int_imp_test.m. While field of parse_tree_module_src
+        % of tests/valid/int_imp_test.m. While the parse_tree_module_src field
         % that holds ImportUseMap0 is guaranteed to be free of a module
         % imported or used more than once (except the permitted combo of
         % used in interface, imported in implementation), the four previous
@@ -545,7 +550,7 @@ generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
         % redundant import_module and use_module items.
         %
         % map.keys_as_set(IntImportUseMap, IntImportUseModuleNameSet),
-        % map.keys_as_set(ImpImportUseMap, ImpImportUseModuleNameSet),
+        % map.keys_as_set(ImpImportUseMap0, ImpImportUseModuleNameSet),
         % set.intersect(IntImportUseModuleNameSet, ImpImportUseModuleNameSet,
         %     IntImpImportUseModuleNameSet),
         % expect(set.is_empty(IntImpImportUseModuleNameSet), $pred,
