@@ -768,10 +768,11 @@
 
                 % The nonlocals of the goal excluding the lambda quantified
                 % variables, in no particular order.
+                % XXX This should be a set_of_var.
                 rhs_nonlocals       :: list(prog_var),
 
-                % Lambda quantified variables.
-                rhs_lambda_quant_vars :: list(prog_var),
+                % The arguments of the lambda.
+                rhs_lambda_arg_vars :: list(prog_var),
 
                 % Modes of the lambda quantified variables.
                 rhs_lambda_modes    :: list(mer_mode),

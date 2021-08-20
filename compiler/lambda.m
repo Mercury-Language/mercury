@@ -544,17 +544,17 @@ create_new_pred_for_lambda(RegWrapperProc, RHS0, OrigVars, ArgVars,
     ExistQVars = [],
     LambdaGoalNonLocals = goal_info_get_nonlocals(LambdaGoalInfo),
     set_of_var.insert_list(Vars, LambdaGoalNonLocals, LambdaNonLocals),
-    goal_util.extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
-        LambdaNonLocals, ExtraTypeInfos),
+    goal_util.extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps, VarTypes,
+        ExistQVars, LambdaNonLocals, ExtraTiTcis),
 
     set_of_var.delete_list(Vars, LambdaGoalNonLocals, NonLocals1),
     % We need all the typeinfos, including the ones that are not used,
     % for the layout structure describing the closure.
-    set_of_var.difference(ExtraTypeInfos, NonLocals1, NewTypeInfos),
-    set_of_var.union(NonLocals1, NewTypeInfos, NonLocals),
+    set_of_var.difference(ExtraTiTcis, NonLocals1, NewTiTcis),
+    set_of_var.union(NonLocals1, NewTiTcis, NonLocals),
     set_of_var.to_sorted_list(NonLocals, ArgVars1),
 
-    ( if set_of_var.is_empty(NewTypeInfos) then
+    ( if set_of_var.is_empty(NewTiTcis) then
         true
     else
         % If we added variables to the nonlocals of the lambda goal, then

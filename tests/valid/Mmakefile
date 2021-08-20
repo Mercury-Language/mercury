@@ -37,6 +37,7 @@ TYPECLASS_PROGS = \
 	func_method \
 	fundeps \
 	fundeps_poly_instance \
+	gh98 \
 	instance_dup_var \
 	instance_superclass \
 	instance_typequal \

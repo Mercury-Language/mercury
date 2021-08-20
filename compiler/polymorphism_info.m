@@ -94,6 +94,10 @@
 
 %---------------------------------------------------------------------------%
 
+:- type maybe_must_requantify
+    --->    no_must_requantify
+    ;       must_requantify.
+
 :- pred poly_info_get_module_info(poly_info::in,
     module_info::out) is det.
 :- pred poly_info_get_varset(poly_info::in,
@@ -124,6 +128,8 @@
     const_struct_db::out) is det.
 :- pred poly_info_get_defined_where(poly_info::in,
     defined_where::out) is det.
+:- pred poly_info_get_must_requantify(poly_info::in,
+    maybe_must_requantify::out) is det.
 :- pred poly_info_get_errors(poly_info::in,
     list(error_spec)::out) is det.
 
@@ -151,6 +157,8 @@
 :- pred poly_info_set_num_reuses(int::in,
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_const_struct_db(const_struct_db::in,
+    poly_info::in, poly_info::out) is det.
+:- pred poly_info_set_must_requantify(
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_errors(list(error_spec)::in,
     poly_info::in, poly_info::out) is det.
@@ -286,6 +294,8 @@
 
                 poly_defined_where          :: defined_where,
 
+                poly_must_requantify        :: maybe_must_requantify,
+
                 % The list of errors we have discovered during the polymorphism
                 % pass.
                 poly_errors                 :: list(error_spec)
@@ -313,11 +323,12 @@ init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
     ( InThisModule = yes, DefinedWhere = defined_in_this_module
     ; InThisModule = no,  DefinedWhere = defined_in_other_module
     ),
+    Requant = no_must_requantify,
     Specs = [],
     PolyInfo = poly_info(ModuleInfo, VarSet, VarTypes, RttiVarMaps,
         TypeVarSet, TypeVarKinds, ProofMap, ConstraintMap,
         TypeInfoVarMap, TypeClassInfoMap, IntConstMap, ConstStructVarMap,
-        NumReuses, SnapshotNum, ConstStructDb, DefinedWhere, Specs).
+        NumReuses, SnapshotNum, ConstStructDb, DefinedWhere, Requant, Specs).
 
 create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
     pred_info_get_typevarset(PredInfo, TypeVarSet),
@@ -339,17 +350,19 @@ create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
     ( InThisModule = yes, DefinedWhere = defined_in_this_module
     ; InThisModule = no,  DefinedWhere = defined_in_other_module
     ),
+    Requant = no_must_requantify,
     Specs = [],
     PolyInfo = poly_info(ModuleInfo, VarSet, VarTypes, RttiVarMaps,
         TypeVarSet, TypeVarKinds, ProofMap, ConstraintMap,
         TypeInfoVarMap, TypeClassInfoMap, IntConstMap, ConstStructVarMap,
-        NumReuses, SnapshotNum, ConstStructDb, DefinedWhere, Specs).
+        NumReuses, SnapshotNum, ConstStructDb, DefinedWhere, Requant, Specs).
 
 poly_info_extract(Info, Specs, !PredInfo, !ProcInfo, !:ModuleInfo) :-
     Info = poly_info(!:ModuleInfo, VarSet, VarTypes, RttiVarMaps,
         TypeVarSet, TypeVarKinds, _ProofMap, _ConstraintMap,
         _TypeInfoVarMap, _TypeClassInfoMap, _IntConstMap, _ConstStructVarMap,
-        _NumReuses, _SnapshotNum, ConstStructDb, _DefinedWhere, Specs),
+        _NumReuses, _SnapshotNum, ConstStructDb, _DefinedWhere,
+        _Requant, Specs),
 
     module_info_set_const_struct_db(ConstStructDb, !ModuleInfo),
 
@@ -408,6 +421,8 @@ poly_info_get_const_struct_db(!.PI, X) :-
     X = !.PI ^ poly_const_struct_db.
 poly_info_get_defined_where(!.PI, X) :-
     X = !.PI ^ poly_defined_where.
+poly_info_get_must_requantify(!.PI, X) :-
+    X = !.PI ^ poly_must_requantify.
 poly_info_get_errors(!.PI, X) :-
     X = !.PI ^ poly_errors.
 
@@ -488,6 +503,8 @@ poly_info_set_const_struct_db(X, !PI) :-
     else
         !PI ^ poly_const_struct_db := X
     ).
+poly_info_set_must_requantify(!PI) :-
+    !PI ^ poly_must_requantify := must_requantify.
 poly_info_set_errors(X, !PI) :-
     !PI ^ poly_errors := X.
 

@@ -124,12 +124,11 @@
 :- pred attach_features_to_all_goals(list(goal_feature),
     attach_in_from_ground_term, hlds_goal, hlds_goal).
 :- mode attach_features_to_all_goals(in,
-    in(bound(attach_in_from_ground_term)),
-    in, out) is det.
+    in(bound(attach_in_from_ground_term)), in, out) is det.
 :- mode attach_features_to_all_goals(in,
     in(bound(do_not_attach_in_from_ground_term)), in, out) is det.
 
-    % extra_nonlocal_typeinfos(TypeInfoMap, TypeClassInfoMap,
+    % extra_nonlocal_typeinfos_typeclass_infos(TypeInfoMap, TypeClassInfoMap,
     %   VarTypes, ExistQVars, NonLocals, NonLocalTypeInfos):
     %
     % Compute which type-info and type-class-info variables may need to be
@@ -147,8 +146,9 @@
     % i.e. a constraint which constrains an existentially quantified type
     % variable.
     %
-:- pred extra_nonlocal_typeinfos(rtti_varmaps::in, vartypes::in,
-    existq_tvars::in, set_of_progvar::in, set_of_progvar::out) is det.
+:- pred extra_nonlocal_typeinfos_typeclass_infos(rtti_varmaps::in,
+    vartypes::in, existq_tvars::in,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
 :- type is_leaf
     --->    is_leaf
@@ -836,7 +836,7 @@ attach_features_to_goal_expr(Features, InFromGroundTerm,
 
 %-----------------------------------------------------------------------------%
 
-extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
+extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps, VarTypes, ExistQVars,
         NonLocals, NonLocalTypeInfos) :-
     % Find all non-local type vars. That is, type vars that are existentially
     % quantified or type vars that appear in the type of a non-local prog_var.
@@ -849,18 +849,17 @@ extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
 
     % Find all the type_infos that are non-local, that is, type_infos for
     % type vars that are non-local in the above sense.
-
-    TypeVarToProgVar = (func(TypeVar) = ProgVar :-
-        rtti_lookup_type_info_locn(RttiVarMaps, TypeVar, Locn),
-        type_info_locn_var(Locn, ProgVar)
-    ),
+    TypeVarToProgVar =
+        ( func(TypeVar) = ProgVar :-
+            rtti_lookup_type_info_locn(RttiVarMaps, TypeVar, Locn),
+            type_info_locn_var(Locn, ProgVar)
+        ),
     NonLocalTypeInfoVars = set_of_var.list_to_set(
         list.map(TypeVarToProgVar, NonLocalTypeVarsList)),
 
     % Find all the typeclass_infos that are non-local. These include
     % all typeclass_infos that constrain a type variable that is non-local
     % in the above sense.
-
     solutions.solutions(
         ( pred(Var::out) is nondet :-
             % Search through all arguments of all constraints

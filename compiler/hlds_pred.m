@@ -1392,7 +1392,7 @@ pred_create(ModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
 
-define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
+define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTiTcis, InstMap0,
         SymName, TVarSet, VarTypes0, ClassContext, RttiVarMaps,
         VarSet0, InstVarSet, Markers, IsAddressTaken, HasParallelConj,
         VarNameRemap, ModuleInfo0, ModuleInfo, PredProcId) :-
@@ -1415,15 +1415,15 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
     (
         TypeInfoLiveness = yes,
         NonLocals = goal_info_get_nonlocals(GoalInfo),
-        goal_util.extra_nonlocal_typeinfos(RttiVarMaps, VarTypes0,
-            ExistQVars, NonLocals, ExtraTypeInfos0),
-        set_of_var.delete_list(ArgVars0, ExtraTypeInfos0, ExtraTypeInfos1),
-        set_of_var.to_sorted_list(ExtraTypeInfos1, ExtraTypeInfos),
-        ArgVars = ExtraTypeInfos ++ ArgVars0
+        goal_util.extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps,
+            VarTypes0, ExistQVars, NonLocals, ExtraTiTcis0),
+        set_of_var.delete_list(ArgVars0, ExtraTiTcis0, ExtraTiTcis1),
+        set_of_var.to_sorted_list(ExtraTiTcis1, ExtraTiTcis),
+        ArgVars = ExtraTiTcis ++ ArgVars0
     ;
         TypeInfoLiveness = no,
         ArgVars = ArgVars0,
-        ExtraTypeInfos = []
+        ExtraTiTcis = []
     ),
 
     Context = goal_info_get_context(GoalInfo),

@@ -1244,15 +1244,13 @@ polymorphism_process_unify(LHSVar, RHS0, Mode, Unification0, UnifyContext,
             Unification0, UnifyContext, GoalInfo0, Goal, _Changed, !Info)
     ;
         RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            ArgVars0, LambdaVars, Modes, Det, LambdaGoal0),
-
+            LambdaNonLocals0, LambdaArgVars, Modes, Det, LambdaGoal0),
         % For lambda expressions, we must recursively traverse the lambda goal.
         % Any type_info variables needed by the lambda goal are created in the
         % lambda goal (not imported from the outside), and any type_info
         % variables created by the lambda goal are not available outside.
         % This is because, after lambda expansion, the code inside and outside
         % the lambda goal will end up in different procedures.
-
         get_cache_maps_snapshot("lambda", InitialSnapshot, !Info),
         empty_cache_maps(!Info),
         polymorphism_process_goal(LambdaGoal0, LambdaGoal1, !Info),
@@ -1260,21 +1258,25 @@ polymorphism_process_unify(LHSVar, RHS0, Mode, Unification0, UnifyContext,
 
         % Currently we don't allow lambda goals to be existentially typed.
         ExistQVars = [],
-        fixup_lambda_quantification(ArgVars0, LambdaVars, ExistQVars,
-            LambdaGoal1, LambdaGoal, NonLocalTypeInfos, !Info),
-        set_of_var.to_sorted_list(NonLocalTypeInfos, NonLocalTypeInfosList),
-        ArgVars = NonLocalTypeInfosList ++ ArgVars0,
+        fixup_lambda_quantification(LambdaNonLocals0, LambdaArgVars,
+            ExistQVars, LambdaGoal1, LambdaGoal,
+            LambdaTiTciVars, PossibleNonLocalTiTciVars, !Info),
+        LambdaNonLocals1 =
+            set_of_var.to_sorted_list(LambdaTiTciVars) ++
+            set_of_var.to_sorted_list(PossibleNonLocalTiTciVars) ++
+            LambdaNonLocals0,
+        list.sort_and_remove_dups(LambdaNonLocals1, LambdaNonLocals),
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            ArgVars, LambdaVars, Modes, Det, LambdaGoal),
+            LambdaNonLocals, LambdaArgVars, Modes, Det, LambdaGoal),
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-        set_of_var.union(NonLocals0, NonLocalTypeInfos, NonLocals),
+        set_of_var.union(PossibleNonLocalTiTciVars, NonLocals0, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
 
         % Complicated (in-in) argument unifications are impossible for lambda
         % expressions, so we don't need to worry about adding the type_infos
         % that would be required for such unifications.
-        Goal = hlds_goal(unify(LHSVar, RHS, Mode, Unification0, UnifyContext),
-            GoalInfo)
+        GoalExpr = unify(LHSVar, RHS, Mode, Unification0, UnifyContext),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ).
 
 :- pred unification_typeinfos(mer_type::in,
@@ -2053,7 +2055,9 @@ fixup_quantification(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
         poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
         rtti_varmaps_no_tvars(RttiVarMaps0),
         poly_info_get_num_reuses(!.Info, NumReuses),
-        NumReuses = 0
+        NumReuses = 0,
+        poly_info_get_must_requantify(!.Info, MustRequantify),
+        MustRequantify = no_must_requantify
     then
         Goal = Goal0
     else
@@ -2072,33 +2076,74 @@ fixup_quantification(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
     % includes the type_info variables and typeclass_info variables for
     % any polymorphically typed variables in the nonlocals set or in the
     % arguments (either the lambda vars or the implicit curried argument
-    % variables). Including typeinfos for arguments which are not in the
-    % nonlocals set of the goal, i.e. unused arguments, is necessary only
-    % if typeinfo_liveness is set, but we do it always, since we don't have
-    % the options available here, and the since cost is pretty minimal.
+    % variables). We return this set of LambdaTiTciVars. Including typeinfos
+    % for arguments which are not in the nonlocals set of the lambda goal,
+    % i.e. unused arguments, is necessary only if typeinfo_liveness is set,
+    % but we do it always, since we don't have the options available here,
+    % and the since cost is pretty minimal.
+    %
+    % We also need to include in the nonlocals set of the lambda expression
+    % any type_info and/or typeclass_info variables we have added to the
+    % goal inside the lambda. In rare cases such as tests/valid/gh98.m,
+    % a typeclass_info that we inserted into the goal inside the lambda
+    % is defined outside the lambda *without* being in LambdaTiTciVars.
+    % We therefore return all type_info/typeclass_info variables that occur
+    % in the transformed lambda goal in AllTiTciGoalVars, for our caller
+    % to likewise include in the nonlocals set of the lambda goal.
     %
 :- pred fixup_lambda_quantification(list(prog_var)::in,
     list(prog_var)::in, existq_tvars::in, hlds_goal::in, hlds_goal::out,
-    set_of_progvar::out, poly_info::in, poly_info::out) is det.
+    set_of_progvar::out, set_of_progvar::out,
+    poly_info::in, poly_info::out) is det.
 
 fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars, !Goal,
-        NewOutsideVars, !Info) :-
+        LambdaTiTciVars, AllTiTciGoalVars, !Info) :-
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     ( if rtti_varmaps_no_tvars(RttiVarMaps0) then
-        set_of_var.init(NewOutsideVars)
+        set_of_var.init(LambdaTiTciVars),
+        set_of_var.init(AllTiTciGoalVars)
     else
         poly_info_get_varset(!.Info, VarSet0),
         poly_info_get_var_types(!.Info, VarTypes0),
         !.Goal = hlds_goal(_, GoalInfo0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        set_of_var.insert_list(ArgVars, NonLocals, NonLocalsPlusArgs0),
-        set_of_var.insert_list(LambdaVars,
-            NonLocalsPlusArgs0, NonLocalsPlusArgs),
-        goal_util.extra_nonlocal_typeinfos(RttiVarMaps0, VarTypes0,
-            ExistQVars, NonLocalsPlusArgs, NewOutsideVars),
-        set_of_var.union(NonLocals, NewOutsideVars, OutsideVars),
+        set_of_var.insert_list(ArgVars ++ LambdaVars,
+            NonLocals, NonLocalsArgVarsLambdaVars),
+        goal_util.extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps0,
+            VarTypes0, ExistQVars, NonLocalsArgVarsLambdaVars,
+            LambdaTiTciVars),
+
+        goal_vars(!.Goal, GoalVars),
+        IsTiOrTci =
+            ( pred(Var::in) is semidet :-
+                lookup_var_type(VarTypes0, Var, VarType),
+                ( VarType = type_info_type
+                ; VarType = typeclass_info_type
+                )
+            ),
+        set_of_var.filter(IsTiOrTci, GoalVars, AllTiTciGoalVars),
+        % Our caller will include AllTiTciGoalVars in the nonlocals set
+        % of the rhs_lambda_goal, since some of them may actually come
+        % from code outside the lambda. However, since some (or even all)
+        % of the variables in this set may actually be local, we insist
+        % on the *whole* procedure body, not just the code of this lambda,
+        % being requantified once its polymorphism transformation has been
+        % completed. (This works both for variables in AllTiTciGoalVars
+        % that were added by polymorphism, and those which were there before.)
+        %
+        % Note that all the variables added by the polymorphism transformation
+        % of !Goal that may be nonlocal are type_infos and typeclass_infos.
+        % The polymorphism transformation can also add integer variables
+        % for use in e.g. getting a type_info out of a particular slot
+        % of a typeclass_info, but we set the set of cached int vars
+        % in the poly_info to empty at the start of transformation of !Goal,
+        % and throw away the updated caches at its end, so any integer vars
+        % created by the transformation inside !:Goal will be local to !:Goal.
+        poly_info_set_must_requantify(!Info),
+        set_of_var.union(NonLocalsArgVarsLambdaVars, AllTiTciGoalVars,
+            PossibleOutsideVars),
         implicitly_quantify_goal_general(ordinary_nonlocals_maybe_lambda,
-            OutsideVars, _Warnings, !Goal,
+            PossibleOutsideVars, _Warnings, !Goal,
             VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
         poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps, !Info)
     ).

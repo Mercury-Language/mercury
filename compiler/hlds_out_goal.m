@@ -1082,7 +1082,8 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarSet, InstVarSet, TypeQual,
         ( if string.contains_char(DumpOptions, 'n') then
             (
                 NonLocals = [_ | _],
-                write_indent(Stream, Indent1, !IO),
+                io.nl(Stream, !IO),
+                write_indent(Stream, Indent, !IO),
                 io.write_string(Stream, "% lambda nonlocals: ", !IO),
                 mercury_output_vars(VarSet, VarNamePrint, NonLocals,
                     Stream, !IO)
