@@ -39,6 +39,10 @@ Changes to the Mercury standard library
     - func `least_index/1`          (replacement: `min/1`)
     - func `greatest_index/1`       (replacement: `max/1`)
 
+* The following predicate has been added:
+
+    - pred `generate_foldl2/7`
+
 ### Changes to the `array2d` module
 
 * The following predicates and functions have been added:

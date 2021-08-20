@@ -116,7 +116,8 @@
 :- func generate(int::in, (func(int) = T)::in) = (array(T)::array_uo)
     is det.
 
-    % generate_foldl(Size, Generate, Array, !Acc):
+    % generate_foldl(Size, Generate, Array, !AccA):
+    %
     % As above, but using a predicate with an accumulator threaded through it
     % to generate the initial value of each element.
     %
@@ -133,6 +134,25 @@
     array_uo, mdi, muo) is semidet.
 :- mode generate_foldl(in, in(pred(in, out, di, uo) is semidet),
     array_uo, di, uo) is semidet.
+
+    % generate_foldl2(Size, Generate, Array, !AccA, !AccB):
+    %
+    % As above, but using a predicate with two accumulators threaded through it
+    % to generate the initial value of each element.
+    %
+:- pred generate_foldl2(int, pred(int, T, A, A, B, B), array(T), A, A, B, B).
+:- mode generate_foldl2(in, in(pred(in, out, in, out, in, out) is det),
+    array_uo, in, out, in, out) is det.
+:- mode generate_foldl2(in, in(pred(in, out, mdi, muo, mdi, muo) is det),
+    array_uo, mdi, muo, mdi, muo) is det.
+:- mode generate_foldl2(in, in(pred(in, out, di, uo, di, uo) is det),
+    array_uo, di, uo, di, uo) is det.
+:- mode generate_foldl2(in, in(pred(in, out, in, out, in, out) is semidet),
+    array_uo, in, out, in, out) is semidet.
+:- mode generate_foldl2(in, in(pred(in, out, mdi, muo, mdi, muo) is semidet),
+    array_uo, mdi, muo, mdi, muo) is semidet.
+:- mode generate_foldl2(in, in(pred(in, out, di, uo, di, uo) is semidet),
+    array_uo, di, uo, di, uo) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -1564,13 +1584,13 @@ generate(Size, GenFunc) = Array :-
     ;
         Result = (>),
         FirstElem = GenFunc(0),
-        Array0 = unsafe_init(Size, FirstElem, 0),
-        Array = generate_2(1, Size, GenFunc, Array0)
+        unsafe_init(Size, FirstElem, 0, Array0),
+        generate_loop(GenFunc, 1, Size, Array0, Array)
     ).
 
-:- func unsafe_init(int::in, T::in, int::in) = (array(T)::array_uo) is det.
+:- pred unsafe_init(int::in, T::in, int::in, array(T)::array_uo) is det.
 :- pragma foreign_proc("C",
-    unsafe_init(Size::in, FirstElem::in, IndexToSet::in) = (Array::array_uo),
+    unsafe_init(Size::in, FirstElem::in, IndexToSet::in, Array::array_uo),
     [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
@@ -1588,31 +1608,31 @@ generate(Size, GenFunc) = Array :-
 
 ").
 :- pragma foreign_proc("C#",
-    unsafe_init(Size::in, FirstElem::in, IndexToSet::in) = (Array::array_uo),
+    unsafe_init(Size::in, FirstElem::in, IndexToSet::in, Array::array_uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     Array = array.ML_unsafe_new_array(Size, FirstElem, IndexToSet);
 ").
 :- pragma foreign_proc("Java",
-    unsafe_init(Size::in, FirstElem::in, IndexToSet::in) = (Array::array_uo),
+    unsafe_init(Size::in, FirstElem::in, IndexToSet::in, Array::array_uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     Array = array.ML_unsafe_new_array(Size, FirstElem, IndexToSet);
 ").
 
-:- func generate_2(int::in, int::in, (func(int) = T)::in, array(T)::array_di)
-    = (array(T)::array_uo) is det.
+:- pred generate_loop((func(int) = T)::in, int::in, int::in,
+    array(T)::array_di, array(T)::array_uo) is det.
 
-generate_2(Index, Size, GenFunc, !.Array) = !:Array :-
+generate_loop(GenFunc, Index, Size, !Array) :-
     ( if Index < Size then
         Elem = GenFunc(Index),
         array.unsafe_set(Index, Elem, !Array),
-        !:Array = generate_2(Index + 1, Size, GenFunc, !.Array)
+        generate_loop(GenFunc, Index + 1, Size, !Array)
     else
         true
     ).
 
-generate_foldl(Size, GenPred, Array, !Acc) :-
+generate_foldl(Size, GenPred, Array, !AccA) :-
     compare(Result, Size, 0),
     (
         Result = (<),
@@ -1622,31 +1642,70 @@ generate_foldl(Size, GenPred, Array, !Acc) :-
         make_empty_array(Array)
     ;
         Result = (>),
-        GenPred(0, FirstElem, !Acc),
-        Array0 = unsafe_init(Size, FirstElem, 0),
-        generate_foldl_2(1, Size, GenPred, Array0, Array, !Acc)
+        GenPred(0, FirstElem, !AccA),
+        unsafe_init(Size, FirstElem, 0, Array0),
+        generate_foldl_loop(GenPred, 1, Size, Array0, Array, !AccA)
     ).
 
-:- pred generate_foldl_2(int, int, pred(int, T, A, A),
-    array(T), array(T), A, A).
-:- mode generate_foldl_2(in, in, in(pred(in, out, in, out) is det),
-    array_di, array_uo, in, out) is det.
-:- mode generate_foldl_2(in, in, in(pred(in, out, mdi, muo) is det),
-    array_di, array_uo, mdi, muo) is det.
-:- mode generate_foldl_2(in, in, in(pred(in, out, di, uo) is det),
-    array_di, array_uo, di, uo) is det.
-:- mode generate_foldl_2(in, in, in(pred(in, out, in, out) is semidet),
-    array_di, array_uo, in, out) is semidet.
-:- mode generate_foldl_2(in, in, in(pred(in, out, mdi, muo) is semidet),
-    array_di, array_uo, mdi, muo) is semidet.
-:- mode generate_foldl_2(in, in, in(pred(in, out, di, uo) is semidet),
-    array_di, array_uo, di, uo) is semidet.
+:- pred generate_foldl_loop(pred(int, T, A, A),
+    int, int, array(T), array(T), A, A).
+:- mode generate_foldl_loop(in(pred(in, out, in, out) is det),
+    in, in, array_di, array_uo, in, out) is det.
+:- mode generate_foldl_loop(in(pred(in, out, mdi, muo) is det),
+    in, in, array_di, array_uo, mdi, muo) is det.
+:- mode generate_foldl_loop(in(pred(in, out, di, uo) is det),
+    in, in, array_di, array_uo, di, uo) is det.
+:- mode generate_foldl_loop(in(pred(in, out, in, out) is semidet),
+    in, in, array_di, array_uo, in, out) is semidet.
+:- mode generate_foldl_loop(in(pred(in, out, mdi, muo) is semidet),
+    in, in, array_di, array_uo, mdi, muo) is semidet.
+:- mode generate_foldl_loop(in(pred(in, out, di, uo) is semidet),
+    in, in, array_di, array_uo, di, uo) is semidet.
 
-generate_foldl_2(Index, Size, GenPred, !Array, !Acc) :-
+generate_foldl_loop(GenPred, Index, Size, !Array, !AccA) :-
     ( if Index < Size then
-        GenPred(Index, Elem, !Acc),
+        GenPred(Index, Elem, !AccA),
         array.unsafe_set(Index, Elem, !Array),
-        generate_foldl_2(Index + 1, Size, GenPred, !Array, !Acc)
+        generate_foldl_loop(GenPred, Index + 1, Size, !Array, !AccA)
+    else
+        true
+    ).
+
+generate_foldl2(Size, GenPred, Array, !AccA, !AccB) :-
+    compare(Result, Size, 0),
+    (
+        Result = (<),
+        unexpected($pred, "negative size")
+    ;
+        Result = (=),
+        make_empty_array(Array)
+    ;
+        Result = (>),
+        GenPred(0, FirstElem, !AccA, !AccB),
+        unsafe_init(Size, FirstElem, 0, Array0),
+        generate_foldl2_loop(GenPred, 1, Size, Array0, Array, !AccA, !AccB)
+    ).
+
+:- pred generate_foldl2_loop(pred(int, T, A, A, B, B),
+    int, int, array(T), array(T), A, A, B, B).
+:- mode generate_foldl2_loop(in(pred(in, out, in, out, in, out) is det),
+    in, in, array_di, array_uo, in, out, in, out) is det.
+:- mode generate_foldl2_loop(in(pred(in, out, mdi, muo, mdi, muo) is det),
+    in, in, array_di, array_uo, mdi, muo, mdi, muo) is det.
+:- mode generate_foldl2_loop(in(pred(in, out, di, uo, di, uo) is det),
+    in, in, array_di, array_uo, di, uo, di, uo) is det.
+:- mode generate_foldl2_loop(in(pred(in, out, in, out, in, out) is semidet),
+    in, in, array_di, array_uo, in, out, in, out) is semidet.
+:- mode generate_foldl2_loop(in(pred(in, out, mdi, muo, mdi, muo) is semidet),
+    in, in, array_di, array_uo, mdi, muo, mdi, muo) is semidet.
+:- mode generate_foldl2_loop(in(pred(in, out, di, uo, di, uo) is semidet),
+    in, in, array_di, array_uo, di, uo, di, uo) is semidet.
+
+generate_foldl2_loop(GenPred, Index, Size, !Array, !AccA, !AccB) :-
+    ( if Index < Size then
+        GenPred(Index, Elem, !AccA, !AccB),
+        array.unsafe_set(Index, Elem, !Array),
+        generate_foldl2_loop(GenPred, Index + 1, Size, !Array, !AccA, !AccB)
     else
         true
     ).
@@ -2255,7 +2314,7 @@ from_list([], Array) :-
 from_list(List, Array) :-
     List = [Head | Tail],
     list.length(List, Len),
-    Array0 = array.unsafe_init(Len, Head, 0),
+    array.unsafe_init(Len, Head, 0, Array0),
     array.unsafe_insert_items(Tail, 1, Array0, Array).
 
 %---------------------------------------------------------------------------%
@@ -2275,7 +2334,7 @@ from_reverse_list([]) = Array :-
 from_reverse_list(RevList) = Array :-
     RevList = [Head | Tail],
     list.length(RevList, Len),
-    Array0 = array.unsafe_init(Len, Head, Len - 1),
+    array.unsafe_init(Len, Head, Len - 1, Array0),
     unsafe_insert_items_reverse(Tail, Len - 2, Array0, Array).
 
 :- pred unsafe_insert_items_reverse(list(T)::in, int::in,
@@ -2331,7 +2390,7 @@ map(Closure, OldArray, NewArray) :-
     ( if array.semidet_lookup(OldArray, 0, Elem0) then
         array.size(OldArray, Size),
         Closure(Elem0, Elem),
-        NewArray0 = unsafe_init(Size, Elem, 0),
+        unsafe_init(Size, Elem, 0, NewArray0),
         array.map_2(1, Size, Closure, OldArray, NewArray0, NewArray)
     else
         array.make_empty_array(NewArray)
@@ -2935,63 +2994,67 @@ foldl2_corresponding(P, A, B, !Acc1, !Acc2) :-
 :- mode do_foldl2_corresponding(in(pred(in, in, in, out, di, uo) is semidet),
     in, in, in, in, in, out, di, uo) is semidet.
 
-do_foldl2_corresponding(P, I, Max, A, B, !Acc1, !Acc2) :-
-    ( if Max < I then
+do_foldl2_corresponding(Pred, CurIndex, Max, ArrayA, ArrayB, !Acc1, !Acc2) :-
+    ( if CurIndex > Max then
         true
     else
-        P(A ^ unsafe_elem(I), B ^ unsafe_elem(I), !Acc1, !Acc2),
-        do_foldl2_corresponding(P, I + 1, Max, A, B, !Acc1, !Acc2)
+        array.unsafe_lookup(ArrayA, CurIndex, ElemA),
+        array.unsafe_lookup(ArrayB, CurIndex, ElemB),
+        Pred(ElemA, ElemB, !Acc1, !Acc2),
+        do_foldl2_corresponding(Pred, CurIndex + 1, Max, ArrayA, ArrayB,
+            !Acc1, !Acc2)
     ).
 
 %---------------------------------------------------------------------------%
 
-map_foldl(P, A, B, !Acc) :-
-    N = array.size(A),
+map_foldl(Pred, ArrayA, ArrayB, !AccA) :-
+    N = array.size(ArrayA),
     ( if N =< 0 then
-        B = array.make_empty_array
+        ArrayB = array.make_empty_array
     else
-        array.unsafe_lookup(A, 0, X),
-        P(X, Y, !Acc),
-        B1 = unsafe_init(N, Y, 0),
-        map_foldl_2(P, 1, A, B1, B, !Acc)
+        array.unsafe_lookup(ArrayA, 0, X),
+        Pred(X, Y, !AccA),
+        unsafe_init(N, Y, 0, ArrayB1),
+        map_foldl_loop(Pred, 1, ArrayA, ArrayB1, ArrayB, !AccA)
     ).
 
-:- pred map_foldl_2(pred(T1, T2, T3, T3),
+:- pred map_foldl_loop(pred(T1, T2, T3, T3),
     int, array(T1), array(T2), array(T2), T3, T3).
-:- mode map_foldl_2(in(pred(in, out, in, out) is det),
+:- mode map_foldl_loop(in(pred(in, out, in, out) is det),
     in, in, array_di, array_uo, in, out) is det.
-:- mode map_foldl_2(in(pred(in, out, mdi, muo) is det),
+:- mode map_foldl_loop(in(pred(in, out, mdi, muo) is det),
     in, in, array_di, array_uo, mdi, muo) is det.
-:- mode map_foldl_2(in(pred(in, out, di, uo) is det),
+:- mode map_foldl_loop(in(pred(in, out, di, uo) is det),
     in, in, array_di, array_uo, di, uo) is det.
-:- mode map_foldl_2(in(pred(in, out, in, out) is semidet),
+:- mode map_foldl_loop(in(pred(in, out, in, out) is semidet),
     in, in, array_di, array_uo, in, out) is semidet.
 
-map_foldl_2(P, I, A, !B, !Acc) :-
-    ( if I < array.size(A) then
-        array.unsafe_lookup(A, I, X),
-        P(X, Y, !Acc),
-        array.unsafe_set(I, Y, !B),
-        map_foldl_2(P, I + 1, A, !B, !Acc)
+map_foldl_loop(Pred, CurIndex, ArrayA, !ArrayB, !AccA) :-
+    ( if CurIndex < array.size(ArrayA) then
+        array.unsafe_lookup(ArrayA, CurIndex, X),
+        Pred(X, Y, !AccA),
+        array.unsafe_set(CurIndex, Y, !ArrayB),
+        map_foldl_loop(Pred, CurIndex + 1, ArrayA, !ArrayB, !AccA)
     else
         true
     ).
 
 %---------------------------------------------------------------------------%
 
-map_corresponding_foldl(P, A, B, C, !Acc) :-
-    SizeA = array.size(A),
-    SizeB = array.size(B),
+map_corresponding_foldl(Pred, ArrayA, ArrayB, ArrayC, !Acc) :-
+    SizeA = array.size(ArrayA),
+    SizeB = array.size(ArrayB),
     ( if SizeA \= SizeB then
         unexpected($pred, "mismatched array sizes")
     else if SizeA =< 0 then
-        C = array.make_empty_array
+        ArrayC = array.make_empty_array
     else
-        array.unsafe_lookup(A, 0, X),
-        array.unsafe_lookup(B, 0, Y),
-        P(X, Y, Z, !Acc),
-        C1 = unsafe_init(SizeA, Z, 0),
-        map_corresponding_foldl_2(P, 1, SizeA, A, B, C1, C, !Acc)
+        array.unsafe_lookup(ArrayA, 0, X),
+        array.unsafe_lookup(ArrayB, 0, Y),
+        Pred(X, Y, Z, !Acc),
+        unsafe_init(SizeA, Z, 0, ArrayC1),
+        map_corresponding_foldl_2(Pred, 1, SizeA, ArrayA, ArrayB, ArrayC1,
+        ArrayC, !Acc)
     ).
 
 :- pred map_corresponding_foldl_2(pred(T1, T2, T3, T4, T4),
@@ -3015,13 +3078,15 @@ map_corresponding_foldl(P, A, B, C, !Acc) :-
     in(pred(in, in, out, di, uo) is semidet),
     in, in, in, in, array_di, array_uo, di, uo) is semidet.
 
-map_corresponding_foldl_2(P, I, N, A, B, !C, !Acc) :-
-    ( if I < N then
-        array.unsafe_lookup(A, I, X),
-        array.unsafe_lookup(B, I, Y),
-        P(X, Y, Z, !Acc),
-        array.unsafe_set(I, Z, !C),
-        map_corresponding_foldl_2(P, I + 1, N, A, B, !C, !Acc)
+map_corresponding_foldl_2(Pred, CurIndex, Size, ArrayA, ArrayB,
+        !ArrayC, !Acc) :-
+    ( if CurIndex < Size then
+        array.unsafe_lookup(ArrayA, CurIndex, X),
+        array.unsafe_lookup(ArrayB, CurIndex, Y),
+        Pred(X, Y, Z, !Acc),
+        array.unsafe_set(CurIndex, Z, !ArrayC),
+        map_corresponding_foldl_2(Pred, CurIndex + 1, Size, ArrayA, ArrayB,
+            !ArrayC, !Acc)
     else
         true
     ).
@@ -3035,11 +3100,11 @@ all_true(Pred, Array) :-
 %:- mode do_all_true(in(pred(in) is semidet), in, in, array_ui) is semidet.
 :- mode do_all_true(in(pred(in) is semidet), in, in, in) is semidet.
 
-do_all_true(Pred, I, UB, Array) :-
-    ( if I =< UB then
-        array.unsafe_lookup(Array, I, Elem),
+do_all_true(Pred, CurIndex, UB, Array) :-
+    ( if CurIndex =< UB then
+        array.unsafe_lookup(Array, CurIndex, Elem),
         Pred(Elem),
-        do_all_true(Pred, I + 1, UB, Array)
+        do_all_true(Pred, CurIndex + 1, UB, Array)
     else
         true
     ).
@@ -3051,11 +3116,11 @@ all_false(Pred, Array) :-
 %:- mode do_all_false(in(pred(in) is semidet), in, in, array_ui) is semidet.
 :- mode do_all_false(in(pred(in) is semidet), in, in, in) is semidet.
 
-do_all_false(Pred, I, UB, Array) :-
-    ( if I =< UB then
-        array.unsafe_lookup(Array, I, Elem),
+do_all_false(Pred, CurIndex, UB, Array) :-
+    ( if CurIndex =< UB then
+        array.unsafe_lookup(Array, CurIndex, Elem),
         not Pred(Elem),
-        do_all_false(Pred, I + 1, UB, Array)
+        do_all_false(Pred, CurIndex + 1, UB, Array)
     else
         true
     ).
