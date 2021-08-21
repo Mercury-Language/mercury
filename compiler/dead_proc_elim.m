@@ -1646,7 +1646,7 @@ pre_modecheck_examine_unify_rhs(RHS, !DeadInfo) :-
             true
         )
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal),
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, Goal),
         pre_modecheck_examine_goal(Goal, !DeadInfo)
     ).
 

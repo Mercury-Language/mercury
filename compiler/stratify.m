@@ -773,7 +773,7 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
             % should be a suitable approximation for the stratification
             % analysis.
             RHS = rhs_lambda_goal(_Purity, _Groundness, _PredOrFunc,
-                _EvalMethod, _NonLocals, _Vars, _Modes, _Determinism,
+                _EvalMethod, _NonLocals, _ArgVarsModes, _Determinism,
                 LambdaGoal),
             get_called_procs(LambdaGoal, [], CalledProcs),
             set.insert_list(CalledProcs, !HasAT)
@@ -901,7 +901,7 @@ get_called_procs(Goal, !Calls) :-
             % should be a suitable approximation for the stratification
             % analysis.
             RHS = rhs_lambda_goal(_Purity, _Groundness, _PredOrFunc,
-                _EvalMethod, _NonLocals, _Vars, _Modes, _Determinism,
+                _EvalMethod, _NonLocals, _ArgVarsModes, _Determinism,
                 LambdaGoal),
             get_called_procs(LambdaGoal, !Calls)
         ;

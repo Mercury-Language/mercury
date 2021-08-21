@@ -272,7 +272,7 @@ make_atomic_unification(Var, RHS, Context, MainContext, SubContext, Purity,
     (
         RHS = rhs_var(_)
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _)
     ;
         RHS = rhs_functor(ConsId, _, _),
         record_used_functor(ConsId, !QualInfo)

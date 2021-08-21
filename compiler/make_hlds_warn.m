@@ -90,6 +90,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.set_of_var.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
 :- import_module require.
@@ -384,11 +385,12 @@ warn_singletons_in_unify(X, RHS, GoalInfo, QuantVars, !Info) :-
             !Info)
     ;
         RHS = rhs_lambda_goal(_Purity, _Groundness, _PredOrFunc,
-            _Eval, _NonLocals, LambdaVars, _Modes, _Det, LambdaGoal),
+            _Eval, _NonLocals, ArgVarsModes, _Det, LambdaGoal),
+        assoc_list.keys(ArgVarsModes, ArgVars),
         % Warn if any lambda-quantified variables occur only in the quantifier.
         LambdaGoal = hlds_goal(_, LambdaGoalInfo),
         LambdaNonLocals = goal_info_get_nonlocals(LambdaGoalInfo),
-        warn_singletons_goal_vars(LambdaVars, GoalInfo, LambdaNonLocals,
+        warn_singletons_goal_vars(ArgVars, GoalInfo, LambdaNonLocals,
             QuantVars, !Info),
 
         % Warn if X (the variable we're unifying the lambda expression with)

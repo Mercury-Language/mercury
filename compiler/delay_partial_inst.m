@@ -346,13 +346,13 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
                     % lambda goals must be any or ground so we don't carry the
                     % construct map into the lambda goal.
                     RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
-                        EvalMethod, NonLocals, LambdaQuantVars, Modues, Detism,
+                        EvalMethod, NonLocals, LambdaArgVarsModes, Detism,
                         LambdaGoal0),
                     delay_partial_inst_in_goal(InstMap0,
                         LambdaGoal0, LambdaGoal, map.init, _ConstructMap,
                         !DelayInfo),
                     RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
-                        EvalMethod, NonLocals, LambdaQuantVars, Modues, Detism,
+                        EvalMethod, NonLocals, LambdaArgVarsModes, Detism,
                         LambdaGoal),
                     GoalExpr = unify(LHS, RHS, Mode, Unify, Context),
                     Goal = hlds_goal(GoalExpr, GoalInfo0)

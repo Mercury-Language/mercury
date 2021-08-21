@@ -531,7 +531,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
                 % - it could be a test, so no constraints.
             )
         ;
-            RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
+            RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _),
             sorry($pred, "unify with lambda goal")
         )
     ;

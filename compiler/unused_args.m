@@ -724,7 +724,7 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
                 set_var_used(LHS, !VarDep)
             ;
                 ( RHS = rhs_functor(_, _, _)
-                ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
+                ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _)
                 ),
                 unexpected($pred,
                     "complicated unifications should only be var-var")

@@ -361,12 +361,12 @@ expand_lambdas_in_unify_goal(LHSVar, RHS0, UnifyMode, Unification0,
         UnifyContext, GoalExpr, !Info) :-
     (
         RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocals, Vars, Modes, Detism, LambdaGoal0),
+            NonLocals, ArgVarsModes, Detism, LambdaGoal0),
         % First, process the lambda goal recursively, in case it contains
         % some nested lambda expressions.
         expand_lambdas_in_goal(LambdaGoal0, LambdaGoal, !Info),
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocals, Vars, Modes, Detism, LambdaGoal),
+            NonLocals, ArgVarsModes, Detism, LambdaGoal),
         (
             Unification0 = construct(_, _, _, _, _, _, _),
             % Then, convert the lambda expression into a new predicate.
@@ -396,7 +396,8 @@ expand_lambda(RegWrapperProc, LHSVar, RHS0, UnifyMode,
         InstVarSet, VarTypes, RttiVarMaps, HasParallelConj,
         MustRecomputeNonLocals0, _HaveExpandedLambdas),
     RHS0 = rhs_lambda_goal(_Purity, _Groundness, PredOrFunc, EvalMethod,
-        RHSNonLocals, Vars, _Modes, Detism, LambdaGoal),
+        RHSNonLocals, VarsModes, Detism, LambdaGoal),
+    assoc_list.keys(VarsModes, Vars),
     Unification0 = construct(Var, _, ArgVars0, ArgUnifyModes0,
         _, _, _),
     trace [compiletime(flag("lambda_sanity_check"))]
@@ -525,7 +526,8 @@ create_new_pred_for_lambda(RegWrapperProc, RHS0, OrigVars, ArgVars,
         InstVarSet, VarTypes, RttiVarMaps, HasParallelConj,
         MustRecomputeNonLocals0, _HaveExpandedLambdas),
     RHS0 = rhs_lambda_goal(Purity, _Groundness, PredOrFunc, _EvalMethod,
-        _RHSNonLocals, Vars, Modes, Detism, LambdaGoal),
+        _RHSNonLocals, VarsModes, Detism, LambdaGoal),
+    assoc_list.keys_and_values(VarsModes, Vars, Modes),
     LambdaGoal = hlds_goal(_, LambdaGoalInfo),
 
     % Calculate the constraints which apply to this lambda expression.
@@ -774,10 +776,11 @@ find_used_vars_in_goal(Goal, !VarUses) :-
             RHS = rhs_functor(_, _, ArgVars),
             mark_vars_as_used(ArgVars, !VarUses)
         ;
-            RHS = rhs_lambda_goal(_, _, _, _, NonLocals, LambdaVars,
-                _, _, LambdaGoal),
+            RHS = rhs_lambda_goal(_, _, _, _, NonLocals, ArgVarsModes,
+                _, LambdaGoal),
+            assoc_list.keys(ArgVarsModes, ArgVars),
             mark_vars_as_used(NonLocals, !VarUses),
-            mark_vars_as_used(LambdaVars, !VarUses),
+            mark_vars_as_used(ArgVars, !VarUses),
             find_used_vars_in_goal(LambdaGoal, !VarUses)
         )
     ;

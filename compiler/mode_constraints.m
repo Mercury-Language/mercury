@@ -511,14 +511,15 @@ number_robdd_variables_in_rhs(_, _, Vars, !RHS, !NRInfo) :-
     !.RHS = rhs_functor(_, _, Args),
     Vars = Args.
 number_robdd_variables_in_rhs(InstGraph, GoalId, Vars, !RHS, !NRInfo) :-
-    !.RHS = rhs_lambda_goal(_, _, _, _, LambdaNonLocals, LambdaVars, _, _,
-        LambdaGoal0),
+    !.RHS = rhs_lambda_goal(_, _, _, _, LambdaNonLocals, ArgVarsModes,
+        _, LambdaGoal0),
     Vars = LambdaNonLocals,
+    assoc_list.keys(ArgVarsModes, ArgVars),
     update_mc_info(enter_lambda_goal(GoalId), !NRInfo),
 
     % Number arguments to the lambda goal, i.e. the nonlocals and the
     % lambda-quantified variables.
-    LambdaHeadVars = LambdaNonLocals ++ LambdaVars,
+    LambdaHeadVars = LambdaNonLocals ++ ArgVars,
     update_mc_info(pred(in, out) is det -->
         inst_graph.foldl_reachable_from_list(
             ( pred(V::in, in, out) is det -->
@@ -1671,8 +1672,8 @@ unify_constraints(LHSVar, GoalId, RHS0, RHS, !Constraint, !GCInfo) :-
         ),
         RHS = RHS0
     ;
-        RHS0 = rhs_lambda_goal(_, _, _, _, NonLocals, LambdaVars, Modes,
-            _, Goal0),
+        RHS0 = rhs_lambda_goal(_, _, _, _, NonLocals, ArgVarsModes, _, Goal0),
+        assoc_list.keys_and_values(ArgVarsModes, ArgVars, Modes),
         InstGraph = !.GCInfo ^ inst_graph,
 
         % Variable Var is made ground by this goal.
@@ -1702,7 +1703,7 @@ unify_constraints(LHSVar, GoalId, RHS0, RHS, !Constraint, !GCInfo) :-
         % place a constraint `V_prod = 0' for all nodes reachable from these
         % variables in the lambda goal.
         ArgModes = list.duplicate(length(NonLocals), in_mode) ++ Modes,
-        LambdaHeadVars = NonLocals ++ LambdaVars,
+        LambdaHeadVars = NonLocals ++ ArgVars,
         ModuleInfo = !.GCInfo ^ module_info,
         update_md_info(process_mode_decl(ModuleInfo,
             InstGraph, LambdaHeadVars, false_var(initial),

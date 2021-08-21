@@ -1158,10 +1158,9 @@ reqscope_check_goal(Goal, InstMap0, IIS, MaybeReportedSwitch,
             )
         ;
             RHS = rhs_lambda_goal(_Purity, _Groundness, _PorF, _EvalMethod,
-                _LambdaNonLocals, Vars, Modes, _Detism, LambdaGoal),
-            assoc_list.from_corresponding_lists(Vars, Modes, VarsModes),
+                _LambdaNonLocals, ArgVarsModes, _Detism, LambdaGoal),
             det_info_get_module_info(!.DetInfo, ModuleInfo),
-            lambda_update_instmap(VarsModes, ModuleInfo,
+            lambda_update_instmap(ModuleInfo, ArgVarsModes,
                 InstMap0, LambdaInstMap0),
             reqscope_check_goal(LambdaGoal, LambdaInstMap0, IIS, no,
                 [], !DetInfo)
@@ -1600,14 +1599,14 @@ reqscope_check_cases(Var, VarType, [Case | Cases], InstMap0, IIS,
     reqscope_check_cases(Var, VarType, Cases, InstMap0, IIS,
         SwitchContexts0, !DetInfo).
 
-:- pred lambda_update_instmap(assoc_list(prog_var, mer_mode)::in,
-    module_info::in, instmap::in, instmap::out) is det.
+:- pred lambda_update_instmap(module_info::in,
+    assoc_list(prog_var, mer_mode)::in, instmap::in, instmap::out) is det.
 
-lambda_update_instmap([], _ModuleInfo, !InstMap).
-lambda_update_instmap([Var - Mode | VarsModes], ModuleInfo, !InstMap) :-
+lambda_update_instmap(_ModuleInfo, [], !InstMap).
+lambda_update_instmap(ModuleInfo, [Var - Mode | VarsModes], !InstMap) :-
     mode_get_insts(ModuleInfo, Mode, InitInst, _FinalInst),
     instmap_set_var(Var, InitInst, !InstMap),
-    lambda_update_instmap(VarsModes, ModuleInfo, !InstMap).
+    lambda_update_instmap(ModuleInfo, VarsModes, !InstMap).
 
 %-----------------------------------------------------------------------------%
 

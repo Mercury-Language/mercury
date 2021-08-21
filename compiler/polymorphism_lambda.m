@@ -64,6 +64,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.set_of_var.
 
+:- import_module assoc_list.
 :- import_module int.
 :- import_module maybe.
 :- import_module require.
@@ -98,15 +99,15 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     % the nonlocals field in the goal_info correctly. The goal_id is needed
     % to compute constraint_ids correctly.
 
-    NonLocals = goal_info_get_nonlocals(GoalInfo0),
-    set_of_var.insert_list(LambdaVars, NonLocals, OutsideVars),
+    NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
+    set_of_var.insert_list(LambdaVars, NonLocals0, OutsideVars),
     set_of_var.list_to_set(Args, InsideVars),
-    set_of_var.intersect(OutsideVars, InsideVars, LambdaNonLocals),
+    set_of_var.intersect(OutsideVars, InsideVars, NonLocals),
     GoalId = goal_info_get_goal_id(GoalInfo0),
 
     instmap_delta_init_unreachable(DummyInstMapDelta),
     DummyDetism = detism_erroneous,
-    goal_info_init(LambdaNonLocals, DummyInstMapDelta, DummyDetism, Purity,
+    goal_info_init(NonLocals, DummyInstMapDelta, DummyDetism, Purity,
         Context, LambdaGoalInfo0),
     goal_info_set_goal_id(GoalId, LambdaGoalInfo0, LambdaGoalInfo),
     LambdaGoal = hlds_goal(LambdaGoalExpr, LambdaGoalInfo),
@@ -114,18 +115,17 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     % Work out the modes of the introduced lambda variables and the determinism
     % of the lambda goal.
     lambda_modes_and_det(PredInfo, ProcInfo, Context, LambdaVars,
-        MaybeLambdaModesDet),
-
+        MaybeLambdaVarsModesDet),
     (
-        MaybeLambdaModesDet = ok2(LambdaModes, LambdaDet),
+        MaybeLambdaVarsModesDet = ok2(LambdaVarsModes, LambdaDet),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         % Higher-order values created in this fashion are always ground.
         Groundness = ho_ground,
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal),
+            ArgVars0, LambdaVarsModes, LambdaDet, LambdaGoal),
         MaybeRHS = ok1(RHS)
     ;
-        MaybeLambdaModesDet = error2(Specs),
+        MaybeLambdaVarsModesDet = error2(Specs),
         MaybeRHS = error1(Specs)
     ).
 
@@ -140,7 +140,8 @@ create_fresh_vars([Type | Types], [Var | Vars], !VarSet, !VarTypes) :-
 
 fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, RHS0, MaybeRHS) :-
     RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-        ArgVars0, LambdaVars, _LambdaModes0, _LambdaDet0, LambdaGoal0),
+        ArgVars0, LambdaVarsModes0, _LambdaDet0, LambdaGoal0),
+    assoc_list.keys(LambdaVarsModes0, LambdaVars),
     LambdaGoal0 = hlds_goal(_, LambdaGoalInfo),
     goal_to_conj_list(LambdaGoal0, LambdaGoalList0),
     ( if
@@ -166,31 +167,32 @@ fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, RHS0, MaybeRHS) :-
     % of the lambda goal.
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     lambda_modes_and_det(PredInfo, ProcInfo, Context, LambdaVars,
-        MaybeLambdaModesDet),
+        MaybeLambdaVarsModesDet),
     (
-        MaybeLambdaModesDet = ok2(LambdaModes, LambdaDet),
-
-        % Construct the lambda expression.
+        MaybeLambdaVarsModesDet = ok2(LambdaVarsModes, LambdaDet),
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal),
+            ArgVars0, LambdaVarsModes, LambdaDet, LambdaGoal),
         MaybeRHS = ok1(RHS)
     ;
-        MaybeLambdaModesDet = error2(Specs),
+        MaybeLambdaVarsModesDet = error2(Specs),
         MaybeRHS = error1(Specs)
     ).
 
 :- pred lambda_modes_and_det(pred_info::in, proc_info::in, prog_context::in,
-    list(prog_var)::in, maybe2(list(mer_mode), determinism)::out) is det.
+    list(prog_var)::in,
+    maybe2(assoc_list(prog_var, mer_mode), determinism)::out) is det.
 
 lambda_modes_and_det(PredInfo, ProcInfo, Context, LambdaVars, MaybeResult) :-
-    proc_info_get_argmodes(ProcInfo, ArgModes),
-    list.length(ArgModes, NumArgModes),
-    list.length(LambdaVars, NumLambdaVars),
-    list.det_drop(NumArgModes - NumLambdaVars, ArgModes, LambdaModes),
     proc_info_get_declared_determinism(ProcInfo, MaybeDet),
     (
         MaybeDet = yes(Det),
-        MaybeResult = ok2(LambdaModes, Det)
+        proc_info_get_argmodes(ProcInfo, ArgModes),
+        list.length(ArgModes, NumArgModes),
+        list.length(LambdaVars, NumLambdaVars),
+        list.det_drop(NumArgModes - NumLambdaVars, ArgModes, LambdaModes),
+        assoc_list.from_corresponding_lists(LambdaVars, LambdaModes,
+            LambdaArgModes),
+        MaybeResult = ok2(LambdaArgModes, Det)
     ;
         MaybeDet = no,
         pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),

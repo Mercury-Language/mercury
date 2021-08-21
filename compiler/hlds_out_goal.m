@@ -1007,7 +1007,7 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarSet, InstVarSet, TypeQual,
         )
     ;
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, _EvalMethod,
-            NonLocals, Vars, Modes, Det, Goal),
+            NonLocals, VarsModes, Det, Goal),
         Indent1 = Indent + 1,
         io.write_string(Stream, purity_prefix_to_string(Purity), !IO),
         Lang = get_output_lang(Info ^ hoi_merc_out_info),
@@ -1022,12 +1022,12 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarSet, InstVarSet, TypeQual,
             ),
             io.write_string(Stream, "(", !IO),
             (
-                Vars = [],
+                VarsModes = [],
                 io.format(Stream, "(%s)", [s(Functor)], !IO)
             ;
-                Vars = [_ | _],
+                VarsModes = [_ | _],
                 ModesStr = var_modes_to_string(Lang, VarSet, InstVarSet,
-                    VarNamePrint, Vars, Modes),
+                    VarNamePrint, VarsModes),
                 io.format(Stream, "%s(%s)",
                     [s(Functor), s(ModesStr)], !IO)
             ),
@@ -1046,21 +1046,20 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarSet, InstVarSet, TypeQual,
                 Groundness = ho_any,
                 Functor = "any_func"
             ),
-            pred_args_to_func_args(Modes, ArgModes, RetMode),
-            pred_args_to_func_args(Vars, ArgVars, RetVar),
+            pred_args_to_func_args(VarsModes, ArgVarsModes, RetVarMode),
             io.write_string(Stream, "(", !IO),
             (
-                ArgVars = [],
+                ArgVarsModes = [],
                 io.format(Stream, "(%s)", [s(Functor)], !IO)
             ;
-                ArgVars = [_ | _],
+                ArgVarsModes = [_ | _],
                 ArgModesStr = var_modes_to_string(Lang, VarSet, InstVarSet,
-                    VarNamePrint, ArgVars, ArgModes),
+                    VarNamePrint, ArgVarsModes),
                 io.format(Stream, "%s(%s)",
                     [s(Functor), s(ArgModesStr)], !IO)
             ),
             RetModeStr = var_mode_to_string(Lang, VarSet, InstVarSet,
-                VarNamePrint, RetVar - RetMode),
+                VarNamePrint, RetVarMode),
             DetStr = mercury_det_to_string(Det),
             io.format(Stream, " = (%s) is %s :-\n",
                 [s(RetModeStr), s(DetStr)], !IO),
@@ -1113,7 +1112,7 @@ unify_rhs_to_string(ModuleInfo, VarSet, VarNamePrint, RHS) = Str :-
         Str = functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint,
             ConsId, ArgVars)
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _),
         Str = "lambda goal"
     ).
 

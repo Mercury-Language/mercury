@@ -301,9 +301,9 @@ convert_goal_expr_to_hhf(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
 convert_unify_to_hhf(RHS0, NonLocals, GoalInfo0, X, Mode, Unif, Context,
         GoalExpr, !HI) :-
     (
-        RHS0 = rhs_lambda_goal(A, B, C, D, E, F, G, H, LambdaGoal0),
+        RHS0 = rhs_lambda_goal(A, B, C, D, E, F, G, LambdaGoal0),
         convert_goal_to_hhf(NonLocals, LambdaGoal0, LambdaGoal, !HI),
-        RHS = rhs_lambda_goal(A, B, C, D, E, F, G, H, LambdaGoal),
+        RHS = rhs_lambda_goal(A, B, C, D, E, F, G, LambdaGoal),
         GoalExpr = unify(X, RHS, Mode, Unif, Context)
     ;
         RHS0 = rhs_var(_),

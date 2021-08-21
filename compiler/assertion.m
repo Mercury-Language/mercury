@@ -759,11 +759,13 @@ equal_unification(RhsA, RhsB, !Subst) :-
         equal_vars(VarsA, VarsB, !Subst)
     ;
         RhsA = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NLVarsA, LVarsA, Modes, Det, GoalA),
+            NonLocalVarsA, ArgVarsModesA, Det, GoalA),
         RhsB = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NLVarsB, LVarsB, Modes, Det, GoalB),
-        equal_vars(NLVarsA, NLVarsB, !Subst),
-        equal_vars(LVarsA, LVarsB, !Subst),
+            NonLocalVarsB, ArgVarsModesB, Det, GoalB),
+        assoc_list.keys(ArgVarsModesA, ArgVarsA),
+        assoc_list.keys(ArgVarsModesB, ArgVarsB),
+        equal_vars(NonLocalVarsA, NonLocalVarsB, !Subst),
+        equal_vars(ArgVarsA, ArgVarsB, !Subst),
         equal_goals(GoalA, GoalB, !Subst)
     ).
 

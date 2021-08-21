@@ -42,6 +42,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -146,10 +147,11 @@ accumulate_proc_stats_in_goal(Goal, !UsedVars, !Stats) :-
                 !Stats ^ ps_unify_complicateds :=
                     !.Stats ^ ps_unify_complicateds + 1
             ;
-                RHS = rhs_lambda_goal(_, _, _, _, NonLocals, QuantVars, _, _,
-                    LambdaGoal),
+                RHS = rhs_lambda_goal(_, _, _, _, NonLocals, ArgVarsModes,
+                    _, LambdaGoal),
+                assoc_list.keys(ArgVarsModes, ArgVars),
                 set_tree234.insert_list(NonLocals, !UsedVars),
-                set_tree234.insert_list(QuantVars, !UsedVars),
+                set_tree234.insert_list(ArgVars, !UsedVars),
                 !Stats ^ ps_unify_complicateds :=
                     !.Stats ^ ps_unify_complicateds + 1,
                 accumulate_proc_stats_in_goal(LambdaGoal, !UsedVars, !Stats)

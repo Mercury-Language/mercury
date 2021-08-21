@@ -662,9 +662,10 @@ unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
             Constraints = []
         )
     ;
-        RHS = rhs_lambda_goal(Purity, _, PredOrFunc, EvalMethod, _, Args,
-            _, _, LambdaGoal),
-        list.map_foldl(get_var_type, Args, ArgTVars, !TCInfo),
+        RHS = rhs_lambda_goal(Purity, _, PredOrFunc, EvalMethod, _,
+            ArgVarsModes, _, LambdaGoal),
+        assoc_list.keys(ArgVarsModes, ArgVars),
+        list.map_foldl(get_var_type, ArgVars, ArgTVars, !TCInfo),
         ArgTypes = list.map(tvar_to_type, ArgTVars),
         construct_higher_order_type(Purity, PredOrFunc, EvalMethod,
             ArgTypes, LambdaType),

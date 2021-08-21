@@ -469,6 +469,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
+:- import_module assoc_list.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
@@ -704,9 +705,10 @@ rhs_goal_vars_acc(RHS, !Set) :-
         RHS = rhs_functor(_Functor, _, ArgVars),
         set_of_var.insert_list(ArgVars, !Set)
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, NonLocals, LambdaVars, _, _, Goal),
+        RHS = rhs_lambda_goal(_, _, _, _, NonLocals, ArgVarsModes, _, Goal),
+        assoc_list.keys(ArgVarsModes, ArgVars),
         set_of_var.insert_list(NonLocals, !Set),
-        set_of_var.insert_list(LambdaVars, !Set),
+        set_of_var.insert_list(ArgVars, !Set),
         goal_vars_acc(Goal, !Set)
     ).
 
@@ -1161,7 +1163,7 @@ goal_proc_refs_acc(Goal, !ReferredToProcs) :-
             RHS = rhs_functor(RHSConsId, _IsExistConstruct, _ArgVars),
             cons_id_proc_refs_acc(RHSConsId, !ReferredToProcs)
         ;
-            RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, SubGoal),
+            RHS = rhs_lambda_goal(_, _, _, _, _, _, _, SubGoal),
             goal_proc_refs_acc(SubGoal, !ReferredToProcs)
         ),
         (

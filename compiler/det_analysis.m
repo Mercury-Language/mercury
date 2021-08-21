@@ -1323,20 +1323,21 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
     % Unifications are either deterministic or semideterministic.
     (
         RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocalVars, Vars, Modes, LambdaDeclaredDet, Goal0),
+            NonLocalVars, ArgVarsModes, LambdaDeclaredDet, Goal0),
         ( if determinism_components(LambdaDeclaredDet, _, at_most_many_cc) then
             LambdaSolnContext = first_soln
         else
             LambdaSolnContext = all_solns
         ),
         det_info_get_module_info(!.DetInfo, ModuleInfo),
-        instmap.pre_lambda_update(ModuleInfo, Vars, Modes, InstMap0, InstMap1),
+        instmap.pre_lambda_update(ModuleInfo, ArgVarsModes,
+            InstMap0, InstMap1),
         det_infer_goal(Goal0, Goal, InstMap1, LambdaSolnContext, [],
             no, LambdaInferredDet, _LambdaFailingContexts, !DetInfo),
         det_check_lambda(LambdaDeclaredDet, LambdaInferredDet,
             Goal, GoalInfo, InstMap1, !DetInfo),
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocalVars, Vars, Modes, LambdaDeclaredDet, Goal)
+            NonLocalVars, ArgVarsModes, LambdaDeclaredDet, Goal)
     ;
         ( RHS0 = rhs_var(_)
         ; RHS0 = rhs_functor(_, _, _)
@@ -1367,7 +1368,7 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
                 RHS = rhs_functor(ConsId, _, _),
                 FailingGoal = deconstruct_goal(LHS, ConsId)
             ;
-                RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
+                RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _),
                 unexpected($pred, "complicated_unify but no fail context")
             ),
             FailingContext = failing_context(Context, FailingGoal),

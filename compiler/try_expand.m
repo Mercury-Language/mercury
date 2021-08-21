@@ -819,15 +819,14 @@ make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
         OutputTupleVar, !ProcInfo),
     (
         MaybeIO = yes(try_io_state_vars(IOVarInitial, IOVarFinal)),
-        LambdaParams = [OutputTupleVar, IOVarInitial, IOVarFinal],
+        LambdaParamsModes = [OutputTupleVar - out_mode,
+            IOVarInitial - di_mode, IOVarFinal - uo_mode],
         LambdaParamTypes = [OutputTupleType, io_state_type, io_state_type],
-        LambdaParamModes = [out_mode, di_mode, uo_mode],
         set_of_var.delete(IOVarFinal, NonLocals1, NonLocals)
     ;
         MaybeIO = no,
-        LambdaParams = [OutputTupleVar],
+        LambdaParamsModes = [OutputTupleVar - out_mode],
         LambdaParamTypes = [OutputTupleType],
-        LambdaParamModes = [out_mode],
         NonLocals = NonLocals0
     ),
     LambdaType = higher_order_type(pf_predicate, LambdaParamTypes,
@@ -856,9 +855,9 @@ make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
     detism_to_try_lambda_detism(BodyDetism, LambdaDetism),
 
     % Make the lambda assignment.
-    RHS = rhs_lambda_goal(purity_pure, ho_ground, pf_predicate,
-        lambda_normal, set_of_var.to_sorted_list(NonLocals),
-        LambdaParams, LambdaParamModes, LambdaDetism, LambdaBody),
+    RHS = rhs_lambda_goal(purity_pure, ho_ground, pf_predicate, lambda_normal,
+        set_of_var.to_sorted_list(NonLocals), LambdaParamsModes,
+        LambdaDetism, LambdaBody),
     create_pure_atomic_complicated_unification(LambdaVar, RHS,
         term.context_init, umc_implicit("try_expand"), [],
         AssignLambdaVarGoal0),

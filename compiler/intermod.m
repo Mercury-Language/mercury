@@ -897,7 +897,7 @@ gather_entities_to_opt_export_in_unify_rhs(RHS, DoWrite, !IntermodInfo) :-
         DoWrite = yes
     ;
         RHS = rhs_lambda_goal(_Purity, _HOGroundness, _PorF, _EvalMethod,
-            _NonLocals, _QuantVars, _Modes, _Detism, Goal),
+            _NonLocals, _ArgVarsModes, _Detism, Goal),
         gather_entities_to_opt_export_in_goal(Goal, DoWrite, !IntermodInfo)
     ;
         RHS = rhs_functor(Functor, _Exist, _Vars),
@@ -2433,7 +2433,7 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
                 fail
             )
         ;
-            RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
+            RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _),
             fail
         )
     then

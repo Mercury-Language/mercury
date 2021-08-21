@@ -79,6 +79,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
 :- import_module counter.
 :- import_module int.
 :- import_module list.
@@ -221,11 +222,12 @@ build_vars_to_zones_in_goal(CurZone, Goal, !TraceCounter, !VarsToZones) :-
             record_vars_in_zone(CurZone, RHSArgVars, !VarsToZones)
         ;
             RHS = rhs_lambda_goal(_Purity, _Groundness, _PredOrFunc,
-                _EvalMethod, _NonLocals, LambdaVars, _LambdaModes, _Detism,
+                _EvalMethod, _NonLocals, LambdaVarsModes, _Detism,
                 LambdaGoal),
             % The lambda goal is the one clause of the procedure that
             % we will construct from LambdaGoal. We therefore treat it
             % as we treat the top level goal.
+            assoc_list.keys(LambdaVarsModes, LambdaVars),
             LambdaZone = top_zone,
             record_vars_in_zone(LambdaZone, LambdaVars, !VarsToZones),
             build_vars_to_zones_in_goal(LambdaZone, LambdaGoal,
@@ -397,14 +399,12 @@ add_exist_scopes_for_dup_vars_in_goal(CurZone, ZonesToDupVars,
             GoalExpr = GoalExpr0
         ;
             RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
-                EvalMethod, NonLocals, LambdaVars, LambdaModes, Detism,
-                LambdaGoal0),
+                EvalMethod, NonLocals, LambdaVarsModes, Detism, LambdaGoal0),
             LambdaZone = top_zone,
             add_exist_scopes_for_dup_vars_in_goal(LambdaZone, ZonesToDupVars,
                 LambdaGoal0, LambdaGoal, !TraceCounter),
             RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
-                EvalMethod, NonLocals, LambdaVars, LambdaModes, Detism,
-                LambdaGoal),
+                EvalMethod, NonLocals, LambdaVarsModes, Detism, LambdaGoal),
             GoalExpr = unify(LHSVar, RHS, Mode, Kind, Context)
         )
     ;

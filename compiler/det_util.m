@@ -193,16 +193,23 @@ delete_unreachable_cases_acc([Case0 | Cases0], PossibleConsIdSet,
     delete_unreachable_cases_acc(Cases0, PossibleConsIdSet,
         !RevReachableCases, !RevUnreachableGoals).
 
-interpret_unify(X, rhs_var(Y), !Subst) :-
-    unify_term(variable(X, context_init), variable(Y, context_init), !Subst).
-interpret_unify(X, rhs_functor(ConsId, _, ArgVars), !Subst) :-
-    term.var_list_to_term_list(ArgVars, ArgTerms),
-    cons_id_and_args_to_term(ConsId, ArgTerms, RhsTerm),
-    unify_term(variable(X, context_init), RhsTerm, !Subst).
-interpret_unify(_X, rhs_lambda_goal(_, _, _, _, _, _, _, _, _), !Subst).
-    % For ease of implementation we just ignore unifications with lambda terms.
-    % This is a safe approximation, it just prevents us from optimizing them
-    % as well as we would like.
+interpret_unify(LHSVar, RHS, !Subst) :-
+    (
+        RHS = rhs_var(RHSVar),
+        unify_term(
+            variable(LHSVar, context_init),
+            variable(RHSVar, context_init), !Subst)
+    ;
+        RHS = rhs_functor(ConsId, _, RHSArgVars),
+        term.var_list_to_term_list(RHSArgVars, RHSArgTerms),
+        cons_id_and_args_to_term(ConsId, RHSArgTerms, RHSTerm),
+        unify_term(variable(LHSVar, context_init), RHSTerm, !Subst)
+    ;
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _)
+        % For ease of implementation, we just ignore unifications
+        % with lambda terms. This is a safe approximation, it just prevents us
+        % from optimizing them as well as we would like.
+    ).
 
 det_lookup_pred_info_and_detism(DetInfo, PredId, ModeId, PredInfo, Detism) :-
     det_info_get_module_info(DetInfo, ModuleInfo),

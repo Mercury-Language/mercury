@@ -278,8 +278,8 @@
     % Update the given instmap to include the initial insts of the
     % lambda variables.
     %
-:- pred pre_lambda_update(module_info::in, list(prog_var)::in,
-    list(mer_mode)::in, instmap::in, instmap::out) is det.
+:- pred pre_lambda_update(module_info::in, assoc_list(prog_var, mer_mode)::in,
+    instmap::in, instmap::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -928,11 +928,20 @@ instmap_delta_bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
 
 %---------------------------------------------------------------------------%
 
-pre_lambda_update(ModuleInfo, Vars, Modes, InstMap0, InstMap) :-
-    mode_list_get_initial_insts(ModuleInfo, Modes, Insts),
-    assoc_list.from_corresponding_lists(Vars, Insts, VarInsts),
-    InstMapDelta = instmap_delta_from_assoc_list(VarInsts),
+pre_lambda_update(ModuleInfo, VarsModes, InstMap0, InstMap) :-
+    var_modes_get_inital_insts(ModuleInfo, VarsModes, VarsInitialInsts),
+    InstMapDelta = instmap_delta_from_assoc_list(VarsInitialInsts),
     apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
+
+:- pred var_modes_get_inital_insts(module_info::in,
+    assoc_list(prog_var, mer_mode)::in, assoc_list(prog_var, mer_inst)::out)
+    is det.
+
+var_modes_get_inital_insts(_, [], []).
+var_modes_get_inital_insts(ModuleInfo, [Var - Mode | VarsModes],
+        [Var - InitialInst | VarInitialInsts]) :-
+    mode_get_insts(ModuleInfo, Mode, InitialInst, _FinalInst),
+    var_modes_get_inital_insts(ModuleInfo, VarsModes, VarInitialInsts).
 
 %---------------------------------------------------------------------------%
 

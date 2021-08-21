@@ -30,6 +30,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
@@ -175,7 +176,7 @@
     % give the context.
     %
 :- func var_modes_to_string(output_lang, prog_varset, inst_varset,
-    var_name_print, list(prog_var), list(mer_mode)) = string.
+    var_name_print, assoc_list(prog_var, mer_mode)) = string.
 
 :- func var_mode_to_string(output_lang, prog_varset, inst_varset,
     var_name_print, pair(prog_var, mer_mode)) = string.
@@ -221,7 +222,6 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_item.  % undesirable dependency
 
-:- import_module assoc_list.
 :- import_module int.
 :- import_module map.
 :- import_module string.
@@ -919,9 +919,7 @@ write_constraint_proof(Indent, VarNamePrint, TVarSet, Constraint - Proof,
 % Write out modes.
 %
 
-var_modes_to_string(Lang, VarSet, InstVarSet, VarNamePrint, Vars, Modes)
-        = Str :-
-    assoc_list.from_corresponding_lists(Vars, Modes, VarModes),
+var_modes_to_string(Lang, VarSet, InstVarSet, VarNamePrint, VarModes) = Str :-
     Strs = list.map(var_mode_to_string(Lang, VarSet, InstVarSet, VarNamePrint),
         VarModes),
     Str = string.join_list(", ", Strs).

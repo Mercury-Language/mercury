@@ -1244,7 +1244,7 @@ polymorphism_process_unify(LHSVar, RHS0, Mode, Unification0, UnifyContext,
             Unification0, UnifyContext, GoalInfo0, Goal, _Changed, !Info)
     ;
         RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            LambdaNonLocals0, LambdaArgVars, Modes, Det, LambdaGoal0),
+            LambdaNonLocals0, ArgVarsModes, Det, LambdaGoal0),
         % For lambda expressions, we must recursively traverse the lambda goal.
         % Any type_info variables needed by the lambda goal are created in the
         % lambda goal (not imported from the outside), and any type_info
@@ -1256,9 +1256,10 @@ polymorphism_process_unify(LHSVar, RHS0, Mode, Unification0, UnifyContext,
         polymorphism_process_goal(LambdaGoal0, LambdaGoal1, !Info),
         set_cache_maps_snapshot("after lambda", InitialSnapshot, !Info),
 
+        assoc_list.keys(ArgVarsModes, ArgVars),
         % Currently we don't allow lambda goals to be existentially typed.
         ExistQVars = [],
-        fixup_lambda_quantification(LambdaNonLocals0, LambdaArgVars,
+        fixup_lambda_quantification(LambdaNonLocals0, ArgVars,
             ExistQVars, LambdaGoal1, LambdaGoal,
             LambdaTiTciVars, PossibleNonLocalTiTciVars, !Info),
         LambdaNonLocals1 =
@@ -1267,7 +1268,7 @@ polymorphism_process_unify(LHSVar, RHS0, Mode, Unification0, UnifyContext,
             LambdaNonLocals0,
         list.sort_and_remove_dups(LambdaNonLocals1, LambdaNonLocals),
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            LambdaNonLocals, LambdaArgVars, Modes, Det, LambdaGoal),
+            LambdaNonLocals, ArgVarsModes, Det, LambdaGoal),
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
         set_of_var.union(PossibleNonLocalTiTciVars, NonLocals0, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
@@ -2096,7 +2097,7 @@ fixup_quantification(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
     set_of_progvar::out, set_of_progvar::out,
     poly_info::in, poly_info::out) is det.
 
-fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars, !Goal,
+fixup_lambda_quantification(LambdaNonLocals0, ArgVars, ExistQVars, !Goal,
         LambdaTiTciVars, AllTiTciGoalVars, !Info) :-
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     ( if rtti_varmaps_no_tvars(RttiVarMaps0) then
@@ -2107,10 +2108,10 @@ fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars, !Goal,
         poly_info_get_var_types(!.Info, VarTypes0),
         !.Goal = hlds_goal(_, GoalInfo0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        set_of_var.insert_list(ArgVars ++ LambdaVars,
-            NonLocals, NonLocalsArgVarsLambdaVars),
+        set_of_var.insert_list(LambdaNonLocals0, NonLocals, BothNonLocals),
+        set_of_var.insert_list(ArgVars, BothNonLocals, NonLocalsWithArgVars),
         goal_util.extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps0,
-            VarTypes0, ExistQVars, NonLocalsArgVarsLambdaVars,
+            VarTypes0, ExistQVars, NonLocalsWithArgVars,
             LambdaTiTciVars),
 
         goal_vars(!.Goal, GoalVars),
@@ -2140,7 +2141,7 @@ fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars, !Goal,
         % and throw away the updated caches at its end, so any integer vars
         % created by the transformation inside !:Goal will be local to !:Goal.
         poly_info_set_must_requantify(!Info),
-        set_of_var.union(NonLocalsArgVarsLambdaVars, AllTiTciGoalVars,
+        set_of_var.union(NonLocalsWithArgVars, AllTiTciGoalVars,
             PossibleOutsideVars),
         implicitly_quantify_goal_general(ordinary_nonlocals_maybe_lambda,
             PossibleOutsideVars, _Warnings, !Goal,

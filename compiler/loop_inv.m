@@ -1219,7 +1219,7 @@ goal_inputs(ModuleInfo, Goal) = Inputs :-
                 UnifyRHS = rhs_functor(_, _, _),
                 Inputs = [LHS]
             ;
-                UnifyRHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
+                UnifyRHS = rhs_lambda_goal(_, _, _, _, _, _, _, _),
                 % These should have been expanded out by now.
                 unexpected($pred, "lambda goal")
             )

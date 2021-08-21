@@ -1483,14 +1483,14 @@ recompute_instmap_delta_1(RecomputeAtomic, Goal0, Goal, VarTypes,
         GoalExpr0 = unify(LHS, RHS0, UniMode0, Uni, Context),
         (
             RHS0 = rhs_lambda_goal(Purity, Groundness, PorF, EvalMethod,
-                LambdaNonLocals, LambdaVars, Modes, Det, SubGoal0),
+                LambdaNonLocals, ArgVarsModes, Det, SubGoal0),
             ModuleInfo0 = !.RI ^ ri_module_info,
-            instmap.pre_lambda_update(ModuleInfo0, LambdaVars, Modes,
+            instmap.pre_lambda_update(ModuleInfo0, ArgVarsModes,
                 InstMap0, InstMap),
             recompute_instmap_delta_1(RecomputeAtomic, SubGoal0, SubGoal,
                 VarTypes, InstMap, _, !RI),
             RHS = rhs_lambda_goal(Purity, Groundness, PorF, EvalMethod,
-                LambdaNonLocals, LambdaVars, Modes, Det, SubGoal)
+                LambdaNonLocals, ArgVarsModes, Det, SubGoal)
         ;
             ( RHS0 = rhs_var(_)
             ; RHS0 = rhs_functor(_, _, _)

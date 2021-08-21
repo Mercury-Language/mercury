@@ -70,7 +70,7 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     GoalExpr0 = unify(LHSVar0, RHS0, UnifyMode, Unification0, UnifyContext),
     (
         RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocals, Vars, Modes, LambdaDeclaredDetism, LambdaGoal0),
+            NonLocals, VarsModes, LambdaDeclaredDetism, LambdaGoal0),
         determinism_to_code_model(LambdaDeclaredDetism, LambdaCodeModel),
         (
             ( LambdaCodeModel = model_det
@@ -93,7 +93,7 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             LambdaProcIsModelNon, LambdaNumEnclosingBarriers),
 
         simplify_info_get_module_info(!.Info, ModuleInfo),
-        instmap.pre_lambda_update(ModuleInfo, Vars, Modes,
+        instmap.pre_lambda_update(ModuleInfo, VarsModes,
             InstMap0, LambdaInstMap0),
 
         % Don't attempt to pass structs into lambda_goals, since that
@@ -107,7 +107,7 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             LambdaInstMap0, LambdaCommon0, _, !Info),
 
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocals, Vars, Modes, LambdaDeclaredDetism, LambdaGoal),
+            NonLocals, VarsModes, LambdaDeclaredDetism, LambdaGoal),
         GoalExpr = unify(LHSVar0, RHS, UnifyMode, Unification0, UnifyContext),
         GoalInfo = GoalInfo0
     ;

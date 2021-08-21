@@ -120,12 +120,12 @@ subst_literals_in_goal(Info, Goal0, Goal) :-
             )
         ;
             RHS0 = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
-                EvalMethod, LambdaNonLocals, LambdaQuantVars,
-                LambdaModes, LambdaDetism, LambdaGoal0),
+                EvalMethod, LambdaNonLocals, LambdaArgVarsModes,
+                LambdaDetism, LambdaGoal0),
             subst_literals_in_goal(Info, LambdaGoal0, LambdaGoal),
             RHS = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
-                EvalMethod, LambdaNonLocals, LambdaQuantVars,
-                LambdaModes, LambdaDetism, LambdaGoal),
+                EvalMethod, LambdaNonLocals, LambdaArgVarsModes,
+                LambdaDetism, LambdaGoal),
             GoalExpr = unify(Var, RHS, Mode, Kind, UnifyContext),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;

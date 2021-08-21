@@ -1324,7 +1324,7 @@ update_construct(ConstInfo, Subst, Goal0, Goal, !AddrVarFieldIds, !Info) :-
                 rename_var_list(need_not_rename, Subst, RHSVars0, RHSVars),
                 RHS = rhs_functor(RHSConsId, IsExistConstr, RHSVars)
             ;
-                RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
+                RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _, _),
                 unexpected($pred, "lambda RHS")
             ),
             GoalExpr = unify(LHS, RHS, Mode, Unification, UnifyContext),

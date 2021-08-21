@@ -911,7 +911,7 @@ unify_rhs_used_modules(RHS, !UsedModules) :-
         RHS = rhs_functor(ConsId, _, _),
         cons_id_used_modules(visibility_private, ConsId, !UsedModules)
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal),
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, Goal),
         hlds_goal_used_modules(Goal, !UsedModules)
     ).
 

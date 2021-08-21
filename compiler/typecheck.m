@@ -2098,27 +2098,28 @@ type_assign_var_has_type(TypeAssign0, Var, Type, !TypeAssignSet) :-
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_unification(UnifyContext, Context, GoalId, X, RHS0, RHS,
+typecheck_unification(UnifyContext, Context, GoalId, LHSVar, RHS0, RHS,
         !TypeAssignSet, !Info) :-
     (
-        RHS0 = rhs_var(Y),
-        typecheck_unify_var_var(UnifyContext, Context, X, Y,
+        RHS0 = rhs_var(RHSVar),
+        typecheck_unify_var_var(UnifyContext, Context, LHSVar, RHSVar,
             !TypeAssignSet, !Info),
         RHS = RHS0
     ;
-        RHS0 = rhs_functor(Functor, _ExistConstraints, Args),
-        typecheck_unify_var_functor(UnifyContext, Context, X,
-            Functor, Args, GoalId, !TypeAssignSet, !Info),
+        RHS0 = rhs_functor(Functor, _ExistConstraints, ArgVars),
+        typecheck_unify_var_functor(UnifyContext, Context, LHSVar,
+            Functor, ArgVars, GoalId, !TypeAssignSet, !Info),
         perform_context_reduction(Context, !TypeAssignSet, !Info),
         RHS = RHS0
     ;
         RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocals, Vars, Modes, Det, Goal0),
+            NonLocals, VarsModes, Det, Goal0),
+        assoc_list.keys(VarsModes, Vars),
         typecheck_lambda_var_has_type(UnifyContext, Context, Purity,
-            PredOrFunc, EvalMethod, X, Vars, !TypeAssignSet, !Info),
+            PredOrFunc, EvalMethod, LHSVar, Vars, !TypeAssignSet, !Info),
         typecheck_goal(Goal0, Goal, Context, !TypeAssignSet, !Info),
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocals, Vars, Modes, Det, Goal)
+            NonLocals, VarsModes, Det, Goal)
     ).
 
 :- pred typecheck_unify_var_var(unify_context::in, prog_context::in,

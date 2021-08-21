@@ -786,7 +786,7 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
             RHS0 = rhs_var(_),
             unexpected($pred, "construct rhs_var")
         ;
-            RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
+            RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _, _),
             unexpected($pred, "construct rhs_lambda_goal")
         ),
         (
@@ -1630,6 +1630,7 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     list.length(CallVars, Arity),
 
     % Create the in the body of the wrapper procedure.
+    % XXX What does that mean?
     CallVar = OrigVar,
     OrigVarPredInstInfo = pred_inst_info(_, ArgModes, _, Determinism),
     GenericCall = higher_order(CallVar, Purity, PredOrFunc, Arity),
@@ -1657,6 +1658,7 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     DummyPPId = proc(invalid_pred_id, invalid_proc_id),
     DummyShroudedPPId = shroud_pred_proc_id(DummyPPId),
     ConsId = closure_cons(DummyShroudedPPId, EvalMethod),
+    LambdaNonLocals = [CallVar],
     InInst = ground(shared, higher_order(OrigVarPredInstInfo)),
     ArgUnifyModes0 = [unify_modes_li_lf_ri_rf(InInst, InInst, InInst, InInst)],
     Unification0 = construct(LHSVar, ConsId, LambdaNonLocals, ArgUnifyModes0,
@@ -1665,9 +1667,9 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
         ground_inst, ground_inst),
     MainContext = umc_implicit("reg_wrapper"),
     UnifyContext = unify_context(MainContext, []),
-    LambdaNonLocals = [CallVar],
+    assoc_list.from_corresponding_lists(CallVars, ArgModes, CallVarsArgModes),
     RHS = rhs_lambda_goal(Purity, ho_ground, PredOrFunc, EvalMethod,
-        LambdaNonLocals, CallVars, ArgModes, Determinism, CallGoal),
+        LambdaNonLocals, CallVarsArgModes, Determinism, CallGoal),
     lambda.expand_lambda(reg_wrapper_proc(RegR_HeadVars), LHSVar, RHS,
         UnifyMode, Unification0, UnifyContext, UnifyGoalExpr, !Info),
 

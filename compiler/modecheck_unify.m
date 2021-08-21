@@ -121,7 +121,7 @@ modecheck_unification(LHSVar, RHS, Unification0, UnifyContext, UnifyGoalInfo0,
             Unification0, UnifyContext, UnifyGoalInfo0, Goal, !ModeInfo)
     ;
         RHS = rhs_lambda_goal(Purity, HOGroundness, _PredOrFunc,
-            _LambdaEvalMethod, LambdaNonLocals, _LambdaQuantVars, _ArgModes,
+            _LambdaEvalMethod, LambdaNonLocals, _ArgVarsModes,
             _Detism, _LambdaGoal),
         ( if
             Purity \= purity_impure,
@@ -298,7 +298,8 @@ modecheck_unification_functor(X, ConsId, IsExistConstruction, ArgVars0,
 modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
         UnifyGoalExpr, !ModeInfo) :-
     LambdaRHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-        ArgVars, Vars, Modes0, Det, Goal0),
+        LambdaNonLocals, VarsModes0, Det, Goal0),
+    assoc_list.keys_and_values(VarsModes0, Vars, Modes0),
 
     % First modecheck the lambda goal itself:
     %
@@ -343,10 +344,12 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
         HowToCheckGoal = check_modes,
         % This only needs to be done once.
         mode_info_get_types_of_vars(!.ModeInfo, Vars, VarTypes),
-        propagate_types_into_mode_list(ModuleInfo0, VarTypes, Modes0, Modes)
+        propagate_types_into_mode_list(ModuleInfo0, VarTypes, Modes0, Modes),
+        assoc_list.from_corresponding_lists(Vars, Modes, VarsModes)
     ;
         HowToCheckGoal = check_unique_modes,
-        Modes = Modes0
+        Modes = Modes0,
+        VarsModes = VarsModes0
     ),
 
     % Initialize the initial insts of the lambda variables.
@@ -451,8 +454,8 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
 
         % Now modecheck the unification of X with the lambda-expression.
         RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            ArgVars, Vars, Modes, Det, Goal),
-        modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes, Det,
+            LambdaNonLocals, VarsModes, Det, Goal),
+        modecheck_unify_lambda(X, PredOrFunc, LambdaNonLocals, Modes, Det,
             RHS0, RHS, Unification0, Unification, UnifyMode, !ModeInfo)
     else
         acc_non_ground_vars(ModuleInfo2, InstMap1, NonLocalsList,
@@ -471,7 +474,7 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
         ),
         % Return any old garbage.
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            ArgVars, Vars, Modes0, Det, Goal0),
+            LambdaNonLocals, VarsModes0, Det, Goal0),
         UnifyMode = unify_modes_li_lf_ri_rf(free, free, free, free),
         Unification = Unification0
     ),
@@ -542,7 +545,7 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDetism,
 modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
         UnifyContext, GoalInfo0, Goal, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal0),
+    RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _, Goal0),
     % Find out the predicate called in the lambda goal.
     ( if
         pred_ids_args_called_from_goal(Goal0, PredIdsArgs0),
@@ -1354,7 +1357,7 @@ categorize_unify_var_lambda(InitInstX, FinalInstX, ArgInsts, X, ArgVars,
         then
             proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
             ( if
-                RHS0 = rhs_lambda_goal(_, _, _, EvalMethod, _, _, _, _, Goal),
+                RHS0 = rhs_lambda_goal(_, _, _, EvalMethod, _, _, _, Goal),
                 Goal = hlds_goal(plain_call(PredId, ProcId, _, _, _, _), _)
             then
                 % XXX We used to construct RHS as a rhs_functor whose cons_id

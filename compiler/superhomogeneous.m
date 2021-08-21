@@ -1812,6 +1812,12 @@ project_lambda_var(LambdaArg) = LambdaVar :-
 project_lambda_arg_mode(LambdaArg) = Mode :-
     Mode = LambdaArg ^ la_arg_mode.
 
+:- func project_lambda_var_arg_mode(lambda_arg) = pair(prog_var, mer_mode).
+
+project_lambda_var_arg_mode(LambdaArg) = LambdaVar - Mode :-
+    LambdaVar = LambdaArg ^ la_arg_var,
+    Mode = LambdaArg ^ la_arg_mode.
+
 %---------------------------------------------------------------------------%
 
     % Parse a list of lambda argument terms, each which should be of the form
@@ -2101,7 +2107,10 @@ build_lambda_expression(LHSVar, UnificationPurity,
                 !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
 
-            LambdaVars = list.map(project_lambda_var, LambdaArgs1),
+            LambdaVarsModes =
+                list.map(project_lambda_var_arg_mode, LambdaArgs1),
+            LambdaVars =
+                list.map(project_lambda_var, LambdaArgs1),
 
             trace [compiletime(flag("debug-statevar-lambda")), io(!IO)] (
                 get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
@@ -2163,7 +2172,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
             ),
 
             LambdaRHS = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
-                EvalMethod, LambdaNonLocals, LambdaVars, Modes, Detism,
+                EvalMethod, LambdaNonLocals, LambdaVarsModes, Detism,
                 HLDS_Goal),
             make_atomic_unification(LHSVar, LambdaRHS, Context, MainContext,
                 SubContext, UnificationPurity, Goal, !QualInfo)

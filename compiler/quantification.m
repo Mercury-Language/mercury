@@ -965,15 +965,16 @@ implicitly_quantify_unify_rhs(ReuseArgs, GoalInfo0, !RHS, !Unification,
         )
     ;
         !.RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            LambdaNonLocals0, LambdaVars0, Modes, Det, Goal0),
+            LambdaNonLocals0, ArgVarsModes0, Det, Goal0),
+        assoc_list.keys_and_values(ArgVarsModes0, ArgVars0, Modes),
 
         % Note: make_hlds.m has already done most of the hard work for
-        % lambda expressions. At this point, LambdaVars0 should in fact be
+        % lambda expressions. At this point, ArgVars0 should in fact be
         % guaranteed to be fresh distinct variables. However, the code below
         % does not assume this.
 
         get_outside(!.Info, OutsideVars0),
-        QVars = set_of_var.list_to_set(LambdaVars0),
+        QVars = set_of_var.list_to_set(ArgVars0),
         % Figure out which variables have overlapping scopes because they occur
         % outside the goal and are also lambda-quantified vars.
         set_of_var.intersect(OutsideVars0, QVars, RenameVars0),
@@ -991,7 +992,7 @@ implicitly_quantify_unify_rhs(ReuseArgs, GoalInfo0, !RHS, !Unification,
         set_of_var.union(RenameVars0, RenameVars1, RenameVars),
         rename_apart(RenameVars, RenameMap, NonLocalsToRecompute, Goal0, Goal1,
             !Info),
-        rename_var_list(need_not_rename, RenameMap, LambdaVars0, LambdaVars),
+        rename_var_list(need_not_rename, RenameMap, ArgVars0, ArgVars),
 
         % Quantified variables cannot be pushed inside a lambda goal,
         % so we insert the quantified vars into the outside vars set,
@@ -1002,7 +1003,7 @@ implicitly_quantify_unify_rhs(ReuseArgs, GoalInfo0, !RHS, !Unification,
         set_quant_vars(QuantVars, !Info),
         % Add the lambda vars as outside vars, since they are outside of the
         % lambda goal.
-        set_of_var.insert_list(LambdaVars, OutsideVars1, OutsideVars),
+        set_of_var.insert_list(ArgVars, OutsideVars1, OutsideVars),
         set_outside(OutsideVars, !Info),
         % Set the LambdaOutsideVars set to empty, because variables that occur
         % outside this lambda expression only in other lambda expressions
@@ -1015,7 +1016,7 @@ implicitly_quantify_unify_rhs(ReuseArgs, GoalInfo0, !RHS, !Unification,
 
         get_nonlocals(!.Info, RHSNonLocals0),
         % Lambda-quantified variables are local.
-        set_of_var.delete_list(LambdaVars, RHSNonLocals0, RHSNonLocals),
+        set_of_var.delete_list(ArgVars, RHSNonLocals0, RHSNonLocals),
         set_quant_vars(QuantVars0, !Info),
         set_outside(OutsideVars0, !Info),
         set_lambda_outside(LambdaOutsideVars0, !Info),
@@ -1030,8 +1031,9 @@ implicitly_quantify_unify_rhs(ReuseArgs, GoalInfo0, !RHS, !Unification,
         list.filter(set_of_var.contains(LambdaGoalNonLocals),
             LambdaNonLocals0, LambdaNonLocals),
 
+        assoc_list.from_corresponding_lists(ArgVars, Modes, ArgVarsModes),
         !:RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            LambdaNonLocals, LambdaVars, Modes, Det, Goal),
+            LambdaNonLocals, ArgVarsModes, Det, Goal),
 
         % For a unification that constructs a lambda expression, the argument
         % variables of the construction are the nonlocal variables of the
@@ -2243,11 +2245,12 @@ unify_rhs_vars_maybe_lambda(NonLocalsToRecompute, RHS, !Set, !LambdaSet) :-
         RHS = rhs_functor(_, _, ArgVars),
         set_of_var.insert_list(ArgVars, !Set)
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, LambdaVars, _, _, Goal),
+        RHS = rhs_lambda_goal(_, _, _, _, _, ArgVarsModes, _, Goal),
+        assoc_list.keys(ArgVarsModes, ArgVars),
         % Note that the NonLocals list is not counted, since all the
         % variables in that list must occur in the goal.
         goal_vars_bitset_maybe_lambda(NonLocalsToRecompute, Goal, GoalVars0),
-        set_of_var.delete_list(LambdaVars, GoalVars0, GoalVars),
+        set_of_var.delete_list(ArgVars, GoalVars0, GoalVars),
         set_of_var.union(!.LambdaSet, GoalVars, !:LambdaSet)
     ).
 
@@ -2264,11 +2267,12 @@ unify_rhs_vars_maybe_lambda_and_bi_impl(RHS, !Set, !LambdaSet) :-
         RHS = rhs_functor(_, _, ArgVars),
         set_of_var.insert_list(ArgVars, !Set)
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, LambdaVars, _, _, Goal),
+        RHS = rhs_lambda_goal(_, _, _, _, _, ArgVarsModes, _, Goal),
+        assoc_list.keys(ArgVarsModes, ArgVars),
         % Note that the NonLocals list is not counted, since all the
         % variables in that list must occur in the goal.
         goal_vars_bitset_maybe_lambda_and_bi_impl(Goal, GoalVars0),
-        set_of_var.delete_list(LambdaVars, GoalVars0, GoalVars),
+        set_of_var.delete_list(ArgVars, GoalVars0, GoalVars),
         set_of_var.union(!.LambdaSet, GoalVars, !:LambdaSet)
     ).
 
@@ -2296,7 +2300,7 @@ unify_rhs_vars_no_lambda(NonLocalsToRecompute, RHS, MaybeSetArgs, !Set) :-
             set_of_var.insert_list(ArgVars, !Set)
         )
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _),
         unexpected($pred, "found lambda")
     ).
 

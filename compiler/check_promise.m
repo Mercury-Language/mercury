@@ -284,7 +284,7 @@ check_in_interface_promise_unify_rhs(ModuleInfo, PredInfo, Var, RHS, Context,
             DefinedInImpl = no
         )
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal),
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, Goal),
         check_in_interface_promise_goal(ModuleInfo, PredInfo, Goal, !Specs)
     ).
 

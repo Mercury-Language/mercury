@@ -709,7 +709,7 @@ mode_error_non_ground_non_local_lambda_var_to_spec(ModeInfo, Var, VarInst)
 :- func mode_error_higher_order_unify_to_spec(mode_info, prog_var,
     mode_error_unify_rhs, mer_type, pred_or_func) = error_spec.
 
-mode_error_higher_order_unify_to_spec(ModeInfo, X, RHS, Type, PredOrFunc)
+mode_error_higher_order_unify_to_spec(ModeInfo, LHSVar, RHS, Type, PredOrFunc)
         = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
@@ -726,14 +726,15 @@ mode_error_higher_order_unify_to_spec(ModeInfo, X, RHS, Type, PredOrFunc)
     ;
         RHS = error_at_lambda(ArgVars, ArgFromToInsts),
         ArgModes = list.map(from_to_insts_to_mode, ArgFromToInsts),
+        assoc_list.from_corresponding_lists(ArgVars, ArgModes, ArgVarsModes),
         RHSStr = "lambda(["
             ++ var_modes_to_string(output_debug, VarSet, InstVarSet,
-                print_name_only, ArgVars, ArgModes)
+                print_name_only, ArgVarsModes)
             ++ "] ... )"
     ),
     varset.init(TypeVarSet),
     MainPieces = [words("In unification of"),
-        quote(mercury_var_to_name_only(VarSet, X)),
+        quote(mercury_var_to_name_only(VarSet, LHSVar)),
         words("with"), quote(RHSStr), suffix(":"), nl,
         words("mode error: attempt at higher-order unification."), nl,
         words("Cannot unify two terms of type"),
