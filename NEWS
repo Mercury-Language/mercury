@@ -155,6 +155,7 @@ Changes to the Mercury standard library
 
 * The following predicates have been added to this module:
 
+    - pred `get_environment_var_map/3`
     - pred `read_named_file_as_string/4`
     - pred `read_named_file_as_lines/4`
     - pred `write_line_cc/4`

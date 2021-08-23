@@ -1823,6 +1823,17 @@
     %
 :- pred have_set_environment_var is semidet.
 
+    % Values of this type map the names of environment variables
+    % to their values.
+    %
+:- type environment_var_map == map(string, string).
+
+    % Return a map containing all the environment variables in the current
+    % environment, together with their values.
+    %
+:- pred get_environment_var_map(environment_var_map::out,
+    io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 %
 % System access predicates.
@@ -2203,6 +2214,7 @@
 
 :- implementation.
 
+:- import_module assoc_list.
 :- import_module dir.
 :- import_module exception.
 :- import_module int.
@@ -2210,6 +2222,7 @@
 :- import_module int16.
 :- import_module int32.
 :- import_module int64.
+:- import_module pair.
 :- import_module parser.
 :- import_module require.
 :- import_module stream.string_writer.
@@ -11679,6 +11692,99 @@ set_environment_var(Var, Value, IO0, IO) :-
 "
     SUCCESS_INDICATOR = true;
 ").
+
+%---------------------%
+
+get_environment_var_map(EnvVarMap, !IO) :-
+    get_environment_var_assoc_list([], EnvVarAL, !IO),
+    map.from_assoc_list(EnvVarAL, EnvVarMap).
+
+:- type env_var_assoc_list == assoc_list(string, string).
+
+:- pred get_environment_var_assoc_list(
+    env_var_assoc_list::in, env_var_assoc_list::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    get_environment_var_assoc_list(EnvVarAL0::in, EnvVarAL::out,
+        _IO0::di, _IO::uo),
+    [may_call_mercury, promise_pure, tabled_for_io],
+"
+    MR_Word cur_env = EnvVarAL0;
+    MR_Word next_env;
+    int     i;
+    char    **environ_vars;
+
+    // See the comments about the environ global below for an
+    // explanation of this.
+    #if defined(MR_MAC_OSX)
+        environ_vars = (*_NSGetEnviron());
+    #else
+        environ_vars = environ;
+    #endif
+
+    for (i = 0; environ_vars[i] != NULL; i++) {
+        ML_record_env_var_equal_value(environ_vars[i], cur_env, &next_env);
+        cur_env = next_env;
+    }
+
+    EnvVarAL = cur_env;
+").
+
+:- pragma foreign_proc("Java",
+    get_environment_var_assoc_list(EnvVarAL0::in, EnvVarAL::out,
+        _IO0::di, _IO::uo),
+    [may_call_mercury, promise_pure],
+"
+    EnvVarAL = EnvVarAL0;
+    java.util.Map<String, String> env = java.lang.System.getenv();
+    for (java.util.Map.Entry<String, String> entry : env.entrySet()) {
+        String name = entry.getKey();
+        String value = entry.getValue();
+        EnvVarAL = ML_record_env_var_and_value(name, value, EnvVarAL);
+    }
+").
+
+:- pragma foreign_proc("C#",
+    get_environment_var_assoc_list(EnvVarAL0::in, EnvVarAL::out,
+        _IO0::di, _IO::uo),
+    [may_call_mercury, promise_pure],
+"
+    EnvVarAL = EnvVarAL0;
+    System.Collections.IDictionary env =
+        System.Environment.GetEnvironmentVariables();
+    foreach (System.Collections.DictionaryEntry entry in env) {
+        string name = (string) entry.Key;
+        string value = (string) entry.Value;
+        EnvVarAL = ML_record_env_var_and_value(name, value, EnvVarAL);
+    }
+").
+
+:- pred record_env_var_equal_value(string::in,
+    env_var_assoc_list::in, env_var_assoc_list::out) is det.
+:- pragma foreign_export("C", record_env_var_equal_value(in, in, out),
+    "ML_record_env_var_equal_value").
+
+record_env_var_equal_value(EnvVarNameEqValue, !EnvVarAL) :-
+    ( if
+        sub_string_search(EnvVarNameEqValue, "=", IndexOfEq),
+        string.split(EnvVarNameEqValue, IndexOfEq, EnvVarName, EqEnvVarValue),
+        string.first_char(EqEnvVarValue, _Eq, EnvVarValue)
+    then
+        !:EnvVarAL = [EnvVarName - EnvVarValue | !.EnvVarAL]
+    else
+        unexpected($pred, "No = in environment entry")
+    ).
+
+:- pred record_env_var_and_value(string::in, string::in,
+    env_var_assoc_list::in, env_var_assoc_list::out) is det.
+:- pragma foreign_export("C#", record_env_var_and_value(in, in, in, out),
+    "ML_record_env_var_and_value").
+:- pragma foreign_export("Java", record_env_var_and_value(in, in, in, out),
+    "ML_record_env_var_and_value").
+
+record_env_var_and_value(EnvVarName, EnvVarValue, !EnvVarAL) :-
+    !:EnvVarAL = [EnvVarName - EnvVarValue | !.EnvVarAL].
 
 %---------------------%
 
