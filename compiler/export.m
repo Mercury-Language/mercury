@@ -655,13 +655,12 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
         module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
         library.version(Version, Fullarch),
         io.write_strings(FileStream, [
-            "/*\n",
-            "** Automatically generated from `", SourceFileName, "'\n",
-            "** by the Mercury compiler,\n",
-            "** version ", Version, "\n",
-            "** configured for ", Fullarch, ".\n",
-            "** Do not edit.\n",
-            "*/\n"], !IO),
+            "// Automatically generated from `", SourceFileName, "'\n",
+            "// by the Mercury compiler,\n",
+            "// version ", Version, "\n",
+            "// configured for ", Fullarch, ".\n",
+            "// Do not edit.\n"
+            ], !IO),
         MangledModuleName = sym_name_mangle(ModuleName),
         string.to_upper(MangledModuleName, UppercaseModuleName),
         GuardMacroName = UppercaseModuleName ++ "_MH",
@@ -732,7 +731,8 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
         (
             Errors = [],
             % Rename "<ModuleName>.mh.tmp" to "<ModuleName>.mh".
-            update_interface(Globals, ModuleName, FileName, !IO)
+            update_interface_report_any_error(Globals, ModuleName, FileName,
+                _Succeeded, !IO)
         ;
             Errors = [_ | _],
             io.remove_file(TmpFileName, _, !IO),

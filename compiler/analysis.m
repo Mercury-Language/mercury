@@ -1308,7 +1308,7 @@ write_analysis_files(Compiler, ModuleInfo, ImportedModule0, !Info, !IO) :-
     get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
     get_error_output_stream(ModuleInfo, ErrorStream, !IO),
     touch_datestamp(Globals, ProgressStream, ErrorStream,
-        TimestampFileName, !IO).
+        TimestampFileName, _Succeeded, !IO).
 
 :- pred load_module_imdg(globals::in, module_name::in,
     analysis_info::in, analysis_info::out, io::di, io::uo) is det.

@@ -165,8 +165,9 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
             get_progress_output_stream(Globals, ModuleName,
                 ProgressStream, !IO),
             get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-            list.foldl(touch_datestamp(Globals, ProgressStream, ErrorStream),
-                TimestampFiles, !IO)
+            list.map_foldl(
+                touch_datestamp(Globals, ProgressStream, ErrorStream),
+                TimestampFiles, _Succeededs, !IO)
         ;
             Reasons = [_ | _],
             add_module_to_recompile(ModuleName, !Info),

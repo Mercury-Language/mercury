@@ -144,7 +144,7 @@ output_c_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
 :- pred output_c_header_file_opts(mlds::in, mlds_to_c_opts::in, string::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
-output_c_header_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
+output_c_header_file_opts(MLDS, Opts, Suffix, !:Succeeded, !IO) :-
     % We write the header file out to <module>.mih.tmp and then call
     % `update_interface' to move the <module>.mih.tmp file to <module>.mih.
     % This avoids updating the timestamp on the `.mih' file if it has not
@@ -163,12 +163,13 @@ output_c_header_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
         ^ m2co_foreign_line_numbers := LineNumbersForCHdrs),
     Indent = 0,
     output_to_file_stream(Globals, ModuleName, TmpHeaderFileName,
-        mlds_output_hdr_file(HdrOpts, Indent, MLDS), Succeeded, !IO),
+        mlds_output_hdr_file(HdrOpts, Indent, MLDS), !:Succeeded, !IO),
     (
-        Succeeded = succeeded,
-        update_interface(Globals, ModuleName, HeaderFileName, !IO)
+        !.Succeeded = succeeded,
+        update_interface_report_any_error(Globals, ModuleName, HeaderFileName,
+            !:Succeeded, !IO)
     ;
-        Succeeded = did_not_succeed
+        !.Succeeded = did_not_succeed
     ).
 
 %---------------------------------------------------------------------------%

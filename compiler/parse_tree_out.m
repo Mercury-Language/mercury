@@ -16,6 +16,7 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.maybe_succeeded.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
@@ -32,27 +33,34 @@
 
 :- pred output_parse_tree_src(
     io.text_output_stream::in, io.text_output_stream::in, globals::in,
-    string::in, parse_tree_src::in, io::di, io::uo) is det.
+    string::in, parse_tree_src::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
 :- pred output_parse_tree_int0(
     io.text_output_stream::in, io.text_output_stream::in, globals::in,
-    string::in, parse_tree_int0::in, io::di, io::uo) is det.
+    string::in, parse_tree_int0::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 :- pred output_parse_tree_int1(
     io.text_output_stream::in, io.text_output_stream::in, globals::in,
-    string::in, parse_tree_int1::in, io::di, io::uo) is det.
+    string::in, parse_tree_int1::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 :- pred output_parse_tree_int2(
     io.text_output_stream::in, io.text_output_stream::in, globals::in,
-    string::in, parse_tree_int2::in, io::di, io::uo) is det.
+    string::in, parse_tree_int2::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 :- pred output_parse_tree_int3(
     io.text_output_stream::in, io.text_output_stream::in, globals::in,
-    string::in, parse_tree_int3::in, io::di, io::uo) is det.
+    string::in, parse_tree_int3::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
 :- pred output_parse_tree_plain_opt(
     io.text_output_stream::in, io.text_output_stream::in, globals::in,
-    string::in, parse_tree_plain_opt::in, io::di, io::uo) is det.
+    string::in, parse_tree_plain_opt::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 :- pred output_parse_tree_trans_opt(
     io.text_output_stream::in, io.text_output_stream::in, globals::in,
-    string::in, parse_tree_trans_opt::in, io::di, io::uo) is det.
+    string::in, parse_tree_trans_opt::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -174,43 +182,50 @@
 %---------------------------------------------------------------------------%
 
 output_parse_tree_src(ProgressStream, ErrorStream, Globals,
-        OutputFileName, ParseTreeSrc, !IO) :-
+        OutputFileName, ParseTreeSrc, Succeeded, !IO) :-
     output_some_parse_tree(ProgressStream, ErrorStream, Globals,
-        OutputFileName, mercury_output_parse_tree_src, ParseTreeSrc, !IO).
+        OutputFileName, mercury_output_parse_tree_src, ParseTreeSrc,
+        Succeeded, !IO).
 
 %---------------------%
 
 output_parse_tree_int0(ProgressStream, ErrorStream, Globals,
-        OutputFileName, ParseTreeInt0, !IO) :-
-    output_some_parse_tree(ProgressStream, ErrorStream, Globals, OutputFileName,
-        mercury_output_parse_tree_int0, ParseTreeInt0, !IO).
+        OutputFileName, ParseTreeInt0, Succeeded, !IO) :-
+    output_some_parse_tree(ProgressStream, ErrorStream, Globals,
+        OutputFileName, mercury_output_parse_tree_int0, ParseTreeInt0,
+        Succeeded, !IO).
 
 output_parse_tree_int1(ProgressStream, ErrorStream, Globals,
-        OutputFileName, ParseTreeInt1, !IO) :-
-    output_some_parse_tree(ProgressStream, ErrorStream, Globals, OutputFileName,
-        mercury_output_parse_tree_int1, ParseTreeInt1, !IO).
+        OutputFileName, ParseTreeInt1, Succeeded, !IO) :-
+    output_some_parse_tree(ProgressStream, ErrorStream, Globals,
+        OutputFileName, mercury_output_parse_tree_int1, ParseTreeInt1,
+        Succeeded, !IO).
 
 output_parse_tree_int2(ProgressStream, ErrorStream, Globals,
-        OutputFileName, ParseTreeInt2, !IO) :-
-    output_some_parse_tree(ProgressStream, ErrorStream, Globals, OutputFileName,
-        mercury_output_parse_tree_int2, ParseTreeInt2, !IO).
+        OutputFileName, ParseTreeInt2, Succeeded, !IO) :-
+    output_some_parse_tree(ProgressStream, ErrorStream, Globals,
+        OutputFileName, mercury_output_parse_tree_int2, ParseTreeInt2,
+        Succeeded, !IO).
 
 output_parse_tree_int3(ProgressStream, ErrorStream, Globals,
-        OutputFileName, ParseTreeInt3, !IO) :-
-    output_some_parse_tree(ProgressStream, ErrorStream, Globals, OutputFileName,
-        mercury_output_parse_tree_int3, ParseTreeInt3, !IO).
+        OutputFileName, ParseTreeInt3, Succeeded, !IO) :-
+    output_some_parse_tree(ProgressStream, ErrorStream, Globals,
+        OutputFileName, mercury_output_parse_tree_int3, ParseTreeInt3,
+        Succeeded, !IO).
 
 %---------------------%
 
 output_parse_tree_plain_opt(ProgressStream, ErrorStream, Globals,
-        OutputFileName, ParseTreePlainOpt, !IO) :-
-    output_some_parse_tree(ProgressStream, ErrorStream, Globals, OutputFileName,
-        mercury_output_parse_tree_plain_opt, ParseTreePlainOpt, !IO).
+        OutputFileName, ParseTreePlainOpt, Succeeded, !IO) :-
+    output_some_parse_tree(ProgressStream, ErrorStream, Globals,
+        OutputFileName, mercury_output_parse_tree_plain_opt, ParseTreePlainOpt,
+        Succeeded, !IO).
 
 output_parse_tree_trans_opt(ProgressStream, ErrorStream, Globals,
-        OutputFileName, ParseTreeTransOpt, !IO) :-
-    output_some_parse_tree(ProgressStream, ErrorStream, Globals, OutputFileName,
-        mercury_output_parse_tree_trans_opt, ParseTreeTransOpt, !IO).
+        OutputFileName, ParseTreeTransOpt, Succeeded, !IO) :-
+    output_some_parse_tree(ProgressStream, ErrorStream, Globals,
+        OutputFileName, mercury_output_parse_tree_trans_opt, ParseTreeTransOpt,
+        Succeeded, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -221,10 +236,10 @@ output_parse_tree_trans_opt(ProgressStream, ErrorStream, Globals,
 :- pred output_some_parse_tree(
     io.text_output_stream::in, io.text_output_stream::in, globals::in,
     string::in, output_parse_tree(PT)::in(output_parse_tree),
-    PT::in, io::di, io::uo) is det.
+    PT::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 output_some_parse_tree(ProgressStream, ErrorStream, Globals,
-        OutputFileName, OutputParseTree, ParseTree, !IO) :-
+        OutputFileName, OutputParseTree, ParseTree, Succeeded, !IO) :-
     io.open_output(OutputFileName, Res, !IO),
     (
         Res = ok(FileStream),
@@ -250,12 +265,14 @@ output_some_parse_tree(ProgressStream, ErrorStream, Globals,
             io.write_string(ProgressStream, " done\n", !IO)
         ;
             Verbose = no
-        )
+        ),
+        Succeeded = succeeded
     ;
         Res = error(_),
         io.format(ErrorStream,
             "Error: couldn't open file `%s' for output.\n",
-            [s(OutputFileName)], !IO)
+            [s(OutputFileName)], !IO),
+        Succeeded = did_not_succeed
     ).
 
 %---------------------------------------------------------------------------%

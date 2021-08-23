@@ -412,11 +412,12 @@ output_trans_opt_file(!.HLDS, !Specs, !DumpInfo, !IO) :-
         write_trans_opt_file(TmpOptStream, !.HLDS, ParseTreeTransOpt, !IO),
         io.close_output(TmpOptStream, !IO),
 
-        update_interface(Globals, ModuleName, OptFileName, !IO),
+        update_interface_report_any_error(Globals, ModuleName, OptFileName,
+            _UpdateSucceeded, !IO),
         get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
         get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
         touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
-            ModuleName, other_ext(".trans_opt_date"), !IO),
+            ModuleName, other_ext(".trans_opt_date"), _TouchSucceeded, !IO),
 
         globals.lookup_bool_option(Globals, experiment5, Experiment5),
         (

@@ -971,12 +971,10 @@ make_info_add_module_and_imports_as_dep(BurdenedAugCompUnit, !Info) :-
 
 make_int3_files(ProgressStream, ErrorStream, Globals,
         ParseTreeModuleSrcs, Succeeded, !Info, !IO) :-
-    list.foldl(
+    list.map_foldl(
         write_short_interface_file_int3(ProgressStream, ErrorStream, Globals),
-        ParseTreeModuleSrcs, !IO),
-    % XXX Get write_short_interface_file_int3 to return whether it succeeded.
-    io.get_exit_status(ExitStatus, !IO),
-    Succeeded = ( if ExitStatus = 0 then succeeded else did_not_succeed ).
+        ParseTreeModuleSrcs, Succeededs, !IO),
+    Succeeded = and_list(Succeededs).
 
 :- pred cleanup_int3_files(globals::in, list(module_name)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.

@@ -50,10 +50,14 @@
     module_name::in, file_name::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-    % update_interface(Globals, ModuleName, OutputFileName, !IO)
+    % update_interface_report_any_error(Globals, ModuleName, OutputFileName,
+    %   Succeeded, !IO)
     %
-:- pred update_interface(globals::in, module_name::in, file_name::in,
-    io::di, io::uo) is det.
+    % As update_interface_return_succeeded, but also print an error message
+    % if the update did not succeed.
+    %
+:- pred update_interface_report_any_error(globals::in, module_name::in,
+    file_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -93,23 +97,25 @@
 %-----------------------------------------------------------------------------%
 
     % touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
-    %   ModuleName, Ext, !IO):
+    %   ModuleName, Ext, Succeeded, !IO):
     %
     % Touch the datestamp file `ModuleName.Ext'. Datestamp files are used
     % to record when each of the interface files was last updated.
     %
 :- pred touch_interface_datestamp(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
-    module_name::in, other_ext::in, io::di, io::uo) is det.
+    module_name::in, other_ext::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
-    % touch_datestamp(Globals, ProgressStream, ErrorStream, FileName, !IO):
+    % touch_datestamp(Globals, ProgressStream, ErrorStream, FileName,
+    %   Succeeded, !IO):
     %
     % Update the modification time for the given file,
     % clobbering the contents of the file.
     %
 :- pred touch_datestamp(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
-    file_name::in, io::di, io::uo) is det.
+    file_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -302,7 +308,8 @@ update_interface_return_succeeded(Globals, ModuleName, OutputFileName,
         Succeeded = did_not_succeed
     ).
 
-update_interface(Globals, ModuleName, OutputFileName, !IO) :-
+update_interface_report_any_error(Globals, ModuleName, OutputFileName,
+        Succeeded, !IO) :-
     update_interface_return_succeeded(Globals, ModuleName, OutputFileName,
         Succeeded, !IO),
     (
@@ -528,12 +535,14 @@ make_symlink_or_copy_dir(Globals, ProgressStream, ErrorStream,
 %-----------------------------------------------------------------------------%
 
 touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
-        ModuleName, OtherExt, !IO) :-
+        ModuleName, OtherExt, Succeeded, !IO) :-
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(OtherExt), ModuleName, OutputFileName, !IO),
-    touch_datestamp(Globals, ProgressStream, ErrorStream, OutputFileName, !IO).
+    touch_datestamp(Globals, ProgressStream, ErrorStream, OutputFileName,
+        Succeeded, !IO).
 
-touch_datestamp(Globals, ProgressStream, ErrorStream, OutputFileName, !IO) :-
+touch_datestamp(Globals, ProgressStream, ErrorStream, OutputFileName,
+        Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(ProgressStream, Verbose,
         "% Touching `" ++ OutputFileName ++ "'... ", !IO),
@@ -545,12 +554,14 @@ touch_datestamp(Globals, ProgressStream, ErrorStream, OutputFileName, !IO) :-
         % time of last modification.
         io.write_string(OutputStream, "\n", !IO),
         io.close_output(OutputStream, !IO),
-        maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
+        maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
+        Succeeded = succeeded
     ;
         Result = error(IOError),
         io.error_message(IOError, IOErrorMessage),
         io.format(ErrorStream, "\nError opening `%s' for output: %s.\n",
-            [s(OutputFileName), s(IOErrorMessage)], !IO)
+            [s(OutputFileName), s(IOErrorMessage)], !IO),
+        Succeeded = did_not_succeed
     ).
 
 %-----------------------------------------------------------------------------%

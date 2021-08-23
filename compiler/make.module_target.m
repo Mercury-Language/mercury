@@ -515,10 +515,11 @@ build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
                 call_mercury_compile_main(Globals, [ModuleArg]),
                 invoke_mmc(Globals, ProgressStream, ErrorStream,
                     ArgFileName, AllOptionArgs ++ [ModuleArg]),
-                Succeeded, !IO)
+                CompileSucceeded, !IO)
         ;
             IsForkable = no,
-            call_mercury_compile_main(Globals, [ModuleArg], Succeeded, !IO)
+            call_mercury_compile_main(Globals, [ModuleArg],
+                CompileSucceeded, !IO)
         ),
         io.set_output_stream(OldOutputStream, _, !IO),
 
@@ -530,9 +531,10 @@ build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
             % The `.err_date' file is needed because the `.err' file is touched
             % by all phases of compilation, including writing interfaces.
             touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
-                ModuleName, other_ext(".err_date"), !IO)
+                ModuleName, other_ext(".err_date"), TouchSucceeded, !IO),
+            Succeeded = CompileSucceeded `and` TouchSucceeded
         else
-            true
+            Succeeded = CompileSucceeded
         )
     ;
         Task = target_code_to_object_code(PIC),

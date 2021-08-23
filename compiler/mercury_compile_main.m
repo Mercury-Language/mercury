@@ -1173,7 +1173,7 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
                 !IO),
             get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
             output_parse_tree_src(ProgressStream, ErrorStream, Globals,
-                OutputFileName, ParseTreeSrc, !IO)
+                OutputFileName, ParseTreeSrc, _Succeeded, !IO)
         ),
         ModulesToLink = [],
         ExtraObjFiles = []
@@ -1238,22 +1238,22 @@ do_process_compiler_arg_make_interface(Globals0, InterfaceFile, FileOrModule,
         maybe_print_delayed_error_messages(ErrorStream, Globals, !IO),
         (
             InterfaceFile = omif_int0,
-            list.foldl2(
+            list.map_foldl2(
                 write_private_interface_file_int0(ProgressStream, ErrorStream,
                     Globals0, FileName, ModuleName, MaybeTimestamp),
-                ParseTreeModuleSrcs, !HaveReadModuleMaps, !IO)
+                ParseTreeModuleSrcs, _Succeededs, !HaveReadModuleMaps, !IO)
         ;
             InterfaceFile = omif_int1_int2,
-            list.foldl2(
+            list.map_foldl2(
                 write_interface_file_int1_int2(ProgressStream, ErrorStream,
                     Globals0, FileName, ModuleName, MaybeTimestamp),
-                ParseTreeModuleSrcs, !HaveReadModuleMaps, !IO)
+                ParseTreeModuleSrcs, _Succeededs, !HaveReadModuleMaps, !IO)
         ;
             InterfaceFile = omif_int3,
-            list.foldl(
+            list.map_foldl(
                 write_short_interface_file_int3(ProgressStream, ErrorStream,
                     Globals0),
-                ParseTreeModuleSrcs, !IO)
+                ParseTreeModuleSrcs, _Succeededs, !IO)
         )
     ).
 
@@ -2535,8 +2535,9 @@ after_front_end_passes(Globals, OpModeCodeGen, MaybeTopModule,
             recompilation.usage.write_usage_file(!.HLDS, NestedSubModules,
                 MaybeTimestampMap, !IO),
             FindTimestampFiles(ModuleName, TimestampFiles, !IO),
-            list.foldl(touch_datestamp(Globals, ProgressStream, ErrorStream),
-                TimestampFiles, !IO)
+            list.map_foldl(
+                touch_datestamp(Globals, ProgressStream, ErrorStream),
+                TimestampFiles, _Succeededs, !IO)
         ;
             Succeeded = did_not_succeed
             % An error should have been reported earlier.
