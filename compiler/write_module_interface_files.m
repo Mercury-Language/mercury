@@ -113,7 +113,6 @@
 
 :- import_module libs.options.
 :- import_module parse_tree.comp_unit_interface.
-:- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
@@ -302,9 +301,8 @@ actually_write_interface_file0(ProgressStream, ErrorStream, Globals,
     disable_all_line_numbers(Globals, NoLineNumGlobals),
     % We handle any failure to read in the old interface version as
     % every item in the module source being brand new.
-    maybe_read_old_int_and_compare_for_smart_recomp(NoLineNumGlobals,
-        ParseTreeInt0, convert_parse_tree_int0_to_int, MaybeTimestamp,
-        MaybeVersionNumbers, !IO),
+    maybe_read_old_int0_and_compare_for_smart_recomp(NoLineNumGlobals,
+        ParseTreeInt0, MaybeTimestamp, MaybeVersionNumbers, !IO),
     ParseTreeInt0V = ParseTreeInt0 ^ pti0_maybe_version_numbers
         := MaybeVersionNumbers,
     output_parse_tree_int0(ProgressStream, ErrorStream, NoLineNumGlobals,
@@ -326,9 +324,8 @@ actually_write_interface_file1(ProgressStream, ErrorStream, Globals,
     disable_all_line_numbers(Globals, NoLineNumGlobals),
     % We handle any failure to read in the old interface version as
     % every item in the module source being brand new.
-    maybe_read_old_int_and_compare_for_smart_recomp(NoLineNumGlobals,
-        ParseTreeInt1, convert_parse_tree_int1_to_int, MaybeTimestamp,
-        MaybeVersionNumbers, !IO),
+    maybe_read_old_int1_and_compare_for_smart_recomp(NoLineNumGlobals,
+        ParseTreeInt1, MaybeTimestamp, MaybeVersionNumbers, !IO),
     ParseTreeInt1V = ParseTreeInt1 ^ pti1_maybe_version_numbers
         := MaybeVersionNumbers,
     output_parse_tree_int1(ProgressStream, ErrorStream, NoLineNumGlobals,
@@ -348,9 +345,8 @@ actually_write_interface_file2(ProgressStream, ErrorStream, Globals,
     construct_int_file_name(Globals, ModuleName, ifk_int2, ExtraSuffix,
         OutputFileName, TmpOutputFileName, !IO),
     disable_all_line_numbers(Globals, NoLineNumGlobals),
-    maybe_read_old_int_and_compare_for_smart_recomp(NoLineNumGlobals,
-        ParseTreeInt2, convert_parse_tree_int2_to_int, MaybeTimestamp,
-        MaybeVersionNumbers, !IO),
+    maybe_read_old_int2_and_compare_for_smart_recomp(NoLineNumGlobals,
+        ParseTreeInt2, MaybeTimestamp, MaybeVersionNumbers, !IO),
     ParseTreeInt2V = ParseTreeInt2 ^ pti2_maybe_version_numbers
         := MaybeVersionNumbers,
     output_parse_tree_int2(ProgressStream, ErrorStream, NoLineNumGlobals,
@@ -400,45 +396,109 @@ disable_all_line_numbers(Globals, NoLineNumGlobals) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_read_old_int_and_compare_for_smart_recomp(globals::in,
-    T::in, (func(T) = parse_tree_int)::in, maybe(timestamp)::in,
-    maybe_version_numbers::out, io::di, io::uo) is det.
+:- pred maybe_read_old_int0_and_compare_for_smart_recomp(globals::in,
+    parse_tree_int0::in, maybe(timestamp)::in, maybe_version_numbers::out,
+    io::di, io::uo) is det.
 
-maybe_read_old_int_and_compare_for_smart_recomp(NoLineNumGlobals,
-        ParseTreeIntN, ParseTreeConvert, MaybeTimestamp,
-        MaybeVersionNumbers, !IO) :-
+maybe_read_old_int0_and_compare_for_smart_recomp(NoLineNumGlobals,
+        ParseTreeInt0, MaybeTimestamp, MaybeVersionNumbers, !IO) :-
     should_generate_item_version_numbers(NoLineNumGlobals,
         WantVersionNumbers, !IO),
     (
         WantVersionNumbers = generate_version_numbers,
-        ParseTreeInt = ParseTreeConvert(ParseTreeIntN),
-        ModuleName = ParseTreeInt ^ pti_module_name,
-        IntFileKind = ParseTreeInt ^ pti_int_file_kind,
-        % XXX ITEM_LIST We do this for .int2 files as well as
-        % .int and .int0 files. Should we?
-
+        ModuleName = ParseTreeInt0 ^ pti0_module_name,
         % Find the timestamp of the current module.
         insist_on_timestamp(MaybeTimestamp, Timestamp),
         % Read in the previous version of the file.
-        read_module_int(NoLineNumGlobals,
+        read_module_int0(NoLineNumGlobals,
             "Reading old interface for module", ignore_errors, do_search,
-            ModuleName, IntFileKind, _OldIntFileName,
+            ModuleName, _OldIntFileName,
             always_read_module(dont_return_timestamp), _OldTimestamp,
-            OldParseTreeInt, _OldSpecs, OldErrors, !IO),
+            OldParseTreeInt0, _OldSpecs, OldErrors, !IO),
         ( if set.is_empty(OldErrors) then
-            MaybeOldParseTreeInt = yes(OldParseTreeInt)
+            MaybeOldParseTreeInt0 = yes(OldParseTreeInt0)
         else
             % If we can't read in the old file, the timestamps will
             % all be set to the modification time of the source file.
-            MaybeOldParseTreeInt = no
+            MaybeOldParseTreeInt0 = no
         ),
-        recompilation.version.compute_version_numbers(Timestamp,
-            ParseTreeInt, MaybeOldParseTreeInt, VersionNumbers),
+        recompilation.version.compute_version_numbers_int0(
+            MaybeOldParseTreeInt0, Timestamp, ParseTreeInt0, VersionNumbers),
         MaybeVersionNumbers = version_numbers(VersionNumbers)
     ;
         WantVersionNumbers = do_not_generate_version_numbers,
         MaybeVersionNumbers = no_version_numbers
     ).
+
+:- pred maybe_read_old_int1_and_compare_for_smart_recomp(globals::in,
+    parse_tree_int1::in, maybe(timestamp)::in, maybe_version_numbers::out,
+    io::di, io::uo) is det.
+
+maybe_read_old_int1_and_compare_for_smart_recomp(NoLineNumGlobals,
+        ParseTreeInt1, MaybeTimestamp, MaybeVersionNumbers, !IO) :-
+    should_generate_item_version_numbers(NoLineNumGlobals,
+        WantVersionNumbers, !IO),
+    (
+        WantVersionNumbers = generate_version_numbers,
+        ModuleName = ParseTreeInt1 ^ pti1_module_name,
+        % Find the timestamp of the current module.
+        insist_on_timestamp(MaybeTimestamp, Timestamp),
+        % Read in the previous version of the file.
+        read_module_int1(NoLineNumGlobals,
+            "Reading old interface for module", ignore_errors, do_search,
+            ModuleName, _OldIntFileName,
+            always_read_module(dont_return_timestamp), _OldTimestamp,
+            OldParseTreeInt1, _OldSpecs, OldErrors, !IO),
+        ( if set.is_empty(OldErrors) then
+            MaybeOldParseTreeInt1 = yes(OldParseTreeInt1)
+        else
+            % If we can't read in the old file, the timestamps will
+            % all be set to the modification time of the source file.
+            MaybeOldParseTreeInt1 = no
+        ),
+        recompilation.version.compute_version_numbers_int1(
+            MaybeOldParseTreeInt1, Timestamp, ParseTreeInt1, VersionNumbers),
+        MaybeVersionNumbers = version_numbers(VersionNumbers)
+    ;
+        WantVersionNumbers = do_not_generate_version_numbers,
+        MaybeVersionNumbers = no_version_numbers
+    ).
+
+:- pred maybe_read_old_int2_and_compare_for_smart_recomp(globals::in,
+    parse_tree_int2::in, maybe(timestamp)::in, maybe_version_numbers::out,
+    io::di, io::uo) is det.
+
+maybe_read_old_int2_and_compare_for_smart_recomp(NoLineNumGlobals,
+        ParseTreeInt2, MaybeTimestamp, MaybeVersionNumbers, !IO) :-
+    should_generate_item_version_numbers(NoLineNumGlobals,
+        WantVersionNumbers, !IO),
+    (
+        WantVersionNumbers = generate_version_numbers,
+        ModuleName = ParseTreeInt2 ^ pti2_module_name,
+        % Find the timestamp of the current module.
+        insist_on_timestamp(MaybeTimestamp, Timestamp),
+        % Read in the previous version of the file.
+        read_module_int2(NoLineNumGlobals,
+            "Reading old interface for module", ignore_errors, do_search,
+            ModuleName, _OldIntFileName,
+            always_read_module(dont_return_timestamp), _OldTimestamp,
+            OldParseTreeInt2, _OldSpecs, OldErrors, !IO),
+        ( if set.is_empty(OldErrors) then
+            MaybeOldParseTreeInt2 = yes(OldParseTreeInt2)
+        else
+            % If we can't read in the old file, the timestamps will
+            % all be set to the modification time of the source file.
+            MaybeOldParseTreeInt2 = no
+        ),
+        recompilation.version.compute_version_numbers_int2(
+            MaybeOldParseTreeInt2, Timestamp, ParseTreeInt2, VersionNumbers),
+        MaybeVersionNumbers = version_numbers(VersionNumbers)
+    ;
+        WantVersionNumbers = do_not_generate_version_numbers,
+        MaybeVersionNumbers = no_version_numbers
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- type maybe_generate_version_numbers
     --->    do_not_generate_version_numbers

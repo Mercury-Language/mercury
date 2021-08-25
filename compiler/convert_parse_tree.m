@@ -23,31 +23,51 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.file_kind.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
 
 %---------------------------------------------------------------------------%
 
-    % Convert from the interface-file-kind specific parse trees
-    % to the generic interface file parse tree. These conversions go
-    % from more restrictive to less restrictive, so they always
-    % succeed without any problems.
+    % The generic representation of all the different kinds of interface files.
+    % The parser reads in .intN files in this format, and then immediately
+    % converts them to their int-file-kind representations.
     %
-    % XXX CLEANUP These conversions should not be needed. Once the contents
-    % of an interface file are in the int_file_kind-specific form,
-    % there should never be a need to convert it back to the less specific
-    % form, losing the more specific invariants.
-    %
-    % However, until recompilation.*.m is converted away from working only
-    % on the generic parse_tree_int representation, these are still being
-    % referred to.
-    %
-:- func convert_parse_tree_int0_to_int(parse_tree_int0) = parse_tree_int.
-:- func convert_parse_tree_int1_to_int(parse_tree_int1) = parse_tree_int.
-:- func convert_parse_tree_int2_to_int(parse_tree_int2) = parse_tree_int.
-:- func convert_parse_tree_int3_to_int(parse_tree_int3) = parse_tree_int.
+:- type parse_tree_int
+    --->    parse_tree_int(
+                pti_module_name             :: module_name,
+                pti_int_file_kind           :: int_file_kind,
+
+                % The context of the `:- module' declaration.
+                pti_module_name_context     :: prog_context,
+
+                % For .int0, .int and .int2; not for .int3.
+                pti_maybe_version_numbers   :: maybe_version_numbers,
+
+                % `:- include_module' declarations in the interface and
+                % in the implementation.
+                pti_int_includes            :: list(item_include),
+                pti_imp_includes            :: list(item_include),
+
+                % `:- import_module' and `:- use_module' declarations
+                % in the interface and in the implementation.
+                pti_int_avails              :: list(item_avail),
+                pti_imp_avails              :: list(item_avail),
+
+                % `:- pragma foreign_import_module' declarations
+                % in the interface and in the implementation.
+                pti_int_fims                :: list(item_fim),
+                pti_imp_fims                :: list(item_fim),
+
+                % Items in the interface and in the implementation.
+                pti_int_items               :: list(item),
+                pti_imp_items               :: list(item)
+            ).
 
     % Convert from the generic interface file parse tree to the
     % interface-file-kind specific parse trees. These conversions go
@@ -123,14 +143,10 @@
 :- implementation.
 
 :- import_module libs.options.
-:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.check_parse_tree_type_defns.
-:- import_module parse_tree.file_kind.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.item_util.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_foreign.
@@ -149,138 +165,6 @@
 :- import_module string.
 :- import_module term.
 :- import_module varset.
-
-%---------------------------------------------------------------------------%
-
-convert_parse_tree_int0_to_int(ParseTreeInt0) = ParseTreeInt :-
-    ParseTreeInt0 = parse_tree_int0(ModuleName, ModuleNameContext,
-        MaybeVersionNumbers, _IntInclMap, _ImpInclMap, InclMap,
-        _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, ImportUseMap,
-        IntFIMSpecs, ImpFIMSpecs,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
-        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises,
-        ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
-        ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
-        ImpForeignEnumMap, ImpDeclPragmas, ImpPromises),
-
-    include_map_to_item_includes(InclMap, IntIncls, ImpIncls),
-    import_and_or_use_map_to_item_avails(do_not_include_implicit,
-        ImportUseMap, IntAvails, ImpAvails),
-    set.to_sorted_list(set.map(fim_spec_to_item, IntFIMSpecs), IntFIMs),
-    set.to_sorted_list(set.map(fim_spec_to_item, ImpFIMSpecs), ImpFIMs),
-    IntItems =
-        type_ctor_defn_map_to_items(IntTypeDefnMap) ++
-        inst_ctor_defn_map_to_items(IntInstDefnMap) ++
-        mode_ctor_defn_map_to_items(IntModeDefnMap) ++
-        list.map(wrap_typeclass_item, IntTypeClasses) ++
-        list.map(wrap_instance_item, IntInstances) ++
-        list.map(wrap_pred_decl_item, IntPredDecls) ++
-        list.map(wrap_mode_decl_item, IntModeDecls) ++
-        list.map(wrap_decl_pragma_item, IntDeclPragmas) ++
-        list.map(wrap_promise_item, IntPromises),
-    ImpItems =
-        type_ctor_defn_map_to_items(ImpTypeDefnMap) ++
-        inst_ctor_defn_map_to_items(ImpInstDefnMap) ++
-        mode_ctor_defn_map_to_items(ImpModeDefnMap) ++
-        list.map(wrap_typeclass_item, ImpTypeClasses) ++
-        list.map(wrap_instance_item, ImpInstances) ++
-        list.map(wrap_pred_decl_item, ImpPredDecls) ++
-        list.map(wrap_mode_decl_item, ImpModeDecls) ++
-        type_ctor_foreign_enum_map_to_items(ImpForeignEnumMap) ++
-        list.map(wrap_decl_pragma_item, ImpDeclPragmas) ++
-        list.map(wrap_promise_item, ImpPromises),
-
-    ParseTreeInt = parse_tree_int(ModuleName, ifk_int0, ModuleNameContext,
-        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
-        IntFIMs, ImpFIMs, IntItems, ImpItems).
-
-convert_parse_tree_int1_to_int(ParseTreeInt1) = ParseTreeInt :-
-    ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
-        MaybeVersionNumbers, _IntInclMap, _ImpInclMap, InclMap,
-        _IntUseMap, _ImpUseMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
-        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises, IntTypeRepnMap,
-        ImpTypeDefnMap, ImpForeignEnumMap, ImpTypeClasses),
-
-    include_map_to_item_includes(InclMap, IntIncls, ImpIncls),
-    import_and_or_use_map_to_item_avails(do_not_include_implicit,
-        ImportUseMap, IntAvails, ImpAvails),
-    set.to_sorted_list(set.map(fim_spec_to_item, IntFIMSpecs), IntFIMs),
-    set.to_sorted_list(set.map(fim_spec_to_item, ImpFIMSpecs), ImpFIMs),
-
-    IntItems =
-        type_ctor_defn_map_to_items(IntTypeDefnMap) ++
-        inst_ctor_defn_map_to_items(IntInstDefnMap) ++
-        mode_ctor_defn_map_to_items(IntModeDefnMap) ++
-        list.map(wrap_typeclass_item, IntTypeClasses) ++
-        list.map(wrap_instance_item, IntInstances) ++
-        list.map(wrap_pred_decl_item, IntPredDecls) ++
-        list.map(wrap_mode_decl_item, IntModeDecls) ++
-        list.map(wrap_decl_pragma_item, IntDeclPragmas) ++
-        list.map(wrap_promise_item, IntPromises) ++
-        type_ctor_repn_map_to_items(IntTypeRepnMap),
-    ImpItems =
-        type_ctor_defn_map_to_items(ImpTypeDefnMap) ++
-        type_ctor_foreign_enum_map_to_items(ImpForeignEnumMap) ++
-        list.map(wrap_typeclass_item, ImpTypeClasses),
-
-    ParseTreeInt = parse_tree_int(ModuleName, ifk_int1, ModuleNameContext,
-        MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
-        IntFIMs, ImpFIMs, IntItems, ImpItems).
-
-convert_parse_tree_int2_to_int(ParseTreeInt2) = ParseTreeInt :-
-    ParseTreeInt2 = parse_tree_int2(ModuleName, ModuleNameContext,
-        MaybeVersionNumbers, _IntInclMap, InclMap, _IntUseMap, ImportUseMap,
-        IntFIMSpecs, ImpFIMSpecs,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
-        IntTypeClasses, IntInstances, IntTypeRepnMap,
-        ImpTypeDefnMap),
-
-    include_map_to_item_includes(InclMap, IntIncls, ImpIncls),
-    expect(unify(ImpIncls, []), $pred, "parse_tree_int2 has imp includes"),
-    import_and_or_use_map_to_item_avails(do_not_include_implicit,
-        ImportUseMap, IntAvails, ImpAvails),
-    expect(unify(ImpAvails, []), $pred, "parse_tree_int2 has imp avails"),
-    set.to_sorted_list(set.map(fim_spec_to_item, IntFIMSpecs), IntFIMs),
-    set.to_sorted_list(set.map(fim_spec_to_item, ImpFIMSpecs), ImpFIMs),
-
-    IntItems =
-        type_ctor_defn_map_to_items(IntTypeDefnMap) ++
-        inst_ctor_defn_map_to_items(IntInstDefnMap) ++
-        mode_ctor_defn_map_to_items(IntModeDefnMap) ++
-        list.map(wrap_typeclass_item, IntTypeClasses) ++
-        list.map(wrap_instance_item, IntInstances) ++
-        type_ctor_repn_map_to_items(IntTypeRepnMap),
-    ImpItems =
-        type_ctor_defn_map_to_items(ImpTypeDefnMap),
-    ParseTreeInt = parse_tree_int(ModuleName, ifk_int2, ModuleNameContext,
-        MaybeVersionNumbers, IntIncls, [], IntAvails, [],
-        IntFIMs, ImpFIMs, IntItems, ImpItems).
-
-convert_parse_tree_int3_to_int(ParseTreeInt3) = ParseTreeInt :-
-    ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
-        _IntInclMap, InclMap, _IntImportMap, ImportUseMap,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
-        IntTypeClasses, IntInstances, IntTypeRepnMap),
-
-    MaybeVersionNumbers = no_version_numbers,
-    include_map_to_item_includes(InclMap, IntIncls, ImpIncls),
-    expect(unify(ImpIncls, []), $pred, "parse_tree_int3 has imp includes"),
-    import_and_or_use_map_to_item_avails(do_not_include_implicit,
-        ImportUseMap, IntAvails, ImpAvails),
-    expect(unify(ImpAvails, []), $pred, "parse_tree_int3 has imp avails"),
-    IntItems =
-        type_ctor_defn_map_to_items(IntTypeDefnMap) ++
-        inst_ctor_defn_map_to_items(IntInstDefnMap) ++
-        mode_ctor_defn_map_to_items(IntModeDefnMap) ++
-        list.map(wrap_typeclass_item, IntTypeClasses) ++
-        list.map(wrap_instance_item, IntInstances) ++
-        type_ctor_repn_map_to_items(IntTypeRepnMap),
-    ParseTreeInt = parse_tree_int(ModuleName, ifk_int3, ModuleNameContext,
-        MaybeVersionNumbers, IntIncls, [], IntAvails, [],
-        [], [], IntItems, []).
 
 %---------------------------------------------------------------------------%
 
@@ -1849,12 +1733,6 @@ add_foreign_enum_item_to_map(ForeignEnumInfo, !ForeignEnumMap) :-
 
 %---------------------------------------------------------------------------%
 
-:- func type_ctor_defn_map_to_items(type_ctor_defn_map) = list(item).
-
-type_ctor_defn_map_to_items(TypeCtorDefnMap) = Items :-
-    TypeDefns = type_ctor_defn_map_to_type_defns(TypeCtorDefnMap),
-    Items = list.map(wrap_type_defn_item, TypeDefns).
-
 type_ctor_defn_map_to_type_defns(TypeCtorDefnMap) = TypeDefns :-
     map.foldl_values(accumulate_type_ctor_defns, TypeCtorDefnMap,
         cord.init, TypeDefnsCord),
@@ -1925,12 +1803,6 @@ wrap_foreign_type_defn(ForeignDefnInfo) = TypeDefnInfo :-
 
 %---------------------%
 
-:- func inst_ctor_defn_map_to_items(inst_ctor_defn_map) = list(item).
-
-inst_ctor_defn_map_to_items(InstCtorDefnMap) = Items :-
-    InstDefns = inst_ctor_defn_map_to_inst_defns(InstCtorDefnMap),
-    Items = list.map(wrap_inst_defn_item, InstDefns).
-
 inst_ctor_defn_map_to_inst_defns(InstCtorDefnMap) = InstDefns :-
     map.foldl_values(accumulate_inst_ctor_defns, InstCtorDefnMap,
         cord.init, InstDefnsCord),
@@ -1946,12 +1818,6 @@ accumulate_inst_ctor_defns(CtorAllDefns, !InstDefns) :-
         cord.from_list(EqvDefns).
 
 %---------------------%
-
-:- func mode_ctor_defn_map_to_items(mode_ctor_defn_map) = list(item).
-
-mode_ctor_defn_map_to_items(ModeCtorDefnMap) = Items :-
-    ModeDefns = mode_ctor_defn_map_to_mode_defns(ModeCtorDefnMap),
-    Items = list.map(wrap_mode_defn_item, ModeDefns).
 
 mode_ctor_defn_map_to_mode_defns(ModeCtorDefnMap) = ModeDefns :-
     map.foldl_values(accumulate_mode_ctor_defns, ModeCtorDefnMap,
@@ -1969,12 +1835,6 @@ accumulate_mode_ctor_defns(CtorAllDefns, !ModeDefns) :-
 
 %---------------------%
 
-:- func type_ctor_repn_map_to_items(type_ctor_repn_map) = list(item).
-
-type_ctor_repn_map_to_items(TypeCtorRepnMap) = Items :-
-    TypeRepns = type_ctor_repn_map_to_type_repns(TypeCtorRepnMap),
-    Items = list.map(wrap_type_repn_item, TypeRepns).
-
 type_ctor_repn_map_to_type_repns(TypeCtorRepnMap) = TypeRepns :-
     map.foldl_values(accumulate_type_ctor_repns, TypeCtorRepnMap,
         cord.init, TypeRepnsCord),
@@ -1985,29 +1845,6 @@ type_ctor_repn_map_to_type_repns(TypeCtorRepnMap) = TypeRepns :-
 
 accumulate_type_ctor_repns(TypeRepn, !TypeRepns) :-
     !:TypeRepns = cord.snoc(!.TypeRepns, TypeRepn).
-
-%---------------------%
-
-:- func type_ctor_foreign_enum_map_to_items(type_ctor_foreign_enum_map)
-    = list(item).
-
-type_ctor_foreign_enum_map_to_items(ForeignEnumMap) = Items :-
-    map.foldl_values(accumulate_foreign_enum_items, ForeignEnumMap,
-        cord.init, ForeignEnumItemsCord),
-    ForeignEnumItems = cord.list(ForeignEnumItemsCord),
-    Items = list.map(wrap_foreign_enum_item, ForeignEnumItems).
-
-:- pred accumulate_foreign_enum_items(c_j_cs_enums::in,
-    cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out)
-    is det.
-
-accumulate_foreign_enum_items(AllEnums, !ForeignEnums) :-
-    AllEnums = c_java_csharp(ForeignEnumsC, ForeignEnumsJava,
-        ForeignEnumsCsharp),
-    !:ForeignEnums = !.ForeignEnums ++
-        cord.from_list(ForeignEnumsC) ++
-        cord.from_list(ForeignEnumsJava) ++
-        cord.from_list(ForeignEnumsCsharp).
 
 %---------------------------------------------------------------------------%
 

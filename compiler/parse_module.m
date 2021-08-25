@@ -90,7 +90,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.file_kind.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
@@ -138,27 +137,13 @@
     parse_tree_src::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
 
-    % actually_read_module_int(IntFileKind, Globals,
+    % actually_read_module_intN(Globals,
     %   DefaultModuleName, DefaultExpectationContexts,
     %   MaybeFileNameAndStream, ReadModuleAndTimestamps,
     %   MaybeModuleTimestampRes, ParseTree, Specs, Errors, !IO):
     %
-    % Analogous to actually_read_module_src, but opens the IntFileKind
-    % interface file for DefaultModuleName.
-    %
-    % XXX CLEANUP This predicate should not be needed; callers should call
-    % the versions specific to a given values of IntFileKind. However,
-    % we do still have calls to it.
-    %
-:- pred actually_read_module_int(int_file_kind::in, globals::in,
-    module_name::in, list(prog_context)::in,
-    maybe_error(path_name_and_stream)::in,
-    read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    parse_tree_int::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
-
-    % Versions of actually_read_module_int that return, for each kind of
-    % interface file, a value of a type that is specific to that kind.
+    % Analogous to actually_read_module_src, but opens the specified kind
+    % of interface file for DefaultModuleName.
     %
 :- pred actually_read_module_int0(globals::in,
     module_name::in, list(prog_context)::in,
@@ -236,6 +221,7 @@
 
 :- import_module libs.options.
 :- import_module parse_tree.convert_parse_tree.
+:- import_module parse_tree.file_kind.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_item.
@@ -306,42 +292,6 @@ actually_read_module_src(Globals,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         make_dummy_parse_tree_src, read_parse_tree_src,
         ParseTree, Specs, Errors, !IO).
-
-%---------------------------------------------------------------------------%
-
-actually_read_module_int(IntFileKind, Globals,
-        DefaultModuleName, DefaultExpectationContexts,
-        MaybeFileNameAndStream, ReadModuleAndTimestamps,
-        MaybeModuleTimestampRes, ParseTreeInt, Specs, Errors, !IO) :-
-    (
-        IntFileKind = ifk_int0,
-        actually_read_module_int0(Globals,
-            DefaultModuleName, DefaultExpectationContexts,
-            MaybeFileNameAndStream, ReadModuleAndTimestamps,
-            MaybeModuleTimestampRes, ParseTreeInt0, Specs, Errors, !IO),
-        ParseTreeInt = convert_parse_tree_int0_to_int(ParseTreeInt0)
-    ;
-        IntFileKind = ifk_int1,
-        actually_read_module_int1(Globals,
-            DefaultModuleName, DefaultExpectationContexts,
-            MaybeFileNameAndStream, ReadModuleAndTimestamps,
-            MaybeModuleTimestampRes, ParseTreeInt1, Specs, Errors, !IO),
-        ParseTreeInt = convert_parse_tree_int1_to_int(ParseTreeInt1)
-    ;
-        IntFileKind = ifk_int2,
-        actually_read_module_int2(Globals,
-            DefaultModuleName, DefaultExpectationContexts,
-            MaybeFileNameAndStream, ReadModuleAndTimestamps,
-            MaybeModuleTimestampRes, ParseTreeInt2, Specs, Errors, !IO),
-        ParseTreeInt = convert_parse_tree_int2_to_int(ParseTreeInt2)
-    ;
-        IntFileKind = ifk_int3,
-        actually_read_module_int3(Globals,
-            DefaultModuleName, DefaultExpectationContexts,
-            MaybeFileNameAndStream, ReadModuleAndTimestamps,
-            MaybeModuleTimestampRes, ParseTreeInt3, Specs, Errors, !IO),
-        ParseTreeInt = convert_parse_tree_int3_to_int(ParseTreeInt3)
-    ).
 
 %---------------------------------------------------------------------------%
 

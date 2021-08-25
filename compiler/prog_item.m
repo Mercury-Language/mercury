@@ -401,39 +401,6 @@
     --->    no_version_numbers
     ;       version_numbers(version_numbers).
 
-    % The generic representation of all the different kinds of interface files.
-    % XXX It should be replaced by the kind-specific representations below.
-:- type parse_tree_int
-    --->    parse_tree_int(
-                pti_module_name             :: module_name,
-                pti_int_file_kind           :: int_file_kind,
-
-                % The context of the `:- module' declaration.
-                pti_module_name_context     :: prog_context,
-
-                % For .int0, .int and .int2; not for .int3.
-                pti_maybe_version_numbers   :: maybe_version_numbers,
-
-                % `:- include_module' declarations in the interface and
-                % in the implementation.
-                pti_int_includes            :: list(item_include),
-                pti_imp_includes            :: list(item_include),
-
-                % `:- import_module' and `:- use_module' declarations
-                % in the interface and in the implementation.
-                pti_int_avails              :: list(item_avail),
-                pti_imp_avails              :: list(item_avail),
-
-                % `:- pragma foreign_import_module' declarations
-                % in the interface and in the implementation.
-                pti_int_fims                :: list(item_fim),
-                pti_imp_fims                :: list(item_fim),
-
-                % Items in the interface and in the implementation.
-                pti_int_items               :: list(item),
-                pti_imp_items               :: list(item)
-            ).
-
 :- type parse_tree_some_int
     --->    parse_tree_some_int0(parse_tree_int0)
     ;       parse_tree_some_int1(parse_tree_int1)

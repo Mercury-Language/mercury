@@ -191,7 +191,7 @@
     maybe(timestamp)::out, parse_tree_src::out,
     list(error_spec)::out, read_module_errors::out, io::di, io::uo) is det.
 
-    % read_module_int(Globals, Descr, IgnoreErrors, Search,
+    % read_module_some_int(Globals, Descr, IgnoreErrors, Search,
     %   ModuleName, IntFileKind, FileName, ReturnTimestamp, MaybeTimestamp,
     %   ParseTreeInt, Specs, Errors, !IO):
     %
@@ -212,13 +212,6 @@
     % to its int_file_kind-specific versions below. The only such calls
     % are now used in the implementation of smart recompilation.
     %
-:- pred read_module_int(globals::in, string::in,
-    maybe_ignore_errors::in, maybe_search::in,
-    module_name::in, int_file_kind::in, file_name::out,
-    read_module_and_timestamps::in, maybe(timestamp)::out,
-    parse_tree_int::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
-
 :- pred read_module_some_int(globals::in, string::in,
     maybe_ignore_errors::in, maybe_search::in,
     module_name::in, int_file_kind::in, file_name::out,
@@ -392,20 +385,6 @@ read_module_src_from_file(Globals, FileName, FileNameDotM, Descr, Search,
         MaybeFileNameAndStream, ReadModuleAndTimestamps, MaybeTimestampRes,
         ParseTreeSrc, ModuleSpecs, Errors, !IO),
     read_module_end_file(Globals, VeryVerbose, FileNameDotM,
-        MaybeTimestampRes, MaybeTimestamp, ModuleSpecs, Specs, Errors, !IO).
-
-read_module_int(Globals, Descr, IgnoreErrors, Search, ModuleName, IntFileKind,
-        FileName, ReadModuleAndTimestamps, MaybeTimestamp,
-        ParseTreeInt, Specs, Errors, !IO) :-
-    read_module_begin(Globals, Descr, Search, ModuleName, fk_int(IntFileKind),
-        FileName0, VeryVerbose, SearchDirs, !IO),
-    search_for_file_and_stream(SearchDirs, FileName0,
-        MaybeFileNameAndStream, !IO),
-    actually_read_module_int(IntFileKind, Globals, ModuleName, [],
-        MaybeFileNameAndStream, ReadModuleAndTimestamps, MaybeTimestampRes,
-        ParseTreeInt, ModuleSpecs, Errors, !IO),
-    read_module_end_module(Globals, IgnoreErrors, VeryVerbose,
-        MaybeFileNameAndStream, FileName0, FileName,
         MaybeTimestampRes, MaybeTimestamp, ModuleSpecs, Specs, Errors, !IO).
 
 read_module_some_int(Globals, Descr, IgnoreErrors, Search, ModuleName,

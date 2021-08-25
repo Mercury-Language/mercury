@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: recompilation_version.m.
 % Main author: stayl.
 %
 % Compute version numbers for program items in interface files.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module recompilation.version.
 :- interface.
@@ -26,13 +26,17 @@
 :- import_module maybe.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % compute_version_numbers(SourceFileModTime, CurParseTreeInt,
-    %   MaybeOldParseTreeInt, VersionNumbers).
+    % compute_version_numbers_intN(MaybeOldParseTreeIntN,
+    %   CurParseTreeIntNTimeStamp, CurParseTreeIntN, VersionNumbers).
     %
-:- pred compute_version_numbers(timestamp::in, parse_tree_int::in,
-    maybe(parse_tree_int)::in, version_numbers::out) is det.
+:- pred compute_version_numbers_int0(maybe(parse_tree_int0)::in,
+    timestamp::in, parse_tree_int0::in, version_numbers::out) is det.
+:- pred compute_version_numbers_int1(maybe(parse_tree_int1)::in,
+    timestamp::in, parse_tree_int1::in, version_numbers::out) is det.
+:- pred compute_version_numbers_int2(maybe(parse_tree_int2)::in,
+    timestamp::in, parse_tree_int2::in, version_numbers::out) is det.
 
 :- pred write_version_numbers(io.text_output_stream::in, version_numbers::in,
     io::di, io::uo) is det.
@@ -69,11 +73,12 @@
     %
 :- pred parse_version_numbers(term::in, maybe1(version_numbers)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_info.
@@ -93,52 +98,102 @@
 :- import_module string.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-compute_version_numbers(SourceFileTime, CurParseTreeInt, MaybeOldParseTreeInt,
-        NewVersionNumbers) :-
-    CurParseTreeInt = parse_tree_int(_ModuleName, _IntFileKind,
-        _ModuleNameContext, _CurMaybeVersionNumbers,
-        _CurIntIncls, _CurImpIncls, _CurIntAvails, _CurImpAvails,
-        _CurIntFIMs, _CurImpFIMs, CurIntItems, CurImpItems),
-    gather_items(CurIntItems, CurImpItems, CurGatheredItems, CurInstanceItems),
+compute_version_numbers_int0(MaybeOldParseTreeInt0,
+        CurFileTime, CurParseTreeInt0, NewVersionNumbers) :-
+    gather_items_in_parse_tree_int0(CurParseTreeInt0, CurGatherResults),
     ( if
-        MaybeOldParseTreeInt = yes(OldParseTreeInt),
-        OldParseTreeInt = parse_tree_int(_, _, _, OldMaybeVersionNumbers,
-            _OldIntIncls, _OldImpIncls, _OldIntAvails, _OldImpAvails,
-            _OldIntFIMs, _OldImpFIMs, OldIntItems, OldImpItems),
-        OldMaybeVersionNumbers = version_numbers(OldVersionNumbers)
+        MaybeOldParseTreeInt0 = yes(OldParseTreeInt0),
+        OldParseTreeInt0 ^ pti0_maybe_version_numbers
+            = version_numbers(OldVersionNumbers)
     then
+        gather_items_in_parse_tree_int0(OldParseTreeInt0, OldGatherResults),
+        MaybeOldVersionNumbersGatherResults =
+            yes({OldVersionNumbers, OldGatherResults})
+    else
+        MaybeOldVersionNumbersGatherResults = no
+    ),
+    update_version_numbers(MaybeOldVersionNumbersGatherResults,
+        CurFileTime, CurGatherResults, NewVersionNumbers).
+
+compute_version_numbers_int1(MaybeOldParseTreeInt1,
+        CurFileTime, CurParseTreeInt1, NewVersionNumbers) :-
+    gather_items_in_parse_tree_int1(CurParseTreeInt1, CurGatherResults),
+    ( if
+        MaybeOldParseTreeInt1 = yes(OldParseTreeInt1),
+        OldParseTreeInt1 ^ pti1_maybe_version_numbers
+            = version_numbers(OldVersionNumbers)
+    then
+        gather_items_in_parse_tree_int1(OldParseTreeInt1, OldGatherResults),
+        MaybeOldVersionNumbersGatherResults =
+            yes({OldVersionNumbers, OldGatherResults})
+    else
+        MaybeOldVersionNumbersGatherResults = no
+    ),
+    update_version_numbers(MaybeOldVersionNumbersGatherResults,
+        CurFileTime, CurGatherResults, NewVersionNumbers).
+
+compute_version_numbers_int2(MaybeOldParseTreeInt2,
+        CurFileTime, CurParseTreeInt2, NewVersionNumbers) :-
+    gather_items_in_parse_tree_int2(CurParseTreeInt2, CurGatherResults),
+    ( if
+        MaybeOldParseTreeInt2 = yes(OldParseTreeInt2),
+        OldParseTreeInt2 ^ pti2_maybe_version_numbers
+            = version_numbers(OldVersionNumbers)
+    then
+        gather_items_in_parse_tree_int2(OldParseTreeInt2, OldGatherResults),
+        MaybeOldVersionNumbersGatherResults =
+            yes({OldVersionNumbers, OldGatherResults})
+    else
+        MaybeOldVersionNumbersGatherResults = no
+    ),
+    update_version_numbers(MaybeOldVersionNumbersGatherResults,
+        CurFileTime, CurGatherResults, NewVersionNumbers).
+
+%---------------------%
+
+:- pred update_version_numbers(maybe({version_numbers, gather_results})::in,
+    timestamp::in, gather_results::in, version_numbers::out) is det.
+
+update_version_numbers(MaybeOldVersionNumbersGatherResults,
+        CurSourceFileTime, CurGatherResults, NewVersionNumbers) :-
+    (
+        MaybeOldVersionNumbersGatherResults =
+            yes({OldVersionNumbers, OldGatherResults}),
         OldVersionNumbers = version_numbers(OldItemVersionNumbers,
             OldInstanceVersionNumbers),
-        gather_items(OldIntItems, OldImpItems,
-            OldGatheredItems, OldInstanceItems)
-    else
+        OldGatherResults = gather_results(OldGatheredItems, OldInstanceMap)
+    ;
+        MaybeOldVersionNumbersGatherResults = no,
         % There were no old version numbers, so every item gets
         % the same timestamp as the source module.
         % XXX ITEM_LIST In which case, the call to compute_item_version_numbers
         % below is mostly a waste of time, since we could get the same job done
         % more quickly without doing a lot of lookups in empty maps.
         OldItemVersionNumbers = init_item_id_set(map.init),
+        map.init(OldInstanceVersionNumbers),
         OldGatheredItems = init_item_id_set(map.init),
-        map.init(OldInstanceItems),
-        map.init(OldInstanceVersionNumbers)
+        map.init(OldInstanceMap)
     ),
-    compute_item_version_numbers(SourceFileTime,
-        CurGatheredItems, OldGatheredItems,
+    CurGatherResults = gather_results(CurGatheredItems, CurInstanceMap),
+    compute_item_version_numbers(CurSourceFileTime,
+        OldGatheredItems, CurGatheredItems,
         OldItemVersionNumbers, NewItemVersionNumbers),
-    compute_instance_version_numbers(SourceFileTime,
-        CurInstanceItems, OldInstanceItems,
+    compute_instance_version_numbers(CurSourceFileTime,
+        OldInstanceMap, CurInstanceMap,
         OldInstanceVersionNumbers, NewInstanceVersionNumbers),
     NewVersionNumbers =
         version_numbers(NewItemVersionNumbers, NewInstanceVersionNumbers).
+
+%---------------------%
 
 :- pred compute_item_version_numbers(timestamp::in,
     gathered_items::in, gathered_items::in,
     item_version_numbers::in, item_version_numbers::out) is det.
 
 compute_item_version_numbers(SourceFileTime,
-        CurGatheredItems, OldGatheredItems,
+        OldGatheredItems, CurGatheredItems,
         OldItemVersionNumbers, NewItemVersionNumbers) :-
     Func = compute_item_version_numbers_2(SourceFileTime,
         OldGatheredItems, OldItemVersionNumbers),
@@ -188,10 +243,10 @@ compute_item_version_numbers_3(SourceFileTime, OldGatheredItems,
     instance_version_numbers::in, instance_version_numbers::out) is det.
 
 compute_instance_version_numbers(SourceFileTime,
-        CurInstanceItemMap, OldInstanceItemMap,
+        OldInstanceItemMap, CurInstanceItemMap,
         OldInstanceVersionNumbers, NewInstanceVersionNumbers) :-
-    NewInstanceVersionNumbers = map.map_values(
-        ( func(ClassId, Items) = InstanceVersionNumber :-
+    Pred =
+        ( pred(ClassId::in, Items::in, InstanceVersionNumber::out) is det :-
             ( if
                 map.search(OldInstanceItemMap, ClassId, OldItems),
                 are_items_changed(OldItems, Items, unchanged),
@@ -203,30 +258,134 @@ compute_instance_version_numbers(SourceFileTime,
                 InstanceVersionNumber = SourceFileTime
             )
         ),
-        CurInstanceItemMap
+    map.map_values(Pred, CurInstanceItemMap, NewInstanceVersionNumbers).
+
+%---------------------------------------------------------------------------%
+
+:- type gather_results
+    --->    gather_results(gathered_items, instance_item_map).
+
+:- pred gather_items_in_parse_tree_int0(parse_tree_int0::in,
+    gather_results::out) is det.
+
+gather_items_in_parse_tree_int0(ParseTreeInt0, GatherResults) :-
+     ParseTreeInt0 = parse_tree_int0(_ModuleName, _ModuleNameContext,
+        _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
+        _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, _ImportUseMap,
+        _IntFIMSpecs, _ImpFIMSpecs,
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
+        IntDeclPragmas, _IntPromises,
+        ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
+        ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
+        _ImpForeignEnumMap, ImpDeclPragmas, _ImpPromises),
+    some [!Info, !GatheredItems] (
+        GatheredItems0 = init_item_id_set(map.init),
+        !:Info = gathered_item_info(GatheredItems0, cord.init, map.init),
+        list.foldl(gather_in_type_defn(ms_interface),
+            type_ctor_defn_map_to_type_defns(IntTypeDefnMap), !Info),
+        list.foldl(gather_in_inst_defn(ms_interface),
+            inst_ctor_defn_map_to_inst_defns(IntInstDefnMap), !Info),
+        list.foldl(gather_in_mode_defn(ms_interface),
+            mode_ctor_defn_map_to_mode_defns(IntModeDefnMap), !Info),
+        list.foldl(gather_in_typeclass(ms_interface), IntTypeClasses, !Info),
+        list.foldl(gather_in_instance(ms_interface), IntInstances, !Info),
+        list.foldl(gather_in_pred_decl(ms_interface), IntPredDecls, !Info),
+        list.foldl(gather_in_mode_decl(ms_interface), IntModeDecls, !Info),
+        list.foldl(gather_in_decl_pragma(ms_interface), IntDeclPragmas, !Info),
+        % XXX Not gathering promises is a bug.
+        list.foldl(gather_in_type_defn(ms_implementation),
+            type_ctor_defn_map_to_type_defns(ImpTypeDefnMap), !Info),
+        list.foldl(gather_in_inst_defn(ms_implementation),
+            inst_ctor_defn_map_to_inst_defns(ImpInstDefnMap), !Info),
+        list.foldl(gather_in_mode_defn(ms_implementation),
+            mode_ctor_defn_map_to_mode_defns(ImpModeDefnMap), !Info),
+        list.foldl(gather_in_typeclass(ms_implementation),
+            ImpTypeClasses, !Info),
+        list.foldl(gather_in_instance(ms_implementation),
+            ImpInstances, !Info),
+        list.foldl(gather_in_pred_decl(ms_implementation),
+            ImpPredDecls, !Info),
+        list.foldl(gather_in_mode_decl(ms_implementation),
+            ImpModeDecls, !Info),
+        % We gather foreign enum info from the type_ctor_defn_maps.
+        list.foldl(gather_in_decl_pragma(ms_implementation),
+            ImpDeclPragmas, !Info),
+        % XXX Not gathering promises is a bug.
+        !.Info = gathered_item_info(!:GatheredItems, PragmaItems, InstanceMap),
+        cord.foldl_pred(distribute_pragma_items, PragmaItems, !GatheredItems),
+        GatherResults = gather_results(!.GatheredItems, InstanceMap)
     ).
 
-%-----------------------------------------------------------------------------%
+:- pred gather_items_in_parse_tree_int1(parse_tree_int1::in,
+    gather_results::out) is det.
 
-:- pred gather_items(list(item)::in, list(item)::in,
-    gathered_items::out, instance_item_map::out) is det.
+gather_items_in_parse_tree_int1(ParseTreeInt1, GatherResults) :-
+    ParseTreeInt1 = parse_tree_int1(_ModuleName, _ModuleNameContext,
+        _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
+        _IntUseMap, _ImpUseMap, _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
+        IntDeclPragmas, _IntPromises, IntTypeRepnMap,
+        ImpTypeDefnMap, _ImpForeignEnumMap, ImpTypeClasses),
+    some [!Info, !GatheredItems] (
+        GatheredItems0 = init_item_id_set(map.init),
+        !:Info = gathered_item_info(GatheredItems0, cord.init, map.init),
+        list.foldl(gather_in_type_defn(ms_interface),
+            type_ctor_defn_map_to_type_defns(IntTypeDefnMap), !Info),
+        list.foldl(gather_in_inst_defn(ms_interface),
+            inst_ctor_defn_map_to_inst_defns(IntInstDefnMap), !Info),
+        list.foldl(gather_in_mode_defn(ms_interface),
+            mode_ctor_defn_map_to_mode_defns(IntModeDefnMap), !Info),
+        list.foldl(gather_in_typeclass(ms_interface), IntTypeClasses, !Info),
+        list.foldl(gather_in_instance(ms_interface), IntInstances, !Info),
+        list.foldl(gather_in_pred_decl(ms_interface), IntPredDecls, !Info),
+        list.foldl(gather_in_mode_decl(ms_interface), IntModeDecls, !Info),
+        list.foldl(gather_in_decl_pragma(ms_interface), IntDeclPragmas, !Info),
+        % XXX Not gathering promises is a bug.
+        list.foldl(gather_in_type_repn(ms_interface),
+            type_ctor_repn_map_to_type_repns(IntTypeRepnMap), !Info),
+        list.foldl(gather_in_type_defn(ms_implementation),
+            type_ctor_defn_map_to_type_defns(ImpTypeDefnMap), !Info),
+        % We gather foreign enum info from the type_ctor_defn_maps.
+        list.foldl(gather_in_typeclass(ms_implementation),
+            ImpTypeClasses, !Info),
+        !.Info = gathered_item_info(!:GatheredItems, PragmaItems, InstanceMap),
+        cord.foldl_pred(distribute_pragma_items, PragmaItems, !GatheredItems),
+        GatherResults = gather_results(!.GatheredItems, InstanceMap)
+    ).
 
-gather_items(IntItems, ImpItems, GatheredItems, Instances) :-
-    GatheredItems0 = init_item_id_set(map.init),
-    Info0 = gathered_item_info(GatheredItems0, cord.init, map.init),
-    gather_in_section(ms_interface, IntItems, Info0, Info1),
-    gather_in_section(ms_implementation, ImpItems, Info1, Info),
-    % Items which could appear in _OtherItems (those which aren't gathered
-    % into the list for another type of item) can't appear in the interface
-    % section. Those other items (e.g. assertions) will need to be handled here
-    % when smart recompilation is made to work with
-    % `--intermodule-optimization'.
-    Info = gathered_item_info(GatheredItems1, PragmaItemsCord, Instances),
-    PragmaItems = cord.list(PragmaItemsCord),
-    list.foldl(distribute_pragma_items, PragmaItems,
-        GatheredItems1, GatheredItems).
+:- pred gather_items_in_parse_tree_int2(parse_tree_int2::in,
+    gather_results::out) is det.
 
-%-----------------------------------------------------------------------------%
+gather_items_in_parse_tree_int2(ParseTreeInt2, GatherResults) :-
+    ParseTreeInt2 = parse_tree_int2(_ModuleName, _ModuleNameContext,
+        _MaybeVersionNumbers, _IntInclMap, _InclMap, _IntUseMap, _ImportUseMap,
+        _IntFIMSpecs, _ImpFIMSpecs,
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeClasses, IntInstances, IntTypeRepnMap,
+        ImpTypeDefnMap),
+    some [!Info, !GatheredItems] (
+        GatheredItems0 = init_item_id_set(map.init),
+        !:Info = gathered_item_info(GatheredItems0, cord.init, map.init),
+        list.foldl(gather_in_type_defn(ms_interface),
+            type_ctor_defn_map_to_type_defns(IntTypeDefnMap), !Info),
+        list.foldl(gather_in_inst_defn(ms_interface),
+            inst_ctor_defn_map_to_inst_defns(IntInstDefnMap), !Info),
+        list.foldl(gather_in_mode_defn(ms_interface),
+            mode_ctor_defn_map_to_mode_defns(IntModeDefnMap), !Info),
+        list.foldl(gather_in_typeclass(ms_interface), IntTypeClasses, !Info),
+        list.foldl(gather_in_instance(ms_interface), IntInstances, !Info),
+        list.foldl(gather_in_type_repn(ms_interface),
+            type_ctor_repn_map_to_type_repns(IntTypeRepnMap), !Info),
+        list.foldl(gather_in_type_defn(ms_implementation),
+            type_ctor_defn_map_to_type_defns(ImpTypeDefnMap), !Info),
+        !.Info = gathered_item_info(!:GatheredItems, PragmaItems, InstanceMap),
+        cord.foldl_pred(distribute_pragma_items, PragmaItems, !GatheredItems),
+        GatherResults = gather_results(!.GatheredItems, InstanceMap)
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- type gathered_item_info
     --->    gathered_item_info(
@@ -237,86 +396,13 @@ gather_items(IntItems, ImpItems, GatheredItems, Instances) :-
             ).
 
 :- type instance_item_map ==
+    % ZZZ item -> item_instance
     map(item_name, assoc_list(module_section, item)).
 
     % The constructors set should always be empty.
 :- type gathered_items == item_id_set(gathered_item_map).
 :- type gathered_item_map == map(pair(string, arity),
     assoc_list(module_section, item)).
-
-:- pred gather_in_section(module_section::in, list(item)::in,
-    gathered_item_info::in, gathered_item_info::out) is det.
-
-gather_in_section(_Section, [], !Info).
-gather_in_section(Section, [Item | Items], !Info) :-
-    gather_in_item(Section, Item, !Info),
-    gather_in_section(Section, Items, !Info).
-
-%---------------------%
-
-:- pred gather_in_item(module_section::in, item::in,
-    gathered_item_info::in, gathered_item_info::out) is det.
-
-gather_in_item(Section, Item, !Info) :-
-    (
-        Item = item_type_defn(ItemTypeDefn),
-        gather_in_type_defn(Section, ItemTypeDefn, !Info)
-    ;
-        Item = item_inst_defn(ItemInstDefn),
-        gather_in_inst_defn(Section, ItemInstDefn, !Info)
-    ;
-        Item = item_mode_defn(ItemModeDefn),
-        gather_in_mode_defn(Section, ItemModeDefn, !Info)
-    ;
-        Item = item_pred_decl(ItemPredDecl),
-        gather_in_pred_decl(Section, ItemPredDecl, !Info)
-    ;
-        Item = item_mode_decl(ItemModeDecl),
-        gather_in_mode_decl(Section, ItemModeDecl, !Info)
-    ;
-        Item = item_typeclass(ItemTypeClass),
-        gather_in_typeclass(Section, ItemTypeClass, !Info)
-    ;
-        Item = item_instance(ItemInstance),
-        gather_in_instance(Section, ItemInstance, !Info)
-    ;
-        Item = item_decl_pragma(ItemDeclPragma),
-        gather_in_decl_pragma(Section, ItemDeclPragma, !Info)
-    ;
-        Item = item_impl_pragma(ItemImplPragma),
-        gather_in_impl_pragma(Section, ItemImplPragma, !Info)
-    ;
-        Item = item_generated_pragma(ItemGenPragma),
-        gather_in_generated_pragma(Section, ItemGenPragma, !Info)
-    ;
-        Item = item_type_repn(ItemTypeRepn),
-        gather_in_type_repn(Section, ItemTypeRepn, !Info)
-    ;
-        Item = item_promise(_)
-        % Do nothing; don't gather the item.
-        % XXX This is likely to be a bug. If the old version of an interface
-        % file makes a promise that the new version of that interface file
-        % does not, then any importing module whose compilation made use
-        % of that promise *needs* to be recompiled, but we don't detect
-        % that need. The only reason why we haven't come across this bug
-        % in real life is that (a) promises are very rare, and (b) when
-        % they *do* occur, they tend to be very stable.
-    ;
-        ( Item = item_foreign_enum(_)
-        ; Item = item_foreign_export_enum(_)
-        )
-        % Do nothing.
-        % XXX I (zs) am not sure whether doing nothing here is a bug,
-        % for reasons pretty similar to the reasons for item_promise.
-    ;
-        ( Item = item_clause(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ; Item = item_mutable(_)
-        ),
-        % Such items should not appear in interfaces.
-        unexpected($pred, "unexpected item in interface")
-    ).
 
 %---------------------%
 
@@ -617,6 +703,7 @@ gather_in_decl_pragma(Section, ItemDeclPragma, !Info) :-
 
 :- pred gather_in_impl_pragma(module_section::in, item_impl_pragma_info::in,
     gathered_item_info::in, gathered_item_info::out) is det.
+:- pragma consider_used(pred(gather_in_impl_pragma/4)).
 
 gather_in_impl_pragma(Section, ItemImplPragma, !Info) :-
     ItemImplPragma = item_pragma_info(ImplPragma, _, _),
@@ -634,6 +721,7 @@ gather_in_impl_pragma(Section, ItemImplPragma, !Info) :-
 :- pred gather_in_generated_pragma(module_section::in,
     item_generated_pragma_info::in,
     gathered_item_info::in, gathered_item_info::out) is det.
+:- pragma consider_used(pred(gather_in_generated_pragma/4)).
 
 gather_in_generated_pragma(Section, ItemGenPragma, !Info) :-
     ItemGenPragma = item_pragma_info(GenPragma, _, _),
@@ -683,7 +771,7 @@ add_gathered_item(Item, ItemId, Section, !GatheredItems) :-
     ),
     update_ids(ItemType, IdMap, !GatheredItems).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred distribute_pragma_items(
     {maybe_pred_or_func_id, item, module_section}::in,
@@ -755,7 +843,7 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type maybe_pred_or_func_id == pair(maybe(pred_or_func), sym_name_arity).
 
@@ -895,7 +983,7 @@ gather_generated_pragma_for_what_pf_id(GenPragma, MaybePredOrFuncId) :-
         user_arity(Arity), _),
     MaybePredOrFuncId = yes(PredOrFunc) - sym_name_arity(Name, Arity).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Check whether various things are unchanged.
 %
@@ -1488,7 +1576,7 @@ class_methods_are_unchanged([Decl1 | Decls1], [Decl2 | Decls2]) :-
     ),
     class_methods_are_unchanged(Decls1, Decls2).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 write_version_numbers(Stream, AllVersionNumbers, !IO) :-
     AllVersionNumbers = version_numbers(VersionNumbers,
@@ -1566,11 +1654,11 @@ write_symname_arity_version_number(Stream, ItemName - VersionNumber, !IO) :-
     io.write_string(Stream, " - ", !IO),
     write_version_number(Stream, VersionNumber, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 version_numbers_version_number = 1.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 parse_version_numbers(VersionNumbersTerm, Result) :-
     ( if
@@ -1696,6 +1784,6 @@ parse_item_version_number(ParseName, Term, Result) :-
         Result = error1([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module recompilation.version.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
