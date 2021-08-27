@@ -86,7 +86,7 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
-:- import_module recompilation.usage.
+:- import_module recompilation.used_file.
 :- import_module recompilation.version.
 
 :- import_module assoc_list.

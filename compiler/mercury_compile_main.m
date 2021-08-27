@@ -97,6 +97,7 @@
 :- import_module recompilation.
 :- import_module recompilation.check.
 :- import_module recompilation.usage.
+:- import_module recompilation.used_file.
 :- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.
 :- import_module top_level.mercury_compile_middle_passes.

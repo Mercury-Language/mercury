@@ -43,6 +43,7 @@
 
 :- include_module recompilation.check.
 :- include_module recompilation.usage.
+:- include_module recompilation.used_file.
 :- include_module recompilation.version.
 
     % Identify a particular version of a program item.

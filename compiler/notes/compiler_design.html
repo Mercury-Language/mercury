@@ -2116,15 +2116,18 @@ This functionality is implemented by the recompilation.m package.
 <li>
 recompilation.m contains types used by the other smart recompilation modules.
 <li>
-recompilation_version.m generates version numbers
+recompilation.version.m generates version numbers
 for program items in interface files.
 <li>
-recompilation_usage.m works out
+recompilation.usage.m works out
 which program items were used during a compilation.
+<li>
+recompilation.used_file.m writes out that information
+to a modulename.used file.
 <li>
 recompilation_check.m is called before recompiling a module.
 It uses the information written
-by recompilation_version.m and recompilation_usage.m
+by recompilation.version.m and recompilation.used_file.m
 to work out whether the recompilation is actually needed.
 </ul>
 
