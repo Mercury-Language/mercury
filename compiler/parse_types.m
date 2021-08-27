@@ -41,7 +41,7 @@
             % The term contains a `:- pragma foreign_import_module'
             % declaration.
 
-    ;       iom_marker_version_numbers(version_numbers)
+    ;       iom_marker_version_numbers(module_item_version_numbers)
             % The term was a record of the version numbers of the items
             % in an interface file.
 

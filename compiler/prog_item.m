@@ -399,7 +399,7 @@
     % of that interface file.
 :- type maybe_version_numbers
     --->    no_version_numbers
-    ;       version_numbers(version_numbers).
+    ;       version_numbers(module_item_version_numbers).
 
 :- type parse_tree_some_int
     --->    parse_tree_some_int0(parse_tree_int0)
@@ -989,7 +989,8 @@
 
                 % The module_version_numbers records in all the imported
                 % interface files.
-                acu_module_version_numbers_map  :: module_version_numbers_map
+                acu_module_item_version_numbers_map ::
+                                                module_item_version_numbers_map
             ).
 
 :- type aug_make_int_unit
@@ -1012,7 +1013,8 @@
 
                 % The module_version_numbers records in all the imported
                 % interface files.
-                amiu_module_version_numbers_map :: module_version_numbers_map
+                amiu_module_item_version_numbers_map ::
+                                                module_item_version_numbers_map
             ).
 
     % init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit):

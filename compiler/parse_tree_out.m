@@ -806,16 +806,16 @@ mercury_output_maybe_module_version_numbers(Stream, ModuleName,
     ).
 
 :- pred mercury_output_module_version_numbers(io.text_output_stream::in,
-    module_name::in, version_numbers::in, io::di, io::uo) is det.
+    module_name::in, module_item_version_numbers::in, io::di, io::uo) is det.
 
-mercury_output_module_version_numbers(Stream, ModuleName, VersionNumbers,
-        !IO) :-
+mercury_output_module_version_numbers(Stream, ModuleName,
+        ModuleItemVersionNumbers, !IO) :-
     io.write_string(Stream, ":- version_numbers(", !IO),
-    io.write_int(Stream, version_numbers_version_number, !IO),
+    io.write_int(Stream, module_item_version_numbers_version_number, !IO),
     io.write_string(Stream, ", ", !IO),
     mercury_output_bracketed_sym_name(ModuleName, Stream, !IO),
     io.write_string(Stream, ",\n", !IO),
-    recompilation.version.write_version_numbers(Stream, VersionNumbers, !IO),
+    write_module_item_version_numbers(Stream, ModuleItemVersionNumbers, !IO),
     io.write_string(Stream, ").\n", !IO).
 
 %---------------------------------------------------------------------------%

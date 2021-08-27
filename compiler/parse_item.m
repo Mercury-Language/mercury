@@ -785,9 +785,11 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
     (
         ArgTerms = [VersionNumberTerm, ModuleNameTerm, VersionNumbersTerm],
         ( if decimal_term_to_int(VersionNumberTerm, VersionNumber) then
-            ( if VersionNumber = version_numbers_version_number then
-                ( if try_parse_symbol_name(ModuleNameTerm, ModuleName) then
-                    recompilation.version.parse_version_numbers(
+            ( if VersionNumber = module_item_version_numbers_version_number then
+                ( if
+                    try_parse_symbol_name(ModuleNameTerm, ModuleName)
+                then
+                    recompilation.version.parse_module_item_version_numbers(
                         VersionNumbersTerm, MaybeVersionNumbers),
                     (
                         MaybeVersionNumbers = ok1(VersionNumbers),

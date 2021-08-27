@@ -1541,7 +1541,7 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
 :- type version_number_info
     --->    dont_allow_version_numbers
     ;       allow_version_numbers_not_seen
-    ;       allow_version_numbers_seen(version_numbers).
+    ;       allow_version_numbers_seen(module_item_version_numbers).
 
     % Read a sequence of items, until we find a marker that indicates
     % a change in section or module. If and when we find such a marker,
@@ -1681,7 +1681,7 @@ read_item_sequence_inner(FileString, FileStringLen, Globals, ModuleName,
         )
     ).
 
-:- pred record_version_numbers(version_numbers::in, term::in,
+:- pred record_version_numbers(module_item_version_numbers::in, term::in,
     version_number_info::in, version_number_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 

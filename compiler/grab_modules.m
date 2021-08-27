@@ -588,7 +588,8 @@ grab_trans_opt_files(Globals, TransOptModuleNames, FoundError,
     string::in, read_why_int2::in, set(module_name)::in,
     have_read_module_maps::in, have_read_module_maps::out,
     module_baggage::in, module_baggage::out,
-    aug_compilation_unit::in, aug_compilation_unit::out, io::di, io::uo) is det.
+    aug_compilation_unit::in, aug_compilation_unit::out,
+    io::di, io::uo) is det.
 
 grab_module_int2_files_and_impls_transitively(Globals, Why, ReadWhy2,
         Modules, !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO) :-
@@ -608,7 +609,8 @@ grab_module_int2_files_and_impls_transitively(Globals, Why, ReadWhy2,
     set(module_name)::in, set(module_name)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     module_baggage::in, module_baggage::out,
-    aug_compilation_unit::in, aug_compilation_unit::out, io::di, io::uo) is det.
+    aug_compilation_unit::in, aug_compilation_unit::out,
+    io::di, io::uo) is det.
 
 grab_module_int2_files_transitively(Globals, Why, ReadWhy2,
         Modules, !ImpIndirectImports,
@@ -723,7 +725,8 @@ grab_module_int0_files_for_amiu(Globals, Why,
     set(module_name)::in, set(module_name)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     module_baggage::in, module_baggage::out,
-    aug_compilation_unit::in, aug_compilation_unit::out, io::di, io::uo) is det.
+    aug_compilation_unit::in, aug_compilation_unit::out,
+    io::di, io::uo) is det.
 
 grab_module_int1_files(_Globals, _Why, _ReadWhy1, [],
         !IntIndirectImports, !ImpIndirectImports,
@@ -754,7 +757,8 @@ grab_module_int1_files(Globals, Why, ReadWhy1, [ModuleName | ModuleNames],
     set(module_name)::in, set(module_name)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     module_baggage::in, module_baggage::out,
-    aug_compilation_unit::in, aug_compilation_unit::out, io::di, io::uo) is det.
+    aug_compilation_unit::in, aug_compilation_unit::out,
+    io::di, io::uo) is det.
 
 grab_module_int2_files(_Globals, _Why, _ReadWhy2, [],
         !IntIndirectImports, !ImpIndirectImports,
@@ -2251,10 +2255,10 @@ aug_compilation_unit_maybe_add_module_version_numbers(ModuleName,
     ;
         MaybeVersionNumbers = version_numbers(VersionNumbers),
         ModuleVersionNumbersMap0 =
-            !.AugCompUnit ^ acu_module_version_numbers_map,
+            !.AugCompUnit ^ acu_module_item_version_numbers_map,
         map.det_insert(ModuleName, VersionNumbers,
             ModuleVersionNumbersMap0, ModuleVersionNumbersMap),
-        !AugCompUnit ^ acu_module_version_numbers_map :=
+        !AugCompUnit ^ acu_module_item_version_numbers_map :=
             ModuleVersionNumbersMap
     ).
 
@@ -2310,10 +2314,10 @@ aug_make_int_unit_maybe_add_module_version_numbers(ModuleName,
     ;
         MaybeVersionNumbers = version_numbers(VersionNumbers),
         ModuleVersionNumbersMap0 =
-            !.AugMakeIntUnit ^ amiu_module_version_numbers_map,
+            !.AugMakeIntUnit ^ amiu_module_item_version_numbers_map,
         map.det_insert(ModuleName, VersionNumbers,
             ModuleVersionNumbersMap0, ModuleVersionNumbersMap),
-        !AugMakeIntUnit ^ amiu_module_version_numbers_map :=
+        !AugMakeIntUnit ^ amiu_module_item_version_numbers_map :=
             ModuleVersionNumbersMap
     ).
 

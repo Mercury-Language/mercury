@@ -315,10 +315,10 @@ make_typeclass_abstract_for_int3(OrigTypeClass) = TypeClass :-
 
 generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
     AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, _, _, _,
-        ModuleVersionNumbers),
+        ModuleItemVersionNumbersMap),
 
-    ( if map.search(ModuleVersionNumbers, ModuleName, VersionNumbers) then
-        MaybeVersionNumbers = version_numbers(VersionNumbers)
+    ( if map.search(ModuleItemVersionNumbersMap, ModuleName, MIVNs) then
+        MaybeVersionNumbers = version_numbers(MIVNs)
     else
         MaybeVersionNumbers = no_version_numbers
     ),

@@ -56,13 +56,9 @@
     %
 :- type version_number == timestamp.
 
-    % XXX RECOMP Rename to parse_version_number_term.
-    % XXX RECOMP Make a semidet PREDICATE.
-:- func term_to_version_number(term(T)) = version_number is semidet.
+:- pred parse_version_number_term(term(T)::in, version_number::out) is semidet.
 
-    % XXX RECOMP Rename to parse_timestamp_term.
-    % XXX RECOMP Make a semidet PREDICATE.
-:- func term_to_timestamp(term(T)) = timestamp is semidet.
+:- pred parse_timestamp_term(term(T)::in, timestamp::out) is semidet.
 
     % XXX RECOMP Transition from calls to write_version_number
     % to calls to version_number_to_string.
@@ -154,7 +150,7 @@
                 % items recorded in the used_items field above.
                 recomp_dependencies     :: map(item_id, set(item_id)),
 
-                recomp_version_numbers  :: map(module_name, version_numbers)
+                recomp_version_numbers  :: module_item_version_numbers_map
             ).
 
 :- func init_recompilation_info(module_name) = recompilation_info.
@@ -188,33 +184,33 @@
 %-----------------------------------------------------------------------------%
 
     % Map modules' names to their version number info.
-:- type module_version_numbers_map == map(module_name, version_numbers).
+:- type module_item_version_numbers_map ==
+    map(module_name, module_item_version_numbers).
 
-    % Version numbers for items in a single module.
-    %
-    % XXX RECOMP RENAME Should be called *module*_version_numbers.
+    % Values of this type specify the version number of each visible item
+    % in a module.
     %
     % XXX The comment on the type of the predecessor of the vn_instances field
     % said: "For each interface file, we keep a version number for each class",
     % which is quite confusing.
     %
-:- type version_numbers
-    --->    version_numbers(
-                vn_type_names       :: name_arity_version_map,
-                vn_type_defns       :: name_arity_version_map,
-                vn_insts            :: name_arity_version_map,
-                vn_modes            :: name_arity_version_map,
-                vn_typeclasses      :: name_arity_version_map,
-                vn_instances        :: item_name_version_map,
-                vn_predicates       :: name_arity_version_map,
-                vn_functions        :: name_arity_version_map
+:- type module_item_version_numbers
+    --->    module_item_version_numbers(
+                mivn_type_names     :: name_arity_version_map,
+                mivn_type_defns     :: name_arity_version_map,
+                mivn_insts          :: name_arity_version_map,
+                mivn_modes          :: name_arity_version_map,
+                mivn_typeclasses    :: name_arity_version_map,
+                mivn_instances      :: item_name_version_map,
+                mivn_predicates     :: name_arity_version_map,
+                mivn_functions      :: name_arity_version_map
             ).
 
 :- type name_arity_version_map == map(name_arity, version_number).
 
 :- type item_name_version_map == map(item_name, version_number).
 
-:- func init_version_numbers = version_numbers.
+:- func init_module_item_version_numbers = module_item_version_numbers.
 
 %-----------------------------------------------------------------------------%
 
@@ -293,10 +289,12 @@
 
 %-----------------------------------------------------------------------------%
 
-term_to_version_number(Term) = term_to_timestamp(Term).
+parse_version_number_term(Term, Timestamp) :-
+    parse_timestamp_term(Term, Timestamp).
 
-term_to_timestamp(term.functor(term.string(TimestampString), [], _)) =
-    string_to_timestamp(TimestampString).
+parse_timestamp_term(Term, Timestamp) :-
+    Term = term.functor(term.string(Str), [], _),
+    parse_timestamp_string(Str, Timestamp).
 
 version_number_to_string(VersionNumber) = VersionNumberStr :-
     string.format("""%s""", [s(timestamp_to_string(VersionNumber))],
@@ -380,9 +378,9 @@ set_used_item_ids(foreign_proc_item, _IdMap, !Used) :-
 
 %-----------------------------------------------------------------------------%
 
-init_version_numbers =
-    version_numbers(map.init, map.init, map.init, map.init, map.init,
-        map.init, map.init, map.init).
+init_module_item_version_numbers =
+    module_item_version_numbers(map.init, map.init, map.init, map.init,
+        map.init, map.init, map.init, map.init).
 
 %-----------------------------------------------------------------------------%
 

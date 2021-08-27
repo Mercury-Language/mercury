@@ -457,7 +457,8 @@ read_and_parse_used_file_version_number(UsedFileName, UsedFileString,
             % while generating the new format only.
             Term = term.functor(term.atom(","), [SubTerm1, SubTerm2], _),
             decimal_term_to_int(SubTerm1, used_file_version_number),
-            decimal_term_to_int(SubTerm2, version_numbers_version_number)
+            decimal_term_to_int(SubTerm2,
+                module_item_version_numbers_version_number)
         then
             ParseTerm = rpt_ok(unit)
         else
@@ -496,7 +497,7 @@ parse_module_timestamp(Term, ParseTerm) :-
         try_parse_sym_name_and_no_args(ModuleNameTerm, ModuleName),
         SuffixTerm = term.functor(term.string(SuffixStr), [], _),
         extension_to_file_kind(SuffixStr, FileKind),
-        Timestamp = term_to_timestamp(TimestampTerm),
+        parse_timestamp_term(TimestampTerm, Timestamp),
         % This must be kept in sync with write_module_name_and_used_items
         % in recompilation.usage.m.
         (
@@ -963,7 +964,7 @@ parse_name_and_arity_item_add_to_set(Term, !UsedClasses, !Reasons) :-
     --->    recomp_used_module(
                 module_name,
                 module_timestamp,
-                maybe(version_numbers)
+                maybe(module_item_version_numbers)
             ).
 
 :- pred read_and_parse_used_modules(string::in, string::in, int::in,
@@ -997,7 +998,8 @@ read_and_parse_used_modules(FileName, FileString, MaxOffset,
                     [TimestampTerm0, UsedItemsTerm], _)
             then
                 TimestampTerm = TimestampTerm0,
-                parse_version_numbers(UsedItemsTerm, MaybeUsedItems),
+                parse_module_item_version_numbers(UsedItemsTerm,
+                    MaybeUsedItems),
                 (
                     MaybeUsedItems = ok1(VersionNumbers),
                     ParseVersionNumbers = rpt_ok(yes(VersionNumbers))
@@ -1121,8 +1123,8 @@ check_imported_module(Globals, UsedModule, MaybeStoppingReason, !Info, !IO) :-
             ),
             ( if
                 MaybeUsedVersionNumbers = yes(UsedVersionNumbers),
-                get_version_numbers_from_parse_tree_some_int(ParseTreeSomeInt,
-                    VersionNumbers)
+                get_module_item_version_numbers_from_parse_tree_some_int(
+                    ParseTreeSomeInt, VersionNumbers)
             then
                 check_module_used_items(ImportedModuleName, RecompAvail,
                     RecordedTimestamp, UsedVersionNumbers, VersionNumbers,
@@ -1148,19 +1150,22 @@ check_imported_module(Globals, UsedModule, MaybeStoppingReason, !Info, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred check_module_used_items(module_name::in, recomp_avail::in,
-    timestamp::in, version_numbers::in, version_numbers::in,
+    timestamp::in,
+    module_item_version_numbers::in, module_item_version_numbers::in,
     parse_tree_some_int::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_module_used_items(ModuleName, RecompAvail, OldTimestamp,
         UsedVersionNumbers, NewVersionNumbers, ParseTreeSomeInt,
         !:MaybeStoppingReason, !Info) :-
-    UsedVersionNumbers = version_numbers(UsedTypeNameMap, UsedTypeDefnMap,
-        UsedInstMap, UsedModeMap, UsedClassMap, UsedInstanceMap,
-        UsedPredMap, UsedFuncMap),
-    NewVersionNumbers = version_numbers(NewTypeNameMap, NewTypeDefnMap,
-        NewInstMap, NewModeMap, NewClassMap, NewInstanceMap,
-        NewPredMap, NewFuncMap),
+    UsedVersionNumbers =
+        module_item_version_numbers(UsedTypeNameMap, UsedTypeDefnMap,
+            UsedInstMap, UsedModeMap, UsedClassMap, UsedInstanceMap,
+            UsedPredMap, UsedFuncMap),
+    NewVersionNumbers =
+        module_item_version_numbers(NewTypeNameMap, NewTypeDefnMap,
+            NewInstMap, NewModeMap, NewClassMap, NewInstanceMap,
+            NewPredMap, NewFuncMap),
 
     !:MaybeStoppingReason = no,
     % Check whether any of the items which were used have changed.
@@ -1347,7 +1352,7 @@ check_items_for_ambiguities(CheckPred, [HeadItem | TailItems],
 %---------------------%
 
 :- pred check_type_defn_info_for_ambiguities(recomp_avail::in, timestamp::in,
-    version_numbers::in, item_type_defn_info::in,
+    module_item_version_numbers::in, item_type_defn_info::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
@@ -1357,8 +1362,8 @@ check_type_defn_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
         _, _, _),
     list.length(TypeParams, TypeArity),
     check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
-        VersionNumbers ^ vn_type_names, type_abstract_item, TypeSymName, TypeArity,
-        NeedsCheck, !MaybeStoppingReason, !Info),
+        VersionNumbers ^ mivn_type_names, type_abstract_item,
+        TypeSymName, TypeArity, NeedsCheck, !MaybeStoppingReason, !Info),
     (
         NeedsCheck = yes,
         TypeCtor = type_ctor(TypeSymName, TypeArity),
@@ -1371,7 +1376,7 @@ check_type_defn_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
 %---------------------%
 
 :- pred check_inst_defn_info_for_ambiguities(recomp_avail::in, timestamp::in,
-    version_numbers::in, item_inst_defn_info::in,
+    module_item_version_numbers::in, item_inst_defn_info::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
@@ -1382,13 +1387,13 @@ check_inst_defn_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
         _MaybeForTypeCtor, _, _, _, _),
     list.length(InstParams, InstArity),
     check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
-        VersionNumbers ^ vn_insts, inst_item, InstSymName, InstArity,
+        VersionNumbers ^ mivn_insts, inst_item, InstSymName, InstArity,
         _NeedsCheck, !MaybeStoppingReason, !Info).
 
 %---------------------%
 
 :- pred check_mode_defn_info_for_ambiguities(recomp_avail::in, timestamp::in,
-    version_numbers::in, item_mode_defn_info::in,
+    module_item_version_numbers::in, item_mode_defn_info::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
@@ -1397,13 +1402,13 @@ check_mode_defn_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
     ItemModeDefn = item_mode_defn_info(ModeSymName, ModeParams, _, _, _, _),
     list.length(ModeParams, ModeArity),
     check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
-        VersionNumbers ^ vn_modes, mode_item, ModeSymName, ModeArity,
+        VersionNumbers ^ mivn_modes, mode_item, ModeSymName, ModeArity,
         _NeedsCheck, !MaybeStoppingReason, !Info).
 
 %---------------------%
 
 :- pred check_typeclass_info_for_ambiguities(recomp_avail::in,
-    timestamp::in, version_numbers::in, item_typeclass_info::in,
+    timestamp::in, module_item_version_numbers::in, item_typeclass_info::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
@@ -1413,7 +1418,7 @@ check_typeclass_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
         _, _, Interface, _, _, _),
     list.length(TypeClassParams, TypeClassArity),
     check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
-        VersionNumbers ^ vn_typeclasses, typeclass_item,
+        VersionNumbers ^ mivn_typeclasses, typeclass_item,
         TypeClassSymName, TypeClassArity,
         NeedsCheck, !MaybeStoppingReason, !Info),
     ( if
@@ -1429,7 +1434,7 @@ check_typeclass_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
     ).
 
 :- pred check_class_decl_for_ambiguities(recomp_avail::in,
-    timestamp::in, version_numbers::in, class_decl::in,
+    timestamp::in, module_item_version_numbers::in, class_decl::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
@@ -1449,7 +1454,7 @@ check_class_decl_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
 %---------------------%
 
 :- pred check_pred_decl_info_for_ambiguities(recomp_avail::in,
-    timestamp::in, version_numbers::in, item_pred_decl_info::in,
+    timestamp::in, module_item_version_numbers::in, item_pred_decl_info::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
@@ -1569,7 +1574,7 @@ item_is_new_or_changed(UsedFileTimestamp, UsedVersionMap, SymName, Arity) :-
     ).
 
 :- pred check_for_pred_or_func_item_ambiguity(bool::in,
-    recomp_avail::in, timestamp::in, version_numbers::in,
+    recomp_avail::in, timestamp::in, module_item_version_numbers::in,
     pred_or_func::in, sym_name::in,
     list(type_and_mode)::in, maybe(mer_type)::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
@@ -1595,12 +1600,12 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompAvail, OldTimestamp,
             ;
                 (
                     PredOrFunc = pf_predicate,
-                    PredMap = VersionNumbers ^ vn_predicates,
+                    PredMap = VersionNumbers ^ mivn_predicates,
                     item_is_new_or_changed(OldTimestamp, PredMap,
                         SymName, Arity)
                 ;
                     PredOrFunc = pf_function,
-                    FuncMap = VersionNumbers ^ vn_functions,
+                    FuncMap = VersionNumbers ^ mivn_functions,
                     item_is_new_or_changed(OldTimestamp, FuncMap,
                         SymName, Arity)
                 )
@@ -1860,7 +1865,8 @@ check_functor_ambiguities_2(RecompAvail, Name, MatchArity, ResolvedCtor,
         (
             Check = yes,
             map.foldl2(
-                check_functor_ambiguity(RecompAvail, Name, Arity, ResolvedCtor),
+                check_functor_ambiguity(RecompAvail, Name, Arity,
+                    ResolvedCtor),
                 UsedCtorMap, no, !:MaybeStoppingReason, !Info)
         ;
             Check = no
@@ -2239,10 +2245,10 @@ record_recompilation_reason(Reason, MaybeStoppingReason, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred get_version_numbers_from_parse_tree_some_int(parse_tree_some_int::in,
-    version_numbers::out) is semidet.
+:- pred get_module_item_version_numbers_from_parse_tree_some_int(
+    parse_tree_some_int::in, module_item_version_numbers::out) is semidet.
 
-get_version_numbers_from_parse_tree_some_int(ParseTreeSomeInt,
+get_module_item_version_numbers_from_parse_tree_some_int(ParseTreeSomeInt,
         VersionNumbers) :-
     (
         ParseTreeSomeInt = parse_tree_some_int0(ParseTreeInt0),

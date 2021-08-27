@@ -32,22 +32,22 @@
     %   CurParseTreeIntNTimeStamp, CurParseTreeIntN, VersionNumbers).
     %
 :- pred compute_version_numbers_int0(maybe(parse_tree_int0)::in,
-    timestamp::in, parse_tree_int0::in, version_numbers::out) is det.
+    timestamp::in, parse_tree_int0::in, module_item_version_numbers::out)
+    is det.
 :- pred compute_version_numbers_int1(maybe(parse_tree_int1)::in,
-    timestamp::in, parse_tree_int1::in, version_numbers::out) is det.
+    timestamp::in, parse_tree_int1::in, module_item_version_numbers::out)
+    is det.
 :- pred compute_version_numbers_int2(maybe(parse_tree_int2)::in,
-    timestamp::in, parse_tree_int2::in, version_numbers::out) is det.
+    timestamp::in, parse_tree_int2::in, module_item_version_numbers::out)
+    is det.
 
-    % XXX RECOMP Rename, because the job this predicate does is VERY different
-    % from the job of write_version_number (singular).
-    %
-:- pred write_version_numbers(io.text_output_stream::in, version_numbers::in,
-    io::di, io::uo) is det.
+:- pred write_module_item_version_numbers(io.text_output_stream::in,
+    module_item_version_numbers::in, io::di, io::uo) is det.
 
     % The version number for the format of the version numbers
     % written to the interface files.
     %
-:- func version_numbers_version_number = int.
+:- func module_item_version_numbers_version_number = int.
 
     % Parse a term that maps item ids to timestamps. These terms
     % look like this:
@@ -74,7 +74,8 @@
     %     )
     % }
     %
-:- pred parse_version_numbers(term::in, maybe1(version_numbers)::out) is det.
+:- pred parse_module_item_version_numbers(term::in,
+    maybe1(module_item_version_numbers)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -158,8 +159,10 @@ compute_version_numbers_int2(MaybeOldParseTreeInt2,
 
 %---------------------%
 
-:- pred update_version_numbers(maybe({version_numbers, gathered_items})::in,
-    timestamp::in, gathered_items::in, version_numbers::out) is det.
+:- pred update_version_numbers(
+    maybe({module_item_version_numbers, gathered_items})::in,
+    timestamp::in, gathered_items::in,
+    module_item_version_numbers::out) is det.
 
 update_version_numbers(MaybeOldVersionNumbersGatherResults,
         CurSourceFileTime, CurGatheredItems, NewVersionNumbers) :-
@@ -173,7 +176,7 @@ update_version_numbers(MaybeOldVersionNumbersGatherResults,
         % XXX ITEM_LIST In which case, the call to compute_item_version_numbers
         % below is mostly a waste of time, since we could get the same job done
         % more quickly without doing a lot of lookups in empty maps.
-        OldVersionNumbers = version_numbers(map.init, map.init,
+        OldVersionNumbers = module_item_version_numbers(map.init, map.init,
             map.init, map.init, map.init, map.init, map.init, map.init),
         OldGatheredItems = gathered_items(map.init, map.init,
             map.init, map.init, map.init, map.init, map.init, map.init)
@@ -186,7 +189,7 @@ update_version_numbers(MaybeOldVersionNumbersGatherResults,
 
 :- pred compute_item_version_numbers(timestamp::in,
     gathered_items::in, gathered_items::in,
-    version_numbers::in, version_numbers::out) is det.
+    module_item_version_numbers::in, module_item_version_numbers::out) is det.
 
 compute_item_version_numbers(SourceFileTime,
         OldGatheredItems, CurGatheredItems,
@@ -197,7 +200,7 @@ compute_item_version_numbers(SourceFileTime,
     CurGatheredItems = gathered_items(CurTypeMap, CurTBodyMap,
         CurInstMap, CurModeMap, CurClassMap, CurInstanceMap,
         CurPredMap, CurFuncMap),
-    OldVersionNumbers = version_numbers(OldTypeVMap, OldTBodyVMap,
+    OldVersionNumbers = module_item_version_numbers(OldTypeVMap, OldTBodyVMap,
         OldInstVMap, OldModeVMap, OldClassVMap, OldInstanceVMap,
         OldPredVMap, OldFuncVMap),
 
@@ -218,7 +221,7 @@ compute_item_version_numbers(SourceFileTime,
     compute_name_arity_version_map(SourceFileTime,
         OldFuncMap, OldFuncVMap, CurFuncMap, NewFuncVMap),
 
-    NewVersionNumbers = version_numbers(NewTypeVMap, NewTBodyVMap,
+    NewVersionNumbers = module_item_version_numbers(NewTypeVMap, NewTBodyVMap,
         NewInstVMap, NewModeVMap, NewClassVMap, NewInstanceVMap,
         NewPredVMap, NewFuncVMap).
 
@@ -813,7 +816,7 @@ gather_in_type_repn(Section, ItemTypeRepn, !TypeDefnMap) :-
     ItemTypeRepn = item_type_repn_info(SymName, Params, _, _, _, _),
     Item = item_type_repn(ItemTypeRepn),
     TypeCtorNA = name_arity(unqualify_name(SymName), list.length(Params)),
-    % XXX We used to add these to the vn_type_defns map.
+    % XXX We used to add these to the mivn_type_defns map.
     multi_map.add(TypeCtorNA, Section - Item, !TypeDefnMap).
 
 %---------------------------------------------------------------------------%
@@ -1556,9 +1559,10 @@ class_methods_are_unchanged([Decl1 | Decls1], [Decl2 | Decls2]) :-
 
 %---------------------------------------------------------------------------%
 
-write_version_numbers(Stream, VersionNumbers, !IO) :-
-    VersionNumbers = version_numbers(TypeNameMap, TypeDefnMap,
-        InstMap, ModeMap, ClassMap, InstanceMap, PredMap, FuncMap),
+write_module_item_version_numbers(Stream, ModuleItemVersionNumbers, !IO) :-
+    ModuleItemVersionNumbers =
+        module_item_version_numbers(TypeNameMap, TypeDefnMap,
+            InstMap, ModeMap, ClassMap, InstanceMap, PredMap, FuncMap),
     ItemTypeMaybeStrs = [
         item_type_and_versions_to_string_na(type_abstract_item, TypeNameMap),
         item_type_and_versions_to_string_na(type_body_item, TypeDefnMap),
@@ -1634,11 +1638,11 @@ item_name_version_number_to_string(ItemName - VersionNumber) = Str :-
 
 %---------------------------------------------------------------------------%
 
-version_numbers_version_number = 1.
+module_item_version_numbers_version_number = 1.
 
 %---------------------------------------------------------------------------%
 
-parse_version_numbers(VersionNumbersTerm, Result) :-
+parse_module_item_version_numbers(VersionNumbersTerm, Result) :-
     ( if
         VersionNumbersTerm = term.functor(term.atom("{}"),
             VersionNumbersTermList0, _)
@@ -1658,28 +1662,28 @@ parse_version_numbers(VersionNumbersTerm, Result) :-
                     VNResult = items(ItemType, ItemVNs),
                     (
                         ItemType = type_abstract_item,
-                        VNs = VNs0 ^ vn_type_names := ItemVNs
+                        VNs = VNs0 ^ mivn_type_names := ItemVNs
                     ;
                         ItemType = type_body_item,
-                        VNs = VNs0 ^ vn_type_defns := ItemVNs
+                        VNs = VNs0 ^ mivn_type_defns := ItemVNs
                     ;
                         ItemType = inst_item,
-                        VNs = VNs0 ^ vn_insts := ItemVNs
+                        VNs = VNs0 ^ mivn_insts := ItemVNs
                     ;
                         ItemType = mode_item,
-                        VNs = VNs0 ^ vn_modes := ItemVNs
+                        VNs = VNs0 ^ mivn_modes := ItemVNs
                     ;
                         ItemType = typeclass_item,
-                        VNs = VNs0 ^ vn_typeclasses := ItemVNs
+                        VNs = VNs0 ^ mivn_typeclasses := ItemVNs
                     ;
                         ItemType = functor_item,
                         unexpected($pred, "functor_item")
                     ;
                         ItemType = predicate_item,
-                        VNs = VNs0 ^ vn_predicates := ItemVNs
+                        VNs = VNs0 ^ mivn_predicates := ItemVNs
                     ;
                         ItemType = function_item,
-                        VNs = VNs0 ^ vn_functions := ItemVNs
+                        VNs = VNs0 ^ mivn_functions := ItemVNs
                     ;
                         ItemType = mutable_item,
                         unexpected($pred, "mutable_item")
@@ -1689,13 +1693,13 @@ parse_version_numbers(VersionNumbersTerm, Result) :-
                     )
                 ;
                     VNResult = instances(InstancesVNs),
-                    VNs = VNs0 ^ vn_instances := InstancesVNs
+                    VNs = VNs0 ^ mivn_instances := InstancesVNs
                 )
             ),
-        VersionNumbers0 = init_version_numbers,
+        ModuleItemVersionNumbers0 = init_module_item_version_numbers,
         list.foldl(UpdateNamedField, NamedFields,
-            VersionNumbers0, VersionNumbers),
-        Result = ok1(VersionNumbers)
+            ModuleItemVersionNumbers0, ModuleItemVersionNumbers),
+        Result = ok1(ModuleItemVersionNumbers)
     ;
         Result0 = error1(Errors),
         Result = error1(Errors)
@@ -1760,7 +1764,7 @@ parse_key_version_number(ParseName, Term, Result) :-
             [NameTerm, ArityTerm], _),
         ParseName(NameTerm, Name),
         decimal_term_to_int(ArityTerm, Arity),
-        VersionNumber = term_to_version_number(VersionNumberTerm)
+        parse_version_number_term(VersionNumberTerm, VersionNumber)
     then
         Result = ok1(name_arity(Name, Arity) - VersionNumber)
     else
@@ -1782,7 +1786,7 @@ parse_item_version_number(ParseName, Term, Result) :-
             [NameTerm, ArityTerm], _),
         ParseName(NameTerm, SymName),
         decimal_term_to_int(ArityTerm, Arity),
-        VersionNumber = term_to_version_number(VersionNumberTerm)
+        parse_version_number_term(VersionNumberTerm, VersionNumber)
     then
         Result = ok1(item_name(SymName, Arity) - VersionNumber)
     else

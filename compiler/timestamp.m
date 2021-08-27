@@ -60,7 +60,7 @@
     % Converts a string formatted as "yyyy-mm-dd hh:mm:ss", into a timestamp.
     % Fails if the string does not have the correct format.
     %
-:- func string_to_timestamp(string) = timestamp is semidet.
+:- pred parse_timestamp_string(string::in, timestamp::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -171,7 +171,7 @@ maybe_dst_to_int(M) = N :-
 
 timestamp_to_string(timestamp(Timestamp)) = Timestamp.
 
-string_to_timestamp(Timestamp) = timestamp(Timestamp) :-
+parse_timestamp_string(Timestamp, timestamp(Timestamp)) :-
     % The if-then-else here is to force order of evaluation --
     % we need to ensure that the sanity checks occur before the
     % calls to unsafe_index. The offsets are only valid if the string

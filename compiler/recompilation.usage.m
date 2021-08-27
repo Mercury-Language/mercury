@@ -188,7 +188,7 @@ write_usage_file_2(Stream, ModuleInfo, NestedSubModules, RecompInfo,
         TimestampMap, !IO) :-
     io.write_int(Stream, used_file_version_number, !IO),
     io.write_string(Stream, ",", !IO),
-    io.write_int(Stream, version_numbers_version_number, !IO),
+    io.write_int(Stream, module_item_version_numbers_version_number, !IO),
     io.write_string(Stream, ".\n\n", !IO),
 
     module_info_get_name(ModuleInfo, ThisModuleName),
@@ -316,7 +316,7 @@ write_module_name_and_used_items(Stream, RecompInfo, TimestampMap,
         ModuleUsedItems = module_imported_items(UsedTypeNames, UsedTypeDefns,
             UsedInsts, UsedModes, UsedClasses, _UsedInstances,
             UsedPreds, UsedFuncs),
-        ModuleVersions = version_numbers(TypeNameMap, TypeDefnMap,
+        ModuleVersions = module_item_version_numbers(TypeNameMap, TypeDefnMap,
             InstMap, ModeMap, ClassMap, InstanceMap, PredMap, FuncMap),
         map.select(TypeNameMap, UsedTypeNames, UsedTypeNameMap),
         map.select(TypeDefnMap, UsedTypeDefns, UsedTypeDefnMap),
@@ -330,12 +330,13 @@ write_module_name_and_used_items(Stream, RecompInfo, TimestampMap,
         ),
         map.select(PredMap, UsedPreds, UsedPredMap),
         map.select(FuncMap, UsedFuncs, UsedFuncMap),
-        UsedModuleVersions = version_numbers(UsedTypeNameMap, UsedTypeDefnMap,
-            UsedInstMap, UsedModeMap, UsedClassMap, UsedInstanceMap,
-            UsedPredMap, UsedFuncMap),
+        UsedModuleVersions =
+            module_item_version_numbers(UsedTypeNameMap, UsedTypeDefnMap,
+                UsedInstMap, UsedModeMap, UsedClassMap, UsedInstanceMap,
+                UsedPredMap, UsedFuncMap),
 
         io.write_string(Stream, " => ", !IO),
-        write_version_numbers(Stream, UsedModuleVersions, !IO),
+        write_module_item_version_numbers(Stream, UsedModuleVersions, !IO),
         io.write_string(Stream, ".\n", !IO)
     else
         % If we don't have version numbers for a module, we just recompile

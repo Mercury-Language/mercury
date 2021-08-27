@@ -462,8 +462,10 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     check_preds_if_field_access_function(!.ModuleInfo, ItemPredDecls,
         !Specs),
 
-    ModuleVersionNumbers = AugCompUnit ^ acu_module_version_numbers_map,
-    map.foldl(add_version_numbers, ModuleVersionNumbers, !QualInfo),
+    ModuleItemVersionNumbers =
+        AugCompUnit ^ acu_module_item_version_numbers_map,
+    map.foldl(add_module_item_version_numbers, ModuleItemVersionNumbers,
+        !QualInfo),
 
     qual_info_get_mq_info(!.QualInfo, MQInfo),
     mq_info_get_found_undef_type(MQInfo, MQUndefType),
@@ -1115,23 +1117,26 @@ make_pragma_foreign_proc_export(Globals, SymName, HeadModes, CName,
 
 %---------------------------------------------------------------------------%
 
-:- pred add_version_numbers(module_name::in, version_numbers::in,
-    qual_info::in, qual_info::out) is det.
+:- pred add_module_item_version_numbers(module_name::in,
+    module_item_version_numbers::in, qual_info::in, qual_info::out) is det.
 
-add_version_numbers(ModuleName, VersionNumbers, !QualInfo) :-
+add_module_item_version_numbers(ModuleName, ModuleItemVersionNumbers,
+        !QualInfo) :-
     % Record the version numbers for each imported module
     % if smart recompilation is enabled.
     apply_to_recompilation_info(
-        update_module_version_numbers(ModuleName, VersionNumbers),
+        update_module_item_version_numbers(ModuleName,
+            ModuleItemVersionNumbers),
         !QualInfo).
 
-:- pred update_module_version_numbers(module_name::in,
-    recompilation.version_numbers::in,
+:- pred update_module_item_version_numbers(module_name::in,
+    module_item_version_numbers::in,
     recompilation_info::in, recompilation_info::out) is det.
 
-update_module_version_numbers(ModuleName, ModuleVersionNumbers, !RecompInfo) :-
+update_module_item_version_numbers(ModuleName, ModuleItemVersionNumbers,
+        !RecompInfo) :-
     VersionNumbersMap0 = !.RecompInfo ^ recomp_version_numbers,
-    map.set(ModuleName, ModuleVersionNumbers,
+    map.set(ModuleName, ModuleItemVersionNumbers,
         VersionNumbersMap0, VersionNumbersMap),
     !RecompInfo ^ recomp_version_numbers := VersionNumbersMap.
 
