@@ -2319,6 +2319,11 @@ must be a functor whose arguments (if any) are types.
 Ordinary discriminated union definitions must be @dfn{transparent}:
 all type variables occurring in the @var{body}
 must also occur in the @var{type}.
+(The reverse is not the case:
+a variable occurring in the @var{type}
+need not also occur in the @var{body}.
+Such variables are called @samp{phantom type parameters},
+and their use is explained below.)
 
 However, constructor definitions can optionally be existentially typed.
 In that case, the functor will be preceded by an existential type quantifier
@@ -2469,6 +2474,49 @@ impure
 ''
 @end example
 
+Phantom type parameters are useful when you have
+two distinct concepts that you want to keep separate,
+but for which nevertheless you want to use the representation.
+This is an example of their use, taken from the Mercury compiler:
+
+@example
+:- type var(T)
+        --->    ...
+
+:- type prog_var == var(prog_var_type).
+:- type type_var == var(type_var_type).
+
+:- type prog_var_type
+    --->    prog_var_type.
+:- type type_var_type
+    --->    type_var_type.
+@end example
+
+The @code{var} type represents the generic notion of a variable.
+It has a phantom type parameter, @code{T},
+which does not occur in the body of its type definition.
+The @code{prog_var} and @code{type_var} types represent
+two different specific kinds of variables:
+program variables, which occur in code (clauses),
+and type variables, which occur in types, respectively.
+They each bind a different type to the type parameter @code{T}.
+These types, @code{prog_var_type} and @code{type_var_type},
+each have a single function symbol of arity zero.
+This means that each type has only one value,
+which in turn means that values of these types contain no information at all.
+But containing information is not the purpose of these types.
+Their purpose is to ensure that
+if ever a computation that expects program variables
+is ever accidentally given type variables, or vice versa,
+this mismatch is detected and reported by the compiler.
+Two variables can be unified only if they have the same type.
+While two @code{prog_var}s have the same type,
+and two @code{type_var}s have the same type,
+a @code{prog_var} and @code{type_var} have different types,
+due to having different types
+(@code{prog_var_type} and @code{type_var_type})
+being bound to the phantom type parameter @code{T}.
+
 @node Equivalence types
 @subsection Equivalence types
 
@@ -2576,14 +2624,16 @@ The body of the subtype may differ from the body of its supertype in two ways.
 @item
 It may omit one or more constructor definitions.
 The ability to do this is the main motivation for the use of subtypes.
-(Since the subtype cannot @emph{add} definitions of constructors,
+
+Since the subtype cannot @emph{add} definitions of constructors,
 the set of constructor definitions in the subtype
 must be a subset of the constructors definitions in the supertype.
 We recommend that they should appear in the same relative order
-as in the supertype definition.)
+as in the supertype definition.
 @item
 It may change the types of some of the arguments of some of the constructors,
 @emph{provided} that each replacement replaces a type with one of its subtypes.
+
 Formally, this means that
 if the supertype @samp{t} has a constructor @samp{f(T1, ..., Tn)},
 and the subtype @samp{s =< t} has a constructor @samp{f(S1, ..., Sn)}.
@@ -2634,6 +2684,10 @@ on the list of parameters in @var{subtype}.
 For example, it need not have any particular relationship
 with the list of parameters
 of the principal type constructor of @var{supertype}.
+For example, @var{subtype} may have
+a phantom type parameter (@pxref{Discriminated unions})
+that does not occur in @var{supertype}.
+
 @c There should be some discussion here
 @c of the possible uses of this flexibility.
 
