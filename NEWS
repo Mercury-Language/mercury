@@ -82,6 +82,13 @@ Changes to the Mercury standard library
     - pred `digit_to_int/2`         (replacement: `decimal_digit_to_int/2`)
     - pred `int_to_digit/2`         (replacement: `int_to_decimal_digit/2`)
 
+### Changes to the `cord` module
+
+* The following predicates have been added:
+
+    - pred `foldl2/6`
+    - pred `foldl3/8`
+
 ### Changes to the `dir` module
 
 * The following predicate has been added:

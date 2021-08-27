@@ -97,6 +97,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
+:- import_module pair.
 :- import_module parser.
 :- import_module require.
 :- import_module set.
@@ -111,9 +112,9 @@ should_recompile(Globals, ModuleName, FindTargetFiles, FindTimestampFiles,
         ModulesToRecompile, HaveReadModuleMaps0, HaveReadModuleMaps, !IO) :-
     globals.lookup_bool_option(Globals, find_all_recompilation_reasons,
         FindAll),
+    ResolvedUsedItems0 = init_resolved_used_items,
     Info0 = recompilation_check_info(ModuleName, no, [], HaveReadModuleMaps0,
-        init_item_id_set(map.init, map.init, map.init),
-        set.init, some_modules([]), FindAll, []),
+        ResolvedUsedItems0, set.init, some_modules([]), FindAll, []),
     % XXX How do we know ModuleName is not an inline submodule?
     should_recompile_2(Globals, is_not_inline_submodule, FindTargetFiles,
         FindTimestampFiles, ModuleName, Info0, Info, !IO),
@@ -583,7 +584,7 @@ read_and_parse_used_items(UsedFileName, UsedFileString, MaxOffset,
         ( if
             Term = term.functor(term.atom("used_items"), UsedItemTerms, _)
         then
-            UsedItems0 = init_item_id_set(map.init, map.init, map.init),
+            UsedItems0 = init_resolved_used_items,
             ReasonsCord0 = cord.init,
             list.foldl2(parse_used_item_set, UsedItemTerms,
                 UsedItems0, UsedItems, ReasonsCord0, ReasonsCord),
@@ -621,7 +622,22 @@ parse_used_item_set(Term, !UsedItems, !Reasons) :-
             list.foldl2(parse_simple_item, ItemTerms,
                 map.init, SimpleItems, cord.init, ItemReasons),
             ( if cord.is_empty(ItemReasons) then
-                update_simple_item_set(ItemType, SimpleItems, !UsedItems)
+                (
+                    ItemType = type_abstract_item,
+                    !UsedItems ^ rui_type_names := SimpleItems
+                ;
+                    ItemType = type_body_item,
+                    !UsedItems ^ rui_type_defns := SimpleItems
+                ;
+                    ItemType = inst_item,
+                    !UsedItems ^ rui_insts := SimpleItems
+                ;
+                    ItemType = mode_item,
+                    !UsedItems ^ rui_modes := SimpleItems
+                ;
+                    ItemType = typeclass_item,
+                    !UsedItems ^ rui_typeclasses := SimpleItems
+                )
             else
                 !:Reasons = !.Reasons ++ ItemReasons
             )
@@ -632,7 +648,13 @@ parse_used_item_set(Term, !UsedItems, !Reasons) :-
             list.foldl2(parse_pred_or_func_item, ItemTerms,
                 map.init, PredOrFuncItems, cord.init, ItemReasons),
             ( if cord.is_empty(ItemReasons) then
-                update_pred_or_func_set(ItemType, PredOrFuncItems, !UsedItems)
+                (
+                    ItemType = predicate_item,
+                    !UsedItems ^ rui_predicates := PredOrFuncItems
+                ;
+                    ItemType = function_item,
+                    !UsedItems ^ rui_functions := PredOrFuncItems
+                )
             else
                 !:Reasons = !.Reasons ++ ItemReasons
             )
@@ -641,7 +663,7 @@ parse_used_item_set(Term, !UsedItems, !Reasons) :-
             list.foldl2(parse_functor_item, ItemTerms,
                 map.init, CtorItems, cord.init, ItemReasons),
             ( if cord.is_empty(ItemReasons) then
-                !UsedItems ^ functors := CtorItems
+                !UsedItems ^ rui_functors := CtorItems
             else
                 !:Reasons = !.Reasons ++ ItemReasons
             )
@@ -672,7 +694,7 @@ parse_simple_item(Term, !Set, !Reasons) :-
         list.foldl2(parse_simple_item_match, MatchTermList,
             map.init, Matches, cord.init, TermReasons),
         ( if cord.is_empty(TermReasons) then
-            map.det_insert(Name - Arity, Matches, !Set)
+            map.det_insert(name_arity(Name, Arity), Matches, !Set)
         else
             !:Reasons = !.Reasons ++ TermReasons
         )
@@ -725,7 +747,7 @@ parse_pred_or_func_item(Term, !Set, !Reasons) :-
     cord(recompile_reason)::in, cord(recompile_reason)::out) is det.
 
 parse_pred_or_func_item_match(Term, !Items, !Reasons) :-
-    PredId = invalid_pred_id,
+    InvPredId = invalid_pred_id,
     ( if
         ( if
             Term = term.functor(term.atom("=>"),
@@ -736,12 +758,12 @@ parse_pred_or_func_item_match(Term, !Items, !Reasons) :-
             list.map(
                 ( pred(MatchTerm::in, Match::out) is semidet :-
                     try_parse_sym_name_and_no_args(MatchTerm, MatchName),
-                    Match = PredId - MatchName
+                    Match = InvPredId - MatchName
                 ),
                 MatchesList, Matches)
         else
             try_parse_sym_name_and_no_args(Term, Qualifier),
-            Matches = [PredId - Qualifier]
+            Matches = [InvPredId - Qualifier]
         )
     then
         map.det_insert(Qualifier, set.list_to_set(Matches), !Items)
@@ -796,8 +818,8 @@ parse_resolved_functor(Term, !RevCtors, !Reasons) :-
         try_parse_sym_name_and_no_args(ModuleTerm, ModuleName),
         decimal_term_to_int(ArityTerm, Arity)
     then
-        PredId = invalid_pred_id,
-        Ctor = resolved_functor_pred_or_func(PredId, ModuleName, PredOrFunc,
+        InvPredId = invalid_pred_id,
+        Ctor = resolved_functor_pred_or_func(InvPredId, ModuleName, PredOrFunc,
             Arity),
         !:RevCtors = [Ctor | !.RevCtors]
     else if
@@ -1133,19 +1155,31 @@ check_imported_module(Globals, UsedModule, MaybeStoppingReason, !Info, !IO) :-
 check_module_used_items(ModuleName, RecompAvail, OldTimestamp,
         UsedVersionNumbers, NewVersionNumbers, ParseTreeSomeInt,
         !:MaybeStoppingReason, !Info) :-
-    UsedVersionNumbers = version_numbers(UsedItemVersionNumbers,
-        UsedInstanceVersionNumbers),
-    NewVersionNumbers = version_numbers(NewItemVersionNumbers,
-        NewInstanceVersionNumbers),
+    UsedVersionNumbers = version_numbers(UsedTypeNameMap, UsedTypeDefnMap,
+        UsedInstMap, UsedModeMap, UsedClassMap, UsedInstanceMap,
+        UsedPredMap, UsedFuncMap),
+    NewVersionNumbers = version_numbers(NewTypeNameMap, NewTypeDefnMap,
+        NewInstMap, NewModeMap, NewClassMap, NewInstanceMap,
+        NewPredMap, NewFuncMap),
 
     !:MaybeStoppingReason = no,
     % Check whether any of the items which were used have changed.
-    list.foldl2(
-        check_item_version_numbers(ModuleName, UsedItemVersionNumbers,
-            NewItemVersionNumbers),
-        [type_abstract_item, type_body_item, inst_item, mode_item,
-            typeclass_item, predicate_item, function_item],
-        !MaybeStoppingReason, !Info),
+    check_name_arity_version_numbers(ModuleName, type_abstract_item,
+        UsedTypeNameMap, NewTypeNameMap, !MaybeStoppingReason, !Info),
+    check_name_arity_version_numbers(ModuleName, type_body_item,
+        UsedTypeDefnMap, NewTypeDefnMap, !MaybeStoppingReason, !Info),
+    check_name_arity_version_numbers(ModuleName, inst_item,
+        UsedInstMap, NewInstMap, !MaybeStoppingReason, !Info),
+    check_name_arity_version_numbers(ModuleName, mode_item,
+        UsedModeMap, NewModeMap, !MaybeStoppingReason, !Info),
+    check_name_arity_version_numbers(ModuleName, typeclass_item,
+        UsedClassMap, NewClassMap, !MaybeStoppingReason, !Info),
+    check_item_name_version_numbers(ModuleName,
+        UsedInstanceMap, NewInstanceMap, !MaybeStoppingReason, !Info),
+    check_name_arity_version_numbers(ModuleName, predicate_item,
+        UsedPredMap, NewPredMap, !MaybeStoppingReason, !Info),
+    check_name_arity_version_numbers(ModuleName, function_item,
+        UsedFuncMap, NewFuncMap, !MaybeStoppingReason, !Info),
 
     % Check whether added or modified items could cause name resolution
     % ambiguities with items which were used.
@@ -1155,39 +1189,32 @@ check_module_used_items(ModuleName, RecompAvail, OldTimestamp,
         ItemInstDefns, ItemModeDefns, ItemTypeClasses, ItemPredDecls),
     check_items_for_ambiguities(
         check_type_defn_info_for_ambiguities(RecompAvail, OldTimestamp,
-            UsedItemVersionNumbers),
+            UsedVersionNumbers),
         ItemTypeDefns, !MaybeStoppingReason, !Info),
     check_items_for_ambiguities(
         check_inst_defn_info_for_ambiguities(RecompAvail, OldTimestamp,
-            UsedItemVersionNumbers),
+            UsedVersionNumbers),
         ItemInstDefns, !MaybeStoppingReason, !Info),
     check_items_for_ambiguities(
         check_mode_defn_info_for_ambiguities(RecompAvail, OldTimestamp,
-            UsedItemVersionNumbers),
+            UsedVersionNumbers),
         ItemModeDefns, !MaybeStoppingReason, !Info),
     check_items_for_ambiguities(
         check_typeclass_info_for_ambiguities(RecompAvail, OldTimestamp,
-            UsedItemVersionNumbers),
+            UsedVersionNumbers),
         ItemTypeClasses, !MaybeStoppingReason, !Info),
     check_items_for_ambiguities(
         check_pred_decl_info_for_ambiguities(RecompAvail, OldTimestamp,
-            UsedItemVersionNumbers),
+            UsedVersionNumbers),
         ItemPredDecls, !MaybeStoppingReason, !Info),
-
-    % Check whether any instances of used typeclasses have been added,
-    % removed or changed.
-    check_instance_version_numbers(ModuleName, UsedInstanceVersionNumbers,
-        NewInstanceVersionNumbers, !MaybeStoppingReason, !Info),
 
     (
         !.MaybeStoppingReason = yes(_)
     ;
         !.MaybeStoppingReason = no,
         % Check for new instances for used typeclasses.
-        ModuleInstances = set.sorted_list_to_set(
-            map.sorted_keys(NewInstanceVersionNumbers)),
-        UsedInstances = set.sorted_list_to_set(
-            map.sorted_keys(UsedInstanceVersionNumbers)),
+        ModuleInstances = map.keys_as_set(NewInstanceMap),
+        UsedInstances = map.keys_as_set(UsedInstanceMap),
 
         UsedClasses = !.Info ^ rci_used_typeclasses,
         set.difference(set.intersect(UsedClasses, ModuleInstances),
@@ -1204,48 +1231,44 @@ check_module_used_items(ModuleName, RecompAvail, OldTimestamp,
         )
     ).
 
-:- func make_item_id(module_name, item_type, pair(string, arity)) = item_id.
+:- func make_item_id(module_name, item_type, name_arity) = item_id.
 
-make_item_id(Module, ItemType, Name - Arity) =
+make_item_id(Module, ItemType, name_arity(Name, Arity)) =
     item_id(ItemType, item_name(qualified(Module, Name), Arity)).
 
 %---------------------------------------------------------------------------%
 
-:- pred check_item_version_numbers(module_name::in, item_version_numbers::in,
-    item_version_numbers::in, item_type::in,
+:- pred check_name_arity_version_numbers(module_name::in, item_type::in,
+    name_arity_version_map::in, name_arity_version_map::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_item_version_numbers(ModuleName, UsedVersionNumbers, NewVersionNumbers,
-        ItemType, !MaybeStoppingReason, !Info) :-
+check_name_arity_version_numbers(ModuleName, ItemType,
+        UsedVersionMap, NewVersionMap, !MaybeStoppingReason, !Info) :-
     (
         !.MaybeStoppingReason = yes(_)
     ;
         !.MaybeStoppingReason = no,
-        NewItemTypeVersionNumbers = extract_ids(NewVersionNumbers, ItemType),
         map.foldl2(
-            check_item_version_number(ModuleName,
-                NewItemTypeVersionNumbers, ItemType),
-            extract_ids(UsedVersionNumbers, ItemType),
-            no, !:MaybeStoppingReason, !Info)
+            check_name_arity_version_number(ModuleName, ItemType,
+                NewVersionMap),
+            UsedVersionMap, !MaybeStoppingReason, !Info)
     ).
 
-:- pred check_item_version_number(module_name::in, version_number_map::in,
-    item_type::in, pair(string, arity)::in, version_number::in,
+:- pred check_name_arity_version_number(module_name::in, item_type::in,
+    name_arity_version_map::in, name_arity::in, version_number::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_item_version_number(ModuleName, NewItemTypeVersionNumbers, ItemType,
+check_name_arity_version_number(ModuleName, ItemType, NewVersionMap,
         NameArity, UsedVersionNumber, !MaybeStoppingReason, !Info) :-
     (
         !.MaybeStoppingReason = yes(_)
     ;
         !.MaybeStoppingReason = no,
-        ( if
-            map.search(NewItemTypeVersionNumbers, NameArity, NewVersionNumber)
-        then
+        ( if map.search(NewVersionMap, NameArity, NewVersionNumber) then
             ( if NewVersionNumber = UsedVersionNumber then
-                !:MaybeStoppingReason = no
+                true
             else
                 ItemId = make_item_id(ModuleName, ItemType, NameArity),
                 Reason = recompile_for_changed_item(ItemId),
@@ -1259,41 +1282,42 @@ check_item_version_number(ModuleName, NewItemTypeVersionNumbers, ItemType,
         )
     ).
 
-:- pred check_instance_version_numbers(module_name::in,
-    instance_version_numbers::in, instance_version_numbers::in,
+:- pred check_item_name_version_numbers(module_name::in,
+    item_name_version_map::in, item_name_version_map::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_instance_version_numbers(ModuleName, UsedInstanceVersionNumbers,
-        NewInstanceVersionNumbers, !MaybeStoppingReason, !Info) :-
+check_item_name_version_numbers(ModuleName, UsedVersionMap, NewVersionMap,
+        !MaybeStoppingReason, !Info) :-
     map.foldl2(
-        check_instance_version_number(ModuleName, NewInstanceVersionNumbers),
-        UsedInstanceVersionNumbers, !MaybeStoppingReason, !Info).
+        check_item_name_version_number(ModuleName, NewVersionMap),
+        UsedVersionMap, !MaybeStoppingReason, !Info).
 
-:- pred check_instance_version_number(module_name::in,
-    instance_version_numbers::in, item_name::in, version_number::in,
+:- pred check_item_name_version_number(module_name::in,
+    item_name_version_map::in, item_name::in, version_number::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_instance_version_number(ModuleName, NewInstanceVersionNumbers,
-        ClassId, UsedVersionNumber, !MaybeStoppingReason, !Info) :-
+check_item_name_version_number(ModuleName, NewVersionMap,
+        ItemName, UsedVersionNumber, !MaybeStoppingReason, !Info) :-
     (
         !.MaybeStoppingReason = yes(_)
     ;
         !.MaybeStoppingReason = no,
-        ( if
-            map.search(NewInstanceVersionNumbers, ClassId, NewVersionNumber)
-        then
+        ( if map.search(NewVersionMap, ItemName, NewVersionNumber) then
             ( if UsedVersionNumber = NewVersionNumber then
-                !:MaybeStoppingReason = no
+                true
             else
+                % XXX RECOMP In the same circumstance, the name_arity version
+                % of this predicate above returns recompile_for_changed_item,
+                % with no "_or_added".
                 Reason = recompile_for_changed_or_added_instance(ModuleName,
-                    ClassId),
+                    ItemName),
                 record_recompilation_reason(Reason, !:MaybeStoppingReason,
                     !Info)
             )
         else
-            Reason = recompile_for_removed_instance(ModuleName, ClassId),
+            Reason = recompile_for_removed_instance(ModuleName, ItemName),
             record_recompilation_reason(Reason, !:MaybeStoppingReason, !Info)
         )
     ).
@@ -1323,7 +1347,7 @@ check_items_for_ambiguities(CheckPred, [HeadItem | TailItems],
 %---------------------%
 
 :- pred check_type_defn_info_for_ambiguities(recomp_avail::in, timestamp::in,
-    item_version_numbers::in, item_type_defn_info::in,
+    version_numbers::in, item_type_defn_info::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
@@ -1333,7 +1357,7 @@ check_type_defn_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
         _, _, _),
     list.length(TypeParams, TypeArity),
     check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
-        VersionNumbers, type_abstract_item, TypeSymName, TypeArity,
+        VersionNumbers ^ vn_type_names, type_abstract_item, TypeSymName, TypeArity,
         NeedsCheck, !MaybeStoppingReason, !Info),
     (
         NeedsCheck = yes,
@@ -1347,7 +1371,7 @@ check_type_defn_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
 %---------------------%
 
 :- pred check_inst_defn_info_for_ambiguities(recomp_avail::in, timestamp::in,
-    item_version_numbers::in, item_inst_defn_info::in,
+    version_numbers::in, item_inst_defn_info::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
@@ -1357,13 +1381,14 @@ check_inst_defn_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
     ItemInstDefn = item_inst_defn_info(InstSymName, InstParams,
         _MaybeForTypeCtor, _, _, _, _),
     list.length(InstParams, InstArity),
-    check_for_simple_item_ambiguity(RecompAvail, OldTimestamp, VersionNumbers,
-        inst_item, InstSymName, InstArity, _, !MaybeStoppingReason, !Info).
+    check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
+        VersionNumbers ^ vn_insts, inst_item, InstSymName, InstArity,
+        _NeedsCheck, !MaybeStoppingReason, !Info).
 
 %---------------------%
 
 :- pred check_mode_defn_info_for_ambiguities(recomp_avail::in, timestamp::in,
-    item_version_numbers::in, item_mode_defn_info::in,
+    version_numbers::in, item_mode_defn_info::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
@@ -1371,13 +1396,14 @@ check_mode_defn_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
         ItemModeDefn, !MaybeStoppingReason, !Info) :-
     ItemModeDefn = item_mode_defn_info(ModeSymName, ModeParams, _, _, _, _),
     list.length(ModeParams, ModeArity),
-    check_for_simple_item_ambiguity(RecompAvail, OldTimestamp, VersionNumbers,
-        mode_item, ModeSymName, ModeArity, _, !MaybeStoppingReason, !Info).
+    check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
+        VersionNumbers ^ vn_modes, mode_item, ModeSymName, ModeArity,
+        _NeedsCheck, !MaybeStoppingReason, !Info).
 
 %---------------------%
 
 :- pred check_typeclass_info_for_ambiguities(recomp_avail::in,
-    timestamp::in, item_version_numbers::in, item_typeclass_info::in,
+    timestamp::in, version_numbers::in, item_typeclass_info::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
@@ -1387,7 +1413,8 @@ check_typeclass_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
         _, _, Interface, _, _, _),
     list.length(TypeClassParams, TypeClassArity),
     check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
-        VersionNumbers, typeclass_item, TypeClassSymName, TypeClassArity,
+        VersionNumbers ^ vn_typeclasses, typeclass_item,
+        TypeClassSymName, TypeClassArity,
         NeedsCheck, !MaybeStoppingReason, !Info),
     ( if
         NeedsCheck = yes,
@@ -1402,7 +1429,7 @@ check_typeclass_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
     ).
 
 :- pred check_class_decl_for_ambiguities(recomp_avail::in,
-    timestamp::in, item_version_numbers::in, class_decl::in,
+    timestamp::in, version_numbers::in, class_decl::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
@@ -1422,7 +1449,7 @@ check_class_decl_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
 %---------------------%
 
 :- pred check_pred_decl_info_for_ambiguities(recomp_avail::in,
-    timestamp::in, item_version_numbers::in, item_pred_decl_info::in,
+    timestamp::in, version_numbers::in, item_pred_decl_info::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
@@ -1437,40 +1464,54 @@ check_pred_decl_info_for_ambiguities(RecompAvail, OldTimestamp,
 %---------------------------------------------------------------------------%
 
 :- pred check_for_simple_item_ambiguity(recomp_avail::in,
-    timestamp::in, item_version_numbers::in, item_type::in(simple_item),
+    timestamp::in, name_arity_version_map::in, item_type::in(simple_item),
     sym_name::in, arity::in, bool::out,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_for_simple_item_ambiguity(RecompAvail, UsedFileTimestamp,
-        VersionNumbers, ItemType, SymName, Arity, NeedsCheck,
+        VersionMap, ItemType, SymName, Arity, NeedsCheck,
         !MaybeStoppingReason, !Info) :-
     (
         !.MaybeStoppingReason = yes(_),
-        % Since we have found a reason to recompile, we don't need to look for
-        % more reasons.
+        % Since we have found a reason to recompile, we don't need to look
+        % for more reasons.
         NeedsCheck = no
     ;
         !.MaybeStoppingReason = no,
         ( if
-            item_is_new_or_changed(UsedFileTimestamp, VersionNumbers,
-                ItemType, SymName, Arity)
+            item_is_new_or_changed(UsedFileTimestamp, VersionMap,
+                SymName, Arity)
         then
             NeedsCheck = yes,
             UsedItems = !.Info ^ rci_used_items,
-            UsedItemMap = extract_simple_item_set(UsedItems, ItemType),
-            Name = unqualify_name(SymName),
-            ( if map.search(UsedItemMap, Name - Arity, MatchingQualifiers) then
+            (
+                ItemType = type_abstract_item,
+                UsedItemMap = UsedItems ^ rui_type_names
+            ;
+                ItemType = type_body_item,
+                unexpected($pred, "type_body_item")
+            ;
+                ItemType = inst_item,
+                UsedItemMap = UsedItems ^ rui_insts
+            ;
+                ItemType = mode_item,
+                UsedItemMap = UsedItems ^ rui_modes
+            ;
+                ItemType = typeclass_item,
+                UsedItemMap = UsedItems ^ rui_typeclasses
+            ),
+            NameArity = name_arity(unqualify_name(SymName), Arity),
+            ( if map.search(UsedItemMap, NameArity, MatchingQualifiers) then
                 map.foldl2(
                     check_for_simple_item_ambiguity_2(ItemType,
                         RecompAvail, SymName, Arity),
-                    MatchingQualifiers, no, !:MaybeStoppingReason, !Info)
+                    MatchingQualifiers, !MaybeStoppingReason, !Info)
             else
-                !:MaybeStoppingReason = no
+                true
             )
         else
-            NeedsCheck = no,
-            !:MaybeStoppingReason = no
+            NeedsCheck = no
         )
     ).
 
@@ -1490,8 +1531,8 @@ check_for_simple_item_ambiguity_2(ItemType, RecompAvail, SymName, Arity,
         Name = unqualify_name(SymName),
         ( if
             % XXX RECOMP401 This logic is ancient, and may do the wrong thing
-            % with most values of RecompAvail, since they those values did not
-            % exist when the original version of this was written.
+            % with most values of RecompAvail, since those values did not exist
+            % when the original version of this code was written.
             ( RecompAvail = recomp_avail_int_use
             ; RecompAvail = recomp_avail_imp_use
             ),
@@ -1499,7 +1540,7 @@ check_for_simple_item_ambiguity_2(ItemType, RecompAvail, SymName, Arity,
             % names but that hopefully won't come up too often.
             OldModuleQualifier = unqualified("")
         then
-            !:MaybeStoppingReason = no
+            true
         else if
             QualifiedName = module_qualify_name(OldModuleQualifier, Name),
             partial_sym_name_matches_full(QualifiedName, SymName),
@@ -1511,20 +1552,16 @@ check_for_simple_item_ambiguity_2(ItemType, RecompAvail, SymName, Arity,
                 [item_id(ItemType, item_name(OldMatchingName, Arity))]),
             record_recompilation_reason(Reason, !:MaybeStoppingReason, !Info)
         else
-            !:MaybeStoppingReason = no
+            true
         )
     ).
 
-:- pred item_is_new_or_changed(timestamp::in, item_version_numbers::in,
-    item_type::in, sym_name::in, arity::in) is semidet.
+:- pred item_is_new_or_changed(timestamp::in, name_arity_version_map::in,
+    sym_name::in, arity::in) is semidet.
 
-item_is_new_or_changed(UsedFileTimestamp, UsedVersionNumbers,
-        ItemType, SymName, Arity) :-
-    Name = unqualify_name(SymName),
-    ( if
-        map.search(extract_ids(UsedVersionNumbers, ItemType), Name - Arity,
-            UsedVersionNumber)
-    then
+item_is_new_or_changed(UsedFileTimestamp, UsedVersionMap, SymName, Arity) :-
+    NameArity = name_arity(unqualify_name(SymName), Arity),
+    ( if map.search(UsedVersionMap, NameArity, UsedVersionNumber) then
         % XXX This assumes that version numbers are timestamps.
         compare((>), UsedVersionNumber, UsedFileTimestamp)
     else
@@ -1532,7 +1569,7 @@ item_is_new_or_changed(UsedFileTimestamp, UsedVersionNumbers,
     ).
 
 :- pred check_for_pred_or_func_item_ambiguity(bool::in,
-    recomp_avail::in, timestamp::in, item_version_numbers::in,
+    recomp_avail::in, timestamp::in, version_numbers::in,
     pred_or_func::in, sym_name::in,
     list(type_and_mode)::in, maybe(mer_type)::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
@@ -1552,17 +1589,33 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompAvail, OldTimestamp,
             WithType = yes(_),
             Arity = list.length(Args)
         ),
-        ItemType = pred_or_func_to_item_type(PredOrFunc),
         ( if
             (
                 NeedsCheck = yes
             ;
-                item_is_new_or_changed(OldTimestamp, VersionNumbers,
-                    ItemType, SymName, Arity)
+                (
+                    PredOrFunc = pf_predicate,
+                    PredMap = VersionNumbers ^ vn_predicates,
+                    item_is_new_or_changed(OldTimestamp, PredMap,
+                        SymName, Arity)
+                ;
+                    PredOrFunc = pf_function,
+                    FuncMap = VersionNumbers ^ vn_functions,
+                    item_is_new_or_changed(OldTimestamp, FuncMap,
+                        SymName, Arity)
+                )
             )
         then
             UsedItems = !.Info ^ rci_used_items,
-            UsedItemMap = extract_pred_or_func_set(UsedItems, ItemType),
+            (
+                PredOrFunc = pf_predicate,
+                ItemType = predicate_item,
+                UsedItemMap = UsedItems ^ rui_predicates
+            ;
+                PredOrFunc = pf_function,
+                ItemType = function_item,
+                UsedItemMap = UsedItems ^ rui_functions
+            ),
             Name = unqualify_name(SymName),
             ( if map.search(UsedItemMap, Name, MatchingArityList) then
                 list.foldl2(
@@ -1572,7 +1625,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompAvail, OldTimestamp,
             else
                 !:MaybeStoppingReason = no
             ),
-            PredId = invalid_pred_id,
+            InvPredId = invalid_pred_id,
             (
                 SymName = qualified(ModuleName, _),
                 (
@@ -1583,7 +1636,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompAvail, OldTimestamp,
                     WithType = no,
                     AritiesToMatch = match_arity_less_than_or_equal(Arity)
                 ),
-                ResolvedFunctor = resolved_functor_pred_or_func(PredId,
+                ResolvedFunctor = resolved_functor_pred_or_func(InvPredId,
                     ModuleName, PredOrFunc, Arity),
                 check_functor_ambiguities_by_name(RecompAvail, SymName,
                     AritiesToMatch, ResolvedFunctor,
@@ -1755,7 +1808,7 @@ check_functor_ambiguities_by_name(RecompAvail, Name, MatchArity, ResolvedCtor,
         !.MaybeStoppingReason = no,
         UsedItems = !.Info ^ rci_used_items,
         UnqualName = unqualify_name(Name),
-        UsedCtors = UsedItems ^ functors,
+        UsedCtors = UsedItems ^ rui_functors,
         ( if map.search(UsedCtors, UnqualName, UsedCtorAL) then
             check_functor_ambiguities_2(RecompAvail, Name, MatchArity,
                 ResolvedCtor, UsedCtorAL, no, !:MaybeStoppingReason, !Info)

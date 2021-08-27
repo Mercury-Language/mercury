@@ -38,7 +38,6 @@
 :- import_module io.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module set.
 :- import_module term.
 
@@ -48,12 +47,27 @@
 
     % Identify a particular version of a program item.
     % This could be done using a timestamp or a hash value.
+    %
+    % XXX RECOMP We had a thread on m-rev on .used files starting on 2021-04-19
+    % on replacing this with two separate representations of time: a binary one
+    % containing seconds since the epoch, plus any sub-second-precision
+    % information the OS may offer, and a text one for the readability
+    % of .used files.
+    %
 :- type version_number == timestamp.
 
+    % XXX RECOMP Rename to parse_version_number_term.
+    % XXX RECOMP Make a semidet PREDICATE.
 :- func term_to_version_number(term(T)) = version_number is semidet.
 
+    % XXX RECOMP Rename to parse_timestamp_term.
+    % XXX RECOMP Make a semidet PREDICATE.
 :- func term_to_timestamp(term(T)) = timestamp is semidet.
 
+    % XXX RECOMP Transition from calls to write_version_number
+    % to calls to version_number_to_string.
+    %
+:- func version_number_to_string(version_number) = string.
 :- pred write_version_number(io.text_output_stream::in, version_number::in,
     io::di, io::uo) is det.
 
@@ -73,6 +87,14 @@
 :- type item_name
     --->    item_name(sym_name, arity).
 
+    % XXX RECOMP Consider splitting this type into two or more types,
+    % one for each separate purpose. We use this, amongst other things,
+    % for selecting one field from several data structures (module_versions,
+    % used_items, resolved_used_items, module_imported_items, and
+    % gathered_items) which have similar but NOT IDENTICAL sets of fields,
+    % so some of these item_types *have* no corresponding field in some
+    % of those structures.
+    %
 :- type item_type
     --->    type_abstract_item
             % Just the name of the type, not its body. It is common
@@ -81,8 +103,8 @@
             % recompiled if the body of the type changes (except for
             % equivalence types).
     ;       type_body_item
-    ;       mode_item
     ;       inst_item
+    ;       mode_item
     ;       typeclass_item
     ;       functor_item        % The RHS of a var-functor unification.
     ;       predicate_item
@@ -93,8 +115,8 @@
 :- inst simple_item for item_type/0
     --->    type_abstract_item
     ;       type_body_item
-    ;       mode_item
     ;       inst_item
+    ;       mode_item
     ;       typeclass_item.
 
 :- inst pred_or_func_item for item_type/0
@@ -103,11 +125,6 @@
 
 :- func pred_or_func_to_item_type(pred_or_func::in)
     = (item_type::out(pred_or_func_item)) is det.
-
-:- pred is_simple_item_type(item_type::(ground >> simple_item)) is semidet.
-
-:- pred is_pred_or_func_item_type(item_type::(ground >> pred_or_func_item))
-    is semidet.
 
 :- pred string_to_item_type(string, item_type).
 :- mode string_to_item_type(in, out) is semidet.
@@ -144,96 +161,60 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type item_id_set(Map, Set, Cons)
-    --->    item_id_set(
-                types           :: Map,
-                type_bodies     :: Map,
-                modes           :: Map,
-                insts           :: Map,
-                typeclasses     :: Map,
-                functors        :: Cons,
-                predicates      :: Set,
-                functions       :: Set,
-                mutables        :: Set,
-                foreign_procs   :: Set
-            ).
-
-:- type item_id_set(T) == item_id_set(T, T, T).
-
-:- func init_item_id_set(T) = item_id_set(T).
-
-:- func init_item_id_set(Simple, PorF, Cons) = item_id_set(Simple, PorF, Cons).
-
-%-----------------------------------------------------------------------------%
-
     % A simple_item_set records the single possible match for an item.
     %
-:- type simple_item_set ==
-    map(pair(string, arity), map(module_qualifier, module_name)).
-
-    % For constructors, predicates and functions, we can't work out
-    % which item is actually used until we have run typechecking.
+    % XXX RECOMP RENAME The type name should reflect that fact.
     %
-:- type pred_or_func_set == simple_item_set.
-
-:- type functor_set == simple_item_set.
+:- type simple_item_set == map(name_arity, map(module_qualifier, module_name)).
 
     % Items which are used by local items.
-:- type used_items ==
-    item_id_set(
-        simple_item_set,
-        pred_or_func_set,
-        functor_set
-    ).
+    %
+    % XXX That "documentation" is not exactly complete ...
+    %
+:- type used_items
+    --->    used_items(
+                used_type_names     :: simple_item_set,
+                used_type_defns     :: simple_item_set,
+                used_insts          :: simple_item_set,
+                used_modes          :: simple_item_set,
+                used_typeclasses    :: simple_item_set,
+                used_functors       :: simple_item_set,
+                used_predicates     :: simple_item_set,
+                used_functions      :: simple_item_set
+            ).
 
 :- func init_used_items = used_items.
 
 %-----------------------------------------------------------------------------%
-%
-% Access functions for item_id_sets.
-%
-
-:- func extract_simple_item_set(item_id_set(Simple, PorF, Cons)::in,
-    item_type::in(simple_item)) = (Simple::out) is det.
-
-:- pred update_simple_item_set(item_type::in(simple_item), Simple::in,
-    item_id_set(Simple, PorF, Cons)::in,
-    item_id_set(Simple, PorF, Cons)::out) is det.
-
-:- func extract_pred_or_func_set(item_id_set(Simple, PorF, Cons)::in,
-    item_type::in(pred_or_func_item)) = (PorF::out) is det.
-
-:- pred update_pred_or_func_set(item_type::in(pred_or_func_item), PorF::in,
-    item_id_set(Simple, PorF, Cons)::in,
-    item_id_set(Simple, PorF, Cons)::out) is det.
-
-:- func extract_ids(item_id_set(T), item_type) = T.
-
-:- pred update_ids(item_type::in, T::in,
-    item_id_set(T)::in, item_id_set(T)::out) is det.
-
-:- func map_ids((func(item_type, T) = U), item_id_set(T), U) = item_id_set(U).
-
-%-----------------------------------------------------------------------------%
-
-    % Version numbers for items in a single module.
-:- type version_numbers
-    --->    version_numbers(
-                item_version_numbers,
-                instance_version_numbers
-            ).
 
     % Map modules' names to their version number info.
 :- type module_version_numbers_map == map(module_name, version_numbers).
 
-    % The constructors set should always be empty -
-    % constructors are never imported separately.
-:- type item_version_numbers == item_id_set(version_number_map).
+    % Version numbers for items in a single module.
+    %
+    % XXX RECOMP RENAME Should be called *module*_version_numbers.
+    %
+    % XXX The comment on the type of the predecessor of the vn_instances field
+    % said: "For each interface file, we keep a version number for each class",
+    % which is quite confusing.
+    %
+:- type version_numbers
+    --->    version_numbers(
+                vn_type_names       :: name_arity_version_map,
+                vn_type_defns       :: name_arity_version_map,
+                vn_insts            :: name_arity_version_map,
+                vn_modes            :: name_arity_version_map,
+                vn_typeclasses      :: name_arity_version_map,
+                vn_instances        :: item_name_version_map,
+                vn_predicates       :: name_arity_version_map,
+                vn_functions        :: name_arity_version_map
+            ).
 
-:- type version_number_map == map(pair(string, arity), version_number).
+:- type name_arity_version_map == map(name_arity, version_number).
 
-    % For each interface file, we keep a version number for each class.
-:- type instance_version_numbers == map(item_name, version_number).
+:- type item_name_version_map == map(item_name, version_number).
+
+:- func init_version_numbers = version_numbers.
 
 %-----------------------------------------------------------------------------%
 
@@ -246,7 +227,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % recompilation.add_used_item(ItemType, UnqualifiedId, QualifiedId,
+    % record_used_item(ItemType, UnqualifiedId, QualifiedId,
     %   !Info).
     %
     % Record a reference to UnqualifiedId, for which QualifiedId
@@ -272,9 +253,19 @@
 
 %-----------------------------------------------------------------------------%
 
+    % XXX RECOMP RENAME It is the eqv_expanded_item_set type that plays
+    % the role that X_info types (for X = polymorphism, simplify etc)
+    % play in the rest of the compiler, in that it contains a data structure
+    % that is threaded through a set of predicates (a) to give them the
+    % info they need to do their jobs, and (b) to collect their observations.
+    %
 :- type eqv_expanded_info == maybe(eqv_expanded_item_set).
 :- type eqv_expanded_item_set
     --->    eqv_expanded_item_set(module_name, set(item_id)).
+            % The module_name field contains the name of the module
+            % currently being compiled.
+            %
+            % XXX Document the meaning of the second field.
 
     % For smart recompilation we need to record which items were expanded
     % in each declaration. Any items which depend on that declaration also
@@ -298,6 +289,7 @@
 
 :- import_module list.
 :- import_module require.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -306,33 +298,27 @@ term_to_version_number(Term) = term_to_timestamp(Term).
 term_to_timestamp(term.functor(term.string(TimestampString), [], _)) =
     string_to_timestamp(TimestampString).
 
+version_number_to_string(VersionNumber) = VersionNumberStr :-
+    string.format("""%s""", [s(timestamp_to_string(VersionNumber))],
+        VersionNumberStr).
+
 write_version_number(Stream, VersionNumber, !IO) :-
-    io.write_string(Stream, """", !IO),
-    io.write_string(Stream, timestamp_to_string(VersionNumber), !IO),
-    io.write_string(Stream, """", !IO).
+    VersionNumberStr = version_number_to_string(VersionNumber),
+    io.write_string(Stream, VersionNumberStr, !IO).
 
 %-----------------------------------------------------------------------------%
 
 pred_or_func_to_item_type(pf_predicate) = predicate_item.
 pred_or_func_to_item_type(pf_function) = function_item.
 
-is_simple_item_type(type_abstract_item).
-is_simple_item_type(type_body_item).
-is_simple_item_type(inst_item).
-is_simple_item_type(mode_item).
-is_simple_item_type(typeclass_item).
-
-is_pred_or_func_item_type(predicate_item).
-is_pred_or_func_item_type(function_item).
-
 string_to_item_type("type", type_abstract_item).
 string_to_item_type("type_body", type_body_item).
 string_to_item_type("inst", inst_item).
 string_to_item_type("mode", mode_item).
 string_to_item_type("typeclass", typeclass_item).
+string_to_item_type("functor", functor_item).
 string_to_item_type("predicate", predicate_item).
 string_to_item_type("function", function_item).
-string_to_item_type("functor", functor_item).
 string_to_item_type("mutable", mutable_item).
 string_to_item_type("foreign_proc", foreign_proc_item).
 
@@ -347,94 +333,56 @@ item_name_to_mode_ctor(item_name(SymName, Arity)) = mode_ctor(SymName, Arity).
 %-----------------------------------------------------------------------------%
 
 init_recompilation_info(ModuleName) =
-    recompilation_info(
-        ModuleName,
-        init_used_items,
-        map.init,
-        map.init
-    ).
+    recompilation_info(ModuleName, init_used_items, map.init, map.init).
 
-init_item_id_set(Init) =
-    item_id_set(Init, Init, Init, Init, Init, Init, Init, Init, Init, Init).
+init_used_items =
+    used_items(map.init, map.init, map.init, map.init, map.init, map.init,
+        map.init, map.init).
 
-init_item_id_set(Simple, PorF, Cons) =
-    item_id_set(Simple, Simple, Simple, Simple, Simple, Cons, PorF, PorF,
-        PorF, PorF).
+:- func get_used_item_ids(used_items, item_type) = simple_item_set.
 
-init_used_items = item_id_set(map.init, map.init, map.init, map.init,
-    map.init, map.init, map.init, map.init, map.init, map.init).
+get_used_item_ids(Used, type_abstract_item) = Used ^ used_type_names.
+get_used_item_ids(Used, type_body_item) = Used ^ used_type_defns.
+get_used_item_ids(Used, inst_item) = Used ^ used_insts.
+get_used_item_ids(Used, mode_item) = Used ^ used_modes.
+get_used_item_ids(Used, typeclass_item) = Used ^ used_typeclasses.
+get_used_item_ids(Used, functor_item) = Used ^ used_functors.
+get_used_item_ids(Used, predicate_item) = Used ^ used_predicates.
+get_used_item_ids(Used, function_item) = Used ^ used_functions.
+get_used_item_ids(_Used, mutable_item) = _ :-
+    unexpected($pred, "mutable_item").
+get_used_item_ids(_Used, foreign_proc_item) = _ :-
+    unexpected($pred, "foreign_proc_item").
 
-extract_simple_item_set(ItemIdSet, type_abstract_item) = ItemIdSet ^ types.
-extract_simple_item_set(ItemIdSet, type_body_item) = ItemIdSet ^ type_bodies.
-extract_simple_item_set(ItemIdSet, mode_item) = ItemIdSet ^ modes.
-extract_simple_item_set(ItemIdSet, inst_item) = ItemIdSet ^ insts.
-extract_simple_item_set(ItemIdSet, typeclass_item) = ItemIdSet ^ typeclasses.
+:- pred set_used_item_ids(item_type::in, simple_item_set::in,
+    used_items::in, used_items::out) is det.
 
-update_simple_item_set(type_abstract_item, IdMap, !ItemIdSet) :-
-    !ItemIdSet ^ types := IdMap.
-update_simple_item_set(type_body_item, IdMap, !ItemIdSet) :-
-    !ItemIdSet ^ type_bodies := IdMap.
-update_simple_item_set(mode_item, IdMap, !ItemIdSet) :-
-    !ItemIdSet ^ modes := IdMap.
-update_simple_item_set(inst_item, IdMap, !ItemIdSet) :-
-    !ItemIdSet ^ insts := IdMap.
-update_simple_item_set(typeclass_item, IdMap, !ItemIdSet) :-
-    !ItemIdSet ^ typeclasses := IdMap.
+set_used_item_ids(type_abstract_item, IdMap, !Used) :-
+    !Used ^ used_type_names := IdMap.
+set_used_item_ids(type_body_item, IdMap, !Used) :-
+    !Used ^ used_type_defns := IdMap.
+set_used_item_ids(inst_item, IdMap, !Used) :-
+    !Used ^ used_insts := IdMap.
+set_used_item_ids(mode_item, IdMap, !Used) :-
+    !Used ^ used_modes := IdMap.
+set_used_item_ids(typeclass_item, IdMap, !Used) :-
+    !Used ^ used_typeclasses := IdMap.
+set_used_item_ids(functor_item, IdMap, !Used) :-
+    !Used ^ used_functors := IdMap.
+set_used_item_ids(predicate_item, IdMap, !Used) :-
+    !Used ^ used_predicates := IdMap.
+set_used_item_ids(function_item, IdMap, !Used) :-
+    !Used ^ used_functions := IdMap.
+set_used_item_ids(mutable_item, _IdMap, !Used) :-
+    unexpected($pred, "mutable_item").
+set_used_item_ids(foreign_proc_item, _IdMap, !Used) :-
+    unexpected($pred, "foreign_proc_item").
 
-extract_pred_or_func_set(ItemIdSet, predicate_item) = ItemIdSet ^ predicates.
-extract_pred_or_func_set(ItemIdSet, function_item) = ItemIdSet ^ functions.
+%-----------------------------------------------------------------------------%
 
-update_pred_or_func_set(predicate_item, Set, !ItemIdSet) :-
-    !ItemIdSet ^ predicates := Set.
-update_pred_or_func_set(function_item, Set, !ItemIdSet) :-
-    !ItemIdSet ^ functions := Set.
-
-extract_ids(ItemIdSet, type_abstract_item) = ItemIdSet ^ types.
-extract_ids(ItemIdSet, type_body_item) = ItemIdSet ^ type_bodies.
-extract_ids(ItemIdSet, mode_item) = ItemIdSet ^ modes.
-extract_ids(ItemIdSet, inst_item) = ItemIdSet ^ insts.
-extract_ids(ItemIdSet, typeclass_item) = ItemIdSet ^ typeclasses.
-extract_ids(ItemIdSet, functor_item) = ItemIdSet ^ functors.
-extract_ids(ItemIdSet, predicate_item) = ItemIdSet ^ predicates.
-extract_ids(ItemIdSet, function_item) = ItemIdSet ^ functions.
-extract_ids(ItemIdSet, mutable_item) = ItemIdSet ^ mutables.
-extract_ids(ItemIdSet, foreign_proc_item) = ItemIdSet ^ foreign_procs.
-
-update_ids(type_abstract_item, IdMap, !ItemIdSet) :-
-    !ItemIdSet ^ types := IdMap.
-update_ids(type_body_item, IdMap, !ItemIdSet) :-
-    !ItemIdSet ^ type_bodies := IdMap.
-update_ids(mode_item, IdMap, !ItemIdSet) :-
-    !ItemIdSet ^ modes := IdMap.
-update_ids(inst_item, IdMap, !ItemIdSet) :-
-    !ItemIdSet ^ insts := IdMap.
-update_ids(typeclass_item, IdMap, !ItemIdSet) :-
-    !ItemIdSet ^ typeclasses := IdMap.
-update_ids(predicate_item, IdMap, !ItemIdSet) :-
-    !ItemIdSet ^ predicates := IdMap.
-update_ids(function_item, IdMap, !ItemIdSet) :-
-    !ItemIdSet ^ functions := IdMap.
-update_ids(functor_item, IdMap, !ItemIdSet) :-
-    !ItemIdSet ^ functors := IdMap.
-update_ids(mutable_item, IdMap, !ItemIdSet) :-
-    !ItemIdSet ^ mutables := IdMap.
-update_ids(foreign_proc_item, IdMap, !ItemIdSet) :-
-    !ItemIdSet ^ foreign_procs := IdMap.
-
-map_ids(Func, Items0, Init) = Items :-
-    % XXX ITEM_LIST Why wite this code in a way that
-    % (a) does not guarantee that all fields of the original item_id_set
-    % are transformed, and (b) actually DOES miss transforming some fields,
-    % such as mutable_item and foreign_proc_item?
-    Items1 = init_item_id_set(Init),
-    Items = list.foldl(
-        ( func(ItemType, NewItems0) = NewItems :-
-            update_ids(ItemType, Func(ItemType, extract_ids(Items0, ItemType)),
-                NewItems0, NewItems)
-        ),
-        [type_abstract_item, type_body_item, mode_item, inst_item,
-            typeclass_item, functor_item, predicate_item, function_item],
-        Items1).
+init_version_numbers =
+    version_numbers(map.init, map.init, map.init, map.init, map.init,
+        map.init, map.init, map.init).
 
 %-----------------------------------------------------------------------------%
 
@@ -456,35 +404,62 @@ record_used_item(ItemType, Id, QualifiedId, !Info) :-
         % Don't record builtin items (QualifiedId may be unqualified
         % for predicates, functions and functors because they aren't
         % qualified until after typechecking).
-        ItemType \= predicate_item,
-        ItemType \= function_item,
-        ItemType \= functor_item,
-        QualifiedName = unqualified(_)
+        QualifiedName = unqualified(_),
+        ignore_unqual_item_for_item_type(ItemType) = ignore
     then
         true
     else
-        ItemSet0 = !.Info ^ recomp_used_items,
-        IdSet0 = extract_ids(ItemSet0, ItemType),
+        Used0 = !.Info ^ recomp_used_items,
+        IdSet0 = get_used_item_ids(Used0, ItemType),
         UnqualifiedName = unqualify_name(QualifiedName),
         ModuleName = find_module_qualifier(QualifiedName),
-        UnqualifiedId = UnqualifiedName - Arity,
+        UnqualifiedId = name_arity(UnqualifiedName, Arity),
         Id = item_name(SymName, _),
         ModuleQualifier = find_module_qualifier(SymName),
         ( if map.search(IdSet0, UnqualifiedId, MatchingNames0) then
-            MatchingNames1 = MatchingNames0
+            ( if map.contains(MatchingNames0, ModuleQualifier) then
+                true
+            else
+                map.det_insert(ModuleQualifier, ModuleName,
+                    MatchingNames0, MatchingNames),
+                map.det_update(UnqualifiedId, MatchingNames, IdSet0, IdSet),
+                set_used_item_ids(ItemType, IdSet, Used0, Used),
+                !Info ^ recomp_used_items := Used
+            )
         else
-            map.init(MatchingNames1)
-        ),
-        ( if map.contains(MatchingNames1, ModuleQualifier) then
-            true
-        else
-            map.det_insert(ModuleQualifier, ModuleName,
-                MatchingNames1, MatchingNames),
-            map.set(UnqualifiedId, MatchingNames, IdSet0, IdSet),
-            update_ids(ItemType, IdSet, ItemSet0, ItemSet),
-            !Info ^ recomp_used_items := ItemSet
+            MatchingNames = map.singleton(ModuleQualifier, ModuleName),
+            map.det_insert(UnqualifiedId, MatchingNames, IdSet0, IdSet),
+            set_used_item_ids(ItemType, IdSet, Used0, Used),
+            !Info ^ recomp_used_items := Used
         )
     ).
+
+:- type maybe_ignore
+    --->    do_not_ignore
+    ;       ignore.
+
+:- func ignore_unqual_item_for_item_type(item_type) = maybe_ignore.
+
+ignore_unqual_item_for_item_type(ItemType) = Ignore :-
+    (
+        ( ItemType = type_abstract_item
+        ; ItemType = type_body_item
+        ; ItemType = inst_item
+        ; ItemType = mode_item
+        ; ItemType = typeclass_item
+        ; ItemType = mutable_item
+        ; ItemType = foreign_proc_item
+        ),
+        Ignore = ignore
+    ;
+        ( ItemType = functor_item
+        ; ItemType = predicate_item
+        ; ItemType = function_item
+        ),
+        Ignore = do_not_ignore
+    ).
+
+%-----------------------------------------------------------------------------%
 
 record_expanded_items(Item, ExpandedItems, !Info) :-
     ( if set.is_empty(ExpandedItems) then
@@ -492,16 +467,13 @@ record_expanded_items(Item, ExpandedItems, !Info) :-
     else
         DepsMap0 = !.Info ^ recomp_dependencies,
         ( if map.search(DepsMap0, Item, Deps0) then
-            Deps1 = Deps0
+            set.union(ExpandedItems, Deps0, Deps),
+            map.det_update(Item, Deps, DepsMap0, DepsMap)
         else
-            set.init(Deps1)
+            map.det_insert(Item, ExpandedItems, DepsMap0, DepsMap)
         ),
-        set.union(Deps1, ExpandedItems, Deps),
-        map.set(Item, Deps, DepsMap0, DepsMap),
         !Info ^ recomp_dependencies := DepsMap
     ).
-
-%-----------------------------------------------------------------------------%
 
 maybe_start_recording_expanded_items(_, _, no, no).
 maybe_start_recording_expanded_items(ModuleName, SymName, yes(_), MaybeInfo) :-
@@ -512,6 +484,7 @@ maybe_start_recording_expanded_items(ModuleName, SymName, yes(_), MaybeInfo) :-
     ).
 
 record_expanded_item(Item, !EquivTypeInfo) :-
+    % XXX RECOMP Why is this called EquivTypeInfo?
     map_maybe(record_expanded_item_2(Item), !EquivTypeInfo).
 
 :- pred record_expanded_item_2(item_id::in,

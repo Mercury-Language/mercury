@@ -1,0 +1,71 @@
+#!/bin/sh
+# vim: ts=4 sw=4 expandtab ft=sh
+#
+# A version of two_module_test that should be more useful for debugging,
+# because instead of hiding the action behind shell functions, it exposes
+# the details of each step. This allows a Mercury developer to (temporarily)
+# modify this script to observe not just the final result of a call to a shell
+# function, but also its intermediate results, e.g. by copying files
+# suspected to be constructed incorrectly to safe locations before later steps
+# overwrite them. It also allows running some compiler invocations under mdb.
+# When you suspect, or know, that a step is screwing up, this can be extremely
+# helpful. Smart recompilation is NOT idempotent; executing even part of
+# a compiler invocation (until e.g. a compiler abort) can, and often will,
+# change the contents of files in a way that will cause later, seeming
+# identical compiler invocations to take a different execution path.
+# By rerunning the whole test process from the start, recreating all
+# the relevant files from scratch each time, this script can sidestep
+# that problem.
+#
+# This script also has some limitations compared with two_module_test.
+#
+# First, it covers only the initial part of two_module_test's job, because
+# that was enough for the purpose for which this script was created.
+#
+# Second, it covers only one of the several possible paths through each
+# shell function invocation, the one which is appropriate for a test
+# that should succeed with just one expected output.
+
+# It is easier to look up the contents of e.g. .used files
+# if they are in the current directory.
+/bin/rm -fr Mercury
+
+test_prog="lambda_mode_r"
+module_1="${test_prog}"
+module_2="${test_prog}_2"
+modules="${module_1} ${module_2}"
+
+tested_compiler="/path/to/mercury_compile"
+MERCURY_COMPILER="${tested_compiler}"
+export MERCURY_COMPILER
+
+grade_opts="--grade hlc.gc"
+dir_opts="--flags ../TESTS_FLAGS"
+opt_opts="--no-intermodule-optimization"
+smart_opts="--smart-recompilation --find-all-recompilation-reasons"
+std_opts="${grade_opts} ${dir_opts} ${opt_opts} ${smart_opts}"
+
+echo "Setting up ${test_prog}"
+
+rm -f "${module_1}.m"
+cp "${module_1}.m.1" "${module_1}.m"
+chmod -w "${module_1}.m"
+rm -f "${module_2}.m"
+cp "${module_2}.m.1" "${module_2}.m"
+chmod -w "${module_2}.m"
+rm -f "${module_1}.res"
+touch "${module_1}.res"
+sleep 1
+
+echo "Testing ${test_prog}"
+
+mmc --generate-dependencies ${std_opts} ${module_1} > ${module_1}.dep_err 2>&1
+mmc --make-short-interface  ${std_opts} ${module_2}
+mmc --make-interface        ${std_opts} ${module_2}
+mmc --make-interface        ${std_opts} ${module_1}
+mmc --compile-to-c          ${std_opts} ${module_1} > ${module_1}.err 2>&1
+mmc --compile-to-c          ${std_opts} ${module_2} > ${module_2}.err 2>&1
+mgnuc ${grade_opts} -- -c ${module_1}.c -o ${module_1}.o
+mgnuc ${grade_opts} -- -c ${module_2}.c -o ${module_2}.o
+ml ${grade_opts} -- -o ${module_1} ${module_1}_init.o \
+	${module_1}.o ${module_2}.o

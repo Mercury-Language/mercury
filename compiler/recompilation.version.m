@@ -38,6 +38,9 @@
 :- pred compute_version_numbers_int2(maybe(parse_tree_int2)::in,
     timestamp::in, parse_tree_int2::in, version_numbers::out) is det.
 
+    % XXX RECOMP Rename, because the job this predicate does is VERY different
+    % from the job of write_version_number (singular).
+    %
 :- pred write_version_numbers(io.text_output_stream::in, version_numbers::in,
     io::di, io::uo) is det.
 
@@ -94,6 +97,8 @@
 :- import_module cord.
 :- import_module list.
 :- import_module map.
+:- import_module multi_map.
+:- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module varset.
@@ -153,17 +158,14 @@ compute_version_numbers_int2(MaybeOldParseTreeInt2,
 
 %---------------------%
 
-:- pred update_version_numbers(maybe({version_numbers, gather_results})::in,
-    timestamp::in, gather_results::in, version_numbers::out) is det.
+:- pred update_version_numbers(maybe({version_numbers, gathered_items})::in,
+    timestamp::in, gathered_items::in, version_numbers::out) is det.
 
 update_version_numbers(MaybeOldVersionNumbersGatherResults,
-        CurSourceFileTime, CurGatherResults, NewVersionNumbers) :-
+        CurSourceFileTime, CurGatheredItems, NewVersionNumbers) :-
     (
         MaybeOldVersionNumbersGatherResults =
-            yes({OldVersionNumbers, OldGatherResults}),
-        OldVersionNumbers = version_numbers(OldItemVersionNumbers,
-            OldInstanceVersionNumbers),
-        OldGatherResults = gather_results(OldGatheredItems, OldInstanceMap)
+            yes({OldVersionNumbers, OldGatheredItems})
     ;
         MaybeOldVersionNumbersGatherResults = no,
         % There were no old version numbers, so every item gets
@@ -171,56 +173,75 @@ update_version_numbers(MaybeOldVersionNumbersGatherResults,
         % XXX ITEM_LIST In which case, the call to compute_item_version_numbers
         % below is mostly a waste of time, since we could get the same job done
         % more quickly without doing a lot of lookups in empty maps.
-        OldItemVersionNumbers = init_item_id_set(map.init),
-        map.init(OldInstanceVersionNumbers),
-        OldGatheredItems = init_item_id_set(map.init),
-        map.init(OldInstanceMap)
+        OldVersionNumbers = version_numbers(map.init, map.init,
+            map.init, map.init, map.init, map.init, map.init, map.init),
+        OldGatheredItems = gathered_items(map.init, map.init,
+            map.init, map.init, map.init, map.init, map.init, map.init)
     ),
-    CurGatherResults = gather_results(CurGatheredItems, CurInstanceMap),
     compute_item_version_numbers(CurSourceFileTime,
         OldGatheredItems, CurGatheredItems,
-        OldItemVersionNumbers, NewItemVersionNumbers),
-    compute_instance_version_numbers(CurSourceFileTime,
-        OldInstanceMap, CurInstanceMap,
-        OldInstanceVersionNumbers, NewInstanceVersionNumbers),
-    NewVersionNumbers =
-        version_numbers(NewItemVersionNumbers, NewInstanceVersionNumbers).
+        OldVersionNumbers, NewVersionNumbers).
 
 %---------------------%
 
 :- pred compute_item_version_numbers(timestamp::in,
     gathered_items::in, gathered_items::in,
-    item_version_numbers::in, item_version_numbers::out) is det.
+    version_numbers::in, version_numbers::out) is det.
 
 compute_item_version_numbers(SourceFileTime,
         OldGatheredItems, CurGatheredItems,
-        OldItemVersionNumbers, NewItemVersionNumbers) :-
-    Func = compute_item_version_numbers_2(SourceFileTime,
-        OldGatheredItems, OldItemVersionNumbers),
-    NewItemVersionNumbers = map_ids(Func, CurGatheredItems, map.init).
+        OldVersionNumbers, NewVersionNumbers) :-
+    OldGatheredItems = gathered_items(OldTypeMap, OldTBodyMap,
+        OldInstMap, OldModeMap, OldClassMap, OldInstanceMap,
+        OldPredMap, OldFuncMap),
+    CurGatheredItems = gathered_items(CurTypeMap, CurTBodyMap,
+        CurInstMap, CurModeMap, CurClassMap, CurInstanceMap,
+        CurPredMap, CurFuncMap),
+    OldVersionNumbers = version_numbers(OldTypeVMap, OldTBodyVMap,
+        OldInstVMap, OldModeVMap, OldClassVMap, OldInstanceVMap,
+        OldPredVMap, OldFuncVMap),
 
-:- func compute_item_version_numbers_2(timestamp, gathered_items,
-    item_version_numbers, item_type,
-    map(pair(string, arity), assoc_list(module_section, item)))
-    = map(pair(string, arity), timestamp).
+    compute_name_arity_version_map(SourceFileTime,
+        OldTypeMap, OldTypeVMap, CurTypeMap, NewTypeVMap),
+    compute_name_arity_version_map(SourceFileTime,
+        OldTBodyMap, OldTBodyVMap, CurTBodyMap, NewTBodyVMap),
+    compute_name_arity_version_map(SourceFileTime,
+        OldInstMap, OldInstVMap, CurInstMap, NewInstVMap),
+    compute_name_arity_version_map(SourceFileTime,
+        OldModeMap, OldModeVMap, CurModeMap, NewModeVMap),
+    compute_name_arity_version_map(SourceFileTime,
+        OldClassMap, OldClassVMap, CurClassMap, NewClassVMap),
+    compute_item_name_version_map(SourceFileTime,
+        OldInstanceMap, OldInstanceVMap, CurInstanceMap, NewInstanceVMap),
+    compute_name_arity_version_map(SourceFileTime,
+        OldPredMap, OldPredVMap, CurPredMap, NewPredVMap),
+    compute_name_arity_version_map(SourceFileTime,
+        OldFuncMap, OldFuncVMap, CurFuncMap, NewFuncVMap),
 
-compute_item_version_numbers_2(SourceFileTime, OldGatheredItems,
-        OldItemVersionNumbers, ItemType, CurGatheredItems) =
+    NewVersionNumbers = version_numbers(NewTypeVMap, NewTBodyVMap,
+        NewInstVMap, NewModeVMap, NewClassVMap, NewInstanceVMap,
+        NewPredVMap, NewFuncVMap).
+
+:- pred compute_name_arity_version_map(timestamp::in,
+    gathered_item_multi_map_na::in, name_arity_version_map::in,
+    gathered_item_multi_map_na::in, name_arity_version_map::out) is det.
+
+compute_name_arity_version_map(SourceFileTime,
+        OldGatheredMap, OldVersionMap, CurGatheredMap, NewVersionMap) :-
     map.map_values(
-        compute_item_version_numbers_3(SourceFileTime,
-            OldGatheredItems, OldItemVersionNumbers, ItemType),
-        CurGatheredItems).
+        compute_name_arity_version_map_entry(SourceFileTime,
+            OldGatheredMap, OldVersionMap),
+        CurGatheredMap, NewVersionMap).
 
-:- func compute_item_version_numbers_3(timestamp, gathered_items,
-    item_version_numbers, item_type, pair(string, arity),
-    assoc_list(module_section, item)) = timestamp.
+:- pred compute_name_arity_version_map_entry(timestamp::in,
+    gathered_item_multi_map_na::in, name_arity_version_map::in,
+    name_arity::in, assoc_list(module_section, item)::in,
+    version_number::out) is det.
 
-compute_item_version_numbers_3(SourceFileTime, OldGatheredItems,
-        OldItemVersionNumbers, ItemType, NameArity, CurItems) = TimeStamp :-
-    OldIds = extract_ids(OldGatheredItems, ItemType),
-    OldItemTypeVersionNumbers = extract_ids(OldItemVersionNumbers, ItemType),
+compute_name_arity_version_map_entry(SourceFileTime,
+        OldGatheredMap, OldVersionMap, NameArity, CurItems, TimeStamp) :-
     ( if
-        map.search(OldIds, NameArity, OldItems),
+        map.search(OldGatheredMap, NameArity, OldItems),
         % We call order_items on the items in both the interface and the
         % implementation of the current parse tree, but doing the same for
         % the previous parse tree would be overkill. However, for some "item"
@@ -231,44 +252,56 @@ compute_item_version_numbers_3(SourceFileTime, OldGatheredItems,
         list.sort(OldItems, SortedOldItems),
         list.sort(CurItems, SortedCurItems),
         are_items_changed(SortedOldItems, SortedCurItems, unchanged),
-        map.search(OldItemTypeVersionNumbers, NameArity, OldItemVersionNumber)
+        map.search(OldVersionMap, NameArity, OldVersionNumber)
     then
-        TimeStamp = OldItemVersionNumber
+        TimeStamp = OldVersionNumber
     else
         TimeStamp = SourceFileTime
     ).
 
-:- pred compute_instance_version_numbers(timestamp::in,
-    instance_item_map::in, instance_item_map::in,
-    instance_version_numbers::in, instance_version_numbers::out) is det.
+:- pred compute_item_name_version_map(timestamp::in,
+    gathered_item_multi_map_in::in, item_name_version_map::in,
+    gathered_item_multi_map_in::in, item_name_version_map::out) is det.
 
-compute_instance_version_numbers(SourceFileTime,
-        OldInstanceItemMap, CurInstanceItemMap,
-        OldInstanceVersionNumbers, NewInstanceVersionNumbers) :-
-    Pred =
-        ( pred(ClassId::in, Items::in, InstanceVersionNumber::out) is det :-
-            ( if
-                map.search(OldInstanceItemMap, ClassId, OldItems),
-                are_items_changed(OldItems, Items, unchanged),
-                map.search(OldInstanceVersionNumbers, ClassId,
-                    OldInstanceVersionNumber)
-            then
-                InstanceVersionNumber = OldInstanceVersionNumber
-            else
-                InstanceVersionNumber = SourceFileTime
-            )
-        ),
-    map.map_values(Pred, CurInstanceItemMap, NewInstanceVersionNumbers).
+compute_item_name_version_map(SourceFileTime,
+        OldGatheredMap, OldVersionMap, CurGatheredMap, NewVersionMap) :-
+    map.map_values(
+        compute_item_name_version_map_entry(SourceFileTime,
+            OldGatheredMap, OldVersionMap),
+        CurGatheredMap, NewVersionMap).
+
+:- pred compute_item_name_version_map_entry(timestamp::in,
+    gathered_item_multi_map_in::in, item_name_version_map::in,
+    item_name::in, assoc_list(module_section, item)::in,
+    version_number::out) is det.
+
+compute_item_name_version_map_entry(SourceFileTime,
+        OldGatheredMap, OldVersionMap, ItemName, CurItems, TimeStamp) :-
+    ( if
+        map.search(OldGatheredMap, ItemName, OldItems),
+        % We call order_items on the items in both the interface and the
+        % implementation of the current parse tree, but doing the same for
+        % the previous parse tree would be overkill. However, for some "item"
+        % types, such as predicate_item, OldItems and CurItems may contain
+        % more than one prog_item.item. We don't want this artificially-created
+        % difference in the ORDER of those items to count as a difference
+        % that requires a recompilation.
+        list.sort(OldItems, SortedOldItems),
+        list.sort(CurItems, SortedCurItems),
+        are_items_changed(SortedOldItems, SortedCurItems, unchanged),
+        map.search(OldVersionMap, ItemName, OldVersionNumber)
+    then
+        TimeStamp = OldVersionNumber
+    else
+        TimeStamp = SourceFileTime
+    ).
 
 %---------------------------------------------------------------------------%
 
-:- type gather_results
-    --->    gather_results(gathered_items, instance_item_map).
-
 :- pred gather_items_in_parse_tree_int0(parse_tree_int0::in,
-    gather_results::out) is det.
+    gathered_items::out) is det.
 
-gather_items_in_parse_tree_int0(ParseTreeInt0, GatherResults) :-
+gather_items_in_parse_tree_int0(ParseTreeInt0, GatheredItems) :-
      ParseTreeInt0 = parse_tree_int0(_ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
         _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, _ImportUseMap,
@@ -279,48 +312,68 @@ gather_items_in_parse_tree_int0(ParseTreeInt0, GatherResults) :-
         ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
         _ImpForeignEnumMap, ImpDeclPragmas, _ImpPromises),
-    some [!Info, !GatheredItems] (
-        GatheredItems0 = init_item_id_set(map.init),
-        !:Info = gathered_item_info(GatheredItems0, cord.init, map.init),
-        list.foldl(gather_in_type_defn(ms_interface),
-            type_ctor_defn_map_to_type_defns(IntTypeDefnMap), !Info),
+    some [!TypeNameMap, !TypeDefnMap, !InstMap, !ModeMap,
+        !ClassMap, !InstanceMap,
+        !PredMap, !FuncMap, !DeclPragmaRecords]
+    (
+        map.init(!:TypeNameMap),
+        map.init(!:TypeDefnMap),
+        map.init(!:InstMap),
+        map.init(!:ModeMap),
+        map.init(!:ClassMap),
+        map.init(!:InstanceMap),
+        map.init(!:PredMap),
+        map.init(!:FuncMap),
+        !:DeclPragmaRecords = cord.init,
+
+        list.foldl2(gather_in_type_defn(ms_interface),
+            type_ctor_defn_map_to_type_defns(IntTypeDefnMap),
+            !TypeNameMap, !TypeDefnMap),
         list.foldl(gather_in_inst_defn(ms_interface),
-            inst_ctor_defn_map_to_inst_defns(IntInstDefnMap), !Info),
+            inst_ctor_defn_map_to_inst_defns(IntInstDefnMap), !InstMap),
         list.foldl(gather_in_mode_defn(ms_interface),
-            mode_ctor_defn_map_to_mode_defns(IntModeDefnMap), !Info),
-        list.foldl(gather_in_typeclass(ms_interface), IntTypeClasses, !Info),
-        list.foldl(gather_in_instance(ms_interface), IntInstances, !Info),
-        list.foldl(gather_in_pred_decl(ms_interface), IntPredDecls, !Info),
-        list.foldl(gather_in_mode_decl(ms_interface), IntModeDecls, !Info),
-        list.foldl(gather_in_decl_pragma(ms_interface), IntDeclPragmas, !Info),
+            mode_ctor_defn_map_to_mode_defns(IntModeDefnMap), !ModeMap),
+        list.foldl(gather_in_typeclass(ms_interface), IntTypeClasses,
+            !ClassMap),
+        list.foldl(gather_in_instance(ms_interface), IntInstances,
+            !InstanceMap),
+        list.foldl2(gather_in_pred_decl(ms_interface), IntPredDecls,
+            !PredMap, !FuncMap),
+        list.foldl2(gather_in_mode_decl(ms_interface), IntModeDecls,
+            !PredMap, !FuncMap),
+        list.foldl(gather_in_decl_pragma(ms_interface), IntDeclPragmas,
+            !DeclPragmaRecords),
         % XXX Not gathering promises is a bug.
-        list.foldl(gather_in_type_defn(ms_implementation),
-            type_ctor_defn_map_to_type_defns(ImpTypeDefnMap), !Info),
+        list.foldl2(gather_in_type_defn(ms_implementation),
+            type_ctor_defn_map_to_type_defns(ImpTypeDefnMap),
+            !TypeNameMap, !TypeDefnMap),
         list.foldl(gather_in_inst_defn(ms_implementation),
-            inst_ctor_defn_map_to_inst_defns(ImpInstDefnMap), !Info),
+            inst_ctor_defn_map_to_inst_defns(ImpInstDefnMap), !InstMap),
         list.foldl(gather_in_mode_defn(ms_implementation),
-            mode_ctor_defn_map_to_mode_defns(ImpModeDefnMap), !Info),
-        list.foldl(gather_in_typeclass(ms_implementation),
-            ImpTypeClasses, !Info),
-        list.foldl(gather_in_instance(ms_implementation),
-            ImpInstances, !Info),
-        list.foldl(gather_in_pred_decl(ms_implementation),
-            ImpPredDecls, !Info),
-        list.foldl(gather_in_mode_decl(ms_implementation),
-            ImpModeDecls, !Info),
+            mode_ctor_defn_map_to_mode_defns(ImpModeDefnMap), !ModeMap),
+        list.foldl(gather_in_typeclass(ms_implementation), ImpTypeClasses,
+            !ClassMap),
+        list.foldl(gather_in_instance(ms_implementation), ImpInstances,
+            !InstanceMap),
+        list.foldl2(gather_in_pred_decl(ms_implementation), ImpPredDecls,
+            !PredMap, !FuncMap),
+        list.foldl2(gather_in_mode_decl(ms_implementation), ImpModeDecls,
+            !PredMap, !FuncMap),
         % We gather foreign enum info from the type_ctor_defn_maps.
-        list.foldl(gather_in_decl_pragma(ms_implementation),
-            ImpDeclPragmas, !Info),
+        list.foldl(gather_in_decl_pragma(ms_implementation), ImpDeclPragmas,
+            !DeclPragmaRecords),
         % XXX Not gathering promises is a bug.
-        !.Info = gathered_item_info(!:GatheredItems, PragmaItems, InstanceMap),
-        cord.foldl_pred(distribute_pragma_items, PragmaItems, !GatheredItems),
-        GatherResults = gather_results(!.GatheredItems, InstanceMap)
+        cord.foldl3(apply_decl_pragma_record, !.DeclPragmaRecords,
+            !PredMap, !FuncMap, !ClassMap),
+        GatheredItems = gathered_items(!.TypeNameMap, !.TypeDefnMap,
+            !.InstMap, !.ModeMap, !.ClassMap, !.InstanceMap,
+            !.PredMap, !.FuncMap)
     ).
 
 :- pred gather_items_in_parse_tree_int1(parse_tree_int1::in,
-    gather_results::out) is det.
+    gathered_items::out) is det.
 
-gather_items_in_parse_tree_int1(ParseTreeInt1, GatherResults) :-
+gather_items_in_parse_tree_int1(ParseTreeInt1, GatheredItems) :-
     ParseTreeInt1 = parse_tree_int1(_ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
         _IntUseMap, _ImpUseMap, _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
@@ -328,89 +381,132 @@ gather_items_in_parse_tree_int1(ParseTreeInt1, GatherResults) :-
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, _IntPromises, IntTypeRepnMap,
         ImpTypeDefnMap, _ImpForeignEnumMap, ImpTypeClasses),
-    some [!Info, !GatheredItems] (
-        GatheredItems0 = init_item_id_set(map.init),
-        !:Info = gathered_item_info(GatheredItems0, cord.init, map.init),
-        list.foldl(gather_in_type_defn(ms_interface),
-            type_ctor_defn_map_to_type_defns(IntTypeDefnMap), !Info),
+    some [!TypeNameMap, !TypeDefnMap, !InstMap, !ModeMap,
+        !ClassMap, !InstanceMap,
+        !PredMap, !FuncMap, !DeclPragmaRecords]
+    (
+        map.init(!:TypeNameMap),
+        map.init(!:TypeDefnMap),
+        map.init(!:InstMap),
+        map.init(!:ModeMap),
+        map.init(!:ClassMap),
+        map.init(!:InstanceMap),
+        map.init(!:PredMap),
+        map.init(!:FuncMap),
+        !:DeclPragmaRecords = cord.init,
+
+        list.foldl2(gather_in_type_defn(ms_interface),
+            type_ctor_defn_map_to_type_defns(IntTypeDefnMap),
+            !TypeNameMap, !TypeDefnMap),
         list.foldl(gather_in_inst_defn(ms_interface),
-            inst_ctor_defn_map_to_inst_defns(IntInstDefnMap), !Info),
+            inst_ctor_defn_map_to_inst_defns(IntInstDefnMap), !InstMap),
         list.foldl(gather_in_mode_defn(ms_interface),
-            mode_ctor_defn_map_to_mode_defns(IntModeDefnMap), !Info),
-        list.foldl(gather_in_typeclass(ms_interface), IntTypeClasses, !Info),
-        list.foldl(gather_in_instance(ms_interface), IntInstances, !Info),
-        list.foldl(gather_in_pred_decl(ms_interface), IntPredDecls, !Info),
-        list.foldl(gather_in_mode_decl(ms_interface), IntModeDecls, !Info),
-        list.foldl(gather_in_decl_pragma(ms_interface), IntDeclPragmas, !Info),
+            mode_ctor_defn_map_to_mode_defns(IntModeDefnMap), !ModeMap),
+        list.foldl(gather_in_typeclass(ms_interface), IntTypeClasses,
+            !ClassMap),
+        list.foldl(gather_in_instance(ms_interface), IntInstances,
+            !InstanceMap),
+        list.foldl2(gather_in_pred_decl(ms_interface), IntPredDecls,
+            !PredMap, !FuncMap),
+        list.foldl2(gather_in_mode_decl(ms_interface), IntModeDecls,
+            !PredMap, !FuncMap),
+        list.foldl(gather_in_decl_pragma(ms_interface), IntDeclPragmas,
+            !DeclPragmaRecords),
         % XXX Not gathering promises is a bug.
         list.foldl(gather_in_type_repn(ms_interface),
-            type_ctor_repn_map_to_type_repns(IntTypeRepnMap), !Info),
-        list.foldl(gather_in_type_defn(ms_implementation),
-            type_ctor_defn_map_to_type_defns(ImpTypeDefnMap), !Info),
+            type_ctor_repn_map_to_type_repns(IntTypeRepnMap), !TypeDefnMap),
+        list.foldl2(gather_in_type_defn(ms_implementation),
+            type_ctor_defn_map_to_type_defns(ImpTypeDefnMap),
+            !TypeNameMap, !TypeDefnMap),
         % We gather foreign enum info from the type_ctor_defn_maps.
         list.foldl(gather_in_typeclass(ms_implementation),
-            ImpTypeClasses, !Info),
-        !.Info = gathered_item_info(!:GatheredItems, PragmaItems, InstanceMap),
-        cord.foldl_pred(distribute_pragma_items, PragmaItems, !GatheredItems),
-        GatherResults = gather_results(!.GatheredItems, InstanceMap)
+            ImpTypeClasses, !ClassMap),
+
+        cord.foldl3(apply_decl_pragma_record, !.DeclPragmaRecords,
+            !PredMap, !FuncMap, !ClassMap),
+        GatheredItems = gathered_items(!.TypeNameMap, !.TypeDefnMap,
+            !.InstMap, !.ModeMap, !.ClassMap, !.InstanceMap,
+            !.PredMap, !.FuncMap)
     ).
 
 :- pred gather_items_in_parse_tree_int2(parse_tree_int2::in,
-    gather_results::out) is det.
+    gathered_items::out) is det.
 
-gather_items_in_parse_tree_int2(ParseTreeInt2, GatherResults) :-
+gather_items_in_parse_tree_int2(ParseTreeInt2, GatheredItems) :-
     ParseTreeInt2 = parse_tree_int2(_ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, _IntInclMap, _InclMap, _IntUseMap, _ImportUseMap,
         _IntFIMSpecs, _ImpFIMSpecs,
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap,
         ImpTypeDefnMap),
-    some [!Info, !GatheredItems] (
-        GatheredItems0 = init_item_id_set(map.init),
-        !:Info = gathered_item_info(GatheredItems0, cord.init, map.init),
-        list.foldl(gather_in_type_defn(ms_interface),
-            type_ctor_defn_map_to_type_defns(IntTypeDefnMap), !Info),
+    some [!TypeNameMap, !TypeDefnMap, !InstMap, !ModeMap,
+        !ClassMap, !InstanceMap]
+    (
+        map.init(!:TypeNameMap),
+        map.init(!:TypeDefnMap),
+        map.init(!:InstMap),
+        map.init(!:ModeMap),
+        map.init(!:ClassMap),
+        map.init(!:InstanceMap),
+
+        list.foldl2(gather_in_type_defn(ms_interface),
+            type_ctor_defn_map_to_type_defns(IntTypeDefnMap),
+            !TypeNameMap, !TypeDefnMap),
         list.foldl(gather_in_inst_defn(ms_interface),
-            inst_ctor_defn_map_to_inst_defns(IntInstDefnMap), !Info),
+            inst_ctor_defn_map_to_inst_defns(IntInstDefnMap), !InstMap),
         list.foldl(gather_in_mode_defn(ms_interface),
-            mode_ctor_defn_map_to_mode_defns(IntModeDefnMap), !Info),
-        list.foldl(gather_in_typeclass(ms_interface), IntTypeClasses, !Info),
-        list.foldl(gather_in_instance(ms_interface), IntInstances, !Info),
+            mode_ctor_defn_map_to_mode_defns(IntModeDefnMap), !ModeMap),
+        list.foldl(gather_in_typeclass(ms_interface), IntTypeClasses,
+            !ClassMap),
+        list.foldl(gather_in_instance(ms_interface), IntInstances,
+            !InstanceMap),
+        % XXX Not gathering promises is a bug.
         list.foldl(gather_in_type_repn(ms_interface),
-            type_ctor_repn_map_to_type_repns(IntTypeRepnMap), !Info),
-        list.foldl(gather_in_type_defn(ms_implementation),
-            type_ctor_defn_map_to_type_defns(ImpTypeDefnMap), !Info),
-        !.Info = gathered_item_info(!:GatheredItems, PragmaItems, InstanceMap),
-        cord.foldl_pred(distribute_pragma_items, PragmaItems, !GatheredItems),
-        GatherResults = gather_results(!.GatheredItems, InstanceMap)
+            type_ctor_repn_map_to_type_repns(IntTypeRepnMap), !TypeDefnMap),
+        list.foldl2(gather_in_type_defn(ms_implementation),
+            type_ctor_defn_map_to_type_defns(ImpTypeDefnMap),
+            !TypeNameMap, !TypeDefnMap),
+
+        map.init(PredMap0),
+        map.init(FuncMap0),
+        GatheredItems = gathered_items(!.TypeNameMap, !.TypeDefnMap,
+            !.InstMap, !.ModeMap, !.ClassMap, !.InstanceMap,
+            PredMap0, FuncMap0)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- type gathered_item_info
-    --->    gathered_item_info(
-                gii_gathered_items  :: gathered_items,
-                gii_pragma_items    :: cord({maybe_pred_or_func_id,
-                                            item, module_section}),
-                gii_instances       :: instance_item_map
+:- type gathered_item_multi_map_na ==
+    multi_map(name_arity, pair(module_section, item)).
+:- type gathered_item_multi_map_in ==
+    multi_map(item_name, pair(module_section, item)).
+    % XXX RECOMP The generic item type here should be replaced with
+    % a different (set of) item-kind-specific types for each field.
+
+:- type gathered_items
+    --->    gathered_items(
+                gi_type_names       :: gathered_item_multi_map_na,
+                gi_type_defns       :: gathered_item_multi_map_na,
+                gi_modes            :: gathered_item_multi_map_na,
+                gi_insts            :: gathered_item_multi_map_na,
+                gi_typeclasses      :: gathered_item_multi_map_na,
+                gi_instances        :: gathered_item_multi_map_in,
+                gi_predicates       :: gathered_item_multi_map_na,
+                gi_functions        :: gathered_item_multi_map_na
             ).
 
-:- type instance_item_map ==
-    % ZZZ item -> item_instance
-    map(item_name, assoc_list(module_section, item)).
-
-    % The constructors set should always be empty.
-:- type gathered_items == item_id_set(gathered_item_map).
-:- type gathered_item_map == map(pair(string, arity),
-    assoc_list(module_section, item)).
+:- type decl_pragma_record
+    --->    decl_pragma_record(module_section, maybe_pred_or_func_id, item).
+            % XXX RECOMP Item here should be item_decl_pragma_info.
 
 %---------------------%
 
 :- pred gather_in_type_defn(module_section::in, item_type_defn_info::in,
-    gathered_item_info::in, gathered_item_info::out) is det.
+    gathered_item_multi_map_na::in, gathered_item_multi_map_na::out,
+    gathered_item_multi_map_na::in, gathered_item_multi_map_na::out) is det.
 
-gather_in_type_defn(Section, ItemTypeDefn, !Info) :-
-    ItemTypeDefn = item_type_defn_info(Name, Args, Body,
+gather_in_type_defn(Section, ItemTypeDefn, !TypeMap, !TypeDefnMap) :-
+    ItemTypeDefn = item_type_defn_info(SymName, Params, Body,
         VarSet, Context, SeqNum),
     Item = item_type_defn(ItemTypeDefn),
     (
@@ -422,7 +518,7 @@ gather_in_type_defn(Section, ItemTypeDefn, !Info) :-
         % this value for AbstractDetails is a BUG.
         AbstractDetails = abstract_type_general,
         AbstractBody = parse_tree_abstract_type(AbstractDetails),
-        NameItemTypeDefn = item_type_defn_info(Name, Args, AbstractBody,
+        NameItemTypeDefn = item_type_defn_info(SymName, Params, AbstractBody,
             VarSet, Context, SeqNum),
         NameItem = item_type_defn(NameItemTypeDefn),
         BodyItem = Item
@@ -447,44 +543,39 @@ gather_in_type_defn(Section, ItemTypeDefn, !Info) :-
         NameItem = Item,
         BodyItem = Item
     ),
-    TypeCtorItem = item_name(Name, list.length(Args)),
-    GatheredItems0 = !.Info ^ gii_gathered_items,
-    add_gathered_item(NameItem, item_id(type_abstract_item, TypeCtorItem),
-        Section, GatheredItems0, GatheredItems1),
-    add_gathered_item(BodyItem, item_id(type_body_item, TypeCtorItem),
-        Section, GatheredItems1, GatheredItems),
-    !Info ^ gii_gathered_items := GatheredItems.
+    TypeCtorNA = name_arity(unqualify_name(SymName), list.length(Params)),
+    multi_map.add(TypeCtorNA, Section - NameItem, !TypeMap),
+    multi_map.add(TypeCtorNA, Section - BodyItem, !TypeDefnMap).
 
 %---------------------%
 
 :- pred gather_in_inst_defn(module_section::in, item_inst_defn_info::in,
-    gathered_item_info::in, gathered_item_info::out) is det.
+    gathered_item_multi_map_na::in, gathered_item_multi_map_na::out) is det.
 
-gather_in_inst_defn(Section, ItemInstDefn, !Info) :-
-    ItemInstDefn = item_inst_defn_info(Name, Params, _, _, _, _, _),
+gather_in_inst_defn(Section, ItemInstDefn, !InstMap) :-
+    ItemInstDefn = item_inst_defn_info(SymName, Params, _, _, _, _, _),
     Item = item_inst_defn(ItemInstDefn),
-    list.length(Params, Arity),
-    ItemId = item_id(inst_item, item_name(Name, Arity)),
-    add_gathered_item_to_info(Item, ItemId, Section, !Info).
+    InstCtorNA = name_arity(unqualify_name(SymName), list.length(Params)),
+    multi_map.add(InstCtorNA, Section - Item, !InstMap).
 
 %---------------------%
 
 :- pred gather_in_mode_defn(module_section::in, item_mode_defn_info::in,
-    gathered_item_info::in, gathered_item_info::out) is det.
+    gathered_item_multi_map_na::in, gathered_item_multi_map_na::out) is det.
 
-gather_in_mode_defn(Section, ItemModeDefn, !Info) :-
-    ItemModeDefn = item_mode_defn_info(Name, Params, _, _, _, _),
+gather_in_mode_defn(Section, ItemModeDefn, !ModeMap) :-
+    ItemModeDefn = item_mode_defn_info(SymName, Params, _, _, _, _),
     Item = item_mode_defn(ItemModeDefn),
-    list.length(Params, Arity),
-    ItemId = item_id(mode_item, item_name(Name, Arity)),
-    add_gathered_item_to_info(Item, ItemId, Section, !Info).
+    ModeCtorNA = name_arity(unqualify_name(SymName), list.length(Params)),
+    multi_map.add(ModeCtorNA, Section - Item, !ModeMap).
 
 %---------------------%
 
 :- pred gather_in_pred_decl(module_section::in, item_pred_decl_info::in,
-    gathered_item_info::in, gathered_item_info::out) is det.
+    gathered_item_multi_map_na::in, gathered_item_multi_map_na::out,
+    gathered_item_multi_map_na::in, gathered_item_multi_map_na::out) is det.
 
-gather_in_pred_decl(Section, ItemPredDecl, !Info) :-
+gather_in_pred_decl(Section, ItemPredDecl, !PredMap, !FuncMap) :-
     ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndModes,
         WithType, WithInst, MaybeDetism, Origin, TypeVarSet, InstVarSet,
         ExistQVars, Purity, Constraints, Context, SeqNum),
@@ -492,6 +583,13 @@ gather_in_pred_decl(Section, ItemPredDecl, !Info) :-
     % the arity here won't be correct, but equiv_type.m will record
     % the dependency on the version number with the `incorrect' arity,
     % so this will work.
+    %
+    % XXX This is an unreliable method of detecting changes.
+    % Making it reliable would require at recording for the
+    % predicate/function the type of the with_type annotation (if any),
+    % which we don't currently do.
+    %
+    % XXX Likewise for with_inst annotations.
     (
         WithType = no,
         adjust_func_arity(PredOrFunc, Arity, list.length(TypesAndModes))
@@ -499,8 +597,7 @@ gather_in_pred_decl(Section, ItemPredDecl, !Info) :-
         WithType = yes(_),
         Arity = list.length(TypesAndModes)
     ),
-    ItemType = pred_or_func_to_item_type(PredOrFunc),
-    ItemId = item_id(ItemType, item_name(PredSymName, Arity)),
+    PredNA = name_arity(unqualify_name(PredSymName), Arity),
 
     split_types_and_modes(TypesAndModes, Types, MaybeModes),
     % The code that generates interface files splits combined pred and mode
@@ -526,7 +623,7 @@ gather_in_pred_decl(Section, ItemPredDecl, !Info) :-
         (
             WithInst = yes(_),
             % MaybePredOrFunc needs to be `no' here because when the item
-            % is read from the interface file we won't know whether it is
+            % is read from the interface file, we won't know whether it is
             % a predicate or a function mode.
             MaybePredOrFunc = no
         ;
@@ -536,66 +633,81 @@ gather_in_pred_decl(Section, ItemPredDecl, !Info) :-
         ModeItemModeDecl = item_mode_decl_info(PredSymName, MaybePredOrFunc,
             Modes, WithInst, MaybeDetism, InstVarSet, Context, SeqNum),
         ModeItem = item_mode_decl(ModeItemModeDecl),
-        add_gathered_item_to_info(PredOnlyItem, ItemId, Section, !Info),
-        add_gathered_item_to_info(ModeItem, ItemId, Section, !Info)
+        (
+            PredOrFunc = pf_predicate,
+            multi_map.add(PredNA, Section - PredOnlyItem, !PredMap),
+            multi_map.add(PredNA, Section - ModeItem, !PredMap)
+        ;
+            PredOrFunc = pf_function,
+            multi_map.add(PredNA, Section - PredOnlyItem, !FuncMap),
+            multi_map.add(PredNA, Section - ModeItem, !FuncMap)
+        )
     else
         PredItem = item_pred_decl(ItemPredDecl),
-        add_gathered_item_to_info(PredItem, ItemId, Section, !Info)
+        (
+            PredOrFunc = pf_predicate,
+            multi_map.add(PredNA, Section - PredItem, !PredMap)
+        ;
+            PredOrFunc = pf_function,
+            multi_map.add(PredNA, Section - PredItem, !FuncMap)
+        )
     ).
 
 %---------------------%
 
 :- pred gather_in_mode_decl(module_section::in, item_mode_decl_info::in,
-    gathered_item_info::in, gathered_item_info::out) is det.
+    gathered_item_multi_map_na::in, gathered_item_multi_map_na::out,
+    gathered_item_multi_map_na::in, gathered_item_multi_map_na::out) is det.
 
-gather_in_mode_decl(Section, ItemModeDecl, !Info) :-
+gather_in_mode_decl(Section, ItemModeDecl, !PredMap, !FuncMap) :-
     % For predicates or functions defined using `with_inst` annotations
     % the pred_or_func and arity here won't be correct, but equiv_type.m
     % will record the dependency on the version number with the `incorrect'
     % pred_or_func and arity, so this will work.
-    ItemModeDecl = item_mode_decl_info(SymName, MaybePredOrFunc, Modes,
+    % 
+    % XXX See the comment about with_inst in gather_in_pred_decl.
+    ItemModeDecl = item_mode_decl_info(SymName, MaybePredOrFunc, ArgModes,
         WithInst, _, _, _, _),
     Item = item_mode_decl(ItemModeDecl),
     ( if
         MaybePredOrFunc = no,
         WithInst = yes(_)
     then
-        GatheredItems0 = !.Info ^ gii_gathered_items,
-        ItemName = item_name(SymName, list.length(Modes)),
-        add_gathered_item(Item, item_id(predicate_item, ItemName),
-            Section, GatheredItems0, GatheredItems1),
-        add_gathered_item(Item, item_id(function_item, ItemName),
-            Section, GatheredItems1, GatheredItems),
-        !Info ^ gii_gathered_items := GatheredItems
+        ModeNA = name_arity(unqualify_name(SymName), list.length(ArgModes)),
+        multi_map.add(ModeNA, Section - Item, !PredMap),
+        multi_map.add(ModeNA, Section - Item, !FuncMap)
     else
         (
             MaybePredOrFunc = yes(PredOrFunc),
-            adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
-            ItemType = pred_or_func_to_item_type(PredOrFunc),
-            ItemId = item_id(ItemType, item_name(SymName, Arity)),
-            add_gathered_item_to_info(Item, ItemId, Section, !Info)
+            adjust_func_arity(PredOrFunc, Arity, list.length(ArgModes)),
+            ModeNA = name_arity(unqualify_name(SymName), Arity),
+            (
+                PredOrFunc = pf_predicate,
+                multi_map.add(ModeNA, Section - Item, !PredMap)
+            ;
+                PredOrFunc = pf_function,
+                multi_map.add(ModeNA, Section - Item, !FuncMap)
+            )
         ;
             MaybePredOrFunc = no
             % We don't have an item_id, so we cannot gather the item.
-            % XXX Does this lead to missing some needed recompilations?
+            % XXX This *will* lead to missing needed recompilations.
         )
     ).
 
 %---------------------%
 
 :- pred gather_in_typeclass(module_section::in, item_typeclass_info::in,
-    gathered_item_info::in, gathered_item_info::out) is det.
+    gathered_item_multi_map_na::in, gathered_item_multi_map_na::out) is det.
 
-gather_in_typeclass(Section, ItemTypeClass, !Info) :-
-    ItemTypeClass = item_typeclass_info(ClassName, ClassVars, _, _,
+gather_in_typeclass(Section, ItemTypeClass, !TypeClassMap) :-
+    ItemTypeClass = item_typeclass_info(ClassName, ClassParams, _, _,
         _, _, _, _),
-    list.length(ClassVars, ClassArity),
-    ItemId = item_id(typeclass_item, item_name(ClassName, ClassArity)),
+    ClassNA = name_arity(unqualify_name(ClassName), list.length(ClassParams)),
     Interface = ItemTypeClass ^ tc_class_methods,
     (
         Interface = class_interface_abstract,
-        Item = item_typeclass(ItemTypeClass),
-        add_gathered_item_to_info(Item, ItemId, Section, !Info)
+        ItemToAdd = item_typeclass(ItemTypeClass)
     ;
         Interface = class_interface_concrete(Decls0),
         % See the comment in gather_in_pred_decl for why we split
@@ -604,9 +716,9 @@ gather_in_typeclass(Section, ItemTypeClass, !Info) :-
         list.condense(DeclsList, Decls),
         SplitItemTypeClass = ItemTypeClass ^ tc_class_methods
             := class_interface_concrete(Decls),
-        Item = item_typeclass(SplitItemTypeClass)
+        ItemToAdd = item_typeclass(SplitItemTypeClass)
     ),
-    add_gathered_item_to_info(Item, ItemId, Section, !Info).
+    multi_map.add(ClassNA, Section - ItemToAdd, !TypeClassMap).
 
 :- func split_class_method_types_and_modes(class_decl) = list(class_decl).
 
@@ -665,119 +777,54 @@ split_class_method_types_and_modes(Decl0) = Decls :-
 %---------------------%
 
 :- pred gather_in_instance(module_section::in, item_instance_info::in,
-    gathered_item_info::in, gathered_item_info::out) is det.
+    gathered_item_multi_map_in::in, gathered_item_multi_map_in::out) is det.
 
-gather_in_instance(Section, ItemInstance, !Info) :-
-    ItemInstance = item_instance_info(ClassName, ClassArgs,
+gather_in_instance(Section, ItemInstance, !InstanceMap) :-
+    ItemInstance = item_instance_info(ClassName, ClassParams,
         _, _, _, _, _, _, _),
     Item = item_instance(ItemInstance),
-    Instances0 = !.Info ^ gii_instances,
-    ClassArity = list.length(ClassArgs),
-    ClassItemName = item_name(ClassName, ClassArity),
-    NewInstanceItem = Section - Item,
-    ( if map.search(Instances0, ClassItemName, OldInstanceItems) then
-        NewInstanceItems = [NewInstanceItem | OldInstanceItems],
-        map.det_update(ClassItemName, NewInstanceItems, Instances0, Instances)
-    else
-        map.det_insert(ClassItemName, [NewInstanceItem], Instances0, Instances)
-    ),
-    !Info ^ gii_instances := Instances.
+    ClassNA = item_name(ClassName, list.length(ClassParams)),
+    multi_map.add(ClassNA, Section - Item, !InstanceMap).
 
 %---------------------%
 
 :- pred gather_in_decl_pragma(module_section::in, item_decl_pragma_info::in,
-    gathered_item_info::in, gathered_item_info::out) is det.
+    cord(decl_pragma_record)::in, cord(decl_pragma_record)::out) is det.
 
-gather_in_decl_pragma(Section, ItemDeclPragma, !Info) :-
+gather_in_decl_pragma(Section, ItemDeclPragma, !DeclPragmas) :-
     ItemDeclPragma = item_pragma_info(DeclPragma, _, _),
     gather_decl_pragma_for_what_pf_id(DeclPragma, MaybePredOrFuncId),
     (
         MaybePredOrFuncId = yes(PredOrFuncId),
         Item = item_decl_pragma(ItemDeclPragma),
-        PragmaItems0 = !.Info ^ gii_pragma_items,
-        PragmaItems = cord.snoc(PragmaItems0, {PredOrFuncId, Item, Section}),
-        !Info ^ gii_pragma_items := PragmaItems
+        Record = decl_pragma_record(Section, PredOrFuncId, Item),
+        cord.snoc(Record, !DeclPragmas)
     ;
         MaybePredOrFuncId = no
+        % XXX Not doing anything here is probably a bug.
     ).
-
-:- pred gather_in_impl_pragma(module_section::in, item_impl_pragma_info::in,
-    gathered_item_info::in, gathered_item_info::out) is det.
-:- pragma consider_used(pred(gather_in_impl_pragma/4)).
-
-gather_in_impl_pragma(Section, ItemImplPragma, !Info) :-
-    ItemImplPragma = item_pragma_info(ImplPragma, _, _),
-    gather_impl_pragma_for_what_pf_id(ImplPragma, MaybePredOrFuncId),
-    (
-        MaybePredOrFuncId = yes(PredOrFuncId),
-        Item = item_impl_pragma(ItemImplPragma),
-        PragmaItems0 = !.Info ^ gii_pragma_items,
-        PragmaItems = cord.snoc(PragmaItems0, {PredOrFuncId, Item, Section}),
-        !Info ^ gii_pragma_items := PragmaItems
-    ;
-        MaybePredOrFuncId = no
-    ).
-
-:- pred gather_in_generated_pragma(module_section::in,
-    item_generated_pragma_info::in,
-    gathered_item_info::in, gathered_item_info::out) is det.
-:- pragma consider_used(pred(gather_in_generated_pragma/4)).
-
-gather_in_generated_pragma(Section, ItemGenPragma, !Info) :-
-    ItemGenPragma = item_pragma_info(GenPragma, _, _),
-    gather_generated_pragma_for_what_pf_id(GenPragma, PredOrFuncId),
-    Item = item_generated_pragma(ItemGenPragma),
-    PragmaItems0 = !.Info ^ gii_pragma_items,
-    PragmaItems = cord.snoc(PragmaItems0, {PredOrFuncId, Item, Section}),
-    !Info ^ gii_pragma_items := PragmaItems.
 
 %---------------------%
 
 :- pred gather_in_type_repn(module_section::in, item_type_repn_info::in,
-    gathered_item_info::in, gathered_item_info::out) is det.
+    gathered_item_multi_map_na::in, gathered_item_multi_map_na::out) is det.
 
-gather_in_type_repn(Section, ItemTypeRepn, !Info) :-
-    ItemTypeRepn = item_type_repn_info(TypeCtorSymName, TypeCtorArgs,
-        _, _, _, _),
+gather_in_type_repn(Section, ItemTypeRepn, !TypeDefnMap) :-
+    ItemTypeRepn = item_type_repn_info(SymName, Params, _, _, _, _),
     Item = item_type_repn(ItemTypeRepn),
-    list.length(TypeCtorArgs, TypeCtorArity),
-    TypeCtorItem = item_name(TypeCtorSymName, TypeCtorArity),
-    ItemId = item_id(type_body_item, TypeCtorItem),
-    add_gathered_item_to_info(Item, ItemId, Section, !Info).
-
-%---------------------%
-
-:- pred add_gathered_item_to_info(item::in, item_id::in, module_section::in,
-    gathered_item_info::in, gathered_item_info::out) is det.
-
-add_gathered_item_to_info(Item, ItemId, Section, !Info) :-
-    GatheredItems0 = !.Info ^ gii_gathered_items,
-    add_gathered_item(Item, ItemId, Section, GatheredItems0, GatheredItems),
-    !Info ^ gii_gathered_items := GatheredItems.
-
-:- pred add_gathered_item(item::in, item_id::in, module_section::in,
-    gathered_items::in, gathered_items::out) is det.
-
-add_gathered_item(Item, ItemId, Section, !GatheredItems) :-
-    ItemId = item_id(ItemType, ItemName),
-    ItemName = item_name(SymName, Arity),
-    Name = unqualify_name(SymName),
-    NameArity = Name - Arity,
-    IdMap0 = extract_ids(!.GatheredItems, ItemType),
-    ( if map.search(IdMap0, NameArity, OldItems) then
-        map.det_update(NameArity, [Section - Item | OldItems], IdMap0, IdMap)
-    else
-        map.det_insert(NameArity, [Section - Item], IdMap0, IdMap)
-    ),
-    update_ids(ItemType, IdMap, !GatheredItems).
+    TypeCtorNA = name_arity(unqualify_name(SymName), list.length(Params)),
+    % XXX We used to add these to the vn_type_defns map.
+    multi_map.add(TypeCtorNA, Section - Item, !TypeDefnMap).
 
 %---------------------------------------------------------------------------%
 
-:- pred distribute_pragma_items(
-    {maybe_pred_or_func_id, item, module_section}::in,
-    gathered_items::in, gathered_items::out) is det.
+:- pred apply_decl_pragma_record(decl_pragma_record::in,
+    gathered_item_multi_map_na::in, gathered_item_multi_map_na::out,
+    gathered_item_multi_map_na::in, gathered_item_multi_map_na::out,
+    gathered_item_multi_map_na::in, gathered_item_multi_map_na::out) is det.
 
-distribute_pragma_items({ItemId, Item, Section}, !GatheredItems) :-
+apply_decl_pragma_record(DeclPragma, !PredMap, !FuncMap, !TypeClassMap) :-
+    DeclPragma = decl_pragma_record(Section, ItemId, Item),
     ItemId = MaybePredOrFunc - sym_name_arity(SymName, Arity),
 
     % For predicates defined using `with_type` annotations we don't know
@@ -787,25 +834,32 @@ distribute_pragma_items({ItemId, Item, Section}, !GatheredItems) :-
     % or a function, this will result in an extra entry in the version numbers.
     % Pragmas in the interface aren't common so this won't be too much of
     % a problem.
-    ItemName = item_name(SymName, Arity),
+    NameArity = name_arity(unqualify_name(SymName), Arity),
     (
         MaybePredOrFunc = yes(PredOrFunc),
-        ItemType = pred_or_func_to_item_type(PredOrFunc),
-        add_gathered_item(Item, item_id(ItemType, ItemName),
-            Section, !GatheredItems)
+        (
+            PredOrFunc = pf_predicate,
+            multi_map.add(NameArity, Section - Item, !PredMap)
+        ;
+            PredOrFunc = pf_function,
+            multi_map.add(NameArity, Section - Item, !FuncMap)
+        )
     ;
         MaybePredOrFunc = no,
-        add_gathered_item(Item, item_id(predicate_item, ItemName),
-            Section, !GatheredItems),
-        add_gathered_item(Item, item_id(function_item, ItemName),
-            Section, !GatheredItems)
+        multi_map.add(NameArity, Section - Item, !PredMap),
+        multi_map.add(NameArity, Section - Item, !FuncMap)
     ),
 
     % Pragmas can apply to typeclass methods.
-    map.map_values_only(distribute_pragma_items_class_items(MaybePredOrFunc,
-        SymName, Arity, Item, Section),
-        extract_ids(!.GatheredItems, typeclass_item), GatheredTypeClasses),
-    update_ids(typeclass_item, GatheredTypeClasses, !GatheredItems).
+    % XXX I (zs) do not see why a decl_pragma *outside* a typeclass
+    % declaration should be able to apply to a class method that is declared
+    % *inside* the typeclass declaration. We should require that any
+    % decl pragma that is intended to apply to a class method
+    % should be declared next to it *inside the typeclass declaration itself*.
+    map.map_values_only(
+        distribute_pragma_items_class_items(MaybePredOrFunc,
+            SymName, Arity, Item, Section),
+        !TypeClassMap).
 
 :- pred distribute_pragma_items_class_items(maybe(pred_or_func)::in,
     sym_name::in, arity::in, item::in, module_section::in,
@@ -906,82 +960,6 @@ gather_decl_pragma_for_what_pf_id(DeclPragma, MaybePredOrFuncId) :-
         adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
         MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
     ).
-
-:- pred gather_impl_pragma_for_what_pf_id(impl_pragma::in,
-    maybe(maybe_pred_or_func_id)::out) is det.
-
-gather_impl_pragma_for_what_pf_id(ImplPragma, MaybePredOrFuncId) :-
-    (
-        ( ImplPragma = impl_pragma_foreign_decl(_)
-        ; ImplPragma = impl_pragma_foreign_code(_)
-        ; ImplPragma = impl_pragma_require_feature_set(_)
-        ; ImplPragma = impl_pragma_require_tail_rec(_)
-        ),
-        MaybePredOrFuncId = no
-    ;
-        ( ImplPragma = impl_pragma_inline(PredNameArity)
-        ; ImplPragma = impl_pragma_no_inline(PredNameArity)
-        ; ImplPragma = impl_pragma_consider_used(PredNameArity)
-        ; ImplPragma = impl_pragma_no_detism_warning(PredNameArity)
-        ; ImplPragma = impl_pragma_promise_pure(PredNameArity)
-        ; ImplPragma = impl_pragma_promise_semipure(PredNameArity)
-        ; ImplPragma = impl_pragma_promise_eqv_clauses(PredNameArity)
-        ; ImplPragma = impl_pragma_mode_check_clauses(PredNameArity)
-        ),
-        PredNameArity = pred_pfu_name_arity(PFU, Name, user_arity(Arity)),
-        MaybePredOrFunc = pfu_to_maybe_pred_or_func(PFU),
-        MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
-    ;
-        ImplPragma = impl_pragma_fact_table(FTInfo),
-        FTInfo = pragma_info_fact_table(PredNameArity, _),
-        PredNameArity = pred_pfu_name_arity(PFU, Name, user_arity(Arity)),
-        MaybePredOrFunc = pfu_to_maybe_pred_or_func(PFU),
-        MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
-    ;
-        ImplPragma = impl_pragma_tabled(TabledInfo),
-        TabledInfo = pragma_info_tabled(_, PredNameArityMPFMaybeModes, _),
-        PredNameArityMPFMaybeModes = pred_or_proc_pfumm_name(PFUMM, Name),
-        pfumm_to_maybe_pf_arity_maybe_modes(PFUMM, MaybePredOrFunc,
-            user_arity(Arity), _MaybeModes),
-        MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
-    ;
-        ImplPragma = impl_pragma_foreign_proc(FPInfo),
-        FPInfo = pragma_info_foreign_proc(_, Name, PredOrFunc, Args, _, _, _),
-        adjust_func_arity(PredOrFunc, Arity, list.length(Args)),
-        MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
-    ;
-        ImplPragma = impl_pragma_external_proc(ExternalInfo),
-        ExternalInfo = pragma_info_external_proc(PFNameArity, _),
-        PFNameArity = pred_pf_name_arity(PredOrFunc, Name, user_arity(Arity)),
-        MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
-    ;
-        ImplPragma = impl_pragma_foreign_proc_export(FPEInfo),
-        FPEInfo = pragma_info_foreign_proc_export(_, _, PredNameModesPF, _),
-        PredNameModesPF = proc_pf_name_modes(PredOrFunc, Name, Modes),
-        adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
-        MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
-    ).
-
-:- pred gather_generated_pragma_for_what_pf_id(generated_pragma::in,
-    maybe_pred_or_func_id::out) is det.
-
-gather_generated_pragma_for_what_pf_id(GenPragma, MaybePredOrFuncId) :-
-    (
-        GenPragma = gen_pragma_unused_args(UnusedArgsInfo),
-        UnusedArgsInfo = pragma_info_unused_args(PredNameArityPFMn, _)
-    ;
-        GenPragma = gen_pragma_exceptions(ExceptionsInfo),
-        ExceptionsInfo = pragma_info_exceptions(PredNameArityPFMn, _)
-    ;
-        GenPragma = gen_pragma_trailing_info(TrailingInfo),
-        TrailingInfo = pragma_info_trailing_info(PredNameArityPFMn, _)
-    ;
-        GenPragma = gen_pragma_mm_tabling_info(MMTablingOnfo),
-        MMTablingOnfo = pragma_info_mm_tabling_info(PredNameArityPFMn, _)
-    ),
-    PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, Name,
-        user_arity(Arity), _),
-    MaybePredOrFuncId = yes(PredOrFunc) - sym_name_arity(Name, Arity).
 
 %---------------------------------------------------------------------------%
 %
@@ -1578,81 +1556,81 @@ class_methods_are_unchanged([Decl1 | Decls1], [Decl2 | Decls2]) :-
 
 %---------------------------------------------------------------------------%
 
-write_version_numbers(Stream, AllVersionNumbers, !IO) :-
-    AllVersionNumbers = version_numbers(VersionNumbers,
-        InstanceVersionNumbers),
-    VersionNumbersList = list.filter_map(
-        ( func(ItemType) = (ItemType - ItemVersions) is semidet :-
-            ItemVersions = extract_ids(VersionNumbers, ItemType),
-            not map.is_empty(ItemVersions)
-        ),
-        [type_abstract_item, type_body_item, mode_item, inst_item,
-            predicate_item, function_item, typeclass_item]),
-    io.write_string(Stream, "{\n\t", !IO),
-    % XXX Specifying the stream to print the items and the separators
-    % is suboptimal, but in the absence of active work on smart
-    % recompilation, we probably don't care.
-    io.write_list(Stream, VersionNumbersList, ",\n\t",
-        write_item_type_and_versions(Stream), !IO),
-    ( if map.is_empty(InstanceVersionNumbers) then
-        true
+write_version_numbers(Stream, VersionNumbers, !IO) :-
+    VersionNumbers = version_numbers(TypeNameMap, TypeDefnMap,
+        InstMap, ModeMap, ClassMap, InstanceMap, PredMap, FuncMap),
+    ItemTypeMaybeStrs = [
+        item_type_and_versions_to_string_na(type_abstract_item, TypeNameMap),
+        item_type_and_versions_to_string_na(type_body_item, TypeDefnMap),
+        item_type_and_versions_to_string_na(inst_item, InstMap),
+        item_type_and_versions_to_string_na(mode_item, ModeMap),
+        item_type_and_versions_to_string_na(predicate_item, PredMap),
+        item_type_and_versions_to_string_na(function_item, FuncMap),
+        item_type_and_versions_to_string_na(typeclass_item, ClassMap),
+        item_type_and_versions_to_string_in("instance", InstanceMap)
+    ],
+    list.filter_map(maybe_is_yes, ItemTypeMaybeStrs, ItemTypeStrs),
+    ItemTypesStr = string.join_list(",\n", ItemTypeStrs),
+    io.format(Stream, "{\n%s\n}", [s(ItemTypesStr)], !IO).
+
+%---------------------%
+
+:- func item_type_and_versions_to_string_na(item_type,
+    map(name_arity, version_number)) = maybe(string).
+
+item_type_and_versions_to_string_na(ItemType, VersionMap) = MaybeStr :-
+    ( if map.is_empty(VersionMap) then
+        MaybeStr = no
     else
-        (
-            VersionNumbersList = []
-        ;
-            VersionNumbersList = [_ | _],
-            io.write_string(Stream, ",\n\t", !IO)
-        ),
-        io.write_string(Stream, "instance(", !IO),
-        map.to_assoc_list(InstanceVersionNumbers, InstanceAL),
-        % XXX Specifying the stream to print the items and the separators
-        % is suboptimal, but in the absence of active work on smart
-        % recompilation, we probably don't care.
-        io.write_list(Stream, InstanceAL, ",\n\n\t",
-            write_symname_arity_version_number(Stream), !IO),
-        io.write_string(Stream, ")\n\t", !IO)
-    ),
-    io.write_string(Stream, "\n}", !IO).
+        string_to_item_type(ItemTypeStr, ItemType),
+        map.to_assoc_list(VersionMap, VersionsAL),
+        ItemVersionStrs =
+            list.map(name_arity_version_number_to_string, VersionsAL),
+        ItemVersionsStr = string.join_list(",\n", ItemVersionStrs),
+        string.format("\t%s(\n%s\n\t)",
+            [s(ItemTypeStr), s(ItemVersionsStr)], Str),
+        MaybeStr = yes(Str)
+    ).
 
-:- pred write_item_type_and_versions(io.text_output_stream::in,
-    pair(item_type, map(pair(string, int), version_number))::in,
-    io::di, io::uo) is det.
+:- func item_type_and_versions_to_string_in(string,
+    map(item_name, version_number)) = maybe(string).
 
-write_item_type_and_versions(Stream, ItemType - ItemVersions, !IO) :-
-    string_to_item_type(ItemTypeStr, ItemType),
-    io.write_string(Stream, ItemTypeStr, !IO),
-    io.write_string(Stream, "(\n\t\t", !IO),
-    map.to_assoc_list(ItemVersions, ItemVersionsList),
-    % XXX Specifying the stream to print the items and the separators
-    % is suboptimal, but in the absence of active work on smart
-    % recompilation, we probably don't care.
-    io.write_list(Stream, ItemVersionsList, ",\n\t\t",
-        write_name_arity_version_number(Stream), !IO),
-    io.write_string(Stream, "\n\t)", !IO).
+item_type_and_versions_to_string_in(ItemTypeStr, VersionMap) = MaybeStr :-
+    ( if map.is_empty(VersionMap) then
+        MaybeStr = no
+    else
+        map.to_assoc_list(VersionMap, VersionsAL),
+        ItemVersionStrs =
+            list.map(item_name_version_number_to_string, VersionsAL),
+        ItemVersionsStr = string.join_list(",\n", ItemVersionStrs),
+        string.format("%s(\n%s\n\t)",
+            [s(ItemTypeStr), s(ItemVersionsStr)], Str),
+        MaybeStr = yes(Str)
+    ).
 
-:- pred write_name_arity_version_number(io.text_output_stream::in,
-    pair(pair(string, int), version_number)::in, io::di, io::uo) is det.
+%---------------------%
 
-write_name_arity_version_number(Stream, NameArity - VersionNumber, !IO) :-
-    NameArity = Name - Arity,
-    mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-        unqualified(Name), Stream, !IO),
-    io.write_string(Stream, "/", !IO),
-    io.write_int(Stream, Arity, !IO),
-    io.write_string(Stream, " - ", !IO),
-    write_version_number(Stream, VersionNumber, !IO).
+:- func name_arity_version_number_to_string(pair(name_arity, version_number))
+    = string.
 
-:- pred write_symname_arity_version_number(io.text_output_stream::in,
-    pair(item_name, version_number)::in, io::di, io::uo) is det.
+name_arity_version_number_to_string(NameArity - VersionNumber) = Str :-
+    NameArity = name_arity(Name, Arity),
+    SymNameStr = mercury_bracketed_sym_name_to_string_ngt(
+        next_to_graphic_token, unqualified(Name)),
+    VersionNumberStr = version_number_to_string(VersionNumber),
+    string.format("\t\t%s/%i - %s",
+        [s(SymNameStr), i(Arity), s(VersionNumberStr)], Str).
 
-write_symname_arity_version_number(Stream, ItemName - VersionNumber, !IO) :-
+:- func item_name_version_number_to_string(pair(item_name, version_number))
+    = string.
+
+item_name_version_number_to_string(ItemName - VersionNumber) = Str :-
     ItemName = item_name(SymName, Arity),
-    mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-        SymName, Stream, !IO),
-    io.write_string(Stream, "/", !IO),
-    io.write_int(Stream, Arity, !IO),
-    io.write_string(Stream, " - ", !IO),
-    write_version_number(Stream, VersionNumber, !IO).
+    SymNameStr = mercury_bracketed_sym_name_to_string_ngt(
+        next_to_graphic_token, SymName),
+    VersionNumberStr = version_number_to_string(VersionNumber),
+    string.format("%s/%i - %s",
+        [s(SymNameStr), i(Arity), s(VersionNumberStr)], Str).
 
 %---------------------------------------------------------------------------%
 
@@ -1672,21 +1650,51 @@ parse_version_numbers(VersionNumbersTerm, Result) :-
     map_parser(parse_item_type_version_numbers, VersionNumbersTermList,
         Result0),
     (
-        Result0 = ok1(List),
-        VersionNumbers0 = version_numbers(init_item_id_set(map.init),
-            map.init),
-        VersionNumbers = list.foldl(
-            ( func(VNResult, version_numbers(VNs0, Instances0)) =
-                    version_numbers(VNs, Instances) :-
+        Result0 = ok1(NamedFields),
+        % NOTE This update could be done by parse_item_type_version_numbers.
+        UpdateNamedField =
+            ( pred(VNResult::in, VNs0::in, VNs::out) is det :-
                 (
                     VNResult = items(ItemType, ItemVNs),
-                    update_ids(ItemType, ItemVNs, VNs0, VNs),
-                    Instances = Instances0
+                    (
+                        ItemType = type_abstract_item,
+                        VNs = VNs0 ^ vn_type_names := ItemVNs
+                    ;
+                        ItemType = type_body_item,
+                        VNs = VNs0 ^ vn_type_defns := ItemVNs
+                    ;
+                        ItemType = inst_item,
+                        VNs = VNs0 ^ vn_insts := ItemVNs
+                    ;
+                        ItemType = mode_item,
+                        VNs = VNs0 ^ vn_modes := ItemVNs
+                    ;
+                        ItemType = typeclass_item,
+                        VNs = VNs0 ^ vn_typeclasses := ItemVNs
+                    ;
+                        ItemType = functor_item,
+                        unexpected($pred, "functor_item")
+                    ;
+                        ItemType = predicate_item,
+                        VNs = VNs0 ^ vn_predicates := ItemVNs
+                    ;
+                        ItemType = function_item,
+                        VNs = VNs0 ^ vn_functions := ItemVNs
+                    ;
+                        ItemType = mutable_item,
+                        unexpected($pred, "mutable_item")
+                    ;
+                        ItemType = foreign_proc_item,
+                        unexpected($pred, "foreign_proc_item")
+                    )
                 ;
-                    VNResult = instances(Instances),
-                    VNs = VNs0
+                    VNResult = instances(InstancesVNs),
+                    VNs = VNs0 ^ vn_instances := InstancesVNs
                 )
-            ), List, VersionNumbers0),
+            ),
+        VersionNumbers0 = init_version_numbers,
+        list.foldl(UpdateNamedField, NamedFields,
+            VersionNumbers0, VersionNumbers),
         Result = ok1(VersionNumbers)
     ;
         Result0 = error1(Errors),
@@ -1694,8 +1702,8 @@ parse_version_numbers(VersionNumbersTerm, Result) :-
     ).
 
 :- type item_version_numbers_result
-    --->    items(item_type, version_number_map)
-    ;       instances(instance_version_numbers).
+    --->    items(item_type, name_arity_version_map)
+    ;       instances(item_name_version_map).
 
 :- pred parse_item_type_version_numbers(term::in,
     maybe1(item_version_numbers_result)::out) is det.
@@ -1742,7 +1750,7 @@ parse_item_type_version_numbers(Term, Result) :-
 
 :- pred parse_key_version_number(
     pred(term, string)::(pred(in, out) is semidet), term::in,
-    maybe1(pair(pair(string, arity), version_number))::out) is det.
+    maybe1(pair(name_arity, version_number))::out) is det.
 
 parse_key_version_number(ParseName, Term, Result) :-
     ( if
@@ -1754,7 +1762,7 @@ parse_key_version_number(ParseName, Term, Result) :-
         decimal_term_to_int(ArityTerm, Arity),
         VersionNumber = term_to_version_number(VersionNumberTerm)
     then
-        Result = ok1((Name - Arity) - VersionNumber)
+        Result = ok1(name_arity(Name, Arity) - VersionNumber)
     else
         Pieces = [words("Error in item version number."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,

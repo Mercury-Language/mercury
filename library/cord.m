@@ -185,8 +185,13 @@
 
     % foldl(F, C, A) = list.foldl(F, list(C), A).
     %
-:- func foldl(func(T, U) = U, cord(T), U) = U.
-:- pred foldl_pred(pred(T, U, U), cord(T), U, U).
+:- func foldl(func(T, A) = A, cord(T), A) = A.
+
+    % foldl_pred(P, C, !AccA)
+    %
+    % Equivalent to list.foldl(P, list(C), !AccA), but faster.
+    %
+:- pred foldl_pred(pred(T, A, A), cord(T), A, A).
 :- mode foldl_pred(in(pred(in, in, out) is det), in, in, out) is det.
 :- mode foldl_pred(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode foldl_pred(in(pred(in, di, uo) is det), in, di, uo) is det.
@@ -194,10 +199,51 @@
 :- mode foldl_pred(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
 :- mode foldl_pred(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
+    % foldl2(P, C, !AccA, !AccB)
+    %
+    % Equivalent to list.foldl2(P, list(C), !AccA, !AccB), but faster.
+    %
+:- pred foldl2(pred(T, A, A, B, B), cord(T), A, A, B, B).
+:- mode foldl2(in(pred(in, in, out, in, out) is det),
+    in, in, out, in, out) is det.
+:- mode foldl2(in(pred(in, in, out, mdi, muo) is det),
+    in, in, out, mdi, muo) is det.
+:- mode foldl2(in(pred(in, in, out, di, uo) is det),
+    in, in, out, di, uo) is det.
+:- mode foldl2(in(pred(in, in, out, in, out) is semidet),
+    in, in, out, in, out) is semidet.
+:- mode foldl2(in(pred(in, in, out, mdi, muo) is semidet),
+    in, in, out, mdi, muo) is semidet.
+:- mode foldl2(in(pred(in, in, out, di, uo) is semidet),
+    in, in, out, di, uo) is semidet.
+
+    % foldl3(P, C, !AccA, !AccB, !AccC)
+    %
+    % Equivalent to list.foldl3(P, list(C), !AccA, !AccB, !AccC), but faster.
+    %
+:- pred foldl3(pred(T, A, A, B, B, C, C), cord(T), A, A, B, B, C, C).
+:- mode foldl3(in(pred(in, in, out, in, out, in, out) is det),
+    in, in, out, in, out, in, out) is det.
+:- mode foldl3(in(pred(in, in, out, in, out, mdi, muo) is det),
+    in, in, out, in, out, mdi, muo) is det.
+:- mode foldl3(in(pred(in, in, out, in, out, di, uo) is det),
+    in, in, out, in, out, di, uo) is det.
+:- mode foldl3(in(pred(in, in, out, in, out, in, out) is semidet),
+    in, in, out, in, out, in, out) is semidet.
+:- mode foldl3(in(pred(in, in, out, in, out, mdi, muo) is semidet),
+    in, in, out, in, out, mdi, muo) is semidet.
+:- mode foldl3(in(pred(in, in, out, in, out, di, uo) is semidet),
+    in, in, out, in, out, di, uo) is semidet.
+
     % foldr(F, C, A) = list.foldr(F, list(C), A).
     %
-:- func foldr(func(T, U) = U, cord(T), U) = U.
-:- pred foldr_pred(pred(T, U, U), cord(T), U, U).
+:- func foldr(func(T, A) = A, cord(T), A) = A.
+
+    % foldr(F, C, !AccA)
+    %
+    % Equivalent to list.foldr(F, list(C), !AccA), but faster.
+    %
+:- pred foldr_pred(pred(T, A, A), cord(T), A, A).
 :- mode foldr_pred(in(pred(in, in, out) is det), in, in, out) is det.
 :- mode foldr_pred(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode foldr_pred(in(pred(in, di, uo) is det), in, di, uo) is det.
@@ -696,62 +742,136 @@ filter_node(P, Node, Trues, Falses) :-
 
 %---------------------------------------------------------------------------%
 
-foldl(_, empty_cord, Acc) = Acc.
-foldl(F, nonempty_cord(N), Acc0) = Acc :-
-    foldl_node(F, N, [], Acc0, Acc).
+foldl(_, empty_cord, AccA) = AccA.
+foldl(F, nonempty_cord(N), AccA0) = AccA :-
+    foldl_node(F, N, [], AccA0, AccA).
 
 :- pred foldl_node(func(T, U) = U, cord_node(T), list(cord_node(T)), U, U).
 :- mode foldl_node(in(func(in, in) = out is det), in, in, in, out) is det.
 
-foldl_node(F, C, Cs, !Acc) :-
+foldl_node(F, C, Cs, !AccA) :-
     (
         C = unit_node(X),
-        F(X, !.Acc) = !:Acc
+        F(X, !.AccA) = !:AccA
     ;
         C = list_node(H, T),
-        list.foldl(F, [H | T], !.Acc) = !:Acc
+        list.foldl(F, [H | T], !.AccA) = !:AccA
     ),
     (
         Cs = []
     ;
         Cs = [Y | Ys],
-        foldl_node(F, Y, Ys, !Acc)
+        foldl_node(F, Y, Ys, !AccA)
     ).
-foldl_node(F, branch_node(A, B), Cs, !Acc) :-
-    foldl_node(F, A, [B | Cs], !Acc).
+foldl_node(F, branch_node(A, B), Cs, !AccA) :-
+    foldl_node(F, A, [B | Cs], !AccA).
 
-foldl_pred(_P, empty_cord, !Acc).
-foldl_pred(P, nonempty_cord(N), !Acc) :-
-    foldl_node_pred(P, N, [], !Acc).
+foldl_pred(_P, empty_cord, !AccA).
+foldl_pred(P, nonempty_cord(N), !AccA) :-
+    foldl_node_pred(P, N, [], !AccA).
 
-:- pred foldl_node_pred(pred(T, U, U), cord_node(T), list(cord_node(T)), U, U).
-:- mode foldl_node_pred(in(pred(in, in, out) is det), in, in, in, out) is det.
-:- mode foldl_node_pred(in(pred(in, mdi, muo) is det), in, in, mdi, muo)
-    is det.
-:- mode foldl_node_pred(in(pred(in, di, uo) is det), in, in, di, uo) is det.
-:- mode foldl_node_pred(in(pred(in, in, out) is semidet), in, in, in, out)
-    is semidet.
-:- mode foldl_node_pred(in(pred(in, mdi, muo) is semidet), in, in, mdi, muo)
-    is semidet.
-:- mode foldl_node_pred(in(pred(in, di, uo) is semidet), in, in, di, uo)
-    is semidet.
+:- pred foldl_node_pred(pred(T, A, A), cord_node(T), list(cord_node(T)), A, A).
+:- mode foldl_node_pred(in(pred(in, in, out) is det),
+    in, in, in, out) is det.
+:- mode foldl_node_pred(in(pred(in, mdi, muo) is det),
+    in, in, mdi, muo) is det.
+:- mode foldl_node_pred(in(pred(in, di, uo) is det),
+    in, in, di, uo) is det.
+:- mode foldl_node_pred(in(pred(in, in, out) is semidet),
+    in, in, in, out) is semidet.
+:- mode foldl_node_pred(in(pred(in, mdi, muo) is semidet),
+    in, in, mdi, muo) is semidet.
+:- mode foldl_node_pred(in(pred(in, di, uo) is semidet),
+    in, in, di, uo) is semidet.
 
-foldl_node_pred(P, C, Cs, !Acc) :-
+foldl_node_pred(P, C, Cs, !AccA) :-
     (
         C = unit_node(X),
-        P(X, !Acc)
+        P(X, !AccA)
     ;
         C = list_node(H, T),
-        list.foldl(P, [H | T], !Acc)
+        list.foldl(P, [H | T], !AccA)
     ),
     (
         Cs = []
     ;
         Cs = [Y | Ys],
-        foldl_node_pred(P, Y, Ys, !Acc)
+        foldl_node_pred(P, Y, Ys, !AccA)
     ).
-foldl_node_pred(P, branch_node(A, B), Cs, !Acc) :-
-    foldl_node_pred(P, A, [B | Cs], !Acc).
+foldl_node_pred(P, branch_node(A, B), Cs, !AccA) :-
+    foldl_node_pred(P, A, [B | Cs], !AccA).
+
+foldl2(_P, empty_cord, !AccA, !AccB).
+foldl2(P, nonempty_cord(N), !AccA, !AccB) :-
+    foldl2_node(P, N, [], !AccA, !AccB).
+
+:- pred foldl2_node(pred(T, A, A, B, B), cord_node(T), list(cord_node(T)),
+    A, A, B, B).
+:- mode foldl2_node(in(pred(in, in, out, in, out) is det),
+    in, in, in, out, in, out) is det.
+:- mode foldl2_node(in(pred(in, in, out, mdi, muo) is det),
+    in, in, in, out, mdi, muo) is det.
+:- mode foldl2_node(in(pred(in, in, out, di, uo) is det),
+    in, in, in, out, di, uo) is det.
+:- mode foldl2_node(in(pred(in, in, out, in, out) is semidet),
+    in, in, in, out, in, out) is semidet.
+:- mode foldl2_node(in(pred(in, in, out, mdi, muo) is semidet),
+    in, in, in, out, mdi, muo) is semidet.
+:- mode foldl2_node(in(pred(in, in, out, di, uo) is semidet),
+    in, in, in, out, di, uo) is semidet.
+
+foldl2_node(P, C, Cs, !AccA, !AccB) :-
+    (
+        C = unit_node(X),
+        P(X, !AccA, !AccB)
+    ;
+        C = list_node(H, T),
+        list.foldl2(P, [H | T], !AccA, !AccB)
+    ),
+    (
+        Cs = []
+    ;
+        Cs = [Y | Ys],
+        foldl2_node(P, Y, Ys, !AccA, !AccB)
+    ).
+foldl2_node(P, branch_node(A, B), Cs, !AccA, !AccB) :-
+    foldl2_node(P, A, [B | Cs], !AccA, !AccB).
+
+foldl3(_P, empty_cord, !AccA, !AccB, !AccC).
+foldl3(P, nonempty_cord(N), !AccA, !AccB, !AccC) :-
+    foldl3_node(P, N, [], !AccA, !AccB, !AccC).
+
+:- pred foldl3_node(pred(T, A, A, B, B, C, C),
+    cord_node(T), list(cord_node(T)), A, A, B, B, C, C).
+:- mode foldl3_node(in(pred(in, in, out, in, out, in, out) is det),
+    in, in, in, out, in, out, in, out) is det.
+:- mode foldl3_node(in(pred(in, in, out, in, out, mdi, muo) is det),
+    in, in, in, out, in, out, mdi, muo) is det.
+:- mode foldl3_node(in(pred(in, in, out, in, out, di, uo) is det),
+    in, in, in, out, in, out, di, uo) is det.
+:- mode foldl3_node(in(pred(in, in, out, in, out, in, out) is semidet),
+    in, in, in, out, in, out, in, out) is semidet.
+:- mode foldl3_node(in(pred(in, in, out, in, out, mdi, muo) is semidet),
+    in, in, in, out, in, out, mdi, muo) is semidet.
+:- mode foldl3_node(in(pred(in, in, out, in, out, di, uo) is semidet),
+    in, in, in, out, in, out, di, uo) is semidet.
+
+foldl3_node(P, C, Cs, !AccA, !AccB, !AccC) :-
+    (
+        C = unit_node(X),
+        P(X, !AccA, !AccB, !AccC)
+    ;
+        C = list_node(H, T),
+        list.foldl3(P, [H | T], !AccA, !AccB, !AccC)
+    ),
+    (
+        Cs = []
+    ;
+        Cs = [Y | Ys],
+        foldl3_node(P, Y, Ys, !AccA, !AccB, !AccC)
+    ).
+foldl3_node(P, branch_node(A, B), Cs, !AccA, !AccB, !AccC) :-
+    foldl3_node(P, A, [B | Cs], !AccA, !AccB, !AccC).
 
 %---------------------------------------------------------------------------%
 
@@ -759,7 +879,7 @@ foldr(_, empty_cord, Acc) = Acc.
 foldr(F, nonempty_cord(N), Acc0) = Acc :-
     foldr_node(F, N, [], Acc0, Acc).
 
-:- pred foldr_node(func(T, U) = U, cord_node(T), list(cord_node(T)), U, U).
+:- pred foldr_node(func(T, A) = A, cord_node(T), list(cord_node(T)), A, A).
 :- mode foldr_node(in(func(in, in) = out is det), in, in, in, out) is det.
 
 foldr_node(F, C, Cs, !Acc) :-
@@ -783,7 +903,7 @@ foldr_pred(_P, empty_cord, !Acc).
 foldr_pred(P, nonempty_cord(N), !Acc) :-
     foldr_node_pred(P, N, [], !Acc).
 
-:- pred foldr_node_pred(pred(T, U, U), cord_node(T), list(cord_node(T)), U, U).
+:- pred foldr_node_pred(pred(T, A, A), cord_node(T), list(cord_node(T)), A, A).
 :- mode foldr_node_pred(in(pred(in, in, out) is det), in, in, in, out) is det.
 :- mode foldr_node_pred(in(pred(in, mdi, muo) is det), in, in, mdi, muo)
     is det.

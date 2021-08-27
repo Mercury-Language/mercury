@@ -1,5 +1,5 @@
-	# typeclass_method_pragma_r calls a predicate with a
-	# `:- pragma obsolete' declaration.
+# typeclass_method_pragma_r calls a predicate with a
+# `:- pragma obsolete' declaration.
 MCFLAGS-typeclass_method_pragma_r = --no-halt-at-warn
 
 # This module tests recompilation of a module which depends on a module

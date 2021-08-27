@@ -25,8 +25,8 @@
     % We keep track of these kinds of entities.
 :- type id_type
     --->    type_id
-    ;       mode_id
     ;       inst_id
+    ;       mode_id
     ;       class_id.
 
     % This identifies an entity among other entities of the same kind.
@@ -302,8 +302,8 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
 :- func convert_simple_item_type(id_type) = item_type.
 
 convert_simple_item_type(type_id) = type_abstract_item.
-convert_simple_item_type(mode_id) = mode_item.
 convert_simple_item_type(inst_id) = inst_item.
+convert_simple_item_type(mode_id) = mode_item.
 convert_simple_item_type(class_id) = typeclass_item.
 
 %---------------------------------------------------------------------------%
