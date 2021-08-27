@@ -241,9 +241,10 @@ check_determinism(PredProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
                     words(detism_decl_name(DetismDecl)),
                     words("could be tighter."), nl],
                 report_determinism_problem(PredProcId, !.ModuleInfo,
-                    MessagePieces, DeclaredDetism, InferredDetism, ReportMsgs),
+                    MessagePieces, [], DeclaredDetism, InferredDetism,
+                    ReportMsg),
                 ReportSpec = error_spec($pred, severity_warning,
-                    phase_detism_check, ReportMsgs),
+                    phase_detism_check, [ReportMsg]),
                 !:Specs = [ReportSpec | !.Specs]
             else
                 true
@@ -252,12 +253,6 @@ check_determinism(PredProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
             ( Cmp = first_detism_tighter_than
             ; Cmp = first_detism_incomparable
             ),
-            proc_info_get_detism_decl(ProcInfo, DetismDecl),
-            MessagePieces = [words("error:"),
-                words(detism_decl_name(DetismDecl)),
-                words("not satisfied."), nl],
-            report_determinism_problem(PredProcId, !.ModuleInfo,
-                MessagePieces, DeclaredDetism, InferredDetism, ReportMsgs),
             proc_info_get_goal(ProcInfo, Goal),
             proc_info_get_varset(ProcInfo, VarSet),
             proc_info_get_vartypes(ProcInfo, VarTypes),
@@ -269,8 +264,28 @@ check_determinism(PredProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
             det_info_get_module_info(DetInfo, !:ModuleInfo),
             sort_error_msgs(GoalMsgs, SortedGoalMsgs),
             cse_nopull_msgs(ProcInfo, CseMsgs),
+            DetailMsgs = SortedGoalMsgs ++ CseMsgs,
+            proc_info_get_detism_decl(ProcInfo, DetismDecl),
+            MessagePieces = [words("error:"),
+                words(detism_decl_name(DetismDecl)),
+                words("not satisfied."), nl],
+            (
+                DetailMsgs = [],
+                ReasonPieces = []
+            ;
+                DetailMsgs = [_],
+                ReasonPieces = [words("The reason for the difference"),
+                    words("is the following."), nl]
+            ;
+                DetailMsgs = [_, _ | _],
+                ReasonPieces = [words("The reasons for the difference"),
+                    words("are the following."), nl]
+            ),
+            report_determinism_problem(PredProcId, !.ModuleInfo,
+                MessagePieces, ReasonPieces, DeclaredDetism, InferredDetism,
+                ReportMsg),
             ReportSpec = error_spec($pred, severity_error, phase_detism_check,
-                ReportMsgs ++ SortedGoalMsgs ++ CseMsgs),
+                [ReportMsg | DetailMsgs]),
             !:Specs = [ReportSpec | !.Specs]
         )
     ),
@@ -546,11 +561,11 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
     ).
 
 :- pred report_determinism_problem(pred_proc_id::in, module_info::in,
-    list(format_component)::in, determinism::in, determinism::in,
-    list(error_msg)::out) is det.
+    list(format_component)::in, list(format_component)::in,
+    determinism::in, determinism::in, error_msg::out) is det.
 
-report_determinism_problem(PredProcId, ModuleInfo, MessagePieces,
-        DeclaredDetism, InferredDetism, Msgs) :-
+report_determinism_problem(PredProcId, ModuleInfo, MessagePieces, ReasonPieces,
+        DeclaredDetism, InferredDetism, Msg) :-
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
     proc_info_get_context(ProcInfo, Context),
     ProcPieces = describe_one_proc_name_mode(ModuleInfo, output_mercury,
@@ -560,8 +575,9 @@ report_determinism_problem(PredProcId, ModuleInfo, MessagePieces,
         [words("Declared"),
         quote(determinism_to_string(DeclaredDetism)), suffix(","),
         words("inferred"),
-        quote(determinism_to_string(InferredDetism)), suffix("."), nl],
-    Msgs = [simplest_msg(Context, Pieces)].
+        quote(determinism_to_string(InferredDetism)), suffix("."), nl] ++
+        ReasonPieces,
+    Msg = simplest_msg(Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 

@@ -10,6 +10,8 @@ user_field_access_decl_override.m:023: In `get_foo_f1'(in) = out:
 user_field_access_decl_override.m:023:   error: determinism declaration not
 user_field_access_decl_override.m:023:   satisfied.
 user_field_access_decl_override.m:023:   Declared `det', inferred `semidet'.
+user_field_access_decl_override.m:023:   The reasons for the difference are the
+user_field_access_decl_override.m:023:   following.
 user_field_access_decl_override.m:028:   Call to
 user_field_access_decl_override.m:028:   `user_field_access_decl_override.f1'(in)
 user_field_access_decl_override.m:028:   = out can fail.
@@ -18,6 +20,8 @@ user_field_access_decl_override.m:030: In `set_foo_f1'(in, in, out):
 user_field_access_decl_override.m:030:   error: determinism declaration not
 user_field_access_decl_override.m:030:   satisfied.
 user_field_access_decl_override.m:030:   Declared `det', inferred `semidet'.
+user_field_access_decl_override.m:030:   The reasons for the difference are the
+user_field_access_decl_override.m:030:   following.
 user_field_access_decl_override.m:035:   Call to
 user_field_access_decl_override.m:035:   `user_field_access_decl_override.f1
 user_field_access_decl_override.m:035:   :='(in, in) = out can fail.

@@ -1,21 +1,25 @@
 det_atomic_goal_msgs.m:011: In `det_calls_failure'(in, out):
 det_atomic_goal_msgs.m:011:   error: determinism declaration not satisfied.
 det_atomic_goal_msgs.m:011:   Declared `det', inferred `failure'.
+det_atomic_goal_msgs.m:011:   The reason for the difference is the following.
 det_atomic_goal_msgs.m:018:   Call to `det_atomic_goal_msgs.failure_pred'(in)
 det_atomic_goal_msgs.m:018:   can fail.
 det_atomic_goal_msgs.m:012: In `det_calls_semidet'(in, out):
 det_atomic_goal_msgs.m:012:   error: determinism declaration not satisfied.
 det_atomic_goal_msgs.m:012:   Declared `det', inferred `semidet'.
+det_atomic_goal_msgs.m:012:   The reason for the difference is the following.
 det_atomic_goal_msgs.m:019:   Call to `det_atomic_goal_msgs.semidet_pred'(in)
 det_atomic_goal_msgs.m:019:   can fail.
 det_atomic_goal_msgs.m:013: In `det_calls_multi'(out):
 det_atomic_goal_msgs.m:013:   error: determinism declaration not satisfied.
 det_atomic_goal_msgs.m:013:   Declared `det', inferred `multi'.
+det_atomic_goal_msgs.m:013:   The reason for the difference is the following.
 det_atomic_goal_msgs.m:020:   Call to `det_atomic_goal_msgs.multi_pred'(out)
 det_atomic_goal_msgs.m:020:   can succeed more than once.
 det_atomic_goal_msgs.m:014: In `det_calls_nondet'(in, out):
 det_atomic_goal_msgs.m:014:   error: determinism declaration not satisfied.
 det_atomic_goal_msgs.m:014:   Declared `det', inferred `nondet'.
+det_atomic_goal_msgs.m:014:   The reason for the difference is the following.
 det_atomic_goal_msgs.m:021:   Call to `det_atomic_goal_msgs.nondet_pred'(in,
 det_atomic_goal_msgs.m:021:   out) can fail and can succeed more than once.
 det_atomic_goal_msgs.m:041: In `failure_pred'(in):

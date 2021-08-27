@@ -1,6 +1,7 @@
 try_detism.m:010: In `p'(out, di, uo):
 try_detism.m:010:   error: determinism declaration not satisfied.
 try_detism.m:010:   Declared `cc_multi', inferred `cc_nondet'.
+try_detism.m:010:   The reason for the difference is the following.
 try_detism.m:017:   In argument 1 of call to predicate `try_detism.q'/3:
 try_detism.m:017:   unification with `X' can fail.
 try_detism.m:016: Error: call to predicate `exception.magic_exception_result'/1

@@ -1,24 +1,29 @@
 det_errors.m:009: In `p1'(in):
 det_errors.m:009:   error: determinism declaration not satisfied.
 det_errors.m:009:   Declared `det', inferred `semidet'.
+det_errors.m:009:   The reason for the difference is the following.
 det_errors.m:042:   In argument 1 of clause head:
 det_errors.m:042:   unification of `HeadVar__1' and `42' can fail.
 det_errors.m:010: In `p2'(in):
 det_errors.m:010:   error: determinism declaration not satisfied.
 det_errors.m:010:   Declared `det', inferred `semidet'.
+det_errors.m:010:   The reason for the difference is the following.
 det_errors.m:043:   Unification of `X' and `42' can fail.
 det_errors.m:011: In `p3'(in):
 det_errors.m:011:   error: determinism declaration not satisfied.
 det_errors.m:011:   Declared `det', inferred `semidet'.
+det_errors.m:011:   The reason for the difference is the following.
 det_errors.m:044:   Unification of `X' and `42' can fail.
 det_errors.m:012: In `p4'(in):
 det_errors.m:012:   error: determinism declaration not satisfied.
 det_errors.m:012:   Declared `det', inferred `semidet'.
+det_errors.m:012:   The reason for the difference is the following.
 det_errors.m:045:   In argument 2 of functor `+/2':
 det_errors.m:045:   unification with `21' can fail.
 det_errors.m:026: In `q'(in, out):
 det_errors.m:026:   error: determinism declaration not satisfied.
 det_errors.m:026:   Declared `det', inferred `semidet'.
+det_errors.m:026:   The reason for the difference is the following.
 det_errors.m:048:   The switch on HeadVar__1 does not cover
 det_errors.m:048:     `d'/0,
 det_errors.m:048:     `e'/0,
@@ -29,6 +34,7 @@ det_errors.m:048:     `i'/1.
 det_errors.m:034: In `r'(in, out):
 det_errors.m:034:   error: determinism declaration not satisfied.
 det_errors.m:034:   Declared `det', inferred `nondet'.
+det_errors.m:034:   The reasons for the difference are the following.
 det_errors.m:054:   The switch on U does not cover
 det_errors.m:054:     `u2'/0.
 det_errors.m:057:   Inside the case u3(V_16) of the switch on U:
@@ -49,6 +55,7 @@ det_errors.m:075:   disjunction has multiple clauses with solutions.
 det_errors.m:035: In `s'(in, out):
 det_errors.m:035:   error: determinism declaration not satisfied.
 det_errors.m:035:   Declared `det', inferred `nondet'.
+det_errors.m:035:   The reasons for the difference are the following.
 det_errors.m:093:   The switch on U does not cover
 det_errors.m:093:     `u2'/0.
 det_errors.m:096:   Inside the case u3(V_11) of the switch on U:
