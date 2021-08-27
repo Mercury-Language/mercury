@@ -93,14 +93,59 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred write_usage_file(module_info::in, set(module_name)::in,
-    maybe(module_timestamp_map)::in, io::di, io::uo) is det.
+    % This type contains all the information that goes into a .used file.
+    %
+    % XXX RECOMP At the moment, its form is only distantly related to the form
+    % in which this info ends up in the .used file. Future changes should
+    % fix that, hopefully to the extent that you can just call io.write
+    % (or equivalent) on it to create every part of the .used file after
+    % the version number.
+    %
+:- type used_file_contents
+    --->    used_file_contents(
+                % The name of the module whose .used file this represents.
+                ufc_module_name             :: module_name,
+
+                % Is this module the top module in its source file?
+                ufc_maybe_top_module        :: maybe_top_module,
+
+                % XXX Document the remaining fields.
+                ufc_module_timestamp_map    :: module_timestamp_map,
+                ufc_mi_version_numbers_map  :: module_item_version_numbers_map,
+                ufc_resolved_used_items     :: resolved_used_items,
+                ufc_used_typeclasses        :: set(item_name),
+                ufc_imported_items          :: imported_items,
+                ufc_module_instances        :: map(module_name, set(item_name))
+            ).
+
+:- type imported_items == map(module_name, module_imported_items).
+
+:- type module_imported_items
+    --->    module_imported_items(
+                mii_type_names      :: imported_item_set,
+                mii_type_defns      :: imported_item_set,
+                mii_insts           :: imported_item_set,
+                mii_modes           :: imported_item_set,
+                mii_typeclasses     :: imported_item_set,
+                mii_functors        :: imported_item_set,
+                mii_predicates      :: imported_item_set,
+                mii_functions       :: imported_item_set
+            ).
+
+:- type imported_item_set == set(name_arity).
 
     % Changes which modify the format of the `.used' files will increment
     % this number. recompilation_check.m should recompile if the version number
     % is out of date.
     %
 :- func used_file_version_number = int.
+
+:- pred write_usage_file(module_info::in, used_file_contents::in,
+    io::di, io::uo) is det.
+
+:- pred construct_used_file_contents(module_info::in, recompilation_info::in,
+    maybe_top_module::in, module_timestamp_map::in,
+    used_file_contents::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -144,54 +189,46 @@ init_resolved_used_items =
 
 %---------------------------------------------------------------------------%
 
-write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestampMap, !IO) :-
-    module_info_get_maybe_recompilation_info(ModuleInfo, MaybeRecompInfo),
-    ( if
-        MaybeRecompInfo = yes(RecompInfo),
-        MaybeTimestampMap = yes(TimestampMap)
-    then
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, verbose, Verbose),
-        % XXX We should output to progress stream and error stream,
-        % not CurStream.
-        io.output_stream(CurStream, !IO),
-        maybe_write_string(CurStream, Verbose,
-            "% Writing recompilation compilation dependency information\n",
-            !IO),
+used_file_version_number = 2.
 
-        module_info_get_name(ModuleInfo, ModuleName),
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
-            ext_other(other_ext(".used")), ModuleName, FileName, !IO),
-        io.open_output(FileName, FileResult, !IO),
-        (
-            FileResult = ok(FileStream),
-            write_usage_file_2(FileStream, ModuleInfo,
-                set.to_sorted_list(NestedSubModules), RecompInfo, TimestampMap,
-                !IO),
-            io.close_output(FileStream, !IO)
-        ;
-            FileResult = error(IOError),
-            io.error_message(IOError, IOErrorMessage),
-            io.format(CurStream, "\nError opening `%s' for output: %s.\n",
-                [s(FileName), s(IOErrorMessage)], !IO),
-            io.set_exit_status(1, !IO)
-        )
-    else
-        true
+write_usage_file(ModuleInfo, UsedFileContents, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    % XXX We should output to progress stream and error stream,
+    % not CurStream.
+    io.output_stream(CurStream, !IO),
+    maybe_write_string(CurStream, Verbose,
+        "% Writing recompilation compilation dependency information\n", !IO),
+
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(other_ext(".used")), ModuleName, FileName, !IO),
+    io.open_output(FileName, FileResult, !IO),
+    (
+        FileResult = ok(FileStream),
+        write_usage_file_to_stream(FileStream, UsedFileContents, !IO),
+        io.close_output(FileStream, !IO)
+    ;
+        FileResult = error(IOError),
+        io.error_message(IOError, IOErrorMessage),
+        io.format(CurStream, "\nError opening `%s' for output: %s.\n",
+            [s(FileName), s(IOErrorMessage)], !IO),
+        io.set_exit_status(1, !IO)
     ).
 
-:- pred write_usage_file_2(io.text_output_stream::in, module_info::in,
-    list(module_name)::in, recompilation_info::in,
-    module_timestamp_map::in, io::di, io::uo) is det.
+:- pred write_usage_file_to_stream(io.text_output_stream::in,
+    used_file_contents::in, io::di, io::uo) is det.
 
-write_usage_file_2(Stream, ModuleInfo, NestedSubModules, RecompInfo,
-        TimestampMap, !IO) :-
+write_usage_file_to_stream(Stream, UsedFileContents, !IO) :-
+    UsedFileContents = used_file_contents(ThisModuleName,
+        MaybeTopModule, TimestampMap, _ModuleItemVersionNumbersMap,
+        ResolvedUsedItems, UsedClasses, ImportedItems, _ModuleInstances),
+
     io.write_int(Stream, used_file_version_number, !IO),
     io.write_string(Stream, ",", !IO),
     io.write_int(Stream, module_item_version_numbers_version_number, !IO),
     io.write_string(Stream, ".\n\n", !IO),
 
-    module_info_get_name(ModuleInfo, ThisModuleName),
     map.lookup(TimestampMap, ThisModuleName,
         module_timestamp(_, ThisModuleTimestamp, _)),
     io.write_string(Stream, "(", !IO),
@@ -200,6 +237,7 @@ write_usage_file_2(Stream, ModuleInfo, NestedSubModules, RecompInfo,
     write_version_number(Stream, ThisModuleTimestamp, !IO),
     io.write_string(Stream, ").\n\n", !IO),
 
+    NestedSubModules = get_nested_children_list_of_top_module(MaybeTopModule),
     (
         NestedSubModules = [],
         io.write_string(Stream, "sub_modules.\n\n", !IO)
@@ -211,12 +249,7 @@ write_usage_file_2(Stream, ModuleInfo, NestedSubModules, RecompInfo,
         io.write_string(Stream, ").\n\n", !IO)
     ),
 
-    UsedItems = RecompInfo ^ recomp_used_items,
-    find_all_used_imported_items(ModuleInfo,
-        UsedItems, RecompInfo ^ recomp_dependencies, ResolvedUsedItems,
-        UsedClasses, ImportedItems, ModuleInstances),
-
-    ( if UsedItems = init_used_items then
+    ( if ResolvedUsedItems = init_resolved_used_items then
         io.write_string(Stream, "used_items.\n", !IO)
     else
         io.write_string(Stream, "used_items(\n\t", !IO),
@@ -253,8 +286,7 @@ write_usage_file_2(Stream, ModuleInfo, NestedSubModules, RecompInfo,
     ),
 
     map.foldl(
-        write_module_name_and_used_items(Stream, RecompInfo, TimestampMap,
-            ModuleInstances),
+        write_module_name_and_used_items(Stream, UsedFileContents),
         ImportedItems, !IO),
     % recompilation_check.m checks for this item when reading in the `.used'
     % file to make sure the earlier compilation wasn't interrupted in the
@@ -263,12 +295,15 @@ write_usage_file_2(Stream, ModuleInfo, NestedSubModules, RecompInfo,
     io.write_string(Stream, "done.\n", !IO).
 
 :- pred write_module_name_and_used_items(io.text_output_stream::in,
-    recompilation_info::in, module_timestamp_map::in,
-    map(module_name, set(item_name))::in, module_name::in,
-    module_imported_items::in, io::di, io::uo) is det.
+    used_file_contents::in,
+    module_name::in, module_imported_items::in, io::di, io::uo) is det.
 
-write_module_name_and_used_items(Stream, RecompInfo, TimestampMap,
-        ModuleInstances, ModuleName, ModuleUsedItems, !IO) :-
+write_module_name_and_used_items(Stream, UsedFileContents,
+        ModuleName, ModuleUsedItems, !IO) :-
+    UsedFileContents = used_file_contents(_ThisModuleName,
+        _MaybeTopModule, TimestampMap, ModuleItemVersionNumbersMap,
+        _ResolvedUsedItems, _UsedClasses, _ImportedItems, ModuleInstances),
+
     io.nl(Stream, !IO),
     io.write_string(Stream, "(", !IO),
     mercury_output_bracketed_sym_name(ModuleName, Stream, !IO),
@@ -308,16 +343,17 @@ write_module_name_and_used_items(Stream, RecompInfo, TimestampMap,
         % XXX We don't yet record all uses of items from these modules
         % in polymorphism.m, etc.
         not any_mercury_builtin_module(ModuleName),
-        map.search(RecompInfo ^ recomp_version_numbers, ModuleName,
-            ModuleVersions)
+        map.search(ModuleItemVersionNumbersMap, ModuleName,
+            ModuleItemVersionNumbers)
     then
         % Select out from the version numbers of all items in the imported
         % module the ones which are used.
         ModuleUsedItems = module_imported_items(UsedTypeNames, UsedTypeDefns,
             UsedInsts, UsedModes, UsedClasses, _UsedInstances,
             UsedPreds, UsedFuncs),
-        ModuleVersions = module_item_version_numbers(TypeNameMap, TypeDefnMap,
-            InstMap, ModeMap, ClassMap, InstanceMap, PredMap, FuncMap),
+        ModuleItemVersionNumbers =
+            module_item_version_numbers(TypeNameMap, TypeDefnMap,
+                InstMap, ModeMap, ClassMap, InstanceMap, PredMap, FuncMap),
         map.select(TypeNameMap, UsedTypeNames, UsedTypeNameMap),
         map.select(TypeDefnMap, UsedTypeDefns, UsedTypeDefnMap),
         map.select(InstMap, UsedInsts, UsedInstMap),
@@ -330,13 +366,14 @@ write_module_name_and_used_items(Stream, RecompInfo, TimestampMap,
         ),
         map.select(PredMap, UsedPreds, UsedPredMap),
         map.select(FuncMap, UsedFuncs, UsedFuncMap),
-        UsedModuleVersions =
+        UsedModuleItemVersionNumbers =
             module_item_version_numbers(UsedTypeNameMap, UsedTypeDefnMap,
                 UsedInstMap, UsedModeMap, UsedClassMap, UsedInstanceMap,
                 UsedPredMap, UsedFuncMap),
 
         io.write_string(Stream, " => ", !IO),
-        write_module_item_version_numbers(Stream, UsedModuleVersions, !IO),
+        write_module_item_version_numbers(Stream,
+            UsedModuleItemVersionNumbers, !IO),
         io.write_string(Stream, ".\n", !IO)
     else
         % If we don't have version numbers for a module, we just recompile
@@ -578,8 +615,6 @@ write_resolved_functor(ResolvedFunctor, Stream, !IO) :-
         io.write_string(Stream, ")", !IO)
     ).
 
-used_file_version_number = 2.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -596,22 +631,6 @@ used_file_version_number = 2.
                 resolved_used_items :: resolved_used_items,
                 used_typeclasses    :: set(item_name)
             ).
-
-:- type imported_items == map(module_name, module_imported_items).
-
-:- type module_imported_items
-    --->    module_imported_items(
-                mii_type_names      :: imported_item_set,
-                mii_type_defns      :: imported_item_set,
-                mii_insts           :: imported_item_set,
-                mii_modes           :: imported_item_set,
-                mii_typeclasses     :: imported_item_set,
-                mii_functors        :: imported_item_set,
-                mii_predicates      :: imported_item_set,
-                mii_functions       :: imported_item_set
-            ).
-
-:- type imported_item_set == set(name_arity).
 
 :- func init_module_imported_items = module_imported_items.
 
@@ -673,17 +692,13 @@ insert_into_imported_items_map(VisibleModule, !ImportedItemsMap) :-
     % is both imported and an ancestor module.
     map.set(VisibleModule, ModuleItems, !ImportedItemsMap).
 
+%---------------------------------------------------------------------------%
+
+construct_used_file_contents(ModuleInfo, RecompInfo, MaybeTopModule,
+        TimestampMap, Contents) :-
     % Go over the set of imported items found to be used and
     % find the transitive closure of the imported items they use.
-    %
-:- pred find_all_used_imported_items(module_info::in,
-    used_items::in, map(item_id, set(item_id))::in,
-    resolved_used_items::out, set(item_name)::out, imported_items::out,
-    map(module_name, set(item_name))::out) is det.
 
-find_all_used_imported_items(ModuleInfo,
-        UsedItems, Dependencies, ResolvedUsedItems, UsedTypeClasses,
-        ImportedItems, ModuleInstances) :-
     % We need to make sure each visible module has an entry in the `.used'
     % file, even if nothing was used from it. This will cause
     % recompilation_check.m to check for new items causing ambiguity
@@ -700,6 +715,7 @@ find_all_used_imported_items(ModuleInfo,
     map.init(ModuleUsedClasses),
     set.init(UsedClasses0),
 
+    UsedItems = RecompInfo ^ recomp_used_items,
     UsedItems = used_items(TypeNames, TypeDefns, Insts, Modes, Classes,
         _, _, _),
     map.init(ResolvedCtors),
@@ -708,6 +724,7 @@ find_all_used_imported_items(ModuleInfo,
     ResolvedUsedItems0 = resolved_used_items(TypeNames, TypeDefns,
         Insts, Modes, Classes, ResolvedCtors, ResolvedPreds, ResolvedFuncs),
 
+    Dependencies = RecompInfo ^ recomp_dependencies,
     Info0 = recompilation_usage_info(ModuleInfo, ItemsToProcess0,
         ImportedItems1, ModuleUsedClasses, Dependencies,
         ResolvedUsedItems0, UsedClasses0),
@@ -717,7 +734,12 @@ find_all_used_imported_items(ModuleInfo,
     ImportedItems = Info ^ imported_items,
     ModuleInstances = Info ^ module_instances,
     UsedTypeClasses = Info ^ used_typeclasses,
-    ResolvedUsedItems = Info ^ resolved_used_items.
+    ResolvedUsedItems = Info ^ resolved_used_items,
+
+    ModuleItemVersionNumbersMap = RecompInfo ^ recomp_version_numbers,
+    Contents = used_file_contents(ModuleName, MaybeTopModule, TimestampMap,
+        ModuleItemVersionNumbersMap,
+        ResolvedUsedItems, UsedTypeClasses, ImportedItems, ModuleInstances).
 
 :- pred find_all_used_imported_items_2(used_items::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.

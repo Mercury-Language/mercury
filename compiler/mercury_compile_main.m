@@ -2530,10 +2530,17 @@ after_front_end_passes(Globals, OpModeCodeGen, MaybeTopModule,
         ),
         (
             Succeeded = succeeded,
-            NestedSubModules =
-                get_nested_children_of_top_module(MaybeTopModule),
-            recompilation.usage.write_usage_file(!.HLDS, NestedSubModules,
-                MaybeTimestampMap, !IO),
+            module_info_get_maybe_recompilation_info(!.HLDS, MaybeRecompInfo),
+            ( if
+                MaybeRecompInfo = yes(RecompInfo),
+                MaybeTimestampMap = yes(TimestampMap)
+            then
+                construct_used_file_contents(!.HLDS, RecompInfo,
+                    MaybeTopModule, TimestampMap, UsedFileContents),
+                write_usage_file(!.HLDS, UsedFileContents, !IO)
+            else
+                true
+            ),
             FindTimestampFiles(ModuleName, TimestampFiles, !IO),
             list.map_foldl(
                 touch_datestamp(Globals, ProgressStream, ErrorStream),
