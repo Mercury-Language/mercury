@@ -98,6 +98,9 @@
 :- type shrouded_pred_proc_id
     --->    shrouded_pred_proc_id(int, int).
 
+:- type cons_ctor
+    --->    cons_ctor(sym_name, arity, type_ctor).
+
 :- type cons_id
     --->    cons(sym_name, arity, type_ctor)
             % Before post-typecheck, the type_ctor field is not meaningful.

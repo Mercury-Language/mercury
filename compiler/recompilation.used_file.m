@@ -70,19 +70,11 @@
 :- type resolved_functor_map == resolved_item_map(set(resolved_functor)).
 
 :- type resolved_functor
-    --->    resolved_functor_pred_or_func(
-                pred_id,
-                module_name,
-                pred_or_func,
-                arity       % The actual arity of the predicate or function
-            )
-    ;       resolved_functor_constructor(
-                item_name   % type_ctor
-            )
-    ;       resolved_functor_field(
-                item_name,  % type_ctor
-                item_name   % cons_id
-            ).
+    --->    resolved_functor_pred_or_func(pred_id, pred_or_func,
+                module_name, pred_form_arity)
+            % The actual arity of the predicate or function
+    ;       resolved_functor_data_constructor(type_ctor)
+    ;       resolved_functor_field_access_func(cons_ctor).
 
 %---------------------%
 
@@ -240,9 +232,9 @@ write_usage_file_to_stream(Stream, UsedFileContents, !IO) :-
         io.write_string(Stream, "used_items(\n\t", !IO),
         some [!WriteComma] (
             !:WriteComma = no,
-            write_simple_item_matches(Stream, type_abstract_item,
+            write_simple_item_matches(Stream, type_name_item,
                 ResolvedUsedItems, !WriteComma, !IO),
-            write_simple_item_matches(Stream, type_body_item,
+            write_simple_item_matches(Stream, type_defn_item,
                 ResolvedUsedItems, !WriteComma, !IO),
             write_simple_item_matches(Stream, inst_item,
                 ResolvedUsedItems, !WriteComma, !IO),
@@ -392,10 +384,10 @@ write_comma_if_needed(Stream, !WriteComma, !IO) :-
 
 write_simple_item_matches(Stream, ItemType, UsedItems, !WriteComma, !IO) :-
     (
-        ItemType = type_abstract_item,
+        ItemType = type_name_item,
         Ids = UsedItems ^ rui_type_names
     ;
-        ItemType = type_body_item,
+        ItemType = type_defn_item,
         Ids = UsedItems ^ rui_type_defns
     ;
         ItemType = inst_item,
@@ -566,8 +558,8 @@ write_resolved_item_set_3(WriteMatches, Arity - Matches, Stream, !IO) :-
 
 write_resolved_functor(ResolvedFunctor, Stream, !IO) :-
     (
-        ResolvedFunctor = resolved_functor_pred_or_func(_, ModuleName,
-            PredOrFunc, Arity),
+        ResolvedFunctor = resolved_functor_pred_or_func(_, PredOrFunc,
+            ModuleName, pred_form_arity(Arity)),
         io.write_string(Stream, pred_or_func_to_full_str(PredOrFunc), !IO),
         io.write_string(Stream, "(", !IO),
         mercury_output_bracketed_sym_name(ModuleName, Stream, !IO),
@@ -575,26 +567,26 @@ write_resolved_functor(ResolvedFunctor, Stream, !IO) :-
         io.write_int(Stream, Arity, !IO),
         io.write_string(Stream, ")", !IO)
     ;
-        ResolvedFunctor = resolved_functor_constructor(ItemName),
-        ItemName = item_name(TypeName, Arity),
+        ResolvedFunctor = resolved_functor_data_constructor(TypeCtor),
+        TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
         io.write_string(Stream, "ctor(", !IO),
         mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-            TypeName, Stream, !IO),
+            TypeCtorSymName, Stream, !IO),
         io.write_string(Stream, "/", !IO),
-        io.write_int(Stream, Arity, !IO),
+        io.write_int(Stream, TypeCtorArity, !IO),
         io.write_string(Stream, ")", !IO)
     ;
-        ResolvedFunctor = resolved_functor_field(TypeItemName, ConsItemName),
-        TypeItemName = item_name(TypeName, TypeArity),
-        ConsItemName = item_name(ConsName, ConsArity),
+        ResolvedFunctor = resolved_functor_field_access_func(ConsCtor),
+        ConsCtor = cons_ctor(ConsSymName, ConsArity, TypeCtor),
+        TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
         io.write_string(Stream, "field(", !IO),
         mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-            TypeName, Stream, !IO),
+            TypeCtorSymName, Stream, !IO),
         io.write_string(Stream, "/", !IO),
-        io.write_int(Stream, TypeArity, !IO),
+        io.write_int(Stream, TypeCtorArity, !IO),
         io.write_string(Stream, ", ", !IO),
         mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-            ConsName, Stream, !IO),
+            ConsSymName, Stream, !IO),
         io.write_string(Stream, "/", !IO),
         io.write_int(Stream, ConsArity, !IO),
         io.write_string(Stream, ")", !IO)

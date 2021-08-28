@@ -93,13 +93,13 @@
     % of those structures.
     %
 :- type item_type
-    --->    type_abstract_item
+    --->    type_name_item
             % Just the name of the type, not its body. It is common
             % for a value of a type to be passed through a predicate without
             % inspecting the value -- such predicates do not need to be
             % recompiled if the body of the type changes (except for
             % equivalence types).
-    ;       type_body_item
+    ;       type_defn_item
     ;       inst_item
     ;       mode_item
     ;       typeclass_item
@@ -110,8 +110,8 @@
     ;       foreign_proc_item.
 
 :- inst simple_item for item_type/0
-    --->    type_abstract_item
-    ;       type_body_item
+    --->    type_name_item
+    ;       type_defn_item
     ;       inst_item
     ;       mode_item
     ;       typeclass_item.
@@ -157,6 +157,21 @@
 :- func init_recompilation_info(module_name) = recompilation_info.
 
 %-----------------------------------------------------------------------------%
+
+:- type used_item_type
+    --->    used_type_name
+            % Just the name of the type, not its body. It is common
+            % for a value of a type to be passed through a predicate without
+            % inspecting the value -- such predicates do not need to be
+            % recompiled if the body of the type changes (except for
+            % equivalence types).
+    ;       used_type_defn
+    ;       used_inst
+    ;       used_mode
+    ;       used_typeclass
+    ;       used_functor        % The RHS of a var-functor unification.
+    ;       used_predicate
+    ;       used_function.
 
     % A simple_item_set records the single possible match for an item.
     %
@@ -224,14 +239,13 @@
 
 %-----------------------------------------------------------------------------%
 
-    % record_used_item(ItemType, UnqualifiedId, QualifiedId,
-    %   !Info).
+    % record_used_item(ItemType, UnqualifiedId, QualifiedId, !Info).
     %
     % Record a reference to UnqualifiedId, for which QualifiedId
     % is the only match. If a new declaration is added so that
     % QualifiedId is not the only match, we need to recompile.
     %
-:- pred record_used_item(item_type::in, item_name::in, item_name::in,
+:- pred record_used_item(used_item_type::in, item_name::in, item_name::in,
     recompilation_info::in, recompilation_info::out) is det.
 
     % For each imported item we need to record which equivalence types
@@ -310,8 +324,8 @@ write_version_number(Stream, VersionNumber, !IO) :-
 pred_or_func_to_item_type(pf_predicate) = predicate_item.
 pred_or_func_to_item_type(pf_function) = function_item.
 
-string_to_item_type("type", type_abstract_item).
-string_to_item_type("type_body", type_body_item).
+string_to_item_type("type", type_name_item).        % for historical reasons
+string_to_item_type("type_body", type_defn_item).   % for historical reasons
 string_to_item_type("inst", inst_item).
 string_to_item_type("mode", mode_item).
 string_to_item_type("typeclass", typeclass_item).
@@ -338,44 +352,36 @@ init_used_items =
     used_items(map.init, map.init, map.init, map.init, map.init, map.init,
         map.init, map.init).
 
-:- func get_used_item_ids(used_items, item_type) = simple_item_set.
+:- func get_used_item_ids(used_items, used_item_type) = simple_item_set.
 
-get_used_item_ids(Used, type_abstract_item) = Used ^ used_type_names.
-get_used_item_ids(Used, type_body_item) = Used ^ used_type_defns.
-get_used_item_ids(Used, inst_item) = Used ^ used_insts.
-get_used_item_ids(Used, mode_item) = Used ^ used_modes.
-get_used_item_ids(Used, typeclass_item) = Used ^ used_typeclasses.
-get_used_item_ids(Used, functor_item) = Used ^ used_functors.
-get_used_item_ids(Used, predicate_item) = Used ^ used_predicates.
-get_used_item_ids(Used, function_item) = Used ^ used_functions.
-get_used_item_ids(_Used, mutable_item) = _ :-
-    unexpected($pred, "mutable_item").
-get_used_item_ids(_Used, foreign_proc_item) = _ :-
-    unexpected($pred, "foreign_proc_item").
+get_used_item_ids(Used, used_type_name) = Used ^ used_type_names.
+get_used_item_ids(Used, used_type_defn) = Used ^ used_type_defns.
+get_used_item_ids(Used, used_inst) = Used ^ used_insts.
+get_used_item_ids(Used, used_mode) = Used ^ used_modes.
+get_used_item_ids(Used, used_typeclass) = Used ^ used_typeclasses.
+get_used_item_ids(Used, used_functor) = Used ^ used_functors.
+get_used_item_ids(Used, used_predicate) = Used ^ used_predicates.
+get_used_item_ids(Used, used_function) = Used ^ used_functions.
 
-:- pred set_used_item_ids(item_type::in, simple_item_set::in,
+:- pred set_used_item_ids(used_item_type::in, simple_item_set::in,
     used_items::in, used_items::out) is det.
 
-set_used_item_ids(type_abstract_item, IdMap, !Used) :-
+set_used_item_ids(used_type_name, IdMap, !Used) :-
     !Used ^ used_type_names := IdMap.
-set_used_item_ids(type_body_item, IdMap, !Used) :-
+set_used_item_ids(used_type_defn, IdMap, !Used) :-
     !Used ^ used_type_defns := IdMap.
-set_used_item_ids(inst_item, IdMap, !Used) :-
+set_used_item_ids(used_inst, IdMap, !Used) :-
     !Used ^ used_insts := IdMap.
-set_used_item_ids(mode_item, IdMap, !Used) :-
+set_used_item_ids(used_mode, IdMap, !Used) :-
     !Used ^ used_modes := IdMap.
-set_used_item_ids(typeclass_item, IdMap, !Used) :-
+set_used_item_ids(used_typeclass, IdMap, !Used) :-
     !Used ^ used_typeclasses := IdMap.
-set_used_item_ids(functor_item, IdMap, !Used) :-
+set_used_item_ids(used_functor, IdMap, !Used) :-
     !Used ^ used_functors := IdMap.
-set_used_item_ids(predicate_item, IdMap, !Used) :-
+set_used_item_ids(used_predicate, IdMap, !Used) :-
     !Used ^ used_predicates := IdMap.
-set_used_item_ids(function_item, IdMap, !Used) :-
+set_used_item_ids(used_function, IdMap, !Used) :-
     !Used ^ used_functions := IdMap.
-set_used_item_ids(mutable_item, _IdMap, !Used) :-
-    unexpected($pred, "mutable_item").
-set_used_item_ids(foreign_proc_item, _IdMap, !Used) :-
-    unexpected($pred, "foreign_proc_item").
 
 %-----------------------------------------------------------------------------%
 
@@ -397,19 +403,19 @@ module_qualify_name(Qualifier, Name) =
 
 %-----------------------------------------------------------------------------%
 
-record_used_item(ItemType, Id, QualifiedId, !Info) :-
+record_used_item(UsedItemType, Id, QualifiedId, !Info) :-
     QualifiedId = item_name(QualifiedName, Arity),
     ( if
         % Don't record builtin items (QualifiedId may be unqualified
         % for predicates, functions and functors because they aren't
         % qualified until after typechecking).
         QualifiedName = unqualified(_),
-        ignore_unqual_item_for_item_type(ItemType) = ignore
+        ignore_unqual_item_for_item_type(UsedItemType) = ignore
     then
         true
     else
         Used0 = !.Info ^ recomp_used_items,
-        IdSet0 = get_used_item_ids(Used0, ItemType),
+        IdSet0 = get_used_item_ids(Used0, UsedItemType),
         UnqualifiedName = unqualify_name(QualifiedName),
         ModuleName = find_module_qualifier(QualifiedName),
         UnqualifiedId = name_arity(UnqualifiedName, Arity),
@@ -422,13 +428,13 @@ record_used_item(ItemType, Id, QualifiedId, !Info) :-
                 map.det_insert(ModuleQualifier, ModuleName,
                     MatchingNames0, MatchingNames),
                 map.det_update(UnqualifiedId, MatchingNames, IdSet0, IdSet),
-                set_used_item_ids(ItemType, IdSet, Used0, Used),
+                set_used_item_ids(UsedItemType, IdSet, Used0, Used),
                 !Info ^ recomp_used_items := Used
             )
         else
             MatchingNames = map.singleton(ModuleQualifier, ModuleName),
             map.det_insert(UnqualifiedId, MatchingNames, IdSet0, IdSet),
-            set_used_item_ids(ItemType, IdSet, Used0, Used),
+            set_used_item_ids(UsedItemType, IdSet, Used0, Used),
             !Info ^ recomp_used_items := Used
         )
     ).
@@ -437,23 +443,21 @@ record_used_item(ItemType, Id, QualifiedId, !Info) :-
     --->    do_not_ignore
     ;       ignore.
 
-:- func ignore_unqual_item_for_item_type(item_type) = maybe_ignore.
+:- func ignore_unqual_item_for_item_type(used_item_type) = maybe_ignore.
 
-ignore_unqual_item_for_item_type(ItemType) = Ignore :-
+ignore_unqual_item_for_item_type(UsedItemType) = Ignore :-
     (
-        ( ItemType = type_abstract_item
-        ; ItemType = type_body_item
-        ; ItemType = inst_item
-        ; ItemType = mode_item
-        ; ItemType = typeclass_item
-        ; ItemType = mutable_item
-        ; ItemType = foreign_proc_item
+        ( UsedItemType = used_type_name
+        ; UsedItemType = used_type_defn
+        ; UsedItemType = used_inst
+        ; UsedItemType = used_mode
+        ; UsedItemType = used_typeclass
         ),
         Ignore = ignore
     ;
-        ( ItemType = functor_item
-        ; ItemType = predicate_item
-        ; ItemType = function_item
+        ( UsedItemType = used_functor
+        ; UsedItemType = used_predicate
+        ; UsedItemType = used_function
         ),
         Ignore = do_not_ignore
     ).

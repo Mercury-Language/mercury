@@ -230,7 +230,7 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
         Body = Body0,
         TVarSet = TVarSet0
     ),
-    ItemId = item_id(type_body_item, TypeCtorItem),
+    ItemId = item_id(type_defn_item, TypeCtorItem),
     finish_recording_expanded_items(ItemId, EquivTypeInfo, !MaybeRecompInfo),
     hlds_data.set_type_defn_body(Body, !Defn),
     hlds_data.set_type_defn_tvarset(TVarSet, !Defn).

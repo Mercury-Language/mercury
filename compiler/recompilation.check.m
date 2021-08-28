@@ -614,8 +614,8 @@ parse_used_item_set(Term, !UsedItems, !Reasons) :-
         string_to_item_type(ItemTypeStr, ItemType)
     then
         (
-            ( ItemType = type_abstract_item
-            ; ItemType = type_body_item
+            ( ItemType = type_name_item
+            ; ItemType = type_defn_item
             ; ItemType = inst_item
             ; ItemType = mode_item
             ; ItemType = typeclass_item
@@ -624,10 +624,10 @@ parse_used_item_set(Term, !UsedItems, !Reasons) :-
                 map.init, SimpleItems, cord.init, ItemReasons),
             ( if cord.is_empty(ItemReasons) then
                 (
-                    ItemType = type_abstract_item,
+                    ItemType = type_name_item,
                     !UsedItems ^ rui_type_names := SimpleItems
                 ;
-                    ItemType = type_body_item,
+                    ItemType = type_defn_item,
                     !UsedItems ^ rui_type_defns := SimpleItems
                 ;
                     ItemType = inst_item,
@@ -820,14 +820,15 @@ parse_resolved_functor(Term, !RevCtors, !Reasons) :-
         decimal_term_to_int(ArityTerm, Arity)
     then
         InvPredId = invalid_pred_id,
-        Ctor = resolved_functor_pred_or_func(InvPredId, ModuleName, PredOrFunc,
-            Arity),
+        Ctor = resolved_functor_pred_or_func(InvPredId, PredOrFunc,
+            ModuleName, pred_form_arity(Arity)),
         !:RevCtors = [Ctor | !.RevCtors]
     else if
         Term = term.functor(term.atom("ctor"), [NameArityTerm], _),
         parse_unqualified_name_and_arity(NameArityTerm, TypeName, TypeArity)
     then
-        Ctor = resolved_functor_constructor(item_name(TypeName, TypeArity)),
+        TypeCtor = type_ctor(TypeName, TypeArity),
+        Ctor = resolved_functor_data_constructor(TypeCtor),
         !:RevCtors = [Ctor | !.RevCtors]
     else if
         Term = term.functor(term.atom("field"),
@@ -837,8 +838,9 @@ parse_resolved_functor(Term, !RevCtors, !Reasons) :-
         parse_unqualified_name_and_arity(ConsNameArityTerm,
             ConsName, ConsArity)
     then
-        Ctor = resolved_functor_field(item_name(TypeName, TypeArity),
-            item_name(ConsName, ConsArity)),
+        TypeCtor = type_ctor(TypeName, TypeArity),
+        ConsCtor = cons_ctor(ConsName, ConsArity, TypeCtor),
+        Ctor = resolved_functor_field_access_func(ConsCtor),
         !:RevCtors = [Ctor | !.RevCtors]
     else
         Reason = recompile_for_syntax_error(get_term_context(Term),
@@ -1169,9 +1171,9 @@ check_module_used_items(ModuleName, RecompAvail, OldTimestamp,
 
     !:MaybeStoppingReason = no,
     % Check whether any of the items which were used have changed.
-    check_name_arity_version_numbers(ModuleName, type_abstract_item,
+    check_name_arity_version_numbers(ModuleName, type_name_item,
         UsedTypeNameMap, NewTypeNameMap, !MaybeStoppingReason, !Info),
-    check_name_arity_version_numbers(ModuleName, type_body_item,
+    check_name_arity_version_numbers(ModuleName, type_defn_item,
         UsedTypeDefnMap, NewTypeDefnMap, !MaybeStoppingReason, !Info),
     check_name_arity_version_numbers(ModuleName, inst_item,
         UsedInstMap, NewInstMap, !MaybeStoppingReason, !Info),
@@ -1362,7 +1364,7 @@ check_type_defn_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
         _, _, _),
     list.length(TypeParams, TypeArity),
     check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
-        VersionNumbers ^ mivn_type_names, type_abstract_item,
+        VersionNumbers ^ mivn_type_names, type_name_item,
         TypeSymName, TypeArity, NeedsCheck, !MaybeStoppingReason, !Info),
     (
         NeedsCheck = yes,
@@ -1491,10 +1493,10 @@ check_for_simple_item_ambiguity(RecompAvail, UsedFileTimestamp,
             NeedsCheck = yes,
             UsedItems = !.Info ^ rci_used_items,
             (
-                ItemType = type_abstract_item,
+                ItemType = type_name_item,
                 UsedItemMap = UsedItems ^ rui_type_names
             ;
-                ItemType = type_body_item,
+                ItemType = type_defn_item,
                 unexpected($pred, "type_body_item")
             ;
                 ItemType = inst_item,
@@ -1587,12 +1589,19 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompAvail, OldTimestamp,
         !.MaybeStoppingReason = yes(_)
     ;
         !.MaybeStoppingReason = no,
+        list.length(Args, PredFormArity),
         (
             WithType = no,
-            adjust_func_arity(PredOrFunc, Arity, list.length(Args))
+            % XXX Given that we use pred_form_arity elsewhere
+            % when we process resolved_functor_pred_or_func,
+            % setting Arity here to the user_arity looks to be a bug.
+            % Unfortunately, ...
+            adjust_func_arity(PredOrFunc, UserArity, PredFormArity)
         ;
             WithType = yes(_),
-            Arity = list.length(Args)
+            % ... in the presence of with_type, we have no idea what even
+            % the actual pred_form_arity is.
+            UserArity = PredFormArity
         ),
         ( if
             (
@@ -1602,12 +1611,12 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompAvail, OldTimestamp,
                     PredOrFunc = pf_predicate,
                     PredMap = VersionNumbers ^ mivn_predicates,
                     item_is_new_or_changed(OldTimestamp, PredMap,
-                        SymName, Arity)
+                        SymName, UserArity)
                 ;
                     PredOrFunc = pf_function,
                     FuncMap = VersionNumbers ^ mivn_functions,
                     item_is_new_or_changed(OldTimestamp, FuncMap,
-                        SymName, Arity)
+                        SymName, UserArity)
                 )
             )
         then
@@ -1625,7 +1634,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompAvail, OldTimestamp,
             ( if map.search(UsedItemMap, Name, MatchingArityList) then
                 list.foldl2(
                     check_for_pred_or_func_item_ambiguity_1(WithType,
-                        ItemType, RecompAvail, SymName, Arity),
+                        ItemType, RecompAvail, SymName, UserArity),
                     MatchingArityList, no, !:MaybeStoppingReason, !Info)
             else
                 !:MaybeStoppingReason = no
@@ -1639,10 +1648,10 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompAvail, OldTimestamp,
                     AritiesToMatch = match_arity_any
                 ;
                     WithType = no,
-                    AritiesToMatch = match_arity_less_than_or_equal(Arity)
+                    AritiesToMatch = match_arity_less_than_or_equal(UserArity)
                 ),
                 ResolvedFunctor = resolved_functor_pred_or_func(InvPredId,
-                    ModuleName, PredOrFunc, Arity),
+                    PredOrFunc, ModuleName, pred_form_arity(PredFormArity)),
                 check_functor_ambiguities_by_name(RecompAvail, SymName,
                     AritiesToMatch, ResolvedFunctor,
                     !MaybeStoppingReason, !Info)
@@ -1761,13 +1770,14 @@ check_type_defn_ambiguity_with_functor(RecompAvail, TypeCtor, TypeDefn,
 check_functor_ambiguities(RecompAvail, TypeCtor, Ctor,
         !MaybeStoppingReason, !Info) :-
     Ctor = ctor(_, _, Name, Args, Arity, _),
-    TypeCtorItem = type_ctor_to_item_name(TypeCtor),
-    ResolvedCtor = resolved_functor_constructor(TypeCtorItem),
+    ResolvedCtor = resolved_functor_data_constructor(TypeCtor),
     check_functor_ambiguities_by_name(RecompAvail, Name,
         match_arity_exact(Arity), ResolvedCtor, !MaybeStoppingReason, !Info),
+    ConsCtor = cons_ctor(Name, Arity, TypeCtor),
+    FieldAccessResolvedCtor =
+        resolved_functor_field_access_func(ConsCtor),
     list.foldl2(
-        check_field_ambiguities(RecompAvail,
-            resolved_functor_field(TypeCtorItem, item_name(Name, Arity))),
+        check_field_ambiguities(RecompAvail, FieldAccessResolvedCtor),
         Args, !MaybeStoppingReason, !Info).
 
 :- pred check_field_ambiguities(recomp_avail::in,
@@ -2160,36 +2170,35 @@ describe_item(item_id(ItemType0, item_name(SymName, Arity))) = Pieces :-
 
 :- pred body_item(item_type::in, item_type::out) is semidet.
 
-body_item(type_body_item, type_abstract_item).
+body_item(type_defn_item, type_name_item).
 
 :- func describe_resolved_functor(sym_name, arity, resolved_functor) =
     list(format_component).
 
-describe_resolved_functor(SymName, _Arity, ResolvedFunctor) = Pieces :-
-    ResolvedFunctor = resolved_functor_pred_or_func(_, ModuleName, PredOrFunc,
-        PredArity),
-    string_to_item_type(ItemTypeStr, pred_or_func_to_item_type(PredOrFunc)),
-    UnqualName = unqualify_name(SymName),
-    SymNameAndArity =
-        sym_name_arity(qualified(ModuleName, UnqualName), PredArity),
-    SymNameAndArityPiece = qual_sym_name_arity(SymNameAndArity),
-    Pieces = [words(ItemTypeStr), SymNameAndArityPiece].
 describe_resolved_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
-    ResolvedFunctor = resolved_functor_constructor(
-        item_name(TypeName, TypeArity)),
-    Pieces = [words("constructor"),
-        unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
-        words("of type"),
-        qual_sym_name_arity(sym_name_arity(TypeName, TypeArity))].
-describe_resolved_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
-    ResolvedFunctor = resolved_functor_field(item_name(TypeName, TypeArity),
-        item_name(ConsName, ConsArity)),
-    Pieces = [words("field access function"),
-        unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
-        words("for constructor"),
-        unqual_sym_name_arity(sym_name_arity(ConsName, ConsArity)),
-        words("of type"),
-        qual_sym_name_arity(sym_name_arity(TypeName, TypeArity))].
+    (
+        ResolvedFunctor = resolved_functor_pred_or_func(_, PredOrFunc,
+            ModuleName, PredArity),
+        Name = unqualify_name(SymName),
+        PFStr = pred_or_func_to_full_str(PredOrFunc),
+        user_arity_pred_form_arity(PredOrFunc, user_arity(UserArity),
+            PredArity),
+        SNA = sym_name_arity(qualified(ModuleName, Name), UserArity),
+        Pieces = [words(PFStr), qual_sym_name_arity(SNA)]
+    ;
+        ResolvedFunctor = resolved_functor_data_constructor(TypeCtor),
+        SNA = sym_name_arity(SymName, Arity),
+        Pieces = [words("constructor"), unqual_sym_name_arity(SNA),
+            words("of type"), qual_type_ctor(TypeCtor)]
+    ;
+        ResolvedFunctor = resolved_functor_field_access_func(ConsCtor),
+        SNA = sym_name_arity(SymName, Arity),
+        ConsCtor = cons_ctor(ConsName, ConsArity, TypeCtor),
+        ConsSNA = sym_name_arity(ConsName, ConsArity),
+        Pieces = [words("field access function"), unqual_sym_name_arity(SNA),
+            words("for constructor"), unqual_sym_name_arity(ConsSNA),
+            words("of type"), qual_type_ctor(TypeCtor)]
+    ).
 
 %---------------------------------------------------------------------------%
 

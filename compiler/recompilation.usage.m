@@ -152,8 +152,8 @@ find_all_used_imported_items(UsedItems, !Info) :-
 
     UsedItems = used_items(TypeNames, TypeDefns, Insts, Modes, Classes,
         Functors, Predicates, Functions),
-    find_items_used_by_simple_item_set(type_abstract_item, TypeNames, !Info),
-    find_items_used_by_simple_item_set(type_body_item, TypeDefns, !Info),
+    find_items_used_by_simple_item_set(type_name_item, TypeNames, !Info),
+    find_items_used_by_simple_item_set(type_defn_item, TypeDefns, !Info),
     find_items_used_by_simple_item_set(inst_item, Insts, !Info),
     find_items_used_by_simple_item_set(mode_item, Modes, !Info),
     find_items_used_by_simple_item_set(typeclass_item, Classes, !Info),
@@ -302,12 +302,11 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
     else
         ConsDefns = ConsDefns1
     ),
-    MatchingConstructors =
+    MatchingConstructorRFs =
         list.map(
             ( func(ConsDefn) = Ctor :-
                 ConsDefn ^ cons_type_ctor = TypeCtor,
-                Ctor = resolved_functor_constructor(
-                    type_ctor_to_item_name(TypeCtor))
+                Ctor = resolved_functor_data_constructor(TypeCtor)
             ),
             ConsDefns),
 
@@ -315,9 +314,9 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     predicate_table_lookup_sym(PredicateTable,
         may_be_partially_qualified, SymName, PredIds),
-    MatchingPreds = list.filter_map(
-        get_pred_or_func_ctors(ModuleInfo, SymName, Arity),
-        PredIds),
+    list.filter_map(
+        can_resolve_pred_or_func(ModuleInfo, SymName, Arity),
+        PredIds, MatchingPredRFs),
 
     % Is it a field access function.
     ( if
@@ -326,28 +325,27 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
         module_info_get_ctor_field_table(ModuleInfo, CtorFields),
         map.search(CtorFields, FieldName, FieldDefns)
     then
-        MatchingFields = list.map(
-            ( func(FieldDefn) = FieldCtor :-
+        MatchingFieldAccessRFs = list.map(
+            ( func(FieldDefn) = FieldAccessRF :-
                 FieldDefn =
                     hlds_ctor_field_defn(_, _, TypeCtor, FieldConsId, _),
                 ( if FieldConsId = cons(ConsName, ConsArity, _) then
-                    FieldCtor = resolved_functor_field(
-                        type_ctor_to_item_name(TypeCtor),
-                        item_name(ConsName, ConsArity))
+                    ConsCtor = cons_ctor(ConsName, ConsArity, TypeCtor),
+                    FieldAccessRF = resolved_functor_field_access_func(ConsCtor)
                 else
                     unexpected($pred, "weird cons_id in hlds_field_defn")
                 )
             ), FieldDefns)
     else
-        MatchingFields = []
+        MatchingFieldAccessRFs = []
     ),
     ResolvedConstructors = set.list_to_set(list.condense(
-        [MatchingConstructors, MatchingPreds, MatchingFields])).
+        [MatchingConstructorRFs, MatchingPredRFs, MatchingFieldAccessRFs])).
 
-:- func get_pred_or_func_ctors(module_info, sym_name,
-    arity, pred_id) = resolved_functor is semidet.
+:- pred can_resolve_pred_or_func(module_info::in, sym_name::in, arity::in,
+    pred_id::in, resolved_functor::out) is semidet.
 
-get_pred_or_func_ctors(ModuleInfo, _SymName, Arity, PredId) = ResolvedCtor :-
+can_resolve_pred_or_func(ModuleInfo, _SymName, Arity, PredId, ResolvedCtor) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredModule = pred_info_module(PredInfo),
@@ -370,8 +368,8 @@ get_pred_or_func_ctors(ModuleInfo, _SymName, Arity, PredId) = ResolvedCtor :-
         ; OrigArity = Arity
         )
     ),
-    ResolvedCtor = resolved_functor_pred_or_func(PredId, PredModule,
-        PredOrFunc, OrigArity).
+    ResolvedCtor = resolved_functor_pred_or_func(PredId, PredOrFunc,
+        PredModule, pred_form_arity(OrigArity)).
 
 %---------------------------------------------------------------------------%
 
@@ -473,74 +471,85 @@ record_resolved_item_3(ModuleQualifier, SymName, Arity, RecordItem, Recorded,
 :- pred find_items_used_by_item(item_type::in, item_name::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-find_items_used_by_item(type_abstract_item, TypeCtorItem, !Info) :-
-    ModuleInfo = !.Info ^ module_info,
-    module_info_get_type_table(ModuleInfo, TypeTable),
-    TypeCtor = item_name_to_type_ctor(TypeCtorItem),
-    lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-    ( if TypeBody = hlds_eqv_type(Type) then
-        % If we use an equivalence type we also use the type
-        % it is equivalent to.
-        find_items_used_by_type(Type, !Info)
-    else
-        true
-    ).
-find_items_used_by_item(type_body_item, TypeCtorItem, !Info) :-
-    ModuleInfo = !.Info ^ module_info,
-    module_info_get_type_table(ModuleInfo, TypeTable),
-    TypeCtor = item_name_to_type_ctor(TypeCtorItem),
-    lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-    find_items_used_by_type_body(TypeBody, !Info).
-find_items_used_by_item(inst_item, InstCtorItem, !Info):-
-    ModuleInfo = !.Info ^ module_info,
-    module_info_get_inst_table(ModuleInfo, Insts),
-    inst_table_get_user_insts(Insts, UserInstTable),
-    InstCtor = item_name_to_inst_ctor(InstCtorItem),
-    map.lookup(UserInstTable, InstCtor, InstDefn),
-    find_items_used_by_inst_defn(InstDefn, !Info).
-find_items_used_by_item(mode_item, ModeCtorItem, !Info):-
-    ModuleInfo = !.Info ^ module_info,
-    module_info_get_mode_table(ModuleInfo, Modes),
-    mode_table_get_mode_defns(Modes, ModeDefns),
-    ModeCtor = item_name_to_mode_ctor(ModeCtorItem),
-    map.lookup(ModeDefns, ModeCtor, ModeDefn),
-    find_items_used_by_mode_defn(ModeDefn, !Info).
-find_items_used_by_item(typeclass_item, ClassItemId, !Info) :-
-    ClassItemId = item_name(ClassName, ClassArity),
-    ClassId = class_id(ClassName, ClassArity),
-    ModuleInfo = !.Info ^ module_info,
-    module_info_get_class_table(ModuleInfo, Classes),
-    map.lookup(Classes, ClassId, ClassDefn),
-    Constraints = ClassDefn ^ classdefn_supers,
-    ClassInterface = ClassDefn ^ classdefn_interface,
-    find_items_used_by_class_constraints(Constraints, !Info),
+find_items_used_by_item(ItemType, ItemName, !Info) :-
     (
-        ClassInterface = class_interface_abstract
+        ItemType = type_name_item,
+        ModuleInfo = !.Info ^ module_info,
+        module_info_get_type_table(ModuleInfo, TypeTable),
+        TypeCtor = item_name_to_type_ctor(ItemName),
+        lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+        ( if TypeBody = hlds_eqv_type(Type) then
+            % If we use an equivalence type we also use the type
+            % it is equivalent to.
+            find_items_used_by_type(Type, !Info)
+        else
+            true
+        )
     ;
-        ClassInterface = class_interface_concrete(ClassDecls),
-        list.foldl(find_items_used_by_class_decl, ClassDecls, !Info)
-    ),
-    module_info_get_instance_table(ModuleInfo, Instances),
-    ( if map.search(Instances, ClassId, InstanceDefns) then
-        list.foldl(find_items_used_by_instance(ClassItemId), InstanceDefns,
-            !Info)
-    else
-        true
+        ItemType = type_defn_item,
+        ModuleInfo = !.Info ^ module_info,
+        module_info_get_type_table(ModuleInfo, TypeTable),
+        TypeCtor = item_name_to_type_ctor(ItemName),
+        lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+        find_items_used_by_type_body(TypeBody, !Info)
+    ;
+        ItemType = inst_item,
+        ModuleInfo = !.Info ^ module_info,
+        module_info_get_inst_table(ModuleInfo, Insts),
+        inst_table_get_user_insts(Insts, UserInstTable),
+        InstCtor = item_name_to_inst_ctor(ItemName),
+        map.lookup(UserInstTable, InstCtor, InstDefn),
+        find_items_used_by_inst_defn(InstDefn, !Info)
+    ;
+        ItemType = mode_item,
+        ModuleInfo = !.Info ^ module_info,
+        module_info_get_mode_table(ModuleInfo, Modes),
+        mode_table_get_mode_defns(Modes, ModeDefns),
+        ModeCtor = item_name_to_mode_ctor(ItemName),
+        map.lookup(ModeDefns, ModeCtor, ModeDefn),
+        find_items_used_by_mode_defn(ModeDefn, !Info)
+    ;
+        ItemType = typeclass_item,
+        ItemName = item_name(ClassName, ClassArity),
+        ClassId = class_id(ClassName, ClassArity),
+        ModuleInfo = !.Info ^ module_info,
+        module_info_get_class_table(ModuleInfo, Classes),
+        map.lookup(Classes, ClassId, ClassDefn),
+        Constraints = ClassDefn ^ classdefn_supers,
+        ClassInterface = ClassDefn ^ classdefn_interface,
+        find_items_used_by_class_constraints(Constraints, !Info),
+        (
+            ClassInterface = class_interface_abstract
+        ;
+            ClassInterface = class_interface_concrete(ClassDecls),
+            list.foldl(find_items_used_by_class_decl, ClassDecls, !Info)
+        ),
+        module_info_get_instance_table(ModuleInfo, Instances),
+        ( if map.search(Instances, ClassId, InstanceDefns) then
+            list.foldl(find_items_used_by_instance(ItemName), InstanceDefns,
+                !Info)
+        else
+            true
+        )
+    ;
+        ItemType = predicate_item,
+        record_used_pred_or_func(pf_predicate, ItemName, !Info)
+    ;
+        ItemType = function_item,
+        record_used_pred_or_func(pf_function, ItemName, !Info)
+    ;
+        ItemType = functor_item,
+        unexpected($pred, "functor")
+    ;
+        ( ItemType = mutable_item
+        ; ItemType = foreign_proc_item
+        )
+        % XXX What should be done here???
+        % Mutables are expanded into other item types which track the
+        % types, insts, preds, and funcs used.
     ).
-find_items_used_by_item(predicate_item, ItemId, !Info) :-
-    record_used_pred_or_func(pf_predicate, ItemId, !Info).
-find_items_used_by_item(function_item, ItemId, !Info) :-
-    record_used_pred_or_func(pf_function, ItemId, !Info).
-find_items_used_by_item(functor_item, _, !Info) :-
-    unexpected($pred, "functor").
-find_items_used_by_item(mutable_item, _ItemId, !Info).
-    % XXX What should be done here???
-find_items_used_by_item(foreign_proc_item, _, !Info).
-    %
-    % Mutables are expanded into other item types which track the
-    % types, insts, preds, and funcs used.
 
 :- pred find_items_used_by_instances(class_id::in,
     list(hlds_instance_defn)::in,
@@ -828,16 +837,22 @@ find_items_used_by_functors_3(Name, Arity, Qualifier, _, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_functor(Name, _Arity, ResolverFunctor, !Info) :-
-    ResolverFunctor = resolved_functor_pred_or_func(PredId, PredModule,
-        PredOrFunc, PredArity),
-    NameArity = name_arity(Name, PredArity),
-    find_items_used_by_pred(PredOrFunc, NameArity, PredId - PredModule, !Info).
-find_items_used_by_functor(_, _, ResolverFunctor, !Info) :-
-    ResolverFunctor = resolved_functor_constructor(TypeCtor),
-    maybe_record_item_to_process(type_body_item, TypeCtor, !Info).
-find_items_used_by_functor(_, _, ResolverFunctor, !Info) :-
-    ResolverFunctor = resolved_functor_field(TypeCtor, _),
-    maybe_record_item_to_process(type_body_item, TypeCtor, !Info).
+    (
+        ResolverFunctor = resolved_functor_pred_or_func(PredId, PredOrFunc,
+            PredModule, pred_form_arity(PredFormArity)),
+        NameArity = name_arity(Name, PredFormArity),
+        find_items_used_by_pred(PredOrFunc, NameArity, PredId - PredModule,
+            !Info)
+    ;
+        (
+            ResolverFunctor = resolved_functor_data_constructor(TypeCtor)
+        ;
+            ResolverFunctor = resolved_functor_field_access_func(ConsCtor),
+            ConsCtor = cons_ctor(_ConsName, _ConsArity, TypeCtor)
+        ),
+        ItemName = type_ctor_to_item_name(TypeCtor),
+        maybe_record_item_to_process(type_defn_item, ItemName, !Info)
+    ).
 
 :- pred find_items_used_by_simple_item_set(item_type::in, simple_item_set::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
@@ -891,7 +906,7 @@ find_items_used_by_type_ctor(TypeCtor, !Info) :-
         not type_ctor_is_higher_order(TypeCtor, _, _, _)
     then
         TypeCtorItem = type_ctor_to_item_name(TypeCtor),
-        maybe_record_item_to_process(type_abstract_item, TypeCtorItem, !Info)
+        maybe_record_item_to_process(type_name_item, TypeCtorItem, !Info)
     else
         true
     ).
@@ -1130,8 +1145,8 @@ init_module_imported_items =
 :- pred get_module_imported_items(module_imported_items::in,
     item_type::in, imported_item_set::out) is det.
 
-get_module_imported_items(MII, type_abstract_item, MII ^ mii_type_names).
-get_module_imported_items(MII, type_body_item, MII ^ mii_type_defns).
+get_module_imported_items(MII, type_name_item, MII ^ mii_type_names).
+get_module_imported_items(MII, type_defn_item, MII ^ mii_type_defns).
 get_module_imported_items(MII, inst_item, MII ^ mii_insts).
 get_module_imported_items(MII, mode_item, MII ^ mii_modes).
 get_module_imported_items(MII, typeclass_item, MII ^ mii_typeclasses).
@@ -1146,9 +1161,9 @@ get_module_imported_items(_MII, foreign_proc_item, _) :-
 :- pred set_module_imported_items(item_type::in, imported_item_set::in,
     module_imported_items::in, module_imported_items::out) is det.
 
-set_module_imported_items(type_abstract_item, Set, !MII) :-
+set_module_imported_items(type_name_item, Set, !MII) :-
     !MII ^ mii_type_names := Set.
-set_module_imported_items(type_body_item, Set, !MII) :-
+set_module_imported_items(type_defn_item, Set, !MII) :-
     !MII ^ mii_type_defns := Set.
 set_module_imported_items(inst_item, Set, !MII) :-
     !MII ^ mii_insts := Set.

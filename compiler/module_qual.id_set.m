@@ -128,6 +128,8 @@
 
 :- implementation.
 
+:- import_module recompilation.
+
 :- import_module assoc_list.
 :- import_module require.
 
@@ -291,20 +293,20 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
         MaybeUniqModuleName = yes(UniqModuleName),
         SymName = qualified(UniqModuleName, BaseName),
         mq_info_set_module_used(InInt, UniqModuleName, !Info),
-        ItemType = convert_simple_item_type(IdType),
+        UsedItemType = convert_used_item_type(IdType),
         ItemName0 = item_name(SymName0, Arity),
         ItemName = item_name(SymName, Arity),
         update_recompilation_info(
-            recompilation.record_used_item(ItemType, ItemName0, ItemName),
+            recompilation.record_used_item(UsedItemType, ItemName0, ItemName),
             !Info)
     ).
 
-:- func convert_simple_item_type(id_type) = item_type.
+:- func convert_used_item_type(id_type) = used_item_type.
 
-convert_simple_item_type(type_id) = type_abstract_item.
-convert_simple_item_type(inst_id) = inst_item.
-convert_simple_item_type(mode_id) = mode_item.
-convert_simple_item_type(class_id) = typeclass_item.
+convert_used_item_type(type_id) = used_type_name.
+convert_used_item_type(inst_id) = used_inst.
+convert_used_item_type(mode_id) = used_mode.
+convert_used_item_type(class_id) = used_typeclass.
 
 %---------------------------------------------------------------------------%
 

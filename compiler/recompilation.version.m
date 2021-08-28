@@ -1564,8 +1564,8 @@ write_module_item_version_numbers(Stream, ModuleItemVersionNumbers, !IO) :-
         module_item_version_numbers(TypeNameMap, TypeDefnMap,
             InstMap, ModeMap, ClassMap, InstanceMap, PredMap, FuncMap),
     ItemTypeMaybeStrs = [
-        item_type_and_versions_to_string_na(type_abstract_item, TypeNameMap),
-        item_type_and_versions_to_string_na(type_body_item, TypeDefnMap),
+        item_type_and_versions_to_string_na(type_name_item, TypeNameMap),
+        item_type_and_versions_to_string_na(type_defn_item, TypeDefnMap),
         item_type_and_versions_to_string_na(inst_item, InstMap),
         item_type_and_versions_to_string_na(mode_item, ModeMap),
         item_type_and_versions_to_string_na(predicate_item, PredMap),
@@ -1661,10 +1661,10 @@ parse_module_item_version_numbers(VersionNumbersTerm, Result) :-
                 (
                     VNResult = items(ItemType, ItemVNs),
                     (
-                        ItemType = type_abstract_item,
+                        ItemType = type_name_item,
                         VNs = VNs0 ^ mivn_type_names := ItemVNs
                     ;
-                        ItemType = type_body_item,
+                        ItemType = type_defn_item,
                         VNs = VNs0 ^ mivn_type_defns := ItemVNs
                     ;
                         ItemType = inst_item,

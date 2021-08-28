@@ -287,15 +287,18 @@ make_atomic_unification(Var, RHS, Context, MainContext, SubContext,
 
 record_called_pred_or_func(PredOrFunc, SymName, Arity, !QualInfo) :-
     Id = item_name(SymName, Arity),
-    apply_to_recompilation_info(recompilation.record_used_item(
-        pred_or_func_to_item_type(PredOrFunc), Id, Id), !QualInfo).
+    ( PredOrFunc = pf_predicate, UsedItemType = used_predicate
+    ; PredOrFunc = pf_function,  UsedItemType = used_function
+    ),
+    apply_to_recompilation_info(
+        recompilation.record_used_item(UsedItemType, Id, Id), !QualInfo).
 
 :- pred record_used_functor(cons_id::in, qual_info::in, qual_info::out) is det.
 
 record_used_functor(ConsId, !QualInfo) :-
     ( if ConsId = cons(SymName, Arity, _) then
         Id = item_name(SymName, Arity),
-        apply_to_recompilation_info(record_used_item(functor_item, Id, Id),
+        apply_to_recompilation_info(record_used_item(used_functor, Id, Id),
             !QualInfo)
     else
         true

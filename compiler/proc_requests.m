@@ -173,7 +173,7 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
     (
         MaybeRecompInfo0 = yes(RecompInfo0),
         TypeCtorItem = type_ctor_to_item_name(TypeCtor),
-        recompilation.record_used_item(type_body_item,
+        recompilation.record_used_item(used_type_defn,
             TypeCtorItem, TypeCtorItem, RecompInfo0, RecompInfo),
         module_info_set_maybe_recompilation_info(yes(RecompInfo), !ModuleInfo)
     ;

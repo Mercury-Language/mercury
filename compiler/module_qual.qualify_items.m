@@ -1039,7 +1039,7 @@ qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
         ConsId = cons(Name, Arity, _),
         Id = item_name(Name, Arity),
         update_recompilation_info(
-            recompilation.record_used_item(functor_item, Id, Id), !Info)
+            recompilation.record_used_item(used_functor, Id, Id), !Info)
     ;
         ( ConsId = tuple_cons(_)
         ; ConsId = closure_cons(_, _)
