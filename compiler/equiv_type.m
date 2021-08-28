@@ -130,26 +130,26 @@
     %
 :- pred replace_in_type(type_eqv_map::in, mer_type::in, mer_type::out,
     maybe_changed::out, tvarset::in, tvarset::out,
-    eqv_expanded_info::in, eqv_expanded_info::out) is det.
+    eqv_expand_info::in, eqv_expand_info::out) is det.
 
 :- pred replace_in_type_list(type_eqv_map::in,
     list(mer_type)::in, list(mer_type)::out, maybe_changed::out,
     tvarset::in, tvarset::out,
-    eqv_expanded_info::in, eqv_expanded_info::out) is det.
+    eqv_expand_info::in, eqv_expand_info::out) is det.
 
 :- pred replace_in_prog_constraints(type_eqv_map::in,
     prog_constraints::in, prog_constraints::out, tvarset::in, tvarset::out,
-    eqv_expanded_info::in, eqv_expanded_info::out) is det.
+    eqv_expand_info::in, eqv_expand_info::out) is det.
 
 :- pred replace_in_prog_constraint_list(type_eqv_map::in,
     list(prog_constraint)::in, list(prog_constraint)::out,
-    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out)
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out)
     is det.
 
 :- pred replace_in_ctors(type_eqv_map::in,
     one_or_more(constructor)::in, one_or_more(constructor)::out,
     tvarset::in, tvarset::out,
-    eqv_expanded_info::in, eqv_expanded_info::out) is det.
+    eqv_expand_info::in, eqv_expand_info::out) is det.
 
 :- type eqv_type_body
     --->    eqv_type_body(
@@ -1003,7 +1003,7 @@ replace_in_type_ctor_all_defns(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
 :- pred replace_in_type_defn_info_general(
     pred(maybe_record_sym_name_use, type_eqv_map, inst_eqv_map, type_ctor,
         prog_context, T, T, tvarset, tvarset,
-        eqv_expanded_info, eqv_expanded_info,
+        eqv_expand_info, eqv_expand_info,
         used_modules, used_modules, list(error_spec))
     :: in(pred(in, in, in, in, in, in, out, in, out, in, out, in, out, out)
         is det),
@@ -1101,7 +1101,7 @@ replace_in_type_repn_eqv(TypeEqvMap, Info0, Info, !Specs) :-
     TypeCtor = type_ctor(SymName, Arity),
     replace_in_type_maybe_record_use_2(dont_record_sym_name_use, TypeEqvMap,
         [], Type0, Type, _Changed, Circ, TVarSet0, TVarSet,
-        no, _, used_modules_init, _),
+        no_eqv_expand_info, _, used_modules_init, _),
     set.to_sorted_list(Circ, CircTypes),
     (
         CircTypes = [_ | _],
@@ -1228,9 +1228,9 @@ replace_in_instance_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
         ; ContainingModuleName = ModuleName
         )
     then
-        UsedTypeCtors0 = no
+        UsedTypeCtors0 = no_eqv_expand_info
     else
-        UsedTypeCtors0 = yes(eqv_expanded_item_set(ModuleName, set.init))
+        UsedTypeCtors0 = eqv_expand_info(ModuleName, set.init)
     ),
     replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
         Constraints0, Constraints, TVarSet0, TVarSet1,
@@ -1308,17 +1308,17 @@ replace_in_pragma_info_type_spec(ModuleName, MaybeRecord,
         ; PredName = qualified(ModuleName, _)
         )
     then
-        ExpandedItems0 = no
+        ExpandedItems0 = no_eqv_expand_info
     else
-        ExpandedItems0 = yes(eqv_expanded_item_set(ModuleName, ItemIds0))
+        ExpandedItems0 = eqv_expand_info(ModuleName, ItemIds0)
     ),
     replace_in_subst(MaybeRecord, TypeEqvMap, Subst0, Subst,
         TVarSet0, TVarSet, ExpandedItems0, ExpandedItems, !UsedModules),
     (
-        ExpandedItems = no,
+        ExpandedItems = no_eqv_expand_info,
         ItemIds = ItemIds0
     ;
-        ExpandedItems = yes(eqv_expanded_item_set(_, ItemIds))
+        ExpandedItems = eqv_expand_info(_, ItemIds)
     ),
     TypeSpecInfo = pragma_info_type_spec(PFUMM, PredName, NewName,
         Subst, TVarSet, ItemIds).
@@ -1419,7 +1419,7 @@ replace_in_mutable_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
 :- pred replace_in_mutable_defn(maybe_record_sym_name_use::in,
     type_eqv_map::in, inst_eqv_map::in,
     item_mutable_info::in, item_mutable_info::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+    eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_mutable_defn(MaybeRecord, TypeEqvMap, InstEqvMap, Info0, Info,
@@ -1493,8 +1493,8 @@ replace_in_event_attr(TypeEqvMap, Attr0, Attr,
         MaybeSynthCall),
     TVarSet0 = varset.init,
     replace_in_type_maybe_record_use(dont_record_sym_name_use, TypeEqvMap,
-        AttrType0, AttrType, _Changed, TVarSet0, _TVarSet, no, _EquivTypeInfo,
-        !UsedModules),
+        AttrType0, AttrType, _Changed, TVarSet0, _TVarSet,
+        no_eqv_expand_info, _EquivTypeInfo, !UsedModules),
     Attr = event_attribute(AttrNum, AttrName, AttrType, AttrMode,
         MaybeSynthCall).
 
@@ -1503,7 +1503,7 @@ replace_in_event_attr(TypeEqvMap, Attr0, Attr,
 :- pred replace_in_type_defn(maybe_record_sym_name_use::in,
     type_eqv_map::in, inst_eqv_map::in, type_ctor::in, prog_context::in,
     type_defn::in, type_defn::out,
-    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
 replace_in_type_defn(MaybeRecord, TypeEqvMap, InstEqvMap, TypeCtor, Context,
@@ -1537,7 +1537,7 @@ replace_in_type_defn(MaybeRecord, TypeEqvMap, InstEqvMap, TypeCtor, Context,
 :- pred replace_in_type_defn_eqv(maybe_record_sym_name_use::in,
     type_eqv_map::in, inst_eqv_map::in, type_ctor::in, prog_context::in,
     type_details_eqv::in, type_details_eqv::out,
-    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
 replace_in_type_defn_eqv(MaybeRecord, TypeEqvMap, _InstEqvMap, TypeCtor,
@@ -1592,7 +1592,7 @@ report_contains_circular_eqv_type(TVarSet, Type, Context,
 :- pred replace_in_type_defn_du(maybe_record_sym_name_use::in,
     type_eqv_map::in, inst_eqv_map::in, type_ctor::in, prog_context::in,
     type_details_du::in, type_details_du::out,
-    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
 replace_in_type_defn_du(MaybeRecord, TypeEqvMap, _InstEqvMap,
@@ -1618,7 +1618,7 @@ replace_in_type_defn_du(MaybeRecord, TypeEqvMap, _InstEqvMap,
 :- pred replace_in_type_defn_solver(maybe_record_sym_name_use::in,
     type_eqv_map::in, inst_eqv_map::in, type_ctor::in, prog_context::in,
     type_details_solver::in, type_details_solver::out,
-    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
 replace_in_type_defn_solver(MaybeRecord, TypeEqvMap, InstEqvMap, TypeCtor,
@@ -1663,7 +1663,7 @@ replace_in_type_report_circular_eqvs(TypeEqvMap, TVarSet0, Context,
         Type0, Type, Changed, !Specs) :-
     replace_in_type_maybe_record_use_2(dont_record_sym_name_use,
         TypeEqvMap, [], Type0, Type, Changed, Circ,
-        TVarSet0, _TVarSet, no, _, used_modules_init, _),
+        TVarSet0, _TVarSet, no_eqv_expand_info, _, used_modules_init, _),
     set.to_sorted_list(Circ, CircTypes),
     (
         CircTypes = [HeadCircTypeCtor | TailCircTypeCtors],
@@ -1681,7 +1681,7 @@ replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet, !EquivTypeInfo) :-
 
 :- pred replace_in_type_maybe_record_use(maybe_record_sym_name_use::in,
     type_eqv_map::in, mer_type::in, mer_type::out, maybe_changed::out,
-    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
@@ -1695,7 +1695,7 @@ replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
 :- pred replace_in_type_maybe_record_use_2(maybe_record_sym_name_use::in,
     type_eqv_map::in, list(type_ctor)::in, mer_type::in, mer_type::out,
     maybe_changed::out, circ_types::out, tvarset::in, tvarset::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+    eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap,
@@ -1776,7 +1776,7 @@ replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap,
     list(type_ctor)::in, mer_type::in, type_ctor::in, list(mer_type)::in,
     kind::in, mer_type::out, maybe_changed::in, maybe_changed::out,
     circ_types::in, circ_types::out, tvarset::in, tvarset::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+    eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_type_ctor(MaybeRecord, TypeEqvMap, TypeCtorsAlreadyExpanded, Type0,
@@ -1841,7 +1841,7 @@ replace_in_type_list(TypeEqvMap, !Types, Changed, !TVarSet, !EquivTypeInfo) :-
 :- pred replace_in_type_list_location(maybe_record_sym_name_use::in,
     type_eqv_map::in, list(mer_type)::in, list(mer_type)::out,
     maybe_changed::out, tvarset::in, tvarset::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+    eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_type_list_location(MaybeRecord, TypeEqvMap, !Types,
@@ -1852,7 +1852,7 @@ replace_in_type_list_location(MaybeRecord, TypeEqvMap, !Types,
 :- pred replace_in_type_list_location_circ(maybe_record_sym_name_use::in,
     type_eqv_map::in, list(mer_type)::in, list(mer_type)::out,
     maybe_changed::out, circ_types::out, tvarset::in, tvarset::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+    eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_type_list_location_circ(MaybeRecord, TypeEqvMap, !Types,
@@ -1865,7 +1865,7 @@ replace_in_type_list_location_circ(MaybeRecord, TypeEqvMap, !Types,
     type_eqv_map::in, list(type_ctor)::in,
     list(mer_type)::in, list(mer_type)::out,
     maybe_changed::out, circ_types::in, circ_types::out,
-    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_type_list_location_circ_2(_MaybeRecord, _TypeEqvMap, _Seen,
@@ -1898,7 +1898,7 @@ replace_in_type_list_location_circ_2(MaybeRecord, TypeEqvMap, Seen,
 :- pred replace_in_ctor_arg_list(maybe_record_sym_name_use::in,
     type_eqv_map::in, list(constructor_arg)::in, list(constructor_arg)::out,
     circ_types::out, tvarset::in, tvarset::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+    eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_ctor_arg_list(MaybeRecord, TypeEqvMap, !Args,
@@ -1910,7 +1910,7 @@ replace_in_ctor_arg_list(MaybeRecord, TypeEqvMap, !Args,
     type_eqv_map::in, list(type_ctor)::in,
     list(constructor_arg)::in, list(constructor_arg)::out,
     circ_types::in, circ_types::out, tvarset::in, tvarset::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+    eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_ctor_arg_list_loop(_MaybeRecord, _TypeEqvMap, _Seen, [], [],
@@ -1931,7 +1931,7 @@ replace_in_ctor_arg_list_loop(MaybeRecord, TypeEqvMap, Seen,
 :- pred replace_in_constraint_store(maybe_record_sym_name_use::in,
     type_eqv_map::in, inst_eqv_map::in,
     list(item_mutable_info)::in, list(item_mutable_info)::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+    eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_constraint_store(_, _, _, [], [], !EquivTypeInfo, !UsedModules).
@@ -1951,7 +1951,7 @@ replace_in_prog_constraints(TypeEqvMap, Cs0, Cs, !TVarSet, !EquivTypeInfo) :-
 
 :- pred replace_in_prog_constraints_location(maybe_record_sym_name_use::in,
     type_eqv_map::in, prog_constraints::in, prog_constraints::out,
-    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_prog_constraints_location(MaybeRecord, TypeEqvMap, Cs0, Cs, !TVarSet,
@@ -1971,7 +1971,7 @@ replace_in_prog_constraint_list(TypeEqvMap,
 
 :- pred replace_in_prog_constraint_list_location(maybe_record_sym_name_use::in,
     type_eqv_map::in, list(prog_constraint)::in, list(prog_constraint)::out,
-    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
@@ -1982,7 +1982,7 @@ replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
 
 :- pred replace_in_prog_constraint_location(maybe_record_sym_name_use::in,
     type_eqv_map::in, prog_constraint::in, prog_constraint::out,
-    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_prog_constraint_location(MaybeRecord, TypeEqvMap,
@@ -1997,7 +1997,7 @@ replace_in_prog_constraint_location(MaybeRecord, TypeEqvMap,
 :- pred replace_in_class_interface(maybe_record_sym_name_use::in,
     type_eqv_map::in, inst_eqv_map::in,
     list(class_decl)::in, list(class_decl)::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+    eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -2010,7 +2010,7 @@ replace_in_class_interface(MaybeRecord, TypeEqvMap, InstEqvMap,
 
 :- pred replace_in_class_decl(maybe_record_sym_name_use::in,
     type_eqv_map::in, inst_eqv_map::in, class_decl::in, class_decl::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+    eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -2058,7 +2058,7 @@ replace_in_class_decl(MaybeRecord, TypeEqvMap, InstEqvMap, Decl0, Decl,
 
 :- pred replace_in_subst(maybe_record_sym_name_use::in, type_eqv_map::in,
     assoc_list(tvar, mer_type)::in, assoc_list(tvar, mer_type)::out,
-    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_subst(_MaybeRecord, _TypeEqvMap, [], [], !TVarSet, !EquivTypeInfo,
@@ -2079,7 +2079,7 @@ replace_in_ctors(TypeEqvMap, !Ctors, !TVarSet, !EquivTypeInfo) :-
 :- pred replace_in_ctors_location(maybe_record_sym_name_use::in,
     type_eqv_map::in,
     one_or_more(constructor)::in, one_or_more(constructor)::out,
-    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_ctors_location(MaybeRecord, TypeEqvMap, Ctors0, Ctors, !TVarSet,
@@ -2094,7 +2094,7 @@ replace_in_ctors_location(MaybeRecord, TypeEqvMap, Ctors0, Ctors, !TVarSet,
 
 :- pred replace_in_ctor(maybe_record_sym_name_use::in, type_eqv_map::in,
     constructor::in, constructor::out, tvarset::in, tvarset::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+    eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_ctor(MaybeRecord, TypeEqvMap, Ctor0, Ctor,
@@ -2122,7 +2122,7 @@ replace_in_ctor(MaybeRecord, TypeEqvMap, Ctor0, Ctor,
 %---------------------------------------------------------------------------%
 
 :- pred replace_in_inst(maybe_record_sym_name_use::in, inst_eqv_map::in,
-    mer_inst::in, mer_inst::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    mer_inst::in, mer_inst::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_inst(MaybeRecord, InstEqvMap, Inst0, Inst,
@@ -2132,7 +2132,7 @@ replace_in_inst(MaybeRecord, InstEqvMap, Inst0, Inst,
 
 :- pred replace_in_inst_location(maybe_record_sym_name_use::in,
     inst_eqv_map::in, set(inst_ctor)::in, mer_inst::in, mer_inst::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+    eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_inst_location(MaybeRecord, InstEqvMap, ExpandedInstCtors,
@@ -2172,7 +2172,7 @@ replace_in_inst_location(MaybeRecord, InstEqvMap, ExpandedInstCtors,
     maybe(mer_type)::in, maybe(mer_type)::out,
     maybe(mer_inst)::in, maybe(mer_inst)::out,
     maybe(determinism)::in, maybe(determinism)::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+    eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
 replace_in_pred_type(MaybeRecord, PredName, PredOrFunc, Context,
@@ -2320,7 +2320,7 @@ pair_extra_types_and_modes([Type | Types], [Mode | Modes],
     maybe(pred_or_func)::in, maybe(pred_or_func)::out,
     maybe(mer_inst)::in, maybe(mer_inst)::out,
     maybe(determinism)::in, maybe(determinism)::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+    eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
 replace_in_pred_mode(MaybeRecord, InstEqvMap, PredName, OrigArity, Context,
@@ -2387,7 +2387,7 @@ replace_in_pred_mode(MaybeRecord, InstEqvMap, PredName, OrigArity, Context,
 
 :- pred replace_in_types_and_modes(maybe_record_sym_name_use::in,
     type_eqv_map::in, list(type_and_mode)::in, list(type_and_mode)::out,
-    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_types_and_modes(MaybeRecord, TypeEqvMap,
@@ -2397,7 +2397,7 @@ replace_in_types_and_modes(MaybeRecord, TypeEqvMap,
 
 :- pred replace_in_type_and_mode(maybe_record_sym_name_use::in,
     type_eqv_map::in, type_and_mode::in, type_and_mode::out,
-    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_type_and_mode(MaybeRecord, TypeEqvMap, TypeAndMode0, TypeAndMode,
@@ -2419,7 +2419,7 @@ replace_in_type_and_mode(MaybeRecord, TypeEqvMap, TypeAndMode0, TypeAndMode,
 :- pred replace_in_structure_sharing_domain(maybe_record_sym_name_use::in,
     type_eqv_map::in, tvarset::in,
     structure_sharing_domain::in, structure_sharing_domain::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+    eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_structure_sharing_domain(MaybeRecord, TypeEqvMap, TVarSet,
@@ -2441,7 +2441,7 @@ replace_in_structure_sharing_domain(MaybeRecord, TypeEqvMap, TVarSet,
 :- pred replace_in_structure_sharing_pair(maybe_record_sym_name_use::in,
     type_eqv_map::in, tvarset::in,
     structure_sharing_pair::in, structure_sharing_pair::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+    eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_structure_sharing_pair(MaybeRecord, TypeEqvMap, TVarSet,
@@ -2453,7 +2453,7 @@ replace_in_structure_sharing_pair(MaybeRecord, TypeEqvMap, TVarSet,
 
 :- pred replace_in_datastruct(maybe_record_sym_name_use::in,
     type_eqv_map::in, tvarset::in, datastruct::in,
-    datastruct::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    datastruct::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_datastruct(MaybeRecord, TypeEqvMap, TVarSet, DS0, DS,
@@ -2465,7 +2465,7 @@ replace_in_datastruct(MaybeRecord, TypeEqvMap, TVarSet, DS0, DS,
 
 :- pred replace_in_unit_selector(maybe_record_sym_name_use::in,
     type_eqv_map::in, tvarset::in, unit_selector::in,
-    unit_selector::out, eqv_expanded_info::in, eqv_expanded_info::out,
+    unit_selector::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
 replace_in_unit_selector(MaybeRecord, TypeEqvMap, TVarSet, Sel0, Sel,

@@ -256,9 +256,9 @@
     % that is threaded through a set of predicates (a) to give them the
     % info they need to do their jobs, and (b) to collect their observations.
     %
-:- type eqv_expanded_info == maybe(eqv_expanded_item_set).
-:- type eqv_expanded_item_set
-    --->    eqv_expanded_item_set(module_name, set(item_id)).
+:- type eqv_expand_info
+    --->    no_eqv_expand_info
+    ;       eqv_expand_info(module_name, set(item_id)).
             % The module_name field contains the name of the module
             % currently being compiled.
             %
@@ -269,14 +269,14 @@
     % depend on the expanded items.
     %
 :- pred maybe_start_recording_expanded_items(module_name::in, sym_name::in,
-    maybe(recompilation_info)::in, eqv_expanded_info::out) is det.
+    maybe(recompilation_info)::in, eqv_expand_info::out) is det.
 
 :- pred record_expanded_item(item_id::in,
-    eqv_expanded_info::in, eqv_expanded_info::out) is det.
+    eqv_expand_info::in, eqv_expand_info::out) is det.
 
     % Record all the expanded items in the recompilation_info.
     %
-:- pred finish_recording_expanded_items(item_id::in, eqv_expanded_info::in,
+:- pred finish_recording_expanded_items(item_id::in, eqv_expand_info::in,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -474,39 +474,51 @@ record_expanded_items(Item, ExpandedItems, !Info) :-
         !Info ^ recomp_dependencies := DepsMap
     ).
 
-maybe_start_recording_expanded_items(_, _, no, no).
-maybe_start_recording_expanded_items(ModuleName, SymName, yes(_), MaybeInfo) :-
-    ( if SymName = qualified(ModuleName, _) then
-        MaybeInfo = no
-    else
-        MaybeInfo = yes(eqv_expanded_item_set(ModuleName, set.init))
+maybe_start_recording_expanded_items(ModuleName, SymName, MaybeRecompInfo,
+        ExpandInfo) :-
+    (
+        MaybeRecompInfo = no,
+        ExpandInfo = no_eqv_expand_info
+    ;
+        MaybeRecompInfo = yes(_),
+        ( if SymName = qualified(ModuleName, _) then
+            ExpandInfo = no_eqv_expand_info
+        else
+            ExpandInfo = eqv_expand_info(ModuleName, set.init)
+        )
     ).
 
-record_expanded_item(Item, !EquivTypeInfo) :-
-    % XXX RECOMP Why is this called EquivTypeInfo?
-    map_maybe(record_expanded_item_2(Item), !EquivTypeInfo).
-
-:- pred record_expanded_item_2(item_id::in,
-    eqv_expanded_item_set::in, eqv_expanded_item_set::out) is det.
-
-record_expanded_item_2(ItemId, ExpandedItemSet0, ExpandedItemSet) :-
-    ExpandedItemSet0 = eqv_expanded_item_set(ModuleName, Items0),
-    ItemId = item_id(_, ItemName),
-    ( if ItemName = item_name(qualified(ModuleName, _), _) then
-        % We don't need to record local types.
-        ExpandedItemSet = ExpandedItemSet0
-    else
-        set.insert(ItemId, Items0, Items),
-        ExpandedItemSet = eqv_expanded_item_set(ModuleName, Items)
+record_expanded_item(ItemId, !ExpandInfo) :-
+    (
+        !.ExpandInfo = no_eqv_expand_info
+    ;
+        !.ExpandInfo = eqv_expand_info(ModuleName, ExpandedItemIds0),
+        ItemId = item_id(_, ItemName),
+        ( if ItemName = item_name(qualified(ModuleName, _), _) then
+            % We don't need to record local items.
+            true
+        else
+            set.insert(ItemId, ExpandedItemIds0, ExpandedItemIds),
+            !:ExpandInfo = eqv_expand_info(ModuleName, ExpandedItemIds)
+        )
     ).
 
-finish_recording_expanded_items(_, no, no, no).
-finish_recording_expanded_items(_, no, yes(Info), yes(Info)).
-finish_recording_expanded_items(_, yes(_), no, _) :-
-    unexpected($pred, "items but no info").
-finish_recording_expanded_items(Item,
-        yes(eqv_expanded_item_set(_, ExpandedItems)), yes(Info0), yes(Info)) :-
-    record_expanded_items(Item, ExpandedItems, Info0, Info).
+finish_recording_expanded_items(ItemId, ExpandInfo,
+        MaybeRecomp0, MaybeRecomp) :-
+    (
+        ExpandInfo = no_eqv_expand_info,
+        MaybeRecomp = MaybeRecomp0
+    ;
+        ExpandInfo = eqv_expand_info(_, ExpandedItemIds),
+        (
+            MaybeRecomp0 = no,
+            unexpected($pred, "items but no info")
+        ;
+            MaybeRecomp0 = yes(Recomp0),
+            record_expanded_items(ItemId, ExpandedItemIds, Recomp0, Recomp),
+            MaybeRecomp = yes(Recomp)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module recompilation.

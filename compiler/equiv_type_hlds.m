@@ -239,7 +239,7 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
     constructor_repn::in, constructor_repn::out,
     ctor_name_to_repn_map::in, ctor_name_to_repn_map::out,
     tvarset::in, tvarset::out,
-    eqv_expanded_info::in, eqv_expanded_info::out) is det.
+    eqv_expand_info::in, eqv_expand_info::out) is det.
 
 replace_in_ctor_repn(TypeEqvMap, CtorRepn0, CtorRepn, !CtorNameToRepnMap,
         !TVarSet, !EquivTypeInfo) :-
@@ -267,7 +267,7 @@ replace_in_ctor_repn(TypeEqvMap, CtorRepn0, CtorRepn, !CtorNameToRepnMap,
 :- pred replace_in_ctor_arg_repn(type_eqv_map::in,
     constructor_arg_repn::in, constructor_arg_repn::out,
     tvarset::in, tvarset::out,
-    eqv_expanded_info::in, eqv_expanded_info::out) is det.
+    eqv_expand_info::in, eqv_expand_info::out) is det.
 
 replace_in_ctor_arg_repn(TypeEqvMap, CtorArgRepn0, CtorArgRepn,
         !TVarSet, !EquivTypeInfo) :-
@@ -574,7 +574,8 @@ replace_in_cons_defn(TypeEqvMap, ConsDefn0, ConsDefn) :-
 
 replace_in_constructor_arg(TypeEqvMap, CtorArg0, CtorArg, !TVarSet) :-
     CtorArg0 = ctor_arg(MaybeFieldName, Type0, Context),
-    replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet, no, _),
+    replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet,
+        no_eqv_expand_info, _),
     (
         Changed = changed,
         CtorArg = ctor_arg(MaybeFieldName, Type, Context)
@@ -1212,7 +1213,7 @@ replace_in_inst_2(TypeEqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
     ;
         Inst0 = free(Type0),
         equiv_type.replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet,
-            no, _),
+            no_eqv_expand_info, _),
         ( Changed = changed, Inst = free(Type)
         ; Changed = no_change, Inst = Inst0
         )
@@ -1366,13 +1367,15 @@ replace_in_inst_name(TypeEqvMap, InstName0, InstName, Changed,
         )
     ;
         InstName0 = typed_ground(Uniq, Type0),
-        replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet, no, _),
+        replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet,
+            no_eqv_expand_info, _),
         ( Changed = no_change, InstName = InstName0
         ; Changed = changed, InstName = typed_ground(Uniq, Type)
         )
     ;
         InstName0 = typed_inst(Type0, Name0),
-        replace_in_type(TypeEqvMap, Type0, Type, TypeChanged, !TVarSet, no, _),
+        replace_in_type(TypeEqvMap, Type0, Type, TypeChanged, !TVarSet,
+            no_eqv_expand_info, _),
         replace_in_inst_name(TypeEqvMap, Name0, Name, InstChanged,
             !TVarSet, !Cache),
         ( if TypeChanged = no_change, InstChanged = no_change then
@@ -1566,9 +1569,11 @@ replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
         TVarSet0 = !.Info ^ ethri_tvarset,
         replace_in_foreign_arg_list(TypeEqvMap, GoalExpr0 ^ foreign_args,
-            Args, ChangedArgs, TVarSet0, TVarSet1, no, _),
+            Args, ChangedArgs, TVarSet0, TVarSet1,
+            no_eqv_expand_info, _),
         replace_in_foreign_arg_list(TypeEqvMap, GoalExpr0 ^ foreign_extra_args,
-            ExtraArgs, ChangedExtraArgs, TVarSet1, TVarSet, no, _),
+            ExtraArgs, ChangedExtraArgs, TVarSet1, TVarSet,
+            no_eqv_expand_info, _),
         ( if ChangedArgs = no_change, ChangedExtraArgs = no_change then
             Changed = no_change,
             GoalExpr = GoalExpr0
@@ -1781,7 +1786,7 @@ replace_in_unification(TypeEqvMap, Uni0, Uni, Changed, !Info) :-
 :- pred replace_in_foreign_arg(type_eqv_map::in,
     foreign_arg::in, foreign_arg::out, maybe_changed::out,
     tvarset::in, tvarset::out,
-    eqv_expanded_info::in, eqv_expanded_info::out) is det.
+    eqv_expand_info::in, eqv_expand_info::out) is det.
 
 replace_in_foreign_arg(TypeEqvMap, Arg0, Arg, Changed, !VarSet, !Info) :-
     Arg0 = foreign_arg(Var, NameMode, Type0, BoxPolicy),
@@ -1792,7 +1797,7 @@ replace_in_foreign_arg(TypeEqvMap, Arg0, Arg, Changed, !VarSet, !Info) :-
 
 :- pred replace_in_foreign_arg_list(type_eqv_map::in,
     list(foreign_arg)::in, list(foreign_arg)::out, maybe_changed::out,
-    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out)
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out)
     is det.
 
 replace_in_foreign_arg_list(_EqvMap, [], [], no_change, !VarSet, !Info).
