@@ -31,8 +31,12 @@
 
 :- type read_term(T)
     --->    eof
+            % We have reached the end-of-file.
     ;       error(string, int)
+            % We have found an error described the message string
+            % on the given line number in the input.
     ;       term(varset(T), term(T)).
+            % We have read in the given term with the given varset.
 
 :- type read_term == read_term(generic).
 

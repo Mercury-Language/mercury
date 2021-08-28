@@ -77,34 +77,25 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_imports.
 :- import_module parse_tree.parse_error.
-:- import_module parse_tree.parse_sym_name.
-:- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.used_file.
-:- import_module recompilation.version.
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module cord.
 :- import_module int.
-:- import_module lexer.             % for line_context and line_posn
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module pair.
-:- import_module parser.
 :- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.
-:- import_module term_io.
-:- import_module unit.
 
 %---------------------------------------------------------------------------%
 
@@ -135,16 +126,10 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
         ModuleName, !Info, !IO) :-
     !Info ^ rci_module_name := ModuleName,
     !Info ^ rci_sub_modules := [],
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(other_ext(".used")), ModuleName, UsedFileName, !IO),
-    io.read_named_file_as_string(UsedFileName, MaybeUsedFileString, !IO),
+    read_used_file_for_module(Globals, ModuleName, ReadUsedFileResult, !IO),
     (
-        MaybeUsedFileString = ok(UsedFileString),
-        string.length(UsedFileString, MaxOffset),
-        LineContext0 = line_context(1, 0),
-        LinePosn0 = line_posn(0),
-        should_recompile_3(UsedFileName, UsedFileString, MaxOffset,
-            LineContext0, LinePosn0, Globals, IsSubModule, FindTargetFiles,
+        ReadUsedFileResult = used_file_ok(UsedFile),
+        should_recompile_3(Globals, UsedFile, IsSubModule, FindTargetFiles,
             MaybeStoppingReason, !Info, !IO),
         (
             MaybeStoppingReason = no,
@@ -193,9 +178,9 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
                 !.Info ^ rci_sub_modules, !Info, !IO)
         )
     ;
-        MaybeUsedFileString = error(_),
+        ReadUsedFileResult = used_file_error(UsedFileError),
         write_recompilation_message(Globals,
-            write_not_found_reasons_message(Globals, UsedFileName, ModuleName),
+            write_used_file_error(Globals, ModuleName, UsedFileError),
             !IO),
         !Info ^ rci_modules_to_recompile := all_modules
     ).
@@ -212,105 +197,118 @@ write_not_recompiling_message(ModuleName, !IO) :-
 write_reasons_message(Globals, ModuleName, Reasons, !IO) :-
     list.foldl(write_recompile_reason(Globals, ModuleName), Reasons, !IO).
 
-:- pred write_not_found_reasons_message(globals::in, string::in,
-    module_name::in, io::di, io::uo) is det.
+:- pred write_used_file_error(globals::in, module_name::in,
+    used_file_error::in, io::di, io::uo) is det.
 
-write_not_found_reasons_message(Globals, UsageFileName, ModuleName, !IO) :-
-    Reason = recompile_for_file_error(UsageFileName,
-        [words("file"), quote(UsageFileName), words("not found."), nl]),
-    write_recompile_reason(Globals, ModuleName, Reason, !IO).
+write_used_file_error(Globals, ModuleName, UsedFileError, !IO) :-
+    PrefixPieces = [words("Recompiling module"), qual_sym_name(ModuleName),
+        suffix(":"), nl],
+    (
+        UsedFileError = uf_read_error(FileName, _IOError),
+        % ZZZ _IOError
+        Pieces = [words("file"), quote(FileName), words("not found."), nl],
+        AllPieces = PrefixPieces ++ Pieces,
+        Spec = error_spec($pred, severity_informational, phase_read_files,
+            [error_msg(no, treat_as_first, 0, [always(AllPieces)])])
+    ;
+        UsedFileError = uf_invalid_file_format(FileName),
+        Pieces = [words("invalid version number in"), quote(FileName),
+            suffix("."), nl],
+        AllPieces = PrefixPieces ++ Pieces,
+        Spec = error_spec($pred, severity_informational, phase_read_files,
+            [error_msg(no, treat_as_first, 0, [always(AllPieces)])])
+    ;
+        UsedFileError = uf_syntax_error(Context, Message),
+        AllPieces = PrefixPieces ++ [words(Message), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_informational, phase_read_files,
+            Context, AllPieces)
+    ;
+        UsedFileError = uf_unreadable_used_items(UsedItemSpecs),
+        list.map(extract_spec_msgs(Globals), UsedItemSpecs, MsgsList),
+        list.condense(MsgsList, Msgs),
+        % MaybeContext = find_first_context_in_msgs(Msgs),
+        Spec = error_spec($pred, severity_informational, phase_read_files,
+            Msgs)
+    ),
+    write_error_spec_ignore(Globals, Spec, !IO).
 
-:- pred should_recompile_3(string::in, string::in, int::in,
-    line_context::in, line_posn::in, globals::in,
+:- pred should_recompile_3(globals::in, used_file::in,
     maybe_is_inline_submodule::in,
     find_target_file_names::in(find_target_file_names),
     maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out,
     io::di, io::uo) is det.
 
-should_recompile_3(UsedFileName, UsedFileString, MaxOffset,
-        !.LineContext, !.LinePosn, Globals, IsSubModule, FindTargetFiles,
+should_recompile_3(Globals, UsedFile, IsSubModule, FindTargetFiles,
         MaybeStoppingReason, !Info, !IO) :-
     % WARNING: any exceptions thrown before the sub_modules field is set
     % in the recompilation_check_info must set the modules_to_recompile field
     % to `all', or else the nested submodules will not be checked
     % and necessary recompilations may be missed.
-    read_and_parse_used_file(UsedFileName, UsedFileString, MaxOffset,
-        !.LineContext, !.LinePosn, ParseUsedFile),
+    UsedFile = used_file(ModuleTimestamp, InlineSubModules,
+        UsedItems, UsedClasses, UsedModules),
+    ModuleTimestamp = module_timestamp(_, RecordedTimestamp, _),
+    !Info ^ rci_sub_modules := InlineSubModules,
+    !Info ^ rci_used_items := UsedItems,
+    !Info ^ rci_used_typeclasses := set.list_to_set(UsedClasses),
     (
-        ParseUsedFile = rpt_error(Reason),
-        MaybeStoppingReason = yes(Reason)
+        IsSubModule = is_inline_submodule,
+        % For inline submodules, we don't need to check the module
+        % timestamp, because we have already checked the timestamp
+        % for the parent module.
+        MaybeStoppingReason0 = no
     ;
-        ParseUsedFile = rpt_ok(UsedFile),
-        UsedFile = used_file(ModuleTimestamp, InlineSubModules,
-            UsedItems, UsedClasses, UsedModules),
-
-        ModuleTimestamp = module_timestamp(_, RecordedTimestamp, _),
-        !Info ^ rci_sub_modules := InlineSubModules,
-        !Info ^ rci_used_items := UsedItems,
-        !Info ^ rci_used_typeclasses := set.list_to_set(UsedClasses),
-
-        (
-            IsSubModule = is_inline_submodule,
-            % For inline submodules, we don't need to check the module
-            % timestamp, because we have already checked the timestamp
-            % for the parent module.
-            MaybeStoppingReason0 = no
-        ;
-            IsSubModule = is_not_inline_submodule,
-            % If the module has changed, recompile.
-            ModuleName = !.Info ^ rci_module_name,
-            read_module_src(Globals, "Reading module",
-                do_not_ignore_errors, do_search, ModuleName, [], FileName,
-                dont_read_module_if_match(RecordedTimestamp),
-                MaybeNewTimestamp, ParseTree, Specs, Errors, !IO),
-            ( if
-                MaybeNewTimestamp = yes(NewTimestamp),
-                NewTimestamp \= RecordedTimestamp
-            then
-                record_read_file_src(ModuleName, FileName,
-                    ModuleTimestamp ^ mts_timestamp := NewTimestamp,
-                    ParseTree, Specs, Errors, !Info),
-                !Info ^ rci_modules_to_recompile := all_modules,
-                ChangedReason = recompile_for_module_changed(FileName),
-                record_recompilation_reason(ChangedReason,
-                    MaybeStoppingReason0, !Info)
-            else if
-                ( set.is_non_empty(Errors)
-                ; MaybeNewTimestamp = no
-                )
-            then
-                % We are throwing away Specs, even though some of its elements
-                % could illuminate the cause of the problem. XXX Is this OK?
-                Pieces = [words("error reading file"), quote(FileName),
-                    suffix("."), nl],
-                FileReason = recompile_for_file_error(FileName, Pieces),
-                % XXX Some of the errors in Errors could be errors other than
-                % syntax errors.
-                MaybeStoppingReason0 = yes(FileReason)
-            else
-                % We are throwing away Specs. Since it should be a repeat
-                % of the errors we saw when the file was first read in,
-                % this should be OK.
-                MaybeStoppingReason0 = no
+        IsSubModule = is_not_inline_submodule,
+        % If the module has changed, recompile.
+        ModuleName = !.Info ^ rci_module_name,
+        read_module_src(Globals, "Reading module",
+            do_not_ignore_errors, do_search, ModuleName, [], FileName,
+            dont_read_module_if_match(RecordedTimestamp),
+            MaybeNewTimestamp, ParseTree, Specs, Errors, !IO),
+        ( if
+            MaybeNewTimestamp = yes(NewTimestamp),
+            NewTimestamp \= RecordedTimestamp
+        then
+            record_read_file_src(ModuleName, FileName,
+                ModuleTimestamp ^ mts_timestamp := NewTimestamp,
+                ParseTree, Specs, Errors, !Info),
+            !Info ^ rci_modules_to_recompile := all_modules,
+            ChangedReason = recompile_for_module_changed(FileName),
+            record_recompilation_reason(ChangedReason,
+                MaybeStoppingReason0, !Info)
+        else if
+            ( set.is_non_empty(Errors)
+            ; MaybeNewTimestamp = no
             )
-        ),
-
-        (
-            MaybeStoppingReason0 = yes(_),
-            MaybeStoppingReason = MaybeStoppingReason0
-        ;
-            MaybeStoppingReason0 = no,
-            % Check whether the output files are present and up-to-date.
-            FindTargetFiles(!.Info ^ rci_module_name, TargetFiles, !IO),
-            list.foldl3(
-                require_recompilation_if_not_up_to_date(RecordedTimestamp),
-                TargetFiles,
-                MaybeStoppingReason0, MaybeStoppingReason1, !Info, !IO),
-
-            check_imported_modules(Globals, UsedModules,
-                MaybeStoppingReason1, MaybeStoppingReason, !Info, !IO)
+        then
+            % We are throwing away Specs, even though some of its elements
+            % could illuminate the cause of the problem. XXX Is this OK?
+            Pieces = [words("error reading file"), quote(FileName),
+                suffix("."), nl],
+            FileReason = recompile_for_file_error(FileName, Pieces),
+            % XXX Some of the errors in Errors could be errors other than
+            % syntax errors.
+            MaybeStoppingReason0 = yes(FileReason)
+        else
+            % We are throwing away Specs. Since it should be a repeat
+            % of the errors we saw when the file was first read in,
+            % this should be OK.
+            MaybeStoppingReason0 = no
         )
+    ),
+    (
+        MaybeStoppingReason0 = yes(_),
+        MaybeStoppingReason = MaybeStoppingReason0
+    ;
+        MaybeStoppingReason0 = no,
+        % Check whether the output files are present and up-to-date.
+        FindTargetFiles(!.Info ^ rci_module_name, TargetFiles, !IO),
+        list.foldl3(
+            require_recompilation_if_not_up_to_date(RecordedTimestamp),
+            TargetFiles,
+            MaybeStoppingReason0, MaybeStoppingReason1, !Info, !IO),
+        check_imported_modules(Globals, UsedModules,
+            MaybeStoppingReason1, MaybeStoppingReason, !Info, !IO)
     ).
 
 :- pred require_recompilation_if_not_up_to_date(timestamp::in, file_name::in,
@@ -339,708 +337,6 @@ require_recompilation_if_not_up_to_date(RecordedTimestamp, TargetFile,
     ).
 
 %---------------------------------------------------------------------------%
-
-:- type used_file
-    --->    used_file(
-                % XXX document the meanings of these fields.
-                module_timestamp,
-                list(module_name),
-                resolved_used_items,
-                list(item_name),
-                list(recomp_used_module)
-            ).
-
-:- pred read_and_parse_used_file(string::in, string::in, int::in,
-    line_context::in, line_posn::in, recomp_parse_term(used_file)::out) is det.
-
-read_and_parse_used_file(UsedFileName, UsedFileString, MaxOffset,
-        !.LineContext, !.LinePosn, ParseUsedFile) :-
-    % XXX
-    % The contents of the *entire .used file* should be a simple large term
-    % of a type that is designed to represent its entire contents, since
-    % that would allow a single call to io.read to read it all in, allowing us
-    % to dispense with pretty much all of the code handling syntax errors
-    % in this module. (Since the contents of .used files are machine generated,
-    % we do not need to strive to generate user-friendly error messages;
-    % a simple indication of the error's presence and location will do.)
-    %
-    % That type, used_file, should depend *only* on public type definitions,
-    % unlike e.g. the representation of sets, which is hidden behind
-    % an abstraction barrier. This is because we don't want changes hidden by
-    % those abstraction barriers to affect the file format.
-    %
-    % We could then handle transitions between file format versions either
-    %
-    % - by trying the parse the contents of the .used file first as a member
-    %   of the new type, and if that failed, as a member of the old type, or
-    %
-    % - by having both formats represented by two different function symbols
-    %   in the same type.
-    %
-    % Alternatively, the .used file could contain two terms, the version
-    % number info, and everything else. We could then select the predicate
-    % we use to read in everything else based on the version number.
-
-    % Check that the format of the usage file is the current format.
-    read_and_parse_used_file_version_number(UsedFileName, UsedFileString,
-        MaxOffset, !LineContext, !LinePosn, ParseVersionNumber),
-    (
-        ParseVersionNumber = rpt_error(Reason),
-        ParseUsedFile = rpt_error(Reason)
-    ;
-        ParseVersionNumber = rpt_ok(_Unit),
-
-        % Find the timestamp of the module the last time it was compiled.
-        read_and_parse_module_timestamp(UsedFileName, UsedFileString,
-            MaxOffset, !LineContext, !LinePosn, ParseTimestamp),
-        % Find out whether this module has any inline submodules.
-        read_and_parse_inline_submodules(UsedFileName, UsedFileString,
-            MaxOffset, !LineContext, !LinePosn, ParseInlineSubModules),
-        % Parse the used items, which are used for checking for ambiguities
-        % with new items.
-        read_and_parse_used_items(UsedFileName, UsedFileString,
-            MaxOffset, !LineContext, !LinePosn, ParseUsedItems),
-        read_and_parse_used_classes(UsedFileName, UsedFileString,
-            MaxOffset, !LineContext, !LinePosn, ParseUsedClasses),
-        read_and_parse_used_modules(UsedFileName, UsedFileString,
-            MaxOffset, !.LineContext, _, !.LinePosn, _,
-            cord.init, ParseUsedModules),
-        ( if
-            ParseTimestamp = rpt_ok({_ModuleName, ModuleTimestamp}),
-            ParseInlineSubModules = rpt_ok(InlineSubModules),
-            ParseUsedItems = rpt_ok(UsedItems),
-            ParseUsedClasses = rpt_ok(UsedClasses),
-            ParseUsedModules = rpt_ok(UsedModules)
-        then
-            UsedFile = used_file(ModuleTimestamp, InlineSubModules,
-                UsedItems, set.to_sorted_list(UsedClasses), UsedModules),
-            ParseUsedFile = rpt_ok(UsedFile)
-        else
-            Reasons1 = project_error_reason(ParseTimestamp),
-            Reasons2 = project_error_reason(ParseInlineSubModules),
-            Reasons3 = project_error_reason(ParseUsedItems),
-            Reasons4 = project_error_reason(ParseUsedClasses),
-            Reasons5 = project_error_reason(ParseUsedModules),
-            % Since at least one rpt_ok test in the condition has failed,
-            % there must be at least one reason.
-            % XXX We could report all the syntax errors we found,
-            % not just the first.
-            FirstReason = list.det_head(Reasons1 ++ Reasons2 ++
-                Reasons3 ++ Reasons4 ++ Reasons5),
-            ParseUsedFile = rpt_error(FirstReason)
-        )
-    ).
-
-:- func project_error_reason(recomp_parse_term(T)) = list(recompile_reason).
-
-project_error_reason(rpt_ok(_)) = [].
-project_error_reason(rpt_error(Reason)) = [Reason].
-
-:- pred read_and_parse_used_file_version_number(string::in,
-    string::in, int::in, line_context::in, line_context::out,
-    line_posn::in, line_posn::out, recomp_parse_term(unit)::out) is det.
-
-read_and_parse_used_file_version_number(UsedFileName, UsedFileString,
-        MaxOffset, !LineContext, !LinePosn, ParseTerm) :-
-    read_term_check_for_error_or_eof(UsedFileName, UsedFileString, MaxOffset,
-        !LineContext, !LinePosn, "usage file version number", ReadTerm),
-    (
-        ReadTerm = rpt_error(Reason),
-        ParseTerm = rpt_error(Reason)
-    ;
-        ReadTerm = rpt_ok(Term),
-        ( if
-            % XXX ITEM_LIST This term should be more self-descriptive.
-            % Instead of the current "2,1.", it should be something like
-            % "mercury_smart_recomp_usage(usage_format(2), version_format(1))".
-            % We could initially accept both formats when reading in,
-            % while generating the new format only.
-            Term = term.functor(term.atom(","), [SubTerm1, SubTerm2], _),
-            decimal_term_to_int(SubTerm1, used_file_version_number),
-            decimal_term_to_int(SubTerm2,
-                module_item_version_numbers_version_number)
-        then
-            ParseTerm = rpt_ok(unit)
-        else
-            Reason = recompile_for_file_error(UsedFileName,
-                [words("invalid version number(s) in file"),
-                quote(UsedFileName), suffix("."), nl]),
-            ParseTerm = rpt_error(Reason)
-        )
-    ).
-
-%---------------------%
-
-:- pred read_and_parse_module_timestamp(string::in, string::in, int::in,
-    line_context::in, line_context::out, line_posn::in, line_posn::out,
-    recomp_parse_term({module_name, module_timestamp})::out) is det.
-
-read_and_parse_module_timestamp(UsedFileName, UsedFileString, MaxOffset,
-        !LineContext, !LinePosn, ParseTerm) :-
-    read_term_check_for_error_or_eof(UsedFileName, UsedFileString, MaxOffset,
-        !LineContext, !LinePosn, "module timestamp", ReadTerm),
-    (
-        ReadTerm = rpt_error(Reason),
-        ParseTerm = rpt_error(Reason)
-    ;
-        ReadTerm = rpt_ok(Term),
-        parse_module_timestamp(Term, ParseTerm)
-    ).
-
-:- pred parse_module_timestamp(term::in,
-    recomp_parse_term({module_name, module_timestamp})::out) is det.
-
-parse_module_timestamp(Term, ParseTerm) :-
-    conjunction_to_list(Term, Args),
-    ( if
-        Args = [ModuleNameTerm, SuffixTerm, TimestampTerm | MaybeOtherTerms],
-        try_parse_sym_name_and_no_args(ModuleNameTerm, ModuleName),
-        SuffixTerm = term.functor(term.string(SuffixStr), [], _),
-        extension_to_file_kind(SuffixStr, FileKind),
-        parse_timestamp_term(TimestampTerm, Timestamp),
-        % This must be kept in sync with write_module_name_and_used_items
-        % in recompilation.usage.m.
-        (
-            MaybeOtherTerms = [],
-            RecompAvail = recomp_avail_int_import
-        ;
-            MaybeOtherTerms = [term.functor(term.atom(Other), [], _)],
-            (
-                Other = "src",
-                RecompAvail = recomp_avail_src
-            ;
-                % XXX Does write_module_name_and_used_items
-                % still generate "used"?
-                ( Other = "used"
-                ; Other = "int_used"
-                ),
-                RecompAvail = recomp_avail_int_use
-            ;
-                Other = "imp_used",
-                RecompAvail = recomp_avail_imp_use
-            ;
-                Other = "int_imported",
-                RecompAvail = recomp_avail_int_import
-            ;
-                Other = "imp_imported",
-                RecompAvail = recomp_avail_imp_import
-            ;
-                Other = "int_used_imp_imported",
-                RecompAvail = recomp_avail_int_use_imp_import
-            )
-        )
-    then
-        ModuleTimestamp = module_timestamp(FileKind, Timestamp, RecompAvail),
-        ParseTerm = rpt_ok({ModuleName, ModuleTimestamp})
-    else
-        Reason = recompile_for_syntax_error(get_term_context(Term),
-            "error in module timestamp"),
-        ParseTerm = rpt_error(Reason)
-    ).
-
-%---------------------%
-
-:- pred read_and_parse_inline_submodules(string::in, string::in, int::in,
-    line_context::in, line_context::out, line_posn::in, line_posn::out,
-    recomp_parse_term(list(module_name))::out) is det.
-
-read_and_parse_inline_submodules(UsedFileName, UsedFileString, MaxOffset,
-        !LineContext, !LinePosn, ParseSubModules) :-
-    % Find out whether this module has any inline submodules.
-    read_term_check_for_error_or_eof(UsedFileName, UsedFileString, MaxOffset,
-        !LineContext, !LinePosn, "inline submodules", ReadTerm),
-    (
-        ReadTerm = rpt_error(Reason),
-        ParseSubModules = rpt_error(Reason)
-    ;
-        ReadTerm = rpt_ok(Term),
-        ( if
-            Term = term.functor(term.atom("sub_modules"), SubModuleTerms, _),
-            list.map(try_parse_sym_name_and_no_args,
-                SubModuleTerms, SubModules)
-        then
-            ParseSubModules = rpt_ok(SubModules)
-        else
-            Reason = recompile_for_syntax_error(get_term_context(Term),
-                "error in sub_modules term"),
-            ParseSubModules = rpt_error(Reason)
-        )
-    ).
-
-%---------------------%
-
-:- pred read_and_parse_used_items(string::in, string::in, int::in,
-    line_context::in, line_context::out, line_posn::in, line_posn::out,
-    recomp_parse_term(resolved_used_items)::out) is det.
-
-read_and_parse_used_items(UsedFileName, UsedFileString, MaxOffset,
-        !LineContext, !LinePosn, ParseUsedItems) :-
-    read_term_check_for_error_or_eof(UsedFileName, UsedFileString, MaxOffset,
-        !LineContext, !LinePosn, "used items", ReadTerm),
-    (
-        ReadTerm = rpt_error(Reason),
-        ParseUsedItems = rpt_error(Reason)
-    ;
-        ReadTerm = rpt_ok(Term),
-        ( if
-            Term = term.functor(term.atom("used_items"), UsedItemTerms, _)
-        then
-            UsedItems0 = init_resolved_used_items,
-            ReasonsCord0 = cord.init,
-            list.foldl2(parse_used_item_set, UsedItemTerms,
-                UsedItems0, UsedItems, ReasonsCord0, ReasonsCord),
-            Reasons = cord.list(ReasonsCord),
-            (
-                Reasons = [],
-                ParseUsedItems = rpt_ok(UsedItems)
-            ;
-                Reasons = [HeadReason | _],
-                ParseUsedItems = rpt_error(HeadReason)
-            )
-        else
-            Reason = recompile_for_syntax_error(get_term_context(Term),
-                "error in used items"),
-            ParseUsedItems = rpt_error(Reason)
-        )
-    ).
-
-:- pred parse_used_item_set(term::in,
-    resolved_used_items::in, resolved_used_items::out,
-    cord(recompile_reason)::in, cord(recompile_reason)::out) is det.
-
-parse_used_item_set(Term, !UsedItems, !Reasons) :-
-    ( if
-        Term = term.functor(term.atom(ItemTypeStr), ItemTerms, _),
-        string_to_item_type(ItemTypeStr, ItemType)
-    then
-        (
-            ( ItemType = type_name_item
-            ; ItemType = type_defn_item
-            ; ItemType = inst_item
-            ; ItemType = mode_item
-            ; ItemType = typeclass_item
-            ),
-            list.foldl2(parse_simple_item, ItemTerms,
-                map.init, SimpleItems, cord.init, ItemReasons),
-            ( if cord.is_empty(ItemReasons) then
-                (
-                    ItemType = type_name_item,
-                    !UsedItems ^ rui_type_names := SimpleItems
-                ;
-                    ItemType = type_defn_item,
-                    !UsedItems ^ rui_type_defns := SimpleItems
-                ;
-                    ItemType = inst_item,
-                    !UsedItems ^ rui_insts := SimpleItems
-                ;
-                    ItemType = mode_item,
-                    !UsedItems ^ rui_modes := SimpleItems
-                ;
-                    ItemType = typeclass_item,
-                    !UsedItems ^ rui_typeclasses := SimpleItems
-                )
-            else
-                !:Reasons = !.Reasons ++ ItemReasons
-            )
-        ;
-            ( ItemType = predicate_item
-            ; ItemType = function_item
-            ),
-            list.foldl2(parse_pred_or_func_item, ItemTerms,
-                map.init, PredOrFuncItems, cord.init, ItemReasons),
-            ( if cord.is_empty(ItemReasons) then
-                (
-                    ItemType = predicate_item,
-                    !UsedItems ^ rui_predicates := PredOrFuncItems
-                ;
-                    ItemType = function_item,
-                    !UsedItems ^ rui_functions := PredOrFuncItems
-                )
-            else
-                !:Reasons = !.Reasons ++ ItemReasons
-            )
-        ;
-            ItemType = functor_item,
-            list.foldl2(parse_functor_item, ItemTerms,
-                map.init, CtorItems, cord.init, ItemReasons),
-            ( if cord.is_empty(ItemReasons) then
-                !UsedItems ^ rui_functors := CtorItems
-            else
-                !:Reasons = !.Reasons ++ ItemReasons
-            )
-        ;
-            ( ItemType = mutable_item
-            ; ItemType = foreign_proc_item
-            ),
-            Reason = recompile_for_syntax_error(get_term_context(Term),
-                "error in used items: unknown item type: " ++ ItemTypeStr),
-            !:Reasons = cord.snoc(!.Reasons, Reason)
-        )
-    else
-        Reason = recompile_for_syntax_error(get_term_context(Term),
-            "error in used items"),
-        !:Reasons = cord.snoc(!.Reasons, Reason)
-    ).
-
-:- pred parse_simple_item(term::in, simple_item_set::in, simple_item_set::out,
-    cord(recompile_reason)::in, cord(recompile_reason)::out) is det.
-
-parse_simple_item(Term, !Set, !Reasons) :-
-    ( if
-        Term = term.functor(term.atom("-"), [NameArityTerm, MatchesTerm], _),
-        parse_unqualified_name_and_arity(NameArityTerm, SymName, Arity)
-    then
-        Name = unqualify_name(SymName),
-        conjunction_to_list(MatchesTerm, MatchTermList),
-        list.foldl2(parse_simple_item_match, MatchTermList,
-            map.init, Matches, cord.init, TermReasons),
-        ( if cord.is_empty(TermReasons) then
-            map.det_insert(name_arity(Name, Arity), Matches, !Set)
-        else
-            !:Reasons = !.Reasons ++ TermReasons
-        )
-    else
-        Reason = recompile_for_syntax_error(get_term_context(Term),
-            "error in simple items"),
-        !:Reasons = cord.snoc(!.Reasons, Reason)
-    ).
-
-:- pred parse_simple_item_match(term::in,
-    map(module_qualifier, module_name)::in,
-    map(module_qualifier, module_name)::out,
-    cord(recompile_reason)::in, cord(recompile_reason)::out) is det.
-
-parse_simple_item_match(Term, !ItemMap, !Reasons) :-
-    ( if
-        % XXX This defaulty representation (the absence of an arrow
-        % meaning there is no explicit qualifier term) is bad design.
-        % There should *always* be an arrow (or some other fixed functor),
-        % with an explicit representation of the qualifier being the same
-        % as the module name.
-        ( if
-            Term = term.functor(term.atom("=>"),
-                [QualifierTerm, ModuleNameTerm], _)
-        then
-            try_parse_sym_name_and_no_args(QualifierTerm, Qualifier),
-            try_parse_sym_name_and_no_args(ModuleNameTerm, ModuleName)
-        else
-            try_parse_sym_name_and_no_args(Term, ModuleName),
-            Qualifier = ModuleName
-        )
-    then
-        map.det_insert(Qualifier, ModuleName, !ItemMap)
-    else
-        Reason = recompile_for_syntax_error(get_term_context(Term),
-            "error in simple item match"),
-        !:Reasons = cord.snoc(!.Reasons, Reason)
-    ).
-
-:- pred parse_pred_or_func_item(term::in,
-    resolved_pred_or_func_set::in, resolved_pred_or_func_set::out,
-    cord(recompile_reason)::in, cord(recompile_reason)::out) is det.
-
-parse_pred_or_func_item(Term, !Set, !Reasons) :-
-    parse_resolved_item_set(parse_pred_or_func_item_match, Term,
-        !Set, !Reasons).
-
-:- pred parse_pred_or_func_item_match(term::in,
-    resolved_pred_or_func_map::in, resolved_pred_or_func_map::out,
-    cord(recompile_reason)::in, cord(recompile_reason)::out) is det.
-
-parse_pred_or_func_item_match(Term, !Items, !Reasons) :-
-    InvPredId = invalid_pred_id,
-    ( if
-        ( if
-            Term = term.functor(term.atom("=>"),
-                [QualifierTerm, MatchesTerm], _)
-        then
-            try_parse_sym_name_and_no_args(QualifierTerm, Qualifier),
-            conjunction_to_list(MatchesTerm, MatchesList),
-            list.map(
-                ( pred(MatchTerm::in, Match::out) is semidet :-
-                    try_parse_sym_name_and_no_args(MatchTerm, MatchName),
-                    Match = InvPredId - MatchName
-                ),
-                MatchesList, Matches)
-        else
-            try_parse_sym_name_and_no_args(Term, Qualifier),
-            Matches = [InvPredId - Qualifier]
-        )
-    then
-        map.det_insert(Qualifier, set.list_to_set(Matches), !Items)
-    else
-        Reason = recompile_for_syntax_error(get_term_context(Term),
-            "error in pred or func match"),
-        !:Reasons = cord.snoc(!.Reasons, Reason)
-    ).
-
-:- pred parse_functor_item(term::in,
-    resolved_functor_set::in, resolved_functor_set::out,
-    cord(recompile_reason)::in, cord(recompile_reason)::out) is det.
-
-parse_functor_item(Term, !Set, !Reasons) :-
-    parse_resolved_item_set(parse_functor_matches, Term, !Set, !Reasons).
-
-:- pred parse_functor_matches(term::in,
-    resolved_functor_map::in, resolved_functor_map::out,
-    cord(recompile_reason)::in, cord(recompile_reason)::out) is det.
-
-parse_functor_matches(Term, !Map, !Reasons) :-
-    ( if
-        Term = term.functor(term.atom("=>"), [QualifierTerm, MatchesTerm], _),
-        try_parse_sym_name_and_no_args(QualifierTerm, Qualifier)
-    then
-        conjunction_to_list(MatchesTerm, MatchesTerms),
-        list.foldl2(parse_resolved_functor, MatchesTerms,
-            [], RevMatches, cord.init, TermReasons),
-        ( if cord.is_empty(TermReasons) then
-            list.reverse(RevMatches, Matches),
-            map.det_insert(Qualifier, set.list_to_set(Matches), !Map)
-        else
-            !:Reasons = !.Reasons ++ TermReasons
-        )
-    else
-        Reason = recompile_for_syntax_error(get_term_context(Term),
-            "error in functor match"),
-        !:Reasons = cord.snoc(!.Reasons, Reason)
-    ).
-
-:- pred parse_resolved_functor(term::in,
-    list(resolved_functor)::in, list(resolved_functor)::out,
-    cord(recompile_reason)::in, cord(recompile_reason)::out) is det.
-
-parse_resolved_functor(Term, !RevCtors, !Reasons) :-
-    ( if
-        Term = term.functor(term.atom(PredOrFuncStr),
-            [ModuleTerm, ArityTerm], _),
-        ( PredOrFuncStr = "predicate", PredOrFunc = pf_predicate
-        ; PredOrFuncStr = "function", PredOrFunc = pf_function
-        ),
-        try_parse_sym_name_and_no_args(ModuleTerm, ModuleName),
-        decimal_term_to_int(ArityTerm, Arity)
-    then
-        InvPredId = invalid_pred_id,
-        Ctor = resolved_functor_pred_or_func(InvPredId, PredOrFunc,
-            ModuleName, pred_form_arity(Arity)),
-        !:RevCtors = [Ctor | !.RevCtors]
-    else if
-        Term = term.functor(term.atom("ctor"), [NameArityTerm], _),
-        parse_unqualified_name_and_arity(NameArityTerm, TypeName, TypeArity)
-    then
-        TypeCtor = type_ctor(TypeName, TypeArity),
-        Ctor = resolved_functor_data_constructor(TypeCtor),
-        !:RevCtors = [Ctor | !.RevCtors]
-    else if
-        Term = term.functor(term.atom("field"),
-            [TypeNameArityTerm, ConsNameArityTerm], _),
-        parse_unqualified_name_and_arity(TypeNameArityTerm,
-            TypeName, TypeArity),
-        parse_unqualified_name_and_arity(ConsNameArityTerm,
-            ConsName, ConsArity)
-    then
-        TypeCtor = type_ctor(TypeName, TypeArity),
-        ConsCtor = cons_ctor(ConsName, ConsArity, TypeCtor),
-        Ctor = resolved_functor_field_access_func(ConsCtor),
-        !:RevCtors = [Ctor | !.RevCtors]
-    else
-        Reason = recompile_for_syntax_error(get_term_context(Term),
-            "error in functor match"),
-        !:Reasons = cord.snoc(!.Reasons, Reason)
-    ).
-
-%---------------------%
-
-:- type parse_resolved_item_matches(T) ==
-    pred(term, resolved_item_map(T), resolved_item_map(T),
-        cord(recompile_reason), cord(recompile_reason)).
-:- inst parse_resolved_item_matches == (pred(in, in, out, in, out) is det).
-
-:- pred parse_resolved_item_set(
-    parse_resolved_item_matches(T)::in(parse_resolved_item_matches),
-    term::in, resolved_item_set(T)::in, resolved_item_set(T)::out,
-    cord(recompile_reason)::in, cord(recompile_reason)::out) is det.
-
-parse_resolved_item_set(ParseMatches, Term, !Set, !Reasons) :-
-    ( if
-        Term = term.functor(term.atom("-"), [NameTerm, MatchesTerm], _),
-        NameTerm = term.functor(term.atom(Name), [], _)
-    then
-        conjunction_to_list(MatchesTerm, MatchTermList),
-        list.foldl2(parse_resolved_item_arity_matches(ParseMatches),
-            MatchTermList, [], RevMatches, !Reasons),
-        list.reverse(RevMatches, Matches),
-        map.det_insert(Name, Matches, !Set)
-    else
-        Reason = recompile_for_syntax_error(get_term_context(Term),
-            "error in resolved item matches"),
-        !:Reasons = cord.snoc(!.Reasons, Reason)
-    ).
-
-:- pred parse_resolved_item_arity_matches(
-    parse_resolved_item_matches(T)::in(parse_resolved_item_matches), term::in,
-    list(pair(arity, resolved_item_map(T)))::in,
-    list(pair(arity, resolved_item_map(T)))::out,
-    cord(recompile_reason)::in, cord(recompile_reason)::out) is det.
-
-parse_resolved_item_arity_matches(ParseMatches, Term,
-        !RevArityMatchMaps, !Reasons) :-
-    ( if
-        Term = term.functor(term.atom("-"), [ArityTerm, MatchesTerm], _),
-        decimal_term_to_int(ArityTerm, Arity0),
-        conjunction_to_list(MatchesTerm, MatchTermList)
-    then
-        Arity = Arity0,
-        list.foldl2(
-            ( pred(MatchTerm::in, Map0::in, Map::out,
-                    Reasons0::in, Reasons::out) is det :-
-                ParseMatches(MatchTerm, Map0, Map, Reasons0, Reasons)
-            ),
-            MatchTermList, map.init, MatchMap, cord.init, TermReasons),
-        ( if cord.is_empty(TermReasons) then
-            !:RevArityMatchMaps = [Arity - MatchMap | !.RevArityMatchMaps]
-        else
-            !:Reasons = !.Reasons ++ TermReasons
-        )
-    else
-        Reason = recompile_for_syntax_error(get_term_context(Term),
-            "error in resolved item matches"),
-        !:Reasons = cord.snoc(!.Reasons, Reason)
-    ).
-
-%---------------------%
-
-:- pred read_and_parse_used_classes(string::in, string::in, int::in,
-    line_context::in, line_context::out, line_posn::in, line_posn::out,
-    recomp_parse_term(set(item_name))::out) is det.
-
-read_and_parse_used_classes(UsedFileName, UsedFileString, MaxOffset,
-        !LineContext, !LinePosn, ParseUsedClasses) :-
-    read_term_check_for_error_or_eof(UsedFileName, UsedFileString, MaxOffset,
-        !LineContext, !LinePosn, "used classes", ReadTerm),
-    (
-        ReadTerm = rpt_error(Reason),
-        ParseUsedClasses = rpt_error(Reason)
-    ;
-        ReadTerm = rpt_ok(Term),
-        ( if
-            Term = term.functor(term.atom("used_classes"), UsedClassTerms, _)
-            % XXX The format of the .used file should put UsedClassTerms
-            % into a list, to give the used_classes functor a fixed arity.
-        then
-            list.foldl2(parse_name_and_arity_item_add_to_set,
-                UsedClassTerms, set.init, UsedClasses, cord.init, ReasonsCord),
-            Reasons = cord.list(ReasonsCord),
-            (
-                Reasons = [],
-                ParseUsedClasses = rpt_ok(UsedClasses)
-            ;
-                Reasons = [HeadReason | _],
-                ParseUsedClasses = rpt_error(HeadReason)
-            )
-        else
-            Context = get_term_context(Term),
-            Reason = recompile_for_syntax_error(Context,
-                "error in used_typeclasses term"),
-            ParseUsedClasses = rpt_error(Reason)
-        )
-    ).
-
-:- pred parse_name_and_arity_item_add_to_set(term::in,
-    set(item_name)::in, set(item_name)::out,
-    cord(recompile_reason)::in, cord(recompile_reason)::out) is det.
-
-parse_name_and_arity_item_add_to_set(Term, !UsedClasses, !Reasons) :-
-    ( if parse_unqualified_name_and_arity(Term, ClassName, ClassArity) then
-        UsedClass = item_name(ClassName, ClassArity),
-        set.insert(UsedClass, !UsedClasses)
-    else
-        Context = get_term_context(Term),
-        Reason = recompile_for_syntax_error(Context,
-            "error in used_typeclasses term"),
-        !:Reasons = cord.snoc(!.Reasons, Reason)
-    ).
-
-%---------------------%
-
-:- type recomp_used_module
-    --->    recomp_used_module(
-                module_name,
-                module_timestamp,
-                maybe(module_item_version_numbers)
-            ).
-
-:- pred read_and_parse_used_modules(string::in, string::in, int::in,
-    line_context::in, line_context::out, line_posn::in, line_posn::out,
-    cord(recomp_used_module)::in,
-    recomp_parse_term(list(recomp_used_module))::out) is det.
-
-read_and_parse_used_modules(FileName, FileString, MaxOffset,
-        !LineContext, !LinePosn, !.UsedModulesCord, ParseUsedModules) :-
-    read_term_check_for_error_or_eof(FileName, FileString, MaxOffset,
-        !LineContext, !LinePosn, "used items list", ReadTerm),
-    (
-        ReadTerm = rpt_ok(Term),
-        % There should always be an item `done.' at the end of the list
-        % of modules to check. We use this to make sure that the writing
-        % of the `.used' file was not interrupted.
-        % XXX See the comment in read_and_parse_used_file for a simpler way
-        % of doing that.
-        ( if
-            Term = term.functor(term.atom("done"), [], _)
-        then
-            % XXX We should check that we are at the end-of-file.
-            ParseUsedModules = rpt_ok(cord.list(!.UsedModulesCord))
-        else
-            % XXX This defaulty representation (the absence of an arrow
-            % meaning there is no used items term) is bad design.
-            % There should *always* be an arrow (or some other fixed functor),
-            % with an explicit representation of an empty set of used items.
-            ( if
-                Term = term.functor(term.atom("=>"),
-                    [TimestampTerm0, UsedItemsTerm], _)
-            then
-                TimestampTerm = TimestampTerm0,
-                parse_module_item_version_numbers(UsedItemsTerm,
-                    MaybeUsedItems),
-                (
-                    MaybeUsedItems = ok1(VersionNumbers),
-                    ParseVersionNumbers = rpt_ok(yes(VersionNumbers))
-                ;
-                    MaybeUsedItems = error1(Specs),
-                    ParseVersionNumbers =
-                        rpt_error(recompile_for_unreadable_used_items(Specs))
-                )
-            else
-                TimestampTerm = Term,
-                ParseVersionNumbers = rpt_ok(no)
-            ),
-            parse_module_timestamp(TimestampTerm, ParseModuleTimestamp),
-            (
-                ParseModuleTimestamp =
-                    rpt_ok({ImportedModuleName, ModuleTimestamp}),
-                (
-                    ParseVersionNumbers = rpt_ok(MaybeVersionNumbers),
-                    UsedModule = recomp_used_module(ImportedModuleName,
-                        ModuleTimestamp, MaybeVersionNumbers),
-                    !:UsedModulesCord =
-                        cord.snoc(!.UsedModulesCord, UsedModule),
-                    read_and_parse_used_modules(FileName, FileString,
-                        MaxOffset, !LineContext, !LinePosn, !.UsedModulesCord,
-                        ParseUsedModules)
-                ;
-                    ParseVersionNumbers = rpt_error(Reason),
-                    ParseUsedModules = rpt_error(Reason)
-                )
-            ;
-                ParseModuleTimestamp = rpt_error(Reason),
-                ParseUsedModules = rpt_error(Reason)
-            )
-        )
-    ;
-        ReadTerm = rpt_error(Reason),
-        ParseUsedModules = rpt_error(Reason)
-    ).
-
 %---------------------------------------------------------------------------%
 
 :- pred check_imported_modules(globals::in, list(recomp_used_module)::in,
@@ -1952,13 +1248,6 @@ check_functor_ambiguity(RecompAvail, SymName, Arity, ResolvedCtor,
     ;       recompile_for_output_file_not_up_to_date(
                 file_name
             )
-    ;       recompile_for_syntax_error(
-                term.context,
-                string
-            )
-    ;       recompile_for_unreadable_used_items(
-                list(error_spec)
-            )
     ;       recompile_for_module_changed(
                 file_name
             )
@@ -2074,86 +1363,64 @@ write_recompilation_message(Globals, P, !IO) :-
 :- pred write_recompile_reason(globals::in, module_name::in,
     recompile_reason::in, io::di, io::uo) is det.
 
-write_recompile_reason(Globals, ModuleName, Reason, !IO) :-
-    PrefixPieces = [words("Recompiling module"), qual_sym_name(ModuleName),
-        suffix(":"), nl],
-    recompile_reason_message(Globals, PrefixPieces, Reason, Spec),
+write_recompile_reason(Globals, ThisModuleName, Reason, !IO) :-
+    PrefixPieces = [words("Recompiling module"),
+        qual_sym_name(ThisModuleName), suffix(":"), nl],
+    (
+        Reason = recompile_for_file_error(_FileName, Pieces)
+        % Pieces should mention FileName.
+    ;
+        Reason = recompile_for_output_file_not_up_to_date(FileName),
+        Pieces = [words("output file"), quote(FileName),
+            words("is not up to date."), nl]
+    ;
+        Reason = recompile_for_module_changed(FileName),
+        Pieces = [words("file"), quote(FileName), words("has changed."), nl]
+    ;
+        Reason = recompile_for_item_ambiguity(Item, AmbiguousItems),
+        ItemPieces = describe_item(Item),
+        AmbiguousItemPieces = component_lists_to_pieces("and",
+            list.map(describe_item, AmbiguousItems)),
+        Pieces = [words("addition of") | ItemPieces]
+            ++ [words("could cause an ambiguity with")]
+            ++ AmbiguousItemPieces ++ [suffix("."), nl]
+    ;
+        Reason = recompile_for_functor_ambiguity(SymName, Arity,
+            Functor, AmbiguousFunctors),
+        FunctorPieces = describe_resolved_functor(SymName, Arity, Functor),
+        AmbiguousFunctorPieces = component_lists_to_pieces("and",
+            list.map(describe_resolved_functor(SymName, Arity),
+                AmbiguousFunctors)),
+        Pieces = [words("addition of") | FunctorPieces]
+            ++ [words("could cause an ambiguity with")]
+            ++ AmbiguousFunctorPieces ++ [suffix("."), nl]
+    ;
+        Reason = recompile_for_changed_item(Item),
+        Pieces = describe_item(Item) ++ [words("was modified."), nl]
+    ;
+        Reason = recompile_for_removed_item(Item),
+        Pieces = describe_item(Item) ++ [words("was removed."), nl]
+    ;
+        Reason = recompile_for_changed_or_added_instance(ModuleName,
+            item_name(ClassName, ClassArity)),
+        Pieces = [words("an instance for class"),
+            qual_sym_name_arity(sym_name_arity(ClassName, ClassArity)),
+            words("in module"), qual_sym_name(ModuleName),
+            words("was added or modified."), nl]
+    ;
+        Reason = recompile_for_removed_instance(ModuleName,
+            item_name(ClassName, ClassArity)),
+        Pieces = [words("an instance for class "),
+            qual_sym_name_arity(sym_name_arity(ClassName, ClassArity)),
+            words("in module"), qual_sym_name(ModuleName),
+            words("was removed."), nl]
+    ),
+    AllPieces = PrefixPieces ++ Pieces,
+    Spec = error_spec($pred, severity_informational, phase_read_files,
+        [error_msg(no, treat_as_first, 0, [always(AllPieces)])]),
     % Since these messages are informational, there should be no warnings
     % or errors.
     write_error_spec_ignore(Globals, Spec, !IO).
-
-:- pred recompile_reason_message(globals::in, list(format_component)::in,
-    recompile_reason::in, error_spec::out) is det.
-
-recompile_reason_message(Globals, PrefixPieces, Reason, Spec) :-
-    (
-        (
-            Reason = recompile_for_file_error(_FileName, Pieces)
-            % Pieces should mention FileName.
-        ;
-            Reason = recompile_for_output_file_not_up_to_date(FileName),
-            Pieces = [words("output file"), quote(FileName),
-                words("is not up to date.")]
-        ;
-            Reason = recompile_for_module_changed(FileName),
-            Pieces = [words("file"), quote(FileName), words("has changed.")]
-        ;
-            Reason = recompile_for_item_ambiguity(Item, AmbiguousItems),
-            ItemPieces = describe_item(Item),
-            AmbiguousItemPieces = component_lists_to_pieces("and",
-                list.map(describe_item, AmbiguousItems)),
-            Pieces = [words("addition of") | ItemPieces]
-                ++ [words("could cause an ambiguity with")]
-                ++ AmbiguousItemPieces ++ [suffix(".")]
-        ;
-            Reason = recompile_for_functor_ambiguity(SymName, Arity,
-                Functor, AmbiguousFunctors),
-            FunctorPieces = describe_resolved_functor(SymName, Arity, Functor),
-            AmbiguousFunctorPieces = component_lists_to_pieces("and",
-                list.map(describe_resolved_functor(SymName, Arity),
-                    AmbiguousFunctors)),
-            Pieces = [words("addition of") | FunctorPieces]
-                ++ [words("could cause an ambiguity with")]
-                ++ AmbiguousFunctorPieces ++ [suffix(".")]
-        ;
-            Reason = recompile_for_changed_item(Item),
-            Pieces = describe_item(Item) ++ [words("was modified.")]
-        ;
-            Reason = recompile_for_removed_item(Item),
-            Pieces = describe_item(Item) ++ [words("was removed.")]
-        ;
-            Reason = recompile_for_changed_or_added_instance(ModuleName,
-                item_name(ClassName, ClassArity)),
-            Pieces = [words("an instance for class"),
-                qual_sym_name_arity(sym_name_arity(ClassName, ClassArity)),
-                words("in module"), qual_sym_name(ModuleName),
-                words("was added or modified.")]
-        ;
-            Reason = recompile_for_removed_instance(ModuleName,
-                item_name(ClassName, ClassArity)),
-            Pieces = [words("an instance for class "),
-                qual_sym_name_arity(sym_name_arity(ClassName, ClassArity)),
-                words("in module"), qual_sym_name(ModuleName),
-                words("was removed.")]
-        ),
-        MaybeContext = no,
-        AllPieces = PrefixPieces ++ Pieces,
-        Spec = error_spec($pred, severity_informational, phase_read_files,
-            [error_msg(MaybeContext, treat_as_first, 0, [always(AllPieces)])])
-    ;
-        Reason = recompile_for_syntax_error(Context, Msg),
-        MaybeContext = yes(Context),
-        AllPieces = PrefixPieces ++ [words(Msg), suffix("."), nl],
-        Spec = error_spec($pred, severity_informational, phase_read_files,
-            [error_msg(MaybeContext, treat_as_first, 0, [always(AllPieces)])])
-    ;
-        Reason = recompile_for_unreadable_used_items(Specs),
-        list.map(extract_spec_msgs(Globals), Specs, MsgsList),
-        list.condense(MsgsList, Msgs),
-        % MaybeContext = find_first_context_in_msgs(Msgs),
-        Spec = error_spec($pred, severity_informational, phase_read_files,
-            Msgs)
-    ).
 
 :- func describe_item(item_id) = list(format_component).
 
@@ -2198,36 +1465,6 @@ describe_resolved_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
         Pieces = [words("field access function"), unqual_sym_name_arity(SNA),
             words("for constructor"), unqual_sym_name_arity(ConsSNA),
             words("of type"), qual_type_ctor(TypeCtor)]
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- type recomp_parse_term(T)
-    --->    rpt_ok(T)
-    ;       rpt_error(recompile_reason).
-
-:- pred read_term_check_for_error_or_eof(string::in,
-    string::in, int::in, line_context::in, line_context::out,
-    line_posn::in, line_posn::out, string::in, recomp_parse_term(term)::out)
-    is det.
-
-read_term_check_for_error_or_eof(FileName, FileString, MaxOffset,
-        !LineContext, !LinePosn, ItemName, ReadTerm) :-
-    parser.read_term_from_linestr(FileName, FileString, MaxOffset,
-        !LineContext, !LinePosn, TermResult),
-    (
-        TermResult = term(_, Term),
-        ReadTerm = rpt_ok(Term)
-    ;
-        TermResult = error(Message, LineNumber),
-        Context = term.context(FileName, LineNumber),
-        ReadTerm = rpt_error(recompile_for_syntax_error(Context, Message))
-    ;
-        TermResult = eof,
-        !.LineContext = line_context(LineNumber, _OffsetAtStartOfLine),
-        Context = term.context(FileName, LineNumber),
-        Message = "unexpected end of file, expected " ++ ItemName ++ ".",
-        ReadTerm = rpt_error(recompile_for_syntax_error(Context, Message))
     ).
 
 %---------------------------------------------------------------------------%
