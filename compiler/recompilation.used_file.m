@@ -392,10 +392,9 @@ simple_item_matches_to_string_3(NameArity - Matches) = Str :-
         list.map(simple_item_matches_to_string_4, MatchList),
     MatchesStr = string.join_list(", ", MatchStrs),
     NGT = next_to_graphic_token,
-    SymName = unqualified(Name),        % XXX This feels redundant.
     string.format("%s/%d - (%s)",
-        [s(mercury_bracketed_sym_name_to_string_ngt(NGT, SymName)),
-        i(Arity), s(MatchesStr)], Str).
+        [s(mercury_bracketed_atom_to_string(NGT, Name)), i(Arity),
+        s(MatchesStr)], Str).
 
 :- func simple_item_matches_to_string_4(pair(module_qualifier, module_name))
     = string.
@@ -510,7 +509,8 @@ resolved_item_set_to_string(MatchesToStr, ItemType, ItemSet) = Str :-
     pair(string, list(pair(int, map(sym_name, T))))) = string.
 
 resolved_item_set_to_string_2(MatchesToStr, Name - MatchesAL) = Str :-
-    NameStr = mercury_bracketed_sym_name_to_string(unqualified(Name)),
+    NGT = not_next_to_graphic_token,
+    NameStr = mercury_bracketed_atom_to_string(NGT, Name),
     MatchStrs = list.map(resolved_item_set_to_string_3(MatchesToStr),
         MatchesAL),
     MatchesStr = string.join_list(",\n\t\t\t", MatchStrs),
@@ -628,6 +628,7 @@ module_name_and_used_items_to_string(UsedFileContents,
         string.format("%s.\n", [s(HdrStr)], Str)
     ).
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 read_used_file_for_module(Globals, ModuleName, ReadUsedFileResult, !IO) :-
@@ -1065,7 +1066,7 @@ parse_pred_or_func_item_match(Term, !Items, !Errors) :-
     then
         map.det_insert(Qualifier, set.list_to_set(Matches), !Items)
     else
-        Context =get_term_context(Term),
+        Context = get_term_context(Term),
         Error = uf_syntax_error(Context, "error in pred or func match"),
         !:Errors = cord.snoc(!.Errors, Error)
     ).
@@ -1107,37 +1108,62 @@ parse_functor_matches(Term, !Map, !Errors) :-
 
 parse_resolved_functor(Term, !RevCtors, !Errors) :-
     ( if
-        Term = term.functor(term.atom(PredOrFuncStr),
-            [ModuleTerm, ArityTerm], _),
-        ( PredOrFuncStr = "predicate", PredOrFunc = pf_predicate
-        ; PredOrFuncStr = "function", PredOrFunc = pf_function
-        ),
-        try_parse_sym_name_and_no_args(ModuleTerm, ModuleName),
-        decimal_term_to_int(ArityTerm, Arity)
+        Term = term.functor(term.atom(Atom), ArgTerms, Context),
+        ( Atom = "predicate"
+        ; Atom = "function"
+        ; Atom = "ctor"
+        ; Atom = "field"
+        )
     then
-        InvPredId = invalid_pred_id,
-        Ctor = resolved_functor_pred_or_func(InvPredId, PredOrFunc,
-            ModuleName, pred_form_arity(Arity)),
-        !:RevCtors = [Ctor | !.RevCtors]
-    else if
-        Term = term.functor(term.atom("ctor"), [NameArityTerm], _),
-        parse_unqualified_name_and_arity(NameArityTerm, TypeName, TypeArity)
-    then
-        TypeCtor = type_ctor(TypeName, TypeArity),
-        Ctor = resolved_functor_data_constructor(TypeCtor),
-        !:RevCtors = [Ctor | !.RevCtors]
-    else if
-        Term = term.functor(term.atom("field"),
-            [TypeNameArityTerm, ConsNameArityTerm], _),
-        parse_unqualified_name_and_arity(TypeNameArityTerm,
-            TypeName, TypeArity),
-        parse_unqualified_name_and_arity(ConsNameArityTerm,
-            ConsName, ConsArity)
-    then
-        TypeCtor = type_ctor(TypeName, TypeArity),
-        ConsCtor = cons_ctor(ConsName, ConsArity, TypeCtor),
-        Ctor = resolved_functor_field_access_func(ConsCtor),
-        !:RevCtors = [Ctor | !.RevCtors]
+        (
+            ( Atom = "predicate", PredOrFunc = pf_predicate
+            ; Atom = "function",  PredOrFunc = pf_function
+            ),
+            ( if
+                ArgTerms = [ModuleTerm, ArityTerm],
+                try_parse_sym_name_and_no_args(ModuleTerm, ModuleName),
+                decimal_term_to_int(ArityTerm, Arity)
+            then
+                InvPredId = invalid_pred_id,
+                Ctor = resolved_functor_pred_or_func(InvPredId, PredOrFunc,
+                    ModuleName, pred_form_arity(Arity)),
+                !:RevCtors = [Ctor | !.RevCtors]
+            else
+                Error = uf_syntax_error(Context, "error in functor match"),
+                !:Errors = cord.snoc(!.Errors, Error)
+            )
+        ;
+            Atom = "ctor",
+            ( if
+                ArgTerms = [NameArityTerm],
+                parse_unqualified_name_and_arity(NameArityTerm,
+                    TypeName, TypeArity)
+            then
+                TypeCtor = type_ctor(TypeName, TypeArity),
+                Ctor = resolved_functor_data_constructor(TypeCtor),
+                !:RevCtors = [Ctor | !.RevCtors]
+            else
+                Error = uf_syntax_error(Context, "error in functor match"),
+                !:Errors = cord.snoc(!.Errors, Error)
+            )
+        ;
+            Atom = "field",
+            ( if
+                ArgTerms = [TypeNameArityTerm, ConsNameArityTerm],
+                parse_unqualified_name_and_arity(TypeNameArityTerm,
+                    TypeName, TypeArity),
+                parse_unqualified_name_and_arity(ConsNameArityTerm,
+                    ConsName, ConsArity)
+            then
+                TypeCtor = type_ctor(TypeName, TypeArity),
+                ConsCtor = cons_ctor(ConsName, ConsArity, TypeCtor),
+                Ctor = resolved_functor_field_access_func(ConsCtor),
+                !:RevCtors = [Ctor | !.RevCtors]
+            else
+                Error = uf_syntax_error(Context, "error in functor match"),
+                !:Errors = cord.snoc(!.Errors, Error)
+            )
+        )
     else
         Context = get_term_context(Term),
         Error = uf_syntax_error(Context, "error in functor match"),
