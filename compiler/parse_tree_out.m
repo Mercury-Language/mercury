@@ -810,13 +810,11 @@ mercury_output_maybe_module_version_numbers(Stream, ModuleName,
 
 mercury_output_module_version_numbers(Stream, ModuleName,
         ModuleItemVersionNumbers, !IO) :-
-    io.write_string(Stream, ":- version_numbers(", !IO),
-    io.write_int(Stream, module_item_version_numbers_version_number, !IO),
-    io.write_string(Stream, ", ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, Stream, !IO),
-    io.write_string(Stream, ",\n", !IO),
-    write_module_item_version_numbers(Stream, ModuleItemVersionNumbers, !IO),
-    io.write_string(Stream, ").\n", !IO).
+    io.format(Stream, ":- version_numbers(%d, %s,\n%s).\n",
+        [i(module_item_version_numbers_version_number),
+        s(mercury_bracketed_sym_name_to_string(ModuleName)),
+        s(module_item_version_numbers_to_string(ModuleItemVersionNumbers))],
+        !IO).
 
 %---------------------------------------------------------------------------%
 

@@ -35,7 +35,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module set.
@@ -61,12 +60,7 @@
 
 :- pred parse_timestamp_term(term(T)::in, timestamp::out) is semidet.
 
-    % XXX RECOMP Transition from calls to write_version_number
-    % to calls to version_number_to_string.
-    %
 :- func version_number_to_string(version_number) = string.
-:- pred write_version_number(io.text_output_stream::in, version_number::in,
-    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -314,10 +308,6 @@ parse_timestamp_term(Term, Timestamp) :-
 version_number_to_string(VersionNumber) = VersionNumberStr :-
     string.format("""%s""", [s(timestamp_to_string(VersionNumber))],
         VersionNumberStr).
-
-write_version_number(Stream, VersionNumber, !IO) :-
-    VersionNumberStr = version_number_to_string(VersionNumber),
-    io.write_string(Stream, VersionNumberStr, !IO).
 
 %-----------------------------------------------------------------------------%
 

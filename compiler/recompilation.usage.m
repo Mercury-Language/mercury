@@ -27,7 +27,6 @@
 :- import_module parse_tree.module_imports.
 :- import_module recompilation.used_file.
 
-:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module set.

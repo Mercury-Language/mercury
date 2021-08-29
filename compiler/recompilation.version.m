@@ -22,7 +22,6 @@
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_item.
 
-:- import_module io.
 :- import_module maybe.
 :- import_module term.
 
@@ -41,8 +40,8 @@
     timestamp::in, parse_tree_int2::in, module_item_version_numbers::out)
     is det.
 
-:- pred write_module_item_version_numbers(io.text_output_stream::in,
-    module_item_version_numbers::in, io::di, io::uo) is det.
+:- func module_item_version_numbers_to_string(module_item_version_numbers)
+    = string.
 
     % The version number for the format of the version numbers
     % written to the interface files.
@@ -1559,7 +1558,7 @@ class_methods_are_unchanged([Decl1 | Decls1], [Decl2 | Decls2]) :-
 
 %---------------------------------------------------------------------------%
 
-write_module_item_version_numbers(Stream, ModuleItemVersionNumbers, !IO) :-
+module_item_version_numbers_to_string(ModuleItemVersionNumbers) = Str :-
     ModuleItemVersionNumbers =
         module_item_version_numbers(TypeNameMap, TypeDefnMap,
             InstMap, ModeMap, ClassMap, InstanceMap, PredMap, FuncMap),
@@ -1575,7 +1574,7 @@ write_module_item_version_numbers(Stream, ModuleItemVersionNumbers, !IO) :-
     ],
     list.filter_map(maybe_is_yes, ItemTypeMaybeStrs, ItemTypeStrs),
     ItemTypesStr = string.join_list(",\n", ItemTypeStrs),
-    io.format(Stream, "{\n%s\n}", [s(ItemTypesStr)], !IO).
+    string.format("{\n%s\n}", [s(ItemTypesStr)], Str).
 
 %---------------------%
 

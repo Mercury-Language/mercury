@@ -162,11 +162,28 @@
     ;       uf_unreadable_used_items(list(error_spec)).
             % XXX document this
 
+    % This type represents the part of the .used file *after*
+    % the version numbers.
 :- type used_file
     --->    used_file(
-                % XXX document the meanings of these fields.
+                % The timestamp of the source file of the module
+                % whose .used file this is.
                 module_timestamp,
+
+                % If this list is non-empty, then this module is the top
+                % module in its source file, and the list gives the names
+                % of all of its nested submodules.
+                %
+                % If this list is empty, then *either*
+                %
+                % - this module is not the top module in its source file, or
+                % - this module *is* the top module in its source file,
+                %   but it has no nested submodules.
+                %
+                % You can't tell which of these is the case.
                 list(module_name),
+
+                % XXX document the meanings of these fields.
                 resolved_used_items,
                 list(item_name),
                 list(recomp_used_module)
@@ -195,7 +212,6 @@
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_sym_name.
-:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_out.
@@ -254,121 +270,324 @@ write_usage_file_to_stream(Stream, UsedFileContents, !IO) :-
         MaybeTopModule, TimestampMap, _ModuleItemVersionNumbersMap,
         ResolvedUsedItems, UsedClasses, ImportedItems, _ModuleInstances),
 
-    io.write_int(Stream, used_file_version_number, !IO),
-    io.write_string(Stream, ",", !IO),
-    io.write_int(Stream, module_item_version_numbers_version_number, !IO),
-    io.write_string(Stream, ".\n\n", !IO),
+    % Term 1.
+    io.write_string(Stream, used_file_version_numbers_to_string, !IO),
 
+    % Term 2.
     map.lookup(TimestampMap, ThisModuleName,
         module_timestamp(_, ThisModuleTimestamp, _)),
-    io.write_string(Stream, "(", !IO),
-    mercury_output_bracketed_sym_name(ThisModuleName, Stream, !IO),
-    io.write_string(Stream, ", "".m"", ", !IO),
-    write_version_number(Stream, ThisModuleTimestamp, !IO),
-    io.write_string(Stream, ").\n\n", !IO),
+    io.write_string(Stream,
+        module_source_timestamp_to_string(ThisModuleName, ThisModuleTimestamp),
+        !IO),
 
+    % Term 3.
+    io.write_string(Stream,
+        nested_children_of_top_module_to_string(MaybeTopModule), !IO),
+
+    % Term 4.
+    io.write_string(Stream, used_items_to_string(ResolvedUsedItems), !IO),
+
+    % Term 5.
+    io.write_string(Stream, used_classes_to_string(UsedClasses), !IO),
+
+    % Terms 6+.
+    UsedFileStrs = list.map(
+        module_name_and_used_items_to_string(UsedFileContents),
+        map.to_sorted_assoc_list(ImportedItems)),
+    io.write_strings(Stream, UsedFileStrs, !IO),
+    % We check for this end-of-list marker when reading in the `.used' file,
+    % to make sure the earlier compilation wasn't interrupted in the
+    % middle of writing the file.
+    io.write_string(Stream, "\ndone.\n", !IO).
+
+%---------------------------------------------------------------------------%
+
+:- func used_file_version_numbers_to_string = string.
+
+used_file_version_numbers_to_string = Str :-
+    string.format("%d,%d.\n\n",
+        [i(used_file_version_number),
+        i(module_item_version_numbers_version_number)], Str).
+
+%---------------------------------------------------------------------------%
+
+:- func module_source_timestamp_to_string(module_name, timestamp) = string.
+
+module_source_timestamp_to_string(ModuleName, Timestamp) = Str :-
+    string.format("(%s, "".m"", %s).\n\n",
+        [s(mercury_bracketed_sym_name_to_string(ModuleName)),
+        s(version_number_to_string(Timestamp))], Str).
+
+%---------------------------------------------------------------------------%
+
+:- func nested_children_of_top_module_to_string(maybe_top_module) = string.
+
+nested_children_of_top_module_to_string(MaybeTopModule) = Str :-
     NestedSubModules = get_nested_children_list_of_top_module(MaybeTopModule),
     (
         NestedSubModules = [],
-        io.write_string(Stream, "sub_modules.\n\n", !IO)
+        Str = "sub_modules.\n\n"
     ;
         NestedSubModules = [_ | _],
-        io.write_string(Stream, "sub_modules(", !IO),
-        write_out_list(mercury_output_bracketed_sym_name, ", ",
-            NestedSubModules, Stream, !IO),
-        io.write_string(Stream, ").\n\n", !IO)
-    ),
+        NestedSubModuleStrs =
+            list.map(mercury_bracketed_sym_name_to_string, NestedSubModules),
+        NestedSubModulesStr = string.join_list(", ", NestedSubModuleStrs),
+        string.format("sub_modules(%s).\n\n", [s(NestedSubModulesStr)], Str)
+    ).
 
-    ( if ResolvedUsedItems = init_resolved_used_items then
-        io.write_string(Stream, "used_items.\n", !IO)
+%---------------------------------------------------------------------------%
+
+:- func used_items_to_string(resolved_used_items) = string.
+
+used_items_to_string(ResolvedUsedItems) = Str :-
+    ResolvedUsedItems = resolved_used_items(UsedTypeNameSet, UsedTypeDefnSet,
+        UsedInstSet, UsedModeSet, UsedClassSet, UsedFunctorSet,
+        UsedPredSet, UsedFuncSet),
+
+    MS1 = maybe_simple_item_matches_to_string(type_name_item, UsedTypeNameSet),
+    MS2 = maybe_simple_item_matches_to_string(type_defn_item, UsedTypeDefnSet),
+    MS3 = maybe_simple_item_matches_to_string(inst_item, UsedInstSet),
+    MS4 = maybe_simple_item_matches_to_string(mode_item, UsedModeSet),
+    MS5 = maybe_simple_item_matches_to_string(typeclass_item, UsedClassSet),
+    MS6 = maybe_pred_or_func_matches_to_string(predicate_item, UsedPredSet),
+    MS7 = maybe_pred_or_func_matches_to_string(function_item, UsedFuncSet),
+    % XXX no item_type wrapper
+    MS8 = maybe_functor_matches_to_string(UsedFunctorSet),
+    MatchStrs = MS1 ++ MS2 ++ MS3 ++ MS4 ++ MS5 ++ MS6 ++ MS7 ++ MS8,
+    (
+        MatchStrs = [],
+        Str = "used_items.\n"
+    ;
+        MatchStrs = [_ | _],
+        MatchesStr = string.join_list(",\n\t", MatchStrs),
+        string.format("used_items(\n" ++ "\t%s\n" ++ ").\n\n",
+            [s(MatchesStr)], Str)
+    ).
+
+%---------------------%
+
+:- func maybe_simple_item_matches_to_string(item_type, simple_item_set)
+    = list(string).
+
+maybe_simple_item_matches_to_string(ItemType, ItemSet) = Strs :-
+    ( if map.is_empty(ItemSet) then
+        Strs = []
     else
-        io.write_string(Stream, "used_items(\n\t", !IO),
-        some [!WriteComma] (
-            !:WriteComma = no,
-            write_simple_item_matches(Stream, type_name_item,
-                ResolvedUsedItems, !WriteComma, !IO),
-            write_simple_item_matches(Stream, type_defn_item,
-                ResolvedUsedItems, !WriteComma, !IO),
-            write_simple_item_matches(Stream, inst_item,
-                ResolvedUsedItems, !WriteComma, !IO),
-            write_simple_item_matches(Stream, mode_item,
-                ResolvedUsedItems, !WriteComma, !IO),
-            write_simple_item_matches(Stream, typeclass_item,
-                ResolvedUsedItems, !WriteComma, !IO),
-            write_pred_or_func_matches(Stream, pf_predicate,
-                ResolvedUsedItems, !WriteComma, !IO),
-            write_pred_or_func_matches(Stream, pf_function,
-                ResolvedUsedItems, !WriteComma, !IO),
-            write_functor_matches(Stream, ResolvedUsedItems ^ rui_functors,
-                !WriteComma, !IO),
-            _ = !.WriteComma
-        ),
-        io.write_string(Stream, "\n).\n\n", !IO)
-    ),
+        string_to_item_type(ItemTypeStr, ItemType),
+        map.to_assoc_list(ItemSet, ItemList),
+        ItemStrs = list.map(simple_item_matches_to_string_3, ItemList),
+        ItemsStr = string.join_list(",\n\t\t", ItemStrs),
+        string.format("%s(\n" ++ "\t\t%s\n" ++ "\t)",
+            [s(ItemTypeStr), s(ItemsStr)], Str),
+        Strs = [Str]
+    ).
 
-    ( if set.is_empty(UsedClasses) then
-        io.write_string(Stream, "used_classes.\n", !IO)
+:- func simple_item_matches_to_string_3(
+    pair(name_arity, map(module_qualifier, module_name))) = string.
+
+simple_item_matches_to_string_3(NameArity - Matches) = Str :-
+    NameArity = name_arity(Name, Arity),
+    map.to_assoc_list(Matches, MatchList),
+    MatchStrs =
+        list.map(simple_item_matches_to_string_4, MatchList),
+    MatchesStr = string.join_list(", ", MatchStrs),
+    NGT = next_to_graphic_token,
+    SymName = unqualified(Name),        % XXX This feels redundant.
+    string.format("%s/%d - (%s)",
+        [s(mercury_bracketed_sym_name_to_string_ngt(NGT, SymName)),
+        i(Arity), s(MatchesStr)], Str).
+
+:- func simple_item_matches_to_string_4(pair(module_qualifier, module_name))
+    = string.
+
+simple_item_matches_to_string_4(Qualifier - ModuleName) = Str :-
+    QualifierStr = mercury_bracketed_sym_name_to_string(Qualifier),
+    ( if Qualifier = ModuleName then
+        Str = QualifierStr
     else
-        io.write_string(Stream, "used_classes(", !IO),
-        write_out_list(write_classname_and_arity, ", ",
-            set.to_sorted_list(UsedClasses), Stream, !IO),
-        io.write_string(Stream, ").\n", !IO)
-    ),
+        ModuleNameStr = mercury_bracketed_sym_name_to_string(ModuleName),
+        string.format("%s => %s", [s(QualifierStr), s(ModuleNameStr)], Str)
+    ).
 
-    map.foldl(
-        write_module_name_and_used_items(Stream, UsedFileContents),
-        ImportedItems, !IO),
-    % recompilation_check.m checks for this item when reading in the `.used'
-    % file to make sure the earlier compilation wasn't interrupted in the
-    % middle of writing the file.
-    io.nl(Stream, !IO),
-    io.write_string(Stream, "done.\n", !IO).
+%---------------------%
 
-:- pred write_module_name_and_used_items(io.text_output_stream::in,
-    used_file_contents::in,
-    module_name::in, module_imported_items::in, io::di, io::uo) is det.
+:- func maybe_pred_or_func_matches_to_string(item_type,
+    resolved_pred_or_func_set) = list(string).
 
-write_module_name_and_used_items(Stream, UsedFileContents,
-        ModuleName, ModuleUsedItems, !IO) :-
+maybe_pred_or_func_matches_to_string(ItemType, ItemSet) = Strs :-
+    ( if map.is_empty(ItemSet) then
+        Strs = []
+    else
+        Str = resolved_item_set_to_string(pred_or_func_matches_to_string_3,
+            ItemType, ItemSet),
+        Strs = [Str]
+    ).
+
+:- func pred_or_func_matches_to_string_3(
+    pair(sym_name, set(pair(pred_id, sym_name))))
+    = string.
+
+pred_or_func_matches_to_string_3(Qualifier - PredIdModuleNames) = Str :-
+    ModuleNames = assoc_list.values(set.to_sorted_list(PredIdModuleNames)),
+    QualifierStr = mercury_bracketed_sym_name_to_string(Qualifier),
+    ( if ModuleNames = [Qualifier] then
+        Str = QualifierStr
+    else
+        ModuleNameStrs =
+            list.map(mercury_bracketed_sym_name_to_string, ModuleNames),
+        ModuleNamesStr = string.join_list(", ", ModuleNameStrs),
+        string.format("%s => (%s)", [s(QualifierStr), s(ModuleNamesStr)], Str)).
+
+%---------------------%
+
+:- func maybe_functor_matches_to_string(resolved_functor_set) = list(string).
+
+maybe_functor_matches_to_string(ItemSet) = Strs :-
+    ( if map.is_empty(ItemSet) then
+        Strs = []
+    else
+        MatchesStr = resolved_item_set_to_string(functor_matches_to_string_2,
+            functor_item, ItemSet),
+        Strs = [MatchesStr]
+    ).
+
+:- func functor_matches_to_string_2(pair(sym_name, set(resolved_functor)))
+    = string.
+
+functor_matches_to_string_2(Qualifier - MatchingCtors) = Str :-
+    MatchingCtorList = set.to_sorted_list(MatchingCtors),
+    MatchingCtorStrs = list.map(resolved_functor_to_string, MatchingCtorList),
+    MatchingCtorsStr = string.join_list(", ", MatchingCtorStrs),
+    string.format("%s => (%s)",
+        [s(mercury_bracketed_sym_name_to_string(Qualifier)),
+        s(MatchingCtorsStr)], Str).
+
+:- func resolved_functor_to_string(resolved_functor) = string.
+
+resolved_functor_to_string(ResolvedFunctor) = Str :-
+    (
+        ResolvedFunctor = resolved_functor_pred_or_func(_, PredOrFunc,
+            ModuleName, pred_form_arity(Arity)),
+        string.format("%s(%s, %i)",
+            [s(pred_or_func_to_full_str(PredOrFunc)),
+            s(mercury_bracketed_sym_name_to_string(ModuleName)),
+            i(Arity)], Str)
+    ;
+        ResolvedFunctor = resolved_functor_data_constructor(TypeCtor),
+        TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+        NGT = next_to_graphic_token,
+        string.format("ctor(%s/%i)",
+            [s(mercury_bracketed_sym_name_to_string_ngt(NGT, TypeCtorSymName)),
+            i(TypeCtorArity)], Str)
+    ;
+        ResolvedFunctor = resolved_functor_field_access_func(ConsCtor),
+        ConsCtor = cons_ctor(ConsSymName, ConsArity, TypeCtor),
+        TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+        NGT = next_to_graphic_token,
+        string.format("field(%s/%i, %s/%i)",
+            [s(mercury_bracketed_sym_name_to_string_ngt(NGT, TypeCtorSymName)),
+            i(TypeCtorArity),
+            s(mercury_bracketed_sym_name_to_string_ngt(NGT, ConsSymName)),
+            i(ConsArity)], Str)
+    ).
+
+%---------------------%
+
+:- func resolved_item_set_to_string(
+    (func(pair(module_qualifier, T)) = string),
+    item_type, resolved_item_set(T)) = string.
+
+resolved_item_set_to_string(MatchesToStr, ItemType, ItemSet) = Str :-
+    string_to_item_type(ItemTypeStr, ItemType),
+    map.to_assoc_list(ItemSet, ItemList),
+    ItemStrs = list.map(resolved_item_set_to_string_2(MatchesToStr), ItemList),
+    ItemsStr = string.join_list(",\n\t\t", ItemStrs),
+    string.format("%s(\n" ++ "\t\t%s\n" ++ "\t)",
+        [s(ItemTypeStr), s(ItemsStr)], Str).
+
+:- func resolved_item_set_to_string_2(
+    (func(pair(module_qualifier, T)) = string),
+    pair(string, list(pair(int, map(sym_name, T))))) = string.
+
+resolved_item_set_to_string_2(MatchesToStr, Name - MatchesAL) = Str :-
+    NameStr = mercury_bracketed_sym_name_to_string(unqualified(Name)),
+    MatchStrs = list.map(resolved_item_set_to_string_3(MatchesToStr),
+        MatchesAL),
+    MatchesStr = string.join_list(",\n\t\t\t", MatchStrs),
+    string.format("%s - (%s)", [s(NameStr), s(MatchesStr)], Str).
+
+:- func resolved_item_set_to_string_3(
+    (func(pair(module_qualifier, T)) = string),
+    pair(int, map(sym_name, T))) = string.
+
+resolved_item_set_to_string_3(MatchesToStr, Arity - Matches) = Str :-
+    map.to_assoc_list(Matches, MatchList),
+    MatchStrs : list(string) = list.map(MatchesToStr, MatchList),
+    MatchesStr = string.join_list(",\n\t\t\t\t", MatchStrs),
+    string.format("%d - (%s)", [i(Arity), s(MatchesStr)], Str).
+
+%---------------------------------------------------------------------------%
+
+:- func used_classes_to_string(set(item_name)) = string.
+
+used_classes_to_string(UsedClasses) = Str :-
+    UsedClassList = set.to_sorted_list(UsedClasses),
+    (
+        UsedClassList = [],
+        Str = "used_classes.\n"
+    ;
+        UsedClassList = [_ | _],
+        UsedClassStrs =
+            list.map(used_classname_and_arity_to_string, UsedClassList),
+        UsedClassesStr = string.join_list(", ", UsedClassStrs),
+        string.format("used_classes(%s).\n\n", [s(UsedClassesStr)], Str)
+    ).
+
+:- func used_classname_and_arity_to_string(item_name) = string.
+
+used_classname_and_arity_to_string(ItemName) = Str :-
+    ItemName = item_name(ClassName, ClassArity),
+    ClassNameStr = mercury_bracketed_sym_name_to_string(ClassName),
+    string.format("%s/%i", [s(ClassNameStr), i(ClassArity)], Str).
+
+%---------------------------------------------------------------------------%
+
+:- func module_name_and_used_items_to_string(used_file_contents,
+    pair(module_name, module_imported_items)) = string.
+
+module_name_and_used_items_to_string(UsedFileContents,
+        ModuleName - ModuleUsedItems) = Str :-
     UsedFileContents = used_file_contents(_ThisModuleName,
         _MaybeTopModule, TimestampMap, ModuleItemVersionNumbersMap,
         _ResolvedUsedItems, _UsedClasses, _ImportedItems, ModuleInstances),
-
-    io.nl(Stream, !IO),
-    io.write_string(Stream, "(", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, Stream, !IO),
-    io.write_string(Stream, ", """, !IO),
     map.lookup(TimestampMap, ModuleName,
         module_timestamp(FileKind, ModuleTimestamp, RecompNeedQual)),
     file_kind_to_extension(FileKind, ExtStr, _Ext),
-    io.write_string(Stream, ExtStr, !IO),
-    io.write_string(Stream, """, ", !IO),
-    write_version_number(Stream, ModuleTimestamp, !IO),
-    % This must be kept in sync with parse_module_timestamp in
-    % recompilation.check.m.
     (
         RecompNeedQual = recomp_avail_src,
-        io.write_string(Stream, ", src", !IO)
+        ImportStr = "src"
     ;
         RecompNeedQual = recomp_avail_int_use,
         % We used to output just ", used".
-        io.write_string(Stream, ", int_used", !IO)
+        ImportStr = "int_used"
     ;
         RecompNeedQual = recomp_avail_imp_use,
-        io.write_string(Stream, ", imp_used", !IO)
+        ImportStr = "imp_used"
     ;
         RecompNeedQual = recomp_avail_int_import,
         % We used to output nothing.
-        io.write_string(Stream, ", int_imported", !IO)
+        ImportStr = "int_imported"
     ;
         RecompNeedQual = recomp_avail_imp_import,
         % We used to output nothing.
-        io.write_string(Stream, ", imp_imported", !IO)
+        ImportStr = "imp_imported"
     ;
         RecompNeedQual = recomp_avail_int_use_imp_import,
-        io.write_string(Stream, ", int_used_imp_imported", !IO)
+        ImportStr = "int_used_imp_imported"
     ),
-    io.write_string(Stream, ")", !IO),
+    string.format("\n(%s, ""%s"", %s, %s)",
+        [s(mercury_bracketed_sym_name_to_string(ModuleName)), s(ExtStr),
+        s(version_number_to_string(ModuleTimestamp)), s(ImportStr)], HdrStr),
     ( if
         % XXX We don't yet record all uses of items from these modules
         % in polymorphism.m, etc.
@@ -400,249 +619,13 @@ write_module_name_and_used_items(Stream, UsedFileContents,
             module_item_version_numbers(UsedTypeNameMap, UsedTypeDefnMap,
                 UsedInstMap, UsedModeMap, UsedClassMap, UsedInstanceMap,
                 UsedPredMap, UsedFuncMap),
-
-        io.write_string(Stream, " => ", !IO),
-        write_module_item_version_numbers(Stream,
-            UsedModuleItemVersionNumbers, !IO),
-        io.write_string(Stream, ".\n", !IO)
+        VNsStr = module_item_version_numbers_to_string(
+            UsedModuleItemVersionNumbers),
+        string.format("%s => %s.\n", [s(HdrStr), s(VNsStr)], Str)
     else
         % If we don't have version numbers for a module, we just recompile
         % if the interface file's timestamp changes.
-        io.write_string(Stream, ".\n", !IO)
-    ).
-
-:- pred write_classname_and_arity(item_name::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
-
-write_classname_and_arity(item_name(ClassName, ClassArity), Stream, !IO) :-
-    mercury_output_bracketed_sym_name(ClassName, Stream, !IO),
-    io.write_string(Stream, "/", !IO),
-    io.write_int(Stream, ClassArity, !IO).
-
-:- pred write_comma_if_needed(io.text_output_stream::in,
-    bool::in, bool::out, io::di, io::uo) is det.
-
-write_comma_if_needed(Stream, !WriteComma, !IO) :-
-    (
-        !.WriteComma = yes,
-        io.write_string(Stream, ",\n\t", !IO)
-    ;
-        !.WriteComma = no
-    ),
-    !:WriteComma = yes.
-
-:- pred write_simple_item_matches(io.text_output_stream::in,
-    item_type::in(simple_item), resolved_used_items::in,
-    bool::in, bool::out, io::di, io::uo) is det.
-
-write_simple_item_matches(Stream, ItemType, UsedItems, !WriteComma, !IO) :-
-    (
-        ItemType = type_name_item,
-        Ids = UsedItems ^ rui_type_names
-    ;
-        ItemType = type_defn_item,
-        Ids = UsedItems ^ rui_type_defns
-    ;
-        ItemType = inst_item,
-        Ids = UsedItems ^ rui_insts
-    ;
-        ItemType = mode_item,
-        Ids = UsedItems ^ rui_modes
-    ;
-        ItemType = typeclass_item,
-        Ids = UsedItems ^ rui_typeclasses
-    ),
-    ( if map.is_empty(Ids) then
-        true
-    else
-        write_comma_if_needed(Stream, !WriteComma, !IO),
-        write_simple_item_matches_2(Stream, ItemType, Ids, !IO)
-    ).
-
-:- pred write_simple_item_matches_2(io.text_output_stream::in,
-    item_type::in, simple_item_set::in, io::di, io::uo) is det.
-
-write_simple_item_matches_2(Stream, ItemType, ItemSet, !IO) :-
-    string_to_item_type(ItemTypeStr, ItemType),
-    io.write_string(Stream, ItemTypeStr, !IO),
-    io.write_string(Stream, "(\n\t\t", !IO),
-    map.to_assoc_list(ItemSet, ItemList),
-    write_out_list(write_simple_item_matches_3, ",\n\t\t", ItemList,
-        Stream, !IO),
-    io.write_string(Stream, "\n\t)", !IO).
-
-:- pred write_simple_item_matches_3(
-    pair(name_arity, map(module_qualifier, module_name))::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
-
-write_simple_item_matches_3(NameArity - Matches, Stream, !IO) :-
-    NameArity = name_arity(Name, Arity),
-    mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-        unqualified(Name), Stream, !IO),
-    io.write_string(Stream, "/", !IO),
-    io.write_int(Stream, Arity, !IO),
-    io.write_string(Stream, " - (", !IO),
-    map.to_assoc_list(Matches, MatchList),
-    write_out_list(write_simple_item_matches_4, ", ", MatchList, Stream, !IO),
-    io.write_string(Stream, ")", !IO).
-
-:- pred write_simple_item_matches_4(pair(module_qualifier, module_name)::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
-
-write_simple_item_matches_4(Qualifier - ModuleName, Stream, !IO) :-
-    mercury_output_bracketed_sym_name(Qualifier, Stream, !IO),
-    ( if Qualifier = ModuleName then
-        true
-    else
-        io.write_string(Stream, " => ", !IO),
-        mercury_output_bracketed_sym_name(ModuleName, Stream, !IO)
-    ).
-
-:- pred write_pred_or_func_matches(io.text_output_stream::in,
-    pred_or_func::in, resolved_used_items::in,
-    bool::in, bool::out, io::di, io::uo) is det.
-
-write_pred_or_func_matches(Stream, PredOrFunc, UsedItems, !WriteComma, !IO) :-
-    (
-        PredOrFunc = pf_predicate,
-        ItemType = predicate_item,
-        ItemSet = UsedItems ^ rui_predicates
-    ;
-        PredOrFunc = pf_function,
-        ItemType = function_item,
-        ItemSet = UsedItems ^ rui_functions
-    ),
-    ( if map.is_empty(ItemSet) then
-        true
-    else
-        write_comma_if_needed(Stream, !WriteComma, !IO),
-        write_pred_or_func_matches_2(ItemType, ItemSet, Stream, !IO)
-    ).
-
-:- pred write_pred_or_func_matches_2(item_type::in,
-    resolved_pred_or_func_set::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
-
-write_pred_or_func_matches_2(ItemType, ItemSet, Stream, !IO) :-
-    write_resolved_item_set(ItemType, ItemSet, write_pred_or_func_matches_3,
-        Stream, !IO).
-
-:- pred write_pred_or_func_matches_3(
-    pair(sym_name, set(pair(pred_id, sym_name)))::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
-
-write_pred_or_func_matches_3(Qualifier - PredIdModuleNames, Stream, !IO) :-
-    ModuleNames = assoc_list.values(set.to_sorted_list(PredIdModuleNames)),
-    mercury_output_bracketed_sym_name(Qualifier, Stream, !IO),
-    ( if ModuleNames = [Qualifier] then
-        true
-    else
-        io.write_string(Stream, " => (", !IO),
-        write_out_list(mercury_output_bracketed_sym_name, ", ", ModuleNames,
-            Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ).
-
-:- pred write_functor_matches(io.text_output_stream::in,
-    resolved_functor_set::in, bool::in, bool::out, io::di, io::uo) is det.
-
-write_functor_matches(Stream, Ids, !WriteComma, !IO) :-
-    ( if map.is_empty(Ids) then
-        true
-    else
-        write_comma_if_needed(Stream, !WriteComma, !IO),
-        write_resolved_item_set(functor_item, Ids, write_functor_matches_2,
-            Stream, !IO)
-    ).
-
-:- pred write_functor_matches_2(pair(sym_name, set(resolved_functor))::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
-
-write_functor_matches_2(Qualifier - MatchingCtors, Stream, !IO) :-
-    mercury_output_bracketed_sym_name(Qualifier, Stream, !IO),
-    io.write_string(Stream, " => (", !IO),
-    write_out_list(write_resolved_functor, ", ",
-        set.to_sorted_list(MatchingCtors), Stream, !IO),
-    io.write_string(Stream, ")", !IO).
-
-:- type write_resolved_item(T) ==
-    pred(pair(module_qualifier, T), io.text_output_stream, io, io).
-:- inst write_resolved_item == (pred(in, in, di, uo) is det).
-
-:- pred write_resolved_item_set(item_type::in, resolved_item_set(T)::in,
-    write_resolved_item(T)::in(write_resolved_item),
-    io.text_output_stream::in, io::di, io::uo) is det.
-
-write_resolved_item_set(ItemType, ItemSet, WriteMatches, Stream, !IO) :-
-    string_to_item_type(ItemTypeStr, ItemType),
-    io.write_string(Stream, ItemTypeStr, !IO),
-    io.write_string(Stream, "(\n\t\t", !IO),
-    map.to_assoc_list(ItemSet, ItemList),
-    write_out_list(write_resolved_item_set_2(WriteMatches), ",\n\t\t",
-        ItemList, Stream, !IO),
-    io.write_string(Stream, "\n\t)", !IO).
-
-:- pred write_resolved_item_set_2(
-    write_resolved_item(T)::in(write_resolved_item),
-    pair(string, list(pair(int, map(sym_name, T))))::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
-
-write_resolved_item_set_2(WriteMatches, Name - MatchesAL, Stream, !IO) :-
-    mercury_output_bracketed_sym_name(unqualified(Name), Stream, !IO),
-    io.write_string(Stream, " - (", !IO),
-    write_out_list(write_resolved_item_set_3(WriteMatches), ",\n\t\t\t",
-        MatchesAL, Stream, !IO),
-    io.write_string(Stream, ")", !IO).
-
-:- pred write_resolved_item_set_3(
-    write_resolved_item(T)::in(write_resolved_item),
-    pair(int, map(sym_name, T))::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
-
-write_resolved_item_set_3(WriteMatches, Arity - Matches, Stream, !IO) :-
-    io.write_int(Stream, Arity, !IO),
-    io.write_string(Stream, " - (", !IO),
-    map.to_assoc_list(Matches, MatchList),
-    write_out_list(WriteMatches, ",\n\t\t\t\t", MatchList, Stream, !IO),
-    io.write_string(Stream, ")", !IO).
-
-:- pred write_resolved_functor(resolved_functor::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
-
-write_resolved_functor(ResolvedFunctor, Stream, !IO) :-
-    (
-        ResolvedFunctor = resolved_functor_pred_or_func(_, PredOrFunc,
-            ModuleName, pred_form_arity(Arity)),
-        io.write_string(Stream, pred_or_func_to_full_str(PredOrFunc), !IO),
-        io.write_string(Stream, "(", !IO),
-        mercury_output_bracketed_sym_name(ModuleName, Stream, !IO),
-        io.write_string(Stream, ", ", !IO),
-        io.write_int(Stream, Arity, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        ResolvedFunctor = resolved_functor_data_constructor(TypeCtor),
-        TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
-        io.write_string(Stream, "ctor(", !IO),
-        mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-            TypeCtorSymName, Stream, !IO),
-        io.write_string(Stream, "/", !IO),
-        io.write_int(Stream, TypeCtorArity, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        ResolvedFunctor = resolved_functor_field_access_func(ConsCtor),
-        ConsCtor = cons_ctor(ConsSymName, ConsArity, TypeCtor),
-        TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
-        io.write_string(Stream, "field(", !IO),
-        mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-            TypeCtorSymName, Stream, !IO),
-        io.write_string(Stream, "/", !IO),
-        io.write_int(Stream, TypeCtorArity, !IO),
-        io.write_string(Stream, ", ", !IO),
-        mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-            ConsSymName, Stream, !IO),
-        io.write_string(Stream, "/", !IO),
-        io.write_int(Stream, ConsArity, !IO),
-        io.write_string(Stream, ")", !IO)
+        string.format("%s.\n", [s(HdrStr)], Str)
     ).
 
 %---------------------------------------------------------------------------%
