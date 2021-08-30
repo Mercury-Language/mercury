@@ -228,6 +228,7 @@ expand_file_into_arg_list(S, Res, !IO) :-
 :- pred real_main_after_expansion(list(string)::in, io::di, io::uo) is det.
 
 real_main_after_expansion(CmdLineArgs, !IO) :-
+    io.get_environment_var_map(EnvVarMap, !IO),
     % XXX Processing the options up to three times is not what you call
     % elegant.
     ( if CmdLineArgs = ["--arg-file", ArgFile | ExtraArgs] then
@@ -266,7 +267,7 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
             NonOptionArgs = []
         ),
         DetectedGradeFlags = [],
-        Variables = options_variables_init,
+        Variables = options_variables_init(EnvVarMap),
         MaybeMCFlags = yes([])
     else
         % Find out which options files to read.
@@ -299,7 +300,7 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
         (
             OptFileErrors = no,
             maybe_dump_options_file(ArgsGlobals, Variables0, !IO),
-            lookup_mmc_options(Variables0, MCFlags0, MCFlagsSpecs0, !IO),
+            lookup_mmc_options(Variables0, MCFlags0, MCFlagsSpecs0),
             MCFlagsErrors0 = contains_errors(ArgsGlobals, MCFlagsSpecs0),
             (
                 MCFlagsErrors0 = no,
@@ -316,7 +317,7 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                 (
                     FlagsSpecs = [_ | _],
                     DetectedGradeFlags = [],
-                    Variables = options_variables_init,
+                    Variables = options_variables_init(EnvVarMap),
                     AllSpecs = OptFileSpecs ++ MCFlagsSpecs0 ++ FlagsSpecs,
                     MaybeMCFlags = no
                 ;
@@ -341,7 +342,7 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                         (
                             ConfigErrors = no,
                             lookup_mmc_options(Variables, MCFlags1,
-                                MCFlagsSpecs1, !IO),
+                                MCFlagsSpecs1),
                             AllSpecs0 = OptFileSpecs ++ MCFlagsSpecs0 ++
                                 ConfigSpecs ++ MCFlagsSpecs1,
                             AllErrors0 = contains_errors(FlagsArgsGlobals,
@@ -354,7 +355,7 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                                 MaybeMCFlags = no
                             ),
                             lookup_mercury_stdlib_dir(Variables,
-                                MaybeMerStdLibDir, StdLibDirSpecs, !IO),
+                                MaybeMerStdLibDir, StdLibDirSpecs),
                             detect_libgrades(FlagsArgsGlobals,
                                 MaybeMerStdLibDir, DetectedGradeFlags, !IO),
                             AllSpecs = AllSpecs0 ++ StdLibDirSpecs
@@ -368,9 +369,8 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                     ;
                         MaybeConfigFile = no,
                         DetectedGradeFlags = [],
-                        Variables = options_variables_init,
-                        lookup_mmc_options(Variables, MCFlags1,
-                            MCFlagsSpecs1, !IO),
+                        Variables = options_variables_init(EnvVarMap),
+                        lookup_mmc_options(Variables, MCFlags1, MCFlagsSpecs1),
                         AllSpecs = OptFileSpecs ++ MCFlagsSpecs0 ++
                             MCFlagsSpecs1,
                         AllErrors = contains_errors(FlagsArgsGlobals,
@@ -386,14 +386,14 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                 )
             ;
                 MCFlagsErrors0 = yes,
-                Variables = options_variables_init,
+                Variables = options_variables_init(EnvVarMap),
                 DetectedGradeFlags = [],
                 AllSpecs = OptFileSpecs ++ MCFlagsSpecs0,
                 MaybeMCFlags = no
             )
         ;
             OptFileErrors = yes,
-            Variables = options_variables_init,
+            Variables = options_variables_init(EnvVarMap),
             DetectedGradeFlags = [],
             AllSpecs = OptFileSpecs,
             MaybeMCFlags = no
@@ -630,7 +630,12 @@ maybe_report_detected_libgrade(VeryVerbose, GradeStr, !IO) :-
 %---------------------------------------------------------------------------%
 
 main_for_make(Globals, Args, !IO) :-
-    main_after_setup(Globals, [], options_variables_init, [], Args, !IO).
+    DetectedGradeFlags = [],
+    io.get_environment_var_map(EnvVarMap, !IO),
+    Variables = options_variables_init(EnvVarMap),
+    OptionArgs = [],
+    main_after_setup(Globals, DetectedGradeFlags, Variables, OptionArgs,
+        Args, !IO).
 
 %---------------------------------------------------------------------------%
 

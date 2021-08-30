@@ -28,7 +28,7 @@
 
 :- type options_variables.
 
-:- func options_variables_init = options_variables.
+:- func options_variables_init(environment_var_map) = options_variables.
 
     % read_options_files_named_in_options_file_option(OptionSearchDirs,
     %   OptionsFiles, Variables, Specs, UndefSpecs, !IO):
@@ -88,28 +88,28 @@
     % Look up $(MAIN_TARGET).
     %
 :- pred lookup_main_target(options_variables::in,
-    maybe(list(string))::out, list(error_spec)::out, io::di, io::uo) is det.
+    maybe(list(string))::out, list(error_spec)::out) is det.
 
     % Look up $(MERCURY_STDLIB_DIR).
     %
 :- pred lookup_mercury_stdlib_dir(options_variables::in,
-    maybe(list(string))::out, list(error_spec)::out, io::di, io::uo) is det.
+    maybe(list(string))::out, list(error_spec)::out) is det.
 
     % Look up the DEFAULT_MCFLAGS variable.
     %
 :- pred lookup_default_options(options_variables::in,
-    list(string)::out, list(error_spec)::out, io::di, io::uo) is det.
+    list(string)::out, list(error_spec)::out) is det.
 
     % Look up all the non-module specific options.
     %
 :- pred lookup_mmc_options(options_variables::in,
-    list(string)::out, list(error_spec)::out, io::di, io::uo) is det.
+    list(string)::out, list(error_spec)::out) is det.
 
     % Same as lookup_mmc_options, but also adds the module-specific
     % (MCFLAGS-module) options.
     %
 :- pred lookup_mmc_module_options(options_variables::in, module_name::in,
-    list(string)::out, list(error_spec)::out, io::di, io::uo) is det.
+    list(string)::out, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -168,15 +168,22 @@
     ;       command_line
     ;       environment.
 
-:- type options_variables == map(options_variable, options_variable_value).
+:- type options_variables
+    --->    options_variables(
+                ov_opts     :: map(options_variable, options_variable_value),
+                ov_env      :: map(options_variable, string)
+            ).
 
-options_variables_init = map.init.
+options_variables_init(EnvVarMap) = Variables :-
+    map.init(OptsMap),
+    Variables = options_variables(OptsMap, EnvVarMap).
 
 %---------------------------------------------------------------------------%
 
 read_options_files_named_in_options_file_option(OptionSearchDirs, OptionsFiles,
         Variables, Specs, UndefSpecs, !IO) :-
-    Variables0 = options_variables_init,
+    io.get_environment_var_map(EnvVarMap, !IO),
+    Variables0 = options_variables_init(EnvVarMap),
     list.foldl5(
         read_options_file_set_params(OptionSearchDirs), OptionsFiles,
         Variables0, Variables,
@@ -215,12 +222,14 @@ read_named_options_file(OptionsPathName, !Variables, Specs, UndefSpecs, !IO) :-
 %---------------------%
 
 read_args_file(OptionsFile, MaybeMCFlags, Specs, UndefSpecs, !IO) :-
-    read_named_options_file(OptionsFile,
-        options_variables_init, Variables, Specs0, UndefSpecs, !IO),
+    io.get_environment_var_map(EnvVarMap, !IO),
+    Variables0 = options_variables_init(EnvVarMap),
+    read_named_options_file(OptionsFile, Variables0, Variables,
+        Specs0, UndefSpecs, !IO),
     % Ignore settings in the environment -- the parent mmc process
     % will have included those in the file.
-    lookup_variable_words_maybe_env_value(no, Variables, "MCFLAGS",
-        FlagsResult),
+    NoEnvVariables = Variables ^ ov_env := map.init,
+    lookup_variable_words(NoEnvVariables, "MCFLAGS", FlagsResult),
     (
         FlagsResult = var_result_set(MCFlags),
         MaybeMCFlags = yes(MCFlags),
@@ -1044,9 +1053,8 @@ update_variable(FileName, LineNumber, SetOrAdd, VarName, NewValue0,
     MaybeWords1 = split_into_words(NewValue1),
     (
         MaybeWords1 = ok(Words1),
-        io.get_environment_var(VarName, MaybeEnvValue, !IO),
-        (
-            MaybeEnvValue = yes(EnvValue),
+        !.Variables = options_variables(OptsMap0, EnvMap),
+        ( if map.search(EnvMap, VarName, EnvValue) then
             Value = string.to_char_list(EnvValue),
             MaybeWords = split_into_words(Value),
             (
@@ -1054,15 +1062,15 @@ update_variable(FileName, LineNumber, SetOrAdd, VarName, NewValue0,
                 EnvValueChars = string.to_char_list(EnvValue),
                 Entry = options_variable_value(EnvValueChars, Words,
                     environment),
-                map.set(VarName, Entry, !Variables)
+                map.set(VarName, Entry, OptsMap0, OptsMap),
+                !:Variables = options_variables(OptsMap, EnvMap)
             ;
                 MaybeWords = error(WordsError),
                 Spec = report_split_error(FileName, LineNumber, WordsError),
                 !:ParseSpecs = [Spec | !.ParseSpecs]
             )
-        ;
-            MaybeEnvValue = no,
-            ( if map.search(!.Variables, VarName, OldEntry) then
+        else
+            ( if map.search(!.Variables ^ ov_opts, VarName, OldEntry) then
                 OldEntry = options_variable_value(OldValue, OldWords, Source),
                 (
                     Source = environment
@@ -1081,12 +1089,14 @@ update_variable(FileName, LineNumber, SetOrAdd, VarName, NewValue0,
                     ),
                     Entry = options_variable_value(NewValue, Words,
                         options_file),
-                    map.det_update(VarName, Entry, !Variables)
+                    map.det_update(VarName, Entry, OptsMap0, OptsMap),
+                    !:Variables = options_variables(OptsMap, EnvMap)
                 )
             else
                 Entry = options_variable_value(NewValue1, Words1,
                     options_file),
-                map.det_insert(VarName, Entry, !Variables)
+                map.det_insert(VarName, Entry, OptsMap0, OptsMap),
+                !:Variables = options_variables(OptsMap, EnvMap)
             )
         )
     ;
@@ -1167,7 +1177,7 @@ expand_any_var_references_loop(Variables, FileName, LineNumber,
                 (
                     MaybeVarName = ovos_var_name(VarName),
                     lookup_variable_value(Variables, VarName, VarValueChars,
-                        !UndefVarNames, !IO),
+                        !UndefVarNames),
                     !:RevChars = list.reverse(VarValueChars) ++ !.RevChars
                 ;
                     MaybeVarName = ovos_spec(ParseSpec),
@@ -1225,9 +1235,8 @@ report_any_undefined_variables(FileName, LineNumber, UndefVarNames0,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-lookup_main_target(Variables, MaybeMainTarget, Specs, !IO) :-
-    lookup_variable_in_env_and_db(Variables, "MAIN_TARGET",
-        MainTargetResult, !IO),
+lookup_main_target(Variables, MaybeMainTarget, Specs) :-
+    lookup_variable_words(Variables, "MAIN_TARGET", MainTargetResult),
     (
         MainTargetResult = var_result_set(MainTarget),
         MaybeMainTarget = yes(MainTarget),
@@ -1244,9 +1253,8 @@ lookup_main_target(Variables, MaybeMainTarget, Specs, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-lookup_mercury_stdlib_dir(Variables, MaybeMerStdlibDir, Specs, !IO) :-
-    lookup_variable_in_env_and_db(Variables, "MERCURY_STDLIB_DIR",
-        MerStdlibDirResult, !IO),
+lookup_mercury_stdlib_dir(Variables, MaybeMerStdlibDir, Specs) :-
+    lookup_variable_words(Variables, "MERCURY_STDLIB_DIR", MerStdlibDirResult),
     (
         MerStdlibDirResult = var_result_set(MerStdlibDir),
         MaybeMerStdlibDir = yes(MerStdlibDir),
@@ -1263,27 +1271,27 @@ lookup_mercury_stdlib_dir(Variables, MaybeMerStdlibDir, Specs, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-lookup_default_options(Variables, Result, Specs, !IO) :-
-    lookup_mmc_maybe_module_options(Variables, default, Result, Specs, !IO).
+lookup_default_options(Variables, Result, Specs) :-
+    lookup_mmc_maybe_module_options(Variables, default, Result, Specs).
 
-lookup_mmc_options(Variables, Result, Specs, !IO) :-
+lookup_mmc_options(Variables, Result, Specs) :-
     lookup_mmc_maybe_module_options(Variables, non_module_specific,
-        Result, Specs, !IO).
+        Result, Specs).
 
-lookup_mmc_module_options(Variables, ModuleName, Result, Specs, !IO) :-
+lookup_mmc_module_options(Variables, ModuleName, Result, Specs) :-
     lookup_mmc_maybe_module_options(Variables, module_specific(ModuleName),
-        Result, Specs, !IO).
+        Result, Specs).
 
 :- pred lookup_mmc_maybe_module_options(options_variables::in,
-    options_variable_class::in, list(string)::out,
-    list(error_spec)::out, io::di, io::uo) is det.
+    options_variable_class::in, list(string)::out, list(error_spec)::out)
+    is det.
 
 lookup_mmc_maybe_module_options(Variables, MaybeModuleName,
-        Result, Specs, !IO) :-
+        Result, Specs) :-
     VariableTypes = options_variable_types,
-    list.map_foldl2(
+    list.map_foldl(
         lookup_options_variable(Variables, MaybeModuleName),
-        VariableTypes, VariableTypesMaybeValues, [], Specs, !IO),
+        VariableTypes, VariableTypesMaybeValues, [], Specs),
     Result = list.condense(
         list.map(convert_to_mmc_options, VariableTypesMaybeValues)).
 
@@ -1456,13 +1464,13 @@ mmc_option_type(mercury_linkage) = option([], "--mercury-linkage").
 :- pred lookup_options_variable(options_variables::in,
     options_variable_class::in, options_variable_type::in,
     pair(options_variable_type, maybe(list(string)))::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 lookup_options_variable(Variables, OptionsVariableClass, FlagsVar,
-        FlagsVar - MaybeValues, !Specs, !IO) :-
+        FlagsVar - MaybeValues, !Specs) :-
     VarName = options_variable_name(FlagsVar),
-    lookup_variable_in_env_and_db(Variables,
-        "DEFAULT_" ++ VarName, DefaultFlagsResult, !IO),
+    lookup_variable_words(Variables, "DEFAULT_" ++ VarName,
+        DefaultFlagsResult),
     (
         OptionsVariableClass = default,
         FlagsResult = var_result_unset,
@@ -1471,10 +1479,8 @@ lookup_options_variable(Variables, OptionsVariableClass, FlagsVar,
         ( OptionsVariableClass = module_specific(_)
         ; OptionsVariableClass = non_module_specific
         ),
-        lookup_variable_in_env_and_db(Variables, VarName,
-            FlagsResult, !IO),
-        lookup_variable_in_env_and_db(Variables, "EXTRA_" ++ VarName,
-            ExtraFlagsResult, !IO)
+        lookup_variable_words(Variables, VarName, FlagsResult),
+        lookup_variable_words(Variables, "EXTRA_" ++ VarName, ExtraFlagsResult)
     ),
     ( if
         OptionsVariableClass = module_specific(ModuleName),
@@ -1482,8 +1488,7 @@ lookup_options_variable(Variables, OptionsVariableClass, FlagsVar,
     then
         ModuleFileNameBase = sym_name_to_string(ModuleName),
         ModuleVarName = VarName ++ "-" ++ ModuleFileNameBase,
-        lookup_variable_in_env_and_db(Variables, ModuleVarName,
-            ModuleFlagsResult, !IO)
+        lookup_variable_words(Variables, ModuleVarName, ModuleFlagsResult)
     else
         ModuleFlagsResult = var_result_unset
     ),
@@ -1569,23 +1574,12 @@ combine_var_results(ResultA, ResultB) = Result :-
         )
     ).
 
-:- pred lookup_variable_in_env_and_db(options_variables::in,
-    options_variable::in, variable_result(list(string))::out,
-    io::di, io::uo) is det.
-
-lookup_variable_in_env_and_db(Variables, VarName, Result, !IO) :-
-    io.get_environment_var(VarName, MaybeEnvValue, !IO),
-    lookup_variable_words_maybe_env_value(MaybeEnvValue, Variables, VarName,
-        Result).
-
-:- pred lookup_variable_words_maybe_env_value(maybe(string)::in,
-    options_variables::in, options_variable::in,
+:- pred lookup_variable_words(options_variables::in, options_variable::in,
     variable_result(list(string))::out) is det.
 
-lookup_variable_words_maybe_env_value(MaybeEnvValue, Variables, VarName,
-        Result) :-
-    (
-        MaybeEnvValue = yes(EnvValue),
+lookup_variable_words(Variables, VarName, Result) :-
+    Variables = options_variables(OptsMap, EnvMap),
+    ( if map.search(EnvMap, VarName, EnvValue) then
         SplitResult = split_into_words(string.to_char_list(EnvValue)),
         (
             SplitResult = ok(EnvWords),
@@ -1598,9 +1592,8 @@ lookup_variable_words_maybe_env_value(MaybeEnvValue, Variables, VarName,
                 [error_msg(no, do_not_treat_as_first, 0, [always(Pieces)])]),
             Result = var_result_error(one_or_more(ErrorSpec, []))
         )
-    ;
-        MaybeEnvValue = no,
-        ( if map.search(Variables, VarName, MapValue) then
+    else
+        ( if map.search(OptsMap, VarName, MapValue) then
             MapValue = options_variable_value(_, Words, _),
             Result = var_result_set(Words)
         else
@@ -1609,21 +1602,17 @@ lookup_variable_words_maybe_env_value(MaybeEnvValue, Variables, VarName,
     ).
 
 :- pred lookup_variable_value(options_variables::in,
-    string::in, list(char)::out, list(string)::in, list(string)::out,
-    io::di, io::uo) is det.
+    string::in, list(char)::out, list(string)::in, list(string)::out) is det.
 
-lookup_variable_value(Variables, VarName, Value, !UndefVarNames, !IO) :-
-    io.get_environment_var(VarName, MaybeValue, !IO),
-    (
-        MaybeValue = yes(ValueString),
-        Value = string.to_char_list(ValueString)
-    ;
-        MaybeValue = no,
-        ( if map.search(Variables, VarName, Entry) then
-            Entry = options_variable_value(Value0, _, _),
-            Value = Value0
+lookup_variable_value(Variables, VarName, ValueChars, !UndefVarNames) :-
+    Variables = options_variables(OptsMap, EnvMap),
+    ( if map.search(EnvMap, VarName, EnvValue) then
+        ValueChars = string.to_char_list(EnvValue)
+    else
+        ( if map.search(OptsMap, VarName, Entry) then
+            Entry = options_variable_value(ValueChars, _, _)
         else
-            Value = [],
+            ValueChars = [],
             !:UndefVarNames = [VarName | !.UndefVarNames]
         )
     ).
@@ -1650,7 +1639,11 @@ dump_options_file(DebugStream, FileName, Variables, !IO) :-
     options_variables::in, io::di, io::uo) is det.
 
 write_options_variables(DumpStream, Variables, !IO) :-
-    map.foldl(write_options_variable_value(DumpStream), Variables, !IO).
+    Variables = options_variables(OptsMap, _EnvMap),
+    map.foldl(write_options_variable_value(DumpStream), OptsMap, !IO).
+    % tests/options_file/basic_test depends on dumping only OptsMap.
+    % You can uncomment this call for debugging.
+    % map.foldl(write_env_variable_value(DumpStream), EnvMap, !IO).
 
 :- pred write_options_variable_value(io.text_output_stream::in,
     string::in, options_variable_value::in, io::di, io::uo) is det.
@@ -1664,6 +1657,17 @@ write_options_variable_value(DumpStream, VarName, OptVarValue, !IO) :-
     io.write(DumpStream, Src, !IO),
     io.write_string(DumpStream, " ", !IO),
     io.write_line(DumpStream, ValueWords, !IO).
+
+:- pred write_env_variable_value(io.text_output_stream::in,
+    string::in, string::in, io::di, io::uo) is det.
+:- pragma consider_used(pred(write_env_variable_value/5)).
+
+write_env_variable_value(DumpStream, VarName, VarValue, !IO) :-
+    % The contents of _ValueChars is implicit in ValueWords, so
+    % printing it out would just clutter the output and make it
+    % harder to read.
+    io.format(DumpStream, "%-24s %s\n",
+        [s(VarName ++ " ->"), s(VarValue)], !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module make.options_file.

@@ -170,7 +170,7 @@ setup_for_build_with_module_options(Globals, InvokedByMmcMake, ModuleName,
         DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
         MayBuild, !IO) :-
     lookup_mmc_module_options(OptionVariables, ModuleName, ModuleOptionArgs,
-        LookupSpecs, !IO),
+        LookupSpecs),
     LookupErrors = contains_errors(Globals, LookupSpecs),
     (
         LookupErrors = yes,

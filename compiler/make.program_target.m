@@ -1470,8 +1470,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
             io.format("Installing grade %s\n", [s(Grade)], !IO)
         ), !IO),
 
-    lookup_mmc_options(!.Info ^ mki_options_variables, MCFlags,
-        LookupSpecs, !IO),
+    lookup_mmc_options(!.Info ^ mki_options_variables, MCFlags, LookupSpecs),
     write_error_specs_ignore(Globals, LookupSpecs, !IO),
     LookupErrors = contains_errors(Globals, LookupSpecs),
     (
