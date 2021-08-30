@@ -390,18 +390,26 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
     else if
         % We want to warn about calls to predicates that update
         % the current input or output stream.
-        ModuleName = mercury_io_module,
+        ( ModuleName = mercury_io_module
+        ; ModuleName = mercury_std_lib_module_name(unqualified("prolog"))
+        ),
         PredOrFunc = pf_predicate,
         (
             ( PredName = "see"
+            ; PredName = "see_binary"
             ; PredName = "seen"
+            ; PredName = "seen_binary"
             ; PredName = "set_input_stream"
+            ; PredName = "set_binary_input_stream"
             ),
             Dir = "input"
         ;
             ( PredName = "tell"
+            ; PredName = "tell_binary"
             ; PredName = "told"
+            ; PredName = "told_binary"
             ; PredName = "set_output_stream"
+            ; PredName = "set_binary_output_stream"
             ),
             Dir = "output"
         )

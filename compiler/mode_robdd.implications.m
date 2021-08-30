@@ -73,6 +73,7 @@
 :- import_module map.
 :- import_module pair.
 :- import_module sparse_bitset.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -343,10 +344,9 @@ extract_implication_vars_from_robdd(Changed, Robdd0, Robdd,
     Robdd = remove_implications(ImpVars, Robdd0),
 
     trace [compile_time(flag("debug_mode_implications")), io(!IO)] (
-        P = (pred(V::in, di, uo) is det -->
-            io.write_int(var_to_int(V))),
-        robdd_to_dot(Robdd0, P, "extract_impl_before.dot", !IO),
-        robdd_to_dot(Robdd, P, "extract_impl_after.dot", !IO)
+        VarToString = (func(V) = string.int_to_string(var_to_int(V))),
+        robdd_to_dot(Robdd0, VarToString, "extract_impl_before.dot", !IO),
+        robdd_to_dot(Robdd, VarToString, "extract_impl_after.dot", !IO)
     ),
 
     Changed = ( Robdd = Robdd0, empty(ImpVars1) -> no ; yes ).

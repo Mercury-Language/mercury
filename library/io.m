@@ -257,12 +257,16 @@
     % Result is either 'ok' or 'error(ErrorCode)'.
     %
 :- pred see(string::in, io.res::out, io::di, io::uo) is det.
+:- pragma obsolete(pred(see/4),
+    [io.open_input/4, prolog.see/4]).
 
     % Attempts to open a file for binary input, and if successful sets
     % the current binary input stream to the newly opened stream.
     % Result is either 'ok' or 'error(ErrorCode)'.
     %
 :- pred see_binary(string::in, io.res::out, io::di, io::uo) is det.
+:- pragma obsolete(pred(see_binary/4),
+    [io.open_binary_input/4, prolog.see_binary/4]).
 
 %---------------------%
 
@@ -272,12 +276,16 @@
     % This will throw an io.error exception if an I/O error occurs.
     %
 :- pred seen(io::di, io::uo) is det.
+:- pragma obsolete(pred(seen/2),
+    [io.close_input/3, prolog.seen/2]).
 
     % Closes the current input stream. The current input stream reverts
     % to standard input. This will throw an io.error exception if
     % an I/O error occurs.
     %
 :- pred seen_binary(io::di, io::uo) is det.
+:- pragma obsolete(pred(seen_binary/2),
+    [io.close_binary_input/3, prolog.seen_binary/2]).
 
 %---------------------%
 
@@ -287,12 +295,16 @@
     % Result is either 'ok' or 'error(ErrCode)'.
     %
 :- pred tell(string::in, io.res::out, io::di, io::uo) is det.
+:- pragma obsolete(pred(tell/4),
+    [io.open_output/4, prolog.tell/4]).
 
     % Attempts to open a file for binary output, and if successful sets
     % the current binary output stream to the newly opened stream.
     % As per Prolog tell/1. Result is either 'ok' or 'error(ErrCode)'.
     %
 :- pred tell_binary(string::in, io.res::out, io::di, io::uo) is det.
+:- pragma obsolete(pred(tell_binary/4),
+    [io.open_binary_output/4, prolog.tell_binary/4]).
 
 %---------------------%
 
@@ -302,12 +314,16 @@
     % This will throw an io.error exception if an I/O error occurs.
     %
 :- pred told(io::di, io::uo) is det.
+:- pragma obsolete(pred(told/2),
+    [io.close_output/3, prolog.told/2]).
 
     % Closes the current binary output stream. The default binary output
     % stream reverts to standard output. As per Prolog told/0. This will
     % throw an io.error exception if an I/O error occurs.
     %
 :- pred told_binary(io::di, io::uo) is det.
+:- pragma obsolete(pred(told_binary/2),
+    [io.close_binary_output/3, prolog.told_binary/2]).
 
 %---------------------------------------------------------------------------%
 %
@@ -2224,6 +2240,7 @@
 :- import_module int64.
 :- import_module pair.
 :- import_module parser.
+:- import_module prolog.
 :- import_module require.
 :- import_module stream.string_writer.
 :- import_module term.
@@ -4532,74 +4549,34 @@ set_binary_output_stream(binary_output_stream(NewStream),
 %
 
 see(File, Result, !IO) :-
-    io.open_input(File, Result0, !IO),
-    (
-        Result0 = ok(Stream),
-        io.set_input_stream(Stream, _, !IO),
-        Result = ok
-    ;
-        Result0 = error(Error),
-        Result = error(Error)
-    ).
+    prolog.see(File, Result, !IO).
 
 see_binary(File, Result, !IO) :-
-    io.open_binary_input(File, Result0, !IO),
-    (
-        Result0 = ok(Stream),
-        io.set_binary_input_stream(Stream, _, !IO),
-        Result = ok
-    ;
-        Result0 = error(Error),
-        Result = error(Error)
-    ).
+    prolog.see_binary(File, Result, !IO).
 
 %---------------------%
 
 seen(!IO) :-
-    io.stdin_stream(Stdin, !IO),
-    io.set_input_stream(Stdin, OldStream, !IO),
-    io.close_input(OldStream, !IO).
+    prolog.seen(!IO).
 
 seen_binary(!IO) :-
-    io.stdin_binary_stream(Stdin, !IO),
-    io.set_binary_input_stream(Stdin, OldStream, !IO),
-    io.close_binary_input(OldStream, !IO).
+    prolog.seen_binary(!IO).
 
 %---------------------%
 
 tell(File, Result, !IO) :-
-    io.open_output(File, Result0, !IO),
-    (
-        Result0 = ok(Stream),
-        io.set_output_stream(Stream, _, !IO),
-        Result = ok
-    ;
-        Result0 = error(Msg),
-        Result = error(Msg)
-    ).
+    prolog.tell(File, Result, !IO).
 
 tell_binary(File, Result, !IO) :-
-    io.open_binary_output(File, Result0, !IO),
-    (
-        Result0 = ok(Stream),
-        io.set_binary_output_stream(Stream, _, !IO),
-        Result = ok
-    ;
-        Result0 = error(Msg),
-        Result = error(Msg)
-    ).
+    prolog.tell_binary(File, Result, !IO).
 
 %---------------------%
 
 told(!IO) :-
-    io.stdout_stream(Stdout, !IO),
-    io.set_output_stream(Stdout, OldStream, !IO),
-    io.close_output(OldStream, !IO).
+    prolog.told(!IO).
 
 told_binary(!IO) :-
-    io.stdout_binary_stream(Stdout, !IO),
-    io.set_binary_output_stream(Stdout, OldStream, !IO),
-    io.close_binary_output(OldStream, !IO).
+    prolog.told_binary(!IO).
 
 %---------------------------------------------------------------------------%
 %

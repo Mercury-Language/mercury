@@ -162,6 +162,7 @@
 :- import_module solutions.
 :- import_module sparse_bitset.
 :- import_module std_util.
+:- import_module string.
 :- import_module varset.
 
 :- type mc_type
@@ -217,20 +218,20 @@ mode_constraint_var(RepVar0, RobddVar, !MCI) :-
     mode_constraint_var(!.MCI ^ mci_pred_id, RepVar0, RobddVar, !MCI).
 
 mode_constraint_var(PredId, RepVar0, RobddVar, !MCI) :-
-    (
+    ( if
         RepVar0 = ProgVar `at` _,
         set_of_var.contains(!.MCI ^ mci_input_nodes, ProgVar)
-    ->
+    then
         % This RepVar must be false since the corresponding input var
         % is true.  We can just return the zero var.
         RobddVar = !.MCI ^ mci_zero_var
-    ;
+    else
         RepVar = RepVar0,
         LambdaId = !.MCI ^ mci_lambda_path,
         Key = key(RepVar, PredId, LambdaId),
-        ( bimap.search(!.MCI ^ mci_varmap, Key, RobddVar0) ->
+        ( if bimap.search(!.MCI ^ mci_varmap, Key, RobddVar0) then
             RobddVar = RobddVar0
-        ;
+        else
             varset.new_var(RobddVar, !.MCI ^ mci_varset, NewVarSet),
             bimap.set(Key, RobddVar, !.MCI ^ mci_varmap, NewVarMap),
             !MCI ^ mci_varset := NewVarSet,
@@ -273,14 +274,15 @@ restrict_threshold(threshold(Threshold), Constraint) =
     restrict_threshold(Threshold, ensure_normalised(Constraint)).
 
 restrict_filter(P0, MCI, M) = restrict_filter(P, ensure_normalised(M)) :-
-    P = (pred(MCV::in) is semidet :-
-        bimap.reverse_lookup(MCI ^ mci_varmap, key(RV, PredId, _), MCV),
-        (
-            PredId \= MCI ^ mci_pred_id
-        ;
-            P0(RV)
-        )
-    ).
+    P =
+        ( pred(MCV::in) is semidet :-
+            bimap.reverse_lookup(MCI ^ mci_varmap, key(RV, PredId, _), MCV),
+            (
+                PredId \= MCI ^ mci_pred_id
+            ;
+                P0(RV)
+            )
+        ).
 
 save_min_var_for_pred(PredId, !MCI) :-
     save_threshold(!.MCI, threshold(Threshold)),
@@ -299,10 +301,12 @@ get_interesting_vars_for_pred(MCI, PredId, Vars) :-
     MaxVars = MCI ^ mci_max_vars,
     VarSet = MCI ^ mci_varset,
     Vars = ( set.sorted_list_to_set `compose`
-        list.filter((pred(V::in) is semidet :-
-            compare(<, map.lookup(MinVars, PredId), V),
-            \+ compare(<, map.lookup(MaxVars, PredId), V)
-        )) `compose` varset.vars
+        list.filter(
+            ( pred(V::in) is semidet :-
+                compare(<, map.lookup(MinVars, PredId), V),
+                \+ compare(<, map.lookup(MaxVars, PredId), V)
+            )
+        ) `compose` varset.vars
     )(VarSet).
 
 set_input_nodes(Constraint0, Constraint, !MCI) :-
@@ -362,67 +366,66 @@ add_forward_goal_path_map(PredId, ForwardGoalPathMap, !MCI) :-
 %   io.format("Nodes: %d \tDepth: %d\n", [i(Nodes), i(Depth)]),
 %   flush_output.
 
-:- pred dump_mode_constraint_var(prog_varset::in, rep_var::in,
-    io::di, io::uo) is det.
+:- func dump_mode_constraint_var(prog_varset, rep_var) = string.
 
-dump_mode_constraint_var(VarSet, in(V), !IO) :-
-    varset.lookup_name(VarSet, V, Name),
-    io.write_string(Name, !IO),
-    io.write_string("_in", !IO).
-dump_mode_constraint_var(VarSet, out(V), !IO) :-
-    varset.lookup_name(VarSet, V, Name),
-    io.write_string(Name, !IO),
-    io.write_string("_out", !IO).
-dump_mode_constraint_var(VarSet, V `at` Id, !IO) :-
-    varset.lookup_name(VarSet, V, Name),
-    io.write_string(Name, !IO),
-    io.write_char('_', !IO),
-    Id = goal_id(IdNum),
-    io.write_int(IdNum, !IO).
+dump_mode_constraint_var(VarSet, RepVar) = Str :-
+    (
+        RepVar = in(V),
+        varset.lookup_name(VarSet, V, Name),
+        string.format("%s_in", [s(Name)], Str)
+    ;
+        RepVar = out(V),
+        varset.lookup_name(VarSet, V, Name),
+        string.format("%s_out", [s(Name)], Str)
+    ;
+        RepVar = V `at` Id,
+        varset.lookup_name(VarSet, V, Name),
+        Id = goal_id(IdNum),
+        string.format("%s_%d", [s(Name), i(IdNum)], Str)
+    ).
 
 robdd_to_dot(Constraint, ProgVarSet, MCI, FileName, !IO) :-
     VarMap = MCI ^ mci_varmap,
-    P = (pred(RobddVar::in, di, uo) is det -->
-        { bimap.reverse_lookup(VarMap, key(RepVar, PredId, LambdaId),
-            RobddVar) },
-        dump_mode_constraint_var(ProgVarSet, RepVar),
-        io.write_string(" "),
-        { pred_id_to_int(PredId, PredIdNum) },
-        io.write_int(PredIdNum),
-        io.write_string(" "),
-        io.write_int(stack.depth(LambdaId)),
-        io.write_string(" ("),
-        io.write_int(term.var_to_int(RobddVar)),
-        io.write_string(")")
-    ),
-    robdd_to_dot(Constraint ^ robdd, P, FileName, !IO).
+    VarToStr =
+        ( func(RobddVar) = Str :-
+            bimap.reverse_lookup(VarMap, key(RepVar, PredId, LambdaId),
+                RobddVar),
+            RepVarStr = dump_mode_constraint_var(ProgVarSet, RepVar),
+            pred_id_to_int(PredId, PredIdNum),
+            string.format("%s %d %d (%d)",
+                [s(RepVarStr), i(PredIdNum),
+                i(stack.depth(LambdaId)), i(term.var_to_int(RobddVar))], Str)
+        ),
+    robdd_to_dot(Constraint ^ robdd, VarToStr, FileName, !IO).
 
 %-----------------------------------------------------------------------------%
 
 atomic_prodvars_map(Constraint, MCI) = ProdVarsMap :-
-    ( some_vars(VarsEntailed) = vars_entailed(ensure_normalised(Constraint)) ->
+    ( if
+        some_vars(VarsEntailed) = vars_entailed(ensure_normalised(Constraint))
+    then
         list.foldl(
-            (pred(MCVar::in, PVM0::in, PVM::out) is det :-
-                (
+            ( pred(MCVar::in, PVM0::in, PVM::out) is det :-
+                ( if
                     bimap.reverse_lookup(MCI ^ mci_varmap, Key, MCVar),
                     Key = key(RepVar, PredId, LambdaId0),
                     PredId = MCI ^ mci_pred_id,
                     RepVar = ProgVar `at` GoalId,
                     stack.push(GoalId, LambdaId0, LambdaId)
-                ->
-                    ( map.search(PVM0, LambdaId, Vs0) ->
+                then
+                    ( if map.search(PVM0, LambdaId, Vs0) then
                         set_of_var.insert(ProgVar, Vs0, Vs),
                         map.det_update(LambdaId, Vs, PVM0, PVM)
-                    ;
+                    else
                         set_of_var.make_singleton(ProgVar, Vs),
                         map.det_insert(LambdaId, Vs, PVM0, PVM)
                     )
-                ;
+                else
                     PVM = PVM0
                 )
             ), sparse_bitset.to_sorted_list(VarsEntailed),
             map.init, ProdVarsMap)
-    ;
+    else
         unexpected($pred, "zero constraint")
     ).
 

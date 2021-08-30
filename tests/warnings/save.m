@@ -11,9 +11,9 @@
 :- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
-
 :- import_module list.
 :- import_module int.
+:- import_module prolog.
 :- import_module string.
 
 main(!IO) :-
@@ -25,7 +25,7 @@ main(!IO) :-
     else
         io.write_string("No solution\n", !IO)
     ),
-    io.see("save_file", SeeRes, !IO),
+    prolog.see("save_file", SeeRes, !IO),
     (
         SeeRes = ok,
         io.read_file_as_string(ReadRes, !IO),

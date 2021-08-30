@@ -300,7 +300,7 @@
 
 :- type literal(T)
     --->    pos(var(T))
-    ;   neg(var(T)).
+    ;       neg(var(T)).
 
     % Convert the ROBDD to disjunctive normal form.
     %
@@ -310,28 +310,35 @@
 %   %
 % :- func cnf(robdd(T)) = list(list(literal(T))).
 
-    % Print out the ROBDD in disjunctive normal form.
+    % Print out the ROBDD in disjunctive normal form. either to the
+    % current output stream, or to the specified output stream.
     %
-:- pred print_robdd(robdd(T)::in, io::di, io::uo) is det.
+:- pred print_robdd(robdd(T)::in,
+    io::di, io::uo) is det.
+:- pred print_robdd(io.text_output_stream::in, robdd(T)::in,
+    io::di, io::uo) is det.
+
+:- type var_to_string(T) == (func(var(T)) = string).
 
     % robdd_to_dot(ROBDD, WriteVar, FileName, !IO):
     %
     % Output the ROBDD in a format that can be processed by the
-    % graph-drawing program `dot'.
+    % graph-drawing program `dot' to the specified filename.
     %
-:- pred robdd_to_dot(robdd(T)::in, write_var(T)::in(write_var), string::in,
-    io::di, io::uo) is det.
+:- pred robdd_to_dot(robdd(T)::in,
+    var_to_string(T)::in, string::in, io::di, io::uo) is det.
 
     % robdd_to_dot(ROBDD, WriteVar, !IO):
+    % robdd_to_dot_stream(Stream, ROBDD, WriteVar, !IO):
     %
     % Output the ROBDD in a format that can be processed by the
-    % graph-drawing program `dot'.
+    % graph-drawing program `dot', either to the current output stream,
+    % or to the specified output stream.
     %
-:- pred robdd_to_dot(robdd(T)::in, write_var(T)::in(write_var),
-    io::di, io::uo) is det.
-
-:- type write_var(T) == pred(var(T), io, io).
-:- inst write_var == (pred(in, di, uo) is det).
+:- pred robdd_to_dot(robdd(T)::in,
+    var_to_string(T)::in, io::di, io::uo) is det.
+:- pred robdd_to_dot_stream(io.text_output_stream::in, robdd(T)::in,
+    var_to_string(T)::in, io::di, io::uo) is det.
 
     % Apply the variable substitution to the ROBDD.
     %
@@ -947,40 +954,46 @@ dnf(R) =
 %   update_io(IO0, IO);
 % ").
 
-print_robdd(F) -->
-    ( if { F = one } then
-        io.write_string("TRUE\n")
-    else if { F = zero } then
-        io.write_string("FALSE\n")
+print_robdd(F, !IO) :-
+    io.output_stream(Stream, !IO),
+    print_robdd(Stream, F, !IO).
+
+print_robdd(Stream, F, !IO) :-
+    ( if F = one then
+        io.write_string(Stream, "TRUE\n", !IO)
+    else if F = zero then
+        io.write_string(Stream, "FALSE\n", !IO)
     else
-        { init(Trues) },
-        { init(Falses) },
-        print_robdd_2(F, Trues, Falses)
+        init(Trues),
+        init(Falses),
+        print_robdd_2(Stream, F, Trues, Falses, !IO)
     ).
 
-:- pred print_robdd_2(robdd(T)::in, set_unordlist(var(T))::in,
-    set_unordlist(var(T))::in, io::di, io::uo) is det.
+:- pred print_robdd_2(io.text_output_stream::in, robdd(T)::in,
+    set_unordlist(var(T))::in, set_unordlist(var(T))::in,
+    io::di, io::uo) is det.
 
-print_robdd_2(F, Trues, Falses) -->
-    ( if { F = one } then
-        { All = to_sorted_list(Trues `union` Falses) },
-        io.write_string("("),
-        list.foldl((pred(Var::in, di, uo) is det -->
-            { if Var `set_unordlist.member` Trues then
-                C = ' '
-            else
-                C = ('~')
-            },
-            { term.var_to_int(Var, N) },
-            io.format(" %c%02d", [c(C), i(N)])
-        ), All),
-        io.write_string(")\n")
-    else if { F \= zero } then
-        print_robdd_2(F ^ tr, Trues `insert` F ^ value, Falses),
-        print_robdd_2(F ^ fa, Trues, Falses `insert` F ^ value)
+print_robdd_2(Stream, F, Trues, Falses, !IO) :-
+    ( if F = one then
+        All = to_sorted_list(Trues `union` Falses),
+        io.write_string(Stream, "(", !IO),
+        list.foldl(
+            ( pred(Var::in, IO0::di, IO::uo) is det :-
+                ( if Var `set_unordlist.member` Trues then
+                    C = ' '
+                else
+                    C = ('~')
+                ),
+                term.var_to_int(Var, N),
+                io.format(Stream, " %c%02d", [c(C), i(N)], IO0, IO)
+            ), All, !IO),
+        io.write_string(Stream, ")\n", !IO)
+    else if F = zero then
+        % Don't do anything for zero terminal.
+        true
     else
-        % Don't do anything for zero terminal
-        []
+        print_robdd_2(Stream, F ^ tr, Trues `insert` F ^ value, Falses, !IO),
+        print_robdd_2(Stream, F ^ fa, Trues, Falses `insert` F ^ value, !IO)
     ).
 
 :- pragma no_inline(func(restrict/2)).
@@ -1421,72 +1434,78 @@ vars_are_constrained_2(F, Vs) :-
         )
     ).
 
-robdd_to_dot(Robdd, WV, Filename) -->
-    io.tell(Filename, Result),
+robdd_to_dot(Robdd, VarToString, Filename, !IO) :-
+    io.open_output(Filename, Result, !IO),
     (
-        { Result = ok },
-        robdd_to_dot(Robdd, WV),
-        io.told
+        Result = ok(Stream),
+        robdd_to_dot_stream(Stream, Robdd, VarToString, !IO),
+        io.close_output(Stream, !IO)
     ;
-        { Result = error(Err) },
-        io.stderr_stream(StdErr),
-        io.nl(StdErr),
-        io.write_string(StdErr, io.error_message(Err)),
-        io.nl(StdErr)
+        Result = error(Err),
+        io.stderr_stream(StdErr, !IO),
+        io.format(StdErr, "\n%s\n", [s(io.error_message(Err))], !IO)
     ).
 
-robdd_to_dot(Robdd, WV) -->
-    io.write_string(
+robdd_to_dot(Robdd, VarToString, !IO) :-
+    io.output_stream(Stream, !IO),
+    robdd_to_dot_stream(Stream, Robdd, VarToString, !IO).
+
+robdd_to_dot_stream(Stream, Robdd, VarToString, !IO) :-
+    Header =
 "digraph G{
     center=true;
     size=""7,11"";
     ordering=out;
     node [shape=record,height=.1];
     concentrate=true;
-"),
-    { multi_map.init(Ranks0) },
-    robdd_to_dot_2(Robdd, WV, set_bbbtree.init, _, Ranks0, Ranks),
-    map.foldl((pred(_::in, Nodes::in, di, uo) is det -->
-        io.write_string("{rank = same; "),
-        list.foldl((pred(Node::in, di, uo) is det -->
-            io.format("%s; ", [s(node_name(Node))])), Nodes),
-        io.write_string("}\n")
-        ), Ranks),
-    io.write_string("}\n").
+",
+    io.write_string(Stream, Header, !IO),
+    multi_map.init(Ranks0),
+    robdd_to_dot_2(Stream, Robdd, VarToString,
+        set_bbbtree.init, _, Ranks0, Ranks, !IO),
+    map.foldl(
+        ( pred(_::in, Nodes::in, di, uo) is det -->
+            io.write_string(Stream, "{rank = same; "),
+            list.foldl(
+                ( pred(Node::in, di, uo) is det -->
+                    io.format(Stream, "%s; ", [s(node_name(Node))])
+                ), Nodes),
+            io.write_string(Stream, "}\n")
+        ), Ranks, !IO),
+    io.write_string(Stream, "}\n", !IO).
 
     % XXX should see if sparse_bitset is more efficient than set_bbbtree.
-:- pred robdd_to_dot_2(robdd(T)::in, write_var(T)::in(write_var),
+:- pred robdd_to_dot_2(io.text_output_stream::in, robdd(T)::in,
+    var_to_string(T)::in,
     set_bbbtree(robdd(T))::in, set_bbbtree(robdd(T))::out,
     multi_map(var(T), robdd(T))::in,
     multi_map(var(T), robdd(T))::out,
     io::di, io::uo) is det.
 
-robdd_to_dot_2(Robdd, WV, Seen0, Seen, Ranks0, Ranks) -->
-    ( if { is_terminal(Robdd) } then
-        { Seen = Seen0 },
-        { Ranks = Ranks0 }
-    else if { Robdd `member` Seen0 } then
-        { Seen = Seen0 },
-        { Ranks = Ranks0 }
+robdd_to_dot_2(Stream, Robdd, VarToString, !Seen, !Ranks, !IO) :-
+    ( if is_terminal(Robdd) then
+        true
+    else if Robdd `member` !.Seen then
+        true
     else
-        robdd_to_dot_2(Robdd ^ tr, WV, Seen0, Seen1, Ranks0, Ranks1),
-        robdd_to_dot_2(Robdd ^ fa, WV, Seen1, Seen2, Ranks1, Ranks2),
-        write_node(Robdd, WV),
-        write_edge(Robdd, Robdd ^ tr, yes),
-        write_edge(Robdd, Robdd ^ fa, no),
-        { Seen = Seen2 `insert` Robdd },
-        { multi_map.set( Robdd ^ value, Robdd, Ranks2, Ranks) }
+        robdd_to_dot_2(Stream, Robdd ^ tr, VarToString, !Seen, !Ranks, !IO),
+        robdd_to_dot_2(Stream, Robdd ^ fa, VarToString, !Seen, !Ranks, !IO),
+        write_node(Stream, Robdd, VarToString, !IO),
+        write_edge(Stream, Robdd, Robdd ^ tr, yes, !IO),
+        write_edge(Stream, Robdd, Robdd ^ fa, no, !IO),
+        !:Seen = !.Seen `insert` Robdd,
+        multi_map.set(Robdd ^ value, Robdd, !Ranks)
     ).
 
-:- pred write_node(robdd(T)::in, write_var(T)::in(write_var),
-    io::di, io::uo) is det.
+:- pred write_node(io.text_output_stream::in, robdd(T)::in,
+    var_to_string(T)::in, io::di, io::uo) is det.
 
-write_node(R, WV) -->
-    io.format("%s [label=""<f0> %s|<f1> ",
-        [s(node_name(R)), s(terminal_name(R ^ tr))]),
-    WV(R ^ value),
-    io.format("|<f2> %s", [s(terminal_name(R ^ fa))]),
-    io.write_string("""];\n").
+write_node(Stream, R, VarToString, !IO) :-
+    io.format(Stream, "%s [label=""<f0> %s|<f1> ",
+        [s(node_name(R)), s(terminal_name(R ^ tr))], !IO),
+    io.write_string(Stream, VarToString(R ^ value), !IO),
+    io.format(Stream, "|<f2> %s", [s(terminal_name(R ^ fa))], !IO),
+    io.write_string(Stream, """];\n", !IO).
 
 :- func node_name(robdd(T)) = string.
 
@@ -1518,16 +1537,16 @@ terminal_name(R) =
         ""
     ).
 
-:- pred write_edge(robdd(T)::in, robdd(T)::in, bool::in,
-    io::di, io::uo) is det.
+:- pred write_edge(io.text_output_stream::in, robdd(T)::in, robdd(T)::in,
+    bool::in, io::di, io::uo) is det.
 
-write_edge(R0, R1, Arc) -->
-    ( if { is_terminal(R1) } then
-        []
+write_edge(Stream, R0, R1, Arc, !IO) :-
+    ( if is_terminal(R1) then
+        true
     else
-        io.format("""%s"":%s -> ""%s"":f1 [label=""%s""];\n",
+        io.format(Stream, """%s"":%s -> ""%s"":f1 [label=""%s""];\n",
             [s(node_name(R0)), s(if Arc = yes then "f0" else "f2"),
-            s(node_name(R1)), s(if Arc = yes then "t" else "f")])
+            s(node_name(R1)), s(if Arc = yes then "t" else "f")], !IO)
     ).
 
 labelling(Vars, R, TrueVars, FalseVars) :-

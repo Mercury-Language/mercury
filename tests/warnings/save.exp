@@ -1,6 +1,6 @@
 save.m:026: The call to predicate `io.write_string'/3 could have an additional
 save.m:026:   argument explicitly specifying a stream.
-save.m:028: The call to predicate `io.see'/4 could be made redundant by
+save.m:028: The call to predicate `prolog.see'/4 could be made redundant by
 save.m:028:   explicitly passing the input stream it specifies to later I/O
 save.m:028:   operations.
 save.m:031: The call to predicate `io.read_file_as_string'/3 could have an

@@ -172,6 +172,17 @@ Changes to the Mercury standard library
     - pred `make_temp/3`            (replacement: `make_temp_file/3`)
     - pred `make_temp/5`            (replacement: `make_temp_file/5`)
 
+* The following predicates have been marked as obsolete:
+
+    - pred `see/4`                  (replacement: `prolog.see/4`)
+    - pred `see_binary/4`           (replacement: `prolog.see_binary/4`)
+    - pred `seen/2`                 (replacement: `prolog.seen/2`)
+    - pred `seen_binary/2`          (replacement: `prolog.seen_binary/2`)
+    - pred `tell/4`                 (replacement: `prolog.tell/4`)
+    - pred `tell_binary/4`          (replacement: `prolog.tell_binary/4`)
+    - pred `told/2`                 (replacement: `prolog.told/2`)
+    - pred `told_binary/2`          (replacement: `prolog.told_binary/2`)
+
 * The following predicate has been renamed:
 
     - pred `report_stats/2` to `report_standard_stats/2`.
@@ -202,6 +213,14 @@ Changes to the Mercury standard library
 * The following predicate has been added to this module:
 
     - pred `is/2`                   (moved here from the `int` module)
+    - pred `see/4`                  (moved here from the `io` module)
+    - pred `see_binary/4`           (moved here from the `io` module)
+    - pred `seen/2`                 (moved here from the `io` module)
+    - pred `seen_binary/2`          (moved here from the `io` module)
+    - pred `tell/4`                 (moved here from the `io` module)
+    - pred `tell_binary/4`          (moved here from the `io` module)
+    - pred `told/2`                 (moved here from the `io` module)
+    - pred `told_binary/2`          (moved here from the `io` module)
 
 ### Changes to the `random` module
 
