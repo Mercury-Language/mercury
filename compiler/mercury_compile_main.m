@@ -74,7 +74,6 @@
 :- import_module parse_tree.check_raw_comp_unit.
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.generate_dep_d_files.
 :- import_module parse_tree.grab_modules.

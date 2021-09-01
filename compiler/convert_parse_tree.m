@@ -89,6 +89,21 @@
 
 %---------------------------------------------------------------------------%
 
+:- type parse_tree_opt
+    --->    parse_tree_opt(
+                pto_module_name             :: module_name,
+                pto_opt_file_kind           :: opt_file_kind,
+
+                % The context of the `:- module' declaration.
+                pto_module_name_context     :: prog_context,
+
+                % `:- use_module' (not `:- import_module') declarations.
+                pto_uses                    :: list(avail_use_info),
+
+                pto_fims                    :: list(item_fim),
+                pto_items                   :: list(item)
+            ).
+
     % Convert from the generic optimization file parse tree to the
     % optimization-file-kind specific parse trees. These conversions go
     % from less restrictive to more restrictive, so they can discover
