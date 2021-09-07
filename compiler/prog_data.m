@@ -350,8 +350,8 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 
 :- type type_details_du
     --->    type_details_du(
-                % The supertype for a subtype definition.
-                du_supertype        :: maybe_subtype,
+                % Is this a subtype, and if so, of which other type?
+                du_maybe_subtype    :: maybe_subtype,
 
                 % The list of data constructors (function symbols) defined
                 % by the type constructor.
