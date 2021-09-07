@@ -661,7 +661,7 @@
 %
 % We implement the first choice by checking whether each entry in
 % a type_ctor_defn_map makes sense, and generating error messages
-% when they don't. This is done by code in check_parse_tree_type_defns.m.
+% when they don't. This is done by code in check_type_inst_mode_defns.m.
 %
 % The fourth and most motivating use is that having all the definitions
 % of a type_ctor, *and* all the foreign_enum pragmas that apply to that

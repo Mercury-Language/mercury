@@ -86,7 +86,7 @@ build_ctor_name_to_foreign_name_map(ForWhat, Context, ContextPieces,
     % Badly qualified data constructor names should have been caught by
     % parse_pragma.m, and should have prevented the construction
     % of the foreign_enum pragma, for at least one of our callers
-    % (check_parse_tree_type_defns.m), but maybe not the other
+    % (check_type_inst_mode_defns.m), but maybe not the other
     % (add_foreign_enum.m).
     ( if cord.is_empty(BadQualCtorSymNamesCord) then
         true

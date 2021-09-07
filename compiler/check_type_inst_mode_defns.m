@@ -7,7 +7,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: check_parse_tree_type_defns.m.
+% File: check_type_inst_mode_defns.m.
 % Main author: zs.
 %
 % This module checks whether the type definition and foreign enum items
@@ -15,7 +15,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.check_parse_tree_type_defns.
+:- module parse_tree.check_type_inst_mode_defns.
 :- interface.
 
 :- import_module parse_tree.error_util.
@@ -1708,5 +1708,5 @@ report_duplicate_field_name(FieldNameTypeCtor, FirstFNLocn, FNLocn, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.check_parse_tree_type_defns.
+:- end_module parse_tree.check_type_inst_mode_defns.
 %---------------------------------------------------------------------------%

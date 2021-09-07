@@ -104,7 +104,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.check_parse_tree_type_defns.
+:- import_module parse_tree.check_type_inst_mode_defns.
 :- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.decide_type_repn.
 :- import_module parse_tree.item_util.

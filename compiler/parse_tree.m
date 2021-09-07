@@ -73,6 +73,7 @@
 
 % Utility routines.
 :- include_module builtin_lib_types.
+:- include_module check_type_inst_mode_defns.
 :- include_module error_util.
 :- include_module item_util.
 :- include_module maybe_error.
@@ -89,7 +90,6 @@
 :- include_module prog_util.
 
 % Type representation.
-:- include_module check_parse_tree_type_defns.
 :- include_module decide_type_repn.
 
 % Transformations that act on the parse tree,

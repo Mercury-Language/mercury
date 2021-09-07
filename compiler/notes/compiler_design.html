@@ -423,9 +423,8 @@ write_module_interface_files.m has the code to write out
 comp_unit_interface.m figures out which parts of a raw compilation unit
 belong in its .int3, .int0, .int and .int2 files.
 <li>
-check_parse_tree_type_defns.m checks whether
-the type definition related items in a raw compilation unit
-are consistent with one another.
+check_type_inst_mode_defns.m checks whether the items in a module
+related to a given type, inst or more are all consistent with one another.
 It uses prog_foreign_enum.m
 to check the validity of foreign enum declarations,
 using code that also does the same job for foreign export enum declarations.
