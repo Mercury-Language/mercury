@@ -8813,8 +8813,8 @@ using a declaration of the form
 This defines @var{MercuryTypeName}
 as a synonym for type @var{ForeignTypeDescriptor}
 defined in the foreign language @var{Lang}.
-@var{MercuryTypeName} must be the name of an abstract type,
-or the name of a discriminated union type that is not a subtype.
+@var{MercuryTypeName} must be the name of
+either an abstract type or a discriminated union type.
 In both cases,
 @var{MercuryTypeName} must be declared with @samp{:- type} as usual.
 The @samp{pragma foreign_type} must not have wider visibility
@@ -8822,8 +8822,9 @@ than the type declaration
 (if the @samp{pragma foreign_type} declaration is in the interface,
 the @samp{:- type} declaration must be also).
 
-The type named by @var{MercuryTypeName}
-cannot be the base type of any subtypes (@pxref{Subtypes}).
+If @var{MercuryTypeName} names a discriminated union type,
+that type cannot be the base type of any subtypes,
+nor can it be a subtype itself (@pxref{Subtypes}).
 
 @var{ForeignTypeDescriptor} defines
 how the Mercury type is mapped for a particular foreign language.
@@ -8837,13 +8838,18 @@ and the @samp{pragma foreign_type} declaration is visible to the foreign_proc,
 it will be passed to that foreign_proc
 as specified by @var{ForeignTypeDescriptor}.
 
-Multiple foreign language definitions may be given for the same type ---
-the appropriate definition will be used for the appropriate language
+The same type may have a foreign language definition
+for more than one foreign language.
+The definition used in the generated code
+will be the one for the foreign language
+that is most appropriate for the target language of the compilation
 (see the language specific information below for details).
-All definitions must have the same visibility.
-A Mercury definition, which must define a discriminated union type,
-may also be given.
-The constructors for the type will only be visible in Mercury clauses
+All the foreign language definitions must have the same visibility.
+
+A type which has one or more foreign language definitions
+may also have a Mercury definition,
+which must define a discriminated union type.
+The constructors for this Mercury type will only be visible in Mercury clauses
 for predicates or functions with @samp{pragma foreign_proc} clauses
 for all of the languages for which there are
 @samp{foreign_type} declarations for the type.
