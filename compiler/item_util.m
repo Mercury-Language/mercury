@@ -291,6 +291,22 @@
     = (item::out(item_decl_or_impl_pragma)) is det.
 
 %---------------------------------------------------------------------------%
+%
+% Converting specific forms of type definitions to the generic form.
+%
+
+:- func wrap_abstract_type_defn(item_type_defn_info_abstract)
+    = item_type_defn_info.
+:- func wrap_solver_type_defn(item_type_defn_info_solver)
+    = item_type_defn_info.
+:- func wrap_eqv_type_defn(item_type_defn_info_eqv)
+    = item_type_defn_info.
+:- func wrap_du_type_defn(item_type_defn_info_du)
+    = item_type_defn_info.
+:- func wrap_foreign_type_defn(item_type_defn_info_foreign)
+    = item_type_defn_info.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -1721,6 +1737,33 @@ wrap_marker_pragma_item(X) = Item :-
         Pragma = item_pragma_info(DeclPragma, Context, SeqNum),
         Item = item_decl_pragma(Pragma)
     ).
+
+%-----------------------------------------------------------------------------%
+
+wrap_abstract_type_defn(AbstractDefnInfo) = TypeDefnInfo :-
+    AbstractDefn = AbstractDefnInfo ^ td_ctor_defn,
+    TypeDefnInfo = AbstractDefnInfo ^ td_ctor_defn
+        := parse_tree_abstract_type(AbstractDefn).
+
+wrap_solver_type_defn(SolverDefnInfo) = TypeDefnInfo :-
+    SolverDefn = SolverDefnInfo ^ td_ctor_defn,
+    TypeDefnInfo = SolverDefnInfo ^ td_ctor_defn
+        := parse_tree_solver_type(SolverDefn).
+
+wrap_eqv_type_defn(EqvDefnInfo) = TypeDefnInfo :-
+    EqvDefn = EqvDefnInfo ^ td_ctor_defn,
+    TypeDefnInfo = EqvDefnInfo ^ td_ctor_defn
+        := parse_tree_eqv_type(EqvDefn).
+
+wrap_du_type_defn(DuDefnInfo) = TypeDefnInfo :-
+    DuDefn = DuDefnInfo ^ td_ctor_defn,
+    TypeDefnInfo = DuDefnInfo ^ td_ctor_defn
+        := parse_tree_du_type(DuDefn).
+
+wrap_foreign_type_defn(ForeignDefnInfo) = TypeDefnInfo :-
+    ForeignDefn = ForeignDefnInfo ^ td_ctor_defn,
+    TypeDefnInfo = ForeignDefnInfo ^ td_ctor_defn
+        := parse_tree_foreign_type(ForeignDefn).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.item_util.

@@ -247,12 +247,12 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
     % The structure of this logic must match the structure of the logic
     % in decide_all_type_repns_stage_2.
     (
-        CheckedDefn = checked_defn_solver(_)
+        CheckedDefn = checked_defn_solver(_, _)
         % The representation of solver types is given by the type that
         % the definition names as the representation type. It has no
         % representation separate from that.
     ;
-        CheckedDefn = checked_defn_std(StdDefn),
+        CheckedDefn = checked_defn_std(StdDefn, _),
         (
             StdDefn = std_mer_type_eqv(EqvStatus, EqvDefn),
             (
@@ -271,15 +271,12 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
         ;
             StdDefn = std_mer_type_du_subtype(DuStatus, DuDefn),
             (
-                ( DuStatus = std_du_type_mer_exported
-                ; DuStatus = std_du_type_abstract_exported
+                ( DuStatus = std_sub_type_mer_exported
+                ; DuStatus = std_sub_type_abstract_exported
                 ),
                 set_tree234.insert(TypeCtor, !ExportedTypes)
             ;
-                DuStatus = std_du_type_mer_ft_exported,
-                unexpected($pred, "subtype with foreign type")
-            ;
-                DuStatus = std_du_type_all_private
+                DuStatus = std_sub_type_all_private
             ),
             DuDefn = item_type_defn_info(TypeCtorSymName, TypeParams,
                 DetailsDu, TVarSet, _Context, _SeqNum),
@@ -811,12 +808,12 @@ decide_all_type_repns_stage_2(BaseParams, EqvRepnMap, EqvMap, SubtypeMap,
     % The structure of this logic must match the structure of the logic
     % in decide_simple_type_repns_stage_1.
     (
-        CheckedDefn = checked_defn_solver(_)
+        CheckedDefn = checked_defn_solver(_, _)
         % The representation of solver types is given by the type that
         % the definition names as the representation type. It has no
         % representation separate from that.
     ;
-        CheckedDefn = checked_defn_std(StdDefn),
+        CheckedDefn = checked_defn_std(StdDefn, _),
         (
             StdDefn = std_mer_type_eqv(_, _),
             map.lookup(EqvRepnMap, TypeCtor, EqvRepnItem0),

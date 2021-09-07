@@ -1776,46 +1776,6 @@ accumulate_type_ctor_defns(CtorAllDefns, !TypeDefns) :-
 at_most_one([]) = [].
 at_most_one([X | _Xs]) = [X].
 
-:- func wrap_abstract_type_defn(item_type_defn_info_abstract)
-    = item_type_defn_info.
-
-wrap_abstract_type_defn(AbstractDefnInfo) = TypeDefnInfo :-
-    AbstractDefn = AbstractDefnInfo ^ td_ctor_defn,
-    TypeDefnInfo = AbstractDefnInfo ^ td_ctor_defn
-        := parse_tree_abstract_type(AbstractDefn).
-
-:- func wrap_solver_type_defn(item_type_defn_info_solver)
-    = item_type_defn_info.
-
-wrap_solver_type_defn(SolverDefnInfo) = TypeDefnInfo :-
-    SolverDefn = SolverDefnInfo ^ td_ctor_defn,
-    TypeDefnInfo = SolverDefnInfo ^ td_ctor_defn
-        := parse_tree_solver_type(SolverDefn).
-
-:- func wrap_eqv_type_defn(item_type_defn_info_eqv)
-    = item_type_defn_info.
-
-wrap_eqv_type_defn(EqvDefnInfo) = TypeDefnInfo :-
-    EqvDefn = EqvDefnInfo ^ td_ctor_defn,
-    TypeDefnInfo = EqvDefnInfo ^ td_ctor_defn
-        := parse_tree_eqv_type(EqvDefn).
-
-:- func wrap_du_type_defn(item_type_defn_info_du)
-    = item_type_defn_info.
-
-wrap_du_type_defn(DuDefnInfo) = TypeDefnInfo :-
-    DuDefn = DuDefnInfo ^ td_ctor_defn,
-    TypeDefnInfo = DuDefnInfo ^ td_ctor_defn
-        := parse_tree_du_type(DuDefn).
-
-:- func wrap_foreign_type_defn(item_type_defn_info_foreign)
-    = item_type_defn_info.
-
-wrap_foreign_type_defn(ForeignDefnInfo) = TypeDefnInfo :-
-    ForeignDefn = ForeignDefnInfo ^ td_ctor_defn,
-    TypeDefnInfo = ForeignDefnInfo ^ td_ctor_defn
-        := parse_tree_foreign_type(ForeignDefn).
-
 %---------------------%
 
 inst_ctor_defn_map_to_inst_defns(InstCtorDefnMap) = InstDefns :-
