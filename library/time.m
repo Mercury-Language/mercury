@@ -625,7 +625,8 @@ localtime(Time, TM, !IO) :-
     // time cannot be represented by a DateTime object.
     System.DateTime t = Time.ToLocalTime();
 
-    // we don't handle leap seconds
+    // We don't handle leap seconds.
+    // (XXX actually, C# does not handle leap seconds.)
     Sec = t.Second;
     Min = t.Minute;
     Hrs = t.Hour;
@@ -771,7 +772,7 @@ gmtime(Time) = TM :-
     YD = t.DayOfYear - 1;
     // UTC time can never have daylight savings.
     N = 0;
-    IsOk = mr_bool.NO;
+    IsOk = mr_bool.YES;
     ErrorMsg = \"\";
 ").
 :- pragma foreign_proc("Java",
