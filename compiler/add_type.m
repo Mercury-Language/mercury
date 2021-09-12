@@ -1252,7 +1252,7 @@ check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBodyDu,
         search_super_type_ctor_defn(TypeTable, TypeCtor, TypeDefn,
             SuperTypeCtor, [], SearchResult),
         (
-            SearchResult = ok1({SuperTypeDefn, SuperTypeBodyDu}),
+            SearchResult = ok2(SuperTypeDefn, SuperTypeBodyDu),
             check_supertypes_up_to_base_type(TypeTable, TypeCtor, TypeDefn,
                 SuperTypeCtor, SuperTypeDefn, SuperTypeBodyDu,
                 [], MaybeBaseMaybeCanon),
@@ -1275,7 +1275,7 @@ check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBodyDu,
                 MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
             )
         ;
-            SearchResult = error1(SearchSpecs),
+            SearchResult = error2(SearchSpecs),
             !:Specs = SearchSpecs ++ !.Specs,
             !:FoundInvalidType = found_invalid_type,
             MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
@@ -1315,13 +1315,13 @@ check_supertypes_up_to_base_type(TypeTable, OrigTypeCtor, OrigTypeDefn,
             search_super_type_ctor_defn(TypeTable, OrigTypeCtor, OrigTypeDefn,
                 NextSuperTypeCtor, PrevSuperTypeCtors1, SearchResult),
             (
-                SearchResult = ok1({NextSuperTypeDefn, NextSuperTypeBodyDu}),
+                SearchResult = ok2(NextSuperTypeDefn, NextSuperTypeBodyDu),
                 check_supertypes_up_to_base_type(TypeTable,
                     OrigTypeCtor, OrigTypeDefn,
                     NextSuperTypeCtor, NextSuperTypeDefn, NextSuperTypeBodyDu,
                     PrevSuperTypeCtors1, MaybeBaseMaybeCanon)
             ;
-                SearchResult = error1(SearchSpecs),
+                SearchResult = error2(SearchSpecs),
                 MaybeBaseMaybeCanon = error1(SearchSpecs)
             )
         else
@@ -1345,7 +1345,7 @@ check_supertypes_up_to_base_type(TypeTable, OrigTypeCtor, OrigTypeDefn,
 
 :- pred search_super_type_ctor_defn(type_table::in, type_ctor::in,
     hlds_type_defn::in, type_ctor::in,
-    list(type_ctor)::in, maybe1({hlds_type_defn, type_body_du})::out) is det.
+    list(type_ctor)::in, maybe2(hlds_type_defn, type_body_du)::out) is det.
 
 search_super_type_ctor_defn(TypeTable, OrigTypeCtor, OrigTypeDefn,
         SuperTypeCtor, PrevSuperTypeCtors, MaybeSuperTypeDefn) :-
@@ -1356,7 +1356,7 @@ search_super_type_ctor_defn(TypeTable, OrigTypeCtor, OrigTypeDefn,
     then
         Spec = supertype_ctor_defn_error_to_spec(OrigTypeCtor, OrigTypeDefn,
             PrevSuperTypeCtors, SuperTypeCtor, circularity_detected),
-        MaybeSuperTypeDefn = error1([Spec])
+        MaybeSuperTypeDefn = error2([Spec])
     else
         ( if
             search_type_ctor_defn(TypeTable, SuperTypeCtor, SuperTypeDefn)
@@ -1370,23 +1370,23 @@ search_super_type_ctor_defn(TypeTable, OrigTypeCtor, OrigTypeDefn,
                 Spec = supertype_ctor_defn_error_to_spec(OrigTypeCtor,
                     OrigTypeDefn, PrevSuperTypeCtors, SuperTypeCtor,
                     supertype_is_abstract),
-                MaybeSuperTypeDefn = error1([Spec])
+                MaybeSuperTypeDefn = error2([Spec])
             else
                 check_supertype_is_du_not_foreign(OrigTypeDefn,
                     SuperTypeCtor, SuperTypeDefn, MaybeSuperTypeBodyDu),
                 (
                     MaybeSuperTypeBodyDu = ok1(SuperTypeBodyDu),
-                    MaybeSuperTypeDefn = ok1({SuperTypeDefn, SuperTypeBodyDu})
+                    MaybeSuperTypeDefn = ok2(SuperTypeDefn, SuperTypeBodyDu)
                 ;
                     MaybeSuperTypeBodyDu = error1(SuperSpecs),
-                    MaybeSuperTypeDefn = error1(SuperSpecs)
+                    MaybeSuperTypeDefn = error2(SuperSpecs)
                 )
             )
         else
             Spec = supertype_ctor_defn_error_to_spec(OrigTypeCtor,
                 OrigTypeDefn, PrevSuperTypeCtors, SuperTypeCtor,
                 supertype_is_not_defined),
-            MaybeSuperTypeDefn = error1([Spec])
+            MaybeSuperTypeDefn = error2([Spec])
         )
     ).
 
