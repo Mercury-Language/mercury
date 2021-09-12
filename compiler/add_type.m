@@ -1590,7 +1590,7 @@ check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
     % Check each subtype constructor against the supertype's constructors.
     TypeBodyDu = type_body_du(OoMCtors, _, _, _, _),
     Ctors = one_or_more_to_list(OoMCtors),
-    foldl2(
+    list.foldl2(
         look_up_and_check_subtype_ctor(TypeTable, NewTVarSet, TypeStatus,
             SuperTypeCtor, SuperCtors),
         Ctors, !FoundInvalidType, !Specs),
@@ -1748,10 +1748,11 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, TypeA, TypeB,
     ;
         TypeA = defined_type(NameA, ArgTypesA, Kind),
         TypeB = defined_type(NameB, ArgTypesB, Kind),
+        list.length(ArgTypesA, ArityA),
+        list.length(ArgTypesB, ArityB),
         ( if
             NameA = NameB,
-            list.length(ArgTypesA, Arity),
-            list.length(ArgTypesB, Arity)
+            ArityA = ArityB
         then
             % TypeA and TypeB have the same type constructor.
             % Check their corresponding argument types.
@@ -1763,12 +1764,11 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, TypeA, TypeB,
             % TypeA and TypeB have different type constructors.
             % Find a subtype definition s(S1, ..., Sn) =< t(T1, ..., Tk)
             % where s/n is the type constructor of TypeA.
-            list.length(ArgTypesA, ArityA),
             TypeCtorA = type_ctor(NameA, ArityA),
             search_type_ctor_defn(TypeTable, TypeCtorA, TypeDefnA),
             hlds_data.get_type_defn_body(TypeDefnA, TypeBodyA),
-            TypeBodyA =
-                hlds_du_type(type_body_du(_, subtype_of(SuperTypeA), _, _, _)),
+            TypeBodyA = hlds_du_type(TypeBodyDuA),
+            TypeBodyDuA = type_body_du(_, subtype_of(SuperTypeA), _, _, _),
 
             hlds_data.get_type_defn_status(TypeDefnA, TypeStatusA),
             not subtype_defn_int_supertype_defn_impl(OrigTypeStatus,
@@ -1779,18 +1779,18 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, TypeA, TypeB,
             hlds_data.get_type_defn_tvarset(TypeDefnA, TVarSetA),
             hlds_data.get_type_defn_tparams(TypeDefnA, TypeParamsA0),
             tvarset_merge_renaming(TVarSet0, TVarSetA, TVarSet, RenamingA),
-            apply_variable_renaming_to_tvar_list(RenamingA, TypeParamsA0,
-                TypeParamsA),
+            apply_variable_renaming_to_tvar_list(RenamingA,
+                TypeParamsA0, TypeParamsA),
             map.from_corresponding_lists(TypeParamsA, ArgTypesA, TSubstA),
 
             % Apply the substitution to t(T1, ..., Tk) to give
             % t(T1', ..., Tk').
-            rename_and_rec_subst_in_type(RenamingA, TSubstA, SuperTypeA,
-                NewTypeA),
+            rename_and_rec_subst_in_type(RenamingA, TSubstA,
+                SuperTypeA, RenamedSuperTypeA),
 
             % Check that t(T1', ..., Tk') =< TypeB.
             check_is_subtype(TypeTable, TVarSet, OrigTypeStatus,
-                NewTypeA, TypeB,
+                RenamedSuperTypeA, TypeB,
                 MaybeExistConstraintsA, MaybeExistConstraintsB,
                 !ExistQVarsMapping)
         )
