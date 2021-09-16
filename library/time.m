@@ -33,8 +33,8 @@
     %
 :- type clock_t == int.
 
-    % The `tms' type holds information about the amount of processor
-    % time that a process and its child processes have consumed.
+    % The `tms' type holds information about the amount of processor time
+    % that a process and its child processes have consumed.
     %
 :- type tms
     --->    tms(
@@ -49,19 +49,22 @@
     %
 :- type time_t.
 
-    % The `tm' type is a concrete type that represents calendar times, broken
-    % down into their constituent components. Comparison (via compare/3) of
-    % `tm' values whose `tm_dst' components are identical is equivalent to
-    % comparison of the times those `tm' values represent.
+    % The `tm' type is a concrete type that represents calendar times,
+    % broken down into their constituent components. Comparison (via compare/3)
+    % of `tm' values is equivalent to comparison of the times those `tm'
+    % values represent IF AND ONLY IF if their `tm_dst' components
+    % are identical.
     %
     % Whether leap seconds are supported depends on the target language.
     % Currently, only C supports leap seconds, while Java and C# do not.
     % For target languages that do not support leap seconds:
-    % - predicates in this module producing a `tm' value as an output will
-    % never set its `tm_sec' component to a value beyond 59;
-    % - predicates in this module taking a `tm_sec' value as an input will
-    % throw a time_error/1 exception if the value of the `tm_sec' component
-    % is beyond 59.
+    %
+    % - predicates in this module that produce a `tm' value as an output
+    %   will never set its `tm_sec' component to a value beyond 59;
+    %
+    % - predicates in this module that take a `tm_sec' value as an input
+    %   will throw a time_error/1 exception if the value of the `tm_sec'
+    %   component is beyond 59.
     %
 :- type tm
     --->    tm(
@@ -74,7 +77,8 @@
                                         % (60 and 61 are for leap seconds)
                 tm_yday :: int,         % YearDay (number since Jan 1st, 0-365)
                 tm_wday :: int,         % WeekDay (number since Sunday, 0-6)
-                tm_dst  :: maybe(dst)   % IsDST (is DST in effect?)
+                tm_dst  :: maybe(dst)   % IsDST (is DST applicable, and if so,
+                                        % is it in effect?)
             ).
 
 :- type dst
@@ -470,7 +474,7 @@ times(Tms, Result, !IO) :-
 "
     Ret = (int) System.DateTime.UtcNow.Ticks;
 
-    // Should We keep only the lower 31 bits of the timestamp, like in java?
+    // Should we keep only the lower 31 bits of the timestamp, like in java?
     // Ret = Ret & 0x7fffffff;
 
     long user =
@@ -491,7 +495,7 @@ times(Tms, Result, !IO) :-
     clk_tck = (Ret::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // TicksPerSecond is guaranteed to be 10,000,000
+    // TicksPerSecond is guaranteed to be 10,000,000.
     Ret = (int) System.TimeSpan.TicksPerSecond;
 ").
 
@@ -568,9 +572,9 @@ localtime(Time, TM, !IO) :-
         throw(time_error("time.localtime: conversion failed: " ++ ErrorMsg))
     ).
 
-:- pred target_localtime(time_t_rep::in, bool::out, int::out, int::out, int::out,
-    int::out, int::out, int::out, int::out, int::out, int::out, string::out,
-    io::di, io::uo) is det.
+:- pred target_localtime(time_t_rep::in, bool::out, int::out, int::out,
+    int::out, int::out, int::out, int::out, int::out, int::out, int::out,
+    string::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     target_localtime(Time::in, IsOk::out, Yr::out, Mnt::out, MD::out, Hrs::out,
@@ -698,7 +702,8 @@ localtime(Time, TM, !IO) :-
 
 gmtime(Time) = TM :-
     Time = time_t(RawTime),
-    target_gmtime(RawTime, IsOk, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N, ErrorMsg),
+    target_gmtime(RawTime, IsOk, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N,
+        ErrorMsg),
     (
         IsOk = yes,
         TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N))
@@ -889,12 +894,12 @@ mktime(TM, Time, !IO) :-
     [will_not_call_mercury, promise_pure],
 "
     // We don't use YD, WD and N.
-    // XXX Ignoring N the daylight savings time indicator is bad
+    // XXX Ignoring N, the daylight savings time indicator, is bad.
     // On the day when you switch back to standard time from daylight
     // savings time, the time '2:30am' occurs twice, once during daylight
     // savings time (N = 1), and then again an hour later, during standard
-    // time (N = 0). The .NET API does not seem to provide any way to
-    // get the right answer in both cases.
+    // time (N = 0). The .NET API does not seem to provide any way
+    // to get the right answer in both cases.
     try {
         System.DateTime local_time =
             new System.DateTime(Yr + 1900, Mnt + 1, MD, Hrs, Min, Sec);
@@ -929,8 +934,8 @@ mktime(TM, Time, !IO) :-
         boolean isDST = rules.isDaylightSavings(Time0);
 
         if (N == 1 & !isDST) {
-            // If the time we constructed is not in daylight savings time, but
-            // it should be, we need to subtract the DSTSavings.
+            // If the time we constructed is not in daylight savings time,
+            // but it should be, we need to subtract the DSTSavings.
             java.time.Duration savings = rules.getDaylightSavings(Time0);
             Time = Time0.minus(savings);
             if (!rules.isDaylightSavings(Time)) {
@@ -941,8 +946,8 @@ mktime(TM, Time, !IO) :-
                 ErrorMsg = \"\";
             }
         } else if (N == 0 && isDST) {
-            // If the time we constructed is in daylight savings time, but
-            // should not be, we need to add the DSTSavings.
+            // If the time we constructed is in daylight savings time,
+            // but should not be, we need to add the DSTSavings.
             java.time.Duration savings = rules.getDaylightSavings(Time0);
             Time = Time0.plus(savings);
             if (rules.isDaylightSavings(Time)) {
@@ -987,51 +992,51 @@ maybe_dst_to_int(M) = N :-
 asctime(TM) = Str :-
     TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, _YD, WD, _DST),
     Str = string.format("%.3s %.3s%3d %.2d:%.2d:%.2d %d\n",
-        [s(wday_name(WD)), s(mon_name(Mnt)), i(MD), i(Hrs),
-            i(Min), i(Sec), i(1900 + Yr)]).
+        [s(weekday_name(WD)), s(month_name(Mnt)), i(MD), i(Hrs),
+        i(Min), i(Sec), i(1900 + Yr)]).
 
-:- func wday_name(int) = string.
+:- func weekday_name(int) = string.
 
-wday_name(N) = Name :-
-    ( if wday_name(N, Name0) then
+weekday_name(N) = Name :-
+    ( if weekday_name(N, Name0) then
         Name = Name0
     else
-        error("time: wday_name")
+        error("time: weekday_name")
     ).
 
-:- pred wday_name(int::in, string::out) is semidet.
+:- pred weekday_name(int::in, string::out) is semidet.
 
-wday_name(0, "Sun").
-wday_name(1, "Mon").
-wday_name(2, "Tue").
-wday_name(3, "Wed").
-wday_name(4, "Thu").
-wday_name(5, "Fri").
-wday_name(6, "Sat").
+weekday_name(0, "Sun").
+weekday_name(1, "Mon").
+weekday_name(2, "Tue").
+weekday_name(3, "Wed").
+weekday_name(4, "Thu").
+weekday_name(5, "Fri").
+weekday_name(6, "Sat").
 
-:- func mon_name(int) = string.
+:- func month_name(int) = string.
 
-mon_name(N) = Name :-
-    ( if mon_name(N, Name0) then
+month_name(N) = Name :-
+    ( if month_name(N, Name0) then
         Name = Name0
     else
-        error("time: mon_name")
+        error("time: month_name")
     ).
 
-:- pred mon_name(int::in, string::out) is semidet.
+:- pred month_name(int::in, string::out) is semidet.
 
-mon_name(0, "Jan").
-mon_name(1, "Feb").
-mon_name(2, "Mar").
-mon_name(3, "Apr").
-mon_name(4, "May").
-mon_name(5, "Jun").
-mon_name(6, "Jul").
-mon_name(7, "Aug").
-mon_name(8, "Sep").
-mon_name(9, "Oct").
-mon_name(10, "Nov").
-mon_name(11, "Dec").
+month_name(0, "Jan").
+month_name(1, "Feb").
+month_name(2, "Mar").
+month_name(3, "Apr").
+month_name(4, "May").
+month_name(5, "Jun").
+month_name(6, "Jul").
+month_name(7, "Aug").
+month_name(8, "Sep").
+month_name(9, "Oct").
+month_name(10, "Nov").
+month_name(11, "Dec").
 
 %---------------------------------------------------------------------------%
 
