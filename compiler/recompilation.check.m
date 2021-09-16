@@ -1002,8 +1002,8 @@ check_for_pred_or_func_item_ambiguity_2(ItemType, RecompAvail,
         Name = unqualify_name(SymName),
         ( if
             % XXX RECOMP401 This logic is ancient, and may do the wrong thing
-            % with most values of RecompAvail, since they those values did not
-            % exist when the original version of this was written.
+            % with most values of RecompAvail, since those values did not exist
+            % when the original version of this was written.
             ( RecompAvail = recomp_avail_int_use
             ; RecompAvail = recomp_avail_imp_use
             ),
@@ -1200,8 +1200,8 @@ check_functor_ambiguity(RecompAvail, SymName, Arity, ResolvedCtor,
         !.MaybeStoppingReason = no,
         ( if
             % XXX RECOMP401 This logic is ancient, and may do the wrong thing
-            % with most values of RecompAvail, since they those values did not
-            % exist when the original version of this was written.
+            % with most values of RecompAvail, since those values did not exist
+            % when the original version of this was written.
             ( RecompAvail = recomp_avail_int_use
             ; RecompAvail = recomp_avail_imp_use
             ),
