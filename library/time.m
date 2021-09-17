@@ -52,8 +52,7 @@
     % The `tm' type is a concrete type that represents calendar times,
     % broken down into their constituent components. Comparison (via compare/3)
     % of `tm' values is equivalent to comparison of the times those `tm'
-    % values represent IF AND ONLY IF if their `tm_dst' components
-    % are identical.
+    % values represent IF AND ONLY IF their `tm_dst' components are identical.
     %
     % Whether leap seconds are supported depends on the target language.
     % Currently, only C supports leap seconds, while Java and C# do not.
