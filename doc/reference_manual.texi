@@ -750,13 +750,18 @@ The @var{Body} must be a valid goal.
 @node Goals
 @section Goals
 
-A goal is a term of one of the following forms:
+A goal is a term of one of the following forms.
 
 @table @asis
 @item @code{some @var{Vars} @var{Goal}}
 An existential quantification.
-@var{Vars} must be a list of variables.
 @var{Goal} must be a valid goal.
+@var{Vars} must be a list
+whose elements are either variables or state variables.
+(A single list may contain both.)
+The case where they are state variables
+is described in @ref{State variables};
+here we discuss the case where they are plain variables.
 
 Each existential quantification introduces a new scope.
 The variables in @var{Vars} are local to the goal @var{Goal}:
@@ -776,9 +781,10 @@ There is usually no need to write existential quantifiers explicitly.
 
 @item @code{all @var{Vars} @var{Goal}}
 A universal quantification.
-@var{Vars} must be a list of variables.
 @var{Goal} must be a valid goal.
-This is an abbreviation for @samp{not (some @var{Vars} not @var{Goal})}.
+@var{Vars} must be a list of variables
+(they may @emph{not} be state variables).
+This goal is an abbreviation for @samp{not (some @var{Vars} not @var{Goal})}.
 
 @item @code{@var{Goal1}, @var{Goal2}}
 A conjunction.
@@ -1190,33 +1196,41 @@ that is,
 is parsed as
 @samp{p(@dots{}, !.@var{X}, !:@var{X}, @dots{})}.
 
-Within each clause, a transformation converts state variables
-into sequences of ordinary logic variables.
-The syntactic conversion is described in terms of
-the notional @samp{transform} function defined next.
-
-The transformation is applied once for each state variable @var{X}
-with some fresh variables which we shall call @var{ThisX} and @var{NextX}.
-
-The expression
-@samp{substitute(@var{Term}, @var{X}, @var{ThisX}, @var{NextX})}
-stands for a copy of @var{Term}
-with free occurrences of @samp{!.@var{X}} replaced with @var{ThisX}
-and free occurrences of @samp{!:@var{X}} replaced with @var{NextX}
-(a free occurrence is one not bound
-by the head of a clause or lambda, or by explicit quantification.)
-
 State variables obey special scope rules.
-A state variable @var{X} must be explicitly introduced
-either in the head of the clause or lambda
-(in which case it may appear as either or both of
-@samp{!.@var{X}} or @samp{!:@var{X}})
-or in an explicit quantification
-(in which case it must appear as @samp{!@var{X}}.)
+A state variable @var{X} must be explicitly introduced,
+and this can happen in one of four ways:
+@itemize
+@item
+As @samp{!@var{X}} in the head of a clause.
+In this case,
+references to state variable @samp{!@var{X}} or to its components
+may appear anywhere in the clause.
+@item
+As either @samp{!.@var{X}} or @samp{!:@var{X}} or both
+in the head of a clause.
+Again, in this case,
+references to state variable @samp{!@var{X}} or to its components
+may appear anywhere in the clause.
+@item
+As either @samp{!.@var{X}} or @samp{!:@var{X}} or both
+in the head of a lambda expression.
+In this case,
+references to state variable @samp{!@var{X}} or to its components
+may appear anywhere in that lambda expression.
+(The reason that @samp{!@var{X}} may not appear as a parameter term
+in the head of a lambda is that
+there is no syntax for specifying the modes of the two implied parameters.)
+@item
+In an explicit quantification such as @samp{some [!@var{X}] @var{Goal}}.
+In this case,
+references to state variable @samp{!@var{X}} or to its components
+may appear anywhere in @samp{@var{Goal}}.
+@end itemize
+
 A state variable @var{X} in the enclosing scope
 of a lambda or if-then-else expression
 may only be referred to as @samp{!.@var{X}}
-(unless the enclosing @var{X} is masked
+(unless the enclosing @var{X} is shadowed
 by a more local state variable of the same name.)
 
 For instance, the following clause employing a lambda expression
@@ -1256,18 +1270,35 @@ is locally scoped to the lambda expression
 and the lambda expression may refer to
 the next version of a local state variable.
 
-There are three restrictions concerning state variables in lambdas:
-first, @samp{!@var{X}} is not a legitimate function result,
-since it stands for two arguments, rather than one;
-second, @samp{!@var{X}} may not appear as a parameter term
-in the head of a lambda,
-since there is no syntax
-for specifying the modes of the two implied parameters;
-third, @samp{!@var{X}} may not appear as an argument in a function application
+There are two restrictions concerning state variables in functions,
+whether they are defined by clauses or lambda expressions.
+@itemize
+@item
+@samp{!@var{X}} is not a legitimate function result,
+since it stands for two arguments, rather than one.
+@item
+@samp{!@var{X}} may not appear as an argument in a function application
 since this would not make sense
 given the usual interpretation of state variables and functions.
 (The default mode of functions is that all arguments are input,
 while in the overwhelming majority of cases, @samp{!:@var{X}} is output.)
+@end itemize
+
+Within each clause, a transformation converts state variables
+into sequences of ordinary logic variables.
+The syntactic conversion is described in terms of
+the notional @samp{transform} function defined next.
+
+The transformation is applied once for each state variable @var{X}
+with some fresh variables which we shall call @var{ThisX} and @var{NextX}.
+
+The expression
+@samp{substitute(@var{Term}, @var{X}, @var{ThisX}, @var{NextX})}
+stands for a copy of @var{Term}
+with free occurrences of @samp{!.@var{X}} replaced with @var{ThisX}
+and free occurrences of @samp{!:@var{X}} replaced with @var{NextX}
+(a free occurrence is one not bound
+by the head of a clause or lambda, or by explicit quantification.)
 
 @table @code
 
@@ -1360,16 +1391,38 @@ substitute(@var{Call_or_Unification}, @var{X}, @var{ThisX}, @var{NextX})
 
 @end table
 
+Actual application of this transformation would, in the general case,
+result in the generation of many different versions of each state variable,
+for which we need more names than just
+@samp{@var{ThisX}}, @samp{@var{TmpX}} and @samp{@var{NextX}}.
+The Mercury compiler therefore uses
+@itemize
+@item
+@samp{@var{STATE_VARIABLE_X_0}} as the initial value of a state variable,
+@item
+@samp{@var{STATE_VARIABLE_X_N}},
+where @samp{@var{N}} is a nonzero positive integer,
+as its intermediate values, and
+@item
+@samp{@var{STATE_VARIABLE_X}} as its final value.
+@end itemize
+
 This transformation can lead
 to the introduction of chains of unifications for variables
-that do not otherwise play a role in the definition.
-Such chains are removed transparently.
+that do not otherwise play a role in the definition,
+such as
+@samp{@var{STATE_VARIABLE_X_5} = @var{STATE_VARIABLE_X_6},
+@var{STATE_VARIABLE_X_6} = @var{STATE_VARIABLE_X_7},
+@var{STATE_VARIABLE_X_7} = @var{STATE_VARIABLE_X_8}}.
+Where possible, the compiler automatically shortcircuits such sequences
+by removing any unneeded intermediate variables.
+In the above case, this would yield
+@samp{@var{STATE_VARIABLE_X_5} = @var{STATE_VARIABLE_X_8}}.
 
 The following code fragments illustrate
-appropriate use of state variable syntax.
+some appropriate uses of state variable syntax.
 
 @table @b
-
 @item Threading the I/O state
 @example
 main(!IO) :-
@@ -1389,12 +1442,25 @@ foldl2(P, [X | Xs], !A, !B) :-
 
 @item Handling accumulators (2)
 @example
-iterate_while2(P, F, !A, !B) :-
-    ( if P(!.A, !.B) then
-        F(!A, !B),
-        iterate_while2(P, F, !A, !B)
+iterate_while2(Test, Update, !A, !B) :-
+    ( if Test(!.A, !.B) then
+        Update(!A, !B),
+        iterate_while2(Test, Update, !A, !B)
     else
         true
+    ).
+@end example
+
+@item Introducing state
+@example
+compute_out(InA, InB, InsC, Out) :-
+    some [!State]
+    (
+        init_state(!:State),
+        update_state_a(InA, !State),
+        update_state_b(InB, !State),
+        list.foldl(update_state_c, InC, !State),
+        compute_output(!.State, Out)
     ).
 @end example
 @end table
