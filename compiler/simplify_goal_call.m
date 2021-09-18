@@ -384,7 +384,7 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
             [words("could have an additional argument"),
             words("explicitly specifying a stream."), nl],
         Spec = conditional_spec($pred, warn_implicit_stream_calls, yes,
-            severity_informational, phase_simplify(report_in_any_mode),
+            severity_warning, phase_simplify(report_in_any_mode),
             [simplest_msg(GoalContext, Pieces)]),
         MaybeSpec = yes(Spec)
     else if
@@ -422,7 +422,7 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
             words("the"), words(Dir), words("stream it specifies"),
             words("to later I/O operations."), nl],
         Spec = conditional_spec($pred, warn_implicit_stream_calls, yes,
-            severity_informational, phase_simplify(report_in_any_mode),
+            severity_warning, phase_simplify(report_in_any_mode),
             [simplest_msg(GoalContext, Pieces)]),
         MaybeSpec = yes(Spec)
     else
