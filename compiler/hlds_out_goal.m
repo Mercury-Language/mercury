@@ -2183,23 +2183,28 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint,
             ),
             (
                 MaybeIO = yes(IOStateVarName),
-                write_indent(Stream, Indent + 1, !IO),
                 maybe_add_comma_newline(Stream, !.AddCommaNewline, !IO),
                 write_indent(Stream, Indent + 1, !IO),
-                io.write_string(Stream, "% io(!" ++ IOStateVarName ++ ")", !IO),
+                io.format(Stream, "io(!%s)", [s(IOStateVarName)], !IO),
                 !:AddCommaNewline = yes
             ;
                 MaybeIO = no
             ),
 
             list.foldl2(write_trace_mutable_var_hlds(Stream, Indent + 1),
-                MutableVars, !.AddCommaNewline, _, !IO),
+                MutableVars, !AddCommaNewline, !IO),
 
-            io.nl(Stream, !IO),
+            (
+                !.AddCommaNewline = no
+            ;
+                !.AddCommaNewline = yes,
+                % There is nothing following that requires a comma.
+                io.nl(Stream, !IO)
+            ),
             write_indent(Stream, Indent + 1, !IO),
-            io.write_string(Stream, "% quantified vars [", !IO),
-            mercury_output_vars(VarSet, VarNamePrint, QuantVars, Stream, !IO),
-            io.write_string(Stream, "]\n", !IO),
+            io.format(Stream, "%% quantified vars [%s]\n",
+                [s(mercury_vars_to_string(VarSet, VarNamePrint, QuantVars))],
+                !IO),
 
             write_indent(Stream, Indent, !IO),
             io.write_string(Stream, "] (\n", !IO)
@@ -2213,10 +2218,10 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint,
             UseParentStack = lc_create_frame_on_child_stack,
             UseParentStackStr = "using_child_stack"
         ),
-        io.format(Stream, "loop_control_spawn_off_%s(",
-            [s(UseParentStackStr)], !IO),
-        mercury_output_vars(VarSet, VarNamePrint, [LCVar, LCSVar], Stream, !IO),
-        io.write_string(Stream, ") (\n", !IO)
+        io.format(Stream, "loop_control_spawn_off_%s(%s) (\n",
+            [s(UseParentStackStr),
+            s(mercury_vars_to_string(VarSet, VarNamePrint, [LCVar, LCSVar]))],
+            !IO)
     ),
     do_write_goal(!.Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint,
         Indent + 1, "\n", Goal, !IO),
@@ -2228,12 +2233,13 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint,
     trace_mutable_var_hlds::in, bool::in, bool::out, io::di, io::uo) is det.
 
 write_trace_mutable_var_hlds(Stream, Indent, MutableVar,
-        !AddCommaNewlineIndent, !IO) :-
+        !AddCommaNewline, !IO) :-
     MutableVar = trace_mutable_var_hlds(MutableName, StateVarName),
-    maybe_add_newline_indent(Stream, !.AddCommaNewlineIndent, Indent, !IO),
-    io.write_string(Stream, "% state(" ++ MutableName ++ ", ", !IO),
-    io.write_string(Stream, "!" ++ StateVarName ++ ")", !IO),
-    !:AddCommaNewlineIndent = yes.
+    maybe_add_comma_newline(Stream, !.AddCommaNewline, !IO),
+    write_indent(Stream, Indent, !IO),
+    io.format(Stream, "state(%s, !%s)",
+        [s(MutableName), s(StateVarName)], !IO),
+    !:AddCommaNewline = yes.
 
 :- pred maybe_add_comma_newline(io.text_output_stream::in, bool::in,
     io::di, io::uo) is det.
@@ -2244,18 +2250,6 @@ maybe_add_comma_newline(Stream, AddCommaNewline, !IO) :-
     ;
         AddCommaNewline = yes,
         io.write_string(Stream, ",\n", !IO)
-    ).
-
-:- pred maybe_add_newline_indent(io.text_output_stream::in, bool::in, int::in,
-    io::di, io::uo) is det.
-
-maybe_add_newline_indent(Stream, AddCommaNewlineIndent, Indent, !IO) :-
-    (
-        AddCommaNewlineIndent = no
-    ;
-        AddCommaNewlineIndent = yes,
-        io.write_string(Stream, "\n", !IO),
-        write_indent(Stream, Indent, !IO)
     ).
 
 %---------------------------------------------------------------------------%
