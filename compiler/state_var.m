@@ -1113,8 +1113,8 @@ merge_changes_made_by_arms([ArmState | ArmStates],
     ;
         UninitVarNames = [_ | _],
         % It is ok for an arm that cannot succeed not to initialize
-        % a variable, but we record a warning anyway, to be printed
-        % in case the procedure has a mode error.
+        % a variable, but we record an informational message anyway,
+        % to be printed in case the procedure has a mode error.
         ArmContext = goal_info_get_context(ArmInfo0),
         report_missing_inits_in_disjunct(ArmContext, UninitVarNames, !Specs)
     ),
