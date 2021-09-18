@@ -7,3 +7,4 @@
 #-----------------------------------------------------------------------------#
 
 MCFLAGS-snapshots = --optimise-constructor-last-call
+MCFLAGS-demangle_test = --no-warn-implicit-stream-calls
