@@ -9551,8 +9551,13 @@ as the use of @samp{pragma foreign_type} results in more type-safe code.
 @subsubsection Using pragma foreign_enum for C
 
 Foreign enumeration values in C must be constants of type @code{MR_Integer}.
-They may be specified as either integer literals
-or via preprocessor macros that expand to integer literals.
+A foreign enumeration value may be specified by one of the following:
+@itemize
+@item An integer literal.
+@item An enumeration constant.
+@item A preprocessor macro that expands to either an integer literal or
+an enumeration constant.
+@end itemize
 
 @node Using pragma foreign_export_enum for C
 @subsubsection Using pragma foreign_export_enum for C
