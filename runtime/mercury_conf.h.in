@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab
 
 // Copyright (C) 1995-2003, 2005-2012 The University of Melbourne.
-// Copyright (C) 2013-2018 The Mercury team.
+// Copyright (C) 2013-2021 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_conf.h.in defines various configuration parameters.
@@ -440,9 +440,9 @@
 
 // The bytecode files represent floats in 64-bit IEEE format.
 //
-// MR_FLOAT_IS_64_BITS: defined iff the C type `float' is exactly 64 bits.
-// MR_DOUBLE_IS_64_BITS: defined iff the C type `double' is exactly 64 bits.
-// MR_LONG_DOUBLE_IS_64_BITS: defined iff the C type `long double' is exactly
+// MR_FLOAT_IS_64_BIT: defined iff the C type `float' is exactly 64 bits.
+// MR_DOUBLE_IS_64_BIT: defined iff the C type `double' is exactly 64 bits.
+// MR_LONG_DOUBLE_IS_64_BIT: defined iff the C type `long double' is exactly
 // 64-bits.
 //
 // XXX why not just have a single MR_64_BIT_FLOAT_TYPE macro,
