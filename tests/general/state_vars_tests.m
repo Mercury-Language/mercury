@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 % state_vars_tests.m
 % Ralph Becket <rafe@cs.mu.oz.au>
-% Wed Apr  3 14:19:02 EST 2002
+% Wed Apr 3 14:19:02 EST 2002
 %---------------------------------------------------------------------------%
 
 :- module state_vars_tests.
@@ -27,8 +27,9 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    unsorted_solutions(test, S),
-    io.print_line(list.reverse(S) `with_type` list(int), !IO).
+    unsorted_solutions(test, Solns),
+    list.reverse(Solns, RevSolns),
+    io.print_line(RevSolns, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -86,21 +87,21 @@ test(X) :-
     some [!A] (
         !:A = 0,
         ( if ( f(!A) ; t(!A) ), !.A = 1 then !:A = 11 else !:A = -1 ),
-        X   = !.A
+        X = !.A
     ).
 
 test(X) :-
     some [!A] (
         !:A = 0,
         ( if ( t(!A) ; f(!A) ), !.A = 1 then !:A = 12 else !:A = -1 ),
-        X   = !.A
+        X = !.A
     ).
 
 test(X) :-
     some [!A] (
         !:A = 0,
         ( add(13, !A) ; add(14, !A) ),
-        X   = !.A
+        X = !.A
     ).
 
 test(X) :-
@@ -108,87 +109,85 @@ test(X) :-
         !:A = 1,
         !:B = 1,
         ( add(14, !A) ; add(15, !B) ),
-        X   = !.A * !.B
+        X = !.A * !.B
     ).
 
 test(X) :-
     some [!A] (
         !:A = 0,
         !:A = fn_a(17, !.A),
-        X   = !.A
+        X = !.A
     ).
 
 test(X) :-
     some [!A] (
         !:A = 0,
         !:A = fn_b(18, !.A),
-        X   = !.A
+        X = !.A
     ).
 
 test(X) :-
     some [!A] (
         !:A = 0,
-        F   = ( func(!.B) = !:B :-
-                    !:B = !.B + 19 ),
+        F = ( func(!.B) = !:B :- !:B = !.B + 19 ),
         !:A = F(!.A),
-        X   = !.A
+        X = !.A
     ).
 
 test(X) :-
     some [!A] (
         !:A = 0,
-        F   = ( func(!.B) = !.B + 20 ),
+        F = ( func(!.B) = !.B + 20 ),
         !:A = F(!.A),
-        X   = !.A
+        X = !.A
     ).
 
 test(X) :-
     some [!A] (
         !:A = 0,
-        F   = ( func(!.A) = !:A :-
-                    !:A = !.A + 21 ),
+        F = ( func(!.A) = !:A :- !:A = !.A + 21 ),
         !:A = F(!.A),
-        X   = !.A
+        X = !.A
     ).
 
 test(X) :-
     some [!A] (
         !:A = 0,
-        F   = ( func(!.A) = !.A + 22 ),
+        F = ( func(!.A) = !.A + 22 ),
         !:A = F(!.A),
-        X   = !.A
+        X = !.A
     ).
 
 test(X) :-
     some [!A] (
         !:A = 0,
-        P   = ( pred(!.B :: in, !:B :: out) is det :- !:B = !.B + 23 ),
+        P = ( pred(!.B :: in, !:B :: out) is det :- !:B = !.B + 23 ),
         P(!A),
-        X   = !.A
+        X = !.A
     ).
 
 test(X) :-
     some [!A] (
         !:A = 0,
-        P   = ( pred(!.B :: in, (!.B + 24) :: out) is det ),
+        P = ( pred(!.B :: in, (!.B + 24) :: out) is det ),
         P(!A),
-        X   = !.A
+        X = !.A
     ).
 
 test(X) :-
     some [!A] (
         !:A = 0,
-        P   = ( pred(!.A :: in, !:A :: out) is det :- !:A = !.A + 25 ),
+        P = ( pred(!.A :: in, !:A :: out) is det :- !:A = !.A + 25 ),
         P(!A),
-        X   = !.A
+        X = !.A
     ).
 
 test(X) :-
     some [!A] (
         !:A = 0,
-        P   = ( pred(!.A :: in, (!.A + 26) :: out) is det ),
+        P = ( pred(!.A :: in, (!.A + 26) :: out) is det ),
         P(!A),
-        X   = !.A
+        X = !.A
     ).
 
 test(!:A * !:B) :-
@@ -200,35 +199,41 @@ test(!:A * !:B) :-
 test(X) :-
     some [!A] (
         !:A = 0,
-        ( if   add(28, !A)
-          then true
-          else !:A = -1
+        ( if add(28, !A) then
+            true
+        else
+            !:A = -1
         ),
-        X   = !.A
+        X = !.A
     ).
 
 test(X) :-
     some [!A] (
         !:A = 0,
-        ( if   add(0, !A)
-          then !:A = !.A + 29
-          else true
+        ( if add(0, !A) then
+            !:A = !.A + 29
+        else
+            true
         ),
-        X   = !.A
+        X = !.A
     ).
 
-% This use of state variables no longer considered valid.
+% This use of state variables is no longer considered valid.
 % test(X) :-
 %      X =
-%         ( if   ( some [!A] !:A = 30 )
-%           then !.A
-%           else 0
-%         ).
+%         ( if ( some [!A] !:A = 30 ) then !.A else 0 ).
 
 test(X) :-
-    ( if   ( some [!A] !:A = 31 )
-      then X = !.A
-      else X = 0
+    ( if ( some [!A] !:A = 31 ) then
+        X = !.A
+    else
+        X = 0
+    ).
+
+test(X) :-
+    some [!A] (
+        !:A = add(30),
+        !.A(3, X)
     ).
 
 %---------------------------------------------------------------------------%
@@ -246,7 +251,7 @@ t(!X) :-
 :- pred f(int::in, int::out) is semidet.
 
 f(!X) :-
-    X0  = !.X,
+    X0 = !.X,
     !:X = !.X + 1,
     !.X = X0.
 
