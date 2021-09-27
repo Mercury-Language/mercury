@@ -1274,127 +1274,332 @@ There are two restrictions concerning state variables in functions,
 whether they are defined by clauses or lambda expressions.
 @itemize
 @item
-@samp{!@var{X}} is not a legitimate function result,
-since it stands for two arguments, rather than one.
+@samp{!@var{X}} is not a legal function result,
+because it stands for two arguments, rather than one.
 @item
-@samp{!@var{X}} may not appear as an argument in a function application
-since this would not make sense
+@samp{!@var{X}} may not appear as an argument in a function application,
+because this would not make sense
 given the usual interpretation of state variables and functions.
 (The default mode of functions is that all arguments are input,
 while in the overwhelming majority of cases, @samp{!:@var{X}} is output.)
 @end itemize
 
-Within each clause, a transformation converts state variables
-into sequences of ordinary logic variables.
-The syntactic conversion is described in terms of
-the notional @samp{transform} function defined next.
+Within each clause, the compiler
+replaces each occurrence of !@var{X} in an argument list
+with two arguments: !.@var{X}, !:@var{X},
+where !.@var{X} represents the current version of the state of !@var{X},
+and !:@var{X} represents its next state.
+It then replaces all occurrences of !.@var{X} and !:@var{X}
+with ordinary variables in way that (in the general case)
+represents a sequence of updates to the state of @var{X}
+from an initial state to a final state.
 
-The transformation is applied once for each state variable @var{X}
-with some fresh variables which we shall call @var{ThisX} and @var{NextX}.
+This replacement is done by code that is equivalent to
+the @samp{transform_goal} and @samp{transform_clause} functions below.
+The basic operation used by these functions is substitution:
+@samp{substitute(@var{Goal},
+[!.@var{X} -> @var{CurX}, !:@var{X} -> @var{NextX}])}
+stands for a copy of @var{Goal} in which
+every free occurrence of @samp{!.@var{X}} is replaced with @var{CurX}, and
+every free occurrence of @samp{!:@var{X}} is replaced with @var{NextX}.
+(A free occurrence is one not bound
+by the head of a clause or lambda, or by an explicit quantification.)
 
-The expression
-@samp{substitute(@var{Term}, @var{X}, @var{ThisX}, @var{NextX})}
-stands for a copy of @var{Term}
-with free occurrences of @samp{!.@var{X}} replaced with @var{ThisX}
-and free occurrences of @samp{!:@var{X}} replaced with @var{NextX}
-(a free occurrence is one not bound
-by the head of a clause or lambda, or by explicit quantification.)
+The @samp{transform_goal(@var{Goal}, @var{X}, @var{CurX}, @var{NextX})}
+function's inputs are
+@itemize
+@item the goal to transform @var{Goal},
+@item the name of the state variable @var{X},
+@item and the ordinary variables @var{CurX} and @var{NextX}
+representing the current and next versions of that state variable.
+@end itemize
+It returns a transformed version of @var{Goal}.
+
+@samp{transform_goal} has a case for each kind of Mercury goal.
+These cases are as follows.
 
 @table @code
 
-@item @var{Head} :- @var{Body}
+@item Calls
+Given a first order call such as
+@samp{@var{predname}(@var{ArgTerm1}, ..., @var{ArgTermN})}
+or a higher-order call such as
+@samp{@var{PredVar}(@var{ArgTerm1}, ..., @var{ArgTermN})},
+if any of the @var{ArgTermI} is !@var{X},
+@samp{transform_goal} replaces that argument with two arguments:
+!.@var{X} and !:@var{X}.
+It then checks whether
+@samp{!:@var{X}} appears in the updated @var{Call}.
+@itemize
+@item
+If it does, then it replaces @var{Call} with
 @example
-transform((@var{Head} :- @var{Body}), @var{X}, @var{ThisX}, @var{NextX}) =
-substitute(@var{Head}, @var{X}, @var{ThisX}, @var{NextX}) :- transform(@var{Body}, @var{X}, @var{ThisX}, @var{NextX})
+substitute(@var{Call}, [!.@var{X} -> @var{CurX}, !:@var{X} -> @var{NextX}])
+@end example
+@item
+If it does not, then it replaces @var{AtomicGoal} with
+@example
+substitute(@var{Call}, [!.@var{X} -> @var{CurX}]),
+@var{NextX} = @var{CurX}
+@end example
+@end itemize
+Note that !.@var{X} can occur in @var{Call} on its own
+(i.e. without !:@var{X}).
+Likewise, !:@var{X} can occur in @var{Call} without !.@var{X},
+but this does not need separate handling.
+
+Note that @var{PredVar} in a higher-order call
+may not be a reference to a state var,
+i.e it may not be !@var{X}, !.@var{X} or !:@var{X}.
+
+@item Unifications
+In a unification @samp{@var{TermA} = @var{TermB}},
+each of @var{TermA} and @var{TermB}
+may have one of the following four forms:
+@itemize
+@item
+The term may be !.@var{S} for some state variable @var{S}.
+If @var{S} is @var{X},
+then @samp{transform_goal} replaces the term with @var{CurX}.
+@item
+The term may be !:@var{S} for some state variable @var{S}.
+If @var{S} is @var{X},
+then @samp{transform_goal} replaces the term with @var{NextX}.
+@item
+The term may be a plain variable
+(i.e. variable that does not refer to any state variable).
+@samp{transform_goal} leaves such terms unchanged.
+@item
+The term may be a non-variable term, which means that
+it must have the form
+@samp{@var{f}(@var{ArgTerm1}, ..., @var{ArgTermN})}.
+@samp{transform_goal} handles these the same way it handles first order calls.
+@end itemize
+Note that @var{TermA} and @var{TermB} may not have the form !@var{S}.
+
+@item State variable field updates
+A state variable field update goal has the form
+@example
+!@var{S} ^ @var{field_list} := @var{Term}
+@end example
+where @var{field_list} is a valid field list @xref{Record syntax}.
+This means that
+@example
+!@var{S} ^ @var{field1} := @var{Term}
+!@var{S} ^ @var{field1} ^ @var{field2} := @var{Term}
+!@var{S} ^ @var{field1} ^ @var{field2} ^ @var{field3} := @var{Term}
+@end example
+are all valid field update goals.
+If @var{S} is @var{X},
+@samp{transform_goal} replaces such goals with
+@example
+@var{NextX} = @var{CurX} ^ @var{field_list} := @var{Term}
+@end example
+Otherwise, it leaves the goal unchanged.
+
+@item Conjunctions
+Given a nonempty conjunction,
+whether a sequential conjunction such as
+@var{Goal1}, @var{Goal2}
+or a parallel conjunction such as @var{Goal1} & @var{Goal2},
+@samp{transform_goal}
+@itemize
+@item creates a fresh variable @var{MidX},
+@item replaces @var{Goal1} with
+@example
+substitute(@var{Goal1}, [!.@var{X} -> @var{CurX}, !:@var{X} -> @var{MidX}])
+@end example
+@item replaces @var{Goal2} with
+@example
+substitute(@var{Goal2}, [!.@var{X} -> @var{MidX}, !:@var{X} -> @var{NextX}])
+@end example
+@end itemize
+This implies that first @var{Goal1}
+updates the state of @var{X} from @var{CurX} to @var{MidX},
+and then @var{Goal2}
+updates the state of @var{X} from @var{MidX} to @var{NextX}.
+
+Given the empty conjunction, i.e. the goal @samp{true},
+@samp{transform_goal} will replace it with
+@example
+@var{NextX} = @var{CurX}
 @end example
 
-@item @var{Head} --> @var{Body}
+@item Disjunctions
+Given a disjunction such as @var{Goal1} ; @var{Goal2},
+@samp{transform_goal}
+@itemize
+@item replaces @var{Goal1} with
 @example
-transform((@var{Head} --> @var{Body}), @var{X}, @var{ThisX}, @var{NextX}) =
-substitute(@var{Head}, @var{X}, @var{ThisX}, @var{NextX}) :- transform(@var{Body}, @var{X}, @var{ThisX}, @var{NextX})
+substitute(@var{Goal1}, [!.@var{X} -> @var{CurX}, !:@var{X} -> @var{NextX}])
 @end example
+@item replaces @var{Goal2} with
+@example
+substitute(@var{Goal2}, [!.@var{X} -> @var{CurX}, !:@var{X} -> @var{NextX}])
+@end example
+@end itemize
+This shows that both disjuncts start with the @var{CurX},
+and both end with @var{NextX}.
+If a disjunct has no update of !@var{X},
+then the value of @var{NextX} in that disjunct will be set to @var{CurX}.
 
-@item @var{Goal1}, @var{Goal2}
-@example
-transform((@var{Goal1}, @var{Goal2}), @var{X}, @var{ThisX}, @var{NextX}) =
-transform(@var{Goal1}, @var{X}, @var{ThisX}, @var{TmpX}), transform(@var{Goal2}, @var{X}, @var{TmpX}, @var{NextX})
-@end example
-for some fresh variable @var{TmpX}.
+The empty disjunction, i.e. the goal @samp{fail}, cannot succeed,
+so what the value of !:@var{X} would be if it @emph{did} succeed is moot.
+Therefore @samp{transform_goal} returns empty disjunctions unchanged.
 
-@item @var{Goal1} ; @var{Goal2}
+@item Negations
+Given a negated goal of the form @samp{not @var{NegatedGoal}}
+@samp{transform_goal}
+@itemize
+@item creates a fresh variable @var{DummyX}, and then
+@item replaces @samp{not @var{NegatedGoal}} with
 @example
-transform((@var{Goal1} ; @var{Goal2}), @var{X}, @var{ThisX}, @var{NextX}) =
-transform(@var{Goal1}, @var{X}, @var{ThisX}, @var{NextX}) ; transform(@var{Goal2}, @var{X}, @var{ThisX}, @var{NextX})
+@samp{not} substitute(@samp{NegatedGoal}, [!.@var{X} -> @var{CurX}, !:@var{X} -> @var{DummyX}]),
+@var{NextX} = @var{CurX}
 @end example
+@end itemize
+It does this because negated goals
+may not generate any outputs visible from the rest of the code,
+which means that any output they @emph{do} generate
+must be local to the negated goal.
 
-@item not @var{Goal}
-@item \+ @var{Goal}
-@example
-transform((not @var{Goal}), @var{X}, @var{ThisX}, @var{NextX}) =
-not transform(@var{Goal1}, @var{X}, @var{ThisX}, @var{DummyX}), @var{NextX} = @var{ThisX}
-@end example
-for some fresh variable @var{DummyX}.
+Negations that use @samp{\+ @var{NegatedGoal}} notation
+are handled exactly the same way,
 
-@item if @var{Goal1} then @var{Goal2} else @var{Goal3}
-@item @var{Goal1} -> @var{Goal2} ; @var{Goal3}
+@item If-then-elses
+Given an if-then-else, whether it uses
+( if @var{Cond} then @var{Then} else @var{Else} ) syntax or
+( @var{Cond} -> @var{Then} ; @var{Else} ) syntax,
+@samp{transform_goal}
+@itemize
+@item creates a fresh variable @var{MidX},
+@item replaces @var{Cond} with
 @example
-transform((if @var{Goal1} then @var{Goal2} else @var{Goal3}), @var{X}, @var{ThisX}, @var{NextX}) =
-if transform(@var{Goal1}, @var{X}, @var{ThisX}, @var{TmpX}) then transform(@var{Goal2}, @var{X}, @var{TmpX},  @var{NextX})
-                                    else transform(@var{Goal3}, @var{X}, @var{ThisX}, @var{NextX})
+substitute(@var{Cond}, [!.@var{X} -> @var{CurX}, !:@var{X} -> @var{MidX}])
 @end example
-for some fresh variable @var{TmpX}.
+@item replaces @var{Then} with
+@example
+substitute(@var{Then}, [!.@var{X} -> @var{MidX}, !:@var{X} -> @var{NextX}])
+@end example
+@item replaces @var{Else} with
+@example
+substitute(@var{Else}, [!.@var{X} -> @var{CurX}, !:@var{X} -> @var{NextX}])
+@end example
+@end itemize
+This effectively treats an if-then-else as being a disjunction,
+with the first disjunct being
+the conjunction of the @var{Cond} and @var{Then} goals,
+and the second disjunct being the @var{Else} goal.
+(The @var{Else} goal is implicitly conjoined inside the second disjunct
+with the negation of the existential closure of @var{Cond},
+since the else case is executed only if the condition has no solution.)
 
-@item @var{Goal1} => @var{Goal2}
-@item @var{Goal2} <= @var{Goal1}
-@example
-transform((@var{Goal1} => @var{Goal2}), @var{X}, @var{ThisX}, @var{NextX}) =
-transform(@var{Goal1}, @var{X}, @var{ThisX}, @var{TmpX}) => transform(@var{Goal2}, @var{X}, @var{TmpX},  @var{NextX}),
-@var{NextX} = @var{ThisX}
-@end example
-for some fresh variable @var{TmpX}.
+@item Bidirectional implications
+@samp{transform_goal} treats a bidirectional implication goal,
+which has the form @var{GoalA} <=> @var{GoalB},
+as it were the conjunction of its two constituent unidirectional implications:
+@var{GoalA} => @var{GoalB}, @var{GoalA} <= @var{GoalB}.
 
-@item all @var{Vars} @var{Goal}
-@example
-transform((all @var{Vars} @var{Goal}), @var{X}, @var{ThisX}, @var{NextX}) =
-all @var{Vars} transform(@var{Goal}, @var{X}, @var{ThisX}, @var{DummyX}), @var{NextX} = @var{ThisX}
-@end example
-for some fresh variable @var{DummyX}.
+@item Unidirectional implications
+@samp{transform_goal} treats a unidirectional implication,
+which has one of the two forms
+@samp{@var{GoalA} => @var{GoalB}} and @samp{@var{GoalB} <= @var{GoalA}},
+as if they were written as
+@samp{not (@var{GoalA}, not @var{GoalB})}.
 
-@item some @var{Vars} @var{Goal}
-@example
-transform((some @var{Vars} @var{Goal}), @var{X}, @var{ThisX}, @var{NextX}) =
-some @var{Vars} transform(@var{Goal}, @var{X}, @var{ThisX}, @var{NextX})
-@end example
+@item Universal quantifications
+@samp{transform_goal} treats universal quantifications,
+which have the form @samp{all @var{Vars} @var{SubGoal}}
+as if they were written as
+@samp{not (some @var{Vars} (not @var{SubGoal}))}.
+Note that in universal quantifications,
+@var{Vars} must a list of ordinary variables.
+@c XXX the state var transformation does not enforce this.
 
-@item !@var{X} ^ @var{field_list} := @var{Term}
-A field update.
-Replaces a field in the argument.
-@var{Term} must be a valid data-term.
-@var{field_list} must be a valid field list.
-@xref{Record syntax}.
+@item Existential quantifications
+In existential quantifications,
+which have the form @samp{some @var{Vars} @var{SubGoal}},
+@var{Vars} must be a list, in which every element
+must be either ordinary variable (such as @var{A}),
+or a state variable (such as !@var{B}).
+(Note that @var{Vars} may not contain
+any element whose form is !.@var{B} or !:@var{B}.)
+@itemize
+@item
+If @var{Vars} does not contain !@var{X},
+then @samp{transform_goal} will replace @var{SubGoal} with
 @example
-transform((!@var{X} ^ @var{field_list} := @var{Term}), @var{X}, @var{ThisX}, @var{NextX}) =
-NextX = ThisX ^ field_list := Term
+substitute(@var{SubGoal}, [!.@var{X} -> @var{CurX}, !:@var{X} -> @var{NextX}])
 @end example
-
-@item @var{Call_or_Unification}
-If @samp{!:@var{X}} does not appear in @var{Call_or_Unification} then
-@example
-transform(@var{Call_or_Unification}, @var{X}, @var{ThisX}, @var{NextX}) =
-substitute(@var{Call_or_Unification}, @var{X}, @var{ThisX}, @var{NextX}), @var{NextX} = @var{ThisX}
-@end example
-If @samp{!:@var{X}} does appear in @var{Call_or_Unification} then
-@example
-transform(@var{Call_or_Unification}, @var{X}, @var{ThisX}, @var{NextX}) =
-substitute(@var{Call_or_Unification}, @var{X}, @var{ThisX}, @var{NextX})
-@end example
+@item
+If @var{Vars} does contain !@var{X},
+then @samp{transform_goal} will leave @var{SubGoal} unchanged, because
+any references to !.@var{X}, !:@var{X} and !@var{X} inside @var{SubGoal}
+refer to the state variable @var{X} introduced by this scope,
+not the one visible outside.
+Effectively, this state variable @var{X}
+@emph{shadows} the one visible outside.
+@end itemize
+Note that state variables in @var{Vars}
+are handled by @samp{transform_clause} below.
 
 @end table
+
+The @samp{transform_clause} function's input is a clause,
+which may be a non-DCG clause or a DCG clause, which have the forms
+@example
+@var{predname}(@var{ArgTerm1}, ..., @var{ArgTermN}) :- @var{BodyGoal}.
+@end example
+and
+@example
+@var{predname}(@var{ArgTerm1}, ..., @var{ArgTermN}) --> @var{BodyGoal}.
+@end example
+respectively.
+@samp{transform_clause} handles both the same way.
+
+@itemize
+@item While any of the @var{ArgTerms}
+has one of the forms !.@var{X}, !:@var{X} and !@var{X},
+@itemize
+@item @samp{transform_clause} will create two fresh variables,
+@var{InitX} and @var{FinalX},
+@item it will replace
+any one of the @var{ArgTerms} that is !.@var{X} with @var{InitX},
+any one of the @var{ArgTerms} that is !:@var{X} with @var{FinalX}, and
+any one of the @var{ArgTerms} that is !@var{X} with
+the argument pair @var{InitX}, @var{FinalX}, and
+@item it will replace @var{BodyGoal} with the result of
+@samp{transform_goal(@var{BodyGoal}, @var{X}, @var{InitX}, @var{FinalX})}.
+@end itemize
+@item While @var{BodyGoal} contains a lambda expression
+whose argument list contains either !.@var{X} or !:@var{X} or both:
+@itemize
+@item @samp{transform_clause} will create two fresh variables,
+@var{InitX} and @var{FinalX},
+@item it will replace
+any one of the arguments that is !.@var{X} with @var{InitX}, and
+any one of the arguments that is !:@var{X} with @var{FinalX}
+(there may not be any argument that is !@var{X}), and
+@item it will replace the lambda goal @var{BodyGoal} with the result of
+@samp{transform_goal(@var{BodyGoal}, @var{X}, @var{InitX}, @var{FinalX})}.
+@end itemize
+@item While @var{BodyGoal} contains an existential quantification goal
+@samp{some @var{Vars} @var{SubGoal}}
+where @var{Vars} contains a state variable such as !@var{B},
+@itemize
+@item @samp{transform_clause} will create two fresh variables,
+@var{InitB} and @var{FinalB},
+@item it will replace @var{SubGoal} with the result of
+@samp{transform_goal(@var{SubGoal}, @var{B}, @var{InitB}, @var{FinalB})},
+and then
+@item it will delete !@var{B} from @var{Vars}.
+@end itemize
+@end itemize
 
 Actual application of this transformation would, in the general case,
 result in the generation of many different versions of each state variable,
 for which we need more names than just
-@samp{@var{ThisX}}, @samp{@var{TmpX}} and @samp{@var{NextX}}.
+@samp{@var{CurX}}, @samp{@var{TmpX}} and @samp{@var{NextX}}.
 The Mercury compiler therefore uses
 @itemize
 @item
