@@ -107,14 +107,17 @@
     % make_fresh_arg_vars_subst_svars(Args, Vars, VarsArgs,
     %   !VarSet, !SVarState, !Specs):
     %
-    % Allocate a distinct variable for each term in Args. Return a list of
-    % these variables in Vars, and return lists of each Var and Arg packaged
-    % together in VarsArgs. (Almost all of our callers want both.)
+    % Ensure we have a distinct variable for each term in Args.
+    % Return a list of these variables in Vars, and return lists of each Var
+    % and Arg packaged together in VarsArgs. (Almost all of our callers
+    % want both.)
     %
     % For each term in Args, if the term is a variable V which is distinct
-    % from the variables already produced, then use just V as the variable
-    % paired with the term in VarsArgs. If it isn't, we pair the term
+    % from the variables already produced, then use just V as the distinct
+    % variable paired with the term in VarsArgs. If it isn't, we pair the term
     % with a fresh variable we allocate from !VarSet.
+    % XXX The use of "fresh" in the name of this predicate implies
+    % that we never just use V, which is misleading.
     %
     % !:VarSet will be the varset resulting after all the necessary variables
     % have been allocated. If any of the Args is of the form !.S or !:S,
