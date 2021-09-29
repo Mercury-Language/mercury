@@ -2153,8 +2153,8 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint,
         DumpOptionsBackup = !.Info ^ hoi_dump_hlds_options_backup,
         !Info ^ hoi_dump_hlds_options := DumpOptionsBackup
     ;
-        Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIO,
-            MutableVars, QuantVars),
+        Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIO0,
+            MutableVars0, QuantVars),
         io.write_string(Stream, "trace [\n", !IO),
         some [!AddCommaNewline] (
             !:AddCommaNewline = no,
@@ -2180,6 +2180,57 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint,
                 !:AddCommaNewline = yes
             ;
                 MaybeRunTime = no
+            ),
+            Lang = get_output_lang(!.Info ^ hoi_merc_out_info),
+            (
+                Lang = output_mercury,
+                % After we have read in trace goals as expressions,
+                % goal_expr_to_goal.m, in the process of converting
+                % those goal_exprs to HLDS goals, wraps the goal
+                % in the scope with code to get and set the I/O state
+                % and/or any mutables mentioned by the scope.
+                %
+                % Therefore when generate Mercury code, we don't write
+                % these parts of the trace goal out. If we did, then
+                % two problems would arise.
+                %
+                % - The obvious problem is that we would get and set
+                %   the I/O state and any mutables twice.
+                %
+                % - In fact, we never get there, because another problem
+                %   arises first, which is that goal_expr_to_goal.m generates
+                %   the calls to getter and setter predicates in an
+                %   unqualified form. When reading the compiler reads such
+                %   code from .opt files, it expects every call in that code
+                %   to have been fully module qualified by the compiler
+                %   invocation that created the .opt file, but obviously,
+                %   that compiler invocation cannot do that on code that
+                %   only a later compiler invocation will create.
+                %
+                % Omitting any io() and state() components from .opt files
+                % works just fine. The other situation in which we write
+                % Mercury code out with output_mercury is when we generate
+                % .ugly files. In that use case, we would prefer to
+                % write out io() and state() components while also
+                % (a) deleting the calls to the get and set predicates
+                % they introduce, and (b) undoing the expansion of the
+                % state variables they specify. While (a) could be done
+                % relatively easily with the help of a goal features
+                % introduced specifically for this purpose, (b) is much
+                % harder. Since .ugly files are not an important use case,
+                % we don't bother.
+                MaybeIO = no,
+                MutableVars = []
+            ;
+                Lang = output_debug,
+                % When generating HLDS dumps, it does not matter what
+                % goal_expr_to_goal.m would do with our output, so we prefer
+                % to generate code that reflects the original source code
+                % as far as possible, accepting that, as explained above,
+                % undoing the transformations that goal_expr_to_goal.m
+                % has already done to the goal in the scope is impractical.
+                MaybeIO = MaybeIO0,
+                MutableVars = MutableVars0
             ),
             (
                 MaybeIO = yes(IOStateVarName),
