@@ -212,11 +212,11 @@ Changes to the Mercury standard library
 
 * The following predicates have been added to this module:
 
-    - pred foldl3_maybe/8
-    - pred foldl4_maybe/10
-    - pred foldl5_maybe/12
-    - pred map_foldl4_maybe/11
-    - pred map_foldl5_maybe/13
+    - pred `foldl3_maybe/8`
+    - pred `foldl4_maybe/10`
+    - pred `foldl5_maybe/12`
+    - pred `map_foldl4_maybe/11`
+    - pred `map_foldl5_maybe/13`
 
 ### Changes to the `prolog` module
 
