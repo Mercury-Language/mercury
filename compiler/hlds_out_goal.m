@@ -2252,10 +2252,16 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint,
                 % There is nothing following that requires a comma.
                 io.nl(Stream, !IO)
             ),
-            write_indent(Stream, Indent + 1, !IO),
-            io.format(Stream, "%% quantified vars [%s]\n",
-                [s(mercury_vars_to_string(VarSet, VarNamePrint, QuantVars))],
-                !IO),
+            (
+                Lang = output_mercury
+            ;
+                Lang = output_debug,
+                QuantVarsStr =
+                    mercury_vars_to_string(VarSet, VarNamePrint, QuantVars),
+                write_indent(Stream, Indent + 1, !IO),
+                io.format(Stream, "%% quantified vars [%s]\n",
+                    [s(QuantVarsStr)], !IO)
+            ),
 
             write_indent(Stream, Indent, !IO),
             io.write_string(Stream, "] (\n", !IO)
