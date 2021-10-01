@@ -1,16 +1,16 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2014 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: item_util.m.
 %
 % This module contains utility predicates for dealing with items.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.item_util.
 :- interface.
@@ -240,6 +240,25 @@
 
 %---------------------------------------------------------------------------%
 %
+% Given a checked map for types, insts or modes, return the interface items
+% and the implementation items they represent. (This will be a consistent
+% subset of the set of the relevant kind of items in the module's code.)
+% For types, return the set of foreign_enum items as well; these are all
+% in the implementation section.
+%
+
+:- pred type_ctor_checked_map_get_src_defns(type_ctor_checked_map::in,
+    list(item_type_defn_info)::out, list(item_type_defn_info)::out,
+    list(item_foreign_enum_info)::out) is det.
+
+:- pred inst_ctor_checked_map_get_src_defns(inst_ctor_checked_map::in,
+    list(item_inst_defn_info)::out, list(item_inst_defn_info)::out) is det.
+
+:- pred mode_ctor_checked_map_get_src_defns(mode_ctor_checked_map::in,
+    list(item_mode_defn_info)::out, list(item_mode_defn_info)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
 % Wrapping up pieces of information with a dummy context
 % and a dummy sequence number.
 %
@@ -305,6 +324,16 @@
     = item_type_defn_info.
 :- func wrap_foreign_type_defn(item_type_defn_info_foreign)
     = item_type_defn_info.
+
+:- func wrap_abstract_inst_defn(item_inst_defn_info_abstract)
+    = item_inst_defn_info.
+:- func wrap_eqv_inst_defn(item_inst_defn_info_eqv)
+    = item_inst_defn_info.
+
+:- func wrap_abstract_mode_defn(item_mode_defn_info_abstract)
+    = item_mode_defn_info.
+:- func wrap_eqv_mode_defn(item_mode_defn_info_eqv)
+    = item_mode_defn_info.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1600,6 +1629,76 @@ project_pragma_type(item_pragma_info(Pragma, _, _)) = Pragma.
 
 %---------------------------------------------------------------------------%
 
+type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
+        IntTypeDefns, ImpTypeDefns, ImpForeignEnums) :-
+    map.values(TypeCtorCheckedMap, TypeCtorCheckedDefns),
+    list.map3(type_ctor_checked_defn_get_src_defns, TypeCtorCheckedDefns,
+        IntTypeDefnLists, ImpTypeDefnLists, ImpForeignEnumLists),
+    list.condense(IntTypeDefnLists, IntTypeDefns),
+    list.condense(ImpTypeDefnLists, ImpTypeDefns),
+    list.condense(ImpForeignEnumLists, ImpForeignEnums).
+
+inst_ctor_checked_map_get_src_defns(InstCtorCheckedMap,
+        IntInstDefns, ImpInstDefns) :-
+    map.values(InstCtorCheckedMap, InstCtorCheckedDefns),
+    list.map2(inst_ctor_checked_defn_get_src_defns, InstCtorCheckedDefns,
+        IntInstDefnLists, ImpInstDefnLists),
+    list.condense(IntInstDefnLists, IntInstDefns),
+    list.condense(ImpInstDefnLists, ImpInstDefns).
+
+mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
+        IntModeDefns, ImpModeDefns) :-
+    map.values(ModeCtorCheckedMap, ModeCtorCheckedDefns),
+    list.map2(mode_ctor_checked_defn_get_src_defns, ModeCtorCheckedDefns,
+        IntModeDefnLists, ImpModeDefnLists),
+    list.condense(IntModeDefnLists, IntModeDefns),
+    list.condense(ImpModeDefnLists, ImpModeDefns).
+
+%---------------------%
+
+:- pred type_ctor_checked_defn_get_src_defns(type_ctor_checked_defn::in,
+    list(item_type_defn_info)::out, list(item_type_defn_info)::out,
+    list(item_foreign_enum_info)::out) is det.
+
+type_ctor_checked_defn_get_src_defns(CheckedDefn, IntDefns, ImpDefns,
+        ImpForeignEnums) :-
+    (
+        CheckedDefn = checked_defn_solver(_, SrcDefnsSolver),
+        SrcDefnsSolver = src_defns_solver(MaybeIntDefn, MaybeImpDefn),
+        IntDefns = maybe_to_list(MaybeIntDefn),
+        ImpDefns = maybe_to_list(MaybeImpDefn),
+        ImpForeignEnums = []
+    ;
+        CheckedDefn = checked_defn_std(_, SrcDefnsStd),
+        SrcDefnsStd = src_defns_std(IntDefns, ImpDefns, ImpForeignEnums)
+    ).
+
+:- pred inst_ctor_checked_defn_get_src_defns(inst_ctor_checked_defn::in,
+    list(item_inst_defn_info)::out, list(item_inst_defn_info)::out) is det.
+
+inst_ctor_checked_defn_get_src_defns(CheckedDefn, IntDefns, ImpDefns) :-
+    CheckedDefn = checked_defn_inst(_, SrcDefns),
+    SrcDefns = src_defns_inst(MaybeIntDefn, MaybeImpDefn),
+    IntDefns = maybe_to_list(MaybeIntDefn),
+    ImpDefns = maybe_to_list(MaybeImpDefn).
+
+:- pred mode_ctor_checked_defn_get_src_defns(mode_ctor_checked_defn::in,
+    list(item_mode_defn_info)::out, list(item_mode_defn_info)::out) is det.
+
+mode_ctor_checked_defn_get_src_defns(CheckedDefn, IntDefns, ImpDefns) :-
+    CheckedDefn = checked_defn_mode(_, SrcDefns),
+    SrcDefns = src_defns_mode(MaybeIntDefn, MaybeImpDefn),
+    IntDefns = maybe_to_list(MaybeIntDefn),
+    ImpDefns = maybe_to_list(MaybeImpDefn).
+
+    % XXX Should we move this to library/maybe.m?
+:- func maybe_to_list(maybe(T)) = list(T).
+
+maybe_to_list(no) = [].
+maybe_to_list(yes(X)) = [X].
+
+%---------------------------------------------------------------------------%
+
 wrap_include(ModuleName) = Include :-
     Include = item_include(ModuleName, term.context_init, item_no_seq_num).
 
@@ -1738,7 +1837,7 @@ wrap_marker_pragma_item(X) = Item :-
         Item = item_decl_pragma(Pragma)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 wrap_abstract_type_defn(AbstractDefnInfo) = TypeDefnInfo :-
     AbstractDefn = AbstractDefnInfo ^ td_ctor_defn,
@@ -1765,6 +1864,26 @@ wrap_foreign_type_defn(ForeignDefnInfo) = TypeDefnInfo :-
     TypeDefnInfo = ForeignDefnInfo ^ td_ctor_defn
         := parse_tree_foreign_type(ForeignDefn).
 
-%-----------------------------------------------------------------------------%
+%---------------------%
+
+wrap_abstract_inst_defn(AbstractDefnInfo) = InstDefnInfo :-
+    InstDefnInfo = AbstractDefnInfo ^ id_inst_defn := abstract_inst_defn.
+
+wrap_eqv_inst_defn(EqvDefnInfo) = InstDefnInfo :-
+    EqvDefn = EqvDefnInfo ^ id_inst_defn,
+    InstDefnInfo = EqvDefnInfo ^ id_inst_defn
+        := nonabstract_inst_defn(EqvDefn).
+
+%---------------------%
+
+wrap_abstract_mode_defn(AbstractDefnInfo) = ModeDefnInfo :-
+    ModeDefnInfo = AbstractDefnInfo ^ md_mode_defn := abstract_mode_defn.
+
+wrap_eqv_mode_defn(EqvDefnInfo) = ModeDefnInfo :-
+    EqvDefn = EqvDefnInfo ^ md_mode_defn,
+    ModeDefnInfo = EqvDefnInfo ^ md_mode_defn
+        := nonabstract_mode_defn(EqvDefn).
+
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.item_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

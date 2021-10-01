@@ -37,7 +37,7 @@
 % The data structure that this module manages is the predicate_table.
 % This contains the pred_table, which maps pred_ids to pred_infos, but
 % it also contains several different kinds of index structures that
-% allow predicates and functions to be lookup up by various combinations
+% allow predicates and functions to be looked up by various combinations
 % of name, module qualifier on the name, and arity.
 %
 % NOTE Almost all of this module manages the indexes, so the name

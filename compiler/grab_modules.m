@@ -1528,7 +1528,7 @@ record_includes_imports_uses_in_parse_tree_int1(Ancestors,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
     ParseTreeInt1 = parse_tree_int1(ModuleName, _, _,
         IntInclMap, ImpInclMap, _InclMap, _, _, _,
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
+        _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
     IntIncls = module_names_contexts_to_item_includes(IntInclMap),
     ImpIncls = module_names_contexts_to_item_includes(ImpInclMap),
@@ -1566,7 +1566,7 @@ record_includes_imports_uses_in_parse_tree_int2(Ancestors,
         ParseTreeInt2, ReadWhyInt2, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
     ParseTreeInt2 = parse_tree_int2(ModuleName, _, _,
-        IntInclMap, _ParseTreeInclMap, _, _, _, _, _, _, _, _, _, _, _),
+        IntInclMap, _ParseTreeInclMap, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
     IntIncls = module_names_contexts_to_item_includes(IntInclMap),
     (

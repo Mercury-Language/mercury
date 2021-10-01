@@ -348,6 +348,16 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     ;       parse_tree_abstract_type(type_details_abstract)
     ;       parse_tree_foreign_type(type_details_foreign_generic).
 
+% XXX This type should be split into two.
+%
+% The new type type_details_sub should be for subtypes. It should have
+% fields listing its supertype and its ctors. It should not have a
+% du_canonical field or a du_direct_arg field, since those aspects
+% of the subtype are decided by the supertype.
+%
+% The new type_details_du should be for non-subtypes, and should have
+% no du_maybe_subtype field.
+%
 :- type type_details_du
     --->    type_details_du(
                 % Is this a subtype, and if so, of which other type?

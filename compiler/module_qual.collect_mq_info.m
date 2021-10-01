@@ -392,10 +392,10 @@ collect_mq_info_in_parse_tree_int1(ReadWhy1, ParseTreeInt1, !Info) :-
     ParseTreeInt1 = parse_tree_int1(_ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, InclMap,
         _IntUseMap, _ImpUseMap, _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        TypeCheckedMap, InstCheckedMap, ModeCheckedMap,
         IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
         _IntDeclPragmas, IntPromises, _IntTypeRepnMap,
-        _ImpTypeDefnMap, _ImpForeignEnumMap, _ImpTypeClasses),
+        _ImpTypeClasses),
 
     mq_info_get_modules(!.Info, Modules0),
     map.foldl(collect_mq_info_in_included_module_info(IntPermissions),
@@ -403,18 +403,18 @@ collect_mq_info_in_parse_tree_int1(ReadWhy1, ParseTreeInt1, !Info) :-
     mq_info_set_modules(Modules, !Info),
 
     mq_info_get_types(!.Info, Types0),
-    IntTypeIds = list.map(type_ctor_to_mq_id, map.keys(IntTypeDefnMap)),
-    list.foldl(id_set_insert(IntPermissions), IntTypeIds, Types0, Types),
+    map.foldl(collect_mq_info_in_int_type_defn(IntPermissions),
+        TypeCheckedMap, Types0, Types),
     mq_info_set_types(Types, !Info),
 
     mq_info_get_insts(!.Info, Insts0),
-    IntInstIds = list.map(inst_ctor_to_mq_id, map.keys(IntInstDefnMap)),
-    list.foldl(id_set_insert(IntPermissions), IntInstIds, Insts0, Insts),
+    map.foldl(collect_mq_info_in_int_inst_defn(IntPermissions),
+        InstCheckedMap, Insts0, Insts),
     mq_info_set_insts(Insts, !Info),
 
     mq_info_get_modes(!.Info, Modes0),
-    IntModeIds = list.map(mode_ctor_to_mq_id, map.keys(IntModeDefnMap)),
-    list.foldl(id_set_insert(IntPermissions), IntModeIds, Modes0, Modes),
+    map.foldl(collect_mq_info_in_int_mode_defn(IntPermissions),
+        ModeCheckedMap, Modes0, Modes),
     mq_info_set_modes(Modes, !Info),
 
     list.foldl(collect_mq_info_in_item_typeclass(IntPermissions),
@@ -422,6 +422,123 @@ collect_mq_info_in_parse_tree_int1(ReadWhy1, ParseTreeInt1, !Info) :-
     list.foldl(collect_mq_info_in_item_instance, IntInstances, !Info),
     list.foldl(collect_mq_info_in_item_promise(mq_used_in_interface),
         IntPromises, !Info).
+
+:- pred collect_mq_info_in_int_type_defn(module_permissions::in,
+    type_ctor::in, type_ctor_checked_defn::in,
+    type_id_set::in, type_id_set::out) is det.
+
+collect_mq_info_in_int_type_defn(IntPermissions, TypeCtor, CheckedDefn,
+        !Types) :-
+    (
+        CheckedDefn = checked_defn_solver(SolverDefn, _),
+        (
+            SolverDefn = solver_type_abstract(AbsStatus, _),
+            (
+                AbsStatus = abstract_solver_type_exported,
+                id_set_insert(IntPermissions,  type_ctor_to_mq_id(TypeCtor),
+                    !Types)
+            ;
+                AbsStatus = abstract_solver_type_private
+            )
+        ;
+            SolverDefn = solver_type_full(MaybeAbsDefn, _),
+            (
+                MaybeAbsDefn = yes(_),
+                id_set_insert(IntPermissions,  type_ctor_to_mq_id(TypeCtor),
+                    !Types)
+            ;
+                MaybeAbsDefn = no
+            )
+        )
+    ;
+        CheckedDefn = checked_defn_std(StdDefn, _),
+        (
+            StdDefn = std_mer_type_eqv(EqvStatus, _),
+            (
+                ( EqvStatus = std_eqv_type_mer_exported
+                ; EqvStatus = std_eqv_type_abstract_exported
+                ),
+                id_set_insert(IntPermissions,  type_ctor_to_mq_id(TypeCtor),
+                    !Types)
+            ;
+                EqvStatus = std_eqv_type_all_private
+            )
+        ;
+            StdDefn = std_mer_type_du_subtype(SubStatus, _),
+            (
+                ( SubStatus = std_sub_type_mer_exported
+                ; SubStatus = std_sub_type_abstract_exported
+                ),
+                id_set_insert(IntPermissions,  type_ctor_to_mq_id(TypeCtor),
+                    !Types)
+            ;
+                SubStatus = std_sub_type_all_private
+            )
+        ;
+            (
+                StdDefn =
+                    std_mer_type_du_all_plain_constants(DuStatus, _, _, _, _)
+            ;
+                StdDefn =
+                    std_mer_type_du_not_all_plain_constants(DuStatus, _, _)
+            ),
+            (
+                ( DuStatus = std_du_type_mer_ft_exported
+                ; DuStatus = std_du_type_mer_exported
+                ; DuStatus = std_du_type_abstract_exported
+                ),
+                id_set_insert(IntPermissions,  type_ctor_to_mq_id(TypeCtor),
+                    !Types)
+            ;
+                DuStatus = std_du_type_all_private
+            )
+        ;
+            StdDefn = std_mer_type_abstract(AbsStatus, _, _),
+            (
+                ( AbsStatus = std_abs_type_ft_exported
+                ; AbsStatus = std_abs_type_abstract_exported
+                ),
+                id_set_insert(IntPermissions,  type_ctor_to_mq_id(TypeCtor),
+                    !Types)
+            ;
+                AbsStatus = std_abs_type_all_private
+            )
+        )
+    ).
+
+:- pred collect_mq_info_in_int_inst_defn(module_permissions::in,
+    inst_ctor::in, inst_ctor_checked_defn::in,
+    inst_id_set::in, inst_id_set::out) is det.
+
+collect_mq_info_in_int_inst_defn(IntPermissions, InstCtor, CheckedDefn,
+        !Insts) :-
+    CheckedDefn = checked_defn_inst(StdInstDefn, _),
+    StdInstDefn = std_inst_defn(Status, _),
+    (
+        ( Status = std_inst_exported
+        ; Status = std_inst_abstract_exported
+        ),
+        id_set_insert(IntPermissions,  inst_ctor_to_mq_id(InstCtor), !Insts)
+    ;
+        Status = std_inst_all_private
+    ).
+
+:- pred collect_mq_info_in_int_mode_defn(module_permissions::in,
+    mode_ctor::in, mode_ctor_checked_defn::in,
+    mode_id_set::in, mode_id_set::out) is det.
+
+collect_mq_info_in_int_mode_defn(IntPermissions, ModeCtor, CheckedDefn,
+        !Modes) :-
+    CheckedDefn = checked_defn_mode(StdModeDefn, _),
+    StdModeDefn = std_mode_defn(Status, _),
+    (
+        ( Status = std_mode_exported
+        ; Status = std_mode_abstract_exported
+        ),
+        id_set_insert(IntPermissions,  mode_ctor_to_mq_id(ModeCtor), !Modes)
+    ;
+        Status = std_mode_all_private
+    ).
 
 %---------------------------------------------------------------------------%
 

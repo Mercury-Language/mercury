@@ -64,6 +64,14 @@
                 % The name of the type constructor whose definition we are in.
                 type_ctor
             )
+    ;       mqec_inst_defn(prog_context,
+                % The name of the inst constructor whose definition we are in.
+                inst_ctor
+            )
+    ;       mqec_mode_defn(prog_context,
+                % The name of the mode constructor whose definition we are in.
+                mode_ctor
+            )
     ;       mqec_constructor_arg(prog_context,
                 % The name of the type constructor whose definition we are in.
                 type_ctor,
@@ -89,14 +97,6 @@
                 % The context the constraint is in.
                 mq_constraint_error_context
             )
-    ;       mqec_inst(prog_context,
-                % The name of the inst.
-                mq_id
-            )
-    ;       mqec_mode(prog_context,
-                % The name of the mode.
-                mq_id
-            )
     ;       mqec_pred_or_func(prog_context,
                 % Whether it is a predicate or function declaration, ...
                 pred_or_func,
@@ -120,10 +120,10 @@
     ;       mqec_clause_mode_annotation(prog_context)
     ;       mqec_type_qual(prog_context)
     ;       mqec_class(prog_context,
-                mq_id
+                class_id
             )
     ;       mqec_instance(prog_context,
-                mq_id
+                class_id
             )
     ;       mqec_mutable(prog_context,
                 string
@@ -447,7 +447,15 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
     (
         ErrorContext = mqec_type_defn(Context, TypeCtor),
         ShouldUnqualId = no,
-        Pieces = [words("definition of type"), wrap_unqual_type_ctor(TypeCtor)]
+        Pieces = [words("definition of type"), unqual_type_ctor(TypeCtor)]
+    ;
+        ErrorContext = mqec_inst_defn(Context, InstCtor),
+        ShouldUnqualId = no,
+        Pieces = [words("definition of inst"), unqual_inst_ctor(InstCtor)]
+    ;
+        ErrorContext = mqec_mode_defn(Context, ModeCtor),
+        ShouldUnqualId = no,
+        Pieces = [words("definition of mode"), unqual_mode_ctor(ModeCtor)]
     ;
         ErrorContext = mqec_constructor_arg(Context, ContainingTypeCtor,
             FunctionSymbol, ArgNum, MaybeCtorFieldName),
@@ -464,7 +472,7 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
         Pieces = [words("the"), nth_fixed(ArgNum), words("argument of"),
             words("function symbol"), quote(FunctionSymbol)] ++
             FieldNamePieces ++
-            [words("of the type"), wrap_unqual_type_ctor(ContainingTypeCtor)]
+            [words("of the type"), unqual_type_ctor(ContainingTypeCtor)]
     ;
         ErrorContext = mqec_typeclass_constraint_name(ConstraintErrorContext),
         ShouldUnqualId = no,
@@ -479,14 +487,6 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
         Pieces = [words("type class constraint for "),
             unqual_sym_name_arity(sym_name_arity(ClassName, Arity)),
             words(Start) | ConstraintErrorContextPieces]
-    ;
-        ErrorContext = mqec_inst(Context, Id),
-        ShouldUnqualId = no,
-        Pieces = [words("definition of inst"), wrap_unqual_id(Id)]
-    ;
-        ErrorContext = mqec_mode(Context, Id),
-        ShouldUnqualId = no,
-        Pieces = [words("definition of mode"), wrap_unqual_id(Id)]
     ;
         ErrorContext = mqec_pred_or_func(Context, PredOrFunc, Id),
         ShouldUnqualId = no,
@@ -539,14 +539,14 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
         ShouldUnqualId = no,
         Pieces = [words("explicit type qualification")]
     ;
-        ErrorContext = mqec_class(Context, Id),
+        ErrorContext = mqec_class(Context, ClassId),
         ShouldUnqualId = no,
-        Pieces = [words("declaration of typeclass"), wrap_unqual_id(Id)]
+        Pieces = [words("declaration of typeclass"), unqual_class_id(ClassId)]
     ;
-        ErrorContext = mqec_instance(Context, Id),
+        ErrorContext = mqec_instance(Context, ClassId),
         ShouldUnqualId = no,
         Pieces = [words("declaration of instance of typeclass"),
-            wrap_qual_id(Id)]
+            qual_class_id(ClassId)]
     ;
         ErrorContext = mqec_mutable(Context, Name),
         ShouldUnqualId = no,
@@ -555,7 +555,7 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
         ErrorContext = mqec_type_repn(Context, TypeCtor),
         ShouldUnqualId = no,
         Pieces = [words("representation information for type"),
-            wrap_unqual_type_ctor(TypeCtor)]
+            unqual_type_ctor(TypeCtor)]
     ;
         ErrorContext = mqec_event_spec_attr(Context, EventName, AttrName),
         ShouldUnqualId = no,
@@ -582,16 +582,6 @@ id_types_to_string(class_id, "typeclasses").
 :- func wrap_module_name(module_name) = format_component.
 
 wrap_module_name(SymName) = qual_sym_name(SymName).
-
-:- func wrap_unqual_type_ctor(type_ctor) = format_component.
-
-wrap_unqual_type_ctor(type_ctor(SymName, Arity)) =
-    unqual_sym_name_arity(sym_name_arity(SymName, Arity)).
-
-:- func wrap_unqual_id(mq_id) = format_component.
-
-wrap_unqual_id(mq_id(SymName, Arity)) =
-    unqual_sym_name_arity(sym_name_arity(SymName, Arity)).
 
 :- func wrap_qual_id(mq_id) = format_component.
 

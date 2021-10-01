@@ -83,6 +83,7 @@
 
 :- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.item_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
@@ -379,10 +380,10 @@ gather_items_in_parse_tree_int1(ParseTreeInt1, GatheredItems) :-
     ParseTreeInt1 = parse_tree_int1(_ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
         _IntUseMap, _ImpUseMap, _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, _IntPromises, IntTypeRepnMap,
-        ImpTypeDefnMap, _ImpForeignEnumMap, ImpTypeClasses),
+        ImpTypeClasses),
     some [!TypeNameMap, !TypeDefnMap, !InstMap, !ModeMap,
         !ClassMap, !InstanceMap,
         !PredMap, !FuncMap, !DeclPragmaRecords]
@@ -397,13 +398,21 @@ gather_items_in_parse_tree_int1(ParseTreeInt1, GatheredItems) :-
         map.init(!:FuncMap),
         !:DeclPragmaRecords = cord.init,
 
+        type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
+            IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
+        inst_ctor_checked_map_get_src_defns(InstCtorCheckedMap,
+            IntInstDefns, ImpInstDefns),
+        mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
+            IntModeDefns, ImpModeDefns),
+        expect(unify(ImpInstDefns, []), $pred, "ImpInstDefns != []"),
+        expect(unify(ImpModeDefns, []), $pred, "ImpModeDefns != []"),
+
         list.foldl2(gather_in_type_defn(ms_interface),
-            type_ctor_defn_map_to_type_defns(IntTypeDefnMap),
-            !TypeNameMap, !TypeDefnMap),
+            IntTypeDefns, !TypeNameMap, !TypeDefnMap),
         list.foldl(gather_in_inst_defn(ms_interface),
-            inst_ctor_defn_map_to_inst_defns(IntInstDefnMap), !InstMap),
+            IntInstDefns, !InstMap),
         list.foldl(gather_in_mode_defn(ms_interface),
-            mode_ctor_defn_map_to_mode_defns(IntModeDefnMap), !ModeMap),
+            IntModeDefns, !ModeMap),
         list.foldl(gather_in_typeclass(ms_interface), IntTypeClasses,
             !ClassMap),
         list.foldl(gather_in_instance(ms_interface), IntInstances,
@@ -418,8 +427,7 @@ gather_items_in_parse_tree_int1(ParseTreeInt1, GatheredItems) :-
         list.foldl(gather_in_type_repn(ms_interface),
             type_ctor_repn_map_to_type_repns(IntTypeRepnMap), !TypeDefnMap),
         list.foldl2(gather_in_type_defn(ms_implementation),
-            type_ctor_defn_map_to_type_defns(ImpTypeDefnMap),
-            !TypeNameMap, !TypeDefnMap),
+            ImpTypeDefns, !TypeNameMap, !TypeDefnMap),
         % We gather foreign enum info from the type_ctor_defn_maps.
         list.foldl(gather_in_typeclass(ms_implementation),
             ImpTypeClasses, !ClassMap),
@@ -438,9 +446,8 @@ gather_items_in_parse_tree_int2(ParseTreeInt2, GatheredItems) :-
     ParseTreeInt2 = parse_tree_int2(_ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, _IntInclMap, _InclMap, _IntUseMap, _ImportUseMap,
         _IntFIMSpecs, _ImpFIMSpecs,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
-        IntTypeClasses, IntInstances, IntTypeRepnMap,
-        ImpTypeDefnMap),
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
+        IntTypeClasses, IntInstances, IntTypeRepnMap),
     some [!TypeNameMap, !TypeDefnMap, !InstMap, !ModeMap,
         !ClassMap, !InstanceMap]
     (
@@ -451,13 +458,21 @@ gather_items_in_parse_tree_int2(ParseTreeInt2, GatheredItems) :-
         map.init(!:ClassMap),
         map.init(!:InstanceMap),
 
+        type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
+            IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
+        inst_ctor_checked_map_get_src_defns(InstCtorCheckedMap,
+            IntInstDefns, ImpInstDefns),
+        mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
+            IntModeDefns, ImpModeDefns),
+        expect(unify(ImpInstDefns, []), $pred, "ImpInstDefns != []"),
+        expect(unify(ImpModeDefns, []), $pred, "ImpModeDefns != []"),
+
         list.foldl2(gather_in_type_defn(ms_interface),
-            type_ctor_defn_map_to_type_defns(IntTypeDefnMap),
-            !TypeNameMap, !TypeDefnMap),
+            IntTypeDefns, !TypeNameMap, !TypeDefnMap),
         list.foldl(gather_in_inst_defn(ms_interface),
-            inst_ctor_defn_map_to_inst_defns(IntInstDefnMap), !InstMap),
+            IntInstDefns, !InstMap),
         list.foldl(gather_in_mode_defn(ms_interface),
-            mode_ctor_defn_map_to_mode_defns(IntModeDefnMap), !ModeMap),
+            IntModeDefns, !ModeMap),
         list.foldl(gather_in_typeclass(ms_interface), IntTypeClasses,
             !ClassMap),
         list.foldl(gather_in_instance(ms_interface), IntInstances,
@@ -466,8 +481,7 @@ gather_items_in_parse_tree_int2(ParseTreeInt2, GatheredItems) :-
         list.foldl(gather_in_type_repn(ms_interface),
             type_ctor_repn_map_to_type_repns(IntTypeRepnMap), !TypeDefnMap),
         list.foldl2(gather_in_type_defn(ms_implementation),
-            type_ctor_defn_map_to_type_defns(ImpTypeDefnMap),
-            !TypeNameMap, !TypeDefnMap),
+            ImpTypeDefns, !TypeNameMap, !TypeDefnMap),
 
         map.init(PredMap0),
         map.init(FuncMap0),

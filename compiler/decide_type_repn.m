@@ -130,7 +130,6 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.check_type_inst_mode_defns.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
 

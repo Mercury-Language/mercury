@@ -540,6 +540,16 @@
             % The output should contain the string form of the type_ctor,
             % surrounded by `' quotes, followed by '/' and the arity.
 
+    ;       qual_inst_ctor(inst_ctor)
+    ;       unqual_inst_ctor(inst_ctor)
+            % The output should contain the string form of the inst_ctor,
+            % surrounded by `' quotes, followed by '/' and the arity.
+
+    ;       qual_mode_ctor(mode_ctor)
+    ;       unqual_mode_ctor(mode_ctor)
+            % The output should contain the string form of the mode_ctor,
+            % surrounded by `' quotes, followed by '/' and the arity.
+
     ;       qual_class_id(class_id)
     ;       unqual_class_id(class_id)
             % The output should contain the string form of the class_id,
@@ -2084,6 +2094,20 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
             TypeCtor = type_ctor(SymName0, Arity),
             SymName = unqualified(unqualify_name(SymName0))
         ;
+            Component = qual_inst_ctor(InstCtor),
+            InstCtor = inst_ctor(SymName, Arity)
+        ;
+            Component = unqual_inst_ctor(InstCtor),
+            InstCtor = inst_ctor(SymName0, Arity),
+            SymName = unqualified(unqualify_name(SymName0))
+        ;
+            Component = qual_mode_ctor(ModeCtor),
+            ModeCtor = mode_ctor(SymName, Arity)
+        ;
+            Component = unqual_mode_ctor(ModeCtor),
+            ModeCtor = mode_ctor(SymName0, Arity),
+            SymName = unqualified(unqualify_name(SymName0))
+        ;
             Component = qual_class_id(ClassId),
             ClassId = class_id(SymName, Arity)
         ;
@@ -2308,6 +2332,20 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         ;
             Component = unqual_type_ctor(TypeCtor),
             TypeCtor = type_ctor(SymName0, Arity),
+            SymName = unqualified(unqualify_name(SymName0))
+        ;
+            Component = qual_inst_ctor(InstCtor),
+            InstCtor = inst_ctor(SymName, Arity)
+        ;
+            Component = unqual_inst_ctor(InstCtor),
+            InstCtor = inst_ctor(SymName0, Arity),
+            SymName = unqualified(unqualify_name(SymName0))
+        ;
+            Component = qual_mode_ctor(ModeCtor),
+            ModeCtor = mode_ctor(SymName, Arity)
+        ;
+            Component = unqual_mode_ctor(ModeCtor),
+            ModeCtor = mode_ctor(SymName0, Arity),
             SymName = unqualified(unqualify_name(SymName0))
         ;
             Component = qual_class_id(ClassId),

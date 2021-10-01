@@ -505,10 +505,16 @@
                 pti1_int_fims               :: set(fim_spec),
                 pti1_imp_fims               :: set(fim_spec),
 
+                % Type, inst and mode definitions, all of which are
+                % in the interface, with the exception of some type
+                % definitions from the implementation section
+                % (which should not be needed after we start actually
+                % *using* type_repn items).
+                pti1_type_defns             :: type_ctor_checked_map,
+                pti1_inst_defns             :: inst_ctor_checked_map,
+                pti1_mode_defns             :: mode_ctor_checked_map,
+
                 % Items of various kinds in the interface.
-                pti1_int_type_defns         :: type_ctor_defn_map,
-                pti1_int_inst_defns         :: inst_ctor_defn_map,
-                pti1_int_mode_defns         :: mode_ctor_defn_map,
                 pti1_int_typeclasses        :: list(item_typeclass_info),
                 pti1_int_instances          :: list(item_instance_info),
                 pti1_int_pred_decls         :: list(item_pred_decl_info),
@@ -518,12 +524,9 @@
 
                 % The representations of all types defined in the module,
                 % whether exported or not.
-                pti1_int_type_repns         :: type_ctor_repn_map,
+                pti1_type_repns             :: type_ctor_repn_map,
 
                 % Items of various kinds in the implementation.
-                % Should not be needed after we switch to use type_repn items.
-                pti1_imp_type_defns         :: type_ctor_defn_map,
-                pti1_imp_foreign_enum_specs :: type_ctor_foreign_enum_map,
                 pti1_imp_typeclasses        :: list(item_typeclass_info)
             ).
 
@@ -557,20 +560,22 @@
                 pti2_int_fims               :: set(fim_spec),
                 pti2_imp_fims               :: set(fim_spec),
 
+                % Type, inst and mode definitions, all of which are
+                % in the interface, with the exception of some type
+                % definitions from the implementation section
+                % (which should not be needed after we start actually
+                % *using* type_repn items).
+                pti2_type_defns             :: type_ctor_checked_map,
+                pti2_inst_defns             :: inst_ctor_checked_map,
+                pti2_mode_defns             :: mode_ctor_checked_map,
+
                 % Items of various kinds in the interface.
-                pti2_int_type_defns         :: type_ctor_defn_map,
-                pti2_int_inst_defns         :: inst_ctor_defn_map,
-                pti2_int_mode_defns         :: mode_ctor_defn_map,
                 pti2_int_typeclasses        :: list(item_typeclass_info),
                 pti2_int_instances          :: list(item_instance_info),
 
                 % The representations of all types defined in the module,
                 % whether exported or not.
-                pti2_int_type_repns         :: type_ctor_repn_map,
-
-                % Items of various kinds in the implementation.
-                % Should not be needed after we switch to use type_repn items.
-                pti2_imp_type_defns         :: type_ctor_defn_map
+                pti2_type_repns             :: type_ctor_repn_map
             ).
 
     % A version of parse_tree_int specialized to hold the contents of
@@ -592,10 +597,13 @@
                 pti3_int_imports            :: module_names_contexts,
                 pti3_import_use_map         :: import_and_or_use_map,
 
+                % Type, inst and mode definitions, all of which are
+                % in the interface.
+                pti3_type_defns             :: type_ctor_checked_map,
+                pti3_inst_defns             :: inst_ctor_checked_map,
+                pti3_mode_defns             :: mode_ctor_checked_map,
+
                 % Items of various kinds in the interface.
-                pti3_int_type_defns         :: type_ctor_defn_map,
-                pti3_int_inst_defns         :: inst_ctor_defn_map,
-                pti3_int_mode_defns         :: mode_ctor_defn_map,
                 pti3_int_typeclasses        :: list(item_typeclass_info),
                 pti3_int_instances          :: list(item_instance_info),
                 pti3_int_type_repns         :: type_ctor_repn_map
@@ -729,15 +737,15 @@
 :- type inst_ctor_defn_map == map(inst_ctor, inst_ctor_all_defns).
 :- type inst_ctor_all_defns
     --->    inst_ctor_all_defns(
-                icad_abstract               :: list(item_inst_defn_info),
-                icad_eqv                    :: list(item_inst_defn_info)
+                icad_abstract           :: list(item_inst_defn_info_abstract),
+                icad_eqv                :: list(item_inst_defn_info_eqv)
             ).
 
 :- type mode_ctor_defn_map == map(mode_ctor, mode_ctor_all_defns).
 :- type mode_ctor_all_defns
     --->    mode_ctor_all_defns(
-                mcad_abstract               :: list(item_mode_defn_info),
-                mcad_eqv                    :: list(item_mode_defn_info)
+                mcad_abstract           :: list(item_mode_defn_info_abstract),
+                mcad_eqv                :: list(item_mode_defn_info_eqv)
             ).
 
 :- type type_ctor_foreign_enum_map == map(type_ctor, c_j_cs_enums).
@@ -1211,8 +1219,6 @@
             % of the .int0 file of an ancestor module.
 
 %---------------------------------------------------------------------------%
-
-%---------------------------------------------------------------------------%
 %
 % The main parts of parse trees are items. There are many kinds of items,
 % and most of those kinds have their own item-kind-specific type that stores
@@ -1336,33 +1342,55 @@
             ).
 
 :- type item_inst_defn_info
+    == item_inst_defn_info_general(maybe_abstract_inst_defn).
+
+:- type item_inst_defn_info_abstract
+    == item_inst_defn_info_general(no_inst_defn).
+:- type item_inst_defn_info_eqv
+    == item_inst_defn_info_general(inst_defn).
+
+:- type item_inst_defn_info_general(T)
     --->    item_inst_defn_info(
                 % `:- inst ... = ...':
                 % a definition of an inst.
                 id_inst_name                    :: sym_name,
                 id_inst_args                    :: list(inst_var),
                 id_maybe_for_type               :: maybe(type_ctor),
-                id_inst_defn                    :: maybe_abstract_inst_defn,
+                id_inst_defn                    :: T,
                 id_varset                       :: inst_varset,
                 id_context                      :: prog_context,
                 id_seq_num                      :: item_seq_num
             ).
+
+:- type no_inst_defn
+    --->    no_inst_defn.
 
 :- type maybe_abstract_inst_defn
     --->    abstract_inst_defn
     ;       nonabstract_inst_defn(inst_defn).
 
 :- type item_mode_defn_info
+    == item_mode_defn_info_general(maybe_abstract_mode_defn).
+
+:- type item_mode_defn_info_abstract
+    == item_mode_defn_info_general(no_mode_defn).
+:- type item_mode_defn_info_eqv
+    == item_mode_defn_info_general(mode_defn).
+
+:- type item_mode_defn_info_general(T)
     --->    item_mode_defn_info(
                 % `:- mode ... = ...':
                 % a definition of a mode.
                 md_mode_name                    :: sym_name,
                 md_mode_args                    :: list(inst_var),
-                md_mode_defn                    :: maybe_abstract_mode_defn,
+                md_mode_defn                    :: T,
                 md_varset                       :: inst_varset,
                 md_context                      :: prog_context,
                 md_seq_num                      :: item_seq_num
             ).
+
+:- type no_mode_defn
+    --->    no_mode_defn.
 
 :- type maybe_abstract_mode_defn
     --->    abstract_mode_defn
@@ -1779,6 +1807,293 @@
     = mutable_thread_local.
 :- func mutable_thread_local_trailed(mutable_maybe_thread_local)
     = mutable_trailed.
+
+%---------------------------------------------------------------------------%
+%
+% The representation of a checked-to-be-consistent set of type and
+% foreign enum definitions for every type constructor defined in a module.
+%
+
+:- type type_ctor_checked_map == map(type_ctor, type_ctor_checked_defn).
+
+    % A type is either a solver type, or not.
+:- type type_ctor_checked_defn
+    --->    checked_defn_solver(solver_type_defn, src_defns_solver)
+    ;       checked_defn_std(std_type_defn, src_defns_std).
+
+%---------------------%
+
+    % Replace this one general type with one type for each function symbol
+    % in solver_type_defn.
+:- type src_defns_solver
+    --->    src_defns_solver(
+                % The item_type_defn_info (if any) in the interface section.
+                maybe(item_type_defn_info),
+
+                % The item_type_defn_info (if any) in the impl section.
+                maybe(item_type_defn_info)
+            ).
+
+    % Replace this one general type with one type for each function symbol
+    % in std_type_defn.
+:- type src_defns_std
+    --->    src_defns_std(
+                % The item_type_defn_infos in the interface section.
+                list(item_type_defn_info),
+
+                % The item_type_defn_infos and item_foreign_enum_infos
+                % in the implementation section.
+                list(item_type_defn_info),
+                list(item_foreign_enum_info)
+            ).
+
+%---------------------%
+
+:- type solver_type_defn
+    --->    solver_type_abstract(
+                abstract_solver_type_status,
+
+                % The abstract definition. It may be in either section;
+                % the status specifies the section.
+                item_type_defn_info_abstract
+            )
+    ;       solver_type_full(
+                % The abstract definition in the interface section,
+                % if one exists.
+                maybe(item_type_defn_info_abstract),
+
+                % The full solver type definition, which must be in the
+                % implementation section.
+                item_type_defn_info_solver
+            ).
+
+:- type abstract_solver_type_status
+    --->    abstract_solver_type_exported
+            % The type name is exported. The abstract definition
+            % is in the interface section.
+    ;       abstract_solver_type_private.
+            % The type name is not exported. The abstract definition
+            % is in the implementation section.
+
+%---------------------%
+
+:- type std_type_defn
+    --->    std_mer_type_eqv(
+                std_eqv_type_status,
+
+                % The equivalence type definition.
+                item_type_defn_info_eqv
+            )
+    ;       std_mer_type_du_subtype(
+                std_du_subtype_status,
+
+                % The discriminated union type definition, which is a subtype.
+                % XXX We should encode the invariant "is a subtype"
+                % in the type.
+                item_type_defn_info_du
+            )
+    ;       std_mer_type_du_all_plain_constants(
+                std_du_type_status,
+
+                % The discriminated union type definition (not a subtype),
+                % which represents either a direct dummy type or an enum.
+                % XXX We should encode the invariant "is not a subtype"
+                % in the type.
+                item_type_defn_info_du,
+
+                % The first functor name in the type, and any later functor
+                % names. If there are no later functor names, then the type
+                % is a direct dummy type, and must satisfy the requirements
+                % of non_sub_du_type_is_dummy; if there are, then the type
+                % is an enum type, and must satisfy the requirements of
+                % non_sub_du_type_is_enum. (Function symbols that do not meet
+                % the relevant requirements may be constants, but we
+                % don't consider them *plain* constants.)
+                string,
+                list(string),
+
+                % For each of our target foreign languages, this field
+                % specifies whether we have either a foreign language
+                % definition for this type, or a foreign enum definition.
+                %
+                % While the Mercury representation uses small integers
+                % allocated consecutively from 0 to represent function symbols,
+                % this is not true even for foreign enum definitions,
+                % much less foreign type definitions.
+                c_j_cs_maybe_defn_or_enum
+            )
+    ;       std_mer_type_du_not_all_plain_constants(
+                std_du_type_status,
+
+                % The discriminated union type definition (not a subtype),
+                % which represents a type *other* than a direct dummy type or
+                % an enum.
+                item_type_defn_info_du,
+
+                % For each of our target foreign languages, this field
+                % specifies whether we have a foreign language type definition
+                % for this type.
+                c_j_cs_maybe_defn
+            )
+    ;       std_mer_type_abstract(
+                std_abs_type_status,
+
+                % The abstract declaration of the type (not a subtype).
+                item_type_defn_info_abstract,
+
+                % For each of our target foreign languages, this field
+                % specifies whether we have a foreign language type definition
+                % for this type.
+                c_j_cs_maybe_defn
+            ).
+
+:- type maybe_only_constants
+    --->    not_only_plain_constants
+    ;       only_plain_constants(
+                % The names of the constants, in the order of declaration.
+                opc_head_name       :: string,
+                opc_tail_names      :: list(string)
+            ).
+
+:- type std_eqv_type_status
+    --->    std_eqv_type_mer_exported
+            % The Mercury definition (i.e. the equivalence) is exported.
+    ;       std_eqv_type_abstract_exported
+            % Only the type name is exported. The Mercury definition
+            % is private.
+    ;       std_eqv_type_all_private.
+            % Everything about the type is private.
+
+:- type std_du_type_status
+    --->    std_du_type_mer_ft_exported
+            % Both the Mercury and any foreign type definitions are exported.
+            % Any foreign enum definitions are private, as they have to be.
+            % This status is not applicable to equivalence types or subtypes,
+            % since they may not have foreign type definitions.
+    ;       std_du_type_mer_exported
+            % The Mercury definition is exported. Any foreign type definitions
+            % and/or foreign enum definitions are private.
+    ;       std_du_type_abstract_exported
+            % Only the type name is exported. The Mercury definition and
+            % any foreign type definitions and/or foreign enum definitions
+            % are private.
+    ;       std_du_type_all_private.
+            % Everything about the type is private.
+
+    % A version of std_du_type_status for subtypes, which may not have
+    % any foreign type definitions, and for which therefore the question of
+    % whether any foreign type definitions are exported is moot.
+:- type std_du_subtype_status
+    --->    std_sub_type_mer_exported
+    ;       std_sub_type_abstract_exported
+    ;       std_sub_type_all_private.
+
+:- type std_abs_type_status
+    --->    std_abs_type_ft_exported
+            % The type has foreign type definitions that are exported.
+            % Any foreign enum definitions are private, as they have to be.
+    ;       std_abs_type_abstract_exported
+            % Only the type name is exported. Any foreign type definitions
+            % and/or foreign enum definitions are private.
+    ;       std_abs_type_all_private.
+            % Everything about the type is private.
+
+%---------------------%
+
+:- type c_j_cs_maybe_defn_or_enum ==
+    c_java_csharp(maybe(foreign_type_or_enum)).
+
+:- type foreign_type_or_enum
+    --->    foreign_type_or_enum_type(item_type_defn_info_foreign)
+    ;       foreign_type_or_enum_enum(checked_foreign_enum).
+
+    % Part of checking a foreign enum definition is checking whether
+    % the correspondence it describes between the Mercury functors
+    % of the type on the one hand and their foreign language counterparts
+    % on the other hand is a bijection. If it is, then the second argument
+    % of the checked_foreign_enum we construct gives the foreign language
+    % counterpart of each Mercury function symbol in the type in the order
+    % in which the Mercury function symbols are defined.
+    %
+    % For example, given
+    %
+    %   :- type t ---> m1 ; m2 ; m3.
+    %
+    % and a foreign enum definition that gives the correspondence correctly
+    % but in a different order, such as
+    %
+    %   :- pragma foreign_enum("C", t/0, [m2 - "f2", m3 - "f3", m1 - "f1"]).
+    %
+    % the second argument will contain the (nonempty) list "f1", "f2", "f3".
+    %
+    % On the other hand, if the mapping in the foreign enum definition is
+    % *not* a bijection, then we will not generate a checked_foreign_enum
+    % structure for it.
+    %
+:- type checked_foreign_enum
+    --->    checked_foreign_enum(item_foreign_enum_info, one_or_more(string)).
+
+%---------------------------------------------------------------------------%
+%
+% The representation of a checked-to-be-consistent set of inst definitions
+% for every inst constructor defined in a module.
+%
+
+:- type inst_ctor_checked_map == map(inst_ctor, inst_ctor_checked_defn).
+
+:- type inst_ctor_checked_defn
+    --->    checked_defn_inst(std_inst_defn, src_defns_inst).
+
+:- type std_inst_defn
+    --->    std_inst_defn(std_inst_status, item_inst_defn_info).
+
+:- type std_inst_status
+    --->    std_inst_exported
+            % The inst definition is exported.
+    ;       std_inst_abstract_exported
+            % Only the inst name is exported. Its definition is private.
+    ;       std_inst_all_private.
+            % Everything about the inst is private.
+
+:- type src_defns_inst
+    --->    src_defns_inst(
+                % The inst definition (if any) in the interface.
+                maybe(item_inst_defn_info),
+
+                % The inst definition (if any) in the implementation.
+                maybe(item_inst_defn_info)
+            ).
+
+%---------------------------------------------------------------------------%
+%
+% The representation of a checked-to-be-consistent set of mode definitions
+% for every mode constructor defined in a module.
+%
+
+:- type mode_ctor_checked_map == map(mode_ctor, mode_ctor_checked_defn).
+
+:- type mode_ctor_checked_defn
+    --->    checked_defn_mode(std_mode_defn, src_defns_mode).
+
+:- type std_mode_defn
+    --->    std_mode_defn(std_mode_status, item_mode_defn_info).
+
+:- type std_mode_status
+    --->    std_mode_exported
+            % The mode definition is exported.
+    ;       std_mode_abstract_exported
+            % Only the mode name is exported. Its definition is private.
+    ;       std_mode_all_private.
+            % Everything about the mode is private.
+
+:- type src_defns_mode
+    --->    src_defns_mode(
+                % The mode definition (if any) in the interface.
+                maybe(item_mode_defn_info),
+
+                % The mode definition (if any) in the implementation.
+                maybe(item_mode_defn_info)
+            ).
 
 %---------------------------------------------------------------------------%
 %

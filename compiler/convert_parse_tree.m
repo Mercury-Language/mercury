@@ -389,18 +389,23 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
     ImpForeignEnumMap = type_ctor_foreign_enum_items_to_map(ImpForeignEnums0),
     list.sort(ImpTypeClasses0, ImpTypeClasses),
 
-    % We want only the error messages.
     create_type_ctor_checked_map(do_not_insist_on_defn,
         IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
-        _TypeDefnCheckedMap, !Specs),
+        IntTypeCheckedMap, !Specs),
+    map.init(ImpInstDefnMap),
+    create_inst_ctor_checked_map(do_not_insist_on_defn,
+        IntInstDefnMap, ImpInstDefnMap, IntInstCheckedMap, !Specs),
+    map.init(ImpModeDefnMap),
+    create_mode_ctor_checked_map(do_not_insist_on_defn,
+        IntModeDefnMap, ImpModeDefnMap, IntModeCheckedMap, !Specs),
 
     ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
         IntUseMap, ImpUseMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeCheckedMap, IntInstCheckedMap, IntModeCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, IntTypeRepnMap,
-        ImpTypeDefnMap, ImpForeignEnumMap, ImpTypeClasses).
+        ImpTypeClasses).
 
 :- pred classify_int1_items_int(list(item)::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
@@ -608,17 +613,21 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
     ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns0),
 
     map.init(ImpForeignEnumMap),
-    % We want only the error messages.
     create_type_ctor_checked_map(do_not_insist_on_defn,
         IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
-        _TypeDefnCheckedMap, !Specs),
+        IntTypeCheckedMap, !Specs),
+    map.init(ImpInstDefnMap),
+    create_inst_ctor_checked_map(do_not_insist_on_defn,
+        IntInstDefnMap, ImpInstDefnMap, IntInstCheckedMap, !Specs),
+    map.init(ImpModeDefnMap),
+    create_mode_ctor_checked_map(do_not_insist_on_defn,
+        IntModeDefnMap, ImpModeDefnMap, IntModeCheckedMap, !Specs),
 
     ParseTreeInt2 = parse_tree_int2(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, IntInclMap, InclMap, IntUseMap, ImportUseMap,
         IntFIMSpecs, ImpFIMSpecs,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
-        IntTypeClasses, IntInstances, IntTypeRepnMap,
-        ImpTypeDefnMap).
+        IntTypeCheckedMap, IntInstCheckedMap, IntModeCheckedMap,
+        IntTypeClasses, IntInstances, IntTypeRepnMap).
 
 :- pred classify_int2_items_int(list(item)::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
@@ -779,10 +788,15 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
 
     map.init(ImpTypeDefnMap),
     map.init(ImpForeignEnumMap),
-    % We want only the error messages.
     create_type_ctor_checked_map(do_not_insist_on_defn,
         IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
-        _TypeDefnCheckedMap, !Specs),
+        IntTypeCheckedMap, !Specs),
+    map.init(ImpInstDefnMap),
+    create_inst_ctor_checked_map(do_not_insist_on_defn,
+        IntInstDefnMap, ImpInstDefnMap, IntInstCheckedMap, !Specs),
+    map.init(ImpModeDefnMap),
+    create_mode_ctor_checked_map(do_not_insist_on_defn,
+        IntModeDefnMap, ImpModeDefnMap, IntModeCheckedMap, !Specs),
 
     some [!ImpContexts]
     (
@@ -825,7 +839,7 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
     ),
     ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
         IntInclMap, InclMap, IntImportMap, ImportUseMap,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeCheckedMap, IntInstCheckedMap, IntModeCheckedMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap).
 
 :- pred classify_int3_items_int(list(item)::in,
@@ -1632,24 +1646,28 @@ add_inst_defn_to_map(InstDefnInfo, !InstDefnMap) :-
     list.length(Params, Arity),
     InstCtor = inst_ctor(SymName, Arity),
     ( if map.search(!.InstDefnMap, InstCtor, AllDefns0) then
-        AllDefns0 = inst_ctor_all_defns(AbstractDefns0, NonAbstractDefns0),
+        AllDefns0 = inst_ctor_all_defns(AbstractDefns0, EqvDefns0),
         (
             MaybeAbstractInstDefn = abstract_inst_defn,
-            AbstractDefns = [InstDefnInfo | AbstractDefns0],
-            AllDefns = inst_ctor_all_defns(AbstractDefns, NonAbstractDefns0)
+            AbstractDefn = InstDefnInfo ^ id_inst_defn := no_inst_defn,
+            AbstractDefns = [AbstractDefn | AbstractDefns0],
+            AllDefns = inst_ctor_all_defns(AbstractDefns, EqvDefns0)
         ;
-            MaybeAbstractInstDefn = nonabstract_inst_defn(_),
-            NonAbstractDefns = [InstDefnInfo | NonAbstractDefns0],
-            AllDefns = inst_ctor_all_defns(AbstractDefns0, NonAbstractDefns)
+            MaybeAbstractInstDefn = nonabstract_inst_defn(InstDefn),
+            EqvDefn = InstDefnInfo ^ id_inst_defn := InstDefn,
+            EqvDefns = [EqvDefn | EqvDefns0],
+            AllDefns = inst_ctor_all_defns(AbstractDefns0, EqvDefns)
         ),
         map.det_update(InstCtor, AllDefns, !InstDefnMap)
     else
         (
             MaybeAbstractInstDefn = abstract_inst_defn,
-            AllDefns = inst_ctor_all_defns([InstDefnInfo], [])
+            AbstractDefn = InstDefnInfo ^ id_inst_defn := no_inst_defn,
+            AllDefns = inst_ctor_all_defns([AbstractDefn], [])
         ;
-            MaybeAbstractInstDefn = nonabstract_inst_defn(_),
-            AllDefns = inst_ctor_all_defns([], [InstDefnInfo])
+            MaybeAbstractInstDefn = nonabstract_inst_defn(InstDefn),
+            EqvDefn = InstDefnInfo ^ id_inst_defn := InstDefn,
+            AllDefns = inst_ctor_all_defns([], [EqvDefn])
         ),
         map.det_insert(InstCtor, AllDefns, !InstDefnMap)
     ).
@@ -1666,24 +1684,28 @@ add_mode_defn_to_map(ModeDefnInfo, !ModeDefnMap) :-
     list.length(Params, Arity),
     ModeCtor = mode_ctor(SymName, Arity),
     ( if map.search(!.ModeDefnMap, ModeCtor, AllDefns0) then
-        AllDefns0 = mode_ctor_all_defns(AbstractDefns0, NonAbstractDefns0),
+        AllDefns0 = mode_ctor_all_defns(AbstractDefns0, EqvDefns0),
         (
             MaybeAbstractModeDefn = abstract_mode_defn,
-            AbstractDefns = [ModeDefnInfo | AbstractDefns0],
-            AllDefns = mode_ctor_all_defns(AbstractDefns, NonAbstractDefns0)
+            AbstractDefn = ModeDefnInfo ^ md_mode_defn := no_mode_defn,
+            AbstractDefns = [AbstractDefn | AbstractDefns0],
+            AllDefns = mode_ctor_all_defns(AbstractDefns, EqvDefns0)
         ;
-            MaybeAbstractModeDefn = nonabstract_mode_defn(_),
-            NonAbstractDefns = [ModeDefnInfo | NonAbstractDefns0],
-            AllDefns = mode_ctor_all_defns(AbstractDefns0, NonAbstractDefns)
+            MaybeAbstractModeDefn = nonabstract_mode_defn(ModeDefn),
+            EqvDefn = ModeDefnInfo ^ md_mode_defn := ModeDefn,
+            EqvDefns = [EqvDefn | EqvDefns0],
+            AllDefns = mode_ctor_all_defns(AbstractDefns0, EqvDefns)
         ),
         map.det_update(ModeCtor, AllDefns, !ModeDefnMap)
     else
         (
             MaybeAbstractModeDefn = abstract_mode_defn,
-            AllDefns = mode_ctor_all_defns([ModeDefnInfo], [])
+            AbstractDefn = ModeDefnInfo ^ md_mode_defn := no_mode_defn,
+            AllDefns = mode_ctor_all_defns([AbstractDefn], [])
         ;
-            MaybeAbstractModeDefn = nonabstract_mode_defn(_),
-            AllDefns = mode_ctor_all_defns([], [ModeDefnInfo])
+            MaybeAbstractModeDefn = nonabstract_mode_defn(ModeDefn),
+            EqvDefn = ModeDefnInfo ^ md_mode_defn := ModeDefn,
+            AllDefns = mode_ctor_all_defns([], [EqvDefn])
         ),
         map.det_insert(ModeCtor, AllDefns, !ModeDefnMap)
     ).
@@ -1789,8 +1811,8 @@ inst_ctor_defn_map_to_inst_defns(InstCtorDefnMap) = InstDefns :-
 accumulate_inst_ctor_defns(CtorAllDefns, !InstDefns) :-
     CtorAllDefns = inst_ctor_all_defns(AbstractDefns, EqvDefns),
     !:InstDefns = !.InstDefns ++
-        cord.from_list(AbstractDefns) ++
-        cord.from_list(EqvDefns).
+        cord.from_list(list.map(wrap_abstract_inst_defn, AbstractDefns)) ++
+        cord.from_list(list.map(wrap_eqv_inst_defn, EqvDefns)).
 
 %---------------------%
 
@@ -1805,8 +1827,8 @@ mode_ctor_defn_map_to_mode_defns(ModeCtorDefnMap) = ModeDefns :-
 accumulate_mode_ctor_defns(CtorAllDefns, !ModeDefns) :-
     CtorAllDefns = mode_ctor_all_defns(AbstractDefns, EqvDefns),
     !:ModeDefns = !.ModeDefns ++
-        cord.from_list(AbstractDefns) ++
-        cord.from_list(EqvDefns).
+        cord.from_list(list.map(wrap_abstract_mode_defn, AbstractDefns)) ++
+        cord.from_list(list.map(wrap_eqv_mode_defn, EqvDefns)).
 
 %---------------------%
 

@@ -444,14 +444,14 @@ acc_implicit_avail_needs_in_parse_tree_int0(ParseTreeInt0,
         _ImpTypeClasses, ImpInstances, _ImpPredDecls, _ImpModeDecls,
         _ImpForeignEnumMap, _ImpDeclPragmas, ImpPromises),
 
-    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_add_defns,
+    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_all_defns,
         IntTypeDefnMap, !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_instance,
         IntInstances, !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_promise,
         IntPromises, !ImplicitAvailNeeds),
 
-    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_add_defns,
+    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_all_defns,
         ImpTypeDefnMap, !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_instance,
         ImpInstances, !ImplicitAvailNeeds),
@@ -466,20 +466,17 @@ acc_implicit_avail_needs_in_parse_tree_int1(ParseTreeInt1,
     ParseTreeInt1 = parse_tree_int1(_ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
         _IntUseMap, _ImpUseMap, _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
-        IntTypeDefnMap, _IntInstDefnMap, _IntModeDefnMap,
+        TypeDefnCheckedMap, _InstDefnCheckedMap, _ModeDefnCheckedMap,
         _IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
         _IntDeclPragmas, IntPromises, _IntTypeRepnMap,
-        ImpTypeDefnMap, _ImpForeignEnumMap, _ImpTypeClasses),
+        _ImpTypeClasses),
 
-    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_add_defns,
-        IntTypeDefnMap, !ImplicitAvailNeeds),
+    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_checked_defn,
+        TypeDefnCheckedMap, !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_instance,
         IntInstances, !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_promise,
-        IntPromises, !ImplicitAvailNeeds),
-
-    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_add_defns,
-        ImpTypeDefnMap, !ImplicitAvailNeeds).
+        IntPromises, !ImplicitAvailNeeds).
 
 :- pred acc_implicit_avail_needs_in_parse_tree_int2(parse_tree_int2::in,
     implicit_avail_needs::in, implicit_avail_needs::out) is det.
@@ -489,17 +486,13 @@ acc_implicit_avail_needs_in_parse_tree_int2(ParseTreeInt2,
     ParseTreeInt2 = parse_tree_int2(_ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, _IntInclMap, _InclMap,
         _IntUseMap, _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
-        IntTypeDefnMap, _IntInstDefnMap, _IntModeDefnMap,
-        _IntTypeClasses, IntInstances, _IntTypeRepnMap,
-        ImpTypeDefnMap),
+        TypeDefnCheckedMap, _InstDefnCheckedMap, _ModeDefnCheckedMap,
+        _IntTypeClasses, IntInstances, _IntTypeRepnMap),
 
-    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_add_defns,
-        IntTypeDefnMap, !ImplicitAvailNeeds),
+    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_checked_defn,
+        TypeDefnCheckedMap, !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_instance,
-        IntInstances, !ImplicitAvailNeeds),
-
-    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_add_defns,
-        ImpTypeDefnMap, !ImplicitAvailNeeds).
+        IntInstances, !ImplicitAvailNeeds).
 
 :- pred acc_implicit_avail_needs_in_parse_tree_plain_opt(
     parse_tree_plain_opt::in,
@@ -534,16 +527,35 @@ acc_implicit_avail_needs_in_parse_tree_trans_opt(ParseTreeTransOpt,
 
 %---------------------%
 
-:- pred acc_implicit_avail_needs_in_type_ctor_add_defns(
+:- pred acc_implicit_avail_needs_in_type_ctor_all_defns(
     type_ctor_all_defns::in,
     implicit_avail_needs::in, implicit_avail_needs::out) is det.
 
-acc_implicit_avail_needs_in_type_ctor_add_defns(AllDefns,
+acc_implicit_avail_needs_in_type_ctor_all_defns(AllDefns,
         !ImplicitAvailNeeds) :-
     AllDefns = type_ctor_all_defns(_SolverAbs, SolverNonAbs,
         _StdAbs, _StdEqv, _StdDu, _StdForeign),
     list.foldl(acc_implicit_avail_needs_in_type_defn_solver,
         SolverNonAbs, !ImplicitAvailNeeds).
+
+:- pred acc_implicit_avail_needs_in_type_ctor_checked_defn(
+    type_ctor_checked_defn::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
+
+acc_implicit_avail_needs_in_type_ctor_checked_defn(CheckedDefn,
+        !ImplicitAvailNeeds) :-
+    (
+        CheckedDefn = checked_defn_solver(SolverDefn, _SrcDefns),
+        (
+            SolverDefn = solver_type_abstract(_, _)
+        ;
+            SolverDefn = solver_type_full(_MaybeAbsDefn, ItemTypeDefnSolver),
+            acc_implicit_avail_needs_in_type_defn_solver(ItemTypeDefnSolver,
+                !ImplicitAvailNeeds)
+        )
+    ;
+        CheckedDefn = checked_defn_std(_, _)
+    ).
 
 :- pred acc_implicit_avail_needs_in_type_defn(item_type_defn_info::in,
     implicit_avail_needs::in, implicit_avail_needs::out) is det.

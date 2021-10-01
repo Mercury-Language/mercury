@@ -102,11 +102,11 @@ module_qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
     % Abstract and foreign types don't need to be qualified.
     IntTypeDefnsAbs0 = IntTypeDefnsAbs,
     IntTypeDefnsForeign0 = IntTypeDefnsForeign,
-    list.map_foldl2(module_qualify_item_type_defn(InInt, qualify_type_defn),
+    list.map_foldl2(module_qualify_item_type_defn(qualify_type_defn, InInt),
         IntTypeDefnsMer0, IntTypeDefnsMer, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_inst_defn(InInt),
+    list.map_foldl2(module_qualify_item_inst_defn(qualify_inst_defn, InInt),
         IntInstDefns0, IntInstDefns, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_mode_defn(InInt),
+    list.map_foldl2(module_qualify_item_mode_defn(qualify_mode_defn, InInt),
         IntModeDefns0, IntModeDefns, !Info, !Specs),
     list.map_foldl2(module_qualify_item_typeclass(InInt),
         IntTypeClasses0, IntTypeClasses, !Info, !Specs),
@@ -125,11 +125,11 @@ module_qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
     % Abstract and foreign types don't need to be qualified.
     ImpTypeDefnsAbs0 = ImpTypeDefnsAbs,
     ImpTypeDefnsForeign0 = ImpTypeDefnsForeign,
-    list.map_foldl2(module_qualify_item_type_defn(InImp, qualify_type_defn),
+    list.map_foldl2(module_qualify_item_type_defn(qualify_type_defn, InImp),
         ImpTypeDefnsMer0, ImpTypeDefnsMer, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_inst_defn(InImp),
+    list.map_foldl2(module_qualify_item_inst_defn(qualify_inst_defn, InImp),
         ImpInstDefns0, ImpInstDefns, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_mode_defn(InImp),
+    list.map_foldl2(module_qualify_item_mode_defn(qualify_mode_defn, InImp),
         ImpModeDefns0, ImpModeDefns, !Info, !Specs),
     list.map_foldl2(module_qualify_item_typeclass(InImp),
         ImpTypeClasses0, ImpTypeClasses, !Info, !Specs),
@@ -183,11 +183,11 @@ module_qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3,
         IntTypeClasses0, IntInstances0, IntTypeRepns0),
 
     InInt = mq_used_in_interface,
-    map.map_values_foldl2(module_qualify_type_ctor_all_defns(InInt),
+    map.map_values_foldl2(module_qualify_type_ctor_checked_defn,
         IntTypeDefnMap0, IntTypeDefnMap, !Info, !Specs),
-    map.map_values_foldl2(module_qualify_inst_ctor_all_defns(InInt),
+    map.map_values_foldl2(module_qualify_inst_ctor_checked_defn,
         IntInstDefnMap0, IntInstDefnMap, !Info, !Specs),
-    map.map_values_foldl2(module_qualify_mode_ctor_all_defns(InInt),
+    map.map_values_foldl2(module_qualify_mode_ctor_checked_defn,
         IntModeDefnMap0, IntModeDefnMap, !Info, !Specs),
     list.map_foldl2(module_qualify_item_typeclass(InInt),
         IntTypeClasses0, IntTypeClasses, !Info, !Specs),
@@ -202,72 +202,203 @@ module_qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3,
         IntTypeClasses, IntInstances, IntTypeRepns).
 
 %---------------------------------------------------------------------------%
+%
+% Module qualify the checked type, inst and mode definition maps.
+%
+% Each entry in each of these checked maps contains
+%
+% - the actual definition of the type, inst or mode, together with its status,
+%   and
+%
+% - the definition's source items (i.e. the items from which that definition
+%   was derived) in the interface and the implementation sections.
+%
+% When we module qualify those items, we pass mq_not_used_in_interface
+% or mq_used_in_interface as appropriate to the section, and we keep
+% any error specs the qualification process generates. This is obviously
+% the right thing to do.
+%
+% When we process the actual definitions, we *always* pass
+% mq_not_used_in_interface, and we *always* throw away the resulting
+% error specs. This is also the right thing to do, but the reason is
+% not obvious.
+%
+% The reason for passing mq_not_used_in_interface when processing the
+% definitions themselves is that the definitions are derived from
+% *both interface and implementation items*. If we passed mq_used_in_interface,
+% then we could record that mq_id was used in the interface just because
+% we used it to resolve a reference to a part of a definition that came from
+% the implementation section, which would be incorrect. Any mq_ids used by
+% parts of the definition that came from the interface section will not be
+% recorded as such when we process the definition itself, but it *will* be
+% recorded as such when we process the interface source items.
+%
+% Likewise, any errors we generate while module qualifying the definitions
+% but then throw away *will* be generated when we module qualify the
+% source items. The difference is that the source items include the context
+% we want for each error message, while the definitions themselves do not.
+% We could add a context to the definitions, but, given the above, there is
+% no point.
+%
 
-:- pred module_qualify_type_ctor_all_defns(mq_in_interface::in,
-    type_ctor_all_defns::in, type_ctor_all_defns::out,
+:- pred module_qualify_type_ctor_checked_defn(
+    type_ctor_checked_defn::in, type_ctor_checked_defn::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_qualify_type_ctor_all_defns(InInt, AllDefns0, AllDefns,
+module_qualify_type_ctor_checked_defn(CheckedDefn0, CheckedDefn,
         !Info, !Specs) :-
-    AllDefns0 = type_ctor_all_defns(SolverAbs, SolverNonAbs0,
-        StdAbs, StdEqv0, StdDu0, StdForeign),
-    % Abstract and foreign type definitions don't need qualifying.
-    list.map_foldl2(
-        module_qualify_item_type_defn(InInt, qualify_type_defn_solver),
-        SolverNonAbs0, SolverNonAbs, !Info, !Specs),
-    list.map_foldl2(
-        module_qualify_item_type_defn(InInt, qualify_type_defn_eqv),
-        StdEqv0, StdEqv, !Info, !Specs),
-    list.map_foldl2(
-        module_qualify_item_type_defn(InInt, qualify_type_defn_du),
-        StdDu0, StdDu, !Info, !Specs),
-    AllDefns = type_ctor_all_defns(SolverAbs, SolverNonAbs,
-        StdAbs, StdEqv, StdDu, StdForeign).
+    (
+        CheckedDefn0 = checked_defn_solver(SolverDefn0, SrcDefns0),
+        (
+            SolverDefn0 = solver_type_abstract(_AbsSolverStatus, _AbsDefn0),
+            % Abstract definitions do not need qualification.
+            SolverDefn = SolverDefn0
+        ;
+            SolverDefn0 = solver_type_full(MaybeAbsDefn0, FullDefn0),
+            % Abstract definitions do not need qualification.
+            module_qualify_item_type_defn(qualify_type_defn_solver,
+                mq_not_used_in_interface, FullDefn0, FullDefn,
+                !Info, !.Specs, _),
+            SolverDefn = solver_type_full(MaybeAbsDefn0, FullDefn)
+        ),
+        SrcDefns0 = src_defns_solver(MaybeIntDefn0, MaybeImpDefn0),
+        QualifyPred = module_qualify_item_type_defn(qualify_type_defn),
+        maybe_qualify_defn(QualifyPred, mq_used_in_interface,
+            MaybeIntDefn0, MaybeIntDefn, !Info, !Specs),
+        maybe_qualify_defn(QualifyPred, mq_not_used_in_interface,
+            MaybeImpDefn0, MaybeImpDefn, !Info, !Specs),
+        SrcDefns = src_defns_solver(MaybeIntDefn, MaybeImpDefn),
+        CheckedDefn = checked_defn_solver(SolverDefn, SrcDefns)
+    ;
+        CheckedDefn0 = checked_defn_std(StdDefn0, SrcDefns0),
+        (
+            StdDefn0 = std_mer_type_eqv(EqvStatus, EqvDefn0),
+            module_qualify_item_type_defn(qualify_type_defn_eqv,
+                mq_not_used_in_interface, EqvDefn0, EqvDefn,
+                !Info, !.Specs, _),
+            StdDefn = std_mer_type_eqv(EqvStatus, EqvDefn)
+        ;
+            StdDefn0 = std_mer_type_du_subtype(SubStatus, DuDefn0),
+            module_qualify_item_type_defn(qualify_type_defn_du,
+                mq_not_used_in_interface, DuDefn0, DuDefn,
+                !Info, !.Specs, _),
+            StdDefn = std_mer_type_du_subtype(SubStatus, DuDefn)
+        ;
+            StdDefn0 = std_mer_type_du_all_plain_constants(DuStatus, DuDefn0,
+                HeadCtor, TailCtors, CJCsDefnOrEnum),
+            module_qualify_item_type_defn(qualify_type_defn_du,
+                mq_not_used_in_interface, DuDefn0, DuDefn,
+                !Info, !.Specs, _),
+            % Foreign types and foreign enums need no qualification.
+            StdDefn = std_mer_type_du_all_plain_constants(DuStatus, DuDefn,
+                HeadCtor, TailCtors, CJCsDefnOrEnum)
+        ;
+            StdDefn0 = std_mer_type_du_not_all_plain_constants(DuStatus,
+                DuDefn0, CJCsDefnOrEnum),
+            module_qualify_item_type_defn(qualify_type_defn_du,
+                mq_not_used_in_interface, DuDefn0, DuDefn,
+                !Info, !.Specs, _),
+            % Foreign types and foreign enums need no qualification.
+            StdDefn = std_mer_type_du_not_all_plain_constants(DuStatus,
+                DuDefn, CJCsDefnOrEnum)
+        ;
+            StdDefn0 = std_mer_type_abstract(_AbsStatus, _AbsDefn,
+                _CJCsDefnOrEnum),
+            % Abstract types, foreign types and foreign enums
+            % need no qualification.
+            StdDefn = StdDefn0
+        ),
+        SrcDefns0 = src_defns_std(IntDefns0, ImpDefns0, ImpForeigns0),
+        list.map_foldl2(
+            module_qualify_item_type_defn(qualify_type_defn,
+                mq_used_in_interface),
+            IntDefns0, IntDefns, !Info, !Specs),
+        list.map_foldl2(
+            module_qualify_item_type_defn(qualify_type_defn,
+                mq_not_used_in_interface),
+            ImpDefns0, ImpDefns, !Info, !Specs),
+        % Foreign types need no qualification.
+        SrcDefns = src_defns_std(IntDefns, ImpDefns, ImpForeigns0),
+        CheckedDefn = checked_defn_std(StdDefn, SrcDefns)
+    ).
 
-:- pred module_qualify_inst_ctor_all_defns(mq_in_interface::in,
-    inst_ctor_all_defns::in, inst_ctor_all_defns::out,
+:- pred module_qualify_inst_ctor_checked_defn(
+    inst_ctor_checked_defn::in, inst_ctor_checked_defn::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_qualify_inst_ctor_all_defns(InInt, AllDefns0, AllDefns,
+module_qualify_inst_ctor_checked_defn(CheckedDefn0, CheckedDefn,
         !Info, !Specs) :-
-    AllDefns0 = inst_ctor_all_defns(Abs0, Eqv0),
+    CheckedDefn0 = checked_defn_inst(StdInstDefn0, SrcDefns0),
+    StdInstDefn0 = std_inst_defn(Status, MaybeAbstractDefn0),
     % Because of the inst_for_type_constructor field,
     % even abstract inst definitions need qualifying.
-    list.map_foldl2(module_qualify_item_inst_defn(InInt),
-        Abs0, Abs, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_inst_defn(InInt),
-        Eqv0, Eqv, !Info, !Specs),
-    AllDefns = inst_ctor_all_defns(Abs, Eqv).
+    module_qualify_item_inst_defn(qualify_inst_defn, mq_not_used_in_interface,
+        MaybeAbstractDefn0, MaybeAbstractDefn, !Info, !.Specs, _),
+    StdInstDefn = std_inst_defn(Status, MaybeAbstractDefn),
+    SrcDefns0 = src_defns_inst(MaybeIntDefn0, MaybeImpDefn0),
+    QualifyPred = module_qualify_item_inst_defn(qualify_inst_defn),
+    maybe_qualify_defn(QualifyPred, mq_used_in_interface,
+        MaybeIntDefn0, MaybeIntDefn, !Info, !Specs),
+    maybe_qualify_defn(QualifyPred, mq_not_used_in_interface,
+        MaybeImpDefn0, MaybeImpDefn, !Info, !Specs),
+    SrcDefns = src_defns_inst(MaybeIntDefn, MaybeImpDefn),
+    CheckedDefn = checked_defn_inst(StdInstDefn, SrcDefns).
 
-:- pred module_qualify_mode_ctor_all_defns(mq_in_interface::in,
-    mode_ctor_all_defns::in, mode_ctor_all_defns::out,
+:- pred module_qualify_mode_ctor_checked_defn(
+    mode_ctor_checked_defn::in, mode_ctor_checked_defn::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_qualify_mode_ctor_all_defns(InInt, AllDefns0, AllDefns,
+module_qualify_mode_ctor_checked_defn(CheckedDefn0, CheckedDefn,
         !Info, !Specs) :-
-    AllDefns0 = mode_ctor_all_defns(Abs0, Eqv0),
-    % Abstract inst definitions don't need qualifying NOW, but will
+    CheckedDefn0 = checked_defn_mode(StdModeDefn0, SrcDefns0),
+    StdModeDefn0 = std_mode_defn(Status, MaybeAbstractDefn0),
+    % Abstract mode definitions don't need qualifying NOW, but will
     % in the future when we add a new mode_for_type_constructor field.
-    list.map_foldl2(module_qualify_item_mode_defn(InInt),
-        Abs0, Abs, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_mode_defn(InInt),
-        Eqv0, Eqv, !Info, !Specs),
-    AllDefns = mode_ctor_all_defns(Abs, Eqv).
+    module_qualify_item_mode_defn(qualify_mode_defn, mq_not_used_in_interface,
+        MaybeAbstractDefn0, MaybeAbstractDefn, !Info, !.Specs, _),
+    StdModeDefn = std_mode_defn(Status, MaybeAbstractDefn),
+    SrcDefns0 = src_defns_mode(MaybeIntDefn0, MaybeImpDefn0),
+    QualifyPred = module_qualify_item_mode_defn(qualify_mode_defn),
+    maybe_qualify_defn(QualifyPred, mq_used_in_interface,
+        MaybeIntDefn0, MaybeIntDefn, !Info, !Specs),
+    maybe_qualify_defn(QualifyPred, mq_not_used_in_interface,
+        MaybeImpDefn0, MaybeImpDefn, !Info, !Specs),
+    SrcDefns = src_defns_mode(MaybeIntDefn, MaybeImpDefn),
+    CheckedDefn = checked_defn_mode(StdModeDefn, SrcDefns).
+
+:- pred maybe_qualify_defn(
+    pred(mq_in_interface, T, T, mq_info, mq_info,
+        list(error_spec), list(error_spec))
+    :: in(pred(in, in, out, in, out, in, out) is det),
+    mq_in_interface::in,
+    maybe(T)::in, maybe(T)::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_qualify_defn(QualifyPred, InInt, MaybeDefn0, MaybeDefn, !Info, !Specs) :-
+    (
+        MaybeDefn0 = no,
+        MaybeDefn = no
+    ;
+        MaybeDefn0 = yes(Defn0),
+        QualifyPred(InInt, Defn0, Defn, !Info, !Specs),
+        MaybeDefn = yes(Defn)
+    ).
 
 %---------------------------------------------------------------------------%
 
-:- pred module_qualify_item_type_defn(mq_in_interface::in,
+:- pred module_qualify_item_type_defn(
     pred(mq_in_interface, prog_context, type_ctor, T, T,
         mq_info, mq_info, list(error_spec), list(error_spec))
     :: in(pred(in, in, in, in, out, in, out, in, out) is det),
+    mq_in_interface::in,
     item_type_defn_info_general(T)::in, item_type_defn_info_general(T)::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_qualify_item_type_defn(InInt, QualDefn, ItemTypeDefn0, ItemTypeDefn,
+module_qualify_item_type_defn(QualDefn, InInt, ItemTypeDefn0, ItemTypeDefn,
         !Info, !Specs) :-
     ItemTypeDefn0 = item_type_defn_info(SymName, Params, TypeDefn0,
         TVarSet, Context, SeqNum),
@@ -277,27 +408,24 @@ module_qualify_item_type_defn(InInt, QualDefn, ItemTypeDefn0, ItemTypeDefn,
     ItemTypeDefn = item_type_defn_info(SymName, Params, TypeDefn,
         TVarSet, Context, SeqNum).
 
-:- pred module_qualify_item_inst_defn(mq_in_interface::in,
-    item_inst_defn_info::in, item_inst_defn_info::out,
+:- pred module_qualify_item_inst_defn(
+    pred(mq_in_interface, prog_context, inst_ctor, T, T,
+        mq_info, mq_info, list(error_spec), list(error_spec))
+    :: in(pred(in, in, in, in, out, in, out, in, out) is det),
+    mq_in_interface::in,
+    item_inst_defn_info_general(T)::in, item_inst_defn_info_general(T)::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_qualify_item_inst_defn(InInt, ItemInstDefn0, ItemInstDefn,
+module_qualify_item_inst_defn(QualDefn, InInt, ItemInstDefn0, ItemInstDefn,
         !Info, !Specs) :-
     ItemInstDefn0 = item_inst_defn_info(SymName, Params, MaybeForTypeCtor0,
         MaybeAbstractInstDefn0, InstVarSet, Context, SeqNum),
     list.length(Params, Arity),
-    ErrorContext = mqec_inst(Context, mq_id(SymName, Arity)),
-    (
-        MaybeAbstractInstDefn0 = abstract_inst_defn,
-        MaybeAbstractInstDefn = abstract_inst_defn
-    ;
-        MaybeAbstractInstDefn0 = nonabstract_inst_defn(InstDefn0),
-        InstDefn0 = eqv_inst(Inst0),
-        qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs),
-        InstDefn = eqv_inst(Inst),
-        MaybeAbstractInstDefn = nonabstract_inst_defn(InstDefn)
-    ),
+    InstCtor = inst_ctor(SymName, Arity),
+    ErrorContext = mqec_inst_defn(Context, InstCtor),
+    QualDefn(InInt, Context, InstCtor,
+        MaybeAbstractInstDefn0, MaybeAbstractInstDefn, !Info, !Specs),
     (
         MaybeForTypeCtor0 = yes(ForTypeCtor0),
         qualify_type_ctor(InInt, ErrorContext, ForTypeCtor0, ForTypeCtor,
@@ -310,27 +438,23 @@ module_qualify_item_inst_defn(InInt, ItemInstDefn0, ItemInstDefn,
     ItemInstDefn = item_inst_defn_info(SymName, Params, MaybeForTypeCtor,
         MaybeAbstractInstDefn, InstVarSet, Context, SeqNum).
 
-:- pred module_qualify_item_mode_defn(mq_in_interface::in,
-    item_mode_defn_info::in, item_mode_defn_info::out,
+:- pred module_qualify_item_mode_defn(
+    pred(mq_in_interface, prog_context, mode_ctor, T, T,
+        mq_info, mq_info, list(error_spec), list(error_spec))
+    :: in(pred(in, in, in, in, out, in, out, in, out) is det),
+    mq_in_interface::in,
+    item_mode_defn_info_general(T)::in, item_mode_defn_info_general(T)::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_qualify_item_mode_defn(InInt, ItemModeDefn0, ItemModeDefn,
+module_qualify_item_mode_defn(QualDefn, InInt, ItemModeDefn0, ItemModeDefn,
         !Info, !Specs) :-
     ItemModeDefn0 = item_mode_defn_info(SymName, Params,
         MaybeAbstractModeDefn0, InstVarSet, Context, SeqNum),
-    (
-        MaybeAbstractModeDefn0 = abstract_mode_defn,
-        MaybeAbstractModeDefn = abstract_mode_defn
-    ;
-        MaybeAbstractModeDefn0 = nonabstract_mode_defn(ModeDefn0),
-        list.length(Params, Arity),
-        ErrorContext = mqec_mode(Context, mq_id(SymName, Arity)),
-        ModeDefn0 = eqv_mode(Mode0),
-        qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs),
-        ModeDefn = eqv_mode(Mode),
-        MaybeAbstractModeDefn = nonabstract_mode_defn(ModeDefn)
-    ),
+    list.length(Params, Arity),
+    ModeCtor = mode_ctor(SymName, Arity),
+    QualDefn(InInt, Context, ModeCtor,
+        MaybeAbstractModeDefn0, MaybeAbstractModeDefn, !Info, !Specs),
     ItemModeDefn = item_mode_defn_info(SymName, Params,
         MaybeAbstractModeDefn, InstVarSet, Context, SeqNum).
 
@@ -352,7 +476,7 @@ module_qualify_item_typeclass(InInt, ItemTypeClass0, ItemTypeClass,
         Interface = class_interface_abstract
     ;
         Interface0 = class_interface_concrete(Methods0),
-        ErrorContext = mqec_class(Context, mq_id(Name, Arity)),
+        ErrorContext = mqec_class(Context, class_id(Name, Arity)),
         qualify_class_decls(InInt, ErrorContext, Methods0, Methods,
             !Info, !Specs),
         Interface = class_interface_concrete(Methods)
@@ -370,8 +494,7 @@ module_qualify_item_instance(InInt, ItemInstance0, ItemInstance,
     ItemInstance0 = item_instance_info(Name0, Types0, OriginalTypes0,
         Constraints0, Body0, VarSet, ModName, Context, SeqNum),
     list.length(Types0, Arity),
-    Id0 = mq_id(Name0, Arity),
-    ErrorContext = mqec_instance(Context, Id0),
+    ErrorContext = mqec_instance(Context, class_id(Name0, Arity)),
 
     (
         InInt = mq_used_in_interface,
@@ -386,6 +509,7 @@ module_qualify_item_instance(InInt, ItemInstance0, ItemInstance,
         OriginalTypes0),
     qualify_prog_constraint_list(InInt, ConstraintErrorContext,
         Constraints0, Constraints, !Info, !Specs),
+    Id0 = mq_id(Name0, Arity),
     qualify_class_name(InInt, ErrorContext, Id0, Name, !Info, !Specs),
     % XXX We don't want to keep the errors from the expansion of both
     % forms of the instance types, since printing two error messages about
@@ -884,8 +1008,30 @@ is_builtin_atomic_type(TypeCtor) :-
 
 %---------------------------------------------------------------------------%
 %
-% Module qualify insts.
+% Module qualify inst definitions and insts.
 %
+
+    % Qualify the right hand side of an inst definition.
+    %
+:- pred qualify_inst_defn(mq_in_interface::in, prog_context::in,
+    inst_ctor::in, maybe_abstract_inst_defn::in, maybe_abstract_inst_defn::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_inst_defn(InInt, Context, InstCtor,
+        MaybeAbstractInstDefn0, MaybeAbstractInstDefn,
+        !Info, !Specs) :-
+    (
+        MaybeAbstractInstDefn0 = abstract_inst_defn,
+        MaybeAbstractInstDefn = abstract_inst_defn
+    ;
+        MaybeAbstractInstDefn0 = nonabstract_inst_defn(InstDefn0),
+        ErrorContext = mqec_inst_defn(Context, InstCtor),
+        InstDefn0 = eqv_inst(Inst0),
+        qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs),
+        InstDefn = eqv_inst(Inst),
+        MaybeAbstractInstDefn = nonabstract_inst_defn(InstDefn)
+    ).
 
     % Qualify a single inst.
     %
@@ -1065,8 +1211,30 @@ qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
 
 %---------------------------------------------------------------------------%
 %
-% Module qualify modes.
+% Module qualify mode definitions and modes.
 %
+
+    % Qualify the right hand side of a mode definition.
+    %
+:- pred qualify_mode_defn(mq_in_interface::in, prog_context::in,
+    mode_ctor::in, maybe_abstract_mode_defn::in, maybe_abstract_mode_defn::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_mode_defn(InInt, Context, ModeCtor,
+        MaybeAbstractModeDefn0, MaybeAbstractModeDefn,
+        !Info, !Specs) :-
+    (
+        MaybeAbstractModeDefn0 = abstract_mode_defn,
+        MaybeAbstractModeDefn = abstract_mode_defn
+    ;
+        MaybeAbstractModeDefn0 = nonabstract_mode_defn(ModeDefn0),
+        ErrorContext = mqec_mode_defn(Context, ModeCtor),
+        ModeDefn0 = eqv_mode(Mode0),
+        qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs),
+        ModeDefn = eqv_mode(Mode),
+        MaybeAbstractModeDefn = nonabstract_mode_defn(ModeDefn)
+    ).
 
 qualify_mode_list(_InInt, _ErrorContext, [], [], !Info, !Specs).
 qualify_mode_list(InInt, ErrorContext, [Mode0 | Modes0], [Mode | Modes],

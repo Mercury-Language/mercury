@@ -1,0 +1,22 @@
+#!/bin/sh
+# vim: ts=4 sw=4 et ft=sh
+#
+# When invoked in a workspace, this script looks at all the automatically
+# generated interface files in the Mercury directories, and shows how their
+# stage 2 counterparts, if any, differ from them.
+#
+
+for dir in library mdbcomp browser compiler slice profiler deep_profiler
+do
+    for ext in int3 int int2 int0
+    do
+        for intfile in ${dir}/*.${ext}
+        do
+            if test -f "stage2/${intfile}"
+            then
+                echo "=== ${intfile} ==="
+                diff -u "${intfile}" "stage2/${intfile}"
+            fi
+        done
+    done
+done

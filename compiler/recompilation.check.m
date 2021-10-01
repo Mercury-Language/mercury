@@ -77,6 +77,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.item_util.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_imports.
 :- import_module parse_tree.parse_error.
@@ -1603,16 +1604,20 @@ get_ambiguity_checkables_parse_tree_int1(ParseTreeInt1, Checkables) :-
     ParseTreeInt1 = parse_tree_int1(_ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, _IntIncls, _ImpIncls, _InclMap,
         _IntUses, _ImpUses, _ImportUseMap, _IntFIMs, _ImpFIMs,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
-        IntTypeClasses, _IntItemInstances,
-        IntPredDecls, _IntModeDecls, _IntDeclPragmas, _IntPromises,
-        _IntTypeRepnMap,
-        ImpTypeDefnMap, _ImpFEEs, ImpTypeClasses),
-    ItemTypeDefns =
-        type_ctor_defn_map_to_type_defns(IntTypeDefnMap) ++
-        type_ctor_defn_map_to_type_defns(ImpTypeDefnMap),
-    ItemInstDefns = inst_ctor_defn_map_to_inst_defns(IntInstDefnMap),
-    ItemModeDefns = mode_ctor_defn_map_to_mode_defns(IntModeDefnMap),
+        TypeDefnCheckedMap, InstDefnCheckedMap, ModeDefnCheckedMap,
+        IntTypeClasses, _IntItemInstances, IntPredDecls, _IntModeDecls,
+        _IntDeclPragmas, _IntPromises, _IntTypeRepnMap, ImpTypeClasses),
+    type_ctor_checked_map_get_src_defns(TypeDefnCheckedMap,
+        IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
+    inst_ctor_checked_map_get_src_defns(InstDefnCheckedMap,
+        IntInstDefns, ImpInstDefns),
+    mode_ctor_checked_map_get_src_defns(ModeDefnCheckedMap,
+        IntModeDefns, ImpModeDefns),
+    expect(unify(ImpInstDefns, []), $pred, "ImpInstDefns != []"),
+    expect(unify(ImpModeDefns, []), $pred, "ImpModeDefns != []"),
+    ItemTypeDefns = IntTypeDefns ++ ImpTypeDefns,
+    ItemInstDefns = IntInstDefns,
+    ItemModeDefns = IntModeDefns,
     ItemTypeClasses = IntTypeClasses ++ ImpTypeClasses,
     ItemPredDecls = IntPredDecls,
     Checkables = ambiguity_checkables(ItemTypeDefns,
@@ -1625,14 +1630,19 @@ get_ambiguity_checkables_parse_tree_int2(ParseTreeInt2, Checkables) :-
     ParseTreeInt2 = parse_tree_int2(_ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, _IntIncls, _InclMap,
         _IntUses, _ImportUseMap, _IntFIMs, _ImpFIMs,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
-        IntItemTypeClasses, _IntItemInstances, _IntTypeRepnMap,
-        ImpTypeDefnMap),
-    ItemTypeDefns =
-        type_ctor_defn_map_to_type_defns(IntTypeDefnMap) ++
-        type_ctor_defn_map_to_type_defns(ImpTypeDefnMap),
-    ItemInstDefns = inst_ctor_defn_map_to_inst_defns(IntInstDefnMap),
-    ItemModeDefns = mode_ctor_defn_map_to_mode_defns(IntModeDefnMap),
+        TypeDefnCheckedMap, InstDefnCheckedMap, ModeDefnCheckedMap,
+        IntItemTypeClasses, _IntItemInstances, _IntTypeRepnMap),
+    type_ctor_checked_map_get_src_defns(TypeDefnCheckedMap,
+        IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
+    inst_ctor_checked_map_get_src_defns(InstDefnCheckedMap,
+        IntInstDefns, ImpInstDefns),
+    mode_ctor_checked_map_get_src_defns(ModeDefnCheckedMap,
+        IntModeDefns, ImpModeDefns),
+    expect(unify(ImpInstDefns, []), $pred, "ImpInstDefns != []"),
+    expect(unify(ImpModeDefns, []), $pred, "ImpModeDefns != []"),
+    ItemTypeDefns = IntTypeDefns ++ ImpTypeDefns,
+    ItemInstDefns = IntInstDefns,
+    ItemModeDefns = IntModeDefns,
     ItemTypeClasses = IntItemTypeClasses,
     ItemPredDecls = [],
     Checkables = ambiguity_checkables(ItemTypeDefns,
@@ -1644,14 +1654,20 @@ get_ambiguity_checkables_parse_tree_int2(ParseTreeInt2, Checkables) :-
 get_ambiguity_checkables_parse_tree_int3(ParseTreeInt3, Checkables) :-
     ParseTreeInt3 = parse_tree_int3(_ModuleName, _ModuleNameContext,
         _Incls, _InclMap, _Avails, _AvailMap,
-        TypeDefnMap, InstDefnMap, ModeDefnMap,
-        ItemTypeClasses, _ItemInstances, _TypeRepnMap),
-    ItemTypeDefns = type_ctor_defn_map_to_type_defns(TypeDefnMap),
-    ItemInstDefns = inst_ctor_defn_map_to_inst_defns(InstDefnMap),
-    ItemModeDefns = mode_ctor_defn_map_to_mode_defns(ModeDefnMap),
-    ItemPredDecls = [],
-    Checkables = ambiguity_checkables(ItemTypeDefns,
-        ItemInstDefns, ItemModeDefns, ItemTypeClasses, ItemPredDecls).
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
+        IntTypeClasses, _IntInstances, _TypeRepnMap),
+    type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
+        IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
+    inst_ctor_checked_map_get_src_defns(InstCtorCheckedMap,
+        IntInstDefns, ImpInstDefns),
+    mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
+        IntModeDefns, ImpModeDefns),
+    expect(unify(ImpTypeDefns, []), $pred, "ImpTypeDefns != []"),
+    expect(unify(ImpInstDefns, []), $pred, "ImpInstDefns != []"),
+    expect(unify(ImpModeDefns, []), $pred, "ImpModeDefns != []"),
+    IntPredDecls = [],
+    Checkables = ambiguity_checkables(IntTypeDefns,
+        IntInstDefns, IntModeDefns, IntTypeClasses, IntPredDecls).
 
 %---------------------------------------------------------------------------%
 :- end_module recompilation.check.
