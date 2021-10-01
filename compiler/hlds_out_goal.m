@@ -2190,7 +2190,7 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint,
                 % in the scope with code to get and set the I/O state
                 % and/or any mutables mentioned by the scope.
                 %
-                % Therefore when generate Mercury code, we don't write
+                % Therefore when we generate Mercury code, we don't write
                 % these parts of the trace goal out. If we did, then
                 % two problems would arise.
                 %
