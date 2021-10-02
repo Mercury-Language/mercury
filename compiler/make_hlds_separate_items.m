@@ -984,6 +984,7 @@ separate_type_defns_abs_mer_for([Item | Items], !Abs, !Mer, !For) :-
         !:Abs = [Item | !.Abs]
     ;
         ( TypeDefn = parse_tree_du_type(_)
+        ; TypeDefn = parse_tree_sub_type(_)
         ; TypeDefn = parse_tree_eqv_type(_)
         ; TypeDefn = parse_tree_solver_type(_)
         ),

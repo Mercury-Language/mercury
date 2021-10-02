@@ -22,11 +22,12 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
+:- import_module list.
 :- import_module term.
 :- import_module varset.
 
     % parse_item_or_marker(ModuleName, VarSet, Term, SeqNum,
-    %   MaybeItemOrMarker):
+    %   MaybeItemOrMarker, !Specs):
     %
     % Parse Term as either an item or sequence of items, or as a marker for
     % the start or end of a module, the start of a module section,
@@ -39,10 +40,15 @@
     % in both cases.
     %
     % If the parsing attempt is unsuccessful, bind MaybeItemOrMarker
-    % to an appropriate error message.
+    % to an error1() wrappedaround an appropriate set of error messages.
+    %
+    % If the term to be parsed has an error that we can recover from without
+    % losing information, then return the item or marker *and* add the
+    % appropriate messages to !Specs.
     %
 :- pred parse_item_or_marker(module_name::in, varset::in, term::in,
-    item_seq_num::in, maybe1(item_or_marker)::out) is det.
+    item_seq_num::in, maybe1(item_or_marker)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % parse_class_decl(ModuleName, VarSet, Term, MaybeClassDecl):
     %
@@ -120,7 +126,6 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
@@ -128,10 +133,10 @@
 
 %---------------------------------------------------------------------------%
 
-parse_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
+parse_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM, !Specs) :-
     ( if Term = term.functor(term.atom(":-"), [DeclTerm], _DeclContext) then
         parse_decl_term_item_or_marker(ModuleName, VarSet, DeclTerm,
-            SeqNum, MaybeIOM)
+            SeqNum, MaybeIOM, !Specs)
     else
         parse_clause_term_item_or_marker(ModuleName, VarSet, Term,
             SeqNum, MaybeIOM)
@@ -140,15 +145,16 @@ parse_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
 %---------------------------------------------------------------------------%
 
 :- pred parse_decl_term_item_or_marker(module_name::in, varset::in, term::in,
-    item_seq_num::in, maybe1(item_or_marker)::out) is det.
-:- pragma inline(pred(parse_decl_term_item_or_marker/5)).
+    item_seq_num::in, maybe1(item_or_marker)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+:- pragma inline(pred(parse_decl_term_item_or_marker/7)).
 
 parse_decl_term_item_or_marker(ModuleName, VarSet, DeclTerm,
-        SeqNum, MaybeIOM) :-
+        SeqNum, MaybeIOM, !Specs) :-
     ( if DeclTerm = term.functor(term.atom(Functor), ArgTerms, Context) then
         ( if
             parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
-                decl_is_not_in_class, Context, SeqNum, MaybeIOMPrime)
+                decl_is_not_in_class, Context, SeqNum, MaybeIOMPrime, !Specs)
         then
             MaybeIOM = MaybeIOMPrime
         else
@@ -183,10 +189,11 @@ decl_functor_is_not_valid(Term, Functor) = Spec :-
 
 :- pred parse_decl_item_or_marker(module_name::in, varset::in,
     string::in, list(term)::in, decl_in_class::in, prog_context::in,
-    item_seq_num::in, maybe1(item_or_marker)::out) is semidet.
+    item_seq_num::in, maybe1(item_or_marker)::out,
+    list(error_spec)::in, list(error_spec)::out) is semidet.
 
 parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
-        IsInClass, Context, SeqNum, MaybeIOM) :-
+        IsInClass, Context, SeqNum, MaybeIOM, !Specs) :-
     require_switch_arms_det [Functor]
     (
         Functor = "module",
@@ -214,11 +221,11 @@ parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
     ;
         Functor = "type",
         parse_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
-            non_solver_type, MaybeIOM)
+            non_solver_type, MaybeIOM, !Specs)
     ;
         Functor = "solver",
         parse_solver_type_defn_item(ModuleName, VarSet, ArgTerms,
-            Context, SeqNum, MaybeIOM)
+            Context, SeqNum, MaybeIOM, !Specs)
     ;
         Functor = "type_representation",
         parse_type_repn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,

@@ -492,7 +492,7 @@ build_eqv_maps_in_type_ctor_checked_defns_int(TypeCtor, CheckedDefn,
                 )
             )
         ;
-            ( StdTypeDefn = std_mer_type_du_subtype(_, _)
+            ( StdTypeDefn = std_mer_type_subtype(_, _)
             ; StdTypeDefn = std_mer_type_du_all_plain_constants(_, _, _, _, _)
             ; StdTypeDefn = std_mer_type_du_not_all_plain_constants(_, _, _)
             ; StdTypeDefn = std_mer_type_abstract(_, _, _)
@@ -1060,7 +1060,7 @@ replace_in_list_loop(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
 replace_in_type_ctor_all_defns(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
         AllDefns0, AllDefns, !RecompInfo, !UsedModules, !Specs) :-
     AllDefns0 = type_ctor_all_defns(TypeSolverAbs, TypeSolver0,
-        TypeStdAbs, TypeStdEqv0, TypeStdDu0, TypeStdForeign),
+        TypeStdAbs, TypeStdEqv0, TypeStdDu0, TypeStdSub0, TypeStdForeign),
     replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
         replace_in_type_defn_info_general(replace_in_type_defn_solver),
         TypeSolver0, TypeSolver, !RecompInfo, !UsedModules, !Specs),
@@ -1070,8 +1070,11 @@ replace_in_type_ctor_all_defns(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
     replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
         replace_in_type_defn_info_general(replace_in_type_defn_du),
         TypeStdDu0, TypeStdDu, !RecompInfo, !UsedModules, !Specs),
+    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+        replace_in_type_defn_info_general(replace_in_type_defn_sub),
+        TypeStdSub0, TypeStdSub, !RecompInfo, !UsedModules, !Specs),
     AllDefns = type_ctor_all_defns(TypeSolverAbs, TypeSolver,
-        TypeStdAbs, TypeStdEqv, TypeStdDu, TypeStdForeign).
+        TypeStdAbs, TypeStdEqv, TypeStdDu, TypeStdSub, TypeStdForeign).
 
 :- pred replace_in_type_ctor_checked_defn(module_name::in,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
@@ -1118,12 +1121,13 @@ replace_in_type_ctor_checked_defn(ModuleName, MaybeRecord,
             !:Specs = EqvSpecs ++ !.Specs,
             StdDefn = std_mer_type_eqv(Status, ItemEqvDefn)
         ;
-            StdDefn0 = std_mer_type_du_subtype(Status, ItemDuDefn0),
-            replace_in_type_defn_info_general(replace_in_type_defn_du,
+            StdDefn0 = std_mer_type_subtype(Status, ItemSubDefn0),
+            replace_in_type_defn_info_general(replace_in_type_defn_sub,
                 ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-                ItemDuDefn0, ItemDuDefn, !RecompInfo, !UsedModules, DuSpecs),
-            !:Specs = DuSpecs ++ !.Specs,
-            StdDefn = std_mer_type_du_subtype(Status, ItemDuDefn)
+                ItemSubDefn0, ItemSubDefn, !RecompInfo, !UsedModules,
+                SubSpecs),
+            !:Specs = SubSpecs ++ !.Specs,
+            StdDefn = std_mer_type_subtype(Status, ItemSubDefn)
         ;
             StdDefn0 = std_mer_type_du_all_plain_constants(Status,
                 ItemDuDefn0, HeadCtor, TailCtors, CJCsMaybeDefnOrEnum),
@@ -1685,6 +1689,12 @@ replace_in_type_defn(MaybeRecord, TypeEqvMap, InstEqvMap, TypeCtor, Context,
             !TVarSet, !EquivTypeInfo, !UsedModules, Specs),
         TypeDefn = parse_tree_du_type(DetailsDu)
     ;
+        TypeDefn0 = parse_tree_sub_type(DetailsSub0),
+        replace_in_type_defn_sub(MaybeRecord, TypeEqvMap, InstEqvMap,
+            TypeCtor, Context, DetailsSub0, DetailsSub,
+            !TVarSet, !EquivTypeInfo, !UsedModules, Specs),
+        TypeDefn = parse_tree_sub_type(DetailsSub)
+    ;
         TypeDefn0 = parse_tree_solver_type(DetailsSolver0),
         replace_in_type_defn_solver(MaybeRecord, TypeEqvMap, InstEqvMap,
             TypeCtor, Context, DetailsSolver0, DetailsSolver,
@@ -1762,21 +1772,27 @@ report_contains_circular_eqv_type(TVarSet, Type, Context,
 replace_in_type_defn_du(MaybeRecord, TypeEqvMap, _InstEqvMap,
         _TypeCtor, _Context, DetailsDu0, DetailsDu,
         !TVarSet, !EquivTypeInfo, !UsedModules, Specs) :-
-    DetailsDu0 = type_details_du(MaybeSuperType0, Ctors0, EqPred,
-        DirectArgFunctors),
-    (
-        MaybeSuperType0 = subtype_of(SuperType0),
-        replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
-            SuperType0, SuperType, _, !TVarSet, !EquivTypeInfo, !UsedModules),
-        MaybeSuperType = subtype_of(SuperType)
-    ;
-        MaybeSuperType0 = not_a_subtype,
-        MaybeSuperType = not_a_subtype
-    ),
+    DetailsDu0 = type_details_du(Ctors0, MaybeCanon, DirectArgFunctors),
     replace_in_ctors_location(MaybeRecord, TypeEqvMap, Ctors0, Ctors,
         !TVarSet, !EquivTypeInfo, !UsedModules),
-    DetailsDu = type_details_du(MaybeSuperType, Ctors, EqPred,
-        DirectArgFunctors),
+    DetailsDu = type_details_du(Ctors, MaybeCanon, DirectArgFunctors),
+    Specs = [].
+
+:- pred replace_in_type_defn_sub(maybe_record_sym_name_use::in,
+    type_eqv_map::in, inst_eqv_map::in, type_ctor::in, prog_context::in,
+    type_details_sub::in, type_details_sub::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_type_defn_sub(MaybeRecord, TypeEqvMap, _InstEqvMap,
+        _TypeCtor, _Context, DetailsSub0, DetailsSub,
+        !TVarSet, !EquivTypeInfo, !UsedModules, Specs) :-
+    DetailsSub0 = type_details_sub(SuperType0, Ctors0),
+    replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
+        SuperType0, SuperType, _, !TVarSet, !EquivTypeInfo, !UsedModules),
+    replace_in_ctors_location(MaybeRecord, TypeEqvMap, Ctors0, Ctors,
+        !TVarSet, !EquivTypeInfo, !UsedModules),
+    DetailsSub = type_details_sub(SuperType, Ctors),
     Specs = [].
 
 :- pred replace_in_type_defn_solver(maybe_record_sym_name_use::in,

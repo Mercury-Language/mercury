@@ -1574,7 +1574,7 @@ intermod_write_type(OutInfo, Stream, TypeCtor - TypeDefn,
     TypeCtor = type_ctor(Name, _Arity),
     (
         Body = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(Ctors, MaybeSuperType, MaybeUserEqComp,
+        TypeBodyDu = type_body_du(Ctors, MaybeSubType, MaybeCanon,
             MaybeRepnA, _MaybeForeign),
         (
             MaybeRepnA = no,
@@ -1583,11 +1583,21 @@ intermod_write_type(OutInfo, Stream, TypeCtor - TypeDefn,
             MaybeRepnA = yes(RepnA),
             MaybeDirectArgCtors = RepnA ^ dur_direct_arg_ctors
         ),
-        % XXX TYPE_REPN We should output information about any direct args
-        % as a separate type_repn item.
-        DetailsDu = type_details_du(MaybeSuperType, Ctors, MaybeUserEqComp,
-            MaybeDirectArgCtors),
-        TypeBody = parse_tree_du_type(DetailsDu)
+        (
+            MaybeSubType = subtype_of(SuperType),
+            % TypeCtor may be noncanonical, and MaybeDirectArgCtors may be
+            % nonempty, but any reader of the .opt file has to find out
+            % both those facts from the base type of this subtype.
+            DetailsSub = type_details_sub(SuperType, Ctors),
+            TypeBody = parse_tree_sub_type(DetailsSub)
+        ;
+            MaybeSubType = not_a_subtype,
+            % XXX TYPE_REPN We should output information about any direct args
+            % as a separate type_repn item.
+            DetailsDu = type_details_du(Ctors, MaybeCanon,
+                MaybeDirectArgCtors),
+            TypeBody = parse_tree_du_type(DetailsDu)
+        )
     ;
         Body = hlds_eqv_type(EqvType),
         TypeBody = parse_tree_eqv_type(type_details_eqv(EqvType))

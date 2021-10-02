@@ -721,12 +721,11 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
 
         DefaultModuleName = unqualified(""),
         parse_item_or_marker(DefaultModuleName, VarSet, MethodTerm,
-            item_no_seq_num, MaybeIOM),
-        (
-            MaybeIOM = error1(Specs),
-            MaybeInstanceMethod = error1(Specs)
-        ;
+            item_no_seq_num, MaybeIOM, [], IOMSpecs),
+        ( if
             MaybeIOM = ok1(IOM),
+            IOMSpecs = []
+        then
             ( if
                 IOM = iom_item(Item),
                 Item = item_clause(ItemClause)
@@ -751,6 +750,9 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                     get_term_context(MethodTerm), Pieces),
                 MaybeInstanceMethod = error1([Spec])
             )
+        else
+            Specs = IOMSpecs ++ get_any_errors1(MaybeIOM),
+            MaybeInstanceMethod = error1(Specs)
         )
     ).
 

@@ -322,6 +322,8 @@
     = item_type_defn_info.
 :- func wrap_du_type_defn(item_type_defn_info_du)
     = item_type_defn_info.
+:- func wrap_sub_type_defn(item_type_defn_info_sub)
+    = item_type_defn_info.
 :- func wrap_foreign_type_defn(item_type_defn_info_foreign)
     = item_type_defn_info.
 
@@ -1858,6 +1860,11 @@ wrap_du_type_defn(DuDefnInfo) = TypeDefnInfo :-
     DuDefn = DuDefnInfo ^ td_ctor_defn,
     TypeDefnInfo = DuDefnInfo ^ td_ctor_defn
         := parse_tree_du_type(DuDefn).
+
+wrap_sub_type_defn(SubDefnInfo) = TypeDefnInfo :-
+    SubDefn = SubDefnInfo ^ td_ctor_defn,
+    TypeDefnInfo = SubDefnInfo ^ td_ctor_defn
+        := parse_tree_sub_type(SubDefn).
 
 wrap_foreign_type_defn(ForeignDefnInfo) = TypeDefnInfo :-
     ForeignDefn = ForeignDefnInfo ^ td_ctor_defn,

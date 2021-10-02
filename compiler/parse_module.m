@@ -787,7 +787,7 @@ read_any_version_number_item(FileString, FileStringLen, Globals,
         !LineContext, !LinePosn) :-
     read_next_item_or_marker(SourceFileName, FileString, FileStringLen,
         InitLookAhead, ModuleName, ReadIOMResult,
-        !SeqNumCounter, !LineContext, !LinePosn),
+        !SeqNumCounter, !LineContext, !LinePosn, !Specs),
     (
         ReadIOMResult = read_iom_eof,
         % If we have found end-of-file, then we are done.
@@ -856,7 +856,7 @@ read_parse_tree_int_section(FileString, FileStringLen, Globals,
         !SeqNumCounter, !Specs, !Errors, !LineContext, !LinePosn) :-
     read_next_item_or_marker(SourceFileName, FileString, FileStringLen,
         InitLookAhead, CurModuleName, ReadIOMResult, !SeqNumCounter,
-        !LineContext, !LinePosn),
+        !LineContext, !LinePosn, !Specs),
     (
         (
             ReadIOMResult = read_iom_eof
@@ -1032,7 +1032,7 @@ read_parse_tree_src_components(FileString, FileStringLen, Globals,
         !LineContext, !LinePosn) :-
     read_next_item_or_marker(!.SourceFileName, FileString, FileStringLen,
         InitLookAhead, CurModuleName, ReadIOMResult, !SeqNumCounter,
-        !LineContext, !LinePosn),
+        !LineContext, !LinePosn, !Specs),
     (
         ReadIOMResult = read_iom_eof,
         % If we have found end-of-file, then we are done.
@@ -1460,7 +1460,7 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
     parser.read_term_from_linestr(!.SourceFileName, FileString, FileStringLen,
         !LineContext, !LinePosn, FirstReadTerm),
     read_term_to_iom_result(root_module_name, !.SourceFileName,
-        FirstReadTerm, !SeqNumCounter, MaybeFirstIOM),
+        FirstReadTerm, MaybeFirstIOM, !SeqNumCounter, !Specs),
     (
         MaybeFirstIOM = read_iom_ok(FirstVarSet, FirstTerm, FirstIOM),
         (
@@ -1609,7 +1609,7 @@ read_item_sequence_inner(FileString, FileStringLen, Globals, ModuleName,
     else
         read_next_item_or_marker(!.SourceFileName, FileString, FileStringLen,
             InitLookAhead, ModuleName, ReadIOMResult, !SeqNumCounter,
-            !LineContext, !LinePosn),
+            !LineContext, !LinePosn, !Specs),
         (
             ReadIOMResult = read_iom_eof,
             FinalLookAhead = no_lookahead
@@ -1718,20 +1718,22 @@ record_version_numbers(MVN, IOMTerm, !VNInfo, !Specs) :-
 :- pred read_next_item_or_marker(file_name::in, string::in, int::in,
     maybe_lookahead::in, module_name::in, read_iom_result::out,
     counter::in, counter::out,
-    line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
+    line_context::in, line_context::out, line_posn::in, line_posn::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 read_next_item_or_marker(FileName, FileString, FileStringLen, InitLookAhead,
-        ModuleName, ReadIOMResult, !SeqNumCounter, !LineContext, !LinePosn) :-
+        ModuleName, ReadIOMResult, !SeqNumCounter, !LineContext, !LinePosn,
+        !Specs) :-
     (
         InitLookAhead = no_lookahead,
         parser.read_term_from_linestr(FileName, FileString, FileStringLen,
             !LineContext, !LinePosn, ReadTermResult),
         read_term_to_iom_result(ModuleName, FileName, ReadTermResult,
-            !SeqNumCounter, ReadIOMResult)
+            ReadIOMResult, !SeqNumCounter, !Specs)
     ;
         InitLookAhead = lookahead(LookAheadVarSet, LookAheadTerm),
         term_to_iom_result(ModuleName, LookAheadVarSet, LookAheadTerm,
-            !SeqNumCounter, ReadIOMResult)
+            ReadIOMResult, !SeqNumCounter, !Specs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1744,10 +1746,11 @@ read_next_item_or_marker(FileName, FileString, FileStringLen, InitLookAhead,
     ;       read_iom_ok(varset, term, item_or_marker).
 
 :- pred read_term_to_iom_result(module_name::in, string::in, read_term::in,
-    counter::in, counter::out, read_iom_result::out) is det.
+    read_iom_result::out, counter::in, counter::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-read_term_to_iom_result(ModuleName, FileName, ReadTermResult,
-        !SeqNumCounter, ReadIOMResult) :-
+read_term_to_iom_result(ModuleName, FileName, ReadTermResult, ReadIOMResult,
+        !SeqNumCounter, !Specs) :-
     % XXX ITEM_LIST Should add a prefix to eof, error, and term
     % in library/term_io.m?
     (
@@ -1763,17 +1766,19 @@ read_term_to_iom_result(ModuleName, FileName, ReadTermResult,
         ReadIOMResult = read_iom_read_error(Spec)
     ;
         ReadTermResult = term(VarSet, Term),
-        term_to_iom_result(ModuleName, VarSet, Term, !SeqNumCounter,
-            ReadIOMResult)
+        term_to_iom_result(ModuleName, VarSet, Term, ReadIOMResult,
+            !SeqNumCounter, !Specs)
     ).
 
 :- pred term_to_iom_result(module_name::in, varset::in, term::in,
-    counter::in, counter::out, read_iom_result::out) is det.
+    read_iom_result::out, counter::in, counter::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-term_to_iom_result(ModuleName, VarSet, Term, !SeqNumCounter, ReadIOMResult) :-
+term_to_iom_result(ModuleName, VarSet, Term, ReadIOMResult,
+        !SeqNumCounter, !Specs) :-
     counter.allocate(SeqNum, !SeqNumCounter),
     parse_item_or_marker(ModuleName, VarSet, Term, item_seq_num(SeqNum),
-        MaybeItemOrMarker),
+        MaybeItemOrMarker, !Specs),
     (
         MaybeItemOrMarker = ok1(ItemOrMarker),
         ReadIOMResult = read_iom_ok(VarSet, Term, ItemOrMarker)
@@ -1837,7 +1842,7 @@ check_for_unexpected_item_at_end(SourceFileName, FileString, FileStringLen,
         !Specs, !Errors, !LineContext, !LinePosn) :-
     read_next_item_or_marker(SourceFileName, FileString, FileStringLen,
         FinalLookAhead, ModuleName, IOMResult,
-        SeqNumCounter0, _SeqNumCounter, !LineContext, !LinePosn),
+        SeqNumCounter0, _SeqNumCounter, !LineContext, !LinePosn, !Specs),
     (
         IOMResult = read_iom_eof
     ;

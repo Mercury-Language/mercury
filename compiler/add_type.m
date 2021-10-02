@@ -141,6 +141,7 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
             HLDSTypeDefn0, Context, !ModuleInfo, !FoundInvalidType, [], Specs)
     ;
         ( ParseTreeTypeDefn = parse_tree_du_type(_)
+        ; ParseTreeTypeDefn = parse_tree_sub_type(_)
         ; ParseTreeTypeDefn = parse_tree_eqv_type(_)
         ),
         module_add_type_defn_mercury(TypeStatus, TypeCtor, TypeParams,
@@ -287,6 +288,7 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
 
 :- inst type_defn_mercury for type_defn/0
     --->    parse_tree_du_type(ground)
+    ;       parse_tree_sub_type(ground)
     ;       parse_tree_eqv_type(ground)
     ;       parse_tree_solver_type(ground).
 
@@ -335,7 +337,9 @@ module_add_type_defn_mercury(TypeStatus1, TypeCtor, TypeParams,
             TypeCtor, TypeParams, DetailsEqv, Context,
             !FoundInvalidType, !Specs)
     ;
-        ParseTreeTypeDefn = parse_tree_solver_type(_)
+        ( ParseTreeTypeDefn = parse_tree_sub_type(_)
+        ; ParseTreeTypeDefn = parse_tree_solver_type(_)
+        )
     ).
 
 %---------------------%
@@ -418,13 +422,12 @@ module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
 convert_type_defn_to_hlds(TypeDefn, TypeCtor, HLDSBody, !ModuleInfo) :-
     (
         TypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu =
-            type_details_du(MaybeSuperType, Ctors, MaybeUserEqComp,
-                MaybeDirectArgCtors),
-        MaybeRepn = no,
-        MaybeForeign = no,
-        TypeBodyDu = type_body_du(Ctors, MaybeSuperType, MaybeUserEqComp,
-            MaybeRepn, MaybeForeign),
+        DetailsDu = type_details_du(Ctors, MaybeCanon, MaybeDirectArgCtors),
+        MaybeSubtype = not_a_subtype,
+        MaybeRepn = maybe.no,
+        MaybeForeign = maybe.no,
+        TypeBodyDu = type_body_du(Ctors, MaybeSubtype, MaybeCanon, MaybeRepn,
+            MaybeForeign),
         HLDSBody = hlds_du_type(TypeBodyDu),
         (
             MaybeDirectArgCtors = no
@@ -459,6 +462,16 @@ convert_type_defn_to_hlds(TypeDefn, TypeCtor, HLDSBody, !ModuleInfo) :-
                 module_info_set_type_repn_dec(TypeRepnDec, !ModuleInfo)
             )
         )
+    ;
+        TypeDefn = parse_tree_sub_type(DetailsSub),
+        DetailsSub = type_details_sub(SuperType, Ctors),
+        MaybeSubtype = subtype_of(SuperType),
+        MaybeCanon = canon,
+        MaybeRepn = maybe.no,
+        MaybeForeign = maybe.no,
+        TypeBodyDu = type_body_du(Ctors, MaybeSubtype, MaybeCanon,
+            MaybeRepn, MaybeForeign),
+        HLDSBody = hlds_du_type(TypeBodyDu)
     ;
         TypeDefn = parse_tree_eqv_type(type_details_eqv(EqvType)),
         HLDSBody = hlds_eqv_type(EqvType)
@@ -633,9 +646,8 @@ maybe_report_multiple_def_error(TypeStatus, TypeCtor, Context, OldDefn,
 
 check_for_invalid_user_defined_unify_compare(TypeStatus, TypeCtor, DetailsDu,
         Context, !FoundInvalidType, !Specs) :-
+    DetailsDu = type_details_du(Ctors, MaybeCanon, _MaybeDirectArg),
     ( if
-        DetailsDu = type_details_du(MaybeSuperType, Ctors, MaybeCanon,
-            _MaybeDirectArg),
         MaybeCanon = noncanon(_),
         % Only report errors for types defined in this module.
         type_status_defined_in_this_module(TypeStatus) = yes
@@ -662,22 +674,6 @@ check_for_invalid_user_defined_unify_compare(TypeStatus, TypeCtor, DetailsDu,
             !:FoundInvalidType = found_invalid_type
         else
             true
-        ),
-        (
-            MaybeSuperType = not_a_subtype
-        ;
-            MaybeSuperType = subtype_of(_),
-            SubPieces = [words("Error: the subtype"),
-                unqual_type_ctor(TypeCtor),
-                words("is not allowed to have its own"),
-                words("user-defined equality or comparison;"),
-                words("it must inherit any user-defined"),
-                words("equality and comparison predicates"),
-                words("from its supertype."), nl],
-            SubSpec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, SubPieces),
-            !:Specs = [SubSpec | !.Specs],
-            !:FoundInvalidType = found_invalid_type
         )
     else
         true

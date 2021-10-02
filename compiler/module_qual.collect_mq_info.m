@@ -464,7 +464,7 @@ collect_mq_info_in_int_type_defn(IntPermissions, TypeCtor, CheckedDefn,
                 EqvStatus = std_eqv_type_all_private
             )
         ;
-            StdDefn = std_mer_type_du_subtype(SubStatus, _),
+            StdDefn = std_mer_type_subtype(SubStatus, _),
             (
                 ( SubStatus = std_sub_type_mer_exported
                 ; SubStatus = std_sub_type_abstract_exported

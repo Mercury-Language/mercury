@@ -343,26 +343,14 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     %
 :- type type_defn
     --->    parse_tree_du_type(type_details_du)
+    ;       parse_tree_sub_type(type_details_sub)
     ;       parse_tree_eqv_type(type_details_eqv)
     ;       parse_tree_solver_type(type_details_solver)
     ;       parse_tree_abstract_type(type_details_abstract)
     ;       parse_tree_foreign_type(type_details_foreign_generic).
 
-% XXX This type should be split into two.
-%
-% The new type type_details_sub should be for subtypes. It should have
-% fields listing its supertype and its ctors. It should not have a
-% du_canonical field or a du_direct_arg field, since those aspects
-% of the subtype are decided by the supertype.
-%
-% The new type_details_du should be for non-subtypes, and should have
-% no du_maybe_subtype field.
-%
 :- type type_details_du
     --->    type_details_du(
-                % Is this a subtype, and if so, of which other type?
-                du_maybe_subtype    :: maybe_subtype,
-
                 % The list of data constructors (function symbols) defined
                 % by the type constructor.
                 du_ctors            :: one_or_more(constructor),
@@ -378,6 +366,17 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
                 % XXX TYPE_REPN This information should NOT be in type_defn
                 % items, but in separate type_representation items.
                 du_direct_arg       :: maybe(list(sym_name_arity))
+            ).
+
+:- type type_details_sub
+    --->    type_details_sub(
+                % The declared immediate supertype of this subtype.
+                sub_supertype       :: mer_type,
+
+                % The list of data constructors (function symbols) defined
+                % by the type constructor. It must constitute a subset
+                % of the set of data constructors of the supertype.
+                sub_ctors           :: one_or_more(constructor)
             ).
 
 :- type type_details_eqv

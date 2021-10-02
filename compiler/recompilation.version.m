@@ -526,8 +526,10 @@ gather_in_type_defn(Section, ItemTypeDefn, !TypeMap, !TypeDefnMap) :-
         VarSet, Context, SeqNum),
     Item = item_type_defn(ItemTypeDefn),
     (
-        Body = parse_tree_du_type(_),
-        % XXX does the abstract_details matter here?
+        ( Body = parse_tree_du_type(_)
+        ; Body = parse_tree_sub_type(_)
+        ),
+        % XXX Does the value of AbstractDetails matter here?
         % XXX TYPE_REPN zs: yes, it should, when it changes in a way that
         % affects decisions about the representations of other types
         % that include the abstract type. That means that *assuming*

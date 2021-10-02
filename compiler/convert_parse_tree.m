@@ -1562,42 +1562,42 @@ add_type_defn_to_map(TypeDefnInfo, !TypeDefnMap) :-
         _TypeVarSet, _Context, _SeqNum),
     list.length(Params, Arity),
     TypeCtor = type_ctor(SymName, Arity),
-    some [!AbstractSolverDefns, !SolverDefns,
-        !AbstractStdDefns, !EqvDefns, !DuDefns,
+    some [!AbsSolverDefns, !SolverDefns,
+        !AbsStdDefns, !EqvDefns, !DuDefns, !SubDefns,
         !ForeignDefnsC, !ForeignDefnsJava, !ForeignDefnsCsharp]
     (
         ( if map.search(!.TypeDefnMap, TypeCtor, AllDefns0) then
             AllDefns0 = type_ctor_all_defns(
-                !:AbstractSolverDefns, !:SolverDefns,
-                !:AbstractStdDefns, !:EqvDefns, !:DuDefns,
+                !:AbsSolverDefns, !:SolverDefns,
+                !:AbsStdDefns, !:EqvDefns, !:DuDefns, !:SubDefns,
                 c_java_csharp(!:ForeignDefnsC, !:ForeignDefnsJava,
                     !:ForeignDefnsCsharp))
         else
-            !:AbstractSolverDefns = [],
+            !:AbsSolverDefns = [],
             !:SolverDefns = [],
 
-            !:AbstractStdDefns = [],
+            !:AbsStdDefns = [],
             !:EqvDefns = [],
             !:DuDefns = [],
+            !:SubDefns = [],
             !:ForeignDefnsC = [],
             !:ForeignDefnsJava = [],
             !:ForeignDefnsCsharp = []
         ),
         (
-            TypeDefn = parse_tree_abstract_type(DetailsAbstract),
-            AbstractDefnInfo = TypeDefnInfo ^ td_ctor_defn := DetailsAbstract,
+            TypeDefn = parse_tree_abstract_type(DetailsAbs),
+            AbsDefnInfo = TypeDefnInfo ^ td_ctor_defn := DetailsAbs,
             (
-                DetailsAbstract = abstract_solver_type,
-                !:AbstractSolverDefns = !.AbstractSolverDefns ++
-                    [AbstractDefnInfo]
+                DetailsAbs = abstract_solver_type,
+                !:AbsSolverDefns = !.AbsSolverDefns ++ [AbsDefnInfo]
             ;
-                ( DetailsAbstract = abstract_type_general
-                ; DetailsAbstract = abstract_type_fits_in_n_bits(_)
-                ; DetailsAbstract = abstract_dummy_type
-                ; DetailsAbstract = abstract_notag_type
-                ; DetailsAbstract = abstract_subtype(_)
+                ( DetailsAbs = abstract_type_general
+                ; DetailsAbs = abstract_type_fits_in_n_bits(_)
+                ; DetailsAbs = abstract_dummy_type
+                ; DetailsAbs = abstract_notag_type
+                ; DetailsAbs = abstract_subtype(_)
                 ),
-                !:AbstractStdDefns = !.AbstractStdDefns ++ [AbstractDefnInfo]
+                !:AbsStdDefns = !.AbsStdDefns ++ [AbsDefnInfo]
             )
         ;
             TypeDefn = parse_tree_solver_type(DetailsSolver),
@@ -1611,6 +1611,10 @@ add_type_defn_to_map(TypeDefnInfo, !TypeDefnMap) :-
             TypeDefn = parse_tree_du_type(DetailsDu),
             DuDefnInfo = TypeDefnInfo ^ td_ctor_defn := DetailsDu,
             !:DuDefns = !.DuDefns ++ [DuDefnInfo]
+        ;
+            TypeDefn = parse_tree_sub_type(DetailsSub),
+            SubDefnInfo = TypeDefnInfo ^ td_ctor_defn := DetailsSub,
+            !:SubDefns = !.SubDefns ++ [SubDefnInfo]
         ;
             TypeDefn = parse_tree_foreign_type(DetailsForeign),
             ForeignDefnInfo = TypeDefnInfo ^ td_ctor_defn := DetailsForeign,
@@ -1627,8 +1631,8 @@ add_type_defn_to_map(TypeDefnInfo, !TypeDefnMap) :-
                     [ForeignDefnInfo]
             )
         ),
-        AllDefns = type_ctor_all_defns(!.AbstractSolverDefns, !.SolverDefns,
-            !.AbstractStdDefns, !.EqvDefns, !.DuDefns,
+        AllDefns = type_ctor_all_defns(!.AbsSolverDefns, !.SolverDefns,
+            !.AbsStdDefns, !.EqvDefns, !.DuDefns, !.SubDefns,
             c_java_csharp(!.ForeignDefnsC, !.ForeignDefnsJava,
                 !.ForeignDefnsCsharp))
     ),
@@ -1780,7 +1784,7 @@ type_ctor_defn_map_to_type_defns(TypeCtorDefnMap) = TypeDefns :-
 
 accumulate_type_ctor_defns(CtorAllDefns, !TypeDefns) :-
     CtorAllDefns = type_ctor_all_defns(AbstractSolverDefns, SolverDefns,
-        AbstractStdDefns, EqvDefns, DuDefns, CJCsEDefns),
+        AbstractStdDefns, EqvDefns, DuDefns, SubDefns, CJCsEDefns),
     CJCsEDefns = c_java_csharp(ForeignDefnsC, ForeignDefnsJava,
         ForeignDefnsCsharp),
     !:TypeDefns = !.TypeDefns ++ cord.from_list(
@@ -1789,6 +1793,7 @@ accumulate_type_ctor_defns(CtorAllDefns, !TypeDefns) :-
         list.map(wrap_abstract_type_defn, at_most_one(AbstractStdDefns)) ++
         list.map(wrap_eqv_type_defn, EqvDefns) ++
         list.map(wrap_du_type_defn, DuDefns) ++
+        list.map(wrap_sub_type_defn, SubDefns) ++
         list.map(wrap_foreign_type_defn, ForeignDefnsC) ++
         list.map(wrap_foreign_type_defn, ForeignDefnsJava) ++
         list.map(wrap_foreign_type_defn, ForeignDefnsCsharp)).
@@ -2085,6 +2090,7 @@ classify_src_items_int([Item | Items],
             !:RevTypeDefnsMer = [ItemTypeDefnInfo | !.RevTypeDefnsMer]
         ;
             ( TypeDefn = parse_tree_du_type(_)
+            ; TypeDefn = parse_tree_sub_type(_)
             ; TypeDefn = parse_tree_eqv_type(_)
             ),
             !:RevTypeDefnsMer = [ItemTypeDefnInfo | !.RevTypeDefnsMer]
@@ -2287,6 +2293,7 @@ classify_src_items_imp([Item | Items],
             !:RevTypeDefnsMer = [ItemTypeDefnInfo | !.RevTypeDefnsMer]
         ;
             ( TypeDefn = parse_tree_du_type(_)
+            ; TypeDefn = parse_tree_sub_type(_)
             ; TypeDefn = parse_tree_eqv_type(_)
             ),
             !:RevTypeDefnsMer = [ItemTypeDefnInfo | !.RevTypeDefnsMer]

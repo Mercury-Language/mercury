@@ -29,17 +29,27 @@
 :- import_module term.
 :- import_module varset.
 
-    % Parse the definition of a solver type.
+    % Parse the definition of a solver type, or of a non-solver type.
+    % (The is_solver_type argument of parse_type_defn_item says whether
+    % we are parsing the definition of non-solver type, or the part of
+    % the definition of a solver type that comes after the "solver" keyword.)
+    %
+    % The syntax of type definitions allows them to include components
+    % that their semantics does not permit, such as a specification of
+    % type-specific equality and comparison predicates for subtypes.
+    % In such cases, we return a message about the error, but, by ignoring
+    % the unexpected component, we can still return a meaningful type
+    % definition item. This is why we return both a maybe1(item_or_marker)
+    % and an updated list of error specs.
     %
 :- pred parse_solver_type_defn_item(module_name::in, varset::in,
     list(term)::in, prog_context::in, item_seq_num::in,
-    maybe1(item_or_marker)::out) is det.
-
-    % Parse the definition of a type.
-    %
+    maybe1(item_or_marker)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 :- pred parse_type_defn_item(module_name::in, varset::in,
     list(term)::in, prog_context::in, item_seq_num::in, is_solver_type::in,
-    maybe1(item_or_marker)::out) is det.
+    maybe1(item_or_marker)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % Parses the attributes in a "where" clause. It looks for and processes
     % only the attributes that can occur on foreign_type pragmas. This includes
@@ -89,13 +99,13 @@
 %---------------------------------------------------------------------------%
 
 parse_solver_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
-        MaybeIOM) :-
+        MaybeIOM, !Specs) :-
     ( if
         ArgTerms = [ArgTerm],
         ArgTerm = term.functor(term.atom("type"), SubArgTerms, SubContext)
     then
         parse_type_defn_item(ModuleName, VarSet, SubArgTerms,
-            SubContext, SeqNum, solver_type, MaybeIOM)
+            SubContext, SeqNum, solver_type, MaybeIOM, !Specs)
     else
         Pieces = [words("Error: the"), decl("solver"), words("keyword"),
             words("should be followed by a type definition."), nl],
@@ -105,7 +115,7 @@ parse_solver_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
     ).
 
 parse_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
-        IsSolverType, MaybeIOM) :-
+        IsSolverType, MaybeIOM, !Specs) :-
     ( if ArgTerms = [TypeDefnTerm] then
         ( if
             TypeDefnTerm = term.functor(term.atom(Name), TypeDefnArgTerms, _),
@@ -118,7 +128,7 @@ parse_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             (
                 Name = "--->",
                 parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
-                    Context, SeqNum, IsSolverType, MaybeIOM)
+                    Context, SeqNum, IsSolverType, MaybeIOM, !Specs)
             ;
                 Name = "==",
                 parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
@@ -151,10 +161,13 @@ parse_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
     %
 :- pred parse_du_type_defn(module_name::in, varset::in, term::in, term::in,
     prog_context::in, item_seq_num::in, is_solver_type::in,
-    maybe1(item_or_marker)::out) is det.
+    maybe1(item_or_marker)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
-        IsSolverType, MaybeIOM) :-
+        IsSolverType, MaybeIOM, !Specs) :-
+    % XXX We should consider which errors should prevent us from returning
+    % a type definition item, and which should not.
     (
         IsSolverType = solver_type,
         SolverPieces = [words("Error: a solver type"),
@@ -201,7 +214,7 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
     ),
     ( if
         SolverSpecs = [],
-        MaybeTypeCtorAndArgs = ok2(Name, Params),
+        MaybeTypeCtorAndArgs = ok2(TypeSymName, Params),
         MaybeSuperType0 = ok1(MaybeSuperType),
         MaybeOneOrMoreCtors = ok1(OneOrMoreCtors),
         MaybeWhere = ok3(SolverTypeDetails, MaybeCanonical, MaybeDirectArgIs)
@@ -211,33 +224,72 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         % if SolverTypeDetails is yes(...).
         expect(unify(SolverTypeDetails, no), $pred,
             "discriminated union type has solver type details"),
-        (
-            MaybeSuperType = subtype_of(SuperType),
-            check_supertype_vars(Params, VarSet, SuperType, SuperTypeContext,
-                [], ErrorSpecs0)
-        ;
-            MaybeSuperType = not_a_subtype,
-            ErrorSpecs0 = []
-        ),
         OneOrMoreCtors = one_or_more(HeadCtor, TailCtors),
         Ctors = [HeadCtor | TailCtors],
         process_du_ctors(Params, VarSet, BodyTerm, Ctors,
-            ErrorSpecs0, ErrorSpecs1),
+            [], ErrorSpecs0),
         (
-            MaybeDirectArgIs = yes(DirectArgCtors),
-            check_direct_arg_ctors(Ctors, DirectArgCtors, BodyTerm,
-                ErrorSpecs1, ErrorSpecs)
+            MaybeSuperType = subtype_of(SuperType),
+            DetailsSub = type_details_sub(SuperType, OneOrMoreCtors),
+            TypeDefn = parse_tree_sub_type(DetailsSub),
+            check_supertype_vars(Params, VarSet, SuperType, SuperTypeContext,
+                ErrorSpecs0, ErrorSpecs),
+            % By returning a meaningful type definition when we read in
+            % a "where equality/comparison is" or "where direct_arg is" clause
+            % for a subtype definition, we allow the compiler to find other
+            % errors in the module *without* generating misleading error
+            % messages about TypeSymName being undefined. This is the case
+            % e.g. with tests/invalid/subtype_user_compare.m.
+            (
+                MaybeCanonical = canon
+            ;
+                MaybeCanonical = noncanon(_),
+                CanonTypeCtor = type_ctor(TypeSymName, list.length(Params)),
+                CanonPieces = [words("Error: the subtype"),
+                    unqual_type_ctor(CanonTypeCtor),
+                    words("is not allowed to have its own"),
+                    words("user-defined equality or comparison;"),
+                    words("it must inherit any user-defined"),
+                    words("equality and comparison predicates"),
+                    words("from its supertype."), nl],
+                CanonSpec = simplest_spec($pred, severity_error,
+                    phase_parse_tree_to_hlds, Context, CanonPieces),
+                !:Specs = [CanonSpec | !.Specs]
+            ),
+            (
+                MaybeDirectArgIs = no
+            ;
+                MaybeDirectArgIs = yes(_),
+                DirectArgTypeCtor =
+                    type_ctor(TypeSymName, list.length(Params)),
+                DirectArgPieces = [words("Error: the subtype"),
+                    unqual_type_ctor(DirectArgTypeCtor),
+                    words("is not allowed to have its own"),
+                    quote("where direct_arg is"), words("annotation;"),
+                    words("it must inherit its representation"),
+                    words("from its supertype."), nl],
+                DirectArgSpec = simplest_spec($pred, severity_error,
+                    phase_parse_tree_to_hlds, Context, DirectArgPieces),
+                !:Specs = [DirectArgSpec | !.Specs]
+            )
         ;
-            MaybeDirectArgIs = no,
-            ErrorSpecs = ErrorSpecs1
+            MaybeSuperType = not_a_subtype,
+            DetailsDu = type_details_du(OneOrMoreCtors, MaybeCanonical,
+                MaybeDirectArgIs),
+            TypeDefn = parse_tree_du_type(DetailsDu),
+            (
+                MaybeDirectArgIs = yes(DirectArgCtors),
+                check_direct_arg_ctors(Ctors, DirectArgCtors, BodyTerm,
+                    ErrorSpecs0, ErrorSpecs)
+            ;
+                MaybeDirectArgIs = no,
+                ErrorSpecs = ErrorSpecs0
+            )
         ),
         (
             ErrorSpecs = [],
             varset.coerce(VarSet, TypeVarSet),
-            DetailsDu = type_details_du(MaybeSuperType, OneOrMoreCtors,
-                MaybeCanonical, MaybeDirectArgIs),
-            TypeDefn = parse_tree_du_type(DetailsDu),
-            ItemTypeDefn = item_type_defn_info(Name, Params, TypeDefn,
+            ItemTypeDefn = item_type_defn_info(TypeSymName, Params, TypeDefn,
                 TypeVarSet, Context, SeqNum),
             Item = item_type_defn(ItemTypeDefn),
             MaybeIOM = ok1(iom_item(Item))

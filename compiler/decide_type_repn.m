@@ -268,25 +268,19 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
                 EqvType, TVarSet, term.dummy_context_init, item_no_seq_num),
             map.det_insert(TypeCtor, EqvRepnItem, !EqvRepnMap)
         ;
-            StdDefn = std_mer_type_du_subtype(DuStatus, DuDefn),
+            StdDefn = std_mer_type_subtype(SubStatus, SubDefn),
             (
-                ( DuStatus = std_sub_type_mer_exported
-                ; DuStatus = std_sub_type_abstract_exported
+                ( SubStatus = std_sub_type_mer_exported
+                ; SubStatus = std_sub_type_abstract_exported
                 ),
                 set_tree234.insert(TypeCtor, !ExportedTypes)
             ;
-                DuStatus = std_sub_type_all_private
+                SubStatus = std_sub_type_all_private
             ),
-            DuDefn = item_type_defn_info(TypeCtorSymName, TypeParams,
-                DetailsDu, TVarSet, _Context, _SeqNum),
-            DetailsDu = type_details_du(MaybeSuperType, _, _, _),
-            (
-                MaybeSuperType = subtype_of(SuperType),
-                type_to_ctor_det(SuperType, SuperTypeCtor)
-            ;
-                MaybeSuperType = not_a_subtype,
-                unexpected($pred, "no supertype")
-            ),
+            SubDefn = item_type_defn_info(TypeCtorSymName, TypeParams,
+                DetailsSub, TVarSet, _Context, _SeqNum),
+            DetailsSub = type_details_sub(SuperType, _),
+            type_to_ctor_det(SuperType, SuperTypeCtor),
             SubtypeRepnItem = item_type_repn_info(TypeCtorSymName, TypeParams,
                 SuperTypeCtor, TVarSet, term.dummy_context_init,
                 item_no_seq_num),
@@ -303,7 +297,6 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
             ;
                 DuStatus = std_du_type_all_private
             ),
-            expect_not(du_defn_is_subtype(DuDefn), $pred, "type is subtype"),
             decide_type_repns_stage_1_du_all_plain_constants(TypeCtor, DuDefn,
                 HeadName, TailNames, MaybeDefnOrEnumCJCs, !SimpleDuMap)
         ;
@@ -318,7 +311,6 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
             ;
                 DuStatus = std_du_type_all_private
             ),
-            expect_not(du_defn_is_subtype(DuDefn), $pred, "type is subtype"),
             decide_type_repns_stage_1_du_not_all_plain_constants(TypeCtor,
                 DuDefn, MaybeDefnCJCs, !SimpleDuMap, !WordAlignedTypeCtorsC)
         ;
@@ -359,13 +351,6 @@ maybe_mark_type_ctor_as_word_aligned_for_c(TypeCtor, MaybeDefnCJCs,
 
 %---------------------%
 
-:- pred du_defn_is_subtype(item_type_defn_info_du::in) is semidet.
-
-du_defn_is_subtype(DuDefn) :-
-    DuDefn = item_type_defn_info(_, _, DetailsDu, _, _, _),
-    DetailsDu = type_details_du(MaybeSuperType, _, _, _),
-    MaybeSuperType = subtype_of(_).
-
 :- pred decide_type_repns_stage_1_du_all_plain_constants(type_ctor::in,
     item_type_defn_info_du::in, string::in, list(string)::in,
     c_j_cs_maybe_defn_or_enum::in,
@@ -375,30 +360,22 @@ decide_type_repns_stage_1_du_all_plain_constants(TypeCtor, DuDefn,
         HeadName, TailNames, MaybeDefnOrEnumCJCs, !SimpleDuMap) :-
     decide_type_repns_foreign_defns_or_enums(MaybeDefnOrEnumCJCs,
         EnumForeignRepns),
-    DuDefn = item_type_defn_info(_TypeCtorSymName, TypeParams, DetailsDu,
+    DuDefn = item_type_defn_info(_TypeCtorSymName, TypeParams, _DetailsDu,
         TVarSet, _Context, _SeqNum),
-    DetailsDu = type_details_du(MaybeSuperType, _, _, _),
     (
-        MaybeSuperType = not_a_subtype,
-        (
-            TailNames = [],
-            % The type has exactly one data constructor.
-            DirectDummyRepn = direct_dummy_repn(HeadName, EnumForeignRepns),
-            SimpleDuRepn = sdr_direct_dummy(TypeParams, TVarSet,
-                DirectDummyRepn)
-        ;
-            TailNames = [HeadTailName | TailTailNames],
-            % The type has at least two data constructors.
-            EnumRepn = enum_repn(HeadName, HeadTailName, TailTailNames,
-                EnumForeignRepns),
-            SimpleDuRepn = sdr_enum(TypeParams, TVarSet, EnumRepn)
-        ),
-        map.det_insert(TypeCtor, SimpleDuRepn, !SimpleDuMap)
+        TailNames = [],
+        % The type has exactly one data constructor.
+        DirectDummyRepn = direct_dummy_repn(HeadName, EnumForeignRepns),
+        SimpleDuRepn = sdr_direct_dummy(TypeParams, TVarSet,
+            DirectDummyRepn)
     ;
-        MaybeSuperType = subtype_of(_)
-        % We cannot decide the representation of a subtype independently
-        % of its base type, which may not even be in the same module.
-    ).
+        TailNames = [HeadTailName | TailTailNames],
+        % The type has at least two data constructors.
+        EnumRepn = enum_repn(HeadName, HeadTailName, TailTailNames,
+            EnumForeignRepns),
+        SimpleDuRepn = sdr_enum(TypeParams, TVarSet, EnumRepn)
+    ),
+    map.det_insert(TypeCtor, SimpleDuRepn, !SimpleDuMap).
 
 :- pred decide_type_repns_stage_1_du_not_all_plain_constants(type_ctor::in,
     item_type_defn_info_du::in, c_j_cs_maybe_defn::in,
@@ -410,54 +387,46 @@ decide_type_repns_stage_1_du_not_all_plain_constants(TypeCtor, DuDefn,
     decide_type_repns_foreign_defns(MaybeDefnCJCs, ForeignTypeRepns),
     DuDefn = item_type_defn_info(_TypeCtorSymName, TypeParams, DetailsDu,
         TVarSet, _Context, _SeqNum),
-    DetailsDu = type_details_du(MaybeSuperType, OoMCtors, MaybeCanonical,
-        _MaybeDirectArgs),
+    DetailsDu = type_details_du(OoMCtors, MaybeCanonical, _MaybeDirectArgs),
+    OoMCtors = one_or_more(HeadCtor, TailCtors),
     (
-        MaybeSuperType = not_a_subtype,
-        OoMCtors = one_or_more(HeadCtor, TailCtors),
-        (
-            TailCtors = [],
-            % The type has exactly one data constructor.
-            SingleCtor = HeadCtor,
-            SingleCtor = ctor(_Ordinal, MaybeExistConstraints,
-                SingleCtorSymName, Args, Arity, _SingleCtorContext),
-            ( if
-                one_constructor_non_constant_is_notag(MaybeExistConstraints,
-                    Args, Arity, MaybeCanonical, OneArg)
-            then
-                SingleCtorName = unqualify_name(SingleCtorSymName),
-                OneArgType = OneArg ^ arg_type,
-                NotagRepn =
-                    notag_repn(SingleCtorName, OneArgType, ForeignTypeRepns),
-                SimpleDuRepn = sdr_notag(TypeParams, TVarSet, NotagRepn),
-                map.det_insert(TypeCtor, SimpleDuRepn, !SimpleDuMap)
+        TailCtors = [],
+        % The type has exactly one data constructor.
+        SingleCtor = HeadCtor,
+        SingleCtor = ctor(_Ordinal, MaybeExistConstraints,
+            SingleCtorSymName, Args, Arity, _SingleCtorContext),
+        ( if
+            one_constructor_non_constant_is_notag(MaybeExistConstraints,
+                Args, Arity, MaybeCanonical, OneArg)
+        then
+            SingleCtorName = unqualify_name(SingleCtorSymName),
+            OneArgType = OneArg ^ arg_type,
+            NotagRepn =
+                notag_repn(SingleCtorName, OneArgType, ForeignTypeRepns),
+            SimpleDuRepn = sdr_notag(TypeParams, TVarSet, NotagRepn),
+            map.det_insert(TypeCtor, SimpleDuRepn, !SimpleDuMap)
+        else
+            % NOTE We currently do not apply the direct arg optimization
+            % to polymorphic argument types.
+            % We could let the argument's type to have a set of type params
+            % that is a subset of the type params of the containing type,
+            % but that would require the runtime system to be able
+            % to handle variables in the argument type, during unification
+            % and comparison (mercury_unify_compare_body.h),
+            % during deconstruction (mercury_ml_expand_body.h),
+            % during deep copying (mercury_deep_copy_body.h), and maybe
+            % during some other operations.
+            TypeCtor = type_ctor(_, TypeCtorArity),
+            ( if TypeCtorArity = 0 then
+                set_tree234.insert(TypeCtor, !WordAlignedTypeCtorsC)
             else
-                % NOTE We currently do not apply the direct arg optimization
-                % to polymorphic argument types.
-                % We could let the argument's type to have a set of type params
-                % that is a subset of the type params of the containing type,
-                % but that would require the runtime system to be able
-                % to handle variables in the argument type, during unification
-                % and comparison (mercury_unify_compare_body.h),
-                % during deconstruction (mercury_ml_expand_body.h),
-                % during deep copying (mercury_deep_copy_body.h), and maybe
-                % during some other operations.
-                TypeCtor = type_ctor(_, TypeCtorArity),
-                ( if TypeCtorArity = 0 then
-                    set_tree234.insert(TypeCtor, !WordAlignedTypeCtorsC)
-                else
-                    true
-                )
+                true
             )
-        ;
-            TailCtors = [_ | _]
-            % The type has two or more data constructors.
-            % This means that it need not be word aligned.
         )
     ;
-        MaybeSuperType = subtype_of(_)
-        % We cannot decide the representation of a subtype independently
-        % of its base type, which may not even be in the same module.
+        TailCtors = [_ | _]
+        % The type has two or more data constructors.
+        % This means that it need not be word aligned.
     ).
 
 %---------------------------------------------------------------------------%
@@ -820,7 +789,7 @@ decide_all_type_repns_stage_2(BaseParams, EqvRepnMap, EqvMap, SubtypeMap,
                 EqvRepnItem0, EqvRepnItem, !Specs),
             add_eqv_repn_item(TypeCtor, EqvRepnItem, !Int1RepnMap)
         ;
-            StdDefn = std_mer_type_du_subtype(_, _),
+            StdDefn = std_mer_type_subtype(_, _),
             map.lookup(SubtypeMap, TypeCtor, SubtypeRepnItem),
             add_subtype_repn_item(TypeCtor, SubtypeRepnItem, !Int1RepnMap)
         ;
@@ -866,9 +835,7 @@ decide_type_repns_stage_2_du_gen(BaseParams, EqvMap, SubtypeMap,
     expect(unify(TypeCtorSymName, SymName), $pred, "sym_name mismatch"),
     expect(unify(NumTypeParams, Arity), $pred, "arity mismatch"),
 
-    DetailsDu = type_details_du(MaybeSuperType, OoMCtors0, MaybeCanonical,
-        _MaybeDirectArgs),
-    expect(unify(MaybeSuperType, not_a_subtype), $pred, "type is subtype"),
+    DetailsDu = type_details_du(OoMCtors0, MaybeCanonical, _MaybeDirectArgs),
     OoMCtors0 = one_or_more(HeadCtor0, TailCtors0),
     expand_eqv_sub_of_notag_types_in_constructor(EqvMap, SubtypeMap,
         SimpleDuMap, TVarSet, HeadCtor0, HeadCtor, !Specs),

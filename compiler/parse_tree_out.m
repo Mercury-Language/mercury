@@ -1031,7 +1031,7 @@ mercury_output_pred_or_mode_decl(Info, Stream, Item, !IO) :-
 
 mercury_output_type_ctor_all_defns(Info, Stream, TypeCtorAllDefns, !IO) :-
     TypeCtorAllDefns = type_ctor_all_defns(SolverAbs, SolverNonAbs,
-        StdAbs, StdEqv, StdDu, CJCs),
+        StdAbs, StdEqv, StdDu, StdSub, CJCs),
     CJCs = c_java_csharp(ForeignC, ForeignJava, ForeignCsharp),
     list.foldl(mercury_output_item_type_defn(Info, Stream),
         list.map(wrap_abstract_type_defn, SolverAbs), !IO),
@@ -1043,6 +1043,8 @@ mercury_output_type_ctor_all_defns(Info, Stream, TypeCtorAllDefns, !IO) :-
         list.map(wrap_eqv_type_defn, StdEqv), !IO),
     list.foldl(mercury_output_item_type_defn(Info, Stream),
         list.map(wrap_du_type_defn, StdDu), !IO),
+    list.foldl(mercury_output_item_type_defn(Info, Stream),
+        list.map(wrap_sub_type_defn, StdSub), !IO),
     list.foldl(mercury_output_item_type_defn(Info, Stream),
         list.map(wrap_foreign_type_defn, ForeignC), !IO),
     list.foldl(mercury_output_item_type_defn(Info, Stream),
@@ -1116,24 +1118,28 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
         io.write_string(Stream, ".\n", !IO)
     ;
         TypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu = type_details_du(MaybeSuperType, OoMCtors, MaybeCanonical,
-            MaybeDirectArgs),
+        DetailsDu = type_details_du(OoMCtors, MaybeCanonical, MaybeDirectArgs),
         mercury_output_begin_type_decl(Stream, non_solver_type, !IO),
         mercury_output_term(TypeVarSet, print_name_only, TypeTerm,
             Stream, !IO),
-        (
-            MaybeSuperType = not_a_subtype
-        ;
-            MaybeSuperType = subtype_of(SuperType),
-            io.write_string(Stream, " =< ", !IO),
-            mercury_output_type(TypeVarSet, print_name_only, SuperType,
-                Stream, !IO)
-        ),
         OoMCtors = one_or_more(HeadCtor, TailCtors),
         mercury_output_ctors(TypeVarSet, yes, HeadCtor, TailCtors,
             Stream, !IO),
         mercury_output_where_attributes(Info, TypeVarSet, no,
             MaybeCanonical, MaybeDirectArgs, Stream, !IO),
+        io.write_string(Stream, ".\n", !IO)
+    ;
+        TypeDefn = parse_tree_sub_type(DetailsDu),
+        DetailsDu = type_details_sub(SuperType, OoMCtors),
+        mercury_output_begin_type_decl(Stream, non_solver_type, !IO),
+        mercury_output_term(TypeVarSet, print_name_only, TypeTerm,
+            Stream, !IO),
+        io.write_string(Stream, " =< ", !IO),
+        mercury_output_type(TypeVarSet, print_name_only, SuperType,
+            Stream, !IO),
+        OoMCtors = one_or_more(HeadCtor, TailCtors),
+        mercury_output_ctors(TypeVarSet, yes, HeadCtor, TailCtors,
+            Stream, !IO),
         io.write_string(Stream, ".\n", !IO)
     ;
         TypeDefn = parse_tree_solver_type(DetailsSolver),

@@ -679,6 +679,7 @@ add_type_defn(SectionInfo, TypeStatus, ItemTypeDefnInfo,
         )
     ;
         ( TypeDefn = parse_tree_du_type(_)
+        ; TypeDefn = parse_tree_sub_type(_)
         ; TypeDefn = parse_tree_eqv_type(_)
         ; TypeDefn = parse_tree_abstract_type(_)
         ; TypeDefn = parse_tree_foreign_type(_)

@@ -279,11 +279,11 @@ module_qualify_type_ctor_checked_defn(CheckedDefn0, CheckedDefn,
                 !Info, !.Specs, _),
             StdDefn = std_mer_type_eqv(EqvStatus, EqvDefn)
         ;
-            StdDefn0 = std_mer_type_du_subtype(SubStatus, DuDefn0),
-            module_qualify_item_type_defn(qualify_type_defn_du,
-                mq_not_used_in_interface, DuDefn0, DuDefn,
+            StdDefn0 = std_mer_type_subtype(SubStatus, SubDefn0),
+            module_qualify_item_type_defn(qualify_type_defn_sub,
+                mq_not_used_in_interface, SubDefn0, SubDefn,
                 !Info, !.Specs, _),
-            StdDefn = std_mer_type_du_subtype(SubStatus, DuDefn)
+            StdDefn = std_mer_type_subtype(SubStatus, SubDefn)
         ;
             StdDefn0 = std_mer_type_du_all_plain_constants(DuStatus, DuDefn0,
                 HeadCtor, TailCtors, CJCsDefnOrEnum),
@@ -725,6 +725,11 @@ qualify_type_defn(InInt, Context, TypeCtor, TypeDefn0, TypeDefn,
             DetailsDu0, DetailsDu, !Info, !Specs),
         TypeDefn = parse_tree_du_type(DetailsDu)
     ;
+        TypeDefn0 = parse_tree_sub_type(DetailsSub0),
+        qualify_type_defn_sub(InInt, Context, TypeCtor,
+            DetailsSub0, DetailsSub, !Info, !Specs),
+        TypeDefn = parse_tree_sub_type(DetailsSub)
+    ;
         ( TypeDefn0 = parse_tree_abstract_type(_)
         ; TypeDefn0 = parse_tree_foreign_type(_)
         ),
@@ -778,23 +783,10 @@ qualify_type_defn_eqv(InInt, Context, TypeCtor, DetailsEqv0, DetailsEqv,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_type_defn_du(InInt, Context, TypeCtor, DetailsDu0, DetailsDu,
+qualify_type_defn_du(InInt, _Context, TypeCtor, DetailsDu0, DetailsDu,
         !Info, !Specs) :-
-    DetailsDu0 = type_details_du(MaybeSuperType0, OoMCtors0, MaybeUserEqComp0,
+    DetailsDu0 = type_details_du(OoMCtors0, MaybeUserEqComp0,
         MaybeDirectArgCtors0),
-    (
-        MaybeSuperType0 = subtype_of(SuperType0),
-        ErrorContext = mqec_type_defn(Context, TypeCtor),
-        % Note that this will not prevent a subtype defined in an interface
-        % section from referring to an abstract type as its supertype.
-        % That will be checked while checking other subtype conditions.
-        qualify_type(InInt, ErrorContext, SuperType0, SuperType,
-            !Info, !Specs),
-        MaybeSuperType = subtype_of(SuperType)
-    ;
-        MaybeSuperType0 = not_a_subtype,
-        MaybeSuperType = not_a_subtype
-    ),
     OoMCtors0 = one_or_more(HeadCtor0, TailCtors0),
     qualify_constructor(InInt, TypeCtor, HeadCtor0, HeadCtor, !Info, !Specs),
     qualify_constructors(InInt, TypeCtor, TailCtors0, TailCtors,
@@ -806,8 +798,29 @@ qualify_type_defn_du(InInt, Context, TypeCtor, DetailsDu0, DetailsDu,
     % Thus we don't module-qualify them here.
     MaybeUserEqComp = MaybeUserEqComp0,
     MaybeDirectArgCtors = MaybeDirectArgCtors0,
-    DetailsDu = type_details_du(MaybeSuperType, OoMCtors, MaybeUserEqComp,
+    DetailsDu = type_details_du(OoMCtors, MaybeUserEqComp,
         MaybeDirectArgCtors).
+
+:- pred qualify_type_defn_sub(mq_in_interface::in, prog_context::in,
+    type_ctor::in, type_details_sub::in, type_details_sub::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_type_defn_sub(InInt, Context, TypeCtor, DetailsSub0, DetailsSub,
+        !Info, !Specs) :-
+    DetailsSub0 = type_details_sub(SuperType0, OoMCtors0),
+    ErrorContext = mqec_type_defn(Context, TypeCtor),
+    % Note that this will not prevent a subtype defined in an interface
+    % section from referring to an abstract type as its supertype.
+    % That will be checked while checking other subtype conditions.
+    qualify_type(InInt, ErrorContext, SuperType0, SuperType,
+        !Info, !Specs),
+    OoMCtors0 = one_or_more(HeadCtor0, TailCtors0),
+    qualify_constructor(InInt, TypeCtor, HeadCtor0, HeadCtor, !Info, !Specs),
+    qualify_constructors(InInt, TypeCtor, TailCtors0, TailCtors,
+        !Info, !Specs),
+    OoMCtors = one_or_more(HeadCtor, TailCtors),
+    DetailsSub = type_details_sub(SuperType, OoMCtors).
 
 :- pred qualify_constructors(mq_in_interface::in, type_ctor::in,
     list(constructor)::in, list(constructor)::out,

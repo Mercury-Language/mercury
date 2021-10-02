@@ -534,7 +534,7 @@ acc_implicit_avail_needs_in_parse_tree_trans_opt(ParseTreeTransOpt,
 acc_implicit_avail_needs_in_type_ctor_all_defns(AllDefns,
         !ImplicitAvailNeeds) :-
     AllDefns = type_ctor_all_defns(_SolverAbs, SolverNonAbs,
-        _StdAbs, _StdEqv, _StdDu, _StdForeign),
+        _StdAbs, _StdEqv, _StdDu, _StdSub, _StdForeign),
     list.foldl(acc_implicit_avail_needs_in_type_defn_solver,
         SolverNonAbs, !ImplicitAvailNeeds).
 
@@ -565,6 +565,7 @@ acc_implicit_avail_needs_in_type_defn(ItemTypeDefn, !ImplicitAvailNeeds) :-
         TypeDefn, _TVarSet, _Context, _SeqNum),
     (
         ( TypeDefn = parse_tree_du_type(_)
+        ; TypeDefn = parse_tree_sub_type(_)
         ; TypeDefn = parse_tree_eqv_type(_)
         ; TypeDefn = parse_tree_abstract_type(_)
         ; TypeDefn = parse_tree_foreign_type(_)

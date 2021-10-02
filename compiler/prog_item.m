@@ -694,6 +694,7 @@
                 tcad_abstract_std       :: list(item_type_defn_info_abstract),
                 tcad_eqv                :: list(item_type_defn_info_eqv),
                 tcad_du                 :: list(item_type_defn_info_du),
+                tcad_sub                :: list(item_type_defn_info_sub),
                 tcad_foreign            :: c_j_cs_defns
             ).
 
@@ -707,6 +708,7 @@
                 tcmd_abstract_std       :: maybe(item_type_defn_info_abstract),
                 tcmd_eqv                :: maybe(item_type_defn_info_eqv),
                 tcmd_du                 :: maybe(item_type_defn_info_du),
+                tcmd_sub                :: maybe(item_type_defn_info_sub),
                 tcmd_foreign            :: c_j_cs_maybe_defn
             ).
 
@@ -1326,6 +1328,8 @@
     == item_type_defn_info_general(type_details_eqv).
 :- type item_type_defn_info_du
     == item_type_defn_info_general(type_details_du).
+:- type item_type_defn_info_sub
+    == item_type_defn_info_general(type_details_sub).
 :- type item_type_defn_info_foreign
     == item_type_defn_info_general(type_details_foreign_generic).
 
@@ -1884,21 +1888,17 @@
                 % The equivalence type definition.
                 item_type_defn_info_eqv
             )
-    ;       std_mer_type_du_subtype(
-                std_du_subtype_status,
+    ;       std_mer_type_subtype(
+                std_subtype_status,
 
-                % The discriminated union type definition, which is a subtype.
-                % XXX We should encode the invariant "is a subtype"
-                % in the type.
-                item_type_defn_info_du
+                % The subtype definition.
+                item_type_defn_info_sub
             )
     ;       std_mer_type_du_all_plain_constants(
                 std_du_type_status,
 
-                % The discriminated union type definition (not a subtype),
-                % which represents either a direct dummy type or an enum.
-                % XXX We should encode the invariant "is not a subtype"
-                % in the type.
+                % The discriminated union type definition which represents
+                % either a direct dummy type or an enum.
                 item_type_defn_info_du,
 
                 % The first functor name in the type, and any later functor
@@ -1925,9 +1925,8 @@
     ;       std_mer_type_du_not_all_plain_constants(
                 std_du_type_status,
 
-                % The discriminated union type definition (not a subtype),
-                % which represents a type *other* than a direct dummy type or
-                % an enum.
+                % The discriminated union type definition which represents
+                % a type *other* than a direct dummy type or an enum.
                 item_type_defn_info_du,
 
                 % For each of our target foreign languages, this field
@@ -1983,7 +1982,7 @@
     % A version of std_du_type_status for subtypes, which may not have
     % any foreign type definitions, and for which therefore the question of
     % whether any foreign type definitions are exported is moot.
-:- type std_du_subtype_status
+:- type std_subtype_status
     --->    std_sub_type_mer_exported
     ;       std_sub_type_abstract_exported
     ;       std_sub_type_all_private.

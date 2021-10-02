@@ -293,15 +293,15 @@ make_type_ctor_checked_defn_abstract_for_int3(TypeCtor, CheckedTypeDefn0,
                 EqvStatus = std_eqv_type_all_private
             )
         ;
-            StdDefn0 = std_mer_type_du_subtype(SubStatus, DuDefn0),
+            StdDefn0 = std_mer_type_subtype(SubStatus, SubDefn0),
             (
                 ( SubStatus = std_sub_type_mer_exported
                 ; SubStatus = std_sub_type_abstract_exported
                 ),
                 AbsStatus = std_abs_type_abstract_exported,
-                DetailsDu = DuDefn0 ^ td_ctor_defn,
-                make_du_type_abstract(DetailsDu, DetailsAbstract),
-                AbsDefn = DuDefn0 ^ td_ctor_defn := DetailsAbstract,
+                DetailsSub = SubDefn0 ^ td_ctor_defn,
+                make_sub_type_abstract(DetailsSub, DetailsAbstract),
+                AbsDefn = SubDefn0 ^ td_ctor_defn := DetailsAbstract,
                 CJCsMaybeDefn = c_java_csharp(no, no, no),
                 StdDefn = std_mer_type_abstract(AbsStatus, AbsDefn,
                     CJCsMaybeDefn),
@@ -904,6 +904,7 @@ record_type_defn_imp(ItemTypeDefn, !ImpTypesMap) :-
     ;
         ( TypeDefn = parse_tree_abstract_type(_)
         ; TypeDefn = parse_tree_du_type(_)
+        ; TypeDefn = parse_tree_sub_type(_)
         ; TypeDefn = parse_tree_eqv_type(_)
         ; TypeDefn = parse_tree_foreign_type(_)
         ),
@@ -1202,45 +1203,42 @@ accumulate_abs_imp_exported_type_lhs_in_defn(IntTypesMap, BothTypesMap,
         )
     ;
         ImpTypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu = type_details_du(MaybeSuperType, OoMCtors, MaybeEqCmp,
-            MaybeDirectArgCtors),
-        (
-            MaybeSuperType = not_a_subtype,
-            ( if
-                map.search(IntTypesMap, TypeCtor, _),
-                non_sub_du_type_is_enum(DetailsDu, _NumFunctors)
-            then
-                set.insert(TypeCtor, !AbsExpEnumTypeCtors)
-            else if
-                % XXX ITEM_LIST Why don't we insist that TypeCtor occurs
-                % in IntTypesMap?
-                % XXX ITEM_LIST If a type has one function symbol
-                % with arity one and the argument type is equivalent
-                % to a dummy type that is defined in another module,
-                % we will NOT include TypeCtor in !DirectDummyTypeCtors,
-                % since we won't know enough about the contents of the
-                % other module.
-                non_sub_du_constructor_list_represents_dummy_type(BothTypesMap,
-                    TVarSet, OoMCtors, MaybeEqCmp, MaybeDirectArgCtors)
-            then
-                set.insert(TypeCtor, !DirectDummyTypeCtors)
+        DetailsDu = type_details_du(OoMCtors, MaybeEqCmp, MaybeDirectArgCtors),
+        ( if
+            map.search(IntTypesMap, TypeCtor, _),
+            non_sub_du_type_is_enum(DetailsDu, _NumFunctors)
+        then
+            set.insert(TypeCtor, !AbsExpEnumTypeCtors)
+        else if
+            % XXX ITEM_LIST Why don't we insist that TypeCtor occurs
+            % in IntTypesMap?
+            % XXX ITEM_LIST If a type has one function symbol
+            % with arity one and the argument type is equivalent
+            % to a dummy type that is defined in another module,
+            % we will NOT include TypeCtor in !DirectDummyTypeCtors,
+            % since we won't know enough about the contents of the
+            % other module.
+            non_sub_du_constructor_list_represents_dummy_type(BothTypesMap,
+                TVarSet, OoMCtors, MaybeEqCmp, MaybeDirectArgCtors)
+        then
+            set.insert(TypeCtor, !DirectDummyTypeCtors)
+        else
+            true
+        )
+    ;
+        ImpTypeDefn = parse_tree_sub_type(DetailsSub),
+        DetailsSub = type_details_sub(SuperType, _OoMCtors),
+        ( if map.search(IntTypesMap, TypeCtor, _) then
+            set.insert(TypeCtor, !AbsExpEqvLhsTypeCtors),
+            ( if type_to_ctor(SuperType, SuperTypeCtor) then
+                set.singleton_set(TypeCtor, Seen0),
+                accumulate_eqv_and_supertypes(BothTypesMap,
+                    SuperTypeCtor, !AbsExpEqvLhsTypeCtors, Seen0, _Seen)
             else
                 true
             )
-        ;
-            MaybeSuperType = subtype_of(SuperType),
-            ( if map.search(IntTypesMap, TypeCtor, _) then
-                set.insert(TypeCtor, !AbsExpEqvLhsTypeCtors),
-                ( if type_to_ctor(SuperType, SuperTypeCtor) then
-                    set.singleton_set(TypeCtor, Seen0),
-                    accumulate_eqv_and_supertypes(BothTypesMap,
-                        SuperTypeCtor, !AbsExpEqvLhsTypeCtors, Seen0, _Seen)
-                else
-                    true
-                )
-            else
-                true
-            )
+        else
+            true
         )
     ;
         ( ImpTypeDefn = parse_tree_abstract_type(_)
@@ -1290,22 +1288,19 @@ accumulate_eqv_and_supertypes_in_defn(BothTypesMap, TypeCtor, ItemTypeDefnInfo,
             true
         )
     ;
-        TypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu = type_details_du(MaybeSuperType, _, _, _),
-        (
-            MaybeSuperType = not_a_subtype
-            % This is the base type.
-        ;
-            MaybeSuperType = subtype_of(SuperType),
-            % Not yet at the base type.
-            set.insert(TypeCtor, !AbsExpEqvLhsTypeCtors),
-            ( if type_to_ctor(SuperType, SuperTypeCtor) then
-                accumulate_eqv_and_supertypes(BothTypesMap, SuperTypeCtor,
-                    !AbsExpEqvLhsTypeCtors, !Seen)
-            else
-                true
-            )
+        TypeDefn = parse_tree_sub_type(DetailsSub),
+        DetailsSub = type_details_sub(SuperType, _),
+        % Not yet at the base type.
+        set.insert(TypeCtor, !AbsExpEqvLhsTypeCtors),
+        ( if type_to_ctor(SuperType, SuperTypeCtor) then
+            accumulate_eqv_and_supertypes(BothTypesMap, SuperTypeCtor,
+                !AbsExpEqvLhsTypeCtors, !Seen)
+        else
+            true
         )
+    ;
+        TypeDefn = parse_tree_du_type(_DetailsDu)
+        % This is the base type.
     ;
         ( TypeDefn = parse_tree_foreign_type(_)
         ; TypeDefn = parse_tree_abstract_type(_)
@@ -1366,8 +1361,13 @@ accumulate_abs_eqv_type_rhs_in_defn(ImpTypesMap, ImpItemTypeDefnInfo,
             NewRhsTypeCtors,
             !AbsExpEqvRhsTypeCtors, set.init, _, !ModulesNeededByTypeDefns)
     ;
-        ImpTypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu = type_details_du(_MaybeSuperType, OoMCtors, _, _),
+        (
+            ImpTypeDefn = parse_tree_du_type(DetailsDu),
+            DetailsDu = type_details_du(OoMCtors, _, _)
+        ;
+            ImpTypeDefn = parse_tree_sub_type(DetailsSub),
+            DetailsSub = type_details_sub(_, OoMCtors)
+        ),
         % There must exist a foreign type alternative to this type.
         % XXX ITEM_LIST I (zs) would like to see a proof argument for that,
         % since I don't think it is true. Unfortunately, we cannot check it
@@ -1553,16 +1553,15 @@ ctor_arg_is_dummy_type_by_some_type_defn(TypeDefnMap, TVarSet, Type, TypeCtor,
     one_or_more.member(ItemTypeDefnInfo, ItemTypeDefnInfos),
     ItemTypeDefnInfo = item_type_defn_info(_TypeCtor, TypeDefnTypeParams,
         TypeDefn, TypeDefnTVarSet, _Context, _SeqNum),
-    TypeDefn = parse_tree_du_type(DetailsDu),
-    DetailsDu = type_details_du(MaybeSuperType, OoMCtors, MaybeEqCmp,
-        MaybeDirectArgCtors),
     (
-        MaybeSuperType = not_a_subtype,
+        TypeDefn = parse_tree_du_type(DetailsDu),
+        DetailsDu = type_details_du(OoMCtors, MaybeEqCmp, MaybeDirectArgCtors),
         non_sub_du_constructor_list_represents_dummy_type_2(TypeDefnMap,
             TVarSet, OoMCtors, MaybeEqCmp, MaybeDirectArgCtors,
             [Type | CoveredTypes0])
     ;
-        MaybeSuperType = subtype_of(SuperType0),
+        TypeDefn = parse_tree_sub_type(DetailsSub),
+        DetailsSub = type_details_sub(SuperType0, _OoMCtors),
         % A subtype can only be a dummy type if its base type is a dummy type.
         merge_tvarsets_and_subst_type_args(TVarSet, TypeArgs, TypeDefnTVarSet,
             TypeDefnTypeParams, SuperType0, SuperType),
@@ -1601,14 +1600,12 @@ get_base_type(TypeDefnMap, TVarSet, Type, BaseType, !.SeenTypes) :-
     one_or_more.member(ItemTypeDefnInfo, ItemTypeDefnInfos),
     ItemTypeDefnInfo = item_type_defn_info(_TypeCtor, TypeDefnTypeParams,
         TypeDefn, TypeDefnTVarSet, _Context, _SeqNum),
-    TypeDefn = parse_tree_du_type(DetailsDu),
-    DetailsDu = type_details_du(MaybeSuperType, _OoMCtors, _MaybeEqCmp,
-        _MaybeDirectArgCtors),
     (
-        MaybeSuperType = not_a_subtype,
+        TypeDefn = parse_tree_du_type(_DetailsDu),
         BaseType = Type
     ;
-        MaybeSuperType = subtype_of(SuperType0),
+        TypeDefn = parse_tree_sub_type(DetailsSub),
+        DetailsSub = type_details_sub(SuperType0, _OoMCtors),
         merge_tvarsets_and_subst_type_args(TVarSet, TypeArgs,
             TypeDefnTVarSet, TypeDefnTypeParams, SuperType0, SuperType),
         get_base_type(TypeDefnMap, TVarSet, SuperType, BaseType, !.SeenTypes)
@@ -1738,7 +1735,7 @@ hide_type_ctor_checked_defn_std_imp_details_for_int1(BothTypesMap,
             )
         )
     ;
-        StdTypeDefn0 = std_mer_type_du_subtype(SubStatus, SubDefn),
+        StdTypeDefn0 = std_mer_type_subtype(SubStatus, SubDefn),
         (
             SubStatus = std_sub_type_mer_exported,
             % The entirety of this type is in the interface.
@@ -2082,51 +2079,38 @@ make_du_type_defn_abstract(BothTypesMap, DuDefnInfo, MaybeAbstractDefnInfo) :-
     % "fits in n bits", "is equivalent to ...") in a type_repn item,
     % and then make the type definition abstract.
     DuDefnInfo = item_type_defn_info(_, _, DetailsDu, TVarSet, _, _),
-    DetailsDu = type_details_du(MaybeSuperType, OoMCtors, MaybeEqCmp,
-        MaybeDirectArgCtors),
-    (
-        MaybeSuperType = not_a_subtype,
-        ( if
-            non_sub_du_constructor_list_represents_dummy_type(BothTypesMap,
-                TVarSet, OoMCtors, MaybeEqCmp, MaybeDirectArgCtors)
-        then
-            % We cannot return DetailsAbs = abstract_dummy_type, because
-            % parse_tree_out.m writes out abstract_dummy_types as if they were
-            % abstract_type_general, which means that if we output
-            % AbstractDefnInfo, readers of the .int file won't know that
-            % the type is abstract.
-            %
-            % The only way we can tell them that is to keep the original
-            % DuDefnInfo. We tell our caller that by returning nothing.
-            MaybeAbstractDefnInfo = no
+    DetailsDu = type_details_du(OoMCtors, MaybeEqCmp, MaybeDirectArgCtors),
+    ( if
+        non_sub_du_constructor_list_represents_dummy_type(BothTypesMap,
+            TVarSet, OoMCtors, MaybeEqCmp, MaybeDirectArgCtors)
+    then
+        % We cannot return DetailsAbs = abstract_dummy_type, because
+        % parse_tree_out.m writes out abstract_dummy_types as if they were
+        % abstract_type_general, which means that if we output
+        % AbstractDefnInfo, readers of the .int file won't know that
+        % the type is abstract.
+        %
+        % The only way we can tell them that is to keep the original
+        % DuDefnInfo. We tell our caller that by returning nothing.
+        MaybeAbstractDefnInfo = no
+    else
+        ( if non_sub_du_type_is_enum(DetailsDu, NumFunctors) then
+            num_bits_needed_for_n_dense_values(NumFunctors, NumBits),
+            DetailsAbs = abstract_type_fits_in_n_bits(NumBits)
         else
-            ( if non_sub_du_type_is_enum(DetailsDu, NumFunctors) then
-                num_bits_needed_for_n_dense_values(NumFunctors, NumBits),
-                DetailsAbs = abstract_type_fits_in_n_bits(NumBits)
-            else
-                DetailsAbs = abstract_type_general
-            ),
-            AbstractDefnInfo = DuDefnInfo ^ td_ctor_defn := DetailsAbs,
-            MaybeAbstractDefnInfo = yes(AbstractDefnInfo)
-        )
-    ;
-        MaybeSuperType = subtype_of(_),
-        unexpected($pred, "subtype")
+            DetailsAbs = abstract_type_general
+        ),
+        AbstractDefnInfo = DuDefnInfo ^ td_ctor_defn := DetailsAbs,
+        MaybeAbstractDefnInfo = yes(AbstractDefnInfo)
     ).
 
-:- func make_subtype_defn_abstract(item_type_defn_info_du)
+:- func make_subtype_defn_abstract(item_type_defn_info_sub)
     = item_type_defn_info_abstract.
 
 make_subtype_defn_abstract(SubDefn) = AbstractDefn :-
     TypeDefn = SubDefn ^ td_ctor_defn,
-    MaybeSubType = TypeDefn ^ du_maybe_subtype,
-    (
-        MaybeSubType = not_a_subtype,
-        unexpected($pred, "not_a_subtype")
-    ;
-        MaybeSubType = subtype_of(SuperType),
-        type_to_ctor_det(SuperType, SuperTypeCtor)
-    ),
+    SuperType = TypeDefn ^ sub_supertype,
+    type_to_ctor_det(SuperType, SuperTypeCtor),
     AbstractDefn = SubDefn ^ td_ctor_defn := abstract_subtype(SuperTypeCtor).
 
 %---------------------------------------------------------------------------%
@@ -2438,6 +2422,11 @@ restrict_type_ctor_int_defn_for_int2(TypeDefnInfo0, TypeDefnInfo,
         % should not need to do anything with the types of those arguments,
         % but I would like to see a correctness argument for that.
     ;
+        TypeDefn0 = parse_tree_sub_type(_),
+        % The consideration just above about the types of constructors
+        % in du types applies also to subtypes.
+        TypeDefnInfo = TypeDefnInfo0
+    ;
         TypeDefn0 = parse_tree_solver_type(_),
         % TypeDefnInfo cannot refer to other modules.
         % XXX ITEM_LIST This should not be necessary, since a full
@@ -2609,7 +2598,10 @@ delete_uc_preds_make_solver_type_dummy(ItemTypeDefn0, ItemTypeDefn) :-
         TypeDefn = parse_tree_du_type(DetailsDu),
         ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn := TypeDefn
     ;
-        TypeDefn0 = parse_tree_abstract_type(_AbstractDetails),
+        TypeDefn0 = parse_tree_sub_type(_),
+        ItemTypeDefn = ItemTypeDefn0
+    ;
+        TypeDefn0 = parse_tree_abstract_type(_),
         ItemTypeDefn = ItemTypeDefn0
     ;
         TypeDefn0 = parse_tree_solver_type(_),
@@ -2662,25 +2654,25 @@ dummy_solver_type = DetailsSolver :-
     is det.
 
 make_du_type_abstract(DetailsDu, DetailsAbstract) :-
-    DetailsDu = type_details_du(MaybeSuperType, Ctors, MaybeCanonical,
-        _MaybeDirectArgCtors),
-    (
-        MaybeSuperType = not_a_subtype,
-        ( if non_sub_du_type_is_enum(DetailsDu, NumFunctors) then
-            num_bits_needed_for_n_dense_values(NumFunctors, NumBits),
-            DetailsAbstract = abstract_type_fits_in_n_bits(NumBits)
-        else if non_sub_du_type_is_notag(Ctors, MaybeCanonical) then
-            DetailsAbstract = abstract_notag_type
-        else if non_sub_du_type_is_dummy(DetailsDu) then
-            DetailsAbstract = abstract_dummy_type
-        else
-            DetailsAbstract = abstract_type_general
-        )
-    ;
-        MaybeSuperType = subtype_of(SuperType),
-        type_to_ctor_det(SuperType, SuperTypeCtor),
-        DetailsAbstract = abstract_subtype(SuperTypeCtor)
+    DetailsDu = type_details_du(Ctors, MaybeCanonical, _MaybeDirectArgCtors),
+    ( if non_sub_du_type_is_enum(DetailsDu, NumFunctors) then
+        num_bits_needed_for_n_dense_values(NumFunctors, NumBits),
+        DetailsAbstract = abstract_type_fits_in_n_bits(NumBits)
+    else if non_sub_du_type_is_notag(Ctors, MaybeCanonical) then
+        DetailsAbstract = abstract_notag_type
+    else if non_sub_du_type_is_dummy(DetailsDu) then
+        DetailsAbstract = abstract_dummy_type
+    else
+        DetailsAbstract = abstract_type_general
     ).
+
+:- pred make_sub_type_abstract(type_details_sub::in,
+    type_details_abstract::out) is det.
+
+make_sub_type_abstract(DetailsSub, DetailsAbstract) :-
+    DetailsSub = type_details_sub(SuperType, _Ctors),
+    type_to_ctor_det(SuperType, SuperTypeCtor),
+    DetailsAbstract = abstract_subtype(SuperTypeCtor).
 
 :- pred delete_uc_preds_from_du_type(type_details_du::in,
     type_details_du::out) is det.
@@ -3043,6 +3035,7 @@ record_foreign_lang_in_type_defn(TypeDefnInfo, !Langs) :-
     TypeDefn = TypeDefnInfo ^ td_ctor_defn,
     (
         ( TypeDefn = parse_tree_du_type(_)
+        ; TypeDefn = parse_tree_sub_type(_)
         ; TypeDefn = parse_tree_abstract_type(_)
         ; TypeDefn = parse_tree_solver_type(_)
         ; TypeDefn = parse_tree_eqv_type(_)
