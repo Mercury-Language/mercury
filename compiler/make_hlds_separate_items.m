@@ -88,7 +88,6 @@
 
 :- implementation.
 
-:- import_module parse_tree.convert_parse_tree. % XXX Undesirable dependency.
 :- import_module parse_tree.file_kind.          % XXX Undesirable dependency.
 :- import_module parse_tree.item_util.
 
@@ -485,12 +484,11 @@ acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
         _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
         _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, ImportUseMap,
         IntFIMSpecs, ImpFIMSpecs,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises,
-        ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
-        ImpForeignEnumMap, ImpDeclPragmas, ImpPromises),
+        ImpDeclPragmas, ImpPromises),
 
     AccAvails0 = !.Acc ^ ia_avails,
     AccFIMs0 = !.Acc ^ ia_fims,
@@ -514,8 +512,8 @@ acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
     IntFIMs = list.map(fim_spec_to_item, set.to_sorted_list(IntFIMSpecs)),
     ImpFIMs = list.map(fim_spec_to_item, set.to_sorted_list(ImpFIMSpecs)),
     AccFIMs = AccFIMs0 ++ cord.from_list(IntFIMs) ++ cord.from_list(ImpFIMs),
-    IntTypeDefns = type_ctor_defn_map_to_type_defns(IntTypeDefnMap),
-    ImpTypeDefns = type_ctor_defn_map_to_type_defns(ImpTypeDefnMap),
+    type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
+        IntTypeDefns, ImpTypeDefns, ImpForeignEnums),
     separate_type_defns_abs_mer_for(IntTypeDefns,
         [], IntTypeDefnsAbs, [], IntTypeDefnsMer, [], IntTypeDefnsFor),
     separate_type_defns_abs_mer_for(ImpTypeDefns,
@@ -532,14 +530,14 @@ acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
         AccTypeDefnsFor0, AccTypeDefnsFor1),
     acc_sec_list(ImpSectionInfo, ImpTypeDefnsFor,
         AccTypeDefnsFor1, AccTypeDefnsFor),
-    IntInstDefns = inst_ctor_defn_map_to_inst_defns(IntInstDefnMap),
-    ImpInstDefns = inst_ctor_defn_map_to_inst_defns(ImpInstDefnMap),
+    inst_ctor_checked_map_get_src_defns(InstCtorCheckedMap,
+        IntInstDefns, ImpInstDefns),
     acc_ims_list(IntItemMercuryStatus, IntInstDefns,
         AccInstDefns0, AccInstDefns1),
     acc_ims_list(ImpItemMercuryStatus, ImpInstDefns,
         AccInstDefns1, AccInstDefns),
-    IntModeDefns = mode_ctor_defn_map_to_mode_defns(IntModeDefnMap),
-    ImpModeDefns = mode_ctor_defn_map_to_mode_defns(ImpModeDefnMap),
+    mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
+        IntModeDefns, ImpModeDefns),
     acc_ims_list(IntItemMercuryStatus, IntModeDefns,
         AccModeDefns0, AccModeDefns1),
     acc_ims_list(ImpItemMercuryStatus, ImpModeDefns,
@@ -558,8 +556,7 @@ acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
         AccModeDecls0, AccModeDecls1),
     acc_ims_list(ImpItemMercuryStatus, ImpModeDecls,
         AccModeDecls1, AccModeDecls),
-    acc_ims_tuple_list(ImpItemMercuryStatus,
-        cjcs_map_to_list(ImpForeignEnumMap),
+    acc_ims_tuple_list(ImpItemMercuryStatus, ImpForeignEnums,
         AccForeignEnums0, AccForeignEnums),
     acc_ims_list(IntItemMercuryStatus, IntDeclPragmas,
         AccDeclPragmas0, AccDeclPragmas1),
@@ -1114,22 +1111,6 @@ acc_ims_tuple_list(_ItemMercuryStatus, [], !ImsItems).
 acc_ims_tuple_list(ItemMercuryStatus, [Item | Items], !ImsItems) :-
     cord.snoc({ItemMercuryStatus, Item}, !ImsItems),
     acc_ims_tuple_list(ItemMercuryStatus, Items, !ImsItems).
-
-%---------------------------------------------------------------------------%
-
-:- func cjcs_map_to_list(map(_K, c_java_csharp(list(V)))) = list(V).
-
-cjcs_map_to_list(Map) = List :-
-    RevList0 = [],
-    map.foldl_values(acc_cjcs_map_to_list, Map, RevList0, RevList),
-    list.reverse(RevList, List).
-
-:- pred acc_cjcs_map_to_list(c_java_csharp(list(V))::in,
-    list(V)::in, list(V)::out) is det.
-
-acc_cjcs_map_to_list(CJCsE, !RevList) :-
-    CJCsE = c_java_csharp(Cs, Javas, Csharps),
-    !:RevList = Cs ++ Javas ++ Csharps ++ !.RevList.
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.make_hlds_passes.make_hlds_separate_items.

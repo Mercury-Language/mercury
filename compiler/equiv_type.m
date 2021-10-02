@@ -356,14 +356,10 @@ build_eqv_maps_in_parse_tree_int0(_ReadWhy0, ParseTreeInt0,
     % All possible values of _ReadWhy0 call for things in both
     % the interface and the implementation sections to be imported
     % in a non-abstract form.
-    list.foldl(build_eqv_maps_in_type_ctor_all_defns,
-        map.values(ParseTreeInt0 ^ pti0_int_type_defns), !TypeEqvMap),
-    list.foldl(build_eqv_maps_in_type_ctor_all_defns,
-        map.values(ParseTreeInt0 ^ pti0_imp_type_defns), !TypeEqvMap),
-    list.foldl(build_eqv_maps_in_inst_ctor_all_defns,
-        map.values(ParseTreeInt0 ^ pti0_int_inst_defns), !InstEqvMap),
-    list.foldl(build_eqv_maps_in_inst_ctor_all_defns,
-        map.values(ParseTreeInt0 ^ pti0_imp_inst_defns), !InstEqvMap).
+    map.foldl(build_eqv_maps_in_type_ctor_checked_defns_int_imp,
+        ParseTreeInt0 ^ pti0_type_defns, !TypeEqvMap),
+    map.foldl(build_eqv_maps_in_inst_ctor_checked_defns_int_imp,
+        ParseTreeInt0 ^ pti0_inst_defns, !InstEqvMap).
 
 :- pred build_eqv_maps_in_parse_tree_int1(read_why_int1::in,
     parse_tree_int1::in,
@@ -434,24 +430,6 @@ build_eqv_maps_in_parse_tree_trans_opt(_ParseTreePlainOpt,
 
 %---------------------%
 
-:- pred build_eqv_maps_in_type_ctor_all_defns(type_ctor_all_defns::in,
-    type_eqv_map::in, type_eqv_map::out) is det.
-
-build_eqv_maps_in_type_ctor_all_defns(TypeCtorAllDefns, !TypeEqvMap) :-
-    EqvTypeDefns = TypeCtorAllDefns ^ tcad_eqv,
-    (
-        EqvTypeDefns = []
-    ;
-        EqvTypeDefns = [EqvTypeDefn | _],
-        EqvTypeDefn = item_type_defn_info(Name, TypeParams, TypeDefnEqv,
-            TVarSet, _Context, _SeqNum),
-        TypeDefnEqv = type_details_eqv(EqvType),
-        list.length(TypeParams, Arity),
-        TypeCtor = type_ctor(Name, Arity),
-        map.set(TypeCtor, eqv_type_body(TVarSet, TypeParams, EqvType),
-            !TypeEqvMap)
-    ).
-
 :- pred build_eqv_maps_in_type_defn(item_type_defn_info::in,
     type_eqv_map::in, type_eqv_map::out) is det.
 
@@ -465,6 +443,32 @@ build_eqv_maps_in_type_defn(ItemTypeDefn, !TypeEqvMap) :-
             !TypeEqvMap)
     else
         true
+    ).
+
+:- pred build_eqv_maps_in_type_ctor_checked_defns_int_imp(type_ctor::in,
+    type_ctor_checked_defn::in,
+    type_eqv_map::in, type_eqv_map::out) is det.
+
+build_eqv_maps_in_type_ctor_checked_defns_int_imp(TypeCtor, CheckedDefn,
+        !TypeEqvMap) :-
+    (
+        CheckedDefn = checked_defn_solver(_, _)
+    ;
+        CheckedDefn = checked_defn_std(StdTypeDefn, _SrcDefns),
+        (
+            StdTypeDefn = std_mer_type_eqv(_Status, ItemTypeDefnEqv),
+            ItemTypeDefnEqv = item_type_defn_info(_Name, TypeParams,
+                TypeDefn, TVarSet, _Context, _SeqNum),
+            TypeDefn = type_details_eqv(EqvType),
+            map.set(TypeCtor, eqv_type_body(TVarSet, TypeParams, EqvType),
+                !TypeEqvMap)
+        ;
+            ( StdTypeDefn = std_mer_type_subtype(_, _)
+            ; StdTypeDefn = std_mer_type_du_all_plain_constants(_, _, _, _, _)
+            ; StdTypeDefn = std_mer_type_du_not_all_plain_constants(_, _, _)
+            ; StdTypeDefn = std_mer_type_abstract(_, _, _)
+            )
+        )
     ).
 
 :- pred build_eqv_maps_in_type_ctor_checked_defns_int(type_ctor::in,
@@ -502,23 +506,6 @@ build_eqv_maps_in_type_ctor_checked_defns_int(TypeCtor, CheckedDefn,
 
 %---------------------%
 
-:- pred build_eqv_maps_in_inst_ctor_all_defns(inst_ctor_all_defns::in,
-    inst_eqv_map::in, inst_eqv_map::out) is det.
-
-build_eqv_maps_in_inst_ctor_all_defns(InstCtorAllDefns, !InstEqvMap) :-
-    InstCtorAllDefns = inst_ctor_all_defns(_AbstractInstDefns, EqvInstDefns),
-    (
-        EqvInstDefns = []
-    ;
-        EqvInstDefns = [EqvInstDefn | _],
-        EqvInstDefn = item_inst_defn_info(Name, InstParams, _IFTC,
-            InstDefn, _InstVarSet, _Context, _SeqNum),
-        InstDefn = eqv_inst(EqvInst),
-        list.length(InstParams, Arity),
-        InstCtor = inst_ctor(Name, Arity),
-        map.set(InstCtor, eqv_inst_body(InstParams, EqvInst), !InstEqvMap)
-    ).
-
 :- pred build_eqv_maps_in_inst_defn(item_inst_defn_info::in,
     inst_eqv_map::in, inst_eqv_map::out) is det.
 
@@ -531,6 +518,24 @@ build_eqv_maps_in_inst_defn(ItemInstDefn, !InstEqvMap) :-
         map.set(InstCtor, eqv_inst_body(InstParams, EqvInst), !InstEqvMap)
     else
         true
+    ).
+
+:- pred build_eqv_maps_in_inst_ctor_checked_defns_int_imp(inst_ctor::in,
+    inst_ctor_checked_defn::in,
+    inst_eqv_map::in, inst_eqv_map::out) is det.
+
+build_eqv_maps_in_inst_ctor_checked_defns_int_imp(InstCtor, CheckedDefn,
+        !InstEqvMap) :-
+    CheckedDefn = checked_defn_inst(StdInstDefn, _SrcDefns),
+    StdInstDefn = std_inst_defn(_Status, ItemInstDefn),
+    ItemInstDefn = item_inst_defn_info(_Name, InstParams, _MaybeForType,
+        MaybeAbstractInstDefn, _InstVarSet, _Context, _SeqNum),
+    (
+        MaybeAbstractInstDefn = abstract_inst_defn
+    ;
+        MaybeAbstractInstDefn = nonabstract_inst_defn(InstDefn),
+        InstDefn = eqv_inst(EqvInst),
+        map.set(InstCtor, eqv_inst_body(InstParams, EqvInst), !InstEqvMap)
     ).
 
 :- pred build_eqv_maps_in_inst_ctor_checked_defns_int(inst_ctor::in,
@@ -741,20 +746,20 @@ replace_in_parse_tree_int0(ModuleName, TypeEqvMap, InstEqvMap,
         MaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
         IntFIMSpecs, ImpFIMSpecs,
-        IntTypeDefnMap0, IntInstDefnMap0, IntModeDefnMap0,
+        TypeCheckedMap0, InstCheckedMap0, ModeCheckedMap0,
         IntTypeClasses0, IntInstances0, IntPredDecls0, IntModeDecls0,
         IntDeclPragmas0, IntPromises,
-        ImpTypeDefnMap0, ImpInstDefnMap0, ImpModeDefnMap0,
         ImpTypeClasses0, ImpInstances0, ImpPredDecls0, ImpModeDecls0,
-        ImpForeignEnumMap, ImpDeclPragmas0, ImpPromises),
+        ImpDeclPragmas0, ImpPromises),
 
     map.map_values_foldl3(
-        replace_in_type_ctor_all_defns(ModuleName, MaybeRecord,
+        replace_in_type_ctor_checked_defn(ModuleName, MaybeRecord,
             TypeEqvMap, InstEqvMap),
-        IntTypeDefnMap0, IntTypeDefnMap,
+        TypeCheckedMap0, TypeCheckedMap,
         !RecompInfo, !UsedModules, !Specs),
-    IntInstDefnMap = IntInstDefnMap0, % XXX See the comment at module top.
-    IntModeDefnMap = IntModeDefnMap0, % XXX See the comment at module top.
+    InstCheckedMap = InstCheckedMap0, % XXX See the comment at module top.
+    ModeCheckedMap = ModeCheckedMap0, % XXX See the comment at module top.
+
     replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
         replace_in_typeclass_info, IntTypeClasses0, IntTypeClasses,
         !RecompInfo, !UsedModules, !Specs),
@@ -771,13 +776,6 @@ replace_in_parse_tree_int0(ModuleName, TypeEqvMap, InstEqvMap,
         replace_in_decl_pragma_info, IntDeclPragmas0, IntDeclPragmas,
         !RecompInfo, !UsedModules, !Specs),
 
-    map.map_values_foldl3(
-        replace_in_type_ctor_all_defns(ModuleName, MaybeRecord,
-            TypeEqvMap, InstEqvMap),
-        ImpTypeDefnMap0, ImpTypeDefnMap,
-        !RecompInfo, !UsedModules, !Specs),
-    ImpInstDefnMap = ImpInstDefnMap0, % XXX See the comment at module top.
-    ImpModeDefnMap = ImpModeDefnMap0, % XXX See the comment at module top.
     replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
         replace_in_typeclass_info, ImpTypeClasses0, ImpTypeClasses,
         !RecompInfo, !UsedModules, !Specs),
@@ -798,12 +796,11 @@ replace_in_parse_tree_int0(ModuleName, TypeEqvMap, InstEqvMap,
         MaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
         IntFIMSpecs, ImpFIMSpecs,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        TypeCheckedMap, InstCheckedMap, ModeCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises,
-        ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
-        ImpForeignEnumMap, ImpDeclPragmas, ImpPromises).
+        ImpDeclPragmas, ImpPromises).
 
 :- pred replace_in_parse_tree_int1(module_name::in,
     type_eqv_map::in, inst_eqv_map::in,
@@ -1049,32 +1046,6 @@ replace_in_list_loop(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
 :- type maybe_record_sym_name_use
     --->    dont_record_sym_name_use
     ;       record_sym_name_use(item_visibility).
-
-:- pred replace_in_type_ctor_all_defns(module_name::in,
-    maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
-    type_ctor_all_defns::in, type_ctor_all_defns::out,
-    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_modules::in, used_modules::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-replace_in_type_ctor_all_defns(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        AllDefns0, AllDefns, !RecompInfo, !UsedModules, !Specs) :-
-    AllDefns0 = type_ctor_all_defns(TypeSolverAbs, TypeSolver0,
-        TypeStdAbs, TypeStdEqv0, TypeStdDu0, TypeStdSub0, TypeStdForeign),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        replace_in_type_defn_info_general(replace_in_type_defn_solver),
-        TypeSolver0, TypeSolver, !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        replace_in_type_defn_info_general(replace_in_type_defn_eqv),
-        TypeStdEqv0, TypeStdEqv, !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        replace_in_type_defn_info_general(replace_in_type_defn_du),
-        TypeStdDu0, TypeStdDu, !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        replace_in_type_defn_info_general(replace_in_type_defn_sub),
-        TypeStdSub0, TypeStdSub, !RecompInfo, !UsedModules, !Specs),
-    AllDefns = type_ctor_all_defns(TypeSolverAbs, TypeSolver,
-        TypeStdAbs, TypeStdEqv, TypeStdDu, TypeStdSub, TypeStdForeign).
 
 :- pred replace_in_type_ctor_checked_defn(module_name::in,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,

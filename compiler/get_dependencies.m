@@ -437,22 +437,19 @@ acc_implicit_avail_needs_in_parse_tree_int0(ParseTreeInt0,
         _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
         _IntImportMap, _IntUsedMap, _ImpImportMap, _ImpUseMap, _ImportUseMap,
         _IntFIMSpecs, _ImpFIMSpecs,
-        IntTypeDefnMap, _IntInstDefnMap, _IntModeDefnMap,
+        TypeCtorCheckedMap, _InstCtorCheckedMap, _ModeCtorCheckedMap,
         _IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
         _IntDeclPragmas, IntPromises,
-        ImpTypeDefnMap, _ImpInstDefnMap, _ImpModeDefnMap,
         _ImpTypeClasses, ImpInstances, _ImpPredDecls, _ImpModeDecls,
-        _ImpForeignEnumMap, _ImpDeclPragmas, ImpPromises),
+        _ImpDeclPragmas, ImpPromises),
 
-    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_all_defns,
-        IntTypeDefnMap, !ImplicitAvailNeeds),
+    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_checked_defn,
+        TypeCtorCheckedMap, !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_instance,
         IntInstances, !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_promise,
         IntPromises, !ImplicitAvailNeeds),
 
-    map.foldl_values(acc_implicit_avail_needs_in_type_ctor_all_defns,
-        ImpTypeDefnMap, !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_instance,
         ImpInstances, !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_promise,
@@ -526,17 +523,6 @@ acc_implicit_avail_needs_in_parse_tree_trans_opt(ParseTreeTransOpt,
     % implicit avail needs.
 
 %---------------------%
-
-:- pred acc_implicit_avail_needs_in_type_ctor_all_defns(
-    type_ctor_all_defns::in,
-    implicit_avail_needs::in, implicit_avail_needs::out) is det.
-
-acc_implicit_avail_needs_in_type_ctor_all_defns(AllDefns,
-        !ImplicitAvailNeeds) :-
-    AllDefns = type_ctor_all_defns(_SolverAbs, SolverNonAbs,
-        _StdAbs, _StdEqv, _StdDu, _StdSub, _StdForeign),
-    list.foldl(acc_implicit_avail_needs_in_type_defn_solver,
-        SolverNonAbs, !ImplicitAvailNeeds).
 
 :- pred acc_implicit_avail_needs_in_type_ctor_checked_defn(
     type_ctor_checked_defn::in,

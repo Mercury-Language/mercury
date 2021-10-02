@@ -240,21 +240,23 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
     list.sort(ImpDeclPragmas0, ImpDeclPragmas),
     list.sort(ImpPromises0, ImpPromises),
 
-    % We want only the error messages.
     create_type_ctor_checked_map(do_not_insist_on_defn,
         IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
-        _TypeDefnCheckedMap, !Specs),
+        TypeCtorCheckedMap, !Specs),
+    create_inst_ctor_checked_map(do_not_insist_on_defn,
+        IntInstDefnMap, ImpInstDefnMap, InstCtorCheckedMap, !Specs),
+    create_mode_ctor_checked_map(do_not_insist_on_defn,
+        IntModeDefnMap, ImpModeDefnMap, ModeCtorCheckedMap, !Specs),
 
     ParseTreeInt0 = parse_tree_int0(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
         IntFIMSpecs, ImpFIMSpecs,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises,
-        ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
-        ImpForeignEnumMap, ImpDeclPragmas, ImpPromises).
+        ImpDeclPragmas, ImpPromises).
 
 :- pred classify_int0_items_int_or_imp(list(item)::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,

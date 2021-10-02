@@ -445,34 +445,31 @@
                 pti0_int_fims               :: set(fim_spec),
                 pti0_imp_fims               :: set(fim_spec),
 
+                % Type, inst and mode definitions from both
+                % the interface and implementation sections.
+                pti0_type_defns             :: type_ctor_checked_map,
+                pti0_inst_defns             :: inst_ctor_checked_map,
+                pti1_mode_defns             :: mode_ctor_checked_map,
+
                 % Items of various kinds in the interface.
                 % XXX For the consumers of the .int0 file, in most cases
                 % it makes no difference whether an item was in the parent's
                 % interface or implementation section. We should make that
                 % distinction here ONLY when we have to.
-                pti0_int_type_defns         :: type_ctor_defn_map,
-                pti0_int_inst_defns         :: inst_ctor_defn_map,
-                pti0_int_mode_defns         :: mode_ctor_defn_map,
                 pti0_int_typeclasses        :: list(item_typeclass_info),
                 pti0_int_instances          :: list(item_instance_info),
                 pti0_int_pred_decls         :: list(item_pred_decl_info),
                 pti0_int_mode_decls         :: list(item_mode_decl_info),
                 pti0_int_decl_pragmas       :: list(item_decl_pragma_info),
                 pti0_int_promises           :: list(item_promise_info),
-                % XXX We will probably need a list of item_type_repn_infos.
 
                 % Items of various kinds in the implementation section.
-                pti0_imp_type_defns         :: type_ctor_defn_map,
-                pti0_imp_inst_defns         :: inst_ctor_defn_map,
-                pti0_imp_mode_defns         :: mode_ctor_defn_map,
                 pti0_imp_typeclasses        :: list(item_typeclass_info),
                 pti0_imp_instances          :: list(item_instance_info),
                 pti0_imp_pred_decls         :: list(item_pred_decl_info),
                 pti0_imp_mode_decls         :: list(item_mode_decl_info),
-                pti0_imp_foreign_enums      :: type_ctor_foreign_enum_map,
                 pti0_imp_decl_pragmas       :: list(item_decl_pragma_info),
                 pti0_imp_promises           :: list(item_promise_info)
-                % XXX We will probably need a list of item_type_repn_infos.
             ).
 
     % A version of parse_tree_int specialized to hold the contents of

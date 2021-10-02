@@ -73,7 +73,6 @@
                                     % type pred_id.
 :- import_module libs.options.
 :- import_module libs.timestamp.
-:- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
@@ -1580,23 +1579,21 @@ get_ambiguity_checkables_parse_tree_int0(ParseTreeInt0, Checkables) :-
         _MaybeVersionNumbers, _IntIncls, _ImpIncls, _InclMap,
         _IntImports, _IntUses, _ImpImports, _ImpUses, _ImportUseMap,
         _IntFIMs, _ImpFIMs,
-        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, _IntInstances,
-        IntPredDecls, _IntModeDecls,
-        _IntDeclPragmas, _IntPromises,
-        ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
-        ImpTypeClasses, _ImpInstances,
-        ImpPredDecls, _ImpModeDecls, _ImpForeignEnums,
+        IntPredDecls, _IntModeDecls, _IntDeclPragmas, _IntPromises,
+        ImpTypeClasses, _ImpInstances, ImpPredDecls, _ImpModeDecls,
         _ImpDeclPragmas, _ImpPromises),
-    ItemTypeDefns =
-        type_ctor_defn_map_to_type_defns(IntTypeDefnMap) ++
-        type_ctor_defn_map_to_type_defns(ImpTypeDefnMap),
-    ItemInstDefns =
-        inst_ctor_defn_map_to_inst_defns(IntInstDefnMap) ++
-        inst_ctor_defn_map_to_inst_defns(ImpInstDefnMap),
-    ItemModeDefns =
-        mode_ctor_defn_map_to_mode_defns(IntModeDefnMap) ++
-        mode_ctor_defn_map_to_mode_defns(ImpModeDefnMap),
+    type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
+        IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
+    inst_ctor_checked_map_get_src_defns(InstCtorCheckedMap,
+        IntInstDefns, ImpInstDefns),
+    mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
+        IntModeDefns, ImpModeDefns),
+
+    ItemTypeDefns = IntTypeDefns ++ ImpTypeDefns,
+    ItemInstDefns = IntInstDefns ++ ImpInstDefns,
+    ItemModeDefns = IntModeDefns ++ ImpModeDefns,
     ItemTypeClasses = IntTypeClasses ++ ImpTypeClasses,
     ItemPredDecls = IntPredDecls ++ ImpPredDecls,
     Checkables = ambiguity_checkables(ItemTypeDefns,
