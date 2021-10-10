@@ -111,10 +111,11 @@
     % or the end of the stream or an error is detected.
     %
     % If a call to get/4 returns `eof', all further calls to get/4,
-    % unboxed_get/5 or bulk_get/9 for that stream return `eof'. If a call to
-    % get/4 returns `error(...)', all further calls to get/4, unboxed_get/5 or
-    % bulk_get/4 for that stream return an error, although not necessarily the
-    % same one.
+    % unboxed_get/5 or bulk_get/9 for that stream return `eof'.
+    %
+    % If a call to get/4 returns `error(...)', all further calls
+    % to get/4, unboxed_get/5 or bulk_get/4 for that stream return an error,
+    % although not necessarily the same one.
     %
     % XXX We should provide an interface to allow the user to reset the
     % error status to try again if an error is transient.
@@ -129,17 +130,18 @@
 :- typeclass unboxed_reader(Stream, Unit, State, Error)
     <= (input(Stream, State), error(Error), (Stream, Unit -> Error)) where
 [
-    % Get the next unit from the given stream. On error or eof an arbitrary
-    % value of type Unit is returned.
+    % Get the next unit from the given stream. On error or eof, return
+    % an *arbitrary* value of type Unit.
     %
     % The unboxed_get operation should block until the next unit is available,
     % or the end of the stream or an error is detected.
     %
     % If a call to unboxed_get/5 returns `eof', all further calls to get/4,
-    % unboxed_get/5 or bulk_get/9 for that stream return `eof'. If a call to
-    % unboxed_get/5 returns `error(...)', all further calls to get/4,
-    % unboxed_get/5 or bulk_get/4 for that stream return an error, although not
-    % necessarily the same one.
+    % unboxed_get/5 or bulk_get/9 for that stream return `eof'.
+    %
+    % If a call to unboxed_get/5 returns `error(...)', all further calls
+    % to get/4, unboxed_get/5 or bulk_get/4 for that stream return an error,
+    % although not necessarily the same one.
     %
     % XXX We should provide an interface to allow the user to reset the
     % error status to try again if an error is transient.
@@ -163,23 +165,27 @@
     % Read at most NumItems items into the given Store starting at the
     % given index, returning the number of items read.
     %
-    % If the read succeeds, Result is `ok' and NumItemsRead equals NumItems.
+    % If the read succeeds, Result will be `ok' and NumItemsRead will equal
+    % NumItems.
     %
     % On end-of-stream, bulk_get/9 puts as many items as it can into !Store.
     % NumItemsRead is less than NumItems, and Result is `ok'.
     %
     % If an error is detected, bulk_get/9 puts as many items as it can into
-    % !Store. NumItemsRead is less than NumItems, and Result is `error(Err)'.
+    % !Store. In such cases, NumItemsRead will be less than NumItems, and
+    % Result will be `error(Err)'.
     %
     % Blocks until NumItems items are available or the end of the stream
     % is reached or an error is detected.
     %
-    % Throws an exception if Index given is out of range or NumItems units
+    % Throws an exception if Index given is out of range, or if NumItems units
     % starting at Index will not fit in !Store.
     %
-    % If a call to bulk_get/4 returns less than NumItems items, all further
+    % If a call to bulk_get/4 returns fewer than NumItems items, all further
     % calls to get/4, unboxed_get/5 or bulk_get/4 for that stream return no
-    % items. If a call to bulk_get/9 returns `error(...)', all further calls to
+    % items.
+    %
+    % If a call to bulk_get/9 returns `error(...)', all further calls to
     % get/4, unboxed_get/5 or bulk_get/9 for that stream return an error,
     % although not necessarily the same one.
     %
