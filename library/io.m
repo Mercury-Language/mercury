@@ -552,7 +552,7 @@
     %
 :- pred read_char_unboxed(io.text_input_stream::in, io.result::out, char::out,
     io::di, io::uo) is det.
-% NOTE_TO_IMPLEMENTORS there is no version without an explicit stream argument
+% NOTE_TO_IMPLEMENTORS There is no version without an explicit stream argument.
 
     % Un-read a character (code point) from the current input stream
     % or from the specified stream.
@@ -592,12 +592,26 @@
 :- pred read_binary_int8(io.binary_input_stream::in, io.result(int8)::out,
     io::di, io::uo) is det.
 
+    % Reads a single signed 8-bit integer from the specified binary input
+    % stream. This interface avoids memory allocation when there is no error.
+    %
+:- pred read_binary_int8_unboxed(io.binary_input_stream::in, io.result::out,
+    int8::out, io::di, io::uo) is det.
+% NOTE_TO_IMPLEMENTORS There is no version without an explicit stream argument.
+
     % Reads a single unsigned 8-bit integer from the current binary input
     % stream or from the specified binary input stream.
     %
 :- pred read_binary_uint8(io.result(uint8)::out, io::di, io::uo) is det.
 :- pred read_binary_uint8(io.binary_input_stream::in, io.result(uint8)::out,
     io::di, io::uo) is det.
+
+    % Reads a single unsigned 8-bit integer from the specified binary input
+    % stream. This interface avoids memory allocation when there is no error.
+    %
+:- pred read_binary_uint8_unboxed(io.binary_input_stream::in, io.result::out,
+    uint8::out, io::di, io::uo) is det.
+% NOTE_TO_IMPLEMENTORS There is no version without an explicit stream argument.
 
 %---------------------%
 
@@ -2024,6 +2038,8 @@
 :- instance stream.reader(binary_input_stream, int, io, io.error).
 :- instance stream.reader(binary_input_stream, int8, io, io.error).
 :- instance stream.reader(binary_input_stream, uint8, io, io.error).
+:- instance stream.unboxed_reader(binary_input_stream, int8, io, io.error).
+:- instance stream.unboxed_reader(binary_input_stream, uint8, io, io.error).
 :- instance stream.bulk_reader(binary_input_stream, int, bitmap, io, io.error).
 :- instance stream.putback(binary_input_stream, int, io, io.error).
 :- instance stream.putback(binary_input_stream, int8, io, io.error).
@@ -2567,6 +2583,24 @@ result0_to_stream_result0(error(Error)) = error(Error).
     ( get(Stream, Result, !IO) :-
         read_binary_uint8(Stream, Result0, !IO),
         Result = result1_to_stream_result1(Result0)
+    )
+].
+
+:- instance stream.unboxed_reader(binary_input_stream, int8, io, io.error)
+    where
+[
+    ( unboxed_get(Stream, Result, Int8, !IO) :-
+        read_binary_int8_unboxed(Stream, Result0, Int8, !IO),
+        Result = io.result0_to_stream_result0(Result0)
+    )
+].
+
+:- instance stream.unboxed_reader(binary_input_stream, uint8, io, io.error)
+    where
+[
+    ( unboxed_get(Stream, Result, UInt8, !IO) :-
+        read_binary_uint8_unboxed(Stream, Result0, UInt8, !IO),
+        Result = io.result0_to_stream_result0(Result0)
     )
 ].
 
@@ -5690,6 +5724,21 @@ read_binary_int8(binary_input_stream(Stream), Result, !IO) :-
         Result = error(io_error(Msg))
     ).
 
+read_binary_int8_unboxed(binary_input_stream(Stream), Result, Int8, !IO) :-
+    read_byte_val(input_stream(Stream), ResultCode, Int, Error, !IO),
+    Int8 = cast_from_int(Int),
+    (
+        ResultCode = result_code_ok,
+        Result = ok
+    ;
+        ResultCode = result_code_eof,
+        Result = eof
+    ;
+        ResultCode = result_code_error,
+        make_err_msg(Error, "read failed: ", Msg, !IO),
+        Result = error(io_error(Msg))
+    ).
+
 read_binary_uint8(Result, !IO) :-
     binary_input_stream(Stream, !IO),
     read_binary_uint8(Stream, Result, !IO).
@@ -5700,6 +5749,21 @@ read_binary_uint8(binary_input_stream(Stream), Result, !IO) :-
         ResultCode = result_code_ok,
         UInt8 = cast_from_int(Int),
         Result = ok(UInt8)
+    ;
+        ResultCode = result_code_eof,
+        Result = eof
+    ;
+        ResultCode = result_code_error,
+        make_err_msg(Error, "read failed: ", Msg, !IO),
+        Result = error(io_error(Msg))
+    ).
+
+read_binary_uint8_unboxed(binary_input_stream(Stream), Result, UInt8, !IO) :-
+    read_byte_val(input_stream(Stream), ResultCode, Int, Error, !IO),
+    UInt8 = cast_from_int(Int),
+    (
+        ResultCode = result_code_ok,
+        Result = ok
     ;
         ResultCode = result_code_eof,
         Result = eof
