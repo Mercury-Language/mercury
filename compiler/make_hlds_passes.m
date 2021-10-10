@@ -229,14 +229,33 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % the processing of a type-specific inst may require access not just
     % to the definition of *that* type, but of any other type that occurs
     % in its definition, either directly or indirectly.
+    %
+    % Checking insts for circularity cannot be guaranteed to catch all
+    % circularities until all insts have been added to the HLDS.
+    % For example, in tests/invalid/circ_inst5.m, the circularity between
+    % the inst_ctors c/0 and c/1 is detected only if the definition of
+    % the inst_ctor i/1 has already been added to the inst table, but
+    % i/1 does not refer to either c/0 or c1, and is not itself circular,
+    % so its later addition cannot be expected to catch the circularity
+    % between c/0 and c/1.
+    %
+    % We definitely do want to guarantee that we catch and report all
+    % circular insts *now*, because later compiler passes *assume* that
+    % this has been done, and thus employ recursive algorithms on insts
+    % that do not check for infinite recursion. Any circularity we miss here
+    % is thus very likely to cause a later pass to enter an infinite loop.
     add_inst_defns(ItemInstDefns,
-        !ModuleInfo, !FoundInvalidInstOrMode, !Specs),
+        !ModuleInfo, !Specs),
+    check_inst_defns(!.ModuleInfo, ItemInstDefns,
+        !FoundInvalidInstOrMode, !Specs),
 
     % Mode definitions may refer to user defined insts. Since we have already
     % seen all inst definitions, we could check whether the newly defined
-    % mode refers to an undefined inst, we do not (yet) do so.
+    % mode refers to an undefined inst, but we do not (yet) do so.
     add_mode_defns(ItemModeDefns,
-        !ModuleInfo, !FoundInvalidInstOrMode, !Specs),
+        !ModuleInfo, !Specs),
+    check_mode_defns(!.ModuleInfo, ItemModeDefns,
+        !FoundInvalidInstOrMode, !Specs),
 
     % A predicate declaration defines the type of the arguments of a predicate,
     % and may give the modes of those arguments. Since we have already seen
@@ -692,35 +711,54 @@ add_type_defn(SectionInfo, TypeStatus, ItemTypeDefnInfo,
 
 :- pred add_inst_defns(ims_list(item_inst_defn_info)::in,
     module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_inst_defns([], !ModuleInfo, !Specs).
+add_inst_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
+    ImsSubList = ims_sub_list(ItemMercuryStatus, InstDefns),
+    item_mercury_status_to_inst_status(ItemMercuryStatus, InstStatus),
+    list.foldl2(module_add_inst_defn(InstStatus), InstDefns,
+        !ModuleInfo, !Specs),
+    add_inst_defns(ImsSubLists, !ModuleInfo, !Specs).
+
+:- pred check_inst_defns(module_info::in, ims_list(item_inst_defn_info)::in,
     found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_inst_defns([], !ModuleInfo, !FoundInvalidInstOrMode, !Specs).
-add_inst_defns([ImsSubList | ImsSubLists],
-        !ModuleInfo, !FoundInvalidInstOrMode, !Specs) :-
-    ImsSubList = ims_sub_list(ItemMercuryStatus, InstDefns),
-    item_mercury_status_to_inst_status(ItemMercuryStatus, InstStatus),
-    list.foldl3(module_add_inst_defn(InstStatus), InstDefns,
-        !ModuleInfo, !FoundInvalidInstOrMode, !Specs),
-    add_inst_defns(ImsSubLists,
-        !ModuleInfo, !FoundInvalidInstOrMode, !Specs).
+check_inst_defns(_, [], !FoundInvalidInstOrMode, !Specs).
+check_inst_defns(ModuleInfo, [ImsSubList | ImsSubLists],
+        !FoundInvalidInstOrMode, !Specs) :-
+    ImsSubList = ims_sub_list(_ItemMercuryStatus, InstDefns),
+    list.foldl2(module_check_inst_defn(ModuleInfo), InstDefns,
+        !FoundInvalidInstOrMode, !Specs),
+    check_inst_defns(ModuleInfo, ImsSubLists,
+        !FoundInvalidInstOrMode, !Specs).
 
 %---------------------------------------------------------------------------%
 
 :- pred add_mode_defns(ims_list(item_mode_defn_info)::in,
     module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_mode_defns([], !ModuleInfo, !Specs).
+add_mode_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
+    ImsSubList = ims_sub_list(ItemMercuryStatus, ModeDefns),
+    item_mercury_status_to_mode_status(ItemMercuryStatus, ModeStatus),
+    list.foldl2(module_add_mode_defn(ModeStatus), ModeDefns,
+        !ModuleInfo, !Specs),
+    add_mode_defns(ImsSubLists, !ModuleInfo, !Specs).
+
+:- pred check_mode_defns(module_info::in, ims_list(item_mode_defn_info)::in,
     found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_mode_defns([], !ModuleInfo, !FoundInvalidInstOrMode, !Specs).
-add_mode_defns([ImsSubList | ImsSubLists],
-        !ModuleInfo, !FoundInvalidInstOrMode, !Specs) :-
-    ImsSubList = ims_sub_list(ItemMercuryStatus, ModeDefns),
-    item_mercury_status_to_mode_status(ItemMercuryStatus, ModeStatus),
-    list.foldl3(module_add_mode_defn(ModeStatus), ModeDefns,
-        !ModuleInfo, !FoundInvalidInstOrMode, !Specs),
-    add_mode_defns(ImsSubLists,
-        !ModuleInfo, !FoundInvalidInstOrMode, !Specs).
+check_mode_defns(_, [], !FoundInvalidInstOrMode, !Specs).
+check_mode_defns(ModuleInfo, [ImsSubList | ImsSubLists],
+        !FoundInvalidInstOrMode, !Specs) :-
+    ImsSubList = ims_sub_list(_ItemMercuryStatus, ModeDefns),
+    list.foldl2(module_check_mode_defn(ModuleInfo), ModeDefns,
+        !FoundInvalidInstOrMode, !Specs),
+    check_mode_defns(ModuleInfo, ImsSubLists, !FoundInvalidInstOrMode, !Specs).
 
 %---------------------------------------------------------------------------%
 

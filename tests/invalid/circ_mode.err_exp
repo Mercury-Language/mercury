@@ -1,3 +1,5 @@
 circ_mode.m:011: Error: circular equivalence mode `circ_mode.circ'/0.
+circ_mode.m:013: Error: circular equivalence modes `circ_mode.circ2'/0 and
+circ_mode.m:013:   `circ_mode.circ1'/0.
 circ_mode.m:015: Error: circular equivalence modes `circ_mode.circ1'/0 and
 circ_mode.m:015:   `circ_mode.circ2'/0.

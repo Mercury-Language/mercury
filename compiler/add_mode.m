@@ -1,16 +1,16 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1993-2006, 2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: add_mode.m.
 %
 % This submodule of make_hlds handles the declarations of new insts and modes.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.add_mode.
 :- interface.
@@ -24,16 +24,24 @@
 
 :- pred module_add_inst_defn(inst_status::in, item_inst_defn_info::in,
     module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred module_check_inst_defn(module_info::in, item_inst_defn_info::in,
     found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     list(error_spec)::in, list(error_spec)::out) is det.
+
+%---------------------%
 
 :- pred module_add_mode_defn(mode_status::in, item_mode_defn_info::in,
     module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred module_check_mode_defn(module_info::in, item_mode_defn_info::in,
     found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -49,10 +57,9 @@
 :- import_module map.
 :- import_module maybe.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-module_add_inst_defn(InstStatus, ItemInstDefnInfo, !ModuleInfo,
-        !FoundInvalidInstOrMode, !Specs) :-
+module_add_inst_defn(InstStatus, ItemInstDefnInfo, !ModuleInfo, !Specs) :-
     ItemInstDefnInfo = item_inst_defn_info(InstName, InstParams, MaybeForType,
         MaybeAbstractInstDefn, VarSet, Context, _SeqNum),
     (
@@ -67,20 +74,7 @@ module_add_inst_defn(InstStatus, ItemInstDefnInfo, !ModuleInfo,
         insts_add(VarSet, InstName, InstParams, MaybeForType, InstDefn,
             Context, InstStatus, UserInstTable0, UserInstTable, !Specs),
         inst_table_set_user_insts(UserInstTable, InstTable0, InstTable),
-        module_info_set_inst_table(InstTable, !ModuleInfo),
-
-        % Check if the inst is infinitely recursive (at the top level).
-        InstArity = list.length(InstParams),
-        InstCtor = inst_ctor(InstName, InstArity),
-        TestArgs = list.duplicate(InstArity, not_reached),
-        check_for_cyclic_inst(UserInstTable, InstCtor, InstCtor, TestArgs, [],
-            Context, InvalidInst, !Specs),
-        (
-            InvalidInst = no
-        ;
-            InvalidInst = yes,
-            !:FoundInvalidInstOrMode = found_invalid_inst_or_mode
-        )
+        module_info_set_inst_table(InstTable, !ModuleInfo)
     ).
 
 :- pred insts_add(inst_varset::in, sym_name::in, list(inst_var)::in,
@@ -171,6 +165,27 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
         )
     ).
 
+%---------------------%
+
+module_check_inst_defn(ModuleInfo, ItemInstDefnInfo,
+        !FoundInvalidInstOrMode, !Specs) :-
+    ItemInstDefnInfo = item_inst_defn_info(InstName, InstParams, _MaybeForType,
+        _MaybeAbstractInstDefn, _VarSet, Context, _SeqNum),
+    % Check if the inst is infinitely recursive (at the top level).
+    module_info_get_inst_table(ModuleInfo, InstTable),
+    inst_table_get_user_insts(InstTable, UserInstTable),
+    InstArity = list.length(InstParams),
+    InstCtor = inst_ctor(InstName, InstArity),
+    TestArgs = list.duplicate(InstArity, not_reached),
+    check_for_cyclic_inst(UserInstTable, InstCtor, InstCtor, TestArgs, [],
+        Context, FoundInvalidInst, !Specs),
+    (
+        FoundInvalidInst = no
+    ;
+        FoundInvalidInst = yes,
+        !:FoundInvalidInstOrMode = found_invalid_inst_or_mode
+    ).
+
     % Check if the inst is infinitely recursive (at the top level).
     %
 :- pred check_for_cyclic_inst(user_inst_table::in, inst_ctor::in,
@@ -220,10 +235,9 @@ should_report_duplicate_inst_or_mode(InstModeStatus) = ReportDup :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-module_add_mode_defn(ModeStatus, ItemModeDefnInfo, !ModuleInfo,
-        !FoundInvalidInstOrMode, !Specs) :-
+module_add_mode_defn(ModeStatus, ItemModeDefnInfo, !ModuleInfo, !Specs) :-
     ItemModeDefnInfo = item_mode_defn_info(Name, Params, MaybeAbstractModeDefn,
         VarSet, Context, _SeqNum),
     (
@@ -234,28 +248,23 @@ module_add_mode_defn(ModeStatus, ItemModeDefnInfo, !ModuleInfo,
         MaybeAbstractModeDefn = nonabstract_mode_defn(ModeDefn),
         module_info_get_mode_table(!.ModuleInfo, ModeTable0),
         modes_add(VarSet, Name, Params, ModeDefn, Context, ModeStatus,
-            InvalidMode, ModeTable0, ModeTable, !Specs),
-        module_info_set_mode_table(ModeTable, !ModuleInfo),
-        (
-            InvalidMode = no
-        ;
-            InvalidMode = yes,
-            !:FoundInvalidInstOrMode = found_invalid_inst_or_mode
-        )
+            ModeTable0, ModeTable, !Specs),
+        module_info_set_mode_table(ModeTable, !ModuleInfo)
     ).
 
 :- pred modes_add(inst_varset::in, sym_name::in, list(inst_var)::in,
-    mode_defn::in, prog_context::in, mode_status::in, bool::out,
+    mode_defn::in, prog_context::in, mode_status::in,
     mode_table::in, mode_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-modes_add(VarSet, Name, Args, ModeBody, Context, ModeStatus, InvalidMode,
+modes_add(VarSet, Name, Params, ModeBody, Context, ModeStatus,
         !ModeTable, !Specs) :-
-    list.length(Args, Arity),
+    list.length(Params, Arity),
     ModeCtor = mode_ctor(Name, Arity),
     ModeBody = eqv_mode(EqvMode),
     HldsModeBody = hlds_mode_body(EqvMode),
-    ModeDefn = hlds_mode_defn(VarSet, Args, HldsModeBody, Context, ModeStatus),
+    ModeDefn = hlds_mode_defn(VarSet, Params, HldsModeBody, Context,
+        ModeStatus),
     ( if mode_table_insert(ModeCtor, ModeDefn, !ModeTable) then
         true
     else
@@ -272,10 +281,26 @@ modes_add(VarSet, Name, Args, ModeBody, Context, ModeStatus, InvalidMode,
             report_multiple_def_error(Name, Arity, "mode",
                 Context, OrigContext, Extras, !Specs)
         )
-    ),
+    ).
+
+%---------------------%
+
+module_check_mode_defn(ModuleInfo, ItemModeDefnInfo,
+        !FoundInvalidInstOrMode, !Specs) :-
+    module_info_get_mode_table(ModuleInfo, ModeTable),
+    ItemModeDefnInfo = item_mode_defn_info(Name, Params,
+        _MaybeAbstractModeDefn, _VarSet, Context, _SeqNum),
+    list.length(Params, Arity),
+    ModeCtor = mode_ctor(Name, Arity),
     Expansions0 = [],
-    check_for_cyclic_mode(!.ModeTable, ModeCtor, ModeCtor, Expansions0,
-        Context, InvalidMode, !Specs).
+    check_for_cyclic_mode(ModeTable, ModeCtor, ModeCtor, Expansions0,
+        Context, FoundInvalidMode, !Specs),
+    (
+        FoundInvalidMode = no
+    ;
+        FoundInvalidMode = yes,
+        !:FoundInvalidInstOrMode = found_invalid_inst_or_mode
+    ).
 
     % Check if the mode is infinitely recursive at the top level.
     %
@@ -374,6 +399,6 @@ report_circular_equiv_error(One, Several, OrigId, Id, Expansions, Context,
         true
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.add_mode.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

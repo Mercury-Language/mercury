@@ -1,3 +1,5 @@
 circ_inst3.m:013: Error: circular equivalence inst `circ_inst3.circ'/0.
+circ_inst3.m:015: Error: circular equivalence insts `circ_inst3.circ2'/0 and
+circ_inst3.m:015:   `circ_inst3.circ1'/0.
 circ_inst3.m:017: Error: circular equivalence insts `circ_inst3.circ1'/0 and
 circ_inst3.m:017:   `circ_inst3.circ2'/0.

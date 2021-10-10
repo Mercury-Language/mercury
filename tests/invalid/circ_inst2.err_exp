@@ -1,5 +1,7 @@
 circ_inst2.m:014: Error: circular equivalence inst `circ_inst2.circ1'/1.
 circ_inst2.m:015: Error: circular equivalence inst `circ_inst2.circ2'/1.
 circ_inst2.m:017: Error: circular equivalence inst `circ_inst2.circ4'/1.
+circ_inst2.m:019: Error: circular equivalence insts `circ_inst2.right'/1 and
+circ_inst2.m:019:   `circ_inst2.left'/1.
 circ_inst2.m:020: Error: circular equivalence insts `circ_inst2.left'/1 and
 circ_inst2.m:020:   `circ_inst2.right'/1.

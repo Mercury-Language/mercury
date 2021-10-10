@@ -1,4 +1,6 @@
 circ_mode2.m:014: Error: circular equivalence mode `circ_mode2.circ1'/1.
 circ_mode2.m:015: Error: circular equivalence mode `circ_mode2.circ2'/1.
+circ_mode2.m:017: Error: circular equivalence modes `circ_mode2.right'/1 and
+circ_mode2.m:017:   `circ_mode2.left'/1.
 circ_mode2.m:018: Error: circular equivalence modes `circ_mode2.left'/1 and
 circ_mode2.m:018:   `circ_mode2.right'/1.
