@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
 % Copyright (C) 2015, 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: lco.m.
 % Author: zs.
@@ -36,7 +36,7 @@
 %       C <= [H | NT]
 %   )
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % TRANSFORMATION FOR LOW-LEVEL DATA
 %
@@ -110,7 +110,7 @@
 %       store_at_ref_impure(RefOut1, Out1)
 %       p'(In1, ... InN, AddrMid1, Out2... OutM)
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % TRANSFORMATION FOR HIGH-LEVEL DATA
 %
@@ -153,7 +153,7 @@
 %   the partially instantiated structures, so many more variants could be
 %   produced. The number of variants is capped.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.lco.
 :- interface.
@@ -163,8 +163,8 @@
 
 :- pred lco_modulo_constructors(module_info::in, module_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -196,6 +196,9 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_rename.
@@ -219,7 +222,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type variant_id
     --->    variant_id(
@@ -300,7 +303,7 @@
                 maybe(field_id)
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 lco_modulo_constructors(!ModuleInfo) :-
     module_info_rebuild_dependency_info(!ModuleInfo, DepInfo),
@@ -354,7 +357,7 @@ lco_log_update(Stream, ModuleInfo, PredProcId - _NewProcInfo, !IO) :-
     ProcIdInt = proc_id_to_int(ProcId),
     io.format(Stream, "    %s/%d\n", [s(SymNameStr), i(ProcIdInt)], !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred lco_proc_if_permitted(variant_map::in, scc::in, pred_proc_id::in,
     module_info::in, module_info::out, variant_map::in, variant_map::out,
@@ -392,6 +395,12 @@ lco_proc_if_permitted(LowerSCCVariants, SCC, CurProc,
 
 lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
         !ModuleInfo, !CurSCCVariants, !CurSCCUpdates, !:Permitted) :-
+    trace [compiletime(flag("lco")), io(!IO)] (
+        get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
+        io.write_string(DebugStream, "\nlco_proc ", !IO),
+        io.write_line(DebugStream, CurProc, !IO),
+        io.flush_output(DebugStream, !IO)
+    ),
     proc_info_get_varset(ProcInfo0, VarSet0),
     proc_info_get_vartypes(ProcInfo0, VarTypes0),
     proc_info_get_headvars(ProcInfo0, HeadVars),
@@ -466,8 +475,8 @@ acceptable_detism_for_lco(detism_non) = no.
 acceptable_detism_for_lco(detism_failure) = no.
 acceptable_detism_for_lco(detism_erroneous) = no.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred lco_in_goal(hlds_goal::in, hlds_goal::out, lco_info::in, lco_info::out,
     lco_const_info::in) is det.
@@ -547,7 +556,7 @@ lco_in_goal(Goal0, Goal, !Info, ConstInfo) :-
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred lco_in_cases(list(case)::in, list(case)::out,
     lco_info::in, lco_info::out, lco_const_info::in) is det.
@@ -559,8 +568,8 @@ lco_in_cases([Case0 | Cases0], [Case | Cases], !Info, ConstInfo) :-
     Case = case(MainConsId, OtherConsIds, Goal),
     lco_in_cases(Cases0, Cases, !Info, ConstInfo).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % lco_in_conj(Goals0, MaybeGoals, !Info, ConstInfo)
     %
@@ -588,7 +597,7 @@ lco_in_conj(Goals0, MaybeGoals, !Info, ConstInfo) :-
             [], RevAfterDependentGoals,
             [], RevAfterNonDependentGoals,
             DelayForVars0, DelayForVars),
-        list.foldl2(acceptable_construct_unification(DelayForVars),
+        list.foldl2(acceptable_construct_unification(ConstInfo, DelayForVars),
             RevAfterDependentGoals, bag.init, UnifyInputVars, !Info)
     then
         list.reverse(RevAfterDependentGoals, UnifyGoals),
@@ -741,13 +750,15 @@ partition_dependent_goal(_Info, _ConstInfo, Goal,
         set_of_var.union(ChangedVars, !DelayForVars)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred acceptable_construct_unification(set_of_progvar::in, hlds_goal::in,
+:- pred acceptable_construct_unification(lco_const_info::in,
+    set_of_progvar::in, hlds_goal::in,
     bag(prog_var)::in, bag(prog_var)::out, lco_info::in, lco_info::out)
     is semidet.
 
-acceptable_construct_unification(DelayForVars, Goal, !UnifyInputVars, !Info) :-
+acceptable_construct_unification(ConstInfo, DelayForVars, Goal,
+        !UnifyInputVars, !Info) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     GoalExpr = unify(_, _, _, Unification, _),
     Unification = construct(ConstructedVar, ConsId, ConstructArgVars,
@@ -780,23 +791,33 @@ acceptable_construct_unification(DelayForVars, Goal, !UnifyInputVars, !Info) :-
     all_delayed_arg_vars_are_full_words(ConstructArgVars, CtorRepn ^ cr_args,
         DelayForVars),
     require_det (
+        UnifyInputVars0 = !.UnifyInputVars,
         bag.delete(ConstructedVar, !UnifyInputVars),
         bag.insert_list(ConstructArgVars, !UnifyInputVars),
         trace [compiletime(flag("lco")), io(!IO)] (
+            ProcInfo = ConstInfo ^ lci_cur_proc_proc,
+            proc_info_get_varset(ProcInfo, VarSet),
+            ConstructedVarStr =
+                mercury_var_to_string(VarSet, print_name_and_num,
+                    ConstructedVar),
+            ConsIdStr = mercury_cons_id_to_string(output_debug,
+                does_not_need_brackets, ConsId),
+            ConstructArgVarStrs = list.map(
+                mercury_var_to_string(VarSet, print_name_and_num),
+                ConstructArgVars),
+            ConstructArgVarsStr = string.join_list(", ", ConstructArgVarStrs),
             get_debug_output_stream(ModuleInfo, DebugStream, !IO),
-            io.write_string(DebugStream, "processing unification ", !IO),
-            io.write(DebugStream, ConstructedVar, !IO),
-            io.write_string(DebugStream, " <= ", !IO),
-            io.write(DebugStream, ConsId, !IO),
-            io.write_string(DebugStream, "(", !IO),
-            io.write(DebugStream, ConstructArgVars, !IO),
-            io.write_string(DebugStream, ")\n", !IO),
+            io.format(DebugStream,
+                "processing unification %s <= %s(%s)\n",
+                [s(ConstructedVarStr), s(ConsIdStr), s(ConstructArgVarsStr)],
+                !IO),
 
+            bag.to_assoc_list(UnifyInputVars0, InitialUnifyInputVars),
+            bag.to_assoc_list(!.UnifyInputVars, UpdatedUnifyInputVars),
             io.write_string(DebugStream, "initial UnifyInputVars: ", !IO),
-            io.write_line(DebugStream, !.UnifyInputVars, !IO),
-
+            io.write_line(DebugStream, InitialUnifyInputVars, !IO),
             io.write_string(DebugStream, "updated UnifyInputVars: ", !IO),
-            io.write_line(DebugStream, !.UnifyInputVars, !IO)
+            io.write_line(DebugStream, UpdatedUnifyInputVars, !IO)
         )
     ).
 
@@ -865,7 +886,8 @@ transform_call_and_unifies(CallGoal, CallOutArgVars, UnifyGoals,
             io.write_string(DebugStream, "updated call out args: ", !IO),
             io.write_line(DebugStream, UpdatedCallOutArgs, !IO),
             io.write_string(DebugStream, "substitution: ", !IO),
-            io.write_line(DebugStream, Subst, !IO),
+            map.to_assoc_list(Subst, SubstAL),
+            io.write_line(DebugStream, SubstAL, !IO),
             io.nl(DebugStream, !IO)
         ),
         % If there are no mismatches, we would create an identical "variant".
@@ -888,7 +910,8 @@ transform_call_and_unifies(CallGoal, CallOutArgVars, UnifyGoals,
             list.foldl(dump_goal_nl(DebugStream, ModuleInfo, VarSet),
                 UpdatedUnifyGoals, !IO),
             io.write_string(DebugStream, "addr field ids:\n", !IO),
-            io.write_line(DebugStream, AddrFieldIds, !IO)
+            map.to_assoc_list(AddrFieldIds, AddrFieldIdsAL),
+            io.write_line(DebugStream, AddrFieldIdsAL, !IO)
         ),
         HighLevelData = ConstInfo ^ lci_highlevel_data,
         make_variant_args(HighLevelData, AddrFieldIds, Mismatches,
@@ -953,6 +976,11 @@ transform_call_and_unifies(CallGoal, CallOutArgVars, UnifyGoals,
         MaybeGoals = no
     ).
 
+:- pred occurs_once(bag(prog_var)::in, prog_var::in) is semidet.
+
+occurs_once(Bag, Var) :-
+    bag.count_value(Bag, Var, 1).
+
 :- pred update_call_args(module_info::in, vartypes::in, list(mer_mode)::in,
     list(prog_var)::in, list(prog_var)::in, list(prog_var)::out) is det.
 
@@ -989,7 +1017,7 @@ update_call_args(ModuleInfo, VarTypes, [CalleeMode | CalleeModes],
         unexpected($pred, "top_unused")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred classify_proc_call_args(module_info::in, vartypes::in,
     list(prog_var)::in, list(mer_mode)::in,
@@ -1018,7 +1046,7 @@ classify_proc_call_args(ModuleInfo, VarTypes, [Arg | Args],
         !:UnusedArgs = [Arg | !.UnusedArgs]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred find_args_to_pass_by_addr(lco_const_info::in, bag(prog_var)::in,
     assoc_list(prog_var, prog_var)::in, int::in,
@@ -1109,7 +1137,7 @@ make_ref_type(FieldType) = PtrType :-
         "store_at_ref_type"),
     PtrType = defined_type(RefTypeName, [FieldType], kind_star).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred make_variant_args(bool::in, map(prog_var, field_id)::in,
     assoc_list(int, prog_var)::in, list(variant_arg)::out) is det.
@@ -1219,7 +1247,7 @@ create_variant_name(PredOrFunc, VariantNumber, OrigName, VariantName) :-
     ),
     VariantName = Prefix ++ OrigName ++ "_" ++ int_to_string(VariantNumber).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred update_construct(lco_const_info::in, map(prog_var, prog_var)::in,
     hlds_goal::in, hlds_goal::out,
@@ -1329,7 +1357,7 @@ bound_inst_with_free_arg(ConsId, FreeArg) = Inst :-
     list.det_replace_nth(ArgInsts0, FreeArg, free_inst, ArgInsts),
     Inst = bound_functor(ConsId, ArgInsts).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred acceptable_construct_mode(module_info::in, unify_mode::in) is semidet.
 
@@ -1341,12 +1369,74 @@ acceptable_construct_mode(ModuleInfo, UnifyMode) :-
     inst_is_ground(ModuleInfo, FinalInstX),
     inst_is_ground(ModuleInfo, FinalInstY).
 
-:- pred occurs_once(bag(prog_var)::in, prog_var::in) is semidet.
+%---------------------------------------------------------------------------%
 
-occurs_once(Bag, Var) :-
-    bag.count_value(Bag, Var, 1).
+:- pred store_updated_procs_in_module_info(pair(pred_proc_id, proc_info)::in,
+    module_info::in, module_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+store_updated_procs_in_module_info(PredProcId - NewProcInfo, !ModuleInfo) :-
+    PredProcId = proc(PredId, ProcId),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
+    map.lookup(PredTable0, PredId, PredInfo0),
+    pred_info_get_proc_table(PredInfo0, Procs0),
+    map.det_update(ProcId, NewProcInfo, Procs0, Procs),
+    pred_info_set_proc_table(Procs, PredInfo0, PredInfo),
+    map.det_update(PredId, PredInfo, PredTable0, PredTable),
+    module_info_set_preds(PredTable, !ModuleInfo).
+
+%---------------------------------------------------------------------------%
+
+:- pred update_variant_pred_info(variant_map::in,
+    pair(pred_proc_id, variant_id)::in,
+    module_info::in, module_info::out) is det.
+
+update_variant_pred_info(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
+    trace [compiletime(flag("lco")), io(!IO)] (
+        get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
+        io.write_string(DebugStream, "\nupdate_variant_pred_info ", !IO),
+        io.write_line(DebugStream, PredProcId, !IO),
+        io.write_line(DebugStream, VariantId, !IO)
+    ),
+    VariantId = variant_id(AddrOutArgs, VariantPredProcId, VariantName),
+    VariantPredProcId = proc(VariantPredId, VariantProcId),
+    PredProcId = proc(PredId, ProcId),
+
+    module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
+        _PredInfo, ProcInfo),
+    lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
+        VariantProcInfo, !ModuleInfo),
+
+    proc_info_get_headvars(VariantProcInfo, HeadVars),
+    proc_info_get_vartypes(VariantProcInfo, VarTypes),
+    lookup_var_types(VarTypes, HeadVars, ArgTypes),
+
+    some [!VariantPredInfo, !PredTable] (
+        module_info_get_preds(!.ModuleInfo, !:PredTable),
+        map.lookup(!.PredTable, VariantPredId, !:VariantPredInfo),
+        pred_info_set_name(VariantName, !VariantPredInfo),
+        pred_info_set_is_pred_or_func(pf_predicate, !VariantPredInfo),
+
+        % Update the argument types for the variant's pred_info.
+        pred_info_get_arg_types(!.VariantPredInfo, TVarSet, ExistQVars,
+            _ArgTypes0),
+        pred_info_set_arg_types(TVarSet, ExistQVars, ArgTypes,
+            !VariantPredInfo),
+
+        pred_info_get_origin(!.VariantPredInfo, Origin0),
+        AddrOutArgPosns = list.map(va_pos, AddrOutArgs),
+        Transform = transform_return_via_ptr(ProcId, AddrOutArgPosns),
+        Origin = origin_transformed(Transform, Origin0, PredId),
+        pred_info_set_origin(Origin, !VariantPredInfo),
+
+        % We throw away any other procs in the variant predicate, because
+        % we create a separate predicate for each variant.
+        VariantProcs = map.singleton(VariantProcId, VariantProcInfo),
+        pred_info_set_proc_table(VariantProcs, !VariantPredInfo),
+        map.det_update(VariantPredId, !.VariantPredInfo, !PredTable),
+        module_info_set_preds(!.PredTable, !ModuleInfo)
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- pred lco_transform_variant_proc(variant_map::in, list(variant_arg)::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
@@ -1369,7 +1459,21 @@ lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
     proc_info_get_initial_instmap(!.ModuleInfo, ProcInfo, InstMap0),
     proc_info_get_goal(ProcInfo, Goal0),
     lco_transform_variant_goal(!.ModuleInfo, VariantMap, VarToAddr, InstMap0,
-        Goal0, Goal, _Changed, !VariantProcInfo),
+        Goal0, Goal, Changed, !VariantProcInfo),
+    trace [compiletime(flag("lco")), io(!IO)] (
+        get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
+        io.write_string(DebugStream, "\nlco_transform_variant_proc\n", !IO),
+        (
+            Changed = no,
+            io.write_string(DebugStream, "unchanged\n", !IO)
+        ;
+            Changed = yes,
+            io.write_string(DebugStream, "goal before:\n", !IO),
+            dump_goal_nl(DebugStream, !.ModuleInfo, VarSet, Goal0, !IO),
+            io.write_string(DebugStream, "\ngoal after:\n", !IO),
+            dump_goal_nl(DebugStream, !.ModuleInfo, VarSet, Goal, !IO)
+        )
+    ),
     proc_info_set_goal(Goal, !VariantProcInfo),
     % We changed the scopes of the headvars we now return via pointers.
     requantify_proc_general(ordinary_nonlocals_no_lambda, !VariantProcInfo),
@@ -1693,16 +1797,6 @@ lco_transform_variant_plain_call(ModuleInfo, VariantMap, VarToAddr, InstMap0,
         )
     ).
 
-:- pred is_grounding(module_info::in, instmap::in, instmap::in,
-    pair(prog_var, store_target)::in) is semidet.
-
-is_grounding(ModuleInfo, InstMap0, InstMap, Var - _StoreTarget) :-
-    instmap_lookup_var(InstMap0, Var, Inst0),
-    not inst_is_ground(ModuleInfo, Inst0),
-    instmap_is_reachable(InstMap),
-    instmap_lookup_var(InstMap, Var, Inst),
-    inst_is_ground(ModuleInfo, Inst).
-
 :- pred grounding_to_variant_args(assoc_list(prog_var, store_target)::in,
     int::in, list(prog_var)::in, prog_var_renaming::out,
     list(variant_arg)::out) is det.
@@ -1806,66 +1900,19 @@ make_unification_arg(GroundVar, TargetArgNum, CurArgNum, ArgType,
             free_inst, ground_inst)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred store_updated_procs_in_module_info(pair(pred_proc_id, proc_info)::in,
-    module_info::in, module_info::out) is det.
+:- pred is_grounding(module_info::in, instmap::in, instmap::in,
+    pair(prog_var, store_target)::in) is semidet.
 
-store_updated_procs_in_module_info(PredProcId - NewProcInfo, !ModuleInfo) :-
-    PredProcId = proc(PredId, ProcId),
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_proc_table(PredInfo0, Procs0),
-    map.det_update(ProcId, NewProcInfo, Procs0, Procs),
-    pred_info_set_proc_table(Procs, PredInfo0, PredInfo),
-    map.det_update(PredId, PredInfo, PredTable0, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo).
+is_grounding(ModuleInfo, InstMap0, InstMap, Var - _StoreTarget) :-
+    instmap_lookup_var(InstMap0, Var, Inst0),
+    not inst_is_ground(ModuleInfo, Inst0),
+    instmap_is_reachable(InstMap),
+    instmap_lookup_var(InstMap, Var, Inst),
+    inst_is_ground(ModuleInfo, Inst).
 
-:- pred update_variant_pred_info(variant_map::in,
-    pair(pred_proc_id, variant_id)::in,
-    module_info::in, module_info::out) is det.
-
-update_variant_pred_info(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
-    VariantId = variant_id(AddrOutArgs, VariantPredProcId, VariantName),
-    VariantPredProcId = proc(VariantPredId, VariantProcId),
-    PredProcId = proc(PredId, ProcId),
-
-    module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
-        _PredInfo, ProcInfo),
-    lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
-        VariantProcInfo, !ModuleInfo),
-
-    proc_info_get_headvars(VariantProcInfo, HeadVars),
-    proc_info_get_vartypes(VariantProcInfo, VarTypes),
-    lookup_var_types(VarTypes, HeadVars, ArgTypes),
-
-    some [!VariantPredInfo, !PredTable] (
-        module_info_get_preds(!.ModuleInfo, !:PredTable),
-        map.lookup(!.PredTable, VariantPredId, !:VariantPredInfo),
-        pred_info_set_name(VariantName, !VariantPredInfo),
-        pred_info_set_is_pred_or_func(pf_predicate, !VariantPredInfo),
-
-        % Update the argument types for the variant's pred_info.
-        pred_info_get_arg_types(!.VariantPredInfo, TVarSet, ExistQVars,
-            _ArgTypes0),
-        pred_info_set_arg_types(TVarSet, ExistQVars, ArgTypes,
-            !VariantPredInfo),
-
-        pred_info_get_origin(!.VariantPredInfo, Origin0),
-        AddrOutArgPosns = list.map(va_pos, AddrOutArgs),
-        Transform = transform_return_via_ptr(ProcId, AddrOutArgPosns),
-        Origin = origin_transformed(Transform, Origin0, PredId),
-        pred_info_set_origin(Origin, !VariantPredInfo),
-
-        % We throw away any other procs in the variant predicate, because
-        % we create a separate predicate for each variant.
-        VariantProcs = map.singleton(VariantProcId, VariantProcInfo),
-        pred_info_set_proc_table(VariantProcs, !VariantPredInfo),
-        map.det_update(VariantPredId, !.VariantPredInfo, !PredTable),
-        module_info_set_preds(!.PredTable, !ModuleInfo)
-    ).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred get_lco_debug_output_stream(lco_info::in, io.text_output_stream::out,
     io::di, io::uo) is det.
@@ -1874,6 +1921,6 @@ get_lco_debug_output_stream(Info, DebugStream, !IO) :-
     ModuleInfo = Info ^ lco_module_info,
     get_debug_output_stream(ModuleInfo, DebugStream, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.lco.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
