@@ -25,11 +25,21 @@ MAYBE_J1 =
 # we want to test errors during compilation should be put into the
 # invalid_nodepend directory.
 
-MULTIMODULE_PROGS= \
+SPECIAL_RULE_MULTIMODULE_PROGS = \
+	duplicate_instance_2
+
+SPECIAL_RULE_SINGLEMODULE_PROGS = \
+	foreign_include_file_missing \
+	illtyped_compare \
+	make_opt_error \
+	require_tailrec_1 \
+	require_tailrec_2 \
+	require_tailrec_3
+
+MULTIMODULE_PROGS = \
 	abstract_eqv \
 	bad_type_class_constraint_intermodule \
 	bug521 \
-	duplicate_instance_2 \
 	exported_unify \
 	ho_default_func_2.sub \
 	ii_parent.ii_child \
@@ -42,7 +52,7 @@ MULTIMODULE_PROGS= \
 	transitive_import_class \
 	type_error_use_module
 
-SINGLEMODULE= \
+SINGLEMODULE_PROGS = \
 	abstract_solver_type \
 	abstract_type_decl \
 	actual_expected \
@@ -149,7 +159,6 @@ SINGLEMODULE= \
 	extra_info_prompt \
 	field_syntax_error \
 	foreign_enum_invalid \
-	foreign_include_file_missing \
 	foreign_procs_exist_type \
 	foreign_purity_mismatch \
 	foreign_singleton \
@@ -176,7 +185,6 @@ SINGLEMODULE= \
 	ho_type_mode_bug \
 	ho_unique_error \
 	html \
-	illtyped_compare \
 	impure_method_impl \
 	incompatible_instance_constraints \
 	inconsistent_instances \
@@ -196,7 +204,6 @@ SINGLEMODULE= \
 	lambda_syntax_error \
 	loopcheck \
 	magicbox \
-	make_opt_error \
 	malformed_ite \
 	max_error_line_width \
 	merge_ground_any \
@@ -246,9 +253,6 @@ SINGLEMODULE= \
 	require_det_in_lambda \
 	require_scopes \
 	require_switch_arms_detism \
-	require_tailrec_1 \
-	require_tailrec_2 \
-	require_tailrec_3 \
 	spurious_mode_error \
 	state_vars_test1 \
 	state_vars_test2 \
@@ -336,20 +340,22 @@ SINGLEMODULE= \
 # RESERVE_TAG_MODULES = \
 # 	reserve_tag
 
-# The following require a trailing grade
+# The following require a trailing grade.
 TRAILED_MODULES = \
 	trailed_mutable
 
-# The following require that the back-end support the C interface
+# The following require that the back-end support the C interface.
 C_INTERFACE_MODULES = \
 	fe_unmapped_nonverbose \
 	fe_unmapped_verbose \
-	foreign_decl_line_number \
 	pragma_qual_error \
 	trace_goal_env
 
+SPECIAL_RULE_C_INTERFACE_MODULES = \
+	foreign_decl_line_number
+
 # The following require that the compiler not ignore `pragma type_spec'
-# declarations
+# declarations.
 TYPE_SPEC_MODULES = \
 	type_spec
 
@@ -380,8 +386,10 @@ NON_PROFDEEP_MODULES = \
 # the C interface.
 ifneq "$(filter java% csharp%,$(GRADE))" ""
 	C_INTERFACE_PROGS=
+	SPECIAL_RULE_C_INTERFACE_PROGS=
 else
 	C_INTERFACE_PROGS=$(C_INTERFACE_MODULES)
+	SPECIAL_RULE_C_INTERFACE_PROGS=$(SPECIAL_RULE_C_INTERFACE_MODULES)
 endif
 
 # The java and csharp grades compile with num_tag_bits = 0.
@@ -406,16 +414,35 @@ endif
 
 TYPE_SPEC_PROGS = $(TYPE_SPEC_MODULES)
 
-SINGLEMODULE_PROGS = $(SINGLEMODULE) \
+#-----------------------------------------------------------------------------#
+
+NONSPECIAL_SINGLEMODULE_PROGS = \
+	$(SINGLEMODULE_PROGS) \
 	$(C_INTERFACE_PROGS) \
 	$(TRAILED_PROGS) \
 	$(TYPE_SPEC_PROGS) \
 	$(NON_PROFDEEP_PROGS)
 
-#-----------------------------------------------------------------------------#
+SPECIAL_SINGLEMODULE_PROGS = \
+	$(SPECIAL_RULE_SINGLEMODULE_PROGS) \
+	$(SPECIAL_RULE_C_INTERFACE_PROGS)
 
-PROGS = $(SINGLEMODULE_PROGS) $(MULTIMODULE_PROGS)
-TESTS = $(sort $(MULTIMODULE_PROGS) $(SINGLEMODULE_PROGS:%=%-nodepend))
+NONSPECIAL_MULTIMODULE_PROGS = \
+	$(MULTIMODULE_PROGS)
+
+SPECIAL_MULTIMODULE_PROGS = \
+	$(SPECIAL_RULE_MULTIMODULE_PROGS)
+
+ALL_SINGLEMODULE_PROGS = \
+	$(NONSPECIAL_SINGLEMODULE_PROGS) \
+	$(SPECIAL_SINGLEMODULE_PROGS) \
+
+ALL_MULTIMODULE_PROGS = \
+	$(NONSPECIAL_MULTIMODULE_PROGS) \
+	$(SPECIAL_MULTIMODULE_PROGS) \
+
+PROGS = $(ALL_SINGLEMODULE_PROGS) $(ALL_MULTIMODULE_PROGS)
+TESTS = $(sort $(ALL_MULTIMODULE_PROGS) $(ALL_SINGLEMODULE_PROGS:%=%-nodepend))
 include ../Mmake.common
 
 # Module-specific options should go in Mercury.options so they can be found
@@ -443,7 +470,7 @@ $(addsuffix .err,$(PROGS)):
 
 else
 
-$(SINGLEMODULE_PROGS:%=%.err): %.err: %.m
+$(NONSPECIAL_SINGLEMODULE_PROGS:%=%.err): %.err: %.m
 	-$(MC) --make-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
 		$*.m > $*.int_err 2>&1;
 	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
@@ -452,7 +479,7 @@ $(SINGLEMODULE_PROGS:%=%.err): %.err: %.m
 	else true; \
 	fi
 
-$(MULTIMODULE_PROGS:%=%.err): %.err: %.m
+$(NONSPECIAL_MULTIMODULE_PROGS:%=%.err): %.err: %.m
 	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
 		$*.m > $*.err 2>&1; \
 	then false; \
