@@ -86,8 +86,8 @@
 % 3 replaces the output arguments with input arguments of type
 %   store_at_ref_type(T), where T is type of the field pointed to, and
 %
-% 4 calls to other procedures in the same SCC are replaced by calls to
-%   variants where possible, and
+% 4 calls to other procedures in the same SCC that are tail calls module
+%   constructors are replaced by calls to variants where possible, and
 %
 % 5 follows each primitive goal that binds one of the output arguments
 %   with a store to the memory location indicated by the corresponding pointer.
@@ -97,18 +97,18 @@
 %   p(In1, ... InN, Out1, ... OutM) :-
 %       ...
 %       Out1 = f1(...Mid1...)
-%           capture addr of Mid1 in Addr1
-%       p'(In1, ... InN, Addr1, Out2... OutM)
+%           capture addr of Mid1 in AddrMid1
+%       p'(In1, ... InN, AddrMid1, Out2... OutM)
 %
-%   p'(In1, ... InN, Ref1, ... OutM) :-
+%   p'(In1, ... InN, RefOut1, ... OutM) :-
 %       Out1 = ground,
-%       store_at_ref_impure(Ref1, Out1)
-%   p'(In1, ... InN, Ref1, Out2... OutM) :-
+%       store_at_ref_impure(RefOut1, Out1)
+%   p'(In1, ... InN, RefOut1, Out2... OutM) :-
 %       ...
 %       Out1 = f1(...Mid1...)
-%           capture addr of Mid1 in Addr1
-%       store_at_ref_impure(Ref1, Out1)
-%       p'(In1, ... InN, Addr1, Out2... OutM)
+%           capture addr of Mid1 in AddrMid1
+%       store_at_ref_impure(RefOut1, Out1)
+%       p'(In1, ... InN, AddrMid1, Out2... OutM)
 %
 %-----------------------------------------------------------------------------%
 %
@@ -235,12 +235,18 @@
                 % arguments.
                 va_pos      :: int,
 
-                % For low-level data this is `no'.
-                % For high-level data this is `yes(FieldId)' where FieldId
-                % indicates the functor that the argument will be bound to, and
-                % the argument of that functor which is to be filled.
+                % For low-level data, this field should be `no'.
+                % For high-level data, this field should be `yes(FieldId)'
+                % where FieldId indicates the functor that the argument
+                % will be bound to, and the argument of that functor
+                % which is to be filled.
                 va_field    :: maybe(field_id)
             ).
+
+    % Materialize this automatically defined field access function,
+    % so we can pass it to higher order code.
+    %
+:- func va_pos(variant_arg) = int.
 
 :- type field_id
     --->    field_id(
@@ -328,8 +334,9 @@ lco_scc(SCC, !VariantMap, !ModuleInfo) :-
                 OpenResult = error(_)
             )
         ),
-        list.foldl(lco_process_proc_update, CurSCCUpdates, !ModuleInfo),
-        list.foldl(lco_process_proc_variant(CurSCCVariantMap), CurSCCVariants,
+        list.foldl(store_updated_procs_in_module_info, CurSCCUpdates,
+            !ModuleInfo),
+        list.foldl(update_variant_pred_info(CurSCCVariantMap), CurSCCVariants,
             !ModuleInfo)
     else
         !:ModuleInfo = ModuleInfo0
@@ -346,67 +353,6 @@ lco_log_update(Stream, ModuleInfo, PredProcId - _NewProcInfo, !IO) :-
     SymNameStr = sym_name_to_string(qualified(ModuleName, PredName)),
     ProcIdInt = proc_id_to_int(ProcId),
     io.format(Stream, "    %s/%d\n", [s(SymNameStr), i(ProcIdInt)], !IO).
-
-%-----------------------------------------------------------------------------%
-
-:- pred lco_process_proc_update(pair(pred_proc_id, proc_info)::in,
-    module_info::in, module_info::out) is det.
-
-lco_process_proc_update(PredProcId - NewProcInfo, !ModuleInfo) :-
-    PredProcId = proc(PredId, ProcId),
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_proc_table(PredInfo0, Procs0),
-    map.det_update(ProcId, NewProcInfo, Procs0, Procs),
-    pred_info_set_proc_table(Procs, PredInfo0, PredInfo),
-    map.det_update(PredId, PredInfo, PredTable0, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo).
-
-:- pred lco_process_proc_variant(variant_map::in,
-    pair(pred_proc_id, variant_id)::in,
-    module_info::in, module_info::out) is det.
-
-lco_process_proc_variant(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
-    VariantId = variant_id(AddrOutArgs, VariantPredProcId, VariantName),
-    VariantPredProcId = proc(VariantPredId, VariantProcId),
-    PredProcId = proc(PredId, ProcId),
-
-    module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
-        _PredInfo, ProcInfo),
-    lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
-        VariantProcInfo, !ModuleInfo),
-
-    proc_info_get_headvars(VariantProcInfo, HeadVars),
-    proc_info_get_vartypes(VariantProcInfo, VarTypes),
-    lookup_var_types(VarTypes, HeadVars, ArgTypes),
-
-    some [!VariantPredInfo, !PredTable] (
-        module_info_get_preds(!.ModuleInfo, !:PredTable),
-        map.lookup(!.PredTable, VariantPredId, !:VariantPredInfo),
-        pred_info_set_name(VariantName, !VariantPredInfo),
-        pred_info_set_is_pred_or_func(pf_predicate, !VariantPredInfo),
-
-        % Update the argument types for the variant's pred_info.
-        pred_info_get_arg_types(!.VariantPredInfo, TVarSet, ExistQVars,
-            _ArgTypes0),
-        pred_info_set_arg_types(TVarSet, ExistQVars, ArgTypes,
-            !VariantPredInfo),
-
-        pred_info_get_origin(!.VariantPredInfo, Origin0),
-        AddrOutArgPosns = list.map(va_pos, AddrOutArgs),
-        Transform = transform_return_via_ptr(ProcId, AddrOutArgPosns),
-        Origin = origin_transformed(Transform, Origin0, PredId),
-        pred_info_set_origin(Origin, !VariantPredInfo),
-
-        % We throw away any other procs in the variant predicate, because
-        % we create a separate predicate for each variant.
-        VariantProcs = map.singleton(VariantProcId, VariantProcInfo),
-        pred_info_set_proc_table(VariantProcs, !VariantPredInfo),
-        map.det_update(VariantPredId, !.VariantPredInfo, !PredTable),
-        module_info_set_preds(!.PredTable, !ModuleInfo)
-    ).
-
-:- func va_pos(variant_arg) = int.
 
 %-----------------------------------------------------------------------------%
 
@@ -1174,9 +1120,10 @@ make_variant_args(HighLevelData, AddrVarFieldIds, Mismatches, VariantArgs) :-
         MakeArg = (func(Pos - _Var) = variant_arg(Pos, no))
     ;
         HighLevelData = yes,
-        MakeArg = (func(Pos - Var) = variant_arg(Pos, yes(FieldId)) :-
-            map.lookup(AddrVarFieldIds, Var, FieldId)
-        )
+        MakeArg =
+            ( func(Pos - Var) = variant_arg(Pos, yes(FieldId)) :-
+                map.lookup(AddrVarFieldIds, Var, FieldId)
+            )
     ),
     VariantArgs = list.map(MakeArg, Mismatches).
 
@@ -1857,6 +1804,65 @@ make_unification_arg(GroundVar, TargetArgNum, CurArgNum, ArgType,
         proc_info_create_var_from_type(ArgType, no, Var, !ProcInfo),
         UnifyMode = unify_modes_li_lf_ri_rf(ground_inst, ground_inst,
             free_inst, ground_inst)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred store_updated_procs_in_module_info(pair(pred_proc_id, proc_info)::in,
+    module_info::in, module_info::out) is det.
+
+store_updated_procs_in_module_info(PredProcId - NewProcInfo, !ModuleInfo) :-
+    PredProcId = proc(PredId, ProcId),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
+    map.lookup(PredTable0, PredId, PredInfo0),
+    pred_info_get_proc_table(PredInfo0, Procs0),
+    map.det_update(ProcId, NewProcInfo, Procs0, Procs),
+    pred_info_set_proc_table(Procs, PredInfo0, PredInfo),
+    map.det_update(PredId, PredInfo, PredTable0, PredTable),
+    module_info_set_preds(PredTable, !ModuleInfo).
+
+:- pred update_variant_pred_info(variant_map::in,
+    pair(pred_proc_id, variant_id)::in,
+    module_info::in, module_info::out) is det.
+
+update_variant_pred_info(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
+    VariantId = variant_id(AddrOutArgs, VariantPredProcId, VariantName),
+    VariantPredProcId = proc(VariantPredId, VariantProcId),
+    PredProcId = proc(PredId, ProcId),
+
+    module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
+        _PredInfo, ProcInfo),
+    lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
+        VariantProcInfo, !ModuleInfo),
+
+    proc_info_get_headvars(VariantProcInfo, HeadVars),
+    proc_info_get_vartypes(VariantProcInfo, VarTypes),
+    lookup_var_types(VarTypes, HeadVars, ArgTypes),
+
+    some [!VariantPredInfo, !PredTable] (
+        module_info_get_preds(!.ModuleInfo, !:PredTable),
+        map.lookup(!.PredTable, VariantPredId, !:VariantPredInfo),
+        pred_info_set_name(VariantName, !VariantPredInfo),
+        pred_info_set_is_pred_or_func(pf_predicate, !VariantPredInfo),
+
+        % Update the argument types for the variant's pred_info.
+        pred_info_get_arg_types(!.VariantPredInfo, TVarSet, ExistQVars,
+            _ArgTypes0),
+        pred_info_set_arg_types(TVarSet, ExistQVars, ArgTypes,
+            !VariantPredInfo),
+
+        pred_info_get_origin(!.VariantPredInfo, Origin0),
+        AddrOutArgPosns = list.map(va_pos, AddrOutArgs),
+        Transform = transform_return_via_ptr(ProcId, AddrOutArgPosns),
+        Origin = origin_transformed(Transform, Origin0, PredId),
+        pred_info_set_origin(Origin, !VariantPredInfo),
+
+        % We throw away any other procs in the variant predicate, because
+        % we create a separate predicate for each variant.
+        VariantProcs = map.singleton(VariantProcId, VariantProcInfo),
+        pred_info_set_proc_table(VariantProcs, !VariantPredInfo),
+        map.det_update(VariantPredId, !.VariantPredInfo, !PredTable),
+        module_info_set_preds(!.PredTable, !ModuleInfo)
     ).
 
 %-----------------------------------------------------------------------------%
