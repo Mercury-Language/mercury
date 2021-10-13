@@ -44,10 +44,13 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Given a goal and an initial instmap, compute the final instmap that
-    % results from the initial instmap after execution of the goal.
+    % Given a goal (or its goal_info) and an initial instmap,
+    % compute the final instmap that results from the initial instmap
+    % after execution of the goal.
     %
 :- pred update_instmap(hlds_goal::in, instmap::in, instmap::out) is det.
+:- pred update_instmap_goal_info(hlds_goal_info::in,
+    instmap::in, instmap::out) is det.
 
     % create_renaming(OutputVars, InstMapDelta, !VarTypes, !VarSet,
     %   UnifyGoals, NewVars, Renaming):
@@ -481,6 +484,10 @@
 %-----------------------------------------------------------------------------%
 
 update_instmap(hlds_goal(_GoalExpr0, GoalInfo0), !InstMap) :-
+    DeltaInstMap = goal_info_get_instmap_delta(GoalInfo0),
+    apply_instmap_delta(DeltaInstMap, !InstMap).
+
+update_instmap_goal_info(GoalInfo0, !InstMap) :-
     DeltaInstMap = goal_info_get_instmap_delta(GoalInfo0),
     apply_instmap_delta(DeltaInstMap, !InstMap).
 

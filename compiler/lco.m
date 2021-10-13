@@ -1712,9 +1712,9 @@ lco_transform_variant_case(ModuleInfo, VariantMap, VarToAddr, InstMap0,
 
 lco_transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
         GoalInfo, GoalExpr0, GoalExpr, Changed, !ProcInfo) :-
-    update_instmap(hlds_goal(GoalExpr0, GoalInfo), InstMap0, InstMap1),
-    list.filter(is_grounding(ModuleInfo, InstMap0, InstMap1), VarToAddr,
-        GroundingVarToAddr),
+    update_instmap_goal_info(GoalInfo, InstMap0, InstMap1),
+    list.filter(is_grounding(ModuleInfo, InstMap0, InstMap1),
+        VarToAddr, GroundingVarToAddr),
     (
         GroundingVarToAddr = [],
         GoalExpr = GoalExpr0,
@@ -1736,9 +1736,9 @@ lco_transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
 
 lco_transform_variant_plain_call(ModuleInfo, VariantMap, VarToAddr, InstMap0,
         GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, Changed, !ProcInfo) :-
-    update_instmap(hlds_goal(GoalExpr0, GoalInfo0), InstMap0, InstMap1),
-    list.filter(is_grounding(ModuleInfo, InstMap0, InstMap1), VarToAddr,
-        GroundingVarToAddr),
+    update_instmap_goal_info(GoalInfo0, InstMap0, InstMap1),
+    list.filter(is_grounding(ModuleInfo, InstMap0, InstMap1),
+        VarToAddr, GroundingVarToAddr),
     (
         GroundingVarToAddr = [],
         GoalExpr = GoalExpr0,
