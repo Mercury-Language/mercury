@@ -22,12 +22,10 @@
 
 :- import_module list.
 
+%---------------------%
+
 :- pred module_add_inst_defn(inst_status::in, item_inst_defn_info::in,
     module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-:- pred module_check_inst_defn(module_info::in, item_inst_defn_info::in,
-    found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------%
@@ -36,7 +34,15 @@
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred module_check_mode_defn(module_info::in, item_mode_defn_info::in,
+%---------------------%
+
+:- pred check_inst_defns(module_info::in, ims_list(item_inst_defn_info)::in,
+    found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+%---------------------%
+
+:- pred check_mode_defns(module_info::in, ims_list(item_mode_defn_info)::in,
     found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -167,6 +173,88 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
 
 %---------------------%
 
+module_add_mode_defn(ModeStatus, ItemModeDefnInfo, !ModuleInfo, !Specs) :-
+    ItemModeDefnInfo = item_mode_defn_info(Name, Params, MaybeAbstractModeDefn,
+        VarSet, Context, _SeqNum),
+    (
+        MaybeAbstractModeDefn = abstract_mode_defn
+        % We use abstract mode definitions only for module qualification;
+        % we never add them to the HLDS.
+    ;
+        MaybeAbstractModeDefn = nonabstract_mode_defn(ModeDefn),
+        module_info_get_mode_table(!.ModuleInfo, ModeTable0),
+        modes_add(VarSet, Name, Params, ModeDefn, Context, ModeStatus,
+            ModeTable0, ModeTable, !Specs),
+        module_info_set_mode_table(ModeTable, !ModuleInfo)
+    ).
+
+:- pred modes_add(inst_varset::in, sym_name::in, list(inst_var)::in,
+    mode_defn::in, prog_context::in, mode_status::in,
+    mode_table::in, mode_table::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+modes_add(VarSet, Name, Params, ModeBody, Context, ModeStatus,
+        !ModeTable, !Specs) :-
+    list.length(Params, Arity),
+    ModeCtor = mode_ctor(Name, Arity),
+    ModeBody = eqv_mode(EqvMode),
+    HldsModeBody = hlds_mode_body(EqvMode),
+    ModeDefn = hlds_mode_defn(VarSet, Params, HldsModeBody, Context,
+        ModeStatus),
+    ( if mode_table_insert(ModeCtor, ModeDefn, !ModeTable) then
+        true
+    else
+        ModeStatus = mode_status(InstModeStatus),
+        ReportDup = should_report_duplicate_inst_or_mode(InstModeStatus),
+        (
+            ReportDup = no
+        ;
+            ReportDup = yes,
+            mode_table_get_mode_defns(!.ModeTable, ModeDefns),
+            map.lookup(ModeDefns, ModeCtor, OrigModeDefn),
+            OrigModeDefn = hlds_mode_defn(_, _, _, OrigContext, _),
+            Extras = [],
+            report_multiple_def_error(Name, Arity, "mode",
+                Context, OrigContext, Extras, !Specs)
+        )
+    ).
+
+%---------------------%
+
+:- func should_report_duplicate_inst_or_mode(new_instmode_status) = bool.
+
+should_report_duplicate_inst_or_mode(InstModeStatus) = ReportDup :-
+    (
+        InstModeStatus = instmode_defined_in_this_module(_),
+        ReportDup = yes
+    ;
+        InstModeStatus = instmode_defined_in_other_module(InstModeImport),
+        (
+            ( InstModeImport = instmode_import_plain
+            ; InstModeImport = instmode_import_abstract
+            ),
+            ReportDup = yes
+        ;
+            InstModeImport = instmode_import_opt,
+            ReportDup = no
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+check_inst_defns(_, [], !FoundInvalidInstOrMode, !Specs).
+check_inst_defns(ModuleInfo, [ImsSubList | ImsSubLists],
+        !FoundInvalidInstOrMode, !Specs) :-
+    ImsSubList = ims_sub_list(_ItemMercuryStatus, InstDefns),
+    list.foldl2(module_check_inst_defn(ModuleInfo), InstDefns,
+        !FoundInvalidInstOrMode, !Specs),
+    check_inst_defns(ModuleInfo, ImsSubLists,
+        !FoundInvalidInstOrMode, !Specs).
+
+:- pred module_check_inst_defn(module_info::in, item_inst_defn_info::in,
+    found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
 module_check_inst_defn(ModuleInfo, ItemInstDefnInfo,
         !FoundInvalidInstOrMode, !Specs) :-
     ItemInstDefnInfo = item_inst_defn_info(InstName, InstParams, _MaybeForType,
@@ -216,74 +304,19 @@ check_for_cyclic_inst(UserInstTable, OrigInstCtor, InstCtor0, Args0,
         )
     ).
 
-:- func should_report_duplicate_inst_or_mode(new_instmode_status) = bool.
-
-should_report_duplicate_inst_or_mode(InstModeStatus) = ReportDup :-
-    (
-        InstModeStatus = instmode_defined_in_this_module(_),
-        ReportDup = yes
-    ;
-        InstModeStatus = instmode_defined_in_other_module(InstModeImport),
-        (
-            ( InstModeImport = instmode_import_plain
-            ; InstModeImport = instmode_import_abstract
-            ),
-            ReportDup = yes
-        ;
-            InstModeImport = instmode_import_opt,
-            ReportDup = no
-        )
-    ).
-
-%---------------------------------------------------------------------------%
-
-module_add_mode_defn(ModeStatus, ItemModeDefnInfo, !ModuleInfo, !Specs) :-
-    ItemModeDefnInfo = item_mode_defn_info(Name, Params, MaybeAbstractModeDefn,
-        VarSet, Context, _SeqNum),
-    (
-        MaybeAbstractModeDefn = abstract_mode_defn
-        % We use abstract mode definitions only for module qualification;
-        % we never add them to the HLDS.
-    ;
-        MaybeAbstractModeDefn = nonabstract_mode_defn(ModeDefn),
-        module_info_get_mode_table(!.ModuleInfo, ModeTable0),
-        modes_add(VarSet, Name, Params, ModeDefn, Context, ModeStatus,
-            ModeTable0, ModeTable, !Specs),
-        module_info_set_mode_table(ModeTable, !ModuleInfo)
-    ).
-
-:- pred modes_add(inst_varset::in, sym_name::in, list(inst_var)::in,
-    mode_defn::in, prog_context::in, mode_status::in,
-    mode_table::in, mode_table::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-modes_add(VarSet, Name, Params, ModeBody, Context, ModeStatus,
-        !ModeTable, !Specs) :-
-    list.length(Params, Arity),
-    ModeCtor = mode_ctor(Name, Arity),
-    ModeBody = eqv_mode(EqvMode),
-    HldsModeBody = hlds_mode_body(EqvMode),
-    ModeDefn = hlds_mode_defn(VarSet, Params, HldsModeBody, Context,
-        ModeStatus),
-    ( if mode_table_insert(ModeCtor, ModeDefn, !ModeTable) then
-        true
-    else
-        ModeStatus = mode_status(InstModeStatus),
-        ReportDup = should_report_duplicate_inst_or_mode(InstModeStatus),
-        (
-            ReportDup = no
-        ;
-            ReportDup = yes,
-            mode_table_get_mode_defns(!.ModeTable, ModeDefns),
-            map.lookup(ModeDefns, ModeCtor, OrigModeDefn),
-            OrigModeDefn = hlds_mode_defn(_, _, _, OrigContext, _),
-            Extras = [],
-            report_multiple_def_error(Name, Arity, "mode",
-                Context, OrigContext, Extras, !Specs)
-        )
-    ).
-
 %---------------------%
+
+check_mode_defns(_, [], !FoundInvalidInstOrMode, !Specs).
+check_mode_defns(ModuleInfo, [ImsSubList | ImsSubLists],
+        !FoundInvalidInstOrMode, !Specs) :-
+    ImsSubList = ims_sub_list(_ItemMercuryStatus, ModeDefns),
+    list.foldl2(module_check_mode_defn(ModuleInfo), ModeDefns,
+        !FoundInvalidInstOrMode, !Specs),
+    check_mode_defns(ModuleInfo, ImsSubLists, !FoundInvalidInstOrMode, !Specs).
+
+:- pred module_check_mode_defn(module_info::in, item_mode_defn_info::in,
+    found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 module_check_mode_defn(ModuleInfo, ItemModeDefnInfo,
         !FoundInvalidInstOrMode, !Specs) :-

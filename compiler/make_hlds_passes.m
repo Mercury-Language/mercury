@@ -721,19 +721,6 @@ add_inst_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
         !ModuleInfo, !Specs),
     add_inst_defns(ImsSubLists, !ModuleInfo, !Specs).
 
-:- pred check_inst_defns(module_info::in, ims_list(item_inst_defn_info)::in,
-    found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_inst_defns(_, [], !FoundInvalidInstOrMode, !Specs).
-check_inst_defns(ModuleInfo, [ImsSubList | ImsSubLists],
-        !FoundInvalidInstOrMode, !Specs) :-
-    ImsSubList = ims_sub_list(_ItemMercuryStatus, InstDefns),
-    list.foldl2(module_check_inst_defn(ModuleInfo), InstDefns,
-        !FoundInvalidInstOrMode, !Specs),
-    check_inst_defns(ModuleInfo, ImsSubLists,
-        !FoundInvalidInstOrMode, !Specs).
-
 %---------------------------------------------------------------------------%
 
 :- pred add_mode_defns(ims_list(item_mode_defn_info)::in,
@@ -747,18 +734,6 @@ add_mode_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
     list.foldl2(module_add_mode_defn(ModeStatus), ModeDefns,
         !ModuleInfo, !Specs),
     add_mode_defns(ImsSubLists, !ModuleInfo, !Specs).
-
-:- pred check_mode_defns(module_info::in, ims_list(item_mode_defn_info)::in,
-    found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_mode_defns(_, [], !FoundInvalidInstOrMode, !Specs).
-check_mode_defns(ModuleInfo, [ImsSubList | ImsSubLists],
-        !FoundInvalidInstOrMode, !Specs) :-
-    ImsSubList = ims_sub_list(_ItemMercuryStatus, ModeDefns),
-    list.foldl2(module_check_mode_defn(ModuleInfo), ModeDefns,
-        !FoundInvalidInstOrMode, !Specs),
-    check_mode_defns(ModuleInfo, ImsSubLists, !FoundInvalidInstOrMode, !Specs).
 
 %---------------------------------------------------------------------------%
 
