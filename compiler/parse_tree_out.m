@@ -290,17 +290,22 @@ mercury_output_parse_tree_module_src(Info, Stream, ParseTreeModuleSrc, !IO) :-
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
-        IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
-        IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        IntPredDecls, IntModeDecls,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
+        _TypeSpecs, _InstModeSpecs,
+
+        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, _IntBadPreds,
 
-        ImpTypeDefnsAbs, ImpTypeDefnsMer, ImpTypeDefnsForeign,
-        ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances,
-        ImpPredDecls, ImpModeDecls, ImpClauses,
-        ImpForeignEnums, ImpForeignExportEnums,
-        ImpDeclPragmas, ImpImplPragmas, ImpPromises,
+        ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls, ImpClauses,
+        ImpForeignExportEnums, ImpDeclPragmas, ImpImplPragmas, ImpPromises,
         ImpInitialises, ImpFinalises, ImpMutables),
+
+    type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
+        IntTypeDefns, ImpTypeDefns, ImpForeignEnums),
+    inst_ctor_checked_map_get_src_defns(InstCtorCheckedMap,
+        IntInstDefns, ImpInstDefns),
+    mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
+        IntModeDefns, ImpModeDefns),
 
     io.write_string(Stream, "% module src\n", !IO),
     mercury_output_module_decl(Stream, "module", ModuleName, !IO),
@@ -329,11 +334,7 @@ mercury_output_parse_tree_module_src(Info, Stream, ParseTreeModuleSrc, !IO) :-
         "%% implicit implementation FIM self-import languages: %s\n",
        [s(string.join_list(", ", ImpSelfFIMLangStrs))], !IO),
     list.foldl(mercury_output_item_type_defn(Info, Stream),
-        IntTypeDefnsAbs, !IO),
-    list.foldl(mercury_output_item_type_defn(Info, Stream),
-        IntTypeDefnsMer, !IO),
-    list.foldl(mercury_output_item_type_defn(Info, Stream),
-        IntTypeDefnsForeign, !IO),
+        IntTypeDefns, !IO),
     list.foldl(mercury_output_item_inst_defn(Info, Stream),
         IntInstDefns, !IO),
     list.foldl(mercury_output_item_mode_defn(Info, Stream),
@@ -360,11 +361,7 @@ mercury_output_parse_tree_module_src(Info, Stream, ParseTreeModuleSrc, !IO) :-
         map.keys(ImpUseMap), !IO),
     list.foldl(mercury_output_fim_spec(Stream), map.keys(ImpFIMSpecMap), !IO),
     list.foldl(mercury_output_item_type_defn(Info, Stream),
-        ImpTypeDefnsAbs, !IO),
-    list.foldl(mercury_output_item_type_defn(Info, Stream),
-        ImpTypeDefnsMer, !IO),
-    list.foldl(mercury_output_item_type_defn(Info, Stream),
-        ImpTypeDefnsForeign, !IO),
+        ImpTypeDefns, !IO),
     list.foldl(mercury_output_item_inst_defn(Info, Stream),
         ImpInstDefns, !IO),
     list.foldl(mercury_output_item_mode_defn(Info, Stream),
@@ -1243,7 +1240,7 @@ mercury_output_where_attributes(Info, TypeVarSet, MaybeSolverTypeDetails,
                 then
                     true
                 else
-                    io.write_string(Stream, ",\n\t\t", !IO)
+                    io.write_string(Stream, ",\n            ", !IO)
                 )
             ;
                 MaybeSolverTypeDetails = no
@@ -1259,7 +1256,7 @@ mercury_output_where_attributes(Info, TypeVarSet, MaybeSolverTypeDetails,
             then
                 true
             else
-                io.write_string(Stream, ",\n\t\t", !IO)
+                io.write_string(Stream, ",\n            ", !IO)
             )
         ;
             MaybeUniPred = no
@@ -1272,7 +1269,7 @@ mercury_output_where_attributes(Info, TypeVarSet, MaybeSolverTypeDetails,
                 MaybeDirectArgs = no
             ;
                 MaybeDirectArgs = yes(_),
-                io.write_string(Stream, ",\n\t\t", !IO)
+                io.write_string(Stream, ",\n            ", !IO)
             )
         ;
             MaybeCmpPred = no

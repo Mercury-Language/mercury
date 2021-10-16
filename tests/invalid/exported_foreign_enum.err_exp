@@ -4,19 +4,19 @@ exported_foreign_enum.m:052:   error: `exported_foreign_enum.foo'/0 is not an
 exported_foreign_enum.m:052:   enumeration type.
 exported_foreign_enum.m:052:   It has this non-zero arity constructor:
 exported_foreign_enum.m:052:       `foo'/1.
-exported_foreign_enum.m:054: In `:- pragma foreign_enum' declaration for type
-exported_foreign_enum.m:054:   `exported_foreign_enum.foo'/0:
-exported_foreign_enum.m:054:   error: `exported_foreign_enum.foo'/0 is not an
-exported_foreign_enum.m:054:   enumeration type.
-exported_foreign_enum.m:054:   It has this non-zero arity constructor:
-exported_foreign_enum.m:054:       `foo'/1.
-exported_foreign_enum.m:073: In `:- pragma foreign_enum' declaration for type
-exported_foreign_enum.m:073:   `exported_foreign_enum.t1'/0:
-exported_foreign_enum.m:073:   error: `exported_foreign_enum.t1'/0 is not an
-exported_foreign_enum.m:073:   enumeration type.
-exported_foreign_enum.m:073:   It has this non-zero arity constructor:
-exported_foreign_enum.m:073:       `f13'/1.
-exported_foreign_enum.m:100: In `:- pragma foreign_enum' declaration for type
-exported_foreign_enum.m:100:   `exported_foreign_enum.t3'/0:
-exported_foreign_enum.m:100:   error: `exported_foreign_enum.t3'/0 is not an
-exported_foreign_enum.m:100:   enumeration type; it is an equivalence type.
+exported_foreign_enum.m:054: Error: the Mercury definition of `foo'/0 is not an
+exported_foreign_enum.m:054:   enumeration type, so there must not be any
+exported_foreign_enum.m:054:   `:- pragma foreign_enum' declarations for it.
+exported_foreign_enum.m:047:   That Mercury definition is here.
+exported_foreign_enum.m:047:   It has this non-zero arity constructor:
+exported_foreign_enum.m:047:       `foo'/1.
+exported_foreign_enum.m:073: Error: the Mercury definition of `t1'/0 is not an
+exported_foreign_enum.m:073:   enumeration type, so there must not be any
+exported_foreign_enum.m:073:   `:- pragma foreign_enum' declarations for it.
+exported_foreign_enum.m:066:   That Mercury definition is here.
+exported_foreign_enum.m:066:   It has this non-zero arity constructor:
+exported_foreign_enum.m:066:       `f13'/1.
+exported_foreign_enum.m:100: Error: this `:- pragma foreign_enum' declaration
+exported_foreign_enum.m:100:   for `t3'/0 is incompatible with the equivalence
+exported_foreign_enum.m:100:   type definition in the implementation section.
+exported_foreign_enum.m:098:   That definition is here.

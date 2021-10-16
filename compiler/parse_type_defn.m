@@ -1697,7 +1697,15 @@ term_list_to_var_list_and_nonvars([Term | Terms], Vars, NonVars) :-
 check_user_type_name(SymName, Context, NameSpecs) :-
     % Check that the mode name is available to users.
     Name = unqualify_name(SymName),
-    ( if is_known_type_name(Name) then
+    ( if Name = "=" then
+        NamePieces = [words("Error: in definitions of equivalence types,"),
+            words("the type name must be followed by"),
+            quote("=="), suffix(","),
+            words("not"), quote("="), suffix("."), nl],
+        NameSpec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, Context, NamePieces),
+        NameSpecs = [NameSpec]
+    else if is_known_type_name(Name) then
         NamePieces = [words("Error: the type name"), quote(Name),
             words("is reserved for the Mercury implementation."), nl],
         NameSpec = simplest_spec($pred, severity_error,

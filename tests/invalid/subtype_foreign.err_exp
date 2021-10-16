@@ -1,9 +1,12 @@
-subtype_foreign.m:017: Error: type `subtype_foreign.citrus'/0 multiply defined.
-subtype_foreign.m:013: Here is the previous definition of type
-subtype_foreign.m:013:   `subtype_foreign.citrus'/0.
-subtype_foreign.m:018: Error: type `subtype_foreign.citrus'/0 multiply defined.
-subtype_foreign.m:013: Here is the previous definition of type
-subtype_foreign.m:013:   `subtype_foreign.citrus'/0.
-subtype_foreign.m:019: Error: type `subtype_foreign.citrus'/0 multiply defined.
-subtype_foreign.m:013: Here is the previous definition of type
-subtype_foreign.m:013:   `subtype_foreign.citrus'/0.
+subtype_foreign.m:017: Error: `citrus'/0 is defined to be a subtype, so there
+subtype_foreign.m:017:   must not be any `:- pragma foreign_type' declarations
+subtype_foreign.m:017:   for it.
+subtype_foreign.m:013:   That subtype definition is here.
+subtype_foreign.m:018: Error: `citrus'/0 is defined to be a subtype, so there
+subtype_foreign.m:018:   must not be any `:- pragma foreign_type' declarations
+subtype_foreign.m:018:   for it.
+subtype_foreign.m:013:   That subtype definition is here.
+subtype_foreign.m:019: Error: `citrus'/0 is defined to be a subtype, so there
+subtype_foreign.m:019:   must not be any `:- pragma foreign_type' declarations
+subtype_foreign.m:019:   for it.
+subtype_foreign.m:013:   That subtype definition is here.

@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred foreign_type.main/2-0 (det) foreign_type.m:22
+      E1:     C1 CALL pred foreign_type.main/2-0 (det) foreign_type.m:20
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -6,11 +6,11 @@ mdb> b copy_coord
  0: + stop  interface pred foreign_type.copy_coord/2-0 (det)
 mdb> continue
 '<<foreign(coord, 0xXXXX)>>'
-      E2:     C2 CALL pred foreign_type.copy_coord/2-0 (det) foreign_type.m:36 (foreign_type.m:26)
+      E2:     C2 CALL pred foreign_type.copy_coord/2-0 (det) foreign_type.m:34 (foreign_type.m:24)
 mdb> print *
        A (arg 1)              	'<<foreign(coord, 0xXXXX)>>'
 mdb> finish
-      E3:     C2 EXIT pred foreign_type.copy_coord/2-0 (det) foreign_type.m:36 (foreign_type.m:26)
+      E3:     C2 EXIT pred foreign_type.copy_coord/2-0 (det) foreign_type.m:34 (foreign_type.m:24)
 mdb> print *
        A (arg 1)              	'<<foreign(coord, 0xXXXX)>>'
        B (arg 2)              	'<<foreign(coord, 0xXXXX)>>'

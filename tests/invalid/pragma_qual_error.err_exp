@@ -1,7 +1,7 @@
 pragma_qual_error.m:025: In `:- pragma foreign_export_enum' declaration:
 pragma_qual_error.m:025:   error: undefined type `bar'/0.
-pragma_qual_error.m:032: In `:- pragma foreign_enum' declaration:
-pragma_qual_error.m:032:   error: undefined type `bar'/0.
+pragma_qual_error.m:032: Error: `:- pragma foreign_enum' declaration for the
+pragma_qual_error.m:032:   undeclared type `bar'/0.
 pragma_qual_error.m:046: Error: `:- pragma foreign_proc' declaration for
 pragma_qual_error.m:046:   undeclared mode of predicate
 pragma_qual_error.m:046:   `pragma_qual_error.foo'/2.

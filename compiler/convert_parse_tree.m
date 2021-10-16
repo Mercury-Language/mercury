@@ -1384,9 +1384,7 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         IntImportMap0, IntImportMap, IntUseMap0, IntUseMap,
         IntFIMSpecMap0, IntFIMSpecMap,
 
-        [], RevIntTypeDefnsAbs, [], RevIntTypeDefnsMer,
-        [], RevIntTypeDefnsForeign,
-        [], RevIntInstDefns, [], RevIntModeDefns,
+        [], RevIntTypeDefns, [], RevIntInstDefns, [], RevIntModeDefns,
         [], RevIntTypeClasses, [], RevIntInstances0,
         [], RevIntPredDecls, [], RevIntModeDecls,
         [], RevIntDeclPragmas, [], RevIntImplPragmas,
@@ -1398,9 +1396,7 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         [], ImpIncls,
         ImpImportMap0, ImpImportMap, ImpUseMap0, ImpUseMap,
         ImpFIMSpecMap0, ImpFIMSpecMap1,
-        [], RevImpTypeDefnsAbs, [], RevImpTypeDefnsMer,
-        [], RevImpTypeDefnsForeign,
-        [], RevImpInstDefns, [], RevImpModeDefns,
+        [], RevImpTypeDefns, [], RevImpInstDefns, [], RevImpModeDefns,
         [], RevImpTypeClasses, [], RevImpInstances0,
         [], RevImpPredDecls, [], RevImpModeDecls, [], RevImpClauses,
         [], RevImpForeignEnums, [], RevImpForeignExportEnums,
@@ -1414,9 +1410,7 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     classify_include_modules(IntIncls, ImpIncls, IntInclMap, ImpInclMap,
         InclMap, !Specs),
 
-    list.reverse(RevIntTypeDefnsAbs, IntTypeDefnsAbs),
-    list.reverse(RevIntTypeDefnsMer, IntTypeDefnsMer),
-    list.reverse(RevIntTypeDefnsForeign, IntTypeDefnsForeign),
+    list.reverse(RevIntTypeDefns, IntTypeDefns),
     list.reverse(RevIntInstDefns, IntInstDefns),
     list.reverse(RevIntModeDefns, IntModeDefns),
     list.reverse(RevIntTypeClasses, IntTypeClasses),
@@ -1430,9 +1424,7 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     list.reverse(RevIntFinalises, IntFinalises),
     list.reverse(RevIntMutables, IntMutables),
 
-    list.reverse(RevImpTypeDefnsAbs, ImpTypeDefnsAbs),
-    list.reverse(RevImpTypeDefnsMer, ImpTypeDefnsMer),
-    list.reverse(RevImpTypeDefnsForeign, ImpTypeDefnsForeign),
+    list.reverse(RevImpTypeDefns, ImpTypeDefns),
     list.reverse(RevImpInstDefns, ImpInstDefns),
     list.reverse(RevImpModeDefns, ImpModeDefns),
     list.reverse(RevImpTypeClasses, ImpTypeClasses),
@@ -1458,6 +1450,23 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         ImpInstances = MovedImpInstances ++ ImpInstances0
     ),
 
+    IntTypeDefnMap = type_ctor_defn_items_to_map(IntTypeDefns),
+    ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns),
+    ImpForeignEnumMap = type_ctor_foreign_enum_items_to_map(ImpForeignEnums),
+    create_type_ctor_checked_map(do_insist_on_defn,
+        IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
+        TypeCtorCheckedMap, [], TypeSpecs),
+    IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns),
+    ImpInstDefnMap = inst_ctor_defn_items_to_map(ImpInstDefns),
+    create_inst_ctor_checked_map(do_insist_on_defn,
+        IntInstDefnMap, ImpInstDefnMap, InstCtorCheckedMap,
+        [], InstSpecs),
+    IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns),
+    ImpModeDefnMap = mode_ctor_defn_items_to_map(ImpModeDefns),
+    create_mode_ctor_checked_map(do_insist_on_defn,
+        IntModeDefnMap, ImpModeDefnMap, ModeCtorCheckedMap,
+        InstSpecs, InstModeSpecs),
+
     % classify_src_items_in_blocks has already generated an error message
     % for each impl pragma in the interface section. However, we then treat
     % these misplaced pragmas as if they were in the implementation section.
@@ -1469,8 +1478,8 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     % By implicitly moving initialise, finalise and mutable declarations
     % from the interface (where they should not be) to the implementation
     % section *after* generating an error message for their inappropriate
-    % placement, we allow the generate to test them for further errors.
-    % Reporting an such further errors together with the bad placement
+    % placement, we allow the compiler to test them for further errors.
+    % Reporting such further errors together with the bad placement
     % should allow programmers to fix both problems at once.
     ImpInitialises = IntInitialises ++ ImpInitialises0,
     ImpFinalises = IntFinalises ++ ImpFinalises0,
@@ -1497,15 +1506,15 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
-        IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
-        IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
+        TypeSpecs, InstModeSpecs,
+
+        IntTypeClasses, IntInstances,
         IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, IntBadClausePreds,
 
-        ImpTypeDefnsAbs, ImpTypeDefnsMer, ImpTypeDefnsForeign,
-        ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances,
-        ImpPredDecls, ImpModeDecls, ImpClauses,
-        ImpForeignEnums, ImpForeignExportEnums,
+        ImpTypeClasses, ImpInstances,
+        ImpPredDecls, ImpModeDecls, ImpClauses, ImpForeignExportEnums,
         ImpDeclPragmas, ImpImplPragmas, ImpPromises,
         ImpInitialises, ImpFinalises, ImpMutables).
 
@@ -1884,8 +1893,6 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     module_names_contexts::in, module_names_contexts::out,
     map(fim_spec, prog_context)::in, map(fim_spec, prog_context)::out,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
-    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
-    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
     list(item_inst_defn_info)::in, list(item_inst_defn_info)::out,
     list(item_mode_defn_info)::in, list(item_mode_defn_info)::out,
     list(item_typeclass_info)::in, list(item_typeclass_info)::out,
@@ -1905,8 +1912,6 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     module_names_contexts::in, module_names_contexts::out,
     module_names_contexts::in, module_names_contexts::out,
     map(fim_spec, prog_context)::in, map(fim_spec, prog_context)::out,
-    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
-    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
     list(item_inst_defn_info)::in, list(item_inst_defn_info)::out,
     list(item_mode_defn_info)::in, list(item_mode_defn_info)::out,
@@ -1930,8 +1935,7 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
 
 classify_src_items_in_blocks([],
         !IntIncls, !IntImportMap, !IntUseMap, !IntFIMSpecMap,
-        !RevIntTypeDefnsAbs, !RevIntTypeDefnsMer, !RevIntTypeDefnsForeign,
-        !RevIntInstDefns, !RevIntModeDefns,
+        !RevIntTypeDefns, !RevIntInstDefns, !RevIntModeDefns,
         !RevIntTypeClasses, !RevIntInstances,
         !RevIntPredDecls, !RevIntModeDecls,
         !RevIntDeclPragmas, !RevIntImplPragmas,
@@ -1939,8 +1943,7 @@ classify_src_items_in_blocks([],
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
         !IntImplicitAvailNeeds, !IntSelfFIMLangs,
         !ImpIncls, !ImpImportMap, !ImpUseMap, !ImpFIMSpecMap,
-        !RevImpTypeDefnsAbs, !RevImpTypeDefnsMer, !RevImpTypeDefnsForeign,
-        !RevImpInstDefns, !RevImpModeDefns,
+        !RevImpTypeDefns, !RevImpInstDefns, !RevImpModeDefns,
         !RevImpTypeClasses, !RevImpInstances,
         !RevImpPredDecls, !RevImpModeDecls, !RevImpClauses,
         !RevImpForeignEnums, !RevImpForeignExportEnums,
@@ -1949,8 +1952,7 @@ classify_src_items_in_blocks([],
         !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !Specs).
 classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !IntIncls, !IntImportMap, !IntUseMap, !IntFIMSpecMap,
-        !RevIntTypeDefnsAbs, !RevIntTypeDefnsMer, !RevIntTypeDefnsForeign,
-        !RevIntInstDefns, !RevIntModeDefns,
+        !RevIntTypeDefns, !RevIntInstDefns, !RevIntModeDefns,
         !RevIntTypeClasses, !RevIntInstances,
         !RevIntPredDecls, !RevIntModeDecls,
         !RevIntDeclPragmas, !RevIntImplPragmas,
@@ -1958,8 +1960,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
         !IntImplicitAvailNeeds, !IntSelfFIMLangs,
         !ImpIncls, !ImpImportMap, !ImpUseMap, !ImpFIMSpecMap,
-        !RevImpTypeDefnsAbs, !RevImpTypeDefnsMer, !RevImpTypeDefnsForeign,
-        !RevImpInstDefns, !RevImpModeDefns,
+        !RevImpTypeDefns, !RevImpInstDefns, !RevImpModeDefns,
         !RevImpTypeClasses, !RevImpInstances,
         !RevImpPredDecls, !RevImpModeDecls, !RevImpClauses,
         !RevImpForeignEnums, !RevImpForeignExportEnums,
@@ -1974,8 +1975,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         list.foldl2(classify_foreign_import_module, FIMs, !IntFIMSpecMap,
             !Specs),
         classify_src_items_int(Items,
-            !RevIntTypeDefnsAbs, !RevIntTypeDefnsMer, !RevIntTypeDefnsForeign,
-            !RevIntInstDefns, !RevIntModeDefns,
+            !RevIntTypeDefns, !RevIntInstDefns, !RevIntModeDefns,
             !RevIntTypeClasses, !RevIntInstances,
             !RevIntPredDecls, !RevIntModeDecls,
             !RevIntDeclPragmas, !RevIntImplPragmas,
@@ -1989,8 +1989,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         list.foldl2(classify_foreign_import_module, FIMs, !ImpFIMSpecMap,
             !Specs),
         classify_src_items_imp(Items,
-            !RevImpTypeDefnsAbs, !RevImpTypeDefnsMer, !RevImpTypeDefnsForeign,
-            !RevImpInstDefns, !RevImpModeDefns,
+            !RevImpTypeDefns, !RevImpInstDefns, !RevImpModeDefns,
             !RevImpTypeClasses, !RevImpInstances,
             !RevImpPredDecls, !RevImpModeDecls, !RevImpClauses,
             !RevImpForeignEnums, !RevImpForeignExportEnums,
@@ -2000,8 +1999,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
     ),
     classify_src_items_in_blocks(ItemBlocks,
         !IntIncls, !IntImportMap, !IntUseMap, !IntFIMSpecMap,
-        !RevIntTypeDefnsAbs, !RevIntTypeDefnsMer, !RevIntTypeDefnsForeign,
-        !RevIntInstDefns, !RevIntModeDefns,
+        !RevIntTypeDefns, !RevIntInstDefns, !RevIntModeDefns,
         !RevIntTypeClasses, !RevIntInstances,
         !RevIntPredDecls, !RevIntModeDecls,
         !RevIntDeclPragmas, !RevIntImplPragmas,
@@ -2009,8 +2007,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
         !IntImplicitAvailNeeds, !IntSelfFIMLangs,
         !ImpIncls, !ImpImportMap, !ImpUseMap, !ImpFIMSpecMap,
-        !RevImpTypeDefnsAbs, !RevImpTypeDefnsMer, !RevImpTypeDefnsForeign,
-        !RevImpInstDefns, !RevImpModeDefns,
+        !RevImpTypeDefns, !RevImpInstDefns, !RevImpModeDefns,
         !RevImpTypeClasses, !RevImpInstances,
         !RevImpPredDecls, !RevImpModeDecls, !RevImpClauses,
         !RevImpForeignEnums, !RevImpForeignExportEnums,
@@ -2046,8 +2043,6 @@ classify_foreign_import_module(ItemFIM, !FIMSpecMap, !Specs) :-
 
 :- pred classify_src_items_int(list(item)::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
-    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
-    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
     list(item_inst_defn_info)::in, list(item_inst_defn_info)::out,
     list(item_mode_defn_info)::in, list(item_mode_defn_info)::out,
     list(item_typeclass_info)::in, list(item_typeclass_info)::out,
@@ -2066,41 +2061,35 @@ classify_foreign_import_module(ItemFIM, !FIMSpecMap, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 classify_src_items_int([],
-        !RevTypeDefnsAbs, !RevTypeDefnsMer, !RevTypeDefnsForeign,
-        !RevInstDefns, !RevModeDefns,
+        !RevTypeDefns, !RevInstDefns, !RevModeDefns,
         !RevTypeClasses, !RevInstances, !RevPredDecls, !RevModeDecls,
         !RevDeclPragmas, !RevImplPragmas, !BadClausePreds,
         !RevPromises, !RevInitialises, !RevFinalises, !RevMutables,
         !ImplicitAvailNeeds, !SelfFIMLangs, !Specs).
 classify_src_items_int([Item | Items],
-        !RevTypeDefnsAbs, !RevTypeDefnsMer, !RevTypeDefnsForeign,
-        !RevInstDefns, !RevModeDefns,
+        !RevTypeDefns, !RevInstDefns, !RevModeDefns,
         !RevTypeClasses, !RevInstances, !RevPredDecls, !RevModeDecls,
         !RevDeclPragmas, !RevImplPragmas, !BadClausePreds,
         !RevPromises, !RevInitialises, !RevFinalises, !RevMutables,
         !ImplicitAvailNeeds, !SelfFIMLangs, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
+        !:RevTypeDefns = [ItemTypeDefnInfo | !.RevTypeDefns],
         ItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn, _, _, _),
         (
-            TypeDefn = parse_tree_abstract_type(_),
-            !:RevTypeDefnsAbs = [ItemTypeDefnInfo | !.RevTypeDefnsAbs]
+            ( TypeDefn = parse_tree_abstract_type(_)
+            ; TypeDefn = parse_tree_du_type(_)
+            ; TypeDefn = parse_tree_sub_type(_)
+            ; TypeDefn = parse_tree_eqv_type(_)
+            )
         ;
             TypeDefn = parse_tree_solver_type(DetailsSolver),
             acc_implicit_avail_needs_solver_type(DetailsSolver,
-                !ImplicitAvailNeeds),
-            !:RevTypeDefnsMer = [ItemTypeDefnInfo | !.RevTypeDefnsMer]
-        ;
-            ( TypeDefn = parse_tree_du_type(_)
-            ; TypeDefn = parse_tree_sub_type(_)
-            ; TypeDefn = parse_tree_eqv_type(_)
-            ),
-            !:RevTypeDefnsMer = [ItemTypeDefnInfo | !.RevTypeDefnsMer]
+                !ImplicitAvailNeeds)
         ;
             TypeDefn = parse_tree_foreign_type(DetailsForeign),
             DetailsForeign = type_details_foreign(ForeignType, _, _),
-            set.insert(foreign_type_language(ForeignType), !SelfFIMLangs),
-            !:RevTypeDefnsForeign = [ItemTypeDefnInfo | !.RevTypeDefnsForeign]
+            set.insert(foreign_type_language(ForeignType), !SelfFIMLangs)
         )
     ;
         Item = item_inst_defn(ItemInstDefnInfo),
@@ -2233,16 +2222,13 @@ classify_src_items_int([Item | Items],
         !:Specs = [Spec | !.Specs]
     ),
     classify_src_items_int(Items,
-        !RevTypeDefnsAbs, !RevTypeDefnsMer, !RevTypeDefnsForeign,
-        !RevInstDefns, !RevModeDefns,
+        !RevTypeDefns, !RevInstDefns, !RevModeDefns,
         !RevTypeClasses, !RevInstances, !RevPredDecls, !RevModeDecls,
         !RevDeclPragmas, !RevImplPragmas,
         !BadClausePreds, !RevPromises, !RevInitialises, !RevFinalises,
         !RevMutables, !ImplicitAvailNeeds, !SelfFIMLangs, !Specs).
 
 :- pred classify_src_items_imp(list(item)::in,
-    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
-    list(item_type_defn_info)::in, list(item_type_defn_info)::out,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
     list(item_inst_defn_info)::in, list(item_inst_defn_info)::out,
     list(item_mode_defn_info)::in, list(item_mode_defn_info)::out,
@@ -2265,8 +2251,7 @@ classify_src_items_int([Item | Items],
     list(error_spec)::in, list(error_spec)::out) is det.
 
 classify_src_items_imp([],
-        !RevTypeDefnsAbs, !RevTypeDefnsMer, !RevTypeDefnsForeign,
-        !RevInstDefns, !RevModeDefns,
+        !RevTypeDefns, !RevInstDefns, !RevModeDefns,
         !RevTypeClasses, !RevInstances,
         !RevPredDecls, !RevModeDecls, !RevClauses,
         !RevForeignEnums, !RevForeignExportEnums,
@@ -2274,8 +2259,7 @@ classify_src_items_imp([],
         !RevInitialises, !RevFinalises, !RevMutables,
         !ImplicitAvailNeeds, !SelfFIMLangs, !Specs).
 classify_src_items_imp([Item | Items],
-        !RevTypeDefnsAbs, !RevTypeDefnsMer, !RevTypeDefnsForeign,
-        !RevInstDefns, !RevModeDefns,
+        !RevTypeDefns, !RevInstDefns, !RevModeDefns,
         !RevTypeClasses, !RevInstances,
         !RevPredDecls, !RevModeDecls, !RevClauses,
         !RevForeignEnums, !RevForeignExportEnums,
@@ -2284,26 +2268,22 @@ classify_src_items_imp([Item | Items],
         !ImplicitAvailNeeds, !SelfFIMLangs, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
+        !:RevTypeDefns = [ItemTypeDefnInfo | !.RevTypeDefns],
         ItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn, _, _, _),
         (
-            TypeDefn = parse_tree_abstract_type(_),
-            !:RevTypeDefnsAbs = [ItemTypeDefnInfo | !.RevTypeDefnsAbs]
+            ( TypeDefn = parse_tree_abstract_type(_)
+            ; TypeDefn = parse_tree_du_type(_)
+            ; TypeDefn = parse_tree_sub_type(_)
+            ; TypeDefn = parse_tree_eqv_type(_)
+            )
         ;
             TypeDefn = parse_tree_solver_type(DetailsSolver),
             acc_implicit_avail_needs_solver_type(DetailsSolver,
-                !ImplicitAvailNeeds),
-            !:RevTypeDefnsMer = [ItemTypeDefnInfo | !.RevTypeDefnsMer]
-        ;
-            ( TypeDefn = parse_tree_du_type(_)
-            ; TypeDefn = parse_tree_sub_type(_)
-            ; TypeDefn = parse_tree_eqv_type(_)
-            ),
-            !:RevTypeDefnsMer = [ItemTypeDefnInfo | !.RevTypeDefnsMer]
+                !ImplicitAvailNeeds)
         ;
             TypeDefn = parse_tree_foreign_type(DetailsForeign),
             DetailsForeign = type_details_foreign(ForeignType, _, _),
-            set.insert(foreign_type_language(ForeignType), !SelfFIMLangs),
-            !:RevTypeDefnsForeign = [ItemTypeDefnInfo | !.RevTypeDefnsForeign]
+            set.insert(foreign_type_language(ForeignType), !SelfFIMLangs)
         )
     ;
         Item = item_inst_defn(ItemInstDefnInfo),
@@ -2427,8 +2407,7 @@ classify_src_items_imp([Item | Items],
         !:Specs = [Spec | !.Specs]
     ),
     classify_src_items_imp(Items,
-        !RevTypeDefnsAbs, !RevTypeDefnsMer, !RevTypeDefnsForeign,
-        !RevInstDefns, !RevModeDefns,
+        !RevTypeDefns, !RevInstDefns, !RevModeDefns,
         !RevTypeClasses, !RevInstances,
         !RevPredDecls, !RevModeDecls, !RevClauses,
         !RevForeignEnums, !RevForeignExportEnums,

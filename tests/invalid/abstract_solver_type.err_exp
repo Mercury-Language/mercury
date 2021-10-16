@@ -1,9 +1,12 @@
-abstract_solver_type.m:015: Error: this definition of type `foo1'/0 is not a
-abstract_solver_type.m:015:   solver type, but its declaration is.
-abstract_solver_type.m:009:   The declaration is here.
-abstract_solver_type.m:017: Error: this definition of type `foo2'/0 is not a
-abstract_solver_type.m:017:   solver type, but its declaration is.
-abstract_solver_type.m:010:   The declaration is here.
-abstract_solver_type.m:021: Error: this definition of type `foo3'/0 is not a
-abstract_solver_type.m:021:   solver type, but its declaration is.
-abstract_solver_type.m:011:   The declaration is here.
+abstract_solver_type.m:009: Error: this solver type declaration of `foo1'/0 is
+abstract_solver_type.m:009:   incompatible with the equivalence type definition
+abstract_solver_type.m:009:   in the implementation section.
+abstract_solver_type.m:015:   That definition is here.
+abstract_solver_type.m:010: Error: this solver type declaration of `foo2'/0 is
+abstract_solver_type.m:010:   incompatible with the discriminated union type
+abstract_solver_type.m:010:   definition in the implementation section.
+abstract_solver_type.m:017:   That definition is here.
+abstract_solver_type.m:011: Error: this solver type declaration of `foo3'/0 is
+abstract_solver_type.m:011:   incompatible with the foreign type definition in
+abstract_solver_type.m:011:   the implementation section.
+abstract_solver_type.m:021:   That definition is here.

@@ -59,6 +59,7 @@
 
 :- implementation.
 
+:- import_module parse_tree.item_util.
 :- import_module parse_tree.module_qual.id_set.
 :- import_module parse_tree.parse_sym_name.
 
@@ -142,15 +143,14 @@ collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc, !Info) :-
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, _ImportUseMap,
         _IntFIMSpecMap, _ImpFIMSpecMap, _IntSelfFIMLangs, _ImpSelfFIMLangs,
 
-        IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
-        IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        _IntPredDecls, _IntModeDecls,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
+        _TypeSpecs, _InstModeSpecs,
+
+        IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
         _IntDeclPragmas, IntPromises, _IntBadPreds,
 
-        ImpTypeDefnsAbs, ImpTypeDefnsMer, ImpTypeDefnsForeign,
-        ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances,
-        _ImpPredDecls, _ImpModeDecls, _ImpClauses,
-        _ImpForeignEnums, _ImpForeignExportEnums,
+        ImpTypeClasses, ImpInstances, _ImpPredDecls, _ImpModeDecls,
+        _ImpClauses, _ImpForeignExportEnums,
         _ImpDeclPragmas, _ImpImplPragmas, ImpPromises,
         _ImpInitialises, _ImpFinalises, _ImpMutables),
 
@@ -177,8 +177,8 @@ collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc, !Info) :-
     mq_info_set_as_yet_unused_interface_modules(UnusedIntModules, !Info),
 
     mq_info_get_types(!.Info, Types0),
-    IntTypeDefns = IntTypeDefnsAbs ++ IntTypeDefnsMer ++ IntTypeDefnsForeign,
-    ImpTypeDefns = ImpTypeDefnsAbs ++ ImpTypeDefnsMer ++ ImpTypeDefnsForeign,
+    type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
+        IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
     list.foldl(id_set_insert(IntPermissions),
         list.map(item_type_defn_info_to_mq_id, IntTypeDefns), Types0, Types1),
     list.foldl(id_set_insert(ImpPermissions),
@@ -186,6 +186,8 @@ collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc, !Info) :-
     mq_info_set_types(Types, !Info),
 
     mq_info_get_insts(!.Info, Insts0),
+    inst_ctor_checked_map_get_src_defns(InstCtorCheckedMap,
+        IntInstDefns, ImpInstDefns),
     list.foldl(id_set_insert(IntPermissions),
         list.map(item_inst_defn_info_to_mq_id, IntInstDefns), Insts0, Insts1),
     list.foldl(id_set_insert(ImpPermissions),
@@ -193,6 +195,8 @@ collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc, !Info) :-
     mq_info_set_insts(Insts, !Info),
 
     mq_info_get_modes(!.Info, Modes0),
+    mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
+        IntModeDefns, ImpModeDefns),
     list.foldl(id_set_insert(IntPermissions),
         list.map(item_mode_defn_info_to_mq_id, IntModeDefns), Modes0, Modes1),
     list.foldl(id_set_insert(ImpPermissions),

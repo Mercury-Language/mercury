@@ -1,8 +1,3 @@
-types.m:005: Warning: the interface of module `types' does not export anything.
-types.m:005:   To be useful, a module should export something. A file should
-types.m:005:   contain at least one declaration other than `:- import_module'
-types.m:005:   in its interface section(s). This would normally be a `:- pred',
-types.m:005:   `:- func', `:- type', `:- inst' or `:- mode' declaration.
 types.m:007: Error: module `types' should start with either an `:- interface'
 types.m:007:   or an `:- implementation' declaration.
 types.m:007:   The following assumes that the missing declaration is an
@@ -15,3 +10,5 @@ types.m:023: Error: clause for predicate `r'/0
 types.m:023:   without corresponding `:- pred' declaration.
 types.m:026: Error: clause for predicate `a'/1
 types.m:026:   without corresponding `:- pred' declaration.
+types.m:053: Error: the type `t'/2 has this declaration, but it has no
+types.m:053:   definition.

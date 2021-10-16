@@ -43,6 +43,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.item_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -62,26 +63,51 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs) :-
             ModuleNameContext, IntIncls, _ImpIncls, _InclMap,
             _IntImports, _IntUses, _ImpImports, _ImpUses, _ImportUseMap,
             _IntFIMs, _ImpFIMs, _IntSelfFIMLangs, _ImpSelfFIMLangs,
-            IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsFor,
-            IntInstDefns, IntModeDefns,
+
+            TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
+            TypeSpecs, InstModeSpecs,
+
             IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-            IntDeclPragmas, IntPromises,
-            _IntBadClauses,
-            _ImpTypeDefnsAbs, _ImpTypeDefnsMer, _ImpTypeDefnsFor,
-            _ImpInstDefns, _ImpModeDefns,
+            IntDeclPragmas, IntPromises, _IntBadClauses,
+
             _ImpTypeClasses, _ImpInstances, _ImpPredDecls, _ImpModeDecls,
-            _ImpClauses, _ImpForeignEnums, _ImpForeignExportEnums,
+            _ImpClauses, _ImpForeignExportEnums,
             _ImpDeclPragmas, _ImpImplPragmas, _ImpPromises,
             _ImpInitialises, _ImpFinalises, _ImpMutables),
         % XXX ITEM_LIST Should we return "yes" for an item_block
         % that contains only ONE include_module declaration?
         ( if
             map.is_empty(IntIncls),
-            IntTypeDefnsAbs = [],
-            IntTypeDefnsMer = [],
-            IntTypeDefnsFor = [],
+            type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
+                IntTypeDefns, _, _),
+            IntTypeDefns = [],
+            inst_ctor_checked_map_get_src_defns(InstCtorCheckedMap,
+                IntInstDefns, _),
             IntInstDefns = [],
+            mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
+                IntModeDefns, _),
             IntModeDefns = [],
+
+            % If some type, inst or mode definitions were invalid, then
+            % there are two possibilities: either some of them are in
+            % the interface section, or none of them are. Unfortunately,
+            % we don't know which is the case, so must choose an algorithm
+            % that works in both cases.
+            %
+            % - If some of the errors are in the interface section, then
+            %   generating a "no exports" warning would be misleading.
+            %
+            % - If all of the errors are in the implementation section, then
+            %   generating that warning would not be misleading, but
+            %   it is also not quite needed. Due to those errors,
+            %   the compilation will fail, with error messages that the
+            %   programmer can and should fix, whether we generate
+            %   a "no exports" warning or not. This means that the warning
+            %   is not really needed *now*; it can be generated later,
+            %   once the complained-about invalid definitions are fixed.
+            TypeSpecs = [],
+            InstModeSpecs = [],
+
             IntTypeClasses = [],
             IntInstances = [],
             IntPredDecls = [],
@@ -89,15 +115,7 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs) :-
             IntDeclPragmas = [],
             IntPromises = []
         then
-            globals.lookup_bool_option(Globals, warn_nothing_exported, Warn),
-            (
-                Warn = no
-                % It is a legitimate thing for libraries to export nothing.
-            ;
-                Warn =  yes,
-                generate_no_exports_warning(ModuleName, ModuleNameContext,
-                    !Specs)
-            )
+            generate_no_exports_warning(ModuleName, ModuleNameContext, !Specs)
         else
             true
         )

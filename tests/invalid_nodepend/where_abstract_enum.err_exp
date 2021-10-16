@@ -2,3 +2,6 @@ where_abstract_enum.m:013: Error: `type_is_abstract_enum' should have exactly
 where_abstract_enum.m:013:   one argument.
 where_abstract_enum.m:015: Error: invalid `where ...' attribute for abstract
 where_abstract_enum.m:015:   non-solver type.
+where_abstract_enum.m:019: Warning: this declaration of `abs1'/0 is redundant,
+where_abstract_enum.m:019:   since the type has a definition in the interface
+where_abstract_enum.m:019:   section.

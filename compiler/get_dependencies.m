@@ -346,27 +346,30 @@ acc_implicit_avail_needs_in_parse_tree_module_src(ParseTreeModuleSrc,
         _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, _ImportUseMap,
         _IntFIMSpecMap, _ImpFIMSpecMap, _IntSelfFIMLangs, _ImpSelfFIMLangs,
 
-        _IntTypeDefnsAbs, IntTypeDefnsMer, _IntTypeDefnsForeign,
-        _IntInstDefns, _IntModeDefns, _IntTypeClasses, IntInstances,
-        _IntPredDecls, _IntModeDecls,
+        TypeCtorCheckedMap, _InstCtorCheckedMap, _ModeCtorCheckedMap,
+        _TypeSpecs, _InstModeSpecs,
+
+        _IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
         _IntDeclPragmas, IntPromises, _IntBadPreds,
 
-        _ImpTypeDefnsAbs, ImpTypeDefnsMer, _ImpTypeDefnsForeign,
-        _ImpInstDefns, _ImpModeDefns, _ImpTypeClasses, ImpInstances,
-        _ImpPredDecls, _ImpModeDecls, ImpClauses,
-        _ImpForeignEnums, _ImpForeignExportEnums,
+        _ImpTypeClasses, ImpInstances, _ImpPredDecls, _ImpModeDecls,
+        ImpClauses, _ImpForeignExportEnums,
         _ImpDeclPragmas, ImpImplPragmas, ImpPromises,
         _ImpInitialises, _ImpFinalises, ImpMutables),
 
-    list.foldl(acc_implicit_avail_needs_in_type_defn,
-        IntTypeDefnsMer, !ImplicitAvailNeeds),
+    type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
+        _IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
+    % acc_implicit_avail_needs_in_type_defn can add to !ImplicitAvailNeeds
+    % only for solver type definitions, and solver types can be only
+    % *declared* in interface sections. Therefore calling that predicate
+    % on _IntTypeDefns would do nothing.
     list.foldl(acc_implicit_avail_needs_in_instance,
         IntInstances, !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_promise,
         IntPromises, !ImplicitAvailNeeds),
 
     list.foldl(acc_implicit_avail_needs_in_type_defn,
-        ImpTypeDefnsMer, !ImplicitAvailNeeds),
+        ImpTypeDefns, !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_instance,
         ImpInstances, !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_clause,
@@ -1083,12 +1086,17 @@ get_fim_specs(ParseTreeModuleSrc, FIMSpecs) :-
             !:SelfImportLangs = set.list_to_set(all_foreign_languages)
         ;
             Mutables = [],
-            IntTypeDefnsFor = ParseTreeModuleSrc ^ ptms_int_type_defns_for,
-            ImpForeignEnums = ParseTreeModuleSrc ^ ptms_imp_foreign_enums,
+            TypeCtorCheckedMap = ParseTreeModuleSrc ^ ptms_type_defns,
+            type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
+                IntTypeDefns, _ImpTypeDefns, ImpForeignEnums),
+            % XXX If we collect FIMSpecs in foreign type definitions
+            % in the interface section, and foreign enums in the implementation
+            % section, why do we not collect them in foreign type definitions
+            % in the implementation section?
             ImpImplPragmas =  ParseTreeModuleSrc ^ ptms_imp_impl_pragmas,
             set.init(!:SelfImportLangs),
             list.foldl(acc_needed_self_fim_langs_for_type_defn,
-                IntTypeDefnsFor, !SelfImportLangs),
+                IntTypeDefns, !SelfImportLangs),
             list.foldl(acc_needed_self_fim_langs_for_foreign_enum,
                 ImpForeignEnums, !SelfImportLangs),
             list.foldl(acc_needed_self_fim_langs_for_impl_pragma,

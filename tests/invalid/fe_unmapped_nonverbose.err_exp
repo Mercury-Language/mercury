@@ -1,10 +1,10 @@
 fe_unmapped_nonverbose.m:073: In `:- pragma foreign_enum' declaration for type
-fe_unmapped_nonverbose.m:073:   `fe_unmapped_nonverbose.voice'/0:
+fe_unmapped_nonverbose.m:073:   `voice'/0:
 fe_unmapped_nonverbose.m:073:   error: the following constructor does not have
 fe_unmapped_nonverbose.m:073:   a foreign value:
 fe_unmapped_nonverbose.m:073:       `alto'.
 fe_unmapped_nonverbose.m:079: In `:- pragma foreign_enum' declaration for type
-fe_unmapped_nonverbose.m:079:   `fe_unmapped_nonverbose.chordophone'/0:
+fe_unmapped_nonverbose.m:079:   `chordophone'/0:
 fe_unmapped_nonverbose.m:079:   error: the following constructors do not have a
 fe_unmapped_nonverbose.m:079:   foreign value:
 fe_unmapped_nonverbose.m:079:       `banjo',
@@ -18,7 +18,7 @@ fe_unmapped_nonverbose.m:079:       `sitar',
 fe_unmapped_nonverbose.m:079:       `ukulele',
 fe_unmapped_nonverbose.m:079:       `viola'.
 fe_unmapped_nonverbose.m:085: In `:- pragma foreign_enum' declaration for type
-fe_unmapped_nonverbose.m:085:   `fe_unmapped_nonverbose.shade_of_white'/0:
+fe_unmapped_nonverbose.m:085:   `shade_of_white'/0:
 fe_unmapped_nonverbose.m:085:   error: the following constructors do not have a
 fe_unmapped_nonverbose.m:085:   foreign value:
 fe_unmapped_nonverbose.m:085:       `blond',

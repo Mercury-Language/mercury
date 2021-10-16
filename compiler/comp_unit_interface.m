@@ -137,15 +137,14 @@ generate_short_interface_int3(Globals, ParseTreeModuleSrc, ParseTreeInt3,
         _IntImports, _IntUses, _ImpImports, _ImpUses, OrigImportUseMap,
         _IntFIMSpecMap, _ImpFIMSpecMap, _IntSelfFIMLangs, _ImpSelfFIMLangs,
 
-        OrigIntTypeDefnsAbs, OrigIntTypeDefnsMer, OrigIntTypeDefnsFor,
-        OrigIntInstDefns, OrigIntModeDefns,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
+        _TypeSpecs, _InstModeSpecs,
+
         OrigIntTypeClasses, OrigIntInstances, _IntPredDecls, _IntModeDecls,
         _IntDeclPragmas, _IntPromises, _IntBadClauses,
 
-        OrigImpTypeDefnsAbs, OrigImpTypeDefnsMer, OrigImpTypeDefnsFor,
-        OrigImpInstDefns, OrigImpModeDefns,
         _ImpTypeClasses, _ImpInstances, _ImpPredDecls, _ImpModeDecls,
-        _ImpClauses, OrigImpForeignEnums, _ImpForeignExportEnums,
+        _ImpClauses, _ImpForeignExportEnums,
         _ImpDeclPragmas, _ImpImplPragmas, _ImpPromises,
         _ImpInitialises, _ImpFinalises, _ImpMutables),
 
@@ -163,31 +162,10 @@ generate_short_interface_int3(Globals, ParseTreeModuleSrc, ParseTreeInt3,
         map.foldl2(acc_int_imports, OrigImportUseMap,
             one_or_more_map.init, IntImportMap, map.init, ImportUseMap)
     ),
-    OrigIntTypeDefns = OrigIntTypeDefnsAbs ++ OrigIntTypeDefnsMer ++
-        OrigIntTypeDefnsFor,
-    OrigImpTypeDefns = OrigImpTypeDefnsAbs ++ OrigImpTypeDefnsMer ++
-        OrigImpTypeDefnsFor,
-    OrigIntTypeDefnMap = type_ctor_defn_items_to_map(OrigIntTypeDefns),
-    OrigImpTypeDefnMap = type_ctor_defn_items_to_map(OrigImpTypeDefns),
-    OrigImpForeignEnumMap =
-        type_ctor_foreign_enum_items_to_map(OrigImpForeignEnums),
-    create_type_ctor_checked_map(do_not_insist_on_defn,
-        OrigIntTypeDefnMap, OrigImpTypeDefnMap, OrigImpForeignEnumMap,
-        TypeCtorCheckedMap, !Specs),
     map.foldl(make_type_ctor_checked_defn_abstract_for_int3,
         TypeCtorCheckedMap, map.init, IntTypeCtorCheckedMap),
-
-    OrigIntInstDefnMap = inst_ctor_defn_items_to_map(OrigIntInstDefns),
-    OrigImpInstDefnMap = inst_ctor_defn_items_to_map(OrigImpInstDefns),
-    create_inst_ctor_checked_map(do_not_insist_on_defn,
-        OrigIntInstDefnMap, OrigImpInstDefnMap, InstCtorCheckedMap, !Specs),
     map.foldl(make_inst_ctor_checked_defn_abstract_for_int3,
         InstCtorCheckedMap, map.init, IntInstCtorCheckedMap),
-
-    OrigIntModeDefnMap = mode_ctor_defn_items_to_map(OrigIntModeDefns),
-    OrigImpModeDefnMap = mode_ctor_defn_items_to_map(OrigImpModeDefns),
-    create_mode_ctor_checked_map(do_not_insist_on_defn,
-        OrigIntModeDefnMap, OrigImpModeDefnMap, ModeCtorCheckedMap, !Specs),
     map.foldl(make_mode_ctor_checked_defn_abstract_for_int3,
         ModeCtorCheckedMap, map.init, IntModeCtorCheckedMap),
 
@@ -509,15 +487,14 @@ generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
         _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
-        IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
-        IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances0,
-        IntPredDecls, IntModeDecls,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
+        _TypeSpecs, _InstModeSpecs,
+
+        IntTypeClasses, IntInstances0, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, _IntBadClausePreds,
 
-        ImpTypeDefnsAbs, ImpTypeDefnsMer, ImpTypeDefnsForeign,
-        ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances0,
-        ImpPredDecls0, ImpModeDecls, _ImpClauses,
-        ImpForeignEnums, _ImpForeignExportEnums,
+        ImpTypeClasses, ImpInstances0, ImpPredDecls0, ImpModeDecls,
+        _ImpClauses, _ImpForeignExportEnums,
         ImpDeclPragmas, _ImpImplPragmas, ImpPromises,
         _ImpInitialises, _ImpFinalises, ImpMutables),
 
@@ -542,22 +519,6 @@ generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
     ImpPredDecls = ImpPredDecls0 ++ list.condense(
         list.map(declare_mutable_aux_preds_for_int0(ModuleName), ImpMutables)),
 
-    IntTypeDefns = IntTypeDefnsAbs ++ IntTypeDefnsMer ++ IntTypeDefnsForeign,
-    ImpTypeDefns = ImpTypeDefnsAbs ++ ImpTypeDefnsMer ++ ImpTypeDefnsForeign,
-    IntTypeDefnMap = type_ctor_defn_items_to_map(IntTypeDefns),
-    IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns),
-    IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns),
-    ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns),
-    ImpInstDefnMap = inst_ctor_defn_items_to_map(ImpInstDefns),
-    ImpModeDefnMap = mode_ctor_defn_items_to_map(ImpModeDefns),
-    ImpForeignEnumMap = type_ctor_foreign_enum_items_to_map(ImpForeignEnums),
-    create_type_ctor_checked_map(do_insist_on_defn,
-        IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
-        TypeCtorCheckedMap, !Specs),
-    create_inst_ctor_checked_map(do_insist_on_defn,
-        IntInstDefnMap, ImpInstDefnMap, InstCtorCheckedMap, !Specs),
-    create_mode_ctor_checked_map(do_insist_on_defn,
-        IntModeDefnMap, ImpModeDefnMap, ModeCtorCheckedMap, !Specs),
     ParseTreeInt0 = parse_tree_int0(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
@@ -578,25 +539,24 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
-        IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsFor,
-        IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        IntPredDecls, IntModeDecls,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
+        TypeSpecs, InstModeSpecs,
+
+        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, IntBadClausePreds,
 
-        ImpTypeDefnsAbs0, ImpTypeDefnsMer0, ImpTypeDefnsFor0,
-        _ImpInstDefns, _ImpModeDefns, ImpTypeClasses, _ImpInstances,
-        _ImpPredDecls, _ImpModeDecls, _ImpClauses,
-        ImpForeignEnums, _ImpForeignExportEnums,
+        ImpTypeClasses, _ImpInstances, _ImpPredDecls, _ImpModeDecls,
+        _ImpClauses, _ImpForeignExportEnums,
         _ImpDeclPragmas, _ImpImplPragmas, _ImpPromises,
         _ImpInitialises, _ImpFinalises, _ImpMutables),
 
     IntInstancesAbstract = list.map(make_instance_abstract, IntInstances),
-    list.map(delete_uc_preds_make_solver_type_dummy,
-        ImpTypeDefnsAbs0, ImpTypeDefnsAbs),
-    list.map(delete_uc_preds_make_solver_type_dummy,
-        ImpTypeDefnsMer0, ImpTypeDefnsMer),
-    list.map(delete_uc_preds_make_solver_type_dummy,
-        ImpTypeDefnsFor0, ImpTypeDefnsFor),
+    map.map_values_only(pre_grab_pre_qual_type_ctor_checked_defn,
+        TypeCtorCheckedMap, IntTypeCtorCheckedMap),
+    map.foldl(pre_grab_pre_qual_inst_ctor_checked_defn,
+        InstCtorCheckedMap, map.init, IntInstCtorCheckedMap),
+    map.foldl(pre_grab_pre_qual_mode_ctor_checked_defn,
+        ModeCtorCheckedMap, map.init, IntModeCtorCheckedMap),
     AbstractImpTypeClasses = list.map(make_typeclass_abstract, ImpTypeClasses),
 
     IntParseTreeModuleSrc = parse_tree_module_src(ModuleName,
@@ -604,14 +564,229 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
-        IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsFor,
-        IntInstDefns, IntModeDefns, IntTypeClasses, IntInstancesAbstract,
-        IntPredDecls, IntModeDecls,
+        IntTypeCtorCheckedMap, IntInstCtorCheckedMap, IntModeCtorCheckedMap,
+        TypeSpecs, InstModeSpecs,
+
+        IntTypeClasses, IntInstancesAbstract, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, IntBadClausePreds,
 
-        ImpTypeDefnsAbs, ImpTypeDefnsMer, ImpTypeDefnsFor,
-        [], [], AbstractImpTypeClasses, [],
-        [], [], [], ImpForeignEnums, [], [], [], [], [], [], []).
+        AbstractImpTypeClasses, [], [], [], [], [], [], [], [], [], [], []).
+
+    % Keep the interface part of the given type_ctor_checked_defn unchanged,
+    % but modify its implementation-section part by
+    %
+    % - making solver types abstract, and
+    %
+    % - deleting any user-specified equality and comparison predicates.
+    %
+:- pred pre_grab_pre_qual_type_ctor_checked_defn(
+    type_ctor_checked_defn::in, type_ctor_checked_defn::out) is det.
+
+pre_grab_pre_qual_type_ctor_checked_defn(CheckedDefn0, CheckedDefn) :-
+    (
+        CheckedDefn0 = checked_defn_solver(SolverDefn0, _SrcDefns0),
+        (
+            SolverDefn0 = solver_type_abstract(_Status, _Defn0),
+            % This solver type has only a declaration. If it is in the
+            % interface section, we keep it unchanged because it is there.
+            % If it is in the implementation section, we want to keep
+            % an abstract version of it, but it already abstract,
+            % so we keep in unchanged for that reason.
+            CheckedDefn = CheckedDefn0
+        ;
+            SolverDefn0 = solver_type_full(MaybeAbstractDefn0, FullDefn0),
+            % Solver type *definitions* can occur only in implementation
+            % sections. This means that
+            %
+            % - if there is a declaration of the solver type in the interface,
+            %   we keep only that declaration;
+            %
+            % - otherwise, we turn the definition in the implementation section
+            %   into a declaration.
+            (
+                MaybeAbstractDefn0 = yes(AbstractDefn0),
+                Status = abstract_solver_type_exported,
+                SolverDefn = solver_type_abstract(Status, AbstractDefn0),
+                WrapAbstractDefn0 = wrap_abstract_type_defn(AbstractDefn0),
+                SrcDefns = src_defns_solver(yes(WrapAbstractDefn0), no)
+            ;
+                MaybeAbstractDefn0 = no,
+                Status = abstract_solver_type_private,
+                AbstractDefn = FullDefn0 ^ td_ctor_defn
+                    := abstract_solver_type,
+                SolverDefn = solver_type_abstract(Status, AbstractDefn),
+                WrapAbstractDefn = wrap_abstract_type_defn(AbstractDefn),
+                SrcDefns = src_defns_solver(no, yes(WrapAbstractDefn))
+            ),
+            CheckedDefn = checked_defn_solver(SolverDefn, SrcDefns)
+        )
+    ;
+        CheckedDefn0 = checked_defn_std(StdDefn0, SrcDefns0),
+        (
+            ( StdDefn0 = std_mer_type_eqv(_Status, _EqvDefn)
+            ; StdDefn0 = std_mer_type_subtype(_Status, _SubDefn)
+            ),
+            % These kinds of types
+            % - are not solver types, and
+            % - they cannot refer to equality or comparison predicates.
+            CheckedDefn = CheckedDefn0
+        ;
+            StdDefn0 = std_mer_type_du_all_plain_constants(Status,
+                DuDefn0, HeadCtor, TailCtors, MaybeCJCsDefnOrEnum0),
+            SrcDefns0 = src_defns_std(IntDefns0, ImpDefns0, ImpForeignEnums0),
+            (
+                Status = std_du_type_mer_ft_exported,
+                StdDefn = StdDefn0,
+                SrcDefns = SrcDefns0
+            ;
+                Status = std_du_type_mer_exported,
+                delete_uc_preds_from_c_j_cs_maybe_defn_or_enum(
+                    MaybeCJCsDefnOrEnum0, MaybeCJCsDefnOrEnum),
+                StdDefn = std_mer_type_du_all_plain_constants(Status,
+                    DuDefn0, HeadCtor, TailCtors, MaybeCJCsDefnOrEnum),
+                list.map(delete_uc_preds_make_solver_type_dummy,
+                    ImpDefns0, ImpDefns),
+                SrcDefns = src_defns_std(IntDefns0, ImpDefns,
+                    ImpForeignEnums0)
+            ;
+                ( Status = std_du_type_abstract_exported
+                ; Status = std_du_type_all_private
+                ),
+                delete_uc_preds_from_du_type_defn(DuDefn0, DuDefn),
+                delete_uc_preds_from_c_j_cs_maybe_defn_or_enum(
+                    MaybeCJCsDefnOrEnum0, MaybeCJCsDefnOrEnum),
+                StdDefn = std_mer_type_du_all_plain_constants(Status,
+                    DuDefn, HeadCtor, TailCtors, MaybeCJCsDefnOrEnum),
+                list.map(delete_uc_preds_make_solver_type_dummy,
+                    ImpDefns0, ImpDefns),
+                SrcDefns = src_defns_std(IntDefns0, ImpDefns,
+                    ImpForeignEnums0)
+            ),
+            CheckedDefn = checked_defn_std(StdDefn, SrcDefns)
+        ;
+            StdDefn0 = std_mer_type_du_not_all_plain_constants(Status,
+                DuDefn0, MaybeCJCsDefn0),
+            SrcDefns0 = src_defns_std(IntDefns0, ImpDefns0, ImpForeignEnums0),
+            (
+                Status = std_du_type_mer_ft_exported,
+                StdDefn = StdDefn0,
+                SrcDefns = SrcDefns0
+            ;
+                Status = std_du_type_mer_exported,
+                delete_uc_preds_from_c_j_cs_maybe_defn(MaybeCJCsDefn0,
+                    MaybeCJCsDefn),
+                StdDefn = std_mer_type_du_not_all_plain_constants(Status,
+                    DuDefn0, MaybeCJCsDefn),
+                list.map(delete_uc_preds_make_solver_type_dummy,
+                    ImpDefns0, ImpDefns),
+                SrcDefns = src_defns_std(IntDefns0, ImpDefns,
+                    ImpForeignEnums0)
+            ;
+                ( Status = std_du_type_abstract_exported
+                ; Status = std_du_type_all_private
+                ),
+                delete_uc_preds_from_du_type_defn(DuDefn0, DuDefn),
+                delete_uc_preds_from_c_j_cs_maybe_defn(MaybeCJCsDefn0,
+                    MaybeCJCsDefn),
+                StdDefn = std_mer_type_du_not_all_plain_constants(Status,
+                    DuDefn, MaybeCJCsDefn),
+                list.map(delete_uc_preds_make_solver_type_dummy,
+                    ImpDefns0, ImpDefns),
+                SrcDefns = src_defns_std(IntDefns0, ImpDefns,
+                    ImpForeignEnums0)
+            ),
+            CheckedDefn = checked_defn_std(StdDefn, SrcDefns)
+        ;
+            StdDefn0 = std_mer_type_abstract(Status, AbsDefn,
+                MaybeCJCsDefn0),
+            (
+                Status = std_abs_type_ft_exported,
+                StdDefn = StdDefn0,
+                SrcDefns = SrcDefns0
+            ;
+                ( Status = std_abs_type_abstract_exported
+                ; Status = std_abs_type_all_private
+                ),
+                delete_uc_preds_from_c_j_cs_maybe_defn(MaybeCJCsDefn0,
+                    MaybeCJCsDefn),
+                StdDefn = std_mer_type_abstract(Status, AbsDefn,
+                    MaybeCJCsDefn),
+                list.map(delete_uc_preds_make_solver_type_dummy,
+                    ImpDefns0, ImpDefns),
+                SrcDefns0 = src_defns_std(IntDefns0, ImpDefns0,
+                    ImpForeignEnums0),
+                SrcDefns = src_defns_std(IntDefns0, ImpDefns,
+                    ImpForeignEnums0)
+            ),
+            CheckedDefn = checked_defn_std(StdDefn, SrcDefns)
+        )
+    ).
+
+    % Keep only the part of the inst_ctor_checked_defn
+    % that is in the interface section.
+    %
+:- pred pre_grab_pre_qual_inst_ctor_checked_defn(inst_ctor::in,
+    inst_ctor_checked_defn::in,
+    inst_ctor_checked_map::in, inst_ctor_checked_map::out) is det.
+
+pre_grab_pre_qual_inst_ctor_checked_defn(InstCtor, CheckedDefn0,
+        !InstCtorCheckedMap) :-
+    CheckedDefn0 = checked_defn_inst(StdDefn0, SrcDefns0),
+    StdDefn0 = std_inst_defn(Status, _Defn0),
+    SrcDefns0 = src_defns_inst(MaybeIntDefn, MaybeImpDefn),
+    (
+        Status = std_inst_exported,
+        expect(unify(MaybeImpDefn, no), $pred, "exported but has imp defn"),
+        map.det_insert(InstCtor, CheckedDefn0, !InstCtorCheckedMap)
+    ;
+        Status = std_inst_abstract_exported,
+        (
+            MaybeIntDefn = yes(IntDefn),
+            StdDefn = std_inst_defn(Status, IntDefn),
+            SrcDefns = src_defns_inst(MaybeIntDefn, no),
+            CheckedDefn = checked_defn_inst(StdDefn, SrcDefns),
+            map.det_insert(InstCtor, CheckedDefn, !InstCtorCheckedMap)
+        ;
+            MaybeIntDefn = no,
+            unexpected($pred, "std_inst_abstract_exported but no int defn")
+        )
+    ;
+        Status = std_inst_all_private
+        % We do not put any checked definition into !InstCtorCheckedMap.
+    ).
+
+    % Keep only the part of the mode_ctor_checked_defn
+    % that is in the interface section.
+    %
+:- pred pre_grab_pre_qual_mode_ctor_checked_defn(mode_ctor::in,
+    mode_ctor_checked_defn::in,
+    mode_ctor_checked_map::in, mode_ctor_checked_map::out) is det.
+
+pre_grab_pre_qual_mode_ctor_checked_defn(ModeCtor, CheckedDefn0,
+        !ModeCtorCheckedMap) :-
+    CheckedDefn0 = checked_defn_mode(StdDefn0, SrcDefns0),
+    StdDefn0 = std_mode_defn(Status, _Defn0),
+    SrcDefns0 = src_defns_mode(MaybeIntDefn, MaybeImpDefn),
+    (
+        Status = std_mode_exported,
+        expect(unify(MaybeImpDefn, no), $pred, "exported but has imp defn"),
+        map.det_insert(ModeCtor, CheckedDefn0, !ModeCtorCheckedMap)
+    ;
+        Status = std_mode_abstract_exported,
+        (
+            MaybeIntDefn = yes(IntDefn),
+            StdDefn = std_mode_defn(Status, IntDefn),
+            SrcDefns = src_defns_mode(MaybeIntDefn, no),
+            CheckedDefn = checked_defn_mode(StdDefn, SrcDefns),
+            map.det_insert(ModeCtor, CheckedDefn, !ModeCtorCheckedMap)
+        ;
+            MaybeIntDefn = no,
+            unexpected($pred, "std_mode_abstract_exported but no int defn")
+        )
+    ;
+        Status = std_mode_all_private
+        % We do not put any checked definition into !ModeCtorCheckedMap.
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -650,15 +825,14 @@ generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap0,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, _ImpSelfFIMLangs,
 
-        IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
-        IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        IntPredDecls, IntModeDecls, IntDeclPragmas, IntPromises0,
-        _IntBadClausePreds,
+        TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
+        _TypeSpecs, _InstModeSpecs,
 
-        ImpTypeDefnsAbs, ImpTypeDefnsMer, ImpTypeDefnsForeign,
-        _ImpInstDefns, _ImpModeDefns, ImpTypeClasses, _ImpInstances,
-        _ImpPredDecls, _ImpModeDecls, _ImpClauses,
-        ImpForeignEnums0, _ImpForeignExportEnums,
+        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
+        IntDeclPragmas, IntPromises0, _IntBadClausePreds,
+
+        ImpTypeClasses, _ImpInstances, _ImpPredDecls, _ImpModeDecls,
+        _ImpClauses, _ImpForeignExportEnums,
         _ImpDeclPragmas, _ImpImplPragmas, _ImpPromises,
         _ImpInitialises, _ImpFinalises, _ImpMutables),
 
@@ -672,17 +846,14 @@ generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
     % modules that we need access to due to references in typeclass
     % definition items.
 
-    % XXX CLEANUP This code does many unneeded tests.
-    IntTypeDefns =
-        IntTypeDefnsAbs ++ IntTypeDefnsMer ++ IntTypeDefnsForeign,
-    ImpTypeDefns =
-        ImpTypeDefnsAbs ++ ImpTypeDefnsMer ++ ImpTypeDefnsForeign,
-    list.foldl(record_type_defn_int, IntTypeDefns,
+    type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap0,
+        IntTypeDefns0, ImpTypeDefns0, _ImpForeignEnums0),
+    list.foldl(record_type_defn_int, IntTypeDefns0,
         one_or_more_map.init, IntTypesMap),
-    list.foldl(record_type_defn_imp, ImpTypeDefns,
+    list.foldl(record_type_defn_imp, ImpTypeDefns0,
         one_or_more_map.init, ImpTypesMap),
-
     BothTypesMap = one_or_more_map.merge(IntTypesMap, ImpTypesMap),
+
     % Compute the set of type_ctors whose definitions in the implementation
     % section we need to preserve, possibly in abstract form (that is
     % figured out below).
@@ -742,12 +913,6 @@ generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
     map.keys_as_set(IntFIMSpecMap, IntExplicitFIMSpecs),
     map.keys_as_set(ImpFIMSpecMap, ImpExplicitFIMSpecs),
 
-    IntTypeDefnMap = type_ctor_defn_items_to_map(IntTypeDefns),
-    ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns),
-    ImpForeignEnumMap = type_ctor_foreign_enum_items_to_map(ImpForeignEnums0),
-    create_type_ctor_checked_map(do_insist_on_defn,
-        IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
-        TypeCtorCheckedMap, !Specs),
     % Note that _ImpSelfFIMLangs above contains the set of foreign languages
     % for which an implicit self FIM is needed by anything in the
     % implementation section of the *source file*. We are now starting to
@@ -762,7 +927,7 @@ generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
     map.foldl2(
         hide_type_ctor_checked_defn_imp_details_for_int1(BothTypesMap,
             NeededImpTypeCtors),
-        TypeCtorCheckedMap, map.init, IntTypeCtorCheckedMap,
+        TypeCtorCheckedMap0, map.init, IntTypeCtorCheckedMap,
         set.init, ImpSelfFIMLangs),
 
     set.foldl(add_self_fim(ModuleName), IntSelfFIMLangs,
@@ -771,10 +936,14 @@ generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
         ImpExplicitFIMSpecs, ImpFIMSpecs0),
     set.difference(ImpFIMSpecs0, IntFIMSpecs, ImpFIMSpecs),
 
+    inst_ctor_checked_map_get_src_defns(InstCtorCheckedMap0,
+        IntInstDefns, _ImpInstDefns),
     IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns),
     create_inst_ctor_checked_map(do_not_insist_on_defn,
         IntInstDefnMap, map.init, IntInstCtorCheckedMap, !Specs),
 
+    mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap0,
+        IntModeDefns, _ImpModeDefns),
     IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns),
     create_mode_ctor_checked_map(do_not_insist_on_defn,
         IntModeDefnMap, map.init, IntModeCtorCheckedMap, !Specs),
@@ -786,7 +955,7 @@ generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
     ;
         Experiment1 = yes,
         decide_repns_for_all_types_for_int1(Globals, ModuleName,
-            TypeCtorCheckedMap, DirectIntSpecs, IndirectIntSpecs,
+            TypeCtorCheckedMap0, DirectIntSpecs, IndirectIntSpecs,
             TypeCtorRepnMap, RepnSpecs),
         !:Specs = !.Specs ++ RepnSpecs
     ),
@@ -1613,7 +1782,7 @@ get_base_type(TypeDefnMap, TVarSet, Type, BaseType, !.SeenTypes) :-
         get_base_type(TypeDefnMap, TVarSet, SuperType, BaseType, !.SeenTypes)
     ).
 
-%---------------------%
+%---------------------------------------------------------------------------%
 
 :- pred hide_type_ctor_checked_defn_imp_details_for_int1(type_defn_map::in,
     set(type_ctor)::in, type_ctor::in, type_ctor_checked_defn::in,
@@ -2568,6 +2737,79 @@ get_int2_langs_from_int1_imp_types([ImpTypeDefn | ImpTypeDefns],
 
 %---------------------------------------------------------------------------%
 
+:- pred delete_uc_preds_from_du_type_defn(
+    item_type_defn_info_du::in, item_type_defn_info_du::out) is det.
+
+delete_uc_preds_from_du_type_defn(ItemTypeDefn0, ItemTypeDefn) :-
+    DetailsDu0 = ItemTypeDefn0 ^ td_ctor_defn,
+    delete_uc_preds_from_du_type(DetailsDu0, DetailsDu),
+    ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn := DetailsDu.
+
+:- pred delete_uc_preds_from_c_j_cs_maybe_defn_or_enum(
+    c_j_cs_maybe_defn_or_enum::in, c_j_cs_maybe_defn_or_enum::out) is det.
+
+delete_uc_preds_from_c_j_cs_maybe_defn_or_enum(CJCsMaybeDefnOrEnum0,
+        CJCsMaybeDefnOrEnum) :-
+    CJCsMaybeDefnOrEnum0 = c_java_csharp(MaybeDefnOrEnumC0, MaybeDefnOrEnumJ0,
+        MaybeDefnOrEnumCs0),
+    delete_uc_preds_from_maybe_foreign_type_defn_or_enum(MaybeDefnOrEnumC0,
+        MaybeDefnOrEnumC),
+    delete_uc_preds_from_maybe_foreign_type_defn_or_enum(MaybeDefnOrEnumJ0,
+        MaybeDefnOrEnumJ),
+    delete_uc_preds_from_maybe_foreign_type_defn_or_enum(MaybeDefnOrEnumCs0,
+        MaybeDefnOrEnumCs),
+    CJCsMaybeDefnOrEnum = c_java_csharp(MaybeDefnOrEnumC,
+        MaybeDefnOrEnumJ, MaybeDefnOrEnumCs).
+
+:- pred delete_uc_preds_from_c_j_cs_maybe_defn(
+    c_j_cs_maybe_defn::in, c_j_cs_maybe_defn::out) is det.
+
+delete_uc_preds_from_c_j_cs_maybe_defn(CJCsMaybeDefn0, CJCsMaybeDefn) :-
+    CJCsMaybeDefn0 = c_java_csharp(MaybeDefnC0, MaybeDefnJ0, MaybeDefnCs0),
+    delete_uc_preds_from_maybe_foreign_type_defn(MaybeDefnC0, MaybeDefnC),
+    delete_uc_preds_from_maybe_foreign_type_defn(MaybeDefnJ0, MaybeDefnJ),
+    delete_uc_preds_from_maybe_foreign_type_defn(MaybeDefnCs0, MaybeDefnCs),
+    CJCsMaybeDefn = c_java_csharp(MaybeDefnC, MaybeDefnJ, MaybeDefnCs).
+
+:- pred delete_uc_preds_from_maybe_foreign_type_defn_or_enum(
+    maybe(foreign_type_or_enum)::in, maybe(foreign_type_or_enum)::out) is det.
+
+delete_uc_preds_from_maybe_foreign_type_defn_or_enum(MaybeDefnOrEnum0,
+        MaybeDefnOrEnum) :-
+    (
+        MaybeDefnOrEnum0 = no,
+        MaybeDefnOrEnum = no
+    ;
+        MaybeDefnOrEnum0 = yes(DefnOrEnum0),
+        (
+            DefnOrEnum0 = foreign_type_or_enum_enum(_),
+            MaybeDefnOrEnum = MaybeDefnOrEnum0
+        ;
+            DefnOrEnum0 = foreign_type_or_enum_type(ItemTypeDefn0),
+            DetailsForeign0 = ItemTypeDefn0 ^ td_ctor_defn,
+            delete_uc_preds_from_foreign_type(DetailsForeign0, DetailsForeign),
+            ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn := DetailsForeign,
+            DefnOrEnum = foreign_type_or_enum_type(ItemTypeDefn),
+            MaybeDefnOrEnum = yes(DefnOrEnum)
+        )
+    ).
+
+:- pred delete_uc_preds_from_maybe_foreign_type_defn(
+    maybe(item_type_defn_info_foreign)::in,
+    maybe(item_type_defn_info_foreign)::out) is det.
+
+delete_uc_preds_from_maybe_foreign_type_defn(MaybeDefn0, MaybeDefn) :-
+    (
+        MaybeDefn0 = no,
+        MaybeDefn = no
+    ;
+        MaybeDefn0 = yes(ItemTypeDefn0),
+        DetailsForeign0 = ItemTypeDefn0 ^ td_ctor_defn,
+        delete_uc_preds_from_foreign_type(DetailsForeign0, DetailsForeign),
+        ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn := DetailsForeign,
+        MaybeDefn = yes(ItemTypeDefn)
+    ).
+
     % XXX TYPE_REPN Consider the relationship between this predicate and
     % make_impl_type_abstract in write_module_interface_files.m. Unlike this
     % predicate, that one has access to the definitions of the types
@@ -2582,20 +2824,6 @@ delete_uc_preds_make_solver_type_dummy(ItemTypeDefn0, ItemTypeDefn) :-
     TypeDefn0 = ItemTypeDefn0 ^ td_ctor_defn,
     (
         TypeDefn0 = parse_tree_du_type(DetailsDu0),
-        % For the `.int2' files, we need the full definitions of
-        % discriminated union types. Even if the functors for a type
-        % are not used within a module, we may need to know them for
-        % comparing insts, e.g. for comparing `ground' and `bound(...)'.
-        % XXX ITEM_LIST: zs: That may be so, but writing out the type
-        % definition unchanged, without something on it that says
-        % "use these functors *only* for these purposes",
-        % is a bug in my opinion.
-        % XXX ITEM_LIST: And most types do NOT have any insts defined for them.
-        % We could collect (a) the set of type constructors mentioned
-        % explicitly in insts as being for that type, and (b) the set of
-        % function symbol/arity pairs that occur in bound insts, and then
-        % make the type definition totally abstract unless the type constructor
-        % either is in set (a) or a member of Ctors is in set (b).
         delete_uc_preds_from_du_type(DetailsDu0, DetailsDu),
         TypeDefn = parse_tree_du_type(DetailsDu),
         ItemTypeDefn = ItemTypeDefn0 ^ td_ctor_defn := TypeDefn
@@ -2676,6 +2904,21 @@ make_sub_type_abstract(DetailsSub, DetailsAbstract) :-
     type_to_ctor_det(SuperType, SuperTypeCtor),
     DetailsAbstract = abstract_subtype(SuperTypeCtor).
 
+    % For the `.int2' files, we need the full definitions of
+    % discriminated union types. Even if the functors for a type
+    % are not used within a module, we may need to know them for
+    % comparing insts, e.g. for comparing `ground' and `bound(...)'.
+    % XXX ITEM_LIST: zs: That may be so, but writing out the type
+    % definition unchanged, without something on it that says
+    % "use these functors *only* for these purposes",
+    % is a bug in my opinion.
+    % XXX ITEM_LIST: And most types do NOT have any insts defined for them.
+    % We could collect (a) the set of type constructors mentioned
+    % explicitly in insts as being for that type, and (b) the set of
+    % function symbol/arity pairs that occur in bound insts, and then
+    % make the type definition totally abstract unless the type constructor
+    % either is in set (a) or a member of Ctors is in set (b).
+    %
 :- pred delete_uc_preds_from_du_type(type_details_du::in,
     type_details_du::out) is det.
 

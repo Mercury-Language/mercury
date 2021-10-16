@@ -32,6 +32,8 @@ types2.m:046:     some [BarTypeParam_1]
 types2.m:046:     X_2: BarTypeParam
 types2.m:053: Error: abstract declaration for type `t'/2 has no corresponding
 types2.m:053:   definition.
+types2.m:053: Error: the type `t'/2 has this declaration, but it has no
+types2.m:053:   definition.
 types2.m:055: Error: no clauses for predicate `bar2'/1.
 types2.m:072: In clause for predicate `repeated_arity'/3:
 types2.m:072:   error: wrong number of arguments (2; should be 3)

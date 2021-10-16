@@ -1,16 +1,12 @@
-repeated_field_name.m:011: Error: field `repeated_field_name.f2' multiply
-repeated_field_name.m:011:   defined.
-repeated_field_name.m:010:   Here is the previous definition of field
-repeated_field_name.m:010:   `repeated_field_name.f2'.
-repeated_field_name.m:012: Error: field `repeated_field_name.f2' multiply
-repeated_field_name.m:012:   defined.
-repeated_field_name.m:010:   Here is the previous definition of field
-repeated_field_name.m:010:   `repeated_field_name.f2'.
-repeated_field_name.m:015: Error: field `repeated_field_name.f1' multiply
-repeated_field_name.m:015:   defined.
-repeated_field_name.m:009:   Here is the previous definition of field
-repeated_field_name.m:009:   `repeated_field_name.f1'.
-repeated_field_name.m:021: Error: field `repeated_field_name.f1' multiply
-repeated_field_name.m:021:   defined.
-repeated_field_name.m:020:   Here is the previous definition of field
-repeated_field_name.m:020:   `repeated_field_name.f1'.
+repeated_field_name.m:011: Error: duplicate occurrence of the field name `f2'
+repeated_field_name.m:011:   in the function symbol `t1'.
+repeated_field_name.m:010:   The first occurrence of this field name is here.
+repeated_field_name.m:012: Error: duplicate occurrence of the field name `f2'
+repeated_field_name.m:012:   in the function symbol `t1'.
+repeated_field_name.m:010:   The first occurrence of this field name is here.
+repeated_field_name.m:015: Error: duplicate occurrence of the field name `f1'
+repeated_field_name.m:015:   in the definition of `t'/0.
+repeated_field_name.m:009:   The first occurrence of this field name is here.
+repeated_field_name.m:021: Error: duplicate occurrence of the field name `f1'
+repeated_field_name.m:021:   in the function symbol `u1'.
+repeated_field_name.m:020:   The first occurrence of this field name is here.

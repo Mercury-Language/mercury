@@ -1,7 +1,21 @@
-foreign_type_visibility.m:013: Error: the definition of the foreign type
-foreign_type_visibility.m:013:   `foreign'/0 must have the same visibility as
-foreign_type_visibility.m:013:   its declaration.
-foreign_type_visibility.m:024: Error: all definitions of the foreign type
-foreign_type_visibility.m:024:   `foreign2'/0 must have the same visibility.
-foreign_type_visibility.m:026: Error: all definitions of the foreign type
-foreign_type_visibility.m:026:   `foreign3'/0 must have the same visibility.
+foreign_type_visibility.m:013: Error: since the Mercury declaration of
+foreign_type_visibility.m:013:   `foreign'/0 is in the implementation section,
+foreign_type_visibility.m:013:   any foreign type definition for it must be in
+foreign_type_visibility.m:013:   the implementation section as well.
+foreign_type_visibility.m:009:   That Mercury declaration is here.
+foreign_type_visibility.m:017: Error: the type `foreign2'/0 has no definition
+foreign_type_visibility.m:017:   that is valid when targeting C; neither a
+foreign_type_visibility.m:017:   Mercury definition, nor a
+foreign_type_visibility.m:017:   `:- pragma foreign_type' declaration for C.
+foreign_type_visibility.m:024: Error: since some foreign language definition of
+foreign_type_visibility.m:024:   `foreign2'/0 is in the interface section, all
+foreign_type_visibility.m:024:   other foreign language definitions for it must
+foreign_type_visibility.m:024:   be in the interface section as well.
+foreign_type_visibility.m:017:   That foreign definition in the interface is
+foreign_type_visibility.m:017:   here.
+foreign_type_visibility.m:026: Error: since the Mercury definition of
+foreign_type_visibility.m:026:   `foreign3'/0 is in the interface section, any
+foreign_type_visibility.m:026:   foreign type definition for it must be in the
+foreign_type_visibility.m:026:   interface section as well.
+foreign_type_visibility.m:019:   That Mercury definition is here.
+For more information, recompile with `-E'.

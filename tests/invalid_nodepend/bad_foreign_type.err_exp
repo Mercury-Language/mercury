@@ -1,3 +1,5 @@
+bad_foreign_type.m:011: Error: the type `foo'/0 has this declaration, but it
+bad_foreign_type.m:011:   has no definition.
 bad_foreign_type.m:017: Error: a `:- pragma foreign_type' declaration must have
 bad_foreign_type.m:017:   three or four arguments.
 bad_foreign_type.m:021: Error: a `:- pragma foreign_type' declaration must have
@@ -55,12 +57,15 @@ bad_foreign_type.m:066:   unrecognized `where' attribute `(bar is baaz)'.
 bad_foreign_type.m:066:   Recognized `where' attributes have the form
 bad_foreign_type.m:066:   `equality is <<equality pred name>>' and
 bad_foreign_type.m:066:   `comparison is <<comparison pred name>>'.
-bad_foreign_type.m:071: Error: type `bar'/0 defined as foreign_type without
-bad_foreign_type.m:071:   being declared.
+bad_foreign_type.m:071: Error: a `:- pragma foreign_type' definition for
+bad_foreign_type.m:071:   `bar'/0 without either a Mercury definition or a
+bad_foreign_type.m:071:   Mercury declaration for `bar'/0.
 bad_foreign_type.m:075: In the second argument of `:- pragma foreign_type'
 bad_foreign_type.m:075:   declaration:
 bad_foreign_type.m:075:   error: expected a type constructor and zero or more
 bad_foreign_type.m:075:   type variables as arguments, got `T'.
+bad_foreign_type.m:079: Error: the type `quux'/0 has this declaration, but it
+bad_foreign_type.m:079:   has no definition.
 bad_foreign_type.m:080: In the third argument of `:- pragma foreign_type'
 bad_foreign_type.m:080:   declaration:
 bad_foreign_type.m:080:   error: foreign type descriptor for language `C' must
@@ -77,8 +82,9 @@ bad_foreign_type.m:087: In the fourth argument of `:- pragma foreign_type'
 bad_foreign_type.m:087:   declaration:
 bad_foreign_type.m:087:   error: foreign type assertion
 bad_foreign_type.m:087:   `can_pass_as_mercury_type' is repeated.
-bad_foreign_type.m:089: Warning: duplicate declaration for type `quux'/0.
-bad_foreign_type.m:079:   The previous declaration was here.
+bad_foreign_type.m:089: Warning: duplicate abstract type declaration for
+bad_foreign_type.m:089:   `quux'/0.
+bad_foreign_type.m:079:   The original declaration is here.
 bad_foreign_type.m:091: In the first argument of `:- pragma foreign_type'
 bad_foreign_type.m:091:   declaration:
 bad_foreign_type.m:091:   error: expected the name of a foreign language, got

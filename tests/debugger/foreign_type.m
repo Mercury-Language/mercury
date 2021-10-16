@@ -12,8 +12,6 @@
 
 :- implementation.
 
-:- type coord.
-
 :- func new(int, int) = coord.
 
 :- func x(coord) = int.

@@ -121,6 +121,8 @@
                 cond_spec_msgs          :: list(error_msg)
             ).
 
+:- pred extract_spec_phase(error_spec::in, error_phase::out) is det.
+
 :- pred extract_spec_msgs(globals::in, error_spec::in,
     list(error_msg)::out) is det.
 
@@ -182,6 +184,12 @@
     ;       phase_read_files
     ;       phase_module_name
     ;       phase_term_to_parse_tree
+    % Some errors in check_type_inst_mode_defns.m report an invalid type, ...
+    ;       phase_type_inst_mode_check_invalid_type
+    % some report an invalid inst or mode, ...
+    ;       phase_type_inst_mode_check_invalid_inst_mode
+    % and some do neither.
+    ;       phase_type_inst_mode_check
     ;       phase_type_repn
     ;       phase_parse_tree_to_hlds
     ;       phase_expand_types
@@ -761,6 +769,15 @@
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
+
+extract_spec_phase(Spec, Phase) :-
+    (
+        Spec = error_spec(_, _, Phase, _)
+    ;
+        Spec = simplest_spec(_, _, Phase, _, _)
+    ;
+        Spec = conditional_spec(_, _, _, _, Phase, _)
+    ).
 
 extract_spec_msgs(Globals, Spec, Msgs) :-
     (
@@ -1420,6 +1437,10 @@ get_maybe_mode_report_control(phase_make_target) = no.
 get_maybe_mode_report_control(phase_read_files) = no.
 get_maybe_mode_report_control(phase_module_name) = no.
 get_maybe_mode_report_control(phase_term_to_parse_tree) = no.
+get_maybe_mode_report_control(phase_type_inst_mode_check) = no.
+get_maybe_mode_report_control(phase_type_inst_mode_check_invalid_type) = no.
+get_maybe_mode_report_control(phase_type_inst_mode_check_invalid_inst_mode)
+    = no.
 get_maybe_mode_report_control(phase_type_repn) = no.
 get_maybe_mode_report_control(phase_parse_tree_to_hlds) = no.
 get_maybe_mode_report_control(phase_expand_types) = no.

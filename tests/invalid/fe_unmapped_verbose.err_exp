@@ -1,5 +1,5 @@
 fe_unmapped_verbose.m:050: In `:- pragma foreign_enum' declaration for type
-fe_unmapped_verbose.m:050:   `fe_unmapped_verbose.shade_of_white'/0:
+fe_unmapped_verbose.m:050:   `shade_of_white'/0:
 fe_unmapped_verbose.m:050:   error: the following constructors do not have a
 fe_unmapped_verbose.m:050:   foreign value:
 fe_unmapped_verbose.m:050:       `blond',

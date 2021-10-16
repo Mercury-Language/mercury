@@ -100,8 +100,7 @@ report_multiple_def_error(Name, Arity, DefType, Context, OrigContext,
     FirstDeclPieces = [words("Here is the previous definition of"),
         fixed(DefType), SNA, suffix("."), nl],
     SecondDeclMsg = simplest_msg(SecondContext, SecondDeclPieces),
-    FirstDeclMsg = error_msg(yes(FirstContext), treat_as_first, 0,
-        [always(FirstDeclPieces)]),
+    FirstDeclMsg = simplest_msg(FirstContext, FirstDeclPieces),
     (
         ExtraPieces = [],
         ExtraMsgs = []

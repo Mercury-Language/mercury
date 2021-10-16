@@ -293,14 +293,20 @@
                 ptms_int_self_fim_langs     :: set(foreign_language),
                 ptms_imp_self_fim_langs     :: set(foreign_language),
 
-                % XXX The type, inst and mode definitions should be in
-                % {type,inst,mode}_ctor_defn_maps. We already have code
-                % to create these, and they would make the jobs of the
-                % predicates that add types, insts and modes to the HLDS
-                % significantly simpler.
-                %
-                % For now, we divide type definitions into three kinds:
-                % abstract, Mercury, and foreign type definitions.
+                ptms_type_defns             :: type_ctor_checked_map,
+                ptms_inst_defns             :: inst_ctor_checked_map,
+                ptms_mode_defns             :: mode_ctor_checked_map,
+                % The error messages generated during the construction
+                % of ptms_type_defns. We have found some invalid types if
+                % some of these error_specs (a) are severity_error, and
+                % (b) are phase_type_inst_mode_check_invalid_type.
+                ptms_type_specs             :: list(error_spec),
+                % The error messages generated during the construction
+                % of ptms_inst_defns and ptms_mode_defns. We have found
+                % some invalid insts and/or more if some of these error_specs
+                % (a) are severity_error, and (b) are
+                % phase_type_inst_mode_check_invalid_inst_mode.
+                ptms_inst_mode_specs        :: list(error_spec),
 
                 % Items of various kinds in the interface.
                 % All these items are to be treated as being in the
@@ -316,11 +322,6 @@
                 % (For abstract instances, there is no point in adding them
                 % twice, once in each section, so we treat them as only
                 % being in sms_interface.)
-                ptms_int_type_defns_abs     :: list(item_type_defn_info),
-                ptms_int_type_defns_mer     :: list(item_type_defn_info),
-                ptms_int_type_defns_for     :: list(item_type_defn_info),
-                ptms_int_inst_defns         :: list(item_inst_defn_info),
-                ptms_int_mode_defns         :: list(item_mode_defn_info),
                 ptms_int_typeclasses        :: list(item_typeclass_info),
                 ptms_int_instances          :: list(item_instance_info),
                 ptms_int_pred_decls         :: list(item_pred_decl_info),
@@ -366,17 +367,11 @@
                 %
                 % All the other kinds of items are to be treated as being
                 % in the sms_impl_but_exported_to_submodules section.
-                ptms_imp_type_defns_abs     :: list(item_type_defn_info),
-                ptms_imp_type_defns_mer     :: list(item_type_defn_info),
-                ptms_imp_type_defns_for     :: list(item_type_defn_info),
-                ptms_imp_inst_defns         :: list(item_inst_defn_info),
-                ptms_imp_mode_defns         :: list(item_mode_defn_info),
                 ptms_imp_typeclasses        :: list(item_typeclass_info),
                 ptms_imp_instances          :: list(item_instance_info),
                 ptms_imp_pred_decls         :: list(item_pred_decl_info),
                 ptms_imp_mode_decls         :: list(item_mode_decl_info),
                 ptms_imp_clauses            :: list(item_clause_info),
-                ptms_imp_foreign_enums      :: list(item_foreign_enum_info),
                 ptms_imp_foreign_export_enums ::
                                         list(item_foreign_export_enum_info),
                 ptms_imp_decl_pragmas       :: list(item_decl_pragma_info),
@@ -386,9 +381,6 @@
                 ptms_imp_finalises          :: list(item_finalise_info),
                 ptms_imp_mutables           :: list(item_mutable_info)
             ).
-
-:- func init_empty_parse_tree_module_src(module_name, prog_context)
-    = parse_tree_module_src.
 
     % When comp_unit_interface.m creates the contents of an interface file,
     % it will always set the maybe_version_numbers field of that interface file
@@ -3074,16 +3066,6 @@
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
-
-init_empty_parse_tree_module_src(ModuleName, ModuleNameContext) =
-    parse_tree_module_src(ModuleName, ModuleNameContext,
-        map.init, map.init, map.init,
-        map.init, map.init, map.init, map.init, map.init,
-        map.init, map.init, set.init, set.init,
-        [], [], [], [], [], [], [], [], [], [], [], set.init,
-        [], [], [], [], [], [], [], [], [], [], [], [],
-        [], [], [], [], [], []
-    ).
 
 init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit) :-
     map.init(AncestorIntSpecs),

@@ -284,14 +284,10 @@ expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
 
 build_eqv_maps_in_parse_tree_module_src(ParseTreeModuleSrc,
         !TypeEqvMap, !InstEqvMap) :-
-    list.foldl(build_eqv_maps_in_type_defn,
-        ParseTreeModuleSrc ^ ptms_int_type_defns_mer, !TypeEqvMap),
-    list.foldl(build_eqv_maps_in_type_defn,
-        ParseTreeModuleSrc ^ ptms_imp_type_defns_mer, !TypeEqvMap),
-    list.foldl(build_eqv_maps_in_inst_defn,
-        ParseTreeModuleSrc ^ ptms_int_inst_defns, !InstEqvMap),
-    list.foldl(build_eqv_maps_in_inst_defn,
-        ParseTreeModuleSrc ^ ptms_imp_inst_defns, !InstEqvMap).
+    map.foldl(build_eqv_maps_in_type_ctor_checked_defns_int_imp,
+        ParseTreeModuleSrc ^ ptms_type_defns, !TypeEqvMap),
+    map.foldl(build_eqv_maps_in_inst_ctor_checked_defns_int_imp,
+        ParseTreeModuleSrc ^ ptms_inst_defns, !InstEqvMap).
 
 %---------------------%
 
@@ -392,8 +388,6 @@ build_eqv_maps_in_parse_tree_int2(ReadWhy2, ParseTreeInt2,
     %
     % All possible values of ReadWhy2 call for things in the implementation
     % section to be imported in an abstract form.
-    % list.foldl(build_eqv_maps_in_type_ctor_all_defns,
-    %     map.values(ParseTreeInt2 ^ pti2_imp_type_defns), !TypeEqvMap),
     (
         ReadWhy2 = rwi2_abstract
     ;
@@ -582,23 +576,25 @@ replace_in_parse_tree_module_src(TypeEqvMap, InstEqvMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
-        IntTypeDefnsAbs, IntTypeDefnsMer0, IntTypeDefnsForeign,
-        IntInstDefns0, IntModeDefns0, IntTypeClasses0, IntInstances0,
-        IntPredDecls0, IntModeDecls0,
+        TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
+        TypeSpecs, InstModeSpecs,
+
+        IntTypeClasses0, IntInstances0, IntPredDecls0, IntModeDecls0,
         IntDeclPragmas0, IntPromises, IntBadPreds,
 
-        ImpTypeDefnsAbs, ImpTypeDefnsMer0, ImpTypeDefnsForeign,
-        ImpInstDefns0, ImpModeDefns0, ImpTypeClasses0, ImpInstances0,
-        ImpPredDecls0, ImpModeDecls0, ImpClauses0,
-        ImpForeignEnums, ImpForeignExportEnums,
-        ImpDeclPragmas0, ImpImplPragmas0, ImpPromises,
-        ImpInitialises, ImpFinalises, ImpMutables0),
+        ImpTypeClasses0, ImpInstances0, ImpPredDecls0, ImpModeDecls0,
+        ImpClauses0, ImpForeignExportEnums, ImpDeclPragmas0, ImpImplPragmas0,
+        ImpPromises, ImpInitialises, ImpFinalises, ImpMutables0),
 
-    replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
-        replace_in_type_defn_info_general(replace_in_type_defn),
-        IntTypeDefnsMer0, IntTypeDefnsMer, !RecompInfo, !UsedModules, !Specs),
-    IntInstDefns = IntInstDefns0, % XXX See the comment at module top.
-    IntModeDefns = IntModeDefns0, % XXX See the comment at module top.
+    map.map_values_foldl3(
+        replace_in_type_ctor_checked_defn(ModuleName,
+            MaybeRecordInt, MaybeRecordImp, TypeEqvMap, InstEqvMap),
+        TypeCtorCheckedMap0, TypeCtorCheckedMap,
+        !RecompInfo, !UsedModules, !Specs),
+    % XXX See the comment at module top.
+    InstCtorCheckedMap = InstCtorCheckedMap0,
+    ModeCtorCheckedMap = ModeCtorCheckedMap0,
+
     replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
         replace_in_typeclass_info, IntTypeClasses0, IntTypeClasses,
         !RecompInfo, !UsedModules, !Specs),
@@ -615,11 +611,6 @@ replace_in_parse_tree_module_src(TypeEqvMap, InstEqvMap,
         replace_in_decl_pragma_info, IntDeclPragmas0, IntDeclPragmas,
         !RecompInfo, !UsedModules, !Specs),
 
-    replace_in_list(ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
-        replace_in_type_defn_info_general(replace_in_type_defn),
-        ImpTypeDefnsMer0, ImpTypeDefnsMer, !RecompInfo, !UsedModules, !Specs),
-    ImpInstDefns = ImpInstDefns0, % XXX See the comment at module top.
-    ImpModeDefns = ImpModeDefns0, % XXX See the comment at module top.
     replace_in_list(ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
         replace_in_typeclass_info, ImpTypeClasses0, ImpTypeClasses,
         !RecompInfo, !UsedModules, !Specs),
@@ -648,17 +639,15 @@ replace_in_parse_tree_module_src(TypeEqvMap, InstEqvMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
-        IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
-        IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        IntPredDecls, IntModeDecls,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
+        TypeSpecs, InstModeSpecs,
+
+        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, IntBadPreds,
 
-        ImpTypeDefnsAbs, ImpTypeDefnsMer, ImpTypeDefnsForeign,
-        ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances,
-        ImpPredDecls, ImpModeDecls, ImpClauses,
-        ImpForeignEnums, ImpForeignExportEnums,
-        ImpDeclPragmas, ImpImplPragmas, ImpPromises,
-        ImpInitialises, ImpFinalises, ImpMutables).
+        ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
+        ImpClauses, ImpForeignExportEnums, ImpDeclPragmas, ImpImplPragmas,
+        ImpPromises, ImpInitialises, ImpFinalises, ImpMutables).
 
 :- pred replace_in_ancestor_int_spec(module_name::in,
     type_eqv_map::in, inst_eqv_map::in,
@@ -741,54 +730,56 @@ replace_in_int_for_opt_spec(ModuleName, TypeEqvMap, InstEqvMap,
 
 replace_in_parse_tree_int0(ModuleName, TypeEqvMap, InstEqvMap,
         OrigParseTreeInt0, ParseTreeInt0, !RecompInfo, !UsedModules, !Specs) :-
-    MaybeRecord = dont_record_sym_name_use,
+    MaybeRecordInt = dont_record_sym_name_use,
+    MaybeRecordImp = dont_record_sym_name_use,
     OrigParseTreeInt0 = parse_tree_int0(IntModuleName, IntModuleNameContext,
         MaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
         IntFIMSpecs, ImpFIMSpecs,
-        TypeCheckedMap0, InstCheckedMap0, ModeCheckedMap0,
+        TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
         IntTypeClasses0, IntInstances0, IntPredDecls0, IntModeDecls0,
         IntDeclPragmas0, IntPromises,
         ImpTypeClasses0, ImpInstances0, ImpPredDecls0, ImpModeDecls0,
         ImpDeclPragmas0, ImpPromises),
 
     map.map_values_foldl3(
-        replace_in_type_ctor_checked_defn(ModuleName, MaybeRecord,
-            TypeEqvMap, InstEqvMap),
-        TypeCheckedMap0, TypeCheckedMap,
+        replace_in_type_ctor_checked_defn(ModuleName,
+            MaybeRecordInt, MaybeRecordImp, TypeEqvMap, InstEqvMap),
+        TypeCtorCheckedMap0, TypeCtorCheckedMap,
         !RecompInfo, !UsedModules, !Specs),
-    InstCheckedMap = InstCheckedMap0, % XXX See the comment at module top.
-    ModeCheckedMap = ModeCheckedMap0, % XXX See the comment at module top.
+    % XXX See the comment at module top.
+    InstCtorCheckedMap = InstCtorCheckedMap0,
+    ModeCtorCheckedMap = ModeCtorCheckedMap0,
 
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
         replace_in_typeclass_info, IntTypeClasses0, IntTypeClasses,
         !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
         replace_in_instance_info, IntInstances0, IntInstances,
         !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
         replace_in_pred_decl_info, IntPredDecls0, IntPredDecls,
         !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
         replace_in_mode_decl_info, IntModeDecls0, IntModeDecls,
         !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
         replace_in_decl_pragma_info, IntDeclPragmas0, IntDeclPragmas,
         !RecompInfo, !UsedModules, !Specs),
 
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    replace_in_list(ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
         replace_in_typeclass_info, ImpTypeClasses0, ImpTypeClasses,
         !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    replace_in_list(ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
         replace_in_instance_info, ImpInstances0, ImpInstances,
         !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    replace_in_list(ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
         replace_in_pred_decl_info, ImpPredDecls0, ImpPredDecls,
         !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    replace_in_list(ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
         replace_in_mode_decl_info, ImpModeDecls0, ImpModeDecls,
         !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    replace_in_list(ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
         replace_in_decl_pragma_info, ImpDeclPragmas0, ImpDeclPragmas,
         !RecompInfo, !UsedModules, !Specs),
 
@@ -796,7 +787,7 @@ replace_in_parse_tree_int0(ModuleName, TypeEqvMap, InstEqvMap,
         MaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
         IntFIMSpecs, ImpFIMSpecs,
-        TypeCheckedMap, InstCheckedMap, ModeCheckedMap,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
@@ -811,50 +802,53 @@ replace_in_parse_tree_int0(ModuleName, TypeEqvMap, InstEqvMap,
 
 replace_in_parse_tree_int1(ModuleName, TypeEqvMap, InstEqvMap,
         OrigParseTreeInt1, ParseTreeInt1, !RecompInfo, !UsedModules, !Specs) :-
-    MaybeRecord = dont_record_sym_name_use,
+    MaybeRecordInt = dont_record_sym_name_use,
+    MaybeRecordImp = dont_record_sym_name_use,
     OrigParseTreeInt1 = parse_tree_int1(IntModuleName, IntModuleNameContext,
         MaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
         IntUseMap, ImpUseMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
-        TypeCheckedMap0, InstCheckedMap0, ModeCheckedMap0,
+        TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
         IntTypeClasses0, IntInstances0, IntPredDecls0, IntModeDecls0,
         IntDeclPragmas0, IntPromises, IntTypeRepnMap0,
         ImpTypeClasses0),
 
     map.map_values_foldl3(
-        replace_in_type_ctor_checked_defn(ModuleName, MaybeRecord,
-            TypeEqvMap, InstEqvMap),
-        TypeCheckedMap0, TypeCheckedMap,
+        replace_in_type_ctor_checked_defn(ModuleName,
+            MaybeRecordInt, MaybeRecordImp, TypeEqvMap, InstEqvMap),
+        TypeCtorCheckedMap0, TypeCtorCheckedMap,
         !RecompInfo, !UsedModules, !Specs),
-    InstCheckedMap = InstCheckedMap0, % XXX See the comment at module top.
-    ModeCheckedMap = ModeCheckedMap0, % XXX See the comment at module top.
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    % XXX See the comment at module top.
+    InstCtorCheckedMap = InstCtorCheckedMap0,
+    ModeCtorCheckedMap = ModeCtorCheckedMap0,
+
+    replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
         replace_in_typeclass_info, IntTypeClasses0, IntTypeClasses,
         !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
         replace_in_instance_info, IntInstances0, IntInstances,
         !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
         replace_in_pred_decl_info, IntPredDecls0, IntPredDecls,
         !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
         replace_in_mode_decl_info, IntModeDecls0, IntModeDecls,
         !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
         replace_in_decl_pragma_info, IntDeclPragmas0, IntDeclPragmas,
         !RecompInfo, !UsedModules, !Specs),
     map.map_values_foldl3(
-        replace_in_type_repn_info(ModuleName, MaybeRecord, TypeEqvMap),
+        replace_in_type_repn_info(ModuleName, MaybeRecordInt, TypeEqvMap),
         IntTypeRepnMap0, IntTypeRepnMap,
         !RecompInfo, !UsedModules, !Specs),
 
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    replace_in_list(ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
         replace_in_typeclass_info, ImpTypeClasses0, ImpTypeClasses,
         !RecompInfo, !UsedModules, !Specs),
 
     ParseTreeInt1 = parse_tree_int1(IntModuleName, IntModuleNameContext,
         MaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
         IntUseMap, ImpUseMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
-        TypeCheckedMap, InstCheckedMap, ModeCheckedMap,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, IntTypeRepnMap,
         ImpTypeClasses).
@@ -868,35 +862,38 @@ replace_in_parse_tree_int1(ModuleName, TypeEqvMap, InstEqvMap,
 
 replace_in_parse_tree_int2(ModuleName, TypeEqvMap, InstEqvMap,
         OrigParseTreeInt2, ParseTreeInt2, !RecompInfo, !UsedModules, !Specs) :-
-    MaybeRecord = dont_record_sym_name_use,
+    MaybeRecordInt = dont_record_sym_name_use,
+    MaybeRecordImp = dont_record_sym_name_use,
     OrigParseTreeInt2 = parse_tree_int2(IntModuleName, IntModuleNameContext,
         MaybeVersionNumbers, IntInclMap, InclMap,
         IntUsedMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
-        TypeCheckedMap0, InstCheckedMap0, ModeCheckedMap0,
+        TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
         IntTypeClasses0, IntInstances0, IntTypeRepnMap0),
 
     map.map_values_foldl3(
-        replace_in_type_ctor_checked_defn(ModuleName, MaybeRecord,
-            TypeEqvMap, InstEqvMap),
-        TypeCheckedMap0, TypeCheckedMap,
+        replace_in_type_ctor_checked_defn(ModuleName,
+            MaybeRecordInt, MaybeRecordImp, TypeEqvMap, InstEqvMap),
+        TypeCtorCheckedMap0, TypeCtorCheckedMap,
         !RecompInfo, !UsedModules, !Specs),
-    InstCheckedMap = InstCheckedMap0, % XXX See the comment at module top.
-    ModeCheckedMap = ModeCheckedMap0, % XXX See the comment at module top.
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    % XXX See the comment at module top.
+    InstCtorCheckedMap = InstCtorCheckedMap0,
+    ModeCtorCheckedMap = ModeCtorCheckedMap0,
+
+    replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
         replace_in_typeclass_info, IntTypeClasses0, IntTypeClasses,
         !RecompInfo, !UsedModules, !Specs),
-    replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+    replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
         replace_in_instance_info, IntInstances0, IntInstances,
         !RecompInfo, !UsedModules, !Specs),
     map.map_values_foldl3(
-        replace_in_type_repn_info(ModuleName, MaybeRecord, TypeEqvMap),
+        replace_in_type_repn_info(ModuleName, MaybeRecordInt, TypeEqvMap),
         IntTypeRepnMap0, IntTypeRepnMap,
         !RecompInfo, !UsedModules, !Specs),
 
     ParseTreeInt2 = parse_tree_int2(IntModuleName, IntModuleNameContext,
         MaybeVersionNumbers, IntInclMap, InclMap,
         IntUsedMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
-        TypeCheckedMap, InstCheckedMap, ModeCheckedMap,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap).
 
 :- pred replace_in_parse_tree_plain_opt(module_name::in,
@@ -1048,13 +1045,14 @@ replace_in_list_loop(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
     ;       record_sym_name_use(item_visibility).
 
 :- pred replace_in_type_ctor_checked_defn(module_name::in,
-    maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
+    maybe_record_sym_name_use::in, maybe_record_sym_name_use::in,
+    type_eqv_map::in, inst_eqv_map::in,
     type_ctor_checked_defn::in, type_ctor_checked_defn::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_modules::in, used_modules::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-replace_in_type_ctor_checked_defn(ModuleName, MaybeRecord,
+replace_in_type_ctor_checked_defn(ModuleName, MaybeRecordInt, MaybeRecordImp,
         TypeEqvMap, InstEqvMap, CheckedDefn0, CheckedDefn,
         !RecompInfo, !UsedModules, !Specs) :-
     (
@@ -1065,7 +1063,7 @@ replace_in_type_ctor_checked_defn(ModuleName, MaybeRecord,
         ;
             SolverDefn0 = solver_type_full(MaybeAbstractDefn0, ItemSolverDefn0),
             replace_in_type_defn_info_general(replace_in_type_defn_solver,
-                ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+                ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
                 ItemSolverDefn0, ItemSolverDefn,
                 !RecompInfo, !UsedModules, SolverSpecs),
             !:Specs = SolverSpecs ++ !.Specs,
@@ -1073,10 +1071,10 @@ replace_in_type_ctor_checked_defn(ModuleName, MaybeRecord,
             SolverDefn = solver_type_full(MaybeAbstractDefn0, ItemSolverDefn)
         ),
         SrcDefns0 = src_defns_solver(MaybeIntDefn0, MaybeImpDefn0),
-        replace_in_maybe(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+        replace_in_maybe(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
             replace_in_type_defn_info_general(replace_in_type_defn),
             MaybeIntDefn0, MaybeIntDefn, !RecompInfo, !UsedModules, !Specs),
-        replace_in_maybe(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+        replace_in_maybe(ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
             replace_in_type_defn_info_general(replace_in_type_defn),
             MaybeImpDefn0, MaybeImpDefn, !RecompInfo, !UsedModules, !Specs),
         SrcDefns = src_defns_solver(MaybeIntDefn, MaybeImpDefn),
@@ -1086,7 +1084,7 @@ replace_in_type_ctor_checked_defn(ModuleName, MaybeRecord,
         (
             StdDefn0 = std_mer_type_eqv(Status, ItemEqvDefn0),
             replace_in_type_defn_info_general(replace_in_type_defn_eqv,
-                ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+                ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
                 ItemEqvDefn0, ItemEqvDefn, !RecompInfo, !UsedModules,
                 EqvSpecs),
             !:Specs = EqvSpecs ++ !.Specs,
@@ -1094,7 +1092,7 @@ replace_in_type_ctor_checked_defn(ModuleName, MaybeRecord,
         ;
             StdDefn0 = std_mer_type_subtype(Status, ItemSubDefn0),
             replace_in_type_defn_info_general(replace_in_type_defn_sub,
-                ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+                ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
                 ItemSubDefn0, ItemSubDefn, !RecompInfo, !UsedModules,
                 SubSpecs),
             !:Specs = SubSpecs ++ !.Specs,
@@ -1103,7 +1101,7 @@ replace_in_type_ctor_checked_defn(ModuleName, MaybeRecord,
             StdDefn0 = std_mer_type_du_all_plain_constants(Status,
                 ItemDuDefn0, HeadCtor, TailCtors, CJCsMaybeDefnOrEnum),
             replace_in_type_defn_info_general(replace_in_type_defn_du,
-                ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+                ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
                 ItemDuDefn0, ItemDuDefn, !RecompInfo, !UsedModules, DuSpecs),
             !:Specs = DuSpecs ++ !.Specs,
             % Foreign type definitions and enums have no equivalences
@@ -1114,7 +1112,7 @@ replace_in_type_ctor_checked_defn(ModuleName, MaybeRecord,
             StdDefn0 = std_mer_type_du_not_all_plain_constants(Status,
                 ItemDuDefn0, CJCsMaybeDefn),
             replace_in_type_defn_info_general(replace_in_type_defn_du,
-                ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+                ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
                 ItemDuDefn0, ItemDuDefn, !RecompInfo, !UsedModules, DuSpecs),
             !:Specs = DuSpecs ++ !.Specs,
             % Foreign type definitions have no equivalences to expand out.
@@ -1128,10 +1126,10 @@ replace_in_type_ctor_checked_defn(ModuleName, MaybeRecord,
             StdDefn = StdDefn0
         ),
         SrcDefns0 = src_defns_std(IntDefns0, ImpDefns0, ImpForeignEnums0),
-        replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+        replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
             replace_in_type_defn_info_general(replace_in_type_defn),
             IntDefns0, IntDefns, !RecompInfo, !UsedModules, !Specs),
-        replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+        replace_in_list(ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
             replace_in_type_defn_info_general(replace_in_type_defn),
             ImpDefns0, ImpDefns, !RecompInfo, !UsedModules, !Specs),
         % Foreign enum infos have no equivalences to expand out.

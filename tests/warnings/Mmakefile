@@ -19,6 +19,7 @@ COMPILE_PROGS = \
 	warn_dead_procs_trace
 
 ERRORCHECK_PROGS = \
+	abstract_type_decl \
 	ambiguous_overloading \
 	bug311 \
 	bug412 \

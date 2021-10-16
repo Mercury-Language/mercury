@@ -1141,20 +1141,24 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
     ( if
         map.search(!.FieldNameTable, FieldName, ExistingDefns),
         list.find_first_match(is_conflicting_field_defn(FieldDefn),
-            ExistingDefns, ConflictingDefn)
+            ExistingDefns, _ConflictingDefn)
     then
-        ConflictingDefn = hlds_ctor_field_defn(OrigContext, _, _, _, _),
-        FieldDefn = hlds_ctor_field_defn(Context, _, _, _, _),
-        FieldString = sym_name_to_string(FieldName),
-        Pieces = [words("Error: field"), quote(FieldString),
-            words("multiply defined."), nl],
-        HereMsg = simplest_msg(Context, Pieces),
-        PrevPieces = [words("Here is the previous definition of field"),
-            quote(FieldString), suffix("."), nl],
-        PrevMsg = simplest_msg(OrigContext, PrevPieces),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            [HereMsg, PrevMsg]),
-        !:Specs = [Spec | !.Specs]
+        % check_type_inst_mode_defns has already generated an error message
+        % for this.
+        %
+        % ConflictingDefn = hlds_ctor_field_defn(OrigContext, _, _, _, _),
+        % FieldDefn = hlds_ctor_field_defn(Context, _, _, _, _),
+        % FieldString = sym_name_to_string(FieldName),
+        % Pieces = [words("Error: field"), quote(FieldString),
+        %     words("multiply defined."), nl],
+        % HereMsg = simplest_msg(Context, Pieces),
+        % PrevPieces = [words("Here is the previous definition of field"),
+        %     quote(FieldString), suffix("."), nl],
+        % PrevMsg = simplest_msg(OrigContext, PrevPieces),
+        % Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        %     [HereMsg, PrevMsg]),
+        % !:Specs = [Spec | !.Specs]
+        true
     else
         UnqualFieldName = unqualify_name(FieldName),
 

@@ -86,28 +86,25 @@ module_qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
-        IntTypeDefnsAbs0, IntTypeDefnsMer0, IntTypeDefnsForeign0,
-        IntInstDefns0, IntModeDefns0, IntTypeClasses0, IntInstances0,
-        IntPredDecls0, IntModeDecls0,
+        TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
+        TypeSpecs, InstModeSpecs,
+
+        IntTypeClasses0, IntInstances0, IntPredDecls0, IntModeDecls0,
         IntDeclPragmas0, IntPromises0, IntBadPreds,
 
-        ImpTypeDefnsAbs0, ImpTypeDefnsMer0, ImpTypeDefnsForeign0,
-        ImpInstDefns0, ImpModeDefns0, ImpTypeClasses0, ImpInstances0,
-        ImpPredDecls0, ImpModeDecls0, ImpClauses0,
-        ImpForeignEnums0, ImpForeignExportEnums0,
+        ImpTypeClasses0, ImpInstances0, ImpPredDecls0, ImpModeDecls0,
+        ImpClauses0, ImpForeignExportEnums0,
         ImpDeclPragmas0, ImpImplPragmas0, ImpPromises0,
         ImpInitialises0, ImpFinalises0, ImpMutables0),
 
+    map.map_values_foldl2(module_qualify_type_ctor_checked_defn,
+        TypeCtorCheckedMap0, TypeCtorCheckedMap, !Info, !Specs),
+    map.map_values_foldl2(module_qualify_inst_ctor_checked_defn,
+        InstCtorCheckedMap0, InstCtorCheckedMap, !Info, !Specs),
+    map.map_values_foldl2(module_qualify_mode_ctor_checked_defn,
+        ModeCtorCheckedMap0, ModeCtorCheckedMap, !Info, !Specs),
+
     InInt = mq_used_in_interface,
-    % Abstract and foreign types don't need to be qualified.
-    IntTypeDefnsAbs0 = IntTypeDefnsAbs,
-    IntTypeDefnsForeign0 = IntTypeDefnsForeign,
-    list.map_foldl2(module_qualify_item_type_defn(qualify_type_defn, InInt),
-        IntTypeDefnsMer0, IntTypeDefnsMer, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_inst_defn(qualify_inst_defn, InInt),
-        IntInstDefns0, IntInstDefns, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_mode_defn(qualify_mode_defn, InInt),
-        IntModeDefns0, IntModeDefns, !Info, !Specs),
     list.map_foldl2(module_qualify_item_typeclass(InInt),
         IntTypeClasses0, IntTypeClasses, !Info, !Specs),
     list.map_foldl2(module_qualify_item_instance(InInt),
@@ -122,15 +119,6 @@ module_qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
     IntPromises = IntPromises0,
 
     InImp = mq_not_used_in_interface,
-    % Abstract and foreign types don't need to be qualified.
-    ImpTypeDefnsAbs0 = ImpTypeDefnsAbs,
-    ImpTypeDefnsForeign0 = ImpTypeDefnsForeign,
-    list.map_foldl2(module_qualify_item_type_defn(qualify_type_defn, InImp),
-        ImpTypeDefnsMer0, ImpTypeDefnsMer, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_inst_defn(qualify_inst_defn, InImp),
-        ImpInstDefns0, ImpInstDefns, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_mode_defn(qualify_mode_defn, InImp),
-        ImpModeDefns0, ImpModeDefns, !Info, !Specs),
     list.map_foldl2(module_qualify_item_typeclass(InImp),
         ImpTypeClasses0, ImpTypeClasses, !Info, !Specs),
     list.map_foldl2(module_qualify_item_instance(InImp),
@@ -141,8 +129,6 @@ module_qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
         ImpModeDecls0, ImpModeDecls, !Info, !Specs),
     % Clauses don't need to be qualified.
     ImpClauses = ImpClauses0,
-    list.map_foldl2(module_qualify_item_foreign_enum(InImp),
-        ImpForeignEnums0, ImpForeignEnums, !Info, !Specs),
     list.map_foldl2(module_qualify_item_foreign_export_enum(InImp),
         ImpForeignExportEnums0, ImpForeignExportEnums, !Info, !Specs),
     list.map_foldl2(module_qualify_item_decl_pragma(InImp),
@@ -161,16 +147,14 @@ module_qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
-        IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
-        IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        IntPredDecls, IntModeDecls,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
+        TypeSpecs, InstModeSpecs,
+
+        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, IntBadPreds,
 
-        ImpTypeDefnsAbs, ImpTypeDefnsMer, ImpTypeDefnsForeign,
-        ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances,
-        ImpPredDecls, ImpModeDecls, ImpClauses,
-        ImpForeignEnums, ImpForeignExportEnums,
-        ImpDeclPragmas, ImpImplPragmas, ImpPromises,
+        ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls, ImpClauses,
+        ImpForeignExportEnums, ImpDeclPragmas, ImpImplPragmas, ImpPromises,
         ImpInitialises, ImpFinalises, ImpMutables).
 
 %---------------------------------------------------------------------------%
@@ -309,7 +293,7 @@ module_qualify_type_ctor_checked_defn(CheckedDefn0, CheckedDefn,
             % need no qualification.
             StdDefn = StdDefn0
         ),
-        SrcDefns0 = src_defns_std(IntDefns0, ImpDefns0, ImpForeigns0),
+        SrcDefns0 = src_defns_std(IntDefns0, ImpDefns0, ImpForeignEnums0),
         list.map_foldl2(
             module_qualify_item_type_defn(qualify_type_defn,
                 mq_used_in_interface),
@@ -318,8 +302,10 @@ module_qualify_type_ctor_checked_defn(CheckedDefn0, CheckedDefn,
             module_qualify_item_type_defn(qualify_type_defn,
                 mq_not_used_in_interface),
             ImpDefns0, ImpDefns, !Info, !Specs),
-        % Foreign types need no qualification.
-        SrcDefns = src_defns_std(IntDefns, ImpDefns, ImpForeigns0),
+        list.map_foldl2(
+            module_qualify_item_foreign_enum(mq_not_used_in_interface),
+            ImpForeignEnums0, ImpForeignEnums, !Info, !Specs),
+        SrcDefns = src_defns_std(IntDefns, ImpDefns, ImpForeignEnums),
         CheckedDefn = checked_defn_std(StdDefn, SrcDefns)
     ).
 

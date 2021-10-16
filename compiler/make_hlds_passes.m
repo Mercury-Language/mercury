@@ -82,6 +82,7 @@
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.
 
+:- import_module bool.
 :- import_module io.
 :- import_module map.
 :- import_module maybe.
@@ -129,13 +130,51 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         )
     ),
 
+    map.init(DirectArgMap),
+    TypeRepnDec = type_repn_decision_data(TypeRepnMap, DirectArgMap,
+        ItemForeignEnums, ItemForeignExportEnums),
+    module_info_set_type_repn_dec(TypeRepnDec, !ModuleInfo),
+
+    TypeSpecs = ParseTreeModuleSrc ^ ptms_type_specs,
+    InstModeSpecs = ParseTreeModuleSrc ^ ptms_inst_mode_specs,
+    !:Specs = TypeSpecs ++ InstModeSpecs,
+
+    IsInvalidTypeSpec =
+        ( pred(Spec::in) is semidet :-
+            extract_spec_phase(Spec, Phase),
+            Phase = phase_type_inst_mode_check_invalid_type
+        ),
+    IsInvalidInstModeSpec =
+        ( pred(Spec::in) is semidet :-
+            extract_spec_phase(Spec, Phase),
+            Phase = phase_type_inst_mode_check_invalid_inst_mode
+        ),
+    list.filter(IsInvalidTypeSpec, TypeSpecs, InvalidTypeSpecs),
+    list.filter(IsInvalidInstModeSpec, InstModeSpecs, InvalidInstModeSpecs),
+    TypeErrors = contains_errors(Globals, InvalidTypeSpecs),
+    InstModeErrors = contains_errors(Globals, InvalidInstModeSpecs),
+    (
+        TypeErrors = no,
+        !:FoundInvalidType = did_not_find_invalid_type
+    ;
+        TypeErrors = yes,
+        !:FoundInvalidType = found_invalid_type
+    ),
+    (
+        InstModeErrors = no,
+        !:FoundInvalidInstOrMode = did_not_find_invalid_inst_or_mode
+    ;
+        InstModeErrors = yes,
+        !:FoundInvalidInstOrMode = found_invalid_inst_or_mode
+    ),
+
     % We used to add items to the HLDS in three passes.
     % Roughly,
     %
     % - pass 1 added type, inst and mode definitions and predicate
     %   declarations to the module,
     % - pass 3 added the definitions of predicates, including not just
-    %   clauses but also clause-like pragmas such as foreign_procs
+    %   clauses but also clause-like pragmas such as foreign_procs,
     %   to the module, while
     % - pass 2 did the tasks that had to be done before pass 3 started
     %   but which needed access to *all* the declarations added by pass 1,
@@ -160,16 +199,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         ItemPragmasDecl, ItemPragmasImpl, PragmasGen, ItemClauses,
         IntBadClauses),
 
-    map.init(DirectArgMap),
-    TypeRepnDec = type_repn_decision_data(TypeRepnMap, DirectArgMap,
-        ItemForeignEnums, ItemForeignExportEnums),
-    module_info_set_type_repn_dec(TypeRepnDec, !ModuleInfo),
-
     % The old pass 1.
-
-    !:FoundInvalidType = did_not_find_invalid_type,
-    !:FoundInvalidInstOrMode = did_not_find_invalid_inst_or_mode,
-    !:Specs = [],
 
     % Record the import_module and use_module declarations.
     add_item_avails(ItemAvails, !ModuleInfo),
