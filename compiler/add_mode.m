@@ -420,11 +420,11 @@ check_for_cyclic_mode(ModeDefns, OrigModeCtor, ModeCtor0,
 cycle_to_error_spec(ModuleInfo, InstOrMode, Cycle, Spec) :-
     (
         InstOrMode = iom_inst,
-        StartInstOrModeWord = "Inst",
+        InstOrModeWord = "inst",
         AnInstOrModeWord = "an inst"
     ;
         InstOrMode = iom_mode,
-        StartInstOrModeWord = "Mode",
+        InstOrModeWord = "mode",
         AnInstOrModeWord = "a mode"
     ),
     Cycle = cycle(SNAsContexts),
@@ -456,7 +456,8 @@ cycle_to_error_spec(ModuleInfo, InstOrMode, Cycle, Spec) :-
             OtherSNAsContexts, OtherSNAPieces),
         LaterSNAPieces = TailLocalSNAPieces ++ OtherSNAPieces
     ),
-    PreludePieces = [words(StartInstOrModeWord), words("name"), HeadSNAPiece,
+    PreludePieces = [words("Error:"),
+        words(InstOrModeWord), words("name"), HeadSNAPiece,
         words("expands to"), words(AnInstOrModeWord),
         words("containing itself")],
     ConsequencePieces = [words("which means that"),

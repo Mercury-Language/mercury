@@ -1,9 +1,9 @@
-circ_inst5.m:009: Inst name `c'/1 expands to an inst containing itself through
-circ_inst5.m:009:   `i'/1, which means that processing any reference to it
-circ_inst5.m:009:   would require an infinite sequence of expansions.
+circ_inst5.m:009: Error: inst name `c'/1 expands to an inst containing itself
+circ_inst5.m:009:   through `i'/1, which means that processing any reference to
+circ_inst5.m:009:   it would require an infinite sequence of expansions.
 circ_inst5.m:010:   The definition of `i'/1 is here.
-circ_inst5.m:021: Inst name `circ_inst5.dead'/0 expands to an inst containing
-circ_inst5.m:021:   itself through
+circ_inst5.m:021: Error: inst name `circ_inst5.dead'/0 expands to an inst
+circ_inst5.m:021:   containing itself through
 circ_inst5.m:021:   `g2'/0,
 circ_inst5.m:021:   `g3'/0,
 circ_inst5.m:021:   `g4'/0,
@@ -14,7 +14,7 @@ circ_inst5.m:022:   The definition of `g2'/0 is here.
 circ_inst5.m:023:   The definition of `g3'/0 is here.
 circ_inst5.m:024:   The definition of `g4'/0 is here.
 circ_inst5.m:025:   The definition of `g5'/0 is here.
-circ_inst5.m:030: Inst name `f2'/0 expands to an inst containing itself through
-circ_inst5.m:030:   `f3'/0, which means that processing any reference to it
-circ_inst5.m:030:   would require an infinite sequence of expansions.
+circ_inst5.m:030: Error: inst name `f2'/0 expands to an inst containing itself
+circ_inst5.m:030:   through `f3'/0, which means that processing any reference
+circ_inst5.m:030:   to it would require an infinite sequence of expansions.
 circ_inst5.m:031:   The definition of `f3'/0 is here.

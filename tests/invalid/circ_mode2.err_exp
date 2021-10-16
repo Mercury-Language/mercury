@@ -1,10 +1,10 @@
-circ_mode2.m:014: Mode name `circ1'/1 expands to a mode containing itself,
-circ_mode2.m:014:   which means that processing any reference to it would
-circ_mode2.m:014:   require an infinite sequence of expansions.
-circ_mode2.m:015: Mode name `circ2'/1 expands to a mode containing itself,
-circ_mode2.m:015:   which means that processing any reference to it would
-circ_mode2.m:015:   require an infinite sequence of expansions.
-circ_mode2.m:017: Mode name `left'/1 expands to a mode containing itself
+circ_mode2.m:014: Error: mode name `circ1'/1 expands to a mode containing
+circ_mode2.m:014:   itself, which means that processing any reference to it
+circ_mode2.m:014:   would require an infinite sequence of expansions.
+circ_mode2.m:015: Error: mode name `circ2'/1 expands to a mode containing
+circ_mode2.m:015:   itself, which means that processing any reference to it
+circ_mode2.m:015:   would require an infinite sequence of expansions.
+circ_mode2.m:017: Error: mode name `left'/1 expands to a mode containing itself
 circ_mode2.m:017:   through `right'/1, which means that processing any
 circ_mode2.m:017:   reference to it would require an infinite sequence of
 circ_mode2.m:017:   expansions.
