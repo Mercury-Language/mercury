@@ -1,5 +1,8 @@
-circ_mode3.m:013: Error: circular equivalence mode `circ_mode3.circ'/0.
-circ_mode3.m:015: Error: circular equivalence modes `circ_mode3.circ2'/0 and
-circ_mode3.m:015:   `circ_mode3.circ1'/0.
-circ_mode3.m:017: Error: circular equivalence modes `circ_mode3.circ1'/0 and
-circ_mode3.m:017:   `circ_mode3.circ2'/0.
+circ_mode3.m:013: Mode name `circ'/0 expands to a mode containing itself, which
+circ_mode3.m:013:   means that processing any reference to it would require an
+circ_mode3.m:013:   infinite sequence of expansions.
+circ_mode3.m:015: Mode name `circ1'/0 expands to a mode containing itself
+circ_mode3.m:015:   through `circ2'/0, which means that processing any
+circ_mode3.m:015:   reference to it would require an infinite sequence of
+circ_mode3.m:015:   expansions.
+circ_mode3.m:017:   The definition of `circ2'/0 is here.

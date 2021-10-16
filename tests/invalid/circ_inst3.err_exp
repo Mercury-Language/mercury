@@ -1,5 +1,8 @@
-circ_inst3.m:013: Error: circular equivalence inst `circ_inst3.circ'/0.
-circ_inst3.m:015: Error: circular equivalence insts `circ_inst3.circ2'/0 and
-circ_inst3.m:015:   `circ_inst3.circ1'/0.
-circ_inst3.m:017: Error: circular equivalence insts `circ_inst3.circ1'/0 and
-circ_inst3.m:017:   `circ_inst3.circ2'/0.
+circ_inst3.m:013: Inst name `circ'/0 expands to an inst containing itself,
+circ_inst3.m:013:   which means that processing any reference to it would
+circ_inst3.m:013:   require an infinite sequence of expansions.
+circ_inst3.m:015: Inst name `circ1'/0 expands to an inst containing itself
+circ_inst3.m:015:   through `circ2'/0, which means that processing any
+circ_inst3.m:015:   reference to it would require an infinite sequence of
+circ_inst3.m:015:   expansions.
+circ_inst3.m:017:   The definition of `circ2'/0 is here.

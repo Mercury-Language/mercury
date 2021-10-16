@@ -56,12 +56,17 @@
 :- import_module libs.
 :- import_module libs.options.
 :- import_module mdbcomp.
+:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_mode.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
+:- import_module require.
+:- import_module set.
 
 %---------------------------------------------------------------------------%
 
@@ -242,195 +247,295 @@ should_report_duplicate_inst_or_mode(InstModeStatus) = ReportDup :-
 
 %---------------------------------------------------------------------------%
 
-check_inst_defns(_, [], !FoundInvalidInstOrMode, !Specs).
-check_inst_defns(ModuleInfo, [ImsSubList | ImsSubLists],
-        !FoundInvalidInstOrMode, !Specs) :-
-    ImsSubList = ims_sub_list(_ItemMercuryStatus, InstDefns),
-    list.foldl2(module_check_inst_defn(ModuleInfo), InstDefns,
-        !FoundInvalidInstOrMode, !Specs),
-    check_inst_defns(ModuleInfo, ImsSubLists,
-        !FoundInvalidInstOrMode, !Specs).
-
-:- pred module_check_inst_defn(module_info::in, item_inst_defn_info::in,
-    found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-module_check_inst_defn(ModuleInfo, ItemInstDefnInfo,
-        !FoundInvalidInstOrMode, !Specs) :-
-    ItemInstDefnInfo = item_inst_defn_info(InstName, InstParams, _MaybeForType,
-        _MaybeAbstractInstDefn, _VarSet, Context, _SeqNum),
-    % Check if the inst is infinitely recursive (at the top level).
-    module_info_get_inst_table(ModuleInfo, InstTable),
-    inst_table_get_user_insts(InstTable, UserInstTable),
-    InstArity = list.length(InstParams),
-    InstCtor = inst_ctor(InstName, InstArity),
-    TestArgs = list.duplicate(InstArity, not_reached),
-    check_for_cyclic_inst(UserInstTable, InstCtor, InstCtor, TestArgs, [],
-        Context, FoundInvalidInst, !Specs),
-    (
-        FoundInvalidInst = no
-    ;
-        FoundInvalidInst = yes,
-        !:FoundInvalidInstOrMode = found_invalid_inst_or_mode
+check_inst_defns(ModuleInfo, ImsSubLists, !FoundInvalidInstOrMode, !Specs) :-
+    find_eqv_cycles_in_insts(ModuleInfo, ImsSubLists, set.init, Cycles),
+    ( if set.is_empty(Cycles) then
+        true
+    else
+        !:FoundInvalidInstOrMode = found_invalid_inst_or_mode,
+        list.map(cycle_to_error_spec(ModuleInfo, iom_inst),
+            set.to_sorted_list(Cycles), CycleSpecs),
+        !:Specs = CycleSpecs ++ !.Specs
     ).
 
-    % Check if the inst is infinitely recursive (at the top level).
-    %
-:- pred check_for_cyclic_inst(user_inst_table::in, inst_ctor::in,
-    inst_ctor::in, list(mer_inst)::in, list(inst_ctor)::in, prog_context::in,
-    bool::out, list(error_spec)::in, list(error_spec)::out) is det.
-
-check_for_cyclic_inst(UserInstTable, OrigInstCtor, InstCtor0, Args0,
-        Expansions0, Context, InvalidMode, !Specs) :-
-    ( if list.member(InstCtor0, Expansions0) then
-        report_circular_inst_equiv_error(OrigInstCtor, InstCtor0, Expansions0,
-            Context, !Specs),
-        InvalidMode = yes
+check_mode_defns(ModuleInfo, ImsSubLists, !FoundInvalidInstOrMode, !Specs) :-
+    find_eqv_cycles_in_modes(ModuleInfo, ImsSubLists, set.init, Cycles),
+    ( if set.is_empty(Cycles) then
+        true
     else
-        ( if
-            map.search(UserInstTable, InstCtor0, InstDefn),
-            InstDefn = hlds_inst_defn(_, Params, Body, _, _, _),
-            Body = eqv_inst(EqvInst0),
-            inst_substitute_arg_list(Params, Args0, EqvInst0, EqvInst),
-            EqvInst = defined_inst(user_inst(Name, Args))
-        then
-            Arity = list.length(Args),
-            InstCtor = inst_ctor(Name, Arity),
-            Expansions = [InstCtor0 | Expansions0],
-            check_for_cyclic_inst(UserInstTable, OrigInstCtor, InstCtor, Args,
-                Expansions, Context, InvalidMode, !Specs)
-        else
-            InvalidMode = no
-        )
+        !:FoundInvalidInstOrMode = found_invalid_inst_or_mode,
+        list.map(cycle_to_error_spec(ModuleInfo, iom_mode),
+            set.to_sorted_list(Cycles), CycleSpecs),
+        !:Specs = CycleSpecs ++ !.Specs
     ).
 
 %---------------------%
 
-check_mode_defns(_, [], !FoundInvalidInstOrMode, !Specs).
-check_mode_defns(ModuleInfo, [ImsSubList | ImsSubLists],
-        !FoundInvalidInstOrMode, !Specs) :-
+:- pred find_eqv_cycles_in_insts(module_info::in,
+    ims_list(item_inst_defn_info)::in,
+    set(cycle)::in, set(cycle)::out) is det.
+
+find_eqv_cycles_in_insts(_, [], !Cycles).
+find_eqv_cycles_in_insts(ModuleInfo, [ImsSubList | ImsSubLists], !Cycles) :-
+    ImsSubList = ims_sub_list(_ItemMercuryStatus, InstDefns),
+    list.foldl(find_eqv_cycles_in_inst(ModuleInfo), InstDefns, !Cycles),
+    find_eqv_cycles_in_insts(ModuleInfo, ImsSubLists, !Cycles).
+
+:- pred find_eqv_cycles_in_modes(module_info::in,
+    ims_list(item_mode_defn_info)::in,
+    set(cycle)::in, set(cycle)::out) is det.
+
+find_eqv_cycles_in_modes(_, [], !Cycles).
+find_eqv_cycles_in_modes(ModuleInfo, [ImsSubList | ImsSubLists], !Cycles) :-
     ImsSubList = ims_sub_list(_ItemMercuryStatus, ModeDefns),
-    list.foldl2(module_check_mode_defn(ModuleInfo), ModeDefns,
-        !FoundInvalidInstOrMode, !Specs),
-    check_mode_defns(ModuleInfo, ImsSubLists, !FoundInvalidInstOrMode, !Specs).
+    list.foldl(find_eqv_cycles_in_mode(ModuleInfo), ModeDefns, !Cycles),
+    find_eqv_cycles_in_modes(ModuleInfo, ImsSubLists, !Cycles).
 
-:- pred module_check_mode_defn(module_info::in, item_mode_defn_info::in,
-    found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+%---------------------%
 
-module_check_mode_defn(ModuleInfo, ItemModeDefnInfo,
-        !FoundInvalidInstOrMode, !Specs) :-
+:- pred find_eqv_cycles_in_inst(module_info::in, item_inst_defn_info::in,
+    set(cycle)::in, set(cycle)::out) is det.
+
+find_eqv_cycles_in_inst(ModuleInfo, ItemInstDefnInfo, !Cycles) :-
+    ItemInstDefnInfo = item_inst_defn_info(InstName, InstParams, _MaybeForType,
+        _MaybeAbstractInstDefn, _VarSet, _Context, _SeqNum),
+    module_info_get_inst_table(ModuleInfo, InstTable),
+    inst_table_get_user_insts(InstTable, UserInstTable),
+    list.length(InstParams, InstArity),
+    InstCtor = inst_ctor(InstName, InstArity),
+    TestArgs = list.duplicate(InstArity, not_reached),
+    map.init(Expansions0),
+    check_for_cyclic_inst(UserInstTable, InstCtor, InstCtor, TestArgs,
+        Expansions0, !Cycles).
+
+:- pred find_eqv_cycles_in_mode(module_info::in, item_mode_defn_info::in,
+    set(cycle)::in, set(cycle)::out) is det.
+
+find_eqv_cycles_in_mode(ModuleInfo, ItemModeDefnInfo, !Cycles) :-
+    ItemModeDefnInfo = item_mode_defn_info(ModeName, ModeParams,
+        _MaybeAbstractModeDefn, _VarSet, _Context, _SeqNum),
     module_info_get_mode_table(ModuleInfo, ModeTable),
-    ItemModeDefnInfo = item_mode_defn_info(Name, Params,
-        _MaybeAbstractModeDefn, _VarSet, Context, _SeqNum),
-    list.length(Params, Arity),
-    ModeCtor = mode_ctor(Name, Arity),
-    Expansions0 = [],
-    check_for_cyclic_mode(ModeTable, ModeCtor, ModeCtor, Expansions0,
-        Context, FoundInvalidMode, !Specs),
-    (
-        FoundInvalidMode = no
-    ;
-        FoundInvalidMode = yes,
-        !:FoundInvalidInstOrMode = found_invalid_inst_or_mode
-    ).
+    mode_table_get_mode_defns(ModeTable, ModeDefns),
+    list.length(ModeParams, ModeArity),
+    ModeCtor = mode_ctor(ModeName, ModeArity),
+    map.init(Expansions0),
+    check_for_cyclic_mode(ModeDefns, ModeCtor, ModeCtor,
+        Expansions0, !Cycles).
 
-    % Check if the mode is infinitely recursive at the top level.
-    %
-:- pred check_for_cyclic_mode(mode_table::in, mode_ctor::in, mode_ctor::in,
-    list(mode_ctor)::in, prog_context::in, bool::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+%---------------------%
 
-check_for_cyclic_mode(ModeTable, OrigModeCtor, ModeCtor0, Expansions0, Context,
-        InvalidMode, !Specs) :-
-    ( if list.member(ModeCtor0, Expansions0) then
-        report_circular_mode_equiv_error(OrigModeCtor, ModeCtor0, Expansions0,
-            Context, !Specs),
-        InvalidMode = yes
-    else
-        mode_table_get_mode_defns(ModeTable, ModeDefns),
-        ( if
-            map.search(ModeDefns, ModeCtor0, ModeDefn),
-            ModeDefn = hlds_mode_defn(_, _, Body, _, _),
-            Body = hlds_mode_body(EqvMode),
-            EqvMode = user_defined_mode(Name, Args)
-        then
-            Arity = list.length(Args),
-            ModeCtor = mode_ctor(Name, Arity),
-            Expansions = [ModeCtor0 | Expansions0],
-            check_for_cyclic_mode(ModeTable, OrigModeCtor, ModeCtor,
-                Expansions, Context, InvalidMode, !Specs)
+:- pred check_for_cyclic_inst(user_inst_table::in,
+    inst_ctor::in, inst_ctor::in, list(mer_inst)::in,
+    expansions::in, set(cycle)::in, set(cycle)::out) is det.
+
+check_for_cyclic_inst(UserInstTable, OrigInstCtor, InstCtor0, Args0,
+        Expansions0, !Cycles) :-
+    InstCtor0 = inst_ctor(SymName0, Arity0),
+    SNA0 = sym_name_arity(SymName0, Arity0),
+    ( if map.search(Expansions0, SNA0, _OldContext) then
+        ( if OrigInstCtor = InstCtor0 then
+            map.to_sorted_assoc_list(Expansions0, ExpansionsAL0),
+            set.insert(cycle(ExpansionsAL0), !Cycles)
         else
-            InvalidMode = no
+            % Both OrigInstCtor and InstCtor0 suffer from needing infinite
+            % expansion, but the circularity we have just detected does
+            % NOT involve OrigInstCtor.
+            true
+        )
+    else
+        ( if
+            map.search(UserInstTable, InstCtor0, InstDefn),
+            InstDefn = hlds_inst_defn(_, Params, Body, _, Context, _),
+            Body = eqv_inst(EqvInst0),
+            inst_substitute_arg_list(Params, Args0, EqvInst0, EqvInst),
+            EqvInst = defined_inst(user_inst(SymName, Args))
+        then
+            list.length(Args, Arity),
+            InstCtor = inst_ctor(SymName, Arity),
+            map.det_insert(SNA0, Context, Expansions0, Expansions1),
+            check_for_cyclic_inst(UserInstTable, OrigInstCtor, InstCtor, Args,
+                Expansions1, !Cycles)
+        else
+            true
         )
     ).
 
-:- pred report_circular_inst_equiv_error(inst_ctor::in, inst_ctor::in,
-    list(inst_ctor)::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred check_for_cyclic_mode(mode_defns::in, mode_ctor::in, mode_ctor::in,
+    expansions::in, set(cycle)::in, set(cycle)::out) is det.
 
-report_circular_inst_equiv_error(OrigInstCtor, InstCtor, Expansions, Context,
-        !Specs) :-
-    report_circular_equiv_error("inst", "insts",
-        inst_ctor_to_circ_id(OrigInstCtor), inst_ctor_to_circ_id(InstCtor),
-        list.map(inst_ctor_to_circ_id, Expansions),
-        Context, !Specs).
-
-:- pred report_circular_mode_equiv_error(mode_ctor::in, mode_ctor::in,
-    list(mode_ctor)::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-report_circular_mode_equiv_error(OrigModeCtor, ModeCtor, Expansions, Context,
-        !Specs) :-
-    report_circular_equiv_error("mode", "modes",
-        mode_ctor_to_circ_id(OrigModeCtor), mode_ctor_to_circ_id(ModeCtor),
-        list.map(mode_ctor_to_circ_id, Expansions),
-        Context, !Specs).
-
-:- type circ_id
-    --->    circ_id(sym_name, arity).
-
-:- func inst_ctor_to_circ_id(inst_ctor) = circ_id.
-:- func mode_ctor_to_circ_id(mode_ctor) = circ_id.
-
-inst_ctor_to_circ_id(inst_ctor(SymName, Arity)) = circ_id(SymName, Arity).
-mode_ctor_to_circ_id(mode_ctor(SymName, Arity)) = circ_id(SymName, Arity).
-
-:- pred report_circular_equiv_error(string::in, string::in,
-    circ_id::in, circ_id::in, list(circ_id)::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-report_circular_equiv_error(One, Several, OrigId, Id, Expansions, Context,
-        !Specs) :-
-    ( if Id = OrigId then
-        % Report an error message of the form
-        %   Error: circular equivalence <kind> foo/0.
-        % or
-        %   Error: circular equivalence <kind>s foo/0 and bar/1.
-        % or
-        %   Error: circular equivalence <kind>s foo/0, bar/1,
-        %   and baz/2.
-        % where <kind> is either "inst" or "mode".
-
-        Kinds = choose_number(Expansions, One, Several),
-        ExpansionPieces = list.map(
-            ( func(circ_id(SymName, Arity)) =
-                qual_sym_name_arity(sym_name_arity(SymName, Arity))
-            ),
-            Expansions),
-        Pieces = [words("Error: circular equivalence"), fixed(Kinds)]
-            ++ component_list_to_pieces("and", ExpansionPieces) ++
-            [suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
-        !:Specs = [Spec | !.Specs]
+check_for_cyclic_mode(ModeDefns, OrigModeCtor, ModeCtor0,
+        Expansions0, !Cycles) :-
+    ModeCtor0 = mode_ctor(SymName0, Arity0),
+    SNA0 = sym_name_arity(SymName0, Arity0),
+    ( if map.search(Expansions0, SNA0, _OldContext) then
+        ( if ModeCtor0 = OrigModeCtor then
+            map.to_sorted_assoc_list(Expansions0, ExpansionsAL0),
+            set.insert(cycle(ExpansionsAL0), !Cycles)
+        else
+            % Both OrigModeCtor and ModeCtor0 suffer from needing infinite
+            % expansion, but the circularity we have just detected does
+            % NOT involve OrigModeCtor.
+            true
+        )
     else
-        % We have an inst `OrigId' which is not itself circular,
-        % but which is defined in terms of `Id' which is circular.
-        % Don't bother reporting it now -- it should have already been
-        % reported when we processed the definition of Id.
-        true
+        ( if
+            map.search(ModeDefns, ModeCtor0, ModeDefn),
+            ModeDefn = hlds_mode_defn(_, _, Body, Context, _),
+            Body = hlds_mode_body(EqvMode),
+            EqvMode = user_defined_mode(SymName, Args)
+        then
+            list.length(Args, Arity),
+            ModeCtor = mode_ctor(SymName, Arity),
+            map.det_insert(SNA0, Context, Expansions0, Expansions1),
+            check_for_cyclic_mode(ModeDefns, OrigModeCtor, ModeCtor,
+                Expansions1, !Cycles)
+        else
+            true
+        )
     ).
+
+%---------------------------------------------------------------------------%
+
+    % The inst_ctors or mode_ctors we have seen so far, together
+    % with the contexts of their definitions.
+:- type expansions == map(sym_name_arity, prog_context).
+
+    % A cycle is an expansion that starts and ends at the same inst_ctor
+    % or mode_ctor.
+    %
+    % We store it as an assoc_list, not a map, both because we need it
+    % in the form of a list when generating the error message, and because
+    % unlike maps, two assoc_lists are be semantically the same
+    % if and only if they are also syntactially the same.
+:- type cycle
+    --->    cycle(assoc_list(sym_name_arity, prog_context)).
+
+:- type inst_or_mode
+    --->    iom_inst
+    ;       iom_mode.
+
+:- pred cycle_to_error_spec(module_info::in, inst_or_mode::in, cycle::in,
+    error_spec::out) is det.
+
+cycle_to_error_spec(ModuleInfo, InstOrMode, Cycle, Spec) :-
+    (
+        InstOrMode = iom_inst,
+        StartInstOrModeWord = "Inst",
+        AnInstOrModeWord = "an inst"
+    ;
+        InstOrMode = iom_mode,
+        StartInstOrModeWord = "Mode",
+        AnInstOrModeWord = "a mode"
+    ),
+    Cycle = cycle(SNAsContexts),
+    module_info_get_name(ModuleInfo, ModuleName),
+    list.filter(sna_context_is_for_module(ModuleName), SNAsContexts,
+        LocalSNAsContexts, OtherSNAsContexts),
+    (
+        LocalSNAsContexts = [],
+        (
+            OtherSNAsContexts = [],
+            unexpected($pred, "cycle has no entries")
+        ;
+            OtherSNAsContexts = [HeadOtherSNAContext | TailOtherSNAsContexts],
+            HeadOtherSNAContext = _HeadSNA - HeadContext,
+            other_sna_and_context_to_piece(HeadOtherSNAContext, HeadSNAPiece),
+            list.map(other_sna_and_context_to_piece,
+                TailOtherSNAsContexts, LaterSNAPieces),
+            ContextMsgs = []
+        )
+    ;
+        LocalSNAsContexts = [HeadLocalSNAContext | TailLocalSNAsContexts],
+        HeadLocalSNAContext = _HeadSNA - HeadContext,
+        local_sna_and_context_to_piece_and_msg(ModuleInfo, InstOrMode,
+            HeadLocalSNAContext, HeadSNAPiece, _HeadMsg),
+        list.map2(
+            local_sna_and_context_to_piece_and_msg(ModuleInfo, InstOrMode),
+            TailLocalSNAsContexts, TailLocalSNAPieces, ContextMsgs),
+        list.map(other_sna_and_context_to_piece,
+            OtherSNAsContexts, OtherSNAPieces),
+        LaterSNAPieces = TailLocalSNAPieces ++ OtherSNAPieces
+    ),
+    PreludePieces = [words(StartInstOrModeWord), words("name"), HeadSNAPiece,
+        words("expands to"), words(AnInstOrModeWord),
+        words("containing itself")],
+    ConsequencePieces = [words("which means that"),
+        words("processing any reference to it"),
+        words("would require an infinite sequence of expansions."), nl],
+    (
+        LaterSNAPieces = [],
+        HeadPieces = PreludePieces ++ [suffix(",")] ++ ConsequencePieces
+    ;
+        LaterSNAPieces = [LaterSNAPiece],
+        HeadPieces = PreludePieces ++
+            [words("through"), LaterSNAPiece, suffix(",")]
+            ++ ConsequencePieces
+    ;
+        LaterSNAPieces = [_, _ | _],
+        LaterSNAPieceLists = list.map(make_singleton_list, LaterSNAPieces),
+        CyclePieces = component_list_to_line_pieces(LaterSNAPieceLists,
+            [suffix(",")]),
+        HeadPieces = PreludePieces ++ [words("through"), nl]
+            ++ CyclePieces ++ ConsequencePieces
+    ),
+    HeadMsg = simplest_msg(HeadContext, HeadPieces),
+    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        [HeadMsg | ContextMsgs]).
+
+:- pred sna_context_is_for_module(module_name::in,
+    pair(sym_name_arity, prog_context)::in) is semidet.
+
+sna_context_is_for_module(ModuleName, SNA - _Context) :-
+    SNA = sym_name_arity(SymName, _Arity),
+    SymName = qualified(ModuleName, _).
+
+:- pred local_sna_and_context_to_piece_and_msg(module_info::in,
+    inst_or_mode::in, pair(sym_name_arity, prog_context)::in,
+    format_component::out, error_msg::out) is det.
+
+local_sna_and_context_to_piece_and_msg(ModuleInfo, InstOrMode, SNA - Context,
+        SNAPiece, Msg) :-
+    % Module qualify the names of local insts or modes *only* if
+    % those names could be confused with insts or modes of the same name
+    % in the builtin module. (Error messages from the Mercury compiler
+    % normally module qualify every reference that is to an entity
+    % that is not either in the current module or the builtin module.)
+    SNA = sym_name_arity(SymName, Arity),
+    Name = unqualify_name(SymName),
+    BuiltinSymName = qualified(mercury_public_builtin_module, Name),
+    (
+        InstOrMode = iom_inst,
+        module_info_get_inst_table(ModuleInfo, InstTable),
+        inst_table_get_user_insts(InstTable, UserInstTable),
+        BuiltinInstCtor = inst_ctor(BuiltinSymName, Arity),
+        ( if map.search(UserInstTable, BuiltinInstCtor, _) then
+            SNAPiece = qual_sym_name_arity(SNA)
+        else
+            SNAPiece = unqual_sym_name_arity(SNA)
+        )
+    ;
+        InstOrMode = iom_mode,
+        module_info_get_mode_table(ModuleInfo, ModeTable),
+        mode_table_get_mode_defns(ModeTable, ModeDefns),
+        BuiltinModeCtor = mode_ctor(BuiltinSymName, Arity),
+        ( if map.search(ModeDefns, BuiltinModeCtor, _ModeDefn) then
+            SNAPiece = qual_sym_name_arity(SNA)
+        else
+            SNAPiece = unqual_sym_name_arity(SNA)
+        )
+    ),
+    MsgPieces = [words("The definition of"), SNAPiece, words("is here."), nl],
+    Msg = simplest_msg(Context, MsgPieces).
+
+:- pred other_sna_and_context_to_piece(pair(sym_name_arity, prog_context)::in,
+    format_component::out) is det.
+
+other_sna_and_context_to_piece(SNA - _Context, SNAPiece) :-
+    SNAPiece = qual_sym_name_arity(SNA).
+
+:- func make_singleton_list(T) = list(T).
+
+make_singleton_list(X) = [X].
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.add_mode.
