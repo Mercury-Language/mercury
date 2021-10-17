@@ -71,17 +71,25 @@
     % interval. The number of milliseconds required to execute Pred with input
     % In this many times is returned as Time.
     %
-    % benchmark_func(Func, In, Out, Repeats, Time) does for functions
-    % exactly what benchmark_det does for predicates.
-    %
 :- pred benchmark_det(pred(T1, T2), T1, T2, int, int).
 :- mode benchmark_det(pred(in, out) is det, in, out, in, out) is cc_multi.
 :- mode benchmark_det(pred(in, out) is cc_multi, in, out, in, out) is cc_multi.
 
+    % benchmark_func(Func, In, Out, Repeats, Time) does for functions exactly
+    % what benchmark_det does for predicates.
+    %
 :- pred benchmark_func(func(T1) = T2, T1, T2, int, int).
 :- mode benchmark_func(func(in) = out is det, in, out, in, out) is cc_multi.
 
-:- pred benchmark_det_io(pred(T1, T2, T3, T3), T1, T2, T3, T3, int, int).
+    % benchmark_det_io(Pred, In, Out, !State, Repeats, Time) is similar to
+    % benchmark_det, except that it is used for benchmarking a det predicate
+    % Pred which destructively updates some unique state State, in addition to
+    % taking the input In and producing the output Out.
+    % State will usually be the I/O state, but it may be some other unique
+    % data structure.
+    %
+:- pred benchmark_det_io(pred(T1, T2, State, State), T1, T2, State, State,
+    int, int).
 :- mode benchmark_det_io(pred(in, out, di, uo) is det, in, out, di, uo,
     in, out) is cc_multi.
 
