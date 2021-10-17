@@ -5589,13 +5589,36 @@ from_char(Char) = char_to_string(Char).
 
 %---------------------%
 
-int_to_string(N) = S1 :-
-    int_to_string(N, S1).
+:- pragma foreign_proc("C",
+    int_to_string(I::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    char buffer[21]; // 1 for sign, 19 for digits, 1 for nul.
+    sprintf(buffer, ""%"" MR_INTEGER_LENGTH_MODIFIER ""d"", I);
+    MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
+    strcpy(S, buffer);
+").
+
+:- pragma foreign_proc("C#",
+    int_to_string(I::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S = I.ToString();
+").
+
+:- pragma foreign_proc("Java",
+    int_to_string(I::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S = java.lang.Integer.toString(I);
+").
 
 int_to_string(N, Str) :-
-    int_to_base_string(N, 10, Str).
+    Str = int_to_string(N).
 
 from_int(N) = int_to_string(N).
+
+%---------------------%
 
 int_to_base_string(N1, N2) = S2 :-
     int_to_base_string(N1, N2, S2).
