@@ -86,9 +86,10 @@ case $host in
         mercury_cv_gcc_model_reg=yes
         mercury_cv_cannot_use_structure_assignment=yes
         ;;
-    aarch64-linux-gnu)
+    aarch64-linux-gnu | aarch64-linux-musl)
         # Taken from the config.cache file after running configure -C
-        # in a Debian 10 arm64 environment.
+        # - in a Debian 10 arm64 environment (for glibc)
+        # - in a Alpine Linux aarch64 environment (for musl)
         mercury_cv_cc_type=gcc
         mercury_cv_siginfo_t=yes
         mercury_cv_pc_access=no

@@ -540,7 +540,9 @@ Portability improvements
 * We have ported Mercury to Linux AArch64 (ARM64) systems.
 
 * The `tools/configure_mingw_cross` script has been replaced by
-  `tools/configure_cross`. It now supports aarch64-linux-gnu as a target.
+  `tools/configure_cross`. It now supports aarch64-linux-gnu and
+  aarch64-linux-musl as targets (i.e. Linux on aarch64 with GNU or
+  musl C libraries).
 
 Changes to the Mercury debugger
 -------------------------------
