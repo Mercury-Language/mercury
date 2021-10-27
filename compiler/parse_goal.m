@@ -935,7 +935,7 @@ parse_goal_implication(Functor, ArgTerms, Context, ContextPieces,
         then
             (
                 Functor = "<=",
-                Goal = implies_expr(Context, GoalB, GoalB)
+                Goal = implies_expr(Context, GoalB, GoalA)
             ;
                 Functor = "=>",
                 Goal = implies_expr(Context, GoalA, GoalB)

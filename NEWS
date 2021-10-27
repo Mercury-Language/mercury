@@ -542,6 +542,8 @@ Changes to the Mercury compiler
   warning about modules that are imported in the interface section but are
   not used in the interface section.
 
+* We have fixed parsing of reverse implication goals (A <= B).
+
 Portability improvements
 ------------------------
 

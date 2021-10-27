@@ -198,6 +198,7 @@ ORDINARY_PROGS = \
 	if_then_else_expr_state_var \
 	impl_def_lex \
 	impl_def_lex_string \
+	implication \
 	impossible_unify \
 	impure_foreign \
 	impure_init_and_final \
