@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2001, 2003-2004, 2006-2008, 2010-2011 The University
 % of Melbourne.
-% Copyright (C) 2014-2018 The Mercury Team.
+% Copyright (C) 2014-2021 The Mercury Team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -67,7 +67,34 @@
 :- pred spawn(pred(thread, io, io), maybe_error(thread), io, io).
 :- mode spawn(pred(in, di, uo) is cc_multi, out, di, uo) is cc_multi.
 
-    % spawn_native(Closure, Res, IO0, IO):
+    % A type representing options that affect thread creation.
+    %
+:- type thread_options.
+
+    % Create a new thread options object with options set to their default
+    % values. The options are:
+    %
+    % - min_stack_size: the minimum stack size in bytes (default: 0).
+    %   The special value 0 means to use the default stack size as chosen by
+    %   the underlying environment.
+    %
+:- func init_thread_options = thread_options.
+
+    % Set the minimum stack size (in bytes) for a new thread created with these
+    % thread options. This only affects C grades that use POSIX threads.
+    % The Java and C# backends do not yet respect the minimum stack size
+    % option.
+    %
+:- pred set_min_stack_size(uint::in, thread_options::in, thread_options::out)
+    is det.
+
+    % spawn_native(Closure, Res, !IO):
+    % Same as spawn_native(Closure, init_thread_options, Res, !IO).
+    %
+:- pred spawn_native(pred(thread, io, io), maybe_error(thread), io, io).
+:- mode spawn_native(pred(in, di, uo) is cc_multi, out, di, uo) is cc_multi.
+
+    % spawn_native(Closure, Options, Res, IO0, IO):
     % Like spawn/4, but Closure will be performed in a separate "native thread"
     % of the environment the program is running in (POSIX thread, Windows
     % thread, Java thread, etc.).
@@ -81,8 +108,10 @@
     % Also, some foreign code depends on OS thread-local state so needs to be
     % consistently executed on a dedicated OS thread to be usable.
     %
-:- pred spawn_native(pred(thread, io, io), maybe_error(thread), io, io).
-:- mode spawn_native(pred(in, di, uo) is cc_multi, out, di, uo) is cc_multi.
+:- pred spawn_native(pred(thread, io, io), thread_options, maybe_error(thread),
+    io, io).
+:- mode spawn_native(pred(in, di, uo) is cc_multi, in, out,
+    di, uo) is cc_multi.
 
     % yield(IO0, IO) is logically equivalent to (IO = IO0) but
     % operationally, yields the Mercury engine to some other thread
@@ -140,6 +169,11 @@
 import jmercury.runtime.JavaInternal;
 import jmercury.runtime.Task;
 ").
+
+:- type thread_options
+    --->    thread_options(
+                min_stack_size  :: uint
+            ).
 
     % The thread id is not formally exposed yet but allows different thread
     % handles to compare unequal.
@@ -301,8 +335,19 @@ spawn_context_2(_, Res, "", !IO) :-
 
 %---------------------------------------------------------------------------%
 
+init_thread_options = thread_options(0u).
+
+set_min_stack_size(MinStackSize, !Options) :-
+    !Options ^ min_stack_size := MinStackSize.
+
+%---------------------------------------------------------------------------%
+
 spawn_native(Goal, Res, !IO) :-
-    spawn_native_2(Goal, Success, ThreadId, ErrorMsg, !IO),
+    spawn_native(Goal, init_thread_options, Res, !IO).
+
+spawn_native(Goal, Options, Res, !IO) :-
+    Options = thread_options(MinStackSize),
+    spawn_native_2(Goal, MinStackSize, Success, ThreadId, ErrorMsg, !IO),
     (
         Success = yes,
         Res = ok(thread(ThreadId))
@@ -311,19 +356,20 @@ spawn_native(Goal, Res, !IO) :-
         Res = error(ErrorMsg)
     ).
 
-:- pred spawn_native_2(pred(thread, io, io), bool, thread_id, string, io, io).
-:- mode spawn_native_2(pred(in, di, uo) is cc_multi, out, out, out, di, uo)
-    is cc_multi.
+:- pred spawn_native_2(pred(thread, io, io), uint, bool, thread_id, string,
+    io, io).
+:- mode spawn_native_2(pred(in, di, uo) is cc_multi, in, out, out, out,
+    di, uo) is cc_multi.
 
 :- pragma foreign_proc("C",
-    spawn_native_2(Goal::(pred(in, di, uo) is cc_multi), Success::out,
-        ThreadId::out, ErrorMsg::out, _IO0::di, _IO::uo),
+    spawn_native_2(Goal::(pred(in, di, uo) is cc_multi), MinStackSize::in,
+        Success::out, ThreadId::out, ErrorMsg::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
 #ifdef MR_THREAD_SAFE
-    Success = ML_create_exclusive_thread(Goal, &ThreadId, &ErrorMsg,
-        MR_ALLOC_ID);
+    Success = ML_create_exclusive_thread(Goal, MinStackSize, &ThreadId,
+        &ErrorMsg, MR_ALLOC_ID);
 #else
     Success = MR_FALSE;
     ThreadId = MR_make_string_const("""");
@@ -333,8 +379,8 @@ spawn_native(Goal, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    spawn_native_2(Goal::(pred(in, di, uo) is cc_multi), Success::out,
-        ThreadId::out, ErrorMsg::out, _IO0::di, _IO::uo),
+    spawn_native_2(Goal::(pred(in, di, uo) is cc_multi), _MinStackSize::in,
+        Success::out, ThreadId::out, ErrorMsg::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
@@ -361,8 +407,8 @@ spawn_native(Goal, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    spawn_native_2(Goal::(pred(in, di, uo) is cc_multi), Success::out,
-        ThreadId::out, ErrorMsg::out, _IO0::di, _IO::uo),
+    spawn_native_2(Goal::(pred(in, di, uo) is cc_multi), _MinStackSize::in,
+        Success::out, ThreadId::out, ErrorMsg::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
@@ -527,8 +573,8 @@ INIT mercury_sys_init_thread_modules
   #include  <pthread.h>
 
   static MR_bool ML_create_exclusive_thread(MR_Word goal,
-                    MR_String *thread_id, MR_String *error_msg,
-                    MR_AllocSiteInfoPtr alloc_id);
+                    size_t min_stack_size, MR_String *thread_id,
+                    MR_String *error_msg, MR_AllocSiteInfoPtr alloc_id);
   static void   *ML_exclusive_thread_wrapper(void *arg);
 
   typedef struct ML_ThreadWrapperArgs ML_ThreadWrapperArgs;
@@ -553,14 +599,14 @@ INIT mercury_sys_init_thread_modules
 :- pragma foreign_code("C", "
 #if defined(MR_THREAD_SAFE)
   static MR_bool
-  ML_create_exclusive_thread(MR_Word goal, MR_String *thread_id,
-        MR_String *error_msg, MR_AllocSiteInfoPtr alloc_id)
+  ML_create_exclusive_thread(MR_Word goal, size_t min_stack_size,
+        MR_String *thread_id, MR_String *error_msg,
+        MR_AllocSiteInfoPtr alloc_id)
   {
     ML_ThreadWrapperArgs    args;
     pthread_t               thread;
     pthread_attr_t          attrs;
-    int                     thread_err;
-    int                     thread_errno;
+    int                     err;
     char                    errbuf[MR_STRERROR_BUF_SIZE];
 
     *thread_id = MR_make_string_const("""");
@@ -583,35 +629,50 @@ INIT mercury_sys_init_thread_modules
     args.thread_id = NULL;
 
     pthread_attr_init(&attrs);
-    pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
-    thread_err = pthread_create(&thread, &attrs, ML_exclusive_thread_wrapper,
-        &args);
-    thread_errno = errno;
-    pthread_attr_destroy(&attrs);
-
-    if (thread_err != 0) {
-        *error_msg = MR_make_string(alloc_id, ""pthread_create failed: %s"",
-          MR_strerror(thread_errno, errbuf, sizeof(errbuf)));
-    } else {
-        MR_LOCK(&args.mutex, ""ML_create_exclusive_thread"");
-        while (args.thread_state == ML_THREAD_NOT_READY) {
-            int cond_err = MR_COND_WAIT(&args.cond, &args.mutex,
-                ""ML_create_exclusive_thread"");
-            // EINTR should not be possible, but it has happened before.
-            if (cond_err != 0 && errno != EINTR) {
-                MR_fatal_error(
-                    ""ML_create_exclusive_thread: MR_COND_WAIT error: %s"",
-                    MR_strerror(errno, errbuf, sizeof(errbuf)));
-            }
-        }
-        MR_UNLOCK(&args.mutex, ""ML_create_exclusive_thread"");
-
-        if (args.thread_state == ML_THREAD_START_ERROR) {
-            *error_msg =
-                MR_make_string_const(""Error setting up engine for thread."");
+    err = pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
+    if (err != 0) {
+        *error_msg = MR_make_string(alloc_id,
+            ""pthread_attr_setdetachstate failed: %s"",
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
+        goto failed_to_create_thread;
+    }
+    if (min_stack_size > 0) {
+        err = pthread_attr_setstacksize(&attrs, min_stack_size);
+        if (err != 0) {
+            *error_msg = MR_make_string(alloc_id,
+                ""pthread_attr_setstacksize failed: %s"",
+                MR_strerror(errno, errbuf, sizeof(errbuf)));
+            goto failed_to_create_thread;
         }
     }
 
+    err = pthread_create(&thread, &attrs, ML_exclusive_thread_wrapper, &args);
+    if (err != 0) {
+        *error_msg = MR_make_string(alloc_id, ""pthread_create failed: %s"",
+            MR_strerror(errno, errbuf, sizeof(errbuf)));
+        goto failed_to_create_thread;
+    }
+
+    MR_LOCK(&args.mutex, ""ML_create_exclusive_thread"");
+    while (args.thread_state == ML_THREAD_NOT_READY) {
+        err = MR_COND_WAIT(&args.cond, &args.mutex,
+            ""ML_create_exclusive_thread"");
+        // EINTR should not be possible, but it has happened before.
+        if (err != 0 && errno != EINTR) {
+            MR_fatal_error(
+                ""ML_create_exclusive_thread: MR_COND_WAIT error: %s"",
+                MR_strerror(errno, errbuf, sizeof(errbuf)));
+        }
+    }
+    MR_UNLOCK(&args.mutex, ""ML_create_exclusive_thread"");
+
+    if (args.thread_state == ML_THREAD_START_ERROR) {
+        *error_msg =
+            MR_make_string_const(""Error setting up engine for thread."");
+    }
+
+failed_to_create_thread:
+    pthread_attr_destroy(&attrs);
     pthread_cond_destroy(&args.cond);
     pthread_mutex_destroy(&args.mutex);
 

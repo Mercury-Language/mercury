@@ -352,6 +352,14 @@ Changes to the Mercury standard library
     - pred `apply_rec_substitution_to_list/3`
                         (replacement: `apply_rec_substitution_in_terms/3`)
 
+### Changes to the `thread` module
+
+* The following predicate and functions have been added:
+
+    - func `init_thread_options/0`
+    - pred `set_min_stack_size/3`
+    - pred `spawn_native/5`
+
 ### Changes to the `thread.mvar` module
 
 * The following obsolete function has been removed:
