@@ -460,6 +460,7 @@ ORDINARY_PROGS = \
 	uint16_switch_test \
 	uint32_from_bytes \
 	uint32_switch_test \
+	uint32_to_string \
 	uint32_to_uint64 \
 	uint64_from_bytes \
 	uint64_ground_term \

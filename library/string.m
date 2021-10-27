@@ -5977,10 +5977,37 @@ uint_to_hex_string(UInt) =
     uint32_to_string(U32::in) = (S::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
-    char buffer[11]; // 10 for digits, 1 for nul.
-    sprintf(buffer, ""%"" PRIu32, U32);
-    MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
-    strcpy(S, buffer);
+    int num_digits;
+    if (U32 < 10) {
+        num_digits = 1;
+    } else if (U32 < 100) {
+        num_digits = 2;
+    } else if (U32 < 1000) {
+        num_digits = 3;
+    } else if (U32 < 10000) {
+        num_digits = 4;
+    } else if (U32 < 100000) {
+        num_digits = 5;
+    } else if (U32 < 1000000) {
+        num_digits = 6;
+    } else if (U32 < 10000000) {
+        num_digits = 7;
+    } else if (U32 < 100000000) {
+        num_digits = 8;
+    } else if (U32 < 1000000000) {
+        num_digits = 9;
+    } else {
+        num_digits = 10;
+    }
+
+    MR_allocate_aligned_string_msg(S, num_digits, MR_ALLOC_ID);
+    S[num_digits] = '\\0';
+    int i = num_digits - 1;
+    do {
+        S[i] = \"0123456789\"[U32 % 10];
+        i--;
+        U32 /= 10;
+    } while(U32 > 0);
 ").
 
 :- pragma foreign_proc("C#",
