@@ -53,18 +53,28 @@ SUBDIRS = \
 
 MMAKEFLAGS =
 
-# We include ../../mfilterjavac in this path because $(SUBDIR_MMAKE) is used
-# from the grade install directories, and we need mfilterjavac in our path
-# when executing in install_grade_dir.java/library and others.
+ifneq ($(CROSS_COMPILING),yes)
+	# We include ../../mfilterjavac in this path because $(SUBDIR_MMAKE) is
+	# used from the grade install directories, and we need mfilterjavac in
+	# our path when executing in install_grade_dir.java/library and others.
+	SUBDIR_MMAKE_PATH=../scripts:../util:../mfilterjavac:../../mfilterjavac:$$PATH
+	SUBSUBDIR_MMAKE_PATH=../../scripts:../../util:../../mfilterjavac:$$PATH
+else
+	# When cross-compiling, exclude util and mfilterjavac from the PATH so
+	# mmake does not try to execute binaries from those directories.
+	SUBDIR_MMAKE_PATH=../scripts:$$PATH
+	SUBSUBDIR_MMAKE_PATH=../../scripts:$$PATH
+endif
+
 SUBDIR_MMAKE = \
-	PATH=../scripts:../util:../mfilterjavac:../../mfilterjavac:$$PATH \
+	PATH=$(SUBDIR_MMAKE_PATH) \
 	MMAKE_VPATH=. \
 	MMAKE_DIR=../scripts \
 	DESTDIR=$(DESTDIR) \
 	../scripts/mmake $(MMAKEFLAGS)
 
 SUBSUBDIR_MMAKE = \
-	PATH=../../scripts:../../util:../../mfilterjavac:$$PATH \
+	PATH=$(SUBSUBDIR_MMAKE_PATH) \
 	MMAKE_VPATH=. \
 	MMAKE_DIR=../../scripts \
 	DESTDIR=$(DESTDIR) \
