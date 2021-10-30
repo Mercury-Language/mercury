@@ -130,22 +130,26 @@
 
 %---------------------------------------------------------------------------%
 
+    % length(List) = Length:
     % length(List, Length):
     %
     % True iff `Length' is the length of `List', i.e. if `List' contains
     % `Length' elements.
     %
+:- func length(list(T)) = int.
+
 :- pred length(list(_T), int).
 :- mode length(in, out) is det.
 % NOTE_TO_IMPLEMENTORS XXX The current mode checker can't handle this mode.
 % NOTE_TO_IMPLEMENTORS :- mode length(input_list_skel, out) is det.
 
-:- func length(list(T)) = int.
-
     % same_length(ListA, ListB):
     %
     % True iff `ListA' and `ListB' have the same length,
     % i.e. iff they both contain the same number of elements.
+    %
+    % Does not traverse *either* list further than the length
+    % of the shorter list.
     %
 :- pred same_length(list(T1), list(T2)).
 % NOTE_TO_IMPLEMENTORS XXX The current mode checker can't handle these modes.
@@ -159,6 +163,9 @@
 % NOTE_TO_IMPLEMENTORS      is det.
 
     % As above, but for three lists.
+    %
+    % Does not traverse *any* of the three lists further than the length
+    % of the shortest list.
     %
 :- pred same_length3(list(T1)::in, list(T2)::in, list(T3)::in)
     is semidet.
@@ -2096,15 +2103,15 @@ remove_suffix(List, Suffix, Prefix) :-
 
 %---------------------------------------------------------------------------%
 
-% Note - it is not possible to write a version of
-% list.length/1 in pure Mercury that works in both directions
-% unless you make it semidet rather than det.
-
-length(L, N) :-
-    list.length_acc(L, 0, N).
+% Note - it is not possible to write a version of list.length/1
+% in pure Mercury that works in both directions unless you make it semidet
+% rather than det.
 
 length(Xs) = N :-
     list.length(Xs, N).
+
+length(L, N) :-
+    list.length_acc(L, 0, N).
 
 :- pred length_acc(list(T), int, int).
 :- mode length_acc(in, in, out) is det.
