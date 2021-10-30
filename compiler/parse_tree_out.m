@@ -170,6 +170,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module char.
 :- import_module cord.
 :- import_module map.
 :- import_module one_or_more.
@@ -1500,35 +1501,64 @@ mercury_output_item_inst_defn(Info, Stream, ItemInstDefn, !IO) :-
         io.write_string(Stream, ")).\n", !IO)
     ;
         MaybeAbstractInstDefn = nonabstract_inst_defn(eqv_inst(Inst)),
-        % XXX The parentheses around the inst name and its arguments
-        % is redundant *most* of the time, in which case it is only clutter.
-        % It would be nice to eliminate this clutter.
-        io.write_string(Stream, ":- inst (", !IO),
-        mercury_output_term(InstVarSet, print_name_only, InstTerm,
-            Stream, !IO),
-        io.write_string(Stream, ") ", !IO),
+        ( if
+            % Is it safe to print the inst name without parentheses around it?
+            sym_name_is_simple(SymName),
+            not (
+                SymName = unqualified(Name),
+                mercury_op(Name)
+            )
+        then
+            % Yes it is, so print the inst and its parameters without
+            % extra parentheses around them.
+            io.format(Stream, ":- inst %s",
+                [s(sym_name_to_string(SymName))], !IO),
+            (
+                ArgTerms = []
+            ;
+                ArgTerms = [HeadArgTerm | TailArgTerms],
+                io.write_string(Stream, "(", !IO),
+                mercury_format_comma_separated_terms(InstVarSet,
+                    print_name_only, HeadArgTerm, TailArgTerms, Stream, !IO),
+                io.write_string(Stream, ")", !IO)
+            )
+        else
+            % No it isn't, so print the extra parentheses.
+            io.write_string(Stream, ":- inst (", !IO),
+            mercury_output_term(InstVarSet, print_name_only, InstTerm,
+                Stream, !IO),
+            io.write_string(Stream, ")", !IO)
+        ),
         (
             MaybeForTypeCtor = no
         ;
             MaybeForTypeCtor = yes(ForTypeCtor),
             ForTypeCtor = type_ctor(ForTypeCtorSymName, ForTypeCtorArity),
-            io.write_string(Stream, "for ", !IO),
+            io.write_string(Stream, " for ", !IO),
             mercury_output_sym_name(ForTypeCtorSymName, Stream, !IO),
             io.write_string(Stream, "/", !IO),
-            io.write_int(Stream, ForTypeCtorArity, !IO),
-            io.write_string(Stream, " ", !IO)
+            io.write_int(Stream, ForTypeCtorArity, !IO)
         ),
-        % XXX If Inst is bound(...), it would be nice to print the inst
-        % definition using the easier-to-read
-        %
-        %   :- inst i
-        %       --->    f1(...)
-        %       ;       f2(...).
-        %
-        % syntax.
-        io.write_string(Stream, "== ", !IO),
-        mercury_output_inst(Stream, Lang, InstVarSet, Inst, !IO),
-        io.write_string(Stream, ".\n", !IO)
+        ( if
+            % Can we print the inst using the syntax that resembles
+            % type definitions?
+            Inst = bound(Uniq, _, BoundInsts),
+            Uniq = shared,
+            bound_inst_cons_ids_are_all_simple(BoundInsts, SimpleBIs),
+            SimpleBIs = [HeadSimpleBI | TailSimpleBIs]
+        then
+            % Yes, so use that syntax, which is more readable, partly
+            % because it has less clutter, and partly because it can be
+            % formatted to have meaningful indentation.
+            io.write_string(Stream, "\n", !IO),
+            output_bound_inst_being_defined(Stream, Lang, InstVarSet,
+                "    --->    ", HeadSimpleBI, TailSimpleBIs, !IO)
+        else
+            % No, so fall back to the less readable but more general syntax.
+            io.write_string(Stream, " == ", !IO),
+            mercury_output_inst(Stream, Lang, InstVarSet, Inst, !IO),
+            io.write_string(Stream, ".\n", !IO)
+        )
     ).
 
     % Succeed if the sym_name describes a builtin inst.
@@ -1545,6 +1575,62 @@ is_builtin_inst_name(InstVarSet, unqualified(Name), Args0) :-
         ContextPieces, Term, MaybeInst),
     MaybeInst = ok1(Inst),
     Inst \= defined_inst(user_inst(_, _)).
+
+:- type simple_bound_inst
+    --->    simple_bound_functor(string, list(mer_inst)).
+
+:- pred bound_inst_cons_ids_are_all_simple(list(bound_inst)::in,
+    list(simple_bound_inst)::out) is semidet.
+
+bound_inst_cons_ids_are_all_simple([], []).
+bound_inst_cons_ids_are_all_simple([HeadBI | TailBIs],
+        [HeadSimpleBI | TailSimpleBIs])  :-
+    HeadBI = bound_functor(ConsId, ArgInsts),
+    ConsId = cons(SymName, _, _),
+    sym_name_is_simple(SymName),
+    SimpleName = sym_name_to_string(SymName),
+    HeadSimpleBI = simple_bound_functor(SimpleName, ArgInsts),
+    bound_inst_cons_ids_are_all_simple(TailBIs, TailSimpleBIs).
+
+:- pred sym_name_is_simple(sym_name::in) is semidet.
+
+sym_name_is_simple(SymName) :-
+    Names = sym_name_to_list(SymName),
+    all_true(name_is_simple, Names).
+
+:- pred name_is_simple(string::in) is semidet.
+
+name_is_simple(Name) :-
+    string.to_char_list(Name, Chars),
+    Chars = [HeadChar | TailChars],
+    char.is_lower(HeadChar),
+    all_true(char.is_alnum_or_underscore, TailChars).
+
+:- pred output_bound_inst_being_defined(io.text_output_stream::in,
+    output_lang::in, inst_varset::in, string::in,
+    simple_bound_inst::in, list(simple_bound_inst)::in, io::di, io::uo) is det.
+
+output_bound_inst_being_defined(Stream, Lang, InstVarSet, ArrowOrSemi,
+        HeadBI, TailBIs, !IO) :-
+    HeadBI = simple_bound_functor(Name, ArgInsts),
+    io.format(Stream, "%s%s", [s(ArrowOrSemi), s(Name)], !IO),
+    (
+        ArgInsts = []
+    ;
+        ArgInsts = [_ | _],
+        io.write_string(Stream, "(", !IO),
+        mercury_output_inst_list(Stream, Lang, InstVarSet, ArgInsts, !IO),
+        io.write_string(Stream, ")", !IO)
+    ),
+    (
+        TailBIs = [],
+        io.write_string(Stream, ".\n", !IO)
+    ;
+        TailBIs = [HeadTailBI | TailTailBIs],
+        io.write_string(Stream, "\n", !IO),
+        output_bound_inst_being_defined(Stream, Lang, InstVarSet,
+            "    ;       ", HeadTailBI, TailTailBIs, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 

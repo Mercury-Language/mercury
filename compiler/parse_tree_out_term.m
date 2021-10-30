@@ -114,6 +114,12 @@
     U::di, U::uo) is det <= output(S, U).
 
 %---------------------------------------------------------------------------%
+
+    % Is this string a Mercury operator?
+    %
+:- pred mercury_op(string::in) is semidet.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -518,8 +524,6 @@ mercury_format_quoted_atom(NextToGraphicToken, Name, S, !U) :-
 %
 % Predicates to test whether a functor is a Mercury operator.
 %
-
-:- pred mercury_op(string::in) is semidet.
 
 mercury_op(Op) :-
     ops.lookup_op(ops.init_mercury_op_table, Op).
