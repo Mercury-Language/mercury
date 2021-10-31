@@ -470,6 +470,7 @@ ORDINARY_PROGS = \
 	uint64_switch_test \
 	uint64_to_string \
 	uint8_switch_test \
+	uint8_to_string \
 	uint_string_conv \
 	uint_switch_test \
 	unicode_test \
