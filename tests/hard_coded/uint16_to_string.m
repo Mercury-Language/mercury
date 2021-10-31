@@ -2,11 +2,11 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 %
-% A test of uint32 to decimal string conversion.
+% A test of uint16 to decimal string conversion.
 %
 %---------------------------------------------------------------------------%
 
-:- module uint32_to_string.
+:- module uint16_to_string.
 :- interface.
 
 :- import_module io.
@@ -18,70 +18,51 @@
 
 :- implementation.
 
-:- import_module int32.
 :- import_module list.
 :- import_module string.
-:- import_module uint32.
+:- import_module uint16.
 
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
     P = (pred(U::in, !.IO::di, !:IO::uo) is det :-
-        io.print_line(uint32_to_string(U), !IO)
+        io.print_line(uint16_to_string(U), !IO)
     ),
     list.foldl(P, test_numbers, !IO).
 
-:- func test_numbers = list(uint32).
+:- func test_numbers = list(uint16).
 
 test_numbers = [
-    0u32,
-    1u32,
-    2u32,
-    7u32,
-    8u32,
-    9u32,
-    10u32,
-    11u32,
-    99u32,
-    100u32,
-    101u32,
-    127u32,
-    128u32,
-    129u32,
-    254u32,
-    255u32,
-    256u32,
-    999u32,
-    1000u32,
-    1001u32,
-    9999u32,
-    10000u32,
-    10001u32,
-    32766u32,
-    32767u32,
-    32768u32,
-    65534u32,
-    65535u32,
-    65536u32,
-    99999u32,
-    100000u32,
-    100001u32,
-    999999u32,
-    1000000u32,
-    1000001u32,
-    9999999u32,
-    10000000u32,
-    10000001u32,
-    99999999u32,
-    100000000u32,
-    100000001u32,
-    999999999u32,
-    1000000000u32,
-    1000000001u32,
-    uint32.cast_from_int32(int32.max_int32),
-    uint32.max_uint32
+    0u16,
+    1u16,
+    2u16,
+    7u16,
+    8u16,
+    9u16,
+    10u16,
+    11u16,
+    99u16,
+    100u16,
+    101u16,
+    126u16,  % max_int8 - 1
+    127u16,  % max_int8
+    128u16,  % max_int8 + 1
+    254u16,  % max_uint8 - 1
+    255u16,  % max_uint8
+    256u16,  % max_uint8 + 1
+    999u16,
+    1000u16,
+    1001u16,
+    9999u16,
+    10000u16,
+    10001u16,
+    32766u16, % max_int16 - 1
+    32767u16, % max_int16
+    32768u16, % max_int16 + 1,
+    65534u16, % max_uint16 - 1
+    65535u16  % max_uint16
 ].
 
 %---------------------------------------------------------------------------%
-:- end_module uint32_to_string.
+:- end_module uint16_to_string.
 %---------------------------------------------------------------------------%
