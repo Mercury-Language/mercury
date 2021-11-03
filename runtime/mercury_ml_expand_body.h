@@ -1147,7 +1147,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                         ": attempt to deconstruct surrogate code point");
                 } else {
-                    size_t n = MR_utf8_encode(buf + 1, (MR_Char)data_word);
+                    size_t n = MR_utf8_encode(buf + 1, (MR_Char) data_word);
                     // XXX Should throw an exception.
                     if (n == 0) {
                         MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
