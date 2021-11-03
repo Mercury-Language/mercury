@@ -425,7 +425,7 @@ extern MR_bool MR_escape_string_quote(MR_String *ptr,
 
 // True if c is a Unicode surrogate code point, i.e. U+D800..U+DFFF.
 
-#define MR_is_surrogate(c)          (((unsigned) (c) & 0xF800) == 0xD800)
+#define MR_is_surrogate(c)          (((unsigned) (c) & 0x1FF800) == 0xD800)
 
 // True if c is a Unicode control code point, i.e. U+0000..U+001f,
 // U+007f..U+009f.
