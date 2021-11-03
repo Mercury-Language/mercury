@@ -54,6 +54,7 @@ ORDINARY_PROGS = \
 	cc_multi_bug \
 	cc_nondet_disj \
 	change_hunk_test \
+	char_not_surrogate \
 	char_signed \
 	char_unicode \
 	checked_nondet_tailcall \
@@ -385,6 +386,7 @@ ORDINARY_PROGS = \
 	string_index_ilseq \
 	string_index_next_ilseq \
 	string_loop \
+	string_not_surrogate \
 	string_presuffix \
 	string_prev_index_ilseq \
 	string_set_char \
