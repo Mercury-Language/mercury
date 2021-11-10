@@ -32,8 +32,7 @@
 % default cryptographic random number generator implementation.
 %
 % On the Java backend, the system RNG is an instance of the
-% java.security.SecureRandom class using the default algorithm random number
-% algorithm.
+% java.security.SecureRandom class using the default random number algorithm.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -136,7 +135,7 @@
 //     the system RNG is implemented by reading from /dev/urandom.
 //
 // ML_SYSRAND_IMPL_NONE
-//     there is no system RNG is not available on this platform.
+//     there is no system RNG available on this platform.
 
 #if defined(__linux__) || defined(MR_SOLARIS) || defined(_AIX)
     #define ML_SYSRAND_IMPL_URANDOM
