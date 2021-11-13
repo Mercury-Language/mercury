@@ -409,6 +409,8 @@ Changes to the Mercury standard library
     - func `unchecked_bit_is_set/2`
     - func `bit_is_clear/2`
     - func `unchecked_bit_is_clear/2`
+    - func `cast_from_uint8/1`
+    - func `cast_to_uint8/1`
 
 ### Changes to the `uint32` module
 
@@ -430,6 +432,8 @@ Changes to the Mercury standard library
     - func `unchecked_bit_is_set/2`
     - func `bit_is_clear/2`
     - func `unchecked_bit_is_clear/2`
+    - func `cast_from_uint8/1`
+    - func `cast_to_uint8/1`
 
 ### Changes to the `uint64` module
 
@@ -450,6 +454,8 @@ Changes to the Mercury standard library
     - func `unchecked_bit_is_set/2`
     - func `bit_is_clear/2`
     - func `unchecked_bit_is_clear/2`
+    - func `cast_from_uint8/1`
+    - func `cast_to_uint8/1`
 
 ### Changes to the `uint8` module
 

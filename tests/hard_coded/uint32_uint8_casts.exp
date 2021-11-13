@@ -1,0 +1,27 @@
+cast_from_uint8(0u8) = 0u32
+cast_from_uint8(7u8) = 7u32
+cast_from_uint8(8u8) = 8u32
+cast_from_uint8(15u8) = 15u32
+cast_from_uint8(16u8) = 16u32
+cast_from_uint8(31u8) = 31u32
+cast_from_uint8(32u8) = 32u32
+cast_from_uint8(63u8) = 63u32
+cast_from_uint8(64u8) = 64u32
+cast_from_uint8(127u8) = 127u32
+cast_from_uint8(128u8) = 128u32
+cast_from_uint8(254u8) = 254u32
+cast_from_uint8(255u8) = 255u32
+
+cast_to_uint8(0u32) = 0u8
+cast_to_uint8(7u32) = 7u8
+cast_to_uint8(8u32) = 8u8
+cast_to_uint8(15u32) = 15u8
+cast_to_uint8(16u32) = 16u8
+cast_to_uint8(31u32) = 31u8
+cast_to_uint8(32u32) = 32u8
+cast_to_uint8(63u32) = 63u8
+cast_to_uint8(64u32) = 64u8
+cast_to_uint8(127u32) = 127u8
+cast_to_uint8(128u32) = 128u8
+cast_to_uint8(254u32) = 254u8
+cast_to_uint8(255u32) = 255u8

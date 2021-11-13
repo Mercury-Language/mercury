@@ -88,6 +88,27 @@
 
 %---------------------------------------------------------------------------%
 %
+% Conversion to/from uint8
+%
+
+    % cast_to_uint8(U64) = U8:
+    %
+    % Convert a uint64 to a uint8.
+    % Always succeeds, but will yield a result that is mathematically equal
+    % to U64 only if U64 is in [0, 2^8 - 1].
+    %
+:- func cast_to_uint8(uint64) = uint8.
+
+    % cast_from_uint8(U8) = U64:
+    %
+    % Convert a uint8 to a uint64.
+    % Always succeeds, and yields a result that is mathemtically equal
+    % to U8.
+    %
+:- func cast_from_uint8(uint8) = uint64.
+
+%---------------------------------------------------------------------------%
+%
 % Change of signedness.
 %
 
@@ -569,6 +590,54 @@ det_from_int(I) = U64 :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     U = (int) U64;
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_to_uint8(U64::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U8 = (uint8_t) U64;
+").
+
+:- pragma foreign_proc("C#",
+    cast_to_uint8(U64::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U8 = (byte) U64;
+").
+
+:- pragma foreign_proc("Java",
+    cast_to_uint8(U64::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U8 = (byte) U64;
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_from_uint8(U8::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U64 = (uint64_t) U8;
+").
+
+:- pragma foreign_proc("C#",
+    cast_from_uint8(U8::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U64 = (ulong) U8;
+").
+
+:- pragma foreign_proc("Java",
+    cast_from_uint8(U8::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U64 = (long) (U8 & 0xff);
 ").
 
 %---------------------------------------------------------------------------%

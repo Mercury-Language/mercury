@@ -108,6 +108,27 @@
 
 %---------------------------------------------------------------------------%
 %
+% Conversion to/from uint8
+%
+
+    % cast_to_uint8(U16) = U8:
+    %
+    % Convert a uint16 to a uint8.
+    % Always succeeds, but will yield a result that is mathematically equal
+    % to U16 only if U16 is in [0, 2^8 - 1].
+    %
+:- func cast_to_uint8(uint16) = uint8.
+
+    % cast_from_uint8(U8) = U16:
+    %
+    % Convert a uint8 to a uint16.
+    % Always succeeds, and yields a result that is mathemtically equal
+    % to U8.
+    %
+:- func cast_from_uint8(uint8) = uint16.
+
+%---------------------------------------------------------------------------%
+%
 % Conversion to/from uint64.
 %
 
@@ -619,6 +640,54 @@ det_from_uint(U) = U16 :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     U = U16 & 0xffff;
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_to_uint8(U16::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U8 = (uint8_t) U16;
+").
+
+:- pragma foreign_proc("C#",
+    cast_to_uint8(U16::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U8 = (byte) U16;
+").
+
+:- pragma foreign_proc("Java",
+    cast_to_uint8(U16::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U8 = (byte) U16;
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_from_uint8(U8::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U16 = (uint16_t) U8;
+").
+
+:- pragma foreign_proc("C#",
+    cast_from_uint8(U8::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U16 = (ushort) U8;
+").
+
+:- pragma foreign_proc("Java",
+    cast_from_uint8(U8::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U16 = (short) (U8 & 0xff);
 ").
 
 %---------------------------------------------------------------------------%

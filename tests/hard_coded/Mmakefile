@@ -462,15 +462,18 @@ ORDINARY_PROGS = \
 	uint16_from_bytes \
 	uint16_switch_test \
 	uint16_to_string \
+	uint16_uint8_casts \
 	uint32_from_bytes \
 	uint32_switch_test \
 	uint32_to_string \
 	uint32_to_uint64 \
+	uint32_uint8_casts \
 	uint64_from_bytes \
 	uint64_ground_term \
 	uint64_string_conv \
 	uint64_switch_test \
 	uint64_to_string \
+	uint64_uint8_casts \
 	uint8_switch_test \
 	uint8_to_string \
 	uint_string_conv \

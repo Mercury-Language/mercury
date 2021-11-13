@@ -102,6 +102,27 @@
 
 %---------------------------------------------------------------------------%
 %
+% Conversion to/from uint8
+%
+
+    % cast_to_uint8(U32) = U8:
+    %
+    % Convert a uint32 to a uint8.
+    % Always succeeds, but will yield a result that is mathematically equal
+    % to U32 only if U32 is in [0, 2^8 - 1].
+    %
+:- func cast_to_uint8(uint32) = uint8.
+
+    % cast_from_uint8(U8) = U32:
+    %
+    % Convert a uint8 to a uint32.
+    % Always succeeds, and yields a result that is mathemtically equal
+    % to U8.
+    %
+:- func cast_from_uint8(uint8) = uint32.
+
+%---------------------------------------------------------------------------%
+%
 % Conversion to/from uint64.
 %
 
@@ -642,6 +663,54 @@ det_from_uint(U) = U32 :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     U = U32;
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_to_uint8(U32::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U8 = (uint8_t) U32;
+").
+
+:- pragma foreign_proc("C#",
+    cast_to_uint8(U32::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U8 = (byte) U32;
+").
+
+:- pragma foreign_proc("Java",
+    cast_to_uint8(U32::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U8 = (byte) U32;
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_from_uint8(U8::in) = (U32::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U32 = (uint32_t) U8;
+").
+
+:- pragma foreign_proc("C#",
+    cast_from_uint8(U8::in) = (U32::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U32 = (uint) U8;
+").
+
+:- pragma foreign_proc("Java",
+    cast_from_uint8(U8::in) = (U32::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U32 = U8 & 0xff;
 ").
 
 %---------------------------------------------------------------------------%
