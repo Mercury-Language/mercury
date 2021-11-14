@@ -386,7 +386,7 @@ Changes to the Mercury standard library
 
     - pred `foldl6/14`
     - pred `foldl6_values/14`
-    - pred `fold56/14`
+    - pred `foldr6/14`
 
 ### Changes to the `uint16` module
 
