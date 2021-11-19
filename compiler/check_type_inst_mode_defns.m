@@ -19,11 +19,9 @@
 :- interface.
 
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
-:- import_module map.
 
 %---------------------------------------------------------------------------%
 
@@ -85,10 +83,12 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign_enum.
 :- import_module parse_tree.prog_type.
 
 :- import_module bimap.
+:- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module pair.

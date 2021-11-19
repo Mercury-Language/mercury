@@ -24,7 +24,6 @@
 :- import_module mdbcomp.sym_name.
 
 :- import_module io.
-:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -62,6 +61,7 @@
 
 :- import_module dir.
 :- import_module getopt.
+:- import_module maybe.
 :- import_module parser.
 :- import_module term.
 :- import_module term_io.

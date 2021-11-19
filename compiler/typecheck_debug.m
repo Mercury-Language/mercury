@@ -19,7 +19,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module io.
-:- import_module list.
 
 %---------------------------------------------------------------------------%
 
@@ -43,6 +42,7 @@
 :- import_module parse_tree.prog_type_subst.
 
 :- import_module bool.
+:- import_module list.
 :- import_module map.
 :- import_module string.
 :- import_module varset.

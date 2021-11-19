@@ -23,7 +23,6 @@
 :- import_module libs.maybe_succeeded.
 :- import_module make.build.
 
-:- import_module bool.
 :- import_module enum.
 :- import_module io.
 :- import_module maybe.
@@ -162,6 +161,7 @@
 :- import_module parse_tree.prog_data_foreign.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module dir.
 :- import_module sparse_bitset.
 

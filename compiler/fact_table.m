@@ -64,7 +64,6 @@
 
 :- import_module io.
 :- import_module list.
-:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
@@ -161,6 +160,7 @@
 :- import_module integer.
 :- import_module library.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module parser.
 :- import_module require.

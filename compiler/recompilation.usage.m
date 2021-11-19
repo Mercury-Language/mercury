@@ -19,17 +19,10 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.sym_name.
+
 :- import_module parse_tree.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.module_imports.
 :- import_module recompilation.used_file.
-
-:- import_module map.
-:- import_module maybe.
-:- import_module set.
 
 :- pred construct_used_file_contents(module_info::in, recompilation_info::in,
     maybe_top_module::in, module_timestamp_map::in,
@@ -47,6 +40,10 @@
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.timestamp.
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
@@ -55,10 +52,13 @@
 :- import_module bool.
 :- import_module int.
 :- import_module list.
+:- import_module map.
+:- import_module maybe.
 :- import_module one_or_more.
 :- import_module pair.
 :- import_module queue.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
