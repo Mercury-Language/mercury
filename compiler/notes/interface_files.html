@@ -959,9 +959,9 @@ it reads in .int files first, .int2 files next, and .int3 files last.
 <p>
 (Note that in the presence of intermodule optimization,
 grab_modules.m <em>can</em> read in a module's .int file
-(as an int-for-opt file) <em>after</em> it reads in its .int2 or .int3 file.
+(as an int-for-opt file) <em>after</em> it reads in its .int2 file.
 This will typically lead to
-many entities defined in the .int2 or .int3 file being defined twice.
+many entities defined in the .int2 file being defined twice.
 The compiler must (and does) reject such double definitions silently.)
 <p>
 I (zs) don't see any inclusion requirements being placed on .int0 files.
