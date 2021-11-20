@@ -7,16 +7,27 @@
 
 :- import_module io.
 
-:- pred main(io::di, io::uo) is det.
+:- typeclass output(S, U) <= (U -> S) where [
+    pred output_int(S::in, int::in, U::di, U::uo) is det
+].
+
+:- instance output(io.text_output_stream, io.state).
+
+:- pred bad_pred(S::in, int::in, U::di, U::uo) is det <= output(U).
+
+:- type bad_type_ctor
+    --->    some [U] f(U) => output(U).
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module bad_type_class_constraint_intermodule_2.
+:- instance output(io.text_output_stream, io.state) where [
+    pred(do_stuff/4) is io.write_string
+].
 
-main(!IO) :-
-    bad_pred(io.stdout_stream, 42, !IO).
+bad_pred(S, N, !U) :-
+    output_int(S, N, !U).
 
 %---------------------------------------------------------------------------%
 

@@ -175,7 +175,6 @@
     ;       halt_at_syntax_errors
     ;       halt_at_auto_parallel_failure
     ;       halt_at_invalid_interface
-    ;       print_errors_warnings_when_generating_interface
     ;       warn_singleton_vars
     ;       warn_overlapping_scopes
     ;       warn_det_decls_too_lax
@@ -1240,10 +1239,6 @@ optdef(oc_warn, halt_at_warn,                           bool(no)).
 optdef(oc_warn, halt_at_syntax_errors,                  bool(no)).
 optdef(oc_warn, halt_at_auto_parallel_failure,          bool(no)).
 optdef(oc_warn, halt_at_invalid_interface,              bool(yes)).
-    % XXX TYPE_REPN We should set halt_at_invalid_interface to "yes"
-    % once we require the installed compiler to ensure that what it puts
-    % into interface files won't generate any errors.
-optdef(oc_warn, print_errors_warnings_when_generating_interface, bool(no)).
 optdef(oc_warn, warn_singleton_vars,                    bool(yes)).
 optdef(oc_warn, warn_overlapping_scopes,                bool(yes)).
 optdef(oc_warn, warn_det_decls_too_lax,                 bool(yes)).
@@ -2139,8 +2134,6 @@ long_option("halt-at-warn",             halt_at_warn).
 long_option("halt-at-syntax-errors",    halt_at_syntax_errors).
 long_option("halt-at-auto-parallel-failure", halt_at_auto_parallel_failure).
 long_option("halt-at-invalid-interface",    halt_at_invalid_interface).
-long_option("print-errors-warnings-when-generating-interface",
-                    print_errors_warnings_when_generating_interface).
 long_option("warn-singleton-variables", warn_singleton_vars).
 long_option("warn-singleton-vars",      warn_singleton_vars).
 long_option("warn-overlapping-scopes",  warn_overlapping_scopes).
@@ -4238,14 +4231,18 @@ options_help_warning(Stream, !IO) :-
 %       "\tThis option causes the compiler to halt if it cannot perform",
 %       "\tan auto-parallelization requested by a feedback file.",
 % --halt-at-invalid-interface is a temporary developer-only option.
-%       "--halt-at-invalid-interface",
-%       "\tThis option causes the compiler to halt immediately",
-%       "\tif it finds that an automatically generated interface file",
-%       "\thas invalid contents.",
-        "--print-errors-warnings-when-generating-interface",
-        "\tPrint error and/or warning messages about problems with a module",
-        "\tnot just when the module is compiled, but also when its",
-        "\tinterface files are generated, if the problem is visible then.",
+        "--no-halt-at-invalid-interface",
+        "\tThis option operates when the compiler is invoked with the",
+        "\t--make--interface option to generate .int and .int2 files",
+        "\tfor one or more modules. In its default setting,",
+        "\t--halt-at-invalid-interface, it causes the compiler to check",
+        "\tthe consistency of those parts of each of those modules",
+        "\tthat are intended to end up in the .int and .int2 files.",
+        "\tIf these checks find any problems, the compiler will stop",
+        "\twithout generating those files after printing an error message",
+        "\tfor each problem. Users can prevent this behavior,",
+        "\tand thus allow the generation of invalid interface files,",
+        "\tby specifying --no-halt-at-invalid-interface.",
         "--no-warn-accumulator-swaps",
         "\tDo not warn about argument order rearrangement caused",
         "\tby `--introduce-accumulators'.",

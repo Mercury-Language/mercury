@@ -24,6 +24,9 @@ MAYBE_J1 =
 # Tests which get errors during the making of dependencies but for which
 # we want to test errors during compilation should be put into the
 # invalid_nodepend directory.
+#
+# Tests for which we want to test for errors during the making of .int/.int2
+# files should be put into the invalid_make_int directory.
 
 SPECIAL_RULE_MULTIMODULE_PROGS = \
 	duplicate_instance_2
@@ -38,17 +41,11 @@ SPECIAL_RULE_SINGLEMODULE_PROGS = \
 
 MULTIMODULE_PROGS = \
 	abstract_eqv \
-	bad_type_class_constraint_intermodule \
-	bug521 \
 	exported_unify \
 	ho_default_func_2.sub \
 	ii_parent.ii_child \
 	imported_mode \
-	int_impl_imports \
-	missing_interface_import2 \
 	partial_implied_mode \
-	test_nested \
-	transitive_import \
 	transitive_import_class \
 	type_error_use_module
 

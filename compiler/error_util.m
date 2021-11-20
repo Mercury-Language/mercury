@@ -1375,18 +1375,13 @@ project_msg_components(Msg) = Components :-
 
 filter_interface_generation_specs(Globals, Specs, SpecsToPrint, !IO) :-
     globals.lookup_bool_option(Globals,
-        print_errors_warnings_when_generating_interface, PrintErrors),
+        halt_at_invalid_interface, HaltInvalidInterface),
     (
-        PrintErrors = yes,
+        HaltInvalidInterface = yes,
         SpecsToPrint = Specs
     ;
-        PrintErrors = no,
-        io.get_exit_status(Status, !IO),
-        ( if Status = 0 then
-            SpecsToPrint = []
-        else
-            SpecsToPrint = Specs
-        )
+        HaltInvalidInterface = no,
+        SpecsToPrint = []
     ).
 
 %---------------------------------------------------------------------------%

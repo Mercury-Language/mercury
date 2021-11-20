@@ -1,5 +1,13 @@
 # vim: ts=8 sw=8 noexpandtab
 # (please keep these lists sorted)
 
-MCFLAGS-bug521_sub = --print-errors-warnings-when-generating-interface
-MCFLAGS-missing_interface_import = --print-errors-warnings-when-generating-interface
+MCFLAGS-bad_type_class_constraint_intermodule	= --halt-at-invalid-interface
+MCFLAGS-bug499					= --halt-at-invalid-interface
+MCFLAGS-bug521_sub				= --halt-at-invalid-interface
+MCFLAGS-int_impl_imports			= --halt-at-invalid-interface
+MCFLAGS-missing_interface_import		= --halt-at-invalid-interface
+MCFLAGS-missing_interface_import2		= --halt-at-invalid-interface
+MCFLAGS-missing_parent_import			= --halt-at-invalid-interface
+MCFLAGS-sub_c					= --halt-at-invalid-interface
+MCFLAGS-test_nested				= --halt-at-invalid-interface
+MCFLAGS-transitive_import			= --halt-at-invalid-interface

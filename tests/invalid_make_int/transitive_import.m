@@ -18,14 +18,13 @@
     ;       b
     ;       c.
 
-:- func assoc_list_first(assoc_list(int, V)) =
-    std_util__pair(int, V) is semidet.
+:- func assoc_list_first(assoc_list(int, V)) = pair.pair(int, V) is semidet.
 
 :- implementation.
 
 :- import_module list.
 
-:- instance enum__enum(enum) where [
+:- instance enum.enum(enum) where [
     to_int(a) = 1,
     to_int(b) = 2,
     to_int(c) = 3,

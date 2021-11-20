@@ -4,7 +4,11 @@
 
 TESTS_DIR = ..
 THIS_DIR = invalid_make_int
-MAYBE_J1 =
+# Two tests, missing_parent_import and sub_c, use nested submodules,
+# which requires -j1. The loss of parallelism has a performance impact,
+# but due to the small number of test cases in this directory, this impact
+# is small.
+MAYBE_J1 = -j1
 
 # Note: multi-module tests are listed separately from single-module tests
 # because we need to make dependencies, and make .int3 files for the
@@ -13,10 +17,18 @@ MAYBE_J1 =
 # Multi-module tests should use *separate* modules, not *nested* modules.
 
 SINGLE_MODULE_PROGS = \
+	bad_type_class_constraint_intermodule \
+	bug499 \
 	bug521_sub \
 	missing_interface_import
 
-MULTI_MODULE_PROGS =
+MULTI_MODULE_PROGS = \
+	int_impl_imports \
+	missing_interface_import2 \
+	missing_parent_import \
+	sub_c \
+	test_nested \
+	transitive_import
 
 #-----------------------------------------------------------------------------#
 
@@ -40,8 +52,8 @@ $(SINGLE_MODULE_PROGS:%=%.int_err): %.int_err: %.m
 	fi
 
 $(MULTI_MODULE_PROGS:%=%.int_err): %.int_err: %.m
-	mmake %.depend
-	mmake %.int3s
+	+mmake $*.depend
+	+mmake $*.all_int3s
 	if $(MC) --make-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
 		> $*.int_err 2>&1; \
 	then false; \

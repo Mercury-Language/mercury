@@ -21,10 +21,6 @@ MAYBE_J1 = -j1
 
 MAKE_DEP_PROGS = \
 	exported_unify3 \
-	import_in_parent \
-	missing_parent_import \
-	sub_c \
-	subtype_submodule \
 	undef_mod_qual \
 	unresolved_overloading
 
@@ -32,6 +28,16 @@ DO_NOT_MAKE_DEP_PROGS = \
 	duplicate_module_test \
 	func_class \
 	nested_impl_in_int
+
+# XXX The test cases import_in_parent and subtype_submodule are
+# currently disabled, because
+#
+# - we now discover the errors they reports when making .int files,
+#   which would require moving them to invalid_make_int, but
+# - this would require adding support for nested submodules to
+#   invalid_make_int, and
+# - this is not warranted, because the errors they report are tested for
+#   elsewhere.
 
 #-----------------------------------------------------------------------------#
 

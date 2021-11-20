@@ -248,7 +248,19 @@ write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
         GetSpecsEffectivelyErrors = no,
         set.is_empty(GetErrors)
     then
-        % Module-qualify all items.
+        % Module-qualify the aug_make_int_unit.
+        %
+        % Note that doing this only if the condition above succeeds avoids
+        % the generation of avalanche error messages, which is good,
+        % but it also prevents us from generating useful, non-avalanche
+        % error messages, e.g. in tests/invalid_make_int/test_nested.m,
+        % we would be able to report that the fourth argument of predicate
+        % "foo" refers to a nonexistent type.
+        %
+        % In the absence of a sure way to filter out all avalanche errors
+        % from QualSpecs, we have to decide between generating some avalanche
+        % error messages or foregoing the generation of some non-avalanche
+        % error messages. This position of this call makes the latter choice.
         module_qualify_aug_make_int_unit(Globals,
             AugMakeIntUnit1, AugMakeIntUnit, [], QualSpecs),
         filter_interface_generation_specs(Globals,

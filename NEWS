@@ -6,6 +6,13 @@ Changes that may break compatibility
 
 * We have removed `is` as a synonym for unification.
 
+* We have reserved `=<`/2 as a type name.
+
+* A term with a top-level functor `coerce/1` is now treated as a
+  type conversion expression. To call a function named `coerce/1`,
+  you can module qualify the name at the call site,
+  or wrap parentheses around the name, e.g. `(coerce)(Arg)`.
+
 * We have made slight changes to the names and/or the functionality
   of several predicates in the `getopt` and `getopt_io` modules.
 
@@ -14,13 +21,6 @@ Changes that may break compatibility
 * We have dropped support for macOS 10.8 and earlier.
 
 * We have removed the Erlang backend as it was unmaintained.
-
-* We have reserved `=<`/2 as a type name.
-
-* A term with a top-level functor `coerce/1` is now treated as a
-  type conversion expression. To call a function named `coerce/1`,
-  you can module qualify the name at the call site,
-  or wrap parentheses around the name, e.g. `(coerce)(Arg)`.
 
 Changes to the Mercury standard library
 ---------------------------------------
@@ -208,7 +208,7 @@ Changes to the Mercury standard library
 
     - pred `foldl6/14`
     - pred `foldl6_values/14`
-    - pred `fold56/14`
+    - pred `foldr6/14`
 
 ### Changes to the `maybe` module
 
@@ -483,9 +483,9 @@ Changes to the Mercury standard library
 
 * The following obsolete predicates have been removed:
 
-    - pred `merge_subst/4`          (replacement: `merge_renaming/4`)
+    - pred `merge_subst/4`      (replacement: `merge_renaming/4`)
     - pred `merge_subst_without_names/4`
-                                    (replacement: `merge_renaming_without_names/4`)
+                                (replacement: `merge_renaming_without_names/4`)
 
 * The following functions and predicates have been added:
 
@@ -512,7 +512,7 @@ Changes to the Mercury language
   A term of type `real_color` can be converted to a term of type `color`
   with `coerce(Term)`. A term of type `color` can be converted to a term of
   type `real_color` if it has an appropriate inst. Subtypes share a common
-  data representation with their base types so the type conversions do not
+  data representation with their base types, so the type conversions do not
   cost anything at runtime.
 
 * Field names no longer need to be unique within a module.
@@ -549,6 +549,15 @@ Changes to the Mercury compiler
   not used in the interface section.
 
 * We have fixed parsing of reverse implication goals (A <= B).
+
+* By default, the compiler now checks some aspects of a module semantics
+  when generating the .int and .int2 interface files for that module.
+  (For example, it generates error messages for references to undefined
+  types, insts and modes.) This new behavior can be switched off for now
+  with the new option --halt-at-invalid-interface. This new option
+  replaces the old --print-errors-warnings-when-generating-interface option,
+  but once any problems caused by the new approach have been ironed out,
+  we intend to delete the --halt-at-invalid-interface option as well.
 
 Portability improvements
 ------------------------

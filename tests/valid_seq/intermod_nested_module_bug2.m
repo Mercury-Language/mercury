@@ -7,12 +7,9 @@
 :- interface.
 
 :- include_module intermod_nested_module_bug2.sub.
-:- import_module assoc_list.
 :- import_module int.
 :- import_module io.
-:- import_module list.
 :- import_module maybe.
-:- import_module string.
 
 :- type cgi
     --->    cgi(

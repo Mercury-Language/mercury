@@ -6511,11 +6511,10 @@ Disable all warning messages about programming style.
 @sp 1
 @item --halt-at-warn
 @findex --halt-at-warn
-This option causes the compiler to treat all
-warnings as if they were errors.  This means that
-if any warning is issued, the compiler will not
-generate code --- instead, it will return a
-non-zero exit status.
+This option causes the compiler to treat all warnings as if they were errors.
+This means that if any warning is issued,
+the compiler will not generate code ---
+instead, it will return a non-zero exit status.
 
 @sp 1
 @item --halt-at-syntax-error
@@ -6533,12 +6532,22 @@ if it finds any syntax errors in the program.
 @c an auto-parallelization requested by a feedback file.
 
 @sp 1
-@item --print-errors-warnings-when-generating-interface
-@findex --no-print-errors-warnings-when-generating-interface
-@findex --print-errors-warnings-when-generating-interface
-Print error and/or warning messages about problems with a module
-not just when the module is compiled, but also when its
-interface files are generated, if the problem is visible then.
+@item --no-halt-at-invalid-interface
+@findex --no-halt-at-invalid-interface
+This option operates
+when the compiler is invoked with the --make--interface option
+to generate .int and .int2 files for one or more modules.
+In its default setting, @samp{--halt-at-invalid-interface},
+it causes the compiler to check the consistency
+of those parts of each of those modules
+that are intended to end up in the .int and .int2 files.
+If these checks find any problems,
+the compiler will stop @emph{without} generating those files
+after printing an error message for each problem.
+
+Users can prevent this behavior,
+and thus allow the generation of invalid interface files,
+by specifying @samp{--no-halt-at-invalid-interface}.
 
 @sp 1
 @item --no-warn-accumulator-swaps

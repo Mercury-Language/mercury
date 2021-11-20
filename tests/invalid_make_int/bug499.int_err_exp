@@ -1,0 +1,3 @@
+bug499.m:012: In definition of type `foo'/0:
+bug499.m:012:   error: undefined type `maybe'/1.
+`bug499.int' and `bug499.int2' not written.

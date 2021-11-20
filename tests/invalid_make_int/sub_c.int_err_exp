@@ -3,3 +3,5 @@ sub_c.m:015:   the absence of an `:- import_module' or `:- use_module'
 sub_c.m:015:   declaration for `sub_a' prevents access to the
 sub_c.m:015:   `:- import_module' declaration for its child module
 sub_c.m:015:   `sub_a.sub1'.
+Error reading .int3 files.
+`sub_c.int' and `sub_c.int2' not written.

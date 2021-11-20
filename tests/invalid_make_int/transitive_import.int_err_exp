@@ -1,0 +1,4 @@
+transitive_import.m:021: In declaration of function `assoc_list_first'/3:
+transitive_import.m:021:   error: undefined type `pair.pair'/2.
+transitive_import.m:021:   (No module named `pair' has been imported.)
+`transitive_import.int' and `transitive_import.int2' not written.

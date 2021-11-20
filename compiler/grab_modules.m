@@ -165,8 +165,7 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
     % two predicates in sync.
     %
     % XXX ITEM_LIST Why aren't we updating !HaveReadModuleMaps?
-    some [!Specs,
-        !IntIndirectImported, !ImpIndirectImported,
+    some [!IntIndirectImported, !ImpIndirectImported,
         !IntImpIndirectImported, !ImpImpIndirectImported]
     (
         % Construct the initial module import structure.
@@ -198,8 +197,6 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
         !:Baggage = module_baggage(SourceFileName, dir.this_directory,
             SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
             GrabbedFileMap0, Specs0, Errors0),
-
-        !:Specs = [],
 
         SrcMap0 = !.HaveReadModuleMaps ^ hrmm_module_src,
         % XXX Should be map.det_insert.
@@ -312,13 +309,11 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
                 !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO)
         ),
 
-        AllImportedOrUsed = set.union_list([IntImports, IntUses,
-            set.list_to_set(ImpImports), set.list_to_set(ImpUses),
-            set.list_to_set(IntUseImpImports)]),
-        check_imports_accessibility(!.AugCompUnit, AllImportedOrUsed, !Specs),
-        Specs1 = !.Baggage ^ mb_specs,
-        Specs = !.Specs ++ Specs1,
-        !Baggage ^ mb_specs := Specs
+        aug_comp_unit_get_import_accessibility_info(!.AugCompUnit,
+            ImportAccessibilityInfo),
+        check_imports_accessibility(ParseTreeModuleSrc,
+            ImportAccessibilityInfo, AccessSpecs),
+        module_baggage_add_specs(AccessSpecs, !Baggage)
     ).
 
 %---------------------------------------------------------------------------%
@@ -427,7 +422,13 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         grab_module_int3_files_transitively(Globals,
             "unqual_imp_indirect_imported", rwi3_indirect_imp_use,
             !.ImpIndirectImported, !HaveReadModuleMaps,
-            !Baggage, !AugMakeIntUnit, !IO)
+            !Baggage, !AugMakeIntUnit, !IO),
+
+        aug_make_int_unit_get_import_accessibility_info(!.AugMakeIntUnit,
+            ImportAccessibilityInfo),
+        check_imports_accessibility(ParseTreeModuleSrc,
+            ImportAccessibilityInfo, AccessSpecs),
+        module_baggage_add_specs(AccessSpecs, !Baggage)
     ).
 
 :- pred dump_modules(io.text_output_stream::in, set(module_name)::in,
@@ -1130,17 +1131,13 @@ module_baggage_add_specs_errors(NewSpecs, NewErrors, !Baggage) :-
 
 %---------------------------------------------------------------------------%
 
-    % check_imports_accessibility(AugItemBlocks, ImportedModules, !Specs):
+    % check_imports_accessibility(ParseTreeModuleSrc, ImportAccessibilityInfo,
+    %   !:Specs):
     %
-    % By the time we are called, we should have read in all the appropriate
-    % interface files, including, for every imported/used module, at least
-    % the short interface for that module's parent module, which will contain
-    % the `include_module' declarations for any exported submodules
-    % of the parent. So the set of accessible submodules can be determined
-    % by looking at every include_module declaration in AugItemBlocks.
-    %
-    % We then go through all of the imported/used modules, looking for
-    % (and reporting) two different but related kinds of errors.
+    % Given the parse tree of a module, and information about the accessibility
+    % of included and/or imported modules gathered by our caller from either
+    % an aug_compilation_unit or an aug_make_int_unit, we look for and report
+    % two different but related kinds of errors.
     %
     % The first is when we see a reference to module x.y.z, but module
     % x.y does not include a submodule named z.
@@ -1148,29 +1145,6 @@ module_baggage_add_specs_errors(NewSpecs, NewErrors, !Baggage) :-
     % The second is when module m.n has an import_module or use_module
     % declaration for module x.y.z, but there is some ancestor of x.y.z
     % (either x or x.y) that neither m.n nor its ancestor m imports or uses.
-    %
-    % A general principle we follow here is that we look for and report
-    % these errors only for source files, and only when generating code them.
-    % We do not expect automatically generated interface and optimization
-    % files to be free of these kinds of errors, because if any such errors
-    % are present in the source files from which they are generated,
-    % those exact errors will be present in the interface and optimization
-    % files as well. Reporting such errors when generating the interface
-    % or optimization files disrupts the usual edit-compile-fix cycle,
-    % because when e.g. generating interface files, the compiler puts
-    % any error messages on standard output, not the module's .err file.
-    % It is also unnecessary, since the error *will* be caught before
-    % an executable can be produced.
-    %
-    % XXX ITEM_LIST The ImportedModules that our caller gives us
-    % will consist of:
-    %
-    % - the modules imported or used in SrcItemBlocks,
-    % - the modules imported or used in the .int3 files of the ancestors
-    %   of *this* module, and
-    % - any implicit dependencies on standard library modules, including
-    %   the private and public builtin modules, the modules implementing
-    %   the operations that we replace calls to e.g. io.format with, etc.
     %
     % XXX ITEM_LIST We should either record in an updated AugCompUnit
     % the set of imported modules that are inaccessible, or remove their
@@ -1184,29 +1158,30 @@ module_baggage_add_specs_errors(NewSpecs, NewErrors, !Baggage) :-
     % - we don't generate "unused module" warnings for them when
     %   --warn-unused-imports is enabled.
     %
-:- pred check_imports_accessibility(aug_compilation_unit::in,
-    set(module_name)::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred check_imports_accessibility(parse_tree_module_src::in,
+    import_accessibility_info::in, list(error_spec)::out) is det.
 
-check_imports_accessibility(AugCompUnit, _ImportedModules, !Specs) :-
-    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
-        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs, _TypeRepnSpecs,
-        _ModuleVersionNumbers),
+check_imports_accessibility(ParseTreeModuleSrc, ImportAccessibilityInfo,
+        !:Specs) :-
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameContext = ParseTreeModuleSrc ^ ptms_module_name_context,
-    record_includes_imports_uses(ParseTreeModuleSrc,
-        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs, ReadModules, InclMap,
-        SrcIntImportUseMap, SrcImpImportUseMap, AncestorImportUseMap),
+    ImportAccessibilityInfo = import_accessibility_info(ReadModules,
+        SeenIncludes, InclMap, SrcIntImportUseMap, SrcImpImportUseMap,
+        AncestorImportUseMap),
 
+    !:Specs = [],
     % The current module is not an import, but this is the obvious place
     % to check whether its purported parent module (if any) actually
     % includes it.
-    report_any_missing_includes(ReadModules, InclMap,
+    report_any_missing_includes(ReadModules, SeenIncludes, InclMap,
         ModuleName, [ModuleNameContext], !Specs),
-    map.foldl(report_any_missing_includes_for_imports(ReadModules, InclMap),
+    map.foldl(
+        report_any_missing_includes_for_imports(ReadModules,
+            SeenIncludes, InclMap),
         SrcIntImportUseMap, !Specs),
-    map.foldl(report_any_missing_includes_for_imports(ReadModules, InclMap),
+    map.foldl(
+        report_any_missing_includes_for_imports(ReadModules,
+            SeenIncludes, InclMap),
         SrcImpImportUseMap, !Specs),
 
     % When checking whether avail declarations (i.e. import_module
@@ -1260,11 +1235,68 @@ append_one_or_more(A, B, AB) :-
     AB = one_or_more(HeadA, TailA ++ [HeadB | TailB]).
 
 %---------------------%
-%
+
+    % aug_{comp,make_int}_unit_get_import_accessibily_info both generate
+    % a value of type import_accessibility_info by scanning the relevant kinds
+    % of items in the input structures they are given.
+    %
+    % - The iai_read_modules field will contain the set of module names
+    %   from whose files (source files, interface files, optimization files)
+    %   the information in the rest of the fields originates.
+    %
+    % - The iai_inclusion_map field will map the name of each module
+    %   that is named in an include_module declaration in the input
+    %   data structure to the context of that declaration.
+    %
+    %   The iai_seen_includes field, supplied by the caller, specifies
+    %   whether any include_module declarations in the read-in modules
+    %   may be intentionally missing from this map. When the input is
+    %   an aug_compilation_unit, all include_module declarations in the
+    %   relevant modules will be in this map, but when the input is
+    %   an aug_make_int_unit, the map will contain information only about
+    %   include_module declarations in the interface sections of those modules
+    %   (since the .int3 files we read in from them contain nothing at all
+    %   from the implementation section).
+    %
+    % - The iai_src_int_import_use_map field will map the module names
+    %   that occur in import_module or use_module declarations in the
+    %   interface sections of the given parse_tree_module_src itself
+    %   to the context(s) of those declarations.
+    %
+    % - The iai_src_imp_import_use_map field contains the same info
+    %   for the implementation section.
+    %
+    % - The iai_ancestor_import_use_map field again contains the same info,
+    %   but for import_module and use_module declarations read from
+    %   (the .int0 interface files of) the ancestors of the
+    %   parse_tree_module_src.
+    %
+    % NOTE By making the value in both the module_inclusion_map and the
+    % module_import_or_use_map a (nonempty) list, we can represent situations
+    % in which a module includes, imports or uses another module
+    % more than once. This is an error, and we could and probably should
+    % diagnose it here, but doing so would require disabling the code
+    % we have elsewhere in the compiler that does that job. If we did that,
+    % we could replace the nonempty lists of contexts with just one context,
+    % and a message for every other context.
+    %
+:- type import_accessibility_info
+    --->    import_accessibility_info(
+                iai_read_modules                :: set(module_name),
+                iai_seen_includes               :: seen_includes,
+                iai_inclusion_map               :: module_inclusion_map,
+                iai_src_int_import_use_map      :: module_import_or_use_map,
+                iai_src_imp_import_use_map      :: module_import_or_use_map,
+                iai_ancestor_import_use_map     :: module_import_or_use_map
+            ).
+
+:- type seen_includes
+    --->    seen_only_int_includes
+    ;       seen_all_includes.
+
 % The module_inclusion_map and module_import_or_use_map are computed by
 % record_includes_imports_uses, for use by find_any_missing_ancestor_imports.
 % For their documentation, see those predicates below.
-%
 
 :- type maybe_abstract_section
     --->    non_abstract_section
@@ -1282,89 +1314,92 @@ append_one_or_more(A, B, AB) :-
 :- type module_import_or_use_map ==
     map(module_name, one_or_more(import_or_use_context)).
 
-    % record_includes_imports_uses(ModuleName, SrcItemBlocks, IntItemBlocks,
-    %   OptItemBlocks, IntForOptItemBlocks, ReadModules, InclMap,
-    %   SrcIntImportUseMap, SrcImpImportUseMap, AncestorImportUseMap):
-    %
-    % Scan all the given item blocks from the compilation unit of ModuleName,
-    % computing several outputs.
-    %
-    % - ReadModules will be the set of module names from whose files
-    %   (source files, interface files, optimization files) the item blocks
-    %   originate.
-    % - InclMap will map the name of each module that is named in an
-    %   include_module declaration in any item block to the context
-    %   of that declaration.
-    % - SrcIntImportUseMap will map the module names that occur in
-    %   import_module or use_module declarations in the interface sections
-    %   of the source file of ModuleName itself to the context(s)
-    %   of those declarations.
-    % - SrcImpImportUseMap is the same, but for the implementation section.
-    % - AncestorImportUseMap is the same, but for import_module and use_module
-    %   declarations read from (the .int0 interface files of) the ancestors
-    %   of ModuleName.
-    %
-    % NOTE By making the value in both the module_inclusion_map and the
-    % module_import_or_use_map a (nonempty) list, we can represent situations
-    % in which a module includes, imports or uses another module
-    % more than once. This is an error, and we could and probably should
-    % diagnose it here, but doing so would require disabling the code
-    % we have elsewhere in the compiler that does that job. If we did that,
-    % we could replace the nonempty lists of contexts with just one context,
-    % and a message for every other context.
-    %
-    % XXX ITEM_LIST We could store the results of this call in both raw and
-    % augmented compilation units. (The raw version would of course be computed
-    % from raw_item_blocks.)
-    %
-:- pred record_includes_imports_uses(parse_tree_module_src::in,
-    map(module_name, ancestor_int_spec)::in,
-    map(module_name, direct_int1_spec)::in,
-    map(module_name, indirect_int2_spec)::in,
-    map(module_name, parse_tree_plain_opt)::in,
-    map(module_name, parse_tree_trans_opt)::in,
-    map(module_name, int_for_opt_spec)::in,
-    set(module_name)::out, module_inclusion_map::out,
-    module_import_or_use_map::out, module_import_or_use_map::out,
-    module_import_or_use_map::out) is det.
+:- pred aug_comp_unit_get_import_accessibility_info(aug_compilation_unit::in,
+    import_accessibility_info::out) is det.
 
-record_includes_imports_uses(ParseTreeModuleSrc,
-        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, _TransOpts, IntForOptSpecs,
-        !:ReadModules, !:InclMap,
-        !:SrcIntImportUseMap, !:SrcImpImportUseMap, !:AncestorImportUseMap) :-
-    set.init(!:ReadModules),
-    map.init(!:InclMap),
-    map.init(!:SrcIntImportUseMap),
-    map.init(!:SrcImpImportUseMap),
-    map.init(!:AncestorImportUseMap),
-    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    Ancestors = get_ancestors_set(ModuleName),
-    record_includes_imports_uses_in_parse_tree_module_src(ParseTreeModuleSrc,
-        !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
-    map.foldl5_values(
-        record_includes_imports_uses_in_ancestor_int_spec(Ancestors),
-        AncestorIntSpecs, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
-    map.foldl5_values(
-        record_includes_imports_uses_in_direct_int1_spec(Ancestors),
-        DirectIntSpecs, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
-    map.foldl5_values(
-        record_includes_imports_uses_in_indirect_int2_spec(Ancestors),
-        IndirectIntSpecs, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
-    map.foldl5_values(
-        record_includes_imports_uses_in_parse_tree_plain_opt(Ancestors),
-        PlainOpts, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
-    % .trans_opt files may contain no include_module, import_module
-    % or use_module declarations, so there is nothing to record for them.
-    map.foldl5_values(
-        record_includes_imports_uses_in_int_for_opt_spec(Ancestors),
-        IntForOptSpecs, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap).
+aug_comp_unit_get_import_accessibility_info(AugCompUnit,
+        ImportAccessibilityInfo) :-
+    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc, AncestorIntSpecs,
+        DirectIntSpecs, IndirectIntSpecs, PlainOpts, _TransOpts,
+        IntForOptSpecs, _TypeRepnSpecs, _ModuleVersionNumbers),
+    some [!ReadModules, !InclMap, !SrcIntImportUseMap, !SrcImpImportUseMap,
+        !AncestorImportUseMap]
+    (
+        set.init(!:ReadModules),
+        map.init(!:InclMap),
+        map.init(!:SrcIntImportUseMap),
+        map.init(!:SrcImpImportUseMap),
+        map.init(!:AncestorImportUseMap),
+        ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+        Ancestors = get_ancestors_set(ModuleName),
+        record_includes_imports_uses_in_parse_tree_module_src(
+            ParseTreeModuleSrc,
+            !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+        map.foldl5_values(
+            record_includes_imports_uses_in_ancestor_int_spec(Ancestors),
+            AncestorIntSpecs, !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+        map.foldl5_values(
+            record_includes_imports_uses_in_direct_int1_spec(Ancestors),
+            DirectIntSpecs, !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+        map.foldl5_values(
+            record_includes_imports_uses_in_indirect_int2_spec(Ancestors),
+            IndirectIntSpecs, !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+        map.foldl5_values(
+            record_includes_imports_uses_in_parse_tree_plain_opt(Ancestors),
+            PlainOpts, !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+        % .trans_opt files may contain no include_module, import_module
+        % or use_module declarations, so there is nothing to record for them.
+        map.foldl5_values(
+            record_includes_imports_uses_in_int_for_opt_spec(Ancestors),
+            IntForOptSpecs, !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+        ImportAccessibilityInfo = import_accessibility_info(!.ReadModules,
+            seen_all_includes, !.InclMap,
+            !.SrcIntImportUseMap, !.SrcImpImportUseMap, !.AncestorImportUseMap)
+    ).
+
+:- pred aug_make_int_unit_get_import_accessibility_info(aug_make_int_unit::in,
+    import_accessibility_info::out) is det.
+
+aug_make_int_unit_get_import_accessibility_info(AugMakeIntUnit,
+        ImportAccessibilityInfo) :-
+    AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, AncestorIntSpecs,
+        DirectIntSpecs, IndirectIntSpecs, _ModuleVersionNumbers),
+    some [!ReadModules, !InclMap, !SrcIntImportUseMap, !SrcImpImportUseMap,
+        !AncestorImportUseMap]
+    (
+        set.init(!:ReadModules),
+        map.init(!:InclMap),
+        map.init(!:SrcIntImportUseMap),
+        map.init(!:SrcImpImportUseMap),
+        map.init(!:AncestorImportUseMap),
+        ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+        Ancestors = get_ancestors_set(ModuleName),
+        record_includes_imports_uses_in_parse_tree_module_src(
+            ParseTreeModuleSrc,
+            !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+        map.foldl5_values(
+            record_includes_imports_uses_in_parse_tree_int0(Ancestors),
+            AncestorIntSpecs, !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+        map.foldl5_values(
+            record_includes_imports_uses_in_direct_int3_spec(Ancestors),
+            DirectIntSpecs, !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+        map.foldl5_values(
+            record_includes_imports_uses_in_indirect_int3_spec(Ancestors),
+            IndirectIntSpecs, !ReadModules, !InclMap,
+            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+        ImportAccessibilityInfo = import_accessibility_info(!.ReadModules,
+            seen_only_int_includes, !.InclMap,
+            !.SrcIntImportUseMap, !.SrcImpImportUseMap, !.AncestorImportUseMap)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -1415,9 +1450,9 @@ record_includes_imports_uses_in_parse_tree_module_src(ParseTreeModuleSrc,
 record_includes_imports_uses_in_ancestor_int_spec(Ancestors,
         AncestorSpec, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
-    AncestorSpec = ancestor_int0(ParseTreeInt0, ReadWhyInt0),
+    AncestorSpec = ancestor_int0(ParseTreeInt0, _ReadWhyInt0),
     record_includes_imports_uses_in_parse_tree_int0(Ancestors,
-        ParseTreeInt0, ReadWhyInt0, !ReadModules, !InclMap,
+        ParseTreeInt0, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap).
 
 :- pred record_includes_imports_uses_in_direct_int1_spec(
@@ -1452,6 +1487,38 @@ record_includes_imports_uses_in_indirect_int2_spec(Ancestors,
         ParseTreeInt2, ReadWhyInt2, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap).
 
+:- pred record_includes_imports_uses_in_direct_int3_spec(
+    set(module_name)::in, direct_int3_spec::in,
+    set(module_name)::in, set(module_name)::out,
+    module_inclusion_map::in, module_inclusion_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+
+record_includes_imports_uses_in_direct_int3_spec(Ancestors,
+        IndirectSpec, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+    IndirectSpec = direct_int3(ParseTreeInt3, _ReadWhyInt3),
+    record_includes_imports_uses_in_parse_tree_int3(Ancestors,
+        ParseTreeInt3, non_abstract_section, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap).
+
+:- pred record_includes_imports_uses_in_indirect_int3_spec(
+    set(module_name)::in, indirect_int3_spec::in,
+    set(module_name)::in, set(module_name)::out,
+    module_inclusion_map::in, module_inclusion_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+
+record_includes_imports_uses_in_indirect_int3_spec(Ancestors,
+        IndirectSpec, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+    IndirectSpec = indirect_int3(ParseTreeInt3, _ReadWhyInt3),
+    record_includes_imports_uses_in_parse_tree_int3(Ancestors,
+        ParseTreeInt3, abstract_section, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap).
+
 :- pred record_includes_imports_uses_in_int_for_opt_spec(set(module_name)::in,
     int_for_opt_spec::in,
     set(module_name)::in, set(module_name)::out,
@@ -1464,9 +1531,9 @@ record_includes_imports_uses_in_int_for_opt_spec(Ancestors,
         IntForOptSpec, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
     (
-        IntForOptSpec = for_opt_int0(ParseTreeInt0, ReadWhyInt0),
+        IntForOptSpec = for_opt_int0(ParseTreeInt0, _ReadWhyInt0),
         record_includes_imports_uses_in_parse_tree_int0(Ancestors,
-            ParseTreeInt0, ReadWhyInt0, !ReadModules, !InclMap,
+            ParseTreeInt0, !ReadModules, !InclMap,
             !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap)
     ;
         IntForOptSpec = for_opt_int1(ParseTreeInt1, ReadWhyInt1),
@@ -1483,7 +1550,7 @@ record_includes_imports_uses_in_int_for_opt_spec(Ancestors,
 %---------------------%
 
 :- pred record_includes_imports_uses_in_parse_tree_int0(set(module_name)::in,
-    parse_tree_int0::in, read_why_int0::in,
+    parse_tree_int0::in,
     set(module_name)::in, set(module_name)::out,
     module_inclusion_map::in, module_inclusion_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out,
@@ -1491,7 +1558,7 @@ record_includes_imports_uses_in_int_for_opt_spec(Ancestors,
     module_import_or_use_map::in, module_import_or_use_map::out) is det.
 
 record_includes_imports_uses_in_parse_tree_int0(Ancestors,
-        ParseTreeInt0, _ReadWhyInt0, !ReadModules, !MaybeAbstractInclMap,
+        ParseTreeInt0, !ReadModules, !MaybeAbstractInclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
     ParseTreeInt0 = parse_tree_int0(ModuleName, _, _,
         _IntInclMap, _ImpInclMap, InclMap,
@@ -1580,6 +1647,25 @@ record_includes_imports_uses_in_parse_tree_int2(Ancestors,
     ),
     expect_not(set.contains(Ancestors, ModuleName), $pred,
         "processing the .int2 file of an ancestor").
+
+:- pred record_includes_imports_uses_in_parse_tree_int3(set(module_name)::in,
+    parse_tree_int3::in, maybe_abstract_section::in,
+    set(module_name)::in, set(module_name)::out,
+    module_inclusion_map::in, module_inclusion_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+
+record_includes_imports_uses_in_parse_tree_int3(Ancestors,
+        ParseTreeInt3, MaybeAbstractSection, !ReadModules, !InclMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+    ParseTreeInt3 = parse_tree_int3(ModuleName, _,
+        IntInclMap, _ParseTreeInclMap, _, _, _, _, _, _, _, _),
+    set.insert(ModuleName, !ReadModules),
+    IntIncls = module_names_contexts_to_item_includes(IntInclMap),
+    record_includes_acc(MaybeAbstractSection, IntIncls, !InclMap),
+    expect_not(set.contains(Ancestors, ModuleName), $pred,
+        "processing the .int3 file of an ancestor").
 
 :- pred record_includes_imports_uses_in_parse_tree_plain_opt(
     set(module_name)::in, parse_tree_plain_opt::in,
@@ -1869,15 +1955,15 @@ wrap_module_name(Module) = qual_sym_name(Module).
 %---------------------%
 
 :- pred report_any_missing_includes_for_imports(set(module_name)::in,
-    module_inclusion_map::in,
+    seen_includes::in, module_inclusion_map::in,
     module_name::in, one_or_more(import_or_use_context)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_any_missing_includes_for_imports(ReadModules, InclMap,
+report_any_missing_includes_for_imports(ReadModules, SeenIncludes, InclMap,
         ModuleName, IoUCs, !Specs) :-
     IoUCs = one_or_more(HeadIoUC, TailIoUCs),
     Contexts = list.map(project_out_import_or_use, [HeadIoUC | TailIoUCs]),
-    report_any_missing_includes(ReadModules, InclMap,
+    report_any_missing_includes(ReadModules, SeenIncludes, InclMap,
         ModuleName, Contexts, !Specs).
 
     % report_any_missing_includes(ReadModules, InclMap, Module, Contexts,
@@ -1890,10 +1976,12 @@ report_any_missing_includes_for_imports(ReadModules, InclMap,
     % declarations), then add an error message reporting this fact to !Specs.
     %
 :- pred report_any_missing_includes(set(module_name)::in,
-    module_inclusion_map::in, module_name::in, list(term.context)::in,
+    seen_includes::in, module_inclusion_map::in,
+    module_name::in, list(term.context)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_any_missing_includes(ReadModules, InclMap, Module, Contexts, !Specs) :-
+report_any_missing_includes(ReadModules, SeenIncludes, InclMap,
+        Module, Contexts, !Specs) :-
     (
         Module = qualified(ParentModule, SubModule),
         ( if map.search(InclMap, Module, IncludeContexts) then
@@ -1914,7 +2002,9 @@ report_any_missing_includes(ReadModules, InclMap, Module, Contexts, !Specs) :-
             ( if set.contains(ReadModules, ParentModule) then
                 % We have read item blocks from ParentModule, and they
                 % *should* have included its include_module declarations.
-                list.foldl(report_missing_include(ParentModule, SubModule),
+                list.foldl(
+                    report_missing_include(SeenIncludes,
+                        ParentModule, SubModule),
                     Contexts, !Specs)
             else
                 % We have read not any item blocks from ParentModule.
@@ -1931,7 +2021,7 @@ report_any_missing_includes(ReadModules, InclMap, Module, Contexts, !Specs) :-
                 true
             )
         ),
-        report_any_missing_includes(ReadModules, InclMap,
+        report_any_missing_includes(ReadModules, SeenIncludes, InclMap,
             ParentModule, Contexts, !Specs)
     ;
         Module = unqualified(_)
@@ -1950,14 +2040,21 @@ report_abstract_include(ParentModule, SubModule, Context, !Specs) :-
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-:- pred report_missing_include(module_name::in, string::in, term.context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred report_missing_include(seen_includes::in, module_name::in, string::in,
+    term.context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-report_missing_include(ParentModule, SubModule, Context, !Specs) :-
-    Pieces = [words("Error:"),
-        words("module"), qual_sym_name(ParentModule),
-        words("does not have a submodule named"), quote(SubModule),
-        suffix("."), nl],
+report_missing_include(SeenIncludes, ParentModule, SubModule, Context,
+        !Specs) :-
+    (
+        SeenIncludes = seen_all_includes,
+        SubmodulePieces = [words("a submodule")]
+    ;
+        SeenIncludes = seen_only_int_includes,
+        SubmodulePieces = [words("a visible submodule")]
+    ),
+    Pieces = [words("Error:"), words("module"),
+        qual_sym_name(ParentModule), words("does not have")] ++
+        SubmodulePieces ++ [words("named"), quote(SubModule), suffix("."), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].

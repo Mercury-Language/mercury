@@ -1,8 +1,0 @@
-bad_type_class_constraint_intermodule_2.int:004: In declaration for type
-bad_type_class_constraint_intermodule_2.int:004:   `bad_type_class_constraint_intermodule_2.bad_type_ctor'/0:
-bad_type_class_constraint_intermodule_2.int:004:   error: the type class
-bad_type_class_constraint_intermodule_2.int:004:   `output'/1 does not exist.
-bad_type_class_constraint_intermodule_2.int:011: In declaration for predicate
-bad_type_class_constraint_intermodule_2.int:011:   `bad_pred'/4:
-bad_type_class_constraint_intermodule_2.int:011:   error: the type class
-bad_type_class_constraint_intermodule_2.int:011:   `output'/1 does not exist.

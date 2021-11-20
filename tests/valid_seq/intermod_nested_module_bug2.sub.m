@@ -6,6 +6,9 @@
 
 :- interface.
 
+:- import_module assoc_list.
+:- import_module io.
+
 :- type post == assoc_list(string).
 
 :- pred read_post(cgi::in, maybe_error(post)::out, io::di, io::uo) is det.

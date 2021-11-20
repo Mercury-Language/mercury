@@ -1,0 +1,11 @@
+test_nested.m:013: Error: module `parent' does not have a visible submodule
+test_nested.m:013:   named `private_child'.
+test_nested.m:014: Error: module `parent' does not have a visible submodule
+test_nested.m:014:   named `undeclared_child'.
+test_nested.m:017: In module `test_nested': error:
+test_nested.m:017:   the absence of an `:- import_module' or `:- use_module'
+test_nested.m:017:   declaration for `parent2' prevents access to the
+test_nested.m:017:   `:- use_module' declaration for its child module
+test_nested.m:017:   `parent2.child'.
+Error reading .int3 files.
+`test_nested.int' and `test_nested.int2' not written.
