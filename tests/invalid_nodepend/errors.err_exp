@@ -45,5 +45,5 @@ errors.m:096:   The previous declaration is here.
 errors.m:101: In definition of type `needs_qualification'/0:
 errors.m:101:   error: undefined type `state'/0.
 errors.m:101:   (Only fully module qualified names may refer to the entities
-errors.m:101:   defined in the module `io'.)
+errors.m:101:   defined in module `io'.)
 For more information, recompile with `-E'.

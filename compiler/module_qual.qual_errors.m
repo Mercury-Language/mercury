@@ -252,7 +252,7 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         ),
         QualSymNames = list.map(wrap_module_name, QualMismatches),
         QualPieces = [words("(Only fully module qualified names"),
-            words("may refer to the entities defined in the"),
+            words("may refer to the entities defined in"),
             fixed(QualModuleWord)] ++
             component_list_to_pieces("and", QualSymNames) ++
             [suffix(".)"), nl]
