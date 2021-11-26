@@ -13,6 +13,7 @@ ORDINARY_PROGS = \
 	address_of_builtins \
 	agg \
 	array_all_tf \
+	array_append \
 	array_copy \
 	array_gen \
 	array_primitives \
