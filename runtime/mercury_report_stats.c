@@ -171,13 +171,17 @@ MR_report_standard_stats(FILE *fp, int *line_number)
     if (result < 0) {
         return errno;
     }
-    if (GC_mercury_calc_gc_time) {
-        // Convert from unsigned long milliseconds to float seconds.
-        result = fprintf(fp, "total GC time: %.2fs, ",
-            (float) GC_total_gc_time / (float) 1000
-        );
-        if (result < 0) { 
-            return errno;
+    {
+        unsigned long total_gc_time;
+
+        total_gc_time = GC_get_full_gc_total_time();
+        if (total_gc_time != 0) {
+            // Convert from unsigned long milliseconds to float seconds.
+            result = fprintf(fp, "total GC time: %.2fs, ",
+                (float) total_gc_time / (float) 1000);
+            if (result < 0) {
+                return errno;
+            }
         }
     }
     result = fprintf(fp, "Heap used since last GC: %.3fk, Total used: %.3fk",

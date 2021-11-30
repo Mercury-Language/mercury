@@ -2001,7 +2001,7 @@ MR_process_options(int argc, char **argv)
 
             case MR_BOEHM_GC_CALC_TIME:
 #ifdef MR_BOEHM_GC
-                GC_mercury_calc_gc_time = MR_TRUE;
+                GC_start_performance_measurement();
 #endif
                 break;
 

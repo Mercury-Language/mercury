@@ -941,6 +941,6 @@ Changes to the Mercury implementation
   Another consequence is that the `--trail-size` and `--trail-size-kwords`
   runtime options no longer have any effect, and are deprecated.
 
-* We have upgraded the bundled Boehm GC to v7.6.12 and libatomic_ops to v7.6.8.
+* We have upgraded the bundled Boehm GC to v8.0.6 and libatomic_ops to v7.6.12.
 
 For news about earlier versions, see the HISTORY file.
