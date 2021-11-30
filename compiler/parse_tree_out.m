@@ -144,6 +144,13 @@
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
+
+    % Print a blank line if the given list is not empty.
+    %
+:- pred maybe_write_block_start_blank_line(io.text_output_stream::in,
+    list(T)::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -742,6 +749,7 @@ mercury_output_parse_tree_plain_opt(Info, Stream, ParseTree, !IO) :-
     mercury_output_module_decl(Stream, "module", ModuleName, !IO),
     list.foldl(mercury_output_module_decl(Stream, "use_module"),
         map.keys(UseMap), !IO),
+    set.foldl(mercury_output_fim_spec(Stream), FIMSpecs, !IO),
     list.foldl(mercury_output_item_type_defn(Info, Stream), TypeDefns, !IO),
     list.foldl(mercury_format_item_foreign_enum(Info, Stream),
         ForeignEnums, !IO),
@@ -749,10 +757,6 @@ mercury_output_parse_tree_plain_opt(Info, Stream, ParseTree, !IO) :-
     list.foldl(mercury_output_item_mode_defn(Info, Stream), ModeDefns, !IO),
     list.foldl(mercury_output_item_typeclass(Info, Stream), TypeClasses, !IO),
     list.foldl(mercury_output_item_instance(Info, Stream), Instances, !IO),
-    % XXX FIMSpecs should be output just after UsedModuleNames, but
-    % the existing code whose output we want to compare the output
-    % of this code to prints them in this position.
-    set.foldl(mercury_output_fim_spec(Stream), FIMSpecs, !IO),
     list.foldl(mercury_output_item_pred_decl(Info, Stream), PredDecls, !IO),
     list.foldl(mercury_output_item_mode_decl(Info, Stream), ModeDecls, !IO),
     list.foldl(mercury_output_item_pred_marker(Stream),
@@ -764,25 +768,30 @@ mercury_output_parse_tree_plain_opt(Info, Stream, ParseTree, !IO) :-
         list.map(project_pragma_type, ForeignProcs), !IO),
     list.foldl(mercury_output_item_promise(Info, Stream), Promises, !IO),
 
+    maybe_write_block_start_blank_line(Stream, UnusedArgs, !IO),
     list.foldl(mercury_output_pragma_unused_args(Stream),
         list.map(project_pragma_type, UnusedArgs), !IO),
+    maybe_write_block_start_blank_line(Stream, Terms, !IO),
     list.foldl(write_pragma_termination_info(Stream, Lang),
         list.map(project_pragma_type, Terms), !IO),
+    maybe_write_block_start_blank_line(Stream, Term2s, !IO),
     list.foldl(write_pragma_termination2_info(Stream, Lang),
         list.map(project_pragma_type, Term2s), !IO),
+    maybe_write_block_start_blank_line(Stream, Exceptions, !IO),
     list.foldl(mercury_output_pragma_exceptions(Stream),
         list.map(project_pragma_type, Exceptions), !IO),
+    maybe_write_block_start_blank_line(Stream, Trailings, !IO),
     list.foldl(mercury_output_pragma_trailing_info(Stream),
         list.map(project_pragma_type, Trailings), !IO),
+    maybe_write_block_start_blank_line(Stream, MMTablings, !IO),
     list.foldl(mercury_output_pragma_mm_tabling_info(Stream),
         list.map(project_pragma_type, MMTablings), !IO),
-    list.foldl(mercury_output_pragma_mm_tabling_info(Stream),
-        list.map(project_pragma_type, MMTablings), !IO),
+    maybe_write_block_start_blank_line(Stream, Sharings, !IO),
     list.foldl(write_pragma_structure_sharing_info(Stream, Lang),
         list.map(project_pragma_type, Sharings), !IO),
+    maybe_write_block_start_blank_line(Stream, Reuses, !IO),
     list.foldl(write_pragma_structure_reuse_info(Stream, Lang),
-        list.map(project_pragma_type, Reuses), !IO),
-    io.nl(Stream, !IO).
+        list.map(project_pragma_type, Reuses), !IO).
 
 mercury_output_parse_tree_trans_opt(Info, Stream, ParseTree, !IO) :-
     ParseTree = parse_tree_trans_opt(ModuleName, _Context,
@@ -790,23 +799,27 @@ mercury_output_parse_tree_trans_opt(Info, Stream, ParseTree, !IO) :-
     Lang = get_output_lang(Info),
     io.write_string(Stream, "% .trans_opt file\n", !IO),
     mercury_output_module_decl(Stream, "module", ModuleName, !IO),
+    maybe_write_block_start_blank_line(Stream, Terms, !IO),
     list.foldl(write_pragma_termination_info(Stream, Lang),
         list.map(project_pragma_type, Terms), !IO),
+    maybe_write_block_start_blank_line(Stream, Term2s, !IO),
     list.foldl(write_pragma_termination2_info(Stream, Lang),
         list.map(project_pragma_type, Term2s), !IO),
+    maybe_write_block_start_blank_line(Stream, Exceptions, !IO),
     list.foldl(mercury_output_pragma_exceptions(Stream),
         list.map(project_pragma_type, Exceptions), !IO),
+    maybe_write_block_start_blank_line(Stream, Trailings, !IO),
     list.foldl(mercury_output_pragma_trailing_info(Stream),
         list.map(project_pragma_type, Trailings), !IO),
+    maybe_write_block_start_blank_line(Stream, MMTablings, !IO),
     list.foldl(mercury_output_pragma_mm_tabling_info(Stream),
         list.map(project_pragma_type, MMTablings), !IO),
-    list.foldl(mercury_output_pragma_mm_tabling_info(Stream),
-        list.map(project_pragma_type, MMTablings), !IO),
+    maybe_write_block_start_blank_line(Stream, Sharings, !IO),
     list.foldl(write_pragma_structure_sharing_info(Stream, Lang),
         list.map(project_pragma_type, Sharings), !IO),
+    maybe_write_block_start_blank_line(Stream, Reuses, !IO),
     list.foldl(write_pragma_structure_reuse_info(Stream, Lang),
-        list.map(project_pragma_type, Reuses), !IO),
-    io.nl(Stream, !IO).
+        list.map(project_pragma_type, Reuses), !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -2149,6 +2162,16 @@ mercury_output_fim_spec(Stream, FIMSpec, !IO) :-
     mercury_output_bracketed_sym_name_ngt(not_next_to_graphic_token,
         ModuleName, Stream, !IO),
     io.write_string(Stream, ").\n", !IO).
+
+%---------------------------------------------------------------------------%
+
+maybe_write_block_start_blank_line(Stream, Items, !IO) :-
+    (
+        Items = []
+    ;
+        Items = [_ | _],
+        io.nl(Stream, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_tree_out.

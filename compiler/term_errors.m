@@ -33,10 +33,9 @@
 
 :- type term_error_kind
     --->    pragma_foreign_code
-            % The analysis result depends on the change constant
-            % of a piece of pragma foreign code, (which cannot be
-            % obtained without analyzing the foreign code, which is
-            % something we cannot do).
+            % The analysis result depends on the change constant of a piece
+            % of pragma foreign code, (which cannot be obtained without
+            % analyzing the foreign code, which is something we cannot do).
             % Valid in both passes.
 
     ;       imported_pred
@@ -44,44 +43,43 @@
             % whose code is not accessible.
 
     ;       can_loop_proc_called(pred_proc_id, pred_proc_id)
-            % can_loop_proc_called(Caller, Callee, Context)
-            % The call from Caller to Callee at the associated
-            % context is to a procedure (Callee) whose termination
-            % info is set to can_loop.
-            % Although this error does not prevent us from
-            % producing argument size information, it would
-            % prevent us from proving termination.
+            % can_loop_proc_called(Caller, Callee)
+            % The call from Caller to Callee at the associated context
+            % is to a procedure (Callee) whose termination info is
+            % set to can_loop.
+            % Although this error does not prevent us from producing
+            % argument size information, it would prevent us from proving
+            % termination.
             % We look for this error in pass 1; if we find it,
             % we do not perform pass 2.
 
     ;       horder_args(pred_proc_id, pred_proc_id)
             % horder_args(Caller, Callee, Context)
-            % The call from Caller to Callee at the associated
-            % context has some arguments of a higher order type.
+            % The call from Caller to Callee at the associated context
+            % has some arguments of a higher order type.
             % Valid in both passes.
 
     ;       horder_call
             % horder_call
-            % There is a higher order call at the associated
-            % context.  Valid in both passes.
+            % There is a higher order call at the associated context.
+            % Valid in both passes.
 
     ;       method_call
             % method_call
-            % There is a call to a typeclass method at the associated
-            % context.  Valid in both passes.
+            % There is a call to a typeclass method at the associated context.
+            % Valid in both passes.
 
     ;       inf_termination_const(pred_proc_id, pred_proc_id)
             % inf_termination_const(Caller, Callee)
-            % The call from Caller to Callee at the associated
-            % context is to a procedure (Callee) whose arg size
-            % info is set to infinite.
+            % The call from Caller to Callee at the associated context is
+            % to a procedure (Callee) whose arg size info is set to infinite.
             % Valid in both passes.
 
     ;       ho_inf_termination_const(pred_proc_id, list(pred_proc_id))
             % ho_inf_termination_const(Caller, Callees).
-            % Caller makes a call to either call/N or apply/N
-            % at the associated context.  'Callees' gives the
-            % possible values of the higher-order argument.
+            % Caller makes a call to either call/N or apply/N at the
+            % associated context. 'Callees' gives the possible values
+            % of the higher-order argument.
 
     ;       not_subset(pred_proc_id, bag(prog_var), bag(prog_var))
             % not_subset(Proc, SupplierVariables, InHeadVariables)
@@ -91,15 +89,14 @@
 
     ;       inf_call(pred_proc_id, pred_proc_id)
             % inf_call(Caller, Callee)
-            % The call from Caller to Callee at the associated
-            % context has infinite weight.
+            % The call from Caller to Callee at the associated context
+            % has infinite weight.
             % Valid error only in pass 2.
 
     ;       cycle(pred_proc_id, assoc_list(pred_proc_id, prog_context))
             % cycle(StartPPId, CallSites)
-            % In the cycle of calls starting at StartPPId and
-            % going through the named call sites may be an
-            % infinite loop.
+            % In the cycle of calls starting at StartPPId and going through
+            % the named call sites may be an infinite loop.
             % Valid error only in pass 2.
 
     ;       no_eqns
@@ -114,19 +111,17 @@
 
     ;       too_many_paths
             % There are too many distinct paths to be analyzed.
-            % Valid in both passes (which analyze different sets
-            % of paths).
+            % Valid in both passes (which analyze different sets of paths).
 
     ;       solver_failed
-            % The solver could not find finite termination
-            % constants for the procedures in the SCC.
+            % The solver could not find finite termination constants
+            % for the procedures in the SCC.
             % Valid only in pass 1.
 
     ;       is_builtin(pred_id)
-            % The termination constant of the given builtin is
-            % set to infinity; this happens when the type of at
-            % least one output argument permits a norm greater
-            % than zero.
+            % The termination constant of the given builtin is set to
+            % infinity; this happens when the type of at least one
+            % output argument permits a norm greater than zero.
 
     ;       does_not_term_pragma(pred_id)
             % The given procedure has a does_not_terminate pragma.
@@ -136,9 +131,9 @@
             % for the procedures in this SCC are inconsistent.
 
     ;       does_not_term_foreign(pred_proc_id).
-            % The procedure contains foreign code that may
-            % make calls back to Mercury.  By default such
-            % code is assumed to be non-terminating.
+            % The procedure contains foreign code that may make calls
+            % back to Mercury. By default, we assume such code to be
+            % non-terminating.
 
 :- type term_error
     --->    term_error(prog_context, term_error_kind).

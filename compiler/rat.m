@@ -26,8 +26,6 @@
 :- module libs.rat.
 :- interface.
 
-:- import_module io.
-
 %-----------------------------------------------------------------------------%
 
 :- type rat.
@@ -55,14 +53,14 @@
 
 :- func abs(rat) = rat.
 
-    % Convert a rational to a string of the form: "(<Num>/<Denom>)".
+    % Convert a rational to a string of the form "(<Num>/<Denom>).
+    % in the general case, or to strings of the form "<Num>" if possible.
     %
-:- func to_string(rat) = string.
+:- func to_arith_string(rat) = string.
 
-    % Write a rat in the form: r(<Numerator>, <Denominator>).
+    % Convert a rational to a string of the form "r(<Num>, <Denom>).
     %
-:- pred write_rat(rat::in, io::di, io::uo) is det.
-:- pred write_rat(io.text_output_stream::in, rat::in, io::di, io::uo) is det.
+:- func to_rat_string(rat) = string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -108,65 +106,64 @@ zero = r(0, 1).
 
 rat(Int) = r(Int, 1).
 
-rat(Num, Den) = rat_norm(Num, Den).
+rat(Num, Denom) = rat_norm(Num, Denom).
 
 '+'(Rat) = Rat.
 
-'-'(r(Num, Den)) = r(-Num, Den).
+'-'(r(Num, Denom)) = r(-Num, Denom).
 
-r(An, Ad) + r(Bn, Bd) = rat_norm(Numer, M) :-
-    M = lcm(Ad, Bd),
-    CA = M // Ad,
-    CB = M // Bd,
-    Numer = An * CA + Bn * CB.
+r(An, Ad) + r(Bn, Bd) = rat_norm(Num, Denom) :-
+    LCM = lcm(Ad, Bd),
+    CA = LCM // Ad,
+    CB = LCM // Bd,
+    Num = An * CA + Bn * CB,
+    Denom = LCM.
 
 X - Y = X + (-Y).
 
     % XXX: need we call rat_norm here?
-r(An, Ad) * r(Bn, Bd) = rat_norm(Numer, Denom) :-
+r(An, Ad) * r(Bn, Bd) = rat_norm(Num, Denom) :-
     G1 = gcd(An, Bd),
     G2 = gcd(Ad, Bn),
-    Numer = (An // G1) * (Bn // G2),
+    Num =   (An // G1) * (Bn // G2),
     Denom = (Ad // G2) * (Bd // G1).
 
 X / Y = X * rat.reciprocal(Y).
 
-:- func rat.reciprocal(rat) = rat.
+:- func reciprocal(rat) = rat.
 
-reciprocal(r(Num, Den)) =
+reciprocal(r(Num, Denom)) =
     ( if Num = 0 then
         unexpected($pred, "division by zero")
     else
-        r(signum(Num) * Den, int.abs(Num))
+        r(signum(Num) * Denom, int.abs(Num))
     ).
 
 numer(r(Num, _)) = Num.
 
-denom(r(_, Den)) = Den.
+denom(r(_, Denom)) = Denom.
 
-abs(r(Num, Den)) = r(int.abs(Num), Den).
+abs(r(Num, Denom)) = r(int.abs(Num), Denom).
 
 :- func rat_norm(int, int) = rat.
 
-rat_norm(Num, Den) = Rat :-
-    ( if Den = 0 then
+rat_norm(Num, Denom) = Rat :-
+    ( if Denom = 0 then
         unexpected($pred, "division by zero")
     else if Num = 0 then
         Rat = r(0, 1)
     else
-        G = gcd(Num, Den),
-        Num2 = Num * signum(Den),
-        Den2 = int.abs(Den),
-        Rat  = r(Num2 // G, Den2 // G)
+        G = gcd(Num, Denom),
+        Rat = r((Num * signum(Denom)) // G, int.abs(Denom) // G)
     ).
 
 :- func gcd(int, int) = int.
 
-gcd(A, B) = gcd_2(int.abs(A), int.abs(B)).
+gcd(A, B) = gcd_loop(int.abs(A), int.abs(B)).
 
-:- func gcd_2(int, int) = int.
+:- func gcd_loop(int, int) = int.
 
-gcd_2(A, B) = ( if B = 0 then A else gcd_2(B, A rem B) ).
+gcd_loop(A, B) = ( if B = 0 then A else gcd_loop(B, A rem B) ).
 
 :- func lcm(int, int) = int.
 
@@ -203,27 +200,20 @@ is_zero(r(0, _)).
 
 :- pred is_negative(rat::in) is semidet.
 
-is_negative(r(Num, _)) :- Num < 0.
+is_negative(r(Num, _)) :-
+    Num < 0.
 
-to_string(r(Num, Denom)) =
+to_arith_string(r(Num, Denom)) =
     ( if Num = 0 then
         "0"
+    else if Denom = 1 then
+        string.format("%d", [i(Num)])
     else
-        "(" ++ string.int_to_string(Num) ++
-            ( if Denom = 1 then
-                ""
-            else
-                "/" ++ string.int_to_string(Denom)
-            )
-        ++ ")"
+        string.format("%d/%d", [i(Num), i(Denom)])
     ).
 
-write_rat(Rat, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_rat(Stream, Rat, !IO).
-
-write_rat(Stream, r(Numerator, Denominator), !IO) :-
-    io.format(Stream, "r(%d, %d)", [i(Numerator), i(Denominator)], !IO).
+to_rat_string(r(Num, Denom)) =
+    string.format("r(%d, %d)", [i(Num), i(Denom)]).
 
 %-----------------------------------------------------------------------------%
 :- end_module libs.rat.

@@ -2331,9 +2331,7 @@ output_constraint(_, gte(_,_), _, _, _) :-
 
 output_constraint_2(OutputVar, Terms, Constant, Stream, !IO) :-
     output_terms(OutputVar, Terms, Stream, !IO),
-    io.write_string(Stream, ", ", !IO),
-    rat.write_rat(Stream, Constant, !IO),
-    io.write_char(Stream, ')', !IO).
+    io.format(Stream, ", %s)", [s(rat.to_rat_string(Constant))], !IO).
 
 :- pred output_terms(output_var::in, lp_terms::in,
     io.text_output_stream::in, io::di, io::uo) is det.
@@ -2347,9 +2345,8 @@ output_terms(OutputVar, Terms, Stream, !IO) :-
     io.text_output_stream::in, io::di, io::uo) is det.
 
 output_term(OutputVar, Var - Coefficient, Stream, !IO) :-
-    io.format(Stream, "term(%s, ", [s(OutputVar(Var))], !IO),
-    rat.write_rat(Stream, Coefficient, !IO),
-    io.write_char(Stream, ')', !IO).
+    io.format(Stream, "term(%s, %s)",
+        [s(OutputVar(Var)), s(rat.to_rat_string(Coefficient))], !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -2386,14 +2383,16 @@ write_constraint(Stream, VarSet, Constr, !IO) :-
     io.write_char(Stream, '\t', !IO),
     list.foldl(write_constr_term(Stream, VarSet), Coeffs, !IO),
     io.format(Stream, "%s %s\n",
-        [s(operator_to_string(Operator)), s(rat.to_string(Constant))], !IO).
+        [s(operator_to_string(Operator)), s(rat.to_arith_string(Constant))],
+        !IO).
 
 :- pred write_constr_term(io.text_output_stream::in, lp_varset::in,
     lp_term::in, io::di, io::uo) is det.
 
 write_constr_term(Stream, VarSet, Var - Coeff, !IO) :-
     VarName = varset.lookup_name(VarSet, Var),
-    io.format(Stream, "%s%s ", [s(rat.to_string(Coeff)), s(VarName)], !IO).
+    io.format(Stream, "%s%s ",
+        [s(rat.to_arith_string(Coeff)), s(VarName)], !IO).
 
 :- func operator_to_string(lp_operator) = string.
 
@@ -2415,7 +2414,7 @@ write_vars(Stream, VarSet, Vars, !IO) :-
 var_to_string(VarSet, Var) = varset.lookup_name(VarSet, Var, "Unnamed").
 
     % Write out the matrix used during fourier elimination.
-    % If `Labels' is `yes' then write out the label for each vector as well.
+    % If `Labels' is `yes', then write out the label for each vector as well.
     %
 :- pred write_matrix(io.text_output_stream::in, lp_varset::in,
     bool::in, matrix::in, io::di, io::uo) is det.
@@ -2431,7 +2430,7 @@ write_vector(Stream, VarSet, _WriteLabels, Vector, !IO) :-
     Vector = vector(_Label, Terms0, Constant),
     Terms = map.to_assoc_list(Terms0),
     list.foldl(write_constr_term(Stream, VarSet), Terms, !IO),
-    io.format(Stream, " (=<) %s\n", [s(rat.to_string(Constant))], !IO).
+    io.format(Stream, " (=<) %s\n", [s(rat.to_arith_string(Constant))], !IO).
 
     % Write out a term - outputs the empty string if the term
     % has a coefficient of zero.

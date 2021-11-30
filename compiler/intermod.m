@@ -103,8 +103,8 @@
     % XXX This is not an elegant arrangement.
     %
     % Update_interface and touch_interface_datestamp are called from
-    % mercury_compile.m, since they must be called after the last time
-    % anything is appended to the .opt.tmp file.
+    % mercury_compile_front_end.m, since they must be called after
+    % the last time anything is appended to the .opt.tmp file.
     %
 :- pred write_initial_opt_file(io.output_stream::in, module_info::in,
     intermod_info::out, parse_tree_plain_opt::out, io::di, io::uo) is det.
@@ -397,9 +397,9 @@ gather_opt_export_preds_in_list(Params, [PredId | PredIds], !IntermodInfo) :-
             else
                 true
             ),
-            intermod_info_get_pred_clauses(!.IntermodInfo, PredClauses0),
-            set.insert(PredId, PredClauses0, PredClauses),
-            intermod_info_set_pred_clauses(PredClauses, !IntermodInfo)
+            intermod_info_get_pred_defns(!.IntermodInfo, PredDefns0),
+            set.insert(PredId, PredDefns0, PredDefns),
+            intermod_info_set_pred_defns(PredDefns, !IntermodInfo)
         ;
             MayOptExportPred = may_not_opt_export_pred,
             % Remove any items added for the clauses for this predicate.
@@ -1419,19 +1419,18 @@ should_opt_export_type_defn(ModuleName, TypeCtor, TypeDefn) :-
 write_opt_file_initial(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
     intermod_info_get_module_info(IntermodInfo, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName),
-    io.write_string(Stream, ":- module ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, Stream, !IO),
-    io.write_string(Stream, ".\n", !IO),
+    ModuleNameStr = mercury_bracketed_sym_name_to_string(ModuleName),
+    io.format(Stream, ":- module %s.\n", [s(ModuleNameStr)], !IO),
 
-    intermod_info_get_pred_clauses(IntermodInfo, PredClauses),
     intermod_info_get_pred_decls(IntermodInfo, PredDecls),
+    intermod_info_get_pred_defns(IntermodInfo, PredDefns),
     intermod_info_get_instances(IntermodInfo, Instances),
     ( if
         % If none of these item types need writing, nothing else
         % needs to be written.
 
-        set.is_empty(PredClauses),
         set.is_empty(PredDecls),
+        set.is_empty(PredDefns),
         Instances = [],
         module_info_get_type_table(ModuleInfo, TypeTable),
         get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
@@ -1466,10 +1465,10 @@ some_type_needs_to_be_written([_ - TypeDefn | TypeCtorDefns], NeedWrite) :-
 
 write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
     IntermodInfo = intermod_info(ModuleInfo, _,
-        WritePredPredIdSet, WriteDeclPredIdSet,
+        WriteDeclPredIdSet, WriteDefnPredIdSet,
         InstanceDefns, Types, NeedFIMs),
-    set.to_sorted_list(WritePredPredIdSet, WritePredPredIds),
     set.to_sorted_list(WriteDeclPredIdSet, WriteDeclPredIds),
+    set.to_sorted_list(WriteDefnPredIdSet, WriteDefnPredIds),
 
     module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
     % XXX CLEANUP We could and should reduce AvailModules to the set of modules
@@ -1490,23 +1489,6 @@ write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
         ),
     list.foldl(AddToUseMap, UsedModuleNames, one_or_more_map.init, UseMap),
 
-    module_info_get_globals(ModuleInfo, Globals),
-    OutInfo0 = init_hlds_out_info(Globals, output_mercury),
-
-    % We don't want to output line numbers in the .opt files,
-    % since that causes spurious changes to the .opt files
-    % when you make trivial changes (e.g. add comments) to the source files.
-    MercInfo0 = OutInfo0 ^ hoi_merc_out_info,
-    MercInfo = merc_out_info_disable_line_numbers(MercInfo0),
-    OutInfo = OutInfo0 ^ hoi_merc_out_info := MercInfo,
-    % Disable verbose dumping of clauses.
-    OutInfoForPreds = OutInfo ^ hoi_dump_hlds_options := "",
-
-    intermod_write_types(OutInfo, Stream, Types, TypeDefns, ForeignEnums, !IO),
-    intermod_write_insts(OutInfo, Stream, ModuleInfo, InstDefns, !IO),
-    intermod_write_modes(OutInfo, Stream, ModuleInfo, ModeDefns, !IO),
-    intermod_write_classes(OutInfo, Stream, ModuleInfo, TypeClasses, !IO),
-    intermod_write_instances(OutInfo, Stream, InstanceDefns, Instances, !IO),
     (
         NeedFIMs = do_need_foreign_import_modules,
         module_info_get_c_j_cs_fims(ModuleInfo, CJCsEFIMs),
@@ -1521,10 +1503,29 @@ write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
         NeedFIMs = do_not_need_foreign_import_modules,
         set.init(FIMSpecs)
     ),
+
+    module_info_get_globals(ModuleInfo, Globals),
+    OutInfo0 = init_hlds_out_info(Globals, output_mercury),
+
+    % We don't want to write line numbers from the source file to .opt files,
+    % because that causes spurious changes to the .opt files
+    % when you make trivial changes (e.g. add comments) to the source files.
+    MercInfo0 = OutInfo0 ^ hoi_merc_out_info,
+    MercInfo = merc_out_info_disable_line_numbers(MercInfo0),
+    OutInfo = OutInfo0 ^ hoi_merc_out_info := MercInfo,
+    % Disable verbose dumping of clauses.
+    OutInfoForPreds = OutInfo ^ hoi_dump_hlds_options := "",
+
+    intermod_write_types(OutInfo, Stream, Types, TypeDefns, ForeignEnums, !IO),
+    intermod_write_insts(OutInfo, Stream, ModuleInfo, InstDefns, !IO),
+    intermod_write_modes(OutInfo, Stream, ModuleInfo, ModeDefns, !IO),
+    intermod_write_classes(OutInfo, Stream, ModuleInfo, TypeClasses, !IO),
+    intermod_write_instances(OutInfo, Stream, InstanceDefns, Instances, !IO),
+
     generate_order_pred_infos(ModuleInfo, WriteDeclPredIds,
         DeclOrderPredInfos),
-    generate_order_pred_infos(ModuleInfo, WritePredPredIds,
-        PredOrderPredInfos),
+    generate_order_pred_infos(ModuleInfo, WriteDefnPredIds,
+        DefnOrderPredInfos),
     PredMarkerPragmasCord0 = cord.init,
     (
         DeclOrderPredInfos = [],
@@ -1541,8 +1542,8 @@ write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
     PredDecls = [],
     ModeDecls = [],
     % Each of these writes a newline at the start.
-    intermod_write_preds(OutInfoForPreds, Stream, ModuleInfo,
-        PredOrderPredInfos, PredMarkerPragmasCord1, PredMarkerPragmasCord,
+    intermod_write_pred_defns(OutInfoForPreds, Stream, ModuleInfo,
+        DefnOrderPredInfos, PredMarkerPragmasCord1, PredMarkerPragmasCord,
         !IO),
     PredMarkerPragmas = cord.list(PredMarkerPragmasCord),
     Clauses = [],
@@ -1950,8 +1951,13 @@ intermod_write_instance(OutInfo, Stream, ClassId - InstanceDefn,
 %---------------------------------------------------------------------------%
 
 :- type order_pred_info
-    --->    order_pred_info(string, user_arity, pred_or_func,
-                pred_id, pred_info).
+    --->    order_pred_info(
+                opi_name            :: string,
+                opi_user_arity      :: user_arity,
+                opi_pred_or_fun     :: pred_or_func,
+                opi_pred_id         :: pred_id,
+                opi_pred_info       :: pred_info
+            ).
 
 :- pred generate_order_pred_infos(module_info::in, list(pred_id)::in,
     list(order_pred_info)::out) is det.
@@ -2233,25 +2239,25 @@ wrap_dummy_pragma_item(T) =
 
 %---------------------------------------------------------------------------%
 
-:- pred intermod_write_preds(hlds_out_info::in, io.text_output_stream::in,
+:- pred intermod_write_pred_defns(hlds_out_info::in, io.text_output_stream::in,
     module_info::in, list(order_pred_info)::in,
     cord(item_pred_marker)::in, cord(item_pred_marker)::out,
     io::di, io::uo) is det.
 
-intermod_write_preds(_, _, _, [], !PredMarkerPragmas, !IO).
-intermod_write_preds(OutInfo, Stream, ModuleInfo,
+intermod_write_pred_defns(_, _, _, [], !PredMarkerPragmas, !IO).
+intermod_write_pred_defns(OutInfo, Stream, ModuleInfo,
         [OrderPredInfo | OrderPredInfos], !PredMarkerPragmas, !IO) :-
-    intermod_write_pred(OutInfo, Stream, ModuleInfo, OrderPredInfo,
+    intermod_write_pred_defn(OutInfo, Stream, ModuleInfo, OrderPredInfo,
         !PredMarkerPragmas, !IO),
-    intermod_write_preds(OutInfo, Stream, ModuleInfo, OrderPredInfos,
+    intermod_write_pred_defns(OutInfo, Stream, ModuleInfo, OrderPredInfos,
         !PredMarkerPragmas, !IO).
 
-:- pred intermod_write_pred(hlds_out_info::in, io.text_output_stream::in,
+:- pred intermod_write_pred_defn(hlds_out_info::in, io.text_output_stream::in,
     module_info::in, order_pred_info::in,
     cord(item_pred_marker)::in, cord(item_pred_marker)::out,
     io::di, io::uo) is det.
 
-intermod_write_pred(OutInfo, Stream, ModuleInfo, OrderPredInfo,
+intermod_write_pred_defn(OutInfo, Stream, ModuleInfo, OrderPredInfo,
         !PredMarkerPragmas, !IO) :-
     io.nl(Stream, !IO),
     OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
@@ -2563,115 +2569,166 @@ get_pragma_foreign_code_vars(Args, Modes, !VarSet, PragmaVars) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-append_analysis_pragmas_to_opt_file(Stream, ModuleInfo, UnusedArgsInfos,
+append_analysis_pragmas_to_opt_file(Stream, ModuleInfo, UnusedArgsInfosSet,
         !ParseTreePlainOpt, !IO) :-
     module_info_get_proc_analysis_kinds(ModuleInfo, ProcAnalysisKinds),
     ( if
         set.is_empty(ProcAnalysisKinds),
-        set.is_empty(UnusedArgsInfos)
+        set.is_empty(UnusedArgsInfosSet)
     then
         % We have nothing to append to the .opt file.
         true
     else
+        UnusedArgsInfos = set.to_sorted_list(UnusedArgsInfosSet),
         module_info_get_valid_pred_ids(ModuleInfo, PredIds),
         generate_order_pred_infos(ModuleInfo, PredIds, OrderPredInfos),
 
-        ( if set.is_non_empty(UnusedArgsInfos) then
-            set.foldl2(write_pragma_unused_args(Stream), UnusedArgsInfos,
-                is_first, _, !IO),
-            !ParseTreePlainOpt ^ ptpo_unused_args :=
-                list.map(wrap_dummy_pragma_item,
-                    set.to_sorted_list(UnusedArgsInfos))
-        else
-            true
-        ),
-        ( if set.contains(ProcAnalysisKinds, pak_termination) then
-            list.foldl3(
-                write_pragma_termination_for_pred(Stream, ModuleInfo),
-                OrderPredInfos, cord.init, TermInfosCord, is_first, _, !IO),
-            !ParseTreePlainOpt ^ ptpo_termination := cord.list(TermInfosCord)
-        else
-            true
-        ),
-        ( if set.contains(ProcAnalysisKinds, pak_termination2) then
-            list.foldl3(
-                write_pragma_termination2_for_pred(Stream, ModuleInfo),
-                OrderPredInfos, cord.init, TermInfos2Cord, is_first, _, !IO),
-            !ParseTreePlainOpt ^ ptpo_termination2 := cord.list(TermInfos2Cord)
-        else
-            true
-        ),
+        gather_analysis_pragmas(ModuleInfo, ProcAnalysisKinds, OrderPredInfos,
+            TermInfos, TermInfos2, Exceptions, TrailingInfos, MMTablingInfos,
+            SharingInfos, ReuseInfos),
 
-        ( if set.contains(ProcAnalysisKinds, pak_exception) then
-            list.foldl3(
-                write_pragma_exceptions_for_pred(Stream, ModuleInfo),
-                OrderPredInfos, cord.init, ExceptionsCord, is_first, _, !IO),
-            !ParseTreePlainOpt ^ ptpo_exceptions := cord.list(ExceptionsCord)
-        else
-            true
-        ),
-        ( if set.contains(ProcAnalysisKinds, pak_trailing) then
-            list.foldl3(
-                write_pragma_trailing_info_for_pred(Stream, ModuleInfo),
-                OrderPredInfos, cord.init, TrailingInfosCord,
-                is_first, _, !IO),
-            !ParseTreePlainOpt ^ ptpo_trailing := cord.list(TrailingInfosCord)
-        else
-            true
-        ),
-        ( if set.contains(ProcAnalysisKinds, pak_mm_tabling) then
-            list.foldl3(
-                write_pragma_mm_tabling_info_for_pred(Stream, ModuleInfo),
-                OrderPredInfos, cord.init, MMTablingInfosCord,
-                is_first, _, !IO),
-            !ParseTreePlainOpt ^ ptpo_mm_tabling :=
-                cord.list(MMTablingInfosCord)
-        else
-            true
-        ),
-        ( if set.contains(ProcAnalysisKinds, pak_structure_sharing) then
-            list.foldl3(
-                write_pragma_structure_sharing_for_pred(Stream, ModuleInfo),
-                OrderPredInfos, cord.init, SharingInfosCord, is_first, _, !IO),
-            !ParseTreePlainOpt ^ ptpo_struct_sharing :=
-                cord.list(SharingInfosCord)
-        else
-            true
-        ),
-        ( if set.contains(ProcAnalysisKinds, pak_structure_reuse) then
-            list.foldl3(
-                write_pragma_structure_reuse_for_pred(Stream, ModuleInfo),
-                OrderPredInfos, cord.init, ReuseInfosCord, is_first, _, !IO),
-            !ParseTreePlainOpt ^ ptpo_struct_reuse := cord.list(ReuseInfosCord)
-        else
-            true
-        )
+        maybe_write_block_start_blank_line(Stream, UnusedArgsInfos, !IO),
+        list.foldl(mercury_output_pragma_unused_args(Stream),
+            UnusedArgsInfos, !IO),
+        write_analysis_pragmas(Stream, TermInfos, TermInfos2, Exceptions,
+            TrailingInfos, MMTablingInfos, SharingInfos, ReuseInfos, !IO),
+
+        !ParseTreePlainOpt ^ ptpo_unused_args :=
+            list.map(wrap_dummy_pragma_item, UnusedArgsInfos),
+        !ParseTreePlainOpt ^ ptpo_termination :=
+            list.map(wrap_dummy_pragma_item, TermInfos),
+        !ParseTreePlainOpt ^ ptpo_termination2 :=
+            list.map(wrap_dummy_pragma_item, TermInfos2),
+        !ParseTreePlainOpt ^ ptpo_exceptions :=
+            list.map(wrap_dummy_pragma_item, Exceptions),
+        !ParseTreePlainOpt ^ ptpo_trailing :=
+            list.map(wrap_dummy_pragma_item, TrailingInfos),
+        !ParseTreePlainOpt ^ ptpo_mm_tabling :=
+            list.map(wrap_dummy_pragma_item, MMTablingInfos),
+        !ParseTreePlainOpt ^ ptpo_struct_sharing :=
+            list.map(wrap_dummy_pragma_item, SharingInfos),
+        !ParseTreePlainOpt ^ ptpo_struct_reuse :=
+            list.map(wrap_dummy_pragma_item, ReuseInfos)
     ).
 
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
+:- pred gather_analysis_pragmas(module_info::in, set(proc_analysis_kind)::in,
+    list(order_pred_info)::in,
+    list(pragma_info_termination_info)::out,
+    list(pragma_info_termination2_info)::out,
+    list(pragma_info_exceptions)::out,
+    list(pragma_info_trailing_info)::out,
+    list(pragma_info_mm_tabling_info)::out,
+    list(pragma_info_structure_sharing)::out,
+    list(pragma_info_structure_reuse)::out) is det.
 
-:- pred write_pragma_unused_args(io.text_output_stream::in,
-    pragma_info_unused_args::in, maybe_first::in, maybe_first::out,
+gather_analysis_pragmas(ModuleInfo, ProcAnalysisKinds, OrderPredInfos,
+        TermInfos, TermInfos2, Exceptions, TrailingInfos, MMTablingInfos,
+        SharingInfos, ReuseInfos) :-
+    ( if set.contains(ProcAnalysisKinds, pak_termination) then
+        list.foldl(
+            gather_pragma_termination_for_pred(ModuleInfo),
+            OrderPredInfos, cord.init, TermInfosCord),
+        TermInfos = cord.list(TermInfosCord)
+    else
+        TermInfos = []
+    ),
+    ( if set.contains(ProcAnalysisKinds, pak_termination2) then
+        list.foldl(
+            gather_pragma_termination2_for_pred(ModuleInfo),
+            OrderPredInfos, cord.init, TermInfos2Cord),
+        TermInfos2 = cord.list(TermInfos2Cord)
+    else
+        TermInfos2 = []
+    ),
+    ( if set.contains(ProcAnalysisKinds, pak_exception) then
+        list.foldl(
+            gather_pragma_exceptions_for_pred(ModuleInfo),
+            OrderPredInfos, cord.init, ExceptionsCord),
+        Exceptions = cord.list(ExceptionsCord)
+    else
+        Exceptions = []
+    ),
+    ( if set.contains(ProcAnalysisKinds, pak_trailing) then
+        list.foldl(
+            gather_pragma_trailing_info_for_pred(ModuleInfo),
+            OrderPredInfos, cord.init, TrailingInfosCord),
+        TrailingInfos = cord.list(TrailingInfosCord)
+    else
+        TrailingInfos = []
+    ),
+    ( if set.contains(ProcAnalysisKinds, pak_mm_tabling) then
+        list.foldl(
+            gather_pragma_mm_tabling_info_for_pred(ModuleInfo),
+            OrderPredInfos, cord.init, MMTablingInfosCord),
+        MMTablingInfos = cord.list(MMTablingInfosCord)
+    else
+        MMTablingInfos = []
+    ),
+    ( if set.contains(ProcAnalysisKinds, pak_structure_sharing) then
+        list.foldl(
+            gather_pragma_structure_sharing_for_pred(ModuleInfo),
+            OrderPredInfos, cord.init, SharingInfosCord),
+        SharingInfos = cord.list(SharingInfosCord)
+    else
+        SharingInfos = []
+    ),
+    ( if set.contains(ProcAnalysisKinds, pak_structure_reuse) then
+        list.foldl(
+            gather_pragma_structure_reuse_for_pred(ModuleInfo),
+            OrderPredInfos, cord.init, ReuseInfosCord),
+        ReuseInfos = cord.list(ReuseInfosCord)
+    else
+        ReuseInfos = []
+    ).
+
+:- pred write_analysis_pragmas(io.text_output_stream::in,
+    list(pragma_info_termination_info)::in,
+    list(pragma_info_termination2_info)::in,
+    list(pragma_info_exceptions)::in,
+    list(pragma_info_trailing_info)::in,
+    list(pragma_info_mm_tabling_info)::in,
+    list(pragma_info_structure_sharing)::in,
+    list(pragma_info_structure_reuse)::in,
     io::di, io::uo) is det.
 
-write_pragma_unused_args(Stream, UnusedArgInfo, !First, !IO) :-
-    maybe_write_nl(Stream, !First, !IO),
-    mercury_output_pragma_unused_args(Stream, UnusedArgInfo, !IO).
+write_analysis_pragmas(Stream, TermInfos, TermInfos2, Exceptions,
+        TrailingInfos, MMTablingInfos, SharingInfos, ReuseInfos, !IO) :-
+    maybe_write_block_start_blank_line(Stream, TermInfos, !IO),
+    list.foldl(write_pragma_termination_info(Stream, output_mercury),
+        TermInfos, !IO),
+    maybe_write_block_start_blank_line(Stream, TermInfos2, !IO),
+    list.foldl(write_pragma_termination2_info(Stream, output_mercury),
+        TermInfos2, !IO),
+    maybe_write_block_start_blank_line(Stream, Exceptions, !IO),
+    list.foldl(mercury_output_pragma_exceptions(Stream),
+        Exceptions, !IO),
+    maybe_write_block_start_blank_line(Stream, TrailingInfos, !IO),
+    list.foldl(mercury_output_pragma_trailing_info(Stream),
+        TrailingInfos, !IO),
+    maybe_write_block_start_blank_line(Stream, MMTablingInfos, !IO),
+    list.foldl(mercury_output_pragma_mm_tabling_info(Stream),
+        MMTablingInfos, !IO),
+    maybe_write_block_start_blank_line(Stream, SharingInfos, !IO),
+    list.foldl(write_pragma_structure_sharing_info(Stream, output_debug),
+        SharingInfos, !IO),
+    maybe_write_block_start_blank_line(Stream, ReuseInfos, !IO),
+    list.foldl(write_pragma_structure_reuse_info(Stream, output_debug),
+        ReuseInfos, !IO).
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % Write out a termination_info pragma for the predicate if it is exported,
-    % it is not a builtin and it is not a predicate used to force type
+    % Gather termination_info pragmas for the predicate if it is exported,
+    % it is not a builtin, and it is not a predicate used to force type
     % specialization.
     %
-:- pred write_pragma_termination_for_pred(io.text_output_stream::in,
-    module_info::in, order_pred_info::in,
-    cord(item_termination)::in, cord(item_termination)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred gather_pragma_termination_for_pred(module_info::in,
+    order_pred_info::in,
+    cord(pragma_info_termination_info)::in,
+    cord(pragma_info_termination_info)::out) is det.
 
-write_pragma_termination_for_pred(Stream, ModuleInfo, OrderPredInfo,
-        !TermInfosCord, !First, !IO) :-
+gather_pragma_termination_for_pred(ModuleInfo, OrderPredInfo,
+        !TermInfosCord) :-
     OrderPredInfo = order_pred_info(_PredName, _PredArity, _PredOrFunc,
         PredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
@@ -2689,20 +2746,20 @@ write_pragma_termination_for_pred(Stream, ModuleInfo, OrderPredInfo,
         not set.member(PredId, TypeSpecForcePreds)
     then
         pred_info_get_proc_table(PredInfo, ProcTable),
-        map.foldl3(
-            maybe_write_pragma_termination_for_proc(Stream, OrderPredInfo),
-            ProcTable, !TermInfosCord, !First, !IO)
+        map.foldl(
+            gather_pragma_termination_for_proc(OrderPredInfo),
+            ProcTable, !TermInfosCord)
     else
         true
     ).
 
-:- pred maybe_write_pragma_termination_for_proc(io.text_output_stream::in,
-    order_pred_info::in, proc_id::in, proc_info::in,
-    cord(item_termination)::in, cord(item_termination)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred gather_pragma_termination_for_proc(order_pred_info::in,
+    proc_id::in, proc_info::in,
+    cord(pragma_info_termination_info)::in,
+    cord(pragma_info_termination_info)::out) is det.
 
-maybe_write_pragma_termination_for_proc(Stream, OrderPredInfo,
-        _ProcId, ProcInfo, !TermInfosCord, !First, !IO) :-
+gather_pragma_termination_for_proc(OrderPredInfo, _ProcId, ProcInfo,
+        !TermInfosCord) :-
     ( if proc_info_is_valid_mode(ProcInfo) then
         OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
             _PredId, PredInfo),
@@ -2711,7 +2768,6 @@ maybe_write_pragma_termination_for_proc(Stream, OrderPredInfo,
         proc_info_declared_argmodes(ProcInfo, ArgModes),
         proc_info_get_maybe_arg_size_info(ProcInfo, MaybeArgSize),
         proc_info_get_maybe_termination_info(ProcInfo, MaybeTermination),
-        maybe_write_nl(Stream, !First, !IO),
         PredNameModesPF =
             proc_pf_name_modes(PredOrFunc, PredSymName, ArgModes),
         MaybeParseTreeArgSize =
@@ -2720,10 +2776,7 @@ maybe_write_pragma_termination_for_proc(Stream, OrderPredInfo,
             maybe_termination_info_to_parse_tree(MaybeTermination),
         TermInfo = pragma_info_termination_info(PredNameModesPF,
             MaybeParseTreeArgSize, MaybeParseTreeTermination),
-        ItemTerm = item_pragma_info(TermInfo, term.context_init,
-            item_no_seq_num),
-        cord.snoc(ItemTerm, !TermInfosCord),
-        write_pragma_termination_info(Stream, output_mercury, TermInfo, !IO)
+        cord.snoc(TermInfo, !TermInfosCord)
     else
         true
     ).
@@ -2769,17 +2822,17 @@ maybe_termination_info_to_parse_tree(MaybeTermination)
 
 %---------------------------------------------------------------------------%
 
-    % Write out termination2_info pragma for the procedures of a predicate if:
+    % Gather termination2_info pragmas for the procedures of a predicate if:
     %   - the predicate is exported.
     %   - the predicate is not compiler generated.
     %
-:- pred write_pragma_termination2_for_pred(io.text_output_stream::in,
-    module_info::in, order_pred_info::in,
-    cord(item_termination2)::in, cord(item_termination2)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred gather_pragma_termination2_for_pred(module_info::in,
+    order_pred_info::in,
+    cord(pragma_info_termination2_info)::in,
+    cord(pragma_info_termination2_info)::out) is det.
 
-write_pragma_termination2_for_pred(Stream, ModuleInfo, OrderPredInfo,
-        !TermInfos2Cord, !First, !IO) :-
+gather_pragma_termination2_for_pred(ModuleInfo, OrderPredInfo,
+        !TermInfo2sCord) :-
     OrderPredInfo = order_pred_info(_, _, _, PredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
     module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
@@ -2792,22 +2845,20 @@ write_pragma_termination2_for_pred(Stream, ModuleInfo, OrderPredInfo,
         not set.member(PredId, TypeSpecForcePreds)
     then
         pred_info_get_proc_table(PredInfo, ProcTable),
-        map.foldl3(
-            maybe_write_pragma_termination2_for_proc(Stream, OrderPredInfo),
-            ProcTable, !TermInfos2Cord, !First, !IO)
+        map.foldl(
+            gather_pragma_termination2_for_proc(OrderPredInfo),
+            ProcTable, !TermInfo2sCord)
     else
         true
     ).
 
-    % Write out a termination2_info pragma for the procedure.
-    %
-:- pred maybe_write_pragma_termination2_for_proc(io.text_output_stream::in,
-    order_pred_info::in, proc_id::in, proc_info::in,
-    cord(item_termination2)::in, cord(item_termination2)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred gather_pragma_termination2_for_proc(order_pred_info::in,
+    proc_id::in, proc_info::in,
+    cord(pragma_info_termination2_info)::in,
+    cord(pragma_info_termination2_info)::out) is det.
 
-maybe_write_pragma_termination2_for_proc(Stream, OrderPredInfo,
-        _ProcId, ProcInfo, !TermInfos2Cord, !First, !IO) :-
+gather_pragma_termination2_for_proc(OrderPredInfo, _ProcId, ProcInfo,
+        !TermInfo2sCord) :-
     ( if proc_info_is_valid_mode(ProcInfo) then
         OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
             _PredId, PredInfo),
@@ -2815,18 +2866,29 @@ maybe_write_pragma_termination2_for_proc(Stream, OrderPredInfo,
         PredSymName = qualified(ModuleName, PredName),
 
         proc_info_declared_argmodes(ProcInfo, ArgModes),
-        proc_info_get_headvars(ProcInfo, HeadVars),
         proc_info_get_termination2_info(ProcInfo, Term2Info),
         MaybeSuccessConstraints = term2_info_get_success_constrs(Term2Info),
         MaybeFailureConstraints = term2_info_get_failure_constrs(Term2Info),
         MaybeTermination = term2_info_get_term_status(Term2Info),
-        SizeVarMap = term2_info_get_size_var_map(Term2Info),
-        HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadVars),
 
         % NOTE: If this predicate is changed, then parse_pragma.m must also
         % be changed, so that it can parse the resulting pragmas.
         PredNameModesPF =
             proc_pf_name_modes(PredOrFunc, PredSymName, ArgModes),
+
+        proc_info_get_headvars(ProcInfo, HeadVars),
+        SizeVarMap = term2_info_get_size_var_map(Term2Info),
+        HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadVars),
+        list.length(HeadVars, NumHeadSizeVars),
+
+        HeadSizeVarIds = 0 .. NumHeadSizeVars - 1,
+        map.det_insert_from_corresponding_lists(HeadSizeVars, HeadSizeVarIds,
+            map.init, VarToVarIdMap),
+        maybe_constr_arg_size_info_to_arg_size_constr(VarToVarIdMap,
+            MaybeSuccessConstraints, MaybeSuccessArgSizeInfo),
+        maybe_constr_arg_size_info_to_arg_size_constr(VarToVarIdMap,
+            MaybeFailureConstraints, MaybeFailureArgSizeInfo),
+
         (
             MaybeTermination = no,
             MaybePragmaTermination = no
@@ -2837,85 +2899,13 @@ maybe_write_pragma_termination2_for_proc(Stream, OrderPredInfo,
             MaybeTermination = yes(can_loop(_)),
             MaybePragmaTermination = yes(can_loop(unit))
         ),
-        maybe_constr_arg_size_info_to_arg_size_constr(VarToVarIdMap,
-            MaybeSuccessConstraints, MaybeSuccessArgSizeInfo),
-        maybe_constr_arg_size_info_to_arg_size_constr(VarToVarIdMap,
-            MaybeFailureConstraints, MaybeFailureArgSizeInfo),
+
         TermInfo2 = pragma_info_termination2_info(PredNameModesPF,
             MaybeSuccessArgSizeInfo, MaybeFailureArgSizeInfo,
             MaybePragmaTermination),
-        ItemTerm2 = item_pragma_info(TermInfo2, term.context_init,
-            item_no_seq_num),
-        cord.snoc(ItemTerm2, !TermInfos2Cord),
-
-        maybe_write_nl(Stream, !First, !IO),
-        io.write_string(Stream, ":- pragma termination2_info(", !IO),
-        (
-            PredOrFunc = pf_predicate,
-            mercury_output_pred_mode_subdecl(Stream, output_mercury,
-                varset.init, PredSymName, ArgModes, no, !IO)
-        ;
-            PredOrFunc = pf_function,
-            pred_args_to_func_args(ArgModes, FuncArgModes, ReturnMode),
-            mercury_output_func_mode_subdecl(Stream, output_mercury,
-                varset.init, PredSymName, FuncArgModes, ReturnMode, no, !IO)
-        ),
-
-        list.length(HeadSizeVars, NumHeadSizeVars),
-        HeadSizeVarIds = 0 .. NumHeadSizeVars - 1,
-        map.det_insert_from_corresponding_lists(HeadSizeVars, HeadSizeVarIds,
-            map.init, VarToVarIdMap),
-
-        io.write_string(Stream, ", ", !IO),
-        output_maybe_constr_arg_size_info(Stream, VarToVarIdMap,
-            MaybeSuccessConstraints, !IO),
-        io.write_string(Stream, ", ", !IO),
-        output_maybe_constr_arg_size_info(Stream, VarToVarIdMap,
-            MaybeFailureConstraints, !IO),
-        io.write_string(Stream, ", ", !IO),
-        io.write_string(Stream, 
-            maybe_constr_termination_info_to_string(MaybeTermination), !IO),
-        io.write_string(Stream, ").\n", !IO)
+        cord.snoc(TermInfo2, !TermInfo2sCord)
     else
         true
-    ).
-
-%---------------------%
-
-:- pred output_maybe_constr_arg_size_info(io.text_output_stream::in,
-    map(size_var, int)::in, maybe(constr_arg_size_info)::in,
-    io::di, io::uo) is det.
-
-output_maybe_constr_arg_size_info(Stream, VarToVarIdMap, MaybeArgSizeConstrs,
-        !IO) :-
-    (
-        MaybeArgSizeConstrs = no,
-        io.write_string(Stream, "not_set", !IO)
-    ;
-        MaybeArgSizeConstrs = yes(Polyhedron),
-        io.write_string(Stream, "constraints(", !IO),
-        Constraints0 = polyhedron.non_false_constraints(Polyhedron),
-        Constraints1 = list.filter(isnt(nonneg_constr), Constraints0),
-        Constraints  = list.sort(Constraints1),
-        LookupVar =
-            (func(Var) = int_to_string(map.lookup(VarToVarIdMap, Var))),
-        lp_rational.output_constraints(Stream, LookupVar, Constraints, !IO),
-        io.write_char(Stream, ')', !IO)
-    ).
-
-:- func maybe_constr_termination_info_to_string(maybe(constr_termination_info))
-    = string.
-
-maybe_constr_termination_info_to_string(MaybeConstrTermInfo) = Str :-
-    (
-        MaybeConstrTermInfo = no,
-        Str = "not_set"
-    ;
-        MaybeConstrTermInfo = yes(cannot_loop(_)),
-        Str = "cannot_loop"
-    ;
-        MaybeConstrTermInfo = yes(can_loop(_)),
-        Str = "can_loop"
     ).
 
 %---------------------%
@@ -2965,29 +2955,25 @@ lp_term_to_arg_size_term(VarToVarIdMap, LPTerm, ArgSizeTerm) :-
 
 %---------------------------------------------------------------------------%
 
-    % Write out the exception pragmas for this predicate.
+    % Gather any exception pragmas for this predicate.
     %
-:- pred write_pragma_exceptions_for_pred(io.text_output_stream::in,
-    module_info::in, order_pred_info::in,
-    cord(item_exceptions)::in, cord(item_exceptions)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred gather_pragma_exceptions_for_pred(module_info::in, order_pred_info::in,
+    cord(pragma_info_exceptions)::in, cord(pragma_info_exceptions)::out) is det.
 
-write_pragma_exceptions_for_pred(Stream, ModuleInfo, OrderPredInfo,
-        !ExceptionsCord, !First, !IO) :-
+gather_pragma_exceptions_for_pred(ModuleInfo, OrderPredInfo,
+        !ExceptionsCord) :-
     OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
-    map.foldl3(
-        maybe_write_pragma_exceptions_for_proc(Stream, ModuleInfo,
-            OrderPredInfo),
-        ProcTable, !ExceptionsCord, !First, !IO).
+    map.foldl(
+        gather_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo),
+        ProcTable, !ExceptionsCord).
 
-:- pred maybe_write_pragma_exceptions_for_proc(io.text_output_stream::in,
-    module_info::in, order_pred_info::in, proc_id::in, proc_info::in,
-    cord(item_exceptions)::in, cord(item_exceptions)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred gather_pragma_exceptions_for_proc(module_info::in,
+    order_pred_info::in, proc_id::in, proc_info::in,
+    cord(pragma_info_exceptions)::in, cord(pragma_info_exceptions)::out) is det.
 
-maybe_write_pragma_exceptions_for_proc(Stream, ModuleInfo, OrderPredInfo,
-        ProcId, ProcInfo, !ExceptionsCord, !First, !IO) :-
+gather_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo,
+        ProcId, ProcInfo, !ExceptionsCord) :-
     OrderPredInfo = order_pred_info(PredName, UserArity, PredOrFunc,
         PredId, PredInfo),
     ( if
@@ -3016,40 +3002,36 @@ maybe_write_pragma_exceptions_for_proc(Stream, ModuleInfo, OrderPredInfo,
             PredSymName, UserArity, ModeNum),
         ProcExceptionInfo = proc_exception_info(Status, _),
         ExceptionInfo = pragma_info_exceptions(PredNameArityPFMn, Status),
-        ItemException = item_pragma_info(ExceptionInfo, term.context_init,
-            item_no_seq_num),
-        cord.snoc(ItemException, !ExceptionsCord),
-        maybe_write_nl(Stream, !First, !IO),
-        mercury_output_pragma_exceptions(Stream, ExceptionInfo, !IO)
+        cord.snoc(ExceptionInfo, !ExceptionsCord)
     else
         true
     ).
 
 %---------------------------------------------------------------------------%
 
-    % Write out the trailing_info pragma for this module.
+    % Gather any trailing_info pragmas for this predicate.
     %
-:- pred write_pragma_trailing_info_for_pred(io.text_output_stream::in,
-    module_info::in, order_pred_info::in,
-    cord(item_trailing)::in, cord(item_trailing)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred gather_pragma_trailing_info_for_pred(module_info::in,
+    order_pred_info::in,
+    cord(pragma_info_trailing_info)::in,
+    cord(pragma_info_trailing_info)::out) is det.
 
-write_pragma_trailing_info_for_pred(Stream, ModuleInfo, OrderPredInfo,
-        !TrailingInfosCord, !First, !IO) :-
+gather_pragma_trailing_info_for_pred(ModuleInfo, OrderPredInfo,
+        !TrailingInfosCord) :-
     OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
-    map.foldl3(
-        maybe_write_pragma_trailing_info_for_proc(Stream, ModuleInfo,
+    map.foldl(
+        gather_pragma_trailing_info_for_proc(ModuleInfo,
             OrderPredInfo),
-        ProcTable, !TrailingInfosCord, !First, !IO).
+        ProcTable, !TrailingInfosCord).
 
-:- pred maybe_write_pragma_trailing_info_for_proc(io.text_output_stream::in,
-    module_info::in, order_pred_info::in, proc_id::in, proc_info::in,
-    cord(item_trailing)::in, cord(item_trailing)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred gather_pragma_trailing_info_for_proc(module_info::in,
+    order_pred_info::in, proc_id::in, proc_info::in,
+    cord(pragma_info_trailing_info)::in,
+    cord(pragma_info_trailing_info)::out) is det.
 
-maybe_write_pragma_trailing_info_for_proc(Stream, ModuleInfo, OrderPredInfo,
-        ProcId, ProcInfo, !TrailingInfosCord, !First, !IO) :-
+gather_pragma_trailing_info_for_proc(ModuleInfo, OrderPredInfo,
+        ProcId, ProcInfo, !TrailingInfosCord) :-
     OrderPredInfo = order_pred_info(PredName, UserArity, PredOrFunc,
         PredId, PredInfo),
     proc_info_get_trailing_info(ProcInfo, MaybeProcTrailingInfo),
@@ -3067,11 +3049,7 @@ maybe_write_pragma_trailing_info_for_proc(Stream, ModuleInfo, OrderPredInfo,
             PredSymName, UserArity, ModeNum),
         ProcTrailingInfo = proc_trailing_info(Status, _),
         TrailingInfo = pragma_info_trailing_info(PredNameArityPFMn, Status),
-        ItemTrailing = item_pragma_info(TrailingInfo, term.context_init,
-            item_no_seq_num),
-        cord.snoc(ItemTrailing, !TrailingInfosCord),
-        maybe_write_nl(Stream, !First, !IO),
-        mercury_output_pragma_trailing_info(Stream, TrailingInfo, !IO)
+        cord.snoc(TrailingInfo, !TrailingInfosCord)
     else
         true
     ).
@@ -3080,27 +3058,26 @@ maybe_write_pragma_trailing_info_for_proc(Stream, ModuleInfo, OrderPredInfo,
 
     % Write out the mm_tabling_info pragma for this predicate.
     %
-:- pred write_pragma_mm_tabling_info_for_pred(io.text_output_stream::in,
-    module_info::in, order_pred_info::in,
-    cord(item_mm_tabling)::in, cord(item_mm_tabling)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred gather_pragma_mm_tabling_info_for_pred(module_info::in,
+    order_pred_info::in,
+    cord(pragma_info_mm_tabling_info)::in,
+    cord(pragma_info_mm_tabling_info)::out) is det.
 
-write_pragma_mm_tabling_info_for_pred(Stream, ModuleInfo, OrderPredInfo,
-        !MMTablingInfosCord, !First, !IO) :-
+gather_pragma_mm_tabling_info_for_pred(ModuleInfo, OrderPredInfo,
+        !MMTablingInfosCord) :-
     OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
-    map.foldl3(
-        maybe_write_pragma_mm_tabling_info_for_proc(Stream, ModuleInfo,
-            OrderPredInfo),
-        ProcTable, !MMTablingInfosCord, !First, !IO).
+    map.foldl(
+        gather_pragma_mm_tabling_info_for_proc(ModuleInfo, OrderPredInfo),
+        ProcTable, !MMTablingInfosCord).
 
-:- pred maybe_write_pragma_mm_tabling_info_for_proc(io.text_output_stream::in,
-    module_info::in, order_pred_info::in, proc_id::in, proc_info::in,
-    cord(item_mm_tabling)::in, cord(item_mm_tabling)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred gather_pragma_mm_tabling_info_for_proc(module_info::in,
+    order_pred_info::in, proc_id::in, proc_info::in,
+    cord(pragma_info_mm_tabling_info)::in,
+    cord(pragma_info_mm_tabling_info)::out) is det.
 
-maybe_write_pragma_mm_tabling_info_for_proc(Stream, ModuleInfo, OrderPredInfo,
-        ProcId, ProcInfo, !MMTablingInfosCord, !First, !IO) :-
+gather_pragma_mm_tabling_info_for_proc(ModuleInfo, OrderPredInfo,
+        ProcId, ProcInfo, !MMTablingInfosCord) :-
     OrderPredInfo = order_pred_info(PredName, PredArity, PredOrFunc,
         PredId, PredInfo),
     proc_info_get_mm_tabling_info(ProcInfo, MaybeProcMMTablingInfo),
@@ -3117,41 +3094,36 @@ maybe_write_pragma_mm_tabling_info_for_proc(Stream, ModuleInfo, OrderPredInfo,
         PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc,
             PredSymName, PredArity, ModeNum),
         ProcMMTablingInfo = proc_mm_tabling_info(Status, _),
-        MMTablingInfo = pragma_info_mm_tabling_info(PredNameArityPFMn,
-            Status),
-        ItemMMTabling = item_pragma_info(MMTablingInfo, term.context_init,
-            item_no_seq_num),
-        cord.snoc(ItemMMTabling, !MMTablingInfosCord),
-        maybe_write_nl(Stream, !First, !IO),
-        mercury_output_pragma_mm_tabling_info(Stream, MMTablingInfo, !IO)
+        MMTablingInfo =
+            pragma_info_mm_tabling_info(PredNameArityPFMn, Status),
+        cord.snoc(MMTablingInfo, !MMTablingInfosCord)
     else
         true
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred write_pragma_structure_sharing_for_pred(io.text_output_stream::in,
-    module_info::in, order_pred_info::in,
-    cord(item_struct_sharing)::in, cord(item_struct_sharing)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred gather_pragma_structure_sharing_for_pred(module_info::in,
+    order_pred_info::in,
+    cord(pragma_info_structure_sharing)::in,
+    cord(pragma_info_structure_sharing)::out) is det.
 
-write_pragma_structure_sharing_for_pred(Stream, ModuleInfo, OrderPredInfo,
-        !SharingInfosCord, !First, !IO) :-
+gather_pragma_structure_sharing_for_pred(ModuleInfo, OrderPredInfo,
+        !SharingInfosCord) :-
     OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
-    map.foldl3(
-        maybe_write_pragma_structure_sharing_for_proc(Stream, ModuleInfo,
+    map.foldl(
+        gather_pragma_structure_sharing_for_proc(ModuleInfo,
             OrderPredInfo),
-        ProcTable, !SharingInfosCord, !First, !IO).
+        ProcTable, !SharingInfosCord).
 
-:- pred maybe_write_pragma_structure_sharing_for_proc(
-    io.text_output_stream::in, module_info::in,
+:- pred gather_pragma_structure_sharing_for_proc(module_info::in,
     order_pred_info::in, proc_id::in, proc_info::in,
-    cord(item_struct_sharing)::in, cord(item_struct_sharing)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+    cord(pragma_info_structure_sharing)::in,
+    cord(pragma_info_structure_sharing)::out) is det.
 
-maybe_write_pragma_structure_sharing_for_proc(Stream, ModuleInfo,
-        OrderPredInfo, ProcId, ProcInfo, !SharingInfosCord, !First, !IO) :-
+gather_pragma_structure_sharing_for_proc(ModuleInfo, OrderPredInfo,
+        ProcId, ProcInfo, !SharingInfosCord) :-
     OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
         PredId, PredInfo),
     ( if
@@ -3175,39 +3147,34 @@ maybe_write_pragma_structure_sharing_for_proc(Stream, ModuleInfo,
         SharingStatus = structure_sharing_domain_and_status(Sharing, _Status),
         SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
             HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Sharing)),
-        ItemSharing = item_pragma_info(SharingInfo, term.context_init,
-            item_no_seq_num),
-        cord.snoc(ItemSharing, !SharingInfosCord),
-        maybe_write_nl(Stream, !First, !IO),
-        write_pragma_structure_sharing_info(Stream, output_debug,
-            SharingInfo, !IO)
+        cord.snoc(SharingInfo, !SharingInfosCord)
     else
         true
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred write_pragma_structure_reuse_for_pred(io.text_output_stream::in,
-    module_info::in, order_pred_info::in,
-    cord(item_struct_reuse)::in, cord(item_struct_reuse)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred gather_pragma_structure_reuse_for_pred(module_info::in,
+    order_pred_info::in,
+    cord(pragma_info_structure_reuse)::in,
+    cord(pragma_info_structure_reuse)::out) is det.
 
-write_pragma_structure_reuse_for_pred(Stream, ModuleInfo, OrderPredInfo,
-        !ReuseInfosCord, !First, !IO) :-
+gather_pragma_structure_reuse_for_pred(ModuleInfo, OrderPredInfo,
+        !ReuseInfosCord) :-
     OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
-    map.foldl3(
-        maybe_write_pragma_structure_reuse_for_proc(Stream, ModuleInfo,
+    map.foldl(
+        gather_pragma_structure_reuse_for_proc(ModuleInfo,
             OrderPredInfo),
-        ProcTable, !ReuseInfosCord, !First, !IO).
+        ProcTable, !ReuseInfosCord).
 
-:- pred maybe_write_pragma_structure_reuse_for_proc(io.text_output_stream::in,
-    module_info::in, order_pred_info::in, proc_id::in, proc_info::in,
-    cord(item_struct_reuse)::in, cord(item_struct_reuse)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred gather_pragma_structure_reuse_for_proc(module_info::in,
+    order_pred_info::in, proc_id::in, proc_info::in,
+    cord(pragma_info_structure_reuse)::in,
+    cord(pragma_info_structure_reuse)::out) is det.
 
-maybe_write_pragma_structure_reuse_for_proc(Stream, ModuleInfo, OrderPredInfo,
-        ProcId, ProcInfo, !ReuseInfosCord, !First, !IO) :-
+gather_pragma_structure_reuse_for_proc(ModuleInfo, OrderPredInfo,
+        ProcId, ProcInfo, !ReuseInfosCord) :-
     OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
         PredId, PredInfo),
     ( if
@@ -3232,11 +3199,7 @@ maybe_write_pragma_structure_reuse_for_proc(Stream, ModuleInfo, OrderPredInfo,
             structure_reuse_domain_and_status(Reuse, _Status),
         ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
             HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Reuse)),
-        ItemReuse = item_pragma_info(ReuseInfo, term.context_init,
-            item_no_seq_num),
-        cord.snoc(ItemReuse, !ReuseInfosCord),
-        write_pragma_structure_reuse_info(Stream, output_debug,
-            ReuseInfo,!IO)
+        cord.snoc(ReuseInfo, !ReuseInfosCord)
     else
         true
     ).
@@ -3459,15 +3422,14 @@ old_status_to_write(status_external(Status)) =
                 % The modules that the .opt file will need to use.
                 im_use_modules          :: set(module_name),
 
-                % The ids of the predicates (and functions) whose
-                % definitions (i.e. clauses) we want to put into the
-                % .opt file.
-                im_pred_clauses         :: set(pred_id),
-
-                % The ids of the predicates (and functions) whose
-                % type and mode declarations we want to put into the
-                % .opt file.
+                % The ids of the predicates (and functions) whose type and mode
+                % declarations we want to put into the .opt file.
                 im_pred_decls           :: set(pred_id),
+
+                % The ids of the predicates (and functions) whose definitions
+                % (i.e. clauses, foreign_procs or promises) we want to put
+                % into the .opt file.
+                im_pred_defns           :: set(pred_id),
 
                 % The instance definitions we want to put into the .opt file.
                 im_instance_defns       :: assoc_list(class_id,
@@ -3494,20 +3456,20 @@ old_status_to_write(status_external(Status)) =
 
 init_intermod_info(ModuleInfo, IntermodInfo) :-
     set.init(Modules),
-    set.init(PredClauses),
     set.init(PredDecls),
+    set.init(PredDefns),
     InstanceDefns = [],
     TypeDefns = [],
-    IntermodInfo = intermod_info(ModuleInfo, Modules, PredClauses, PredDecls,
+    IntermodInfo = intermod_info(ModuleInfo, Modules, PredDecls, PredDefns,
         InstanceDefns, TypeDefns, do_not_need_foreign_import_modules).
 
 :- pred intermod_info_get_module_info(intermod_info::in, module_info::out)
     is det.
 :- pred intermod_info_get_use_modules(intermod_info::in, set(module_name)::out)
     is det.
-:- pred intermod_info_get_pred_clauses(intermod_info::in, set(pred_id)::out)
-    is det.
 :- pred intermod_info_get_pred_decls(intermod_info::in, set(pred_id)::out)
+    is det.
+:- pred intermod_info_get_pred_defns(intermod_info::in, set(pred_id)::out)
     is det.
 :- pred intermod_info_get_instances(intermod_info::in,
     assoc_list(class_id, hlds_instance_defn)::out) is det.
@@ -3516,9 +3478,9 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
 
 :- pred intermod_info_set_use_modules(set(module_name)::in,
     intermod_info::in, intermod_info::out) is det.
-:- pred intermod_info_set_pred_clauses(set(pred_id)::in,
-    intermod_info::in, intermod_info::out) is det.
 :- pred intermod_info_set_pred_decls(set(pred_id)::in,
+    intermod_info::in, intermod_info::out) is det.
+:- pred intermod_info_set_pred_defns(set(pred_id)::in,
     intermod_info::in, intermod_info::out) is det.
 :- pred intermod_info_set_instances(
     assoc_list(class_id, hlds_instance_defn)::in,
@@ -3534,10 +3496,10 @@ intermod_info_get_module_info(IntermodInfo, X) :-
     X = IntermodInfo ^ im_module_info.
 intermod_info_get_use_modules(IntermodInfo, X) :-
     X = IntermodInfo ^ im_use_modules.
-intermod_info_get_pred_clauses(IntermodInfo, X) :-
-    X = IntermodInfo ^ im_pred_clauses.
 intermod_info_get_pred_decls(IntermodInfo, X) :-
     X = IntermodInfo ^ im_pred_decls.
+intermod_info_get_pred_defns(IntermodInfo, X) :-
+    X = IntermodInfo ^ im_pred_defns.
 intermod_info_get_instances(IntermodInfo, X) :-
     X = IntermodInfo ^ im_instance_defns.
 intermod_info_get_types(IntermodInfo, X) :-
@@ -3545,10 +3507,10 @@ intermod_info_get_types(IntermodInfo, X) :-
 
 intermod_info_set_use_modules(X, !IntermodInfo) :-
     !IntermodInfo ^ im_use_modules := X.
-intermod_info_set_pred_clauses(X, !IntermodInfo) :-
-    !IntermodInfo ^ im_pred_clauses := X.
 intermod_info_set_pred_decls(X, !IntermodInfo) :-
     !IntermodInfo ^ im_pred_decls := X.
+intermod_info_set_pred_defns(X, !IntermodInfo) :-
+    !IntermodInfo ^ im_pred_defns := X.
 intermod_info_set_instances(X, !IntermodInfo) :-
     !IntermodInfo ^ im_instance_defns := X.
 intermod_info_set_types(X, !IntermodInfo) :-
@@ -3560,26 +3522,11 @@ intermod_info_set_need_foreign_import_modules(!IntermodInfo) :-
 
 write_trans_opt_file(Stream, ModuleInfo, ParseTreeTransOpt, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
-    io.write_string(Stream, ":- module ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, Stream, !IO),
-    io.write_string(Stream, ".\n", !IO),
-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, experiment5, Experiment5),
-    (
-        Experiment5 = no,
-        StartIsFirst = is_first
-    ;
-        Experiment5 = yes,
-        StartIsFirst = is_not_first
-    ),
-
-    % All predicates to write global items into the .trans_opt file
-    % should go here.
+    ModuleNameStr = mercury_bracketed_sym_name_to_string(ModuleName),
+    io.format(Stream, ":- module %s.\n", [s(ModuleNameStr)], !IO),
 
     % Select all the predicates for which something should be written
     % into the .trans_opt file.
-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     PredIdsSet = set.list_to_set(PredIds),
     module_info_get_structure_reuse_preds(ModuleInfo, ReusePredsSet),
@@ -3591,80 +3538,21 @@ write_trans_opt_file(Stream, ModuleInfo, ParseTreeTransOpt, !IO) :-
     % Don't try to output pragmas for an analysis unless that analysis
     % was actually run.
     module_info_get_proc_analysis_kinds(ModuleInfo, ProcAnalysisKinds),
-
-    ( if set.contains(ProcAnalysisKinds, pak_termination) then
-        list.foldl3(
-            write_pragma_termination_for_pred(Stream, ModuleInfo),
-            NoReuseOrderPredInfos,
-            cord.init, TermInfosCord, StartIsFirst, _, !IO),
-        TermInfos = cord.list(TermInfosCord)
-    else
-        TermInfos = []
-    ),
-
-    ( if set.contains(ProcAnalysisKinds, pak_termination2) then
-        list.foldl3(
-            write_pragma_termination2_for_pred(Stream, ModuleInfo),
-            NoReuseOrderPredInfos,
-            cord.init, TermInfos2Cord, StartIsFirst, _, !IO),
-        TermInfos2 = cord.list(TermInfos2Cord)
-    else
-        TermInfos2 = []
-    ),
-
-    ( if set.contains(ProcAnalysisKinds, pak_exception) then
-        list.foldl3(
-            write_pragma_exceptions_for_pred(Stream, ModuleInfo),
-            NoReuseOrderPredInfos,
-            cord.init, ExceptionsCord, StartIsFirst, _, !IO),
-        Exceptions = cord.list(ExceptionsCord)
-    else
-        Exceptions = []
-    ),
-
-    ( if set.contains(ProcAnalysisKinds, pak_trailing) then
-        list.foldl3(
-            write_pragma_trailing_info_for_pred(Stream, ModuleInfo),
-            NoReuseOrderPredInfos,
-            cord.init, TrailingInfosCord, StartIsFirst, _, !IO),
-        TrailingInfos = cord.list(TrailingInfosCord)
-    else
-        TrailingInfos = []
-    ),
-
-    ( if set.contains(ProcAnalysisKinds, pak_mm_tabling) then
-        list.foldl3(
-            write_pragma_mm_tabling_info_for_pred(Stream, ModuleInfo),
-            NoReuseOrderPredInfos,
-            cord.init, MMTablingInfosCord, StartIsFirst, _, !IO),
-        MMTablingInfos = cord.list(MMTablingInfosCord)
-    else
-        MMTablingInfos = []
-    ),
-
-    ( if set.contains(ProcAnalysisKinds, pak_structure_sharing) then
-        list.foldl3(
-            write_pragma_structure_sharing_for_pred(Stream, ModuleInfo),
-            NoReuseOrderPredInfos,
-            cord.init, SharingInfosCord, StartIsFirst, _, !IO),
-        SharingInfos = cord.list(SharingInfosCord)
-    else
-        SharingInfos = []
-    ),
-
-    ( if set.contains(ProcAnalysisKinds, pak_structure_reuse) then
-        list.foldl3(
-            write_pragma_structure_reuse_for_pred(Stream, ModuleInfo),
-            NoReuseOrderPredInfos,
-            cord.init, ReuseInfosCord, StartIsFirst, _, !IO),
-        ReuseInfos = cord.list(ReuseInfosCord)
-    else
-        ReuseInfos = []
-    ),
+    gather_analysis_pragmas(ModuleInfo, ProcAnalysisKinds,
+        NoReuseOrderPredInfos,
+        TermInfos, TermInfos2, Exceptions, TrailingInfos, MMTablingInfos,
+        SharingInfos, ReuseInfos),
+    write_analysis_pragmas(Stream, TermInfos, TermInfos2, Exceptions,
+        TrailingInfos, MMTablingInfos, SharingInfos, ReuseInfos, !IO),
 
     ParseTreeTransOpt = parse_tree_trans_opt(ModuleName, term.context_init,
-        TermInfos, TermInfos2, Exceptions, TrailingInfos, MMTablingInfos,
-        SharingInfos, ReuseInfos).
+        list.map(wrap_dummy_pragma_item, TermInfos),
+        list.map(wrap_dummy_pragma_item, TermInfos2),
+        list.map(wrap_dummy_pragma_item, Exceptions),
+        list.map(wrap_dummy_pragma_item, TrailingInfos),
+        list.map(wrap_dummy_pragma_item, MMTablingInfos),
+        list.map(wrap_dummy_pragma_item, SharingInfos),
+        list.map(wrap_dummy_pragma_item, ReuseInfos)).
 
 %---------------------------------------------------------------------------%
 
