@@ -939,7 +939,7 @@ parse_ordinary_cons_id(VarSet, Functor, ArgTerms, Context, ConsId, !Specs) :-
         )
     ).
 
-    % See whether Atom indicates a term with special syntax.
+    % See whether YAtom indicates a term with special syntax.
     %
 :- pred maybe_unravel_special_var_functor_unification(prog_var::in,
     string::in, list(prog_term)::in, term.context::in,
