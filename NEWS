@@ -554,10 +554,10 @@ Changes to the Mercury compiler
   when generating the .int and .int2 interface files for that module.
   (For example, it generates error messages for references to undefined
   types, insts and modes.) This new behavior can be switched off for now
-  with the new option --halt-at-invalid-interface. This new option
-  replaces the old --print-errors-warnings-when-generating-interface option,
+  with the new option `--halt-at-invalid-interface`. This new option
+  replaces the old `--print-errors-warnings-when-generating-interface` option,
   but once any problems caused by the new approach have been ironed out,
-  we intend to delete the --halt-at-invalid-interface option as well.
+  we intend to delete the `--halt-at-invalid-interface` option as well.
 
 Portability improvements
 ------------------------
