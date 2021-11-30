@@ -309,6 +309,8 @@
 :- func wrap_marker_pragma_item(item_pred_marker::in)
     = (item::out(item_decl_or_impl_pragma)) is det.
 
+:- func wrap_dummy_pragma_item(T) = item_pragma_info(T).
+
 %---------------------------------------------------------------------------%
 %
 % Converting specific forms of type definitions to the generic form.
@@ -1838,6 +1840,9 @@ wrap_marker_pragma_item(X) = Item :-
         Pragma = item_pragma_info(DeclPragma, Context, SeqNum),
         Item = item_decl_pragma(Pragma)
     ).
+
+wrap_dummy_pragma_item(T) =
+    item_pragma_info(T, term.context_init, item_no_seq_num).
 
 %---------------------------------------------------------------------------%
 

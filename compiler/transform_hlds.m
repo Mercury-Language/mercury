@@ -17,6 +17,8 @@
 %-----------------------------------------------------------------------------%
 
 :- include_module intermod.
+:- include_module intermod_analysis.
+:- include_module intermod_order_pred_info.
 
 :- include_module equiv_type_hlds.
 

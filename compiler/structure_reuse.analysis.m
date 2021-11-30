@@ -118,7 +118,7 @@
 :- import_module transform_hlds.ctgc.structure_reuse.versions.
 :- import_module transform_hlds.ctgc.structure_sharing.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
-:- import_module transform_hlds.intermod.
+:- import_module transform_hlds.intermod_analysis.
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module bimap.

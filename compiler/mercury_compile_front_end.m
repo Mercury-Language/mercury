@@ -128,6 +128,7 @@
 :- import_module transform_hlds.
 :- import_module transform_hlds.dead_proc_elim.
 :- import_module transform_hlds.intermod.
+:- import_module transform_hlds.intermod_analysis.
 
 :- import_module benchmarking.
 :- import_module int.

@@ -1385,13 +1385,26 @@ This information can be used to reduce the overhead of minimal model tabling.
 
 <p>
 The results of these program analyses
-are written out to `.trans_opt' files by intermod.m.
-intermod.m is also responsible for creating `.opt' files.
-Besides containing some analysis results,
-`.opt' files may also contain contains clauses
-for predicates (exported or local),
-if these clauses are suitable for other optimizations
-such as inlining or higher-order specialization.
+are written out to both `.opt' and `.trans_opt' files by intermod_analysis.m.
+`.trans_opt' files consist of nothing but analysis results,
+while `.opt' files also contain
+other information written out by intermod.m.
+This other information falls into two categories.
+<ul>
+<li>
+the definitions for predicates (exported or local)
+if these are suitable for other optimizations
+such as inlining or higher-order specialization, and
+<li>
+other not-ordinarily-exported parts of the module,
+such as local type, inst and mode definitions
+and the declarations of local predicates,
+if these may be required to make sense
+of the predicate definitions in the first category.
+</ul>
+The module intermod_order_pred_info.m
+contains utilities needed by both intermod.m and intermod_analysis.m.
+
 <p>
 Most of the remaining HLDS-to-HLDS transformations are optimizations:
 

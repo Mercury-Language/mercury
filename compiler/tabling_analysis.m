@@ -99,7 +99,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module transform_hlds.intermod.
+:- import_module transform_hlds.intermod_analysis.
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module bool.

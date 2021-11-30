@@ -97,7 +97,7 @@
 :- import_module transform_hlds.implicit_parallelism.
 :- import_module transform_hlds.implicit_parallelism.introduce_parallelism.
 :- import_module transform_hlds.inlining.
-:- import_module transform_hlds.intermod.
+:- import_module transform_hlds.intermod_analysis.
 :- import_module transform_hlds.lambda.
 :- import_module transform_hlds.lco.
 :- import_module transform_hlds.loop_inv.
