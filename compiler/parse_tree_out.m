@@ -112,6 +112,9 @@
 % Output some components of type definitions.
 %
 
+:- pred mercury_output_item_type_defn(merc_out_info::in,
+    io.text_output_stream::in, item_type_defn_info::in, io::di, io::uo) is det.
+
 :- pred mercury_output_where_attributes(merc_out_info::in, tvarset::in,
     maybe(solver_type_details)::in, maybe_canonical::in,
     maybe(list(sym_name_arity))::in, io.text_output_stream::in,
@@ -128,9 +131,23 @@
     string::out, string::out) is det.
 
 %---------------------------------------------------------------------------%
+
+:- pred mercury_output_item_inst_defn(merc_out_info::in,
+    io.text_output_stream::in, item_inst_defn_info::in, io::di, io::uo) is det.
+:- pred mercury_output_item_mode_defn(merc_out_info::in,
+    io.text_output_stream::in, item_mode_defn_info::in, io::di, io::uo) is det.
+:- pred mercury_format_item_foreign_enum(merc_out_info::in, S::in,
+    item_foreign_enum_info::in, U::di, U::uo) is det <= output(S, U).
+:- pred mercury_output_item_typeclass(merc_out_info::in,
+    io.text_output_stream::in, item_typeclass_info::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
 %
 % Output some components of an instance definition.
 %
+
+:- pred mercury_output_item_instance(merc_out_info::in,
+    io.text_output_stream::in, item_instance_info::in, io::di, io::uo) is det.
 
 :- pred mercury_output_instance_method(instance_method::in,
     io.text_output_stream::in, io::di, io::uo) is det.
@@ -1043,9 +1060,6 @@ mercury_output_pred_or_mode_decl(Info, Stream, Item, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item_type_defn(merc_out_info::in,
-    io.text_output_stream::in, item_type_defn_info::in, io::di, io::uo) is det.
-
 mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
     % XXX We should not use the tvar names in TypeVarSet; we should be
     % using standard tvar names such as TV1, TV2 etc. This should allow
@@ -1486,9 +1500,6 @@ mercury_output_ctor_arg_name_prefix(Stream, yes(FieldName), !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item_inst_defn(merc_out_info::in,
-    io.text_output_stream::in, item_inst_defn_info::in, io::di, io::uo) is det.
-
 mercury_output_item_inst_defn(Info, Stream, ItemInstDefn, !IO) :-
     ItemInstDefn = item_inst_defn_info(SymName0, InstParams, MaybeForTypeCtor,
         MaybeAbstractInstDefn, InstVarSet, Context, _SeqNum),
@@ -1647,9 +1658,6 @@ output_bound_inst_being_defined(Stream, Lang, InstVarSet, ArrowOrSemi,
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item_mode_defn(merc_out_info::in,
-    io.text_output_stream::in, item_mode_defn_info::in, io::di, io::uo) is det.
-
 mercury_output_item_mode_defn(Info, Stream, ItemModeDefn, !IO) :-
     ItemModeDefn = item_mode_defn_info(SymName, InstParams,
         MaybeAbstractModeDefn, VarSet, Context, _SeqNum),
@@ -1752,9 +1760,6 @@ mercury_output_item_mode_decl(Info, Stream, ItemModeDecl, !IO) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-:- pred mercury_format_item_foreign_enum(merc_out_info::in, S::in,
-    item_foreign_enum_info::in, U::di, U::uo) is det <= output(S, U).
 
 mercury_format_item_foreign_enum(_Info, S, ItemForeignEnum, !U) :-
     ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor, OoMValues,
@@ -1886,9 +1891,6 @@ mercury_output_item_promise(_, Stream, ItemPromise, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item_typeclass(merc_out_info::in,
-    io.text_output_stream::in, item_typeclass_info::in, io::di, io::uo) is det.
-
 mercury_output_item_typeclass(Info, Stream, ItemTypeClass, !IO) :-
     ItemTypeClass = item_typeclass_info(ClassName0, Vars, Constraints, FunDeps,
         Interface, VarSet, _Context, _SeqNum),
@@ -2019,9 +2021,6 @@ output_class_decl(Lang, Decl, Stream, !IO) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-:- pred mercury_output_item_instance(merc_out_info::in,
-    io.text_output_stream::in, item_instance_info::in, io::di, io::uo) is det.
 
 mercury_output_item_instance(_, Stream, ItemInstance, !IO) :-
     % XXX When prettyprinting a Mercury module, we want to print the original

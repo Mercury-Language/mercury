@@ -1085,10 +1085,13 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
     else
         TypeCtors = [TheTypeCtor],
         MaybePredId = no,
-        ( if TheTypeCtor = type_ctor(qualified(TypeModule, _), _) then
+        TheTypeCtor = type_ctor(TypeCtorSymName, _),
+        (
+            TypeCtorSymName = qualified(TypeModule, _),
             UnqualMethodName = unqualify_name(InstanceMethodName0),
             InstanceMethodName = qualified(TypeModule, UnqualMethodName)
-        else
+        ;
+            TypeCtorSymName = unqualified(_),
             unexpected($pred, "unqualified type_ctor in " ++
                 "hlds_cons_defn or hlds_ctor_field_defn")
         )
@@ -1412,11 +1415,30 @@ write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
     % Disable verbose dumping of clauses.
     OutInfoForPreds = OutInfo ^ hoi_dump_hlds_options := "",
 
-    intermod_write_types(OutInfo, Stream, Types, TypeDefns, ForeignEnums, !IO),
-    intermod_write_insts(OutInfo, Stream, ModuleInfo, InstDefns, !IO),
-    intermod_write_modes(OutInfo, Stream, ModuleInfo, ModeDefns, !IO),
-    intermod_write_classes(OutInfo, Stream, ModuleInfo, TypeClasses, !IO),
-    intermod_write_instances(OutInfo, Stream, InstanceDefns, Instances, !IO),
+    intermod_gather_types(Types, TypeDefns, ForeignEnums),
+    intermod_gather_insts(ModuleInfo, InstDefns),
+    intermod_gather_modes(ModuleInfo, ModeDefns),
+    intermod_gather_classes(ModuleInfo, TypeClasses),
+    intermod_gather_instances(InstanceDefns, Instances),
+
+    maybe_write_block_start_blank_line(Stream, TypeDefns, !IO),
+    list.foldl(mercury_output_item_type_defn(MercInfo, Stream),
+        TypeDefns, !IO),
+    maybe_write_block_start_blank_line(Stream, ForeignEnums, !IO),
+    list.foldl(mercury_format_item_foreign_enum(MercInfo, Stream),
+        ForeignEnums, !IO),
+    maybe_write_block_start_blank_line(Stream, InstDefns, !IO),
+    list.foldl(mercury_output_item_inst_defn(MercInfo, Stream),
+        InstDefns, !IO),
+    maybe_write_block_start_blank_line(Stream, ModeDefns, !IO),
+    list.foldl(mercury_output_item_mode_defn(MercInfo, Stream),
+        ModeDefns, !IO),
+    maybe_write_block_start_blank_line(Stream, TypeClasses, !IO),
+    list.foldl(mercury_output_item_typeclass(MercInfo, Stream),
+        TypeClasses, !IO),
+    maybe_write_block_start_blank_line(Stream, Instances, !IO),
+    list.foldl(mercury_output_item_instance(MercInfo, Stream),
+        Instances, !IO),
 
     generate_order_pred_infos(ModuleInfo, WriteDeclPredIds,
         DeclOrderPredInfos),
@@ -1461,18 +1483,6 @@ write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
     --->    is_not_first
     ;       is_first.
 
-:- pred maybe_write_nl(io.text_output_stream::in,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
-
-maybe_write_nl(Stream, !First, !IO) :-
-    (
-        !.First = is_first,
-        io.nl(Stream, !IO),
-        !:First = is_not_first
-    ;
-        !.First = is_not_first
-    ).
-
 %---------------------------------------------------------------------------%
 
 :- pred intermod_write_use_module(io.text_output_stream::in, module_name::in,
@@ -1485,41 +1495,32 @@ intermod_write_use_module(Stream, ModuleName, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred intermod_write_types(hlds_out_info::in, io.text_output_stream::in,
-    assoc_list(type_ctor, hlds_type_defn)::in,
-    list(item_type_defn_info)::out, list(item_foreign_enum_info)::out,
-    io::di, io::uo) is det.
+:- pred intermod_gather_types(assoc_list(type_ctor, hlds_type_defn)::in,
+    list(item_type_defn_info)::out, list(item_foreign_enum_info)::out) is det.
 
-intermod_write_types(OutInfo, Stream, Types, TypeDefns, ForeignEnums, !IO) :-
-    (
-        Types = []
-    ;
-        Types = [_ | _],
-        io.nl(Stream, !IO)
-    ),
+intermod_gather_types(Types, TypeDefns, ForeignEnums) :-
     list.sort(Types, SortedTypes),
-    list.foldl3(intermod_write_type(OutInfo, Stream), SortedTypes,
-        cord.init, TypeDefnsCord, cord.init, ForeignEnumsCord, !IO),
+    list.foldl2(intermod_gather_type, SortedTypes,
+        cord.init, TypeDefnsCord, cord.init, ForeignEnumsCord),
     TypeDefns = cord.list(TypeDefnsCord),
     ForeignEnums = cord.list(ForeignEnumsCord).
 
-:- pred intermod_write_type(hlds_out_info::in, io.text_output_stream::in,
-    pair(type_ctor, hlds_type_defn)::in,
+:- pred intermod_gather_type(pair(type_ctor, hlds_type_defn)::in,
     cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
-    cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out,
-    io::di, io::uo) is det.
+    cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out)
+    is det.
 
-intermod_write_type(OutInfo, Stream, TypeCtor - TypeDefn,
-        !TypeDefnsCord, !ForeignEnumsCord, !IO) :-
-    hlds_data.get_type_defn_tvarset(TypeDefn, VarSet),
-    hlds_data.get_type_defn_tparams(TypeDefn, Args),
+intermod_gather_type(TypeCtor - TypeDefn,
+        !TypeDefnsCord, !ForeignEnumsCord) :-
+    hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet),
+    hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
     hlds_data.get_type_defn_body(TypeDefn, Body),
     hlds_data.get_type_defn_context(TypeDefn, Context),
-    TypeCtor = type_ctor(Name, _Arity),
+    TypeCtor = type_ctor(TypeSymName, _Arity),
     (
         Body = hlds_du_type(TypeBodyDu),
         TypeBodyDu = type_body_du(Ctors, MaybeSubType, MaybeCanon,
-            MaybeRepnA, _MaybeForeign),
+            MaybeRepnA, MaybeForeignTypeBody),
         (
             MaybeRepnA = no,
             unexpected($pred, "MaybeRepnA = no")
@@ -1544,82 +1545,35 @@ intermod_write_type(OutInfo, Stream, TypeCtor - TypeDefn,
         )
     ;
         Body = hlds_eqv_type(EqvType),
-        TypeBody = parse_tree_eqv_type(type_details_eqv(EqvType))
+        TypeBody = parse_tree_eqv_type(type_details_eqv(EqvType)),
+        MaybeForeignTypeBody = no
     ;
         Body = hlds_abstract_type(Details),
-        TypeBody = parse_tree_abstract_type(Details)
+        TypeBody = parse_tree_abstract_type(Details),
+        MaybeForeignTypeBody = no
     ;
-        Body = hlds_foreign_type(_),
-        TypeBody = parse_tree_abstract_type(abstract_type_general)
+        Body = hlds_foreign_type(ForeignTypeBody0),
+        TypeBody = parse_tree_abstract_type(abstract_type_general),
+        MaybeForeignTypeBody = yes(ForeignTypeBody0)
     ;
         Body = hlds_solver_type(DetailsSolver),
-        TypeBody = parse_tree_solver_type(DetailsSolver)
+        TypeBody = parse_tree_solver_type(DetailsSolver),
+        MaybeForeignTypeBody = no
     ),
-    MainItemTypeDefn = item_type_defn_info(Name, Args, TypeBody, VarSet,
-        Context, item_no_seq_num),
+    MainItemTypeDefn = item_type_defn_info(TypeSymName, TypeParams, TypeBody,
+        TVarSet, Context, item_no_seq_num),
     cord.snoc(MainItemTypeDefn, !TypeDefnsCord),
-    MainItem = item_type_defn(MainItemTypeDefn),
-
-    MercInfo = OutInfo ^ hoi_merc_out_info,
-    mercury_output_item(MercInfo, Stream, MainItem, !IO),
-    ( if
-        (
-            Body = hlds_foreign_type(ForeignTypeBody)
-        ;
-            Body = hlds_du_type(
-                type_body_du(_, _, _, _, MaybeForeignTypeBody)),
-            MaybeForeignTypeBody = yes(ForeignTypeBody)
-        ),
-        ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava, MaybeCSharp)
-    then
-        (
-            MaybeC = yes(DataC),
-            DataC = type_details_foreign(CForeignType,
-                CMaybeUserEqComp, AssertionsC),
-            CDetailsForeign = type_details_foreign(c(CForeignType),
-                CMaybeUserEqComp, AssertionsC),
-            CItemTypeDefn = item_type_defn_info(Name, Args,
-                parse_tree_foreign_type(CDetailsForeign),
-                VarSet, Context, item_no_seq_num),
-            cord.snoc(CItemTypeDefn, !TypeDefnsCord),
-            CItem = item_type_defn(CItemTypeDefn),
-            mercury_output_item(MercInfo, Stream, CItem, !IO)
-        ;
-            MaybeC = no
-        ),
-        (
-            MaybeJava = yes(DataJava),
-            DataJava = type_details_foreign(JavaForeignType,
-                JavaMaybeUserEqComp, AssertionsJava),
-            JavaDetailsForeign = type_details_foreign(java(JavaForeignType),
-                JavaMaybeUserEqComp, AssertionsJava),
-            JavaItemTypeDefn = item_type_defn_info(Name, Args,
-                parse_tree_foreign_type(JavaDetailsForeign),
-                VarSet, Context, item_no_seq_num),
-            cord.snoc(JavaItemTypeDefn, !TypeDefnsCord),
-            JavaItem = item_type_defn(JavaItemTypeDefn),
-            mercury_output_item(MercInfo, Stream, JavaItem, !IO)
-        ;
-            MaybeJava = no
-        ),
-        (
-            MaybeCSharp = yes(DataCSharp),
-            DataCSharp = type_details_foreign(CSharpForeignType,
-                CSharpMaybeUserEqComp, AssertionsCSharp),
-            CSharpDetailsForeign = type_details_foreign(
-                csharp(CSharpForeignType),
-                CSharpMaybeUserEqComp, AssertionsCSharp),
-            CSharpItemTypeDefn = item_type_defn_info(Name, Args,
-                parse_tree_foreign_type(CSharpDetailsForeign),
-                VarSet, Context, item_no_seq_num),
-            cord.snoc(CSharpItemTypeDefn, !TypeDefnsCord),
-            CSharpItem = item_type_defn(CSharpItemTypeDefn),
-            mercury_output_item(MercInfo, Stream, CSharpItem, !IO)
-        ;
-            MaybeCSharp = no
-        )
-    else
-        true
+    (
+        MaybeForeignTypeBody = no
+    ;
+        MaybeForeignTypeBody = yes(ForeignTypeBody),
+        ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava, MaybeCsharp),
+        maybe_acc_foreign_type_defn_info(TypeSymName, TypeParams, TVarSet,
+            Context, (func(FT) = c(FT)), MaybeC, !TypeDefnsCord),
+        maybe_acc_foreign_type_defn_info(TypeSymName, TypeParams, TVarSet,
+            Context, (func(FT) = java(FT)), MaybeJava, !TypeDefnsCord),
+        maybe_acc_foreign_type_defn_info(TypeSymName, TypeParams, TVarSet,
+            Context, (func(FT) = csharp(FT)), MaybeCsharp, !TypeDefnsCord)
     ),
     ( if
         Body = hlds_du_type(type_body_du(_, _, _, MaybeRepnB, _)),
@@ -1644,57 +1598,72 @@ intermod_write_type(OutInfo, Stream, TypeCtor - TypeDefn,
             OoMForeignEnumVals =
                 one_or_more(HeadForeignEnumVal, TailForeignEnumVals),
             ForeignEnum = item_foreign_enum_info(Lang, TypeCtor,
-                OoMForeignEnumVals, term.context_init, item_no_seq_num),
-            cord.snoc(ForeignEnum, !ForeignEnumsCord),
-            ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor,
                 OoMForeignEnumVals, Context, item_no_seq_num),
-            ForeignItem = item_foreign_enum(ItemForeignEnum),
-            mercury_output_item(MercInfo, Stream, ForeignItem, !IO)
+            cord.snoc(ForeignEnum, !ForeignEnumsCord)
         )
     else
         true
+    ).
+
+:- pred maybe_acc_foreign_type_defn_info(sym_name::in, list(type_param)::in,
+    tvarset::in, prog_context::in,
+    (func(T) = generic_language_foreign_type)::in,
+    maybe(type_details_foreign(T))::in,
+    cord(item_type_defn_info)::in, cord(item_type_defn_info)::out) is det.
+
+maybe_acc_foreign_type_defn_info(TypeSymName, TypeParams, TVarSet, Context,
+        MakeGeneric, MaybeDetails, !TypeDefnsCord) :-
+    (
+        MaybeDetails = no
+    ;
+        MaybeDetails = yes(Details),
+        Details = type_details_foreign(LangForeignType, MaybeUserEqComp,
+            Assertions),
+        DetailsForeign = type_details_foreign(MakeGeneric(LangForeignType),
+            MaybeUserEqComp, Assertions),
+        ItemTypeDefn = item_type_defn_info(TypeSymName, TypeParams,
+            parse_tree_foreign_type(DetailsForeign),
+            TVarSet, Context, item_no_seq_num),
+        cord.snoc(ItemTypeDefn, !TypeDefnsCord)
     ).
 
 :- pred gather_foreign_enum_value_pair(constructor_repn::in,
     assoc_list(sym_name, string)::in, assoc_list(sym_name, string)::out)
     is det.
 
-gather_foreign_enum_value_pair(CtorRepn, !Values) :-
+gather_foreign_enum_value_pair(CtorRepn, !RevValues) :-
     CtorRepn = ctor_repn(_, _, SymName, Tag, _, Arity, _),
     expect(unify(Arity, 0), $pred, "Arity != 0"),
     ( if Tag = foreign_tag(_ForeignLang, ForeignTag) then
-        !:Values = [SymName - ForeignTag | !.Values]
+        !:RevValues = [SymName - ForeignTag | !.RevValues]
     else
         unexpected($pred, "expected foreign tag")
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred intermod_write_insts(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, list(item_inst_defn_info)::out, io::di, io::uo) is det.
+:- pred intermod_gather_insts(module_info::in,
+    list(item_inst_defn_info)::out) is det.
 
-intermod_write_insts(OutInfo, Stream, ModuleInfo, InstDefns, !IO) :-
+intermod_gather_insts(ModuleInfo, InstDefns) :-
     module_info_get_name(ModuleInfo, ModuleName),
     module_info_get_inst_table(ModuleInfo, Insts),
     inst_table_get_user_insts(Insts, UserInstMap),
-    map.foldl3(intermod_write_inst(OutInfo, Stream, ModuleName), UserInstMap,
-        cord.init, InstDefnsCord, is_first, _, !IO),
+    map.foldl(intermod_gather_inst(ModuleName), UserInstMap,
+        cord.init, InstDefnsCord),
     InstDefns = cord.list(InstDefnsCord).
 
-:- pred intermod_write_inst(hlds_out_info::in, io.text_output_stream::in,
-    module_name::in, inst_ctor::in, hlds_inst_defn::in,
-    cord(item_inst_defn_info)::in, cord(item_inst_defn_info)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred intermod_gather_inst(module_name::in,
+    inst_ctor::in, hlds_inst_defn::in,
+    cord(item_inst_defn_info)::in, cord(item_inst_defn_info)::out) is det.
 
-intermod_write_inst(OutInfo, Stream, ModuleName, InstCtor, InstDefn,
-        !InstDefnsCord, !First, !IO) :-
+intermod_gather_inst(ModuleName, InstCtor, InstDefn, !InstDefnsCord) :-
     InstCtor = inst_ctor(SymName, _Arity),
     InstDefn = hlds_inst_defn(Varset, Args, Inst, IFTC, Context, InstStatus),
     ( if
         SymName = qualified(ModuleName, _),
         inst_status_to_write(InstStatus) = yes
     then
-        maybe_write_nl(Stream, !First, !IO),
         (
             IFTC = iftc_applicable_declared(ForTypeCtor),
             MaybeForTypeCtor = yes(ForTypeCtor)
@@ -1708,34 +1677,29 @@ intermod_write_inst(OutInfo, Stream, ModuleName, InstCtor, InstDefn,
         ),
         ItemInstDefn = item_inst_defn_info(SymName, Args, MaybeForTypeCtor,
             nonabstract_inst_defn(Inst), Varset, Context, item_no_seq_num),
-        cord.snoc(ItemInstDefn, !InstDefnsCord),
-        Item = item_inst_defn(ItemInstDefn),
-        MercInfo = OutInfo ^ hoi_merc_out_info,
-        mercury_output_item(MercInfo, Stream, Item, !IO)
+        cord.snoc(ItemInstDefn, !InstDefnsCord)
     else
         true
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred intermod_write_modes(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, list(item_mode_defn_info)::out, io::di, io::uo) is det.
+:- pred intermod_gather_modes(module_info::in,
+    list(item_mode_defn_info)::out) is det.
 
-intermod_write_modes(OutInfo, Stream, ModuleInfo, ModeDefns, !IO) :-
+intermod_gather_modes(ModuleInfo, ModeDefns) :-
     module_info_get_name(ModuleInfo, ModuleName),
     module_info_get_mode_table(ModuleInfo, Modes),
     mode_table_get_mode_defns(Modes, ModeDefnMap),
-    map.foldl3(intermod_write_mode(OutInfo, Stream, ModuleName), ModeDefnMap,
-        cord.init, ModeDefnsCord, is_first, _, !IO),
+    map.foldl(intermod_gather_mode(ModuleName), ModeDefnMap,
+        cord.init, ModeDefnsCord),
     ModeDefns = cord.list(ModeDefnsCord).
 
-:- pred intermod_write_mode(hlds_out_info::in, io.text_output_stream::in,
-    module_name::in, mode_ctor::in, hlds_mode_defn::in,
-    cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred intermod_gather_mode(module_name::in,
+    mode_ctor::in, hlds_mode_defn::in,
+    cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out) is det.
 
-intermod_write_mode(OutInfo, Stream, ModuleName, ModeCtor, ModeDefn,
-        !ModeDefnsCord, !First, !IO) :-
+intermod_gather_mode(ModuleName, ModeCtor, ModeDefn, !ModeDefnsCord) :-
     ModeCtor = mode_ctor(SymName, _Arity),
     ModeDefn = hlds_mode_defn(Varset, Args, hlds_mode_body(Mode), Context,
         ModeStatus),
@@ -1743,37 +1707,31 @@ intermod_write_mode(OutInfo, Stream, ModuleName, ModeCtor, ModeDefn,
         SymName = qualified(ModuleName, _),
         mode_status_to_write(ModeStatus) = yes
     then
-        maybe_write_nl(Stream, !First, !IO),
         MaybeAbstractModeDefn = nonabstract_mode_defn(eqv_mode(Mode)),
         ItemModeDefn = item_mode_defn_info(SymName, Args,
             MaybeAbstractModeDefn, Varset, Context, item_no_seq_num),
-        cord.snoc(ItemModeDefn, !ModeDefnsCord),
-        Item = item_mode_defn(ItemModeDefn),
-        MercInfo = OutInfo ^ hoi_merc_out_info,
-        mercury_output_item(MercInfo, Stream, Item, !IO)
+        cord.snoc(ItemModeDefn, !ModeDefnsCord)
     else
         true
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred intermod_write_classes(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, list(item_typeclass_info)::out, io::di, io::uo) is det.
+:- pred intermod_gather_classes(module_info::in,
+    list(item_typeclass_info)::out) is det.
 
-intermod_write_classes(OutInfo, Stream, ModuleInfo, TypeClasses, !IO) :-
+intermod_gather_classes(ModuleInfo, TypeClasses) :-
     module_info_get_name(ModuleInfo, ModuleName),
     module_info_get_class_table(ModuleInfo, ClassDefnMap),
-    map.foldl3(intermod_write_class(OutInfo, Stream, ModuleName), ClassDefnMap,
-        cord.init, TypeClassesCord, is_first, _, !IO),
+    map.foldl(intermod_gather_class(ModuleName), ClassDefnMap,
+        cord.init, TypeClassesCord),
     TypeClasses = cord.list(TypeClassesCord).
 
-:- pred intermod_write_class(hlds_out_info::in, io.text_output_stream::in,
-    module_name::in, class_id::in, hlds_class_defn::in,
-    cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred intermod_gather_class(module_name::in,
+    class_id::in, hlds_class_defn::in,
+    cord(item_typeclass_info)::in, cord(item_typeclass_info)::out) is det.
 
-intermod_write_class(OutInfo, Stream, ModuleName, ClassId, ClassDefn,
-        !TypeClassesCord, !First, !IO) :-
+intermod_gather_class(ModuleName, ClassId, ClassDefn, !TypeClassesCord) :-
     ClassDefn = hlds_class_defn(TypeClassStatus, Constraints, HLDSFunDeps,
         _Ancestors, TVars, _Kinds, Interface, _HLDSClassInterface, TVarSet,
         Context, _HasBadDefn),
@@ -1782,14 +1740,10 @@ intermod_write_class(OutInfo, Stream, ModuleName, ClassId, ClassDefn,
         QualifiedClassName = qualified(ModuleName, _),
         typeclass_status_to_write(TypeClassStatus) = yes
     then
-        maybe_write_nl(Stream, !First, !IO),
         FunDeps = list.map(unmake_hlds_class_fundep(TVars), HLDSFunDeps),
         ItemTypeClass = item_typeclass_info(QualifiedClassName, TVars,
             Constraints, FunDeps, Interface, TVarSet, Context, item_no_seq_num),
-        cord.snoc(ItemTypeClass, !TypeClassesCord),
-        Item = item_typeclass(ItemTypeClass),
-        MercInfo = OutInfo ^ hoi_merc_out_info,
-        mercury_output_item(MercInfo, Stream, Item, !IO)
+        cord.snoc(ItemTypeClass, !TypeClassesCord)
     else
         true
     ).
@@ -1811,38 +1765,25 @@ unmake_hlds_class_fundep_arg_posns(TVars, ArgPosns) = ArgTVars :-
 
 %---------------------------------------------------------------------------%
 
-:- pred intermod_write_instances(hlds_out_info::in, io.text_output_stream::in, 
-    assoc_list(class_id, hlds_instance_defn)::in,
-    list(item_instance_info)::out, io::di, io::uo) is det.
+:- pred intermod_gather_instances(assoc_list(class_id, hlds_instance_defn)::in,
+    list(item_instance_info)::out) is det.
 
-intermod_write_instances(OutInfo, Stream, InstanceDefns, Instances, !IO) :-
-    (
-        InstanceDefns = []
-    ;
-        InstanceDefns = [_ | _],
-        io.nl(Stream, !IO)
-    ),
+intermod_gather_instances(InstanceDefns, Instances) :-
     list.sort(InstanceDefns, SortedInstanceDefns),
-    list.foldl2(intermod_write_instance(OutInfo, Stream), SortedInstanceDefns,
-        cord.init, InstancesCord, !IO),
+    list.foldl(intermod_gather_instance, SortedInstanceDefns,
+        cord.init, InstancesCord),
     Instances = cord.list(InstancesCord).
 
-:- pred intermod_write_instance(hlds_out_info::in, io.text_output_stream::in,
-    pair(class_id, hlds_instance_defn)::in,
-    cord(item_instance_info)::in, cord(item_instance_info)::out,
-    io::di, io::uo) is det.
+:- pred intermod_gather_instance(pair(class_id, hlds_instance_defn)::in,
+    cord(item_instance_info)::in, cord(item_instance_info)::out) is det.
 
-intermod_write_instance(OutInfo, Stream, ClassId - InstanceDefn,
-        !InstancesCord, !IO) :-
+intermod_gather_instance(ClassId - InstanceDefn, !InstancesCord) :-
     InstanceDefn = hlds_instance_defn(ModuleName, Types, OriginalTypes, _,
         Context, Constraints, Body, _, TVarSet, _),
     ClassId = class_id(ClassName, _),
     ItemInstance = item_instance_info(ClassName, Types, OriginalTypes,
         Constraints, Body, TVarSet, ModuleName, Context, item_no_seq_num),
-    cord.snoc(ItemInstance, !InstancesCord),
-    Item = item_instance(ItemInstance),
-    MercInfo = OutInfo ^ hoi_merc_out_info,
-    mercury_output_item(MercInfo, Stream, Item, !IO).
+    cord.snoc(ItemInstance, !InstancesCord).
 
 %---------------------------------------------------------------------------%
 
