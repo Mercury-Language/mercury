@@ -157,7 +157,7 @@ write_short_interface_file_int3(ProgressStream, ErrorStream, Globals,
     ;
         EffectivelyErrors = yes,
         report_file_not_written(ErrorStream, Globals, Specs, no, ModuleName,
-            other_ext(".int3"), no, !IO),
+            other_ext(".int3"), no, other_ext(".date3"), !IO),
         Succeeded = did_not_succeed
     ).
 
@@ -211,14 +211,15 @@ write_private_interface_file_int0(ProgressStream, ErrorStream, Globals,
         ;
             EffectiveGetQualSpecs = [_ | _],
             report_file_not_written(ErrorStream, Globals,
-                EffectiveGetQualSpecs, no,
-                ModuleName, other_ext(".int0"), no, !IO),
+                EffectiveGetQualSpecs, no, ModuleName,
+                other_ext(".int0"), no, other_ext(".date0"), !IO),
             Succeeded = did_not_succeed
         )
     else
         PrefixMsg = "Error reading interface files.\n",
         report_file_not_written(ErrorStream, Globals, GetSpecs,
-            yes(PrefixMsg), ModuleName, other_ext(".int0"), no, !IO),
+            yes(PrefixMsg), ModuleName,
+            other_ext(".int0"), no, other_ext(".date0"), !IO),
         Succeeded = did_not_succeed
     ).
 
@@ -287,14 +288,15 @@ write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
         ;
             EffectiveGetQualSpecs = [_ | _],
             report_file_not_written(ErrorStream, Globals,
-                EffectiveGetQualSpecs, no, ModuleName,
-                other_ext(".int"), yes(other_ext(".int2")), !IO),
+                EffectiveGetQualSpecs, no, ModuleName, other_ext(".int"),
+                yes(other_ext(".int2")), other_ext(".date"), !IO),
             Succeeded = did_not_succeed
         )
     else
         PrefixMsg = "Error reading .int3 files.\n",
         report_file_not_written(ErrorStream, Globals, GetSpecs, yes(PrefixMsg),
-            ModuleName, other_ext(".int"), yes(other_ext(".int2")), !IO),
+            ModuleName, other_ext(".int"), yes(other_ext(".int2")),
+            other_ext(".date"), !IO),
         Succeeded = did_not_succeed
     ).
 
@@ -547,10 +549,10 @@ insist_on_timestamp(MaybeTimestamp, Timestamp) :-
 
 :- pred report_file_not_written(io.text_output_stream::in, globals::in, 
     list(error_spec)::in, maybe(string)::in, module_name::in,
-    other_ext::in, maybe(other_ext)::in, io::di, io::uo) is det.
+    other_ext::in, maybe(other_ext)::in, other_ext::in, io::di, io::uo) is det.
 
 report_file_not_written(ErrorStream, Globals, Specs, MaybePrefixMsg,
-        ModuleName, OtherExtA, MaybeOtherExtB, !IO) :-
+        ModuleName, OtherExtA, MaybeOtherExtB, OtherExtDate, !IO) :-
     write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
     (
         MaybePrefixMsg = no
@@ -563,21 +565,33 @@ report_file_not_written(ErrorStream, Globals, Specs, MaybePrefixMsg,
     % longer than the line length.
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
         ext_other(OtherExtA), ModuleName, IntAFileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(OtherExtDate), ModuleName, DateFileName, !IO),
     (
         MaybeOtherExtB = no,
-        NotWrittenPieces = [quote(IntAFileName), words("not written."), nl]
+        NotWrittenPieces = [quote(IntAFileName), words("not written."), nl],
+        ToRemoveFileNames = [IntAFileName, DateFileName]
     ;
         MaybeOtherExtB = yes(OtherExtB),
         module_name_to_file_name(Globals, $pred, do_not_create_dirs,
             ext_other(OtherExtB), ModuleName, IntBFileName, !IO),
         NotWrittenPieces = [quote(IntAFileName), words("and"),
-            quote(IntBFileName), words("not written."), nl]
+            quote(IntBFileName), words("not written."), nl],
+        ToRemoveFileNames = [IntAFileName, IntBFileName, DateFileName]
     ),
     NotWrittenMsg = error_msg(no, treat_as_first, 0,
         [always(NotWrittenPieces)]),
     NotWrittenSpec = error_spec($pred, severity_informational,
         phase_read_files, [NotWrittenMsg]),
-    write_error_spec_ignore(ErrorStream, Globals, NotWrittenSpec, !IO).
+    write_error_spec_ignore(ErrorStream, Globals, NotWrittenSpec, !IO),
+    % We remove the interface file(s) the errors prevented us from generating,
+    % as well as the file indicating when they were last successfully written,
+    % for the same reason: to prevent any previous versions of those files
+    % being used in other compilations despite the fact that they are now
+    % out-of-date. If we did not do this, compilations that read in the
+    % now-obsolete interface files could generate error messages about
+    % errors that do not now exist in the source files at all.
+    list.map_foldl(io.remove_file, ToRemoveFileNames, _RemoveResults, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.write_module_interface_files.
