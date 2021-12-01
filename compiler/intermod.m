@@ -1446,19 +1446,22 @@ write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
     PredMarkerPragmasCord0 = cord.init,
     (
         DeclOrderPredInfos = [],
+        ModeDecls = [],
         PredMarkerPragmasCord1 = PredMarkerPragmasCord0,
         TypeSpecPragmas = []
     ;
         DeclOrderPredInfos = [_ | _],
         io.nl(Stream, !IO),
-        intermod_write_pred_decls(Stream, ModuleInfo, DeclOrderPredInfos,
+        intermod_write_pred_decls(MercInfo, Stream, ModuleInfo,
+            DeclOrderPredInfos,
+            cord.init, ModeDeclsCord,
             PredMarkerPragmasCord0, PredMarkerPragmasCord1,
             cord.init, TypeSpecPragmasCord, !IO),
+        ModeDecls = cord.list(ModeDeclsCord),
         TypeSpecPragmas = list.map(wrap_dummy_pragma_item,
             cord.list(TypeSpecPragmasCord))
     ),
     PredDecls = [],
-    ModeDecls = [],
     % Each of these writes a newline at the start.
     intermod_write_pred_defns(OutInfoForPreds, Stream, ModuleInfo,
         DefnOrderPredInfos, PredMarkerPragmasCord1, PredMarkerPragmasCord,
@@ -1782,29 +1785,32 @@ intermod_gather_instance(ClassId - InstanceDefn, !InstancesCord) :-
     % We need to write all the declarations for local predicates so
     % the procedure labels for the C code are calculated correctly.
     %
-:- pred intermod_write_pred_decls(io.text_output_stream::in,
+:- pred intermod_write_pred_decls(merc_out_info::in, io.text_output_stream::in,
     module_info::in, list(order_pred_info)::in,
+    cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
     cord(pragma_info_pred_marker)::in, cord(pragma_info_pred_marker)::out,
     cord(pragma_info_type_spec)::in, cord(pragma_info_type_spec)::out,
     io::di, io::uo) is det.
 
-intermod_write_pred_decls(_, _, [],
-        !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO).
-intermod_write_pred_decls(ModuleInfo, Stream, [OrderPredInfo | OrderPredInfos],
-        !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO) :-
-    intermod_write_pred_decl(ModuleInfo, Stream, OrderPredInfo,
-        !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO),
-    intermod_write_pred_decls(ModuleInfo, Stream, OrderPredInfos,
-        !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO).
+intermod_write_pred_decls(_, _, _, [],
+        !ModeDeclsCord, !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO).
+intermod_write_pred_decls(MercInfo, Stream, ModuleInfo,
+        [OrderPredInfo | OrderPredInfos],
+        !ModeDeclsCord, !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO) :-
+    intermod_write_pred_decl(MercInfo, Stream, ModuleInfo, OrderPredInfo,
+        !ModeDeclsCord, !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO),
+    intermod_write_pred_decls(MercInfo, Stream, ModuleInfo, OrderPredInfos,
+        !ModeDeclsCord, !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO).
 
-:- pred intermod_write_pred_decl(io.text_output_stream::in,
+:- pred intermod_write_pred_decl(merc_out_info::in, io.text_output_stream::in,
     module_info::in, order_pred_info::in,
+    cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
     cord(pragma_info_pred_marker)::in, cord(pragma_info_pred_marker)::out,
     cord(pragma_info_type_spec)::in, cord(pragma_info_type_spec)::out,
     io::di, io::uo) is det.
 
-intermod_write_pred_decl(Stream, ModuleInfo, OrderPredInfo,
-        !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO) :-
+intermod_write_pred_decl(MercInfo, Stream, ModuleInfo, OrderPredInfo,
+        !ModeDeclsCord, !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO) :-
     OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
         PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
@@ -1850,16 +1856,17 @@ intermod_write_pred_decl(Stream, ModuleInfo, OrderPredInfo,
     pred_info_get_proc_table(PredInfo, ProcMap),
     % Make sure the mode declarations go out in the same order they came in,
     % so that the all the modes get the same proc_id in the importing modules.
-    % SortedProcPairs will sorted on proc_ids. (map.values is not *documented*
-    % to return a list sorted by keys.)
+    % SortedProcPairs will be sorted on proc_ids. (map.values is not
+    % *documented* to return a list sorted by keys.)
     map.to_sorted_assoc_list(ProcMap, SortedProcPairs),
-    intermod_write_pred_valid_modes(Stream, PredOrFunc, PredSymName,
-        SortedProcPairs, !IO),
-
+    intermod_gather_pred_valid_modes(PredOrFunc, PredSymName,
+        SortedProcPairs, ModeDecls),
     intermod_gather_pred_marker_pragmas(PredInfo, PredMarkerPragmas),
     intermod_gather_pred_type_spec_pragmas(ModuleInfo, PredId,
         TypeSpecPragmas),
 
+    list.foldl(mercury_output_item_mode_decl(MercInfo, Stream),
+        ModeDecls, !IO),
     list.foldl(mercury_output_item_pred_marker(Stream),
         PredMarkerPragmas, !IO),
     Lang = output_mercury,
@@ -1872,54 +1879,41 @@ intermod_write_pred_decl(Stream, ModuleInfo, OrderPredInfo,
         mercury_output_pragma_type_spec(Stream, print_name_and_num, Lang),
         TypeSpecPragmas, !IO),
 
+    !:ModeDeclsCord = !.ModeDeclsCord ++ cord.from_list(ModeDecls),
     !:PredMarkerPragmasCord =
         !.PredMarkerPragmasCord ++ cord.from_list(PredMarkerPragmas),
     !:TypeSpecPragmasCord =
         !.TypeSpecPragmasCord ++ cord.from_list(TypeSpecPragmas).
 
-:- pred intermod_write_pred_valid_modes(io.text_output_stream::in,
-    pred_or_func::in, sym_name::in, assoc_list(proc_id, proc_info)::in,
-    io::di, io::uo) is det.
+:- pred intermod_gather_pred_valid_modes(pred_or_func::in, sym_name::in,
+    assoc_list(proc_id, proc_info)::in, list(item_mode_decl_info)::out) is det.
 
-intermod_write_pred_valid_modes(_, _, _, [], !IO).
-intermod_write_pred_valid_modes(Stream, PredOrFunc, PredSymName,
-        [ProcIdInfo | ProcIdInfos], !IO) :-
+intermod_gather_pred_valid_modes(_, _, [], []).
+intermod_gather_pred_valid_modes(PredOrFunc, PredSymName,
+        [ProcIdInfo | ProcIdInfos], ModeDecls) :-
+    intermod_gather_pred_valid_modes(PredOrFunc, PredSymName,
+        ProcIdInfos, TailModeDecls),
     ProcIdInfo = _ProcId - ProcInfo,
     ( if proc_info_is_valid_mode(ProcInfo) then
-        intermod_write_pred_mode(Stream, PredOrFunc, PredSymName,
-            ProcInfo, !IO)
-    else
-        true
-    ),
-    intermod_write_pred_valid_modes(Stream, PredOrFunc, PredSymName,
-        ProcIdInfos, !IO).
-
-:- pred intermod_write_pred_mode(io.text_output_stream::in,
-    pred_or_func::in, sym_name::in, proc_info::in, io::di, io::uo) is det.
-
-intermod_write_pred_mode(Stream, PredOrFunc, PredSymName, ProcInfo, !IO) :-
-    proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
-    proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
-    ( if
-        MaybeArgModes = yes(ArgModesPrime),
-        MaybeDetism = yes(DetismPrime)
-    then
-        ArgModes = ArgModesPrime,
-        Detism = DetismPrime
-    else
-        unexpected($pred, "attempt to write undeclared mode")
-    ),
-    varset.init(Varset),
-    (
-        PredOrFunc = pf_function,
-        pred_args_to_func_args(ArgModes, FuncArgModes, FuncRetMode),
-        mercury_output_func_mode_decl(Stream, output_mercury, Varset,
-            PredSymName, FuncArgModes, FuncRetMode, yes(Detism), !IO)
-    ;
-        PredOrFunc = pf_predicate,
+        proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
+        proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
+        ( if
+            MaybeArgModes = yes(ArgModesPrime),
+            MaybeDetism = yes(DetismPrime)
+        then
+            ArgModes = ArgModesPrime,
+            Detism = DetismPrime
+        else
+            unexpected($pred, "attempt to write undeclared mode")
+        ),
         MaybeWithInst = maybe.no,
-        mercury_output_pred_mode_decl(Stream, output_mercury, Varset,
-            PredSymName, ArgModes, MaybeWithInst, yes(Detism), !IO)
+        varset.init(InstVarset),
+        HeadModeDecl = item_mode_decl_info(PredSymName, yes(PredOrFunc),
+            ArgModes, MaybeWithInst, yes(Detism), InstVarset,
+            term.dummy_context_init, item_no_seq_num),
+        ModeDecls = [HeadModeDecl | TailModeDecls]
+    else
+        ModeDecls = TailModeDecls
     ).
 
 :- pred intermod_gather_pred_marker_pragmas(pred_info::in,

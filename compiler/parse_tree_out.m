@@ -145,6 +145,8 @@
     io.text_output_stream::in, item_inst_defn_info::in, io::di, io::uo) is det.
 :- pred mercury_output_item_mode_defn(merc_out_info::in,
     io.text_output_stream::in, item_mode_defn_info::in, io::di, io::uo) is det.
+:- pred mercury_output_item_mode_decl(merc_out_info::in,
+    io.text_output_stream::in, item_mode_decl_info::in, io::di, io::uo) is det.
 :- pred mercury_format_item_foreign_enum(merc_out_info::in, S::in,
     item_foreign_enum_info::in, U::di, U::uo) is det <= output(S, U).
 :- pred mercury_output_item_typeclass(merc_out_info::in,
@@ -1737,29 +1739,26 @@ mercury_output_item_pred_decl(Info, Stream, ItemPredDecl, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item_mode_decl(merc_out_info::in,
-    io.text_output_stream::in, item_mode_decl_info::in, io::di, io::uo) is det.
-
 mercury_output_item_mode_decl(Info, Stream, ItemModeDecl, !IO) :-
     % Most of the code that outputs mode declarations is in
     % parse_tree_out_pred_decl.m.
-    ItemModeDecl = item_mode_decl_info(PredName0, PredOrFunc, Modes,
-        WithInst, MaybeDet, VarSet, Context, _SeqNum),
-    maybe_unqualify_sym_name(Info, PredName0, PredName),
+    ItemModeDecl = item_mode_decl_info(PredSymName0, MaybePredOrFunc, ArgModes,
+        MaybeWithInst, MaybeDetism, InstVarSet, Context, _SeqNum),
+    maybe_unqualify_sym_name(Info, PredSymName0, PredSymName),
     maybe_output_line_number(Info, Context, Stream, !IO),
     Lang = get_output_lang(Info),
     ( if
         % Function mode declarations using `with_type` have the same format
         % as predicate mode declarations.
-        PredOrFunc = yes(pf_function),
-        WithInst = no
+        MaybePredOrFunc = yes(pf_function),
+        MaybeWithInst = no
     then
-        pred_args_to_func_args(Modes, FuncModes, RetMode),
-        mercury_output_func_mode_decl(Stream, Lang, VarSet, PredName,
-            FuncModes, RetMode, MaybeDet, !IO)
+        pred_args_to_func_args(ArgModes, FuncArgModes, ReturnMode),
+        mercury_output_func_mode_decl(Stream, Lang, InstVarSet, PredSymName,
+            FuncArgModes, ReturnMode, MaybeDetism, !IO)
     else
-        mercury_output_pred_mode_decl(Stream, Lang, VarSet, PredName,
-            Modes, WithInst, MaybeDet, !IO)
+        mercury_output_pred_mode_decl(Stream, Lang, InstVarSet, PredSymName,
+            ArgModes, MaybeWithInst, MaybeDetism, !IO)
     ).
 
 %---------------------------------------------------------------------------%
