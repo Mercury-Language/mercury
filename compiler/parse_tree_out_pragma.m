@@ -82,15 +82,17 @@
 :- pred write_pragma_termination_info(io.text_output_stream::in,
     output_lang::in, pragma_info_termination_info::in, io::di, io::uo) is det.
 
-    % Write the given arg size info. Verbose if the first arg is yes.
+    % Return a string representation of the given arg size info.
+    % Include the representation of any error infos if the first arg is yes.
     %
-:- pred write_maybe_arg_size_info(io.text_output_stream::in, bool::in,
-    maybe(generic_arg_size_info(T))::in, io::di, io::uo) is det.
+:- func maybe_arg_size_info_to_string(bool, maybe(generic_arg_size_info(T)))
+    = string.
 
-    % Write the given termination info. Verbose if the first arg is yes.
+    % Return a string representation of the given termination info.
+    % Include the representation of any error_infos if the first arg is yes.
     %
-:- pred write_maybe_termination_info(io.text_output_stream::in, bool::in,
-    maybe(generic_termination_info(S, T))::in, io::di, io::uo) is det.
+:- func maybe_termination_info_to_string(bool,
+    maybe(generic_termination_info(S, T))) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -401,11 +403,16 @@ mercury_format_pragma_foreign_decl(FDInfo, S, !U) :-
 
 mercury_output_pragma_foreign_code(Stream, FCInfo, !IO) :-
     FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude),
-    io.write_string(Stream, ":- pragma foreign_code(", !IO),
-    mercury_format_foreign_language_string(Lang, Stream, !IO),
-    io.write_string(Stream, ", ", !IO),
-    mercury_format_foreign_literal_or_include(LiteralOrInclude, Stream, !IO),
-    io.write_string(Stream, ").\n", !IO).
+    LangStr = mercury_foreign_language_to_string(Lang),
+    LorIStr = foreign_literal_or_include_to_string(LiteralOrInclude),
+    io.format(Stream, ":- pragma foreign_code(%s, %s).\n",
+        [s(LangStr), s(LorIStr)], !IO).
+
+:- func foreign_literal_or_include_to_string(foreign_literal_or_include)
+    =  string.
+
+foreign_literal_or_include_to_string(LiteralOrInclude) = Str :-
+    mercury_format_foreign_literal_or_include(LiteralOrInclude, unit, "", Str).
 
 :- pred mercury_format_foreign_literal_or_include(
     foreign_literal_or_include::in, S::in,
@@ -1320,84 +1327,56 @@ write_pragma_termination_info(Stream, Lang, TermInfo, !IO) :-
     TermInfo = pragma_info_termination_info(PredNameModesPF,
         MaybeArgSize, MaybeTermination),
     PredStr = proc_pf_name_modes_to_string(Lang, PredNameModesPF),
-    io.format(Stream, ":- pragma termination_info(%s, ", [s(PredStr)], !IO),
-    write_maybe_arg_size_info(Stream, no, MaybeArgSize, !IO),
-    io.write_string(Stream, ", ", !IO),
-    write_maybe_termination_info(Stream, no, MaybeTermination, !IO),
-    io.write_string(Stream, ").\n", !IO).
+    ArgSizeStr = maybe_arg_size_info_to_string(no, MaybeArgSize),
+    TermStr = maybe_termination_info_to_string(no, MaybeTermination),
+    io.format(Stream, ":- pragma termination_info(%s, %s, %s).\n",
+        [s(PredStr), s(ArgSizeStr), s(TermStr)], !IO).
 
-write_maybe_arg_size_info(Stream, Verbose, MaybeArgSizeInfo, !IO) :-
+maybe_arg_size_info_to_string(Verbose, MaybeArgSizeInfo) = Str :-
     (
         MaybeArgSizeInfo = no,
-        io.write_string(Stream, "not_set", !IO)
-    ;
-        MaybeArgSizeInfo = yes(infinite(Error)),
-        io.write_string(Stream, "infinite", !IO),
-        (
-            Verbose = yes,
-            io.write_string(Stream, "(", !IO),
-            io.write(Stream, Error, !IO),
-            io.write_string(Stream, ")", !IO)
-        ;
-            Verbose = no
-        )
+        Str = "not_set"
     ;
         MaybeArgSizeInfo = yes(finite(Const, UsedArgs)),
-        io.write_string(Stream, "finite(", !IO),
-        io.write_int(Stream, Const, !IO),
-        io.write_string(Stream, ", ", !IO),
-        write_used_args(Stream, UsedArgs, !IO),
-        io.write_string(Stream, ")", !IO)
-    ).
-
-:- pred write_used_args(io.text_output_stream::in, list(bool)::in,
-    io::di, io::uo) is det.
-
-write_used_args(Stream, [], !IO) :-
-    io.write_string(Stream, "[]", !IO).
-write_used_args(Stream, [UsedArg | UsedArgs], !IO) :-
-    io.write_string(Stream, "[", !IO),
-    write_bool(Stream, UsedArg, !IO),
-    write_used_comma_args(Stream, UsedArgs, !IO),
-    io.write_string(Stream, "]", !IO).
-
-:- pred write_used_comma_args(io.text_output_stream::in, list(bool)::in,
-    io::di, io::uo) is det.
-
-write_used_comma_args(_Stream, [], !IO).
-write_used_comma_args(Stream, [UsedArg | UsedArgs], !IO) :-
-    io.write_string(Stream, ", ", !IO),
-    write_bool(Stream, UsedArg, !IO),
-    write_used_comma_args(Stream, UsedArgs, !IO).
-
-:- pred write_bool(io.text_output_stream::in, bool::in, io::di, io::uo) is det.
-
-write_bool(Stream, Bool, !IO) :-
-    (
-        Bool = no,
-        io.write_string(Stream, "no", !IO)
+        string.format("finite(%d, %s)",
+            [i(Const), s(used_args_to_string(UsedArgs))], Str)
     ;
-        Bool = yes,
-        io.write_string(Stream, "yes", !IO)
+        MaybeArgSizeInfo = yes(infinite(ErrorInfo)),
+        (
+            Verbose = no,
+            Str = "infinite"
+        ;
+            Verbose = yes,
+            string.format("infinite(%s)", [s(string.string(ErrorInfo))], Str)
+        )
     ).
 
-write_maybe_termination_info(Stream, Verbose, MaybeTerminationInfo, !IO) :-
+:- func used_args_to_string(list(bool)) = string.
+
+used_args_to_string(UsedArgs) = Str :-
+    BoolStrs = list.map(bool_to_string, UsedArgs),
+    string.format("[%s]", [s(string.join_list(", ", BoolStrs))], Str).
+
+:- func bool_to_string(bool) = string.
+
+bool_to_string(no) = "no".
+bool_to_string(yes) = "yes".
+
+maybe_termination_info_to_string(Verbose, MaybeTerminationInfo) = Str :-
     (
         MaybeTerminationInfo = no,
-        io.write_string(Stream, "not_set", !IO)
+        Str = "not_set"
     ;
         MaybeTerminationInfo = yes(cannot_loop(_)),
-        io.write_string(Stream, "cannot_loop", !IO)
+        Str = "cannot_loop"
     ;
-        MaybeTerminationInfo = yes(can_loop(Error)),
-        io.write_string(Stream, "can_loop", !IO),
+        MaybeTerminationInfo = yes(can_loop(ErrorInfo)),
         (
-            Verbose = yes,
-            io.write_string(Stream, "(", !IO),
-            io.write(Stream, Error, !IO),
-            io.write_string(Stream, ")", !IO)
+            Verbose = no,
+            Str = "can_loop"
         ;
-            Verbose = no
+            Verbose = yes,
+            string.format("can_loop(%s)", [s(string.string(ErrorInfo))], Str)
         )
     ).
 

@@ -1208,12 +1208,10 @@ coverage_point_to_string(cp_type_branch_arm) = "branch arm".
 write_proc_termination_info(Stream, DumpOptions,  MaybeArgSize,
         MaybeTermination, !IO) :-
     ( if string.contains_char(DumpOptions, 't') then
-        io.write_string(Stream, "% Arg size properties: ", !IO),
-        write_maybe_arg_size_info(Stream, yes, MaybeArgSize, !IO),
-        io.nl(Stream, !IO),
-        io.write_string(Stream, "% Termination properties: ", !IO),
-        write_maybe_termination_info(Stream, yes, MaybeTermination, !IO),
-        io.nl(Stream, !IO)
+        SizeStr = maybe_arg_size_info_to_string(yes, MaybeArgSize),
+        TermStr = maybe_termination_info_to_string(yes, MaybeTermination),
+        io.format(Stream, "%% Arg size properties: %s\n", [s(SizeStr)], !IO),
+        io.format(Stream, "%% Termination properties: %s\n", [s(TermStr)], !IO)
     else
         true
     ).
