@@ -17,6 +17,8 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.maybe_succeeded.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
@@ -104,6 +106,13 @@
 
 %---------------------------------------------------------------------------%
 
+    % mercury_output_module_decl(Stream, Decl, ModuleName, !IO)
+    %
+:- pred mercury_output_module_decl(io.text_output_stream::in,
+    string::in, module_name::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
 :- pred mercury_output_item(merc_out_info::in, io.text_output_stream::in,
     item::in, io::di, io::uo) is det.
 
@@ -173,9 +182,7 @@
 :- implementation.
 
 :- import_module libs.options.
-:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.canonicalize_interface.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.maybe_error.
@@ -778,6 +785,8 @@ mercury_output_parse_tree_plain_opt(Info, Stream, ParseTree, !IO) :-
     list.foldl(mercury_output_item_mode_decl(Info, Stream), ModeDecls, !IO),
     list.foldl(mercury_output_item_pred_marker(Stream),
         list.map(project_pragma_type, PredMarkers), !IO),
+    % NOTE: This print_name_only assumes that PredDecls are printed
+    % with print_name_only as well (which they are).
     list.foldl(mercury_output_pragma_type_spec(Stream, print_name_only, Lang),
         list.map(project_pragma_type, TypeSpecs), !IO),
     list.foldl(mercury_output_item_clause(Info, Stream), Clauses, !IO),
@@ -956,15 +965,9 @@ mercury_output_item_avail(Info, Stream, Avail, !IO) :-
     maybe_output_line_number(Info, Context, Stream, !IO),
     mercury_output_module_decl(Stream, Decl, ModuleName, !IO).
 
-:- pred mercury_output_module_decl(io.text_output_stream::in,
-    string::in, module_name::in, io::di, io::uo) is det.
-
 mercury_output_module_decl(Stream, Decl, ModuleName, !IO) :-
-    io.write_string(Stream, ":- ", !IO),
-    io.write_string(Stream, Decl, !IO),
-    io.write_string(Stream, " ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, Stream, !IO),
-    io.write_string(Stream, ".\n", !IO).
+    ModuleNameStr = mercury_bracketed_sym_name_to_string(ModuleName),
+    io.format(Stream, ":- %s %s.\n", [s(Decl), s(ModuleNameStr)], !IO).
 
 %---------------------------------------------------------------------------%
 
