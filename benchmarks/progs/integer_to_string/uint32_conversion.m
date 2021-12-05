@@ -51,7 +51,15 @@ main(!IO) :-
     benchmark_det_io(run_test(alt3_uint32_to_string), Array, _, !IO,
         NumRepeats, TimeAlt3),
     io.format("Alt3: %dms ratio: %.2f\n",
-        [i(TimeAlt3), f(float(TimeStd) / float(TimeAlt3))], !IO).
+        [i(TimeAlt3), f(float(TimeStd) / float(TimeAlt3))], !IO),
+    benchmark_det_io(run_test(alt4_uint32_to_string), Array, _, !IO,
+        NumRepeats, TimeAlt4),
+    io.format("Alt4: %dms ratio: %.2f\n",
+        [i(TimeAlt4), f(float(TimeStd) / float(TimeAlt4))], !IO),
+    benchmark_det_io(run_test(alt5_uint32_to_string), Array, _, !IO,
+        NumRepeats, TimeAlt5),
+    io.format("Alt5: %dms ratio: %.2f\n",
+        [i(TimeAlt5), f(float(TimeStd) / float(TimeAlt5))], !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -252,7 +260,122 @@ do_test(Func, N, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-% XXX TODO: try table driven approaches.
+% Lookup pairs of digits every iteration.
+
+:- func alt4_uint32_to_string(uint32::in) = (string::uo) is det.
+:- pragma foreign_proc("C",
+    alt4_uint32_to_string(U::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    int num_digits;
+    if (U < 10) {
+        num_digits = 1;
+    } else if (U < 100) {
+        num_digits = 2;
+    } else if (U < 1000) {
+        num_digits = 3;
+    } else if (U < 10000) {
+        num_digits = 4;
+    } else if (U < 100000) {
+        num_digits = 5;
+    } else if (U < 1000000) {
+        num_digits = 6;
+    } else if (U < 10000000) {
+        num_digits = 7;
+    } else if (U < 100000000) {
+        num_digits = 8;
+    } else if (U < 1000000000) {
+        num_digits = 9;
+    } else {
+        num_digits = 10;
+    }
+
+    static const char digits[201] =
+        \"0001020304050607080910111213141516171819\"
+        \"2021222324252627282930313233343536373839\"
+        \"4041424344454647484950515253545556575859\"
+        \"6061626364656667686970717273747576777879\"
+        \"8081828384858687888990919293949596979899\";
+
+    MR_allocate_aligned_string_msg(S, num_digits, MR_ALLOC_ID);
+    S[num_digits] = '\\0';
+    int next = num_digits - 1;
+    while (U >= 100) {
+        int i = (U % 100) * 2;
+        U /= 100;
+        S[next] = digits[i + 1];
+        S[next - 1] = digits[i];
+        next -= 2;
+    }
+
+    if (U < 10) {
+        S[next] = '0' + U;
+    } else {
+        int i = U * 2;
+        S[next] = digits[i + 1];
+        S[next - 1] = digits[i];
+    }
+").
+
+%---------------------------------------------------------------------------%
+
+% Lookup pairs of digits every iteration using base 10 integer log
+% to compute the number of digits.
+
+:- func alt5_uint32_to_string(uint32::in) = (string::uo) is det.
+:- pragma foreign_proc("C",
+    alt5_uint32_to_string(U::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    int num_digits = digit_count(U);
+
+    static const char digits[201] =
+        \"0001020304050607080910111213141516171819\"
+        \"2021222324252627282930313233343536373839\"
+        \"4041424344454647484950515253545556575859\"
+        \"6061626364656667686970717273747576777879\"
+        \"8081828384858687888990919293949596979899\";
+
+    MR_allocate_aligned_string_msg(S, num_digits, MR_ALLOC_ID);
+    S[num_digits] = '\\0';
+    int next = num_digits - 1;
+    while (U >= 100) {
+        uint32_t i = (U % 100) * 2;
+        U /= 100;
+        S[next] = digits[i + 1];
+        S[next - 1] = digits[i];
+        next -= 2;
+    }
+
+    if (U < 10) {
+        S[next] = '0' + U;
+    } else {
+        uint32_t i = U * 2;
+        S[next] = digits[i + 1];
+        S[next - 1] = digits[i];
+    }
+").
+
+:- pragma foreign_decl("C", "
+
+extern int digit_count(uint32_t x);
+
+").
+
+% Integer log base 10: Hacker's Delight 2nd Edition, figure 11-13.
+:- pragma foreign_code("C", "
+
+#define ILOG2(N) (31 - __builtin_clz((N) | 1))
+
+int digit_count(uint32_t x) {
+  static const uint32_t table[] = {9, 99, 999, 9999, 99999,
+    999999, 9999999, 99999999, 999999999};
+  int y = (9 * ILOG2(x)) >> 5;
+  y += x > table[y];
+  return y + 1;
+}
+
+").
 
 %---------------------------------------------------------------------------%
 :- end_module uint32_conversion.

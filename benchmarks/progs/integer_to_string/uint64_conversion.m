@@ -47,7 +47,11 @@ main(!IO) :-
     benchmark_det_io(run_test(alt2_uint64_to_string), Array, _, !IO,
         NumRepeats, TimeAlt2),
     io.format("Alt2: %dms ratio: %.2f\n",
-        [i(TimeAlt2), f(float(TimeStd) / float(TimeAlt2))], !IO).
+        [i(TimeAlt2), f(float(TimeStd) / float(TimeAlt2))], !IO),
+    benchmark_det_io(run_test(alt3_uint64_to_string), Array, _, !IO,
+        NumRepeats, TimeAlt3),
+    io.format("Alt3: %dms ratio: %.2f\n",
+        [i(TimeAlt3), f(float(TimeStd) / float(TimeAlt3))], !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -222,6 +226,85 @@ do_test(Func, N, !IO) :-
         S[i] = \"0123456789\"[U % 10];
         i--;
     } while ( U /= 10 );
+").
+
+%---------------------------------------------------------------------------%
+
+% Lookup pairs of digits every iteration.
+
+:- func alt3_uint64_to_string(uint64::in) = (string::uo) is det.
+:- pragma foreign_proc("C",
+    alt3_uint64_to_string(U::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    int num_digits;
+    if (U < UINT64_C(10)) {
+        num_digits = 1;
+    } else if (U < UINT64_C(100)) {
+        num_digits = 2;
+    } else if (U < UINT64_C(1000)) {
+        num_digits = 3;
+    } else if (U < UINT64_C(10000)) {
+        num_digits = 4;
+    } else if (U < UINT64_C(100000)) {
+        num_digits = 5;
+    } else if (U < UINT64_C(1000000)) {
+        num_digits = 6;
+    } else if (U < UINT64_C(10000000)) {
+        num_digits = 7;
+    } else if (U < UINT64_C(100000000)) {
+        num_digits = 8;
+    } else if (U < UINT64_C(1000000000)) {
+        num_digits = 9;
+    } else if (U < UINT64_C(10000000000)) {
+        num_digits = 10;
+    } else if (U < UINT64_C(100000000000)) {
+        num_digits = 11;
+    } else if (U < UINT64_C(1000000000000)) {
+        num_digits = 12;
+    } else if (U < UINT64_C(10000000000000)) {
+        num_digits = 13;
+    } else if (U < UINT64_C(100000000000000)) {
+        num_digits = 14;
+    } else if (U < UINT64_C(1000000000000000)) {
+        num_digits = 15;
+    } else if (U < UINT64_C(10000000000000000)) {
+        num_digits = 16;
+    } else if (U < UINT64_C(100000000000000000)) {
+        num_digits = 17;
+    } else if (U < UINT64_C(1000000000000000000)) {
+        num_digits = 18;
+    } else if (U < UINT64_C(10000000000000000000)) {
+        num_digits = 19;
+    } else {
+        num_digits = 20;
+    }
+
+    static const char digits[201] =
+        \"0001020304050607080910111213141516171819\"
+        \"2021222324252627282930313233343536373839\"
+        \"4041424344454647484950515253545556575859\"
+        \"6061626364656667686970717273747576777879\"
+        \"8081828384858687888990919293949596979899\";
+
+    MR_allocate_aligned_string_msg(S, num_digits, MR_ALLOC_ID);
+    S[num_digits] = '\\0';
+    int next = num_digits - 1;
+    while (U >= 100) {
+        int i = (U % 100) * 2;
+        U /= 100;
+        S[next] = digits[i + 1];
+        S[next - 1] = digits[i];
+        next -= 2;
+    }
+
+    if (U < 10) {
+        S[next] = '0' + U;
+    } else {
+        int i = U * 2;
+        S[next] = digits[i + 1];
+        S[next - 1] = digits[i];
+    }
 ").
 
 %---------------------------------------------------------------------------%
