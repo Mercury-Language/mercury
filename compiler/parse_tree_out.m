@@ -145,6 +145,8 @@
     io.text_output_stream::in, item_inst_defn_info::in, io::di, io::uo) is det.
 :- pred mercury_output_item_mode_defn(merc_out_info::in,
     io.text_output_stream::in, item_mode_defn_info::in, io::di, io::uo) is det.
+:- pred mercury_output_item_pred_decl(output_lang::in, var_name_print::in,
+    io.text_output_stream::in, item_pred_decl_info::in, io::di, io::uo) is det.
 :- pred mercury_output_item_mode_decl(merc_out_info::in,
     io.text_output_stream::in, item_mode_decl_info::in, io::di, io::uo) is det.
 :- pred mercury_format_item_foreign_enum(merc_out_info::in, S::in,
@@ -377,7 +379,8 @@ mercury_output_parse_tree_module_src(Info, Stream, ParseTreeModuleSrc, !IO) :-
         IntTypeClasses, !IO),
     list.foldl(mercury_output_item_instance(Info, Stream),
         IntInstances, !IO),
-    list.foldl(mercury_output_item_pred_decl(Info, Stream),
+    list.foldl(
+        mercury_output_item_pred_decl_mu_mc(Info, print_name_only, Stream),
         IntPredDecls, !IO),
     list.foldl(mercury_output_item_mode_decl(Info, Stream),
         IntModeDecls, !IO),
@@ -404,7 +407,8 @@ mercury_output_parse_tree_module_src(Info, Stream, ParseTreeModuleSrc, !IO) :-
         ImpTypeClasses, !IO),
     list.foldl(mercury_output_item_instance(Info, Stream),
         ImpInstances, !IO),
-    list.foldl(mercury_output_item_pred_decl(Info, Stream),
+    list.foldl(
+        mercury_output_item_pred_decl_mu_mc(Info, print_name_only, Stream),
         ImpPredDecls, !IO),
     list.foldl(mercury_output_item_mode_decl(Info, Stream),
         ImpModeDecls, !IO),
@@ -566,7 +570,8 @@ mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO) :-
     list.foldl(mercury_output_item_instance(Info, Stream),
         list.sort(IntInstances), !IO),
     order_pred_and_mode_decls(IntPredDecls, IntModeDecls, IntPredOrModeDecls),
-    mercury_output_pred_or_mode_decls(Info, Stream, IntPredOrModeDecls, !IO),
+    mercury_output_pred_or_mode_decls(Info, print_name_only, Stream,
+        IntPredOrModeDecls, !IO),
     list.foldl(mercury_output_item_decl_pragma(Info, Stream),
         list.sort(IntDeclPragmas), !IO),
     list.foldl(mercury_output_item_promise(Info, Stream),
@@ -610,7 +615,7 @@ mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO) :-
             list.sort(ImpInstances), !IO),
         order_pred_and_mode_decls(ImpPredDecls, ImpModeDecls,
             ImpPredOrModeDecls),
-        mercury_output_pred_or_mode_decls(Info, Stream,
+        mercury_output_pred_or_mode_decls(Info, print_name_only, Stream,
             ImpPredOrModeDecls, !IO),
         list.foldl(mercury_format_item_foreign_enum(Info, Stream),
             ImpForeignEnums, !IO),
@@ -655,7 +660,8 @@ mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO) :-
     list.foldl(mercury_output_item_instance(Info, Stream),
         list.sort(IntInstances), !IO),
     order_pred_and_mode_decls(IntPredDecls, IntModeDecls, IntPredOrModeDecls),
-    mercury_output_pred_or_mode_decls(Info, Stream, IntPredOrModeDecls, !IO),
+    mercury_output_pred_or_mode_decls(Info, print_name_only, Stream,
+        IntPredOrModeDecls, !IO),
     list.foldl(mercury_output_item_decl_pragma(Info, Stream),
         list.sort(IntDeclPragmas), !IO),
     list.foldl(mercury_output_item_promise(Info, Stream),
@@ -783,13 +789,38 @@ mercury_output_parse_tree_plain_opt(Info, Stream, ParseTree, !IO) :-
     list.foldl(mercury_output_item_mode_defn(Info, Stream), ModeDefns, !IO),
     list.foldl(mercury_output_item_typeclass(Info, Stream), TypeClasses, !IO),
     list.foldl(mercury_output_item_instance(Info, Stream), Instances, !IO),
-    list.foldl(mercury_output_item_pred_decl(Info, Stream), PredDecls, !IO),
+    % NOTE: The names of type variables in type_spec pragmas must match
+    % *exactly* the names of the corresponding type variables in the
+    % predicate declaration to which they apply. This is why one variable,
+    % VarNamePrint, controls both.
+    %
+    % If a predicate is defined by a foreign_proc, then its declaration
+    % *must* be printed with print_name_only, because that is the only way
+    % that any reference to the type_info variable in the foreign code
+    % in the body of the foreign_proc will match the declared name of the
+    % type variable that it is for.
+    %
+    % We used to print the predicate declarations with print_name_only
+    % for such predicates (predicates defined by foreign_procs) and with
+    % print_name_and_num for all other predicates. (That included predicates
+    % representing promises.) However, the predicates whose declarations
+    % we are writing out have not been through any transformation that
+    % would have either (a) changed the names of any existing type variables,
+    % or (b) introduced any new type variables, so the mapping between
+    % type variable numbers and names should be the same now as when the
+    % the predicate declaration was first parsed. And at that time, two
+    % type variable occurrences with the same name obviously referred to the
+    % same type variable, so the numeric suffix added by print_name_and_num
+    % was obviously not needed.
+    VarNamePrintPredDecl = print_name_only,
+    list.foldl(
+        mercury_output_item_pred_decl(Lang, VarNamePrintPredDecl, Stream),
+        PredDecls, !IO),
     list.foldl(mercury_output_item_mode_decl(Info, Stream), ModeDecls, !IO),
     list.foldl(mercury_output_item_pred_marker(Stream),
         list.map(project_pragma_type, PredMarkers), !IO),
-    % NOTE: This print_name_only assumes that PredDecls are printed
-    % with print_name_only as well (which they are).
-    list.foldl(mercury_output_pragma_type_spec(Stream, print_name_only, Lang),
+    list.foldl(
+        mercury_output_pragma_type_spec(Stream, VarNamePrintPredDecl, Lang),
         list.map(project_pragma_type, TypeSpecs), !IO),
     list.foldl(mercury_output_item_clause(Info, Stream), Clauses, !IO),
     list.foldl(mercury_output_pragma_foreign_proc(Stream, Lang),
@@ -996,7 +1027,8 @@ mercury_output_item(Info, Stream, Item, !IO) :-
         mercury_output_item_mode_defn(Info, Stream, ItemModeDefn, !IO)
     ;
         Item = item_pred_decl(ItemPredDecl),
-        mercury_output_item_pred_decl(Info, Stream, ItemPredDecl, !IO)
+        mercury_output_item_pred_decl_mu_mc(Info, print_name_only, Stream,
+            ItemPredDecl, !IO)
     ;
         Item = item_mode_decl(ItemModeDecl),
         mercury_output_item_mode_decl(Info, Stream, ItemModeDecl, !IO)
@@ -1042,22 +1074,24 @@ mercury_output_item(Info, Stream, Item, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred mercury_output_pred_or_mode_decls(merc_out_info::in,
-    io.text_output_stream::in, list(pred_or_mode_decl_item)::in,
-    io::di, io::uo) is det.
+    var_name_print::in, io.text_output_stream::in,
+    list(pred_or_mode_decl_item)::in, io::di, io::uo) is det.
 
-mercury_output_pred_or_mode_decls(_, _, [], !IO).
-mercury_output_pred_or_mode_decls(Info, Stream, [Item | Items], !IO) :-
-    mercury_output_pred_or_mode_decl(Info, Stream, Item, !IO),
-    mercury_output_pred_or_mode_decls(Info, Stream, Items, !IO).
+mercury_output_pred_or_mode_decls(_, _, _, [], !IO).
+mercury_output_pred_or_mode_decls(Info, VarNamePrint, Stream,
+        [Item | Items], !IO) :-
+    mercury_output_pred_or_mode_decl(Info, VarNamePrint, Stream, Item, !IO),
+    mercury_output_pred_or_mode_decls(Info, VarNamePrint, Stream, Items, !IO).
 
-:- pred mercury_output_pred_or_mode_decl(merc_out_info::in,
+:- pred mercury_output_pred_or_mode_decl(merc_out_info::in, var_name_print::in,
     io.text_output_stream::in, pred_or_mode_decl_item::in,
     io::di, io::uo) is det.
 
-mercury_output_pred_or_mode_decl(Info, Stream, Item, !IO) :-
+mercury_output_pred_or_mode_decl(Info, VarNamePrint, Stream, Item, !IO) :-
     (
         Item = pomd_pred(ItemPredDecl),
-        mercury_output_item_pred_decl(Info, Stream, ItemPredDecl, !IO)
+        mercury_output_item_pred_decl_mu_mc(Info, VarNamePrint, Stream,
+            ItemPredDecl, !IO)
     ;
         Item = pomd_mode(ItemModeDecl),
         mercury_output_item_mode_decl(Info, Stream, ItemModeDecl, !IO)
@@ -1706,18 +1740,38 @@ mercury_format_mode_defn_head(InstVarSet, Context, Name, Args, S, !U) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item_pred_decl(merc_out_info::in,
-    io.text_output_stream::in, item_pred_decl_info::in, io::di, io::uo) is det.
+    % Output the given predicate declaration, after
+    %
+    % - Maybe Unqualifying the predicate name, and
+    % - Maybe writing out the line number Context.
+    %
+:- pred mercury_output_item_pred_decl_mu_mc(merc_out_info::in,
+    var_name_print::in, io.text_output_stream::in, item_pred_decl_info::in,
+    io::di, io::uo) is det.
 
-mercury_output_item_pred_decl(Info, Stream, ItemPredDecl, !IO) :-
+mercury_output_item_pred_decl_mu_mc(Info, VarNamePrint, Stream,
+        ItemPredDecl0, !IO) :-
+    MaybeQualifiedItemNames = get_maybe_qualified_item_names(Info),
+    (
+        MaybeQualifiedItemNames = qualified_item_names,
+        ItemPredDecl = ItemPredDecl0
+    ;
+        MaybeQualifiedItemNames = unqualified_item_names,
+        PredSymName0 = ItemPredDecl0 ^ pf_name,
+        PredSymName = unqualified(unqualify_name(PredSymName0)),
+        ItemPredDecl = ItemPredDecl0 ^ pf_name := PredSymName
+    ),
+    maybe_output_line_number(Info, ItemPredDecl ^ pf_context, Stream, !IO),
+    Lang = get_output_lang(Info),
+    mercury_output_item_pred_decl(Lang, VarNamePrint, Stream,
+        ItemPredDecl, !IO).
+
+mercury_output_item_pred_decl(Lang, VarNamePrint, Stream, ItemPredDecl, !IO) :-
     % Most of the code that outputs pred declarations is in
     % parse_tree_out_pred_decl.m.
-    ItemPredDecl = item_pred_decl_info(PredName0, PredOrFunc, TypesAndModes,
+    ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndModes,
         WithType, WithInst, MaybeDetism, _Origin, TypeVarSet, InstVarSet,
-        ExistQVars, Purity, Constraints, Context, _SeqNum),
-    maybe_unqualify_sym_name(Info, PredName0, PredName),
-    maybe_output_line_number(Info, Context, Stream, !IO),
-    Lang = get_output_lang(Info),
+        ExistQVars, Purity, Constraints, _Context, _SeqNum),
     ( if
         % Function declarations using `with_type` have the same format
         % as predicate declarations, but with `func' instead of `pred'.
@@ -1726,15 +1780,15 @@ mercury_output_item_pred_decl(Info, Stream, ItemPredDecl, !IO) :-
     then
         pred_args_to_func_args(TypesAndModes, FuncTypesAndModes,
             RetTypeAndMode),
-        mercury_format_func_decl(Lang, TypeVarSet, InstVarSet,
-            ExistQVars, PredName, FuncTypesAndModes, RetTypeAndMode,
-            MaybeDetism, Purity, Constraints,
-            ":- ", ".\n", ".\n", Stream, !IO)
+        mercury_format_func_decl(Lang, VarNamePrint,
+            TypeVarSet, InstVarSet, ExistQVars,
+            PredSymName, FuncTypesAndModes, RetTypeAndMode, MaybeDetism,
+            Purity, Constraints, ":- ", ".\n", ".\n", Stream, !IO)
     else
-        mercury_format_pred_or_func_decl(Lang, TypeVarSet, InstVarSet,
-            PredOrFunc, ExistQVars, PredName, TypesAndModes,
-            WithType, WithInst, MaybeDetism, Purity, Constraints,
-            ":- ", ".\n", ".\n", Stream, !IO)
+        mercury_format_pred_or_func_decl(Lang, VarNamePrint,
+            TypeVarSet, InstVarSet, PredOrFunc, ExistQVars,
+            PredSymName, TypesAndModes, WithType, WithInst, MaybeDetism,
+            Purity, Constraints, ":- ", ".\n", ".\n", Stream, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1911,7 +1965,7 @@ mercury_output_item_typeclass(Info, Stream, ItemTypeClass, !IO) :-
         Interface = class_interface_concrete(ClassDecls),
         io.write_string(Stream, " where [\n", !IO),
         Lang = get_output_lang(Info),
-        output_class_decls(Stream, Lang, ClassDecls, !IO),
+        output_class_decls(Stream, Lang, print_name_only, ClassDecls, !IO),
         io.write_string(Stream, "\n].\n", !IO)
     ).
 
@@ -1960,15 +2014,17 @@ mercury_format_fundep(TypeVarSet, VarNamePrint, fundep(Domain, Range),
     add_string(")", S, !U).
 
 :- pred output_class_decls(io.text_output_stream::in,
-    output_lang::in, list(class_decl)::in, io::di, io::uo) is det.
+    output_lang::in, var_name_print::in, list(class_decl)::in,
+    io::di, io::uo) is det.
 
-output_class_decls(Stream, Lang, ClassDecls, !IO) :-
-    write_out_list(output_class_decl(Lang), ",\n", ClassDecls, Stream, !IO).
+output_class_decls(Stream, Lang, VarNamePrint, ClassDecls, !IO) :-
+    write_out_list(output_class_decl(Lang, VarNamePrint), ",\n",
+        ClassDecls, Stream, !IO).
 
-:- pred output_class_decl(output_lang::in, class_decl::in,
+:- pred output_class_decl(output_lang::in, var_name_print::in, class_decl::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 
-output_class_decl(Lang, Decl, Stream, !IO) :-
+output_class_decl(Lang, VarNamePrint, Decl, Stream, !IO) :-
     io.write_string(Stream, "\t", !IO),
     (
         Decl = class_decl_pred_or_func(PredOrFuncInfo),
@@ -1988,14 +2044,15 @@ output_class_decl(Lang, Decl, Stream, !IO) :-
         then
             pred_args_to_func_args(TypesAndModes,
                 FuncTypesAndModes, RetTypeAndMode),
-            mercury_format_func_decl(Lang, TypeVarSet, InstVarSet, ExistQVars,
+            mercury_format_func_decl(Lang, VarNamePrint,
+                TypeVarSet, InstVarSet, ExistQVars,
                 unqualified(Name), FuncTypesAndModes, RetTypeAndMode,
                 MaybeDetism, Purity, Constraints, "", ",\n\t", "", Stream, !IO)
         else
-            mercury_format_pred_or_func_decl(Lang, TypeVarSet, InstVarSet,
-                PredOrFunc, ExistQVars, unqualified(Name), TypesAndModes,
-                WithType, WithInst, MaybeDetism, Purity,
-                Constraints, "", ",\n\t", "", Stream, !IO)
+            mercury_format_pred_or_func_decl(Lang, VarNamePrint,
+                TypeVarSet, InstVarSet, PredOrFunc, ExistQVars,
+                unqualified(Name), TypesAndModes, WithType, WithInst,
+                MaybeDetism, Purity, Constraints, "", ",\n\t", "", Stream, !IO)
         )
     ;
         Decl = class_decl_mode(ModeInfo),

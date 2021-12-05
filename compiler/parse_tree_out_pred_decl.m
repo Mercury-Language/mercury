@@ -34,7 +34,7 @@
 
     % XXX Document me.
     %
-:- pred mercury_format_pred_or_func_decl(output_lang::in,
+:- pred mercury_format_pred_or_func_decl(output_lang::in, var_name_print::in,
     tvarset::in, inst_varset::in, pred_or_func::in, existq_tvars::in,
     sym_name::in, list(type_and_mode)::in,
     maybe(mer_type)::in, maybe(mer_inst)::in, maybe(determinism)::in,
@@ -43,7 +43,7 @@
 
     % XXX Document me.
     %
-:- pred mercury_format_func_decl(output_lang::in,
+:- pred mercury_format_func_decl(output_lang::in, var_name_print::in,
     tvarset::in, inst_varset::in, existq_tvars::in,
     sym_name::in, list(type_and_mode)::in, type_and_mode::in,
     maybe(determinism)::in, purity::in, prog_constraints::in, string::in,
@@ -137,7 +137,7 @@
 
 %---------------------------------------------------------------------------%
 
-mercury_format_pred_or_func_decl(Lang, TypeVarSet, InstVarSet,
+mercury_format_pred_or_func_decl(Lang, VarNamePrint, TypeVarSet, InstVarSet,
         PredOrFunc, ExistQVars, PredName, TypesAndModes, WithType, WithInst,
         MaybeDet, Purity, ClassContext, StartString,
         Separator, Terminator, S, !U) :-
@@ -148,43 +148,43 @@ mercury_format_pred_or_func_decl(Lang, TypeVarSet, InstVarSet,
         ; WithInst = yes(_)
         )
     then
-        mercury_format_pred_or_func_type_2(TypeVarSet, print_name_only,
+        mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint,
             PredOrFunc, ExistQVars, PredName, Types, WithType, no,
             Purity, ClassContext, StartString, Separator, S, !U),
         mercury_format_pred_or_func_mode_decl(Lang, InstVarSet, PredName,
             Modes, WithInst, MaybeDet, StartString, Terminator, S, !U)
     else
-        mercury_format_pred_or_func_type_2(TypeVarSet, print_name_only,
+        mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint,
             PredOrFunc, ExistQVars, PredName, Types, WithType, MaybeDet,
             Purity, ClassContext, StartString, Terminator, S, !U)
     ).
 
 %---------------------%
 
-mercury_format_func_decl(Lang, TypeVarSet, InstVarSet, ExistQVars, FuncName,
-        TypesAndModes, RetTypeAndMode, MaybeDet, Purity, ClassContext,
-        StartString, Separator, Terminator, S, !U) :-
+mercury_format_func_decl(Lang, VarNamePrint, TypeVarSet, InstVarSet,
+        ExistQVars, FuncName, TypesAndModes, RetTypeAndMode, MaybeDet, Purity,
+        ClassContext, StartString, Separator, Terminator, S, !U) :-
     split_types_and_modes(TypesAndModes, Types, MaybeModes),
     split_type_and_mode(RetTypeAndMode, RetType, MaybeRetMode),
     ( if
         MaybeModes = yes(Modes),
         MaybeRetMode = yes(RetMode)
     then
-        mercury_format_func_type_2(TypeVarSet, print_name_only,
+        mercury_format_func_type_2(TypeVarSet, VarNamePrint,
             ExistQVars, FuncName, Types, RetType, no, Purity,
             ClassContext, StartString, Separator, S, !U),
         mercury_format_func_mode_decl(Lang, InstVarSet, FuncName, Modes,
             RetMode, MaybeDet, StartString, Terminator, S, !U)
     else
-        mercury_format_func_type_2(TypeVarSet, print_name_only,
+        mercury_format_func_type_2(TypeVarSet, VarNamePrint,
             ExistQVars, FuncName, Types, RetType, MaybeDet, Purity,
             ClassContext, StartString, Terminator, S, !U)
     ).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_pred_type(Stream, TypeVarSet, VarNamePrint, ExistQVars, PredName,
-        Types, MaybeDet, Purity, ClassContext, !IO) :-
+mercury_output_pred_type(Stream, TypeVarSet, VarNamePrint, ExistQVars,
+        PredName, Types, MaybeDet, Purity, ClassContext, !IO) :-
     mercury_format_pred_type(TypeVarSet, VarNamePrint, ExistQVars, PredName,
         Types, no, MaybeDet, Purity, ClassContext, Stream, !IO).
 
@@ -206,15 +206,16 @@ mercury_format_pred_type(TypeVarSet, VarNamePrint, ExistQVars, PredName,
 
 %---------------------%
 
-mercury_output_func_type(Stream, VarSet, ExistQVars, FuncName, Types, RetType,
-        MaybeDet, Purity, ClassContext, VarNamePrint, !IO) :-
-    mercury_format_func_type(VarSet, ExistQVars, FuncName, Types, RetType,
+mercury_output_func_type(Stream, VarSet, ExistQVars, FuncName,
+        ArgTypes, RetType, MaybeDet, Purity, ClassContext, VarNamePrint,
+        !IO) :-
+    mercury_format_func_type(VarSet, ExistQVars, FuncName, ArgTypes, RetType,
         MaybeDet, Purity, ClassContext, VarNamePrint, Stream, !IO).
 
-mercury_func_type_to_string(TypeVarSet, VarNamePrint, ExistQVars,
-        FuncName, Types, RetType, MaybeDet, Purity, ClassContext) = String :-
+mercury_func_type_to_string(TypeVarSet, VarNamePrint, ExistQVars, FuncName,
+        ArgTypes, RetType, MaybeDet, Purity, ClassContext) = String :-
     mercury_format_func_type(TypeVarSet, VarNamePrint, ExistQVars,
-        FuncName, Types, RetType, MaybeDet, Purity, ClassContext,
+        FuncName, ArgTypes, RetType, MaybeDet, Purity, ClassContext,
         unit, "", String).
 
 :- pred mercury_format_func_type(tvarset::in, var_name_print::in,
@@ -223,9 +224,10 @@ mercury_func_type_to_string(TypeVarSet, VarNamePrint, ExistQVars,
     S::in, U::di, U::uo) is det <= output(S, U).
 
 mercury_format_func_type(TypeVarSet, VarNamePrint, ExistQVars, FuncName,
-        Types, RetType, MaybeDet, Purity, ClassContext, S, !U) :-
+        ArgTypes, RetType, MaybeDet, Purity, ClassContext, S, !U) :-
     mercury_format_func_type_2(TypeVarSet, VarNamePrint, ExistQVars, FuncName,
-        Types, RetType, MaybeDet, Purity, ClassContext, ":- ", ".\n", S, !U).
+        ArgTypes, RetType, MaybeDet, Purity, ClassContext, ":- ", ".\n",
+        S, !U).
 
 %---------------------------------------------------------------------------%
 %
@@ -312,7 +314,8 @@ mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint, PredOrFunc,
     string::in, string::in, S::in, U::di, U::uo) is det <= output(S, U).
 
 mercury_format_func_type_2(VarSet, VarNamePrint, ExistQVars, FuncName, Types,
-        RetType, MaybeDet, Purity, Constraints, StartString, Separator, S, !U) :-
+        RetType, MaybeDet, Purity, Constraints, StartString, Separator,
+        S, !U) :-
     add_string(StartString, S, !U),
     mercury_format_quantifier(VarSet, VarNamePrint, ExistQVars, S, !U),
     Constraints = constraints(UnivConstraints, ExistConstraints),
@@ -332,7 +335,8 @@ mercury_format_func_type_2(VarSet, VarNamePrint, ExistQVars, FuncName, Types,
         Types = [_ | _],
         mercury_format_sym_name(FuncName, S, !U),
         add_string("(", S, !U),
-        add_list(mercury_format_type(VarSet, VarNamePrint), ", ", Types, S, !U),
+        add_list(mercury_format_type(VarSet, VarNamePrint), ", ", Types,
+            S, !U),
         add_string(")", S, !U)
     ;
         Types = [],

@@ -139,7 +139,6 @@
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_pragma.
-:- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.parse_tree_to_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
@@ -513,7 +512,7 @@ gather_entities_to_opt_export_in_goal(Goal, MayOptExportPred, !IntermodInfo) :-
 gather_entities_to_opt_export_in_goal_expr(GoalExpr, MayOptExportPred,
         !IntermodInfo) :-
     (
-        GoalExpr = unify(_LVar, RHS, _Mode, _Kind, _UnifyContext),
+        GoalExpr = unify(_LHSVar, RHS, _Mode, _Kind, _UnifyContext),
         % Export declarations for preds used in higher order pred constants
         % or function calls.
         gather_entities_to_opt_export_in_unify_rhs(RHS, MayOptExportPred,
@@ -1446,6 +1445,7 @@ write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
     PredMarkerPragmasCord0 = cord.init,
     (
         DeclOrderPredInfos = [],
+        PredDecls = [],
         ModeDecls = [],
         PredMarkerPragmasCord1 = PredMarkerPragmasCord0,
         TypeSpecPragmas = []
@@ -1454,14 +1454,15 @@ write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
         io.nl(Stream, !IO),
         intermod_write_pred_decls(MercInfo, Stream, ModuleInfo,
             DeclOrderPredInfos,
+            cord.init, PredDeclsCord,
             cord.init, ModeDeclsCord,
             PredMarkerPragmasCord0, PredMarkerPragmasCord1,
             cord.init, TypeSpecPragmasCord, !IO),
+        PredDecls = cord.list(PredDeclsCord),
         ModeDecls = cord.list(ModeDeclsCord),
         TypeSpecPragmas = list.map(wrap_dummy_pragma_item,
             cord.list(TypeSpecPragmasCord))
     ),
-    PredDecls = [],
     % Each of these writes a newline at the start.
     intermod_write_pred_defns(OutInfoForPreds, Stream, ModuleInfo,
         DefnOrderPredInfos, PredMarkerPragmasCord1, PredMarkerPragmasCord,
@@ -1787,72 +1788,84 @@ intermod_gather_instance(ClassId - InstanceDefn, !InstancesCord) :-
     %
 :- pred intermod_write_pred_decls(merc_out_info::in, io.text_output_stream::in,
     module_info::in, list(order_pred_info)::in,
+    cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
     cord(pragma_info_pred_marker)::in, cord(pragma_info_pred_marker)::out,
     cord(pragma_info_type_spec)::in, cord(pragma_info_type_spec)::out,
     io::di, io::uo) is det.
 
 intermod_write_pred_decls(_, _, _, [],
-        !ModeDeclsCord, !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO).
+        !PredDeclsCord, !ModeDeclsCord, !PredMarkerPragmasCord,
+        !TypeSpecPragmasCord, !IO).
 intermod_write_pred_decls(MercInfo, Stream, ModuleInfo,
         [OrderPredInfo | OrderPredInfos],
-        !ModeDeclsCord, !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO) :-
+        !PredDeclsCord, !ModeDeclsCord, !PredMarkerPragmasCord,
+        !TypeSpecPragmasCord, !IO) :-
     intermod_write_pred_decl(MercInfo, Stream, ModuleInfo, OrderPredInfo,
-        !ModeDeclsCord, !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO),
+        !PredDeclsCord, !ModeDeclsCord, !PredMarkerPragmasCord,
+        !TypeSpecPragmasCord, !IO),
     intermod_write_pred_decls(MercInfo, Stream, ModuleInfo, OrderPredInfos,
-        !ModeDeclsCord, !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO).
+        !PredDeclsCord, !ModeDeclsCord, !PredMarkerPragmasCord,
+        !TypeSpecPragmasCord, !IO).
 
 :- pred intermod_write_pred_decl(merc_out_info::in, io.text_output_stream::in,
     module_info::in, order_pred_info::in,
+    cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
     cord(pragma_info_pred_marker)::in, cord(pragma_info_pred_marker)::out,
     cord(pragma_info_type_spec)::in, cord(pragma_info_type_spec)::out,
     io::di, io::uo) is det.
 
 intermod_write_pred_decl(MercInfo, Stream, ModuleInfo, OrderPredInfo,
-        !ModeDeclsCord, !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO) :-
+        !PredDeclsCord, !ModeDeclsCord, !PredMarkerPragmasCord,
+        !TypeSpecPragmasCord, !IO) :-
     OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
         PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
     pred_info_get_arg_types(PredInfo, TVarSet, ExistQVars, ArgTypes),
     pred_info_get_purity(PredInfo, Purity),
     pred_info_get_class_context(PredInfo, ClassContext),
-    pred_info_get_goal_type(PredInfo, GoalType),
-    (
-        GoalType = goal_not_for_promise(NPGoalType),
-        (
-            ( NPGoalType = np_goal_type_foreign
-            ; NPGoalType = np_goal_type_clause_and_foreign
-            ),
-            % For foreign code goals, we cannot append variable numbers
-            % to type variables in the predicate declaration, because
-            % the foreign code may contain references to variables
-            % such as `TypeInfo_for_T', which will break if `T'
-            % is written as `T_1' in the pred declaration.
-            VarNamePrint = print_name_only
-        ;
-            ( NPGoalType = np_goal_type_clause
-            ; NPGoalType = np_goal_type_none
-            ),
-            VarNamePrint = print_name_and_num
-        )
-    ;
-        GoalType = goal_for_promise(_),
-        VarNamePrint = print_name_and_num
-    ),
+    pred_info_get_context(PredInfo, Context),
     PredSymName = qualified(ModuleName, PredName),
-    (
-        PredOrFunc = pf_predicate,
-        mercury_output_pred_type(Stream, TVarSet, VarNamePrint, ExistQVars,
-            PredSymName, ArgTypes, no, Purity,
-            ClassContext, !IO)
-    ;
-        PredOrFunc = pf_function,
-        pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType),
-        mercury_output_func_type(Stream, TVarSet, VarNamePrint, ExistQVars,
-            PredSymName, FuncArgTypes, FuncRetType, no, Purity,
-            ClassContext, !IO)
-    ),
+    TypesAndNoModes = list.map((func(T) = type_only(T)), ArgTypes),
+    MaybeWithType = maybe.no,
+    MaybeWithInst = maybe.no,
+    MaybeDetism = maybe.no,     % We are NOT declaring the mode.
+    varset.init(InstVarSet),
+    % Origin is a dummy, which is OK because the origin is never printed.
+    % If that ever changes, we would have to reverse the transform done
+    % by record_pred_origin in add_pred.m.
+    Origin = item_origin_user,
+    PredDecl = item_pred_decl_info(PredSymName, PredOrFunc,
+        TypesAndNoModes, MaybeWithType, MaybeWithInst, MaybeDetism, Origin,
+        TVarSet, InstVarSet, ExistQVars, Purity, ClassContext,
+        Context, item_no_seq_num),
+    % NOTE: The names of type variables in type_spec pragmas must match
+    % *exactly* the names of the corresponding type variables in the 
+    % predicate declaration to which they apply. This is why one variable,
+    % VarNamePrint, controls both.
+    %
+    % If a predicate is defined by a foreign_proc, then its declaration
+    % *must* be printed with print_name_only, because that is the only way
+    % that any reference to the type_info variable in the foreign code
+    % in the body of the foreign_proc will match the declared name of the
+    % type variable that it is for.
+    %
+    % We used to print the predicate declarations with print_name_only
+    % for such predicates (predicates defined by foreign_procs) and with
+    % print_name_and_num for all other predicates. (That included predicates
+    % representing promises.) However, the predicates whose declarations
+    % we are writing out have not been through any transformation that
+    % would have either (a) changed the names of any existing type variables,
+    % or (b) introduced any new type variables, so the mapping between
+    % type variable numbers and names should be the same now as when the
+    % the predicate declaration was first parsed. And at that time, two
+    % type variable occurrences with the same name obviously referred to the
+    % same type variable, so the numeric suffix added by print_name_and_num
+    % was obviously not needed.
+    VarNamePrint = print_name_only,
+    mercury_output_item_pred_decl(output_mercury, VarNamePrint, Stream,
+        PredDecl, !IO),
     pred_info_get_proc_table(PredInfo, ProcMap),
     % Make sure the mode declarations go out in the same order they came in,
     % so that the all the modes get the same proc_id in the importing modules.
@@ -1870,15 +1883,10 @@ intermod_write_pred_decl(MercInfo, Stream, ModuleInfo, OrderPredInfo,
     list.foldl(mercury_output_item_pred_marker(Stream),
         PredMarkerPragmas, !IO),
     Lang = output_mercury,
-    % NOTE: The names of type variables in type_spec pragmas must match
-    % *exactly* the names of the corresponding type variables in the 
-    % predicate declaration to which they apply. If we specify
-    % print_name_and_num when writing out the predicate declaration (we do),
-    % then we must specify print_name_and_num here as well.
-    list.foldl(
-        mercury_output_pragma_type_spec(Stream, print_name_and_num, Lang),
+    list.foldl(mercury_output_pragma_type_spec(Stream, VarNamePrint, Lang),
         TypeSpecPragmas, !IO),
 
+    cord.snoc(PredDecl, !PredDeclsCord),
     !:ModeDeclsCord = !.ModeDeclsCord ++ cord.from_list(ModeDecls),
     !:PredMarkerPragmasCord =
         !.PredMarkerPragmasCord ++ cord.from_list(PredMarkerPragmas),
