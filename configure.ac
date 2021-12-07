@@ -708,14 +708,14 @@ AC_SUBST(ENABLE_BOEHM_LARGE_CONFIG)
 #
 
 AC_ARG_ENABLE(gc-mmap,
-    AS_HELP_STRING([--enable-gc-mmap],
-                   [use mmap instead of sbrk when using Boehm GC]),
-    [enable_gc_mmap="$enableval"],[enable_gc_mmap=no])
+    AS_HELP_STRING([--disable-gc-mmap],
+                   [use sbrk instead of mmap when using Boehm GC]),
+    [enable_gc_mmap="$enableval"],[enable_gc_mmap=yes])
 
 AC_ARG_ENABLE(gc-munmap,
-    AS_HELP_STRING([--enable-gc-munmap],
-                   [enable unmapping of unused pages when using Boehm GC]),
-    [enable_gc_munmap="$enableval"],[enable_gc_munmap=no])
+    AS_HELP_STRING([--disable-gc-munmap],
+                   [disable unmapping of unused pages when using Boehm GC]),
+    [enable_gc_munmap="$enableval"],[enable_gc_munmap=yes])
 
 AC_MSG_CHECKING(whether to enable unmapping of unused pages when using Boehm GC)
 case "$enable_gc_munmap" in
