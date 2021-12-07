@@ -509,19 +509,7 @@ old_status_defined_in_impl_section(status_opt_exported) =           yes.
 old_status_defined_in_impl_section(status_pseudo_exported) =        no.
 old_status_defined_in_impl_section(status_external(Status)) =
     old_status_defined_in_impl_section(Status).
-old_status_defined_in_impl_section(status_imported(ImportLocn)) =
-    import_locn_defined_in_impl_section(ImportLocn).
-
-:- func import_locn_defined_in_impl_section(import_locn) = bool.
-
-% XXX Returning "yes" for import_locn_interface seems wrong.
-% XXX Returning "yes" for everything seems wrong.
-import_locn_defined_in_impl_section(import_locn_implementation) = yes.
-import_locn_defined_in_impl_section(import_locn_interface) = yes.
-import_locn_defined_in_impl_section(import_locn_import_by_ancestor) = yes.
-import_locn_defined_in_impl_section(import_locn_ancestor_int0_interface) = yes.
-import_locn_defined_in_impl_section(import_locn_ancestor_int0_implementation)
-    = yes.
+old_status_defined_in_impl_section(status_imported(_ImportLocn)) =   no.
 
 :- func instmode_status_defined_in_impl_section(new_instmode_status) = bool.
 

@@ -175,22 +175,8 @@ get_promise_ex_goal(PredInfo, Goal) :-
 check_in_interface_promise_goal(ModuleInfo, PredInfo, Goal, !Specs) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
-        GoalExpr = plain_call(PredId, _, _, _, _,SymName),
-        module_info_pred_info(ModuleInfo, PredId, CallPredInfo),
-        pred_info_get_status(CallPredInfo, PredStatus),
-        DefnInImplSection = pred_status_defined_in_impl_section(PredStatus),
-        (
-            DefnInImplSection = yes,
-            Context = goal_info_get_context(GoalInfo),
-            PredOrFunc = pred_info_is_pred_or_func(CallPredInfo),
-            Arity = pred_info_orig_arity(CallPredInfo),
-            PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
-            IdPieces = [qual_pf_sym_name_orig_arity(PFSymNameArity)],
-            report_assertion_interface_error(ModuleInfo, Context, IdPieces,
-                !Specs)
-        ;
-            DefnInImplSection = no
-        )
+        GoalExpr = plain_call(PredId, _, _, _, _, _),
+        check_in_interface_promise_call(ModuleInfo, PredId, GoalInfo, !Specs)
     ;
         GoalExpr = generic_call(_, _, _, _, _)
     ;
@@ -200,23 +186,8 @@ check_in_interface_promise_goal(ModuleInfo, PredInfo, Goal, !Specs) :-
             Context, !Specs)
     ;
         GoalExpr = call_foreign_proc(_, PredId, _, _, _, _, _),
-        module_info_pred_info(ModuleInfo, PredId, PragmaPredInfo),
-        pred_info_get_status(PragmaPredInfo, PredStatus),
-        DefnInImplSection = pred_status_defined_in_impl_section(PredStatus),
-        (
-            DefnInImplSection = yes,
-            Context = goal_info_get_context(GoalInfo),
-            PredOrFunc = pred_info_is_pred_or_func(PragmaPredInfo),
-            Name = pred_info_name(PragmaPredInfo),
-            SymName = unqualified(Name),
-            Arity = pred_info_orig_arity(PragmaPredInfo),
-            PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
-            IdPieces = [qual_pf_sym_name_orig_arity(PFSymNameArity)],
-            report_assertion_interface_error(ModuleInfo, Context, IdPieces,
-                !Specs)
-        ;
-            DefnInImplSection = no
-        )
+        % XXX How can there be a call_foreign_proc in a promise?
+        check_in_interface_promise_call(ModuleInfo, PredId, GoalInfo, !Specs)
     ;
         GoalExpr = conj(_, Goals),
         check_in_interface_promise_goals(ModuleInfo, PredInfo, Goals, !Specs)
@@ -256,6 +227,42 @@ check_in_interface_promise_goal(ModuleInfo, PredInfo, Goal, !Specs) :-
         )
     ).
 
+:- pred check_in_interface_promise_call(module_info::in, pred_id::in,
+    hlds_goal_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+check_in_interface_promise_call(ModuleInfo, PredId, GoalInfo, !Specs) :-
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_module_name(PredInfo, PredModuleName),
+    pred_info_get_name(PredInfo, PredName),
+    pred_info_get_status(PredInfo, PredStatus),
+    ( if ModuleName = PredModuleName then
+        DefnInImplSection =
+            pred_status_defined_in_impl_section(PredStatus),
+        (
+            DefnInImplSection = yes,
+            Context = goal_info_get_context(GoalInfo),
+            PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+            PredSymName = qualified(PredModuleName, PredName),
+            Arity = pred_info_orig_arity(PredInfo),
+            PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, Arity),
+            PredNamePieces = [qual_pf_sym_name_orig_arity(PFSymNameArity)],
+            report_assertion_interface_error(ModuleName, Context,
+                PredNamePieces, !Specs)
+        ;
+            DefnInImplSection = no
+        )
+    else
+        Context = goal_info_get_context(GoalInfo),
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+        PredSymName = qualified(PredModuleName, PredName),
+        Arity = pred_info_orig_arity(PredInfo),
+        PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, Arity),
+        PredNamePieces = [qual_pf_sym_name_orig_arity(PFSymNameArity)],
+        report_assertion_module_error(ModuleName, Context, PredModuleName,
+            PredNamePieces, !Specs)
+    ).
+
 :- pred check_in_interface_promise_unify_rhs(module_info::in, pred_info::in,
     prog_var::in, unify_rhs::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -273,15 +280,34 @@ check_in_interface_promise_unify_rhs(ModuleInfo, PredInfo, Var, RHS, Context,
         module_info_get_type_table(ModuleInfo, TypeTable),
         lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         get_type_defn_status(TypeDefn, TypeStatus),
-        DefinedInImpl = type_status_defined_in_impl_section(TypeStatus),
-        (
-            DefinedInImpl = yes,
-            IdPieces = [words("constructor"),
-                qual_cons_id_and_maybe_arity(ConsId)],
-            report_assertion_interface_error(ModuleInfo, Context, IdPieces,
-                !Specs)
-        ;
-            DefinedInImpl = no
+        module_info_get_name(ModuleInfo, ModuleName),
+        TypeCtor = type_ctor(TypeCtorSymName, _),
+        ( if sym_name_get_module_name(TypeCtorSymName, TypeCtorModuleName) then
+            ( if ModuleName = TypeCtorModuleName then
+                DefinedInImpl =
+                    type_status_defined_in_impl_section(TypeStatus),
+                (
+                    DefinedInImpl = yes,
+                    IdPieces = [words("constructor"),
+                        qual_cons_id_and_maybe_arity(ConsId)],
+                    report_assertion_interface_error(ModuleName, Context,
+                        IdPieces, !Specs)
+                ;
+                    DefinedInImpl = no
+                )
+            else
+                IdPieces = [words("constructor"),
+                    qual_cons_id_and_maybe_arity(ConsId)],
+                report_assertion_module_error(ModuleName, Context,
+                    TypeCtorModuleName, IdPieces, !Specs)
+            )
+        else
+            % TypeCtorSymName has no module name component, so it must be
+            % a builtin type constructor. If we had a table that mapped each
+            % builtin type_ctor to the name of the module(s) that could make
+            % promises about that type_ctor, we could check that here,
+            % but we don't have such a table.
+            true
         )
     ;
         RHS = rhs_lambda_goal(_, _, _, _, _, _, _, Goal),
@@ -299,21 +325,44 @@ check_in_interface_promise_goals(ModuleInfo, PredInfo, [Goal0 | Goal0s],
 
 %---------------------%
 
-:- pred report_assertion_interface_error(module_info::in, prog_context::in,
+:- pred report_assertion_interface_error(module_name::in, prog_context::in,
     list(format_component)::in, list(error_spec)::in, list(error_spec)::out)
     is det.
 
-report_assertion_interface_error(ModuleInfo, Context, IdPieces, !Specs) :-
-    module_info_get_name(ModuleInfo, ModuleName),
+report_assertion_interface_error(ModuleName, Context, IdPieces, !Specs) :-
     MainPieces =
         [words("In interface for module"), qual_sym_name(ModuleName),
         suffix(":"), nl,
-        words("error: exported promise refers to")] ++ IdPieces ++
-        [words("which is defined in the implementation section of module"),
+        words("error: exported promise refers to")] ++
+        IdPieces ++ [suffix(","),
+        words("which is defined in the implementation section of module"),
         qual_sym_name(ModuleName), suffix("."), nl],
     VerbosePieces =
         [words("Either move the promise into the implementation section,"),
         words("or move the definition into the interface."), nl],
+    Msgs = [always(MainPieces), verbose_only(verbose_always, VerbosePieces)],
+    Spec = error_spec($pred, severity_error, phase_type_check,
+        [simple_msg(Context, Msgs)]),
+    !:Specs = [Spec | !.Specs].
+
+:- pred report_assertion_module_error(module_name::in, prog_context::in,
+    module_name::in, list(format_component)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_assertion_module_error(ModuleName, Context, PredModuleName,
+        IdPieces, !Specs) :-
+    MainPieces =
+        [words("In interface for module"), qual_sym_name(ModuleName),
+        suffix(":"), nl,
+        words("error: exported promise refers to")] ++
+        IdPieces ++ [suffix(","),
+        words("which is defined in another module,"),
+        qual_sym_name(PredModuleName), suffix("."), nl],
+    VerbosePieces =
+        [words("Either move the promise into the implementation section,"),
+        words("or move it to the"),
+        qual_sym_name(PredModuleName), words("module."),
+        words("In most cases, the latter is preferable."), nl],
     Msgs = [always(MainPieces), verbose_only(verbose_always, VerbosePieces)],
     Spec = error_spec($pred, severity_error, phase_type_check,
         [simple_msg(Context, Msgs)]),

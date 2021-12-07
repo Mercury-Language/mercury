@@ -2111,12 +2111,12 @@ write_promise(Info, Stream, ModuleInfo, VarSet, PromiseType, HeadVars,
         ; PromiseType = promise_type_exhaustive
         ; PromiseType = promise_type_exclusive_exhaustive
         ),
-        io.format(Stream, ":- all [%s]\n%s\n(\n",
+        io.format(Stream, ":- all [%s] %s\n(\n",
             [s(HeadVarsStr), s(promise_to_string(PromiseType))], !IO)
     ),
     Goal = Clause ^ clause_body,
     do_write_goal(Info, Stream, ModuleInfo, VarSet, no_varset_vartypes,
-        print_name_only, 1, ").\n", Goal, !IO).
+        print_name_only, 1, "\n).\n", Goal, !IO).
 
 :- pred intermod_write_clause(hlds_out_info::in, io.text_output_stream::in,
     module_info::in, pred_id::in, sym_name::in, pred_or_func::in,

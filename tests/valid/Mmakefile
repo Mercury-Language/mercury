@@ -209,6 +209,7 @@ OTHER_PROGS = \
 	pred_with_no_modes \
 	preferred_switch_var \
 	promise_equiv_exists_non_local \
+	promise_ex \
 	qualified_cons_id \
 	quantifier_warning \
 	record_syntax_bug \

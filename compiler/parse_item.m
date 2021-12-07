@@ -256,9 +256,8 @@ parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
         ( Functor = "some", QuantType = quant_type_exist
         ; Functor = "all", QuantType = quant_type_univ
         ),
-        parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms,
-            IsInClass, Context, SeqNum, QuantType, cord.init, cord.init,
-            MaybeIOM)
+        parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
+            Context, SeqNum, QuantType, cord.init, cord.init, MaybeIOM)
     ;
         ( Functor = "=>", QuantType = quant_type_exist
         ; Functor = "<=", QuantType = quant_type_univ
@@ -275,15 +274,19 @@ parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
     ;
         Functor = "promise",
         parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM)
-    ;
-        ( Functor = "promise_exclusive", PromiseType = promise_type_exclusive
-        ; Functor = "promise_exhaustive", PromiseType = promise_type_exhaustive
-        ; Functor = "promise_exclusive_exhaustive",
-            PromiseType = promise_type_exclusive_exhaustive
-        ),
-        UnivQuantVars = [],
-        parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
-            PromiseType, UnivQuantVars, MaybeIOM)
+% The supported form of promise_ex declarations is
+% ":- all [Vars] promise_ex Goal", and it is parsed by
+% parse_attr_decl_item_or_marker.
+%
+%   ;
+%       ( Functor = "promise_exclusive", PromiseType = promise_type_exclusive
+%       ; Functor = "promise_exhaustive", PromiseType = promise_type_exhaustive
+%       ; Functor = "promise_exclusive_exhaustive",
+%           PromiseType = promise_type_exclusive_exhaustive
+%       ),
+%       UnivQuantVars = [],
+%       parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
+%           PromiseType, UnivQuantVars, MaybeIOM)
     ;
         Functor = "typeclass",
         parse_typeclass_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
@@ -381,15 +384,14 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
         parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms,
             IsInClass, Context, SeqNum, Purity, PurityAttrs0,
             QuantConstrAttrs0, MaybeIOM)
-%   ;
-%       ( Functor = "promise_exclusive", PromiseType = promise_type_exclusive
-%       ; Functor = "promise_exhaustive", PromiseType = promise_type_exhaustive
-%       ; Functor = "promise_exclusive_exhaustive",
-%           PromiseType = promise_type_exclusive_exhaustive
-%       ),
-%       UnivQuantVars = [],
-%       parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
-%           PromiseType, UnivQuantVars, MaybeIOM)
+    ;
+        ( Functor = "promise_exclusive", PromiseType = promise_type_exclusive
+        ; Functor = "promise_exhaustive", PromiseType = promise_type_exhaustive
+        ; Functor = "promise_exclusive_exhaustive",
+            PromiseType = promise_type_exclusive_exhaustive
+        ),
+        parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
+            PromiseType, PurityAttrs0, QuantConstrAttrs0, MaybeIOM)
     ).
 
 %---------------------------------------------------------------------------%
@@ -501,6 +503,23 @@ parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
             Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
+
+:- pred check_quant_vars(cord(format_component)::in, varset::in,
+    quantifier_type::in, term::in, maybe1(list(var))::out) is det.
+
+check_quant_vars(InitContextPieces, VarSet, QuantType, VarsTerm, MaybeVars) :-
+    % Both versions of VarContextPieces should be statically allocated terms.
+    (
+        QuantType = quant_type_exist,
+        VarsContextPieces = [lower_case_next_if_not_first,
+            words("In first argument of"), quote("some"), suffix(":"), nl]
+    ;
+        QuantType = quant_type_univ,
+        VarsContextPieces = [lower_case_next_if_not_first,
+            words("In first argument of"), quote("all"), suffix(":"), nl]
+    ),
+    ContextPieces = InitContextPieces ++ cord.from_list(VarsContextPieces),
+    parse_possibly_repeated_vars(VarsTerm, VarSet, ContextPieces, MaybeVars).
 
 :- pred parse_constraint_attr(module_name::in, varset::in,
     string::in, list(term)::in, decl_in_class::in,
@@ -1713,18 +1732,7 @@ get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
         !ExistClassConstraints, !ExistInstConstraints) :-
     (
         QuantConstrAttr = qca_quant_vars(QuantType, VarsTerm),
-        % Both versions of ContextPieces should be statically allocated terms.
-        (
-            QuantType = quant_type_exist,
-            TailContextPieces = [words("in first argument of"),
-                quote("some"), suffix(":"), nl]
-        ;
-            QuantType = quant_type_univ,
-            TailContextPieces = [words("in first argument of"),
-                quote("all"), suffix(":"), nl]
-        ),
-        VarsContextPieces = ContextPieces ++ cord.from_list(TailContextPieces),
-        parse_possibly_repeated_vars(VarsTerm, VarSet, VarsContextPieces,
+        check_quant_vars(ContextPieces, VarSet, QuantType, VarsTerm,
             MaybeVars),
         (
             MaybeVars = error1(VarsSpecs),
@@ -1825,51 +1833,70 @@ parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
 %---------------------------------------------------------------------------%
 
 :- pred parse_promise_ex_item(varset::in, string::in, list(term)::in,
-    prog_context::in, item_seq_num::in, promise_type::in, list(term)::in,
+    prog_context::in, item_seq_num::in, promise_type::in,
+    cord(purity_attr)::in, cord(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
-        PromiseType, _UnivVarTerms, MaybeIOM) :-
+        PromiseType, PurityAttrCord, QuantConstrAttrCord, MaybeIOM) :-
     ( if ArgTerms = [Term] then
-        varset.coerce(VarSet, ProgVarSet0),
-        ContextPieces = cord.init,
-        parse_goal(Term, ContextPieces, MaybeGoal0, ProgVarSet0, ProgVarSet),
+        PurityAttrs = cord.list(PurityAttrCord),
         (
-            MaybeGoal0 = ok2(Goal, GoalWarningSpecs),
-            (
-                GoalWarningSpecs = [],
-                % Get universally quantified variables.
-                % XXX We used to try to get a list of universally quantified
-                % variables from attributes, using this code:
-                % get_quant_vars(quant_type_univ, ModuleName, [], _,
-                %     [], UnivVars0),
-                % list.map(term.coerce_var, UnivVars0, UnivVars),
-                % However, passing [] as the list of attributes,
-                % instead of a list of attributes passed to us by our caller,
-                % guaranteed that the value of UnivVars would ALWAYS be [].
-                %
-                % We should allow our caller to process "all [<vars>]" prefixes
-                % before the promise_ex declaration, and give us the terms
-                % containing lists of variables for us to parse.
-                UnivVars = [],
-                ItemPromise = item_promise_info(PromiseType, Goal, ProgVarSet,
-                    UnivVars, Context, SeqNum),
-                Item = item_promise(ItemPromise),
-                MaybeIOM = ok1(iom_item(Item))
-            ;
-                GoalWarningSpecs = [_ | _],
-                % We *could* try to preserve any warnings for code
-                % inside Goal0, and add the promise to the parse tree
-                % for later addition to the HLDS even in the presence
-                % of such warnings, but there doesn't seem to be any point
-                % in doing that, because at the moment, the only kind
-                % of construct that generates warning_specs is a
-                % disable_warnings scope, and those should NOT be appearing
-                % in any promise.
-                MaybeIOM = error1(GoalWarningSpecs)
-            )
+            PurityAttrs = [],
+            PuritySpecs = []
         ;
-            MaybeGoal0 = error2(Specs),
+            PurityAttrs = [_ | _],
+            PurityPieces =
+                [words("Error: a"), decl(Functor), words("declaration"),
+                words("may not have a purity attribute."), nl],
+            PuritySpec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, PurityPieces),
+            PuritySpecs = [PuritySpec]
+        ),
+        QuantConstrAttrs = cord.list(QuantConstrAttrCord),
+        ContextPieces = cord.from_list([words("In"), words(Functor),
+            words("declaration:"), nl]),
+        ( if
+            QuantConstrAttrs = [QuantConstrAttr],
+            QuantConstrAttr = qca_quant_vars(quant_type_univ, VarsTerm)
+        then
+            check_quant_vars(ContextPieces, VarSet, quant_type_univ, VarsTerm,
+                MaybeUnivVars)
+        else
+            UnivVarsPieces =
+                [words("Error: a"), decl(Functor), words("declaration"),
+                words("must have the form"),
+                quote(":- all [<vars>] " ++ Functor ++ " ( <disjunction> )"),
+                suffix("."), nl],
+            UnivVarsSpec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, UnivVarsPieces),
+            MaybeUnivVars = error1([UnivVarsSpec])
+        ),
+        varset.coerce(VarSet, ProgVarSet0),
+        parse_goal(Term, ContextPieces, MaybeGoal0, ProgVarSet0, ProgVarSet),
+        ( if
+            PuritySpecs = [],
+            MaybeUnivVars = ok1(UnivVars),
+            MaybeGoal0 = ok2(Goal, GoalWarningSpecs),
+            % We *could* try to preserve any warnings for code inside Goal,
+            % and add the promise to the parse tree for later addition
+            % to the HLDS even in the presence of such warnings, but
+            % there doesn't seem to be any point in doing that, because
+            % at the moment, the only kind of construct that generates
+            % warning_specs is a disable_warnings scope, and those
+            % should NOT be appearing in any promise.
+            GoalWarningSpecs = []
+        then
+            UnivProgVars = list.map(term.coerce_var, UnivVars),
+            ItemPromise = item_promise_info(PromiseType, Goal, ProgVarSet,
+                UnivProgVars, Context, SeqNum),
+            Item = item_promise(ItemPromise),
+            MaybeIOM = ok1(iom_item(Item))
+        else
+            ( MaybeGoal0 = ok2(_, GoalSpecs)
+            ; MaybeGoal0 = error2(GoalSpecs)
+            ),
+            Specs = PuritySpecs ++ get_any_errors1(MaybeUnivVars) ++ GoalSpecs,
             MaybeIOM = error1(Specs)
         )
     else

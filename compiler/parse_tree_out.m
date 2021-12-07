@@ -1929,21 +1929,23 @@ mercury_output_item_promise(_, Stream, ItemPromise, !IO) :-
         _Context, _SeqNum),
     UnivVarStrs = list.map(varset.lookup_name(VarSet), UnivVars),
     UnivVarsStr = string.join_list(", ", UnivVarStrs),
+    % The parentheses around the goal are required; without them,
+    % operator precedence problems prevent the parser from being able
+    % to read back in the promises we write out.
     (
         PromiseType = promise_type_true,
-        io.format(Stream, ":- promise all [%s]", [s(UnivVarsStr)], !IO)
+        io.format(Stream, ":- promise all [%s] (\n", [s(UnivVarsStr)], !IO)
     ;
         ( PromiseType = promise_type_exclusive
         ; PromiseType = promise_type_exhaustive
         ; PromiseType = promise_type_exclusive_exhaustive
         ),
-        io.format(Stream, ":- all [%s]\n%s",
+        io.format(Stream, ":- all [%s]\n%s\n(\n",
             [s(UnivVarsStr), s(promise_to_string(PromiseType))], !IO)
     ),
     Indent = 1,
-    mercury_output_newline(Indent, Stream, !IO),
     mercury_output_goal(Stream, VarSet, Indent, Goal, !IO),
-    io.write_string(Stream, ".\n", !IO).
+    io.write_string(Stream, "\n).\n", !IO).
 
 %---------------------------------------------------------------------------%
 
