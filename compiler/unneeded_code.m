@@ -76,7 +76,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.inst_test.
-:- import_module check_hlds.mode_util.
+:- import_module check_hlds.recompute_instmap_deltas.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_path.
 :- import_module hlds.hlds_goal.

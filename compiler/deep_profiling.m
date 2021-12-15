@@ -55,7 +55,7 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.mode_util.
+:- import_module check_hlds.mode_top_functor.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_util.

@@ -58,13 +58,19 @@
    % The current mode analysis system, which is based (quite loosely)
    % on the idea of abtract interpretation.
    :- include_module delay_info.
+   :- include_module inst_abstract_unify.
+   :- include_module inst_lookup.
    :- include_module inst_match.
+   :- include_module inst_merge.
+   :- include_module inst_mode_type_prop.
    :- include_module inst_test.
    :- include_module inst_util.
    :- include_module mode_comparison.
    :- include_module mode_debug.
    :- include_module mode_errors.
    :- include_module mode_info.
+   :- include_module mode_test.
+   :- include_module mode_top_functor.
    :- include_module mode_util.
    :- include_module modecheck_call.
    :- include_module modecheck_coerce.
@@ -74,6 +80,7 @@
    :- include_module modecheck_util.
    :- include_module modes.
    :- include_module proc_requests.
+   :- include_module recompute_instmap_deltas.
    :- include_module unify_proc.
    :- include_module unique_modes.
 

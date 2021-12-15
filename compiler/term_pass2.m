@@ -38,7 +38,7 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.mode_util.
+:- import_module check_hlds.mode_test.
 :- import_module hlds.goal_util.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.

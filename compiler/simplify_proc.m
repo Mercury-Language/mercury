@@ -90,7 +90,7 @@
 
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.det_util.
-:- import_module check_hlds.mode_util.
+:- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.simplify.common.
 :- import_module check_hlds.simplify.format_call.
 :- import_module check_hlds.simplify.simplify_goal.

@@ -464,7 +464,7 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.inst_util.
+:- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
 :- import_module parse_tree.prog_detism.

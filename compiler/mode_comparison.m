@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: mod_comparison.m.
+% File: mode_comparison.m.
 %
 % This file contains code compare different modes of a predicate.
 %

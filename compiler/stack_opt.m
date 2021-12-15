@@ -89,7 +89,7 @@
 :- import_module backend_libs.interval.
 :- import_module backend_libs.matching.
 :- import_module check_hlds.
-:- import_module check_hlds.mode_util.
+:- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_proc.
 :- import_module check_hlds.simplify.simplify_tasks.

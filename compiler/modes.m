@@ -133,9 +133,9 @@
 :- import_module check_hlds.cse_detection.
 :- import_module check_hlds.delay_partial_inst.
 :- import_module check_hlds.det_analysis.
+:- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_test.
-:- import_module check_hlds.inst_util.
 :- import_module check_hlds.introduce_exists_casts.
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.

@@ -61,6 +61,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_comparison.

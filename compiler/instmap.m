@@ -399,9 +399,10 @@
 
 :- implementation.
 
+:- import_module check_hlds.inst_abstract_unify.
 :- import_module check_hlds.inst_match.
+:- import_module check_hlds.inst_merge.
 :- import_module check_hlds.inst_test.
-:- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 

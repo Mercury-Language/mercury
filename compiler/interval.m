@@ -191,7 +191,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.inst_test.
-:- import_module check_hlds.mode_util.
+:- import_module check_hlds.mode_test.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_llds.

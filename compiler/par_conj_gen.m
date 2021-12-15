@@ -128,7 +128,7 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.mode_util.
+:- import_module check_hlds.mode_test.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.

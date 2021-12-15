@@ -1019,8 +1019,19 @@ and a whole bunch of service modules.
     inst_match.m contains the code for examining insts
     and checking whether they match.
     <li>
-    inst_util.m contains the code for creating new insts from old ones:
-    unifying them, merging them and so on.
+    inst_abstract_unify.m contains code for unifying insts.
+    <li>
+    inst_lookup.m contains code for looking up insts, possibly expanding
+    references to user-defined insts in the process.
+    <li>
+    inst_merge.m contains code for merging insts. When the branches of
+    an if-then-else or disjunction all bind a variable, this merging process
+    figures out what the variable's inst should be when execution reaches
+    the program point just after the branched control structure.
+    <li>
+    inst_test.m contains various kinds of tests on insts.
+    <li>
+    inst_util.m contains code for creating new insts and modifying old insts.
     <li>
     mode_comparison.m module compares different modes of a predicate.
     <li>
@@ -1036,8 +1047,22 @@ and a whole bunch of service modules.
     or a new mode for a user-defined predicate or function
     whose set of modes is being inferred.
     <li>
-    mode_util.m contains miscellaneous useful predicates dealing with modes.
-    Many of these are used by lots of later stages of the compiler.
+    inst_mode_type_prop.m propagates type information into insts and modes.
+    <li>
+    recompute_instmap_deltas.m does what its name says: it recomputes
+    the instmap deltas of the component goals of a procedure body.
+    This needs to be done after virtually all changes to that body,
+    so this module is used by many of the later stages of the compiler.
+    <li>
+    mode_test.m contains various kinds of tests on modes.
+    <li>
+    mode_top_functor.m computes the mode of the top functor of a term
+    from the mode of the whole term. This is of interest because it controls
+    e.g. when a target language variable that holds the term becomes alive.
+    <li>
+    mode_util.m contains miscellaneous useful predicates dealing with modes,
+    many of which transform between the various representations of modes
+    (from_to_insts, mer_mode, unify_mode).
     <li>
     mode_debug.m contains debugging code
     for tracing the actions of the mode checker.

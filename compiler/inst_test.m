@@ -21,10 +21,12 @@
 :- interface.
 
 :- import_module hlds.
+:- import_module hlds.instmap.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
+:- import_module bool.
 :- import_module list.
 :- import_module maybe.
 
@@ -183,18 +185,36 @@
 :- pred maybe_any_to_bound(module_info::in, maybe(mer_type)::in,
     uniqueness::in, ho_inst_info::in, mer_inst::out) is semidet.
 
+%---------------------------------------------------------------------------%
+
+    % Succeed iff the inst is any or contains any.
+    %
+:- pred inst_contains_any(module_info::in, mer_inst::in) is semidet.
+
+    % Succeed iff the given var's inst is any or contains any.
+    %
+:- pred var_inst_contains_any(module_info::in, instmap::in, prog_var::in)
+    is semidet.
+
+:- pred inst_contains_higher_order(module_info::in, mer_inst::in) is semidet.
+
+    % Return true if the given inst may restrict the set of function symbols
+    % that may be successfully unified with the variable that has this inst.
+    %
+:- func inst_may_restrict_cons_ids(module_info, mer_inst) = bool.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.passes_aux.
 :- import_module parse_tree.prog_type.
 
-:- import_module bool.
 :- import_module io.
 :- import_module require.
 :- import_module set.
@@ -1364,3 +1384,221 @@ type_may_contain_solver_type_2(CtorCat) = MayContainSolverType :-
 
 %-----------------------------------------------------------------------------%
 
+inst_contains_any(ModuleInfo, Inst) :-
+    set.init(Expansions),
+    inst_contains_any_2(ModuleInfo, Inst, Expansions) = yes.
+
+:- func inst_contains_any_2(module_info, mer_inst, set(inst_name)) = bool.
+
+inst_contains_any_2(ModuleInfo, Inst, !.Expansions) = ContainsAny :-
+    (
+        Inst = any(_, _),
+        ContainsAny = yes
+    ;
+        Inst = bound(_, InstResults, BoundInsts),
+        (
+            InstResults = inst_test_results_fgtc,
+            ContainsAny = no
+        ;
+            InstResults = inst_test_results(_, AnyResults, _, _, _, _),
+            (
+                AnyResults = inst_result_does_not_contain_any,
+                ContainsAny = no
+            ;
+                AnyResults = inst_result_does_contain_any,
+                ContainsAny = yes
+            ;
+                AnyResults = inst_result_contains_any_unknown,
+                ContainsAny = bound_inst_list_contains_any(ModuleInfo,
+                    BoundInsts, !.Expansions)
+            )
+        ;
+            InstResults = inst_test_no_results,
+            ContainsAny = bound_inst_list_contains_any(ModuleInfo, BoundInsts,
+                !.Expansions)
+        )
+    ;
+        Inst = inst_var(_),
+        unexpected($pred, "uninstantiated inst parameter")
+    ;
+        Inst = defined_inst(InstName),
+        ( if set.member(InstName, !.Expansions) then
+            ContainsAny = no
+        else
+            set.insert(InstName, !Expansions),
+            inst_lookup(ModuleInfo, InstName, SubInst),
+            ContainsAny =
+                inst_contains_any_2(ModuleInfo, SubInst, !.Expansions)
+        )
+    ;
+        Inst = constrained_inst_vars(_, SubInst),
+        ContainsAny = inst_contains_any_2(ModuleInfo, SubInst, !.Expansions)
+    ;
+        ( Inst = free
+        ; Inst = free(_)
+        ; Inst = not_reached
+        ; Inst = ground(_, _)
+        ; Inst = abstract_inst(_, _)
+        ),
+        ContainsAny = no
+    ).
+
+:- func inst_list_contains_any(module_info, list(mer_inst), set(inst_name))
+    = bool.
+
+inst_list_contains_any(_ModuleInfo, [], _Expansions) = no.
+inst_list_contains_any(ModuleInfo, [Inst | Insts], Expansions) = ContainsAny :-
+    HeadContainsAny = inst_contains_any_2(ModuleInfo, Inst, Expansions),
+    (
+        HeadContainsAny = yes,
+        ContainsAny = yes
+    ;
+        HeadContainsAny = no,
+        ContainsAny = inst_list_contains_any(ModuleInfo, Insts, Expansions)
+    ).
+
+:- func bound_inst_list_contains_any(module_info, list(bound_inst),
+    set(inst_name)) = bool.
+
+bound_inst_list_contains_any(_ModuleInfo, [], _Expansions) = no.
+bound_inst_list_contains_any(ModuleInfo, [BoundInst | BoundInsts],
+        Expansions) = ContainsAny :-
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    HeadContainsAny =
+        inst_list_contains_any(ModuleInfo, ArgInsts, Expansions),
+    (
+        HeadContainsAny = yes,
+        ContainsAny = yes
+    ;
+        HeadContainsAny = no,
+        ContainsAny = bound_inst_list_contains_any(ModuleInfo, BoundInsts,
+            Expansions)
+    ).
+
+%---------------------------------------------------------------------------%
+
+var_inst_contains_any(ModuleInfo, Instmap, Var) :-
+    instmap_lookup_var(Instmap, Var, Inst),
+    inst_contains_any(ModuleInfo, Inst).
+
+%---------------------------------------------------------------------------%
+
+inst_contains_higher_order(ModuleInfo, Inst) :-
+    set.init(Expansions),
+    inst_contains_higher_order_2(ModuleInfo, Inst, Expansions) = yes.
+
+:- func inst_contains_higher_order_2(module_info, mer_inst, set(inst_name))
+    = bool.
+
+inst_contains_higher_order_2(ModuleInfo, Inst, !.Expansions) = ContainsHO :-
+    (
+        ( Inst = ground(_, HOInstInfo)
+        ; Inst = any(_, HOInstInfo)
+        ),
+        ContainsHO = ho_inst_info_contains_higher_order(HOInstInfo)
+    ;
+        Inst = bound(_, _, BoundInsts),
+        ContainsHO = bound_inst_list_contains_higher_order(ModuleInfo,
+            BoundInsts, !.Expansions)
+    ;
+        Inst = inst_var(_),
+        unexpected($pred, "uninstantiated inst parameter")
+    ;
+        Inst = defined_inst(InstName),
+        ( if set.member(InstName, !.Expansions) then
+            ContainsHO = no
+        else
+            set.insert(InstName, !Expansions),
+            inst_lookup(ModuleInfo, InstName, SubInst),
+            ContainsHO =
+                inst_contains_higher_order_2(ModuleInfo, SubInst, !.Expansions)
+        )
+    ;
+        Inst = constrained_inst_vars(_, SubInst),
+        ContainsHO =
+            inst_contains_higher_order_2(ModuleInfo, SubInst, !.Expansions)
+    ;
+        Inst = abstract_inst(_, ArgInsts),
+        ContainsHO = inst_list_contains_higher_order(ModuleInfo, ArgInsts,
+            !.Expansions)
+    ;
+        ( Inst = free
+        ; Inst = free(_)
+        ; Inst = not_reached
+        ),
+        ContainsHO = no
+    ).
+
+:- func inst_list_contains_higher_order(module_info, list(mer_inst),
+    set(inst_name)) = bool.
+
+inst_list_contains_higher_order(_ModuleInfo, [], _Expansions) = no.
+inst_list_contains_higher_order(ModuleInfo, [Inst | Insts], Expansions) =
+        ContainsHO :-
+    HeadContainsHO =
+        inst_contains_higher_order_2(ModuleInfo, Inst, Expansions),
+    (
+        HeadContainsHO = yes,
+        ContainsHO = yes
+    ;
+        HeadContainsHO = no,
+        ContainsHO =
+            inst_list_contains_higher_order(ModuleInfo, Insts, Expansions)
+    ).
+
+:- func bound_inst_list_contains_higher_order(module_info, list(bound_inst),
+    set(inst_name)) = bool.
+
+bound_inst_list_contains_higher_order(_ModuleInfo, [], _Expansions) = no.
+bound_inst_list_contains_higher_order(ModuleInfo, [BoundInst | BoundInsts],
+        Expansions) = ContainsHO :-
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    HeadContainsHO =
+        inst_list_contains_higher_order(ModuleInfo, ArgInsts, Expansions),
+    (
+        HeadContainsHO = yes,
+        ContainsHO = yes
+    ;
+        HeadContainsHO = no,
+        ContainsHO = bound_inst_list_contains_higher_order(ModuleInfo,
+            BoundInsts, Expansions)
+    ).
+
+:- func ho_inst_info_contains_higher_order(ho_inst_info) = bool.
+
+ho_inst_info_contains_higher_order(HOInstInfo) = ContainsHO :-
+    (
+        HOInstInfo = higher_order(_),
+        ContainsHO = yes
+    ;
+        HOInstInfo = none_or_default_func,
+        ContainsHO = no
+    ).
+
+%---------------------------------------------------------------------------%
+
+inst_may_restrict_cons_ids(ModuleInfo, Inst) = MayRestrict :-
+    (
+        ( Inst = any(_, _)
+        ; Inst = bound(_, _, _)
+        ; Inst = inst_var(_)
+        ; Inst = constrained_inst_vars(_, _)    % XXX is this right?
+        ; Inst = abstract_inst(_, _)
+        ),
+        MayRestrict = yes
+    ;
+        ( Inst = free
+        ; Inst = free(_)
+        ; Inst = not_reached
+        ; Inst = ground(_, _)
+        ),
+        MayRestrict = no
+    ;
+        Inst = defined_inst(InstName),
+        inst_lookup(ModuleInfo, InstName, NewInst),
+        MayRestrict = inst_may_restrict_cons_ids(ModuleInfo, NewInst)
+    ).
+
+%-----------------------------------------------------------------------------%
+:- end_module check_hlds.inst_test.
+%-----------------------------------------------------------------------------%

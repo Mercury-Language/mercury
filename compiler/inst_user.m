@@ -27,7 +27,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.mode_util.
+:- import_module check_hlds.inst_mode_type_prop.
 :- import_module hlds.hlds_inst_mode.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.

@@ -35,8 +35,8 @@
 :- implementation.
 
 :- import_module check_hlds.det_util.
+:- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.inst_test.
-:- import_module check_hlds.inst_util.
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.

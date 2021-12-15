@@ -28,7 +28,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.
-:- import_module check_hlds.mode_util.
+:- import_module check_hlds.mode_test.
 :- import_module hlds.add_pred.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_code_util.

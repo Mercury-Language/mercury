@@ -62,7 +62,7 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.mode_util.
+:- import_module check_hlds.mode_test.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
@@ -244,7 +244,7 @@ term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
             lookup_var_type(VarTypes, Var, Type),
             ( if
                 not zero_size_type(ModuleInfo, Type),
-                mode_util.mode_is_input(ModuleInfo, Mode)
+                mode_is_input(ModuleInfo, Mode)
             then
                 UseArg = yes
             else

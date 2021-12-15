@@ -37,7 +37,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.mode_util.
+:- import_module check_hlds.mode_test.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.status.

@@ -57,8 +57,10 @@
 :- implementation.
 
 :- import_module check_hlds.
+:- import_module check_hlds.mode_test.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism_type_info.
+:- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.purity.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.

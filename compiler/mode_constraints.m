@@ -46,16 +46,16 @@
 :- implementation.
 
 :- import_module check_hlds.build_mode_constraints.
-:- import_module check_hlds.ordering_mode_constraints.
-
+:- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.mode_constraint_robdd.
 :- import_module check_hlds.mode_ordering.
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.ordering_mode_constraints.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_path.
 :- import_module hlds.hhf.
-:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_clauses.
+:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.

@@ -34,7 +34,7 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.mode_util.
+:- import_module check_hlds.mode_test.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
@@ -389,7 +389,7 @@ closure_analyse_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
 
                 % A 'no' here means that the foreign argument is unused.
                 NameMode = yes(foreign_arg_name_mode(_, Mode)),
-                mode_util.mode_is_output(ModuleInfo, Mode),
+                mode_is_output(ModuleInfo, Mode),
                 type_is_higher_order(Type),
                 Out = Var - unknown
             ),

@@ -139,7 +139,7 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.mode_util.
+:- import_module check_hlds.mode_top_functor.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.

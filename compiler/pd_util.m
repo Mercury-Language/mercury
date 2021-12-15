@@ -162,11 +162,12 @@
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.det_report.
 :- import_module check_hlds.det_util.
+:- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_test.
-:- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_info.
-:- import_module check_hlds.mode_util.
+:- import_module check_hlds.mode_test.
+:- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.unique_modes.
 :- import_module check_hlds.simplify.simplify_proc.
 :- import_module hlds.goal_form.

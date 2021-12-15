@@ -354,7 +354,6 @@
 
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_test.
-:- import_module check_hlds.inst_util.
 :- import_module hlds.hlds_module.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.error_msg_inst.

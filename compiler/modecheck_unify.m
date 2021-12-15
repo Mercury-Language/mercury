@@ -45,11 +45,16 @@
 
 :- implementation.
 
+:- import_module check_hlds.inst_abstract_unify.
+:- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.inst_match.
+:- import_module check_hlds.inst_mode_type_prop.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
+:- import_module check_hlds.mode_test.
+:- import_module check_hlds.mode_top_functor.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.modecheck_goal.
 :- import_module check_hlds.modecheck_util.

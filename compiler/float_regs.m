@@ -148,9 +148,11 @@
 :- implementation.
 
 :- import_module check_hlds.
+:- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_class.

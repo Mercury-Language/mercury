@@ -151,8 +151,8 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.det_analysis.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.purity.
+:- import_module check_hlds.recompute_instmap_deltas.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.mark_tail_calls.

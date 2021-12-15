@@ -135,6 +135,7 @@
 :- implementation.
 
 :- import_module check_hlds.
+:- import_module check_hlds.mode_test.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.from_ground_term_util.
 :- import_module hlds.goal_util.
@@ -2208,7 +2209,7 @@ partition_args_and_lambda_vars(ModuleInfo,
     % If the mode is undefined, calling mode_is_output/2 directly would cause
     % the compiler to abort, so we don't want to do that.
     %
-    % It doesn't really matter whether we consider an argument with an
+    % It does not really matter whether we consider an argument with an
     % undefined mode input or output, because mode analysis will fail anyway.
     % The code here is slightly simpler if we consider it input.
     ( if

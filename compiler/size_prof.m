@@ -108,8 +108,8 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.inst_test.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism_type_info.
+:- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_proc.
 :- import_module check_hlds.simplify.simplify_tasks.

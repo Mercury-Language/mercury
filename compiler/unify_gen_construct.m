@@ -60,7 +60,7 @@
 :- import_module backend_libs.rtti.
 :- import_module backend_libs.type_class_info.
 :- import_module check_hlds.
-:- import_module check_hlds.mode_util.
+:- import_module check_hlds.mode_top_functor.
 :- import_module check_hlds.type_util.
 :- import_module hlds.const_struct.
 :- import_module hlds.goal_form.
