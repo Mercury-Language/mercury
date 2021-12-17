@@ -1211,7 +1211,7 @@ merge_instmapping_delta_vars([Var | Vars], InstMap, VarTypes,
         instmap_lookup_var(InstMap, Var, InstB)
     ),
     lookup_var_type(VarTypes, Var, VarType),
-    ( if inst_merge(InstA, InstB, VarType, InstAB, !ModuleInfo) then
+    ( if inst_merge(VarType, InstA, InstB, InstAB, !ModuleInfo) then
         % XXX Given instmap_lookup_var(InstMap, Var, OldInst),
         % we should probably set Inst not directly from InstAB, but
         % from a conjunction of OldInst and InstAB. If OldInst says that

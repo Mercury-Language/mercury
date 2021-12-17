@@ -414,9 +414,9 @@ update_inst_var_sub_2(InstA, Type, InstVar, !Info) :-
             % If InstVar already has an inst associated with it, merge
             % the old and new insts. Fail if this merge is not possible.
             ModuleInfo0 = !.Info ^ imi_module_info,
-            inst_merge(InstA, InstB, Type, Inst, ModuleInfo0, ModuleInfo),
+            inst_merge(Type, InstA, InstB, InstAB, ModuleInfo0, ModuleInfo),
             !Info ^ imi_module_info := ModuleInfo,
-            map.det_update(InstVar, Inst, InstVarSub0, InstVarSub),
+            map.det_update(InstVar, InstAB, InstVarSub0, InstVarSub),
             !Info ^ imi_maybe_sub := inst_var_sub(InstVarSub)
         else
             map.det_insert(InstVar, InstA, InstVarSub0, InstVarSub),

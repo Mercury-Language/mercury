@@ -50,10 +50,10 @@
 :- pred insts_merge(mer_type::in, mer_inst::in, list(mer_inst)::in,
     maybe(mer_inst)::out, module_info::in, module_info::out) is det.
 
-    % inst_merge(InstA, InstB, Type, InstC, !ModuleInfo):
+    % inst_merge(Type, InstA, InstB, InstAB, !ModuleInfo):
     %
     % Combine the insts found in different arms of a disjunction, switch, or
-    % if-then-else. The information in InstC is the minimum of the information
+    % if-then-else. The information in InstAB is the minimum of the information
     % in InstA and InstB. Where InstA and InstB specify a binding (free or
     % bound), it must be the same in both.
     %
@@ -66,8 +66,8 @@
     % taken place in another predicate, we can't count on having access
     % to that information.)
     %
-:- pred inst_merge(mer_inst::in, mer_inst::in, mer_type::in,
-    mer_inst::out, module_info::in, module_info::out) is semidet.
+:- pred inst_merge(mer_type::in, mer_inst::in, mer_inst::in, mer_inst::out,
+    module_info::in, module_info::out) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -146,7 +146,7 @@ insts_merge_pass(Type, Inst1, Insts2Plus, !MergedInsts, !Fail, !ModuleInfo) :-
     ;
         Insts2Plus = [Inst2],
         ( if
-            inst_merge(Inst1, Inst2, Type, Inst12, !ModuleInfo)
+            inst_merge(Type, Inst1, Inst2, Inst12, !ModuleInfo)
         then
             !:MergedInsts = [Inst12 | !.MergedInsts]
         else
@@ -155,8 +155,8 @@ insts_merge_pass(Type, Inst1, Insts2Plus, !MergedInsts, !Fail, !ModuleInfo) :-
     ;
         Insts2Plus = [Inst2, Inst3],
         ( if
-            inst_merge(Inst1, Inst2, Type, Inst12, !ModuleInfo),
-            inst_merge(Inst12, Inst3, Type, Inst123, !ModuleInfo)
+            inst_merge(Type, Inst1, Inst2, Inst12, !ModuleInfo),
+            inst_merge(Type, Inst12, Inst3, Inst123, !ModuleInfo)
         then
             !:MergedInsts = [Inst123 | !.MergedInsts]
         else
@@ -165,9 +165,9 @@ insts_merge_pass(Type, Inst1, Insts2Plus, !MergedInsts, !Fail, !ModuleInfo) :-
     ;
         Insts2Plus = [Inst2, Inst3, Inst4 | Insts5Plus],
         ( if
-            inst_merge(Inst1, Inst2, Type, Inst12, !ModuleInfo),
-            inst_merge(Inst3, Inst4, Type, Inst34, !ModuleInfo),
-            inst_merge(Inst12, Inst34, Type, Inst1234, !ModuleInfo)
+            inst_merge(Type, Inst1, Inst2, Inst12, !ModuleInfo),
+            inst_merge(Type, Inst3, Inst4, Inst34, !ModuleInfo),
+            inst_merge(Type, Inst12, Inst34, Inst1234, !ModuleInfo)
         then
             !:MergedInsts = [Inst1234 | !.MergedInsts],
             (
@@ -184,9 +184,9 @@ insts_merge_pass(Type, Inst1, Insts2Plus, !MergedInsts, !Fail, !ModuleInfo) :-
 
 %---------------------------------------------------------------------------%
 
-inst_merge(InstA, InstB, Type, Inst, !ModuleInfo) :-
+inst_merge(Type, InstA, InstB, InstAB, !ModuleInfo) :-
     % The merge_inst_table has two functions. One is to act as a cache,
-    % in the expectation that just looking up Inst would be quicker than
+    % in the expectation that just looking up InstAB would be quicker than
     % computing it. The other is to ensure termination for situations
     % in which one or both of InstA and InstB are recursive.
     %
@@ -201,7 +201,7 @@ inst_merge(InstA, InstB, Type, Inst, !ModuleInfo) :-
         InstA = bound(_, _, _),
         InstB = bound(_, _, _)
     then
-        inst_merge_2(InstA, InstB, Type, Inst, !ModuleInfo)
+        inst_merge_2(Type, InstA, InstB, InstAB, !ModuleInfo)
     else
         % Check whether this pair of insts is already in the merge_insts table.
         module_info_get_inst_table(!.ModuleInfo, InstTable0),
@@ -213,10 +213,10 @@ inst_merge(InstA, InstB, Type, Inst, !ModuleInfo) :-
         (
             MaybeMaybeMergedInst = yes(MaybeMergedInst),
             (
-                MaybeMergedInst = inst_known(Inst0)
+                MaybeMergedInst = inst_known(InstAB0)
             ;
                 MaybeMergedInst = inst_unknown,
-                Inst0 = defined_inst(MergeInstName)
+                InstAB0 = defined_inst(MergeInstName)
             )
         ;
             MaybeMaybeMergedInst = no,
@@ -227,29 +227,29 @@ inst_merge(InstA, InstB, Type, Inst, !ModuleInfo) :-
             module_info_set_inst_table(InstTable1, !ModuleInfo),
 
             % Merge the insts.
-            inst_merge_2(InstA, InstB, Type, Inst0, !ModuleInfo),
+            inst_merge_2(Type, InstA, InstB, InstAB0, !ModuleInfo),
 
             % Now update the value associated with ThisInstPair.
             module_info_get_inst_table(!.ModuleInfo, InstTable2),
             inst_table_get_merge_insts(InstTable2, MergeInstTable2),
-            det_update_merge_inst(MergeInstInfo, inst_known(Inst0),
+            det_update_merge_inst(MergeInstInfo, inst_known(InstAB0),
                 MergeInstTable2, MergeInstTable3),
             inst_table_set_merge_insts(MergeInstTable3,
                 InstTable2, InstTable3),
             module_info_set_inst_table(InstTable3, !ModuleInfo)
         ),
         % Avoid expanding recursive insts.
-        ( if inst_contains_inst_name(!.ModuleInfo, MergeInstName, Inst0) then
-            Inst = defined_inst(MergeInstName)
+        ( if inst_contains_inst_name(!.ModuleInfo, MergeInstName, InstAB0) then
+            InstAB = defined_inst(MergeInstName)
         else
-            Inst = Inst0
+            InstAB = InstAB0
         )
     ).
 
-:- pred inst_merge_2(mer_inst::in, mer_inst::in, mer_type::in,
-    mer_inst::out, module_info::in, module_info::out) is semidet.
+:- pred inst_merge_2(mer_type::in, mer_inst::in, mer_inst::in, mer_inst::out,
+    module_info::in, module_info::out) is semidet.
 
-inst_merge_2(InstA, InstB, Type, Inst, !ModuleInfo) :-
+inst_merge_2(Type, InstA, InstB, InstAB, !ModuleInfo) :-
 %   % XXX Would this test improve efficiency?
 %   % What if we compared the addresses?
 %   ( if InstA = InstB then
@@ -258,45 +258,45 @@ inst_merge_2(InstA, InstB, Type, Inst, !ModuleInfo) :-
     inst_expand(!.ModuleInfo, InstA, ExpandedInstA),
     inst_expand(!.ModuleInfo, InstB, ExpandedInstB),
     ( if ExpandedInstB = not_reached then
-        Inst = ExpandedInstA
+        InstAB = ExpandedInstA
     else if ExpandedInstA = not_reached then
-        Inst = ExpandedInstB
+        InstAB = ExpandedInstB
     else
-        inst_merge_3(ExpandedInstA, ExpandedInstB, Type, Inst, !ModuleInfo)
+        inst_merge_3(Type, ExpandedInstA, ExpandedInstB, InstAB, !ModuleInfo)
     ).
 
-:- pred inst_merge_3(mer_inst::in, mer_inst::in, mer_type::in,
-    mer_inst::out, module_info::in, module_info::out) is semidet.
+:- pred inst_merge_3(mer_type::in, mer_inst::in, mer_inst::in, mer_inst::out,
+    module_info::in, module_info::out) is semidet.
 
-inst_merge_3(InstA, InstB, Type, Inst, !ModuleInfo) :-
+inst_merge_3(Type, InstA, InstB, InstAB, !ModuleInfo) :-
     ( if InstA = constrained_inst_vars(InstVarsA, SubInstA) then
         ( if InstB = constrained_inst_vars(InstVarsB, SubInstB) then
-            inst_merge(SubInstA, SubInstB, Type, Inst0, !ModuleInfo),
+            inst_merge(Type, SubInstA, SubInstB, InstAB0, !ModuleInfo),
             set.intersect(InstVarsA, InstVarsB, InstVars),
             ( if set.is_non_empty(InstVars) then
-                Inst = constrained_inst_vars(InstVars, Inst0)
+                InstAB = constrained_inst_vars(InstVars, InstAB0)
                 % We can keep the constrained_inst_vars here since
                 % Inst0 = SubInstA `lub` SubInstB and the original constraint
-                % on the InstVars, InstC, must have been such that
-                % SubInstA `lub` SubInstB =< InstC.
+                % on the InstVars, InstAB, must have been such that
+                % SubInstA `lub` SubInstB =< InstAB.
             else
-                Inst = Inst0
+                InstAB = InstAB0
             )
         else
-            inst_merge(SubInstA, InstB, Type, Inst, !ModuleInfo)
+            inst_merge(Type, SubInstA, InstB, InstAB, !ModuleInfo)
         )
     else if InstB = constrained_inst_vars(_InstVarsB, SubInstB) then
         % InstA \= constrained_inst_vars(_, _) is equivalent to
         % constrained_inst_vars(InstVarsA, InstA) where InstVarsA = empty.
-        inst_merge(InstA, SubInstB, Type, Inst, !ModuleInfo)
+        inst_merge(Type, InstA, SubInstB, InstAB, !ModuleInfo)
     else
-        inst_merge_4(InstA, InstB, Type, Inst, !ModuleInfo)
+        inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo)
     ).
 
-:- pred inst_merge_4(mer_inst::in, mer_inst::in, mer_type::in,
-    mer_inst::out, module_info::in, module_info::out) is semidet.
+:- pred inst_merge_4(mer_type::in, mer_inst::in, mer_inst::in, mer_inst::out,
+    module_info::in, module_info::out) is semidet.
 
-inst_merge_4(InstA, InstB, Type, Inst, !ModuleInfo) :-
+inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
     % We do not yet allow merging of `free' and `any', except in the case
     % where the any is `mostly_clobbered_any' or `clobbered_any', because
     % that would require inserting additional code to initialize the free var.
@@ -312,14 +312,14 @@ inst_merge_4(InstA, InstB, Type, Inst, !ModuleInfo) :-
         InstB = any(UniqB, HOInstInfoB),
         merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo),
         merge_uniq(UniqA, UniqB, Uniq),
-        Inst = any(Uniq, HOInstInfo)
+        InstAB = any(Uniq, HOInstInfo)
     ;
         InstA = any(Uniq, HOInstInfo),
         InstB = free,
         % We do not yet allow merge of any with free, except for
         % clobbered anys.
         ( Uniq = clobbered ; Uniq = mostly_clobbered ),
-        Inst = any(Uniq, HOInstInfo)
+        InstAB = any(Uniq, HOInstInfo)
     ;
         InstA = any(UniqA, _),
         InstB = bound(UniqB, InstResultsB, BoundInstsB),
@@ -335,13 +335,13 @@ inst_merge_4(InstA, InstB, Type, Inst, !ModuleInfo) :-
             inst_results_bound_inst_list_is_ground_or_any(!.ModuleInfo,
                 InstResultsB, BoundInstsB)
         ),
-        Inst = any(Uniq, none_or_default_func)
+        InstAB = any(Uniq, none_or_default_func)
     ;
         InstA = any(UniqA, HOInstInfoA),
         InstB = ground(UniqB, HOInstInfoB),
         merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo),
         merge_uniq(UniqA, UniqB, Uniq),
-        Inst = any(Uniq, HOInstInfo)
+        InstAB = any(Uniq, HOInstInfo)
     ;
         InstA = any(UniqA, _),
         InstB = abstract_inst(_, _),
@@ -349,14 +349,14 @@ inst_merge_4(InstA, InstB, Type, Inst, !ModuleInfo) :-
         % We do not yet allow merge of any with free, except for
         % clobbered anys.
         ( Uniq = clobbered ; Uniq = mostly_clobbered ),
-        Inst = any(Uniq, none_or_default_func)
+        InstAB = any(Uniq, none_or_default_func)
     ;
         InstA = free,
         InstB = any(Uniq, HOInstInfo),
         % We do not yet allow merge of any with free, except for
         % clobbered anys.
         ( Uniq = clobbered ; Uniq = mostly_clobbered ),
-        Inst = any(Uniq, HOInstInfo)
+        InstAB = any(Uniq, HOInstInfo)
     ;
         InstA = bound(UniqA, InstResultsA, BoundInstsA),
         InstB = any(UniqB, _),
@@ -372,13 +372,13 @@ inst_merge_4(InstA, InstB, Type, Inst, !ModuleInfo) :-
             inst_results_bound_inst_list_is_ground_or_any(!.ModuleInfo,
                 InstResultsA, BoundInstsA)
         ),
-        Inst = any(Uniq, none_or_default_func)
+        InstAB = any(Uniq, none_or_default_func)
     ;
         InstA = ground(UniqA, HOInstInfoA),
         InstB = any(UniqB, HOInstInfoB),
         merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo),
         merge_uniq(UniqA, UniqB, Uniq),
-        Inst = any(Uniq, HOInstInfo)
+        InstAB = any(Uniq, HOInstInfo)
     ;
         InstA = abstract_inst(_, _),
         InstB = any(UniqB, _),
@@ -386,44 +386,44 @@ inst_merge_4(InstA, InstB, Type, Inst, !ModuleInfo) :-
         % We do not yet allow merge of any with free, except for
         % clobbered anys.
         ( Uniq = clobbered ; Uniq = mostly_clobbered ),
-        Inst = any(Uniq, none_or_default_func)
+        InstAB = any(Uniq, none_or_default_func)
     ;
         InstA = free,
         InstB = free,
-        Inst = free
+        InstAB = free
     ;
         InstA = bound(UniqA, _InstResultsA, BoundInstsA),
         InstB = bound(UniqB, _InstResultsB, BoundInstsB),
         merge_uniq(UniqA, UniqB, Uniq),
-        bound_inst_list_merge(BoundInstsA, BoundInstsB, Type, BoundInsts,
+        bound_inst_list_merge(Type, BoundInstsA, BoundInstsB, BoundInstsAB,
             !ModuleInfo),
         % XXX A better approximation of InstResults is probably possible.
-        Inst = bound(Uniq, inst_test_no_results, BoundInsts)
+        InstAB = bound(Uniq, inst_test_no_results, BoundInstsAB)
     ;
         InstA = bound(UniqA, InstResultsA, BoundInstsA),
         InstB = ground(UniqB, _),
-        inst_merge_bound_ground(UniqA, InstResultsA, BoundInstsA, UniqB,
-            Type, Inst, !ModuleInfo),
+        inst_merge_bound_ground(Type, UniqA, InstResultsA, BoundInstsA, UniqB,
+            InstAB, !ModuleInfo),
         not inst_contains_nondefault_func_mode(!.ModuleInfo, InstA)
     ;
         InstA = ground(UniqA, _),
         InstB = bound(UniqB, InstResultsB, BoundInstsB),
-        inst_merge_bound_ground(UniqB, InstResultsB, BoundInstsB, UniqA,
-            Type, Inst, !ModuleInfo),
+        inst_merge_bound_ground(Type, UniqB, InstResultsB, BoundInstsB, UniqA,
+            InstAB, !ModuleInfo),
         not inst_contains_nondefault_func_mode(!.ModuleInfo, InstB)
     ;
         InstA = ground(UniqA, HOInstInfoA),
         InstB = ground(UniqB, HOInstInfoB),
         merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo),
         merge_uniq(UniqA, UniqB, Uniq),
-        Inst = ground(Uniq, HOInstInfo)
+        InstAB = ground(Uniq, HOInstInfo)
     ;
         InstA = abstract_inst(Name, ArgsA),
         InstB = abstract_inst(Name, ArgsB),
         % We don't know the arguments types of an abstract inst.
         Types = list.duplicate(list.length(ArgsA), no_type_available),
-        inst_list_merge(ArgsA, ArgsB, Types, Args, !ModuleInfo),
-        Inst = abstract_inst(Name, Args)
+        inst_list_merge(Types, ArgsA, ArgsB, ArgsAB, !ModuleInfo),
+        InstAB = abstract_inst(Name, ArgsAB)
     ).
 
     % merge_uniq(A, B, C) succeeds if C is minimum of A and B in the ordering
@@ -541,12 +541,12 @@ merge_inst_uniq(ModuleInfo, InstA, UniqB, !Expansions, Uniq) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred inst_merge_bound_ground(uniqueness::in, inst_test_results::in,
-    list(bound_inst)::in, uniqueness::in, mer_type::in, mer_inst::out,
+:- pred inst_merge_bound_ground(mer_type::in, uniqueness::in,
+    inst_test_results::in, list(bound_inst)::in, uniqueness::in, mer_inst::out,
     module_info::in, module_info::out) is semidet.
 
-inst_merge_bound_ground(UniqA, InstResultsA, BoundInstsA, UniqB,
-        Type, Result, !ModuleInfo) :-
+inst_merge_bound_ground(Type, UniqA, InstResultsA, BoundInstsA, UniqB,
+        Result, !ModuleInfo) :-
     ( if
         inst_results_bound_inst_list_is_ground(!.ModuleInfo, InstResultsA,
             BoundInstsA)
@@ -573,7 +573,7 @@ inst_merge_bound_ground(UniqA, InstResultsA, BoundInstsA, UniqB,
             ),
             InstA = bound(UniqA, InstResultsA, BoundInstsA),
             InstB = bound(UniqB, InstResultsB, BoundInstsB),
-            inst_merge_4(InstA, InstB, Type, Result, !ModuleInfo)
+            inst_merge_4(Type, InstA, InstB, Result, !ModuleInfo)
         else
             merge_uniq_bound(!.ModuleInfo, UniqB, UniqA, BoundInstsA, Uniq),
             Result = any(Uniq, none_or_default_func)
@@ -582,17 +582,17 @@ inst_merge_bound_ground(UniqA, InstResultsA, BoundInstsA, UniqB,
 
 %---------------------------------------------------------------------------%
 
-:- pred inst_list_merge(list(mer_inst)::in, list(mer_inst)::in,
-    list(mer_type)::in, list(mer_inst)::out,
+:- pred inst_list_merge(list(mer_type)::in,
+    list(mer_inst)::in, list(mer_inst)::in, list(mer_inst)::out,
     module_info::in, module_info::out) is semidet.
 
-inst_list_merge([], [], _, [], !ModuleInfo).
-inst_list_merge([ArgA | ArgsA], [ArgB | ArgsB], [Type | Types],
-        [Arg | Args], !ModuleInfo) :-
-    inst_merge(ArgA, ArgB, Type, Arg, !ModuleInfo),
-    inst_list_merge(ArgsA, ArgsB, Types, Args, !ModuleInfo).
+inst_list_merge(_, [], [], [], !ModuleInfo).
+inst_list_merge([Type | Types], [ArgA | ArgsA], [ArgB | ArgsB],
+        [ArgAB | ArgsAB], !ModuleInfo) :-
+    inst_merge(Type, ArgA, ArgB, ArgAB, !ModuleInfo),
+    inst_list_merge(Types, ArgsA, ArgsB, ArgsAB, !ModuleInfo).
 
-    % bound_inst_list_merge(BoundInstsA, BoundInstsB, BoundInsts, Type,
+    % bound_inst_list_merge(Type, BoundInstsA, BoundInstsB, BoundInsts,
     %   !ModuleInfo):
     %
     % The two input lists BoundInstsA and BoundInstsB must already be sorted.
@@ -600,19 +600,19 @@ inst_list_merge([ArgA | ArgsA], [ArgB | ArgsB], [Type | Types],
     % so that the functors of the output list BoundInsts are the union
     % of the functors of the input lists BoundInstsA and BoundInstsB.
     %
-:- pred bound_inst_list_merge(list(bound_inst)::in, list(bound_inst)::in,
-    mer_type::in, list(bound_inst)::out,
+:- pred bound_inst_list_merge(mer_type::in,
+    list(bound_inst)::in, list(bound_inst)::in, list(bound_inst)::out,
     module_info::in, module_info::out) is semidet.
 
-bound_inst_list_merge(BoundInstsA, BoundInstsB, Type, BoundInsts,
+bound_inst_list_merge(Type, BoundInstsA, BoundInstsB, BoundInstsAB,
         !ModuleInfo) :-
     (
         BoundInstsA = [],
-        BoundInsts = BoundInstsB
+        BoundInstsAB = BoundInstsB
     ;
         BoundInstsA = [_ | _],
         BoundInstsB = [],
-        BoundInsts = BoundInstsA
+        BoundInstsAB = BoundInstsA
     ;
         BoundInstsA = [BoundInstA | BoundInstsTailA],
         BoundInstsB = [BoundInstB | BoundInstsTailB],
@@ -621,19 +621,19 @@ bound_inst_list_merge(BoundInstsA, BoundInstsB, Type, BoundInsts,
         ( if equivalent_cons_ids(ConsIdA, ConsIdB) then
             get_cons_id_arg_types(!.ModuleInfo, Type,
                 ConsIdA, list.length(ArgsA), Types),
-            inst_list_merge(ArgsA, ArgsB, Types, Args, !ModuleInfo),
-            BoundInst = bound_functor(ConsIdA, Args),
-            bound_inst_list_merge(BoundInstsTailA, BoundInstsTailB, Type,
-                BoundInstsTail, !ModuleInfo),
-            BoundInsts = [BoundInst | BoundInstsTail]
+            inst_list_merge(Types, ArgsA, ArgsB, ArgsAB, !ModuleInfo),
+            BoundInst = bound_functor(ConsIdA, ArgsAB),
+            bound_inst_list_merge(Type, BoundInstsTailA, BoundInstsTailB,
+                BoundInstsABTail, !ModuleInfo),
+            BoundInstsAB = [BoundInst | BoundInstsABTail]
         else if compare(<, ConsIdA, ConsIdB) then
-            bound_inst_list_merge(BoundInstsTailA, BoundInstsB, Type,
-                BoundInstsTail, !ModuleInfo),
-            BoundInsts = [BoundInstA | BoundInstsTail]
+            bound_inst_list_merge(Type, BoundInstsTailA, BoundInstsB,
+                BoundInstsABTail, !ModuleInfo),
+            BoundInstsAB = [BoundInstA | BoundInstsABTail]
         else
-            bound_inst_list_merge(BoundInstsA, BoundInstsTailB, Type,
-                BoundInstsTail, !ModuleInfo),
-            BoundInsts = [BoundInstB | BoundInstsTail]
+            bound_inst_list_merge(Type, BoundInstsA, BoundInstsTailB,
+                BoundInstsABTail, !ModuleInfo),
+            BoundInstsAB = [BoundInstB | BoundInstsABTail]
         )
     ).
 
