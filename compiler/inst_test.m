@@ -28,7 +28,6 @@
 
 :- import_module bool.
 :- import_module list.
-:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -104,8 +103,7 @@
     inst_test_results::in, list(bound_inst)::in) is semidet.
 
 :- pred inst_results_bound_inst_list_is_ground_mt(module_info::in,
-    maybe(mer_type)::in, inst_test_results::in, list(bound_inst)::in)
-    is semidet.
+    mer_type::in, inst_test_results::in, list(bound_inst)::in) is semidet.
 
 :- pred inst_results_bound_inst_list_is_ground_or_any(module_info::in,
     inst_test_results::in, list(bound_inst)::in) is semidet.
@@ -182,7 +180,7 @@
     % since they are det and therefore cannot bind any non-local solver
     % variables that may be present.
     %
-:- pred maybe_any_to_bound(module_info::in, maybe(mer_type)::in,
+:- pred maybe_any_to_bound(module_info::in, mer_type::in,
     uniqueness::in, ho_inst_info::in, mer_inst::out) is semidet.
 
 %---------------------------------------------------------------------------%
@@ -223,6 +221,8 @@
 %-----------------------------------------------------------------------------%
 
 inst_is_ground(ModuleInfo, Inst) :-
+    % XXX TYPE_FOR_INST Our caller should pass us the type.
+    %
     % inst_is_ground succeeds iff the inst passed is `ground' or the
     % equivalent. Abstract insts are not considered ground.
     promise_pure (
@@ -241,7 +241,7 @@ inst_is_ground(ModuleInfo, Inst) :-
                 get_debug_output_stream(ModuleInfo, DebugStream, !IO),
                 io.write_string(DebugStream, "inst_is_ground miss\n", !IO)
             ),
-            ( if inst_is_ground_mt(ModuleInfo, no, Inst) then
+            ( if inst_is_ground_mt(ModuleInfo, no_type_available, Inst) then
                 impure record_inst_is_ground(Inst, yes)
                 % Succeed.
             else
@@ -296,14 +296,11 @@ typedef struct {
 
 #define INST_IS_GROUND_CACHE_SIZE 1307
 
-/*
-** Every entry should be implicitly initialized to zeros. Since zero is
-** not a valid address for an inst, uninitialized entries cannot be mistaken
-** for filled-in entries.
-*/
+// Every entry should be implicitly initialized to zeros. Since zero is
+// not a valid address for an inst, uninitialized entries cannot be mistaken
+// for filled-in entries.
 
-static  InstIsGroundCacheEntry
-                inst_is_ground_cache[INST_IS_GROUND_CACHE_SIZE];
+static  InstIsGroundCacheEntry inst_is_ground_cache[INST_IS_GROUND_CACHE_SIZE];
 ").
 
     % Look up Inst in the cache. If it is there, return Found = yes
@@ -347,7 +344,7 @@ lookup_inst_is_ground(_, no, no) :-
     hash = (MR_Unsigned) Inst;
     hash = hash >> MR_LOW_TAG_BITS;
     hash = hash % INST_IS_GROUND_CACHE_SIZE;
-    /* We overwrite any existing entry in the slot. */
+    // We overwrite any existing entry in the slot.
     inst_is_ground_cache[hash].iig_inst_addr = Inst;
     inst_is_ground_cache[hash].iig_is_ground = IsGround;
 ").
@@ -357,20 +354,20 @@ record_inst_is_ground(_, _) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred inst_is_ground_mt(module_info::in, maybe(mer_type)::in, mer_inst::in)
+:- pred inst_is_ground_mt(module_info::in, mer_type::in, mer_inst::in)
     is semidet.
 
-inst_is_ground_mt(ModuleInfo, MaybeType, Inst) :-
+inst_is_ground_mt(ModuleInfo, Type, Inst) :-
     Expansions0 = set_tree234.init,
-    inst_is_ground_mt_1(ModuleInfo, MaybeType, Inst, Expansions0, _Expansions).
+    inst_is_ground_mt_1(ModuleInfo, Type, Inst, Expansions0, _Expansions).
 
     % The third arg is the set of insts which have already been expanded;
     % we use this to avoid going into an infinite loop.
     %
-:- pred inst_is_ground_mt_1(module_info::in, maybe(mer_type)::in, mer_inst::in,
+:- pred inst_is_ground_mt_1(module_info::in, mer_type::in, mer_inst::in,
     set_tree234(mer_inst)::in, set_tree234(mer_inst)::out) is semidet.
 
-inst_is_ground_mt_1(ModuleInfo, MaybeType, Inst, !Expansions) :-
+inst_is_ground_mt_1(ModuleInfo, Type, Inst, !Expansions) :-
     % XXX This special casing of any/2 was introduced in version 1.65
     % of this file. The log message for that version gives a reason why
     % this special casing is required, but I (zs) don't believe it,
@@ -379,23 +376,23 @@ inst_is_ground_mt_1(ModuleInfo, MaybeType, Inst, !Expansions) :-
         ( if set_tree234.contains(!.Expansions, Inst) then
             true
         else
-            inst_is_ground_mt_2(ModuleInfo, MaybeType, Inst, !Expansions)
+            inst_is_ground_mt_2(ModuleInfo, Type, Inst, !Expansions)
         )
     else
         % XXX Make this work on Inst's *address*.
         ( if set_tree234.insert_new(Inst, !Expansions) then
             % Inst was not yet in Expansions, but we have now inserted it.
-            inst_is_ground_mt_2(ModuleInfo, MaybeType, Inst, !Expansions)
+            inst_is_ground_mt_2(ModuleInfo, Type, Inst, !Expansions)
         else
             % Inst was already in !.Expansions.
             true
         )
     ).
 
-:- pred inst_is_ground_mt_2(module_info::in, maybe(mer_type)::in, mer_inst::in,
+:- pred inst_is_ground_mt_2(module_info::in, mer_type::in, mer_inst::in,
     set_tree234(mer_inst)::in, set_tree234(mer_inst)::out) is semidet.
 
-inst_is_ground_mt_2(ModuleInfo, MaybeType, Inst, !Expansions) :-
+inst_is_ground_mt_2(ModuleInfo, Type, Inst, !Expansions) :-
     require_complete_switch [Inst]
     (
         ( Inst = free
@@ -408,19 +405,19 @@ inst_is_ground_mt_2(ModuleInfo, MaybeType, Inst, !Expansions) :-
         )
     ;
         Inst = bound(_, InstResults, BoundInsts),
-        inst_results_bound_inst_list_is_ground_mt_2(ModuleInfo, MaybeType,
+        inst_results_bound_inst_list_is_ground_mt_2(ModuleInfo, Type,
             InstResults, BoundInsts, !Expansions)
     ;
         Inst = constrained_inst_vars(_, SubInst),
-        inst_is_ground_mt_1(ModuleInfo, MaybeType, SubInst, !Expansions)
+        inst_is_ground_mt_1(ModuleInfo, Type, SubInst, !Expansions)
     ;
         Inst = defined_inst(InstName),
         inst_lookup(ModuleInfo, InstName, NextInst),
-        inst_is_ground_mt_1(ModuleInfo, MaybeType, NextInst, !Expansions)
+        inst_is_ground_mt_1(ModuleInfo, Type, NextInst, !Expansions)
     ;
         Inst = any(Uniq, HOInstInfo),
-        maybe_any_to_bound(ModuleInfo, MaybeType, Uniq, HOInstInfo, NextInst),
-        inst_is_ground_mt_1(ModuleInfo, MaybeType, NextInst, !Expansions)
+        maybe_any_to_bound(ModuleInfo, Type, Uniq, HOInstInfo, NextInst),
+        inst_is_ground_mt_1(ModuleInfo, Type, NextInst, !Expansions)
     ;
         Inst = inst_var(_),
         unexpected($pred, "uninstantiated inst parameter")
@@ -852,14 +849,15 @@ inst_results_bound_inst_list_is_ground(ModuleInfo, InstResults, BoundInsts) :-
             fail
         ;
             GroundnessResult = inst_result_groundness_unknown,
-            bound_inst_list_is_ground_mt(ModuleInfo, no, BoundInsts)
+            bound_inst_list_is_ground_mt(ModuleInfo, no_type_available,
+                BoundInsts)
         )
     ;
         InstResults = inst_test_no_results,
-        bound_inst_list_is_ground_mt(ModuleInfo, no, BoundInsts)
+        bound_inst_list_is_ground_mt(ModuleInfo, no_type_available, BoundInsts)
     ).
 
-inst_results_bound_inst_list_is_ground_mt(ModuleInfo, MaybeType, InstResults,
+inst_results_bound_inst_list_is_ground_mt(ModuleInfo, Type, InstResults,
         BoundInsts) :-
     require_complete_switch [InstResults]
     (
@@ -874,18 +872,18 @@ inst_results_bound_inst_list_is_ground_mt(ModuleInfo, MaybeType, InstResults,
             fail
         ;
             GroundnessResult = inst_result_groundness_unknown,
-            bound_inst_list_is_ground_mt(ModuleInfo, MaybeType, BoundInsts)
+            bound_inst_list_is_ground_mt(ModuleInfo, Type, BoundInsts)
         )
     ;
         InstResults = inst_test_no_results,
-        bound_inst_list_is_ground_mt(ModuleInfo, MaybeType, BoundInsts)
+        bound_inst_list_is_ground_mt(ModuleInfo, Type, BoundInsts)
     ).
 
 :- pred inst_results_bound_inst_list_is_ground_mt_2(module_info::in,
-    maybe(mer_type)::in, inst_test_results::in, list(bound_inst)::in,
+    mer_type::in, inst_test_results::in, list(bound_inst)::in,
     set_tree234(mer_inst)::in, set_tree234(mer_inst)::out) is semidet.
 
-inst_results_bound_inst_list_is_ground_mt_2(ModuleInfo, MaybeType, InstResults,
+inst_results_bound_inst_list_is_ground_mt_2(ModuleInfo, Type, InstResults,
         BoundInsts, !Expansions) :-
     require_complete_switch [InstResults]
     (
@@ -900,12 +898,12 @@ inst_results_bound_inst_list_is_ground_mt_2(ModuleInfo, MaybeType, InstResults,
             fail
         ;
             GroundnessResult = inst_result_groundness_unknown,
-            bound_inst_list_is_ground_mt_2(ModuleInfo, MaybeType, BoundInsts,
+            bound_inst_list_is_ground_mt_2(ModuleInfo, Type, BoundInsts,
                 !Expansions)
         )
     ;
         InstResults = inst_test_no_results,
-        bound_inst_list_is_ground_mt_2(ModuleInfo, MaybeType, BoundInsts,
+        bound_inst_list_is_ground_mt_2(ModuleInfo, Type, BoundInsts,
             !Expansions)
     ).
 
@@ -961,31 +959,28 @@ inst_results_bound_inst_list_is_ground_or_any_2(ModuleInfo, InstResults,
 
 %-----------------------------------------------------------------------------%
 
-:- pred bound_inst_list_is_ground_mt(module_info::in, maybe(mer_type)::in,
+:- pred bound_inst_list_is_ground_mt(module_info::in, mer_type::in,
     list(bound_inst)::in) is semidet.
 
 bound_inst_list_is_ground_mt(_, _, []).
-bound_inst_list_is_ground_mt(ModuleInfo, MaybeType,
+bound_inst_list_is_ground_mt(ModuleInfo, Type,
         [BoundInst | BoundInsts]) :-
     BoundInst = bound_functor(Name, Args),
-    maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, Name,
-        list.length(Args), MaybeTypes),
-    inst_list_is_ground_mt(ModuleInfo, MaybeTypes, Args),
-    bound_inst_list_is_ground_mt(ModuleInfo, MaybeType, BoundInsts).
+    get_cons_id_arg_types(ModuleInfo, Type, Name, list.length(Args), Types),
+    inst_list_is_ground_mt(ModuleInfo, Types, Args),
+    bound_inst_list_is_ground_mt(ModuleInfo, Type, BoundInsts).
 
-:- pred bound_inst_list_is_ground_mt_2(module_info::in, maybe(mer_type)::in,
+:- pred bound_inst_list_is_ground_mt_2(module_info::in, mer_type::in,
     list(bound_inst)::in,
     set_tree234(mer_inst)::in, set_tree234(mer_inst)::out) is semidet.
 
 bound_inst_list_is_ground_mt_2(_, _, [], !Expansions).
-bound_inst_list_is_ground_mt_2(ModuleInfo, MaybeType, [BoundInst | BoundInsts],
+bound_inst_list_is_ground_mt_2(ModuleInfo, Type, [BoundInst | BoundInsts],
         !Expansions) :-
     BoundInst = bound_functor(Name, Args),
-    maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, Name,
-        list.length(Args), MaybeTypes),
-    inst_list_is_ground_mt_2(ModuleInfo, MaybeTypes, Args, !Expansions),
-    bound_inst_list_is_ground_mt_2(ModuleInfo, MaybeType, BoundInsts,
-        !Expansions).
+    get_cons_id_arg_types(ModuleInfo, Type, Name, list.length(Args), Types),
+    inst_list_is_ground_mt_2(ModuleInfo, Types, Args, !Expansions),
+    bound_inst_list_is_ground_mt_2(ModuleInfo, Type, BoundInsts, !Expansions).
 
 :- pred bound_inst_list_is_ground_or_any(module_info::in,
     list(bound_inst)::in) is semidet.
@@ -1089,16 +1084,16 @@ inst_list_is_ground(ModuleInfo, [Inst | Insts]) :-
     inst_is_ground(ModuleInfo, Inst),
     inst_list_is_ground(ModuleInfo, Insts).
 
-:- pred inst_list_is_ground_mt(module_info::in, list(maybe(mer_type))::in,
+:- pred inst_list_is_ground_mt(module_info::in, list(mer_type)::in,
     list(mer_inst)::in) is semidet.
 
 inst_list_is_ground_mt(_, [], []).
-inst_list_is_ground_mt(ModuleInfo, [MaybeType | MaybeTypes], [Inst | Insts]) :-
-    inst_is_ground_mt(ModuleInfo, MaybeType, Inst),
-    inst_list_is_ground_mt(ModuleInfo, MaybeTypes, Insts).
+inst_list_is_ground_mt(ModuleInfo, [Type | Types], [Inst | Insts]) :-
+    inst_is_ground_mt(ModuleInfo, Type, Inst),
+    inst_list_is_ground_mt(ModuleInfo, Types, Insts).
 
 :- pred inst_list_is_ground_mt_2(module_info::in,
-    list(maybe(mer_type))::in, list(mer_inst)::in,
+    list(mer_type)::in, list(mer_inst)::in,
     set_tree234(mer_inst)::in, set_tree234(mer_inst)::out) is semidet.
 
 inst_list_is_ground_mt_2(_, [], [], !Expansions).
@@ -1106,10 +1101,10 @@ inst_list_is_ground_mt_2(_, [], [_ | _], !Expansions) :-
     unexpected($pred, "length mismatch").
 inst_list_is_ground_mt_2(_, [_ | _], [], !Expansions) :-
     unexpected($pred, "length mismatch").
-inst_list_is_ground_mt_2(ModuleInfo, [MaybeType | MaybeTypes], [Inst | Insts],
+inst_list_is_ground_mt_2(ModuleInfo, [Type | Types], [Inst | Insts],
         !Expansions) :-
-    inst_is_ground_mt_1(ModuleInfo, MaybeType, Inst, !Expansions),
-    inst_list_is_ground_mt_2(ModuleInfo, MaybeTypes, Insts, !Expansions).
+    inst_is_ground_mt_1(ModuleInfo, Type, Inst, !Expansions),
+    inst_list_is_ground_mt_2(ModuleInfo, Types, Insts, !Expansions).
 
 inst_list_is_ground_or_any(_, []).
 inst_list_is_ground_or_any(ModuleInfo, [Inst | Insts]) :-
@@ -1325,7 +1320,7 @@ inst_list_contains_inst_name(ModuleInfo, InstName, [Inst | Insts], Contains,
 
 %-----------------------------------------------------------------------------%
 
-maybe_any_to_bound(ModuleInfo, yes(Type), Uniq, none_or_default_func, Inst) :-
+maybe_any_to_bound(ModuleInfo, Type, Uniq, none_or_default_func, Inst) :-
     not type_is_solver_type(ModuleInfo, Type),
     ( if type_constructors(ModuleInfo, Type, Constructors) then
         type_to_ctor_det(Type, TypeCtor),

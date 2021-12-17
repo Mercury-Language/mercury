@@ -275,6 +275,10 @@
 :- pred cons_id_arg_types(module_info::in, mer_type::in,
     cons_id::out, list(mer_type)::out) is nondet.
 
+    % Is this type a du type?
+    %
+:- pred type_is_du_type(module_info::in, mer_type::in) is semidet.
+
     % Given a type constructor and one of its cons_ids, look up the definition
     % of that cons_id. Fails if the cons_id is not user-defined.
     %
@@ -1498,6 +1502,13 @@ cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
     map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
     ArgTypes0 = list.map(func(C) = C ^ arg_type, Args),
     apply_subst_to_type_list(TSubst, ArgTypes0, ArgTypes).
+
+type_is_du_type(ModuleInfo, Type) :-
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    type_to_ctor(Type, TypeCtor),
+    search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
+    TypeDefnBody = hlds_du_type(_).
 
 get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
     module_info_get_cons_table(ModuleInfo, Ctors),

@@ -31,11 +31,9 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module maybe.
-
 %---------------------------------------------------------------------------%
 
-    % inst_merge(InstA, InstB, MaybeType, InstC, !ModuleInfo):
+    % inst_merge(InstA, InstB, Type, InstC, !ModuleInfo):
     %
     % Combine the insts found in different arms of a disjunction, switch, or
     % if-then-else. The information in InstC is the minimum of the information
@@ -43,19 +41,15 @@
     % bound), it must be the same in both.
     %
     % In the vast majority of cases, our caller knows the type of variable
-    % whose insts InstA and InstB represent. The reason why we take only
-    % a maybe(type) here instead is that this variable may contain, directly or
-    % indirectly, some existentially typed arguments, and when inst_merge
-    % recurses down to those arguments, we won't be able to figure out the
-    % types of those argunents from the type of the function symbol(s) wrapped
-    % around them. We could figure it out from the types of the variables
-    % that were used to construct that term, but since that construction
-    % could have taken place in another predicate, we can't count on
-    % having access to that information.
-    % XXX Consider whether we could just use type variables as the types
-    % of such existentially typed arguments.
+    % whose insts InstA and InstB represent. When it does not, it should pass
+    % the type returned by the no_type_available function. This can happen e.g.
+    % when the type of a constructor argument is existentially typed.
+    % (We could figure it out from the types of the variables that were used
+    % to construct that term, but since that construction could have
+    % taken place in another predicate, we can't count on having access
+    % to that information.)
     %
-:- pred inst_merge(mer_inst::in, mer_inst::in, maybe(mer_type)::in,
+:- pred inst_merge(mer_inst::in, mer_inst::in, mer_type::in,
     mer_inst::out, module_info::in, module_info::out) is semidet.
 
 %---------------------------------------------------------------------------%
@@ -74,12 +68,13 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module list.
+:- import_module maybe.
 :- import_module require.
 :- import_module set.
 
 %---------------------------------------------------------------------------%
 
-inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
+inst_merge(InstA, InstB, Type, Inst, !ModuleInfo) :-
     % The merge_inst_table has two functions. One is to act as a cache,
     % in the expectation that just looking up Inst would be quicker than
     % computing it. The other is to ensure termination for situations
@@ -96,7 +91,7 @@ inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         InstA = bound(_, _, _),
         InstB = bound(_, _, _)
     then
-        inst_merge_2(InstA, InstB, MaybeType, Inst, !ModuleInfo)
+        inst_merge_2(InstA, InstB, Type, Inst, !ModuleInfo)
     else
         % Check whether this pair of insts is already in the merge_insts table.
         module_info_get_inst_table(!.ModuleInfo, InstTable0),
@@ -122,7 +117,7 @@ inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
             module_info_set_inst_table(InstTable1, !ModuleInfo),
 
             % Merge the insts.
-            inst_merge_2(InstA, InstB, MaybeType, Inst0, !ModuleInfo),
+            inst_merge_2(InstA, InstB, Type, Inst0, !ModuleInfo),
 
             % Now update the value associated with ThisInstPair.
             module_info_get_inst_table(!.ModuleInfo, InstTable2),
@@ -141,10 +136,10 @@ inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         )
     ).
 
-:- pred inst_merge_2(mer_inst::in, mer_inst::in, maybe(mer_type)::in,
+:- pred inst_merge_2(mer_inst::in, mer_inst::in, mer_type::in,
     mer_inst::out, module_info::in, module_info::out) is semidet.
 
-inst_merge_2(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
+inst_merge_2(InstA, InstB, Type, Inst, !ModuleInfo) :-
 %   % XXX Would this test improve efficiency?
 %   % What if we compared the addresses?
 %   ( if InstA = InstB then
@@ -157,17 +152,16 @@ inst_merge_2(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
     else if ExpandedInstA = not_reached then
         Inst = ExpandedInstB
     else
-        inst_merge_3(ExpandedInstA, ExpandedInstB, MaybeType, Inst,
-            !ModuleInfo)
+        inst_merge_3(ExpandedInstA, ExpandedInstB, Type, Inst, !ModuleInfo)
     ).
 
-:- pred inst_merge_3(mer_inst::in, mer_inst::in, maybe(mer_type)::in,
+:- pred inst_merge_3(mer_inst::in, mer_inst::in, mer_type::in,
     mer_inst::out, module_info::in, module_info::out) is semidet.
 
-inst_merge_3(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
+inst_merge_3(InstA, InstB, Type, Inst, !ModuleInfo) :-
     ( if InstA = constrained_inst_vars(InstVarsA, SubInstA) then
         ( if InstB = constrained_inst_vars(InstVarsB, SubInstB) then
-            inst_merge(SubInstA, SubInstB, MaybeType, Inst0, !ModuleInfo),
+            inst_merge(SubInstA, SubInstB, Type, Inst0, !ModuleInfo),
             set.intersect(InstVarsA, InstVarsB, InstVars),
             ( if set.is_non_empty(InstVars) then
                 Inst = constrained_inst_vars(InstVars, Inst0)
@@ -179,20 +173,20 @@ inst_merge_3(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
                 Inst = Inst0
             )
         else
-            inst_merge(SubInstA, InstB, MaybeType, Inst, !ModuleInfo)
+            inst_merge(SubInstA, InstB, Type, Inst, !ModuleInfo)
         )
     else if InstB = constrained_inst_vars(_InstVarsB, SubInstB) then
         % InstA \= constrained_inst_vars(_, _) is equivalent to
         % constrained_inst_vars(InstVarsA, InstA) where InstVarsA = empty.
-        inst_merge(InstA, SubInstB, MaybeType, Inst, !ModuleInfo)
+        inst_merge(InstA, SubInstB, Type, Inst, !ModuleInfo)
     else
-        inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo)
+        inst_merge_4(InstA, InstB, Type, Inst, !ModuleInfo)
     ).
 
-:- pred inst_merge_4(mer_inst::in, mer_inst::in, maybe(mer_type)::in,
+:- pred inst_merge_4(mer_inst::in, mer_inst::in, mer_type::in,
     mer_inst::out, module_info::in, module_info::out) is semidet.
 
-inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
+inst_merge_4(InstA, InstB, Type, Inst, !ModuleInfo) :-
     % We do not yet allow merging of `free' and `any', except in the case
     % where the any is `mostly_clobbered_any' or `clobbered_any', because
     % that would require inserting additional code to initialize the free var.
@@ -291,7 +285,7 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         InstA = bound(UniqA, _InstResultsA, BoundInstsA),
         InstB = bound(UniqB, _InstResultsB, BoundInstsB),
         merge_uniq(UniqA, UniqB, Uniq),
-        bound_inst_list_merge(BoundInstsA, BoundInstsB, MaybeType, BoundInsts,
+        bound_inst_list_merge(BoundInstsA, BoundInstsB, Type, BoundInsts,
             !ModuleInfo),
         % XXX A better approximation of InstResults is probably possible.
         Inst = bound(Uniq, inst_test_no_results, BoundInsts)
@@ -299,13 +293,13 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         InstA = bound(UniqA, InstResultsA, BoundInstsA),
         InstB = ground(UniqB, _),
         inst_merge_bound_ground(UniqA, InstResultsA, BoundInstsA, UniqB,
-            MaybeType, Inst, !ModuleInfo),
+            Type, Inst, !ModuleInfo),
         not inst_contains_nondefault_func_mode(!.ModuleInfo, InstA)
     ;
         InstA = ground(UniqA, _),
         InstB = bound(UniqB, InstResultsB, BoundInstsB),
         inst_merge_bound_ground(UniqB, InstResultsB, BoundInstsB, UniqA,
-            MaybeType, Inst, !ModuleInfo),
+            Type, Inst, !ModuleInfo),
         not inst_contains_nondefault_func_mode(!.ModuleInfo, InstB)
     ;
         InstA = ground(UniqA, HOInstInfoA),
@@ -317,8 +311,8 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         InstA = abstract_inst(Name, ArgsA),
         InstB = abstract_inst(Name, ArgsB),
         % We don't know the arguments types of an abstract inst.
-        MaybeTypes = list.duplicate(list.length(ArgsA), no),
-        inst_list_merge(ArgsA, ArgsB, MaybeTypes, Args, !ModuleInfo),
+        Types = list.duplicate(list.length(ArgsA), no_type_available),
+        inst_list_merge(ArgsA, ArgsB, Types, Args, !ModuleInfo),
         Inst = abstract_inst(Name, Args)
     ).
 
@@ -438,11 +432,11 @@ merge_inst_uniq(ModuleInfo, InstA, UniqB, !Expansions, Uniq) :-
 %---------------------------------------------------------------------------%
 
 :- pred inst_merge_bound_ground(uniqueness::in, inst_test_results::in,
-    list(bound_inst)::in, uniqueness::in, maybe(mer_type)::in, mer_inst::out,
+    list(bound_inst)::in, uniqueness::in, mer_type::in, mer_inst::out,
     module_info::in, module_info::out) is semidet.
 
 inst_merge_bound_ground(UniqA, InstResultsA, BoundInstsA, UniqB,
-        MaybeType, Result, !ModuleInfo) :-
+        Type, Result, !ModuleInfo) :-
     ( if
         inst_results_bound_inst_list_is_ground(!.ModuleInfo, InstResultsA,
             BoundInstsA)
@@ -454,9 +448,7 @@ inst_merge_bound_ground(UniqA, InstResultsA, BoundInstsA, UniqB,
             InstResultsA, BoundInstsA),
         % If we know the type, we can give a more accurate result than
         % just "any".
-        (
-            MaybeType = yes(Type),
-            type_constructors(!.ModuleInfo, Type, Constructors),
+        ( if type_constructors(!.ModuleInfo, Type, Constructors) then
             type_to_ctor_det(Type, TypeCtor),
             constructors_to_bound_insts(!.ModuleInfo, UniqB, TypeCtor,
                 Constructors, BoundInstsB0),
@@ -471,9 +463,8 @@ inst_merge_bound_ground(UniqA, InstResultsA, BoundInstsA, UniqB,
             ),
             InstA = bound(UniqA, InstResultsA, BoundInstsA),
             InstB = bound(UniqB, InstResultsB, BoundInstsB),
-            inst_merge_4(InstA, InstB, MaybeType, Result, !ModuleInfo)
-        ;
-            MaybeType = no,
+            inst_merge_4(InstA, InstB, Type, Result, !ModuleInfo)
+        else
             merge_uniq_bound(!.ModuleInfo, UniqB, UniqA, BoundInstsA, Uniq),
             Result = any(Uniq, none_or_default_func)
         )
@@ -482,16 +473,17 @@ inst_merge_bound_ground(UniqA, InstResultsA, BoundInstsA, UniqB,
 %---------------------------------------------------------------------------%
 
 :- pred inst_list_merge(list(mer_inst)::in, list(mer_inst)::in,
-    list(maybe(mer_type))::in, list(mer_inst)::out,
+    list(mer_type)::in, list(mer_inst)::out,
     module_info::in, module_info::out) is semidet.
 
 inst_list_merge([], [], _, [], !ModuleInfo).
-inst_list_merge([ArgA | ArgsA], [ArgB | ArgsB], [MaybeType | MaybeTypes],
+inst_list_merge([ArgA | ArgsA], [ArgB | ArgsB], [Type | Types],
         [Arg | Args], !ModuleInfo) :-
-    inst_merge(ArgA, ArgB, MaybeType, Arg, !ModuleInfo),
-    inst_list_merge(ArgsA, ArgsB, MaybeTypes, Args, !ModuleInfo).
+    inst_merge(ArgA, ArgB, Type, Arg, !ModuleInfo),
+    inst_list_merge(ArgsA, ArgsB, Types, Args, !ModuleInfo).
 
-    % bound_inst_list_merge(BoundInstsA, BoundInstsB, BoundInsts, !ModuleInfo):
+    % bound_inst_list_merge(BoundInstsA, BoundInstsB, BoundInsts, Type,
+    %   !ModuleInfo):
     %
     % The two input lists BoundInstsA and BoundInstsB must already be sorted.
     % Here we perform a sorted merge operation,
@@ -499,10 +491,10 @@ inst_list_merge([ArgA | ArgsA], [ArgB | ArgsB], [MaybeType | MaybeTypes],
     % of the functors of the input lists BoundInstsA and BoundInstsB.
     %
 :- pred bound_inst_list_merge(list(bound_inst)::in, list(bound_inst)::in,
-    maybe(mer_type)::in, list(bound_inst)::out,
+    mer_type::in, list(bound_inst)::out,
     module_info::in, module_info::out) is semidet.
 
-bound_inst_list_merge(BoundInstsA, BoundInstsB, MaybeType, BoundInsts,
+bound_inst_list_merge(BoundInstsA, BoundInstsB, Type, BoundInsts,
         !ModuleInfo) :-
     (
         BoundInstsA = [],
@@ -517,19 +509,19 @@ bound_inst_list_merge(BoundInstsA, BoundInstsB, MaybeType, BoundInsts,
         BoundInstA = bound_functor(ConsIdA, ArgsA),
         BoundInstB = bound_functor(ConsIdB, ArgsB),
         ( if equivalent_cons_ids(ConsIdA, ConsIdB) then
-            maybe_get_cons_id_arg_types(!.ModuleInfo, MaybeType,
-                ConsIdA, list.length(ArgsA), MaybeTypes),
-            inst_list_merge(ArgsA, ArgsB, MaybeTypes, Args, !ModuleInfo),
+            get_cons_id_arg_types(!.ModuleInfo, Type,
+                ConsIdA, list.length(ArgsA), Types),
+            inst_list_merge(ArgsA, ArgsB, Types, Args, !ModuleInfo),
             BoundInst = bound_functor(ConsIdA, Args),
-            bound_inst_list_merge(BoundInstsTailA, BoundInstsTailB, MaybeType,
+            bound_inst_list_merge(BoundInstsTailA, BoundInstsTailB, Type,
                 BoundInstsTail, !ModuleInfo),
             BoundInsts = [BoundInst | BoundInstsTail]
         else if compare(<, ConsIdA, ConsIdB) then
-            bound_inst_list_merge(BoundInstsTailA, BoundInstsB, MaybeType,
+            bound_inst_list_merge(BoundInstsTailA, BoundInstsB, Type,
                 BoundInstsTail, !ModuleInfo),
             BoundInsts = [BoundInstA | BoundInstsTail]
         else
-            bound_inst_list_merge(BoundInstsA, BoundInstsTailB, MaybeType,
+            bound_inst_list_merge(BoundInstsA, BoundInstsTailB, Type,
                 BoundInstsTail, !ModuleInfo),
             BoundInsts = [BoundInstB | BoundInstsTail]
         )

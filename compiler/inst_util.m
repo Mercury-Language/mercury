@@ -23,7 +23,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
-:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
@@ -73,14 +72,30 @@
     % XXX This predicate returns the types of the arguments, but
     % loses any ho_inst_info for the arguments.
     %
-:- pred maybe_get_cons_id_arg_types(module_info::in, maybe(mer_type)::in,
-    cons_id::in, arity::in, list(maybe(mer_type))::out) is det.
+:- pred get_cons_id_arg_types(module_info::in, mer_type::in,
+    cons_id::in, arity::in, list(mer_type)::out) is det.
 
     % XXX This predicate returns the types of the arguments, but
     % loses any ho_inst_info for the arguments.
     %
-:- pred maybe_get_higher_order_arg_types(maybe(mer_type)::in, arity::in,
-    list(maybe(mer_type))::out) is det.
+:- pred get_higher_order_arg_types(mer_type::in, arity::in,
+    list(mer_type)::out) is det.
+
+    % Return a type that represents the *absence* of type information.
+    % This type is a type variable. Since the predicates and functions
+    % working on insts and modes use type information *only* to look up
+    % the constructors of a type, this conveys exactly the right info.
+    %
+    % Note that we always return the *same* type variable. Besides matching
+    % the semantics expected of functions, it also means our callers will not
+    % construct non-canonical inst_match_inputs structures. The fact that
+    % we return the same type variable as the "types" of e.g. different
+    % existentially typed arguments of a data constructor is not a problem,
+    % even though those arguments may contain values of different types at
+    % runtime, because the predicates working insts and modes never compare
+    % the types associated with those insts and modes for equality.
+    %
+:- func no_type_available = mer_type.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -98,7 +113,9 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module int.
+:- import_module maybe.
 :- import_module require.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -359,38 +376,40 @@ pred_inst_info_default_func_mode(Arity) = PredInstInfo :-
 
 %---------------------------------------------------------------------------%
 
-maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, ConsId, Arity,
-        MaybeTypes) :-
+get_cons_id_arg_types(ModuleInfo, Type, ConsId, Arity, Types) :-
     ( if
         ( ConsId = cons(_SymName, _, _)
         ; ConsId = tuple_cons(_)
         )
     then
         ( if
-            MaybeType = yes(Type),
             % XXX get_cons_id_non_existential_arg_types will fail
             % for ConsIds with existentially typed arguments.
             get_cons_id_non_existential_arg_types(ModuleInfo, Type,
-                ConsId, Types),
-            list.length(Types, Arity)
+                ConsId, ArgTypes),
+            list.length(ArgTypes, Arity)
         then
-            MaybeTypes = list.map(func(T) = yes(T), Types)
+            Types = ArgTypes
         else
-            list.duplicate(Arity, no, MaybeTypes)
+            list.duplicate(Arity, no_type_available, Types)
         )
     else
-        MaybeTypes = []
+        Types = []
     ).
 
-maybe_get_higher_order_arg_types(MaybeType, Arity, MaybeTypes) :-
-    ( if
-        MaybeType = yes(Type),
-        type_is_higher_order_details(Type, _, _, _, ArgTypes)
-    then
-        MaybeTypes = list.map(func(T) = yes(T), ArgTypes)
+get_higher_order_arg_types(Type, Arity, Types) :-
+    ( if type_is_higher_order_details(Type, _, _, _, ArgTypes) then
+        Types = ArgTypes
     else
-        list.duplicate(Arity, no, MaybeTypes)
+        list.duplicate(Arity, no_type_available, Types)
     ).
+
+%---------------------------------------------------------------------------%
+
+no_type_available = Type :-
+    varset.init(VarSet0),
+    new_var(Var, VarSet0, _VarSet),
+    Type = type_variable(Var, kind_star).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.inst_util.
