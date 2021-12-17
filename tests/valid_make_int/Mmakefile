@@ -9,7 +9,8 @@ MAYBE_J1 =
 #-----------------------------------------------------------------------------#
 # Please keep these lists sorted.
 
-SINGLE_MODULE_PROGS =
+SINGLE_MODULE_PROGS = \
+	extra_interface_import
 
 MULTI_MODULE_PROGS = \
 	bug506 \

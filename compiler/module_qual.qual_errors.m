@@ -383,7 +383,7 @@ warn_unused_interface_import(ParentModuleName,
     % unused_imports.m will also generate a warning for this import,
     % and it will be more precise than we can do here, because it will know
     % whether the imported module is used in the *implementation* section.
-    Spec = conditional_spec($pred, warn_unused_imports, no,
+    Spec = conditional_spec($pred, warn_unused_interface_imports, yes,
         severity_warning, phase_parse_tree_to_hlds, [HeadMsg | TailMsgs]),
     !:Specs = [Spec | !.Specs].
 

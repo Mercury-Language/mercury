@@ -219,6 +219,7 @@
     ;       warn_insts_without_matching_type
     ;       warn_insts_with_functors_without_type
     ;       warn_unused_imports
+    ;       warn_unused_interface_imports
     ;       inform_ite_instead_of_switch
     ;       inform_incomplete_switch
     ;       inform_incomplete_switch_threshold
@@ -1292,6 +1293,15 @@ optdef(oc_warn, warn_unused_imports,                    bool(no)).
     % XXX warn_unused_imports is disabled by default until someone
     % removes all the unused imports from the compiler itself,
     % which is compiled with --halt-at-warn by default.
+    % XXX The above comment is obsolete; warn_unused_imports is now
+    % turned on by default in COMP_FLAGS.
+optdef(oc_warn, warn_unused_interface_imports,          bool(yes)).
+    % Since warn_unused_interface_imports does *part* of the job
+    % of warn_unused_imports, it is automatically turned off if
+    % warn_unused_imports is turned on. It is also turned off when
+    % generating interface files, because the presence of unused
+    % imports in the interface of module A should not prevent the
+    % testing of a module B that imports A.
 optdef(oc_warn, inform_ite_instead_of_switch,           bool(no)).
 optdef(oc_warn, inform_incomplete_switch,               bool(no)).
 optdef(oc_warn, inform_incomplete_switch_threshold,     int(0)).
@@ -2197,6 +2207,7 @@ long_option("warn-insts-without-matching-type",
 long_option("warn-insts-with-functors-without-type",
                     warn_insts_with_functors_without_type).
 long_option("warn-unused-imports",      warn_unused_imports).
+long_option("warn-unused-interface-imports",    warn_unused_interface_imports).
 long_option("inform-ite-instead-of-switch", inform_ite_instead_of_switch).
 long_option("inform-incomplete-switch", inform_incomplete_switch).
 long_option("inform-incomplete-switch-threshold",
@@ -4262,12 +4273,16 @@ options_help_warning(Stream, !IO) :-
         "--warn-insts-with-functors-without-type",
         "\tWarn about insts that do specify functors but do not specify",
         "\twhat type they are for.",
-        % XXX disabled until compiler unused_imports,
-        % don't forget to update the user_guide.texi
+        % XXX don't forget to update the user_guide.texi
         % "--no-warn-unused-imports",
         % "\tDo not warn about modules that are imported but not used.",
         "--warn-unused-imports",
         "\tWarn about modules that are imported but not used.",
+        % Not documented because its relationship with --warn-unused-imports
+        % is too complicated for users (and maybe even developers ...).
+%       "--warn-unused-interface-imports",
+%       "\tWarn about modules that are imported in the interface",
+%       "\tbut not used there.",
         "--no-warn-nothing-exported",
         "\tDo not warn about modules which export nothing.",
         "--warn-unused-args",

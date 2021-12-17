@@ -2091,6 +2091,7 @@ handle_stack_layout_options(!Globals, OT_OptDups0, OT_OptDups,
     %   smart_recompilation
     %   transitive_optimization
     %   warn_wrong_module_name
+    %   warn_unused_interface_imports
     %
 :- pred handle_opmode_implications(op_mode::in,
     globals::in, globals::out) is det.
@@ -2106,6 +2107,8 @@ handle_opmode_implications(OpMode, !Globals) :-
         (
             OpModeArgs = opma_make_interface(OpModeArgsMI),
             globals.set_option(line_numbers, bool(no), !Globals),
+            globals.set_option(warn_unused_interface_imports, bool(no),
+                !Globals),
             (
                 ( OpModeArgsMI = omif_int0
                 ; OpModeArgsMI = omif_int1_int2
@@ -2186,6 +2189,7 @@ handle_opmode_implications(OpMode, !Globals) :-
     %   use_trans_opt_files
     %   verbose_recompilation
     %   warn_missing_trans_opt_files
+    %   warn_unused_interface_imports
     %
 :- pred handle_option_to_option_implications(globals::in, globals::out)
     is det.
@@ -2253,7 +2257,18 @@ handle_option_to_option_implications(!Globals) :-
     % is done when making the `.opt' file. With `--use-opt-files',
     % that doesn't happen.
     % XXX Should that be "with `--no-use-opt-files'"?
-    globals.set_option(use_opt_files, bool(no), !Globals).
+    globals.set_option(use_opt_files, bool(no), !Globals),
+
+    globals.lookup_bool_option(!.Globals, warn_unused_imports, UnusedImports),
+    (
+        UnusedImports = no
+    ;
+        UnusedImports = yes,
+        % warn_unused_interface_imports does *part* of the job
+        % of warn_unused_imports.
+        globals.set_option(warn_unused_interface_imports, bool(no),
+            !Globals)
+    ).
 
     % --use-opt-files implies --no-warn-missing-opt-files since
     % we are expecting some to be missing.

@@ -316,6 +316,14 @@
 
 %---------------------------------------------------------------------------%
 
+    % Would trying to print the given spec result in any output?
+    % The answer can be "no" if all parts of the error_spec are
+    % under a condition that happens to be false.
+    %
+:- pred does_spec_print_anything(globals::in, error_spec::in) is semidet.
+
+%---------------------------------------------------------------------------%
+
     % Return the worst of two actual severities.
     %
 :- func worst_severity(actual_severity, actual_severity)
@@ -366,10 +374,10 @@
 
     % Delete all the given error_specs, which are supposed to have been
     % gathered during the process that generates the contents of an interface
-    % file, if two conditions are both satisfied:
+    % file, if halt_at_invalid_interface is not set.
     %
-    % - print_errors_warnings_when_generating_interface is NOT set, and
-    % - the exit status has NOT been set to indicate an error.
+    % Even if it is set, delete any conditional error specs whose conditions
+    % are false.
     %
 :- pred filter_interface_generation_specs(globals::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
@@ -972,6 +980,69 @@ make_list_term([Var | Vars]) =
 
 %---------------------------------------------------------------------------%
 
+does_spec_print_anything(Globals, Spec) :-
+    does_spec_print_anything_2(Globals, Spec) = yes.
+
+:- func does_spec_print_anything_2(globals, error_spec) = bool.
+
+does_spec_print_anything_2(Globals, Spec) = Prints :-
+    (
+        Spec = simplest_spec(_, _, _, _, _),
+        Prints = yes
+    ;
+        Spec = error_spec(_, _, _, Msgs),
+        PrintsList = list.map(does_msg_print_anything(Globals), Msgs),
+        bool.or_list(PrintsList, Prints)
+    ;
+        Spec = conditional_spec(_, Option, MatchValue, _, _, Msgs),
+        globals.lookup_bool_option(Globals, Option, OptionValue),
+        ( if OptionValue = MatchValue then
+            PrintsList = list.map(does_msg_print_anything(Globals), Msgs),
+            bool.or_list(PrintsList, Prints)
+        else
+            Prints = no
+        )
+    ).
+
+:- func does_msg_print_anything(globals, error_msg) = bool.
+
+does_msg_print_anything(Globals, Msg) = Prints :-
+    (
+        Msg = simplest_msg(_, _),
+        Prints = yes
+    ;
+        ( Msg = simple_msg(_, MsgComponents)
+        ; Msg = error_msg(_, _, _, MsgComponents)
+        ),
+        PrintsList = list.map(does_msg_component_print_anything(Globals),
+            MsgComponents),
+        bool.or_list(PrintsList, Prints)
+    ).
+
+:- func does_msg_component_print_anything(globals, error_msg_component) = bool.
+
+does_msg_component_print_anything(Globals, MsgComponent) = Prints :-
+    (
+        ( MsgComponent = always(_)
+        ; MsgComponent = verbose_only(_, _)
+        ; MsgComponent = verbose_and_nonverbose(_, _)
+        ; MsgComponent = print_anything(_)
+        ),
+        Prints = yes
+    ;
+        MsgComponent = option_is_set(Option, MatchValue, MsgComponents),
+        globals.lookup_bool_option(Globals, Option, OptionValue),
+        ( if OptionValue = MatchValue then
+            PrintsList = list.map(does_msg_component_print_anything(Globals),
+                MsgComponents),
+            bool.or_list(PrintsList, Prints)
+        else
+            Prints = no
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
 worst_severity(actual_severity_error, actual_severity_error) =
     actual_severity_error.
 worst_severity(actual_severity_error, actual_severity_warning) =
@@ -1378,7 +1449,7 @@ filter_interface_generation_specs(Globals, Specs, SpecsToPrint, !IO) :-
         halt_at_invalid_interface, HaltInvalidInterface),
     (
         HaltInvalidInterface = yes,
-        SpecsToPrint = Specs
+        list.filter(does_spec_print_anything(Globals), Specs, SpecsToPrint)
     ;
         HaltInvalidInterface = no,
         SpecsToPrint = []

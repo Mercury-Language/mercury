@@ -156,7 +156,7 @@ write_short_interface_file_int3(ProgressStream, ErrorStream, Globals,
         Succeeded = OutputSucceeded `and` TouchSucceeded
     ;
         EffectivelyErrors = yes,
-        report_file_not_written(ErrorStream, Globals, Specs, no, ModuleName,
+        report_file_not_written(ErrorStream, Globals, Specs, [], ModuleName,
             other_ext(".int3"), no, other_ext(".date3"), !IO),
         Succeeded = did_not_succeed
     ).
@@ -211,14 +211,17 @@ write_private_interface_file_int0(ProgressStream, ErrorStream, Globals,
         ;
             EffectiveGetQualSpecs = [_ | _],
             report_file_not_written(ErrorStream, Globals,
-                EffectiveGetQualSpecs, no, ModuleName,
+                EffectiveGetQualSpecs, [], ModuleName,
                 other_ext(".int0"), no, other_ext(".date0"), !IO),
             Succeeded = did_not_succeed
         )
     else
-        PrefixMsg = "Error reading interface files.\n",
+        % The negative indent is to let the rest of the error_spec
+        % start at the left margin.
+        PrefixPieces = [words("Error reading interface files."),
+            nl_indent_delta(-1)],
         report_file_not_written(ErrorStream, Globals, GetSpecs,
-            yes(PrefixMsg), ModuleName,
+            PrefixPieces, ModuleName,
             other_ext(".int0"), no, other_ext(".date0"), !IO),
         Succeeded = did_not_succeed
     ).
@@ -288,13 +291,16 @@ write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
         ;
             EffectiveGetQualSpecs = [_ | _],
             report_file_not_written(ErrorStream, Globals,
-                EffectiveGetQualSpecs, no, ModuleName, other_ext(".int"),
+                EffectiveGetQualSpecs, [], ModuleName, other_ext(".int"),
                 yes(other_ext(".int2")), other_ext(".date"), !IO),
             Succeeded = did_not_succeed
         )
     else
-        PrefixMsg = "Error reading .int3 files.\n",
-        report_file_not_written(ErrorStream, Globals, GetSpecs, yes(PrefixMsg),
+        % The negative indent is to let the rest of the error_spec
+        % start at the left margin.
+        PrefixPieces = [words("Error reading .int3 files."),
+            nl_indent_delta(-1)],
+        report_file_not_written(ErrorStream, Globals, GetSpecs, PrefixPieces,
             ModuleName, other_ext(".int"), yes(other_ext(".int2")),
             other_ext(".date"), !IO),
         Succeeded = did_not_succeed
@@ -548,18 +554,11 @@ insist_on_timestamp(MaybeTimestamp, Timestamp) :-
 %---------------------------------------------------------------------------%
 
 :- pred report_file_not_written(io.text_output_stream::in, globals::in, 
-    list(error_spec)::in, maybe(string)::in, module_name::in,
+    list(error_spec)::in, list(format_component)::in, module_name::in,
     other_ext::in, maybe(other_ext)::in, other_ext::in, io::di, io::uo) is det.
 
-report_file_not_written(ErrorStream, Globals, Specs, MaybePrefixMsg,
+report_file_not_written(ErrorStream, Globals, Specs, PrefixPieces,
         ModuleName, OtherExtA, MaybeOtherExtB, OtherExtDate, !IO) :-
-    write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
-    (
-        MaybePrefixMsg = no
-    ;
-        MaybePrefixMsg = yes(PrefixMsg),
-        io.write_string(ErrorStream, PrefixMsg, !IO)
-    ),
     % We use write_error_spec to print the message the interface file or
     % files not being written in order to wrap the message if it is
     % longer than the line length.
@@ -580,9 +579,10 @@ report_file_not_written(ErrorStream, Globals, Specs, MaybePrefixMsg,
         ToRemoveFileNames = [IntAFileName, IntBFileName, DateFileName]
     ),
     NotWrittenMsg = error_msg(no, treat_as_first, 0,
-        [always(NotWrittenPieces)]),
+        [always(PrefixPieces ++ NotWrittenPieces)]),
     NotWrittenSpec = error_spec($pred, severity_informational,
         phase_read_files, [NotWrittenMsg]),
+    write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
     write_error_spec_ignore(ErrorStream, Globals, NotWrittenSpec, !IO),
     % We remove the interface file(s) the errors prevented us from generating,
     % as well as the file indicating when they were last successfully written,

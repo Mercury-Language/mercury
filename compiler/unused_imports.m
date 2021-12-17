@@ -317,7 +317,7 @@ add_msg_if_avail_as_general(ModuleName, ThisAvail, PrevAvail, !Msgs) :-
 :- func generate_unused_warning(module_name, module_name, import_or_use,
     prog_context, anywhere_or_interface) = error_spec.
 
-generate_unused_warning(TopModuleName, UnusedModuleName, ImportOrUse,
+generate_unused_warning(ModuleName, UnusedModuleName, ImportOrUse,
         Context, AnywhereOrInterface) = Spec :-
     (
         AnywhereOrInterface = aoi_anywhere,
@@ -329,8 +329,7 @@ generate_unused_warning(TopModuleName, UnusedModuleName, ImportOrUse,
         NotUsedInTheLocn = "in the interface"
     ),
     ImportOrUseDeclName = import_or_use_decl_name(ImportOrUse),
-    Pieces = [words("In module" ), qual_sym_name(TopModuleName),
-        suffix(":"), nl,
+    Pieces = [words("In module"), qual_sym_name(ModuleName), suffix(":"), nl,
         words("warning: module"), qual_sym_name(UnusedModuleName),
         words("has a"), decl(ImportOrUseDeclName),
         words("declaration"), words(DeclInTheLocn), suffix(","),

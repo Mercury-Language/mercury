@@ -6611,6 +6611,15 @@ what type they are for.
 Warn about modules that are imported but not used.
 @c Do not warn about modules that are imported but not used.
 
+@c Not documented because its relationship with --warn-unused-imports
+@c is too complicated for users (and maybe even for developers ...).
+@c @sp 1
+@c @item --warn-unused-interface-imports
+@c @findex --no-warn-unused-interface-imports
+@c @findex --warn-unused-interface-imports
+@c Warn about modules that are imported in the interface
+@c but are not used in the interface.
+
 @sp 1
 @item --no-warn-nothing-exported
 @findex --no-warn-nothing-exported
