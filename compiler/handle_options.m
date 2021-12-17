@@ -2107,6 +2107,9 @@ handle_opmode_implications(OpMode, !Globals) :-
         (
             OpModeArgs = opma_make_interface(OpModeArgsMI),
             globals.set_option(line_numbers, bool(no), !Globals),
+            globals.lookup_bool_option(!.Globals, halt_at_warn_make_int,
+                HaltAtWarn),
+            globals.set_option(halt_at_warn, bool(HaltAtWarn), !Globals),
             globals.set_option(warn_unused_interface_imports, bool(no),
                 !Globals),
             (
@@ -2132,12 +2135,18 @@ handle_opmode_implications(OpMode, !Globals) :-
             (
                 OpModeAugment = opmau_make_opt_int,
                 globals.set_option(line_numbers, bool(no), !Globals),
+                globals.lookup_bool_option(!.Globals, halt_at_warn_make_opt,
+                    HaltAtWarn),
+                globals.set_option(halt_at_warn, bool(HaltAtWarn), !Globals),
                 Smart = bool.no
             ;
                 OpModeAugment = opmau_make_trans_opt_int,
                 globals.set_option(transitive_optimization, bool(yes),
                     !Globals),
                 globals.set_option(line_numbers, bool(no), !Globals),
+                globals.lookup_bool_option(!.Globals, halt_at_warn_make_opt,
+                    HaltAtWarn),
+                globals.set_option(halt_at_warn, bool(HaltAtWarn), !Globals),
                 Smart = bool.no
             ;
                 ( OpModeAugment = opmau_make_analysis_registry

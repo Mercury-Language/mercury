@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
 % Copyright (C) 2013-2021 The Mercury team.
@@ -172,6 +172,13 @@
     ;       inhibit_style_warnings
     ;       warn_accumulator_swaps
     ;       halt_at_warn
+    ;       halt_at_warn_make_int
+    ;       halt_at_warn_make_opt
+            % Almost all code in the compiler should only look at the value
+            % of halt_at_warn. handle_options.m will overwrite its value
+            % with the value of halt_at_warn_make_int when making interface
+            % files and with the value of halt_at_warn_make_opt when making
+            % optimization files.
     ;       halt_at_syntax_errors
     ;       halt_at_auto_parallel_failure
     ;       halt_at_invalid_interface
@@ -1237,6 +1244,8 @@ optdef(oc_warn, inhibit_warnings,                       bool_special).
 optdef(oc_warn, inhibit_style_warnings,                 bool_special).
 optdef(oc_warn, warn_accumulator_swaps,                 bool(yes)).
 optdef(oc_warn, halt_at_warn,                           bool(no)).
+optdef(oc_warn, halt_at_warn_make_int,                  bool(no)).
+optdef(oc_warn, halt_at_warn_make_opt,                  bool(no)).
 optdef(oc_warn, halt_at_syntax_errors,                  bool(no)).
 optdef(oc_warn, halt_at_auto_parallel_failure,          bool(no)).
 optdef(oc_warn, halt_at_invalid_interface,              bool(yes)).
@@ -2141,6 +2150,9 @@ long_option("inhibit-warnings",         inhibit_warnings).
 long_option("inhibit-style-warnings",   inhibit_style_warnings).
 long_option("warn-accumulator-swaps",   warn_accumulator_swaps).
 long_option("halt-at-warn",             halt_at_warn).
+long_option("halt-at-warn-make-int",  halt_at_warn_make_int).
+long_option("halt-at-warn-make-interface",  halt_at_warn_make_int).
+long_option("halt-at-warn-make-opt",    halt_at_warn_make_opt).
 long_option("halt-at-syntax-errors",    halt_at_syntax_errors).
 long_option("halt-at-auto-parallel-failure", halt_at_auto_parallel_failure).
 long_option("halt-at-invalid-interface",    halt_at_invalid_interface).
@@ -4229,11 +4241,25 @@ options_help_warning(Stream, !IO) :-
         "--inhibit-style-warnings",
         "\tDisable all warning messages about programming style.",
         "--halt-at-warn",
-        "\tThis option causes the compiler to treat all",
-        "\twarnings as if they were errors. This means that",
-        "\tif any warning is issued, the compiler will not",
-        "\tgenerate code --- instead, it will return a",
-        "\tnon-zero exit status.",
+        "\tThis option causes the compiler to treat all warnings",
+        "\tas if they were errors when generating target code.",
+        "\tThis means that if the compiler issues any warning,",
+        "\tit will not generate target code --- instead, it will",
+        "\treturn a non-zero exit status.",
+        "--halt-at-warn-make-interface",
+        "\tThis option causes the compiler to treat all warnings",
+        "\tas if they were errors when generating an interface file",
+        "\t(a .int, .int0, .int2 or .int3 file). This means that",
+        "\tif the compiler issues any warnings at that time,",
+        "\tit will not generate the interface file --- instead,",
+        "\tit will return a non-zero exit status.",
+        "--halt-at-warn-make-opt",
+        "\tThis option causes the compiler to treat all warnings",
+        "\tas if they were errors when generating an optimization file",
+        "\t(.opt or .trans_opt file.) This means that if the compiler",
+        "\tissues any warnings at that time, it will not generate the",
+        "\toptimization file --- instead, it will return a non-zero",
+        "\texit status.",
         "--halt-at-syntax-errors",
         "\tThis option causes the compiler to halt immediately",
         "\tafter syntax checking and not do any semantic checking",

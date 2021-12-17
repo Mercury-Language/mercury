@@ -6511,9 +6511,32 @@ Disable all warning messages about programming style.
 @sp 1
 @item --halt-at-warn
 @findex --halt-at-warn
-This option causes the compiler to treat all warnings as if they were errors.
-This means that if any warning is issued,
-the compiler will not generate code ---
+This option causes the compiler to treat all warnings
+as if they were errors when generating target code.
+This means that if the compiler issues any warning,
+it will not generate target code ---
+instead, it will return a non-zero exit status.
+
+@sp 1
+@item --halt-at-warn-make-int
+@item --halt-at-warn-make-interface
+@findex --halt-at-warn-make-int
+@findex --halt-at-warn-make-interface
+This option causes the compiler to treat all warnings
+as if they were errors when generating an interface file
+(a @samp{.int}, @samp{.int0}, @samp{.int2} or @samp{.int3} file).
+This means that if the compiler issues any warnings at that time,
+it will not generate the interface file ---
+instead, it will return a non-zero exit status.
+
+@sp 1
+@item --halt-at-warn-make-opt
+@findex --halt-at-warn-make-opt
+This option causes the compiler to treat all warnings
+as if they were errors when generating an optimization file
+(a @samp{.opt} or @samp{.trans_opt} file).
+This means that if the compiler issues any warnings at that time,
+it will not generate the optimization file ---
 instead, it will return a non-zero exit status.
 
 @sp 1
