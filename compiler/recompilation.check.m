@@ -143,13 +143,12 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
             % when catching that exception.)
             Reasons = [StoppingReason]
         ),
+        get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
         (
             Reasons = [],
             FindTimestampFiles(ModuleName, TimestampFiles, !IO),
-            write_recompilation_message(Globals,
+            maybe_write_recompilation_message(Globals, ProgressStream,
                 write_not_recompiling_message(ModuleName), !IO),
-            get_progress_output_stream(Globals, ModuleName,
-                ProgressStream, !IO),
             get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
             list.map_foldl(
                 touch_datestamp(Globals, ProgressStream, ErrorStream),
@@ -157,7 +156,7 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
         ;
             Reasons = [_ | _],
             add_module_to_recompile(ModuleName, !Info),
-            write_recompilation_message(Globals,
+            maybe_write_recompilation_message(Globals, ProgressStream,
                 write_reasons_message(Globals, ModuleName,
                     list.reverse(Reasons)),
                 !IO)
@@ -179,28 +178,32 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
         )
     ;
         ReadUsedFileResult = used_file_error(UsedFileError),
-        write_recompilation_message(Globals,
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+        maybe_write_recompilation_message(Globals, ErrorStream,
             write_used_file_error(Globals, ModuleName, UsedFileError),
             !IO),
         !Info ^ rci_modules_to_recompile := all_modules
     ).
 
-:- pred write_not_recompiling_message(module_name::in, io::di, io::uo) is det.
+:- pred write_not_recompiling_message(module_name::in,
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-write_not_recompiling_message(ModuleName, !IO) :-
-    io.format("Not recompiling module %s.\n",
+write_not_recompiling_message(ModuleName, Stream, !IO) :-
+    io.format(Stream, "Not recompiling module %s.\n",
         [s(sym_name_to_escaped_string(ModuleName))], !IO).
 
 :- pred write_reasons_message(globals::in, module_name::in,
-    list(recompile_reason)::in, io::di, io::uo) is det.
+    list(recompile_reason)::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-write_reasons_message(Globals, ModuleName, Reasons, !IO) :-
-    list.foldl(write_recompile_reason(Globals, ModuleName), Reasons, !IO).
+write_reasons_message(Globals, ModuleName, Reasons, Stream, !IO) :-
+    list.foldl(write_recompile_reason(Globals, Stream, ModuleName),
+        Reasons, !IO).
 
 :- pred write_used_file_error(globals::in, module_name::in,
-    used_file_error::in, io::di, io::uo) is det.
+    used_file_error::in, io.text_output_stream::in, io::di, io::uo) is det.
 
-write_used_file_error(Globals, ModuleName, UsedFileError, !IO) :-
+write_used_file_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
     PrefixPieces = [words("Recompiling module"), qual_sym_name(ModuleName),
         suffix(":"), nl],
     (
@@ -230,7 +233,7 @@ write_used_file_error(Globals, ModuleName, UsedFileError, !IO) :-
         Spec = error_spec($pred, severity_informational, phase_read_files,
             Msgs)
     ),
-    write_error_spec_ignore(Globals, Spec, !IO).
+    write_error_spec_ignore(Stream, Globals, Spec, !IO).
 
 :- pred should_recompile_3(globals::in, used_file::in,
     maybe_is_inline_submodule::in,
@@ -1353,22 +1356,24 @@ record_read_file_some_int(ModuleName, FileName, ModuleTimestamp,
 
 %---------------------------------------------------------------------------%
 
-:- pred write_recompilation_message(globals::in,
-    pred(io, io)::in(pred(di, uo) is det), io::di, io::uo) is det.
+:- pred maybe_write_recompilation_message(globals::in,
+    io.text_output_stream::in,
+    pred(io.text_output_stream, io, io)::in(pred(in, di, uo) is det),
+    io::di, io::uo) is det.
 
-write_recompilation_message(Globals, P, !IO) :-
+maybe_write_recompilation_message(Globals, Stream, P, !IO) :-
     globals.lookup_bool_option(Globals, verbose_recompilation, Verbose),
     (
         Verbose = yes,
-        P(!IO)
+        P(Stream, !IO)
     ;
         Verbose = no
     ).
 
-:- pred write_recompile_reason(globals::in, module_name::in,
-    recompile_reason::in, io::di, io::uo) is det.
+:- pred write_recompile_reason(globals::in, io.text_output_stream::in,
+    module_name::in, recompile_reason::in, io::di, io::uo) is det.
 
-write_recompile_reason(Globals, ThisModuleName, Reason, !IO) :-
+write_recompile_reason(Globals, Stream, ThisModuleName, Reason, !IO) :-
     PrefixPieces = [words("Recompiling module"),
         qual_sym_name(ThisModuleName), suffix(":"), nl],
     (
@@ -1425,7 +1430,7 @@ write_recompile_reason(Globals, ThisModuleName, Reason, !IO) :-
         [error_msg(no, treat_as_first, 0, [always(AllPieces)])]),
     % Since these messages are informational, there should be no warnings
     % or errors.
-    write_error_spec_ignore(Globals, Spec, !IO).
+    write_error_spec_ignore(Stream, Globals, Spec, !IO).
 
 :- func describe_item(item_id) = list(format_component).
 
