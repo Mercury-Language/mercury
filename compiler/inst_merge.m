@@ -31,7 +31,24 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
+:- import_module list.
+:- import_module maybe.
+
 %---------------------------------------------------------------------------%
+
+    % insts_merge(Type, HeadInst, TailInsts, MaybeMergedInst, !ModuleInfo):
+    %
+    % Given a list of one or more insts of a given variable that reflect
+    % the inst of that variable at the ends of the branches of a branched
+    % control structure such as a disjunction or if-then-else, return
+    %
+    % - either `yes(MergedInst)' where MergedInst is the final inst
+    %   of that variable after the branched control structure as a whole,
+    %
+    % - or `no' if some of the insts are not compatible.
+    %
+:- pred insts_merge(mer_type::in, mer_inst::in, list(mer_inst)::in,
+    maybe(mer_inst)::out, module_info::in, module_info::out) is det.
 
     % inst_merge(InstA, InstB, Type, InstC, !ModuleInfo):
     %
@@ -67,10 +84,103 @@
 :- import_module mdbcomp.
 :- import_module parse_tree.prog_type.
 
-:- import_module list.
-:- import_module maybe.
 :- import_module require.
 :- import_module set.
+
+%---------------------------------------------------------------------------%
+
+insts_merge(Type, HeadInst, TailInsts, MaybeMergedInst, !ModuleInfo) :-
+    % We used to use a straightforward algorithm that, given a list of N insts,
+    % merged the tail N-1 insts, and merged the result with the head inst.
+    % While this is simple and efficient for small N, it has very bad
+    % performance for large N. The reason is that its complexity can be N^2,
+    % since in many cases each arm of the branched control structure binds
+    % the variable to a different function symbol, and this means that the
+    % merged inst evolves like this:
+    %
+    %   bound(f)
+    %   bound(f; g)
+    %   bound(f; g; h)
+    %   bound(f; g; h; i)
+    %
+    % Our current algorithm uses a number of passes, each of which divides the
+    % number of insts by four by merging groups of four adjacent insts.
+    % The overall complexity is thus closer to N log N than N^2.
+    insts_merge_pass(Type, HeadInst, TailInsts,
+        [], MergedInsts, merge_has_not_failed, Fail, !ModuleInfo),
+    (
+        Fail = merge_has_failed,
+        MaybeMergedInst = no
+    ;
+        Fail = merge_has_not_failed,
+        (
+            MergedInsts = [],
+            % insts_merge_pass can return MergedInsts = [], but only
+            % together with Fail = merge_has_failed.
+            unexpected($pred, "MergedInsts = []")
+        ;
+            MergedInsts = [MergedInst1 | MergedInsts2Plus],
+            (
+                MergedInsts2Plus = [],
+                MaybeMergedInst = yes(MergedInst1)
+            ;
+                MergedInsts2Plus = [_ | _],
+                insts_merge(Type, MergedInst1, MergedInsts2Plus,
+                    MaybeMergedInst, !ModuleInfo)
+            )
+        )
+    ).
+
+:- type merge_fail
+    --->    merge_has_not_failed
+    ;       merge_has_failed.
+
+:- pred insts_merge_pass(mer_type::in, mer_inst::in, list(mer_inst)::in,
+    list(mer_inst)::in, list(mer_inst)::out,
+    merge_fail::in, merge_fail::out, module_info::in, module_info::out) is det.
+
+insts_merge_pass(Type, Inst1, Insts2Plus, !MergedInsts, !Fail, !ModuleInfo) :-
+    (
+        Insts2Plus = [],
+        !:MergedInsts = [Inst1 | !.MergedInsts]
+    ;
+        Insts2Plus = [Inst2],
+        ( if
+            inst_merge(Inst1, Inst2, Type, Inst12, !ModuleInfo)
+        then
+            !:MergedInsts = [Inst12 | !.MergedInsts]
+        else
+            !:Fail = merge_has_failed
+        )
+    ;
+        Insts2Plus = [Inst2, Inst3],
+        ( if
+            inst_merge(Inst1, Inst2, Type, Inst12, !ModuleInfo),
+            inst_merge(Inst12, Inst3, Type, Inst123, !ModuleInfo)
+        then
+            !:MergedInsts = [Inst123 | !.MergedInsts]
+        else
+            !:Fail = merge_has_failed
+        )
+    ;
+        Insts2Plus = [Inst2, Inst3, Inst4 | Insts5Plus],
+        ( if
+            inst_merge(Inst1, Inst2, Type, Inst12, !ModuleInfo),
+            inst_merge(Inst3, Inst4, Type, Inst34, !ModuleInfo),
+            inst_merge(Inst12, Inst34, Type, Inst1234, !ModuleInfo)
+        then
+            !:MergedInsts = [Inst1234 | !.MergedInsts],
+            (
+                Insts5Plus = []
+            ;
+                Insts5Plus = [Inst5 | Insts6Plus],
+                insts_merge_pass(Type, Inst5, Insts6Plus,
+                    !MergedInsts, !Fail, !ModuleInfo)
+            )
+        else
+            !:Fail = merge_has_failed
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 

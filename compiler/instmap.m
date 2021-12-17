@@ -406,7 +406,6 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 
-:- import_module bool.
 :- import_module int.
 :- import_module maybe.
 :- import_module one_or_more.
@@ -845,7 +844,7 @@ bind_inst_to_functors(Type, MainConsId, OtherConsIds, InitInst, FinalInst,
         MainFinalInst, !ModuleInfo),
     bind_inst_to_functors_others(Type, OtherConsIds, InitInst,
         OtherFinalInsts, !ModuleInfo),
-    merge_var_insts(Type, MainFinalInst, OtherFinalInsts, MaybeMergedInst,
+    insts_merge(Type, MainFinalInst, OtherFinalInsts, MaybeMergedInst,
         !ModuleInfo),
     (
         MaybeMergedInst = yes(FinalInst)
@@ -1133,8 +1132,7 @@ merge_insts_of_vars([Var | Vars], ArmInstMaps, VarTypes, !InstMapping,
     lookup_var_type(VarTypes, Var, VarType),
     list.map(lookup_var_in_arm_instmap(Var), ArmInstMaps, VarInsts),
     det_head_tail(VarInsts, HeadVarInst, TailVarInsts), 
-    merge_var_insts(VarType, HeadVarInst, TailVarInsts, MaybeInst,
-        !ModuleInfo),
+    insts_merge(VarType, HeadVarInst, TailVarInsts, MaybeInst, !ModuleInfo),
     (
         MaybeInst = no,
         list.map(arm_instmap_project_context, ArmInstMaps, Contexts),
@@ -1157,109 +1155,6 @@ lookup_var_in_arm_instmap(Var, ArmInstMap, Inst) :-
 
 arm_instmap_project_context(ArmErrorInfo, Context) :-
     ArmErrorInfo = arm_instmap(Context, _InstMap).
-
-    % merge_var_insts(Insts, Type, !ModuleInfo, MaybeMergedInst):
-    %
-    % Given a list of insts of a given variable that reflect the inst of that
-    % variable at the ends of a branched control structure such as a
-    % disjunction or if-then-else, return either `yes(MergedInst)' where
-    % MergedInst is the final inst of that variable after the branched control
-    % structure as a whole, or `no' if some of the insts are not compatible.
-    %
-    % We used to use a straightforward algorithm that, given a list of N insts,
-    % merged the tail N-1 insts, and merged the result with the head inst.
-    % While this is simple and efficient for small N, it has very bad
-    % performance for large N. The reason is that its complexity can be N^2,
-    % since in many cases each arm of the branched control structure binds
-    % the variable to a different function symbol, and this means that the
-    % merged inst evolves like this:
-    %
-    %   bound(f)
-    %   bound(f; g)
-    %   bound(f; g; h)
-    %   bound(f; g; h; i)
-    %
-    % Our current algorithm uses a number of passes, each of which divides the
-    % number of insts by four by merging groups of four adjacent insts.
-    % The overall complexity is thus closer to N log N than N^2.
-    %
-:- pred merge_var_insts(mer_type::in, mer_inst::in, list(mer_inst)::in,
-    maybe(mer_inst)::out, module_info::in, module_info::out) is det.
-
-merge_var_insts(Type, HeadInst, TailInsts, MaybeMergedInst, !ModuleInfo) :-
-    merge_var_insts_pass(Type, HeadInst, TailInsts,
-        [], MergedInsts, no, Error, !ModuleInfo),
-    (
-        Error = yes,
-        MaybeMergedInst = no
-    ;
-        Error = no,
-        (
-            MergedInsts = [],
-            % merge_var_insts_pass can return MergedInsts = [], but only
-            % together with Error = yes.
-            unexpected($pred, "MergedInsts = []")
-        ;
-            MergedInsts = [MergedInst1 | MergedInsts2Plus],
-            (
-                MergedInsts2Plus = [],
-                MaybeMergedInst = yes(MergedInst1)
-            ;
-                MergedInsts2Plus = [_ | _],
-                merge_var_insts(Type, MergedInst1, MergedInsts2Plus,
-                    MaybeMergedInst, !ModuleInfo)
-            )
-        )
-    ).
-
-:- pred merge_var_insts_pass(mer_type::in,
-    mer_inst::in, list(mer_inst)::in,
-    list(mer_inst)::in, list(mer_inst)::out,
-    bool::in, bool::out, module_info::in, module_info::out) is det.
-
-merge_var_insts_pass(Type, Inst1, Insts2Plus, !MergedInsts, !Error,
-        !ModuleInfo) :-
-    (
-        Insts2Plus = [],
-        !:MergedInsts = [Inst1 | !.MergedInsts]
-    ;
-        Insts2Plus = [Inst2],
-        ( if
-            inst_merge(Inst1, Inst2, Type, Inst12, !ModuleInfo)
-        then
-            !:MergedInsts = [Inst12 | !.MergedInsts]
-        else
-            !:Error = yes
-        )
-    ;
-        Insts2Plus = [Inst2, Inst3],
-        ( if
-            inst_merge(Inst1, Inst2, Type, Inst12, !ModuleInfo),
-            inst_merge(Inst12, Inst3, Type, Inst123, !ModuleInfo)
-        then
-            !:MergedInsts = [Inst123 | !.MergedInsts]
-        else
-            !:Error = yes
-        )
-    ;
-        Insts2Plus = [Inst2, Inst3, Inst4 | Insts5Plus],
-        ( if
-            inst_merge(Inst1, Inst2, Type, Inst12, !ModuleInfo),
-            inst_merge(Inst3, Inst4, Type, Inst34, !ModuleInfo),
-            inst_merge(Inst12, Inst34, Type, Inst1234, !ModuleInfo)
-        then
-            !:MergedInsts = [Inst1234 | !.MergedInsts],
-            (
-                Insts5Plus = []
-            ;
-                Insts5Plus = [Inst5 | Insts6Plus],
-                merge_var_insts_pass(Type, Inst5, Insts6Plus,
-                    !MergedInsts, !Error, !ModuleInfo)
-            )
-        else
-            !:Error = yes
-        )
-    ).
 
 %---------------------------------------------------------------------------%
 
