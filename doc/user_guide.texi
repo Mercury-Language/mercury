@@ -6974,6 +6974,19 @@ Do not generate messages about inferred modes.
 @findex --inform-suboptimal-packing
 Generate messages if the arguments of a data constructor
 could be packed more tightly if they were reordered.
+
+@c @sp 1
+@c @item --print-error-spec-id
+@c @findex --print-error-spec-id
+@c After each error message printed, print its id, which
+@c by convention is the $pred of the code that constructs it.
+
+@c @sp 1
+@c @item --inform-ignored-pragma-errors
+@c @findex --inform-ignored-pragma-errors
+@c Print an informational message for each otherwise-ignored error
+@c that reports an inability to find the procedure that a pragma refers to.
+
 @end table
 
 @node Verbosity options

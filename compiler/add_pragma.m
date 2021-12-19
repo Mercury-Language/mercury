@@ -1469,24 +1469,22 @@ add_pragma_exceptions(ExceptionsInfo, Context, !ModuleInfo, !Specs) :-
     ExceptionsInfo = pragma_info_exceptions(PredNameArityPFMn, ThrowStatus),
     PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, SymName, UserArity,
         ModeNum),
-    look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
+    % XXX We will just ignore errors for the time being -
+    % it causes errors with transitive-intermodule optimization.
+    % XXX What kinds of errors?
+    look_up_pragma_pf_sym_arity_mode_num(!.ModuleInfo, is_fully_qualified,
         lfh_ignore, Context, "exceptions",
-        PredOrFunc, SymName, UserArity, MaybePredId),
+        PredOrFunc, SymName, UserArity, ModeNum, MaybePredProc),
     (
-        MaybePredId = ok1(PredId),
-        proc_id_to_int(ProcId, ModeNum),
-        module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
-            PredInfo0, ProcInfo0),
+        MaybePredProc = ok4(PredId, ProcId, PredInfo0, ProcInfo0),
         ProcExceptionInfo = proc_exception_info(ThrowStatus, no),
         proc_info_set_exception_info(yes(ProcExceptionInfo),
             ProcInfo0, ProcInfo),
         module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo,
             !ModuleInfo)
     ;
-        MaybePredId = error1(_Specs)
-        % XXX We'll just ignore this for the time being -
-        % it causes errors with transitive-intermodule optimization.
-        % XXX What kinds of errors?
+        MaybePredProc = error4(Specs),
+        !:Specs = Specs ++ !.Specs
     ).
 
 %---------------------%
@@ -1500,24 +1498,22 @@ add_pragma_trailing_info(TrailingInfo, Context, !ModuleInfo, !Specs) :-
         TrailingStatus),
     PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, SymName, UserArity,
         ModeNum),
-    look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
+    % XXX We will just ignore errors for the time being -
+    % it causes errors with transitive-intermodule optimization.
+    % XXX What kinds of errors?
+    look_up_pragma_pf_sym_arity_mode_num(!.ModuleInfo, is_fully_qualified,
         lfh_ignore, Context, "trailing_info",
-        PredOrFunc, SymName, UserArity, MaybePredId),
+        PredOrFunc, SymName, UserArity, ModeNum, MaybePredProc),
     (
-        MaybePredId = ok1(PredId),
-        proc_id_to_int(ProcId, ModeNum),
-        module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
-            PredInfo0, ProcInfo0),
+        MaybePredProc = ok4(PredId, ProcId, PredInfo0, ProcInfo0),
         ProcTrailingInfo = proc_trailing_info(TrailingStatus, no),
         proc_info_set_trailing_info(yes(ProcTrailingInfo),
             ProcInfo0, ProcInfo),
         module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo,
             !ModuleInfo)
     ;
-        MaybePredId = error1(_Specs)
-        % XXX We'll just ignore this for the time being -
-        % it causes errors with transitive-intermodule optimization.
-        % XXX What kinds of errors?
+        MaybePredProc = error4(Specs),
+        !:Specs = Specs ++ !.Specs
     ).
 
 %---------------------%
@@ -1531,24 +1527,22 @@ add_pragma_mm_tabling_info(MMTablingInfo, Context, !ModuleInfo, !Specs) :-
         TablingStatus),
     PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, SymName, UserArity,
         ModeNum),
-    look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
+    % XXX We will just ignore errors for the time being -
+    % it causes errors with transitive-intermodule optimization.
+    % XXX What kinds of errors?
+    look_up_pragma_pf_sym_arity_mode_num(!.ModuleInfo, is_fully_qualified,
         lfh_ignore, Context, "mm_tabling_info",
-        PredOrFunc, SymName, UserArity, MaybePredId),
+        PredOrFunc, SymName, UserArity, ModeNum, MaybePredProc),
     (
-        MaybePredId = ok1(PredId),
-        proc_id_to_int(ProcId, ModeNum),
-        module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
-            PredInfo0, ProcInfo0),
+        MaybePredProc = ok4(PredId, ProcId, PredInfo0, ProcInfo0),
         ProcMMTablingInfo = proc_mm_tabling_info(TablingStatus, no),
         proc_info_set_mm_tabling_info(yes(ProcMMTablingInfo),
             ProcInfo0, ProcInfo),
         module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo,
             !ModuleInfo)
     ;
-        MaybePredId = error1(_Specs)
-        % XXX We'll just ignore this for the time being -
-        % it causes errors with transitive-intermodule optimization.
-        % XXX What kinds of errors?
+        MaybePredProc = error4(Specs),
+        !:Specs = Specs ++ !.Specs
     ).
 
 %---------------------------------------------------------------------------%
@@ -1850,9 +1844,6 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
     (
         PredIds = [],
         (
-            FailHandling = lfh_ignore,
-            Specs = []
-        ;
             FailHandling = lfh_user_error,
             predicate_table_lookup_pf_sym(PredTable,
                 may_be_partially_qualified,
@@ -1867,12 +1858,23 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
                 UserArityInt, OtherArities, Context, DescPieces, [], Specs)
         ;
             FailHandling = lfh_internal_error,
-            Pieces = [words("Internal compiler error:"),
-                words("unknown predicate name in"), pragma_decl(PragmaName),
-                words("declaration."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = report_unknown_pred_or_func(severity_error,
+                PragmaName, Context, PredOrFunc, SymName, UserArity),
             Specs = [Spec]
+        ;
+            FailHandling = lfh_ignore,
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.lookup_bool_option(Globals, inform_ignored_pragma_errors,
+                InformIgnored),
+            (
+                InformIgnored = no,
+                Specs = []
+            ;
+                InformIgnored = yes,
+                Spec = report_unknown_pred_or_func(severity_error,
+                    PragmaName, Context, PredOrFunc, SymName, UserArity),
+                Specs = [Spec]
+            )
         ),
         MaybePredId = error1(Specs)
     ;
@@ -1884,9 +1886,6 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
         expect(unify(IsFullyQualified, may_be_partially_qualified), $pred,
             "two or more PredIds but is_fully_qualified"),
         (
-            FailHandling = lfh_ignore,
-            Specs = []
-        ;
             FailHandling = lfh_user_error,
             StartPieces = [words("Error: ambiguous"), p_or_f(PredOrFunc),
                 words("name in"), pragma_decl(PragmaName),
@@ -1908,14 +1907,83 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
             Specs = [Spec]
         ;
             FailHandling = lfh_internal_error,
+            Spec = report_ambiguous_pred_or_func(severity_error,
+                PragmaName, Context, PredOrFunc, SymName, UserArity),
+            Specs = [Spec]
+        ;
+            FailHandling = lfh_ignore,
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.lookup_bool_option(Globals, inform_ignored_pragma_errors,
+                InformIgnored),
+            (
+                InformIgnored = no,
+                Specs = []
+            ;
+                InformIgnored = yes,
+                Spec = report_ambiguous_pred_or_func(severity_informational,
+                    PragmaName, Context, PredOrFunc, SymName, UserArity),
+                Specs = [Spec]
+            )
+        ),
+        MaybePredId = error1(Specs)
+    ).
+
+:- func report_unknown_pred_or_func(error_severity, string, prog_context,
+    pred_or_func, sym_name, user_arity) = error_spec.
+
+report_unknown_pred_or_func(Severity, PragmaName, Context,
+        PredOrFunc, SymName, UserArity) = Spec :-
+    UserArity = user_arity(UserArityInt),
+    SNA = sym_name_arity(SymName, UserArityInt),
+    Pieces = [words("Internal compiler error:"),
+        words("unknown"), words(pred_or_func_to_full_str(PredOrFunc)),
+        qual_sym_name_arity(SNA), words("in"),
+        pragma_decl(PragmaName), words("declaration."), nl],
+    Spec = simplest_spec($pred, Severity, phase_parse_tree_to_hlds,
+        Context, Pieces).
+
+:- func report_ambiguous_pred_or_func(error_severity, string, prog_context,
+    pred_or_func, sym_name, user_arity) = error_spec.
+
+report_ambiguous_pred_or_func(Severity, PragmaName, Context,
+        PredOrFunc, SymName, UserArity) = Spec :-
+    UserArity = user_arity(UserArityInt),
+    SNA = sym_name_arity(SymName, UserArityInt),
+    Pieces = [words("Internal compiler error:"),
+        words("ambiguous"), words(pred_or_func_to_full_str(PredOrFunc)),
+        words("name"), qual_sym_name_arity(SNA), words("in"),
+        pragma_decl(PragmaName), words("declaration."), nl],
+    Spec = simplest_spec($pred, Severity, phase_parse_tree_to_hlds,
+        Context, Pieces).
+
+:- pred look_up_pragma_pf_sym_arity_mode_num(module_info::in,
+    is_fully_qualified::in, lookup_failure_handling::in, prog_context::in,
+    string::in, pred_or_func::in, sym_name::in, user_arity::in, int::in,
+    maybe4(pred_id, proc_id, pred_info, proc_info)::out) is det.
+
+look_up_pragma_pf_sym_arity_mode_num(ModuleInfo, IsFullyQualified, FailHandling,
+        Context, PragmaName, PredOrFunc, SymName, UserArity, ModeNum,
+        MaybePredProcId) :-
+    look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
+        Context, PragmaName, PredOrFunc, SymName, UserArity, MaybePredId),
+    (
+        MaybePredId = ok1(PredId),
+        proc_id_to_int(ProcId, ModeNum),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        pred_info_get_proc_table(PredInfo, ProcTable),
+        ( if map.search(ProcTable, ProcId, ProcInfo) then
+            MaybePredProcId = ok4(PredId, ProcId, PredInfo, ProcInfo)
+        else
             Pieces = [words("Internal compiler error:"),
                 words("ambiguous predicate name in"), pragma_decl(PragmaName),
                 words("declaration."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_parse_tree_to_hlds, Context, Pieces),
-            Specs = [Spec]
-        ),
-        MaybePredId = error1(Specs)
+            MaybePredProcId = error4([Spec])
+        )
+    ;
+        MaybePredId = error1(Specs),
+        MaybePredProcId = error4(Specs)
     ).
 
 %---------------------%

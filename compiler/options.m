@@ -241,6 +241,7 @@
     ;       inform_inferred_modes
     ;       inform_suboptimal_packing
     ;       print_error_spec_id
+    ;       inform_ignored_pragma_errors
 
     % Verbosity options
     ;       verbose
@@ -1325,6 +1326,7 @@ optdef(oc_warn, inform_inferred_types,                  bool(yes)).
 optdef(oc_warn, inform_inferred_modes,                  bool(yes)).
 optdef(oc_warn, inform_suboptimal_packing,              bool(no)).
 optdef(oc_warn, print_error_spec_id,                    bool(no)).
+optdef(oc_warn, inform_ignored_pragma_errors,           bool(no)).
 
     % Verbosity options.
 
@@ -2241,6 +2243,7 @@ long_option("inform-inferred-types",    inform_inferred_types).
 long_option("inform-inferred-modes",    inform_inferred_modes).
 long_option("inform-suboptimal-packing",    inform_suboptimal_packing).
 long_option("print-error-spec-id",      print_error_spec_id).
+long_option("inform-ignored-pragma-errors", inform_ignored_pragma_errors).
 
 % verbosity options
 long_option("verbose",                  verbose).
@@ -4475,6 +4478,10 @@ options_help_warning(Stream, !IO) :-
 %       "--print-error-spec-id",
 %       "\tAfter each error message printed, print its id, which",
 %       "\tby convention is the $pred of the code that constructs it."
+%       "--inform-ignored-pragma-errors",
+%       "\tPrint an informational message for each otherwise-ignored error",
+%       "\tthat reports an inability to find the procedure that a pragma",
+%       "\trefers to."
     ], !IO).
 
 :- pred options_help_verbosity(io.text_output_stream::in,
