@@ -71,8 +71,8 @@
 
 saved_vars_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
     trace [io(!IO)] (
-        write_proc_progress_message("% Minimizing saved vars in ",
-            PredId, ProcId, !.ModuleInfo, !IO)
+        write_proc_progress_message(!.ModuleInfo,
+            "Minimizing saved vars in", PredId, ProcId, !IO)
     ),
 
     module_info_get_globals(!.ModuleInfo, Globals),

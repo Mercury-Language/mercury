@@ -122,8 +122,8 @@ gen_preds(ModuleInfo, [PredId | PredIds], Code, !IO) :-
 
 gen_pred(_PredId, [], _PredInfo, _ModuleInfo, empty, !IO).
 gen_pred(PredId, [ProcId | ProcIds], PredInfo, ModuleInfo, Code, !IO) :-
-    write_proc_progress_message("% Generating bytecode for ",
-        PredId, ProcId, ModuleInfo, !IO),
+    write_proc_progress_message(ModuleInfo, "Generating bytecode for",
+        PredId, ProcId, !IO),
     gen_proc(ProcId, PredInfo, ModuleInfo, ProcCode),
     gen_pred(PredId, ProcIds, PredInfo, ModuleInfo, ProcsCode, !IO),
     Code = ProcCode ++ ProcsCode.

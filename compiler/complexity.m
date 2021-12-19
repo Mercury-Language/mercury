@@ -180,9 +180,9 @@ complexity_process_proc_msg(NumProcs, ProcMap, PredProcId,
         (
             Verbose = yes,
             trace [io(!IO)] (
-                write_proc_progress_message(
-                    "% Applying complexity experiment transformation to ",
-                    PredId, ProcId, !.ModuleInfo, !IO)
+                write_proc_progress_message(!.ModuleInfo,
+                    "Applying complexity experiment transformation to",
+                    PredId, ProcId, !IO)
             )
         ;
             Verbose = no

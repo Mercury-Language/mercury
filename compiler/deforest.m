@@ -206,8 +206,8 @@ deforest_proc_deltas(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo) :-
     some [!ModuleInfo, !PredInfo, !ProcInfo, !Goal] (
         pd_info_get_module_info(!.PDInfo, !:ModuleInfo),
         trace [io(!IO)] (
-            write_proc_progress_message("% Deforesting ",
-                PredId, ProcId, !.ModuleInfo, !IO)
+            write_proc_progress_message(!.ModuleInfo,
+                "Deforesting", PredId, ProcId, !IO)
         ),
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             !:PredInfo, !:ProcInfo),
@@ -272,8 +272,8 @@ deforest_proc_deltas(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo) :-
 
         pd_info_get_module_info(!.PDInfo, !:ModuleInfo),
         trace [io(!IO)] (
-            write_proc_progress_message("% Finished deforesting ",
-                PredId, ProcId, !.ModuleInfo, !IO)
+            write_proc_progress_message(!.ModuleInfo,
+                "Finished deforesting", PredId, ProcId, !IO)
         ),
         pd_info_get_cost_delta(!.PDInfo, CostDelta),
         pd_info_get_size_delta(!.PDInfo, SizeDelta),
@@ -1310,8 +1310,8 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             pd_info_set_parent_versions(Parents0, !PDInfo),
             pd_info_get_pred_proc_id(!.PDInfo, proc(CurrPredId, CurrProcId)),
             trace [io(!IO)] (
-                write_proc_progress_message("% Back in ",
-                    CurrPredId, CurrProcId, ModuleInfo, !IO)
+                write_proc_progress_message(ModuleInfo,
+                    "Back in", CurrPredId, CurrProcId, !IO)
             ),
             MaybeCallGoal = yes(CallGoal)
         else

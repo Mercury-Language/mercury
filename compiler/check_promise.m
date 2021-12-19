@@ -93,8 +93,8 @@ check_promises_in_pred(PredId, !ToInvalidatePredIds, !ModuleInfo, !Specs) :-
             true
         else
             trace [io(!IO)] (
-                write_pred_progress_message("Checking promises in ", PredId,
-                    !.ModuleInfo, !IO)
+                write_pred_progress_message(!.ModuleInfo,
+                    "Checking promises in", PredId, !IO)
             ),
 
             % Store the declaration in the appropriate table and get the goal

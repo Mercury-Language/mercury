@@ -81,8 +81,8 @@ convert_pred_to_hhf(Simple, PredId, !ModuleInfo, !IO) :-
             pred_info_set_inst_graph_info(!.IG, PredInfo0, PredInfo2)
         )
     else
-        write_pred_progress_message("% Calculating HHF and inst graph for ",
-            PredId, !.ModuleInfo, !IO),
+        write_pred_progress_message(!.ModuleInfo,
+            "Calculating HHF and inst graph for", PredId, !IO),
 
         pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
         convert_clauses_info_to_hhf(Simple, !.ModuleInfo, ClausesInfo0,

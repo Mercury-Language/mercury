@@ -164,8 +164,7 @@ simplify_pred_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo,
 
 simplify_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo, !ProcInfo)  :-
     trace [io(!IO)] (
-        write_pred_progress_message("% Simplifying ", PredId, !.ModuleInfo,
-            !IO)
+        write_pred_progress_message(!.ModuleInfo, "Simplifying", PredId, !IO)
     ),
     simplify_proc_return_msgs(SimplifyTasks, PredId, ProcId, !ModuleInfo,
         !ProcInfo, _).

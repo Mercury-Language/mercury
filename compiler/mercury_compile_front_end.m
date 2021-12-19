@@ -1311,8 +1311,7 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
 
 simplify_pred(SimplifyTasks0, PredId, !ModuleInfo, !PredInfo, !Specs) :-
     trace [io(!IO)] (
-        write_pred_progress_message("% Simplifying ", PredId, !.ModuleInfo,
-            !IO)
+        write_pred_progress_message(!.ModuleInfo, "Simplifying", PredId, !IO)
     ),
     ProcIds = pred_info_valid_non_imported_procids(!.PredInfo),
     % Don't warn for compiler-generated procedures.

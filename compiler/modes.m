@@ -624,21 +624,21 @@ write_modes_progress_message(ModuleInfo, WhatToCheck, PredId, PredInfo, !IO) :-
     ( if check_marker(Markers, marker_infer_modes) then
         (
             WhatToCheck = check_modes,
-            Msg = "% Mode-analysing "
+            Msg = "Mode-analysing"
         ;
             WhatToCheck = check_unique_modes,
-            Msg = "% Unique-mode-analysing "
+            Msg = "Unique-mode-analysing"
         )
     else
         (
             WhatToCheck = check_modes,
-            Msg = "% Mode-checking "
+            Msg = "Mode-checking"
         ;
             WhatToCheck = check_unique_modes,
-            Msg = "% Unique-mode-checking "
+            Msg = "Unique-mode-checking"
         )
     ),
-    write_pred_progress_message(Msg, PredId, ModuleInfo, !IO).
+    write_pred_progress_message(ModuleInfo, Msg, PredId, !IO).
 
 %-----------------------------------------------------------------------------%
 

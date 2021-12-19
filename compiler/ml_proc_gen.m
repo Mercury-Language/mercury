@@ -527,8 +527,8 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
     PredProcIdInfo =
         pred_proc_id_info(PredProcId, PredInfo, ProcInfo, ProcContext),
     trace [io(!IO)] (
-        write_proc_progress_message("% Generating MLDS code for ",
-            PredProcId, ModuleInfo, !IO)
+        write_proc_progress_message(ModuleInfo,
+            "Generating MLDS code for", PredProcId, !IO)
     ),
 
     some [!Info] (
@@ -1248,8 +1248,8 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         _CopyOutValThroughPtrStmts),
 
     trace [io(!IO)] (
-        write_proc_progress_message("% Generating in-TSCC MLDS code for ",
-            PredProcId, ModuleInfo, !IO)
+        write_proc_progress_message(ModuleInfo,
+            "Generating in-TSCC MLDS code for", PredProcId, !IO)
     ),
 
     some [!Info] (
@@ -1326,8 +1326,8 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
 construct_tscc_entry_proc(ModuleInfo, LoopKind, PredProcCodes,
         EnvVarNames, EntryProcDescComments, EntryProc, FuncDefn) :-
     trace [io(!IO)] (
-        write_proc_progress_message("% Generating MLDS code for ",
-            EntryProc, ModuleInfo, !IO)
+        write_proc_progress_message(ModuleInfo,
+            "Generating MLDS code for", EntryProc, !IO)
     ),
 
     list.map_foldl2(construct_func_body_for_tscc(EntryProc),

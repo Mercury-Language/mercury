@@ -222,14 +222,10 @@
 
 size_prof_process_proc_msg(Transform, PredProcId, !ProcInfo, !ModuleInfo) :-
     trace [io(!IO)] (
-        write_proc_progress_message("% Adding typeinfos in ",
-            PredProcId, !.ModuleInfo, !IO)
+        write_proc_progress_message(!.ModuleInfo,
+            "Size profiling", PredProcId, !IO)
     ),
-    size_prof_process_proc(Transform, PredProcId, !ProcInfo, !ModuleInfo),
-    trace [io(!IO)] (
-        write_proc_progress_message("done.\n",
-            PredProcId, !.ModuleInfo, !IO)
-    ).
+    size_prof_process_proc(Transform, PredProcId, !ProcInfo, !ModuleInfo).
 
 :- pred size_prof_process_proc(construct_transform::in, pred_proc_id::in,
     proc_info::in, proc_info::out,

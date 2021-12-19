@@ -408,37 +408,35 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, SCCMap, PredId, PredInfo,
         simptask_elim_removable_scopes | SimpList1],
     SimplifyTasks = list_to_simplify_tasks(Globals, SimpList),
     trace [io(!IO)] (
-        write_proc_progress_message("% Simplifying ", PredId, ProcId,
-            !.HLDS, !IO)
+        write_proc_progress_message(!.HLDS, "Simplifying", PredId, ProcId, !IO)
     ),
     simplify_proc(SimplifyTasks, PredId, ProcId, !HLDS, !ProcInfo),
     trace [io(!IO)] (
-        write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
-            !.HLDS, !IO)
+        write_proc_progress_message(!.HLDS,
+            "Computing liveness in", PredId, ProcId, !IO)
     ),
     detect_liveness_proc(!.HLDS, PredProcId, !ProcInfo),
     trace [io(!IO)] (
-        write_proc_progress_message(
-            "% Marking directly tail recursive calls in ", PredId, ProcId,
-            !.HLDS, !IO)
+        write_proc_progress_message(!.HLDS,
+            "Marking directly tail recursive calls in", PredId, ProcId, !IO)
     ),
     mark_tail_rec_calls_in_proc_for_llds_code_gen(!.HLDS, PredId, ProcId,
         PredInfo, SCCMap, !ProcInfo, !Specs),
 
     trace [io(!IO)] (
-        write_proc_progress_message("% Allocating stack slots in ", PredId,
-            ProcId, !.HLDS, !IO)
+        write_proc_progress_message(!.HLDS,
+            "Allocating stack slots in", PredId, ProcId, !IO)
     ),
     allocate_stack_slots_in_proc(!.HLDS, PredProcId, !ProcInfo),
     trace [io(!IO)] (
-        write_proc_progress_message(
-            "% Allocating storage locations for live vars in ",
-            PredId, ProcId, !.HLDS, !IO)
+        write_proc_progress_message(!.HLDS,
+            "Allocating storage locations for live vars in",
+            PredId, ProcId, !IO)
     ),
     allocate_store_maps(final_allocation, !.HLDS, PredProcId, !ProcInfo),
     trace [io(!IO)] (
-        write_proc_progress_message("% Generating low-level (LLDS) code for ",
-            PredId, ProcId, !.HLDS, !IO)
+        write_proc_progress_message(!.HLDS,
+            "Generating low-level (LLDS) code for", PredId, ProcId, !IO)
     ),
     generate_proc_code(!.HLDS, ConstStructMap, PredId, PredInfo,
          ProcId, !.ProcInfo, CProc0, !GlobalData),
@@ -452,9 +450,9 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, SCCMap, PredId, PredInfo,
         CProc = CProc0
     ),
     trace [io(!IO)] (
-        write_proc_progress_message(
-            "% Generating call continuation information for ",
-            PredId, ProcId, !.HLDS, !IO)
+        write_proc_progress_message(!.HLDS,
+            "Generating call continuation information for",
+            PredId, ProcId, !IO)
     ),
     maybe_collect_call_continuations_in_cproc(!.HLDS, CProc, !GlobalData).
 

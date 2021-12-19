@@ -171,8 +171,8 @@ detect_switches_in_pred(Info, PredId, !PredInfo) :-
         NonImportedProcIds = [_ | _],
         trace [io(!IO)] (
             ModuleInfo = Info ^ sdi_module_info,
-            write_pred_progress_message("% Detecting switches in ", PredId,
-                ModuleInfo, !IO)
+            write_pred_progress_message(ModuleInfo,
+                "Detecting switches in", PredId, !IO)
         ),
         pred_info_get_proc_table(!.PredInfo, ProcTable0),
         map.to_assoc_list(ProcTable0, ProcList0),

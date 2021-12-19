@@ -513,16 +513,16 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, NextIteration) :-
             % declaration of `pred foo(T1, T2, ..., TN)' by make_hlds.m.
             Inferring = yes,
             trace [io(!IO)] (
-                write_pred_progress_message("% Inferring type of ",
-                    PredId, ModuleInfo, !IO)
+                write_pred_progress_message(ModuleInfo,
+                    "Inferring type of", PredId, !IO)
             ),
             !:ExternalTypeParams = [],
             PredConstraints = constraints([], [])
         else
             Inferring = no,
             trace [io(!IO)] (
-                write_pred_progress_message("% Type-checking ", PredId,
-                    ModuleInfo, !IO)
+                write_pred_progress_message(ModuleInfo,
+                    "Type-checking", PredId, !IO)
             ),
             type_vars_list(ArgTypes0, !:ExternalTypeParams),
             pred_info_get_class_context(!.PredInfo, PredConstraints),

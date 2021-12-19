@@ -226,31 +226,19 @@
 %-----------------------------------------------------------------------------%
 
 unneeded_process_proc_msg(PredProcId, !ProcInfo, !ModuleInfo) :-
+    trace [io(!IO)] (
+        write_proc_progress_message(!.ModuleInfo,
+            "Removing dead code in", PredProcId, !IO)
+    ),
     % The transformation considers every nonlocal variable of a goal
     % that is bound on entry to be consumed by that goal. If the nonlocal set
     % contains any such variables that are not actually needed by the goal,
     % then the transformation will not be as effective as it could be.
     % Therefore we preprocess the procedure body to ensure that the nonlocals
     % sets are accurate reflections of the true needs of goals.
-
-    trace [io(!IO)] (
-        write_proc_progress_message("% Removing dead code in ",
-            PredProcId, !.ModuleInfo, !IO)
-    ),
     unneeded_pre_process_proc(!ProcInfo),
     PredProcId = proc(PredId, _),
-    unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, 1, Successful),
-    trace [io(!IO)] (
-        (
-            Successful = yes,
-            write_proc_progress_message("% done.\n",
-                PredProcId, !.ModuleInfo, !IO)
-        ;
-            Successful = no,
-            write_proc_progress_message("% none found.\n",
-                PredProcId, !.ModuleInfo, !IO)
-        )
-    ).
+    unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, 1, _Successful).
 
 :- pred unneeded_pre_process_proc(proc_info::in, proc_info::out) is det.
 

@@ -145,14 +145,13 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred write_pred_progress_message(string::in, pred_id::in, module_info::in,
-    io::di, io::uo) is det.
+:- pred write_pred_progress_message(module_info::in, string::in,
+    pred_id::in, io::di, io::uo) is det.
 
-:- pred write_proc_progress_message(string::in, pred_proc_id::in,
-    module_info::in, io::di, io::uo) is det.
-
-:- pred write_proc_progress_message(string::in, pred_id::in, proc_id::in,
-    module_info::in, io::di, io::uo) is det.
+:- pred write_proc_progress_message(module_info::in, string::in,
+    pred_proc_id::in, io::di, io::uo) is det.
+:- pred write_proc_progress_message(module_info::in, string::in,
+    pred_id::in, proc_id::in, io::di, io::uo) is det.
 
 :- pred maybe_report_sizes(module_info::in, io::di, io::uo) is det.
 
@@ -393,7 +392,7 @@ seq_process_valid_nonimported_procs(PredId, [ProcId | ProcIds], !Task,
 
 %---------------------------------------------------------------------------%
 
-write_pred_progress_message(Message, PredId, ModuleInfo, !IO) :-
+write_pred_progress_message(ModuleInfo, Message, PredId, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
@@ -401,15 +400,16 @@ write_pred_progress_message(Message, PredId, ModuleInfo, !IO) :-
         module_info_get_name(ModuleInfo, ModuleName),
         globals.get_progress_output_stream(Globals, ModuleName, Stream, !IO),
         PredStr = pred_id_to_string(ModuleInfo, PredId),
-        io.format(Stream, "%s%s\n", [s(Message), s(PredStr)], !IO)
+        io.format(Stream, "%% %s %s\n", [s(Message), s(PredStr)], !IO),
+        io.flush_output(Stream, !IO)
     ;
         VeryVerbose = no
     ).
 
-write_proc_progress_message(Message, proc(PredId, ProcId), ModuleInfo, !IO) :-
-    write_proc_progress_message(Message, PredId, ProcId, ModuleInfo, !IO).
+write_proc_progress_message(ModuleInfo, Message, proc(PredId, ProcId), !IO) :-
+    write_proc_progress_message(ModuleInfo, Message, PredId, ProcId, !IO).
 
-write_proc_progress_message(Message, PredId, ProcId, ModuleInfo, !IO) :-
+write_proc_progress_message(ModuleInfo, Message, PredId, ProcId, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
@@ -417,7 +417,8 @@ write_proc_progress_message(Message, PredId, ProcId, ModuleInfo, !IO) :-
         module_info_get_name(ModuleInfo, ModuleName),
         globals.get_progress_output_stream(Globals, ModuleName, Stream, !IO),
         ProcStr = pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId),
-        io.format(Stream, "%s%s\n", [s(Message), s(ProcStr)], !IO)
+        io.format(Stream, "%% %s %s\n", [s(Message), s(ProcStr)], !IO),
+        io.flush_output(Stream, !IO)
     ;
         VeryVerbose = no
     ).

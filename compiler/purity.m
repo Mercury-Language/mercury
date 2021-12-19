@@ -222,8 +222,8 @@ maybe_puritycheck_preds([PredId | PredIds], !ModuleInfo, !Specs) :-
         true
     else
         trace [io(!IO)] (
-            write_pred_progress_message("% Purity-checking ", PredId,
-                !.ModuleInfo, !IO)
+            write_pred_progress_message(!.ModuleInfo,
+                "Purity-checking", PredId, !IO)
         ),
         puritycheck_pred(PredId, PredInfo0, PredInfo, !.ModuleInfo, !Specs),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)

@@ -1019,9 +1019,8 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                write_pred_progress_message(
-                    "% Eliminated opt_imported predicate ",
-                    PredId, ModuleInfo, !IO)
+                write_pred_progress_message(ModuleInfo,
+                    "Eliminated opt_imported predicate", PredId, !IO)
             )
         ;
             VeryVerbose = no
@@ -1061,9 +1060,8 @@ dead_proc_eliminate_proc(ProcElimInfo, Keep, PredId, ProcId,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                write_proc_progress_message(
-                    "% Eliminated the dead procedure ",
-                    PredId, ProcId, ModuleInfo, !IO)
+                write_proc_progress_message(ModuleInfo,
+                    "Eliminated the dead procedure", PredId, ProcId, !IO)
             )
         ;
             VeryVerbose = no

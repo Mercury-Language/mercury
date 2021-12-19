@@ -616,8 +616,8 @@ mc_process_pred(PredId, SCC, !ModeConstraint, !MCI,
         !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     trace [io(!IO)] (
-        write_pred_progress_message("% Calculating mode constraints for ",
-            PredId, !.ModuleInfo, !IO),
+        write_pred_progress_message(!.ModuleInfo,
+            "Calculating mode constraints for ", PredId, !IO),
         io.flush_output(!IO)
     ),
 

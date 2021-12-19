@@ -10,7 +10,7 @@
 % File: delay_construct.m.
 % Author: zs.
 %
-% This module transforms sequences of goals in procedure bodies.  It looks for
+% This module transforms sequences of goals in procedure bodies. It looks for
 % a unification that constructs a ground term followed by primitive goals, at
 % least one of which can fail, and none of which take the variable
 % representing the cell as their input. Such code sequences cause the cell to
@@ -62,8 +62,8 @@
 
 delay_construct_proc(ModuleInfo, proc(PredId, ProcId), !ProcInfo) :-
     trace [io(!IO)] (
-        write_proc_progress_message("% Delaying construction unifications in ",
-            PredId, ProcId, ModuleInfo, !IO)
+        write_proc_progress_message(ModuleInfo,
+            "Delaying construction unifications in", PredId, ProcId, !IO)
     ),
     module_info_get_globals(ModuleInfo, Globals),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -179,8 +179,8 @@ delay_construct_in_goal(Goal0, InstMap0, DelayInfo, Goal) :-
 % We maintain a list of delayed construction unifications that construct
 % ground terms, and the set of variables they define.
 %
-% When we find other construction unifications, we add them to the list.  It
-% does not matter if they depend on other delayed construction unifications;
+% When we find other construction unifications, we add them to the list.
+% It does not matter if they depend on other delayed construction unifications;
 % when we put them back into the conjunction, we do so in the original order.
 %
 % There are several reasons why we may not be able to delay a construction

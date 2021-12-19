@@ -158,8 +158,8 @@ closure_analyse_proc(Debug, PPId, !ModuleInfo) :-
     ClosureInfo0 = closure_info_init(!.ModuleInfo, VarTypes, HeadVars,
         ArgModes),
     trace [io(!TIO)] (
-        write_proc_progress_message("% Analysing closures in ",
-            PPId, !.ModuleInfo, !TIO)
+        write_proc_progress_message(!.ModuleInfo,
+            "Analysing closures in", PPId, !TIO)
     ),
     proc_info_get_goal(ProcInfo0, Body0),
     closure_analyse_goal(VarTypes, !.ModuleInfo, Body0, Body,

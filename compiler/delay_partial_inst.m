@@ -224,8 +224,8 @@ delay_partial_inst_preds_acc([PredId | PredIds], !RevChangedPredIds,
 delay_partial_inst_proc(ModuleInfo, PredId, ProcTable, ProcId,
         !ChangedProcs) :-
     trace [io(!IO)] (
-        write_proc_progress_message("% Delaying partial instantiations in ",
-            PredId, ProcId, ModuleInfo, !IO)
+        write_proc_progress_message(ModuleInfo,
+            "Delaying partial instantiations in", PredId, ProcId, !IO)
     ),
     some [!ProcInfo] (
         map.lookup(ProcTable, ProcId, !:ProcInfo),

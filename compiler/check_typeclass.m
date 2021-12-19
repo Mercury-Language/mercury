@@ -1689,8 +1689,8 @@ check_typeclass_constraints_on_pred(ModuleInfo, PredId, !Specs) :-
         % constraints does not matter.
         AllConstraints = UnivConstraints ++ ExistConstraints,
         trace [io(!IO)] (
-            write_pred_progress_message("% Checking typeclass constraints on ",
-                PredId, ModuleInfo, !IO)
+            write_pred_progress_message(ModuleInfo,
+                "Checking typeclass constraints on", PredId, !IO)
         ),
 
         % Check that all class ids mentioned in the constraints

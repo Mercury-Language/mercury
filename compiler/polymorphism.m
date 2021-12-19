@@ -336,8 +336,8 @@ fixup_pred_polymorphism(PredId, !ExistsCastPredIds, !ModuleInfo) :-
     % even though it is almost never of interest.
     % That is why we enable it only when requested.
     trace [compiletime(flag("poly_msgs")), io(!IO)] (
-        write_pred_progress_message("% Fixup pred polymorphism for ",
-            PredId, !.ModuleInfo, !IO)
+        write_pred_progress_message(!.ModuleInfo,
+            "Fixup pred polymorphism for", PredId, !IO)
     ),
 
     module_info_get_preds(!.ModuleInfo, PredTable0),
@@ -391,8 +391,8 @@ polymorphism_process_pred_msg(PredId, !SafeToContinue, !Specs, !ModuleInfo) :-
     % even though it is almost never of interest.
     % That is why we enable it only when requested.
     trace [compiletime(flag("poly_msgs")), io(!IO)] (
-        write_pred_progress_message("% Transforming polymorphism for ",
-            PredId, !.ModuleInfo, !IO)
+        write_pred_progress_message(!.ModuleInfo,
+            "Transforming polymorphism for", PredId, !IO)
     ),
     polymorphism_process_pred(PredId, PredSafeToContinue, !Specs, !ModuleInfo),
     (

@@ -688,9 +688,8 @@ make_direct_arg_in_out_clone(PredProcId, OoMInOutArgs, ProcInOut,
     ;
         VeryVerbose = yes,
         trace [io(!IO)] (
-            write_proc_progress_message("% Cloning ", PredProcId,
-                !.ModuleInfo, !IO),
-            io.flush_output(!IO)
+            write_proc_progress_message(!.ModuleInfo,
+                "Cloning", PredProcId, !IO)
         )
     ),
 
@@ -1007,9 +1006,8 @@ transform_direct_arg_in_out_calls_in_proc(DirectArgProcMap,
     ;
         VeryVerbose = yes,
         trace [io(!IO)] (
-            write_proc_progress_message("% Direct arg in out transforming ",
-                PredId, ProcId, !.ModuleInfo, !IO),
-            io.flush_output(!IO)
+            write_proc_progress_message(!.ModuleInfo,
+                "Direct arg in out transforming", PredId, ProcId, !IO)
         )
     ),
     proc_info_get_varset(!.ProcInfo, VarSet0),

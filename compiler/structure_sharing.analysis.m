@@ -482,9 +482,9 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !DepProcs) :-
     TabledAsDescr = ss_fixpoint_table_get_short_description(PPId,
         !.FixpointTable),
     trace [io(!IO)] (
-        write_proc_progress_message(
-            "% Sharing analysis (run " ++ string.int_to_string(Run) ++ ") ",
-            PPId, ModuleInfo, !IO)
+        write_proc_progress_message(ModuleInfo,
+            "Sharing analysis (run " ++ string.int_to_string(Run) ++ ")",
+            PPId, !IO)
     ),
 
     % In some cases the sharing can be predicted to be bottom, in which

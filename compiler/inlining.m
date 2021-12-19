@@ -468,8 +468,7 @@ maybe_mark_proc_to_be_inlined(Params, ModuleInfo, PredProcId,
 mark_proc_to_be_inlined(ModuleInfo, PredProcId, !ShouldInlineProcs) :-
     set.insert(PredProcId, !ShouldInlineProcs),
     trace [io(!IO)] (
-        write_proc_progress_message("% Inlining ", PredProcId,
-            ModuleInfo, !IO)
+        write_proc_progress_message(ModuleInfo, "Inlining", PredProcId, !IO)
     ).
 
 :- pred should_proc_be_inlined(inline_params::in, module_info::in,
