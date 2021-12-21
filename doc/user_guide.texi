@@ -6978,7 +6978,7 @@ could be packed more tightly if they were reordered.
 @c @sp 1
 @c @item --print-error-spec-id
 @c @findex --print-error-spec-id
-@c After each error message printed, print its id, which
+@c After each error message is printed, print its id, which
 @c by convention is the $pred of the code that constructs it.
 
 @c @sp 1

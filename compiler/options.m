@@ -4476,7 +4476,7 @@ options_help_warning(Stream, !IO) :-
         "\tGenerate messages if the arguments of a data constructor",
         "\tcould be packed more tightly if they were reordered."
 %       "--print-error-spec-id",
-%       "\tAfter each error message printed, print its id, which",
+%       "\tAfter each error message is printed, print its id, which",
 %       "\tby convention is the $pred of the code that constructs it."
 %       "--inform-ignored-pragma-errors",
 %       "\tPrint an informational message for each otherwise-ignored error",
