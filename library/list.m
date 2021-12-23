@@ -324,7 +324,7 @@
 
     % delete_nth(List0, N, List):
     %
-    % True iff List0 has an Nth element,
+    % True iff List0 has an N'th element,
     % and List is List0 with this element deleted.
     %
 :- pred delete_nth(list(T)::in, int::in, list(T)::out) is semidet.
@@ -1961,7 +1961,7 @@
 
     % map_foldr(Pred, InList, OutList, Start, End):
     %
-    % Calls Pred on each element of InList, working left-to-right.
+    % Calls Pred on each element of InList, working right-to-left.
     % The second argument of that call will be included in OutList,
     % while the third and fourth will represent respectively
     % the current and the next value of a piece of state.
