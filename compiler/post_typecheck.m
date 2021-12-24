@@ -172,6 +172,43 @@ post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId, !PredInfo,
         true
     ).
 
+%---------------------%
+
+:- pred report_unbound_inst_vars(module_info::in, pred_id::in,
+    list(proc_id)::in, pred_info::in, pred_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcIds, !PredInfo,
+        !Specs) :-
+    (
+        ErrorProcIds = []
+    ;
+        ErrorProcIds = [_ | _],
+        pred_info_get_proc_table(!.PredInfo, ProcTable0),
+        list.foldl2(report_unbound_inst_var_error(ModuleInfo, PredId),
+            ErrorProcIds, ProcTable0, ProcTable, !Specs),
+        pred_info_set_proc_table(ProcTable, !PredInfo)
+    ).
+
+:- pred report_unbound_inst_var_error(module_info::in,
+    pred_id::in, proc_id::in, proc_table::in, proc_table::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_unbound_inst_var_error(ModuleInfo, PredId, ProcId, Procs0, Procs,
+        !Specs) :-
+    map.lookup(Procs0, ProcId, ProcInfo),
+    proc_info_get_context(ProcInfo, Context),
+    Pieces = [words("In"), decl("mode"), words("declaration for")] ++
+        describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId)
+        ++ [suffix(":"), nl,
+        words("error: unbound inst variable(s)."), nl,
+        words("(Sorry, polymorphic modes are not supported.)"), nl],
+    Spec = simplest_spec($pred, severity_error, phase_type_check,
+        Context, Pieces),
+    !:Specs = [Spec | !.Specs],
+    % Delete this mode, to avoid internal errors.
+    map.det_remove(ProcId, _, Procs0, Procs).
+
 %---------------------------------------------------------------------------%
 
     % Check that the all of the types which have been inferred for the
@@ -794,43 +831,6 @@ propagate_types_into_var_modes(ModuleInfo, VarTypes,
     lookup_var_type(VarTypes, Var, Type),
     propagate_type_into_mode(ModuleInfo, Type, Mode0, Mode),
     propagate_types_into_var_modes(ModuleInfo, VarTypes, VarsModes0, VarsModes).
-
-%---------------------------------------------------------------------------%
-
-:- pred report_unbound_inst_vars(module_info::in, pred_id::in,
-    list(proc_id)::in, pred_info::in, pred_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcIds, !PredInfo,
-        !Specs) :-
-    (
-        ErrorProcIds = []
-    ;
-        ErrorProcIds = [_ | _],
-        pred_info_get_proc_table(!.PredInfo, ProcTable0),
-        list.foldl2(report_unbound_inst_var_error(ModuleInfo, PredId),
-            ErrorProcIds, ProcTable0, ProcTable, !Specs),
-        pred_info_set_proc_table(ProcTable, !PredInfo)
-    ).
-
-:- pred report_unbound_inst_var_error(module_info::in,
-    pred_id::in, proc_id::in, proc_table::in, proc_table::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-report_unbound_inst_var_error(ModuleInfo, PredId, ProcId, Procs0, Procs,
-        !Specs) :-
-    map.lookup(Procs0, ProcId, ProcInfo),
-    proc_info_get_context(ProcInfo, Context),
-    Pieces = [words("In"), decl("mode"), words("declaration for")] ++
-        describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId)
-        ++ [suffix(":"), nl,
-        words("error: unbound inst variable(s)."), nl,
-        words("(Sorry, polymorphic modes are not supported.)"), nl],
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
-        Context, Pieces),
-    !:Specs = [Spec | !.Specs],
-    % Delete this mode, to avoid internal errors.
-    map.det_remove(ProcId, _, Procs0, Procs).
 
 %---------------------------------------------------------------------------%
 
