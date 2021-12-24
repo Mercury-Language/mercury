@@ -450,61 +450,88 @@ propagate_type_into_bound_inst(ModuleInfo, Type, Inst0, Inst) :-
     Inst0 = bound(Uniq, InstResults0, BoundInsts0),
     % Test for the most frequent kinds of type_ctors first.
     % XXX Replace with a switch on Type.
-    ( if
-        type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
-        TypeCtor = type_ctor(qualified(TypeModule, _), _),
-        module_info_get_type_table(ModuleInfo, TypeTable),
-        search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-        hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
-        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        TypeBody = hlds_du_type(TypeBodyDu),
-        OoMConstructors = TypeBodyDu ^ du_type_ctors
-    then
-        ( if
-            InstResults0 = inst_test_results(_, _, _, _, _, PropagatedResult0),
-            PropagatedResult0 =
-                inst_result_type_ctor_propagated(PropagatedTypeCtor0),
-            PropagatedTypeCtor0 = TypeCtor,
-            TypeParams = []
-        then
-            % The job has already been done.
-            Inst = Inst0
-        else
-            map.from_corresponding_lists(TypeParams, TypeArgs, ArgSubst),
-            Constructors = one_or_more_to_list(OoMConstructors),
-            propagate_subst_type_ctor_into_bound_insts(ModuleInfo,
-                ArgSubst, TypeCtor, TypeModule, Constructors,
-                BoundInsts0, BoundInsts1),
-            list.sort(BoundInsts1, BoundInsts),
-            PropagatedResult = inst_result_type_ctor_propagated(TypeCtor),
+    (
+        Type = builtin_type(BuiltinType),
+        (
+            BuiltinType = builtin_type_char,
+            % There is no need to sort BoundInsts; if BoundInsts0 is sorted,
+            % which it should be, then BoundInsts will be sorted too.
+            list.map(propagate_char_type, BoundInsts0, BoundInsts),
+            % Tuples don't have a *conventional* type_ctor.
+            % XXX Tuples?
+            PropagatedResult = inst_result_no_type_ctor_propagated,
             construct_new_bound_inst(Uniq, InstResults0, PropagatedResult,
                 BoundInsts, Inst)
+        ;
+            ( BuiltinType = builtin_type_int(_)
+            ; BuiltinType = builtin_type_float
+            ; BuiltinType = builtin_type_string
+            ),
+            % Builtin types other than char have no info to propagate
+            % into an inst.
+            Inst = Inst0
         )
-    else if
-        type_is_tuple(Type, TupleArgTypes)
-    then
+    ;
+        Type = tuple_type(ArgTypes, _Kind),
         % There is no need to sort BoundInsts; if BoundInsts0 is sorted,
         % which it should be, then BoundInsts will be sorted too.
-        list.map(propagate_types_into_tuple(ModuleInfo, TupleArgTypes),
+        list.map(propagate_types_into_tuple(ModuleInfo, ArgTypes),
             BoundInsts0, BoundInsts),
         % Tuples don't have a *conventional* type_ctor.
         PropagatedResult = inst_result_no_type_ctor_propagated,
         construct_new_bound_inst(Uniq, InstResults0, PropagatedResult,
             BoundInsts, Inst)
-    else if
-        Type = builtin_type(builtin_type_char)
-    then
-        % There is no need to sort BoundInsts; if BoundInsts0 is sorted,
-        % which it should be, then BoundInsts will be sorted too.
-        list.map(propagate_char_type, BoundInsts0, BoundInsts),
-        % Tuples don't have a *conventional* type_ctor.
-        PropagatedResult = inst_result_no_type_ctor_propagated,
-        construct_new_bound_inst(Uniq, InstResults0, PropagatedResult,
-            BoundInsts, Inst)
-    else
-        % Type variables, and builtin types other than char,
-        % don't need processing.
+    ;
+        ( Type = type_variable(_, _)
+        ; Type = higher_order_type(_, _, _, _, _)
+        ; Type = apply_n_type(_, _, _)
+        ),
+        % Type variables have no info to propagate into an inst.
+        % Higher order types may have some, but we have not traditionally
+        % propagated them.
         Inst = Inst0
+    ;
+        Type = defined_type(SymName, ArgTypes, _Kind),
+        ( if
+            SymName = qualified(TypeModule, _),
+            module_info_get_type_table(ModuleInfo, TypeTable),
+            TypeCtor = type_ctor(SymName, list.length(ArgTypes)),
+            search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+            hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
+            hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+            TypeBody = hlds_du_type(TypeBodyDu)
+        then
+            ( if
+                InstResults0 = inst_test_results(_, _, _, _, _,
+                    PropagatedResult0),
+                PropagatedResult0 =
+                    inst_result_type_ctor_propagated(PropagatedTypeCtor0),
+                PropagatedTypeCtor0 = TypeCtor,
+                TypeParams = []
+            then
+                % The job has already been done.
+                Inst = Inst0
+            else
+                map.from_corresponding_lists(TypeParams, ArgTypes, ArgSubst),
+                OoMConstructors = TypeBodyDu ^ du_type_ctors,
+                Constructors = one_or_more_to_list(OoMConstructors),
+                propagate_subst_type_ctor_into_bound_insts(ModuleInfo,
+                    ArgSubst, TypeCtor, TypeModule, Constructors,
+                    BoundInsts0, BoundInsts1),
+                list.sort(BoundInsts1, BoundInsts),
+                PropagatedResult = inst_result_type_ctor_propagated(TypeCtor),
+                construct_new_bound_inst(Uniq, InstResults0, PropagatedResult,
+                    BoundInsts, Inst)
+            )
+        else
+            % Type variables have no info to propagate into an inst.
+            % Higher order types may have some, but we have not traditionally
+            % propagated them.
+            Inst = Inst0
+        )
+    ;
+        Type = kinded_type(KindedType, _Kind),
+        propagate_type_into_bound_inst(ModuleInfo, KindedType, Inst0, Inst)
     ).
 
 :- pred construct_new_bound_inst(uniqueness::in, inst_test_results::in,
