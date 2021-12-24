@@ -103,11 +103,11 @@
     %
 :- pred subst_type_is_nonground(mer_type::in, tsubst::in) is semidet.
 
-    % type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs):
+    % type_has_variable_arity_ctor(Type, TypeCtor, ArgTypes):
     %
     % Check if the principal type constructor of Type is of variable arity.
     % If yes, return the type constructor as TypeCtor and its args as
-    % TypeArgs. If not, fail.
+    % ArgTypes. If not, fail.
     %
 :- pred type_has_variable_arity_ctor(mer_type::in, type_ctor::out,
     list(mer_type)::out) is semidet.
@@ -503,49 +503,50 @@ subst_type_is_nonground(Type, TSubst) :-
         true
     ).
 
-type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs) :-
+type_has_variable_arity_ctor(Type, TypeCtor, ArgTypes) :-
     ( if
-        type_is_higher_order_details(Type, _Purity, PredOrFunc, _, TypeArgs0)
+        type_is_higher_order_details(Type, _Purity, PredOrFunc, _, ArgTypes0)
     then
-        TypeArgs = TypeArgs0,
+        ArgTypes = ArgTypes0,
         PredOrFuncStr = prog_out.pred_or_func_to_str(PredOrFunc),
         TypeCtor = type_ctor(unqualified(PredOrFuncStr), 0)
     else if
-        type_is_tuple(Type, TypeArgs1)
+        type_is_tuple(Type, ArgTypes1)
     then
-        TypeArgs = TypeArgs1,
+        ArgTypes = ArgTypes1,
         % XXX why tuple/0 and not {}/N ?
         TypeCtor = type_ctor(unqualified("tuple"), 0)
     else
         fail
     ).
 
-type_to_ctor_and_args(Type, TypeCtor, Args) :-
+type_to_ctor_and_args(Type, TypeCtor, ArgTypes) :-
     require_complete_switch [Type]
     (
         Type = type_variable(_, _),
         fail
     ;
-        Type = defined_type(SymName, Args, _),
-        Arity = list.length(Args),
+        Type = defined_type(SymName, ArgTypes, _),
+        Arity = list.length(ArgTypes),
         TypeCtor = type_ctor(SymName, Arity)
     ;
         Type = builtin_type(BuiltinType),
         builtin_type_to_string(BuiltinType, Name),
         SymName = unqualified(Name),
         Arity = 0,
-        Args = [],
+        ArgTypes = [],
         TypeCtor = type_ctor(SymName, Arity)
     ;
-        Type = higher_order_type(PorF, Args, _HOInstInfo, Purity, _EvalMethod),
+        Type = higher_order_type(PorF, ArgTypes, _HO, Purity, _EvalMethod),
+        list.length(ArgTypes, NumArgTypes),
         (
             PorF = pf_predicate,
             PorFStr = "pred",
-            Arity = list.length(Args)
+            UserArity = NumArgTypes
         ;
             PorF = pf_function,
             PorFStr = "func",
-            Arity = list.length(Args) - 1
+            UserArity = NumArgTypes - 1
         ),
         SymName0 = unqualified(PorFStr),
         (
@@ -558,35 +559,35 @@ type_to_ctor_and_args(Type, TypeCtor, Args) :-
             Purity = purity_impure,
             SymName = add_outermost_qualifier("impure", SymName0)
         ),
-        TypeCtor = type_ctor(SymName, Arity)
+        TypeCtor = type_ctor(SymName, UserArity)
     ;
-        Type = tuple_type(Args, _),
+        Type = tuple_type(ArgTypes, _),
         SymName = unqualified("{}"),
-        Arity = list.length(Args),
+        Arity = list.length(ArgTypes),
         TypeCtor = type_ctor(SymName, Arity)
     ;
         Type = apply_n_type(_, _, _),
         sorry($pred, "apply/N types")
     ;
         Type = kinded_type(SubType, _),
-        type_to_ctor_and_args(SubType, TypeCtor, Args)
+        type_to_ctor_and_args(SubType, TypeCtor, ArgTypes)
     ).
 
-type_to_ctor_and_args_det(Type, TypeCtor, Args) :-
-    ( if type_to_ctor_and_args(Type, TypeCtorPrime, ArgsPrime) then
+type_to_ctor_and_args_det(Type, TypeCtor, ArgTypes) :-
+    ( if type_to_ctor_and_args(Type, TypeCtorPrime, ArgTypesPrime) then
         TypeCtor = TypeCtorPrime,
-        Args = ArgsPrime
+        ArgTypes = ArgTypesPrime
     else
         unexpected($pred, "type_to_ctor_and_args failed: " ++ string(Type))
     ).
 
 type_to_ctor(Type, TypeCtor) :-
     % This should be subject to unused argument elimination.
-    type_to_ctor_and_args(Type, TypeCtor, _Args).
+    type_to_ctor_and_args(Type, TypeCtor, _ArgTypes).
 
 type_to_ctor_det(Type, TypeCtor) :-
     % This should be subject to unused argument elimination.
-    type_to_ctor_and_args_det(Type, TypeCtor, _Args).
+    type_to_ctor_and_args_det(Type, TypeCtor, _ArgTypes).
 
 type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc, EvalMethod) :-
     % Please keep this code in sync with classify_type_ctor_if_special.
@@ -650,16 +651,16 @@ type_vars_list(Types, TVars) :-
 :- pred type_vars_2(mer_type::in, list(tvar)::in, list(tvar)::out) is det.
 
 type_vars_2(type_variable(Var, _), Vs, [Var | Vs]).
-type_vars_2(defined_type(_, Args, _), !V) :-
-    type_vars_list_2(Args, !V).
+type_vars_2(defined_type(_, ArgTypes, _), !V) :-
+    type_vars_list_2(ArgTypes, !V).
 type_vars_2(builtin_type(_), !V).
-type_vars_2(higher_order_type(_, Args, _, _, _), !V) :-
-    type_vars_list_2(Args, !V).
-type_vars_2(tuple_type(Args, _), !V) :-
-    type_vars_list_2(Args, !V).
-type_vars_2(apply_n_type(Var, Args, _), !V) :-
+type_vars_2(higher_order_type(_, ArgTypes, _, _, _), !V) :-
+    type_vars_list_2(ArgTypes, !V).
+type_vars_2(tuple_type(ArgTypes, _), !V) :-
+    type_vars_list_2(ArgTypes, !V).
+type_vars_2(apply_n_type(Var, ArgTypes, _), !V) :-
     !:V = [Var | !.V],
-    type_vars_list_2(Args, !V).
+    type_vars_list_2(ArgTypes, !V).
 type_vars_2(kinded_type(Type, _), !V) :-
     type_vars_2(Type, !V).
 
@@ -672,15 +673,15 @@ type_vars_list_2([Type | Types], !V) :-
     type_vars_list_2(Types, !V).
 
 type_contains_var(type_variable(Var, _), Var).
-type_contains_var(defined_type(_, Args, _), Var) :-
-    type_list_contains_var(Args, Var).
-type_contains_var(higher_order_type(_, Args, _, _, _), Var) :-
-    type_list_contains_var(Args, Var).
-type_contains_var(tuple_type(Args, _), Var) :-
-    type_list_contains_var(Args, Var).
+type_contains_var(defined_type(_, ArgTypes, _), Var) :-
+    type_list_contains_var(ArgTypes, Var).
+type_contains_var(higher_order_type(_, ArgTypes, _, _, _), Var) :-
+    type_list_contains_var(ArgTypes, Var).
+type_contains_var(tuple_type(ArgTypes, _), Var) :-
+    type_list_contains_var(ArgTypes, Var).
 type_contains_var(apply_n_type(Var, _, _), Var).
-type_contains_var(apply_n_type(_, Args, _), Var) :-
-    type_list_contains_var(Args, Var).
+type_contains_var(apply_n_type(_, ArgTypes, _), Var) :-
+    type_list_contains_var(ArgTypes, Var).
 type_contains_var(kinded_type(Type, _), Var) :-
     type_contains_var(Type, Var).
 
@@ -689,7 +690,7 @@ type_list_contains_var([Type | _], Var) :-
 type_list_contains_var([_ | Types], Var) :-
     type_list_contains_var(Types, Var).
 
-construct_type(TypeCtor, Args, Type) :-
+construct_type(TypeCtor, ArgTypes, Type) :-
     ( if
         TypeCtor = type_ctor(unqualified(Name), 0),
         builtin_type_to_string(BuiltinType, Name)
@@ -698,16 +699,17 @@ construct_type(TypeCtor, Args, Type) :-
     else if
         type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc, EvalMethod)
     then
-        construct_higher_order_type(Purity, PredOrFunc, EvalMethod, Args, Type)
+        construct_higher_order_type(Purity, PredOrFunc, EvalMethod, ArgTypes,
+            Type)
     else if
         type_ctor_is_tuple(TypeCtor)
     then
         % XXX kind inference: we assume the kind is star.
-        Type = tuple_type(Args, kind_star)
+        Type = tuple_type(ArgTypes, kind_star)
     else
         TypeCtor = type_ctor(SymName, _),
         % XXX kind inference: we assume the kind is star.
-        Type = defined_type(SymName, Args, kind_star)
+        Type = defined_type(SymName, ArgTypes, kind_star)
     ).
 
 construct_higher_order_type(Purity, PredOrFunc, EvalMethod, ArgTypes, Type) :-
@@ -746,8 +748,8 @@ construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType,
 
 strip_builtin_qualifiers_from_type(type_variable(Var, Kind),
         type_variable(Var, Kind)).
-strip_builtin_qualifiers_from_type(defined_type(Name0, Args0, Kind),
-        defined_type(Name, Args, Kind)) :-
+strip_builtin_qualifiers_from_type(defined_type(Name0, ArgTypes0, Kind),
+        defined_type(Name, ArgTypes, Kind)) :-
     ( if
         Name0 = qualified(Module, Name1),
         Module = mercury_public_builtin_module
@@ -756,19 +758,19 @@ strip_builtin_qualifiers_from_type(defined_type(Name0, Args0, Kind),
     else
         Name = Name0
     ),
-    strip_builtin_qualifiers_from_type_list(Args0, Args).
+    strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes).
 strip_builtin_qualifiers_from_type(builtin_type(BuiltinType),
         builtin_type(BuiltinType)).
 strip_builtin_qualifiers_from_type(
-        higher_order_type(PorF, Args0, HOInstInfo, Purity, EvalMethod),
-        higher_order_type(PorF, Args, HOInstInfo, Purity, EvalMethod)) :-
-    strip_builtin_qualifiers_from_type_list(Args0, Args).
-strip_builtin_qualifiers_from_type(tuple_type(Args0, Kind),
-        tuple_type(Args, Kind)) :-
-    strip_builtin_qualifiers_from_type_list(Args0, Args).
-strip_builtin_qualifiers_from_type(apply_n_type(Var, Args0, Kind),
-        apply_n_type(Var, Args, Kind)) :-
-    strip_builtin_qualifiers_from_type_list(Args0, Args).
+        higher_order_type(PorF, ArgTypes0, HOInstInfo, Purity, EvalMethod),
+        higher_order_type(PorF, ArgTypes, HOInstInfo, Purity, EvalMethod)) :-
+    strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes).
+strip_builtin_qualifiers_from_type(tuple_type(ArgTypes0, Kind),
+        tuple_type(ArgTypes, Kind)) :-
+    strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes).
+strip_builtin_qualifiers_from_type(apply_n_type(Var, ArgTypes0, Kind),
+        apply_n_type(Var, ArgTypes, Kind)) :-
+    strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes).
 strip_builtin_qualifiers_from_type(kinded_type(Type0, Kind),
         kinded_type(Type, Kind)) :-
     strip_builtin_qualifiers_from_type(Type0, Type).
@@ -1009,9 +1011,9 @@ num_bits_needed_for_n_dense_values(NumValues, NumBits) :-
 
 all_functors_are_constants([], !NumFunctors).
 all_functors_are_constants([Ctor | Ctors], !NumFunctors) :-
-    Ctor = ctor(_Ordinal, MaybeExistConstraints, _Name, Args, _Arity,
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, _Name, ArgTypes, _Arity,
         _Context),
-    Args = [],
+    ArgTypes = [],
     MaybeExistConstraints = no_exist_constraints,
     !:NumFunctors = !.NumFunctors + 1,
     all_functors_are_constants(Ctors, !NumFunctors).
@@ -1128,24 +1130,24 @@ type_unify_head_type_param(Var, HeadVar, Kind, HeadTypeParams, !Bindings) :-
 
 type_unify_nonvar(TypeX, TypeY, HeadTypeParams, !Bindings) :-
     (
-        TypeX = defined_type(SymName, ArgsX, _),
-        TypeY = defined_type(SymName, ArgsY, _),
+        TypeX = defined_type(SymName, ArgTypesX, _),
+        TypeY = defined_type(SymName, ArgTypesY, _),
         % Instead of insisting that the names are equal and the arg lists
         % unify, we should consider attempting to expand equivalence types
         % first. That would require the type table to be passed in to the
         % unification algorithm, though.
-        type_unify_list(ArgsX, ArgsY, HeadTypeParams, !Bindings)
+        type_unify_list(ArgTypesX, ArgTypesY, HeadTypeParams, !Bindings)
     ;
         TypeX = builtin_type(BuiltinType),
         TypeY = builtin_type(BuiltinType)
     ;
-        TypeX = higher_order_type(PorF, ArgsX, _, Purity, EvalMethod),
-        TypeY = higher_order_type(PorF, ArgsY, _, Purity, EvalMethod),
-        type_unify_list(ArgsX, ArgsY, HeadTypeParams, !Bindings)
+        TypeX = higher_order_type(PorF, ArgTypesX, _, Purity, EvalMethod),
+        TypeY = higher_order_type(PorF, ArgTypesY, _, Purity, EvalMethod),
+        type_unify_list(ArgTypesX, ArgTypesY, HeadTypeParams, !Bindings)
     ;
-        TypeX = tuple_type(ArgsX, _),
-        TypeY = tuple_type(ArgsY, _),
-        type_unify_list(ArgsX, ArgsY, HeadTypeParams, !Bindings)
+        TypeX = tuple_type(ArgTypesX, _),
+        TypeY = tuple_type(ArgTypesY, _),
+        type_unify_list(ArgTypesX, ArgTypesY, HeadTypeParams, !Bindings)
     ).
 
     % Handle apply_n types and kinded types.
@@ -1154,10 +1156,10 @@ type_unify_nonvar(TypeX, TypeY, HeadTypeParams, !Bindings) :-
     tsubst::in, tsubst::out) is semidet.
 
 type_unify_special(TypeX, TypeY, HeadTypeParams, !Bindings) :-
-    ( if TypeX = apply_n_type(VarX, ArgsX, _) then
-        type_unify_apply(TypeY, VarX, ArgsX, HeadTypeParams, !Bindings)
-    else if TypeY = apply_n_type(VarY, ArgsY, _) then
-        type_unify_apply(TypeX, VarY, ArgsY, HeadTypeParams, !Bindings)
+    ( if TypeX = apply_n_type(VarX, ArgTypesX, _) then
+        type_unify_apply(TypeY, VarX, ArgTypesX, HeadTypeParams, !Bindings)
+    else if TypeY = apply_n_type(VarY, ArgTypesY, _) then
+        type_unify_apply(TypeX, VarY, ArgTypesY, HeadTypeParams, !Bindings)
     else if TypeX = kinded_type(RawX, _) then
         ( if TypeY = kinded_type(RawY, _) then
             type_unify(RawX, RawY, HeadTypeParams, !Bindings)
@@ -1184,54 +1186,54 @@ type_unify_special(TypeX, TypeY, HeadTypeParams, !Bindings) :-
 :- pred type_unify_apply(mer_type::in, tvar::in, list(mer_type)::in,
     list(tvar)::in, tsubst::in, tsubst::out) is semidet.
 
-type_unify_apply(TypeY, VarX, ArgsX0, HeadTypeParams, !Bindings) :-
+type_unify_apply(TypeY, VarX, ArgTypesX0, HeadTypeParams, !Bindings) :-
     (
-        TypeY = defined_type(NameY, ArgsY0, KindY0),
-        type_unify_args(ArgsX0, ArgsY0, ArgsY, KindY0, KindY, HeadTypeParams,
-            !Bindings),
-        type_unify_var(VarX, defined_type(NameY, ArgsY, KindY), HeadTypeParams,
-            !Bindings)
+        TypeY = defined_type(NameY, ArgTypesY0, KindY0),
+        type_unify_args(ArgTypesX0, ArgTypesY0, ArgTypesY, KindY0, KindY,
+            HeadTypeParams, !Bindings),
+        type_unify_var(VarX, defined_type(NameY, ArgTypesY, KindY),
+            HeadTypeParams, !Bindings)
     ;
         TypeY = builtin_type(_),
-        ArgsX0 = [],
+        ArgTypesX0 = [],
         type_unify_var(VarX, TypeY, HeadTypeParams, !Bindings)
     ;
         TypeY = higher_order_type(_, _, _, _, _),
-        ArgsX0 = [],
+        ArgTypesX0 = [],
         type_unify_var(VarX, TypeY, HeadTypeParams, !Bindings)
     ;
-        TypeY = tuple_type(ArgsY0, KindY0),
-        type_unify_args(ArgsX0, ArgsY0, ArgsY, KindY0, KindY, HeadTypeParams,
-            !Bindings),
-        type_unify_var(VarX, tuple_type(ArgsY, KindY), HeadTypeParams,
+        TypeY = tuple_type(ArgTypesY0, KindY0),
+        type_unify_args(ArgTypesX0, ArgTypesY0, ArgTypesY, KindY0, KindY,
+            HeadTypeParams, !Bindings),
+        type_unify_var(VarX, tuple_type(ArgTypesY, KindY), HeadTypeParams,
             !Bindings)
     ;
-        TypeY = apply_n_type(VarY, ArgsY0, Kind0),
-        list.length(ArgsX0, NArgsX0),
-        list.length(ArgsY0, NArgsY0),
-        compare(Result, NArgsX0, NArgsY0),
+        TypeY = apply_n_type(VarY, ArgTypesY0, Kind0),
+        list.length(ArgTypesX0, NArgTypesX0),
+        list.length(ArgTypesY0, NArgTypesY0),
+        compare(Result, NArgTypesX0, NArgTypesY0),
         (
             Result = (<),
-            type_unify_args(ArgsX0, ArgsY0, ArgsY, Kind0, Kind,
+            type_unify_args(ArgTypesX0, ArgTypesY0, ArgTypesY, Kind0, Kind,
                 HeadTypeParams, !Bindings),
-            type_unify_var(VarX, apply_n_type(VarY, ArgsY, Kind),
+            type_unify_var(VarX, apply_n_type(VarY, ArgTypesY, Kind),
                 HeadTypeParams, !Bindings)
         ;
             Result = (=),
             % We know here that the list of remaining args will be empty.
-            type_unify_args(ArgsX0, ArgsY0, _, Kind0, Kind, HeadTypeParams,
-                !Bindings),
+            type_unify_args(ArgTypesX0, ArgTypesY0, _, Kind0, Kind,
+                HeadTypeParams, !Bindings),
             type_unify_var_var(VarX, VarY, Kind, HeadTypeParams, !Bindings)
         ;
             Result = (>),
-            type_unify_args(ArgsY0, ArgsX0, ArgsX, Kind0, Kind,
+            type_unify_args(ArgTypesY0, ArgTypesX0, ArgTypesX, Kind0, Kind,
                 HeadTypeParams, !Bindings),
-            type_unify_var(VarY, apply_n_type(VarX, ArgsX, Kind),
+            type_unify_var(VarY, apply_n_type(VarX, ArgTypesX, Kind),
                 HeadTypeParams, !Bindings)
         )
     ;
         TypeY = kinded_type(RawY, _),
-        type_unify_apply(RawY, VarX, ArgsX0, HeadTypeParams, !Bindings)
+        type_unify_apply(RawY, VarX, ArgTypesX0, HeadTypeParams, !Bindings)
     ;
         TypeY = builtin_type(_),
         % XXX I (zs) am not sure *why* it is ok to fail here.
@@ -1242,25 +1244,25 @@ type_unify_apply(TypeY, VarX, ArgsX0, HeadTypeParams, !Bindings) :-
     list(mer_type)::out, kind::in, kind::out, list(tvar)::in,
     tsubst::in, tsubst::out) is semidet.
 
-type_unify_args(ArgsX, ArgsY0, ArgsY, KindY0, KindY, HeadTypeParams,
-        !Bindings) :-
-    list.reverse(ArgsX, RevArgsX),
-    list.reverse(ArgsY0, RevArgsY0),
-    type_unify_rev_args(RevArgsX, RevArgsY0, RevArgsY, KindY0, KindY,
-        HeadTypeParams, !Bindings),
-    list.reverse(RevArgsY, ArgsY).
+type_unify_args(ArgTypesX, ArgTypesY0, ArgTypesY,
+        KindY0, KindY, HeadTypeParams, !Bindings) :-
+    list.reverse(ArgTypesX, RevArgTypesX),
+    list.reverse(ArgTypesY0, RevArgTypesY0),
+    type_unify_rev_args(RevArgTypesX, RevArgTypesY0, RevArgTypesY,
+        KindY0, KindY, HeadTypeParams, !Bindings),
+    list.reverse(RevArgTypesY, ArgTypesY).
 
 :- pred type_unify_rev_args(list(mer_type)::in, list(mer_type)::in,
     list(mer_type)::out, kind::in, kind::out, list(tvar)::in,
     tsubst::in, tsubst::out) is semidet.
 
-type_unify_rev_args([], ArgsY, ArgsY, KindY, KindY, _, !Bindings).
-type_unify_rev_args([ArgX | ArgsX], [ArgY0 | ArgsY0], ArgsY, KindY0, KindY,
-        HeadTypeParams, !Bindings) :-
-    type_unify(ArgX, ArgY0, HeadTypeParams, !Bindings),
-    KindY1 = kind_arrow(get_type_kind(ArgY0), KindY0),
-    type_unify_rev_args(ArgsX, ArgsY0, ArgsY, KindY1, KindY,
-        HeadTypeParams, !Bindings).
+type_unify_rev_args([], ArgTypesY, ArgTypesY, KindY, KindY, _, !Bindings).
+type_unify_rev_args([ArgTypeX | ArgTypesX], [ArgTypeY0 | ArgTypesY0],
+        ArgTypesY, KindY0, KindY, HeadTypeParams, !Bindings) :-
+    type_unify(ArgTypeX, ArgTypeY0, HeadTypeParams, !Bindings),
+    KindY1 = kind_arrow(get_type_kind(ArgTypeY0), KindY0),
+    type_unify_rev_args(ArgTypesX, ArgTypesY0, ArgTypesY,
+        KindY1, KindY, HeadTypeParams, !Bindings).
 
 type_unify_list([], [], _HeadTypeParams, !Bindings).
 type_unify_list([X | Xs], [Y | Ys], HeadTypeParams, !Bindings) :-
@@ -1284,27 +1286,27 @@ type_occurs(TypeX, Y, Bindings) :-
             type_occurs(BindingOfX, Y, Bindings)
         )
     ;
-        TypeX = defined_type(_, Args, _),
-        type_occurs_list(Args, Y, Bindings)
+        TypeX = defined_type(_, ArgTypes, _),
+        type_occurs_list(ArgTypes, Y, Bindings)
     ;
-        TypeX = higher_order_type(_, Args, _, _, _),
-        type_occurs_list(Args, Y, Bindings)
+        TypeX = higher_order_type(_, ArgTypes, _, _, _),
+        type_occurs_list(ArgTypes, Y, Bindings)
     ;
-        TypeX = tuple_type(Args, _),
-        type_occurs_list(Args, Y, Bindings)
+        TypeX = tuple_type(ArgTypes, _),
+        type_occurs_list(ArgTypes, Y, Bindings)
     ;
-        TypeX = apply_n_type(X, Args, _),
+        TypeX = apply_n_type(X, ArgTypes, _),
         (
             X = Y
         ;
-            type_occurs_list(Args, Y, Bindings)
+            type_occurs_list(ArgTypes, Y, Bindings)
         ;
             map.search(Bindings, X, BindingOfX),
             type_occurs(BindingOfX, Y, Bindings)
         )
     ;
-        TypeX = kinded_type(X, _),
-        type_occurs(X, Y, Bindings)
+        TypeX = kinded_type(TypeX1, _),
+        type_occurs(TypeX1, Y, Bindings)
     ;
         TypeX = builtin_type(_),
         fail
