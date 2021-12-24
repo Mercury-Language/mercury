@@ -48,7 +48,6 @@
 :- import_module check_hlds.inst_abstract_unify.
 :- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.inst_match.
-:- import_module check_hlds.inst_mode_type_prop.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_debug.
@@ -303,8 +302,7 @@ modecheck_unification_functor(X, ConsId, IsExistConstruction, ArgVars0,
 modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
         UnifyGoalExpr, !ModeInfo) :-
     LambdaRHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-        LambdaNonLocals, VarsModes0, Det, Goal0),
-    assoc_list.keys_and_values(VarsModes0, Vars, Modes0),
+        LambdaNonLocals, VarsModes, Det, Goal0),
 
     % First modecheck the lambda goal itself:
     %
@@ -342,22 +340,9 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
     % share all non-local variables at the top of the lambda goal. This is
     % safe, but perhaps too conservative.
 
-    mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-    mode_info_get_how_to_check(!.ModeInfo, HowToCheckGoal),
-
-    (
-        HowToCheckGoal = check_modes,
-        % This only needs to be done once.
-        mode_info_get_types_of_vars(!.ModeInfo, Vars, VarTypes),
-        propagate_types_into_mode_list(ModuleInfo0, VarTypes, Modes0, Modes),
-        assoc_list.from_corresponding_lists(Vars, Modes, VarsModes)
-    ;
-        HowToCheckGoal = check_unique_modes,
-        Modes = Modes0,
-        VarsModes = VarsModes0
-    ),
-
     % Initialize the initial insts of the lambda variables.
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
+    assoc_list.keys_and_values(VarsModes, Vars, Modes),
     mode_list_get_initial_insts(ModuleInfo0, Modes, VarInitialInsts),
     assoc_list.from_corresponding_lists(Vars, VarInitialInsts, VarInstAL),
     VarInstMapDelta = instmap_delta_from_assoc_list(VarInstAL),
@@ -436,6 +421,7 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
         mode_info_lock_vars(var_lock_lambda(PredOrFunc), NonLocals, !ModeInfo),
 
         mode_checkpoint(enter, "lambda goal", !ModeInfo),
+        mode_info_get_how_to_check(!.ModeInfo, HowToCheckGoal),
         (
             HowToCheckGoal = check_unique_modes,
             unique_modes_check_goal(Goal0, Goal, !ModeInfo)
@@ -479,7 +465,7 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
         ),
         % Return any old garbage.
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            LambdaNonLocals, VarsModes0, Det, Goal0),
+            LambdaNonLocals, VarsModes, Det, Goal0),
         UnifyMode = unify_modes_li_lf_ri_rf(free, free, free, free),
         Unification = Unification0
     ),

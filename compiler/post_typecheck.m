@@ -15,8 +15,8 @@
 %     binding them to the type `void';
 %   - it propagates type information into the argument modes of procedures;
 %   - it reports errors for unbound inst variables in mode declarations;
-%   - it reports an error if there are indistinguishable modes for
-%     a predicate or function;
+%   - it reports an error if a predicate or function has two or more
+%     indistinguishable modes.
 %
 % These actions cannot be done until after type inference is complete,
 % so they need to be done in a pass *after* the typecheck pass.
@@ -71,10 +71,19 @@
 :- pred setup_vartypes_in_clauses_for_imported_pred(pred_info::in,
     pred_info::out) is det.
 
-    % XXX document me
+    % Propagate type information into the argument modes of all
+    % the procedures of the given predicate.
     %
-:- pred propagate_types_into_modes(module_info::in, list(proc_id)::out,
-    pred_info::in, pred_info::out) is det.
+    % Return a list of the ids of the procedures in which this process failed,
+    % and a list of errors describing situations in which a named inst
+    % was applied to a type whose type constructor is *not* the type
+    % constructor that this inst was declared to be for.
+    %
+    % This predicate is exported for use by add_special_pred.m, which does
+    % most of the task of this module itself, but delegates this one to us.
+    %
+:- pred propagate_types_into_pred_modes(module_info::in, list(proc_id)::out,
+    list(error_spec)::out, pred_info::in, pred_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -152,7 +161,9 @@ post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId, !PredInfo,
                 !NoTypeErrorSpecs),
             check_type_of_main(!.PredInfo, !AlwaysSpecs)
         ),
-        propagate_types_into_modes(ModuleInfo, ErrorProcs, !PredInfo),
+        propagate_types_into_pred_modes(ModuleInfo, ErrorProcs,
+            InstForTypeSpecs, !PredInfo),
+        !:NoTypeErrorSpecs = InstForTypeSpecs ++ !.NoTypeErrorSpecs,
         report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo,
             !AlwaysSpecs),
         check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo,
@@ -524,17 +535,19 @@ check_type_of_main(PredInfo, !Specs) :-
         pred_info_orig_arity(PredInfo) = 2,
         pred_info_is_exported(PredInfo)
     then
-        % Check that the arguments of main/2 have type `io.state'.
         pred_info_get_arg_types(PredInfo, ArgTypes),
-        ( if
-            ArgTypes = [Arg1, Arg2],
-            type_is_io_state(Arg1),
-            type_is_io_state(Arg2)
+        % Check that both arguments of main/2 have type `io.state'.
+        (  if
+            % This part of the test cannot fail, since we checked the arity.
+            ArgTypes = [ArgType1, ArgType2],
+            % These parts can fail.
+            type_is_io_state(ArgType1),
+            type_is_io_state(ArgType2)
         then
             true
         else
             pred_info_get_context(PredInfo, Context),
-            Pieces = [words("Error: arguments of main/2"),
+            Pieces = [words("Error: both arguments of"), quote("main/2"),
                 words("must have type"), quote("io.state"), suffix("."), nl],
             Spec = simplest_spec($pred, severity_error, phase_type_check,
                 Context, Pieces),
@@ -564,29 +577,56 @@ setup_vartypes_in_clauses_for_imported_pred(!PredInfo) :-
 
 %---------------------------------------------------------------------------%
 
-propagate_types_into_modes(ModuleInfo, ErrorProcIds, !PredInfo) :-
+:- type maybe_process_lambda_goals
+    --->    no_lambda_goals_to_process
+    ;       process_lambda_goals.
+
+propagate_types_into_pred_modes(ModuleInfo, ErrorProcIds, InstForTypeSpecs,
+        !PredInfo) :-
+    pred_info_get_markers(!.PredInfo, Markers),
+    ( if check_marker(Markers, marker_has_rhs_lambda) then
+        ProcessLambda = process_lambda_goals
+    else
+        ProcessLambda = no_lambda_goals_to_process
+    ),
     pred_info_get_arg_types(!.PredInfo, ArgTypes),
     pred_info_get_proc_table(!.PredInfo, Procs0),
     ProcIds = pred_info_all_procids(!.PredInfo),
-    propagate_types_into_proc_modes(ModuleInfo, ProcIds, ArgTypes,
-        [], RevErrorProcIds, Procs0, Procs),
-    ErrorProcIds = list.reverse(RevErrorProcIds),
-    pred_info_set_proc_table(Procs, !PredInfo).
+    propagate_types_into_procs_modes(ModuleInfo, ArgTypes, ProcessLambda,
+        ProcIds, [], RevErrorProcIds, Procs0, Procs),
+    list.reverse(RevErrorProcIds, ErrorProcIds),
+    pred_info_set_proc_table(Procs, !PredInfo),
+    InstForTypeSpecs = [].
 
-:- pred propagate_types_into_proc_modes(module_info::in, list(proc_id)::in,
-    list(mer_type)::in, list(proc_id)::in, list(proc_id)::out,
+:- pred propagate_types_into_procs_modes(module_info::in, list(mer_type)::in,
+    maybe_process_lambda_goals::in, list(proc_id)::in,
+    list(proc_id)::in, list(proc_id)::out,
     proc_table::in, proc_table::out) is det.
 
-propagate_types_into_proc_modes(_, [], _, !RevErrorProcIds, !Procs).
-propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds], ArgTypes,
+propagate_types_into_procs_modes(_, _, _, [], !RevErrorProcIds, !Procs).
+propagate_types_into_procs_modes(ModuleInfo, ArgTypes, ProcessLambda,
+        [ProcId | ProcIds], !RevErrorProcIds, !Procs) :-
+    propagate_types_into_proc_modes(ModuleInfo, ArgTypes, ProcessLambda,
+        ProcId, !RevErrorProcIds, !Procs),
+    propagate_types_into_procs_modes(ModuleInfo, ArgTypes, ProcessLambda,
+        ProcIds, !RevErrorProcIds, !Procs).
+
+%---------------------%
+
+:- pred propagate_types_into_proc_modes(module_info::in,
+    list(mer_type)::in, maybe_process_lambda_goals::in, proc_id::in,
+    list(proc_id)::in, list(proc_id)::out,
+    proc_table::in, proc_table::out) is det.
+
+propagate_types_into_proc_modes(ModuleInfo, ArgTypes, ProcessLambda, ProcId,
         !RevErrorProcIds, !Procs) :-
     map.lookup(!.Procs, ProcId, ProcInfo0),
     proc_info_get_argmodes(ProcInfo0, ArgModes0),
-    propagate_types_into_mode_list(ModuleInfo, ArgTypes, ArgModes0, ArgModes),
+    propagate_types_into_modes(ModuleInfo, ArgTypes, ArgModes0, ArgModes),
 
     % Check for unbound inst vars.
     %
-    % This needs to be done after the call to propagate_types_into_mode_list,
+    % This needs to be done after the call to propagate_types_into_modes,
     % because we need the insts to be module qualified.
     %
     % It also needs to be done before mode analysis, to avoid internal errors
@@ -603,13 +643,159 @@ propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds], ArgTypes,
     then
         !:RevErrorProcIds = [ProcId | !.RevErrorProcIds]
     else
-        proc_info_set_argmodes(ArgModes, ProcInfo0, ProcInfo),
+        proc_info_set_argmodes(ArgModes, ProcInfo0, ProcInfo1),
+        (
+            ProcessLambda = no_lambda_goals_to_process,
+            ProcInfo = ProcInfo1
+        ;
+            ProcessLambda = process_lambda_goals,
+            proc_info_get_goal(ProcInfo1, Goal0),
+            proc_info_get_vartypes(ProcInfo1, VarTypes),
+            propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+                Goal0, Goal),
+            proc_info_set_goal(Goal, ProcInfo1, ProcInfo)
+        ),
         map.det_update(ProcId, ProcInfo, !Procs)
-    ),
-    propagate_types_into_proc_modes(ModuleInfo, ProcIds, ArgTypes,
-        !RevErrorProcIds, !Procs).
+    ).
 
 %---------------------%
+
+:- pred propagate_types_into_lambda_modes_in_goal(module_info::in,
+    vartypes::in, hlds_goal::in, hlds_goal::out) is det.
+
+propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes, Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    (
+        GoalExpr0 = unify(LHS0, RHS0, UnifyMode0, Unification0, UniContext0),
+        (
+            ( RHS0 = rhs_var(_)
+            ; RHS0 = rhs_functor(_, _, _)
+            ),
+            Goal = Goal0
+        ;
+            RHS0 = rhs_lambda_goal(Purity0, HOGroundness0, PorF0, EvalMethod0,
+                ClosureVars0, ArgVarsModes0, Detism0, LambdaGoal0),
+            propagate_types_into_var_modes(ModuleInfo, VarTypes,
+                ArgVarsModes0, ArgVarsModes),
+            propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+                LambdaGoal0, LambdaGoal),
+            RHS = rhs_lambda_goal(Purity0, HOGroundness0, PorF0, EvalMethod0,
+                ClosureVars0, ArgVarsModes, Detism0, LambdaGoal),
+            GoalExpr = unify(LHS0, RHS, UnifyMode0, Unification0, UniContext0),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        )
+    ;
+        ( GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _, _)
+        ),
+        Goal = Goal0
+    ;
+        GoalExpr0 = conj(ConjType, Conjuncts0),
+        propagate_types_into_lambda_modes_in_goals(ModuleInfo, VarTypes,
+            Conjuncts0, Conjuncts),
+        GoalExpr = conj(ConjType, Conjuncts),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = disj(Disjuncts0),
+        propagate_types_into_lambda_modes_in_goals(ModuleInfo, VarTypes,
+            Disjuncts0, Disjuncts),
+        GoalExpr = disj(Disjuncts),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = switch(Var0, CanFail0, Cases0),
+        propagate_types_into_lambda_modes_in_cases(ModuleInfo, VarTypes,
+            Cases0, Cases),
+        GoalExpr = switch(Var0, CanFail0, Cases),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = if_then_else(Vars0, Cond0, Then0, Else0),
+        propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+            Cond0, Cond),
+        propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+            Then0, Then),
+        propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+            Else0, Else),
+        GoalExpr = if_then_else(Vars0, Cond, Then, Else),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = negation(SubGoal0),
+        propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+            SubGoal0, SubGoal),
+        GoalExpr = negation(SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = scope(Reason0, SubGoal0),
+        propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+            SubGoal0, SubGoal),
+        GoalExpr = scope(Reason0, SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
+        GoalExpr0 = shorthand(ShortHand0),
+        (
+            ShortHand0 = bi_implication(GoalA0, GoalB0),
+            propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+                GoalA0, GoalA),
+            propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+                GoalB0, GoalB),
+            ShortHand = bi_implication(GoalA, GoalB)
+        ;
+            ShortHand0 = atomic_goal(AtomicGoalType0, OuterVars0, InnerVars0,
+                OutputVars0, MainGoal0, OrElseGoals0, OrElseInners0),
+            propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+                MainGoal0, MainGoal),
+            propagate_types_into_lambda_modes_in_goals(ModuleInfo, VarTypes,
+                OrElseGoals0, OrElseGoals),
+            ShortHand = atomic_goal(AtomicGoalType0, OuterVars0, InnerVars0,
+                OutputVars0, MainGoal, OrElseGoals, OrElseInners0)
+        ;
+            ShortHand0 = try_goal(MaybeIOVars0, ResultVars0, SubGoal0),
+            propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+                SubGoal0, SubGoal),
+            ShortHand = try_goal(MaybeIOVars0, ResultVars0, SubGoal)
+        ),
+        GoalExpr = shorthand(ShortHand),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ).
+
+:- pred propagate_types_into_lambda_modes_in_goals(module_info::in,
+    vartypes::in, list(hlds_goal)::in, list(hlds_goal)::out) is det.
+
+propagate_types_into_lambda_modes_in_goals(_, _, [], []).
+propagate_types_into_lambda_modes_in_goals(ModuleInfo, VarTypes,
+        [Goal0 | Goals0], [Goal | Goals]) :-
+    propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+        Goal0, Goal),
+    propagate_types_into_lambda_modes_in_goals(ModuleInfo, VarTypes,
+        Goals0, Goals).
+
+:- pred propagate_types_into_lambda_modes_in_cases(module_info::in,
+    vartypes::in, list(case)::in, list(case)::out) is det.
+
+propagate_types_into_lambda_modes_in_cases(_, _, [], []).
+propagate_types_into_lambda_modes_in_cases(ModuleInfo, VarTypes,
+        [Case0 | Cases0], [Case | Cases]) :-
+    Case0 = case(MainConsId0, OtherConsIds0, Goal0),
+    propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+        Goal0, Goal),
+    Case = case(MainConsId0, OtherConsIds0, Goal),
+    propagate_types_into_lambda_modes_in_cases(ModuleInfo, VarTypes,
+        Cases0, Cases).
+
+%---------------------%
+
+:- pred propagate_types_into_var_modes(module_info::in, vartypes::in,
+    assoc_list(prog_var, mer_mode)::in, assoc_list(prog_var, mer_mode)::out)
+    is det.
+
+propagate_types_into_var_modes(_, _, [], []).
+propagate_types_into_var_modes(ModuleInfo, VarTypes,
+        [Var - Mode0 | VarsModes0], [Var - Mode | VarsModes]) :-
+    lookup_var_type(VarTypes, Var, Type),
+    propagate_type_into_mode(ModuleInfo, Type, Mode0, Mode),
+    propagate_types_into_var_modes(ModuleInfo, VarTypes, VarsModes0, VarsModes).
+
+%---------------------------------------------------------------------------%
 
 :- pred report_unbound_inst_vars(module_info::in, pred_id::in,
     list(proc_id)::in, pred_info::in, pred_info::out,

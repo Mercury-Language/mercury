@@ -1962,6 +1962,7 @@ intermod_gather_pred_marker_pragmas_loop(PredOrFunc, PredSymName, UserArity,
         ; Marker = marker_has_require_scope
         ; Marker = marker_has_incomplete_switch
         ; Marker = marker_has_format_call
+        ; Marker = marker_has_rhs_lambda
         ; Marker = marker_fact_table_semantic_errors
 
         % Since the inferred declarations are output, these don't need

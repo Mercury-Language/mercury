@@ -4,7 +4,8 @@ invalid_main.m:006:   The following assumes that the missing declaration is an
 invalid_main.m:006:   `:- implementation' declaration.
 invalid_main.m:009: Error: `main'/2 must be `det' or `cc_multi'.
 invalid_main.m:009: Error: `main'/2 must have mode `(di, uo)'.
-invalid_main.m:009: Error: arguments of main/2 must have type `io.state'.
+invalid_main.m:009: Error: both arguments of `main/2' must have type
+invalid_main.m:009:   `io.state'.
 invalid_main.m:009: In `main'(di, out):
 invalid_main.m:009:   warning: determinism declaration could be tighter.
 invalid_main.m:009:   Declared `multi', inferred `det'.

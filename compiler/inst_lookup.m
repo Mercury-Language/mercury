@@ -151,14 +151,12 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         )
     ;
         InstName = typed_ground(Uniq, Type),
-        map.init(Subst),
-        propagate_type_into_inst(ModuleInfo, Subst, Type,
-            ground(Uniq, none_or_default_func), Inst)
+        Inst0 = ground(Uniq, none_or_default_func),
+        propagate_type_into_inst(ModuleInfo, Type, Inst0, Inst)
     ;
         InstName = typed_inst(Type, TypedInstName),
         inst_lookup(ModuleInfo, TypedInstName, Inst0),
-        map.init(Subst),
-        propagate_type_into_inst(ModuleInfo, Subst, Type, Inst0, Inst)
+        propagate_type_into_inst(ModuleInfo, Type, Inst0, Inst)
     ).
 
 %---------------------------------------------------------------------------%

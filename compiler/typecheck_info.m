@@ -132,6 +132,10 @@
                 tecc_varset                     :: prog_varset
             ).
 
+:- type maybe_rhs_lambda
+    --->    has_no_rhs_lambda
+    ;       has_rhs_lambda.
+
 %-----------------------------------------------------------------------------%
 
 :- type typecheck_debug_info
@@ -172,6 +176,8 @@
     maybe(error_spec)::out) is det.
 :- pred typecheck_info_get_nosuffix_integer_vars(typecheck_info::in,
     set_tree234(prog_var)::out) is det.
+:- pred typecheck_info_get_rhs_lambda(typecheck_info::in,
+    maybe_rhs_lambda::out) is det.
 :- pred typecheck_info_get_debug_info(typecheck_info::in,
     typecheck_debug_info::out) is det.
 
@@ -180,6 +186,8 @@
 :- pred typecheck_info_set_non_overload_errors(list(error_spec)::in,
     typecheck_info::in, typecheck_info::out) is det.
 :- pred typecheck_info_set_overload_error(maybe(error_spec)::in,
+    typecheck_info::in, typecheck_info::out) is det.
+:- pred typecheck_info_set_rhs_lambda(maybe_rhs_lambda::in,
     typecheck_info::in, typecheck_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -285,6 +293,8 @@
                 % need for the right suffix.
                 tcsi_nosuffix_integer_vars      :: set_tree234(prog_var),
 
+                tcsi_has_rhs_lambda             :: maybe_rhs_lambda,
+
                 tcsi_debug_info                 :: typecheck_debug_info
             ).
 
@@ -329,7 +339,8 @@ typecheck_info_init(ModuleInfo, PredId, PredInfo, ClauseVarSet, Status,
     ),
     SubInfo = typecheck_sub_info(Verbose, CallsAreFullyQualified,
         AmbiguityErrorLimit, MaybeFieldAccessFunctionStatus,
-        NonOverloadErrors, OverloadErrors, NoSuffixIntegerMap, DebugInfo),
+        NonOverloadErrors, OverloadErrors, NoSuffixIntegerMap,
+        has_no_rhs_lambda, DebugInfo),
     ClauseNum = 0,
     ClauseContext = type_error_clause_context(ModuleInfo, PredId,
         PredMarkers, ClauseNum, term.context_init, ClauseVarSet),
@@ -374,6 +385,8 @@ typecheck_info_get_overload_error(Info, X) :-
     X = Info ^ tci_sub_info ^ tcsi_overload_error.
 typecheck_info_get_nosuffix_integer_vars(Info, X) :-
     X = Info ^ tci_sub_info ^ tcsi_nosuffix_integer_vars.
+typecheck_info_get_rhs_lambda(Info, X) :-
+    X = Info ^ tci_sub_info ^ tcsi_has_rhs_lambda.
 typecheck_info_get_debug_info(Info, X) :-
     X = Info ^ tci_sub_info ^ tcsi_debug_info.
 
@@ -386,6 +399,8 @@ typecheck_info_set_overload_error(X, !Info) :-
     !Info ^ tci_sub_info ^ tcsi_overload_error := X.
 typecheck_info_set_nosuffix_integer_vars(X, !Info) :-
     !Info ^ tci_sub_info ^ tcsi_nosuffix_integer_vars := X.
+typecheck_info_set_rhs_lambda(X, !Info) :-
+    !Info ^ tci_sub_info ^ tcsi_has_rhs_lambda := X.
 
 % Access statistics from before the change on 2015 jan 9.
 %

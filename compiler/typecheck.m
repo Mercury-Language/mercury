@@ -539,12 +539,20 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, NextIteration) :-
             PredConstraints, Constraints),
         type_assign_set_init(TypeVarSet0, ExplicitVarTypes0,
             !.ExternalTypeParams, Constraints, !:TypeAssignSet),
-        pred_info_get_markers(!.PredInfo, PredMarkers),
+        pred_info_get_markers(!.PredInfo, PredMarkers0),
         typecheck_info_init(ModuleInfo, PredId, !.PredInfo,
-            ClauseVarSet, PredStatus, PredMarkers, !.Specs, !:Info),
+            ClauseVarSet, PredStatus, PredMarkers0, !.Specs, !:Info),
         get_clause_list_for_replacement(ClausesRep0, Clauses0),
         typecheck_clause_list(HeadVars, ArgTypes0, Clauses0, Clauses,
             !TypeAssignSet, !Info),
+        typecheck_info_get_rhs_lambda(!.Info, MaybeRHSLambda),
+        (
+            MaybeRHSLambda = has_no_rhs_lambda
+        ;
+            MaybeRHSLambda = has_rhs_lambda,
+            add_marker(marker_has_rhs_lambda, PredMarkers0, PredMarkers),
+            pred_info_set_markers(PredMarkers, !PredInfo)
+        ),
         % We need to perform a final pass of context reduction at the end,
         % before checking the typeclass constraints.
         pred_info_get_context(!.PredInfo, Context),
@@ -2114,6 +2122,7 @@ typecheck_unification(UnifyContext, Context, GoalId, LHSVar, RHS0, RHS,
     ;
         RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             NonLocals, VarsModes, Det, Goal0),
+        typecheck_info_set_rhs_lambda(has_rhs_lambda, !Info),
         assoc_list.keys(VarsModes, Vars),
         typecheck_lambda_var_has_type(UnifyContext, Context, Purity,
             PredOrFunc, EvalMethod, LHSVar, Vars, !TypeAssignSet, !Info),

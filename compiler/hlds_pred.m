@@ -434,6 +434,12 @@
             % (or at least not verifiably correct) format calls, which
             % would be no-ops on predicates that do not have this marker.
 
+    ;       marker_has_rhs_lambda
+            % The body of this predicate contains a unification whose
+            % right hand side is a lambda goal. This marker is set by
+            % the typecheck pass, and it is used (as of this writing)
+            % only by the post-typecheck pass.
+
     ;       marker_fact_table_semantic_errors.
             % This predicate has a fact_table pragma for it, so it is
             % *expected* not to have any clauses in the program itself,
@@ -1056,6 +1062,7 @@ marker_name(marker_mutable_access_pred, "mutable_access_pred").
 marker_name(marker_has_require_scope, "has_require_scope").
 marker_name(marker_has_incomplete_switch, "has_incomplete_switch").
 marker_name(marker_has_format_call, "has_format_call").
+marker_name(marker_has_rhs_lambda, "has_rhs_lambda").
 marker_name(marker_fact_table_semantic_errors, "fact_table_semantic_errors").
 
 %---------------------------------------------------------------------------%
