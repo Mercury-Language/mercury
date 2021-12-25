@@ -12,6 +12,8 @@
 --warn-suspicious-foreign-code
 --warn-potentially-ambiguous-pragma
 --halt-at-warn
+--no-halt-at-warn-make-int
+--no-halt-at-warn-make-opt
 --warn-dead-predicates
 --no-warn-inferred-erroneous
 --no-mercury-stdlib-dir

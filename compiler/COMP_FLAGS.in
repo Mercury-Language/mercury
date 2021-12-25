@@ -12,6 +12,8 @@
 --warn-implicit-stream-calls
 --warn-potentially-ambiguous-pragma
 --halt-at-warn
+--no-halt-at-warn-make-int
+--no-halt-at-warn-make-opt
 --no-mercury-stdlib-dir
 --no-detect-libgrades
 -I../library
