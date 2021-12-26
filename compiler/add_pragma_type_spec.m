@@ -56,7 +56,7 @@
 
 add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
     TSInfo = pragma_info_type_spec(PFUMM, SymName, _, _, _, _),
-    module_info_get_predicate_table(!.ModuleInfo, Preds),
+    module_info_get_predicate_table(!.ModuleInfo, PredTable),
     (
         (
             PFUMM = pfumm_predicate(ModesOrArity),
@@ -78,8 +78,10 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
                 pred_form_arity(PredArityInt)),
             MaybeModes = no
         ),
-        predicate_table_lookup_pf_sym_arity(Preds, is_fully_qualified,
+        predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
             PredOrFunc, SymName, PredArityInt, PredIds),
+        predicate_table_lookup_pf_sym(PredTable, is_fully_qualified,
+            PredOrFunc, SymName, AllArityPredIds),
         UserArity = user_arity(UserArityInt)
     ;
         PFUMM = pfumm_unknown(UserArity),
@@ -88,15 +90,20 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
         UserArity = user_arity(UserArityInt),
         MaybePredOrFunc = no,
         MaybeModes = no,
-        predicate_table_lookup_sym_arity(Preds, is_fully_qualified,
-            SymName, UserArityInt, PredIds)
+        predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
+            SymName, UserArityInt, PredIds),
+        predicate_table_lookup_sym(PredTable, is_fully_qualified,
+            SymName, AllArityPredIds)
     ),
     (
         PredIds = [],
-        % XXX We should compute a valid value for OtherArities.
-        OtherArities = [],
+        module_info_get_preds(!.ModuleInfo, Preds),
+        find_user_arities_other_than(Preds, AllArityPredIds, UserArity,
+            OtherUserArities),
+        OtherUserArityInts =
+            list.map(project_user_arity_int, OtherUserArities),
         report_undefined_pred_or_func_error(MaybePredOrFunc, SymName,
-            UserArityInt, OtherArities, Context,
+            UserArityInt, OtherUserArityInts, Context,
             [pragma_decl("type_spec"), words("declaration")], !Specs)
     ;
         PredIds = [_ | _],
