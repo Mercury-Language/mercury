@@ -31,15 +31,15 @@
 %
 % The MLDS data structure is quite full-featured, including for example
 % support for arbitrary nesting, multiple return values, and tagged pointers.
-% However, many
-% of the intended target languages do not support all of those features.
-% Therefore the HLDS->MLDS compiler must ensure that the final MLDS code that
-% it eventually generates does not use features which the target does not
-% support. This will (presumably) be accomplished by having handle_options.m
-% set various flags according to the selected target, and having the
-% HLDS->MLDS compiler take account of those flags and either generate simpler
-% MLDS code in the first place or run some extra simplification passes over
-% the MLDS code before invoking the MLDS->target compiler.
+% However, many of the intended target languages do not support
+% all of those features. Therefore the HLDS->MLDS compiler must ensure that
+% the final MLDS code that it eventually generates does not use features
+% that the target does not support. This will (presumably) be accomplished
+% by having handle_options.m set various flags according to the selected
+% target, and having the HLDS->MLDS compiler take account of those flags
+% and either generate simpler MLDS code in the first place, or run some
+% extra simplification passes over the MLDS code before invoking the
+% MLDS->target compiler.
 %
 %---------------------------------------------------------------------------%
 %
@@ -49,8 +49,10 @@
 % 1. Modules
 %
 % Mercury module names map directly to MLDS package names, except that
-% modules in the Mercury standard library map get a `mercury' prefix,
-% e.g. `mercury.builtin', `mercury.io', `mercury.univ', etc.
+% modules in the Mercury standard library get a `mercury' prefix,
+% resulting in MLDS names such as `mercury.builtin', `mercury.io',
+% and `mercury.univ'.
+%
 % [Rationale: omitting the `mercury' prefix would lead to namespace
 % pollution in the generated target language code.]
 %
@@ -62,27 +64,32 @@
 % to avoid any ambiguities.
 %
 % [Rationale: the reason for keeping structured names rather than flattened
-% names at the MLDS level is that we do not want to do name mangling at
-% the HLDS -> MLDS stage, since we do not know what restrictions the target
-% language will impose. For example, some target languages (e.g. C++, Java)
-% will support overloading, while others (e.g. C) will not.]
+% names at the MLDS level is that since we do not know what restrictions
+% the target language will impose, we do want to do name mangling at the
+% MLDS -> target stage, not at the HLDS -> MLDS stage. For example,
+% some target languages (e.g. C++, Java) support overloading, while others
+% (e.g. C) do not.]
 %
 % 3. Procedure signatures
 %
 % MLDS function signatures are determined by the HLDS procedure's
 % argument types, modes, and determinism.
+%
 % Procedures arguments with dummy types (such as `io.state' or `store(_)')
 % are not passed.
+%
 % Procedure arguments with top_unused modes are not passed.
+%
 % Procedures arguments with top_in modes are passed as input.
+%
 % Procedures arguments with top_out modes are normally passed by reference.
 % However, several alternative approaches are also supported (see below).
 %
 % Procedures with determinism model_det need no special handling.
 % Procedures with determinism model_semi must return a boolean.
 % Procedures with determinism model_non get passed a continuation;
-% if the procedure succeeds, it must call the continuation, and if it fails,
-% it must return.
+% if the procedure succeeds, it must call the continuation (once for each
+% success), and if it fails, it must return.
 %
 % With the `--copy-out' option, arguments with top_out modes will be returned
 % by value. This requires the target language to support multiple return
@@ -119,16 +126,15 @@
 %
 % 5. Global data
 %
-% MLDS names for global data are structured; they hold some
-% information about the kind of global data (see the mlds_data_name type).
+% MLDS names for global data are structured; they hold some information
+% about the kind of global data (see the mlds_data_name type).
 %
 % 6. Types
 %
-% If there is an MLDS type corresponding to a Mercury type, then
-% the Mercury type name maps directly to the MLDS type name,
-% suitably module-qualified of course.
-% The MLDS type name includes the type arity (arity overloading is allowed).
-% However, if a low-level data representation scheme is used,
+% If there is an MLDS type corresponding to a Mercury type, then the Mercury
+% type name maps directly to the MLDS type name, suitably module-qualified
+% of course. The MLDS type name includes the type arity (arity overloading
+% is allowed). However, if a low-level data representation scheme is used,
 % then some Mercury types may not have corresponding MLDS type names
 % (that is, the corresponding MLDS type may be just `MR_Word' or its
 % equivalent).
@@ -139,6 +145,7 @@
 % MLDS types nested within the MLDS type for the Mercury data type to which
 % the constructors belong. There are some exceptions; see ml_type_gen.m
 % for full details. The MLDS type name includes the constructor arity.
+%
 % [Rationale: Mercury allows data constructors to be overloaded on
 % their result type within a single module, and also allows them
 % to be overloaded on arity within a single type. Nesting resolves
@@ -161,8 +168,8 @@
 % cyclic definitions. eg:
 %       :- type foo ---> f(bar) ; g.
 %       :- type bar ---> f2(foo) ; g2
-% At some point this should be changed so that initialization is performed by 2
-% phases: first allocate all of the objects, then fill in the fields.
+% At some point this should be changed so that initialization is performed
+% by two phases: first allocate all of the objects, then fill in the fields.
 %
 % 8. Insts and modes
 %
@@ -179,8 +186,8 @@
 % But if it is possible, then when it is done the target language
 % generator will be able to ignore the issue of type classes.
 %
-% For language interoperability, however, it might be nice if the
-% translation were done at higher level.
+% For language interoperability, however, it might be nice if the translation
+% were done at higher level.
 %
 % Mercury type classes should map directly to MLDS interfaces.
 %
@@ -205,16 +212,16 @@
 % of names beginning with uppercase or lowercase letters, then the target
 % language generator should generate names that respect those conventions.
 %
-% An MLDS name may contain arbitrary characters.
-% If the target language has restrictions on what names can be used
-% in identifiers, then it is the responsibility of the target language
-% generator to mangle MLDS names accordingly to ensure that they abide
-% by those restrictions.
+% An MLDS name may contain arbitrary characters. If the target language
+% has restrictions on what names can be used in identifiers, then
+% it is the responsibility of the target language generator to mangle
+% MLDS names accordingly to ensure that they abide by those restrictions.
 %
 % 2. Packages.
 %
 % MLDS packages should be mapped directly to the corresponding notion
 % in the target language, if possible.
+%
 % If the target does not have a notion of packages, then they should be
 % mapped to names of the form "foo.bar.baz" or if dots are not allowed
 % then to "foo__bar__baz".
@@ -231,8 +238,8 @@
 % the previous rule. Likewise, the arity-zero version of function
 % (i.e. a constant) should not be function-qualified or arity-qualified
 % unless this would cause ambiguity with an unqualified name generated
-% the aforementioned rule.
-% The first mode of a predicate should not be mode-qualified.
+% the aforementioned rule. The first mode of a predicate should not be
+% mode-qualified.
 %
 % [Rationale: name mangling should be avoided where possible, because
 % this makes it easier for the user to interoperate with other languages
@@ -241,11 +248,12 @@
 % 4. Procedures.
 %
 % If a procedure name needs to be qualified, the qualification should be
-% done by appending "_f" for functions or "_p" for predicates,
-% optionally followed by the arity,
-% optionally followed by an underscore and then the mode number,
-% optionally followed by "_i" and then the MLDS function sequence number
-% (for internal MLDS functions, used e.g. to implement backtracking).
+% done by
+% - appending "_f" for functions or "_p" for predicates,
+% - optionally followed by the arity,
+% - optionally followed by an underscore and then the mode number,
+% - optionally followed by "_i" and then the MLDS function sequence number
+%   (for internal MLDS functions, used e.g. to implement backtracking).
 %
 % [Rationale: any qualifiers should go at the end of a name, so that
 % command-line completion works even for mangled names (and hopefully
@@ -258,13 +266,13 @@
 %
 % 5. Types.
 %
-% If a type name needs to be qualified, the qualification should be
-% done by appending an underscore followed by the arity.
+% If a type name needs to be qualified, the qualification should be done
+% by appending an underscore followed by the arity.
 %
 % To avoid ambiguity as to whether a name is qualified or not,
-% any types whose unqualified name matches the pattern for qualified
-% names, i.e. the regular expression `.*_[0-9]+',
-% should always be qualified (even if not overloaded).
+% any types whose unqualified name matches the pattern for qualified names,
+% i.e. the regular expression `.*_[0-9]+', should always be qualified
+% (even if not overloaded).
 %
 %---------------------------------------------------------------------------%
 %
@@ -402,7 +410,7 @@
 :- type mlds_module_name.
 
     % An mlds_package_name specifies the name of an mlds package.
-    % XXX This is wrongly named as it is used for module names in the Java
+    % XXX This is wrongly named, as it is used for module names in the Java
     % backend.
     %
 :- type mlds_package_name == mlds_module_name.
@@ -414,9 +422,8 @@
 
     % Given the name of a Mercury module, and a package name, return the
     % name of the corresponding MLDS module name in which this module is
-    % defined.
-    % In this case, the package is specified as the first parameter (c.f.
-    % mercury_module_name_to_mlds above).
+    % defined. In this case, the package is specified as the first parameter
+    % (c.f. mercury_module_name_to_mlds above).
     %
 :- func mercury_module_and_package_name_to_mlds(mercury_module_name,
     mercury_module_name) = mlds_module_name.
