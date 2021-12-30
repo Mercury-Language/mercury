@@ -6,7 +6,7 @@
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% File: parser.m.
+% File: mercury_term_parser.m.
 % Main author: fjh.
 % Stability: high.
 %
@@ -17,18 +17,18 @@
 % similar, but it takes a list of tokens rather than a string.
 %
 % The parser is a relatively straight-forward top-down recursive descent
-% parser, made somewhat complicated by the need to handle operator
-% precedences.  It uses `lexer.get_token_list' to read a list of tokens.
+% parser, made somewhat complicated by the need to handle operator precedences.
+% It uses `mercury_term_lexer.get_token_list' to read a list of tokens.
 % It uses the routines from the module `ops' to look up operator precedences.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- module parser.
+:- module mercury_term_parser.
 :- interface.
 
 :- import_module io.
-:- import_module lexer.
+:- import_module mercury_term_lexer.
 :- import_module ops.
 :- import_module term_io.
 
@@ -166,79 +166,83 @@
 
 read_term(Result, !IO) :-
     io.input_stream(Stream, !IO),
-    parser.read_term(Stream, Result, !IO).
+    mercury_term_parser.read_term(Stream, Result, !IO).
 
 read_term(Stream, Result, !IO) :-
     io.input_stream_name(Stream, FileName, !IO),
-    parser.read_term_filename_with_op_table(Stream, ops.init_mercury_op_table,
-        FileName, Result, !IO).
+    mercury_term_parser.read_term_filename_with_op_table(Stream,
+        ops.init_mercury_op_table, FileName, Result, !IO).
 
 read_term_with_op_table(Ops, Result, !IO) :-
     io.input_stream(Stream, !IO),
-    parser.read_term_with_op_table(Stream, Ops, Result, !IO).
+    mercury_term_parser.read_term_with_op_table(Stream, Ops, Result, !IO).
 
 read_term_with_op_table(Stream, Ops, Result, !IO) :-
     io.input_stream_name(Stream, FileName, !IO),
-    parser.read_term_filename_with_op_table(Stream, Ops,
+    mercury_term_parser.read_term_filename_with_op_table(Stream, Ops,
         FileName, Result, !IO).
 
 read_term_filename(FileName, Result, !IO) :-
     io.input_stream(Stream, !IO),
-    parser.read_term_filename(Stream, FileName, Result, !IO).
+    mercury_term_parser.read_term_filename(Stream, FileName, Result, !IO).
 
 read_term_filename(Stream, FileName, Result, !IO) :-
-    parser.read_term_filename_with_op_table(Stream, ops.init_mercury_op_table,
-        FileName, Result, !IO).
+    mercury_term_parser.read_term_filename_with_op_table(Stream,
+        ops.init_mercury_op_table, FileName, Result, !IO).
 
 read_term_filename_with_op_table(Ops, FileName, Result, !IO) :-
     io.input_stream(Stream, !IO),
-    parser.read_term_filename_with_op_table(Stream, Ops,
+    mercury_term_parser.read_term_filename_with_op_table(Stream, Ops,
         FileName, Result, !IO).
 
 read_term_filename_with_op_table(Stream, Ops, FileName, Result, !IO) :-
-    lexer.get_token_list(Stream, Tokens, !IO),
-    parser.parse_tokens_with_op_table(Ops, FileName, Tokens, Result).
+    mercury_term_lexer.get_token_list(Stream, Tokens, !IO),
+    mercury_term_parser.parse_tokens_with_op_table(Ops, FileName,
+        Tokens, Result).
 
 %---------------------%
 
 read_term_from_string(FileName, String, EndPos, Result) :-
-    parser.read_term_from_string_with_op_table(ops.init_mercury_op_table,
-        FileName, String, EndPos, Result).
+    mercury_term_parser.read_term_from_string_with_op_table(
+        ops.init_mercury_op_table, FileName, String, EndPos, Result).
 
 read_term_from_string_with_op_table(Ops, FileName, String, EndPos, Result) :-
     string.length(String, Len),
     StartPos = posn(1, 0, 0),
-    parser.read_term_from_substring_with_op_table(Ops, FileName, String, Len,
-        StartPos, EndPos, Result).
+    mercury_term_parser.read_term_from_substring_with_op_table(Ops, FileName,
+        String, Len, StartPos, EndPos, Result).
 
 read_term_from_substring(FileName, String, Len, StartPos, EndPos, Result) :-
-    parser.read_term_from_substring_with_op_table(ops.init_mercury_op_table,
-        FileName, String, Len, StartPos, EndPos, Result).
+    mercury_term_parser.read_term_from_substring_with_op_table(
+        ops.init_mercury_op_table, FileName, String, Len, StartPos, EndPos,
+        Result).
 
 read_term_from_linestr(FileName, String, Len,
         StartLineContext, EndLineContext, StartLinePosn, EndLinePosn,
         Result) :-
-    parser.read_term_from_linestr_with_op_table(ops.init_mercury_op_table,
-        FileName, String, Len,
-        StartLineContext, EndLineContext, StartLinePosn, EndLinePosn,
-        Result).
+    mercury_term_parser.read_term_from_linestr_with_op_table(
+        ops.init_mercury_op_table, FileName, String, Len,
+        StartLineContext, EndLineContext, StartLinePosn, EndLinePosn, Result).
 
 read_term_from_substring_with_op_table(Ops, FileName, String, Len,
         StartPos, EndPos, Result) :-
-    lexer.string_get_token_list_max(String, Len, Tokens, StartPos, EndPos),
-    parser.parse_tokens_with_op_table(Ops, FileName, Tokens, Result).
+    mercury_term_lexer.string_get_token_list_max(String, Len, Tokens,
+        StartPos, EndPos),
+    mercury_term_parser.parse_tokens_with_op_table(Ops, FileName, Tokens,
+        Result).
 
 read_term_from_linestr_with_op_table(Ops, FileName, String, Len,
         StartLineContext, EndLineContext, StartLinePosn, EndLinePosn,
         Result) :-
-    lexer.linestr_get_token_list_max(String, Len, Tokens,
+    mercury_term_lexer.linestr_get_token_list_max(String, Len, Tokens,
         StartLineContext, EndLineContext, StartLinePosn, EndLinePosn),
-    parser.parse_tokens_with_op_table(Ops, FileName, Tokens, Result).
+    mercury_term_parser.parse_tokens_with_op_table(Ops, FileName, Tokens,
+        Result).
 
 %---------------------------------------------------------------------------%
 
 parse_tokens(FileName, Tokens, Result) :-
-    parser.parse_tokens_with_op_table(ops.init_mercury_op_table,
+    mercury_term_parser.parse_tokens_with_op_table(ops.init_mercury_op_table,
         FileName, Tokens, Result).
 
 parse_tokens_with_op_table(Ops, FileName, Tokens, Result) :-
@@ -268,7 +272,7 @@ check_for_errors(Parse, VarSet, Tokens, LeftOverTokens, Result) :-
             % Find the token that caused the error.
             (
                 ErrorTokens = token_cons(ErrorTok, ErrorTokLineNum, _),
-                lexer.token_to_string(ErrorTok, TokString),
+                mercury_term_lexer.token_to_string(ErrorTok, TokString),
                 string.format("Syntax error at %s: %s",
                     [s(TokString), s(ErrorMessage)], Message),
                 LineNum = ErrorTokLineNum
@@ -291,7 +295,7 @@ check_for_errors(Parse, VarSet, Tokens, LeftOverTokens, Result) :-
         else
             (
                 LeftOverTokens = token_cons(Token, LineNum, _),
-                lexer.token_to_string(Token, TokString),
+                mercury_term_lexer.token_to_string(Token, TokString),
                 string.format("Syntax error: unexpected %s",
                     [s(TokString)], Message),
                 Result = error(Message, LineNum)
@@ -387,7 +391,7 @@ parse_arg(Term, !TokensLeft, !PS) :-
     % XXX We should do the following:
     %   ArgPriority = ops.arg_priority(OpTable),
     % but that would mean we can't, for example, parse '::'/2 in arguments
-    % the way we want to.  Perhaps a better solution would be to change the
+    % the way we want to. Perhaps a better solution would be to change the
     % priority of '::'/2, but we need to analyse the impact of that further.
     ArgPriority = ops.max_priority(OpTable) + 1,
     do_parse_term(ArgPriority, argument, Term, !TokensLeft, !PS).
@@ -1161,20 +1165,22 @@ could_start_term(integer_dot(_), no).
 
 %---------------------------------------------------------------------------%
 
-:- func lexer_base_to_term_base(lexer.integer_base) = term.integer_base.
+:- func lexer_base_to_term_base(mercury_term_lexer.integer_base)
+    = term.integer_base.
 
 lexer_base_to_term_base(base_2) = base_2.
 lexer_base_to_term_base(base_8) = base_8.
 lexer_base_to_term_base(base_10) = base_10.
 lexer_base_to_term_base(base_16) = base_16.
 
-:- func lexer_signedness_to_term_signedness(lexer.signedness)
+:- func lexer_signedness_to_term_signedness(mercury_term_lexer.signedness)
     = term.signedness.
 
 lexer_signedness_to_term_signedness(unsigned) = unsigned.
 lexer_signedness_to_term_signedness(signed) = signed.
 
-:- func lexer_size_to_term_size(lexer.integer_size) = term.integer_size.
+:- func lexer_size_to_term_size(mercury_term_lexer.integer_size)
+    = term.integer_size.
 
 lexer_size_to_term_size(size_word) = size_word.
 lexer_size_to_term_size(size_8_bit) = size_8_bit.

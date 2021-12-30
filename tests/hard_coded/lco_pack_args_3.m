@@ -39,5 +39,4 @@ gen([E | Es], 42.5, T) :-
 
 main(!IO) :-
     gen([enum1, enum2, enum3], _, T),
-    io.write(T, !IO),
-    io.nl(!IO).
+    io.write_line(T, !IO).

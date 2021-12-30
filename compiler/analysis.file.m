@@ -123,7 +123,7 @@
 :- import_module char.
 :- import_module dir.
 :- import_module exception.
-:- import_module parser.
+:- import_module mercury_term_parser.
 :- import_module require.
 :- import_module string.
 :- import_module term.
@@ -555,7 +555,8 @@ write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
         % Request file already exists. Check it has the right version number,
         % then append the new requests to the end.
 
-        parser.read_term(InputStream, VersionResult : read_term, !IO),
+        mercury_term_parser.read_term(InputStream, VersionResult : read_term,
+            !IO),
         io.close_input(InputStream, !IO),
         ( if
             VersionResult = term(_, NumberTerm),
@@ -790,7 +791,7 @@ read_analysis_file(AnalysisFileName, ParseEntry,
     io::di, io::uo) is det.
 
 check_analysis_file_version_number(Stream, !IO) :-
-    parser.read_term(Stream, TermResult : read_term, !IO),
+    mercury_term_parser.read_term(Stream, TermResult : read_term, !IO),
     ( if
         TermResult  = term(_, NumberTerm),
         decimal_term_to_int(NumberTerm, version_number)
@@ -805,7 +806,7 @@ check_analysis_file_version_number(Stream, !IO) :-
     parse_entry(T)::in(parse_entry), T::in, T::out, io::di, io::uo) is det.
 
 read_analysis_file_2(Stream, ParseEntry, Results0, Results, !IO) :-
-    parser.read_term(Stream, TermResult : read_term, !IO),
+    mercury_term_parser.read_term(Stream, TermResult : read_term, !IO),
     (
         TermResult = term(_, Term),
         ParseEntry(Term, Results0, Results1),

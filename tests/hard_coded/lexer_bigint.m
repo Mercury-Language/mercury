@@ -14,14 +14,14 @@
 :- implementation.
 
 :- import_module list.
-:- import_module lexer.
+:- import_module mercury_term_lexer.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
     % Read from the current input stream.
-    lexer.get_token_list(Tokens, !IO),
+    mercury_term_lexer.get_token_list(Tokens, !IO),
     write_token_list(Tokens, !IO),
     io.nl(!IO),
 
@@ -33,23 +33,21 @@ main(!IO) :-
         (
             ReadRes = ok(String),
             Posn0 = posn(1, 0, 0),
-            lexer.string_get_token_list(String, StringTokens, Posn0, _Posn),
+            mercury_term_lexer.string_get_token_list(String, StringTokens,
+                Posn0, _Posn),
             write_token_list(StringTokens, !IO)
         ;
             ReadRes = error(_, Error),
-            io.write(Error, !IO),
-            io.nl(!IO)
+            io.write_line(Error, !IO)
         )
     ;
         OpenRes = error(Error),
-        io.write(Error, !IO),
-        io.nl(!IO)
+        io.write_line(Error, !IO)
     ).
 
 :- pred write_token_list(token_list::in, io::di, io::uo) is det.
 
 write_token_list(token_nil, !IO).
 write_token_list(token_cons(Token, _Context, List), !IO) :-
-    io.write(Token, !IO),
-    io.nl(!IO),
+    io.write_line(Token, !IO),
     write_token_list(List, !IO).

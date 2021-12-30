@@ -589,8 +589,8 @@ is_ascii(Char) :-
     Code >= 0x00,
     Code =< 0x7f.
 
-% The information here is duplicated in lookup_token_action in lexer.m.
-% If you update this; you will also need update that.
+% The information here is duplicated in lookup_token_action
+% in mercury_term_lexer.m. If you update this; you will also need update that.
 is_whitespace(' ').
 is_whitespace('\t').
 is_whitespace('\n').
@@ -626,7 +626,8 @@ is_alpha_or_underscore(Char) :-
 is_alnum_or_underscore(Char) :-
     % We explicitly enumerate here for efficiency.
     % (The information here and in some of the following predicates,
-    % e.g. lower_upper, is duplicated in lookup_token_action in lexer.m.)
+    % e.g. lower_upper, is duplicated in lookup_token_action
+    % in mercury_term_lexer.m.)
     %
     % A more concise implementation would be:
     %   ( if is_digit(Char) then

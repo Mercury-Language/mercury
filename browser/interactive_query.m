@@ -71,7 +71,7 @@
 :- import_module exception.
 :- import_module map.
 :- import_module maybe.
-:- import_module parser.
+:- import_module mercury_term_parser.
 :- import_module string.
 :- import_module term.
 :- import_module term_io.
@@ -119,7 +119,7 @@ query_2(Env, !IO) :-
         query_2(Env, !IO)
     ;
         Result = ok(Line),
-        parser.read_term_from_string("", Line, _, ReadTerm),
+        mercury_term_parser.read_term_from_string("", Line, _, ReadTerm),
         query_3(Env, ReadTerm, !IO)
     ).
 

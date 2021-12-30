@@ -2254,8 +2254,8 @@
 :- import_module int16.
 :- import_module int32.
 :- import_module int64.
+:- import_module mercury_term_parser.
 :- import_module pair.
-:- import_module parser.
 :- import_module prolog.
 :- import_module require.
 :- import_module stream.string_writer.
@@ -8784,7 +8784,8 @@ read(Stream, Result, !IO) :-
     with_input_stream(Stream, read, Result, !IO).
 
 read_from_string(FileName, String, Len, Result, !Posn) :-
-    parser.read_term_from_substring(FileName, String, Len, !Posn, ReadResult),
+    mercury_term_parser.read_term_from_substring(FileName, String, Len,
+        !Posn, ReadResult),
     !.Posn = posn(LineNumber, _, _),
     process_read_term(ReadResult, LineNumber, Result).
 

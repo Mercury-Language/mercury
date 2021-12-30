@@ -122,17 +122,17 @@
 :- import_module io.
 :- import_module kv_list.
 :- import_module lazy.
-:- import_module lexer.
 :- import_module list.
 :- import_module map.
 :- import_module math.
 :- import_module maybe.
+:- import_module mercury_term_lexer.
+:- import_module mercury_term_parser.
 :- import_module multi_map.
 :- import_module one_or_more.
 :- import_module one_or_more_map.
 :- import_module ops.
 :- import_module pair.
-:- import_module parser.
 :- import_module parsing_utils.
 :- import_module pprint.
 :- import_module pqueue.
@@ -292,12 +292,13 @@ stdlib_module_doc_undoc("integer",                      doc).
 stdlib_module_doc_undoc("io",                           doc).
 stdlib_module_doc_undoc("kv_list",                      doc).
 stdlib_module_doc_undoc("lazy",                         doc).
-stdlib_module_doc_undoc("lexer",                        doc).
 stdlib_module_doc_undoc("library",                      doc).
 stdlib_module_doc_undoc("list",                         doc).
 stdlib_module_doc_undoc("map",                          doc).
 stdlib_module_doc_undoc("math",                         doc).
 stdlib_module_doc_undoc("maybe",                        doc).
+stdlib_module_doc_undoc("mercury_term_lexer",           doc).
+stdlib_module_doc_undoc("mercury_term_parser",          doc).
 stdlib_module_doc_undoc("multi_map",                    doc).
 stdlib_module_doc_undoc("one_or_more",                  doc).
 stdlib_module_doc_undoc("one_or_more_map",              doc).
@@ -305,7 +306,6 @@ stdlib_module_doc_undoc("mutvar",                       undoc).
 stdlib_module_doc_undoc("ops",                          doc).
 stdlib_module_doc_undoc("pair",                         doc).
 stdlib_module_doc_undoc("par_builtin",                  undoc).
-stdlib_module_doc_undoc("parser",                       doc).
 stdlib_module_doc_undoc("parsing_utils",                doc).
 stdlib_module_doc_undoc("pprint",                       doc).
 stdlib_module_doc_undoc("pqueue",                       doc).

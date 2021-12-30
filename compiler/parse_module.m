@@ -233,10 +233,10 @@
 :- import_module cord.
 :- import_module counter.
 :- import_module int.
-:- import_module lexer.
+:- import_module mercury_term_lexer.
+:- import_module mercury_term_parser.
 :- import_module one_or_more.
 :- import_module pair.
-:- import_module parser.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -1457,8 +1457,8 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
     % Parse the first term, treating it as occurring within the scope
     % of the special "root" module (so that any `:- module' declaration
     % is taken to be a non-nested module unless explicitly qualified).
-    parser.read_term_from_linestr(!.SourceFileName, FileString, FileStringLen,
-        !LineContext, !LinePosn, FirstReadTerm),
+    mercury_term_parser.read_term_from_linestr(!.SourceFileName,
+        FileString, FileStringLen, !LineContext, !LinePosn, FirstReadTerm),
     read_term_to_iom_result(root_module_name, !.SourceFileName,
         FirstReadTerm, MaybeFirstIOM, !SeqNumCounter, !Specs),
     (
@@ -1726,8 +1726,9 @@ read_next_item_or_marker(FileName, FileString, FileStringLen, InitLookAhead,
         !Specs) :-
     (
         InitLookAhead = no_lookahead,
-        parser.read_term_from_linestr(FileName, FileString, FileStringLen,
-            !LineContext, !LinePosn, ReadTermResult),
+        mercury_term_parser.read_term_from_linestr(FileName,
+            FileString, FileStringLen, !LineContext, !LinePosn,
+            ReadTermResult),
         read_term_to_iom_result(ModuleName, FileName, ReadTermResult,
             ReadIOMResult, !SeqNumCounter, !Specs)
     ;

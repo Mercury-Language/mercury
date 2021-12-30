@@ -219,9 +219,9 @@
 
 :- import_module bool.
 :- import_module cord.
-:- import_module lexer.
 :- import_module list.
-:- import_module parser.
+:- import_module mercury_term_lexer.
+:- import_module mercury_term_parser.
 :- import_module require.
 :- import_module string.
 :- import_module term_io.
@@ -1361,7 +1361,7 @@ read_and_parse_used_modules(FileName, FileString, MaxOffset,
 
 read_term_check_for_error_or_eof(FileName, FileString, MaxOffset,
         !LineContext, !LinePosn, ItemName, ReadTerm) :-
-    parser.read_term_from_linestr(FileName, FileString, MaxOffset,
+    mercury_term_parser.read_term_from_linestr(FileName, FileString, MaxOffset,
         !LineContext, !LinePosn, TermResult),
     (
         TermResult = term(_, Term),

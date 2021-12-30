@@ -18,7 +18,7 @@
 
 :- import_module list.
 :- import_module nested_module_bug.parser.
-:- import_module parser.
+:- import_module mercury_term_parser.
 
 main(!IO) :-
     parse_tokens("foo", [1, 2], List),

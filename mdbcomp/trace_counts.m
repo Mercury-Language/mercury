@@ -185,7 +185,7 @@
 :- import_module exception.
 :- import_module int.
 :- import_module integer.
-:- import_module lexer.
+:- import_module mercury_term_lexer.
 :- import_module require.
 :- import_module string.
 :- import_module term_io.
@@ -468,8 +468,8 @@ read_trace_counts_setup(InputStream, !TraceCounts, !IO) :-
 
 read_proc_trace_counts(InputStream, HeaderLineNumber, HeaderLine,
         CurModuleNameSym, CurFileName, !TraceCounts, !IO) :-
-    lexer.string_get_token_list_max(HeaderLine, string.length(HeaderLine),
-        TokenList, posn(HeaderLineNumber, 1, 0), _),
+    mercury_term_lexer.string_get_token_list_max(HeaderLine,
+        string.length(HeaderLine), TokenList, posn(HeaderLineNumber, 1, 0), _),
     ( if TokenList = token_cons(name(TokenName), _, TokenListRest) then
         ( if
             TokenName = "module",

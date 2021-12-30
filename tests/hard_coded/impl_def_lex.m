@@ -16,7 +16,7 @@
 
 :- implementation.
 
-:- import_module lexer.
+:- import_module mercury_term_lexer.
 
 main(!IO) :-
     get_token_list(Tokens, !IO),

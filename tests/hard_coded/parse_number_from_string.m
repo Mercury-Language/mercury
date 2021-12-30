@@ -17,9 +17,9 @@
 :- implementation.
 
 :- import_module list.
+:- import_module mercury_term_parser.
 :- import_module term.
 :- import_module term_io.
-:- import_module parser.
 :- import_module string.
 
 %---------------------------------------------------------------------------%

@@ -11,8 +11,9 @@
 % Stability: low.
 %
 % This module exports a typeclass `ops.op_table' which is used to define
-% operator precedence tables for use by `parser.read_term_with_op_table'
-% and `term_io.write_term_with_op_table'.
+% operator precedence tables for use by
+% `mercury_term_parser.read_term_with_op_table' and
+% `term_io.write_term_with_op_table'.
 %
 % It also exports an instance `ops.mercury_op_table' that implements the
 % Mercury operator table defined in the Mercury Language Reference Manual.
@@ -146,7 +147,7 @@
 :- type table == ops.mercury_op_table.
 
 %
-% For use by parser.m, term_io.m, stream.string_writer.m.
+% For use by mercury_term_parser.m, term_io.m, stream.string_writer.m.
 %
 
 :- pred adjust_priority_for_assoc(ops.priority::in, ops.assoc::in,

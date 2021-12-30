@@ -13,6 +13,9 @@ Changes that may break compatibility
   you can module qualify the name at the call site,
   or wrap parentheses around the name, e.g. `(coerce)(Arg)`.
 
+* We have renamed the `lexer' and `parser' modules of the Mercury standard
+  library to `mercury_term_lexer' and `mercury_term_parser' respectively.
+
 * We have made slight changes to the names and/or the functionality
   of several predicates in the `getopt` and `getopt_io` modules.
 
@@ -189,6 +192,11 @@ Changes to the Mercury standard library
 
     - pred `report_stats/2` to `report_standard_stats/2`.
 
+### Changes to the `lexer` module
+
+    This module has been renamed to `mercury_term_lexer`, to make
+    name clashes between it and user-written modules less likely.
+
 ### Changes to the `list` module
 
 * The following predicates have been added:
@@ -219,6 +227,11 @@ Changes to the Mercury standard library
     - pred `foldl5_maybe/12`
     - pred `map_foldl4_maybe/11`
     - pred `map_foldl5_maybe/13`
+
+### Changes to the `parser` module
+
+    This module has been renamed to `mercury_term_parser`, to make
+    name clashes between it and user-written modules less likely.
 
 ### Changes to the `prolog` module
 

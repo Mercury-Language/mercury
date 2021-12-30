@@ -125,7 +125,7 @@
 :- implementation.
 
 :- import_module int.
-:- import_module lexer.
+:- import_module mercury_term_lexer.
 :- import_module ops.
 :- import_module string.
 :- import_module unit.
@@ -511,7 +511,9 @@ mercury_format_quoted_atom(NextToGraphicToken, Name, S, !U) :-
     ( if
         NextToGraphicToken = next_to_graphic_token,
         string.to_char_list(Name, Chars),
-        ( list.member(Char, Chars) => lexer.graphic_token_char(Char) )
+        ( list.member(Char, Chars) =>
+            mercury_term_lexer.graphic_token_char(Char)
+        )
     then
         add_string("'", S, !U),
         add_escaped_string(Name, S, !U),

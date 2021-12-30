@@ -52,9 +52,10 @@
 
 :- type var(T).
 
-    % In terms constructed by library/parser.m, a functor can have arguments
-    % *only* if its const is atom(...). If it is integer, string, float or
-    % implementation_defined, then its argument list is guaranteed to be [].
+    % In terms constructed by library/mercury_term_parser.m, a functor
+    % can have arguments *only* if its const is atom(...). If it is integer,
+    % string, float or implementation_defined, then its argument list
+    % is guaranteed to be [].
 :- type const
     --->    atom(string)
     ;       integer(

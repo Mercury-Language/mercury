@@ -284,9 +284,9 @@
 :- import_module bool.
 :- import_module int.
 :- import_module integer.
-:- import_module lexer.
 :- import_module list.
-:- import_module parser.
+:- import_module mercury_term_lexer.
+:- import_module mercury_term_parser.
 :- import_module string.
 :- import_module stream.string_writer.
 
@@ -306,7 +306,7 @@ read_term_with_op_table(Ops, Result, !IO) :-
     term_io.read_term_with_op_table(InStream, Ops, Result, !IO).
 
 read_term_with_op_table(InStream, Ops, Result, !IO) :-
-    parser.read_term_with_op_table(InStream, Ops, Result, !IO).
+    mercury_term_parser.read_term_with_op_table(InStream, Ops, Result, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -896,7 +896,7 @@ should_atom_be_quoted(S, AdjacentToGraphicToken) = ShouldQuote :-
             S = "!"
         ;
             % Graphic token (6.4.2)
-            string.all_match(lexer.graphic_token_char, S),
+            string.all_match(mercury_term_lexer.graphic_token_char, S),
             S \= "",
 
             % We need to quote tokens starting with '#', because Mercury uses

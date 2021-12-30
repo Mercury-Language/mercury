@@ -62,7 +62,7 @@
 :- import_module dir.
 :- import_module getopt.
 :- import_module maybe.
-:- import_module parser.
+:- import_module mercury_term_parser.
 :- import_module term.
 :- import_module term_io.
 
@@ -508,7 +508,7 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
         MaybeDirAndStream, !IO),
     (
         MaybeDirAndStream = ok(path_name_and_stream(ModuleDir, DepStream)),
-        parser.read_term(DepStream, TermResult, !IO),
+        mercury_term_parser.read_term(DepStream, TermResult, !IO),
         io.close_input(DepStream, !IO),
         (
             TermResult = term(_, Term),

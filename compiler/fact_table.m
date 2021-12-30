@@ -162,8 +162,8 @@
 :- import_module library.
 :- import_module map.
 :- import_module maybe.
+:- import_module mercury_term_parser.
 :- import_module pair.
-:- import_module parser.
 :- import_module require.
 :- import_module string.
 :- import_module term.
@@ -849,7 +849,7 @@ infer_procs_determinism_pass_1(GenInfo, [ProcId | ProcIds],
 read_in_and_compile_facts(FileStream, FileName, MaybeProgressStream,
         FactTableSize, PredInfo, NumFactArgInfos, FactArgInfos,
         ProcStreams, MaybeOutput, !FactNum, !Specs, !IO) :-
-    parser.read_term(FileStream, Result0, !IO),
+    mercury_term_parser.read_term(FileStream, Result0, !IO),
     (
         Result0 = eof
     ;

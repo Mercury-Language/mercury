@@ -379,7 +379,7 @@
 
 :- interface.
 
-    % Exported for use by lexer.m.
+    % Exported for use by mercury_term_lexer.m.
     %
 :- pred from_base_string_underscore(int::in, string::in, integer::out)
     is semidet.

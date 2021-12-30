@@ -18,13 +18,13 @@
 
 :- implementation.
 
-:- import_module lexer.
+:- import_module mercury_term_lexer.
 
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
     % Read from the current input stream.
-    lexer.get_token_list(Tokens, !IO),
+    mercury_term_lexer.get_token_list(Tokens, !IO),
     write_token_list(Tokens, !IO),
     io.nl(!IO),
 
@@ -36,7 +36,8 @@ main(!IO) :-
         (
             ReadRes = ok(String),
             Posn0 = posn(1, 0, 0),
-            lexer.string_get_token_list(String, StringTokens, Posn0, _Posn),
+            mercury_term_lexer.string_get_token_list(String, StringTokens,
+                Posn0, _Posn),
             write_token_list(StringTokens, !IO)
         ;
             ReadRes = error(_, Error),
