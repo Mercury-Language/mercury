@@ -1320,6 +1320,14 @@ then
         cd ${root}
     fi
 
+    check_stdlib_modules_status=0
+    cd ${root}/${stage2dir}/library
+    mmake ${mmake_opts} check_stdlib_modules || {
+        echo '** mmake check_stdlib_modules failed in library!'
+        check_stdlib_modules_status=1
+    }
+    cd ${root}
+
     if ${stop_after_stage_2}
     then
         echo "stopping after building stage 2"
@@ -1857,6 +1865,7 @@ else
 
     diff_status=0
     check_namespace_status=0
+    check_stdlib_modules_status=0
     echo "building of stages 1 and 2 skipped"
 fi
 
@@ -2295,6 +2304,12 @@ fi
 if test "${check_namespace_status}" != 0
 then
     echo "ERROR EXIT: some namespace isn't clean"
+    exitstatus=1
+fi
+
+if test "${check_stdlib_modules_status}" != 0
+then
+    echo "ERROR EXIT: mismatch in list of stdlib modules"
     exitstatus=1
 fi
 

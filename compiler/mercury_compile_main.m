@@ -108,10 +108,12 @@
 :- import_module dir.
 :- import_module gc.
 :- import_module getopt.
+:- import_module library.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
+:- import_module solutions.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -740,86 +742,80 @@ do_op_mode_standalone_interface(Globals, StandaloneIntBasename, !IO) :-
     io::di, io::uo) is det.
 
 do_op_mode_query(Globals, OpModeQuery, !IO) :-
+    io.stdout_stream(StdOut, !IO),
     (
         OpModeQuery = opmq_output_cc,
         globals.lookup_string_option(Globals, cc, CC),
-        io.stdout_stream(StdOut, !IO),
-        io.write_string(StdOut, CC ++ "\n", !IO)
+        io.print_line(StdOut, CC, !IO)
     ;
         OpModeQuery = opmq_output_c_compiler_type,
         globals.lookup_string_option(Globals, c_compiler_type, CC_Type),
-        io.stdout_stream(StdOut, !IO),
-        io.write_string(StdOut, CC_Type ++ "\n", !IO)
+        io.print_line(StdOut, CC_Type, !IO)
     ;
         OpModeQuery = opmq_output_cflags,
-        io.stdout_stream(StdOut, !IO),
         output_c_compiler_flags(Globals, StdOut, !IO),
         io.nl(StdOut, !IO)
     ;
         OpModeQuery = opmq_output_c_include_directory_flags,
-        io.stdout_stream(StdOut, !IO),
         output_c_include_directory_flags(Globals, StdOut, !IO)
     ;
         OpModeQuery = opmq_output_csharp_compiler,
         globals.lookup_string_option(Globals, csharp_compiler, CSC),
-        io.stdout_stream(StdOut, !IO),
-        io.write_string(StdOut, CSC ++ "\n", !IO)
+        io.print_line(StdOut, CSC, !IO)
     ;
         OpModeQuery = opmq_output_csharp_compiler_type,
         globals.lookup_string_option(Globals, csharp_compiler_type, CSC_Type),
-        io.stdout_stream(StdOut, !IO),
-        io.write_string(StdOut, CSC_Type ++ "\n", !IO)
+        io.print_line(StdOut, CSC_Type, !IO)
+    ;
+        OpModeQuery = opmq_output_java_class_dir,
+        get_class_dir_name(Globals, ClassName),
+        io.print_line(StdOut, ClassName, !IO)
     ;
         OpModeQuery = opmq_output_grade_defines,
-        io.stdout_stream(StdOut, !IO),
         output_c_grade_defines(Globals, StdOut, !IO)
     ;
         OpModeQuery = opmq_output_link_command,
         globals.lookup_string_option(Globals, link_executable_command,
             LinkCommand),
-        io.stdout_stream(Stdout, !IO),
-        io.write_string(Stdout, LinkCommand, !IO),
-        io.nl(Stdout, !IO)
+        io.print_line(StdOut, LinkCommand, !IO)
     ;
         OpModeQuery = opmq_output_shared_lib_link_command,
         globals.lookup_string_option(Globals, link_shared_lib_command,
             LinkCommand),
-        io.stdout_stream(Stdout, !IO),
-        io.write_string(Stdout, LinkCommand, !IO),
-        io.nl(Stdout, !IO)
+        io.print_line(StdOut, LinkCommand, !IO)
     ;
         OpModeQuery = opmq_output_library_link_flags,
-        io.stdout_stream(StdOut, !IO),
         output_library_link_flags(Globals, StdOut, !IO)
-    ;
-        OpModeQuery = opmq_output_class_dir,
-        io.stdout_stream(StdOut, !IO),
-        get_class_dir_name(Globals, ClassName),
-        io.write_string(StdOut, ClassName ++ "\n", !IO)
     ;
         OpModeQuery = opmq_output_grade_string,
         % When Mmake asks for the grade, it really wants the directory
         % component to use. This is consistent with scripts/canonical_grade.
         grade_directory_component(Globals, Grade),
-        io.stdout_stream(Stdout, !IO),
-        io.write_string(Stdout, Grade, !IO),
-        io.nl(Stdout, !IO)
+        io.print_line(StdOut, Grade, !IO)
     ;
         OpModeQuery = opmq_output_libgrades,
         globals.lookup_accumulating_option(Globals, libgrades, LibGrades),
-        (
-            LibGrades = []
-        ;
-            LibGrades = [_ | _],
-            io.stdout_stream(Stdout, !IO),
-            io.write_list(Stdout, LibGrades, "\n", io.write_string, !IO),
-            io.nl(Stdout, !IO)
-        )
+        list.foldl(io.print_line(StdOut), LibGrades, !IO)
+    ;
+        OpModeQuery = opmq_output_stdlib_modules,
+        GetStdlibModules =
+            ( pred(Line::out) is multi :-
+                library.stdlib_module_doc_undoc(ModuleName, DocUndoc),
+                (
+                    DocUndoc = doc,
+                    DocStr = "DOC"
+                ;
+                    DocUndoc = undoc,
+                    DocStr = "UNDOC"
+                ),
+                Line = DocStr ++ " " ++ ModuleName ++ ".m\n"
+            ),
+        solutions.solutions(GetStdlibModules, StdlibLines),
+        list.foldl(io.write_string(StdOut), StdlibLines, !IO)
     ;
         OpModeQuery = opmq_output_target_arch,
-        io.stdout_stream(StdOut, !IO),
         globals.lookup_string_option(Globals, target_arch, TargetArch),
-        io.write_string(StdOut, TargetArch ++ "\n", !IO)
+        io.print_line(StdOut, TargetArch, !IO)
     ).
 
 %---------------------------------------------------------------------------%

@@ -236,6 +236,7 @@
     ;       warn_state_var_shadowing
     ;       warn_suspected_occurs_check_failure
     ;       warn_potentially_ambiguous_pragma
+    ;       warn_stdlib_shadowing
     ;       inform_inferred
     ;       inform_inferred_types
     ;       inform_inferred_modes
@@ -316,7 +317,8 @@
     ;       only_opmode_output_grade_defines
     ;       only_opmode_output_c_include_directory_flags
     ;       only_opmode_output_target_arch
-    ;       only_opmode_output_class_dir
+    ;       only_opmode_output_java_class_dir
+    ;       only_opmode_output_stdlib_modules
 
     % Auxiliary output options
     ;       error_output_suffix
@@ -1321,6 +1323,7 @@ optdef(oc_warn, warn_suspicious_foreign_code,           bool(no)).
 optdef(oc_warn, warn_state_var_shadowing,               bool(yes)).
 optdef(oc_warn, warn_suspected_occurs_check_failure,    bool(yes)).
 optdef(oc_warn, warn_potentially_ambiguous_pragma,      bool(no)).
+optdef(oc_warn, warn_stdlib_shadowing,                  bool(yes)).
 optdef(oc_warn, inform_inferred,                        bool_special).
 optdef(oc_warn, inform_inferred_types,                  bool(yes)).
 optdef(oc_warn, inform_inferred_modes,                  bool(yes)).
@@ -1403,7 +1406,8 @@ optdef(oc_opmode, only_opmode_output_library_link_flags, bool(no)).
 optdef(oc_opmode, only_opmode_output_grade_defines,     bool(no)).
 optdef(oc_opmode, only_opmode_output_c_include_directory_flags, bool(no)).
 optdef(oc_opmode, only_opmode_output_target_arch,       bool(no)).
-optdef(oc_opmode, only_opmode_output_class_dir,         bool(no)).
+optdef(oc_opmode, only_opmode_output_java_class_dir,    bool(no)).
+optdef(oc_opmode, only_opmode_output_stdlib_modules,    bool(no)).
 
     % Auxiliary output options.
 
@@ -2238,6 +2242,8 @@ long_option("warn-potentially-ambiguous-pragma",
                                         warn_potentially_ambiguous_pragma).
 long_option("warn-potentially-ambiguous-pragmas",
                                         warn_potentially_ambiguous_pragma).
+long_option("warn-stdlib-shadowing",
+                                        warn_stdlib_shadowing).
 long_option("inform-inferred",          inform_inferred).
 long_option("inform-inferred-types",    inform_inferred_types).
 long_option("inform-inferred-modes",    inform_inferred_modes).
@@ -2346,8 +2352,11 @@ long_option("output-c-include-directory-flags",
 long_option("output-c-include-dir-flags",
     only_opmode_output_c_include_directory_flags).
 long_option("output-target-arch",       only_opmode_output_target_arch).
-long_option("output-class-directory",   only_opmode_output_class_dir).
-long_option("output-class-dir",         only_opmode_output_class_dir).
+long_option("output-class-directory",   only_opmode_output_java_class_dir).
+long_option("output-class-dir",         only_opmode_output_java_class_dir).
+long_option("output-java-class-directory",  only_opmode_output_java_class_dir).
+long_option("output-java-class-dir",        only_opmode_output_java_class_dir).
+long_option("output-stdlib-modules",    only_opmode_output_stdlib_modules).
 
 % aux output options
 long_option("smart-recompilation",      smart_recompilation).
@@ -4466,6 +4475,10 @@ options_help_warning(Stream, !IO) :-
         "--warn-potentially-ambiguous-pragma",
         "\tGenerate warnings for pragmas that do not specify whether they are",
         "\tfor a predicate or a function.",
+        "--no-warn-stdlib-shadowing",
+        "\tDo not generate warnings for module names that either duplicate",
+        "\tthe name of a module in the Mercury standard library, or contain",
+        "\ta subsequence of name components that do so.",
         "--no-inform-inferred",
         "\tDo not generate messages about inferred types or modes.",
         "--no-inform-inferred-types",
@@ -4735,8 +4748,12 @@ options_help_output(Stream, !IO) :-
         "--output-target-arch",
         "\tPrint the target architecture to the standard output.",
         "--output-class-dir, --output-class-directory",
+        "--output-java-class-dir, --output-java-class-directory",
         "\tPrint to standard output the name of the directory in which",
-        "\tgenerated Java class files will be placed."
+        "\tgenerated Java class files will be placed.",
+        "--output-stdlib-modules",
+        "\tPrint to standard output the names of modules in the Mercury",
+        "\tstandard library."
     ], !IO).
 
 :- pred options_help_aux_output(io.text_output_stream::in,

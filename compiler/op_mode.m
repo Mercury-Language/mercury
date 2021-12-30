@@ -50,14 +50,16 @@
     ;       opmq_output_csharp_compiler             % C# compiler properties.
     ;       opmq_output_csharp_compiler_type
 
+    ;       opmq_output_java_class_dir              % Java properties.
+
     ;       opmq_output_link_command                % Linker properties.
     ;       opmq_output_shared_lib_link_command
     ;       opmq_output_library_link_flags
 
-    ;       opmq_output_class_dir                   % Java properties.
-
     ;       opmq_output_grade_string                % Grade information.
     ;       opmq_output_libgrades
+
+    ;       opmq_output_stdlib_modules              % Library information.
 
     ;       opmq_output_target_arch.                % System information.
 
@@ -311,13 +313,16 @@ bool_op_modes = [
     only_opmode_output_library_link_flags -
         opm_top_query(opmq_output_library_link_flags),
 
-    only_opmode_output_class_dir -
-        opm_top_query(opmq_output_class_dir),
+    only_opmode_output_java_class_dir -
+        opm_top_query(opmq_output_java_class_dir),
 
     only_opmode_output_grade_string -
         opm_top_query(opmq_output_grade_string),
     only_opmode_output_libgrades -
         opm_top_query(opmq_output_libgrades),
+
+    only_opmode_output_stdlib_modules -
+        opm_top_query(opmq_output_stdlib_modules),
 
     only_opmode_output_target_arch -
         opm_top_query(opmq_output_target_arch),
@@ -411,7 +416,7 @@ op_mode_to_option_string(OptionTable, MOP) = Str :-
             MOPQ = opmq_output_library_link_flags,
             Str = "--output-library-link-flags"
         ;
-            MOPQ = opmq_output_class_dir,
+            MOPQ = opmq_output_java_class_dir,
             Str = "--output-class-dir"
         ;
             MOPQ = opmq_output_grade_string,
@@ -419,6 +424,9 @@ op_mode_to_option_string(OptionTable, MOP) = Str :-
         ;
             MOPQ = opmq_output_libgrades,
             Str = "--output-libgrades"
+        ;
+            MOPQ = opmq_output_stdlib_modules,
+            Str = "--output-stdlib-modules"
         ;
             MOPQ = opmq_output_target_arch,
             Str = "--output-target-arch"

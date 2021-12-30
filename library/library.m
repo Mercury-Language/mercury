@@ -28,10 +28,26 @@
 
 :- interface.
 
+    % Is a module or submodule intended to be documented in the library
+    % reference manual, or not?
+:- type doc_or_undoc
+    --->    doc
+    ;       undoc.
+
     % Succeeds iff the string is the (unqualified) name of one of the
     % modules in the Mercury standard library.
     %
 :- pred mercury_std_library_module(string::in) is semidet.
+
+    % Maps the name of each module in the Mercury standard library
+    % to an indication of whether we want to document it or not.
+    %
+    % Can also be used to get the names and doc status of *all* the
+    % modules in the Mercury standard library.
+    %
+:- pred stdlib_module_doc_undoc(string, doc_or_undoc).
+:- mode stdlib_module_doc_undoc(in, out) is semidet.
+:- mode stdlib_module_doc_undoc(out, out) is multi.
 
 %---------------------------------------------------------------------------%
 
@@ -230,137 +246,140 @@
 
 %---------------------------------------------------------------------------%
 
-mercury_std_library_module("array").
-mercury_std_library_module("array2d").
-mercury_std_library_module("assoc_list").
-mercury_std_library_module("backjump").
-mercury_std_library_module("bag").
-mercury_std_library_module("benchmarking").
-mercury_std_library_module("bimap").
-mercury_std_library_module("bitmap").
-mercury_std_library_module("bit_buffer").
-mercury_std_library_module("bit_buffer.read").
-mercury_std_library_module("bit_buffer.write").
-mercury_std_library_module("bool").
-mercury_std_library_module("bt_array").
-mercury_std_library_module("builtin").
-mercury_std_library_module("calendar").
-mercury_std_library_module("char").
-mercury_std_library_module("construct").
-mercury_std_library_module("cord").
-mercury_std_library_module("counter").
-mercury_std_library_module("deconstruct").
-mercury_std_library_module("diet").
-mercury_std_library_module("digraph").
-mercury_std_library_module("dir").
-mercury_std_library_module("edit_seq").
-mercury_std_library_module("enum").
-mercury_std_library_module("eqvclass").
-mercury_std_library_module("exception").
-mercury_std_library_module("fat_sparse_bitset").
-mercury_std_library_module("float").
-mercury_std_library_module("gc").
-mercury_std_library_module("getopt").
-mercury_std_library_module("getopt_io").
-mercury_std_library_module("hash_table").
-mercury_std_library_module("injection").
-mercury_std_library_module("int").
-mercury_std_library_module("int8").
-mercury_std_library_module("int16").
-mercury_std_library_module("int32").
-mercury_std_library_module("int64").
-mercury_std_library_module("integer").
-mercury_std_library_module("io").
-mercury_std_library_module("kv_list").
-mercury_std_library_module("lazy").
-mercury_std_library_module("lexer").
-mercury_std_library_module("library").
-mercury_std_library_module("list").
-mercury_std_library_module("map").
-mercury_std_library_module("math").
-mercury_std_library_module("maybe").
-mercury_std_library_module("multi_map").
-mercury_std_library_module("one_or_more").
-mercury_std_library_module("one_or_more_map").
-mercury_std_library_module("mutvar").
-mercury_std_library_module("ops").
-mercury_std_library_module("pair").
-mercury_std_library_module("par_builtin").
-mercury_std_library_module("parser").
-mercury_std_library_module("parsing_utils").
-mercury_std_library_module("pprint").
-mercury_std_library_module("pqueue").
-mercury_std_library_module("pretty_printer").
-mercury_std_library_module("private_builtin").
-mercury_std_library_module("profiling_builtin").
-mercury_std_library_module("prolog").
-mercury_std_library_module("psqueue").
-mercury_std_library_module("queue").
-mercury_std_library_module("random").
-mercury_std_library_module("random.sfc16").
-mercury_std_library_module("random.sfc32").
-mercury_std_library_module("random.sfc64").
-mercury_std_library_module("random.system_rng").
-mercury_std_library_module("ranges").
-mercury_std_library_module("rational").
-mercury_std_library_module("rbtree").
-mercury_std_library_module("region_builtin").
-mercury_std_library_module("require").
-mercury_std_library_module("robdd").
-mercury_std_library_module("rtree").
-mercury_std_library_module("rtti_implementation").
-mercury_std_library_module("set").
-mercury_std_library_module("set_bbbtree").
-mercury_std_library_module("set_ctree234").
-mercury_std_library_module("set_ordlist").
-mercury_std_library_module("set_tree234").
-mercury_std_library_module("set_unordlist").
-mercury_std_library_module("solutions").
-mercury_std_library_module("sparse_bitset").
-mercury_std_library_module("stack").
-mercury_std_library_module("std_util").
-mercury_std_library_module("stm_builtin").
-mercury_std_library_module("store").
-mercury_std_library_module("stream").
-mercury_std_library_module("stream.string_writer").
-mercury_std_library_module("string").
-mercury_std_library_module("string.builder").
-mercury_std_library_module("string.format").
-mercury_std_library_module("string.parse_runtime").
-mercury_std_library_module("string.parse_util").
-mercury_std_library_module("string.to_string").
-mercury_std_library_module("table_builtin").
-mercury_std_library_module("table_statistics").
-mercury_std_library_module("term").
-mercury_std_library_module("term_conversion").
-mercury_std_library_module("term_io").
-mercury_std_library_module("term_size_prof_builtin").
-mercury_std_library_module("term_to_xml").
-mercury_std_library_module("test_bitset").
-mercury_std_library_module("time").
-mercury_std_library_module("thread").
-mercury_std_library_module("thread.barrier").
-mercury_std_library_module("thread.channel").
-mercury_std_library_module("thread.closeable_channel").
-mercury_std_library_module("thread.future").
-mercury_std_library_module("thread.mvar").
-mercury_std_library_module("thread.semaphore").
-mercury_std_library_module("tree234").
-mercury_std_library_module("tree_bitset").
-mercury_std_library_module("type_desc").
-mercury_std_library_module("uint").
-mercury_std_library_module("uint8").
-mercury_std_library_module("uint16").
-mercury_std_library_module("uint32").
-mercury_std_library_module("uint64").
-mercury_std_library_module("unit").
-mercury_std_library_module("univ").
-mercury_std_library_module("varset").
-mercury_std_library_module("version_array").
-mercury_std_library_module("version_array2d").
-mercury_std_library_module("version_bitmap").
-mercury_std_library_module("version_hash_table").
-mercury_std_library_module("version_store").
+mercury_std_library_module(ModuleName) :-
+    stdlib_module_doc_undoc(ModuleName, _).
+
+stdlib_module_doc_undoc("array",                        doc).
+stdlib_module_doc_undoc("array2d",                      doc).
+stdlib_module_doc_undoc("assoc_list",                   doc).
+stdlib_module_doc_undoc("backjump",                     undoc).
+stdlib_module_doc_undoc("bag",                          doc).
+stdlib_module_doc_undoc("benchmarking",                 doc).
+stdlib_module_doc_undoc("bimap",                        doc).
+stdlib_module_doc_undoc("bitmap",                       doc).
+stdlib_module_doc_undoc("bit_buffer",                   doc).
+stdlib_module_doc_undoc("bit_buffer.read",              doc).
+stdlib_module_doc_undoc("bit_buffer.write",             doc).
+stdlib_module_doc_undoc("bool",                         doc).
+stdlib_module_doc_undoc("bt_array",                     doc).
+stdlib_module_doc_undoc("builtin",                      doc).
+stdlib_module_doc_undoc("calendar",                     doc).
+stdlib_module_doc_undoc("char",                         doc).
+stdlib_module_doc_undoc("construct",                    doc).
+stdlib_module_doc_undoc("cord",                         doc).
+stdlib_module_doc_undoc("counter",                      doc).
+stdlib_module_doc_undoc("deconstruct",                  doc).
+stdlib_module_doc_undoc("diet",                         doc).
+stdlib_module_doc_undoc("digraph",                      doc).
+stdlib_module_doc_undoc("dir",                          doc).
+stdlib_module_doc_undoc("edit_seq",                     doc).
+stdlib_module_doc_undoc("enum",                         doc).
+stdlib_module_doc_undoc("eqvclass",                     doc).
+stdlib_module_doc_undoc("exception",                    doc).
+stdlib_module_doc_undoc("fat_sparse_bitset",            doc).
+stdlib_module_doc_undoc("float",                        doc).
+stdlib_module_doc_undoc("gc",                           doc).
+stdlib_module_doc_undoc("getopt",                       doc).
+stdlib_module_doc_undoc("getopt_io",                    doc).
+stdlib_module_doc_undoc("hash_table",                   doc).
+stdlib_module_doc_undoc("injection",                    doc).
+stdlib_module_doc_undoc("int",                          doc).
+stdlib_module_doc_undoc("int8",                         doc).
+stdlib_module_doc_undoc("int16",                        doc).
+stdlib_module_doc_undoc("int32",                        doc).
+stdlib_module_doc_undoc("int64",                        doc).
+stdlib_module_doc_undoc("integer",                      doc).
+stdlib_module_doc_undoc("io",                           doc).
+stdlib_module_doc_undoc("kv_list",                      doc).
+stdlib_module_doc_undoc("lazy",                         doc).
+stdlib_module_doc_undoc("lexer",                        doc).
+stdlib_module_doc_undoc("library",                      doc).
+stdlib_module_doc_undoc("list",                         doc).
+stdlib_module_doc_undoc("map",                          doc).
+stdlib_module_doc_undoc("math",                         doc).
+stdlib_module_doc_undoc("maybe",                        doc).
+stdlib_module_doc_undoc("multi_map",                    doc).
+stdlib_module_doc_undoc("one_or_more",                  doc).
+stdlib_module_doc_undoc("one_or_more_map",              doc).
+stdlib_module_doc_undoc("mutvar",                       undoc).
+stdlib_module_doc_undoc("ops",                          doc).
+stdlib_module_doc_undoc("pair",                         doc).
+stdlib_module_doc_undoc("par_builtin",                  undoc).
+stdlib_module_doc_undoc("parser",                       doc).
+stdlib_module_doc_undoc("parsing_utils",                doc).
+stdlib_module_doc_undoc("pprint",                       doc).
+stdlib_module_doc_undoc("pqueue",                       doc).
+stdlib_module_doc_undoc("pretty_printer",               doc).
+stdlib_module_doc_undoc("private_builtin",              undoc).
+stdlib_module_doc_undoc("profiling_builtin",            undoc).
+stdlib_module_doc_undoc("prolog",                       doc).
+stdlib_module_doc_undoc("psqueue",                      doc).
+stdlib_module_doc_undoc("queue",                        doc).
+stdlib_module_doc_undoc("random",                       doc).
+stdlib_module_doc_undoc("random.sfc16",                 doc).
+stdlib_module_doc_undoc("random.sfc32",                 doc).
+stdlib_module_doc_undoc("random.sfc64",                 doc).
+stdlib_module_doc_undoc("random.system_rng",            doc).
+stdlib_module_doc_undoc("ranges",                       doc).
+stdlib_module_doc_undoc("rational",                     doc).
+stdlib_module_doc_undoc("rbtree",                       doc).
+stdlib_module_doc_undoc("region_builtin",               undoc).
+stdlib_module_doc_undoc("require",                      doc).
+stdlib_module_doc_undoc("robdd",                        undoc).
+stdlib_module_doc_undoc("rtree",                        doc).
+stdlib_module_doc_undoc("rtti_implementation",          undoc).
+stdlib_module_doc_undoc("set",                          doc).
+stdlib_module_doc_undoc("set_bbbtree",                  doc).
+stdlib_module_doc_undoc("set_ctree234",                 doc).
+stdlib_module_doc_undoc("set_ordlist",                  doc).
+stdlib_module_doc_undoc("set_tree234",                  doc).
+stdlib_module_doc_undoc("set_unordlist",                doc).
+stdlib_module_doc_undoc("solutions",                    doc).
+stdlib_module_doc_undoc("sparse_bitset",                doc).
+stdlib_module_doc_undoc("stack",                        doc).
+stdlib_module_doc_undoc("std_util",                     doc).
+stdlib_module_doc_undoc("stm_builtin",                  undoc).
+stdlib_module_doc_undoc("store",                        doc).
+stdlib_module_doc_undoc("stream",                       doc).
+stdlib_module_doc_undoc("stream.string_writer",         doc).
+stdlib_module_doc_undoc("string",                       doc).
+stdlib_module_doc_undoc("string.builder",               doc).
+stdlib_module_doc_undoc("string.format",                undoc).
+stdlib_module_doc_undoc("string.parse_runtime",         undoc).
+stdlib_module_doc_undoc("string.parse_util",            undoc).
+stdlib_module_doc_undoc("string.to_string",             undoc).
+stdlib_module_doc_undoc("table_builtin",                undoc).
+stdlib_module_doc_undoc("table_statistics",             doc).
+stdlib_module_doc_undoc("term",                         doc).
+stdlib_module_doc_undoc("term_conversion",              doc).
+stdlib_module_doc_undoc("term_io",                      doc).
+stdlib_module_doc_undoc("term_size_prof_builtin",       undoc).
+stdlib_module_doc_undoc("term_to_xml",                  doc).
+stdlib_module_doc_undoc("test_bitset",                  undoc).
+stdlib_module_doc_undoc("time",                         doc).
+stdlib_module_doc_undoc("thread",                       doc).
+stdlib_module_doc_undoc("thread.barrier",               doc).
+stdlib_module_doc_undoc("thread.channel",               doc).
+stdlib_module_doc_undoc("thread.closeable_channel",     doc).
+stdlib_module_doc_undoc("thread.future",                doc).
+stdlib_module_doc_undoc("thread.mvar",                  doc).
+stdlib_module_doc_undoc("thread.semaphore",             doc).
+stdlib_module_doc_undoc("tree234",                      doc).
+stdlib_module_doc_undoc("tree_bitset",                  doc).
+stdlib_module_doc_undoc("type_desc",                    doc).
+stdlib_module_doc_undoc("uint",                         doc).
+stdlib_module_doc_undoc("uint8",                        doc).
+stdlib_module_doc_undoc("uint16",                       doc).
+stdlib_module_doc_undoc("uint32",                       doc).
+stdlib_module_doc_undoc("uint64",                       doc).
+stdlib_module_doc_undoc("unit",                         doc).
+stdlib_module_doc_undoc("univ",                         doc).
+stdlib_module_doc_undoc("varset",                       doc).
+stdlib_module_doc_undoc("version_array",                doc).
+stdlib_module_doc_undoc("version_array2d",              doc).
+stdlib_module_doc_undoc("version_bitmap",               doc).
+stdlib_module_doc_undoc("version_hash_table",           doc).
+stdlib_module_doc_undoc("version_store",                doc).
 
 %---------------------------------------------------------------------------%
 
