@@ -440,7 +440,7 @@ add_lazily_generated_special_pred(SpecialId, Item, TVarSet, Type, TypeCtor,
         Item = declaration_only,
         setup_vartypes_in_clauses_for_imported_pred(PredInfo0, PredInfo1)
     ),
-    propagate_types_into_pred_modes(!.ModuleInfo, ErrorProcs,
+    propagate_checked_types_into_pred_modes(!.ModuleInfo, ErrorProcs,
         _InstForTypeSpecs, PredInfo1, PredInfo),
     expect(unify(ErrorProcs, []), $pred, "ErrorProcs != []"),
 

@@ -74,6 +74,7 @@ SINGLEMODULE_PROGS = \
 	bad_pred_arity \
 	bad_statevar_bad_context \
 	bad_sv_unify_msg \
+	bad_type_for_inst \
 	bind_in_negated \
 	bind_var_errors \
 	bug10 \

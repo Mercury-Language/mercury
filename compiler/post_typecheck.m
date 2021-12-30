@@ -82,8 +82,9 @@
     % This predicate is exported for use by add_special_pred.m, which does
     % most of the task of this module itself, but delegates this one to us.
     %
-:- pred propagate_types_into_pred_modes(module_info::in, list(proc_id)::out,
-    list(error_spec)::out, pred_info::in, pred_info::out) is det.
+:- pred propagate_checked_types_into_pred_modes(module_info::in,
+    list(proc_id)::out, list(error_spec)::out,
+    pred_info::in, pred_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -161,7 +162,7 @@ post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId, !PredInfo,
                 !NoTypeErrorSpecs),
             check_type_of_main(!.PredInfo, !AlwaysSpecs)
         ),
-        propagate_types_into_pred_modes(ModuleInfo, ErrorProcs,
+        propagate_checked_types_into_pred_modes(ModuleInfo, ErrorProcs,
             InstForTypeSpecs, !PredInfo),
         !:NoTypeErrorSpecs = InstForTypeSpecs ++ !.NoTypeErrorSpecs,
         report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo,
@@ -614,56 +615,75 @@ setup_vartypes_in_clauses_for_imported_pred(!PredInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- type maybe_process_lambda_goals
-    --->    no_lambda_goals_to_process
-    ;       process_lambda_goals.
-
-propagate_types_into_pred_modes(ModuleInfo, ErrorProcIds, InstForTypeSpecs,
-        !PredInfo) :-
-    pred_info_get_markers(!.PredInfo, Markers),
-    ( if check_marker(Markers, marker_has_rhs_lambda) then
-        ProcessLambda = process_lambda_goals
-    else
-        ProcessLambda = no_lambda_goals_to_process
-    ),
-    pred_info_get_arg_types(!.PredInfo, ArgTypes),
+propagate_checked_types_into_pred_modes(ModuleInfo, ErrorProcIds,
+        !:Specs, !PredInfo) :-
     pred_info_get_proc_table(!.PredInfo, Procs0),
     ProcIds = pred_info_all_procids(!.PredInfo),
-    propagate_types_into_procs_modes(ModuleInfo, ArgTypes, ProcessLambda,
-        ProcIds, [], RevErrorProcIds, Procs0, Procs),
+    !:Specs = [],
+    propagate_checked_types_into_procs_modes(ModuleInfo, !.PredInfo, ProcIds,
+        [], RevErrorProcIds, !Specs, Procs0, Procs),
     list.reverse(RevErrorProcIds, ErrorProcIds),
     pred_info_set_proc_table(Procs, !PredInfo),
-    InstForTypeSpecs = [].
-
-:- pred propagate_types_into_procs_modes(module_info::in, list(mer_type)::in,
-    maybe_process_lambda_goals::in, list(proc_id)::in,
-    list(proc_id)::in, list(proc_id)::out,
-    proc_table::in, proc_table::out) is det.
-
-propagate_types_into_procs_modes(_, _, _, [], !RevErrorProcIds, !Procs).
-propagate_types_into_procs_modes(ModuleInfo, ArgTypes, ProcessLambda,
-        [ProcId | ProcIds], !RevErrorProcIds, !Procs) :-
-    propagate_types_into_proc_modes(ModuleInfo, ArgTypes, ProcessLambda,
-        ProcId, !RevErrorProcIds, !Procs),
-    propagate_types_into_procs_modes(ModuleInfo, ArgTypes, ProcessLambda,
-        ProcIds, !RevErrorProcIds, !Procs).
+    pred_info_get_markers(!.PredInfo, Markers),
+    ( if check_marker(Markers, marker_has_rhs_lambda) then
+        % We have not copied goals in clauses to become the bodies
+        % of procedures, so the lambda expressions in whose arguments
+        % we should propagate types into insts exist only in the clauses_info.
+        pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
+        clauses_info_get_had_syntax_errors(ClausesInfo0, FoundSyntaxError),
+        (
+            FoundSyntaxError = some_clause_syntax_errors
+            % Any errors we could generate could be spurious. Any that aren't
+            % will be found and reported by the first compiler invocation
+            % after the user fixes the syntax errors.
+        ;
+            FoundSyntaxError = no_clause_syntax_errors,
+            clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNums),
+            get_clause_list_for_replacement(ClausesRep0, Clauses0),
+            VarTypes = ClausesInfo0 ^ cli_vartypes,
+            propagate_checked_types_into_lambda_modes_in_clauses(ModuleInfo,
+                VarTypes, Clauses0, Clauses, !Specs),
+            set_clause_list(Clauses, ClausesRep),
+            clauses_info_set_clauses_rep(ClausesRep, ItemNums,
+                ClausesInfo0, ClausesInfo),
+            pred_info_set_clauses_info(ClausesInfo, !PredInfo)
+        )
+    else
+        true
+    ).
 
 %---------------------%
 
-:- pred propagate_types_into_proc_modes(module_info::in,
-    list(mer_type)::in, maybe_process_lambda_goals::in, proc_id::in,
-    list(proc_id)::in, list(proc_id)::out,
+:- pred propagate_checked_types_into_procs_modes(module_info::in,
+    pred_info::in, list(proc_id)::in, list(proc_id)::in, list(proc_id)::out,
+    list(error_spec)::in, list(error_spec)::out,
     proc_table::in, proc_table::out) is det.
 
-propagate_types_into_proc_modes(ModuleInfo, ArgTypes, ProcessLambda, ProcId,
-        !RevErrorProcIds, !Procs) :-
+propagate_checked_types_into_procs_modes(_, _, [],
+        !RevErrorProcIds, !Specs, !Procs).
+propagate_checked_types_into_procs_modes(ModuleInfo, PredInfo,
+        [ProcId | ProcIds], !RevErrorProcIds, !Specs, !Procs) :-
+    propagate_checked_types_into_proc_modes(ModuleInfo, PredInfo, ProcId,
+        !RevErrorProcIds, !Specs, !Procs),
+    propagate_checked_types_into_procs_modes(ModuleInfo, PredInfo, ProcIds,
+        !RevErrorProcIds, !Specs, !Procs).
+
+:- pred propagate_checked_types_into_proc_modes(module_info::in,
+    pred_info::in, proc_id::in, list(proc_id)::in, list(proc_id)::out,
+    list(error_spec)::in, list(error_spec)::out,
+    proc_table::in, proc_table::out) is det.
+
+propagate_checked_types_into_proc_modes(ModuleInfo, PredInfo, ProcId,
+        !RevErrorProcIds, !Specs, !Procs) :-
+    pred_info_get_arg_types(PredInfo, ArgTypes),
     map.lookup(!.Procs, ProcId, ProcInfo0),
     proc_info_get_argmodes(ProcInfo0, ArgModes0),
-    propagate_types_into_modes(ModuleInfo, ArgTypes, ArgModes0, ArgModes),
+    propagate_checked_types_into_modes(ModuleInfo, ta_pred(PredInfo),
+        ArgTypes, ArgModes0, ArgModes, !Specs),
 
     % Check for unbound inst vars.
     %
-    % This needs to be done after the call to propagate_types_into_modes,
+    % This needs to be done after calling propagate_checked_types_into_modes,
     % because we need the insts to be module qualified.
     %
     % It also needs to be done before mode analysis, to avoid internal errors
@@ -680,27 +700,48 @@ propagate_types_into_proc_modes(ModuleInfo, ArgTypes, ProcessLambda, ProcId,
     then
         !:RevErrorProcIds = [ProcId | !.RevErrorProcIds]
     else
-        proc_info_set_argmodes(ArgModes, ProcInfo0, ProcInfo1),
-        (
-            ProcessLambda = no_lambda_goals_to_process,
-            ProcInfo = ProcInfo1
-        ;
-            ProcessLambda = process_lambda_goals,
-            proc_info_get_goal(ProcInfo1, Goal0),
-            proc_info_get_vartypes(ProcInfo1, VarTypes),
-            propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
-                Goal0, Goal),
-            proc_info_set_goal(Goal, ProcInfo1, ProcInfo)
-        ),
+        proc_info_set_argmodes(ArgModes, ProcInfo0, ProcInfo),
         map.det_update(ProcId, ProcInfo, !Procs)
     ).
 
 %---------------------%
 
-:- pred propagate_types_into_lambda_modes_in_goal(module_info::in,
-    vartypes::in, hlds_goal::in, hlds_goal::out) is det.
+:- pred propagate_checked_types_into_lambda_modes_in_clauses(module_info::in,
+    vartypes::in, list(clause)::in, list(clause)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes, Goal0, Goal) :-
+propagate_checked_types_into_lambda_modes_in_clauses(_, _, [], [], !Specs).
+propagate_checked_types_into_lambda_modes_in_clauses(ModuleInfo, VarTypes,
+        [Clause0 | Clauses0], [Clause | Clauses], !Specs) :-
+    propagate_checked_types_into_lambda_modes_in_clause(ModuleInfo, VarTypes,
+        Clause0, Clause, !Specs),
+    propagate_checked_types_into_lambda_modes_in_clauses(ModuleInfo, VarTypes,
+        Clauses0, Clauses, !Specs).
+
+:- pred propagate_checked_types_into_lambda_modes_in_clause(module_info::in,
+    vartypes::in, clause::in, clause::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+propagate_checked_types_into_lambda_modes_in_clause(ModuleInfo, VarTypes,
+        Clause0, Clause, !Specs) :-
+    Lang = Clause0 ^ clause_lang,
+    (
+        Lang = impl_lang_mercury,
+        Goal0 = Clause0 ^ clause_body,
+        propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+            Goal0, Goal, !Specs),
+        Clause = Clause0 ^ clause_body := Goal
+    ;
+        Lang = impl_lang_foreign(_),
+        Clause = Clause0
+    ).
+
+:- pred propagate_checked_types_into_lambda_modes_in_goal(module_info::in,
+    vartypes::in, hlds_goal::in, hlds_goal::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
+        VarTypes, Goal0, Goal, !Specs) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(LHS0, RHS0, UnifyMode0, Unification0, UniContext0),
@@ -712,10 +753,13 @@ propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes, Goal0, Goal) :-
         ;
             RHS0 = rhs_lambda_goal(Purity0, HOGroundness0, PorF0, EvalMethod0,
                 ClosureVars0, ArgVarsModes0, Detism0, LambdaGoal0),
-            propagate_types_into_var_modes(ModuleInfo, VarTypes,
-                ArgVarsModes0, ArgVarsModes),
-            propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
-                LambdaGoal0, LambdaGoal),
+            list.length(ArgVarsModes0, NumArgs),
+            Context = goal_info_get_context(GoalInfo0),
+            Args = ta_lambda(PorF0, NumArgs, Context),
+            propagate_checked_types_into_var_modes(ModuleInfo,
+                VarTypes, Args, 1, ArgVarsModes0, ArgVarsModes, !Specs),
+            propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
+                VarTypes, LambdaGoal0, LambdaGoal, !Specs),
             RHS = rhs_lambda_goal(Purity0, HOGroundness0, PorF0, EvalMethod0,
                 ClosureVars0, ArgVarsModes, Detism0, LambdaGoal),
             GoalExpr = unify(LHS0, RHS, UnifyMode0, Unification0, UniContext0),
@@ -729,108 +773,114 @@ propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes, Goal0, Goal) :-
         Goal = Goal0
     ;
         GoalExpr0 = conj(ConjType, Conjuncts0),
-        propagate_types_into_lambda_modes_in_goals(ModuleInfo, VarTypes,
-            Conjuncts0, Conjuncts),
+        propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo,
+            VarTypes, Conjuncts0, Conjuncts, !Specs),
         GoalExpr = conj(ConjType, Conjuncts),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Disjuncts0),
-        propagate_types_into_lambda_modes_in_goals(ModuleInfo, VarTypes,
-            Disjuncts0, Disjuncts),
+        propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo,
+            VarTypes, Disjuncts0, Disjuncts, !Specs),
         GoalExpr = disj(Disjuncts),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(Var0, CanFail0, Cases0),
-        propagate_types_into_lambda_modes_in_cases(ModuleInfo, VarTypes,
-            Cases0, Cases),
+        propagate_checked_types_into_lambda_modes_in_cases(ModuleInfo,
+            VarTypes, Cases0, Cases, !Specs),
         GoalExpr = switch(Var0, CanFail0, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars0, Cond0, Then0, Else0),
-        propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
-            Cond0, Cond),
-        propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
-            Then0, Then),
-        propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
-            Else0, Else),
+        propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
+            VarTypes, Cond0, Cond, !Specs),
+        propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
+            VarTypes, Then0, Then, !Specs),
+        propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
+            VarTypes, Else0, Else, !Specs),
         GoalExpr = if_then_else(Vars0, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(SubGoal0),
-        propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
-            SubGoal0, SubGoal),
+        propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
+            VarTypes, SubGoal0, SubGoal, !Specs),
         GoalExpr = negation(SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
-        propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
-            SubGoal0, SubGoal),
+        propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
+            VarTypes, SubGoal0, SubGoal, !Specs),
         GoalExpr = scope(Reason0, SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = shorthand(ShortHand0),
         (
             ShortHand0 = bi_implication(GoalA0, GoalB0),
-            propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
-                GoalA0, GoalA),
-            propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
-                GoalB0, GoalB),
+            propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
+                VarTypes, GoalA0, GoalA, !Specs),
+            propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
+                VarTypes, GoalB0, GoalB, !Specs),
             ShortHand = bi_implication(GoalA, GoalB)
         ;
             ShortHand0 = atomic_goal(AtomicGoalType0, OuterVars0, InnerVars0,
                 OutputVars0, MainGoal0, OrElseGoals0, OrElseInners0),
-            propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
-                MainGoal0, MainGoal),
-            propagate_types_into_lambda_modes_in_goals(ModuleInfo, VarTypes,
-                OrElseGoals0, OrElseGoals),
+            propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
+                VarTypes, MainGoal0, MainGoal, !Specs),
+            propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo,
+                VarTypes, OrElseGoals0, OrElseGoals, !Specs),
             ShortHand = atomic_goal(AtomicGoalType0, OuterVars0, InnerVars0,
                 OutputVars0, MainGoal, OrElseGoals, OrElseInners0)
         ;
             ShortHand0 = try_goal(MaybeIOVars0, ResultVars0, SubGoal0),
-            propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
-                SubGoal0, SubGoal),
+            propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
+                VarTypes, SubGoal0, SubGoal, !Specs),
             ShortHand = try_goal(MaybeIOVars0, ResultVars0, SubGoal)
         ),
         GoalExpr = shorthand(ShortHand),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ).
 
-:- pred propagate_types_into_lambda_modes_in_goals(module_info::in,
-    vartypes::in, list(hlds_goal)::in, list(hlds_goal)::out) is det.
+:- pred propagate_checked_types_into_lambda_modes_in_goals(module_info::in,
+    vartypes::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-propagate_types_into_lambda_modes_in_goals(_, _, [], []).
-propagate_types_into_lambda_modes_in_goals(ModuleInfo, VarTypes,
-        [Goal0 | Goals0], [Goal | Goals]) :-
-    propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
-        Goal0, Goal),
-    propagate_types_into_lambda_modes_in_goals(ModuleInfo, VarTypes,
-        Goals0, Goals).
+propagate_checked_types_into_lambda_modes_in_goals(_, _, [], [], !Specs).
+propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo, VarTypes,
+        [Goal0 | Goals0], [Goal | Goals], !Specs) :-
+    propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+        Goal0, Goal, !Specs),
+    propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo, VarTypes,
+        Goals0, Goals, !Specs).
 
-:- pred propagate_types_into_lambda_modes_in_cases(module_info::in,
-    vartypes::in, list(case)::in, list(case)::out) is det.
+:- pred propagate_checked_types_into_lambda_modes_in_cases(module_info::in,
+    vartypes::in, list(case)::in, list(case)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-propagate_types_into_lambda_modes_in_cases(_, _, [], []).
-propagate_types_into_lambda_modes_in_cases(ModuleInfo, VarTypes,
-        [Case0 | Cases0], [Case | Cases]) :-
+propagate_checked_types_into_lambda_modes_in_cases(_, _, [], [], !Specs).
+propagate_checked_types_into_lambda_modes_in_cases(ModuleInfo, VarTypes,
+        [Case0 | Cases0], [Case | Cases], !Specs) :-
     Case0 = case(MainConsId0, OtherConsIds0, Goal0),
-    propagate_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
-        Goal0, Goal),
+    propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+        Goal0, Goal, !Specs),
     Case = case(MainConsId0, OtherConsIds0, Goal),
-    propagate_types_into_lambda_modes_in_cases(ModuleInfo, VarTypes,
-        Cases0, Cases).
+    propagate_checked_types_into_lambda_modes_in_cases(ModuleInfo, VarTypes,
+        Cases0, Cases, !Specs).
 
 %---------------------%
 
-:- pred propagate_types_into_var_modes(module_info::in, vartypes::in,
-    assoc_list(prog_var, mer_mode)::in, assoc_list(prog_var, mer_mode)::out)
-    is det.
+:- pred propagate_checked_types_into_var_modes(module_info::in, vartypes::in,
+    tprop_args::in, int::in,
+    assoc_list(prog_var, mer_mode)::in, assoc_list(prog_var, mer_mode)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-propagate_types_into_var_modes(_, _, [], []).
-propagate_types_into_var_modes(ModuleInfo, VarTypes,
-        [Var - Mode0 | VarsModes0], [Var - Mode | VarsModes]) :-
+propagate_checked_types_into_var_modes(_, _, _, _, [], [], !Specs).
+propagate_checked_types_into_var_modes(ModuleInfo, VarTypes, Args, ArgNum,
+        [Var - Mode0 | VarsModes0], [Var - Mode | VarsModes], !Specs) :-
     lookup_var_type(VarTypes, Var, Type),
-    propagate_type_into_mode(ModuleInfo, Type, Mode0, Mode),
-    propagate_types_into_var_modes(ModuleInfo, VarTypes, VarsModes0, VarsModes).
+    Context = tprop_arg_list_slot(Args, ArgNum),
+    propagate_checked_type_into_mode(ModuleInfo, Context,
+        Type, Mode0, Mode, !Specs),
+    propagate_checked_types_into_var_modes(ModuleInfo, VarTypes,
+        Args, ArgNum + 1, VarsModes0, VarsModes, !Specs).
 
 %---------------------------------------------------------------------------%
 

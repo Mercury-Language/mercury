@@ -1,0 +1,39 @@
+bad_type_for_inst.m:025: In the second argument of predicate `p1'/2:
+bad_type_for_inst.m:025:   error: the user defined inst
+bad_type_for_inst.m:025:     `bad_type_for_inst.i1_a'/2
+bad_type_for_inst.m:025:   is declared to be applicable only to values of type
+bad_type_for_inst.m:025:     `bad_type_for_inst.t1'/2,
+bad_type_for_inst.m:025:   but here it is applied to values of type
+bad_type_for_inst.m:025:     `int'/0.
+bad_type_for_inst.m:028: In the first argument of predicate `p2'/2:
+bad_type_for_inst.m:028:   in the expansion of the user-defined inst
+bad_type_for_inst.m:028:   `bad_type_for_inst.i1_a'/2:
+bad_type_for_inst.m:028:   in the second argument of `f1'/3:
+bad_type_for_inst.m:028:   error: the user defined inst
+bad_type_for_inst.m:028:     `bad_type_for_inst.i1_a'/2
+bad_type_for_inst.m:028:   is declared to be applicable only to values of type
+bad_type_for_inst.m:028:     `bad_type_for_inst.t1'/2,
+bad_type_for_inst.m:028:   but here it is applied to values of type
+bad_type_for_inst.m:028:     `bad_type_for_inst.t2'/2.
+bad_type_for_inst.m:031: In the first argument of predicate `p3'/2:
+bad_type_for_inst.m:031:   error: the user defined inst
+bad_type_for_inst.m:031:     `bad_type_for_inst.i1_b'/1
+bad_type_for_inst.m:031:   is declared to be applicable only to values of type
+bad_type_for_inst.m:031:     `bad_type_for_inst.t1'/2,
+bad_type_for_inst.m:031:   but here it is applied to values of type
+bad_type_for_inst.m:031:     `bad_type_for_inst.t2'/2.
+bad_type_for_inst.m:034: In the result argument of function `f1'/2:
+bad_type_for_inst.m:034:   error: the user defined inst
+bad_type_for_inst.m:034:     `bad_type_for_inst.i1_b'/1
+bad_type_for_inst.m:034:   is declared to be applicable only to values of type
+bad_type_for_inst.m:034:     `bad_type_for_inst.t1'/2,
+bad_type_for_inst.m:034:   but here it is applied to values of type
+bad_type_for_inst.m:034:     `bad_type_for_inst.t2'/2.
+bad_type_for_inst.m:044: In the first argument of the lambda expression:
+bad_type_for_inst.m:044:   in the second argument of tuple:
+bad_type_for_inst.m:044:   error: the user defined inst
+bad_type_for_inst.m:044:     `bad_type_for_inst.i1_b'/1
+bad_type_for_inst.m:044:   is declared to be applicable only to values of type
+bad_type_for_inst.m:044:     `bad_type_for_inst.t1'/2,
+bad_type_for_inst.m:044:   but here it is applied to values of type
+bad_type_for_inst.m:044:     `bad_type_for_inst.t2'/2.

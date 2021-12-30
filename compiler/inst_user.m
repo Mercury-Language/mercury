@@ -122,7 +122,8 @@ pretest_user_inst_defn(ModuleInfo, InstCtor, InstDefn0, UserInstTable0,
             TypeCtorArity = 0
         then
             Type = defined_type(TypeCtorSymName, [], kind_star),
-            propagate_type_into_bound_inst(ModuleInfo, Type, Inst1, Inst)
+            propagate_unchecked_type_into_bound_inst(ModuleInfo, Type,
+                Inst1, Inst)
         else
             Inst = Inst1
         ),

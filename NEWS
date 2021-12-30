@@ -559,6 +559,13 @@ Changes to the Mercury compiler
   but once any problems caused by the new approach have been ironed out,
   we intend to delete the `--halt-at-invalid-interface` option as well.
 
+* In an earlier release, we extended the syntax of `:- inst` declarations
+  to allow programmers to specify which type constructor's values the inst
+  is meant for. At that time, these functioned only as documentation,
+  but the compiler now reports error messages for situations in which
+  an inst that was declared to be intended for values of one type constructor
+  is applied to values of another type constructor.
+
 Portability improvements
 ------------------------
 

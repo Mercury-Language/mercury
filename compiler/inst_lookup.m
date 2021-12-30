@@ -152,11 +152,21 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
     ;
         InstName = typed_ground(Uniq, Type),
         Inst0 = ground(Uniq, none_or_default_func),
-        propagate_type_into_inst(ModuleInfo, Type, Inst0, Inst)
+        propagate_unchecked_type_into_inst(ModuleInfo, Type, Inst0, Inst)
     ;
         InstName = typed_inst(Type, TypedInstName),
         inst_lookup(ModuleInfo, TypedInstName, Inst0),
-        propagate_type_into_inst(ModuleInfo, Type, Inst0, Inst)
+        % XXX Each invocation of inst_lookup expands out one inst_name.
+        % An inst_name of nonzeero arity will be applied to a list of insts,
+        % some of which may contain other inst_names, whose arguments
+        % may contain other inst_names, and so on.
+        %
+        % Such situations represent potential performance problems, because
+        % this call will propagate type information into *all* parts of Inst0,
+        % not just the top layer. This means that an inst inside argument
+        % lists of N nested inst_names will have type information propagated
+        % into it N times.
+        propagate_unchecked_type_into_inst(ModuleInfo, Type, Inst0, Inst)
     ).
 
 %---------------------------------------------------------------------------%
