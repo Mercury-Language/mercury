@@ -1091,10 +1091,19 @@ substitute_types_check_match(InstVarSet, ExpType, TypeStuff,
         else
             ActualSubsumesExpected = actual_does_not_subsume_expected
         ),
-        ExpectedPieces = type_to_pieces(add_quotes, TVarSet, InstVarSet,
-            ExternalTypeParams, FullExpType),
-        ActualPieces = type_to_pieces(add_quotes, TVarSet, InstVarSet,
-            ExternalTypeParams, FullArgType),
+        ExpectedPieces0 = type_to_pieces(print_name_only, add_quotes,
+            TVarSet, InstVarSet, ExternalTypeParams, FullExpType),
+        ActualPieces0 = type_to_pieces(print_name_only, add_quotes,
+            TVarSet, InstVarSet, ExternalTypeParams, FullArgType),
+        ( if ExpectedPieces0 = ActualPieces0 then
+            ExpectedPieces = type_to_pieces(print_name_and_num, add_quotes,
+                TVarSet, InstVarSet, ExternalTypeParams, FullExpType),
+            ActualPieces = type_to_pieces(print_name_and_num, add_quotes,
+                TVarSet, InstVarSet, ExternalTypeParams, FullArgType)
+        else
+            ExpectedPieces = ExpectedPieces0,
+            ActualPieces = ActualPieces0
+        ),
         ( if
             FullExpType = builtin_type(builtin_type_string),
             FullArgType = defined_type(ArgTypeCtorSymName, [_], kind_star),
@@ -1542,8 +1551,10 @@ report_error_arg_var(Info, ClauseContext, GoalContext, Context, Var,
     ( if ActualExpectedList = [ActualExpected] then
         ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces),
         Pieces2 = argument_name_to_pieces(VarSet, Var) ++
-            [words("has type")] ++ ActualPieces ++ [suffix(","), nl,
-            words("expected type was")] ++ ExpectedPieces ++ [suffix("."), nl]
+            [words("has type"), nl_indent_delta(1)] ++
+            ActualPieces ++ [suffix(","), nl_indent_delta(-1),
+            words("expected type was"), nl_indent_delta(1)] ++
+            ExpectedPieces ++ [suffix("."), nl_indent_delta(-1)]
     else
         Pieces2 = [words("type of")] ++
             argument_name_to_pieces(VarSet, Var) ++
@@ -1955,14 +1966,24 @@ ambiguity_error_possibilities_to_pieces([Var | Vars], VarSet, InstVarSet,
     then
         type_assign_get_typevarset(TypeAssign1, TVarSet1),
         type_assign_get_typevarset(TypeAssign2, TVarSet2),
+        UnnamedPiecesT1 = type_to_pieces(print_name_only, add_quotes,
+            TVarSet1, InstVarSet, ExternalTypeParams1, T1),
+        UnnamedPiecesT2 = type_to_pieces(print_name_only, add_quotes,
+            TVarSet2, InstVarSet, ExternalTypeParams2, T2),
+        ( if UnnamedPiecesT1 = UnnamedPiecesT2 then
+            PiecesT1 = type_to_pieces(print_name_and_num, add_quotes,
+                TVarSet1, InstVarSet, ExternalTypeParams1, T1),
+            PiecesT2 = type_to_pieces(print_name_and_num, add_quotes,
+                TVarSet2, InstVarSet, ExternalTypeParams2, T2)
+        else
+            PiecesT1 = UnnamedPiecesT1,
+            PiecesT2 = UnnamedPiecesT2
+        ),
         HeadPieces =
             [words(mercury_var_to_name_only(VarSet, Var)), suffix(":")] ++
-            type_to_pieces(add_quotes, TVarSet1, InstVarSet,
-                ExternalTypeParams1, T1) ++
+            [nl_indent_delta(1)] ++ PiecesT1 ++ [nl_indent_delta(-1)] ++
             [words("or")] ++
-            type_to_pieces(add_quotes, TVarSet2, InstVarSet,
-                ExternalTypeParams2, T2) ++
-            [nl]
+            [nl_indent_delta(1)] ++ PiecesT2 ++ [nl_indent_delta(-1)]
     else
         HeadPieces = []
     ),
@@ -2149,8 +2170,8 @@ cons_type_to_pieces(InstVarSet, ConsInfo, Functor) = Pieces :-
             % code to print types, so we take a shortcut.
             Type = defined_type(SymName, ArgTypes, kind_star),
             ArgPieces =
-                type_to_pieces(do_not_add_quotes, TVarSet, InstVarSet,
-                    ExistQVars, Type) ++
+                type_to_pieces(print_name_only, do_not_add_quotes,
+                    TVarSet, InstVarSet, ExistQVars, Type) ++
                 [suffix(":")]
         else
             unexpected($pred, "invalid cons_id")
@@ -2160,7 +2181,7 @@ cons_type_to_pieces(InstVarSet, ConsInfo, Functor) = Pieces :-
         ArgPieces = []
     ),
     Pieces = ArgPieces ++
-        type_to_pieces(do_not_add_quotes, TVarSet, InstVarSet,
+        type_to_pieces(print_name_only, do_not_add_quotes, TVarSet, InstVarSet,
             ExistQVars, ConsType).
 
     % Return a description of the  argument types of the given list of
@@ -2244,24 +2265,40 @@ args_type_assign_set_msg_to_pieces(ArgTypeAssignSet, VarSet) = Pieces :-
 
 type_stuff_to_actual_expected(InstVarSet, Type, VarTypeStuff)
         = ActualExpected :-
-    VarTypeStuff = type_stuff(VarType, TVarSet, TypeBinding,
-        ExternalTypeParams),
-    ActualPieces = bound_type_to_pieces(TVarSet, InstVarSet, TypeBinding,
-        ExternalTypeParams, VarType),
-    ExpectedPieces = bound_type_to_pieces(TVarSet, InstVarSet, TypeBinding,
-        ExternalTypeParams, Type),
-    ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces).
+    VarTypeStuff =
+        type_stuff(VarType, TVarSet, TypeBinding, ExternalTypeParams),
+    ActualPieces0 = bound_type_to_pieces(print_name_only,
+        TVarSet, InstVarSet, TypeBinding, ExternalTypeParams, VarType),
+    ExpectedPieces0 = bound_type_to_pieces(print_name_only,
+        TVarSet, InstVarSet, TypeBinding, ExternalTypeParams, Type),
+    ( if ActualPieces0 = ExpectedPieces0 then
+        ActualPieces = bound_type_to_pieces(print_name_and_num,
+            TVarSet, InstVarSet, TypeBinding, ExternalTypeParams, VarType),
+        ExpectedPieces = bound_type_to_pieces(print_name_and_num,
+            TVarSet, InstVarSet, TypeBinding, ExternalTypeParams, Type),
+        ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces)
+    else
+        ActualExpected = actual_expected_types(ActualPieces0, ExpectedPieces0)
+    ).
 
 :- func arg_type_stuff_to_actual_expected(inst_varset, arg_type_stuff) =
     actual_expected_types.
 
 arg_type_stuff_to_actual_expected(InstVarSet, ArgTypeStuff) = ActualExpected :-
     ArgTypeStuff = arg_type_stuff(Type, VarType, TVarSet, ExternalTypeParams),
-    ActualPieces = type_to_pieces(add_quotes, TVarSet, InstVarSet,
-        ExternalTypeParams, VarType),
-    ExpectedPieces = type_to_pieces(add_quotes, TVarSet, InstVarSet,
-        ExternalTypeParams, Type),
-    ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces).
+    ActualPieces0 = type_to_pieces(print_name_only, add_quotes,
+        TVarSet, InstVarSet, ExternalTypeParams, VarType),
+    ExpectedPieces0 = type_to_pieces(print_name_only, add_quotes,
+        TVarSet, InstVarSet, ExternalTypeParams, Type),
+    ( if ActualPieces0 = ExpectedPieces0 then
+        ActualPieces = type_to_pieces(print_name_and_num, add_quotes,
+            TVarSet, InstVarSet, ExternalTypeParams, VarType),
+        ExpectedPieces = type_to_pieces(print_name_and_num, add_quotes,
+            TVarSet, InstVarSet, ExternalTypeParams, Type),
+        ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces)
+    else
+        ActualExpected = actual_expected_types(ActualPieces0, ExpectedPieces0)
+    ).
 
 :- func actual_expected_types_list_to_pieces(list(actual_expected_types))
     = list(format_component).
@@ -2290,13 +2327,13 @@ actual_types_to_pieces(ActualExpected) = Pieces :-
     ActualExpected = actual_expected_types(ActualPieces, _ExpectedPieces),
     Pieces = [words("(inferred)") | ActualPieces].
 
-:- func bound_type_to_pieces(tvarset, inst_varset, tsubst,
+:- func bound_type_to_pieces(var_name_print, tvarset, inst_varset, tsubst,
     external_type_params, mer_type) = list(format_component).
 
-bound_type_to_pieces(TVarSet, InstVarSet, TypeBindings, ExternalTypeParams,
-        Type0) = Pieces :-
+bound_type_to_pieces(VarNamePrint, TVarSet, InstVarSet,
+        TypeBindings, ExternalTypeParams, Type0) = Pieces :-
     apply_rec_subst_to_type(TypeBindings, Type0, Type),
-    Pieces = type_to_pieces(add_quotes, TVarSet, InstVarSet,
+    Pieces = type_to_pieces(VarNamePrint, add_quotes, TVarSet, InstVarSet,
         ExternalTypeParams, Type).
 
 %---------------------------------------------------------------------------%
@@ -2903,8 +2940,8 @@ typestuff_to_pieces(InstVarSet, TypeStuff) = Pieces :-
     Type = typestuff_to_type(TypeStuff),
     TypeStuff = type_stuff(_Type0, TypeVarSet, _TypeBindings,
         ExternalTypeParams),
-    Pieces = type_to_pieces(add_quotes, TypeVarSet, InstVarSet,
-        ExternalTypeParams, Type).
+    Pieces = type_to_pieces(print_name_only, add_quotes,
+        TypeVarSet, InstVarSet, ExternalTypeParams, Type).
 
 :- type arg_type_stuff
     --->    arg_type_stuff(

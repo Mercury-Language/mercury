@@ -45,6 +45,8 @@ purity_nonsense2.m:019:   error: undefined symbol `semi'/0.
 purity_nonsense2.m:025: In clause for predicate `e14'/1:
 purity_nonsense2.m:025:   in argument 1 (i.e. the predicate term) of impure
 purity_nonsense2.m:025:   higher-order predicate call:
-purity_nonsense2.m:025:   type error: variable `P' has type `pred',
-purity_nonsense2.m:025:   expected type was `impure pred'.
+purity_nonsense2.m:025:   type error: variable `P' has type
+purity_nonsense2.m:025:     `pred',
+purity_nonsense2.m:025:   expected type was
+purity_nonsense2.m:025:     `impure pred'.
 For more information, recompile with `-E'.

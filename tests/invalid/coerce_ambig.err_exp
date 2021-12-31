@@ -1,9 +1,15 @@
 coerce_ambig.m:030: In clause for predicate `ambig1'/0:
 coerce_ambig.m:030:   error: ambiguous overloading causes type ambiguity.
 coerce_ambig.m:030:   Possible type assignments include:
-coerce_ambig.m:030:   X: `coerce_ambig.fruit' or `coerce_ambig.citrus'
+coerce_ambig.m:030:   X:
+coerce_ambig.m:030:     `coerce_ambig.fruit'
+coerce_ambig.m:030:   or
+coerce_ambig.m:030:     `coerce_ambig.citrus'
 coerce_ambig.m:036: In clause for predicate `ambig2'/0:
 coerce_ambig.m:036:   error: ambiguous overloading causes type ambiguity.
 coerce_ambig.m:036:   Possible type assignments include:
-coerce_ambig.m:036:   X: `coerce_ambig.fruit' or `coerce_ambig.another_fruit'
+coerce_ambig.m:036:   X:
+coerce_ambig.m:036:     `coerce_ambig.fruit'
+coerce_ambig.m:036:   or
+coerce_ambig.m:036:     `coerce_ambig.another_fruit'
 For more information, recompile with `-E'.

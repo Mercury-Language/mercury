@@ -2,9 +2,9 @@ actual_expected.m:110: In clause for predicate `find_compulsory_lvals'/5:
 actual_expected.m:110:   in argument 2 of call to predicate
 actual_expected.m:110:   `actual_expected.find_compulsory_lvals'/5:
 actual_expected.m:110:   type error: variable `LiveMap' has type
-actual_expected.m:110:   `tree234.tree234(actual_expected.label,
-actual_expected.m:110:   set_ordlist.set_ordlist(actual_expected.lval))',
+actual_expected.m:110:     `tree234.tree234(actual_expected.label,
+actual_expected.m:110:     set_ordlist.set_ordlist(actual_expected.lval))',
 actual_expected.m:110:   expected type was
-actual_expected.m:110:   `maybe.maybe(tree234.tree234(actual_expected.label,
-actual_expected.m:110:   set_ordlist.set_ordlist(actual_expected.lval)))'.
+actual_expected.m:110:     `maybe.maybe(tree234.tree234(actual_expected.label,
+actual_expected.m:110:     set_ordlist.set_ordlist(actual_expected.lval)))'.
 For more information, recompile with `-E'.

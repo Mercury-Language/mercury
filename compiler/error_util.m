@@ -302,8 +302,8 @@
     --->    do_not_add_quotes
     ;       add_quotes.
 
-    % type_to_pieces(MaybeAddQuotes, TVarSet, InstVarSet, ExternalTypeParams,
-    %   Type) = Pieces:
+    % type_to_pieces(VarNamePrint, MaybeAddQuotes, TVarSet, InstVarSet,
+    %   ExternalTypeParams, Type) = Pieces:
     %
     % Format Type for printing as part of an error message. Use TVarSet
     % as the source of the names of any type variables in the type, and
@@ -311,8 +311,8 @@
     % higher order types. Put an existential quantifier in front of any type
     % that contains any of the type variables in ExternalTypeParams.
     %
-:- func type_to_pieces(maybe_add_quotes, tvarset, inst_varset, list(tvar),
-    mer_type) = list(format_component).
+:- func type_to_pieces(var_name_print, maybe_add_quotes, tvarset, inst_varset,
+    list(tvar), mer_type) = list(format_component).
 
 %---------------------------------------------------------------------------%
 
@@ -806,8 +806,8 @@ extract_spec_msgs(Globals, Spec, Msgs) :-
 
 %---------------------------------------------------------------------------%
 
-type_to_pieces(MaybeAddQuotes, TVarSet, InstVarSet, ExternalTypeParams,
-        Type0) = Pieces :-
+type_to_pieces(VarNamePrint, MaybeAddQuotes, TVarSet, InstVarSet,
+        ExternalTypeParams, Type0) = Pieces :-
     strip_builtin_qualifiers_from_type(Type0, Type),
     (
         MaybeAddQuotes = do_not_add_quotes,
@@ -838,8 +838,8 @@ type_to_pieces(MaybeAddQuotes, TVarSet, InstVarSet, ExternalTypeParams,
         (
             HOInstInfo = none_or_default_func,
             ArgPieces = list.map(
-                type_to_pieces(do_not_add_quotes, TVarSet, InstVarSet,
-                    ExternalTypeParams),
+                type_to_pieces(VarNamePrint, do_not_add_quotes,
+                    TVarSet, InstVarSet, ExternalTypeParams),
                 ArgTypes),
             FuncResultPrefixPieces = [],
             FuncResultSuffixPieces = [],
@@ -876,8 +876,8 @@ type_to_pieces(MaybeAddQuotes, TVarSet, InstVarSet, ExternalTypeParams,
                 ArityMismatchPieces = []
             else
                 ArgPieces = list.map(
-                    type_to_pieces(do_not_add_quotes, TVarSet, InstVarSet,
-                        ExternalTypeParams),
+                    type_to_pieces(VarNamePrint, do_not_add_quotes,
+                        TVarSet, InstVarSet, ExternalTypeParams),
                     ArgTypes),
                 FuncResultPrefixPieces = [],
                 FuncResultSuffixPieces = [],
@@ -932,7 +932,7 @@ type_to_pieces(MaybeAddQuotes, TVarSet, InstVarSet, ExternalTypeParams,
         maybe_add_existential_quantifier(ExistQVars, Term0, Term),
         varset.coerce(TVarSet, VarSet),
         TermPiece =
-            words(mercury_term_to_string(VarSet, print_name_only, Term)),
+            words(mercury_term_to_string(VarSet, VarNamePrint, Term)),
         Pieces = StartQuotePieces ++ [TermPiece] ++ EndQuotePieces
     ).
 
@@ -941,8 +941,8 @@ type_to_pieces(MaybeAddQuotes, TVarSet, InstVarSet, ExternalTypeParams,
 
 type_and_mode_to_pieces(TVarSet, InstVarSet, ExternalTypeParams,
         Type - Mode) = Pieces :-
-    TypePieces = type_to_pieces(do_not_add_quotes, TVarSet, InstVarSet,
-        ExternalTypeParams, Type),
+    TypePieces = type_to_pieces(print_name_only, do_not_add_quotes,
+        TVarSet, InstVarSet, ExternalTypeParams, Type),
     ModeTerm0 = mode_to_term(output_mercury, Mode),
     term.coerce(ModeTerm0, ModeTerm),
     ModePiece =

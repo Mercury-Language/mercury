@@ -2,8 +2,9 @@ ext_type_bug.m:017: In clause for predicate `foo'/1:
 ext_type_bug.m:017:   in argument 1 of call to predicate
 ext_type_bug.m:017:   `ext_type_bug.make_bar'/1:
 ext_type_bug.m:017:   type error: variable `Bar' has type
-ext_type_bug.m:017:   `ext_type_bug.bar(int)',
-ext_type_bug.m:017:   expected type was `(some [T] ext_type_bug.bar(T))'.
+ext_type_bug.m:017:     `ext_type_bug.bar(int)',
+ext_type_bug.m:017:   expected type was
+ext_type_bug.m:017:     `(some [T] ext_type_bug.bar(T))'.
 ext_type_bug.m:017:   The partial type assignment was:
 ext_type_bug.m:017:     some [T_1]
 ext_type_bug.m:017:     Bar_2: ext_type_bug.bar(int)
