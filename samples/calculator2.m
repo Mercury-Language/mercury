@@ -4,7 +4,7 @@
 %
 % Another calculator - parses and evaluates integer expression terms.
 % This module demonstrates the use of user-defined operator precedence
-% tables with parser.read_term.
+% tables with mercury_term_parser.read_term.
 %
 % Note that unlike calculator.m, the expressions must be terminated with a `.'.
 % This version also allows variable assignments of the form `X = Exp.'.
@@ -32,9 +32,9 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module mercury_term_parser.
 :- import_module ops.
 :- import_module pair.
-:- import_module parser.
 :- import_module require.
 :- import_module string.
 :- import_module term.
@@ -54,7 +54,7 @@ main(!IO) :-
 main_2(CalcInfo0, !IO) :-
     io.write_string("calculator> ", !IO),
     io.flush_output(!IO),
-    parser.read_term_with_op_table(calculator_op_table, Res, !IO),
+    mercury_term_parser.read_term_with_op_table(calculator_op_table, Res, !IO),
     (
         Res = error(Msg, _Line),
         io.write_string(Msg, !IO),
