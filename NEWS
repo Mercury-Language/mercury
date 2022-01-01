@@ -13,8 +13,8 @@ Changes that may break compatibility
   you can module qualify the name at the call site,
   or wrap parentheses around the name, e.g. `(coerce)(Arg)`.
 
-* We have renamed the `lexer' and `parser' modules of the Mercury standard
-  library to `mercury_term_lexer' and `mercury_term_parser' respectively.
+* We have renamed the `lexer` and `parser` modules of the Mercury standard
+  library to `mercury_term_lexer` and `mercury_term_parser` respectively.
 
 * We have made slight changes to the names and/or the functionality
   of several predicates in the `getopt` and `getopt_io` modules.
