@@ -211,8 +211,8 @@ Changes to the Mercury standard library
 
 ### Changes to the `lexer` module
 
-    This module has been renamed to `mercury_term_lexer`, to make
-    name clashes between it and user-written modules less likely.
+* This module has been renamed to `mercury_term_lexer`, to make
+  name clashes between it and user-written modules less likely.
 
 ### Changes to the `list` module
 
@@ -247,8 +247,8 @@ Changes to the Mercury standard library
 
 ### Changes to the `parser` module
 
-    This module has been renamed to `mercury_term_parser`, to make
-    name clashes between it and user-written modules less likely.
+* This module has been renamed to `mercury_term_parser`, to make
+  name clashes between it and user-written modules less likely.
 
 ### Changes to the `prolog` module
 
