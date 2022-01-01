@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2021 The Mercury Team.
+% Copyright (C) 2013-2022 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -3058,7 +3058,7 @@ display_compiler_version(Stream, !IO) :-
     io.write_strings(Stream, [
         "Mercury Compiler, version ", Version, ", on ", Fullarch, "\n",
         "Copyright (C) 1993-2012 The University of Melbourne\n",
-        "Copyright (C) 2013-2021 The Mercury team\n"
+        "Copyright (C) 2013-2022 The Mercury team\n"
     ], !IO).
 
 usage_errors(ErrorStream, Globals, Specs, !IO) :-
@@ -3090,10 +3090,10 @@ long_usage(Stream, !IO) :-
     % copies of the long usage message. We can print both a short and along
     % usage message, but there is no simple way to avoid that.
     library.version(Version, Fullarch),
-    Template = 
+    Template =
         "Name: mmc -- Melbourne Mercury Compiler, version %s on %s\n" ++
         "Copyright: Copyright (C) 1993-2012 The University of Melbourne\n" ++
-        "Copyright (C) 2013-2021 The Mercury team\n" ++
+        "Copyright (C) 2013-2022 The Mercury team\n" ++
         "Usage: mmc [<options>] <arguments>\n" ++
         "Arguments:\n" ++
         "\tArguments ending in `.m' are assumed to be source file names.\n" ++

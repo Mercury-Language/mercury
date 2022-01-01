@@ -16,7 +16,7 @@
 This file documents the Mercury programming language, version <VERSION>.
 
 Copyright @copyright{} 1995--2012 The University of Melbourne.@*
-Copyright @copyright{} 2013--2021 The Mercury team.
+Copyright @copyright{} 2013--2022 The Mercury team.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -55,7 +55,7 @@ into another language, under the above conditions for modified versions.
 @page
 @vskip 0pt plus 1filll
 Copyright @copyright{} 1995--2012 The University of Melbourne.@*
-Copyright @copyright{} 2013--2021 The Mercury team.
+Copyright @copyright{} 2013--2022 The Mercury team.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
