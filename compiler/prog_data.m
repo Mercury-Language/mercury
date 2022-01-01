@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2021 The Mercury team.
+% Copyright (C) 2014-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2044,7 +2044,7 @@ valid_trace_grade_name(GradeName) :-
     %
     % XXX ARITY We should eventually replace these ints with uint16, since
     % an arity can never be negative, and we do not support arities higher
-    % than "about 1000" according to the LIMITATIONS file. (The main reason
+    % than "about 1000" according to the LIMITATIONS.md file. (The main reason
     % for the upper limit is that the abstract machine we use as the target
     % in LLDS grades has 1024 registers, some of which are needed for
     % purposes such as the semidet success indicator, and the type_info

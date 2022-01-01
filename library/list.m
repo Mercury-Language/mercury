@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -39,7 +39,7 @@
     %
     % They could also be used for partial instantiation but partial
     % instantiation does not work completely, for information see the
-    % LIMITATIONS file distributed with Mercury.
+    % LIMITATIONS.md file distributed with Mercury.
     %
 :- inst list_skel(I) for list/1
     --->    []

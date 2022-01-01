@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2002, 2004 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2022 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 #ifndef MERCURY_TYPE_DESC_H
@@ -55,7 +55,7 @@ typedef struct MR_TypeCtorDesc_Struct *MR_TypeCtorDesc;
 // of general purpose registers, to reduce the probability that the
 // `small' integers for higher-order and tuple types are confused with
 // type_ctor_info pointers. This still allows higher-order terms with
-// 1024 arguments, which is more than ../LIMITATIONS promises.
+// 1024 arguments, which is more than ../LIMITATIONS.md promises.
 
 #define MR_MAX_VARIABLE_ARITY       MR_MAX_VIRTUAL_R_REG
 

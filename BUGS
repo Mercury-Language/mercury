@@ -27,4 +27,4 @@ be able to reproduce the problem.  Make sure that all bug reports are fully
 self-contained.
 
 Some known problems related to using Mercury on specific operating systems are
-described in the README.* files. See also the LIMITATIONS file.
+described in the README.* files. See also the LIMITATIONS.md file.

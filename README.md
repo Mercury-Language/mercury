@@ -59,7 +59,7 @@ The [history](HISTORY) file is relevant if you want to find out more about the
 past development of Mercury.
 [News](NEWS) lists any current or future enhancements (but this isn't
 always up-to-date).
-The [limitations](LIMITATIONS) file lists a number of ways in which the
+The [limitations](LIMITATIONS.md) file lists a number of ways in which the
 Mercury implementation does not yet meet its goals.
 
 ## Information for developers
