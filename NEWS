@@ -70,6 +70,23 @@ Changes to the Mercury standard library
     - func `to_set_without_duplicates/1`    (replacement: func `to_set/1`)
     - pred `to_set_without_duplicates/2`    (replacement: func `to_set/1`)
 
+### Changes to the `bitmap` module
+
+* The following predicates and functions have been added:
+
+    - func `get_bit/2`
+    - func `get_bits/2`
+    - func `get_byte/2`
+    - pred `set_bit/4`
+    - pred `set_bit/4`
+    - pred `set_byte/4`
+    - func `unsafe_get_bit/2`
+    - func `unsafe_get_bits/2`
+    - func `unsafe_get_byte/2`
+    - pred `unsafe_set_bit/4`
+    - pred `unsafe_set_bits/4`
+    - pred `unsafe_set_byte/4`
+
 ### Changes to the `char` module
 
 * The following predicates have been added:
