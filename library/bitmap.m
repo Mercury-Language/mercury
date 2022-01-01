@@ -517,10 +517,10 @@ set_trailing_bits_in_byte(Bit, Initializer, !BM) :-
     ( if FirstTrailingBitIndex \= 0 then
         ByteIndex = byte_index_for_bit(FirstTrailingBit),
         NumBitsToSet = bits_per_byte - FirstTrailingBitIndex,
-        Byte0 = unsafe_get_byte(!.BM, ByteIndex),
+        Byte0 = unsafe_get_byte_1(!.BM, ByteIndex),
         set_bits_in_byte(FirstTrailingBitIndex, NumBitsToSet, Initializer,
             Byte0, Byte),
-        unsafe_set_byte(ByteIndex, Byte, !BM)
+        unsafe_set_byte_1(ByteIndex, Byte, !BM)
     else
         true
     ).
@@ -543,7 +543,7 @@ initialize_bitmap_bytes(ByteIndex, LastByteIndex, Init, !BM) :-
     ( if ByteIndex > LastByteIndex then
         true
     else
-        unsafe_set_byte(ByteIndex, Init, !BM),
+        unsafe_set_byte_2(ByteIndex, Init, !BM),
         initialize_bitmap_bytes(ByteIndex + 1, LastByteIndex, Init, !BM)
     ).
 
@@ -734,7 +734,7 @@ extract_bits_from_bytes(FirstByteIndex, FirstBitIndex, NumBits, BM, !Bits) :-
 
 extract_bits_from_byte_index(ByteIndex, FirstBitIndex,
         NumBitsThisByte, BM, !Bits) :-
-    BitsThisByte = extract_bits_from_byte(unsafe_get_byte(BM, ByteIndex),
+    BitsThisByte = extract_bits_from_byte(unsafe_get_byte_2(BM, ByteIndex),
         FirstBitIndex, NumBitsThisByte),
     !:Bits = (!.Bits `unchecked_left_shift` NumBitsThisByte) \/ BitsThisByte.
 
@@ -815,22 +815,22 @@ set_bits_in_bytes(LastByteIndex, LastBitIndex, NumBits, Bits, !BM) :-
 
 set_bits_in_byte_index(ByteIndex, LastBitIndex, NumBitsThisByte, Bits, !BM) :-
     FirstBitInByte = LastBitIndex - NumBitsThisByte + 1,
-    Byte0 = unsafe_get_byte(!.BM, ByteIndex),
+    Byte0 = unsafe_get_byte_3(!.BM, ByteIndex),
     set_bits_in_byte(FirstBitInByte, NumBitsThisByte, Bits, Byte0, Byte),
-    unsafe_set_byte(ByteIndex, Byte, !BM).
+    unsafe_set_byte_3(ByteIndex, Byte, !BM).
 
 %---------------------------------------------------------------------------%
 
 get_byte(BM, N) = Byte :-
     ( if byte_in_range(BM, N) then
-        Byte = unsafe_get_byte(BM, N)
+        Byte = unsafe_get_byte_4(BM, N)
     else
         throw_byte_bounds_error(BM, "bitmap.get_byte", N)
     ).
 
 BM ^ byte(N) = Byte :-
     ( if byte_in_range(BM, N) then
-        Byte = unsafe_get_byte(BM, N)
+        Byte = unsafe_get_byte_4(BM, N)
     else
         throw_byte_bounds_error(BM, "bitmap.byte", N)
     ).
@@ -865,16 +865,742 @@ BM ^ unsafe_byte(N) = Byte :-
 
 %---------------------------------------------------------------------------%
 
+:- func unsafe_get_byte_1(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_1(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_1(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_1(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_1(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_1").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_2(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_2(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_2(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_2(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_2(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_2").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_3(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_3(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_3(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_3(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_3(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_3").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_4(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_4(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_4(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_4(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_4(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_4").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_5(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_5(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_5(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_5(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_5(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_5").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_6(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_6(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_6(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_6(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_6(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_6").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_7(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_7(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_7(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_7(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_7(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_7").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_8(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_8(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_8(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_8(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_8(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_8").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_9(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_9(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_9(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_9(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_9(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_9").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_10(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_10(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_10(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_10(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_10(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_10").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_11(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_11(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_11(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_11(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_11(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_11").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_12(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_12(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_12(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_12(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_12(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_12").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_13(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_13(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_13(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_13(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_13(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_13").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_14(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_14(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_14(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_14(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_14(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_14").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_15(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_15(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_15(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_15(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_15(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_15").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_16(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_16(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_16(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_16(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_16(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_16").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_17(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_17(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_17(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_17(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_17(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_17").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_18(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_18(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_18(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_18(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_18(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_18").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_19(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_19(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_19(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_19(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_19(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_19").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_20(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_20(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_20(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_20(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_20(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_20").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_21(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_21(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_21(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_21(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_21(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_21").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_22(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_22(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_22(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_22(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_22(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_22").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_23(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_23(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_23(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_23(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_23(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_23").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_24(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_24(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_24(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_24(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_24(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_24").
+
+%---------------------------------------------------------------------------%
+
+:- func unsafe_get_byte_25(bitmap, byte_index) = byte.
+
+:- pragma foreign_proc("C",
+    unsafe_get_byte_25(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = (MR_Integer) BM->elements[N];
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_byte_25(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    // Mask off sign bits so Byte is in range 0-255.
+    Byte = ((int) BM.elements[N]) & 0xff;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_byte_25(BM::in, N::in) = (Byte::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    Byte = BM.elements[N];
+").
+
+unsafe_get_byte_25(_BM, _N) = _Byte :-
+    private_builtin.sorry("bitmap.unsafe_byte_25").
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 set_byte(N, Byte, !BM) :-
     ( if byte_in_range(!.BM, N) then
-        unsafe_set_byte(N, Byte, !BM)
+        unsafe_set_byte_4(N, Byte, !BM)
     else
         throw_byte_bounds_error(!.BM, "bitmap.set_byte", N)
     ).
 
 (!.BM ^ byte(N) := Byte) = !:BM :-
     ( if byte_in_range(!.BM, N) then
-        unsafe_set_byte(N, Byte, !BM)
+        unsafe_set_byte_4(N, Byte, !BM)
     else
         throw_byte_bounds_error(!.BM, "bitmap.'byte :='", N)
     ).
@@ -908,6 +1634,550 @@ unsafe_set_byte(_N, _Byte, !BM) :-
 
 (!.BM ^ unsafe_byte(N) := Byte) = !:BM :-
     unsafe_set_byte(N, Byte, !BM).
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_1(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_1(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_1(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_1(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_1(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_1(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_2(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_2(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_2(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_2(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_2(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_2(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_3(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_3(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_3(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_3(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_3(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_3(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_4(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_4(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_4(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_4(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_4(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_4(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_5(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_5(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_5(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_5(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_5(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_5(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_6(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_6(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_6(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_6(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_6(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_6(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_7(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_7(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_7(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_7(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_7(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_7(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_8(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_8(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_8(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_8(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_8(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_8(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_9(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_9(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_9(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_9(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_9(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_9(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_10(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_10(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_10(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_10(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_10(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_10(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_11(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_11(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_11(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_11(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_11(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_11(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_12(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_12(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_12(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_12(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_12(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_12(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_13(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_13(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_13(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_13(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_13(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_13(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_14(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_14(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_14(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_14(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_14(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_14(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_15(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_15(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_15(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_15(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_15(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_15(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_16(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_16(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_16(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_16(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_16(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_16(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
+
+%---------------------------------------------------------------------------%
+
+:- pred unsafe_set_byte_17(byte_index, byte, bitmap, bitmap).
+:- mode unsafe_set_byte_17(in, in, bitmap_di, bitmap_uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_set_byte_17(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM->elements[N] = (MR_uint_least8_t) Byte;
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_set_byte_17(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_set_byte_17(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = BM0;
+    BM.elements[N] = (byte) Byte;
+").
+
+unsafe_set_byte_17(_N, _Byte, !BM) :-
+    private_builtin.sorry("bitmap.'unsafe_byte :='").
 
 %---------------------------------------------------------------------------%
 
@@ -1025,33 +2295,33 @@ unsafe_flip(BM0, I) = BM :-
 
 unsafe_flip(I, BM0, BM) :-
     ByteIndex = byte_index_for_bit(I),
-    Byte0 = unsafe_get_byte(BM0, ByteIndex),
+    Byte0 = unsafe_get_byte_5(BM0, ByteIndex),
     Byte = Byte0 `xor` bitmask(I),
-    unsafe_set_byte(ByteIndex, Byte, BM0, BM).
+    unsafe_set_byte_5(ByteIndex, Byte, BM0, BM).
 
 unsafe_set(BM0, I) = BM :-
     unsafe_set(I, BM0, BM).
 
 unsafe_set(I, BM0, BM) :-
     ByteIndex = byte_index_for_bit(I),
-    Byte0 = unsafe_get_byte(BM0, ByteIndex),
+    Byte0 = unsafe_get_byte_6(BM0, ByteIndex),
     Byte = Byte0 \/ bitmask(I),
-    unsafe_set_byte(ByteIndex, Byte, BM0, BM).
+    unsafe_set_byte_6(ByteIndex, Byte, BM0, BM).
 
 unsafe_clear(BM0, I) = BM :-
     unsafe_clear(I, BM0, BM).
 
 unsafe_clear(I, BM0, BM) :-
     ByteIndex = byte_index_for_bit(I),
-    Byte0 = unsafe_get_byte(BM0, ByteIndex),
+    Byte0 = unsafe_get_byte_6(BM0, ByteIndex),
     Byte = Byte0 /\ \bitmask(I),
-    unsafe_set_byte(ByteIndex, Byte, BM0, BM).
+    unsafe_set_byte_7(ByteIndex, Byte, BM0, BM).
 
 unsafe_is_set(BM, I) :-
     not unsafe_is_clear(BM, I).
 
 unsafe_is_clear(BM, I) :-
-    unsafe_get_byte(BM, byte_index_for_bit(I)) /\ bitmask(I) = 0.
+    unsafe_get_byte_7(BM, byte_index_for_bit(I)) /\ bitmask(I) = 0.
 
 %---------------------------------------------------------------------------%
 
@@ -1204,8 +2474,8 @@ complement_loop(ByteIndex, !BM) :-
     ( if ByteIndex < 0 then
         true
     else
-        X = unsafe_get_byte(!.BM, ByteIndex),
-        unsafe_set_byte(ByteIndex, \ X, !BM),
+        X = unsafe_get_byte_8(!.BM, ByteIndex),
+        unsafe_set_byte_8(ByteIndex, \ X, !BM),
         complement_loop(ByteIndex - 1, !BM)
     ).
 
@@ -1263,9 +2533,9 @@ zip(Fn, BM_A, BM_B, BM) :-
 
 zip2(I, Fn, BM_A, BM_B, BM) :-
     ( if I >= 0 then
-        XA = unsafe_get_byte(BM_A, I),
-        XB = unsafe_get_byte(BM_B, I),
-        unsafe_set_byte(I, Fn(XA, XB), BM_B, BM_C),
+        XA = unsafe_get_byte_9(BM_A, I),
+        XB = unsafe_get_byte_9(BM_B, I),
+        unsafe_set_byte_9(I, Fn(XA, XB), BM_B, BM_C),
         zip2(I - 1, Fn, BM_A, BM_C, BM)
     else
         BM = BM_B
@@ -1371,7 +2641,7 @@ unsafe_copy_bits(SameBM, SrcBM, SrcStartBit, DestStartBit,
                 NumBitsAtStart = bits_per_byte - StartIndex,
                 SrcPartialStartByteIndex = byte_index_for_bit(SrcStartBit),
                 PartialStartByte =
-                    unsafe_get_byte(SrcBM, SrcPartialStartByteIndex),
+                    unsafe_get_byte_10(SrcBM, SrcPartialStartByteIndex),
                 StartBitsToSet = extract_bits_from_byte(PartialStartByte,
                     StartIndex, NumBitsAtStart),
                 !:NumBits = !.NumBits - NumBitsAtStart
@@ -1384,7 +2654,7 @@ unsafe_copy_bits(SameBM, SrcBM, SrcStartBit, DestStartBit,
                 NumBitsAtEnd = EndIndex + 1,
                 SrcPartialEndByteIndex = byte_index_for_bit(SrcEndBit),
                 PartialEndByte =
-                    unsafe_get_byte(SrcBM, SrcPartialEndByteIndex),
+                    unsafe_get_byte_11(SrcBM, SrcPartialEndByteIndex),
                 EndBitsToSet = extract_bits_from_byte(PartialEndByte,
                     0, NumBitsAtEnd),
                 !:NumBits = !.NumBits - NumBitsAtEnd
@@ -1405,20 +2675,20 @@ unsafe_copy_bits(SameBM, SrcBM, SrcStartBit, DestStartBit,
             else
                 DestPartialStartByteIndex = DestStartByteIndex - 1,
                 StartByte0 =
-                    unsafe_get_byte(!.DestBM, DestPartialStartByteIndex),
+                    unsafe_get_byte_12(!.DestBM, DestPartialStartByteIndex),
                 set_bits_in_byte(StartIndex, NumBitsAtStart, StartBitsToSet,
                     StartByte0, StartByte),
-                unsafe_set_byte(DestPartialStartByteIndex, StartByte, !DestBM)
+                unsafe_set_byte_10(DestPartialStartByteIndex, StartByte, !DestBM)
             ),
 
             ( if NumBitsAtEnd = 0 then
                 true
             else
                 DestPartialEndByteIndex = DestStartByteIndex + NumBytes,
-                EndByte0 = unsafe_get_byte(!.DestBM, DestPartialEndByteIndex),
+                EndByte0 = unsafe_get_byte_13(!.DestBM, DestPartialEndByteIndex),
                 set_bits_in_byte(0, NumBitsAtEnd, EndBitsToSet,
                     EndByte0, EndByte),
-                unsafe_set_byte(DestPartialEndByteIndex, EndByte, !DestBM)
+                unsafe_set_byte_11(DestPartialEndByteIndex, EndByte, !DestBM)
             )
         )
     else
@@ -1532,8 +2802,8 @@ unsafe_do_copy_bytes(SrcBM, SrcByteIndex, DestByteIndex,
     ( if NumBytes = 0 then
         true
     else
-        Byte = unsafe_get_byte(SrcBM, SrcByteIndex),
-        unsafe_set_byte(DestByteIndex, Byte, !DestBM),
+        Byte = unsafe_get_byte_14(SrcBM, SrcByteIndex),
+        unsafe_set_byte_12(DestByteIndex, Byte, !DestBM),
         unsafe_do_copy_bytes(SrcBM, SrcByteIndex + AddForNext,
             DestByteIndex + AddForNext, NumBytes - 1, AddForNext, !DestBM)
     ).
@@ -1587,7 +2857,7 @@ unsafe_copy_unaligned_bits(SameBM, SrcBM, SrcStartBit, DestStartBit,
         Direction = left_to_right,
         SrcStartByteIndex = byte_index_for_bit(NewSrcStartBit),
         DestStartByteIndex = byte_index_for_bit(NewDestStartBit),
-        SrcByte = unsafe_get_byte(SrcBM, SrcStartByteIndex),
+        SrcByte = unsafe_get_byte_15(SrcBM, SrcStartByteIndex),
         unsafe_copy_unaligned_bytes_ltor(SrcBM,
             SrcStartByteIndex + 1, SrcBitIndex, SrcByte,
             DestStartByteIndex, NumBytes, !DestBM)
@@ -1596,7 +2866,7 @@ unsafe_copy_unaligned_bits(SameBM, SrcBM, SrcStartBit, DestStartBit,
         SrcStartByteIndex = byte_index_for_bit(NewSrcStartBit + !.NumBits - 1),
         DestStartByteIndex =
             byte_index_for_bit(NewDestStartBit + !.NumBits - 1),
-        SrcByte = unsafe_get_byte(SrcBM, SrcStartByteIndex),
+        SrcByte = unsafe_get_byte_16(SrcBM, SrcStartByteIndex),
         unsafe_copy_unaligned_bytes_rtol(SrcBM,
             SrcStartByteIndex - 1, SrcBitIndex, SrcByte,
             DestStartByteIndex, NumBytes, !DestBM)
@@ -1607,19 +2877,19 @@ unsafe_copy_unaligned_bits(SameBM, SrcBM, SrcStartBit, DestStartBit,
         true
     else
         PartialDestStartByteIndex = byte_index_for_bit(DestStartBit),
-        StartByte0 = unsafe_get_byte(!.DestBM, PartialDestStartByteIndex),
+        StartByte0 = unsafe_get_byte_17(!.DestBM, PartialDestStartByteIndex),
         set_bits_in_byte(DestStartIndex, NumBitsAtStart, StartBits,
             StartByte0, StartByte),
-        unsafe_set_byte(PartialDestStartByteIndex, StartByte, !DestBM)
+        unsafe_set_byte_13(PartialDestStartByteIndex, StartByte, !DestBM)
     ),
 
     ( if NumBitsAtEnd = 0 then
         true
     else
         PartialDestEndByteIndex = byte_index_for_bit(DestEndBit),
-        EndByte0 = unsafe_get_byte(!.DestBM, PartialDestEndByteIndex),
+        EndByte0 = unsafe_get_byte_18(!.DestBM, PartialDestEndByteIndex),
         set_bits_in_byte(0, NumBitsAtEnd, EndBits, EndByte0, EndByte),
-        unsafe_set_byte(PartialDestEndByteIndex, EndByte, !DestBM)
+        unsafe_set_byte_14(PartialDestEndByteIndex, EndByte, !DestBM)
     ).
 
 :- pred unsafe_copy_unaligned_bytes_ltor(bitmap, byte_index, bit_index_in_byte,
@@ -1651,11 +2921,11 @@ unsafe_copy_unaligned_bytes_ltor(SrcBM, SrcByteIndex, SrcBitIndex,
         % (we can't look it up here because in the general case it may be
         % overwritten by previous recursive calls).
 
-        SrcByteBits = unsafe_get_byte(SrcBM, SrcByteIndex),
+        SrcByteBits = unsafe_get_byte_19(SrcBM, SrcByteIndex),
         DestByteBits = (PrevSrcByteBits `unchecked_left_shift` SrcBitIndex)
             \/ (SrcByteBits `unchecked_right_shift`
                 (bits_per_byte - SrcBitIndex)),
-        unsafe_set_byte(DestByteIndex, DestByteBits, !DestBM),
+        unsafe_set_byte_15(DestByteIndex, DestByteBits, !DestBM),
 
         unsafe_copy_unaligned_bytes_ltor(SrcBM, SrcByteIndex + 1, SrcBitIndex,
             SrcByteBits, DestByteIndex + 1, NumBytes - 1, !DestBM)
@@ -1689,11 +2959,11 @@ unsafe_copy_unaligned_bytes_rtol(SrcBM, SrcByteIndex, SrcBitIndex,
         % (we can't look it up here because in the general case it may be
         % overwritten by previous recursive calls).
 
-        SrcByteBits = unsafe_get_byte(SrcBM, SrcByteIndex),
+        SrcByteBits = unsafe_get_byte_20(SrcBM, SrcByteIndex),
         DestByteBits = (SrcByteBits `unchecked_left_shift` SrcBitIndex)
             \/ (PrevSrcByteBits `unchecked_right_shift`
                 (bits_per_byte - SrcBitIndex)),
-        unsafe_set_byte(DestByteIndex, DestByteBits, !DestBM),
+        unsafe_set_byte_16(DestByteIndex, DestByteBits, !DestBM),
 
         unsafe_copy_unaligned_bytes_rtol(SrcBM, SrcByteIndex - 1,
             SrcBitIndex, SrcByteBits, DestByteIndex - 1, NumBytes - 1, !DestBM)
@@ -1737,7 +3007,7 @@ to_string_chars(Index, BM, !Chars) :-
     ( if Index < 0 then
         true
     else
-        Byte = unsafe_get_byte(BM, Index),
+        Byte = unsafe_get_byte_21(BM, Index),
         Mask = n_bit_mask(4),
         ( if
             char.int_to_hex_digit((Byte `unchecked_right_shift` 4) /\ Mask,
@@ -1787,7 +3057,7 @@ hex_chars_to_bitmap(Str, Index, End, ByteIndex, !BM) :-
         char.hex_digit_to_int(unsafe_index(Str, Index), HighNibble),
         char.hex_digit_to_int(unsafe_index(Str, Index + 1), LowNibble),
         Byte = (HighNibble `unchecked_left_shift` 4) \/ LowNibble,
-        unsafe_set_byte(ByteIndex, Byte, !BM),
+        unsafe_set_byte_17(ByteIndex, Byte, !BM),
         hex_chars_to_bitmap(Str, Index + 2, End, ByteIndex + 1, !BM)
     ).
 
@@ -1811,7 +3081,7 @@ bitmap_to_byte_strings(BM, NumBits, !.Strs) = !:Strs :-
     ( if NumBits =< 0 then
         true
     else
-        ThisByte0 = unsafe_get_byte(BM, byte_index_for_bit(NumBits - 1)),
+        ThisByte0 = unsafe_get_byte_22(BM, byte_index_for_bit(NumBits - 1)),
         LastBitIndex = bit_index_in_byte(NumBits - 1),
         ( if LastBitIndex = bits_per_byte - 1 then
             BitsThisByte = bits_per_byte,
@@ -1846,7 +3116,7 @@ hash(BM) = HashVal :-
 
 hash_2(BM, Index, Length, !HashVal) :-
     ( if Index < Length then
-        combine_hash(unsafe_get_byte(BM, Index), !HashVal),
+        combine_hash(unsafe_get_byte_23(BM, Index), !HashVal),
         hash_2(BM, Index + 1, Length, !HashVal)
     else
         true
@@ -1919,7 +3189,7 @@ bitmap_equal(BM_A, BM_B) :-
 
 bytes_equal(Index, MaxIndex, BM_A, BM_B) :-
     ( if Index =< MaxIndex then
-        unsafe_get_byte(BM_A, Index) = unsafe_get_byte(BM_B, Index),
+        unsafe_get_byte_24(BM_A, Index) = unsafe_get_byte_24(BM_B, Index),
         bytes_equal(Index + 1, MaxIndex, BM_A, BM_B)
     else
         true
@@ -2014,8 +3284,8 @@ bitmap_compare(Result, BM1, BM2) :-
 
 bytes_compare(Result, Index, MaxIndex, BM1, BM2) :-
     ( if Index =< MaxIndex then
-        Byte1 = unsafe_get_byte(BM1, Index),
-        Byte2 = unsafe_get_byte(BM2, Index),
+        Byte1 = unsafe_get_byte_25(BM1, Index),
+        Byte2 = unsafe_get_byte_25(BM2, Index),
         compare(Result0, Byte1, Byte2),
         (
             Result0 = (=),
