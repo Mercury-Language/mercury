@@ -1,0 +1,3 @@
+bug214.m:043: In predicate `solve_mip_cg'/2:
+bug214.m:043:   type error: unsatisfied typeclass constraint:
+bug214.m:043:     `bug214.linear_expr(int, V_16, int)'
