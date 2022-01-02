@@ -282,7 +282,7 @@ check_stdlib_modules: check_doc check_undoc check_doc_undoc
 #-----------------------------------------------------------------------------#
 
 tags:	$(MTAGS) $(wildcard *.m)
-	$(MTAGS) $(wildcard *.m)
+	$(MTAGS) $(filter-out getopt.m,$(wildcard *.m))
 
 .PHONY: tags_file_exists
 tags_file_exists:
