@@ -31,5 +31,3 @@ war/WEB-INF/appengine-web.xml and change the application id one you've created.
 You can create a new application at https://appengine.google.com/.  Then do:
 
     make deploy
-
-The sample is currently deployed to http://imlmertest.appspot.com/.
