@@ -4,8 +4,8 @@
 %
 % A simpler calculator - parses and evaluates integer expressions.
 %
-% For an example of a parser with better error handling, see parser.m in
-% the Mercury library source code.
+% For an example of a parser with better error handling, see
+% mercury_term_parser.m in the Mercury library source code.
 %
 % Author: fjh.
 %

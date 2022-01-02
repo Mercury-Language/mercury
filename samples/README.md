@@ -24,7 +24,7 @@ This directory contains some example Mercury programs.
 * [interpreter.m](interpreter.m) -- An simple interpreter for definite logic
   programs. A demonstration of meta-programming in Mercury.
 
-* [exapnd_terms.m](expand_terms.m) -- Another example meta-program, showing how
+* [expand_terms.m](expand_terms.m) -- Another example meta-program, showing how
   to emulate Prolog's `expand_term` mechanism.
 
 * [e.m](e.m) -- A small program which calculates the base of natural logarithms
