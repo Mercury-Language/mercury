@@ -235,11 +235,11 @@ getopt.m:	getopt_io.m
 .PHONY: check_doc
 check_doc: MODULES_DOC *.m
 	@{								  \
-		set -x;							  \
 		sort < MODULES_DOC > DOC_VIA_MODULES;			  \
 		mmc --output-stdlib-modules > DOC_VIA_MMC0 2>&1;	  \
 		cat DOC_VIA_MMC0 | grep '^DOC ' |			  \
-			sed -e 's/^DOC //' > DOC_VIA_MMC;		  \
+			sed -e 's/^DOC //' > DOC_VIA_MMC1;		  \
+		sort DOC_VIA_MMC1 > DOC_VIA_MMC;			  \
 		if diff -u DOC_VIA_MODULES DOC_VIA_MMC; then		  \
 			true;						  \
 		else							  \
