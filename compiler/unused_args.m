@@ -362,14 +362,34 @@ maybe_setup_pred_args(PredId, !VarUsage, !PredProcList, !OptProcs,
         !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ( if
-        % The builtins use all their arguments. We also want to treat stub
-        % procedures (those which originally had no clauses) as if they use
-        % all of their arguments, to avoid spurious warnings in their callers.
+        % Check whether we must (or should) consider all arguments
+        % of the predicate to be used.
         (
+            % Builtins *do* use all their arguments.
             pred_info_is_builtin(PredInfo)
         ;
+            % To avoid spurious warnings in their callers, we want to treat
+            % stub procedures (those which originally had no clauses)
+            % as if they use all of their arguments,
             pred_info_get_markers(PredInfo, Markers),
             check_marker(Markers, marker_stub)
+        ;
+            % The method of a class instance must have the exact same set
+            % or arguments as the class method itself. We cannot delete
+            % an argument, even an unused argument, from an instance method
+            % without deleting that same argument from the class method,
+            % which we cannot do unless that argument is unused in *all*
+            % instances of the class, a condition we cannot check here.
+            %
+            % The above is why we cannot *replace* a class or instance method
+            % procedure with their unused-arg-optimized clone. We *could* make
+            % a class or instance method *forward* its job to such a clone,
+            % but since class and instance methods cannot be recursive,
+            % there would be no point.
+            pred_info_get_origin(PredInfo, Origin),
+            ( Origin = origin_class_method(_, _)
+            ; Origin = origin_instance_method(_, _)
+            )
         )
     then
         true
@@ -468,6 +488,68 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcIds, !OptProcs,
                 % not compatible with each other.
                 proc_info_get_eval_method(ProcInfo, EvalMethod),
                 EvalMethod \= eval_normal
+            ;
+                proc_info_get_declared_determinism(ProcInfo,
+                    MaybeDeclaredDetism),
+                proc_info_get_goal(ProcInfo, Goal),
+                Goal = hlds_goal(_, GoalInfo),
+                ActualDetism = goal_info_get_determinism(GoalInfo),
+                % If there is a declared detism but the actual detism
+                % differs from it, then replacing the Goal in ProcInfo
+                % with a forwarding call to the clone of this procedure
+                % in which the unused args have been eliminated
+                % can cause simplification to screw up.
+                %
+                % The scenario, as shown by Mantis bug #541,
+                % is the following.
+                %
+                % - A predicate is declared to be det (usually because
+                %   it has to conform to an interface) but its body goal
+                %   always throws an exception. Its actual determinism
+                %   is therefore erroneous, and the body goal as a whole
+                %   has an instmap delta of "unreachable".
+                %
+                % - The clone of this procedure which has the unused args
+                %   deleted has the same declared determinism as the original,
+                %   i.e. det.
+                %
+                % - Replacing the body with a call to the clone replaces
+                %   an erroneous goal whose instmap_delta is unreachable
+                %   with a det goal whose instmap_delta is unreachable.
+                %
+                %   It is this step that is at fault, for the violating
+                %   the invariant which says that a goal whose instmap_delta
+                %   is "unreachable" should have determinism whose soln_count
+                %   component is "at_most_zero", and vice versa.
+                %
+                % - The simplification pass we invoke just before code
+                %   generation sees the contradiction. To make the program
+                %   point as unreachable as the instmap_delta says it
+                %   should be, it adds a "fail" goal after the call
+                %   to the clone.
+                %
+                % - The code generator aborts when it finds "fail"
+                %   in a det context.
+                %
+                % We could change simplification to make the
+                % supposed-to-be-unreachable end of the procedure body
+                % actually unreachable by adding not "fail", but code
+                % that throws an exception. However, there is no point
+                % in having unused args replacing code that throws
+                % an exception with code that does a det call (whose
+                % body throws an exception which we don't see it because
+                % it is beyond the predicate boundary), and then having
+                % simplification add code to throw an exception afterward.
+                % It is much simpler not to allow the unused arg transformation
+                % to replace the original exception throwing code
+                % in the first place.
+                (
+                    MaybeDeclaredDetism = yes(DeclaredDetism),
+                    DeclaredDetism \= ActualDetism
+                ;
+                    determinism_components(ActualDetism, _CanFail, SolnCount),
+                    SolnCount = at_most_zero
+                )
             )
         then
             true

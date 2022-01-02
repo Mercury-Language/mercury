@@ -343,26 +343,22 @@ write_origin(Stream, ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
         Origin = origin_instance_method(_, MethodConstraints),
         MethodConstraints = instance_method_constraints(ClassId,
             InstanceTypes, InstanceConstraints, ClassMethodConstraints),
-        io.write_string(Stream, "% instance method constraints:\n", !IO),
+        io.write_string(Stream, "% instance method\n", !IO),
         ClassId = class_id(ClassName, _),
+        io.write_string(Stream,
+            "% class name and instance type vector:\n", !IO),
+        io.write_string(Stream, "%   ", !IO),
         mercury_output_constraint(TVarSet, VarNamePrint,
             constraint(ClassName, InstanceTypes), Stream, !IO),
         io.nl(Stream, !IO),
-        io.write_string(Stream, "instance constraints: ", !IO),
-        write_out_list(mercury_output_constraint(TVarSet, VarNamePrint),
-            ", ", InstanceConstraints, Stream, !IO),
-        io.nl(Stream, !IO),
-
+        write_origin_constraints(Stream, "instance constraints",
+            TVarSet, VarNamePrint, InstanceConstraints, !IO),
         ClassMethodConstraints = constraints(MethodUnivConstraints,
             MethodExistConstraints),
-        io.write_string(Stream, "method univ constraints: ", !IO),
-        write_out_list(mercury_output_constraint(TVarSet, VarNamePrint),
-            ", ", MethodUnivConstraints, Stream, !IO),
-        io.nl(Stream, !IO),
-        io.write_string(Stream, "method exist constraints: ", !IO),
-        write_out_list(mercury_output_constraint(TVarSet, VarNamePrint),
-            ", ", MethodExistConstraints, Stream, !IO),
-        io.nl(Stream, !IO)
+        write_origin_constraints(Stream, "method universal constraints",
+            TVarSet, VarNamePrint, MethodUnivConstraints, !IO),
+        write_origin_constraints(Stream, "method existential constraints",
+            TVarSet, VarNamePrint, MethodExistConstraints, !IO)
     ;
         Origin = origin_class_method(ClassId, MethodId),
         ClassId = class_id(ClassSymName, ClassArity),
@@ -477,6 +473,31 @@ write_origin(Stream, ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
         ; Origin = origin_user(_)
         )
     ).
+
+:- pred write_origin_constraints(io.text_output_stream::in, string::in,
+    tvarset::in, var_name_print::in, list(prog_constraint)::in, io::di, io::uo)
+    is det.
+
+write_origin_constraints(Stream, Msg, TVarSet, VarNamePrint,
+        Constraints, !IO) :-
+    (
+        Constraints = [],
+        io.format(Stream, "%% %s: none\n", [s(Msg)], !IO)
+    ;
+        Constraints = [_ | _],
+        io.format(Stream, "%% %s:\n", [s(Msg)], !IO),
+        list.foldl(write_origin_constraint(Stream, TVarSet, VarNamePrint),
+            Constraints, !IO)
+    ).
+
+:- pred write_origin_constraint(io.text_output_stream::in,
+    tvarset::in, var_name_print::in, prog_constraint::in, io::di, io::uo)
+    is det.
+
+write_origin_constraint(Stream, TVarSet, VarNamePrint, Constraint, !IO) :-
+    io.write_string(Stream, "%       ", !IO),
+    mercury_output_constraint(TVarSet, VarNamePrint, Constraint, Stream, !IO),
+    io.nl(Stream, !IO).
 
 %---------------------------------------------------------------------------%
 
