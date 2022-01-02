@@ -1,5 +1,5 @@
 Mercury Sample Programs
------------------------
+=======================
 
 This directory contains some example Mercury programs.
 
@@ -31,6 +31,12 @@ This directory contains some example Mercury programs.
   to however many digits you choose. It illustrates one way to achieve lazy
   evaluation in Mercury.
 
+* [eliza.m](eliza.m) -- An implementation of the famous computer
+  psychotherapist.
+
+* [beer.m](beer.m) -- A small program that prints the lyrics of the song
+  "99 Bottle of Beer".
+
 * [Mmakefile](Mmakefile) -- The file used by `mmake`, the Mercury Make program,
   to build the programs in this directory.
 
@@ -43,7 +49,7 @@ nondeterminism, showing how a Mercury program can compute
 
 for a query which has more than one logically correct answer.
 
-The [concurreny](concurrency) sub-directory contains examples of how to use
+The [concurrency](concurrency) sub-directory contains examples of how to use
 Mercury's concurrency interface, i.e. using threads in Mercury programs.
 
 There are also some sub-directories which contain examples of multi-module
@@ -58,7 +64,7 @@ Mercury programs:
 * [c_interface](c_interface) -- This directory contains some examples of mixed
   Mercury/C/C++/Fortran programs using the C interface.
 
-* [java_interfac](java_interface) -- This directory contains some examples of
+* [java_interface](java_interface) -- This directory contains some examples of
   mixed Mercury/Java programs using the foreign language interface.
 
 * [rot13](rot13) -- This directory contains a few implementations of rot-13
