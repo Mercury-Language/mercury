@@ -132,7 +132,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
 
     map.init(DirectArgMap),
     TypeRepnDec = type_repn_decision_data(TypeRepnMap, DirectArgMap,
-        ItemForeignEnums, ItemForeignExportEnums),
+        ForeignEnums, ForeignExportEnums),
     module_info_set_type_repn_dec(TypeRepnDec, !ModuleInfo),
 
     TypeSpecs = ParseTreeModuleSrc ^ ptms_type_specs,
@@ -189,21 +189,17 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     %
     % The constraints of what we have to add before what are documented below.
 
-    separate_items_in_aug_comp_unit(AugCompUnit, ItemAvails, ItemFIMs,
-        ItemTypeDefnsAbstract, ItemTypeDefnsMercury, ItemTypeDefnsForeign,
-        ItemInstDefns, ItemModeDefns,
-        ItemPredDecls, ItemModeDecls,
-        ItemPromises, ItemTypeclasses, ItemInstances,
-        ItemInitialises, ItemFinalises, ItemMutables,
-        TypeRepnMap,
-        ItemForeignEnums, ItemForeignExportEnums,
-        ItemPragmasDecl, ItemPragmasImpl, PragmasGen, ItemClauses,
-        IntBadClauses),
+    separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
+        TypeDefnsAbstract, TypeDefnsMercury, TypeDefnsForeign,
+        InstDefns, ModeDefns, PredDecls, ModeDecls,
+        Promises, Typeclasses, Instances, Initialises, Finalises, Mutables,
+        TypeRepnMap, ForeignEnums, ForeignExportEnums,
+        PragmasDecl, PragmasImpl, PragmasGen, Clauses, IntBadClauses),
 
     % The old pass 1.
 
     % Record the import_module and use_module declarations.
-    add_item_avails(ItemAvails, !ModuleInfo),
+    add_item_avails(Avails, !ModuleInfo),
 
     % Record type definitions.
     %
@@ -224,11 +220,11 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % implement those auxiliary predicates. We add these items to the HLDS
     % later, at the time when we add items of the same kinds to the HLDS.
     % (The mutables implement the constraint store.)
-    some [!SolverItemPredDecls, !SolverItemForeignProcs, !SolverItemMutables]
+    some [!RevSolverPredDecls, !RevSolverForeignProcs, !RevSolverMutables]
     (
-        !:SolverItemPredDecls = [],
-        !:SolverItemForeignProcs = [],
-        !:SolverItemMutables = [],
+        !:RevSolverPredDecls = [],
+        !:RevSolverForeignProcs = [],
+        !:RevSolverMutables = [],
         % XXX TYPE_REPN
         % The XXX comments below are irrelevant if
         % separate_items_in_aug_comp_unit returns a type_ctor_checked_map.
@@ -242,18 +238,35 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         % but beware: the current code of maybe_make_abstract_type_defn,
         % while usually returning abstract types, sometimes returns Mercury
         % types.
-        add_type_defns(ItemTypeDefnsAbstract,
-            !ModuleInfo, !FoundInvalidType, !Specs, !SolverItemPredDecls,
-            !SolverItemForeignProcs, !SolverItemMutables),
-        add_type_defns(ItemTypeDefnsMercury,
-            !ModuleInfo, !FoundInvalidType, !Specs, !SolverItemPredDecls,
-            !SolverItemForeignProcs, !SolverItemMutables),
-        add_type_defns(ItemTypeDefnsForeign,
-            !ModuleInfo, !FoundInvalidType, !Specs, !SolverItemPredDecls,
-            !SolverItemForeignProcs, !SolverItemMutables),
-        SolverItemPredDecls = !.SolverItemPredDecls,
-        SolverItemForeignProcs = !.SolverItemForeignProcs,
-        SolverItemMutables = !.SolverItemMutables
+        add_type_defns(TypeDefnsAbstract,
+            !ModuleInfo, !FoundInvalidType, !Specs, !RevSolverPredDecls,
+            !RevSolverForeignProcs, !RevSolverMutables),
+        add_type_defns(TypeDefnsMercury,
+            !ModuleInfo, !FoundInvalidType, !Specs, !RevSolverPredDecls,
+            !RevSolverForeignProcs, !RevSolverMutables),
+        add_type_defns(TypeDefnsForeign,
+            !ModuleInfo, !FoundInvalidType, !Specs, !RevSolverPredDecls,
+            !RevSolverForeignProcs, !RevSolverMutables),
+        % The code of add_type_defns adds new entries to the *fronts* of
+        % !RevSolverPredDecls, !RevSolverForeignProcs and !RevSolverMutables,
+        % because doing so avoids quadratic behavior. However, this means
+        % that e.g. a pred decl for a solver type from a later type defn
+        % could come before a pred decl from an earlier type defn.
+        % This is a problem if the two type definitions are actually the same,
+        % the first copy being from a module's .intN file and the second copy
+        % being from the module's .opt file. The reason why this is a problem
+        % is that we suppress error messages about duplicate pred decls
+        % only if the duplicate (i.e. the copy we see second) is from
+        % a .opt file.
+        %
+        % The make_hlds_separate_items.m gives us lists of type defns
+        % in which type_defns from .intN files will always precede
+        % type_defns from .opt files. To ensure that this property also holds
+        % for the pred decls of any auxiliary predicates needed for the
+        % solver types among them, we must restore the original order.
+        list.reverse(!.RevSolverPredDecls, SolverPredDecls),
+        list.reverse(!.RevSolverForeignProcs, SolverForeignProcs),
+        list.reverse(!.RevSolverMutables, SolverMutables)
     ),
 
     % We process inst definitions after all type definitions because
@@ -275,17 +288,17 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % this has been done, and thus employ recursive algorithms on insts
     % that do not check for infinite recursion. Any circularity we miss here
     % is thus very likely to cause a later pass to enter an infinite loop.
-    add_inst_defns(ItemInstDefns,
+    add_inst_defns(InstDefns,
         !ModuleInfo, !Specs),
-    check_inst_defns(!.ModuleInfo, ItemInstDefns,
+    check_inst_defns(!.ModuleInfo, InstDefns,
         !FoundInvalidInstOrMode, !Specs),
 
     % Mode definitions may refer to user defined insts. Since we have already
     % seen all inst definitions, we could check whether the newly defined
     % mode refers to an undefined inst, but we do not (yet) do so.
-    add_mode_defns(ItemModeDefns,
+    add_mode_defns(ModeDefns,
         !ModuleInfo, !Specs),
-    check_mode_defns(!.ModuleInfo, ItemModeDefns,
+    check_mode_defns(!.ModuleInfo, ModeDefns,
         !FoundInvalidInstOrMode, !Specs),
 
     % A predicate declaration defines the type of the arguments of a predicate,
@@ -293,9 +306,9 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % all type, inst and mode definitions, we could check whether the newly
     % defined predicate refers to an undefined type, inst, or mode, but
     % we do not (yet) do so.
-    add_pred_decls(ItemPredDecls,
+    add_pred_decls(PredDecls,
         !ModuleInfo, !Specs),
-    add_pred_decls(SolverItemPredDecls,
+    add_pred_decls(SolverPredDecls,
         !ModuleInfo, !Specs),
 
     % We need to process the mode declaration of a predicate
@@ -306,7 +319,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     %
     % Note that mode declarations embedded in predmode declarations
     % have already been added to the HLDS by add_pred_decl.
-    add_mode_decls(ItemModeDecls,
+    add_mode_decls(ModeDecls,
         !ModuleInfo, !Specs),
 
     % Every mutable has its own set of access predicates. Declare them
@@ -317,21 +330,21 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % We have to do this after we add types and insts to the HLDS,
     % so we can check the types and insts in the mutable for validity.
     % XXX Currently, we check only the inst for validity.
-    AllItemMutables = ItemMutables ++ SolverItemMutables,
+    AllMutables = Mutables ++ SolverMutables,
     module_info_get_user_init_pred_target_names(!.ModuleInfo,
         InitPredTargetNames0),
-    implement_mutables_if_local(!.ModuleInfo, AllItemMutables,
-        MutableItemPredDecls, MutableItemClauses, MutableItemForeignProcs,
+    implement_mutables_if_local(!.ModuleInfo, AllMutables,
+        MutablePredDecls, MutableClauses, MutableForeignProcs,
         MutableForeignDeclCodes, MutableForeignBodyCodes,
         RevPragmaFPEInfos1, InitPredTargetNames0, InitPredTargetNames1,
         !Specs),
-    add_pred_decls(MutableItemPredDecls,
+    add_pred_decls(MutablePredDecls,
         !ModuleInfo, !Specs),
 
     % Record the definitions of typeclasses.
     % This will add the pred and mode declarations of the methods inside them
     % to the HLDS.
-    add_typeclass_defns(ItemTypeclasses,
+    add_typeclass_defns(Typeclasses,
         !ModuleInfo, !Specs),
 
     % The old pass 2.
@@ -343,12 +356,12 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % adds that implicit mode declaration in such circumstances.
     % XXX It should also generate error messages for PREDICATES that have
     % no mode declaration.
-    maybe_add_default_modes(ItemPredDecls,
+    maybe_add_default_modes(PredDecls,
         !ModuleInfo),
-    % The items in MutableItemPredDecls do not have default modes to add.
+    % The items in MutablePredDecls do not have default modes to add.
 
     % Record instance definitions.
-    add_instance_defns(ItemInstances,
+    add_instance_defns(Instances,
         !ModuleInfo, !Specs),
 
     % Implement several kinds of pragmas, the ones in the subtype
@@ -356,7 +369,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
 
     % Record imports of foreign-language modules for use by the target code
     % we may generate.
-    list.foldl(module_add_item_fim, ItemFIMs,
+    list.foldl(module_add_item_fim, FIMs,
         !ModuleInfo),
 
     % Since all declared predicates are in now the HLDS, we could check
@@ -405,11 +418,11 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     init_qual_info(MQInfo0, TypeEqvMap, !:QualInfo),
 
     % Add clauses to their predicates.
-    add_clauses(ItemClauses,
+    add_clauses(Clauses,
         !ModuleInfo, !QualInfo, !Specs),
     % Add clauses that define the auxiliary predicates
     % that implement some of the auxiliary predicates of mutables.
-    add_clauses(MutableItemClauses,
+    add_clauses(MutableClauses,
         !ModuleInfo, !QualInfo, !Specs),
     % Add clauses that record promises.
     % XXX CLEANUP For each promise, we add a clause, find that there is
@@ -417,7 +430,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % remember that oh yeah, this is normal for promises, and then add
     % the implicitly-specified predicate declaration. It would be much simpler
     % to just construct and add the predicate declaration first.
-    add_promises(ItemPromises,
+    add_promises(Promises,
         !ModuleInfo, !QualInfo, !Specs),
 
     % Remember attempts to define predicates in the interface.
@@ -426,9 +439,9 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % Add foreign proc definitions
     % - for the auxiliary predicates that implement solver types, and
     % - for the rest of the auxiliary predicates that implement mutables.
-    add_pragma_foreign_procs(SolverItemForeignProcs,
+    add_pragma_foreign_procs(SolverForeignProcs,
         !ModuleInfo, !Specs),
-    add_pragma_foreign_procs(MutableItemForeignProcs,
+    add_pragma_foreign_procs(MutableForeignProcs,
         !ModuleInfo, !Specs),
 
     % Check that the predicates listed in `:- initialise' and `:- finalise'
@@ -441,10 +454,10 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % implement_mutables_if_local above.
     module_info_get_user_final_pred_target_names(!.ModuleInfo,
         FinalPredTargetNames1),
-    add_initialises(!.ModuleInfo, ItemInitialises,
+    add_initialises(!.ModuleInfo, Initialises,
         RevPragmaFPEInfos1, RevPragmaFPEInfos2,
         InitPredTargetNames1, InitPredTargetNames, !Specs),
-    add_finalises(!.ModuleInfo, ItemFinalises,
+    add_finalises(!.ModuleInfo, Finalises,
         RevPragmaFPEInfos2, RevPragmaFPEInfos,
         FinalPredTargetNames1, FinalPredTargetNames, !Specs),
     module_info_set_user_init_pred_target_names(InitPredTargetNames,
@@ -479,17 +492,17 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % This times does have to be after we have processed all predicate
     % and mode declarations, since several pragmas do refer to predicates
     % or to modes of predicates.
-    add_decl_pragmas(ItemPragmasDecl,
+    add_decl_pragmas(PragmasDecl,
         !ModuleInfo, !QualInfo, !Specs),
 
     % We want to process tabled pragmas *after* any inline pragmas
     % (which are also impl pragmas), so that we can detect and report
     % the problem if a predicate or function has both an inline pragma
     % and a tabled pragma.
-    add_impl_pragmas(ItemPragmasImpl, [], RevItemPragmasTabled,
+    add_impl_pragmas(PragmasImpl, [], RevPragmasTabled,
         !ModuleInfo, !QualInfo, !Specs),
-    list.reverse(RevItemPragmasTabled, ItemPragmasTabled),
-    add_impl_pragmas_tabled(ItemPragmasTabled,
+    list.reverse(RevPragmasTabled, PragmasTabled),
+    add_impl_pragmas_tabled(PragmasTabled,
         !ModuleInfo, !QualInfo, !Specs),
 
     list.reverse(RevPragmaFPEInfos, PragmaFPEInfos),
@@ -509,8 +522,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % We can do this only after we have processed every predicate declaration,
     % as well as everything that affects either the type table or the
     % constructor table.
-    check_preds_if_field_access_function(!.ModuleInfo, ItemPredDecls,
-        !Specs),
+    check_preds_if_field_access_function(!.ModuleInfo, PredDecls, !Specs),
 
     ModuleItemVersionNumbers =
         AugCompUnit ^ acu_module_item_version_numbers_map,
@@ -666,17 +678,17 @@ add_item_avail(ItemMercuryStatus, Avail, !ModuleInfo) :-
     sec_list(item_mutable_info)::in, sec_list(item_mutable_info)::out) is det.
 
 add_type_defns([], !ModuleInfo, !FoundInvalidType,
-        !Specs, !PredDecls, !ForeignProcs, !Mutables).
+        !Specs, !RevPredDecls, !RevForeignProcs, !RevMutables).
 add_type_defns([SecList | SecLists], !ModuleInfo, !FoundInvalidType,
-        !Specs, !PredDecls, !ForeignProcs, !Mutables) :-
+        !Specs, !RevPredDecls, !RevForeignProcs, !RevMutables) :-
     SecList = sec_sub_list(SectionInfo, TypeDefns),
     SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
     item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus),
     list.foldl6(add_type_defn(SectionInfo, TypeStatus), TypeDefns,
         !ModuleInfo, !FoundInvalidType, !Specs,
-        !PredDecls, !ForeignProcs, !Mutables),
+        !RevPredDecls, !RevForeignProcs, !RevMutables),
     add_type_defns(SecLists, !ModuleInfo, !FoundInvalidType,
-        !Specs, !PredDecls, !ForeignProcs, !Mutables).
+        !Specs, !RevPredDecls, !RevForeignProcs, !RevMutables).
 
 :- pred add_type_defn(sec_info::in, type_status::in, item_type_defn_info::in,
     module_info::in, module_info::out,
@@ -686,11 +698,11 @@ add_type_defns([SecList | SecLists], !ModuleInfo, !FoundInvalidType,
     ims_list(item_foreign_proc)::in, ims_list(item_foreign_proc)::out,
     sec_list(item_mutable_info)::in, sec_list(item_mutable_info)::out) is det.
 
-add_type_defn(SectionInfo, TypeStatus, ItemTypeDefnInfo,
+add_type_defn(SectionInfo, TypeStatus, TypeDefnInfo,
         !ModuleInfo, !FoundInvalidType, !Specs,
-        !PredDecls, !ForeignProcs, !Mutables) :-
+        !RevPredDecls, !RevForeignProcs, !RevMutables) :-
     SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
-    ItemTypeDefnInfo = item_type_defn_info(SymName, TypeParams, TypeDefn,
+    TypeDefnInfo = item_type_defn_info(SymName, TypeParams, TypeDefn,
         TypeVarSet, Context, _SeqNum),
     (
         TypeDefn = parse_tree_solver_type(Detailssolver),
@@ -710,7 +722,7 @@ add_type_defn(SectionInfo, TypeStatus, ItemTypeDefnInfo,
             TypeVarSet, SolverTypeDetails, Context),
         get_solver_type_aux_pred_decls(SolverAuxPredInfo, PredDeclInfos),
         PredDeclList = sec_sub_list(SectionInfo, PredDeclInfos),
-        !:PredDecls = [PredDeclList | !.PredDecls],
+        !:RevPredDecls = [PredDeclList | !.RevPredDecls],
         (
             ItemMercuryStatus = item_defined_in_this_module(_),
             module_info_get_globals(!.ModuleInfo, Globals),
@@ -719,11 +731,11 @@ add_type_defn(SectionInfo, TypeStatus, ItemTypeDefnInfo,
                 ForeignProcInfos),
             ForeignProcList =
                 ims_sub_list(ItemMercuryStatus, ForeignProcInfos),
-            !:ForeignProcs = [ForeignProcList | !.ForeignProcs],
+            !:RevForeignProcs = [ForeignProcList | !.RevForeignProcs],
 
             MutableItems = SolverTypeDetails ^ std_mutable_items,
             MutableList = sec_sub_list(SectionInfo, MutableItems),
-            !:Mutables = [MutableList | !.Mutables]
+            !:RevMutables = [MutableList | !.RevMutables]
         ;
             ItemMercuryStatus = item_defined_in_other_module(_)
         )
@@ -735,7 +747,7 @@ add_type_defn(SectionInfo, TypeStatus, ItemTypeDefnInfo,
         ; TypeDefn = parse_tree_foreign_type(_)
         )
     ),
-    module_add_type_defn(TypeStatus, NeedQual, ItemTypeDefnInfo,
+    module_add_type_defn(TypeStatus, NeedQual, TypeDefnInfo,
         !ModuleInfo, !FoundInvalidType, !Specs).
 
 %---------------------------------------------------------------------------%
@@ -812,8 +824,8 @@ maybe_add_default_modes([SecSubList | SecSubLists], !ModuleInfo) :-
 :- pred maybe_add_default_mode(item_pred_decl_info::in,
     module_info::in, module_info::out) is det.
 
-maybe_add_default_mode(ItemPredDecl, !ModuleInfo) :-
-    ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndModes,
+maybe_add_default_mode(PredDecl, !ModuleInfo) :-
+    PredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndModes,
         _, _, _, _, _, _, _, _, _, _, _),
     % Add default modes for function declarations, if necessary.
     PredName = unqualify_name(PredSymName),
@@ -878,8 +890,8 @@ add_promises([ImsList | ImsLists], !ModuleInfo, !QualInfo, !Specs) :-
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_promise(PredStatus, ItemPromiseInfo, !ModuleInfo, !QualInfo, !Specs) :-
-    ItemPromiseInfo = item_promise_info(PromiseType, Goal, VarSet, UnivVars,
+add_promise(PredStatus, PromiseInfo, !ModuleInfo, !QualInfo, !Specs) :-
+    PromiseInfo = item_promise_info(PromiseType, Goal, VarSet, UnivVars,
         Context, SeqNum),
     % Promise declarations are recorded as a predicate with a goal_type
     % of goal_type_promise(X), where X is a promise_type. This allows us
@@ -954,10 +966,9 @@ add_initialises(ModuleInfo, [ImsList | ImsLists],
     pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_initialise(ModuleInfo, ItemMercuryStatus, ItemInitialise,
+add_initialise(ModuleInfo, ItemMercuryStatus, Initialise,
         !RevPragmaFPEInfos, !PredTargetNames, !Specs) :-
-    ItemInitialise = item_initialise_info(SymName, Arity, Origin, Context,
-        SeqNum),
+    Initialise = item_initialise_info(SymName, Arity, Origin, Context, SeqNum),
     (
         ItemMercuryStatus = item_defined_in_this_module(_),
         (
@@ -998,10 +1009,9 @@ add_finalises(ModuleInfo, [ImsList | ImsLists],
     pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_finalise(ModuleInfo, ItemMercuryStatus, ItemFinaliseInfo,
+add_finalise(ModuleInfo, ItemMercuryStatus, FinaliseInfo,
         !RevPragmaFPEInfos, !PredTargetNames, !Specs) :-
-    ItemFinaliseInfo = item_finalise_info(SymName, Arity, Origin, Context,
-        SeqNum),
+    FinaliseInfo = item_finalise_info(SymName, Arity, Origin, Context, SeqNum),
     (
         ItemMercuryStatus = item_defined_in_this_module(_),
         (

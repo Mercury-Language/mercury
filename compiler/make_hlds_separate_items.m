@@ -166,9 +166,32 @@ separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
         map.foldl_values(acc_ancestor_int_spec, AncestorIntSpecs, !Acc),
         map.foldl_values(acc_direct_int1_spec, DirectInt1Specs, !Acc),
         map.foldl_values(acc_indirect_int2_spec, IndirectInt2Specs, !Acc),
+        map.foldl_values(acc_int_for_opt_spec, IntForOptSpecs, !Acc),
+        % We add the contents of .opt and .trans_opt files last,
+        % even after int_for_opt files. The reason for this is that
+        %
+        % - a module's.opt file may contain items that are duplicates
+        %   of items in that module's .int, .int2 or .int0 file,
+        %   such as pred decls, mode decls, and type definitions
+        %   (which, in the case of solver types, may also indirectly
+        %   represent pred decls), and
+        %
+        % - while the code in e.g. add_pred.m that checks for these duplicates
+        %   refrains from generating error messages when the duplicates come
+        %   from a .opt file, it does generate errors when they come from
+        %   a .intN file.
+        %
+        % To avoid spurious errors, we therefore arrange for all items
+        % from .opt files to come after all items from .intN files.
+        %
+        % .trans_opt files cannot contain any item that duplicates anything
+        % in a .intN file, so we *could process them before .intN files,
+        % but there is no reason to do so.
+        %
+        % Likewise, there can be duplicates between .opt and .trans_opt files
+        % and only things we pay attention to from type_repn_spec files.
         map.foldl_values(acc_parse_tree_plain_opt, PlainOpts, !Acc),
         map.foldl_values(acc_parse_tree_trans_opt, TransOpts, !Acc),
-        map.foldl_values(acc_int_for_opt_spec, IntForOptSpecs, !Acc),
         map.foldl_values(acc_type_repn_spec, TypeRepnSpecs, !Acc),
         !.Acc = item_accumulator(AvailsCord, FIMsCord,
             TypeDefnsAbstractCord, TypeDefnsMercuryCord, TypeDefnsForeignCord,
