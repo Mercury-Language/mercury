@@ -10,6 +10,9 @@ More information is available on the
 in other README files in the source code repository, and in the
 [documentation](http://www.mercurylang.org/documentation/documentation.html).
 
+Small sample programs written in Mercury can be found in the [samples](samples)
+directory of the source code repository.
+
 ## README files
 
 The Mercury compiler has a number of different
