@@ -102,6 +102,7 @@
 :- pred mercury_format_sym_name_ngt(needs_quotes::in, sym_name::in, S::in,
     U::di, U::uo) is det <= output(S, U).
 
+:- func mercury_sym_name_arity_to_string(sym_name_arity) = string.
 :- pred mercury_format_sym_name_arity(sym_name_arity::in, S::in,
     U::di, U::uo) is det <= output(S, U).
 
@@ -423,6 +424,11 @@ mercury_format_sym_name_ngt(NextToGraphicToken, SymName, S, !U) :-
         SymName = unqualified(PredName),
         mercury_format_quoted_atom(NextToGraphicToken, PredName, S, !U)
     ).
+
+%---------------------%
+
+mercury_sym_name_arity_to_string(SNA) = Str :-
+    mercury_format_sym_name_arity(SNA, unit, "", Str).
 
 mercury_format_sym_name_arity(sym_name_arity(SymName, Arity), S, !U) :-
     mercury_format_sym_name(SymName, S, !U),

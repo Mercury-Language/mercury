@@ -1121,12 +1121,11 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
             ; DetailsAbstract = abstract_type_fits_in_n_bits(_)
             ; DetailsAbstract = abstract_subtype(_)
             ),
-            IsSolverType = non_solver_type
+            io.write_string(Stream, ":- type ", !IO)
         ;
             DetailsAbstract = abstract_solver_type,
-            IsSolverType = solver_type
+            io.write_string(Stream, ":- solver type ", !IO)
         ),
-        mercury_output_begin_type_decl(Stream, IsSolverType, !IO),
         mercury_output_term_nq(TypeVarSet, print_name_only,
             next_to_graphic_token, TypeTerm, Stream, !IO),
         (
@@ -1154,7 +1153,7 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
     ;
         TypeDefn = parse_tree_eqv_type(DetailsEqv),
         DetailsEqv = type_details_eqv(EqvType),
-        mercury_output_begin_type_decl(Stream, non_solver_type, !IO),
+        io.write_string(Stream, ":- type ", !IO),
         mercury_output_term(TypeVarSet, print_name_only, TypeTerm,
             Stream, !IO),
         io.write_string(Stream, " == ", !IO),
@@ -1163,7 +1162,7 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
     ;
         TypeDefn = parse_tree_du_type(DetailsDu),
         DetailsDu = type_details_du(OoMCtors, MaybeCanonical, MaybeDirectArgs),
-        mercury_output_begin_type_decl(Stream, non_solver_type, !IO),
+        io.write_string(Stream, ":- type ", !IO),
         mercury_output_term(TypeVarSet, print_name_only, TypeTerm,
             Stream, !IO),
         OoMCtors = one_or_more(HeadCtor, TailCtors),
@@ -1175,7 +1174,7 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
     ;
         TypeDefn = parse_tree_sub_type(DetailsDu),
         DetailsDu = type_details_sub(SuperType, OoMCtors),
-        mercury_output_begin_type_decl(Stream, non_solver_type, !IO),
+        io.write_string(Stream, ":- type ", !IO),
         mercury_output_term(TypeVarSet, print_name_only, TypeTerm,
             Stream, !IO),
         io.write_string(Stream, " =< ", !IO),
@@ -1189,7 +1188,7 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
         TypeDefn = parse_tree_solver_type(DetailsSolver),
         DetailsSolver =
             type_details_solver(SolverTypeDetails, MaybeCanonical),
-        mercury_output_begin_type_decl(Stream, solver_type, !IO),
+        io.write_string(Stream, ":- solver type ", !IO),
         mercury_output_term(TypeVarSet, print_name_only, TypeTerm,
             Stream, !IO),
         mercury_output_where_attributes(Info, TypeVarSet,
@@ -1245,119 +1244,82 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
 % Predicates needed to output more than one kind of type.
 %
 
-:- pred mercury_output_begin_type_decl(io.text_output_stream::in,
-    is_solver_type::in, io::di, io::uo) is det.
-
-mercury_output_begin_type_decl(Stream, IsSolverType, !IO) :-
-    (
-        IsSolverType = solver_type,
-        io.write_string(Stream, ":- solver type ", !IO)
-    ;
-        IsSolverType = non_solver_type,
-        io.write_string(Stream, ":- type ", !IO)
-    ).
-
 mercury_output_where_attributes(Info, TypeVarSet, MaybeSolverTypeDetails,
         MaybeCanonical, MaybeDirectArgs, Stream, !IO) :-
-    ( if
-        MaybeSolverTypeDetails = no,
-        ( MaybeCanonical = canon
-        ; MaybeCanonical = noncanon(noncanon_subtype)
-        ),
-        MaybeDirectArgs = no
-    then
-        true
-    else
-        io.write_string(Stream, "\n    where   ", !IO),
+    some [!LineCord]
+    (
+        !:LineCord = cord.init,
         (
-            MaybeCanonical = noncanon(noncanon_abstract(_)),
-            MaybeUniPred = no,
-            MaybeCmpPred = no,
-            io.write_string(Stream, "type_is_abstract_noncanonical", !IO)
+            MaybeCanonical = canon
         ;
-            MaybeCanonical = noncanon(noncanon_subtype),
-            MaybeUniPred = no,
-            MaybeCmpPred = no
-        ;
+            MaybeCanonical = noncanon(NonCanon),
             (
-                MaybeCanonical = canon,
-                MaybeUniPred = no,
-                MaybeCmpPred = no
+                NonCanon = noncanon_abstract(_),
+                cord.snoc("type_is_abstract_noncanonical", !LineCord)
             ;
-                MaybeCanonical = noncanon(noncanon_uni_cmp(UniPred, CmpPred)),
-                MaybeUniPred = yes(UniPred),
-                MaybeCmpPred = yes(CmpPred)
+                NonCanon = noncanon_subtype
             ;
-                MaybeCanonical = noncanon(noncanon_uni_only(UniPred)),
-                MaybeUniPred = yes(UniPred),
-                MaybeCmpPred = no
+                NonCanon = noncanon_uni_cmp(UniPred, CmpPred),
+                UniPredStr = mercury_bracketed_sym_name_to_string(UniPred),
+                CmpPredStr = mercury_bracketed_sym_name_to_string(CmpPred),
+                UniPredLine = "equality is " ++ UniPredStr,
+                CmpPredLine = "comparison is " ++ CmpPredStr,
+                cord.snoc(UniPredLine, !LineCord),
+                cord.snoc(CmpPredLine, !LineCord)
             ;
-                MaybeCanonical = noncanon(noncanon_cmp_only(CmpPred)),
-                MaybeUniPred = no,
-                MaybeCmpPred = yes(CmpPred)
-            ),
+                NonCanon = noncanon_uni_only(UniPred),
+                UniPredStr = mercury_bracketed_sym_name_to_string(UniPred),
+                UniPredLine = "equality is " ++ UniPredStr,
+                cord.snoc(UniPredLine, !LineCord)
+            ;
+                NonCanon = noncanon_cmp_only(CmpPred),
+                CmpPredStr = mercury_bracketed_sym_name_to_string(CmpPred),
+                CmpPredLine = "comparison is " ++ CmpPredStr,
+                cord.snoc(CmpPredLine, !LineCord)
+            )
+        ),
+        (
+            MaybeDirectArgs = yes(DirectArgFunctors),
+            FunctorStrs =
+                list.map(mercury_sym_name_arity_to_string, DirectArgFunctors),
+            FunctorsStr = string.join_list(", ", FunctorStrs),
+            string.format("direct_arg is [%s]", [s(FunctorsStr)],
+                DirectArgLine),
+            cord.snoc(DirectArgLine, !LineCord)
+        ;
+            MaybeDirectArgs = no
+        ),
+        Lines = cord.list(!.LineCord),
+        ( if
+            MaybeSolverTypeDetails = no,
+            Lines = []
+        then
+            true
+        else
+            io.write_string(Stream, "\n    where\n", !IO),
             (
                 MaybeSolverTypeDetails = yes(SolverTypeDetails),
                 mercury_output_solver_type_details(Info, Stream, TypeVarSet,
                     SolverTypeDetails, !IO),
-                ( if
-                    MaybeUniPred = no,
-                    MaybeCmpPred = no,
-                    MaybeDirectArgs = no
-                then
-                    true
-                else
-                    io.write_string(Stream, ",\n            ", !IO)
+                (
+                    Lines = []
+                ;
+                    Lines = [_ | _],
+                    io.write_string(Stream, ",\n", !IO)
                 )
             ;
                 MaybeSolverTypeDetails = no
-            )
-        ),
-        (
-            MaybeUniPred = yes(UniPredName),
-            io.write_string(Stream, "equality is ", !IO),
-            mercury_output_bracketed_sym_name(UniPredName, Stream, !IO),
-            ( if
-                MaybeCmpPred = no,
-                MaybeDirectArgs = no
-            then
-                true
-            else
-                io.write_string(Stream, ",\n            ", !IO)
-            )
-        ;
-            MaybeUniPred = no
-        ),
-        (
-            MaybeCmpPred = yes(CmpPredName),
-            io.write_string(Stream, "comparison is ", !IO),
-            mercury_output_bracketed_sym_name(CmpPredName, Stream, !IO),
-            (
-                MaybeDirectArgs = no
-            ;
-                MaybeDirectArgs = yes(_),
-                io.write_string(Stream, ",\n            ", !IO)
-            )
-        ;
-            MaybeCmpPred = no
-        ),
-        (
-            MaybeDirectArgs = yes(DirectArgFunctors),
-            io.write_string(Stream, "direct_arg is [", !IO),
-            mercury_output_direct_arg_functors(Stream, DirectArgFunctors, !IO),
-            io.write_string(Stream, "]", !IO)
-        ;
-            MaybeDirectArgs = no
+            ),
+            % We cannot curry string.append, because it has several modes.
+            IndentLine =
+                ( func(Line) = IndentedLine :-
+                    string.append("        ", Line, IndentedLine)
+                ),
+            IndentedLines = list.map(IndentLine, Lines),
+            AllLines = string.join_list(",\n", IndentedLines),
+            io.write_string(Stream, AllLines, !IO)
         )
-        % If you add code to print any more atttributes here, you must change
-        % the conditions above for printing the commas before them.
     ).
-
-:- pred mercury_output_direct_arg_functors(io.text_output_stream::in,
-    list(sym_name_arity)::in, io::di, io::uo) is det.
-
-mercury_output_direct_arg_functors(Stream, Ctors, !IO) :-
-    add_list(mercury_format_sym_name_arity, ", ", Ctors, Stream, !IO).
 
 :- pred mercury_output_solver_type_details(merc_out_info::in,
     io.text_output_stream::in, tvarset::in, solver_type_details::in,
@@ -1366,23 +1328,24 @@ mercury_output_direct_arg_functors(Stream, Ctors, !IO) :-
 mercury_output_solver_type_details(Info, Stream, TypeVarSet, Details, !IO) :-
     Details = solver_type_details(RepresentationType, GroundInst,
         AnyInst, MutableInfos),
-    io.write_string(Stream, "representation is ", !IO),
+    io.write_string(Stream, "        representation is ", !IO),
     mercury_output_type(TypeVarSet, print_name_only, RepresentationType,
         Stream, !IO),
     Lang = get_output_lang(Info),
     varset.init(EmptyInstVarSet),
-    io.write_string(Stream, ",\n\t\tground is ", !IO),
+    io.write_string(Stream, ",\n        ground is ", !IO),
     mercury_output_inst(Stream, Lang, EmptyInstVarSet, GroundInst, !IO),
-    io.write_string(Stream, ",\n\t\tany is ", !IO),
+    io.write_string(Stream, ",\n        any is ", !IO),
     mercury_output_inst(Stream, Lang, EmptyInstVarSet, AnyInst, !IO),
     (
         MutableInfos = []
     ;
         MutableInfos = [_ | _],
-        io.write_string(Stream, ",\n\t\tconstraint_store is [\n\t\t\t", !IO),
-        write_out_list(mercury_output_item_mutable_2(Info), ",\n\t\t\t",
-            MutableInfos, Stream, !IO),
-        io.write_string(Stream, "\n\t\t]", !IO)
+        io.write_string(Stream,
+            ",\n        constraint_store is [\n            ", !IO),
+        write_out_list(mercury_output_item_mutable_2(Info),
+            ",\n            ", MutableInfos, Stream, !IO),
+        io.write_string(Stream, "\n        ]", !IO)
     ).
 
 %---------------------%
