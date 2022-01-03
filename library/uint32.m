@@ -102,7 +102,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Conversion to/from uint8
+% Conversion to/from uint8.
 %
 
     % cast_to_uint8(U32) = U8:
@@ -120,6 +120,27 @@
     % to U8.
     %
 :- func cast_from_uint8(uint8) = uint32.
+
+%---------------------------------------------------------------------------%
+%
+% Conversion to/from uint16.
+%
+
+    % cast_to_uint8(U32) = U16:
+    %
+    % Convert a uint32 to a uint16.
+    % Always succeeds, but will yield a result that is mathematically equal
+    % to U32 only if U32 is in [0, 2^16 - 1].
+    %
+:- func cast_to_uint16(uint32) = uint16.
+
+    % cast_from_uint16(U16) = U32:
+    %
+    % Convert a uint16 to a uint32.
+    % Always succeeds, and yields a result that is mathemtically equal
+    % to U16.
+    %
+:- func cast_from_uint16(uint16) = uint32.
 
 %---------------------------------------------------------------------------%
 %
@@ -711,6 +732,54 @@ det_from_uint(U) = U32 :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     U32 = U8 & 0xff;
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_to_uint16(U32::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U16 = (uint16_t) U32;
+").
+
+:- pragma foreign_proc("C#",
+    cast_to_uint16(U32::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U16 = (ushort) U32;
+").
+
+:- pragma foreign_proc("Java",
+    cast_to_uint16(U32::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U16 = (short) U32;
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_from_uint16(U16::in) = (U32::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U32 = (uint32_t) U16;
+").
+
+:- pragma foreign_proc("C#",
+    cast_from_uint16(U16::in) = (U32::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U32 = (uint) U16;
+").
+
+:- pragma foreign_proc("Java",
+    cast_from_uint16(U16::in) = (U32::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U32 = U16 & 0xffff;
 ").
 
 %---------------------------------------------------------------------------%

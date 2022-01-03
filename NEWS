@@ -464,6 +464,8 @@ Changes to the Mercury standard library
     - func `unchecked_bit_is_clear/2`
     - func `cast_from_uint8/1`
     - func `cast_to_uint8/1`
+    - func `cast_from_uint16/1`
+    - func `cast_to_uint16/1`
 
 ### Changes to the `uint64` module
 
