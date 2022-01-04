@@ -106,7 +106,7 @@ main(!IO) :-
 		MOpts = error(Str),
 		io.stderr_stream(StdErr, !IO),
 		io.format(StdErr, "usage: maze [-xN] [-yN] [-sN]\nerror: %s\n",
-			[s(Str)], !IO),
+			[s(option_error_to_string(Str))], !IO),
 		io.set_exit_status(1, !IO)
 	).
 
