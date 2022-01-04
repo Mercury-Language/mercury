@@ -514,8 +514,8 @@ clear_filler_bits(!BM) :-
 set_trailing_bits_in_byte(Bit, Initializer, !BM) :-
     FirstTrailingBit = Bit + 1,
     FirstTrailingBitIndex = bit_index_in_byte(FirstTrailingBit),
-    ( if FirstTrailingBitIndex \= 0 then
-        ByteIndex = byte_index_for_bit(FirstTrailingBit),
+    ( if FirstTrailingBitIndex > 0 then
+        ByteIndex = det_byte_index_for_bit(FirstTrailingBit),
         NumBitsToSet = bits_per_byte - FirstTrailingBitIndex,
         Byte0 = unsafe_get_byte_1(!.BM, ByteIndex),
         set_bits_in_byte(FirstTrailingBitIndex, NumBitsToSet, Initializer,
@@ -1829,38 +1829,6 @@ unsafe_set_byte_6(_N, _Byte, !BM) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred unsafe_set_byte_7(byte_index, byte, bitmap, bitmap).
-:- mode unsafe_set_byte_7(in, in, bitmap_di, bitmap_uo) is det.
-
-:- pragma foreign_proc("C",
-    unsafe_set_byte_7(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    BM = BM0;
-    BM->elements[N] = (MR_uint_least8_t) Byte;
-").
-
-:- pragma foreign_proc("Java",
-    unsafe_set_byte_7(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    BM = BM0;
-    BM.elements[N] = (byte) Byte;
-").
-
-:- pragma foreign_proc("C#",
-    unsafe_set_byte_7(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    BM = BM0;
-    BM.elements[N] = (byte) Byte;
-").
-
-unsafe_set_byte_7(_N, _Byte, !BM) :-
-    private_builtin.sorry("bitmap.'unsafe_byte :='").
-
-%---------------------------------------------------------------------------%
-
 :- pred unsafe_set_byte_8(byte_index, byte, bitmap, bitmap).
 :- mode unsafe_set_byte_8(in, in, bitmap_di, bitmap_uo) is det.
 
@@ -2294,7 +2262,7 @@ unsafe_flip(BM0, I) = BM :-
     unsafe_flip(I, BM0, BM).
 
 unsafe_flip(I, BM0, BM) :-
-    ByteIndex = byte_index_for_bit(I),
+    ByteIndex = det_byte_index_for_bit(I),
     Byte0 = unsafe_get_byte_5(BM0, ByteIndex),
     Byte = Byte0 `xor` bitmask(I),
     unsafe_set_byte_5(ByteIndex, Byte, BM0, BM).
@@ -2303,7 +2271,7 @@ unsafe_set(BM0, I) = BM :-
     unsafe_set(I, BM0, BM).
 
 unsafe_set(I, BM0, BM) :-
-    ByteIndex = byte_index_for_bit(I),
+    ByteIndex = det_byte_index_for_bit(I),
     Byte0 = unsafe_get_byte_6(BM0, ByteIndex),
     Byte = Byte0 \/ bitmask(I),
     unsafe_set_byte_6(ByteIndex, Byte, BM0, BM).
@@ -2312,16 +2280,16 @@ unsafe_clear(BM0, I) = BM :-
     unsafe_clear(I, BM0, BM).
 
 unsafe_clear(I, BM0, BM) :-
-    ByteIndex = byte_index_for_bit(I),
+    ByteIndex = det_byte_index_for_bit(I),
     Byte0 = unsafe_get_byte_6(BM0, ByteIndex),
     Byte = Byte0 /\ \bitmask(I),
-    unsafe_set_byte_7(ByteIndex, Byte, BM0, BM).
+    unsafe_set_byte_6(ByteIndex, Byte, BM0, BM).
 
 unsafe_is_set(BM, I) :-
     not unsafe_is_clear(BM, I).
 
 unsafe_is_clear(BM, I) :-
-    unsafe_get_byte_7(BM, byte_index_for_bit(I)) /\ bitmask(I) = 0.
+    unsafe_get_byte_7(BM, det_byte_index_for_bit(I)) /\ bitmask(I) = 0.
 
 %---------------------------------------------------------------------------%
 
@@ -2855,17 +2823,18 @@ unsafe_copy_unaligned_bits(SameBM, SrcBM, SrcStartBit, DestStartBit,
 
     (
         Direction = left_to_right,
-        SrcStartByteIndex = byte_index_for_bit(NewSrcStartBit),
-        DestStartByteIndex = byte_index_for_bit(NewDestStartBit),
+        SrcStartByteIndex = det_byte_index_for_bit(NewSrcStartBit),
+        DestStartByteIndex = det_byte_index_for_bit(NewDestStartBit),
         SrcByte = unsafe_get_byte_15(SrcBM, SrcStartByteIndex),
         unsafe_copy_unaligned_bytes_ltor(SrcBM,
             SrcStartByteIndex + 1, SrcBitIndex, SrcByte,
             DestStartByteIndex, NumBytes, !DestBM)
     ;
         Direction = right_to_left,
-        SrcStartByteIndex = byte_index_for_bit(NewSrcStartBit + !.NumBits - 1),
+        SrcStartByteIndex =
+            det_byte_index_for_bit(NewSrcStartBit + !.NumBits - 1),
         DestStartByteIndex =
-            byte_index_for_bit(NewDestStartBit + !.NumBits - 1),
+            det_byte_index_for_bit(NewDestStartBit + !.NumBits - 1),
         SrcByte = unsafe_get_byte_16(SrcBM, SrcStartByteIndex),
         unsafe_copy_unaligned_bytes_rtol(SrcBM,
             SrcStartByteIndex - 1, SrcBitIndex, SrcByte,
@@ -3081,7 +3050,8 @@ bitmap_to_byte_strings(BM, NumBits, !.Strs) = !:Strs :-
     ( if NumBits =< 0 then
         true
     else
-        ThisByte0 = unsafe_get_byte_22(BM, byte_index_for_bit(NumBits - 1)),
+        ThisByte0 =
+            unsafe_get_byte_22(BM, det_byte_index_for_bit(NumBits - 1)),
         LastBitIndex = bit_index_in_byte(NumBits - 1),
         ( if LastBitIndex = bits_per_byte - 1 then
             BitsThisByte = bits_per_byte,
@@ -3338,11 +3308,22 @@ resize_bitmap(OldBM, N) =
     %
 :- func byte_index_for_bit(bit_index) = byte_index.
 
-byte_index_for_bit(I) =
+byte_index_for_bit(I) = ByteIndex :-
     ( if I < 0 then
-        -1
+        ByteIndex = -1
     else
-        unchecked_quotient(I, bits_per_byte)
+        ByteIndex = unchecked_quotient(I, bits_per_byte)
+    ).
+
+    % The byte index containing the given bit.
+    %
+:- func det_byte_index_for_bit(bit_index) = byte_index.
+
+det_byte_index_for_bit(I) = ByteIndex :-
+    ( if I < 0 then
+        unexpected($pred, "I < 0")
+    else
+        ByteIndex = unchecked_quotient(I, bits_per_byte)
     ).
 
 %---------------------------------------------------------------------------%
