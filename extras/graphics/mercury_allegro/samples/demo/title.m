@@ -78,7 +78,7 @@ title_screen(Data, ColorScheme, WhatToDo, !Display, !IO) :-
     (
         KP = yes,
         readkey_decode(Ascii, _, !IO),
-        WhatToDo = (if Ascii = '\033' then quit else play_game)
+        WhatToDo = (if Ascii = '\033\' then quit else play_game)
     ;
         KP = no,
         WhatToDo = play_game

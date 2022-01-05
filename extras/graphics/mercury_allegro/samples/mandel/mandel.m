@@ -91,7 +91,7 @@ main_loop(Slice, Viewport, ViewportHistory, Y0, LinesFilled0, !IO) :-
     ),
     (
         Input = keyboard(Ascii),
-        (if Ascii = '\033' then
+        (if Ascii = '\033\' then
             true    % quit
         else
             main_loop(Slice, Viewport, ViewportHistory, Y, LinesFilled, !IO)

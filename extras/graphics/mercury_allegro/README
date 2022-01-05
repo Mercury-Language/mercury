@@ -6,8 +6,8 @@ library and the AllegroGL addon library.
 
 The API follows the C APIs as far as is reasonable, so you don't need to learn
 a new API.  Build it by running `make' or `make agl' if you additionally have
-AllegroGL installed.  You will need Allegro 4.2.x (4.1.x may also work).  It
-has currently only been tested on Linux.
+AllegroGL installed.  You will need Allegro 4.2.x-4.4.x (4.1.x may also work).
+It has currently only been tested on Linux.
 
 The subdirectories are:
 
