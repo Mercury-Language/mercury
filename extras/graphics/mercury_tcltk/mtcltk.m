@@ -115,6 +115,12 @@
 #endif
 ").
 
+:- pragma foreign_enum("C", tcl_status/0,
+[
+  tcl_ok - "TCL_OK",
+  tcl_error - "TCL_ERROR"
+]).
+
 :- pragma foreign_decl("C", "
     extern MR_Word mtcltk_mercury_initializer;
     extern char *mtcltk_strdup(const char *str);
@@ -224,7 +230,7 @@ Tcl_AppInit(Tcl_Interp *interp)
             MR_fatal_error(""Tcl_Eval returned neither TCL_OK or TCL_ERROR"");
     }
 
-    Result = mtcltk_strdup(Interp->result);
+    Result = mtcltk_strdup(Tcl_GetStringResult(Interp));
 ").
 
 :- pragma foreign_code("C", "
@@ -284,12 +290,24 @@ mtcltk_do_callback(ClientData clientData, Tcl_Interp *interp,
             (MR_Word) args);
     }
 
+    MR_String s;
     mtcltk_call_mercury_closure((MR_Word) clientData, interp,
-        args, &status, &interp->result);
+        args, &status, &s);
+    char* u = Tcl_Alloc(2048);
+
+    if (strlen(s) > 2047) {
+       strcpy(u, ""Result string overflow"");
+       return TCL_ERROR;
+    } else {
+       strncpy(u, s, 2047);
+    }
+
+    Tcl_SetResult(interp, u, TCL_DYNAMIC);
 /*
-    fprintf(stderr, ""mercury result: `%s'\n"", interp->result);
+    fprintf(stderr, ""mercury result: `%s'\n"", s);
 */
     return (mtcltk_tcl_status_ok(status) ? TCL_OK : TCL_ERROR);
+
 }
 
 ").
