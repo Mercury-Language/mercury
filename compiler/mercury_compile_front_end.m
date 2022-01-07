@@ -208,7 +208,7 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
     maybe_warn_about_insts_without_matching_type(Verbose, Stats, Globals,
         !HLDS, !DumpInfo, !Specs, !IO),
     do_typecheck(Verbose, Stats, Globals, FoundSyntaxError, FoundTypeError,
-        ExceededTypeCheckIterationLimit, !HLDS, !DumpInfo, !Specs, !IO),
+        NumberOfIterations, !HLDS, !DumpInfo, !Specs, !IO),
 
     % We can't continue after an undefined inst/mode error, since
     % propagate_types_into_proc_modes (in post_typecheck.m -- called by
@@ -224,7 +224,7 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
             "% Program contains undefined inst " ++
             "or undefined mode error(s).\n", !IO),
         io.set_exit_status(1, !IO)
-    else if ExceededTypeCheckIterationLimit = yes then
+    else if NumberOfIterations = exceeded_iteration_limit then
         % FoundTypeError will always be true here, so if Verbose = yes,
         % we have already printed a message about the program containing
         % type errors.
@@ -254,7 +254,7 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
 
         ( if
             ( FoundTypeError = yes
-            ; FoundSyntaxError = yes
+            ; FoundSyntaxError = some_clause_syntax_errors
             ; SomeMissingTypeDefns = yes
             ; NumPostTypeCheckErrors > 0
             )
@@ -330,12 +330,12 @@ maybe_warn_about_insts_without_matching_type(Verbose, Stats, Globals,
     ).
 
 :- pred do_typecheck(bool::in, bool::in, globals::in,
-    bool::out, bool::out, bool::out,
+    maybe_clause_syntax_errors::out, bool::out, number_of_iterations::out,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 do_typecheck(Verbose, Stats, Globals, FoundSyntaxError, FoundTypeError,
-        ExceededTypeCheckIterationLimit, !HLDS, !DumpInfo, !Specs, !IO) :-
+        NumberOfIterations, !HLDS, !DumpInfo, !Specs, !IO) :-
     % Next typecheck the clauses.
     maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
     maybe_write_string(Verbose, "% Type-checking...\n", !IO),
@@ -351,13 +351,13 @@ do_typecheck(Verbose, Stats, Globals, FoundSyntaxError, FoundTypeError,
             typecheck_constraints(!HLDS, TypeCheckSpecs)
         ),
         % XXX We should teach typecheck_constraints to report syntax errors.
-        FoundSyntaxError = no,
-        ExceededTypeCheckIterationLimit = no
+        FoundSyntaxError = no_clause_syntax_errors,
+        NumberOfIterations = within_iteration_limit
     ;
         TypeCheckConstraints = no,
         prepare_for_typecheck_module(!HLDS),
         typecheck_module(!HLDS, TypeCheckSpecs, FoundSyntaxError,
-            ExceededTypeCheckIterationLimit)
+            NumberOfIterations)
     ),
     !:Specs = TypeCheckSpecs ++ !.Specs,
     maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
