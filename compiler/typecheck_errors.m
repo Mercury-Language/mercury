@@ -190,6 +190,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.vartypes.
 :- import_module libs.
+:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.mercury_to_mercury.
@@ -533,20 +534,7 @@ maybe_report_no_clauses(ModuleInfo, PredId, PredInfo) = Specs :-
         Pieces = [words("Error: no clauses for") | PredPieces] ++
             [suffix("."), nl],
         pred_info_get_context(PredInfo, Context),
-        % It is possible (and even likely) that the error that got the exit
-        % status set was caused by a syntax error in a clause defining this
-        % predicate or function. Reporting a missing clause could therefore
-        % be redundant and misleading. Even if this predicate or function truly
-        % has no clauses, this error would be caught once the other errors
-        % (the ones leading to the exit status) are fixed by the programmer.
-        %
-        % However, right now we have no means to distinguish the case where
-        % the exit status being set to nonzero was caused by an actual syntax
-        % error, and the case where it was set by a no clauses error for
-        % another predicate. Since we don't want to limit the number of
-        % predicates without clauses we warn about in a single compiler
-        % invocation to one, we choose (as the lesser of two evils)
-        % to always report the error.
+
         Spec = simplest_spec($pred, severity_error, phase_type_check,
             Context, Pieces),
         Specs = [Spec]
@@ -559,14 +547,22 @@ maybe_report_no_clauses_stub(ModuleInfo, PredId, PredInfo) = Specs :-
     ShouldReport = should_report_no_clauses(ModuleInfo, PredInfo),
     (
         ShouldReport = yes,
-        PredPieces = describe_one_pred_name(ModuleInfo,
-            should_not_module_qualify, PredId),
-        Pieces = [words("Warning: no clauses for ") | PredPieces] ++
-            [suffix(".")],
-        pred_info_get_context(PredInfo, Context),
-        Spec = conditional_spec($pred, warn_stubs, yes, severity_warning,
-            phase_type_check, [simplest_msg(Context, Pieces)]),
-        Specs = [Spec]
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, warn_stubs, WarnStubs),
+        (
+            WarnStubs = yes,
+            PredPieces = describe_one_pred_name(ModuleInfo,
+                should_not_module_qualify, PredId),
+            Pieces = [words("Warning: no clauses for ") | PredPieces] ++
+                [suffix("."), nl],
+            pred_info_get_context(PredInfo, Context),
+            Spec = simplest_spec($pred, severity_warning,
+                phase_type_check, Context, Pieces),
+            Specs = [Spec]
+        ;
+            WarnStubs = no,
+            Specs = []
+        )
     ;
         ShouldReport = no,
         Specs = []
@@ -1833,7 +1829,8 @@ wrong_arity_constructor_to_pieces(Name, Arity, ActualArities) = Pieces :-
 :- pred accumulate_matching_cons_module_names(sym_name::in, hlds_cons_defn::in,
     list(module_name)::in, list(module_name)::out) is det.
 
-accumulate_matching_cons_module_names(FunctorSymName, ConsDefn, !ModuleNames) :-
+accumulate_matching_cons_module_names(FunctorSymName, ConsDefn,
+        !ModuleNames) :-
     type_ctor(TypeCtorSymName, _) = ConsDefn ^ cons_type_ctor,
     (
         TypeCtorSymName = unqualified(_)
