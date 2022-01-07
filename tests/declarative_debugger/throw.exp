@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred throw.main/2-0 (cc_multi) throw.m:16
+      E1:     C1 CALL pred throw.main/2-0 (cc_multi) throw.m:21
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -7,9 +7,9 @@ mdb> break p
 mdb> break q
  1: + stop  interface pred throw.q/1-0 (semidet)
 mdb> continue
-      E2:     C2 CALL pred throw.p/1-0 (cc_nondet) throw.m:24
+      E2:     C2 CALL pred throw.p/1-0 (cc_nondet) throw.m:29
 mdb> finish
-      E3:     C2 EXCP pred throw.p/1-0 (cc_nondet) q!;c2; throw.m:26
+      E3:     C2 EXCP pred throw.p/1-0 (cc_nondet) q!;c2; throw.m:31
 mdb> dd -d 3 -n 7
 Call p(_)
 Throws "Too big"
@@ -23,7 +23,7 @@ Found unhandled or incorrect exception:
 p(_)
 "Too big"
 Is this a bug? yes
-      E3:     C2 EXCP pred throw.p/1-0 (cc_nondet) q!;c2; throw.m:26
+      E3:     C2 EXCP pred throw.p/1-0 (cc_nondet) q!;c2; throw.m:31
 mdb> continue
 mdb: warning: reached unknown label
 This may result in some exception events
@@ -31,7 +31,7 @@ being omitted from the trace.
 exception(univ_cons("Too big"))
       E4:     C3 CALL pred throw.q/1-0 (semidet) throw.m:50
 mdb> finish
-      E5:     C3 EXCP pred throw.q/1-0 (semidet) c2;~;q!;c2;~;q!;c2; throw.m:54
+      E5:     C3 EXCP pred throw.q/1-0 (semidet) c2;~;q!;c2;~;q!;c2; throw.m:59
 mdb> dd -d 3 -n 7
 Call q(_)
 Throws "Too big"

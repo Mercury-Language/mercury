@@ -1,10 +1,15 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+%
+% The .exp file is for ???
+% The .exp2 file is for ???
 % The .exp3 file is for when we optimize var saves across stack flushes.
+% The .exp4 file is .exp2 but with --delay-constructs (set by -O5).
 
 :- module throw.
 :- interface.
+
 :- import_module io.
 
 :- pred main(io::di, io::uo) is cc_multi.
