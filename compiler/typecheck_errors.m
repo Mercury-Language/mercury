@@ -577,6 +577,7 @@ maybe_report_no_clauses_stub(ModuleInfo, PredId, PredInfo) = Specs :-
 should_report_no_clauses(ModuleInfo, PredInfo) = ShouldReport :-
     module_info_get_int_bad_clauses(ModuleInfo, IntBadClauses),
     module_info_get_name(ModuleInfo, ModuleName),
+    pred_info_get_module_name(PredInfo, PredModuleName),
     pred_info_get_name(PredInfo, PredName),
     pred_info_get_orig_arity(PredInfo, Arity),
     pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
@@ -586,6 +587,7 @@ should_report_no_clauses(ModuleInfo, PredInfo) = ShouldReport :-
     ( if
         ( set.contains(IntBadClauses, Id)
         ; check_marker(PredMarkers, marker_fact_table_semantic_errors)
+        ; ModuleName \= PredModuleName
         )
     then
         ShouldReport = no
