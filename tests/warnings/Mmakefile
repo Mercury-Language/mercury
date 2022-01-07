@@ -68,7 +68,18 @@ ERRORCHECK_PROGS = \
 # We don't yet pass (or even have a .exp file for) these tests.
 #	missing_singleton_warning
 #	trace_goal_dupl_defn
+
+# We do not pass these two tests, which were intended to test the shadowing
+# of standard library modules. Ironically, the reason why we compare the
+# actual .err files of these test cases with their .exp files is that
+# mmake finds what it thinks are *their* .err files in the stage2/library
+# directory, and thus does not actually compile them. This leaves no .err
+# file in *this* directory for the %.res_error rule to compare against
+# the .exp file.
 #
+#	profiling_builtin
+#	time
+
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 	ERRORCHECK_PROGS += unused_args_analysis
 endif

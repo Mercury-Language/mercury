@@ -14,6 +14,7 @@
 --halt-at-warn
 --no-halt-at-warn-make-int
 --no-halt-at-warn-make-opt
+--no-warn-stdlib-shadowing
 --warn-dead-predicates
 --no-warn-inferred-erroneous
 --no-mercury-stdlib-dir

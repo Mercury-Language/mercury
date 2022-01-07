@@ -1,0 +1,8 @@
+profiling_builtin.m:006: Warning: this module, `profiling_builtin', has the
+profiling_builtin.m:006:   same name as a module in the Mercury standard
+profiling_builtin.m:006:   library. A third module cannot import both, and you
+profiling_builtin.m:006:   will likely have problems where a third module will
+profiling_builtin.m:006:   want to import one but will get the other.
+profiling_builtin.m:006:   The Mercury standard library module in question is
+profiling_builtin.m:006:   part of the Mercury implementation, and is not
+profiling_builtin.m:006:   publically documented.

@@ -1844,6 +1844,7 @@ pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, Baggage0, AugCompUnit0,
     ),
 
     ParseTreeModuleSrc = AugCompUnit0 ^ acu_module_src,
+    maybe_warn_about_stdlib_shadowing(Globals, ParseTreeModuleSrc, !Specs),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     (
         WriteDFile = do_not_write_d_file,
@@ -1980,6 +1981,92 @@ pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, Baggage0, AugCompUnit0,
         module_info_incr_errors(HLDS0, HLDS1)
     else
         HLDS1 = HLDS0
+    ).
+
+:- pred maybe_warn_about_stdlib_shadowing(globals::in,
+    parse_tree_module_src::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_warn_about_stdlib_shadowing(Globals, ParseTreeModuleSrc, !Specs) :-
+    globals.lookup_bool_option(Globals, warn_stdlib_shadowing, WarnShadowing),
+    (
+        WarnShadowing = no
+    ;
+        WarnShadowing = yes,
+        ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+        ModuleNameStr = sym_name_to_string(ModuleName),
+        ( if
+            stdlib_module_doc_undoc(ModuleNameStr, DocUndoc)
+        then
+            Pieces0 = [words("Warning: this module,"),
+                qual_sym_name(ModuleName), suffix(","),
+                words("has the same name"),
+                words("as a module in the Mercury standard library."),
+                words("A third module cannot import both,"),
+                words("and you will likely have problems where"),
+                words("a third module will want to import one"),
+                words("but will get the other."), nl],
+            maybe_mention_undoc(DocUndoc, Pieces0, Pieces),
+            Context = ParseTreeModuleSrc ^ ptms_module_name_context,
+            Spec = simplest_spec($pred, severity_warning, phase_read_files,
+                Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        else if
+            GetStdlibModules =
+                ( pred(LibModuleName::out) is multi :-
+                    library.stdlib_module_doc_undoc(LibModuleNameStr,
+                        _DocUndoc),
+                    LibModuleName = string_to_sym_name(LibModuleNameStr)
+                ),
+            solutions.solutions(GetStdlibModules, LibModuleNames),
+            IsShadowed =
+                ( pred(LibModuleName::in) is semidet :-
+                    partial_sym_name_is_part_of_full(LibModuleName, ModuleName)
+                ),
+            list.find_first_match(IsShadowed, LibModuleNames,
+                ShadowedLibModuleName),
+            ShadowedLibModuleNameStr =
+                sym_name_to_string(ShadowedLibModuleName),
+            stdlib_module_doc_undoc(ShadowedLibModuleNameStr, DocUndoc)
+        then
+            Pieces0 = [words("Warning: the name of this module,"),
+                qual_sym_name(ModuleName), suffix(","),
+                words("contains the name of a module,"),
+                qual_sym_name(ShadowedLibModuleName), suffix(","),
+                words("in the Mercury standard library."),
+                words("A reference to the standard library in a third module"),
+                words("will therefore be a (not fully qualified) reference"),
+                words("to this module, which means that"),
+                words("you will likely have problems where,"),
+                words("especially in the absence of needed"),
+                decl("import_module"), words("declarations,"),
+                words("a reference intended to refer to"),
+                words("the standard library module"),
+                words("will be taken as a reference to this module,"),
+                words("and vice versa."), nl],
+            maybe_mention_undoc(DocUndoc, Pieces0, Pieces),
+            Context = ParseTreeModuleSrc ^ ptms_module_name_context,
+            Spec = simplest_spec($pred, severity_warning, phase_read_files,
+                Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        else
+            true
+        )
+    ).
+
+:- pred maybe_mention_undoc(doc_or_undoc::in,
+    list(format_component)::in, list(format_component)::out) is det.
+
+maybe_mention_undoc(DocUndoc, Pieces0, Pieces) :-
+    (
+        DocUndoc = doc,
+        Pieces = Pieces0
+    ;
+        DocUndoc = undoc,
+        Pieces = Pieces0 ++
+            [words("The Mercury standard library module in question"),
+            words("is part of the Mercury implementation,"),
+            words("and is not publically documented."), nl]
     ).
 
 %---------------------%
@@ -2431,14 +2518,8 @@ after_front_end_passes(Globals, OpModeCodeGen, MaybeTopModule,
         ext_other(other_ext(".used")), ModuleName, UsageFileName, !IO),
     io.remove_file(UsageFileName, _, !IO),
 
-    globals.lookup_bool_option(Globals, halt_at_warn, HaltAtWarn),
-    (
-        HaltAtWarn = no,
-        FrontEndErrors = contains_errors(Globals, !.Specs)
-    ;
-        HaltAtWarn = yes,
-        FrontEndErrors = contains_errors_and_or_warnings(Globals, !.Specs)
-    ),
+    FrontEndErrors =
+        contains_errors_or_warnings_treated_as_errors(Globals, !.Specs),
     module_info_get_num_errors(!.HLDS, NumErrors),
     ( if
         FrontEndErrors = no,
