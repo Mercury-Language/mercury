@@ -15,7 +15,7 @@ This directory contains some example Mercury programs.
   stream.
 
 * [calculator.m](calculator.m) -- A simple four-function arithmetic calculator,
-  with a parser written using the Definite Clause Grammar notation.
+  with a parser written using Definite Clause Grammar (DCG) notation.
 
 * [calculator2.m](calculator2.m) -- A simple four-function arithmetic
   calculator, which uses the `mercury_term_parser` module in the standard
@@ -74,8 +74,8 @@ Mercury programs:
   specification language Z.
 
 * [solver_types](solver_types) -- This directory contains an example solver
-  type implementation and some sample applications.
+  type implementation, and some sample applications.
 
 * [lazy_list](lazy_list) -- This directory contains an example of how the
-  `lazy` module in the standard library can be used to implement lazy data
-  structures, in this case a lazy list.
+  `lazy` module in the standard library can be used to implement a lazy data
+  structure, in this case a lazy list.

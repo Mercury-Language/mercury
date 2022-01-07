@@ -1,10 +1,10 @@
 Networking Library
 ==================
 
-This library is inteded to provide support for networking with both 1) a
-simple binding around the BSD sockets interface 2) a higher-level set of
-predicates and functions for common patterns.  This is a work in progress
-and many things are unimplemented.
+This library is inteded to provide support for networking with both
+1) a simple binding around the BSD sockets interface, and
+2) a higher-level set of predicates and functions for common patterns.
+This is a work in progress, and many things are unimplemented.
 
 Copying
 -------

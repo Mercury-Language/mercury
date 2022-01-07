@@ -1,9 +1,9 @@
 LIMITATIONS
 -----------
 
-The current implementation does not yet completely implement the
-Mercury language. The main limitations of the current implementation
-are the following:
+The current implementation does not yet completely implement
+the Mercury language.
+The main limitations of the current implementation are the following.
 
 * We do not allow definite aliasing in the mode system. That is, we do not
   allow the unification of two free variables. Without this, partially
@@ -38,7 +38,8 @@ are the following:
 
 * Type inference and mode inference are a bit imperfect.
 
-We hope to eliminate all of these problems.
+We hope to eventually eliminate all of these problems,
+but right now they are not being actively worked on.
 
 In addition, design decisions in this implementation have imposed the
 following fixed limits:
