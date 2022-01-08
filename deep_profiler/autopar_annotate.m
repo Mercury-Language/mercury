@@ -234,3 +234,5 @@ ite_annotate_with_instmap(Cond, Then, Else, SeenDuplicateInstantiation,
         InstMapAfterElse, ElseDetism).
 
 %---------------------------------------------------------------------------%
+:- end_module autopar_annotate.
+%---------------------------------------------------------------------------%

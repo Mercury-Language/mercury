@@ -1034,3 +1034,7 @@ extern  int MR_DD_debug_origin;
 ").
 debug_origin(_, !IO) :-
     private_builtin.sorry("declarative_debugger.debug_origin").
+
+%---------------------------------------------------------------------------%
+:- end_module mdb.declarative_debugger.
+%---------------------------------------------------------------------------%

@@ -27,3 +27,7 @@
 :- include_module mdprof_fb.automatic_parallelism.autopar_find_best_par.
 :- include_module mdprof_fb.automatic_parallelism.autopar_search_goals.
 :- include_module mdprof_fb.automatic_parallelism.autopar_types.
+
+%---------------------------------------------------------------------------%
+:- end_module mdprof_fb.automatic_parallelism.
+%---------------------------------------------------------------------------%

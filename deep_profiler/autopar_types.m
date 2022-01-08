@@ -421,3 +421,5 @@ build_sharedvars_set(seq_conj(Conjs), !BoundVars, !SharedVars) :-
     !:BoundVars = set.union(!.BoundVars, ProducedVars).
 
 %---------------------------------------------------------------------------%
+:- end_module autopar_types.
+%---------------------------------------------------------------------------%

@@ -933,5 +933,5 @@ num_allocated(varset(VarSupply, _, _)) =
     term.var_supply_num_allocated(VarSupply).
 
 %---------------------------------------------------------------------------%
-%:- end_module varset.
+:- end_module varset.
 %---------------------------------------------------------------------------%

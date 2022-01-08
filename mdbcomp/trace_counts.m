@@ -991,3 +991,7 @@ calc_num_tests([FileType | Rest]) =
 num_tests_for_file_type(union_file(N, _)) = N.
 num_tests_for_file_type(single_file(_)) = 1.
 num_tests_for_file_type(diff_file(_, _)) = -1.
+
+%---------------------------------------------------------------------------%
+:- end_module mdbcomp.trace_counts.
+%---------------------------------------------------------------------------%

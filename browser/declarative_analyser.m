@@ -1383,3 +1383,5 @@ search_mode_to_string(SearchMode) = Str :-
 debug_analyser_state(Analyser, Analyser ^ debug_origin).
 
 %---------------------------------------------------------------------------%
+:- end_module mdb.declarative_analyser.
+%---------------------------------------------------------------------------%

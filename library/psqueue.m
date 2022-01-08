@@ -1189,7 +1189,7 @@ loser_tree_has_search_property(LTree) :-
         )
     ).
 
-%------------------%
+%---------------------%
 
 :- pred min_key_in_loser_tree(loser_tree(P, K)::in, maybe(K)::out) is det.
 
@@ -1230,7 +1230,7 @@ min_key_in_loser_tree_acc(LTree, !.CurMin, MaybeMinKey) :-
         MaybeMinKey = yes(MinKey)
     ).
 
-%------------------%
+%---------------------%
 
 :- pred max_key_in_loser_tree(loser_tree(P, K)::in, maybe(K)::out) is det.
 
@@ -1271,7 +1271,7 @@ max_key_in_loser_tree_acc(LTree, !.CurMax, MaybeMaxKey) :-
         MaybeMaxKey = yes(MaxKey)
     ).
 
-%------------------%
+%---------------------%
 
 :- pred take_min_xmxmx(T::in, maybe(T)::in, maybe(T)::in, T::out) is det.
 

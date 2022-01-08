@@ -6324,3 +6324,5 @@ format(FormatString, PolyList, String) :-
     format.format_impl(FormatString, PolyList, String).
 
 %---------------------------------------------------------------------------%
+:- end_module string.
+%---------------------------------------------------------------------------%

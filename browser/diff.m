@@ -130,3 +130,7 @@ path_to_string([Posn | Posns]) = Str :-
     PosnStr = string.int_to_string(Posn),
     PosnsStrs = list.map(string.int_to_string, Posns),
     Str = string.join_list("/", [PosnStr | PosnsStrs]).
+
+%---------------------------------------------------------------------------%
+:- end_module mdb.diff.
+%---------------------------------------------------------------------------%

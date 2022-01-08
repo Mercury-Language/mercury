@@ -193,3 +193,7 @@ display_close_result(_Stream, dl_ok, !IO).
 display_close_result(Stream, dl_error(String), !IO) :-
     io.print(Stream, String, !IO),
     io.nl(Stream, !IO).
+
+%---------------------------------------------------------------------------%
+:- end_module mdb.collect_lib.
+%---------------------------------------------------------------------------%

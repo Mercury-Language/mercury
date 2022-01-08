@@ -90,3 +90,7 @@ synthetic_term_to_browser_term(FunctorString, Args, IsFunc) = BrowserTerm :-
         list.det_split_last(Args, FuncArgs, Return),
         BrowserTerm = synthetic_term(FunctorString, FuncArgs, yes(Return))
     ).
+
+%---------------------------------------------------------------------------%
+:- end_module mdb.browser_term.
+%---------------------------------------------------------------------------%

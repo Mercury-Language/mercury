@@ -1365,3 +1365,5 @@ write_private_builtin_type_info(Stream, PrivateBuiltinTypeInfo, !State) :-
     write_type_desc(Stream, TypeDesc, !State).
 
 %---------------------------------------------------------------------------%
+:- end_module stream.string_writer.
+%---------------------------------------------------------------------------%

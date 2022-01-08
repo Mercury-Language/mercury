@@ -9,11 +9,11 @@
 % File: string.builder.m.
 % Main author: maclarty.
 %
-% This module implements a string builder stream.  It can be used to
-% build up a string using string or character writers.
+% This module implements a string builder stream. It can be used
+% to build up a string using string or character writers.
 %
 % To build up a string using this module, you first construct an initial
-% string builder state by calling the init function.  You can then use
+% string builder state by calling the init function. You can then use
 % any instances of stream.writer that write strings or characters to update the
 % string builder state, using string.builder.handle as the stream argument.
 % Once you've finished writing to the string builder you can get the final
@@ -60,6 +60,8 @@
 
 :- type state
     --->    state(list(string)).
+            % A reversed list of the strings that, when unreversed
+            % and appended together, yields the string we have built.
 
 init = state([]).
 

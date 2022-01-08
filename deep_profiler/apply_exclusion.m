@@ -178,4 +178,5 @@ pair_contour(Deep, ExcludeSpec, CSDPtr) =
     apply_contour_exclusion(Deep, ExcludeSpec, CSDPtr) - CSDPtr.
 
 %---------------------------------------------------------------------------%
-
+:- end_module apply_exclusion.
+%---------------------------------------------------------------------------%

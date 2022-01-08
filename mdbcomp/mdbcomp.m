@@ -78,3 +78,5 @@ mercury_mdbcomp_module("mdbcomp.sym_name").
 mercury_mdbcomp_module("mdbcomp.trace_counts").
 
 %---------------------------------------------------------------------------%
+:- end_module mdbcomp.
+%---------------------------------------------------------------------------%

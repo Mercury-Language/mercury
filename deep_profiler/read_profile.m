@@ -693,7 +693,7 @@ read_proc_id_user_defined(InputStream, PredOrFunc, MaybeProcLabel, !IO) :-
     % immediately followed in the profiling data file by the number of times
     % that the coverage point was executed.
     %
-:- pred read_coverage_point_static_and_num(io.binary_input_stream::in, 
+:- pred read_coverage_point_static_and_num(io.binary_input_stream::in,
     maybe_error(pair(coverage_point_info, int))::out, io::di, io::uo) is det.
 
 read_coverage_point_static_and_num(InputStream, MaybeCP, !IO) :-
@@ -1601,4 +1601,5 @@ make_dummy_psptr = proc_static_ptr(-1).
 ").
 
 %---------------------------------------------------------------------------%
+:- end_module read_profile.
 %---------------------------------------------------------------------------%

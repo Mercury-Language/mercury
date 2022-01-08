@@ -624,3 +624,5 @@ var_first_use_time(FindProdOrCons, TimeBefore, Goal, Var, Time) :-
     Time = TimeBefore + UseTime.
 
 %---------------------------------------------------------------------------%
+:- end_module autopar_calc_overlap.
+%---------------------------------------------------------------------------%

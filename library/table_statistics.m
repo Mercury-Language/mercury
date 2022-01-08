@@ -968,3 +968,5 @@ dummy_proc_table_statistics = ProcTableStatistics :-
     ProcTableStatistics = proc_table_statistics(CallTableStats, no).
 
 %---------------------------------------------------------------------------%
+:- end_module table_statistics.
+%---------------------------------------------------------------------------%

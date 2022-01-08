@@ -8,9 +8,9 @@
 % File: random.system_rng.m.
 % Main author: Julien Fischer
 %
-% This module provides access to the system random number generator. This
-% generator is a platform specific cryptographically secure random number
-% generator that is seeded from the OS entropy pool.
+% This module provides access to the system random number generator.
+% This is a platform specific cryptographically secure random number generator
+% that is seeded from the OS entropy pool.
 %
 % The intended use of this generator is to provide small amounts of
 % high-quality random material suitable, for example, for seeding other
@@ -952,7 +952,6 @@ ML_random_generate_bytes(ML_SystemRandomHandle handle,
         }
     }
 ").
-
 
 %---------------------------------------------------------------------------%
 :- end_module random.system_rng.

@@ -1036,3 +1036,5 @@ goal_cost_above_par_threshold(Info, Cost) :-
     PercallCost > float(Info ^ ipi_opts ^ cpcp_call_site_threshold).
 
 %---------------------------------------------------------------------------%
+:- end_module autopar_search_goals.
+%---------------------------------------------------------------------------%

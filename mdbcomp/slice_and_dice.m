@@ -1021,3 +1021,5 @@ format_context(FileName, LineNumber) = Str :-
     Str = FileName ++ ":" ++ int_to_string(LineNumber).
 
 %---------------------------------------------------------------------------%
+:- end_module mdbcomp.slice_and_dice.
+%---------------------------------------------------------------------------%

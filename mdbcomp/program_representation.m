@@ -2151,3 +2151,5 @@ coverage_point_type_c_value(cp_type_branch_arm,
     "MR_cp_type_branch_arm").
 
 %---------------------------------------------------------------------------%
+:- end_module mdbcomp.program_representation.
+%---------------------------------------------------------------------------%

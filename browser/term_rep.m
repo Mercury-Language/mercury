@@ -189,3 +189,7 @@ find_functor(Current, NumFunctors, Type, FunctorName, Arity,
     else
         MaybeFunctorNum = no
     ).
+
+%---------------------------------------------------------------------------%
+:- end_module mdb.term_rep.
+%---------------------------------------------------------------------------%

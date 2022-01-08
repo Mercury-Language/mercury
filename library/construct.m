@@ -1216,3 +1216,5 @@ construct_tuple_2(Args, ArgTypeDescs, Arity) = Term :-
     Term = rtti_implementation.construct_tuple_2(Args, ArgTypeInfos, Arity).
 
 %---------------------------------------------------------------------------%
+:- end_module construct.
+%---------------------------------------------------------------------------%

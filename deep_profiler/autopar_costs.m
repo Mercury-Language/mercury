@@ -381,3 +381,5 @@ recursion_type_get_interesting_parallelisation_depth(RecursionType,
     ).
 
 %---------------------------------------------------------------------------%
+:- end_module autopar_costs.
+%---------------------------------------------------------------------------%

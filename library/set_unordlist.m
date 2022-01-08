@@ -501,7 +501,7 @@ insert_list(!.S, Xs) = !:S :-
 insert_list(List, sul(!.Set), sul(!:Set)) :-
     list.append(List, !Set).
 
-%---------%
+%---------------------%
 
 delete(!.S, T) = !:S :-
     set_unordlist.delete(T, !S).
@@ -517,7 +517,7 @@ delete_list([X | Xs], !S) :-
     set_unordlist.delete(X, !S),
     set_unordlist.delete_list(Xs, !S).
 
-%---------%
+%---------------------%
 
 remove(E, sul(S0), sul(S)) :-
     list.member(E, S0),
@@ -587,7 +587,7 @@ power_union_2([T | Ts], !S) :-
     set_unordlist.union(!.S, T, !:S),
     set_unordlist.power_union_2(Ts, !S).
 
-%---------%
+%---------------------%
 
 intersect(S1, S2) = S3 :-
     set_unordlist.intersect(S1, S2, S3).
@@ -624,7 +624,7 @@ power_intersect(sul([S0 | Ss]), S) :-
         set_unordlist.intersect(S1, S0, S)
     ).
 
-%---------%
+%---------------------%
 
 difference(S1, S2) = S3 :-
     set_unordlist.difference(S1, S2, S3).

@@ -679,3 +679,5 @@ debug_cliques_exceeded_parallelism(OutputStream, Clique, !IO) :-
         [i(CliqueNum)], !IO).
 
 %---------------------------------------------------------------------------%
+:- end_module autopar_search_callgraph.
+%---------------------------------------------------------------------------%

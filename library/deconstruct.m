@@ -1064,4 +1064,5 @@ local_univ_named_arg(Term, NonCanon, Name, Argument) :-
     rtti_implementation.univ_named_arg(Term, NonCanon, Name, Argument).
 
 %---------------------------------------------------------------------------%
+:- end_module deconstruct.
 %---------------------------------------------------------------------------%

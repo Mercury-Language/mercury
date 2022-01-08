@@ -453,3 +453,5 @@ format_var_use_line(VarNameTable, Var - Use, singleton(String)) :-
     lookup_var_name(VarNameTable, Var, VarName).
 
 %---------------------------------------------------------------------------%
+:- end_module autopar_reports.
+%---------------------------------------------------------------------------%

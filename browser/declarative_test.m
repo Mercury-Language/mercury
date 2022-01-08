@@ -76,3 +76,7 @@ process_arguments(MaybeFile, !IO) :-
 usage(!IO) :-
     io.progname_base("declarative_test", Name, !IO),
     io.write_strings(["Usage: ", Name, " <filename>\n"], !IO).
+
+%---------------------------------------------------------------------------%
+:- end_module declarative_test.
+%---------------------------------------------------------------------------%

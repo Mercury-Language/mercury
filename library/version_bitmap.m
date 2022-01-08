@@ -376,4 +376,5 @@ unsafe_rewind(BM) = version_array.unsafe_rewind(BM).
 unsafe_rewind(BM, version_bitmap.unsafe_rewind(BM)).
 
 %---------------------------------------------------------------------------%
+:- end_module version_bitmap.
 %---------------------------------------------------------------------------%

@@ -149,3 +149,7 @@ match_with_cterms(UnivArgs, CArgs, Match) :-
 "
     if (1 == 1) throw new Error(\"not supported in java grade\");
 ").
+
+%---------------------------------------------------------------------------%
+:- end_module mdb.cterm.
+%---------------------------------------------------------------------------%

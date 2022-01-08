@@ -112,9 +112,14 @@
     % new version store mutvars. A mutvar is just an index into the
     % version_store.
     %
-:- type version_store(S)        ---> version_store(version_array(univ)).
-:- type mutvar(T, S)            ---> mutvar(int).
-:- type some_version_store_type ---> some_version_store_type.
+:- type version_store(S)
+    --->    version_store(version_array(univ)).
+
+:- type mutvar(T, S)
+    --->    mutvar(int).
+
+:- type some_version_store_type
+    --->    some_version_store_type.
 
 %---------------------------------------------------------------------------%
 
@@ -184,4 +189,5 @@ unsafe_rewind(version_store(VA)) = version_store(unsafe_rewind(VA)).
 unsafe_rewind(VS, unsafe_rewind(VS)).
 
 %---------------------------------------------------------------------------%
+:- end_module version_store.
 %---------------------------------------------------------------------------%

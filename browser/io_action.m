@@ -133,3 +133,7 @@ make_yes_io_action(ProcName, yes, Args) =
     yes(io_action(ProcName, pf_function, Args)).
 make_yes_io_action(ProcName, no, Args) =
     yes(io_action(ProcName, pf_predicate, Args)).
+
+%---------------------------------------------------------------------------%
+:- end_module mdb.io_action.
+%---------------------------------------------------------------------------%

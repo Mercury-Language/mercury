@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 expandtab
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007, 2010-2012 The University of Melbourne.
 % Copyright (C) 2015-2016 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Mercury coverage test tool.
 %
 % Author: Zoltan Somogyi.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mcov.
 :- interface.
@@ -20,8 +20,8 @@
 
 :- pred main(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -47,7 +47,7 @@
 :- import_module string.
 :- import_module term_io.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     unlimit_stack(!IO),
@@ -68,7 +68,7 @@ main(!IO) :-
         write_error_message(GetoptErrorMsg, !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred do_coverage_testing(option_table(option)::in, list(string)::in,
     io::di, io::uo) is det.
@@ -150,7 +150,7 @@ kind_warning =
 consistency_warning =
     "Warning: reporting on a mixture of trace file types and/or programs.\n".
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type proc_info
     --->    proc_info(
@@ -258,7 +258,7 @@ in_stdlib_or_mdbcomp_module(ProcLabelInContext - _) :-
     ; is_mdbcomp_module_name(Module)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred collect_zero_count_local_procs(trace_counts_list::in,
     list(proc_info)::out) is det.
@@ -317,7 +317,7 @@ is_zero_count_local_proc(ProcInfoMap, ProcLabel - Count, ProcInfo) :-
     is_local_proc(ProcLabel),
     map.lookup(ProcInfoMap, ProcLabel, ProcInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred collect_zero_count_local_labels(trace_counts_list::in,
     list(label_info)::in, list(label_info)::out) is det.
@@ -347,7 +347,7 @@ label_process_path_port_count(ProcLabel, FileName,
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We don't want to warn about zero executions of a copy of a procedure
     % inlined in a module other than the module that defines the procedure.
@@ -365,7 +365,7 @@ is_local_proc(ProcLabel) :-
         DefModuleSym = TypeModuleSym
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred write_proc_info(io.text_output_stream::in, proc_info::in,
     io::di, io::uo) is det.
@@ -429,7 +429,7 @@ write_path_port_for_user(OutStream, port_and_path(Port, Path), !IO) :-
     io.write_strings(OutStream,
         [PortStr, " <", rev_goal_path_to_string(Path), ">"], !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred short_usage(io.text_output_stream::in, io::di, io::uo) is det.
 
@@ -497,7 +497,7 @@ write_tabbed_lines(OutStream, [Str | Strs], !IO) :-
     io.format(OutStream, "\t%s\n", [s(Str)], !IO),
     write_tabbed_lines(OutStream, Strs, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type option
     --->    help
@@ -543,7 +543,7 @@ option_default(flags_file,      file_special).
 option_default(ignore_stdlib,   bool(yes)).
 option_default(ignore_mdbcomp,  bool(yes)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred write_error_message(string::in, io::di, io::uo) is det.
 
@@ -552,6 +552,6 @@ write_error_message(Msg, !IO) :-
     io.format(Stderr, "%s\n", [s(Msg)], !IO),
     io.set_exit_status(1, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module mcov.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

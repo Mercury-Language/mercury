@@ -421,3 +421,5 @@ cost_and_callees_is_recursive(ParentCliquePtr, CostAndCallees) :-
     ParentCliquePtr = Callee ^ c_clique.
 
 %---------------------------------------------------------------------------%
+:- end_module analysis_utils.
+%---------------------------------------------------------------------------%

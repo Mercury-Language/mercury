@@ -1052,13 +1052,15 @@ get_arg_length([HeadUniv | Rest], TotalLength, MaxLength) :-
     ( if Arity = 0 then
         Length = string.length(Functor)
     else
-        % 2 is added because if a term has arguments then the
-        % shortest way to print it is "functor/Arity"
-        % Assuming Arity is a single digit
+        % Since the term has arguments, then the shortest way to print it
+        % is "functor/Arity", which adds one for the / and *at least* one
+        % for the Arity.
         Length = string.length(Functor) + 2
     ),
     TotalLength = Length + RestTotalLength,
     int.max((Length + Correction), RestMaxLength, MaxLength),
     get_arg_length(Rest, RestTotalLength, RestMaxLength).
 
+%---------------------------------------------------------------------------%
+:- end_module mdb.sized_pretty.
 %---------------------------------------------------------------------------%
