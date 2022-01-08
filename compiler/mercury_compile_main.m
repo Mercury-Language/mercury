@@ -261,7 +261,7 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
         AllSpecs = ArgsNonUndefSpecs ++ ArgsUndefSpecs,
         (
             MaybeArgs1 = yes(Args1),
-            separate_option_args(Args1, OptionArgs, NonOptionArgs, !IO)
+            separate_option_args(Args1, OptionArgs, NonOptionArgs)
         ;
             MaybeArgs1 = no,
             OptionArgs = [],

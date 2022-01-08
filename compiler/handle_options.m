@@ -39,12 +39,12 @@
     list(string)::out, list(string)::out, list(error_spec)::out,
     globals::out, io::di, io::uo) is det.
 
-    % separate_option_args(Args, OptionArgs, NonOptionArgs, !IO):
+    % separate_option_args(Args, OptionArgs, NonOptionArgs):
     %
     % Separate the list of arguments into option and non-option arguments.
     %
 :- pred separate_option_args(list(string)::in,
-    list(string)::out, list(string)::out, io::di, io::uo) is det.
+    list(string)::out, list(string)::out) is det.
 
     % Display the compiler version.
     %
@@ -138,8 +138,11 @@ handle_given_options(Args0, OptionArgs, Args, Specs, !:Globals, !IO) :-
         )
     ).
 
-separate_option_args(RawArgs, OptionArgs, NonOptionArgs, !IO) :-
-    process_given_options(RawArgs, OptionArgs, NonOptionArgs, _, _, _, !IO).
+separate_option_args(RawArgs, OptionArgs, NonOptionArgs) :-
+    getopt.init_option_table(option_defaults, OptionTable0),
+    % XXX Ignoring _MaybeError seems a bit careless.
+    getopt.record_arguments(short_option, long_option, OptionTable0,
+        RawArgs, NonOptionArgs, OptionArgs, _MaybeError, _OptionValues).
 
     % process_given_options(Args, OptionArgs, NonOptionArgs, MaybeOptionTable,
     %   !IO):

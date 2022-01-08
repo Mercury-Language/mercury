@@ -117,7 +117,13 @@ Changes to the Mercury standard library
 
 ### Changes to the `getopt` module
 
-* The following predicates have been added:
+* The following new predicates have been added:
+
+    - pred `record_arguments/8'
+    - pred `expand_file_specials/8'
+
+* The following variants of the existing process_options predicate
+  have been added:
 
     - pred `process_options_io/6`
     - pred `process_options_io/7`
