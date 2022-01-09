@@ -1,16 +1,16 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: make_hlds_warn.m.
 %
 % Generate whatever warnings the module being transformed to HLDS deserves.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.make_hlds_warn.
 :- interface.
@@ -26,7 +26,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Warn about variables with overlapping scopes.
     %
@@ -77,8 +77,8 @@
     foreign_literal_or_include::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -97,7 +97,7 @@
 :- import_module string.
 :- import_module varset.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 add_quant_warnings(PredCallId, VarSet, Warnings, !Specs) :-
     WarningSpecs =
@@ -129,7 +129,7 @@ quant_warning_to_spec(PredCallId, VarSet, Warning) = Spec :-
         severity_warning, phase_parse_tree_to_hlds,
         [simplest_msg(Context, Pieces1 ++ Pieces2)]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 warn_singletons(ModuleInfo, PredCallId, VarSet, Body, !Specs) :-
     % We handle warnings about variables in the clause head specially.
@@ -402,7 +402,7 @@ warn_singletons_in_unify(X, RHS, GoalInfo, QuantVars, !Info) :-
         warn_singletons_in_goal(LambdaGoal, QuantVars, !Info)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % warn_singletons_goal_vars(Vars, GoalInfo, NonLocals, QuantVars, ...):
     %
@@ -517,7 +517,7 @@ add_warn_spec(Spec, !Info) :-
     Specs = [Spec | Specs0],
     !Info ^ wi_specs := Specs.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
         Args, Context, PFSymNameArity, PredId, ProcId, !Specs) :-
@@ -738,7 +738,7 @@ check_fp_body_for_return(Lang, Context, PFSymNameArity, BodyPieces, !Specs) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Promise_ex error checking.
 %
@@ -879,7 +879,7 @@ promise_ex_error(PromiseType, Context, Message, !Specs) :-
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 warn_suspicious_foreign_code(Lang, BodyCode, Context, !Specs) :-
     (
@@ -912,6 +912,6 @@ warn_suspicious_foreign_code(Lang, BodyCode, Context, !Specs) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.make_hlds_warn.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

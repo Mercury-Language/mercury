@@ -1,16 +1,16 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2014-2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: make_hlds.m.
 %
 % This module defines predicates that construct HLDS goals.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.make_goal.
 
@@ -146,8 +146,8 @@
 :- pred deconstruct_tuple(prog_var::in, list(prog_var)::in, hlds_goal::out)
     is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -160,7 +160,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 true_goal = hlds_goal(true_goal_expr, GoalInfo) :-
     instmap_delta_init_reachable(InstMapDelta),
@@ -189,7 +189,7 @@ fail_goal_with_context(Context) = hlds_goal(GoalExpr, GoalInfo) :-
     hlds_goal(GoalExpr, GoalInfo0) = fail_goal,
     goal_info_set_context(Context, GoalInfo0, GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 create_atomic_complicated_unification(LHS, RHS, Context,
         UnifyMainContext, UnifySubContext, Purity, Goal) :-
@@ -205,7 +205,7 @@ create_pure_atomic_complicated_unification(LHS, RHS, Context,
     create_atomic_complicated_unification(LHS, RHS, Context,
         UnifyMainContext, UnifySubContext, purity_pure, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_complicated_unify_assigns([], [_ | _], _) :-
     unexpected($pred, "length mismatch").
@@ -226,7 +226,7 @@ make_complicated_unify_assign(Var1, Var2, Goal) :-
             Context, umc_explicit, [], Goal)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_simple_assign(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
     Ground = ground(shared, none_or_default_func),
@@ -248,7 +248,7 @@ make_simple_test(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
     GoalExpr = unify(X, rhs_var(Y), UnifyMode, Unification, UnifyContext),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_int_const_construction(Context, Var, Int, Goal) :-
     ConsId = some_int_const(int_const(Int)),
@@ -278,7 +278,7 @@ make_const_construction(Context, Var, ConsId, Goal) :-
         GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_int_const_construction_alloc_in_proc(Int, MaybeName, Goal, Var,
         !ProcInfo) :-
@@ -305,7 +305,7 @@ make_const_construction_alloc_in_proc(ConsId, Type, MaybeName, Goal, Var,
     proc_info_create_var_from_type(Type, MaybeName, Var, !ProcInfo),
     make_const_construction(term.context_init, Var, ConsId, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_int_const_construction_alloc(Int, MaybeName, Goal, Var,
         !VarSet, !VarTypes) :-
@@ -337,7 +337,7 @@ make_const_construction_alloc(ConsId, Type, MaybeName, Goal, Var,
     add_var_type(Var, Type, !VarTypes),
     make_const_construction(term.context_init, Var, ConsId, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 construct_functor(Var, ConsId, Args, Goal) :-
     list.length(Args, Arity),
@@ -379,6 +379,6 @@ deconstruct_tuple(Tuple, Args, Goal) :-
     ConsId = tuple_cons(Arity),
     deconstruct_functor(Tuple, ConsId, Args, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.make_goal.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

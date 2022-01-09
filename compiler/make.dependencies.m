@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: make.dependencies.m.
 % Author: stayl.
@@ -12,7 +12,7 @@
 % Code to find the dependencies for a particular target,
 % e.g. module.c depends on module.m, import.int, etc.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module make.dependencies.
 :- interface.
@@ -28,7 +28,7 @@
 :- import_module maybe.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % find_module_deps(Globals, ModuleIndex, Succeeded, Deps, !Info, !IO).
     %
@@ -60,7 +60,7 @@
 :- func target_dependencies(globals::in, module_target_type::in) =
     (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Union the output set of dependencies for a given module
     % with the accumulated set. This is used with
@@ -95,7 +95,7 @@
     list(module_name)::in, list(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Find all modules in the current directory which are reachable (by import)
     % from the given module. Return a list of `--local-module-id' options
@@ -105,13 +105,13 @@
     maybe_succeeded::out, list(string)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred dependency_status(globals::in, dependency_file::in,
     dependency_status::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type dependencies_result
     --->    deps_up_to_date
@@ -139,7 +139,7 @@
     list(maybe_error(timestamp))::in, dependencies_result::out,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type cached_direct_imports.
 :- func init_cached_direct_imports = cached_direct_imports.
@@ -150,8 +150,8 @@
 :- type cached_transitive_dependencies.
 :- func init_cached_transitive_dependencies = cached_transitive_dependencies.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -165,7 +165,7 @@
 :- import_module dir.
 :- import_module sparse_bitset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 target_dependencies(Globals, Target) = FindDeps :-
     (
@@ -353,7 +353,7 @@ imports = combine_deps_list([
         module_target_int2 `of` indirect_imports
     ]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func of(module_target_type, find_module_deps(module_index)) =
     find_module_deps(dependency_file_index).
@@ -440,7 +440,7 @@ map_find_module_deps(FindDeps2, FindDeps1, Globals, ModuleIndex, Succeeded,
         Succeeded = Succeeded1 `and` Succeeded2
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred no_deps(globals::in, module_index::in, maybe_succeeded::out,
     deps_set(T)::out,
@@ -464,7 +464,7 @@ ancestors(_Globals, ModuleIndex, succeeded, AncestorIndices, !Info, !IO) :-
     Ancestors = get_ancestors(ModuleName),
     module_names_to_index_set(Ancestors, AncestorIndices, !Info).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred direct_imports(globals::in, module_index::in,
     maybe_succeeded::out, deps_set(module_index)::out,
@@ -579,7 +579,7 @@ non_intermod_direct_imports_2(Globals, ModuleIndex, Succeeded, Modules,
         Modules = init
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Return the list of modules for which we should read `.int2' files.
     %
@@ -634,7 +634,7 @@ indirect_imports_2(Globals, FindDirectImports, ModuleIndex, Succeeded,
         Succeeded = DirectSucceeded `and` IndirectSucceeded
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Return the list of modules for which we should read `.opt' files.
     %
@@ -663,7 +663,7 @@ intermod_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
         Modules = init
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred foreign_imports(globals::in, module_index::in,
     maybe_succeeded::out, deps_set(module_index)::out,
@@ -752,7 +752,7 @@ find_module_foreign_imports_3(Languages, Globals, ModuleIndex,
         Succeeded = did_not_succeed
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred fact_table_files(globals::in, module_index::in,
     maybe_succeeded::out, set(dependency_file)::out,
@@ -773,7 +773,7 @@ fact_table_files(Globals, ModuleIndex, Succeeded, Files, !Info, !IO) :-
         Files = init
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred foreign_include_files(globals::in, module_index::in,
     maybe_succeeded::out, set(dependency_file)::out,
@@ -816,7 +816,7 @@ get_foreign_include_files_2(Languages, SourceFileName, ForeignInclude, File) :-
     make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
     File = dep_file(IncludePath).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type deps_result(T)
     --->    deps_result(
@@ -885,7 +885,7 @@ deps_set_foldl3_maybe_stop_at_error(KeepGoing, P, Globals, Ts,
     foldl3_maybe_stop_at_error(KeepGoing, P, Globals, to_sorted_list(Ts),
         Succeeded, !Acc, !Info, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 find_reachable_local_modules(Globals, ModuleName, Succeeded, Modules,
         !Info, !IO) :-
@@ -1014,7 +1014,7 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 remove_nested_modules(Globals, Modules0, Modules, !Info, !IO) :-
     list.foldl3(collect_nested_modules(Globals), Modules0,
@@ -1037,7 +1037,7 @@ collect_nested_modules(Globals, ModuleName, !NestedModules, !Info, !IO) :-
         MaybeModuleDepInfo = no_module_dep_info
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_local_module_id_options(Globals, ModuleName, Succeeded, Options,
         !Info, !IO) :-
@@ -1073,7 +1073,7 @@ make_write_target_dependency_status(Globals, DepTarget - DepStatus, !IO) :-
     io.write_string(" - ", !IO),
     io.write_string(DepStatusStr, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 dependency_status(Globals, Dep, Status, !Info, !IO) :-
     (
@@ -1337,7 +1337,7 @@ make_write_dependency_file_and_timestamp_list([Head | Tail], !IO) :-
     io.nl(!IO),
     make_write_dependency_file_and_timestamp_list(Tail, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type cached_direct_imports == map(module_index, module_deps_result).
 
@@ -1369,6 +1369,6 @@ init_cached_foreign_imports = map.init.
 
 init_cached_transitive_dependencies = map.init.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module make.dependencies.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

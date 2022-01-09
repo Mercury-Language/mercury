@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1993-2006, 2008 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: make_hlds_error.m.
 %
@@ -14,7 +14,7 @@
 % that are either needed by more than one submodule of make_hlds.m, or are
 % needed outside make_hlds.m.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.make_hlds_error.
 :- interface.
@@ -31,7 +31,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred report_multiple_def_error(sym_name::in, int::in, string::in,
     prog_context::in, prog_context::in, list(format_component)::in,
@@ -55,8 +55,8 @@
     maybe_class_method::in, prog_context::in, list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -72,7 +72,7 @@
 :- import_module set.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_multiple_def_error(Name, Arity, DefType, Context, OrigContext,
         ExtraPieces, !Specs) :-
@@ -155,7 +155,7 @@ report_undefined_mode_error(Name, Arity, Context, DescPieces, !Specs) :-
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 maybe_report_undefined_pred_error(ModuleInfo, Name, Arity, PredOrFunc, Status,
         IsClassMethod, Context, DescPieces, !Specs) :-
@@ -268,6 +268,6 @@ gather_porf_arities(ModuleInfo, [PredId | PredIds], WantedPorF,
 
 wrap_int_fixed(N) = int_fixed(N).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds_error.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

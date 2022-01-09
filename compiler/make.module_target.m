@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: make.module_target.m.
 % Main author: stayl.
@@ -12,7 +12,7 @@
 % Build targets which relate to a single module (e.g. C code, object code,
 % interface files).
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module make.module_target.
 :- interface.
@@ -30,7 +30,7 @@
 :- import_module io.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % make_module_target(Target, Succeeded, !Info).
     %
@@ -79,8 +79,8 @@
 :- pred external_foreign_code_files(globals::in, pic::in, module_dep_info::in,
     list(foreign_code_file)::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -101,7 +101,7 @@
 :- import_module require.
 :- import_module sparse_bitset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_module_target(Globals, DepFile, Succeeded, !Info, !IO) :-
     make_module_target_extra_options([], Globals, DepFile, Succeeded,
@@ -358,7 +358,7 @@ force_reanalysis_of_suboptimal_module(Globals, ModuleName, ForceReanalysis,
         ForceReanalysis = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred build_target(globals::in, compilation_task_type_and_options::in,
     target_file::in, module_dep_info::in, list(target_file)::in,
@@ -628,7 +628,7 @@ forkable_module_compilation_task_type(task_make_analysis_registry) = yes.
 forkable_module_compilation_task_type(task_compile_to_target_code) = yes.
 forkable_module_compilation_task_type(task_make_xml_doc) = yes.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred get_foreign_code_file(globals::in, module_name::in, pic::in,
     foreign_language::in, foreign_code_file::out, io::di, io::uo) is det.
@@ -665,7 +665,7 @@ get_object_extension(Globals, PIC) = OtherExt :-
         sorry($pred, "object extension for java")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred call_mercury_compile_main(globals::in, list(string)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
@@ -758,7 +758,7 @@ invoke_mmc(Globals, ProgressStream, ErrorStream,
 target_is_java :-
     semidet_fail.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 record_made_target(Globals, TargetFile, CompilationTask, Succeeded,
         !Info, !IO) :-
@@ -840,7 +840,7 @@ delete_timestamp(Globals, TouchedFile, !Timestamps) :-
     ),
     map.delete(TouchedFile, !Timestamps).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type compilation_task_type_and_options
     --->    task_and_options(
@@ -1077,11 +1077,13 @@ gather_target_file_timestamp_file_names(Globals, TouchedTargetFile,
         true
     ).
 
+%---------------------------------------------------------------------------%
+
 external_foreign_code_files(Globals, PIC, ModuleDepInfo, ForeignFiles, !IO) :-
     % Find externally compiled foreign code files for
     % `:- pragma foreign_proc' declarations.
     %
-    % Any changed here may require corresponding changes in 
+    % Any changes here may require corresponding changes in
     % get_foreign_object_targets.
 
     pic_object_file_extension(Globals, PIC, ObjExt),
@@ -1146,6 +1148,6 @@ target_type_to_pic(TargetType) = Result :-
         Result = non_pic
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module make.module_target.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

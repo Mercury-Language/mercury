@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 expandtab
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2002-2009, 2011 The University of Melbourne.
 % Copyright (C) 2014-2017, 2019-2020 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: make.module_dep_file.m.
 % Author: stayl.
@@ -13,7 +13,7 @@
 % Code to read and write the `<module>.module_dep' files, which contain
 % information about inter-module dependencies.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module make.module_dep_file.
 :- interface.
@@ -25,7 +25,7 @@
 
 :- import_module io.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Get the dependencies for a given module.
     % Dependencies are generated on demand, not by a `mmc --make depend'
@@ -38,8 +38,8 @@
 :- pred write_module_dep_file(globals::in, burdened_aug_comp_unit::in,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -94,7 +94,7 @@
 version_number(module_dep_file_v1, 1).
 version_number(module_dep_file_v2, 2).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo, !Info, !IO) :-
     RebuildModuleDeps = !.Info ^ mki_rebuild_module_deps,
@@ -304,7 +304,7 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
         !Info ^ mki_module_dependencies := ModuleDepMap
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 write_module_dep_file(Globals, BurdenedAugCompUnit0, !IO) :-
     BurdenedAugCompUnit0 = burdened_aug_comp_unit(Baggage0, AugCompUnit0),
@@ -474,7 +474,7 @@ contains_foreign_export_to_string(ContainsForeignExport,
         ContainsForeignExportStr = "no_foreign_export"
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred read_module_dependencies_search(globals::in, rebuild_module_deps::in,
     module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
@@ -599,7 +599,7 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
         Result = error("failed to parse term")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_module_summary_file(module_name::in, dir_name::in, term::in,
     module_dep_summary::out) is semidet.
@@ -739,7 +739,7 @@ contains_foreign_export_term(Term, ContainsForeignExport) :-
     atom_term(Term, Atom, []),
     contains_foreign_export_to_string(ContainsForeignExport, Atom).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred some_bad_module_dependency(make_info::in, list(module_name)::in)
     is semidet.
@@ -779,7 +779,7 @@ check_regular_file_exists(FileName, FileExists, !IO) :-
         FileExists = error(FileName ++ ": " ++ io.error_message(Error))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Something went wrong reading the dependencies, so just rebuild them.
     %
@@ -1011,6 +1011,6 @@ maybe_write_importing_module(ModuleName, yes(ImportingModuleName), !IO) :-
         [s(sym_name_to_escaped_string(ModuleName)),
         s(sym_name_to_escaped_string(ImportingModuleName))], !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module make.module_dep_file.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

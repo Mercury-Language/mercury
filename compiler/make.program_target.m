@@ -1,24 +1,24 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: make.program_target.m.
 % Main author: stayl.
 %
 % Build targets which relate to whole programs or libraries.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module make.program_target.
 :- interface.
 
 :- import_module libs.maybe_succeeded.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % make_linked_target(Globals, Target, Succeeded, !Info, !IO):
     %
@@ -38,8 +38,8 @@
     maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -63,7 +63,7 @@
 :- import_module int.
 :- import_module require.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_linked_target(Globals, LinkedTargetFile, LinkedTargetSucceeded,
         !Info, !IO) :-
@@ -670,7 +670,7 @@ linked_target_cleanup(Globals, MainModuleName, FileType, OutputFileName,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % When compiling to Java we want to invoke `javac' just once, passing it a
     % list of all out-of-date `.java' files. This is a lot quicker than
@@ -777,7 +777,7 @@ delete_java_class_timestamps(FileName, MaybeTimestamp, !Timestamps) :-
         map.det_insert(FileName, MaybeTimestamp, !Timestamps)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_misc_target(Globals, MainModuleName - TargetType, Succeeded,
         !Info, !IO) :-
@@ -903,7 +903,7 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred make_all_interface_files(globals::in, list(module_name)::in,
     maybe_succeeded::out,
@@ -962,7 +962,7 @@ collect_modules_with_children(Globals, ModuleName, !ParentModules,
         MaybeModuleDepInfo = no_module_dep_info
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type build0(Info) == pred(maybe_succeeded, Info, Info, io, io).
 :- inst build0 == (pred(out, in, out, di, uo) is det).
@@ -1059,7 +1059,7 @@ remove_cache_dir(Globals, CacheDir, !Info, !IO) :-
         io.format("Removing %s\n", [s(CacheDir)]), !IO),
     io.remove_file_recursively(CacheDir, _, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred build_analysis_files(globals::in, module_name::in,
     list(module_name)::in, maybe_succeeded::in, maybe_succeeded::out,
@@ -1153,7 +1153,7 @@ build_analysis_files_2(Globals, MainModuleName, TargetModules,
         Succeeded = Succeeded0 `and` Succeeded1
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Return a list of modules in reverse order of their dependencies, i.e.
     % the list is the module dependency graph from bottom-up. Mutually
@@ -1189,7 +1189,7 @@ add_module_relations(LookupModuleImports, ModuleName,
     add_module_dep_info_to_deps_graph(ModuleDepInfo, LookupModuleImports,
         !IntDepsGraph, !ImplDepsGraph).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func lookup_module_dep_info_in_maybe_map(
     map(module_name, maybe_module_dep_info), module_name)
@@ -1244,7 +1244,7 @@ reset_analysis_registry_dependency_status(ModuleName, !Info) :-
         DepStatusMap0, DepStatusMap),
     !Info ^ mki_dependency_status := DepStatusMap.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred build_library(module_name::in, list(module_name)::in, globals::in,
     maybe_succeeded::out,
@@ -1323,7 +1323,7 @@ build_java_library(Globals, MainModuleName, Succeeded, !Info, !IO) :-
         linked_target_file(MainModuleName, java_archive),
         Succeeded, !Info, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred install_library(globals::in, module_name::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -1907,7 +1907,7 @@ generate_archive_index(Globals, FileName, InstallDir, Succeeded, !IO) :-
     invoke_system_command(Globals, ProgressStream, ErrorStream, OutputStream,
         cmd_verbose, Command, Succeeded, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_make_grade_clean(globals::in, bool::in, module_name::in,
     list(module_name)::in, make_info::in, make_info::out,
@@ -1988,7 +1988,7 @@ remove_init_files(Globals, Verbose, ModuleName, !Info, !IO) :-
             ext_other(other_ext("_init" ++ PicObjExt))],
         !Info, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred make_module_clean(globals::in, module_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -2068,7 +2068,7 @@ remove_fact_table_object_and_assembler_files(Globals, ModuleName, PIC,
         ModuleName, module_target_fact_table_object(PIC, FactTableFile),
         !Info, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred make_module_realclean(globals::in, module_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -2096,6 +2096,6 @@ make_module_realclean(Globals, ModuleName, !Info, !IO) :-
     make_remove_module_file(Globals, very_verbose, ModuleName,
         ext_other(other_ext(".request")), !Info, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module make.program_target.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
