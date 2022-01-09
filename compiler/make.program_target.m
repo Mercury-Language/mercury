@@ -576,24 +576,9 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         % procedures and fact tables. We don't need to include these in the
         % timestamp checking above -- they will have been checked when the
         % module's object file was built.
-        list.map_foldl2(
-            ( pred(ModuleName::in, ForeignFiles::out,
-                    MakeInfo0::in, MakeInfo::out, !.IO::di, !:IO::uo) is det :-
-                get_module_dependencies(Globals, ModuleName,
-                    MaybeModuleDepInfo, MakeInfo0, MakeInfo, !IO),
-                (
-                    MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
-                    external_foreign_code_files(Globals, PIC, ModuleDepInfo,
-                        ForeignFiles, !IO)
-                ;
-                    MaybeModuleDepInfo = no_module_dep_info,
-                    % This error should have been detected earlier.
-                    unexpected($pred, "error in dependencies")
-                )
-            ), AllModulesList, ExtraForeignFiles, !Info, !IO),
-        ForeignObjects = list.map(
-            (func(foreign_code_file(_, _, ObjFile)) = ObjFile),
-            list.condense(ExtraForeignFiles)),
+        list.map_foldl2(get_module_foreign_object_files(Globals, PIC),
+            AllModulesList, ForeignObjectFileLists, !Info, !IO),
+        ForeignObjects = list.condense(ForeignObjectFileLists),
 
         (
             CompilationTarget = target_c,
@@ -642,6 +627,27 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             Succeeded = did_not_succeed,
             file_error(!.Info, OutputFileName, !IO)
         )
+    ).
+
+:- pred get_module_foreign_object_files(globals::in, pic::in,
+    module_name::in, list(file_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+get_module_foreign_object_files(Globals, PIC, ModuleName, ForeignObjectFiles,
+        !MakeInfo, !IO) :-
+    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
+        !MakeInfo, !IO),
+    (
+        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+        external_foreign_code_files(Globals, PIC, ModuleDepInfo,
+            ForeignFiles, !IO),
+        ForeignObjectFiles = list.map(
+            (func(foreign_code_file(_, _, ObjFile)) = ObjFile),
+            ForeignFiles)
+    ;
+        MaybeModuleDepInfo = no_module_dep_info,
+        % This error should have been detected earlier.
+        unexpected($pred, "error in dependencies")
     ).
 
 :- pred linked_target_cleanup(globals::in, module_name::in,
@@ -1095,8 +1101,7 @@ build_analysis_files_1(Globals, MainModuleName, AllModules, Succeeded,
     reverse_ordered_modules(!.Info ^ mki_module_dependencies,
         TargetModules0, TargetModules1),
     % Filter out the non-local modules so we don't try to reanalyse them.
-    list.filter((pred(Mod::in) is semidet :- list.member(Mod, AllModules)),
-        TargetModules1, TargetModules),
+    list.filter(list.contains(AllModules), TargetModules1, TargetModules),
     make_local_module_id_options(Globals, MainModuleName, Succeeded0,
         LocalModulesOpts, !Info, !IO),
     (
@@ -1510,17 +1515,10 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
         % to make it easier to stop and clean up on an interrupt.
         globals.lookup_bool_option(LibGlobals, very_verbose, VeryVerbose),
         setup_checking_for_interrupt(Cookie, !IO),
-        Build =
-            ( pred(GradeSucceeded::out, MInfo::in,
-                    !.IO::di, !:IO::uo) is det :-
-                call_in_forked_process(
-                    ( pred(GradeSucceeded0::out, !.IO::di, !:IO::uo) is det :-
-                        install_library_grade_2(LibGlobals, LinkSucceeded0,
-                            ModuleName, AllModules, MInfo, CleanAfter,
-                            GradeSucceeded0, !IO)
-                    ), GradeSucceeded, !IO)
-            ),
-        Build(Succeeded0, !.Info, !IO),
+        call_in_forked_process(
+            install_library_grade_2(LibGlobals, LinkSucceeded0,
+                ModuleName, AllModules, !.Info, CleanAfter),
+            Succeeded0, !IO),
         Cleanup = maybe_make_grade_clean(LibGlobals, CleanAfter, ModuleName,
             AllModules),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
