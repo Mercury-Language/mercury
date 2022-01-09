@@ -105,6 +105,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module set_tree234.
 :- import_module solutions.
 :- import_module string.
 :- import_module version_array.
@@ -729,6 +730,42 @@ option_table_hash(AllOptionArgs, Hash, !IO) :-
     % the module to be recompiled if necessary, but that's later. We are not
     % compiling the module immediately, so this is the only use we have for
     % AllOptionArgsGlobals here.
+    %
+    % XXX This algorithm processes every option in the option table, even
+    % though it does not include all of them in the hash. Virtually all
+    % of these options will have their default values, which makes
+    % most of that work effectively wasted.
+    %
+    % A more elegant approach would be to invoke getopt.record_arguments on
+    % AllOptionArgs, and hash the resulting list of option_values. This would
+    % require hashing special options (such as -ON) as well as non-special
+    % values, but the cost of that would be trivial.
+    %
+    % This approach would have two principal differences from the current one.
+    %
+    % - First, the current approach computes a different hash if AllOptionArgs
+    %   has not changed, but the default value of an (consequential) option
+    %   has changed, or if a new consequential option has been added.
+    %   The recompilation that this forces will be needed after some changes
+    %   to the option defaults, but not after others.
+    %
+    %   However, this consideration never applies only to a single module;
+    %   if the default set of option values changes, it applies for all
+    %   modules. Therefore it would be enough to record a hash of the
+    %   default values of all options *once* as a "global" value in the
+    %   MODULE.track_flags file, which, if it changes, invalidates *every*
+    %   module-specific entry in that file.
+    %
+    % - Second, it is possible for some changes in AllOptionArgs to yield
+    %   the same final AllOptionArgsGlobals, if some option in the old
+    %   AllOptionArgs implies the value of some other option, and the new
+    %   AllOptionArgs explicitly sets this option to the implied value
+    %   (or vice versa). In such cases, the new approach would force a
+    %   recompilation, while the old one would not. However, the absence
+    %   of a recompilation in such an instance could be more worrysome
+    %   than welcome for users who do not know about that option implication,
+    %   or who do not appreciate its significance.
+    %
     handle_given_options(AllOptionArgs, _, _, OptionsErrors,
         AllOptionArgsGlobals, !IO),
     (
@@ -741,15 +778,16 @@ option_table_hash(AllOptionArgs, Hash, !IO) :-
     globals.get_options(AllOptionArgsGlobals, OptionTable),
     map.to_sorted_assoc_list(OptionTable, OptionList),
     inconsequential_options(InconsequentialOptions),
-    list.filter(include_option_in_hash(InconsequentialOptions),
+    InconsequentialOptionsSet = set_tree234.from_set(InconsequentialOptions),
+    list.filter(include_option_in_hash(InconsequentialOptionsSet),
         OptionList, HashOptionList),
     globals.get_opt_tuple(AllOptionArgsGlobals, OptTuple),
     Hash = md5sum(string({HashOptionList, OptTuple})).
 
-:- pred include_option_in_hash(set(option)::in,
+:- pred include_option_in_hash(set_tree234(option)::in,
     pair(option, option_data)::in) is semidet.
 
-include_option_in_hash(InconsequentialOptions, Option - OptionData) :-
+include_option_in_hash(InconsequentialOptionsSet, Option - OptionData) :-
     require_complete_switch [OptionData]
     (
         ( OptionData = bool(_)
@@ -759,8 +797,8 @@ include_option_in_hash(InconsequentialOptions, Option - OptionData) :-
         ; OptionData = maybe_string(_)
         ; OptionData = accumulating(_)
         ),
-        % XXX reconsider if a lot of these options really should be ignored
-        not set.contains(InconsequentialOptions, Option)
+        % XXX Reconsider if a lot of these options really should be ignored.
+        not set_tree234.contains(InconsequentialOptionsSet, Option)
     ;
         ( OptionData = special
         ; OptionData = bool_special
