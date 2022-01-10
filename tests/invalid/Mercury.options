@@ -13,6 +13,7 @@ MCFLAGS-any_mode                = --infer-types
 MCFLAGS-assert_in_interface     = --no-intermodule-optimization \
                                     --verbose-error-messages
 
+MCFLAGS-abstract_eqv            = --no-intermodule-optimization
 MCFLAGS-actual_expected         = --no-intermodule-optimization
 MCFLAGS-any_to_ground_in_ite_cond_nomax = --no-max-error-line-width
 MCFLAGS-bug214                  = --allow-stubs --no-warn-stubs
@@ -118,7 +119,8 @@ MCFLAGS-require_tailrec_3       = -O0 --optimise-tailcalls \
 # with the features in the test require_feature_set pragma.
 MCFLAGS-test_feature_set        = --grade java --verbose-error-messages
 MCFLAGS-tricky_assert1          = --verbose-error-messages
-MCFLAGS-type_error_use_module   = --verbose-error-messages
+MCFLAGS-type_error_use_module   = --verbose-error-messages \
+                                    --no-intermodule-optimization
 MCFLAGS-typeclass_dup_method_mode = --verbose-error-messages
 MCFLAGS-typeclass_constraint_extra_var = --verbose-error-messages
 MCFLAGS-typeclass_missing_det_3 = --verbose-error-messages
