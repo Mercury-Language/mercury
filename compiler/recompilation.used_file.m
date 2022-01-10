@@ -704,12 +704,14 @@ read_and_parse_used_file(UsedFileName, UsedFileString, MaxOffset,
             MaxOffset, !.LineContext, _, !.LinePosn, _,
             cord.init, ParseUsedModules),
         ( if
-            ParseTimestamp = used_file_ok({_ModuleName, ModuleTimestamp}),
+            ParseTimestamp = used_file_ok(ModuleNameTimestamp),
             ParseInlineSubModules = used_file_ok(InlineSubModules),
             ParseUsedItems = used_file_ok(UsedItems),
             ParseUsedClasses = used_file_ok(UsedClasses),
             ParseUsedModules = used_file_ok(UsedModules)
         then
+            ModuleNameTimestamp =
+                module_name_and_timestamp(_ModuleName, ModuleTimestamp),
             UsedFile = used_file(ModuleTimestamp, InlineSubModules,
                 UsedItems, set.to_sorted_list(UsedClasses), UsedModules),
             ParseUsedFile = used_file_ok(UsedFile)
@@ -767,9 +769,12 @@ read_and_parse_used_file_version_number(UsedFileName, UsedFileString,
 
 %---------------------%
 
+:- type module_name_and_timestamp
+    --->    module_name_and_timestamp(module_name, module_timestamp).
+
 :- pred read_and_parse_module_timestamp(string::in, string::in, int::in,
     line_context::in, line_context::out, line_posn::in, line_posn::out,
-    used_file_result({module_name, module_timestamp})::out) is det.
+    used_file_result(module_name_and_timestamp)::out) is det.
 
 read_and_parse_module_timestamp(UsedFileName, UsedFileString, MaxOffset,
         !LineContext, !LinePosn, ParseTerm) :-
@@ -784,7 +789,7 @@ read_and_parse_module_timestamp(UsedFileName, UsedFileString, MaxOffset,
     ).
 
 :- pred parse_module_timestamp(term::in,
-    used_file_result({module_name, module_timestamp})::out) is det.
+    used_file_result(module_name_and_timestamp)::out) is det.
 
 parse_module_timestamp(Term, ParseTerm) :-
     conjunction_to_list(Term, Args),
@@ -827,7 +832,8 @@ parse_module_timestamp(Term, ParseTerm) :-
         )
     then
         ModuleTimestamp = module_timestamp(FileKind, Timestamp, RecompAvail),
-        ParseTerm = used_file_ok({ModuleName, ModuleTimestamp})
+        NameTimestamp = module_name_and_timestamp(ModuleName, ModuleTimestamp),
+        ParseTerm = used_file_ok(NameTimestamp)
     else
         Context = get_term_context(Term),
         Error = uf_syntax_error(Context, "error in module timestamp"),
@@ -1327,11 +1333,12 @@ read_and_parse_used_modules(FileName, FileString, MaxOffset,
             ),
             parse_module_timestamp(TimestampTerm, ParseModuleTimestamp),
             (
-                ParseModuleTimestamp =
-                    used_file_ok({ImportedModuleName, ModuleTimestamp}),
+                ParseModuleTimestamp = used_file_ok(ModuleNameTimestamp),
+                ModuleNameTimestamp =
+                    module_name_and_timestamp( ModuleName, ModuleTimestamp),
                 (
                     ParseVersionNumbers = used_file_ok(MaybeVersionNumbers),
-                    UsedModule = recomp_used_module(ImportedModuleName,
+                    UsedModule = recomp_used_module(ModuleName,
                         ModuleTimestamp, MaybeVersionNumbers),
                     !:UsedModulesCord =
                         cord.snoc(!.UsedModulesCord, UsedModule),
