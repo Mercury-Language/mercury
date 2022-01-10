@@ -289,7 +289,7 @@ tags_file_exists:
 	@if test ! -f tags; \
 	then \
 		echo making tags; \
-		$(MTAGS) $($(STD_LIB_NAME).ms); \
+		$(MTAGS) $(filter-out getopt.m,$($(STD_LIB_NAME).ms)); \
 	fi
 
 $(STD_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk $($(STD_LIB_NAME).ms)
