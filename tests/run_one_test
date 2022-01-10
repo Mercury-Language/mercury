@@ -38,6 +38,12 @@ else
     then
         rm -f "${test_full}.failed"
         echo FAILED TEST "${this_dir}/${test_full}" "${params_msg}"
+        if test -s "${test_full}.err"
+        then
+            echo "ERROR OUTPUT" >> "${test_full}.log"
+            cat "${test_full}.err" >> "${test_full}.log"
+            echo "END OF THE ERROR OUTPUT" >> "${test_full}.log"
+        fi
         echo "LOG OF THE FAILED TEST"
         cat "${test_full}.log"
         echo "END OF THE LOG OF THE FAILED TEST"
