@@ -22,9 +22,13 @@
 :- module make.deps_set.
 :- interface.
 
-:- import_module bool.
+:- import_module make.dependencies.
+:- import_module make.make_info.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
+
 :- import_module enum.
-:- import_module io.
+:- import_module list.
 :- import_module set.
 :- import_module sparse_bitset.
 
@@ -88,15 +92,12 @@
 :- implementation.
 
 :- import_module libs.
-:- import_module libs.file_util.
-:- import_module libs.globals.
-:- import_module make.util.
 :- import_module parse_tree.
-:- import_module parse_tree.file_names.
 
-:- import_module dir.
 :- import_module int.
 :- import_module maybe.
+:- import_module version_array.
+:- import_module version_hash_table.
 
 %---------------------------------------------------------------------------%
 %

@@ -205,8 +205,11 @@ which contains the following modules:
 
 <ul>
 <li>
-make.m categorizes targets passed on the command line
+make.top_level.m categorizes targets passed on the command line
 and passes them to the appropriate module to be built.
+<li>
+make.track_flags.m keeps a database that records
+which options were used to compile each module.
 <li>
 make.program_target.m handles whole program `mmc --make' targets,
 including executables, libraries and cleanup.
@@ -223,6 +226,9 @@ make.module_dep_file.m records dependency information for each module
 between compilations.
 <li>
 make.build.m provides the machinery required to bring targets up to date.
+<li>
+make.info.m defines the main data structure
+used by all the make*.m modules above.
 <li>
 make.util.m contains utility predicates.
 <li>

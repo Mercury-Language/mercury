@@ -18,10 +18,25 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.maybe_succeeded.
+:- import_module make.make_info.
+:- import_module make.options_file.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
+:- import_module io.
+:- import_module list.
+:- import_module maybe.
+
 %---------------------------------------------------------------------------%
+
+    % We export this type so that mercury_compile_main.m can tell
+    % setup_for_build_with_module_options that the call did *not* come from
+    % the code of mmc --make itself.
+:- type maybe_invoked_by_mmc_make
+    --->    not_invoked_by_mmc_make
+    ;       invoked_by_mmc_make.
 
 :- type may_build
     --->    may_not_build(list(error_spec))
@@ -151,18 +166,18 @@
 
 :- implementation.
 
+:- import_module libs.file_util.
 :- import_module libs.handle_options.
+:- import_module libs.options.
 :- import_module libs.process_util.
 :- import_module parse_tree.file_names.
 
 :- import_module bool.
 :- import_module char.
-:- import_module dir.
 :- import_module getopt.
 :- import_module int.
-:- import_module maybe.
-:- import_module require.
 :- import_module set.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 

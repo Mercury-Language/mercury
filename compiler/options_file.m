@@ -17,8 +17,12 @@
 :- module make.options_file.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.file_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
+:- import_module parse_tree.error_util.
 
 :- import_module io.
 :- import_module list.
@@ -126,12 +130,6 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-
-:- import_module libs.
-:- import_module libs.globals.
-:- import_module libs.options.
-:- import_module parse_tree.
-:- import_module parse_tree.error_util.
 
 :- import_module assoc_list.
 :- import_module bool.

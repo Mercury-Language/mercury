@@ -21,10 +21,17 @@
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.maybe_succeeded.
+:- import_module libs.timestamp.
 :- import_module make.build.
+:- import_module make.deps_set.
+:- import_module make.make_info.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 
 :- import_module enum.
 :- import_module io.
+:- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module set.
 
@@ -155,15 +162,24 @@
 
 :- implementation.
 
-:- import_module make.deps_set.
+:- import_module backend_libs.
+:- import_module backend_libs.compile_target_code.
+:- import_module libs.options.
+:- import_module make.module_dep_file.
+:- import_module make.util.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.module_imports.
 :- import_module parse_tree.prog_data_foreign.
 
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module dir.
+:- import_module pair.
+:- import_module require.
 :- import_module sparse_bitset.
+:- import_module string.
+:- import_module version_hash_table.
 
 %---------------------------------------------------------------------------%
 

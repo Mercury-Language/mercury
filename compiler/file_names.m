@@ -105,6 +105,8 @@
 :- func extension_to_string(ext) = string.
 :- func other_extension_to_string(other_ext) = string.
 
+:- func make_module_dep_file_extension = other_ext is det.
+
 %---------------------%
 
 % XXX Most of the predicates below take a "from" string argument,
@@ -272,6 +274,10 @@ valid_other_ext(other_ext(ExtStr)) :-
     not (
         ExtStr = ".m"       % ext_src
     ).
+
+%---------------------------------------------------------------------------%
+
+make_module_dep_file_extension = other_ext(".module_dep").
 
 %---------------------------------------------------------------------------%
 

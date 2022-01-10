@@ -16,7 +16,15 @@
 :- module make.program_target.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module libs.maybe_succeeded.
+:- import_module make.make_info.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
+
+:- import_module io.
+:- import_module pair.
 
 %---------------------------------------------------------------------------%
 
@@ -44,24 +52,44 @@
 :- implementation.
 
 :- import_module analysis.
-:- import_module libs.
+:- import_module backend_libs.
+:- import_module backend_libs.compile_target_code.
 :- import_module libs.check_libgrades.
 :- import_module libs.compute_grade.
+:- import_module libs.file_util.
+:- import_module libs.handle_options.
+:- import_module libs.options.
 :- import_module libs.process_util.
+:- import_module libs.timestamp.
+:- import_module make.build.
+:- import_module make.dependencies.
+:- import_module make.module_dep_file.
+:- import_module make.module_target.
+:- import_module make.options_file.
+:- import_module make.util.
 :- import_module parse_tree.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_deps_graph.
+:- import_module parse_tree.module_imports.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
 
+:- import_module bool.
 :- import_module digraph.
 :- import_module dir.
 :- import_module getopt.
 :- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module maybe.
 :- import_module require.
+:- import_module set.
+:- import_module string.
+:- import_module version_hash_table.
 
 %---------------------------------------------------------------------------%
 

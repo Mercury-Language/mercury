@@ -65,7 +65,9 @@
 :- import_module libs.timestamp.
 :- import_module make.
 :- import_module make.build.
+:- import_module make.module_dep_file.
 :- import_module make.options_file.
+:- import_module make.top_level.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.shared_utilities.
@@ -1966,7 +1968,8 @@ pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, Baggage0, AugCompUnit0,
             generate_mmc_make_module_dependencies, OutputMMCMakeDeps),
         (
             OutputMMCMakeDeps = yes,
-            make_write_module_dep_file(Globals, BurdenedAugCompUnit0, !IO)
+            make.module_dep_file.write_module_dep_file(Globals,
+                BurdenedAugCompUnit0, !IO)
         ;
             OutputMMCMakeDeps = no
         )

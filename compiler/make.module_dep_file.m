@@ -20,8 +20,11 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module make.make_info.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
+:- import_module parse_tree.module_imports.
 
 :- import_module io.
 
@@ -44,8 +47,13 @@
 :- implementation.
 
 :- import_module libs.file_util.
+:- import_module libs.maybe_succeeded.
+:- import_module libs.options.
 :- import_module libs.process_util.
-:- import_module parse_tree.
+:- import_module libs.timestamp.
+:- import_module make.build.
+:- import_module make.module_target.
+:- import_module make.util.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.get_dependencies.
@@ -59,12 +67,20 @@
 :- import_module parse_tree.read_modules.
 :- import_module parse_tree.write_module_interface_files.
 
+:- import_module bool.
 :- import_module dir.
 :- import_module getopt.
+:- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module mercury_term_parser.
+:- import_module require.
+:- import_module set.
+:- import_module string.
 :- import_module term.
 :- import_module term_io.
+
+%---------------------------------------------------------------------------%
 
     % The version 1 module_dep file format is the same as version 2 except that
     % it does not include a list of files included by `pragma foreign_decl' and

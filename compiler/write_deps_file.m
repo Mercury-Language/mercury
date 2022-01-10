@@ -123,7 +123,6 @@
 
 :- import_module libs.options.
 :- import_module libs.mmakefiles.
-:- import_module make.                          % XXX undesirable dependency
 :- import_module parse_tree.find_module.        % XXX undesirable dependency
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.module_cmds.
