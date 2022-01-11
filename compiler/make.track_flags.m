@@ -136,11 +136,12 @@ make_track_flags_files_2(Globals, ModuleName, Succeeded,
 option_table_hash(AllOptionArgs, Hash, !IO) :-
     % This code is part of the --track-flags implementation. We hash the
     % options in the updated globals because they include module-specific
-    % options. The hash is then compared with the hash in a MODULE.track_flags
-    % file, which is updated if it differs. The new timestamp will later force
-    % the module to be recompiled if necessary, but that's later. We are not
-    % compiling the module immediately, so this is the only use we have for
-    % AllOptionArgsGlobals here.
+    % options. The hash is then compared with the hash stored in the
+    % <module_name>.track_flags file, which is updated if it differs.
+    % The new timestamp will later force the module to be recompiled
+    % if necessary, but that's later. We are not compiling the module
+    % immediately, so this is the only use we have for AllOptionArgsGlobals
+    % here.
     %
     % XXX This algorithm processes every option in the option table, even
     % though it does not include all of them in the hash. Virtually all
@@ -163,9 +164,11 @@ option_table_hash(AllOptionArgs, Hash, !IO) :-
     %   However, this consideration never applies only to a single module;
     %   if the default set of option values changes, it applies for all
     %   modules. Therefore it would be enough to record a hash of the
-    %   default values of all options *once* as a "global" value in the
-    %   MODULE.track_flags file, which, if it changes, invalidates *every*
-    %   module-specific entry in that file.
+    %   default values of all options (or a timestamp when the option database
+    %   was last modified, see below) *once* in a global file that is relevant
+    %   to all modules in a directory, named maybe "Mercury.track_flags",
+    %   which, if it changes, invalidates *every* <module_name>.track_flags
+    %   file in that directory.
     %
     % - Second, it is possible for some changes in AllOptionArgs to yield
     %   the same final AllOptionArgsGlobals, if some option in the old
@@ -176,6 +179,13 @@ option_table_hash(AllOptionArgs, Hash, !IO) :-
     %   of a recompilation in such an instance could be more worrysome
     %   than welcome for users who do not know about that option implication,
     %   or who do not appreciate its significance.
+    %
+    % Note also that while the old approach forces a recompilation
+    % both when the set of options changes and when the default value
+    % of an option changes, it does *not* force a recompilation
+    % if the *meaning* of an option is redefined. We could consider
+    % all three of these kinds of changes grounds for updating a timestamp
+    % of when the option database last changed.
     %
     handle_given_options(AllOptionArgs, _, _, OptionsErrors,
         AllOptionArgsGlobals, !IO),
