@@ -23,6 +23,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.maybe_error.
 
 :- import_module io.
 :- import_module list.
@@ -92,7 +93,7 @@
     % Look up $(MAIN_TARGET).
     %
 :- pred lookup_main_target(options_variables::in,
-    maybe(list(string))::out, list(error_spec)::out) is det.
+    maybe1(list(string))::out) is det.
 
     % Look up $(MERCURY_STDLIB_DIR).
     %
@@ -1233,20 +1234,17 @@ report_any_undefined_variables(FileName, LineNumber, UndefVarNames0,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-lookup_main_target(Variables, MaybeMainTarget, Specs) :-
+lookup_main_target(Variables, MaybeMainTarget) :-
     lookup_variable_words(Variables, "MAIN_TARGET", MainTargetResult),
     (
         MainTargetResult = var_result_set(MainTarget),
-        MaybeMainTarget = yes(MainTarget),
-        Specs = []
+        MaybeMainTarget = ok1(MainTarget)
     ;
         MainTargetResult = var_result_unset,
-        MaybeMainTarget = yes([]),
-        Specs = []
+        MaybeMainTarget = ok1([])
     ;
         MainTargetResult = var_result_error(OoMSpecs),
-        MaybeMainTarget = no,
-        Specs = one_or_more_to_list(OoMSpecs)
+        MaybeMainTarget = error1(one_or_more_to_list(OoMSpecs))
     ).
 
 %---------------------------------------------------------------------------%

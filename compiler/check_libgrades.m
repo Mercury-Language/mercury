@@ -17,9 +17,11 @@
 :- interface.
 
 :- import_module libs.globals.
-:- import_module libs.maybe_succeeded.
+:- import_module parse_tree.
+:- import_module parse_tree.error_util.
 
 :- import_module io.
+:- import_module list.
 
 %---------------------------------------------------------------------------%
 
@@ -27,7 +29,7 @@
     % libraries required by the target are installed in the selected grade.
     % Always succeeds if --libgrade-install-check is *not* enabled.
     %
-:- pred maybe_check_libraries_are_installed(globals::in, maybe_succeeded::out,
+:- pred maybe_check_libraries_are_installed(globals::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -41,31 +43,31 @@
 
 :- import_module bool.
 :- import_module dir.
-:- import_module list.
 :- import_module maybe.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
 
-maybe_check_libraries_are_installed(Globals, Succeeded, !IO) :-
+maybe_check_libraries_are_installed(Globals, !:Specs, !IO) :-
     globals.lookup_bool_option(Globals, libgrade_install_check,
         LibgradeCheck),
     (
         LibgradeCheck = yes,
         globals.lookup_accumulating_option(Globals, mercury_libraries, Libs),
         grade_directory_component(Globals, GradeDirName),
-        check_stdlib_is_installed(Globals, GradeDirName, Succeeded0, !IO),
+        !:Specs = [],
+        check_stdlib_is_installed(Globals, GradeDirName, !Specs, !IO),
         list.foldl2(check_library_is_installed(Globals, GradeDirName), Libs,
-            Succeeded0, Succeeded, !IO)
+            !Specs, !IO)
     ;
         LibgradeCheck = no,
-        Succeeded = succeeded
+        !:Specs = []
     ).
 
 :- pred check_stdlib_is_installed(globals::in, string::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-check_stdlib_is_installed(Globals, GradeDirName, Succeeded, !IO) :-
+check_stdlib_is_installed(Globals, GradeDirName, !Specs, !IO) :-
     globals.lookup_maybe_string_option(Globals,
         mercury_standard_library_directory, MaybeStdLibDir),
     (
@@ -92,31 +94,28 @@ check_stdlib_is_installed(Globals, GradeDirName, Succeeded, !IO) :-
         io.open_input(StdLibCheckFile, StdLibCheckFileResult, !IO),
         (
             StdLibCheckFileResult = ok(StdLibCheckFileStream),
-            io.close_input(StdLibCheckFileStream, !IO),
-            Succeeded = succeeded
+            io.close_input(StdLibCheckFileStream, !IO)
         ;
             StdLibCheckFileResult = error(_),
             % XXX It would be better for our *caller* to print this kind of
             % message, since it may know a more appropriate target stream
             % than stderr.
-            io.stderr_stream(Stderr, !IO),
             io.progname_base("mercury_compile", ProgName, !IO),
-            io.format(Stderr,
-                "%s: error: the Mercury standard library "  ++
-                "cannot be found in grade %s.\n",
-                [s(ProgName), s(GradeDirName)], !IO),
-            Succeeded = did_not_succeed
+            Pieces = [fixed(ProgName), suffix(":"), words("error:"),
+                words("the Mercury standard library cannot be found"),
+                words("in grade"), quote(GradeDirName), suffix("."), nl],
+            Spec = simplest_no_context_spec($pred, severity_error,
+                phase_check_libs, Pieces),
+            !:Specs = [Spec | !.Specs]
         )
     ;
-        MaybeStdLibDir = no,
-        Succeeded = succeeded
+        MaybeStdLibDir = no
     ).
 
-:- pred check_library_is_installed(globals::in, string::in,
-    string::in, maybe_succeeded::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
+:- pred check_library_is_installed(globals::in, string::in, string::in,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-check_library_is_installed(Globals, GradeDirName, LibName, !Succeeded, !IO) :-
+check_library_is_installed(Globals, GradeDirName, LibName, !Specs, !IO) :-
     globals.get_target(Globals, Target),
     (
         % In C grades, check for the presence of a library by seeing
@@ -151,12 +150,13 @@ check_library_is_installed(Globals, GradeDirName, LibName, !Succeeded, !IO) :-
         MaybeDirName = ok(_)
     ;
         MaybeDirName = error(_),
-        io.stderr_stream(Stderr, !IO),
         io.progname_base("mercury_compile", ProgName, !IO),
-        io.format(Stderr,
-            "%s: error: the library `%s' cannot be found in grade `%s'.\n",
-            [s(ProgName), s(LibName), s(GradeDirName)], !IO),
-        !:Succeeded = did_not_succeed
+        Pieces = [fixed(ProgName), suffix(":"), words("error:"),
+            words("the library"), quote(LibName), words("cannot be found"),
+            words("in grade"), quote(GradeDirName), suffix("."), nl],
+        Spec = simplest_no_context_spec($pred, severity_error,
+            phase_check_libs, Pieces),
+        !:Specs = [Spec | !.Specs]
     ).
 
 %---------------------------------------------------------------------------%

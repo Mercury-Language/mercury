@@ -111,6 +111,12 @@
                 simp_spec_context       :: prog_context,
                 simp_spec_pieces        :: list(format_component)
             )
+    ;       simplest_no_context_spec(
+                simpnc_id               :: string,
+                simpnc_spec_severity    :: error_severity,
+                simpnc_spec_phase       :: error_phase,
+                simpnc_spec_pieces      :: list(format_component)
+            )
     ;       conditional_spec(
                 cond_id                 :: string,
                 cond_spec_option        :: option,
@@ -180,6 +186,7 @@
 
 :- type error_phase
     --->    phase_options
+    ;       phase_check_libs
     ;       phase_make_target
     ;       phase_read_files
     ;       phase_module_name
@@ -242,7 +249,10 @@
 :- type error_msg
     --->    simplest_msg(
                 simplest_context        :: prog_context,
-                simple_pieces           :: list(format_component)
+                simplest_pieces         :: list(format_component)
+            )
+    ;       simplest_no_context_msg(
+                simplestnc_pieces       :: list(format_component)
             )
     ;       simple_msg(
                 simple_context          :: prog_context,
@@ -784,6 +794,8 @@ extract_spec_phase(Spec, Phase) :-
     ;
         Spec = simplest_spec(_, _, Phase, _, _)
     ;
+        Spec = simplest_no_context_spec(_, _, Phase, _)
+    ;
         Spec = conditional_spec(_, _, _, _, Phase, _)
     ).
 
@@ -793,6 +805,9 @@ extract_spec_msgs(Globals, Spec, Msgs) :-
     ;
         Spec = simplest_spec(_Id, _Severity, _Phase, Context, Pieces),
         Msgs = [simplest_msg(Context, Pieces)]
+    ;
+        Spec = simplest_no_context_spec(_Id, _Severity, _Phase, Pieces),
+        Msgs = [simplest_no_context_msg(Pieces)]
     ;
         Spec = conditional_spec(_Id, Option, MatchValue, _Severity, _Phase,
             Msgs0),
@@ -987,7 +1002,9 @@ does_spec_print_anything(Globals, Spec) :-
 
 does_spec_print_anything_2(Globals, Spec) = Prints :-
     (
-        Spec = simplest_spec(_, _, _, _, _),
+        ( Spec = simplest_spec(_, _, _, _, _)
+        ; Spec = simplest_no_context_spec(_, _, _, _)
+        ),
         Prints = yes
     ;
         Spec = error_spec(_, _, _, Msgs),
@@ -1008,7 +1025,9 @@ does_spec_print_anything_2(Globals, Spec) = Prints :-
 
 does_msg_print_anything(Globals, Msg) = Prints :-
     (
-        Msg = simplest_msg(_, _),
+        ( Msg = simplest_msg(_, _)
+        ; Msg = simplest_no_context_msg(_)
+        ),
         Prints = yes
     ;
         ( Msg = simple_msg(_, MsgComponents)
@@ -1093,6 +1112,7 @@ actual_spec_severity(Globals, Spec) = MaybeSeverity :-
     (
         ( Spec = error_spec(_, Severity, _, _)
         ; Spec = simplest_spec(_, Severity, _, _, _)
+        ; Spec = simplest_no_context_spec(_, Severity, _, _)
         ),
         MaybeSeverity = actual_error_severity(Globals, Severity)
     ;
@@ -1234,6 +1254,10 @@ remove_conditionals_in_spec(Globals, Spec0, Spec) :-
             MaybeActualSeverity = actual_error_severity(Globals, Severity0),
             Msgs = [simplest_msg(Context0, Pieces0)]
         ;
+            Spec0 = simplest_no_context_spec(Id, Severity0, Phase, Pieces0),
+            MaybeActualSeverity = actual_error_severity(Globals, Severity0),
+            Msgs = [simplest_no_context_msg(Pieces0)]
+        ;
             Spec0 = conditional_spec(Id, Option, MatchValue,
                 Severity0, Phase, Msgs0),
             globals.lookup_bool_option(Globals, Option, OptionValue),
@@ -1278,6 +1302,12 @@ remove_conditionals_in_msg(Globals, Msg0, Msg) :-
             Msg0 = simplest_msg(Context, Pieces0),
             Components0 = [always(Pieces0)],
             MaybeContext = yes(Context),
+            TreatAsFirst = do_not_treat_as_first,
+            ExtraIndent = 0
+        ;
+            Msg0 = simplest_no_context_msg(Pieces0),
+            Components0 = [always(Pieces0)],
+            MaybeContext = no,
             TreatAsFirst = do_not_treat_as_first,
             ExtraIndent = 0
         ;
@@ -1420,21 +1450,22 @@ project_msg_context(Msg) = MaybeContext :-
         Msg = simplest_msg(Context, _),
         MaybeContext = yes(Context)
     ;
+        Msg = simplest_no_context_msg(_),
+        MaybeContext = no
+    ;
         Msg = simple_msg(Context, _),
         MaybeContext = yes(Context)
     ;
-        Msg = error_msg(yes(Context), _, _, _),
-        MaybeContext = yes(Context)
-    ;
-        Msg = error_msg(no, _, _, __),
-        MaybeContext = no
+        Msg = error_msg(MaybeContext, _, _, _)
     ).
 
 :- func project_msg_components(error_msg) = list(error_msg_component).
 
 project_msg_components(Msg) = Components :-
     (
-        Msg = simplest_msg(_, Pieces),
+        ( Msg = simplest_msg(_, Pieces)
+        ; Msg = simplest_no_context_msg(Pieces)
+        ),
         Components = [always(Pieces)]
     ;
         Msg = simple_msg(_, Components)
@@ -1488,6 +1519,8 @@ project_spec_phase(Spec) = Phase :-
     ;
         Spec = simplest_spec(_, _, Phase, _, _)
     ;
+        Spec = simplest_no_context_spec(_, _, Phase, _)
+    ;
         Spec = conditional_spec(_, _, _, _, Phase, _)
     ).
 
@@ -1499,6 +1532,7 @@ error_spec_accumulator_to_list(yes(AnyModeSpecSet - AllModeSpecSet)) =
     maybe(mode_report_control).
 
 get_maybe_mode_report_control(phase_options) = no.
+get_maybe_mode_report_control(phase_check_libs) = no.
 get_maybe_mode_report_control(phase_make_target) = no.
 get_maybe_mode_report_control(phase_read_files) = no.
 get_maybe_mode_report_control(phase_module_name) = no.
@@ -1609,6 +1643,10 @@ do_write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors,
         MaybeActual = actual_error_severity(Globals, Severity),
         Msgs1 = [simplest_msg(Context, Pieces)]
     ;
+        Spec = simplest_no_context_spec(Id, Severity, _Phase, Pieces),
+        MaybeActual = actual_error_severity(Globals, Severity),
+        Msgs1 = [simplest_no_context_msg(Pieces)]
+    ;
         Spec = conditional_spec(Id, Option, MatchValue,
             Severity, _Phase, Msgs0),
         globals.lookup_bool_option(Globals, Option, Value),
@@ -1638,6 +1676,9 @@ do_write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors,
                 ; HeadMsg = simple_msg(HeadContext, _)
                 ),
                 MaybeHeadContext = yes(HeadContext)
+            ;
+                HeadMsg = simplest_no_context_msg(_),
+                MaybeHeadContext = no
             ;
                 HeadMsg = error_msg(MaybeHeadContext, _, _, _)
             ),
@@ -1702,6 +1743,12 @@ do_write_error_msgs(Stream, [Msg | Msgs], Globals, !.First, !PrintedSome,
         Msg = simplest_msg(SimpleContext, Pieces),
         Components = [always(Pieces)],
         MaybeContext = yes(SimpleContext),
+        TreatAsFirst = do_not_treat_as_first,
+        ExtraIndentLevel = 0
+    ;
+        Msg = simplest_no_context_msg(Pieces),
+        Components = [always(Pieces)],
+        MaybeContext = no,
         TreatAsFirst = do_not_treat_as_first,
         ExtraIndentLevel = 0
     ;

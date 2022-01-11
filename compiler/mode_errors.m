@@ -1619,8 +1619,8 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
         [always(Preamble),
         verbose_and_nonverbose(VerbosePieces, NonVerbosePieces)]),
     (
-        CalleeModeErrors = [First | _],
-        First = mode_error_info(_, CalleeModeError,
+        CalleeModeErrors = [FirstModeError | _],
+        FirstModeError = mode_error_info(_, CalleeModeError,
             CalleeContext, CalleeModeContext),
         mode_info_set_pred_id(CalleePredId, !ModeInfo),
         mode_info_set_proc_id(CalleeProcId, !ModeInfo),
@@ -1638,6 +1638,9 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
                 LaterHead0 = simplest_msg(LaterContext, Pieces),
                 LaterHead = error_msg(yes(LaterContext), treat_as_first,
                     0, [always(Pieces)])
+            ;
+                LaterHead0 = simplest_no_context_msg(Pieces),
+                LaterHead = error_msg(no, treat_as_first, 0, [always(Pieces)])
             ;
                 LaterHead0 = simple_msg(LaterContext, Components),
                 LaterHead = error_msg(yes(LaterContext), treat_as_first,

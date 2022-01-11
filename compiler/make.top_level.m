@@ -57,6 +57,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.read_modules.
 
@@ -75,64 +76,15 @@
 
 make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
         Targets0, !IO) :-
+    io.progname_base("mercury_compile", ProgName, !IO),
+    get_main_target_if_needed(ProgName, Variables, Targets0, MaybeTargets0),
+    report_any_absolute_targets(ProgName, MaybeTargets0, MaybeTargets),
     (
-        Targets0 = [],
-        lookup_main_target(Variables, MaybeTargets, LookupSpecs),
-        write_error_specs_ignore(Globals, LookupSpecs, !IO),
-        LookupErrors = contains_errors(Globals, LookupSpecs),
-        (
-            LookupErrors = yes,
-            Targets = [],
-            Continue0 = no
-        ;
-            LookupErrors = no,
-            (
-                MaybeTargets = no,
-                Targets = [],
-                Continue0 = no
-            ;
-                MaybeTargets = yes(Targets),
-                (
-                    Targets = [_ | _],
-                    Continue0 = yes
-                ;
-                    Targets = [],
-                    Continue0 = no,
-                    io.write_string("** Error: no targets specified " ++
-                        "and `MAIN_TARGET' not defined.\n", !IO)
-                )
-            )
-        )
-    ;
-        Targets0 = [_ | _],
-        Continue0 = yes,
-        Targets = Targets0
-    ),
-
-    % Ensure none of the targets contains the directory_separator.
-    % Such targets are not supported by the rest of the code.
-
-    list.filter(
-        ( pred(Target::in) is semidet :-
-            string.contains_char(Target, dir.directory_separator)
-        ), Targets, AbsTargets),
-    (
-        AbsTargets = [],
-        Continue = Continue0
-    ;
-        AbsTargets = [_ | _],
-        Continue = no,
-        io.progname_base("mercury_compile", ProgName, !IO),
-        AbsTargetSpecs =
-            list.map(report_target_with_dir_component(ProgName), AbsTargets),
+        MaybeTargets = error1(Specs),
         io.stderr_stream(StdErr, !IO),
-        write_error_specs_ignore(StdErr, Globals, AbsTargetSpecs, !IO)
-    ),
-    (
-        Continue = no,
-        io.set_exit_status(1, !IO)
+        write_error_specs_ignore(StdErr, Globals, Specs, !IO)
     ;
-        Continue = yes,
+        MaybeTargets = ok1(Targets),
         globals.lookup_bool_option(Globals, keep_going, KeepGoingBool),
         ( KeepGoingBool = no,  KeepGoing = do_not_keep_going
         ; KeepGoingBool = yes, KeepGoing = do_keep_going
@@ -193,17 +145,84 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
         % Build the targets, stopping on any errors if `--keep-going'
         % was not set.
         foldl2_maybe_stop_at_error(KeepGoing, make_target, Globals,
-            ClassifiedTargets, Succeeded, MakeInfo0, _MakeInfo, !IO),
+            ClassifiedTargets, Succeeded,
+            MakeInfo0, _MakeInfo, !IO),
         maybe_set_exit_status(Succeeded, !IO)
+    ).
+
+%---------------------%
+
+:- pred get_main_target_if_needed(string::in, options_variables::in,
+    list(string)::in, maybe1(list(string))::out) is det.
+
+get_main_target_if_needed(ProgName, Variables, Targets0, MaybeTargets) :-
+    (
+        Targets0 = [],
+        lookup_main_target(Variables, MaybeMainTargets),
+        (
+            MaybeMainTargets = error1(Specs),
+            MaybeTargets = error1(Specs)
+        ;
+            MaybeMainTargets = ok1(MainTargets),
+            (
+                MainTargets = [_ | _],
+                MaybeTargets = ok1(MainTargets)
+            ;
+                MainTargets = [],
+                Pieces = [quote(ProgName), suffix(":"),
+                    words("*** Error: no targets specified and"),
+                    quote("MAIN_TARGET"), words("not defined."), nl],
+                Spec = simplest_no_context_spec($pred, severity_error,
+                    phase_options, Pieces),
+                MaybeTargets = error1([Spec])
+            )
+        )
+    ;
+        Targets0 = [_ | _],
+        MaybeTargets = ok1(Targets0)
+    ).
+
+%---------------------%
+
+    % Ensure none of the targets contains the directory_separator.
+    % Such targets are not supported by the rest of the code.
+    %
+:- pred report_any_absolute_targets(string::in, maybe1(list(string))::in,
+    maybe1(list(string))::out) is det.
+
+report_any_absolute_targets(ProgName, MaybeTargets0, MaybeTargets) :-
+    (
+        MaybeTargets0 = error1(_),
+        MaybeTargets = MaybeTargets0
+    ;
+        MaybeTargets0 = ok1(Targets),
+        IsAbsoluteFileName =
+            ( pred(Target::in) is semidet :-
+                string.contains_char(Target, dir.directory_separator)
+            ),
+        list.filter(IsAbsoluteFileName, Targets, AbsTargets),
+        (
+            AbsTargets = [],
+            MaybeTargets = MaybeTargets0
+        ;
+            AbsTargets = [_ | _],
+            AbsTargetSpecs =
+                list.map(report_target_with_dir_component(ProgName),
+                AbsTargets),
+            MaybeTargets = error1(AbsTargetSpecs)
+        )
     ).
 
 :- func report_target_with_dir_component(string, string) = error_spec.
 
 report_target_with_dir_component(ProgName, Target) = Spec :-
-    Pieces = [fixed(ProgName), suffix(":"), fixed(Target), suffix(":"), nl,
-        words("Make target must not contain any directory component."), nl],
+    Pieces = [fixed(ProgName), suffix(":"),
+        words("a make target may not contain a directory component,"),
+        words("but"), quote(Target), words("does."), nl],
     Spec = error_spec($pred, severity_error, phase_make_target,
         [error_msg(no, treat_as_first, 0, [always(Pieces)])]).
+
+%---------------------%
 
 :- pred make_target(globals::in, pair(module_name, target_type)::in,
     maybe_succeeded::out,
@@ -232,11 +251,15 @@ make_target(Globals, Target, Succeeded, !Info, !IO) :-
             LinkedTargetFile = linked_target_file(ModuleName,
                 ProgramTargetType),
             make_linked_target(Globals, LinkedTargetFile, Succeeded,
-                !Info, !IO)
+                !Info, [], Specs, !IO),
+            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+            write_error_specs_ignore(ErrorStream, Globals, Specs, !IO)
         ;
             TargetType = misc_target(MiscTargetType),
             make_misc_target(Globals, ModuleName - MiscTargetType, Succeeded,
-                !Info, !IO)
+                !Info, [], Specs, !IO),
+            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+            write_error_specs_ignore(ErrorStream, Globals, Specs, !IO)
         )
     ;
         TrackFlagsSucceeded = did_not_succeed,

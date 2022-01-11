@@ -22,29 +22,32 @@
 :- import_module make.make_info.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
+:- import_module parse_tree.error_util.
 
 :- import_module io.
+:- import_module list.
 :- import_module pair.
 
 %---------------------------------------------------------------------------%
 
-    % make_linked_target(Globals, Target, Succeeded, !Info, !IO):
+    % make_linked_target(Globals, Target, Succeeded, !Info, !Specs, !IO):
     %
     % Build a library or an executable.
     %
 :- pred make_linked_target(globals::in, linked_target_file::in,
-    maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    maybe_succeeded::out, make_info::in, make_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-    % make_misc_target(Globals, Target, Succeeded, !Info, !IO):
+    % make_misc_target(Globals, Target, Succeeded, !Info, !Specs, !IO):
     %
     % Handle miscellaneous target types, including clean-up, library
     % installation, and building all files of a given type for all
     % modules in the program.
     %
 :- pred make_misc_target(globals::in, pair(module_name, misc_target_type)::in,
-    maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    maybe_succeeded::out, make_info::in, make_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -67,8 +70,6 @@
 :- import_module make.module_target.
 :- import_module make.options_file.
 :- import_module make.util.
-:- import_module parse_tree.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_deps_graph.
@@ -83,7 +84,6 @@
 :- import_module dir.
 :- import_module getopt.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -94,7 +94,7 @@
 %---------------------------------------------------------------------------%
 
 make_linked_target(Globals, LinkedTargetFile, LinkedTargetSucceeded,
-        !Info, !IO) :-
+        !Info, !Specs, !IO) :-
     LinkedTargetFile = linked_target_file(_MainModuleName, FileType),
     (
         FileType = shared_library,
@@ -121,25 +121,25 @@ make_linked_target(Globals, LinkedTargetFile, LinkedTargetSucceeded,
     then
         LinkedTargetSucceeded = succeeded
     else
-        maybe_check_libraries_are_installed(Globals, LibgradeCheckSucceeded,
-            !IO),
+        maybe_check_libraries_are_installed(Globals, LibgradeCheckSpecs, !IO),
         (
-            LibgradeCheckSucceeded = succeeded,
-            maybe_with_analysis_cache_dir(Globals,
+            LibgradeCheckSpecs = [],
+            maybe_with_analysis_cache_dir_3(Globals,
                 make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions),
-                LinkedTargetSucceeded, !Info, !IO)
+                LinkedTargetSucceeded, !Info, !Specs, !IO)
         ;
-            LibgradeCheckSucceeded = did_not_succeed,
+            LibgradeCheckSpecs = [_ | _],
+            !:Specs = LibgradeCheckSpecs ++ !.Specs,
             LinkedTargetSucceeded = did_not_succeed
         )
     ).
 
 :- pred make_linked_target_1(globals::in, linked_target_file::in,
-    list(string)::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    list(string)::in, maybe_succeeded::out, make_info::in, make_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions, Succeeded,
-        !Info, !IO) :-
+        !Info, !Specs, !IO) :-
     LinkedTargetFile = linked_target_file(MainModuleName, _FileType),
 
     % When using `--intermodule-analysis', perform an analysis pass first.
@@ -151,7 +151,8 @@ make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions, Succeeded,
     (
         IntermodAnalysis = yes,
         make_misc_target_builder(Globals, MainModuleName,
-            misc_target_build_analyses, IntermodAnalysisSucceeded, !Info, !IO)
+            misc_target_build_analyses, IntermodAnalysisSucceeded,
+            !Info, !Specs, !IO)
     ;
         IntermodAnalysis = no,
         IntermodAnalysisSucceeded = succeeded
@@ -808,7 +809,7 @@ delete_java_class_timestamps(FileName, MaybeTimestamp, !Timestamps) :-
 %---------------------------------------------------------------------------%
 
 make_misc_target(Globals, MainModuleName - TargetType, Succeeded,
-        !Info, !IO) :-
+        !Info, !Specs, !IO) :-
     DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
     OptionVariables = !.Info ^ mki_options_variables,
     OptionArgs = !.Info ^ mki_option_args,
@@ -819,7 +820,7 @@ make_misc_target(Globals, MainModuleName - TargetType, Succeeded,
     (
         MayBuild = may_build(_AllOptionArgs, BuildGlobals, _Warnings),
         make_misc_target_builder(BuildGlobals, MainModuleName,
-            TargetType, Succeeded, !Info, !IO)
+            TargetType, Succeeded, !Info, !Specs, !IO)
     ;
         MayBuild = may_not_build(Specs),
         get_error_output_stream(Globals, MainModuleName, ErrorStream, !IO),
@@ -828,11 +829,11 @@ make_misc_target(Globals, MainModuleName - TargetType, Succeeded,
     ).
 
 :- pred make_misc_target_builder(globals::in, module_name::in,
-    misc_target_type::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    misc_target_type::in, maybe_succeeded::out, make_info::in, make_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
-        !Info, !IO) :-
+        !Info, !Specs, !IO) :-
     % Don't rebuild .module_dep files when cleaning up.
     RebuildModuleDeps = !.Info ^ mki_rebuild_module_deps,
     ( if
@@ -877,7 +878,7 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
             then
                 Succeeded = did_not_succeed
             else
-                maybe_with_analysis_cache_dir(Globals,
+                maybe_with_analysis_cache_dir_2(Globals,
                     foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
                         make_module_target, Globals,
                         make_dependency_list(TargetModules, ModuleTargetType)),
@@ -887,7 +888,7 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
         )
     ;
         TargetType = misc_target_build_analyses,
-        maybe_with_analysis_cache_dir(Globals,
+        maybe_with_analysis_cache_dir_2(Globals,
             build_analysis_files(Globals, MainModuleName, AllModules,
                 Succeeded0),
             Succeeded, !Info, !IO)
@@ -897,9 +898,9 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
             !Info, !IO),
         (
             IntSucceeded = succeeded,
-            maybe_with_analysis_cache_dir(Globals,
+            maybe_with_analysis_cache_dir_3(Globals,
                 build_library(MainModuleName, AllModules, Globals),
-                Succeeded, !Info, !IO)
+                Succeeded, !Info, !Specs, !IO)
         ;
             IntSucceeded = did_not_succeed,
             Succeeded = did_not_succeed
@@ -907,7 +908,7 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
     ;
         TargetType = misc_target_install_library,
         make_misc_target(Globals, MainModuleName - misc_target_build_library,
-            LibSucceeded, !Info, !IO),
+            LibSucceeded, !Info, !Specs, !IO),
         (
             LibSucceeded = succeeded,
             install_library(Globals, MainModuleName, Succeeded, !Info, !IO)
@@ -992,18 +993,96 @@ collect_modules_with_children(Globals, ModuleName, !ParentModules,
 
 %---------------------------------------------------------------------------%
 
-:- type build0(Info) == pred(maybe_succeeded, Info, Info, io, io).
-:- inst build0 == (pred(out, in, out, di, uo) is det).
+:- type build2(Info) == pred(maybe_succeeded, Info, Info, io, io).
+:- inst build2 == (pred(out, in, out, di, uo) is det).
 
     % If `--analysis-file-cache' is enabled, create a temporary directory for
     % holding analysis cache files and pass that to child processes.
     % After P is finished, remove the cache directory completely.
     %
-:- pred maybe_with_analysis_cache_dir(globals::in,
-    build0(make_info)::in(build0), maybe_succeeded::out,
+:- pred maybe_with_analysis_cache_dir_2(globals::in,
+    build2(make_info)::in(build2), maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-maybe_with_analysis_cache_dir(Globals, P, Succeeded, !Info, !IO) :-
+maybe_with_analysis_cache_dir_2(Globals, P, Succeeded, !Info, !IO) :-
+    should_we_use_analysis_cache_dir(Globals, !.Info,
+        UseAnalysisCacheDir, !IO),
+    (
+        UseAnalysisCacheDir = do_not_use_analysis_cache_dir,
+        P(Succeeded, !Info, !IO)
+    ;
+        UseAnalysisCacheDir = use_analysis_cache_dir(CacheDir, CacheDirOption),
+        OrigOptionArgs = !.Info ^ mki_option_args,
+        % Pass the name of the cache directory to child processes
+        !Info ^ mki_option_args :=
+            OrigOptionArgs ++ [CacheDirOption, CacheDir],
+        globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+        setup_checking_for_interrupt(Cookie, !IO),
+        P(Succeeded1, !Info, !IO),
+        Cleanup = remove_cache_dir(Globals, CacheDir),
+        teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
+            Succeeded1, Succeeded, !Info, !IO),
+        remove_cache_dir(Globals, CacheDir, !Info, !IO),
+        !Info ^ mki_option_args := OrigOptionArgs
+    ;
+        UseAnalysisCacheDir = analysis_cache_dir_create_failed,
+        Succeeded = did_not_succeed
+    ).
+
+%---------------------%
+
+:- type build3(Info) == pred(maybe_succeeded, Info, Info,
+    list(error_spec), list(error_spec), io, io).
+:- inst build3 == (pred(out, in, out, in, out, di, uo) is det).
+
+    % If `--analysis-file-cache' is enabled, create a temporary directory for
+    % holding analysis cache files and pass that to child processes.
+    % After P is finished, remove the cache directory completely.
+    %
+:- pred maybe_with_analysis_cache_dir_3(globals::in,
+    build3(make_info)::in(build3), maybe_succeeded::out,
+    make_info::in, make_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+maybe_with_analysis_cache_dir_3(Globals, P, Succeeded, !Info, !Specs, !IO) :-
+    should_we_use_analysis_cache_dir(Globals, !.Info,
+        UseAnalysisCacheDir, !IO),
+    (
+        UseAnalysisCacheDir = do_not_use_analysis_cache_dir,
+        P(Succeeded, !Info, !Specs, !IO)
+    ;
+        UseAnalysisCacheDir = use_analysis_cache_dir(CacheDir, CacheDirOption),
+        OrigOptionArgs = !.Info ^ mki_option_args,
+        % Pass the name of the cache directory to child processes
+        !Info ^ mki_option_args :=
+            OrigOptionArgs ++ [CacheDirOption, CacheDir],
+        globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+        setup_checking_for_interrupt(Cookie, !IO),
+        P(Succeeded1, !Info, !Specs, !IO),
+        Cleanup = remove_cache_dir(Globals, CacheDir),
+        teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
+            Succeeded1, Succeeded, !Info, !IO),
+        remove_cache_dir(Globals, CacheDir, !Info, !IO),
+        !Info ^ mki_option_args := OrigOptionArgs
+    ;
+        UseAnalysisCacheDir = analysis_cache_dir_create_failed,
+        Succeeded = did_not_succeed
+    ).
+
+%---------------------%
+
+:- type maybe_use_analysis_cache_dir
+    --->    do_not_use_analysis_cache_dir
+    ;       use_analysis_cache_dir(string, string)
+    ;       analysis_cache_dir_create_failed.
+
+    % If `--analysis-file-cache' is enabled, create a temporary directory for
+    % holding analysis cache files.
+    %
+:- pred should_we_use_analysis_cache_dir(globals::in, make_info::in,
+    maybe_use_analysis_cache_dir::out, io::di, io::uo) is det.
+
+should_we_use_analysis_cache_dir(Globals, Info, UseAnalysisCacheDir, !IO) :-
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
     globals.lookup_bool_option(Globals, analysis_file_cache, Caching),
@@ -1019,31 +1098,23 @@ maybe_with_analysis_cache_dir(Globals, P, Succeeded, !Info, !IO) :-
             CacheDir0 \= ""
         ;
             % Analysis file cache directory already set up in a parent call.
-            list.member(CacheDirOption, !.Info ^ mki_option_args)
+            list.member(CacheDirOption, Info ^ mki_option_args)
         )
     then
-        P(Succeeded, !Info, !IO)
+        UseAnalysisCacheDir = do_not_use_analysis_cache_dir
     else
-        create_analysis_cache_dir(Globals, Succeeded0, CacheDir, !IO),
+        create_analysis_cache_dir(Globals, Succeeded, CacheDir, !IO),
         (
-            Succeeded0 = succeeded,
-            OrigOptionArgs = !.Info ^ mki_option_args,
-            % Pass the name of the cache directory to child processes
-            !Info ^ mki_option_args :=
-                OrigOptionArgs ++ [CacheDirOption, CacheDir],
-            globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-            setup_checking_for_interrupt(Cookie, !IO),
-            P(Succeeded1, !Info, !IO),
-            Cleanup = remove_cache_dir(Globals, CacheDir),
-            teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
-                Succeeded1, Succeeded, !Info, !IO),
-            remove_cache_dir(Globals, CacheDir, !Info, !IO),
-            !Info ^ mki_option_args := OrigOptionArgs
+            Succeeded = succeeded,
+            UseAnalysisCacheDir =
+                use_analysis_cache_dir(CacheDir, CacheDirOption)
         ;
-            Succeeded0 = did_not_succeed,
-            Succeeded = did_not_succeed
+            Succeeded = did_not_succeed,
+            UseAnalysisCacheDir = analysis_cache_dir_create_failed
         )
     ).
+
+%---------------------%
 
 :- pred create_analysis_cache_dir(globals::in, maybe_succeeded::out,
     string::out, io::di, io::uo) is det.
@@ -1275,31 +1346,35 @@ reset_analysis_registry_dependency_status(ModuleName, !Info) :-
 %---------------------------------------------------------------------------%
 
 :- pred build_library(module_name::in, list(module_name)::in, globals::in,
-    maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    maybe_succeeded::out, make_info::in, make_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-build_library(MainModuleName, AllModules, Globals, Succeeded, !Info, !IO) :-
+build_library(MainModuleName, AllModules, Globals, Succeeded,
+        !Info, !Specs, !IO) :-
     globals.get_target(Globals, Target),
     (
         Target = target_c,
         build_c_library(Globals, MainModuleName, AllModules, Succeeded,
-            !Info, !IO)
+            !Info, !Specs, !IO)
     ;
         Target = target_csharp,
-        build_csharp_library(Globals, MainModuleName, Succeeded, !Info, !IO)
+        build_csharp_library(Globals, MainModuleName, Succeeded,
+            !Info, !Specs, !IO)
     ;
         Target = target_java,
-        build_java_library(Globals, MainModuleName, Succeeded, !Info, !IO)
+        build_java_library(Globals, MainModuleName, Succeeded,
+            !Info, !Specs, !IO)
     ).
 
 :- pred build_c_library(globals::in, module_name::in, list(module_name)::in,
-    maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    maybe_succeeded::out, make_info::in, make_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-build_c_library(Globals, MainModuleName, AllModules, Succeeded, !Info, !IO) :-
+build_c_library(Globals, MainModuleName, AllModules, Succeeded,
+        !Info, !Specs, !IO) :-
     make_linked_target(Globals,
         linked_target_file(MainModuleName, static_library),
-        StaticSucceeded, !Info, !IO),
+        StaticSucceeded, !Info, !Specs, !IO),
     shared_libraries_supported(Globals, SharedLibsSupported),
     (
         StaticSucceeded = succeeded,
@@ -1307,7 +1382,7 @@ build_c_library(Globals, MainModuleName, AllModules, Succeeded, !Info, !IO) :-
             SharedLibsSupported = yes,
             make_linked_target(Globals,
                 linked_target_file(MainModuleName, shared_library),
-                SharedLibsSucceeded, !Info, !IO)
+                SharedLibsSucceeded, !Info, !Specs, !IO)
         ;
             SharedLibsSupported = no,
             SharedLibsSucceeded = succeeded
@@ -1334,22 +1409,22 @@ build_c_library(Globals, MainModuleName, AllModules, Succeeded, !Info, !IO) :-
     ).
 
 :- pred build_csharp_library(globals::in, module_name::in,
-    maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    maybe_succeeded::out, make_info::in, make_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-build_csharp_library(Globals, MainModuleName, Succeeded, !Info, !IO) :-
+build_csharp_library(Globals, MainModuleName, Succeeded, !Info, !Specs, !IO) :-
     make_linked_target(Globals,
         linked_target_file(MainModuleName, csharp_library),
-        Succeeded, !Info, !IO).
+        Succeeded, !Info, !Specs, !IO).
 
 :- pred build_java_library(globals::in, module_name::in,
-    maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    maybe_succeeded::out, make_info::in, make_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-build_java_library(Globals, MainModuleName, Succeeded, !Info, !IO) :-
+build_java_library(Globals, MainModuleName, Succeeded, !Info, !Specs, !IO) :-
     make_linked_target(Globals,
         linked_target_file(MainModuleName, java_archive),
-        Succeeded, !Info, !IO).
+        Succeeded, !Info, !Specs, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1577,7 +1652,7 @@ remove_grade_dependent_targets(File, _Status, StatusMap0) = StatusMap :-
 install_library_grade_2(Globals, LinkSucceeded0, ModuleName, AllModules,
         Info0, CleanAfter, Succeeded, !IO) :-
     make_misc_target(Globals, ModuleName - misc_target_build_library,
-        LibSucceeded, Info0, Info1, !IO),
+        LibSucceeded, Info0, Info1, [], Specs, !IO),
     (
         LibSucceeded = succeeded,
         % `GradeDir' differs from `Grade' in that it is in canonical form.
@@ -1588,6 +1663,7 @@ install_library_grade_2(Globals, LinkSucceeded0, ModuleName, AllModules,
             Info2, _Info, !IO)
     ;
         LibSucceeded = did_not_succeed,
+        write_error_specs_ignore(Globals, Specs, !IO),
         Succeeded = did_not_succeed
     ).
 

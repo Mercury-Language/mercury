@@ -665,9 +665,11 @@ main_after_setup(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
     else
         globals.get_op_mode(Globals, OpMode),
         HaveReadModuleMaps0 = init_have_read_module_maps,
+        Specs0 = [],
         do_op_mode(Globals, OpMode, DetectedGradeFlags,
             OptionVariables, OptionArgs, Args,
-            HaveReadModuleMaps0, _HaveReadModuleMaps, !IO)
+            HaveReadModuleMaps0, _HaveReadModuleMaps, Specs0, Specs, !IO),
+        write_error_specs_ignore(Globals, Specs, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -676,10 +678,10 @@ main_after_setup(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
     list(string)::in, options_variables::in,
     list(string)::in, list(string)::in,
     have_read_module_maps::in, have_read_module_maps::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 do_op_mode(Globals, OpMode, DetectedGradeFlags, OptionVariables,
-        OptionArgs, Args, !HaveReadModuleMaps, !IO) :-
+        OptionArgs, Args, !HaveReadModuleMaps, !Specs, !IO) :-
     (
         OpMode = opm_top_make,
         make_process_compiler_args(Globals, DetectedGradeFlags,
@@ -706,7 +708,7 @@ do_op_mode(Globals, OpMode, DetectedGradeFlags, OptionVariables,
         else
             do_op_mode_args(Globals, OpModeArgs, FileNamesFromStdin,
                 DetectedGradeFlags, OptionVariables, OptionArgs, Args,
-                !HaveReadModuleMaps, !IO)
+                !HaveReadModuleMaps, !Specs, !IO)
         )
     ).
 
@@ -829,23 +831,23 @@ do_op_mode_query(Globals, OpModeQuery, !IO) :-
     list(string)::in, options_variables::in,
     list(string)::in, list(string)::in,
     have_read_module_maps::in, have_read_module_maps::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 do_op_mode_args(Globals, OpModeArgs, FileNamesFromStdin, DetectedGradeFlags,
-        OptionVariables, OptionArgs, Args, !HaveReadModuleMaps, !IO) :-
+        OptionVariables, OptionArgs, Args, !HaveReadModuleMaps, !Specs, !IO) :-
     (
         FileNamesFromStdin = yes,
         io.stdin_stream(StdIn, !IO),
         process_compiler_stdin_args(Globals, StdIn, OpModeArgs,
             DetectedGradeFlags, OptionVariables, OptionArgs,
             cord.empty, ModulesToLinkCord, cord.empty, ExtraObjFilesCord,
-            !HaveReadModuleMaps, !IO)
+            !HaveReadModuleMaps, !Specs, !IO)
     ;
         FileNamesFromStdin = no,
         process_compiler_cmd_line_args(Globals, OpModeArgs,
             DetectedGradeFlags, OptionVariables, OptionArgs, Args,
             cord.empty, ModulesToLinkCord, cord.empty, ExtraObjFilesCord,
-            !HaveReadModuleMaps, !IO)
+            !HaveReadModuleMaps, !Specs, !IO)
     ),
     ModulesToLink = cord.list(ModulesToLinkCord),
     ExtraObjFiles = cord.list(ExtraObjFilesCord),
@@ -970,11 +972,11 @@ maybe_print_delayed_error_messages(ErrorStream, Globals, !IO) :-
     cord(string)::in, cord(string)::out,
     cord(string)::in, cord(string)::out,
     have_read_module_maps::in, have_read_module_maps::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 process_compiler_stdin_args(Globals, StdIn, OpModeArgs,
         DetectedGradeFlags, OptionVariables, OptionArgs,
-        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !IO) :-
+        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !Specs, !IO) :-
     ( if cord.is_empty(!.Modules) then
         true
     else
@@ -986,12 +988,12 @@ process_compiler_stdin_args(Globals, StdIn, OpModeArgs,
         Arg = string.rstrip(Line),
         process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags,
             OptionVariables, OptionArgs, Arg, ArgModules, ArgExtraObjFiles,
-            !HaveReadModuleMaps, !IO),
+            !HaveReadModuleMaps, !Specs, !IO),
         !:Modules = !.Modules ++ cord.from_list(ArgModules),
         !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
         process_compiler_stdin_args(Globals, StdIn, OpModeArgs,
             DetectedGradeFlags, OptionVariables, OptionArgs,
-            !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !IO)
+            !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !Specs, !IO)
     ;
         FileResult = eof
     ;
@@ -1009,16 +1011,16 @@ process_compiler_stdin_args(Globals, StdIn, OpModeArgs,
     list(string)::in, list(string)::in,
     cord(string)::in, cord(string)::out, cord(string)::in, cord(string)::out,
     have_read_module_maps::in, have_read_module_maps::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 process_compiler_cmd_line_args(_, _, _, _, _, [],
-        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !IO).
+        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !Specs, !IO).
 process_compiler_cmd_line_args(Globals, OpModeArgs, DetectedGradeFlags,
         OptionVariables, OptionArgs, [Arg | Args],
-        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !IO) :-
+        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !Specs, !IO) :-
     process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags,
         OptionVariables, OptionArgs, Arg, ArgModules, ArgExtraObjFiles,
-        !HaveReadModuleMaps, !IO),
+        !HaveReadModuleMaps, !Specs, !IO),
     (
         Args = [_ | _],
         garbage_collect(!IO)
@@ -1029,7 +1031,7 @@ process_compiler_cmd_line_args(Globals, OpModeArgs, DetectedGradeFlags,
     !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
     process_compiler_cmd_line_args(Globals, OpModeArgs, DetectedGradeFlags,
         OptionVariables, OptionArgs, Args, !Modules, !ExtraObjFiles,
-        !HaveReadModuleMaps, !IO).
+        !HaveReadModuleMaps, !Specs, !IO).
 
     % Figure out whether the compiler argument is a module name or a file name.
     % Open the specified file or module, and process it.
@@ -1047,11 +1049,11 @@ process_compiler_cmd_line_args(Globals, OpModeArgs, DetectedGradeFlags,
     list(string)::in, options_variables::in,
     list(string)::in, string::in, list(string)::out, list(string)::out,
     have_read_module_maps::in, have_read_module_maps::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
         OptionArgs, Arg, ModulesToLink, ExtraObjFiles,
-        !HaveReadModuleMaps, !IO) :-
+        !HaveReadModuleMaps, !Specs, !IO) :-
     FileOrModule = string_to_file_or_module(Arg),
     globals.lookup_bool_option(Globals, invoked_by_mmc_make, InvokedByMake),
     (
@@ -1070,14 +1072,15 @@ process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
         ;
             MayBuild = may_build(_AllOptionArgs, BuildGlobals, _Warnings),
             maybe_check_libraries_are_installed(Globals,
-                LibgradeCheckSucceeded, !IO),
+                LibgradeCheckSpecs, !IO),
             (
-                LibgradeCheckSucceeded = succeeded,
+                LibgradeCheckSpecs = [],
                 do_process_compiler_arg(BuildGlobals, OpModeArgs, OptionArgs,
                     FileOrModule, ModulesToLink, ExtraObjFiles,
                     !HaveReadModuleMaps, !IO)
             ;
-                LibgradeCheckSucceeded = did_not_succeed,
+                LibgradeCheckSpecs = [_ | _],
+                !:Specs = LibgradeCheckSpecs ++ !.Specs,
                 ModulesToLink = [],
                 ExtraObjFiles = []
             )
