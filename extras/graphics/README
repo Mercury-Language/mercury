@@ -23,13 +23,12 @@ and we'll see about incorporating enhancements in the main distribution.
                                 library.
 					
 	samples/
-		calc/		A calculator that uses mercury_tcltk
+		calc/		A calculator that uses mercury_tcltk.
 
+		gears/		The classic OpenGL gears demo.
+	
 		maze/		Draws pretty mazes in 3D using OpenGL
 				and GLUT.
-
-		pent/		Places pentominoes on a board in 3D 
-				using OpenGL and GLUT.
 
 We haven't worked out how to prevent the Tcl/Tk library from giving a
 tcl prompt when it enters the event loop. If you know how, let us know!
