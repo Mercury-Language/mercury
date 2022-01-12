@@ -10,14 +10,16 @@ include Mercury.options
 
 # You may need to modify the line below
 
-MLLIBS    = -ltk8.4 -ltcl8.4 -L/usr/X11R6/lib -lX11 -lXmu -lXext -lm -ldl \
+TCL_TK_VERSION=8.6
+
+MLLIBS    = -ltk$(TCL_TK_VERSION) -ltcl$(TCL_TK_VERSION) -L/usr/X11R6/lib -lX11 -lXext -lm -ldl \
    	    -lXt -lICE -lSM
 
 MLFLAGS	  = -R/usr/X11R6/lib
 
 # On some Linux machines you may need to let mgnuc know where the
-# tcl/tk header files are.
-# EXTRA_CFLAGS = -I/usr/include/tcl8.0
+# Tcl/Tk header files are.
+EXTRA_CFLAGS = -I/usr/include/tcl -I/usr/include/tk
 
 LIBRARY = libmercury_tcltk
 

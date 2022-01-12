@@ -301,7 +301,7 @@ mtcltk_do_callback(ClientData clientData, Tcl_Interp *interp,
     }
     strcpy(t_result, m_result);
 
-    Tcl_SetResult(interp, u, TCL_DYNAMIC);
+    Tcl_SetResult(interp, t_result, TCL_DYNAMIC);
 /*
     fprintf(stderr, ""mercury result: `%s'\n"", m_result);
 */
