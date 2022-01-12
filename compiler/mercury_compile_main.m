@@ -684,7 +684,12 @@ do_op_mode(Globals, OpMode, DetectedGradeFlags, OptionVariables,
         OptionArgs, Args, !HaveReadModuleMaps, !Specs, !IO) :-
     (
         OpMode = opm_top_make,
-        make_process_compiler_args(Globals, DetectedGradeFlags,
+        % make_process_compiler_args itself does not pay attention to the
+        % value of filenames_from_stdin, but we definitely should not let it
+        % pass filenames_from_stdin=yes to any subcompilations.
+        globals.set_option(filenames_from_stdin, bool(no),
+            Globals, MakeGlobals),
+        make_process_compiler_args(MakeGlobals, DetectedGradeFlags,
             OptionVariables, OptionArgs, Args, !IO)
     ;
         OpMode = opm_top_generate_source_file_mapping,
@@ -835,19 +840,49 @@ do_op_mode_query(Globals, OpModeQuery, !IO) :-
 
 do_op_mode_args(Globals, OpModeArgs, FileNamesFromStdin, DetectedGradeFlags,
         OptionVariables, OptionArgs, Args, !HaveReadModuleMaps, !Specs, !IO) :-
+    globals.lookup_bool_option(Globals, invoked_by_mmc_make, InvokedByMake),
     (
         FileNamesFromStdin = yes,
+        % Mmc --make does not set --filenames-from-stdin.
+        expect(unify(InvokedByMake, no), $pred, "InvokedByMake != no"),
         io.stdin_stream(StdIn, !IO),
-        process_compiler_stdin_args(Globals, StdIn, OpModeArgs,
+        setup_and_process_compiler_stdin_args(Globals, StdIn, OpModeArgs,
             DetectedGradeFlags, OptionVariables, OptionArgs,
             cord.empty, ModulesToLinkCord, cord.empty, ExtraObjFilesCord,
             !HaveReadModuleMaps, !Specs, !IO)
     ;
         FileNamesFromStdin = no,
-        process_compiler_cmd_line_args(Globals, OpModeArgs,
-            DetectedGradeFlags, OptionVariables, OptionArgs, Args,
-            cord.empty, ModulesToLinkCord, cord.empty, ExtraObjFilesCord,
-            !HaveReadModuleMaps, !Specs, !IO)
+        (
+            InvokedByMake = no,
+            % We used to do this check once per compiler arg, which was
+            % quite wasteful.
+            %
+            % We also used to do this check, as we are we doing now,
+            % only when InvokedByMake = no. I, zs, don't know why, though
+            % I *guess* that it may be that the compiler invocation that *set*
+            % --invoked-by-mmc-make may have done it already.
+            maybe_check_libraries_are_installed(Globals,
+                LibgradeCheckSpecs, !IO),
+            (
+                LibgradeCheckSpecs = [],
+                setup_and_process_compiler_cmd_line_args(Globals, OpModeArgs,
+                    DetectedGradeFlags, OptionVariables, OptionArgs, Args,
+                    cord.empty, ModulesToLinkCord,
+                    cord.empty, ExtraObjFilesCord,
+                    !HaveReadModuleMaps, !Specs, !IO)
+            ;
+                LibgradeCheckSpecs = [_ | _],
+                ModulesToLinkCord = cord.empty,
+                ExtraObjFilesCord = cord.empty
+            )
+        ;
+            InvokedByMake = yes,
+            % `mmc --make' has already set up the options.
+            do_process_compiler_cmd_line_args(Globals, OpModeArgs,
+                OptionArgs, Args,
+                cord.empty, ModulesToLinkCord, cord.empty, ExtraObjFilesCord,
+                !HaveReadModuleMaps, !IO)
+        )
     ),
     ModulesToLink = cord.list(ModulesToLinkCord),
     ExtraObjFiles = cord.list(ExtraObjFilesCord),
@@ -876,8 +911,6 @@ do_op_mode_args(Globals, OpModeArgs, FileNamesFromStdin, DetectedGradeFlags,
                     ProgressStream, !IO),
                 get_error_output_stream(Globals, MainModuleName,
                     ErrorStream, !IO),
-                globals.lookup_bool_option(Globals, invoked_by_mmc_make,
-                    InvokedByMake),
                 (
                     InvokedByMake = yes,
                     % `mmc --make' has already set up the options.
@@ -966,72 +999,101 @@ maybe_print_delayed_error_messages(ErrorStream, Globals, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred process_compiler_stdin_args(globals::in, io.text_input_stream::in,
-    op_mode_args::in, list(string)::in,
+:- pred setup_and_process_compiler_stdin_args(globals::in,
+    io.text_input_stream::in, op_mode_args::in, list(string)::in,
     options_variables::in, list(string)::in,
     cord(string)::in, cord(string)::out,
     cord(string)::in, cord(string)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-process_compiler_stdin_args(Globals, StdIn, OpModeArgs,
+setup_and_process_compiler_stdin_args(Globals, StdIn, OpModeArgs,
         DetectedGradeFlags, OptionVariables, OptionArgs,
         !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !Specs, !IO) :-
     ( if cord.is_empty(!.Modules) then
         true
     else
-        garbage_collect(!IO)
+        gc.garbage_collect(!IO)
     ),
-    io.read_line_as_string(StdIn, FileResult, !IO),
+    io.read_line_as_string(StdIn, LineResult, !IO),
     (
-        FileResult = ok(Line),
+        LineResult = ok(Line),
         Arg = string.rstrip(Line),
-        process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags,
+        setup_and_process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags,
             OptionVariables, OptionArgs, Arg, ArgModules, ArgExtraObjFiles,
             !HaveReadModuleMaps, !Specs, !IO),
         !:Modules = !.Modules ++ cord.from_list(ArgModules),
         !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
-        process_compiler_stdin_args(Globals, StdIn, OpModeArgs,
+        setup_and_process_compiler_stdin_args(Globals, StdIn, OpModeArgs,
             DetectedGradeFlags, OptionVariables, OptionArgs,
             !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !Specs, !IO)
     ;
-        FileResult = eof
+        LineResult = eof
     ;
-        FileResult = error(Error),
+        LineResult = error(Error),
         io.error_message(Error, Msg),
-        io.stderr_stream(StdErr, !IO),
-        io.format(StdErr,
-            "Error reading module name from standard input: %s\n",
-            [s(Msg)], !IO),
-        io.set_exit_status(1, !IO)
+        Pieces = [words("Error reading module name from standard input:"),
+            words(Msg), suffix("."), nl],
+        Spec = simplest_no_context_spec($pred, severity_error,
+            phase_read_files, Pieces),
+        !:Specs = [Spec | !.Specs]
     ).
 
-:- pred process_compiler_cmd_line_args(globals::in, op_mode_args::in,
+%---------------------%
+
+:- pred setup_and_process_compiler_cmd_line_args(globals::in, op_mode_args::in,
     list(string)::in, options_variables::in,
     list(string)::in, list(string)::in,
     cord(string)::in, cord(string)::out, cord(string)::in, cord(string)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-process_compiler_cmd_line_args(_, _, _, _, _, [],
+setup_and_process_compiler_cmd_line_args(_, _, _, _, _, [],
         !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !Specs, !IO).
-process_compiler_cmd_line_args(Globals, OpModeArgs, DetectedGradeFlags,
-        OptionVariables, OptionArgs, [Arg | Args],
+setup_and_process_compiler_cmd_line_args(Globals, OpModeArgs,
+        DetectedGradeFlags, OptionVariables, OptionArgs, [Arg | Args],
         !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !Specs, !IO) :-
-    process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags,
+    setup_and_process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags,
         OptionVariables, OptionArgs, Arg, ArgModules, ArgExtraObjFiles,
         !HaveReadModuleMaps, !Specs, !IO),
     (
-        Args = [_ | _],
-        garbage_collect(!IO)
-    ;
         Args = []
+    ;
+        Args = [_ | _],
+        gc.garbage_collect(!IO)
     ),
     !:Modules = !.Modules ++ cord.from_list(ArgModules),
     !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
-    process_compiler_cmd_line_args(Globals, OpModeArgs, DetectedGradeFlags,
-        OptionVariables, OptionArgs, Args, !Modules, !ExtraObjFiles,
-        !HaveReadModuleMaps, !Specs, !IO).
+    setup_and_process_compiler_cmd_line_args(Globals, OpModeArgs,
+        DetectedGradeFlags, OptionVariables, OptionArgs, Args,
+        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !Specs, !IO).
+
+:- pred do_process_compiler_cmd_line_args(globals::in, op_mode_args::in,
+    list(string)::in, list(string)::in,
+    cord(string)::in, cord(string)::out, cord(string)::in, cord(string)::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    io::di, io::uo) is det.
+
+do_process_compiler_cmd_line_args(_, _, _, [],
+        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !IO).
+do_process_compiler_cmd_line_args(Globals, OpModeArgs, OptionArgs, [Arg | Args],
+        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !IO) :-
+    % `mmc --make' has already set up the options.
+    FileOrModule = string_to_file_or_module(Arg),
+    do_process_compiler_arg(Globals, OpModeArgs, OptionArgs, FileOrModule,
+        ArgModules, ArgExtraObjFiles, !HaveReadModuleMaps, !IO),
+    (
+        Args = []
+    ;
+        Args = [_ | _],
+        gc.garbage_collect(!IO)
+    ),
+    !:Modules = !.Modules ++ cord.from_list(ArgModules),
+    !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
+    do_process_compiler_cmd_line_args(Globals, OpModeArgs, OptionArgs, Args,
+        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !IO).
+
+%---------------------%
 
     % Figure out whether the compiler argument is a module name or a file name.
     % Open the specified file or module, and process it.
@@ -1045,57 +1107,45 @@ process_compiler_cmd_line_args(Globals, OpModeArgs, DetectedGradeFlags,
     % build_with_module_options_args, even if we were NOT invoked with --make.
     % This seems strange to me. -zs
     %
-:- pred process_compiler_arg(globals::in, op_mode_args::in,
+:- pred setup_and_process_compiler_arg(globals::in, op_mode_args::in,
     list(string)::in, options_variables::in,
     list(string)::in, string::in, list(string)::out, list(string)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
-        OptionArgs, Arg, ModulesToLink, ExtraObjFiles,
+setup_and_process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags,
+        OptionVariables, OptionArgs, Arg, ModulesToLink, ExtraObjFiles,
         !HaveReadModuleMaps, !Specs, !IO) :-
     FileOrModule = string_to_file_or_module(Arg),
-    globals.lookup_bool_option(Globals, invoked_by_mmc_make, InvokedByMake),
+    ModuleName = file_or_module_to_module_name(FileOrModule),
+    ExtraOptions = [],
+    setup_for_build_with_module_options(Globals, not_invoked_by_mmc_make,
+        ModuleName, DetectedGradeFlags, OptionVariables,
+        OptionArgs, ExtraOptions, MayBuild, !IO),
     (
-        InvokedByMake = no,
-        ModuleName = file_or_module_to_module_name(FileOrModule),
-        ExtraOptions = [],
-        setup_for_build_with_module_options(Globals, not_invoked_by_mmc_make,
-            ModuleName, DetectedGradeFlags, OptionVariables,
-            OptionArgs, ExtraOptions, MayBuild, !IO),
+        MayBuild = may_not_build(SetupSpecs),
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+        write_error_specs_ignore(ErrorStream, Globals, SetupSpecs, !IO),
+        ModulesToLink = [],
+        ExtraObjFiles = []
+    ;
+        MayBuild = may_build(_AllOptionArgs, BuildGlobals, _Warnings),
+        maybe_check_libraries_are_installed(Globals,
+            LibgradeCheckSpecs, !IO),
         (
-            MayBuild = may_not_build(SetupSpecs),
-            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-            write_error_specs_ignore(ErrorStream, Globals, SetupSpecs, !IO),
+            LibgradeCheckSpecs = [],
+            do_process_compiler_arg(BuildGlobals, OpModeArgs, OptionArgs,
+                FileOrModule, ModulesToLink, ExtraObjFiles,
+                !HaveReadModuleMaps, !IO)
+        ;
+            LibgradeCheckSpecs = [_ | _],
+            !:Specs = LibgradeCheckSpecs ++ !.Specs,
             ModulesToLink = [],
             ExtraObjFiles = []
-        ;
-            MayBuild = may_build(_AllOptionArgs, BuildGlobals, _Warnings),
-            maybe_check_libraries_are_installed(Globals,
-                LibgradeCheckSpecs, !IO),
-            (
-                LibgradeCheckSpecs = [],
-                do_process_compiler_arg(BuildGlobals, OpModeArgs, OptionArgs,
-                    FileOrModule, ModulesToLink, ExtraObjFiles,
-                    !HaveReadModuleMaps, !IO)
-            ;
-                LibgradeCheckSpecs = [_ | _],
-                !:Specs = LibgradeCheckSpecs ++ !.Specs,
-                ModulesToLink = [],
-                ExtraObjFiles = []
-            )
         )
-    ;
-        InvokedByMake = yes,
-        % `mmc --make' has already set up the options.
-        do_process_compiler_arg(Globals, OpModeArgs, OptionArgs, FileOrModule,
-            ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO)
     ).
 
-:- func version_numbers_return_timestamp(bool) = maybe_return_timestamp.
-
-version_numbers_return_timestamp(no) = dont_return_timestamp.
-version_numbers_return_timestamp(yes) = do_return_timestamp.
+%---------------------%
 
 :- pred do_process_compiler_arg(globals::in, op_mode_args::in,
     list(string)::in, file_or_module::in, list(string)::out, list(string)::out,
@@ -1130,7 +1180,7 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
     %
     % The best fix seems to be to use a single approach, and that
     % approach should be the one using make_module_and_imports.
-    
+
     % XXX Another, different problem is that
     %
     % - some of the predicates called from here update the initial Globals0
@@ -1262,6 +1312,11 @@ do_process_compiler_arg_make_interface(Globals0, InterfaceFile, FileOrModule,
                 ParseTreeModuleSrcs, _Succeededs, !IO)
         )
     ).
+
+:- func version_numbers_return_timestamp(bool) = maybe_return_timestamp.
+
+version_numbers_return_timestamp(no) = dont_return_timestamp.
+version_numbers_return_timestamp(yes) = do_return_timestamp.
 
 :- pred find_modules_to_recompile(globals::in, globals::out,
     file_or_module::in, modules_to_recompile::out,
