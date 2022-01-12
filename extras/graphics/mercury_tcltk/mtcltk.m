@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-1998,2000, 2003, 2005-2006 The University of Melbourne.
-% Copyright (C) 2014, 2018, 2020 The Mercury team.
+% Copyright (C) 2014, 2018, 2020, 2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -90,7 +90,8 @@
 
 :- implementation.
 
-:- pragma foreign_type("C", tcl_interp, "Tcl_Interp *").
+:- pragma foreign_type("C", tcl_interp, "Tcl_Interp *",
+   [can_pass_as_mercury_type]).
 
 :- pragma foreign_decl("C", "
 /*
@@ -115,10 +116,9 @@
 #endif
 ").
 
-:- pragma foreign_enum("C", tcl_status/0,
-[
-  tcl_ok - "TCL_OK",
-  tcl_error - "TCL_ERROR"
+:- pragma foreign_enum("C", tcl_status/0, [
+    tcl_ok - "TCL_OK",
+    tcl_error - "TCL_ERROR"
 ]).
 
 :- pragma foreign_decl("C", "
@@ -290,24 +290,22 @@ mtcltk_do_callback(ClientData clientData, Tcl_Interp *interp,
             (MR_Word) args);
     }
 
-    MR_String s;
+    MR_String m_result;
     mtcltk_call_mercury_closure((MR_Word) clientData, interp,
-        args, &status, &s);
-    char* u = Tcl_Alloc(2048);
+        args, &status, &m_result);
 
-    if (strlen(s) > 2047) {
-       strcpy(u, ""Result string overflow"");
-       return TCL_ERROR;
-    } else {
-       strncpy(u, s, 2047);
+    // Copy result string into Tcl allocated memory.
+    char *t_result = Tcl_Alloc(strlen(m_result) + 1);
+    if (t_result == NULL) {
+        return TCL_ERROR;
     }
+    strcpy(t_result, m_result);
 
     Tcl_SetResult(interp, u, TCL_DYNAMIC);
 /*
-    fprintf(stderr, ""mercury result: `%s'\n"", s);
+    fprintf(stderr, ""mercury result: `%s'\n"", m_result);
 */
     return (mtcltk_tcl_status_ok(status) ? TCL_OK : TCL_ERROR);
-
 }
 
 ").
