@@ -289,8 +289,8 @@ string_to_grade_component(FilterDesc, Comp, !Comps, !Specs) :-
         Pieces = [words("Support for"), quote("erlang"), words("as an"),
             words(FilterDesc), words("library grade component"),
             words("has been discontinued"), nl],
-        Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-        Spec = error_spec($pred, severity_informational, phase_options, [Msg]),
+        Spec = simplest_no_context_spec($pred, severity_informational,
+            phase_options, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         Pieces = [words("Unknown"), words(FilterDesc),

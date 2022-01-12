@@ -94,13 +94,11 @@ warning_or_error_severity(we_error, severity_error).
 %-----------------------------------------------------------------------------%
 
 add_error(Phase, Pieces, !Specs) :-
-    Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-    Spec = error_spec($pred, severity_error, Phase, [Msg]),
+    Spec = simplest_no_context_spec($pred, severity_error, Phase, Pieces),
     !:Specs = [Spec | !.Specs].
 
 add_warning(Phase, Pieces, !Specs) :-
-    Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-    Spec = error_spec($pred, severity_warning, Phase, [Msg]),
+    Spec = simplest_no_context_spec($pred, severity_warning, Phase, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%

@@ -239,8 +239,8 @@ read_args_file(OptionsFile, MaybeMCFlags, Specs, UndefSpecs, !IO) :-
         ( if Specs0 = [], UndefSpecs = [] then
             Pieces = [words("mercury_compile: internal error:"),
                 words("arguments file does not set MCFLAGS."), nl],
-            Spec = error_spec($pred, severity_error, phase_read_files,
-                [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+            Spec = simplest_no_context_spec($pred, severity_error,
+                phase_read_files, Pieces),
             Specs = [Spec | Specs0]
         else
             % Any of the errors in Specs or UndefSpecs could be the reason
@@ -456,7 +456,7 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
                     quote(ErrorFile), suffix(":"),
                     words(Error), suffix("."), nl],
                 Spec = error_spec($pred, severity_error, phase_read_files,
-                    [error_msg(MaybeContext, treat_as_first, 0,
+                    [error_msg(MaybeContext, always_treat_as_first, 0,
                         [always(Pieces)])]),
                 !:IOSpecs = [Spec | !.IOSpecs]
             ;
@@ -1525,8 +1525,8 @@ lookup_options_variable(Variables, OptionsVariableClass, FlagsVar,
                     list_to_pieces(
                         list.map(func(Lib) = add_quotes(Lib), BadLibs))]
                     ++ [suffix(".")],
-                Spec = error_spec($pred, severity_error, phase_read_files,
-                    [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+                Spec = simplest_no_context_spec($pred, severity_error,
+                    phase_read_files, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         else
@@ -1584,8 +1584,8 @@ lookup_variable_words(Variables, VarName, Result) :-
             SplitResult = error(Msg),
             Pieces = [words("Error: in environment variable"),
                 quote(VarName), suffix(":"), words(Msg), nl],
-            ErrorSpec = error_spec($pred, severity_error, phase_read_files,
-                [error_msg(no, do_not_treat_as_first, 0, [always(Pieces)])]),
+            ErrorSpec = simplest_no_context_spec($pred, severity_error,
+                phase_read_files, Pieces),
             Result = var_result_error(one_or_more(ErrorSpec, []))
         )
     else

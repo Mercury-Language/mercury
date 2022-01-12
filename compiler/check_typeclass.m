@@ -1646,7 +1646,8 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
     PiecesB = [words("Here is the conflicting instance."), nl],
 
     MsgA = simplest_msg(ContextA, PiecesA),
-    MsgB = error_msg(yes(ContextB), treat_as_first, 0, [always(PiecesB)]),
+    MsgB = error_msg(yes(ContextB), always_treat_as_first, 0,
+        [always(PiecesB)]),
     Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
         [MsgA, MsgB]).
 

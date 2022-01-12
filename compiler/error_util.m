@@ -230,21 +230,21 @@
 % treat the first line of the first message differently than the rest:
 % we separate it from the context by one space, whereas following lines
 % are separated by three spaces. You can request that the first line of
-% a message be treated as it were the first by setting the error_treat_as_first
-% field to "treat_as_first". You can also request that the pieces in a message
-% be given extra indentation by setting the error_extra_indent field
-% to a nonzero value.
+% a message be treated as it were the first, even if it is not, by setting
+% the error_treat_as_first field to "always_treat_as_first". You can also
+% request that the pieces in a message be given extra indentation by setting
+% the error_extra_indent field to a strictly positive value.
 %
 % The term simple_msg(Context, Components) is a shorthand for (and equivalent
-% in every respect to) the term error_msg(yes(Context), do_not_treat_as_first,
+% in every respect to) the term error_msg(yes(Context), treat_based_on_posn,
 % 0, Components).
 %
 % The term simplest_msg(Context, Pieces) is a shorthand for (and equivalent
 % in every respect to) the term simple_msg(Context, [always(Pieces)]).
 
-:- type maybe_treat_as_first
-    --->    treat_as_first
-    ;       do_not_treat_as_first.
+:- type maybe_always_treat_as_first
+    --->    always_treat_as_first
+    ;       treat_based_on_posn.
 
 :- type error_msg
     --->    simplest_msg(
@@ -260,7 +260,7 @@
             )
     ;       error_msg(
                 error_context           :: maybe(prog_context),
-                error_treat_as_first    :: maybe_treat_as_first,
+                error_treat_as_first    :: maybe_always_treat_as_first,
                 error_extra_indent      :: int,
                 error_components        :: list(error_msg_component)
             ).
@@ -1302,18 +1302,18 @@ remove_conditionals_in_msg(Globals, Msg0, Msg) :-
             Msg0 = simplest_msg(Context, Pieces0),
             Components0 = [always(Pieces0)],
             MaybeContext = yes(Context),
-            TreatAsFirst = do_not_treat_as_first,
+            TreatAsFirst = treat_based_on_posn,
             ExtraIndent = 0
         ;
             Msg0 = simplest_no_context_msg(Pieces0),
             Components0 = [always(Pieces0)],
             MaybeContext = no,
-            TreatAsFirst = do_not_treat_as_first,
+            TreatAsFirst = treat_based_on_posn,
             ExtraIndent = 0
         ;
             Msg0 = simple_msg(Context, Components0),
             MaybeContext = yes(Context),
-            TreatAsFirst = do_not_treat_as_first,
+            TreatAsFirst = treat_based_on_posn,
             ExtraIndent = 0
         ;
             Msg0 = error_msg(MaybeContext, TreatAsFirst, ExtraIndent,
@@ -1682,7 +1682,7 @@ do_write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors,
             ;
                 HeadMsg = error_msg(MaybeHeadContext, _, _, _)
             ),
-            IdMsg = error_msg(MaybeHeadContext, do_not_treat_as_first, 0,
+            IdMsg = error_msg(MaybeHeadContext, treat_based_on_posn, 0,
                 [always([words("error_spec id:"), fixed(Id), nl])]),
             Msgs = Msgs1 ++ [IdMsg]
         )
@@ -1719,6 +1719,10 @@ do_write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors,
         )
     ).
 
+:- type maybe_treat_as_first
+    --->    treat_as_first
+    ;       do_not_treat_as_first.
+
 :- type maybe_printed_something
     --->    printed_something
     ;       have_not_printed_anything.
@@ -1743,28 +1747,28 @@ do_write_error_msgs(Stream, [Msg | Msgs], Globals, !.First, !PrintedSome,
         Msg = simplest_msg(SimpleContext, Pieces),
         Components = [always(Pieces)],
         MaybeContext = yes(SimpleContext),
-        TreatAsFirst = do_not_treat_as_first,
+        TreatAsFirst = treat_based_on_posn,
         ExtraIndentLevel = 0
     ;
         Msg = simplest_no_context_msg(Pieces),
         Components = [always(Pieces)],
         MaybeContext = no,
-        TreatAsFirst = do_not_treat_as_first,
+        TreatAsFirst = treat_based_on_posn,
         ExtraIndentLevel = 0
     ;
         Msg = simple_msg(SimpleContext, Components),
         MaybeContext = yes(SimpleContext),
-        TreatAsFirst = do_not_treat_as_first,
+        TreatAsFirst = treat_based_on_posn,
         ExtraIndentLevel = 0
     ;
         Msg = error_msg(MaybeContext, TreatAsFirst, ExtraIndentLevel,
             Components)
     ),
     (
-        TreatAsFirst = treat_as_first,
+        TreatAsFirst = always_treat_as_first,
         !:First = treat_as_first
     ;
-        TreatAsFirst = do_not_treat_as_first
+        TreatAsFirst = treat_based_on_posn
         % Leave !:First as it is, even if it is treat_as_first.
     ),
     Indent = ExtraIndentLevel * indent_increment,

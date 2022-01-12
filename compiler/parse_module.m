@@ -440,7 +440,8 @@ report_module_has_unexpected_name(FileName, ExpectedName, ExpectationContexts,
         words("contains the wrong module."),
         words("Expected module"), qual_sym_name(ExpectedName), suffix(","),
         words("found module"), qual_sym_name(ActualName), suffix("."), nl],
-    MainMsg = error_msg(MaybeContext, treat_as_first, 0, [always(MainPieces)]),
+    MainMsg = error_msg(MaybeContext, always_treat_as_first, 0,
+        [always(MainPieces)]),
     list.sort_and_remove_dups(ExpectationContexts, SortedExpectationContexts0),
     list.delete_all(SortedExpectationContexts0, term.context_init,
         SortedExpectationContexts),
@@ -588,8 +589,8 @@ do_actually_read_module(Globals, DefaultModuleName, DefaultExpectationContexts,
 read_error_msg(ErrorMsg, Specs, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
     Pieces = [fixed(ProgName), suffix(":"), words(ErrorMsg), nl],
-    Spec = error_spec($pred, severity_error, phase_read_files,
-        [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+    Spec = simplest_no_context_spec($pred, severity_error, phase_read_files,
+        Pieces),
     Specs = [Spec].
 
 %---------------------------------------------------------------------------%

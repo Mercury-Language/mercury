@@ -109,9 +109,8 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
             EventSetName = "",
             EventSpecMap = map.init,
             Pieces = [words("eof in term specification file."), nl],
-            Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-            ErrorSpec = error_spec($pred, severity_error,
-                phase_term_to_parse_tree, [Msg]),
+            ErrorSpec = simplest_no_context_spec($pred, severity_error,
+                phase_term_to_parse_tree, Pieces),
             ErrorSpecs = [ErrorSpec]
         ;
             TermReadRes = error(TermReadMsg, LineNumber),
@@ -130,9 +129,8 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
         EventSetName = "",
         EventSpecMap = map.init,
         Pieces = [words(ErrorMessage), nl],
-        Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-        ErrorSpec = error_spec($pred, severity_error, phase_term_to_parse_tree,
-            [Msg]),
+        ErrorSpec = simplest_no_context_spec($pred, severity_error,
+            phase_term_to_parse_tree, Pieces),
         ErrorSpecs = [ErrorSpec]
     ).
 

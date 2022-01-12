@@ -1297,11 +1297,11 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
             Msgs = [Msg1] ++ SubMsgs
         ;
             VeryVerbose = yes,
-            Pieces2 =
+            Components2 =
                 [always([nl]),
                 'new print_anything'(
                     write_indented_goal(ModuleInfo, VarSet, Goal))],
-            Msg2 = error_msg(no, do_not_treat_as_first, 0, Pieces2),
+            Msg2 = error_msg(no, treat_based_on_posn, 0, Components2),
             Msgs = [Msg1, Msg2] ++ SubMsgs
         )
     ).
@@ -1636,19 +1636,20 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
             LaterMsgs0 = [LaterHead0 | LaterTail],
             (
                 LaterHead0 = simplest_msg(LaterContext, Pieces),
-                LaterHead = error_msg(yes(LaterContext), treat_as_first,
+                LaterHead = error_msg(yes(LaterContext), always_treat_as_first,
                     0, [always(Pieces)])
             ;
                 LaterHead0 = simplest_no_context_msg(Pieces),
-                LaterHead = error_msg(no, treat_as_first, 0, [always(Pieces)])
+                LaterHead = error_msg(no, always_treat_as_first,
+                    0, [always(Pieces)])
             ;
                 LaterHead0 = simple_msg(LaterContext, Components),
-                LaterHead = error_msg(yes(LaterContext), treat_as_first,
+                LaterHead = error_msg(yes(LaterContext), always_treat_as_first,
                     0, Components)
             ;
                 LaterHead0 = error_msg(MaybeLaterContext, _, Indent,
                     Components),
-                LaterHead = error_msg(MaybeLaterContext, treat_as_first,
+                LaterHead = error_msg(MaybeLaterContext, always_treat_as_first,
                     Indent, Components)
             ),
             LaterMsgs = [LaterHead | LaterTail]

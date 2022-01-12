@@ -238,7 +238,8 @@ describe_term2_error(ModuleInfo, Single, MaybeErrorNum, Error,
         MaybeErrorNum = no,
         Pieces = Pieces0
     ),
-    ReasonMsg = error_msg(yes(Context), treat_as_first, 0, [always(Pieces)]),
+    ReasonMsg = error_msg(yes(Context), always_treat_as_first, 0,
+        [always(Pieces)]),
     !:ReasonMsgsCord = cord.snoc(!.ReasonMsgsCord, ReasonMsg).
 
 :- pred term2_error_kind_description(module_info::in, maybe(pred_proc_id)::in,

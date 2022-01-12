@@ -1468,8 +1468,8 @@ infer_determinism_pass_2(ModuleInfo, GenInfo,
                 words("in ether the"), quote("sort"),
                 words("or the"), quote("cut"), words("program"),
                 words("during fact table determinism inference."), nl],
-            Spec = error_spec($pred, severity_error, phase_fact_table_check,
-                [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+            Spec = simplest_no_context_spec($pred, severity_error,
+                phase_fact_table_check, Pieces),
             !:Specs = [Spec | !.Specs],
             Determinism = detism_erroneous
         )
@@ -1651,8 +1651,8 @@ append_data_table(ModuleInfo, OutputFileName, DataFileName, !Specs, !IO) :-
         else
             Pieces = [words("An error occurred while concatenating"),
                 words("fact table output files."), nl],
-            Spec = error_spec($pred, severity_error, phase_fact_table_check,
-                [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+            Spec = simplest_no_context_spec($pred, severity_error,
+                phase_fact_table_check, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -1835,8 +1835,8 @@ read_sort_file_line(InputStream, InputFileName,
             [words("Error reading file"), quote(InputFileName),
             suffix(":"), nl,
             words(ErrorMessage), nl],
-        Spec = error_spec($pred, severity_error, phase_fact_table_check,
-            [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+        Spec = simplest_no_context_spec($pred, severity_error,
+            phase_fact_table_check, Pieces),
         !:Specs = [Spec | !.Specs],
         MaybeSortFileLine = no
     ).
@@ -3842,7 +3842,7 @@ delete_temporary_file(FileName, !Specs, !IO) :-
             quote(FileName), suffix(":"), nl,
             words(ErrorMsg), suffix("."), nl],
         Spec = error_spec($pred, severity_error, phase_fact_table_check,
-            [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+            [error_msg(no, treat_based_on_posn, 0, [always(Pieces)])]),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -3852,13 +3852,13 @@ delete_temporary_file(FileName, !Specs, !IO) :-
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 add_call_system_error(Cmd, ErrorCode, !Specs, !IO) :-
-    io.error_message(ErrorCode, ErrorMsg),
     io.progname_base("mercury_compile", ProgName, !IO),
+    io.error_message(ErrorCode, ErrorMsg),
     Pieces = [fixed(ProgName), suffix(":"),
         words("error executing system command"), quote(Cmd), suffix(":"), nl,
         words(ErrorMsg), suffix("."), nl],
     Spec = error_spec($pred, severity_error, phase_fact_table_check,
-        [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+        [error_msg(no, treat_based_on_posn, 0, [always(Pieces)])]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -3868,14 +3868,14 @@ add_call_system_error(Cmd, ErrorCode, !Specs, !IO) :-
     io::di, io::uo) is det.
 
 add_file_open_error(MaybeContext, FileName, InOrOut, Error, !Specs, !IO) :-
-    io.error_message(Error, ErrorMsg),
     io.progname_base("mercury_compile", ProgName, !IO),
+    io.error_message(Error, ErrorMsg),
     Pieces = [fixed(ProgName), suffix(":"),
         words("error opening file"), quote(FileName),
         words("for"), words(InOrOut), suffix(":"), nl,
         words(ErrorMsg), nl],
     Spec = error_spec($pred, severity_error, phase_fact_table_check,
-        [error_msg(MaybeContext, treat_as_first, 0, [always(Pieces)])]),
+        [error_msg(MaybeContext, treat_based_on_posn, 0, [always(Pieces)])]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -3893,8 +3893,8 @@ add_error_context_and_pieces(Context, Pieces, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_error_pieces(Pieces, !Specs) :-
-    Spec = error_spec($pred, severity_error, phase_fact_table_check,
-        [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+    Spec = simplest_no_context_spec($pred, severity_error,
+        phase_fact_table_check, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%

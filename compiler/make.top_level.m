@@ -219,8 +219,8 @@ report_target_with_dir_component(ProgName, Target) = Spec :-
     Pieces = [fixed(ProgName), suffix(":"),
         words("a make target may not contain a directory component,"),
         words("but"), quote(Target), words("does."), nl],
-    Spec = error_spec($pred, severity_error, phase_make_target,
-        [error_msg(no, treat_as_first, 0, [always(Pieces)])]).
+    Spec = simplest_no_context_spec($pred, severity_error,
+        phase_make_target, Pieces).
 
 %---------------------%
 

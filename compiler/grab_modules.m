@@ -2262,9 +2262,8 @@ update_opt_error_status(Globals, WarnOption, FileName,
             WarnOptionValue = yes,
             Pieces = [words("Warning: cannot open"), quote(FileName),
                 suffix("."), nl],
-            Msg = error_msg(no, treat_as_first, 0, [always(Pieces)]),
-            Spec = error_spec($pred, severity_warning, phase_read_files,
-                [Msg]),
+            Spec = simplest_no_context_spec($pred, severity_warning,
+                phase_read_files, Pieces),
             !:Specs = [Spec | !.Specs]
         )
         % NOTE: We do NOT update !Error, since a missing optimization

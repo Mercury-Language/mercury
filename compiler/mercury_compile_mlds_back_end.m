@@ -73,7 +73,6 @@
 :- import_module top_level.mercury_compile_llds_back_end.
 
 :- import_module bool.
-:- import_module maybe.
 :- import_module pprint.
 :- import_module require.
 :- import_module string.
@@ -295,8 +294,8 @@ maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO) :-
             quote("--reclaim-heap-on-nondet-failure"), suffix("."),
             words("Use"), quote("--(no-)reclaim-heap-on-failure"),
             words("instead."), nl],
-        Spec = error_spec($pred, severity_error, phase_read_files,
-            [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+        Spec = simplest_no_context_spec($pred, severity_error,
+            phase_read_files, Pieces),
         write_error_spec_ignore(Globals, Spec, !IO)
     ).
 

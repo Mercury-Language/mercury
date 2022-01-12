@@ -613,7 +613,7 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                         PiecesB = [words("The first one was here."), nl],
                         MsgA = simplest_msg(NewContext, PiecesA),
                         MsgB = error_msg(yes(FirstClauseContext),
-                            treat_as_first, 0, [always(PiecesB)]),
+                            always_treat_as_first, 0, [always(PiecesB)]),
                         Spec = error_spec($pred, severity_error,
                             phase_parse_tree_to_hlds, [MsgA, MsgB]),
                         !:Specs = [Spec | !.Specs]

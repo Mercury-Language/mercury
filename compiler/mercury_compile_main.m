@@ -736,8 +736,8 @@ do_op_mode_standalone_interface(Globals, StandaloneIntBasename, !IO) :-
             words("Error:"), quote("--generate-standalone-interface"),
             words("is not required for target language"),
             words(compilation_target_string(Target)), suffix("."), nl],
-        Spec = error_spec($pred, severity_error, phase_options,
-            [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+        Spec = simplest_no_context_spec($pred, severity_error, phase_options,
+            Pieces),
         write_error_spec_ignore(ErrorStream, Globals, Spec, !IO)
     ;
         Target = target_c,
@@ -2300,10 +2300,8 @@ maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
                     words("for module"), qual_sym_name(ModuleName),
                     suffix("."), nl,
                     words("You need to remake the dependencies."), nl],
-                Msg = error_msg(no, do_not_treat_as_first, 0,
-                    [always(Pieces)]),
-                Spec = error_spec($pred, severity_warning, phase_read_files,
-                    [Msg]),
+                Spec = simplest_no_context_spec($pred, severity_warning,
+                    phase_read_files, Pieces),
                 write_error_spec_ignore(Globals, Spec, !IO)
             ;
                 WarnNoTransOptDeps = no

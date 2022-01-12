@@ -69,8 +69,8 @@ typecheck_report_max_iterations_exceeded(MaxIterations) = Spec :-
         words("iterations."),
         words("You can use the"), quote("--type-inference-iteration-limit"),
         words("option to increase the limit).")],
-    Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
+    Spec = simplest_no_context_spec($pred, severity_error, phase_type_check,
+        Pieces).
 
 %---------------------------------------------------------------------------%
 

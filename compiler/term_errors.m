@@ -283,7 +283,8 @@ describe_term_error(ModuleInfo, Single, TermErrorContext, ErrorNum,
         ErrorNum = no,
         Pieces = Pieces0
     ),
-    ReasonMsg = error_msg(yes(Context), treat_as_first, 0, [always(Pieces)]),
+    ReasonMsg = error_msg(yes(Context), always_treat_as_first, 0,
+        [always(Pieces)]),
     !:ReasonMsgs = cord.snoc(!.ReasonMsgs, ReasonMsg),
     (
         Reason = yes(InfArgSizePPId),
