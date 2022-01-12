@@ -77,7 +77,7 @@ scribble(Window, Size0, MaybeXY0, !IO) :-
 
     % The scribble state machine...
     %
-:- pred sm(event::in, float::in, maybexy::in, float::out, maybexy::out,
+:- pred sm(x_event::in, float::in, maybexy::in, float::out, maybexy::out,
                 drawing::out) is semidet.
 
 sm( key_press(_, _, _, "c"),        Size, MaybeXY, Size, MaybeXY,
