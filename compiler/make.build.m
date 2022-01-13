@@ -176,6 +176,7 @@
 :- import_module char.
 :- import_module getopt.
 :- import_module int.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 
