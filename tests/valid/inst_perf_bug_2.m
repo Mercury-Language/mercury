@@ -38,11 +38,14 @@
 :- type t11 ---> f(t12, t12) ; g(t12, t12).
 :- inst t11 ---> f(t12, t12) ; g(t12, t12).
 
-:- type t12 ---> f(t13, t13) ; g(t13, t13).
-:- inst t12 ---> f(t13, t13) ; g(t13, t13).
+% Commented out to avoid exceeding tools/test_mercury's 300 second limit
+% on testing.mercurylang.org.
+%
+% :- type t12 ---> f(t13, t13) ; g(t13, t13).
+% :- inst t12 ---> f(t13, t13) ; g(t13, t13).
 
-:- type t13 ---> f ; g ; h.
-:- inst t13 ---> f ; g.
+:- type t12 ---> f ; g ; h.
+:- inst t12 ---> f ; g.
 
 :- pred p(t1::in(t1), t1::out(t1)) is det.
 
