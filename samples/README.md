@@ -73,8 +73,8 @@ Mercury programs:
 * [muz](muz) -- This directory contains a syntax checker / type checker for the
   specification language Z.
 
-* [solver_types](solver_types) -- This directory contains an example solver
-  type implementation, and some sample applications.
+* [solver_types](solver_types) -- This directory contains an example of a
+  simple constraint solver implemented using solver types.
 
 * [lazy_list](lazy_list) -- This directory contains an example of how the
   `lazy` module in the standard library can be used to implement a lazy data
