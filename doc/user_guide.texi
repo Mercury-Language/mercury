@@ -8201,12 +8201,24 @@ The grade modifier @samp{.prof} calls for gprof-style profiling;
 the grade modifier @samp{.memprof} calls for profiling of memory usage;
 while the grade modifier @samp{.profdeep} calls for deep profiling.
 See @ref{Profiling} for an explanation
-of the differences between these forms of profiling.
+of the differences between these forms of profiling,
+all of which are available only when targeting C.
 
 @item trailing
 The default is no trailing.
 Applications that need trailing should specify the grade modifier @samp{.tr}.
 @samp{.trseg} is currently accepted as synonym for @samp{.tr}.
+Trailing is available only when targeting C.
+
+(A trail is a data structure
+that records changes to a mutable data store during normal execution
+so that each of those changes can be unwound (undone)
+when execution backtracks to the point in time before it was made.
+Mercury normally needs a trail
+only when executing programs that use constraint solvers.
+While the act of posting a constraint in such a program
+is a declarative action,
+its implementation requires updating a constraint store.)
 
 @item floating point precision
 By default when targeting C,
@@ -8225,6 +8237,7 @@ definitely will @emph{not} improve memory consumption,
 and will probably not improve speed.
 On the other hand, it may simplify the use of C APIs
 that exclusively use single precision floats.
+
 For target languages other than C,
 the Mercury @samp{float} type is always implemented
 as a double-precision floating point number,
@@ -8253,6 +8266,10 @@ This approach has higher overhead,
 since calls to, and returns from, procedures must execute more code,
 but it avoids imposing any limit on stack size
 other than the size of available memory.
+
+When targeting languages other than C,
+the stack is always managed by the implementation of the target language,
+so for them, the @samp{.stseg} modifier is neither relevant nor supported.
 
 @item debugging
 The default is to generate executables that do not support debugging.
@@ -8283,13 +8300,22 @@ the usual @emph{sequential} conjunctions operator.
 In low-level C grades with the grade modifier @samp{.par},
 users can enable support for ThreadScope-style thread profiling
 by also specifying the grade module @samp{.threadscope}.
-The default is no support for profiling.
-Note that support for this form of profiling is experimental.
+The default is no support for thread profiling.
+Note that form of profiling is experimental,
+and it is not currently supported.
 
 @item minimal model tabling
 The default is no support for minimal model evaluation.
 When targeting low-level C, users can specify the grade modifier @samp{.mm},
 which enables support for minimal model tabled evaluation of procedures.
+The grade component @samp{.mmsc} is a synonym for @samp{.mm},
+standing for minimal model via stack copying,
+since the standard implementation works by copying stack segments.
+(The synonym exists because Mercury also has
+another implementation of minimal model tabling.
+This other implementation, which is incomplete
+and was only ever useful for experiments,
+is based on a completely different implementation technique.)
 
 @end table
 
@@ -8299,8 +8325,12 @@ the auto-configuration script,
 but can be overridden if desired
 with the environment variable @env{MERCURY_DEFAULT_GRADE}.
 @vindex MERCURY_DEFAULT_GRADE
-Depending on your particular installation,
-only a subset of these possible grades will have been installed.
+On any given particular installation,
+the Mercury runtime system and Mercury standard library
+will be installed in only a subset of the possible grades;
+you can find out which grades these are
+by invoking the Mercury compiler
+with the @samp{--output-libgrades} option.
 Attempting to use a grade which has not been installed
 will result in an error at link time.
 (The error message will typically be something like
