@@ -82,8 +82,7 @@
     % cast_from_int8(I8) = I32:
     %
     % Convert an int8 to a int32.
-    % Always succeeds, and yields a result that is mathemtically equal
-    % to I8.
+    % Always succeeds, and yields a result that is mathematically equal to I8.
     %
 :- func cast_from_int8(int8) = int32.
 
@@ -103,8 +102,7 @@
     % cast_from_int16(I16) = I32:
     %
     % Convert an int16 to a int32.
-    % Always succeeds, and yields a result that is mathemtically equal
-    % to I16.
+    % Always succeeds, and yields a result that is mathematically equal to I16.
     %
 :- func cast_from_int16(int16) = int32.
 
@@ -125,7 +123,7 @@
     %
     % Convert an int64 to a int32.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to I only if I is in [0, 2^32 - 1].
+    % to I64 only if I64 is in [-(2^31), 2^31 - 1].
     %
 :- func cast_from_int64(int64) = int32.
 
