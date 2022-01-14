@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017-2018 The Mercury team.
+% Copyright (C) 2017-2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -65,6 +65,69 @@
     % to the original.
     %
 :- func cast_to_int(int32) = int.
+
+%---------------------------------------------------------------------------%
+%
+% Conversion to/from int8.
+%
+
+    % cast_to_int8(I32) = I8:
+    %
+    % Convert an int32 to an int8.
+    % Always succeeds, but will yield a result that is mathematically equal
+    % to I32 only if I32 is in [-(2^7), 2^7 - 1].
+    %
+:- func cast_to_int8(int32) = int8.
+
+    % cast_from_int8(I8) = I32:
+    %
+    % Convert an int8 to a int32.
+    % Always succeeds, and yields a result that is mathemtically equal
+    % to I8.
+    %
+:- func cast_from_int8(int8) = int32.
+
+%---------------------------------------------------------------------------%
+%
+% Conversion to/from int16.
+%
+
+    % cast_to_int16(I32) = I16:
+    %
+    % Convert an int32 to an int16.
+    % Always succeeds, but will yield a result that is mathematically equal
+    % to I32 only if I32 is in [-(2^15), 2^15 - 1].
+    %
+:- func cast_to_int16(int32) = int16.
+
+    % cast_from_int16(I16) = I32:
+    %
+    % Convert an int16 to a int32.
+    % Always succeeds, and yields a result that is mathemtically equal
+    % to I16.
+    %
+:- func cast_from_int16(int16) = int32.
+
+%---------------------------------------------------------------------------%
+%
+% Conversion to/from int64.
+%
+
+    % cast_to_int64(I32) = I64:
+    %
+    % Convert an int32 to an int64.
+    % Always succeeds, and always yields a result that is
+    % mathematically equal to I32.
+    %
+:- func cast_to_int64(int32) = int64.
+
+    % cast_from_int64(I64) = I32:
+    %
+    % Convert an int64 to a int32.
+    % Always succeeds, but will yield a result that is mathematically equal
+    % to I only if I is in [0, 2^32 - 1].
+    %
+:- func cast_from_int64(int64) = int32.
 
 %---------------------------------------------------------------------------%
 %
@@ -471,6 +534,150 @@ det_from_int(I) = I32 :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     I = I32;
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_to_int8(I32::in) = (I8::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    I8 = (int8_t) I32;
+").
+
+:- pragma foreign_proc("C#",
+    cast_to_int8(I32::in) = (I8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I8 = (sbyte) I32;
+").
+
+:- pragma foreign_proc("Java",
+    cast_to_int8(I32::in) = (I8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I8 = (byte) I32;
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_from_int8(I8::in) = (I32::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    I32 = I8;
+").
+
+:- pragma foreign_proc("C#",
+    cast_from_int8(I8::in) = (I32::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I32 = I8;
+").
+
+:- pragma foreign_proc("Java",
+    cast_from_int8(I8::in) = (I32::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I32 = I8;
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_to_int16(I32::in) = (I16::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    I16 = (int16_t) I32;
+").
+
+:- pragma foreign_proc("C#",
+    cast_to_int16(I32::in) = (I16::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I16 = (short) I32;
+").
+
+:- pragma foreign_proc("Java",
+    cast_to_int16(I32::in) = (I16::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I16 = (short) I32;
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_from_int16(I16::in) = (I32::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    I32 = I16;
+").
+
+:- pragma foreign_proc("C#",
+    cast_from_int16(I16::in) = (I32::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I32 = I16;
+").
+
+:- pragma foreign_proc("Java",
+    cast_from_int16(I16::in) = (I32::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I32 = I16;
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_to_int64(I32::in) = (I64::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    I64 = (int64_t) I32;
+").
+
+:- pragma foreign_proc("C#",
+    cast_to_int64(I32::in) = (I64::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I64 = (long) I32;
+").
+
+:- pragma foreign_proc("Java",
+    cast_to_int64(I32::in) = (I64::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I64 = (long) I32;
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_from_int64(I64::in) = (I32::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    I32 = (int32_t) I64;
+").
+
+:- pragma foreign_proc("C#",
+    cast_from_int64(I64::in) = (I32::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I32 = (int) I64;
+").
+
+:- pragma foreign_proc("Java",
+    cast_from_int64(I64::in) = (I32::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    I32 = (int) I64;
 ").
 
 %---------------------------------------------------------------------------%

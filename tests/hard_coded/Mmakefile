@@ -209,6 +209,8 @@ ORDINARY_PROGS = \
 	inst_alias \
 	int16_from_bytes \
 	int32_from_bytes \
+	int32_int16_casts \
+	int32_int8_casts \
 	int64_from_bytes \
 	int_fold_up_down \
 	int_impl_imports \

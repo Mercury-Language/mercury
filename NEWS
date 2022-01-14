@@ -176,6 +176,17 @@ Changes to the Mercury standard library
     - func `legacy_left_shift/2`    (replacement: `<<`)
     - func `legacy_right_shift/2`   (replacement: `>>`)
 
+### Changes to the `int32` module
+
+* The following functions have been added:
+
+    - func `cast_to_int8`
+    - func `cast_from_int8`
+    - func `cast_to_int16`
+    - func `cast_from_int16`
+    - func `cast_to_int64`
+    - func `cast_from_int64`
+
 ### Changes to the `integer` module
 
 * The following obsolete functions have been removed:
