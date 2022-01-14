@@ -8052,14 +8052,15 @@ Perform termination analysis only on predicates with at most @var{n} paths.
 @cindex ABI (Application Binary Interface)
 @cindex Application Binary Interface (ABI)
 
-The following compilation options affect the generated
-code in such a way that the entire program must be
-compiled with the same setting of these options,
-and it must be linked to a version of the Mercury
-library which has been compiled with the same setting.
-(Attempting to link object files compiled with different
-settings of these options will generally result in an error at
-link time, typically of the form @samp{undefined symbol MR_grade_@dots{}}
+The following compilation options affect the generated code
+in such a way that the entire program
+must be compiled with the same setting of these options,
+and it must be linked to a version of the Mercury standard library
+which has been compiled with the same setting.
+(Attempting to link object files compiled
+with different settings of these options
+will generally result in an error at link time,
+typically of the form @samp{undefined symbol MR_grade_@dots{}}
 or @samp{symbol MR_runtime_grade multiply defined}.)
 
 The options below must be passed to @samp{mgnuc}, @samp{c2init}
@@ -8130,7 +8131,7 @@ This base grade calls for generating idiomatic C,
 which we call high-level C.
 
 @item @samp{none}, @samp{reg}, and @samp{asm_fast}
-These base grades calls for generating assembly-like C code,
+These base grades call for generating assembly-like C code,
 which we call low-level C.
 @samp{none} calls for generating standard C without using any GNU C extensions.
 @samp{reg} and @samp{asm_fast} both call for
@@ -8208,21 +8209,26 @@ Applications that need trailing should specify the grade modifier @samp{.tr}.
 @samp{.trseg} is currently accepted as synonym for @samp{.tr}.
 
 @item floating point precision
-By default when targeting C, the Mercury @samp{float} type is implemented as an
-IEEE 754 double-precision floating point number, which occupies 64 bits of
-space.
-On platforms whose word size is 32 bits, users whose programs do not require
-double precision may improve memory consumption and speed by specifying the
-grade modifier @samp{.spf} (short for single-precision float), which calls for
-implementing all Mercury floats as IEEE 754 single-precision floating point
-numbers.
-Note that on 64 bit platforms, using single-precision floats definitely will
-@emph{not} improve memory consumption, and will probably not improve speed.
-On the other hand, it may simplify the use of C APIs that exclusively use
-single precision floats.
-For target languages other than C, the Mercury @samp{float} type is always
-implemented as a double-precision floating point number and the
-@samp{.spf} modifier is not supported.
+By default when targeting C,
+the Mercury @samp{float} type is implemented
+as an IEEE 754 double-precision floating point number,
+which occupies 64 bits of space.
+On platforms whose word size is 32 bits,
+users whose programs do not require double precision
+may improve memory consumption and speed
+by specifying the grade modifier @samp{.spf}
+(short for single-precision float),
+which calls for implementing all Mercury floats
+as IEEE 754 single-precision floating point numbers.
+Note that on 64 bit platforms, using single-precision floats
+definitely will @emph{not} improve memory consumption,
+and will probably not improve speed.
+On the other hand, it may simplify the use of C APIs
+that exclusively use single precision floats.
+For target languages other than C,
+the Mercury @samp{float} type is always implemented
+as a double-precision floating point number,
+and the @samp{.spf} modifier is not supported.
 
 @item stack size
 When generating low-level C,
@@ -8287,19 +8293,22 @@ which enables support for minimal model tabled evaluation of procedures.
 
 @end table
 
-The default grade is system-dependent; it is chosen at installation time
-by @samp{configure}, the auto-configuration script, but can be overridden
-with the environment variable @env{MERCURY_DEFAULT_GRADE} if desired.
+The default grade is system-dependent;
+it is chosen at installation time by @samp{configure},
+the auto-configuration script,
+but can be overridden if desired
+with the environment variable @env{MERCURY_DEFAULT_GRADE}.
 @vindex MERCURY_DEFAULT_GRADE
-Depending on your particular installation, only a subset
-of these possible grades will have been installed.
+Depending on your particular installation,
+only a subset of these possible grades will have been installed.
 Attempting to use a grade which has not been installed
 will result in an error at link time.
 (The error message will typically be something like
 @samp{ld: can't find library for -lmercury}.)
 
-The tables below show the options that are selected by each base grade
-and grade modifier; they are followed by descriptions of those options.
+The tables below show the options
+that are selected by each base grade and grade modifier;
+they are followed by descriptions of those options.
 
 @table @asis
 @item @var{Grade}
