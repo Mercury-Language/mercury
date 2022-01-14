@@ -305,8 +305,12 @@ static const char header1[] =
 // the deprecated macro about for compatibility with older versions of glibc.
 static const char header2[] =
     "*/\n"
-    "#define _DEFAULT_SOURCE\n"
-    "#define _BSD_SOURCE\n"
+    "#ifndef _DEFAULT_SOURCE\n"
+    "  #define _DEFAULT_SOURCE\n"
+    "#endif\n"
+    "#ifndef _BSD_SOURCE\n"
+    "  #define _BSD_SOURCE\n"
+    "#endif\n"
     "#include <stddef.h>\n"
     "#ifdef MR_PROFILE_SBRK\n"
     "#include <unistd.h>\n"
