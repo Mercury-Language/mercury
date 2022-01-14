@@ -8267,7 +8267,7 @@ since calls to, and returns from, procedures must execute more code,
 but it avoids imposing any limit on stack size
 other than the size of available memory.
 
-When targeting languages other than C,
+When targeting anything other than low-level C,
 the stack is always managed by the implementation of the target language,
 so for them, the @samp{.stseg} modifier is neither relevant nor supported.
 
