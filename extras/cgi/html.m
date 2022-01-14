@@ -280,63 +280,64 @@ output_list_item(Item, !IO) :-
     io.nl(!IO).
 
 output_form_start(ActionURL, !IO) :-
-    io.format("<FORM ACTION=""%s"" METHOD=POST>\n",
+    io.format("<form action=""%s"" method=""POST"">\n",
         [s(escape_attr_string(ActionURL))], !IO).
 
 output_form_end(!IO) :-
-    io.write_string("</FORM>\n", !IO).
+    io.write_string("</form>\n", !IO).
 
 output_field(Name, text(Size, MaxLength, Value), !IO) :-
-    io.format("<INPUT NAME=%s TYPE=text SIZE=%d MAXLENGTH=%d VALUE=""%s"">",
+    io.format(
+        "<input name=""%s"" type=""text"" size=""%d"" maxlength=""%d"" value=""%s"">",
         [s(Name), i(Size), i(MaxLength), s(escape_attr_string(Value))], !IO).
 output_field(Name, password(Size, MaxLength, Value), !IO) :-
     io.format(
-        "<INPUT NAME=%s TYPE=password SIZE=%d MAXLENGTH=%d VALUE=""%s"">",
+        "<input name=""%s"" type=""password"" size=""%d"" maxlength=""%d"" value=""%s"">",
         [s(Name), i(Size), i(MaxLength), s(escape_attr_string(Value))], !IO).
 output_field(Name, textarea(Rows, Columns, Value), !IO) :-
-    io.format("<TEXTAREA NAME=%s ROWS=%d COLS=%d>",
+    io.format("<textarea name=""%s"" rows=""%d"" cols=""%d"">",
         [s(Name), i(Rows), i(Columns)], !IO),
     io.write_string(escape_html_string(Value), !IO),
-    io.write_string("</TEXTAREA>", !IO).
+    io.write_string("</textarea>", !IO).
 output_field(Name, checkbox(Checked, Value), !IO) :-
-    io.format("<INPUT NAME=%s TYPE=checkbox VALUE=""%s""",
+    io.format("<input name=""%s"" type=""checkbox"" value=""%s""",
         [s(Name), s(escape_attr_string(Value))], !IO),
     (
         Checked = yes,
-        io.write_string(" CHECKED", !IO)
+        io.write_string(" checked", !IO)
     ;
         Checked = no
     ),
     io.write_string(">", !IO).
 output_field(Name, radio(Checked, Value), !IO) :-
-    io.format("<INPUT NAME=%s TYPE=radio VALUE=""%s""",
+    io.format("<input name=""%s"" type=""radio"" value=""%s""",
         [s(Name), s(escape_attr_string(Value))], !IO),
     (
         Checked = yes,
-        io.write_string(" CHECKED", !IO)
+        io.write_string(" checked", !IO)
     ;
         Checked = no
     ),
     io.write_string(">", !IO).
 output_field(Name, select(Size, Multiple, Options), !IO) :-
-    io.format("<SELECT NAME=%s SIZE=%d ", [s(Name), i(Size)], !IO),
+    io.format("<select name=""%s"" size=""%d"" ", [s(Name), i(Size)], !IO),
     (
         Multiple = yes,
-        io.write_string("MULTIPLE", !IO)
+        io.write_string("multiple", !IO)
     ;
         Multiple = no
     ),
     io.write_string(">\n", !IO),
     output_list(output_selection_option, Options, !IO),
-    io.write_string("</SELECT>", !IO).
+    io.write_string("</select>", !IO).
 output_field(Name, submit(Value), !IO) :-
-    io.format("<INPUT NAME=%s TYPE=submit VALUE=""%s"">",
+    io.format("<input name=""%s"" type=""submit"" value=""%s"">",
         [s(Name), s(escape_attr_string(Value))], !IO).
 output_field(Name, reset(Value), !IO) :-
-    io.format("<INPUT NAME=%s TYPE=reset VALUE=""%s"">",
+    io.format("<input name=""%s"" type=""reset"" value=""%s"">",
         [s(Name), s(escape_attr_string(Value))], !IO).
 output_field(Name, hidden(Value), !IO) :-
-    io.format("<INPUT NAME=%s TYPE=hidden VALUE=""%s"">",
+    io.format("<input name=""=%s"" type=""hidden"" value=""%s"">",
         [s(Name), s(escape_attr_string(Value))], !IO).
 
 :- pred output_selection_option(pair(string, bool)::in, io::di, io::uo)
@@ -345,10 +346,10 @@ output_field(Name, hidden(Value), !IO) :-
 output_selection_option(Text - Selected, !IO) :-
     (
         Selected = yes,
-        io.write_string("<OPTION SELECTED>", !IO)
+        io.write_string("<option selected>", !IO)
     ;
         Selected = no,
-        io.write_string("<OPTION>", !IO)
+        io.write_string("<option>", !IO)
     ),
     io.write_string(escape_html_string(Text), !IO),
     io.nl(!IO).
