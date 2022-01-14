@@ -7358,31 +7358,29 @@ but do not attempt to link the named modules.
 @sp 1
 @item --output-grade-string
 @findex --output-grade-string
-Compute from the rest of the option settings the canonical grade
-string and print it on the standard output.
+Compute the canonical string representing the currently selected grade,
+and print it on the standard output.
 
 @sp 1
 @item --output-link-command
 @findex --output-link-command
-Print the command used to link executables to the
-standard output.
+Print to standard output the command used to link executables.
 
 @sp 1
 @item --output-shared-lib-link-command
 @findex --output-shared-lib-link-command
-Print the command used to link shared libraries to the
-standard output.
+Print to standard output the command used to link shared libraries.
 
 @sp 1
 @item --output-libgrades
 @findex --output-libgrades
-Print the list of compilation grades in which a library to
-be installed should be built to the standard output.
+Print to standard output the list of compilation grades in which
+the Mercury standard library is available with this compiler.
 
 @sp 1
 @item --output-cc
 @findex --output-cc
-Print the command used to invoke the C compiler to the standard output.
+Print to standard output the command used to invoke the C compiler.
 
 @sp 1
 @item --output-cc-type
@@ -7394,13 +7392,12 @@ Print the C compiler type to the standard output.
 @sp 1
 @item --output-cflags
 @findex --output-cflags
-Print the flags with which the C compiler will be invoked
-to the standard output.
+Print to standard output the flags with which the C compiler will be invoked.
 
 @sp 1
 @item --output-csharp-compiler
 @findex --output-csharp-compiler
-Print the command used to invoke the C# compiler to the standard output.
+Print to standard output the command used to invoke the C# compiler.
 
 @sp 1
 @item --output-csharp-compiler-type
@@ -7410,27 +7407,25 @@ Print the C# compiler type to the standard output.
 @sp 1
 @item --output-library-link-flags
 @findex --output-library-link-flags
-Print the flags that are passed to the linker in order to link
-against the current set of libraries.  This includes the standard
-library as well as any other libraries specified via the
-@samp{--ml} option.  The flags are printed to the standard output.
+Print to standard output the flags that are passed to the linker
+in order to link against the current set of libraries.
+This includes the standard library, as well as any other libraries
+specified via the @samp{--ml} option.
 
 @sp 1
 @item --output-grade-defines
 @findex --output-grade-defines
-Print the flags that are passed to the C compiler to define the macros used to
-specify the compilation grade.
-The flags are printed to the standard output.
+Print to standard output the flags that are passed to the C compiler
+to define the macros whose values specify the compilation grade.
 
 @sp 1
 @item --output-c-include-dir-flags
 @item --output-c-include-directory-flags
 @findex --output-c-include-dir-flags
 @findex --output-c-include-directory-flags
-Print the flags that are passed to the C compiler to specify which directories
-to search for C header files.
+Print to standard output the flags that are passed to the C compiler
+to specify which directories to search for C header files.
 This includes the C header files from the standard library.
-The flags are printed to the standard output.
 
 @sp 1
 @item --output-target-arch
@@ -7440,10 +7435,20 @@ Print the target architecture to the standard output.
 @sp 1
 @item --output-class-dir
 @item --output-class-directory
+@item --output-java-class-dir
+@item --output-java-class-directory
 @findex --output-class-dir
 @findex --output-class-directory
+@findex --output-java-class-dir
+@findex --output-java-class-directory
 Print to standard output the name of the directory in which generated Java
 class files will be placed.
+
+@sp 1
+@item --output-stdlib-modules
+@findex --output-stdlib-modules
+Print to standard output the names of the modules
+in the Mercury standard library.
 
 @end table
 
