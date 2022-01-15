@@ -328,7 +328,6 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual,
         % All predicate names passed into this predicate should have been
         % qualified by the parser when they were first read.
         Succeeded = no,
-        module_info_incr_errors(!ModuleInfo),
         unqualified_pred_error(PredSymName, PredArity, Context, !Specs)
     ;
         PredSymName = qualified(MNameOfPred, PName),

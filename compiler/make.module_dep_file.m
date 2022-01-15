@@ -862,7 +862,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         ),
         (
             FatalReadError = yes,
-            write_error_specs_ignore(ErrorStream, Globals, Specs0, !IO),
+            write_error_specs(ErrorStream, Globals, Specs0, !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
             (
                 DisplayErrorReadingFile = yes,
@@ -906,7 +906,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             io.set_output_stream(ErrorStream, _, !IO),
             % XXX Why are we ignoring all previously reported errors?
             io.set_exit_status(0, !IO),
-            write_error_specs_ignore(Globals, Specs, !IO),
+            write_error_specs(Globals, Specs, !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
 
             list.foldl(make_info_add_module_and_imports_as_dep,
@@ -931,7 +931,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                     OptionVariables, OptionArgs, ExtraOptions, MayBuild, !IO),
                 (
                     MayBuild = may_not_build(MSISpecs),
-                    write_error_specs_ignore(ErrorStream, Globals,
+                    write_error_specs(ErrorStream, Globals,
                         MSISpecs, !IO),
                     Succeeded0 = did_not_succeed
                 ;

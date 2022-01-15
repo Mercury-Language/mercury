@@ -3064,7 +3064,7 @@ display_compiler_version(Stream, !IO) :-
 usage_errors(ErrorStream, Globals, Specs, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
     io.format(ErrorStream, "%s:\n", [s(ProgName)], !IO),
-    write_error_specs_ignore(ErrorStream, Globals, Specs, !IO).
+    write_error_specs(ErrorStream, Globals, Specs, !IO).
 
 :- mutable(already_printed_usage, bool, no, ground,
     [untrailed, attach_to_io_state]).

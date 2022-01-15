@@ -220,7 +220,7 @@ typecheck_to_fixpoint(Iteration, MaxIterations, !ModuleInfo,
                 module_info_get_name(!.ModuleInfo, ModuleName),
                 get_debug_output_stream(Globals, ModuleName, OutputStream,
                     !IO),
-                write_error_specs_ignore(OutputStream, Globals,
+                write_error_specs(OutputStream, Globals,
                     ProgressSpecs, !IO)
             )
         ;

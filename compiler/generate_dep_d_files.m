@@ -126,7 +126,7 @@ build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
     parse_tree_src_to_burdened_aug_comp_unit_list(Globals, FileNameDotM,
         ParseTreeSrc, ReadModuleErrors, Specs0, Specs, ModuleAndImportsList),
     get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-    write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
+    write_error_specs(ErrorStream, Globals, Specs, !IO),
     map.init(DepsMap0),
     list.foldl(insert_into_deps_map, ModuleAndImportsList, DepsMap0, DepsMap).
 
@@ -144,7 +144,7 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
     generate_deps_map(Globals, Search, ModuleName, DepsMap0, DepsMap,
         [], DepsMapSpecs, !IO),
     get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-    write_error_specs_ignore(ErrorStream, Globals, DepsMapSpecs, !IO),
+    write_error_specs(ErrorStream, Globals, DepsMapSpecs, !IO),
 
     % Check whether we could read the main `.m' file.
     map.lookup(DepsMap, ModuleName, ModuleDep),

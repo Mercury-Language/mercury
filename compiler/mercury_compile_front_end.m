@@ -153,13 +153,13 @@ frontend_pass(OpModeAugment, QualInfo0,
         % We can't continue after an undefined type error, because if we did,
         % typecheck could get internal errors.
         !:FoundError = yes,
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
         maybe_write_string(Verbose,
             "% Program contains undefined type error(s).\n", !IO),
         io.set_exit_status(1, !IO)
     ;
         FoundUndefTypeError = no,
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
 
         % It would be nice to move the decide_type_repns pass later,
         % possibly all the way to the end of the semantic analysis passes,
@@ -294,10 +294,10 @@ maybe_eliminate_dead_preds(OpModeAugment, Verbose, Stats, Globals,
         % to speed up compilation. This must be done after
         % typeclass instances have been checked, since that
         % fills in which pred_ids are needed by instance decls.
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
         maybe_write_string(Verbose, "% Eliminating dead predicates... ", !IO),
         dead_pred_elim(!HLDS),
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
         maybe_write_string(Verbose, "done.\n", !IO),
         maybe_report_stats(Stats, !IO),
         maybe_dump_hlds(!.HLDS, 10, "dead_pred_elim", !DumpInfo, !IO)
@@ -316,11 +316,11 @@ maybe_warn_about_insts_without_matching_type(Verbose, Stats, Globals,
         WarnInstsWithNoMatchingType),
     (
         WarnInstsWithNoMatchingType = yes,
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
         maybe_write_string(Verbose,
             "% Checking that insts have matching types... ", !IO),
         check_insts_have_matching_types(!HLDS, !Specs),
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
         maybe_write_string(Verbose, "done.\n", !IO),
         maybe_report_stats(Stats, !IO),
         maybe_dump_hlds(!.HLDS, 12, "warn_insts_without_matching_type",
@@ -337,7 +337,7 @@ maybe_warn_about_insts_without_matching_type(Verbose, Stats, Globals,
 do_typecheck(Verbose, Stats, Globals, FoundSyntaxError, FoundTypeError,
         NumberOfIterations, !HLDS, !DumpInfo, !Specs, !IO) :-
     % Next typecheck the clauses.
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Type-checking...\n", !IO),
     maybe_write_string(Verbose, "% Type-checking clauses...\n", !IO),
     globals.lookup_bool_option(Globals, type_check_constraints,
@@ -360,7 +360,7 @@ do_typecheck(Verbose, Stats, Globals, FoundSyntaxError, FoundTypeError,
             NumberOfIterations)
     ),
     !:Specs = TypeCheckSpecs ++ !.Specs,
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     FoundTypeError = contains_errors(Globals, TypeCheckSpecs),
     (
         FoundTypeError = yes,
@@ -727,7 +727,6 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
             % Work out whether we encountered any errors.
             MaybeWorstSpecsSeverity =
                 worst_severity_in_specs(Globals, !.Specs),
-            module_info_get_num_errors(!.HLDS, NumErrors),
             io.get_exit_status(ExitStatus, !IO),
             ( if
                 FoundModeError = no,
@@ -735,7 +734,6 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
                 FoundStratError = no,
                 FoundOISUError = no,
                 FoundTryError = no,
-                NumErrors = 0,
                 (
                     MaybeWorstSpecsSeverity = no
                 ;
@@ -765,7 +763,7 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
 
 decide_type_repns_pass(Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose,
         "% Deciding type representations...\n", !IO),
     decide_type_repns(!HLDS, !Specs, !IO),
@@ -783,7 +781,7 @@ puritycheck(Verbose, Stats, !HLDS, !Specs, !IO) :-
     !:Specs = PuritySpecs ++ !.Specs,
     module_info_get_globals(!.HLDS, Globals),
     PurityErrors = contains_errors(Globals, PuritySpecs),
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     (
         PurityErrors = yes,
         maybe_write_string(Verbose,
@@ -806,7 +804,7 @@ check_promises(Verbose, Stats, !HLDS, !Specs, !IO) :-
     !:Specs = PromiseSpecs ++ !.Specs,
     module_info_get_globals(!.HLDS, Globals),
     PromiseErrors = contains_errors(Globals, PromiseSpecs),
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     (
         PromiseErrors = yes,
         maybe_write_string(Verbose,
@@ -826,7 +824,7 @@ check_promises(Verbose, Stats, !HLDS, !Specs, !IO) :-
 
 subst_implementation_defined_literals(Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose,
         "% Substituting implementation-defined literals...\n", !IO),
     maybe_flush_output(Verbose, !IO),
@@ -844,7 +842,7 @@ subst_implementation_defined_literals(Verbose, Stats, !HLDS, !Specs, !IO) :-
 maybe_polymorphism(Verbose, Stats, ExistsCastPredIds, SafeToContinue,
         !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
 
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
@@ -867,7 +865,7 @@ maybe_polymorphism(Verbose, Stats, ExistsCastPredIds, SafeToContinue,
         VeryVerbose = yes,
         maybe_write_string(Verbose, "% done.\n", !IO)
     ),
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     maybe_report_stats(Stats, !IO).
 
 %---------------------------------------------------------------------------%
@@ -877,7 +875,7 @@ maybe_polymorphism(Verbose, Stats, ExistsCastPredIds, SafeToContinue,
 
 clause_to_proc(Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Copying clauses to procedures...", !IO),
     copy_clauses_to_proc_for_all_valid_procs(!HLDS),
     maybe_write_string(Verbose, " done.\n", !IO),
@@ -892,7 +890,7 @@ clause_to_proc(Verbose, Stats, !HLDS, !Specs, !IO) :-
 post_copy_polymorphism_pass(Verbose, Stats, ExistsCastPredIds, !HLDS,
         !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Post copy polymorphism...", !IO),
     post_copy_polymorphism(ExistsCastPredIds, !HLDS),
     maybe_write_string(Verbose, " done.\n", !IO),
@@ -910,11 +908,11 @@ maybe_warn_about_unused_imports(Verbose, Stats, !HLDS, !Specs, !IO) :-
         WarnUnusedImports),
     (
         WarnUnusedImports = yes,
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
         maybe_write_string(Verbose, "% Checking for unused imports...", !IO),
         warn_about_unused_imports(!.HLDS, UnusedImportSpecs),
         !:Specs = UnusedImportSpecs ++ !.Specs,
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -948,7 +946,7 @@ maybe_mode_constraints(Verbose, Stats, !HLDS, !IO) :-
 modecheck(Verbose, Stats, !HLDS, FoundModeError, SafeToContinue,
         !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Mode-checking clauses...\n", !IO),
     globals.lookup_bool_option(Globals, benchmark_modes, BenchmarkModes),
     (
@@ -969,11 +967,11 @@ modecheck(Verbose, Stats, !HLDS, FoundModeError, SafeToContinue,
     FoundModeError = contains_errors(Globals, ModeSpecs),
     (
         FoundModeError = no,
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
         maybe_write_string(Verbose, "% Program is mode-correct.\n", !IO)
     ;
         FoundModeError = yes,
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
         maybe_write_string(Verbose, "% Program contains mode error(s).\n", !IO)
     ),
     maybe_report_stats(Stats, !IO).
@@ -1017,7 +1015,7 @@ maybe_compute_goal_modes(Verbose, Stats, !HLDS, !Specs, !IO) :-
         ComputeGoalModes = no
     ;
         ComputeGoalModes = yes,
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
         maybe_write_string(Verbose, "% Computing goal modes... ", !IO),
         compute_goal_modes_in_module(!HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
@@ -1059,7 +1057,7 @@ check_determinism(Verbose, Stats, !HLDS, !Specs, !IO) :-
     !:Specs = DetismSpecs ++ !.Specs,
     module_info_get_globals(!.HLDS, Globals),
     FoundError = contains_errors(Globals, DetismSpecs),
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     (
         FoundError = yes,
         maybe_write_string(Verbose,
@@ -1079,13 +1077,13 @@ check_determinism(Verbose, Stats, !HLDS, !Specs, !IO) :-
 
 check_unique_modes(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose,
         "% Checking for backtracking over unique modes...\n", !IO),
     unique_modes_check_module(!HLDS, UniqueSpecs),
     !:Specs = UniqueSpecs ++ !.Specs,
     FoundError = contains_errors(Globals, UniqueSpecs),
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     (
         FoundError = yes,
         maybe_write_string(Verbose,
@@ -1111,12 +1109,12 @@ check_stratification(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
         ; Warn = yes
         )
     then
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
         maybe_write_string(Verbose, "% Checking stratification...\n", !IO),
         check_module_for_stratification(!HLDS, StratifySpecs),
         !:Specs = StratifySpecs ++ !.Specs,
         FoundError = contains_errors(Globals, StratifySpecs),
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
         (
             FoundError = yes,
             maybe_write_string(Verbose,
@@ -1145,13 +1143,13 @@ check_oisu_pragmas(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
     (
         ModuleOISUPairs = [_ | _],
         module_info_get_globals(!.HLDS, Globals),
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
         maybe_write_string(Verbose,
             "% Checking oisu pragmas...\n", !IO),
         check_oisu_pragmas_for_module(ModuleOISUPairs, !HLDS, OISUSpecs),
         !:Specs = OISUSpecs ++ !.Specs,
         FoundError = contains_errors(Globals, OISUSpecs),
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
         (
             FoundError = yes,
             maybe_write_string(Verbose,
@@ -1182,12 +1180,12 @@ type_ctor_is_defined_in_this_module(ModuleName, TypeCtor - _) :-
 
 process_try_goals(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Transforming try goals...\n", !IO),
     expand_try_goals_in_module(!HLDS, [], TryExpandSpecs),
     !:Specs = TryExpandSpecs ++ !.Specs,
     FoundError = contains_errors(Globals, TryExpandSpecs),
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     (
         FoundError = yes,
         maybe_write_string(Verbose, "% Program contains error(s).\n", !IO)
@@ -1280,7 +1278,7 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
     (
         SimpList = [_ | _],
 
-        maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
         maybe_write_string(Verbose, "% Simplifying goals...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         SimplifyTasks = list_to_simplify_tasks(Globals, SimpList),
@@ -1290,7 +1288,7 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
         (
             SimplifyPass = simplify_pass_frontend,
             !:Specs = SimplifySpecs ++ !.Specs,
-            maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO)
+            maybe_write_out_errors(Verbose, Globals, !Specs, !IO)
         ;
             ( SimplifyPass = simplify_pass_ll_backend
             ; SimplifyPass = simplify_pass_ml_backend
@@ -1340,7 +1338,7 @@ simplify_pred(SimplifyTasks0, PredId, !ModuleInfo, !PredInfo, !Specs) :-
 
 maybe_generate_style_warnings(Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
 
     globals.lookup_bool_option(Globals, warn_non_contiguous_decls,
         NonContiguousDecls),
@@ -1400,7 +1398,7 @@ maybe_generate_style_warnings(Verbose, Stats, !HLDS, !Specs, !IO) :-
 
 maybe_proc_statistics(Verbose, Stats, Msg, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
 
     globals.lookup_string_option(Globals, proc_size_statistics, StatsFileName),
     ( if StatsFileName = "" then

@@ -220,7 +220,7 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
                 maybe_dump_hlds(!.ModuleInfo, 46, "cse_repeat_modecheck",
                     no_prev_dump, _DumpInfo, !IO),
                 get_error_output_stream(!.ModuleInfo, ErrorStream, !IO),
-                write_error_specs_ignore(ErrorStream, Globals, ModeSpecs, !IO)
+                write_error_specs(ErrorStream, Globals, ModeSpecs, !IO)
             ),
             unexpected($pred, "mode check fails when repeated")
         ;

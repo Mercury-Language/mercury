@@ -302,7 +302,7 @@ unique_modecheck_goal_live_vars(LiveVars, Goal0, Goal, Errors, !PDInfo) :-
         Debug = yes,
         trace [io(!IO)] (
             ErrorSpecs = list.map(mode_error_info_to_spec(ModeInfo), Errors),
-            write_error_specs_ignore(Globals, ErrorSpecs, !IO)
+            write_error_specs(Globals, ErrorSpecs, !IO)
         )
     ;
         Debug = no

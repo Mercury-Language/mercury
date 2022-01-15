@@ -419,19 +419,13 @@
 
 %---------------------------------------------------------------------------%
 
-    % write_error_spec_ignore(Globals, Spec, !IO):
-    % write_error_spec_ignore(Stream, Globals, Spec, !IO):
-    % write_error_specs_ignore(Globals, Specs !IO):
-    % write_error_specs_ignore(Stream, Globals, Specs !IO):
-    % write_error_spec(Globals, Spec, !NumWarnings, !NumErrors, !IO):
-    % write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors, !IO):
-    % write_error_specs(Globals, Specs !NumWarnings, !NumErrors, !IO):
-    % write_error_specs(Stream, Globals, Specs !NumWarnings, !NumErrors, !IO):
+    % write_error_spec(Globals, Spec, !IO):
+    % write_error_spec(Stream, Globals, Spec, !IO):
+    % write_error_specs(Globals, Specs !IO):
+    % write_error_specs(Stream, Globals, Specs !IO):
     %
     % Write out the error message(s) specified by Spec or Specs, minus the
-    % parts whose conditions are false. In the non-ignore versions,
-    % increment !NumWarnings by the number of printed warnings and
-    % !NumErrors by the number of printed errors.
+    % parts whose conditions are false.
     %
     % Set the exit status to 1 if we found any errors, or if we found any
     % warnings and --halt-at-warn is set. If some error specs have verbose
@@ -445,35 +439,14 @@
     % will not be changed. This will happen even if the severity means
     % that something should have been printed out.
     %
-    % Calls to the ignore versions could be considered to implicitly have
-    % an XXX next to them, for not incrementing the num_errors field
-    % in the module_info if the (ignored) number of errors printed
-    % is nonzero. However, we have got along fine for a long time ignoring
-    % the number of warnings and errors at most calls to write out specs,
-    % since we do set the exit status to a nonzero value when we print an
-    % error, and the main use of the num_errors field is to do likewise.
-    %
-:- pred write_error_spec_ignore(globals::in,
-    error_spec::in, io::di, io::uo) is det.
-:- pred write_error_spec_ignore(io.text_output_stream::in, globals::in,
-    error_spec::in, io::di, io::uo) is det.
-:- pred write_error_specs_ignore(globals::in,
-    list(error_spec)::in, io::di, io::uo) is det.
-:- pred write_error_specs_ignore(io.text_output_stream::in, globals::in,
-    list(error_spec)::in, io::di, io::uo) is det.
-
 :- pred write_error_spec(globals::in,
-    error_spec::in, int::in, int::out, int::in, int::out,
-    io::di, io::uo) is det.
+    error_spec::in, io::di, io::uo) is det.
 :- pred write_error_spec(io.text_output_stream::in, globals::in,
-    error_spec::in, int::in, int::out, int::in, int::out,
-    io::di, io::uo) is det.
+    error_spec::in, io::di, io::uo) is det.
 :- pred write_error_specs(globals::in,
-    list(error_spec)::in, int::in, int::out, int::in, int::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, io::di, io::uo) is det.
 :- pred write_error_specs(io.text_output_stream::in, globals::in,
-    list(error_spec)::in, int::in, int::out, int::in, int::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1575,23 +1548,9 @@ pre_hlds_maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO) :-
         Verbose = no
     ;
         Verbose = yes,
-        write_error_specs_ignore(Stream, Globals, !.Specs, !IO),
+        write_error_specs(Stream, Globals, !.Specs, !IO),
         !:Specs = []
     ).
-
-%---------------------------------------------------------------------------%
-
-write_error_spec_ignore(Globals, Spec, !IO) :-
-    write_error_spec(Globals, Spec, 0, _, 0, _, !IO).
-
-write_error_spec_ignore(Stream, Globals, Spec, !IO) :-
-    write_error_spec(Stream, Globals, Spec, 0, _, 0, _, !IO).
-
-write_error_specs_ignore(Globals, Specs, !IO) :-
-    write_error_specs(Globals, Specs, 0, _, 0, _, !IO).
-
-write_error_specs_ignore(Stream, Globals, Specs, !IO) :-
-    write_error_specs(Stream, Globals, Specs, 0, _, 0, _, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -1607,24 +1566,23 @@ write_error_specs_ignore(Stream, Globals, Specs, !IO) :-
 % for verbose_once message to be printed by each of several invocations
 % of write_error_specs, in practice it won't happen.
 
-write_error_spec(Globals, Spec, !NumWarnings, !NumErrors, !IO) :-
+write_error_spec(Globals, Spec, !IO) :-
     io.output_stream(Stream, !IO),
-    write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors, !IO).
+    write_error_spec(Stream, Globals, Spec, !IO).
 
-write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors, !IO) :-
-    do_write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors,
-        set.init, _, !IO).
+write_error_spec(Stream, Globals, Spec, !IO) :-
+    do_write_error_spec(Stream, Globals, Spec, 0, _, 0, _, set.init, _, !IO).
 
 %---------------------%
 
-write_error_specs(Globals, Specs0, !NumWarnings, !NumErrors, !IO) :-
+write_error_specs(Globals, Specs0, !IO) :-
     io.output_stream(Stream, !IO),
-    write_error_specs(Stream, Globals, Specs0, !NumWarnings, !NumErrors, !IO).
+    write_error_specs(Stream, Globals, Specs0, !IO).
 
-write_error_specs(Stream, Globals, Specs0, !NumWarnings, !NumErrors, !IO) :-
+write_error_specs(Stream, Globals, Specs0, !IO) :-
     sort_error_specs(Globals, Specs0, Specs),
-    list.foldl4(do_write_error_spec(Stream, Globals), Specs,
-        !NumWarnings, !NumErrors, set.init, _, !IO).
+    list.foldl4(do_write_error_spec(Stream, Globals), Specs, 0, _, 0, _,
+        set.init, _, !IO).
 
 %---------------------%
 

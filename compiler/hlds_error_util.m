@@ -127,12 +127,10 @@
 %   when there is nothing to print is so low (a few dozen instructions),
 %   we can easily afford to incur it unnecessarily once per compiler phase.
 
-:- pred definitely_write_out_errors(globals::in,
-    module_info::in, module_info::out, list(error_spec)::in,
+:- pred definitely_write_out_errors(globals::in, list(error_spec)::in,
     io::di, io::uo) is det.
 
 :- pred maybe_write_out_errors(bool::in, globals::in,
-    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -367,21 +365,17 @@ project_pred_form_arity_int(pred_form_arity(A)) = A.
 
 %-----------------------------------------------------------------------------%
 
-definitely_write_out_errors(Globals, !HLDS, Specs, !IO) :-
-    write_error_specs(Globals, Specs,
-        0, _NumWarnings, 0, NumErrors, !IO),
-    module_info_incr_num_errors(NumErrors, !HLDS).
+definitely_write_out_errors(Globals, Specs, !IO) :-
+    write_error_specs(Globals, Specs, !IO).
 
-maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO) :-
+maybe_write_out_errors(Verbose, Globals, !Specs, !IO) :-
     % pre_hlds_maybe_write_out_errors in error_util.m is a pre-HLDS version
     % of this predicate.
     (
         Verbose = no
     ;
         Verbose = yes,
-        write_error_specs(Globals, !.Specs,
-            0, _NumWarnings, 0, NumErrors, !IO),
-        module_info_incr_num_errors(NumErrors, !HLDS),
+        write_error_specs(Globals, !.Specs, !IO),
         !:Specs = []
     ).
 

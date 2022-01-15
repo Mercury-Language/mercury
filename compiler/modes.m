@@ -441,7 +441,7 @@ modecheck_to_fixpoint(PredIds, NumIterationsLeft, WhatToCheck,
                             DebugStream, !IO),
                         io.write_string(DebugStream,
                             "Inferences by current iteration:\n", !IO),
-                        write_error_specs_ignore(DebugStream, Globals,
+                        write_error_specs(DebugStream, Globals,
                             InferenceSpecs, !IO),
                         io.write_string(DebugStream,
                             "End of inferences.\n", !IO)

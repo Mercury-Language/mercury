@@ -82,7 +82,7 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
     (
         MaybeTargets = error1(Specs),
         io.stderr_stream(StdErr, !IO),
-        write_error_specs_ignore(StdErr, Globals, Specs, !IO)
+        write_error_specs(StdErr, Globals, Specs, !IO)
     ;
         MaybeTargets = ok1(Targets),
         globals.lookup_bool_option(Globals, keep_going, KeepGoingBool),
@@ -253,13 +253,13 @@ make_target(Globals, Target, Succeeded, !Info, !IO) :-
             make_linked_target(Globals, LinkedTargetFile, Succeeded,
                 !Info, [], Specs, !IO),
             get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-            write_error_specs_ignore(ErrorStream, Globals, Specs, !IO)
+            write_error_specs(ErrorStream, Globals, Specs, !IO)
         ;
             TargetType = misc_target(MiscTargetType),
             make_misc_target(Globals, ModuleName - MiscTargetType, Succeeded,
                 !Info, [], Specs, !IO),
             get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-            write_error_specs_ignore(ErrorStream, Globals, Specs, !IO)
+            write_error_specs(ErrorStream, Globals, Specs, !IO)
         )
     ;
         TrackFlagsSucceeded = did_not_succeed,

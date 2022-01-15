@@ -95,7 +95,7 @@ make_track_flags_files_2(Globals, ModuleName, Succeeded,
         !LastHash, !Info, !IO) :-
     lookup_mmc_module_options(!.Info ^ mki_options_variables, ModuleName,
         ModuleOptionArgs, LookupSpecs),
-    write_error_specs_ignore(Globals, LookupSpecs, !IO),
+    write_error_specs(Globals, LookupSpecs, !IO),
     LookupErrors = contains_errors(Globals, LookupSpecs),
     (
         LookupErrors = no,

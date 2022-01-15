@@ -440,7 +440,7 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
         ;
             MayBuild = may_not_build(Specs),
             get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-            write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
+            write_error_specs(ErrorStream, Globals, Specs, !IO),
             Succeeded0 = did_not_succeed
         ),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,

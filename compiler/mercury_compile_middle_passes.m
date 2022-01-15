@@ -924,7 +924,7 @@ maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO) :-
         apply_implicit_parallelism_transformation(SourceFileMap, Specs, !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         % XXX This is a bit late for printing errors.
-        write_error_specs_ignore(Globals, Specs, !IO),
+        write_error_specs(Globals, Specs, !IO),
         maybe_report_stats(Stats, !IO)
     ;
         % The user hasn't asked for implicit parallelism.

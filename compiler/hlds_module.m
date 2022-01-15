@@ -347,7 +347,6 @@
     set(pf_sym_name_arity)::out) is det.
 :- pred module_info_get_maybe_dependency_info(module_info::in,
     maybe(hlds_dependency_info)::out) is det.
-:- pred module_info_get_num_errors(module_info::in, int::out) is det.
 :- pred module_info_get_type_ctor_gen_infos(module_info::in,
     list(type_ctor_gen_info)::out) is det.
 :- pred module_info_get_must_be_stratified_preds(module_info::in,
@@ -589,11 +588,6 @@
 
 %---------------------%
 
-:- pred module_info_incr_errors(module_info::in, module_info::out) is det.
-
-:- pred module_info_incr_num_errors(int::in,
-    module_info::in, module_info::out) is det.
-
     % The module_info stores a counter which is used to distinguish
     % lambda predicates which appear on the same line in the same file.
     % This predicate returns the next number for the given context
@@ -700,7 +694,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module counter.
-:- import_module int.
 :- import_module require.
 :- import_module string.
 
@@ -840,8 +833,6 @@
                 % Please see module_info_ensure_dependency_info for the
                 % meaning of this dependency_info, and the constraints on it.
                 mri_maybe_dependency_info       :: maybe(hlds_dependency_info),
-
-                mri_num_errors                  :: int,
 
                 mri_type_ctor_gen_infos         :: list(type_ctor_gen_info),
                 mri_must_be_stratified_preds    :: set(pred_id),
@@ -1060,7 +1051,6 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
     FactTableFiles = [],
     set.init(IntBadPreds),
     MaybeDependencyInfo = maybe.no,
-    NumErrors = 0,
     MustBeStratifiedPreds = [],
     set.init(StratPreds),
     map.init(UnusedArgInfo),
@@ -1129,7 +1119,6 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
         FactTableFiles,
         IntBadPreds,
         MaybeDependencyInfo,
-        NumErrors,
         MustBeStratifiedPreds,
         StratPreds,
         UnusedArgInfo,
@@ -1218,8 +1207,6 @@ module_info_optimize(!ModuleInfo) :-
 
 :- pred module_info_set_maybe_dependency_info(maybe(hlds_dependency_info)::in,
     module_info::in, module_info::out) is det.
-:- pred module_info_set_num_errors(int::in,
-    module_info::in, module_info::out) is det.
 :- pred module_info_set_lambdas_per_context(map(prog_context, counter)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_atomics_per_context(map(prog_context, counter)::in,
@@ -1296,8 +1283,6 @@ module_info_get_int_bad_clauses(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_int_bad_clauses.
 module_info_get_maybe_dependency_info(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_maybe_dependency_info.
-module_info_get_num_errors(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_num_errors.
 module_info_get_type_ctor_gen_infos(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_type_ctor_gen_infos.
 module_info_get_must_be_stratified_preds(MI, X) :-
@@ -1428,12 +1413,6 @@ module_info_set_int_bad_clauses(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_int_bad_clauses := X.
 module_info_set_maybe_dependency_info(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_maybe_dependency_info := X.
-module_info_set_num_errors(X, !MI) :-
-    ( if X = !.MI ^ mi_rare_info ^ mri_num_errors then
-        true
-    else
-        !MI ^ mi_rare_info ^ mri_num_errors := X
-    ).
 module_info_set_type_ctor_gen_infos(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_type_ctor_gen_infos := X.
 module_info_set_must_be_stratified_preds(X, !MI) :-
@@ -1622,14 +1601,6 @@ module_info_clobber_dependency_info(!MI) :-
     module_info_set_maybe_dependency_info(no, !MI).
 
 %---------------------%
-
-module_info_incr_errors(!MI) :-
-    module_info_incr_num_errors(1, !MI).
-
-module_info_incr_num_errors(Incr, !MI) :-
-    module_info_get_num_errors(!.MI, Errs0),
-    Errs = Errs0 + Incr,
-    module_info_set_num_errors(Errs, !MI).
 
 module_info_next_lambda_count(Context, Count, !MI) :-
     module_info_get_lambdas_per_context(!.MI, ContextCounter0),

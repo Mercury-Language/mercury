@@ -231,7 +231,7 @@ write_used_file_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
         Spec = error_spec($pred, severity_informational, phase_read_files,
             Msgs)
     ),
-    write_error_spec_ignore(Stream, Globals, Spec, !IO).
+    write_error_spec(Stream, Globals, Spec, !IO).
 
 :- pred should_recompile_3(globals::in, used_file::in,
     maybe_is_inline_submodule::in,
@@ -1428,7 +1428,7 @@ write_recompile_reason(Globals, Stream, ThisModuleName, Reason, !IO) :-
         phase_read_files, AllPieces),
     % Since these messages are informational, there should be no warnings
     % or errors.
-    write_error_spec_ignore(Stream, Globals, Spec, !IO).
+    write_error_spec(Stream, Globals, Spec, !IO).
 
 :- func describe_item(item_id) = list(format_component).
 

@@ -100,7 +100,6 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
 
     ItemTypeDefnInfo = item_type_defn_info(SymName, TypeParams,
         ParseTreeTypeDefn, TVarSet, Context, _SeqNum),
-    module_info_get_globals(!.ModuleInfo, Globals),
     list.length(TypeParams, Arity),
     TypeCtor = type_ctor(SymName, Arity),
     convert_type_defn_to_hlds(ParseTreeTypeDefn, TypeCtor, Body, !ModuleInfo),
@@ -170,11 +169,6 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
         ParseTreeTypeDefn = parse_tree_foreign_type(_),
         module_add_type_defn_foreign(TypeStatus0, TypeStatus, TypeCtor, Body,
             HLDSTypeDefn0, Context, !ModuleInfo, !FoundInvalidType, [], Specs)
-    ),
-    ( if contains_errors(Globals, Specs) = yes then
-        module_info_incr_errors(!ModuleInfo)
-    else
-        true
     ),
     !:Specs = Specs ++ !.Specs.
 

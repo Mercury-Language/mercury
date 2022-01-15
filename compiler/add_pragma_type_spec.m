@@ -533,7 +533,6 @@ handle_pragma_type_spec_modes(SymName, UserArity, Context, MaybeModes,
             UserArity = user_arity(UserArityInt),
             report_undefined_mode_error(SymName, UserArityInt, Context,
                 [pragma_decl("type_spec"), words("declaration")], !Specs),
-            module_info_incr_errors(!ModuleInfo),
             MaybeProcIds = no
         )
     ;

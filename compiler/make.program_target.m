@@ -172,7 +172,7 @@ make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions, Succeeded,
         ;
             MayBuild = may_not_build(Specs),
             get_error_output_stream(Globals, MainModuleName, ErrorStream, !IO),
-            write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
+            write_error_specs(ErrorStream, Globals, Specs, !IO),
             Succeeded = did_not_succeed
         )
     ;
@@ -824,7 +824,7 @@ make_misc_target(Globals, MainModuleName - TargetType, Succeeded,
     ;
         MayBuild = may_not_build(Specs),
         get_error_output_stream(Globals, MainModuleName, ErrorStream, !IO),
-        write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
+        write_error_specs(ErrorStream, Globals, Specs, !IO),
         Succeeded = did_not_succeed
     ).
 
@@ -1579,7 +1579,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
         ), !IO),
 
     lookup_mmc_options(!.Info ^ mki_options_variables, MCFlags, LookupSpecs),
-    write_error_specs_ignore(Globals, LookupSpecs, !IO),
+    write_error_specs(Globals, LookupSpecs, !IO),
     LookupErrors = contains_errors(Globals, LookupSpecs),
     (
         LookupErrors = no,
@@ -1663,7 +1663,7 @@ install_library_grade_2(Globals, LinkSucceeded0, ModuleName, AllModules,
             Info2, _Info, !IO)
     ;
         LibSucceeded = did_not_succeed,
-        write_error_specs_ignore(Globals, Specs, !IO),
+        write_error_specs(Globals, Specs, !IO),
         Succeeded = did_not_succeed
     ).
 

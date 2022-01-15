@@ -1213,7 +1213,7 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
                     Context, Pieces),
                 module_info_get_name(ModuleInfo, ModuleName),
                 get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-                write_error_spec_ignore(ErrorStream, Globals, Spec, !IO)
+                write_error_spec(ErrorStream, Globals, Spec, !IO)
             ),
             unexpected($pred, "unresolvable predicate overloading")
         else

@@ -296,7 +296,7 @@ maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO) :-
             words("instead."), nl],
         Spec = simplest_no_context_spec($pred, severity_error,
             phase_read_files, Pieces),
-        write_error_spec_ignore(Globals, Spec, !IO)
+        write_error_spec(Globals, Spec, !IO)
     ).
 
 :- pred maybe_mark_tail_rec_calls_hlds(bool::in, bool::in,

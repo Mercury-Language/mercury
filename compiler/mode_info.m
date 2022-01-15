@@ -1112,7 +1112,7 @@ mode_info_add_error(ModeErrorInfo, !ModeInfo) :-
             Spec = mode_error_info_to_spec(!.ModeInfo, ModeErrorInfo),
             globals.set_option(print_error_spec_id, bool(yes),
                 Globals0, Globals),
-            write_error_spec(DebugStream, Globals, Spec, 0, _, 0, _, !IO),
+            write_error_spec(DebugStream, Globals, Spec, !IO),
             io.flush_output(DebugStream, !IO)
         )
     ).
