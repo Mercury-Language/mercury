@@ -40,7 +40,7 @@ class CSharpMain {
         // Build up Mercury list of ints in C# 
         // (See the section ``C# data passing conventions'' in the reference
         // manual for details.)
-        list.List_1 mList = list.empty_list(); 
+        var mList = list.empty_list(); 
         mList = list.cons(1, mList);
         mList = list.cons(2, mList);
         mList = list.cons(3, mList);
