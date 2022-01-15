@@ -1,4 +1,4 @@
-MERCURY C INTERFACE EXAMPLES
+Mercury C Interface Examples
 ============================
 
 This directory contains some examples of mixed Mercury/C/C++/Fortran programs
