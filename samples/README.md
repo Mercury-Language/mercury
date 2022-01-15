@@ -64,6 +64,9 @@ Mercury programs:
 * [c_interface](c_interface) -- This directory contains some examples of mixed
   Mercury/C/C++/Fortran programs using the C interface.
 
+* [csharp_interface](csharp_interface) -- This directory contains some
+  examples of mixed Mercury/C# programs using the foreign language interface.
+
 * [java_interface](java_interface) -- This directory contains some examples of
   mixed Mercury/Java programs using the foreign language interface.
 
