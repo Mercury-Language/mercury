@@ -106,8 +106,11 @@
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
-    % Add the items from the .opt files of imported modules to
-    % the items for this module.
+    % grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
+    %   !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO):
+    %
+    % Add the contents of the .opt files of imported modules, as well as
+    % the .int files needed to make sense of them, to !AugCompUnit.
     %
 :- pred grab_plain_opt_and_int_for_opt_files(globals::in, bool::out,
     module_baggage::in, module_baggage::out,
@@ -115,10 +118,11 @@
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
-    % grab_trans_opt_files(Globals, ModuleList, !AugCompUnit, Error, !IO):
+    % grab_trans_opt_files(Globals, Modules, FoundError,
+    %   !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO):
     %
-    % Add the items from each of the modules in ModuleList.trans_opt to
-    % the items in AugCompUnit.
+    % Add the contents of the .trans_opt file of each module in Modules
+    % to !AugCompUnit.
     %
 :- pred grab_trans_opt_files(globals::in, list(module_name)::in, bool::out,
     module_baggage::in, module_baggage::out,
