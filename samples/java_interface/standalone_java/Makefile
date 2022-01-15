@@ -8,7 +8,8 @@ MMC = mmc
 JAVAC = javac
 JAVA = java
 
-# We need to tell javac about the Mercury libraries.
+# We need to tell javac and java where to find the Mercury runtime and
+# standard libraries.
 GRADE = java
 MER_LIB_DIR = $(dir $(shell which mmc))../lib/mercury/lib/$(GRADE)
 MER_JARS = $(MER_LIB_DIR)/mer_std.jar:$(MER_LIB_DIR)/mer_rt.jar

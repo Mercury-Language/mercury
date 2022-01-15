@@ -36,7 +36,7 @@ public class JavaMain {
             runProgram(args);
         } finally {
             // When we have finished calling Mercury procedures then we need
-            // to tell the Mercury Runtime that we've finished using it.
+            // to tell the Mercury Runtime that we have finished using it.
             // The static method finalise() in the MercuryRuntime class does
             // this.  This call is (currently) mandatory otherwise the JVM
             // may not exit cleanly, therefore it should be called in a
@@ -63,8 +63,8 @@ public class JavaMain {
         System.exit(MercuryRuntime.getExitStatus());
     }
 
-    public static void runProgram(String[] args) {
-
+    public static void runProgram(String[] args)
+    {
         // This is a call to an exported Mercury procedure that does some I/O.
         // The mercury_lib class contains a static method for each procedure
         // that is foreign exported to Java.

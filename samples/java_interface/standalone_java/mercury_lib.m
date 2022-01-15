@@ -35,47 +35,47 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_export("Java", write_hello(di, uo),
-    "writeHello").
+:- pragma foreign_export("Java", write_hello(di, uo), "writeHello").
 
 write_hello(!IO) :-
     io.print_line("Hello World", !IO).
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_export("Java", cube(in) = out,
-    "cube").
+:- pragma foreign_export("Java", cube(in) = out, "cube").
 
 cube(X) = X * X * X.
 
 %-----------------------------------------------------------------------------%
+%
+% Trivial concurrency test.
+%
 
-%
-% Trivial concurrency test.  No one would normally write fibs this way.
-%
-:- pragma foreign_export("Java", fibs(in) = out,
-    "fibs").
+% No one would normally write fibs this way.
+
+:- pragma foreign_export("Java", fibs(in) = out, "fibs").
+
 fibs(N) = fibs_par(N).
 
 :- func fibs_par(int) = int.
 
 fibs_par(N) = F :-
-    ( N < 2 ->
+    ( if N < 2 then
         F = 1
-    ; N > fibs_thresh ->
-        F2 = future((func) = fibs_par(N-2)),
-        F1 = fibs_par(N-1),
+    else if N > fibs_thresh then
+        F2 = future((func) = fibs_par(N - 2)),
+        F1 = fibs_par(N - 1),
         F = F1 + wait(F2)
-    ;
-        F = fibs_seq(N-1) + fibs_seq(N-2)
+    else
+        F = fibs_seq(N - 1) + fibs_seq(N - 2)
     ).
 
 :- func fibs_seq(int) = int.
 
 fibs_seq(N) =
-    ( N < 2 ->
+    ( if N < 2 then
         1
-    ;
+    else
         fibs_seq(N-2) + fibs_seq(N-1)
     ).
 
@@ -85,7 +85,7 @@ fibs_thresh = 20.
 
 %-----------------------------------------------------------------------------%
 %
-% Initialiser for this library
+% Initialiser for this library.
 %
 
 :- initialise initialiser/2.
@@ -97,7 +97,7 @@ initialiser(!IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Finaliser for this library
+% Finaliser for this library.
 %
 
 :- finalise finaliser/2.
