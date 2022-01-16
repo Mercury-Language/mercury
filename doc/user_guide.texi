@@ -10347,7 +10347,7 @@ building and installing the default set of grades.
 @sp 1
 @item --libgrades-include-component @var{component}
 @itemx --libgrades-include @var{component}
-@findex --libgrade-include-component
+@findex --libgrades-include-component
 @findex --libgrades-include
 Remove grades that do not contain the specified component from the
 set of library grades to be installed.
