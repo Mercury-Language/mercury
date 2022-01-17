@@ -23,7 +23,7 @@ demos: $(DEMOS)
 # The following stuff tells Mmake to use the two libraries
 VPATH = $(CURS_DIR):$(MMAKE_VPATH)
 MCFLAGS = -I$(CURS_DIR) $(EXTRA_MCFLAGS)
-MGNUCFLAGS = -I$(CURS_DIR)
+CFLAGS = -I$(CURS_DIR)
 MLFLAGS = -R$(CURS_DIR) $(EXTRA_MLFLAGS) \
           -L$(CURS_DIR)
 MLLIBS = -lcurs -lpanel -lncurses $(EXTRA_MLLIBS)
