@@ -31,6 +31,9 @@ INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 
 -include ../Mmake.params
 
+# Do not issue a warning because mercury_odbc does not export anything.
+MCFLAGS-mercury_odbc = --no-warn-nothing-exported --no-warn-interface-imports
+
 #-----------------------------------------------------------------------------#
 
 ifeq ($(MODBC_DRIVER),MODBC_MS)
@@ -61,10 +64,7 @@ check:
 
 #-----------------------------------------------------------------------------#
 
-# `--no-ansi' is needed because the ODBC header files include C++-style
-# "//" comments.  `--no-ansi' allows recognition of C++-style "//" comments,
-# presuming you have gcc version 2.7.1 or greater.
-MGNUCFLAGS=--no-ansi -D$(MODBC_DRIVER) -D$(MODBC_DB) -I$(ODBC_INCL_DIR)
+MGNUCFLAGS=-D$(MODBC_DRIVER) -D$(MODBC_DB) -I$(ODBC_INCL_DIR)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
