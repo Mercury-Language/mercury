@@ -24,14 +24,17 @@
 :- pred encode64(string::in, string::out) is det.
 
     % Encodes a list of bytes as a base 64 string.
+    %
     % Note this means that the integers must be in the range 0-255.
     % This constraint is not checked.
     %
 :- pred encode64_byte_list(list(int)::in, string::out) is det.
 
     % Decodes a base64 string to clear text.
-    % WARNING: If the resulting string contains non-terminating null characters,
-    % as in a PDF file for instance, the string is likely to be truncated
+    %
+    % WARNING: If the resulting string contains non-terminating null
+    % characters, as in a PDF file for instance, the string is likely to
+    % be truncated.
     %
 :- pred decode64(string::in, string::out) is det.
 
@@ -55,14 +58,12 @@
 encode64(Data, Base64) :-
     encode64(Data, string.length(Data), Base64).
 
-:- pragma foreign_decl("C", "
-#include <string.h>
-
-").
+:- pragma foreign_decl("C", "#include <string.h>").
 
 :- pragma foreign_decl("C", local, "
 
-static unsigned char alphabet[64] = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/\";
+static unsigned char alphabet[64] =
+    \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/\";
 
 ").
 
@@ -78,19 +79,20 @@ static unsigned char alphabet[64] = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop
     int cols, bits, c, char_count;
     int i;
 
-    /*
-     * Base64 encoded data uses 4:3 times more space than the original string
-     * We need to foresee an extra MR_Word for the string terminator character 
-     */
-    MR_offset_incr_hp_atomic(base64_buff, 0, ((((Len + 2) / 3) * 4) + sizeof(MR_Word)) / sizeof(MR_Word));
-    base64_ptr = (char *) base64_buff;  
+    // Base64 encoded data uses 4:3 times more space than the original string.
+    // We need to foresee an extra MR_Word for the string terminator character.
+    //
+    MR_offset_incr_hp_atomic(base64_buff, 0,
+        ((((Len + 2) / 3) * 4) + sizeof(MR_Word)) / sizeof(MR_Word));
+    base64_ptr = (char *) base64_buff;
 
     char_count = 0;
     bits = 0;
     cols = 0;
 
-    for(i = 0; i < Len; i++) {
-        /* need to cast to an unsigned char otherwise we might get negative values */
+    for (i = 0; i < Len; i++) {
+        // We need to cast to an unsigned char otherwise we might get negative
+        // values.
         c = (unsigned char) Data[i];
         bits += c;
 
@@ -100,7 +102,7 @@ static unsigned char alphabet[64] = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop
             *base64_ptr++ = alphabet[(bits >> 12) & 0x3f];
             *base64_ptr++ = alphabet[(bits >> 6) & 0x3f];
             *base64_ptr++ = alphabet[bits & 0x3f];
-            
+
             /* Invalidates the size of allocated memory */
             /*
             cols += 4;
@@ -115,7 +117,7 @@ static unsigned char alphabet[64] = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop
             bits <<= 8;
         }
     }
-    
+
     if (char_count != 0) {
         bits <<= 16 - (8 * char_count);
         *base64_ptr++ = alphabet[bits >> 18];
@@ -142,18 +144,17 @@ static unsigned char alphabet[64] = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop
     decode64(Base64::in, Data::out),
     [will_not_call_mercury, thread_safe, promise_pure, may_not_duplicate],
 "
-
     MR_Word data_buff;
     char *data_ptr;
 
     static char inalphabet[256], decoder[256];
     int i, bits, c, char_count, errors = 0;
 
-    /* 
-     * Decoded data uses 3:4 of the space of the Base64 string
-     */
-    MR_offset_incr_hp_atomic(data_buff, 0, (((strlen(Base64) * 3) / 4) + sizeof(MR_Word)) / sizeof(MR_Word));
-    data_ptr = (char *) data_buff;  
+    // Decoded data uses 3:4 of the space of the Base64 string.
+    //
+    MR_offset_incr_hp_atomic(data_buff, 0,
+        (((strlen(Base64) * 3) / 4) + sizeof(MR_Word)) / sizeof(MR_Word));
+    data_ptr = (char *) data_buff;
 
     for (i = (sizeof alphabet) - 1; i >= 0 ; i--) {
         inalphabet[alphabet[i]] = 1;
@@ -162,16 +163,17 @@ static unsigned char alphabet[64] = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop
 
     char_count = 0;
     bits = 0;
-    for(i = 0; i < strlen(Base64); i++) {
-        /* need to cast to an unsigned char otherwise we might get negative values */
+    for (i = 0; i < strlen(Base64); i++) {
+        // We need to cast to an unsigned char otherwise we might get negative
+        // values.
         c = (unsigned char) Base64[i];
         if (c == '=')
           break;
 
-        /* Skip invalid characters */
+        // Skip invalid characters.
         if (c > 255 || ! inalphabet[c])
           continue;
-        
+
         bits += decoder[c];
         char_count++;
         if (char_count == 4) {
@@ -212,7 +214,6 @@ static unsigned char alphabet[64] = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop
     Data = (char *) data_buff;
 ").
 
-    %
     % We define our own version of map/2 so that we can
     % apply the --optimize-constructor-last-call optimization
     % (this optimization is turned off for the standard
@@ -224,7 +225,7 @@ base64.map(_, []) =  [].
 base64.map(F, [H0 | T0]) = [H | T] :-
     H = F(H0),
     T = base64.map(F, T0).
-        
+
 encode64_byte_list(Bytes, Base64) :-
     Chars = base64.map(char.det_from_int, Bytes),
     Length = list.length(Chars),
