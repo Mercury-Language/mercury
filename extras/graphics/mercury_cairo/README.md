@@ -12,7 +12,7 @@ Building the binding
 --------------------
 
 1. Fill in the system-specific information for your system in the file
-   [Cairo.options](Cario.options).
+   [Cairo.options](Cairo.options).
 
 2. Build and install with the following command:
 
@@ -56,7 +56,7 @@ Mapping from C functions to Mercury predicates
 In the Mercury binding, the Cairo API is split up into submodules, each of
 which covers a specific area of functionality.
 
-The top-level module in the binding is named [cairo](cario.m).
+The top-level module in the binding is named [cairo](cairo.m).
 It contains:
 
   * Bindings for the major types in Cairo.
@@ -73,7 +73,7 @@ For example:
 ```
 
 Operations that create and manipulate path data are in the submodule
-[cairo.path](cario.path.m).
+[cairo.path](cairo.path.m).
 For example:
 
 ```
@@ -84,7 +84,7 @@ For example:
 ```
 
 Operations on patterns, mainly those whose C names are begin with
-`cairo_pattern_`, are in the submodule [cairo.pattern](cario.pattern.m).
+`cairo_pattern_`, are in the submodule [cairo.pattern](cairo.pattern.m).
 For example:
 
 ```
@@ -95,7 +95,7 @@ For example:
 ```
 
 Operations on surfaces, those whose C name being with `cairo_surface_`,
-are contained in the submodule [cairo.surface](cario.surface.m).
+are contained in the submodule [cairo.surface](cairo.surface.m).
 For example:
 
 ```
@@ -111,7 +111,7 @@ Backend Submodules
 The Mercury binding has submodules that provide image, PDF, PostScript, SVG and
 recording surfaces.  Each surface is represented by a type that is an instance
 of the `cairo.surface/1 type class`.  For example, the interface to image
-surfaces is in the submodule [cairo.image](cario.image.m).
+surfaces is in the submodule [cairo.image](cairo.image.m).
 
 Image surfaces are always supported.  PDF, PostScript, SVG and recording
 surfaces are optional.  The following predicates may be used to test if they
@@ -126,7 +126,7 @@ are supported by an installation:
 
 (The predicate `cairo.png.png_is_supported/0` performs the same function for
 determining whether the PNG reading and writing capabilities in the submodule
-[cairo.png](cario.png.m) are supported by an installation.)
+[cairo.png](cairo.png.m) are supported by an installation.)
 
 Other surface types, e.g. X, Quartz, Win32, are not provided by the Mercury
 Cairo binding.  The intention is that they can be provided by separate
