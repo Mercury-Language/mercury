@@ -27,22 +27,22 @@
     % Addition.
     %
 :- func float + complex = complex.
-:- mode in   + in   = uo  is det.
+:- mode in + in   = uo  is det.
 
     % Subtraction.
     %
 :- func float - complex = complex.
-:- mode in   - in   = uo  is det.
+:- mode in - in   = uo  is det.
 
     % Multiplication.
     %
 :- func float * complex = complex.
-:- mode in   * in   = uo  is det.
+:- mode in * in   = uo  is det.
 
     % Division.
     %
 :- func float / complex = complex.
-:- mode in   / in   = uo  is det.
+:- mode in / in   = uo  is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -68,4 +68,5 @@ XR / cmplx(YR, YI) = cmplx(XR * YR / Div, - XR * YI / Div) :-
 %   Div = (Yr * Yr + Yi * Yi).
 
 %-----------------------------------------------------------------------------%
+:- end_module complex_numbers.float_complex.
 %-----------------------------------------------------------------------------%

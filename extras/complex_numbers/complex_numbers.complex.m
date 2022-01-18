@@ -185,4 +185,5 @@ polar_to_complex(Magnitude, Theta) = cmplx(Real, Imag) :-
 cis(Theta) = cmplx(cos(Theta), sin(Theta)).
 
 %-----------------------------------------------------------------------------%
+:- end_module complex_numbers.complex.
 %-----------------------------------------------------------------------------%

@@ -1,6 +1,6 @@
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-1998, 2001, 2006 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018, 2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 
@@ -17,4 +17,5 @@
 :- include_module imag_float.
 
 %-----------------------------------------------------------------------------%
+:- end_module complex_numbers.
 %-----------------------------------------------------------------------------%

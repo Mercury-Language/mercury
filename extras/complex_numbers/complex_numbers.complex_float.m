@@ -2,18 +2,18 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-1998, 2001, 2004-2006 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018, 2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
-
+%
 % File: complex_float.m.
 % Main author: fjh.
 % Stability: medium.
-
+%
 % This module provides binary operators on (complex, float).
 %
 % See also: complex, float, complex_float.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module complex_numbers.complex_float.
@@ -28,22 +28,22 @@
     % Addition.
     %
 :- func complex + float = complex.
-:- mode in   + in   = uo  is det.
+:- mode in + in   = uo  is det.
 
     % Subtraction.
     %
 :- func complex - float = complex.
-:- mode in   - in   = uo  is det.
+:- mode in - in   = uo  is det.
 
     % Multiplication.
-    % 
+    %
 :- func complex * float = complex.
-:- mode in   * in   = uo  is det.
+:- mode in * in   = uo  is det.
 
     % Division.
     %
 :- func complex / float = complex.
-:- mode in   / in   = uo  is det.
+:- mode in / in   = uo  is det.
 
     % Exponentiation.
     %
@@ -70,4 +70,5 @@ pow(Z0, P) = Z :-
     Z = polar_to_complex(L, Th).
 
 %-----------------------------------------------------------------------------%
+:- end_module complex_numbers.complex_float.
 %-----------------------------------------------------------------------------%

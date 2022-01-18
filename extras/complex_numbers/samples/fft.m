@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-
+%
 % File: fft.m.
 % Main author: conway.
 % Date: August 1996.
-
+%
 % This source file is hereby placed in the public domain.
 %   -conway (the author).
-
+%
 % This module provides a predicate for performing the Fast Fourier Transform
 % (fft) on a list of complex numbers. The list must be a power of 2 in length
 % (ie 4, 8, 16, ... elements).
@@ -22,7 +22,7 @@
 % algorithm for combining the component transforms. This code is not maximally
 % efficient, but rather is intended as a clear presentation of the FFT
 % algorithm.
-
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -57,18 +57,17 @@ main(!IO) :-
     Zero = 0.0 + 0.0 * i,
     One  = 1.0 + 0.0 * i,
     fft([One, Zero, One, Zero], T),
-    io.write(T, !IO),
-    io.nl(!IO).
+    io.write_line(T, !IO).
 
 :- pred fft(list(complex)::in, list(complex)::out) is det.
 
 fft(Ins, Outs) :-
-        % First put the list into bit-reversed order.
+    % First put the list into bit-reversed order.
     bit_rev(Ins, Shuffle),
     list.length(Shuffle, NInt),
     int.log2(NInt, R),
     N = float(NInt),
-        % Now recombine the component transforms
+    % Now recombine the component transforms.
     combine(N, 1.0, R, Shuffle, Outs).
 
 :- pred bit_rev(list(T)::in, list(T)::out) is det.
@@ -93,20 +92,20 @@ split([X1, X2|Xs], [X1|Ys], [X2|Zs]) :-
     list(complex)::in, list(complex)::out) is det.
 
 combine(N, K, R, Ins, Outs) :-
-    (
+    ( if
         R = 0
-    ->
+    then
         Outs = Ins
-    ;
+    else
         R1 = R - 1,
         L = 1 << R1,
-             % Split the list in half
+        % Split the list in half.
         divide(L, Ins, Fs0, Ss0),
         K2 = K * 2.0,
-            % Now combine the transforms in the respective halves
+        % Now combine the transforms in the respective halves.
         combine(N, K2, R1, Fs0, Fs),
         combine(N, K2, R1, Ss0, Ss),
-            % Now perform the 'butterfly'
+        % Now perform the 'butterfly'.
         xform(Fs, Ss, complex(1.0), w(K, N), Rs0, Rs1),
         list.append(Rs0, Rs1, Outs)
     ).
@@ -128,12 +127,12 @@ xform([Di0 | Dis0], [Dj0 | Djs0], WJN, WKN, [Di | Dis], [Dj | Djs]) :-
 :- pred divide(int::in, list(T)::in, list(T)::out, list(T)::out) is det.
 
 divide(R, Ins, Fs, Ss) :-
-    (
+    ( if
         R =< 0
-    ->
+    then
         Fs = [],
         Ss = Ins
-    ;
+    else
         (
             Ins = [],
             error("divide error!")
@@ -150,4 +149,5 @@ w(J, N) = cis(Theta) :-
     Theta = J * 2.0 * pi / N.
 
 %-----------------------------------------------------------------------------%
+:- end_module fft.
 %-----------------------------------------------------------------------------%

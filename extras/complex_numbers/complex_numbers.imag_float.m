@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-1998, 2001, 2004-2006 The University of Melbourne.
-% Copyright (C) 2015, 2018 The Mercury team.
+% Copyright (C) 2015, 2018, 2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -30,22 +30,22 @@
     % Addition.
     %
 :- func imag + float = complex.
-:- mode in   + in   = uo  is det.
+:- mode in + in   = uo  is det.
 
     % Subtraction.
     %
 :- func imag - float = complex.
-:- mode in   - in   = uo  is det.
+:- mode in - in   = uo  is det.
 
     % Multiplication.
     %
 :- func imag * float = imag.
-:- mode in   * in   = uo  is det.
+:- mode in * in   = uo  is det.
 
     % Division.
     %
 :- func imag / float = imag.
-:- mode in   / in   = uo  is det.
+:- mode in / in   = uo  is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -60,4 +60,5 @@ im(XI) * YR = im(XI * YR).
 im(XI) / YR = im(XI / YR).
 
 %-----------------------------------------------------------------------------%
+:- end_module complex_numbers.imag_float.
 %-----------------------------------------------------------------------------%
