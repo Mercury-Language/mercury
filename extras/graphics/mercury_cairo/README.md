@@ -2,7 +2,7 @@ Mercury Cairo Binding
 =====================
 
 This directory contains the package `mercury_cairo` which is a Mercury binding
-to the [Cairo 2D graphics library](http://www.cairographics.org>).
+to the [Cairo 2D graphics library](http://www.cairographics.org).
 
 See the file [COPYING.LIB](COPYING.LIB) in this directory for copyright and
 licensing information.
