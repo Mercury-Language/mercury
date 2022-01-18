@@ -8,17 +8,15 @@
 %
 % Main author: Ian MacLarty (maclarty@cs.mu.oz.au).
 %
-%---------------------------------------------------------------------------%
-%
 % This module is responsible for generating the Wix source code for the
 % installer.
 % The installer is first converted to an annotated installer and then
 % to XML.  The annotated installer contains extra information, like Ids
 % for all the elements.
 %
+%---------------------------------------------------------------------------%
 
 :- module wix_installer.
-
 :- interface.
 
 :- import_module io.
@@ -82,7 +80,7 @@
                 ann_prod_guid                   :: guid,
                     % XXX Upgrade installers are not yet supported,
                     % however the upgrade code is required so that
-                    % deployed packages can be upgraded when 
+                    % deployed packages can be upgraded when
                     % upgrade installers are supported.
                 ann_prod_upgrade_guid           :: guid,
                 ann_prod_manufacturer           :: string,
@@ -98,7 +96,7 @@
     func(to_xml/1) is annotated_installer_to_xml
 ].
 
-:- func annotated_installer_to_xml(annotated_installer::in) = 
+:- func annotated_installer_to_xml(annotated_installer::in) =
     (xml::out(xml_doc)) is det.
 
 annotated_installer_to_xml(Installer) = XML :-
@@ -158,7 +156,7 @@ annotated_installer_to_xml(Installer) = XML :-
                 attr("EmbedCab", "yes"),
                 attr("CompressionLevel", "high")], [])] ++
             [elem("Directory", [
-                id_attr("TARGETDIR"), 
+                id_attr("TARGETDIR"),
                 attr("Name", "SourceDir")
             ], [
                 elem("Component", [
@@ -175,8 +173,8 @@ annotated_installer_to_xml(Installer) = XML :-
                         list.map(annotated_file_to_xml, Contents))
                 ]),
                 elem("Directory", [
-                    id_attr(desktop_id), 
-                    attr("Name", "Desktop")], 
+                    id_attr(desktop_id),
+                    attr("Name", "Desktop")],
                    [])
                 ] ++
                 programs_menu_directory_if_required(Name, Contents)
@@ -204,22 +202,22 @@ gen_annotated_installer(Installer, GUIDStream, AnnotatedInstaller, !IO) :-
         !:DialogIdMap = map.init,
         !:BitMaps = map.init,
         Installer = installer(
-            Product, 
-            Language, 
-            EnvVars, 
+            Product,
+            Language,
+            EnvVars,
             ShortCuts, AllUsers,
             Title, InstallHeading, InstallDescr,
-            Next, Back, Cancel, Install, CancelMessage, 
+            Next, Back, Cancel, Install, CancelMessage,
             RemoveHeading, RemoveConfirm, Remove,
             RemoveProgressHeading, RemoveProgressDescr,
             FinishHeading, FinishMessage, Finish,
             FilesInUseHeading, FilesInUseMessage, Ignore, Retry,
-            Yes, No, MustBeAdminMessage, BannerSrc, BackgroundSrc, 
+            Yes, No, MustBeAdminMessage, BannerSrc, BackgroundSrc,
             WizardSteps),
         Product = product(
-            ManufacturerToken, 
-            NameToken, 
-            Version, 
+            ManufacturerToken,
+            NameToken,
+            Version,
             DescriptionToken,
             CommentsToken,
             FilesPath,
@@ -227,19 +225,19 @@ gen_annotated_installer(Installer, GUIDStream, AnnotatedInstaller, !IO) :-
         generate_wizard_dialogs(Title, Next, Back, Cancel, Install,
             BannerSrc, BackgroundSrc, WizardSteps, WizDialogs),
         CancelDlg = cancel_dialog(Title, CancelMessage, Yes, No),
-        FinishDlg = finish_dialog(Title, FinishHeading, FinishMessage, 
+        FinishDlg = finish_dialog(Title, FinishHeading, FinishMessage,
             Finish, BackgroundSrc),
-        InstallProgressDlg = 
+        InstallProgressDlg =
             install_progress_dialog(Title, InstallHeading, InstallDescr,
                 Cancel, BannerSrc),
-        RemoveProgressDlg = 
-            remove_progress_dialog(Title, RemoveProgressHeading, 
+        RemoveProgressDlg =
+            remove_progress_dialog(Title, RemoveProgressHeading,
                 RemoveProgressDescr, Cancel, BannerSrc),
-        RemoveDlg = remove_dialog(Title, RemoveHeading, RemoveConfirm, 
+        RemoveDlg = remove_dialog(Title, RemoveHeading, RemoveConfirm,
             Remove, Cancel, BannerSrc),
-        annotate_dialogs(Language, WizDialogs ++ 
+        annotate_dialogs(Language, WizDialogs ++
             [CancelDlg, InstallProgressDlg,
-            RemoveDlg, RemoveProgressDlg, FinishDlg], 
+            RemoveDlg, RemoveProgressDlg, FinishDlg],
             AnnDialogs0, !IdSupply, !DialogIdMap, !BitMaps),
         %
         % Generate the default files-in-use dialog which asks the user
@@ -247,14 +245,14 @@ gen_annotated_installer(Installer, GUIDStream, AnnotatedInstaller, !IO) :-
         % The dialog must be handled separately because it has the
         % reserved id `FilesInUse'.
         %
-        FilesInUseDlg = files_in_use_dialog(Title, FilesInUseHeading, 
+        FilesInUseDlg = files_in_use_dialog(Title, FilesInUseHeading,
             FilesInUseMessage, Retry, Ignore, Cancel, BannerSrc),
         annotate_dialog(Language, FilesInUseDlg, AnnFilesInUseDlg0, !IdSupply,
             !DialogIdMap, !BitMaps),
         set_ann_dialog_id("FilesInUse", AnnFilesInUseDlg0, AnnFilesInUseDlg),
         list.append(AnnDialogs0, [AnnFilesInUseDlg], AnnDialogs),
 
-        % Look up the ID assigned to the remove dialog which will be 
+        % Look up the ID assigned to the remove dialog which will be
         % shown if the product is already installed.
         map.lookup(!.DialogIdMap, remove_dlg, RemoveDlgId),
 
@@ -276,12 +274,12 @@ gen_annotated_installer(Installer, GUIDStream, AnnotatedInstaller, !IO) :-
         det_translate(CommentsToken, Language, Comments),
         det_translate(DefaultInstallToken, Language, DefInsLoc),
         gen_files(FilesPath, ShortCuts, Files, !IO),
-        annotate_files(Language, Files, !.IdSupply, _, GUIDStream, FilesPath, 
+        annotate_files(Language, Files, !.IdSupply, _, GUIDStream, FilesPath,
             AnnotatedFiles, !IO),
         gen_guid(GUIDStream, ProductGUID, !IO),
         gen_guid(GUIDStream, UpgradeGUID, !IO),
         gen_guid(GUIDStream, EnvVarsGUID, !IO),
-        AnnotatedInstaller = 
+        AnnotatedInstaller =
             annotated_installer(
                 annotated_product(
                     ProductGUID,
@@ -306,13 +304,13 @@ gen_annotated_installer(Installer, GUIDStream, AnnotatedInstaller, !IO) :-
             )
     ).
 
-:- pred annotate_env_vars(language::in, 
+:- pred annotate_env_vars(language::in,
     list(set_env_var(L))::in, list(ann_set_env_var)::out,
-    id_supply::in, id_supply::out, privilege::out) 
+    id_supply::in, id_supply::out, privilege::out)
     is det <= language_independent_tokens(L).
 
 annotate_env_vars(_, [], [], !IdSupply, normal).
-annotate_env_vars(Language, [Var | Vars], [AnnVar | AnnVars], !IdSupply, Priv) 
+annotate_env_vars(Language, [Var | Vars], [AnnVar | AnnVars], !IdSupply, Priv)
         :-
     Var = set_env_var(VarName, ValueToken, HowSet, SysOrUser),
     det_translate(ValueToken, Language, Value),

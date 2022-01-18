@@ -11,14 +11,13 @@
 %---------------------------------------------------------------------------%
 
 :- module wix.
-
 :- interface.
 
 :- import_module bool.
 :- import_module int.
 :- import_module io.
 :- import_module list.
-:- import_module string. 
+:- import_module string.
 
 :- import_module wix_gui.
 
@@ -29,11 +28,11 @@
     %
     % The name of the source file to generate is given by FileName.
     % By convention Wix source files have the suffix `.wxs'.
-    % The Installer argument contains all the information necessary to 
+    % The Installer argument contains all the information necessary to
     % generate the installer (see the installer type below).
-    % GUIDFile is a file of GUIDs (one per line).  
+    % GUIDFile is a file of GUIDs (one per line).
     % A GUID is a unique identifier that Windows uses to keep track of
-    % each installed component.  
+    % each installed component.
     % There should be at least as many GUIDs in the file as there are files in
     % the product the installer is for.
     %
@@ -49,11 +48,11 @@
     % and `wix_error(Error)' if there was a problem.  See the definition of
     % the wix_result type below for the possible errors that could occur.
     %
-:- pred generate_installer(installer(L)::in, string::in, string::in, 
+:- pred generate_installer(installer(L)::in, string::in, string::in,
     wix_result::out, io::di, io::uo)
     is det <= language_independent_tokens(L).
 
-    % Types of the following class are tokens used to represent 
+    % Types of the following class are tokens used to represent
     % fragments of text in the user interface of the installer in
     % a language independent way.  The translate member should
     % translate all the tokens for the languages supported by the installer.
@@ -71,7 +70,7 @@
 ].
 
     % The installer type is used to define a Windows installer.
-    % The values of type L are tokens representing fragments of 
+    % The values of type L are tokens representing fragments of
     % text in the installer GUI.  The tokens are converted to the
     % appropriate language based on the value of the wix_language field.
     %
@@ -89,9 +88,9 @@
                     % the product (see the definition of set_env_var below).
                 wix_set_env_vars            :: list(set_env_var(L)),
 
-                    % A mapping from filenames to shortcuts which 
+                    % A mapping from filenames to shortcuts which
                     % should be placed on the desktop and/or programs
-                    % menu (see the definition of the shortcut_function 
+                    % menu (see the definition of the shortcut_function
                     % type below).
                 wix_shortcut_func           :: shortcut_function(L),
 
@@ -102,7 +101,7 @@
                     % title bar of the installer GUI.
                 wix_title                   :: L,
 
-                    % Tokens representing the heading and description 
+                    % Tokens representing the heading and description
                     % to display while installation is progressing.
                 wix_install_heading         :: L,
                 wix_install_descr           :: L,
@@ -119,7 +118,7 @@
                 wix_cancel_message          :: L,
 
                     % Tokens representing the heading, confirmation message
-                    % and Remove button text displayed in the 
+                    % and Remove button text displayed in the
                     % uninstallation confirmation dialog.
                 wix_remove_heading          :: L,
                 wix_remove_confirm          :: L,
@@ -157,7 +156,7 @@
                     % user is not an administrator, but administrator
                     % privileges are required for the installation.
                     % (Administrator privileges will be required if any
-                    % system level environment variables need to be set 
+                    % system level environment variables need to be set
                     % by the installer).
                 wix_must_be_admin_msg       :: L,
 
@@ -167,7 +166,7 @@
                     %
                 wix_banner_source           :: string,
 
-                    % The path to a larger bitmap image that will be 
+                    % The path to a larger bitmap image that will be
                     % used as the background for the final wizard step
                     % (after successful installation).  This bitmap will
                     % also be used for wizard_start wizard steps
@@ -183,7 +182,7 @@
 
     % The shortcut function determines which files should have shortcuts
     % installed on the Desktop and/or the Programs menu.
-    % It takes two string arguments - the directory of the file and the 
+    % It takes two string arguments - the directory of the file and the
     % name of the file.  It returns a list of shortcuts to generate for the
     % given file.
     %
@@ -191,14 +190,14 @@
 
 :- type shortcut(L)
     --->    shortcut(
-                shortcut_where  :: shortcut_where,  % Where to place the 
+                shortcut_where  :: shortcut_where,  % Where to place the
                                                     % shortcut.
                 shortcut_name   :: L                % The title of the shortcut
                                                     % as the user will see it.
             ).
 
 :- type shortcut_where
-    --->    programs    % Place the shortcut in the Programs menu under a 
+    --->    programs    % Place the shortcut in the Programs menu under a
                         % folder with the same name as the product.
     ;       desktop.    % Place the shortcut on the Desktop.
 
@@ -209,7 +208,7 @@
     --->    product(
                 product_manufacturer        :: L,
                 product_name                :: L,
-                product_version             :: version_no, 
+                product_version             :: version_no,
                 product_description         :: L,
                 product_comments            :: L,
 
@@ -218,7 +217,7 @@
                     % computer, on the machine where the installer will be
                     % generated.
                 product_files_path          :: string,
-                
+
                     % The name of the folder under the "Program Files" folder
                     % to install the product on the user's machine.
                 product_default_install_loc :: L
@@ -228,8 +227,8 @@
     %
 :- type version_no
     --->    version_no(
-                version_major   :: int, 
-                version_minor   :: int, 
+                version_major   :: int,
+                version_minor   :: int,
                 version_build   :: int,
                 version_other   :: int
             ).
@@ -238,7 +237,7 @@
     % to set during the installation.
     % Values can be appended or prepended to existing environment variables,
     % or the value of an old environment variable can be overwritten
-    % completely.  If the environment variable doesn't exist it will be 
+    % completely.  If the environment variable doesn't exist it will be
     % created.  Environement variables can also be set in the user or
     % system environment space.  Setting an environment variable in the
     % system user space will require the user to have administrator privileges.
@@ -261,7 +260,7 @@
 
     % Should the environment variable be set in the system or
     % user environment space?
-    % Setting an environment variable in the system environment 
+    % Setting an environment variable in the system environment
     % space requires administrator privileges, but the environment variable
     % will be visible to all users.
     %
@@ -283,7 +282,7 @@
 :- func welcome_wizard_step(L, L) = wizard_step(L).
 
     % notice_wizard_step(Heading, Message) = WizardStep.
-    % The notice wizard step is similar to the license wizard step, 
+    % The notice wizard step is similar to the license wizard step,
     % except that the text to display is given as a string, instead of
     % in an .rtf file.  The text is also not displayed in a scrollable
     % area, but in a static text area.
@@ -534,6 +533,7 @@
     ;       guid_cmd_error(io.system_result).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -545,6 +545,8 @@
 :- import_module exception.
 :- import_module term_to_xml.
 :- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
 generate_installer(Installer, GUIDFile, FileName, Result, !IO) :-
     io.open_output(FileName, OpenOutputResult, !IO),
@@ -560,8 +562,8 @@ generate_installer(Installer, GUIDFile, FileName, Result, !IO) :-
             %
             promise_equivalent_solutions [TryResult, !:IO] (
                 try_io(
-                    wix_installer.gen_annotated_installer(Installer, GUIDStream), 
-                    TryResult, 
+                    wix_installer.gen_annotated_installer(Installer, GUIDStream),
+                    TryResult,
                     !IO)
             ),
             (

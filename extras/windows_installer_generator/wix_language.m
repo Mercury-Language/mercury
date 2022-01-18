@@ -8,13 +8,11 @@
 %
 % Main author: Ian MacLarty (maclarty@cs.mu.oz.au).
 %
-%---------------------------------------------------------------------------%
-%
 % A few language-related utility predicates.
 %
+%---------------------------------------------------------------------------%
 
 :- module wix_language.
-
 :- interface.
 
 :- import_module wix.

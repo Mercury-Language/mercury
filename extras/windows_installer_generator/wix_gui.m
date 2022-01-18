@@ -8,15 +8,14 @@
 %
 % Main author: Ian MacLarty (maclarty@cs.mu.oz.au).
 %
-%---------------------------------------------------------------------------%
-%
 % This module is responsible for generating the GUI components of the
 % installer.
 %
-% Throughout this module the type variable L indicates a language 
+% Throughout this module the type variable L indicates a language
 % independent token and the type variable D indicates a type representing
 % a set of dialog boxes (such as wizard_step_dlg).
 %
+%---------------------------------------------------------------------------%
 
 :- module wix_gui.
 
@@ -42,7 +41,7 @@
 
     % Different types of wizard steps that can occur in the installer.
     %
-:- type wizard_step_dlg 
+:- type wizard_step_dlg
     --->    wiz_step(int)
     ;       cancel_dlg
     ;       install_progress_dlg
@@ -147,18 +146,18 @@
 
 :- type annotated_dialog.
 
-:- pred set_ann_dialog_id(id::in, 
+:- pred set_ann_dialog_id(id::in,
     annotated_dialog::in, annotated_dialog::out) is det.
 
-:- pred annotate_dialogs(language::in, 
-    list(dialog(L, D))::in, list(annotated_dialog)::out, 
-    id_supply::in, id_supply::out, 
+:- pred annotate_dialogs(language::in,
+    list(dialog(L, D))::in, list(annotated_dialog)::out,
+    id_supply::in, id_supply::out,
     map(D, id)::in, map(D, id)::out,
     map(string, id)::in, map(string, id)::out) is det
     <= language_independent_tokens(L).
 
-:- pred annotate_dialog(language::in, dialog(L, D)::in, annotated_dialog::out, 
-    id_supply::in, id_supply::out, 
+:- pred annotate_dialog(language::in, dialog(L, D)::in, annotated_dialog::out,
+    id_supply::in, id_supply::out,
     map(D, id)::in, map(D, id)::out,
     map(string, id)::in, map(string, id)::out) is det
     <= language_independent_tokens(L).
@@ -166,7 +165,7 @@
 :- func bitmaps_to_xml(list(string), list(id)) = list(xml).
 
 :- pred generate_wizard_dialogs(L::in, L::in, L::in, L::in, L::in, string::in,
-    string::in, list(wizard_step(L))::in, 
+    string::in, list(wizard_step(L))::in,
     list(dialog(L, wizard_step_dlg))::out) is det.
 
 %----------------------------------------------------------------------------%
@@ -311,9 +310,9 @@ remove_progress_dialog(Title, Heading, Description, Cancel, BitMapSrc) =
 
 remove_dialog(Title, Heading, AreYouSure, Remove, Cancel, BitMapSrc) =
     dialog(remove_dlg, 370 - 270, Title, not_modeless, [
-        button(304 - 243, 56 - 17, default, Cancel, 
+        button(304 - 243, 56 - 17, default, Cancel,
             [spawn_dialog(cancel_dlg)]),
-        button(236 - 243, 56 - 17, not_default, Remove, 
+        button(236 - 243, 56 - 17, not_default, Remove,
             [remove_all, new_dialog(remove_progress_dlg)]),
         bitmap(0 - 0, 370 - 44, BitMapSrc),
         text(35 - 65, 300 - 20, AreYouSure, normal),
@@ -341,34 +340,34 @@ files_in_use_dialog(Title, Heading, Message, Retry, Ignore, Cancel, BitMapSrc)
         line(0 - 44, 370 - 0),
         files_in_use_list(20 - 87, 330 - 130)]).
 
-cancel_dialog(Title, CancelMessage, Yes, No) = 
+cancel_dialog(Title, CancelMessage, Yes, No) =
     dialog(cancel_dlg, 260 - 85, Title, not_modeless, [
         button(132 - 57, 56 - 17, default, No, [return]),
         button(72 - 57, 56 - 17, not_default, Yes, [exit]),
         text(48 - 15, 194 - 30, CancelMessage, normal)]).
 
 annotate_dialogs(_, [], [], !IdSupply, !DialogIdMap, !BitMaps).
-annotate_dialogs(Language, [Dialog | Dialogs], [AnnDialog | AnnDialogs], 
+annotate_dialogs(Language, [Dialog | Dialogs], [AnnDialog | AnnDialogs],
         !IdSupply, !DialogIdMap, !BitMaps) :-
     annotate_dialogs(Language, Dialogs, AnnDialogs, !IdSupply,
         !DialogIdMap, !BitMaps),
     annotate_dialog(Language, Dialog, AnnDialog, !IdSupply,
         !DialogIdMap, !BitMaps).
 
-annotate_dialog(Language, Dialog, AnnDialog, !IdSupply, !DialogIdMap, 
+annotate_dialog(Language, Dialog, AnnDialog, !IdSupply, !DialogIdMap,
         !BitMaps) :-
     Dialog = dialog(DialogToken, Size, TitleToken, Modeless, Controls),
     det_translate(TitleToken, Language, Title),
     lookup_dialog_id(DialogToken, DialogId, !DialogIdMap, !IdSupply),
-    annotate_controls(Language, Controls, AnnControls, !DialogIdMap, 
+    annotate_controls(Language, Controls, AnnControls, !DialogIdMap,
         !IdSupply, !BitMaps),
     AnnDialog = annotated_dialog(DialogId, Size, Title, Modeless,
         AnnControls).
 
 :- func annotated_dialog_to_xml(annotated_dialog) = xml.
 
-annotated_dialog_to_xml(annotated_dialog(Id, Size, Title, Modeless, Controls)) 
-    = elem("Dialog", 
+annotated_dialog_to_xml(annotated_dialog(Id, Size, Title, Modeless, Controls))
+    = elem("Dialog",
         [id_attr(Id)] ++
         size_attrs(Size) ++
         [title_attr(Title)] ++
@@ -376,7 +375,7 @@ annotated_dialog_to_xml(annotated_dialog(Id, Size, Title, Modeless, Controls))
         [attr("NoMinimize", "yes")],
         list.map(annotated_control_to_xml, Controls)).
 
-:- pred annotate_controls(language::in, list(control(L, D))::in, 
+:- pred annotate_controls(language::in, list(control(L, D))::in,
     list(annotated_control)::out,
     map(D, id)::in, map(D, id)::out,
     id_supply::in, id_supply::out,
@@ -391,8 +390,8 @@ annotate_controls(Language, [Control | Controls], [AnnControl | AnnControls],
     annotate_control(Language, Control, AnnControl, !DialogIdMap,
         !IdSupply, !BitMaps).
 
-:- pred annotate_control(language::in, 
-    control(L, D)::in, 
+:- pred annotate_control(language::in,
+    control(L, D)::in,
     annotated_control::out,
     map(D, id)::in, map(D, id)::out,
     id_supply::in, id_supply::out,
@@ -417,7 +416,7 @@ annotate_control(Language, Control, AnnControl, !DialogIdMap, !IdSupply,
             allocate_id(BitMapSourceId, !IdSupply),
             map.det_insert(Source, BitMapSourceId, !BitMaps)
         ),
-        AnnControl = annotated_bitmap(BitMapControlId, Pos, Size, 
+        AnnControl = annotated_bitmap(BitMapControlId, Pos, Size,
             BitMapSourceId)
     ;
         Control = line(Pos, Size),
@@ -467,7 +466,7 @@ annotated_control_to_xml(annotated_bitmap(Id, Pos, Size, SrcId)) =
         pos_attrs(Pos) ++
         [text_attr(SrcId)] ++
         [attr("TabSkip", "no")], []).
-annotated_control_to_xml(annotated_line(Id, Pos, Size)) = 
+annotated_control_to_xml(annotated_line(Id, Pos, Size)) =
     elem(control_elem,
         [type_attr("Line")] ++
         [id_attr(Id)] ++
@@ -482,7 +481,7 @@ annotated_control_to_xml(annotated_scrollable_text(Id, Pos, Size, TextSrc)) =
         [attr("Sunken", "yes")] ++
         [attr("TabSkip", "no")], [
             elem("Text", [attr("src", TextSrc)], [])]).
-annotated_control_to_xml(annotated_text(Id, Pos, Size, Text, Style)) = 
+annotated_control_to_xml(annotated_text(Id, Pos, Size, Text, Style)) =
     elem(control_elem,
         [type_attr("Text")] ++
         [id_attr(Id)] ++
@@ -492,7 +491,7 @@ annotated_control_to_xml(annotated_text(Id, Pos, Size, Text, Style)) =
         [attr("NoPrefix", "yes")], [
             elem("Text", [], [
                 data(text_style_modifier(Style) ++ Text)])]).
-annotated_control_to_xml(annotated_progress_bar(Id, Pos, Size)) = 
+annotated_control_to_xml(annotated_progress_bar(Id, Pos, Size)) =
     elem(control_elem,
         [id_attr(Id)] ++
         [type_attr("ProgressBar")] ++
@@ -501,18 +500,18 @@ annotated_control_to_xml(annotated_progress_bar(Id, Pos, Size)) =
         [attr("ProgressBlocks", "yes")] ++
         [attr("Text", " ")],
         [elem("Subscribe", [
-            attr("Event", "SetProgress"), 
+            attr("Event", "SetProgress"),
             attr("Attribute", "Progress")], [])]).
-annotated_control_to_xml(annotated_progress_text(Id, Pos, Size)) = 
+annotated_control_to_xml(annotated_progress_text(Id, Pos, Size)) =
     elem(control_elem,
         [id_attr(Id)] ++
         [type_attr("Text")] ++
         pos_attrs(Pos) ++
         size_attrs(Size),
         [elem("Subscribe", [
-            attr("Event", "ActionText"), 
+            attr("Event", "ActionText"),
             attr("Attribute", "Text")], [])]).
-annotated_control_to_xml(annotated_files_in_use_list(Id, Pos, Size)) = 
+annotated_control_to_xml(annotated_files_in_use_list(Id, Pos, Size)) =
     elem(control_elem,
         [id_attr(Id)] ++
         [type_attr("ListBox")] ++
@@ -522,7 +521,7 @@ annotated_control_to_xml(annotated_files_in_use_list(Id, Pos, Size)) =
         [attr("TabSkip", "yes")] ++
         [attr("Sunken", "yes")],
         [elem("Subscribe", [
-            attr("Event", "ActionText"), 
+            attr("Event", "ActionText"),
             attr("Attribute", "Text")], [])]).
 
 :- func text_style_modifier(text_style) = string.
@@ -543,27 +542,27 @@ annotated_event_to_xml(annotated_spawn_dialog(DialogId)) =
         attr("Event", "SpawnDialog"),
         attr("Value", DialogId)],
         [data("1")]).
-annotated_event_to_xml(annotated_return) = 
+annotated_event_to_xml(annotated_return) =
     elem(publish_elem, [
         attr("Event", "EndDialog"),
         attr("Value", "Return")],
         [data("1")]).
-annotated_event_to_xml(annotated_exit) = 
+annotated_event_to_xml(annotated_exit) =
     elem(publish_elem, [
         attr("Event", "EndDialog"),
         attr("Value", "Exit")],
         [data("1")]).
-annotated_event_to_xml(annotated_remove_all) = 
+annotated_event_to_xml(annotated_remove_all) =
     elem(publish_elem, [
         attr("Event", "Remove"),
         attr("Value", "All")],
         [data("1")]).
-annotated_event_to_xml(annotated_retry) = 
+annotated_event_to_xml(annotated_retry) =
     elem(publish_elem, [
         attr("Event", "EndDialog"),
         attr("Value", "Retry")],
         [data("1")]).
-annotated_event_to_xml(annotated_ignore) = 
+annotated_event_to_xml(annotated_ignore) =
     elem(publish_elem, [
         attr("Event", "EndDialog"),
         attr("Value", "Ignore")],
@@ -578,15 +577,15 @@ control_elem = "Control".
 publish_elem = "Publish".
 
 bitmaps_to_xml([], []) = [].
-bitmaps_to_xml([Source | Sources], [Id | Ids]) = 
+bitmaps_to_xml([Source | Sources], [Id | Ids]) =
     [elem("Binary", [
         id_attr(Id),
         attr("src", Source)],
         [])] ++
     bitmaps_to_xml(Sources, Ids).
-bitmaps_to_xml([], [_ | _]) = _ :- 
+bitmaps_to_xml([], [_ | _]) = _ :-
     error("bitmaps_to_xml: more ids than sources").
-bitmaps_to_xml([_ | _], []) = _ :- 
+bitmaps_to_xml([_ | _], []) = _ :-
     error("bitmaps_to_xml: more sources than ids").
 
 :- pred annotate_events(list(event(D))::in, list(annotated_event)::out,
@@ -594,7 +593,7 @@ bitmaps_to_xml([_ | _], []) = _ :-
     id_supply::in, id_supply::out) is det.
 
 annotate_events([], [], !DialogIdMap, !IdSupply).
-annotate_events([Event | Events], [AnnEvent | AnnEvents], !DialogIdMap, 
+annotate_events([Event | Events], [AnnEvent | AnnEvents], !DialogIdMap,
         !IdSupply) :-
     annotate_events(Events, AnnEvents, !DialogIdMap, !IdSupply),
     annotate_event(Event, AnnEvent, !DialogIdMap, !IdSupply).
@@ -606,12 +605,12 @@ annotate_events([Event | Events], [AnnEvent | AnnEvents], !DialogIdMap,
 annotate_event(Event, AnnEvent, !DialogIdMap, !IdSupply) :-
     (
         Event = new_dialog(DialogToken),
-        lookup_dialog_id(DialogToken, DialogId, !DialogIdMap, 
+        lookup_dialog_id(DialogToken, DialogId, !DialogIdMap,
             !IdSupply),
         AnnEvent = annotated_new_dialog(DialogId)
     ;
         Event = spawn_dialog(DialogToken),
-        lookup_dialog_id(DialogToken, DialogId, !DialogIdMap, 
+        lookup_dialog_id(DialogToken, DialogId, !DialogIdMap,
             !IdSupply),
         AnnEvent = annotated_spawn_dialog(DialogId)
     ;
@@ -631,7 +630,7 @@ annotate_event(Event, AnnEvent, !DialogIdMap, !IdSupply) :-
         AnnEvent = annotated_ignore
     ).
 
-:- pred lookup_dialog_id(D::in, id::out, 
+:- pred lookup_dialog_id(D::in, id::out,
     map(D, id)::in, map(D, id)::out,
     id_supply::in, id_supply::out) is det.
 
@@ -643,24 +642,24 @@ lookup_dialog_id(DialogToken, DialogId, !DialogIdMap, !IdSupply) :-
         map.det_insert(DialogToken, DialogId, !DialogIdMap)
     ).
 
-generate_wizard_dialogs(Title, Next, Back, Cancel, Install, BannerSrc, 
+generate_wizard_dialogs(Title, Next, Back, Cancel, Install, BannerSrc,
         BackgroundSrc, WizardSteps, Dialogs) :-
     generate_wizard_dialogs_2(Title, Next, Back, Cancel, Install,
         BannerSrc, BackgroundSrc, WizardSteps, 0, [], Dialogs).
 
-:- pred generate_wizard_dialogs_2(L::in, L::in, L::in, L::in, L::in, 
+:- pred generate_wizard_dialogs_2(L::in, L::in, L::in, L::in, L::in,
     string::in, string::in, list(wizard_step(L))::in, int::in,
     list(dialog(L, wizard_step_dlg))::in,
     list(dialog(L, wizard_step_dlg))::out) is det.
 
 generate_wizard_dialogs_2(_, _, _, _, _, _, _, [], _, Dialogs,
     list.reverse(Dialogs)).
-generate_wizard_dialogs_2(Title, Next, Back, Cancel, Install, BannerSrc, 
+generate_wizard_dialogs_2(Title, Next, Back, Cancel, Install, BannerSrc,
         BackgroundSrc, [WizardStep | WizardSteps], StepNum, !Dialogs)
         :-
     (
         WizardSteps = [],
-        NextButton = [button(236 - 243, 56 - 17, default, Install, 
+        NextButton = [button(236 - 243, 56 - 17, default, Install,
             [new_dialog(install_progress_dlg)])]
     ;
         WizardSteps = [_ | _],
@@ -670,10 +669,10 @@ generate_wizard_dialogs_2(Title, Next, Back, Cancel, Install, BannerSrc,
     ( if StepNum = 0 then
         BackButton = []
     else
-        BackButton = [button(180 - 243, 56 - 17, not_default, Back, 
+        BackButton = [button(180 - 243, 56 - 17, not_default, Back,
             [new_dialog(wiz_step(StepNum - 1))])]
     ),
-    CancelButton = [button(304 - 243, 56 - 17, not_default, Cancel, 
+    CancelButton = [button(304 - 243, 56 - 17, not_default, Cancel,
         [spawn_dialog(cancel_dlg)])],
     (
         WizardStep = wizard_step(Heading, Controls),
@@ -681,7 +680,7 @@ generate_wizard_dialogs_2(Title, Next, Back, Cancel, Install, BannerSrc,
         BottomLine = [line(0 - 234, 370 - 0)],
         BannerLine = [line(0 - 44, 370 - 0)],
         HeadingText = [text(15 - 6, 280 - 15, Heading, bold)],
-        WizControls = Controls ++ NextButton ++ BackButton ++ 
+        WizControls = Controls ++ NextButton ++ BackButton ++
             CancelButton ++ Banner ++ BottomLine ++ BannerLine ++
             HeadingText
     ;
@@ -697,14 +696,14 @@ generate_wizard_dialogs_2(Title, Next, Back, Cancel, Install, BannerSrc,
     Dialog = dialog(wiz_step(StepNum), 370 - 270, Title, not_modeless,
         WizControls),
     generate_wizard_dialogs_2(Title, Next, Back, Cancel, Install,
-        BannerSrc, BackgroundSrc, WizardSteps, StepNum + 1, 
+        BannerSrc, BackgroundSrc, WizardSteps, StepNum + 1,
         [Dialog | !.Dialogs], !:Dialogs).
 
 maybe_ui_elements([], _, _) = [].
 maybe_ui_elements([Dialog | Dialogs], RemoveDlgId, FinishDlgId) = XML :-
     DialogId = Dialog ^ ann_dialog_id,
     XML = [
-        elem("UI", [], 
+        elem("UI", [],
             [elem("Property", [id_attr("DefaultUIFont")], [data("DlgFont8")])]
             ++ list.map(annotated_dialog_to_xml, [Dialog | Dialogs]) ++
             [elem("InstallUISequence", [], [
@@ -718,7 +717,7 @@ maybe_ui_elements([Dialog | Dialogs], RemoveDlgId, FinishDlgId) = XML :-
                 ], [data("NOT Installed")]),
                 elem("Show", [
                     %
-                    % If the product is already installed should the 
+                    % If the product is already installed should the
                     % removal dialog box.
                     %
                     attr("Dialog", RemoveDlgId),
@@ -736,16 +735,16 @@ maybe_ui_elements([Dialog | Dialogs], RemoveDlgId, FinishDlgId) = XML :-
             % Define some commonly used fonts.
             %
             [elem("TextStyle", [
-                id_attr("DlgFont8"), 
+                id_attr("DlgFont8"),
                 attr("FaceName", "Tahoma"),
                 attr("Size", "8")], [])] ++
             [elem("TextStyle", [
-                id_attr("DlgFontBold8"), 
+                id_attr("DlgFontBold8"),
                 attr("FaceName", "Tahoma"),
                 attr("Size", "8"),
                 attr("Bold", "yes")], [])] ++
             [elem("TextStyle", [
-                id_attr("VerdanaBold13"), 
+                id_attr("VerdanaBold13"),
                 attr("FaceName", "Verdana"),
                 attr("Size", "13"),
                 attr("Bold", "yes")], [])]

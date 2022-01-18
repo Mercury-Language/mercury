@@ -8,10 +8,9 @@
 %
 % Main author: Ian MacLarty (maclarty@cs.mu.oz.au).
 %
-%---------------------------------------------------------------------------%
-%
 % Various misc predicates and functions used by the wix modules.
 %
+%---------------------------------------------------------------------------%
 
 :- module wix_util.
 
@@ -90,15 +89,18 @@
 :- func system_or_user_to_string(env_var_system_or_user) = string.
 
 %----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module counter. 
-:- import_module dir. 
+:- import_module counter.
+:- import_module dir.
 :- import_module exception.
-:- import_module int. 
-:- import_module require. 
+:- import_module int.
+:- import_module require.
 :- import_module string.
+
+%----------------------------------------------------------------------------%
 
 guid_attr(GUID) = attr("Guid", GUID).
 
@@ -117,8 +119,8 @@ name_attrs(FileName, ShortName) = Attrs :-
 
 pos_attrs(X - Y) = [attr("X", int_to_string(X)), attr("Y", int_to_string(Y))].
 
-size_attrs(Width - Height) = 
-    [attr("Width", int_to_string(Width)), 
+size_attrs(Width - Height) =
+    [attr("Width", int_to_string(Width)),
     attr("Height", int_to_string(Height))].
 
 title_attr(Title) = attr("Title", Title).
@@ -155,9 +157,9 @@ is_legal_windows_short_name(FileName) :-
         string.is_all_alnum_or_underscore(BaseName)
     ).
 
-    % XXX I don't know exactly how to do this, so am ignoring it for 
+    % XXX I don't know exactly how to do this, so am ignoring it for
     % now.  It should only cause problems on versions of windows which
-    % don't support long file names.  To my knowledge this is versions 
+    % don't support long file names.  To my knowledge this is versions
     % prior to Windows 95 which Mercury won't run on anyway - Ian MacLarty.
     %
 :- func make_short_filename(string) = string.
@@ -180,7 +182,7 @@ attr_if_not_blank(attr(Name, Value)) = AttrList :-
         AttrList = [attr(Name, Value)]
     ).
 
-version_no_to_string(version_no(Major, Minor, Build, Other)) = 
+version_no_to_string(version_no(Major, Minor, Build, Other)) =
     int_to_string(Major) ++ "." ++ int_to_string(Minor) ++ "." ++
     int_to_string(Build) ++ "." ++ int_to_string(Other).
 
