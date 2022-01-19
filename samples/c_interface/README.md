@@ -4,7 +4,7 @@ Mercury C Interface Examples
 This directory contains some examples of mixed Mercury/C/C++/Fortran programs
 using the foreign language interface.
 
-* [short_example.m](short_example.m) -- A short example of a Mercury code
+* [short_example.m](short_example.m) -- A short example of Mercury code
   calling C code.
 
 * [mercury_calls_c](mercury_calls_c) -- A detailed example of Mercury code

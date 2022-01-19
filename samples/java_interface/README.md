@@ -4,6 +4,9 @@ Mercury Java Interface Examples
 This directory contains some examples of mixed Mercury/Java programs using
 the foreign language interface.
 
+* [short_example.m](short_example.m) -- A short example of Mercury code
+  calling Java code.
+
 * [mercury_calls_java](mercury_calls_java) -- A detailed example of Mercury
   code calling Java code.
 
