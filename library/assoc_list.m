@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-1997, 1999-2001, 2004-2006, 2010-2011 The University of Melbourne.
-% Copyright (C) 2013-2020 The Mercury team.
+% Copyright (C) 2013-2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -27,6 +27,15 @@
 :- type assoc_list(K, V) == list(pair(K, V)).
 
 :- type assoc_list(T) == list(pair(T, T)).
+
+%---------------------------------------------------------------------------%
+
+    % These instantiation states can be used for instantiation
+    % state subtyping.
+    %
+:- inst assoc_list(I1, I2) == list(pair(I1, I2)).
+
+:- inst assoc_list(I) == list(pair(I, I)).
 
 %---------------------------------------------------------------------------%
 %
