@@ -10,8 +10,11 @@
 % Main authors: fjh, zs.
 % Stability: medium to high.
 %
-% This file contains the definition of the type assoc_list(K, V)
-% and some predicates which operate on those types.
+% This file defines the type assoc_list(K, V), which holds a list of
+% key-value pairs, and some predicates which operate on assoc_lists.
+%
+% Another module of the Mercury standard library, kv_list.m, defines
+% another data type that does the same job, but makes different tradeoffs.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
