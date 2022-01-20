@@ -73,8 +73,8 @@
 :- func lookup_vertex(digraph(T), digraph_key(T)) = T.
 :- pred lookup_vertex(digraph(T)::in, digraph_key(T)::in, T::out) is det.
 
-    % add_edge adds an edge to the digraph if it doesn't already
-    % exist, and leaves the digraph unchanged otherwise.
+    % add_edge adds an edge to the digraph if it doesn't already exist,
+    % and leaves the digraph unchanged otherwise.
     %
 :- func add_edge(digraph_key(T), digraph_key(T), digraph(T)) = digraph(T).
 :- pred add_edge(digraph_key(T)::in, digraph_key(T)::in,
@@ -226,7 +226,7 @@
 
     % dfsrev(G, Key, !Visit, DfsRev) is true if DfsRev is a
     % reverse depth-first sorting of G starting at Key providing we have
-    % already visited !.Visit nodes, ie the reverse of Dfs from dfs/5.
+    % already visited !.Visit nodes, i.e. the reverse of Dfs from dfs/5.
     % !:Visit is !.Visit + DfsRev.
     %
 :- pred dfsrev(digraph(T)::in, digraph_key(T)::in,
@@ -248,8 +248,8 @@
 :- pred inverse(digraph(T)::in, digraph(T)::out) is det.
 
     % compose(G1, G2, G) is true if G is the composition
-    % of the digraphs G1 and G2. That is, there is an edge (x,y) in G iff
-    % there exists vertex m such that (x,m) is in G1 and (m,y) is in G2.
+    % of the digraphs G1 and G2. This means that there is an edge (x,y) in G
+    % iff there exists vertex m such that (x,m) is in G1 and (m,y) is in G2.
     %
 :- func compose(digraph(T), digraph(T)) = digraph(T).
 :- pred compose(digraph(T)::in, digraph(T)::in, digraph(T)::out)
@@ -311,7 +311,7 @@
     %
     % If we view each edge in the digraph as representing a <from, to>
     % relationship, then ATS will contain SCC A before all SCCs B
-    % for which there is a vertex <from, to> with "from" being in SCC A
+    % for which there is an edge <from, to> with "from" being in SCC A
     % and "to" being in SCC B. In other words, ATS will be in from-to order.
     %
 :- func atsort(digraph(T)) = list(set(T)).
@@ -396,29 +396,29 @@
 :- type key_map(T)     == map(int, digraph_key(T)).
 :- type key_set_map(T) == map(int, digraph_key_set(T)).
 
-:- func key_set_map_add(key_set_map(T), int, digraph_key(T)) = key_set_map(T).
+:- pred key_set_map_add(int::in, digraph_key(T)::in,
+    key_set_map(T)::in, key_set_map(T)::out) is det.
 
-key_set_map_add(Map0, XI, Y) = Map :-
+key_set_map_add(XI, Y, Map0, Map) :-
     ( if map.search(Map0, XI, SuccXs0) then
-        ( if contains(SuccXs0, Y) then
+        ( if sparse_bitset.contains(SuccXs0, Y) then
             Map = Map0
         else
-            insert(Y, SuccXs0, SuccXs),
-            Map = map.det_update(Map0, XI, SuccXs)
+            sparse_bitset.insert(Y, SuccXs0, SuccXs),
+            map.det_update(XI, SuccXs, Map0, Map)
         )
     else
-        init(SuccXs0),
-        insert(Y, SuccXs0, SuccXs),
-        Map = map.det_insert(Map0, XI, SuccXs)
+        SuccXs = sparse_bitset.make_singleton_set(Y),
+        map.det_insert(XI, SuccXs, Map0, Map)
     ).
 
-:- func key_set_map_delete(key_set_map(T), int, digraph_key(T)) =
-    key_set_map(T).
+:- pred key_set_map_delete(int::in, digraph_key(T)::in,
+    key_set_map(T)::in, key_set_map(T)::out) is det.
 
-key_set_map_delete(Map0, XI, Y) = Map :-
+key_set_map_delete(XI, Y, Map0, Map) :-
     ( if map.search(Map0, XI, SuccXs0) then
-        delete(Y, SuccXs0, SuccXs),
-        Map = map.det_update(Map0, XI, SuccXs)
+        sparse_bitset.delete(Y, SuccXs0, SuccXs),
+        map.det_update(XI, SuccXs, Map0, Map)
     else
         Map = Map0
     ).
@@ -436,11 +436,13 @@ init(digraph(0, VMap, FwdMap, BwdMap)) :-
 %---------------------------------------------------------------------------%
 
 add_vertex(Vertex, Key, !G) :-
-    ( if bimap.search(!.G ^ vertex_map, Vertex, Key0) then
+    VertexMap0 = !.G ^ vertex_map,
+    ( if bimap.search(VertexMap0, Vertex, Key0) then
         Key = Key0
     else
         allocate_key(Key, !G),
-        !G ^ vertex_map := bimap.set(!.G ^ vertex_map, Vertex, Key)
+        bimap.set(Vertex, Key, VertexMap0, VertexMap),
+        !G ^ vertex_map := VertexMap
     ).
 
 :- pred allocate_key(digraph_key(T)::out, digraph(T)::in, digraph(T)::out)
@@ -483,8 +485,12 @@ add_edge(X, Y, !.G) = !:G :-
 add_edge(X, Y, !G) :-
     X = digraph_key(XI),
     Y = digraph_key(YI),
-    !G ^ fwd_map := key_set_map_add(!.G ^ fwd_map, XI, Y),
-    !G ^ bwd_map := key_set_map_add(!.G ^ bwd_map, YI, X).
+    FwdMap0 = !.G ^ fwd_map,
+    BwdMap0 = !.G ^ bwd_map,
+    key_set_map_add(XI, Y, FwdMap0, FwdMap),
+    key_set_map_add(YI, X, BwdMap0, BwdMap),
+    !G ^ fwd_map := FwdMap,
+    !G ^ bwd_map := BwdMap.
 
 add_vertices_and_edge(VX, VY, !.G) = !:G :-
     digraph.add_vertices_and_edge(VX, VY, !G).
@@ -516,8 +522,12 @@ delete_edge(X, Y, !.G) = !:G :-
 delete_edge(X, Y, !G) :-
     X = digraph_key(XI),
     Y = digraph_key(YI),
-    !G ^ fwd_map := key_set_map_delete(!.G ^ fwd_map, XI, Y),
-    !G ^ bwd_map := key_set_map_delete(!.G ^ bwd_map, YI, X).
+    FwdMap0 = !.G ^ fwd_map,
+    BwdMap0 = !.G ^ bwd_map,
+    key_set_map_delete(XI, Y, FwdMap0, FwdMap),
+    key_set_map_delete(YI, X, BwdMap0, BwdMap),
+    !G ^ fwd_map := FwdMap,
+    !G ^ bwd_map := BwdMap.
 
 delete_assoc_list(Edges, !.G) = !:G :-
     digraph.delete_assoc_list(Edges, !G).
@@ -531,11 +541,11 @@ delete_assoc_list([X - Y | Edges], !G) :-
 
 is_edge(G, digraph_key(XI), Y) :-
     map.search(G ^ fwd_map, XI, YSet),
-    member(Y, YSet).
+    sparse_bitset.member(Y, YSet).
 
 is_edge_rev(G, X, digraph_key(YI)) :-
     map.search(G ^ bwd_map, YI, XSet),
-    member(X, XSet).
+    sparse_bitset.member(X, XSet).
 
 %---------------------------------------------------------------------------%
 
@@ -552,7 +562,7 @@ lookup_key_set_from(G, digraph_key(XI), Ys) :-
     ( if map.search(G ^ fwd_map, XI, Ys0) then
         Ys = Ys0
     else
-        init(Ys)
+        sparse_bitset.init(Ys)
     ).
 
 lookup_to(G, Y) = Xs :-
@@ -568,7 +578,7 @@ lookup_key_set_to(G, digraph_key(YI), Xs) :-
     ( if map.search(G ^ bwd_map, YI, Xs0) then
         Xs = Xs0
     else
-        init(Xs)
+        sparse_bitset.init(Xs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -674,11 +684,11 @@ dfsrev(G, X, !Visited, DfsRev) :-
     list(digraph_key(T))::in, list(digraph_key(T))::out) is det.
 
 dfs_2(G, X, !Visited, !DfsRev) :-
-    ( if contains(!.Visited, X) then
+    ( if sparse_bitset.contains(!.Visited, X) then
         true
     else
         digraph.lookup_key_set_from(G, X, SuccXs),
-        insert(X, !Visited),
+        sparse_bitset.insert(X, !Visited),
 
         % Go and visit all of the node's children first.
         sparse_bitset.foldl2(digraph.dfs_2(G), SuccXs, !Visited, !DfsRev),
@@ -692,7 +702,7 @@ vertices(G) = Vs :-
 
 vertices(G, Vs) :-
     bimap.ordinates(G ^ vertex_map, VsList),
-    sorted_list_to_set(VsList, Vs).
+    set.sorted_list_to_set(VsList, Vs).
 
 :- pred digraph.keys(digraph(T)::in, list(digraph_key(T))::out) is det.
 
@@ -723,13 +733,13 @@ compose(G1, G2, !:Comp) :-
 
     % Find the sets of keys to be matched in each digraph.
     AL = list.map(
-        (func(Match) = Xs - Ys :-
+        ( func(Match) = Xs - Ys :-
             digraph.lookup_key(G1, Match, M1),
             digraph.lookup_key_set_to(G1, M1, Xs),
             digraph.lookup_key(G2, Match, M2),
             digraph.lookup_key_set_from(G2, M2, Ys)
         ),
-        to_sorted_list(Matches)),
+        set.to_sorted_list(Matches)),
 
     % Find the sets of keys in each digraph which will occur in
     % the new digraph.
@@ -752,8 +762,7 @@ find_necessary_keys(Xs - Ys, !Needed1, !Needed2) :-
     sparse_bitset.union(Ys, !Needed2).
 
 :- pred copy_vertex(digraph(T)::in, digraph_key(T)::in,
-    digraph(T)::in, digraph(T)::out, key_map(T)::in, key_map(T)::out)
-    is det.
+    digraph(T)::in, digraph(T)::out, key_map(T)::in, key_map(T)::out) is det.
 
 copy_vertex(G, X, !Comp, !KMap) :-
     digraph.lookup_vertex(G, X, VX),
@@ -772,7 +781,8 @@ add_composition_edges(KMap1, KMap2, Xs - Ys, !Comp) :-
     digraph_key_set(T).
 
 map_digraph_key_set(KMap, Set0) = Set :-
-    sparse_bitset.foldl(accumulate_digraph_key_set(KMap), Set0, init, Set).
+    sparse_bitset.foldl(accumulate_digraph_key_set(KMap), Set0,
+        sparse_bitset.init, Set).
 
 :- pred accumulate_digraph_key_set(key_map(T)::in, digraph_key(T)::in,
     digraph_key_set(T)::in, digraph_key_set(T)::out) is det.
@@ -780,7 +790,7 @@ map_digraph_key_set(KMap, Set0) = Set :-
 accumulate_digraph_key_set(KMap, X, !Set) :-
     X = digraph_key(XI),
     map.lookup(KMap, XI, Y),
-    !:Set = insert(!.Set, Y).
+    sparse_bitset.insert(Y, !Set).
 
 %---------------------------------------------------------------------------%
 
@@ -802,7 +812,7 @@ is_dag(G) :-
     % (<=) If we encounter an ancestor in any traversal, then we have a cycle.
     %
     digraph.keys(G, Keys),
-    foldl(digraph.is_dag_2(G, []), Keys, init, _).
+    list.foldl(digraph.is_dag_2(G, []), Keys, sparse_bitset.init, _).
 
 :- pred digraph.is_dag_2(digraph(T)::in, list(digraph_key(T))::in,
     digraph_key(T)::in, digraph_key_set(T)::in, digraph_key_set(T)::out)
@@ -811,11 +821,11 @@ is_dag(G) :-
 is_dag_2(G, Ancestors, X, !Visited) :-
     ( if list.member(X, Ancestors) then
         fail
-    else if contains(!.Visited, X) then
+    else if sparse_bitset.contains(!.Visited, X) then
         true
     else
         digraph.lookup_key_set_from(G, X, SuccXs),
-        !:Visited = insert(!.Visited, X),
+        sparse_bitset.insert(X, !Visited),
         foldl(digraph.is_dag_2(G, [X | Ancestors]), SuccXs, !Visited)
     ).
 
@@ -826,20 +836,20 @@ components(G) = Components :-
 
 components(G, Components) :-
     digraph.keys(G, Keys),
-    list_to_set(Keys, KeySet : digraph_key_set(T)),
-    digraph.components_2(G, KeySet, init, Components).
+    sparse_bitset.list_to_set(Keys, KeySet : digraph_key_set(T)),
+    digraph.components_loop(G, KeySet, set.init, Components).
 
-:- pred digraph.components_2(digraph(T)::in, digraph_key_set(T)::in,
+:- pred digraph.components_loop(digraph(T)::in, digraph_key_set(T)::in,
     set(set(digraph_key(T)))::in, set(set(digraph_key(T)))::out) is det.
 
-components_2(G, Xs0, !Components) :-
-    ( if remove_least(X, Xs0, Xs1) then
-        init(Comp0),
+components_loop(G, Xs0, !Components) :-
+    ( if sparse_bitset.remove_least(X, Xs0, Xs1) then
+        sparse_bitset.init(Comp0),
         Keys0 = make_singleton_set(X),
         digraph.reachable_from(G, Keys0, Comp0, Comp),
-        set.insert(to_set(Comp), !Components),
-        difference(Xs1, Comp, Xs2),
-        digraph.components_2(G, Xs2, !Components)
+        set.insert(sparse_bitset.to_set(Comp), !Components),
+        sparse_bitset.difference(Xs1, Comp, Xs2),
+        digraph.components_loop(G, Xs2, !Components)
     else
         true
     ).
@@ -849,13 +859,13 @@ components_2(G, Xs0, !Components) :-
 
 reachable_from(G, Keys0, !Comp) :-
     % Invariant: Keys0 and !.Comp are disjoint.
-    ( if remove_least(X, Keys0, Keys1) then
-        insert(X, !Comp),
+    ( if sparse_bitset.remove_least(X, Keys0, Keys1) then
+        sparse_bitset.insert(X, !Comp),
         digraph.lookup_key_set_from(G, X, FwdSet),
         digraph.lookup_key_set_to(G, X, BwdSet),
-        union(FwdSet, BwdSet, NextSet0),
-        difference(NextSet0, !.Comp, NextSet),
-        union(Keys1, NextSet, Keys),
+        sparse_bitset.union(FwdSet, BwdSet, NextSet0),
+        sparse_bitset.difference(NextSet0, !.Comp, NextSet),
+        sparse_bitset.union(Keys1, NextSet, Keys),
         digraph.reachable_from(G, Keys, !Comp)
     else
         true
@@ -881,7 +891,7 @@ cliques(G, Cliques) :-
     digraph.dfsrev(G, DfsRev),
     digraph.inverse(G, GInv),
     set.init(Cliques0),
-    init(Visit),
+    sparse_bitset.init(Visit),
     digraph.cliques_2(DfsRev, GInv, Visit, Cliques0, Cliques).
 
 :- pred digraph.cliques_2(list(digraph_key(T))::in, digraph(T)::in,
@@ -894,7 +904,7 @@ cliques_2([X | Xs0], GInv, !.Visited, !Cliques) :-
     digraph.dfs_2(GInv, X, !Visited, [], CliqueList),
 
     % Insert the cycle into the clique set.
-    list_to_set(CliqueList, Clique),
+    set.list_to_set(CliqueList, Clique),
     set.insert(Clique, !Cliques),
 
     % Delete all the visited vertices, so head of the list is the next
@@ -975,10 +985,10 @@ return_vertices_in_to_from_order(G, ToFromTsort) :-
 
 check_tsort(_, _, []).
 check_tsort(G, Vis0, [X | Xs]) :-
-    insert(X, Vis0, Vis),
+    sparse_bitset.insert(X, Vis0, Vis),
     digraph.lookup_key_set_from(G, X, SuccXs),
-    intersect(Vis, SuccXs, BackPointers),
-    is_empty(BackPointers),
+    sparse_bitset.intersect(Vis, SuccXs, BackPointers),
+    sparse_bitset.is_empty(BackPointers),
     digraph.check_tsort(G, Vis, Xs).
 
 %---------------------------------------------------------------------------%
@@ -996,18 +1006,17 @@ digraph.return_sccs_in_from_to_order(G) = ATsort :-
 digraph.return_sccs_in_to_from_order(G) = ATsort :-
     % The algorithm used is described in R.E. Tarjan, "Depth-first search
     % and linear graph algorithms", SIAM Journal on Computing, 1, 2 (1972).
-
     digraph.dfsrev(G, DfsRev),
     digraph.inverse(G, GInv),
-    init(Vis),
-    digraph.atsort_2(DfsRev, GInv, Vis, [], ATsort).
+    sparse_bitset.init(Vis),
+    digraph.atsort_loop(DfsRev, GInv, Vis, [], ATsort).
 
-:- pred digraph.atsort_2(list(digraph_key(T))::in, digraph(T)::in,
+:- pred digraph.atsort_loop(list(digraph_key(T))::in, digraph(T)::in,
     digraph_key_set(T)::in, list(set(T))::in, list(set(T))::out) is det.
 
-atsort_2([], _, _, !ATsort).
-atsort_2([X | Xs], GInv, !.Vis, !ATsort) :-
-    ( if contains(!.Vis, X) then
+atsort_loop([], _, _, !ATsort).
+atsort_loop([X | Xs], GInv, !.Vis, !ATsort) :-
+    ( if sparse_bitset.contains(!.Vis, X) then
         true
     else
         digraph.dfs_2(GInv, X, !Vis, [], CliqKeys),
@@ -1015,7 +1024,7 @@ atsort_2([X | Xs], GInv, !.Vis, !ATsort) :-
         set.list_to_set(CliqList, Cliq),
         !:ATsort = [Cliq | !.ATsort]
     ),
-    digraph.atsort_2(Xs, GInv, !.Vis, !ATsort).
+    digraph.atsort_loop(Xs, GInv, !.Vis, !ATsort).
 
 %---------------------------------------------------------------------------%
 
@@ -1061,8 +1070,8 @@ detect_fake_reflexives(_, _, [], !Fakes).
 detect_fake_reflexives(G, Rtc, [X | Xs], !Fakes) :-
     digraph.lookup_key_set_from(G, X, SuccXs),
     digraph.lookup_key_set_to(Rtc, X, PreXs),
-    intersect(SuccXs, PreXs, Ys),
-    ( if is_empty(Ys) then
+    sparse_bitset.intersect(SuccXs, PreXs, Ys),
+    ( if sparse_bitset.is_empty(Ys) then
         !:Fakes = [X - X | !.Fakes]
     else
         true
@@ -1088,7 +1097,7 @@ rtc(G, !:Rtc) :-
     % add the appropriate edges.
 
     digraph.dfs(G, Dfs),
-    init(Vis),
+    sparse_bitset.init(Vis),
 
     % First start with all the vertices in G, but no edges.
     G = digraph(NextKey, VMap, _, _),
@@ -1103,13 +1112,15 @@ rtc(G, !:Rtc) :-
 
 rtc_2([], _, _, !Rtc).
 rtc_2([X | Xs], G, !.Vis, !Rtc) :-
-    ( if contains(!.Vis, X) then
+    ( if sparse_bitset.contains(!.Vis, X) then
         true
     else
         digraph.dfs_2(G, X, !Vis, [], CliqList),
-        list_to_set(CliqList, Cliq),
-        foldl(find_followers(G), Cliq, Cliq, Followers0),
-        foldl(find_followers(!.Rtc), Followers0, Cliq, Followers),
+        sparse_bitset.list_to_set(CliqList, Cliq),
+        sparse_bitset.foldl(find_followers(G), Cliq,
+            Cliq, Followers0),
+        sparse_bitset.foldl(find_followers(!.Rtc), Followers0,
+            Cliq, Followers),
         digraph.add_cartesian_product(Cliq, Followers, !Rtc)
     ),
     digraph.rtc_2(Xs, G, !.Vis, !Rtc).
@@ -1119,40 +1130,43 @@ rtc_2([X | Xs], G, !.Vis, !Rtc) :-
 
 find_followers(G, X, !Followers) :-
     digraph.lookup_key_set_from(G, X, SuccXs),
-    union(SuccXs, !Followers).
+    sparse_bitset.union(SuccXs, !Followers).
 
 :- pred digraph.add_cartesian_product(digraph_key_set(T)::in,
     digraph_key_set(T)::in, digraph(T)::in, digraph(T)::out) is det.
 
 add_cartesian_product(KeySet1, KeySet2, !Rtc) :-
-    foldl((pred(Key1::in, !.Rtc::in, !:Rtc::out) is det :-
-        foldl(digraph.add_edge(Key1), KeySet2, !Rtc)
-    ), KeySet1, !Rtc).
+    sparse_bitset.foldl(
+        ( pred(Key1::in, !.Rtc::in, !:Rtc::out) is det :-
+            sparse_bitset.foldl(digraph.add_edge(Key1), KeySet2, !Rtc)
+        ), KeySet1, !Rtc).
 
 %---------------------------------------------------------------------------%
 
 traverse(Graph, ProcessVertex, ProcessEdge, !Acc) :-
     digraph.keys(Graph, VertexKeys),
-    digraph.traverse_2(Graph, ProcessVertex, ProcessEdge, VertexKeys, !Acc).
+    digraph.traverse_vertex_list(Graph, ProcessVertex, ProcessEdge,
+        VertexKeys, !Acc).
 
-:- pred digraph.traverse_2(digraph(T),
+:- pred digraph.traverse_vertex_list(digraph(T),
     pred(T, A, A), pred(T, T, A, A), list(digraph_key(T)), A, A).
-:- mode digraph.traverse_2(in, pred(in, di, uo) is det,
+:- mode digraph.traverse_vertex_list(in, pred(in, di, uo) is det,
     pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode digraph.traverse_2(in, pred(in, in, out) is det,
+:- mode digraph.traverse_vertex_list(in, pred(in, in, out) is det,
     pred(in, in, in, out) is det, in, in, out) is det.
 
-traverse_2(_, _, _, [], !Acc).
-traverse_2(Graph, ProcessVertex, ProcessEdge, [VertexKey | VertexKeys],
-        !Acc) :-
+traverse_vertex_list(_, _, _, [], !Acc).
+traverse_vertex_list(Graph, ProcessVertex, ProcessEdge,
+        [VertexKey | VertexKeys], !Acc) :-
     % XXX avoid the sparse_bitset.to_sorted_list here
     % (difficult to do using sparse_bitset.foldl because
     % traverse_children has multiple modes).
-    Vertex = lookup_vertex(Graph, VertexKey),
+    Vertex = digraph.lookup_vertex(Graph, VertexKey),
     ProcessVertex(Vertex, !Acc),
-    ChildrenKeys = to_sorted_list(lookup_from(Graph, VertexKey)),
+    ChildrenKeys = set.to_sorted_list(digraph.lookup_from(Graph, VertexKey)),
     digraph.traverse_children(Graph, ProcessEdge, Vertex, ChildrenKeys, !Acc),
-    digraph.traverse_2(Graph, ProcessVertex, ProcessEdge, VertexKeys, !Acc).
+    digraph.traverse_vertex_list(Graph, ProcessVertex, ProcessEdge,
+        VertexKeys, !Acc).
 
 :- pred digraph.traverse_children(digraph(T), pred(T, T, A, A),
     T, list(digraph_key(T)), A, A).
@@ -1163,7 +1177,7 @@ traverse_2(Graph, ProcessVertex, ProcessEdge, [VertexKey | VertexKeys],
 
 traverse_children(_, _, _, [], !Acc).
 traverse_children(Graph, ProcessEdge, Parent, [ChildKey | ChildKeys], !Acc) :-
-    Child = lookup_vertex(Graph, ChildKey),
+    Child = digraph.lookup_vertex(Graph, ChildKey),
     ProcessEdge(Parent, Child, !Acc),
     digraph.traverse_children(Graph, ProcessEdge, Parent, ChildKeys, !Acc).
 
