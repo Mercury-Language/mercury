@@ -59,7 +59,8 @@
     ;       opmq_output_grade_string                % Grade information.
     ;       opmq_output_libgrades
 
-    ;       opmq_output_stdlib_modules              % Library information.
+    ;       opmq_output_stdlib_grades               % Library information.
+    ;       opmq_output_stdlib_modules
 
     ;       opmq_output_target_arch.                % System information.
 
@@ -320,6 +321,8 @@ bool_op_modes = [
         opm_top_query(opmq_output_grade_string),
     only_opmode_output_libgrades -
         opm_top_query(opmq_output_libgrades),
+    only_opmode_output_stdlib_grades -
+        opm_top_query(opmq_output_stdlib_grades),
 
     only_opmode_output_stdlib_modules -
         opm_top_query(opmq_output_stdlib_modules),
@@ -424,6 +427,9 @@ op_mode_to_option_string(OptionTable, MOP) = Str :-
         ;
             MOPQ = opmq_output_libgrades,
             Str = "--output-libgrades"
+        ;
+            MOPQ = opmq_output_stdlib_grades,
+            Str = "--output-stdlib-grades"
         ;
             MOPQ = opmq_output_stdlib_modules,
             Str = "--output-stdlib-modules"

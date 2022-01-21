@@ -307,6 +307,7 @@
     ;       only_opmode_output_grade_string
     ;       only_opmode_output_link_command
     ;       only_opmode_output_shared_lib_link_command
+    ;       only_opmode_output_stdlib_grades
     ;       only_opmode_output_libgrades
     ;       only_opmode_output_cc
     ;       only_opmode_output_c_compiler_type
@@ -1396,6 +1397,7 @@ optdef(oc_opmode, compile_to_shared_lib,                bool(no)).
 optdef(oc_opmode, only_opmode_output_grade_string,      bool(no)).
 optdef(oc_opmode, only_opmode_output_link_command,      bool(no)).
 optdef(oc_opmode, only_opmode_output_shared_lib_link_command, bool(no)).
+optdef(oc_opmode, only_opmode_output_stdlib_grades,     bool(no)).
 optdef(oc_opmode, only_opmode_output_libgrades,         bool(no)).
 optdef(oc_opmode, only_opmode_output_cc,                bool(no)).
 optdef(oc_opmode, only_opmode_output_c_compiler_type,   bool(no)).
@@ -2336,6 +2338,7 @@ long_option("output-grade-string",      only_opmode_output_grade_string).
 long_option("output-link-command",      only_opmode_output_link_command).
 long_option("output-shared-lib-link-command",
     only_opmode_output_shared_lib_link_command).
+long_option("output-stdlib-grades",     only_opmode_output_stdlib_grades).
 long_option("output-libgrades",         only_opmode_output_libgrades).
 long_option("output-cc",                only_opmode_output_cc).
 long_option("output-cc-type",           only_opmode_output_c_compiler_type).
@@ -4711,9 +4714,12 @@ options_help_output(Stream, !IO) :-
         "\tPrint to standard output the command used to link executables.",
         "--output-shared-lib-link-command",
         "\tPrint to standard output the command used to link shared libraries",
-        "--output-libgrades",
+        "--output-stdlib-grades",
         "\tPrint to standard output the list of compilation grades in which",
         "\tthe Mercury standard library is available with this compiler.",
+        "--output-libgrades",
+        "\tPrint to standard output the list of compilation grades in which",
+        "\ta library to be installed should be built.",
         "--output-cc",
         "\tPrint to standard output the command used to invoke the",
         "\tC compiler.",

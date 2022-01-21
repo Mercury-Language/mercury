@@ -98,7 +98,7 @@
     % Look up $(MERCURY_STDLIB_DIR).
     %
 :- pred lookup_mercury_stdlib_dir(options_variables::in,
-    maybe(list(string))::out, list(error_spec)::out) is det.
+    maybe1(list(string))::out) is det.
 
     % Look up the DEFAULT_MCFLAGS variable.
     %
@@ -1249,20 +1249,17 @@ lookup_main_target(Variables, MaybeMainTarget) :-
 
 %---------------------------------------------------------------------------%
 
-lookup_mercury_stdlib_dir(Variables, MaybeMerStdlibDir, Specs) :-
+lookup_mercury_stdlib_dir(Variables, MaybeMerStdlibDir) :-
     lookup_variable_words(Variables, "MERCURY_STDLIB_DIR", MerStdlibDirResult),
     (
         MerStdlibDirResult = var_result_set(MerStdlibDir),
-        MaybeMerStdlibDir = yes(MerStdlibDir),
-        Specs = []
+        MaybeMerStdlibDir = ok1(MerStdlibDir)
     ;
         MerStdlibDirResult = var_result_unset,
-        MaybeMerStdlibDir = yes([]),
-        Specs = []
+        MaybeMerStdlibDir = ok1([])
     ;
         MerStdlibDirResult = var_result_error(OoMSpecs),
-        MaybeMerStdlibDir = no,
-        Specs = one_or_more_to_list(OoMSpecs)
+        MaybeMerStdlibDir = error1(one_or_more_to_list(OoMSpecs))
     ).
 
 %---------------------------------------------------------------------------%

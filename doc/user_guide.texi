@@ -7372,10 +7372,16 @@ Print to standard output the command used to link executables.
 Print to standard output the command used to link shared libraries.
 
 @sp 1
+@item --output-stdlib-grades
+@findex --output-stdlib-grades
+Print to standard output the list of compilation grades in which
+the Mercury standard library is available with this compiler.
+
+@sp 1
 @item --output-libgrades
 @findex --output-libgrades
 Print to standard output the list of compilation grades in which
-the Mercury standard library is available with this compiler.
+a library to be installed should be built.
 
 @sp 1
 @item --output-cc
@@ -8330,7 +8336,7 @@ the Mercury runtime system and Mercury standard library
 will be installed in only a subset of the possible grades;
 you can find out which grades these are
 by invoking the Mercury compiler
-with the @samp{--output-libgrades} option.
+with the @samp{--output-stdlib-grades} option.
 Attempting to use a grade which has not been installed
 will result in an error at link time.
 (The error message will typically be something like

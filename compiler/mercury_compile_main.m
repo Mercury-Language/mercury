@@ -80,6 +80,7 @@
 :- import_module parse_tree.generate_dep_d_files.
 :- import_module parse_tree.grab_modules.
 :- import_module parse_tree.item_util.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_imports.
 :- import_module parse_tree.module_qual.
@@ -357,11 +358,24 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                                 AllErrors0 = yes,
                                 MaybeMCFlags = no
                             ),
+                            % XXX Record _StdLibGrades in the final globals
+                            % structure.
+                            maybe_detect_stdlib_grades(FlagsArgsGlobals,
+                                Variables, _MaybeStdLibGrades,
+                                DetectedGradeFlags, !IO),
+                            % maybe_detect_stdlib_grades does this lookup, but
+                            % it returns any error in MaybeConfigMerStdLibDir
+                            % (as part of _MaybeStdLibGrades) only if that
+                            % error is relevant, i.e. if we cannot get
+                            % the location of the Mercury standard library
+                            % from the mercury_standard_library_directory
+                            % option. Including such irrelevant errors in
+                            % AllSpecs preserves old behavior, though I (zs)
+                            % do not understand the reason for that behavior.
                             lookup_mercury_stdlib_dir(Variables,
-                                MaybeMerStdLibDir, StdLibDirSpecs),
-                            detect_libgrades(FlagsArgsGlobals,
-                                MaybeMerStdLibDir, DetectedGradeFlags, !IO),
-                            AllSpecs = AllSpecs0 ++ StdLibDirSpecs
+                                MaybeConfigMerStdLibDir),
+                            AllSpecs = AllSpecs0 ++
+                                get_any_errors1(MaybeConfigMerStdLibDir)
                         ;
                             ConfigErrors = yes,
                             DetectedGradeFlags = [],
@@ -462,92 +476,170 @@ maybe_dump_options_file(ArgsGlobals, Variables, !IO) :-
 
 %---------------------%
 
-% Enable the compile-time trace flag "debug-detect-libgrades" to enable
-% debugging messages for library grade detection in the very verbose output.
+:- pred maybe_detect_stdlib_grades(globals::in, options_variables::in,
+    maybe1(set(string))::out, list(string)::out, io::di, io::uo) is det.
 
-:- pred detect_libgrades(globals::in, maybe(list(string))::in,
-    list(string)::out, io::di, io::uo) is det.
-
-detect_libgrades(Globals, MaybeConfigMerStdLibDir, GradeOpts, !IO) :-
+maybe_detect_stdlib_grades(Globals, Variables,
+        MaybeStdlibGrades, StdlibGradeOpts, !IO) :-
+    % Enable the compile-time trace flag "debug-detect-libgrades" to enable
+    % debugging messages for library grade detection in the very verbose
+    % output.
     globals.lookup_bool_option(Globals, detect_libgrades, Detect),
     (
         Detect = yes,
+        io.stdout_stream(StdOut, !IO),
         globals.lookup_bool_option(Globals, verbose, Verbose),
         trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
-            maybe_write_string(Verbose, "% Detecting library grades ...\n",
-                !TIO)
+            maybe_write_string(StdOut, Verbose,
+                "% Detecting library grades ...\n", !TIO)
         ),
-        globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-        % NOTE: a standard library directory specified on the command line
-        % overrides one set using the MERCURY_STDLIB_DIR variable.
-        ( if
-            % Was the standard library directory set on the command line?
-            globals.lookup_maybe_string_option(Globals,
-                mercury_standard_library_directory, MaybeStdLibDir),
-            MaybeStdLibDir = yes(MerStdLibDir)
-        then
-            do_detect_libgrades(VeryVerbose, MerStdLibDir, GradeOpts, !IO)
-        else if
-            % Was the standard library directory set using the
-            % MERCURY_STDLIB_DIR variable?
-            MaybeConfigMerStdLibDir = yes([MerStdLibDir])
-        then
-            do_detect_libgrades(VeryVerbose, MerStdLibDir, GradeOpts, !IO)
-        else
-            GradeOpts = []
+        find_mercury_stdlib(Globals, Variables, MaybeMerStdLibDir, !IO),
+        % If we cannot find the Mercury standard library directory,
+        % we return the error message(s) explaining the reason for that
+        % in MaybeStdlibGrades, which one our caller pays attention to,
+        % but NOT in StdlibGradeOpts, which is for another of our callers.
+        (
+            MaybeMerStdLibDir = ok1(MerStdLibDir),
+            do_detect_libgrades(MerStdLibDir, StdlibGrades, !IO),
+            MaybeStdlibGrades = ok1(StdlibGrades)
+        ;
+            MaybeMerStdLibDir = error1(Specs),
+            MaybeStdlibGrades = error1(Specs),
+            set.init(StdlibGrades)
         ),
         trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
-            maybe_write_string(Verbose, "% done.\n", !TIO)
+            (
+                Verbose = yes,
+                set.fold(report_detected_libgrade(StdOut),
+                    StdlibGrades, !TIO),
+                io.write_string(StdOut, "% done.\n", !TIO)
+            ;
+                Verbose = no
+            )
         )
     ;
         Detect = no,
-        GradeOpts = []
+        set.init(StdlibGrades),
+        MaybeStdlibGrades = ok1(StdlibGrades)
+    ),
+    GradeToOpts = (func(Grade) = ["--libgrade", Grade]),
+    StdlibGradeOptionPairs =
+        list.map(GradeToOpts, set.to_sorted_list(StdlibGrades)),
+    list.condense(StdlibGradeOptionPairs, StdlibGradeOpts).
+
+    % Where is the Mercury standard library?
+    %
+    % NOTE: A standard library directory specified on the command line
+    % overrides one set using the MERCURY_STDLIB_DIR variable.
+    %
+:- pred find_mercury_stdlib(globals::in, options_variables::in,
+    maybe1(string)::out, io::di, io::uo) is det.
+
+find_mercury_stdlib(Globals, Variables, MaybeMerStdLibDir, !IO) :-
+    ( if
+        % Was the standard library directory set on the command line?
+        globals.lookup_maybe_string_option(Globals,
+            mercury_standard_library_directory, MaybeStdLibDir),
+        MaybeStdLibDir = yes(MerStdLibDir)
+    then
+        can_you_read_dir(MerStdLibDir, MaybeMerStdLibDir, !IO)
+    else
+        % Was the standard library directory set using the
+        % MERCURY_STDLIB_DIR variable?
+        lookup_mercury_stdlib_dir(Variables, MaybeConfigMerStdLibDir),
+        (
+            MaybeConfigMerStdLibDir = ok1(MerStdLibDirs),
+            (
+                MerStdLibDirs = [MerStdLibDir],
+                can_you_read_dir(MerStdLibDir, MaybeMerStdLibDir, !IO)
+            ;
+                MerStdLibDirs = [],
+                Pieces = [words("Error: the location of the directory"),
+                    words("that holds the Mercury standard library"),
+                    words("is not specified either by the value of any"),
+                    quote("--mercury-stdlib-dir"), words("option"),
+                    words("to the compiler, nor by any definition of the"),
+                    quote("MERCURY_STDLIB_DIR"), words("variable in the"),
+                    quote("Mercury.config"), words("file."), nl],
+                Spec = simplest_no_context_spec($pred, severity_error,
+                    phase_options, Pieces),
+                MaybeMerStdLibDir = error1([Spec])
+            ;
+                MerStdLibDirs = [_, _ | _],
+                Pieces = [words("Error: the definition of the"),
+                    quote("MERCURY_STDLIB_DIR"), words("variable in the"),
+                    quote("Mercury.config"), words("file"),
+                    words("contains more than one string."), nl],
+                Spec = simplest_no_context_spec($pred, severity_error,
+                    phase_options, Pieces),
+                MaybeMerStdLibDir = error1([Spec])
+            )
+        ;
+            MaybeConfigMerStdLibDir = error1(Specs),
+            MaybeMerStdLibDir = error1(Specs)
+        )
     ).
 
-:- pred do_detect_libgrades(bool::in, string::in, list(string)::out,
+:- pred can_you_read_dir(string::in, maybe1(string)::out, io::di, io::uo)
+    is det.
+
+can_you_read_dir(MerStdLibDir, MaybeMerStdLibDir, !IO) :-
+    io.check_file_accessibility(MerStdLibDir, [read], CanRead, !IO),
+    (
+        CanRead = ok,
+        MaybeMerStdLibDir = ok1(MerStdLibDir)
+    ;
+        CanRead = error(ReadError),
+        io.error_message(ReadError, ReadErrorMsg),
+        Pieces = [words("Error:"), fixed(MerStdLibDir), suffix(":"), nl,
+            words(ReadErrorMsg), suffix("."), nl],
+        Spec = simplest_no_context_spec($pred, severity_error,
+            phase_options, Pieces),
+        MaybeMerStdLibDir = error1([Spec])
+    ).
+
+:- pred do_detect_libgrades(string::in, set(string)::out,
     io::di, io::uo) is det.
 
-do_detect_libgrades(VeryVerbose, StdLibDir, GradeOpts, !IO) :-
+do_detect_libgrades(StdLibDir, Grades, !IO) :-
     ModulesDir = StdLibDir / "modules",
-    dir.foldl2(do_detect_libgrade_using_init_file(VeryVerbose), ModulesDir,
-        [], MaybeGradeOpts0, !IO),
+    dir.foldl2(do_detect_libgrade_using_init_file, ModulesDir,
+        set.init, MaybeGrades0, !IO),
     (
-        MaybeGradeOpts0 = ok(GradeOpts0),
+        MaybeGrades0 = ok(Grades0),
         LibsDir = StdLibDir / "lib",
-        dir.foldl2(do_detect_libgrade_using_lib_file(VeryVerbose), LibsDir,
-            GradeOpts0, MaybeGradeOpts, !IO),
+        dir.foldl2(do_detect_libgrade_using_lib_file, LibsDir,
+            Grades0, MaybeGrades, !IO),
         (
-            MaybeGradeOpts = ok(GradeOpts)
+            MaybeGrades = ok(Grades)
         ;
-            MaybeGradeOpts = error(_, _),
-            GradeOpts = []
+            MaybeGrades = error(_, _),
+            set.init(Grades)
         )
     ;
-        MaybeGradeOpts0 = error(_, _),
-        GradeOpts = []
+        MaybeGrades0 = error(_, _),
+        set.init(Grades)
     ).
 
     % Test for the presence of an installed grade by looking for mer_std.init.
     % This works for all grades except the C# and Java grades.
     %
-:- pred do_detect_libgrade_using_init_file(bool::in, string::in, string::in,
-    io.file_type::in, bool::out, list(string)::in, list(string)::out,
+:- pred do_detect_libgrade_using_init_file(string::in, string::in,
+    io.file_type::in, bool::out, set(string)::in, set(string)::out,
     io::di, io::uo) is det.
 
-do_detect_libgrade_using_init_file(VeryVerbose, DirName, GradeFileName,
-        GradeFileType, Continue, !GradeOpts, !IO) :-
+do_detect_libgrade_using_init_file(DirName, GradeFileName,
+        GradeFileType, Continue, !Grades, !IO) :-
     (
         GradeFileType = directory,
         InitFile = DirName / GradeFileName / "mer_std.init",
         io.check_file_accessibility(InitFile, [read], Result, !IO),
         (
             Result = ok,
-            maybe_report_detected_libgrade(VeryVerbose, GradeFileName, !IO),
-            !:GradeOpts = ["--libgrade", GradeFileName | !.GradeOpts]
+            set.insert(GradeFileName, !Grades)
         ;
             Result = error(_)
-        ),
-        Continue = yes
+        )
     ;
         ( GradeFileType = regular_file
         ; GradeFileType = symbolic_link
@@ -559,19 +651,19 @@ do_detect_libgrade_using_init_file(VeryVerbose, DirName, GradeFileName,
         ; GradeFileType = semaphore
         ; GradeFileType = shared_memory
         ; GradeFileType = unknown
-        ),
-        Continue = yes
-    ).
+        )
+    ),
+    Continue = yes.
 
     % Test for the presence of installed Java and C# grades by looking for
     % the standard library JAR or assembly respectively.
     %
-:- pred do_detect_libgrade_using_lib_file(bool::in, string::in, string::in,
-    io.file_type::in, bool::out, list(string)::in, list(string)::out,
+:- pred do_detect_libgrade_using_lib_file(string::in, string::in,
+    io.file_type::in, bool::out, set(string)::in, set(string)::out,
     io::di, io::uo) is det.
 
-do_detect_libgrade_using_lib_file(VeryVerbose, DirName, GradeFileName,
-        GradeFileType, Continue, !GradeOpts, !IO) :-
+do_detect_libgrade_using_lib_file(DirName, GradeFileName, GradeFileType,
+        Continue, !Grades, !IO) :-
     (
         GradeFileType = directory,
         ( if
@@ -581,16 +673,13 @@ do_detect_libgrade_using_lib_file(VeryVerbose, DirName, GradeFileName,
             io.check_file_accessibility(TargetFile, [read], Result, !IO),
             (
                 Result = ok,
-                maybe_report_detected_libgrade(VeryVerbose, GradeFileName,
-                    !IO),
-                !:GradeOpts = ["--libgrade", GradeFileName | !.GradeOpts]
+                set.insert(GradeFileName, !Grades)
             ;
                 Result = error(_)
             )
         else
             true
-        ),
-        Continue = yes
+        )
     ;
         ( GradeFileType = regular_file
         ; GradeFileType = symbolic_link
@@ -602,9 +691,9 @@ do_detect_libgrade_using_lib_file(VeryVerbose, DirName, GradeFileName,
         ; GradeFileType = semaphore
         ; GradeFileType = shared_memory
         ; GradeFileType = unknown
-        ),
-        Continue = yes
-    ).
+        )
+    ),
+    Continue = yes.
 
 :- pred csharp_or_java_libgrade_target(string::in, string::out) is semidet.
 
@@ -617,18 +706,11 @@ csharp_or_java_libgrade_target(GradeFileName, LibFile) :-
         false
     ).
 
-:- pred maybe_report_detected_libgrade(bool::in, string::in,
+:- pred report_detected_libgrade(io.text_output_stream::in, string::in,
     io::di, io::uo) is det.
 
-maybe_report_detected_libgrade(VeryVerbose, GradeStr, !IO) :-
-    trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
-        (
-            VeryVerbose = yes,
-            io.format("%% Detected library grade: %s\n", [s(GradeStr)], !TIO)
-        ;
-            VeryVerbose = no
-        )
-    ).
+report_detected_libgrade(Stream, Grade, !IO) :-
+    io.format(Stream, "%% Detected library grade: %s\n", [s(Grade)], !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -699,7 +781,7 @@ do_op_mode(Globals, OpMode, DetectedGradeFlags, OptionVariables,
         do_op_mode_standalone_interface(Globals, StandaloneIntBasename, !IO)
     ;
         OpMode = opm_top_query(OpModeQuery),
-        do_op_mode_query(Globals, OpModeQuery, !IO)
+        do_op_mode_query(Globals, OpModeQuery, OptionVariables, !IO)
     ;
         OpMode = opm_top_args(OpModeArgs),
         globals.lookup_bool_option(Globals, filenames_from_stdin,
@@ -747,10 +829,10 @@ do_op_mode_standalone_interface(Globals, StandaloneIntBasename, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred do_op_mode_query(globals::in, op_mode_query::in,
+:- pred do_op_mode_query(globals::in, op_mode_query::in, options_variables::in,
     io::di, io::uo) is det.
 
-do_op_mode_query(Globals, OpModeQuery, !IO) :-
+do_op_mode_query(Globals, OpModeQuery, OptionVariables, !IO) :-
     io.stdout_stream(StdOut, !IO),
     (
         OpModeQuery = opmq_output_cc,
@@ -805,6 +887,17 @@ do_op_mode_query(Globals, OpModeQuery, !IO) :-
         OpModeQuery = opmq_output_libgrades,
         globals.lookup_accumulating_option(Globals, libgrades, LibGrades),
         list.foldl(io.print_line(StdOut), LibGrades, !IO)
+    ;
+        OpModeQuery = opmq_output_stdlib_grades,
+        find_mercury_stdlib(Globals, OptionVariables, MaybeMerStdLibDir, !IO),
+        (
+            MaybeMerStdLibDir = ok1(MerStdLibDir),
+            do_detect_libgrades(MerStdLibDir, StdlibGrades, !IO),
+            set.fold(io.print_line(StdOut), StdlibGrades, !IO)
+        ;
+            MaybeMerStdLibDir = error1(Specs),
+            write_error_specs(StdOut, Globals, Specs, !IO)
+        )
     ;
         OpModeQuery = opmq_output_stdlib_modules,
         GetStdlibModules =
