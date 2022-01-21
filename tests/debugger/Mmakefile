@@ -40,7 +40,6 @@ NONRETRY_PROGS = \
 	exception_vars			\
 	existential_type_classes	\
 	exported_eqv_type		\
-	fib				\
 	field_names			\
 	foreign_type			\
 	higher_order			\
@@ -49,7 +48,6 @@ NONRETRY_PROGS = \
 	label_layout			\
 	lambdatest			\
 	list_cmd			\
-	loopcheck			\
 	lval_desc_array			\
 	mdbrc_test			\
 	multi_parameter			\
@@ -74,6 +72,10 @@ NONRETRY_PROGS = \
 	uci_index			\
 	user_event			\
 	user_event_2
+
+TABLING_PROGS = \
+	fib				\
+	loopcheck
 
 # We currently don't pass this test.
 #	deeply_nested_typeinfo
@@ -119,6 +121,12 @@ endif
 # other than .decldebug grades.
 ifneq "$(findstring decldebug,$(GRADE))" ""
     SHALLOW_PROGS :=
+endif
+
+# Tabling is not compatible with parallel execution,
+# so tests exercising tabling will never succeed in .par grades.
+ifneq "$(findstring par,$(GRADE))" ""
+    TABLING_PROGS :=
 endif
 
 # The sensitive tests are so named because they are sensitive to details
