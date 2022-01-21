@@ -618,6 +618,19 @@ Changes to the Mercury compiler
 * The new option `--output-stdlib-grades` outputs the grades in which
   the Mercury standard library is available with this compiler.
 
+* By default, the compiler now warns if the module being compiled has a name
+  that shadows that of Mercury standard library module. The warning can be
+  disabled using the new option `--no-warn-stdlib-shadowing`.
+
+* The new options `--output-java-class-dir` and `--output-java-class-directory`
+  are now supported as synonyms for `--output-class-dir`.
+
+* The new option `--halt-at-warn-make-interface` causes the compiler to
+  treat all warnings as if they were errors when generating interface files.
+
+* The new option `--halt-at-warn-make-opt` causes the compiler to
+  treat all warnings as if they were errors when generating optimization files.
+
 Portability improvements
 ------------------------
 
