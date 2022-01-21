@@ -144,7 +144,6 @@
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.parse_error.
-:- import_module parse_tree.parse_module.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 
@@ -164,9 +163,9 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
         SourceFileModuleName, MaybeTimestamp, MaybeTopModule,
         ParseTreeModuleSrc0, !:Baggage, !:AugCompUnit,
         !HaveReadModuleMaps, !IO) :-
-    % The predicates grab_imported_modules and grab_unqual_imported_modules
-    % have quite similar tasks. Please keep the corresponding parts of these
-    % two predicates in sync.
+    % The predicates grab_imported_modules_augment and
+    % grab_unqual_imported_modules_make_int have quite similar tasks.
+    % Please keep the corresponding parts of these two predicates in sync.
     %
     % XXX ITEM_LIST Why aren't we updating !HaveReadModuleMaps?
     some [!IntIndirectImported, !ImpIndirectImported,
@@ -211,8 +210,8 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
         import_and_or_use_map_to_module_name_contexts(ImportUseMap,
             IntImportMap, IntUseMap, ImpImportMap, ImpUseMap,
             IntUseImpImportMap),
-        map.keys_as_set(IntImportMap, IntImports2),
-        map.keys_as_set(IntUseMap, IntUses2),
+        map.keys_as_set(IntImportMap, IntImports0),
+        map.keys_as_set(IntUseMap, IntUses0),
         ImpImports = map.sorted_keys(ImpImportMap),
         ImpUses = map.sorted_keys(ImpUseMap),
         IntUseImpImports = map.sorted_keys(IntUseImpImportMap),
@@ -227,7 +226,7 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
         Ancestors = get_ancestors(ModuleName),
         grab_module_int0_files_for_acu(Globals,
             "ancestors", rwi0_section,
-            Ancestors, IntImports2, IntImports, IntUses2, IntUses,
+            Ancestors, IntImports0, IntImports, IntUses0, IntUses,
             !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO),
 
         % Get the .int files of the modules imported using `import_module'.
@@ -278,12 +277,6 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
 
         % Get the .int2 files of the modules indirectly imported
         % the implementation sections of .int/.int2 files.
-        % XXX Shouldn't these be .int3 files, as implied by the following
-        % old comment?
-        % Process the short interfaces for modules imported in the
-        % implementation of indirectly imported modules. The items in these
-        % modules shouldn't be visible to typechecking -- they are used for
-        % fully expanding equivalence types after the semantic checking passes.
         grab_module_int2_files_and_impls_transitively(Globals,
             "int_imp_indirect_imported", rwi2_abstract,
             !.IntImpIndirectImported,
@@ -325,9 +318,9 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
 grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         SourceFileModuleName, ParseTreeModuleSrc,
         !:Baggage, !:AugMakeIntUnit, !HaveReadModuleMaps, !IO) :-
-    % The predicates grab_imported_modules and grab_unqual_imported_modules
-    % have quite similar tasks. Please keep the corresponding parts of these
-    % two predicates in sync.
+    % The predicates grab_imported_modules_augment and
+    % grab_unqual_imported_modules_make_int have quite similar tasks.
+    % Please keep the corresponding parts of these two predicates in sync.
     %
     % XXX ITEM_LIST Why aren't we updating !HaveReadModuleMaps?
 
@@ -486,7 +479,7 @@ grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
     globals.lookup_bool_option(Globals, structure_reuse_analysis,
         StructureReuse),
     ( if (UnusedArgs = opt_unused_args_intermod ; StructureReuse = yes) then
-        read_plain_opt_file(Globals, VeryVerbose, ModuleName, OwnFileName,
+        read_module_plain_opt(Globals, ModuleName, OwnFileName,
             OwnParseTreePlainOpt0, OwnSpecs, OwnError, !IO),
         % XXX We should store the whole parse_tree, with a note next to it
         % saying "keep only these two kinds of pragmas".
@@ -2120,7 +2113,7 @@ read_plain_opt_files(Globals, VeryVerbose, ReadOptFilesTransitively,
         [ModuleName | ModuleNames0], DontQueueOptModules0,
         !ParseTreePlainOptsCord, !ExplicitDeps, !ImplicitNeeds,
         !Specs, !Error, !IO) :-
-    read_plain_opt_file(Globals, VeryVerbose, ModuleName, FileName,
+    read_module_plain_opt(Globals, ModuleName, FileName,
         ParseTreePlainOpt, OptSpecs, OptError, !IO),
     cord.snoc(ParseTreePlainOpt, !ParseTreePlainOptsCord),
     get_explicit_and_implicit_avail_needs_in_parse_tree_plain_opt(
@@ -2156,26 +2149,6 @@ read_plain_opt_files(Globals, VeryVerbose, ReadOptFilesTransitively,
         !ParseTreePlainOptsCord, !ExplicitDeps, !ImplicitNeeds,
         !Specs, !Error, !IO).
 
-:- pred read_plain_opt_file(globals::in, bool::in,
-    module_name::in, string::out, parse_tree_plain_opt::out,
-    list(error_spec)::out, read_module_errors::out, io::di, io::uo) is det.
-
-read_plain_opt_file(Globals, VeryVerbose, ModuleName, FileName,
-        ParseTreePlainOpt, OptSpecs, OptError, !IO) :-
-    maybe_write_string(VeryVerbose,
-        "% Reading optimization interface for module", !IO),
-    maybe_write_string(VeryVerbose, " `", !IO),
-    ModuleNameString = sym_name_to_string(ModuleName),
-    maybe_write_string(VeryVerbose, ModuleNameString, !IO),
-    maybe_write_string(VeryVerbose, "'...\n", !IO),
-    maybe_flush_output(VeryVerbose, !IO),
-
-    module_name_to_search_file_name(Globals, $pred,
-        ext_other(other_ext(".opt")), ModuleName, FileName, !IO),
-    actually_read_module_plain_opt(Globals, FileName, ModuleName, [],
-        ParseTreePlainOpt, OptSpecs, OptError, !IO),
-    maybe_write_string(VeryVerbose, "% done.\n", !IO).
-
 %---------------------------------------------------------------------------%
 
 :- pred read_trans_opt_files(globals::in, bool::in, list(module_name)::in,
@@ -2186,7 +2159,7 @@ read_plain_opt_file(Globals, VeryVerbose, ModuleName, FileName,
 read_trans_opt_files(_, _, [], !ParseTreeTransOpts, !Specs, !Error, !IO).
 read_trans_opt_files(Globals, VeryVerbose, [ModuleName | ModuleNames],
         !ParseTreeTransOptsCord, !Specs, !Error, !IO) :-
-    read_trans_opt_file(Globals, VeryVerbose, ModuleName, FileName,
+    read_module_trans_opt(Globals, ModuleName, FileName,
         ParseTreeTransOpt, TransOptSpecs, TransOptError, !IO),
 
     cord.snoc(ParseTreeTransOpt, !ParseTreeTransOptsCord),
@@ -2197,23 +2170,6 @@ read_trans_opt_files(Globals, VeryVerbose, [ModuleName | ModuleNames],
 
     read_trans_opt_files(Globals, VeryVerbose, ModuleNames,
         !ParseTreeTransOptsCord, !Specs, !Error, !IO).
-
-:- pred read_trans_opt_file(globals::in, bool::in,
-    module_name::in, string::out, parse_tree_trans_opt::out,
-    list(error_spec)::out, read_module_errors::out, io::di, io::uo) is det.
-
-read_trans_opt_file(Globals, VeryVerbose, ModuleName, FileName,
-        ParseTreeTransOpt, TransOptSpecs, TransOptError, !IO) :-
-    ModuleNameStr = sym_name_to_string(ModuleName),
-    string.format("%% Reading `%s.trans_opt'... ", [s(ModuleNameStr)], Msg),
-    maybe_write_string(VeryVerbose, Msg, !IO),
-    maybe_flush_output(VeryVerbose, !IO),
-
-    module_name_to_search_file_name(Globals, $pred,
-        ext_other(other_ext(".trans_opt")), ModuleName, FileName, !IO),
-    actually_read_module_trans_opt(Globals, FileName, ModuleName, [],
-        ParseTreeTransOpt, TransOptSpecs, TransOptError, !IO),
-    maybe_write_string(VeryVerbose, " done.\n", !IO).
 
 %---------------------------------------------------------------------------%
 

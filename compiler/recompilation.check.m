@@ -262,7 +262,7 @@ should_recompile_3(Globals, UsedFile, IsSubModule, FindTargetFiles,
         IsSubModule = is_not_inline_submodule,
         % If the module has changed, recompile.
         ModuleName = !.Info ^ rci_module_name,
-        read_module_src(Globals, "Reading module",
+        read_module_src(Globals, rrm_std(ModuleName),
             do_not_ignore_errors, do_search, ModuleName, [], FileName,
             dont_read_module_if_match(RecordedTimestamp),
             MaybeNewTimestamp, ParseTree, Specs, Errors, !IO),
@@ -400,9 +400,7 @@ check_imported_module(Globals, UsedModule, MaybeStoppingReason, !Info, !IO) :-
         Errors = ErrorsPrime
     else
         Recorded = bool.no,
-        int_file_kind_to_extension(IntFileKind, IntFileExt, _OtherExt),
-        read_module_some_int(Globals,
-            "Reading " ++ IntFileExt ++ " file for module",
+        read_module_some_int(Globals, rrm_std(ImportedModuleName),
             do_not_ignore_errors, do_search, ImportedModuleName, IntFileKind,
             FileName, dont_read_module_if_match(RecordedTimestamp),
             MaybeNewTimestamp, ParseTreeSomeInt, Specs, Errors, !IO)

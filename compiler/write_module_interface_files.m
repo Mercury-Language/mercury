@@ -430,9 +430,8 @@ maybe_read_old_int0_and_compare_for_smart_recomp(NoLineNumGlobals,
         % Find the timestamp of the current module.
         insist_on_timestamp(MaybeTimestamp, Timestamp),
         % Read in the previous version of the file.
-        read_module_int0(NoLineNumGlobals,
-            "Reading old interface for module", ignore_errors, do_search,
-            ModuleName, _OldIntFileName,
+        read_module_int0(NoLineNumGlobals, rrm_old(ModuleName),
+            ignore_errors, do_search, ModuleName, _OldIntFileName,
             always_read_module(dont_return_timestamp), _OldTimestamp,
             OldParseTreeInt0, _OldSpecs, OldErrors, !IO),
         ( if set.is_empty(OldErrors) then
@@ -464,9 +463,8 @@ maybe_read_old_int1_and_compare_for_smart_recomp(NoLineNumGlobals,
         % Find the timestamp of the current module.
         insist_on_timestamp(MaybeTimestamp, Timestamp),
         % Read in the previous version of the file.
-        read_module_int1(NoLineNumGlobals,
-            "Reading old interface for module", ignore_errors, do_search,
-            ModuleName, _OldIntFileName,
+        read_module_int1(NoLineNumGlobals, rrm_old(ModuleName),
+            ignore_errors, do_search, ModuleName, _OldIntFileName,
             always_read_module(dont_return_timestamp), _OldTimestamp,
             OldParseTreeInt1, _OldSpecs, OldErrors, !IO),
         ( if set.is_empty(OldErrors) then
@@ -498,9 +496,8 @@ maybe_read_old_int2_and_compare_for_smart_recomp(NoLineNumGlobals,
         % Find the timestamp of the current module.
         insist_on_timestamp(MaybeTimestamp, Timestamp),
         % Read in the previous version of the file.
-        read_module_int2(NoLineNumGlobals,
-            "Reading old interface for module", ignore_errors, do_search,
-            ModuleName, _OldIntFileName,
+        read_module_int2(NoLineNumGlobals, rrm_old(ModuleName),
+            ignore_errors, do_search, ModuleName, _OldIntFileName,
             always_read_module(dont_return_timestamp), _OldTimestamp,
             OldParseTreeInt2, _OldSpecs, OldErrors, !IO),
         ( if set.is_empty(OldErrors) then

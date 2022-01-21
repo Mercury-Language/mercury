@@ -1584,7 +1584,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             % We don't search `--search-directories' for source files
             % because that can result in the generated interface files
             % being created in the wrong directory.
-            read_module_src(Globals0, "Reading module",
+            read_module_src(Globals0, rrm_std(ModuleName),
                 do_not_ignore_errors, do_not_search,
                 ModuleName, [], FileNameDotM,
                 always_read_module(ReturnTimestamp), MaybeTimestamp,
@@ -1634,7 +1634,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             % because that can result in the generated interface files
             % being created in the wrong directory.
             read_module_src_from_file(Globals0, FileName, FileNameDotM,
-                "Reading file", do_not_search,
+                rrm_file, do_not_search,
                 always_read_module(ReturnTimestamp), MaybeTimestamp,
                 ParseTreeSrc, Specs, Errors, !IO),
             ParseTreeSrc = parse_tree_src(ModuleName, _, _),

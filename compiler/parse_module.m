@@ -170,22 +170,23 @@
     parse_tree_int3::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
 
-    % actually_read_module_N_opt(OptFileKind, Globals, FileName,
-    %   DefaultModuleName, DefaultExpectationContexts, ParseTree,
-    %   Specs, Errors, !IO):
+    % actually_read_module_{plain,trans}_opt(Globals, FileName,
+    %   DefaultModuleName, MaybeFileNameAndStream,
+    %   ParseTree, Specs, Errors, !IO):
     %
     % Analogous to actually_read_module_src, but opens the specified kind
-    % of optimization file for DefaultModuleName. It differs in being
-    % given the FileName, and using intermod_directories instead of
-    % search_directories when searching for that file. Also reports an error
-    % if the actual module name doesn't match the expected module name.
+    % of optimization file for DefaultModuleName. It differs in reporting
+    % an error if the actual module name does not match the expected module
+    % name.
+    % XXX zs: I would like to know the reason for the difference, which is old,
+    % and which recent changes have preserved.
     %
 :- pred actually_read_module_plain_opt(globals::in,
-    file_name::in, module_name::in, list(prog_context)::in,
+    module_name::in, maybe_error(path_name_and_stream)::in,
     parse_tree_plain_opt::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
 :- pred actually_read_module_trans_opt(globals::in,
-    file_name::in, module_name::in, list(prog_context)::in,
+    module_name::in, maybe_error(path_name_and_stream)::in,
     parse_tree_trans_opt::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
 
@@ -375,38 +376,47 @@ filter_convert_specs(Globals, ReadSpecs, ReadConvertSpecs, Specs) :-
 
 %---------------------------------------------------------------------------%
 
-actually_read_module_plain_opt(Globals, FileName, DefaultModuleName,
-        DefaultExpectationContexts, ParseTreePlainOpt, Specs, Errors, !IO) :-
-    globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
-    search_for_file_and_stream(Dirs, FileName, MaybeFileNameAndStream, !IO),
+actually_read_module_plain_opt(Globals, DefaultModuleName,
+        MaybeFileNameAndStream, ParseTreePlainOpt, Specs, Errors, !IO) :-
+    DefaultExpectationContexts = [],
     do_actually_read_module(Globals,
         DefaultModuleName, DefaultExpectationContexts, MaybeFileNameAndStream,
         always_read_module(dont_return_timestamp), _,
         make_dummy_parse_tree_opt(ofk_opt),
         read_parse_tree_opt(ofk_opt),
-        ParseTreeOpt, ItemSpecs, Errors, !IO),
-    ModuleName = ParseTreeOpt ^ pto_module_name,
-    check_module_has_expected_name(FileName, DefaultModuleName,
-        DefaultExpectationContexts, ModuleName, no, NameSpecs),
-    Specs0 = ItemSpecs ++ NameSpecs,
+        ParseTreeOpt, ReadSpecs, Errors, !IO),
+    (
+        MaybeFileNameAndStream = ok(path_name_and_stream(FileName, _)),
+        ModuleName = ParseTreeOpt ^ pto_module_name,
+        check_module_has_expected_name(FileName, DefaultModuleName,
+            DefaultExpectationContexts, ModuleName, no, NameSpecs),
+        Specs0 = ReadSpecs ++ NameSpecs
+    ;
+        MaybeFileNameAndStream = error(_),
+        Specs0 = ReadSpecs
+    ),
     check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
         Specs0, Specs).
 
-actually_read_module_trans_opt(Globals, FileName,
-        DefaultModuleName, DefaultExpectationContexts,
-        ParseTreeTransOpt, Specs, Errors, !IO) :-
-    globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
-    search_for_file_and_stream(Dirs, FileName, MaybeFileNameAndStream, !IO),
+actually_read_module_trans_opt(Globals, DefaultModuleName,
+        MaybeFileNameAndStream, ParseTreeTransOpt, Specs, Errors, !IO) :-
+    DefaultExpectationContexts = [],
     do_actually_read_module(Globals,
         DefaultModuleName, DefaultExpectationContexts, MaybeFileNameAndStream,
         always_read_module(dont_return_timestamp), _,
         make_dummy_parse_tree_opt(ofk_trans_opt),
         read_parse_tree_opt(ofk_trans_opt),
-        ParseTreeOpt, ItemSpecs, Errors, !IO),
-    ModuleName = ParseTreeOpt ^ pto_module_name,
-    check_module_has_expected_name(FileName, DefaultModuleName,
-        DefaultExpectationContexts, ModuleName, no, NameSpecs),
-    Specs0 = ItemSpecs ++ NameSpecs,
+        ParseTreeOpt, ReadSpecs, Errors, !IO),
+    (
+        MaybeFileNameAndStream = ok(path_name_and_stream(FileName, _)),
+        ModuleName = ParseTreeOpt ^ pto_module_name,
+        check_module_has_expected_name(FileName, DefaultModuleName,
+            DefaultExpectationContexts, ModuleName, no, NameSpecs),
+        Specs0 = ReadSpecs ++ NameSpecs
+    ;
+        MaybeFileNameAndStream = error(_),
+        Specs0 = ReadSpecs
+    ),
     check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt, ParseTreeTransOpt,
         Specs0, Specs).
 

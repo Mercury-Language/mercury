@@ -119,7 +119,7 @@ generate_d_file_for_file(Globals, FileName, !IO) :-
 build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
     % Read in the top-level file (to figure out its module name).
     FileNameDotM = FileName ++ ".m",
-    read_module_src_from_file(Globals, FileName, FileNameDotM, "Reading file",
+    read_module_src_from_file(Globals, FileName, FileNameDotM, rrm_file,
         do_not_search, always_read_module(dont_return_timestamp), _,
         ParseTreeSrc, Specs0, ReadModuleErrors, !IO),
     ParseTreeSrc = parse_tree_src(ModuleName, _, _),

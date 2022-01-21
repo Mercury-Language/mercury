@@ -316,9 +316,9 @@ read_dependencies(Globals, Search, ModuleName, ExpectationContexts,
         BurdenedAugCompUnitList, !Specs, !IO) :-
     % XXX If SrcSpecs contains error messages, the parse tree may not be
     % complete, and the rest of this predicate may work on incorrect data.
-    read_module_src(Globals, "Getting dependencies for module",
-        ignore_errors, Search, ModuleName, ExpectationContexts,
-        SourceFileName, always_read_module(dont_return_timestamp), _,
+    read_module_src(Globals, rrm_get_deps(ModuleName), ignore_errors, Search,
+        ModuleName, ExpectationContexts, SourceFileName,
+        always_read_module(dont_return_timestamp), _,
         ParseTreeSrc, SrcSpecs, SrcReadModuleErrors, !IO),
     parse_tree_src_to_burdened_aug_comp_unit_list(Globals, SourceFileName,
         ParseTreeSrc, SrcReadModuleErrors, SrcSpecs, Specs,
