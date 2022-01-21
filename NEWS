@@ -615,7 +615,7 @@ Changes to the Mercury compiler
   an inst that was declared to be intended for values of one type constructor
   is applied to values of another type constructor.
 
-* The new option --output-stdlib-grades outputs the grades in which
+* The new option `--output-stdlib-grades` outputs the grades in which
   the Mercury standard library is available with this compiler.
 
 Portability improvements
