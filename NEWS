@@ -585,6 +585,55 @@ Changes to the Mercury language
   `may_not_export_body` does not prevent inlining of the foreign procedure
   into other procedures in the same module.
 
+* A `pragma foreign_proc` declaration can now include an attribute
+  `may_not_export_body` that prevents its body (i.e. the foreign code)
+  from being duplicated outside of the target file for that module
+  by intermodule optimization. This is useful when the foreign code
+  refers to types, functions, etc. that should be kept local to the
+  target file of that module. Unlike the `may_not_duplicate` attribute,
+  `may_not_export_body` does not prevent inlining of the foreign procedure
+  into other procedures in the same module.
+
+* Many pragmas contain a name/arity pair for specifying the predicate
+  or function they apply to; an example is
+
+    :- pragma inline(init/1).
+
+  If the module in which this pragma occurs contains both
+  a function init/1 and a predicate init/1, then this pragma
+  is ambiguous. Traditionally, the Mercury compiler applied such
+  ambiguous pragma to both the function and the predicate.
+  The programmers who wished the pragma to apply to only one of them
+  had to rename the other.
+
+  Now, pragmas that take a name/arity pair can specify whether they are
+  intended to apply to a function or to a predicate by putting a func()
+  or pred() wrapper around the name/arity pair, like this:
+
+    :- pragma inline(func(init/1)).     % applies ONLY to func init/1.
+    :- pragma inline(pred(init/1)).     % applies ONLY to pred init/1.
+
+  This new syntax applies to all of the following kinds of pragmas:
+
+    check_termination
+    consider_used
+    does_not_terminate
+    fact_table
+    inline
+    loop_check
+    memo
+    minimal_model
+    mode_check_clauses
+    no_determinism_warning
+    no_inline
+    obsolete
+    promise_equivalent_clauses
+    promise_pure
+    promise_semipure
+    require_tail_recursion
+    terminates
+    type_spec
+
 Changes to the Mercury compiler
 -------------------------------
 
@@ -603,10 +652,11 @@ Changes to the Mercury compiler
   when generating the .int and .int2 interface files for that module.
   (For example, it generates error messages for references to undefined
   types, insts and modes.) This new behavior can be switched off for now
-  with the new option `--halt-at-invalid-interface`. This new option
-  replaces the old `--print-errors-warnings-when-generating-interface` option,
-  but once any problems caused by the new approach have been ironed out,
-  we intend to delete the `--halt-at-invalid-interface` option as well.
+  with the new option `--no-halt-at-invalid-interface`. This new option
+  replaces the old `--no-print-errors-warnings-when-generating-interface`
+  option, but once any problems caused by the new approach have been
+  ironed out, we intend to delete the `--halt-at-invalid-interface`
+  option as well.
 
 * In an earlier release, we extended the syntax of `:- inst` declarations
   to allow programmers to specify which type constructor's values the inst
@@ -630,6 +680,11 @@ Changes to the Mercury compiler
 
 * The new option `--halt-at-warn-make-opt` causes the compiler to
   treat all warnings as if they were errors when generating optimization files.
+
+* The new option `--warn-potentially-ambiguous-pragma` causes the compiler to
+  generate a warning for all pragmas that include a name/arity pair,
+  but lack a func() or pred() wrapper around it to indicate whether they are
+  intended to apply to a function or to a predicate.
 
 Portability improvements
 ------------------------
