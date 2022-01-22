@@ -1138,10 +1138,14 @@ simplify_improve_builtin_compare(_ModeNum, Args, Context,
     % structure and compare the atomic constituents. We can only do this
     % on values of types which we know not to have user-defined equality
     % predicates.
+    %
+    % The Erlang backend was the only one on which
+    % can_compare_compound_values could ever be "yes".
+    %
+    % globals.lookup_bool_option(Globals, can_compare_compound_values, yes),
+    semidet_fail,
 
     simplify_info_get_module_info(!.Info, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, can_compare_compound_values, yes),
     list.reverse(Args, [Y, X, R | _]),
     simplify_info_get_var_types(!.Info, VarTypes),
     lookup_var_type(VarTypes, Y, Type),

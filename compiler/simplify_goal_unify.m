@@ -45,9 +45,6 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module hlds.vartypes.
-:- import_module libs.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
@@ -180,17 +177,20 @@ process_compl_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
         type_to_ctor_and_args_det(Type, TypeCtor, TypeArgs),
         determinism_components(Detism, CanFail, at_most_one),
         lookup_mode_num(ModuleInfo, TypeCtor, UnifyMode, Detism, ProcId),
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, can_compare_compound_values,
-            CanCompareCompoundValues),
         ( if
-            % On the Erlang backend, it is faster for us to use builtin
+            % On the Erlang backend, it was faster for us to use builtin
             % comparison operators on high level data structures than to
             % deconstruct the data structure and compare the atomic
             % constituents. We can only do this on values of a type
             % if that type does not have user-defined equality.
+            %
+            % The Erlang backend was the only one on which
+            % can_compare_compound_values could ever be "yes".
+            %
+            % globals.lookup_bool_option(Globals,
+            %   can_compare_compound_values, yes),
+            semidet_fail,
             hlds_pred.in_in_unification_proc_id(ProcId),
-            CanCompareCompoundValues = yes,
             type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type)
         then
             ExtraGoals = [],

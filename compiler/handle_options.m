@@ -1234,7 +1234,6 @@ check_for_incompatibilities(!.Globals, OpMode, !Specs) :-
     %   arg_pack_bits
     %   backend_foreign_languages
     %   asm_labels
-    %   can_compare_compound_values
     %   can_compare_constants_as_ints
     %   delay_partial_instantiations
     %   det_copy_out

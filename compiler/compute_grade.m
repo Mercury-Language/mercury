@@ -288,7 +288,7 @@ string_to_grade_component(FilterDesc, Comp, !Comps, !Specs) :-
     else if Comp = "erlang" then
         Pieces = [words("Support for"), quote("erlang"), words("as an"),
             words(FilterDesc), words("library grade component"),
-            words("has been discontinued"), nl],
+            words("has been discontinued."), nl],
         Spec = simplest_no_context_spec($pred, severity_informational,
             phase_options, Pieces),
         !:Specs = [Spec | !.Specs]

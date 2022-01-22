@@ -435,9 +435,6 @@
     ;       java_only           % target java + target_code_only
     ;       csharp              % target csharp
     ;       csharp_only         % target csharp + target_code_only
-    % XXX The following options need to be documented.
-    ;       erlang              % target erlang
-    ;       erlang_only         % target erlang + target_code_only
 
     % Compilation model options for optional features:
 
@@ -624,13 +621,6 @@
             % Should be set to yes if the test of whether two input arguments
             % are object identical should be done by casting the arguments to a
             % generic pointer type. Otherwise they will be cast to integers.
-
-    ;       can_compare_compound_values
-            % Should be set to yes if the target back end supports comparison
-            % of non-atomic values with builtin operators.
-            % XXX This was never automatically set to "yes" even when we
-            % still had the Erlang backend. None of our other target languages
-            % had ever had this capability.
 
     ;       delay_partial_instantiations
 
@@ -881,9 +871,6 @@
     ;       optopt_inline_alloc
     ;       optopt_c_optimize
 
-    %   - Erlang
-    ;       optopt_erlang_switch_on_strings_as_atoms
-
     % Special optimization options.
 
     ;       default_opt_level
@@ -983,16 +970,6 @@
     ;       csharp_flags
     ;       quoted_csharp_flag
     ;       cli_interpreter
-
-    % Erlang
-    ;       erlang_compiler
-    ;       erlang_interpreter
-    ;       erlang_flags
-    ;       quoted_erlang_flag
-    ;       erlang_include_directory
-    ;       erlang_object_file_extension
-    ;       erlang_native_code
-    ;       erlang_inhibit_trivial_warnings
 
     % Link options
     ;       output_file_name
@@ -1503,8 +1480,6 @@ optdef(oc_grade, csharp,                                special).
 optdef(oc_grade, csharp_only,                           special).
 optdef(oc_grade, java,                                  special).
 optdef(oc_grade, java_only,                             special).
-optdef(oc_grade, erlang,                                special).
-optdef(oc_grade, erlang_only,                           special).
 
     % Optional feature compilation model options:
     % (a) Debuggging
@@ -1619,7 +1594,6 @@ optdef(oc_internal, trace_stack_layout,                 bool(no)).
 optdef(oc_internal, body_typeinfo_liveness,             bool(no)).
 optdef(oc_internal, can_compare_constants_as_ints,      bool(no)).
 optdef(oc_internal, pretest_equality_cast_pointers,     bool(no)).
-optdef(oc_internal, can_compare_compound_values,        bool(no)).
 optdef(oc_internal, delay_partial_instantiations,       bool(no)).
 optdef(oc_internal, allow_defn_of_builtins,             bool(no)).
 optdef(oc_internal, type_ctor_info,                     bool(yes)).
@@ -1876,9 +1850,6 @@ optdef(oc_opt, optopt_local_thread_engine_base,         bool_special).
 optdef(oc_opt, optopt_inline_alloc,                     bool_special).
 optdef(oc_opt, optopt_c_optimize,                       bool_special).
 
-    % Erlang
-optdef(oc_opt, optopt_erlang_switch_on_strings_as_atoms, bool_special).
-
     % Target code compilation options.
 
 optdef(oc_target_comp, target_debug,                    bool(no)).
@@ -1933,16 +1904,6 @@ optdef(oc_target_comp, csharp_compiler,                 string("csc")).
 optdef(oc_target_comp, csharp_flags,                    accumulating([])).
 optdef(oc_target_comp, quoted_csharp_flag,              string_special).
 optdef(oc_target_comp, cli_interpreter,                 string("")).
-
-    % Erlang
-optdef(oc_target_comp, erlang_compiler,                 string("erlc")).
-optdef(oc_target_comp, erlang_interpreter,              string("erl")).
-optdef(oc_target_comp, erlang_flags,                    accumulating([])).
-optdef(oc_target_comp, quoted_erlang_flag,              string_special).
-optdef(oc_target_comp, erlang_include_directory,        accumulating([])).
-optdef(oc_target_comp, erlang_object_file_extension,    string(".beam")).
-optdef(oc_target_comp, erlang_native_code,              bool(no)).
-optdef(oc_target_comp, erlang_inhibit_trivial_warnings, bool(yes)).
 
     % Link Options.
 
@@ -2467,10 +2428,6 @@ long_option("csharp",               csharp).
 long_option("C#",                   csharp).
 long_option("csharp-only",          csharp_only).
 long_option("C#-only",              csharp_only).
-long_option("erlang",               erlang).
-long_option("Erlang",               erlang).
-long_option("erlang-only",          erlang_only).
-long_option("Erlang-only",          erlang_only).
 % Optional features compilation model options:
 % (a) debugging
 long_option("debug",                exec_trace).
@@ -2590,7 +2547,6 @@ long_option("trace-stack-layout",   trace_stack_layout).
 long_option("body-typeinfo-liveness",   body_typeinfo_liveness).
 long_option("can-compare-constants-as-ints",  can_compare_constants_as_ints).
 long_option("pretest-equality-cast-pointers", pretest_equality_cast_pointers).
-long_option("can-compare-compound-values",    can_compare_compound_values).
 long_option("delay-partial-instantiations",   delay_partial_instantiations).
 long_option("allow-defn-of-builtins",         allow_defn_of_builtins).
 long_option("type-ctor-info",       type_ctor_info).
@@ -2886,10 +2842,6 @@ long_option("everything-in-one-C-function", everything_in_one_c_function).
 long_option("inline-alloc",         optopt_inline_alloc).
 long_option("local-thread-engine-base", optopt_local_thread_engine_base).
 
-% Erlang
-long_option("erlang-switch-on-strings-as-atoms",
-                optopt_erlang_switch_on_strings_as_atoms).
-
 long_option("enable-termination",   termination).
 long_option("enable-term",          termination).
 long_option("check-termination",    termination_check).
@@ -3003,17 +2955,6 @@ long_option("csharp-compiler",      csharp_compiler).
 long_option("csharp-flags",         csharp_flags).
 long_option("csharp-flag",          quoted_csharp_flag).
 long_option("cli-interpreter",      cli_interpreter).
-
-long_option("erlang-compiler",      erlang_compiler).
-long_option("erlang-interpreter",   erlang_interpreter).
-long_option("erlang-flags",         erlang_flags).
-long_option("erlang-flag",          quoted_erlang_flag).
-long_option("erlang-include-directory", erlang_include_directory).
-long_option("erlang-include-dir",       erlang_include_directory).
-long_option("erlang-object-file-extension", erlang_object_file_extension).
-long_option("erlang-native-code",   erlang_native_code).
-long_option("erlang-inhibit-trivial-warnings",
-                                    erlang_inhibit_trivial_warnings).
 
 % link options
 long_option("output-file",          output_file_name).
@@ -3313,15 +3254,6 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             map.set(target, string("csharp"), !OptionTable),
             map.set(only_opmode_target_code_only, bool(yes), !OptionTable)
         ;
-            Option = erlang,
-            SpecialData = none,
-            map.set(target, string("erlang"), !OptionTable)
-        ;
-            Option = erlang_only,
-            SpecialData = none,
-            map.set(target, string("erlang"), !OptionTable),
-            map.set(only_opmode_target_code_only, bool(yes), !OptionTable)
-        ;
             Option = profiling,
             SpecialData = bool(Profile),
             map.set(profile_time, bool(Profile), !OptionTable),
@@ -3495,10 +3427,6 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             Option = quoted_csharp_flag,
             SpecialData = string(Flag),
             handle_quoted_flag(csharp_flags, Flag, !OptionTable)
-        ;
-            Option = quoted_erlang_flag,
-            SpecialData = string(Flag),
-            handle_quoted_flag(erlang_flags, Flag, !OptionTable)
         ;
             Option = quoted_ld_flag,
             SpecialData = string(Flag),
@@ -3858,10 +3786,6 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Bool),
             OptOption = oo_use_local_thread_engine_base(Bool)
         ;
-            Option = optopt_erlang_switch_on_strings_as_atoms,
-            SpecialData = bool(Bool),
-            OptOption = oo_switch_on_strings_as_atoms(Bool)
-        ;
             Option = optopt_inline_alloc,
             SpecialData = bool(Bool),
             OptOption = oo_inline_alloc(Bool)
@@ -4113,7 +4037,6 @@ option_table_add_mercury_library_directory(Dir, !OptionTable) :-
     list.foldl(append_to_accumulating_option, [
         search_directories          - dir.make_path_name(Dir, "ints"),
         c_include_directory         - dir.make_path_name(Dir, "inc"),
-        erlang_include_directory    - dir.make_path_name(Dir, "inc"),
         mercury_library_directories - Dir
     ], !OptionTable).
 
@@ -4123,7 +4046,6 @@ option_table_add_search_library_files_directory(Dir, !OptionTable) :-
     list.foldl(append_to_accumulating_option, [
         search_directories          - Dir,
         c_include_directory         - Dir,
-        erlang_include_directory    - Dir,
         search_library_files_directories - Dir
     ], !OptionTable).
 
