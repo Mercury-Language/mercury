@@ -304,10 +304,9 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
         (
             OptFileErrors = no,
             maybe_dump_options_file(ArgsGlobals, Variables0, !IO),
-            lookup_mmc_options(Variables0, MCFlags0, MCFlagsSpecs0),
-            MCFlagsErrors0 = contains_errors(ArgsGlobals, MCFlagsSpecs0),
+            lookup_mmc_options(Variables0, MaybeMCFlags0),
             (
-                MCFlagsErrors0 = no,
+                MaybeMCFlags0 = ok1(MCFlags0),
                 % Process the options again to find out which configuration
                 % file to read.
 
@@ -322,7 +321,7 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                     FlagsSpecs = [_ | _],
                     DetectedGradeFlags = [],
                     Variables = options_variables_init(EnvVarMap),
-                    AllSpecs = OptFileSpecs ++ MCFlagsSpecs0 ++ FlagsSpecs,
+                    AllSpecs = OptFileSpecs ++ FlagsSpecs,
                     MaybeMCFlags = no
                 ;
                     FlagsSpecs = [],
@@ -345,14 +344,14 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                             ConfigSpecs),
                         (
                             ConfigErrors = no,
-                            lookup_mmc_options(Variables, MCFlags1,
-                                MCFlagsSpecs1),
-                            AllSpecs0 = OptFileSpecs ++ MCFlagsSpecs0 ++
-                                ConfigSpecs ++ MCFlagsSpecs1,
+                            lookup_mmc_options(Variables, MaybeMCFlags1),
+                            AllSpecs0 = OptFileSpecs ++ ConfigSpecs ++
+                                get_any_errors1(MaybeMCFlags1),
                             AllErrors0 = contains_errors(FlagsArgsGlobals,
                                 AllSpecs0),
                             (
                                 AllErrors0 = no,
+                                det_project_ok1(MaybeMCFlags1, MCFlags1),
                                 MaybeMCFlags = yes(MCFlags1)
                             ;
                                 AllErrors0 = yes,
@@ -379,21 +378,21 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                         ;
                             ConfigErrors = yes,
                             DetectedGradeFlags = [],
-                            AllSpecs = OptFileSpecs ++
-                                MCFlagsSpecs0 ++ ConfigSpecs,
+                            AllSpecs = OptFileSpecs ++ ConfigSpecs,
                             MaybeMCFlags = no
                         )
                     ;
                         MaybeConfigFile = no,
                         DetectedGradeFlags = [],
                         Variables = options_variables_init(EnvVarMap),
-                        lookup_mmc_options(Variables, MCFlags1, MCFlagsSpecs1),
-                        AllSpecs = OptFileSpecs ++ MCFlagsSpecs0 ++
-                            MCFlagsSpecs1,
+                        lookup_mmc_options(Variables, MaybeMCFlags1),
+                        AllSpecs = OptFileSpecs ++
+                            get_any_errors1(MaybeMCFlags1),
                         AllErrors = contains_errors(FlagsArgsGlobals,
                             AllSpecs),
                         (
                             AllErrors = no,
+                            det_project_ok1(MaybeMCFlags1, MCFlags1),
                             MaybeMCFlags = yes(MCFlags1)
                         ;
                             AllErrors = yes,
@@ -402,7 +401,7 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                     )
                 )
             ;
-                MCFlagsErrors0 = yes,
+                MaybeMCFlags0 = error1(MCFlagsSpecs0),
                 Variables = options_variables_init(EnvVarMap),
                 DetectedGradeFlags = [],
                 AllSpecs = OptFileSpecs ++ MCFlagsSpecs0,
@@ -419,13 +418,14 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
     (
         MaybeMCFlags = yes(MCFlags),
 
-        % NOTE: the order of the flags here is important. It must be:
+        % NOTE: The order of the flags here must be:
         %
         %   (1) flags for detected library grades
         %   (2) flags from Mercury.config and any Mercury.options files
         %   (3) flags from any command line options
         %
-        % Flags given later in this list will override those given earlier.
+        % The order is important, because flags given later in this list
+        % can override those given earlier.
         %
         % XXX the relationship between --no-libgrade or --libgrade options set
         % via the DEFAULT_MCFLAGS variable and detected library grades is
@@ -1011,7 +1011,7 @@ do_op_mode_args(Globals, OpModeArgs, FileNamesFromStdin, DetectedGradeFlags,
                         ModulesToLink, ExtraObjFiles, Globals, Succeeded, !IO)
                 ;
                     InvokedByMake = no,
-                    setup_for_build_with_module_options(Globals,
+                    setup_for_build_with_module_options(
                         not_invoked_by_mmc_make, MainModuleName,
                         DetectedGradeFlags, OptionVariables, OptionArgs, [],
                         MayBuild, !IO),
@@ -1021,8 +1021,7 @@ do_op_mode_args(Globals, OpModeArgs, FileNamesFromStdin, DetectedGradeFlags,
                             SetupSpecs, !IO),
                         Succeeded = did_not_succeed
                     ;
-                        MayBuild = may_build(_AllOptionArgs, BuildGlobals,
-                            _Warnings),
+                        MayBuild = may_build(_AllOptionArgs, BuildGlobals),
                         link_module_list(ProgressStream, ErrorStream,
                             ModulesToLink, ExtraObjFiles, BuildGlobals,
                             Succeeded, !IO)
@@ -1212,9 +1211,9 @@ setup_and_process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags,
     FileOrModule = string_to_file_or_module(Arg),
     ModuleName = file_or_module_to_module_name(FileOrModule),
     ExtraOptions = [],
-    setup_for_build_with_module_options(Globals, not_invoked_by_mmc_make,
-        ModuleName, DetectedGradeFlags, OptionVariables,
-        OptionArgs, ExtraOptions, MayBuild, !IO),
+    setup_for_build_with_module_options(not_invoked_by_mmc_make, ModuleName,
+        DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
+        MayBuild, !IO),
     (
         MayBuild = may_not_build(SetupSpecs),
         get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
@@ -1222,7 +1221,7 @@ setup_and_process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags,
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
-        MayBuild = may_build(_AllOptionArgs, BuildGlobals, _Warnings),
+        MayBuild = may_build(_AllOptionArgs, BuildGlobals),
         maybe_check_libraries_are_installed(Globals,
             LibgradeCheckSpecs, !IO),
         (

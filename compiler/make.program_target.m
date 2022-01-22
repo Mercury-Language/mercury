@@ -71,6 +71,7 @@
 :- import_module make.options_file.
 :- import_module make.util.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_deps_graph.
 :- import_module parse_tree.module_imports.
@@ -162,11 +163,11 @@ make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions, Succeeded,
         DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
         OptionVariables = !.Info ^ mki_options_variables,
         OptionArgs = !.Info ^ mki_option_args,
-        setup_for_build_with_module_options(Globals, invoked_by_mmc_make,
+        setup_for_build_with_module_options(invoked_by_mmc_make,
             MainModuleName, DetectedGradeFlags, OptionVariables, OptionArgs,
             ExtraOptions, MayBuild, !IO),
         (
-            MayBuild = may_build(_AllOptionArgs, BuildGlobals, _Warnings),
+            MayBuild = may_build(_AllOptionArgs, BuildGlobals),
             make_linked_target_2(BuildGlobals, LinkedTargetFile,
                 Succeeded, !Info, !IO)
         ;
@@ -814,11 +815,11 @@ make_misc_target(Globals, MainModuleName - TargetType, Succeeded,
     OptionVariables = !.Info ^ mki_options_variables,
     OptionArgs = !.Info ^ mki_option_args,
     ExtraOptions = [],
-    setup_for_build_with_module_options(Globals, invoked_by_mmc_make,
-        MainModuleName, DetectedGradeFlags, OptionVariables, OptionArgs,
-        ExtraOptions, MayBuild, !IO),
+    setup_for_build_with_module_options(invoked_by_mmc_make, MainModuleName,
+        DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
+        MayBuild, !IO),
     (
-        MayBuild = may_build(_AllOptionArgs, BuildGlobals, _Warnings),
+        MayBuild = may_build(_AllOptionArgs, BuildGlobals),
         make_misc_target_builder(BuildGlobals, MainModuleName,
             TargetType, Succeeded, !Info, !Specs, !IO)
     ;
@@ -1578,16 +1579,15 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
             io.format("Installing grade %s\n", [s(Grade)], !IO)
         ), !IO),
 
-    lookup_mmc_options(!.Info ^ mki_options_variables, MCFlags, LookupSpecs),
-    write_error_specs(Globals, LookupSpecs, !IO),
-    LookupErrors = contains_errors(Globals, LookupSpecs),
+    lookup_mmc_options(!.Info ^ mki_options_variables, MaybeMCFlags),
     (
-        LookupErrors = no,
+        MaybeMCFlags = ok1(MCFlags),
         DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
         AllFlags = DetectedGradeFlags ++ MCFlags ++ OptionArgs,
         handle_given_options(AllFlags, _, _, OptionsSpecs, LibGlobals, !IO)
     ;
-        LookupErrors = yes,
+        MaybeMCFlags = error1(LookupSpecs),
+        write_error_specs(Globals, LookupSpecs, !IO),
         % Errors should have been caught before.
         unexpected($pred, "bad DEFAULT_MCFLAGS")
     ),

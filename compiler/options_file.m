@@ -103,18 +103,18 @@
     % Look up the DEFAULT_MCFLAGS variable.
     %
 :- pred lookup_default_options(options_variables::in,
-    list(string)::out, list(error_spec)::out) is det.
+    maybe1(list(string))::out) is det.
 
     % Look up all the non-module specific options.
     %
 :- pred lookup_mmc_options(options_variables::in,
-    list(string)::out, list(error_spec)::out) is det.
+    maybe1(list(string))::out) is det.
 
     % Same as lookup_mmc_options, but also adds the module-specific
     % (MCFLAGS-module) options.
     %
 :- pred lookup_mmc_module_options(options_variables::in, module_name::in,
-    list(string)::out, list(error_spec)::out) is det.
+    maybe1(list(string))::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -140,7 +140,7 @@
 :- import_module one_or_more.
 :- import_module map.
 :- import_module pair.
-:- import_module require.
+:- import_module set.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -1114,7 +1114,7 @@ update_variable(FileName, LineNumber, SetOrAdd, VarName, NewValue0,
 expand_any_var_references(Variables, FileName, LineNumber, Chars0, Chars,
         !ParseSpecs, !UndefSpecs, !IO) :-
     expand_any_var_references_loop(Variables, FileName, LineNumber,
-        Chars0, [], RevChars, !ParseSpecs, [], UndefVarNames, !IO),
+        Chars0, [], RevChars, !ParseSpecs, set.init, UndefVarNames, !IO),
     list.reverse(RevChars, Chars),
     report_any_undefined_variables(FileName, LineNumber, UndefVarNames,
         !UndefSpecs).
@@ -1122,7 +1122,7 @@ expand_any_var_references(Variables, FileName, LineNumber, Chars0, Chars,
 :- pred expand_any_var_references_loop(options_variables::in,
     file_name::in, int::in, list(char)::in, list(char)::in, list(char)::out,
     list(error_spec)::in, list(error_spec)::out,
-    list(string)::in, list(string)::out, io::di, io::uo) is det.
+    set(string)::in, set(string)::out, io::di, io::uo) is det.
 
 expand_any_var_references_loop(_, _, _,
         [], !RevChars, !ParseSpecs, !UndefVarNames, !IO).
@@ -1208,21 +1208,18 @@ report_unterminated_variable_reference(FileName, LineNumber, RevChars)
         Context, Pieces).
 
 :- pred report_any_undefined_variables(file_name::in, int::in,
-    list(string)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    set(string)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-report_any_undefined_variables(FileName, LineNumber, UndefVarNames0,
+report_any_undefined_variables(FileName, LineNumber, UndefVarNamesSet,
         !UndefSpecs) :-
+    set.to_sorted_list(UndefVarNamesSet, UndefVarNames),
     (
-        UndefVarNames0 = []
+        UndefVarNames = []
     ;
-        UndefVarNames0 = [_ | _],
-        list.sort_and_remove_dups(UndefVarNames0, UndefVarNames),
-
-        UndefVarNamesPieces = list_to_quoted_pieces(UndefVarNames),
-        ( UndefVarNames = [], unexpected($pred, "UndefVarNames = []")
-        ; UndefVarNames = [_],        VarVars = "variable",  IsAre = "is"
+        ( UndefVarNames = [_],        VarVars = "variable",  IsAre = "is"
         ; UndefVarNames = [_, _ | _], VarVars = "variables", IsAre = "are"
         ),
+        UndefVarNamesPieces = list_to_quoted_pieces(UndefVarNames),
         Context = term.context_init(FileName, LineNumber),
         Pieces = [words("Warning:"), words(VarVars) | UndefVarNamesPieces] ++
             [words(IsAre), words("undefined."), nl],
@@ -1264,29 +1261,39 @@ lookup_mercury_stdlib_dir(Variables, MaybeMerStdlibDir) :-
 
 %---------------------------------------------------------------------------%
 
-lookup_default_options(Variables, Result, Specs) :-
-    lookup_mmc_maybe_module_options(Variables, default, Result, Specs).
+lookup_default_options(Variables, Result) :-
+    lookup_mmc_maybe_module_options(Variables, default, Result).
 
-lookup_mmc_options(Variables, Result, Specs) :-
-    lookup_mmc_maybe_module_options(Variables, non_module_specific,
-        Result, Specs).
+lookup_mmc_options(Variables, Result) :-
+    lookup_mmc_maybe_module_options(Variables, non_module_specific, Result).
 
-lookup_mmc_module_options(Variables, ModuleName, Result, Specs) :-
+lookup_mmc_module_options(Variables, ModuleName, Result) :-
     lookup_mmc_maybe_module_options(Variables, module_specific(ModuleName),
-        Result, Specs).
+        Result).
 
 :- pred lookup_mmc_maybe_module_options(options_variables::in,
-    options_variable_class::in, list(string)::out, list(error_spec)::out)
-    is det.
+    options_variable_class::in, maybe1(list(string))::out) is det.
 
-lookup_mmc_maybe_module_options(Variables, MaybeModuleName,
-        Result, Specs) :-
+lookup_mmc_maybe_module_options(Variables, MaybeModuleName, Result) :-
     VariableTypes = options_variable_types,
     list.map_foldl(
         lookup_options_variable(Variables, MaybeModuleName),
         VariableTypes, VariableTypesMaybeValues, [], Specs),
-    Result = list.condense(
-        list.map(convert_to_mmc_options, VariableTypesMaybeValues)).
+    (
+        Specs = [],
+        MmcOptLists =
+            list.map(convert_to_mmc_options, VariableTypesMaybeValues),
+        list.condense(MmcOptLists, MmcOpts),
+        Result = ok1(MmcOpts)
+    ;
+        Specs = [_ | _],
+        % Returning error1 here is correct because all error_specs in Specs
+        % will have severity_error. There is (as of 2022 jan 23) exactly
+        % one place in this module that generates an error_spec whose
+        % severity is NOT severity_error, but it is not reachable from
+        % lookup_options_variable.
+        Result = error1(Specs)
+    ).
 
 :- type options_variable_class
     --->    default
@@ -1595,7 +1602,7 @@ lookup_variable_words(Variables, VarName, Result) :-
     ).
 
 :- pred lookup_variable_value(options_variables::in,
-    string::in, list(char)::out, list(string)::in, list(string)::out) is det.
+    string::in, list(char)::out, set(string)::in, set(string)::out) is det.
 
 lookup_variable_value(Variables, VarName, ValueChars, !UndefVarNames) :-
     Variables = options_variables(OptsMap, EnvMap),
@@ -1606,7 +1613,7 @@ lookup_variable_value(Variables, VarName, ValueChars, !UndefVarNames) :-
             Entry = options_variable_value(ValueChars, _, _)
         else
             ValueChars = [],
-            !:UndefVarNames = [VarName | !.UndefVarNames]
+            set.insert(VarName, !UndefVarNames)
         )
     ).
 

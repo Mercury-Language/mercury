@@ -40,18 +40,11 @@
 
 :- type may_build
     --->    may_not_build(list(error_spec))
-    ;       may_build(list(string), globals, list(error_spec)).
-            % The globals we have set up for the build,
-            % all the arguments for the build, and
-            % any warnings (not errors) we got while updating the globals.
-            % To the extent that any of these warnings reflect problems
-            % on the command line supplied by the programmer, they should
-            % have been reported before we started building any targets.
-            % Any *other* warnings are the responsibility of (the code
-            % invoked by) setup_for_build_with_module_options, so
-            % there is no point in reporting it to the programmer.
+    ;       may_build(list(string), globals).
+            % All the arguments for the build, and the globals we have set up
+            % for the build.
 
-    % setup_for_build_with_module_options(Globals, InvokedByMmcMake,
+    % setup_for_build_with_module_options(InvokedByMmcMake,
     %   ModuleName, DetectedGradeFlags, OptionVariables, OptionArgs,
     %   ExtraOptions, MayBuild, !Info, !IO):
     %
@@ -71,9 +64,8 @@
     % XXX The type of ExtraOptions should be assoc_list(option, option_data),
     % or possibly just a maybe(op_mode). not list(string),
     %
-:- pred setup_for_build_with_module_options(globals::in,
-    maybe_invoked_by_mmc_make::in, module_name::in,
-    list(string)::in, options_variables::in,
+:- pred setup_for_build_with_module_options(maybe_invoked_by_mmc_make::in,
+    module_name::in, list(string)::in, options_variables::in,
     list(string)::in, list(string)::in, may_build::out, io::di, io::uo) is det.
 
 %---------------------%
@@ -171,6 +163,7 @@
 :- import_module libs.options.
 :- import_module libs.process_util.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.maybe_error.
 
 :- import_module bool.
 :- import_module char.
@@ -182,17 +175,16 @@
 
 %---------------------------------------------------------------------------%
 
-setup_for_build_with_module_options(Globals, InvokedByMmcMake, ModuleName,
+setup_for_build_with_module_options(InvokedByMmcMake, ModuleName,
         DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
         MayBuild, !IO) :-
-    lookup_mmc_module_options(OptionVariables, ModuleName, ModuleOptionArgs,
-        LookupSpecs),
-    LookupErrors = contains_errors(Globals, LookupSpecs),
+    lookup_mmc_module_options(OptionVariables, ModuleName,
+        MaybeModuleOptionArgs),
     (
-        LookupErrors = yes,
+        MaybeModuleOptionArgs = error1(LookupSpecs),
         MayBuild = may_not_build(LookupSpecs)
     ;
-        LookupErrors = no,
+        MaybeModuleOptionArgs = ok1(ModuleOptionArgs),
         % --invoked-by-mmc-make disables reading DEFAULT_MCFLAGS from the
         % environment (DEFAULT_MCFLAGS is included in OptionArgs) and
         % generation of `.d' files. --use-subdirs is needed because
@@ -213,10 +205,10 @@ setup_for_build_with_module_options(Globals, InvokedByMmcMake, ModuleName,
             OptionSpecs, BuildGlobals, !IO),
         (
             OptionSpecs = [_ | _],
-            MayBuild = may_not_build(LookupSpecs ++ OptionSpecs)
+            MayBuild = may_not_build(OptionSpecs)
         ;
             OptionSpecs = [],
-            MayBuild = may_build(AllOptionArgs, BuildGlobals, LookupSpecs)
+            MayBuild = may_build(AllOptionArgs, BuildGlobals)
         )
     ).
 

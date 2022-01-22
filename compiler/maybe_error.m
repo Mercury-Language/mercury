@@ -66,11 +66,14 @@
     list(error_spec).
 
 :- pred project_ok1(maybe1(T1)::in, T1::out) is semidet.
+:- pred det_project_ok1(maybe1(T1)::in, T1::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module require.
 
 %-----------------------------------------------------------------------------%
 
@@ -101,6 +104,14 @@ project_ok1(Maybe1, Item) :-
     ;
         Maybe1 = error1(_Specs),
         fail
+    ).
+
+det_project_ok1(Maybe1, Item) :-
+    (
+        Maybe1 = ok1(Item)
+    ;
+        Maybe1 = error1(_Specs),
+        unexpected($pred, "error1")
     ).
 
 %-----------------------------------------------------------------------------%

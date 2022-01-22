@@ -927,16 +927,16 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                 OptionVariables = !.Info ^ mki_options_variables,
                 OptionArgs = !.Info ^ mki_option_args,
                 ExtraOptions = ["--make-short-interface"],
-                setup_for_build_with_module_options(Globals,
-                    invoked_by_mmc_make, ModuleName, DetectedGradeFlags,
-                    OptionVariables, OptionArgs, ExtraOptions, MayBuild, !IO),
+                setup_for_build_with_module_options(invoked_by_mmc_make,
+                    ModuleName, DetectedGradeFlags, OptionVariables,
+                    OptionArgs, ExtraOptions, MayBuild, !IO),
                 (
                     MayBuild = may_not_build(MSISpecs),
                     write_error_specs(ErrorStream, Globals,
                         MSISpecs, !IO),
                     Succeeded0 = did_not_succeed
                 ;
-                    MayBuild = may_build(_AllOptions, BuildGlobals, _Warnings),
+                    MayBuild = may_build(_AllOptions, BuildGlobals),
                     % Printing progress to the current output stream
                     % preserves old behavior.
                     % XXX Our caller should pass us ProgressStream.

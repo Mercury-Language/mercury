@@ -50,6 +50,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.read_modules.
 
 :- import_module bool.
@@ -94,11 +95,9 @@ make_track_flags_files(Globals, ModuleName, Succeeded, !Info, !IO) :-
 make_track_flags_files_2(Globals, ModuleName, Succeeded,
         !LastHash, !Info, !IO) :-
     lookup_mmc_module_options(!.Info ^ mki_options_variables, ModuleName,
-        ModuleOptionArgs, LookupSpecs),
-    write_error_specs(Globals, LookupSpecs, !IO),
-    LookupErrors = contains_errors(Globals, LookupSpecs),
+        MaybeModuleOptionArgs),
     (
-        LookupErrors = no,
+        MaybeModuleOptionArgs = ok1(ModuleOptionArgs),
         DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
         OptionArgs = !.Info ^ mki_option_args,
         AllOptionArgs = DetectedGradeFlags ++ ModuleOptionArgs ++ OptionArgs,
@@ -126,7 +125,8 @@ make_track_flags_files_2(Globals, ModuleName, Succeeded,
             write_hash_file(HashFileName, Hash, Succeeded, !IO)
         )
     ;
-        LookupErrors = yes,
+        MaybeModuleOptionArgs = error1(LookupSpecs),
+        write_error_specs(Globals, LookupSpecs, !IO),
         Succeeded = did_not_succeed
     ).
 
