@@ -8,6 +8,8 @@
 #   BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
 #   BY THE ADMINISTRATORS OF THE MERCURY PROJECT.
 
+include ../Ncurses.options
+
 # Specify the location of the `mypackage' and `myotherlib' directories
 #
 CURS_DIR = ..
@@ -24,9 +26,11 @@ demos: $(DEMOS)
 VPATH = $(CURS_DIR):$(MMAKE_VPATH)
 MCFLAGS = -I$(CURS_DIR) $(EXTRA_MCFLAGS)
 CFLAGS = -I$(CURS_DIR)
-MLFLAGS = -R$(CURS_DIR) $(EXTRA_MLFLAGS) \
-          -L$(CURS_DIR)
-MLLIBS = -lcurs -lpanel -lncurses $(EXTRA_MLLIBS)
+MLFLAGS = -R$(CURS_DIR) $(EXTRA_MLFLAGS) -L$(CURS_DIR)
+
+# You should check that the definitions of PANEL_LIBS and NCURSES_LIBS
+# in ../Ncurses.options are correct for your system.
+MLLIBS = -lcurs $(PANEL_LIBS) $(NCURSES_LIBS) $(EXTRA_MLLIBS)
 C2INITARGS = $(CURS_DIR)/curs.init
 
 MAIN_TARGET = all

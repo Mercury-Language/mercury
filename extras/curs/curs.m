@@ -1,8 +1,12 @@
 %-----------------------------------------------------------------------------%
-% curs.m
-% Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
-% Thu Jan 11 13:47:25 GMT 2001
 % vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
+% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
+% Copyright (C) 2021-2022 The Mercury team.
+%---------------------------------------------------------------------------%
+%
+% File: curs.m
 %
 %   THIS FILE IS HEREBY CONTRIBUTED TO THE MERCURY PROJECT TO
 %   BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
@@ -10,15 +14,16 @@
 %
 % Simplified Mercury interface to the ncurses and panel libraries.
 %
-% This is largely inspired by Tomas Conway and Robert Jeschofnik's
+% This is largely inspired by Thomas Conway and Robert Jeschofnik's
 % mcurses module; it is intended to more closely match the facilities
 % offered by the ncurses package and leave the issue of window management
 % to the ncurses and panel libraries rather than doing so in Mercury.
 %
-% XXX This module no error checking.
+% XXX This module does no error checking.
 %
-% NOTE: you will need to include `-lpanel -lncurses' in MLLIBS when
-% linking against this module.
+% NOTE: you will need to include the correct flags for linking against
+% ncurses and the panel library in MLLIBS when linking against this module.
+% See Ncurses.options for details.
 %
 %-----------------------------------------------------------------------------%
 
@@ -1060,7 +1065,7 @@ addstr(Attr, Str, !IO) :-
         #include <panel.h>
 
     ").
-    
+
     :- pragma foreign_type("C", panel, "PANEL *").
 
     %-------------------------------------------------------------------------%
@@ -1191,7 +1196,7 @@ addstr(Attr, Str, !IO) :-
         wattron(panel_window(Panel), Attr);
         IO = IO0;
     ").
-    
+
     :- pragma foreign_proc("C",
         attr_off(Panel::in, Attr::in, IO0::di, IO::uo),
         [will_not_call_mercury, promise_pure],
@@ -1251,4 +1256,5 @@ addstr(Attr, Str, !IO) :-
     %-------------------------------------------------------------------------%
 
 %-----------------------------------------------------------------------------%
+:- end_module curs.
 %-----------------------------------------------------------------------------%

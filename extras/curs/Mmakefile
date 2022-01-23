@@ -8,14 +8,20 @@
 #   BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
 #   BY THE ADMINISTRATORS OF THE MERCURY PROJECT.
 
+include Ncurses.options
+
 # To build, do the following:
 #
-# $ mmake depend
-# $ mmake
+# Check that the values in the file Ncurses.options are appropriate
+# for linking against ncurses on your system.
+# Then do:
+#
+#     $ mmake depend
+#     $ mmake
 #
 # And to install...
 #
-# $ mmake install
+#     $ mmake install
 
 # Omit this line if you want to install in the standard location.
 # Edit this line if you want to install the library elsewhere.
@@ -30,11 +36,11 @@ INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 #
 #LIBGRADES = asm_fast.gc hlc.gc
 
-# The following standard libraries must be linked against in any
-# application using the curs library (i.e. MLLIBS must include
-# at least the following and in this order) :
+# The following libraries must be linked against in any application using the
+# curs library (i.e. MLLIBS must include at least the following and in this
+# order).
 #
-MLLIBS = -lpanel -lncurses
+MLLIBS = $(PANEL_LIBS) $(NCURSES_LIBS)
 
 # Any application using this library will also need the following
 # in its Mmakefile:

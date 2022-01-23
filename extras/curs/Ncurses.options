@@ -1,0 +1,30 @@
+# The flags for linking against ncurses.
+#
+# The default value below should work on most systems. If it does not you can
+# find the exact value for you system by either:
+#
+# 1. Running the command:
+#
+#    $ ncursesN-config --libs
+#
+# where N is the version of ncurses installed on your system
+# (e.g. 6, 5, 5.4 etc).
+#
+# 2. Running the command:
+#
+#    $ pkg-config --libs --static ncurses
+#
+# This second method will only work if the pkg-config utility is available
+# on your system.
+#
+# You can override this variable directly on the command line with the output
+# of one of the above methods by doing, for example:
+#
+#    $ mmake depend NCURSES_LIBS="$(ncurses6-config --libs)"
+#    $ mmake NCURSES_LIBS="(ncurses6-config --libs$)"
+#
+NCURSES_LIBS = -lncurses
+
+# The flags for linking against the ncurses panel library.
+#
+PANEL_LIBS = -lpanel

@@ -1,8 +1,8 @@
 %-----------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
 % Tue Jan 23 10:05:05 GMT 2001
-% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
-%
 %
 %   THIS FILE IS HEREBY CONTRIBUTED TO THE MERCURY PROJECT TO
 %   BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
@@ -78,15 +78,15 @@ main(!IO) :-
     border(Panel1, !IO),
     move(Panel1, 0, 1, !IO),
     addstr(Panel1, normal, " 1 ", !IO),
-    
+
     border(Panel2, !IO),
     move(Panel2, 0, 1, !IO),
     addstr(Panel2, normal, " 2 ", !IO),
-    
+
     border(Panel3, !IO),
     move(Panel3, 0, 1, !IO),
     addstr(Panel3, normal, " 3 ", !IO),
-    
+
     border(Panel4, !IO),
     move(Panel4, 0, 1, !IO),
     addstr(Panel4, normal, " 4 ", !IO),
@@ -145,4 +145,5 @@ raise_panel(P, PanelData, !IO) :-
     main_loop(P, PanelData, !IO).
 
 %-----------------------------------------------------------------------------%
+:- end_module demo.
 %-----------------------------------------------------------------------------%
