@@ -9,7 +9,7 @@
 % Please note that this is still a partial binding; it does not provide
 % complete curses functionality.
 % Major things this binding implements:
-%     * Creation, destruction, clearing, raising, and lowering of arbitary
+%     * Creation, destruction, clearing, raising, and lowering of arbitrary
 %       windows.
 %     * Scrolling.
 %     * Colour on a character by character basis.
