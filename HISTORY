@@ -6065,6 +6065,373 @@ Known issues
   in the code generator.
 
 
+NEWS for Mercury 20.06.1, 3 November 2020
+=========================================
+
+This is a bug-fix release.
+
+* [Mantis bug #519]. We have deleted an old workaround from the Tcl/Tk
+  binding in the extras that causes linking errors with recent versions
+  of Tcl/Tk.
+
+* [Mantis bug #514]. We have fixed a bug that caused linking errors
+  in the deep profiling version of the Mercury runtime library when using
+  GCC with the `-fno-common` option.
+
+  Users of GCC 10 should note that `-fno-common` is now the default.
+
+* [Mantis bug #513]. We have fixed a bug that caused the compiler to
+  generate code that incorrectly reads variable values from the stack
+  in disjunctions.
+
+* [Github issue #90]. We have fixed a bug that the caused the compiler
+  to abort on code that used type classes in lambda expressions.
+
+* We have fixed a bug that caused the low-level C backend to incorrectly
+  place the contents of `foreign_code` pragmas after the contents of
+  `foreign_proc` pragmas in the generated C code.
+
+* We have fixed a bug with the debugger's `level` command where it would
+  report an error when invoked without any arguments instead of resetting
+  the current ancestor level to the level of the current event.
+
+
+NEWS for Mercury 20.06, 30 June 2020
+====================================
+
+Changes that may break compatibility
+------------------------------------
+
+* We have deleted the `one_or_more` type, and the operations on it, from
+  the `list` module of the Mercury standard library, and moved them to
+  a new module named `one_or_more`. This will break compatibility for
+  code that used the moved functionality, but such breaks can be fixed
+  simply by importing `one_or_more` as well as (or in rare cases, instead of)
+  the `list` module.
+
+* If module A contains a `:- import_module` or a `:- use_module` declaration
+  for module B but does not refer to anything defined in module B, we used
+  to generate a warning for the declaration only if module A had no submodules,
+  because it is possible that A's submodules refer to entities defined in B.
+  We now generate a warning for unused `:- import_module` and `:- use_module`
+  declaration in this case as well, which will stop the program from compiling
+  if `--halt-at-warn` is set. The fix is simple: replace the declaration
+  being warned about in the parent module with declarations in the child
+  modules that need it. In the fairly frequent case that not all child modules
+  need module B, this avoids the need to recompile those child modules
+  when the interface of module B changes.
+
+* We have moved the type `domain_error` from the `math` module of the Mercury
+  standard library to the `exception` module. Any module qualified references
+  to the name of either the type or of its one function symbol should have
+  the module qualification either updated or deleted. The reason for the move
+  is that it reduces the cost of some new optimizations.
+
+* We have added an additional constructor to the `poly_type` type from
+  the `string` module. Existing code that uses that type may need to be
+  updated.
+
+Changes to the Mercury standard library
+---------------------------------------
+
+### New module: `kv_list`
+
+* This module, whose name is short for key-value list, contains the same
+  functionality as the existing `assoc_list` module, but stores lists of
+  key-value pairs in a more space-efficient manner. Specifically, it uses
+  one three-word cell on the heap to represent each pair, while the
+  `assoc_list` module uses two two-word cells, which means that `kv_list`
+  will allocate fewer heap cells. The tradeoff is that unlike assoc_lists,
+  kv_lists are not standard lists, and thus cannot be manipulated
+  using the functions and predicates of the `list` module.
+
+### New module: `one_or_more`
+
+* This module defines the `one_or_more` type, which represents nonempty lists,
+  and provides operations on the values of this type. For every operation
+  in the `list` module that makes sense for nonempty lists, there is a
+  corresponding operation in `one_or_more`.
+
+### New module: `one_or_more_map`
+
+* This module implements `one_or_more_map`, a map from keys to one or more
+  values. Its functionality is very similar to that of the `multi_map` module
+  (in fact, the two modules define the exact same set of operations),
+  but unlike `multi_map`, it uses the type system to enforce the invariant
+  that every key in the map must have at least one associated value.
+
+### New module: `thread.closeable_channel`
+
+* This module implements closeable unbounded channels, similar to the unbounded
+  channels provided by the `thread.channel` module, but with the addition of a
+  close operation. Once a channel is closed, no more items can be added to it,
+  and reading from a closed channel will not block indefinitely.
+
+### Changes to the `assoc_list` module
+
+* The following predicates and functions have been added:
+
+    - pred `lookup/3`
+    - pred `update/4`
+    - pred `foldl/4`
+    - pred `foldl2/6`
+    - pred `foldl3/8`
+    - func `foldl_keys/3`
+    - func `foldl_values/3`
+
+### Changes to the `char` module
+
+* The following function and predicate have been added:
+
+    - func `hash/1`
+    - pred `hash/2`
+
+### Changes to the `float` module
+
+* The following predicate has been added:
+
+    - pred `hash/2`
+
+### Changes to the `hash_table` module
+
+* The following predicates have been deprecated and will be removed in a future
+  release:
+
+    - pred `int_hash/2`
+    - pred `uint_hash/2`
+    - pred `float_hash/2`
+    - pred `char_hash/2`
+    - pred `string_hash/2`
+    - pred `generic_hash/2`
+
+* The following obsolete functions have been removed:
+
+    - func `new/3`
+    - func `new_default/1`
+
+### Changes to the `int` module
+
+* The following function and predicate have been added:
+
+    - func `hash/1`
+    - pred `hash/2`
+
+### Changes to the `integer` module
+
+* The following functions have been added:
+
+   - func `eight/0`
+   - func `sixteen/0`
+
+### Changes to the `io` module
+
+* The predicates `write_many/3` and `write_many/4` now work directly
+  with values of type `uint`.
+
+* The predicates `format/4` and `format/5` now work directly with values
+  of type `uint`. (See the changes to the `string` module for further
+  details.)
+
+### Changes to the `list` module
+
+* The following predicate has been added:
+
+    - pred `map_corresponding3/5`
+
+* The following type, functions and predicates have been moved to the
+  new `one_or_more` module. Note: this change can break backwards
+  compatibility.
+
+    - type `one_or_more/1`
+    - func `one_or_more_cons/2`     (as `one_or_more.cons/2`)
+    - func `one_or_more_to_list/1`
+    - pred `list_to_one_or_more/2`
+    - pred `det_list_to_one_or_more/2`
+
+### Changes to the `map` module
+
+* The following predicates and functions have been added:
+
+    - pred `filter_map_values/3`
+    - pred `filter_map_values_only/3`
+    - pred `foldl4_values/10`
+    - pred `foldl5_values/12`
+    - func `keys_as_set/1`
+    - pred `keys_as_set/2`
+
+### Changes to the `multi_map` module
+
+* The following predicates and functions have been added:
+
+    - func `keys_as_set/1`
+    - pred `keys_as_set/2`
+    - func `reverse_add/3`
+    - pred `reverse_add/4`
+    - func `sorted_keys/1`
+    - pred `sorted_keys/2`
+
+### Changes to the `string` module
+
+* Formatting of `uint` values is now directly supported by `format/2` and
+  `format/3`. The `poly_type/0` type has been extended with a new
+  alternative, `u/1`, to allow this.
+
+### Changes to the `stream` module
+
+* We have added a new `reader/4` subclass, `unboxed_reader/4`. This subclass
+  allows readers to provide a `get` operation that avoids boxing non-error
+  outputs.
+
+### Changes to the `stream.string_writer` module
+
+* The predicate `format/5` now work directly with values of type `uint`.
+  (See the changes to the `string` module for further details.)
+
+### Changes to the `thread.channel` module
+
+* The following predicate has been deprecated and will be removed in a future
+  release:
+
+    - pred `untake/4`
+
+### Changes to the `thread.mvar` module
+
+* The documentation of the following predicates has been clarified to match the
+  actual implementation:
+
+    - pred `try_take/4`
+    - pred `try_read/4`
+
+### Changes to the `tree234` module
+
+* The following predicates have been added:
+
+    - pred `filter_map_values/3`
+    - pred `filter_map_values_only/3`
+    - pred `foldl4_values/10`
+    - pred `foldl5_values/12`
+
+### Changes to the `uint` module
+
+* The following function and predicate have been added:
+
+    - func `hash/1`
+    - pred `hash/2`
+
+### Changes to the `version_array` module
+
+* The following obsolete function has been removed:
+
+    - func `unsafe_new/2`
+
+### Changes to the `version_hash_table` module
+
+* The following predicates have been deprecated and will be removed in a future
+  release:
+
+    - pred `int_hash/2`
+    - pred `uint_hash/2`
+    - pred `float_hash/2`
+    - pred `char_hash/2`
+    - pred `string_hash/2`
+    - pred `generic_hash/2`
+
+Changes to the Mercury compiler
+-------------------------------
+
+### Alternative script to invoke the compiler
+
+* We have added an alternative script, `mercury`, to use when invoking the
+  compiler on systems where the usual name, `mmc`, clashes with other
+  executables.
+
+### Changes to the treatment of unused imports
+
+* The compiler now generates warnings for `:- import_module` and
+  `:- use_module` declarations in the interface of a module even if
+  that module has submodules. Previously, it generated such warnings
+  only if the module had no submodules.
+
+### Changes to code model options
+
+* `--trail-segments`
+
+  Grades that support trailing now always use trail segments. This means
+  that the `--trail-segments` option now has no effect, and it is therefore
+  deprecated.
+
+* `--high-level-data`
+
+  We have deleted the `--high-level-data` option. Its effects are now
+  implied by the target language.
+
+* `--tags`
+
+  We have deleted the `--tags` option. Its effects are now implied
+  by the target language.
+
+### Changes to warnings
+
+* [Github issue #85]. The compiler will now generate a warning about
+  a disjunct that cannot succeed even if the predicate or function in which
+  that disjunct occurs has other modes in which that disjunct can succeed.
+
+  The generation of such warnings can now be disabled by wrapping
+  the whole disjunction, or a larger goal containing it, in a
+  `disable_warnings` scope, like this:
+
+        disable_warnings [no_solution_disjunct] (
+           Goal
+        )
+
+* [Mantis bug #497]. The compiler will now generate a warning for an
+  unrecognised warning name in a `disable_warnings` scope instead of
+  reporting an error.
+
+### New warning options
+
+* `--print-errors-warnings-when-generating-interface`
+
+  Until now, the compiler did not try to detect problems with a module
+  when generating its interface files. Now it does. To preserve compatibility,
+  by default it still ignores any problems it finds then, but if this option
+  is enabled, and if it does in fact find any problems, the compiler will
+  report them, and if they are severe enough, it will not generate the
+  interface file at all. In the usual use case where the compiler is asked
+  to generate the interface file as part of rebuilding the whole executable,
+  this behavior has the advantage that the rebuild, which would fail anyway,
+  fails sooner.
+
+### New auxiliary output options
+
+* `--show-definition-extents`
+
+  When this option is specified, the compiler will write out a list
+  of the predicates and functions defined in the module, together with
+  the approximate line numbers of their first and last lines,
+  to `module.defn_extents`. The list will be ordered on the starting
+  line numbers of the predicates and functions.
+
+Changes to the Mercury implementation
+-------------------------------------
+
+* Grades that support trailing now always use trail segments; it is no longer
+  possible to use a fixed size trail.
+
+  One consequence of this is that the `trseg` grade component now acts
+  as a synonym for the `tr` component. Since `tr` is shorter, `trseg`
+  is deprecated in its favor.
+
+  Another consequence is that the `--trail-size` and `--trail-size-kwords`
+  runtime options no longer have any effect, and are deprecated.
+
+* We have upgraded the bundled Boehm GC to v8.0.6 and libatomic_ops to v7.6.12.
+
+* We have enabled support for unmapping of unused memory pages in Boehm GC
+  by default. If this should cause a problem on your platform, it can be
+  disabled by passing `--disable-gc-munmap` to configure.
+
+
 
 .NET CLR back-end history
 -------------------------
