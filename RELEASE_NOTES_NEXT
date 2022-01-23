@@ -7,3 +7,5 @@ after that, remove the option, and always generate an error.
 
 Carve several submodules off io.m, as discussed on m-dev on 2021 Aug 23-34
 in a thread about get_environment_var_map.
+
+Eliminate the --trail-segments option.
