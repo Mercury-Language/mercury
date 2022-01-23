@@ -2,6 +2,8 @@
 # vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 
+include ../Ncurses.options
+
 # Specify location of the mcurses library
 MCURSES_DIR = ..
 
@@ -14,7 +16,7 @@ MLFLAGS = 	-R$(MCURSES_DIR) $(EXTRA_MLFLAGS) \
 
 # Note that you have to tell the linker to use the mcurses library
 # AND the ncurses library (which mcurses is an interface for)
-MLLIBS =	-lmcurses -lncurses $(EXTRA_MLLIBS)
+MLLIBS =	-lmcurses $(NCURSES_LIBS) $(EXTRA_MLLIBS)
 C2INITARGS =	$(MCURSES_DIR)/mcurses.init
 
 default_target:	smalltest

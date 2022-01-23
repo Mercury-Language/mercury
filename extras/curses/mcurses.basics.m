@@ -2,11 +2,12 @@
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2000, 2010 The University of Melbourne.
+% Copyright (C) 2019, 2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
 %
-% File:          basics.m
+% File:          mcurses.basics.m
 % Main author:   conway
 % Maintained by: rejj
 % Stability:     Medium
@@ -36,65 +37,66 @@
 
 %----------------------------------------------------------------------------%
 
-  % Initialise curses.
-  % This is used by user.m, and should not be called by the programmer.
-  %
+    % Initialise curses.
+    % This is used by user.m, and should not be called by the programmer.
+    %
 :- pred init(io::di, io::uo) is det.
 
-  % Shutdown curses. This is required before exiting your program, or else you
-  % will be left with a practically unusable terminal.
-  %
+    % Shutdown curses.
+    % This is required before exiting your program, or else you will be left
+    % with a practically unusable terminal.
+    %
 :- pred endwin(io::di, io::uo) is det.
 
-  % Initialise the colour mode for curses.
-  % This must be called before attempting to use anything with colour.
-  %
+    % Initialise the colour mode for curses.
+    % This must be called before attempting to use anything with colour.
+    %
 :- pred start_colour(io::di, io::uo) is det.
 
-  % Update the curses screen.
-  %
+    % Update the curses screen.
+    %
 :- pred update(io::di, io::uo) is det.
 
-  % Perform a doupdate.
-  % (see the curses man page for descriptions of update and doupdate)
+    % Perform a doupdate.
+    % (see the curses man page for descriptions of update and doupdate)
 :- pred doupdate(io::di, io::uo) is det.
 
-  % Clear the curses screen.
-  %
+    % Clear the curses screen.
+    %
 :- pred clear(io::di, io::uo) is det.
 
-  % cursor(X, Y, !IO):
-  % Places the cursor at position X, Y.
-  %
+    % cursor(X, Y, !IO):
+    % Places the cursor at position X, Y.
+    %
 :- pred cursor(int::in, int::in, io::di, io::uo) is det.
 
-  % Place a string on the screen, starting at the current cursor position.
-  %
+    % Place a string on the screen, starting at the current cursor position.
+    %
 :- pred putstr(string::in, io::di, io::uo) is det.
 
-  % Place a single character on the screen at the current cursor position.
-  %
+    % Place a single character on the screen at the current cursor position.
+    %
 :- pred putchar(char::in, io::di, io::uo) is det.
 
-  % cols(Cols, !IO):
-  % Retrieves the number of columns in the screen.
-  %
+    % cols(Cols, !IO):
+    % Retrieves the number of columns in the screen.
+    %
 :- pred cols(int::out, io::di, io::uo) is det.
 
-  % rows(Rows, !IO):
-  % Retrieves the number of rows in the screen.
-  % 
+    % rows(Rows, !IO):
+    % Retrieves the number of rows in the screen.
+    %
 :- pred rows(int::out, io::di, io::uo) is det.
 
-  % getkey(Key, !IO):
-  % Wait for the next keypress from the user, and return it as Key.
-  %
+    % getkey(Key, !IO):
+    % Wait for the next keypress from the user, and return it as Key.
+    %
 :- pred getkey(int::out, io::di, io::uo) is det.
 
 %----------------------------------------------------------------------------%
 
-  % Functions to return scancodes for some common keypresses
-  
+    % Functions to return scancodes for some common keypresses.
+    %
 :- func break = int.
 :- func down = int.
 :- func up = int.
@@ -108,8 +110,8 @@
 
 %----------------------------------------------------------------------------%
 
-  % Functions to return colours for characters
-  
+    % Functions to return colours for characters.
+    %
 :- func black = int.
 :- func green = int.
 :- func red = int.
@@ -119,8 +121,8 @@
 :- func blue = int.
 :- func yellow = int.
 
-  % Functions to return attributes for characters
-  
+    % Functions to return attributes for characters.
+    %
 :- func normal = int.
 :- func standout = int.
 :- func underline = int.
@@ -149,32 +151,30 @@
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    init(IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury],
+    init(_IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     WINDOW *w;
     w = initscr();
     noecho();
     cbreak();
     keypad(w, TRUE);
-    IO = IO0;
 ").
 
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    endwin(IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury],
+    endwin(_IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     endwin();
-    IO = IO0;
 ").
 
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    start_colour(IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury],
+    start_colour(_IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     start_color();
     init_pair(COLOR_BLACK, COLOR_BLACK, COLOR_BLACK);
@@ -185,97 +185,87 @@
     init_pair(COLOR_MAGENTA, COLOR_MAGENTA, COLOR_BLACK);
     init_pair(COLOR_BLUE, COLOR_BLUE, COLOR_BLACK);
     init_pair(COLOR_YELLOW, COLOR_YELLOW, COLOR_BLACK);
-    IO = IO0;
 ").
 
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    doupdate(IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury],
+    doupdate(_IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     doupdate();
-    IO = IO0;
 ").
 
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    update(IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury],
+    update(_IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     refresh();
-    IO = IO0;
 ").
 
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    clear(IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury],
+    clear(_IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     clear();
-    IO = IO0;
 ").
 
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    cursor(X::in, Y::in, IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury],
+    cursor(X::in, Y::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     move(Y, X);
-    IO = IO0;
 ").
 
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    putstr(Str::in, IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury],
+    putstr(Str::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     addstr(Str);
-    IO = IO0;
 ").
 
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    putchar(C::in, IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury],
+    putchar(C::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     addch((chtype) C);
-    IO = IO0;
 ").
 
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    cols(C::out, IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury],
+    cols(C::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     C = tigetnum((char *) ""cols"");
-    IO = IO0;
 ").
 
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    rows(R::out, IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury],
+    rows(R::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     R = tigetnum((char *) ""lines"");
-    IO = IO0;
 ").
 
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    getkey(C::out, IO0::di, IO::uo),
-    [promise_pure, will_not_call_mercury],
+    getkey(C::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     C = getch();
-    IO = IO0;
 ").
 
 %----------------------------------------------------------------------------%

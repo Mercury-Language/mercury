@@ -2,18 +2,20 @@
 # vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2000-2003 The University of Melbourne.
-# Copyright (C) 2015-2018 The Mercury team.
+# Copyright (C) 2015-2018, 2022 The Mercury team.
 # This file is distributed under the terms specified in COPYING.LIB.
 #-----------------------------------------------------------------------------#
+
+include Ncurses.options
 
 # This is needed to avoid conflicts with `bool'
 CFLAGS = -DMERCURY_BOOTSTRAP_H
 
 INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 
-# The following definition is correct for Linux.  You may need to change
-# this line to include the appropriate curses library for your OS.
-MLLIBS = -lncurses
+# Check that the values in the file Ncurses.options are appropriate for
+# linking against ncurses on your system.
+MLLIBS = $(NCURSES_LIBS)
 
 -include ../Mmake.params
 
