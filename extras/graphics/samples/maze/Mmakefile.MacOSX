@@ -13,7 +13,7 @@ MAIN_TARGET = maze
 MERCURY_OPENGL_DIR = ../../mercury_opengl
 MERCURY_GLUT_DIR = ../../mercury_glut
 
-MGNUCFLAGS = -I$(MERCURY_OPENGL_DIR) -I$(MERCURY_GLUT_DIR)
+CFLAGS = -I$(MERCURY_OPENGL_DIR) -I$(MERCURY_GLUT_DIR)
 
 VPATH = $(MERCURY_OPENGL_DIR):$(MERCURY_GLUT_DIR):$(MMAKE_VPATH)
 
@@ -28,3 +28,7 @@ C2INITARGS = $(MERCURY_OPENGL_DIR)/mercury_opengl.init \
 	$(MERCURY_GLUT_DIR)/mercury_glut.init
 
 depend: maze.depend
+
+.PHONY: run
+run: maze
+	DYLD_LIBRARY_PATH=$(MERCURY_GLUT_DIR):$(MERCURY_OPENGL_DIR) ./maze

@@ -1,3 +1,5 @@
+%---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
 %------------------------------------------------------------------------------
 %
 % file: globals.m
@@ -34,39 +36,35 @@
 %-----------------------------------------------------------------------------%
 
 globals.init(!IO) :-
-	Map = map.init `with_type` map(string, univ), 
-	type_to_univ(Map, UMap1),
-	unsafe_promise_unique(UMap1, UMap),
-	io.set_globals(UMap, !IO).
+    map.init(Map : map(string, univ)),
+    io.set_globals(univ(Map), !IO).
 
 globals.get(Name, Value, !IO) :-
-	io.get_globals(UMap0, !IO),
-	( if univ_to_type(UMap0, Map0) 
-	  then
-		( if 	UValue = Map0 ^ elem(Name)
-		  then
-			( if   univ_to_type(UValue, Value0) 
-			  then Value = Value0
-			  else error("globals.get/4: value has bad type.")
-			)
-		  else
-			error("globals.get/4: name not found.")
-		)
-	  else
-		error("globals.get/4: global store corrupt.")
-	).
+    io.get_globals(UMap0, !IO),
+    ( if univ_to_type(UMap0, Map0) then
+        ( if UValue = Map0 ^ elem(Name) then
+            ( if univ_to_type(UValue, Value0) then
+                Value = Value0
+            else
+                error("globals.get/4: value has bad type.")
+            )
+        else
+            error("globals.get/4: name not found.")
+        )
+    else
+        error("globals.get/4: global store corrupt.")
+    ).
 
 globals.set(Name, Value, !IO) :-
-	io.get_globals(UMap0, !IO),
-	( if univ_to_type(UMap0, Map0)
-	  then
-	  	type_to_univ(Value, UValue),
-		map.set(Name, UValue, Map0, Map),
-		type_to_univ(Map, UMap),
-		io.set_globals(UMap, !IO)
-	  else
-	  	error("globals.set/4: global store corrupt.")
-	).
+    io.get_globals(UMap0, !IO),
+    ( if univ_to_type(UMap0, Map0) then
+        type_to_univ(Value, UValue),
+        map.set(Name, UValue, Map0, Map),
+        type_to_univ(Map, UMap),
+        io.set_globals(UMap, !IO)
+    else
+        error("globals.set/4: global store corrupt.")
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module globals.
