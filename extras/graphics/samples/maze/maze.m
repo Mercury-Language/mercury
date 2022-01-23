@@ -90,19 +90,14 @@ main(!IO) :-
         getopt.lookup_int_option(Opts, height, YMax),
         getopt.lookup_int_option(Opts, seed, Seed),
         globals.set("Size", float(XMax), !IO),
-        solutions(
-            (pred(X::out) is nondet :- between(0, XMax - 1, X)),
-            XIndexs),
-        solutions(
-            (pred(Y::out) is nondet :- between(0, YMax - 1, Y)),
-            YIndexes),
+        XIndexes = 0 .. XMax - 1,
+        YIndexes = 0 .. YMax - 1,
         random.init(Seed, Rnd0),
-        maze.dig(pos(XMax, YMax), XIndexs, YIndexes, map.init, Maze,
-            Rnd0, Rnd),
+        dig(pos(XMax, YMax), XIndexes, YIndexes, map.init, Maze, Rnd0, Rnd),
         io.write_string(" done.\n", !IO),
         io.flush_output(!IO),
         globals.set("Rnd", Rnd, !IO),
-        maze.main_2(Maze, !IO)
+        main_2(Maze, !IO)
     ;
         MOpts = error(Str),
         io.stderr_stream(StdErr, !IO),
@@ -114,15 +109,15 @@ main(!IO) :-
 %-----------------------------------------------------------------------------%
 
     % Set the display mode and initial window attributes.
-    % Register % callbacks and then start the thing running.
-:- pred maze.main_2(maze::in, io::di, io::uo) is det.
+    % Register callbacks and then start the thing running.
+:- pred main_2(maze::in, io::di, io::uo) is det.
 
-maze.main_2(Maze, !IO) :-
+main_2(Maze, !IO) :-
     glut.init_display_mode([double, rgba], !IO),
     glut.init_window_size(300, 300, !IO),
     glut.window.create("Maze", !IO),
 
-    maze.create(Maze, !IO),
+    create(Maze, !IO),
     glut.callback.display_func(maze.display, !IO),
     glut.callback.reshape_func(maze.reshape, !IO),
     glut.callback.keyboard_func(maze.keyboard, !IO),
@@ -144,9 +139,9 @@ maze.main_2(Maze, !IO) :-
 
     % Work out the next position in the traversal of the maze and then
     % tell OpenGL to redisplay it.
-:- pred maze.idle(io::di, io::uo) is det.
+:- pred idle(io::di, io::uo) is det.
 
-maze.idle(!IO) :-
+idle(!IO) :-
     next_pos(!IO),
     glut.window.post_redisplay(!IO).
 
@@ -172,11 +167,11 @@ next_pos(!IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred maze.create(maze::in, io::di, io::uo) is det.
+:- pred create(maze::in, io::di, io::uo) is det.
 
-maze.create(Maze, !IO) :-
+create(Maze, !IO) :-
     MazeList = map.to_assoc_list(Maze),
-    Walls    = maze.cons_walls(MazeList),
+    Walls = maze.cons_walls(MazeList),
     WallList = map.to_assoc_list(Walls),
     mogl.new_list(maze_list, compile, !IO),
     mogl.begin(quads, !IO),
@@ -205,30 +200,30 @@ make_mlist([Pos - Walls | Rest], !IO) :-
     list.foldl(maze.wall(Pos), Walls, !IO),
     maze.make_mlist(Rest, !IO).
 
-:- pred maze.wall(pos::in, wall::in, io::di, io::uo) is det.
+:- pred wall(pos::in, wall::in, io::di, io::uo) is det.
 
-maze.wall(pos(X0, Z0), north, !IO) :-
+wall(pos(X0, Z0), north, !IO) :-
     X = float(X0),
     Z = float(Z0),
     mogl.vertex3(X,       0.0, Z + 1.0, !IO),
     mogl.vertex3(X + 1.0, 0.0, Z + 1.0, !IO),
     mogl.vertex3(X + 1.0, 1.0, Z + 1.0, !IO),
     mogl.vertex3(X,       1.0, Z + 1.0, !IO).
-maze.wall(pos(X0, Z0), south, !IO) :-
+wall(pos(X0, Z0), south, !IO) :-
     X = float(X0),
     Z = float(Z0),
     mogl.vertex3(X,       0.0, Z, !IO),
     mogl.vertex3(X + 1.0, 0.0, Z, !IO),
     mogl.vertex3(X + 1.0, 1.0, Z, !IO),
     mogl.vertex3(X,       1.0, Z, !IO).
-maze.wall(pos(X0, Z0), east, !IO) :-
+wall(pos(X0, Z0), east, !IO) :-
     X = float(X0),
     Z = float(Z0),
     mogl.vertex3(X + 1.0, 0.0, Z,       !IO),
     mogl.vertex3(X + 1.0, 0.0, Z + 1.0, !IO),
     mogl.vertex3(X + 1.0, 1.0, Z + 1.0, !IO),
     mogl.vertex3(X + 1.0, 1.0, Z,       !IO).
-maze.wall(pos(X0, Z0), west, !IO) :-
+wall(pos(X0, Z0), west, !IO) :-
     X = float(X0),
     Z = float(Z0),
     mogl.vertex3(X, 0.0, Z,       !IO),
@@ -237,9 +232,9 @@ maze.wall(pos(X0, Z0), west, !IO) :-
     mogl.vertex3(X, 1.0, Z,       !IO).
 
     % The stuff that happens for each frame.
-:- pred maze.display(io::di, io::uo) is det.
+:- pred display(io::di, io::uo) is det.
 
-maze.display(!IO) :-
+display(!IO) :-
     globals.get("Size", Size, !IO),
     mogl.clear_color(0.0, 0.0, 0.0, 0.0, !IO),
     mogl.clear([color, depth], !IO),
@@ -261,9 +256,9 @@ maze.display(!IO) :-
 
     glut.window.swap_buffers(!IO).
 
-:- pred maze.reshape(int::in, int::in, io::di, io::uo) is det.
+:- pred reshape(int::in, int::in, io::di, io::uo) is det.
 
-maze.reshape(Width, Height, !IO) :-
+reshape(Width, Height, !IO) :-
     mogl.viewport(0, 0, Width, Height, !IO),
     mogl.matrix_mode(projection, !IO),
     mogl.load_identity(!IO),
@@ -302,9 +297,9 @@ draw_maze(!IO) :-
     globals.set("Phi", Phi + 0.005, !IO),
     globals.set("Theta", Theta + 0.006, !IO).
 
-:- pred maze.draw_vis(pos::in, io::di, io::uo) is det.
+:- pred draw_vis(pos::in, io::di, io::uo) is det.
 
-maze.draw_vis(pos(Xi, Zi), !IO) :-
+draw_vis(pos(Xi, Zi), !IO) :-
     mogl.vertex3(float(Xi) + 0.5, 0.5, float(Zi) + 0.5, !IO).
 
 %------------------------------------------------------------------------------%
@@ -378,10 +373,10 @@ dig2(FarPos, [adj(NewPos, OldPos) | Rest], !Maze, !Rnd) :-
         dig2(FarPos, Rest, !Maze, !Rnd)
     ).
 
-:- pred maze.adj(pos::in, pos::in, list(adj)::out, random.supply::mdi,
+:- pred adj(pos::in, pos::in, list(adj)::out, random.supply::mdi,
     random.supply::muo) is det.
 
-maze.adj(pos(FarX, FarY), pos(X, Y), Adjs, !Rnd) :-
+adj(pos(FarX, FarY), pos(X, Y), Adjs, !Rnd) :-
     Pred = (pred(Adj::out) is nondet :-
         (
             X1 = X - 1,
@@ -446,25 +441,14 @@ get_nth([X | Xs], I, Y, Ys) :-
         Ys = [X | Zs]
     ).
 
-:- pred between(int::in, int::in, int::out) is nondet.
-
-between(Min, Max, I) :-
-    Min =< Max,
-    (
-        I = Min
-    ;
-        Min1 = Min + 1,
-        between(Min1, Max, I)
-    ).
-
 %------------------------------------------------------------------------------%
 %
 % Keyboard handling.
 %
 
-:- pred maze.keyboard(char::in, int::in, int::in, io::di, io::uo) is det.
+:- pred keyboard(char::in, int::in, int::in, io::di, io::uo) is det.
 
-maze.keyboard(Key, _, _, !IO) :-
+keyboard(Key, _, _, !IO) :-
     ( if char.to_int(Key, 27) then
         glut.quit(!IO)
     else
