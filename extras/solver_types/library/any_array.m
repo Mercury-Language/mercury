@@ -300,7 +300,6 @@
 :- use_module    any_list.
 :- import_module exception.
 :- import_module int.
-:- import_module list.
 :- import_module require.
 :- import_module string.
 
