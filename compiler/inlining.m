@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
 % Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: inlining.m.
 % Main author: conway.
@@ -76,7 +76,7 @@
 % Due to the way in which we generate code for model_non pragma_foreign_code,
 % procedures whose body is such a pragma_foreign_code must NOT be inlined.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.inlining.
 :- interface.
@@ -94,7 +94,7 @@
 :- import_module list.
 :- import_module map.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred inline_in_module(module_info::in, module_info::out) is det.
 
@@ -109,7 +109,7 @@
 :- pred is_simple_goal(hlds_goal::in, int::in) is semidet.
 
     % do_inline_call(UnivQVars, Args, CalledPredInfo, CalledProcInfo,
-    %   !VarSet, !VarTypes, !TVarSet, !RttiVarMaps):
+    %   !VarSet, !VarTypes, !TVarSet, !RttiVarMaps, !RttiVarMaps, Goal):
     %
     % Given the universally quantified type variables in the caller's type,
     % the arguments to the call, the pred_info and proc_info for the called
@@ -144,8 +144,8 @@
 :- pred can_inline_proc(module_info::in, pred_id::in, proc_id::in,
     builtin_state::in, may_inline_purity_promised_pred::in) is semidet.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -181,7 +181,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This structure holds the paramaters that direct the details of the
     % inlining process. Most (but not all) of these fields hold the
@@ -204,6 +204,89 @@
 
                 ip_needed_map                   :: needed_map
             ).
+
+%---------------------------------------------------------------------------%
+
+    % inline_info contains
+    %
+    % - the information we need as we process a goal for inlining, and
+    % - the information that is changed as a result of inlining.
+    %
+    % It is threaded through all the code that does inlining in procedure
+    % bodies, updated when necessary. When the process is done, each of the
+    % updateable fields should be acted upon, either by putting the updated
+    % value of the field back where it came from, or by performing the action
+    % that a flag calls for if it is set.
+    %
+:- type inline_info
+    --->    inline_info(
+            % The static fields.
+                i_module_info           :: module_info,
+
+                % Variable threshold for inlining.
+                i_var_threshold         :: int,
+
+                % Highlevel_code option.
+                i_highlevel_code        :: bool,
+
+                % Universally quantified type vars occurring in the argument
+                % types for this predicate (the caller, not the callee).
+                % These are the ones that must not be bound.
+                i_univ_caller_tvars     :: list(tvar),
+
+                % Markers for the current predicate.
+%               i_pred_markers          :: pred_markers,
+
+                % The set of procedures in the current SCC, tail calls
+                % to which should be inlined.
+                i_should_inline_tail_calls :: set(pred_proc_id),
+
+            % The fields we can update between different inlining passes
+            % on a procedure body.
+
+                i_should_inline_procs   :: set(pred_proc_id),
+
+            % The fields we can update while doing inlining in a goal.
+
+                i_prog_varset           :: prog_varset,
+                i_vartypes              :: vartypes,
+                i_tvarset               :: tvarset,
+
+                % Information about locations of type_infos and
+                % typeclass_infos.
+                i_rtti_varmaps          :: rtti_varmaps,
+
+                % Did we do any inlining in the proc?
+                i_done_any_inlining     :: have_we_inlined,
+
+                % Did we inline any procs for which
+                % proc_info_get_has_parallel_conj returns `has_parallel_conj'?
+                i_inlined_parallel      :: have_we_inlined_parallel_conj,
+
+                % Did we change the determinism of any subgoal?
+                i_changed_detism        :: have_we_changed_detism,
+
+                % Did we change the purity of any subgoal?
+                i_changed_purity        :: have_we_changed_purity
+            ).
+
+:- type have_we_inlined
+    --->    we_have_not_inlined
+    ;       we_have_inlined.
+
+:- type have_we_inlined_parallel_conj
+    --->    we_have_not_inlined_parallel_conj
+    ;       we_have_inlined_parallel_conj.
+
+:- type have_we_changed_detism
+    --->    have_not_changed_detism
+    ;       have_changed_detism.
+
+:- type have_we_changed_purity
+    --->    have_not_changed_purity
+    ;       have_changed_purity.
+
+%---------------------------------------------------------------------------%
 
 inline_in_module(!ModuleInfo) :-
     % Package up all the inlining options
@@ -295,8 +378,8 @@ inline_in_scc(Params, SCCEntryPoints, !ShouldInlineProcs, !ModuleInfo) :-
         unexpected($pred, "empty SCC")
     ;
         SCCProcs = [SCCProc],
-        inline_in_proc(Params, !.ShouldInlineProcs, set.init, SCCProc,
-            !ModuleInfo),
+        inline_in_proc_if_allowed(Params, !.ShouldInlineProcs,
+            set.init, SCCProc, !ModuleInfo),
         maybe_mark_proc_to_be_inlined(Params, !.ModuleInfo, SCCProc,
             !ShouldInlineProcs)
     ;
@@ -419,7 +502,7 @@ inline_in_linear_tail_rec_proc(Params, ShouldInlineProcs, SCC, EntryPoints,
     else
         set.init(ShouldInlineTailProcs)
     ),
-    inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs,
+    inline_in_proc_if_allowed(Params, ShouldInlineProcs, ShouldInlineTailProcs,
         PredProcId, !ModuleInfo).
 
 :- pred inline_in_simple_non_singleton_scc(inline_params::in,
@@ -441,11 +524,14 @@ inline_in_simple_non_singleton_scc(Params, SCCProcs, !ShouldInlineProcs,
     %
     % - procedures that are only called from one call site.
     %
-    list.filter(should_proc_be_inlined(Params, !.ModuleInfo),
+    list.filter(
+        should_proc_be_inlined(Params, !.ModuleInfo),
         SCCProcs, ShouldInlineSCCProcs),
-    list.foldl(mark_proc_to_be_inlined(!.ModuleInfo), ShouldInlineSCCProcs,
-        !ShouldInlineProcs),
-    list.foldl(inline_in_proc(Params, !.ShouldInlineProcs, set.init),
+    list.foldl(
+        mark_proc_to_be_inlined(!.ModuleInfo),
+        ShouldInlineSCCProcs, !ShouldInlineProcs),
+    list.foldl(
+        inline_in_proc_if_allowed(Params, !.ShouldInlineProcs, set.init),
         SCCProcs, !ModuleInfo).
 
     % This predicate effectively adds implicit `pragma inline' directives
@@ -475,7 +561,7 @@ mark_proc_to_be_inlined(ModuleInfo, PredProcId, !ShouldInlineProcs) :-
     pred_proc_id::in) is semidet.
 
 should_proc_be_inlined(Params, ModuleInfo, PredProcId) :-
-    module_info_pred_proc_info(ModuleInfo, PredProcId, _PredInfo, ProcInfo),
+    module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
     proc_info_get_goal(ProcInfo, CalledGoal),
     PredProcId = proc(PredId, ProcId),
     Entity = entity_proc(PredId, ProcId),
@@ -505,7 +591,10 @@ should_proc_be_inlined(Params, ModuleInfo, PredProcId) :-
         NumUses = 1
     ),
     % Don't inline directly recursive predicates unless explicitly requested.
-    not goal_calls(CalledGoal, PredProcId).
+    not goal_calls(CalledGoal, PredProcId),
+
+    pred_info_get_origin(PredInfo, Origin),
+    origin_involves_daio(Origin, does_not_involve_daio).
 
 is_simple_clause_list(Clauses, SimpleThreshold) :-
     clause_list_size(Clauses, Size),
@@ -573,70 +662,25 @@ is_flat_simple_goal_list([Goal | Goals]) :-
     is_flat_simple_goal(Goal),
     is_flat_simple_goal_list(Goals).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % inline_info contains
-    %
-    % - the information we need as we process a goal for inlining, and
-    % - the information that is changed as a result of inlining.
-    %
-    % It is threaded through all the code that does inlining in procedure
-    % bodies, updated when necessary. When the process is done, each of the
-    % updateable fields should be acted upon, either by putting the updated
-    % value of the field back where it came from, or by performing the action
-    % that a flag calls for if it is set.
-    %
-:- type inline_info
-    --->    inline_info(
-            % The static fields.
-                i_module_info           :: module_info,
+:- pred inline_in_proc_if_allowed(inline_params::in,
+    set(pred_proc_id)::in, set(pred_proc_id)::in, pred_proc_id::in,
+    module_info::in, module_info::out) is det.
 
-                % Variable threshold for inlining.
-                i_var_threshold         :: int,
-
-                % Highlevel_code option.
-                i_highlevel_code        :: bool,
-
-                % Universally quantified type vars occurring in the argument
-                % types for this predicate (the caller, not the callee).
-                % These are the ones that must not be bound.
-                i_univ_caller_tvars     :: list(tvar),
-
-                % Markers for the current predicate.
-%               i_pred_markers          :: pred_markers,
-
-                % The set of procedures in the current SCC, tail calls
-                % to which should be inlined.
-                i_should_inline_tail_calls :: set(pred_proc_id),
-
-            % The fields we can update between different inlining passes
-            % on a procedure body.
-
-                i_should_inline_procs   :: set(pred_proc_id),
-
-            % The fields we can update while doing inlining in a goal.
-
-                i_prog_varset           :: prog_varset,
-                i_vartypes              :: vartypes,
-                i_tvarset               :: tvarset,
-
-                % Information about locations of type_infos and
-                % typeclass_infos.
-                i_rtti_varmaps          :: rtti_varmaps,
-
-                % Did we do any inlining in the proc?
-                i_done_any_inlining     :: bool,
-
-                % Did we inline any procs for which
-                % proc_info_get_has_parallel_conj returns `has_parallel_conj'?
-                i_inlined_parallel      :: bool,
-
-                % Did we change the determinism of any subgoal?
-                i_changed_detism        :: bool,
-
-                % Did we change the purity of any subgoal?
-                i_changed_purity        :: bool
-            ).
+inline_in_proc_if_allowed(Params, ShouldInlineProcs, ShouldInlineTailProcs,
+        PredProcId, !ModuleInfo) :-
+    PredProcId = proc(PredId, _ProcId),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+    pred_info_get_origin(PredInfo, Origin),
+    origin_involves_daio(Origin, InvolvesDAIO),
+    (
+        InvolvesDAIO = does_not_involve_daio,
+        inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs,
+            PredProcId, !ModuleInfo)
+    ;
+        InvolvesDAIO = does_involve_daio
+    ).
 
 :- pred inline_in_proc(inline_params::in,
     set(pred_proc_id)::in, set(pred_proc_id)::in, pred_proc_id::in,
@@ -663,15 +707,11 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
         proc_info_get_vartypes(!.ProcInfo, VarTypes0),
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
 
-        DidInlining0 = bool.no,
-        InlinedParallel0 = bool.no,
-        DetChanged0 = bool.no,
-        PurityChanged0 = bool.no,
-
         InlineInfo0 = inline_info(!.ModuleInfo, VarThresh, HighLevelCode,
             UnivQTVars, ShouldInlineTailProcs, ShouldInlineProcs,
             VarSet0, VarTypes0, TypeVarSet0, RttiVarMaps0,
-            DidInlining0, InlinedParallel0, DetChanged0, PurityChanged0),
+            we_have_not_inlined, we_have_not_inlined_parallel_conj,
+            have_not_changed_detism, have_not_changed_purity),
 
         inlining_in_goal(Goal0, Goal, InlineInfo0, InlineInfo),
 
@@ -687,14 +727,14 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
         proc_info_set_goal(Goal, !ProcInfo),
 
         (
-            InlinedParallel = yes,
+            InlinedParallel = we_have_inlined_parallel_conj,
             proc_info_set_has_parallel_conj(has_parallel_conj, !ProcInfo)
         ;
-            InlinedParallel = no
+            InlinedParallel = we_have_not_inlined_parallel_conj
         ),
 
         (
-            DidInlining = yes,
+            DidInlining = we_have_inlined,
             % We want to requantify the procedure body if we did any inlining.
             % If the body of an inlined call did not use some of the
             % call's input arg vars, and this was the only use of the
@@ -705,17 +745,17 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
             recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
                 !ProcInfo, !ModuleInfo)
         ;
-            DidInlining = no
+            DidInlining = we_have_not_inlined
         ),
 
         map.det_update(ProcId, !.ProcInfo, ProcTable0, ProcTable),
         pred_info_set_proc_table(ProcTable, !PredInfo),
 
         (
-            PurityChanged = yes,
+            PurityChanged = have_changed_purity,
             repuritycheck_proc(!.ModuleInfo, PredProcId, !PredInfo)
         ;
-            PurityChanged = no
+            PurityChanged = have_not_changed_purity
         ),
 
         map.det_update(PredId, !.PredInfo, PredTable0, PredTable),
@@ -725,14 +765,14 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
         % determinism analysis, because propagating the determinism information
         % through the procedure may lead to more efficient code.
         (
-            DetChanged = yes,
+            DetChanged = have_changed_detism,
             det_infer_proc_ignore_msgs(PredId, ProcId, !ModuleInfo)
         ;
-            DetChanged = no
+            DetChanged = have_not_changed_detism
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred inlining_in_goal(hlds_goal::in, hlds_goal::out,
     inline_info::in, inline_info::out) is det.
@@ -802,6 +842,56 @@ inlining_in_goal(Goal0, Goal, !Info) :-
         unexpected($pred, "shorthand")
     ).
 
+%---------------------------------------------------------------------------%
+
+:- pred inlining_in_disjuncts(list(hlds_goal)::in, list(hlds_goal)::out,
+    inline_info::in, inline_info::out) is det.
+
+inlining_in_disjuncts([], [], !Info).
+inlining_in_disjuncts([Goal0 | Goals0], [Goal | Goals], !Info) :-
+    inlining_in_goal(Goal0, Goal, !Info),
+    inlining_in_disjuncts(Goals0, Goals, !Info).
+
+:- pred inlining_in_cases(list(case)::in, list(case)::out,
+    inline_info::in, inline_info::out) is det.
+
+inlining_in_cases([], [], !Info).
+inlining_in_cases([Case0 | Cases0], [Case | Cases], !Info) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    inlining_in_goal(Goal0, Goal, !Info),
+    Case = case(MainConsId, OtherConsIds, Goal),
+    inlining_in_cases(Cases0, Cases, !Info).
+
+%---------------------------------------------------------------------------%
+
+:- pred inlining_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
+    inline_info::in, inline_info::out) is det.
+
+inlining_in_conj([], [], !Info).
+inlining_in_conj([HeadGoal0 | TailGoals0], Goals, !Info) :-
+    inlining_in_goal(HeadGoal0, HeadGoal, !Info),
+    inlining_in_conj(TailGoals0, TailGoals, !Info),
+    % Since a single goal may become a conjunction,
+    % we flatten the conjunction as we go.
+    goal_to_conj_list(HeadGoal, HeadGoalList),
+    Goals = HeadGoalList ++ TailGoals.
+
+:- pred inlining_in_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
+    inline_info::in, inline_info::out) is det.
+
+inlining_in_par_conj([], [], !Info).
+inlining_in_par_conj([HeadGoal0 | TailGoals0], Goals, !Info) :-
+    inlining_in_goal(HeadGoal0, HeadGoal, !Info),
+    inlining_in_par_conj(TailGoals0, TailGoals, !Info),
+    % Since a single goal may become a parallel conjunction,
+    % we flatten the conjunction as we go.
+    % Note that this is *much* less likely to happen for parallel conjunctions
+    % than for sequential ones.
+    goal_to_par_conj_list(HeadGoal, HeadGoalList),
+    Goals = HeadGoalList ++ TailGoals.
+
+%---------------------------------------------------------------------------%
+
 :- pred inlining_in_call(hlds_goal_expr::in(goal_expr_plain_call),
     hlds_goal_info::in, hlds_goal::out,
     inline_info::in, inline_info::out) is det.
@@ -840,12 +930,12 @@ inlining_in_call(GoalExpr0, GoalInfo0, Goal, !Info) :-
             VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet,
             RttiVarMaps0, RttiVarMaps, Goal1),
 
-        DidInlining = yes,
+        DidInlining = we_have_inlined,
 
         proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
         (
             HasParallelConj = has_parallel_conj,
-            InlinedParallel = yes
+            InlinedParallel = we_have_inlined_parallel_conj
         ;
             HasParallelConj = has_no_parallel_conj,
             InlinedParallel = InlinedParallel0
@@ -860,7 +950,7 @@ inlining_in_call(GoalExpr0, GoalInfo0, Goal, !Info) :-
         ( if Determinism0 = Determinism1 then
             DetChanged = DetChanged0
         else
-            DetChanged = yes
+            DetChanged = have_changed_detism
         ),
 
         Purity0 = goal_info_get_purity(GoalInfo0),
@@ -868,7 +958,7 @@ inlining_in_call(GoalExpr0, GoalInfo0, Goal, !Info) :-
         ( if Purity0 = Purity1 then
             PurityChanged = PurityChanged0
         else
-            PurityChanged = yes
+            PurityChanged = have_changed_purity
         ),
 
         !:Info = inline_info(ModuleInfo, VarThresh, HighLevelCode,
@@ -914,12 +1004,11 @@ tci_vars_different_constraints(RttiVarMaps, [VarA, VarB | Vars]) :-
         tci_vars_different_constraints(RttiVarMaps, [VarB | Vars])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 do_inline_call(ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
         VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet,
         RttiVarMaps0, RttiVarMaps, Goal) :-
-
     proc_info_get_goal(ProcInfo, CalledGoal),
 
     % Look up the rest of the info for the called procedure.
@@ -1004,55 +1093,7 @@ rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet, VarSet, VarTypes1,
         VarSet0, VarSet, VarTypes1, VarTypes, Renaming0, Renaming),
     must_rename_vars_in_goal(Renaming, CalledGoal, Goal).
 
-%-----------------------------------------------------------------------------%
-
-:- pred inlining_in_disjuncts(list(hlds_goal)::in, list(hlds_goal)::out,
-    inline_info::in, inline_info::out) is det.
-
-inlining_in_disjuncts([], [], !Info).
-inlining_in_disjuncts([Goal0 | Goals0], [Goal | Goals], !Info) :-
-    inlining_in_goal(Goal0, Goal, !Info),
-    inlining_in_disjuncts(Goals0, Goals, !Info).
-
-:- pred inlining_in_cases(list(case)::in, list(case)::out,
-    inline_info::in, inline_info::out) is det.
-
-inlining_in_cases([], [], !Info).
-inlining_in_cases([Case0 | Cases0], [Case | Cases], !Info) :-
-    Case0 = case(MainConsId, OtherConsIds, Goal0),
-    inlining_in_goal(Goal0, Goal, !Info),
-    Case = case(MainConsId, OtherConsIds, Goal),
-    inlining_in_cases(Cases0, Cases, !Info).
-
-%-----------------------------------------------------------------------------%
-
-:- pred inlining_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-    inline_info::in, inline_info::out) is det.
-
-inlining_in_conj([], [], !Info).
-inlining_in_conj([HeadGoal0 | TailGoals0], Goals, !Info) :-
-    inlining_in_goal(HeadGoal0, HeadGoal, !Info),
-    inlining_in_conj(TailGoals0, TailGoals, !Info),
-    % Since a single goal may become a conjunction,
-    % we flatten the conjunction as we go.
-    goal_to_conj_list(HeadGoal, HeadGoalList),
-    Goals = HeadGoalList ++ TailGoals.
-
-:- pred inlining_in_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-    inline_info::in, inline_info::out) is det.
-
-inlining_in_par_conj([], [], !Info).
-inlining_in_par_conj([HeadGoal0 | TailGoals0], Goals, !Info) :-
-    inlining_in_goal(HeadGoal0, HeadGoal, !Info),
-    inlining_in_par_conj(TailGoals0, TailGoals, !Info),
-    % Since a single goal may become a parallel conjunction,
-    % we flatten the conjunction as we go.
-    % Note that this is *much* less likely to happen for parallel conjunctions
-    % than for sequential ones.
-    goal_to_par_conj_list(HeadGoal, HeadGoalList),
-    Goals = HeadGoalList ++ TailGoals.
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type maybe_user_req
     --->    not_user_req
@@ -1205,6 +1246,7 @@ can_inline_proc_2(ModuleInfo, PredId, ProcId, BuiltinState, HighLevelCode,
 
         % For the LLDS back-end, under no circumstances inline model_non
         % foreign_procs. The resulting code would not work properly.
+        % XXX We should not have any model_non foreign_procs anymore.
         not (
             HighLevelCode = no,
             proc_info_interface_determinism(ProcInfo, Detism),
@@ -1242,6 +1284,79 @@ ok_to_inline_language(lang_c, target_c).
 ok_to_inline_language(lang_java, target_java).
 ok_to_inline_language(lang_csharp, target_csharp).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% The direct_arg_in_out transformation (daio for short) creates code
+% with insts that are good enough to be accepted by the code generators,
+% but too fragile to be processed by transformations such as inlining.
+% Invoking inlining on a predicate created by the daio transformation
+% was responsible for Mantis bug #542.
+%
+
+:- type maybe_involves_daio
+    --->    does_not_involve_daio
+    ;       does_involve_daio.
+
+:- pred origin_involves_daio(pred_origin::in,
+    maybe_involves_daio::out) is det.
+
+origin_involves_daio(Origin, InvolvesDAIO) :-
+    (
+        ( Origin = origin_special_pred(_SpecialPredId, _TypeCtor)
+        ; Origin = origin_instance_method(_SymName, _Constraints)
+        ; Origin = origin_class_method(_ClassId, _PFSymNameArity)
+        ; Origin = origin_created(_Creation)
+        ; Origin = origin_assertion(_, _)
+        ; Origin = origin_lambda(_FileNam, _LineNum, _Seq)
+        ; Origin = origin_solver_type(_SymName, _Arity, _PredKind)
+        ; Origin = origin_tabling(_PFSymNameArity, _PredKind)
+        ; Origin = origin_mutable(_ModuleName, _MutableName, _PredKind)
+        ; Origin = origin_initialise
+        ; Origin = origin_finalise
+        ; Origin = origin_user(_SymName)
+        ),
+        InvolvesDAIO = does_not_involve_daio
+    ;
+        Origin = origin_transformed(Transform, SubOrigin, _PredId),
+        ( if
+            ( origin_transformation_involves_daio(Transform, does_involve_daio)
+            ; origin_involves_daio(SubOrigin, does_involve_daio)
+            )
+        then
+            InvolvesDAIO = does_involve_daio
+        else
+            InvolvesDAIO = does_not_involve_daio
+        )
+    ).
+
+:- pred origin_transformation_involves_daio(pred_transformation::in,
+    maybe_involves_daio::out) is det.
+
+origin_transformation_involves_daio(Transform, InvolvesDAIO) :-
+    (
+        ( Transform = transform_higher_order_specialization(_)
+        ; Transform = transform_higher_order_type_specialization(_)
+        ; Transform = transform_type_specialization(_)
+        ; Transform = transform_unused_argument_elimination(_)
+        ; Transform = transform_accumulator(_)
+        ; Transform = transform_loop_invariant(_)
+        ; Transform = transform_tuple(_)
+        ; Transform = transform_untuple(_)
+        ; Transform = transform_dependent_parallel_conjunction
+        ; Transform = transform_parallel_loop_control
+        ; Transform = transform_return_via_ptr(_, _)
+        ; Transform = transform_table_generator
+        ; Transform = transform_stm_expansion
+        ; Transform = transform_dnf(_)
+        ; Transform = transform_structure_reuse
+        ; Transform = transform_source_to_source_debug
+        ),
+        InvolvesDAIO = does_not_involve_daio
+    ;
+        Transform = transform_direct_arg_in_out,
+        InvolvesDAIO = does_involve_daio
+    ).
+
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.inlining.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
