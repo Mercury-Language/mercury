@@ -146,8 +146,8 @@ all:	library $(TAGS_FILE_EXISTS) browse_test declarative_test
 library: $(LIBS)
 
 .PHONY: depend
-depend:	SSDB_FLAGS $(DEPENDS)
-$(DEPENDS): Mercury.modules
+depend:	$(DEPENDS)
+$(DEPENDS): SSDB_FLAGS Mercury.modules
 
 # This directory contains source files for which the module
 # name doesn't match the file name, so smart recompilation

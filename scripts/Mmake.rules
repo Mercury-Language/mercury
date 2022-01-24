@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab ft=make
+#-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2007, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
@@ -107,7 +109,7 @@ endif
 # so we must create it manually.
 # The following mkdirs work around a bug in GNU Make.
 .PHONY: %.depend
-%.depend :
+%.depend:
 	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $* > $(*F).dep_err 2>&1
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 ifeq ($(MMAKE_USE_SUBDIRS_EXPLICIT),yes)
@@ -136,19 +138,19 @@ endif	# MMAKE_USE_MMC_MAKE != yes
 
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
-$(date0s_subdir)%.date0 : %.m
+$(date0s_subdir)%.date0: %.m
 	$(MCPI) $(ALL_GRADEFLAGS) $(ALL_MCPIFLAGS) $(*F)
 
-$(dates_subdir)%.date : %.m
+$(dates_subdir)%.date: %.m
 	$(MCI) $(ALL_GRADEFLAGS) $(ALL_MCIFLAGS) $(*F)
 
-$(date3s_subdir)%.date3 : %.m
+$(date3s_subdir)%.date3: %.m
 	$(MCSI) $(ALL_GRADEFLAGS) $(ALL_MCSIFLAGS) $(*F)
 
-$(optdates_subdir)%.optdate : %.m
+$(optdates_subdir)%.optdate: %.m
 	$(MCOI) $(ALL_GRADEFLAGS) $(ALL_MCOIFLAGS) $(*F)
 
-$(trans_opt_dates_subdir)%.trans_opt_date : %.m
+$(trans_opt_dates_subdir)%.trans_opt_date: %.m
 	$(MCTOI) $(ALL_GRADEFLAGS) $(ALL_MCTOIFLAGS) $(*F)
 
 # Be very careful about changing the following rules.
@@ -157,22 +159,22 @@ $(trans_opt_dates_subdir)%.trans_opt_date : %.m
 # (It is a pity that GNU Make doesn't have a way of handling these sorts
 # of rules in a nicer manner.)
 
-$(int0s_subdir)%.int0 : $(date0s_subdir)%.date0
+$(int0s_subdir)%.int0: $(date0s_subdir)%.date0
 	@:
 
-$(ints_subdir)%.int : $(dates_subdir)%.date
+$(ints_subdir)%.int: $(dates_subdir)%.date
 	@:
 
-$(int2s_subdir)%.int2 : $(dates_subdir)%.date
+$(int2s_subdir)%.int2: $(dates_subdir)%.date
 	@:
 
-$(int3s_subdir)%.int3 : $(date3s_subdir)%.date3
+$(int3s_subdir)%.int3: $(date3s_subdir)%.date3
 	@:
 
-$(opts_subdir)%.opt : $(optdates_subdir)%.optdate
+$(opts_subdir)%.opt: $(optdates_subdir)%.optdate
 	@:
 
-$(trans_opts_subdir)%.trans_opt : $(trans_opt_dates_subdir)%.trans_opt_date
+$(trans_opts_subdir)%.trans_opt: $(trans_opt_dates_subdir)%.trans_opt_date
 	@:
 
 endif	# MMAKE_USE_MMC_MAKE != yes
@@ -190,10 +192,10 @@ ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
 # When smart recompilation finds that a module does not need to be recompiled,
 # it only touches the `.c_date' file.
-$(cs_subdir)%.c : $(c_dates_subdir)%.c_date
+$(cs_subdir)%.c: $(c_dates_subdir)%.c_date
 	@:
 
-$(c_dates_subdir)%.c_date : %.m
+$(c_dates_subdir)%.c_date: %.m
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) $(*F) $(ERR_REDIRECT)
 
 # Java back-end.
@@ -215,7 +217,7 @@ endif
 $(javas_subdir)%.java: $(java_dates_subdir)%.java_date
 	@:
 
-$(java_dates_subdir)%.java_date : %.m
+$(java_dates_subdir)%.java_date: %.m
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) \
 		--java-only $(*F) $(ERR_REDIRECT)
 
@@ -225,37 +227,40 @@ $(java_dates_subdir)%.java_date : %.m
 # is zero size, write is never called. `touch' has code to test specifically
 # for this situation, and adds a byte to the file and then removes it.
 
-.m.err:
+%.err: %.m
 	$(MCE) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $(*F) $(ERR_REDIRECT)
 	@touch $@
 
 endif	# MMAKE_USE_MMC_MAKE != yes
 
-.m.ugly:
+%.ugly: %.m
 	$(MC) --convert-to-mercury $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $(*F)
 
 #-----------------------------------------------------------------------------#
 #
 # Rules for compiling C files in the user's source directory.
 #
+# There is a near-identical of the rule for %.$O in ../Mmake.common.in
+# (search for %.pseudo_o). Any changes to the rule here should be made
+# there as well.
+#
 
-.c.$O:
+%.$O: %.c
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< $(OBJFILE_OPT)$@
 
-.c.pic_o:
+%.pic_o: %.c
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
 		-c $< $(OBJFILE_OPT)$@
 
-.c.s:
+%.s: %.c
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -S $< -o $@
 
-.c.pic_s:
+%.pic_s: %.c
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
 		-S $< -o $@
 
-.c.i:
+%.i: %.c
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -E $< > $@
-
 
 #-----------------------------------------------------------------------------#
 #
@@ -269,10 +274,10 @@ ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
 ifneq ("$(cs_subdir)","")
 
-$(os_subdir)%.$O : $(cs_subdir)%.c
+$(os_subdir)%.$O: $(cs_subdir)%.c
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< $(OBJFILE_OPT)$@
 
-$(os_subdir)%.pic_o : $(cs_subdir)%.c
+$(os_subdir)%.pic_o: $(cs_subdir)%.c
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
 		-c $< -o $@
 
@@ -431,7 +436,3 @@ install_grade_dirs: #install_lib_dirs
 		$(INSTALL_MKDIR) $(INSTALL_GRADE_INC_DIR)/Mercury
 	-[ -d $(INSTALL_GRADE_INT_DIR)/Mercury ] || \
 		$(INSTALL_MKDIR) $(INSTALL_GRADE_INT_DIR)/Mercury
-
-#-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab ft=make
-#-----------------------------------------------------------------------------#

@@ -134,13 +134,14 @@ SHARED_LIBS		= @SHARED_LIBS@
 # in scripts/Mmake.vars to avoid accidentally overwriting an
 # existing installation when using an installed mmake.
 ifeq ($(DESTDIR),)
-	# DESTDIR is the empty string, DESTDIR_AND_SLASH must therefore be empty.
-	# Otherwise the slash can change a relative path into an absolute one; or
-	# on Windows, it can create an invalid path name.
+	# DESTDIR is the empty string, DESTDIR_AND_SLASH must therefore
+	# be empty. Otherwise, the slash can change a relative path
+	# into an absolute one; or on Windows, it can create an invalid
+	# path name.
 	DESTDIR_AND_SLASH=
 else
-	# We cannot append paths like this in Windows, but we don't think anyone
-	# will use DESTDIR on Windows.
+	# We cannot append paths like this in Windows, but we don't think
+	# anyone will use DESTDIR on Windows.
 	DESTDIR_AND_SLASH=$(DESTDIR)/
 endif
 
@@ -295,10 +296,10 @@ $(MERCURY_DIR)/Mmake.params: ;
 ifdef CHECK_OBJS
 
 HDR_CHECK_CS	  = $(CHECK_HDRS:.h=.check_hdr.c)
-HDR_CHECK_OBJS    = $(CHECK_HDRS:.h=.check_hdr.$O)
+HDR_CHECK_POBJS   = $(CHECK_HDRS:.h=.check_hdr.pseudo_o)
 HDR_CHECK_MACROS  = $(CHECK_HDRS:.h=.check.macros)
 MHDR_CHECK_CS	  = $(CHECK_MHDRS:.mh=.check_mhdr.c)
-MHDR_CHECK_OBJS   = $(CHECK_MHDRS:.mh=.check_mhdr.$O)
+MHDR_CHECK_POBJS  = $(CHECK_MHDRS:.mh=.check_mhdr.pseudo_o)
 MHDR_CHECK_MACROS = $(CHECK_MHDRS:.mh=.check.mmacros)
 OBJ_CHECKS        = $(CHECK_OBJS:%=%.obj_check)
 
@@ -386,19 +387,19 @@ HEADER_CLEAN_FILTER = \
 		fgrep -v -x -f ../RESERVED_MACRO_NAMES | \
 		fgrep -v -x -f RESERVED_MACRO_NAMES
 
-# This rule checks that object files are properly namespace-clean, with
-# regard to the global symbols that they define.
-# For an object file foo.o, it produces a file foo.o.obj_check that
-# contains a list of all the globals defined by that object that
-# do not start with `MR_', `mercury_', or `entry_'.
+# This rule checks that object files are properly namespace-clean,
+# with regard to the global symbols that they define.
+# For an object file foo.o, it produces a file foo.o.obj_check that contains
+# a list of all the globals defined by that object that do not start with
+# `MR_', `mercury_', or `entry_'.
 
 %.obj_check: %
-	$(NM) -P -g $< | awk '$$2 != "U" { print $$1; }' | \
+	@$(NM) -P -g $< | awk '$$2 != "U" { print $$1; }' | \
 		grep -v $(OBJ_PREFIX_EXPRS) | sort -u > $@
 	@if cmp -s /dev/null $@; then \
 		true; \
 	else \
-		echo "** Global symbols in user namespace:"; \
+		echo "** Global symbols in user namespace: $*:"; \
 		cat $@; \
 		echo "(You may need to add a distinguishing prefix to these names.)"; \
 		exit 1; \
@@ -410,11 +411,27 @@ HEADER_CLEAN_FILTER = \
 # `#include' statement that includes foo.h; compiling foo.check_hdr.c will fail
 # if foo.h is not self-contained. Similarly for .mh files.
 
-%.check_hdr.c : %.h
-	echo "#include \"$*.h\"" > $*.check_hdr.c
+%.check_hdr.c: %.h
+	@echo "#include \"$*.h\"" > $*.check_hdr.c
 
-%.check_mhdr.c : %.mh
-	echo "#include \"$*.mh\"" > $*.check_mhdr.c
+%.check_mhdr.c: %.mh
+	@echo "#include \"$*.mh\"" > $*.check_mhdr.c
+
+# This rule is a version of the rule for "%.$O: %c" in scripts/Mmake.rules,
+# but to avoid clutter in the usual case that the object file *can* be made,
+# it does not print the action.
+
+%.pseudo_o: %.c
+	@$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< $(OBJFILE_OPT)$@
+
+# Mark these files as intermediate files that make should NOT delete
+# automatically. The reason for this is that there is no way to tell make
+# to delete these files *without* printing the rm command used to delete them.
+# Instead, tools/bootcheck uses "mmake clean_check" to delete them silently.
+# Users whose run "mmake check_namespace" manually can do so as well.
+.SECONDARY: $(HDR_CHECK_CS) $(HDR_CHECK_POBJS) $(HDR_CHECK_MACROS)
+.SECONDARY: $(MHDR_CHECK_CS) $(MHDR_CHECK_POBJS) $(MHDR_CHECK_MACROS)
+.SECONDARY: $(OBJ_CHECKS)
 
 # These rules check whether a header file defines any macros it shouldn't.
 # They generates the list of macros defined in the header file, and filter this
@@ -436,9 +453,9 @@ AWK = awk
 
 %.check.macros: %.h %.check_hdr.c
 	@> $*.empty.c
-	-@CC@ -E $*.empty.c -nostdinc -dN 2> /dev/null | \
+	-@ @CC@ -E $*.empty.c -nostdinc -dN 2> /dev/null | \
 		$(AWK) '/[ \t]*#define/ { print $$2; }' | sort -u > $*.base
-	-$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
+	-@$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
 		-DMERCURY_BOOTSTRAP_H -DMR_NO_CONF_BACKWARDS_COMPAT \
 		-E $*.check_hdr.c -nostdinc -dN \
 		2> /dev/null | $(AWK) '/[ \t]*#define/ { print $$2; }' | \
@@ -448,7 +465,7 @@ AWK = awk
 	@if cmp -s /dev/null $@; then \
 		true; \
 	else \
-		echo "** Macro name(s) in user namespace:"; \
+		echo "** Macro name(s) in user namespace: $*:"; \
 		cat $@; \
 		echo "(You may need to add a distinguishing prefix to these names.)"; \
 		exit 1; \
@@ -456,9 +473,9 @@ AWK = awk
 
 %.check.mmacros: %.mh %.check_mhdr.c
 	@> $*.mempty.c
-	-@CC@ -E $*.mempty.c -nostdinc -dN 2> /dev/null | \
+	-@ @CC@ -E $*.mempty.c -nostdinc -dN 2> /dev/null | \
 		$(AWK) '/[ \t]*#define/ { print $$2; }' | sort -u > $*.mbase
-	-$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
+	-@$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
 		-DMERCURY_BOOTSTRAP_H -DMR_NO_CONF_BACKWARDS_COMPAT \
 		-E $*.check_mhdr.c -nostdinc -dN \
 		2> /dev/null | $(AWK) '/[ \t]*#define/ { print $$2; }' | \
@@ -471,16 +488,16 @@ AWK = awk
 	@if cmp -s /dev/null $@; then \
 		true; \
 	else \
-		echo "** Macro name(s) in user namespace:"; \
+		echo "** Macro name(s) in user namespace: $*:"; \
 		cat $@; \
 		echo "(You may need to add a distinguishing prefix to these names.)"; \
 		exit 1; \
 	fi
 
-#-----------------------------------------------------------------------------#
+#---------------------#
 
 .PHONY: check_headers_self_contained
-check_headers_self_contained: $(HDR_CHECK_OBJS) $(MHDR_CHECK_OBJS)
+check_headers_self_contained: $(HDR_CHECK_POBJS) $(MHDR_CHECK_POBJS)
 
 .PHONY: check_headers_macros
 check_headers_macros: $(HDR_CHECK_MACROS) $(MHDR_CHECK_MACROS)
@@ -496,12 +513,12 @@ check_namespace: check_headers check_objs
 
 .PHONY: clean_check
 clean_check:
-	-rm -f $(HDR_CHECK_OBJS) $(HDR_CHECK_CS) $(HDR_CHECK_MACROS)
-	-rm -f $(MHDR_CHECK_OBJS) $(MHDR_CHECK_CS) $(MHDR_CHECK_MACROS)
-	-rm -f $(OBJ_CHECKS)
+	-@rm -f $(HDR_CHECK_POBJS) $(HDR_CHECK_CS) $(HDR_CHECK_MACROS)
+	-@rm -f $(MHDR_CHECK_POBJS) $(MHDR_CHECK_CS) $(MHDR_CHECK_MACROS)
+	-@rm -f $(OBJ_CHECKS)
 
 endif
-# the endif is for "ifdef CHECK_OBJS" a long way above
+# The endif is for "ifdef CHECK_OBJS" a long way above.
 
 #-----------------------------------------------------------------------------#
 

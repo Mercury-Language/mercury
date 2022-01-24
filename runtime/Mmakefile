@@ -265,7 +265,7 @@ THREADLIBS	= \
 
 CFLAGS += $(HWLOC_CFLAGS)
 
-$(HDR_CHECK_OBJS):	mercury_conf.h
+$(HDR_CHECK_POBJS):	mercury_conf.h
 
 #-----------------------------------------------------------------------------#
 

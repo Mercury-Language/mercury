@@ -85,10 +85,12 @@ $(OBJ_PROGS:%=%.runtest): %.runtest: %.$(TARGET_OBJ_EXT) ;
 
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
-%.err: %.m
+$(PROGS:%=%.err): %.err: %.m
 	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
 		> $*.err 2>&1; \
-	then false; else true; fi
+	then false; \
+	else true; \
+	fi
 
 else
 
@@ -98,9 +100,12 @@ else
 %	doubled up error messages, once while making interface files,
 %	then the module proper.  The second time the command is run
 %	only one set of error messages should appear.
-$(addsuffix .err,$(PROGS)):
+$(PROGS:%=%.err):
 	-$(MCM) $@
-	if $(MCM) -r $@ > /dev/null 2>&1 ; then false; else true; fi
+	if $(MCM) -r $@ > /dev/null 2>&1; \
+	then false; \
+	else true; \
+	fi
 
 endif
 

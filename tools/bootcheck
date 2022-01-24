@@ -1079,9 +1079,17 @@ then
                 # The rules to generate *_FLAGS files from *_FLAGS.in files
                 # will not run if we are using `mmc --make', so run them now.
                 if (cd ${stage2dir} && \
-                    ${MMAKE} compiler/COMP_FLAGS library/LIB_FLAGS \
-                        mdbcomp/MDBCOMP_FLAGS grade_lib/GRADE_LIB_FLAGS \
-                        profiler/PROF_FLAGS deep_profiler/DEEP_FLAGS)
+                    ${MMAKE} \
+                        library/LIB_FLAGS \
+                        mdbcomp/MDBCOMP_FLAGS \
+                        browser/MDB_FLAGS
+                        ssdb/SSDB_FLAGS \
+                        grade_lib/GRADE_LIB_FLAGS \
+                        compiler/COMP_FLAGS \
+                        slice/SLICE_FLAGS \
+                        profiler/PROF_FLAGS \
+                        deep_profiler/DEEP_FLAGS \
+                        mfilterjavac/MFILTERJAVAC_FLAGS)
                 then
                     echo "building of stage 2 flags files successful"
                 else
@@ -1092,6 +1100,9 @@ then
         esac
 
         if (cd ${stage2dir} && \
+            # If you update this list, consider whether you also need
+            # to update the list of *_FLAGS files you need to build
+            # just above.
             ${MMAKE} ${mmake_opts} \
                 dep_library \
                 dep_mdbcomp \
@@ -1292,31 +1303,37 @@ then
             echo '** mmake check_namespace failed in runtime!'
             check_namespace_status=1
         }
+        mmake ${mmake_opts} clean_check
         cd ${root}/${stage2dir}/trace
         mmake ${mmake_opts} check_namespace || {
             echo '** mmake check_namespace failed in trace!'
             check_namespace_status=1
         }
+        mmake ${mmake_opts} clean_check
         cd ${root}/${stage2dir}/library
         mmake ${mmake_opts} check_namespace || {
             echo '** mmake check_namespace failed in library!'
             check_namespace_status=1
         }
+        mmake ${mmake_opts} clean_check
         cd ${root}/${stage2dir}/mdbcomp
         mmake ${mmake_opts} check_namespace || {
             echo '** mmake check_namespace failed in mdbcomp!'
             check_namespace_status=1
         }
+        mmake ${mmake_opts} clean_check
         cd ${root}/${stage2dir}/browser
         mmake ${mmake_opts} check_namespace || {
             echo '** mmake check_namespace failed in browser!'
             check_namespace_status=1
         }
+        mmake ${mmake_opts} clean_check
         cd ${root}/${stage2dir}/ssdb
         mmake ${mmake_opts} check_namespace || {
             echo '** mmake check_namespace failed in ssdb!'
             check_namespace_status=1
         }
+        mmake ${mmake_opts} clean_check
         cd ${root}
     fi
 

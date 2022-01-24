@@ -23,14 +23,12 @@ include ../Mmake.common
 
 %.runtest: %.err_res ;
 
-%.err: %.m %.options_file
+$(PROGS:%=%.err): %.err: %.m %.options_file
 	if $(MC) --errorcheck-only --options-file $*.options_file \
 		--halt-at-warn $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
 		> $*.err 2>&1; \
-	then \
-		false; \
-	else \
-		true; \
+	then false; \
+	else true; \
 	fi
 
 #-----------------------------------------------------------------------------#

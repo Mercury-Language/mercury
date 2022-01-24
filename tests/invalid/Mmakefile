@@ -458,7 +458,7 @@ ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 # error messages, once while making interface files, then the module proper.
 # The second time the command is run, only one set of error messages
 # should appear.
-$(addsuffix .err,$(PROGS)):
+$(PROGS:%=%.err):
 	-$(MCM) $@
 	if $(MCM) -r $@ > /dev/null 2>&1 ; \
 	then false; \

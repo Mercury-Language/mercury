@@ -3,7 +3,7 @@
 #-----------------------------------------------------------------------------#
 
 TESTS_DIR = ..
-THIS_DIR = invalid_submodule
+THIS_DIR = invalid_submodules
 MAYBE_J1 = -j1
 
 # This directory contains tests for errors in programs in which at least
@@ -16,15 +16,15 @@ MAYBE_J1 = -j1
 # For multi-module tests (which includes all the tests in this directory)
 # we normally need to make the dependencies. However, multi-module tests
 # where the error is detected when building the dependencies
-# (e.g. duplicate_module_test.m) should be included in DO_NOT_MAKE_DEP_PROGS,
-# not MAKE_DEP_PROGS, because we have a specific make rule for them below.
+# (e.g. duplicate_module_test.m) should be included in MAKE_DEP_ONLY_PROGS,
+# not STD_PROGS, because we have a specific make rule for them below.
 
-MAKE_DEP_PROGS = \
+STD_PROGS = \
 	exported_unify3 \
 	undef_mod_qual \
 	unresolved_overloading
 
-DO_NOT_MAKE_DEP_PROGS = \
+MAKE_DEP_ONLY_PROGS = \
 	duplicate_module_test \
 	func_class \
 	nested_impl_in_int
@@ -41,8 +41,11 @@ DO_NOT_MAKE_DEP_PROGS = \
 
 #-----------------------------------------------------------------------------#
 
-PROGS = $(MAKE_DEP_PROGS) $(DO_NOT_MAKE_DEP_PROGS)
-TESTS = $(sort $(MAKE_DEP_PROGS) $(DO_NOT_MAKE_DEP_PROGS:%=%-nodepend))
+PROGS = $(STD_PROGS) $(MAKE_DEP_ONLY_PROGS)
+# For the MAKE_DEP_ONLY_PROGS, we want to make the dependencies
+# using our own rule below, not the usual rule, which is why we disable
+# the usual rule for them via the -nodepend suffix.
+TESTS = $(sort $(STD_PROGS) $(MAKE_DEP_ONLY_PROGS:%=%-nodepend))
 include ../Mmake.common
 
 # Module-specific options should go in Mercury.options so they can be found
@@ -55,7 +58,7 @@ include Mercury.options
 
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
-%.err: %.m
+$(STD_PROGS:%=%.err): %.err: %.m
 	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
 		> $*.err 2>&1; \
 	then false; \
@@ -70,9 +73,9 @@ else
 # error messages, once while making interface files, then the module proper.
 # The second time the command is run, only one set of error messages
 # should appear.
-$(addsuffix .err,$(PROGS)):
+$(STD_PROGS:%=%.err):
 	-$(MCM) $@
-	if $(MCM) -r $@ > /dev/null 2>&1 ; \
+	if $(MCM) -r $@ > /dev/null 2>&1; \
 	then false; \
 	else true; \
 	fi
@@ -81,7 +84,7 @@ endif
 
 # For these test cases, the bug is caught when generating dependencies,
 # so it is easiest just to do that step.
-$(addsuffix .err,$(DO_NOT_MAKE_DEP_PROGS)): %.err: %.m
+$(MAKE_DEP_ONLY_PROGS:%=%.err): %.err: %.m
 	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
 		--generate-dependencies $* > $*.err 2>&1; \
 	then false; \

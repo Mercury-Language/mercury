@@ -6,7 +6,7 @@ TESTS_DIR = ..
 THIS_DIR = invalid_purity
 MAYBE_J1 =
 
-PROGS = \
+STD_PROGS = \
 	impure_func_t2 \
 	impure_func_t3 \
 	impure_func_t4 \
@@ -20,10 +20,13 @@ PROGS = \
 	pragma_c_and_mercury \
 	purity \
 	purity_nonsense \
-	purity_nonsense2-nodepend \
 	purity_type_error
 
-TESTS = $(PROGS)
+NODEPEND_PROGS = \
+	purity_nonsense2
+
+PROGS = $(STD_PROGS) $(NODEPEND_PROGS)
+TESTS = $(STD_PROGS) $(NODEPEND_PROGS:%=%-nodepend)
 include ../Mmake.common
 
 # These tests all get spurious failures with intermodule optimization,
@@ -43,16 +46,21 @@ include Mercury.options
 
 #-----------------------------------------------------------------------------#
 
-# See ../Mmakefile explanation of this.
+# See ../Mmakefile for an explanation of this.
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
-%.err: %.m
+$(PROGS:%=%.err): %.err: %.m
 	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) --errorcheck-only $* \
 		> $*.err 2>&1; \
-	then false; else true; fi
+	then false; \
+	else true; \
+	fi
 else
-$(addsuffix .err,$(PROGS)):
+$(PROGS:%=%.err):
 	-$(MCM) $@
-	if $(MCM) -r $@ > /dev/null 2>&1 ; then false; else true; fi
+	if $(MCM) -r $@ > /dev/null 2>&1; \
+	then false; \
+	else true; \
+	fi
 endif
 
 clean_local: clean_invalid_purity

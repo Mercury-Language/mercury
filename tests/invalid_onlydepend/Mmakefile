@@ -22,7 +22,7 @@ include Mercury.options
 
 #-----------------------------------------------------------------------------#
 
-%.err: %.m
+$(PROGS:%=%.err): %.err: %.m
 	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) --generate-dependencies \
 		$* > $*.err 2>&1; \
 	then false; \
