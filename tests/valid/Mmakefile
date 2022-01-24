@@ -91,6 +91,7 @@ OTHER_PROGS = \
 	bug486 \
 	bug493 \
 	bug51 \
+	bug510 \
 	bug512 \
 	bug539 \
 	bug85 \
