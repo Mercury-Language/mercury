@@ -28,13 +28,96 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.parse_error.
-:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module set.
+
+%---------------------------------------------------------------------------%
+
+    % The "baggage" of a module is the information the compiler may need
+    % to know about the process of reading in both that module, and the other
+    % modules needed to augment it.
+    %
+:- type module_baggage
+    --->    module_baggage(
+                % The name of the source file and directory
+                % containing the module source.
+                %
+                % Currently, the source_file dir field is *always* set
+                % to dir.this_directory, so strictly speaking, this field
+                % is redundant. However, there are arguments for keeping it.
+                %
+                % 1. In the future, we may want to support reading in
+                %    source files from places other than the current dir.
+                %
+                % 2. The source_file_dir field in the module_dep_summary
+                %    structure is set by searching for a .module_dep summary
+                %    file in a search path, so its contents need not be
+                %    the current directory. Keeping it here as well
+                %    is consistent with that.
+                %
+                % 3. A typical compiler execution creates few values
+                %    of this type, so the cost of keeping this field
+                %    is negligible.
+                mb_source_file_name         :: file_name,
+                mb_source_file_dir          :: dir_name,
+
+                % The name of the top-level module in the above source file.
+                mb_source_file_module_name  :: module_name,
+
+                % The other modules included in the same source file,
+                % if this module is the top-level module in its file.
+                %
+                % Invariant: this is top_module(...) if and only if
+                % source_file_name = source_file_module_name.
+                mb_maybe_top_module         :: maybe_top_module,
+
+                % If we are doing smart recompilation, we need to keep
+                % the timestamps of the modules read in.
+                mb_maybe_timestamp_map      :: maybe(module_timestamp_map),
+
+                mb_grabbed_file_map         :: grabbed_file_map,
+
+                % Whether an error has been encountered when reading in
+                % this module.
+                mb_specs                    :: list(error_spec),
+                mb_errors                   :: read_module_errors
+            ).
+
+    % A "burdened" augmented compilation unit contains, besides the augmented
+    % compilation unit itself, the "baggage" of the module parse trees
+    % (source, interface file, and optimization file) that the augmented
+    % compilation unit consists of.
+    %
+:- type burdened_aug_comp_unit
+    --->    burdened_aug_comp_unit(
+                bacu_baggage    :: module_baggage,
+                bacu_acu        :: aug_compilation_unit
+            ).
+
+%---------------------------------------------------------------------------%
+% The following sections define the types holding baggage components,
+% and operations on those types.
+%---------------------------------------------------------------------------%
+
+:- type maybe_top_module
+    --->    top_module(set(module_name))
+            % This module is the top module in its source file,
+            % and the argument gives the names of all its descendants
+            % (i.e. its children, its children's children, and so on).
+    ;       not_top_module.
+            % This module is NOT the top module in its source file.
+
+    % Return the module's nested childred IF it is a top module.
+    % Otherwise, return the empty set or list.
+    %
+:- func get_nested_children_of_top_module(maybe_top_module) =
+    set(module_name).
+:- func get_nested_children_list_of_top_module(maybe_top_module) =
+    list(module_name).
 
 %---------------------------------------------------------------------------%
 
@@ -144,78 +227,6 @@
 :- type grabbed_file_map == map(module_name, grabbed_file).
 
 %---------------------------------------------------------------------------%
-
-:- type maybe_top_module
-    --->    top_module(set(module_name))
-            % This module is the top module in its source file,
-            % and the argument gives the names of all its descendants
-            % (i.e. its children, its children's children, and so on).
-    ;       not_top_module.
-            % This module is NOT the top module in its source file.
-
-    % Return the module's nested childred IF it is a top module.
-    % Otherwise, return the empty set or list.
-    %
-:- func get_nested_children_of_top_module(maybe_top_module) = set(module_name).
-:- func get_nested_children_list_of_top_module(maybe_top_module) =
-    list(module_name).
-
-%---------------------------------------------------------------------------%
-
-:- type module_baggage
-    --->    module_baggage(
-                % The name of the source file and directory
-                % containing the module source.
-                %
-                % Currently, the source_file dir field is *always* set
-                % to dir.this_directory, so strictly speaking, this field
-                % is redundant. However, there are arguments for keeping it.
-                %
-                % 1. In the future, we may want to support reading in
-                %    source files from places other than the current dir.
-                %
-                % 2. The source_file_dir field in the module_dep_summary
-                %    structure is set by searching for a .module_dep summary
-                %    file in a search path, so its contents need not be
-                %    the current directory. Keeping it here as well
-                %    is consistent with that.
-                %
-                % 3. A typical compiler execution creates few values
-                %    of this type, so the cost of keeping this field
-                %    is negligible.
-                mb_source_file_name         :: file_name,
-                mb_source_file_dir          :: dir_name,
-
-                % The name of the top-level module in the above source file.
-                mb_source_file_module_name  :: module_name,
-
-                % The other modules included in the same source file,
-                % if this module is the top-level module in its file.
-                %
-                % Invariant: this is top_module(...) if and only if
-                % source_file_name = source_file_module_name.
-                mb_maybe_top_module         :: maybe_top_module,
-
-                % If we are doing smart recompilation, we need to keep
-                % the timestamps of the modules read in.
-                mb_maybe_timestamp_map      :: maybe(module_timestamp_map),
-
-                mb_grabbed_file_map         :: grabbed_file_map,
-
-                % Whether an error has been encountered when reading in
-                % this module.
-                mb_specs                    :: list(error_spec),
-                mb_errors                   :: read_module_errors
-            ).
-
-%---------------------------------------------------------------------------%
-
-:- type burdened_aug_comp_unit
-    --->    burdened_aug_comp_unit(
-                bacu_baggage    :: module_baggage,
-                bacu_acu        :: aug_compilation_unit
-            ).
-
 %---------------------------------------------------------------------------%
 
     % This predicate is used by
@@ -245,59 +256,13 @@
     set(module_name)::out, set(module_name)::out) is det.
 
 %---------------------------------------------------------------------------%
-
-:- type module_dep_info
-    --->    module_dep_info_imports(burdened_aug_comp_unit)
-    ;       module_dep_info_summary(module_dep_summary).
-
-:- type module_dep_summary
-    --->    module_dep_summary(
-                mds_source_file_name        :: string,
-                mds_source_file_dir         :: string,
-                mds_source_file_module_name :: module_name,
-                mds_module_name             :: module_name,
-                mds_children                :: set(module_name),
-                mds_maybe_top_module        :: maybe_top_module,
-                mds_int_deps                :: set(module_name),
-                mds_imp_deps                :: set(module_name),
-                mds_fact_table_file_names   :: set(string),
-                mds_fims                    :: set(fim_spec),
-                mds_foreign_include_files   :: set(foreign_include_file_info),
-                mds_contains_foreign_code   :: contains_foreign_code,
-                mds_contains_foreign_export :: contains_foreign_export
-            ).
-
-:- pred module_dep_info_get_source_file_name(module_dep_info::in,
-    string::out) is det.
-:- pred module_dep_info_get_source_file_dir(module_dep_info::in,
-    string::out) is det.
-:- pred module_dep_info_get_source_file_module_name(module_dep_info::in,
-    module_name::out) is det.
-:- pred module_dep_info_get_module_name(module_dep_info::in,
-    module_name::out) is det.
-:- pred module_dep_info_get_children(module_dep_info::in,
-    set(module_name)::out) is det.
-:- pred module_dep_info_get_maybe_top_module(module_dep_info::in,
-    maybe_top_module::out) is det.
-:- pred module_dep_info_get_int_deps(module_dep_info::in,
-    set(module_name)::out) is det.
-:- pred module_dep_info_get_imp_deps(module_dep_info::in,
-    set(module_name)::out) is det.
-:- pred module_dep_info_get_fact_tables(module_dep_info::in,
-    set(string)::out) is det.
-:- pred module_dep_info_get_fims(module_dep_info::in,
-    set(fim_spec)::out) is det.
-:- pred module_dep_info_get_foreign_include_files(module_dep_info::in,
-    set(foreign_include_file_info)::out) is det.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.split_parse_tree_src.
 
 :- import_module cord.
@@ -438,125 +403,6 @@ section_import_and_or_use_int_imp(SectionImportUse) = Section :-
         ; SectionImportUse = imp_use(_)
         ),
         Section = ms_implementation
-    ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-module_dep_info_get_source_file_name(ModuleDepInfo, X) :-
-    (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        Baggage = BurdenedAugCompUnit ^ bacu_baggage,
-        X = Baggage ^ mb_source_file_name
-    ;
-        ModuleDepInfo = module_dep_info_summary(Summary),
-        X = Summary ^ mds_source_file_name
-    ).
-
-module_dep_info_get_source_file_dir(ModuleDepInfo, X) :-
-    (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        Baggage = BurdenedAugCompUnit ^ bacu_baggage,
-        X = Baggage ^ mb_source_file_dir
-    ;
-        ModuleDepInfo = module_dep_info_summary(Summary),
-        X = Summary ^ mds_source_file_dir
-    ).
-
-module_dep_info_get_source_file_module_name(ModuleDepInfo, X) :-
-    (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        Baggage = BurdenedAugCompUnit ^ bacu_baggage,
-        X = Baggage ^ mb_source_file_module_name
-    ;
-        ModuleDepInfo = module_dep_info_summary(Summary),
-        X = Summary ^ mds_source_file_module_name
-    ).
-
-module_dep_info_get_module_name(ModuleDepInfo, X) :-
-    (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
-        X = ParseTreeModuleSrc ^ ptms_module_name
-    ;
-        ModuleDepInfo = module_dep_info_summary(Summary),
-        X = Summary ^ mds_module_name
-    ).
-
-module_dep_info_get_children(ModuleDepInfo, X) :-
-    (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
-        IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
-        X = map.keys_as_set(IncludeMap)
-    ;
-        ModuleDepInfo = module_dep_info_summary(Summary),
-        X = Summary ^ mds_children
-    ).
-
-module_dep_info_get_maybe_top_module(ModuleDepInfo, X) :-
-    (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        Baggage = BurdenedAugCompUnit ^ bacu_baggage,
-        X = Baggage ^ mb_maybe_top_module
-    ;
-        ModuleDepInfo = module_dep_info_summary(Summary),
-        X = Summary ^ mds_maybe_top_module
-    ).
-
-module_dep_info_get_int_deps(ModuleDepInfo, X) :-
-    (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-        aug_compilation_unit_get_int_imp_deps(AugCompUnit, X, _)
-    ;
-        ModuleDepInfo = module_dep_info_summary(Summary),
-        X = Summary ^ mds_int_deps
-    ).
-
-module_dep_info_get_imp_deps(ModuleDepInfo, X) :-
-    (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-        aug_compilation_unit_get_int_imp_deps(AugCompUnit, _, X)
-    ;
-        ModuleDepInfo = module_dep_info_summary(Summary),
-        X = Summary ^ mds_imp_deps
-    ).
-
-module_dep_info_get_fact_tables(ModuleDepInfo, X) :-
-    (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
-        get_fact_tables(ParseTreeModuleSrc, X)
-    ;
-        ModuleDepInfo = module_dep_info_summary(Summary),
-        X = Summary ^ mds_fact_table_file_names
-    ).
-
-module_dep_info_get_fims(ModuleDepInfo, X) :-
-    (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
-        get_fim_specs(ParseTreeModuleSrc, X)
-    ;
-        ModuleDepInfo = module_dep_info_summary(Summary),
-        X = Summary ^ mds_fims
-    ).
-
-module_dep_info_get_foreign_include_files(ModuleDepInfo, X) :-
-    (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
-        get_foreign_include_file_infos(ParseTreeModuleSrc, X)
-    ;
-        ModuleDepInfo = module_dep_info_summary(Summary),
-        X = Summary ^ mds_foreign_include_files
     ).
 
 %---------------------------------------------------------------------------%

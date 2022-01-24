@@ -26,7 +26,7 @@
 :- import_module make.dependencies.
 :- import_module make.make_info.
 :- import_module parse_tree.
-:- import_module parse_tree.module_imports.
+:- import_module parse_tree.module_dep_info.
 
 :- import_module io.
 :- import_module list.
@@ -98,6 +98,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
+:- import_module parse_tree.module_imports.
 :- import_module parse_tree.prog_foreign.
 :- import_module top_level.                      % XXX unwanted dependency
 :- import_module top_level.mercury_compile_main. % XXX unwanted dependency

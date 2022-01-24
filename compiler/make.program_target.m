@@ -73,8 +73,8 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.
+:- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.module_deps_graph.
-:- import_module parse_tree.module_imports.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
 :- import_module transform_hlds.

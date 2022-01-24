@@ -457,11 +457,14 @@ exports anything.
 generate_dep_d_files.m generates the information from which
 write_deps_file.m writes out Makefile fragments.
 <li>
-module_imports.m contains the module_imports type and its access
-predicates.
+module_imports.m contains the module_baggage type,
+the types of its components, and utility predicates.
 <li>
 get_dependencies.m contains predicates that compute various sorts of
 direct dependencies (those caused by imports) between modules.
+<li>
+module_dep_info.m defines data structures for recording,
+for a given module, which other modules it depends on, and how.
 <li>
 deps_map.m and module_deps_graph.m contain data structures
 for recording indirect dependencies between modules,

@@ -169,6 +169,7 @@
 :- import_module make.util.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.module_imports.
 :- import_module parse_tree.prog_data_foreign.
 

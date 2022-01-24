@@ -29,7 +29,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.module_imports.
+:- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.read_modules.
 
 :- import_module list.

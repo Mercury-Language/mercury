@@ -264,7 +264,7 @@
 :- import_module analysis.
 :- import_module make.build.
 :- import_module make.module_dep_file.
-:- import_module parse_tree.module_imports.
+:- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.prog_foreign.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.

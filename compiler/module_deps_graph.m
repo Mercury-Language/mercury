@@ -20,7 +20,7 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.module_imports.
+:- import_module parse_tree.module_dep_info.
 
 :- import_module digraph.
 

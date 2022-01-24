@@ -72,6 +72,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
+:- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.module_deps_graph.
 :- import_module parse_tree.module_imports.
 :- import_module parse_tree.parse_error.
