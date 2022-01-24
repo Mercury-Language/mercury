@@ -688,15 +688,22 @@ llds_output_pass(OpModeCodeGen, HLDS, GlobalData0, Procs, ModuleName,
     % Split the code up into bite-size chunks for the C compiler.
     globals.get_opt_tuple(Globals, OptTuple),
     JustOneCFunc = OptTuple ^ ot_use_just_one_c_func,
+    % Three test cases, tests/hard_coded/backend_external*.m,
+    % include hand-written C modules as a text of ":- external" pragmas.
+    % The name of these hand-written C modules clashes with CModuleName.
+    % The simplest way to avoid such clashes which are detectable only
+    % at the high optimization levels at which use_just_one_c_func
+    % is turned on (see Mantis bug #543) is to use the same machinery
+    % to generate C modules *with* use_just_one_c_func as *without* it.
     (
         JustOneCFunc = use_just_one_c_func,
-        ChunkedModules = [comp_gen_c_module(CModuleName, Procs)]
+        ChunkedProcs = [Procs]
     ;
         JustOneCFunc = do_not_use_just_one_c_func,
         ProcsPerFunc = OptTuple ^ ot_procs_per_c_function,
-        list.chunk(Procs, ProcsPerFunc, ChunkedProcs),
-        combine_chunks(ChunkedProcs, CModuleName, ChunkedModules)
+        list.chunk(Procs, ProcsPerFunc, ChunkedProcs)
     ),
+    proc_chunks_to_c_modules(CModuleName, ChunkedProcs, ChunkedModules),
     list.map_foldl(make_foreign_import_header_code(Globals), C_Includes,
         C_IncludeHeaderCodes, !IO),
 
@@ -863,22 +870,21 @@ make_foreign_import_header_code(Globals, FIMSpec, Include, !IO) :-
             "`:- pragma foreign_import_module' for Java")
     ).
 
-:- pred combine_chunks(list(list(c_procedure))::in, string::in,
+:- pred proc_chunks_to_c_modules(string::in, list(list(c_procedure))::in,
     list(comp_gen_c_module)::out) is det.
 
-combine_chunks(ChunkList, ModName, Modules) :-
-    combine_chunks_2(ChunkList, ModName, 0, Modules).
+proc_chunks_to_c_modules(ModName, ChunkList, Modules) :-
+    proc_chunks_to_c_modules_loop(ModName, 0, ChunkList, Modules).
 
-:- pred combine_chunks_2(list(list(c_procedure))::in,
-    string::in, int::in, list(comp_gen_c_module)::out) is det.
+:- pred proc_chunks_to_c_modules_loop(string::in, int::in,
+    list(list(c_procedure))::in, list(comp_gen_c_module)::out) is det.
 
-combine_chunks_2([], _ModName, _N, []).
-combine_chunks_2([Chunk | Chunks], ModuleName, Num, [Module | Modules]) :-
+proc_chunks_to_c_modules_loop(_CModuleName, _Num, [], []).
+proc_chunks_to_c_modules_loop(CModuleName, Num,
+        [Chunk | Chunks], [Module | Modules]) :-
     string.int_to_string(Num, NumString),
-    ThisModuleName = ModuleName ++ NumString,
-    Module = comp_gen_c_module(ThisModuleName, Chunk),
-    Num1 = Num + 1,
-    combine_chunks_2(Chunks, ModuleName, Num1, Modules).
+    Module = comp_gen_c_module(CModuleName ++ NumString, Chunk),
+    proc_chunks_to_c_modules_loop(CModuleName, Num + 1, Chunks, Modules).
 
 :- pred output_llds_file(globals::in, c_file::in, maybe_succeeded::out,
     io::di, io::uo) is det.
