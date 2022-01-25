@@ -37,7 +37,7 @@
     %   by module_dep_info_summary).
     %
 :- type module_dep_info
-    --->    module_dep_info_imports(burdened_aug_comp_unit)
+    --->    module_dep_info_full(burdened_module)
     ;       module_dep_info_summary(module_dep_summary).
 
 :- type module_dep_summary
@@ -97,8 +97,8 @@
 
 module_dep_info_get_source_file_name(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        Baggage = BurdenedAugCompUnit ^ bacu_baggage,
+        ModuleDepInfo = module_dep_info_full(BurdenedModule),
+        Baggage = BurdenedModule ^ bm_baggage,
         X = Baggage ^ mb_source_file_name
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -107,8 +107,8 @@ module_dep_info_get_source_file_name(ModuleDepInfo, X) :-
 
 module_dep_info_get_source_file_dir(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        Baggage = BurdenedAugCompUnit ^ bacu_baggage,
+        ModuleDepInfo = module_dep_info_full(BurdenedModule),
+        Baggage = BurdenedModule ^ bm_baggage,
         X = Baggage ^ mb_source_file_dir
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -117,8 +117,8 @@ module_dep_info_get_source_file_dir(ModuleDepInfo, X) :-
 
 module_dep_info_get_source_file_module_name(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        Baggage = BurdenedAugCompUnit ^ bacu_baggage,
+        ModuleDepInfo = module_dep_info_full(BurdenedModule),
+        Baggage = BurdenedModule ^ bm_baggage,
         X = Baggage ^ mb_source_file_module_name
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -127,9 +127,8 @@ module_dep_info_get_source_file_module_name(ModuleDepInfo, X) :-
 
 module_dep_info_get_module_name(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+        ModuleDepInfo = module_dep_info_full(BurdenedModule),
+        ParseTreeModuleSrc = BurdenedModule ^ bm_module,
         X = ParseTreeModuleSrc ^ ptms_module_name
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -138,9 +137,8 @@ module_dep_info_get_module_name(ModuleDepInfo, X) :-
 
 module_dep_info_get_children(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+        ModuleDepInfo = module_dep_info_full(BurdenedModule),
+        ParseTreeModuleSrc = BurdenedModule ^ bm_module,
         IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
         X = map.keys_as_set(IncludeMap)
     ;
@@ -150,8 +148,8 @@ module_dep_info_get_children(ModuleDepInfo, X) :-
 
 module_dep_info_get_maybe_top_module(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        Baggage = BurdenedAugCompUnit ^ bacu_baggage,
+        ModuleDepInfo = module_dep_info_full(BurdenedModule),
+        Baggage = BurdenedModule ^ bm_baggage,
         X = Baggage ^ mb_maybe_top_module
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -160,9 +158,9 @@ module_dep_info_get_maybe_top_module(ModuleDepInfo, X) :-
 
 module_dep_info_get_int_deps(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-        aug_compilation_unit_get_int_imp_deps(AugCompUnit, X, _)
+        ModuleDepInfo = module_dep_info_full(BurdenedModule),
+        ParseTreeModuleSrc = BurdenedModule ^ bm_module,
+        parse_tree_module_src_get_int_imp_deps(ParseTreeModuleSrc, X, _)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_int_deps
@@ -170,9 +168,9 @@ module_dep_info_get_int_deps(ModuleDepInfo, X) :-
 
 module_dep_info_get_imp_deps(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-        aug_compilation_unit_get_int_imp_deps(AugCompUnit, _, X)
+        ModuleDepInfo = module_dep_info_full(BurdenedModule),
+        ParseTreeModuleSrc = BurdenedModule ^ bm_module,
+        parse_tree_module_src_get_int_imp_deps(ParseTreeModuleSrc, _, X)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_imp_deps
@@ -180,9 +178,8 @@ module_dep_info_get_imp_deps(ModuleDepInfo, X) :-
 
 module_dep_info_get_fact_tables(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+        ModuleDepInfo = module_dep_info_full(BurdenedModule),
+        ParseTreeModuleSrc = BurdenedModule ^ bm_module,
         get_fact_tables(ParseTreeModuleSrc, X)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -191,9 +188,8 @@ module_dep_info_get_fact_tables(ModuleDepInfo, X) :-
 
 module_dep_info_get_fims(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+        ModuleDepInfo = module_dep_info_full(BurdenedModule),
+        ParseTreeModuleSrc = BurdenedModule ^ bm_module,
         get_fim_specs(ParseTreeModuleSrc, X)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
@@ -202,9 +198,8 @@ module_dep_info_get_fims(ModuleDepInfo, X) :-
 
 module_dep_info_get_foreign_include_files(ModuleDepInfo, X) :-
     (
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
-        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+        ModuleDepInfo = module_dep_info_full(BurdenedModule),
+        ParseTreeModuleSrc = BurdenedModule ^ bm_module,
         get_foreign_include_file_infos(ParseTreeModuleSrc, X)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),

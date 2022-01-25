@@ -37,7 +37,7 @@
 :- type deps
     --->    deps(
                 have_processed,
-                burdened_aug_comp_unit
+                burdened_module
             ).
 
 :- type have_processed
@@ -83,7 +83,7 @@
     %
     % XXX This shouldn't need to be exported.
     %
-:- pred insert_into_deps_map(burdened_aug_comp_unit::in,
+:- pred insert_into_deps_map(burdened_module::in,
     deps_map::in, deps_map::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -104,12 +104,12 @@
 %---------------------------------------------------------------------------%
 
 get_submodule_kind(ModuleName, DepsMap) = Kind :-
-    Ancestors = get_ancestors(ModuleName),
-    ( if list.last(Ancestors, Parent) then
-        map.lookup(DepsMap, ModuleName, deps(_, BurdenedAugCompUnit)),
-        map.lookup(DepsMap, Parent, deps(_, ParentImportsAndBaggage)),
-        ModuleBaggage = BurdenedAugCompUnit ^ bacu_baggage,
-        ParentBaggage = ParentImportsAndBaggage ^ bacu_baggage,
+    (
+        ModuleName = qualified(Parent, _),
+        map.lookup(DepsMap, ModuleName, deps(_, BurdenedModule)),
+        map.lookup(DepsMap, Parent, deps(_, ParentBurdenedModule)),
+        ModuleBaggage = BurdenedModule ^ bm_baggage,
+        ParentBaggage = ParentBurdenedModule ^ bm_baggage,
         ModuleFileName = ModuleBaggage ^ mb_source_file_name,
         ParentFileName = ParentBaggage ^ mb_source_file_name,
         ( if ModuleFileName = ParentFileName then
@@ -117,7 +117,8 @@ get_submodule_kind(ModuleName, DepsMap) = Kind :-
         else
             Kind = separate_submodule
         )
-    else
+    ;
+        ModuleName = unqualified(_),
         Kind = toplevel
     ).
 
@@ -167,16 +168,15 @@ generate_deps_map_step(Globals, Search, Module, ExpectationContexts,
     % and public children to the list of dependencies we need to generate,
     % and mark it as having been processed.
     % XXX Why only the *public* children?
-    Deps0 = deps(Done0, BurdenedAugCompUnit),
+    Deps0 = deps(Done0, BurdenedModule),
     (
         Done0 = not_yet_processed,
-        Deps = deps(already_processed, BurdenedAugCompUnit),
+        Deps = deps(already_processed, BurdenedModule),
         map.det_update(Module, Deps, !DepsMap),
-        AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
         % We could keep a list of the modules we have already processed
         % and subtract it from the sets of modules we add here, but doing that
         % actually leads to a small slowdown.
-        ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+        ParseTreeModuleSrc = BurdenedModule ^ bm_module,
 
         ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
         AncestorModuleNames = get_ancestors_set(ModuleName),
@@ -291,16 +291,15 @@ lookup_or_find_dependencies(Globals, Search, ModuleName, ExpectationContexts,
         Deps = DepsPrime
     else
         read_dependencies(Globals, Search, ModuleName, ExpectationContexts,
-            ModuleImportsList, !Specs, !IO),
-        list.foldl(insert_into_deps_map, ModuleImportsList, !DepsMap),
+            BurdenedModuleList, !Specs, !IO),
+        list.foldl(insert_into_deps_map, BurdenedModuleList, !DepsMap),
         map.lookup(!.DepsMap, ModuleName, Deps)
     ).
 
-insert_into_deps_map(BurdenedAugCompUnit, !DepsMap) :-
-    AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+insert_into_deps_map(BurdenedModule, !DepsMap) :-
+    ParseTreeModuleSrc = BurdenedModule ^ bm_module,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    Deps = deps(not_yet_processed, BurdenedAugCompUnit),
+    Deps = deps(not_yet_processed, BurdenedModule),
     map.set(ModuleName, Deps, !DepsMap).
 
     % Read a module to determine the (direct) dependencies of that module
@@ -308,21 +307,19 @@ insert_into_deps_map(BurdenedAugCompUnit, !DepsMap) :-
     % structure for the named module, and each of its nested submodules.
     %
 :- pred read_dependencies(globals::in, maybe_search::in,
-    module_name::in, expectation_contexts::in,
-    list(burdened_aug_comp_unit)::out,
+    module_name::in, expectation_contexts::in, list(burdened_module)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 read_dependencies(Globals, Search, ModuleName, ExpectationContexts,
-        BurdenedAugCompUnitList, !Specs, !IO) :-
+        BurdenedModules, !Specs, !IO) :-
     % XXX If SrcSpecs contains error messages, the parse tree may not be
     % complete, and the rest of this predicate may work on incorrect data.
     read_module_src(Globals, rrm_get_deps(ModuleName), ignore_errors, Search,
         ModuleName, ExpectationContexts, SourceFileName,
         always_read_module(dont_return_timestamp), _,
         ParseTreeSrc, SrcSpecs, SrcReadModuleErrors, !IO),
-    parse_tree_src_to_burdened_aug_comp_unit_list(Globals, SourceFileName,
-        ParseTreeSrc, SrcReadModuleErrors, SrcSpecs, Specs,
-        BurdenedAugCompUnitList),
+    parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
+        ParseTreeSrc, SrcReadModuleErrors, SrcSpecs, Specs, BurdenedModules),
     !:Specs = Specs ++ !.Specs.
 
 %---------------------------------------------------------------------------%

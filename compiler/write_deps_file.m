@@ -38,7 +38,7 @@
                 id_fim_deps         :: set(module_name)
             ).
 
-    % write_dependency_file(Globals, ModuleAndImports, MaybeIntermodDeps,
+    % write_dependency_file(Globals, BurdenedAugCompUnit, MaybeIntermodDeps,
     %   AllDeps, MaybeTransOptDeps, !IO):
     %
     % Write out the per-module makefile dependencies (`.d') file for the
@@ -53,12 +53,13 @@
     % XXX The MaybeIntermodDeps allows generate_dependencies_write_d_file
     % to supply some information derived from the overall dependency graph
     % that is intended to override the values of some of the fields in
-    % ModuleAndImports. These used to be passed in ModuleAndImports itself,
-    % but they do not actually belong there, since the overridden fields
-    % are supposed to be *solely* from the main module in ModuleAndImports.
-    % As to *why* this overriding is desirable, I (zs) don't know,
-    % and I am pretty sure that the original author (fjh) does not know
-    % anymore either :-(
+    % BurdenedAugCompUnit. These used to be passed in a ModuleAndImports
+    % argument itself (the predecessor of BurdenedAugCompUnit), but they
+    % do not actually belong there, since the overridden fields are
+    % supposed to be *solely* from the main module in BurdenedAugCompUnit.
+    % As to *why* this overriding is desirable, I (zs) don't know, and
+    % I am pretty sure that the original author (fjh) does not know anymore
+    % either :-(
     %
 :- pred write_dependency_file(globals::in, burdened_aug_comp_unit::in,
     maybe_intermod_deps::in, set(module_name)::in,
@@ -268,8 +269,7 @@ write_dependency_file(Globals, BurdenedAugCompUnit, IntermodDeps, AllDeps,
 
 generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
         AllDeps, MaybeTransOptDeps, !:MmakeFile, !IO) :-
-    BurdenedAugCompUnit =
-        burdened_aug_comp_unit(Baggage, AugCompUnit),
+    BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
     SourceFileName = Baggage ^ mb_source_file_name,
     SourceFileModuleName = Baggage ^ mb_source_file_module_name,
     MaybeTopModule = Baggage ^ mb_maybe_top_module,
@@ -1255,14 +1255,13 @@ generate_dependencies_write_d_file(Globals, Dep,
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
         TransOptOrder, _DepsMap, !IO) :-
     % XXX The fact that _DepsMap is unused here may be a bug.
-    Dep = deps(_, BurdenedAugCompUnit),
-    BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
+    Dep = deps(_, BurdenedModule),
+    BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
 
     % Look up the interface/implementation/indirect dependencies
     % for this module from the respective dependency graphs,
     % and save them in the module_and_imports structure.
 
-    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
         IndirectOptDeps),
@@ -1310,6 +1309,8 @@ generate_dependencies_write_d_file(Globals, Dep,
     Errors = Baggage ^ mb_errors,
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_empty(FatalErrors) then
+        init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit),
+        BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
         write_dependency_file(Globals, BurdenedAugCompUnit, IntermodDeps,
             IndirectOptDeps, yes(TransOptDeps), !IO)
     else
@@ -1393,9 +1394,8 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     % The modules for which we need to generate .int0 files.
     ModulesWithSubModules = list.filter(
         ( pred(Module::in) is semidet :-
-            map.lookup(DepsMap, Module, deps(_, BurdenedAugCompUnit)),
-            AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-            ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+            map.lookup(DepsMap, Module, deps(_, BurdenedModule)),
+            ParseTreeModuleSrc = BurdenedModule ^ bm_module,
             IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
             not map.is_empty(IncludeMap)
         ), Modules),
@@ -1667,8 +1667,8 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
 select_ok_modules([], _, []).
 select_ok_modules([Module | Modules0], DepsMap, Modules) :-
     select_ok_modules(Modules0, DepsMap, ModulesTail),
-    map.lookup(DepsMap, Module, deps(_, BurdenedAugCompUnit)),
-    Baggage = BurdenedAugCompUnit ^ bacu_baggage,
+    map.lookup(DepsMap, Module, deps(_, BurdenedModule)),
+    Baggage = BurdenedModule ^ bm_baggage,
     Errors = Baggage ^ mb_errors,
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_empty(FatalErrors) then
@@ -1702,9 +1702,8 @@ get_fact_table_file_names(DepsMap, Modules, FactTableFileNames) :-
 
 get_fact_table_file_names(_DepsMap, [], !FactTableFileNames).
 get_fact_table_file_names(DepsMap, [Module | Modules], !FactTableFileNames) :-
-    map.lookup(DepsMap, Module, deps(_, BurdenedAugCompUnit)),
-    AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+    map.lookup(DepsMap, Module, deps(_, BurdenedModule)),
+    ParseTreeModuleSrc = BurdenedModule ^ bm_module,
     get_fact_tables(ParseTreeModuleSrc, FactTableFileNames),
     % Handle object files for foreign code.
     % NOTE: currently none of the backends support foreign code
@@ -2079,10 +2078,9 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
     ),
     ( if
         Intermod = yes,
-        some [ModuleAndImports] (
-            map.member(DepsMap, _, deps(_, BurdenedAugCompUnit)),
-            AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-            ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+        some [BurdenedModule] (
+            map.member(DepsMap, _, deps(_, BurdenedModule)),
+            ParseTreeModuleSrc = BurdenedModule ^ bm_module,
             IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
             not map.is_empty(IncludeMap)
         )
@@ -2393,8 +2391,8 @@ remove_files_cmd(Files) =
 
 get_source_file(DepsMap, ModuleName, FileName) :-
     map.lookup(DepsMap, ModuleName, Deps),
-    Deps = deps(_, BurdenedAugCompUnit),
-    Baggage = BurdenedAugCompUnit ^ bacu_baggage,
+    Deps = deps(_, BurdenedModule),
+    Baggage = BurdenedModule ^ bm_baggage,
     SourceFileName = Baggage ^ mb_source_file_name,
     ( if string.remove_suffix(SourceFileName, ".m", SourceFileBase) then
         FileName = SourceFileBase

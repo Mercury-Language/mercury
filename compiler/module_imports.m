@@ -98,6 +98,12 @@
                 bacu_acu        :: aug_compilation_unit
             ).
 
+:- type burdened_module
+    --->    burdened_module(
+                bm_baggage      :: module_baggage,
+                bm_module       :: parse_tree_module_src
+            ).
+
 %---------------------------------------------------------------------------%
 % The following sections define the types holding baggage components,
 % and operations on those types.
@@ -242,17 +248,17 @@
     % XXX Do the callers fill in the other fields, or do they need *only*
     % the parse_tree_module_src? If the latter, we should return only *that*.
     %
-:- pred parse_tree_src_to_burdened_aug_comp_unit_list(globals::in,
+:- pred parse_tree_src_to_burdened_module_list(globals::in,
     file_name::in, parse_tree_src::in, read_module_errors::in,
     list(error_spec)::in, list(error_spec)::out,
-    list(burdened_aug_comp_unit)::out) is det.
+    list(burdened_module)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
-% Predicates for getting information from aug_compilation_units.
+% Predicates for getting information from parse_tree_module_srcs.
 %
 
-:- pred aug_compilation_unit_get_int_imp_deps(aug_compilation_unit::in,
+:- pred parse_tree_module_src_get_int_imp_deps(parse_tree_module_src::in,
     set(module_name)::out, set(module_name)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -292,8 +298,8 @@ get_nested_children_list_of_top_module(MaybeTopModule) = Modules :-
 
 %---------------------------------------------------------------------------%
 
-parse_tree_src_to_burdened_aug_comp_unit_list(Globals, SourceFileName,
-        ParseTreeSrc, ReadModuleErrors, !Specs, BurdenedAugCompUnitList) :-
+parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
+        ParseTreeSrc, ReadModuleErrors, !Specs, BurdenedModules) :-
     % XXX This predicate and augment_and_process_all_submodules
     % do very similar jobs. See whether we can unify the two.
     split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
@@ -307,18 +313,18 @@ parse_tree_src_to_burdened_aug_comp_unit_list(Globals, SourceFileName,
     % to thread a single grabbed_file_map through the augment processing
     % of all its aug_compilation_units.
     list.map(
-        maybe_nested_init_burdened_aug_comp_unit(SourceFileName,
+        maybe_nested_init_burdened_module(SourceFileName,
             TopModuleName, AllModuleNames, BaggageSpecs0, ReadModuleErrors),
-        ParseTreeModuleSrcs, BurdenedAugCompUnitList).
+        ParseTreeModuleSrcs, BurdenedModules).
 
-:- pred maybe_nested_init_burdened_aug_comp_unit(file_name::in,
+:- pred maybe_nested_init_burdened_module(file_name::in,
     module_name::in, set(module_name)::in,
     list(error_spec)::in, read_module_errors::in,
-    parse_tree_module_src::in, burdened_aug_comp_unit::out) is det.
+    parse_tree_module_src::in, burdened_module::out) is det.
 
-maybe_nested_init_burdened_aug_comp_unit(SourceFileName,
+maybe_nested_init_burdened_module(SourceFileName,
         SourceFileModuleName, AllModuleNames, Specs, Errors,
-        ParseTreeModuleSrc, BurdenedAugCompUnit) :-
+        ParseTreeModuleSrc, BurdenedModule) :-
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ( if ModuleName = SourceFileModuleName then
         set.delete(ModuleName, AllModuleNames, NestedModuleNames),
@@ -331,14 +337,12 @@ maybe_nested_init_burdened_aug_comp_unit(SourceFileName,
     Baggage = module_baggage(SourceFileName, dir.this_directory,
         SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
         GrabbedFileMap, Specs, Errors),
-    init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit),
-    BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit).
+    BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-aug_compilation_unit_get_int_imp_deps(AugCompUnit, IntDeps, ImpDeps) :-
-    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+parse_tree_module_src_get_int_imp_deps(ParseTreeModuleSrc, IntDeps, ImpDeps) :-
     ImportUseMap = ParseTreeModuleSrc ^ ptms_import_use_map,
     map.foldl2(add_module_dep, ImportUseMap,
         set.init, IntDeps, set.init, ImpDeps).

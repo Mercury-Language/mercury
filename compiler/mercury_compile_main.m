@@ -2120,8 +2120,9 @@ pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, Baggage0, AugCompUnit0,
             generate_mmc_make_module_dependencies, OutputMMCMakeDeps),
         (
             OutputMMCMakeDeps = yes,
+            BurdenedModule0 = burdened_module(Baggage0, ParseTreeModuleSrc),
             make.module_dep_file.write_module_dep_file(Globals,
-                BurdenedAugCompUnit0, !IO)
+                BurdenedModule0, !IO)
         ;
             OutputMMCMakeDeps = no
         )

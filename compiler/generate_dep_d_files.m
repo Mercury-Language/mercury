@@ -124,12 +124,12 @@ build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
         do_not_search, always_read_module(dont_return_timestamp), _,
         ParseTreeSrc, Specs0, ReadModuleErrors, !IO),
     ParseTreeSrc = parse_tree_src(ModuleName, _, _),
-    parse_tree_src_to_burdened_aug_comp_unit_list(Globals, FileNameDotM,
-        ParseTreeSrc, ReadModuleErrors, Specs0, Specs, ModuleAndImportsList),
+    parse_tree_src_to_burdened_module_list(Globals, FileNameDotM,
+        ParseTreeSrc, ReadModuleErrors, Specs0, Specs, ModuleBaggageList),
     get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
     write_error_specs(ErrorStream, Globals, Specs, !IO),
     map.init(DepsMap0),
-    list.foldl(insert_into_deps_map, ModuleAndImportsList, DepsMap0, DepsMap).
+    list.foldl(insert_into_deps_map, ModuleBaggageList, DepsMap0, DepsMap).
 
 %---------------------------------------------------------------------------%
 
@@ -149,9 +149,8 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
 
     % Check whether we could read the main `.m' file.
     map.lookup(DepsMap, ModuleName, ModuleDep),
-    ModuleDep = deps(_, BurdenedAugCompUnit),
-    BurdenedAugCompUnit =
-        burdened_aug_comp_unit(Baggage, _ModuleAndImports),
+    ModuleDep = deps(_, BurdenedModule),
+    BurdenedModule = burdened_module(Baggage, _ParseTreeModuleSrc),
     Errors = Baggage ^ mb_errors,
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_non_empty(FatalErrors) then
@@ -268,12 +267,12 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
 deps_list_to_deps_graph([], _, !IntDepsGraph, !ImplDepsGraph).
 deps_list_to_deps_graph([Deps | DepsList], DepsMap,
         !IntDepsGraph, !ImplDepsGraph) :-
-    Deps = deps(_, BurdenedAugCompUnit),
-    Baggage = BurdenedAugCompUnit ^ bacu_baggage,
+    Deps = deps(_, BurdenedModule),
+    Baggage = BurdenedModule ^ bm_baggage,
     ModuleErrors = Baggage ^ mb_errors,
     set.intersect(ModuleErrors, fatal_read_module_errors, FatalModuleErrors),
     ( if set.is_empty(FatalModuleErrors) then
-        ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
+        ModuleDepInfo = module_dep_info_full(BurdenedModule),
         add_module_dep_info_to_deps_graph(ModuleDepInfo,
             lookup_module_and_imports_in_deps_map(DepsMap),
             !IntDepsGraph, !ImplDepsGraph)
@@ -287,8 +286,8 @@ deps_list_to_deps_graph([Deps | DepsList], DepsMap,
 
 lookup_module_and_imports_in_deps_map(DepsMap, ModuleName)
         = ModuleDepInfo :-
-    map.lookup(DepsMap, ModuleName, deps(_, ModuleAndImports)),
-    ModuleDepInfo = module_dep_info_imports(ModuleAndImports).
+    map.lookup(DepsMap, ModuleName, deps(_, BurdenedModule)),
+    ModuleDepInfo = module_dep_info_full(BurdenedModule).
 
 %---------------------------------------------------------------------------%
 

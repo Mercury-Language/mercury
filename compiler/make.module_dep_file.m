@@ -38,7 +38,7 @@
     maybe_module_dep_info::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-:- pred write_module_dep_file(globals::in, burdened_aug_comp_unit::in,
+:- pred write_module_dep_file(globals::in, burdened_module::in,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -323,13 +323,11 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
 
 %---------------------------------------------------------------------------%
 
-write_module_dep_file(Globals, BurdenedAugCompUnit0, !IO) :-
-    BurdenedAugCompUnit0 = burdened_aug_comp_unit(Baggage0, AugCompUnit0),
+write_module_dep_file(Globals, BurdenedModule0, !IO) :-
+    BurdenedModule0 = burdened_module(Baggage0, ParseTreeModuleSrc),
     Baggage0 = module_baggage(SourceFileName, _SourceFileDir,
         SourceFileModuleName, MaybeTopModule, _MaybeTimestampMap,
         _GrabbedFileMap, Specs, _Errors),
-    AugCompUnit0 = aug_compilation_unit(ParseTreeModuleSrc,
-        _, _, _, _, _, _, _, _),
 
     MaybeTimestampMap = maybe.no,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
@@ -339,27 +337,14 @@ write_module_dep_file(Globals, BurdenedAugCompUnit0, !IO) :-
         SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
         GrabbedFileMap, Specs, Errors),
 
-    map.init(AncestorIntSpecs),
-    map.init(DirectIntSpecs),
-    map.init(IndirectIntSpecs),
-    map.init(PlainOpts),
-    map.init(TransOpts),
-    map.init(IntForOptSpecs),
-    map.init(TypeRepnSpecs),
-    map.init(VersionNumbers),
-    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
-        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs, VersionNumbers),
+    BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
+    do_write_module_dep_file(Globals, BurdenedModule, !IO).
 
-    BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
-    do_write_module_dep_file(Globals, BurdenedAugCompUnit, !IO).
-
-:- pred do_write_module_dep_file(globals::in, burdened_aug_comp_unit::in,
+:- pred do_write_module_dep_file(globals::in, burdened_module::in,
     io::di, io::uo) is det.
 
-do_write_module_dep_file(Globals, BurdenedAugCompUnit, !IO) :-
-    BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
-    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+do_write_module_dep_file(Globals, BurdenedModule, !IO) :-
+    BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(make_module_dep_file_extension),
@@ -368,7 +353,7 @@ do_write_module_dep_file(Globals, BurdenedAugCompUnit, !IO) :-
     (
         ProgDepResult = ok(ProgDepStream),
         do_write_module_dep_file_to_stream(ProgDepStream, Globals,
-            Baggage, AugCompUnit, !IO),
+            Baggage, ParseTreeModuleSrc, !IO),
         io.close_output(ProgDepStream, !IO)
     ;
         ProgDepResult = error(Error),
@@ -379,23 +364,23 @@ do_write_module_dep_file(Globals, BurdenedAugCompUnit, !IO) :-
     ).
 
 :- pred do_write_module_dep_file_to_stream(io.text_output_stream::in,
-    globals::in, module_baggage::in, aug_compilation_unit::in,
+    globals::in, module_baggage::in, parse_tree_module_src::in,
     io::di, io::uo) is det.
 
-do_write_module_dep_file_to_stream(Stream, Globals, Baggage, AugCompUnit,
-        !IO) :-
+do_write_module_dep_file_to_stream(Stream, Globals,
+        Baggage, ParseTreeModuleSrc, !IO) :-
     Version = module_dep_file_v2,
     version_number(Version, VersionNumber),
     SourceFileName = Baggage ^ mb_source_file_name,
     SourceFileModuleName = Baggage ^ mb_source_file_module_name,
     SourceFileModuleNameStr =
         mercury_bracketed_sym_name_to_string(SourceFileModuleName),
-    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     Ancestors = set.to_sorted_list(get_ancestors_set(ModuleName)),
     IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
     Children = map.keys(IncludeMap),
-    aug_compilation_unit_get_int_imp_deps(AugCompUnit, IntDepSet, ImpDepSet),
+    parse_tree_module_src_get_int_imp_deps(ParseTreeModuleSrc,
+        IntDepSet, ImpDepSet),
     set.to_sorted_list(IntDepSet, IntDeps),
     set.to_sorted_list(ImpDepSet, ImpDeps),
     MaybeTopModule = Baggage ^ mb_maybe_top_module,
@@ -895,13 +880,12 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             !Info ^ mki_module_dependencies := ModuleDepMap
         ;
             FatalReadError = no,
-            parse_tree_src_to_burdened_aug_comp_unit_list(Globals,
+            parse_tree_src_to_burdened_module_list(Globals,
                 SourceFileName, ParseTreeSrc, ReadModuleErrors, Specs0, Specs,
-                BurdenedAugCompUnitList),
+                BurdenedModules),
             ParseTreeModuleSrcs = list.map(
-                ( func(burdened_aug_comp_unit(_, ACU)) = PTMS :-
-                    PTMS = ACU ^ acu_module_src
-                ), BurdenedAugCompUnitList),
+                (func(burdened_module(_, PTMS)) = PTMS),
+                BurdenedModules),
             SubModuleNames = list.map(parse_tree_module_src_project_name,
                  ParseTreeModuleSrcs),
 
@@ -912,7 +896,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             io.set_output_stream(OldOutputStream, _, !IO),
 
             list.foldl(make_info_add_module_and_imports_as_dep,
-                BurdenedAugCompUnitList, !Info),
+                BurdenedModules, !Info),
 
             % If there were no errors, write out the `.int3' file
             % while we have the contents of the module. The `int3' file
@@ -955,7 +939,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
 
             setup_checking_for_interrupt(CookieWMDF, !IO),
             list.foldl(do_write_module_dep_file(Globals),
-                BurdenedAugCompUnitList, !IO),
+                BurdenedModules, !IO),
             CleanupWMDF = cleanup_module_dep_files(Globals, SubModuleNames),
             teardown_checking_for_interrupt(VeryVerbose, CookieWMDF,
                 CleanupWMDF, succeeded, _Succeeded, !Info, !IO),
@@ -969,14 +953,13 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         MaybeErrorStream = no
     ).
 
-:- pred make_info_add_module_and_imports_as_dep(burdened_aug_comp_unit::in,
+:- pred make_info_add_module_and_imports_as_dep(burdened_module::in,
     make_info::in, make_info::out) is det.
 
-make_info_add_module_and_imports_as_dep(BurdenedAugCompUnit, !Info) :-
-    AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
-    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+make_info_add_module_and_imports_as_dep(BurdenedModule, !Info) :-
+    ParseTreeModuleSrc = BurdenedModule ^ bm_module,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    ModuleDepInfo = module_dep_info_imports(BurdenedAugCompUnit),
+    ModuleDepInfo = module_dep_info_full(BurdenedModule),
     MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
     ModuleDeps0 = !.Info ^ mki_module_dependencies,
     % XXX Could this be map.det_insert?
