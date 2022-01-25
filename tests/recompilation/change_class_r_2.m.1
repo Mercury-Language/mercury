@@ -10,7 +10,7 @@
 
 :- type foo
     --->    a
-    ;   b(int).
+    ;       b(int).
 
 :- pred init_foo(foo::out) is det.
 
@@ -27,4 +27,3 @@
 ].
 
 init_foo(a).
-

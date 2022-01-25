@@ -23,6 +23,4 @@ main(!IO) :-
 :- pred output(t::in, io::di, io::uo) is det.
     
 output(X, !IO) :-
-    io.write(X, !IO),
-    io.nl(!IO).
-
+    io.write_line(X, !IO).

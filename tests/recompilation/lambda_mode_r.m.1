@@ -17,8 +17,7 @@
 main(!IO) :-
     P =
         ( pred(X :: foo_in, di, uo) is det -->
-            io.write(X),
-            io.nl
+            io.write_line(X)
         ),
     init_foo(F),
     P(F, !IO).
@@ -26,5 +25,4 @@ main(!IO) :-
 :- pred output_foo(foo::in, io::di, io::uo) is det.
 
 output_foo(X, !IO) :-
-    io.write(X, !IO),
-    io.nl(!IO).
+    io.write_line(X, !IO).
