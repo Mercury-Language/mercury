@@ -30,10 +30,10 @@
 
 :- type module_name == sym_name.
 
-    % get_ancestors(ModuleName) = ParentDeps:
+    % get_ancestors(ModuleName) = Ancestors:
     %
-    % ParentDeps is the list of ancestor modules for this module, oldest first;
-    % e.g. if the ModuleName is `foo.bar.baz', then ParentDeps would be
+    % Ancestors is the list of ancestor modules for this module, oldest first;
+    % e.g. if the ModuleName is `foo.bar.baz', then Ancestors would be
     % [`foo', `foo.bar'].
     %
 :- func get_ancestors(module_name) = list(module_name).
