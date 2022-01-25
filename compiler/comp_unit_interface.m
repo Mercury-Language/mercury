@@ -1091,7 +1091,7 @@ record_modules_needed_by_typeclass_imp(ItemTypeClass,
     % The superclass constraints on the typeclass being declared
     % may refer to typeclasses that this module has imported.
     Constraints = ItemTypeClass ^ tc_superclasses,
-    list.foldl(accumulate_modules_from_constraint, Constraints,
+    list.foldl(accumulate_modules_in_qual_constraint, Constraints,
         !ImpModulesNeededByTypeClassDefns).
 
 :- pred keep_promise_item_int(item_promise_info::in) is semidet.
@@ -1107,57 +1107,6 @@ keep_promise_item_int(ItemPromise) :-
         ; PromiseType = promise_type_exhaustive
         ; PromiseType = promise_type_exclusive_exhaustive
         )
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred accumulate_modules_from_constraint(prog_constraint::in,
-    set(module_name)::in, set(module_name)::out) is det.
-
-accumulate_modules_from_constraint(Constraint, !Modules) :-
-    Constraint = constraint(ClassName, ArgTypes),
-    (
-        ClassName = qualified(ModuleName, _),
-        set.insert(ModuleName, !Modules)
-    ;
-        ClassName = unqualified(_),
-        unexpected($pred, "unknown typeclass in constraint")
-    ),
-    accumulate_modules_from_types(ArgTypes, !Modules).
-
-:- pred accumulate_modules_from_types(list(mer_type)::in,
-    set(module_name)::in, set(module_name)::out) is det.
-
-accumulate_modules_from_types([], !Modules).
-accumulate_modules_from_types([Type | Types], !Modules) :-
-    accumulate_modules_from_type(Type, !Modules),
-    accumulate_modules_from_types(Types, !Modules).
-
-:- pred accumulate_modules_from_type(mer_type::in,
-    set(module_name)::in, set(module_name)::out) is det.
-
-accumulate_modules_from_type(Type, !Modules) :-
-    (
-        % Do nothing for these types - they cannot affect the set of
-        % implementation imports in an interface file.
-        ( Type = type_variable(_, _)
-        ; Type = builtin_type(_)
-        )
-    ;
-        Type = defined_type(TypeName, ArgTypes, _),
-        det_sym_name_get_module_name(TypeName, ModuleName),
-        set.insert(ModuleName, !Modules),
-        accumulate_modules_from_types(ArgTypes, !Modules)
-    ;
-        Type = kinded_type(KindedType, _),
-        accumulate_modules_from_type(KindedType, !Modules)
-    ;
-        ( Type = tuple_type(ArgTypes, _)
-        ; Type = apply_n_type(_, ArgTypes, _)
-        ; Type = higher_order_type(_, ArgTypes, _HOInstInfo, _, _)
-        ),
-        % XXX ITEM_LIST accumulate modules from _HOInstInfo
-        accumulate_modules_from_types(ArgTypes, !Modules)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1518,7 +1467,7 @@ accumulate_abs_eqv_type_rhs_in_defn(ImpTypesMap, ImpItemTypeDefnInfo,
         % idempotent, there is no point in invoking them again.
         set.difference(RhsTypeCtors, !.AbsExpEqvRhsTypeCtors, NewRhsTypeCtors),
         set.union(NewRhsTypeCtors, !AbsExpEqvRhsTypeCtors),
-        set.fold(accumulate_modules_used_by_type_ctor, NewRhsTypeCtors,
+        set.fold(accumulate_modules_in_qual_type_ctor, NewRhsTypeCtors,
             !ModulesNeededByTypeDefns),
         % XXX ITEM_LIST I (zs) *think* that the reason why we ignore the
         % result of the second accumulator (!DuArgTypeCtors) in this call
@@ -1550,36 +1499,13 @@ accumulate_abs_eqv_type_rhs_in_defn(ImpTypesMap, ImpItemTypeDefnInfo,
         ctors_to_user_type_ctor_set(one_or_more_to_list(OoMCtors),
             set.init, RhsTypeCtors),
         set.union(RhsTypeCtors, !DuArgTypeCtors),
-        set.fold(accumulate_modules_used_by_type_ctor, RhsTypeCtors,
+        set.fold(accumulate_modules_in_qual_type_ctor, RhsTypeCtors,
             !ModulesNeededByTypeDefns)
     ;
         ( ImpTypeDefn = parse_tree_abstract_type(_)
         ; ImpTypeDefn = parse_tree_solver_type(_)
         ; ImpTypeDefn = parse_tree_foreign_type(_)
         )
-    ).
-
-%---------------------%
-
-:- pred accumulate_modules_used_by_type_ctor(type_ctor::in,
-    set(module_name)::in, set(module_name)::out) is det.
-
-accumulate_modules_used_by_type_ctor(TypeCtor, !Modules) :-
-    TypeCtor = type_ctor(SymName, _Arity),
-    (
-        SymName = qualified(ModuleName, _),
-        set.insert(ModuleName, !Modules)
-    ;
-        SymName = unqualified(_)
-        % Our ancestor generate_interfaces_int1_int2 should be invoked
-        % only *after* the module qualification of the augmented compilation
-        % unit whose contents we are now processing, and the module
-        % qualification pass would have generated an error message
-        % for this cannot-be-uniquely-qualified name. However, if the
-        % user has turned off the halt_at_invalid_interface option,
-        % which is on by default, then the compiler ignores that error,
-        % and proceeds to call generate_interfaces_int1_int2 above,
-        % which calls us indirectly.
     ).
 
 %---------------------%
@@ -2949,201 +2875,6 @@ delete_uc_preds_from_foreign_type(DetailsForeign0, DetailsForeign) :-
 
 %---------------------------------------------------------------------------%
 
-:- type maybe_unqual_symnames
-    --->    no_unqual_symnames
-    ;       some_unqual_symnames.
-
-:- pred accumulate_module(sym_name::in,
-    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
-    set(module_name)::in, set(module_name)::out) is det.
-
-accumulate_module(SymName, !MaybeUnqual, !ModuleNames) :-
-    (
-        SymName = unqualified(_),
-        !:MaybeUnqual = some_unqual_symnames
-    ;
-        SymName = qualified(ModuleName, _),
-        set.insert(ModuleName, !ModuleNames)
-    ).
-
-%---------------------%
-
-:- pred accumulate_modules_in_constraint(prog_constraint::in,
-    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
-    set(module_name)::in, set(module_name)::out) is det.
-
-accumulate_modules_in_constraint(Constraint, !MaybeUnqual, !ModuleNames) :-
-    Constraint = constraint(ClassSymName, ArgTypes),
-    accumulate_module(ClassSymName, !MaybeUnqual, !ModuleNames),
-    accumulate_modules_in_types(ArgTypes, !MaybeUnqual, !ModuleNames).
-
-%---------------------%
-
-:- pred accumulate_modules_in_type(mer_type::in,
-    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
-    set(module_name)::in, set(module_name)::out) is det.
-
-accumulate_modules_in_type(Type, !MaybeUnqual, !ModuleNames) :-
-    (
-        ( Type = type_variable(_, _)
-        ; Type = builtin_type(_)
-        )
-    ;
-        Type = defined_type(SymName, ArgTypes, _Kind),
-        accumulate_module(SymName, !MaybeUnqual, !ModuleNames),
-        accumulate_modules_in_types(ArgTypes, !MaybeUnqual, !ModuleNames)
-    ;
-        ( Type = tuple_type(ArgTypes, _Kind)
-        ; Type = apply_n_type(_TVar, ArgTypes, _Kind)
-        ; Type = higher_order_type(_PredOrFunc, ArgTypes,
-            _HOInstInfo, _Purity, _EvalMethod)
-        ),
-        accumulate_modules_in_types(ArgTypes, !MaybeUnqual, !ModuleNames)
-    ;
-        Type = kinded_type(ArgType, _Kind),
-        accumulate_modules_in_type(ArgType, !MaybeUnqual, !ModuleNames)
-    ).
-
-%---------------------%
-
-:- pred accumulate_modules_in_inst(mer_inst::in,
-    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
-    set(module_name)::in, set(module_name)::out) is det.
-
-accumulate_modules_in_inst(Inst, !MaybeUnqual, !ModuleNames) :-
-    (
-        ( Inst = free
-        ; Inst = not_reached
-        ; Inst = ground(_Uniq, _HOInstInfo)
-        ; Inst = inst_var(_InstVar)
-        ; Inst = any(_Uniq, _HOInstInfo)
-        )
-    ;
-        Inst = free(Type),
-        accumulate_modules_in_type(Type, !MaybeUnqual, !ModuleNames)
-    ;
-        Inst = bound(_Uniq, _InstTestsResults, BoundInsts),
-        accumulate_modules_in_bound_insts(BoundInsts,
-            !MaybeUnqual, !ModuleNames)
-    ;
-        Inst = constrained_inst_vars(_InstVars, ArgInst),
-        accumulate_modules_in_inst(ArgInst, !MaybeUnqual, !ModuleNames)
-    ;
-        Inst = defined_inst(InstName),
-        accumulate_modules_in_inst_name(InstName, !MaybeUnqual, !ModuleNames)
-    ;
-        Inst = abstract_inst(SymName, ArgInsts),
-        accumulate_module(SymName, !MaybeUnqual, !ModuleNames),
-        accumulate_modules_in_insts(ArgInsts, !MaybeUnqual, !ModuleNames)
-    ).
-
-:- pred accumulate_modules_in_inst_name(inst_name::in,
-    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
-    set(module_name)::in, set(module_name)::out) is det.
-
-accumulate_modules_in_inst_name(InstName, !MaybeUnqual, !ModuleNames) :-
-    (
-        InstName = user_inst(SymName, ArgInsts),
-        accumulate_module(SymName, !MaybeUnqual, !ModuleNames),
-        accumulate_modules_in_insts(ArgInsts, !MaybeUnqual, !ModuleNames)
-    ;
-        ( InstName = unify_inst(_IsLive, _IsReal, ArgInstA, ArgInstB)
-        ; InstName = merge_inst(ArgInstA, ArgInstB)
-        ),
-        accumulate_modules_in_insts([ArgInstA, ArgInstB],
-            !MaybeUnqual, !ModuleNames)
-    ;
-        ( InstName = ground_inst(ArgInstName, _Uniq, _IsLive, _IsReal)
-        ; InstName = any_inst(ArgInstName, _Uniq, _IsLive, _IsReal)
-        ; InstName = shared_inst(ArgInstName)
-        ; InstName = mostly_uniq_inst(ArgInstName)
-        ),
-        accumulate_modules_in_inst_name(ArgInstName,
-            !MaybeUnqual, !ModuleNames)
-    ;
-        InstName = typed_ground(_Uniq, Type),
-        accumulate_modules_in_type(Type, !MaybeUnqual, !ModuleNames)
-    ;
-        InstName = typed_inst(Type, ArgInstName),
-        accumulate_modules_in_type(Type, !MaybeUnqual, !ModuleNames),
-        accumulate_modules_in_inst_name(ArgInstName,
-            !MaybeUnqual, !ModuleNames)
-    ).
-
-:- pred accumulate_modules_in_bound_inst(bound_inst::in,
-    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
-    set(module_name)::in, set(module_name)::out) is det.
-
-accumulate_modules_in_bound_inst(BoundInst, !MaybeUnqual, !ModuleNames) :-
-    BoundInst = bound_functor(ConsId, ArgInsts),
-    ( if ConsId = cons(SymName, _ConsArity, TypeCtor) then
-        accumulate_module(SymName, !MaybeUnqual, !ModuleNames),
-        TypeCtor = type_ctor(TypeCtorSymName, _Arity),
-        accumulate_module(TypeCtorSymName, !MaybeUnqual, !ModuleNames)
-    else
-        true
-    ),
-    accumulate_modules_in_insts(ArgInsts, !MaybeUnqual, !ModuleNames).
-
-%---------------------%
-
-:- pred accumulate_modules_in_mode(mer_mode::in,
-    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
-    set(module_name)::in, set(module_name)::out) is det.
-
-accumulate_modules_in_mode(Mode, !MaybeUnqual, !ModuleNames) :-
-    (
-        Mode = from_to_mode(InstA, InstB),
-        accumulate_modules_in_inst(InstA, !MaybeUnqual, !ModuleNames),
-        accumulate_modules_in_inst(InstB, !MaybeUnqual, !ModuleNames)
-    ;
-        Mode = user_defined_mode(SymName, ArgInsts),
-        accumulate_module(SymName, !MaybeUnqual, !ModuleNames),
-        accumulate_modules_in_insts(ArgInsts, !MaybeUnqual, !ModuleNames)
-    ).
-
-%---------------------%
-
-:- pred accumulate_modules_in_constraints(list(prog_constraint)::in,
-    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
-    set(module_name)::in, set(module_name)::out) is det.
-
-accumulate_modules_in_constraints([], !MaybeUnqual, !ModuleNames).
-accumulate_modules_in_constraints([Constraint | Constraints],
-        !MaybeUnqual, !ModuleNames) :-
-    accumulate_modules_in_constraint(Constraint, !MaybeUnqual, !ModuleNames),
-    accumulate_modules_in_constraints(Constraints, !MaybeUnqual, !ModuleNames).
-
-:- pred accumulate_modules_in_types(list(mer_type)::in,
-    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
-    set(module_name)::in, set(module_name)::out) is det.
-
-accumulate_modules_in_types([], !MaybeUnqual, !ModuleNames).
-accumulate_modules_in_types([Type | Types], !MaybeUnqual, !ModuleNames) :-
-    accumulate_modules_in_type(Type, !MaybeUnqual, !ModuleNames),
-    accumulate_modules_in_types(Types, !MaybeUnqual, !ModuleNames).
-
-:- pred accumulate_modules_in_bound_insts(list(bound_inst)::in,
-    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
-    set(module_name)::in, set(module_name)::out) is det.
-
-accumulate_modules_in_bound_insts([], !MaybeUnqual, !ModuleNames).
-accumulate_modules_in_bound_insts([BoundInst | BoundInsts],
-        !MaybeUnqual, !ModuleNames) :-
-    accumulate_modules_in_bound_inst(BoundInst, !MaybeUnqual, !ModuleNames),
-    accumulate_modules_in_bound_insts(BoundInsts, !MaybeUnqual, !ModuleNames).
-
-:- pred accumulate_modules_in_insts(list(mer_inst)::in,
-    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
-    set(module_name)::in, set(module_name)::out) is det.
-
-accumulate_modules_in_insts([], !MaybeUnqual, !ModuleNames).
-accumulate_modules_in_insts([Inst | Insts], !MaybeUnqual, !ModuleNames) :-
-    accumulate_modules_in_inst(Inst, !MaybeUnqual, !ModuleNames),
-    accumulate_modules_in_insts(Insts, !MaybeUnqual, !ModuleNames).
-
-%---------------------------------------------------------------------------%
-
 :- func make_inst_defn_abstract(item_inst_defn_info) = item_inst_defn_info.
 
 make_inst_defn_abstract(InstDefn) =
@@ -3301,6 +3032,274 @@ record_foreign_lang_in_type_defn(TypeDefnInfo, !Langs) :-
 record_foreign_lang_in_foreign_enum(ForeignEnumInfo, !Langs) :-
     ForeignEnumInfo = item_foreign_enum_info(Lang, _, _, _, _),
     set.insert(Lang, !Langs).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred accumulate_modules_in_constraints(list(prog_constraint)::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+accumulate_modules_in_constraints([], !MaybeUnqual, !ModuleNames).
+accumulate_modules_in_constraints([Constraint | Constraints],
+        !MaybeUnqual, !ModuleNames) :-
+    accumulate_modules_in_constraint(Constraint, !MaybeUnqual, !ModuleNames),
+    accumulate_modules_in_constraints(Constraints, !MaybeUnqual, !ModuleNames).
+
+:- pred accumulate_modules_in_constraint(prog_constraint::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+accumulate_modules_in_constraint(Constraint, !MaybeUnqual, !ModuleNames) :-
+    Constraint = constraint(ClassSymName, ArgTypes),
+    accumulate_module(ClassSymName, !MaybeUnqual, !ModuleNames),
+    accumulate_modules_in_types(ArgTypes, !MaybeUnqual, !ModuleNames).
+
+%---------------------%
+
+:- pred accumulate_modules_in_qual_constraint(prog_constraint::in,
+    set(module_name)::in, set(module_name)::out) is det.
+
+accumulate_modules_in_qual_constraint(Constraint, !Modules) :-
+    Constraint = constraint(ClassSymName, ArgTypes),
+    (
+        ClassSymName = qualified(ModuleName, _),
+        set.insert(ModuleName, !Modules)
+    ;
+        ClassSymName = unqualified(_),
+        unexpected($pred, "unknown typeclass in constraint")
+    ),
+    accumulate_modules_in_qual_types(ArgTypes, !Modules).
+
+%---------------------%
+
+:- pred accumulate_modules_in_types(list(mer_type)::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+accumulate_modules_in_types([], !MaybeUnqual, !ModuleNames).
+accumulate_modules_in_types([Type | Types], !MaybeUnqual, !ModuleNames) :-
+    accumulate_modules_in_type(Type, !MaybeUnqual, !ModuleNames),
+    accumulate_modules_in_types(Types, !MaybeUnqual, !ModuleNames).
+
+:- pred accumulate_modules_in_type(mer_type::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+accumulate_modules_in_type(Type, !MaybeUnqual, !ModuleNames) :-
+    (
+        ( Type = type_variable(_, _)
+        ; Type = builtin_type(_)
+        )
+    ;
+        Type = defined_type(SymName, ArgTypes, _Kind),
+        accumulate_module(SymName, !MaybeUnqual, !ModuleNames),
+        accumulate_modules_in_types(ArgTypes, !MaybeUnqual, !ModuleNames)
+    ;
+        ( Type = tuple_type(ArgTypes, _Kind)
+        ; Type = apply_n_type(_TVar, ArgTypes, _Kind)
+        ; Type = higher_order_type(_PredOrFunc, ArgTypes,
+            _HOInstInfo, _Purity, _EvalMethod)
+        ),
+        accumulate_modules_in_types(ArgTypes, !MaybeUnqual, !ModuleNames)
+    ;
+        Type = kinded_type(ArgType, _Kind),
+        accumulate_modules_in_type(ArgType, !MaybeUnqual, !ModuleNames)
+    ).
+
+%---------------------%
+
+:- pred accumulate_modules_in_qual_types(list(mer_type)::in,
+    set(module_name)::in, set(module_name)::out) is det.
+
+accumulate_modules_in_qual_types([], !Modules).
+accumulate_modules_in_qual_types([Type | Types], !Modules) :-
+    accumulate_modules_in_qual_type(Type, !Modules),
+    accumulate_modules_in_qual_types(Types, !Modules).
+
+:- pred accumulate_modules_in_qual_type(mer_type::in,
+    set(module_name)::in, set(module_name)::out) is det.
+
+accumulate_modules_in_qual_type(Type, !Modules) :-
+    (
+        % Do nothing for these types - they cannot affect the set of
+        % implementation imports in an interface file.
+        ( Type = type_variable(_, _)
+        ; Type = builtin_type(_)
+        )
+    ;
+        Type = defined_type(TypeName, ArgTypes, _),
+        det_sym_name_get_module_name(TypeName, ModuleName),
+        set.insert(ModuleName, !Modules),
+        accumulate_modules_in_qual_types(ArgTypes, !Modules)
+    ;
+        Type = kinded_type(KindedType, _),
+        accumulate_modules_in_qual_type(KindedType, !Modules)
+    ;
+        ( Type = tuple_type(ArgTypes, _)
+        ; Type = apply_n_type(_, ArgTypes, _)
+        ; Type = higher_order_type(_, ArgTypes, _HOInstInfo, _, _)
+        ),
+        % XXX ITEM_LIST accumulate modules from _HOInstInfo
+        accumulate_modules_in_qual_types(ArgTypes, !Modules)
+    ).
+
+:- pred accumulate_modules_in_qual_type_ctor(type_ctor::in,
+    set(module_name)::in, set(module_name)::out) is det.
+
+accumulate_modules_in_qual_type_ctor(TypeCtor, !Modules) :-
+    TypeCtor = type_ctor(SymName, _Arity),
+    (
+        SymName = qualified(ModuleName, _),
+        set.insert(ModuleName, !Modules)
+    ;
+        SymName = unqualified(_)
+        % Our ancestor generate_interfaces_int1_int2 should be invoked
+        % only *after* the module qualification of the augmented compilation
+        % unit whose contents we are now processing, and the module
+        % qualification pass would have generated an error message
+        % for this cannot-be-uniquely-qualified name. However, if the
+        % user has turned off the halt_at_invalid_interface option,
+        % which is on by default, then the compiler ignores that error,
+        % and proceeds to call generate_interfaces_int1_int2 above,
+        % which calls us indirectly.
+    ).
+
+%---------------------%
+
+:- pred accumulate_modules_in_insts(list(mer_inst)::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+accumulate_modules_in_insts([], !MaybeUnqual, !ModuleNames).
+accumulate_modules_in_insts([Inst | Insts], !MaybeUnqual, !ModuleNames) :-
+    accumulate_modules_in_inst(Inst, !MaybeUnqual, !ModuleNames),
+    accumulate_modules_in_insts(Insts, !MaybeUnqual, !ModuleNames).
+
+:- pred accumulate_modules_in_inst(mer_inst::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+accumulate_modules_in_inst(Inst, !MaybeUnqual, !ModuleNames) :-
+    (
+        ( Inst = free
+        ; Inst = not_reached
+        ; Inst = ground(_Uniq, _HOInstInfo)
+        ; Inst = inst_var(_InstVar)
+        ; Inst = any(_Uniq, _HOInstInfo)
+        )
+    ;
+        Inst = free(Type),
+        accumulate_modules_in_type(Type, !MaybeUnqual, !ModuleNames)
+    ;
+        Inst = bound(_Uniq, _InstTestsResults, BoundInsts),
+        accumulate_modules_in_bound_insts(BoundInsts,
+            !MaybeUnqual, !ModuleNames)
+    ;
+        Inst = constrained_inst_vars(_InstVars, ArgInst),
+        accumulate_modules_in_inst(ArgInst, !MaybeUnqual, !ModuleNames)
+    ;
+        Inst = defined_inst(InstName),
+        accumulate_modules_in_inst_name(InstName, !MaybeUnqual, !ModuleNames)
+    ;
+        Inst = abstract_inst(SymName, ArgInsts),
+        accumulate_module(SymName, !MaybeUnqual, !ModuleNames),
+        accumulate_modules_in_insts(ArgInsts, !MaybeUnqual, !ModuleNames)
+    ).
+
+:- pred accumulate_modules_in_inst_name(inst_name::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+accumulate_modules_in_inst_name(InstName, !MaybeUnqual, !ModuleNames) :-
+    (
+        InstName = user_inst(SymName, ArgInsts),
+        accumulate_module(SymName, !MaybeUnqual, !ModuleNames),
+        accumulate_modules_in_insts(ArgInsts, !MaybeUnqual, !ModuleNames)
+    ;
+        ( InstName = unify_inst(_IsLive, _IsReal, ArgInstA, ArgInstB)
+        ; InstName = merge_inst(ArgInstA, ArgInstB)
+        ),
+        accumulate_modules_in_insts([ArgInstA, ArgInstB],
+            !MaybeUnqual, !ModuleNames)
+    ;
+        ( InstName = ground_inst(ArgInstName, _Uniq, _IsLive, _IsReal)
+        ; InstName = any_inst(ArgInstName, _Uniq, _IsLive, _IsReal)
+        ; InstName = shared_inst(ArgInstName)
+        ; InstName = mostly_uniq_inst(ArgInstName)
+        ),
+        accumulate_modules_in_inst_name(ArgInstName,
+            !MaybeUnqual, !ModuleNames)
+    ;
+        InstName = typed_ground(_Uniq, Type),
+        accumulate_modules_in_type(Type, !MaybeUnqual, !ModuleNames)
+    ;
+        InstName = typed_inst(Type, ArgInstName),
+        accumulate_modules_in_type(Type, !MaybeUnqual, !ModuleNames),
+        accumulate_modules_in_inst_name(ArgInstName,
+            !MaybeUnqual, !ModuleNames)
+    ).
+
+:- pred accumulate_modules_in_bound_insts(list(bound_inst)::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+accumulate_modules_in_bound_insts([], !MaybeUnqual, !ModuleNames).
+accumulate_modules_in_bound_insts([BoundInst | BoundInsts],
+        !MaybeUnqual, !ModuleNames) :-
+    accumulate_modules_in_bound_inst(BoundInst, !MaybeUnqual, !ModuleNames),
+    accumulate_modules_in_bound_insts(BoundInsts, !MaybeUnqual, !ModuleNames).
+
+:- pred accumulate_modules_in_bound_inst(bound_inst::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+accumulate_modules_in_bound_inst(BoundInst, !MaybeUnqual, !ModuleNames) :-
+    BoundInst = bound_functor(ConsId, ArgInsts),
+    ( if ConsId = cons(SymName, _ConsArity, TypeCtor) then
+        accumulate_module(SymName, !MaybeUnqual, !ModuleNames),
+        TypeCtor = type_ctor(TypeCtorSymName, _Arity),
+        accumulate_module(TypeCtorSymName, !MaybeUnqual, !ModuleNames)
+    else
+        true
+    ),
+    accumulate_modules_in_insts(ArgInsts, !MaybeUnqual, !ModuleNames).
+
+%---------------------%
+
+:- pred accumulate_modules_in_mode(mer_mode::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+accumulate_modules_in_mode(Mode, !MaybeUnqual, !ModuleNames) :-
+    (
+        Mode = from_to_mode(InstA, InstB),
+        accumulate_modules_in_inst(InstA, !MaybeUnqual, !ModuleNames),
+        accumulate_modules_in_inst(InstB, !MaybeUnqual, !ModuleNames)
+    ;
+        Mode = user_defined_mode(SymName, ArgInsts),
+        accumulate_module(SymName, !MaybeUnqual, !ModuleNames),
+        accumulate_modules_in_insts(ArgInsts, !MaybeUnqual, !ModuleNames)
+    ).
+
+%---------------------%
+
+:- type maybe_unqual_symnames
+    --->    no_unqual_symnames
+    ;       some_unqual_symnames.
+
+:- pred accumulate_module(sym_name::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+accumulate_module(SymName, !MaybeUnqual, !ModuleNames) :-
+    (
+        SymName = unqualified(_),
+        !:MaybeUnqual = some_unqual_symnames
+    ;
+        SymName = qualified(ModuleName, _),
+        set.insert(ModuleName, !ModuleNames)
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.comp_unit_interface.
