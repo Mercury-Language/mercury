@@ -194,7 +194,13 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         InstDefns, ModeDefns, PredDecls, ModeDecls,
         Promises, Typeclasses, Instances, Initialises, Finalises, Mutables,
         TypeRepnMap, ForeignEnums, ForeignExportEnums,
-        PragmasDecl, PragmasImpl, PragmasGen, Clauses, IntBadClauses),
+        PragmasDecl, PragmasDeclTypeSpec,
+        PragmasDeclTermInfo, PragmasDeclTerm2Info,
+        PragmasDeclSharing, PragmasDeclReuse,
+        PragmasImpl,
+        PragmasGenUnusedArgs, PragmasGenExceptions,
+        PragmasGenTrailing, PragmasGenMMTabling,
+        Clauses, IntBadClauses),
 
     % The old pass 1.
 
@@ -473,7 +479,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     %
     % 1: We had to do this for foreign_enum pragmas, since these may affect
     %    type representations, and *that* may affect many other things.
-    %    However, but these now have their own item kind, which are processed
+    %    However, these now have their own item kind, which are processed
     %    at the very top above.
     %
     % 2: We once also had to do this for foreign_decl pragmas, but the
@@ -494,6 +500,16 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % or to modes of predicates.
     add_decl_pragmas(PragmasDecl,
         !ModuleInfo, !QualInfo, !Specs),
+    add_decl_pragmas_type_spec(PragmasDeclTypeSpec,
+        !ModuleInfo, !QualInfo, !Specs),
+    add_decl_pragmas_term_info(PragmasDeclTermInfo,
+        !ModuleInfo, !Specs),
+    add_decl_pragmas_term2_info(PragmasDeclTerm2Info,
+        !ModuleInfo, !Specs),
+    add_decl_pragmas_sharing(PragmasDeclSharing,
+        !ModuleInfo, !Specs),
+    add_decl_pragmas_reuse(PragmasDeclReuse,
+        !ModuleInfo, !Specs),
 
     % We want to process tabled pragmas *after* any inline pragmas
     % (which are also impl pragmas), so that we can detect and report
@@ -514,7 +530,13 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     list.foldl(module_add_foreign_body_code, MutableForeignBodyCodes,
         !ModuleInfo),
 
-    list.foldl2(add_gen_pragma, PragmasGen,
+    list.foldl2(add_gen_pragma_unused_args, PragmasGenUnusedArgs,
+        !ModuleInfo, !Specs),
+    list.foldl2(add_gen_pragma_exceptions, PragmasGenExceptions,
+        !ModuleInfo, !Specs),
+    list.foldl2(add_gen_pragma_trailing, PragmasGenTrailing,
+        !ModuleInfo, !Specs),
+    list.foldl2(add_gen_pragma_mm_tabling, PragmasGenMMTabling,
         !ModuleInfo, !Specs),
 
     % Check that the declarations for field extraction and update functions

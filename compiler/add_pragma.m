@@ -23,6 +23,28 @@
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+:- pred add_decl_pragmas_type_spec(list(item_type_spec)::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred add_decl_pragmas_term_info(list(item_termination)::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred add_decl_pragmas_term2_info(list(item_termination2)::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred add_decl_pragmas_sharing(list(item_struct_sharing)::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred add_decl_pragmas_reuse(list(item_struct_reuse)::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+%---------------------%
+
 :- pred add_impl_pragmas(ims_list(item_impl_pragma_info)::in,
     ims_list(item_tabled)::in, ims_list(item_tabled)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -37,7 +59,21 @@
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_gen_pragma(item_generated_pragma_info::in,
+%---------------------%
+
+:- pred add_gen_pragma_unused_args(item_unused_args::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred add_gen_pragma_exceptions(item_exceptions::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred add_gen_pragma_trailing(item_trailing::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred add_gen_pragma_mm_tabling(item_mm_tabling::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -100,6 +136,43 @@ add_decl_pragmas([ImsList | ImsLists], !ModuleInfo, !QualInfo, !Specs) :-
     list.foldl3(add_decl_pragma(ItemMercuryStatus), Items,
         !ModuleInfo, !QualInfo, !Specs),
     add_decl_pragmas(ImsLists, !ModuleInfo, !QualInfo, !Specs).
+
+add_decl_pragmas_type_spec([], !ModuleInfo, !QualInfo, !Specs).
+add_decl_pragmas_type_spec([PragmaInfo | PragmaInfos],
+        !ModuleInfo, !QualInfo, !Specs) :-
+    PragmaInfo = item_pragma_info(Pragma, Context, _SeqNum),
+    add_pragma_type_spec(Pragma, Context, !ModuleInfo, !QualInfo, !Specs),
+    add_decl_pragmas_type_spec(PragmaInfos, !ModuleInfo, !QualInfo, !Specs).
+
+add_decl_pragmas_term_info([], !ModuleInfo, !Specs).
+add_decl_pragmas_term_info([PragmaInfo | PragmaInfos],
+        !ModuleInfo, !Specs) :-
+    PragmaInfo = item_pragma_info(Pragma, Context, _SeqNum),
+    add_pragma_termination_info(Pragma, Context, !ModuleInfo, !Specs),
+    add_decl_pragmas_term_info(PragmaInfos, !ModuleInfo, !Specs).
+
+add_decl_pragmas_term2_info([], !ModuleInfo, !Specs).
+add_decl_pragmas_term2_info([PragmaInfo | PragmaInfos],
+        !ModuleInfo, !Specs) :-
+    PragmaInfo = item_pragma_info(Pragma, Context, _SeqNum),
+    add_pragma_termination2_info(Pragma, Context, !ModuleInfo, !Specs),
+    add_decl_pragmas_term2_info(PragmaInfos, !ModuleInfo, !Specs).
+
+add_decl_pragmas_sharing([], !ModuleInfo, !Specs).
+add_decl_pragmas_sharing([PragmaInfo | PragmaInfos],
+        !ModuleInfo, !Specs) :-
+    PragmaInfo = item_pragma_info(Pragma, Context, _SeqNum),
+    add_pragma_structure_sharing(Pragma, Context, !ModuleInfo, !Specs),
+    add_decl_pragmas_sharing(PragmaInfos, !ModuleInfo, !Specs).
+
+add_decl_pragmas_reuse([], !ModuleInfo, !Specs).
+add_decl_pragmas_reuse([PragmaInfo | PragmaInfos],
+        !ModuleInfo, !Specs) :-
+    PragmaInfo = item_pragma_info(Pragma, Context, _SeqNum),
+    add_pragma_structure_reuse(Pragma, Context, !ModuleInfo, !Specs),
+    add_decl_pragmas_reuse(PragmaInfos, !ModuleInfo, !Specs).
+
+%---------------------%
 
 add_impl_pragmas([], !RevPragmaTabled, !ModuleInfo, !QualInfo, !Specs).
 add_impl_pragmas([ImsList | ImsLists],
@@ -1417,29 +1490,8 @@ add_impl_pragma_tabled(ItemMercuryStatus, ItemPragmaInfo,
 % Adding generated pragmas to the HLDS.
 %
 
-add_gen_pragma(ItemPragmaInfo, !ModuleInfo, !Specs) :-
-    ItemPragmaInfo = item_pragma_info(Pragma, Context, _SeqNum),
-    (
-        Pragma = gen_pragma_unused_args(UnusedArgsInfo),
-        add_pragma_unused_args(UnusedArgsInfo, Context, !ModuleInfo, !Specs)
-    ;
-        Pragma = gen_pragma_exceptions(ExceptionsInfo),
-        add_pragma_exceptions(ExceptionsInfo, Context, !ModuleInfo, !Specs)
-    ;
-        Pragma = gen_pragma_trailing_info(TrailingInfo),
-        add_pragma_trailing_info(TrailingInfo, Context, !ModuleInfo, !Specs)
-    ;
-        Pragma = gen_pragma_mm_tabling_info(MMTablingInfo),
-        add_pragma_mm_tabling_info(MMTablingInfo, Context, !ModuleInfo, !Specs)
-    ).
-
-%---------------------%
-
-:- pred add_pragma_unused_args(pragma_info_unused_args::in,
-    prog_context::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_pragma_unused_args(UnusedArgsInfo, Context, !ModuleInfo, !Specs) :-
+add_gen_pragma_unused_args(ItemPragmaInfo, !ModuleInfo, !Specs) :-
+    ItemPragmaInfo = item_pragma_info(UnusedArgsInfo, Context, _SeqNum),
     UnusedArgsInfo = pragma_info_unused_args(PredNameArityPFMn, UnusedArgs),
     PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, SymName, UserArity,
         ModeNum),
@@ -1459,13 +1511,8 @@ add_pragma_unused_args(UnusedArgsInfo, Context, !ModuleInfo, !Specs) :-
         !:Specs = Specs ++ !.Specs
     ).
 
-%---------------------%
-
-:- pred add_pragma_exceptions(pragma_info_exceptions::in, prog_context::in,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_pragma_exceptions(ExceptionsInfo, Context, !ModuleInfo, !Specs) :-
+add_gen_pragma_exceptions(ItemPragmaInfo, !ModuleInfo, !Specs) :-
+    ItemPragmaInfo = item_pragma_info(ExceptionsInfo, Context, _SeqNum),
     ExceptionsInfo = pragma_info_exceptions(PredNameArityPFMn, ThrowStatus),
     PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, SymName, UserArity,
         ModeNum),
@@ -1487,13 +1534,8 @@ add_pragma_exceptions(ExceptionsInfo, Context, !ModuleInfo, !Specs) :-
         !:Specs = Specs ++ !.Specs
     ).
 
-%---------------------%
-
-:- pred add_pragma_trailing_info(pragma_info_trailing_info::in,
-    prog_context::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_pragma_trailing_info(TrailingInfo, Context, !ModuleInfo, !Specs) :-
+add_gen_pragma_trailing(ItemPragmaInfo, !ModuleInfo, !Specs) :-
+    ItemPragmaInfo = item_pragma_info(TrailingInfo, Context, _SeqNum),
     TrailingInfo = pragma_info_trailing_info(PredNameArityPFMn,
         TrailingStatus),
     PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, SymName, UserArity,
@@ -1516,13 +1558,8 @@ add_pragma_trailing_info(TrailingInfo, Context, !ModuleInfo, !Specs) :-
         !:Specs = Specs ++ !.Specs
     ).
 
-%---------------------%
-
-:- pred add_pragma_mm_tabling_info(pragma_info_mm_tabling_info::in,
-    prog_context::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_pragma_mm_tabling_info(MMTablingInfo, Context, !ModuleInfo, !Specs) :-
+add_gen_pragma_mm_tabling(ItemPragmaInfo, !ModuleInfo, !Specs) :-
+    ItemPragmaInfo = item_pragma_info(MMTablingInfo, Context, _SeqNum),
     MMTablingInfo = pragma_info_mm_tabling_info(PredNameArityPFMn,
         TablingStatus),
     PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, SymName, UserArity,

@@ -79,8 +79,16 @@
     ims_tuple_list(item_foreign_enum_info)::out,
     list(item_foreign_export_enum_info)::out,
     ims_list(item_decl_pragma_info)::out,
+    list(item_type_spec)::out,
+    list(item_termination)::out,
+    list(item_termination2)::out,
+    list(item_struct_sharing)::out,
+    list(item_struct_reuse)::out,
     ims_list(item_impl_pragma_info)::out,
-    list(item_generated_pragma_info)::out,
+    list(item_unused_args)::out,
+    list(item_exceptions)::out,
+    list(item_trailing)::out,
+    list(item_mm_tabling)::out,
     ims_list(item_clause_info)::out,
     set(pf_sym_name_arity)::out) is det.
 
@@ -123,8 +131,16 @@
                 ia_foreign_enums    :: ims_tuple_cord(item_foreign_enum_info),
                 ia_fees             :: cord(item_foreign_export_enum_info),
                 ia_decl_pragmas     :: ims_cord(item_decl_pragma_info),
+                ia_decl_type_spec   :: cord(item_type_spec),
+                ia_decl_term        :: cord(item_termination),
+                ia_decl_term2       :: cord(item_termination2),
+                ia_decl_str_sharing :: cord(item_struct_sharing),
+                ia_decl_str_reuse   :: cord(item_struct_reuse),
                 ia_impl_pragmas     :: ims_cord(item_impl_pragma_info),
-                ia_gen_pragmas      :: cord(item_generated_pragma_info),
+                ia_gen_unused_args  :: cord(item_unused_args),
+                ia_gen_exceptions   :: cord(item_exceptions),
+                ia_gen_trailing     :: cord(item_trailing),
+                ia_gen_mm_tabling   :: cord(item_mm_tabling),
                 ia_promises         :: ims_cord(item_promise_info),
                 ia_initialises      :: ims_cord(item_initialise_info),
                 ia_finalises        :: ims_cord(item_finalise_info),
@@ -135,10 +151,15 @@
 separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
         TypeDefnsAbstract, TypeDefnsMercury, TypeDefnsForeign,
         InstDefns, ModeDefns, PredDecls, ModeDecls,
-        Promises, Typeclasses, Instances,
+        Promises, TypeClasses, Instances,
         Initialises, Finalises, Mutables,
         TypeRepnMap, ForeignEnums, ForeignExportEnums,
-        PragmasDecl, PragmasImpl, PragmasGen, Clauses, IntBadPreds) :-
+        DeclPragmas, DeclPragmasTypeSpec,
+        DeclPragmasTermInfo, DeclPragmasTerm2Info,
+        DeclPragmasSharing, DeclPragmasReuse,
+        ImplPragmas, GenPragmasUnusedArgs, GenPragmasExceptions,
+        GenPragmasTrailing, GenPragmasMMTabling,
+        Clauses, IntBadPreds) :-
     AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
         AncestorIntSpecs, DirectInt1Specs, IndirectInt2Specs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
@@ -160,8 +181,14 @@ separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
             cord.init, cord.init, cord.init, cord.init,
             cord.init, cord.init, cord.init,
             cord.init, cord.init,
+
             cord.init, cord.init, cord.init, cord.init,
-            cord.init, cord.init, cord.init, []),
+            cord.init, cord.init,
+            cord.init,
+
+            cord.init, cord.init, cord.init, cord.init,
+            cord.init, cord.init, cord.init,
+            cord.init, []),
         acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc),
         map.foldl_values(acc_ancestor_int_spec, AncestorIntSpecs, !Acc),
         map.foldl_values(acc_direct_int1_spec, DirectInt1Specs, !Acc),
@@ -195,11 +222,19 @@ separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
         map.foldl_values(acc_type_repn_spec, TypeRepnSpecs, !Acc),
         !.Acc = item_accumulator(AvailsCord, FIMsCord,
             TypeDefnsAbstractCord, TypeDefnsMercuryCord, TypeDefnsForeignCord,
-            InstDefnsCord, ModeDefnsCord, TypeclassesCord, InstancesCord,
+            InstDefnsCord, ModeDefnsCord, TypeClassesCord, InstancesCord,
             PredDeclsCord, ModeDeclsCord, ClausesCord,
             ForeignEnumsCord, ForeignExportEnumsCord,
-            PragmasDeclCord, PragmasImplCord, PragmasGenCord, PromisesCord,
-            InitialisesCord, FinalisesCord, MutablesCord, ModuleIntTypeRepns)
+
+            DeclPragmasCord, DeclPragmasTypeSpecCord,
+            DeclPragmasTermInfoCord, DeclPragmasTerm2InfoCord,
+            DeclPragmasSharingCord, DeclPragmasReuseCord,
+            ImplPragmasCord,
+
+            GenPragmasUnusedArgsCord, GenPragmasExceptionsCord,
+            GenPragmasTrailingCord, GenPragmasMMTablingCord,
+            PromisesCord, InitialisesCord, FinalisesCord,
+            MutablesCord, ModuleIntTypeRepns)
     ),
 
     Avails = cord.list(AvailsCord),
@@ -209,16 +244,24 @@ separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
     TypeDefnsForeign = cord.list(TypeDefnsForeignCord),
     InstDefns = cord.list(InstDefnsCord),
     ModeDefns = cord.list(ModeDefnsCord),
-    Typeclasses = cord.list(TypeclassesCord),
+    TypeClasses = cord.list(TypeClassesCord),
     Instances = cord.list(InstancesCord),
     PredDecls = cord.list(PredDeclsCord),
     ModeDecls = cord.list(ModeDeclsCord),
     Clauses = cord.list(ClausesCord),
     ForeignEnums = cord.list(ForeignEnumsCord),
     ForeignExportEnums = cord.list(ForeignExportEnumsCord),
-    PragmasDecl = cord.list(PragmasDeclCord),
-    PragmasImpl = cord.list(PragmasImplCord),
-    PragmasGen = cord.list(PragmasGenCord),
+    DeclPragmas = cord.list(DeclPragmasCord),
+    DeclPragmasTypeSpec = cord.list(DeclPragmasTypeSpecCord),
+    DeclPragmasTermInfo = cord.list(DeclPragmasTermInfoCord),
+    DeclPragmasTerm2Info = cord.list(DeclPragmasTerm2InfoCord),
+    DeclPragmasSharing = cord.list(DeclPragmasSharingCord),
+    DeclPragmasReuse = cord.list(DeclPragmasReuseCord),
+    ImplPragmas = cord.list(ImplPragmasCord),
+    GenPragmasUnusedArgs = cord.list(GenPragmasUnusedArgsCord),
+    GenPragmasExceptions = cord.list(GenPragmasExceptionsCord),
+    GenPragmasTrailing = cord.list(GenPragmasTrailingCord),
+    GenPragmasMMTabling = cord.list(GenPragmasMMTablingCord),
     Promises = cord.list(PromisesCord),
     Initialises = cord.list(InitialisesCord),
     Finalises = cord.list(FinalisesCord),
@@ -371,26 +414,19 @@ acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc) :-
         SubSectionInfo = sec_info(SubItemMercuryStatus, may_be_unqualified)
     ),
 
-    AccAvails0 = !.Acc ^ ia_avails,
-    AccFIMs0 = !.Acc ^ ia_fims,
-    AccTypeDefnsAbs0 = !.Acc ^ ia_type_defns_abs,
-    AccTypeDefnsMer0 = !.Acc ^ ia_type_defns_mer,
-    AccTypeDefnsFor0 = !.Acc ^ ia_type_defns_for,
-    AccInstDefns0 = !.Acc ^ ia_inst_defns,
-    AccModeDefns0 = !.Acc ^ ia_mode_defns,
-    AccTypeClasses0 = !.Acc ^ ia_typeclasses,
-    AccInstances0 = !.Acc ^ ia_instances,
-    AccPredDecls0 = !.Acc ^ ia_pred_decls,
-    AccModeDecls0 = !.Acc ^ ia_mode_decls,
-    AccClauses0 = !.Acc ^ ia_clauses,
-    AccForeignEnums0 = !.Acc ^ ia_foreign_enums,
-    AccForeignExportEnums0 = !.Acc ^ ia_fees,
-    AccDeclPragmas0 = !.Acc ^ ia_decl_pragmas,
-    AccImplPragmas0 = !.Acc ^ ia_impl_pragmas,
-    AccPromises0 = !.Acc ^ ia_promises,
-    AccInitialises0 = !.Acc ^ ia_initialises,
-    AccFinalises0 = !.Acc ^ ia_finalises,
-    AccMutables0 = !.Acc ^ ia_mutables,
+    !.Acc = item_accumulator(AccAvails0, AccFIMs0,
+        AccTypeDefnsAbs0, AccTypeDefnsMer0, AccTypeDefnsFor0,
+        AccInstDefns0, AccModeDefns0, AccTypeClasses0, AccInstances0,
+        AccPredDecls0, AccModeDecls0, AccClauses0,
+        AccForeignEnums0, AccForeignExportEnums0,
+        AccDeclPragmas0, AccDeclPragmasTypeSpec0,
+        AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
+        AccDeclPragmasSharing0, AccDeclPragmasReuse0,
+        AccImplPragmas0,
+        AccGenPragmasUnusedArgs0, AccGenPragmasExceptions0,
+        AccGenPragmasTrailing0, AccGenPragmasMMTabling0,
+        AccPromises0, AccInitialises0, AccFinalises0,
+        AccMutables0, AccTypeRepns0),
 
     import_and_or_use_map_to_item_avails(do_not_include_implicit,
         ImportUseMap, IntAvails, ImpAvails),
@@ -465,26 +501,19 @@ acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc) :-
         AccFinalises0, AccFinalises),
     acc_sec_list(SubSectionInfo, SubMutables, AccMutables0, AccMutables),
 
-    !Acc ^ ia_avails := AccAvails,
-    !Acc ^ ia_fims := AccFIMs,
-    !Acc ^ ia_type_defns_abs := AccTypeDefnsAbs,
-    !Acc ^ ia_type_defns_mer := AccTypeDefnsMer,
-    !Acc ^ ia_type_defns_for := AccTypeDefnsFor,
-    !Acc ^ ia_inst_defns := AccInstDefns,
-    !Acc ^ ia_mode_defns := AccModeDefns,
-    !Acc ^ ia_typeclasses := AccTypeClasses,
-    !Acc ^ ia_instances := AccInstances,
-    !Acc ^ ia_pred_decls := AccPredDecls,
-    !Acc ^ ia_mode_decls := AccModeDecls,
-    !Acc ^ ia_clauses := AccClauses,
-    !Acc ^ ia_foreign_enums := AccForeignEnums,
-    !Acc ^ ia_fees := AccForeignExportEnums,
-    !Acc ^ ia_decl_pragmas := AccDeclPragmas,
-    !Acc ^ ia_impl_pragmas := AccImplPragmas,
-    !Acc ^ ia_promises := AccPromises,
-    !Acc ^ ia_initialises := AccInitialises,
-    !Acc ^ ia_finalises := AccFinalises,
-    !Acc ^ ia_mutables := AccMutables.
+    !:Acc = item_accumulator(AccAvails, AccFIMs,
+        AccTypeDefnsAbs, AccTypeDefnsMer, AccTypeDefnsFor,
+        AccInstDefns, AccModeDefns, AccTypeClasses, AccInstances,
+        AccPredDecls, AccModeDecls, AccClauses,
+        AccForeignEnums, AccForeignExportEnums,
+        AccDeclPragmas, AccDeclPragmasTypeSpec0,
+        AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
+        AccDeclPragmasSharing0, AccDeclPragmasReuse0,
+        AccImplPragmas,
+        AccGenPragmasUnusedArgs0, AccGenPragmasExceptions0,
+        AccGenPragmasTrailing0, AccGenPragmasMMTabling0,
+        AccPromises, AccInitialises, AccFinalises,
+        AccMutables, AccTypeRepns0).
 
 %---------------------%
 
@@ -522,20 +551,19 @@ acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
         ImpDeclPragmas, ImpPromises),
 
-    AccAvails0 = !.Acc ^ ia_avails,
-    AccFIMs0 = !.Acc ^ ia_fims,
-    AccTypeDefnsAbs0 = !.Acc ^ ia_type_defns_abs,
-    AccTypeDefnsMer0 = !.Acc ^ ia_type_defns_mer,
-    AccTypeDefnsFor0 = !.Acc ^ ia_type_defns_for,
-    AccInstDefns0 = !.Acc ^ ia_inst_defns,
-    AccModeDefns0 = !.Acc ^ ia_mode_defns,
-    AccTypeClasses0 = !.Acc ^ ia_typeclasses,
-    AccInstances0 = !.Acc ^ ia_instances,
-    AccPredDecls0 = !.Acc ^ ia_pred_decls,
-    AccModeDecls0 = !.Acc ^ ia_mode_decls,
-    AccForeignEnums0 = !.Acc ^ ia_foreign_enums,
-    AccDeclPragmas0 = !.Acc ^ ia_decl_pragmas,
-    AccPromises0 = !.Acc ^ ia_promises,
+    !.Acc = item_accumulator(AccAvails0, AccFIMs0,
+        AccTypeDefnsAbs0, AccTypeDefnsMer0, AccTypeDefnsFor0,
+        AccInstDefns0, AccModeDefns0, AccTypeClasses0, AccInstances0,
+        AccPredDecls0, AccModeDecls0, AccClauses0,
+        AccForeignEnums0, AccForeignExportEnums0,
+        AccDeclPragmas0, AccDeclPragmasTypeSpec0,
+        AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
+        AccDeclPragmasSharing0, AccDeclPragmasReuse0,
+        AccImplPragmas0,
+        AccGenPragmasUnusedArgs0, AccGenPragmasExceptions0,
+        AccGenPragmasTrailing0, AccGenPragmasMMTabling0,
+        AccPromises0, AccInitialises0, AccFinalises0,
+        AccMutables0, AccTypeRepns0),
 
     import_and_or_use_map_to_item_avails(do_not_include_implicit,
         ImportUseMap, IntAvails, ImpAvails),
@@ -599,20 +627,19 @@ acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
     acc_ims_list(ImpItemMercuryStatus, ImpPromises,
         AccPromises1, AccPromises),
 
-    !Acc ^ ia_avails := AccAvails,
-    !Acc ^ ia_fims := AccFIMs,
-    !Acc ^ ia_type_defns_abs := AccTypeDefnsAbs,
-    !Acc ^ ia_type_defns_mer := AccTypeDefnsMer,
-    !Acc ^ ia_type_defns_for := AccTypeDefnsFor,
-    !Acc ^ ia_inst_defns := AccInstDefns,
-    !Acc ^ ia_mode_defns := AccModeDefns,
-    !Acc ^ ia_typeclasses := AccTypeClasses,
-    !Acc ^ ia_instances := AccInstances,
-    !Acc ^ ia_pred_decls := AccPredDecls,
-    !Acc ^ ia_mode_decls := AccModeDecls,
-    !Acc ^ ia_foreign_enums := AccForeignEnums,
-    !Acc ^ ia_decl_pragmas := AccDeclPragmas,
-    !Acc ^ ia_promises := AccPromises.
+    !:Acc = item_accumulator(AccAvails, AccFIMs,
+        AccTypeDefnsAbs, AccTypeDefnsMer, AccTypeDefnsFor,
+        AccInstDefns, AccModeDefns, AccTypeClasses, AccInstances,
+        AccPredDecls, AccModeDecls, AccClauses0,
+        AccForeignEnums, AccForeignExportEnums0,
+        AccDeclPragmas, AccDeclPragmasTypeSpec0,
+        AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
+        AccDeclPragmasSharing0, AccDeclPragmasReuse0,
+        AccImplPragmas0,
+        AccGenPragmasUnusedArgs0, AccGenPragmasExceptions0,
+        AccGenPragmasTrailing0, AccGenPragmasMMTabling0,
+        AccPromises, AccInitialises0, AccFinalises0,
+        AccMutables0, AccTypeRepns0).
 
 %---------------------%
 
@@ -674,21 +701,19 @@ acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
         IntDeclPragmas, IntPromises, IntTypeRepnMap,
         ImpTypeClasses),
 
-    AccAvails0 = !.Acc ^ ia_avails,
-    AccFIMs0 = !.Acc ^ ia_fims,
-    AccTypeDefnsAbs0 = !.Acc ^ ia_type_defns_abs,
-    AccTypeDefnsMer0 = !.Acc ^ ia_type_defns_mer,
-    AccTypeDefnsFor0 = !.Acc ^ ia_type_defns_for,
-    AccInstDefns0 = !.Acc ^ ia_inst_defns,
-    AccModeDefns0 = !.Acc ^ ia_mode_defns,
-    AccTypeClasses0 = !.Acc ^ ia_typeclasses,
-    AccInstances0 = !.Acc ^ ia_instances,
-    AccPredDecls0 = !.Acc ^ ia_pred_decls,
-    AccModeDecls0 = !.Acc ^ ia_mode_decls,
-    AccForeignEnums0 = !.Acc ^ ia_foreign_enums,
-    AccDeclPragmas0 = !.Acc ^ ia_decl_pragmas,
-    AccPromises0 = !.Acc ^ ia_promises,
-    AccTypeRepns0 = !.Acc ^ ia_type_repns,
+    !.Acc = item_accumulator(AccAvails0, AccFIMs0,
+        AccTypeDefnsAbs0, AccTypeDefnsMer0, AccTypeDefnsFor0,
+        AccInstDefns0, AccModeDefns0, AccTypeClasses0, AccInstances0,
+        AccPredDecls0, AccModeDecls0, AccClauses0,
+        AccForeignEnums0, AccForeignExportEnums0,
+        AccDeclPragmas0, AccDeclPragmasTypeSpec0,
+        AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
+        AccDeclPragmasSharing0, AccDeclPragmasReuse0,
+        AccImplPragmas0,
+        AccGenPragmasUnusedArgs0, AccGenPragmasExceptions0,
+        AccGenPragmasTrailing0, AccGenPragmasMMTabling0,
+        AccPromises0, AccInitialises0, AccFinalises0,
+        AccMutables0, AccTypeRepns0),
 
     import_and_or_use_map_to_item_avails(do_not_include_implicit,
         ImportUseMap, IntAvails, ImpAvails),
@@ -740,21 +765,19 @@ acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
     AccTypeRepns = [ModuleName - int_type_ctor_repns(ifk_int1, IntTypeRepnMap)
         | AccTypeRepns0],
 
-    !Acc ^ ia_avails := AccAvails,
-    !Acc ^ ia_fims := AccFIMs,
-    !Acc ^ ia_type_defns_abs := AccTypeDefnsAbs,
-    !Acc ^ ia_type_defns_mer := AccTypeDefnsMer,
-    !Acc ^ ia_type_defns_for := AccTypeDefnsFor,
-    !Acc ^ ia_inst_defns := AccInstDefns,
-    !Acc ^ ia_mode_defns := AccModeDefns,
-    !Acc ^ ia_typeclasses := AccTypeClasses,
-    !Acc ^ ia_instances := AccInstances,
-    !Acc ^ ia_pred_decls := AccPredDecls,
-    !Acc ^ ia_mode_decls := AccModeDecls,
-    !Acc ^ ia_foreign_enums := AccForeignEnums,
-    !Acc ^ ia_decl_pragmas := AccDeclPragmas,
-    !Acc ^ ia_promises := AccPromises,
-    !Acc ^ ia_type_repns := AccTypeRepns.
+    !:Acc = item_accumulator(AccAvails, AccFIMs,
+        AccTypeDefnsAbs, AccTypeDefnsMer, AccTypeDefnsFor,
+        AccInstDefns, AccModeDefns, AccTypeClasses, AccInstances,
+        AccPredDecls, AccModeDecls, AccClauses0,
+        AccForeignEnums, AccForeignExportEnums0,
+        AccDeclPragmas, AccDeclPragmasTypeSpec0,
+        AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
+        AccDeclPragmasSharing0, AccDeclPragmasReuse0,
+        AccImplPragmas0,
+        AccGenPragmasUnusedArgs0, AccGenPragmasExceptions0,
+        AccGenPragmasTrailing0, AccGenPragmasMMTabling0,
+        AccPromises, AccInitialises0, AccFinalises0,
+        AccMutables0, AccTypeRepns).
 
 %---------------------%
 
@@ -794,16 +817,19 @@ acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc) :-
         TypeCheckedMap, InstCheckedMap, ModeCheckedMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap),
 
-    AccAvails0 = !.Acc ^ ia_avails,
-    AccFIMs0 = !.Acc ^ ia_fims,
-    AccTypeDefnsAbs0 = !.Acc ^ ia_type_defns_abs,
-    AccTypeDefnsMer0 = !.Acc ^ ia_type_defns_mer,
-    AccTypeDefnsFor0 = !.Acc ^ ia_type_defns_for,
-    AccInstDefns0 = !.Acc ^ ia_inst_defns,
-    AccModeDefns0 = !.Acc ^ ia_mode_defns,
-    AccTypeClasses0 = !.Acc ^ ia_typeclasses,
-    AccInstances0 = !.Acc ^ ia_instances,
-    AccTypeRepns0 = !.Acc ^ ia_type_repns,
+    !.Acc = item_accumulator(AccAvails0, AccFIMs0,
+        AccTypeDefnsAbs0, AccTypeDefnsMer0, AccTypeDefnsFor0,
+        AccInstDefns0, AccModeDefns0, AccTypeClasses0, AccInstances0,
+        AccPredDecls0, AccModeDecls0, AccClauses0,
+        AccForeignEnums0, AccForeignExportEnums0,
+        AccDeclPragmas0, AccDeclPragmasTypeSpec0,
+        AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
+        AccDeclPragmasSharing0, AccDeclPragmasReuse0,
+        AccImplPragmas0,
+        AccGenPragmasUnusedArgs0, AccGenPragmasExceptions0,
+        AccGenPragmasTrailing0, AccGenPragmasMMTabling0,
+        AccPromises0, AccInitialises0, AccFinalises0,
+        AccMutables0, AccTypeRepns0),
 
     import_and_or_use_map_to_item_avails(do_not_include_implicit,
         ImportUseMap, IntAvails, ImpAvails),
@@ -845,16 +871,19 @@ acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc) :-
     AccTypeRepns = [ModuleName - int_type_ctor_repns(ifk_int2, IntTypeRepnMap)
         | AccTypeRepns0],
 
-    !Acc ^ ia_avails := AccAvails,
-    !Acc ^ ia_fims := AccFIMs,
-    !Acc ^ ia_type_defns_abs := AccTypeDefnsAbs,
-    !Acc ^ ia_type_defns_mer := AccTypeDefnsMer,
-    !Acc ^ ia_type_defns_for := AccTypeDefnsFor,
-    !Acc ^ ia_inst_defns := AccInstDefns,
-    !Acc ^ ia_mode_defns := AccModeDefns,
-    !Acc ^ ia_typeclasses := AccTypeClasses,
-    !Acc ^ ia_instances := AccInstances,
-    !Acc ^ ia_type_repns := AccTypeRepns.
+    !:Acc = item_accumulator(AccAvails, AccFIMs,
+        AccTypeDefnsAbs, AccTypeDefnsMer, AccTypeDefnsFor,
+        AccInstDefns, AccModeDefns, AccTypeClasses, AccInstances,
+        AccPredDecls0, AccModeDecls0, AccClauses0,
+        AccForeignEnums0, AccForeignExportEnums0,
+        AccDeclPragmas0, AccDeclPragmasTypeSpec0,
+        AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
+        AccDeclPragmasSharing0, AccDeclPragmasReuse0,
+        AccImplPragmas0,
+        AccGenPragmasUnusedArgs0, AccGenPragmasExceptions0,
+        AccGenPragmasTrailing0, AccGenPragmasMMTabling0,
+        AccPromises0, AccInitialises0, AccFinalises0,
+        AccMutables0, AccTypeRepns).
 
 %---------------------%
 
@@ -872,23 +901,19 @@ acc_parse_tree_plain_opt(ParseTreePlainOpt, !Acc) :-
         MarkerPragmas, TypeSpecs, UnusedArgs, TermInfos, Term2Infos,
         Exceptions, Trailings, MMTablings, Sharings, Reuses),
 
-    AccAvails0 = !.Acc ^ ia_avails,
-    AccFIMs0 = !.Acc ^ ia_fims,
-    AccTypeDefnsAbs0 = !.Acc ^ ia_type_defns_abs,
-    AccTypeDefnsMer0 = !.Acc ^ ia_type_defns_mer,
-    AccTypeDefnsFor0 = !.Acc ^ ia_type_defns_for,
-    AccInstDefns0 = !.Acc ^ ia_inst_defns,
-    AccModeDefns0 = !.Acc ^ ia_mode_defns,
-    AccTypeClasses0 = !.Acc ^ ia_typeclasses,
-    AccInstances0 = !.Acc ^ ia_instances,
-    AccPredDecls0 = !.Acc ^ ia_pred_decls,
-    AccModeDecls0 = !.Acc ^ ia_mode_decls,
-    AccClauses0 = !.Acc ^ ia_clauses,
-    AccForeignEnums0 = !.Acc ^ ia_foreign_enums,
-    AccDeclPragmas0 = !.Acc ^ ia_decl_pragmas,
-    AccImplPragmas0 = !.Acc ^ ia_impl_pragmas,
-    AccGenPragmas0 = !.Acc ^ ia_gen_pragmas,
-    AccPromises0 = !.Acc ^ ia_promises,
+    !.Acc = item_accumulator(AccAvails0, AccFIMs0,
+        AccTypeDefnsAbs0, AccTypeDefnsMer0, AccTypeDefnsFor0,
+        AccInstDefns0, AccModeDefns0, AccTypeClasses0, AccInstances0,
+        AccPredDecls0, AccModeDecls0, AccClauses0,
+        AccForeignEnums0, AccForeignExportEnums0,
+        AccDeclPragmas0, AccDeclPragmasTypeSpec0,
+        AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
+        AccDeclPragmasSharing0, AccDeclPragmasReuse0,
+        AccImplPragmas0,
+        AccGenPragmasUnusedArgs0, AccGenPragmasExceptions0,
+        AccGenPragmasTrailing0, AccGenPragmasMMTabling0,
+        AccPromises0, AccInitialises0, AccFinalises0,
+        AccMutables0, AccTypeRepns0),
 
     OptAvails = use_map_to_item_avails(UseMap),
     acc_ims_avails(ItemMercuryStatus, OptAvails, AccAvails0, AccAvails),
@@ -913,45 +938,46 @@ acc_parse_tree_plain_opt(ParseTreePlainOpt, !Acc) :-
         AccForeignEnums0, AccForeignEnums),
     acc_pred_marker_pragmas(MarkerPragmas,
         [], DeclMarkerPragmas, [], ImplMarkerPragmas),
-    OptDeclPragmas =
-        list.map(wrap_type_spec_pragma, TypeSpecs) ++
-        list.map(wrap_termination_pragma, TermInfos) ++
-        list.map(wrap_termination2_pragma, Term2Infos) ++
-        list.map(wrap_struct_sharing_pragma, Sharings) ++
-        list.map(wrap_struct_reuse_pragma, Reuses) ++
-        DeclMarkerPragmas,
-    acc_ims_list(ItemMercuryStatus, OptDeclPragmas,
+    acc_ims_list(ItemMercuryStatus, DeclMarkerPragmas,
         AccDeclPragmas0, AccDeclPragmas),
+    AccDeclPragmasTypeSpec = AccDeclPragmasTypeSpec0 ++
+        cord.from_list(TypeSpecs),
+    AccDeclPragmasTermInfo = AccDeclPragmasTermInfo0 ++
+        cord.from_list(TermInfos),
+    AccDeclPragmasTerm2Info = AccDeclPragmasTerm2Info0 ++
+        cord.from_list(Term2Infos),
+    AccDeclPragmasSharing = AccDeclPragmasSharing0 ++
+        cord.from_list(Sharings),
+    AccDeclPragmasReuse = AccDeclPragmasReuse0 ++
+        cord.from_list(Reuses),
     OptImplPragmas =
         list.map(wrap_foreign_proc, ForeignProcs) ++
         ImplMarkerPragmas,
     acc_ims_list(ItemMercuryStatus, OptImplPragmas,
         AccImplPragmas0, AccImplPragmas),
-    OptGenPragmas =
-        list.map(wrap_unused_args_pragma, UnusedArgs) ++
-        list.map(wrap_exceptions_pragma, Exceptions) ++
-        list.map(wrap_trailing_pragma, Trailings) ++
-        list.map(wrap_mm_tabling_pragma, MMTablings),
-    AccGenPragmas = AccGenPragmas0 ++ cord.from_list(OptGenPragmas),
+    AccGenPragmasUnusedArgs = AccGenPragmasUnusedArgs0 ++
+        cord.from_list(UnusedArgs),
+    AccGenPragmasExceptions = AccGenPragmasExceptions0 ++
+        cord.from_list(Exceptions),
+    AccGenPragmasTrailing = AccGenPragmasTrailing0 ++
+        cord.from_list(Trailings),
+    AccGenPragmasMMTabling = AccGenPragmasMMTabling0 ++
+        cord.from_list(MMTablings),
     acc_ims_list(ItemMercuryStatus, Promises, AccPromises0, AccPromises),
 
-    !Acc ^ ia_avails := AccAvails,
-    !Acc ^ ia_fims := AccFIMs,
-    !Acc ^ ia_type_defns_abs := AccTypeDefnsAbs,
-    !Acc ^ ia_type_defns_mer := AccTypeDefnsMer,
-    !Acc ^ ia_type_defns_for := AccTypeDefnsFor,
-    !Acc ^ ia_inst_defns := AccInstDefns,
-    !Acc ^ ia_mode_defns := AccModeDefns,
-    !Acc ^ ia_typeclasses := AccTypeClasses,
-    !Acc ^ ia_instances := AccInstances,
-    !Acc ^ ia_pred_decls := AccPredDecls,
-    !Acc ^ ia_mode_decls := AccModeDecls,
-    !Acc ^ ia_clauses := AccClauses,
-    !Acc ^ ia_foreign_enums := AccForeignEnums,
-    !Acc ^ ia_decl_pragmas := AccDeclPragmas,
-    !Acc ^ ia_impl_pragmas := AccImplPragmas,
-    !Acc ^ ia_gen_pragmas := AccGenPragmas,
-    !Acc ^ ia_promises := AccPromises.
+    !:Acc = item_accumulator(AccAvails, AccFIMs,
+        AccTypeDefnsAbs, AccTypeDefnsMer, AccTypeDefnsFor,
+        AccInstDefns, AccModeDefns, AccTypeClasses, AccInstances,
+        AccPredDecls, AccModeDecls, AccClauses,
+        AccForeignEnums, AccForeignExportEnums0,
+        AccDeclPragmas, AccDeclPragmasTypeSpec,
+        AccDeclPragmasTermInfo, AccDeclPragmasTerm2Info,
+        AccDeclPragmasSharing, AccDeclPragmasReuse,
+        AccImplPragmas,
+        AccGenPragmasUnusedArgs, AccGenPragmasExceptions,
+        AccGenPragmasTrailing, AccGenPragmasMMTabling,
+        AccPromises, AccInitialises0, AccFinalises0,
+        AccMutables0, AccTypeRepns0).
 
 %---------------------%
 
@@ -962,26 +988,49 @@ acc_parse_tree_trans_opt(ParseTreeTransOpt, !Acc) :-
     ParseTreeTransOpt = parse_tree_trans_opt(_ModuleName, _ModuleNameContext,
         TermInfos, Term2Infos, Exceptions, Trailings, MMTablings,
         Sharings, Reuses),
-    ItemMercuryStatus = item_defined_in_other_module(item_import_opt_int),
 
-    AccDeclPragmas0 = !.Acc ^ ia_decl_pragmas,
-    AccGenPragmas0 = !.Acc ^ ia_gen_pragmas,
+    !.Acc = item_accumulator(AccAvails0, AccFIMs0,
+        AccTypeDefnsAbs0, AccTypeDefnsMer0, AccTypeDefnsFor0,
+        AccInstDefns0, AccModeDefns0, AccTypeClasses0, AccInstances0,
+        AccPredDecls0, AccModeDecls0, AccClauses0,
+        AccForeignEnums0, AccForeignExportEnums0,
+        AccDeclPragmas0, AccDeclPragmasTypeSpec0,
+        AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
+        AccDeclPragmasSharing0, AccDeclPragmasReuse0,
+        AccImplPragmas0,
+        AccGenPragmasUnusedArgs0, AccGenPragmasExceptions0,
+        AccGenPragmasTrailing0, AccGenPragmasMMTabling0,
+        AccPromises0, AccInitialises0, AccFinalises0,
+        AccMutables0, AccTypeRepns0),
 
-    OptDeclPragmas =
-        list.map(wrap_termination_pragma, TermInfos) ++
-        list.map(wrap_termination2_pragma, Term2Infos) ++
-        list.map(wrap_struct_sharing_pragma, Sharings) ++
-        list.map(wrap_struct_reuse_pragma, Reuses),
-    acc_ims_list(ItemMercuryStatus, OptDeclPragmas,
-        AccDeclPragmas0, AccDeclPragmas),
-    OptGenPragmas =
-        list.map(wrap_exceptions_pragma, Exceptions) ++
-        list.map(wrap_trailing_pragma, Trailings) ++
-        list.map(wrap_mm_tabling_pragma, MMTablings),
-    AccGenPragmas = AccGenPragmas0 ++ cord.from_list(OptGenPragmas),
+    AccDeclPragmasTermInfo = AccDeclPragmasTermInfo0 ++
+        cord.from_list(TermInfos),
+    AccDeclPragmasTerm2Info = AccDeclPragmasTerm2Info0 ++
+        cord.from_list(Term2Infos),
+    AccDeclPragmasSharing = AccDeclPragmasSharing0 ++
+        cord.from_list(Sharings),
+    AccDeclPragmasReuse = AccDeclPragmasReuse0 ++
+        cord.from_list(Reuses),
+    AccGenPragmasExceptions = AccGenPragmasExceptions0 ++
+        cord.from_list(Exceptions),
+    AccGenPragmasTrailing = AccGenPragmasTrailing0 ++
+        cord.from_list(Trailings),
+    AccGenPragmasMMTabling = AccGenPragmasMMTabling0 ++
+        cord.from_list(MMTablings),
 
-    !Acc ^ ia_decl_pragmas := AccDeclPragmas,
-    !Acc ^ ia_gen_pragmas := AccGenPragmas.
+    !:Acc = item_accumulator(AccAvails0, AccFIMs0,
+        AccTypeDefnsAbs0, AccTypeDefnsMer0, AccTypeDefnsFor0,
+        AccInstDefns0, AccModeDefns0, AccTypeClasses0, AccInstances0,
+        AccPredDecls0, AccModeDecls0, AccClauses0,
+        AccForeignEnums0, AccForeignExportEnums0,
+        AccDeclPragmas0, AccDeclPragmasTypeSpec0,
+        AccDeclPragmasTermInfo, AccDeclPragmasTerm2Info,
+        AccDeclPragmasSharing, AccDeclPragmasReuse,
+        AccImplPragmas0,
+        AccGenPragmasUnusedArgs0, AccGenPragmasExceptions,
+        AccGenPragmasTrailing, AccGenPragmasMMTabling,
+        AccPromises0, AccInitialises0, AccFinalises0,
+        AccMutables0, AccTypeRepns0).
 
 %---------------------------------------------------------------------------%
 
@@ -1048,63 +1097,11 @@ acc_pred_marker_pragmas([ItemMarker | ItemMarkers],
     % they yield an item_decl_pragma_info or item_generated_pragma_info;
     % they do not convert the resulting pragma into a general item.
 
-:- func wrap_type_spec_pragma(item_type_spec) = item_decl_pragma_info.
-:- func wrap_termination_pragma(item_termination) = item_decl_pragma_info.
-:- func wrap_termination2_pragma(item_termination2) = item_decl_pragma_info.
-:- func wrap_struct_sharing_pragma(item_struct_sharing)
-    = item_decl_pragma_info.
-:- func wrap_struct_reuse_pragma(item_struct_reuse) = item_decl_pragma_info.
-
-wrap_type_spec_pragma(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Item = item_pragma_info(decl_pragma_type_spec(Info), Context, SeqNum).
-
-wrap_termination_pragma(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Item = item_pragma_info(decl_pragma_termination_info(Info),
-        Context, SeqNum).
-
-wrap_termination2_pragma(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Item = item_pragma_info(decl_pragma_termination2_info(Info),
-        Context, SeqNum).
-
-wrap_struct_sharing_pragma(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Item = item_pragma_info(decl_pragma_structure_sharing(Info),
-        Context, SeqNum).
-
-wrap_struct_reuse_pragma(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Item = item_pragma_info(decl_pragma_structure_reuse(Info),
-        Context, SeqNum).
-
 :- func wrap_foreign_proc(item_foreign_proc) = item_impl_pragma_info.
 
 wrap_foreign_proc(X) = Item :-
     X = item_pragma_info(Info, Context, SeqNum),
     Item = item_pragma_info(impl_pragma_foreign_proc(Info), Context, SeqNum).
-
-:- func wrap_unused_args_pragma(item_unused_args) = item_generated_pragma_info.
-:- func wrap_exceptions_pragma(item_exceptions) = item_generated_pragma_info.
-:- func wrap_trailing_pragma(item_trailing) = item_generated_pragma_info.
-:- func wrap_mm_tabling_pragma(item_mm_tabling) = item_generated_pragma_info.
-
-wrap_unused_args_pragma(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Item = item_pragma_info(gen_pragma_unused_args(Info), Context, SeqNum).
-
-wrap_exceptions_pragma(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Item = item_pragma_info(gen_pragma_exceptions(Info), Context, SeqNum).
-
-wrap_trailing_pragma(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Item = item_pragma_info(gen_pragma_trailing_info(Info), Context, SeqNum).
-
-wrap_mm_tabling_pragma(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Item = item_pragma_info(gen_pragma_mm_tabling_info(Info), Context, SeqNum).
 
 %---------------------------------------------------------------------------%
 
