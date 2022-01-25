@@ -1575,11 +1575,11 @@ accumulate_modules_used_by_type_ctor(TypeCtor, !Modules) :-
         % only *after* the module qualification of the augmented compilation
         % unit whose contents we are now processing, and the module
         % qualification pass would have generated an error message
-        % for this cannot-be-uniquely-qualified name. However, if the option
-        % print_errors_warnings_when_generating_interface is off, as it is
-        % by default, then the compiler ignores that error, and proceeds
-        % to call generate_interfaces_int1_int2 above, which calls us
-        % indirectly.
+        % for this cannot-be-uniquely-qualified name. However, if the
+        % user has turned off the halt_at_invalid_interface option,
+        % which is on by default, then the compiler ignores that error,
+        % and proceeds to call generate_interfaces_int1_int2 above,
+        % which calls us indirectly.
     ).
 
 %---------------------%
@@ -2546,7 +2546,7 @@ restrict_type_ctor_checked_defn_for_int2(TypeCtor, TypeCtorCheckedDefn0,
             checked_defn_solver(SolverTypeDefn0, SrcDefnsSolver0),
         SolverTypeDefn = SolverTypeDefn0,
         SrcDefnsSolver0 = src_defns_solver(MaybeIntDefn0, MaybeImpDefn),
-        map_fold3_maybe(restrict_type_ctor_int_defn_for_int2,
+        maybe.map_fold3_maybe(restrict_type_ctor_int_defn_for_int2,
             MaybeIntDefn0, MaybeIntDefn,
             !MaybeUnqual, !ModuleNames, !IntImplicitFIMLangs),
         SrcDefnsSolver = src_defns_solver(MaybeIntDefn, MaybeImpDefn),
