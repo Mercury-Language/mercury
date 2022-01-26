@@ -50,6 +50,6 @@ initialcommit=9101f6d96bc9d0e2ec0f84048d85b00c4826a595
 git checkout --detach "$initialcommit"
 git clean -fdxq .
 tar xf "$archive" --strip-components=1
-git add .
+git add -f .
 git commit -q -m "Imported $basename"
 git tag -a -m "Tag $version" "$tag"
