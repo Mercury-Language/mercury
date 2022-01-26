@@ -7,9 +7,9 @@ mdb> break p
 mdb> break q
  1: + stop  interface pred throw.q/1-0 (semidet)
 mdb> continue
-      E2:     C2 CALL pred throw.p/1-0 (cc_nondet) throw.m:24 (exception.m:NNNN)
+      E2:     C2 CALL pred throw.p/1-0 (cc_nondet) throw.m:29 (exception.m:NNNN)
 mdb> finish
-      E3:     C2 EXCP pred throw.p/1-0 (cc_nondet) q!;c2; throw.m:26 (exception.m:NNNN)
+      E3:     C2 EXCP pred throw.p/1-0 (cc_nondet) q!;c2; throw.m:31 (exception.m:NNNN)
 mdb> dd -d 3 -n 7
 Call p(_)
 Throws "Too big"

@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % The .exp file is for ???
-% The .exp2 file is for ???
+% The .exp2 file is for when we optimize at -O2 or less.
 % The .exp3 file is for when we optimize var saves across stack flushes.
 % The .exp4 file is .exp2 but with --delay-constructs (set by -O5).
 
