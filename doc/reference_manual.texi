@@ -3415,8 +3415,9 @@ Supplying a type declaration and a single mode declaration
 also allows higher-order terms to be created
 from a field access function without using explicit lambda expressions.
 
-Declarations for field access functions for fields occurring in the interface
-section of a module must also occur in the interface section.
+If a field occurs in the interface section of a module,
+then any declaration for a field access function for that field
+must also occur in the interface section.
 
 If there are multiple fields with the same label in the same module,
 only one of those fields can have user-supplied declarations
