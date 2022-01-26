@@ -39,17 +39,14 @@
     % type-specific equality and comparison predicates for subtypes.
     % In such cases, we return a message about the error, but, by ignoring
     % the unexpected component, we can still return a meaningful type
-    % definition item. This is why we return both a maybe1(item_or_marker)
-    % and an updated list of error specs.
+    % definition item. We can return both using iom_item_and_specs.
     %
 :- pred parse_solver_type_defn_item(module_name::in, varset::in,
     list(term)::in, prog_context::in, item_seq_num::in,
-    maybe1(item_or_marker)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    maybe1(item_or_marker)::out) is det.
 :- pred parse_type_defn_item(module_name::in, varset::in,
     list(term)::in, prog_context::in, item_seq_num::in, is_solver_type::in,
-    maybe1(item_or_marker)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    maybe1(item_or_marker)::out) is det.
 
     % Parses the attributes in a "where" clause. It looks for and processes
     % only the attributes that can occur on foreign_type pragmas. This includes
@@ -99,13 +96,13 @@
 %---------------------------------------------------------------------------%
 
 parse_solver_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
-        MaybeIOM, !Specs) :-
+        MaybeIOM) :-
     ( if
         ArgTerms = [ArgTerm],
         ArgTerm = term.functor(term.atom("type"), SubArgTerms, SubContext)
     then
         parse_type_defn_item(ModuleName, VarSet, SubArgTerms,
-            SubContext, SeqNum, solver_type, MaybeIOM, !Specs)
+            SubContext, SeqNum, solver_type, MaybeIOM)
     else
         Pieces = [words("Error: the"), decl("solver"), words("keyword"),
             words("should be followed by a type definition."), nl],
@@ -115,7 +112,7 @@ parse_solver_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
     ).
 
 parse_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
-        IsSolverType, MaybeIOM, !Specs) :-
+        IsSolverType, MaybeIOM) :-
     ( if ArgTerms = [TypeDefnTerm] then
         ( if
             TypeDefnTerm = term.functor(term.atom(Name), TypeDefnArgTerms, _),
@@ -128,7 +125,7 @@ parse_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             (
                 Name = "--->",
                 parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
-                    Context, SeqNum, IsSolverType, MaybeIOM, !Specs)
+                    Context, SeqNum, IsSolverType, MaybeIOM)
             ;
                 Name = "==",
                 parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
@@ -161,11 +158,10 @@ parse_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
     %
 :- pred parse_du_type_defn(module_name::in, varset::in, term::in, term::in,
     prog_context::in, item_seq_num::in, is_solver_type::in,
-    maybe1(item_or_marker)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    maybe1(item_or_marker)::out) is det.
 
 parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
-        IsSolverType, MaybeIOM, !Specs) :-
+        IsSolverType, MaybeIOM) :-
     % XXX We should consider which errors should prevent us from returning
     % a type definition item, and which should not.
     (
@@ -241,7 +237,8 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             % messages about TypeSymName being undefined. This is the case
             % e.g. with tests/invalid/subtype_user_compare.m.
             (
-                MaybeCanonical = canon
+                MaybeCanonical = canon,
+                RecoverableSpecs0 = []
             ;
                 MaybeCanonical = noncanon(_),
                 CanonTypeCtor = type_ctor(TypeSymName, list.length(Params)),
@@ -254,10 +251,11 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
                     words("from its supertype."), nl],
                 CanonSpec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, CanonPieces),
-                !:Specs = [CanonSpec | !.Specs]
+                RecoverableSpecs0 = [CanonSpec]
             ),
             (
-                MaybeDirectArgIs = no
+                MaybeDirectArgIs = no,
+                RecoverableSpecs = RecoverableSpecs0
             ;
                 MaybeDirectArgIs = yes(_),
                 DirectArgTypeCtor =
@@ -270,7 +268,7 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
                     words("from its supertype."), nl],
                 DirectArgSpec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, DirectArgPieces),
-                !:Specs = [DirectArgSpec | !.Specs]
+                RecoverableSpecs = [DirectArgSpec | RecoverableSpecs0]
             )
         ;
             MaybeSuperType = not_a_subtype,
@@ -284,7 +282,8 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             ;
                 MaybeDirectArgIs = no,
                 ErrorSpecs = ErrorSpecs0
-            )
+            ),
+            RecoverableSpecs = []
         ),
         (
             ErrorSpecs = [],
@@ -292,7 +291,14 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             ItemTypeDefn = item_type_defn_info(TypeSymName, Params, TypeDefn,
                 TypeVarSet, Context, SeqNum),
             Item = item_type_defn(ItemTypeDefn),
-            MaybeIOM = ok1(iom_item(Item))
+            (
+                RecoverableSpecs = [],
+                IOM = iom_item(Item)
+            ;
+                RecoverableSpecs = [_ | _],
+                IOM = iom_item_and_specs(Item, RecoverableSpecs)
+            ),
+            MaybeIOM = ok1(IOM)
         ;
             ErrorSpecs = [_ | _],
             MaybeIOM = error1(ErrorSpecs)

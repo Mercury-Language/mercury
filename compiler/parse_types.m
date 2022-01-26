@@ -30,6 +30,11 @@
     --->    iom_item(item)
             % The term contains an item.
 
+    ;       iom_item_and_specs(item, list(error_spec))
+            % The term contains an item. This item has errors that we want
+            % to report, but from which we have recovered in a useful
+            % though probably not perfect manner.
+
     ;       iom_marker_include(one_or_more(item_include))
             % The term contains an `:- include_module' declaration.
 
@@ -85,7 +90,9 @@
 
 iom_desc_pieces(IOM) = Pieces :-
     (
-        IOM = iom_item(Item),
+        ( IOM = iom_item(Item)
+        ; IOM = iom_item_and_specs(Item, _Specs)
+        ),
         Pieces = item_desc_pieces(Item)
     ;
         IOM = iom_marker_include(_),
