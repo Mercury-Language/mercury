@@ -1060,21 +1060,24 @@ return_timestamp_if_needed(ReturnTimestamp, MaybeTimestamp0, MaybeTimestamp) :-
 check_timestamp_report_if_needed_and_missing(Globals, FileName,
         MaybeTimestampRes, MaybeTimestamp, !IO) :-
     (
-        MaybeTimestampRes = yes(ok(Timestamp)),
-        MaybeTimestamp = yes(Timestamp)
-    ;
-        MaybeTimestampRes = yes(error(IOError)),
-        MaybeTimestamp = no,
-        globals.lookup_bool_option(Globals, smart_recompilation,
-            SmartRecompilation),
-        % Should we print the warning if smart recompilation has already been
-        % disabled by an earlier error? At the moment, we do.
+        MaybeTimestampRes = yes(TimestampRes),
         (
-            SmartRecompilation = yes,
-            record_and_report_missing_timestamp(Globals, FileName,
-                IOError, !IO)
+            TimestampRes = ok(Timestamp),
+            MaybeTimestamp = yes(Timestamp)
         ;
-            SmartRecompilation = no
+            TimestampRes = error(IOError),
+            MaybeTimestamp = no,
+            globals.lookup_bool_option(Globals, smart_recompilation,
+                SmartRecompilation),
+            % Should we print the warning if smart recompilation has
+            % already been disabled by an earlier error? At the moment, we do.
+            (
+                SmartRecompilation = yes,
+                record_and_report_missing_timestamp(Globals, FileName,
+                    IOError, !IO)
+            ;
+                SmartRecompilation = no
+            )
         )
     ;
         MaybeTimestampRes = no,
@@ -1091,18 +1094,14 @@ record_and_report_missing_timestamp(Globals, FileName, Error, !IO) :-
     globals.lookup_bool_option(Globals, warn_smart_recompilation, Warn),
     (
         Warn = yes,
-        io.error_message(Error, Msg),
-        io.format("Warning: cannot find modification time for %s:\n",
-            [s(FileName)], !IO),
-        io.format("  %s.\n", [s(Msg)], !IO),
-        io.format("  Smart recompilation will not work.\n", [], !IO),
-        globals.lookup_bool_option(Globals, halt_at_warn, HaltAtWarn),
-        (
-            HaltAtWarn = yes,
-            io.set_exit_status(1, !IO)
-        ;
-            HaltAtWarn = no
-        )
+        io.error_message(Error, ErrorMsg),
+        Pieces = [words("Warning: cannot find modification time for"),
+            quote(FileName), suffix(":"), nl,
+            words(ErrorMsg), suffix("."), nl,
+            words("Smart recompilation will not work."), nl],
+        Spec = simplest_no_context_spec($pred, severity_warning,
+            phase_read_files, Pieces),
+        write_error_spec(Globals, Spec, !IO)
     ;
         Warn = no
     ).
