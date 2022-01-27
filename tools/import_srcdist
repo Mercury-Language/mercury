@@ -51,5 +51,10 @@ git checkout --detach "$initialcommit"
 git clean -fdxq .
 tar xf "$archive" --strip-components=1
 git add -f .
+if git status --porcelain --ignored | grep -v '^A  '
+then
+    echo "Some files were not added." >&2
+    exit 1
+fi
 git commit -q -m "Imported $basename"
 git tag -a -m "Tag $version" "$tag"
