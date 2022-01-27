@@ -286,12 +286,12 @@ peek_at_file(FileStream, DefaultModuleName, DefaultExpectationContexts,
 
 %---------------------------------------------------------------------------%
 
-actually_read_module_src(Globals,
+actually_read_module_src(_Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTree, Specs, Errors, !IO) :-
-    do_actually_read_module(Globals,
-        DefaultModuleName, DefaultExpectationContexts, MaybeFileNameAndStream,
+    do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
+        MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         make_dummy_parse_tree_src, read_parse_tree_src,
         ParseTree, Specs, Errors, !IO).
@@ -303,8 +303,7 @@ actually_read_module_int0(Globals,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTreeInt0, Specs, Errors, !IO) :-
     IntFileKind = ifk_int0,
-    do_actually_read_module(Globals,
-        DefaultModuleName, DefaultExpectationContexts,
+    do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         make_dummy_parse_tree_int(IntFileKind),
@@ -319,8 +318,7 @@ actually_read_module_int1(Globals,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTreeInt1, Specs, Errors, !IO) :-
     IntFileKind = ifk_int1,
-    do_actually_read_module(Globals,
-        DefaultModuleName, DefaultExpectationContexts,
+    do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         make_dummy_parse_tree_int(IntFileKind),
@@ -335,8 +333,7 @@ actually_read_module_int2(Globals,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTreeInt2, Specs, Errors, !IO) :-
     IntFileKind = ifk_int2,
-    do_actually_read_module(Globals,
-        DefaultModuleName, DefaultExpectationContexts,
+    do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         make_dummy_parse_tree_int(IntFileKind),
@@ -351,8 +348,7 @@ actually_read_module_int3(Globals,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
         MaybeModuleTimestampRes, ParseTreeInt3, Specs, Errors, !IO) :-
     IntFileKind = ifk_int3,
-    do_actually_read_module(Globals,
-        DefaultModuleName, DefaultExpectationContexts,
+    do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         make_dummy_parse_tree_int(IntFileKind),
@@ -378,12 +374,11 @@ filter_convert_specs(Globals, ReadSpecs, ReadConvertSpecs, Specs) :-
 
 %---------------------------------------------------------------------------%
 
-actually_read_module_plain_opt(Globals, DefaultModuleName,
+actually_read_module_plain_opt(_Globals, DefaultModuleName,
         MaybeFileNameAndStream, ParseTreePlainOpt, Specs, Errors, !IO) :-
     DefaultExpectationContexts = [],
-    do_actually_read_module(Globals,
-        DefaultModuleName, DefaultExpectationContexts, MaybeFileNameAndStream,
-        always_read_module(dont_return_timestamp), _,
+    do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
+        MaybeFileNameAndStream, always_read_module(dont_return_timestamp), _,
         make_dummy_parse_tree_opt(ofk_opt),
         read_parse_tree_opt(ofk_opt),
         ParseTreeOpt, ReadSpecs, Errors, !IO),
@@ -400,12 +395,11 @@ actually_read_module_plain_opt(Globals, DefaultModuleName,
     check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
         Specs0, Specs).
 
-actually_read_module_trans_opt(Globals, DefaultModuleName,
+actually_read_module_trans_opt(_Globals, DefaultModuleName,
         MaybeFileNameAndStream, ParseTreeTransOpt, Specs, Errors, !IO) :-
     DefaultExpectationContexts = [],
-    do_actually_read_module(Globals,
-        DefaultModuleName, DefaultExpectationContexts, MaybeFileNameAndStream,
-        always_read_module(dont_return_timestamp), _,
+    do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
+        MaybeFileNameAndStream, always_read_module(dont_return_timestamp), _,
         make_dummy_parse_tree_opt(ofk_trans_opt),
         read_parse_tree_opt(ofk_trans_opt),
         ParseTreeOpt, ReadSpecs, Errors, !IO),
@@ -480,10 +474,10 @@ expectation_context_to_msg(Context, SubMsg) :-
 %---------------------%
 
 :- type read_parse_tree(PT) ==
-    pred(file_name, string, int, line_context, line_posn, globals, module_name,
-        list(prog_context), PT, list(error_spec), read_module_errors).
+    pred(file_name, string, int, line_context, line_posn, module_name,
+        list(prog_context), maybe(PT), list(error_spec), read_module_errors).
 :- inst read_parse_tree
-    == (pred(in, in, in, in, in, in, in, in, out, out, out) is det).
+    == (pred(in, in, in, in, in, in, in, out, out, out) is det).
 
 :- type make_dummy_parse_tree(PT) == pred(module_name, PT).
 :- inst make_dummy_parse_tree == (pred(in, out) is det).
@@ -517,15 +511,14 @@ make_dummy_parse_tree_opt(OptFileKind, ModuleName, ParseTree) :-
     % takes place inside ReadParseTree, which will be one of
     % read_parse_tree_src, read_parse_tree_int and read_parse_tree_src.
     %
-:- pred do_actually_read_module(globals::in,
-    module_name::in, list(prog_context)::in,
+:- pred do_actually_read_module(module_name::in, list(prog_context)::in,
     maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
     make_dummy_parse_tree(PT)::in(make_dummy_parse_tree),
     read_parse_tree(PT)::in(read_parse_tree), PT::out,
     list(error_spec)::out, read_module_errors::out, io::di, io::uo) is det.
 
-do_actually_read_module(Globals, DefaultModuleName, DefaultExpectationContexts,
+do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         MakeDummyParseTree, ReadParseTree, ParseTree, Specs, Errors, !IO) :-
@@ -575,8 +568,14 @@ do_actually_read_module(Globals, DefaultModuleName, DefaultExpectationContexts,
                 LinePosn0 = line_posn(0),
                 ReadParseTree(FileStreamName, FileString, FileStringLen,
                     LineContext0, LinePosn0,
-                    Globals, DefaultModuleName, DefaultExpectationContexts,
-                    ParseTree, Specs, Errors)
+                    DefaultModuleName, DefaultExpectationContexts,
+                    MaybeParseTree, Specs, Errors),
+                (
+                    MaybeParseTree = yes(ParseTree)
+                ;
+                    MaybeParseTree = no,
+                    MakeDummyParseTree(DefaultModuleName, ParseTree)
+                )
             ;
                 MaybeResult = error2(_PartialStr, _PartialLen, ErrorCode),
                 MakeDummyParseTree(DefaultModuleName, ParseTree),
@@ -621,38 +620,33 @@ read_error_msg(ErrorMsg, Specs, !IO) :-
     %
 :- pred read_parse_tree_opt(opt_file_kind::in, file_name::in,
     string::in, int::in, line_context::in, line_posn::in,
-    globals::in, module_name::in, list(prog_context)::in,
-    parse_tree_opt::out, list(error_spec)::out, read_module_errors::out)
-    is det.
+    module_name::in, list(prog_context)::in, maybe(parse_tree_opt)::out,
+    list(error_spec)::out, read_module_errors::out) is det.
 
 read_parse_tree_opt(OptFileKind, SourceFileName0,
         FileString, FileStringLen, !.LineContext, !.LinePosn,
-        Globals, DefaultModuleName, DefaultExpectationContexts,
-        ParseTree, !:Specs, !:Errors) :-
+        DefaultModuleName, DefaultExpectationContexts,
+        MaybeParseTree, !:Specs, !:Errors) :-
     read_module_header(FileString, FileStringLen,
         DefaultModuleName, DefaultExpectationContexts, SourceFileName0,
         MaybeModuleHeader, SeqNumCounter1, !LineContext, !LinePosn),
     (
-        MaybeModuleHeader = no_valid_module_header(ModuleNameContext,
-            NoModuleSpecs, NoModuleErrors),
-        !:Specs = NoModuleSpecs,
-        !:Errors = set.list_to_set(NoModuleErrors),
-        ModuleName = DefaultModuleName,
-        ParseTree = parse_tree_opt(ModuleName, OptFileKind, ModuleNameContext,
-            [], [], [])
+        MaybeModuleHeader = no_valid_module_header(_ModuleNameContext,
+            !:Specs, NoModuleErrors),
+        MaybeParseTree = no,
+        set.list_to_set(NoModuleErrors, !:Errors)
     ;
         MaybeModuleHeader = valid_module_header(ModuleName, ModuleNameContext),
         % XXX We should allow the update of SourceFileName.
-        read_item_sequence(FileString, FileStringLen, Globals, ModuleName,
-            no_lookahead, FinalLookAhead, dont_allow_version_numbers, _,
+        read_item_sequence(FileString, FileStringLen, ModuleName,
+            no_lookahead, FinalLookAhead,
             cord.init, InclsCord, cord.init, AvailsCord,
             cord.init, FIMsCord, cord.init, ItemsCord,
             SourceFileName0, SourceFileName, SeqNumCounter1, SeqNumCounter,
             [], !:Specs, set.init, !:Errors, !LineContext, !LinePosn),
         check_for_unexpected_item_at_end(SourceFileName, FileString,
             FileStringLen, ModuleName, fk_opt(OptFileKind), FinalLookAhead,
-            SeqNumCounter, !Specs, !Errors,
-            !.LineContext, _LineContext, !.LinePosn, _LinePosn),
+            SeqNumCounter, !Specs, !Errors, !.LineContext, !.LinePosn),
         expect(cord.is_empty(InclsCord), $pred, "Incls != []"),
         Avails = cord.list(AvailsCord),
         avail_imports_uses(Avails, Imports, Uses),
@@ -660,7 +654,8 @@ read_parse_tree_opt(OptFileKind, SourceFileName0,
         FIMs = cord.list(FIMsCord),
         Items = cord.list(ItemsCord),
         ParseTree = parse_tree_opt(ModuleName, OptFileKind, ModuleNameContext,
-            Uses, FIMs, Items)
+            Uses, FIMs, Items),
+        MaybeParseTree = yes(ParseTree)
     ).
 
 %---------------------------------------------------------------------------%
@@ -682,148 +677,86 @@ read_parse_tree_opt(OptFileKind, SourceFileName0,
     %
 :- pred read_parse_tree_int(int_file_kind::in, file_name::in,
     string::in, int::in, line_context::in, line_posn::in,
-    globals::in, module_name::in, list(prog_context)::in,
-    parse_tree_int::out, list(error_spec)::out, read_module_errors::out)
-    is det.
+    module_name::in, list(prog_context)::in, maybe(parse_tree_int)::out,
+    list(error_spec)::out, read_module_errors::out) is det.
 
 read_parse_tree_int(IntFileKind, SourceFileName,
         FileString, FileStringLen, !.LineContext, !.LinePosn,
-        Globals, DefaultModuleName, DefaultExpectationContexts,
-        ParseTree, !:Specs, !:Errors) :-
-    some [!SeqNumCounter] (
+        DefaultModuleName, DefaultExpectationContexts,
+        MaybeParseTreeInt, !:Specs, !:Errors) :-
+    some [!SeqNumCounter, !LookAhead] (
         read_module_header(FileString, FileStringLen,
             DefaultModuleName, DefaultExpectationContexts, SourceFileName,
             MaybeModuleHeader, !:SeqNumCounter, !LineContext, !LinePosn),
         (
-            MaybeModuleHeader = no_valid_module_header(ModuleNameContext,
-                NoModuleSpecs, NoModuleErrors),
-            !:Specs = NoModuleSpecs,
-            !:Errors = set.list_to_set(NoModuleErrors),
-            ModuleName = DefaultModuleName,
-            ParseTree = parse_tree_int(ModuleName, IntFileKind,
-                ModuleNameContext, no_version_numbers,
-                [], [], [], [], [], [], [], [])
+            MaybeModuleHeader = no_valid_module_header(_ModuleNameContext,
+                !:Specs, NoModuleErrors),
+            set.list_to_set(NoModuleErrors, !:Errors),
+            MaybeParseTreeInt = no
         ;
             MaybeModuleHeader =
                 valid_module_header(ModuleName, ModuleNameContext),
-            some [!LookAhead] (
-                !:LookAhead = no_lookahead,
-                read_any_version_number_item(FileString, FileStringLen,
-                    Globals, ModuleName, SourceFileName, !LookAhead,
-                    MaybeVersionNumbers, !SeqNumCounter,
-                    [], !:Specs, set.init, !:Errors, !LineContext, !LinePosn),
-                read_parse_tree_int_section(FileString, FileStringLen, Globals,
-                    ModuleName, SourceFileName, "interface", !LookAhead,
-                    MaybeFirstRawItemBlock, !SeqNumCounter, !Specs, !Errors,
-                    !LineContext, !LinePosn),
-                (
-                    MaybeFirstRawItemBlock = no,
-                    % Ignore MaybeVersionNumbers if the interface is empty,
-                    % since there are no items whose version numbers we may be
-                    % interested in.
-                    ParseTree = parse_tree_int(ModuleName, IntFileKind,
-                        ModuleNameContext, no_version_numbers,
-                        [], [], [], [], [], [], [], [])
-                ;
-                    MaybeFirstRawItemBlock = yes({FirstRawItemBlock, _}),
-                    FirstRawItemBlock = item_block(_, FirstSectionKind,
-                        FirstIncls, FirstAvails, FirstFIMs, FirstItems),
-                    (
-                        FirstSectionKind = ms_interface,
-                        read_parse_tree_int_section(FileString, FileStringLen,
-                            Globals, ModuleName, SourceFileName,
-                            "implementation", !LookAhead,
-                            MaybeSecondRawItemBlock, !SeqNumCounter,
-                            !Specs, !Errors, !LineContext, !LinePosn),
-                        (
-                            MaybeSecondRawItemBlock = no,
-                            ParseTree = parse_tree_int(ModuleName, IntFileKind,
-                                ModuleNameContext, MaybeVersionNumbers,
-                                FirstIncls, [], FirstAvails, [],
-                                FirstFIMs, [], FirstItems, [])
-                        ;
-                            MaybeSecondRawItemBlock =
-                                yes({SecondRawItemBlock, SectionContext}),
-                            SecondRawItemBlock = item_block(_,
-                                SecondSectionKind, SecondIncls, SecondAvails,
-                                SecondFIMs, SecondItems),
-                            (
-                                SecondSectionKind = ms_interface,
-                                Pieces = [words("Error: an interface file"),
-                                    words("should not have two consecutive"),
-                                    words("interface sections."), nl],
-                                Spec = simplest_spec($pred, severity_error,
-                                    phase_term_to_parse_tree,
-                                    SectionContext, Pieces),
-                                !:Specs = [Spec | !.Specs],
-                                % Return a dummy parse tree if this happens.
-                                ParseTree = parse_tree_int(ModuleName,
-                                    IntFileKind,
-                                    ModuleNameContext, MaybeVersionNumbers,
-                                    [], [], [], [], [], [], [], [])
-                            ;
-                                SecondSectionKind = ms_implementation,
-                                ParseTree = parse_tree_int(ModuleName,
-                                    IntFileKind,
-                                    ModuleNameContext, MaybeVersionNumbers,
-                                    FirstIncls, SecondIncls,
-                                    FirstAvails, SecondAvails,
-                                    FirstFIMs, SecondFIMs,
-                                    FirstItems, SecondItems)
-                            )
-                        )
-                    ;
-                        FirstSectionKind = ms_implementation,
-                        % This should not happen, but I (zs) cannot come up
-                        % with a convincing argument for *why*.
-                        ParseTree = parse_tree_int(ModuleName, IntFileKind,
-                            ModuleNameContext, MaybeVersionNumbers,
-                            [], FirstIncls, [], FirstAvails,
-                            [], FirstFIMs, [], FirstItems)
-                    )
-                ),
+            !:LookAhead = no_lookahead,
+            read_any_version_number_item(FileString, FileStringLen,
+                ModuleName, SourceFileName, !LookAhead, VersionNumbersResult,
+                !SeqNumCounter, !LineContext, !LinePosn),
+            (
+                VersionNumbersResult = vnr_error(Spec, Error),
+                !:Specs = [Spec],
+                !:Errors = set.make_singleton_set(Error),
+                MaybeParseTreeInt = no
+            ;
+                VersionNumbersResult = vnr_ok(MaybeVersionNumbers),
+                read_parse_tree_int_sections(FileString, FileStringLen,
+                    ModuleName, ModuleNameContext, IntFileKind,
+                    SourceFileName, MaybeVersionNumbers,
+                    !LookAhead, MaybeParseTreeInt, !SeqNumCounter,
+                    !:Specs, !:Errors, !LineContext, !LinePosn),
                 check_for_unexpected_item_at_end(SourceFileName,
                     FileString, FileStringLen, ModuleName, fk_int(IntFileKind),
                     !.LookAhead, !.SeqNumCounter, !Specs, !Errors,
-                    !.LineContext, _LineContext, !.LinePosn, _LinePosn)
+                    !.LineContext, !.LinePosn)
             )
         )
     ).
 
+:- type version_number_result
+    --->    vnr_ok(maybe_version_numbers)
+    ;       vnr_error(error_spec, read_module_error).
+
 :- pred read_any_version_number_item(string::in, int::in,
-    globals::in, module_name::in, file_name::in,
-    maybe_lookahead::in, maybe_lookahead::out, maybe_version_numbers::out,
-    counter::in, counter::out, list(error_spec)::in, list(error_spec)::out,
-    read_module_errors::in, read_module_errors::out,
+    module_name::in, file_name::in, maybe_lookahead::in, maybe_lookahead::out,
+    version_number_result::out, counter::in, counter::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_any_version_number_item(FileString, FileStringLen, Globals,
+read_any_version_number_item(FileString, FileStringLen,
         ModuleName, SourceFileName, InitLookAhead, FinalLookAhead,
-        MaybeVersionNumbers, !SeqNumCounter, !Specs, !Errors,
-        !LineContext, !LinePosn) :-
+        VersionNumberResult, !SeqNumCounter, !LineContext, !LinePosn) :-
     read_next_item_or_marker(SourceFileName, FileString, FileStringLen,
         InitLookAhead, ModuleName, ReadIOMResult,
         !SeqNumCounter, !LineContext, !LinePosn),
     (
         ReadIOMResult = read_iom_eof,
         % If we have found end-of-file, then we are done.
-        MaybeVersionNumbers = no_version_numbers,
-        FinalLookAhead = no_lookahead
+        FinalLookAhead = no_lookahead,
+        VersionNumberResult = vnr_ok(no_version_numbers)
     ;
-        ReadIOMResult = read_iom_read_error(ItemSpec),
-        % Add the read error to the list of errors and continue looking
-        % for a version number.
-        !:Specs = [ItemSpec | !.Specs],
-        set.insert(rme_could_not_read_term, !Errors),
-        read_any_version_number_item(FileString, FileStringLen,
-            Globals, ModuleName, SourceFileName, no_lookahead, FinalLookAhead,
-            MaybeVersionNumbers, !SeqNumCounter, !Specs, !Errors,
-            !LineContext, !LinePosn)
+        ReadIOMResult = read_iom_parse_term_error(ItemSpec),
+        % We used to continue looking for a version number in this situation,
+        % but (a) given that version numbers are put into .intN files
+        % by automatic processes, *any* error detected in them renders
+        % the entire contents of the file suspect, and (b) when we are
+        % expecting a section marker but find read_iom_parse_term_error,
+        % we don't continue looking.
+        FinalLookAhead = no_lookahead,
+        VersionNumberResult = vnr_error(ItemSpec, rme_could_not_read_term)
     ;
-        ReadIOMResult = read_iom_parse_errors(IOMVarSet, IOMTerm,
+        ReadIOMResult = read_iom_parse_item_errors(IOMVarSet, IOMTerm,
             _ItemSpecs, _ItemErrors),
-        MaybeVersionNumbers = no_version_numbers,
-        FinalLookAhead = lookahead(IOMVarSet, IOMTerm)
+        % Ignore the errors; our caller will compute them again,
+        % and record them, if and when it parses FinalLookAhead again.
+        FinalLookAhead = lookahead(IOMVarSet, IOMTerm),
+        VersionNumberResult = vnr_ok(no_version_numbers)
     ;
         ReadIOMResult = read_iom_ok(IOMVarSet, IOMTerm, IOM),
         % If the term we have read in is a version number item, return it.
@@ -831,8 +764,8 @@ read_any_version_number_item(FileString, FileStringLen, Globals,
         % later.
         (
             IOM = iom_marker_version_numbers(VN),
-            MaybeVersionNumbers = version_numbers(VN),
-            FinalLookAhead = no_lookahead
+            FinalLookAhead = no_lookahead,
+            VersionNumberResult = vnr_ok(version_numbers(VN))
         ;
             ( IOM = iom_marker_module_start(_, _, _)
             ; IOM = iom_marker_module_end(_, _, _)
@@ -842,51 +775,133 @@ read_any_version_number_item(FileString, FileStringLen, Globals,
             ; IOM = iom_marker_avail(_)
             ; IOM = iom_marker_fim(_)
             ; IOM = iom_item(_)
+            ; IOM = iom_item_and_specs(_, _)
+            % The reasoning for read_iom_parse_item_errors also applies
+            % to iom_item_and_specs.
             ; IOM = iom_handled(_)
             ),
-            MaybeVersionNumbers = no_version_numbers,
-            FinalLookAhead = lookahead(IOMVarSet, IOMTerm)
-        ;
-            IOM = iom_item_and_specs(_, ItemSpecs),
-            !:Specs = ItemSpecs ++ !.Specs,
-            MaybeVersionNumbers = no_version_numbers,
-            FinalLookAhead = lookahead(IOMVarSet, IOMTerm)
+            FinalLookAhead = lookahead(IOMVarSet, IOMTerm),
+            VersionNumberResult = vnr_ok(no_version_numbers)
         )
     ).
 
 %---------------------------------------------------------------------------%
 %
-% int:      module_start, vns? section, section?
+% int:      module_start, vns? STARTHERE int_section, int_section? ENDHERE
 %
-% section:  STARTHERE interface_marker, item* ENDHERE
+%---------------------------------------------------------------------------%
+
+    % XXX ITEM_LIST We should return *either* a ParseTreeInt *or* some errors,
+    % but *not* both.
+    %
+:- pred read_parse_tree_int_sections(string::in, int::in,
+    module_name::in, prog_context::in, int_file_kind::in, file_name::in,
+    maybe_version_numbers::in, maybe_lookahead::in, maybe_lookahead::out,
+    maybe(parse_tree_int)::out,
+    counter::in, counter::out, list(error_spec)::out, read_module_errors::out,
+    line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
+
+read_parse_tree_int_sections(FileString, FileStringLen,
+        ModuleName, ModuleNameContext, IntFileKind, SourceFileName,
+        MaybeVersionNumbers, !LookAhead, MaybeParseTreeInt, !SeqNumCounter,
+        !:Specs, !:Errors, !LineContext, !LinePosn) :-
+    read_parse_tree_int_section(FileString, FileStringLen,
+        ModuleName, SourceFileName, "interface", !LookAhead,
+        MaybeFirstRawItemBlock, !SeqNumCounter,
+        [], !:Specs, set.init, !:Errors, !LineContext, !LinePosn),
+    (
+        MaybeFirstRawItemBlock = no,
+        % Ignore MaybeVersionNumbers if the interface is empty,
+        % since there are no items whose version numbers we may be
+        % interested in.
+        ParseTreeInt = parse_tree_int(ModuleName, IntFileKind,
+            ModuleNameContext, no_version_numbers,
+            [], [], [], [], [], [], [], []),
+        MaybeParseTreeInt = yes(ParseTreeInt)
+    ;
+        MaybeFirstRawItemBlock = yes({FirstRawItemBlock, _}),
+        FirstRawItemBlock = item_block(_, FirstSectionKind,
+            FirstIncls, FirstAvails, FirstFIMs, FirstItems),
+        (
+            FirstSectionKind = ms_interface,
+            read_parse_tree_int_section(FileString, FileStringLen,
+                ModuleName, SourceFileName, "implementation", !LookAhead,
+                MaybeSecondRawItemBlock, !SeqNumCounter, !Specs, !Errors,
+                !LineContext, !LinePosn),
+            (
+                MaybeSecondRawItemBlock = no,
+                ParseTreeInt = parse_tree_int(ModuleName, IntFileKind,
+                    ModuleNameContext, MaybeVersionNumbers,
+                    FirstIncls, [], FirstAvails, [],
+                    FirstFIMs, [], FirstItems, []),
+                MaybeParseTreeInt = yes(ParseTreeInt)
+            ;
+                MaybeSecondRawItemBlock =
+                    yes({SecondRawItemBlock, SectionContext}),
+                SecondRawItemBlock = item_block(_, SecondSectionKind,
+                    SecondIncls, SecondAvails, SecondFIMs, SecondItems),
+                (
+                    SecondSectionKind = ms_interface,
+                    Pieces = [words("Error: an interface file"),
+                        words("should not have two consecutive"),
+                        words("interface sections."), nl],
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_term_to_parse_tree, SectionContext, Pieces),
+                    !:Specs = [Spec | !.Specs],
+                    MaybeParseTreeInt = no
+                ;
+                    SecondSectionKind = ms_implementation,
+                    ParseTreeInt = parse_tree_int(ModuleName, IntFileKind,
+                        ModuleNameContext, MaybeVersionNumbers,
+                        FirstIncls, SecondIncls, FirstAvails, SecondAvails,
+                        FirstFIMs, SecondFIMs, FirstItems, SecondItems),
+                    MaybeParseTreeInt = yes(ParseTreeInt)
+                )
+            )
+        ;
+            FirstSectionKind = ms_implementation,
+            % This should not happen, but I (zs) cannot come up
+            % with a convincing argument for *why*.
+            ParseTreeInt = parse_tree_int(ModuleName, IntFileKind,
+                ModuleNameContext, MaybeVersionNumbers,
+                [], FirstIncls, [], FirstAvails,
+                [], FirstFIMs, [], FirstItems),
+            MaybeParseTreeInt = yes(ParseTreeInt)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% int_section: 
+%           STARTHERE interface_marker, item* ENDHERE
 %           STARTHERE implementation_marker, item* ENDHERE
 %
 %---------------------------------------------------------------------------%
 
 :- pred read_parse_tree_int_section(string::in, int::in,
-    globals::in, module_name::in, file_name::in, string::in,
+    module_name::in, file_name::in, string::in,
     maybe_lookahead::in, maybe_lookahead::out,
     maybe({raw_item_block, prog_context})::out,
     counter::in, counter::out, list(error_spec)::in, list(error_spec)::out,
     read_module_errors::in, read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_parse_tree_int_section(FileString, FileStringLen, Globals,
-        CurModuleName, SourceFileName, ExpectedSectionKindStr,
+read_parse_tree_int_section(FileString, FileStringLen,
+        ModuleName, SourceFileName, ExpectedSectionKindStr,
         InitLookAhead, FinalLookAhead, MaybeRawItemBlock,
         !SeqNumCounter, !Specs, !Errors, !LineContext, !LinePosn) :-
     read_next_item_or_marker(SourceFileName, FileString, FileStringLen,
-        InitLookAhead, CurModuleName, ReadIOMResult, !SeqNumCounter,
+        InitLookAhead, ModuleName, ReadIOMResult, !SeqNumCounter,
         !LineContext, !LinePosn),
     (
         (
             ReadIOMResult = read_iom_eof
         ;
-            ReadIOMResult = read_iom_read_error(ItemSpec),
+            ReadIOMResult = read_iom_parse_term_error(ItemSpec),
             !:Specs = [ItemSpec | !.Specs],
             set.insert(rme_could_not_read_term, !Errors)
         ;
-            ReadIOMResult = read_iom_parse_errors(_IOMVarSet, _IOMTerm,
+            ReadIOMResult = read_iom_parse_item_errors(_IOMVarSet, _IOMTerm,
                 ItemSpecs, ItemErrors),
             !:Specs = ItemSpecs ++ !.Specs,
             set.union(ItemErrors, !Errors)
@@ -898,32 +913,29 @@ read_parse_tree_int_section(FileString, FileStringLen, Globals,
         (
             IOM = iom_marker_section(SectionKind, SectionContext,
                 _SectionSeqNum),
-            read_item_sequence(FileString, FileStringLen, Globals,
-                CurModuleName, no_lookahead, FinalLookAhead,
-                dont_allow_version_numbers, _VNInfo,
+            read_item_sequence(FileString, FileStringLen,
+                ModuleName, no_lookahead, FinalLookAhead,
                 cord.init, InclsCord, cord.init, AvailsCord,
                 cord.init, FIMsCord, cord.init, ItemsCord,
                 SourceFileName, _UpdatedSourceFileName,
                 !SeqNumCounter, !Specs, !Errors, !LineContext, !LinePosn),
-            RawItemBlock = item_block(CurModuleName, SectionKind,
+            RawItemBlock = item_block(ModuleName, SectionKind,
                 cord.list(InclsCord), cord.list(AvailsCord),
                 cord.list(FIMsCord), cord.list(ItemsCord)),
             MaybeRawItemBlock = yes({RawItemBlock, SectionContext})
         ;
-            (
-                ( IOM = iom_marker_src_file(_)
-                ; IOM = iom_marker_module_start(_, _, _)
-                ; IOM = iom_marker_module_end(_, _, _)
-                ; IOM = iom_marker_version_numbers(_)
-                ; IOM = iom_marker_include(_)
-                ; IOM = iom_marker_avail(_)
-                ; IOM = iom_marker_fim(_)
-                ; IOM = iom_item(_)
-                ; IOM = iom_handled(_)
-                )
-            ;
-                IOM = iom_item_and_specs(_, ItemSpecs),
-                !:Specs = ItemSpecs ++ !.Specs
+            ( IOM = iom_marker_src_file(_)
+            ; IOM = iom_marker_module_start(_, _, _)
+            ; IOM = iom_marker_module_end(_, _, _)
+            ; IOM = iom_marker_version_numbers(_)
+            ; IOM = iom_marker_include(_)
+            ; IOM = iom_marker_avail(_)
+            ; IOM = iom_marker_fim(_)
+            ; IOM = iom_item(_)
+            ; IOM = iom_item_and_specs(_, _)
+            % The fact that IOM is not a section marker trumps any error_specs
+            % in iom_item_and_specs.
+            ; IOM = iom_handled(_)
             ),
             Context = get_term_context(IOMTerm),
             IOMPieces = iom_desc_pieces(IOM),
@@ -966,15 +978,14 @@ read_parse_tree_int_section(FileString, FileStringLen, Globals,
 %---------------------------------------------------------------------------%
 
 :- pred read_parse_tree_src(file_name::in, string::in, int::in,
-    line_context::in, line_posn::in,
-    globals::in, module_name::in, list(prog_context)::in,
-    parse_tree_src::out, list(error_spec)::out, read_module_errors::out)
-    is det.
+    line_context::in, line_posn::in, module_name::in, list(prog_context)::in,
+    maybe(parse_tree_src)::out,
+    list(error_spec)::out, read_module_errors::out) is det.
 
 read_parse_tree_src(!.SourceFileName, FileString, FileStringLen,
         !.LineContext, !.LinePosn,
-        Globals, DefaultModuleName, DefaultExpectationContexts,
-        ParseTree, !:Specs, !:Errors) :-
+        DefaultModuleName, DefaultExpectationContexts,
+        MaybeParseTree, !:Specs, !:Errors) :-
     some [!SeqNumCounter] (
         !:Specs = [],
         set.init(!:Errors),
@@ -1022,17 +1033,17 @@ read_parse_tree_src(!.SourceFileName, FileString, FileStringLen,
         ContainingModules = [],
         MaybePrevSection = no,
         read_parse_tree_src_components(FileString, FileStringLen,
-            Globals, ModuleName, ContainingModules, MaybePrevSection,
+            ModuleName, ContainingModules, MaybePrevSection,
             have_not_given_missing_section_start_warning,
             InitLookAhead, FinalLookAhead, cord.init, ModuleComponents,
             !SourceFileName, !SeqNumCounter, !Specs, !Errors,
             !LineContext, !LinePosn),
         check_for_unexpected_item_at_end(!.SourceFileName, FileString,
             FileStringLen, ModuleName, fk_src, FinalLookAhead, !.SeqNumCounter,
-            !Specs, !Errors,
-            !.LineContext, _LineContext, !.LinePosn, _LinePosn),
+            !Specs, !Errors, !.LineContext, !.LinePosn),
         ParseTree = parse_tree_src(ModuleName, ModuleNameContext,
-            ModuleComponents)
+            ModuleComponents),
+        MaybeParseTree = yes(ParseTree)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1045,7 +1056,7 @@ read_parse_tree_src(!.SourceFileName, FileString, FileStringLen,
 %
 %---------------------------------------------------------------------------%
 
-:- pred read_parse_tree_src_components(string::in, int::in, globals::in,
+:- pred read_parse_tree_src_components(string::in, int::in,
     module_name::in, list(module_name)::in,
     maybe(pair(module_section, prog_context))::in,
     missing_section_start_warning::in,
@@ -1056,7 +1067,7 @@ read_parse_tree_src(!.SourceFileName, FileString, FileStringLen,
     read_module_errors::in, read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_parse_tree_src_components(FileString, FileStringLen, Globals,
+read_parse_tree_src_components(FileString, FileStringLen,
         CurModuleName, ContainingModules,
         MaybePrevSection, !.MissingStartSectionWarning,
         InitLookAhead, FinalLookAhead, !ModuleComponents,
@@ -1070,19 +1081,19 @@ read_parse_tree_src_components(FileString, FileStringLen, Globals,
         % If we have found end-of-file, then we are done.
         FinalLookAhead = no_lookahead
     ;
-        ReadIOMResult = read_iom_read_error(ItemSpec),
+        ReadIOMResult = read_iom_parse_term_error(ItemSpec),
         % Add the new errors to the list of errors and continue looking
         % for a section marker.
         !:Specs = [ItemSpec | !.Specs],
         set.insert(rme_could_not_read_term, !Errors),
         read_parse_tree_src_components(FileString, FileStringLen,
-            Globals, CurModuleName,
-            ContainingModules, MaybePrevSection, !.MissingStartSectionWarning,
+            CurModuleName, ContainingModules,
+            MaybePrevSection, !.MissingStartSectionWarning,
             no_lookahead, FinalLookAhead, !ModuleComponents,
             !SourceFileName, !SeqNumCounter, !Specs, !Errors,
             !LineContext, !LinePosn)
     ;
-        ReadIOMResult = read_iom_parse_errors(IOMVarSet, IOMTerm,
+        ReadIOMResult = read_iom_parse_item_errors(IOMVarSet, IOMTerm,
             _Specs, _Errors),
         % Generate an error for the missing section marker.
         % Leave the term in the lookahead, but otherwise handle the term
@@ -1095,9 +1106,8 @@ read_parse_tree_src_components(FileString, FileStringLen, Globals,
         SectionKind = ms_implementation,
         SectionContext = term.context_init,
         ItemSeqInitLookAhead = lookahead(IOMVarSet, IOMTerm),
-        read_item_sequence(FileString, FileStringLen, Globals, CurModuleName,
+        read_item_sequence(FileString, FileStringLen, CurModuleName,
             ItemSeqInitLookAhead, ItemSeqFinalLookAhead,
-            dont_allow_version_numbers, _,
             cord.init, InclsCord, cord.init, AvailsCord,
             cord.init, FIMsCord, cord.init, ItemsCord,
             !SourceFileName, !SeqNumCounter, !Specs, !Errors,
@@ -1106,8 +1116,8 @@ read_parse_tree_src_components(FileString, FileStringLen, Globals,
             InclsCord, AvailsCord, FIMsCord, ItemsCord, !ModuleComponents),
         % We have read in one component; recurse to read in other components.
         read_parse_tree_src_components(FileString, FileStringLen,
-            Globals, CurModuleName,
-            ContainingModules, yes(SectionKind - SectionContext),
+            CurModuleName, ContainingModules,
+            yes(SectionKind - SectionContext),
             have_not_given_missing_section_start_warning,
             ItemSeqFinalLookAhead, FinalLookAhead, !ModuleComponents,
             !SourceFileName, !SeqNumCounter, !Specs, !Errors,
@@ -1117,7 +1127,7 @@ read_parse_tree_src_components(FileString, FileStringLen, Globals,
         (
             IOM = iom_marker_src_file(!:SourceFileName),
             read_parse_tree_src_components(FileString, FileStringLen,
-                Globals, CurModuleName, ContainingModules, MaybePrevSection,
+                CurModuleName, ContainingModules, MaybePrevSection,
                 !.MissingStartSectionWarning, no_lookahead, FinalLookAhead,
                 !ModuleComponents, !SourceFileName, !SeqNumCounter,
                 !Specs, !Errors, !LineContext, !LinePosn)
@@ -1129,7 +1139,7 @@ read_parse_tree_src_components(FileString, FileStringLen, Globals,
                 get_term_context(IOMTerm), Pieces),
             !:Specs = [Spec | !.Specs],
             read_parse_tree_src_components(FileString, FileStringLen,
-                Globals, CurModuleName, ContainingModules, MaybePrevSection,
+                CurModuleName, ContainingModules, MaybePrevSection,
                 !.MissingStartSectionWarning, no_lookahead, FinalLookAhead,
                 !ModuleComponents, !SourceFileName, !SeqNumCounter,
                 !Specs, !Errors, !LineContext, !LinePosn)
@@ -1164,14 +1174,14 @@ read_parse_tree_src_components(FileString, FileStringLen, Globals,
                 )
             ),
             read_parse_tree_src_submodule(FileString, FileStringLen,
-                Globals, ContainingModules, MaybePrevSection, CurModuleName,
+                ContainingModules, MaybePrevSection, CurModuleName,
                 StartModuleName, StartContext,
                 no_lookahead, SubModuleFinalLookAhead, !ModuleComponents,
                 !SourceFileName, !SeqNumCounter, !Specs, !Errors,
                 !LineContext, !LinePosn),
             % We have read in one component; recurse to read in others.
             read_parse_tree_src_components(FileString, FileStringLen,
-                Globals, CurModuleName, ContainingModules, MaybePrevSection,
+                CurModuleName, ContainingModules, MaybePrevSection,
                 !.MissingStartSectionWarning,
                 SubModuleFinalLookAhead, FinalLookAhead,
                 !ModuleComponents, !SourceFileName, !SeqNumCounter,
@@ -1213,17 +1223,16 @@ read_parse_tree_src_components(FileString, FileStringLen, Globals,
                         Context, !.MissingStartSectionWarning,
                         _MissingStartSectionWarning, !Specs, !Errors),
                     % The following code is duplicated in the case for
-                    % read_iom_parse_errors above.
+                    % read_iom_parse_item_errors above.
                     SectionKind = ms_implementation,
                     SectionContext = term.context_init
                 ),
                 ItemSeqInitLookAhead = lookahead(IOMVarSet, IOMTerm)
             ),
             % The following code is duplicated in the case for
-            % read_iom_parse_errors above.
-            read_item_sequence(FileString, FileStringLen, Globals,
-                CurModuleName, ItemSeqInitLookAhead, ItemSeqFinalLookAhead,
-                dont_allow_version_numbers, _,
+            % read_iom_parse_item_errors above.
+            read_item_sequence(FileString, FileStringLen, CurModuleName,
+                ItemSeqInitLookAhead, ItemSeqFinalLookAhead,
                 cord.init, InclsCord, cord.init, AvailsCord,
                 cord.init, FIMsCord, cord.init, ItemsCord,
                 !SourceFileName, !SeqNumCounter, !Specs, !Errors,
@@ -1233,8 +1242,8 @@ read_parse_tree_src_components(FileString, FileStringLen, Globals,
             % We have read in one component; recurse to read in other
             % components.
             read_parse_tree_src_components(FileString, FileStringLen,
-                Globals, CurModuleName,
-                ContainingModules, yes(SectionKind - SectionContext),
+                CurModuleName, ContainingModules,
+                yes(SectionKind - SectionContext),
                 have_not_given_missing_section_start_warning,
                 ItemSeqFinalLookAhead, FinalLookAhead, !ModuleComponents,
                 !SourceFileName, !SeqNumCounter, !Specs, !Errors,
@@ -1299,7 +1308,7 @@ generate_missing_start_section_warning_src(CurModuleName,
         % Do not generate duplicate warnings.
     ).
 
-:- pred read_parse_tree_src_submodule(string::in, int::in, globals::in,
+:- pred read_parse_tree_src_submodule(string::in, int::in,
     list(module_name)::in, maybe(pair(module_section, prog_context))::in,
     module_name::in, module_name::in, prog_context::in,
     maybe_lookahead::in, maybe_lookahead::out,
@@ -1309,8 +1318,7 @@ generate_missing_start_section_warning_src(CurModuleName,
     read_module_errors::in, read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_parse_tree_src_submodule(FileString, FileStringLen,
-        Globals, ContainingModules,
+read_parse_tree_src_submodule(FileString, FileStringLen, ContainingModules,
         MaybePrevSection, ContainingModuleName, StartModuleName, StartContext,
         InitLookAhead, FinalLookAhead, !ModuleComponents,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors,
@@ -1336,8 +1344,7 @@ read_parse_tree_src_submodule(FileString, FileStringLen,
     ),
     NestedContainingModules = [StartModuleName | ContainingModules],
     NestedMaybePrevSection = no,
-    read_parse_tree_src_components(FileString, FileStringLen,
-        Globals, StartModuleName,
+    read_parse_tree_src_components(FileString, FileStringLen, StartModuleName,
         NestedContainingModules, NestedMaybePrevSection,
         have_not_given_missing_section_start_warning,
         InitLookAhead, FinalLookAhead, cord.init, NestedModuleComponents,
@@ -1580,7 +1587,8 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
                 rme_no_module_decl_at_start)
         )
     ;
-        MaybeFirstIOM = read_iom_parse_errors(FirstVarSet, FirstTerm, _, _),
+        MaybeFirstIOM = read_iom_parse_item_errors(FirstVarSet, FirstTerm,
+            _, _),
         LookAhead = lookahead(FirstVarSet, FirstTerm),
         FirstContext = get_term_context(FirstTerm),
         ModuleDeclPresent = no_module_decl_present(LookAhead,
@@ -1588,7 +1596,7 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
             rme_no_module_decl_at_start)
     ;
         ( MaybeFirstIOM = read_iom_eof
-        ; MaybeFirstIOM = read_iom_read_error(_)
+        ; MaybeFirstIOM = read_iom_parse_term_error(_)
         ),
         term.context_init(!.SourceFileName, 1, FirstContext),
         ModuleDeclPresent = no_module_decl_present(no_lookahead,
@@ -1598,11 +1606,6 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
     ).
 
 %---------------------------------------------------------------------------%
-
-:- type version_number_info
-    --->    dont_allow_version_numbers
-    ;       allow_version_numbers_not_seen
-    ;       allow_version_numbers_seen(module_item_version_numbers).
 
     % Read a sequence of items, until we find a marker that indicates
     % a change in section or module. If and when we find such a marker,
@@ -1614,9 +1617,8 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
     %
     % XXX ITEM_LIST specialize the modes for lookahead/no_lookahead.
     %
-:- pred read_item_sequence(string::in, int::in, globals::in, module_name::in,
+:- pred read_item_sequence(string::in, int::in, module_name::in,
     maybe_lookahead::in, maybe_lookahead::out,
-    version_number_info::in, version_number_info::out,
     cord(item_include)::in, cord(item_include)::out,
     cord(item_avail)::in, cord(item_avail)::out,
     cord(item_fim)::in, cord(item_fim)::out,
@@ -1626,20 +1628,20 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
     read_module_errors::in, read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_item_sequence(FileString, FileStringLen, Globals, ModuleName,
+read_item_sequence(FileString, FileStringLen, ModuleName,
         InitLookAhead, FinalLookAhead,
-        !VNInfo, !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
+        !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors,
         !LineContext, !LinePosn) :-
-    read_item_sequence_inner(FileString, FileStringLen, Globals, ModuleName,
+    read_item_sequence_inner(FileString, FileStringLen, ModuleName,
         1024, NumItemsLeft, InitLookAhead, MidLookAhead,
-        !VNInfo, !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
+        !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors,
         !LineContext, !LinePosn),
     ( if NumItemsLeft = 0 then
-        read_item_sequence(FileString, FileStringLen, Globals, ModuleName,
+        read_item_sequence(FileString, FileStringLen, ModuleName,
             MidLookAhead, FinalLookAhead,
-            !VNInfo, !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
+            !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
             !SourceFileName, !SeqNumCounter, !Specs, !Errors,
             !LineContext, !LinePosn)
     else
@@ -1648,10 +1650,9 @@ read_item_sequence(FileString, FileStringLen, Globals, ModuleName,
 
     % XXX ITEM_LIST specialize the modes for lookahead/no_lookahead.
     %
-:- pred read_item_sequence_inner(string::in, int::in, globals::in,
+:- pred read_item_sequence_inner(string::in, int::in,
     module_name::in, int::in, int::out,
     maybe_lookahead::in, maybe_lookahead::out,
-    version_number_info::in, version_number_info::out,
     cord(item_include)::in, cord(item_include)::out,
     cord(item_avail)::in, cord(item_avail)::out,
     cord(item_fim)::in, cord(item_fim)::out,
@@ -1660,8 +1661,8 @@ read_item_sequence(FileString, FileStringLen, Globals, ModuleName,
     read_module_errors::in, read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_item_sequence_inner(FileString, FileStringLen, Globals, ModuleName,
-        !NumItemsLeft, InitLookAhead, FinalLookAhead, !VNInfo,
+read_item_sequence_inner(FileString, FileStringLen, ModuleName,
+        !NumItemsLeft, InitLookAhead, FinalLookAhead,
         !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors,
         !LineContext, !LinePosn) :-
@@ -1676,18 +1677,17 @@ read_item_sequence_inner(FileString, FileStringLen, Globals, ModuleName,
             FinalLookAhead = no_lookahead
         ;
             (
-                ReadIOMResult = read_iom_read_error(ItemSpec),
+                ReadIOMResult = read_iom_parse_term_error(ItemSpec),
                 ItemSpecs = [ItemSpec],
                 ItemErrors = set.make_singleton_set(rme_could_not_read_term)
             ;
-                ReadIOMResult = read_iom_parse_errors(_, _,
+                ReadIOMResult = read_iom_parse_item_errors(_, _,
                     ItemSpecs, ItemErrors)
             ),
             !:Specs = ItemSpecs ++ !.Specs,
             !:Errors = set.union(!.Errors, ItemErrors),
-            read_item_sequence_inner(FileString, FileStringLen,
-                Globals, ModuleName,
-                !NumItemsLeft, no_lookahead, FinalLookAhead, !VNInfo,
+            read_item_sequence_inner(FileString, FileStringLen, ModuleName,
+                !NumItemsLeft, no_lookahead, FinalLookAhead,
                 !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
                 !SourceFileName, !SeqNumCounter, !Specs, !Errors,
                 !LineContext, !LinePosn)
@@ -1701,17 +1701,16 @@ read_item_sequence_inner(FileString, FileStringLen, Globals, ModuleName,
                 ),
                 FinalLookAhead = lookahead(IOMVarSet, IOMTerm)
             ;
-                IOM = iom_marker_version_numbers(MVN),
-                record_version_numbers(MVN, IOMTerm, !VNInfo, !Specs),
-                read_item_sequence_inner(FileString, FileStringLen,
-                    Globals, ModuleName,
-                    !NumItemsLeft, no_lookahead, FinalLookAhead, !VNInfo,
-                    !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
-                    !SourceFileName, !SeqNumCounter, !Specs, !Errors,
-                    !LineContext, !LinePosn)
-            ;
                 (
                     IOM = iom_marker_src_file(!:SourceFileName)
+                ;
+                    IOM = iom_marker_version_numbers(_),
+                    Pieces = [words("Error: version number records"),
+                        words("should not appear anywhere except in"),
+                        words("automatically generated interface files."), nl],
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_read_files, get_term_context(IOMTerm), Pieces),
+                    !:Specs = [Spec | !.Specs]
                 ;
                     IOM = iom_marker_include(Incls),
                     Incls = one_or_more(HeadIncl, TailIncls),
@@ -1736,40 +1735,13 @@ read_item_sequence_inner(FileString, FileStringLen, Globals, ModuleName,
                     IOM = iom_handled(HandledSpecs),
                     !:Specs = HandledSpecs ++ !.Specs
                 ),
-                read_item_sequence_inner(FileString, FileStringLen,
-                    Globals, ModuleName,
-                    !NumItemsLeft, no_lookahead, FinalLookAhead, !VNInfo,
+                read_item_sequence_inner(FileString, FileStringLen, ModuleName,
+                    !NumItemsLeft, no_lookahead, FinalLookAhead,
                     !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
                     !SourceFileName, !SeqNumCounter, !Specs, !Errors,
                     !LineContext, !LinePosn)
             )
         )
-    ).
-
-:- pred record_version_numbers(module_item_version_numbers::in, term::in,
-    version_number_info::in, version_number_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-record_version_numbers(MVN, IOMTerm, !VNInfo, !Specs) :-
-    (
-        !.VNInfo = allow_version_numbers_not_seen,
-        !:VNInfo = allow_version_numbers_seen(MVN)
-    ;
-        !.VNInfo = allow_version_numbers_seen(_),
-        Pieces = [words("Error: duplicate version_numbers record."),
-            words("This indicates an internal error in the"),
-            words("Mercury compiler that generated this file."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_read_files,
-            get_term_context(IOMTerm), Pieces),
-        !:Specs = [Spec | !.Specs]
-    ;
-        !.VNInfo = dont_allow_version_numbers,
-        Pieces = [words("Error: version number records"),
-            words("should not appear anywhere except in"),
-            words("automatically generated interface files."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_read_files,
-            get_term_context(IOMTerm), Pieces),
-        !:Specs = [Spec | !.Specs]
     ).
 
 %---------------------------------------------------------------------------%
@@ -1802,10 +1774,18 @@ read_next_item_or_marker(FileName, FileString, FileStringLen, InitLookAhead,
 
 :- type read_iom_result
     --->    read_iom_eof
-    ;       read_iom_read_error(error_spec)
-    ;       read_iom_parse_errors(varset, term,
+            % We have reached end-of-file.
+    ;       read_iom_parse_term_error(error_spec)
+            % The call to mercury_term_parser.read_term_from_linestr
+            % has failed, which means that what we found in the file string
+            % is not a valid term.
+    ;       read_iom_parse_item_errors(varset, term,
                 list(error_spec), set(read_module_error))
+            % We have successfully read a term from the file string,
+            % but could not parse it as an item or marker.
     ;       read_iom_ok(varset, term, item_or_marker).
+            % We have successfully read a term from the file string,
+            % and parsed it as an item or marker.
 
 :- pred read_term_to_iom_result(module_name::in, string::in, read_term::in,
     read_iom_result::out, counter::in, counter::out) is det.
@@ -1824,7 +1804,7 @@ read_term_to_iom_result(ModuleName, FileName, ReadTermResult, ReadIOMResult,
         Pieces = [words(ErrorMsg), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             Context, Pieces),
-        ReadIOMResult = read_iom_read_error(Spec)
+        ReadIOMResult = read_iom_parse_term_error(Spec)
     ;
         ReadTermResult = term(VarSet, Term),
         term_to_iom_result(ModuleName, VarSet, Term, ReadIOMResult,
@@ -1843,7 +1823,7 @@ term_to_iom_result(ModuleName, VarSet, Term, ReadIOMResult, !SeqNumCounter) :-
         ReadIOMResult = read_iom_ok(VarSet, Term, ItemOrMarker)
     ;
         MaybeItemOrMarker = error1(Specs),
-        ReadIOMResult = read_iom_parse_errors(VarSet, Term, Specs,
+        ReadIOMResult = read_iom_parse_item_errors(VarSet, Term, Specs,
             set.make_singleton_set(rme_could_not_parse_item))
     ).
 
@@ -1886,22 +1866,22 @@ report_wrong_module_start(FirstContext, Expected, Actual) = Spec :-
     maybe_lookahead::in, counter::in,
     list(error_spec)::in, list(error_spec)::out,
     read_module_errors::in, read_module_errors::out,
-    line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
+    line_context::in, line_posn::in) is det.
 
 check_for_unexpected_item_at_end(SourceFileName, FileString, FileStringLen,
         ModuleName, FileKind, FinalLookAhead, SeqNumCounter0,
-        !Specs, !Errors, !LineContext, !LinePosn) :-
+        !Specs, !Errors, !.LineContext, !.LinePosn) :-
     read_next_item_or_marker(SourceFileName, FileString, FileStringLen,
         FinalLookAhead, ModuleName, IOMResult,
-        SeqNumCounter0, _SeqNumCounter, !LineContext, !LinePosn),
+        SeqNumCounter0, _SeqNumCounter, !.LineContext, _, !.LinePosn, _),
     (
         IOMResult = read_iom_eof
     ;
-        IOMResult = read_iom_read_error(ItemSpec),
+        IOMResult = read_iom_parse_term_error(ItemSpec),
         !:Specs = [ItemSpec | !.Specs],
         set.insert(rme_could_not_read_term, !Errors)
     ;
-        IOMResult = read_iom_parse_errors(_VarSet, Term,
+        IOMResult = read_iom_parse_item_errors(_VarSet, Term,
             ItemSpecs, ItemErrors),
         !:Specs = ItemSpecs ++ !.Specs,
         !:Errors = set.union(!.Errors, ItemErrors),
