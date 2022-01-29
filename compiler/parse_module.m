@@ -175,11 +175,7 @@
     %   ParseTree, Specs, Errors, !IO):
     %
     % Analogous to actually_read_module_src, but opens the specified kind
-    % of optimization file for DefaultModuleName. It differs in reporting
-    % an error if the actual module name does not match the expected module
-    % name.
-    % XXX zs: I would like to know the reason for the difference, which is old,
-    % and which recent changes have preserved.
+    % of optimization file for DefaultModuleName.
     %
 :- pred actually_read_module_plain_opt(globals::in,
     module_name::in, maybe_error(path_name_and_stream)::in,
@@ -193,27 +189,6 @@
 :- type maybe_require_module_decl
     --->    dont_require_module_decl
     ;       require_module_decl.
-
-    % check_module_has_expected_name(FileName,
-    %   ExpectedModuleName, ExpectationContexts,
-    %   ActualModuleName, MaybeActualModuleNameContext, Specs):
-    %
-    % Check that ActualModuleName is equal to ExpectedModuleName. If it isn't,
-    % generate an error message about FileName containing the wrong module.
-    %
-    % Note that while actually_read_opt_file always calls
-    % check_module_has_expected_name, actually_read_module_src and
-    % actually_read_module_int do not, though their callers may.
-    % However, those callers do not always know WHAT module name they expect
-    % until the module has already been read in,
-    % so making actually_read_module_src and actually_read_module_int
-    % call check_module_has_expected_name directly would not be easy,
-    % particularly since the information those callers use in this decision
-    % is hidden by the polymorphism provided by the FileInfo type variable.
-    %
-:- pred check_module_has_expected_name(file_name::in,
-    module_name::in, list(prog_context)::in,
-    module_name::in, maybe(term.context)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -381,17 +356,7 @@ actually_read_module_plain_opt(_Globals, DefaultModuleName,
         MaybeFileNameAndStream, always_read_module(dont_return_timestamp), _,
         make_dummy_parse_tree_opt(ofk_opt),
         read_parse_tree_opt(ofk_opt),
-        ParseTreeOpt, ReadSpecs, Errors, !IO),
-    (
-        MaybeFileNameAndStream = ok(path_name_and_stream(FileName, _)),
-        ModuleName = ParseTreeOpt ^ pto_module_name,
-        check_module_has_expected_name(FileName, DefaultModuleName,
-            DefaultExpectationContexts, ModuleName, no, NameSpecs),
-        Specs0 = ReadSpecs ++ NameSpecs
-    ;
-        MaybeFileNameAndStream = error(_),
-        Specs0 = ReadSpecs
-    ),
+        ParseTreeOpt, Specs0, Errors, !IO),
     check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
         Specs0, Specs).
 
@@ -402,31 +367,11 @@ actually_read_module_trans_opt(_Globals, DefaultModuleName,
         MaybeFileNameAndStream, always_read_module(dont_return_timestamp), _,
         make_dummy_parse_tree_opt(ofk_trans_opt),
         read_parse_tree_opt(ofk_trans_opt),
-        ParseTreeOpt, ReadSpecs, Errors, !IO),
-    (
-        MaybeFileNameAndStream = ok(path_name_and_stream(FileName, _)),
-        ModuleName = ParseTreeOpt ^ pto_module_name,
-        check_module_has_expected_name(FileName, DefaultModuleName,
-            DefaultExpectationContexts, ModuleName, no, NameSpecs),
-        Specs0 = ReadSpecs ++ NameSpecs
-    ;
-        MaybeFileNameAndStream = error(_),
-        Specs0 = ReadSpecs
-    ),
+        ParseTreeOpt, Specs0, Errors, !IO),
     check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt, ParseTreeTransOpt,
         Specs0, Specs).
 
 %---------------------------------------------------------------------------%
-
-check_module_has_expected_name(FileName, ExpectedName, ExpectationContexts,
-        ActualName, MaybeActualContext, Specs) :-
-    ( if ActualName = ExpectedName then
-        Specs = []
-    else
-        report_module_has_unexpected_name(FileName, ExpectedName,
-            ExpectationContexts, ActualName, MaybeActualContext, Spec),
-        Specs = [Spec]
-    ).
 
 :- pred report_module_has_unexpected_name(file_name::in,
     module_name::in, list(prog_context)::in,
