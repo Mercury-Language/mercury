@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1994-2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2022 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_wrapper.h - defines the interface to mercury_wrapper.c.
@@ -176,6 +176,7 @@ extern  int                 MR_num_complexity_procs;
 #endif
 
 extern const char           *MR_progname;
+extern MR_bool              MR_progname_is_known;
 extern int                  mercury_argc;
 extern char                 **mercury_argv;
 extern int                  mercury_exit_status;

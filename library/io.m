@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2021 The Mercury team.
+% Copyright (C) 2013-2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -11551,7 +11551,7 @@ system_temp_dir("", 0, !IO).
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, may_not_duplicate],
 "
-    if (MR_progname) {
+    if ((MR_progname != NULL) && MR_progname_is_known) {
         MR_make_aligned_string(PrognameOut, MR_progname);
     } else {
         PrognameOut = DefaultProgname;

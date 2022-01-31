@@ -328,6 +328,7 @@ enum MR_TimeProfileMethod
 #endif
 
 const char          *MR_progname;
+MR_bool             MR_progname_is_known;
 int                 mercury_argc;   // Not counting progname.
 char                **mercury_argv;
 int                 mercury_exit_status = 0;
@@ -1032,9 +1033,27 @@ MR_make_argv(const char *string,
 static void
 MR_process_args(int argc, char **argv)
 {
-    MR_progname = argv[0];
-    mercury_argc = argc - 1;
-    mercury_argv = argv + 1;
+    // It is possible that argc == 0 and argv[0] == NULL on some operating
+    // systems. Since that is not actually useful, we ensure that MR_progname
+    // is always set to a valid string so that uses of MR_progname do not need
+    // to check if it is NULL.
+
+    if (argc >= 1) {
+        MR_progname = argv[0];
+        mercury_argc = argc - 1;
+        mercury_argv = argv + 1;
+    } else {
+        MR_progname = NULL;
+        mercury_argc = 0;
+        mercury_argv = argv;
+    }
+
+    if (MR_progname == NULL) {
+        MR_progname = "";
+        MR_progname_is_known = MR_FALSE;
+    } else {
+        MR_progname_is_known = MR_TRUE;
+    }
 }
 
 // MR_process_environment_options() is a function to parse the options put

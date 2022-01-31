@@ -2,6 +2,7 @@
 // vim:sw=4 ts=4 expandtab
 //
 // Copyright (C) 1995-2008, 2010-2012 The University of Melbourne.
+// Copyright (C) 2014-2016, 2019, 2020, 2022 The Mercury team.
 // This file may only be copied under the terms of the GNU General
 // Public License - see the file COPYING in the Mercury distribution.
 
@@ -646,6 +647,9 @@ main(int argc, char **argv)
     int exit_status;
 
     MR_progname = argv[0];
+    if (MR_progname == NULL) {
+        MR_progname = "mkinit";
+    }
 
     parse_options(argc, argv);
 
