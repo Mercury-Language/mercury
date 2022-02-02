@@ -1048,10 +1048,18 @@ report_error_implementation_in_interface(ModuleName, Context, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_non_abstract_instance_in_interface(Context, !Specs) :-
-    Pieces = [words("Error: non-abstract instance declaration"),
+    AlwaysPieces = [words("Error: non-abstract instance declaration"),
         words("in module interface."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
+    VerbosePieces = [words("The usual fix for this problem"),
+        words("is to move this instance declaration"),
+        words("to the implementation section,"),
+        words("replacing it in the interface section"),
+        words("with its abstract version, which contains"),
+        words("just the class name and the instance type vector."), nl],
+    Msg = simple_msg(Context,
+        [always(AlwaysPieces), verbose_only(verbose_once, VerbosePieces)]),
+    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        [Msg]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
