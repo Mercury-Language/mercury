@@ -303,8 +303,8 @@ insert_into_deps_map(BurdenedModule, !DepsMap) :-
     map.set(ModuleName, Deps, !DepsMap).
 
     % Read a module to determine the (direct) dependencies of that module
-    % and any nested submodules it contains. Return the module_and_imports
-    % structure for the named module, and each of its nested submodules.
+    % and any nested submodules it contains. Return the burdened_module
+    % structure for both the named module and each of its nested submodules.
     %
 :- pred read_dependencies(globals::in, maybe_search::in,
     module_name::in, expectation_contexts::in, list(burdened_module)::out,
