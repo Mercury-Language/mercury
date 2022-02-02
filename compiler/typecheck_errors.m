@@ -770,10 +770,10 @@ report_error_unify_var_var(Info, ClauseContext, UnifyContext, Context,
         quote(mercury_var_to_name_only(VarSet, Y))] ++
         type_of_var_to_pieces(InstVarSet, TypeAssignSet, Y) ++
             [suffix("."), nl],
-    type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
-        VerboseComponents),
+    type_assign_set_msg_to_verbose_component(Info, TypeAssignSet, VarSet,
+        VerboseComponent),
     Msg = simple_msg(Context,
-        [always(ContextPieces), always(MainPieces) | VerboseComponents]),
+        [always(ContextPieces), always(MainPieces), VerboseComponent]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
@@ -838,10 +838,10 @@ report_error_lambda_var(Info, ClauseContext, UnifyContext, Context,
     Pieces4 = Pieces4a ++ Pieces4b ++ Pieces4c,
     MainPieces = Pieces1 ++ Pieces2 ++ Pieces3 ++ Pieces4,
 
-    type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
-        VerboseComponents),
+    type_assign_set_msg_to_verbose_component(Info, TypeAssignSet, VarSet,
+        VerboseComponent),
     Msg = simple_msg(Context,
-        [always(ContextPieces), always(MainPieces) | VerboseComponents]),
+        [always(ContextPieces), always(MainPieces), VerboseComponent]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
@@ -877,10 +877,10 @@ report_error_functor_type(Info, UnifyContext, Context,
         NoSuffixIntegerPieces = []
     ),
 
-    type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
-        VerboseComponents),
+    type_assign_set_msg_to_verbose_component(Info, TypeAssignSet, VarSet,
+        VerboseComponent),
     AlwaysPieces = ContextPieces ++ MainPieces ++ NoSuffixIntegerPieces,
-    Msg = simple_msg(Context, [always(AlwaysPieces) | VerboseComponents]),
+    Msg = simple_msg(Context, [always(AlwaysPieces), VerboseComponent]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
@@ -958,8 +958,9 @@ report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
                 ConsDefnList) ++
             types_of_vars_to_pieces(VarSet, InstVarSet, Args, TypeAssignSet),
         ErrorPieces = ResultTypePieces ++ AllTypesPieces,
-        type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
-            VerboseComponents)
+        type_assign_set_msg_to_verbose_component(Info, TypeAssignSet, VarSet,
+            VerboseComponent),
+        VerboseComponents = [VerboseComponent]
     ),
     (
         MaybeNumMismatches = no,
@@ -1361,12 +1362,12 @@ report_error_var(Info, GoalContext, Context, Var, Type, TypeAssignSet)
         NoSuffixIntegerPieces = []
     ),
 
-    type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
-        VerboseComponents),
+    type_assign_set_msg_to_verbose_component(Info, TypeAssignSet, VarSet,
+        VerboseComponent),
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(GoalContextPieces),
-        always(TypeErrorPieces ++ MismatchPieces ++ NoSuffixIntegerPieces)
-        | VerboseComponents]),
+        always(TypeErrorPieces ++ MismatchPieces ++ NoSuffixIntegerPieces),
+        VerboseComponent]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]),
     SpecAndMaybeActualExpected =
         spec_and_maybe_actual_expected(Spec, MaybeActualExpected).
@@ -1390,11 +1391,11 @@ report_arg_vector_type_errors(Info, ClauseContext, Context, ArgVectorKind,
     arg_vector_type_errors_to_pieces(VarSet, ArgVectorTypeErrors,
         HeadArgVectorTypeErrors, TailArgVectorTypeErrors,
         ArgErrorPieces),
-    type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
-        VerboseComponents),
+    type_assign_set_msg_to_verbose_component(Info, TypeAssignSet, VarSet,
+        VerboseComponent),
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(ArgVectorKindPieces),
-        always(ArgErrorPieces) | VerboseComponents]),
+        always(ArgErrorPieces), VerboseComponent]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 :- pred arg_vector_type_errors_to_pieces(prog_varset::in,
@@ -1523,11 +1524,11 @@ report_error_var_either_type(Info, ClauseContext, GoalContext, Context,
             [nl_indent_delta(-1), fixed("}."), nl]
     ),
 
-    type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
-        VerboseComponents),
+    type_assign_set_msg_to_verbose_component(Info, TypeAssignSet, VarSet,
+        VerboseComponent),
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ GoalContextPieces),
-        always(Pieces1 ++ Pieces2) | VerboseComponents]),
+        always(Pieces1 ++ Pieces2), VerboseComponent]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
@@ -1564,11 +1565,11 @@ report_error_arg_var(Info, ClauseContext, GoalContext, Context, Var,
             [nl_indent_delta(-1), fixed("}."), nl]
     ),
 
-    arg_type_assign_set_msg_to_verbose_pieces(Info, ArgTypeAssignSet, VarSet,
-        VerboseComponents),
+    arg_type_assign_set_msg_to_verbose_component(Info, ArgTypeAssignSet, VarSet,
+        VerboseComponent),
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ GoalContextPieces),
-        always(Pieces1 ++ Pieces2) | VerboseComponents]),
+        always(Pieces1 ++ Pieces2), VerboseComponent]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
@@ -3022,38 +3023,37 @@ nosuffix_integer_pieces = Pieces :-
 % at the end.
 %
 
-:- pred type_assign_set_msg_to_verbose_pieces(typecheck_info::in,
-    type_assign_set::in, prog_varset::in, list(error_msg_component)::out)
-    is det.
+:- pred type_assign_set_msg_to_verbose_component(typecheck_info::in,
+    type_assign_set::in, prog_varset::in, error_msg_component::out) is det.
 
-type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
-        VerboseComponents) :-
+type_assign_set_msg_to_verbose_component(Info, TypeAssignSet, VarSet,
+        VerboseComponent) :-
     typecheck_info_get_verbose_errors(Info, VerboseErrors),
     (
         VerboseErrors = no,
-        VerboseComponents = [verbose_only(verbose_always, [])]
+        VerbosePieces = []
     ;
         VerboseErrors = yes,
-        VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
-        VerboseComponents = [verbose_only(verbose_always, VerbosePieces)]
-    ).
+        VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet)
+    ),
+    VerboseComponent = verbose_only(verbose_always, VerbosePieces).
 
-:- pred arg_type_assign_set_msg_to_verbose_pieces(typecheck_info::in,
-    args_type_assign_set::in, prog_varset::in, list(error_msg_component)::out)
+:- pred arg_type_assign_set_msg_to_verbose_component(typecheck_info::in,
+    args_type_assign_set::in, prog_varset::in, error_msg_component::out)
     is det.
 
-arg_type_assign_set_msg_to_verbose_pieces(Info, ArgTypeAssignSet, VarSet,
-        VerboseComponents) :-
+arg_type_assign_set_msg_to_verbose_component(Info, ArgTypeAssignSet, VarSet,
+        VerboseComponent) :-
     typecheck_info_get_verbose_errors(Info, VerboseErrors),
     (
         VerboseErrors = no,
-        VerboseComponents = [verbose_only(verbose_always, [])]
+        VerbosePieces = []
     ;
         VerboseErrors = yes,
         VerbosePieces =
-            args_type_assign_set_msg_to_pieces(ArgTypeAssignSet, VarSet),
-        VerboseComponents = [verbose_only(verbose_always, VerbosePieces)]
-    ).
+            args_type_assign_set_msg_to_pieces(ArgTypeAssignSet, VarSet)
+    ),
+    VerboseComponent = verbose_only(verbose_always, VerbosePieces).
 
 %---------------------------------------------------------------------------%
 
