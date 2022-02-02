@@ -397,9 +397,10 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual,
                 globals.get_target(Globals, CompilationTarget),
                 add_builtin(PredId, Types, CompilationTarget,
                     PredInfo0, PredInfo),
-                predicate_table_get_preds(PredTable1, Preds1),
-                map.det_update(PredId, PredInfo, Preds1, Preds),
-                predicate_table_set_preds(Preds, PredTable1, PredTable)
+                predicate_table_get_pred_id_table(PredTable1, PredIdTable1),
+                map.det_update(PredId, PredInfo, PredIdTable1, PredIdTable),
+                predicate_table_set_pred_id_table(PredIdTable,
+                    PredTable1, PredTable)
             else
                 PredTable = PredTable1
             ),
@@ -737,12 +738,13 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
                 PredId, !ModuleInfo, !Specs)
         ),
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable1),
-        predicate_table_get_preds(PredicateTable1, Preds0),
-        map.lookup(Preds0, PredId, PredInfo0),
+        predicate_table_get_pred_id_table(PredicateTable1, PredIdTable0),
+        map.lookup(PredIdTable0, PredId, PredInfo0),
         module_do_add_mode(PartOfPredmode, IsClassMethod, ItemMercuryStatus,
             ItemModeDecl, PredInfo0, PredInfo, ProcId, !Specs),
-        map.det_update(PredId, PredInfo, Preds0, Preds),
-        predicate_table_set_preds(Preds, PredicateTable1, PredicateTable),
+        map.det_update(PredId, PredInfo, PredIdTable0, PredIdTable),
+        predicate_table_set_pred_id_table(PredIdTable,
+            PredicateTable1, PredicateTable),
         module_info_set_predicate_table(PredicateTable, !ModuleInfo),
         PredProcId = proc(PredId, ProcId)
     ).

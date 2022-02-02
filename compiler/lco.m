@@ -1378,13 +1378,11 @@ acceptable_construct_mode(ModuleInfo, UnifyMode) :-
 
 store_updated_procs_in_module_info(PredProcId - NewProcInfo, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, Procs0),
     map.det_update(ProcId, NewProcInfo, Procs0, Procs),
     pred_info_set_proc_table(Procs, PredInfo0, PredInfo),
-    map.det_update(PredId, PredInfo, PredTable0, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo).
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -1412,9 +1410,8 @@ update_variant_pred_info(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
     proc_info_get_vartypes(VariantProcInfo, VarTypes),
     lookup_var_types(VarTypes, HeadVars, ArgTypes),
 
-    some [!VariantPredInfo, !PredTable] (
-        module_info_get_preds(!.ModuleInfo, !:PredTable),
-        map.lookup(!.PredTable, VariantPredId, !:VariantPredInfo),
+    some [!VariantPredInfo] (
+        module_info_pred_info(!.ModuleInfo, VariantPredId, !:VariantPredInfo),
         pred_info_set_name(VariantName, !VariantPredInfo),
         pred_info_set_is_pred_or_func(pf_predicate, !VariantPredInfo),
 
@@ -1434,8 +1431,8 @@ update_variant_pred_info(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
         % we create a separate predicate for each variant.
         VariantProcs = map.singleton(VariantProcId, VariantProcInfo),
         pred_info_set_proc_table(VariantProcs, !VariantPredInfo),
-        map.det_update(VariantPredId, !.VariantPredInfo, !PredTable),
-        module_info_set_preds(!.PredTable, !ModuleInfo)
+        module_info_set_pred_info(VariantPredId, !.VariantPredInfo,
+            !ModuleInfo)
     ).
 
 %---------------------------------------------------------------------------%

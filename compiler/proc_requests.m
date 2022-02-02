@@ -241,10 +241,9 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
 
 request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         !ModuleInfo) :-
-    some [!PredInfo, !ProcInfo, !PredMap, !ProcMap, !Goal] (
+    some [!PredInfo, !ProcInfo, !Goal] (
         % Create a new proc_info for this procedure.
-        module_info_get_preds(!.ModuleInfo, !:PredMap),
-        map.lookup(!.PredMap, PredId, !:PredInfo),
+        module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         SeqNum = item_no_seq_num,
         list.length(ArgModes, Arity),
         DeclaredArgModes = no,
@@ -259,8 +258,7 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         % to the proc_info, and mark the procedure as one that
         % cannot be processed yet. (The mark will be changed to
         % `can_process_now' by modecheck_queued_proc.)
-        pred_info_get_proc_table(!.PredInfo, !:ProcMap),
-        map.lookup(!.ProcMap, ProcId, !:ProcInfo),
+        pred_info_proc_info(!.PredInfo, ProcId, !:ProcInfo),
         proc_info_set_can_process(cannot_process_yet, !ProcInfo),
 
         copy_clauses_to_proc_in_proc_info(!.PredInfo, ProcId, !ProcInfo),
@@ -288,10 +286,8 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         ),
         proc_info_set_goal(!.Goal, !ProcInfo),
 
-        map.det_update(ProcId, !.ProcInfo, !ProcMap),
-        pred_info_set_proc_table(!.ProcMap, !PredInfo),
-        map.det_update(PredId, !.PredInfo, !PredMap),
-        module_info_set_preds(!.PredMap, !ModuleInfo),
+        pred_info_set_proc_info(ProcId, !.ProcInfo, !PredInfo),
+        module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo),
 
         % Insert the pred_proc_id into the request queue.
         module_info_get_proc_requests(!.ModuleInfo, Requests0),

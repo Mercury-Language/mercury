@@ -487,8 +487,9 @@
 % a simple getter or setter predicates.
 %
 
-:- pred module_info_get_preds(module_info::in, pred_table::out) is det.
-:- pred module_info_set_preds(pred_table::in,
+:- pred module_info_get_pred_id_table(module_info::in,
+    pred_id_table::out) is det.
+:- pred module_info_set_pred_id_table(pred_id_table::in,
     module_info::in, module_info::out) is det.
 
     % Given a pred_id, return the pred_info of the specified pred.
@@ -1461,18 +1462,18 @@ module_info_set_type_repn_dec(X, !MI) :-
 % a simple getter or setter predicates.
 %
 
-module_info_get_preds(MI, Preds) :-
+module_info_get_pred_id_table(MI, PredIdTable) :-
     module_info_get_predicate_table(MI, PredTable),
-    predicate_table_get_preds(PredTable, Preds).
+    predicate_table_get_pred_id_table(PredTable, PredIdTable).
 
-module_info_set_preds(Preds, !MI) :-
+module_info_set_pred_id_table(PredIdTable, !MI) :-
     module_info_get_predicate_table(!.MI, PredTable0),
-    predicate_table_set_preds(Preds, PredTable0, PredTable),
+    predicate_table_set_pred_id_table(PredIdTable, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !MI).
 
 module_info_pred_info(MI, PredId, PredInfo) :-
-    module_info_get_preds(MI, Preds),
-    ( if map.search(Preds, PredId, PredInfoPrime) then
+    module_info_get_pred_id_table(MI, PredIdTable),
+    ( if map.search(PredIdTable, PredId, PredInfoPrime) then
         PredInfo = PredInfoPrime
     else
         pred_id_to_int(PredId, PredInt),
@@ -1519,9 +1520,10 @@ module_info_remove_predicate(PredId, !MI) :-
     module_info_set_predicate_table(PredTable, !MI).
 
 module_info_set_pred_info(PredId, PredInfo, !MI) :-
-    module_info_get_preds(!.MI, Preds0),
-    map.set(PredId, PredInfo, Preds0, Preds),
-    module_info_set_preds(Preds, !MI).
+    module_info_get_pred_id_table(!.MI, PredIdTable0),
+    % XXX Should be map.det_update.
+    map.set(PredId, PredInfo, PredIdTable0, PredIdTable),
+    module_info_set_pred_id_table(PredIdTable, !MI).
 
 module_info_set_pred_proc_info(proc(PredId, ProcId), PredInfo, ProcInfo,
         !MI) :-
@@ -1529,6 +1531,7 @@ module_info_set_pred_proc_info(proc(PredId, ProcId), PredInfo, ProcInfo,
         PredInfo, ProcInfo, !MI).
 
 module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo, !MI) :-
+    % XXX Should be pred_info_set_proc_info, which calls map.det_update.
     pred_info_get_proc_table(PredInfo0, Procs0),
     map.set(ProcId, ProcInfo, Procs0, Procs),
     pred_info_set_proc_table(Procs, PredInfo0, PredInfo),

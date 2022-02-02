@@ -210,9 +210,7 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM, PredName,
         TabledMethod = TabledMethod0
     ),
 
-    module_info_get_predicate_table(!.ModuleInfo, PredicateTable),
-    predicate_table_get_preds(PredicateTable, Preds),
-    map.lookup(Preds, PredId, PredInfo0),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pfumm_to_maybe_pf_arity_maybe_modes(PFUMM, MaybePredOrFunc, UserArity,
         MaybeModes),
     (

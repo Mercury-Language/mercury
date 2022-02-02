@@ -97,8 +97,8 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
     ),
     (
         PredIds = [],
-        module_info_get_preds(!.ModuleInfo, Preds),
-        find_user_arities_other_than(Preds, AllArityPredIds, UserArity,
+        module_info_get_pred_id_table(!.ModuleInfo, PredIdTable),
+        find_user_arities_other_than(PredIdTable, AllArityPredIds, UserArity,
             OtherUserArities),
         OtherUserArityInts =
             list.map(project_user_arity_int, OtherUserArities),

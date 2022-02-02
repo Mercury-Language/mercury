@@ -76,17 +76,17 @@
 
     % Return the arities that the given pred_ids have.
     %
-:- pred find_pred_arities(pred_table::in, list(pred_id)::in,
+:- pred find_pred_arities(pred_id_table::in, list(pred_id)::in,
     list(pred_form_arity)::out) is det.
-:- pred find_user_arities(pred_table::in, list(pred_id)::in,
+:- pred find_user_arities(pred_id_table::in, list(pred_id)::in,
     list(user_arity)::out) is det.
 
     % Return the set of arities that the given pred_ids have,
     % other than the given arity.
     %
-:- pred find_pred_arities_other_than(pred_table::in, list(pred_id)::in,
+:- pred find_pred_arities_other_than(pred_id_table::in, list(pred_id)::in,
     pred_form_arity::in, list(pred_form_arity)::out) is det.
-:- pred find_user_arities_other_than(pred_table::in, list(pred_id)::in,
+:- pred find_user_arities_other_than(pred_id_table::in, list(pred_id)::in,
     user_arity::in, list(user_arity)::out) is det.
 
 :- func project_user_arity_int(user_arity) = int.
@@ -333,7 +333,7 @@ find_user_arities_other_than(PredTable, PredIds, Arity, OtherArities) :-
     set.delete(Arity, AritiesSet, OtherAritiesSet),
     set.to_sorted_list(OtherAritiesSet, OtherArities).
 
-:- pred find_pred_arities_set(pred_table::in, list(pred_id)::in,
+:- pred find_pred_arities_set(pred_id_table::in, list(pred_id)::in,
     set(pred_form_arity)::out) is det.
 
 find_pred_arities_set(_, [], set.init).
@@ -344,7 +344,7 @@ find_pred_arities_set(PredTable, [PredId | PredIds], AritiesSet) :-
     PredFormArity = pred_form_arity(PredFormArityInt),
     set.insert(PredFormArity, AritiesSet0, AritiesSet).
 
-:- pred find_user_arities_set(pred_table::in, list(pred_id)::in,
+:- pred find_user_arities_set(pred_id_table::in, list(pred_id)::in,
     set(user_arity)::out) is det.
 
 find_user_arities_set(_, [], set.init).

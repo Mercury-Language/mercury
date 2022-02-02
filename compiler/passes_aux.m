@@ -260,12 +260,12 @@ process_valid_nonimported_procs_update(!Task, !ModuleInfo) :-
         ; !.Task = update_proc_ids_pred(_)
         ),
         ValidPredIdSet = set_tree234.list_to_set(ValidPredIds),
-        module_info_get_preds(!.ModuleInfo, PredMap0),
-        map.to_assoc_list(PredMap0, PredIdsInfos0),
+        module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
+        map.to_assoc_list(PredIdTable0, PredIdsInfos0),
         par_process_valid_nonimported_procs_in_preds(!.ModuleInfo, !.Task,
             ValidPredIdSet, PredIdsInfos0, PredIdsInfos),
-        map.from_sorted_assoc_list(PredIdsInfos, PredMap),
-        module_info_set_preds(PredMap, !ModuleInfo)
+        map.from_sorted_assoc_list(PredIdsInfos, PredIdTable),
+        module_info_set_pred_id_table(PredIdTable, !ModuleInfo)
     ;
         ( !.Task = update_module(_)
         ; !.Task = update_module_pred(_)
@@ -341,8 +341,7 @@ par_process_valid_nonimported_procs(ModuleInfo, Task, PredId,
 seq_process_valid_nonimported_procs_in_preds([], !Task, !ModuleInfo).
 seq_process_valid_nonimported_procs_in_preds([PredId | PredIds], !Task,
         !ModuleInfo) :-
-    module_info_get_preds(!.ModuleInfo, PredTable),
-    map.lookup(PredTable, PredId, PredInfo),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     seq_process_valid_nonimported_procs(PredId, ProcIds, !Task, !ModuleInfo),
     seq_process_valid_nonimported_procs_in_preds(PredIds, !Task, !ModuleInfo).
@@ -354,39 +353,33 @@ seq_process_valid_nonimported_procs_in_preds([PredId | PredIds], !Task,
 seq_process_valid_nonimported_procs(_PredId, [], !Task, !ModuleInfo).
 seq_process_valid_nonimported_procs(PredId, [ProcId | ProcIds], !Task,
         !ModuleInfo) :-
-    module_info_get_preds(!.ModuleInfo, Preds0),
-    map.lookup(Preds0, PredId, Pred0),
-    pred_info_get_proc_table(Pred0, Procs0),
-    map.lookup(Procs0, ProcId, Proc0),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    pred_info_proc_info(PredInfo0, ProcId, ProcInfo0),
 
     PredProcId = proc(PredId, ProcId),
     (
         !.Task = update_module(Closure),
-        Closure(PredProcId, Proc0, Proc, !ModuleInfo)
+        Closure(PredProcId, ProcInfo0, ProcInfo, !ModuleInfo)
     ;
         !.Task = update_module_pred(Closure),
-        Closure(PredProcId, Pred0, Proc0, Proc, !ModuleInfo)
+        Closure(PredProcId, PredInfo0, ProcInfo0, ProcInfo, !ModuleInfo)
     ;
         !.Task = update_module_cookie(Closure, Cookie0),
-        Closure(PredProcId, Proc0, Proc, !ModuleInfo, Cookie0, Cookie),
+        Closure(PredProcId, ProcInfo0, ProcInfo, !ModuleInfo, Cookie0, Cookie),
         !:Task = update_module_cookie(Closure, Cookie)
     ;
         !.Task = update_module_pred_cookie(Closure, Cookie0),
-        Closure(PredProcId, Pred0, Proc0, Proc, !ModuleInfo, Cookie0, Cookie),
+        Closure(PredProcId, PredInfo0, ProcInfo0, ProcInfo, !ModuleInfo,
+            Cookie0, Cookie),
         !:Task = update_module_pred_cookie(Closure, Cookie)
     ),
 
     % If the pass changed the module_info, it may have changed the pred table
     % or the proc table for this pred_id. Do not take any chances.
 
-    module_info_get_preds(!.ModuleInfo, Preds8),
-    map.lookup(Preds8, PredId, Pred8),
-    pred_info_get_proc_table(Pred8, Procs8),
-
-    map.det_update(ProcId, Proc, Procs8, Procs),
-    pred_info_set_proc_table(Procs, Pred8, Pred),
-    map.det_update(PredId, Pred, Preds8, Preds),
-    module_info_set_preds(Preds, !ModuleInfo),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo8),
+    pred_info_set_proc_info(ProcId, ProcInfo, PredInfo8, PredInfo),
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
 
     seq_process_valid_nonimported_procs(PredId, ProcIds, !Task, !ModuleInfo).
 
@@ -440,9 +433,9 @@ maybe_report_sizes(HLDS, !IO) :-
 report_sizes(ModuleInfo, !IO) :-
     get_debug_output_stream(ModuleInfo, Stream, !IO),
 
-    module_info_get_preds(ModuleInfo, PredTable),
+    module_info_get_pred_id_table(ModuleInfo, PredIdTable),
     io.format(Stream, "Pred table size = %d\n",
-        [i(map.count(PredTable))], !IO),
+        [i(map.count(PredIdTable))], !IO),
 
     module_info_get_type_table(ModuleInfo, TypeTable),
     get_all_type_ctor_defns(TypeTable, TypeCtorDefns),

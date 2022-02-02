@@ -125,8 +125,8 @@
 table_gen_process_module(!ModuleInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, trace_table_io, TraceTableIO),
-    module_info_get_preds(!.ModuleInfo, Preds0),
-    map.keys(Preds0, PredIds),
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
+    map.keys(PredIdTable0, PredIds),
     map.init(GenMap0),
     table_gen_process_preds(TraceTableIO, PredIds,
         !ModuleInfo, GenMap0, _, !Specs).
@@ -162,8 +162,7 @@ table_gen_process_pred(TraceTableIO, PredId, !ModuleInfo, !GenMap, !Specs) :-
 table_gen_process_procs(_, _, [], !ModuleInfo, !GenMap, !Specs).
 table_gen_process_procs(TraceTableIO, PredId, [ProcId | ProcIds],
         !ModuleInfo, !GenMap, !Specs) :-
-    module_info_get_preds(!.ModuleInfo, PredTable),
-    map.lookup(PredTable, PredId, PredInfo),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo0),
     table_gen_process_proc(TraceTableIO, PredId, ProcId, ProcInfo0, PredInfo,
@@ -733,9 +732,7 @@ table_gen_transform_proc(TabledMethod, PredId, ProcId, !ProcInfo, !PredInfo,
     % so recompute the purity here.
     % XXX Fix this: generate correct-by-construction purity information.
     repuritycheck_proc(!.ModuleInfo, proc(PredId, ProcId), !PredInfo),
-    module_info_get_preds(!.ModuleInfo, PredTable1),
-    map.det_update(PredId, !.PredInfo, PredTable1, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo).
+    module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -2056,9 +2053,7 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
     map.det_insert(ProcId, !.ProcInfo, ProcTable0, ProcTable),
     pred_info_set_proc_table(ProcTable, !PredInfo),
 
-    module_info_get_preds(ModuleInfo1, PredTable0),
-    map.det_update(PredId, !.PredInfo, PredTable0, PredTable),
-    module_info_set_preds(PredTable, ModuleInfo1, ModuleInfo),
+    module_info_set_pred_info(PredId, !.PredInfo, ModuleInfo1, ModuleInfo),
     !TableInfo ^ table_module_info := ModuleInfo.
 
 :- pred clone_pred_info(pred_id::in, pred_info::in, list(prog_var)::in,

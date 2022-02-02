@@ -264,7 +264,7 @@ apply_dg_to_procs(_PredId, [], _Distance, _PredIdSpecialized,
         _SymNameSpecialized, !PredInfo, !Specialized, !ModuleInfo).
 apply_dg_to_procs(PredId, [ProcId | ProcIds], Distance, PredIdSpecialized,
         SymNameSpecialized, !PredInfo, !Specialized, !ModuleInfo) :-
-    module_info_proc_info(!.ModuleInfo, proc(PredId, ProcId), ProcInfo0),
+    module_info_proc_info(!.ModuleInfo, PredId, ProcId, ProcInfo0),
     proc_info_get_has_parallel_conj(ProcInfo0, HasParallelConj),
     (
         HasParallelConj = has_parallel_conj,

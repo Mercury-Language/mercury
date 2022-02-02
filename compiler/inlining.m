@@ -694,10 +694,8 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
 
         PredProcId = proc(PredId, ProcId),
 
-        module_info_get_preds(!.ModuleInfo, PredTable0),
-        map.lookup(PredTable0, PredId, !:PredInfo),
-        pred_info_get_proc_table(!.PredInfo, ProcTable0),
-        map.lookup(ProcTable0, ProcId, !:ProcInfo),
+        module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
+        pred_info_proc_info(!.PredInfo, ProcId, !:ProcInfo),
 
         pred_info_get_univ_quant_tvars(!.PredInfo, UnivQTVars),
         pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
@@ -748,8 +746,7 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
             DidInlining = we_have_not_inlined
         ),
 
-        map.det_update(ProcId, !.ProcInfo, ProcTable0, ProcTable),
-        pred_info_set_proc_table(ProcTable, !PredInfo),
+        pred_info_set_proc_info(ProcId, !.ProcInfo, !PredInfo),
 
         (
             PurityChanged = have_changed_purity,
@@ -758,8 +755,7 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
             PurityChanged = have_not_changed_purity
         ),
 
-        map.det_update(PredId, !.PredInfo, PredTable0, PredTable),
-        module_info_set_preds(PredTable, !ModuleInfo),
+        module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo),
 
         % If the determinism of some subgoals has changed, then we rerun
         % determinism analysis, because propagating the determinism information

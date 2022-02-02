@@ -79,11 +79,11 @@
 
 ml_gen_preds(Target, ConstStructMap, FuncDefns,
         !GlobalData, !ModuleInfo, !Specs) :-
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.to_sorted_assoc_list(PredTable0, PredIdInfos0),
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
+    map.to_sorted_assoc_list(PredIdTable0, PredIdInfos0),
     ml_find_procs_for_code_gen(PredIdInfos0, PredIdInfos, [], PredProcIds),
-    map.from_sorted_assoc_list(PredIdInfos, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo),
+    map.from_sorted_assoc_list(PredIdInfos, PredIdTable),
+    module_info_set_pred_id_table(PredIdTable, !ModuleInfo),
 
     list.sort(PredProcIds, SortedPredProcIds),
     set.sorted_list_to_set(SortedPredProcIds, CodeGenPredProcIds),

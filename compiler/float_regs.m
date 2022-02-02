@@ -502,20 +502,12 @@ insert_reg_wrappers_pred(PredId, !ModuleInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 insert_reg_wrappers_proc(PredId, ProcId, !ModuleInfo, !Specs) :-
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_proc_table(PredInfo0, ProcTable0),
-    map.lookup(ProcTable0, ProcId, ProcInfo0),
-
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    pred_info_proc_info(PredInfo0, ProcId, ProcInfo0),
     insert_reg_wrappers_proc_2(ProcInfo0, ProcInfo, PredInfo0, PredInfo1,
         !ModuleInfo, !Specs),
-
-    pred_info_get_proc_table(PredInfo1, ProcTable1),
-    map.det_update(ProcId, ProcInfo, ProcTable1, ProcTable),
-    pred_info_set_proc_table(ProcTable, PredInfo1, PredInfo),
-    module_info_get_preds(!.ModuleInfo, PredTable1),
-    map.det_update(PredId, PredInfo, PredTable1, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo).
+    pred_info_set_proc_info(ProcId, ProcInfo, PredInfo1, PredInfo),
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 :- pred insert_reg_wrappers_proc_2(proc_info::in, proc_info::out,
     pred_info::in, pred_info::out, module_info::in, module_info::out,

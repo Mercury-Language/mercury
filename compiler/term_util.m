@@ -374,34 +374,22 @@ all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], ModuleInfo) :-
 set_pred_proc_ids_arg_size_info([], _ArgSize, !ModuleInfo).
 set_pred_proc_ids_arg_size_info([PPId | PPIds], ArgSize, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_proc_table(PredInfo0, ProcTable0),
-    map.lookup(ProcTable0, ProcId, ProcInfo0),
-
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    pred_info_proc_info(PredInfo0, ProcId, ProcInfo0),
     proc_info_set_maybe_arg_size_info(yes(ArgSize), ProcInfo0, ProcInfo),
-
-    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-    map.det_update(PredId, PredInfo, PredTable0, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo),
+    pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo),
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
     set_pred_proc_ids_arg_size_info(PPIds, ArgSize, !ModuleInfo).
 
 set_pred_proc_ids_termination_info([], _Termination, !ModuleInfo).
 set_pred_proc_ids_termination_info([PPId | PPIds], Termination, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_proc_table(PredInfo0, ProcTable0),
-    map.lookup(ProcTable0, ProcId, ProcInfo0),
-
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    pred_info_proc_info(PredInfo0, ProcId, ProcInfo0),
     proc_info_set_maybe_termination_info(yes(Termination),
         ProcInfo0, ProcInfo),
-
-    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-    map.det_update(PredId, PredInfo, PredTable0, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo),
+    pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo),
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
     set_pred_proc_ids_termination_info(PPIds, Termination, !ModuleInfo).
 
 %---------------------------------------------------------------------------%

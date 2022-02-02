@@ -59,10 +59,10 @@ write_proc_stats_for_module(OutStream, Msg, ModuleInfo, !IO) :-
     ModuleName = sym_name_to_string(ModuleSymName),
     io.format(OutStream, "MODULE %s\n", [s(ModuleName)], !IO),
 
-    module_info_get_preds(ModuleInfo, PredTable),
-    map.to_assoc_list(PredTable, Preds),
+    module_info_get_pred_id_table(ModuleInfo, PredIdTable),
+    map.to_assoc_list(PredIdTable, PredIdsInfos),
     list.foldl(write_proc_stats_for_pred(OutStream, Msg, ModuleInfo),
-        Preds, !IO).
+        PredIdsInfos, !IO).
 
 :- pred write_proc_stats_for_pred(io.output_stream::in, string::in,
     module_info::in, pair(pred_id, pred_info)::in, io::di, io::uo) is det.

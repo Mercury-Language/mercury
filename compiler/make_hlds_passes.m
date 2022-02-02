@@ -867,9 +867,11 @@ maybe_add_default_mode(PredDecl, !ModuleInfo) :-
                 is_fully_qualified, PredSymName, FuncArity, PredIds),
             (
                 PredIds = [_ | _],
-                predicate_table_get_preds(PredTable0, Preds0),
-                maybe_add_default_func_modes(PredIds, Preds0, Preds),
-                predicate_table_set_preds(Preds, PredTable0, PredTable),
+                predicate_table_get_pred_id_table(PredTable0, PredIdTable0),
+                maybe_add_default_func_modes(PredIds,
+                    PredIdTable0, PredIdTable),
+                predicate_table_set_pred_id_table(PredIdTable,
+                    PredTable0, PredTable),
                 module_info_set_predicate_table(PredTable, !ModuleInfo)
             ;
                 PredIds = [],

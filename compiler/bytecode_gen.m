@@ -96,8 +96,7 @@ gen_module(ModuleInfo, Code, !IO) :-
 
 gen_preds(_ModuleInfo, [], empty, !IO).
 gen_preds(ModuleInfo, [PredId | PredIds], Code, !IO) :-
-    module_info_get_preds(ModuleInfo, PredTable),
-    map.lookup(PredTable, PredId, PredInfo),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     (
         ProcIds = [],

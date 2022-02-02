@@ -73,8 +73,7 @@
 construct_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code,
         !CI, !CLD) :-
     get_module_info(!.CI, ModuleInfo),
-    module_info_get_preds(ModuleInfo, Preds),
-    map.lookup(Preds, PredId, PredInfo),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, Procs),
     map.lookup(Procs, ProcId, ProcInfo),
 

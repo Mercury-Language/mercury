@@ -158,8 +158,8 @@
 %
 
 generate_arg_info(ModuleInfo0, ModuleInfo) :-
-    module_info_get_preds(ModuleInfo0, Preds),
-    map.keys(Preds, PredIds),
+    module_info_get_pred_id_table(ModuleInfo0, PredIdTable),
+    map.keys(PredIdTable, PredIds),
     generate_pred_arg_info(PredIds, ModuleInfo0, ModuleInfo).
 
 :- pred generate_pred_arg_info(list(pred_id)::in,
@@ -167,8 +167,7 @@ generate_arg_info(ModuleInfo0, ModuleInfo) :-
 
 generate_pred_arg_info([], !ModuleInfo).
 generate_pred_arg_info([PredId | PredIds], !ModuleInfo) :-
-    module_info_get_preds(!.ModuleInfo, PredTable),
-    map.lookup(PredTable, PredId, PredInfo),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     generate_proc_list_arg_info(PredId, pred_info_valid_procids(PredInfo),
         !ModuleInfo),
     generate_pred_arg_info(PredIds, !ModuleInfo).
@@ -178,20 +177,15 @@ generate_pred_arg_info([PredId | PredIds], !ModuleInfo) :-
 
 generate_proc_list_arg_info(_PredId, [], !ModuleInfo).
 generate_proc_list_arg_info(PredId, [ProcId | ProcIds], !ModuleInfo) :-
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_proc_table(PredInfo0, ProcTable0),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_markers(PredInfo0, Markers),
     pred_info_get_arg_types(PredInfo0, ArgTypes),
-    map.lookup(ProcTable0, ProcId, ProcInfo0),
-
+    pred_info_proc_info(PredInfo0, ProcId, ProcInfo0),
     generate_proc_arg_info(Markers, ArgTypes, !.ModuleInfo,
         ProcInfo0, ProcInfo),
+    pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo),
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
 
-    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-    map.det_update(PredId, PredInfo, PredTable0, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo),
     generate_proc_list_arg_info(PredId, ProcIds, !ModuleInfo).
 
 generate_proc_arg_info(Markers, ArgTypes, ModuleInfo, !ProcInfo) :-

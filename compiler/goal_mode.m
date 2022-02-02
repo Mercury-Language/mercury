@@ -191,10 +191,10 @@ dump_goal_mode(PrefixStr, VarSet, GoalMode) = !:DumpStrs :-
 
 compute_goal_modes_in_module(!ModuleInfo) :-
     module_info_get_valid_pred_id_set(!.ModuleInfo, ValidPredIds),
-    module_info_get_preds(!.ModuleInfo, PredTable0),
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
     map.map_values(compute_goal_modes_in_pred(!.ModuleInfo, ValidPredIds),
-        PredTable0, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo).
+        PredIdTable0, PredIdTable),
+    module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
 :- pred compute_goal_modes_in_pred(module_info::in, set_tree234(pred_id)::in,
     pred_id::in, pred_info::in, pred_info::out) is det.

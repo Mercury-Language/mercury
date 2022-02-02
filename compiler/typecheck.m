@@ -188,14 +188,14 @@ typecheck_module(!ModuleInfo, Specs, FoundSyntaxError,
 typecheck_to_fixpoint(Iteration, MaxIterations, !ModuleInfo,
         OrigValidPredIds, OrigValidPredIdSet, FinalValidPredIdSet,
         Specs, FoundSyntaxError, NumberOfIterations) :-
-    module_info_get_preds(!.ModuleInfo, PredMap0),
-    map.to_assoc_list(PredMap0, PredIdsInfos0),
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
+    map.to_assoc_list(PredIdTable0, PredIdsInfos0),
     typecheck_module_one_iteration(!.ModuleInfo, OrigValidPredIdSet,
         PredIdsInfos0, PredIdsInfos, [], NewlyInvalidPredIds,
         [], CurSpecs, no_clause_syntax_errors, CurFoundSyntaxError,
         next_iteration_is_not_needed, NextIteration),
-    map.from_sorted_assoc_list(PredIdsInfos, PredMap),
-    module_info_set_preds(PredMap, !ModuleInfo),
+    map.from_sorted_assoc_list(PredIdsInfos, PredIdTable),
+    module_info_set_pred_id_table(PredIdTable, !ModuleInfo),
 
     module_info_make_pred_ids_invalid(NewlyInvalidPredIds, !ModuleInfo),
     module_info_get_valid_pred_id_set(!.ModuleInfo, NewValidPredIdSet),
@@ -1756,8 +1756,8 @@ typecheck_call_overloaded_pred(SymNameArity, Context, GoalId, PredIdList,
     typecheck_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
-    predicate_table_get_preds(PredicateTable, Preds),
-    get_overloaded_pred_arg_types(PredIdList, Preds, ClassTable, GoalId,
+    predicate_table_get_pred_id_table(PredicateTable, PredIdTable),
+    get_overloaded_pred_arg_types(PredIdList, PredIdTable, ClassTable, GoalId,
         TypeAssignSet0, [], ArgsTypeAssignSet),
 
     % Then unify the types of the call arguments with the
@@ -1766,7 +1766,7 @@ typecheck_call_overloaded_pred(SymNameArity, Context, GoalId, PredIdList,
     typecheck_var_has_arg_type_list(VarVectorKind, 1, Context, ArgVars,
         ArgsTypeAssignSet, TypeAssignSet, !Info).
 
-:- pred get_overloaded_pred_arg_types(list(pred_id)::in, pred_table::in,
+:- pred get_overloaded_pred_arg_types(list(pred_id)::in, pred_id_table::in,
     class_table::in, goal_id::in, type_assign_set::in,
     args_type_assign_set::in, args_type_assign_set::out) is det.
 
@@ -2861,14 +2861,14 @@ builtin_atomic_type(impl_defined_const(IDCKind), Type) :-
 
 builtin_pred_type(Info, ConsId, Arity, GoalId, ConsTypeInfos) :-
     ConsId = cons(SymName, _, _),
-    typecheck_info_get_pred_table(Info, PredicateTable),
+    typecheck_info_get_predicate_table(Info, PredicateTable),
     typecheck_info_get_calls_are_fully_qualified(Info, IsFullyQualified),
     predicate_table_lookup_sym(PredicateTable, IsFullyQualified, SymName,
         PredIds),
     (
         PredIds = [_ | _],
-        predicate_table_get_preds(PredicateTable, Preds),
-        accumulate_cons_type_infos_for_pred_ids(Info, Preds, GoalId,
+        predicate_table_get_pred_id_table(PredicateTable, PredIdTable),
+        accumulate_cons_type_infos_for_pred_ids(Info, PredIdTable, GoalId,
             PredIds, Arity, [], ConsTypeInfos)
     ;
         PredIds = [],
@@ -2876,7 +2876,7 @@ builtin_pred_type(Info, ConsId, Arity, GoalId, ConsTypeInfos) :-
     ).
 
 :- pred accumulate_cons_type_infos_for_pred_ids(typecheck_info::in,
-    pred_table::in, goal_id::in, list(pred_id)::in, int::in,
+    pred_id_table::in, goal_id::in, list(pred_id)::in, int::in,
     list(cons_type_info)::in, list(cons_type_info)::out) is det.
 
 accumulate_cons_type_infos_for_pred_ids(_, _, _, [], _, !ConsTypeInfos).
@@ -2888,7 +2888,7 @@ accumulate_cons_type_infos_for_pred_ids(Info, PredTable, GoalId,
         PredIds, Arity, !ConsTypeInfos).
 
 :- pred accumulate_cons_type_infos_for_pred_id(typecheck_info::in,
-    pred_table::in, goal_id::in, pred_id::in, int::in,
+    pred_id_table::in, goal_id::in, pred_id::in, int::in,
     list(cons_type_info)::in, list(cons_type_info)::out) is det.
 
 accumulate_cons_type_infos_for_pred_id(Info, PredTable, GoalId,

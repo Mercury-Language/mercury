@@ -139,8 +139,7 @@ detect_cse_in_module(!ModuleInfo) :-
 
 detect_cse_in_preds([], !ModuleInfo).
 detect_cse_in_preds([PredId | PredIds], !ModuleInfo) :-
-    module_info_get_preds(!.ModuleInfo, PredTable),
-    map.lookup(PredTable, PredId, PredInfo),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     detect_cse_in_pred(PredId, PredInfo, !ModuleInfo),
     detect_cse_in_preds(PredIds, !ModuleInfo).
 
@@ -176,17 +175,13 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
 
     % XXX We wouldn't have to keep getting the proc_info out of and back into
     % the module_info if modecheck didn't take a whole module_info.
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_proc_table(PredInfo0, ProcTable0),
-    map.lookup(ProcTable0, ProcId, ProcInfo0),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    pred_info_proc_info(PredInfo0, ProcId, ProcInfo0),
 
     detect_cse_in_proc_pass(!.ModuleInfo, Redo, ProcInfo0, ProcInfo1),
 
-    map.det_update(ProcId, ProcInfo1, ProcTable0, ProcTable1),
-    pred_info_set_proc_table(ProcTable1, PredInfo0, PredInfo1),
-    map.det_update(PredId, PredInfo1, PredTable0, PredTable1),
-    module_info_set_preds(PredTable1, !ModuleInfo),
+    pred_info_set_proc_info(ProcId, ProcInfo1, PredInfo0, PredInfo1),
+    module_info_set_pred_info(PredId, PredInfo1, !ModuleInfo),
 
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     trace [io(!IO)] (
@@ -241,18 +236,14 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
             VeryVerbose = no
         ),
 
-        module_info_get_preds(!.ModuleInfo, PredTable2),
-        map.lookup(PredTable2, PredId, PredInfo2),
-        pred_info_get_proc_table(PredInfo2, ProcTable2),
-        map.lookup(ProcTable2, ProcId, ProcInfo2),
+        module_info_pred_info(!.ModuleInfo, PredId, PredInfo2),
+        pred_info_proc_info(PredInfo2, ProcId, ProcInfo2),
 
         SwitchDetectInfo = init_switch_detect_info(!.ModuleInfo),
         detect_switches_in_proc(SwitchDetectInfo, ProcInfo2, ProcInfo),
 
-        map.det_update(ProcId, ProcInfo, ProcTable2, ProcTable3),
-        pred_info_set_proc_table(ProcTable3, PredInfo2, PredInfo3),
-        map.det_update(PredId, PredInfo3, PredTable2, PredTable3),
-        module_info_set_preds(PredTable3, !ModuleInfo),
+        pred_info_set_proc_info(ProcId, ProcInfo, PredInfo2, PredInfo3),
+        module_info_set_pred_info(PredId, PredInfo3, !ModuleInfo),
 
         trace [io(!IO)] (
             get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),

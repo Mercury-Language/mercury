@@ -294,10 +294,8 @@ mark_tail_rec_calls_in_scc(_Params, _SCC, [], !ModuleInfo, !Specs).
 mark_tail_rec_calls_in_scc(Params, SCC, [PredProcId | PredProcIds],
         !ModuleInfo, !Specs) :-
     PredProcId = proc(PredId, ProcId),
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_proc_table(PredInfo0, ProcTable0),
-    map.lookup(ProcTable0, ProcId, ProcInfo0),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    pred_info_proc_info(PredInfo0, ProcId, ProcInfo0),
 
     maybe_override_params_for_proc(ProcInfo0, Params, ProcParams),
 
@@ -310,10 +308,8 @@ mark_tail_rec_calls_in_scc(Params, SCC, [PredProcId | PredProcIds],
         WasProcChanged = proc_was_not_changed
     ;
         WasProcChanged = proc_may_have_been_changed,
-        map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-        pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-        map.det_update(PredId, PredInfo, PredTable0, PredTable),
-        module_info_set_preds(PredTable, !ModuleInfo)
+        pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo),
+        module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ),
 
     mark_tail_rec_calls_in_scc(Params, SCC, PredProcIds, !ModuleInfo, !Specs).

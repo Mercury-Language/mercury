@@ -160,13 +160,9 @@ process_imported_sharing(!ModuleInfo):-
     module_info::out) is det.
 
 process_imported_sharing_in_pred(PredId, !ModuleInfo) :-
-    some [!PredTable] (
-        module_info_get_preds(!.ModuleInfo, !:PredTable),
-        PredInfo0 = !.PredTable ^ det_elem(PredId),
-        process_imported_sharing_in_procs(PredInfo0, PredInfo),
-        map.det_update(PredId, PredInfo, !PredTable),
-        module_info_set_preds(!.PredTable, !ModuleInfo)
-    ).
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    process_imported_sharing_in_procs(PredInfo0, PredInfo),
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 :- pred process_imported_sharing_in_procs(pred_info::in,
     pred_info::out) is det.
@@ -185,7 +181,7 @@ process_imported_sharing_in_procs(!PredInfo) :-
 
 process_imported_sharing_in_proc(PredInfo, ProcId, !ProcTable) :-
     some [!ProcInfo] (
-        !:ProcInfo = !.ProcTable ^ det_elem(ProcId),
+        map.lookup(!.ProcTable, ProcId, !:ProcInfo),
         ( if
             proc_info_get_imported_structure_sharing(!.ProcInfo,
                 ImpHeadVars, ImpTypes, ImpSharing)
@@ -235,18 +231,14 @@ process_intermod_analysis_imported_sharing(!ModuleInfo):-
     module_info::in, module_info::out) is det.
 
 process_intermod_analysis_imported_sharing_in_pred(PredId, !ModuleInfo) :-
-    some [!PredTable] (
-        module_info_get_preds(!.ModuleInfo, !:PredTable),
-        map.lookup(!.PredTable, PredId, PredInfo0),
-        ( if pred_info_is_imported_not_external(PredInfo0) then
-            module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo),
-            process_intermod_analysis_imported_sharing_in_procs(!.ModuleInfo,
-                AnalysisInfo, PredId, PredInfo0, PredInfo),
-            map.det_update(PredId, PredInfo, !PredTable),
-            module_info_set_preds(!.PredTable, !ModuleInfo)
-        else
-            true
-        )
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    ( if pred_info_is_imported_not_external(PredInfo0) then
+        module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo),
+        process_intermod_analysis_imported_sharing_in_procs(!.ModuleInfo,
+            AnalysisInfo, PredId, PredInfo0, PredInfo),
+        module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
+    else
+        true
     ).
 
 :- pred process_intermod_analysis_imported_sharing_in_procs(module_info::in,
@@ -272,8 +264,7 @@ process_intermod_analysis_imported_sharing_in_proc(ModuleInfo, AnalysisInfo,
         PredId, PredInfo, ProcId, !ProcTable) :-
     PPId = proc(PredId, ProcId),
     some [!ProcInfo] (
-        !:ProcInfo = !.ProcTable ^ det_elem(ProcId),
-
+        map.lookup(!.ProcTable, ProcId, !:ProcInfo),
         module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
         FuncInfo = structure_sharing_func_info(ModuleInfo, !.ProcInfo),
         lookup_best_result(AnalysisInfo, ModuleName, FuncId, FuncInfo,

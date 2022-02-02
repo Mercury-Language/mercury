@@ -190,8 +190,7 @@ expand_lambdas_in_pred(PredId, !ModuleInfo) :-
     module_info::in, module_info::out) is det.
 
 expand_lambdas_in_proc(PredId, ProcId, !ModuleInfo) :-
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
 
@@ -201,9 +200,7 @@ expand_lambdas_in_proc(PredId, ProcId, !ModuleInfo) :-
     pred_info_get_proc_table(PredInfo1, ProcTable1),
     map.det_update(ProcId, ProcInfo, ProcTable1, ProcTable),
     pred_info_set_proc_table(ProcTable, PredInfo1, PredInfo),
-    module_info_get_preds(!.ModuleInfo, PredTable1),
-    map.det_update(PredId, PredInfo, PredTable1, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo).
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 :- pred do_expand_lambdas_in_proc(proc_info::in, proc_info::out,
     pred_info::in, pred_info::out, module_info::in, module_info::out) is det.

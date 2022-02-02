@@ -257,8 +257,7 @@ gather_opt_export_preds_fixpoint(Params, ExtraExportedPreds0, !IntermodInfo) :-
 gather_opt_export_preds_in_list(_, [], !IntermodInfo).
 gather_opt_export_preds_in_list(Params, [PredId | PredIds], !IntermodInfo) :-
     intermod_info_get_module_info(!.IntermodInfo, ModuleInfo),
-    module_info_get_preds(ModuleInfo, PredTable),
-    map.lookup(PredTable, PredId, PredInfo),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
     module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
     TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
@@ -2690,16 +2689,16 @@ maybe_opt_export_instance_defn(Instance0, Instance, !ModuleInfo) :-
     module_info::in, module_info::out) is det.
 
 opt_export_preds(PredIds, !ModuleInfo) :-
-    module_info_get_preds(!.ModuleInfo, Preds0),
-    opt_export_preds_in_pred_table(PredIds, Preds0, Preds),
-    module_info_set_preds(Preds, !ModuleInfo).
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
+    opt_export_preds_in_pred_id_table(PredIds, PredIdTable0, PredIdTable),
+    module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
-:- pred opt_export_preds_in_pred_table(list(pred_id)::in,
-    pred_table::in, pred_table::out) is det.
+:- pred opt_export_preds_in_pred_id_table(list(pred_id)::in,
+    pred_id_table::in, pred_id_table::out) is det.
 
-opt_export_preds_in_pred_table([], !Preds).
-opt_export_preds_in_pred_table([PredId | PredIds], !Preds) :-
-    map.lookup(!.Preds, PredId, PredInfo0),
+opt_export_preds_in_pred_id_table([], !PredIdTable).
+opt_export_preds_in_pred_id_table([PredId | PredIds], !PredIdTable) :-
+    map.lookup(!.PredIdTable, PredId, PredInfo0),
     pred_info_get_status(PredInfo0, PredStatus0),
     ToWrite = pred_status_to_write(PredStatus0),
     (
@@ -2717,11 +2716,11 @@ opt_export_preds_in_pred_table([PredId | PredIds], !Preds) :-
             PredStatus = pred_status(status_opt_exported)
         ),
         pred_info_set_status(PredStatus, PredInfo0, PredInfo),
-        map.det_update(PredId, PredInfo, !Preds)
+        map.det_update(PredId, PredInfo, !PredIdTable)
     ;
         ToWrite = no
     ),
-    opt_export_preds_in_pred_table(PredIds, !Preds).
+    opt_export_preds_in_pred_id_table(PredIds, !PredIdTable).
 
 %---------------------------------------------------------------------------%
 :- end_module transform_hlds.intermod.

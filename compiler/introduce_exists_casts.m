@@ -62,13 +62,13 @@
 %-----------------------------------------------------------------------------%
 
 introduce_exists_casts(PredIds, !ModuleInfo) :-
-    module_info_get_preds(!.ModuleInfo, PredTable0),
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
     list.foldl(maybe_introduce_exists_casts_pred(!.ModuleInfo), PredIds,
-        PredTable0, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo).
+        PredIdTable0, PredIdTable),
+    module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
 :- pred maybe_introduce_exists_casts_pred(module_info::in, pred_id::in,
-    pred_table::in, pred_table::out) is det.
+    pred_id_table::in, pred_id_table::out) is det.
 
 maybe_introduce_exists_casts_pred(ModuleInfo, PredId, !PredTable) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
@@ -105,14 +105,12 @@ introduce_exists_casts_procs(ModuleInfo, PredInfo, [ProcId | ProcIds],
 %-----------------------------------------------------------------------------%
 
 introduce_exists_casts_poly(PredId, !ModuleInfo) :-
-    module_info_get_preds(!.ModuleInfo, PredMap0),
-    map.lookup(PredMap0, PredId, PredInfo0),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcMap0),
     map.map_values_only(introduce_exists_casts_proc(!.ModuleInfo, PredInfo0),
         ProcMap0, ProcMap),
     pred_info_set_proc_table(ProcMap, PredInfo0, PredInfo),
-    map.det_update(PredId, PredInfo, PredMap0, PredMap),
-    module_info_set_preds(PredMap, !ModuleInfo).
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 

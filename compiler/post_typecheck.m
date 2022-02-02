@@ -134,11 +134,11 @@ post_typecheck_finish_preds(!ModuleInfo, NumBadErrors,
         AlwaysSpecs, NoTypeErrorSpecs) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds),
     ValidPredIdSet = set_tree234.list_to_set(ValidPredIds),
-    module_info_get_preds(!.ModuleInfo, PredMap0),
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
     map.map_foldl3(post_typecheck_do_finish_pred(!.ModuleInfo, ValidPredIdSet),
-        PredMap0, PredMap, 0, NumBadErrors,
+        PredIdTable0, PredIdTable, 0, NumBadErrors,
         [], AlwaysSpecs, [], NoTypeErrorSpecs),
-    module_info_set_preds(PredMap, !ModuleInfo).
+    module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
 :- pred post_typecheck_do_finish_pred(module_info::in,
     set_tree234(pred_id)::in,

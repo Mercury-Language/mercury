@@ -128,10 +128,8 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
 
     % Lookup the pred_info for this pred, add the pragma to the proc_info
     % in the proc_table in the pred_info, and save the pred_info.
-    module_info_get_predicate_table(!.ModuleInfo, PredTable1),
-    predicate_table_get_preds(PredTable1, Preds0),
     some [!PredInfo] (
-        map.lookup(Preds0, PredId, !:PredInfo),
+        module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
 
         % status_opt_imported preds are initially tagged as status_imported
         % and are tagged as status_opt_imported only if/when we see a clause
@@ -228,9 +226,8 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
                     ClausesInfo1, ClausesInfo, !ModuleInfo, !Specs),
                 pred_info_set_clauses_info(ClausesInfo, !PredInfo),
                 pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
-                map.det_update(PredId, !.PredInfo, Preds0, Preds),
-                predicate_table_set_preds(Preds, PredTable1, PredTable),
-                module_info_set_predicate_table(PredTable, !ModuleInfo),
+
+                module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo),
                 pragma_get_var_infos(PVars, ArgInfoBox),
                 ArgInfo = list.map(
                     foreign_arg_name_mode_box_project_maybe_name_mode,

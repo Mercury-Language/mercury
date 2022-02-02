@@ -85,8 +85,8 @@
 modecheck_call_pred(PredId, MaybeDetism, ProcId0, TheProcId,
         ArgVars0, ArgVars, _GoalInfo, ExtraGoals, !ModeInfo) :-
     mode_info_get_may_change_called_proc(!.ModeInfo, MayChangeCalledProc),
-    mode_info_get_preds(!.ModeInfo, Preds),
-    map.lookup(Preds, PredId, PredInfo),
+    mode_info_get_pred_id_table(!.ModeInfo, PredIdTable),
+    map.lookup(PredIdTable, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, Procs),
     (
         MayChangeCalledProc = may_not_change_called_proc,
@@ -282,8 +282,8 @@ no_matching_modes(PredId, ArgVars, ProcInitialInsts, MaybeDetism, WaitingVars,
     % just insert a new mode declaration which will match.
     % Otherwise, report an error.
 
-    mode_info_get_preds(!.ModeInfo, Preds),
-    map.lookup(Preds, PredId, PredInfo),
+    mode_info_get_pred_id_table(!.ModeInfo, PredIdTable),
+    map.lookup(PredIdTable, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     ( if check_marker(Markers, marker_infer_modes) then
         insert_new_mode(PredId, ArgVars, MaybeDetism, NewProcId, !ModeInfo),
@@ -318,8 +318,7 @@ insert_new_mode(PredId, ArgVars, MaybeDet, ProcId, !ModeInfo) :-
     % to create a new mode for this predicate.
     get_var_insts_and_lives(!.ModeInfo, ArgVars, InitialInsts, ArgLives),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-    module_info_get_preds(ModuleInfo0, Preds0),
-    map.lookup(Preds0, PredId, PredInfo0),
+    module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
     pred_info_get_context(PredInfo0, Context),
     list.length(ArgVars, Arity),
     list.duplicate(Arity, not_reached, FinalInsts),
@@ -331,12 +330,11 @@ insert_new_mode(PredId, ArgVars, MaybeDet, ProcId, !ModeInfo) :-
     % of requested procedures.
     request_proc(PredId, Modes, InstVarSet, yes(ArgLives), MaybeDet, Context,
         ProcId, ModuleInfo0, ModuleInfo),
-
     mode_info_set_module_info(ModuleInfo, !ModeInfo),
 
     % Since we have created a new inferred mode for this predicate,
-    % things have changed, so we will need to do at least one more
-    % pass of the fixpoint analysis.
+    % things have changed, so we will need to do at least one more pass
+    % of the fixpoint analysis.
     mode_info_set_changed_flag(yes, !ModeInfo).
 
 :- pred get_var_insts_and_lives(mode_info::in, list(prog_var)::in,

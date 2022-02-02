@@ -147,10 +147,10 @@ term_constr_build_abstract_scc(Options, SCCWithEntryPoints, Errors,
         term_constr_build_abstract_proc(!.ModuleInfo, Options,
             SCC, EntryProcs),
         SCC, varset.init, SizeVarset, [], AbstractSCC),
-    module_info_get_preds(!.ModuleInfo, PredTable0),
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
     RecordInfo =
         ( pred(Info::in, !.Errors::in, !:Errors::out,
-                !.PredTable::in, !:PredTable::out) is det :-
+                !.PredIdTable::in, !:PredIdTable::out) is det :-
             Info = term_scc_info(proc(PredId, ProcId), AR0, VarMap, Status,
                 ProcErrors, HeadSizeVars),
 
@@ -161,7 +161,7 @@ term_constr_build_abstract_scc(Options, SCCWithEntryPoints, Errors,
             % size_varset, they should all have separate size_var_maps.
 
             AR = AR0 ^ ap_size_varset := SizeVarset,
-            map.lookup(!.PredTable, PredId, PredInfo0),
+            map.lookup(!.PredIdTable, PredId, PredInfo0),
             pred_info_get_proc_table(PredInfo0, ProcTable0),
             map.lookup(ProcTable0, ProcId, ProcInfo0),
             some [!Term2Info] (
@@ -181,7 +181,7 @@ term_constr_build_abstract_scc(Options, SCCWithEntryPoints, Errors,
                         ( func(ho_call(Context)) =
                             term2_error(Context, horder_call)
                         ), AR ^ ap_ho_calls),
-                    list.append(HorderErrors, !Errors)
+                    !:Errors = HorderErrors ++ !.Errors
                 else
                     true
                 ),
@@ -190,11 +190,12 @@ term_constr_build_abstract_scc(Options, SCCWithEntryPoints, Errors,
             ),
             map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
             pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-            map.det_update(PredId, PredInfo, !PredTable),
-            list.append(ProcErrors, !Errors)
+            map.det_update(PredId, PredInfo, !PredIdTable),
+            !:Errors = ProcErrors ++ !.Errors
         ),
-    list.foldl2(RecordInfo, AbstractSCC, [], Errors, PredTable0, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo).
+    list.foldl2(RecordInfo, AbstractSCC, [], Errors,
+        PredIdTable0, PredIdTable),
+    module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
 :- pred term_constr_build_abstract_proc(module_info::in,
     term_build_options::in, scc::in, set(pred_proc_id)::in, pred_proc_id::in,

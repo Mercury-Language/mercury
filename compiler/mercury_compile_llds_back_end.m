@@ -271,8 +271,7 @@ llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap, SCCMap,
 
 llds_backend_pass_by_preds_do_one_pred(!HLDS, ConstStructMap, SCCMap, PredId,
         !MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs) :-
-    module_info_get_preds(!.HLDS, PredTable),
-    map.lookup(PredTable, PredId, PredInfo),
+    module_info_pred_info(!.HLDS, PredId, PredInfo),
     ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     (
         ProcIds = []

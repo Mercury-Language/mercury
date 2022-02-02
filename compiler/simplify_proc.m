@@ -452,18 +452,14 @@ simplify_proc_analyze_and_format_calls(!ModuleInfo, ImplicitStreamWarnings,
         % transformation that inserts calls to these predicates,
         % there is no point in invoking find_format_call again later.
 
-        module_info_get_preds(!.ModuleInfo, PredTable0),
-        map.lookup(PredTable0, PredId, PredInfo0),
-        pred_info_get_proc_table(PredInfo0, ProcTable0),
-        map.det_update(ProcId, !.ProcInfo, ProcTable0, ProcTable),
-        pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo1),
+        module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+        pred_info_set_proc_info(ProcId, !.ProcInfo, PredInfo0, PredInfo1),
 
         pred_info_get_markers(PredInfo1, Markers1),
         remove_marker(marker_has_format_call, Markers1, Markers),
         pred_info_set_markers(Markers, PredInfo1, PredInfo),
 
-        map.det_update(PredId, PredInfo, PredTable0, PredTable),
-        module_info_set_preds(PredTable, !ModuleInfo)
+        module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ;
         MaybeGoal = no
         % There should not be any updates to the varset and the vartypes,

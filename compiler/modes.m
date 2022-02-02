@@ -397,7 +397,7 @@ modecheck_to_fixpoint(PredIds, NumIterationsLeft, WhatToCheck,
         MayChangeCalledProc, !ModuleInfo, SafeToContinue, !:Specs) :-
     % Save the old procedure bodies, so that we can restore any procedure body 
     % for the next pass if necessary.
-    module_info_get_preds(!.ModuleInfo, OldPredTable0),
+    module_info_get_pred_id_table(!.ModuleInfo, OldPredIdTable0),
 
     % Analyze every procedure whose "CanProcess" flag is `can_process_now'.
     list.foldl3(maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc),
@@ -405,7 +405,7 @@ modecheck_to_fixpoint(PredIds, NumIterationsLeft, WhatToCheck,
 
     % Analyze the procedures whose "CanProcess" flag was cannot_process_yet;
     % those procedures were inserted into the unify requests queue.
-    modecheck_queued_procs(WhatToCheck, OldPredTable0, OldPredTable,
+    modecheck_queued_procs(WhatToCheck, OldPredIdTable0, OldPredIdTable,
         !ModuleInfo, Changed1, Changed, !Specs),
 
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -471,7 +471,7 @@ modecheck_to_fixpoint(PredIds, NumIterationsLeft, WhatToCheck,
                     % Restore the proc_info goals from the
                     % proc_infos in the old module_info.
                     % XXX Why don't we do the same for check_modes?
-                    copy_pred_bodies(OldPredTable, PredIds, !ModuleInfo)
+                    copy_pred_bodies(OldPredIdTable, PredIds, !ModuleInfo)
                 ),
 
                 modecheck_to_fixpoint(PredIds, NumIterationsLeft - 1,
@@ -496,29 +496,30 @@ report_max_iterations_exceeded(ModuleInfo) = Spec :-
     Spec = simplest_no_context_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Pieces).
 
-    % copy_pred_bodies(OldPredTable, ProcId, !ModuleInfo):
+    % copy_pred_bodies(OldPredIdTable, ProcId, !ModuleInfo):
     %
     % Copy the procedure bodies for all procedures of the specified PredIds
-    % from OldPredTable into !ModuleInfo.
+    % from OldPredIdTable into !ModuleInfo.
     %
-:- pred copy_pred_bodies(pred_table::in, list(pred_id)::in,
+:- pred copy_pred_bodies(pred_id_table::in, list(pred_id)::in,
     module_info::in, module_info::out) is det.
 
-copy_pred_bodies(OldPredTable, PredIds, !ModuleInfo) :-
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    list.foldl(copy_pred_body(OldPredTable), PredIds, PredTable0, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo).
+copy_pred_bodies(OldPredIdTable, PredIds, !ModuleInfo) :-
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
+    list.foldl(copy_pred_body(OldPredIdTable), PredIds,
+        PredIdTable0, PredIdTable),
+    module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
-    % copy_pred_body(OldPredTable, ProcId, PredTable0, PredTable):
+    % copy_pred_body(OldPredIdTable, ProcId, PredIdTable0, PredIdTable):
     %
     % Copy the procedure bodies for all procedures of the specified PredId
-    % from OldPredTable into PredTable0, giving PredTable.
+    % from OldPredIdTable into PredIdTable0, giving PredIdTable.
     %
-:- pred copy_pred_body(pred_table::in, pred_id::in,
-    pred_table::in, pred_table::out) is det.
+:- pred copy_pred_body(pred_id_table::in, pred_id::in,
+    pred_id_table::in, pred_id_table::out) is det.
 
-copy_pred_body(OldPredTable, PredId, PredTable0, PredTable) :-
-    map.lookup(PredTable0, PredId, PredInfo0),
+copy_pred_body(OldPredIdTable, PredId, PredIdTable0, PredIdTable) :-
+    map.lookup(PredIdTable0, PredId, PredInfo0),
     ( if
         % Don't copy type class methods, because their proc_infos are generated
         % already mode-correct, and because copying from the clauses_info
@@ -526,16 +527,16 @@ copy_pred_body(OldPredTable, PredId, PredTable0, PredTable) :-
         pred_info_get_markers(PredInfo0, Markers),
         check_marker(Markers, marker_class_method)
     then
-        PredTable = PredTable0
+        PredIdTable = PredIdTable0
     else
         pred_info_get_proc_table(PredInfo0, ProcTable0),
-        map.lookup(OldPredTable, PredId, OldPredInfo),
+        map.lookup(OldPredIdTable, PredId, OldPredInfo),
         pred_info_get_proc_table(OldPredInfo, OldProcTable),
         map.keys(OldProcTable, OldProcIds),
         list.foldl(copy_proc_body(OldProcTable), OldProcIds,
             ProcTable0, ProcTable),
         pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-        map.det_update(PredId, PredInfo, PredTable0, PredTable)
+        map.det_update(PredId, PredInfo, PredIdTable0, PredIdTable)
     ).
 
     % copy_proc_body(OldProcTable, ProcId, !ProcTable):
@@ -579,8 +580,7 @@ should_modecheck_pred(PredInfo) = ShouldModeCheck :-
 
 maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc, PredId,
         !ModuleInfo, !Changed, !Specs) :-
-    module_info_get_preds(!.ModuleInfo, Preds0),
-    map.lookup(Preds0, PredId, PredInfo0),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     ShouldModeCheck = should_modecheck_pred(PredInfo0),
     (
         ShouldModeCheck = no
@@ -805,12 +805,8 @@ definitely_modecheck_proc(WhatToCheck, MayChangeCalledProc,
     pred_info_get_proc_table(PredInfo1, ProcMap1),
     map.det_update(ProcId, ProcInfo, ProcMap1, ProcMap),
     pred_info_set_proc_table(ProcMap, PredInfo1, PredInfo2),
-
     pred_info_set_clauses_info(ClausesInfo, PredInfo2, PredInfo),
-
-    module_info_get_preds(!.ModuleInfo, PredMap1),
-    map.det_update(PredId, PredInfo, PredMap1, PredMap),
-    module_info_set_preds(PredMap, !ModuleInfo).
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 :- type maybe_infer_modes
     --->    do_not_infer_modes
@@ -1145,16 +1141,16 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, IsUnifyPred,
 
     % Do mode analysis of the queued procedures. If the first argument is
     % `unique_mode_check', then also go on and do full determinism analysis
-    % and unique mode analysis on them as well. The pred_table arguments
+    % and unique mode analysis on them as well. The pred_id_table arguments
     % are used to store copies of the procedure bodies before unique mode
     % analysis, so that we can restore them before doing the next analysis
     % pass.
     %
 :- pred modecheck_queued_procs(how_to_check_goal::in,
-    pred_table::in, pred_table::out, module_info::in, module_info::out,
+    pred_id_table::in, pred_id_table::out, module_info::in, module_info::out,
     bool::in, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
 
-modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo,
+modecheck_queued_procs(HowToCheckGoal, !OldPredIdTable, !ModuleInfo,
         !Changed, !Specs) :-
     module_info_get_proc_requests(!.ModuleInfo, Requests0),
     get_req_queue(Requests0, RequestQueue0),
@@ -1177,15 +1173,15 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo,
                     HowToCheckGoal, !IO)
             ),
             modecheck_queued_proc(HowToCheckGoal, PredProcId,
-                !OldPredTable, !ModuleInfo, HeadChanged, HeadSpecs),
+                !OldPredIdTable, !ModuleInfo, HeadChanged, HeadSpecs),
             bool.or(HeadChanged, !Changed),
             !:Specs = HeadSpecs ++ !.Specs
         else
             true
         ),
         disable_warning [suspicious_recursion] (
-            modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo,
-                !Changed, !Specs)
+            modecheck_queued_procs(HowToCheckGoal, !OldPredIdTable,
+                !ModuleInfo, !Changed, !Specs)
         )
     else
         true
@@ -1216,25 +1212,21 @@ queued_proc_progress_message(ModuleInfo, PredProcId, HowToCheckGoal, !IO) :-
     ).
 
 :- pred modecheck_queued_proc(how_to_check_goal::in, pred_proc_id::in,
-    pred_table::in, pred_table::out, module_info::in, module_info::out,
+    pred_id_table::in, pred_id_table::out, module_info::in, module_info::out,
     bool::out, list(error_spec)::out) is det.
 
-modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
+modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredIdTable, !ModuleInfo,
         !:Changed, Specs) :-
     PredProcId = proc(PredId, ProcId),
 
-    module_info_get_preds(!.ModuleInfo, Preds0),
-    map.lookup(Preds0, PredId, PredInfo0),
-    pred_info_get_proc_table(PredInfo0, Procs0),
-    map.lookup(Procs0, ProcId, ProcInfo0),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    pred_info_proc_info(PredInfo0, ProcId, ProcInfo0),
 
     % Mark the procedure as ready to be processed.
     proc_info_set_can_process(can_process_now, ProcInfo0, ProcInfo1),
 
-    map.det_update(ProcId, ProcInfo1, Procs0, Procs1),
-    pred_info_set_proc_table(Procs1, PredInfo0, PredInfo1),
-    map.det_update(PredId, PredInfo1, Preds0, Preds1),
-    module_info_set_preds(Preds1, !ModuleInfo),
+    pred_info_set_proc_info(ProcId, ProcInfo1, PredInfo0, PredInfo1),
+    module_info_set_pred_info(PredId, PredInfo1, !ModuleInfo),
 
     % Modecheck the procedure.
     definitely_modecheck_proc(check_modes, may_change_called_proc,
@@ -1251,23 +1243,19 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
         (
             HowToCheckGoal = check_unique_modes,
 
-            module_info_get_preds(!.ModuleInfo, Preds2),
-            map.lookup(Preds2, PredId, PredInfo2),
-            pred_info_get_proc_table(PredInfo2, Procs2),
-            map.lookup(Procs2, ProcId, ProcInfo2),
+            module_info_pred_info(!.ModuleInfo, PredId, PredInfo2),
+            pred_info_proc_info(PredInfo2, ProcId, ProcInfo2),
 
             SwitchDetectInfo = init_switch_detect_info(!.ModuleInfo),
             detect_switches_in_proc(SwitchDetectInfo, ProcInfo2, ProcInfo3),
 
-            map.det_update(ProcId, ProcInfo3, Procs2, Procs3),
-            pred_info_set_proc_table(Procs3, PredInfo2, PredInfo3),
-            map.det_update(PredId, PredInfo3, Preds2, Preds3),
-            module_info_set_preds(Preds3, !ModuleInfo),
+            pred_info_set_proc_info(ProcId, ProcInfo3, PredInfo2, PredInfo3),
+            module_info_set_pred_info(PredId, PredInfo3, !ModuleInfo),
 
             detect_cse_in_proc(PredId, ProcId, !ModuleInfo),
             determinism_check_proc(ProcId, PredId, !ModuleInfo, DetismSpecs),
             expect(unify(DetismSpecs, []), $pred, "found detism error"),
-            save_proc_info(!.ModuleInfo, ProcId, PredId, !OldPredTable),
+            save_proc_info(!.ModuleInfo, ProcId, PredId, !OldPredIdTable),
             unique_modes_check_proc(PredId, ProcId, !ModuleInfo,
                 NewChanged, UniqueSpecs),
             bool.or(NewChanged, !Changed),
@@ -1282,16 +1270,16 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
     % !OldProcTable.
     %
 :- pred save_proc_info(module_info::in, proc_id::in, pred_id::in,
-    pred_table::in, pred_table::out) is det.
+    pred_id_table::in, pred_id_table::out) is det.
 
-save_proc_info(ModuleInfo, ProcId, PredId, !OldPredTable) :-
+save_proc_info(ModuleInfo, ProcId, PredId, !OldPredIdTable) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         _PredInfo, ProcInfo),
-    map.lookup(!.OldPredTable, PredId, OldPredInfo0),
+    map.lookup(!.OldPredIdTable, PredId, OldPredInfo0),
     pred_info_get_proc_table(OldPredInfo0, OldProcTable0),
     map.set(ProcId, ProcInfo, OldProcTable0, OldProcTable),
     pred_info_set_proc_table(OldProcTable, OldPredInfo0, OldPredInfo),
-    map.det_update(PredId, OldPredInfo, !OldPredTable).
+    map.det_update(PredId, OldPredInfo, !OldPredIdTable).
 
 %-----------------------------------------------------------------------------%
 
@@ -1596,8 +1584,7 @@ module_check_eval_methods_and_main(ModuleInfo, !Specs) :-
 
 pred_check_eval_methods_and_main(_, [], !Specs).
 pred_check_eval_methods_and_main(ModuleInfo, [PredId | PredIds], !Specs) :-
-    module_info_get_preds(ModuleInfo, Preds),
-    map.lookup(Preds, PredId, PredInfo),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_valid_procids(PredInfo),
     proc_check_eval_methods_and_main(ModuleInfo, PredInfo, ProcIds, !Specs),
     pred_check_eval_methods_and_main(ModuleInfo, PredIds, !Specs).
@@ -1620,8 +1607,8 @@ proc_check_eval_methods_and_main(ModuleInfo, PredInfo, [ProcId | ProcIds],
             true
         else
             % All tabled methods require ground arguments.
-            GroundArgsSpec =
-                report_eval_method_requires_ground_args(ProcInfo, TabledMethod),
+            GroundArgsSpec = report_eval_method_requires_ground_args(ProcInfo,
+                TabledMethod),
             !:Specs = [GroundArgsSpec | !.Specs]
         ),
         ( if

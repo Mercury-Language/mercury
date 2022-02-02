@@ -308,10 +308,8 @@ det_infer_proc_ignore_msgs(PredId, ProcId, !ModuleInfo) :-
 
 det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     % Get the proc_info structure for this procedure.
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_proc_table(PredInfo0, ProcTable0),
-    map.lookup(ProcTable0, ProcId, ProcInfo0),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    pred_info_proc_info(PredInfo0, ProcId, ProcInfo0),
 
     % Remember the old inferred determinism of this procedure.
     proc_info_get_inferred_determinism(ProcInfo0, OldDetism),
@@ -445,9 +443,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     proc_info_set_inferred_determinism(NewDetism, ProcInfo1, ProcInfo),
 
     % Put back the new proc_info structure.
-    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo1),
-
+    pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo1),
     some [!Markers] (
         pred_info_get_markers(PredInfo1, !:Markers),
         (
@@ -470,9 +466,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
         ),
         pred_info_set_markers(!.Markers, PredInfo1, PredInfo)
     ),
-
-    map.det_update(PredId, PredInfo, PredTable0, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo).
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 :- pred get_exported_proc_context(list(pragma_exported_proc)::in,
     pred_id::in, proc_id::in, prog_context::out) is semidet.
@@ -1915,8 +1909,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
 
 det_find_matching_non_cc_mode(DetInfo, PredId, !ProcId) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
-    module_info_get_preds(ModuleInfo, PredTable),
-    map.lookup(PredTable, PredId, PredInfo),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.to_assoc_list(ProcTable, ProcList),
     det_find_matching_non_cc_mode_procs(ProcList, ModuleInfo, PredInfo,
@@ -2136,24 +2129,24 @@ det_get_soln_context(DeclaredDetism, SolnContext) :-
 
 determinism_declarations(ModuleInfo, PredIds,
         DeclaredProcs, UndeclaredProcs, NoInferProcs) :-
-    module_info_get_preds(ModuleInfo, PredTable),
-    determinism_declarations_preds(PredTable, PredIds,
+    module_info_get_pred_id_table(ModuleInfo, PredIdTable),
+    determinism_declarations_preds(PredIdTable, PredIds,
         [], DeclaredProcs, [], UndeclaredProcs, [], NoInferProcs).
 
-:- pred determinism_declarations_preds(pred_table::in, list(pred_id)::in,
+:- pred determinism_declarations_preds(pred_id_table::in, list(pred_id)::in,
     pred_proc_list::in, pred_proc_list::out,
     pred_proc_list::in, pred_proc_list::out,
     pred_proc_list::in, pred_proc_list::out) is det.
 
-determinism_declarations_preds(_PredTable, [],
+determinism_declarations_preds(_PredIdTable, [],
         !DeclaredProcs, !UndeclaredProcs, !NoInferProcs).
-determinism_declarations_preds(PredTable, [PredId | PredIds],
+determinism_declarations_preds(PredIdTable, [PredId | PredIds],
         !DeclaredProcs, !UndeclaredProcs, !NoInferProcs) :-
-    map.lookup(PredTable, PredId, PredInfo),
+    map.lookup(PredIdTable, PredId, PredInfo),
     ProcIds = pred_info_valid_procids(PredInfo),
     determinism_declarations_procs(PredId, PredInfo, ProcIds,
         !DeclaredProcs, !UndeclaredProcs, !NoInferProcs),
-    determinism_declarations_preds(PredTable, PredIds,
+    determinism_declarations_preds(PredIdTable, PredIds,
         !DeclaredProcs, !UndeclaredProcs, !NoInferProcs).
 
 :- pred determinism_declarations_procs(pred_id::in, pred_info::in,

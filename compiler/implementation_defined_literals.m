@@ -56,9 +56,10 @@
 %-----------------------------------------------------------------------------%
 
 subst_impl_defined_literals(!ModuleInfo) :-
-    module_info_get_preds(!.ModuleInfo, Preds0),
-    map.map_values(subst_literals_in_pred(!.ModuleInfo), Preds0, Preds),
-    module_info_set_preds(Preds, !ModuleInfo).
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
+    map.map_values(subst_literals_in_pred(!.ModuleInfo),
+        PredIdTable0, PredIdTable),
+    module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
 :- pred subst_literals_in_pred(module_info::in, pred_id::in, pred_info::in,
     pred_info::out)  is det.

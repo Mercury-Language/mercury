@@ -250,8 +250,8 @@ dead_proc_initialize(ModuleInfo, !:Queue, !:Needed) :-
     !:Queue = queue.init,
     !:Needed = map.init,
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-    module_info_get_preds(ModuleInfo, PredTable),
-    dead_proc_initialize_preds(PredTable, PredIds, !Queue, !Needed),
+    module_info_get_pred_id_table(ModuleInfo, PredIdTable),
+    dead_proc_initialize_preds(PredIdTable, PredIds, !Queue, !Needed),
 
     module_info_get_pragma_exported_procs(ModuleInfo, PragmaExports),
     dead_proc_initialize_pragma_exports(cord.list(PragmaExports),
@@ -273,7 +273,7 @@ dead_proc_initialize(ModuleInfo, !:Queue, !:Needed) :-
     % Add all normally exported procedures within the listed predicates
     % to the queue and map.
     %
-:- pred dead_proc_initialize_preds(pred_table::in, list(pred_id)::in,
+:- pred dead_proc_initialize_preds(pred_id_table::in, list(pred_id)::in,
     entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
     is det.
 
@@ -583,10 +583,9 @@ dead_proc_examine_const_struct_args([Arg | Args], !Queue, !Needed) :-
 dead_proc_examine_proc(ModuleInfo, AnalyzeDeletedCalls, PredProcId,
         !Queue, !Needed) :-
     PredProcId = proc(PredId, ProcId),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     ( if
-        module_info_get_preds(ModuleInfo, PredTable),
-        map.lookup(PredTable, PredId, PredInfo),
-        ProcIds = pred_info_valid_non_imported_procids(PredInfo),
         list.member(ProcId, ProcIds),
         pred_info_get_proc_table(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo)
@@ -867,7 +866,7 @@ dead_proc_examine_goal(ModuleInfo, CurPredProcId, Goal, !Queue, !Needed) :-
 
                 % Table of predicates in this module: preds and procs
                 % in this table may be eliminated.
-                proc_elim_pred_table    :: pred_table,
+                proc_elim_pred_id_table :: pred_id_table,
 
                 % Has anything changed that could affect dependency_info.
                 proc_elim_changed       :: bool
@@ -881,15 +880,15 @@ dead_proc_examine_goal(ModuleInfo, CurPredProcId, Goal, !Queue, !Needed) :-
 
 do_dead_proc_eliminate(ElimOptImported, !.Needed, !ModuleInfo) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-    module_info_get_preds(!.ModuleInfo, PredTable0),
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
     Changed0 = no,
-    ProcElimInfo0 = proc_elim_info(!.Needed, !.ModuleInfo, PredTable0,
+    ProcElimInfo0 = proc_elim_info(!.Needed, !.ModuleInfo, PredIdTable0,
         Changed0),
     list.foldl(dead_proc_eliminate_pred(ElimOptImported), PredIds,
         ProcElimInfo0, ProcElimInfo),
-    ProcElimInfo = proc_elim_info(!:Needed, !:ModuleInfo, PredTable,
+    ProcElimInfo = proc_elim_info(!:Needed, !:ModuleInfo, PredIdTable,
         Changed),
-    module_info_set_preds(PredTable, !ModuleInfo),
+    module_info_set_pred_id_table(PredIdTable, !ModuleInfo),
 
     module_info_get_type_ctor_gen_infos(!.ModuleInfo, TypeCtorGenInfos0),
     dead_proc_eliminate_type_ctor_infos(TypeCtorGenInfos0, !.Needed,
@@ -1079,7 +1078,7 @@ dead_proc_eliminate_proc(ProcElimInfo, Keep, PredId, ProcId,
 
 do_dead_proc_warn(ModuleInfo, Needed, Specs) :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-    module_info_get_preds(ModuleInfo, PredTable),
+    module_info_get_pred_id_table(ModuleInfo, PredIdTable),
     module_info_get_globals(ModuleInfo, Globals),
     % We get called only if either warn_dead_procs or warn_dead_preds is set.
     % We warn about procedures of entirely dead predicates if either is set
@@ -1087,13 +1086,13 @@ do_dead_proc_warn(ModuleInfo, Needed, Specs) :-
     % procedures with live siblings.
     globals.lookup_bool_option(Globals, warn_dead_procs, WarnWithLiveSiblings),
     list.foldl(
-        dead_proc_warn_pred(ModuleInfo, PredTable, WarnWithLiveSiblings,
+        dead_proc_warn_pred(ModuleInfo, PredIdTable, WarnWithLiveSiblings,
             Needed),
         PredIds, [], Specs).
 
     % Warn about any unused procedures for this pred.
     %
-:- pred dead_proc_warn_pred(module_info::in, pred_table::in, bool::in,
+:- pred dead_proc_warn_pred(module_info::in, pred_id_table::in, bool::in,
     needed_map::in, pred_id::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 

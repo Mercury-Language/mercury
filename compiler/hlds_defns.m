@@ -102,8 +102,8 @@ write_hlds_defns(Stream, ModuleInfo, !IO) :-
     gather_local_mode_names(ModuleName, ModeCtors,
         set.init, ModeNameArities),
 
-    module_info_get_preds(ModuleInfo, Preds),
-    map.to_sorted_assoc_list(Preds, PredDefns),
+    module_info_get_pred_id_table(ModuleInfo, PredIdTable),
+    map.to_sorted_assoc_list(PredIdTable, PredDefns),
     gather_local_pred_names(ModuleName, PredDefns,
         set.init, FuncNameArities, set.init, PredNameArities),
 
@@ -335,8 +335,8 @@ output_prefixed_strings(Stream, Prefix, [Str | Strs], !IO) :-
 write_hlds_defn_line_counts(Stream, ModuleInfo, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
 
-    module_info_get_preds(ModuleInfo, Preds),
-    map.values(Preds, PredInfos),
+    module_info_get_pred_id_table(ModuleInfo, PredIdTable),
+    map.values(PredIdTable, PredInfos),
     list.foldl(gather_pred_line_counts(ModuleName), PredInfos,
         [], PredLineCounts),
 
@@ -350,8 +350,8 @@ write_hlds_defn_line_counts(Stream, ModuleInfo, !IO) :-
 write_hlds_defn_extents(Stream, ModuleInfo, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
 
-    module_info_get_preds(ModuleInfo, Preds),
-    map.values(Preds, PredInfos),
+    module_info_get_pred_id_table(ModuleInfo, PredIdTable),
+    map.values(PredIdTable, PredInfos),
     list.foldl(gather_pred_line_counts(ModuleName), PredInfos,
         [], PredLineCounts),
 

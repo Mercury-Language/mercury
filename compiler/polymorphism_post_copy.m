@@ -100,8 +100,7 @@ expand_class_method_bodies_in_defn(ClassDefn, !ModuleInfo) :-
 
 expand_class_method_body(ClassProc, !ProcNum, !ModuleInfo) :-
     ClassProc = proc(PredId, ProcId),
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
 
     % XXX Looking up the proc_info for ProcId can fail here because
@@ -183,8 +182,7 @@ expand_class_method_body(ClassProc, !ProcNum, !ModuleInfo) :-
             PredInfo = PredInfo1
         ),
 
-        map.det_update(PredId, PredInfo, PredTable0, PredTable),
-        module_info_set_preds(PredTable, !ModuleInfo)
+        module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     else
         true
     ),

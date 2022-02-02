@@ -280,10 +280,9 @@ mark_pred_as_obsolete(ObsoletePredInfo, PragmaStatus, Context,
         PredIds, OtherUserArities),
     (
         PredIds = [_ | _],
-        module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-        predicate_table_get_preds(PredTable0, Preds0),
+        module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
         mark_pred_ids_as_obsolete(ObsoleteInFavourOf, PragmaStatus, PredIds,
-            no, WrongStatus, Preds0, Preds),
+            no, WrongStatus, PredIdTable0, PredIdTable),
         (
             WrongStatus = yes,
             pragma_status_error(pfu_to_string(PFU), SymName, UserArity,
@@ -291,8 +290,7 @@ mark_pred_as_obsolete(ObsoletePredInfo, PragmaStatus, Context,
         ;
             WrongStatus = no
         ),
-        predicate_table_set_preds(Preds, PredTable0, PredTable),
-        module_info_set_predicate_table(PredTable, !ModuleInfo)
+        module_info_set_pred_id_table(PredIdTable, !ModuleInfo)
     ;
         PredIds = [],
         DescPieces = [pragma_decl("obsolete"), words("declaration")],
@@ -304,7 +302,7 @@ mark_pred_as_obsolete(ObsoletePredInfo, PragmaStatus, Context,
 
 :- pred mark_pred_ids_as_obsolete(list(sym_name_arity)::in,
     pred_status::in, list(pred_id)::in, bool::in, bool::out,
-    pred_table::in, pred_table::out) is det.
+    pred_id_table::in, pred_id_table::out) is det.
 
 mark_pred_ids_as_obsolete(_, _, [], !WrongStatus, !PredTable).
 mark_pred_ids_as_obsolete(ObsoleteInFavourOf, PragmaStatus, [PredId | PredIds],
@@ -977,8 +975,8 @@ add_pragma_external_proc(ExternalInfo, Context, !ModuleInfo, !Specs) :-
                 !ModuleInfo, !Specs)
         ;
             PredIds = [],
-            module_info_get_preds(!.ModuleInfo, PredTable0),
-            find_user_arities_other_than(PredTable0, AllArityPredIds,
+            module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
+            find_user_arities_other_than(PredIdTable0, AllArityPredIds,
                 UserArity, OtherUserArities),
             OtherArities =
                 list.map(project_user_arity_int, OtherUserArities),
@@ -995,16 +993,14 @@ add_pragma_external_proc(ExternalInfo, Context, !ModuleInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 mark_pred_as_external(Context, PredId, !ModuleInfo, !Specs) :-
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, _ItemNumbers),
     IsEmpty = clause_list_is_empty(ClausesRep0),
     (
         IsEmpty = yes,
         pred_info_mark_as_external(PredInfo0, PredInfo),
-        map.det_update(PredId, PredInfo, PredTable0, PredTable),
-        module_info_set_preds(PredTable, !ModuleInfo)
+        module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ;
         IsEmpty = no,
         PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
@@ -1612,8 +1608,8 @@ add_pred_marker(PragmaName, PredSymNameArity, Status, Context,
         Context, !Specs),
     do_add_pred_marker(PragmaName, PredSymNameArity, Status, MustBeExported,
         Context, add_marker_pred_info(Marker), !ModuleInfo, PredIds, !Specs),
-    module_info_get_preds(!.ModuleInfo, PredTable),
-    list.map(get_pred_markers(PredTable), PredIds, PredMarkerSets),
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable),
+    list.map(get_pred_markers(PredIdTable), PredIds, PredMarkerSets),
     PredMarkers = set.union_list(PredMarkerSets),
     set.intersect(PredMarkers, set.list_to_set(ConflictMarkers),
         ConflictingPredMarkerSet),
@@ -1663,10 +1659,9 @@ do_add_pred_marker(PragmaName, PredSpec, Status, MustBeExported,
         PredIds, OtherUserArities),
     (
         PredIds = [_ | _],
-        module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-        predicate_table_get_preds(PredTable0, Preds0),
+        module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
         pragma_add_marker(PredIds, UpdatePredInfo, Status,
-            MustBeExported, Preds0, Preds, WrongStatus),
+            MustBeExported, PredIdTable0, PredIdTable, WrongStatus),
         (
             WrongStatus = yes,
             pragma_status_error(pfu_to_string(PFU), PredSymName, UserArity,
@@ -1674,8 +1669,7 @@ do_add_pred_marker(PragmaName, PredSpec, Status, MustBeExported,
         ;
             WrongStatus = no
         ),
-        predicate_table_set_preds(Preds, PredTable0, PredTable),
-        module_info_set_predicate_table(PredTable, !ModuleInfo)
+        module_info_set_pred_id_table(PredIdTable, !ModuleInfo)
     ;
         PredIds = [],
         UserArity = user_arity(UserArityInt),
@@ -1690,11 +1684,11 @@ do_add_pred_marker(PragmaName, PredSpec, Status, MustBeExported,
     % of conflicting markers are also present in the corresponding pred_info.
     % The output is a set of the names of the conflicting markers present.
     %
-:- pred get_pred_markers(pred_table::in, pred_id::in,
+:- pred get_pred_markers(pred_id_table::in, pred_id::in,
     set(pred_marker)::out) is det.
 
-get_pred_markers(PredTable, PredId, Markers) :-
-    map.lookup(PredTable, PredId, PredInfo),
+get_pred_markers(PredIdTable, PredId, Markers) :-
+    map.lookup(PredIdTable, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers).
 
     % For each pred_id in the list, add the given markers to the
@@ -1702,7 +1696,7 @@ get_pred_markers(PredTable, PredId, Markers) :-
     %
 :- pred pragma_add_marker(list(pred_id)::in,
     add_marker_pred_info::in(add_marker_pred_info), pred_status::in,
-    bool::in, pred_table::in, pred_table::out, bool::out) is det.
+    bool::in, pred_id_table::in, pred_id_table::out, bool::out) is det.
 
 pragma_add_marker([], _, _, _, !PredTable, no).
 pragma_add_marker([PredId | PredIds], UpdatePredInfo, Status, MustBeExported,
@@ -1816,8 +1810,8 @@ get_matching_pred_ids(ModuleInfo, PFU, SymName, UserArity, PredIds,
             % - there may be no such pred_id, and
             % - even if there are such pred_ids, there is no guarantee
             %   that the user meant one of them.
-            module_info_get_preds(ModuleInfo, Preds0),
-            find_user_arities_other_than(Preds0, SymOnlyPredIds,
+            module_info_get_pred_id_table(ModuleInfo, PredIdTable0),
+            find_user_arities_other_than(PredIdTable0, SymOnlyPredIds,
                 UserArity, OtherUserArities)
         ;
             PredIds = [_ | _],
@@ -1836,8 +1830,7 @@ get_matching_pred_ids(ModuleInfo, PFU, SymName, UserArity, PredIds,
 
 transform_selected_mode_of_pred(PredId, PFNameArity, Modes,
         PragmaName, Context, ProcTransform, !ModuleInfo, !Specs) :-
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.to_assoc_list(ProcTable0, ProcList),
     ( if
@@ -1846,10 +1839,8 @@ transform_selected_mode_of_pred(PredId, PFNameArity, Modes,
     then
         map.lookup(ProcTable0, ProcId, ProcInfo0),
         ProcTransform(ProcInfo0, ProcInfo),
-        map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-        pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-        map.det_update(PredId, PredInfo, PredTable0, PredTable),
-        module_info_set_preds(PredTable, !ModuleInfo)
+        pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo),
+        module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     else
         Pieces = [words("Error:"), pragma_decl(PragmaName),
             words("declaration for undeclared mode of"),
@@ -1885,9 +1876,9 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
             predicate_table_lookup_pf_sym(PredTable,
                 may_be_partially_qualified,
                 PredOrFunc, SymName, AllArityPredIds),
-            module_info_get_preds(ModuleInfo, Preds),
-            find_user_arities_other_than(Preds, AllArityPredIds, UserArity,
-                OtherUserArities),
+            module_info_get_pred_id_table(ModuleInfo, PredIdTable),
+            find_user_arities_other_than(PredIdTable, AllArityPredIds,
+                UserArity, OtherUserArities),
             UserArity = user_arity(UserArityInt),
             OtherArities = list.map(project_user_arity_int, OtherUserArities),
             DescPieces = [pragma_decl(PragmaName), words("declaration")],

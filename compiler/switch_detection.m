@@ -136,13 +136,13 @@ detect_switches_in_module(!ModuleInfo) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds),
     ValidPredIdSet = set_tree234.list_to_set(ValidPredIds),
 
-    module_info_get_preds(!.ModuleInfo, PredMap0),
-    map.to_assoc_list(PredMap0, PredIdsInfos0),
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
+    map.to_assoc_list(PredIdTable0, PredIdsInfos0),
 
     detect_switches_in_preds(Info, ValidPredIdSet,
         PredIdsInfos0, PredIdsInfos),
-    map.from_sorted_assoc_list(PredIdsInfos, PredMap),
-    module_info_set_preds(PredMap, !ModuleInfo).
+    map.from_sorted_assoc_list(PredIdsInfos, PredIdTable),
+    module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
 :- pred detect_switches_in_preds(switch_detect_info::in,
     set_tree234(pred_id)::in,

@@ -181,13 +181,11 @@ module_add_clause_2(PredStatus, ClauseType, PredId, PredOrFunc, PredSymName,
         MaybeAnnotatedArgTerms, Arity, ArityAdjustment, ClauseVarSet,
         MaybeBodyGoal, Context, SeqNum, IllegalSVarResult,
         !ModuleInfo, !QualInfo, !Specs) :-
-    some [!PredInfo, !PredicateTable, !PredSpecs] (
+    some [!PredInfo, !PredSpecs] (
         % Lookup the pred_info for this pred, add the clause to the
         % clauses_info in the pred_info, if there are no modes add an
         % `infer_modes' marker, and then save the pred_info.
-        module_info_get_predicate_table(!.ModuleInfo, !:PredicateTable),
-        predicate_table_get_preds(!.PredicateTable, PredMap0),
-        map.lookup(PredMap0, PredId, !:PredInfo),
+        module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
 
         trace [io(!IO)] (
             add_clause_progress_msg(!.ModuleInfo, !.PredInfo, PredOrFunc,
@@ -281,9 +279,7 @@ module_add_clause_2(PredStatus, ClauseType, PredId, PredOrFunc, PredSymName,
                     PredStatus, Clauses, PredOrFunc, PredSymName, Arity,
                     VarSet, Goal, Warnings, !Specs)
             ),
-            map.det_update(PredId, !.PredInfo, PredMap0, PredMap),
-            predicate_table_set_preds(PredMap, !PredicateTable),
-            module_info_set_predicate_table(!.PredicateTable, !ModuleInfo)
+            module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
         )
     ).
 

@@ -377,8 +377,8 @@ find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
     list.foldl(const_struct_used_modules, ConstStructs, !UsedModules),
     UsedModulesConstStruct = !.UsedModules,
 
-    module_info_get_preds(ModuleInfo, PredTable),
-    map.foldl(pred_info_used_modules(ModuleInfo), PredTable, !UsedModules),
+    module_info_get_pred_id_table(ModuleInfo, PredIdTable),
+    map.foldl(pred_info_used_modules(ModuleInfo), PredIdTable, !UsedModules),
     UsedModulesPredInfo = !.UsedModules,
 
     module_info_get_class_table(ModuleInfo, ClassTable),
@@ -637,7 +637,7 @@ instance_used_modules(ModuleInfo, ThisModuleName, ClassId, InstanceDefn,
         list.foldl(prog_constraint_used_modules(Visibility), Constraints,
             !UsedModules)
 
-        % The methods of the class are stored in the pred_table,
+        % The methods of the class are stored in the predicate_table,
         % and thus should have been processed by pred_info_used_modules.
     else
         true

@@ -315,12 +315,12 @@ get_comment_backwards(Comments, Line) = Comment :-
             [], TypeXmls),
         TypeXml = elem("types", [], TypeXmls),
 
-        module_info_get_preds(ModuleInfo, PredTable),
-        map.foldl(pred_documentation(Comments), PredTable, [], PredXmls),
+        module_info_get_pred_id_table(ModuleInfo, PredIdTable),
+        map.foldl(pred_documentation(Comments), PredIdTable, [], PredXmls),
         PredXml = elem("preds", [], PredXmls),
 
         module_info_get_class_table(ModuleInfo, ClassTable),
-        map.foldl(class_documentation(Comments, PredTable), ClassTable,
+        map.foldl(class_documentation(Comments, PredIdTable), ClassTable,
             [], ClassXmls),
         ClassXml = elem("typeclasses", [], ClassXmls),
 
@@ -768,7 +768,7 @@ determinism_to_xml(detism_failure) = tagged_string("determinism", "failure").
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred class_documentation(comments::in, pred_table::in,
+:- pred class_documentation(comments::in, pred_id_table::in,
     class_id::in, hlds_class_defn::in,
     list(xml)::in, list(xml)::out) is det.
 
@@ -821,7 +821,8 @@ fundep_to_xml_2(Tag, TVarset, Vars, Set) =
     xml_list(Tag, type_param_to_xml(TVarset),
         restrict_list_elements(Set, Vars)).
 
-:- func class_methods_to_xml(comments, pred_table, hlds_class_interface) = xml.
+:- func class_methods_to_xml(comments, pred_id_table, hlds_class_interface)
+    = xml.
 
 class_methods_to_xml(C, PredTable, Methods) = Xml :-
     AllPredIds = list.map(pred_proc_id_project_pred_id, Methods),

@@ -145,18 +145,14 @@ process_imported_preds(PredIds, !ModuleInfo) :-
     is det.
 
 process_imported_pred(PredId, !ModuleInfo) :-
-    some [!PredTable] (
-        module_info_get_preds(!.ModuleInfo, !:PredTable),
-        module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo),
-        TypeSpecInfo = type_spec_info(_, TypeSpecPredIds, _, _),
-        ( if set.member(PredId, TypeSpecPredIds) then
-            true
-        else
-            map.lookup(!.PredTable, PredId, PredInfo0),
-            process_imported_procs(PredInfo0, PredInfo),
-            map.det_update(PredId, PredInfo, !PredTable),
-            module_info_set_preds(!.PredTable, !ModuleInfo)
-        )
+    module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo),
+    TypeSpecInfo = type_spec_info(_, TypeSpecPredIds, _, _),
+    ( if set.member(PredId, TypeSpecPredIds) then
+        true
+    else
+        module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+        process_imported_procs(PredInfo0, PredInfo),
+        module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ).
 
 :- pred process_imported_procs(pred_info::in, pred_info::out) is det.
@@ -259,6 +255,13 @@ create_lp_term(SubstMap, ArgSizeTerm, Var - Coefficient) :-
 
 process_builtin_preds([], !ModuleInfo).
 process_builtin_preds([PredId | PredIds], !ModuleInfo) :-
+    process_builtin_pred(PredId, !ModuleInfo),
+    process_builtin_preds(PredIds, !ModuleInfo).
+
+:- pred process_builtin_pred(pred_id::in,
+    module_info::in, module_info::out) is det.
+
+process_builtin_pred(PredId, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_op_mode(Globals, OpMode),
     ( if OpMode = opm_top_args(opma_augment(opmau_make_opt_int)) then
@@ -266,15 +269,10 @@ process_builtin_preds([PredId | PredIds], !ModuleInfo) :-
     else
         MakeOptInt = no
     ),
-    some [!PredTable] (
-        module_info_get_preds(!.ModuleInfo, !:PredTable),
-        PredInfo0 = !.PredTable ^ det_elem(PredId),
-        process_builtin_procs(MakeOptInt, PredId, !.ModuleInfo,
-            PredInfo0, PredInfo),
-        map.det_update(PredId, PredInfo, !PredTable),
-        module_info_set_preds(!.PredTable, !ModuleInfo)
-    ),
-    process_builtin_preds(PredIds, !ModuleInfo).
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    process_builtin_procs(MakeOptInt, PredId, !.ModuleInfo,
+        PredInfo0, PredInfo),
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
     % It is possible for compiler generated/mercury builtin predicates
     % to be imported or locally defined, so they must be covered here

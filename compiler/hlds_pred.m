@@ -1789,9 +1789,9 @@ pred_info_proc_info(PredInfo, ProcId, ProcInfo) :-
     map.lookup(ProcTable, ProcId, ProcInfo).
 
 pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo) :-
-    pred_info_get_proc_table(!.PredInfo, Procedures0),
-    map.set(ProcId, ProcInfo, Procedures0, Procedures),
-    pred_info_set_proc_table(Procedures, !PredInfo).
+    pred_info_get_proc_table(!.PredInfo, ProcTable0),
+    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
+    pred_info_set_proc_table(ProcTable, !PredInfo).
 
 pred_info_is_imported(PredInfo) :-
     pred_info_get_status(PredInfo, PredStatus),

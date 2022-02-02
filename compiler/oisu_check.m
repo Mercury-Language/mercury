@@ -54,14 +54,14 @@
 check_oisu_pragmas_for_module(OISUPairs, !ModuleInfo, Specs) :-
     map.init(KindMap0),
     list.foldl(add_type_ctor_to_kind_map, OISUPairs, KindMap0, KindMap),
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.to_assoc_list(PredTable0, Preds0),
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
+    map.to_assoc_list(PredIdTable0, PredIdsInfos0),
     assoc_list.keys(OISUPairs, OISUTypeCtors),
     list.map_foldl2(
         check_local_oisu_pred(!.ModuleInfo, KindMap, OISUTypeCtors),
-        Preds0, Preds, set.init, OISUProcs, [], Specs),
-    map.from_assoc_list(Preds, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo),
+        PredIdsInfos0, PredIdsInfos, set.init, OISUProcs, [], Specs),
+    map.from_assoc_list(PredIdsInfos, PredIdTable),
+    module_info_set_pred_id_table(PredIdTable, !ModuleInfo),
     module_info_set_oisu_procs(OISUProcs, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%

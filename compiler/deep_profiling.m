@@ -116,12 +116,10 @@ apply_deep_profiling_transform(!ModuleInfo) :-
         TailRecursion = no
     ),
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-    module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-    predicate_table_get_preds(PredTable0, PredMap0),
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
     list.foldl(deep_prof_transform_pred(!.ModuleInfo), PredIds,
-        PredMap0, PredMap),
-    predicate_table_set_preds(PredMap, PredTable0, PredTable),
-    module_info_set_predicate_table(PredTable, !ModuleInfo).
+        PredIdTable0, PredIdTable),
+    module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -153,8 +151,7 @@ apply_deep_prof_tail_rec_transform_to_scc(SCC, !ModuleInfo) :-
 
 apply_deep_prof_tail_rec_transform_to_proc(PredProcId, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_arg_types(PredInfo0, Types),
     pred_info_get_origin(PredInfo0, Origin),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
@@ -206,8 +203,7 @@ apply_deep_prof_tail_rec_transform_to_proc(PredProcId, !ModuleInfo) :-
         map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable1),
         map.det_insert(CloneProcId, CloneProcInfo, ProcTable1, ProcTable),
         pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-        map.det_update(PredId, PredInfo, PredTable0, PredTable),
-        module_info_set_preds(PredTable, !ModuleInfo)
+        module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     else
         true
     ).
@@ -588,7 +584,7 @@ figure_out_rec_call_numbers_in_case_list([Case|Cases], !N, !TailCallSites) :-
 %-----------------------------------------------------------------------------%
 
 :- pred deep_prof_transform_pred(module_info::in, pred_id::in,
-    pred_table::in, pred_table::out) is det.
+    pred_id_table::in, pred_id_table::out) is det.
 
 deep_prof_transform_pred(ModuleInfo, PredId, !PredMap) :-
     map.lookup(!.PredMap, PredId, PredInfo0),
@@ -1911,8 +1907,8 @@ get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
         unexpected($pred, "no pred_id")
     ;
         PredIds = [PredId],
-        predicate_table_get_preds(PredTable, Preds),
-        map.lookup(Preds, PredId, PredInfo),
+        predicate_table_get_pred_id_table(PredTable, PredIdTable),
+        map.lookup(PredIdTable, PredId, PredInfo),
         ProcIds = pred_info_all_procids(PredInfo),
         (
             ProcIds = [],

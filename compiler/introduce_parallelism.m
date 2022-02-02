@@ -90,18 +90,16 @@ apply_implicit_parallelism_transformation(SourceFileMap, Specs, !ModuleInfo) :-
     then
         % Retrieve and process predicates.
         module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-        module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-        predicate_table_get_preds(PredTable0, PredMap0),
+        module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
         list.foldl4(maybe_parallelise_pred(ParallelismInfo),
-            PredIds, PredMap0, PredMap,
+            PredIds, PredIdTable0, PredIdTable,
             have_not_introduced_parallelism, AnyPredIntroducedParallelism,
             !ModuleInfo, [], Specs),
         (
             AnyPredIntroducedParallelism = have_not_introduced_parallelism
         ;
             AnyPredIntroducedParallelism = introduced_parallelism,
-            predicate_table_set_preds(PredMap, PredTable0, PredTable),
-            module_info_set_predicate_table(PredTable, !ModuleInfo),
+            module_info_set_pred_id_table(PredIdTable, !ModuleInfo),
             module_info_set_has_parallel_conj(!ModuleInfo)
         )
     else
@@ -187,14 +185,14 @@ cpc_proc_is_in_module(ModuleName, ProcLabel - CPC, IMProcLabel - CPC) :-
 %-----------------------------------------------------------------------------%
 
 :- pred maybe_parallelise_pred(parallelism_info::in,
-    pred_id::in, pred_table::in, pred_table::out,
+    pred_id::in, pred_id_table::in, pred_id_table::out,
     introduced_parallelism::in, introduced_parallelism::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_parallelise_pred(ParallelismInfo, PredId, !PredTable,
+maybe_parallelise_pred(ParallelismInfo, PredId, !PredIdTable,
         !AnyPredIntroducedParallelism, !ModuleInfo, !Specs) :-
-    map.lookup(!.PredTable, PredId, PredInfo0),
+    map.lookup(!.PredIdTable, PredId, PredInfo0),
     ProcIds = pred_info_valid_non_imported_procids(PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
     list.foldl4(maybe_parallelise_proc(ParallelismInfo, PredInfo0, PredId),
@@ -207,7 +205,7 @@ maybe_parallelise_pred(ParallelismInfo, PredId, !PredTable,
         AnyProcIntroducedParallelism = introduced_parallelism,
         !:AnyPredIntroducedParallelism = introduced_parallelism,
         pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-        map.det_update(PredId, PredInfo, !PredTable)
+        map.det_update(PredId, PredInfo, !PredIdTable)
     ).
 
 :- pred maybe_parallelise_proc(parallelism_info::in,

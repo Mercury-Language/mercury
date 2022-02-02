@@ -243,8 +243,8 @@ init_hlds_out_info(Globals, Lang) = Info :-
 %
 
 pred_id_to_string(ModuleInfo, PredId) = Str :-
-    module_info_get_preds(ModuleInfo, PredTable),
-    ( if map.search(PredTable, PredId, PredInfo) then
+    module_info_get_pred_id_table(ModuleInfo, PredIdTable),
+    ( if map.search(PredIdTable, PredId, PredInfo) then
         Str = pred_info_id_to_string(PredInfo)
     else
         % The predicate has been deleted, so we print what we can.

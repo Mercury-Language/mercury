@@ -74,14 +74,14 @@
 
 prepare_for_typecheck_module(!ModuleInfo) :-
     module_info_get_valid_pred_id_set(!.ModuleInfo, OrigValidPredIdSet),
-    module_info_get_preds(!.ModuleInfo, PredMap0),
-    map.to_sorted_assoc_list(PredMap0, PredIdsInfos0),
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
+    map.to_sorted_assoc_list(PredIdTable0, PredIdsInfos0),
 
     prepare_for_typecheck(!.ModuleInfo, OrigValidPredIdSet,
         PredIdsInfos0, PredIdsInfos),
 
-    map.from_sorted_assoc_list(PredIdsInfos, PredMap),
-    module_info_set_preds(PredMap, !ModuleInfo).
+    map.from_sorted_assoc_list(PredIdsInfos, PredIdTable),
+    module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
 :- pred prepare_for_typecheck(module_info::in, set_tree234(pred_id)::in,
     assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out)

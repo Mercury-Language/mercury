@@ -198,8 +198,7 @@ add_special_pred_decl_defn(SpecialPredId, TVarSet, Type0, TypeCtor, TypeBody,
     module_info_get_special_pred_maps(!.ModuleInfo, SpecialPredMaps1),
     lookup_special_pred_maps(SpecialPredMaps1, SpecialPredId, TypeCtor,
         PredId),
-    module_info_get_preds(!.ModuleInfo, PredMap0),
-    map.lookup(PredMap0, PredId, PredInfo0),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     % If the type was imported, then the special preds for that type
     % should be imported too.
     % XXX There are several different shades of "imported", and in this case,
@@ -247,9 +246,7 @@ add_clauses_for_special_pred(SpecDefnInfo, !.PredInfo, !ModuleInfo) :-
     add_marker(marker_calls_are_fully_qualified, Markers0, Markers),
     pred_info_set_markers(Markers, !PredInfo),
     PredId = SpecDefnInfo ^ spdi_pred_id,
-    module_info_get_preds(!.ModuleInfo, PredMap0),
-    map.det_update(PredId, !.PredInfo, PredMap0, PredMap),
-    module_info_set_preds(PredMap, !ModuleInfo).
+    module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo).
 
     % These types need to have the builtin qualifier removed
     % so that their special predicates type check.

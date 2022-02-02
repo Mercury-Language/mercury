@@ -197,8 +197,8 @@
 
 :- pred typecheck_info_get_module_name(typecheck_info::in, module_name::out)
     is det.
-:- pred typecheck_info_get_pred_table(typecheck_info::in, predicate_table::out)
-    is det.
+:- pred typecheck_info_get_predicate_table(typecheck_info::in,
+    predicate_table::out) is det.
 :- pred typecheck_info_get_type_table(typecheck_info::in, type_table::out)
     is det.
 :- pred typecheck_info_get_cons_table(typecheck_info::in, cons_table::out)
@@ -446,7 +446,7 @@ typecheck_info_set_rhs_lambda(X, !Info) :-
 typecheck_info_get_module_name(Info, Name) :-
     typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_get_name(ModuleInfo, Name).
-typecheck_info_get_pred_table(Info, Preds) :-
+typecheck_info_get_predicate_table(Info, Preds) :-
     typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_get_predicate_table(ModuleInfo, Preds).
 typecheck_info_get_type_table(Info, Types) :-

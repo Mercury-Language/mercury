@@ -22,7 +22,7 @@
     % for functions that don't have an explicit mode declaration.
     %
 :- pred maybe_add_default_func_modes(list(pred_id)::in,
-    pred_table::in, pred_table::out) is det.
+    pred_id_table::in, pred_id_table::out) is det.
 
 :- pred maybe_add_default_func_mode(pred_info::in, pred_info::out,
     maybe(proc_id)::out) is det.

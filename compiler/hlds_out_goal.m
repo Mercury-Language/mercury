@@ -1358,8 +1358,8 @@ write_goal_plain_call(Info, Stream, ModuleInfo, VarSet, TypeQual,
         % misleading.
         PredOrFunc = pf_predicate
     else if
-        module_info_get_preds(ModuleInfo, PredTable),
-        map.search(PredTable, PredId, PredInfo)
+        module_info_get_pred_id_table(ModuleInfo, PredIdTable),
+        map.search(PredIdTable, PredId, PredInfo)
     then
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         pred_info_get_purity(PredInfo, Purity),

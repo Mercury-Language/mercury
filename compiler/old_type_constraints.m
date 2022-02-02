@@ -233,7 +233,7 @@ old_typecheck_constraints(!HLDS, Specs) :-
     error_specs::in, error_specs::out) is det.
 
 typecheck_one_predicate_if_needed(PredId, !Environment, !HLDS, !Specs) :-
-    predicate_table_get_preds(!.Environment ^ tce_pred_env, Preds0),
+    predicate_table_get_pred_id_table(!.Environment ^ tce_pred_env, Preds0),
     map.lookup(Preds0, PredId, PredInfo),
     ( if
         % Compiler-generated predicates are created already type-correct,
@@ -257,7 +257,7 @@ typecheck_one_predicate_if_needed(PredId, !Environment, !HLDS, !Specs) :-
             pred_info_mark_as_external(PredInfo, PredInfo1),
             map.det_update(PredId, PredInfo1, Preds0, Preds),
             PredEnv0 = !.Environment ^ tce_pred_env,
-            predicate_table_set_preds(Preds, PredEnv0, PredEnv),
+            predicate_table_set_pred_id_table(Preds, PredEnv0, PredEnv),
             module_info_set_predicate_table(PredEnv, !HLDS),
             !Environment ^ tce_pred_env := PredEnv
         ;
@@ -308,7 +308,7 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
     (
         % Find the clause list in the predicate definition.
         !:PredEnv = !.Environment ^ tce_pred_env,
-        predicate_table_get_preds(!.PredEnv, !:Preds),
+        predicate_table_get_pred_id_table(!.PredEnv, !:Preds),
         map.lookup(!.Preds, PredId, !:PredInfo),
         pred_info_get_typevarset(!.PredInfo, TVarSet),
         pred_info_get_context(!.PredInfo, Context),
@@ -379,7 +379,7 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
         pred_info_set_clauses_info(!.ClausesInfo, !PredInfo),
         pred_info_set_typevarset(!.TCInfo ^ tconstr_tvarset, !PredInfo),
         map.det_update(PredId, !.PredInfo, !Preds),
-        predicate_table_set_preds(!.Preds, !PredEnv),
+        predicate_table_set_pred_id_table(!.Preds, !PredEnv),
         module_info_set_predicate_table(!.PredEnv, !HLDS),
         !Environment ^ tce_pred_env := !.PredEnv,
         !:Specs = !.TCInfo ^ tconstr_error_specs ++ !.Specs
@@ -632,7 +632,7 @@ unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
                 Name, PredIds),
             (
                 PredIds = [_ | _],
-                predicate_table_get_preds(PredEnv, Preds),
+                predicate_table_get_pred_id_table(PredEnv, Preds),
                 list.filter_map_foldl(
                     ho_pred_unif_constraint(Preds, GoalInfo, LTVar,
                         ArgTypeVars),
@@ -716,8 +716,8 @@ functor_unif_constraint(LTVar, ArgTVars, Info, ConsDefn, Constraints,
     % Fails if the number of arguments supplied to the predicate is greater
     % than its arity.
     %
-:- pred ho_pred_unif_constraint(pred_table::in, hlds_goal_info::in, tvar::in,
-    list(tvar)::in, pred_id::in, conj_type_constraint::out,
+:- pred ho_pred_unif_constraint(pred_id_table::in, hlds_goal_info::in,
+    tvar::in, list(tvar)::in, pred_id::in, conj_type_constraint::out,
     type_constraint_info::in, type_constraint_info::out) is semidet.
 
 ho_pred_unif_constraint(PredTable, Info, LHSTVar, ArgTVars, PredId, Constraint,
@@ -778,7 +778,7 @@ plain_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
     % used in the call.
     predicate_table_lookup_pred_sym(PredEnv, may_be_partially_qualified,
         Name, PredIds0),
-    predicate_table_get_preds(PredEnv, Preds),
+    predicate_table_get_pred_id_table(PredEnv, Preds),
     list.filter(pred_has_arity(Preds, list.length(Args)), PredIds0, PredIds),
     list.map_foldl(get_var_type, Args, ArgTVars, !TCInfo),
     list.map2_foldl(pred_call_constraint(Preds, GoalInfo, ArgTVars),
@@ -811,7 +811,8 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
                     Method)
             then
                 Method = proc(PredId, _),
-                predicate_table_get_preds(Environment ^ tce_pred_env, Preds),
+                predicate_table_get_pred_id_table(Environment ^ tce_pred_env,
+                    Preds),
                 ( if pred_has_arity(Preds, list.length(Vars), PredId) then
                     pred_call_constraint(Preds, GoalInfo, ArgTVars, PredId,
                         Constraint, PredTVars, !TCInfo),
@@ -872,7 +873,7 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
     % definition. This may only be called if the number of arguments given
     % is equal to the arity of the predicate.
     %
-:- pred pred_call_constraint(pred_table::in, hlds_goal_info::in,
+:- pred pred_call_constraint(pred_id_table::in, hlds_goal_info::in,
     list(tvar)::in, pred_id::in, conj_type_constraint::out, list(tvar)::out,
     type_constraint_info::in, type_constraint_info::out) is det.
 
@@ -914,7 +915,7 @@ foreign_proc_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
     Context = goal_info_get_context(GoalInfo),
     ArgVars = list.map(foreign_arg_var, ForeignArgs),
     ArgTypes0 = list.map(foreign_arg_type, ForeignArgs),
-    predicate_table_get_preds(Environment ^ tce_pred_env, Preds),
+    predicate_table_get_pred_id_table(Environment ^ tce_pred_env, Preds),
     ( if map.search(Preds, PredId, PredInfo) then
         pred_info_get_typevarset(PredInfo, PredTVarSet),
         prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
@@ -1025,7 +1026,7 @@ variable_assignment_constraint(Context, Var, Type, !TCInfo) :-
 % Constraint generation utility predicates.
 %
 
-:- pred pred_has_arity(pred_table::in, int::in, pred_id::in) is semidet.
+:- pred pred_has_arity(pred_id_table::in, int::in, pred_id::in) is semidet.
 
 pred_has_arity(Preds, Arity, PredId) :-
     map.lookup(Preds, PredId, Pred),
@@ -2062,7 +2063,7 @@ diagnose_ambig_pred_error(PredEnv, Conjunctions, Msg) :-
 
 ambig_pred_error_message(PredEnv, (_ - PredId), Component) :-
     % XXX Should use describe_one_pred_name.
-    predicate_table_get_preds(PredEnv, Preds),
+    predicate_table_get_pred_id_table(PredEnv, Preds),
     map.lookup(Preds, PredId, PredInfo),
     Name = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),

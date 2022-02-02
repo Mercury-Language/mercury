@@ -287,7 +287,7 @@
 :- pred mode_info_get_num_errors(mode_info::in, int::out) is det.
 :- pred mode_info_get_liveness(mode_info::in, set_of_progvar::out) is det.
 
-:- pred mode_info_get_preds(mode_info::in, pred_table::out) is det.
+:- pred mode_info_get_pred_id_table(mode_info::in, pred_id_table::out) is det.
 :- pred mode_info_get_insts(mode_info::in, inst_table::out) is det.
 :- pred mode_info_get_modes(mode_info::in, mode_table::out) is det.
 
@@ -923,9 +923,9 @@ mode_info_get_liveness(ModeInfo, LiveVars) :-
     bag.to_list_without_duplicates(LiveVarsBag, SortedList),
     set_of_var.sorted_list_to_set(SortedList, LiveVars).
 
-mode_info_get_preds(ModeInfo, Preds) :-
+mode_info_get_pred_id_table(ModeInfo, PredIdTable) :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
-    module_info_get_preds(ModuleInfo, Preds).
+    module_info_get_pred_id_table(ModuleInfo, PredIdTable).
 
 mode_info_get_insts(ModeInfo, Insts) :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),

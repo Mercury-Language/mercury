@@ -1414,7 +1414,7 @@ unused_args_fixup_proc(VeryVerbose, VarUsage, ProcCallInfo, PredProcId,
     proc_call_info::in, module_info::in, module_info::out) is det.
 
 do_unused_args_fixup_proc(VarUsage, OldPredProcId, ProcCallInfo,
-        ModuleInfo0, ModuleInfo) :-
+        !ModuleInfo) :-
     % Work out which proc we should be fixing up.
     ( if map.search(ProcCallInfo, OldPredProcId, OldProcCallInfo) then
         OldProcCallInfo = call_info(PredId, ProcId, _, UnusedArgs)
@@ -1424,12 +1424,9 @@ do_unused_args_fixup_proc(VarUsage, OldPredProcId, ProcCallInfo,
     ),
     map.lookup(VarUsage, OldPredProcId, UsageInfos),
     map.keys(UsageInfos, UnusedVars),
-    module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
+    module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         PredInfo0, ProcInfo0),
     proc_info_get_vartypes(ProcInfo0, VarTypes0),
-    module_info_get_preds(ModuleInfo0, Preds0),
-    pred_info_get_proc_table(PredInfo0, Procs0),
-
     proc_info_get_headvars(ProcInfo0, HeadVars0),
     proc_info_get_argmodes(ProcInfo0, ArgModes0),
     proc_info_get_varset(ProcInfo0, VarSet0),
@@ -1446,7 +1443,7 @@ do_unused_args_fixup_proc(VarUsage, OldPredProcId, ProcCallInfo,
 
         % Remove unused vars from goal.
         % NOTE We should probably remove unused variables from the type map.
-        FixupInfo0 = fixup_info(ModuleInfo0, ProcCallInfo, UnusedVars,
+        FixupInfo0 = fixup_info(!.ModuleInfo, ProcCallInfo, UnusedVars,
             VarSet0, VarTypes0),
         unused_args_fixup_goal(!Goal, FixupInfo0, FixupInfo, Changed),
         FixupInfo = fixup_info(_, _, _, VarSet1, VarTypes1),
@@ -1467,11 +1464,8 @@ do_unused_args_fixup_proc(VarUsage, OldPredProcId, ProcCallInfo,
         ),
         ProcInfo = !.ProcInfo
     ),
-
-    map.set(ProcId, ProcInfo, Procs0, Procs),
-    pred_info_set_proc_table(Procs, PredInfo0, PredInfo),
-    map.set(PredId, PredInfo, Preds0, Preds),
-    module_info_set_preds(Preds, ModuleInfo0, ModuleInfo).
+    pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo),
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 :- type fixup_info
     --->    fixup_info(

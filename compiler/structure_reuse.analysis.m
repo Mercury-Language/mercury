@@ -502,13 +502,9 @@ process_imported_reuse(!ModuleInfo):-
     module_info::out) is det.
 
 process_imported_reuse_in_pred(PredId, !ModuleInfo) :-
-    some [!PredTable] (
-        module_info_get_preds(!.ModuleInfo, !:PredTable),
-        map.lookup(!.PredTable, PredId, PredInfo0),
-        process_imported_reuse_in_procs(PredInfo0, PredInfo),
-        map.det_update(PredId, PredInfo, !PredTable),
-        module_info_set_preds(!.PredTable, !ModuleInfo)
-    ).
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    process_imported_reuse_in_procs(PredInfo0, PredInfo),
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 :- pred process_imported_reuse_in_procs(pred_info::in,
     pred_info::out) is det.

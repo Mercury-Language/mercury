@@ -225,9 +225,9 @@ report_pred_call_error(ClauseContext, Context, SymNameArity) = Spec :-
     PFSymNameArity = pf_sym_name_arity(pf_predicate, SymName, Arity),
     (
         OtherIds = [_ | _],
-        predicate_table_get_preds(PredicateTable, Preds),
+        predicate_table_get_pred_id_table(PredicateTable, PredIdTable),
         % XXX ARITY This code should use user_arities, not pred_form_arities.
-        find_pred_arities(Preds, OtherIds, PredArities),
+        find_pred_arities(PredIdTable, OtherIds, PredArities),
         Arities = list.map(project_pred_form_arity_int, PredArities),
         Spec = report_error_pred_num_args(ClauseContext, Context,
             PFSymNameArity, Arities)
@@ -489,8 +489,8 @@ find_possible_pf_missing_module_qualifiers(PredicateTable,
 
 accumulate_matching_pf_module_names(PredicateTable, SymName, PredId,
         !ModuleNames) :-
-    predicate_table_get_preds(PredicateTable, PredTable),
-    map.lookup(PredTable, PredId, PredInfo),
+    predicate_table_get_pred_id_table(PredicateTable, PredIdTable),
+    map.lookup(PredIdTable, PredId, PredInfo),
     pred_info_get_module_name(PredInfo, ModuleName),
     (
         SymName = unqualified(_),

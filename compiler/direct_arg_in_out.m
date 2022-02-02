@@ -968,10 +968,7 @@ transform_direct_arg_in_out_calls_in_pred(DirectArgProcMap,
             DirectArgProcInOutMap, CloneInOutMap, PredId),
         ProcTable0, ProcTable, !ModuleInfo, !Specs),
     pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
-
-    module_info_get_preds(!.ModuleInfo, PredMap0),
-    map.det_update(PredId, PredInfo, PredMap0, PredMap),
-    module_info_set_preds(PredMap, !ModuleInfo).
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 :- pred maybe_transform_direct_arg_in_out_calls_in_proc(
     direct_arg_proc_map::in, direct_arg_proc_in_out_map::in,
