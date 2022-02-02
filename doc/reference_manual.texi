@@ -6560,7 +6560,7 @@ An instance declaration has the form
 
 @example
 :- instance @var{classname}(@var{typename}(@var{typevar}, @dots{}), @dots{})
-        where [@var{methoddefinition}, @var{methoddefinition}, @dots{}].
+        where [@var{method_definition}, @var{method_definition}, @dots{}].
 @end example
 
 An @samp{instance} declaration
@@ -6583,21 +6583,30 @@ These restrictions ensure that there are no overlapping instance declarations,
 i.e.@: for each typeclass there is at most one instance declaration
 that may be applied to any type (or sequence of types).
 
+Instance declarations may appear
+only in the implementation section of a module.
+If you want to export the knowledge that a type, or a sequence of types,
+is a member of a given typeclass,
+then put an abstract version of the instance declaration
+(@pxref{Abstract instance declarations})
+into the interface section of the module
+that contains the full instance declaration in its implementation section.
+
 There is no special interaction between subtypes and the typeclass system.
 A subtype is @emph{not} automatically an instance of a typeclass if
 there is an @samp{instance} declaration for its supertype.
 
-Each @var{methoddefinition} entry
+Each @var{method_definition} entry
 in the @samp{where [@dots{}]} part of an @code{instance} declaration
 defines the implementation of one of the class methods for this instance.
 There are two ways of defining methods.
 The first way is to define a method
 by giving the name of the predicate or function which implements that method.
-In this case, the @var{methoddefinition} must have one of the following forms:
+In this case, the @var{method_definition} must have one of the following forms:
 
 @example
-pred(@var{methodname}/@var{arity}) is @var{predname}
-func(@var{methodname}/@var{arity}) is @var{funcname}
+pred(@var{method_name}/@var{arity}) is @var{predname}
+func(@var{method_name}/@var{arity}) is @var{funcname}
 @end example
 
 @noindent
@@ -6605,13 +6614,13 @@ The @var{predname} or @var{funcname} must name
 a predicate or function of the specified arity
 whose type, modes, determinism, and purity are at least as permissive
 as the declared type, modes, determinism, and purity
-of the class method with the specified @var{methodname} and @var{arity},
+of the class method with the specified @var{method_name} and @var{arity},
 after the types of the arguments in the instance declaration
 have been substituted in place of the parameters in the type class declaration.
 
 The second way of defining methods is
 by listing the clauses for the definition inside the instance declaration.
-A @var{methoddefinition} can be a clause.
+A @var{method_definition} can be a clause.
 These clauses are just like the clauses
 used to define ordinary predicates or functions (@pxref{Items}),
 and so they can be facts, rules, or DCG rules.
@@ -6793,6 +6802,7 @@ Like abstract type declarations,
 abstract instance declarations are only useful
 in the interface section of a module.
 Each abstract instance declaration must be accompanied
+in the implementation section of the same module
 by a corresponding non-abstract instance declaration
 that defines how the type class methods are implemented.
 

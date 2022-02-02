@@ -5,6 +5,7 @@ MCFLAGS-bigtest                 = --verbose-error-messages
 MCFLAGS-duplicate_modes         = --verbose-error-messages
 MCFLAGS-errors2                 = --verbose-error-messages
 MCFLAGS-fundeps_unbound_in_ctor = --verbose-error-messages
+MCFLAGS-instance_bug            = --verbose-error-messages
 MCFLAGS-no_exports              = --verbose-error-messages --halt-at-warn
 MCFLAGS-predmode                = --verbose-error-messages
 MCFLAGS-prog_io_erroneous       = --verbose-error-messages
