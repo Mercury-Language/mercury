@@ -86,8 +86,8 @@
     % read in from source files to be augmented, generating at least
     % an initial version of the HLDS.
 :- type op_mode_augment
-    --->    opmau_make_opt_int
-    ;       opmau_make_trans_opt_int
+    --->    opmau_make_plain_opt
+    ;       opmau_make_trans_opt
     ;       opmau_make_analysis_registry
     ;       opmau_make_xml_documentation
     ;       opmau_typecheck_only
@@ -243,8 +243,8 @@ may_be_together_with_check_only(OpMode) = MayBeTogether :-
         ;
             OpModeArgs = opma_augment(OpModeAugment),
             (
-                ( OpModeAugment = opmau_make_opt_int
-                ; OpModeAugment = opmau_make_trans_opt_int
+                ( OpModeAugment = opmau_make_plain_opt
+                ; OpModeAugment = opmau_make_trans_opt
                 ; OpModeAugment = opmau_make_analysis_registry
                 ; OpModeAugment = opmau_make_xml_documentation
                 ),
@@ -344,9 +344,9 @@ bool_op_modes = [
         opm_top_args(opma_convert_to_mercury),
 
     only_opmode_make_optimization_interface -
-        opm_top_args(opma_augment(opmau_make_opt_int)),
+        opm_top_args(opma_augment(opmau_make_plain_opt)),
     only_opmode_make_transitive_opt_interface -
-        opm_top_args(opma_augment(opmau_make_trans_opt_int)),
+        opm_top_args(opma_augment(opmau_make_trans_opt)),
     only_opmode_make_analysis_registry -
         opm_top_args(opma_augment(opmau_make_analysis_registry)),
     only_opmode_make_xml_documentation -
@@ -463,10 +463,10 @@ op_mode_to_option_string(OptionTable, MOP) = Str :-
         ;
             MOPA = opma_augment(MOPAU),
             (
-                MOPAU = opmau_make_opt_int,
+                MOPAU = opmau_make_plain_opt,
                 Str = "--make-opt-int"
             ;
-                MOPAU = opmau_make_trans_opt_int,
+                MOPAU = opmau_make_trans_opt,
                 Str = "--make-trans-opt"
             ;
                 MOPAU = opmau_make_analysis_registry,

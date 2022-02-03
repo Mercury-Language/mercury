@@ -257,7 +257,7 @@ unused_args_process_module(!ModuleInfo, Specs, UnusedArgInfos) :-
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
     ( if
-        OpMode = opm_top_args(opma_augment(opmau_make_opt_int)),
+        OpMode = opm_top_args(opma_augment(opmau_make_plain_opt)),
         % Only write unused argument analysis pragmas to `.opt' files for
         % `--intermodule-optimization', not `--intermodule-analysis'.
         IntermodAnalysis = no
@@ -269,7 +269,7 @@ unused_args_process_module(!ModuleInfo, Specs, UnusedArgInfos) :-
     globals.lookup_bool_option(Globals, warn_unused_args, DoWarn),
     ( if
         ( DoWarn = yes
-        ; OpMode = opm_top_args(opma_augment(opmau_make_opt_int))
+        ; OpMode = opm_top_args(opma_augment(opmau_make_plain_opt))
         )
     then
         set.init(WarnedPredIds0),

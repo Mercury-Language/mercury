@@ -60,7 +60,6 @@
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
-:- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -96,8 +95,10 @@ analyse_termination_in_module(!ModuleInfo, !:Specs) :-
 
     % Process builtin and compiler-generated predicates, and user-supplied
     % pragmas.
+    should_we_believe_check_termination_markers(!.ModuleInfo,
+        BelieveCheckTerm),
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-    term_preprocess_preds(PredIds, !ModuleInfo),
+    term_preprocess_preds(BelieveCheckTerm, PredIds, !ModuleInfo),
 
     % Process all the SCCs of the call graph in a bottom-up order.
     module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
@@ -586,25 +587,18 @@ decide_what_term_errors_to_report(ModuleInfo, SCC, Errors,
     %   information about it (termination_info pragmas, terminates pragmas,
     %   check_termination pragmas, builtin/compiler generated).
     %
-:- pred term_preprocess_preds(list(pred_id)::in,
-    module_info::in, module_info::out) is det.
+:- pred term_preprocess_preds(maybe_believe_check_termination::in,
+    list(pred_id)::in, module_info::in, module_info::out) is det.
 
-term_preprocess_preds([], !ModuleInfo).
-term_preprocess_preds([PredId | PredIds], !ModuleInfo) :-
-    term_preprocess_pred(PredId, !ModuleInfo),
-    term_preprocess_preds(PredIds, !ModuleInfo).
+term_preprocess_preds(_, [], !ModuleInfo).
+term_preprocess_preds(BelieveCheckTerm, [PredId | PredIds], !ModuleInfo) :-
+    term_preprocess_pred(BelieveCheckTerm, PredId, !ModuleInfo),
+    term_preprocess_preds(BelieveCheckTerm, PredIds, !ModuleInfo).
 
-:- pred term_preprocess_pred(pred_id::in,
-    module_info::in, module_info::out) is det.
+:- pred term_preprocess_pred(maybe_believe_check_termination::in,
+    pred_id::in, module_info::in, module_info::out) is det.
 
-term_preprocess_pred(PredId, !ModuleInfo) :-
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals.get_op_mode(Globals, OpMode),
-    ( if OpMode = opm_top_args(opma_augment(opmau_make_opt_int)) then
-        MakeOptInt = yes
-    else
-        MakeOptInt = no
-    ),
+term_preprocess_pred(BelieveCheckTerm, PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_status(PredInfo0, PredStatus),
     pred_info_get_context(PredInfo0, Context),
@@ -644,7 +638,7 @@ term_preprocess_pred(PredId, !ModuleInfo) :-
             (
                 check_marker(Markers, marker_terminates)
             ;
-                MakeOptInt = no,
+                BelieveCheckTerm = do_believe_check_termination,
                 check_marker(Markers, marker_check_termination)
             )
         then

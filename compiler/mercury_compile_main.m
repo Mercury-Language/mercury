@@ -1523,8 +1523,8 @@ read_augment_and_process_module(Globals0, OpModeAugment, OptionArgs,
         FileOrModule, MaybeModulesToRecompile, ModulesToLink, ExtraObjFiles,
         !HaveReadModuleMaps, !IO) :-
     (
-        ( OpModeAugment = opmau_make_opt_int
-        ; OpModeAugment = opmau_make_trans_opt_int
+        ( OpModeAugment = opmau_make_plain_opt
+        ; OpModeAugment = opmau_make_trans_opt
         ; OpModeAugment = opmau_make_analysis_registry
         ; OpModeAugment = opmau_make_xml_documentation
         )
@@ -1855,7 +1855,7 @@ process_augmented_module(Globals0, OpModeAugment, Baggage, AugCompUnit,
         % modify any files; this includes writing to .d files.
         WriteDFile = do_not_write_d_file
     ;
-        OpModeAugment = opmau_make_trans_opt_int,
+        OpModeAugment = opmau_make_trans_opt,
         disable_warning_options(Globals0, Globals),
         WriteDFile = write_d_file
     ;
@@ -1863,7 +1863,7 @@ process_augmented_module(Globals0, OpModeAugment, Baggage, AugCompUnit,
         Globals = Globals0,
         WriteDFile = write_d_file
     ;
-        OpModeAugment = opmau_make_opt_int,
+        OpModeAugment = opmau_make_plain_opt,
         disable_warning_options(Globals0, Globals),
         % Don't write the `.d' file when making the `.opt' file because
         % we can't work out the full transitive implementation dependencies.
@@ -1916,11 +1916,11 @@ process_augmented_module(Globals0, OpModeAugment, Baggage, AugCompUnit,
             ),
             ExtraObjFiles = []
         ;
-            OpModeAugment = opmau_make_opt_int,
+            OpModeAugment = opmau_make_plain_opt,
             % Only run up to typechecking when making the .opt file.
             ExtraObjFiles = []
         ;
-            OpModeAugment = opmau_make_trans_opt_int,
+            OpModeAugment = opmau_make_trans_opt,
             output_trans_opt_file(HLDS21, !Specs, !DumpInfo, !IO),
             ExtraObjFiles = []
         ;
@@ -1988,7 +1988,7 @@ pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, Baggage0, AugCompUnit0,
         % Don't write the `.d' file when making the `.opt' file because
         % we can't work out the full transitive implementation dependencies.
         ( MMCMake = yes
-        ; OpModeAugment = opmau_make_opt_int
+        ; OpModeAugment = opmau_make_plain_opt
         )
     then
         WriteDFile = do_not_write_d_file
@@ -2353,7 +2353,7 @@ maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
         ; IntermodOpt = yes
         ; IntermodAnalysis = yes
         ),
-        OpModeAugment \= opmau_make_opt_int
+        OpModeAugment \= opmau_make_plain_opt
     then
         maybe_write_string(Verbose, "% Reading .opt files...\n", !IO),
         maybe_flush_output(Verbose, !IO),
@@ -2364,7 +2364,7 @@ maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
         PlainOptError = no
     ),
     (
-        OpModeAugment = opmau_make_trans_opt_int,
+        OpModeAugment = opmau_make_trans_opt,
         (
             MaybeTransOptDeps = yes(TransOptDeps),
             % When creating the trans_opt file, only import the
@@ -2392,7 +2392,7 @@ maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
             )
         )
     ;
-        OpModeAugment = opmau_make_opt_int,
+        OpModeAugment = opmau_make_plain_opt,
         % If we are making the `.opt' file, then we cannot read any
         % `.trans_opt' files, since `.opt' files aren't allowed to depend on
         % `.trans_opt' files.

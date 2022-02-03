@@ -190,7 +190,7 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
         % Handle existing paths.
         (
             CallArgSizeInfo = yes(finite(CallGamma, OutputSuppliers)),
-            remove_unused_args(InVars, Args, OutputSuppliers, UsedInVars),
+            remove_unused_args(Args, OutputSuppliers, InVars, UsedInVars),
             record_change(UsedInVars, OutVars, CallGamma, [], !Info)
         ;
             CallArgSizeInfo = yes(infinite(_)),
@@ -203,7 +203,7 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
             % a runtime abort in map.lookup.
             params_get_output_suppliers(Params, OutputSuppliersMap),
             map.lookup(OutputSuppliersMap, CallPPId, OutputSuppliers),
-            remove_unused_args(InVars, Args, OutputSuppliers, UsedInVars),
+            remove_unused_args(Args, OutputSuppliers, InVars, UsedInVars),
             record_change(UsedInVars, OutVars, 0, [CallPPId], !Info)
         ),
 
@@ -220,7 +220,7 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
             % XXX This is an overapproximation, since it includes
             % higher order outputs.
             params_get_var_types(Params, VarTypes),
-            horder_vars(Args, VarTypes)
+            some_var_is_higher_order(VarTypes, Args)
         then
             add_error(Params, Context, horder_args(PPId, CallPPId), !Info)
         else
@@ -341,6 +341,35 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
         unexpected($pred, "shorthand")
+    ).
+
+    % remove_unused_args(VarList, BoolList, !InVarBag):
+    %
+    % VarList and BoolList are corresponding lists. Any variable in VarList
+    % that has a `no' in the corresponding place in the BoolList is removed
+    % from !InVarBag.
+    %
+    % XXX Replace the bools with a bespoke type.
+    %
+:- pred remove_unused_args(list(prog_var)::in, list(bool)::in,
+    bag(prog_var)::in, bag(prog_var)::out) is det.
+
+remove_unused_args([], [], !Vars).
+remove_unused_args([], [_ | _], !Vars) :-
+    unexpected($pred, "unmatched variables").
+remove_unused_args([_ | _], [], !Vars) :-
+    unexpected($pred, "unmatched variables").
+remove_unused_args([Arg | Args], [UsedVar | UsedVars], !Vars) :-
+    (
+        % The variable is used, so leave it.
+        UsedVar = yes,
+        remove_unused_args(Args, UsedVars, !Vars)
+    ;
+        % The variable is not used in producing output vars, so don't include
+        % it as an input variable.
+        UsedVar = no,
+        bag.delete(Arg, !Vars),
+        remove_unused_args(Args, UsedVars, !Vars)
     ).
 
 %-----------------------------------------------------------------------------%

@@ -288,7 +288,7 @@ maybe_eliminate_dead_preds(OpModeAugment, Verbose, Stats, Globals,
         ; IntermodAnalysis = yes
         ; UseOptFiles = yes
         ),
-        OpModeAugment \= opmau_make_opt_int
+        OpModeAugment \= opmau_make_plain_opt
     then
         % Eliminate unnecessary clauses from `.opt' files,
         % to speed up compilation. This must be done after
@@ -401,20 +401,19 @@ frontend_pass_after_typecheck(OpModeAugment, Verbose, Stats, Globals,
         % Switch detection looks at only a maximum of two levels
         % of disjunction, not three, so we need this block here;
         % the block that sets MakeOptInt is not recognized as
-        % being a switch arm complementing the opmau_typecheck_only
-        % arm.
-        ( OpModeAugment = opmau_make_opt_int
-        ; OpModeAugment = opmau_make_trans_opt_int
+        % being a switch arm complementing the opmau_typecheck_only arm.
+        ( OpModeAugment = opmau_make_plain_opt
+        ; OpModeAugment = opmau_make_trans_opt
         ; OpModeAugment = opmau_make_analysis_registry
         ; OpModeAugment = opmau_make_xml_documentation
         ; OpModeAugment = opmau_errorcheck_only
         ; OpModeAugment = opmau_generate_code(_)
         ),
         (
-            OpModeAugment = opmau_make_opt_int,
+            OpModeAugment = opmau_make_plain_opt,
             MakeOptInt = yes
         ;
-            ( OpModeAugment = opmau_make_trans_opt_int
+            ( OpModeAugment = opmau_make_trans_opt
             ; OpModeAugment = opmau_make_analysis_registry
             ; OpModeAugment = opmau_make_xml_documentation
             ; OpModeAugment = opmau_errorcheck_only

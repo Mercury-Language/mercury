@@ -57,9 +57,7 @@
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.
-:- import_module libs.globals.
 :- import_module libs.lp_rational.
-:- import_module libs.op_mode.
 :- import_module libs.polyhedron.
 :- import_module libs.rat.
 :- import_module mdbcomp.
@@ -109,8 +107,10 @@
 % Also look at builtin_compound_eq, builtin_compound_lt.
 
 term2_preprocess_module(!ModuleInfo) :-
+    should_we_believe_check_termination_markers(!.ModuleInfo,
+        BelieveCheckTerm),
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-    process_builtin_preds(PredIds, !ModuleInfo),
+    process_builtin_preds(BelieveCheckTerm, PredIds, !ModuleInfo),
     process_imported_preds(PredIds, !ModuleInfo).
 
 %----------------------------------------------------------------------------%
@@ -250,27 +250,20 @@ create_lp_term(SubstMap, ArgSizeTerm, Var - Coefficient) :-
 % Set up information for builtins.
 %
 
-:- pred process_builtin_preds(list(pred_id)::in,
-    module_info::in, module_info::out) is det.
+:- pred process_builtin_preds(maybe_believe_check_termination::in,
+    list(pred_id)::in, module_info::in, module_info::out) is det.
 
-process_builtin_preds([], !ModuleInfo).
-process_builtin_preds([PredId | PredIds], !ModuleInfo) :-
-    process_builtin_pred(PredId, !ModuleInfo),
-    process_builtin_preds(PredIds, !ModuleInfo).
+process_builtin_preds(_, [], !ModuleInfo).
+process_builtin_preds(BelieveCheckTerm, [PredId | PredIds], !ModuleInfo) :-
+    process_builtin_pred(BelieveCheckTerm, PredId, !ModuleInfo),
+    process_builtin_preds(BelieveCheckTerm, PredIds, !ModuleInfo).
 
-:- pred process_builtin_pred(pred_id::in,
-    module_info::in, module_info::out) is det.
+:- pred process_builtin_pred(maybe_believe_check_termination::in,
+    pred_id::in, module_info::in, module_info::out) is det.
 
-process_builtin_pred(PredId, !ModuleInfo) :-
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals.get_op_mode(Globals, OpMode),
-    ( if OpMode = opm_top_args(opma_augment(opmau_make_opt_int)) then
-        MakeOptInt = yes
-    else
-        MakeOptInt = no
-    ),
+process_builtin_pred(BelieveCheckTerm, PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-    process_builtin_procs(MakeOptInt, PredId, !.ModuleInfo,
+    process_builtin_procs(BelieveCheckTerm, !.ModuleInfo, PredId,
         PredInfo0, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
@@ -278,10 +271,10 @@ process_builtin_pred(PredId, !ModuleInfo) :-
     % to be imported or locally defined, so they must be covered here
     % separately.
     %
-:- pred process_builtin_procs(bool::in, pred_id::in, module_info::in,
-    pred_info::in, pred_info::out) is det.
+:- pred process_builtin_procs(maybe_believe_check_termination::in,
+    module_info::in, pred_id::in, pred_info::in, pred_info::out) is det.
 
-process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
+process_builtin_procs(BelieveCheckTerm, ModuleInfo, PredId, !PredInfo) :-
     pred_info_get_status(!.PredInfo, PredStatus),
     pred_info_get_markers(!.PredInfo, Markers),
     pred_info_get_context(!.PredInfo, Context),
@@ -331,7 +324,7 @@ process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
                 (
                     check_marker(Markers, marker_terminates)
                 ;
-                    MakeOptInt = no,
+                    BelieveCheckTerm = do_believe_check_termination,
                     check_marker(Markers, marker_check_termination)
                 )
             then

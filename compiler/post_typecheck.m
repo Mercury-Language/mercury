@@ -958,7 +958,7 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
                 globals.lookup_bool_option(Globals, intermodule_analysis, no)
             ;
                 globals.get_op_mode(Globals, OpMode),
-                OpMode = opm_top_args(opma_augment(opmau_make_opt_int))
+                OpMode = opm_top_args(opma_augment(opmau_make_plain_opt))
             )
         then
             % XXX We shouldn't ignore the updated ModuleInfo, which may

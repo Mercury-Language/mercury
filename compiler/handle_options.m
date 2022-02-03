@@ -844,8 +844,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target,
                 %   was implemented, and they have (yet) not been taught
                 %   about it.
                 OpMode = opm_top_args(opma_augment(Augment)),
-                ( Augment = opmau_make_opt_int
-                ; Augment = opmau_make_trans_opt_int
+                ( Augment = opmau_make_plain_opt
+                ; Augment = opmau_make_trans_opt
                 )
             ;
                 % If we are not allowed to use const structs for the
@@ -1048,7 +1048,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target,
         % Don't do the unused_args optimization when making the
         % optimization interface.
         ( AllowSrcChangesDebug = do_not_allow_src_changes
-        ; OpMode = opm_top_args(opma_augment(opmau_make_opt_int))
+        ; OpMode = opm_top_args(opma_augment(opmau_make_plain_opt))
         )
     then
         OT_OptUnusedArgs = do_not_opt_unused_args
@@ -2132,14 +2132,14 @@ handle_opmode_implications(OpMode, !Globals) :-
         ;
             OpModeArgs = opma_augment(OpModeAugment),
             (
-                OpModeAugment = opmau_make_opt_int,
+                OpModeAugment = opmau_make_plain_opt,
                 globals.set_option(line_numbers, bool(no), !Globals),
                 globals.lookup_bool_option(!.Globals, halt_at_warn_make_opt,
                     HaltAtWarn),
                 globals.set_option(halt_at_warn, bool(HaltAtWarn), !Globals),
                 Smart = bool.no
             ;
-                OpModeAugment = opmau_make_trans_opt_int,
+                OpModeAugment = opmau_make_trans_opt,
                 globals.set_option(transitive_optimization, bool(yes),
                     !Globals),
                 globals.set_option(line_numbers, bool(no), !Globals),

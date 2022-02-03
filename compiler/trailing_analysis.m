@@ -137,8 +137,8 @@ analyse_trail_usage_in_module(!ModuleInfo) :-
         globals.get_op_mode(Globals, OpMode),
         ( if
             OpMode = opm_top_args(opma_augment(OpModeAugment)),
-            ( OpModeAugment = opmau_make_opt_int
-            ; OpModeAugment = opmau_make_trans_opt_int
+            ( OpModeAugment = opmau_make_plain_opt
+            ; OpModeAugment = opmau_make_trans_opt
             ; OpModeAugment = opmau_make_analysis_registry
             )
         then

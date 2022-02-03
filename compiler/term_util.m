@@ -103,24 +103,15 @@
     % between the arity of the procedure and the arity of the predicate is
     % the number of typeinfos.
     %
-:- pred make_bool_list(list(_T)::in, list(bool)::in, list(bool)::out) is det.
-
-%---------------------%
-
-    % Removes variables from the InVarBag that are not used in the call.
-    % remove_unused_args(InVarBag0, VarList, BoolList, InVarBag) VarList and
-    % BoolList are corresponding lists. Any variable in VarList that has a
-    % `no' in the corresponding place in the BoolList is removed from
-    % InVarBag.
+    % XXX Replace the bools with a bespoke type.
     %
-:- pred remove_unused_args(bag(prog_var)::in, list(prog_var)::in,
-    list(bool)::in, bag(prog_var)::out) is det.
+:- pred make_bool_list(list(_T)::in, list(bool)::in, list(bool)::out) is det.
 
 %---------------------%
 
     % Succeeds if one or more variables in the list are higher order.
     %
-:- pred horder_vars(list(prog_var)::in, vartypes::in) is semidet.
+:- pred some_var_is_higher_order(vartypes::in, list(prog_var)::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -192,6 +183,27 @@
     is semidet.
 
 %---------------------------------------------------------------------------%
+
+:- type maybe_believe_check_termination
+    --->    do_not_believe_check_termination
+    ;       do_believe_check_termination.
+
+    % When we process imported predicates, should we believe that
+    % the presence of a 'check_termination' pragma, or rather the pred marker
+    % indicating the presence of such a pragma, guarantees that (in the absence
+    % of an error from that pragma) the predicate will actually terminate?
+    %
+    % The check_termination pragma will be checked by the compiler
+    % when it compiles the source file that the predicate was imported from.
+    % However, when we make .opt files, we do not check whether predicates
+    % with check_termination pragmas actually terminate, so we cannot assume
+    % that they do, since any violations of that assumption will *not* be
+    % reported.
+    %
+:- pred should_we_believe_check_termination_markers(module_info::in,
+    maybe_believe_check_termination::out) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -199,6 +211,9 @@
 :- import_module check_hlds.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_test.
+:- import_module libs.
+:- import_module libs.globals.
+:- import_module libs.op_mode.
 :- import_module parse_tree.prog_type.
 
 :- import_module require.
@@ -206,6 +221,22 @@
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+
+% For these next two predicates (split_unification_vars and
+% partition_call_args) there is a problem of what needs to be done for
+% partially instantiated data structures. The correct answer is that the
+% system should use a norm such that the size of the uninstantiated parts
+% of a partially instantiated structure have no effect on the size of the
+% data structure according to the norm. For example when finding the size
+% of a list-skeleton, list-length norm should be used. Therefore, the
+% size of any term must be given by:
+%
+% sizeof(term) = constant + sum of the size of each
+%   (possibly partly) instantiated subterm.
+%
+% It is probably easiest to implement this by modifying term_weights.
+% The current implementation does not correctly handle partially
+% instantiated data structures.
 
 partition_call_args(ModuleInfo, ArgModes, Args, InVarsBag, OutVarsBag) :-
     partition_call_args_2(ModuleInfo, ArgModes, Args, InVars, OutVars),
@@ -235,22 +266,6 @@ partition_call_args_2(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
         OutputArgs = OutputArgs1
     ).
 
-    % For these next two predicates (split_unification_vars and
-    % partition_call_args) there is a problem of what needs to be done for
-    % partially instantiated data structures. The correct answer is that the
-    % system should use a norm such that the size of the uninstantiated parts
-    % of a partially instantiated structure have no effect on the size of the
-    % data structure according to the norm. For example when finding the size
-    % of a list-skeleton, list-length norm should be used. Therefore, the
-    % size of any term must be given by:
-    %
-    % sizeof(term) = constant + sum of the size of each
-    %           (possibly partly) instantiated subterm.
-    %
-    % It is probably easiest to implement this by modifying term_weights.
-    % The current implementation does not correctly handle partially
-    % instantiated data structures.
-    %
 split_unification_vars(_, [], [], Vars, Vars) :-
     bag.init(Vars).
 split_unification_vars(_, [], [_ | _], _, _) :-
@@ -264,14 +279,14 @@ split_unification_vars(ModuleInfo, [Arg | Args], [ArgMode | ArgModes],
     ( if
         inst_is_bound(ModuleInfo, ArgInit)
     then
-        % Variable is an input variable
+        % Variable is an input variable.
         bag.insert(Arg, InVars0, InVars),
         OutVars = OutVars0
     else if
         inst_is_free(ModuleInfo, ArgInit),
         inst_is_bound(ModuleInfo, ArgFinal)
     then
-        % Variable is an output variable
+        % Variable is an output variable.
         InVars = InVars0,
         bag.insert(Arg, OutVars0, OutVars)
     else
@@ -293,37 +308,17 @@ make_bool_list(HeadVars0, Bools, Out) :-
 :- pred make_bool_list_2(list(_T)::in, list(bool)::in, list(bool)::out) is det.
 
 make_bool_list_2([], Bools, Bools).
-make_bool_list_2([ _ | Vars ], Bools, [no | Out]) :-
+make_bool_list_2([_ | Vars], Bools, [no | Out]) :-
     make_bool_list_2(Vars, Bools, Out).
 
 %---------------------------------------------------------------------------%
 
-remove_unused_args(Vars, [], [], Vars).
-remove_unused_args(Vars, [], [_X | _Xs], Vars) :-
-    unexpected($pred, "unmatched variables").
-remove_unused_args(Vars, [_X | _Xs], [], Vars) :-
-    unexpected($pred, "unmatched variables").
-remove_unused_args(Vars0, [ Arg | Args ], [ UsedVar | UsedVars ], Vars) :-
-    (
-        % The variable is used, so leave it.
-        UsedVar = yes,
-        remove_unused_args(Vars0, Args, UsedVars, Vars)
-    ;
-        % The variable is not used in producing output vars, so don't include
-        % it as an input variable.
-        UsedVar = no,
-        bag.delete(Arg, Vars0, Vars1),
-        remove_unused_args(Vars1, Args, UsedVars, Vars)
-    ).
-
-%---------------------------------------------------------------------------%
-
-horder_vars([Arg | Args], VarType) :-
-    (
-        lookup_var_type(VarType, Arg, Type),
-        type_is_higher_order(Type)
-    ;
-        horder_vars(Args, VarType)
+some_var_is_higher_order(VarTypes, [Arg | Args]) :-
+    lookup_var_type(VarTypes, Arg, Type),
+    ( if type_is_higher_order(Type) then
+        true
+    else
+        some_var_is_higher_order(VarTypes, Args)
     ).
 
 %---------------------------------------------------------------------------%
@@ -426,6 +421,17 @@ attributes_imply_termination(Attributes) :-
     ;
         get_terminates(Attributes) = depends_on_mercury_calls,
         get_may_call_mercury(Attributes) = proc_will_not_call_mercury
+    ).
+
+%---------------------------------------------------------------------------%
+
+should_we_believe_check_termination_markers(ModuleInfo, Believe) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_op_mode(Globals, OpMode),
+    ( if OpMode = opm_top_args(opma_augment(opmau_make_plain_opt)) then
+        Believe = do_not_believe_check_termination
+    else
+        Believe = do_believe_check_termination
     ).
 
 %---------------------------------------------------------------------------%

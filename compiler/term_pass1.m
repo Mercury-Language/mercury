@@ -327,7 +327,7 @@ check_goal_non_term_calls(ModuleInfo, PPId, VarTypes, Goal, !Errors) :-
             ; TerminationInfo = no
             )
         ),
-        ( if horder_vars(Args, VarTypes) then
+        ( if some_var_is_higher_order(VarTypes, Args) then
             HigherOrderErrorKind = horder_args(PPId, CallPPId),
             HigherOrderError = term_error(Context, HigherOrderErrorKind),
             list.cons(HigherOrderError, !Errors)

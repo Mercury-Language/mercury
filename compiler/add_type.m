@@ -580,7 +580,7 @@ merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, TypeBodyDuB,
     globals.get_op_mode(Globals, OpMode),
     ( if
         have_foreign_type_for_backend(Target, ForeignTypeBody, yes),
-        OpMode \= opm_top_args(opma_augment(opmau_make_opt_int))
+        OpMode \= opm_top_args(opma_augment(opmau_make_plain_opt))
     then
         Body = hlds_foreign_type(ForeignTypeBody)
     else
