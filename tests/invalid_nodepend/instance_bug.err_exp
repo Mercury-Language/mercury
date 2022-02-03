@@ -1,7 +1,6 @@
 instance_bug.m:013: Error: non-abstract instance declaration in module
 instance_bug.m:013:   interface.
-instance_bug.m:013:   The usual fix for this problem is to move this instance
+instance_bug.m:013:   If you intend to export this instance, move this
 instance_bug.m:013:   declaration to the implementation section, replacing it
 instance_bug.m:013:   in the interface section with its abstract version, which
-instance_bug.m:013:   contains just the class name and the instance type
-instance_bug.m:013:   vector.
+instance_bug.m:013:   omits the `where [...]' part.

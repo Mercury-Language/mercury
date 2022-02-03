@@ -6583,15 +6583,6 @@ These restrictions ensure that there are no overlapping instance declarations,
 i.e.@: for each typeclass there is at most one instance declaration
 that may be applied to any type (or sequence of types).
 
-Instance declarations may appear
-only in the implementation section of a module.
-If you want to export the knowledge that a type, or a sequence of types,
-is a member of a given typeclass,
-then put an abstract version of the instance declaration
-(@pxref{Abstract instance declarations})
-into the interface section of the module
-that contains the full instance declaration in its implementation section.
-
 There is no special interaction between subtypes and the typeclass system.
 A subtype is @emph{not} automatically an instance of a typeclass if
 there is an @samp{instance} declaration for its supertype.
@@ -6600,8 +6591,9 @@ Each @var{method_definition} entry
 in the @samp{where [@dots{}]} part of an @code{instance} declaration
 defines the implementation of one of the class methods for this instance.
 There are two ways of defining methods.
-The first way is to define a method
-by giving the name of the predicate or function which implements that method.
+
+The first way to define a method is by
+giving the name of the predicate or function which implements that method.
 In this case, the @var{method_definition} must have one of the following forms:
 
 @example
@@ -6765,6 +6757,18 @@ this will invoke @samp{coordinate_translate}.
 
 Further instances of the type class could be made,
 e.g.@: a type that represents the point using polar coordinates.
+
+Since method may be defined using clauses,
+and the interface sections of modules may @emph{not} include clauses,
+instance declarations that specify method definitions
+may appear only in the implementation section of a module.
+If you want to export the knowledge that a type, or a sequence of types,
+is a member of a given typeclass,
+then put an version of the instance declaration
+that omits all method definitions
+(@pxref{Abstract instance declarations})
+into the interface section of the module
+that contains the full instance declaration in its implementation section.
 
 @node Abstract typeclass declarations
 @section Abstract typeclass declarations
@@ -6990,6 +6994,12 @@ must exactly match the type class constraints
 on the corresponding non-abstract instance declaration
 that defines that instance.
 @c XXX The current implementation does not enforce that rule.
+
+The abstract version of the above instance declaration would be
+
+@example
+:- instance portrayable(list(T)) <= portrayable(T).
+@end example
 
 @node Functional dependencies
 @section Functional dependencies
