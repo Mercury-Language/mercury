@@ -609,8 +609,8 @@ term_preprocess_pred(BelieveCheckTerm, PredId, !ModuleInfo) :-
         % It is possible for compiler generated/mercury builtin
         % predicates to be imported or locally defined, so they
         % must be covered here, separately.
-        set_compiler_gen_terminates(PredInfo0, ProcIds, PredId,
-            !.ModuleInfo, ProcTable0, ProcTable1)
+        set_compiler_gen_terminates(!.ModuleInfo, PredInfo0, ProcIds, PredId,
+            ProcTable0, ProcTable1)
     then
         ProcTable2 = ProcTable1
     else if
@@ -676,11 +676,11 @@ term_preprocess_pred(BelieveCheckTerm, PredId, !ModuleInfo) :-
     % We assume that user-defined special predicates terminate. This assumption
     % is checked later during the post_term_analysis pass.
     %
-:- pred set_compiler_gen_terminates(pred_info::in, list(proc_id)::in,
-    pred_id::in, module_info::in, proc_table::in, proc_table::out)
+:- pred set_compiler_gen_terminates(module_info::in, pred_info::in,
+    list(proc_id)::in, pred_id::in, proc_table::in, proc_table::out)
     is semidet.
 
-set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
+set_compiler_gen_terminates(ModuleInfo, PredInfo, ProcIds, PredId,
         !ProcTable) :-
     ( if
         pred_info_is_builtin(PredInfo)
