@@ -575,11 +575,11 @@ should_report_no_clauses(ModuleInfo, PredInfo) = ShouldReport :-
     module_info_get_name(ModuleInfo, ModuleName),
     pred_info_get_module_name(PredInfo, PredModuleName),
     pred_info_get_name(PredInfo, PredName),
-    pred_info_get_orig_arity(PredInfo, Arity),
+    UserArity = pred_info_user_arity(PredInfo),
     pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-    pred_info_get_markers(PredInfo, PredMarkers),
     SymName = qualified(ModuleName, PredName),
-    Id = pf_sym_name_arity(PredOrFunc, SymName, Arity),
+    Id = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+    pred_info_get_markers(PredInfo, PredMarkers),
     ( if
         ( set.contains(IntBadClauses, Id)
         ; check_marker(PredMarkers, marker_fact_table_semantic_errors)

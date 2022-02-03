@@ -699,6 +699,8 @@
     % *not* counting inserted type_info arguments for polymorphic preds.
     %
 :- func pred_info_orig_arity(pred_info) = arity.
+:- func pred_info_pred_form_arity(pred_info) = pred_form_arity.
+:- func pred_info_user_arity(pred_info) = user_arity.
 
     % N-ary functions are converted into N+1-ary predicates.
     % (Clauses are converted in make_hlds, but calls to functions
@@ -1501,8 +1503,14 @@ pred_info_module(PI) = X :-
     pred_info_get_module_name(PI, X).
 pred_info_name(PI) = X :-
     pred_info_get_name(PI, X).
-pred_info_orig_arity(PI) = X :-
-    pred_info_get_orig_arity(PI, X).
+pred_info_orig_arity(PI) = Arity :-
+    pred_info_get_orig_arity(PI, Arity).
+pred_info_pred_form_arity(PI) = pred_form_arity(Arity) :-
+    pred_info_get_orig_arity(PI, Arity).
+pred_info_user_arity(PI) = UserArity :-
+    pred_info_get_is_pred_or_func(PI, PredOrFunc),
+    PredFormArity = pred_info_pred_form_arity(PI),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity).
 pred_info_is_pred_or_func(PI) = X :-
     pred_info_get_is_pred_or_func(PI, X).
 

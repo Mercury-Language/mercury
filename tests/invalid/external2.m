@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % This module tests the error message for a predicate that has one or more
-% clauses despite being marked as texternal.
+% clauses despite being marked as external.
 %
 
 :- module external2.

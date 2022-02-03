@@ -90,7 +90,7 @@
     list(item_trailing)::out,
     list(item_mm_tabling)::out,
     ims_list(item_clause_info)::out,
-    set(pf_sym_name_arity)::out) is det.
+    set(pred_pf_name_arity)::out) is det.
 
 %---------------------------------------------------------------------------%
 

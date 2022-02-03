@@ -166,6 +166,7 @@
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
 :- import_module recompilation.
 
 :- import_module bool.
@@ -1901,7 +1902,7 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     list(item_mode_decl_info)::in, list(item_mode_decl_info)::out,
     list(item_decl_pragma_info)::in, list(item_decl_pragma_info)::out,
     list(item_impl_pragma_info)::in, list(item_impl_pragma_info)::out,
-    set(pf_sym_name_arity)::in, set(pf_sym_name_arity)::out,
+    set(pred_pf_name_arity)::in, set(pred_pf_name_arity)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
     list(item_initialise_info)::in, list(item_initialise_info)::out,
     list(item_finalise_info)::in, list(item_finalise_info)::out,
@@ -2051,7 +2052,7 @@ classify_foreign_import_module(ItemFIM, !FIMSpecMap, !Specs) :-
     list(item_mode_decl_info)::in, list(item_mode_decl_info)::out,
     list(item_decl_pragma_info)::in, list(item_decl_pragma_info)::out,
     list(item_impl_pragma_info)::in, list(item_impl_pragma_info)::out,
-    set(pf_sym_name_arity)::in, set(pf_sym_name_arity)::out,
+    set(pred_pf_name_arity)::in, set(pred_pf_name_arity)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
     list(item_initialise_info)::in, list(item_initialise_info)::out,
     list(item_finalise_info)::in, list(item_finalise_info)::out,
@@ -2116,22 +2117,24 @@ classify_src_items_int([Item | Items],
         ItemClauseInfo = item_clause_info(PredOrFunc, PredSymName, ArgTerms,
             _VarSet, _Body, Context, _SeqNum),
         list.length(ArgTerms, Arity),
-        % There is no point printing out the qualified name
+        % There is no point printing out the qualified name,
         % since the module name is implicit in the context.
         UnqualPredSymName = unqualified(unqualify_name(PredSymName)),
         PredName = pf_sym_name_orig_arity_to_string(PredOrFunc,
             sym_name_arity(UnqualPredSymName, Arity)),
         error_is_exported(Context, [words("clause for"), fixed(PredName)],
             !Specs),
-        set.insert(pf_sym_name_arity(PredOrFunc, PredSymName, Arity),
-            !BadClausePreds)
+        user_arity_pred_form_arity(PredOrFunc, UserArity,
+            pred_form_arity(Arity)),
+        PredPfNameArity =
+            pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
+        set.insert(PredPfNameArity, !BadClausePreds)
     ;
         Item = item_decl_pragma(ItemDeclPragma),
         !:RevDeclPragmas = [ItemDeclPragma | !.RevDeclPragmas]
     ;
         Item = item_impl_pragma(ItemImplPragma),
-        error_is_exported(get_item_context(Item), item_desc_pieces(Item),
-            !Specs),
+        error_item_is_exported(Item, !Specs),
         !:RevImplPragmas = [ItemImplPragma | !.RevImplPragmas],
         ItemImplPragma = item_pragma_info(ImplPragma, _Context, _SeqNum),
         (
@@ -2139,30 +2142,51 @@ classify_src_items_int([Item | Items],
                 ImplPragma = impl_pragma_foreign_proc(ForeignProcInfo),
                 ForeignProcInfo = pragma_info_foreign_proc(_,
                     SymName, PredOrFunc, Vars, _, _, _),
-                list.length(Vars, Arity)
+                list.length(Vars, Arity),
+                user_arity_pred_form_arity(PredOrFunc, UserArity,
+                    pred_form_arity(Arity)),
+                PredPfNameArity =
+                    pred_pf_name_arity(PredOrFunc, SymName, UserArity)
             ;
                 ImplPragma = impl_pragma_external_proc(ExternalProcInfo),
-                ExternalProcInfo = pragma_info_external_proc(PFNameArity, _),
-                PFNameArity = pred_pf_name_arity(PredOrFunc, SymName,
-                    user_arity(Arity))
+                ExternalProcInfo =
+                    pragma_info_external_proc(PredPfNameArity, _)
             ),
-            set.insert(pf_sym_name_arity(PredOrFunc, SymName, Arity),
-                !BadClausePreds)
+            set.insert(PredPfNameArity, !BadClausePreds)
         ;
-            ImplPragma = impl_pragma_fact_table(_)
-            % If a predicate named e.g. foo/N has a fact table pragma for it,
-            % but due to a bug the pragma is in the interface section, then
-            % generating an error message about the absence of clauses
-            % for predicate foo/N will be misleading. However, we cannot add
-            % foo/N to !BadClausePreds without knowing whether the pragma
-            % is for the predicate foo/N or the function foo/N, which
-            % is a piece of information that the pragma unfortunately
-            % does *not* contain. So if a module declares both a predicate
-            % foo/N and a function foo/N, has no clauses for either of them
-            % in the implementation, but has an (invalid) fact_table pragma
-            % for just one of them in the interface, we have no way of
-            % generating an error message about the missing clauses for
-            % just the other.
+            ImplPragma = impl_pragma_fact_table(FactTableInfo),
+            FactTableInfo = pragma_info_fact_table(PredSpec, _FileName),
+            PredSpec = pred_pfu_name_arity(PFU, SymName, UserArity),
+            (
+                PFU = pfu_predicate,
+                PredPfNameArity =
+                    pred_pf_name_arity(pf_predicate, SymName, UserArity),
+                set.insert(PredPfNameArity, !BadClausePreds)
+            ;
+                PFU = pfu_function,
+                PredPfNameArity =
+                    pred_pf_name_arity(pf_function, SymName, UserArity),
+                set.insert(PredPfNameArity, !BadClausePreds)
+            ;
+                PFU = pfu_unknown
+                % If a predicate named e.g. foo/N has a fact table pragma
+                % for it, but due to a bug the pragma is in the interface
+                % section, then generating an error message about the
+                % absence of clauses for predicate foo/N will be misleading.
+                % However, we cannot add foo/N to !BadClausePreds without
+                % knowing whether the pragma is for the predicate foo/N
+                % or the function foo/N, and if we got here, then we do not
+                % know. If the module we are compiling declares both
+                % a predicate foo/N and a function foo/N, has no clauses
+                % for either of them in the implementation, but has an
+                % (invalid) fact_table pragma for just one of them in the
+                % interface, we have no way of generating an error message
+                % about the missing clauses for *just* the other; we have
+                % generate that error message either for both, or for neither.
+                % By doing nothing here, we choose generating a message
+                % for both. We know one will be misleading, we just don't know
+                % which one ;-(
+            )
         ;
             ( ImplPragma = impl_pragma_foreign_decl(_)
             ; ImplPragma = impl_pragma_foreign_code(_)
@@ -2196,22 +2220,18 @@ classify_src_items_int([Item | Items],
         ( Item = item_foreign_enum(_)
         ; Item = item_foreign_export_enum(_)
         ),
-        error_is_exported(get_item_context(Item), item_desc_pieces(Item),
-            !Specs)
+        error_item_is_exported(Item, !Specs)
     ;
         Item = item_initialise(ItemInitialiseInfo),
-        error_is_exported(get_item_context(Item), item_desc_pieces(Item),
-            !Specs),
+        error_item_is_exported(Item, !Specs),
         !:RevInitialises = [ItemInitialiseInfo | !.RevInitialises]
     ;
         Item = item_finalise(ItemFinaliseInfo),
-        error_is_exported(get_item_context(Item), item_desc_pieces(Item),
-            !Specs),
+        error_item_is_exported(Item, !Specs),
         !:RevFinalises = [ItemFinaliseInfo | !.RevFinalises]
     ;
         Item = item_mutable(ItemMutableInfo),
-        error_is_exported(get_item_context(Item), item_desc_pieces(Item),
-            !Specs),
+        error_item_is_exported(Item, !Specs),
         !:RevMutables = [ItemMutableInfo | !.RevMutables]
     ;
         Item = item_type_repn(ItemTypeRepnInfo),
@@ -2450,6 +2470,12 @@ acc_implicit_avail_needs_in_promise(ItemPromiseInfo, !ImplicitAvailNeeds) :-
     acc_implicit_avail_needs_in_goal(Goal, !ImplicitAvailNeeds).
 
 %---------------------------------------------------------------------------%
+
+:- pred error_item_is_exported(item::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+error_item_is_exported(Item, !Specs) :-
+    error_is_exported(get_item_context(Item), item_desc_pieces(Item), !Specs).
 
     % Emit an error reporting that something should not have occurred in
     % a module interface.

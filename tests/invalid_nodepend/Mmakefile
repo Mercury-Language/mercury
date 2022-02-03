@@ -48,7 +48,10 @@ PROGS = \
 	errors1 \
 	errors2 \
 	external \
+	external_in_interface \
+	fact_table_in_interface \
 	foreign_enum_import \
+	foreign_proc_in_interface \
 	func_errors \
 	funcs_as_preds \
 	fundeps_unbound_in_ctor \

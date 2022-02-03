@@ -344,7 +344,7 @@
 :- pred module_info_get_fact_table_file_names(module_info::in,
     list(string)::out) is det.
 :- pred module_info_get_int_bad_clauses(module_info::in,
-    set(pf_sym_name_arity)::out) is det.
+    set(pred_pf_name_arity)::out) is det.
 :- pred module_info_get_maybe_dependency_info(module_info::in,
     maybe(hlds_dependency_info)::out) is det.
 :- pred module_info_get_type_ctor_gen_infos(module_info::in,
@@ -440,7 +440,7 @@
     module_info::in, module_info::out) is det.
 :- pred module_info_set_foreign_body_codes(cord(foreign_body_code)::in,
     module_info::in, module_info::out) is det.
-:- pred module_info_set_int_bad_clauses(set(pf_sym_name_arity)::in,
+:- pred module_info_set_int_bad_clauses(set(pred_pf_name_arity)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_type_ctor_gen_infos(list(type_ctor_gen_info)::in,
     module_info::in, module_info::out) is det.
@@ -823,13 +823,14 @@
                 % The set of predicates and functions for which there was
                 % an attempt to define them in the interface (by clause,
                 % foreign_proc, or external_proc pragma), which means that
-                % if find no definition for them in the implementation section
-                % either, we should NOT generate an error message complaining
-                % about the definition being missing. Such a message would be
-                % misleading, since the definition is not missing, it was
-                % just misplaced, and we have already generated an error
-                % message about that misplaced attempt at definition.
-                mri_int_bad_clauses             :: set(pf_sym_name_arity),
+                % if we find no definition for them in the implementation
+                % section either, we should NOT generate an error message
+                % complaining about the definition being missing. Such a
+                % message would be misleading, since the definition is not
+                % missing, it was just misplaced, and we have already
+                % generated an error message about that misplaced attempt
+                % at definition.
+                mri_int_bad_clauses             :: set(pred_pf_name_arity),
 
                 % Please see module_info_ensure_dependency_info for the
                 % meaning of this dependency_info, and the constraints on it.

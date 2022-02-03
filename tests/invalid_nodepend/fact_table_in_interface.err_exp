@@ -1,0 +1,21 @@
+fact_table_in_interface.m:015: Error: no clauses for function `foo'/1.
+fact_table_in_interface.m:016: Error: no clauses for predicate `bar'/2.
+fact_table_in_interface.m:018: Error: no clauses for predicate `baz'/2.
+fact_table_in_interface.m:019: Error: no clauses for function `baz'/2.
+fact_table_in_interface.m:021: mercury_compile: error opening file
+fact_table_in_interface.m:021:   `nonexistent_foo' for input:
+fact_table_in_interface.m:021:   can't open input file: No such file or
+fact_table_in_interface.m:021:   directory
+fact_table_in_interface.m:021: Error: `:- pragma fact_table' declaration in
+fact_table_in_interface.m:021:   module interface.
+fact_table_in_interface.m:022: mercury_compile: error opening file
+fact_table_in_interface.m:022:   `nonexistent_bar' for input:
+fact_table_in_interface.m:022:   can't open input file: No such file or
+fact_table_in_interface.m:022:   directory
+fact_table_in_interface.m:022: Error: `:- pragma fact_table' declaration in
+fact_table_in_interface.m:022:   module interface.
+fact_table_in_interface.m:023: Error: `:- pragma fact_table' declaration in
+fact_table_in_interface.m:023:   module interface.
+fact_table_in_interface.m:023: In `pragma fact_table' for
+fact_table_in_interface.m:023:   `fact_table_in_interface.baz'/2:
+fact_table_in_interface.m:023:   error: ambiguous predicate/function name.

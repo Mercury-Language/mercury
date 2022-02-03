@@ -335,7 +335,7 @@
                 % generating a warning about a lack of a definition
                 % in the implementation section (if in fact there is
                 % no definition there) would be more misleading than useful.
-                ptms_int_bad_clauses        :: set(pf_sym_name_arity),
+                ptms_int_bad_clauses        :: set(pred_pf_name_arity),
 
                 % A repeat of everything above, but in the implementation
                 % section, with the addition of some item kinds that may occur

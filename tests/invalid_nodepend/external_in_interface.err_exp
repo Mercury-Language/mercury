@@ -1,0 +1,6 @@
+external_in_interface.m:015: Error: no clauses for function `foo'/1.
+external_in_interface.m:016: Error: no clauses for predicate `bar'/2.
+external_in_interface.m:019: Error: `:- pragma external_pred' declaration in
+external_in_interface.m:019:   module interface.
+external_in_interface.m:020: Error: `:- pragma external_func' declaration in
+external_in_interface.m:020:   module interface.
