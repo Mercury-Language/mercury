@@ -399,8 +399,8 @@ add_class_mode_decl(ItemMercuryStatus, PredStatus, ModeInfo,
         PredOrFunc, PredSymName, PredArity, PredIds),
     (
         PredIds = [],
-        missing_pred_or_func_method_error(PredSymName, PredArity, PredOrFunc,
-            Context, !Specs)
+        PredSNA = sym_name_arity(PredSymName, PredArity),
+        missing_pred_or_func_method_error(PredOrFunc, PredSNA, Context, !Specs)
     ;
         PredIds = [HeadPredId | TailPredIds],
         (
@@ -422,8 +422,9 @@ add_class_mode_decl(ItemMercuryStatus, PredStatus, ModeInfo,
                 % XXX It may also be worth reporting that although there
                 % wasn't a matching class method, there was a matching
                 % predicate/function.
-                missing_pred_or_func_method_error(PredSymName, PredArity,
-                    PredOrFunc, Context, !Specs)
+                PredSNA = sym_name_arity(PredSymName, PredArity),
+                missing_pred_or_func_method_error(PredOrFunc, PredSNA, Context,
+                    !Specs)
             )
         ;
             TailPredIds = [_ | _],
@@ -497,13 +498,17 @@ add_instance_defn(InstanceStatus0, ItemInstanceInfo, !ModuleInfo, !Specs) :-
         Context, _SeqNum),
     (
         InstanceBody0 = instance_body_abstract,
+        InstanceBody = instance_body_abstract,
         % XXX This can make the status abstract_imported even if the instance
         % is NOT imported.
         % When this is fixed, please undo the workaround for this bug
         % in instance_used_modules in unused_imports.m.
         instance_make_status_abstract(InstanceStatus0, InstanceStatus)
     ;
-        InstanceBody0 = instance_body_concrete(_),
+        InstanceBody0 = instance_body_concrete(InstanceMethods0),
+        list.map(expand_bang_state_pairs_in_instance_method,
+            InstanceMethods0, InstanceMethods),
+        InstanceBody = instance_body_concrete(InstanceMethods),
         InstanceStatus = InstanceStatus0
     ),
 
@@ -511,9 +516,8 @@ add_instance_defn(InstanceStatus0, ItemInstanceInfo, !ModuleInfo, !Specs) :-
     module_info_get_instance_table(!.ModuleInfo, InstanceTable0),
     list.length(Types, ClassArity),
     ClassId = class_id(ClassName, ClassArity),
-    expand_bang_state_pairs_in_instance_body(InstanceBody0, InstanceBody),
     ( if map.search(Classes, ClassId, _) then
-        MaybeClassInterface = no,
+        MaybeClassInterface = maybe.no,
         map.init(ProofMap),
         NewInstanceDefn = hlds_instance_defn(InstanceModuleName,
             Types, OriginalTypes, InstanceStatus, Context, Constraints,
@@ -527,8 +531,8 @@ add_instance_defn(InstanceStatus0, ItemInstanceInfo, !ModuleInfo, !Specs) :-
             InstanceTable0, InstanceTable),
         module_info_set_instance_table(InstanceTable, !ModuleInfo)
     else
-        undefined_type_class_error(ClassName, ClassArity, Context,
-            "instance declaration", !Specs)
+        report_instance_for_undefined_typeclass(ClassId, Context,
+            !Specs)
     ).
 
 :- pred check_for_overlapping_instances(hlds_instance_defn::in,
@@ -567,12 +571,10 @@ report_any_overlapping_instance_declarations(ClassId,
             NewOtherTypes),
         type_list_subsumes(NewTypes, NewOtherTypes, _)
     then
-        ClassId = class_id(ClassName, ClassArity),
         % XXX STATUS Multiply defined if type_list_subsumes in BOTH directions.
         NewPieces = [words("Error: multiply defined (or overlapping)"),
             words("instance declarations for class"),
-            qual_sym_name_arity(sym_name_arity(ClassName, ClassArity)),
-            suffix("."), nl],
+            qual_class_id(ClassId), suffix("."), nl],
         NewMsg = simplest_msg(NewContext, NewPieces),
         OtherPieces = [words("Previous instance declaration was here.")],
         OtherMsg = error_msg(yes(OtherContext), always_treat_as_first, 0,
@@ -623,9 +625,6 @@ check_instance_constraints(InstanceDefnA, ClassId, InstanceDefnB, !Specs) :-
     then
         true
     else
-        ClassId = class_id(ClassName, ClassArity),
-        ClassSNA = sym_name_arity(ClassName, ClassArity),
-
         ContextA = InstanceDefnA ^ instdefn_context,
         ContextB = InstanceDefnB ^ instdefn_context,
         % The flattening of source item blocks by modules.m puts
@@ -650,7 +649,7 @@ check_instance_constraints(InstanceDefnA, ClassId, InstanceDefnB, !Specs) :-
         % of a problem appears at the second declaration. This is why
         % we start the report of the problem with *its* context.
         SecondDeclPieces = [words("In instance declaration for class"),
-            qual_sym_name_arity(ClassSNA), suffix(":"), nl,
+            qual_class_id(ClassId), suffix(":"), nl,
             words("the instance constraints here"),
             words("are incompatible with ..."), nl],
         SecondDeclMsg = simplest_msg(SecondContext, SecondDeclPieces),
@@ -808,39 +807,33 @@ pred_method_with_no_modes_error(PredInfo, !Specs) :-
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
-
-    Pieces = [words("Error: no mode declaration"),
-        words("for type class method predicate"),
-        qual_sym_name_arity(
-            sym_name_arity(qualified(ModuleName, PredName), Arity)),
+    SNA = sym_name_arity(qualified(ModuleName, PredName), Arity),
+    Pieces = [words("Error: no mode declaration for"),
+        words("type class method predicate"), qual_sym_name_arity(SNA),
         suffix("."), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-:- pred undefined_type_class_error(sym_name::in, arity::in, prog_context::in,
-    string::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred report_instance_for_undefined_typeclass(class_id::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-undefined_type_class_error(ClassName, ClassArity, Context, Description,
-        !Specs) :-
-    Pieces = [words("Error:"), words(Description), words("for"),
-        qual_sym_name_arity(sym_name_arity(ClassName, ClassArity)),
-        words("without corresponding"), decl("typeclass"),
-        words("declaration."), nl],
+report_instance_for_undefined_typeclass(ClassId, Context, !Specs) :-
+    Pieces = [words("Error:"), decl("instance"), words("declaration"),
+        words("for"), qual_class_id(ClassId), words("without corresponding"),
+        decl("typeclass"), words("declaration."), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-:- pred missing_pred_or_func_method_error(sym_name::in, arity::in,
-    pred_or_func::in, prog_context::in,
+:- pred missing_pred_or_func_method_error(pred_or_func::in, sym_name_arity::in,
+    prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-missing_pred_or_func_method_error(MethodName, MethodArity, PredOrFunc,
-        Context, !Specs) :-
+missing_pred_or_func_method_error(PredOrFunc, MethodSNA, Context, !Specs) :-
     Pieces = [words("Error: mode declaration for type class method"),
-        qual_sym_name_arity(sym_name_arity(MethodName, MethodArity)),
-        words("without corresponding"), p_or_f(PredOrFunc),
-        words("method declaration."), nl],
+        qual_sym_name_arity(MethodSNA), words("without corresponding"),
+        p_or_f(PredOrFunc), words("method declaration."), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].

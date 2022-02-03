@@ -60,8 +60,8 @@
     %
 :- pred expand_bang_state_pairs_in_terms(list(prog_term)::in,
     list(prog_term)::out) is det.
-:- pred expand_bang_state_pairs_in_instance_body(instance_body::in,
-    instance_body::out) is det.
+:- pred expand_bang_state_pairs_in_instance_method(instance_method::in,
+    instance_method::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -438,20 +438,7 @@ expand_bang_state_pairs_in_terms([HeadArg0 | TailArgs0], Args) :-
         )
     ).
 
-expand_bang_state_pairs_in_instance_body(InstanceBody0, InstanceBody) :-
-    (
-        InstanceBody0 = instance_body_abstract,
-        InstanceBody = instance_body_abstract
-    ;
-        InstanceBody0 = instance_body_concrete(Methods0),
-        list.map(expand_bang_state_pairs_in_method, Methods0, Methods),
-        InstanceBody = instance_body_concrete(Methods)
-    ).
-
-:- pred expand_bang_state_pairs_in_method(instance_method::in,
-    instance_method::out) is det.
-
-expand_bang_state_pairs_in_method(IM0, IM) :-
+expand_bang_state_pairs_in_instance_method(IM0, IM) :-
     IM0 = instance_method(PredOrFunc, Method, ProcDef0, Arity0, Ctxt),
     (
         ProcDef0 = instance_proc_def_name(_),
