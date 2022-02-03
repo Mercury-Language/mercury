@@ -6758,13 +6758,13 @@ this will invoke @samp{coordinate_translate}.
 Further instances of the type class could be made,
 e.g.@: a type that represents the point using polar coordinates.
 
-Since method may be defined using clauses,
+Since methods may be defined using clauses,
 and the interface sections of modules may @emph{not} include clauses,
 instance declarations that specify method definitions
 may appear only in the implementation section of a module.
 If you want to export the knowledge that a type, or a sequence of types,
 is a member of a given typeclass,
-then put an version of the instance declaration
+then put a version of the instance declaration
 that omits all method definitions
 (@pxref{Abstract instance declarations})
 into the interface section of the module
