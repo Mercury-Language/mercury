@@ -2103,8 +2103,28 @@ classify_src_items_int([Item | Items],
         !:RevTypeClasses = [ItemTypeclassInfo | !.RevTypeClasses]
     ;
         Item = item_instance(ItemInstanceInfo),
-        acc_implicit_avail_needs_in_instance(ItemInstanceInfo,
-            !ImplicitAvailNeeds),
+        InstanceBody = ItemInstanceInfo ^ ci_method_instances,
+        (
+            InstanceBody = instance_body_abstract
+        ;
+            InstanceBody = instance_body_concrete(InstanceMethods),
+            list.foldl(acc_implicit_avail_needs_in_instance_method,
+                InstanceMethods, !ImplicitAvailNeeds),
+
+            AlwaysPieces = [words("Error: non-abstract instance declaration"),
+                words("in module interface."), nl],
+            VerbosePieces = [words("If you intend to export this instance,"),
+                words("move this declaration to the implementation section,"),
+                words("replacing it in the interface section"),
+                words("with its abstract version, which omits"),
+                words("the"), quote("where [...]"), words("part."), nl],
+            Msg = simple_msg(ItemInstanceInfo ^ ci_context,
+                [always(AlwaysPieces),
+                verbose_only(verbose_once, VerbosePieces)]),
+            Spec = error_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
+        ),
         !:RevInstances = [ItemInstanceInfo | !.RevInstances]
     ;
         Item = item_pred_decl(ItemPredDeclInfo),
@@ -2445,21 +2465,6 @@ acc_implicit_avail_needs_solver_type(DetailsSolver, !ImplicitAvailNeeds) :-
         _GroundInst, _AnyInst, MutableItems),
     list.foldl(acc_implicit_avail_needs_in_mutable, MutableItems,
         !ImplicitAvailNeeds).
-
-:- pred acc_implicit_avail_needs_in_instance(item_instance_info::in,
-    implicit_avail_needs::in, implicit_avail_needs::out) is det.
-
-acc_implicit_avail_needs_in_instance(ItemInstanceInfo, !ImplicitAvailNeeds) :-
-    ItemInstanceInfo = item_instance_info(_DerivingClass, _ClassName,
-        _Types, _OriginalTypes, InstanceBody, _VarSet,
-        _ModuleContainingInstance, _Context, _SeqNum),
-    (
-        InstanceBody = instance_body_abstract
-    ;
-        InstanceBody = instance_body_concrete(InstanceMethods),
-        list.foldl(acc_implicit_avail_needs_in_instance_method,
-            InstanceMethods, !ImplicitAvailNeeds)
-    ).
 
 :- pred acc_implicit_avail_needs_in_promise(item_promise_info::in,
     implicit_avail_needs::in, implicit_avail_needs::out) is det.

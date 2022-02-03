@@ -255,8 +255,6 @@ create_split_compilation_units_depth_first(Globals, ModuleName,
             ; NestedInfo = split_nested_only_int(Context)
             ; NestedInfo = split_nested_int_imp(Context, _)
             ),
-            check_interface_blocks_for_abstract_instances(RawItemBlocks,
-                !Specs),
             RawCompUnit = raw_compilation_unit(ModuleName, Context,
                 RawItemBlocks),
             check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
@@ -294,40 +292,6 @@ create_split_compilation_units_depth_first(Globals, ModuleName,
             true
         )
     ).
-
-    % Check to make sure that non-abstract instance declarations
-    % do not occur in a module interface.
-    %
-:- pred check_interface_blocks_for_abstract_instances(list(raw_item_block)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_interface_blocks_for_abstract_instances([], !Specs).
-check_interface_blocks_for_abstract_instances([RawItemBlock | RawItemBlocks],
-        !Specs) :-
-    RawItemBlock = item_block(_, Section, _Incls, _Avails, _FIMs, Items),
-    (
-        Section = ms_interface,
-        check_interface_items_for_abstract_instances(Items, !Specs)
-    ;
-        Section = ms_implementation
-    ),
-    check_interface_blocks_for_abstract_instances(RawItemBlocks, !Specs).
-
-:- pred check_interface_items_for_abstract_instances(list(item)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_interface_items_for_abstract_instances([], !Specs).
-check_interface_items_for_abstract_instances([Item | Items], !Specs) :-
-    ( if
-        Item = item_instance(ItemInstance),
-        ItemInstance ^ ci_method_instances \= instance_body_abstract
-    then
-        InstanceContext = ItemInstance ^ ci_context,
-        report_non_abstract_instance_in_interface(InstanceContext, !Specs)
-    else
-        true
-    ),
-    check_interface_items_for_abstract_instances(Items, !Specs).
 
 %---------------------------------------------------------------------------%
 
@@ -1040,25 +1004,6 @@ report_error_implementation_in_interface(ModuleName, Context, !Specs) :-
         words("occurs in interface section of parent module."), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
-    !:Specs = [Spec | !.Specs].
-
-%---------------------------------------------------------------------------%
-
-:- pred report_non_abstract_instance_in_interface(prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-report_non_abstract_instance_in_interface(Context, !Specs) :-
-    AlwaysPieces = [words("Error: non-abstract instance declaration"),
-        words("in module interface."), nl],
-    VerbosePieces = [words("If you intend to export this instance,"),
-        words("move this declaration to the implementation section,"),
-        words("replacing it in the interface section"),
-        words("with its abstract version, which omits"),
-        words("the"), quote("where [...]"), words("part."), nl],
-    Msg = simple_msg(Context,
-        [always(AlwaysPieces), verbose_only(verbose_once, VerbosePieces)]),
-    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        [Msg]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%

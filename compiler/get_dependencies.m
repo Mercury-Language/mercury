@@ -122,6 +122,8 @@
 
 %---------------------%
 
+:- pred acc_implicit_avail_needs_in_instance(item_instance_info::in,
+    implicit_avail_needs::in, implicit_avail_needs::out) is det.
 :- pred acc_implicit_avail_needs_in_instance_method(instance_method::in,
     implicit_avail_needs::in, implicit_avail_needs::out) is det.
 :- pred acc_implicit_avail_needs_in_mutable(item_mutable_info::in,
@@ -587,9 +589,6 @@ acc_implicit_avail_needs_in_solver_details(DetailsSolver,
         _GroundInst, _AnyInst, MutableItems),
     list.foldl(acc_implicit_avail_needs_in_mutable, MutableItems,
         !ImplicitAvailNeeds).
-
-:- pred acc_implicit_avail_needs_in_instance(item_instance_info::in,
-    implicit_avail_needs::in, implicit_avail_needs::out) is det.
 
 acc_implicit_avail_needs_in_instance(ItemInstance, !ImplicitAvailNeeds) :-
     ItemInstance = item_instance_info(_DerivingClass, _ClassName,
