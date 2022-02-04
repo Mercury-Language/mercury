@@ -1586,6 +1586,31 @@ EOF
         cp /dev/null "${type_stats}"
     fi
 
+    case ${use_mmc_make} in
+        yes)
+            # The rules to generate *_FLAGS files from *_FLAGS.in files
+            # will not run if we are using `mmc --make', so run them now.
+            if (cd ${stage3dir} && \
+                ${MMAKE} \
+                    library/LIB_FLAGS \
+                    mdbcomp/MDBCOMP_FLAGS \
+                    browser/MDB_FLAGS \
+                    ssdb/SSDB_FLAGS \
+                    grade_lib/GRADE_LIB_FLAGS \
+                    compiler/COMP_FLAGS \
+                    slice/SLICE_FLAGS \
+                    profiler/PROF_FLAGS \
+                    deep_profiler/DEEP_FLAGS \
+                    mfilterjavac/MFILTERJAVAC_FLAGS)
+            then
+                echo "building of stage 3 flags files successful"
+            else
+                echo "building of stage 3 flags files not successful"
+                exit 1
+            fi
+            ;;
+    esac
+
     if (cd ${stage3dir} && \
         ${MMAKE} ${mmake_opts} \
             dep_library \
