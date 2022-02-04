@@ -161,28 +161,28 @@ split_nested_info_get_context(SplitNested) = Context :-
     maybe(module_name)::out) is det.
 
 section_has_some_ancestor_in_interface(SectionAncestors,
-        MaybeProblemAncestor) :-
+        MaybeInterfaceAncestor) :-
     SectionAncestors = sa_parent(_ModuleName, ModuleAncestors),
     (
         ModuleAncestors = ma_no_parent,
-        MaybeProblemAncestor = no
+        MaybeInterfaceAncestor = no
     ;
         ModuleAncestors = ma_parent(SectionKind, _SectionContext,
             SectionParentAncestors),
         (
             SectionKind = ms_interface,
-            SectionParentAncestors = sa_parent(ProblemAncestor, _),
-            MaybeProblemAncestor = yes(ProblemAncestor)
+            SectionParentAncestors = sa_parent(InterfaceAncestor, _),
+            MaybeInterfaceAncestor = yes(InterfaceAncestor)
         ;
             SectionKind = ms_implementation,
             section_has_some_ancestor_in_interface(SectionParentAncestors,
-                MaybeProblemAncestor)
+                MaybeInterfaceAncestor)
         )
     ).
 
     % Maps each module to the list of its submodules seen so far.
     % A submodule that is nested into its parent twice (because it has
-    % its interface section and implementation inside separate `:- module'/
+    % its interface and implementation sections inside separate `:- module'/
     % `:- end_module' pairs) will appear twice in the cord.
     %
 :- type module_to_submodules_map == map(module_name, cord(module_name)).
@@ -750,11 +750,11 @@ split_component_discover_submodules(ModuleName, Component, SectionAncestors,
         ;
             SectionKind = ms_implementation,
             section_has_some_ancestor_in_interface(SectionAncestors,
-                MaybeProblemAncestor),
+                MaybeInterfaceAncestor),
             (
-                MaybeProblemAncestor = no
+                MaybeInterfaceAncestor = no
             ;
-                MaybeProblemAncestor = yes(ProblemAncestor),
+                MaybeInterfaceAncestor = yes(InterfaceAncestor),
                 SectionAncestors = sa_parent(CurModuleName, ModuleAncestors),
                 (
                     ModuleAncestors = ma_no_parent,
@@ -763,7 +763,7 @@ split_component_discover_submodules(ModuleName, Component, SectionAncestors,
                 ;
                     ModuleAncestors = ma_parent(_, _, ModuleSectionAncestor),
                     ModuleSectionAncestor = sa_parent(ModuleParent, _),
-                    ( if ModuleParent = ProblemAncestor then
+                    ( if ModuleParent = InterfaceAncestor then
                         PorA = "parent"
                     else
                         PorA = "ancestor"
@@ -772,7 +772,7 @@ split_component_discover_submodules(ModuleName, Component, SectionAncestors,
                 Pieces = [words("This implementation section for module"),
                     qual_sym_name(CurModuleName), words("occurs in"),
                     words("the interface section of"), words(PorA),
-                    words("module"), qual_sym_name(ProblemAncestor),
+                    words("module"), qual_sym_name(InterfaceAncestor),
                     suffix("."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, SectionContext, Pieces),
@@ -882,14 +882,22 @@ discover_included_submodules([Include | Includes], SectionAncestors,
 combine_submodule_include_infos(EntryA, EntryB, Entry) :-
     EntryA = submodule_include_info(SectionA, ContextA),
     EntryB = submodule_include_info(SectionB, ContextB),
-    ( if SectionA = ms_interface, SectionB = ms_implementation then
+    (
+        SectionA = ms_interface,
+        SectionB = ms_implementation,
         Entry = EntryA
-    else if SectionA = ms_implementation, SectionB = ms_interface then
+    ;
+        SectionA = ms_implementation,
+        SectionB = ms_interface,
         Entry = EntryB
-    else
-        % The conditions above test for the only two possible ways
-        % these could be different.
-        expect(unify(SectionA, SectionB), $pred, "SectionA != SectionB"),
+    ;
+        (
+            SectionA = ms_interface,
+            SectionB = ms_interface
+        ;
+            SectionA = ms_implementation,
+            SectionB = ms_implementation
+        ),
         compare(CmpResult, ContextA, ContextB),
         (
             CmpResult = (<),
