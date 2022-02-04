@@ -1082,7 +1082,7 @@ then
                     ${MMAKE} \
                         library/LIB_FLAGS \
                         mdbcomp/MDBCOMP_FLAGS \
-                        browser/MDB_FLAGS
+                        browser/MDB_FLAGS \
                         ssdb/SSDB_FLAGS \
                         grade_lib/GRADE_LIB_FLAGS \
                         compiler/COMP_FLAGS \
