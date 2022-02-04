@@ -980,32 +980,5 @@ submodule_include_info_map_to_item_includes_acc(IntMods, ImpMods,
     ).
 
 %---------------------------------------------------------------------------%
-
-:- pred report_error_implementation_in_interface(module_name::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma consider_used(pred(report_error_implementation_in_interface/4)).
-
-report_error_implementation_in_interface(ModuleName, Context, !Specs) :-
-    % XXX Delete this predicate once its job has been confirmed to be done
-    % somewhere else.
-    (
-        ModuleName = qualified(ParentModule0, ChildModule0),
-        ParentModule = ParentModule0,
-        ChildModule = ChildModule0
-    ;
-        ModuleName = unqualified(_),
-        unexpected($pred, "unqualified module name")
-    ),
-    Pieces = [words("In interface for module"), qual_sym_name(ParentModule),
-        suffix(":"), nl, words("in definition of submodule"),
-        quote(ChildModule), suffix(":"), nl,
-        words("error:"), decl("implementation"),
-        words("declaration for submodule"),
-        words("occurs in interface section of parent module."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
-    !:Specs = [Spec | !.Specs].
-
-%---------------------------------------------------------------------------%
 :- end_module parse_tree.split_parse_tree_src.
 %---------------------------------------------------------------------------%
