@@ -89,7 +89,7 @@
     --->    inst_msg_info(
                 imi_module_info         :: module_info,
                 imi_inst_varset         :: inst_varset,
-                imi_expand_named_insts  :: maybe_expand_named_insts
+                imi_named_insts         :: maybe_expand_named_insts
             ).
 
     % We record which inst names we have seen before. The main reason why
@@ -330,41 +330,37 @@ insts_to_pieces(Info, !Expansions, HeadInst, TailInsts, Suffix, Pieces) :-
     (
         TailInsts = [],
         HeadSuffix = Suffix,
-        TailPieces = []
+        inst_to_pieces(Info, !Expansions, HeadInst, HeadSuffix, Pieces)
     ;
         TailInsts = [HeadTailInst | TailTailInsts],
+        HeadSuffix = [suffix(","), nl],
+        inst_to_pieces(Info, !Expansions, HeadInst, HeadSuffix, HeadPieces),
         insts_to_pieces(Info, !Expansions, HeadTailInst, TailTailInsts,
             Suffix, TailPieces),
-        % We used to include TailPieces in HeadSuffix, but that can generate
-        % incorrect output. It indents everything in TailPieces with the
-        % indentation level of the last line we generate for HeadInst,
-        % which is *usually* the same as the intended indentation level
-        % (which is the current level), but not always. Specifically,
-        % if HeadInst is a not-yet-expanded inst name, it won't be the same.
-        HeadSuffix = [suffix(","), nl]
-    ),
-    inst_to_pieces(Info, !Expansions, HeadInst, HeadSuffix, HeadPieces),
-    Pieces = HeadPieces ++ TailPieces.
+        Pieces = HeadPieces ++ TailPieces
+    ).
 
 :- pred insts_to_inline_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
     mer_inst::in, list(mer_inst)::in,
     list(format_component)::in, list(format_component)::out) is det.
 
-insts_to_inline_pieces(Info, !Expansions, HeadInst, TailInsts, Suffix,
-        Pieces) :-
+insts_to_inline_pieces(Info, !Expansions, HeadInst, TailInsts,
+        Suffix, Pieces) :-
     (
         TailInsts = [],
         HeadSuffix = Suffix,
-        TailPieces = []
+        inst_to_inline_pieces(Info, !Expansions,
+            HeadInst, HeadSuffix, Pieces)
     ;
         TailInsts = [HeadTailInst | TailTailInsts],
+        HeadSuffix = [suffix(",")],
+        inst_to_inline_pieces(Info, !Expansions, HeadInst,
+            HeadSuffix, HeadPieces),
         insts_to_inline_pieces(Info, !Expansions, HeadTailInst, TailTailInsts,
             Suffix, TailPieces),
-        HeadSuffix = [suffix(",")]
-    ),
-    inst_to_inline_pieces(Info, !Expansions, HeadInst, HeadSuffix, HeadPieces),
-    Pieces = HeadPieces ++ TailPieces.
+        Pieces = HeadPieces ++ TailPieces
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -456,18 +452,18 @@ inst_name_to_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
             % in a back-to-front order, which means that if a named inst
             % occurs in EqvInst more than once, it will be the *last*
             % occurrence, not the first, which will be expanded.
-            name_and_arg_insts_to_pieces(Info, !Expansions,
+            NameInfo = Info ^ imi_named_insts := dont_expand_named_insts,
+            name_and_arg_insts_to_pieces(NameInfo, !.Expansions, _,
                 SymNameStr, ArgInsts, [], NamePieces),
             NamedNamePieces = [words("named inst") | NamePieces],
-            record_user_inst_name(InstName, NamedNamePieces, !Expansions),
 
-            ExpandInsts = Info ^ imi_expand_named_insts,
+            ExpandInsts = Info ^ imi_named_insts,
             (
                 ExpandInsts = dont_expand_named_insts,
-                % XXX Would NamedNamePieces look better in the output?
-                Pieces = NamedNamePieces ++ Suffix
+                Pieces = NamePieces ++ Suffix
             ;
                 ExpandInsts = expand_named_insts,
+                record_user_inst_name(InstName, NamedNamePieces, !Expansions),
                 ModuleInfo = Info ^ imi_module_info,
                 inst_lookup(ModuleInfo, InstName, EqvInst),
                 ( if
@@ -551,18 +547,18 @@ inst_name_to_inline_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
             % in a back-to-front order, which means that if a named inst
             % occurs in EqvInst more than once, it will be the *last*
             % occurrence, not the first, which will be expanded.
-            name_and_arg_insts_to_inline_pieces(Info, !Expansions,
+            NameInfo = Info ^ imi_named_insts := dont_expand_named_insts,
+            name_and_arg_insts_to_inline_pieces(NameInfo, !.Expansions, _,
                 SymNameStr, ArgInsts, [], NamePieces),
             NamedNamePieces = [words("named inst") | NamePieces],
-            record_user_inst_name(InstName, NamedNamePieces, !Expansions),
 
-            ExpandInsts = Info ^ imi_expand_named_insts,
+            ExpandInsts = Info ^ imi_named_insts,
             (
                 ExpandInsts = dont_expand_named_insts,
-                % XXX Would NamedNamePieces look better in the output?
                 Pieces = NamePieces ++ Suffix
             ;
                 ExpandInsts = expand_named_insts,
+                record_user_inst_name(InstName, NamedNamePieces, !Expansions),
                 ModuleInfo = Info ^ imi_module_info,
                 inst_lookup(ModuleInfo, InstName, EqvInst),
                 ( if
@@ -678,8 +674,8 @@ record_user_inst_name(InstName, Pieces, !Expansions) :-
 record_internal_inst_name(InstName, InstNameStr, InstNumPieces, !Expansions) :-
     !.Expansions = expansions_info(ExpansionsMap0, ExpansionsCounter0),
     counter.allocate(InstNum, ExpansionsCounter0, ExpansionsCounter),
-    InstNameNumStr = "internal " ++ InstNameStr ++
-        " #" ++ int_to_string(InstNum),
+    string.format("internal %s #%d", [s(InstNameStr), i(InstNum)],
+        InstNameNumStr),
     InstNumPieces = [fixed(InstNameNumStr)],
     map.det_insert(InstName, InstNumPieces, ExpansionsMap0, ExpansionsMap),
     !:Expansions = expansions_info(ExpansionsMap, ExpansionsCounter).
