@@ -36,8 +36,9 @@
     --->    quote_short_inst
     ;       fixed_short_inst.
 
-    % report_inst(ModuleInfo, InstVarSet, ShortInstQF, ShortInstSuffix,
-    %    LongInstPrefix, LongInstSuffix, Inst0) = Pieces:
+    % error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts,
+    %   ShortInstQF, ShortInstSuffix, LongInstPrefix, LongInstSuffix, Inst0)
+    %   = Pieces:
     %
     % Format Inst0 for use in an error message, in a short form that fits at
     % the end of the current line if possible, and in a long form that starts
@@ -186,7 +187,7 @@ inst_to_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
         Pieces = [fixed("free") | Suffix]
     ;
         Inst = bound(Uniq, _, BoundInsts),
-        mercury_format_uniqueness(Uniq, "bound", unit, "", BoundName),
+        BoundName = mercury_uniqueness_to_string(Uniq, "bound"),
         (
             BoundInsts = [],
             Pieces = [fixed(BoundName) | Suffix]
@@ -206,7 +207,7 @@ inst_to_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
             Pieces = HOPieces ++ Suffix
         ;
             HOInstInfo = none_or_default_func,
-            mercury_format_uniqueness(Uniq, "ground", unit, "", Str),
+            Str = mercury_uniqueness_to_string(Uniq, "ground"),
             Pieces = [fixed(Str) | Suffix]
         )
     ;
@@ -218,7 +219,7 @@ inst_to_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
             Pieces = HOPieces ++ Suffix
         ;
             HOInstInfo = none_or_default_func,
-            mercury_format_any_uniqueness(Uniq, unit, "", Str),
+            Str = mercury_any_uniqueness_to_string(Uniq),
             Pieces = [fixed(Str) | Suffix]
         )
     ;
@@ -258,7 +259,7 @@ inst_to_inline_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
         Pieces = [fixed("free") | Suffix]
     ;
         Inst = bound(Uniq, _, BoundInsts),
-        mercury_format_uniqueness(Uniq, "bound", unit, "", BoundName),
+        BoundName = mercury_uniqueness_to_string(Uniq, "bound"),
         (
             BoundInsts = [],
             Pieces = [fixed(BoundName) | Suffix]
@@ -278,7 +279,7 @@ inst_to_inline_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
             Pieces = HOPieces ++ Suffix
         ;
             HOInstInfo = none_or_default_func,
-            mercury_format_uniqueness(Uniq, "ground", unit, "", Str),
+            Str = mercury_uniqueness_to_string(Uniq, "ground"),
             Pieces = [fixed(Str) | Suffix]
         )
     ;
@@ -290,7 +291,7 @@ inst_to_inline_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
             Pieces = HOPieces ++ Suffix
         ;
             HOInstInfo = none_or_default_func,
-            mercury_format_any_uniqueness(Uniq, unit, "", Str),
+            Str = mercury_any_uniqueness_to_string(Uniq),
             Pieces = [fixed(Str) | Suffix]
         )
     ;
@@ -328,14 +329,22 @@ inst_to_inline_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
 insts_to_pieces(Info, !Expansions, HeadInst, TailInsts, Suffix, Pieces) :-
     (
         TailInsts = [],
-        HeadSuffix = Suffix
+        HeadSuffix = Suffix,
+        TailPieces = []
     ;
         TailInsts = [HeadTailInst | TailTailInsts],
         insts_to_pieces(Info, !Expansions, HeadTailInst, TailTailInsts,
             Suffix, TailPieces),
-        HeadSuffix = [suffix(","), nl] ++ TailPieces
+        % We used to include TailPieces in HeadSuffix, but that can generate
+        % incorrect output. It indents everything in TailPieces with the
+        % indentation level of the last line we generate for HeadInst,
+        % which is *usually* the same as the intended indentation level
+        % (which is the current level), but not always. Specifically,
+        % if HeadInst is a not-yet-expanded inst name, it won't be the same.
+        HeadSuffix = [suffix(","), nl]
     ),
-    inst_to_pieces(Info, !Expansions, HeadInst, HeadSuffix, Pieces).
+    inst_to_pieces(Info, !Expansions, HeadInst, HeadSuffix, HeadPieces),
+    Pieces = HeadPieces ++ TailPieces.
 
 :- pred insts_to_inline_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
@@ -346,14 +355,16 @@ insts_to_inline_pieces(Info, !Expansions, HeadInst, TailInsts, Suffix,
         Pieces) :-
     (
         TailInsts = [],
-        HeadSuffix = Suffix
+        HeadSuffix = Suffix,
+        TailPieces = []
     ;
         TailInsts = [HeadTailInst | TailTailInsts],
         insts_to_inline_pieces(Info, !Expansions, HeadTailInst, TailTailInsts,
             Suffix, TailPieces),
-        HeadSuffix = [suffix(",")] ++ TailPieces
+        HeadSuffix = [suffix(",")]
     ),
-    inst_to_inline_pieces(Info, !Expansions, HeadInst, HeadSuffix, Pieces).
+    inst_to_inline_pieces(Info, !Expansions, HeadInst, HeadSuffix, HeadPieces),
+    Pieces = HeadPieces ++ TailPieces.
 
 %---------------------------------------------------------------------------%
 
@@ -432,23 +443,19 @@ bound_insts_to_inline_pieces(Info, !Expansions, HeadBoundInst, TailBoundInsts,
 
 inst_name_to_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
     ( if have_we_expanded_inst_name(!.Expansions, InstName, PastPieces) then
-        Pieces = PastPieces
+        Pieces = PastPieces ++ Suffix
     else
         (
             InstName = user_inst(SymName, ArgInsts),
-            ModuleInfo = Info ^ imi_module_info,
-            (
-                SymName = qualified(ModuleName, BaseName),
-                module_info_get_name(ModuleInfo, CurModuleName),
-                ( if ModuleName = CurModuleName then
-                    SymNameStr = BaseName
-                else
-                    SymNameStr = sym_name_to_string(SymName)
-                )
-            ;
-                SymName = unqualified(BaseName),
-                SymNameStr = BaseName
-            ),
+            sym_name_to_min_qual_string(Info, SymName, SymNameStr),
+            % XXX If ArgInsts contains named user insts, expanding them
+            % inside the name of another inst is far from ideal. However,
+            % leaving them to be expanded in the call to inst_to_pieces
+            % on EqvInst below also has a problem. This is that we construct
+            % lists of insts, such as the (expansion of ArgInsts in EqvInst)
+            % in a back-to-front order, which means that if a named inst
+            % occurs in EqvInst more than once, it will be the *last*
+            % occurrence, not the first, which will be expanded.
             name_and_arg_insts_to_pieces(Info, !Expansions,
                 SymNameStr, ArgInsts, [], NamePieces),
             NamedNamePieces = [words("named inst") | NamePieces],
@@ -458,9 +465,10 @@ inst_name_to_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
             (
                 ExpandInsts = dont_expand_named_insts,
                 % XXX Would NamedNamePieces look better in the output?
-                Pieces = NamePieces ++ Suffix
+                Pieces = NamedNamePieces ++ Suffix
             ;
                 ExpandInsts = expand_named_insts,
+                ModuleInfo = Info ^ imi_module_info,
                 inst_lookup(ModuleInfo, InstName, EqvInst),
                 ( if
                     ( EqvInst = defined_inst(InstName)
@@ -472,8 +480,8 @@ inst_name_to_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
                 else
                     inst_to_pieces(Info, !Expansions, EqvInst,
                         Suffix, EqvPieces),
-                    Pieces = NamedNamePieces ++ [suffix(","), nl,
-                        words("which expands to"),
+                    Pieces = NamedNamePieces ++
+                        [nl, words("which expands to"),
                         nl_indent_delta(1) | EqvPieces] ++
                         [nl_indent_delta(-1)]
                 )
@@ -516,9 +524,10 @@ inst_name_to_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
                     !Expansions),
                 inst_to_inline_pieces(Info, !Expansions, EqvInst, Suffix,
                     EqvPieces),
-                Pieces = InstNumPieces ++ [suffix(","), nl,
-                    words("which expands to"),
-                    nl_indent_delta(1) | EqvPieces] ++ [nl_indent_delta(-1)]
+                Pieces = InstNumPieces ++
+                    [nl, words("which expands to"),
+                    nl_indent_delta(1) | EqvPieces] ++
+                    [nl_indent_delta(-1)]
             )
         )
     ).
@@ -529,23 +538,19 @@ inst_name_to_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
 
 inst_name_to_inline_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
     ( if have_we_expanded_inst_name(!.Expansions, InstName, PastPieces) then
-        Pieces = PastPieces
+        Pieces = PastPieces ++ Suffix
     else
         (
             InstName = user_inst(SymName, ArgInsts),
-            ModuleInfo = Info ^ imi_module_info,
-            (
-                SymName = qualified(ModuleName, BaseName),
-                module_info_get_name(ModuleInfo, CurModuleName),
-                ( if ModuleName = CurModuleName then
-                    SymNameStr = BaseName
-                else
-                    SymNameStr = sym_name_to_string(SymName)
-                )
-            ;
-                SymName = unqualified(BaseName),
-                SymNameStr = BaseName
-            ),
+            sym_name_to_min_qual_string(Info, SymName, SymNameStr),
+            % XXX If ArgInsts contains named user insts, expanding them
+            % inside the name of another inst is far from ideal. However,
+            % leaving them to be expanded in the call to inst_to_pieces
+            % on EqvInst below also has a problem. This is that we construct
+            % lists of insts, such as the (expansion of ArgInsts in EqvInst)
+            % in a back-to-front order, which means that if a named inst
+            % occurs in EqvInst more than once, it will be the *last*
+            % occurrence, not the first, which will be expanded.
             name_and_arg_insts_to_inline_pieces(Info, !Expansions,
                 SymNameStr, ArgInsts, [], NamePieces),
             NamedNamePieces = [words("named inst") | NamePieces],
@@ -558,6 +563,7 @@ inst_name_to_inline_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
                 Pieces = NamePieces ++ Suffix
             ;
                 ExpandInsts = expand_named_insts,
+                ModuleInfo = Info ^ imi_module_info,
                 inst_lookup(ModuleInfo, InstName, EqvInst),
                 ( if
                     ( EqvInst = defined_inst(InstName)
@@ -569,8 +575,7 @@ inst_name_to_inline_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
                 else
                     inst_to_inline_pieces(Info, !Expansions, EqvInst,
                         Suffix, ExpandedPieces),
-                    Pieces = NamedNamePieces ++ [suffix(","),
-                        words("which expands to"),
+                    Pieces = NamedNamePieces ++ [words("which expands to"),
                         prefix("<") | ExpandedPieces] ++ [suffix(">")]
                 )
             )
@@ -613,13 +618,30 @@ inst_name_to_inline_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
             else
                 record_internal_inst_name(InstName, InstNameStr, InstNumPieces,
                     !Expansions),
-                inst_to_inline_pieces(Info, !Expansions, EqvInst, Suffix,
+                inst_to_inline_pieces(Info, !Expansions, EqvInst, [],
                     EqvPieces),
-                Pieces = InstNumPieces ++ [suffix(","),
-                    words("which expands to"),
-                    prefix("<") | EqvPieces] ++ [suffix(">")]
+                Pieces = InstNumPieces ++ [words("which expands to"),
+                    prefix("<") | EqvPieces] ++ [suffix(">") | Suffix]
             )
         )
+    ).
+
+:- pred sym_name_to_min_qual_string(inst_msg_info::in,
+    sym_name::in, string::out) is det.
+
+sym_name_to_min_qual_string(Info, SymName, SymNameStr) :-
+    (
+        SymName = qualified(ModuleName, BaseName),
+        ModuleInfo = Info ^ imi_module_info,
+        module_info_get_name(ModuleInfo, CurModuleName),
+        ( if ModuleName = CurModuleName then
+            SymNameStr = BaseName
+        else
+            SymNameStr = sym_name_to_string(SymName)
+        )
+    ;
+        SymName = unqualified(BaseName),
+        SymNameStr = BaseName
     ).
 
 %---------------------------------------------------------------------------%
@@ -681,7 +703,7 @@ pred_inst_info_to_pieces(Info, !Expansions, AnyPrefix, Uniq,
         ; Uniq = clobbered
         ; Uniq = mostly_clobbered
         ),
-        mercury_format_uniqueness(Uniq, "ground", unit, "", BoundName),
+        BoundName = mercury_uniqueness_to_string(Uniq, "ground"),
         UniqPieces = [fixed("/*"), fixed(BoundName), fixed("*/")]
     ),
     modes_to_pieces(Info, !Expansions, ArgModes, ArgModesPieces),
@@ -744,7 +766,7 @@ pred_inst_info_to_inline_pieces(Info, !Expansions, AnyPrefix, Uniq,
         ; Uniq = clobbered
         ; Uniq = mostly_clobbered
         ),
-        mercury_format_uniqueness(Uniq, "ground", unit, "", BoundName),
+        BoundName = mercury_uniqueness_to_string(Uniq, "ground"),
         UniqPieces = [fixed("/*"), fixed(BoundName), fixed("*/")]
     ),
     modes_to_inline_pieces(Info, !Expansions, ArgModes, ArgModesPieces),

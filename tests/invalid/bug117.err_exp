@@ -2,7 +2,7 @@ bug117.m:028: In clause for `extract(in) = out((list.non_empty_list))':
 bug117.m:028:   mode error: argument 2 did not get sufficiently instantiated.
 bug117.m:028:   Final instantiatedness of `X' was `ground',
 bug117.m:028:   expected final instantiatedness was
-bug117.m:028:     named inst list.non_empty_list,
+bug117.m:028:     named inst list.non_empty_list
 bug117.m:028:     which expands to
 bug117.m:028:       bound(
 bug117.m:028:         '[|]'(ground, ground)

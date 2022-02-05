@@ -71,9 +71,11 @@
 :- pred mercury_format_real_comma(unify_is_real::in, S::in, U::di, U::uo) is det
     <= output(S, U).
 
+:- func mercury_uniqueness_to_string(uniqueness, string) = string.
 :- pred mercury_format_uniqueness(uniqueness::in, string::in,
     S::in, U::di, U::uo) is det <= output(S, U).
 
+:- func mercury_any_uniqueness_to_string(uniqueness) = string.
 :- pred mercury_format_any_uniqueness(uniqueness::in,
     S::in, U::di, U::uo) is det <= output(S, U).
 
@@ -515,6 +517,9 @@ mercury_format_comma_real(Real, S, !U) :-
         add_string(", fake", S, !U)
     ).
 
+mercury_uniqueness_to_string(Uniq, Suffix) = String :-
+    mercury_format_uniqueness(Uniq, Suffix, unit, "", String).
+
 mercury_format_uniqueness(shared, SharedString, S, !U) :-
     add_string(SharedString, S, !U).
 mercury_format_uniqueness(unique, _, S, !U) :-
@@ -525,6 +530,9 @@ mercury_format_uniqueness(clobbered, _, S, !U) :-
     add_string("clobbered", S, !U).
 mercury_format_uniqueness(mostly_clobbered, _, S, !U) :-
     add_string("mostly_clobbered", S, !U).
+
+mercury_any_uniqueness_to_string(Uniq) = String :-
+    mercury_format_any_uniqueness(Uniq, unit, "", String).
 
 mercury_format_any_uniqueness(shared, S, !U) :-
     add_string("any", S, !U).

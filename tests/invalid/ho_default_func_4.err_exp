@@ -3,7 +3,7 @@ ho_default_func_4.m:039:   in call to function `univ.univ'/1:
 ho_default_func_4.m:039:   mode error: argument `V_7' and the return value
 ho_default_func_4.m:039:   `V_6' have the following insts:
 ho_default_func_4.m:039:     /* unique */ (func(
-ho_default_func_4.m:039:       in(named inst one,
+ho_default_func_4.m:039:       in(named inst one
 ho_default_func_4.m:039:       which expands to
 ho_default_func_4.m:039:         bound(
 ho_default_func_4.m:039:           1

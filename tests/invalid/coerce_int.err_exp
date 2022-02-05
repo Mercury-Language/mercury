@@ -10,7 +10,7 @@ coerce_int.m:026:         1
 coerce_int.m:026:       ;
 coerce_int.m:026:         3
 coerce_int.m:026:       )
-coerce_int.m:026:     ),
+coerce_int.m:026:     )
 coerce_int.m:026:     which expands to
 coerce_int.m:026:       bound(
 coerce_int.m:026:         wrap(

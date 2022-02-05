@@ -376,8 +376,8 @@ inst_substitute_arg_list(Params, Args, Inst0, Inst) :-
         inst_apply_substitution(Subst, Inst0, Inst)
     ).
 
-    % mode_apply_substitution(Mode0, Subst, Mode) is true iff
-    % Mode is the mode that results from apply Subst to Mode0.
+    % mode_apply_substitution(Subst, Mode0, Mode) is true iff
+    % Mode is the mode that results from applying Subst to Mode0.
     %
 :- pred mode_apply_substitution(inst_var_sub::in, mer_mode::in, mer_mode::out)
     is det.

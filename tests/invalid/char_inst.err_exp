@@ -3,7 +3,7 @@ char_inst.m:017:   in argument 1 of call to predicate `char_inst.test'/3:
 char_inst.m:017:   mode error: variable `V_8' has instantiatedness
 char_inst.m:017:   `unique('x')',
 char_inst.m:017:   expected instantiatedness was
-char_inst.m:017:     named inst key_char,
+char_inst.m:017:     named inst key_char
 char_inst.m:017:     which expands to
 char_inst.m:017:       bound(
 char_inst.m:017:         f
