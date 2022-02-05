@@ -10,7 +10,7 @@ merge_ground_any.m:019:     ;
 merge_ground_any.m:019:       -(ground, any)
 merge_ground_any.m:019:     ),
 merge_ground_any.m:019:   expected final instantiatedness was
-merge_ground_any.m:019:     named inst hpair(ground, any),
+merge_ground_any.m:019:     named inst hpair(ground, any)
 merge_ground_any.m:019:     which expands to
 merge_ground_any.m:019:       bound(
 merge_ground_any.m:019:         -(ground, any)

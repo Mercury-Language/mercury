@@ -54,6 +54,7 @@ init_body_elem =
     % [ul([li([text("List item")])])].  % This line compiles without errors
 
     [ul([li([])])].
-        % This line causes compiler abort
-        % Expected result: mode checker error because of violated inst rule
-        % (li tag requires non-empty list as argument)
+        % Mantis bug #528 was about this line causing a compiler abort.
+        % Since that bug has been fixed, the expected result is an error
+        % message about the mode error on this line (the `li' tag requires
+        % a non-empty list as its argument).

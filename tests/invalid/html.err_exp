@@ -4,7 +4,7 @@ html.m:053:   mode error: argument 1 had the wrong instantiatedness.
 html.m:053:   Final instantiatedness of `HeadVar__1' was `unique',
 html.m:053:   expected final instantiatedness was
 html.m:053:     named inst non_empty_list(
-html.m:053:       named inst top_body_elem,
+html.m:053:       named inst top_body_elem
 html.m:053:       which expands to
 html.m:053:         bound(
 html.m:053:           text(ground)
@@ -13,36 +13,73 @@ html.m:053:           ul(
 html.m:053:             named inst non_empty_list(
 html.m:053:               named inst li(
 html.m:053:                 named inst top_body_elem
-html.m:053:               ),
+html.m:053:               )
 html.m:053:               which expands to
 html.m:053:                 bound(
 html.m:053:                   li(
 html.m:053:                     named inst non_empty_list(
 html.m:053:                       named inst top_body_elem
-html.m:053:                     ),
+html.m:053:                     )
 html.m:053:                     which expands to
 html.m:053:                       bound(
 html.m:053:                         '[|]'(
-html.m:053:                           named inst top_body_elem
+html.m:053:                           named inst top_body_elem,
+html.m:053:                           named inst list.list_skel(
+html.m:053:                             named inst top_body_elem
+html.m:053:                           )
+html.m:053:                           which expands to
+html.m:053:                             bound(
+html.m:053:                               []
+html.m:053:                             ;
+html.m:053:                               '[|]'(
+html.m:053:                                 named inst top_body_elem,
+html.m:053:                                 named inst list.list_skel(
+html.m:053:                                   named inst top_body_elem
+html.m:053:                                 )
+html.m:053:                               )
+html.m:053:                             )
 html.m:053:                         )
 html.m:053:                       )
 html.m:053:                   )
 html.m:053:                 )
-html.m:053:             ),
+html.m:053:             )
 html.m:053:             which expands to
 html.m:053:               bound(
 html.m:053:                 '[|]'(
 html.m:053:                   named inst li(
 html.m:053:                     named inst top_body_elem
+html.m:053:                   ),
+html.m:053:                   named inst list.list_skel(
+html.m:053:                     named inst li(
+html.m:053:                       named inst top_body_elem
+html.m:053:                     )
 html.m:053:                   )
+html.m:053:                   which expands to
+html.m:053:                     bound(
+html.m:053:                       []
+html.m:053:                     ;
+html.m:053:                       '[|]'(
+html.m:053:                         named inst li(
+html.m:053:                           named inst top_body_elem
+html.m:053:                         ),
+html.m:053:                         named inst list.list_skel(
+html.m:053:                           named inst li(
+html.m:053:                             named inst top_body_elem
+html.m:053:                           )
+html.m:053:                         )
+html.m:053:                       )
+html.m:053:                     )
 html.m:053:                 )
 html.m:053:               )
 html.m:053:           )
 html.m:053:         )
-html.m:053:     ),
+html.m:053:     )
 html.m:053:     which expands to
 html.m:053:       bound(
 html.m:053:         '[|]'(
-html.m:053:           named inst top_body_elem
+html.m:053:           named inst top_body_elem,
+html.m:053:           named inst list.list_skel(
+html.m:053:             named inst top_body_elem
+html.m:053:           )
 html.m:053:         )
 html.m:053:       ).

@@ -3,7 +3,7 @@ bug191.m:035:   out((bug191.a)))':
 bug191.m:035:   mode error: argument 3 did not get sufficiently instantiated.
 bug191.m:035:   Final instantiatedness of `HeadVar__3' was `ground',
 bug191.m:035:   expected final instantiatedness was
-bug191.m:035:     named inst a,
+bug191.m:035:     named inst a
 bug191.m:035:     which expands to
 bug191.m:035:       bound(
 bug191.m:035:         a(ground)
