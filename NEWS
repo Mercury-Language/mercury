@@ -79,7 +79,7 @@ Changes to the Mercury standard library
     - func `get_bits/2`
     - func `get_byte/2`
     - pred `set_bit/4`
-    - pred `set_bit/4`
+    - pred `set_bits/4`
     - pred `set_byte/4`
     - func `unsafe_get_bit/2`
     - func `unsafe_get_bits/2`
