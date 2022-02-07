@@ -12,10 +12,10 @@
 % This module traverses the HLDS, updating the `how_to_construct' field of
 % construction unifications. For each construction which can be done
 % statically, i.e. whose arguments are all static, it replaces this field with
-% `construct_statically'. The main use of information is in the MLDS back-end,
-% to determine when we can generate static initialized constants instead of
-% calling new_object(). However, other parts of the compiler also use this
-% information.
+% `construct_statically'. The main use of this information is in the MLDS
+% backend, to determine when we can generate static constants instead of
+% calling new_object(). However, other parts of the compiler may also use
+% this information.
 %
 %-----------------------------------------------------------------------------%
 

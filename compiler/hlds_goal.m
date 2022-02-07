@@ -1073,6 +1073,37 @@
             % construct_dynamically and construct_statically, it would need
             % to rerun mark_static_terms.m. As of this writing, there is
             % no such later pass.
+            %
+            % Before 2022 feb 7, a construct unification was allowed to be
+            % marked static only if none of the static components it relied on
+            % was bound in a branch of an earlier branched control structure.
+            % From 2022 feb 7, a construct unification is allowed to be
+            % marked static if some of the static components it relies on
+            % are bound in a branch of an earlier branched control structure,
+            % *provided* that all the branches of that branched control
+            % structure whose endpoints are reachable all agree on that
+            % binding. The motivation for this change was Mantis bug #544,
+            % which involves add_trail_ops.m transforming
+            %
+            %   ... goal that adds an entry to const_var_map ...
+            %   ... following code ...
+            %
+            % into
+            %
+            %   (
+            %       ... trail ops ...
+            %       ... goal that adds an entry to const_var_map ...
+            %       ... trail ops ...
+            %   ;
+            %       ... trail ops ...
+            %       fail
+            %   ),
+            %   ... following code ...
+            %
+            % Since the second disjunct cannot succeed, the new policy
+            % allows the following code to rely on exactly the same entries
+            % in the const_var_map in the transformed code as in the original
+            % code.
 
     % Information used to perform structure reuse on a cell.
     %
