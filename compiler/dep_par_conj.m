@@ -2299,16 +2299,15 @@ make_new_spec_parallel_pred_info(FutureArgs, PredStatus, PPId, !PredInfo) :-
     PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
     pred_info_get_arg_types(!.PredInfo, Tvars, ExistQVars, ArgTypes0),
     pred_info_get_origin(!.PredInfo, OrigOrigin),
-    make_pred_name(PredModule, "Parallel", yes(PredOrFunc),
-        Name0, newpred_parallel_args(FutureArgs), Name1),
+    Transform =
+        tn_dep_par_conj(PredOrFunc, proc_id_to_int(ProcId), FutureArgs),
+    make_pred_name(PredModule, Name0, Transform, SymName),
     % The mode number is included because we want to avoid the creation of
     % more than one predicate with the same name if more than one mode of
     % a predicate is parallelised. Since the names of e.g. deep profiling
     % proc_static structures are derived from the names of predicates,
     % duplicate predicate names lead to duplicate global variable names
     % and hence to link errors.
-    proc_id_to_int(ProcId, ProcInt),
-    add_sym_name_suffix(Name1, "_" ++ int_to_string(ProcInt), Name),
     Arity = pred_info_orig_arity(!.PredInfo),
     pred_info_get_typevarset(!.PredInfo, TypeVars),
 
@@ -2329,7 +2328,7 @@ make_new_spec_parallel_pred_info(FutureArgs, PredStatus, PPId, !PredInfo) :-
     Origin = origin_transformed(transform_dependent_parallel_conjunction,
         OrigOrigin, PredId),
     CurUserDecl = maybe.no,
-    pred_info_init(PredModule, Name, Arity, PredOrFunc, Context, Origin,
+    pred_info_init(PredModule, SymName, Arity, PredOrFunc, Context, Origin,
         PredStatus, CurUserDecl, GoalType, Markers, ArgTypes,
         Tvars, ExistQVars, ClassContext, EmptyProofs, EmptyConstraintMap,
         ClausesInfo, VarNameRemap, !:PredInfo),

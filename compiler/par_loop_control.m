@@ -571,23 +571,22 @@ merge_loop_control_par_conjs_between_branches(
     module_info::in, module_info::out) is det.
 
 create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
-        ContainingGoalMap, PredProcId, PredSym, !ModuleInfo) :-
+        ContainingGoalMap, PredProcId, PredSymName, !ModuleInfo) :-
     proc(OldPredId, OldProcId) = OldPredProcId,
     module_info_pred_info(!.ModuleInfo, OldPredId, OldPredInfo),
 
     % Gather data to build the new pred/proc.
     module_info_get_name(!.ModuleInfo, ModuleName),
     PredOrFunc = pred_info_is_pred_or_func(OldPredInfo),
-    make_pred_name(ModuleName, "LoopControl", yes(PredOrFunc),
-        pred_info_name(OldPredInfo), newpred_parallel_loop_control, PredSym0),
+    Transform = tn_par_loop_control(PredOrFunc, proc_id_to_int(OldProcId)),
+    make_pred_name(ModuleName, pred_info_name(OldPredInfo), Transform,
+        PredSymName),
     % The mode number is included because we want to avoid the creation of
     % more than one predicate with the same name if more than one mode of
     % a predicate is parallelised. Since the names of e.g. deep profiling
     % proc_static structures are derived from the names of predicates,
     % duplicate predicate names lead to duplicate global variable names
     % and hence to link errors.
-    proc_id_to_int(OldProcId, OldProcInt),
-    add_sym_name_suffix(PredSym0, "_" ++ int_to_string(OldProcInt), PredSym),
     pred_info_get_context(OldPredInfo, Context),
     pred_info_get_origin(OldPredInfo, OldOrigin),
     Origin = origin_transformed(transform_parallel_loop_control, OldOrigin,
@@ -607,7 +606,7 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         % Construct the pred info structure. We initially construct it with
         % the old proc info which will be replaced below.
         GoalType = goal_not_for_promise(np_goal_type_none),
-        pred_info_create(ModuleName, PredSym, PredOrFunc, Context, Origin,
+        pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin,
             pred_status(status_local), Markers, ArgTypes0, TypeVarSet,
             ExistQVars, ClassConstraints, set.init, map.init, GoalType,
             OldProcInfo, ProcId, !:PredInfo),
@@ -636,7 +635,7 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         get_lc_join_and_terminate_proc(!.ModuleInfo, JoinAndTerminateProc),
 
         Info = loop_control_info(!.ModuleInfo, LCVar, OldPredProcId,
-            PredProcId, PredSym, PreserveTailRecursion, WaitFreeSlotProc,
+            PredProcId, PredSymName, PreserveTailRecursion, WaitFreeSlotProc,
             lc_wait_free_slot_name, JoinAndTerminateProc,
             lc_join_and_terminate_name),
         goal_loop_control_all_recursive_paths(Info, RecParConjIds,

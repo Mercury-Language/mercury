@@ -1034,18 +1034,18 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
     ( if
         (
             PragmaTerms = [PredAndModesTerm, TypeSubnTerm],
-            MaybeSpecName = no
+            MaybeSpecSymName = no
         ;
-            PragmaTerms = [PredAndModesTerm, TypeSubnTerm, SpecNameTerm],
+            PragmaTerms = [PredAndModesTerm, TypeSubnTerm, SpecSymNameTerm],
 
             % This form of the pragma should not appear in source files.
-            SpecNameTerm = term.functor(_, _, SpecContext),
+            SpecSymNameTerm = term.functor(_, _, SpecContext),
             term.context_file(SpecContext, FileName),
             not string.remove_suffix(FileName, ".m", _),
 
             try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
-                SpecNameTerm, SpecializedName),
-            MaybeSpecName = yes(SpecializedName)
+                SpecSymNameTerm, SpecializedSymName),
+            MaybeSpecSymName = yes(SpecializedSymName)
         )
     then
         ArityOrModesContextPieces = cord.from_list(
@@ -1063,18 +1063,19 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             varset.coerce(VarSet, TVarSet),
             ( if list.map(parse_type_spec_pair, TypeSubnTerms, TypeSubns) then
                 (
-                    MaybeSpecName = yes(SpecName)
+                    MaybeSpecSymName = yes(SpecSymName)
                 ;
-                    MaybeSpecName = no,
+                    MaybeSpecSymName = no,
                     UnqualName = unqualify_name(PredName),
                     pfumm_to_maybe_pf_arity_maybe_modes(PFUMM, MaybePredOrFunc,
                         _Arity, _MaybeModes),
-                    make_pred_name(ModuleName, "TypeSpecOf", MaybePredOrFunc,
-                        UnqualName, newpred_type_subst(TVarSet, TypeSubns),
-                        SpecName)
+                    Transform =
+                        tn_type_spec(MaybePredOrFunc, TVarSet, TypeSubns),
+                    make_pred_name(ModuleName, UnqualName, Transform,
+                        SpecSymName)
                 ),
                 TypeSpecInfo = pragma_info_type_spec(PFUMM, PredName,
-                    SpecName, TypeSubns, TVarSet, set.init),
+                    SpecSymName, TypeSubns, TVarSet, set.init),
                 Pragma = decl_pragma_type_spec(TypeSpecInfo),
                 ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
                 Item = item_decl_pragma(ItemPragma),

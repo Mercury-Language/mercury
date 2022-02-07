@@ -141,7 +141,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module string.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -768,13 +767,11 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
     else
         Counter = 1
     ),
-    make_pred_name_with_context(PredModule, "loop_inv",
-        PredOrFunc, PredName, Line, Counter, AuxPredSymName0),
-    hlds_pred.proc_id_to_int(ProcId, ProcNo),
-    Suffix = string.format("_%d", [i(ProcNo)]),
-    add_sym_name_suffix(AuxPredSymName0, Suffix, AuxPredSymName),
+    ProcNum = proc_id_to_int(ProcId),
+    Transform = tn_loop_inv(PredOrFunc, ProcNum, lnc(Line, Counter)),
+    make_pred_name(PredModule, PredName, Transform, AuxPredSymName),
 
-    Origin = origin_transformed(transform_loop_invariant(ProcNo),
+    Origin = origin_transformed(transform_loop_invariant(ProcNum),
         OrigOrigin, PredId),
     hlds_pred.define_new_pred(
         Origin,         % in    - The origin of this new predicate

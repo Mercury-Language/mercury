@@ -87,19 +87,17 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type reuse_name == sym_name.
+:- func generate_reuse_name(module_info, pred_proc_id, list(int)) = sym_name.
 
-:- func generate_reuse_name(module_info, pred_proc_id, list(int)) = reuse_name.
-
-generate_reuse_name(ModuleInfo, PPId, NoClobbers) = ReuseName :-
+generate_reuse_name(ModuleInfo, PPId, NoClobberArgNums) = ReusePredSymName :-
     PPId = proc(_, ProcId),
     module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _ProcInfo),
     PredModule = pred_info_module(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredName = pred_info_name(PredInfo),
-    proc_id_to_int(ProcId, ProcInt),
-    make_pred_name(PredModule, "ctgc", yes(PredOrFunc), PredName,
-        newpred_structure_reuse(ProcInt, NoClobbers), ReuseName).
+    Transform = tn_structure_reuse(PredOrFunc, proc_id_to_int(ProcId),
+        NoClobberArgNums),
+    make_pred_name(PredModule, PredName, Transform, ReusePredSymName).
 
 %-----------------------------------------------------------------------------%
 
@@ -208,7 +206,7 @@ create_fresh_pred_proc_info_copy(PPId, NoClobbers, NewPPId, !ModuleInfo) :-
     module_info_set_structure_reuse_preds(ReusePreds, !ModuleInfo).
 
 :- pred create_fresh_pred_proc_info_copy_2(pred_id::in, pred_info::in,
-    proc_info::in, reuse_name::in, pred_info::out, proc_id::out) is det.
+    proc_info::in, sym_name::in, pred_info::out, proc_id::out) is det.
 
 create_fresh_pred_proc_info_copy_2(PredId, PredInfo, ProcInfo, ReusePredName,
         ReusePredInfo, ReuseProcId) :-
@@ -476,7 +474,7 @@ unification_set_reuse(ShortReuseDescription, !Unification) :-
 
 :- pred determine_reuse_version(reuse_as_table::in, module_info::in,
     pred_id::in, proc_id::in, sym_name::in, list(int)::in,
-    pred_id::out, proc_id::out, reuse_name::out) is det.
+    pred_id::out, proc_id::out, sym_name::out) is det.
 
 determine_reuse_version(ReuseTable, ModuleInfo, PredId, ProcId, PredName,
         NoClobbers, ReusePredId, ReuseProcId, ReusePredName) :-

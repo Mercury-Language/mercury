@@ -170,7 +170,6 @@
 :- import_module pair.
 :- import_module maybe.
 :- import_module require.
-:- import_module string.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -191,7 +190,7 @@ control_distance_granularity(!ModuleInfo, Distance) :-
     module_info::in, module_info::out) is det.
 
 apply_dg_to_preds([], _Distance, !ModuleInfo).
-apply_dg_to_preds([PredId | PredIdList], Distance, !ModuleInfo) :-
+apply_dg_to_preds([PredId | PredIds], Distance, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     % We need to know what the pred_id will be for the specified predicate
     % before we actually clone it (this avoids doing one more pass to update
@@ -201,22 +200,19 @@ apply_dg_to_preds([PredId | PredIdList], Distance, !ModuleInfo) :-
 
     % Create the new sym_name for the recursive plain calls.
     ModuleName = pred_info_module(PredInfo),
-    Prefix = granularity_prefix,
-    MaybePredOrFunc = yes(pf_predicate),
     PredName0 = pred_info_name(PredInfo),
-    make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName0,
-        newpred_distance_granularity(Distance), NewCallSymName),
+    % XXX *Always* passing pf_predicate here seems to be a bug.
+    Transform = tn_par_distance_granularity(pf_predicate, Distance),
+    make_pred_name(ModuleName, PredName0, Transform, NewPredSymName),
+    PredName = unqualify_name(NewPredSymName),
 
     ProcIds = pred_info_valid_non_imported_procids(PredInfo),
-    apply_dg_to_procs(PredId, ProcIds, Distance, NewPredId, NewCallSymName,
+    apply_dg_to_procs(PredId, ProcIds, Distance, NewPredId, NewPredSymName,
         PredInfo, PredInfoClone0, no, Specialized, !ModuleInfo),
     (
         Specialized = yes,
         % The predicate has been specialized as it contains recursive calls.
 
-        % Create the name of the specialized predicate out of the name of the
-        % original one.
-        create_specialized_pred_name(Prefix, Distance, PredName0, PredName),
         pred_info_set_name(PredName, PredInfoClone0, PredInfoClone1),
 
         % If the original predicate was a function then the specialized version
@@ -242,13 +238,13 @@ apply_dg_to_preds([PredId | PredIdList], Distance, !ModuleInfo) :-
         module_info_set_predicate_table(PredicateTable1, !ModuleInfo),
 
         update_original_predicate_procs(PredId, ProcIds, Distance, NewPredId,
-            NewCallSymName, PredInfo, PredInfoUpdated, !ModuleInfo),
+            NewPredSymName, PredInfo, PredInfoUpdated, !ModuleInfo),
         module_info_set_pred_info(PredId, PredInfoUpdated, !ModuleInfo)
     ;
         Specialized = no
         % The predicate has not been specialized.
     ),
-    apply_dg_to_preds(PredIdList, Distance, !ModuleInfo).
+    apply_dg_to_preds(PredIds, Distance, !ModuleInfo).
 
     % Apply the distance granularity transformation to each procedure in the
     % list.
@@ -821,22 +817,6 @@ apply_dg_to_switch([Case | Cases], !CasesAcc, CallerPredId, CallerProcId,
     apply_dg_to_switch(Cases, !CasesAcc, CallerPredId, CallerProcId,
         PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo,
         Distance, !MaybeGranularityVar).
-
-    % Create the string name of the specialized predicate (same format as
-    % make_pred_name in prog_util) out of the name of the original one.
-    %
-:- pred create_specialized_pred_name(string::in, int::in,
-    string::in, string::out) is det.
-
-create_specialized_pred_name(Prefix, Distance, !PredName) :-
-    PFS = "pred",
-    int_to_string(Distance, PredIdStr),
-    string.format("%s__%s__%s__%s",
-        [s(Prefix), s(PFS), s(!.PredName), s(PredIdStr)], !:PredName).
-
-:-func granularity_prefix = string.
-
-granularity_prefix = "DistanceGranularityFor".
 
 %-----------------------------------------------------------------------------%
 %

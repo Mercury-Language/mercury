@@ -1234,16 +1234,14 @@ make_new_pred_info(_ModuleInfo, UnusedArgs, PredStatus, proc(PredId, ProcId),
     else
         Name1 = Name0
     ),
-    make_pred_name(PredModule, "UnusedArgs", yes(PredOrFunc),
-        Name1, newpred_unused_args(UnusedArgs), Name2),
     % The mode number is included because we want to avoid the creation of
     % more than one predicate with the same name if more than one mode of
     % a predicate is specialized. Since the names of e.g. deep profiling
     % proc_static structures are derived from the names of predicates,
     % duplicate predicate names lead to duplicate global variable names
     % and hence to link errors.
-    proc_id_to_int(ProcId, ProcInt),
-    add_sym_name_suffix(Name2, "_" ++ int_to_string(ProcInt), Name),
+    Transform = tn_unused_args(PredOrFunc, proc_id_to_int(ProcId), UnusedArgs),
+    make_pred_name(PredModule, Name1, Transform, SymName),
     Arity = pred_info_orig_arity(!.PredInfo),
     pred_info_get_typevarset(!.PredInfo, TypeVars),
     remove_listof_elements(1, UnusedArgs, ArgTypes0, ArgTypes),
@@ -1259,10 +1257,10 @@ make_new_pred_info(_ModuleInfo, UnusedArgs, PredStatus, proc(PredId, ProcId),
     % constraints.
     map.init(Proofs),
     map.init(ConstraintMap),
-    Transform = transform_unused_argument_elimination(UnusedArgs),
-    Origin = origin_transformed(Transform, OrigOrigin, PredId),
+    OriginTransform = transform_unused_argument_elimination(UnusedArgs),
+    Origin = origin_transformed(OriginTransform, OrigOrigin, PredId),
     CurUserDecl = maybe.no,
-    pred_info_init(PredModule, Name, Arity, PredOrFunc, Context, Origin,
+    pred_info_init(PredModule, SymName, Arity, PredOrFunc, Context, Origin,
         PredStatus, CurUserDecl, GoalType, Markers, ArgTypes,
         Tvars, ExistQVars, ClassContext, Proofs, ConstraintMap,
         ClausesInfo, VarNameRemap, !:PredInfo),

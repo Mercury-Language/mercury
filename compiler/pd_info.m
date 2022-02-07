@@ -482,7 +482,7 @@ pd_info_incr_size_delta(Delta1, !PDInfo) :-
 
 :- implementation.
 
-pd_info.search_version(PDInfo, Goal, MaybeVersion) :-
+search_version(PDInfo, Goal, MaybeVersion) :-
     trace [io(!IO)] (
         pd_debug_output_goal(PDInfo, "Searching for version:\n", Goal, !IO)
     ),
@@ -512,8 +512,8 @@ pd_info.search_version(PDInfo, Goal, MaybeVersion) :-
     instmap::in, vartypes::in, list(pred_proc_id)::in,
     version_index::in, maybe_version::out) is semidet.
 
-pd_info.get_matching_version(_, _, _, _, [], _, no_version).
-pd_info.get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
+get_matching_version(_, _, _, _, [], _, no_version).
+get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
         [VersionId | VersionIds], Versions, MaybeVersion) :-
     map.lookup(Versions, VersionId, Version),
     Version = version_info(OldGoal, _, OldArgs, OldArgTypes,
@@ -552,12 +552,12 @@ pd_info.get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
     map(prog_var, prog_var)::in, tsubst::in, version_info::in,
     maybe_version::in, maybe_version::out) is det.
 
-pd_info.pick_version(_, PredProcId, Renaming, TSubn, VersionInfo, no_version,
+pick_version(_, PredProcId, Renaming, TSubn, VersionInfo, no_version,
     version(more_general, PredProcId, VersionInfo, Renaming, TSubn)).
-pd_info.pick_version(_, _, _, _, _,
+pick_version(_, _, _, _, _,
         version(exact, PredProcId, Version2, Renaming2, TSubn2),
         version(exact, PredProcId, Version2, Renaming2, TSubn2)).
-pd_info.pick_version(_ModuleInfo, PredProcId1, Renaming1, TSubn1, Version1,
+pick_version(_ModuleInfo, PredProcId1, Renaming1, TSubn1, Version1,
         version(more_general, PredProcId2, Version2, Renaming2, TSubn2),
         MaybeVersion) :-
     Version1 = version_info(_, _, _, _, _, _, CostDelta1, _, _),
@@ -594,7 +594,7 @@ pd_info.pick_version(_ModuleInfo, PredProcId1, Renaming1, TSubn1, Version1,
     instmap::in, vartypes::in, pred_proc_id::in,
     version_info::in, maybe_version::out) is semidet.
 
-pd_info.goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
+goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
         OldArgTypes, NewGoal, NewInstMap, NewVarTypes, PredProcId,
         Version, MaybeVersion) :-
     pd_util.goals_match(ModuleInfo, OldGoal, OldArgs, OldArgTypes,
@@ -617,8 +617,8 @@ pd_info.goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
     map(prog_var, prog_var)::in, instmap::in, instmap::in, vartypes::in,
     version_is_exact::in, version_is_exact::out) is semidet.
 
-pd_info.check_insts(_, [], _, _, _, _, !ExactSoFar).
-pd_info.check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
+check_insts(_, [], _, _, _, _, !ExactSoFar).
+check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
         NewInstMap, VarTypes, !ExactSoFar) :-
     instmap_lookup_var(OldInstMap, OldVar, OldVarInst),
     map.lookup(VarRenaming, OldVar, NewVar),
@@ -645,7 +645,7 @@ pd_info.check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
 
 %---------------------------------------------------------------------------%
 
-pd_info.define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
+define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
     pd_info_get_instmap(!.PDInfo, InstMap),
     Goal = hlds_goal(_, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
@@ -659,8 +659,8 @@ pd_info.define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
     Context = goal_info_get_context(GoalInfo),
     term.context_line(Context, Line),
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
-    make_pred_name_with_context(PredModule, "DeforestationIn",
-        pf_predicate, PredName, Line, Count, SymName),
+    Transform = tn_deforestation(pf_predicate, lnc(Line, Count)),
+    make_pred_name(PredModule, PredName, Transform, NewPredSymName),
 
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
     pred_info_get_typevarset(PredInfo, TVarSet),
@@ -675,14 +675,14 @@ pd_info.define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
     % XXX handle the extra typeinfo arguments for
     % --typeinfo-liveness properly.
     hlds_pred.define_new_pred(Origin, Goal, CallGoal, Args, _ExtraArgs,
-        InstMap, SymName, TVarSet, VarTypes, ClassContext, RttiVarMaps,
+        InstMap, NewPredSymName, TVarSet, VarTypes, ClassContext, RttiVarMaps,
         VarSet, InstVarSet, Markers, address_is_not_taken, HasParallelConj,
         VarNameRemap, ModuleInfo0, ModuleInfo, PredProcId),
     pd_info_set_module_info(ModuleInfo, !PDInfo).
 
 %---------------------------------------------------------------------------%
 
-pd_info.register_version(PredProcId, Version, !PDInfo) :-
+register_version(PredProcId, Version, !PDInfo) :-
     trace [io(!IO)] (
         pd_debug_register_version(!.PDInfo, PredProcId, Version, !IO)
     ),
@@ -706,7 +706,7 @@ pd_info.register_version(PredProcId, Version, !PDInfo) :-
 
 %---------------------------------------------------------------------------%
 
-pd_info.invalidate_version(PredProcId, !PDInfo) :-
+invalidate_version(PredProcId, !PDInfo) :-
     pd_info_get_versions(!.PDInfo, Versions0),
     map.lookup(Versions0, PredProcId, Version),
     Goal = Version ^ version_orig_goal,
@@ -725,7 +725,7 @@ pd_info.invalidate_version(PredProcId, !PDInfo) :-
     ),
     pd_info.remove_version(PredProcId, !PDInfo).
 
-pd_info.remove_version(PredProcId, !PDInfo) :-
+remove_version(PredProcId, !PDInfo) :-
     pd_info_get_versions(!.PDInfo, Versions0),
     map.lookup(Versions0, PredProcId, Version),
     Goal = Version ^ version_orig_goal,

@@ -1578,8 +1578,8 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
 
     Types = NewTypes ++ Types0,
 
-    make_pred_name_with_context(ModuleName, "AccFrom", PredOrFunc, Name,
-        Line, Counter, SymName),
+    Transform = tn_accumulator(PredOrFunc, lnc(Line, Counter)),
+    make_pred_name(ModuleName, Name, Transform, SymName),
 
     OutVarNums = list.map(term.var_to_int, OutVars),
     Origin = origin_transformed(transform_accumulator(OutVarNums),

@@ -802,15 +802,13 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    ProcNum = proc_id_to_int(ProcId), 
     Context = goal_info_get_context(GoalInfo),
     term.context_line(Context, Line),
-    make_pred_name_with_context(PredModule, "tupling",
-        PredOrFunc, PredName, Line, Counter, AuxPredSymName0),
-    hlds_pred.proc_id_to_int(ProcId, ProcNo),
-    Suffix = string.format("_%d", [i(ProcNo)]),
-    add_sym_name_suffix(AuxPredSymName0, Suffix, AuxPredSymName),
+    Transform = tn_tupling(PredOrFunc, ProcNum, lnc(Line, Counter)),
+    make_pred_name(PredModule, PredName, Transform, AuxPredSymName),
 
-    Origin = origin_transformed(transform_tuple(ProcNo), OrigOrigin, PredId),
+    Origin = origin_transformed(transform_tuple(ProcNum), OrigOrigin, PredId),
     hlds_pred.define_new_pred(
         Origin,                 % in
         Goal,                   % in
