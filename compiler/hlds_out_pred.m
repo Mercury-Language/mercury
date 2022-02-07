@@ -31,7 +31,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % write_pred(Info, Lang, ModuleInfo, PredId, PredInfo, !IO):
+    % write_pred(Info, Stream, Lang, ModuleInfo, PredId, PredInfo, !IO):
     %
 :- pred write_pred(hlds_out_info::in, io.text_output_stream::in,
     output_lang::in, module_info::in, pred_id::in, pred_info::in,
@@ -41,7 +41,7 @@
     --->    write_actual_modes
     ;       write_declared_modes.
 
-    % write_clause(Info, Lang, ModuleInfo, PredId, PredOrFunc,
+    % write_clause(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc,
     %   VarSet, TypeQual, VarNamePrint, WriteWhichModes, Indent,
     %   HeadTerms, Clause, !IO).
     %
