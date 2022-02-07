@@ -369,6 +369,11 @@ that operate on (parts of) the parse tree.
 builtin_lib_types.m contains definitions about types, type constructors
 and function symbols that the Mercury implementation needs to know about.
 <li>
+pred_name.m contains code that constructs predicate names.
+As we create transformed versions of predicates and functions,
+this module constructs new names for them,
+derived from the name of the original version.
+<li>
 prog_item_stats.m has facilities for gathering and printing statistics
 about the parse tree.
 <li>

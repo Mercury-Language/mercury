@@ -125,10 +125,10 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module counter.

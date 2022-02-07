@@ -159,9 +159,9 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
@@ -203,10 +203,9 @@ apply_dg_to_preds([PredId | PredIdList], Distance, !ModuleInfo) :-
     ModuleName = pred_info_module(PredInfo),
     Prefix = granularity_prefix,
     MaybePredOrFunc = yes(pf_predicate),
-    NewPredIdGranularity = newpred_distance_granularity(Distance),
     PredName0 = pred_info_name(PredInfo),
     make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName0,
-        NewPredIdGranularity, NewCallSymName),
+        newpred_distance_granularity(Distance), NewCallSymName),
 
     ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     apply_dg_to_procs(PredId, ProcIds, Distance, NewPredId, NewCallSymName,

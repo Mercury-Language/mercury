@@ -158,10 +158,10 @@
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.

@@ -52,9 +52,9 @@
 :- import_module parse_tree.parse_type_defn.
 :- import_module parse_tree.parse_type_name.
 :- import_module parse_tree.parse_util.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_item.
-:- import_module parse_tree.prog_util.
 
 :- import_module cord.
 :- import_module int.
@@ -1085,9 +1085,9 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                     pragma_decl("type_spec"), words("declaration:"), nl,
                     words("error: expected a type substitution, got"),
                     quote(TypeSubnTermStr), suffix("."), nl],
+                TypeSubnContext = get_term_context(TypeSubnTerm),
                 Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree,
-                    get_term_context(TypeSubnTerm), Pieces),
+                    phase_term_to_parse_tree, TypeSubnContext, Pieces),
                 MaybeIOM = error1([Spec])
             )
         ;

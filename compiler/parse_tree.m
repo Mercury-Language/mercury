@@ -77,6 +77,7 @@
 :- include_module error_util.
 :- include_module item_util.
 :- include_module maybe_error.
+:- include_module pred_name.
 :- include_module prog_detism.
 :- include_module prog_event.
 :- include_module prog_foreign.

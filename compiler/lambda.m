@@ -148,9 +148,9 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 :- import_module transform_hlds.
 :- import_module transform_hlds.direct_arg_in_out.
 

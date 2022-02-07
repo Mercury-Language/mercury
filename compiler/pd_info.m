@@ -124,7 +124,7 @@
 :- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_util.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.pd_debug.
 :- import_module transform_hlds.pd_util.
