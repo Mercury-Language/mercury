@@ -2866,9 +2866,9 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         % faults or other errors when the order or number of extra arguments
         % changes. If the user does not recompile all affected code, the
         % program will not link.
-        PredName = string.append_list(
-            [PredName0, "_", int_to_string(CallerProcInt), "_",
-            int_to_string(higher_order_arg_order_version)]),
+        Version = higher_order_arg_order_version,
+        string.format("%s_%d_%d",
+            [s(PredName0), i(CallerProcInt), i(Version)], PredName),
         SymName = qualified(PredModule, PredName),
         Transform = transform_higher_order_type_specialization(CallerProcInt),
         NewProcId = CallerProcId,
@@ -2883,8 +2883,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         IdCounter0 = !.Info ^ hogi_next_id,
         counter.allocate(Id, IdCounter0, IdCounter),
         !Info ^ hogi_next_id := IdCounter,
-        string.int_to_string(Id, IdStr),
-        string.append_list([Name0, "__ho", IdStr], PredName),
+        string.format("%s__ho%d", [s(Name0), i(Id)], PredName),
         SymName = qualified(PredModule, PredName),
         Transform = transform_higher_order_specialization(Id),
         PredStatus = pred_status(status_local)
@@ -3341,16 +3340,8 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
             CalledPredInfo, CalledProcInfo),
         PredOrFunc = pred_info_is_pred_or_func(CalledPredInfo),
         proc_info_get_argmodes(CalledProcInfo, CalledArgModes),
-        ( if
-            list.split_list(NumArgs, CalledArgModes,
-                CurriedArgModes0, NonCurriedArgModes0)
-        then
-            NonCurriedArgModes = NonCurriedArgModes0,
-            CurriedArgModes1 = CurriedArgModes0
-        else
-            unexpected($pred, "list.split_list failed.")
-        ),
-
+        list.det_split_list(NumArgs, CalledArgModes,
+            CurriedArgModes1, NonCurriedArgModes),
         proc_info_interface_determinism(CalledProcInfo, ProcDetism),
         GroundInstInfo = higher_order(pred_inst_info(PredOrFunc,
             NonCurriedArgModes, arg_reg_types_unset, ProcDetism))

@@ -58,6 +58,8 @@
 
 %-----------------------------------------------------------------------------%
 
+    % XXX The name of this type should NOT give the misleading impression
+    % that it has anything to do with pred_ids.
 :- type new_pred_id
     --->    newpred_counter(int, int)                   % Line number, Counter
     ;       newpred_type_subst(tvarset, type_subst)
@@ -88,6 +90,8 @@
     % Create a predicate name and return it as SymName. Create the name
     % based on the Prefix, the (maybe) PredOrFunc, the base name PredName,
     % and the pred-name-suffix generating scheme described by NewPredId.
+    %
+    % XXX The Prefix should be implicit in new_pred_id.
     %
 :- pred make_pred_name(module_name::in, string::in, maybe(pred_or_func)::in,
     string::in, new_pred_id::in, sym_name::out) is det.
@@ -275,31 +279,37 @@ make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
         string.format("%d__%d", [i(Line), i(Counter)], PredIdStr)
     ;
         NewPredId = newpred_type_subst(VarSet, TypeSubst),
-        SubstToString = (pred(SubstElem::in, SubstStr::out) is det :-
-            SubstElem = Var - Type,
-            varset.lookup_name(VarSet, Var, VarName),
-            TypeString = mercury_type_to_string(VarSet, print_name_only, Type),
-            string.append_list([VarName, " = ", TypeString], SubstStr)
-        ),
+        SubstToString =
+            ( pred(SubstElem::in, SubstStr::out) is det :-
+                SubstElem = Var - Type,
+                varset.lookup_name(VarSet, Var, VarName),
+                TypeStr =
+                    mercury_type_to_string(VarSet, print_name_only, Type),
+                % XXX The use of = here *requires* mangling the names
+                % that we construct using SubstStr.
+                string.format("%s = %s", [s(VarName), s(TypeStr)], SubstStr)
+            ),
         list_to_string(SubstToString, TypeSubst, PredIdStr)
     ;
-        ( NewPredId = newpred_unused_args(Args)
-        ; NewPredId = newpred_parallel_args(Args)
+        ( NewPredId = newpred_unused_args(ArgNums)
+        ; NewPredId = newpred_parallel_args(ArgNums)
         ),
-        list_to_string(int_to_string, Args, PredIdStr)
+        list_to_string(string.int_to_string, ArgNums, PredIdStr)
     ;
-        NewPredId = newpred_structure_reuse(ModeNum, Args),
-        int_to_string(ModeNum, ModeStr),
-        list_to_string(int_to_string, Args, ArgsStr),
-        PredIdStr = ModeStr ++ "__" ++ ArgsStr
+        NewPredId = newpred_structure_reuse(ModeNum, ArgNums),
+        list_to_string(string.int_to_string, ArgNums, ArgNumsStr),
+        string.format("%i__%s", [i(ModeNum), s(ArgNumsStr)], PredIdStr)
     ;
         NewPredId = newpred_distance_granularity(Distance),
-        int_to_string(Distance, PredIdStr)
+        string.int_to_string(Distance, PredIdStr)
     ;
         NewPredId = newpred_parallel_loop_control,
+        % XXX This leaves Name ending with two underscores.
         PredIdStr = ""
     ),
 
+    % XXX The format of PredIdStr, including whether it may be empty,
+    % depends on Prefix; therefore it should immediately follow Prefix.
     string.format("%s__%s__%s__%s",
         [s(Prefix), s(PFS), s(PredName), s(PredIdStr)], Name),
     SymName = qualified(ModuleName, Name).
@@ -308,6 +318,8 @@ make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
     list(T)::in, string::out) is det.
 
 list_to_string(Pred, List, String) :-
+    % XXX The use of [] here *requires* mangling the names that
+    % our callers construct using String.
     list_to_string_2(Pred, List, ["]"], Strings),
     string.append_list(["[" | Strings], String).
 
@@ -316,6 +328,8 @@ list_to_string(Pred, List, String) :-
 
 list_to_string_2(_, [], !Strings).
 list_to_string_2(Pred, [T | Ts], !Strings) :-
+    % XXX The use of , here *requires* mangling the names that
+    % our callers construct using !Strings.
     (
         Ts = []
     ;
