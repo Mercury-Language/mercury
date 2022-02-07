@@ -35,14 +35,8 @@
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % We use values of this type when constructing a compound term.
-    % The first three arguments give an arguments value, its type,
-    % and its position and width in the term being constructed.
-    % The fourth argument is meaningful only when constructing a term
-    % dynamically (i.e. not when constructing it statically); if set to `yes',
-    % it contains the information needed to look up this value, together
-    % with any others packed together with it in a single word, in the
-    % packed_arg_map. As such, it should be set to `yes' only for arguments
-    % whose arg_pos_width is apw_partial_first or apw_partial_shifted.
+    % The arguments give an argument's value, its type, and
+    % its position and width in the term being constructed.
 :- type mlds_rval_type_and_width
     --->    rval_type_and_width(mlds_rval, mlds_type, arg_pos_width).
 
@@ -220,7 +214,7 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
     ;
         % Ordinary compound terms.
         ConsTag = remote_args_tag(RemoteArgsTagInfo),
-        ml_generate_dynamic_construct_compound(LHSVar, ConsId,
+        ml_generate_construct_compound(LHSVar, ConsId,
             RemoteArgsTagInfo, RHSVars, ArgModes, TakeAddr, HowToConstruct,
             Context, Defns, Stmts, !Info)
     ;
@@ -229,7 +223,7 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
             "taking address of non word-sized argument"),
         local_primsectag_filled_bitfield(!.Info, LocalArgsTagInfo,
             TagFilledBitfield),
-        ml_generate_dynamic_construct_tagword_compound(ConsId,
+        ml_generate_construct_tagword_compound(ConsId,
             TagFilledBitfield, LHSVar, RHSVars, ArgModes, HowToConstruct,
             Context, Stmts, !Info),
         Defns = []
@@ -239,7 +233,7 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
         ),
         expect(unify(TakeAddr, []), $pred,
             "notag or direct_arg_tag: take_addr"),
-        ml_genenate_dynamic_construct_notag_direct_arg(LHSVar, ConsTag,
+        ml_genenate_construct_notag_direct_arg(LHSVar, ConsTag,
             RHSVars, ArgModes, Context, Stmts, !Info),
         Defns = []
     ;
@@ -250,14 +244,14 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
 
 %---------------------------------------------------------------------------%
 
-:- pred ml_generate_dynamic_construct_compound(prog_var::in,
+:- pred ml_generate_construct_compound(prog_var::in,
     cons_id::in, remote_args_tag_info::in,
     list(prog_var)::in, list(unify_mode)::in, list(int)::in,
     how_to_construct::in, prog_context::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_generate_dynamic_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
+ml_generate_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
         RHSVars, ArgModes, TakeAddr, HowToConstruct, Context,
         Defns, Stmts, !Info) :-
     ml_gen_info_get_target(!.Info, Target),
@@ -374,13 +368,13 @@ ml_generate_dynamic_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
         NonTagwordRHSVarsTypesWidths, NonTagwordArgModes,
         FirstArgNum, TakeAddr, HowToConstruct, Context, Defns, Stmts, !Info).
 
-:- pred ml_generate_dynamic_construct_tagword_compound(cons_id::in,
+:- pred ml_generate_construct_tagword_compound(cons_id::in,
     filled_bitfield::in, prog_var::in,
     list(prog_var)::in, list(unify_mode)::in,
     how_to_construct::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_generate_dynamic_construct_tagword_compound(ConsId, TagFilledBitfield,
+ml_generate_construct_tagword_compound(ConsId, TagFilledBitfield,
         LHSVar, ArgVars, ArgModes, HowToConstruct, Context, Stmts, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_info_get_var_types(!.Info, VarTypes),
@@ -1165,12 +1159,12 @@ ml_gen_tagword_statically(Info, [RHSVarTypeWidth | RHSVarsTypesWidths],
 
 %---------------------------------------------------------------------------%
 
-:- pred ml_genenate_dynamic_construct_notag_direct_arg(
+:- pred ml_genenate_construct_notag_direct_arg(
     prog_var::in, cons_tag::in(no_or_direct_arg_tag), list(prog_var)::in,
     list(unify_mode)::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_genenate_dynamic_construct_notag_direct_arg(LHSVar, ConsTag, RHSVars,
+ml_genenate_construct_notag_direct_arg(LHSVar, ConsTag, RHSVars,
         ArgModes, Context, Stmts, !Info) :-
     get_notag_or_direct_arg_arg_mode(RHSVars, ArgModes, RHSVar, ArgMode),
     ml_variable_type(!.Info, LHSVar, LHSType),

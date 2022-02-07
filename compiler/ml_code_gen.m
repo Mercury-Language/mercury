@@ -436,17 +436,32 @@
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate code for a goal that is one branch of a branched control
-    % structure. At the end of the branch, we need to forget what we learned
+    % structure. At the end of the branch, we forget what we learned
     % during the branch about which variables are bound to constants,
-    % since those variables may not be bound to constants (at least not the
-    % same constants) in parallel branches, or in code after the branched
-    % control if control did not go through this branch.
+    % in order to set up for generating code for other branches,
+    % which should not have access to variable values bounds in earlier
+    % branches. We do add the final const_var_map to the list of const_var_maps
+    % if the end of the goal is actually reachable. Our callers should
+    % thread this list through all the calls that generate code for all the
+    % branches, and should then give the final list of const_var_maps to
+    % ml_gen_record_consensus_const_var_map below to compute the const_var_map
+    % that is appropriate for the program point immediately after the branched
+    % control structure.
     %
 :- pred ml_gen_goal_as_branch(code_model::in, hlds_goal::in,
     list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_stmt)::out,
+    list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_goal_as_branch_block(code_model::in, hlds_goal::in,
-    mlds_stmt::out, ml_gen_info::in, ml_gen_info::out) is det.
+    mlds_stmt::out,
+    list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+    % See the comment just above.
+    %
+:- pred ml_gen_record_consensus_const_var_map(list(ml_ground_term_map)::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate MLDS code for the specified goal in the specified code model.
     % Return the result as two lists, one containing the necessary declarations
@@ -484,6 +499,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
+:- import_module hlds.instmap.
 :- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_commit_gen.
@@ -513,15 +529,64 @@ ml_gen_goal_as_block(CodeModel, Goal, Stmt, !Info) :-
     Stmt = ml_gen_block(LocalVarDefns, FuncDefns, Stmts, Context).
 
 ml_gen_goal_as_branch(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts,
-        !Info) :-
+        !ReachableConstVarMaps, !Info) :-
     ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
     ml_gen_goal(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts, !Info),
+    record_const_var_map_if_reachable(!.Info, Goal, !ReachableConstVarMaps),
+    % Reset the const_var_map for the next branch.
+    % XXX This should be done by our callers.
     ml_gen_info_set_const_var_map(InitConstVarMap, !Info).
 
-ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt, !Info) :-
+ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt,
+        !ReachableConstVarMaps, !Info) :-
     ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
     ml_gen_goal_as_block(CodeModel, Goal, Stmt, !Info),
+    record_const_var_map_if_reachable(!.Info, Goal, !ReachableConstVarMaps),
+    % Reset the const_var_map for the next branch.
+    % XXX This should be done by our callers.
     ml_gen_info_set_const_var_map(InitConstVarMap, !Info).
+
+:- pred record_const_var_map_if_reachable(ml_gen_info::in, hlds_goal::in,
+    list(ml_ground_term_map)::in, list(ml_ground_term_map)::out) is det.
+
+record_const_var_map_if_reachable(Info, Goal, !ReachableConstVarMaps) :-
+    Goal = hlds_goal(_, GoalInfo),
+    InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
+    ( if instmap_delta_is_reachable(InstMapDelta) then
+        ml_gen_info_get_const_var_map(Info, ConstVarMap),
+        !:ReachableConstVarMaps = [ConstVarMap | !.ReachableConstVarMaps]
+    else
+        true
+    ).
+
+%---------------------------------------------------------------------------%
+
+ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info) :-
+    (
+        ReachableConstVarMaps = [],
+        map.init(ConsensusConstVarMap)
+    ;
+        ReachableConstVarMaps = [HeadConstVarMap | TailConstVarMap],
+        ml_gen_consensus_const_var_map_loop(HeadConstVarMap,
+            TailConstVarMap, ConsensusConstVarMap)
+    ),
+    ml_gen_info_set_const_var_map(ConsensusConstVarMap, !Info).
+
+:- pred ml_gen_consensus_const_var_map_loop(ml_ground_term_map::in,
+    list(ml_ground_term_map)::in, ml_ground_term_map::out) is det.
+
+ml_gen_consensus_const_var_map_loop(ConsensusSoFar0,
+        ConstVarMaps, ConsensusConstVarMap) :-
+    (
+        ConstVarMaps = [],
+        ConsensusConstVarMap = ConsensusSoFar0
+    ;
+        ConstVarMaps = [HeadConstVarMap | TailConstVarMaps],
+        % XXX Keeping ConsensusSoFar* as assoc_lists would be more efficient.
+        ConsensusSoFar1 = map.common_subset(ConsensusSoFar0, HeadConstVarMap),
+        ml_gen_consensus_const_var_map_loop(ConsensusSoFar1,
+            TailConstVarMaps, ConsensusConstVarMap)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -534,22 +599,19 @@ ml_gen_goal(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts, !Info) :-
 
     ml_gen_info_get_varset(!.Info, VarSet),
     Context = goal_info_get_context(GoalInfo),
-    ml_gen_local_var_decls(VarSet, VarTypes, Context, VarsToDeclare, VarDefns,
-        !Info),
+    ml_gen_local_var_decls(VarSet, VarTypes, Context, VarsToDeclare,
+        ScopeVarDefns, !Info),
 
     % Generate code for the goal in its own code model.
     GoalCodeModel = goal_info_get_code_model(GoalInfo),
     ml_gen_goal_expr(GoalExpr, GoalCodeModel, Context, GoalInfo,
-        GoalLocalVarDefns, GoalFuncDefns, GoalStmts0, !Info),
+        GoalVarDefns, FuncDefns, Stmts0, !Info),
+    LocalVarDefns = ScopeVarDefns ++ GoalVarDefns,
 
     % Add whatever wrapper is needed to convert the goal's code model
     % to the desired code model.
     ml_gen_maybe_convert_goal_code_model(CodeModel, GoalCodeModel, Context,
-        GoalStmts0, GoalStmts, !Info),
-
-    LocalVarDefns = VarDefns ++ GoalLocalVarDefns,
-    FuncDefns = GoalFuncDefns,
-    Stmts = GoalStmts.
+        Stmts0, Stmts, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -859,7 +921,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
         LocalVarDefns, FuncDefns, Stmts, !Info) :-
     Cond = hlds_goal(_, CondGoalInfo),
     CondCodeModel = goal_info_get_code_model(CondGoalInfo),
-    ml_gen_info_get_packed_word_map(!.Info, EntryPackedWordMap),
+    ml_gen_info_get_packed_word_map(!.Info, InitPackedWordMap),
     (
         %   model_det Cond:
         %       <(if Cond then Then else Else)>
@@ -892,16 +954,20 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
             CondLocalVarDefns, CondFuncDefns, CondStmts, !Info),
         ml_gen_test_success(Succeeded, !Info),
         ml_gen_goal_as_block(CodeModel, Then, ThenStmt, !Info),
+        ml_gen_cond_then_reachable_const_var_maps(Cond, Then, !.Info,
+            ReachableConstVarMaps0),
         ml_gen_info_set_const_var_map(InitConstVarMap, !Info),
-        % Start the else branch with EntryPackedWordMap to prevent it
+        % Start the else branch with InitPackedWordMap to prevent it
         % from trying to use map entries added by the then branch.
-        ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
+        ml_gen_info_set_packed_word_map(InitPackedWordMap, !Info),
         ml_gen_goal_as_block(CodeModel, Else, ElseStmt, !Info),
-        % Start the code after the if-then-else with EntryPackedWordMap
+        % Start the code after the if-then-else with InitPackedWordMap
         % to prevent it from trying to use map entries added by a branch
         % that was not taken.
-        ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
-        ml_gen_info_set_const_var_map(InitConstVarMap, !Info),
+        ml_gen_info_set_packed_word_map(InitPackedWordMap, !Info),
+        ml_gen_else_reachable_const_var_maps(Else, !.Info,
+            ReachableConstVarMaps0, ReachableConstVarMaps),
+        ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info),
         IfStmt = ml_stmt_if_then_else(Succeeded, ThenStmt, yes(ElseStmt),
             Context),
         LocalVarDefns = CondLocalVarDefns,
@@ -934,7 +1000,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
         % is needed for declarations of static consts).
 
         CondCodeModel = model_non,
-        ml_gen_info_get_const_var_map(!.Info, EntryConstVarMap),
+        ml_gen_info_get_const_var_map(!.Info, InitConstVarMap),
 
         % Generate the `cond_<N>' var and the code to initialize it to false.
         ml_gen_info_new_cond_var(CondVar, !Info),
@@ -965,6 +1031,8 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
         ml_gen_info_set_packed_word_map(map.init, !Info),
         ml_gen_info_increment_func_nest_depth(!Info),
         ml_gen_goal_as_block(CodeModel, Then, ThenStmt, !Info),
+        ml_gen_cond_then_reachable_const_var_maps(Cond, Then, !.Info,
+            ReachableConstVarMaps0),
         ml_gen_info_decrement_func_nest_depth(!Info),
         % Do not take any information about packed args out of the new function
         % depth, for the same reason.
@@ -977,16 +1045,18 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 
         % Generate `if (!cond_<N>) { <Else> }'.
         ml_gen_test_cond_var(CondVar, CondSucceeded),
-        ml_gen_info_set_const_var_map(EntryConstVarMap, !Info),
-        % Start the else branch with EntryPackedWordMap to prevent it
+        ml_gen_info_set_const_var_map(InitConstVarMap, !Info),
+        % Start the else branch with InitPackedWordMap to prevent it
         % from trying to use map entries added by the then branch.
-        ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
+        ml_gen_info_set_packed_word_map(InitPackedWordMap, !Info),
         ml_gen_goal_as_block(CodeModel, Else, ElseStmt, !Info),
-        % Start the code after the if-then-else with EntryPackedWordMap
+        ml_gen_else_reachable_const_var_maps(Else, !.Info,
+            ReachableConstVarMaps0, ReachableConstVarMaps),
+        % Start the code after the if-then-else with InitPackedWordMap
         % to prevent it from trying to use map entries added by a branch
         % that was not taken.
-        ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
-        ml_gen_info_set_const_var_map(EntryConstVarMap, !Info),
+        ml_gen_info_set_packed_word_map(InitPackedWordMap, !Info),
+        ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info),
         IfStmt = ml_stmt_if_then_else(ml_unop(logical_not, CondSucceeded),
             ElseStmt, no, Context),
 
@@ -994,6 +1064,38 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
         LocalVarDefns = [CondVarDecl | CondLocalVarDefns],
         FuncDefns = CondFuncDefns ++ [ThenFuncDefn],
         Stmts = [SetCondFalse | CondStmts] ++ [IfStmt]
+    ).
+
+:- pred ml_gen_cond_then_reachable_const_var_maps(hlds_goal::in, hlds_goal::in,
+    ml_gen_info::in, list(ml_ground_term_map)::out) is det.
+
+ml_gen_cond_then_reachable_const_var_maps(Cond, Then, Info,
+        ReachableConstVarMaps0) :-
+    Cond = hlds_goal(_, CondGoalInfo),
+    Then = hlds_goal(_, ThenGoalInfo),
+    CondInstMapDelta = goal_info_get_instmap_delta(CondGoalInfo),
+    ThenInstMapDelta = goal_info_get_instmap_delta(ThenGoalInfo),
+    ( if
+        instmap_delta_is_reachable(CondInstMapDelta),
+        instmap_delta_is_reachable(ThenInstMapDelta)
+    then
+        ml_gen_info_get_const_var_map(Info, ThenConstVarMap),
+        ReachableConstVarMaps0 = [ThenConstVarMap]
+    else
+        ReachableConstVarMaps0 = []
+    ).
+
+:- pred ml_gen_else_reachable_const_var_maps(hlds_goal::in, ml_gen_info::in,
+    list(ml_ground_term_map)::in, list(ml_ground_term_map)::out) is det.
+
+ml_gen_else_reachable_const_var_maps(Else, Info, !ReachableConstVarMaps) :-
+    Else = hlds_goal(_, ElseGoalInfo),
+    ElseInstMapDelta = goal_info_get_instmap_delta(ElseGoalInfo),
+    ( if instmap_delta_is_reachable(ElseInstMapDelta) then
+        ml_gen_info_get_const_var_map(Info, ElseConstVarMap),
+        !:ReachableConstVarMaps = [ElseConstVarMap | !.ReachableConstVarMaps]
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%
@@ -1009,7 +1111,7 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         !Info) :-
     Cond = hlds_goal(_, CondGoalInfo),
     CondCodeModel = goal_info_get_code_model(CondGoalInfo),
-    ml_gen_info_get_packed_word_map(!.Info, EntryPackedWordMap),
+    ml_gen_info_get_packed_word_map(!.Info, InitPackedWordMap),
     (
         % model_det negation:
         %       <not(Goal)>
@@ -1023,7 +1125,9 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
 
         CodeModel = model_det,
         ml_gen_goal_as_branch(model_semi, Cond,
-            LocalVarDefns, FuncDefns, Stmts, !Info)
+            LocalVarDefns, FuncDefns, Stmts,
+            [], ReachableConstVarMaps, !Info),
+        ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info)
     ;
         % model_semi negation, model_det goal:
         %       <succeeded = not(Goal)>
@@ -1033,11 +1137,13 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
 
         CodeModel = model_semi, CondCodeModel = model_det,
         ml_gen_goal_as_branch(model_det, Cond,
-            CondLocalVarDefns, CondFuncDefns, CondStmts, !Info),
-        % Start the code after the negation with EntryPackedWordMap
+            CondLocalVarDefns, CondFuncDefns, CondStmts,
+            [], ReachableConstVarMaps, !Info),
+        ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info),
+        % Start the code after the negation with InitPackedWordMap
         % to prevent it from trying to use map entries added by a branch
         % that was not taken.
-        ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
+        ml_gen_info_set_packed_word_map(InitPackedWordMap, !Info),
         ml_gen_set_success(ml_const(mlconst_false), Context, SetSuccessFalse,
             !Info),
         LocalVarDefns = CondLocalVarDefns,
@@ -1052,11 +1158,13 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
 
         CodeModel = model_semi, CondCodeModel = model_semi,
         ml_gen_goal_as_branch(model_semi, Cond,
-            CondLocalVarDefns, CondFuncDefns, CondStmts, !Info),
-        % Start the code after the negation with EntryPackedWordMap
+            CondLocalVarDefns, CondFuncDefns, CondStmts,
+            [], ReachableConstVarMaps, !Info),
+        ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info),
+        % Start the code after the negation with InitPackedWordMap
         % to prevent it from trying to use map entries added by a branch
         % that was not taken.
-        ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
+        ml_gen_info_set_packed_word_map(InitPackedWordMap, !Info),
         ml_gen_test_success(Succeeded, !Info),
         ml_gen_set_success(ml_unop(logical_not, Succeeded),
             Context, InvertSuccess, !Info),

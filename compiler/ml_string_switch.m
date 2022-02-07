@@ -123,7 +123,8 @@
 ml_generate_string_trie_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
         EntryPackedArgsMap, Context, Stmts, !Info) :-
     gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
-        TaggedCases, map.init, CodeMap, !Info),
+        TaggedCases, map.init, CodeMap, [], ReachableConstVarMaps, !Info),
+    ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info),
     create_nested_switch_trie(TaggedCases, Context, VarRval, MaxCaseNum,
         CaseNumVarLval, CaseNumVarDefn,
         InitCaseNumVarStmt, GetCaseNumSwitchStmt, !Info),
@@ -739,7 +740,8 @@ chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval, Context,
 ml_generate_string_hash_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
         EntryPackedArgsMap, Context, Defns, Stmts, !Info) :-
     gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
-        TaggedCases, map.init, CodeMap, !Info),
+        TaggedCases, map.init, CodeMap, [], ReachableConstVarMaps, !Info),
+    ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info),
     build_str_case_id_assoc_list(TaggedCases, -1, _MaxCaseNum,
         [], RevStrsCaseIds),
     list.reverse(RevStrsCaseIds, StrsCaseIds),
@@ -863,39 +865,44 @@ add_to_strs_case_ids(CaseId, TaggedConsId, !RevStrsCaseIds) :-
 :- pred gen_tagged_case_codes_for_string_switch(code_model::in,
     packed_word_map::in, list(tagged_case)::in,
     map(case_id, mlds_stmt)::in, map(case_id, mlds_stmt)::out,
+    list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_tagged_case_codes_for_string_switch(_CodeModel, _EntryPackedArgsMap, [],
-        !CodeMap, !Info).
+        !CodeMap, !ReachableConstVarMaps, !Info).
 gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
-        [TaggedCase | TaggedCases], !CodeMap, !Info) :-
+        [TaggedCase | TaggedCases], !CodeMap, !ReachableConstVarMaps, !Info) :-
     gen_tagged_case_code_for_string_switch(CodeModel, EntryPackedArgsMap,
-        TaggedCase, !CodeMap, !Info),
+        TaggedCase, !CodeMap, !ReachableConstVarMaps, !Info),
     gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
-        TaggedCases, !CodeMap, !Info).
+        TaggedCases, !CodeMap, !ReachableConstVarMaps, !Info).
 
-:- pred gen_tagged_case_code_for_string_switch_dummy(code_model::in,
+:- pred gen_tagged_case_code_for_string_switch_return_case_id(code_model::in,
     packed_word_map::in, tagged_case::in, case_id::out,
     map(case_id, mlds_stmt)::in, map(case_id, mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out, unit::in, unit::out) is det.
+    list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
-gen_tagged_case_code_for_string_switch_dummy(CodeModel, EntryPackedArgsMap,
-        TaggedCase, CaseId, !CodeMap, !Info, !Dummy) :-
+gen_tagged_case_code_for_string_switch_return_case_id(CodeModel,
+        EntryPackedArgsMap, TaggedCase, CaseId,
+        !CodeMap, !ReachableConstVarMaps, !Info) :-
     TaggedCase = tagged_case(_, _, CaseId, _),
     gen_tagged_case_code_for_string_switch(CodeModel, EntryPackedArgsMap,
-        TaggedCase, !CodeMap, !Info).
+        TaggedCase, !CodeMap, !ReachableConstVarMaps, !Info).
 
 :- pred gen_tagged_case_code_for_string_switch(code_model::in,
     packed_word_map::in, tagged_case::in,
     map(case_id, mlds_stmt)::in, map(case_id, mlds_stmt)::out,
+    list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_tagged_case_code_for_string_switch(CodeModel, EntryPackedArgsMap,
-        TaggedCase, !CodeMap, !Info) :-
+        TaggedCase, !CodeMap, !ReachableConstVarMaps, !Info) :-
     ml_gen_info_set_packed_word_map(EntryPackedArgsMap, !Info),
     TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds,
         CaseId, Goal),
-    ml_gen_goal_as_branch_block(CodeModel, Goal, GoalStmt, !Info),
+    ml_gen_goal_as_branch_block(CodeModel, Goal, GoalStmt,
+        !ReachableConstVarMaps, !Info),
     MainString = gen_string_switch_case_comment(MainTaggedConsId),
     OtherStrings = list.map(gen_string_switch_case_comment,
         OtherTaggedConsIds),
@@ -1621,9 +1628,11 @@ ml_generate_string_binary_jump_switch(VarRval, Cases, CodeModel, CanFail,
     ),
     map.init(CaseLabelMap0),
     switch_util.string_binary_cases(Cases,
-        gen_tagged_case_code_for_string_switch_dummy(CodeModel,
+        gen_tagged_case_code_for_string_switch_return_case_id(CodeModel,
             EntryPackedArgsMap),
-        CaseLabelMap0, CaseLabelMap, !Info, unit, _, SortedTable),
+        CaseLabelMap0, CaseLabelMap, [], ReachableConstVarMaps, !Info,
+        SortedTable),
+    ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info),
     ml_gen_string_binary_jump_initializers(SortedTable, StructType,
         [], RevRowInitializers, 0, TableSize),
     list.reverse(RevRowInitializers, RowInitializers),

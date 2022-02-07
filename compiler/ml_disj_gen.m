@@ -186,14 +186,20 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Stmts, !Info) :-
                 ml_gen_lookup_disj(OutVars, Solns, Context, Stmts, !Info)
             else
                 ml_gen_ordinary_model_non_disj(FirstDisjunct, LaterDisjuncts,
-                    EntryPackedWordMap, Context, Stmts, !Info)
+                    EntryPackedWordMap, Context, Stmts,
+                    [], ReachableConstVarMaps, !Info),
+                ml_gen_record_consensus_const_var_map(ReachableConstVarMaps,
+                    !Info)
             )
         ;
             ( CodeModel = model_det
             ; CodeModel = model_semi
             ),
             ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts,
-                EntryPackedWordMap, CodeModel, Context, Stmts, !Info)
+                EntryPackedWordMap, CodeModel, Context, Stmts,
+                [], ReachableConstVarMaps, !Info),
+            ml_gen_record_consensus_const_var_map(ReachableConstVarMaps,
+                !Info)
         ),
         % Start the code *after* the whole disjunction with
         % EntryPackedWordMap as well, to prevent that code from trying to use
@@ -216,14 +222,18 @@ allow_lookup_disj(ml_target_java) = yes.
 
 :- pred ml_gen_ordinary_model_det_semi_disj(hlds_goal::in, list(hlds_goal)::in,
     packed_word_map::in, code_model::in, prog_context::in,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_stmt)::out,
+    list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts,
-        EntryPackedWordMap, CodeModel, Context, Stmts, !Info) :-
+        EntryPackedWordMap, CodeModel, Context, Stmts,
+        !ReachableConstVarMaps, !Info) :-
     ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
     (
         LaterDisjuncts = [],
-        ml_gen_goal_as_branch_block(CodeModel, FirstDisjunct, Stmt, !Info),
+        ml_gen_goal_as_branch_block(CodeModel, FirstDisjunct, Stmt,
+            !ReachableConstVarMaps, !Info),
         Stmts = [Stmt]
     ;
         LaterDisjuncts = [FirstLaterDisjunct | LaterLaterDisjuncts],
@@ -251,23 +261,25 @@ ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts,
         FirstCodeModel = goal_info_get_code_model(FirstGoalInfo),
         (
             FirstCodeModel = model_det,
-            ml_gen_goal_as_branch_block(model_det, FirstDisjunct, Stmt, !Info),
+            ml_gen_goal_as_branch_block(model_det, FirstDisjunct, Stmt,
+                !ReachableConstVarMaps, !Info),
             Stmts = [Stmt]
         ;
             FirstCodeModel = model_semi,
             ml_gen_goal_as_branch_block(model_semi, FirstDisjunct, FirstStmt,
-                !Info),
+                !ReachableConstVarMaps, !Info),
             ml_gen_test_success(Succeeded, !Info),
             ml_gen_ordinary_model_det_semi_disj(FirstLaterDisjunct,
                 LaterLaterDisjuncts, EntryPackedWordMap, CodeModel, Context,
-                LaterStmts, !Info),
+                LaterStmts, !ReachableConstVarMaps, !Info),
             LaterStmt = ml_gen_block([], [], LaterStmts, Context),
             IfStmt = ml_stmt_if_then_else(ml_unop(logical_not, Succeeded),
                 LaterStmt, no, Context),
             Stmts = [FirstStmt, IfStmt]
         ;
             FirstCodeModel = model_non,
-            % simplify.m should get wrap commits around these.
+            % simplify.m should wrap commits around these disjunctions
+            % if overall they are model_semi.
             unexpected($pred,
                 "model_non disjunct in model_det or model_semi disjunction")
         )
@@ -277,14 +289,16 @@ ml_gen_ordinary_model_det_semi_disj(FirstDisjunct, LaterDisjuncts,
 
 :- pred ml_gen_ordinary_model_non_disj(hlds_goal::in, list(hlds_goal)::in,
     packed_word_map::in, prog_context::in, list(mlds_stmt)::out,
+    list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ordinary_model_non_disj(FirstDisjunct, LaterDisjuncts,
-        EntryPackedWordMap, Context, Stmts, !Info) :-
+        EntryPackedWordMap, Context, Stmts, !ReachableConstVarMaps, !Info) :-
     ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
     (
         LaterDisjuncts = [],
-        ml_gen_goal_as_branch_block(model_non, FirstDisjunct, Stmt, !Info),
+        ml_gen_goal_as_branch_block(model_non, FirstDisjunct, Stmt,
+            !ReachableConstVarMaps, !Info),
         Stmts = [Stmt]
     ;
         LaterDisjuncts = [FirstLaterDisjunct | LaterLaterDisjuncts],
@@ -296,9 +310,10 @@ ml_gen_ordinary_model_non_disj(FirstDisjunct, LaterDisjuncts,
         %       <Goals && SUCCEED()>
 
         ml_gen_goal_as_branch_block(model_non, FirstDisjunct, FirstStmt,
-            !Info),
+            !ReachableConstVarMaps, !Info),
         ml_gen_ordinary_model_non_disj(FirstLaterDisjunct, LaterLaterDisjuncts,
-            EntryPackedWordMap, Context, LaterStmts, !Info),
+            EntryPackedWordMap, Context, LaterStmts,
+            !ReachableConstVarMaps, !Info),
         Stmts = [FirstStmt | LaterStmts]
     ).
 

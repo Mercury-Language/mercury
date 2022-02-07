@@ -490,7 +490,7 @@
 %
 
 :- pred ml_gen_info_get_const_var_map(ml_gen_info::in,
-    map(prog_var, ml_ground_term)::out) is det.
+    ml_ground_term_map::out) is det.
 :- pred ml_gen_info_get_used_succeeded_var(ml_gen_info::in, bool::out) is det.
 :- pred ml_gen_info_get_closure_wrapper_defns(ml_gen_info::in,
     list(mlds_function_defn)::out) is det.
@@ -526,7 +526,7 @@
     packed_word_map::out) is det.
 :- pred ml_gen_info_get_func_nest_depth(ml_gen_info::in, int::out) is det.
 
-:- pred ml_gen_info_set_const_var_map(map(prog_var, ml_ground_term)::in,
+:- pred ml_gen_info_set_const_var_map(ml_ground_term_map::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 :- pred ml_gen_info_set_used_succeeded_var(bool::in,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -733,13 +733,15 @@ generate_tail_rec_start_label(TsccKind, Id) = Label :-
                 % Branched control structures should reset the map
                 % to its original value at the start of every branch
                 % after the first (to prevent a later branch from using
-                % information that is applicable only in a previous branch),
-                % and at the end of the branched control structure
-                % (to prevent the code after it using information whose
-                % correctness depends on the exact route that
-                % execution took to there).
+                % information that is applicable only in a previous branch).
                 %
-/*  1 */        mgi_const_var_map       :: map(prog_var, ml_ground_term),
+                % They must also ensure that the const_var_map at the
+                % program point just after the branched control structure
+                % contains only entries that exist at the ends of all the
+                % branches whose ends are actually reachable (to prevent
+                % the code after it using information whose correctness
+                % depends on the exact route that execution took to there).
+/*  1 */        mgi_const_var_map       :: ml_ground_term_map,
 
 /*  2 */        mgi_func_counter        :: counter,
 /*  3 */        mgi_conv_var_counter    :: counter,

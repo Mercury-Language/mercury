@@ -466,11 +466,11 @@
 
 %---------------------%
 
-    % Given two maps M1 and M2, create a third map M3 that has only the
-    % keys that occur in both M1 and M2. For keys that occur in both M1
-    % and M2, compute the corresponding values. If they are the same,
-    % include the key/value pair in M3. If they differ, do not include the
-    % key in M3.
+    % Given two maps MapA and MapB, create a third map CommonMap that
+    % has only the keys that occur in both MapA and MapB. For keys
+    % that occur in both MapA and MapB, look up the corresponding values.
+    % If they are the same, include the key/value pair in CommonMap.
+    % If they differ, do not include the key in CommonMap.
     %
     % This predicate effectively considers the input maps to be sets of
     % key/value pairs, computes the intersection of those two sets, and
@@ -482,12 +482,12 @@
     %
 :- func common_subset(map(K, V), map(K, V)) = map(K, V).
 
-    % Given two maps M1 and M2, create a third map M3 that has only the
-    % keys that occur in both M1 and M2. For keys that occur in both M1
-    % and M2, compute the value in the final map by applying the supplied
-    % predicate to the values associated with the key in M1 and M2.
-    % Fail if and only if this predicate fails on the values associated
-    % with some common key.
+    % Given two maps MapA and MapB, create a third map, IntersectMap,
+    % that has only the keys that occur in both MapA and MapB. For keys
+    % that occur in both MapA and MapB, compute the value in the final map
+    % by applying the supplied predicate to the values associated with
+    % the key in MapA and MapB. Fail if and only if this predicate fails
+    % on the values associated with some common key.
     %
 :- func intersect(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
 
@@ -516,12 +516,12 @@
 
 %---------------------%
 
-    % Given two maps M1 and M2, create a third map M3 that contains all
-    % the keys that occur in either M1 and M2. For keys that occur in both M1
-    % and M2, compute the value in the final map by applying the supplied
-    % closure to the values associated with the key in M1 and M2.
-    % Fail if and only if this closure fails on the values associated
-    % with some common key.
+    % Given two maps MapA and MapB, create a third map, UnionMap, that
+    % contains all the keys that occur in either MapA and MapB. For keys
+    % that occur in both MapA and MapB, compute the value in the final map
+    % by applying the supplied closure to the values associated with the key
+    % in MapA and MapB. Fail if and only if this closure fails on
+    % the values associated with some common key.
     %
 :- func union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
 :- pred union(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
@@ -1313,14 +1313,14 @@ det_min_key(M) =
 
 %---------------------------------------------------------------------------%
 
-insert(M1, K, V) = M2 :-
-    map.insert(K, V, M1, M2).
+insert(M0, K, V) = M :-
+    map.insert(K, V, M0, M).
 
 insert(K, V, !Map) :-
     tree234.insert(K, V, !Map).
 
-det_insert(M1, K, V) = M2 :-
-    map.det_insert(K, V, M1, M2).
+det_insert(M0, K, V) = M :-
+    map.det_insert(K, V, M0, M).
 
 det_insert(K, V, !Map) :-
     ( if tree234.insert(K, V, !.Map, NewMap) then
@@ -1329,8 +1329,8 @@ det_insert(K, V, !Map) :-
         report_lookup_error("map.det_insert: key already present", K, V)
     ).
 
-det_insert_from_corresponding_lists(M1, Ks, Vs) = M2 :-
-    map.det_insert_from_corresponding_lists(Ks, Vs, M1, M2).
+det_insert_from_corresponding_lists(M0, Ks, Vs) = M :-
+    map.det_insert_from_corresponding_lists(Ks, Vs, M0, M).
 
 det_insert_from_corresponding_lists([], [], !Map).
 det_insert_from_corresponding_lists([], [_ | _], _, _) :-
@@ -1341,8 +1341,8 @@ det_insert_from_corresponding_lists([K | Ks], [V | Vs], !Map) :-
     map.det_insert(K, V, !Map),
     map.det_insert_from_corresponding_lists(Ks, Vs, !Map).
 
-det_insert_from_assoc_list(M1, AL) = M2 :-
-    map.det_insert_from_assoc_list(AL, M1, M2).
+det_insert_from_assoc_list(M0, AL) = M :-
+    map.det_insert_from_assoc_list(AL, M0, M).
 
 det_insert_from_assoc_list([], !Map).
 det_insert_from_assoc_list([K - V | KVs], !Map) :-
@@ -1374,14 +1374,14 @@ det_update(K, V, !Map) :-
 
 %---------------------%
 
-set(M1, K, V) = M2 :-
-    map.set(K, V, M1, M2).
+set(M0, K, V) = M :-
+    map.set(K, V, M0, M).
 
 set(K, V, !Map) :-
     tree234.set(K, V, !Map).
 
-set_from_corresponding_lists(M1, Ks, Vs) = M2 :-
-    map.set_from_corresponding_lists(Ks, Vs, M1, M2).
+set_from_corresponding_lists(M0, Ks, Vs) = M :-
+    map.set_from_corresponding_lists(Ks, Vs, M0, M).
 
 set_from_corresponding_lists([], [], !Map).
 set_from_corresponding_lists([], [_ | _], _, _) :-
@@ -1392,8 +1392,8 @@ set_from_corresponding_lists([K | Ks], [V | Vs], !Map) :-
     map.set(K, V, !Map),
     map.set_from_corresponding_lists(Ks, Vs, !Map).
 
-set_from_assoc_list(M1, AL) = M2 :-
-    map.set_from_assoc_list(AL, M1, M2).
+set_from_assoc_list(M0, AL) = M :-
+    map.set_from_assoc_list(AL, M0, M).
 
 set_from_assoc_list([], !Map).
 set_from_assoc_list([K - V | KVs], !Map) :-
@@ -1696,20 +1696,20 @@ apply_to_list([K | Ks], Map, [V | Vs]) :-
 
 %---------------------------------------------------------------------------%
 
-merge(M1, M2) = M3 :-
-    map.merge(M1, M2, M3).
+merge(MapA, MapB) = MergedMap :-
+    map.merge(MapA, MapB, MergedMap).
 
-merge(MA, MB, M) :-
+merge(MapA, MapB, MergedMap) :-
     % You may wish to compare this to old_merge below.
-    map.to_assoc_list(MB, MBList),
-    map.det_insert_from_assoc_list(MBList, MA, M).
+    map.to_assoc_list(MapB, MapBList),
+    map.det_insert_from_assoc_list(MapBList, MapA, MergedMap).
 
-overlay(M1, M2) = M3 :-
-    map.overlay(M1, M2, M3).
+overlay(MapA, MapB) = OverlayMap :-
+    map.overlay(MapA, MapB, OverlayMap).
 
-overlay(Map0, Map1, Map) :-
-    map.to_assoc_list(Map1, AssocList),
-    map.overlay_2(AssocList, Map0, Map).
+overlay(MapA, MapB, OverlayMap) :-
+    map.to_assoc_list(MapB, AssocListB),
+    map.overlay_2(AssocListB, MapA, OverlayMap).
 
 :- pred overlay_2(assoc_list(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
 :- pragma type_spec(pred(map.overlay_2/3), K = var(_)).
@@ -1719,12 +1719,12 @@ overlay_2([K - V | AssocList], !Map) :-
     map.set(K, V, !Map),
     map.overlay_2(AssocList, !Map).
 
-overlay_large_map(M1, M2) = M3 :-
-    map.overlay_large_map(M1, M2, M3).
+overlay_large_map(MapA, MapB) = OverlayMap :-
+    map.overlay_large_map(MapA, MapB, OverlayMap).
 
-overlay_large_map(Map0, Map1, Map) :-
-    map.to_assoc_list(Map0, AssocList),
-    map.overlay_large_map_2(AssocList, Map1, Map).
+overlay_large_map(MapA, MapB, OverlayMap) :-
+    map.to_assoc_list(MapA, AssocListA),
+    map.overlay_large_map_2(AssocListA, MapB, OverlayMap).
 
 :- pred overlay_large_map_2(assoc_list(K, V)::in,
     map(K, V)::in, map(K, V)::out) is det.
@@ -1741,55 +1741,58 @@ overlay_large_map_2([K - V | AssocList], Map0, Map) :-
 
 %---------------------%
 
-common_subset(Map1, Map2) = Common :-
-    map.to_sorted_assoc_list(Map1, AssocList1),
-    map.to_sorted_assoc_list(Map2, AssocList2),
-    map.common_subset_loop(AssocList1, AssocList2, [], RevCommonAssocList),
-    map.from_rev_sorted_assoc_list(RevCommonAssocList, Common).
+common_subset(MapA, MapB) = CommonMap :-
+    map.to_sorted_assoc_list(MapA, AssocListA),
+    map.to_sorted_assoc_list(MapB, AssocListB),
+    map.common_subset_loop(AssocListA, AssocListB, [], RevCommonAssocList),
+    map.from_rev_sorted_assoc_list(RevCommonAssocList, CommonMap).
 
 :- pred common_subset_loop(assoc_list(K, V)::in, assoc_list(K, V)::in,
     assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
 
-common_subset_loop(AssocList1, AssocList2, !RevCommonAssocList) :-
+common_subset_loop(ListA, ListB, !RevCommonList) :-
     (
-        AssocList1 = [],
-        AssocList2 = []
+        ListA = [],
+        ListB = []
     ;
-        AssocList1 = [_ | _],
-        AssocList2 = []
+        ListA = [_ | _],
+        ListB = []
     ;
-        AssocList1 = [],
-        AssocList2 = [_ | _]
+        ListA = [],
+        ListB = [_ | _]
     ;
-        AssocList1 = [Key1 - Value1 | AssocTail1],
-        AssocList2 = [Key2 - Value2 | AssocTail2],
-        compare(R, Key1, Key2),
+        ListA = [KeyA - ValueA | TailA],
+        ListB = [KeyB - ValueB | TailB],
+        compare(R, KeyA, KeyB),
         (
             R = (=),
-            ( if Value1 = Value2 then
-                !:RevCommonAssocList = [Key1 - Value1 | !.RevCommonAssocList]
+            ( if ValueA = ValueB then
+                !:RevCommonList = [KeyA - ValueA | !.RevCommonList]
             else
                 true
             ),
-            map.common_subset_loop(AssocTail1, AssocTail2, !RevCommonAssocList)
+            map.common_subset_loop(TailA, TailB, !RevCommonList)
         ;
-            ( R = (<)
-            ; R = (>)
-            ),
-            map.common_subset_loop(AssocList1, AssocTail2, !RevCommonAssocList)
+            R = (<),
+            % KeyA has no match in ListB.
+            map.common_subset_loop(TailA, ListB, !RevCommonList)
+        ;
+            R = (>),
+            % KeyB has no match in ListA.
+            map.common_subset_loop(ListA, TailB, !RevCommonList)
         )
     ).
 
 %---------------------%
 
-intersect(F, M1, M2) = M3 :-
+intersect(F, MapA, MapB) = IntersectMap :-
     P = (pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    map.intersect(P, M1, M2, M3).
+    map.intersect(P, MapA, MapB, IntersectMap).
 
-intersect(CommonPred, Map1, Map2, Common) :-
-    map.to_sorted_assoc_list(Map1, AssocList1),
-    map.to_sorted_assoc_list(Map2, AssocList2),
-    map.intersect_loop(AssocList1, AssocList2, CommonPred,
+intersect(CommonPred, MapA, MapB, Common) :-
+    map.to_sorted_assoc_list(MapA, AssocListA),
+    map.to_sorted_assoc_list(MapB, AssocListB),
+    map.intersect_loop(AssocListA, AssocListB, CommonPred,
         [], RevCommonAssocList),
     map.from_rev_sorted_assoc_list(RevCommonAssocList, Common).
 
@@ -1800,44 +1803,42 @@ intersect(CommonPred, Map1, Map2, Common) :-
 :- mode intersect_loop(in, in, pred(in, in, out) is det, in, out)
     is det.
 
-intersect_loop(AssocList1, AssocList2, CommonPred, !RevCommonAssocList) :-
+intersect_loop(ListA, ListB, CommonPred, !RevCommonList) :-
     (
-        AssocList1 = [],
-        AssocList2 = []
+        ListA = [],
+        ListB = []
     ;
-        AssocList1 = [_ | _],
-        AssocList2 = []
+        ListA = [_ | _],
+        ListB = []
     ;
-        AssocList1 = [],
-        AssocList2 = [_ | _]
+        ListA = [],
+        ListB = [_ | _]
     ;
-        AssocList1 = [Key1 - Value1 | AssocTail1],
-        AssocList2 = [Key2 - Value2 | AssocTail2],
-        compare(R, Key1, Key2),
+        ListA = [KeyA - ValueA | TailA],
+        ListB = [KeyB - ValueB | TailB],
+        compare(R, KeyA, KeyB),
         (
             R = (=),
-            CommonPred(Value1, Value2, Value),
-            !:RevCommonAssocList = [Key1 - Value | !.RevCommonAssocList],
-            map.intersect_loop(AssocTail1, AssocTail2, CommonPred,
-                !RevCommonAssocList)
+            CommonPred(ValueA, ValueB, Value),
+            !:RevCommonList = [KeyA - Value | !.RevCommonList],
+            map.intersect_loop(TailA, TailB, CommonPred,
+                !RevCommonList)
         ;
             R = (<),
-            map.intersect_loop(AssocTail1, AssocList2, CommonPred,
-                !RevCommonAssocList)
+            map.intersect_loop(TailA, ListB, CommonPred, !RevCommonList)
         ;
             R = (>),
-            map.intersect_loop(AssocList1, AssocTail2, CommonPred,
-                !RevCommonAssocList)
+            map.intersect_loop(ListA, TailB, CommonPred, !RevCommonList)
         )
     ).
 
-det_intersect(PF, M1, M2) = M3 :-
+det_intersect(PF, MapA, MapB) = IntersectMap :-
     P = (pred(X::in, Y::in, Z::out) is semidet :- Z = PF(X, Y) ),
-    map.det_intersect(P, M1, M2, M3).
+    map.det_intersect(P, MapA, MapB, IntersectMap).
 
-det_intersect(CommonPred, Map1, Map2, Common) :-
-    ( if map.intersect(CommonPred, Map1, Map2, CommonPrime) then
-        Common = CommonPrime
+det_intersect(CommonPred, MapA, MapB, CommonMap) :-
+    ( if map.intersect(CommonPred, MapA, MapB, CommonMapPrime) then
+        CommonMap = CommonMapPrime
     else
         unexpected($pred, "map.intersect failed")
     ).
@@ -1914,15 +1915,15 @@ intersect_list_pass(HeadAssocList, TailAssocLists, CommonPred,
 
 %---------------------%
 
-union(F, M1, M2) = M3 :-
+union(F, MapA, MapB) = UnionMap :-
     P = (pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    map.union(P, M1, M2, M3).
+    map.union(P, MapA, MapB, UnionMap).
 
-union(CommonPred, Map1, Map2, Common) :-
-    map.to_sorted_assoc_list(Map1, AssocList1),
-    map.to_sorted_assoc_list(Map2, AssocList2),
-    map.union_loop(AssocList1, AssocList2, CommonPred, [], RevCommonAssocList),
-    map.from_rev_sorted_assoc_list(RevCommonAssocList, Common).
+union(CommonPred, MapA, MapB, UnionMap) :-
+    map.to_sorted_assoc_list(MapA, AssocListA),
+    map.to_sorted_assoc_list(MapB, AssocListB),
+    map.union_loop(AssocListA, AssocListB, CommonPred, [], RevUnionAssocList),
+    map.from_rev_sorted_assoc_list(RevUnionAssocList, UnionMap).
 
     % The real intended modes of this predicate are the last two.
     % The first four modes are just specialized versions for use by
@@ -1982,13 +1983,13 @@ union_loop(AssocList1, AssocList2, CommonPred, !RevCommonAssocList) :-
         )
     ).
 
-det_union(F, M1, M2) = M3 :-
+det_union(F, MapA, MapB) = UnionMap :-
     P = (pred(X::in, Y::in, Z::out) is semidet :- Z = F(X, Y) ),
-    map.det_union(P, M1, M2, M3).
+    map.det_union(P, MapA, MapB, UnionMap).
 
-det_union(CommonPred, Map1, Map2, Union) :-
-    ( if map.union(CommonPred, Map1, Map2, UnionPrime) then
-        Union = UnionPrime
+det_union(CommonPred, MapA, MapB, UnionMap) :-
+    ( if map.union(CommonPred, MapA, MapB, UnionMapPrime) then
+        UnionMap = UnionMapPrime
     else
         unexpected($pred, "map.union failed")
     ).
@@ -2068,8 +2069,8 @@ equal(MapA, MapB) :-
 
 %---------------------------------------------------------------------------%
 
-optimize(M1) = M2 :-
-    map.optimize(M1, M2).
+optimize(M0) = M :-
+    map.optimize(M0, M).
 
 optimize(Map, Map).
 
@@ -2143,16 +2144,16 @@ foldr6(Pred, Map, !A, !B, !C, !D, !E, !F) :-
 
 %---------------------%
 
-map_values(F, M1) = M2 :-
+map_values(F, M0) = M :-
     P = (pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    map.map_values(P, M1, M2).
+    map.map_values(P, M0, M).
 
 map_values(Pred, Map0, Map) :-
     tree234.map_values(Pred, Map0, Map).
 
-map_values_only(F, M1) = M2 :-
+map_values_only(F, M0) = M :-
     P = (pred(Y::in, Z::out) is det :- Z = F(Y) ),
-    map.map_values_only(P, M1, M2).
+    map.map_values_only(P, M0, M).
 
 map_values_only(Pred, Map0, Map) :-
     tree234.map_values_only(Pred, Map0, Map).
@@ -2190,15 +2191,15 @@ map_values_foldl3(Pred, !Map, !AccA, !AccB, !AccC) :-
 
 %---------------------------------------------------------------------------%
 
-old_merge(M1, M2) = M3 :-
-    map.old_merge(M1, M2, M3).
+old_merge(MapA, MapB) = MergedMap :-
+    map.old_merge(MapA, MapB, MergedMap).
 
-old_merge(M0, M1, M) :-
-    map.to_assoc_list(M0, ML0),
-    map.to_assoc_list(M1, ML1),
-    list.merge(ML0, ML1, ML),
-    % ML may be sorted, but it may contain duplicates.
-    map.from_assoc_list(ML, M).
+old_merge(MapA, MapB, MergedMap) :-
+    map.to_assoc_list(MapA, ListA),
+    map.to_assoc_list(MapB, ListB),
+    list.merge(ListA, ListB, MergedList),
+    % MergedList may be sorted, but it may contain duplicates.
+    map.from_assoc_list(MergedList, MergedMap).
 
 %---------------------------------------------------------------------------%
 :- end_module map.

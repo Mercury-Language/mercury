@@ -469,16 +469,19 @@ ml_switch_generate_if_then_else_chain(TaggedCases0, Var,
         TaggedCases = [FirstTaggedCase | LaterTaggedCases],
         ml_switch_generate_if_then_else_chain_ites(FirstTaggedCase,
             LaterTaggedCases, Var, CodeModel, CanFail, EntryPackedWordMap,
-            Context, Stmts, !Info)
+            Context, Stmts, [], ReachableConstVarMaps, !Info),
+        ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info)
     ).
 
 :- pred ml_switch_generate_if_then_else_chain_ites(tagged_case::in,
     list(tagged_case)::in, prog_var::in, code_model::in, can_fail::in,
     packed_word_map::in, prog_context::in, list(mlds_stmt)::out,
+    list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_switch_generate_if_then_else_chain_ites(TaggedCase, TaggedCases, Var,
-        CodeModel, CanFail, EntryPackedWordMap, Context, [Stmt], !Info) :-
+        CodeModel, CanFail, EntryPackedWordMap, Context, [Stmt],
+        !ReachableConstVarMaps, !Info) :-
     ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
     TaggedCase = tagged_case(_, _, _, Goal),
     (
@@ -488,7 +491,8 @@ ml_switch_generate_if_then_else_chain_ites(TaggedCase, TaggedCases, Var,
             % We do not need to test whether we are in the first tagged case;
             % previous tests have implied that we must be, by eliminating all
             % other cons_ids that Var could be bound to.
-            ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt, !Info)
+            ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt,
+                !ReachableConstVarMaps, !Info)
         ;
             CanFail = can_fail,
             % We handle this case as if we still had later cases, cases
@@ -499,7 +503,8 @@ ml_switch_generate_if_then_else_chain_ites(TaggedCase, TaggedCases, Var,
             ml_switch_generate_if_then_else_cond(TaggedCase, Var, Cond, !Info),
 
             % Generate code for the first tagged case.
-            ml_gen_goal_as_branch_block(CodeModel, Goal, GoalBlock, !Info),
+            ml_gen_goal_as_branch_block(CodeModel, Goal, GoalBlock,
+                !ReachableConstVarMaps, !Info),
 
             % Generate code for the non-covered tagged cases.
             ml_gen_failure(CodeModel, Context, FailStmts, !Info),
@@ -518,12 +523,13 @@ ml_switch_generate_if_then_else_chain_ites(TaggedCase, TaggedCases, Var,
         ml_switch_generate_if_then_else_cond(TaggedCase, Var, Cond, !Info),
 
         % Generate code for the first tagged case.
-        ml_gen_goal_as_branch_block(CodeModel, Goal, GoalBlock, !Info),
+        ml_gen_goal_as_branch_block(CodeModel, Goal, GoalBlock,
+            !ReachableConstVarMaps, !Info),
 
         % Generate code for the later tagged cases.
         ml_switch_generate_if_then_else_chain_ites(LaterTaggedCase,
             LaterTaggedCases, Var, CodeModel, CanFail, EntryPackedWordMap,
-            Context, LaterStmts, !Info),
+            Context, LaterStmts, !ReachableConstVarMaps, !Info),
         LaterBlock = ml_gen_block([], [], LaterStmts, Context),
 
         % Put the codes for the first and later tagged cases together.
@@ -556,8 +562,10 @@ ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail,
     ml_gen_var(!.Info, Var, Lval),
     Rval = ml_lval(Lval),
     ml_switch_gen_range(!.Info, MLDS_Type, Range),
-    ml_switch_generate_mlds_cases(Type, MLDS_Type, Cases, CodeModel,
-        EntryPackedWordMap, MLDS_Cases, !Info),
+    ml_switch_generate_mlds_cases(Type, MLDS_Type, CodeModel,
+        EntryPackedWordMap, Cases, MLDS_Cases,
+        [], ReachableConstVarMaps, !Info),
+    ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info),
     ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info),
     SwitchStmt0 = ml_stmt_switch(MLDS_Type, Rval, Range, MLDS_Cases, Default,
         Context),
@@ -580,30 +588,39 @@ ml_switch_gen_range(Info, MLDS_Type, Range) :-
     ).
 
 :- pred ml_switch_generate_mlds_cases(mer_type::in, mlds_type::in,
-    list(tagged_case)::in, code_model::in, packed_word_map::in,
-    list(mlds_switch_case)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    code_model::in, packed_word_map::in,
+    list(tagged_case)::in, list(mlds_switch_case)::out,
+    list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_switch_generate_mlds_cases(_, _, [], _, _, [], !Info).
-ml_switch_generate_mlds_cases(MerType, MLDS_Type, [TaggedCase | TaggedCases],
-        CodeModel, EntryPackedWordMap, [MLDS_Case | MLDS_Cases], !Info) :-
-    ml_switch_generate_mlds_case(MerType, MLDS_Type, TaggedCase, CodeModel,
-        EntryPackedWordMap, MLDS_Case, !Info),
-    ml_switch_generate_mlds_cases(MerType, MLDS_Type, TaggedCases, CodeModel,
-        EntryPackedWordMap, MLDS_Cases, !Info).
+ml_switch_generate_mlds_cases(_, _, _, _, [], [],
+        !ReachableConstVarMaps, !Info).
+ml_switch_generate_mlds_cases(MerType, MLDS_Type, CodeModel,
+        EntryPackedWordMap, [TaggedCase | TaggedCases],
+        [MLDS_Case | MLDS_Cases], !ReachableConstVarMaps, !Info) :-
+    ml_switch_generate_mlds_case(MerType, MLDS_Type, CodeModel,
+        EntryPackedWordMap, TaggedCase, MLDS_Case,
+        !ReachableConstVarMaps, !Info),
+    ml_switch_generate_mlds_cases(MerType, MLDS_Type, CodeModel,
+        EntryPackedWordMap, TaggedCases, MLDS_Cases,
+        !ReachableConstVarMaps, !Info).
 
 :- pred ml_switch_generate_mlds_case(mer_type::in, mlds_type::in,
-    tagged_case::in, code_model::in, packed_word_map::in,
-    mlds_switch_case::out, ml_gen_info::in, ml_gen_info::out) is det.
+    code_model::in, packed_word_map::in,
+    tagged_case::in, mlds_switch_case::out,
+    list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_switch_generate_mlds_case(MerType, MLDS_Type, TaggedCase, CodeModel,
-        EntryPackedWordMap, MLDS_Case, !Info) :-
+ml_switch_generate_mlds_case(MerType, MLDS_Type, CodeModel, EntryPackedWordMap,
+        TaggedCase, MLDS_Case, !ReachableConstVarMaps, !Info) :-
     ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
     TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, Goal),
     ml_tagged_cons_id_to_match_cond(MerType, MLDS_Type, TaggedMainConsId,
         MainCond),
     list.map(ml_tagged_cons_id_to_match_cond(MerType, MLDS_Type),
         TaggedOtherConsIds, OtherConds),
-    ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt, !Info),
+    ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt,
+        !ReachableConstVarMaps, !Info),
     MLDS_Case = mlds_switch_case(MainCond, OtherConds, Stmt).
 
 :- pred ml_tagged_cons_id_to_match_cond(mer_type::in, mlds_type::in,
