@@ -1223,10 +1223,9 @@ make_new_pred_info(_ModuleInfo, UnusedArgs, PredStatus, proc(PredId, ProcId),
         then
             type_ctor_module_name_arity(TypeCtor, TypeModule, TypeName,
                 TypeArity),
-            string.int_to_string(TypeArity, TypeArityStr),
-            TypeModuleString = sym_name_to_string_sep(TypeModule, "__"),
-            string.append_list([Name0, "_", TypeModuleString, "__", TypeName,
-                "_", TypeArityStr], Name1)
+            TypeModuleStr = sym_name_to_string_sep(TypeModule, "__"),
+            string.format("%s_%s__%s_%d",
+                [s(Name0), s(TypeModuleStr), s(TypeName), i(TypeArity)], Name1)
         else
             % The special predicate has already been specialised.
             Name1 = Name0
