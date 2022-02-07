@@ -59,8 +59,9 @@ Changes to the Mercury standard library
 
 ### Changes to the `assoc_list` module
 
-* The following predicate has been added:
+* The following predicates and functions have been added:
 
+    - func `common_subset/2`
     - pred `maybe_from_corresponding_lists/3`
 
 ### Changes to the `bag` module

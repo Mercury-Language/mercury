@@ -511,6 +511,7 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.set_of_var.
 
+:- import_module assoc_list.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -567,25 +568,29 @@ ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info) :-
         map.init(ConsensusConstVarMap)
     ;
         ReachableConstVarMaps = [HeadConstVarMap | TailConstVarMap],
-        ml_gen_consensus_const_var_map_loop(HeadConstVarMap,
-            TailConstVarMap, ConsensusConstVarMap)
+        map.to_assoc_list(HeadConstVarMap, HeadConstVarAL),
+        ml_gen_consensus_const_var_map_loop(TailConstVarMap,
+            HeadConstVarAL, ConsensusConstVarAL),
+        map.from_sorted_assoc_list(ConsensusConstVarAL, ConsensusConstVarMap)
     ),
     ml_gen_info_set_const_var_map(ConsensusConstVarMap, !Info).
 
-:- pred ml_gen_consensus_const_var_map_loop(ml_ground_term_map::in,
-    list(ml_ground_term_map)::in, ml_ground_term_map::out) is det.
+:- pred ml_gen_consensus_const_var_map_loop(list(ml_ground_term_map)::in,
+    assoc_list(prog_var, ml_ground_term)::in,
+    assoc_list(prog_var, ml_ground_term)::out) is det.
 
-ml_gen_consensus_const_var_map_loop(ConsensusSoFar0,
-        ConstVarMaps, ConsensusConstVarMap) :-
+ml_gen_consensus_const_var_map_loop(ConstVarMaps,
+        ConsensusSoFar0, Consensus) :-
     (
         ConstVarMaps = [],
-        ConsensusConstVarMap = ConsensusSoFar0
+        Consensus = ConsensusSoFar0
     ;
         ConstVarMaps = [HeadConstVarMap | TailConstVarMaps],
-        % XXX Keeping ConsensusSoFar* as assoc_lists would be more efficient.
-        ConsensusSoFar1 = map.common_subset(ConsensusSoFar0, HeadConstVarMap),
-        ml_gen_consensus_const_var_map_loop(ConsensusSoFar1,
-            TailConstVarMaps, ConsensusConstVarMap)
+        map.to_assoc_list(HeadConstVarMap, HeadConstVarAL),
+        ConsensusSoFar1 =
+            assoc_list.common_subset(ConsensusSoFar0, HeadConstVarAL),
+        ml_gen_consensus_const_var_map_loop(TailConstVarMaps,
+            ConsensusSoFar1, Consensus)
     ).
 
 %---------------------------------------------------------------------------%
