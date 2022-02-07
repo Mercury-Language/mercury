@@ -184,23 +184,35 @@
     % one input argument, and for each key-value pair in List,
     % calls the closure on the key K. If Pred(K) is true, the key-value pair
     % is included in TrueList; otherwise, it is included in FalseList.
-    %      
+    %
 :- pred filter(pred(K)::in(pred(in) is semidet),
     assoc_list(K, V)::in, assoc_list(K, V)::out, assoc_list(K, V)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
-% Merging assoc_lists.
+% Operations on two assoc_lists.
 %
 
-    % merge(L1, L2, L):
+    % merge(ListA, ListB, ListAB):
     %
-    % L is the result of merging the elements of L1 and L2, in ascending order.
-    % L1 and L2 must be sorted on the keys.
+    % Given two lists ListA and ListB, which must both be sorted
+    % in ascending order on the keys, return ListAB, which is the result
+    % of merging the elements of ListA and ListB. It will also be sorted
+    % in ascending order.
     %
 :- func merge(assoc_list(K, V), assoc_list(K, V)) = assoc_list(K, V).
 :- pred merge(assoc_list(K, V)::in, assoc_list(K, V)::in,
     assoc_list(K, V)::out) is det.
+
+    % common_subset(ListA, ListB, CommonList):
+    %
+    % Given two lists ListA and ListB, which must both be sorted
+    % in ascending order on the keys, neither of which contains any key
+    % more than once, return CommonList, which will consist of only the
+    % key-value pairs that occur in *both* ListA and ListB.
+    % It will also be sorted in ascending order on the keys.
+    %
+:- func common_subset(assoc_list(K, V), assoc_list(K, V)) = assoc_list(K, V).
 
 %---------------------------------------------------------------------------%
 %
@@ -558,6 +570,46 @@ merge([A | As], [B | Bs], Cs) :-
         % If compare((=), AK, BK), take A first.
         assoc_list.merge(As, [B | Bs], Cs0),
         Cs = [A | Cs0]
+    ).
+
+common_subset(ListA, ListB) = CommonList :-
+    assoc_list.common_subset_loop(ListA, ListB, [], RevCommonList),
+    list.reverse(RevCommonList, CommonList).
+
+:- pred common_subset_loop(assoc_list(K, V)::in, assoc_list(K, V)::in,
+    assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
+
+common_subset_loop(ListA, ListB, !RevCommonList) :-
+    (
+        ListA = [],
+        ListB = []
+    ;
+        ListA = [_ | _],
+        ListB = []
+    ;
+        ListA = [],
+        ListB = [_ | _]
+    ;
+        ListA = [KeyA - ValueA | TailA],
+        ListB = [KeyB - ValueB | TailB],
+        compare(R, KeyA, KeyB),
+        (
+            R = (=),
+            ( if ValueA = ValueB then
+                !:RevCommonList = [KeyA - ValueA | !.RevCommonList]
+            else
+                true
+            ),
+            assoc_list.common_subset_loop(TailA, TailB, !RevCommonList)
+        ;
+            R = (<),
+            % KeyA has no match in ListB.
+            assoc_list.common_subset_loop(TailA, ListB, !RevCommonList)
+        ;
+            R = (>),
+            % KeyB has no match in ListA.
+            assoc_list.common_subset_loop(ListA, TailB, !RevCommonList)
+        )
     ).
 
 %---------------------------------------------------------------------------%
