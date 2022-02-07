@@ -49,7 +49,6 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -218,7 +217,7 @@ record_used_pred_or_func(PredOrFunc, Id, !Info) :-
     !Info ^ resolved_used_items := UsedItems.
 
 :- pred do_record_used_pred_or_func(pred_or_func::in,
-    module_qualifier::in, sym_name::in, arity::in, bool::out,
+    module_qualifier::in, sym_name::in, arity::in, maybe_recorded::out,
     resolved_pred_or_func_map::in, resolved_pred_or_func_map::out,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
@@ -231,7 +230,7 @@ do_record_used_pred_or_func(PredOrFunc, ModuleQualifier,
         PredOrFunc, SymName, OrigArity, MatchingPredIds),
     (
         MatchingPredIds = [_ | _],
-        Recorded = yes,
+        Recorded = recorded,
         PredModules = set.list_to_set(list.map(
             ( func(PredId) = PredId - PredModule :-
                 module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -244,7 +243,7 @@ do_record_used_pred_or_func(PredOrFunc, ModuleQualifier,
             PredModules, !Info)
     ;
         MatchingPredIds = [],
-        Recorded = no
+        Recorded = not_recorded
     ).
 
 %---------------------------------------------------------------------------%
@@ -261,22 +260,20 @@ record_used_functor(SymName - Arity, !Info) :-
     !Info ^ resolved_used_items := UsedItems.
 
 :- pred do_record_used_functor(module_qualifier::in,
-    sym_name::in, arity::in, bool::out, resolved_functor_map::in,
-    resolved_functor_map::out,
+    sym_name::in, arity::in, maybe_recorded::out,
+    resolved_functor_map::in, resolved_functor_map::out,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 do_record_used_functor(ModuleQualifier, SymName, Arity, Recorded,
         !ResolvedCtorMap, !Info) :-
     ModuleInfo = !.Info ^ module_info,
-
     find_matching_functors(ModuleInfo, SymName, Arity, MatchingCtors),
     Name = unqualify_name(SymName),
     set.fold(find_items_used_by_functor(Name, Arity), MatchingCtors, !Info),
-
     ( if set.is_empty(MatchingCtors) then
-        Recorded = no
+        Recorded = not_recorded
     else
-        Recorded = yes,
+        Recorded = recorded,
         map.det_insert(ModuleQualifier, MatchingCtors, !ResolvedCtorMap)
     ).
 
@@ -372,15 +369,19 @@ can_resolve_pred_or_func(ModuleInfo, _SymName, Arity, PredId, ResolvedCtor) :-
 
 %---------------------------------------------------------------------------%
 
-:- type record_resolved_item(T) ==
-    pred(module_qualifier, sym_name, arity, bool,
+:- type maybe_recorded
+    --->    not_recorded
+    ;       recorded.
+
+:- type record_item_pred(T) ==
+    pred(module_qualifier, sym_name, arity, maybe_recorded,
         resolved_item_map(T), resolved_item_map(T),
         recompilation_usage_info, recompilation_usage_info).
-:- inst record_resolved_item ==
+:- inst record_item_pred ==
     (pred(in, in, in, out, in, out, in, out) is det).
 
 :- pred record_resolved_item(sym_name::in, arity::in,
-    record_resolved_item(T)::in(record_resolved_item),
+    record_item_pred(T)::in(record_item_pred),
     resolved_item_set(T)::in, resolved_item_set(T)::out,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
@@ -395,14 +396,14 @@ record_resolved_item(SymName, Arity, RecordItem, !IdSet, !Info) :-
     record_resolved_item_2(ModuleQualifier, SymName, Arity, RecordItem,
         Recorded, MatchingNames1, MatchingNames, !Info),
     (
-        Recorded = yes,
+        Recorded = recorded,
         map.set(UnqualifiedName, MatchingNames, !IdSet)
     ;
-        Recorded = no
+        Recorded = not_recorded
     ).
 
 :- pred record_resolved_item_2(module_qualifier::in, sym_name::in, arity::in,
-    record_resolved_item(T)::in(record_resolved_item), bool::out,
+    record_item_pred(T)::in(record_item_pred), maybe_recorded::out,
     resolved_item_list(T)::in, resolved_item_list(T)::out,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
@@ -413,10 +414,10 @@ record_resolved_item_2(ModuleQualifier, SymName, Arity, RecordItem, Recorded,
     record_resolved_item_3(ModuleQualifier, SymName, Arity, RecordItem,
         Recorded, Map0, Map, !Info),
     (
-        Recorded = yes,
+        Recorded = recorded,
         !:List = [Arity - Map]
     ;
-        Recorded = no
+        Recorded = not_recorded
     ).
 record_resolved_item_2(ModuleQualifier, SymName, Arity, RecordItem, Recorded,
         !List, !Info) :-
@@ -426,40 +427,40 @@ record_resolved_item_2(ModuleQualifier, SymName, Arity, RecordItem, Recorded,
         record_resolved_item_3(ModuleQualifier, SymName, Arity, RecordItem,
             Recorded, NewArityMap0, NewArityMap, !Info),
         (
-            Recorded = yes,
+            Recorded = recorded,
             !:List = [Arity - NewArityMap | !.List]
         ;
-            Recorded = no
+            Recorded = not_recorded
         )
     else if Arity = ThisArity then
         record_resolved_item_3(ModuleQualifier, SymName, Arity, RecordItem,
             Recorded, ArityMap0, ArityMap, !Info),
         (
-            Recorded = yes,
+            Recorded = recorded,
             !:List = [Arity - ArityMap | ListRest0]
         ;
-            Recorded = no
+            Recorded = not_recorded
         )
     else
         record_resolved_item_2(ModuleQualifier, SymName, Arity, RecordItem,
             Recorded, ListRest0, ListRest, !Info),
         (
-            Recorded = yes,
+            Recorded = recorded,
             !:List = [ThisArity - ArityMap0 | ListRest]
         ;
-            Recorded = no
+            Recorded = not_recorded
         )
     ).
 
 :- pred record_resolved_item_3(module_qualifier::in, sym_name::in, arity::in,
-    record_resolved_item(T)::in(record_resolved_item), bool::out,
+    record_item_pred(T)::in(record_item_pred), maybe_recorded::out,
     resolved_item_map(T)::in, resolved_item_map(T)::out,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 record_resolved_item_3(ModuleQualifier, SymName, Arity, RecordItem, Recorded,
         !ResolvedMap, !Info) :-
     ( if map.contains(!.ResolvedMap, ModuleQualifier) then
-        Recorded = no
+        Recorded = not_recorded
     else
         RecordItem(ModuleQualifier, SymName, Arity, Recorded,
             !ResolvedMap, !Info)
