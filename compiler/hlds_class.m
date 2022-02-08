@@ -1,12 +1,12 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2019, 2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: hlds_lass.m.
+% File: hlds_class.m.
 % Main authors: fjh, conway.
 %
 % This module defines the part of the HLDS that deals with type classes
