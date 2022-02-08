@@ -795,7 +795,7 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
         pd_info_get_created_versions(!.PDInfo, CreatedVersions),
         set.difference(CreatedVersions, CreatedVersions0, NewVersions0),
         set.to_sorted_list(NewVersions0, NewVersions),
-        list.foldl(pd_info.remove_version, NewVersions, !PDInfo)
+        list.foldl(pd_info_remove_version, NewVersions, !PDInfo)
 
         % AfterGoals will be restored properly in conj.
     ;
@@ -1077,7 +1077,7 @@ call_call_2(ConjNonLocals, EarlierGoal, BetweenGoals, MaybeLaterGoal,
     create_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ConjNonLocals,
         FoldGoal),
 
-    pd_info.search_version(!.PDInfo, FoldGoal, MaybeVersion),
+    pd_info_search_version(!.PDInfo, FoldGoal, MaybeVersion),
     pd_info_get_parent_versions(!.PDInfo, Parents),
 
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
@@ -1267,7 +1267,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
         then
             % Create the new version.
 
-            pd_info.define_new_pred(origin_created(created_by_deforestation),
+            pd_info_define_new_pred(origin_created(created_by_deforestation),
                 DeforestGoal, PredProcId, CallGoal, !PDInfo),
             PredProcId = proc(PredId, _),
 
@@ -1299,7 +1299,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             pd_info_set_global_term_info(TermInfo, !PDInfo),
             set.insert_list([PredProcId | CalledPreds], Parents0, Parents),
             pd_info_set_parent_versions(Parents, !PDInfo),
-            pd_info.register_version(PredProcId, VersionInfo, !PDInfo),
+            pd_info_register_version(PredProcId, VersionInfo, !PDInfo),
 
             % Run deforestation on the new predicate to do the folding.
             pd_info_get_unfold_info(!.PDInfo, UnfoldInfo),

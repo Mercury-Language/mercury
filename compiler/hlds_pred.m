@@ -669,23 +669,23 @@
 
 %---------------------%
 
-    % define_new_pred(Origin, Goal, CallGoal, Args, ExtraArgs,
-    %   InstMap, PredName, TVarSet, VarTypes, ClassContext,
-    %   TVarMap, TCVarMap, VarSet, Markers, IsAddressTaken, VarNameRemap,
-    %   !ModuleInfo, PredProcId)
+    % define_new_pred(SymName, Origin, TVarSet, VarTypes
+    %   ClassContext, RttiVarMaps, InstVarSet, InstMap0, VarSet, VarNameRemap,
+    %   Markers, IsAddressTaken, HasParallelConj, PredProcId,
+    %   ArgVars, ExtraTiTcis, Goal0, CallGoal, !ModuleInfo):
     %
     % Create a new predicate for the given goal, returning a goal to
     % call the created predicate. ExtraArgs is the list of extra
     % type_infos and typeclass_infos required by typeinfo liveness
     % which were added to the front of the argument list.
     %
-:- pred define_new_pred(pred_origin::in,
-    hlds_goal::in, hlds_goal::out, list(prog_var)::in, list(prog_var)::out,
-    instmap::in, sym_name::in, tvarset::in, vartypes::in,
-    prog_constraints::in, rtti_varmaps::in, prog_varset::in,
-    inst_varset::in, pred_markers::in, is_address_taken::in,
-    has_parallel_conj::in, map(prog_var, string)::in,
-    module_info::in, module_info::out, pred_proc_id::out) is det.
+:- pred define_new_pred(sym_name::in, pred_origin::in,
+    tvarset::in, vartypes::in, prog_constraints::in, rtti_varmaps::in,
+    inst_varset::in, instmap::in, prog_varset::in, map(prog_var, string)::in,
+    pred_markers::in, is_address_taken::in, has_parallel_conj::in,
+    pred_proc_id::out,
+    list(prog_var)::in, list(prog_var)::out, hlds_goal::in, hlds_goal::out,
+    module_info::in, module_info::out) is det.
 
     % Various predicates for accessing the information stored in the
     % pred_id and pred_info data structures.
@@ -1402,10 +1402,10 @@ pred_create(ModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
 
-define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTiTcis, InstMap0,
-        SymName, TVarSet, VarTypes0, ClassContext, RttiVarMaps,
-        VarSet0, InstVarSet, Markers, IsAddressTaken, HasParallelConj,
-        VarNameRemap, ModuleInfo0, ModuleInfo, PredProcId) :-
+define_new_pred(SymName, Origin, TVarSet, VarTypes0, ClassContext, RttiVarMaps,
+        InstVarSet, InstMap0, VarSet0, VarNameRemap,
+        Markers, IsAddressTaken, HasParallelConj, PredProcId,
+        ArgVars0, ExtraTiTcis, Goal0, CallGoal, !ModuleInfo) :-
     Goal0 = hlds_goal(_GoalExpr, GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     apply_instmap_delta(InstMapDelta, InstMap0, InstMap),
@@ -1418,7 +1418,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTiTcis, InstMap0,
     % arguments need to be passed in, not just the ones that are used.
     % Similarly if the address of a procedure of this predicate is taken,
     % so that we can copy the closure.
-    module_info_get_globals(ModuleInfo0, Globals),
+    module_info_get_globals(!.ModuleInfo, Globals),
     PredStatus = pred_status(status_local),
     non_special_interface_should_use_typeinfo_liveness(PredStatus,
         IsAddressTaken, Globals, TypeInfoLiveness),
@@ -1443,7 +1443,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTiTcis, InstMap0,
         ArgTypes, ArgModes),
 
     % XXX why does pred_info_create take a sym_name only to unqualify it?
-    module_info_get_name(ModuleInfo0, ModuleName),
+    module_info_get_name(!.ModuleInfo, ModuleName),
     sym_name_get_module_name_default(SymName, ModuleName, SymNameModule),
 
     % Remove unneeded variables from the vartypes and varset.
@@ -1454,7 +1454,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTiTcis, InstMap0,
     varset.select(GoalVarsSet, VarSet0, VarSet),
 
     % Approximate the termination information for the new procedure.
-    ( if goal_cannot_loop(ModuleInfo0, Goal0) then
+    ( if goal_cannot_loop(!.ModuleInfo, Goal0) then
         TermInfo = yes(cannot_loop(unit))
     else
         TermInfo = no
@@ -1474,12 +1474,13 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTiTcis, InstMap0,
         ClassContext, Assertions, VarNameRemap, GoalType, ProcInfo,
         ProcId, PredInfo),
 
-    module_info_get_predicate_table(ModuleInfo0, PredTable0),
+    module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     predicate_table_insert(PredInfo, PredId, PredTable0, PredTable),
-    module_info_set_predicate_table(PredTable, ModuleInfo0, ModuleInfo),
+    module_info_set_predicate_table(PredTable, !ModuleInfo),
 
-    GoalExpr = plain_call(PredId, ProcId, ArgVars, not_builtin, no, SymName),
-    Goal = hlds_goal(GoalExpr, GoalInfo),
+    CallGoalExpr =
+        plain_call(PredId, ProcId, ArgVars, not_builtin, no, SymName),
+    CallGoal = hlds_goal(CallGoalExpr, GoalInfo),
     PredProcId = proc(PredId, ProcId).
 
 :- pred compute_arg_types_modes(list(prog_var)::in, vartypes::in,

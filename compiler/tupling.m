@@ -784,10 +784,10 @@ insert_proc_start_deconstruction(Goal0, Goal, !VarSet, !VarTypes,
     module_info::in, module_info::out) is det.
 
 create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
-        AuxPredProcId, CallAux, ModuleInfo0, ModuleInfo) :-
+        AuxPredProcId, CallAux, !ModuleInfo) :-
     proc_info_get_headvars(ProcInfo, AuxHeadVars),
     proc_info_get_goal(ProcInfo, Goal @ hlds_goal(_GoalExpr, GoalInfo)),
-    proc_info_get_initial_instmap(ModuleInfo0, ProcInfo, InitialAuxInstMap),
+    proc_info_get_initial_instmap(!.ModuleInfo, ProcInfo, InitialAuxInstMap),
     pred_info_get_typevarset(PredInfo, TVarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     pred_info_get_class_context(PredInfo, ClassContext),
@@ -810,26 +810,25 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
 
     Origin = origin_transformed(transform_tuple(ProcNum), OrigOrigin, PredId),
     hlds_pred.define_new_pred(
-        Origin,                 % in
-        Goal,                   % in
-        CallAux,                % out
-        AuxHeadVars,            % in
-        _ExtraArgs,             % out
-        InitialAuxInstMap,      % in
         AuxPredSymName,         % in
+        Origin,                 % in
         TVarSet,                % in
         VarTypes,               % in
         ClassContext,           % in
         RttiVarMaps,            % in
-        VarSet,                 % in
         InstVarSet,             % in
+        InitialAuxInstMap,      % in
+        VarSet,                 % in
+        VarNameRemap,           % in
         Markers,                % in
         address_is_not_taken,   % in
         HasParallelConj,        % in
-        VarNameRemap,           % in
-        ModuleInfo0,
-        ModuleInfo,
-        AuxPredProcId
+        AuxPredProcId,          % out
+        AuxHeadVars,            % in
+        _ExtraArgs,             % out
+        Goal,                   % in
+        CallAux,                % out
+        !ModuleInfo
     ).
 
 %-----------------------------------------------------------------------------%

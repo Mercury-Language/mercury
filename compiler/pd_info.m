@@ -404,29 +404,29 @@ pd_info_incr_size_delta(Delta1, !PDInfo) :-
     % Find the deforestation procedure which most closely matches
     % the given goal.
     %
-:- pred pd_info.search_version(pd_info::in, hlds_goal::in, maybe_version::out)
+:- pred pd_info_search_version(pd_info::in, hlds_goal::in, maybe_version::out)
     is det.
 
     % Create a new predicate for the input goal, returning a goal
     % which calls the new predicate.
     %
-:- pred pd_info.define_new_pred(pred_origin::in, hlds_goal::in,
+:- pred pd_info_define_new_pred(pred_origin::in, hlds_goal::in,
     pred_proc_id::out, hlds_goal::out, pd_info::in, pd_info::out) is det.
 
     % Add a version to the table.
     %
-:- pred pd_info.register_version(pred_proc_id::in, version_info::in,
+:- pred pd_info_register_version(pred_proc_id::in, version_info::in,
     pd_info::in, pd_info::out) is det.
 
     % Remove a version and make sure it is never recreated.
     %
-:- pred pd_info.invalidate_version(pred_proc_id::in,
+:- pred pd_info_invalidate_version(pred_proc_id::in,
     pd_info::in, pd_info::out) is det.
 
     % Remove a version, but allow it to be recreated if it
     % is used elsewhere.
     %
-:- pred pd_info.remove_version(pred_proc_id::in,
+:- pred pd_info_remove_version(pred_proc_id::in,
     pd_info::in, pd_info::out) is det.
 
     % The result of looking up a specialised version of a pred.
@@ -482,7 +482,7 @@ pd_info_incr_size_delta(Delta1, !PDInfo) :-
 
 :- implementation.
 
-search_version(PDInfo, Goal, MaybeVersion) :-
+pd_info_search_version(PDInfo, Goal, MaybeVersion) :-
     trace [io(!IO)] (
         pd_debug_output_goal(PDInfo, "Searching for version:\n", Goal, !IO)
     ),
@@ -495,7 +495,7 @@ search_version(PDInfo, Goal, MaybeVersion) :-
     proc_info_get_vartypes(ProcInfo, VarTypes),
     ( if
         map.search(GoalVersionIndex, CalledPreds, VersionIds),
-        pd_info.get_matching_version(ModuleInfo, Goal, InstMap,
+        pd_info_get_matching_version(ModuleInfo, Goal, InstMap,
             VarTypes, VersionIds, Versions, MaybeVersion0)
     then
         MaybeVersion = MaybeVersion0
@@ -508,24 +508,24 @@ search_version(PDInfo, Goal, MaybeVersion) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred pd_info.get_matching_version(module_info::in, hlds_goal::in,
+:- pred pd_info_get_matching_version(module_info::in, hlds_goal::in,
     instmap::in, vartypes::in, list(pred_proc_id)::in,
     version_index::in, maybe_version::out) is semidet.
 
-get_matching_version(_, _, _, _, [], _, no_version).
-get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
+pd_info_get_matching_version(_, _, _, _, [], _, no_version).
+pd_info_get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
         [VersionId | VersionIds], Versions, MaybeVersion) :-
     map.lookup(Versions, VersionId, Version),
     Version = version_info(OldGoal, _, OldArgs, OldArgTypes,
         OldInstMap, _, _, _, _),
     ( if
-        pd_info.goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
+        pd_info_goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
             OldArgTypes, ThisGoal, ThisInstMap, VarTypes, VersionId, Version,
             MaybeVersion1)
     then
         (
             MaybeVersion1 = no_version,
-            pd_info.get_matching_version(ModuleInfo, ThisGoal, ThisInstMap,
+            pd_info_get_matching_version(ModuleInfo, ThisGoal, ThisInstMap,
                 VarTypes, VersionIds, Versions, MaybeVersion)
         ;
             MaybeVersion1 = version(exact, _, _, _, _),
@@ -533,14 +533,14 @@ get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
         ;
             MaybeVersion1 = version(more_general, PredProcId,
                 MoreGeneralVersion, Renaming, TypeSubn),
-            pd_info.get_matching_version(ModuleInfo, ThisGoal,
+            pd_info_get_matching_version(ModuleInfo, ThisGoal,
                 ThisInstMap, VarTypes, VersionIds,
                 Versions, MaybeVersion2),
-            pd_info.pick_version(ModuleInfo, PredProcId, Renaming,
+            pd_info_pick_version(ModuleInfo, PredProcId, Renaming,
                 TypeSubn, MoreGeneralVersion, MaybeVersion2, MaybeVersion)
         )
     else
-        pd_info.get_matching_version(ModuleInfo, ThisGoal, ThisInstMap,
+        pd_info_get_matching_version(ModuleInfo, ThisGoal, ThisInstMap,
             VarTypes, VersionIds, Versions, MaybeVersion)
     ).
 
@@ -548,16 +548,16 @@ get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
 
     % Choose between two versions.
     %
-:- pred pd_info.pick_version(module_info::in, pred_proc_id::in,
+:- pred pd_info_pick_version(module_info::in, pred_proc_id::in,
     map(prog_var, prog_var)::in, tsubst::in, version_info::in,
     maybe_version::in, maybe_version::out) is det.
 
-pick_version(_, PredProcId, Renaming, TSubn, VersionInfo, no_version,
+pd_info_pick_version(_, PredProcId, Renaming, TSubn, VersionInfo, no_version,
     version(more_general, PredProcId, VersionInfo, Renaming, TSubn)).
-pick_version(_, _, _, _, _,
+pd_info_pick_version(_, _, _, _, _,
         version(exact, PredProcId, Version2, Renaming2, TSubn2),
         version(exact, PredProcId, Version2, Renaming2, TSubn2)).
-pick_version(_ModuleInfo, PredProcId1, Renaming1, TSubn1, Version1,
+pd_info_pick_version(_ModuleInfo, PredProcId1, Renaming1, TSubn1, Version1,
         version(more_general, PredProcId2, Version2, Renaming2, TSubn2),
         MaybeVersion) :-
     Version1 = version_info(_, _, _, _, _, _, CostDelta1, _, _),
@@ -589,12 +589,12 @@ pick_version(_ModuleInfo, PredProcId1, Renaming1, TSubn1, Version1,
     %   the old inst must be at least as general as the
     %   new one, i.e inst_matches_initial(FirstInst, SecondInst) (?)
     %
-:- pred pd_info.goal_is_more_general(module_info::in, hlds_goal::in,
+:- pred pd_info_goal_is_more_general(module_info::in, hlds_goal::in,
     instmap::in, list(prog_var)::in, list(mer_type)::in, hlds_goal::in,
     instmap::in, vartypes::in, pred_proc_id::in,
     version_info::in, maybe_version::out) is semidet.
 
-goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
+pd_info_goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
         OldArgTypes, NewGoal, NewInstMap, NewVarTypes, PredProcId,
         Version, MaybeVersion) :-
     pd_util.goals_match(ModuleInfo, OldGoal, OldArgs, OldArgTypes,
@@ -602,7 +602,7 @@ goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
     OldGoal = hlds_goal(_, OldGoalInfo),
     OldNonLocals0 = goal_info_get_nonlocals(OldGoalInfo),
     set_of_var.to_sorted_list(OldNonLocals0, OldNonLocalsList),
-    pd_info.check_insts(ModuleInfo, OldNonLocalsList, OldNewRenaming,
+    pd_info_check_insts(ModuleInfo, OldNonLocalsList, OldNewRenaming,
         OldInstMap, NewInstMap, NewVarTypes, exact, Exact),
 
     MaybeVersion = version(Exact, PredProcId, Version,
@@ -613,12 +613,12 @@ goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
     % Check that all the insts in the old version are at least as
     % general as the insts in the new version.
     %
-:- pred pd_info.check_insts(module_info::in, list(prog_var)::in,
+:- pred pd_info_check_insts(module_info::in, list(prog_var)::in,
     map(prog_var, prog_var)::in, instmap::in, instmap::in, vartypes::in,
     version_is_exact::in, version_is_exact::out) is semidet.
 
-check_insts(_, [], _, _, _, _, !ExactSoFar).
-check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
+pd_info_check_insts(_, [], _, _, _, _, !ExactSoFar).
+pd_info_check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
         NewInstMap, VarTypes, !ExactSoFar) :-
     instmap_lookup_var(OldInstMap, OldVar, OldVarInst),
     map.lookup(VarRenaming, OldVar, NewVar),
@@ -640,12 +640,12 @@ check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
     ;
         !.ExactSoFar = more_general
     ),
-    pd_info.check_insts(ModuleInfo, Vars, VarRenaming, OldInstMap,
+    pd_info_check_insts(ModuleInfo, Vars, VarRenaming, OldInstMap,
         NewInstMap, VarTypes, !ExactSoFar).
 
 %---------------------------------------------------------------------------%
 
-define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
+pd_info_define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
     pd_info_get_instmap(!.PDInfo, InstMap),
     Goal = hlds_goal(_, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
@@ -674,15 +674,16 @@ define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
     proc_info_get_var_name_remap(ProcInfo, VarNameRemap),
     % XXX handle the extra typeinfo arguments for
     % --typeinfo-liveness properly.
-    hlds_pred.define_new_pred(Origin, Goal, CallGoal, Args, _ExtraArgs,
-        InstMap, NewPredSymName, TVarSet, VarTypes, ClassContext, RttiVarMaps,
-        VarSet, InstVarSet, Markers, address_is_not_taken, HasParallelConj,
-        VarNameRemap, ModuleInfo0, ModuleInfo, PredProcId),
+    hlds_pred.define_new_pred(NewPredSymName, Origin,
+        TVarSet, VarTypes, ClassContext, RttiVarMaps,
+        InstVarSet, InstMap, VarSet, VarNameRemap,
+        Markers, address_is_not_taken, HasParallelConj, PredProcId,
+        Args, _ExtraArgs, Goal, CallGoal, ModuleInfo0, ModuleInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo).
 
 %---------------------------------------------------------------------------%
 
-register_version(PredProcId, Version, !PDInfo) :-
+pd_info_register_version(PredProcId, Version, !PDInfo) :-
     trace [io(!IO)] (
         pd_debug_register_version(!.PDInfo, PredProcId, Version, !IO)
     ),
@@ -706,7 +707,7 @@ register_version(PredProcId, Version, !PDInfo) :-
 
 %---------------------------------------------------------------------------%
 
-invalidate_version(PredProcId, !PDInfo) :-
+pd_info_invalidate_version(PredProcId, !PDInfo) :-
     pd_info_get_versions(!.PDInfo, Versions0),
     map.lookup(Versions0, PredProcId, Version),
     Goal = Version ^ version_orig_goal,
@@ -723,9 +724,9 @@ invalidate_version(PredProcId, !PDInfo) :-
     else
         true
     ),
-    pd_info.remove_version(PredProcId, !PDInfo).
+    pd_info_remove_version(PredProcId, !PDInfo).
 
-remove_version(PredProcId, !PDInfo) :-
+pd_info_remove_version(PredProcId, !PDInfo) :-
     pd_info_get_versions(!.PDInfo, Versions0),
     map.lookup(Versions0, PredProcId, Version),
     Goal = Version ^ version_orig_goal,

@@ -734,7 +734,7 @@ compute_initial_aux_instmap(Gs, IM) = list.foldl(ApplyGoalInstMap, Gs, IM) :-
     module_info::in, module_info::out) is det.
 
 create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
-        InitialAuxInstMap, AuxPredProcId, Replacement,
+        InitialAuxInstMap, AuxPredProcId, ReplacementGoal,
         AuxPredInfo, AuxProcInfo, ModuleInfo0, ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
 
@@ -774,32 +774,31 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
     Origin = origin_transformed(transform_loop_invariant(ProcNum),
         OrigOrigin, PredId),
     hlds_pred.define_new_pred(
-        Origin,         % in    - The origin of this new predicate
-        Goal,           % in    - The goal for the new aux proc.
-        Replacement,    % out   - How we can call the new aux proc.
-        AuxHeadVars,    % in    - The args for the new aux proc.
-        _ExtraArgs,     % out   - Extra args prepended to Args for typeinfo
-                        %           liveness purposes.
-        InitialAuxInstMap,
-                        % in    - The initial instmap for the new aux proc.
         AuxPredSymName, % in    - The name of the new aux proc.
+        Origin,         % in    - The origin of this new predicate
         TVarSet,        % in    - ???
         VarTypes,       % in    - The var -> type mapping for the new aux proc.
         ClassContext,   % in    - Typeclass constraints on the new aux proc.
         RttiVarMaps,    % in    - type_info and typeclass_info locations.
-        VarSet,         % in    - ???
         InstVarSet,     % in    - ???
+        InitialAuxInstMap, % in - The initial instmap for the new aux proc.
+        VarSet,         % in    - ???
+        VarNameRemap,   % in
         Markers,        % in    - Markers for the new aux proc.
         address_is_not_taken,
                         % in    - The address of the new aux proc is not taken.
         HasParallelConj, % in
-        VarNameRemap,   % in
+        AuxPredProcId,  % out   - The pred_proc_id for the new aux proc.
+        AuxHeadVars,    % in    - The args for the new aux proc.
+        _ExtraArgs,     % out   - Extra args prepended to Args for typeinfo
+                        %           liveness purposes.
+        Goal,           % in    - The goal for the new aux proc.
+        ReplacementGoal,% out   - How we can call the new aux proc.
         ModuleInfo0,
-        ModuleInfo,
-        AuxPredProcId   % out   - The pred_proc_id for the new aux proc.
+        ModuleInfo
     ),
 
-    % Note on Replacement:
+    % Note on ReplacementGoal:
     % - we change the call args as necessary in gen_aux_call;
     % - we handle the changes to nonlocals by requantifying
     %   over the entire goal after we've transformed it.
