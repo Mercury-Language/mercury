@@ -1196,8 +1196,8 @@ find_matching_instance_method([Instance | Instances], MethodNum, ClassTypes,
     then
         Constraints = Constraints0,
         UnconstrainedTVarTypes = UnconstrainedTVarTypes0,
-        yes(ClassInterface) = Instance ^ instdefn_hlds_interface,
-        list.det_index1(ClassInterface, MethodNum, proc(PredId, ProcId))
+        yes(MethodPredProcIds) = Instance ^ instdefn_maybe_method_ppids,
+        list.det_index1(MethodPredProcIds, MethodNum, proc(PredId, ProcId))
     else
         find_matching_instance_method(Instances, MethodNum, ClassTypes,
             PredId, ProcId, Constraints, UnconstrainedTVarTypes, !TVarSet)

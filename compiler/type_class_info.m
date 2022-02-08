@@ -109,8 +109,8 @@ generate_class_id(ModuleInfo, ClassId, ClassDefn) = TCId :-
     ClassVars = ClassDefn ^ classdefn_vars,
     ClassVarSet = ClassDefn ^ classdefn_tvarset,
     list.map(varset.lookup_name(ClassVarSet), ClassVars, VarNames),
-    Interface = ClassDefn ^ classdefn_hlds_interface,
-    MethodIds = list.map(generate_method_id(ModuleInfo), Interface),
+    MethodPredProcIds = ClassDefn ^ classdefn_method_ppids,
+    MethodIds = list.map(generate_method_id(ModuleInfo), MethodPredProcIds),
     TCId = tc_id(TCName, VarNames, MethodIds).
 
 :- func generate_method_id(module_info, pred_proc_id) = tc_method_id.
@@ -171,13 +171,13 @@ generate_instance_decl(ModuleInfo, ClassId, Instance) = RttiData :-
     ),
     Constraints = Instance ^ instdefn_constraints,
     TCConstraints = list.map(generate_class_constraint, Constraints),
-    MaybeInterface = Instance ^ instdefn_hlds_interface,
+    MaybeMethodPredProcIds = Instance ^ instdefn_maybe_method_ppids,
     (
-        MaybeInterface = yes(Interface),
+        MaybeMethodPredProcIds = yes(MethodPredProcIds),
         MethodProcLabels = list.map(generate_method_proc_label(ModuleInfo),
-            Interface)
+            MethodPredProcIds)
     ;
-        MaybeInterface = no,
+        MaybeMethodPredProcIds = no,
         unexpected($pred, "no interface")
     ),
     TCInstance = tc_instance(TCName, InstanceTCTypes, NumTypeVars,

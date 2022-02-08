@@ -120,7 +120,7 @@ gen_body(ModuleInfo, ClassId, InstanceDefn, BaseTypeClassInfo) :-
     Constraints = InstanceDefn ^ instdefn_constraints,
     list.length(Constraints, NumConstraints),
 
-    MaybeInstancePredProcIds = InstanceDefn ^ instdefn_hlds_interface,
+    MaybeInstancePredProcIds = InstanceDefn ^ instdefn_maybe_method_ppids,
     (
         MaybeInstancePredProcIds = no,
         unexpected($pred,

@@ -1903,10 +1903,10 @@ make_new_clone_var(OldVar, NewVar, !Info) :-
     hlds_class_defn::in, hlds_class_defn::out) is det.
 
 transform_class(DirectArgProcInOutMap, Class0, Class) :-
-    PredProcIds0 = Class0 ^ classdefn_hlds_interface,
+    PredProcIds0 = Class0 ^ classdefn_method_ppids,
     list.map(transform_class_instance_proc(DirectArgProcInOutMap),
         PredProcIds0, PredProcIds),
-    Class = Class0 ^ classdefn_hlds_interface := PredProcIds.
+    Class = Class0 ^ classdefn_method_ppids := PredProcIds.
 
 :- pred transform_class_instances(direct_arg_proc_in_out_map::in,
     list(hlds_instance_defn)::in, list(hlds_instance_defn)::out) is det.
@@ -1919,16 +1919,17 @@ transform_class_instances(DirectArgProcInOutMap, Instances0, Instances) :-
     hlds_instance_defn::in, hlds_instance_defn::out) is det.
 
 transform_class_instance(DirectArgProcInOutMap, Instance0, Instance) :-
-    MaybeInterface0 = Instance0 ^ instdefn_hlds_interface,
+    MaybeMethodPredProcIds0 = Instance0 ^ instdefn_maybe_method_ppids,
     (
-        MaybeInterface0 = no,
+        MaybeMethodPredProcIds0 = no,
         Instance = Instance0
     ;
-        MaybeInterface0 = yes(PredProcIds0),
+        MaybeMethodPredProcIds0 = yes(MethodPredProcIds0),
         list.map(transform_class_instance_proc(DirectArgProcInOutMap),
-            PredProcIds0, PredProcIds),
-        MaybeInterface = yes(PredProcIds),
-        Instance = Instance0 ^ instdefn_hlds_interface := MaybeInterface
+            MethodPredProcIds0, MethodPredProcIds),
+        MaybeMethodPredProcIds = yes(MethodPredProcIds),
+        Instance = Instance0 ^ instdefn_maybe_method_ppids
+            := MaybeMethodPredProcIds
     ).
 
 :- pred transform_class_instance_proc(direct_arg_proc_in_out_map::in,

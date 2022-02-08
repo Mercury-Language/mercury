@@ -78,7 +78,7 @@
                 classdefn_interface         :: class_interface,
 
                 % Methods.
-                classdefn_hlds_interface    :: hlds_class_interface,
+                classdefn_method_ppids      :: method_pred_proc_ids,
 
                 % VarNames.
                 classdefn_tvarset           :: tvarset,
@@ -110,7 +110,7 @@
 
 :- func restrict_list_elements(set(hlds_class_argpos), list(T)) = list(T).
 
-:- type hlds_class_interface == list(pred_proc_id).
+:- type method_pred_proc_ids == list(pred_proc_id).
 
     % For each class, we keep track of a list of its instances, since there
     % can be more than one instance of each class. Each visible instance
@@ -154,7 +154,7 @@
 
                 % After check_typeclass, we will know the pred_ids and proc_ids
                 % of all the methods.
-                instdefn_hlds_interface :: maybe(hlds_class_interface),
+                instdefn_maybe_method_ppids :: maybe(method_pred_proc_ids),
 
                 % VarNames
                 instdefn_tvarset        :: tvarset,

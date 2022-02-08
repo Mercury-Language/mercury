@@ -67,7 +67,7 @@ write_class_defn(Info, Stream, ClassId - ClassDefn, !IO) :-
     io.write_string(Stream, ":\n", !IO),
 
     ClassDefn = hlds_class_defn(_, Constraints, FunDeps, _, Vars, _, _,
-        Interface, VarSet, Context, _),
+        MethodPredProcIds, VarSet, Context, _),
 
     maybe_output_context_comment(Stream, 0, "", Context, !IO),
     DumpOptions = Info ^ hoi_dump_hlds_options,
@@ -91,7 +91,7 @@ write_class_defn(Info, Stream, ClassId - ClassDefn, !IO) :-
     io.nl(Stream, !IO),
 
     io.write_string(Stream, "% Class Methods: ", !IO),
-    write_out_list(write_class_proc, ", ", Interface, Stream, !IO),
+    write_out_list(write_class_proc, ", ", MethodPredProcIds, Stream, !IO),
     io.nl(Stream, !IO),
     io.nl(Stream, !IO).
 

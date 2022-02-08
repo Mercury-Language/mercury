@@ -417,7 +417,7 @@ get_instance_pred_procs(Instance, !Queue, !Needed) :-
     is det.
 
 get_class_pred_procs(Class, !Queue, !Needed) :-
-    Methods = Class ^ classdefn_hlds_interface,
+    Methods = Class ^ classdefn_method_ppids,
     list.foldl2(get_class_interface_pred_proc, Methods, !Queue, !Needed).
 
 :- pred get_class_interface_pred_proc(pred_proc_id::in,

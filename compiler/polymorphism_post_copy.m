@@ -92,8 +92,9 @@ class_id_is_from_given_module(ModuleName, ClassId) :-
     module_info::in, module_info::out) is det.
 
 expand_class_method_bodies_in_defn(ClassDefn, !ModuleInfo) :-
-    Interface = ClassDefn ^ classdefn_hlds_interface,
-    list.foldl2(expand_class_method_body, Interface, 1, _, !ModuleInfo).
+    MethodPredProcIds = ClassDefn ^ classdefn_method_ppids,
+    list.foldl2(expand_class_method_body, MethodPredProcIds,
+        1, _, !ModuleInfo).
 
 :- pred expand_class_method_body(pred_proc_id::in, int::in, int::out,
     module_info::in, module_info::out) is det.

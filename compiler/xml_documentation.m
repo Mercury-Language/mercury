@@ -792,7 +792,7 @@ class_documentation(C, PredTable, class_id(Name, Arity), ClassDefn, !Xml) :-
         XmlFundeps = xml_list("fundeps",
             fundep_to_xml(TVarset, Vars), ClassDefn ^ classdefn_fundeps),
         XmlMethods = class_methods_to_xml(C, PredTable,
-            ClassDefn ^ classdefn_hlds_interface),
+            ClassDefn ^ classdefn_method_ppids),
         XmlVisibility = typeclass_visibility_to_xml(TypeClassStatus),
         XmlContext = prog_context_to_xml(Context),
 
@@ -821,7 +821,7 @@ fundep_to_xml_2(Tag, TVarset, Vars, Set) =
     xml_list(Tag, type_param_to_xml(TVarset),
         restrict_list_elements(Set, Vars)).
 
-:- func class_methods_to_xml(comments, pred_id_table, hlds_class_interface)
+:- func class_methods_to_xml(comments, pred_id_table, method_pred_proc_ids)
     = xml.
 
 class_methods_to_xml(C, PredTable, Methods) = Xml :-

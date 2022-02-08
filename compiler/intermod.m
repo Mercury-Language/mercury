@@ -2619,7 +2619,7 @@ maybe_opt_export_class_defn(ClassId - ClassDefn0, ClassId - ClassDefn,
         ToWrite = yes,
         ClassDefn = ClassDefn0 ^ classdefn_status :=
             typeclass_status(status_exported),
-        class_procs_to_pred_ids(ClassDefn ^ classdefn_hlds_interface, PredIds),
+        class_procs_to_pred_ids(ClassDefn ^ classdefn_method_ppids, PredIds),
         opt_export_preds(PredIds, !ModuleInfo)
     ;
         ToWrite = no,

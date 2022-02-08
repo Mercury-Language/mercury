@@ -524,7 +524,7 @@ check_one_class(ClassTable, ClassId, InstanceDefns0, InstanceDefns,
         !ModuleInfo, !QualInfo, !Specs) :-
     map.lookup(ClassTable, ClassId, ClassDefn),
     ClassDefn = hlds_class_defn(TypeClassStatus, SuperClasses, _FunDeps,
-        _Ancestors, ClassVars, _Kinds, Interface, ClassInterface,
+        _Ancestors, ClassVars, _Kinds, Interface, MethodPredProcIds,
         ClassVarSet, ClassContext, MaybeBadDefn),
     ( if
         typeclass_status_defined_in_this_module(TypeClassStatus) = yes,
@@ -545,12 +545,12 @@ check_one_class(ClassTable, ClassId, InstanceDefns0, InstanceDefns,
         ),
         InstanceDefns = InstanceDefns0
     else
-        ClassProcPredIds0 = list.map(
-            pred_proc_id_project_pred_id, ClassInterface),
+        ClassProcPredIds0 =
+            list.map(pred_proc_id_project_pred_id, MethodPredProcIds),
         list.sort_and_remove_dups(ClassProcPredIds0, ClassProcPredIds),
         list.map_foldl3(
             check_class_instance(ClassId, SuperClasses, ClassVars,
-                ClassInterface, Interface, ClassVarSet, ClassProcPredIds),
+                Interface, MethodPredProcIds, ClassVarSet, ClassProcPredIds),
             InstanceDefns0, InstanceDefns,
             !ModuleInfo, !QualInfo, !Specs)
     ).
@@ -558,15 +558,15 @@ check_one_class(ClassTable, ClassId, InstanceDefns0, InstanceDefns,
     % Check one instance of one class.
     %
 :- pred check_class_instance(class_id::in, list(prog_constraint)::in,
-    list(tvar)::in, hlds_class_interface::in, class_interface::in,
+    list(tvar)::in, class_interface::in, method_pred_proc_ids::in,
     tvarset::in, list(pred_id)::in,
     hlds_instance_defn::in, hlds_instance_defn::out,
     module_info::in, module_info::out,
     make_hlds_qual_info::in, make_hlds_qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_class_instance(ClassId, SuperClasses, Vars, HLDSClassInterface,
-        ClassInterface, ClassVarSet, ClassPredIds, !InstanceDefn,
+check_class_instance(ClassId, SuperClasses, Vars, ClassInterface,
+        MethodPredProcIds, ClassVarSet, ClassPredIds, !InstanceDefn,
         !ModuleInfo, !QualInfo, !Specs):-
     % Check conformance of the instance body.
     !.InstanceDefn = hlds_instance_defn(_, _, _, _, TermContext, _,
@@ -576,7 +576,7 @@ check_class_instance(ClassId, SuperClasses, Vars, HLDSClassInterface,
     ;
         InstanceBody = instance_body_concrete(InstanceMethods),
         check_concrete_class_instance(ClassId, Vars,
-            HLDSClassInterface, ClassInterface,
+            ClassInterface, MethodPredProcIds,
             ClassPredIds, TermContext, InstanceMethods,
             !InstanceDefn, !ModuleInfo, !QualInfo, !Specs)
     ),
@@ -586,15 +586,15 @@ check_class_instance(ClassId, SuperClasses, Vars, HLDSClassInterface,
         !.ModuleInfo, !InstanceDefn, !Specs).
 
 :- pred check_concrete_class_instance(class_id::in, list(tvar)::in,
-    hlds_class_interface::in, class_interface::in,
+    class_interface::in, method_pred_proc_ids::in,
     list(pred_id)::in, term.context::in,
     list(instance_method)::in, hlds_instance_defn::in, hlds_instance_defn::out,
     module_info::in, module_info::out,
     make_hlds_qual_info::in, make_hlds_qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
-        ClassInterface, ClassPredIds, TermContext, InstanceMethods,
+check_concrete_class_instance(ClassId, Vars, ClassInterface, MethodPredProcIds,
+        ClassPredIds, TermContext, InstanceMethods,
         !InstanceDefn, !ModuleInfo, !QualInfo, !Specs) :-
     (
         ClassInterface = class_interface_abstract,
@@ -605,7 +605,7 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
         !:Specs = [Spec | !.Specs]
     ;
         ClassInterface = class_interface_concrete(_),
-        list.foldl5(check_instance_pred(ClassId, Vars, HLDSClassInterface),
+        list.foldl5(check_instance_pred(ClassId, Vars, MethodPredProcIds),
             ClassPredIds, !InstanceDefn, [], RevInstanceMethods,
             !ModuleInfo, !QualInfo, !Specs),
 
@@ -613,7 +613,7 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
         % after this pass. Normally that will be handled by
         % check_instance_pred, but we also need to handle it below,
         % in case the class has no methods.
-        MaybePredProcs1 = !.InstanceDefn ^ instdefn_hlds_interface,
+        MaybePredProcs1 = !.InstanceDefn ^ instdefn_maybe_method_ppids,
         (
             MaybePredProcs1 = yes(_),
             MaybePredProcs = MaybePredProcs1
@@ -626,7 +626,7 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
         % as the methods in the class definition. intermod.m relies on this.
         OrderedInstanceMethods = list.reverse(RevInstanceMethods),
 
-        !InstanceDefn ^ instdefn_hlds_interface := MaybePredProcs,
+        !InstanceDefn ^ instdefn_maybe_method_ppids := MaybePredProcs,
         !InstanceDefn ^ instdefn_body :=
             instance_body_concrete(OrderedInstanceMethods),
 
@@ -684,7 +684,7 @@ method_is_known(PredTable, ClassPredIds, Method) :-
     % Check one pred in one instance of one class.
     %
 :- pred check_instance_pred(class_id::in, list(tvar)::in,
-    hlds_class_interface::in, pred_id::in,
+    method_pred_proc_ids::in, pred_id::in,
     hlds_instance_defn::in, hlds_instance_defn::out,
     list(instance_method)::in, list(instance_method)::out,
     module_info::in, module_info::out,
@@ -832,7 +832,7 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
             InstancePredProcs = InstancePredProcs1
         ),
         InstanceDefn = InstanceDefn0
-            ^ instdefn_hlds_interface := yes(InstancePredProcs)
+            ^ instdefn_maybe_method_ppids := yes(InstancePredProcs)
     ;
         MatchingInstanceMethods = [_, _ | _],
         InstanceDefn = InstanceDefn0,

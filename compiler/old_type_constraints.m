@@ -807,7 +807,7 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
         ClassId = class_id(Name, Arity),
         ( if map.search(Environment ^ tce_class_env, ClassId, ClassDefn) then
             ( if
-                list.index0(ClassDefn ^ classdefn_hlds_interface, MethodNum,
+                list.index0(ClassDefn ^ classdefn_method_ppids, MethodNum,
                     Method)
             then
                 Method = proc(PredId, _),
