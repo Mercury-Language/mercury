@@ -73,7 +73,7 @@
                 classdefn_kinds             :: tvar_kind_map,
 
                 % The interface from the original declaration, used by
-                % intermod.m to % write out the interface for a local typeclass
+                % intermod.m to write out the interface for a local typeclass
                 % to the `.opt' file.
                 classdefn_interface         :: class_interface,
 
