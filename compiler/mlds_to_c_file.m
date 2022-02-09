@@ -183,9 +183,12 @@ output_c_dump_preds(MLDS, Globals, TargetOrDump, Suffix, DumpPredNames, !IO) :-
     DumpFileName = DumpBaseName ++ Suffix,
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ProcDefns = MLDS ^ mlds_proc_defns,
+    list.filter(func_defn_has_name_in_list(DumpPredNames), ProcDefns,
+        SelectedProcDefns),
+    list.sort(SelectedProcDefns, SortedSelectedProcDefns),
     output_to_file_stream(Globals, ModuleName, DumpFileName,
-        mlds_output_named_function_defns(Opts, DumpPredNames, MLDS_ModuleName,
-            ProcDefns),
+        output_c_dump_func_defns(Opts, MLDS_ModuleName,
+            SortedSelectedProcDefns),
         _Succeeded, !IO).
 
 func_defn_has_name_in_list(DumpPredNames, FuncDefn) :-
@@ -197,27 +200,16 @@ func_defn_has_name_in_list(DumpPredNames, FuncDefn) :-
         _Arity, _CodeModel, _MaybeReturnValue),
     list.member(Name, DumpPredNames).
 
-:- pred mlds_output_named_function_defns(mlds_to_c_opts::in, list(string)::in,
+:- pred output_c_dump_func_defns(mlds_to_c_opts::in,
     mlds_module_name::in, list(mlds_function_defn)::in,
     io.text_output_stream::in, list(string)::out, io::di, io::uo) is det.
 
-mlds_output_named_function_defns(Opts, DumpPredNames, ModuleName,
-        FuncDefns, Stream, Errors, !IO) :-
-    (
-        FuncDefns = [],
-        Errors = []
-    ;
-        FuncDefns = [FuncDefn | FuncDefnsTail],
-        ( if func_defn_has_name_in_list(DumpPredNames, FuncDefn) then
-            Indent = 0,
-            mlds_output_function_defn(Opts, Stream, Indent, ModuleName,
-                FuncDefn, !IO)
-        else
-            true
-        ),
-        mlds_output_named_function_defns(Opts, DumpPredNames,
-            ModuleName, FuncDefnsTail, Stream, Errors, !IO)
-    ).
+output_c_dump_func_defns(_, _, [], _, [], !IO).
+output_c_dump_func_defns(Opts, ModuleName, [FuncDefn | FuncDefns],
+        Stream, Errors, !IO) :-
+    Indent = 0,
+    mlds_output_function_defn(Opts, Stream, Indent, ModuleName, FuncDefn, !IO),
+    output_c_dump_func_defns(Opts, ModuleName, FuncDefns, Stream, Errors, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -442,16 +434,16 @@ mlds_output_src_file(Opts, Indent, MLDS, Stream, Errors, !IO) :-
     mlds_output_c_defns(Opts, Stream, MLDS_ModuleName, Indent, ForeignCode,
         ForeignCodeErrors, !IO),
     io.nl(Stream, !IO),
-    mlds_output_global_var_defns(Opts, Stream, Indent, yes, MLDS_ModuleName,
-        RttiDefns, !IO),
-    mlds_output_function_defns(Opts, Stream, Indent, MLDS_ModuleName,
-        ClosureWrapperFuncDefns, !IO),
-    mlds_output_global_var_defns(Opts, Stream, Indent, yes, MLDS_ModuleName,
-        CellDefns, !IO),
-    mlds_output_global_var_defns(Opts, Stream, Indent, yes, MLDS_ModuleName,
-        TableStructDefns, !IO),
-    mlds_output_function_defns(Opts, Stream, Indent, MLDS_ModuleName,
-        ProcDefns, !IO),
+    mlds_output_global_var_defns(Opts, Stream, Indent, yes,
+        MLDS_ModuleName, RttiDefns, !IO),
+    mlds_output_function_defns(Opts, blank_line_start, Stream, Indent,
+        MLDS_ModuleName, ClosureWrapperFuncDefns, !IO),
+    mlds_output_global_var_defns(Opts, Stream, Indent, yes,
+        MLDS_ModuleName, CellDefns, !IO),
+    mlds_output_global_var_defns(Opts, Stream, Indent, yes,
+        MLDS_ModuleName, TableStructDefns, !IO),
+    mlds_output_function_defns(Opts, blank_line_start, Stream, Indent,
+        MLDS_ModuleName, ProcDefns, !IO),
     io.nl(Stream, !IO),
     mlds_output_init_fn_defns(Opts, Stream, MLDS_ModuleName, FuncDefns,
         TypeCtorInfoDefns, AllocSites, InitPreds, FinalPreds, !IO),

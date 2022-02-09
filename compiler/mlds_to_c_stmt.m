@@ -159,25 +159,46 @@ mlds_output_stmt_block(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
             mlds_output_function_decl_opts(Opts, Stream, BlockIndent,
                 ModuleName),
             FuncDefns, !IO),
-        io.write_string(Stream, "\n", !IO)
+        PrintedSomething0 = yes
     ;
-        FuncDefns = []
+        FuncDefns = [],
+        PrintedSomething0 = no
     ),
     (
         LocalVarDefns = [_ | _],
+        (
+            PrintedSomething0 = no
+        ;
+            PrintedSomething0 = yes,
+            io.nl(Stream, !IO)
+        ),
         mlds_output_local_var_defns(Opts, Stream, BlockIndent, no,
             LocalVarDefns, !IO),
-        io.write_string(Stream, "\n", !IO)
+        PrintedSomething1 = yes
     ;
-        LocalVarDefns = []
+        LocalVarDefns = [],
+        PrintedSomething1 = PrintedSomething0
     ),
     (
         FuncDefns = [_ | _],
-        mlds_output_function_defns(Opts, Stream, BlockIndent, ModuleName,
-            FuncDefns, !IO),
-        io.write_string(Stream, "\n", !IO)
+        (
+            PrintedSomething1 = no
+        ;
+            PrintedSomething1 = yes,
+            io.nl(Stream, !IO)
+        ),
+        mlds_output_function_defns(Opts, no_blank_line_start, Stream,
+            BlockIndent, ModuleName, FuncDefns, !IO),
+        PrintedSomething2 = yes
     ;
-        FuncDefns = []
+        FuncDefns = [],
+        PrintedSomething2 = PrintedSomething1
+    ),
+    (
+        PrintedSomething2 = no
+    ;
+        PrintedSomething2 = yes,
+        io.nl(Stream, !IO)
     ),
     mlds_output_statements(Opts, Stream, BlockIndent, FuncInfo, SubStmts, !IO),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),

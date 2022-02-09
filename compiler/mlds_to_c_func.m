@@ -39,7 +39,11 @@
     output_type::in(output_type), output_type::in(output_type),
     io::di, io::uo) is det.
 
-:- pred mlds_output_function_defns(mlds_to_c_opts::in,
+:- type maybe_blank_line
+    --->    no_blank_line_start
+    ;       blank_line_start.
+
+:- pred mlds_output_function_defns(mlds_to_c_opts::in, maybe_blank_line::in,
     io.text_output_stream::in, indent::in, mlds_module_name::in,
     list(mlds_function_defn)::in, io::di, io::uo) is det.
 
@@ -64,6 +68,7 @@
 :- import_module char.
 :- import_module int.
 :- import_module maybe.
+:- import_module string.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -86,7 +91,6 @@ mlds_output_function_decl_opts(Opts, Stream, Indent, ModuleName,
     output_n_indents(Stream, Indent, !IO),
     mlds_output_function_decl_flags(Opts, Stream, Flags, MaybeBody, !IO),
     QualFuncName = qual_function_name(ModuleName, FuncName),
-
     (
         MaybePredProcId = no
     ;
@@ -125,9 +129,8 @@ mlds_output_func_decl_ho(Opts, Stream, Indent, QualFuncName, Context,
             mlds_output_prefix_suffix(Opts, OutputPrefix, OutputSuffix),
             RetTypes, !IO)
     ),
-    io.write_char(Stream, ' ', !IO),
-    io.write_string(Stream, CallingConvention, !IO),
-    io.nl(Stream, !IO),
+    io.format(Stream, " %s\n", [s(CallingConvention)], !IO),
+    output_n_indents(Stream, Indent, !IO),
     mlds_output_fully_qualified_function_name(Stream, QualFuncName, !IO),
     StdDecl = Opts ^ m2co_std_func_decl,
     (
@@ -204,17 +207,22 @@ mlds_output_param(Opts, OutputPrefix, OutputSuffix, Indent,
 
 %---------------------------------------------------------------------------%
 
-mlds_output_function_defns(_, _, _, _, [], !IO).
-mlds_output_function_defns(Opts, Stream, Indent, ModuleName,
+mlds_output_function_defns(_, _, _, _, _, [], !IO).
+mlds_output_function_defns(Opts, BlankLine, Stream, Indent, ModuleName,
         [FuncDefn | FuncDefns], !IO) :-
-    mlds_output_function_defn(Opts, Stream, Indent, ModuleName,
-        FuncDefn, !IO),
-    mlds_output_function_defns(Opts, Stream, Indent, ModuleName,
-        FuncDefns, !IO).
+    (
+        BlankLine = no_blank_line_start
+    ;
+        BlankLine = blank_line_start,
+        io.nl(Stream, !IO)
+    ),
+    mlds_output_function_defn(Opts, Stream, Indent,
+        ModuleName, FuncDefn, !IO),
+    mlds_output_function_defns(Opts, blank_line_start, Stream, Indent,
+        ModuleName, FuncDefns, !IO).
 
 mlds_output_function_defn(Opts, Stream, Indent, ModuleName,
         FunctionDefn, !IO) :-
-    io.nl(Stream, !IO),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
     output_n_indents(Stream, Indent, !IO),
     FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
@@ -243,13 +251,8 @@ mlds_output_pred_proc_id(Opts, Stream, proc(PredId, ProcId), !IO) :-
     Comments = Opts ^ m2co_auto_comments,
     (
         Comments = yes,
-        io.write_string(Stream, "// pred_id: ", !IO),
-        pred_id_to_int(PredId, PredIdNum),
-        io.write_int(Stream, PredIdNum, !IO),
-        io.write_string(Stream, ", proc_id: ", !IO),
-        proc_id_to_int(ProcId, ProcIdNum),
-        io.write_int(Stream, ProcIdNum, !IO),
-        io.nl(Stream, !IO)
+        io.format(Stream, "/* pred_id: %i, proc_id: %i */ ",
+            [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))], !IO)
     ;
         Comments = no
     ).
@@ -266,10 +269,15 @@ mlds_output_func(Opts, Stream, Indent, QualFuncName, Context, Params,
         FunctionBody = body_external,
         io.write_string(Stream, ";\n", !IO)
     ;
-        FunctionBody = body_defined_here(Body),
+        FunctionBody = body_defined_here(BodyStmt),
         io.write_string(Stream, "\n", !IO),
 
         c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+        % XXX We should not output braces around the function body if
+        % - ProfileTime = no, and
+        % - BodyStmt = ml_stmt_block(...),
+        % because mlds_output_statement will put braces around its output
+        % anyway.
         output_n_indents(Stream, Indent, !IO),
         io.write_string(Stream, "{\n", !IO),
 
@@ -284,8 +292,8 @@ mlds_output_func(Opts, Stream, Indent, QualFuncName, Context, Params,
 
         Signature = mlds_get_func_signature(Params),
         FuncInfo = func_info_c(QualFuncName, Signature),
-        mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo, Body, !IO),
-
+        mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo,
+            BodyStmt, !IO),
         c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
         output_n_indents(Stream, Indent, !IO),
         io.write_string(Stream, "}\n", !IO)    % end the function
