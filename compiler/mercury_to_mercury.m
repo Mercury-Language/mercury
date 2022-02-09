@@ -114,6 +114,10 @@
 :- pred mercury_format_bracketed_sym_name(sym_name::in, S::in,
     U::di, U::uo) is det <= output(S, U).
 
+:- func mercury_bracketed_sym_name_arity_to_string(sym_name_arity) = string.
+:- pred mercury_format_bracketed_sym_name_arity(sym_name_arity::in, S::in,
+    U::di, U::uo) is det <= output(S, U).
+
 %---------------------%
 
 :- pred mercury_output_bracketed_sym_name_ngt(needs_quotes::in, sym_name::in,
@@ -448,6 +452,17 @@ mercury_bracketed_sym_name_to_string(SymName) =
 mercury_format_bracketed_sym_name(SymName, S, !U) :-
     mercury_format_bracketed_sym_name_ngt(not_next_to_graphic_token, SymName,
         S, !U).
+
+%---------------------%
+
+mercury_bracketed_sym_name_arity_to_string(SNA) = Str :-
+    mercury_format_bracketed_sym_name_arity(SNA, unit, "", Str).
+
+mercury_format_bracketed_sym_name_arity(sym_name_arity(SymName, Arity),
+        S, !U) :-
+    mercury_format_bracketed_sym_name(SymName, S, !U),
+    add_char('/', S, !U),
+    add_int(Arity, S, !U).
 
 %---------------------%
 

@@ -1281,7 +1281,8 @@ mercury_output_where_attributes(Info, TypeVarSet, MaybeSolverTypeDetails,
         (
             MaybeDirectArgs = yes(DirectArgFunctors),
             FunctorStrs =
-                list.map(mercury_sym_name_arity_to_string, DirectArgFunctors),
+                list.map(mercury_bracketed_sym_name_arity_to_string,
+                    DirectArgFunctors),
             FunctorsStr = string.join_list(", ", FunctorStrs),
             string.format("direct_arg is [%s]", [s(FunctorsStr)],
                 DirectArgLine),

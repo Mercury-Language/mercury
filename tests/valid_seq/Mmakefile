@@ -78,7 +78,8 @@ OTHER_PROGS = \
 	nested_module_bug \
 	opt_det_warn \
 	parsing_bug_main \
-	transitive_instance
+	transitive_instance \
+	xml_event_read
 
 # XXX The following tests are not valid under the current Mercury
 # language rules:
