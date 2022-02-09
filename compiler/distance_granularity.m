@@ -203,7 +203,8 @@ apply_dg_to_preds([PredId | PredIds], Distance, !ModuleInfo) :-
     PredName0 = pred_info_name(PredInfo),
     % XXX *Always* passing pf_predicate here seems to be a bug.
     Transform = tn_par_distance_granularity(pf_predicate, Distance),
-    make_pred_name(ModuleName, PredName0, Transform, NewPredSymName),
+    make_transformed_pred_sym_name(ModuleName, PredName0, Transform,
+        NewPredSymName),
     PredName = unqualify_name(NewPredSymName),
 
     ProcIds = pred_info_valid_non_imported_procids(PredInfo),

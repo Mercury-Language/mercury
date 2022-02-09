@@ -103,6 +103,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 
@@ -272,8 +273,7 @@ add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor, TypeStatus,
         Context, !ModuleInfo) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     special_pred_interface(SpecialPredId, Type, ArgTypes, ArgModes, Det),
-    PredBaseName = special_pred_name(SpecialPredId, TypeCtor),
-    PredName = unqualified(PredBaseName),
+    make_uci_pred_sym_name(SpecialPredId, TypeCtor, PredSymName),
     PredArity = get_special_pred_id_arity(SpecialPredId),
     % All current special_preds are predicates.
     clauses_info_init(pf_predicate, PredArity,
@@ -290,7 +290,7 @@ add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor, TypeStatus,
     ClassContext = constraints([], []),
     ExistQVars = [],
     map.init(VarNameRemap),
-    pred_info_init(ModuleName, PredName, PredArity, pf_predicate, Context,
+    pred_info_init(ModuleName, pf_predicate, PredSymName, PredArity, Context,
         Origin, PredStatus, MaybeCurUserDecl, GoalType, Markers, ArgTypes,
         TVarSet, ExistQVars, ClassContext, Proofs, ConstraintMap,
         ClausesInfo0, VarNameRemap, PredInfo0),

@@ -83,9 +83,8 @@
 
 :- implementation.
 
-:- import_module hlds.
-:- import_module hlds.special_pred.
 :- import_module parse_tree.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 
@@ -119,7 +118,7 @@ proc_label_to_c_string(AddPrefix, ProcLabel) = ProcLabelString :-
         % Figure out the LabelName.
         DummyArity = -1,    % not used by make_pred_or_func_name.
         TypeCtor = type_ctor(qualified(TypeModule, TypeName), TypeArity),
-        PredName = special_pred_name(SpecialPredId, TypeCtor),
+        PredName = uci_pred_name(SpecialPredId, TypeCtor),
         LabelName = make_pred_or_func_name(unqualified(""), pf_predicate,
             unqualified(""), PredName, DummyArity, AddPrefix),
 

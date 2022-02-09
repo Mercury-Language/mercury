@@ -51,11 +51,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Return the predicate name we should use for the given special_pred
-    % for the given type constructor.
-    %
-:- func special_pred_name(special_pred_id, type_ctor) = string.
-
 :- pred special_pred_mode_num(special_pred_id::in, int::out) is det.
 
     % This predicate always returns determinism `semidet' for unification
@@ -192,28 +187,6 @@ special_pred_description(spec_pred_compare, "comparison predicate").
 special_pred_description(spec_pred_index,   "indexing predicate").
 
 %-----------------------------------------------------------------------------%
-
-special_pred_name(SpecialPred, type_ctor(SymName, Arity)) = Name :-
-    BaseName = get_special_pred_id_target_name(SpecialPred),
-    AppendTypeId = spec_pred_name_append_type_id,
-    (
-        AppendTypeId = yes,
-        Name = BaseName ++ sym_name_to_string(SymName)
-            ++ "/" ++ int_to_string(Arity)
-    ;
-        AppendTypeId = no,
-        Name = BaseName
-    ).
-
-:- func spec_pred_name_append_type_id = bool.
-:- pragma inline(func(spec_pred_name_append_type_id/0)).
-
-% XXX The name demanglers don't yet understand predicate names for special
-% preds that have the type name and arity appended, and the hand-written
-% unify/compare predicates for builtin types such as typeinfo have the plain
-% base names. Therefore returning "yes" here is useful only for debugging
-% the compiler.
-spec_pred_name_append_type_id = no.
 
 special_pred_mode_num(_, 0).
     % Mode num for special procs is always 0 (the first mode).

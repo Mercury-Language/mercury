@@ -446,7 +446,8 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     Context = goal_info_get_context(GoalInfo),
     term.context_line(Context, Line),
     Transform = tn_untupling(PredOrFunc, ProcNum, lnc(Line, Counter)),
-    make_pred_name(PredModule, PredName, Transform, AuxPredSymName),
+    make_transformed_pred_sym_name(PredModule, PredName, Transform,
+        AuxPredSymName),
 
     Origin =
         origin_transformed(transform_untuple(ProcNum), OrigOrigin, PredId),

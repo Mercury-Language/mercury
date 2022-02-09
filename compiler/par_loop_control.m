@@ -579,8 +579,8 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
     module_info_get_name(!.ModuleInfo, ModuleName),
     PredOrFunc = pred_info_is_pred_or_func(OldPredInfo),
     Transform = tn_par_loop_control(PredOrFunc, proc_id_to_int(OldProcId)),
-    make_pred_name(ModuleName, pred_info_name(OldPredInfo), Transform,
-        PredSymName),
+    make_transformed_pred_sym_name(ModuleName, pred_info_name(OldPredInfo),
+        Transform, PredSymName),
     % The mode number is included because we want to avoid the creation of
     % more than one predicate with the same name if more than one mode of
     % a predicate is parallelised. Since the names of e.g. deep profiling

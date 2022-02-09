@@ -660,7 +660,8 @@ pd_info_define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
     term.context_line(Context, Line),
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     Transform = tn_deforestation(pf_predicate, lnc(Line, Count)),
-    make_pred_name(PredModule, PredName, Transform, NewPredSymName),
+    make_transformed_pred_sym_name(PredModule, PredName, Transform,
+        NewPredSymName),
 
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
     pred_info_get_typevarset(PredInfo, TVarSet),

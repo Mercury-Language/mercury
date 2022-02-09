@@ -33,12 +33,6 @@
     %
 :- func cons_id_to_tag(module_info, cons_id) = cons_tag.
 
-    % Given a list of types, mangle the names so into a string which
-    % identifies them. The types must all have their top level functor
-    % bound, with any arguments free variables.
-    %
-:- pred make_instance_string(list(mer_type)::in, string::out) is det.
-
     % Given a type_ctor, return the cons_id that represents its type_ctor_info.
     %
 :- func type_ctor_info_cons_id(type_ctor) = cons_id.
@@ -74,8 +68,8 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_type.
 
 :- import_module char.
 :- import_module map.
@@ -83,7 +77,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -199,24 +192,6 @@ cons_id_to_tag(ModuleInfo, ConsId) = ConsTag:-
         get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepn),
         ConsTag = ConsRepn ^ cr_tag
     ).
-
-%-----------------------------------------------------------------------------%
-
-make_instance_string(InstanceTypes, InstanceString) :-
-    % Note that for historical reasons, builtin types are treated as being
-    % unqualified (`int') rather than being qualified (`builtin.int')
-    % at this point.
-    list.map(instance_type_ctor_to_string, InstanceTypes, InstanceStrings),
-    string.append_list(InstanceStrings, InstanceString).
-
-:- pred instance_type_ctor_to_string(mer_type::in, string::out) is det.
-
-instance_type_ctor_to_string(Type, String) :-
-    type_to_ctor_det(Type, TypeCtor),
-    TypeCtor = type_ctor(TypeName, TypeArity),
-    TypeNameString = sym_name_to_string_sep(TypeName, "__"),
-    string.int_to_string(TypeArity, TypeArityString),
-    String = TypeNameString ++ "__arity" ++ TypeArityString ++ "__".
 
 %-----------------------------------------------------------------------------%
 

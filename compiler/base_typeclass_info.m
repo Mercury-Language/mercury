@@ -43,12 +43,12 @@
 :- implementation.
 
 :- import_module backend_libs.type_class_info.
-:- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.status.
 :- import_module parse_tree.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.

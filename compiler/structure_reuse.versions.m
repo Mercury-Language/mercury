@@ -97,7 +97,8 @@ generate_reuse_name(ModuleInfo, PPId, NoClobberArgNums) = ReusePredSymName :-
     PredName = pred_info_name(PredInfo),
     Transform = tn_structure_reuse(PredOrFunc, proc_id_to_int(ProcId),
         NoClobberArgNums),
-    make_pred_name(PredModule, PredName, Transform, ReusePredSymName).
+    make_transformed_pred_sym_name(PredModule, PredName, Transform,
+        ReusePredSymName).
 
 %-----------------------------------------------------------------------------%
 

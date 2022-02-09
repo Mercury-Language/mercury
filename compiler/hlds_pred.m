@@ -599,18 +599,18 @@
                 item_seq_num
             ).
 
-    % pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context,
-    %   Origin, Status, CurUserDecl, GoalType, Markers, ArgTypes, TypeVarSet,
-    %   ExistQVars, ClassContext, ClassProofs, ClassConstraintMap,
-    %   User, ClausesInfo, VarNameRemap, PredInfo)
+    % pred_info_init(ModuleName, PredOrFunc, PredSymName, Arity, Context,
+    %   Origin, Status, CurUserDecl, GoalType, Markers,
+    %   ArgTypes, TypeVarSet, ExistQVars, ClassContext, ClassProofs,
+    %   ClassConstraintMap, ClausesInfo, VarNameRemap, PredInfo):
     %
     % Return a pred_info whose fields are filled in from the information
     % (direct and indirect) in the arguments, and from defaults.
     %
-:- pred pred_info_init(module_name::in, sym_name::in, arity::in,
-    pred_or_func::in, prog_context::in, pred_origin::in, pred_status::in,
-    maybe(cur_user_decl_info)::in, goal_type::in, pred_markers::in,
-    list(mer_type)::in, tvarset::in, existq_tvars::in,
+:- pred pred_info_init(module_name::in, pred_or_func::in,
+    sym_name::in, arity::in, prog_context::in, pred_origin::in,
+    pred_status::in, maybe(cur_user_decl_info)::in, goal_type::in,
+    pred_markers::in, list(mer_type)::in, tvarset::in, existq_tvars::in,
     prog_constraints::in, constraint_proof_map::in, constraint_map::in,
     clauses_info::in, map(prog_var, string)::in, pred_info::out) is det.
 
@@ -1267,7 +1267,7 @@ marker_name(marker_fact_table_semantic_errors, "fact_table_semantic_errors").
                 psi_instance_method_arg_types   :: list(mer_type)
             ).
 
-pred_info_init(ModuleName, PredSymName, Arity, PredOrFunc, Context,
+pred_info_init(ModuleName, PredOrFunc, PredSymName, Arity, Context,
         Origin, Status, CurUserDecl, GoalType, Markers,
         ArgTypes, TypeVarSet, ExistQVars, ClassContext, ClassProofs,
         ClassConstraintMap, ClausesInfo, VarNameRemap, PredInfo) :-

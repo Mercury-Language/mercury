@@ -111,7 +111,6 @@
 :- import_module check_hlds.typeclasses.
 :- import_module hlds.add_pred.
 :- import_module hlds.hlds_class.
-:- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
@@ -128,6 +127,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
@@ -739,7 +739,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 
     % Work out the name of the predicate that we will generate
     % to check this instance method.
-    make_introduced_pred_name(ClassId, MethodName, Arity,
+    make_instance_method_pred_sym_name(ClassId, MethodName, Arity,
         InstanceTypes, PredName),
 
     CheckInfo0 = check_instance_method_info(PredOrFunc, PredName, Arity,
@@ -997,7 +997,7 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
     PredStatus = pred_status(OldImportStatus),
     CurUserDecl = maybe.no,
     GoalType = goal_not_for_promise(np_goal_type_none),
-    pred_info_init(InstanceModuleName, PredName, PredArity, PredOrFunc,
+    pred_info_init(InstanceModuleName, PredOrFunc, PredName, PredArity,
         Context, PredOrigin, PredStatus, CurUserDecl, GoalType, Markers,
         ArgTypes, TVarSet, ExistQVars, ClassContext, Proofs, ConstraintMap,
         ClausesInfo, VarNameRemap, PredInfo0),
@@ -1028,40 +1028,6 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
     predicate_table_insert_qual(PredInfo, may_be_unqualified, PQInfo, PredId,
         PredicateTable1, PredicateTable),
     module_info_set_predicate_table(PredicateTable, !ModuleInfo).
-
-%---------------------------------------------------------------------------%
-
-    % Make the name of the introduced pred used to check a particular
-    % instance of a particular class method
-    %
-    % XXX This isn't quite perfect, I suspect
-    %
-:- pred make_introduced_pred_name(class_id::in, sym_name::in, arity::in,
-    list(mer_type)::in, sym_name::out) is det.
-
-make_introduced_pred_name(ClassId, MethodName, Arity, InstanceTypes,
-        PredName) :-
-    ClassId = class_id(ClassName, _ClassArity),
-    ClassNameString = sym_name_to_string_sep(ClassName, "__"),
-    MethodNameString = sym_name_to_string_sep(MethodName, "__"),
-    % Perhaps we should include the arity in this mangled string?
-    string.int_to_string(Arity, ArityString),
-    make_instance_string(InstanceTypes, InstanceString),
-    string.append_list(
-        [introduced_pred_name_prefix,
-        ClassNameString, "____",
-        InstanceString, "____",
-        MethodNameString, "_",
-        ArityString],
-        PredNameString),
-    PredName = unqualified(PredNameString).
-
-    % The prefix added to the class method name for the predicate
-    % used to call a class method for a specific instance.
-    %
-:- func introduced_pred_name_prefix = string.
-
-introduced_pred_name_prefix = "ClassMethod_for_".
 
 %---------------------------------------------------------------------------%
 

@@ -85,6 +85,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_data_foreign.
@@ -1801,8 +1802,8 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
     ( if map.search(!.GenMap, PredId, GeneratorPredIdPrime) then
         GeneratorPredId = GeneratorPredIdPrime
     else
-        clone_pred_info(PredId, PredInfo0, HeadVars, NumberedOutputVars,
-            GeneratorPredId, !TableInfo),
+        clone_pred_info(PredId, ProcId, PredInfo0, HeadVars,
+            NumberedOutputVars, GeneratorPredId, !TableInfo),
         map.det_insert(PredId, GeneratorPredId, !GenMap)
     ),
 
@@ -2056,18 +2057,18 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
     module_info_set_pred_info(PredId, !.PredInfo, ModuleInfo1, ModuleInfo),
     !TableInfo ^ table_module_info := ModuleInfo.
 
-:- pred clone_pred_info(pred_id::in, pred_info::in, list(prog_var)::in,
-    list(var_mode_pos_method)::in, pred_id::out,
+:- pred clone_pred_info(pred_id::in, proc_id::in, pred_info::in,
+    list(prog_var)::in, list(var_mode_pos_method)::in, pred_id::out,
     table_info::in, table_info::out) is det.
 
-clone_pred_info(OrigPredId, PredInfo0, HeadVars, NumberedOutputVars,
-        GeneratorPredId, !TableInfo) :-
+clone_pred_info(OrigPredId, OrigProcId, PredInfo0, HeadVars,
+        NumberedOutputVars, GeneratorPredId, !TableInfo) :-
     % We don't have any procedures for the generator yet. We will copy
     % the consumers' procedures later, one by one, as they are transformed.
 
     ModuleName = pred_info_module(PredInfo0),
-    PredName0 = pred_info_name(PredInfo0),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
+    PredName = pred_info_name(PredInfo0),
     pred_info_get_context(PredInfo0, Context),
     % The generator is local even if the original predicate is exported.
     PredStatus = pred_status(status_local),
@@ -2083,10 +2084,13 @@ clone_pred_info(OrigPredId, PredInfo0, HeadVars, NumberedOutputVars,
     pred_info_get_clauses_info(PredInfo0, ClausesInfo),
     pred_info_get_var_name_remap(PredInfo0, VarNameRemap),
 
-    PredName = qualified(ModuleName, "GeneratorFor_" ++ PredName0),
+    Transform = tn_minimal_model_generator(PredOrFunc,
+        proc_id_to_int(OrigProcId)),
+    make_transformed_pred_sym_name(ModuleName, PredName, Transform,
+        GenPredSymName),
     assoc_list.from_corresponding_lists(HeadVars, ArgTypes0, HeadVarTypes),
     keep_only_output_arg_types(HeadVarTypes, NumberedOutputVars, ArgTypes),
-    Arity = list.length(ArgTypes),
+    list.length(ArgTypes, Arity),
 
     markers_to_marker_list(Markers0, MarkerList0),
     list.filter(filter_marker, MarkerList0, MarkerList),
@@ -2095,20 +2099,21 @@ clone_pred_info(OrigPredId, PredInfo0, HeadVars, NumberedOutputVars,
     Origin = origin_transformed(transform_table_generator,
         OrigOrigin, OrigPredId),
     CurUserDecl = maybe.no,
-    pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
+    pred_info_init(ModuleName, PredOrFunc, GenPredSymName, Arity, Context,
         Origin, PredStatus, CurUserDecl, GoalType, Markers,
         ArgTypes, TypeVarSet, ExistQVars, ClassContext, ClassProofMap,
-        ClassConstraintMap, ClausesInfo, VarNameRemap, PredInfo),
+        ClassConstraintMap, ClausesInfo, VarNameRemap, GenPredInfo),
 
     ModuleInfo0 = !.TableInfo ^ table_module_info,
     module_info_get_predicate_table(ModuleInfo0, PredTable0),
-    predicate_table_insert(PredInfo, GeneratorPredId, PredTable0, PredTable),
+    predicate_table_insert(GenPredInfo, GeneratorPredId,
+        PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, ModuleInfo0, ModuleInfo),
     !TableInfo ^ table_module_info := ModuleInfo.
 
     % clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo).
     % This predicate creates a new procedure with the same body as the
-    % procedure with ProcId in PredInfo.  It then creates a call goal
+    % procedure with ProcId in PredInfo. It then creates a call goal
     % expression which calls the new procedure with its formal arguments as the
     % actual arguments.
     %

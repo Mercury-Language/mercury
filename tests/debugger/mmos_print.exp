@@ -9,7 +9,7 @@ mdb> step
 mdb> print *
        A (arg 1)              	1
 mdb> step
-tc(1)        1:      1  1 CALL pred mmos_print.GeneratorFor_tc/1-0 (nondet) mmos_print.m:21
+tc(1)        1:      1  1 CALL pred mmos_print.GeneratorFor_pred__tc__0/1-0 (nondet) mmos_print.m:21
 mdb> print *
 mdb: there are no live variables.
 mdb> step

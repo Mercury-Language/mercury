@@ -157,12 +157,12 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.special_pred.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
@@ -1076,7 +1076,7 @@ dump_proclabel(ProcLabel) = Str :-
             TypeName, TypeArity, Mode),
         TypeCtor = type_ctor(qualified(TypeModule, TypeName), TypeArity),
         Str = sym_name_mangle(Module) ++ "__"
-            ++ special_pred_name(SpecialPredId, TypeCtor) ++ "_"
+            ++ uci_pred_name(SpecialPredId, TypeCtor) ++ "_"
             ++ qualify_name(sym_name_mangle(TypeModule), TypeName) ++ "_"
             ++ int_to_string(TypeArity) ++ "_" ++ int_to_string(Mode)
     ).

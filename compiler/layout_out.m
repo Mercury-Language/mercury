@@ -191,7 +191,6 @@
 :- import_module backend_libs.name_mangle.
 :- import_module backend_libs.proc_label.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.special_pred.
 :- import_module libs.
 :- import_module libs.trace_params.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
@@ -201,6 +200,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_event.
 :- import_module parse_tree.prog_data_pragma.
@@ -2502,7 +2502,7 @@ output_proc_id(Stream, ProcLabel, Origin, !IO) :-
         ProcLabel = special_proc_label(DefiningModule, SpecialPredId,
             TypeModule, TypeName, TypeArity, ModeNum),
         TypeCtor = type_ctor(qualified(TypeModule, TypeName), TypeArity),
-        PredName0 = special_pred_name(SpecialPredId, TypeCtor),
+        PredName0 = uci_pred_name(SpecialPredId, TypeCtor),
         PredName = origin_name(Origin, PredName0),
         quote_and_write_string(Stream, TypeName, !IO),
         io.write_string(Stream, ",\n", !IO),

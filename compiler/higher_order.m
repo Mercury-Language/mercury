@@ -82,6 +82,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -2844,7 +2845,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     Name0 = pred_info_name(PredInfo0),
     PredArity = pred_info_orig_arity(PredInfo0),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
-    PredModule = pred_info_module(PredInfo0),
+    PredModuleName = pred_info_module(PredInfo0),
     module_info_get_globals(ModuleInfo0, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     pred_info_get_arg_types(PredInfo0, ArgTVarSet, ExistQVars, Types),
@@ -2859,18 +2860,19 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         % structures are derived from the names of predicates, duplicate
         % predicate names lead to duplicate global variable names and hence to
         % link errors.
-        PredName0 = predicate_name(ModuleInfo0, CallerPredId),
-        proc_id_to_int(CallerProcId, CallerProcInt),
+        CallerPredName0 = predicate_name(ModuleInfo0, CallerPredId),
+        proc_id_to_int(CallerProcId, CallerProcNum),
 
         % The higher_order_arg_order_version part is to avoid segmentation
         % faults or other errors when the order or number of extra arguments
         % changes. If the user does not recompile all affected code, the
         % program will not link.
-        Version = higher_order_arg_order_version,
-        string.format("%s_%d_%d",
-            [s(PredName0), i(CallerProcInt), i(Version)], PredName),
-        SymName = qualified(PredModule, PredName),
-        Transform = transform_higher_order_type_specialization(CallerProcInt),
+        Transform = tn_higher_order_type_spec(PredOrFunc, CallerProcNum,
+            higher_order_arg_order_version),
+        make_transformed_pred_sym_name(PredModuleName, CallerPredName0,
+            Transform, SpecSymName),
+        OriginTransform =
+            transform_higher_order_type_specialization(CallerProcNum),
         NewProcId = CallerProcId,
         % For exported predicates the type specialization must
         % be exported.
@@ -2883,9 +2885,10 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         IdCounter0 = !.Info ^ hogi_next_id,
         counter.allocate(Id, IdCounter0, IdCounter),
         !Info ^ hogi_next_id := IdCounter,
-        string.format("%s__ho%d", [s(Name0), i(Id)], PredName),
-        SymName = qualified(PredModule, PredName),
-        Transform = transform_higher_order_specialization(Id),
+        Transform = tn_higher_order(PredOrFunc, Id),
+        make_transformed_pred_sym_name(PredModuleName, Name0,
+            Transform, SpecSymName),
+        OriginTransform = transform_higher_order_specialization(Id),
         PredStatus = pred_status(status_local)
     ),
 
@@ -2895,9 +2898,10 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         VeryVerbose = yes,
         get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
         list.length(Types, ActualArity),
+        SpecPredName = unqualify_name(SpecSymName),
         write_request(ProgressStream, ModuleInfo0, "Specializing",
-            qualified(PredModule, Name0), PredArity, ActualArity,
-            yes(PredName), HOArgs, Context, !IO)
+            qualified(PredModuleName, Name0), PredArity, ActualArity,
+            yes(SpecPredName), HOArgs, Context, !IO)
     ),
 
     pred_info_get_origin(PredInfo0, OrigOrigin),
@@ -2921,10 +2925,10 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     ClausesInfo = clauses_info(EmptyVarSet, EmptyTVarNameMap,
         EmptyVarTypes, EmptyVarTypes, EmptyHeadVars, ClausesRep, ItemNumbers,
         EmptyRttiVarMaps, no_foreign_lang_clauses, no_clause_syntax_errors),
-    Origin = origin_transformed(Transform, OrigOrigin, CallerPredId),
+    Origin = origin_transformed(OriginTransform, OrigOrigin, CallerPredId),
     CurUserDecl = maybe.no,
-    pred_info_init(PredModule, SymName, PredArity, PredOrFunc, Context, Origin,
-        PredStatus, CurUserDecl, GoalType, MarkerList, Types,
+    pred_info_init(PredModuleName, PredOrFunc, SpecSymName, PredArity,
+        Context, Origin, PredStatus, CurUserDecl, GoalType, MarkerList, Types,
         ArgTVarSet, ExistQVars, ClassContext, EmptyProofs, EmptyConstraintMap,
         ClausesInfo, VarNameRemap, NewPredInfo0),
     pred_info_set_typevarset(TypeVarSet, NewPredInfo0, NewPredInfo1),
@@ -2936,7 +2940,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     !Info ^ hogi_module_info := ModuleInfo1,
 
     NewPred = new_pred(proc(NewPredId, NewProcId), CalledPredProc, Caller,
-        SymName, HOArgs, CallArgs, ExtraTypeInfoTVars, ArgTypes,
+        SpecSymName, HOArgs, CallArgs, ExtraTypeInfoTVars, ArgTypes,
         CallerTVarSet, TypeInfoLiveness, IsUserTypeSpec),
 
     higher_order_add_new_pred(CalledPredProc, NewPred, !Info),

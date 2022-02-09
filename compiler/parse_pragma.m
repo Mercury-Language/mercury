@@ -1069,10 +1069,10 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                     UnqualName = unqualify_name(PredName),
                     pfumm_to_maybe_pf_arity_maybe_modes(PFUMM, MaybePredOrFunc,
                         _Arity, _MaybeModes),
-                    Transform =
-                        tn_type_spec(MaybePredOrFunc, TVarSet, TypeSubns),
-                    make_pred_name(ModuleName, UnqualName, Transform,
-                        SpecSymName)
+                    Transform = tn_pragma_type_spec(MaybePredOrFunc,
+                        TVarSet, TypeSubns),
+                    make_transformed_pred_sym_name(ModuleName, UnqualName,
+                        Transform, SpecSymName)
                 ),
                 TypeSpecInfo = pragma_info_type_spec(PFUMM, PredName,
                     SpecSymName, TypeSubns, TVarSet, set.init),

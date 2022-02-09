@@ -2301,7 +2301,7 @@ make_new_spec_parallel_pred_info(FutureArgs, PredStatus, PPId, !PredInfo) :-
     pred_info_get_origin(!.PredInfo, OrigOrigin),
     Transform =
         tn_dep_par_conj(PredOrFunc, proc_id_to_int(ProcId), FutureArgs),
-    make_pred_name(PredModule, Name0, Transform, SymName),
+    make_transformed_pred_sym_name(PredModule, Name0, Transform, SymName),
     % The mode number is included because we want to avoid the creation of
     % more than one predicate with the same name if more than one mode of
     % a predicate is parallelised. Since the names of e.g. deep profiling
@@ -2328,7 +2328,7 @@ make_new_spec_parallel_pred_info(FutureArgs, PredStatus, PPId, !PredInfo) :-
     Origin = origin_transformed(transform_dependent_parallel_conjunction,
         OrigOrigin, PredId),
     CurUserDecl = maybe.no,
-    pred_info_init(PredModule, SymName, Arity, PredOrFunc, Context, Origin,
+    pred_info_init(PredModule, PredOrFunc, SymName, Arity, Context, Origin,
         PredStatus, CurUserDecl, GoalType, Markers, ArgTypes,
         Tvars, ExistQVars, ClassContext, EmptyProofs, EmptyConstraintMap,
         ClausesInfo, VarNameRemap, !:PredInfo),
