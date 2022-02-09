@@ -39,7 +39,7 @@ main(!IO) :-
     is det.
 
 data(Eqns, max, Obj, Varset) :-
-    varset.init(Varset0 ),
+    varset.init(Varset0),
     varset.new_vars(80, Vars0, Varset0, Varset),
     list.sort(Vars0, Vars),
     list.map(mkeqn, Vars, Eqns),
