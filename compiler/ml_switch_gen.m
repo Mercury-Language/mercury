@@ -185,7 +185,6 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
         Decls = []
     ;
         MayUseSmartIndexing = may_use_smart_indexing,
-        module_info_get_globals(ModuleInfo, Globals),
         (
             SwitchCategory = atomic_switch,
             ml_gen_smart_atomic_switch(SwitchVar, SwitchVarType, CanFail,
@@ -205,6 +204,7 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
         ;
             SwitchCategory = tag_switch,
             num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
+            module_info_get_globals(ModuleInfo, Globals),
             globals.get_opt_tuple(Globals, OptTuple),
             TagSize = OptTuple ^ ot_tag_switch_size,
             ( if
