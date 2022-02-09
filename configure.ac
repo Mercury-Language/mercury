@@ -355,10 +355,11 @@ AC_PATH_PROG(BOOTSTRAP_MC,mmc)
 case $BOOTSTRAP_MC in
     *Windows*|*system32*|*WINNT*)
         BOOTSTRAP_MC=
-        MERCURY_MSG("wrong mmc ignored")
+        MERCURY_MSG("ignoring Microsoft Management Console")
         ;;
 esac
 
+DETECTED_MC="$BOOTSTRAP_MC"
 if test "$BOOTSTRAP_MC" != ""
 then
     AC_MSG_CHECKING(whether the above mmc works and is sufficiently recent)
@@ -3329,11 +3330,18 @@ fi
 
 if test "$BOOTSTRAP_MC" = ""; then
     GRADE="$BOOTSTRAP_GRADE"
+    if test "$DETECTED_MC" = ""
+    then
+        MC_UNAVAIL_MSG="Mercury compiler not yet installed"
+    else
+        MC_UNAVAIL_MSG="Installed Mercury compiler is not up to date"
+    fi
+    MC_ERROR
     AC_MSG_WARN(
-[Mercury compiler not yet installed -
-****    cannot use grade '$BEST_GRADE_FOR_COMPILER'
-****    using grade '$GRADE' to compile the compiler
-****    after installation is complete you may reinstall
+[$MC_UNAVAIL_MSG -
+****    cannot use grade '$BEST_GRADE_FOR_COMPILER'.
+****    Using grade '$GRADE' to compile the compiler.
+****    After installation is complete, you may reinstall
 ****    from scratch to have a faster compiler.
 ****    NOTE: before reinstalling from scratch, ensure that the
 ****    source tree is clean by running 'make realclean'. Not doing
