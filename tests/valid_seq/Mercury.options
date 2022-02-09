@@ -53,3 +53,4 @@ MCFLAGS-intermod_user_sharing	= --intermodule-optimization
 MCFLAGS-intermod_user_sharing_2	= --intermodule-optimization
 MCFLAGS-opt_det_warn		= --intermodule-optimization --halt-at-warn
 MCFLAGS-opt_det_warn2		= --intermodule-optimization --halt-at-warn --no-warn-inferred-erroneous
+MCFLAGS-xml_event_read		= --intermodule-optimization
