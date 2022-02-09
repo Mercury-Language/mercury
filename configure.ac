@@ -3336,7 +3336,6 @@ if test "$BOOTSTRAP_MC" = ""; then
     else
         MC_UNAVAIL_MSG="Installed Mercury compiler is not up to date"
     fi
-    MC_ERROR
     AC_MSG_WARN(
 [$MC_UNAVAIL_MSG -
 ****    cannot use grade '$BEST_GRADE_FOR_COMPILER'.
