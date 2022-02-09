@@ -241,7 +241,7 @@
     %
 :- pred nth_member_search(list(T)::in, T::in, int::out) is semidet.
 
-    % nth_member_loookup(List, Elem, Position):
+    % nth_member_lookup(List, Elem, Position):
     %
     % A deterministic version of nth_member_search, which throws an exception
     % instead of failing if the element is not found in the list.

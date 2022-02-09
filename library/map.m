@@ -1157,7 +1157,7 @@
 % Note to implementors:
 %
 % This is the old version of map.merge/3. It is buggy in the sense that if the
-% sets of keys of the input maps are not disjointm it won't throw an exception
+% sets of keys of the input maps are not disjoint it won't throw an exception
 % but will insert the key and the smallest of the two corresponding values into
 % the output map. Eventually we would like to get rid of this version but some
 % of the code in the compiler currently assumes this behaviour, and
