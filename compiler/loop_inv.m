@@ -556,8 +556,6 @@ inv_goals_vars(ModuleInfo, UniquelyUsedVars,
     list.foldl2(inv_goals_vars_2(ModuleInfo, UniquelyUsedVars),
         InvGoals0, [], InvGoals, InvVars0,InvVars).
 
-%-----------------------------------------------------------------------------%
-
 :- pred inv_goals_vars_2(module_info::in, list(prog_var)::in, hlds_goal::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     list(prog_var)::in, list(prog_var)::out) is det.
@@ -575,12 +573,13 @@ inv_goals_vars_2(ModuleInfo, UUVs, Goal, IGs0, IGs, IVs0, IVs) :-
         IVs = IVs0
     ).
 
-%-----------------------------------------------------------------------------%
-
 :- pred has_uniquely_used_arg(list(prog_var)::in, hlds_goal::in) is semidet.
 
 has_uniquely_used_arg(UUVs, hlds_goal(_GoalExpr, GoalInfo)) :-
     NonLocals = goal_info_get_nonlocals(GoalInfo),
+    % XXX If our caller gave as UUVs as a set_of_progvar, this could be
+    % a simple test of whether the intersection is empty. As it is,
+    % this code requires a commit around nondet code.
     list.member(UUV, UUVs),
     set_of_var.member(NonLocals, UUV).
 
@@ -588,9 +587,12 @@ has_uniquely_used_arg(UUVs, hlds_goal(_GoalExpr, GoalInfo)) :-
 
 :- pred invariant_goal(list(hlds_goal)::in, hlds_goal::in) is semidet.
 
-invariant_goal(InvariantGoals, Goal) :-
-    list.member(InvariantGoal, InvariantGoals),
-    equivalent_goals(InvariantGoal, Goal).
+invariant_goal([InvariantGoal | InvariantGoals], Goal) :-
+    ( if equivalent_goals(InvariantGoal, Goal) then
+        true
+    else
+        invariant_goal(InvariantGoals, Goal)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -599,6 +601,8 @@ invariant_goal(InvariantGoals, Goal) :-
 
 input_args_are_invariant(ModuleInfo, Goal, InvVars) :-
     Inputs = goal_inputs(ModuleInfo, Goal),
+    % XXX This is a subset test. Both InvVars and the output of goal_inputs
+    % should be set_of_progvars.
     all [V] (
         list.member(V, Inputs)
     =>
