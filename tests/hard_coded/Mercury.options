@@ -15,6 +15,7 @@ MCFLAGS-bug300 =		--no-const-struct --optimize-constructor-last-call
 MCFLAGS-bug314 =		--trace deep
 MCFLAGS-bug392 =		-O0 --deforestation
 MCFLAGS-bug455_mod_a 		= --intermodule-optimization
+MCFLAGS-bug548 =        --inlining
 MCFLAGS-checked_nondet_tailcall	= --checked-nondet-tailcalls
 MCFLAGS-checked_nondet_tailcall_noinline = --checked-nondet-tailcalls --no-inlining
 MCFLAGS-cc_and_non_cc_test = 	--no-inlining

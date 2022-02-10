@@ -137,12 +137,9 @@ gen_tagged_case_code(CodeModel, EntryPackedArgsMap, TaggedCase, CaseId,
         CaseId, Goal),
     ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt,
         !ReachableConstVarMaps, Info1, Info2),
-    % Do not allow the generated code to be literally duplicated if it contains
-    % labels. Rather, we will regenerate the code at every point it is required
-    % so that the labels are unique.
     ( if
         OtherTaggedConsIds = [_ | _],
-        statement_contains_label(Stmt)
+        some_statement_prevents_duplication(Stmt)
     then
         MaybeCode = generate(EntryPackedArgsMap, Goal),
         Info = Info1
@@ -152,11 +149,29 @@ gen_tagged_case_code(CodeModel, EntryPackedArgsMap, TaggedCase, CaseId,
     ),
     map.det_insert(CaseId, MaybeCode, !CodeMap).
 
-:- pred statement_contains_label(mlds_stmt::in) is semidet.
+    % Do not allow the generated code to be literally duplicated
+    % if it contains either labels or function definitions, because
+    % doing so would generate output that defines a label or a function
+    % more than once. Instead, our caller will arrange for us to
+    % generate the code at every point it is required, and, crucially,
+    % if the goal has MLDS generated for it several times, every auxiliary
+    % function will have a different name generated for it each time.
+    %
+:- pred some_statement_prevents_duplication(mlds_stmt::in) is semidet.
 
-statement_contains_label(Stmt) :-
+some_statement_prevents_duplication(Stmt) :-
     statement_is_or_contains_statement(Stmt, SubStmt),
-    SubStmt = ml_stmt_label(_, _).
+    (
+        SubStmt = ml_stmt_label(_, _)
+    ;
+        SubStmt = ml_stmt_block(_LocalVarDefns, FuncDefns, _Stmts, _Ctxt),
+        FuncDefns = [_ | _]
+    ;
+        ( SubStmt = ml_stmt_try_commit(_, _, _, _)
+        ; SubStmt = ml_stmt_do_commit(_, _)
+        )
+        % Commits get turned into functions later.
+    ).
 
 :- type is_a_case_split_between_ptags
     --->    no_case_is_split_between_ptags
