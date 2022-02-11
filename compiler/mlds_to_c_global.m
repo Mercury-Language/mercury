@@ -292,15 +292,13 @@ mlds_output_vector_cell_group_defn(Opts, Stream, Indent, MangledModuleName,
     io::di, io::uo) is det.
 
 mlds_output_cell(Opts, Stream, Indent, Initializer, !RowNum, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "/* row ", !IO),
-    io.write_int(Stream, !.RowNum, !IO),
-    io.write_string(Stream, " */", !IO),
     ( if Initializer = init_struct(_, [_]) then
-        io.write_char(Stream, ' ', !IO)
+        EndChar = ' '
     else
-        io.nl(Stream, !IO)
+        EndChar = '\n'
     ),
+    output_n_indents(Stream, Indent, !IO),
+    io.format(Stream, "/* row %3d */%c", [i(!.RowNum), c(EndChar)], !IO),
     !:RowNum = !.RowNum + 1,
     mlds_output_initializer_body(Opts, Indent, Initializer, Stream, !IO),
     io.write_string(Stream, ",\n", !IO).
