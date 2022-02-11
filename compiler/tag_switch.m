@@ -61,6 +61,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module uint8.
+:- import_module unit.
 
 %-----------------------------------------------------------------------------%
 
@@ -227,7 +228,7 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
     Params = represent_params(VarName, SwitchGoalInfo, CodeModel, BranchStart,
         EndLabel),
     group_cases_by_ptag(TaggedCases, represent_tagged_case_for_llds(Params),
-        map.init, CaseLabelMap0, !MaybeEnd, !CI, _, PtagCaseMap),
+        map.init, CaseLabelMap0, !MaybeEnd, !CI, unit, _, _, PtagCaseMap),
 
     map.count(PtagCaseMap, PtagsUsed),
     get_globals(!.CI, Globals),

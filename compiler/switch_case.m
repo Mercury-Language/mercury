@@ -26,6 +26,7 @@
 :- import_module ll_backend.llds.
 
 :- import_module map.
+:- import_module unit.
 
 :- type represent_params
     --->    represent_params(
@@ -63,7 +64,8 @@
     %
 :- pred represent_tagged_case_for_llds(represent_params::in,
     tagged_case::in, label::out, case_label_map::in, case_label_map::out,
-    branch_end::in, branch_end::out, code_info::in, code_info::out) is det.
+    branch_end::in, branch_end::out, code_info::in, code_info::out,
+    unit::in, unit::out) is det.
 
     % generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap):
     %
@@ -88,7 +90,7 @@
 :- import_module string.
 
 represent_tagged_case_for_llds(Params, TaggedCase, Label, !CaseLabelMap,
-        !MaybeEnd, !CI) :-
+        !MaybeEnd, !CI, _, unit) :-
     some [!CLD] (
         Params = represent_params(SwitchVarName, SwitchGoalInfo, CodeModel,
             BranchStart, EndLabel),

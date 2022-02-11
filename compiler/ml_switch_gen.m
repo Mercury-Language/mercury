@@ -210,10 +210,12 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
             ( if
                 NumConsIds >= TagSize,
                 NumArms > 1,
-                globals_target_supports_int_switch(Globals) = yes
+                globals_target_supports_int_switch(Globals) = yes,
+                ml_generate_tag_switch_if_possible(TaggedCases, SwitchVar,
+                    CodeModel, CanFail, EntryPackedWordMap, Context,
+                    StmtsPrime, !Info)
             then
-                ml_generate_tag_switch(TaggedCases, SwitchVar, CodeModel,
-                    CanFail, EntryPackedWordMap, Context, Stmts, !Info)
+                Stmts = StmtsPrime
             else
                 ml_switch_generate_if_then_else_chain(TaggedCases,
                     SwitchVar, CodeModel, CanFail, EntryPackedWordMap, Context,
