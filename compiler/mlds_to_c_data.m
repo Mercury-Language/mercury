@@ -1151,7 +1151,7 @@ mlds_output_initializer_body(Opts, Indent, Initializer, Stream, !IO) :-
             FieldInitializers = [FieldInitializer],
             output_n_indents(Stream, Indent, !IO),
             io.write_string(Stream, "{ ", !IO),
-            mlds_output_initializer_body(Opts, Indent + 1, FieldInitializer,
+            mlds_output_initializer_body(Opts, 0, FieldInitializer,
                 Stream, !IO),
             io.write_string(Stream, " }", !IO)
         ;
