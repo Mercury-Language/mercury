@@ -53,7 +53,7 @@
 %       <OuterLocals>
 %
 %       <Inner1Ret>
-%       inner(<Inner1Args>, void *env_ptr_arg) {
+%       inner1(<Inner1Args>, void *env_ptr_arg) {
 %           <Inner1Locals>
 %
 %           <NestedInnerRet>
@@ -68,7 +68,7 @@
 %       }
 %
 %       <Inner2Ret>
-%       inner(<Inner2Args>, void *env_ptr_arg) {
+%       inner2(<Inner2Args>, void *env_ptr_arg) {
 %           <Inner2Locals>
 %
 %           <Inner2Code>
@@ -94,14 +94,14 @@
 %   }
 %
 %   <Inner1Ret>
-%   inner(<Inner1Args>, void *env_ptr_arg) {
+%   inner1(<Inner1Args>, void *env_ptr_arg) {
 %       OuterLocals *env_ptr = env_ptr_arg;
 %
 %       <Inner1Code'>
 %   }
 %
 %   <Inner2Ret>
-%   inner(<Inner2Args>, void *env_ptr_arg) {
+%   inner2(<Inner2Args>, void *env_ptr_arg) {
 %       OuterLocals *env_ptr = env_ptr_arg;
 %       <Inner2Locals>
 %
@@ -118,13 +118,13 @@
 %   }
 %
 % where <Inner1Code'>, <Inner2Code'> and <NestedInnerCode'> are the
-% same as <Inner1Code>, <Inner2Code> and <NestedInnerCode> (respectively)
+% same as <Inner1Code>, <Inner2Code> and <NestedInnerCode> respectively,
 % except that any references to a local variable <Var> declared in outer()
 % are replaced with `env_ptr -> <Var>', and likewise <OuterCode'> is
 % the same as <OuterCode> with references to local variables replaced with
-% `env_ptr->foo'. In the latter case it could (depending on how smart the C
-% compiler is) potentially be more efficient to generate `env.foo', but
-% currently we don't do that.
+% `env_ptr->foo'. In the latter case, it could potentially be more efficient
+% to generate `env.foo' (depending on how smart the C compiler is),
+% but currently we don't do that.
 %
 % Actually the description above is slightly over-simplified: not all local
 % variables need to be put in the environment struct. Only those local
@@ -431,7 +431,7 @@
 
 :- type action
     --->    hoist_nested_funcs
-            % Eliminate nested functions
+            % Eliminate nested functions.
 
     ;       chain_gc_stack_frames.
             % Add shadow stack for supporting accurate GC.
