@@ -881,11 +881,11 @@ gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
     packed_word_map::in, tagged_case::in, case_id::out,
     map(case_id, mlds_stmt)::in, map(case_id, mlds_stmt)::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    ml_gen_info::in, ml_gen_info::out, unit::in, unit::out) is det.
 
 gen_tagged_case_code_for_string_switch_return_case_id(CodeModel,
         EntryPackedArgsMap, TaggedCase, CaseId,
-        !CodeMap, !ReachableConstVarMaps, !Info) :-
+        !CodeMap, !ReachableConstVarMaps, !Info, _, unit) :-
     TaggedCase = tagged_case(_, _, CaseId, _),
     gen_tagged_case_code_for_string_switch(CodeModel, EntryPackedArgsMap,
         TaggedCase, !CodeMap, !ReachableConstVarMaps, !Info).
@@ -1631,7 +1631,7 @@ ml_generate_string_binary_jump_switch(VarRval, Cases, CodeModel, CanFail,
         gen_tagged_case_code_for_string_switch_return_case_id(CodeModel,
             EntryPackedArgsMap),
         CaseLabelMap0, CaseLabelMap, [], ReachableConstVarMaps, !Info,
-        SortedTable),
+        unit, _, SortedTable),
     ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info),
     ml_gen_string_binary_jump_initializers(SortedTable, StructType,
         [], RevRowInitializers, 0, TableSize),

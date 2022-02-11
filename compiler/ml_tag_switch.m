@@ -29,11 +29,14 @@
 
 %---------------------------------------------------------------------------%
 
-    % Generate efficient indexing code for tag based switches.
+    % Generate efficient indexing code for tag based switches,
+    % if this can be done without generating duplicates of
+    % auxiliary MLDS functions, or environment structures that
+    % have more than one copy of a field.
     %
-:- pred ml_generate_tag_switch(list(tagged_case)::in, prog_var::in,
+:- pred ml_generate_tag_switch_if_possible(list(tagged_case)::in, prog_var::in,
     code_model::in, can_fail::in, packed_word_map::in, prog_context::in,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -50,11 +53,11 @@
 :- import_module ml_backend.ml_simplify_switch.
 :- import_module ml_backend.ml_switch_gen.
 :- import_module ml_backend.ml_unify_gen_util.
-:- import_module ml_backend.ml_util.
 
 :- import_module assoc_list.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -68,24 +71,38 @@
 
 %---------------------------------------------------------------------------%
 
-ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail,
+ml_generate_tag_switch_if_possible(TaggedCases, Var, CodeModel, CanFail,
         EntryPackedArgsMap, Context, Stmts, !Info) :-
+    % Group the cases based on primary tag value, find out how many
+    % constructors share each primary tag value, and sort the cases so that
+    % the most frequently occurring primary tag values come first.
+    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    ml_variable_type(!.Info, Var, VarType),
+    get_ptag_counts(VarType, ModuleInfo, MaxPrimary, PtagCountMap),
+    group_cases_by_ptag(TaggedCases,
+        gen_tagged_case_code(CodeModel, EntryPackedArgsMap),
+        map.init, CodeMap, [], ReachableConstVarMaps0,
+        may_use_tag_switch, MayUseTagSwitch, !Info,
+        _CaseIdPtagsMap, PtagCaseMap),
+    % Proceed only if we can do so safely.
+    MayUseTagSwitch = may_use_tag_switch,
+    ml_generate_tag_switch(Var, CodeModel, CanFail, MaxPrimary,
+        PtagCountMap, PtagCaseMap, CodeMap, ReachableConstVarMaps0,
+        Context, Stmts, !Info).
+
+:- pred ml_generate_tag_switch(prog_var::in, code_model::in, can_fail::in,
+    uint8::in, ptag_count_map::in, ptag_case_map(case_id)::in,
+    code_map::in, list(ml_ground_term_map)::in, prog_context::in,
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_generate_tag_switch(Var, CodeModel, CanFail, MaxPrimary,
+        PtagCountMap, PtagCaseMap, CodeMap, ReachableConstVarMaps0,
+        Context, Stmts, !Info) :-
     % Generate the rval for the primary tag.
     ml_gen_var(!.Info, Var, VarLval),
     VarRval = ml_lval(VarLval),
     PtagRval = ml_unop(tag, VarRval),
 
-    % Group the cases based on primary tag value, find out how many
-    % constructors share each primary tag value, and sort the cases so that
-    % the most frequently occurring primary tag values come first.
-
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ml_variable_type(!.Info, Var, Type),
-    get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap),
-    group_cases_by_ptag(TaggedCases,
-        gen_tagged_case_code(CodeModel, EntryPackedArgsMap),
-        map.init, CodeMap, [], ReachableConstVarMaps0, !Info,
-        _CaseIdPtagsMap, PtagCaseMap),
     order_ptags_by_count(PtagCountMap, PtagCaseMap, PtagCaseList),
     % The code generation scheme that we use below can duplicate the code of a
     % case if the representations of the cons_ids of that case use more than
@@ -125,53 +142,216 @@ ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail,
     ml_simplify_switch(SwitchStmt0, SwitchStmt, !Info),
     Stmts = [SwitchStmt].
 
+:- type may_use_tag_switch
+    --->    may_not_use_tag_switch
+    ;       may_use_tag_switch.
+
 :- pred gen_tagged_case_code(code_model::in, packed_word_map::in,
     tagged_case::in, case_id::out, code_map::in, code_map::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
+    may_use_tag_switch::in, may_use_tag_switch::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_tagged_case_code(CodeModel, EntryPackedArgsMap, TaggedCase, CaseId,
-        !CodeMap, !ReachableConstVarMaps, Info0, Info) :-
+        !CodeMap, !ReachableConstVarMaps, !MayUseTagSwitch, Info0, Info) :-
     ml_gen_info_set_packed_word_map(EntryPackedArgsMap, Info0, Info1),
     TaggedCase = tagged_case(_MainTaggedConsId, OtherTaggedConsIds,
         CaseId, Goal),
     ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt,
         !ReachableConstVarMaps, Info1, Info2),
-    ( if
-        OtherTaggedConsIds = [_ | _],
-        some_statement_prevents_duplication(Stmt)
-    then
-        MaybeCode = generate(EntryPackedArgsMap, Goal),
-        Info = Info1
-    else
+    (
+        OtherTaggedConsIds = [],
         MaybeCode = immediate(Stmt),
         Info = Info2
+    ;
+        OtherTaggedConsIds = [_ | _],
+        % Testing whether this case is for two or more cons_ids
+        % is conservative.
+        % XXX When generating code for a language (such as C)
+        % in which two or more values of the switched-on variable
+        % can share the same code, the condition we should test for
+        % is whether the tags of [MainTaggedConsId | OtherTaggedConsIds]
+        % indicate whether this is the case for them. If it is,
+        % then returning MaybeCode = immediate(Stmt) and Info = Info2
+        % should be fine.
+        acc_dup_properties_of_stmt(Stmt,
+            does_not_contain_label, HasLabel,
+            will_not_gen_aux_pred, HasAuxPred,
+            has_no_local_vars, HasLocalVars),
+        ( if
+            HasAuxPred = will_gen_aux_pred,
+            HasLocalVars = has_local_vars
+        then
+            % Unlike labels and aux functions (see below), the names
+            % of MLDS variables do not include a sequence number.
+            % Therefore whether we return Stmt to be used duplicated as is,
+            % or letting it be generated several times from scratch,
+            % the resulting MLDS code will contain duplicate definitions
+            % of the local variables indicated by has_local_vars,
+            % and when ml_elim_nested moves all local variables *from all
+            % the duplicated copies of the block that these came from*
+            % to a *single* environment structure, the affected fields
+            % of the environment structure will be doubly defined,
+            % and the target language compiler will rightly report an error.
+            % The simplest way to avoid this is use this setting of
+            % !:MayUseTagSwitch to tell ml_generate_tag_switch_if_possible
+            % to fail, letting ml_switch_gen.m fall back to an if-then-else
+            % chain for the switch. Slow but working target language code
+            % beats "fast" but non-compilable target language code :-(
+            % Given how long the problem we are guarding against here
+            % has lurked in this code without being detected, the speed
+            % of the code we generate in such rare cases are extremely
+            % unlikely to matter in practice.
+            !:MayUseTagSwitch = may_not_use_tag_switch,
+            % Since we are forcing ml_generate_tag_switch_if_possible
+            % to fail, the MaybeCode and Info values we return won't be used.
+            MaybeCode = generate(EntryPackedArgsMap, Goal),
+            Info = Info1
+        else
+            ( if
+                ( HasLabel = does_contain_label
+                ; HasAuxPred = will_gen_aux_pred
+                )
+            then
+                % Stmt contains either the definition of either a label,
+                % or an auxiliary function. We therefore cannot include
+                % two copies of Stmt in the code we generate for the switch,
+                % because that would leave the label or the aux function
+                % multiply defined, but if we create MLDS code for Goal
+                % in every branch, things will be fine, because each time
+                % we generate code for Goal, any labels and aux functions
+                % will have different sequence numbers included in their names.
+                MaybeCode = generate(EntryPackedArgsMap, Goal),
+                Info = Info1
+            else
+                MaybeCode = immediate(Stmt),
+                Info = Info2
+            )
+        )
     ),
     map.det_insert(CaseId, MaybeCode, !CodeMap).
 
-    % Do not allow the generated code to be literally duplicated
-    % if it contains either labels or function definitions, because
-    % doing so would generate output that defines a label or a function
-    % more than once. Instead, our caller will arrange for us to
-    % generate the code at every point it is required, and, crucially,
-    % if the goal has MLDS generated for it several times, every auxiliary
-    % function will have a different name generated for it each time.
-    %
-:- pred some_statement_prevents_duplication(mlds_stmt::in) is semidet.
+%---------------------------------------------------------------------------%
 
-some_statement_prevents_duplication(Stmt) :-
-    statement_is_or_contains_statement(Stmt, SubStmt),
+:- type stmt_contains_label
+    --->    does_not_contain_label
+    ;       does_contain_label.
+
+:- type stmt_will_gen_aux_pred
+    --->    will_not_gen_aux_pred
+    ;       will_gen_aux_pred.
+
+:- type stmt_has_local_vars
+    --->    has_no_local_vars
+    ;       has_local_vars.
+
+    % Find out, for the given MLDS statement,
+    %
+    % - whether it contains any labels;
+    % - whether it contains any constructs that ml_elim_nested.m will turn into
+    %   an auxiliary structure using an environment, and
+    % - whether it defines any local variables.
+    %
+:- pred acc_dup_properties_of_stmt(mlds_stmt::in,
+    stmt_contains_label::in, stmt_contains_label::out,
+    stmt_will_gen_aux_pred::in, stmt_will_gen_aux_pred::out,
+    stmt_has_local_vars::in, stmt_has_local_vars::out) is det.
+
+acc_dup_properties_of_stmt(Stmt, !HasLabel, !HasAuxPred, !HasLocalVars) :-
     (
-        SubStmt = ml_stmt_label(_, _)
+        Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, BlockStmts, _Ctxt),
+        (
+            LocalVarDefns = []
+        ;
+            LocalVarDefns = [_ | _],
+            !:HasLocalVars = has_local_vars
+        ),
+        (
+            FuncDefns = []
+        ;
+            FuncDefns = [_ | _],
+            !:HasAuxPred = will_gen_aux_pred,
+            list.foldl3(acc_dup_properties_of_func, FuncDefns,
+                !HasLabel, !HasAuxPred, !HasLocalVars)
+        ),
+        list.foldl3(acc_dup_properties_of_stmt, BlockStmts,
+            !HasLabel, !HasAuxPred, !HasLocalVars)
     ;
-        SubStmt = ml_stmt_block(_LocalVarDefns, FuncDefns, _Stmts, _Ctxt),
-        FuncDefns = [_ | _]
+        Stmt = ml_stmt_while(_Kind, _Rval, BodyStmt, _LoopLocalVars, _Ctxt),
+        % _LoopLocalVars does not *create* any new local vars.
+        acc_dup_properties_of_stmt(BodyStmt,
+            !HasLabel, !HasAuxPred, !HasLocalVars)
     ;
-        ( SubStmt = ml_stmt_try_commit(_, _, _, _)
-        ; SubStmt = ml_stmt_do_commit(_, _)
+        Stmt = ml_stmt_if_then_else(_Cond, ThenStmt, MaybeElseStmt, _Ctxt),
+        acc_dup_properties_of_stmt(ThenStmt,
+            !HasLabel, !HasAuxPred, !HasLocalVars),
+        (
+            MaybeElseStmt = no
+        ;
+            MaybeElseStmt = yes(ElseStmt),
+            acc_dup_properties_of_stmt(ElseStmt,
+                !HasLabel, !HasAuxPred, !HasLocalVars)
         )
-        % Commits get turned into functions later.
+    ;
+        Stmt = ml_stmt_switch(_Type, _Val, _Range, Cases, Default, _Ctxt),
+        list.foldl3(acc_dup_properties_of_case, Cases,
+            !HasLabel, !HasAuxPred, !HasLocalVars),
+        (
+            ( Default = default_is_unreachable
+            ; Default = default_do_nothing
+            )
+        ;
+            Default = default_case(DefaultStmt),
+            acc_dup_properties_of_stmt(DefaultStmt,
+                !HasLabel, !HasAuxPred, !HasLocalVars)
+        )
+    ;
+        Stmt = ml_stmt_try_commit(_Ref, BodyStmt, HandlerStmt, _Ctxt),
+        !:HasAuxPred = will_gen_aux_pred,
+        acc_dup_properties_of_stmt(BodyStmt,
+            !HasLabel, !HasAuxPred, !HasLocalVars),
+        acc_dup_properties_of_stmt(HandlerStmt,
+            !HasLabel, !HasAuxPred, !HasLocalVars)
+    ;
+        Stmt = ml_stmt_do_commit(_Ref, _Ctxt),
+        !:HasAuxPred = will_gen_aux_pred
+    ;
+        Stmt = ml_stmt_label(_Label, _Ctxt),
+        !:HasLabel = does_contain_label
+    ;
+        ( Stmt = ml_stmt_goto(_, _Ctxt)
+        ; Stmt = ml_stmt_computed_goto(_Rval, _Labels, _Ctxt)
+        ; Stmt = ml_stmt_call(_Sig, _Func, _Args, _RetLvals, _TailCall, _Ctxt)
+        ; Stmt = ml_stmt_return(_Rvals, _Ctxt)
+        ; Stmt = ml_stmt_atomic(_AtomicStmt, _Ctxt)
+        )
     ).
+
+:- pred acc_dup_properties_of_case(mlds_switch_case::in,
+    stmt_contains_label::in, stmt_contains_label::out,
+    stmt_will_gen_aux_pred::in, stmt_will_gen_aux_pred::out,
+    stmt_has_local_vars::in, stmt_has_local_vars::out) is det.
+
+acc_dup_properties_of_case(Case, !HasLabel, !HasAuxPred, !HasLocalVars) :-
+    Case = mlds_switch_case(_HeadMatchCond, _TailMatchConds, Stmt),
+    acc_dup_properties_of_stmt(Stmt, !HasLabel, !HasAuxPred, !HasLocalVars).
+
+:- pred acc_dup_properties_of_func(mlds_function_defn::in,
+    stmt_contains_label::in, stmt_contains_label::out,
+    stmt_will_gen_aux_pred::in, stmt_will_gen_aux_pred::out,
+    stmt_has_local_vars::in, stmt_has_local_vars::out) is det.
+
+acc_dup_properties_of_func(FuncDefn, !HasLabel, !HasAuxPred, !HasLocalVars) :-
+    FuncDefn = mlds_function_defn(_Name, _Ctxt, _Flags, _OrigPredProcId,
+        _Params, FuncBody, _EnvVars, _MaybeTailRec),
+    (
+        FuncBody = body_external
+    ;
+        FuncBody = body_defined_here(Stmt),
+        acc_dup_properties_of_stmt(Stmt, !HasLabel, !HasAuxPred, !HasLocalVars)
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- type is_a_case_split_between_ptags
     --->    no_case_is_split_between_ptags

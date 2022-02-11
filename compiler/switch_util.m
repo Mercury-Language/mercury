@@ -253,9 +253,11 @@
     % and return a sorted assoc_list version of that map.
     %
 :- pred string_binary_cases(list(tagged_case)::in,
-    pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
-        ::in(pred(in, out, in, out, in, out, in, out) is det),
-    StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
+    pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB,
+        StateC, StateC, StateD, StateD)
+        ::in(pred(in, out, in, out, in, out, in, out, in, out) is det),
+    StateA::in, StateA::out, StateB::in, StateB::out,
+    StateC::in, StateC::out, StateD::in, StateD::out,
     assoc_list(string, CaseRep)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -263,6 +265,7 @@
 % Stuff for tag switches.
 %
 
+% XXX This comment seems to have been misplaced. -zs 2022 feb 10.
 % Map secondary tag values (-1 stands for none) to information about their
 % switch arm. This "information about the switch arm" is polymorphic, because
 % in the presence of switch arms that correspond to more than one cons_id,
@@ -304,7 +307,6 @@
                 % It is possible for two or more primary tag values
                 % to have exactly the same action, if those ptags represent
                 % cons_ids that share the same arm of the switch.
-                % The primary tag values
 
                 % The first and any later ptag values that have this code.
                 ptag,
@@ -352,9 +354,11 @@
     % having the same primary tag value.
     %
 :- pred group_cases_by_ptag(list(tagged_case)::in,
-    pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
-        ::in(pred(in, out, in, out, in, out, in, out) is det),
-    StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
+    pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB,
+        StateC, StateC, StateD, StateD)
+        ::in(pred(in, out, in, out, in, out, in, out, in, out) is det),
+    StateA::in, StateA::out, StateB::in, StateB::out,
+    StateC::in, StateC::out, StateD::in, StateD::out,
     case_id_ptags_map::out, ptag_case_map(CaseRep)::out) is det.
 
     % Group together any primary tags with the same cases.
@@ -1417,23 +1421,26 @@ next_free_hash_slot(Map, HomeMap, TableSize, LastUsed, FreeSlot) :-
 %
 
 string_binary_cases(TaggedCases, RepresentCase,
-        !StateA, !StateB, !StateC, SortedTable) :-
+        !StateA, !StateB, !StateC, !StateD, SortedTable) :-
     string_binary_entries(TaggedCases, RepresentCase,
-        !StateA, !StateB, !StateC, [], UnsortedTable),
+        !StateA, !StateB, !StateC, !StateD, [], UnsortedTable),
     list.sort(UnsortedTable, SortedTable).
 
 :- pred string_binary_entries(list(tagged_case)::in,
-    pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
-        ::in(pred(in, out, in, out, in, out, in, out) is det),
-    StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
+    pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB,
+        StateC, StateC, StateD, StateD)
+        ::in(pred(in, out, in, out, in, out, in, out, in, out) is det),
+    StateA::in, StateA::out, StateB::in, StateB::out,
+    StateC::in, StateC::out, StateD::in, StateD::out,
     assoc_list(string, CaseRep)::in, assoc_list(string, CaseRep)::out) is det.
 
-string_binary_entries([], _, !StateA, !StateB, !StateC, !UnsortedTable).
+string_binary_entries([], _,
+        !StateA, !StateB, !StateC, !StateD, !UnsortedTable).
 string_binary_entries([TaggedCase | TaggedCases], RepresentCase,
-        !StateA, !StateB, !StateC, !UnsortedTable) :-
+        !StateA, !StateB, !StateC, !StateD, !UnsortedTable) :-
     string_binary_entries(TaggedCases, RepresentCase,
-        !StateA, !StateB, !StateC, !UnsortedTable),
-    RepresentCase(TaggedCase, CaseRep, !StateA, !StateB, !StateC),
+        !StateA, !StateB, !StateC, !StateD, !UnsortedTable),
+    RepresentCase(TaggedCase, CaseRep, !StateA, !StateB, !StateC, !StateD),
     TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, _),
     add_string_binary_entry(CaseRep, MainTaggedConsId, !UnsortedTable),
     list.foldl(add_string_binary_entry(CaseRep), OtherTaggedConsIds,
@@ -1612,31 +1619,34 @@ get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
 
 %-----------------------------------------------------------------------------%
 
-group_cases_by_ptag(TaggedCases, RepresentCase, !StateA, !StateB, !StateC,
+group_cases_by_ptag(TaggedCases, RepresentCase,
+        !StateA, !StateB, !StateC, !StateD,
         CaseNumPtagsMap, PtagCaseMap) :-
     group_cases_by_ptag_loop(TaggedCases, RepresentCase,
-        !StateA, !StateB, !StateC,
+        !StateA, !StateB, !StateC, !StateD,
         map.init, CaseNumPtagsMap, map.init, PtagCaseMap).
 
 :- pred group_cases_by_ptag_loop(list(tagged_case)::in,
-    pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
-        ::in(pred(in, out, in, out, in, out, in, out) is det),
-    StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
+    pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB,
+        StateC, StateC, StateD, StateD)
+        ::in(pred(in, out, in, out, in, out, in, out, in, out) is det),
+    StateA::in, StateA::out, StateB::in, StateB::out,
+    StateC::in, StateC::out, StateD::in, StateD::out,
     case_id_ptags_map::in, case_id_ptags_map::out,
     ptag_case_map(CaseRep)::in, ptag_case_map(CaseRep)::out) is det.
 
 group_cases_by_ptag_loop([], _,
-        !StateA, !StateB, !StateC, !CaseNumPtagsMap, !PtagCaseMap).
+        !StateA, !StateB, !StateC, !StateD, !CaseNumPtagsMap, !PtagCaseMap).
 group_cases_by_ptag_loop([TaggedCase | TaggedCases], RepresentCase,
-        !StateA, !StateB, !StateC, !CaseNumPtagsMap, !PtagCaseMap) :-
+        !StateA, !StateB, !StateC, !StateD, !CaseNumPtagsMap, !PtagCaseMap) :-
     TaggedCase = tagged_case(MainTaggedConsId, OtherConsIds, CaseId, _Goal),
-    RepresentCase(TaggedCase, CaseRep, !StateA, !StateB, !StateC),
+    RepresentCase(TaggedCase, CaseRep, !StateA, !StateB, !StateC, !StateD),
     group_case_by_ptag(CaseId, CaseRep, MainTaggedConsId,
         !CaseNumPtagsMap, !PtagCaseMap),
     list.foldl2(group_case_by_ptag(CaseId, CaseRep), OtherConsIds,
         !CaseNumPtagsMap, !PtagCaseMap),
     group_cases_by_ptag_loop(TaggedCases, RepresentCase,
-        !StateA, !StateB, !StateC, !CaseNumPtagsMap, !PtagCaseMap).
+        !StateA, !StateB, !StateC, !StateD, !CaseNumPtagsMap, !PtagCaseMap).
 
 :- pred group_case_by_ptag(case_id::in, CaseRep::in, tagged_cons_id::in,
     map(case_id, set(ptag))::in, map(case_id, set(ptag))::out,

@@ -97,6 +97,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module std_util.
+:- import_module unit.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -202,7 +203,7 @@ represent_tagged_cases_in_string_switch(_, [], [],
 represent_tagged_cases_in_string_switch(Params, [Case | Cases], !:StrsLabels,
         !CaseLabelMap, !MaybeEnd, !CI) :-
     represent_tagged_case_for_llds(Params, Case, Label,
-        !CaseLabelMap, !MaybeEnd, !CI),
+        !CaseLabelMap, !MaybeEnd, !CI, unit, _),
     represent_tagged_cases_in_string_switch(Params, Cases, !:StrsLabels,
         !CaseLabelMap, !MaybeEnd, !CI),
     Case = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, _),
@@ -707,7 +708,7 @@ generate_string_binary_switch(Cases, VarRval, VarName, CodeModel, CanFail,
     map.init(CaseLabelMap0),
     switch_util.string_binary_cases(Cases,
         represent_tagged_case_for_llds(Params),
-        CaseLabelMap0, CaseLabelMap, no, MaybeEnd, !CI, SortedTable),
+        CaseLabelMap0, CaseLabelMap, no, MaybeEnd, !CI, unit, _, SortedTable),
 
     gen_string_binary_jump_slots(SortedTable, [], RevTableRows, [], RevTargets,
         0, TableSize),
