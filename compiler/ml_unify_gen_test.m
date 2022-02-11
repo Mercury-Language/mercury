@@ -127,24 +127,24 @@ ml_generate_test_rval_has_tagged_cons_id(Info, Rval, Type, CheaperTagTest,
     ml_generate_test_rval_has_cons_tag(Info, Rval, Type, CheaperTagTest,
         ConsTag, TestRval).
 
-    % ml_generate_test_rval_has_cons_tag(Info, VarRval, Type, ConsTag,
+    % ml_generate_test_rval_has_cons_tag(Info, VarRval, VarType, ConsTag,
     %   TestRval):
     %
-    % TestRval is an rval of type bool which evaluates to true if VarRval has
-    % the specified ConsTag, and false otherwise. Type is the type of VarRval.
+    % TestRval is an rval of type bool which evaluates to true if VarRval,
+    % which has type VarType, has the specified ConsTag, and false otherwise.
     %
 :- pred ml_generate_test_rval_has_cons_tag(ml_gen_info::in,
     mlds_rval::in, mer_type::in, maybe_cheaper_tag_test::in, cons_tag::in,
     mlds_rval::out) is det.
 
-ml_generate_test_rval_has_cons_tag(Info, VarRval, Type, CheaperTagTest,
+ml_generate_test_rval_has_cons_tag(Info, VarRval, VarType, CheaperTagTest,
         ConsTag, TestRval) :-
     ( if
         CheaperTagTest = cheaper_tag_test(_ExpensiveConsId, ExpensiveConsTag,
             _CheapConsId, CheapConsTag),
         ConsTag = ExpensiveConsTag
     then
-        ml_generate_test_rval_has_cons_tag_direct(Info, VarRval, Type,
+        ml_generate_test_rval_has_cons_tag_direct(Info, VarRval, VarType,
             CheapConsTag, CheapConsTagTestRval),
         ( if
             CheapConsTagTestRval = ml_binop(eq(IntType), SubRvalA, SubRvalB)
@@ -154,7 +154,7 @@ ml_generate_test_rval_has_cons_tag(Info, VarRval, Type, CheaperTagTest,
             TestRval = ml_unop(logical_not, CheapConsTagTestRval)
         )
     else
-        ml_generate_test_rval_has_cons_tag_direct(Info, VarRval, Type,
+        ml_generate_test_rval_has_cons_tag_direct(Info, VarRval, VarType,
             ConsTag, TestRval)
     ).
 
