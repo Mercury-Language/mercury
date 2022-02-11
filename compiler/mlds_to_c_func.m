@@ -272,31 +272,37 @@ mlds_output_func(Opts, Stream, Indent, QualFuncName, Context, Params,
         FunctionBody = body_defined_here(BodyStmt),
         io.write_string(Stream, "\n", !IO),
 
-        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-        % XXX We should not output braces around the function body if
-        % - ProfileTime = no, and
-        % - BodyStmt = ml_stmt_block(...),
-        % because mlds_output_statement will put braces around its output
-        % anyway.
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "{\n", !IO),
-
+        LineNumbers = Opts ^ m2co_line_numbers,
         ProfileTime = Opts ^ m2co_profile_time,
-        (
-            ProfileTime = yes,
-            mlds_output_time_profile_instr(Opts, Stream, Context, Indent + 1,
-                QualFuncName, !IO)
-        ;
-            ProfileTime = no
-        ),
-
         Signature = mlds_get_func_signature(Params),
         FuncInfo = func_info_c(QualFuncName, Signature),
-        mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo,
-            BodyStmt, !IO),
-        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "}\n", !IO)    % end the function
+        ( if
+            LineNumbers = no,
+            ProfileTime = no,
+            BodyStmt = ml_stmt_block(_, _, _, _)
+        then
+            % The entire output of this call will have braces around it.
+            % mlds_output_statement puts them there to create a scope
+            % for the block, but they also work to wrap the function.
+            mlds_output_statement(Opts, Stream, Indent, FuncInfo,
+                BodyStmt, !IO)
+        else
+            c_output_context(Stream, LineNumbers, Context, !IO),
+            output_n_indents(Stream, Indent, !IO),
+            io.write_string(Stream, "{\n", !IO),    % start of the function
+            (
+                ProfileTime = yes,
+                mlds_output_time_profile_instr(Opts, Stream, Context,
+                    Indent + 1, QualFuncName, !IO)
+            ;
+                ProfileTime = no
+            ),
+            mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo,
+                BodyStmt, !IO),
+            c_output_context(Stream, LineNumbers, Context, !IO),
+            output_n_indents(Stream, Indent, !IO),
+            io.write_string(Stream, "}\n", !IO)     % end of the function
+        )
     ).
 
 %---------------------------------------------------------------------------%
