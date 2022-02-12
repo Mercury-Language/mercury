@@ -210,7 +210,7 @@
 
     % The empty document corresponding to the null string.
     %
-:- func nil                 = doc.
+:- func nil = doc.
 
     % The document consisting of a single string.
     %
@@ -218,31 +218,31 @@
     % type class, it is simpler to just apply the doc/1
     % method.
     %
-:- func text(string)        = doc.
+:- func text(string) = doc.
 
     % The composition of two docs with no intervening space.
     %
     % NOTE: with the addition of the doc/1 type class, it is
     % simpler to construct compound docs using ++/2.
     %
-:- func doc `<>` doc        = doc.
+:- func doc `<>` doc = doc.
 
     % The newline document. In a group doc (see below) the pretty printer
     % may choose to instead `flatten' all line docs into nil docs in order
     % to fit a doc on a single line.
     %
-:- func line                = doc.
+:- func line = doc.
 
     % Any `line' docs in the body that are not flattened out by the
     % pretty printer are followed by the given number of spaces
     % (nested `nest's add up).
     %
-:- func nest(int, T)        = doc <= (doc(T)).
+:- func nest(int, T) = doc <= (doc(T)).
 
     % Identical to a nest doc except that indentation is extended with
     % a string label rather than some number of spaces.
     %
-:- func label(string, T)    = doc <= (doc(T)).
+:- func label(string, T) = doc <= (doc(T)).
 
     % A group doc gives the pretty printer a choice: if the doc can be printed
     % without line wrapping then it does so (all line, label, nest and group
@@ -250,7 +250,7 @@
     % treats the group body literally, although nested group docs remain as
     % choice points.
     %
-:- func group(T)            = doc <= (doc(T)).
+:- func group(T) = doc <= (doc(T)).
 
     % This function can be used to convert strings, chars, ints, uints and
     % floats to their text doc equivalents.
@@ -262,7 +262,7 @@
 
     % Shorthand for doc ++ line ++ doc.
     %
-:- func doc `</>` doc       = doc.
+:- func doc `</>` doc = doc.
 
     % Various bracketing functions.
     %
@@ -271,10 +271,10 @@
     %          brackets(Doc) = bracketed("[", "]", Doc)
     %            braces(Doc) = bracketed("{", "}", Doc)
     %
-:- func bracketed(T1, T2, T3)  = doc <= (doc(T1), doc(T2), doc(T3)).
-:- func parentheses(T)         = doc <= (doc(T)).
-:- func brackets(T)            = doc <= (doc(T)).
-:- func braces(T)              = doc <= (doc(T)).
+:- func bracketed(T1, T2, T3) = doc <= (doc(T1), doc(T2), doc(T3)).
+:- func parentheses(T)        = doc <= (doc(T)).
+:- func brackets(T)           = doc <= (doc(T)).
+:- func braces(T)             = doc <= (doc(T)).
 
     % packed(Sep, [X1, X2, .., Xn]) = G1 `<>` G2 `<>` .. `<>` Gn where
     % Gi = group(line `<>` Xi `<>` Sep), except for Gn where
@@ -322,21 +322,21 @@
     % Handy punctuation docs and versions with following
     % spaces and/or line breaks.
     %
-:- func comma               = doc.
-:- func semic               = doc.      % Semicolon.
-:- func colon               = doc.
-:- func space               = doc.
-:- func comma_space         = doc.
-:- func semic_space         = doc.
-:- func colon_space         = doc.
-:- func comma_line          = doc.
-:- func semic_line          = doc.
-:- func colon_line          = doc.
-:- func space_line          = doc.
-:- func comma_space_line    = doc.
-:- func semic_space_line    = doc.
-:- func colon_space_line    = doc.
-:- func ellipsis            = doc.      % "...".
+:- func comma            = doc.
+:- func semic            = doc.      % Semicolon.
+:- func colon            = doc.
+:- func space            = doc.
+:- func comma_space      = doc.
+:- func semic_space      = doc.
+:- func colon_space      = doc.
+:- func comma_line       = doc.
+:- func semic_line       = doc.
+:- func colon_line       = doc.
+:- func space_line       = doc.
+:- func comma_space_line = doc.
+:- func semic_space_line = doc.
+:- func colon_space_line = doc.
+:- func ellipsis         = doc.      % "...".
 
     % Performs word wrapping at the end of line, taking whitespace sequences
     % as delimiters separating words.
@@ -355,21 +355,29 @@
     % This may throw an exception or cause a runtime abort if the term
     % in question has user-defined equality.
     %
-:- func to_doc(T)           = doc.
-:- func to_doc(int, T)      = doc.
+:- func to_doc(T)      = doc.
+:- func to_doc(int, T) = doc.
 
     % Convert docs to pretty printed strings. The int argument specifies
     % a line width in characters.
     %
 :- func to_string(int, doc) = string.
 
-    % Write docs out in pretty printed format. The int argument specifies
-    % a page width in characters.
+    % Write the given doc out in its pretty printed format to the
+    % current output stream.
+    %
+    % The int argument specifies the preferred maximum length of each line.
+    % (This preferred maximum can be exceeeded, e.g. if a single text string
+    % to be printed is longer than this width.)
     %
 :- pred write(int::in, T::in, io::di, io::uo) is det <= doc(T).
 
-    % Write docs to the specified string writer stream in pretty printed
-    % format. The int argument specifies a page width in characters.
+    % Write the specified doc to the specified string writer stream
+    % in its pretty printed format.
+    %
+    % The int argument specifies the preferred maximum length of each line.
+    % (This preferred maximum can be exceeeded, e.g. if a single text string
+    % to be printed is longer than this width.)
     %
 :- pred write(Stream::in, int::in, T::in, State::di, State::uo) is det
     <= ( doc(T), stream.writer(Stream, string, State) ).
@@ -403,16 +411,15 @@
 %---------------------------------------------------------------------------%
 
 :- type doc
-    --->    'NIL'
-    ;       'SEQ'(doc, doc)
-    ;       'NEST'(int, doc)
-    ;       'LABEL'(string, doc)
-    ;       'TEXT'(string)
-    ;       'LINE'
-    ;       'GROUP'(doc)
-    ;       'DOC'(int, univ).
-            %
-            % 'DOC'(MaxDepth, Univ)
+    --->    pp_nil
+    ;       pp_text(string)
+    ;       pp_line
+    ;       pp_seq(doc, doc)
+    ;       pp_group(doc)
+    ;       pp_nest(int, doc)
+    ;       pp_label(string, doc)
+    ;       pp_doc(int, univ).
+            % pp_doc(MaxDepth, Univ)
             % - Univ is the object to be converted to a doc via to_doc/3,
             %   represented as a univ.
             % - MaxDepth is the depth limit before using ellipsis.
@@ -433,26 +440,20 @@ doc(X) = doc(int.max_int, X).
 
 %---------------------------------------------------------------------------%
 
-:- instance doc(doc)    where [ doc(_, Doc)    = Doc            ].
-:- instance doc(string) where [ doc(_, String) = text(String)   ].
-:- instance doc(int)    where [ doc(_, Int)    = poly(i(Int))   ].
-:- instance doc(int8)   where [ doc(_, Int8) = text(int8_to_string(Int8))].
-:- instance doc(int16) where [ doc(_, Int16) = text(int16_to_string(Int16))].
-:- instance doc(int32) where [ doc(_, Int32) = text(int32_to_string(Int32))].
-:- instance doc(int64) where [ doc(_, Int64) = text(int64_to_string(Int64))].
-:- instance doc(uint)   where [ doc(_, UInt) = text(uint_to_string(UInt))].
-:- instance doc(uint8)  where [ doc(_, UInt8) = text(uint8_to_string(UInt8))].
-:- instance doc(uint16) where [
-    doc(_, UInt16) = text(uint16_to_string(UInt16))
-].
-:- instance doc(uint32) where [
-    doc(_, UInt32) = text(uint32_to_string(UInt32))
-].
-:- instance doc(uint64) where [
-    doc(_, UInt64) = text(uint64_to_string(UInt64))
-].
-:- instance doc(float)  where [ doc(_, Float)  = poly(f(Float)) ].
-:- instance doc(char)   where [ doc(_, Char)   = poly(c(Char))  ].
+:- instance doc(doc)    where [doc(_, Doc) =    Doc].
+:- instance doc(string) where [doc(_, String) = text(String)].
+:- instance doc(int)    where [doc(_, I) =      poly(i(I))].
+:- instance doc(int8)   where [doc(_, I8) =     text(int8_to_string(I8))].
+:- instance doc(int16)  where [doc(_, I16) =    text(int16_to_string(I16))].
+:- instance doc(int32)  where [doc(_, I32) =    text(int32_to_string(I32))].
+:- instance doc(int64)  where [doc(_, I64) =    text(int64_to_string(I64))].
+:- instance doc(uint)   where [doc(_, UI) =     text(uint_to_string(UI))].
+:- instance doc(uint8)  where [doc(_, UI8) =    text(uint8_to_string(UI8))].
+:- instance doc(uint16) where [doc(_, UI16) =   text(uint16_to_string(UI16))].
+:- instance doc(uint32) where [doc(_, UI32) =   text(uint32_to_string(UI32))].
+:- instance doc(uint64) where [doc(_, UI64) =   text(uint64_to_string(UI64))].
+:- instance doc(float)  where [doc(_, Float) =  poly(f(Float))].
+:- instance doc(char)   where [doc(_, Char) =   poly(c(Char))].
 
 %---------------------------------------------------------------------------%
 
@@ -460,39 +461,39 @@ Doc1 ++ Doc2 = doc(Doc1) `<>` doc(Doc2).
 
 %---------------------------------------------------------------------------%
 
-nil             = 'NIL'.
-X `<>` Y        = 'SEQ'(X, Y).
-nest(I, X)      = 'NEST'(I, doc(X)).
-label(L, X)     = 'LABEL'(L, doc(X)).
-text(S)         = 'TEXT'(S).
-line            = 'LINE'.
-group(X)        = 'GROUP'(doc(X)).
+nil            = pp_nil.
+X `<>` Y       = pp_seq(X, Y).
+nest(I, X)     = pp_nest(I, doc(X)).
+label(L, X)    = pp_label(L, doc(X)).
+text(S)        = pp_text(S).
+line           = pp_line.
+group(X)       = pp_group(doc(X)).
 
-poly(s(S))      = text(string.format("%s", [s(S)])).
-poly(c(C))      = text(string.format("%c", [c(C)])).
-poly(i(I))      = text(string.format("%d", [i(I)])).
-poly(i8(I8))    = text(string.format("%d", [i(int8.cast_to_int(I8))])).
-poly(i16(I16))  = text(string.format("%d", [i(int16.cast_to_int(I16))])).
-poly(i32(I32))  = text(string.format("%d", [i(int32.cast_to_int(I32))])).
-poly(i64(I64))  = text(string.format("%d", [i(int64.cast_to_int(I64))])).
-poly(u(U))      = text(string.format("%u", [u(U)])).
-poly(u8(U8))    = text(string.format("%u", [u(uint8.cast_to_uint(U8))])).
-poly(u16(U16))  = text(string.format("%u", [u(uint16.cast_to_uint(U16))])).
-poly(u32(U32))  = text(string.format("%u", [u(uint32.cast_to_uint(U32))])).
-poly(u64(U64))  = text(string.format("%u", [u(uint64.cast_to_uint(U64))])).
-poly(f(F))      = text(string.format("%f", [f(F)])).
+poly(s(S))     = text(string.format("%s", [s(S)])).
+poly(c(C))     = text(string.format("%c", [c(C)])).
+poly(i(I))     = text(string.format("%d", [i(I)])).
+poly(i8(I8))   = text(string.format("%d", [i(int8.cast_to_int(I8))])).
+poly(i16(I16)) = text(string.format("%d", [i(int16.cast_to_int(I16))])).
+poly(i32(I32)) = text(string.format("%d", [i(int32.cast_to_int(I32))])).
+poly(i64(I64)) = text(string.format("%d", [i(int64.cast_to_int(I64))])).
+poly(u(U))     = text(string.format("%u", [u(U)])).
+poly(u8(U8))   = text(string.format("%u", [u(uint8.cast_to_uint(U8))])).
+poly(u16(U16)) = text(string.format("%u", [u(uint16.cast_to_uint(U16))])).
+poly(u32(U32)) = text(string.format("%u", [u(uint32.cast_to_uint(U32))])).
+poly(u64(U64)) = text(string.format("%u", [u(uint64.cast_to_uint(U64))])).
+poly(f(F))     = text(string.format("%f", [f(F)])).
 
 %---------------------------------------------------------------------------%
 
-to_string(W, X) = S :-
-    layout_best(pred(H::in, T::in, [H | T]::out) is det, W, X, [], Ss),
-    S = string.append_list(list.reverse(Ss)).
+to_string(Width, Doc) = Str :-
+    layout_best(pred(H::in, T::in, [H | T]::out) is det, Width, Doc, [], Strs),
+    Str = string.append_list(list.reverse(Strs)).
 
-write(W, X, !IO) :-
-    layout_best(io.write_string, W, doc(X), !IO).
+write(Width, Doc, !IO) :-
+    layout_best(io.write_string, Width, doc(Doc), !IO).
 
-write(Stream, W, X, !State) :-
-    layout_best(put(Stream), W, doc(X), !State).
+write(Stream, Width, Doc, !State) :-
+    layout_best(put(Stream), Width, doc(Doc), !State).
 
 %---------------------------------------------------------------------------%
 
@@ -503,60 +504,81 @@ write(Stream, W, X, !State) :-
 :- mode layout_best(pred(in, di, uo) is det, in, in, di, uo) is det.
 :- mode layout_best(pred(in, in, out) is det, in, in, in, out) is det.
 
-layout_best(P, W, X, S0, S) :-
-    lb(P, W, 0, _, "", X, S0, S).
+layout_best(AccPred, Width, Doc, !LayoutStream) :-
+    layout_best_acc(AccPred, Width, "", Doc, 0, _UsedWidth, !LayoutStream).
 
-    % lb(P, W, K0, K, I, X, S0, S)
+    % layout_best_acc(AccPred, Width, AfterNlStr, Doc,
+    %   !UsedWidth, !LayoutStream):
     %
-    %   P  is the predicate for accumulating output strings;
-    %   W  is the number of characters on a line;
-    %   K0 is the number of characters laid out on the current line so far;
-    %   K  is the number of characters laid out on the current line after X;
-    %   I  is the indentation string to appear after newlines;
-    %   X  is the doc to lay out;
-    %   S0 is the layout stream value before laying out X;
-    %   S  is the resulting layout stream value after laying out X.
+    % AccPred is the predicate for accumulating output strings.
+    %
+    % Width is the number of characters on a line;
+    %
+    % AfterNlStr is the indentation string to we should put after newlines.
+    %
+    % Doc is the doc to lay out.
+    %
+    % !UsedWidth is the number of characters laid out on the current line
+    % so far before and after laying out Doc.
+    %
+    % !LayoutStream is the layout stream before and after laying out Doc.
     %
     % This predicate is somewhat different to the function `be' described
     % by Wadler. In the first place, the decision procedure has been
     % recoded (in fits_flat/2) to preserve linear running times under
-    % a strict language. The second important change is that lb/8
+    % a strict language. The second important change is that layout_best_acc/8
     % handles output strings as they are identified (e.g. writing them
     % out or accumulating them in a list), doing away with the need for
     % a more elaborate simple_doc type.
     %
-:- pred lb(pred(string, T, T), int, int, int, string, doc, T, T).
-:- mode lb(pred(in, di, uo) is det, in, in, out, in, in, di, uo) is det.
-:- mode lb(pred(in, in, out) is det, in, in, out, in, in, in, out) is det.
+:- pred layout_best_acc(pred(string, T, T), int, string, doc, int, int, T, T).
+:- mode layout_best_acc(pred(in, di, uo) is det,
+    in, in, in, in, out, di, uo) is det.
+:- mode layout_best_acc(pred(in, in, out) is det,
+    in, in, in, in, out, in, out) is det.
 
-lb(_, _, K,  K, _, 'NIL',         S,  S).
-
-lb(P, W, K0, K, I, 'SEQ'(X, Y),   S0, S) :-
-    lb(P, W, K0, K1, I, X, S0, S1),
-    lb(P, W, K1, K,  I, Y, S1, S ).
-
-lb(P, W, K0, K, I, 'NEST'(J, X),  S0, S) :-
-    lb(P, W, K0, K, extend(I, J), X, S0, S).
-
-lb(P, W, K0, K, I, 'LABEL'(L, X), S0, S) :-
-    lb(P, W, K0, K, I ++ L, X, S0, S).
-
-lb(P, _, _,  K, I, 'LINE',        S0, S) :-
-    K = string.count_codepoints(I),
-    P("\n", S0, S1),
-    P(I,    S1, S ).
-
-lb(P, W, K0, K, I, 'GROUP'(X),    S0, S) :-
-    ( if fits_flat(X, W - K0) then layout_flat(P, K0, K, X, S0, S)
-                              else lb(P, W, K0, K, I, X,  S0, S)
+layout_best_acc(AccPred, Width, AfterNlStr, Doc, !UsedWidth, !LayoutStream) :-
+    (
+        Doc = pp_nil
+    ;
+        Doc = pp_seq(DocA, DocB),
+        layout_best_acc(AccPred, Width, AfterNlStr, DocA,
+            !UsedWidth, !LayoutStream),
+        layout_best_acc(AccPred, Width, AfterNlStr, DocB,
+            !UsedWidth, !LayoutStream)
+    ;
+        Doc = pp_nest(ExtraIndent, DocA),
+        NewAfterNlStr = AfterNlStr ++ string.duplicate_char(' ', ExtraIndent),
+        layout_best_acc(AccPred, Width, NewAfterNlStr, DocA,
+            !UsedWidth, !LayoutStream)
+    ;
+        Doc = pp_label(LabelStr, DocA),
+        NewAfterNlStr = AfterNlStr ++ LabelStr,
+        layout_best_acc(AccPred, Width, NewAfterNlStr, DocA,
+            !UsedWidth, !LayoutStream)
+    ;
+        Doc = pp_line,
+        !:UsedWidth = string.count_codepoints(AfterNlStr),
+        AccPred("\n", !LayoutStream),
+        AccPred(AfterNlStr, !LayoutStream)
+    ;
+        Doc = pp_group(DocA),
+        ( if fits_flat(DocA, Width - !.UsedWidth) then
+            layout_flat(AccPred, DocA, !UsedWidth, !LayoutStream)
+        else
+            layout_best_acc(AccPred, Width, AfterNlStr, DocA,
+                !UsedWidth, !LayoutStream)
+        )
+    ;
+        Doc = pp_doc(MaxDepth, Univ),
+        DocA = to_doc(MaxDepth, univ_value(Univ)),
+        layout_best_acc(AccPred, Width, AfterNlStr, DocA,
+            !UsedWidth, !LayoutStream)
+    ;
+        Doc = pp_text(Text),
+        !:UsedWidth = !.UsedWidth + string.count_codepoints(Text),
+        AccPred(Text, !LayoutStream)
     ).
-
-lb(P, W, K0, K, I, 'DOC'(D, U),   S0, S) :-
-    lb(P, W, K0, K, I, to_doc(D, univ_value(U)), S0, S).
-
-lb(P, _, K0, K, _, 'TEXT'(T),     S0, S) :-
-    K = K0 + string.count_codepoints(T),
-    P(T, S0, S).
 
 %---------------------------------------------------------------------------%
 
@@ -564,92 +586,113 @@ lb(P, _, K0, K, _, 'TEXT'(T),     S0, S) :-
     %
 :- pred fits_flat(doc::in, int::in) is semidet.
 
-fits_flat(X, R) :-
-    ff(X, R) = _.
+fits_flat(Doc, MaxWidth) :-
+    fits_flat_width_left(Doc, MaxWidth, _WidthLeft).
 
-:- func ff(doc, int) = int is semidet.
+    % Returns the width left on the line after formatting the given doc
+    % on a line with the given max width. Stops and fails as soon as
+    % the width left goes zero or negative.
+    % XXX The "goes zero" part is arguably a bug.
+    %
+:- pred fits_flat_width_left(doc::in, int::in, int::out) is semidet.
 
-ff('NIL',         R) = R.
-ff('SEQ'(X, Y),   R) = ff(Y, ff(X, R)).
-ff('NEST'(_, X),  R) = ff(X, R).
-ff('LABEL'(_, X), R) = ff(X, R).
-ff('LINE',        R) = R.
-ff('GROUP'(X),    R) = ff(X, R).
-ff('DOC'(D, U),   R) = ff(to_doc(D, univ_value(U)), R).
-ff('TEXT'(S),     R) = R - L :-
-    L = string.count_codepoints(S),
-    R > L.
+fits_flat_width_left(Doc, WidthAvail, WidthLeft) :-
+    (
+        ( Doc = pp_nil
+        ; Doc = pp_line
+        ),
+        WidthLeft = WidthAvail
+    ;
+        Doc = pp_text(Str),
+        StrLen = string.count_codepoints(Str),
+        WidthLeft = WidthAvail - StrLen,
+        WidthLeft > 0               % XXX This *could* be WidthLeft >= 0.
+    ;
+        Doc = pp_seq(DocA, DocB),
+        fits_flat_width_left(DocA, WidthAvail, WidthLeftAfterA),
+        fits_flat_width_left(DocB, WidthLeftAfterA, WidthLeft)
+    ;
+        ( Doc = pp_group(DocA)
+        ; Doc = pp_nest(_, DocA)
+        ; Doc = pp_label(_, DocA)   % XXX Why are we ignoring the labels?
+        ),
+        fits_flat_width_left(DocA, WidthAvail, WidthLeft)
+    ;
+        Doc = pp_doc(MaxDepth, Univ),
+        DocA = to_doc(MaxDepth, univ_value(Univ)),
+        fits_flat_width_left(DocA, WidthAvail, WidthLeft)
+    ).
 
 %---------------------------------------------------------------------------%
 
     % Lay out a doc in its flattened form.
     %
-:- pred layout_flat(pred(string, T, T), int, int, doc, T, T).
-:- mode layout_flat(pred(in, di, uo) is det, in, out, in, di, uo) is det.
-:- mode layout_flat(pred(in, in, out) is det, in, out, in, in, out) is det.
+:- pred layout_flat(pred(string, T, T), doc, int, int, T, T).
+:- mode layout_flat(pred(in, di, uo) is det,  in, in, out, di, uo) is det.
+:- mode layout_flat(pred(in, in, out) is det, in, in, out, in, out) is det.
 
-layout_flat(_, K,  K, 'NIL',         S,  S).
-
-layout_flat(P, K0, K, 'SEQ'(X, Y),   S0, S) :-
-    layout_flat(P, K0, K1, X, S0, S1),
-    layout_flat(P, K1, K,  Y, S1, S ).
-
-layout_flat(P, K0, K, 'NEST'(_, X),  S0, S) :-
-    layout_flat(P, K0, K, X, S0, S).
-
-layout_flat(P, K0, K, 'LABEL'(_, X), S0, S) :-
-    layout_flat(P, K0, K, X, S0, S).
-
-layout_flat(_, K,  K, 'LINE',        S,  S).
-
-layout_flat(P, K0, K, 'GROUP'(X),    S0, S) :-
-    layout_flat(P, K0, K, X, S0, S).
-
-layout_flat(P, K0, K, 'DOC'(D, U),   S0, S) :-
-    layout_flat(P, K0, K, to_doc(D, univ_value(U)), S0, S).
-
-layout_flat(P, K0, K, 'TEXT'(T),     S0, S) :-
-    K = K0 + string.count_codepoints(T),
-    P(T, S0, S).
-
-%---------------------------------------------------------------------------%
-
-:- func extend(string, int) = string.
-
-extend(I, J) = I ++ string.duplicate_char(' ', J).
-
-%---------------------------------------------------------------------------%
-
-X `</>` Y               = X ++ line ++ Y.
-
-%---------------------------------------------------------------------------%
-
-bracketed(L, R, D)      = L ++ D ++ R.
-parentheses(D)          = bracketed("(", ")", D).
-brackets(D)             = bracketed("[", "]", D).
-braces(D)               = bracketed("{", "}", D).
-
-%---------------------------------------------------------------------------%
-
-separated(_,  _,   []) = nil.
-
-separated(PP, Sep, [X | Xs]) =
-    ( if Xs = [] then PP(X)
-                 else PP(X) ++ (Sep ++ separated(PP, Sep, Xs))
+layout_flat(AccPred, Doc, !UsedWidth, !LayoutStream) :-
+    (
+        ( Doc = pp_nil
+        ; Doc = pp_line
+        )
+    ;
+        Doc = pp_text(Text),
+        !:UsedWidth = !.UsedWidth + string.count_codepoints(Text),
+        AccPred(Text, !LayoutStream)
+    ;
+        Doc = pp_seq(DocA, DocB),
+        layout_flat(AccPred, DocA, !UsedWidth, !LayoutStream),
+        layout_flat(AccPred, DocB, !UsedWidth, !LayoutStream)
+    ;
+        ( Doc = pp_group(DocA)
+        ; Doc = pp_nest(_, DocA)
+        ; Doc = pp_label(_, DocA)
+        ),
+        layout_flat(AccPred, DocA, !UsedWidth, !LayoutStream)
+    ;
+        Doc = pp_doc(MaxDepth, Univ),
+        DocA = to_doc(MaxDepth, univ_value(Univ)),
+        layout_flat(AccPred, DocA, !UsedWidth, !LayoutStream)
     ).
 
 %---------------------------------------------------------------------------%
 
-packed(_N, _Sep, []           ) =
+X `</>` Y = X ++ line ++ Y.
+
+%---------------------------------------------------------------------------%
+
+bracketed(L, R, D) = L ++ D ++ R.
+parentheses(D)     = bracketed("(", ")", D).
+brackets(D)        = bracketed("[", "]", D).
+braces(D)          = bracketed("{", "}", D).
+
+%---------------------------------------------------------------------------%
+
+separated(_, _,  []) = nil.
+separated(PP, Sep, [X | Xs]) = Doc :-
+    % XXX Using a helper predicate that takes X and Xs as separate arguments
+    % (and thus always works on a nonempty list) would do the same job
+    % with only one nil-vs-cons test per iteration.
+    (
+        Xs = [],
+        Doc = PP(X)
+    ;
+        Xs = [_ | _],
+        Doc = PP(X) ++ (Sep ++ separated(PP, Sep, Xs))
+    ).
+
+%---------------------------------------------------------------------------%
+
+packed(_N, _Sep, []) =
     nil.
-
-packed(N,  _Sep, [X]          ) =
+packed(N, _Sep, [X]) =
     group(line ++ (if 0 < N then doc(X) else ellipsis)).
-
-packed(N,  Sep,  [X1, X2 | Xs]) =
-    ( if   0 < N
-      then group(line ++ X1 ++ Sep) ++ packed(N - 1, Sep, [X2 | Xs])
-      else group(line ++ ellipsis)
+packed(N, Sep, [X1, X2 | Xs]) =
+    ( if 0 < N then
+        group(line ++ X1 ++ Sep) ++ packed(N - 1, Sep, [X2 | Xs])
+    else
+        group(line ++ ellipsis)
     ).
 
 %---------------------------------------------------------------------------%
@@ -672,7 +715,7 @@ packed_cs_to_depth(Depth, Xs) =
 %---------------------------------------------------------------------------%
 
 packed_cs_univ_args(Depth, UnivArgs) =
-    packed_cs(Depth, list.map(func(UA) = 'DOC'(Depth, UA), UnivArgs)).
+    packed_cs(Depth, list.map(func(UA) = pp_doc(Depth, UA), UnivArgs)).
 
 %---------------------------------------------------------------------------%
 
@@ -682,21 +725,21 @@ word_wrapped(String) =
 
 %---------------------------------------------------------------------------%
 
-comma                   = text(",").
-semic                   = text(";").
-colon                   = text(":").
-space                   = text(" ").
-comma_space             = text(", ").
-semic_space             = text("; ").
-colon_space             = text(": ").
-comma_line              = "," ++ line.
-semic_line              = ";" ++ line.
-colon_line              = ":" ++ line.
-space_line              = " " ++ line.
-comma_space_line        = ", " ++ line.
-semic_space_line        = "; " ++ line.
-colon_space_line        = ": " ++ line.
-ellipsis                = text("...").
+comma            = text(",").
+semic            = text(";").
+colon            = text(":").
+space            = text(" ").
+comma_space      = text(", ").
+semic_space      = text("; ").
+colon_space      = text(": ").
+comma_line       = "," ++ line.
+semic_line       = ";" ++ line.
+colon_line       = ":" ++ line.
+space_line       = " " ++ line.
+comma_space_line = ", " ++ line.
+semic_space_line = "; " ++ line.
+colon_space_line = ": " ++ line.
+ellipsis         = text("...").
 
 %---------------------------------------------------------------------------%
 
@@ -716,37 +759,28 @@ to_doc(Depth, X) = to_doc(Depth, 1000, X).
 :- func to_doc(int, priority, T) = doc.
 
 to_doc(Depth, Priority, X) =
-    ( if      dynamic_cast_to_var(X, Var)
-      then    var_to_doc(Depth, Var)
-
-      else if dynamic_cast_to_sparse_bitset_of_int(X, SparseBitsetInt)
-      then    sparse_bitset_to_doc(Depth, SparseBitsetInt)
-
-      else if dynamic_cast_to_sparse_bitset_of_var(X, SparseBitsetVar)
-      then    sparse_bitset_to_doc(Depth, SparseBitsetVar)
-
-      else if dynamic_cast_to_list(X, List)
-      then    list_to_doc(Depth, List)
-
-      else if dynamic_cast_to_array(X, Array)
-      then    array_to_doc(Depth, Array)
-
-      else if dynamic_cast_to_version_array(X, VersionArray)
-      then    version_array_to_doc(Depth, VersionArray)
-
-      else if dynamic_cast_to_tuple(X, Tuple)
-      then    tuple_to_doc(Depth, Tuple)
-
-      else if dynamic_cast_to_map(X, Map)
-      then    map_to_doc(Depth, Map)
-
-      else if dynamic_cast_to_map_pair(X, MapPair)
-      then    map_pair_to_doc(Depth, MapPair)
-
-      else if dynamic_cast_to_robdd(X, Robdd)
-      then    robdd_to_doc(Depth, Robdd)
-
-      else    generic_term_to_doc(Depth, Priority, X)
+    ( if dynamic_cast_to_var(X, Var) then
+        var_to_doc(Depth, Var)
+    else if dynamic_cast_to_sparse_bitset_of_int(X, SparseBitsetInt) then
+        sparse_bitset_to_doc(Depth, SparseBitsetInt)
+    else if dynamic_cast_to_sparse_bitset_of_var(X, SparseBitsetVar) then
+        sparse_bitset_to_doc(Depth, SparseBitsetVar)
+    else if dynamic_cast_to_list(X, List) then
+        list_to_doc(Depth, List)
+    else if dynamic_cast_to_array(X, Array) then
+        array_to_doc(Depth, Array)
+    else if dynamic_cast_to_version_array(X, VersionArray) then
+        version_array_to_doc(Depth, VersionArray)
+    else if dynamic_cast_to_tuple(X, Tuple) then
+        tuple_to_doc(Depth, Tuple)
+    else if dynamic_cast_to_map(X, Map) then
+        map_to_doc(Depth, Map)
+    else if dynamic_cast_to_map_pair(X, MapPair) then
+        map_pair_to_doc(Depth, MapPair)
+    else if dynamic_cast_to_robdd(X, Robdd) then
+        robdd_to_doc(Depth, Robdd)
+    else
+        generic_term_to_doc(Depth, Priority, X)
     ).
 
 %---------------------------------------------------------------------------%
@@ -756,78 +790,74 @@ to_doc(Depth, Priority, X) =
 generic_term_to_doc(Depth, Priority, X) = Doc :-
     ( if
         Depth =< 0
-      then
+    then
         functor(X, canonicalize, Name, Arity),
         Doc = ( if Arity = 0 then text(Name) else Name ++ "/" ++ Arity )
-      else
+    else
         deconstruct(X, canonicalize, Name, _Arity, UnivArgs),
         Table = init_mercury_op_table,
-        Doc =
-            ( if
-                UnivArgs = [UnivArg],
-                lookup_prefix_op(Table, Name, OpPri, Assoc)
-              then
-                maybe_parens(Priority, OpPri,
-                    Name ++
-                    space ++
-                    univ_to_doc(Depth - 1, OpPri `adjusted_by` Assoc,
-                        UnivArg)
-                )
-              else if
-                UnivArgs = [UnivArg],
-                lookup_postfix_op(Table, Name, OpPri, Assoc)
-              then
-                maybe_parens(Priority, OpPri,
-                    univ_to_doc(Depth - 1, OpPri `adjusted_by` Assoc,
-                        UnivArg) ++
-                    space ++
-                    Name
-                )
-              else if
-                UnivArgs = [UnivArgL, UnivArgR],
-                lookup_infix_op(Table, Name, OpPri, AssocL, AssocR)
-              then
-                maybe_parens(Priority, OpPri,
-                    univ_to_doc(Depth - 1, OpPri `adjusted_by` AssocL,
-                        UnivArgL) ++
-                    space ++
-                    Name ++
-                    space ++
-                    group(line ++
-                        nest(2,
-                            univ_to_doc(Depth - 2, OpPri `adjusted_by` AssocR,
-                                UnivArgR)
-                        )
-                    )
-                )
-              else if
-                UnivArgs = [UnivArgR1, UnivArgR2],
-                lookup_binary_prefix_op(Table, Name, OpPri, AssocR1, AssocR2)
-              then
-                maybe_parens(Priority, OpPri,
-                    Name ++
-                    space ++
-                    univ_to_doc(Depth - 2, OpPri `adjusted_by` AssocR1,
-                        UnivArgR1) ++
-                    space ++
-                    group(line ++
-                        nest(2,
-                            univ_to_doc(Depth - 2, OpPri `adjusted_by` AssocR2,
-                                UnivArgR2)
-                        )
-                    )
-                )
-              else if
-                UnivArgs = []
-              then
-                text(Name)
-              else
-                group(
-                    Name ++ parentheses(
-                        nest(2, packed_cs_univ_args(Depth - 1, UnivArgs))
+        ( if
+            UnivArgs = [UnivArg],
+            lookup_prefix_op(Table, Name, OpPri, Assoc)
+        then
+            Doc = maybe_parens(Priority, OpPri,
+                Name ++
+                space ++
+                univ_to_doc(Depth - 1, OpPri `adjusted_by` Assoc, UnivArg)
+            )
+        else if
+            UnivArgs = [UnivArg],
+            lookup_postfix_op(Table, Name, OpPri, Assoc)
+        then
+            Doc = maybe_parens(Priority, OpPri,
+                univ_to_doc(Depth - 1, OpPri `adjusted_by` Assoc, UnivArg) ++
+                space ++
+                Name
+            )
+        else if
+            UnivArgs = [UnivArgL, UnivArgR],
+            lookup_infix_op(Table, Name, OpPri, AssocL, AssocR)
+        then
+            Doc = maybe_parens(Priority, OpPri,
+                univ_to_doc(Depth - 1, OpPri `adjusted_by` AssocL, UnivArgL) ++
+                space ++
+                Name ++
+                space ++
+                group(line ++
+                    nest(2,
+                        univ_to_doc(Depth - 2, OpPri `adjusted_by` AssocR,
+                            UnivArgR)
                     )
                 )
             )
+        else if
+            UnivArgs = [UnivArgR1, UnivArgR2],
+            lookup_binary_prefix_op(Table, Name, OpPri, AssocR1, AssocR2)
+        then
+            Doc = maybe_parens(Priority, OpPri,
+                Name ++
+                space ++
+                univ_to_doc(Depth - 2, OpPri `adjusted_by` AssocR1,
+                    UnivArgR1) ++
+                space ++
+                group(line ++
+                    nest(2,
+                        univ_to_doc(Depth - 2, OpPri `adjusted_by` AssocR2,
+                            UnivArgR2)
+                    )
+                )
+            )
+        else if
+            UnivArgs = []
+        then
+            Doc = text(Name)
+        else
+            Doc = group(
+                Name ++ parentheses(
+                    nest(2, packed_cs_univ_args(Depth - 1, UnivArgs))
+                )
+            )
+        )
     ).
 
 %---------------------------------------------------------------------------%
