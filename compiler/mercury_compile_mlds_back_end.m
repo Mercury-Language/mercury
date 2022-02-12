@@ -426,9 +426,11 @@ maybe_dump_mlds(Globals, MLDS, StageNum, StageName, !IO) :-
         maybe_write_string(Verbose, "% Dumping out raw MLDS...\n", !IO),
         ModuleName = mlds_get_module_name(MLDS),
         module_name_to_file_name(Globals, $pred, do_create_dirs,
-            ext_other(other_ext(".mlds_dump")), ModuleName, BaseFileName, !IO),
-        DumpFile = BaseFileName ++ "." ++ StageNumStr ++ "-" ++ StageName,
-        dump_mlds_doc(Globals, DumpFile, Doc, !IO),
+            ext_other(other_ext(".mlds_dump")), ModuleName,
+            DumpBaseFileName, !IO),
+        string.format("%s.%s-%s",
+            [s(DumpBaseFileName), s(StageNumStr), s(StageName)], DumpFileName),
+        dump_mlds_doc(Globals, DumpFileName, Doc, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     else
         true
@@ -436,28 +438,26 @@ maybe_dump_mlds(Globals, MLDS, StageNum, StageName, !IO) :-
 
 :- pred dump_mlds_doc(globals::in, string::in, doc::in, io::di, io::uo) is det.
 
-dump_mlds_doc(Globals, DumpFile, Doc, !IO) :-
+dump_mlds_doc(Globals, DumpFileName, Doc, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
-    maybe_write_string(Verbose, "% Dumping out MLDS to `", !IO),
-    maybe_write_string(Verbose, DumpFile, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
+    string.format("%% Dumping out MLDS to `%s'...", [s(DumpFileName)],
+        StartMsg),
+    maybe_write_string(Verbose, StartMsg, !IO),
     maybe_flush_output(Verbose, !IO),
-    io.open_output(DumpFile, Res, !IO),
+    io.open_output(DumpFileName, OpenResult, !IO),
     (
-        Res = ok(FileStream),
-        io.set_output_stream(FileStream, OutputStream, !IO),
-        pprint.write(80, Doc, !IO),
-        io.nl(!IO),
-        io.set_output_stream(OutputStream, _, !IO),
+        OpenResult = ok(FileStream),
+        pprint.write(FileStream, 80, Doc, !IO),
+        io.nl(FileStream, !IO),
         io.close_output(FileStream, !IO),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        Res = error(IOError),
+        OpenResult = error(IOError),
         maybe_write_string(Verbose, "\n", !IO),
-        ErrorMessage = "can't open file `" ++ DumpFile ++ "' for output: " ++
-            io.error_message(IOError),
+        string.format("can't open file `%s' for output: %s",
+            [s(DumpFileName), s(io.error_message(IOError))], ErrorMessage),
         report_error(ErrorMessage, !IO)
     ).
 
