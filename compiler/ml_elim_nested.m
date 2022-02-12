@@ -874,10 +874,12 @@ ml_create_env(Action, EnvClassName, EnvClassId, LocalVars, Context,
     Imports = [],
     Interfaces = [],
     TypeParams = [],
+    MemberClasses = [],
+    MemberMethods = [],
     Ctors = [],
-    EnvClassDefn = mlds_class_defn(EnvClassName, 0, Context,
-        EnvClassFlags, EnvClassKind, Imports, Inherits, Interfaces,
-        TypeParams, Fields, [], [], Ctors),
+    EnvClassDefn = mlds_class_defn(EnvClassName, 0, Context, EnvClassFlags,
+        EnvClassKind, Imports, Inherits, Interfaces, TypeParams,
+        Fields, MemberClasses, MemberMethods, Ctors),
 
     % Generate the following variable declaration:
     %

@@ -66,9 +66,27 @@ mlds_output_class_defns(Opts, Stream, Indent, ModuleName,
 
 mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, _Flags,
-        Kind, _Imports, Inherits, _Implements, _TypeParams,
-        MemberFields, MemberClasses, MemberMethods, Ctors),
-    expect(unify(MemberMethods, []), $pred, "MemberMethods != []"),
+        Kind, _Imports, Inherits, _Interfaces, _TypeParams,
+        MemberFields, MemberClasses, _MemberMethods, Ctors),
+    % These calls to expect/3 are based on the code constructing environment
+    % structures in ml_elim_nested.m, which should be the *only* place
+    % in the MLDS code generator that generates MLDS classes when
+    % targeting C using low level data.
+    %
+    % However, we want to preserve the possibility of writing out MLDS dumps
+    % as C code even if targeting another language, so these calls
+    % are commented out. For this to be truly useful, we would have to extend
+    % this code to write out the fields ignored above in some form
+    % (not necessarily in C syntax).
+    %
+    % expect(unify(Kind, mlds_struct), $pred, "Kind != mlds_struct"),
+    % expect(unify(Imports, []), $pred, "Imports != []"),
+    % expect(unify(Inherits, inherits_nothing), $pred, "Inherits != nothing"),
+    % expect(unify(Interfaces, []), $pred, "Interfaces != []"),
+    % expect(unify(TypeParams, []), $pred, "TypeParams != []"),
+    % expect(unify(MemberClasses, []), $pred, "MemberClasses != []"),
+    % expect(unify(MemberMethods, []), $pred, "MemberMethods != []"),
+    % expect(unify(Ctors, []), $pred, "Ctors != []"),
 
     io.nl(Stream, !IO),
     % Output the class declaration.

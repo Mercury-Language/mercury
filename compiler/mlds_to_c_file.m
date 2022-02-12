@@ -246,6 +246,9 @@ mlds_output_hdr_file(Opts, Indent, MLDS, Stream, Errors, !IO) :-
 
     list.filter(class_defn_is_private, ClassDefns,
         _PrivateClassDefns, PublicClassDefns),
+    % When the MLDS backends targets C, the only class definitions we generate
+    % are the definitions of environment structures. These are always private.
+    expect(unify(PublicClassDefns, []), $pred, "PublicClassDefns != []"),
     list.filter(global_var_defn_is_private,
         RttiDefns ++ CellDefns ++ TableStructDefns,
         _PrivateGlobalVarDefns, PublicGlobarVarDefns),
@@ -269,9 +272,10 @@ mlds_output_hdr_file(Opts, Indent, MLDS, Stream, Errors, !IO) :-
     io.nl(Stream, !IO),
 
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    list.foldl(mlds_output_class_defn(Opts, Stream, Indent, MLDS_ModuleName),
-        PublicClassDefns, !IO),
-    io.nl(Stream, !IO),
+% See above.
+%   list.foldl(mlds_output_class_defn(Opts, Stream, Indent, MLDS_ModuleName),
+%       PublicClassDefns, !IO),
+%   io.nl(Stream, !IO),
     StdOpts = Opts ^ m2co_std_func_decl := yes,
     mlds_output_global_var_decls(StdOpts, Stream, Indent, MLDS_ModuleName,
         SortedPublicGlobarVarDefns, !IO),
