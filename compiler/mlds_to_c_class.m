@@ -65,26 +65,15 @@ mlds_output_class_defns(Opts, Stream, Indent, ModuleName,
     mlds_output_class_defns(Opts, Stream, Indent, ModuleName, ClassDefns, !IO).
 
 mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
-    ClassDefn = mlds_class_defn(_ClassName, _Arity, Context, Flags, _Kind,
-        _Imports, _Inherits, _Implements, _TypeParams,
-        _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
-    io.nl(Stream, !IO),
-    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    mlds_output_class_decl_flags(Opts, Stream, Flags, definition, !IO),
-    mlds_output_class(Opts, Stream, Indent, ModuleName, ClassDefn, !IO).
-
-%---------------------------------------------------------------------------%
-
-:- pred mlds_output_class(mlds_to_c_opts::in, io.text_output_stream::in,
-    indent::in, mlds_module_name::in, mlds_class_defn::in,
-    io::di, io::uo) is det.
-
-mlds_output_class(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, _Flags,
         Kind, _Imports, Inherits, _Implements, _TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors),
     expect(unify(MemberMethods, []), $pred, "MemberMethods != []"),
+
+    io.nl(Stream, !IO),
+    % Output the class declaration.
+    mlds_output_class_decl(Opts, Stream, Indent, ModuleName, ClassDefn,
+        definition, !IO),
 
     % To avoid name clashes, we need to qualify the names of the member
     % constants with the class name. (In particular, this is needed for
@@ -144,7 +133,7 @@ mlds_output_class(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
         unexpected($pred, "inherits_generic_env_ptr_type")
     ),
 
-    % Output the class declaration and the class members.
+    % Output the class members.
     % We treat enumerations specially.
     %
     % Note that standard ANSI/ISO C does not allow empty structs. We could
@@ -156,8 +145,6 @@ mlds_output_class(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
     % `target_uses_empty_base_classes' before generating empty structs.)
     % Hence we do not need to check for empty structs here.
 
-    mlds_output_class_decl(Stream, Indent, ModuleName, ClassName, ClassArity,
-        ClassDefn, !IO),
     io.write_string(Stream, " {\n", !IO),
     (
         Kind = mlds_enum,
@@ -196,18 +183,23 @@ mlds_output_class(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_class_decl(io.text_output_stream::in, indent::in,
-    mlds_module_name::in, mlds_class_name::in, arity::in, mlds_class_defn::in,
+:- pred mlds_output_class_decl(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, mlds_module_name::in, mlds_class_defn::in, decl_or_defn::in,
     io::di, io::uo) is det.
 
-mlds_output_class_decl(Stream, _Indent, ModuleName, ClassName, Arity,
-        ClassDefn, !IO) :-
-    ClassKind = ClassDefn ^ mcd_kind,
+mlds_output_class_decl(Opts, Stream, Indent, ModuleName, ClassDefn,
+        DeclOrDefn, !IO) :-
+    ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, Flags,
+        ClassKind, _Imports, _Inherits, _Implements, _TypeParams,
+        _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    mlds_output_class_decl_flags(Opts, Stream, Flags, DeclOrDefn, !IO),
     (
         ClassKind = mlds_enum,
         io.write_string(Stream, "enum ", !IO),
         output_qual_name_prefix_c(Stream, ModuleName, !IO),
-        mlds_output_class_name_arity(Stream, ClassName, Arity, !IO),
+        mlds_output_class_name_arity(Stream, ClassName, ClassArity, !IO),
         io.write_string(Stream, "_e", !IO)
     ;
         ( ClassKind = mlds_class
@@ -216,7 +208,7 @@ mlds_output_class_decl(Stream, _Indent, ModuleName, ClassName, Arity,
         ),
         io.write_string(Stream, "struct ", !IO),
         output_qual_name_prefix_c(Stream, ModuleName, !IO),
-        mlds_output_class_name_arity(Stream, ClassName, Arity, !IO),
+        mlds_output_class_name_arity(Stream, ClassName, ClassArity, !IO),
         io.write_string(Stream, "_s", !IO)
     ).
 
@@ -225,6 +217,10 @@ mlds_output_class_decl(Stream, _Indent, ModuleName, ClassName, Arity,
     decl_or_defn::in, io::di, io::uo) is det.
 
 mlds_output_class_decl_flags(Opts, Stream, Flags, _DeclOrDefn, !IO) :-
+    % DeclOrDefn does not affect what we output. Callers who pass us
+    % DeclOrDefn = forward_decl will put a semicolon after the declaration;
+    % callers who pass us DeclOrDefn = definition will put the definition
+    % itself there.
     Flags = mlds_class_decl_flags(Access, Overridability, Constness),
     Comments = Opts ^ m2co_auto_comments,
     (
@@ -264,26 +260,22 @@ mlds_output_constness(_, modifiable, !IO).
 
 %---------------------%
 
-:- pred mlds_output_class_decl_opts(mlds_to_c_opts::in,
+:- pred mlds_output_class_forward_decl(mlds_to_c_opts::in,
     io.text_output_stream::in, indent::in, mlds_module_name::in,
     mlds_class_defn::in, io::di, io::uo) is det.
-:- pragma consider_used(pred(mlds_output_class_decl_opts/7)).
+:- pragma consider_used(pred(mlds_output_class_forward_decl/7)).
 
-mlds_output_class_decl_opts(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
-    ClassDefn = mlds_class_defn(ClassName, Arity, Context, Flags, Kind,
-        _Imports, _Inherits, _Implements,
-        _TypeParams, _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
+mlds_output_class_forward_decl(Opts, Stream, Indent, ModuleName,
+        ClassDefn, !IO) :-
     % ANSI C does not permit forward declarations of enumeration types.
     % So we just skip those. Currently they are not needed since we do not
-    % actually use the enum types.
-    ( if Kind = mlds_enum then
+    % actually create any mlds_enum classes when targeting C.
+    % We also never output forward declarations (this pred is never called).
+    ( if ClassDefn ^ mcd_kind = mlds_enum then
         true
     else
-        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Stream, Indent, !IO),
-        mlds_output_class_decl_flags(Opts, Stream, Flags, forward_decl, !IO),
-        mlds_output_class_decl(Stream, Indent, ModuleName, ClassName,
-            Arity, ClassDefn, !IO),
+        mlds_output_class_decl(Opts, Stream, Indent, ModuleName,
+            ClassDefn, forward_decl, !IO),
         io.write_string(Stream, ";\n", !IO)
     ).
 
