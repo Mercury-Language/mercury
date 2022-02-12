@@ -133,8 +133,7 @@ mlds_output_class(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, _Flags,
         Kind, _Imports, Inherits, _Implements, _TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors),
-    expect(unify(MemberMethods, []), $pred,
-        "MemberMethods != []"),
+    expect(unify(MemberMethods, []), $pred, "MemberMethods != []"),
 
     % To avoid name clashes, we need to qualify the names of the member
     % constants with the class name. (In particular, this is needed for
@@ -356,7 +355,7 @@ mlds_output_field_var_decl_flags(Opts, Stream, Flags, DeclOrDefn, !IO) :-
         Comments = yes,
         % XXX We used to call mlds_output_extern_or_static
         % on mlds_data_decl_flags. This predicate pays attention to PerInstance
-        % *only* when the access flag is acc_local, while field var's
+        % *only* when the access flag is acc_local, while field vars'
         % access flags were always acc_public (which is why we do not need
         % to explicitly store that flag).
         PerInstance = Flags ^ mfvdf_per_instance,
@@ -388,15 +387,15 @@ mlds_output_class_decl_flags(Opts, Stream, Flags, _DeclOrDefn, !IO) :-
             Access = class_private,
             io.write_string(Stream, "/* private: */ ", !IO)
         ),
-        io.write_string(Stream, "/* one_copy */ ", !IO)
+        io.write_string(Stream, "/* one_copy */ ", !IO),
+        (
+            Overridability = overridable
+        ;
+            Overridability = sealed,
+            io.write_string(Stream, "/* sealed */ ", !IO)
+        )
     ;
         Comments = no
-    ),
-    (
-        Overridability = overridable
-    ;
-        Overridability = sealed,
-        io.write_string(Stream, "/* sealed */ ", !IO)
     ),
     mlds_output_constness(Stream, Constness, !IO).
 
