@@ -54,55 +54,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_class_decl_opts(mlds_to_c_opts::in,
-    io.text_output_stream::in, indent::in, mlds_module_name::in,
-    mlds_class_defn::in, io::di, io::uo) is det.
-:- pragma consider_used(pred(mlds_output_class_decl_opts/7)).
-
-mlds_output_class_decl_opts(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
-    ClassDefn = mlds_class_defn(ClassName, Arity, Context, Flags, Kind,
-        _Imports, _Inherits, _Implements,
-        _TypeParams, _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
-    % ANSI C does not permit forward declarations of enumeration types.
-    % So we just skip those. Currently they are not needed since we do not
-    % actually use the enum types.
-    ( if Kind = mlds_enum then
-        true
-    else
-        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Stream, Indent, !IO),
-        mlds_output_class_decl_flags(Opts, Stream, Flags, forward_decl, !IO),
-        mlds_output_class_decl(Stream, Indent, ModuleName, ClassName,
-            Arity, ClassDefn, !IO),
-        io.write_string(Stream, ";\n", !IO)
-    ).
-
-:- pred mlds_output_class_decl(io.text_output_stream::in, indent::in,
-    mlds_module_name::in, mlds_class_name::in, arity::in, mlds_class_defn::in,
-    io::di, io::uo) is det.
-
-mlds_output_class_decl(Stream, _Indent, ModuleName, ClassName, Arity,
-        ClassDefn, !IO) :-
-    ClassKind = ClassDefn ^ mcd_kind,
-    (
-        ClassKind = mlds_enum,
-        io.write_string(Stream, "enum ", !IO),
-        output_qual_name_prefix_c(Stream, ModuleName, !IO),
-        mlds_output_class_name_arity(Stream, ClassName, Arity, !IO),
-        io.write_string(Stream, "_e", !IO)
-    ;
-        ( ClassKind = mlds_class
-        ; ClassKind = mlds_interface
-        ; ClassKind = mlds_struct
-        ),
-        io.write_string(Stream, "struct ", !IO),
-        output_qual_name_prefix_c(Stream, ModuleName, !IO),
-        mlds_output_class_name_arity(Stream, ClassName, Arity, !IO),
-        io.write_string(Stream, "_s", !IO)
-    ).
-
-%---------------------------------------------------------------------------%
-
 :- pred mlds_output_class_defns(mlds_to_c_opts::in, io.text_output_stream::in,
     indent::in, mlds_module_name::in, list(mlds_class_defn)::in,
     io::di, io::uo) is det.
@@ -245,6 +196,99 @@ mlds_output_class(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
 
 %---------------------------------------------------------------------------%
 
+:- pred mlds_output_class_decl(io.text_output_stream::in, indent::in,
+    mlds_module_name::in, mlds_class_name::in, arity::in, mlds_class_defn::in,
+    io::di, io::uo) is det.
+
+mlds_output_class_decl(Stream, _Indent, ModuleName, ClassName, Arity,
+        ClassDefn, !IO) :-
+    ClassKind = ClassDefn ^ mcd_kind,
+    (
+        ClassKind = mlds_enum,
+        io.write_string(Stream, "enum ", !IO),
+        output_qual_name_prefix_c(Stream, ModuleName, !IO),
+        mlds_output_class_name_arity(Stream, ClassName, Arity, !IO),
+        io.write_string(Stream, "_e", !IO)
+    ;
+        ( ClassKind = mlds_class
+        ; ClassKind = mlds_interface
+        ; ClassKind = mlds_struct
+        ),
+        io.write_string(Stream, "struct ", !IO),
+        output_qual_name_prefix_c(Stream, ModuleName, !IO),
+        mlds_output_class_name_arity(Stream, ClassName, Arity, !IO),
+        io.write_string(Stream, "_s", !IO)
+    ).
+
+:- pred mlds_output_class_decl_flags(mlds_to_c_opts::in,
+    io.text_output_stream::in, mlds_class_decl_flags::in,
+    decl_or_defn::in, io::di, io::uo) is det.
+
+mlds_output_class_decl_flags(Opts, Stream, Flags, _DeclOrDefn, !IO) :-
+    Flags = mlds_class_decl_flags(Access, Overridability, Constness),
+    Comments = Opts ^ m2co_auto_comments,
+    (
+        Comments = yes,
+        (
+            Access = class_public,
+            io.write_string(Stream, "/* public: */ ", !IO)
+        ;
+            Access = class_private,
+            io.write_string(Stream, "/* private: */ ", !IO)
+        ),
+        io.write_string(Stream, "/* one_copy */ ", !IO),
+        (
+            Overridability = overridable
+        ;
+            Overridability = sealed,
+            io.write_string(Stream, "/* sealed */ ", !IO)
+        )
+    ;
+        Comments = no
+    ),
+    mlds_output_constness(Stream, Constness, !IO).
+
+:- pred mlds_output_per_instance_comment(io.text_output_stream::in,
+    per_instance::in, io::di, io::uo) is det.
+
+mlds_output_per_instance_comment(_, per_instance, !IO).
+mlds_output_per_instance_comment(Stream, one_copy, !IO) :-
+    io.write_string(Stream, "/* one_copy */ ", !IO).
+
+:- pred mlds_output_constness(io.text_output_stream::in, constness::in,
+    io::di, io::uo) is det.
+
+mlds_output_constness(Stream, const, !IO) :-
+    io.write_string(Stream, "const ", !IO).
+mlds_output_constness(_, modifiable, !IO).
+
+%---------------------%
+
+:- pred mlds_output_class_decl_opts(mlds_to_c_opts::in,
+    io.text_output_stream::in, indent::in, mlds_module_name::in,
+    mlds_class_defn::in, io::di, io::uo) is det.
+:- pragma consider_used(pred(mlds_output_class_decl_opts/7)).
+
+mlds_output_class_decl_opts(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
+    ClassDefn = mlds_class_defn(ClassName, Arity, Context, Flags, Kind,
+        _Imports, _Inherits, _Implements,
+        _TypeParams, _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
+    % ANSI C does not permit forward declarations of enumeration types.
+    % So we just skip those. Currently they are not needed since we do not
+    % actually use the enum types.
+    ( if Kind = mlds_enum then
+        true
+    else
+        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Stream, Indent, !IO),
+        mlds_output_class_decl_flags(Opts, Stream, Flags, forward_decl, !IO),
+        mlds_output_class_decl(Stream, Indent, ModuleName, ClassName,
+            Arity, ClassDefn, !IO),
+        io.write_string(Stream, ";\n", !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
 :- pred function_defn_is_static_member(mlds_function_defn::in) is semidet.
 
 function_defn_is_static_member(FuncDefn) :-
@@ -370,48 +414,6 @@ mlds_output_field_var_decl_flags(Opts, Stream, Flags, DeclOrDefn, !IO) :-
         DeclOrDefn = definition
     ),
     mlds_output_constness(Stream, Constness, !IO).
-
-:- pred mlds_output_class_decl_flags(mlds_to_c_opts::in,
-    io.text_output_stream::in, mlds_class_decl_flags::in,
-    decl_or_defn::in, io::di, io::uo) is det.
-
-mlds_output_class_decl_flags(Opts, Stream, Flags, _DeclOrDefn, !IO) :-
-    Flags = mlds_class_decl_flags(Access, Overridability, Constness),
-    Comments = Opts ^ m2co_auto_comments,
-    (
-        Comments = yes,
-        (
-            Access = class_public,
-            io.write_string(Stream, "/* public: */ ", !IO)
-        ;
-            Access = class_private,
-            io.write_string(Stream, "/* private: */ ", !IO)
-        ),
-        io.write_string(Stream, "/* one_copy */ ", !IO),
-        (
-            Overridability = overridable
-        ;
-            Overridability = sealed,
-            io.write_string(Stream, "/* sealed */ ", !IO)
-        )
-    ;
-        Comments = no
-    ),
-    mlds_output_constness(Stream, Constness, !IO).
-
-:- pred mlds_output_per_instance_comment(io.text_output_stream::in,
-    per_instance::in, io::di, io::uo) is det.
-
-mlds_output_per_instance_comment(_, per_instance, !IO).
-mlds_output_per_instance_comment(Stream, one_copy, !IO) :-
-    io.write_string(Stream, "/* one_copy */ ", !IO).
-
-:- pred mlds_output_constness(io.text_output_stream::in, constness::in,
-    io::di, io::uo) is det.
-
-mlds_output_constness(Stream, const, !IO) :-
-    io.write_string(Stream, "const ", !IO).
-mlds_output_constness(_, modifiable, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_c_class.
