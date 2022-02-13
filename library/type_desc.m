@@ -235,7 +235,6 @@
 
 :- implementation.
 
-:- import_module bool.
 :- import_module require.
 :- import_module string.
 
@@ -462,36 +461,29 @@ type_name(Type) = TypeName :-
     ( if Arity = 0 then
         UnqualifiedTypeName = Name
     else
-        ( if ModuleName = "builtin", Name = "func" then
-            IsFunc = yes
+        ( if ModuleName = "builtin", Name = "{}" then
+            type_arg_names(ArgTypes, ArgTypeNames),
+            TupleArgTypeNames = ["{" | ArgTypeNames] ++ ["}"],
+            string.append_list(TupleArgTypeNames, UnqualifiedTypeName)
         else
-            IsFunc = no
-        ),
-        ( if
-            ModuleName = "builtin", Name = "{}"
-        then
-            type_arg_names(ArgTypes, IsFunc, ArgTypeNames),
-            list.append(ArgTypeNames, ["}"], TypeStrings0),
-            TypeStrings = ["{" | TypeStrings0],
-            string.append_list(TypeStrings, UnqualifiedTypeName)
-        else if
-            IsFunc = yes,
-            ArgTypes = [FuncRetType]
-        then
-            FuncRetTypeName = type_name(FuncRetType),
-            string.append_list(["((func) = ", FuncRetTypeName, ")"],
-                UnqualifiedTypeName)
-        else
-            type_arg_names(ArgTypes, IsFunc, ArgTypeNames),
-            (
-                IsFunc = no,
-                list.append(ArgTypeNames, [")"], TypeStrings0)
-            ;
-                IsFunc = yes,
-                TypeStrings0 = ArgTypeNames
+            ( if ModuleName = "builtin", Name = "func" then
+                det_split_last(ArgTypes, NonReturnArgTypes, ReturnArgType),
+                ReturnArgTypeName = type_name(ReturnArgType),
+                (
+                    NonReturnArgTypes = [],
+                    TypeNameStrs = ["((func) = ", ReturnArgTypeName, ")"]
+                ;
+                    NonReturnArgTypes = [HeadArgType | TailArgTypes],
+                    type_arg_names_lag(HeadArgType, TailArgTypes,
+                        NonReturnArgTypeNames),
+                    TypeNameStrs = [Name, "(" | NonReturnArgTypeNames]
+                        ++ [") = ", ReturnArgTypeName]
+                )
+            else
+                type_arg_names(ArgTypes, ArgTypeNames),
+                TypeNameStrs = [Name, "(" | ArgTypeNames] ++ [")"]
             ),
-            TypeNameStrings = [Name, "(" | TypeStrings0],
-            string.append_list(TypeNameStrings, UnqualifiedTypeName)
+            string.append_list(TypeNameStrs, UnqualifiedTypeName)
         )
     ),
     ( if ModuleName = "builtin" then
@@ -502,33 +494,26 @@ type_name(Type) = TypeName :-
 
     % Turn the types into a list of strings representing an argument list,
     % adding commas as separators as required. For example:
-    %   ["TypeName1", ",", "TypeName2"]
-    % If formatting a function type, we close the parentheses around
-    % the function's input parameters, e.g.
-    %   ["TypeName1", ",", "TypeName2", ") = ", "ReturnTypeName"]
-    % It is the caller's responsibility to add matching parentheses.
+    % ["TypeName1", ",", "TypeName2"].
     %
-:- pred type_arg_names(list(type_desc)::in, bool::in, list(string)::out)
-    is det.
+:- pred type_arg_names(list(type_desc)::in, list(string)::out) is det.
 
-type_arg_names([], _, []).
-type_arg_names([Type | Types], IsFunc, ArgNames) :-
-    Name = type_name(Type),
+type_arg_names([], []).
+type_arg_names([Type | Types], ArgNames) :-
+    type_arg_names_lag(Type, Types, ArgNames).
+
+:- pred type_arg_names_lag(type_desc::in, list(type_desc)::in,
+    list(string)::out) is det.
+
+type_arg_names_lag(HeadType, TailTypes, Names) :-
+    HeadName = type_name(HeadType),
     (
-        Types = [],
-        ArgNames = [Name]
+        TailTypes = [],
+        Names = [HeadName]
     ;
-        Types = [_ | _],
-        ( if
-            IsFunc = yes,
-            Types = [FuncReturnType]
-        then
-            FuncReturnName = type_name(FuncReturnType),
-            ArgNames = [Name, ") = ", FuncReturnName]
-        else
-            type_arg_names(Types, IsFunc, Names),
-            ArgNames = [Name, ", " | Names]
-        )
+        TailTypes = [HeadTailType | TailTailTypes],
+        type_arg_names_lag(HeadTailType, TailTailTypes, TailNames),
+        Names = [HeadName, ", " | TailNames]
     ).
 
 %---------------------------------------------------------------------------%
