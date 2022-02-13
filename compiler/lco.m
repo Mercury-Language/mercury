@@ -1433,9 +1433,8 @@ lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
     proc_info_get_vartypes(ProcInfo, VarTypes0),
     proc_info_get_headvars(ProcInfo, HeadVars0),
     proc_info_get_argmodes(ProcInfo, ArgModes0),
-    make_addr_vars(HeadVars0, ArgModes0, HeadVars, ArgModes,
-        AddrOutArgs, 1, !.ModuleInfo, VarToAddr,
-        VarSet0, VarSet, VarTypes0, VarTypes),
+    make_addr_vars(!.ModuleInfo, 1, HeadVars0, HeadVars, ArgModes0, ArgModes,
+        AddrOutArgs, VarToAddr, VarSet0, VarSet, VarTypes0, VarTypes),
     proc_info_set_headvars(HeadVars, !VariantProcInfo),
     proc_info_set_argmodes(ArgModes, !VariantProcInfo),
     proc_info_set_varset(VarSet, !VariantProcInfo),
@@ -1478,29 +1477,32 @@ lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
             !VariantProcInfo, !ModuleInfo)
     ).
 
-:- pred make_addr_vars(list(prog_var)::in, list(mer_mode)::in,
-    list(prog_var)::out, list(mer_mode)::out, list(variant_arg)::in,
-    int::in, module_info::in, var_to_target::out,
+:- pred make_addr_vars(module_info::in, int::in,
+    list(prog_var)::in, list(prog_var)::out,
+    list(mer_mode)::in, list(mer_mode)::out,
+    list(variant_arg)::in, var_to_target::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-make_addr_vars([], [], [], [], AddrOutArgs, _, _, [],
+make_addr_vars(_, _, [], [], [], [], AddrOutArgs, [],
         !VarSet, !VarTypes) :-
     expect(unify(AddrOutArgs, []), $pred, "AddrOutArgs != []").
-make_addr_vars([], [_ | _], _, _, _, _, _, _, !VarSet, !VarTypes) :-
+make_addr_vars(_, _, [], _, [_ | _], _, _, _, !VarSet, !VarTypes) :-
     unexpected($pred, "mismatched lists").
-make_addr_vars([_ | _], [], _, _, _, _, _, _, !VarSet, !VarTypes) :-
+make_addr_vars(_, _, [_ | _], _, [], _, _, _, !VarSet, !VarTypes) :-
     unexpected($pred, "mismatched lists").
-make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
-        [HeadVar | HeadVars], [Mode | Modes], !.AddrOutArgs,
-        NextOutArgNum, ModuleInfo, VarToAddr, !VarSet, !VarTypes) :-
+make_addr_vars(ModuleInfo, NextOutArgNum,
+        [HeadVar0 | HeadVars0], [HeadVar | HeadVars],
+        [Mode0 | Modes0], [Mode | Modes],
+        !.AddrOutArgs, VarToAddr, !VarSet, !VarTypes) :-
     lookup_var_type(!.VarTypes, HeadVar0, HeadVarType),
     mode_to_top_functor_mode(ModuleInfo, Mode0, HeadVarType, TopFunctorMode),
     (
         TopFunctorMode = top_in,
         HeadVar = HeadVar0,
         Mode = Mode0,
-        make_addr_vars(HeadVars0, Modes0, HeadVars, Modes, !.AddrOutArgs,
-            NextOutArgNum, ModuleInfo, VarToAddr, !VarSet, !VarTypes)
+        make_addr_vars(ModuleInfo, NextOutArgNum,
+            HeadVars0, HeadVars, Modes0, Modes,
+            !.AddrOutArgs, VarToAddr, !VarSet, !VarTypes)
     ;
         TopFunctorMode = top_out,
         ( if
@@ -1528,17 +1530,17 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
                 InitialInst = bound(shared, inst_test_no_results, [BoundInst]),
                 Mode = from_to_mode(InitialInst, ground_inst)
             ),
-            make_addr_vars(HeadVars0, Modes0, HeadVars, Modes,
-                !.AddrOutArgs, NextOutArgNum + 1, ModuleInfo,
-                VarToAddrTail, !VarSet, !VarTypes),
+            make_addr_vars(ModuleInfo, NextOutArgNum + 1,
+                HeadVars0, HeadVars, Modes0, Modes,
+                !.AddrOutArgs, VarToAddrTail, !VarSet, !VarTypes),
             VarToAddrHead = HeadVar0 - store_target(AddrVar, MaybeFieldId),
             VarToAddr = [VarToAddrHead | VarToAddrTail]
         else
             HeadVar = HeadVar0,
             Mode = Mode0,
-            make_addr_vars(HeadVars0, Modes0, HeadVars, Modes,
-                !.AddrOutArgs, NextOutArgNum + 1, ModuleInfo,
-                VarToAddr, !VarSet, !VarTypes)
+            make_addr_vars(ModuleInfo, NextOutArgNum + 1,
+                HeadVars0, HeadVars, Modes0, Modes,
+                !.AddrOutArgs, VarToAddr, !VarSet, !VarTypes)
         )
     ;
         TopFunctorMode = top_unused,
