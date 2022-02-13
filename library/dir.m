@@ -1333,7 +1333,7 @@ make_single_directory(DirName, Result, !IO) :-
 foldl2(Pred, DirName, Data0, Result, !IO) :-
     SubDirs = do_not_enter_subdirs,
     Params = fold_params(SubDirs, on_error_stop),
-    dir.foldl2_process_dir(Params, Pred, fixup_dirname(DirName),
+    dir.foldl2_process_dir(Params, Pred, make_dirname_ok_for_windows(DirName),
         parent_is_not_symlink, [], user_continue, _MaybeUserStop,
         [], RevErrors, Data0, Data, !IO),
     list.reverse(RevErrors, Errors),
@@ -1352,7 +1352,7 @@ recursive_foldl2(Pred, DirName, FollowLinks0, Data0, Result, !IO) :-
     ),
     SubDirs = enter_subdirs(FollowLinks),
     Params = fold_params(SubDirs, on_error_stop),
-    dir.foldl2_process_dir(Params, Pred, fixup_dirname(DirName),
+    dir.foldl2_process_dir(Params, Pred, make_dirname_ok_for_windows(DirName),
         parent_is_not_symlink, [], user_continue, _MaybeUserStop,
         [], RevErrors, Data0, Data, !IO),
     list.reverse(RevErrors, Errors),
@@ -1366,7 +1366,7 @@ recursive_foldl2(Pred, DirName, FollowLinks0, Data0, Result, !IO) :-
     ).
 
 general_foldl2(Params, Pred, DirName, Data0, Data, Errors, !IO) :-
-    dir.foldl2_process_dir(Params, Pred, fixup_dirname(DirName),
+    dir.foldl2_process_dir(Params, Pred, make_dirname_ok_for_windows(DirName),
         parent_is_not_symlink, [], user_continue, _MaybeUserStop,
         [], RevErrors, Data0, Data, !IO),
     list.reverse(RevErrors, Errors).
@@ -1380,9 +1380,9 @@ general_foldl2(Params, Pred, DirName, Data0, Data, Errors, !IO) :-
     % This function removes the trailing slash, except when we are in the
     % root directory.
     %
-:- func fixup_dirname(string) = string.
+:- func make_dirname_ok_for_windows(string) = string.
 
-fixup_dirname(Dir0) = Dir :-
+make_dirname_ok_for_windows(Dir0) = Dir :-
     DirChars = canonicalize_path_chars(string.to_char_list(Dir0)),
     ( if is_root_directory(DirChars) then
         Dir = Dir0
@@ -1415,20 +1415,6 @@ fixup_dirname(Dir0) = Dir :-
 
 foldl2_process_dir(Params, Pred, DirName, SymLinkParent, ParentIds0,
         !MaybeUserStop, !RevErrors, !Data, !IO) :-
-    % XXX We remove this sanity check after some experience with this case,
-    % say in July 2021.
-    ( if
-        (
-            !.MaybeUserStop = user_stop
-        ;
-            !.RevErrors = [_ | _],
-            Params ^ fp_on_error = on_error_stop
-        )
-    then
-        unexpected($pred, "our caller did not check stop condition")
-    else
-        true
-    ),
     ( if Params ^ fp_subdirs = enter_subdirs(follow_symlinks) then
         check_for_symlink_loop(DirName, SymLinkParent, ParentIds0,
             MaybeLoop, !IO)
