@@ -110,6 +110,9 @@
             % XXX A proc_id and a list of the argument numbers of the
             % arguments being passed by address would also work.
 
+    ;       tn_ssdb_stdlib_proxy(pred_or_func)
+            % The new predicate name include only the pred_or_func indication.
+
     ;       tn_dep_par_conj(pred_or_func, int, list(int))
             % The new predicate name includes the proc_id of the original
             % predicate (given by the second argument), as well as the list
@@ -147,17 +150,20 @@
 
     % make_transformed_pred_sym_name(ModuleName, OrigName, Transform,
     %   TransformedSymName):
+    % make_transformed_pred_name(OrigName, Transform, TransformedName):
     %
     % Given the original name of a predicate or function, return the name
     % we want to give to a version of it that has been transformed by
     % Transform.
     %
-    % We return the transformed name as a sym_name qualified with ModuleName,
-    % because pretty much all our callers want the result in this sym_name
-    % form.
+    % The first version returns the transformed name as a sym_name
+    % qualified with ModuleName, because most of our callers want the result
+    % in this sym_name form.
     %
 :- pred make_transformed_pred_sym_name(module_name::in, string::in,
     transform_name::in, sym_name::out) is det.
+:- pred make_transformed_pred_name(string::in,
+    transform_name::in, string::out) is det.
 
 %---------------------%
 
@@ -205,11 +211,14 @@
 
 make_transformed_pred_sym_name(ModuleName, OrigName, Transform,
         TransformedSymName) :-
+    make_transformed_pred_name(OrigName, Transform, TransformedName),
+    TransformedSymName = qualified(ModuleName, TransformedName).
+
+make_transformed_pred_name(OrigName, Transform, TransformedName) :-
     (
         Transform = tn_higher_order(_PredOrFunc, Counter),
         % XXX Ignoring _PredOrFunc seems to me to be a bug.
-        string.format("%s__ho%d", [s(OrigName), i(Counter)], TransformedName),
-        TransformedSymName = qualified(ModuleName, TransformedName)
+        string.format("%s__ho%d", [s(OrigName), i(Counter)], TransformedName)
     ;
         Transform = tn_higher_order_type_spec(_PredOrFunc, ProcNum, Version),
         % As documented above, for this transform, OrigName and ProcNum
@@ -219,8 +228,7 @@ make_transformed_pred_sym_name(ModuleName, OrigName, Transform,
         % XXX Ignoring _PredOrFunc seems to me to be a bug.
         % XXX As is separating OrigName from the suffix with only a single '_'.
         string.format("%s_%d_%d", [s(OrigName), i(ProcNum), i(Version)],
-            TransformedName),
-        TransformedSymName = qualified(ModuleName, TransformedName)
+            TransformedName)
     ;
         ( Transform = tn_accumulator(_, _)
         ; Transform = tn_deforestation(_, _)
@@ -229,6 +237,7 @@ make_transformed_pred_sym_name(ModuleName, OrigName, Transform,
         ; Transform = tn_tupling(_, _, _)
         ; Transform = tn_untupling(_, _, _)
         ; Transform = tn_last_call_modulo_cons(_, _)
+        ; Transform = tn_ssdb_stdlib_proxy(_)
         ; Transform = tn_dep_par_conj(_, _, _)
         ; Transform = tn_par_distance_granularity(_, _)
         ; Transform = tn_par_loop_control(_, _)
@@ -273,6 +282,13 @@ make_transformed_pred_sym_name(ModuleName, OrigName, Transform,
             string.format("LCMC__%s",
                 [s(pred_or_func_to_str(PredOrFunc))], Prefix),
             string.format("%i", [i(VariantNum)], Suffix)
+        ;
+            Transform = tn_ssdb_stdlib_proxy(PredOrFunc),
+            string.format("SSDB__%s",
+                [s(pred_or_func_to_str(PredOrFunc))], Prefix),
+            % XXX Having an empty Suffix leaves Name ending with
+            % two consecutive underscores.
+            Suffix = ""
         ;
             Transform = tn_dep_par_conj(PredOrFunc, ProcNum, ArgNums),
             string.format("Parallel__%s",
@@ -327,8 +343,7 @@ make_transformed_pred_sym_name(ModuleName, OrigName, Transform,
         % XXX The format of Suffix depends on Prefix; therefore it should
         % immediately follow Prefix.
         string.format("%s__%s__%s",
-            [s(Prefix), s(OrigName), s(Suffix)], TransformedName),
-        TransformedSymName = qualified(ModuleName, TransformedName)
+            [s(Prefix), s(OrigName), s(Suffix)], TransformedName)
     ).
 
 %---------------------------------------------------------------------------%

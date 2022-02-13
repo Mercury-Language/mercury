@@ -196,50 +196,52 @@ apply_dg_to_preds([PredId | PredIds], Distance, !ModuleInfo) :-
     % before we actually clone it (this avoids doing one more pass to update
     % the pred_id in the recursive plain calls).
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable),
-    get_next_pred_id(PredicateTable, NewPredId),
+    get_next_pred_id(PredicateTable, ClonePredId),
 
     % Create the new sym_name for the recursive plain calls.
-    ModuleName = pred_info_module(PredInfo),
+    module_info_get_name(!.ModuleInfo, ModuleName),
     PredName0 = pred_info_name(PredInfo),
     % XXX *Always* passing pf_predicate here seems to be a bug.
     Transform = tn_par_distance_granularity(pf_predicate, Distance),
-    make_transformed_pred_sym_name(ModuleName, PredName0, Transform,
-        NewPredSymName),
-    PredName = unqualify_name(NewPredSymName),
+    make_transformed_pred_name(PredName0, Transform, ClonePredName),
+    ClonePredSymName = qualified(ModuleName, ClonePredName),
 
     ProcIds = pred_info_valid_non_imported_procids(PredInfo),
-    apply_dg_to_procs(PredId, ProcIds, Distance, NewPredId, NewPredSymName,
+    apply_dg_to_procs(PredId, ProcIds, Distance, ClonePredId, ClonePredSymName,
         PredInfo, PredInfoClone0, no, Specialized, !ModuleInfo),
     (
         Specialized = yes,
         % The predicate has been specialized as it contains recursive calls.
 
-        pred_info_set_name(PredName, PredInfoClone0, PredInfoClone1),
+        pred_info_set_module_name(ModuleName, PredInfoClone0, PredInfoClone1),
+        pred_info_set_name(ClonePredName, PredInfoClone1, PredInfoClone2),
 
         % If the original predicate was a function then the specialized version
         % is a predicate.
-        pred_info_set_is_pred_or_func(pf_predicate, PredInfoClone1,
-            PredInfoClone2),
+        pred_info_set_is_pred_or_func(pf_predicate,
+            PredInfoClone2, PredInfoClone3),
 
         % The arity and the argument types of the specialized predicate must be
         % modified.
-        Arity = pred_info_orig_arity(PredInfoClone2),
-        pred_info_set_orig_arity(Arity + 1, PredInfoClone2, PredInfoClone3),
-        pred_info_get_arg_types(PredInfoClone3, ArgTypes0),
+        Arity = pred_info_orig_arity(PredInfoClone3),
+        pred_info_set_orig_arity(Arity + 1, PredInfoClone3, PredInfoClone4),
+        pred_info_get_arg_types(PredInfoClone4, ArgTypes0),
         list.append(ArgTypes0, [int_type], ArgTypes),
-        pred_info_get_typevarset(PredInfoClone3, Tvarset),
-        pred_info_get_exist_quant_tvars(PredInfoClone3, ExistqTvars),
+        pred_info_get_typevarset(PredInfoClone4, Tvarset),
+        pred_info_get_exist_quant_tvars(PredInfoClone4, ExistqTvars),
         pred_info_set_arg_types(Tvarset, ExistqTvars, ArgTypes,
-            PredInfoClone3, PredInfoClone),
+            PredInfoClone4, PredInfoClone),
 
         % Add the specialized predicate to the predicate table.
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-        predicate_table_insert(PredInfoClone, _, PredicateTable0,
-            PredicateTable1),
+        predicate_table_insert(PredInfoClone, InsertedPredId,
+            PredicateTable0, PredicateTable1),
+        expect(unify(ClonePredId, InsertedPredId), $pred,
+            "ClonePredId != InsertedPredId"),
         module_info_set_predicate_table(PredicateTable1, !ModuleInfo),
 
-        update_original_predicate_procs(PredId, ProcIds, Distance, NewPredId,
-            NewPredSymName, PredInfo, PredInfoUpdated, !ModuleInfo),
+        update_original_predicate_procs(PredId, ProcIds, Distance, ClonePredId,
+            ClonePredSymName, PredInfo, PredInfoUpdated, !ModuleInfo),
         module_info_set_pred_info(PredId, PredInfoUpdated, !ModuleInfo)
     ;
         Specialized = no

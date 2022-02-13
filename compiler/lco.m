@@ -1189,14 +1189,13 @@ ensure_variant_exists(PredId, ProcId, AddrOutArgs, VariantPredProcId,
         Transform = tn_last_call_modulo_cons(PredOrFunc, VariantNumber),
         % Even if PredInfo describes a predicate opt-imported from another
         % module, the variant we construct is defined in *this* module.
-        make_transformed_pred_sym_name(ModuleName, PredName, Transform,
-            VariantSymName),
+        make_transformed_pred_name(PredName, Transform, VariantName),
 
         some [!VariantPredInfo] (
             !:VariantPredInfo = PredInfo,
+            VariantSymName = qualified(ModuleName, VariantName),
             pred_info_set_module_name(ModuleName, !VariantPredInfo),
-            pred_info_set_name(unqualify_name(VariantSymName),
-                !VariantPredInfo),
+            pred_info_set_name(VariantName, !VariantPredInfo),
             pred_info_set_is_pred_or_func(pf_predicate, !VariantPredInfo),
 
             pred_info_get_origin(PredInfo, Origin0),

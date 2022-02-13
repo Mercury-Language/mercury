@@ -230,6 +230,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_rename.
@@ -240,7 +241,6 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
-:- import_module string.
 :- import_module term.
 :- import_module varset.
 
@@ -424,7 +424,7 @@ lookup_proxy_pred(PredId, MaybeNewPredId, !ProxyMap, !ModuleInfo) :-
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
         PredModule = pred_info_module(PredInfo),
         ( if mercury_std_library_module_name(PredModule) then
-            create_proxy_pred(PredId, NewPredId, !ModuleInfo),
+            create_proxy_pred(PredId, PredInfo, NewPredId, !ModuleInfo),
             MaybeNewPredId = yes(NewPredId)
         else
             MaybeNewPredId = no
@@ -432,33 +432,36 @@ lookup_proxy_pred(PredId, MaybeNewPredId, !ProxyMap, !ModuleInfo) :-
         map.det_insert(PredId, MaybeNewPredId, !ProxyMap)
     ).
 
-:- pred create_proxy_pred(pred_id::in, pred_id::out,
+:- pred create_proxy_pred(pred_id::in, pred_info::in, pred_id::out,
     module_info::in, module_info::out) is det.
 
-create_proxy_pred(PredId, NewPredId, !ModuleInfo) :-
-    some [!PredInfo] (
-        module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
-        pred_info_set_status(pred_status(status_local), !PredInfo),
+create_proxy_pred(PredId, !.PredInfo, NewPredId, !ModuleInfo) :-
+    pred_info_set_status(pred_status(status_local), !PredInfo),
 
-        ProcIds = pred_info_valid_procids(!.PredInfo),
-        list.foldl2(create_proxy_proc(PredId), ProcIds, !PredInfo,
-            !ModuleInfo),
+    ProcIds = pred_info_valid_procids(!.PredInfo),
+    list.foldl2(create_proxy_proc(PredId), ProcIds, !PredInfo,
+        !ModuleInfo),
 
-        % Change the name so that the proxy is not confused with the original.
-        Name = pred_info_name(!.PredInfo),
-        pred_info_set_name("SSDBPR__" ++ Name, !PredInfo),
+    % The proxy is defined in this module, even if the original is not.
+    module_info_get_name(!.ModuleInfo, ModuleName),
+    pred_info_set_module_name(ModuleName, !PredInfo),
+    % Change the name, so that the proxy is not confused with the original.
+    Name = pred_info_name(!.PredInfo),
+    PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
+    Transform = tn_ssdb_stdlib_proxy(PredOrFunc),
+    make_transformed_pred_name(Name, Transform, ProxyName),
+    pred_info_set_name(ProxyName, !PredInfo),
 
-        % Set the predicate origin so that the later pass can find the name of
-        % the original predicate.
-        pred_info_get_origin(!.PredInfo, Origin),
-        NewOrigin = origin_transformed(transform_source_to_source_debug,
-            Origin, PredId),
-        pred_info_set_origin(NewOrigin, !PredInfo),
+    % Set the predicate origin so that the later pass can find the name of
+    % the original predicate.
+    pred_info_get_origin(!.PredInfo, Origin),
+    NewOrigin = origin_transformed(transform_source_to_source_debug,
+        Origin, PredId),
+    pred_info_set_origin(NewOrigin, !PredInfo),
 
-        module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-        predicate_table_insert(!.PredInfo, NewPredId, PredTable0, PredTable),
-        module_info_set_predicate_table(PredTable, !ModuleInfo)
-    ).
+    module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+    predicate_table_insert(!.PredInfo, NewPredId, PredTable0, PredTable),
+    module_info_set_predicate_table(PredTable, !ModuleInfo).
 
 :- pred create_proxy_proc(pred_id::in, proc_id::in,
     pred_info::in, pred_info::out, module_info::in, module_info::out) is det.
