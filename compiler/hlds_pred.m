@@ -769,11 +769,13 @@
 :- pred pred_info_get_proc_table(pred_info::in,
     proc_table::out) is det.
 
-    % Setting the name of a pred_info after its creation won't remove its name
-    % from the indexes under its old name or insert it into the indexes
-    % under its new name. If is therefore safe to do this only after *all*
-    % the passes that look up predicates by name.
+    % Setting any part of the sym_name of a pred_info after its creation
+    % won't remove its name from the indexes under its old name or insert it
+    % into the indexes under its new name. If is therefore safe to do this
+    % only after *all* the passes that look up predicates by name.
     %
+:- pred pred_info_set_module_name(module_name::in,
+    pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_name(string::in,
     pred_info::in, pred_info::out) is det.
 
@@ -1573,6 +1575,8 @@ pred_info_get_clauses_info(!.PI, X) :-
 pred_info_get_proc_table(!.PI, X) :-
     X = !.PI ^ pi_proc_table.
 
+pred_info_set_module_name(X, !PI) :-
+    !PI ^ pi_module_name := X.
 pred_info_set_name(X, !PI) :-
     !PI ^ pi_name := X.
 pred_info_set_orig_arity(X, !PI) :-

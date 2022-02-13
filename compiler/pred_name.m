@@ -104,6 +104,12 @@
             % which is inside the hlds package, and thus has access
             % to the proc_id type.
 
+    ;       tn_last_call_modulo_cons(pred_or_func, int)
+            % The new predicate names includes a sequentially allocated
+            % variant number.
+            % XXX A proc_id and a list of the argument numbers of the
+            % arguments being passed by address would also work.
+
     ;       tn_dep_par_conj(pred_or_func, int, list(int))
             % The new predicate name includes the proc_id of the original
             % predicate (given by the second argument), as well as the list
@@ -222,6 +228,7 @@ make_transformed_pred_sym_name(ModuleName, OrigName, Transform,
         ; Transform = tn_loop_inv(_, _, _)
         ; Transform = tn_tupling(_, _, _)
         ; Transform = tn_untupling(_, _, _)
+        ; Transform = tn_last_call_modulo_cons(_, _)
         ; Transform = tn_dep_par_conj(_, _, _)
         ; Transform = tn_par_distance_granularity(_, _)
         ; Transform = tn_par_loop_control(_, _)
@@ -261,6 +268,11 @@ make_transformed_pred_sym_name(ModuleName, OrigName, Transform,
             LNC = lnc(Line, Counter),
             string.format("%d__%d_%d",
                 [i(Line), i(Counter), i(ProcNum)], Suffix)
+        ;
+            Transform = tn_last_call_modulo_cons(PredOrFunc, VariantNum),
+            string.format("LCMC__%s",
+                [s(pred_or_func_to_str(PredOrFunc))], Prefix),
+            string.format("%i", [i(VariantNum)], Suffix)
         ;
             Transform = tn_dep_par_conj(PredOrFunc, ProcNum, ArgNums),
             string.format("Parallel__%s",

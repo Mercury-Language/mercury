@@ -200,6 +200,7 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_rename.
@@ -230,7 +231,7 @@
     --->    variant_id(
                 list(variant_arg),  % The output arguments returned in memory.
                 pred_proc_id,       % The id of the variant.
-                string              % The name of the variant predicate.
+                sym_name            % The sym_name of the variant predicate.
             ).
 
 :- type variant_arg
@@ -872,7 +873,7 @@ transform_call_and_unifies(CallGoal, CallOutArgVars, UnifyGoals,
     proc_info_get_vartypes(ProcInfo, VarTypes),
     ( if
         CallGoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin,
-            UnifyContext, SymName),
+            UnifyContext, _SymName),
         CurrProcOutArgs = ConstInfo ^ lci_cur_proc_outputs,
         assoc_list.from_corresponding_lists(CallOutArgVars, CurrProcOutArgs,
             CallHeadPairs),
@@ -919,7 +920,7 @@ transform_call_and_unifies(CallGoal, CallOutArgVars, UnifyGoals,
         make_variant_args(HighLevelData, AddrFieldIds, Mismatches,
             VariantArgs),
         ensure_variant_exists(PredId, ProcId, VariantArgs,
-            VariantPredProcId, SymName, VariantSymName, !Info)
+            VariantPredProcId, VariantSymName, !Info)
     then
         module_info_proc_info(ModuleInfo, PredId, ProcId, CalleeProcInfo),
         proc_info_get_argmodes(CalleeProcInfo, CalleeModes),
@@ -1158,25 +1159,19 @@ make_variant_args(HighLevelData, AddrVarFieldIds, Mismatches, VariantArgs) :-
     VariantArgs = list.map(MakeArg, Mismatches).
 
 :- pred ensure_variant_exists(pred_id::in, proc_id::in, list(variant_arg)::in,
-    pred_proc_id::out, sym_name::in, sym_name::out,
-    lco_info::in, lco_info::out) is semidet.
+    pred_proc_id::out, sym_name::out, lco_info::in, lco_info::out) is semidet.
 
-ensure_variant_exists(PredId, ProcId, AddrArgNums, VariantPredProcId,
-        SymName, VariantSymName, !Info) :-
+ensure_variant_exists(PredId, ProcId, AddrOutArgs, VariantPredProcId,
+        VariantSymName, !Info) :-
     PredProcId = proc(PredId, ProcId),
     CurSCCVariants0 = !.Info ^ lco_cur_scc_variants,
     ( if
-        multi_map.search(CurSCCVariants0, PredProcId, ExistingVariants),
-        match_existing_variant(ExistingVariants, AddrArgNums, ExistingVariant)
+        multi_map.search(CurSCCVariants0, PredProcId, ExistingVariantIds),
+        match_existing_variant(ExistingVariantIds, AddrOutArgs,
+            ExistingVariantId)
     then
-        get_variant_id_and_name(ExistingVariant, SymName, VariantPredProcId,
-            VariantSymName)
+        ExistingVariantId = variant_id(_, VariantPredProcId, VariantSymName)
     else
-        ModuleInfo0 = !.Info ^ lco_module_info,
-        clone_pred_proc(PredId, ClonePredId, PredOrFunc,
-            ModuleInfo0, ModuleInfo),
-        VariantPredProcId = proc(ClonePredId, ProcId),
-        !Info ^ lco_module_info := ModuleInfo,
         ( if
             multi_map.search(CurSCCVariants0, PredProcId, ExistingVariants)
         then
@@ -1185,16 +1180,53 @@ ensure_variant_exists(PredId, ProcId, AddrArgNums, VariantPredProcId,
             VariantNumber = 1
         ),
         VariantNumber =< max_variants_per_proc,
-        (
-            SymName = unqualified(Name),
-            create_variant_name(PredOrFunc, VariantNumber, Name, VariantName),
-            VariantSymName = unqualified(VariantName)
-        ;
-            SymName = qualified(ModuleName, Name),
-            create_variant_name(PredOrFunc, VariantNumber, Name, VariantName),
-            VariantSymName = qualified(ModuleName, VariantName)
+
+        ModuleInfo0 = !.Info ^ lco_module_info,
+        module_info_get_name(ModuleInfo0, ModuleName),
+        module_info_pred_info(ModuleInfo0, PredId, PredInfo),
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+        pred_info_get_name(PredInfo, PredName),
+        Transform = tn_last_call_modulo_cons(PredOrFunc, VariantNumber),
+        % Even if PredInfo describes a predicate opt-imported from another
+        % module, the variant we construct is defined in *this* module.
+        make_transformed_pred_sym_name(ModuleName, PredName, Transform,
+            VariantSymName),
+
+        some [!VariantPredInfo] (
+            !:VariantPredInfo = PredInfo,
+            pred_info_set_module_name(ModuleName, !VariantPredInfo),
+            pred_info_set_name(unqualify_name(VariantSymName),
+                !VariantPredInfo),
+            pred_info_set_is_pred_or_func(pf_predicate, !VariantPredInfo),
+
+            pred_info_get_origin(PredInfo, Origin0),
+            AddrOutArgNums = list.map(va_pos, AddrOutArgs),
+            OriginTransform = transform_return_via_ptr(ProcId, AddrOutArgNums),
+            Origin = origin_transformed(OriginTransform, Origin0, PredId),
+            pred_info_set_origin(Origin, !VariantPredInfo),
+
+            % We throw away any other procs in the variant predicate, because
+            % we create a separate predicate for each variant.
+            %
+            % update_variant_pred_info will update the proc_info
+            % after transforming it.
+            pred_info_get_proc_table(PredInfo, ProcTable),
+            map.lookup(ProcTable, ProcId, ProcInfo),
+            VariantProcTable = map.singleton(ProcId, ProcInfo),
+            pred_info_set_proc_table(VariantProcTable, !VariantPredInfo),
+
+            module_info_get_predicate_table(ModuleInfo0, PredTable0),
+            predicate_table_insert(!.VariantPredInfo, VariantPredId,
+                PredTable0, PredTable),
+            module_info_set_predicate_table(PredTable,
+                ModuleInfo0, ModuleInfo)
         ),
-        NewVariant = variant_id(AddrArgNums, VariantPredProcId, VariantName),
+
+        VariantPredProcId = proc(VariantPredId, ProcId),
+        !Info ^ lco_module_info := ModuleInfo,
+
+        NewVariant =
+            variant_id(AddrOutArgs, VariantPredProcId, VariantSymName),
         multi_map.set(PredProcId, NewVariant, CurSCCVariants0, CurSCCVariants),
         !Info ^ lco_cur_scc_variants := CurSCCVariants
     ).
@@ -1202,52 +1234,16 @@ ensure_variant_exists(PredId, ProcId, AddrArgNums, VariantPredProcId,
 :- pred match_existing_variant(list(variant_id)::in, list(variant_arg)::in,
     variant_id::out) is semidet.
 
-match_existing_variant([Variant0 | Variants], AddrArgNums, Variant) :-
-    ( if Variant0 = variant_id(AddrArgNums, _, _) then
-        Variant = Variant0
+match_existing_variant([VariantId0 | VariantIds], AddrArgNums, VariantId) :-
+    ( if VariantId0 = variant_id(AddrArgNums, _, _) then
+        VariantId = VariantId0
     else
-        match_existing_variant(Variants, AddrArgNums, Variant)
-    ).
-
-:- pred get_variant_id_and_name(variant_id::in, sym_name::in,
-    pred_proc_id::out, sym_name::out) is det.
-
-get_variant_id_and_name(VariantId, SymName, PredProcId, VariantSymName) :-
-    VariantId = variant_id(_, PredProcId, VariantName),
-    (
-        SymName = unqualified(_Name),
-        VariantSymName = unqualified(VariantName)
-    ;
-        SymName = qualified(ModuleName, _Name),
-        VariantSymName = qualified(ModuleName, VariantName)
+        match_existing_variant(VariantIds, AddrArgNums, VariantId)
     ).
 
 :- func max_variants_per_proc = int.
 
 max_variants_per_proc = 4.
-
-:- pred clone_pred_proc(pred_id::in, pred_id::out, pred_or_func::out,
-    module_info::in, module_info::out) is det.
-
-clone_pred_proc(PredId, ClonePredId, PredOrFunc, !ModuleInfo) :-
-    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-    predicate_table_insert(PredInfo, ClonePredId, PredTable0, PredTable),
-    module_info_set_predicate_table(PredTable, !ModuleInfo).
-
-:- pred create_variant_name(pred_or_func::in, int::in, string::in,
-    string::out) is det.
-
-create_variant_name(PredOrFunc, VariantNumber, OrigName, VariantName) :-
-    (
-        PredOrFunc = pf_function,
-        Prefix = "LCMCfn_"
-    ;
-        PredOrFunc = pf_predicate,
-        Prefix = "LCMCpr_"
-    ),
-    VariantName = Prefix ++ OrigName ++ "_" ++ int_to_string(VariantNumber).
 
 %---------------------------------------------------------------------------%
 
@@ -1397,7 +1393,7 @@ update_variant_pred_info(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
         io.write_line(DebugStream, PredProcId, !IO),
         io.write_line(DebugStream, VariantId, !IO)
     ),
-    VariantId = variant_id(AddrOutArgs, VariantPredProcId, VariantName),
+    VariantId = variant_id(AddrOutArgs, VariantPredProcId, _VariantSymName),
     VariantPredProcId = proc(VariantPredId, VariantProcId),
     PredProcId = proc(PredId, ProcId),
 
@@ -1412,23 +1408,13 @@ update_variant_pred_info(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
 
     some [!VariantPredInfo] (
         module_info_pred_info(!.ModuleInfo, VariantPredId, !:VariantPredInfo),
-        pred_info_set_name(VariantName, !VariantPredInfo),
-        pred_info_set_is_pred_or_func(pf_predicate, !VariantPredInfo),
-
-        % Update the argument types for the variant's pred_info.
-        pred_info_get_arg_types(!.VariantPredInfo, TVarSet, ExistQVars,
-            _ArgTypes0),
+        % Put the updated arg type information in the VariantProcInfo
+        % we just constructed into !VariantPredInfo.
+        pred_info_get_arg_types(!.VariantPredInfo,
+            TVarSet, ExistQVars, _ArgTypes0),
         pred_info_set_arg_types(TVarSet, ExistQVars, ArgTypes,
             !VariantPredInfo),
-
-        pred_info_get_origin(!.VariantPredInfo, Origin0),
-        AddrOutArgPosns = list.map(va_pos, AddrOutArgs),
-        Transform = transform_return_via_ptr(ProcId, AddrOutArgPosns),
-        Origin = origin_transformed(Transform, Origin0, PredId),
-        pred_info_set_origin(Origin, !VariantPredInfo),
-
-        % We throw away any other procs in the variant predicate, because
-        % we create a separate predicate for each variant.
+        % Put the VariantProcInfo we just constructed into !VariantPredInfo.
         VariantProcs = map.singleton(VariantProcId, VariantProcInfo),
         pred_info_set_proc_table(VariantProcs, !VariantPredInfo),
         module_info_set_pred_info(VariantPredId, !.VariantPredInfo,
@@ -1831,21 +1817,21 @@ lco_transform_variant_plain_call(ModuleInfo, Transforms, VariantMap, VarToAddr,
         % an address variable in place of each variable that would be ground by
         % the call.
         GoalExpr0 = plain_call(CallPredId, CallProcId, ArgVars, Builtin,
-            UnifyContext, SymName),
+            UnifyContext, _SymName),
         CallPredProcId = proc(CallPredId, CallProcId),
         module_info_proc_info(ModuleInfo, CallPredId, CallProcId,
             CalleeProcInfo),
         proc_info_get_vartypes(!.ProcInfo, VarTypes),
         proc_info_get_argmodes(CalleeProcInfo, CalleeArgModes),
         ( if
-            multi_map.search(VariantMap, CallPredProcId, ExistingVariants),
+            multi_map.search(VariantMap, CallPredProcId, ExistingVariantIds),
             classify_proc_call_args(ModuleInfo, VarTypes,
                 ArgVars, CalleeArgModes,
                 _InArgVars, OutArgVars, _UnusedArgVars),
             grounding_to_variant_args(GroundingVarToAddr, 1, OutArgVars, Subst,
                 VariantArgVars, VariantArgs),
-            match_existing_variant(ExistingVariants, VariantArgs,
-                ExistingVariant),
+            match_existing_variant(ExistingVariantIds, VariantArgs,
+                ExistingVariantId),
 
             % The need for the test done by the rest of this condition
             % is explained by the comment on the variant_transforms type.
@@ -1856,8 +1842,9 @@ lco_transform_variant_plain_call(ModuleInfo, Transforms, VariantMap, VarToAddr,
             set_of_var.is_empty(NeededOutArgVarsSet)
         then
             rename_var_list(need_not_rename, Subst, ArgVars, CallArgVars),
-            get_variant_id_and_name(ExistingVariant, SymName,
-                proc(VariantPredId, VariantProcId), VariantSymName),
+            ExistingVariantId = variant_id(_, VariantPredProcId,
+                VariantSymName),
+            VariantPredProcId = proc(VariantPredId, VariantProcId),
             GoalExpr = plain_call(VariantPredId, VariantProcId, CallArgVars,
                 Builtin, UnifyContext, VariantSymName),
 
