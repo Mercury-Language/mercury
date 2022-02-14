@@ -1459,41 +1459,42 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
             !:NeededNames),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         ( if
-            PredModule = pred_info_module(PredInfo),
+            PredModuleName = pred_info_module(PredInfo),
             PredName = pred_info_name(PredInfo),
-            PredArity = pred_info_orig_arity(PredInfo),
             (
                 % Don't eliminate special preds since they won't be actually
                 % called from the HLDS until after polymorphism.
                 is_unify_index_or_compare_pred(PredInfo)
             ;
-                % Don't eliminate preds from builtin modules, since later
-                % passes of the compiler may introduce calls to them
-                % (e.g. polymorphism.m needs unify/2 and friends).
-                % XXX This is too broad. The later disjuncts here try to do
-                % a much more precise job.
-                any_mercury_builtin_module(PredModule)
-            ;
-                % Simplify can't introduce calls to this predicate or function
-                % if we eliminate it here.
-                is_std_lib_module_name(PredModule, PredModuleNameStr),
-                may_introduce_calls_to(PredModuleNameStr, PredName, PredArity)
+                is_std_lib_module_name(PredModuleName, PredModuleNameStr),
+                % Don't eliminate preds from standard library modules
+                % if later passes of the compiler may introduce calls to them.
+                PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+                PredOrigArity = pred_info_orig_arity(PredInfo),
+                may_introduce_calls_to(PredOrFunc,
+                    PredModuleNameStr, PredName, PredOrigArity)
             ;
                 % Don't attempt to eliminate local preds here, since we want
-                % to do semantic checking on those even if they aren't used.
-                not pred_info_is_imported(PredInfo),
+                % to do semantic checking on those, even if they are not used.
                 pred_info_get_status(PredInfo, PredStatus),
-                PredStatus \= pred_status(status_opt_imported)
-            ;
-                % Don't eliminate predicates declared in this module with a
-                % `:- pragma external_{pred/func}'.
-                module_info_get_name(ModuleInfo, PredModule)
+                PredStatus = pred_status(OldStatus),
+                ( OldStatus = status_external(_)
+                ; OldStatus = status_abstract_imported
+                ; OldStatus = status_pseudo_imported
+                ; OldStatus = status_exported
+                ; OldStatus = status_exported_to_submodules
+                ; OldStatus = status_abstract_exported
+                ; OldStatus = status_opt_exported
+                ; OldStatus = status_pseudo_exported
+                ; OldStatus = status_local
+                )
             ;
                 % Don't eliminate the clauses for promises.
                 pred_info_is_promise(PredInfo, _)
             )
         then
-            set_tree234.insert(qualified(PredModule, PredName), !NeededNames),
+            PredSymName = qualified(PredModuleName, PredName),
+            set_tree234.insert(PredSymName, !NeededNames),
             queue.put(PredId, !Queue)
         else
             true

@@ -16,12 +16,14 @@
 :- module hlds.introduced_call_table.
 :- interface.
 
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 %-----------------------------------------------------------------------------%
 
-    % may_introduce_calls_to(StdLibModuleNameStr, Name, Arity):
+    % may_introduce_calls_to(PredOrFunc, StdLibModuleNameStr, Name, OrigArity):
     %
     % Succeed if a compiler pass may introduce calls to a predicate or
     % function from the given standard library module with the given name
@@ -31,18 +33,22 @@
     % that are unused when it is first run, but which may have calls to them
     % added later on.
     %
-:- pred may_introduce_calls_to(string::in, string::in, arity::in)
-    is semidet.
+:- pred may_introduce_calls_to(pred_or_func::in, string::in,
+    string::in, arity::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-%-----------------------------------------------------------------------------%
-
-may_introduce_calls_to(ModuleName, PredName, OrigArity) :-
+may_introduce_calls_to(_PredOrFunc, ModuleName, PredName, OrigArity) :-
+    % XXX Many operations in the standard library are available
+    % both as a function and as a predicate. If the compiler consistently
+    % introduces calls to one form but not the other, then the other
+    % need not be listed here.
     (
+        ModuleName = "builtin"
+    ;
         ModuleName = "exception",
         mict_exception(PredName, OrigArity)
     ;
@@ -62,8 +68,16 @@ may_introduce_calls_to(ModuleName, PredName, OrigArity) :-
         ModuleName = "io",
         mict_io(PredName, OrigArity)
     ;
-        ModuleName = "private_builtin",
-        mict_private_builtin(PredName, OrigArity)
+        ModuleName = "private_builtin"
+        % mict_private_builtin(PredName, OrigArity)
+    ;
+        ModuleName = "profiling_builtin"
+    ;
+        ModuleName = "region_builtin"
+    ;
+        ModuleName = "ssdb"
+    ;
+        ModuleName = "stm_builtin"
     ;
         ModuleName = "string",
         mict_string(PredName, OrigArity)
@@ -74,8 +88,10 @@ may_introduce_calls_to(ModuleName, PredName, OrigArity) :-
         ModuleName = "stream",
         mict_stream(PredName, OrigArity)
     ;
-        ModuleName = "table_builtin",
-        mict_table_builtin(PredName, OrigArity)
+        ModuleName = "table_builtin"
+        % mict_table_builtin(PredName, OrigArity)
+    ;
+        ModuleName = "term_size_builtin"
     ).
 
 :- pred mict_exception(string::in, int::in) is semidet.
@@ -107,6 +123,7 @@ mict_io("write_string", _).
 
 :- pred mict_private_builtin(string::in, int::in) is semidet.
 :- pragma inline(pred(mict_private_builtin/2)).
+:- pragma consider_used(pred(mict_private_builtin/2)).
 
 mict_private_builtin("builtin_compound_eq", _).
 mict_private_builtin("builtin_compound_lt", _).
@@ -191,6 +208,7 @@ mict_stream("put", _).
 
 :- pred mict_table_builtin(string::in, int::in) is semidet.
 :- pragma inline(pred(mict_table_builtin/2)).
+:- pragma consider_used(pred(mict_table_builtin/2)).
 
 mict_table_builtin("table_lookup_insert_start_int", _).
 mict_table_builtin("table_lookup_insert_int", _).
