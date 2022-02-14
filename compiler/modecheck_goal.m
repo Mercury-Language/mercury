@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
 % Copyright (C) 2014-2019, 2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: modecheck_goal.m.
 % Main author: fjh.
@@ -74,7 +74,7 @@
 % If they aren't used, the compiler will probably not detect the error;
 % if they are, it will probably go into an infinite loop.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module check_hlds.modecheck_goal.
 :- interface.
@@ -104,8 +104,8 @@
 :- pred modecheck_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
     hlds_goal_expr::out, mode_info::in, mode_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -153,8 +153,8 @@
 :- import_module uint.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 modecheck_goal(Goal0, Goal, !ModeInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
@@ -193,25 +193,18 @@ modecheck_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     % XXX The predicates we call here should have their definitions
     % in the same order as this switch.
     (
-        GoalExpr0 = unify(LHS0, RHS0, _UniMode, Unification0, UnifyContext),
-        modecheck_goal_unify(LHS0, RHS0, Unification0, UnifyContext, GoalInfo0,
-            GoalExpr, !ModeInfo)
+        GoalExpr0 = unify(_, _, _, _, _),
+        modecheck_goal_unify(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo)
     ;
-        GoalExpr0 = plain_call(PredId, ProcId0, Args0, _Builtin,
-            MaybeCallUnifyContext, PredName),
-        modecheck_goal_plain_call(PredId, ProcId0, Args0,
-            MaybeCallUnifyContext, PredName, GoalInfo0, GoalExpr, !ModeInfo)
+        GoalExpr0 = plain_call(_, _, _, _, _, _),
+        modecheck_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo)
     ;
-        GoalExpr0 = generic_call(GenericCall, Args0, Modes0, _MaybeArgRegs,
-            _Detism),
-        modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0,
-            GoalExpr, !ModeInfo)
+        GoalExpr0 = generic_call(_, _, _, _, _),
+        modecheck_goal_generic_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo)
     ;
-        GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId0,
-            Args0, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
-        modecheck_goal_call_foreign_proc(Attributes, PredId, ProcId0,
-            Args0, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode,
-            GoalInfo0, GoalExpr, !ModeInfo)
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
+        modecheck_goal_call_foreign_proc(GoalExpr0, GoalInfo0, GoalExpr,
+            !ModeInfo)
     ;
         GoalExpr0 = conj(ConjType, Goals),
         modecheck_goal_conj(ConjType, Goals, GoalInfo0, GoalExpr, !ModeInfo)
@@ -219,13 +212,11 @@ modecheck_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
         GoalExpr0 = disj(Goals),
         modecheck_goal_disj(Goals, GoalInfo0, GoalExpr, !ModeInfo)
     ;
-        GoalExpr0 = switch(Var, CanFail, Cases0),
-        modecheck_goal_switch(Var, CanFail, Cases0, GoalInfo0, GoalExpr,
-            !ModeInfo)
+        GoalExpr0 = switch(_, _, _),
+        modecheck_goal_switch(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo)
     ;
-        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        modecheck_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0,
-            GoalExpr, !ModeInfo)
+        GoalExpr0 = if_then_else(_, _, _, _),
+        modecheck_goal_if_then_else(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo)
     ;
         GoalExpr0 = negation(SubGoal0),
         modecheck_goal_negation(SubGoal0, GoalInfo0, GoalExpr, !ModeInfo)
@@ -237,7 +228,204 @@ modecheck_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
         modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Modecheck unifications. Most of the work is in modecheck_unify.m.
+%
+
+:- pred modecheck_goal_unify(hlds_goal_expr::in(goal_expr_unify),
+    hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out) is det.
+
+modecheck_goal_unify(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
+    GoalExpr0 = unify(LHS0, RHS0, _UniMode, Unification0, UnifyContext),
+    mode_checkpoint(enter, "unify", !ModeInfo),
+    mode_info_set_call_context(call_context_unify(UnifyContext), !ModeInfo),
+    modecheck_unification(LHS0, RHS0, Unification0, UnifyContext, GoalInfo0,
+        GoalExpr, !ModeInfo),
+    mode_info_unset_call_context(!ModeInfo),
+    mode_checkpoint(exit, "unify", !ModeInfo).
+
+%---------------------------------------------------------------------------%
+%
+% Modecheck plain calls. Most of the work is in modecheck_call.m.
+%
+
+:- pred modecheck_goal_plain_call(hlds_goal_expr::in(goal_expr_plain_call),
+    hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out) is det.
+
+modecheck_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
+    GoalExpr0 = plain_call(PredId, ProcId0, ArgVars0, _Builtin,
+        MaybeCallUnifyContext, PredSymName),
+
+    PredNameString = sym_name_to_string(PredSymName),
+    CallString = "call " ++ PredNameString,
+    mode_checkpoint(enter, CallString, !ModeInfo),
+
+    mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
+        !ModeInfo),
+
+    mode_info_get_instmap(!.ModeInfo, InstMap0),
+    DeterminismKnown = no,
+    modecheck_call_pred(PredId, DeterminismKnown, ProcId0, ProcId,
+        ArgVars0, ArgVars, GoalInfo0, ExtraGoals, !ModeInfo),
+
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+    mode_info_get_pred_id(!.ModeInfo, CallerPredId),
+    Builtin = builtin_state(ModuleInfo, CallerPredId, PredId, ProcId),
+    Call = plain_call(PredId, ProcId, ArgVars, Builtin, MaybeCallUnifyContext,
+        PredSymName),
+    handle_extra_goals(Call, ExtraGoals, GoalInfo0, ArgVars0, ArgVars,
+        InstMap0, GoalExpr, !ModeInfo),
+
+    mode_info_unset_call_context(!ModeInfo),
+    mode_checkpoint(exit, CallString, !ModeInfo).
+
+%---------------------------------------------------------------------------%
+%
+% Modecheck generic calls.
+%
+
+:- pred modecheck_goal_generic_call(hlds_goal_expr::in(goal_expr_generic_call),
+    hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out) is det.
+
+modecheck_goal_generic_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
+    GoalExpr0 = generic_call(GenericCall, Args0, Modes0, _MaybeArgRegs,
+        _Detism),
+
+    mode_checkpoint(enter, "generic_call", !ModeInfo),
+    mode_info_get_instmap(!.ModeInfo, InstMap0),
+
+    hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
+    CallId = mode_call_generic(GenericCallId),
+    mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
+    (
+        GenericCall = higher_order(PredVar, _, PredOrFunc, _),
+        modecheck_higher_order_call(PredOrFunc, PredVar,
+            Args0, Args, Modes, Det, ExtraGoals, !ModeInfo),
+        GoalExpr1 = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
+            Det),
+        AllArgs0 = [PredVar | Args0],
+        AllArgs = [PredVar | Args],
+        handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, AllArgs0, AllArgs,
+            InstMap0, GoalExpr, !ModeInfo)
+    ;
+        % Class method calls are added by polymorphism.m.
+        % XXX We should probably fill this in so that
+        % rerunning mode analysis works on code with typeclasses.
+        GenericCall = class_method(_, _, _, _),
+        unexpected($pred, "class_method_call")
+    ;
+        GenericCall = event_call(EventName),
+        mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+        module_info_get_event_set(ModuleInfo, EventSet),
+        EventSpecMap = EventSet ^ event_set_spec_map,
+        ( if event_arg_modes(EventSpecMap, EventName, ModesPrime) then
+            Modes = ModesPrime
+        else
+            % The typechecker should have caught the unknown event,
+            % and not let compilation of this predicate proceed any further.
+            unexpected($pred, "unknown event")
+        ),
+        modecheck_event_call(Modes, Args0, Args, !ModeInfo),
+        GoalExpr = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
+            detism_det)
+    ;
+        GenericCall = cast(CastType),
+        ( CastType = unsafe_type_cast
+        ; CastType = unsafe_type_inst_cast
+        ; CastType = equiv_type_cast
+        ; CastType = exists_cast
+        ),
+        ( if
+            goal_info_has_feature(GoalInfo0, feature_keep_constant_binding),
+            mode_info_get_instmap(!.ModeInfo, InstMap),
+            ( if
+                Args0 = [Arg1Prime, _Arg2Prime],
+                Modes0 = [Mode1Prime, Mode2Prime]
+            then
+                Arg1 = Arg1Prime,
+                Mode1 = Mode1Prime,
+                Mode2 = Mode2Prime
+            else
+                unexpected($pred, "bad cast")
+            ),
+            Mode1 = in_mode,
+            Mode2 = out_mode,
+            instmap_lookup_var(InstMap, Arg1, Inst1),
+            Inst1 = bound(Unique, _, [bound_functor(ConsId, [])]),
+            mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+            get_cons_repn_defn(ModuleInfo, ConsId, ConsRepn),
+            ConsRepn ^ cr_tag = shared_local_tag_no_args(_, LocalSectag, _)
+        then
+            LocalSectag = local_sectag(_, PrimSec, _),
+            SectagWholeWord = uint.cast_to_int(PrimSec),
+            SectagConsId = some_int_const(int_const(SectagWholeWord)),
+            BoundFunctor = bound_functor(SectagConsId, []),
+            BoundInst = bound(Unique, inst_test_results_fgtc, [BoundFunctor]),
+            NewMode2 = from_to_mode(free, BoundInst),
+            Modes = [Mode1, NewMode2]
+        else
+            Modes = Modes0
+        ),
+        modecheck_builtin_cast(Modes, Args0, Args, Det, ExtraGoals, !ModeInfo),
+        GoalExpr1 = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
+            Det),
+        handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, Args0, Args,
+            InstMap0, GoalExpr, !ModeInfo)
+    ;
+        GenericCall = cast(subtype_coerce),
+        modecheck_coerce(Args0, Args, Modes0, Modes, Det, ExtraGoals,
+            !ModeInfo),
+        GoalExpr1 = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
+            Det),
+        handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, Args0, Args,
+            InstMap0, GoalExpr, !ModeInfo)
+    ),
+
+    mode_info_unset_call_context(!ModeInfo),
+    mode_checkpoint(exit, "generic_call", !ModeInfo).
+
+%---------------------------------------------------------------------------%
+%
+% Modecheck foreign_proc goals.
+%
+
+:- pred modecheck_goal_call_foreign_proc(
+    hlds_goal_expr::in(goal_expr_foreign_proc),
+    hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out) is det.
+
+modecheck_goal_call_foreign_proc(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
+    % To modecheck a foreign_proc, we just modecheck the proc for
+    % which it is the goal.
+    GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId0,
+        Args0, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
+
+    mode_checkpoint(enter, "foreign_proc", !ModeInfo),
+    mode_info_get_instmap(!.ModeInfo, InstMap0),
+    DeterminismKnown = no,
+    mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
+        !ModeInfo),
+    ArgVars0 = list.map(foreign_arg_var, Args0),
+    modecheck_call_pred(PredId, DeterminismKnown, ProcId0, ProcId,
+        ArgVars0, ArgVars, GoalInfo0, ExtraGoals, !ModeInfo),
+
+    % zs: The assignment to Pragma looks wrong: instead of Args0,
+    % I think we should use Args after the following call:
+    % replace_foreign_arg_vars(Args0, ArgVars, Args)
+    % or is there some reason why Args0 and Args would be the same?
+    Pragma = call_foreign_proc(Attributes, PredId, ProcId, Args0, ExtraArgs,
+        MaybeTraceRuntimeCond, PragmaCode),
+    handle_extra_goals(Pragma, ExtraGoals, GoalInfo0, ArgVars0, ArgVars,
+        InstMap0, GoalExpr, !ModeInfo),
+
+    mode_info_unset_call_context(!ModeInfo),
+    mode_checkpoint(exit, "foreign_proc", !ModeInfo).
+
+%---------------------------------------------------------------------------%
 %
 % Modecheck conjunctions. Most of the work is done by modecheck_conj.m.
 %
@@ -270,7 +458,7 @@ modecheck_goal_conj(ConjType, Goals0, GoalInfo0, GoalExpr, !ModeInfo) :-
         mode_checkpoint(exit, "par_conj", !ModeInfo)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Modecheck disjunctions.
 %
@@ -374,16 +562,17 @@ arm_instmap_set_vars_same(Inst, Vars, ArmInstMap0, ArmInstMap) :-
     instmap_set_vars_same(Inst, Vars, InstMap0, InstMap),
     ArmInstMap = arm_instmap(Context, InstMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Modecheck switches.
 %
 
-:- pred modecheck_goal_switch(prog_var::in, can_fail::in, list(case)::in,
+:- pred modecheck_goal_switch(hlds_goal_expr::in(goal_expr_switch),
     hlds_goal_info::in, hlds_goal_expr::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_goal_switch(Var, CanFail, Cases0, GoalInfo0, GoalExpr, !ModeInfo) :-
+modecheck_goal_switch(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
+    GoalExpr0 = switch(Var, CanFail, Cases0),
     mode_checkpoint(enter, "switch", !ModeInfo),
     (
         Cases0 = [],
@@ -468,7 +657,7 @@ merge_switch_branches(NonLocals, LargeFlatConstructs, Cases0, Cases,
     make_arm_instmaps_for_cases(Cases, InstMaps, ArmInstMaps),
     instmap_merge(NonLocals, ArmInstMaps, merge_disj, !ModeInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Utility predicates used to help optimize the modechecking of disjunctions and
 % switches.
@@ -651,18 +840,17 @@ set_large_flat_constructs_to_ground_in_case(LargeFlatConstructs,
         Goal0, Goal),
     Case = case(MainConsId, OtherConsIds, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Modecheck if-then-elses.
 %
 
-:- pred modecheck_goal_if_then_else(list(prog_var)::in,
-    hlds_goal::in, hlds_goal::in, hlds_goal::in,
+:- pred modecheck_goal_if_then_else(hlds_goal_expr::in(goal_expr_ite),
     hlds_goal_info::in, hlds_goal_expr::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0, GoalExpr,
-        !ModeInfo) :-
+modecheck_goal_if_then_else(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
+    GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
     mode_checkpoint(enter, "if-then-else", !ModeInfo),
     mode_info_get_pred_var_multimode_error_map(!.ModeInfo, MultiModeErrorMap0),
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
@@ -712,7 +900,7 @@ modecheck_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0, GoalExpr,
     ),
     mode_checkpoint(exit, "if-then-else", !ModeInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Modecheck negations.
 %
@@ -757,7 +945,7 @@ modecheck_goal_negation(SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
     mode_info_set_pred_var_multimode_error_map(MultiModeErrorMap0, !ModeInfo),
     mode_checkpoint(exit, "not", !ModeInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Modecheck scope goals.
 %
@@ -1230,201 +1418,7 @@ modecheck_ground_term_construct_arg_loop([Var | Vars], [VarInst | VarInsts],
     modecheck_ground_term_construct_arg_loop(Vars, VarInsts, ArgModes,
         !LocalVarMap).
 
-%-----------------------------------------------------------------------------%
-%
-% Modecheck plain calls. Most of the work is in modecheck_call.m.
-%
-
-:- pred modecheck_goal_plain_call(pred_id::in, proc_id::in,
-    list(prog_var)::in, maybe(call_unify_context)::in, sym_name::in,
-    hlds_goal_info::in, hlds_goal_expr::out,
-    mode_info::in, mode_info::out) is det.
-
-modecheck_goal_plain_call(PredId, ProcId0, Args0, MaybeCallUnifyContext,
-        PredName, GoalInfo0, GoalExpr, !ModeInfo) :-
-    PredNameString = sym_name_to_string(PredName),
-    CallString = "call " ++ PredNameString,
-    mode_checkpoint(enter, CallString, !ModeInfo),
-
-    mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
-        !ModeInfo),
-
-    mode_info_get_instmap(!.ModeInfo, InstMap0),
-    DeterminismKnown = no,
-    modecheck_call_pred(PredId, DeterminismKnown, ProcId0, ProcId,
-        Args0, Args, GoalInfo0, ExtraGoals, !ModeInfo),
-
-    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    mode_info_get_pred_id(!.ModeInfo, CallerPredId),
-    Builtin = builtin_state(ModuleInfo, CallerPredId, PredId, ProcId),
-    Call = plain_call(PredId, ProcId, Args, Builtin, MaybeCallUnifyContext,
-        PredName),
-    handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args0, Args,
-        InstMap0, GoalExpr, !ModeInfo),
-
-    mode_info_unset_call_context(!ModeInfo),
-    mode_checkpoint(exit, CallString, !ModeInfo).
-
-%-----------------------------------------------------------------------------%
-%
-% Modecheck generic calls.
-%
-
-:- pred modecheck_goal_generic_call(generic_call::in, list(prog_var)::in,
-    list(mer_mode)::in, hlds_goal_info::in, hlds_goal_expr::out,
-    mode_info::in, mode_info::out) is det.
-
-modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
-        !ModeInfo) :-
-    mode_checkpoint(enter, "generic_call", !ModeInfo),
-    mode_info_get_instmap(!.ModeInfo, InstMap0),
-
-    hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
-    CallId = mode_call_generic(GenericCallId),
-    mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
-    (
-        GenericCall = higher_order(PredVar, _, PredOrFunc, _),
-        modecheck_higher_order_call(PredOrFunc, PredVar,
-            Args0, Args, Modes, Det, ExtraGoals, !ModeInfo),
-        GoalExpr1 = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
-            Det),
-        AllArgs0 = [PredVar | Args0],
-        AllArgs = [PredVar | Args],
-        handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, AllArgs0, AllArgs,
-            InstMap0, GoalExpr, !ModeInfo)
-    ;
-        % Class method calls are added by polymorphism.m.
-        % XXX We should probably fill this in so that
-        % rerunning mode analysis works on code with typeclasses.
-        GenericCall = class_method(_, _, _, _),
-        unexpected($pred, "class_method_call")
-    ;
-        GenericCall = event_call(EventName),
-        mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-        module_info_get_event_set(ModuleInfo, EventSet),
-        EventSpecMap = EventSet ^ event_set_spec_map,
-        ( if event_arg_modes(EventSpecMap, EventName, ModesPrime) then
-            Modes = ModesPrime
-        else
-            % The typechecker should have caught the unknown event,
-            % and not let compilation of this predicate proceed any further.
-            unexpected($pred, "unknown event")
-        ),
-        modecheck_event_call(Modes, Args0, Args, !ModeInfo),
-        GoalExpr = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
-            detism_det)
-    ;
-        GenericCall = cast(CastType),
-        ( CastType = unsafe_type_cast
-        ; CastType = unsafe_type_inst_cast
-        ; CastType = equiv_type_cast
-        ; CastType = exists_cast
-        ),
-        ( if
-            goal_info_has_feature(GoalInfo0, feature_keep_constant_binding),
-            mode_info_get_instmap(!.ModeInfo, InstMap),
-            ( if
-                Args0 = [Arg1Prime, _Arg2Prime],
-                Modes0 = [Mode1Prime, Mode2Prime]
-            then
-                Arg1 = Arg1Prime,
-                Mode1 = Mode1Prime,
-                Mode2 = Mode2Prime
-            else
-                unexpected($pred, "bad cast")
-            ),
-            Mode1 = in_mode,
-            Mode2 = out_mode,
-            instmap_lookup_var(InstMap, Arg1, Inst1),
-            Inst1 = bound(Unique, _, [bound_functor(ConsId, [])]),
-            mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-            get_cons_repn_defn(ModuleInfo, ConsId, ConsRepn),
-            ConsRepn ^ cr_tag = shared_local_tag_no_args(_, LocalSectag, _)
-        then
-            LocalSectag = local_sectag(_, PrimSec, _),
-            SectagWholeWord = uint.cast_to_int(PrimSec),
-            SectagConsId = some_int_const(int_const(SectagWholeWord)),
-            BoundFunctor = bound_functor(SectagConsId, []),
-            BoundInst = bound(Unique, inst_test_results_fgtc, [BoundFunctor]),
-            NewMode2 = from_to_mode(free, BoundInst),
-            Modes = [Mode1, NewMode2]
-        else
-            Modes = Modes0
-        ),
-        modecheck_builtin_cast(Modes, Args0, Args, Det, ExtraGoals, !ModeInfo),
-        GoalExpr1 = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
-            Det),
-        handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, Args0, Args,
-            InstMap0, GoalExpr, !ModeInfo)
-    ;
-        GenericCall = cast(subtype_coerce),
-        modecheck_coerce(Args0, Args, Modes0, Modes, Det, ExtraGoals,
-            !ModeInfo),
-        GoalExpr1 = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
-            Det),
-        handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, Args0, Args,
-            InstMap0, GoalExpr, !ModeInfo)
-    ),
-
-    mode_info_unset_call_context(!ModeInfo),
-    mode_checkpoint(exit, "generic_call", !ModeInfo).
-
-%-----------------------------------------------------------------------------%
-%
-% Modecheck unifications. Most of the work is in modecheck_unify.m.
-%
-
-:- pred modecheck_goal_unify(prog_var::in, unify_rhs::in,
-    unification::in, unify_context::in, hlds_goal_info::in,
-    hlds_goal_expr::out, mode_info::in, mode_info::out) is det.
-
-modecheck_goal_unify(LHS0, RHS0, Unification0, UnifyContext, GoalInfo0,
-        GoalExpr, !ModeInfo) :-
-    mode_checkpoint(enter, "unify", !ModeInfo),
-    mode_info_set_call_context(call_context_unify(UnifyContext), !ModeInfo),
-    modecheck_unification(LHS0, RHS0, Unification0, UnifyContext, GoalInfo0,
-        GoalExpr, !ModeInfo),
-    mode_info_unset_call_context(!ModeInfo),
-    mode_checkpoint(exit, "unify", !ModeInfo).
-
-%-----------------------------------------------------------------------------%
-%
-% Modecheck foreign_proc goals.
-%
-
-:- pred modecheck_goal_call_foreign_proc(pragma_foreign_proc_attributes::in,
-    pred_id::in, proc_id::in, list(foreign_arg)::in, list(foreign_arg)::in,
-    maybe(trace_expr(trace_runtime))::in, pragma_foreign_proc_impl::in,
-    hlds_goal_info::in, hlds_goal_expr::out,
-    mode_info::in, mode_info::out) is det.
-
-modecheck_goal_call_foreign_proc(Attributes, PredId, ProcId0, Args0, ExtraArgs,
-        MaybeTraceRuntimeCond, PragmaCode, GoalInfo0, GoalExpr, !ModeInfo) :-
-    % To modecheck a foreign_proc, we just modecheck the proc for
-    % which it is the goal.
-
-    mode_checkpoint(enter, "pragma_foreign_code", !ModeInfo),
-    mode_info_get_instmap(!.ModeInfo, InstMap0),
-    DeterminismKnown = no,
-    mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
-        !ModeInfo),
-    ArgVars0 = list.map(foreign_arg_var, Args0),
-    modecheck_call_pred(PredId, DeterminismKnown, ProcId0, ProcId,
-        ArgVars0, ArgVars, GoalInfo0, ExtraGoals, !ModeInfo),
-
-    % zs: The assignment to Pragma looks wrong: instead of Args0,
-    % I think we should use Args after the following call:
-    % replace_foreign_arg_vars(Args0, ArgVars, Args)
-    % or is there some reason why Args0 and Args would be the same?
-    Pragma = call_foreign_proc(Attributes, PredId, ProcId, Args0, ExtraArgs,
-        MaybeTraceRuntimeCond, PragmaCode),
-    handle_extra_goals(Pragma, ExtraGoals, GoalInfo0, ArgVars0, ArgVars,
-        InstMap0, GoalExpr, !ModeInfo),
-
-    mode_info_unset_call_context(!ModeInfo),
-    mode_checkpoint(exit, "pragma_foreign_code", !ModeInfo).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Modecheck shorthand goals.
 %
@@ -1538,7 +1532,7 @@ modecheck_orelse_list(MultiModeErrorMap0, [Goal0 | Goals0], [Goal | Goals],
     modecheck_orelse_list(MultiModeErrorMap0, Goals0, Goals,
         InstMaps, !ModeInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Service predicates dealing with solver variables.
 %
@@ -1570,6 +1564,6 @@ check_no_inst_any_vars(NegCtxtDesc, [NonLocal | NonLocals], InstMap0, InstMap,
             !ModeInfo)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module check_hlds.modecheck_goal.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
