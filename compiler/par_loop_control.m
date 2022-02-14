@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
 % Copyright (C) 2015, 2017 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: par_loop_control.m.
 % Author: pbone.
@@ -80,7 +80,7 @@
 % 4. Multiple parallel conjunctions may exist within the body, but due to rule
 %    3, only one of them may contain a recursive call.
 %
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.par_loop_control.
 :- interface.
@@ -88,13 +88,13 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_par_loop_control_module(module_info::in, module_info::out)
     is det.
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -114,6 +114,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
+:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -133,7 +134,7 @@
 :- import_module string.
 :- import_module varset.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 maybe_par_loop_control_module(!ModuleInfo) :-
     module_info_rebuild_dependency_info(!ModuleInfo, DepInfo),
@@ -175,7 +176,7 @@ maybe_par_loop_control_proc(DepInfo, PredProcId, !ProcInfo, !ModuleInfo) :-
         true
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Loop control is applicable if the procedure contains a parallel
     % conjunction with exactly two conjuncts whose right conjunct contains a
@@ -214,7 +215,7 @@ proc_is_self_recursive(DepInfo, PredProcId) :-
     digraph.tc(DepGraphWOSelfEdge, TCDepGraphWOSelfEdge),
     not digraph.is_edge(TCDepGraphWOSelfEdge, SelfKey, SelfKey).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type seen_usable_recursion
     --->    have_not_seen_recursive_call
@@ -564,7 +565,7 @@ merge_loop_control_par_conjs_between_branches(
         Seen = seen_usable_recursion_in_par_conj(GoalIds)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred create_inner_proc(list(goal_id)::in, pred_proc_id::in, proc_info::in,
     containing_goal_map::in, pred_proc_id::out, sym_name::out,
@@ -636,8 +637,8 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
 
         Info = loop_control_info(!.ModuleInfo, LCVar, OldPredProcId,
             PredProcId, PredSymName, PreserveTailRecursion, WaitFreeSlotProc,
-            lc_wait_free_slot_name, JoinAndTerminateProc,
-            lc_join_and_terminate_name),
+            lc_wait_free_slot_sym_name, JoinAndTerminateProc,
+            lc_join_and_terminate_sym_name),
         goal_loop_control_all_recursive_paths(Info, RecParConjIds,
             ContainingGoalMap, !Body, !VarSet, !VarTypes),
 
@@ -1066,7 +1067,7 @@ combine_use_parent_stack(lc_create_frame_on_child_stack,
 combine_use_parent_stack(lc_create_frame_on_child_stack,
     lc_create_frame_on_child_stack, lc_create_frame_on_child_stack).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This predicate does two things:
     %
@@ -1243,7 +1244,7 @@ case_update_non_loop_control_paths(Info, RecParConjIds, !Case,
         !Case ^ case_goal := !.Goal
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred create_get_free_slot_goal(loop_control_info::in, prog_var::out,
     hlds_goal::out, prog_varset::in, prog_varset::out,
@@ -1263,7 +1264,7 @@ create_get_free_slot_goal(Info, LCSVar, Goal, !VarSet, !VarTypes) :-
     GoalInfo = impure_init_goal_info(NonLocals, InstmapDelta, detism_det),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred create_create_loop_control_goal(module_info::in, prog_var::in,
     prog_var::out, hlds_goal::out, prog_varset::in, prog_varset::out,
@@ -1275,12 +1276,12 @@ create_create_loop_control_goal(ModuleInfo, NumContextsVar, LCVar, Goal,
     add_var_type(LCVar, loop_control_var_type, !VarTypes),
     get_lc_create_proc(ModuleInfo, LCCreatePredId, LCCreateProcId),
     GoalExpr = plain_call(LCCreatePredId, LCCreateProcId,
-        [NumContextsVar, LCVar], not_builtin, no, lc_create_name),
+        [NumContextsVar, LCVar], not_builtin, no, lc_create_sym_name),
     goal_info_init(set_of_var.list_to_set([NumContextsVar, LCVar]),
         instmap_delta_bind_var(LCVar), detism_det, purity_pure, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred create_join_and_terminate_goal(loop_control_info::in, prog_var::in,
     prog_var::in, hlds_goal::out) is det.
@@ -1296,7 +1297,7 @@ create_join_and_terminate_goal(Info, LCVar, LCSVar, Goal) :-
     GoalInfo = impure_init_goal_info(NonLocals, InstmapDelta, detism_det),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred create_finish_loop_control_goal(loop_control_info::in, hlds_goal::out)
     is det.
@@ -1306,13 +1307,13 @@ create_finish_loop_control_goal(Info, Goal) :-
     LCVar = Info ^ lci_lc_var,
 
     GoalExpr = plain_call(PredId, ProcId, [LCVar], not_builtin, maybe.no,
-        lc_finish_loop_control_name),
+        lc_finish_loop_control_sym_name),
     NonLocals = set_of_var.list_to_set([LCVar]),
     instmap_delta_init_reachable(InstmapDelta),
     GoalInfo = impure_init_goal_info(NonLocals, InstmapDelta, detism_det),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type fixup_goal_info
     --->    fixup_goal_info
@@ -1337,7 +1338,7 @@ fixup_goal_info(Info, Goal0, Goal) :-
         Goal = hlds_goal(GoalExpr, !.GoalInfo)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred update_outer_proc(pred_proc_id::in, pred_proc_id::in, sym_name::in,
     module_info::in, proc_info::in, proc_info::out) is det.
@@ -1379,10 +1380,11 @@ update_outer_proc(PredProcId, InnerPredProcId, InnerPredName, ModuleInfo,
         goal_info_init(set_of_var.list_to_set([NumContextsVar]),
             instmap_delta_bind_var(NumContextsVar),
             detism_det, purity_pure, GetNumContextsGoalInfo),
-        GetNumContextsGoal = hlds_goal(plain_call(LCDefaultNumContextsPredId,
-                LCDefaultNumContextsProcId, [NumContextsVar],
-                not_builtin, no, lc_default_num_contexts_name),
-            GetNumContextsGoalInfo),
+        GetNumContextsGoalExpr = plain_call(LCDefaultNumContextsPredId,
+            LCDefaultNumContextsProcId, [NumContextsVar],
+            not_builtin, no, lc_default_num_contexts_sym_name),
+        GetNumContextsGoal =
+            hlds_goal(GetNumContextsGoalExpr, GetNumContextsGoalInfo),
 
         % Create the call to lc_create
         create_create_loop_control_goal(ModuleInfo, NumContextsVar, LCVar,
@@ -1455,113 +1457,114 @@ remap_instmap(Remap, OldInstmapDelta, !:InstmapDelta) :-
             instmap_delta_set_var(Var, Inst, IMD0, IMD)
         ), VarInsts, !InstmapDelta).
 
-%--------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func loop_control_var_type = mer_type.
 
 loop_control_var_type = defined_type(Sym, [], kind_star) :-
-    Sym = qualified(par_builtin_module_sym, "loop_control").
+    Sym = qualified(mercury_par_builtin_module, "loop_control").
 
 :- func loop_control_slot_var_type = mer_type.
 
 loop_control_slot_var_type = builtin_type(builtin_type_int(int_type_int)).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- func lc_wait_free_slot_name = sym_name.
+:- func lc_wait_free_slot_name = string.
 
-lc_wait_free_slot_name =
-    qualified(par_builtin_module_sym, lc_wait_free_slot_name_unqualified).
+lc_wait_free_slot_name = "lc_wait_free_slot".
 
-:- func lc_wait_free_slot_name_unqualified = string.
+:- func lc_wait_free_slot_sym_name = sym_name.
 
-lc_wait_free_slot_name_unqualified = "lc_wait_free_slot".
+lc_wait_free_slot_sym_name =
+    qualified(mercury_par_builtin_module, lc_wait_free_slot_name).
 
 :- pred get_lc_wait_free_slot_proc(module_info::in, pred_proc_id::out) is det.
 
 get_lc_wait_free_slot_proc(ModuleInfo, proc(PredId, ProcId)) :-
-    lookup_lc_pred_proc(ModuleInfo, lc_wait_free_slot_name_unqualified, 2,
+    lookup_lc_pred_proc(ModuleInfo, lc_wait_free_slot_name, 2,
         PredId, ProcId).
 
-:- func lc_default_num_contexts_name_unqualified = string.
+%---------------------%
 
-lc_default_num_contexts_name_unqualified = "lc_default_num_contexts".
+:- func lc_default_num_contexts_name = string.
 
-:- func lc_default_num_contexts_name = sym_name.
+lc_default_num_contexts_name = "lc_default_num_contexts".
 
-lc_default_num_contexts_name =
-    qualified(par_builtin_module_sym,
-        lc_default_num_contexts_name_unqualified).
+:- func lc_default_num_contexts_sym_name = sym_name.
+
+lc_default_num_contexts_sym_name =
+    qualified(mercury_par_builtin_module, lc_default_num_contexts_name).
 
 :- pred get_lc_default_num_contexts_proc(module_info::in, pred_id::out,
     proc_id::out) is det.
 
 get_lc_default_num_contexts_proc(ModuleInfo, PredId, ProcId) :-
-    lookup_lc_pred_proc(ModuleInfo, lc_default_num_contexts_name_unqualified,
-        1, PredId, ProcId).
+    lookup_lc_pred_proc(ModuleInfo, lc_default_num_contexts_name, 1,
+        PredId, ProcId).
 
-:- func lc_create_name_unqualified = string.
+%---------------------%
 
-lc_create_name_unqualified = "lc_create".
+:- func lc_create_name = string.
 
-:- func lc_create_name = sym_name.
+lc_create_name = "lc_create".
 
-lc_create_name =
-    qualified(par_builtin_module_sym, lc_create_name_unqualified).
+:- func lc_create_sym_name = sym_name.
+
+lc_create_sym_name =
+    qualified(mercury_par_builtin_module, lc_create_name).
 
 :- pred get_lc_create_proc(module_info::in, pred_id::out, proc_id::out) is det.
 
 get_lc_create_proc(ModuleInfo, PredId, ProcId) :-
-    lookup_lc_pred_proc(ModuleInfo, lc_create_name_unqualified, 2, PredId,
-        ProcId).
+    lookup_lc_pred_proc(ModuleInfo, lc_create_name, 2,
+        PredId, ProcId).
 
-:- func lc_join_and_terminate_name_unqualified = string.
+%---------------------%
 
-lc_join_and_terminate_name_unqualified = "lc_join_and_terminate".
+:- func lc_join_and_terminate_name = string.
 
-:- func lc_join_and_terminate_name = sym_name.
+lc_join_and_terminate_name = "lc_join_and_terminate".
 
-lc_join_and_terminate_name =
-    qualified(par_builtin_module_sym, lc_join_and_terminate_name_unqualified).
+:- func lc_join_and_terminate_sym_name = sym_name.
+
+lc_join_and_terminate_sym_name =
+    qualified(mercury_par_builtin_module, lc_join_and_terminate_name).
 
 :- pred get_lc_join_and_terminate_proc(module_info::in, pred_proc_id::out)
     is det.
 
 get_lc_join_and_terminate_proc(ModuleInfo, proc(PredId, ProcId)) :-
-    lookup_lc_pred_proc(ModuleInfo, lc_join_and_terminate_name_unqualified, 2,
+    lookup_lc_pred_proc(ModuleInfo, lc_join_and_terminate_name, 2,
         PredId, ProcId).
 
-:- func lc_finish_loop_control_name_unqualified = string.
+%---------------------%
 
-lc_finish_loop_control_name_unqualified = "lc_finish".
+:- func lc_finish_loop_control_name = string.
 
-:- func lc_finish_loop_control_name = sym_name.
+lc_finish_loop_control_name = "lc_finish".
 
-lc_finish_loop_control_name =
-    qualified(par_builtin_module_sym, lc_finish_loop_control_name_unqualified).
+:- func lc_finish_loop_control_sym_name = sym_name.
+
+lc_finish_loop_control_sym_name =
+    qualified(mercury_par_builtin_module, lc_finish_loop_control_name).
 
 :- pred get_lc_finish_loop_control_proc(module_info::in,
     pred_id::out, proc_id::out) is det.
 
 get_lc_finish_loop_control_proc(ModuleInfo, PredId, ProcId) :-
-    lookup_lc_pred_proc(ModuleInfo, lc_finish_loop_control_name_unqualified, 1,
+    lookup_lc_pred_proc(ModuleInfo, lc_finish_loop_control_name, 1,
         PredId, ProcId).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred lookup_lc_pred_proc(module_info::in, string::in, arity::in,
     pred_id::out, proc_id::out) is det.
 
-lookup_lc_pred_proc(ModuleInfo, Sym, Arity, PredId, ProcId) :-
-    lookup_builtin_pred_proc_id(ModuleInfo, par_builtin_module_sym,
-        Sym, pf_predicate, Arity, only_mode, PredId, ProcId).
+lookup_lc_pred_proc(ModuleInfo, Name, Arity, PredId, ProcId) :-
+    lookup_builtin_pred_proc_id(ModuleInfo, mercury_par_builtin_module,
+        Name, pf_predicate, Arity, only_mode, PredId, ProcId).
 
-%----------------------------------------------------------------------------%
-
-:- func par_builtin_module_sym = sym_name.
-
-par_builtin_module_sym = unqualified("par_builtin").
-
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.par_loop_control.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
