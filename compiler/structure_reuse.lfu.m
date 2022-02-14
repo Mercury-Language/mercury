@@ -281,16 +281,11 @@ add_vars_to_lfu_in_goal_expr(ForceInUse, Expr0, Expr) :-
         add_vars_to_lfu_in_goal(ForceInUse, Goal0, Goal),
         Expr = scope(Reason, Goal)
     ;
-        Expr0 = generic_call(_, _, _, _, _),
-        Expr = Expr0
-    ;
-        Expr0 = plain_call(_, _, _, _, _, _),
-        Expr = Expr0
-    ;
-        Expr0 = unify(_, _, _, _, _),
-        Expr = Expr0
-    ;
-        Expr0 = call_foreign_proc(_, _, _, _, _, _, _),
+        ( Expr0 = generic_call(_, _, _, _, _)
+        ; Expr0 = plain_call(_, _, _, _, _, _)
+        ; Expr0 = unify(_, _, _, _, _)
+        ; Expr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
         Expr = Expr0
     ;
         Expr0 = shorthand(Shorthand0),

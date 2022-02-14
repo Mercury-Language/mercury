@@ -10,15 +10,17 @@
 % File: dep_par_conj.m.
 % Author: wangp.
 %
-% This module implements dependent parallel conjunction using a HLDS->HLDS
-% transformation. The transformation has two main components: a synchronization
-% transformation and a specialization transformation.
+% This module implements dependent parallel conjunction using HLDS->HLDS
+% transformations. The overall process has two main components:
+%
+% - a synchronization transformation, and
+% - a specialization transformation.
 %
 % 1 The synchronization transformation ensures that consumers do not access
 %   shared variables before producers generate them. We do this by adding calls
 %   to the synchronisation primitives defined in library/par_builtin.m.
 %   In general, we make producers signal the availability of shared variables
-%   as soon as possible and we make consumers wait for the shared variables
+%   as soon as possible, and we make consumers wait for the shared variables
 %   as late as possible.
 %
 % 2 The specialization transformation spots the need for and creates new
@@ -96,17 +98,13 @@
 %
 % - The predicates and functions in this module whose names start with the
 %   prefixes "sync_dep_par_conjs", "insert_wait_in" and "insert_signal_in"
-%   implement the synchronization transformation
+%   implement the synchronization transformation.
 %
 % - Those whose names start with "find_specialization_requests" or include
 %   "specialization" implement part (a) of the specialization transformation.
 %
 % - Those whose names start with "add_requested_specialized" implement part (b)
 %   of the specialization transformation.
-%
-% TODO:
-% - Reconsider when this pass is run; in particular par_builtin primitives
-%   ought to be inlined.
 %
 %---------------------------------------------------------------------------%
 

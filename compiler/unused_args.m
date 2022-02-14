@@ -749,10 +749,11 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
         % in here should be kept in sync with the treatment of foreign_procs
         % in unused_args_fixup_goal_expr: any variable considered unused here
         % should be renamed apart in unused_args_fixup_goal_expr.
-        ArgIsUsed = (pred(Arg::in, Var::out) is semidet :-
-            Arg = foreign_arg(Var, MaybeNameAndMode, _, _),
-            MaybeNameAndMode = yes(_)
-        ),
+        ArgIsUsed =
+            ( pred(Arg::in, Var::out) is semidet :-
+                Arg = foreign_arg(Var, MaybeNameAndMode, _, _),
+                MaybeNameAndMode = yes(_)
+            ),
         list.filter_map(ArgIsUsed, Args ++ ExtraArgs, UsedVars),
         set_list_vars_used(UsedVars, !VarDep)
     ;
@@ -1100,11 +1101,12 @@ unused_args_create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
         FuncInfo = unused_args_func_info(PredArity),
         Answer = unused_args_answer(UnusedArgs),
 
-        FilterUnused = (pred(VersionAnswer::in) is semidet :-
-            VersionAnswer \= Answer,
-            VersionAnswer \= unused_args_answer([]),
-            more_precise_than(FuncInfo, Answer, VersionAnswer)
-        ),
+        FilterUnused =
+            ( pred(VersionAnswer::in) is semidet :-
+                VersionAnswer \= Answer,
+                VersionAnswer \= unused_args_answer([]),
+                more_precise_than(FuncInfo, Answer, VersionAnswer)
+            ),
         IntermodOldArgLists = list.map(get_unused_args,
             list.filter(FilterUnused, IntermodOldAnswers))
     ;

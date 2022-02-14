@@ -377,7 +377,9 @@ process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo, !Goal) :-
             true
         )
     ;
-        GoalExpr0 = generic_call(_, _, _, _, _)
+        ( GoalExpr0 = generic_call(_, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        )
     ;
         GoalExpr0 = unify(_, _, _, Unification0, _),
         ReuseDescription0 = goal_info_get_reuse(GoalInfo0),
@@ -438,9 +440,6 @@ process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo, !Goal) :-
             ElseGoal0, ElseGoal),
         GoalExpr = if_then_else(Vars, IfGoal, ThenGoal, ElseGoal),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
-    ;
-        GoalExpr0 = call_foreign_proc(_Attrs, _ForeignPredId, _ForeignProcId,
-            _Args, _ExtraArgs, _MaybeTraceRuntimeCond, _Impl)
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.

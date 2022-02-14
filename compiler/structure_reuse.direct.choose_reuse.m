@@ -853,11 +853,10 @@ find_match_in_goal_2(Background, Goal, !Match) :-
             unexpected($pred, "complicated unify")
         )
     ;
-        GoalExpr = plain_call(_, _, _, _, _, _)
-    ;
-        GoalExpr = generic_call( _, _, _, _, _)
-    ;
-        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ( GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call( _, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        )
     ;
         GoalExpr = conj(_, Goals),
         find_best_match_in_conjunction(Background, Goals, !Match)
@@ -1195,15 +1194,10 @@ annotate_reuses_in_goal(Background, Match, !Goal) :-
         annotate_reuse_for_unification(Background, Match, Unification,
             GoalInfo0, GoalInfo)
     ;
-        GoalExpr0 = plain_call(_, _, _, _, _, _),
-        GoalExpr = GoalExpr0,
-        GoalInfo = GoalInfo0
-    ;
-        GoalExpr0 = generic_call( _, _, _, _, _),
-        GoalExpr = GoalExpr0,
-        GoalInfo = GoalInfo0
-    ;
-        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
+        ( GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call( _, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
         GoalExpr = GoalExpr0,
         GoalInfo = GoalInfo0
     ;
@@ -1455,15 +1449,10 @@ check_for_cell_caching_2(DeadCellTable, !Goal) :-
             Unification0, Unification, GoalInfo0, GoalInfo),
         GoalExpr = unify(A, B, C, Unification, D)
     ;
-        GoalExpr0 = plain_call(_, _, _, _, _, _),
-        GoalExpr = GoalExpr0,
-        GoalInfo = GoalInfo0
-    ;
-        GoalExpr0 = generic_call( _, _, _, _, _),
-        GoalExpr = GoalExpr0,
-        GoalInfo = GoalInfo0
-    ;
-        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
+        ( GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call( _, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
         GoalExpr = GoalExpr0,
         GoalInfo = GoalInfo0
     ;

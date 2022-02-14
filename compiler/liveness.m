@@ -1240,13 +1240,11 @@ var_is_named(VarSet, Var) :-
 
 delay_death_goal_expr(!GoalExpr, !GoalInfo, !BornVars, !DelayedDead, VarSet) :-
     (
-        !.GoalExpr = plain_call(_, _, _, _, _, _)
-    ;
-        !.GoalExpr = generic_call(_, _, _, _, _)
-    ;
-        !.GoalExpr = unify(_, _, _, _, _)
-    ;
-        !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ( !.GoalExpr = unify(_, _, _, _, _)
+        ; !.GoalExpr = plain_call(_, _, _, _, _, _)
+        ; !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ; !.GoalExpr = generic_call(_, _, _, _, _)
+        )
     ;
         !.GoalExpr = conj(ConjType, Goals0),
         (

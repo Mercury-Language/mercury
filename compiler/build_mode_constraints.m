@@ -657,7 +657,9 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         CallArgs = list.map(foreign_arg_var, ForeignArgs),
         module_info_pred_proc_info(ModuleInfo, CalledPred, ProcId, _,
             ProcInfo),
-        ( if proc_info_get_maybe_declared_argmodes(ProcInfo, yes(_OrigDecl)) then
+        ( if
+            proc_info_get_maybe_declared_argmodes(ProcInfo, yes(_OrigDecl))
+        then
             proc_info_get_argmodes(ProcInfo, Decl),
 
             % This pred should strip the disj(conj()) for the single

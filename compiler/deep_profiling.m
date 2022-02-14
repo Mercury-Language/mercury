@@ -1071,10 +1071,13 @@ deep_prof_transform_goal(Goal0, Goal, AddedImpurity, !DeepInfo) :-
         )
     ;
         GoalExpr0 = call_foreign_proc(Attrs, _, _, _, _, _, _),
-        ( if get_may_call_mercury(Attrs) = proc_may_call_mercury then
+        MayCallMercury = get_may_call_mercury(Attrs),
+        (
+            MayCallMercury = proc_may_call_mercury,
             deep_prof_wrap_foreign_code(Goal1, Goal, !DeepInfo),
             AddedImpurity = yes
-        else
+        ;
+            MayCallMercury = proc_will_not_call_mercury,
             Goal = Goal1,
             AddedImpurity = no
         )
