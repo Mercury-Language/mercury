@@ -442,13 +442,13 @@ gen_store_ticket(TicketVar, Context, SaveTicketGoal, Info) :-
             Info ^ trail_module_info, Context, SaveTicketGoal)
     ;
         GenerateInline = gen_trail_ops_inline,
-        Args = [foreign_arg(TicketVar,
+        Arg1 = foreign_arg(TicketVar,
             yes(foreign_arg_name_mode("Ticket", out_mode)),
-            ticket_type, bp_native_if_possible)],
+            ticket_type, bp_native_if_possible),
         ForeignCode = "MR_store_ticket(Ticket);",
-        trail_generate_foreign_proc("store_ticket", purity_impure,
-            instmap_delta_bind_var(TicketVar), Info ^ trail_module_info,
-            Context, Args, ForeignCode, SaveTicketGoal)
+        trail_generate_foreign_proc(Info, "store_ticket",
+            [Arg1], instmap_delta_bind_var(TicketVar),
+            purity_impure, Context, ForeignCode, SaveTicketGoal)
     ).
 
 :- pred gen_reset_ticket_undo(prog_var::in, prog_context::in, hlds_goal::out,
@@ -463,13 +463,13 @@ gen_reset_ticket_undo(TicketVar, Context, ResetTicketGoal, Info) :-
             Context, ResetTicketGoal)
     ;
         GenerateInline = gen_trail_ops_inline,
-        Args = [foreign_arg(TicketVar,
+        Arg1 = foreign_arg(TicketVar,
             yes(foreign_arg_name_mode("Ticket", in_mode)),
-            ticket_type, bp_native_if_possible)],
+            ticket_type, bp_native_if_possible),
         ForeignCode = "MR_reset_ticket(Ticket, MR_undo);",
-        trail_generate_foreign_proc("reset_ticket_undo", purity_impure,
-            instmap_delta_bind_no_var, Info ^ trail_module_info,
-            Context, Args, ForeignCode, ResetTicketGoal)
+        trail_generate_foreign_proc(Info, "reset_ticket_undo",
+            [Arg1], instmap_delta_bind_no_var,
+            purity_impure, Context, ForeignCode, ResetTicketGoal)
     ).
 
 :- pred gen_reset_ticket_solve(prog_var::in, prog_context::in, hlds_goal::out,
@@ -484,13 +484,13 @@ gen_reset_ticket_solve(TicketVar, Context, ResetTicketGoal, Info) :-
             Context, ResetTicketGoal)
     ;
         GenerateInline = gen_trail_ops_inline,
-        Args = [foreign_arg(TicketVar,
+        Arg1 = foreign_arg(TicketVar,
             yes(foreign_arg_name_mode("Ticket", in_mode)),
-            ticket_type, bp_native_if_possible)],
+            ticket_type, bp_native_if_possible),
         ForeignCode = "MR_reset_ticket(Ticket, MR_solve);",
-        trail_generate_foreign_proc("reset_ticket_solve", purity_impure,
-            instmap_delta_bind_no_var, Info ^ trail_module_info,
-            Context, Args, ForeignCode, ResetTicketGoal)
+        trail_generate_foreign_proc(Info, "reset_ticket_solve",
+            [Arg1], instmap_delta_bind_no_var,
+            purity_impure, Context, ForeignCode, ResetTicketGoal)
     ).
 
 :- pred gen_reset_ticket_commit(prog_var::in, prog_context::in, hlds_goal::out,
@@ -505,13 +505,13 @@ gen_reset_ticket_commit(TicketVar, Context, ResetTicketGoal, Info) :-
             Context, ResetTicketGoal)
     ;
         GenerateInline = gen_trail_ops_inline,
-        Args = [foreign_arg(TicketVar,
+        Arg1 = foreign_arg(TicketVar,
             yes(foreign_arg_name_mode("Ticket", in_mode)),
-            ticket_type, bp_native_if_possible)],
+            ticket_type, bp_native_if_possible),
         ForeignCode = "MR_reset_ticket(Ticket, MR_commit);",
-        trail_generate_foreign_proc("reset_ticket_commit", purity_impure,
-            instmap_delta_bind_no_var, Info ^ trail_module_info,
-            Context, Args, ForeignCode, ResetTicketGoal)
+        trail_generate_foreign_proc(Info, "reset_ticket_commit",
+            [Arg1], instmap_delta_bind_no_var,
+            purity_impure, Context, ForeignCode, ResetTicketGoal)
     ).
 
 :- pred gen_prune_ticket(prog_context::in, hlds_goal::out,
@@ -526,11 +526,10 @@ gen_prune_ticket(Context, PruneTicketGoal, Info) :-
             Context, PruneTicketGoal)
     ;
         GenerateInline = gen_trail_ops_inline,
-        Args = [],
         ForeignCode = "MR_prune_ticket();",
-        trail_generate_foreign_proc("prune_ticket", purity_impure,
-            instmap_delta_bind_no_var, Info ^ trail_module_info,
-            Context, Args, ForeignCode, PruneTicketGoal)
+        trail_generate_foreign_proc(Info, "prune_ticket",
+            [], instmap_delta_bind_no_var,
+            purity_impure, Context, ForeignCode, PruneTicketGoal)
     ).
 
 :- pred gen_discard_ticket(prog_context::in, hlds_goal::out,
@@ -545,11 +544,10 @@ gen_discard_ticket(Context, DiscardTicketGoal, Info) :-
             Context, DiscardTicketGoal)
     ;
         GenerateInline = gen_trail_ops_inline,
-        Args = [],
         ForeignCode = "MR_discard_ticket();",
-        trail_generate_foreign_proc("discard_ticket", purity_impure,
-            instmap_delta_bind_no_var, Info ^ trail_module_info,
-            Context, Args, ForeignCode, DiscardTicketGoal)
+        trail_generate_foreign_proc(Info, "discard_ticket",
+            [], instmap_delta_bind_no_var,
+            purity_impure, Context, ForeignCode, DiscardTicketGoal)
     ).
 
 :- pred gen_mark_ticket_stack(prog_var::in, prog_context::in, hlds_goal::out,
@@ -566,13 +564,13 @@ gen_mark_ticket_stack(SavedTicketCounterVar, Context, MarkTicketStackGoal,
             Context, MarkTicketStackGoal)
     ;
         GenerateInline = gen_trail_ops_inline,
-        Args = [foreign_arg(SavedTicketCounterVar,
+        Arg1 = foreign_arg(SavedTicketCounterVar,
             yes(foreign_arg_name_mode("TicketCounter", out_mode)),
-            ticket_counter_type, bp_native_if_possible)],
+            ticket_counter_type, bp_native_if_possible),
         ForeignCode = "MR_mark_ticket_stack(TicketCounter);",
-        trail_generate_foreign_proc("mark_ticket_stack", purity_impure,
-            instmap_delta_bind_no_var, Info ^ trail_module_info,
-            Context, Args, ForeignCode, MarkTicketStackGoal)
+        trail_generate_foreign_proc(Info, "mark_ticket_stack",
+            [Arg1], instmap_delta_bind_no_var,
+            purity_impure, Context, ForeignCode, MarkTicketStackGoal)
     ).
 
 :- pred gen_prune_tickets_to(prog_var::in, prog_context::in, hlds_goal::out,
@@ -588,13 +586,13 @@ gen_prune_tickets_to(SavedTicketCounterVar, Context, PruneTicketsToGoal,
             Info ^ trail_module_info, Context, PruneTicketsToGoal)
     ;
         GenerateInline = gen_trail_ops_inline,
-        Args = [foreign_arg(SavedTicketCounterVar,
+        Arg1 = foreign_arg(SavedTicketCounterVar,
             yes(foreign_arg_name_mode("TicketCounter", in_mode)),
-            ticket_counter_type, bp_native_if_possible)],
+            ticket_counter_type, bp_native_if_possible),
         ForeignCode = "MR_prune_tickets_to(TicketCounter);",
-        trail_generate_foreign_proc("prune_tickets_to", purity_impure,
-            instmap_delta_bind_no_var, Info ^ trail_module_info,
-            Context, Args, ForeignCode, PruneTicketsToGoal)
+        trail_generate_foreign_proc(Info, "prune_tickets_to",
+            [Arg1], instmap_delta_bind_no_var,
+            purity_impure, Context, ForeignCode, PruneTicketsToGoal)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -646,12 +644,13 @@ trail_generate_call(PredName, Detism, Purity, Args, InstMapDelta, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred trail_generate_foreign_proc(string::in, purity::in,
-    instmap_delta::in, module_info::in, term.context::in,
-    list(foreign_arg)::in, string::in, hlds_goal::out) is det.
+:- pred trail_generate_foreign_proc(trail_ops_info::in, string::in,
+    list(foreign_arg)::in, instmap_delta::in, purity::in, term.context::in,
+    string::in, hlds_goal::out) is det.
 
-trail_generate_foreign_proc(PredName, Purity, InstMapDelta,
-        ModuleInfo, Context, Args, ForeignCode, ForeignProcGoal) :-
+trail_generate_foreign_proc(Info, PredName, Args, InstMapDelta,
+        Purity, Context, ForeignCode, ForeignProcGoal) :-
+    ModuleInfo = Info ^ trail_module_info,
     PrivateBuiltinModule = mercury_private_builtin_module,
     Detism = detism_det,
     some [!ForeignProcAttrs] (
