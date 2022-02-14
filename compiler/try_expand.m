@@ -196,7 +196,6 @@
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_data.
 
 :- import_module list.
 
@@ -204,13 +203,6 @@
 
 :- pred expand_try_goals_in_module(module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-
-    % try_expand_may_introduce_calls(PredName, Arity):
-    %
-    % Succeed if the transformation may introduce calls to a predicate
-    % or function with the given name in the exception module.
-    %
-:- pred try_expand_may_introduce_calls(string::in, arity::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -234,6 +226,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.set_of_var.
 
@@ -943,12 +936,6 @@ make_output_tuple_inst_cast(TmpTupleVar, TupleVar, TupleArgInsts,
             rhs_var(TmpTupleVar), term.context_init,
             umc_implicit("try_expand"), [], CastOrUnify)
     ).
-
-%-----------------------------------------------------------------------------%
-
-try_expand_may_introduce_calls("try", 2).
-try_expand_may_introduce_calls("try_io", 4).
-try_expand_may_introduce_calls("unreachable", 0).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.try_expand.

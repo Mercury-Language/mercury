@@ -123,16 +123,13 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.simplify.
-:- import_module check_hlds.simplify.simplify_proc.
-:- import_module check_hlds.try_expand.
 :- import_module hlds.const_struct.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.introduced_call_table.
 :- import_module hlds.make_goal.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
@@ -143,7 +140,6 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.prog_item.      % undesirable dependency
 :- import_module parse_tree.prog_data_pragma.
-:- import_module transform_hlds.direct_arg_in_out.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -1273,7 +1269,9 @@ warn_dead_proc(ModuleInfo, PredId, ProcId, Context) = Spec :-
 :- type pred_elim_info
     --->    pred_elim_info(
                 pred_elim_module_info   :: module_info,
-                pred_elim_queue         :: queue(pred_id), % preds to examine.
+
+                % preds to examine.
+                pred_elim_queue         :: queue(pred_id),
 
                 % preds examined.
                 pred_elim_examined      :: set_tree234(pred_id),
@@ -1286,24 +1284,23 @@ warn_dead_proc(ModuleInfo, PredId, ProcId, Context) = Spec :-
             ).
 
 dead_pred_elim(!ModuleInfo) :-
-    queue.init(Queue0),
-    map.init(Needed0),
+    map.init(NeededMap0),
     module_info_get_pragma_exported_procs(!.ModuleInfo, PragmaExports),
-    dead_proc_initialize_pragma_exports(cord.list(PragmaExports), Queue0, _,
-        Needed0, Needed1),
+    dead_proc_initialize_pragma_exports(cord.list(PragmaExports),
+        queue.init, _, NeededMap0, NeededMap1),
 
     % The goals for the class method procs need to be examined because
     % they contain calls to the actual method implementations.
 
     module_info_get_instance_table(!.ModuleInfo, Instances),
     module_info_get_class_table(!.ModuleInfo, Classes),
-    dead_proc_initialize_class_methods(Classes, Instances, Queue0, _,
-        Needed1, Needed),
-    map.keys(Needed, Entities),
-    queue.init(Queue1),
+    dead_proc_initialize_class_methods(Classes, Instances,
+        queue.init, _, NeededMap1, NeededMap),
+    % All entities in NeededMap should be mapped to not_eliminable.
+    map.keys(NeededMap, NeededEntities),
     NeededPreds0 = set_tree234.init,
-    list.foldl2(dead_pred_elim_add_entity, Entities, Queue1, Queue,
-        NeededPreds0, NeededPreds1),
+    list.foldl2(dead_pred_elim_add_entity, NeededEntities,
+        queue.init, Queue, NeededPreds0, NeededPreds1),
 
     module_info_get_type_table(!.ModuleInfo, TypeTable),
     get_all_type_ctor_defns(TypeTable, TypeCtorDefns),
@@ -1327,7 +1324,7 @@ dead_pred_elim(!ModuleInfo) :-
     module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo0),
     TypeSpecInfo0 = type_spec_info(TypeSpecProcs0, TypeSpecForcePreds0,
         SpecMap0, PragmaMap0),
-    set_tree234.to_sorted_list(NeededPreds3) = NeededPredList3,
+    NeededPredList3 = set_tree234.to_sorted_list(NeededPreds3),
     list.foldl(
         ( pred(NeededPred::in, AllPreds0::in, AllPreds::out) is det :-
             ( if map.search(SpecMap0, NeededPred, NewNeededPreds) then
@@ -1479,22 +1476,8 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
             ;
                 % Simplify can't introduce calls to this predicate or function
                 % if we eliminate it here.
-                is_std_lib_module_name(PredModule, PredModuleName),
-                (
-                    simplify_may_introduce_calls(PredModuleName, PredName,
-                        PredArity)
-                ;
-                    daio_may_introduce_calls(PredModuleName, PredName,
-                        PredArity)
-                )
-            ;
-                % Try-goal expansion may introduce calls to predicates in
-                % `exception'.
-                % XXX it should actually be calling predicates in a new
-                % exception_builtin module, which would obviate the need for
-                % this check
-                PredModule = mercury_exception_module,
-                try_expand_may_introduce_calls(PredName, PredArity)
+                is_std_lib_module_name(PredModule, PredModuleNameStr),
+                may_introduce_calls_to(PredModuleNameStr, PredName, PredArity)
             ;
                 % Don't attempt to eliminate local preds here, since we want
                 % to do semantic checking on those even if they aren't used.
@@ -1505,12 +1488,6 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
                 % Don't eliminate predicates declared in this module with a
                 % `:- pragma external_{pred/func}'.
                 module_info_get_name(ModuleInfo, PredModule)
-            ;
-                % Don't eliminate <foo>_init_any/1 predicates; modes.m may
-                % insert calls to them to initialize variables from inst `free'
-                % to inst `any'.
-                string.remove_suffix(PredName, "_init_any", _),
-                PredArity = 1
             ;
                 % Don't eliminate the clauses for promises.
                 pred_info_is_promise(PredInfo, _)

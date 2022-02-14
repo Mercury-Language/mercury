@@ -188,18 +188,6 @@
 :- pred do_direct_arg_in_out_transform_in_module(direct_arg_proc_map::in,
     module_info::in, module_info::out, list(error_spec)::out) is det.
 
-%---------------------%
-
-    % daio_may_introduce_calls(ModuleName, PredName, Arity):
-    %
-    % Succeed iff this module may introduce calls to the predicate
-    % PredName/Arity in the standard library module ModuleName.
-    % dead_proc_elim.m calls this predicate to avoid deleting
-    % predicates that are unused when it is first run, but which may have
-    % calls to them added later on, when this module is invoked.
-    %
-:- pred daio_may_introduce_calls(string::in, string::in, arity::in) is semidet.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -2205,13 +2193,6 @@ args_may_violate_prohibition_pieces(OfProcDescPieces, HeadArg, TailArgs)
             [words("Arguments")] ++ ArgsPieces ++ OfProcDescPieces ++
             [words("may violate this prohibition")]
     ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-daio_may_introduce_calls(ModuleName, PredName, Arity) :-
-    ModuleName = "private_builtin",
-    PredName = "partial_inst_copy", Arity = 2.
 
 %---------------------------------------------------------------------------%
 :- end_module transform_hlds.direct_arg_in_out.

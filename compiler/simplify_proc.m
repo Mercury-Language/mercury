@@ -28,7 +28,6 @@
 :- import_module hlds.instmap.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_data.
 
 :- import_module list.
 
@@ -74,15 +73,6 @@
     proc_info::in, proc_info::out, instmap::in, hlds_goal::in, hlds_goal::out,
     int::out) is det.
 
-    % simplify_may_introduce_calls(ModuleName, PredName, Arity):
-    %
-    % Succeed if the simplify package may introduce calls to a predicate
-    % or function with the given name. ModuleName should be a standard library
-    % module.
-    %
-:- pred simplify_may_introduce_calls(string::in, string::in, arity::in)
-    is semidet.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -106,6 +96,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module transform_hlds.
 :- import_module transform_hlds.direct_arg_in_out.
@@ -865,202 +856,6 @@ set_goal_contains_trace_features_in_cases([Case0 | Cases0], [Case | Cases],
     Case = case(MainConsId, OtherConsIds, Goal),
     !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
     set_goal_contains_trace_features_in_cases(Cases0, Cases, !ContainsTrace).
-
-%-----------------------------------------------------------------------------%
-
-simplify_may_introduce_calls(ModuleName, PredName, _Arity) :-
-    % For some reason, the compiler records the original arity of
-    % int.unchecked_quotient as 3, not 2. Don't check the arities
-    % until this is fixed.
-    (
-        ModuleName = "private_builtin",
-        ( PredName = "builtin_compound_eq"
-        ; PredName = "builtin_compound_lt"
-        ; PredName = "builtin_int16_gt"
-        ; PredName = "builtin_int16_lt"
-        ; PredName = "builtin_int32_gt"
-        ; PredName = "builtin_int32_lt"
-        ; PredName = "builtin_int64_gt"
-        ; PredName = "builtin_int64_lt"
-        ; PredName = "builtin_int8_gt"
-        ; PredName = "builtin_int8_lt"
-        ; PredName = "builtin_int_gt"
-        ; PredName = "builtin_int_lt"
-        ; PredName = "builtin_uint16_gt"
-        ; PredName = "builtin_uint16_lt"
-        ; PredName = "builtin_uint32_gt"
-        ; PredName = "builtin_uint32_lt"
-        ; PredName = "builtin_uint64_gt"
-        ; PredName = "builtin_uint64_lt"
-        ; PredName = "builtin_uint8_gt"
-        ; PredName = "builtin_uint8_lt"
-        ; PredName = "builtin_uint_gt"
-        ; PredName = "builtin_uint_lt"
-        ; PredName = "state_var_copy"
-        )
-    ;
-        ( ModuleName = "int"
-        ; ModuleName = "uint"
-        ; ModuleName = "int8"
-        ; ModuleName = "uint8"
-        ; ModuleName = "int16"
-        ; ModuleName = "uint16"
-        ; ModuleName = "int32"
-        ; ModuleName = "uint32"
-        ; ModuleName = "int64"
-        ; ModuleName = "uint64"
-        ),
-        ( PredName = "*"
-        ; PredName = "unchecked_quotient"
-        ; PredName = "unchecked_rem"
-        ; PredName = "unchecked_left_shift"
-        ; PredName = "unchecked_right_shift"
-        )
-    ;
-        ModuleName = "io",
-        PredName = "write_string"
-    ;
-        ModuleName = "string",
-        ( PredName = "int_to_string"
-        ; PredName = "char_to_string"
-        ; PredName = "float_to_string"
-        ; PredName = "++"
-        )
-    ;
-        ModuleName = "string.format",
-        ( PredName = "format_char_component_nowidth"
-        ; PredName = "format_char_component_width"
-        ; PredName = "format_string_component_nowidth_noprec"
-        ; PredName = "format_string_component_nowidth_prec"
-        ; PredName = "format_string_component_width_noprec"
-        ; PredName = "format_string_component_width_prec"
-        ; PredName = "format_signed_int_component_nowidth_noprec"
-        ; PredName = "format_signed_int_component_nowidth_prec"
-        ; PredName = "format_signed_int_component_width_noprec"
-        ; PredName = "format_signed_int_component_width_prec"
-        ; PredName = "format_unsigned_int_component_nowidth_noprec"
-        ; PredName = "format_unsigned_int_component_nowidth_prec"
-        ; PredName = "format_unsigned_int_component_width_noprec"
-        ; PredName = "format_unsigned_int_component_width_prec"
-        ; PredName = "format_signed_int64_component_nowidth_noprec"
-        ; PredName = "format_signed_int64_component_nowidth_prec"
-        ; PredName = "format_signed_int64_component_width_noprec"
-        ; PredName = "format_signed_int64_component_width_prec"
-        ; PredName = "format_unsigned_int64_component_nowidth_noprec"
-        ; PredName = "format_unsigned_int64_component_nowidth_prec"
-        ; PredName = "format_unsigned_int64_component_width_noprec"
-        ; PredName = "format_unsigned_int64_component_width_prec"
-        ; PredName = "format_uint_component_nowidth_noprec"
-        ; PredName = "format_uint_component_nowidth_prec"
-        ; PredName = "format_uint_component_width_noprec"
-        ; PredName = "format_uint_component_width_prec"
-        ; PredName = "format_uint64_component_nowidth_noprec"
-        ; PredName = "format_uint64_component_nowidth_prec"
-        ; PredName = "format_uint64_component_width_noprec"
-        ; PredName = "format_uint64_component_width_prec"
-        ; PredName = "format_float_component_nowidth_noprec"
-        ; PredName = "format_float_component_nowidth_prec"
-        ; PredName = "format_float_component_width_noprec"
-        ; PredName = "format_float_component_width_prec"
-        ; PredName = "format_cast_int8_to_int"
-        ; PredName = "format_cast_int16_to_int"
-        ; PredName = "format_cast_int32_to_int"
-        ; PredName = "format_cast_uint8_to_uint"
-        ; PredName = "format_cast_uint16_to_uint"
-        ; PredName = "format_cast_uint32_to_uint"
-        )
-    ;
-        ModuleName = "stream",
-        PredName = "put"
-    ;
-        ModuleName = "table_builtin",
-
-        ( PredName = "table_lookup_insert_start_int"
-        ; PredName = "table_lookup_insert_int"
-        ; PredName = "table_lookup_insert_float"
-        ; PredName = "table_lookup_insert_char"
-        ; PredName = "table_lookup_insert_string"
-        ; PredName = "table_lookup_insert_enum"
-        ; PredName = "table_lookup_insert_foreign_enum"
-        ; PredName = "table_lookup_insert_gen"
-        ; PredName = "table_lookup_insert_addr"
-        ; PredName = "table_lookup_insert_poly"
-        ; PredName = "table_lookup_insert_poly_addr"
-        ; PredName = "table_lookup_insert_typeinfo"
-        ; PredName = "table_lookup_insert_typeclassinfo"
-
-        ; PredName = "table_lookup_save_int_answer"
-        ; PredName = "table_lookup_save_char_answer"
-        ; PredName = "table_lookup_save_string_answer"
-        ; PredName = "table_lookup_save_float_answer"
-        ; PredName = "table_lookup_save_io_state_answer"
-        ; PredName = "table_lookup_save_any_answer"
-
-        ; PredName = "table_lookup_restore_int_answer"
-        ; PredName = "table_lookup_restore_char_answer"
-        ; PredName = "table_lookup_restore_string_answer"
-        ; PredName = "table_lookup_restore_float_answer"
-        ; PredName = "table_lookup_restore_io_state_answer"
-        ; PredName = "table_lookup_restore_any_answer"
-
-        ; PredName = "table_loop_setup"
-        ; PredName = "table_loop_setup_shortcut"
-        ; PredName = "table_loop_mark_as_inactive"
-        ; PredName = "table_loop_mark_as_inactive_and_fail"
-        ; PredName = "table_loop_mark_as_active_and_fail"
-
-        ; PredName = "table_memo_det_setup"
-        ; PredName = "table_memo_det_setup_shortcut"
-        ; PredName = "table_memo_semi_setup"
-        ; PredName = "table_memo_semi_setup_shortcut"
-        ; PredName = "table_memo_non_setup"
-        ; PredName = "table_memo_mark_as_failed"
-        ; PredName = "table_memo_mark_as_succeeded"
-        ; PredName = "table_memo_mark_as_incomplete"
-        ; PredName = "table_memo_mark_as_active_and_fail"
-        ; PredName = "table_memo_mark_as_complete_and_fail"
-        ; PredName = "table_memo_create_answer_block"
-        ; PredName = "table_memo_get_answer_block"
-        ; PredName = "table_memo_non_get_answer_table"
-        ; PredName = "table_memo_non_answer_is_not_duplicate"
-        ; PredName = "table_memo_non_answer_is_not_duplicate_shortcut"
-        ; PredName = "table_memo_return_all_answers_nondet"
-        ; PredName = "table_memo_return_all_answers_multi"
-        ; PredName = "table_memo_non_return_all_shortcut"
-
-        ; PredName = "table_io_in_range"
-        ; PredName = "table_io_has_occurred"
-        ; PredName = "table_io_copy_io_state"
-        ; PredName = "table_io_left_bracket_unitized_goal"
-        ; PredName = "table_io_right_bracket_unitized_goal"
-
-        ; PredName = "table_mm_setup"
-        ; PredName = "table_mm_suspend_consumer"
-        ; PredName = "table_mm_completion"
-        ; PredName = "table_mm_get_answer_table"
-        ; PredName = "table_mm_answer_is_not_duplicate"
-        ; PredName = "table_mm_answer_is_not_duplicate_shortcut"
-        ; PredName = "table_mm_create_answer_block"
-        ; PredName = "table_mm_fill_answer_block_shortcut"
-        ; PredName = "table_mm_return_all_nondet"
-        ; PredName = "table_mm_return_all_multi"
-        ; PredName = "table_mm_return_all_shortcut"
-
-        ; PredName = "table_mmos_save_inputs"
-        ; PredName = "table_mmos_setup_consumer"
-        ; PredName = "table_mmos_answer_is_not_duplicate"
-        ; PredName = "table_mmos_answer_is_not_duplicate_shortcut"
-        ; PredName = "table_mmos_consume_next_answer_nondet"
-        ; PredName = "table_mmos_consume_next_answer_multi"
-        ; PredName = "table_mmos_restore_answers"
-        ; PredName = "table_mmos_pickup_inputs"
-        ; PredName = "table_mmos_create_answer_block"
-        ; PredName = "table_mmos_return_answer"
-        ; PredName = "table_mmos_completion"
-
-        ; PredName = "table_error"
-        )
-    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.simplify.simplify_proc.

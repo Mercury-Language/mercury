@@ -698,15 +698,15 @@ predicate_table_optimize(PredicateTable0, PredicateTable) :-
 
 %---------------------%
 
-predicate_table_restrict(PartialQualInfo, PredIds, OrigPredicateTable,
+predicate_table_restrict(PartialQualInfo, ToKeepPredIds, OrigPredicateTable,
         !:PredicateTable) :-
+    OrigPredIdTable = OrigPredicateTable ^ pt_pred_id_table,
+    OrigAccessibilityTable = OrigPredicateTable ^ pt_accessibility_table,
     predicate_table_reset(OrigPredicateTable, !:PredicateTable),
-    predicate_table_get_pred_id_table(OrigPredicateTable, PredIdTable),
-    AccessibilityTable = OrigPredicateTable ^ pt_accessibility_table,
     list.foldl(
-        reinsert_for_restrict(PartialQualInfo, PredIdTable,
-            AccessibilityTable),
-        PredIds, !PredicateTable).
+        reinsert_for_restrict(PartialQualInfo,
+            OrigPredIdTable, OrigAccessibilityTable),
+        ToKeepPredIds, !PredicateTable).
 
 :- pred predicate_table_reset(predicate_table::in, predicate_table::out)
     is det.

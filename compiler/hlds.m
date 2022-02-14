@@ -85,6 +85,7 @@
 :- include_module hlds_defns.
 :- include_module hlds_code_util.
 :- include_module hlds_statistics.
+:- include_module introduced_call_table.
 :- include_module make_goal.
 :- include_module mark_static_terms.
 :- include_module mark_tail_calls.

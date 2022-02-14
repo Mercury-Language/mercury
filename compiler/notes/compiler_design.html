@@ -754,6 +754,15 @@ and higher-order code to traverse
 all the predicates defined in the current module
 and do something with each one.
 <li>
+introduced_call_table.m contains what is effectively
+a database of the predicates and functions
+that may have calls introduced to them by various compiler passes.
+The reason why we need this is that if dead_proc_elim.m
+deleted those predicates and functions from the HLDS as dead code
+before the pass that introduces calls to them has been run,
+those calls would have no destination.
+By consulting this database, dead_proc_elim.m can avoid this problem.
+<li>
 hlds_error_util.m contains utility routines
 for printing nicely formatted error messages
 for symptoms involving HLDS data structures.
