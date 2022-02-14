@@ -701,7 +701,7 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                         MinusPredId, MinusProcId),
                     MinusCallArgs = [GranularityVar, Var, VarResult],
                     MinusCallBuiltin = inline_builtin,
-                    MinusCallSymName = qualified(unqualified("int"), "-"),
+                    MinusCallSymName = qualified(unqualified("int"), "minus"),
                     ConsId =
                         cons(MinusCallSymName, 2, cons_id_dummy_type_ctor),
                     Rhs = rhs_functor(ConsId, is_not_exist_constr,
@@ -728,8 +728,8 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     Context = goal_info_get_context(FirstGoalInfo),
                     goal_info_init(NonLocals, InstMapDeltaDecrement, Detism,
                         Purity, Context, DecrementGoalInfo),
-                    DecrementGoal = hlds_goal(DecrementGoalExpr,
-                        DecrementGoalInfo),
+                    DecrementGoal =
+                        hlds_goal(DecrementGoalExpr, DecrementGoalInfo),
 
                     % Use the decremented value of GranularityVar as the
                     % last argument of the call.
@@ -738,7 +738,7 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     % If the original predicate is a function then the
                     % specialized version is a predicate. Therefore, there is
                     % no need for the unify context anymore.
-                    CallUnifyContext = no,
+                    CallUnifyContext = maybe.no,
 
                     GoalExpr = plain_call(CalleePredId, CalleeProcId, CallArgs,
                         CallBuiltin, CallUnifyContext, CallSymName),
