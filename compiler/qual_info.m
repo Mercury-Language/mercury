@@ -88,11 +88,11 @@
 :- pred record_called_pred_or_func(pred_or_func::in, sym_name::in, arity::in,
     qual_info::in, qual_info::out) is det.
 
-:- pred construct_pred_or_func_call(pred_id::in, pred_or_func::in,
+:- pred construct_and_record_pred_or_func_call(pred_id::in, pred_or_func::in,
     sym_name::in, list(prog_var)::in, hlds_goal_info::in, hlds_goal::out,
     qual_info::in, qual_info::out) is det.
 
-:- pred do_construct_pred_or_func_call(pred_id::in, pred_or_func::in,
+:- pred construct_pred_or_func_call(pred_id::in, pred_or_func::in,
     sym_name::in, list(prog_var)::in, hlds_goal_info::in, hlds_goal::out)
     is det.
 
@@ -306,30 +306,30 @@ record_used_functor(ConsId, !QualInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args, GoalInfo, Goal,
-        !QualInfo) :-
-    do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
+construct_and_record_pred_or_func_call(PredId, PredOrFunc, SymName, ArgVars,
+        GoalInfo, Goal, !QualInfo) :-
+    construct_pred_or_func_call(PredId, PredOrFunc, SymName, ArgVars,
         GoalInfo, Goal),
-    list.length(Args, Arity),
+    list.length(ArgVars, Arity),
     adjust_func_arity(PredOrFunc, OrigArity, Arity),
     record_called_pred_or_func(PredOrFunc, SymName, OrigArity, !QualInfo).
 
-do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
+construct_pred_or_func_call(PredId, PredOrFunc, SymName, ArgVars,
         GoalInfo, Goal) :-
     (
         PredOrFunc = pf_predicate,
-        GoalExpr = plain_call(PredId, invalid_proc_id, Args, not_builtin, no,
+        GoalExpr = plain_call(PredId, invalid_proc_id, ArgVars, not_builtin, no,
             SymName),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         PredOrFunc = pf_function,
-        pred_args_to_func_args(Args, FuncArgs, RetArg),
-        list.length(FuncArgs, Arity),
+        pred_args_to_func_args(ArgVars, FuncArgVars, RetArgVar),
+        list.length(FuncArgVars, Arity),
         TypeCtor = cons_id_dummy_type_ctor,
         ConsId = cons(SymName, Arity, TypeCtor),
         Context = goal_info_get_context(GoalInfo),
-        RHS = rhs_functor(ConsId, is_not_exist_constr, FuncArgs),
-        create_pure_atomic_complicated_unification(RetArg, RHS,
+        RHS = rhs_functor(ConsId, is_not_exist_constr, FuncArgVars),
+        create_pure_atomic_complicated_unification(RetArgVar, RHS,
             Context, umc_explicit, [], hlds_goal(GoalExpr, _)),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ).

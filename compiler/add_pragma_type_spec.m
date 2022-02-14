@@ -164,7 +164,7 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeModes, Context, PredId,
             varset.init(ArgVarSet0),
             user_arity_pred_form_arity(PredOrFunc, UserArity,
                 pred_form_arity(PredArityInt)),
-            make_n_fresh_vars("HeadVar__", PredArityInt, Args,
+            make_n_fresh_vars("HeadVar__", PredArityInt, ArgVars,
                 ArgVarSet0, ArgVarSet),
             % XXX We could use explicit type qualifications here for the
             % argument types, but explicit type qualification doesn't work
@@ -172,10 +172,10 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeModes, Context, PredId,
             % typecheck.m -- the explicitly declared types are not kept in
             % sync with the predicate's tvarset after the first pass of
             % type checking.
-            % map.from_corresponding_lists(Args, Types, VarTypes0)
+            % map.from_corresponding_lists(ArgVars, Types, VarTypes0)
             init_vartypes(VarTypes0),
             goal_info_init(GoalInfo0),
-            set_of_var.list_to_set(Args, NonLocals),
+            set_of_var.list_to_set(ArgVars, NonLocals),
             goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
             goal_info_set_context(Context, GoalInfo1, GoalInfo),
 
@@ -184,12 +184,12 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeModes, Context, PredId,
             % higher_order.m generate the interface for the type specialized
             % procedure, and will be removed by higher_order.m after that
             % is done.
-            do_construct_pred_or_func_call(PredId, PredOrFunc,
-                SymName, Args, GoalInfo, Goal),
+            construct_pred_or_func_call(PredId, PredOrFunc, SymName, ArgVars,
+                GoalInfo, Goal),
             Clause = clause(selected_modes(ProcIds), Goal, impl_lang_mercury,
                 Context, []),
             map.init(TVarNameMap),
-            ArgsVec = proc_arg_vector_init(PredOrFunc, Args),
+            ArgsVec = proc_arg_vector_init(PredOrFunc, ArgVars),
             set_clause_list([Clause], ClausesRep),
             ItemNumbers = init_clause_item_numbers_comp_gen,
             rtti_varmaps_init(RttiVarMaps),

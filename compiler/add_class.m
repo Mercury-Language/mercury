@@ -717,7 +717,7 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         % ... and then the goal itself.
         varset.init(VarSet0),
         make_n_fresh_vars("HeadVar__", PredArity, HeadVars, VarSet0, VarSet),
-        construct_pred_or_func_call(invalid_pred_id, PredOrFunc,
+        construct_and_record_pred_or_func_call(invalid_pred_id, PredOrFunc,
             InstancePredName, HeadVars, GoalInfo, IntroducedGoal, !QualInfo),
         IntroducedClause = clause(all_modes, IntroducedGoal, impl_lang_mercury,
             Context, []),
