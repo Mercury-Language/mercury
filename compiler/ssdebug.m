@@ -503,12 +503,12 @@ insert_context_update_call(ModuleInfo, Goal0, Goal, !ProcInfo) :-
         proc_info_set_vartypes(!.VarTypes, !ProcInfo)
     ),
 
-    Args = [FileNameVar, LineNumberVar],
+    ArgVars = [FileNameVar, LineNumberVar],
     Features = [],
     instmap_delta_init_reachable(InstMapDelta),
     generate_simple_call(ModuleInfo, mercury_ssdb_builtin_module,
         "set_context", pf_predicate, only_mode, detism_det, purity_impure,
-        Args, Features, InstMapDelta, Context, SetContextGoal),
+        ArgVars, Features, InstMapDelta, Context, SetContextGoal),
 
     conj_list_to_goal([MakeFileName, MakeLineNumber, SetContextGoal, Goal0],
         GoalInfo, Goal).
@@ -1212,13 +1212,13 @@ impure_backtrack_goal_info(Detism) = GoalInfo :-
     module_info::in, module_info::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out) is det.
 
-make_handle_event(HandleTypeString, Arguments, HandleEventGoal, !ModuleInfo,
+make_handle_event(HandleTypeString, ArgVars, HandleEventGoal, !ModuleInfo,
         !VarSet, !VarTypes) :-
     SSDBModule = mercury_ssdb_builtin_module,
     Features = [],
     Context = term.context_init,
     generate_simple_call(!.ModuleInfo, SSDBModule, HandleTypeString,
-        pf_predicate, only_mode, detism_det, purity_impure, Arguments,
+        pf_predicate, only_mode, detism_det, purity_impure, ArgVars,
         Features, instmap_delta_bind_no_var, Context, HandleEventGoal).
 
     % make_proc_id_construction(ModuleInfo, PredInfo, Goals, Var,

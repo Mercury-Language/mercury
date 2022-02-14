@@ -1184,21 +1184,24 @@ unused_args_create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
 make_intermod_proc(PredId, NewPredId, ProcId, NewPredName,
         OrigPredInfo, OrigProcInfo, UnusedArgs, UnusedArgs2, !ModuleInfo) :-
     % Add an exported predicate with the number of removed arguments promised
-    % in the analysis file which just calls the new predicate.
+    % in the analysis file, which just calls the new predicate.
     make_new_pred_info(!.ModuleInfo, UnusedArgs2, pred_status(status_exported),
         proc(PredId, ProcId), OrigPredInfo, ExtraPredInfo0),
     PredModule = pred_info_module(OrigPredInfo),
     create_call_goal(UnusedArgs, NewPredId, ProcId,
         PredModule, NewPredName, OrigProcInfo, ExtraProc0),
+
     proc_info_get_headvars(OrigProcInfo, HeadVars0),
-    remove_listof_elements(1, UnusedArgs2, HeadVars0, IntermodHeadVars),
-    proc_info_set_headvars(IntermodHeadVars, ExtraProc0, ExtraProc1),
     proc_info_get_argmodes(OrigProcInfo, ArgModes0),
+    remove_listof_elements(1, UnusedArgs2, HeadVars0, IntermodHeadVars),
     remove_listof_elements(1, UnusedArgs2, ArgModes0, IntermodArgModes),
+    proc_info_set_headvars(IntermodHeadVars, ExtraProc0, ExtraProc1),
     proc_info_set_argmodes(IntermodArgModes, ExtraProc1, ExtraProc),
+
     pred_info_get_proc_table(ExtraPredInfo0, ExtraProcs0),
     map.set(ProcId, ExtraProc, ExtraProcs0, ExtraProcs),
     pred_info_set_proc_table(ExtraProcs, ExtraPredInfo0, ExtraPredInfo),
+
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     predicate_table_insert(ExtraPredInfo, _, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo).

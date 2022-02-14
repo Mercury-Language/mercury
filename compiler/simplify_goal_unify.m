@@ -194,7 +194,11 @@ process_compl_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
             type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type)
         then
             ExtraGoals = [],
-            call_builtin_compound_eq(XVar, YVar, ModuleInfo, GoalInfo0, Call)
+            Context = goal_info_get_context(GoalInfo0),
+            generate_simple_call(ModuleInfo, mercury_private_builtin_module,
+                "builtin_compound_eq", pf_predicate, only_mode, detism_semi,
+                purity_pure, [XVar, YVar], [], instmap_delta_bind_no_var,
+                Context, Call)
         else if
             hlds_pred.in_in_unification_proc_id(ProcId),
 
@@ -263,16 +267,6 @@ call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId, ModuleInfo,
     NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
     set_of_var.insert_list(TypeInfoVars, NonLocals0, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, CallGoalInfo).
-
-:- pred call_builtin_compound_eq(prog_var::in, prog_var::in, module_info::in,
-    hlds_goal_info::in, hlds_goal::out) is det.
-
-call_builtin_compound_eq(XVar, YVar, ModuleInfo, GoalInfo, Call) :-
-    Context = goal_info_get_context(GoalInfo),
-    generate_simple_call(ModuleInfo, mercury_private_builtin_module,
-        "builtin_compound_eq", pf_predicate, only_mode, detism_semi,
-        purity_pure, [XVar, YVar], [], instmap_delta_bind_no_var,
-        Context, Call).
 
 %---------------------------------------------------------------------------%
 

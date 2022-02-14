@@ -364,10 +364,10 @@ new_var(Name, Type, Var, !Info) :-
     list(prog_var)::in, instmap_delta::in, module_info::in,
     term.context::in, hlds_goal::out) is det.
 
-heap_generate_call(PredName, Detism, Purity, Args, InstMapDelta, ModuleInfo,
+heap_generate_call(PredName, Detism, Purity, ArgVars, InstMapDelta, ModuleInfo,
         Context, CallGoal) :-
     generate_simple_call(ModuleInfo, mercury_private_builtin_module,
-        PredName, pf_predicate, only_mode, Detism, Purity, Args, [],
+        PredName, pf_predicate, only_mode, Detism, Purity, ArgVars, [],
         InstMapDelta, Context, CallGoal).
 
 %-----------------------------------------------------------------------------%

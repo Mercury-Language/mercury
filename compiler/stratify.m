@@ -357,14 +357,11 @@ higher_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
                 ModuleInfo, !Specs)
         )
     ;
-        GoalExpr = plain_call(_CPred, _CProc, _Args, _Builtin, _UC, Sym),
+        GoalExpr = plain_call(_CPred, _CProc, _Args, _Builtin, _UC, SymName),
         ( if
             % XXX Is this good enough to detect all calls to solutions ?
             HighOrderLoops = yes,
-            ( Sym = unqualified(Name)
-            ; Sym = qualified(_, Name)
-            ),
-            Name = "solutions"
+            unqualify_name(SymName) = "solutions"
         then
             Context = goal_info_get_context(GoalInfo),
             ErrorMsg = "call to solutions/2 introduces a non-stratified loop.",

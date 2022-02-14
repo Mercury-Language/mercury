@@ -499,14 +499,15 @@ propagate_conj_constraints([Goal0 | Goals0], NonLocals, RevGoals0, Goals,
     ( if
         % constraint.m ensures that only constraints relevant
         % to this goal are placed adjacent to it.
-        Goal0 = hlds_goal(plain_call(PredId, _ProcId, _Args, _, _, SymName),
-            _),
+        Goal0 = hlds_goal(GoalExpr0, _GoalInfo0),
+        GoalExpr0 = plain_call(PredId, _ProcId, _Args, _, _, SymName),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         not pred_info_is_imported(PredInfo),
-        list.take_while((pred(CnstrGoal::in) is semidet :-
-            CnstrGoal = hlds_goal(_, CnstrGoalInfo),
-            goal_info_has_feature(CnstrGoalInfo, feature_constraint)
-        ), Goals0, Constraints, Goals1),
+        list.take_while(
+            ( pred(CnstrGoal::in) is semidet :-
+                CnstrGoal = hlds_goal(_, CnstrGoalInfo),
+                goal_info_has_feature(CnstrGoalInfo, feature_constraint)
+            ), Goals0, Constraints, Goals1),
         Constraints = [_ | _]
     then
         SymNameString = sym_name_to_string(SymName),

@@ -1279,8 +1279,8 @@ insert_reg_wrappers_foreign_call(PredId, ProcId, ForeignArgs0, ForeignArgs,
     Vars0 = list.map(foreign_arg_var, ForeignArgs0),
     insert_reg_wrappers_plain_call(PredId, ProcId, Vars0, Vars, WrapGoals,
         _MissingProc, InstMap0, Context, !Info, !Specs),
-    list.map_corresponding(set_foreign_arg_var, Vars, ForeignArgs0,
-        ForeignArgs).
+    list.map_corresponding(set_foreign_arg_var, Vars,
+        ForeignArgs0, ForeignArgs).
 
 :- pred set_foreign_arg_var(prog_var::in, foreign_arg::in, foreign_arg::out)
     is det.
