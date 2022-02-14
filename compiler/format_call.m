@@ -1853,11 +1853,45 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [CallGoal]
         )
     ;
-        Spec = compiler_spec_signed_int(Context, Flags,
-            MaybeWidth, MaybePrec, IntSize, OrigValueVar),
+        (
+            Spec = compiler_spec_signed_int(Context, Flags,
+                MaybeWidth, MaybePrec, IntSize, OrigValueVar),
+            % Format a signed int as signed int.
+            BaseVars = [],
+            BaseGoals = [],
+            ( if IntSize = int_size_64 then
+                FormatPredBase = "format_signed_int64_component"
+            else
+                FormatPredBase = "format_signed_int_component"
+            ),
+            cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
+                OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes)
+        ;
+            Spec = compiler_spec_unsigned_int(Context, Flags,
+                MaybeWidth, MaybePrec, Base, IntSize, OrigValueVar),
+            % Format a signed int as unsigned int.
+            build_int_base_arg(Base, BaseVars, BaseGoals, !VarSet, !VarTypes),
+            ( if IntSize = int_size_64 then
+                FormatPredBase = "format_unsigned_int64_component"
+            else
+                FormatPredBase = "format_unsigned_int_component"
+            ),
+            cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
+                OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes)
+        ;
+            Spec = compiler_spec_uint(Context, Flags,
+                MaybeWidth, MaybePrec, Base, UIntSize, OrigValueVar),
+            % Format an unsigned int as unsigned int.
+            build_int_base_arg(Base, BaseVars, BaseGoals, !VarSet, !VarTypes),
+            ( if UIntSize = uint_size_64 then
+                FormatPredBase = "format_uint64_component"
+            else
+                FormatPredBase = "format_uint_component"
+            ),
+            cast_uint_value_var_if_needed(ModuleInfo, Context, UIntSize,
+                OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes)
+        ),
         set_of_var.insert(OrigValueVar, !ValueVars),
-        cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
-            OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes),
         make_result_var_if_needed(MaybeResultVar, ResultVar,
             !VarSet, !VarTypes),
         build_flags_arg(Context, Flags, FlagsVar, FlagsGoals,
@@ -1866,74 +1900,14 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             !VarSet, !VarTypes),
         maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
             !VarSet, !VarTypes),
-        ( if IntSize = int_size_64 then
-            FormatPredBase = "format_signed_int64_component"
-        else
-            FormatPredBase = "format_signed_int_component"
-        ),
         generate_simple_call(ModuleInfo, mercury_string_format_module,
             FormatPredBase ++ WidthSuffix ++ PrecSuffix,
             pf_predicate, only_mode, detism_det, purity_pure,
-            [FlagsVar] ++ WidthVars ++ PrecVars ++ [ValueVar, ResultVar], [],
+            [FlagsVar] ++ WidthVars ++ PrecVars ++ BaseVars ++
+                [ValueVar, ResultVar], [],
             instmap_delta_bind_var(ResultVar), Context, CallGoal),
         Goals = ValueCastGoals ++ FlagsGoals ++ WidthGoals ++ PrecGoals ++
-            [CallGoal]
-    ;
-        Spec = compiler_spec_unsigned_int(Context, Flags,
-            MaybeWidth, MaybePrec, Base, IntSize, OrigValueVar),
-        set_of_var.insert(OrigValueVar, !ValueVars),
-        cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
-            OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes),
-        make_result_var_if_needed(MaybeResultVar, ResultVar,
-            !VarSet, !VarTypes),
-        build_flags_arg(Context, Flags, FlagsVar, FlagsGoals,
-            !VarSet, !VarTypes),
-        maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars, WidthGoals,
-            !VarSet, !VarTypes),
-        maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
-            !VarSet, !VarTypes),
-        build_int_base_arg(Base, BaseVar, BaseGoal, !VarSet, !VarTypes),
-        ( if IntSize = int_size_64 then
-            FormatPredBase = "format_unsigned_int64_component"
-        else
-            FormatPredBase = "format_unsigned_int_component"
-        ),
-        generate_simple_call(ModuleInfo, mercury_string_format_module,
-            FormatPredBase ++ WidthSuffix ++ PrecSuffix,
-            pf_predicate, only_mode, detism_det, purity_pure,
-            [FlagsVar] ++ WidthVars ++ PrecVars ++
-                [BaseVar, ValueVar, ResultVar], [],
-            instmap_delta_bind_var(ResultVar), Context, CallGoal),
-        Goals = ValueCastGoals ++ FlagsGoals ++ WidthGoals ++ PrecGoals ++
-            [BaseGoal, CallGoal]
-    ;
-        Spec = compiler_spec_uint(Context, Flags,
-            MaybeWidth, MaybePrec, Base, UIntSize, OrigValueVar),
-        set_of_var.insert(OrigValueVar, !ValueVars),
-        cast_uint_value_var_if_needed(ModuleInfo, Context, UIntSize,
-            OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes),
-        make_result_var_if_needed(MaybeResultVar, ResultVar,
-            !VarSet, !VarTypes),
-        build_flags_arg(Context, Flags, FlagsVar, FlagsGoals,
-            !VarSet, !VarTypes),
-        maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars, WidthGoals,
-            !VarSet, !VarTypes),
-        maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
-            !VarSet, !VarTypes),
-        build_int_base_arg(Base, BaseVar, BaseGoal, !VarSet, !VarTypes),
-        ( if UIntSize = uint_size_64 then
-            FormatPredBase = "format_uint64_component"
-        else
-            FormatPredBase = "format_uint_component"
-        ),
-        generate_simple_call(ModuleInfo, mercury_string_format_module,
-            FormatPredBase ++ WidthSuffix ++ PrecSuffix,
-            pf_predicate, only_mode, detism_det, purity_pure,
-            [FlagsVar] ++ WidthVars ++ PrecVars ++
-                [BaseVar, ValueVar, ResultVar], [],
-            instmap_delta_bind_var(ResultVar), Context, CallGoal),
-        Goals = ValueCastGoals ++ FlagsGoals ++ WidthGoals ++ PrecGoals ++
-            [BaseGoal, CallGoal]
+            BaseGoals ++ [CallGoal]
     ;
         Spec = compiler_spec_float(Context, Flags,
             MaybeWidth, MaybePrec, Kind, ValueVar),
@@ -2177,10 +2151,10 @@ maybe_build_prec_arg(MaybePrec, PredNameSuffix, MaybePrecVar,
     ).
 
 :- pred build_int_base_arg(string_format_int_base::in,
-    prog_var::out, hlds_goal::out,
+    list(prog_var)::out, list(hlds_goal)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-build_int_base_arg(Base, Var, Goal, !VarSet, !VarTypes) :-
+build_int_base_arg(Base, [Var], [Goal], !VarSet, !VarTypes) :-
     ParseUtil = mercury_string_parse_util_module,
     TypeName = qualified(ParseUtil, "string_format_int_base"),
     TypeCtor = type_ctor(TypeName, 0),
