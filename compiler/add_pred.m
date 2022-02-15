@@ -73,14 +73,15 @@
     %   :- pred p(T1, T2, ..., Tn).
     % for that predicate; the real types will be inferred by type inference.
     %
-:- pred preds_add_implicit_report_error(module_name::in, pred_or_func::in,
-    sym_name::in, arity::in, pred_status::in, maybe_class_method::in,
-    prog_context::in, pred_origin::in, list(format_component)::in,
-    pred_id::out, module_info::in, module_info::out,
+:- pred preds_add_implicit_report_error(pred_or_func::in,
+    module_name::in, string::in, arity::in, pred_status::in,
+    maybe_class_method::in, prog_context::in, pred_origin::in,
+    list(format_component)::in, pred_id::out,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred preds_add_implicit_for_assertion(module_name::in, pred_or_func::in,
-    sym_name::in, arity::in, list(prog_var)::in,
+:- pred preds_add_implicit_for_assertion(pred_or_func::in,
+    module_name::in, string::in, arity::in, list(prog_var)::in,
     pred_status::in, promise_type::in, prog_context::in, pred_id::out,
     module_info::in, module_info::out) is det.
 
@@ -124,15 +125,20 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
         ArgTypesAndModes, WithType, WithInst, MaybeDetism,
         Origin, TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints,
         Context, SeqNum),
+    (
+        PredSymName = unqualified(_PredName),
+        unexpected($pred, "unqualified PredSymName")
+    ;
+        PredSymName = qualified(PredModuleName, PredName)
+    ),
     % Any WithType and WithInst annotations should have been expanded
     % and the type and/or inst put into TypesAndModes by equiv_type.m.
     expect(unify(WithType, no), $pred, "WithType != no"),
     expect(unify(WithInst, no), $pred, "WithInst != no"),
 
-    PredName = unqualify_name(PredSymName),
     ( if PredName = "" then
-        Pieces = [words("Error: you cannot declare a"),
-            words(pred_or_func_to_full_str(PredOrFunc)),
+        PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
+        Pieces = [words("Error: you cannot declare a"), words(PredOrFuncStr),
             words("whose name is a variable."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces),
@@ -170,8 +176,8 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
         ),
         record_pred_origin(PredSymName, Origin, PredOrigin, Markers),
         add_new_pred(PredOrigin, Context, SeqNum, PredStatus, NeedQual,
-            PredOrFunc, PredSymName, TypeVarSet, ExistQVars, ArgTypes,
-            Constraints, PredmodeDecl, Purity, Markers, Succeeded,
+            PredOrFunc, PredModuleName, PredName, TypeVarSet, ExistQVars,
+            ArgTypes, Constraints, PredmodeDecl, Purity, Markers, Succeeded,
             !ModuleInfo, !Specs),
         (
             MaybeArgModes = yes(ArgModes),
@@ -300,14 +306,15 @@ check_for_modeless_predmode_decl(PredStatus, PredOrFunc,
     ).
 
 :- pred add_new_pred(pred_origin::in, prog_context::in, item_seq_num::in,
-    pred_status::in, need_qualifier::in, pred_or_func::in, sym_name::in,
-    tvarset::in, existq_tvars::in, list(mer_type)::in, prog_constraints::in,
-    maybe_predmode_decl::in, purity::in, pred_markers::in, bool::out,
+    pred_status::in, need_qualifier::in, pred_or_func::in,
+    module_name::in, string::in, tvarset::in, existq_tvars::in,
+    list(mer_type)::in, prog_constraints::in, maybe_predmode_decl::in,
+    purity::in, pred_markers::in, bool::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual,
-        PredOrFunc, PredSymName, TVarSet, ExistQVars, Types, Constraints,
+add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual, PredOrFunc,
+        PredModuleName, PredName, TVarSet, ExistQVars, Types, Constraints,
         PredmodeDecl, Purity, Markers0, Succeeded, !ModuleInfo, !Specs) :-
     % NB. Predicates are also added in lambda.m, which converts
     % lambda expressions into separate predicates, so any changes may need
@@ -321,91 +328,82 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual,
     else
         PredStatus = PredStatus0
     ),
-    module_info_get_name(!.ModuleInfo, ModuleName),
     list.length(Types, PredArity),
-    (
-        PredSymName = unqualified(_PName),
-        % All predicate names passed into this predicate should have been
-        % qualified by the parser when they were first read.
-        Succeeded = no,
-        unqualified_pred_error(PredSymName, PredArity, Context, !Specs)
-    ;
-        PredSymName = qualified(MNameOfPred, PName),
-        ( if
-            % NOTE This code is duplicating the effect of
-            %
-            % MaybeItemMercuryStatus = yes(ItemMercuryStatus),
-            % ItemMercuryStatus = item_defined_in_this_module(ItemExport)
-            %
-            % without requiring our caller to pass ItemMercuryStatus here.
-            % The reason why this is important is that for compiler-generated
-            % predicate declarations, there is no natural ItemMercuryStatus.
-            PredStatus = pred_status(OldItemStatus),
-            (
-                OldItemStatus = status_local,
-                ItemExport = item_export_nowhere
-            ;
-                OldItemStatus = status_exported_to_submodules,
-                ItemExport = item_export_only_submodules
-            ;
-                OldItemStatus = status_exported,
-                ItemExport = item_export_anywhere
-            )
-        then
-            DeclSection = item_decl_section(ItemExport),
-            MaybeCurUserDecl = yes(cur_user_decl_info(DeclSection,
-                PredmodeDecl, SeqNum))
-        else
-            MaybeCurUserDecl = no
-        ),
-        GoalType = goal_not_for_promise(np_goal_type_none),
-        module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-        clauses_info_init(PredOrFunc, PredArity, init_clause_item_numbers_user,
-            ClausesInfo),
-        map.init(Proofs),
-        map.init(ConstraintMap),
-        purity_to_markers(Purity, PurityMarkers),
-        add_markers(PurityMarkers, Markers0, Markers),
-        map.init(VarNameRemap),
-        pred_info_init(ModuleName, PredOrFunc, PredSymName, PredArity, Context,
-            PredOrigin, PredStatus, MaybeCurUserDecl, GoalType,
-            Markers, Types, TVarSet, ExistQVars, Constraints, Proofs,
-            ConstraintMap, ClausesInfo, VarNameRemap, PredInfo0),
-        predicate_table_lookup_pf_m_n_a(PredTable0, is_fully_qualified,
-            PredOrFunc, MNameOfPred, PName, PredArity, PredIds),
+    PredSymName = qualified(PredModuleName, PredName),
+    ( if
+        % NOTE This code is duplicating the effect of
+        %
+        % MaybeItemMercuryStatus = yes(ItemMercuryStatus),
+        % ItemMercuryStatus = item_defined_in_this_module(ItemExport)
+        %
+        % without requiring our caller to pass ItemMercuryStatus here.
+        % The reason why this is important is that for compiler-generated
+        % predicate declarations, there is no natural ItemMercuryStatus.
+        PredStatus = pred_status(OldItemStatus),
         (
-            PredIds = [OrigPred | _],
-            Succeeded = no,
-            module_info_pred_info(!.ModuleInfo, OrigPred, OrigPredInfo),
-            pred_info_get_context(OrigPredInfo, OrigContext),
-            DeclString = pred_or_func_to_str(PredOrFunc),
-            adjust_func_arity(PredOrFunc, PorFArity, PredArity),
-            ( if PredStatus0 = pred_status(status_opt_imported) then
-                true
-            else
-                report_multiple_def_error(PredSymName, PorFArity, DeclString,
-                    Context, OrigContext, [], !Specs)
-            )
+            OldItemStatus = status_local,
+            ItemExport = item_export_nowhere
         ;
-            PredIds = [],
-            Succeeded = yes,
-            module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
-            predicate_table_insert_qual(PredInfo0, NeedQual, PQInfo, PredId,
-                PredTable0, PredTable1),
-            ( if pred_info_is_builtin(PredInfo0) then
-                module_info_get_globals(!.ModuleInfo, Globals),
-                globals.get_target(Globals, CompilationTarget),
-                add_builtin(PredId, Types, CompilationTarget,
-                    PredInfo0, PredInfo),
-                predicate_table_get_pred_id_table(PredTable1, PredIdTable1),
-                map.det_update(PredId, PredInfo, PredIdTable1, PredIdTable),
-                predicate_table_set_pred_id_table(PredIdTable,
-                    PredTable1, PredTable)
-            else
-                PredTable = PredTable1
-            ),
-            module_info_set_predicate_table(PredTable, !ModuleInfo)
+            OldItemStatus = status_exported_to_submodules,
+            ItemExport = item_export_only_submodules
+        ;
+            OldItemStatus = status_exported,
+            ItemExport = item_export_anywhere
         )
+    then
+        DeclSection = item_decl_section(ItemExport),
+        MaybeCurUserDecl = yes(cur_user_decl_info(DeclSection,
+            PredmodeDecl, SeqNum))
+    else
+        MaybeCurUserDecl = no
+    ),
+    GoalType = goal_not_for_promise(np_goal_type_none),
+    module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+    clauses_info_init(PredOrFunc, PredArity, init_clause_item_numbers_user,
+        ClausesInfo),
+    map.init(Proofs),
+    map.init(ConstraintMap),
+    purity_to_markers(Purity, PurityMarkers),
+    add_markers(PurityMarkers, Markers0, Markers),
+    map.init(VarNameRemap),
+    pred_info_init(PredOrFunc, PredModuleName, PredName, PredArity,
+        Context, PredOrigin, PredStatus, MaybeCurUserDecl, GoalType,
+        Markers, Types, TVarSet, ExistQVars, Constraints, Proofs,
+        ConstraintMap, ClausesInfo, VarNameRemap, PredInfo0),
+    predicate_table_lookup_pf_m_n_a(PredTable0, is_fully_qualified,
+        PredOrFunc, PredModuleName, PredName, PredArity, PredIds),
+    (
+        PredIds = [OrigPred | _],
+        Succeeded = no,
+        module_info_pred_info(!.ModuleInfo, OrigPred, OrigPredInfo),
+        pred_info_get_context(OrigPredInfo, OrigContext),
+        DeclString = pred_or_func_to_str(PredOrFunc),
+        adjust_func_arity(PredOrFunc, PorFArity, PredArity),
+        ( if PredStatus0 = pred_status(status_opt_imported) then
+            true
+        else
+            report_multiple_def_error(PredSymName, PorFArity, DeclString,
+                Context, OrigContext, [], !Specs)
+        )
+    ;
+        PredIds = [],
+        Succeeded = yes,
+        module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
+        predicate_table_insert_qual(PredInfo0, NeedQual, PQInfo, PredId,
+            PredTable0, PredTable1),
+        ( if pred_info_is_builtin(PredInfo0) then
+            module_info_get_globals(!.ModuleInfo, Globals),
+            globals.get_target(Globals, CompilationTarget),
+            add_builtin(PredId, Types, CompilationTarget,
+                PredInfo0, PredInfo),
+            predicate_table_get_pred_id_table(PredTable1, PredIdTable1),
+            map.det_update(PredId, PredInfo, PredIdTable1, PredIdTable),
+            predicate_table_set_pred_id_table(PredIdTable,
+                PredTable1, PredTable)
+        else
+            PredTable = PredTable1
+        ),
+        module_info_set_predicate_table(PredTable, !ModuleInfo)
     ),
     DefnThisModule = pred_status_defined_in_this_module(PredStatus0),
     (
@@ -697,9 +695,12 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
         !ModuleInfo, !Specs) :-
     ItemModeDecl = item_mode_decl_info(PredSymName, MaybePredOrFunc,
         Modes, WithInst, _MaybeDetism, _InstVarSet, Context, _SeqNum),
-    % Any WithInst annotations should have been expanded
-    % and the inst put into Modes by equiv_type.m.
-    expect(unify(WithInst, no), $pred, "WithInst != no"),
+    (
+        PredSymName = unqualified(_PredName),
+        unexpected($pred, "unqualified PredSymName")
+    ;
+        PredSymName = qualified(PredModuleName, PredName)
+    ),
     % The equiv_type pass should have also either set the pred_or_func,
     % or removed the item from the parse tree.
     (
@@ -708,7 +709,10 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
         MaybePredOrFunc = no,
         unexpected($pred, "no pred_or_func on mode declaration")
     ),
-    PredName = unqualify_name(PredSymName),
+    % Any WithInst annotations should have been expanded
+    % and the inst put into Modes by equiv_type.m.
+    expect(unify(WithInst, no), $pred, "WithInst != no"),
+
     ( if PredName = "" then
         % This dummy PredProcId won't be used due to the error.
         PredProcId = proc(invalid_pred_id, invalid_proc_id),
@@ -723,19 +727,18 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
         % a warning message and insert an implicit definition
         % for the predicate; it is presumed to be local, and its type
         % will be inferred automatically.
-        module_info_get_name(!.ModuleInfo, ModuleName0),
-        sym_name_get_module_name_default(PredSymName, ModuleName0, ModuleName),
         list.length(Modes, Arity),
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-        predicate_table_lookup_pf_sym_arity(PredicateTable0,
-            is_fully_qualified, PredOrFunc, PredSymName, Arity, PredIds),
+        predicate_table_lookup_pf_m_n_a(PredicateTable0, is_fully_qualified,
+            PredOrFunc, PredModuleName, PredName, Arity, PredIds),
         ( if PredIds = [PredIdPrime] then
             PredId = PredIdPrime
         else
-            preds_add_implicit_report_error(ModuleName, PredOrFunc,
-                PredSymName, Arity, PredStatus, IsClassMethod, Context,
-                origin_user(PredSymName), [decl("mode"), words("declaration")],
-                PredId, !ModuleInfo, !Specs)
+            preds_add_implicit_report_error(PredOrFunc,
+                PredModuleName, PredName, Arity, PredStatus, IsClassMethod,
+                Context, origin_user(PredSymName),
+                [decl("mode"), words("declaration")], PredId,
+                !ModuleInfo, !Specs)
         ),
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable1),
         predicate_table_get_pred_id_table(PredicateTable1, PredIdTable0),
@@ -893,24 +896,15 @@ unspecified_det_for_local(PFSymNameArity, Context, !Specs) :-
         phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-:- pred unqualified_pred_error(sym_name::in, int::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-unqualified_pred_error(PredSymName, Arity, Context, !Specs) :-
-    Pieces = [words("Internal error: the unqualified predicate name"),
-        unqual_sym_name_arity(sym_name_arity(PredSymName, Arity)),
-        words("should have been qualified by the parser."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
-    !:Specs = [Spec | !.Specs].
-
 %---------------------------------------------------------------------------%
 
-preds_add_implicit_report_error(ModuleName, PredOrFunc, PredSymName, PredArity,
-        Status, IsClassMethod, Context, PredOrigin, DescPieces, PredId,
-        !ModuleInfo, !Specs) :-
-    maybe_report_undefined_pred_error(!.ModuleInfo, PredSymName, PredArity,
-        PredOrFunc, Status, IsClassMethod, Context, DescPieces, !Specs),
+preds_add_implicit_report_error(PredOrFunc, PredModuleName, PredName,
+        PredArity, Status, IsClassMethod, Context, PredOrigin, DescPieces,
+        PredId, !ModuleInfo, !Specs) :-
+    PredSymName = qualified(PredModuleName, PredName),
+    maybe_report_undefined_pred_error(!.ModuleInfo, PredOrFunc,
+        PredSymName, PredArity, Status, IsClassMethod, Context,
+        DescPieces, !Specs),
     (
         PredOrFunc = pf_function,
         adjust_func_arity(pf_function, FuncArity, PredArity),
@@ -922,11 +916,11 @@ preds_add_implicit_report_error(ModuleName, PredOrFunc, PredSymName, PredArity,
     clauses_info_init(PredOrFunc, PredArity, init_clause_item_numbers_user,
         ClausesInfo),
     GoalType = goal_not_for_promise(np_goal_type_none),
-    preds_do_add_implicit(ModuleName, PredOrFunc, PredSymName, PredArity,
+    preds_do_add_implicit(PredOrFunc, PredModuleName, PredName, PredArity,
         Status, Context, PredOrigin, GoalType, ClausesInfo,
         PredId, !ModuleInfo).
 
-preds_add_implicit_for_assertion(ModuleName, PredOrFunc, PredSymName,
+preds_add_implicit_for_assertion(PredOrFunc, PredModuleName, PredName,
         PredArity, HeadVars, Status, PromiseType, Context,
         PredId, !ModuleInfo) :-
     clauses_info_init_for_assertion(HeadVars, ClausesInfo),
@@ -934,16 +928,16 @@ preds_add_implicit_for_assertion(ModuleName, PredOrFunc, PredSymName,
     term.context_line(Context, LineNum),
     PredOrigin = origin_assertion(FileName, LineNum),
     GoalType = goal_for_promise(PromiseType),
-    preds_do_add_implicit(ModuleName, PredOrFunc, PredSymName, PredArity,
+    preds_do_add_implicit(PredOrFunc, PredModuleName, PredName, PredArity,
         Status, Context, PredOrigin, GoalType, ClausesInfo,
         PredId, !ModuleInfo).
 
-:- pred preds_do_add_implicit(module_name::in, pred_or_func::in, sym_name::in,
+:- pred preds_do_add_implicit(pred_or_func::in, module_name::in, string::in,
     arity::in, pred_status::in, prog_context::in, pred_origin::in,
     goal_type::in, clauses_info::in, pred_id::out,
     module_info::in, module_info::out) is det.
 
-preds_do_add_implicit(ModuleName, PredOrFunc, PredSymName, PredArity,
+preds_do_add_implicit(PredOrFunc, PredModuleName, PredName, PredArity,
         PredStatus, Context, PredOrigin, GoalType, ClausesInfo,
         PredId, !ModuleInfo) :-
     MaybeCurUserDecl = maybe.no,
@@ -960,7 +954,7 @@ preds_do_add_implicit(ModuleName, PredOrFunc, PredSymName, PredArity,
     map.init(Proofs),
     map.init(ConstraintMap),
     map.init(VarNameRemap),
-    pred_info_init(ModuleName, PredOrFunc, PredSymName, PredArity, Context,
+    pred_info_init(PredOrFunc, PredModuleName, PredName, PredArity, Context,
         PredOrigin, PredStatus, MaybeCurUserDecl, GoalType, Markers0,
         Types, TVarSet, ExistQVars, Constraints, Proofs, ConstraintMap,
         ClausesInfo, VarNameRemap, PredInfo0),
@@ -968,8 +962,8 @@ preds_do_add_implicit(ModuleName, PredOrFunc, PredSymName, PredArity,
     add_marker(marker_no_pred_decl, Markers1, Markers),
     pred_info_set_markers(Markers, PredInfo0, PredInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-    predicate_table_lookup_pf_sym_arity(PredicateTable0,
-        is_fully_qualified, PredOrFunc, PredSymName, PredArity, PredIds),
+    predicate_table_lookup_pf_m_n_a(PredicateTable0, is_fully_qualified,
+        PredOrFunc, PredModuleName, PredName, PredArity, PredIds),
     (
         PredIds = [],
         module_info_get_partial_qualifier_info(!.ModuleInfo, MQInfo),
@@ -1015,14 +1009,14 @@ check_pred_if_field_access_function(ModuleInfo, PredStatus, ItemPredDecl,
     sym_name::in, arity::in, pred_status::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_check_field_access_function(ModuleInfo, FuncName, FuncArity, FuncStatus,
-        Context, !Specs) :-
+maybe_check_field_access_function(ModuleInfo, FuncSymName, FuncArity,
+        FuncStatus, Context, !Specs) :-
     ( if
-        is_field_access_function_name(ModuleInfo, FuncName, FuncArity,
+        is_field_access_function_name(ModuleInfo, FuncSymName, FuncArity,
             AccessType, FieldName)
     then
         check_field_access_function(ModuleInfo, AccessType, FieldName,
-            FuncName, FuncArity, FuncStatus, Context, !Specs)
+            FuncSymName, FuncArity, FuncStatus, Context, !Specs)
     else
         true
     ).
@@ -1031,13 +1025,8 @@ maybe_check_field_access_function(ModuleInfo, FuncName, FuncArity, FuncStatus,
     sym_name::in, sym_name::in, arity::in, pred_status::in,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-check_field_access_function(ModuleInfo, _AccessType, FieldName, FuncName,
+check_field_access_function(ModuleInfo, _AccessType, FieldName, FuncSymName,
         FuncArity, FuncStatus, Context, !Specs) :-
-    % XXX Our caller adjusted the arity one way; we now adjust it back.
-    % It should be possible to do without the double adjustment.
-    adjust_func_arity(pf_function, FuncArity, PredArity),
-    FuncCallId = pf_sym_name_arity(pf_function, FuncName, PredArity),
-
     % Check that a function applied to an exported type is also exported.
     module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
     ( if
@@ -1048,6 +1037,10 @@ check_field_access_function(ModuleInfo, _AccessType, FieldName, FuncName,
         DefnStatus = type_status(status_exported),
         FuncStatus \= pred_status(status_exported)
     then
+        % XXX Our caller adjusted the arity one way; we now adjust it back.
+        % It should be possible to do without the double adjustment.
+        adjust_func_arity(pf_function, FuncArity, PredArity),
+        FuncCallId = pf_sym_name_arity(pf_function, FuncSymName, PredArity),
         report_field_status_mismatch(Context, FuncCallId, !Specs)
     else
         true

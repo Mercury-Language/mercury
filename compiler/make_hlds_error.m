@@ -51,7 +51,7 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred maybe_report_undefined_pred_error(module_info::in,
-    sym_name::in, int::in, pred_or_func::in, pred_status::in,
+    pred_or_func::in, sym_name::in, int::in, pred_status::in,
     maybe_class_method::in, prog_context::in, list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -74,7 +74,7 @@
 
 %---------------------------------------------------------------------------%
 
-report_multiple_def_error(Name, Arity, DefType, Context, OrigContext,
+report_multiple_def_error(SymName, Arity, DefType, Context, OrigContext,
         ExtraPieces, !Specs) :-
     % The flattening of source item blocks by modules.m puts
     % all items in a given section together. Since the original
@@ -94,11 +94,11 @@ report_multiple_def_error(Name, Arity, DefType, Context, OrigContext,
         SecondContext = OrigContext
     ),
 
-    SNA = qual_sym_name_arity(sym_name_arity(Name, Arity)),
-    SecondDeclPieces = [words("Error:"), fixed(DefType), SNA,
-        words("multiply defined."), nl],
+    SNA = sym_name_arity(SymName, Arity),
+    SecondDeclPieces = [words("Error:"), fixed(DefType),
+        qual_sym_name_arity(SNA), words("multiply defined."), nl],
     FirstDeclPieces = [words("Here is the previous definition of"),
-        fixed(DefType), SNA, suffix("."), nl],
+        fixed(DefType), qual_sym_name_arity(SNA), suffix("."), nl],
     SecondDeclMsg = simplest_msg(SecondContext, SecondDeclPieces),
     FirstDeclMsg = simplest_msg(FirstContext, FirstDeclPieces),
     (
@@ -112,7 +112,7 @@ report_multiple_def_error(Name, Arity, DefType, Context, OrigContext,
         [SecondDeclMsg, FirstDeclMsg | ExtraMsgs]),
     !:Specs = [Spec | !.Specs].
 
-report_undefined_pred_or_func_error(MaybePorF, Name, Arity, OtherArities,
+report_undefined_pred_or_func_error(MaybePorF, SymName, Arity, OtherArities,
         Context, DescPieces, !Specs) :-
     (
         MaybePorF = no,
@@ -127,7 +127,7 @@ report_undefined_pred_or_func_error(MaybePorF, Name, Arity, OtherArities,
         SNAPrefixPieces = [words("function")],
         PredOrFuncPieces = [decl("func")]
     ),
-    SNA = sym_name_arity(Name, Arity),
+    SNA = sym_name_arity(SymName, Arity),
     MainPieces = [words("Error:") | DescPieces] ++
         [words("for")] ++ SNAPrefixPieces ++ [unqual_sym_name_arity(SNA),
         words("without corresponding")] ++ PredOrFuncPieces ++
@@ -138,7 +138,7 @@ report_undefined_pred_or_func_error(MaybePorF, Name, Arity, OtherArities,
     ;
         OtherArities = [_ | _],
         list.map(string.int_to_string, OtherArities, OtherArityStrs),
-        OtherArityPieces = [unqual_sym_name(Name), words("does exist with"),
+        OtherArityPieces = [unqual_sym_name(SymName), words("does exist with"),
             words(choose_number(OtherArityStrs, "arity", "arities"))] ++
             list_to_pieces(OtherArityStrs) ++
             [suffix("."), nl]
@@ -147,18 +147,18 @@ report_undefined_pred_or_func_error(MaybePorF, Name, Arity, OtherArities,
         Context, MainPieces ++ OtherArityPieces),
     !:Specs = [Spec | !.Specs].
 
-report_undefined_mode_error(Name, Arity, Context, DescPieces, !Specs) :-
+report_undefined_mode_error(SymName, Arity, Context, DescPieces, !Specs) :-
+    SNA = sym_name_arity(SymName, Arity),
     Pieces = [words("Error:") | DescPieces] ++ [words("for"),
-        qual_sym_name_arity(sym_name_arity(Name, Arity)),
-        words("specifies non-existent mode.")],
+        qual_sym_name_arity(SNA), words("specifies non-existent mode."), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
 
-maybe_report_undefined_pred_error(ModuleInfo, Name, Arity, PredOrFunc, Status,
-        IsClassMethod, Context, DescPieces, !Specs) :-
+maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName, Arity,
+        Status, IsClassMethod, Context, DescPieces, !Specs) :-
     % Our caller (or one of its ancestors) will add an implicit declaration
     % for every undeclared predicate or function that has a reference to it
     % either in a clause or in some other declaration (e.g. a tabling pragma).
@@ -189,7 +189,7 @@ maybe_report_undefined_pred_error(ModuleInfo, Name, Arity, PredOrFunc, Status,
     then
         true
     else
-        PFSymNameArity = pf_sym_name_arity(PredOrFunc, Name, Arity),
+        PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
         PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
         MainPieces = [invis_order_default_start(1),
             words("Error:") | DescPieces] ++ [words("for"),
@@ -200,7 +200,7 @@ maybe_report_undefined_pred_error(ModuleInfo, Name, Arity, PredOrFunc, Status,
 
         module_info_get_predicate_table(ModuleInfo, PredicateTable),
         predicate_table_lookup_pf_sym(PredicateTable,
-            is_fully_qualified, PredOrFunc, Name, AllArityPredIds),
+            is_fully_qualified, PredOrFunc, SymName, AllArityPredIds),
         gather_porf_arities(ModuleInfo, AllArityPredIds, PredOrFunc,
             PorFArities),
         set.delete(Arity, PorFArities, OtherArities),

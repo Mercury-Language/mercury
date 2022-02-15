@@ -599,7 +599,7 @@
                 item_seq_num
             ).
 
-    % pred_info_init(ModuleName, PredOrFunc, PredSymName, Arity, Context,
+    % pred_info_init(PredOrFunc, PredModuleName, PredName, Arity, Context,
     %   Origin, Status, CurUserDecl, GoalType, Markers,
     %   ArgTypes, TypeVarSet, ExistQVars, ClassContext, ClassProofs,
     %   ClassConstraintMap, ClausesInfo, VarNameRemap, PredInfo):
@@ -607,14 +607,14 @@
     % Return a pred_info whose fields are filled in from the information
     % (direct and indirect) in the arguments, and from defaults.
     %
-:- pred pred_info_init(module_name::in, pred_or_func::in,
-    sym_name::in, arity::in, prog_context::in, pred_origin::in,
+:- pred pred_info_init(pred_or_func::in, module_name::in, string::in,
+    arity::in, prog_context::in, pred_origin::in,
     pred_status::in, maybe(cur_user_decl_info)::in, goal_type::in,
     pred_markers::in, list(mer_type)::in, tvarset::in, existq_tvars::in,
     prog_constraints::in, constraint_proof_map::in, constraint_map::in,
     clauses_info::in, map(prog_var, string)::in, pred_info::out) is det.
 
-    % pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin,
+    % pred_info_create(PredOrFunc, ModuleName, PredName, Context, Origin,
     %   Status, Markers, ArgTypes, TypeVarSet, ExistQVars,
     %   ClassContext, Assertions, VarNameRemap, ProcInfo, ProcId,
     %   PredInfo)
@@ -624,7 +624,7 @@
     % proc_info becomes the only procedure of the predicate (currently)
     % and its proc_id is returned as the second last argument.
     %
-:- pred pred_info_create(module_name::in, sym_name::in, pred_or_func::in,
+:- pred pred_info_create(pred_or_func::in, module_name::in, string::in,
     prog_context::in, pred_origin::in, pred_status::in, pred_markers::in,
     list(mer_type)::in, tvarset::in, existq_tvars::in, prog_constraints::in,
     set(assert_id)::in, map(prog_var, string)::in, goal_type::in,
@@ -1269,7 +1269,7 @@ marker_name(marker_fact_table_semantic_errors, "fact_table_semantic_errors").
                 psi_instance_method_arg_types   :: list(mer_type)
             ).
 
-pred_info_init(ModuleName, PredOrFunc, PredSymName, Arity, Context,
+pred_info_init(PredOrFunc, PredModuleName, PredName, Arity, Context,
         Origin, Status, CurUserDecl, GoalType, Markers,
         ArgTypes, TypeVarSet, ExistQVars, ClassContext, ClassProofs,
         ClassConstraintMap, ClausesInfo, VarNameRemap, PredInfo) :-
@@ -1296,8 +1296,8 @@ pred_info_init(ModuleName, PredOrFunc, PredSymName, Arity, Context,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
         VarNameRemap, Assertions, ObsoleteInFavourOf, InstanceMethodArgTypes),
 
-    sym_name_get_module_name_default(PredSymName, ModuleName, PredModuleName),
-    PredName = unqualify_name(PredSymName),
+    % argument PredModuleName
+    % argument PredName
     % argument Arity
     % argument PredOrFunc
     % argument Origin
@@ -1313,7 +1313,7 @@ pred_info_init(ModuleName, PredOrFunc, PredSymName, Arity, Context,
         Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
 
-pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin, Status,
+pred_info_create(PredOrFunc, PredModuleName, PredName, Context, Origin, Status,
         Markers, ArgTypes, TypeVarSet, ExistQVars, ClassContext,
         Assertions, VarNameRemap, GoalType, ProcInfo, ProcId, PredInfo) :-
     % argument Context
@@ -1354,8 +1354,8 @@ pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin, Status,
         HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
         no_foreign_lang_clauses, no_clause_syntax_errors),
 
-    % argument ModuleName
-    PredName = unqualify_name(PredSymName),
+    % argument PredModuleName
+    % argument PredName
     list.length(ArgTypes, Arity),
     % argument PredOrFunc
     % argument Origin
@@ -1368,7 +1368,7 @@ pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin, Status,
     map.init(ProcTable0),
     next_mode_id(ProcTable0, ProcId),
     map.det_insert(ProcId, ProcInfo, ProcTable0, ProcTable),
-    PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,
+    PredInfo = pred_info(PredModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
 
@@ -1404,8 +1404,8 @@ pred_create(ModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
 
-define_new_pred(SymName, Origin, TVarSet, VarTypes0, ClassContext, RttiVarMaps,
-        InstVarSet, InstMap0, VarSet0, VarNameRemap,
+define_new_pred(PredSymName, Origin, TVarSet, VarTypes0,
+        ClassContext, RttiVarMaps, InstVarSet, InstMap0, VarSet0, VarNameRemap,
         Markers, IsAddressTaken, HasParallelConj, PredProcId,
         ArgVars0, ExtraTiTcis, Goal0, CallGoal, !ModuleInfo) :-
     Goal0 = hlds_goal(_GoalExpr, GoalInfo),
@@ -1444,9 +1444,13 @@ define_new_pred(SymName, Origin, TVarSet, VarTypes0, ClassContext, RttiVarMaps,
     compute_arg_types_modes(ArgVars, VarTypes0, InstMap0, InstMap,
         ArgTypes, ArgModes),
 
-    % XXX why does pred_info_create take a sym_name only to unqualify it?
-    module_info_get_name(!.ModuleInfo, ModuleName),
-    sym_name_get_module_name_default(SymName, ModuleName, SymNameModule),
+    (
+        PredSymName = qualified(PredModuleName, PredName)
+    ;
+        PredSymName = unqualified(PredName),
+        module_info_get_name(!.ModuleInfo, ModuleName),
+        PredModuleName = ModuleName
+    ),
 
     % Remove unneeded variables from the vartypes and varset.
     goal_util.goal_vars(Goal0, GoalVars0),
@@ -1471,7 +1475,7 @@ define_new_pred(SymName, Origin, TVarSet, VarTypes0, ClassContext, RttiVarMaps,
 
     set.init(Assertions),
     GoalType = goal_not_for_promise(np_goal_type_none),
-    pred_info_create(SymNameModule, SymName, pf_predicate, Context, Origin,
+    pred_info_create(pf_predicate, PredModuleName, PredName, Context, Origin,
         PredStatus, Markers, ArgTypes, TVarSet, ExistQVars,
         ClassContext, Assertions, VarNameRemap, GoalType, ProcInfo,
         ProcId, PredInfo),
@@ -1481,7 +1485,7 @@ define_new_pred(SymName, Origin, TVarSet, VarTypes0, ClassContext, RttiVarMaps,
     module_info_set_predicate_table(PredTable, !ModuleInfo),
 
     CallGoalExpr =
-        plain_call(PredId, ProcId, ArgVars, not_builtin, no, SymName),
+        plain_call(PredId, ProcId, ArgVars, not_builtin, no, PredSymName),
     CallGoal = hlds_goal(CallGoalExpr, GoalInfo),
     PredProcId = proc(PredId, ProcId).
 

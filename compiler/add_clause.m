@@ -95,8 +95,17 @@
 
 module_add_clause(PredStatus, ClauseType, ClauseInfo,
         !ModuleInfo, !QualInfo, !Specs) :-
-    ClauseInfo = item_clause_info(PredOrFunc, PredName, ArgTerms0,
+    ClauseInfo = item_clause_info(PredOrFunc, PredSymName, ArgTerms0,
         ClauseVarSet, MaybeBodyGoal, Context, SeqNum),
+    (
+        PredSymName = qualified(PredModuleName, PredName)
+    ;
+        PredSymName = unqualified(_),
+        % XXX The item_clause_info should encode this invariant, either
+        % by recording PredModuleName and PredName separately, or by using
+        % a qualified-only subtype of SymName.
+        unexpected($pred, "PredSymName is unqualified")
+    ),
     ( if
         illegal_state_var_func_result(PredOrFunc, ArgTerms0, SVar, SVarCtxt)
     then
@@ -110,18 +119,17 @@ module_add_clause(PredStatus, ClauseType, ClauseInfo,
     % Lookup the pred declaration in the predicate table.
     % (If it's not there, call maybe_undefined_pred_error and insert
     % an implicit declaration for the predicate.)
-    module_info_get_name(!.ModuleInfo, ModuleName),
     list.length(ArgTerms, Arity0),
     Arity = Arity0 + ArityAdjustment,
     some [!PredInfo] (
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable),
         predicate_table_lookup_pf_sym_arity(PredicateTable,
-            is_fully_qualified, PredOrFunc, PredName, Arity, PredIds),
+            is_fully_qualified, PredOrFunc, PredSymName, Arity, PredIds),
         ( if PredIds = [PredIdPrime] then
             MaybePredId = yes(PredIdPrime),
             (
                 ClauseType = clause_for_promise(_),
-                NameString = sym_name_to_string(PredName),
+                NameString = sym_name_to_string(PredSymName),
                 string.format("%s %s %s (%s).\n",
                     [s("Attempted to introduce a predicate"),
                     s("for a promise with a name that is identical"),
@@ -131,7 +139,7 @@ module_add_clause(PredStatus, ClauseType, ClauseInfo,
             ;
                 ClauseType = clause_not_for_promise
             )
-        else if unqualify_name(PredName) = ",", Arity = 2 then
+        else if PredName = ",", Arity = 2 then
             MaybePredId = no,
             SNA = sym_name_arity(unqualified(","), 2),
             Pieces = [words("Attempt to define a clause for"),
@@ -147,22 +155,22 @@ module_add_clause(PredStatus, ClauseType, ClauseInfo,
             (
                 ClauseType = clause_for_promise(PromiseType),
                 HeadVars = term.term_list_to_var_list(ArgTerms),
-                preds_add_implicit_for_assertion(ModuleName, PredOrFunc,
-                    PredName, Arity, HeadVars, PredStatus, PromiseType,
-                    Context, NewPredId, !ModuleInfo)
+                preds_add_implicit_for_assertion(PredOrFunc,
+                    PredModuleName, PredName, Arity, HeadVars, PredStatus,
+                    PromiseType, Context, NewPredId, !ModuleInfo)
             ;
                 ClauseType = clause_not_for_promise,
-                preds_add_implicit_report_error(ModuleName, PredOrFunc,
-                    PredName, Arity, PredStatus, is_not_a_class_method,
-                    Context, origin_user(PredName), [words("clause")],
-                    NewPredId, !ModuleInfo, !Specs)
+                preds_add_implicit_report_error(PredOrFunc,
+                    PredModuleName, PredName, Arity, PredStatus,
+                    is_not_a_class_method, Context, origin_user(PredSymName),
+                    [words("clause")], NewPredId, !ModuleInfo, !Specs)
             ),
             MaybePredId = yes(NewPredId)
         ),
         (
             MaybePredId = yes(PredId),
             module_add_clause_2(PredStatus, ClauseType, PredId,
-                PredOrFunc, PredName, ArgTerms, Arity, ArityAdjustment,
+                PredOrFunc, PredSymName, ArgTerms, Arity, ArityAdjustment,
                 ClauseVarSet, MaybeBodyGoal, Context, SeqNum,
                 IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs)
         ;

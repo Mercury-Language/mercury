@@ -120,8 +120,14 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
 
 add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeModes, Context, PredId,
         !ModuleInfo, !QualInfo, !Specs) :-
-    TSInfo0 = pragma_info_type_spec(_PFUMM, SymName, SpecName, Subst,
+    TSInfo0 = pragma_info_type_spec(_PFUMM, SymName, SpecSymName, Subst,
         TVarSet0, ExpandedItems),
+    (
+        SpecSymName = qualified(SpecModuleName, SpecName)
+    ;
+        SpecSymName = unqualified(_),
+        unexpected($pred, "unqualified SpecSymName")
+    ),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     handle_pragma_type_spec_subst(Context, Subst, PredInfo0,
         TVarSet0, TVarSet, Types, ExistQVars, ClassContext, SubstOk,
@@ -207,7 +213,6 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeModes, Context, PredId,
                 pred_info_get_status(PredInfo0, PredStatus)
             ),
 
-            ModuleName = pred_info_module(PredInfo0),
             pred_info_get_origin(PredInfo0, OrigOrigin),
             SubstDesc = list.map(subst_desc, Subst),
             Origin = origin_transformed(
@@ -215,7 +220,7 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeModes, Context, PredId,
             MaybeCurUserDecl = maybe.no,
             GoalType = goal_not_for_promise(np_goal_type_none),
             pred_info_get_var_name_remap(PredInfo0, VarNameRemap),
-            pred_info_init(ModuleName, PredOrFunc, SpecName, PredArityInt,
+            pred_info_init(PredOrFunc, SpecModuleName, SpecName, PredArityInt,
                 Context, Origin, PredStatus, MaybeCurUserDecl, GoalType,
                 Markers, Types, TVarSet, ExistQVars, ClassContext, Proofs,
                 ConstraintMap, Clauses, VarNameRemap, NewPredInfo0),
@@ -258,7 +263,7 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeModes, Context, PredId,
                 PredOrFunc = pf_function,
                 PFUMM = pfumm_function(ModesOrArity)
             ),
-            TSInfo = pragma_info_type_spec(PFUMM, SymName, SpecName,
+            TSInfo = pragma_info_type_spec(PFUMM, SymName, SpecSymName,
                 map.to_assoc_list(RenamedSubst), TVarSet, ExpandedItems),
             multi_map.set(PredId, TSInfo, PragmaMap0, PragmaMap),
             TypeSpecInfo = type_spec_info(ProcsToSpec, ForceVersions, SpecMap,

@@ -134,6 +134,8 @@
     % code.
     % XXX This implementation is currently incomplete, so in future
     % this interface may change.
+    % XXX As of 2022 feb 15, this predicate, which effectively does nothing,
+    % is unused.
     %
 :- pred extrude_pragma_implementation(list(foreign_language)::in,
     list(pragma_var)::in, sym_name::in, pred_or_func::in, prog_context::in,
@@ -500,18 +502,24 @@ foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo, Body,
 %-----------------------------------------------------------------------------%
 
 filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
-    IsWanted = (pred(foreign_decl_code(Lang, _, _, _)::in) is semidet :-
-        WantedLang = Lang),
+    IsWanted =
+        ( pred(foreign_decl_code(Lang, _, _, _)::in) is semidet :-
+            WantedLang = Lang
+        ),
     list.filter(IsWanted, Decls0, LangDecls, NotLangDecls).
 
 filter_bodys(WantedLang, Bodys0, LangBodys, NotLangBodys) :-
-    IsWanted = (pred(foreign_body_code(Lang, _, _)::in) is semidet :-
-        WantedLang = Lang),
+    IsWanted =
+        ( pred(foreign_body_code(Lang, _, _)::in) is semidet :-
+            WantedLang = Lang
+        ),
     list.filter(IsWanted, Bodys0, LangBodys, NotLangBodys).
 
 filter_exports(WantedLang, Exports0, LangExports, NotLangExports) :-
-    IsWanted = (pred(pragma_exported_proc(Lang, _, _, _, _)::in) is semidet :-
-        WantedLang = Lang),
+    IsWanted =
+        ( pred(pragma_exported_proc(Lang, _, _, _, _)::in) is semidet :-
+            WantedLang = Lang
+        ),
     list.filter(IsWanted, Exports0, LangExports, NotLangExports).
 
 %-----------------------------------------------------------------------------%

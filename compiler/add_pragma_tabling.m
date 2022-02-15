@@ -68,7 +68,13 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
         !ModuleInfo, !QualInfo, !Specs) :-
     TabledInfo = pragma_info_tabled(TabledMethod, PredOrProcSpec,
         MaybeAttributes),
-    PredOrProcSpec = pred_or_proc_pfumm_name(PFUMM, PredName),
+    PredOrProcSpec = pred_or_proc_pfumm_name(PFUMM, PredSymName),
+    (
+        PredSymName = qualified(PredModuleName, PredName)
+    ;
+        PredSymName = unqualified(_),
+        unexpected($pred, "unqualified PredSymName")
+    ),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     (
         (
@@ -94,17 +100,15 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
         % Lookup the pred or func declaration in the predicate table.
         % If it is not there, print an error message and insert
         % a dummy declaration for it.
-        predicate_table_lookup_pf_sym_arity(PredicateTable0,
-            is_fully_qualified, PredOrFunc, PredName, PredFormArityInt,
-            PredIds0),
+        predicate_table_lookup_pf_m_n_a(PredicateTable0, is_fully_qualified,
+            PredOrFunc, PredModuleName, PredName, PredFormArityInt, PredIds0),
         (
             PredIds0 = [],
             TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
-            module_info_get_name(!.ModuleInfo, ModuleName),
             DescPieces = [pragma_decl(TabledMethodStr), words("declaration")],
-            preds_add_implicit_report_error(ModuleName, PredOrFunc,
-                PredName, PredFormArityInt, PredStatus,
-                is_not_a_class_method, Context, origin_user(PredName),
+            preds_add_implicit_report_error(PredOrFunc,
+                PredModuleName, PredName, PredFormArityInt, PredStatus,
+                is_not_a_class_method, Context, origin_user(PredSymName),
                 DescPieces, PredId, !ModuleInfo, !Specs),
             PredIds = [PredId]
         ;
@@ -115,22 +119,21 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
         PFUMM = pfumm_unknown(UserArity),
         TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
         maybe_warn_about_pfumm_unknown(!.ModuleInfo, TabledMethodStr, PFUMM,
-            PredName, Context, !Specs),
+            PredSymName, Context, !Specs),
         UserArity = user_arity(UserArityInt),
-        predicate_table_lookup_sym_arity(PredicateTable0,
-            is_fully_qualified, PredName, UserArityInt, PredIds0),
+        predicate_table_lookup_m_n_a(PredicateTable0, is_fully_qualified,
+            PredModuleName, PredName, UserArityInt, PredIds0),
         (
             PredIds0 = [],
-            module_info_get_name(!.ModuleInfo, ModuleName),
             DescPieces = [pragma_decl(TabledMethodStr), words("declaration")],
             % XXX The pragma does not say whether the user intends to table
             % a predicate or a function, so adding a predicate here is
             % only a guess.
             user_arity_pred_form_arity(pf_predicate, UserArity,
                 pred_form_arity(PredFormArityInt)),
-            preds_add_implicit_report_error(ModuleName, pf_predicate,
-                PredName, PredFormArityInt, PredStatus,
-                is_not_a_class_method, Context, origin_user(PredName),
+            preds_add_implicit_report_error(pf_predicate,
+                PredModuleName, PredName, PredFormArityInt, PredStatus,
+                is_not_a_class_method, Context, origin_user(PredSymName),
                 DescPieces, PredId, !ModuleInfo, !Specs),
             PredIds = [PredId]
         ;
@@ -151,7 +154,7 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
                 StatsPieces = [words("Error: cannot request statistics"),
                     words("for the ambiguous name"),
                     qual_sym_name_arity(
-                        sym_name_arity(PredName, UserArityInt)),
+                        sym_name_arity(PredSymName, UserArityInt)),
                     suffix(","),
                     words("since the compiler-generated statistics predicate"),
                     words("would have an ambiguous name too."), nl],
@@ -166,7 +169,7 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
                 ResetPieces = [words("Error: cannot request allow_reset"),
                     words("for the ambiguous name"),
                     qual_sym_name_arity(
-                        sym_name_arity(PredName, UserArityInt)),
+                        sym_name_arity(PredSymName, UserArityInt)),
                     suffix(","),
                     words("since the compiler-generated reset predicate"),
                     words("would have an ambiguous name too."), nl],
@@ -181,7 +184,7 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
         MaybeAttributes = no
     ),
     list.foldl3(
-        module_add_pragma_tabled_for_pred(TabledMethod, PFUMM, PredName,
+        module_add_pragma_tabled_for_pred(TabledMethod, PFUMM, PredSymName,
             MaybeAttributes, Context, ItemMercuryStatus, PredStatus),
         PredIds, !ModuleInfo, !QualInfo, !Specs).
 
@@ -192,7 +195,7 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM, PredName,
+module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM, PredSymName,
         MaybeAttributes, Context, ItemMercuryStatus, PredStatus, PredId,
         !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -229,7 +232,8 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM, PredName,
     % pred_form_arity.
     user_arity_pred_form_arity(PredOrFunc, UserArity,
         pred_form_arity(PredFormArityInt)),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredName, PredFormArityInt),
+    PFSymNameArity =
+        pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArityInt),
 
     TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
@@ -237,7 +241,7 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM, PredName,
         VeryVerbose = yes,
         trace [io(!IO)] (
             IdStr = pf_sym_name_orig_arity_to_string(PredOrFunc,
-                PredName, PredFormArityInt),
+                PredSymName, PredFormArityInt),
             get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             io.format(ProgressStream,
                 "%% Processing `:- pragma %s' for %s...\n",

@@ -111,7 +111,7 @@
             % arguments being passed by address would also work.
 
     ;       tn_ssdb_stdlib_proxy(pred_or_func)
-            % The new predicate name include only the pred_or_func indication.
+            % The new predicate name includes only the pred_or_func indication.
 
     ;       tn_dep_par_conj(pred_or_func, int, list(int))
             % The new predicate name includes the proc_id of the original
@@ -139,14 +139,30 @@
             % argument is there to provide the names of the type vars
             % on both sides of those arrows.
 
+    ;       tn_io_tabling(pred_or_func)
+            % The new predicate name includes only the pred_or_func indication.
+
     ;       tn_minimal_model_generator(pred_or_func, int)
             % The new predicate name includes the proc_id of the original
             % predicate (given by the second argument).
+
+    ;       tn_stm_expanded(pred_or_func, stm_clone_kind, int, int, int)
+            % The new predicate name includes the clone kind, the arity
+            % of the original predicate (given by the third argument),
+            % the pred_id of the original predicate (given by the fourth
+            % argument), and a unique counter value (the last argument).
 
     ;       tn_unused_args(pred_or_func, int, list(int)).
             % The new predicate name includes the proc_id of the original
             % predicate (given by the second argument), as well a list
             % of the argument numbers of the unused arguments.
+
+:- type stm_clone_kind
+    --->    stmck_top_level
+    ;       stmck_rollback
+    ;       stmck_wrapper
+    ;       stmck_simple_wrapper
+    ;       stmck_or_else.
 
     % make_transformed_pred_sym_name(ModuleName, OrigName, Transform,
     %   TransformedSymName):
@@ -172,8 +188,8 @@
     %
     % XXX This isn't quite perfect, I suspect.
     %
-:- pred make_instance_method_pred_sym_name(class_id::in,
-    sym_name::in, arity::in, list(mer_type)::in, sym_name::out) is det.
+:- pred make_instance_method_pred_name(class_id::in,
+    sym_name::in, arity::in, list(mer_type)::in, string::out) is det.
 
     % Given a list of types, mangle the names so into a string which
     % identifies them. The types must all have their top level functor
@@ -182,12 +198,6 @@
 :- pred make_instance_string(list(mer_type)::in, string::out) is det.
 
 %---------------------%
-
-    % Return the sym_name of the unify, compare or index predicate
-    % for the given type_ctor.
-    %
-:- pred make_uci_pred_sym_name(special_pred_id::in, type_ctor::in,
-    sym_name::out) is det.
 
     % Return the predicate name we should use for the given uci (special) pred
     % for the given type_ctor.
@@ -230,6 +240,21 @@ make_transformed_pred_name(OrigName, Transform, TransformedName) :-
         string.format("%s_%d_%d", [s(OrigName), i(ProcNum), i(Version)],
             TransformedName)
     ;
+        Transform =
+            tn_stm_expanded(_PredOrFunc, CloneKind, Arity, PredNum, Counter),
+        ( CloneKind = stmck_top_level,      CloneKindStr = "top_level"
+        ; CloneKind = stmck_rollback,       CloneKindStr = "rollback"
+        ; CloneKind = stmck_wrapper,        CloneKindStr = "wrapper"
+        ; CloneKind = stmck_simple_wrapper, CloneKindStr = "simple_wrapper"
+        ; CloneKind = stmck_or_else,        CloneKindStr = "or_else"
+        ),
+        % XXX The string we construct here does not fit into our current
+        % naming scheme at all, but while stm does not work, this does not
+        % matter.
+        string.format("StmExpanded_%s_%s_%d_%d_%d",
+            [s(CloneKindStr), s(OrigName), i(Arity), i(PredNum), i(Counter)],
+            TransformedName)
+    ;
         ( Transform = tn_accumulator(_, _)
         ; Transform = tn_deforestation(_, _)
         ; Transform = tn_lambda(_, _)
@@ -243,6 +268,7 @@ make_transformed_pred_name(OrigName, Transform, TransformedName) :-
         ; Transform = tn_par_loop_control(_, _)
         ; Transform = tn_structure_reuse(_, _, _)
         ; Transform = tn_pragma_type_spec(_, _, _)
+        ; Transform = tn_io_tabling(_)
         ; Transform = tn_minimal_model_generator(_, _)
         ; Transform = tn_unused_args(_, _, _)
         ),
@@ -328,6 +354,13 @@ make_transformed_pred_name(OrigName, Transform, TransformedName) :-
             string.format("TypeSpecOf__%s", [s(PredOrFuncStr)], Prefix),
             Suffix = type_subst_to_string(VarSet, TypeSubst)
         ;
+            Transform = tn_io_tabling(PredOrFunc),
+            string.format("OutlinedForIOTablingFrom__%s",
+                [s(pred_or_func_to_str(PredOrFunc))], Prefix),
+            % XXX Having an empty Suffix leaves Name ending with
+            % two consecutive underscores.
+            Suffix = ""
+        ;
             Transform = tn_minimal_model_generator(PredOrFunc, ProcNum),
             string.format("GeneratorFor_%s",
                 [s(pred_or_func_to_str(PredOrFunc))], Prefix),
@@ -348,8 +381,8 @@ make_transformed_pred_name(OrigName, Transform, TransformedName) :-
 
 %---------------------------------------------------------------------------%
 
-make_instance_method_pred_sym_name(ClassId, MethodName, Arity, InstanceTypes,
-        PredSymName) :-
+make_instance_method_pred_name(ClassId, MethodName, Arity, InstanceTypes,
+        PredName) :-
     ClassId = class_id(ClassName, _ClassArity),
     ClassNameStr = sym_name_to_string_sep(ClassName, "__"),
     MethodNameStr = sym_name_to_string_sep(MethodName, "__"),
@@ -357,8 +390,7 @@ make_instance_method_pred_sym_name(ClassId, MethodName, Arity, InstanceTypes,
     make_instance_string(InstanceTypes, InstanceStr),
     string.format("ClassMethod_for_%s____%s____%s_%d",
         [s(ClassNameStr), s(InstanceStr), s(MethodNameStr), i(Arity)],
-        PredName),
-    PredSymName = unqualified(PredName).
+        PredName).
 
 make_instance_string(InstanceTypes, InstanceStr) :-
     % Note that for historical reasons, builtin types are treated as being
@@ -376,10 +408,6 @@ instance_type_ctor_to_string(Type, Str) :-
     string.format("%s__arity%i__", [s(TypeNameStr), i(TypeArity)], Str).
 
 %---------------------------------------------------------------------------%
-
-make_uci_pred_sym_name(SpecialPredId, TypeCtor, PredSymName) :-
-    PredName = uci_pred_name(SpecialPredId, TypeCtor),
-    PredSymName = unqualified(PredName).
 
 uci_pred_name(SpecialPred, type_ctor(SymName, Arity)) = Name :-
     BaseName = get_special_pred_id_target_name(SpecialPred),

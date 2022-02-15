@@ -1579,14 +1579,14 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
     Types = NewTypes ++ Types0,
 
     Transform = tn_accumulator(PredOrFunc, lnc(Line, Counter)),
-    make_transformed_pred_sym_name(ModuleName, Name, Transform, SymName),
+    make_transformed_pred_name(Name, Transform, TransformedName),
 
     OutVarNums = list.map(term.var_to_int, OutVars),
     Origin = origin_transformed(transform_accumulator(OutVarNums),
         OldOrigin, OrigPredId),
     GoalType = goal_not_for_promise(np_goal_type_none),
-    pred_info_create(ModuleName, SymName, PredOrFunc, PredContext, Origin,
-        pred_status(status_local), Markers, Types, TypeVarSet,
+    pred_info_create(PredOrFunc, ModuleName, TransformedName, PredContext,
+        Origin, pred_status(status_local), Markers, Types, TypeVarSet,
         ExistQVars, ClassContext, Assertions, VarNameRemap, GoalType,
         NewProcInfo, NewProcId, NewPredInfo).
 

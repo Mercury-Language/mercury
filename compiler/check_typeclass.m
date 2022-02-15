@@ -739,7 +739,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 
     % Work out the name of the predicate that we will generate
     % to check this instance method.
-    make_instance_method_pred_sym_name(ClassId, MethodName, Arity,
+    make_instance_method_pred_name(ClassId, MethodName, Arity,
         InstanceTypes, PredName),
 
     CheckInfo0 = check_instance_method_info(PredOrFunc, PredName, Arity,
@@ -759,7 +759,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
                 cimi_method_pred_or_func    :: pred_or_func,
 
                 % Name that the introduced pred should be given.
-                cimi_introduced_pred_name   :: sym_name,
+                cimi_introduced_pred_name   :: string,
 
                 % Arity of the method. (For funcs, this is the original arity,
                 % not the arity as a predicate.)
@@ -997,7 +997,7 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
     PredStatus = pred_status(OldImportStatus),
     CurUserDecl = maybe.no,
     GoalType = goal_not_for_promise(np_goal_type_none),
-    pred_info_init(InstanceModuleName, PredOrFunc, PredName, PredArity,
+    pred_info_init(PredOrFunc, InstanceModuleName, PredName, PredArity,
         Context, PredOrigin, PredStatus, CurUserDecl, GoalType, Markers,
         ArgTypes, TVarSet, ExistQVars, ClassContext, Proofs, ConstraintMap,
         ClausesInfo, VarNameRemap, PredInfo0),

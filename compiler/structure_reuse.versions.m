@@ -87,21 +87,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- func generate_reuse_name(module_info, pred_proc_id, list(int)) = sym_name.
-
-generate_reuse_name(ModuleInfo, PPId, NoClobberArgNums) = ReusePredSymName :-
-    PPId = proc(_, ProcId),
-    module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _ProcInfo),
-    PredModule = pred_info_module(PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    PredName = pred_info_name(PredInfo),
-    Transform = tn_structure_reuse(PredOrFunc, proc_id_to_int(ProcId),
-        NoClobberArgNums),
-    make_transformed_pred_sym_name(PredModule, PredName, Transform,
-        ReusePredSymName).
-
-%-----------------------------------------------------------------------------%
-
 create_reuse_procedures(!ReuseTable, !ModuleInfo) :-
     % This process can be split into separate steps:
     % - determine all the pred-proc-ids of procedure with conditional reuse;
@@ -189,30 +174,36 @@ maybe_create_full_reuse_proc_copy(PPId, NewPPId, !ModuleInfo, !ReuseTable) :-
 
 %-----------------------------------------------------------------------------%
 
-create_fresh_pred_proc_info_copy(PPId, NoClobbers, NewPPId, !ModuleInfo) :-
+create_fresh_pred_proc_info_copy(PPId, NoClobberArgNums, NewPPId,
+        !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, ProcInfo0),
-    ReusePredName = generate_reuse_name(!.ModuleInfo, PPId, NoClobbers),
-    PPId = proc(PredId, _),
-    create_fresh_pred_proc_info_copy_2(PredId, PredInfo0, ProcInfo0,
-        ReusePredName, ReusePredInfo, ReuseProcId),
-
-    NewPPId = proc(ReusePredId, ReuseProcId),
+    create_fresh_pred_proc_info_copy_2(PPId, PredInfo0, ProcInfo0,
+        NoClobberArgNums, ReusePredInfo, ReuseProcId),
 
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     predicate_table_insert(ReusePredInfo, ReusePredId, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo),
 
+    NewPPId = proc(ReusePredId, ReuseProcId),
+
     module_info_get_structure_reuse_preds(!.ModuleInfo, ReusePreds0),
     set.insert(ReusePredId, ReusePreds0, ReusePreds),
     module_info_set_structure_reuse_preds(ReusePreds, !ModuleInfo).
 
-:- pred create_fresh_pred_proc_info_copy_2(pred_id::in, pred_info::in,
-    proc_info::in, sym_name::in, pred_info::out, proc_id::out) is det.
+:- pred create_fresh_pred_proc_info_copy_2(pred_proc_id::in, 
+    pred_info::in, proc_info::in, no_clobber_args::in,
+    pred_info::out, proc_id::out) is det.
 
-create_fresh_pred_proc_info_copy_2(PredId, PredInfo, ProcInfo, ReusePredName,
-        ReusePredInfo, ReuseProcId) :-
-    ModuleName = pred_info_module(PredInfo),
+create_fresh_pred_proc_info_copy_2(PredProcId, PredInfo, ProcInfo,
+        NoClobberArgNums, ReusePredInfo, ReuseProcId) :-
+    PredProcId = proc(PredId, ProcId),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    PredName = pred_info_name(PredInfo),
+    Transform = tn_structure_reuse(PredOrFunc, proc_id_to_int(ProcId),
+        NoClobberArgNums),
+    make_transformed_pred_name(PredName, Transform, ReusePredName),
+
+    PredModuleName = pred_info_module(PredInfo),
     pred_info_get_context(PredInfo, ProgContext),
     pred_info_get_origin(PredInfo, PredOrigin),
     pred_info_get_status(PredInfo, PredStatus0),
@@ -233,7 +224,9 @@ create_fresh_pred_proc_info_copy_2(PredId, PredInfo, ProcInfo, ReusePredName,
     NewPredOrigin = origin_transformed(transform_structure_reuse, PredOrigin,
         PredId),
     GoalType = goal_not_for_promise(np_goal_type_none),
-    pred_info_create(ModuleName, ReusePredName, PredOrFunc, ProgContext,
+    % Shouldn't we use the *current* module's name, even if it is not
+    % the same as PredModuleName?
+    pred_info_create(PredOrFunc, PredModuleName, ReusePredName, ProgContext,
         NewPredOrigin, PredStatus, PredMarkers, MerTypes, TVarset,
         ExistQTVars, ProgConstraints, AssertIds, VarNameRemap, GoalType,
         ProcInfo, ReuseProcId, ReusePredInfo).

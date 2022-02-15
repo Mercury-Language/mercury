@@ -2869,8 +2869,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         % program will not link.
         Transform = tn_higher_order_type_spec(PredOrFunc, CallerProcNum,
             higher_order_arg_order_version),
-        make_transformed_pred_sym_name(PredModuleName, CallerPredName0,
-            Transform, SpecSymName),
+        make_transformed_pred_name(CallerPredName0, Transform, SpecName),
         OriginTransform =
             transform_higher_order_type_specialization(CallerProcNum),
         NewProcId = CallerProcId,
@@ -2886,8 +2885,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         counter.allocate(Id, IdCounter0, IdCounter),
         !Info ^ hogi_next_id := IdCounter,
         Transform = tn_higher_order(PredOrFunc, Id),
-        make_transformed_pred_sym_name(PredModuleName, Name0,
-            Transform, SpecSymName),
+        make_transformed_pred_name(Name0, Transform, SpecName),
         OriginTransform = transform_higher_order_specialization(Id),
         PredStatus = pred_status(status_local)
     ),
@@ -2896,12 +2894,11 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         VeryVerbose = no
     ;
         VeryVerbose = yes,
-        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+        get_progress_output_stream(ModuleInfo0, ProgressStream, !IO),
         list.length(Types, ActualArity),
-        SpecPredName = unqualify_name(SpecSymName),
         write_request(ProgressStream, ModuleInfo0, "Specializing",
             qualified(PredModuleName, Name0), PredArity, ActualArity,
-            yes(SpecPredName), HOArgs, Context, !IO)
+            yes(SpecName), HOArgs, Context, !IO)
     ),
 
     pred_info_get_origin(PredInfo0, OrigOrigin),
@@ -2927,7 +2924,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         EmptyRttiVarMaps, no_foreign_lang_clauses, no_clause_syntax_errors),
     Origin = origin_transformed(OriginTransform, OrigOrigin, CallerPredId),
     CurUserDecl = maybe.no,
-    pred_info_init(PredModuleName, PredOrFunc, SpecSymName, PredArity,
+    pred_info_init(PredOrFunc, PredModuleName, SpecName, PredArity,
         Context, Origin, PredStatus, CurUserDecl, GoalType, MarkerList, Types,
         ArgTVarSet, ExistQVars, ClassContext, EmptyProofs, EmptyConstraintMap,
         ClausesInfo, VarNameRemap, NewPredInfo0),
@@ -2939,6 +2936,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 
     !Info ^ hogi_module_info := ModuleInfo1,
 
+    SpecSymName = qualified(PredModuleName, SpecName),
     NewPred = new_pred(proc(NewPredId, NewProcId), CalledPredProc, Caller,
         SpecSymName, HOArgs, CallArgs, ExtraTypeInfoTVars, ArgTypes,
         CallerTVarSet, TypeInfoLiveness, IsUserTypeSpec),

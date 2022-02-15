@@ -187,6 +187,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
@@ -865,7 +866,7 @@ create_top_level_pred(Context, AtomicGoalVarList, OuterDI, OuterUO, AtomicGoal,
 
     create_cloned_pred(InputVars ++ OutputVars ++ [OuterDI, OuterUO],
         InputTypes ++ OutputTypes ++ [io_io_type, io_io_type],
-        InputModes ++ OutputModes ++ [di_mode, uo_mode], "toplevel",
+        InputModes ++ OutputModes ++ [di_mode, uo_mode], stmck_top_level,
         AtomicGoal, no, NewPredInfo0, Goal, !StmInfo),
 
     UnifyModeUoDi = unify_modes_li_lf_ri_rf(free, unique_inst,
@@ -1250,8 +1251,8 @@ create_rollback_pred(Context, AtomicGoalVarList, CallGoal, AtomicGoal,
     get_input_output_modes(AtomicGoalVars, InputModes, OutputModes),
 
     create_cloned_pred(InputVars ++ OutputVars, InputTypes ++ OutputTypes,
-        InputModes ++ OutputModes, "rollback", AtomicGoal, no, NewPredInfo0,
-        CallGoal, !StmInfo),
+        InputModes ++ OutputModes, stmck_rollback, AtomicGoal,
+        no, NewPredInfo0, CallGoal, !StmInfo),
 
     create_rollback_pred_2(Context, AtomicGoalVarList, CallGoal,
         AtomicGoal, OrElseGoals, NewPredInfo0, NewPredInfo, !StmInfo),
@@ -1428,7 +1429,7 @@ create_wrapper_pred_2(AtomicGoalVars, ResultType, ResultVar0,
     create_cloned_pred(InputVars ++ [ResultVar0, InnerDI, InnerUO0],
         InputTypes ++ [ResultType, stm_state_type, stm_state_type],
         InputModes ++ [out_mode, di_mode, uo_mode],
-        "wrapper", !.AtomicGoal, no, !:NewPredInfo, CallGoal, !StmInfo),
+        stmck_wrapper, !.AtomicGoal, no, !:NewPredInfo, CallGoal, !StmInfo),
 
     rename_var_in_wrapper_pred("stm_ResultVar", ResultVar0, ResultType,
         ResultVar, !NewPredInfo, !AtomicGoal),
@@ -1582,8 +1583,8 @@ create_simple_wrapper_pred_2(Context, AtomicGoalVars, ResultType, ResultVar0,
 
     create_cloned_pred(InputVars ++ [ResultVar0, InnerDI, InnerUO0],
         InputTypes ++ [ResultType, stm_state_type, stm_state_type],
-        InputModes ++ [out_mode, di_mode, uo_mode],
-        "simple_wrapper", !.AtomicGoal, no, !:NewPredInfo, CallGoal, !StmInfo),
+        InputModes ++ [out_mode, di_mode, uo_mode], stmck_simple_wrapper,
+        !.AtomicGoal, no, !:NewPredInfo, CallGoal, !StmInfo),
 
     rename_var_in_wrapper_pred("stm_ResultVar", ResultVar0, ResultType,
         ResultVar, !NewPredInfo, !AtomicGoal),
@@ -1681,9 +1682,8 @@ create_or_else_pred(Context, AtomicGoalVars, BranchGoalVars, Closures,
     make_return_type(OutputTypes, ReturnType),
     create_cloned_pred(InputVars ++ OutputVars ++ [StmDI, StmUO],
         InputTypes ++ OutputTypes ++ [stm_state_type, stm_state_type],
-        InputModes ++ OutputModes ++ [di_mode, uo_mode],
-        "or_else", true_goal, MaybeDetism, NewPredInfo0, CallGoal,
-        !StmInfo),
+        InputModes ++ OutputModes ++ [di_mode, uo_mode], stmck_or_else,
+        true_goal, MaybeDetism, NewPredInfo0, CallGoal, !StmInfo),
 
     create_aux_variable(stm_state_type, yes("STMDI"), NewStmDI,
         NewPredInfo0, NewPredInfo1),
@@ -2436,16 +2436,16 @@ make_type_info(Type, Var, Goals, NewPredInfo0, NewPredInfo) :-
     % built) as well as a call to the new predicate.
     %
 :- pred create_cloned_pred(list(prog_var)::in, list(mer_type)::in,
-    list(mer_mode)::in, string::in, hlds_goal::in, maybe(determinism)::in,
-    stm_new_pred_info::out, hlds_goal::out, stm_info::in, stm_info::out)
-    is det.
+    list(mer_mode)::in, stm_clone_kind::in, hlds_goal::in,
+    maybe(determinism)::in, stm_new_pred_info::out, hlds_goal::out,
+    stm_info::in, stm_info::out) is det.
 
 create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes,
-        Prefix, OrigGoal, MaybeDetism, NewStmPredInfo, CallGoal, !StmInfo) :-
+        CloneKind, OrigGoal, MaybeDetism, NewStmPredInfo, CallGoal, !StmInfo) :-
     ModuleInfo0 = !.StmInfo ^ stm_info_module_info,
     PredInfo = !.StmInfo ^ stm_info_pred_info,
-    ProcId = !.StmInfo ^ stm_info_proc_id,
     PredId = !.StmInfo ^ stm_info_pred_id,
+    ProcId = !.StmInfo ^ stm_info_proc_id,
     ExpansionCnt0 = !.StmInfo ^ stm_info_expand_id,
 
     list.length(ProcHeadVars, Arity),
@@ -2477,9 +2477,9 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes,
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_context(PredInfo, PredContext),
 
-    NewPredName = qualified(ModuleName, "StmExpanded_" ++ Prefix ++ "_" ++
-        OrigPredName ++ "_" ++ string(Arity) ++ "_" ++ string(PredId) ++
-        "_" ++ string(ExpansionCnt0)),
+    Transform = tn_stm_expanded(PredOrFunc, CloneKind, Arity, 
+        pred_id_to_int(PredId), ExpansionCnt0),
+    make_transformed_pred_name(OrigPredName, Transform, NewPredName),
 
     pred_info_get_origin(PredInfo, OrigPredOrigin),
     NewPredOrigin = origin_transformed(transform_stm_expansion,
@@ -2491,7 +2491,7 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes,
     pred_info_get_assertions(PredInfo, PredAssertions),
     pred_info_get_markers(PredInfo, Markers),
     GoalType = goal_not_for_promise(np_goal_type_none),
-    pred_info_create(ModuleName, NewPredName, PredOrFunc, PredContext,
+    pred_info_create(PredOrFunc, ModuleName, NewPredName, PredContext,
         NewPredOrigin, pred_status(status_local), Markers, PredArgTypes,
         PredTypeVarSet, PredExistQVars, PredClassContext, PredAssertions,
         VarNameRemap, GoalType, NewProcInfo, NewProcId, NewPredInfo),
@@ -2499,10 +2499,9 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes,
     module_info_get_predicate_table(ModuleInfo0, PredicateTable0),
     predicate_table_insert(NewPredInfo, NewPredId,
         PredicateTable0, PredicateTable),
-    module_info_set_predicate_table(PredicateTable, ModuleInfo0,
-        ModuleInfo),
+    module_info_set_predicate_table(PredicateTable, ModuleInfo0, ModuleInfo),
     CallExpr = plain_call(NewPredId, NewProcId, ProcHeadVars, not_builtin, no,
-        NewPredName),
+        qualified(ModuleName, NewPredName)),
 
     set_of_var.list_to_set(ProcHeadVars, CallNonLocals),
     instmap_delta_from_mode_list(ModuleInfo0, ProcHeadVars, ProcHeadModes,

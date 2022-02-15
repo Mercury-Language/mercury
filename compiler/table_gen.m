@@ -1406,17 +1406,15 @@ create_new_io_goal(OrigGoal, TableIoEntryKind, Unitize, TableIoStates,
     module_info_pred_info(ModuleInfo0, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     ( if check_marker(Markers, marker_user_marked_no_inline) then
-        %
         % If the predicate should not be inlined, then we create a new
         % predicate with the same body as the original predicate, which is
         % called wherever the original goal would appear in the transformed
-        % code.  This is necessary when the original goal is foreign C code
-        % that uses labels.  The original goal would otherwise be duplicated
+        % code. This is necessary when the original goal is foreign C code
+        % that uses labels. The original goal would otherwise be duplicated
         % by the transformation, resulting in duplicate label errors from
         % the C compiler.
-        %
-        clone_proc_and_create_call(PredInfo, ProcId, CallExpr, ModuleInfo0,
-            ModuleInfo),
+        clone_proc_and_create_call(PredInfo, ProcId, CallExpr,
+            ModuleInfo0, ModuleInfo),
         NewGoal = hlds_goal(CallExpr, OrigGoalInfo),
         !TableInfo ^ table_module_info := ModuleInfo
     else
@@ -2086,8 +2084,7 @@ clone_pred_info(OrigPredId, OrigProcId, PredInfo0, HeadVars,
 
     Transform = tn_minimal_model_generator(PredOrFunc,
         proc_id_to_int(OrigProcId)),
-    make_transformed_pred_sym_name(ModuleName, PredName, Transform,
-        GenPredSymName),
+    make_transformed_pred_name(PredName, Transform, GenPredName),
     assoc_list.from_corresponding_lists(HeadVars, ArgTypes0, HeadVarTypes),
     keep_only_output_arg_types(HeadVarTypes, NumberedOutputVars, ArgTypes),
     list.length(ArgTypes, Arity),
@@ -2099,7 +2096,7 @@ clone_pred_info(OrigPredId, OrigProcId, PredInfo0, HeadVars,
     Origin = origin_transformed(transform_table_generator,
         OrigOrigin, OrigPredId),
     CurUserDecl = maybe.no,
-    pred_info_init(ModuleName, PredOrFunc, GenPredSymName, Arity, Context,
+    pred_info_init(PredOrFunc, ModuleName, GenPredName, Arity, Context,
         Origin, PredStatus, CurUserDecl, GoalType, Markers,
         ArgTypes, TypeVarSet, ExistQVars, ClassContext, ClassProofMap,
         ClassConstraintMap, ClausesInfo, VarNameRemap, GenPredInfo),
@@ -2142,9 +2139,9 @@ clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
     ModuleName = pred_info_module(PredInfo),
     OrigPredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    Transform = tn_io_tabling(PredOrFunc),
+    make_transformed_pred_name(OrigPredName, Transform, NewPredName),
     pred_info_get_context(PredInfo, PredContext),
-    NewPredName = qualified(ModuleName, "OutlinedForIOTablingFrom_" ++
-        OrigPredName),
     pred_info_get_arg_types(PredInfo, PredArgTypes),
     pred_info_get_typevarset(PredInfo, PredTypeVarSet),
     pred_info_get_exist_quant_tvars(PredInfo, PredExistQVars),
@@ -2152,7 +2149,7 @@ clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
     pred_info_get_assertions(PredInfo, PredAssertions),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_goal_type(PredInfo, GoalType),
-    pred_info_create(ModuleName, NewPredName, PredOrFunc, PredContext,
+    pred_info_create(PredOrFunc, ModuleName, NewPredName, PredContext,
         origin_created(created_by_io_tabling), pred_status(status_local),
         Markers, PredArgTypes, PredTypeVarSet, PredExistQVars,
         PredClassContext, PredAssertions, VarNameRemap, GoalType,
@@ -2162,7 +2159,7 @@ clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
         PredicateTable0, PredicateTable),
     module_info_set_predicate_table(PredicateTable, !ModuleInfo),
     CallExpr = plain_call(NewPredId, NewProcId, ProcHeadVars, not_builtin, no,
-        NewPredName).
+        qualified(ModuleName, NewPredName)).
 
 :- pred keep_only_output_arg_types(assoc_list(prog_var, mer_type)::in,
     list(var_mode_pos_method)::in, list(mer_type)::out) is det.
