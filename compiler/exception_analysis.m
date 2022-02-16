@@ -506,7 +506,7 @@ check_goal_for_exceptions_generic_call(VarTypes, Details, Args, GoalInfo,
         IntermodAnalysis),
     (
         Details = higher_order(Var, _, _,  _),
-        ClosureValueMap = goal_info_get_ho_values(GoalInfo),
+        ClosureValueMap = goal_info_get_higher_order_value_map(GoalInfo),
         ( if map.search(ClosureValueMap, Var, ClosureValues) then
             get_closures_exception_status(IntermodAnalysis, ClosureValues,
                 MaybeWillNotThrow, MaybeAnalysisStatus, !ModuleInfo),

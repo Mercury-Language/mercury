@@ -1195,10 +1195,10 @@
 
     % This type stores the possible values of a higher order variable
     % at a particular point, as determined by the closure analysis
-    % (see closure_analysis.m.)  If a variable does not have an entry
+    % (see closure_analysis.m.) If a variable does not have an entry
     % in the map, then it may take any (valid) value.
     %
-:- type ho_values == map(prog_var, set(pred_proc_id)).
+:- type higher_order_value_map == map(prog_var, set(pred_proc_id)).
 
 :- type rbmm_goal_info
     --->    rbmm_goal_info(
@@ -1633,12 +1633,13 @@
 
 :- func goal_info_get_context(hlds_goal_info) = prog_context.
 :- func goal_info_get_reverse_goal_path(hlds_goal_info) = reverse_goal_path.
-:- func goal_info_get_ho_values(hlds_goal_info) = ho_values.
+:- func goal_info_get_higher_order_value_map(hlds_goal_info)
+    = higher_order_value_map.
 :- func goal_info_get_goal_mode(hlds_goal_info) = goal_mode.
 :- func goal_info_get_maybe_ctgc(hlds_goal_info) = maybe(ctgc_goal_info).
 :- func goal_info_get_maybe_rbmm(hlds_goal_info) = maybe(rbmm_goal_info).
-:- func goal_info_get_maybe_mode_constr(hlds_goal_info) =
-    maybe(mode_constr_goal_info).
+:- func goal_info_get_maybe_mode_constr(hlds_goal_info)
+    = maybe(mode_constr_goal_info).
 :- func goal_info_get_maybe_dp_info(hlds_goal_info) = maybe(dp_goal_info).
 
 :- pred goal_info_set_determinism(determinism::in,
@@ -1660,7 +1661,7 @@
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_reverse_goal_path(reverse_goal_path::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_ho_values(ho_values::in,
+:- pred goal_info_set_higher_order_value_map(higher_order_value_map::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_goal_mode(goal_mode::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
@@ -2041,7 +2042,7 @@ rbmm_info_init =
                 % is undecidable, this may be a conservative approximation.
 /*  1 */        gi_determinism      :: determinism,
 
-/*  - */        gi_purity           :: purity,
+/*  2 */        gi_purity           :: purity,
 
                 % The change in insts over this goal (computed during mode
                 % analysis). Since the unreachability problem is undecidable,
@@ -2061,28 +2062,28 @@ rbmm_info_init =
                 %
                 % Normally the instmap_delta will list only the nonlocal
                 % variables of the goal.
-/*  2 */        gi_instmap_delta    :: instmap_delta,
+/*  3 */        gi_instmap_delta    :: instmap_delta,
 
                 % The non-local vars in the goal, i.e. the variables that
                 % occur both inside and outside of the goal (computed by
                 % quantification.m). In some circumstances, this may be a
                 % conservative approximation: it may be a superset of the
                 % real non-locals.
-/*  3 */        gi_nonlocals        :: set_of_progvar,
+/*  4 */        gi_nonlocals        :: set_of_progvar,
 
                 % The set of compiler-defined "features" of this goal,
                 % which optimisers may wish to know about.
-/*  4 */        gi_features         :: set(goal_feature),
+/*  5 */        gi_features         :: set(goal_feature),
 
                 % An value that uniquely identifies this goal in its procedure.
-/*  5 */        gi_goal_id          :: goal_id,
+/*  6 */        gi_goal_id          :: goal_id,
 
-/*  6 */        gi_code_gen_info    :: hlds_goal_code_gen_info,
+/*  7 */        gi_code_gen_info    :: hlds_goal_code_gen_info,
 
                 % Extra information about the goal that doesn't fit in an
                 % eight-word cell. Mostly used for information used by
                 % various optional analysis passes, e.g closure analysis.
-/*  7 */        gi_extra            :: hlds_goal_extra_info
+/*  8 */        gi_extra            :: hlds_goal_extra_info
             ).
 
 :- type hlds_goal_extra_info
@@ -2091,7 +2092,7 @@ rbmm_info_init =
 
                 egi_rev_goal_path       :: reverse_goal_path,
 
-                egi_ho_vals             :: ho_values,
+                egi_ho_value_map        :: higher_order_value_map,
 
                 egi_goal_mode           :: goal_mode,
 
@@ -2220,8 +2221,8 @@ goal_info_get_context(GoalInfo) = X :-
     X = GoalInfo ^ gi_extra ^ egi_context.
 goal_info_get_reverse_goal_path(GoalInfo) = X :-
     X = GoalInfo ^ gi_extra ^ egi_rev_goal_path.
-goal_info_get_ho_values(GoalInfo) = X :-
-    X = GoalInfo ^ gi_extra ^ egi_ho_vals.
+goal_info_get_higher_order_value_map(GoalInfo) = X :-
+    X = GoalInfo ^ gi_extra ^ egi_ho_value_map.
 goal_info_get_goal_mode(GoalInfo) = X :-
     X = GoalInfo ^ gi_extra ^ egi_goal_mode.
 goal_info_get_maybe_ctgc(GoalInfo) = X :-
@@ -2260,12 +2261,12 @@ goal_info_set_context(X, !GoalInfo) :-
     !GoalInfo ^ gi_extra ^ egi_context := X.
 goal_info_set_reverse_goal_path(X, !GoalInfo) :-
     !GoalInfo ^ gi_extra ^ egi_rev_goal_path := X.
-goal_info_set_ho_values(X, !GoalInfo) :-
-    ( if private_builtin.pointer_equal(X, !.GoalInfo ^ gi_extra ^ egi_ho_vals)
-    then
+goal_info_set_higher_order_value_map(X, !GoalInfo) :-
+    Map0 = !.GoalInfo ^ gi_extra ^ egi_ho_value_map,
+    ( if private_builtin.pointer_equal(X, Map0) then
         true
     else
-        !GoalInfo ^ gi_extra ^ egi_ho_vals := X
+        !GoalInfo ^ gi_extra ^ egi_ho_value_map := X
     ).
 goal_info_set_goal_mode(X, !GoalInfo) :-
     !GoalInfo ^ gi_extra ^ egi_goal_mode := X.

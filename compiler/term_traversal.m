@@ -269,7 +269,7 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
         Context = goal_info_get_context(GoalInfo),
         (
             Details = higher_order(Var, _, _, _),
-            ClosureValueMap = goal_info_get_ho_values(GoalInfo),
+            ClosureValueMap = goal_info_get_higher_order_value_map(GoalInfo),
 
             % If closure analysis has identified a set of values this
             % higher-order variable can take, then we can check if they all
