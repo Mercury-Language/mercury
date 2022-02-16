@@ -21,6 +21,7 @@ MCFLAGS-checked_nondet_tailcall_noinline = --checked-nondet-tailcalls --no-inlin
 MCFLAGS-cc_and_non_cc_test = 	--no-inlining
 MCFLAGS-constraint	=	--constraint-propagation --enable-termination
 MCFLAGS-constraint_order =	--constraint-propagation --enable-termination
+MCFLAGS-coerce_opt =		--intermodule-optimization
 MCFLAGS-deforest_cc_bug =	--deforestation
 MCFLAGS-delay_partial_test =    --delay-partial-instantiations
 MCFLAGS-delay_partial_test2 =   --delay-partial-instantiations

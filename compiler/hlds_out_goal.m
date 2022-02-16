@@ -1527,7 +1527,19 @@ write_goal_generic_call(Info, Stream, _ModuleInfo, VarSet, _TypeQual,
         io.write_string(Stream, Follow, !IO)
     ;
         GenericCall = cast(CastType),
-        CastTypeString = cast_type_to_string(CastType),
+        (
+            ( CastType = unsafe_type_cast
+            ; CastType = unsafe_type_inst_cast
+            ; CastType = equiv_type_cast
+            ; CastType = exists_cast
+            ),
+            CastTypeString = cast_type_to_string(CastType)
+        ;
+            CastType = subtype_coerce,
+            % We must produce valid Mercury code for coerce casts that are
+            % written to .opt files.
+            CastTypeString = "coerce"
+        ),
         ( if string.contains_char(DumpOptions, 'l') then
             write_indent(Stream, Indent, !IO),
             io.write_strings(Stream, ["% ", CastTypeString, "\n"], !IO),
