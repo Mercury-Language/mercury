@@ -63,6 +63,7 @@ ORDINARY_PROGS = \
 	checked_nondet_tailcall_noinline \
 	closeable_channel_test \
 	closure_extension \
+	coerce_opt \
 	common_type_cast \
 	compare_spec \
 	comparison \
