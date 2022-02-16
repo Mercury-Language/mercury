@@ -253,12 +253,12 @@ add_bad_qual_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
         words(HasOrHave), words("a module qualification"),
         words("that is not compatible with the type definition:"),
         nl_indent_delta(2)] ++
-        qual_ctors_to_line_pieces(Ctors, [suffix(".")]),
+        qual_ctors_to_line_pieces(Ctors, [suffix("."), nl]),
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, ContextPieces ++ ErrorPieces),
     !:Specs = [Spec | !.Specs].
 
-%-----%
+%---------------------%
 
 :- func qual_ctors_to_line_pieces(list(sym_name), list(format_component))
     = list(format_component).
@@ -293,7 +293,7 @@ add_unknown_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
         Context, ContextPieces ++ ErrorPieces),
     !:Specs = [Spec | !.Specs].
 
-%------%
+%---------------------%
 
 :- func unqual_ctors_to_line_pieces(list(sym_name), list(format_component))
     = list(format_component).
@@ -356,7 +356,7 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, CtorNames0,
     Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-%------%
+%---------------------%
 
 :- func ctor_names_to_line_pieces(list(string), list(format_component))
     = list(format_component).

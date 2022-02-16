@@ -886,8 +886,9 @@ type_to_pieces(VarNamePrint, MaybeAddQuotes, TVarSet, InstVarSet,
                 ArgPieces = [_ | _],
                 ArgBlockPieces =
                     [error_util.suffix("("), nl_indent_delta(1)] ++
-                    component_list_to_line_pieces(ArgPieces, []) ++
-                    [nl_indent_delta(-1), fixed(")")]
+                    component_list_to_line_pieces(ArgPieces,
+                        [nl_indent_delta(-1)]) ++
+                    [fixed(")")]
             )
         ;
             PorF = pf_function,
@@ -904,10 +905,10 @@ type_to_pieces(VarNamePrint, MaybeAddQuotes, TVarSet, InstVarSet,
                 list.det_split_last(ArgPieces, FuncArgPieces,
                     ReturnValuePieces),
                 ArgBlockPieces = [suffix("("), nl_indent_delta(1)] ++
-                    component_list_to_line_pieces(FuncArgPieces, []) ++
-                    [nl_indent_delta(-1), fixed(") =")] ++
-                    FuncResultPrefixPieces ++ ReturnValuePieces ++
-                    FuncResultSuffixPieces
+                    component_list_to_line_pieces(FuncArgPieces,
+                        [nl_indent_delta(-1)]) ++
+                    [fixed(") =")] ++ FuncResultPrefixPieces ++
+                    ReturnValuePieces ++ FuncResultSuffixPieces
             )
         ),
         Pieces = StartQuotePieces ++
@@ -1879,7 +1880,7 @@ strict_component_list_to_pieces([Comp1, Comp2 | Comps]) =
     ++ strict_component_list_to_pieces([Comp2 | Comps]).
 
 component_list_to_line_pieces([], _) = [].
-component_list_to_line_pieces([Comps], Final) = Comps ++ Final ++ [nl].
+component_list_to_line_pieces([Comps], Final) = Comps ++ Final.
 component_list_to_line_pieces([Comps1, Comps2 | CompLists], Final) =
     Comps1 ++ [suffix(","), nl]
     ++ component_list_to_line_pieces([Comps2 | CompLists], Final).

@@ -475,7 +475,7 @@ cycle_to_error_spec(ModuleInfo, InstOrMode, Cycle, Spec) :-
         LaterSNAPieces = [_, _ | _],
         LaterSNAPieceLists = list.map(make_singleton_list, LaterSNAPieces),
         CyclePieces = component_list_to_line_pieces(LaterSNAPieceLists,
-            [suffix(",")]),
+            [suffix(","), nl]),
         HeadPieces = PreludePieces ++ [words("through"), nl]
             ++ CyclePieces ++ ConsequencePieces
     ),

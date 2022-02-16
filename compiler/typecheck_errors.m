@@ -694,7 +694,7 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
             list.sort(PredIdPiecesList, SortedPredIdPiecesList),
             PredIdPieces =
                 component_list_to_line_pieces(SortedPredIdPiecesList,
-                    [suffix(".")]),
+                    [suffix("."), nl]),
             FirstPieces = StartPieces ++ PredIdPieces,
             LaterPieces = [words("The predicate symbol"),
                 qual_sym_name_arity(CallId), words("is also overloaded here.")]
@@ -709,7 +709,7 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
             list.sort(SourcePiecesList, SortedSourcePiecesList),
             SourcePieces =
                 component_list_to_line_pieces(SortedSourcePiecesList,
-                    [suffix(".")]),
+                    [suffix("."), nl]),
             FirstPieces = StartPieces ++ SourcePieces,
             LaterPieces = [words("The function symbol"),
                 qual_cons_id_and_maybe_arity(ConsId),
@@ -2015,7 +2015,7 @@ report_unsatisfiable_constraints(ClauseContext, Context, TypeAssignSet)
     ),
     % XXX This won't be very pretty when there are multiple type_assigns.
     Pieces2 = component_list_to_line_pieces(ConstraintPieceLists,
-        [suffix(".")]),
+        [suffix("."), nl]),
     Spec = simplest_spec($pred, severity_error, phase_type_check, Context,
         InClauseForPieces ++ Pieces1 ++ Pieces2).
 
@@ -2127,8 +2127,9 @@ type_of_var_to_pieces(InstVarSet, TypeAssignSet, Var) = Pieces :-
         Pieces = [words("has type")] ++ TypePieces
     else
         Pieces = [words("has overloaded type {"), nl_indent_delta(2)] ++
-            component_list_to_line_pieces(TypePiecesLists, []) ++
-            [nl_indent_delta(-2), words("}")]
+            component_list_to_line_pieces(TypePiecesLists,
+                [nl_indent_delta(-2)]) ++
+            [words("}")]
     ).
 
 :- func type_of_functor_to_pieces(inst_varset, cons_id, int,
@@ -2307,7 +2308,8 @@ actual_expected_types_list_to_pieces(ActualExpectedList) = Pieces :-
     ExpectedPieces = list.foldl(expected_types_to_pieces, ActualExpectedList,
         []),
     ActualPieces = list.map(actual_types_to_pieces, ActualExpectedList),
-    Pieces = component_list_to_line_pieces(ExpectedPieces ++ ActualPieces, []).
+    Pieces =
+        component_list_to_line_pieces(ExpectedPieces ++ ActualPieces, [nl]).
 
 :- func expected_types_to_pieces(actual_expected_types,
     list(list(format_component))) = list(list(format_component)).
@@ -2448,8 +2450,8 @@ type_assign_hlds_constraints_to_pieces(Constraints, TypeBindings, TypeVarSet)
         AssumedConstraints, TypeBindings, TypeVarSet, no),
     PiecesList2 = type_assign_constraints_to_pieces_list("<=",
         ConstraintsToProve, TypeBindings, TypeVarSet, no),
-    Pieces1 = component_list_to_line_pieces(PiecesList1, []),
-    Pieces2 = component_list_to_line_pieces(PiecesList2, []).
+    Pieces1 = component_list_to_line_pieces(PiecesList1, [nl]),
+    Pieces2 = component_list_to_line_pieces(PiecesList2, [nl]).
 
 :- func type_assign_constraints_to_pieces_list(string, list(hlds_constraint),
     tsubst, tvarset, bool) = list(list(format_component)).

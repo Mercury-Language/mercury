@@ -647,8 +647,7 @@ add_undeclared_mode_error(ModuleInfo, PredInfo, PredId, VarSet, ModeList,
                 component_list_to_line_pieces(
                     list.map(mode_decl_for_pred_info_to_pieces(PredInfo),
                         ProcIds),
-                    []) ++
-                [nl_indent_delta(-1)]
+                    [nl_indent_delta(-1)])
         )
     ),
     Msg = simple_msg(Context,

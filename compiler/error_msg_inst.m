@@ -724,7 +724,7 @@ pred_inst_info_to_pieces(Info, !Expansions, AnyPrefix, Uniq,
         pred_args_to_func_args(ArgModesPieces,
             RealArgModesPieces, RetModePieces),
         JoinedRealArgModePieces =
-            component_list_to_line_pieces(RealArgModesPieces, []),
+            component_list_to_line_pieces(RealArgModesPieces, [nl]),
         % XXX Should we put parentheses around RetModePieces?
         % If it prints as "InitInst >> FinalInst", then the parentheses
         % could make the output easier to read, but if it prints as a

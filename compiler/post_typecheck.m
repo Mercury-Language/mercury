@@ -257,8 +257,8 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
         choose_number(Constraints, "constraint:", "constraints:")),
         nl_indent_delta(1)] ++
         component_list_to_line_pieces(
-            list.map(constraint_to_error_piece(TVarSet), Constraints), []) ++
-        [nl_indent_delta(-1)],
+            list.map(constraint_to_error_piece(TVarSet), Constraints),
+                [nl_indent_delta(-1)]),
     MainMsg = simplest_msg(Context, MainPieces),
 
     ConstrainedGoals = find_constrained_goals(PredInfo, Constraints),
