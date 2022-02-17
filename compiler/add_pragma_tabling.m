@@ -48,6 +48,7 @@
 :- import_module ml_backend.mlds_to_c_name.     % XXX undesirable dependency
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -182,19 +183,21 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
         MaybeAttributes = no
     ),
     list.foldl3(
-        module_add_pragma_tabled_for_pred(TabledMethod, PFUMM, PredSymName,
-            MaybeAttributes, Context, ItemMercuryStatus, PredStatus),
+        module_add_pragma_tabled_for_pred(TabledMethod, PFUMM,
+            PredModuleName, PredName, MaybeAttributes, Context,
+            ItemMercuryStatus, PredStatus),
         PredIds, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred module_add_pragma_tabled_for_pred(tabled_eval_method::in,
-    pred_func_or_unknown_maybe_modes::in, sym_name::in,
+    pred_func_or_unknown_maybe_modes::in, module_name::in, string::in,
     maybe(table_attributes)::in, prog_context::in,
     item_mercury_status::in, pred_status::in, pred_id::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM, PredSymName,
-        MaybeAttributes, Context, ItemMercuryStatus, PredStatus, PredId,
+module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM,
+        PredModuleName, PredName, MaybeAttributes, Context,
+        ItemMercuryStatus, PredStatus, PredId,
         !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     ( if TabledMethod0 = tabled_minimal(_) then
@@ -221,15 +224,9 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM, PredSymName,
         PredOrFunc = pred_info_is_pred_or_func(PredInfo0)
     ),
 
-    % The places that later use PFSymNameArity all assume that Arity
-    % includes the return value for functions, and then make the appropriate
-    % correction for this, i.e. they take PredFormArityInt, even though
-    % they want UserArity. It would be simpler to just pass UserArity to them,
-    % but would require more extensive changes, including splitting
-    % pf_sym_name_arity into two types, one for user_arity and one for
-    % pred_form_arity.
+    PredSymName = qualified(PredModuleName, PredName),
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
+    PFSymNameArity = pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
 
     TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
@@ -257,7 +254,7 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM, PredSymName,
         WarnTableWithInline = yes
     then
         InlineWarningPieces = [words("Warning: "),
-            qual_pf_sym_name_orig_arity(PFSymNameArity), words("has a"),
+            qual_pf_sym_name_user_arity(PFSymNameArity), words("has a"),
             pragma_decl(TabledMethodStr), words("declaration but also has a"),
             pragma_decl("inline"), words("declaration."), nl,
             words("This inline pragma will be ignored"),
@@ -273,7 +270,7 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM, PredSymName,
     ( if pred_info_is_imported(PredInfo0) then
         Pieces = [words("Error: "), pragma_decl(TabledMethodStr),
             words("declaration for imported"),
-            qual_pf_sym_name_orig_arity(PFSymNameArity), suffix("."), nl],
+            qual_pf_sym_name_user_arity(PFSymNameArity), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces),
         !:Specs = [Spec | !.Specs]
@@ -300,9 +297,10 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM, PredSymName,
                     !.ModuleInfo, ProcId)
             then
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
-                set_eval_method_create_aux_preds(ProcId, ProcInfo0,
-                    Context, PFSymNameArity, yes, TabledMethod,
-                    MaybeAttributes, ItemMercuryStatus, PredStatus,
+                set_eval_method_create_aux_preds(PredOrFunc,
+                    PredModuleName, PredName, UserArity, ProcId, ProcInfo0,
+                    is_single_proc, Context, TabledMethod, MaybeAttributes,
+                    ItemMercuryStatus, PredStatus,
                     ProcTable0, ProcTable, !ModuleInfo, !QualInfo, !Specs),
                 pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
@@ -310,7 +308,7 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM, PredSymName,
                 Pieces = [words("Error:"),
                     pragma_decl(TabledMethodStr),
                     words("declaration for undeclared mode of"),
-                    qual_pf_sym_name_orig_arity(PFSymNameArity),
+                    qual_pf_sym_name_user_arity(PFSymNameArity),
                     suffix("."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, Pieces),
@@ -322,7 +320,7 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM, PredSymName,
                 ExistingProcs = [],
                 Pieces = [words("Error: "),
                     pragma_decl(TabledMethodStr), words("declaration for"),
-                    qual_pf_sym_name_orig_arity(PFSymNameArity),
+                    qual_pf_sym_name_user_arity(PFSymNameArity),
                     words("with no declared modes."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, Pieces),
@@ -331,13 +329,15 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM, PredSymName,
                 ExistingProcs = [_ | ExistingProcsTail],
                 (
                     ExistingProcsTail = [],
-                    SingleProc = yes
+                    SingleProc = is_single_proc
                 ;
                     ExistingProcsTail = [_ | _],
-                    SingleProc = no
+                    SingleProc = is_not_single_proc
                 ),
-                set_eval_method_create_aux_preds_list(ExistingProcs, Context,
-                    PFSymNameArity, SingleProc, TabledMethod, MaybeAttributes,
+                set_eval_method_create_aux_preds_list(PredOrFunc,
+                    PredModuleName, PredName, UserArity,
+                    ExistingProcs, SingleProc, Context,
+                    TabledMethod, MaybeAttributes,
                     ItemMercuryStatus, PredStatus, ProcTable0, ProcTable,
                     !ModuleInfo, !QualInfo, !Specs),
                 pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
@@ -346,41 +346,46 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM, PredSymName,
         )
     ).
 
-:- pred set_eval_method_create_aux_preds_list(
-    assoc_list(proc_id, proc_info)::in, prog_context::in,
-    pf_sym_name_arity::in, bool::in, tabled_eval_method::in,
-    maybe(table_attributes)::in, item_mercury_status::in, pred_status::in,
+:- pred set_eval_method_create_aux_preds_list(pred_or_func::in,
+    module_name::in, string::in, user_arity::in,
+    assoc_list(proc_id, proc_info)::in, aux_tabling_maybe_single_proc::in,
+    prog_context::in, tabled_eval_method::in, maybe(table_attributes)::in,
+    item_mercury_status::in, pred_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-set_eval_method_create_aux_preds_list([], _, _, _, _, _, _, _,
+set_eval_method_create_aux_preds_list(_, _, _, _, [], _, _, _, _, _, _,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs).
-set_eval_method_create_aux_preds_list([ProcId - ProcInfo0 | Rest], Context,
-        PFSymNameArity, SingleProc, TabledMethod, MaybeAttributes,
-        ItemMercuryStatus, PredStatus,
+set_eval_method_create_aux_preds_list(PredOrFunc, PredModuleName, PredName,
+        UserArity, [ProcId - ProcInfo0 | ProcIdsInfos], SingleProc, Context,
+        TabledMethod, MaybeAttributes, ItemMercuryStatus, PredStatus,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
-    set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context,
-        PFSymNameArity, SingleProc, TabledMethod, MaybeAttributes,
-        ItemMercuryStatus, PredStatus,
+    set_eval_method_create_aux_preds(PredOrFunc, PredModuleName, PredName,
+        UserArity, ProcId, ProcInfo0, SingleProc, Context, TabledMethod,
+        MaybeAttributes, ItemMercuryStatus, PredStatus,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs),
-    set_eval_method_create_aux_preds_list(Rest, Context,
-        PFSymNameArity, SingleProc, TabledMethod, MaybeAttributes,
-        ItemMercuryStatus, PredStatus,
+    set_eval_method_create_aux_preds_list(PredOrFunc, PredModuleName, PredName,
+        UserArity, ProcIdsInfos, SingleProc, Context, TabledMethod,
+        MaybeAttributes, ItemMercuryStatus, PredStatus,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs).
 
-:- pred set_eval_method_create_aux_preds(proc_id::in, proc_info::in,
-    prog_context::in, pf_sym_name_arity::in, bool::in, tabled_eval_method::in,
-    maybe(table_attributes)::in, item_mercury_status::in, pred_status::in,
+:- pred set_eval_method_create_aux_preds(pred_or_func::in,
+    module_name::in, string::in, user_arity::in, proc_id::in, proc_info::in,
+    aux_tabling_maybe_single_proc::in, prog_context::in,
+    tabled_eval_method::in, maybe(table_attributes)::in,
+    item_mercury_status::in, pred_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, PFSymNameArity,
-        SingleProc, TabledMethod, MaybeAttributes,
-        ItemMercuryStatus, PredStatus,
+set_eval_method_create_aux_preds(PredOrFunc, PredModuleName, PredName,
+        UserArity, ProcId, ProcInfo0, SingleProc, Context, TabledMethod,
+        MaybeAttributes, ItemMercuryStatus, PredStatus,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
     proc_info_get_eval_method(ProcInfo0, OldEvalMethod),
+    PredSymName = qualified(PredModuleName, PredName),
+    PFSymNameArity = pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
     (
         OldEvalMethod = eval_normal,
         proc_info_get_maybe_declared_argmodes(ProcInfo0,
@@ -390,8 +395,8 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, PFSymNameArity,
             TabledMethodStr = tabled_eval_method_to_pragma_name(TabledMethod),
             Pieces = [words("Error:"),
                 pragma_decl(TabledMethodStr), words("declaration for"),
-                qual_pf_sym_name_orig_arity(PFSymNameArity),
-                suffix(","), words("which has no declared modes."), nl],
+                qual_pf_sym_name_user_arity(PFSymNameArity), suffix(","),
+                words("which has no declared modes."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -425,7 +430,7 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, PFSymNameArity,
                     tabled_eval_method_to_pragma_name(TabledMethod),
                 Pieces = [words("Error in"),
                     pragma_decl(TabledMethodStr), words("declaration for"),
-                    qual_pf_sym_name_orig_arity(PFSymNameArity),
+                    qual_pf_sym_name_user_arity(PFSymNameArity),
                     suffix(":"), nl, fixed(ArgMsg), words(ErrorMsg), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, Pieces),
@@ -450,18 +455,18 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, PFSymNameArity,
             % but they will do their intended jobs only in C grades.
             (
                 Statistics = table_gather_statistics,
-                create_tabling_statistics_pred(ProcId, Context,
-                    PFSymNameArity, SingleProc, IsTablingSupported,
-                    ItemMercuryStatus, PredStatus,
+                create_tabling_statistics_pred(PredOrFunc,
+                    PredModuleName, PredName, UserArity, ProcId, SingleProc,
+                    Context, IsTablingSupported, ItemMercuryStatus, PredStatus,
                     !ProcTable, !ModuleInfo, !QualInfo, !Specs)
             ;
                 Statistics = table_dont_gather_statistics
             ),
             (
                 AllowReset = table_allow_reset,
-                create_tabling_reset_pred(ProcId, Context,
-                    PFSymNameArity, SingleProc, IsTablingSupported,
-                    ItemMercuryStatus, PredStatus,
+                create_tabling_reset_pred(PredOrFunc,
+                    PredModuleName, PredName, UserArity, ProcId, SingleProc,
+                    Context, IsTablingSupported, ItemMercuryStatus, PredStatus,
                     !ProcTable, !ModuleInfo, !QualInfo, !Specs)
             ;
                 AllowReset = table_dont_allow_reset
@@ -474,14 +479,14 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, PFSymNameArity,
         TabledMethodStr = tabled_eval_method_to_pragma_name(TabledMethod),
         ( if OldTabledMethod = TabledMethod then
             Pieces = [words("Error:"),
-                qual_pf_sym_name_orig_arity(PFSymNameArity),
+                qual_pf_sym_name_user_arity(PFSymNameArity),
                 words("has duplicate"), fixed(TabledMethodStr),
                 words("pragmas specified."), nl]
         else
             OldTabledMethodStr =
                 tabled_eval_method_to_pragma_name(OldTabledMethod),
             Pieces = [words("Error:"),
-                qual_pf_sym_name_orig_arity(PFSymNameArity),
+                qual_pf_sym_name_user_arity(PFSymNameArity),
                 words("has both"), fixed(OldTabledMethodStr),
                 words("and"), fixed(TabledMethodStr),
                 words("pragmas specified."),
@@ -493,19 +498,24 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, PFSymNameArity,
         !:Specs = [Spec | !.Specs]
     ).
 
-:- pred create_tabling_statistics_pred(proc_id::in, prog_context::in,
-    pf_sym_name_arity::in, bool::in, bool::in,
-    item_mercury_status::in, pred_status::in,
+:- pred create_tabling_statistics_pred(pred_or_func::in,
+    module_name::in, string::in, user_arity::in,
+    proc_id::in, aux_tabling_maybe_single_proc::in, prog_context::in,
+    bool::in, item_mercury_status::in, pred_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-create_tabling_statistics_pred(ProcId, Context, PFSymNameArity, SingleProc,
-        IsTablingSupported, ItemMercuryStatus, PredStatus,
+create_tabling_statistics_pred(PredOrFunc, PredModuleName, PredName, UserArity,
+        ProcId, SingleProc, Context, IsTablingSupported,
+        ItemMercuryStatus, PredStatus,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
+    Transform = tn_aux_tabling(PredOrFunc, UserArity, atpk_statistics,
+        SingleProc, proc_id_to_int(ProcId)),
+    make_transformed_pred_name(PredName, Transform, StatsPredName),
+    StatsPredSymName = qualified(PredModuleName, StatsPredName),
+
     TableBuiltinModule = mercury_table_statistics_module,
-    StatsPredSymName =
-        tabling_stats_pred_name(PFSymNameArity, ProcId, SingleProc),
     StatsTypeName = qualified(TableBuiltinModule, "proc_table_statistics"),
     StatsType = defined_type(StatsTypeName, [], kind_star),
     TypeAndModeArg1 = type_and_mode(StatsType, out_mode),
@@ -518,6 +528,9 @@ create_tabling_statistics_pred(ProcId, Context, PFSymNameArity, SingleProc,
     ExistQVars = [],
     Constraints = constraints([], []),
 
+    PredSymName = qualified(PredModuleName, PredName),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
     Attrs = item_compiler_attributes(compiler_origin_tabling(PFSymNameArity,
         tabling_aux_pred_stats)),
     MaybeAttrs = item_origin_compiler(Attrs),
@@ -585,18 +598,23 @@ create_tabling_statistics_pred(ProcId, Context, PFSymNameArity, SingleProc,
         )
     ).
 
-:- pred create_tabling_reset_pred(proc_id::in, prog_context::in,
-    pf_sym_name_arity::in, bool::in, bool::in,
-    item_mercury_status::in, pred_status::in,
+:- pred create_tabling_reset_pred(pred_or_func::in,
+    module_name::in, string::in, user_arity::in,
+    proc_id::in, aux_tabling_maybe_single_proc::in, prog_context::in,
+    bool::in, item_mercury_status::in, pred_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-create_tabling_reset_pred(ProcId, Context, PFSymNameArity, SingleProc,
-         IsTablingSupported, ItemMercuryStatus, PredStatus,
-         !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
-    ResetPredSymName = tabling_reset_pred_name(PFSymNameArity, ProcId,
-        SingleProc),
+create_tabling_reset_pred(PredOrFunc, PredModuleName, PredName, UserArity,
+        ProcId, SingleProc, Context, IsTablingSupported,
+        ItemMercuryStatus, PredStatus,
+        !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
+    Transform = tn_aux_tabling(PredOrFunc, UserArity, atpk_reset,
+        SingleProc, proc_id_to_int(ProcId)),
+    make_transformed_pred_name(PredName, Transform, ResetPredName),
+    ResetPredSymName = qualified(PredModuleName, ResetPredName),
+
     TypeAndModeArg1 = type_and_mode(io_state_type, di_mode),
     TypeAndModeArg2 = type_and_mode(io_state_type, uo_mode),
     ArgTypesAndModes = [TypeAndModeArg1, TypeAndModeArg2],
@@ -605,6 +623,9 @@ create_tabling_reset_pred(ProcId, Context, PFSymNameArity, SingleProc,
     ExistQVars = [],
     Constraints = constraints([], []),
 
+    PredSymName = qualified(PredModuleName, PredName),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
     Attrs = item_compiler_attributes(compiler_origin_tabling(PFSymNameArity,
         tabling_aux_pred_reset)),
     MaybeAttrs = item_origin_compiler(Attrs),
@@ -654,47 +675,6 @@ create_tabling_reset_pred(ProcId, Context, PFSymNameArity, SingleProc,
             module_add_clause(PredStatus, ClauseType, ResetClauseInfo,
                 !ModuleInfo, !QualInfo, !Specs)
         )
-    ).
-
-:- func tabling_stats_pred_name(pf_sym_name_arity, proc_id, bool) = sym_name.
-
-tabling_stats_pred_name(PFSymNameArity, ProcId, SingleProc) =
-    tabling_pred_name("table_statistics_for", PFSymNameArity, ProcId,
-        SingleProc).
-
-:- func tabling_reset_pred_name(pf_sym_name_arity, proc_id, bool) = sym_name.
-
-tabling_reset_pred_name(PFSymNameArity, ProcId, SingleProc) =
-    tabling_pred_name("table_reset_for", PFSymNameArity, ProcId, SingleProc).
-
-    % XXX ARITY move to pred_name.m
-:- func tabling_pred_name(string, pf_sym_name_arity, proc_id, bool) = sym_name.
-
-tabling_pred_name(Prefix, PFSymNameArity, ProcId, SingleProc) = NewSymName :-
-    PFSymNameArity = pf_sym_name_arity(PorF, SymName, PredFormArity),
-    user_arity_pred_form_arity(PorF, UserArity, PredFormArity),
-    UserArity = user_arity(UserArityInt),
-    (
-        SymName = qualified(ModuleName, Name),
-        MaybeModuleName = yes(ModuleName)
-    ;
-        SymName = unqualified(Name),
-        MaybeModuleName = no
-    ),
-    NewName0 = Prefix ++ "_" ++ Name ++ "_" ++ int_to_string(UserArityInt),
-    (
-        SingleProc = yes,
-        NewName = NewName0
-    ;
-        SingleProc = no,
-        NewName = NewName0 ++ "_" ++ int_to_string(proc_id_to_int(ProcId))
-    ),
-    (
-        MaybeModuleName = yes(ModuleNameAgain),
-        NewSymName = qualified(ModuleNameAgain, NewName)
-    ;
-        MaybeModuleName = no,
-        NewSymName = unqualified(NewName)
     ).
 
 :- func table_info_c_global_var_name(module_info, pf_sym_name_arity, proc_id)

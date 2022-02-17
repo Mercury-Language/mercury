@@ -46,6 +46,14 @@
 :- type line_number_and_counter
     --->    lnc(int, int).
 
+:- type aux_tabling_pred_kind
+    --->    atpk_statistics
+    ;       atpk_reset.
+
+:- type aux_tabling_maybe_single_proc
+    --->    is_not_single_proc
+    ;       is_single_proc.
+
     % With three exceptions, all the transform_names specify whether
     % the original predicate is a predicate or a function, because
     % our naming scheme includes this information in the transformed name.
@@ -79,6 +87,15 @@
             %
             % XXX It would be nice to know what the relationship is
             % between tn_pragma_type_spec and tn_higher_order_type_spec.
+
+    ;       tn_aux_tabling(pred_or_func, user_arity, aux_tabling_pred_kind,
+                aux_tabling_maybe_single_proc, int)
+            % The new predicate name will include the arity of the original
+            % predicate, an indication of what kind of aux predicate this is,
+            % and, if the procedure being transformed is not the only procedure
+            % in its predicate (as indicated by the fourth argument), it will
+            % also include the proc_id of the original procedure
+            % (in its int form, as given by the fifth argument).
 
     ;       tn_accumulator(pred_or_func, line_number_and_counter)
     ;       tn_deforestation(pred_or_func, line_number_and_counter)
@@ -173,7 +190,7 @@
     % Transform.
     %
     % The first version returns the transformed name as a sym_name
-    % qualified with ModuleName, because most of our callers want the result
+    % qualified with ModuleName, because some of our callers want the result
     % in this sym_name form.
     %
 :- pred make_transformed_pred_sym_name(module_name::in, string::in,
@@ -228,6 +245,8 @@ make_transformed_pred_name(OrigName, Transform, TransformedName) :-
     (
         Transform = tn_higher_order(_PredOrFunc, Counter),
         % XXX Ignoring _PredOrFunc seems to me to be a bug.
+        % XXX The string we construct here does not fit into our current
+        % naming scheme at all.
         string.format("%s__ho%d", [s(OrigName), i(Counter)], TransformedName)
     ;
         Transform = tn_higher_order_type_spec(_PredOrFunc, ProcNum, Version),
@@ -236,9 +255,33 @@ make_transformed_pred_name(OrigName, Transform, TransformedName) :-
         % the procedure being transformed. _PredOrFunc belongs to the
         % predicate being transformed, but it is ignored ...
         % XXX Ignoring _PredOrFunc seems to me to be a bug.
+        % XXX The string we construct here does not fit into our current
+        % naming scheme at all.
         % XXX As is separating OrigName from the suffix with only a single '_'.
         string.format("%s_%d_%d", [s(OrigName), i(ProcNum), i(Version)],
             TransformedName)
+    ;
+        Transform = tn_aux_tabling(_PredOrFunc, UserArity, AuxTablingPredKind,
+            SingleProc, ProcIdInt),
+        % XXX Ignoring _PredOrFunc seems to me to be a bug.
+        % XXX The string we construct here does not fit into our current
+        % general naming scheme at all. However, the reference manual
+        % does require us (in section 20.2) to generate the names that
+        % we generate here.
+        UserArity = user_arity(UserArityInt),
+        ( AuxTablingPredKind = atpk_statistics, KindStr = "statistics"
+        ; AuxTablingPredKind = atpk_reset,      KindStr = "reset"
+        ),
+        (
+            SingleProc = is_single_proc,
+            string.format("table_%s_for_%s_%d",
+                [s(KindStr), s(OrigName), i(UserArityInt)], TransformedName)
+        ;
+            SingleProc = is_not_single_proc,
+            string.format("table_%s_for_%s_%d_%d",
+                [s(KindStr), s(OrigName), i(UserArityInt), i(ProcIdInt)],
+                TransformedName)
+        )
     ;
         Transform =
             tn_stm_expanded(_PredOrFunc, CloneKind, Arity, PredNum, Counter),
