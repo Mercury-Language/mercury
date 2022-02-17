@@ -583,10 +583,12 @@ arg_number_to_string(CallId, ArgNum) = Str :-
     ;
         CallId = generic_call_id(GenericCallId),
         (
-            GenericCallId = gcid_higher_order(_Purity, PredOrFunc, Arity),
+            GenericCallId = gcid_higher_order(_Purity, PredOrFunc,
+                PredFormArity),
+            PredFormArity = pred_form_arity(PredFormArityInt),
             ( if
                 PredOrFunc = pf_function,
-                ArgNum = Arity
+                ArgNum = PredFormArityInt
             then
                 Str = "the return value"
             else

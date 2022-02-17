@@ -675,7 +675,7 @@
                 ho_call_kind    :: pred_or_func,
 
                 % number of arguments (including the higher-order term)
-                ho_call_arity   :: arity
+                ho_call_arity   :: pred_form_arity
             )
 
     ;       class_method(
@@ -1985,8 +1985,8 @@ make_foreign_args(Vars, NamesModesBoxes, Types, Args) :-
 
 generic_call_to_id(GenericCall, GenericCallId) :-
     (
-        GenericCall = higher_order(_, Purity, PorF, Arity),
-        GenericCallId = gcid_higher_order(Purity, PorF, Arity)
+        GenericCall = higher_order(_, Purity, PorF, PredFormArity),
+        GenericCallId = gcid_higher_order(Purity, PorF, PredFormArity)
     ;
         GenericCall = class_method(_, _, ClassId, MethodId),
         GenericCallId = gcid_class_method(ClassId, MethodId)

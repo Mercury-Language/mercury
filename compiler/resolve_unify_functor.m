@@ -101,10 +101,11 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
         ArgVars = FuncArgVars ++ [X0],
         Modes = [],
         Det = detism_erroneous,
-        adjust_func_arity(pf_function, Arity, FullArity),
-        HOCall = generic_call(
-            higher_order(FuncVar, Purity, pf_function, FullArity),
-            ArgVars, Modes, arg_reg_types_unset, Det),
+        user_arity_pred_form_arity(pf_function,
+            user_arity(Arity), PredFormArity),
+        Generic = higher_order(FuncVar, Purity, pf_function, PredFormArity),
+        HOCall = generic_call(Generic, ArgVars, Modes,
+            arg_reg_types_unset, Det),
         Goal = hlds_goal(HOCall, GoalInfo0),
         IsPlainUnify = is_not_plain_unify
     else if

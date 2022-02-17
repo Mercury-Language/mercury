@@ -85,8 +85,8 @@
     unify_main_context::in, unify_sub_contexts::in, hlds_goal::out,
     qual_info::in, qual_info::out) is det.
 
-:- pred record_called_pred_or_func(pred_or_func::in, sym_name::in, arity::in,
-    qual_info::in, qual_info::out) is det.
+:- pred record_called_pred_or_func(pred_or_func::in, sym_name::in,
+    user_arity::in, qual_info::in, qual_info::out) is det.
 
 :- pred construct_and_record_pred_or_func_call(pred_id::in, pred_or_func::in,
     sym_name::in, list(prog_var)::in, hlds_goal_info::in, hlds_goal::out,
@@ -285,8 +285,9 @@ make_atomic_unification(Var, RHS, Context, MainContext, SubContext,
     make_atomic_unification(Var, RHS, Context, MainContext, SubContext,
         purity_pure, Goal, !QualInfo).
 
-record_called_pred_or_func(PredOrFunc, SymName, Arity, !QualInfo) :-
-    Id = item_name(SymName, Arity),
+record_called_pred_or_func(PredOrFunc, SymName, UserArity, !QualInfo) :-
+    UserArity = user_arity(UserArityInt),
+    Id = item_name(SymName, UserArityInt),
     ( PredOrFunc = pf_predicate, UsedItemType = used_predicate
     ; PredOrFunc = pf_function,  UsedItemType = used_function
     ),
@@ -310,9 +311,9 @@ construct_and_record_pred_or_func_call(PredId, PredOrFunc, SymName, ArgVars,
         GoalInfo, Goal, !QualInfo) :-
     construct_pred_or_func_call(PredId, PredOrFunc, SymName, ArgVars,
         GoalInfo, Goal),
-    list.length(ArgVars, Arity),
-    adjust_func_arity(PredOrFunc, OrigArity, Arity),
-    record_called_pred_or_func(PredOrFunc, SymName, OrigArity, !QualInfo).
+    PredFormArity = arg_list_arity(ArgVars),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+    record_called_pred_or_func(PredOrFunc, SymName, UserArity, !QualInfo).
 
 construct_pred_or_func_call(PredId, PredOrFunc, SymName, ArgVars,
         GoalInfo, Goal) :-

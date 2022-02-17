@@ -1620,13 +1620,13 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     % These are also the variables in the call in the procedure body.
     create_fresh_vars(PredArgTypes, CallVars, VarSet0, VarSet1,
         VarTypes0, VarTypes1),
-    list.length(CallVars, Arity),
+    PredFormArity = arg_list_arity(CallVars),
 
     % Create the in the body of the wrapper procedure.
     % XXX What does that mean?
     CallVar = OrigVar,
     OrigVarPredInstInfo = pred_inst_info(_, ArgModes, _, Determinism),
-    GenericCall = higher_order(CallVar, Purity, PredOrFunc, Arity),
+    GenericCall = higher_order(CallVar, Purity, PredOrFunc, PredFormArity),
     CallGoalExpr = generic_call(GenericCall, CallVars, ArgModes,
         arg_reg_types(InnerArgRegs), Determinism),
     CallNonLocals = set_of_var.list_to_set([CallVar | CallVars]),
