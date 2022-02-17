@@ -415,28 +415,28 @@ set_eval_method_create_aux_preds(PredOrFunc, PredModuleName, PredName,
             ),
             (
                 Strictness = cts_specified(MaybeArgMethods, _HiddenArgMethod),
-                check_pred_args_against_tabling_methods(DeclaredArgModes,
-                    MaybeArgMethods, !.ModuleInfo, 1, MaybeError)
+                check_pred_args_against_tabling_methods(!.ModuleInfo, 1,
+                    DeclaredArgModes, MaybeArgMethods, ArgErrorPieces)
             ;
                 ( Strictness = cts_all_strict
                 ; Strictness = cts_all_fast_loose
                 ),
-                check_pred_args_against_tabling(DeclaredArgModes, !.ModuleInfo,
-                    1, MaybeError)
+                check_pred_args_against_tabling(!.ModuleInfo, 1,
+                    DeclaredArgModes, ArgErrorPieces)
             ),
             (
-                MaybeError = yes(ArgMsg - ErrorMsg),
+                ArgErrorPieces = []
+            ;
+                ArgErrorPieces = [_ | _],
                 TabledMethodStr =
                     tabled_eval_method_to_pragma_name(TabledMethod),
                 Pieces = [words("Error in"),
                     pragma_decl(TabledMethodStr), words("declaration for"),
                     qual_pf_sym_name_user_arity(PFSymNameArity),
-                    suffix(":"), nl, fixed(ArgMsg), words(ErrorMsg), nl],
+                    suffix(":"), nl | ArgErrorPieces],
                 Spec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, Pieces),
                 !:Specs = [Spec | !.Specs]
-            ;
-                MaybeError = no
             ),
             EvalMethod = eval_tabled(TabledMethod),
             proc_info_set_eval_method(EvalMethod, ProcInfo0, ProcInfo1),
@@ -720,63 +720,61 @@ table_info_c_global_var_name(ModuleInfo, PFSymNameArity, ProcId) = VarName :-
 proc_tabling_info_var_name(ProcLabel) =
     tabling_struct_data_addr_string(ProcLabel, tabling_info).
 
-:- pred check_pred_args_against_tabling_methods(list(mer_mode)::in,
-    list(maybe(arg_tabling_method))::in, module_info::in, int::in,
-    maybe(pair(string))::out) is det.
+:- pred check_pred_args_against_tabling_methods(module_info::in, int::in,
+    list(mer_mode)::in, list(maybe(arg_tabling_method))::in,
+    list(format_component)::out) is det.
 
-check_pred_args_against_tabling_methods([], [], _, _, no).
-check_pred_args_against_tabling_methods([], [_ | _], _, _, MaybeError) :-
-    MaybeError = yes("too many argument tabling methods specified." - "").
-check_pred_args_against_tabling_methods([_ | _], [], _, _, MaybeError) :-
-    MaybeError = yes("not enough argument tabling methods specified." - "").
-check_pred_args_against_tabling_methods([Mode | Modes],
-        [MaybeArgMethod | MaybeArgMethods], ModuleInfo, ArgNum, MaybeError) :-
+check_pred_args_against_tabling_methods(_, _, [], [], []).
+check_pred_args_against_tabling_methods(_, _, [], [_ | _], Pieces) :-
+    Pieces = [words("too many argument tabling methods specified."), nl].
+check_pred_args_against_tabling_methods(_, _, [_ | _], [], Pieces) :-
+    Pieces = [words("not enough argument tabling methods specified."), nl].
+check_pred_args_against_tabling_methods(ModuleInfo, ArgNum,
+        [Mode | Modes], [MaybeArgMethod | MaybeArgMethods], Pieces) :-
     % XXX We should check not just the boundedness of the argument, but also
     % whether it has any uniqueness annotation: tabling destroys uniqueness.
     ( if mode_is_fully_input(ModuleInfo, Mode) then
         (
             MaybeArgMethod = yes(_),
-            check_pred_args_against_tabling_methods(Modes, MaybeArgMethods,
-                ModuleInfo, ArgNum + 1, MaybeError)
+            check_pred_args_against_tabling_methods(ModuleInfo, ArgNum + 1,
+                Modes, MaybeArgMethods, Pieces)
         ;
             MaybeArgMethod = no,
-            MaybeError = yes(("argument " ++ int_to_string(ArgNum) ++ ":") -
-                ("argument tabling method `" ++
-                maybe_arg_tabling_method_to_string(MaybeArgMethod) ++
-                "' is not compatible with input modes."))
+            Pieces = [fixed("argument " ++ int_to_string(ArgNum)), suffix(":"),
+                words("argument tabling method"),
+                quote(maybe_arg_tabling_method_to_string(MaybeArgMethod)),
+                words("is not compatible with input modes."), nl]
         )
     else if mode_is_fully_output(ModuleInfo, Mode) then
         (
             MaybeArgMethod = yes(_),
-            MaybeError = yes(("argument " ++ int_to_string(ArgNum) ++ ":") -
-                ("argument tabling method `" ++
-                maybe_arg_tabling_method_to_string(MaybeArgMethod) ++
-                "' is not compatible with output modes."))
+            Pieces = [fixed("argument " ++ int_to_string(ArgNum)), suffix(":"),
+                words("argument tabling method"),
+                quote(maybe_arg_tabling_method_to_string(MaybeArgMethod)),
+                words("is not compatible with output modes."), nl]
         ;
             MaybeArgMethod = no,
-            check_pred_args_against_tabling_methods(Modes, MaybeArgMethods,
-                ModuleInfo, ArgNum + 1, MaybeError)
+            check_pred_args_against_tabling_methods(ModuleInfo, ArgNum + 1,
+                Modes, MaybeArgMethods, Pieces)
         )
     else
-        MaybeError = yes(("argument " ++ int_to_string(ArgNum) ++ ":") -
-            "is neither input or output.")
+        Pieces = [fixed("argument " ++ int_to_string(ArgNum)),
+            words("is neither input or output."), nl]
     ).
 
-:- pred check_pred_args_against_tabling(list(mer_mode)::in, module_info::in,
-    int::in, maybe(pair(string))::out) is det.
+:- pred check_pred_args_against_tabling(module_info::in, int::in,
+    list(mer_mode)::in, list(format_component)::out) is det.
 
-check_pred_args_against_tabling([], _, _, no).
-check_pred_args_against_tabling([Mode | Modes], ModuleInfo, ArgNum,
-        MaybeError) :-
+check_pred_args_against_tabling(_, _, [], []).
+check_pred_args_against_tabling(ModuleInfo, ArgNum, [Mode | Modes],
+        Pieces) :-
     ( if mode_is_fully_input(ModuleInfo, Mode) then
-        check_pred_args_against_tabling(Modes, ModuleInfo, ArgNum + 1,
-            MaybeError)
+        check_pred_args_against_tabling(ModuleInfo, ArgNum + 1, Modes, Pieces)
     else if mode_is_fully_output(ModuleInfo, Mode) then
-        check_pred_args_against_tabling(Modes, ModuleInfo, ArgNum + 1,
-            MaybeError)
+        check_pred_args_against_tabling(ModuleInfo, ArgNum + 1, Modes, Pieces)
     else
-        MaybeError = yes(("argument " ++ int_to_string(ArgNum)) -
-            "is neither input or output.")
+        Pieces = [fixed("argument " ++ int_to_string(ArgNum)),
+            words("is neither input or output."), nl]
     ).
 
 %----------------------------------------------------------------------------%
