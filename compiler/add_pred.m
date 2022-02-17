@@ -680,7 +680,7 @@ add_builtin(PredId, HeadTypes0, CompilationTarget, !PredInfo) :-
 
 add_new_proc(Context, SeqNum, Arity, InstVarSet, ArgModes,
         MaybeDeclaredArgModes, MaybeArgLives, DetismDecl, MaybeDetism,
-        IsAddressTaken, HasParallelConj, !PredInfo, ModeId) :-
+        IsAddressTaken, HasParallelConj, !PredInfo, ProcId) :-
     pred_info_get_arg_types(!.PredInfo, ArgTypes),
     pred_info_get_var_name_remap(!.PredInfo, VarNameRemap),
     proc_info_init(Context, SeqNum, Arity, ArgTypes,
@@ -691,8 +691,8 @@ add_new_proc(Context, SeqNum, Arity, InstVarSet, ArgModes,
 
     pred_info_get_proc_table(!.PredInfo, ProcTable0),
     % XXX ARITY rename to next_proc_id
-    next_mode_id(ProcTable0, ModeId),
-    map.det_insert(ModeId, ProcInfo, ProcTable0, ProcTable),
+    next_proc_id(ProcTable0, ProcId),
+    map.det_insert(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_proc_table(ProcTable, !PredInfo).
 
 %---------------------------------------------------------------------------%

@@ -162,7 +162,7 @@
 
 :- type proc_table == map(proc_id, proc_info).
 
-:- pred next_mode_id(proc_table::in, proc_id::out) is det.
+:- pred next_proc_id(proc_table::in, proc_id::out) is det.
 
 :- type call_id
     --->    plain_call_id(pf_sym_name_arity)
@@ -1020,13 +1020,12 @@ next_pred_id(pred_id(PredId), pred_id(NextPredId)) :-
 
 in_in_unification_proc_id(0).
 
+next_proc_id(ProcTable, ProcId) :-
     % We could store the next available ModeId rather than recomputing
     % it on demand, but it is probably more efficient this way.
-    %
-next_mode_id(Procs, ModeId) :-
-    map.to_assoc_list(Procs, List),
-    list.length(List, ModeInt),
-    proc_id_to_int(ModeId, ModeInt).
+    map.to_assoc_list(ProcTable, ProcIdsInfos),
+    list.length(ProcIdsInfos, Num),
+    proc_id_to_int(ProcId, Num).
 
 calls_are_fully_qualified(Markers) =
     ( if check_marker(Markers, marker_calls_are_fully_qualified) then
@@ -1383,7 +1382,7 @@ pred_info_create(PredOrFunc, PredModuleName, PredName, Context, Origin, Status,
     % argument ExistQVars
     % argument ClassContext
     map.init(ProcTable0),
-    next_mode_id(ProcTable0, ProcId),
+    next_proc_id(ProcTable0, ProcId),
     map.det_insert(ProcId, ProcInfo, ProcTable0, ProcTable),
     PredInfo = pred_info(PredModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
