@@ -138,13 +138,10 @@ detect_non_contiguous_pred_decls(ModuleInfo, MaybeDefnKind, PredId,
             MakesSense = proc_contiguity_makes_sense,
             ProcINCs = [HeadProcINC | TailProcINCs]
         then
-            % invis_order; "ends here" first
             pred_info_get_context(PredInfo, PredDeclContext),
             PredINC = inc(PredDeclItemNumber, PredDeclContext),
-            Specs0 = !.StyleInfo ^ style_specs,
             report_any_inc_gaps(PredInfo, PredINC, HeadProcINC, TailProcINCs,
-                0, Specs0, Specs),
-            !StyleInfo ^ style_specs := Specs
+                0, !StyleInfo)
         else
             true
         ),
@@ -232,10 +229,14 @@ gather_proc_item_numbers(ProcInfo, !ProcINCs, !MakesSense) :-
     ).
 
 :- pred report_any_inc_gaps(pred_info::in, inc::in, inc::in, list(inc)::in,
-    int::in, list(error_spec)::in, list(error_spec)::out) is det.
+    int::in, pred_style_info::in, pred_style_info::out) is det.
 
 report_any_inc_gaps(PredInfo, FirstINC, SecondINC, LaterINCs,
-        FirstProcNum, !Specs) :-
+        FirstProcNum, !StyleInfo) :-
+    % If FirstProcNum = 0, then FirstINC is for the predicate or function
+    % declaration.
+    % If FirstProcNum > 0, then FirstINC is for FirstProcNum'th 
+    % mode declaration.
     FirstINC = inc(FirstItemNumber, FirstContext),
     SecondINC = inc(SecondItemNumber, SecondContext),
     ( if
@@ -277,14 +278,16 @@ report_any_inc_gaps(PredInfo, FirstINC, SecondINC, LaterINCs,
         SecondMsg = simplest_msg(SecondContext, SecondPieces),
         Spec = error_spec($pred, severity_warning, phase_style,
             [FirstMsg, SecondMsg]),
-        !:Specs = [Spec | !.Specs]
+        Specs0 = !.StyleInfo ^ style_specs,
+        Specs = [Spec | Specs0],
+        !StyleInfo ^ style_specs := Specs
     ),
     (
         LaterINCs = []
     ;
         LaterINCs = [ThirdINC | LaterLaterINCs],
         report_any_inc_gaps(PredInfo, SecondINC, ThirdINC, LaterLaterINCs,
-            FirstProcNum + 1, !Specs)
+            FirstProcNum + 1, !StyleInfo)
     ).
 
 %---------------------------------------------------------------------------%
