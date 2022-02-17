@@ -68,6 +68,7 @@
     % Check all the determinism declarations in this module.
     % This is the main predicate exported by this module.
     %
+    % XXX ARITY ambiguous pred name
 :- pred global_checking_pass(pred_proc_list::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -171,11 +172,13 @@ global_checking_pass([], !ModuleInfo, !Specs).
 global_checking_pass([PredProcId | PredProcIds], !ModuleInfo, !Specs) :-
     module_info_pred_proc_info(!.ModuleInfo, PredProcId, PredInfo, ProcInfo),
     check_determinism(PredProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs),
+    % XXX ARITY merge these two calls into check_determinism
     check_determinism_of_main(PredInfo, ProcInfo, !Specs),
     check_for_multisoln_func(PredProcId, PredInfo, ProcInfo, !.ModuleInfo,
         !Specs),
     global_checking_pass(PredProcIds, !ModuleInfo, !Specs).
 
+    % XXX ARITY fix ambiguous name
 :- pred check_determinism(pred_proc_id::in, pred_info::in, proc_info::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -241,7 +244,7 @@ check_determinism(PredProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
                 MessagePieces = [words("warning:"),
                     words(detism_decl_name(DetismDecl)),
                     words("could be tighter."), nl],
-                report_determinism_problem(PredProcId, !.ModuleInfo,
+                report_determinism_problem(!.ModuleInfo, PredProcId,
                     MessagePieces, [], DeclaredDetism, InferredDetism,
                     ReportMsg),
                 ReportSpec = error_spec($pred, severity_warning,
@@ -282,7 +285,7 @@ check_determinism(PredProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
                 ReasonPieces = [words("The reasons for the difference"),
                     words("are the following."), nl]
             ),
-            report_determinism_problem(PredProcId, !.ModuleInfo,
+            report_determinism_problem(!.ModuleInfo, PredProcId,
                 MessagePieces, ReasonPieces, DeclaredDetism, InferredDetism,
                 ReportMsg),
             ReportSpec = error_spec($pred, severity_error, phase_detism_check,
@@ -561,11 +564,11 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
         % that will often be the case, and should not be warned about.
     ).
 
-:- pred report_determinism_problem(pred_proc_id::in, module_info::in,
+:- pred report_determinism_problem(module_info::in, pred_proc_id::in, 
     list(format_component)::in, list(format_component)::in,
     determinism::in, determinism::in, error_msg::out) is det.
 
-report_determinism_problem(PredProcId, ModuleInfo, MessagePieces, ReasonPieces,
+report_determinism_problem(ModuleInfo, PredProcId, MessagePieces, ReasonPieces,
         DeclaredDetism, InferredDetism, Msg) :-
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
     proc_info_get_context(ProcInfo, Context),
@@ -614,6 +617,7 @@ det_diagnose_goal(Goal, InstMap0, Desired, SwitchContexts, !DetInfo, Msgs) :-
 
 det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         SwitchContexts, !DetInfo, Msgs) :-
+    % XXX ARITY order of arms
     (
         GoalExpr = conj(_, Goals),
         det_diagnose_conj(Goals, InstMap0, Desired, SwitchContexts, !DetInfo,

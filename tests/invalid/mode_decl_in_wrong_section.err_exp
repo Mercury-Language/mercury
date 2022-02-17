@@ -3,7 +3,7 @@ mode_decl_in_wrong_section.m:013:   predicate `p'/2 is not followed immediately
 mode_decl_in_wrong_section.m:013:   by its second mode declaration.
 mode_decl_in_wrong_section.m:021:   The second mode declaration is here.
 mode_decl_in_wrong_section.m:015: Error: mode declaration in the interface
-mode_decl_in_wrong_section.m:015:   section for function `f'/2, whose function
+mode_decl_in_wrong_section.m:015:   section for function `f'/1, whose function
 mode_decl_in_wrong_section.m:015:   declaration is in the implementation.
 mode_decl_in_wrong_section.m:015: Warning: the first mode declaration for
 mode_decl_in_wrong_section.m:015:   function `f'/1 is not followed immediately

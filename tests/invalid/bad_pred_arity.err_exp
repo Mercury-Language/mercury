@@ -103,8 +103,8 @@ bad_pred_arity.m:049:         string
 bad_pred_arity.m:049:     )
 bad_pred_arity.m:052: Error: clause for function `f1'/3
 bad_pred_arity.m:052:   without corresponding `:- func' declaration.
-bad_pred_arity.m:052:   However, a function of that name does exist with arity
-bad_pred_arity.m:052:   6.
+bad_pred_arity.m:052:   However, functions of that name do exist with arities 2
+bad_pred_arity.m:052:   and 4.
 bad_pred_arity.m:052: Inferred :- func f1(int, string, int) = string.
 bad_pred_arity.m:052:   The argument list difference from the arity 2 version
 bad_pred_arity.m:052:   is
@@ -123,8 +123,8 @@ bad_pred_arity.m:052:         int
 bad_pred_arity.m:052:     ) = string
 bad_pred_arity.m:054: Error: clause for function `f1'/0
 bad_pred_arity.m:054:   without corresponding `:- func' declaration.
-bad_pred_arity.m:054:   However, functions of that name do exist with arities 4
-bad_pred_arity.m:054:   and 6.
+bad_pred_arity.m:054:   However, functions of that name do exist with arities 2
+bad_pred_arity.m:054:   and 4.
 bad_pred_arity.m:054: Inferred :- func f1 = string.
 bad_pred_arity.m:054:   The argument list difference from the arity 2 version
 bad_pred_arity.m:054:   is
@@ -144,8 +144,8 @@ bad_pred_arity.m:054:   - ) = string
 bad_pred_arity.m:054:   + func = string
 bad_pred_arity.m:056: Error: clause for function `f2'/3
 bad_pred_arity.m:056:   without corresponding `:- func' declaration.
-bad_pred_arity.m:056:   However, functions of that name do exist with arities 2
-bad_pred_arity.m:056:   and 6.
+bad_pred_arity.m:056:   However, functions of that name do exist with arities
+bad_pred_arity.m:056:   0, 2 and 4.
 bad_pred_arity.m:056: Inferred :- func f2(int, T2, int) = int.
 bad_pred_arity.m:056:   The argument list difference from the arity 0 version
 bad_pred_arity.m:056:   is

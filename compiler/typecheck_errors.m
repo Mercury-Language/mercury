@@ -39,7 +39,7 @@
 :- type arg_vector_kind
     --->    arg_vector_clause_head
     ;       arg_vector_plain_call_pred_id(pred_id)
-    ;       arg_vector_plain_pred_call(sym_name_arity)
+    ;       arg_vector_plain_pred_call(sym_name_pred_form_arity)
     ;       arg_vector_generic_call(generic_call_id)
     ;       arg_vector_foreign_proc_call(pred_id)
     ;       arg_vector_event(string).
@@ -80,7 +80,7 @@
 %---------------------------------------------------------------------------%
 
 :- func report_pred_call_error(type_error_clause_context, prog_context,
-    sym_name_arity) = error_spec.
+    sym_name_pred_form_arity) = error_spec.
 
 :- func report_unknown_event_call_error(prog_context, string) = error_spec.
 
@@ -215,22 +215,20 @@
 %---------------------------------------------------------------------------%
 
 report_pred_call_error(ClauseContext, Context, SymNameArity) = Spec :-
-    SymNameArity = sym_name_arity(SymName, Arity),
+    SymNameArity = sym_name_pred_form_arity(SymName, PredFormArity),
     ModuleInfo = ClauseContext ^ tecc_module_info,
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     PredMarkers = ClauseContext ^ tecc_pred_markers,
     IsFullyQualified = calls_are_fully_qualified(PredMarkers),
     predicate_table_lookup_pf_sym(PredicateTable, IsFullyQualified,
         pf_predicate, SymName, OtherIds),
-    PFSymNameArity = pf_sym_name_arity(pf_predicate, SymName, Arity),
+    PFSymNameArity = pf_sym_name_arity(pf_predicate, SymName, PredFormArity),
     (
         OtherIds = [_ | _],
         predicate_table_get_pred_id_table(PredicateTable, PredIdTable),
-        % XXX ARITY This code should use user_arities, not pred_form_arities.
-        find_pred_arities(PredIdTable, OtherIds, PredArities),
-        Arities = list.map(project_pred_form_arity_int, PredArities),
+        find_pred_arities(PredIdTable, OtherIds, PredFormArities),
         Spec = report_error_pred_num_args(ClauseContext, Context,
-            PFSymNameArity, Arities)
+            PFSymNameArity, PredFormArities)
     ;
         OtherIds = [],
         report_error_undef_pred(ClauseContext, Context,
@@ -260,14 +258,18 @@ report_pred_call_error(ClauseContext, Context, SymNameArity) = Spec :-
 %---------------------%
 
 :- func report_error_pred_num_args(type_error_clause_context, prog_context,
-    pf_sym_name_arity, list(int)) = error_spec.
+    pf_sym_name_arity, list(pred_form_arity)) = error_spec.
 
-report_error_pred_num_args(ClauseContext, Context, PFSymNameArity, Arities)
-        = Spec :-
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
+report_error_pred_num_args(ClauseContext, Context, PFSymNameArity,
+        AllPredFormArities) = Spec :-
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
+    PredFormArity = pred_form_arity(PredFormArityInt),
+    AllPredFormArityInts =
+        list.map(project_pred_form_arity_int, AllPredFormArities),
     MainPieces = in_clause_for_pieces(ClauseContext) ++
         [words("error:")] ++
-        error_num_args_to_pieces(yes(PredOrFunc), Arity, Arities) ++ [nl] ++
+        error_num_args_to_pieces(PredOrFunc, PredFormArityInt,
+            AllPredFormArityInts) ++ [nl] ++
         [words("in call to"), p_or_f(PredOrFunc), qual_sym_name(SymName),
         suffix("."), nl],
     ( if
@@ -288,10 +290,10 @@ report_error_pred_num_args(ClauseContext, Context, PFSymNameArity, Arities)
         % with (one of) their old arities.
         (
             PredName = "process_options",
-            ( Arity = 6 ; Arity = 7 )
+            ( PredFormArityInt = 6 ; PredFormArityInt = 7 )
         ;
             PredName = "process_options_track",
-            Arity = 9
+            PredFormArityInt = 9
         )
     then
         SpecialPieces =
@@ -314,12 +316,14 @@ report_error_pred_num_args(ClauseContext, Context, PFSymNameArity, Arities)
 
 report_error_undef_pred(ClauseContext, Context, PFSymNameArity,
         Msg, MissingImportModules) :-
-    PFSymNameArity = pf_sym_name_arity(_PredOrFunc, PredSymName, Arity),
+    PFSymNameArity =
+        pf_sym_name_arity(_PredOrFunc, PredSymName, PredFormArity),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     InClauseForComponent = always(InClauseForPieces),
+    PredFormArity = pred_form_arity(PredFormArityInt),
     ( if
         PredSymName = unqualified("->"),
-        ( Arity = 2 ; Arity = 4 )
+        ( PredFormArityInt = 2 ; PredFormArityInt = 4 )
     then
         MainPieces = [words("error:"), quote("->"), words("without"),
             quote(";"), suffix("."), nl],
@@ -332,14 +336,14 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity,
         MissingImportModules = []
     else if
         PredSymName = unqualified("else"),
-        ( Arity = 2 ; Arity = 4 )
+        ( PredFormArityInt = 2 ; PredFormArityInt = 4 )
     then
         Components = [always([words("error: unmatched"), quote("else"),
             suffix("."), nl])],
         MissingImportModules = []
     else if
         PredSymName = unqualified("if"),
-        ( Arity = 2 ; Arity = 4 )
+        ( PredFormArityInt = 2 ; PredFormArityInt = 4 )
     then
         Pieces = [words("error:"), quote("if"), words("without"),
             quote("then"), words("or"), quote("else"), suffix("."), nl],
@@ -347,7 +351,7 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity,
         MissingImportModules = []
     else if
         PredSymName = unqualified("then"),
-        ( Arity = 2 ; Arity = 4 )
+        ( PredFormArityInt = 2 ; PredFormArityInt = 4 )
     then
         MainPieces = [words("error:"), quote("then"), words("without"),
             quote("if"), words("or"), quote("else"), suffix("."), nl],
@@ -361,13 +365,13 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity,
         MissingImportModules = []
     else if
         PredSymName = unqualified("apply"),
-        Arity >= 1
+        PredFormArityInt >= 1
     then
         Components = report_apply_instead_of_pred,
         MissingImportModules = []
     else if
         PredSymName = unqualified(PurityString),
-        Arity = 1,
+        PredFormArityInt = 1,
         ( PurityString = "impure" ; PurityString = "semipure" )
     then
         MainPieces = [words("error:"), quote(PurityString),
@@ -380,7 +384,7 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity,
         MissingImportModules = []
     else if
         PredSymName = unqualified("some"),
-        Arity = 2
+        PredFormArityInt = 2
     then
         Pieces = [words("syntax error in existential quantification:"),
             words("first argument of"), quote("some"),
@@ -421,11 +425,12 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity,
             % with the old contents of the getopt modules either.
             (
                 PredName = "process_options_se",
-                ( Arity = 4 ; Arity = 5 ; Arity = 6 ; Arity = 7 ),
+                ( PredFormArityInt = 4 ; PredFormArityInt = 5 ;
+                PredFormArityInt = 6 ; PredFormArityInt = 7 ),
                 NewPredName = "process_options"
             ;
                 PredName = "process_options_track_se",
-                ( Arity = 7 ; Arity = 9 ),
+                ( PredFormArityInt = 7 ; PredFormArityInt = 9 ),
                 NewPredName = "process_options_track"
             )
         then
@@ -515,10 +520,10 @@ report_unknown_event_call_error(Context, EventName) = Spec :-
 %---------------------------------------------------------------------------%
 
 report_event_args_mismatch(Context, EventName, EventArgTypes, Args) = Spec :-
-    list.length(Args, NumArgs),
-    list.length(EventArgTypes, NumArgTypes),
+    pred_form_arity(ActualArity) = arg_list_arity(Args),
+    pred_form_arity(ExpectedArity) = arg_list_arity(EventArgTypes),
     Pieces = [words("Error:")] ++
-        error_num_args_to_pieces(no, NumArgs, [NumArgTypes]) ++
+        error_num_args_to_pieces(pf_predicate, ActualArity, [ExpectedArity]) ++
         [words("in event"), quote(EventName), suffix("."), nl],
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, Pieces).
@@ -684,9 +689,13 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
         % We print a detailed message for the first context, but omit
         % repeating the list of possible matches for any later contexts.
         (
-            Symbol = overloaded_pred(CallId, PredIds),
+            Symbol = overloaded_pred(SymNamePredFormArity, PredIds),
+            SymNamePredFormArity =
+                sym_name_pred_form_arity(SymName, PredFormArity),
+            PredFormArity = pred_form_arity(PredFormArityInt),
+            SNA = sym_name_arity(SymName, PredFormArityInt),
             StartPieces = [words("The predicate symbol"),
-                qual_sym_name_arity(CallId), suffix("."), nl,
+                qual_sym_name_arity(SNA), suffix("."), nl,
                 words("The possible matches are:"), nl_indent_delta(1)],
             PredIdPiecesList = list.map(
                 describe_one_pred_name(ModuleInfo, should_module_qualify),
@@ -697,7 +706,7 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
                     [suffix("."), nl]),
             FirstPieces = StartPieces ++ PredIdPieces,
             LaterPieces = [words("The predicate symbol"),
-                qual_sym_name_arity(CallId), words("is also overloaded here.")]
+                qual_sym_name_arity(SNA), words("is also overloaded here.")]
         ;
             Symbol = overloaded_func(ConsId, Sources0),
             list.sort(Sources0, Sources),
@@ -1821,9 +1830,10 @@ return_function_arities(ModuleInfo, [PredId | PredIds], !FuncArities) :-
     = list(format_component).
 
 wrong_arity_constructor_to_pieces(Name, Arity, ActualArities) = Pieces :-
-    MaybePredOrFunc = no,
-    NumArgsPieces = error_num_args_to_pieces(MaybePredOrFunc, Arity,
-        ActualArities),
+    % Constructors' arities should be treated the same way as
+    % predicates' ariries.
+    NumArgsPieces =
+        error_num_args_to_pieces(pf_predicate, Arity, ActualArities),
     Pieces = [words("error: ")] ++ NumArgsPieces ++
         [words("in use of constructor"), qual_sym_name(Name), suffix(".")].
 
@@ -2630,19 +2640,21 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
                     int_fixed(ArgNum), words("of the clause head:"), nl]
             ;
                 (
-                    ArgVectorKind = arg_vector_plain_pred_call(SymNameArity),
-                    SymNameArity = sym_name_arity(SymName, Arity),
-                    PFSymNameArity =
-                        pf_sym_name_arity(pf_predicate, SymName, Arity),
+                    ArgVectorKind =
+                        arg_vector_plain_pred_call(SymNamePredFormArity),
+                    SymNamePredFormArity =
+                        sym_name_pred_form_arity(SymName, PredFormArity),
+                    PFSymNameArity = pf_sym_name_arity(pf_predicate, SymName,
+                        PredFormArity),
                     CallId = plain_call_id(PFSymNameArity)
                 ;
                     ArgVectorKind = arg_vector_plain_call_pred_id(PredId),
                     ModuleInfo = ClauseContext ^ tecc_module_info,
                     module_info_pred_info(ModuleInfo, PredId, PredInfo),
+                    pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
                     pred_info_get_module_name(PredInfo, ModuleName),
                     pred_info_get_name(PredInfo, Name),
-                    pred_info_get_orig_arity(PredInfo, Arity),
-                    pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+                    Arity = pred_info_pred_form_arity(PredInfo),
                     PFSymNameArity = pf_sym_name_arity(PredOrFunc,
                         qualified(ModuleName, Name), Arity),
                     CallId = plain_call_id(PFSymNameArity)
@@ -2741,18 +2753,20 @@ arg_vector_kind_to_pieces(ClauseContext, ArgVectorKind) = Pieces :-
         Pieces = [words("in arguments of the clause head:"), nl]
     ;
         (
-            ArgVectorKind = arg_vector_plain_pred_call(SymNameArity),
-            SymNameArity = sym_name_arity(SymName, Arity),
-            PFSymNameArity = pf_sym_name_arity(pf_predicate, SymName, Arity),
+            ArgVectorKind = arg_vector_plain_pred_call(SymNamePredFormArity),
+            SymNamePredFormArity =
+                sym_name_pred_form_arity(SymName, PredFormArity),
+            PFSymNameArity =
+                pf_sym_name_arity(pf_predicate, SymName, PredFormArity),
             CallId = plain_call_id(PFSymNameArity)
         ;
             ArgVectorKind = arg_vector_plain_call_pred_id(PredId),
             ModuleInfo = ClauseContext ^ tecc_module_info,
             module_info_pred_info(ModuleInfo, PredId, PredInfo),
+            pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
             pred_info_get_module_name(PredInfo, ModuleName),
             pred_info_get_name(PredInfo, Name),
-            pred_info_get_orig_arity(PredInfo, Arity),
-            pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+            Arity = pred_info_pred_form_arity(PredInfo),
             PFSymNameArity = pf_sym_name_arity(PredOrFunc,
                 qualified(ModuleName, Name), Arity),
             CallId = plain_call_id(PFSymNameArity)
@@ -2787,28 +2801,30 @@ in_clause_for_pieces(ClauseContext) = Pieces :-
         should_not_module_qualify, PredId),
     Pieces = [words("In clause for") | PredIdPieces] ++ [suffix(":"), nl].
 
-    % error_num_args_to_pieces(MaybePredOrFunc, Arity, CorrectArities):
+    % error_num_args_to_pieces(PredOrFunc, Arity, CorrectArities):
     %
     % Return a description for the error message
     % "wrong number of arguments (<Arity>; should be <CorrectArities>)",
     % adjusting `Arity' and `CorrectArities' if `MaybePredOrFunc' is
     % `yes(function)'.
     %
-:- func error_num_args_to_pieces(maybe(pred_or_func), int, list(int)) =
+:- func error_num_args_to_pieces(pred_or_func, int, list(int)) =
     list(format_component).
 
-error_num_args_to_pieces(MaybePredOrFunc, Arity0, Arities0) = Pieces :-
-    % Adjust arities for functions.
-    ( if MaybePredOrFunc = yes(pf_function) then
+error_num_args_to_pieces(PredOrFunc, Arity0, Arities0) = Pieces :-
+    (
+        PredOrFunc = pf_predicate,
+        Arity = Arity0,
+        Arities = Arities0
+    ;
+        PredOrFunc = pf_function,
+        % Adjust arities for functions.
         adjust_func_arity(pf_function, Arity, Arity0),
         ReverseAdjust =
             ( pred(OtherArity0::in, OtherArity::out) is det :-
                 adjust_func_arity(pf_function, OtherArity, OtherArity0)
             ),
         list.map(ReverseAdjust, Arities0, Arities)
-    else
-        Arity = Arity0,
-        Arities = Arities0
     ),
     RightAritiesPieces = error_right_num_args_to_pieces(Arities),
     Pieces = [words("wrong number of arguments ("),

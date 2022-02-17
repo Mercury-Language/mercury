@@ -650,14 +650,14 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 [PredNameTerm, ArityTerm], _)
         then
             ( if
-                try_parse_sym_name_and_no_args(PredNameTerm, PredName),
+                try_parse_sym_name_and_no_args(PredNameTerm, PredSymName),
                 decimal_term_to_int(ArityTerm, ArityInt),
                 try_parse_sym_name_and_no_args(InstanceMethodTerm,
                     InstanceMethodName)
             then
-                InstanceMethod = instance_method(pf_predicate, PredName,
-                    instance_proc_def_name(InstanceMethodName), ArityInt,
-                    TermContext),
+                ProcDef = instance_proc_def_name(InstanceMethodName),
+                InstanceMethod = instance_method(pf_predicate, PredSymName,
+                    user_arity(ArityInt), ProcDef, TermContext),
                 MaybeInstanceMethod = ok1(InstanceMethod)
             else
                 MethodTermStr = describe_error_term(VarSet, MethodTerm),
@@ -676,14 +676,14 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 [FuncNameTerm, ArityTerm], _)
         then
             ( if
-                try_parse_sym_name_and_no_args(FuncNameTerm, FuncName),
+                try_parse_sym_name_and_no_args(FuncNameTerm, FuncSymName),
                 decimal_term_to_int(ArityTerm, ArityInt),
                 try_parse_sym_name_and_no_args(InstanceMethodTerm,
                     InstanceMethodName)
             then
-                InstanceMethod = instance_method(pf_function, FuncName,
-                    instance_proc_def_name(InstanceMethodName), ArityInt,
-                    TermContext),
+                ProcDef = instance_proc_def_name(InstanceMethodName),
+                InstanceMethod = instance_method(pf_function, FuncSymName,
+                    user_arity(ArityInt), ProcDef, TermContext),
                 MaybeInstanceMethod = ok1(InstanceMethod)
             else
                 MethodTermStr = describe_error_term(VarSet, MethodTerm),
@@ -729,11 +729,13 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 Item = item_clause(ItemClause)
             then
                 ItemClause = item_clause_info(PredOrFunc, ClassMethodName,
-                    HeadArgs, _VarSet, _ClauseBody, Context, _SeqNum),
-                adjust_func_arity(PredOrFunc, ArityInt, list.length(HeadArgs)),
+                    ArgTerms, _VarSet, _ClauseBody, Context, _SeqNum),
+                PredFormArity = arg_list_arity(ArgTerms),
+                user_arity_pred_form_arity(PredOrFunc,
+                    UserArity, PredFormArity),
+                ProcDef = instance_proc_def_clauses([ItemClause]),
                 InstanceMethod = instance_method(PredOrFunc, ClassMethodName,
-                    instance_proc_def_clauses([ItemClause]), ArityInt,
-                    Context),
+                    UserArity, ProcDef, Context),
                 MaybeInstanceMethod = ok1(InstanceMethod)
             else
                 MethodTermStr = describe_error_term(VarSet, MethodTerm),

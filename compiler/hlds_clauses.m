@@ -88,8 +88,8 @@
                 cli_had_syntax_errors       :: maybe_clause_syntax_errors
         ).
 
-:- pred clauses_info_init(pred_or_func::in, int::in, clause_item_numbers::in,
-    clauses_info::out) is det.
+:- pred clauses_info_init(pred_or_func::in, pred_form_arity::in,
+    clause_item_numbers::in, clauses_info::out) is det.
 
 :- pred clauses_info_init_for_assertion(prog_vars::in, clauses_info::out)
     is det.
@@ -358,9 +358,11 @@
 
 %-----------------------------------------------------------------------------%
 
-clauses_info_init(PredOrFunc, Arity, ItemNumbers, ClausesInfo) :-
+clauses_info_init(PredOrFunc, PredFormArity, ItemNumbers, ClausesInfo) :-
     varset.init(VarSet0),
-    make_n_fresh_vars("HeadVar__", Arity, HeadVars, VarSet0, VarSet),
+    PredFormArity = pred_form_arity(PredFormArityInt),
+    make_n_fresh_vars("HeadVar__", PredFormArityInt, HeadVars,
+        VarSet0, VarSet),
     init_vartypes(VarTypes),
     map.init(TVarNameMap),
     HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),

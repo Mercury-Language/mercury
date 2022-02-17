@@ -33,8 +33,7 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred clauses_info_add_clause(clause_applicable_modes::in, list(proc_id)::in,
-    pred_status::in, clause_type::in,
-    pred_or_func::in, arity::in, list(prog_term)::in,
+    pred_status::in, clause_type::in, pred_or_func::in, list(prog_term)::in,
     prog_context::in, item_seq_num::in, list(quant_warning)::out,
     goal::in, hlds_goal::out,
     prog_varset::in, prog_varset::out, tvarset::in, tvarset::out,
@@ -121,6 +120,7 @@ module_add_clause(PredStatus, ClauseType, ClauseInfo,
     % an implicit declaration for the predicate.)
     list.length(ArgTerms, Arity0),
     Arity = Arity0 + ArityAdjustment,
+    PredFormArity = pred_form_arity(Arity),
     some [!PredInfo] (
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable),
         predicate_table_lookup_pf_sym_arity(PredicateTable,
@@ -156,12 +156,12 @@ module_add_clause(PredStatus, ClauseType, ClauseInfo,
                 ClauseType = clause_for_promise(PromiseType),
                 HeadVars = term.term_list_to_var_list(ArgTerms),
                 preds_add_implicit_for_assertion(PredOrFunc,
-                    PredModuleName, PredName, Arity, HeadVars, PredStatus,
-                    PromiseType, Context, NewPredId, !ModuleInfo)
+                    PredModuleName, PredName, PredFormArity, HeadVars,
+                    PredStatus, PromiseType, Context, NewPredId, !ModuleInfo)
             ;
                 ClauseType = clause_not_for_promise,
                 preds_add_implicit_report_error(PredOrFunc,
-                    PredModuleName, PredName, Arity, PredStatus,
+                    PredModuleName, PredName, PredFormArity, PredStatus,
                     is_not_a_class_method, Context, origin_user(PredSymName),
                     [words("clause")], NewPredId, !ModuleInfo, !Specs)
             ),
@@ -170,7 +170,7 @@ module_add_clause(PredStatus, ClauseType, ClauseInfo,
         (
             MaybePredId = yes(PredId),
             module_add_clause_2(PredStatus, ClauseType, PredId,
-                PredOrFunc, PredSymName, ArgTerms, Arity, ArityAdjustment,
+                PredOrFunc, PredSymName, ArgTerms, PredFormArity,
                 ClauseVarSet, MaybeBodyGoal, Context, SeqNum,
                 IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs)
         ;
@@ -179,14 +179,14 @@ module_add_clause(PredStatus, ClauseType, ClauseInfo,
     ).
 
 :- pred module_add_clause_2(pred_status::in, clause_type::in, pred_id::in,
-    pred_or_func::in, sym_name::in, list(prog_term)::in, int::in, int::in,
+    pred_or_func::in, sym_name::in, list(prog_term)::in, pred_form_arity::in,
     prog_varset::in, maybe2(goal, list(warning_spec))::in, prog_context::in,
     item_seq_num::in, maybe({prog_var, prog_context})::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 module_add_clause_2(PredStatus, ClauseType, PredId, PredOrFunc, PredSymName,
-        MaybeAnnotatedArgTerms, Arity, ArityAdjustment, ClauseVarSet,
+        MaybeAnnotatedArgTerms, PredFormArity, ClauseVarSet,
         MaybeBodyGoal, Context, SeqNum, IllegalSVarResult,
         !ModuleInfo, !QualInfo, !Specs) :-
     some [!PredInfo, !PredSpecs] (
@@ -197,7 +197,7 @@ module_add_clause_2(PredStatus, ClauseType, PredId, PredOrFunc, PredSymName,
 
         trace [io(!IO)] (
             add_clause_progress_msg(!.ModuleInfo, !.PredInfo, PredOrFunc,
-                PredSymName, MaybeAnnotatedArgTerms, ArityAdjustment, !IO)
+                PredSymName, PredFormArity, !IO)
         ),
 
         % Opt_imported preds are initially tagged as imported, and are tagged
@@ -220,7 +220,7 @@ module_add_clause_2(PredStatus, ClauseType, PredId, PredOrFunc, PredSymName,
             IllegalSVarResult = no
         ),
         maybe_add_error_for_field_access_function(!.ModuleInfo, PredStatus,
-            PredOrFunc, PredSymName, Arity, Context, !PredSpecs),
+            PredOrFunc, PredSymName, PredFormArity, Context, !PredSpecs),
         maybe_add_error_for_builtin(!.ModuleInfo, !.PredInfo,
             Context, !PredSpecs),
         maybe_add_default_func_mode(!PredInfo, _),
@@ -247,7 +247,7 @@ module_add_clause_2(PredStatus, ClauseType, PredId, PredOrFunc, PredSymName,
                     ProcIdsForThisClause, AllProcIds,
                     !ModuleInfo, !QualInfo, !Specs),
                 clauses_info_add_clause(ProcIdsForThisClause, AllProcIds,
-                    PredStatus, ClauseType, PredOrFunc, Arity, ArgTerms,
+                    PredStatus, ClauseType, PredOrFunc, ArgTerms,
                     Context, SeqNum, Warnings,
                     BodyGoal, Goal, ClauseVarSet, VarSet, TVarSet0, TVarSet,
                     Clauses0, Clauses, !ModuleInfo, !QualInfo, !Specs),
@@ -284,8 +284,8 @@ module_add_clause_2(PredStatus, ClauseType, PredId, PredOrFunc, PredSymName,
                     true
                 ),
                 maybe_add_singleton_and_quant_warnings(!.ModuleInfo,
-                    PredStatus, Clauses, PredOrFunc, PredSymName, Arity,
-                    VarSet, Goal, Warnings, !Specs)
+                    PredOrFunc, PredSymName, PredFormArity,
+                    PredStatus, Clauses, VarSet, Goal, Warnings, !Specs)
             ),
             module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
         )
@@ -294,11 +294,11 @@ module_add_clause_2(PredStatus, ClauseType, PredId, PredOrFunc, PredSymName,
 %-----------------%
 
 :- pred add_clause_progress_msg(module_info::in, pred_info::in,
-    pred_or_func::in, sym_name::in, list(prog_term)::in, int::in,
+    pred_or_func::in, sym_name::in, pred_form_arity::in,
     io::di, io::uo) is det.
 
 add_clause_progress_msg(ModuleInfo, PredInfo, PredOrFunc, PredName,
-        ArgTerms, ArityAdjustment, !IO) :-
+        PredFormArity, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
@@ -306,10 +306,9 @@ add_clause_progress_msg(ModuleInfo, PredInfo, PredOrFunc, PredName,
         pred_info_get_clauses_info(PredInfo, MsgClauses),
         NumClauses = num_clauses_in_clauses_rep(MsgClauses ^ cli_rep),
         PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
-        list.length(ArgTerms, PredArity0),
-        PredArity = PredArity0 + ArityAdjustment,
-        adjust_func_arity(PredOrFunc, OrigArity, PredArity),
-        SNAStr = sym_name_arity_to_string(sym_name_arity(PredName, OrigArity)),
+        user_arity_pred_form_arity(PredOrFunc, user_arity(Arity),
+            PredFormArity),
+        SNAStr = sym_name_arity_to_string(sym_name_arity(PredName, Arity)),
         get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
         io.format(ProgressStream, "%% Processing clause %d for %s `%s'...\n",
             [i(NumClauses + 1), s(PredOrFuncStr), s(SNAStr)], !IO)
@@ -320,24 +319,25 @@ add_clause_progress_msg(ModuleInfo, PredInfo, PredOrFunc, PredName,
 %-----------------%
 
 :- pred maybe_add_error_for_field_access_function(module_info::in,
-    pred_status::in, pred_or_func::in, sym_name::in, int::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    pred_status::in, pred_or_func::in, sym_name::in, pred_form_arity::in,
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 maybe_add_error_for_field_access_function(ModuleInfo, PredStatus,
-        PredOrFunc, PredSymName, Arity, Context, !Specs) :-
+        PredOrFunc, PredSymName, PredFormArity, Context, !Specs) :-
     ( if
         % User-supplied clauses for field access functions are not
         % allowed -- the clauses are always generated by the compiler.
         PredOrFunc = pf_function,
-        adjust_func_arity(pf_function, FuncArity, Arity),
+        user_arity_pred_form_arity(PredOrFunc, user_arity(UserArityInt),
+            PredFormArity),
         is_field_access_function_name(ModuleInfo, PredSymName,
-            FuncArity, _, _),
+            UserArityInt, _, _),
         % Don't report errors for clauses for field access function clauses
         % in `.opt' files.
         PredStatus \= pred_status(status_opt_imported)
     then
         FieldPFSymNameArity =
-            pf_sym_name_arity(PredOrFunc, PredSymName, Arity),
+            pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
         FieldAccessMainPieces =
             [words("Error: clause for"),
             words("automatically generated field access"),
@@ -387,13 +387,14 @@ maybe_add_error_for_builtin(ModuleInfo, PredInfo, Context, !Specs) :-
     ).
 
 :- pred maybe_add_singleton_and_quant_warnings(module_info::in,
-    pred_status::in, clauses_info::in, pred_or_func::in,
-    sym_name::in, int::in, prog_varset::in, hlds_goal::in,
+    pred_or_func::in, sym_name::in, pred_form_arity::in,
+    pred_status::in, clauses_info::in, prog_varset::in, hlds_goal::in,
     list(quant_warning)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_add_singleton_and_quant_warnings(ModuleInfo, PredStatus, Clauses,
-        PredOrFunc, PredSymName, Arity, VarSet, Goal, Warnings, !Specs) :-
+maybe_add_singleton_and_quant_warnings(ModuleInfo, PredOrFunc,
+        PredSymName, PredFormArity, PredStatus, Clauses, VarSet,
+        Goal, Warnings, !Specs) :-
     ( if
         (
             % Any singleton warnings should be generated for the original code,
@@ -418,7 +419,8 @@ maybe_add_singleton_and_quant_warnings(ModuleInfo, PredStatus, Clauses,
         true
     else
         % Warn about singleton variables.
-        WarnPFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, Arity),
+        WarnPFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName,
+            PredFormArity),
         warn_singletons(ModuleInfo, WarnPFSymNameArity, VarSet, Goal, !Specs),
         % Warn about variables with overlapping scopes.
         add_quant_warnings(WarnPFSymNameArity, VarSet, Warnings, !Specs)
@@ -666,7 +668,7 @@ mode_decl_for_pred_info_to_pieces(PredInfo, ProcId) =
 %-----------------------------------------------------------------------------%
 
 clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
-        PredOrFunc, Arity, ArgTerms, Context, SeqNum, QuantWarnings,
+        PredOrFunc, ArgTerms, Context, SeqNum, QuantWarnings,
         BodyGoal, Goal, CVarSet, VarSet, TVarSet0, TVarSet,
         !ClausesInfo, !ModuleInfo, !QualInfo, !Specs) :-
     !.ClausesInfo = clauses_info(VarSet0, TVarNameMap0,
@@ -696,7 +698,7 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
         MaybeOptImported, !QualInfo),
     varset.merge_renaming(VarSet0, CVarSet, VarSet1, Renaming),
     add_clause_transform(Renaming, HeadVars, ArgTerms, BodyGoal, Context,
-        PredOrFunc, Arity, ClauseType, Goal0, VarSet1, VarSet,
+        PredOrFunc, ClauseType, Goal0, VarSet1, VarSet,
         QuantWarnings, StateVarWarnings, StateVarErrors,
         !ModuleInfo, !QualInfo, !Specs),
     qual_info_get_tvarset(!.QualInfo, TVarSet),
@@ -780,14 +782,14 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
     %
 :- pred add_clause_transform(prog_var_renaming::in,
     proc_arg_vector(prog_var)::in, list(prog_term)::in, goal::in,
-    prog_context::in, pred_or_func::in, arity::in, clause_type::in,
+    prog_context::in, pred_or_func::in, clause_type::in,
     hlds_goal::out, prog_varset::in, prog_varset::out,
     list(quant_warning)::out, list(error_spec)::out, list(error_spec)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_clause_transform(Renaming, HeadVars, ArgTerms0, ParseTreeBodyGoal, Context,
-        PredOrFunc, Arity, ClauseType, Goal, !VarSet,
+        PredOrFunc, ClauseType, Goal, !VarSet,
         QuantWarnings, StateVarWarnings, StateVarErrors,
         !ModuleInfo, !QualInfo, !Specs) :-
     some [!SInfo, !SVarState, !SVarStore] (
@@ -802,7 +804,8 @@ add_clause_transform(Renaming, HeadVars, ArgTerms0, ParseTreeBodyGoal, Context,
             HeadGoal = true_goal
         ;
             ClauseType = clause_not_for_promise,
-            ArgContext = ac_head(PredOrFunc, Arity),
+            PredFormArity = arg_list_arity(ArgTerms0),
+            ArgContext = ac_head(PredOrFunc, PredFormArity),
             HeadGoal0 = true_goal,
             pair_vars_with_terms(HeadVarList, ArgTerms, HeadVarsArgTerms),
             insert_arg_unifications(HeadVarsArgTerms, Context, ArgContext,

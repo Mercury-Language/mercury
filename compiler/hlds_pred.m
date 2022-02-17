@@ -608,7 +608,7 @@
     % (direct and indirect) in the arguments, and from defaults.
     %
 :- pred pred_info_init(pred_or_func::in, module_name::in, string::in,
-    arity::in, prog_context::in, pred_origin::in,
+    pred_form_arity::in, prog_context::in, pred_origin::in,
     pred_status::in, maybe(cur_user_decl_info)::in, goal_type::in,
     pred_markers::in, list(mer_type)::in, tvarset::in, existq_tvars::in,
     prog_constraints::in, constraint_proof_map::in, constraint_map::in,
@@ -1269,7 +1269,7 @@ marker_name(marker_fact_table_semantic_errors, "fact_table_semantic_errors").
                 psi_instance_method_arg_types   :: list(mer_type)
             ).
 
-pred_info_init(PredOrFunc, PredModuleName, PredName, Arity, Context,
+pred_info_init(PredOrFunc, PredModuleName, PredName, PredFormArity, Context,
         Origin, Status, CurUserDecl, GoalType, Markers,
         ArgTypes, TypeVarSet, ExistQVars, ClassContext, ClassProofs,
         ClassConstraintMap, ClausesInfo, VarNameRemap, PredInfo) :-
@@ -1298,7 +1298,23 @@ pred_info_init(PredOrFunc, PredModuleName, PredName, Arity, Context,
 
     % argument PredModuleName
     % argument PredName
-    % argument Arity
+    PredFormArity = pred_form_arity(PredFormArityInt),
+    % NOTE We cannot assert anything about the relationship
+    % between PredFormArity and the number of arguments in ArgTypes, because
+    %
+    % - ArgTypes may be have more arguments than PredFormArity,
+    %   due to the type_info/typeclass_info arguments added by the
+    %   polymorphism pass, and
+    %
+    % - ArgTypes have have fewer arguments than PredFormArity,
+    %   because some arguments may have been removed by the unused_args pass.
+    %
+    % XXX ARGVEC Eventually, when we start using arg vectors, the arguments
+    % added by the polymorphism pass would be counted separately.
+    %
+    % XXX ARITY The unused_args pass *should* decrement PredFormArity
+    % by the number of arguments it eliminates, but at the moment, it does not.
+    %
     % argument PredOrFunc
     % argument Origin
     % argument Status
@@ -1309,8 +1325,9 @@ pred_info_init(PredOrFunc, PredModuleName, PredName, Arity, Context,
     % argument ClassContext
     % argument ClausesInfo
     map.init(ProcTable),
-    PredInfo = pred_info(PredModuleName, PredName, Arity, PredOrFunc,
-        Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
+    % XXX ARITY The PredFormArityInt should be just PredFormArity.
+    PredInfo = pred_info(PredModuleName, PredName, PredFormArityInt,
+        PredOrFunc, Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
 
 pred_info_create(PredOrFunc, PredModuleName, PredName, Context, Origin, Status,
@@ -1988,8 +2005,8 @@ purity_to_markers(purity_impure, [marker_is_impure]).
 pred_info_get_pf_sym_name_arity(PredInfo, PFSymNameArity) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_sym_name(PredInfo, SymName),
-    Arity = pred_info_orig_arity(PredInfo),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity).
+    PredFormArity = pred_info_pred_form_arity(PredInfo),
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity).
 
 pred_info_get_sym_name(PredInfo, SymName) :-
     Module = pred_info_module(PredInfo),

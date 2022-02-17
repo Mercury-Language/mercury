@@ -221,6 +221,7 @@
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_item.  % undesirable dependency
+:- import_module parse_tree.prog_util.
 
 :- import_module int.
 :- import_module map.
@@ -257,7 +258,7 @@ pred_info_id_to_string(PredInfo) = Str :-
     % hlds_out_pred.m, or vice versa.
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
+    PredFormArity = pred_info_pred_form_arity(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_origin(PredInfo, Origin),
     (
@@ -275,7 +276,7 @@ pred_info_id_to_string(PredInfo) = Str :-
         MethodConstraints = instance_method_constraints(ClassId,
             InstanceTypes, _, _),
         MethodStr = pf_sym_name_orig_arity_to_string(PredOrFunc, MethodName,
-            Arity),
+            PredFormArity),
         ClassId = class_id(ClassName, _),
         ClassStr = sym_name_to_string(ClassName),
         TypeStrs = mercury_type_list_to_string(varset.init, InstanceTypes),
@@ -285,10 +286,13 @@ pred_info_id_to_string(PredInfo) = Str :-
         Origin = origin_class_method(ClassId, MethodId),
         ClassId = class_id(ClassSymName, ClassArity),
         MethodId = pf_sym_name_arity(MethodPredOrFunc,
-            MethodSymName, MethodArity),
+            MethodSymName, MethodPredFormArity),
+        user_arity_pred_form_arity(MethodPredOrFunc,
+            MethodUserArity, MethodPredFormArity),
+        MethodUserArity = user_arity(MethodUserArityInt),
         string.format("class method %s %s/%d for %s/%d",
             [s(pred_or_func_to_string(MethodPredOrFunc)),
-            s(sym_name_to_string(MethodSymName)), i(MethodArity),
+            s(sym_name_to_string(MethodSymName)), i(MethodUserArityInt),
             s(sym_name_to_string(ClassSymName)), i(ClassArity)], Str)
     ;
         Origin = origin_assertion(FileName, LineNumber),
@@ -298,7 +302,8 @@ pred_info_id_to_string(PredInfo) = Str :-
                 s(FileName), i(LineNumber)])
         else
             SymName = qualified(Module, Name),
-            Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName, Arity)
+            Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName,
+                PredFormArity)
         )
     ;
         Origin = origin_tabling(BasePredId, TablingAuxPredKind),
@@ -338,7 +343,8 @@ pred_info_id_to_string(PredInfo) = Str :-
         ; Origin = origin_user(_)
         ),
         SymName = qualified(Module, Name),
-        Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName, Arity)
+        Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName,
+            PredFormArity)
     ).
 
 pred_proc_id_to_string(ModuleInfo, proc(PredId, ProcId)) =
@@ -563,7 +569,9 @@ call_arg_id_to_string(CallId, ArgNum, PredMarkers) = Str :-
 
 arg_number_to_string(CallId, ArgNum) = Str :-
     (
-        CallId = plain_call_id(pf_sym_name_arity(PredOrFunc, _, Arity)),
+        CallId = plain_call_id(PFSymNameArity),
+        PFSymNameArity = pf_sym_name_arity(PredOrFunc, _, PredFormArity),
+        PredFormArity = pred_form_arity(Arity),
         ( if
             PredOrFunc = pf_function,
             Arity = ArgNum

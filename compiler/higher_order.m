@@ -2700,9 +2700,9 @@ filter_request(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
+    PredFormArity = pred_info_pred_form_arity(PredInfo),
     pred_info_get_arg_types(PredInfo, Types),
-    list.length(Types, ActualArity),
+    ActualArity = arg_list_arity(Types),
     (
         VeryVerbose = no,
         MaybeProgressStream = no
@@ -2711,7 +2711,7 @@ filter_request(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
         get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
         MaybeProgressStream = yes(ProgressStream),
         write_request(ProgressStream, ModuleInfo, "Request for",
-            qualified(PredModule, PredName), Arity, ActualArity,
+            qualified(PredModule, PredName), PredFormArity, ActualArity,
             no, HOArgs, Context, !IO)
     ),
     (
@@ -2843,7 +2843,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         PredInfo0, ProcInfo0),
 
     Name0 = pred_info_name(PredInfo0),
-    PredArity = pred_info_orig_arity(PredInfo0),
+    PredFormArity = pred_info_pred_form_arity(PredInfo0),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
     PredModuleName = pred_info_module(PredInfo0),
     module_info_get_globals(ModuleInfo0, Globals),
@@ -2895,9 +2895,9 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     ;
         VeryVerbose = yes,
         get_progress_output_stream(ModuleInfo0, ProgressStream, !IO),
-        list.length(Types, ActualArity),
+        ActualArity = arg_list_arity(Types),
         write_request(ProgressStream, ModuleInfo0, "Specializing",
-            qualified(PredModuleName, Name0), PredArity, ActualArity,
+            qualified(PredModuleName, Name0), PredFormArity, ActualArity,
             yes(SpecName), HOArgs, Context, !IO)
     ),
 
@@ -2924,7 +2924,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         EmptyRttiVarMaps, no_foreign_lang_clauses, no_clause_syntax_errors),
     Origin = origin_transformed(OriginTransform, OrigOrigin, CallerPredId),
     CurUserDecl = maybe.no,
-    pred_info_init(PredOrFunc, PredModuleName, SpecName, PredArity,
+    pred_info_init(PredOrFunc, PredModuleName, SpecName, PredFormArity,
         Context, Origin, PredStatus, CurUserDecl, GoalType, MarkerList, Types,
         ArgTVarSet, ExistQVars, ClassContext, EmptyProofs, EmptyConstraintMap,
         ClausesInfo, VarNameRemap, NewPredInfo0),
@@ -2963,16 +2963,19 @@ higher_order_add_new_pred(CalledPredProcId, NewPred, !Info) :-
     !Info ^ hogi_new_pred_map := NewPredMap.
 
 :- pred write_request(io.text_output_stream::in, module_info::in,
-    string::in, sym_name::in, arity::in, arity::in, maybe(string)::in,
-    list(higher_order_arg)::in, prog_context::in, io::di, io::uo) is det.
+    string::in, sym_name::in, pred_form_arity::in, pred_form_arity::in,
+    maybe(string)::in, list(higher_order_arg)::in, prog_context::in,
+    io::di, io::uo) is det.
 
 write_request(OutputStream, ModuleInfo, Msg,
         SymName, PredArity, ActualArity, MaybeNewName, HOArgs, Context, !IO) :-
     OldName = sym_name_to_string(SymName),
+    PredArity = pred_form_arity(PredArityInt),
+    ActualArity = pred_form_arity(ActualArityInt),
     io.write_string(OutputStream, "% ", !IO),
     prog_out.write_context(OutputStream, Context, !IO),
     io.format(OutputStream, "%s `%s'/%d",
-        [s(Msg), s(OldName), i(PredArity)], !IO),
+        [s(Msg), s(OldName), i(PredArityInt)], !IO),
     (
         MaybeNewName = yes(NewName),
         io.format(OutputStream, " into %s", [s(NewName)], !IO)
@@ -2980,7 +2983,7 @@ write_request(OutputStream, ModuleInfo, Msg,
         MaybeNewName = no
     ),
     io.write_string(OutputStream, " with higher-order arguments:\n", !IO),
-    NumToDrop = ActualArity - PredArity,
+    NumToDrop = ActualArityInt - PredArityInt,
     output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, 0,
         HOArgs, !IO).
 

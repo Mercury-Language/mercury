@@ -1003,15 +1003,8 @@ define_init_pred(ModuleName, Lang, ItemMutable, InitSetPredName,
     Attrs = item_compiler_attributes(compiler_origin_mutable(ModuleName,
         MutableName, mutable_pred_init)),
     Origin = item_origin_compiler(Attrs),
-    Arity = 0,
-    (
-        SeqNum = item_seq_num(SeqNumInt)
-    ;
-        SeqNum = item_no_seq_num,
-        unexpected($pred, "item_no_seq_num")
-    ),
-    new_user_init_pred(ModuleName, SeqNumInt, InitPredName, Arity,
-        TargetName, !PredTargetNames),
+    new_user_init_or_final_pred_target_name(ModuleName, "init", SeqNum,
+        InitPredName, user_arity(0), TargetName, !PredTargetNames),
     PredNameModesPF = proc_pf_name_modes(pf_predicate, InitPredName, []),
     FPEInfo = pragma_info_foreign_proc_export(Origin, Lang,
         PredNameModesPF, TargetName),

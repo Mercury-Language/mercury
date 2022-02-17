@@ -666,14 +666,16 @@ check_for_unknown_methods(InstanceMethods, ClassId, ClassPredIds, Context,
 
 method_is_known(PredTable, ClassPredIds, Method) :-
     % Find this method definition's p/f, name, arity.
-    Method = instance_method(MethodPredOrFunc, MethodName, _MethodDefn,
-        MethodArity, _Context),
+    Method = instance_method(MethodPredOrFunc, MethodName, MethodUserArity,
+        _MethodDefn, _Context),
     % Search for pred_ids matching that p/f, name, arity, and succeed
     % if the method definition p/f, name, and arity matches at least one
     % of the methods from the class interface.
-    adjust_func_arity(MethodPredOrFunc, MethodArity, MethodPredArity),
+    user_arity_pred_form_arity(MethodPredOrFunc, MethodUserArity,
+        pred_form_arity(MethodPredFormArityInt)),
     predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
-        MethodPredOrFunc, MethodName, MethodPredArity, MatchingPredIds),
+        MethodPredOrFunc, MethodName, MethodPredFormArityInt, MatchingPredIds),
+    % XXX ARITY Code this as an intersection test.
     some [PredId] (
         list.member(PredId, MatchingPredIds),
         list.member(PredId, ClassPredIds)
@@ -718,9 +720,9 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
     MethodName0 = pred_info_name(PredInfo),
     PredModule = pred_info_module(PredInfo),
     MethodName = qualified(PredModule, MethodName0),
-    PredArity = pred_info_orig_arity(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    adjust_func_arity(PredOrFunc, Arity, PredArity),
+    PredFormArity = pred_info_pred_form_arity(PredInfo),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     pred_info_get_proc_table(PredInfo, ProcTable),
     list.map(
         ( pred(TheProcId::in, ModesAndDetism::out) is det :-
@@ -739,10 +741,10 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 
     % Work out the name of the predicate that we will generate
     % to check this instance method.
-    make_instance_method_pred_name(ClassId, MethodName, Arity,
+    make_instance_method_pred_name(ClassId, MethodName, UserArity,
         InstanceTypes, PredName),
 
-    CheckInfo0 = check_instance_method_info(PredOrFunc, PredName, Arity,
+    CheckInfo0 = check_instance_method_info(PredOrFunc, PredName, UserArity,
         ExistQVars, ArgTypes, ClassContext, ArgModes, ArgTypeVars,
         InstanceStatus),
     check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
@@ -763,7 +765,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 
                 % Arity of the method. (For funcs, this is the original arity,
                 % not the arity as a predicate.)
-                cimi_method_arity           :: arity,
+                cimi_method_arity           :: user_arity,
 
                 % Existentially quantified type variables.
                 cimi_existq_tvars           :: existq_tvars,
@@ -806,13 +808,13 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
         InstanceConstraints, InstanceBody, MaybeInstancePredProcs,
         InstanceVarSet, _InstanceProofs),
     PredOrFunc = CheckInfo ^ cimi_method_pred_or_func,
-    Arity = CheckInfo ^ cimi_method_arity,
-    get_matching_instance_defns(InstanceBody, PredOrFunc, MethodName, Arity,
-        MatchingInstanceMethods),
+    UserArity = CheckInfo ^ cimi_method_arity,
+    get_matching_instance_defns(InstanceBody, PredOrFunc, MethodName,
+        UserArity, MatchingInstanceMethods),
     (
         MatchingInstanceMethods = [InstanceMethod],
         !:RevInstanceMethods = [InstanceMethod | !.RevInstanceMethods],
-        InstanceMethod = instance_method(_, _, InstancePredDefn, _, Context),
+        InstanceMethod = instance_method(_, _, _, InstancePredDefn, Context),
         produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers,
             InstanceTypes, InstanceConstraints,
             InstanceVarSet, InstanceModuleName,
@@ -837,12 +839,12 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
         MatchingInstanceMethods = [_, _ | _],
         InstanceDefn = InstanceDefn0,
         report_duplicate_method_defn(ClassId, InstanceDefn0, PredOrFunc,
-            MethodName, Arity, MatchingInstanceMethods, !Specs)
+            MethodName, UserArity, MatchingInstanceMethods, !Specs)
     ;
         MatchingInstanceMethods = [],
         InstanceDefn = InstanceDefn0,
         report_undefined_method(ClassId, InstanceDefn0, PredOrFunc,
-            MethodName, Arity, !Specs)
+            MethodName, UserArity, !Specs)
     ).
 
     % Get all the instance definitions which match the specified
@@ -850,17 +852,17 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
     % being combined into a single definition.
     %
 :- pred get_matching_instance_defns(instance_body::in, pred_or_func::in,
-    sym_name::in, arity::in, list(instance_method)::out) is det.
+    sym_name::in, user_arity::in, list(instance_method)::out) is det.
 
 get_matching_instance_defns(instance_body_abstract, _, _, _, []).
 get_matching_instance_defns(instance_body_concrete(InstanceMethods),
-        PredOrFunc, MethodName, MethodArity, ResultList) :-
+        PredOrFunc, MethodSymName, MethodUserArity, ResultList) :-
     % First find the instance method definitions that match this
     % predicate/function's name and arity
     list.filter(
         ( pred(Method::in) is semidet :-
-            Method = instance_method(PredOrFunc, MethodName, _MethodDefn,
-                MethodArity, _Context)
+            Method = instance_method(PredOrFunc, MethodSymName,
+                MethodUserArity, _MethodDefn, _Context)
         ),
         InstanceMethods, MatchingMethods),
     ( if
@@ -868,7 +870,7 @@ get_matching_instance_defns(instance_body_concrete(InstanceMethods),
         FirstContext = First ^ instance_method_decl_context,
         not (
             list.member(DefnViaName, MatchingMethods),
-            DefnViaName = instance_method(_, _, InstanceProcDef, _, _),
+            DefnViaName = instance_method(_, _, _, InstanceProcDef, _),
             InstanceProcDef = DefnViaName ^ instance_method_proc_def,
             InstanceProcDef = instance_proc_def_name(_)
         )
@@ -878,14 +880,14 @@ get_matching_instance_defns(instance_body_concrete(InstanceMethods),
         % combine them all into a single definition.
         MethodToClause =
             ( pred(Method::in, Clauses::out) is semidet :-
-                Method = instance_method(_, _, Defn, _, _),
+                Method = instance_method(_, _, _, Defn, _),
                 Defn = instance_proc_def_clauses(Clauses)
             ),
         list.filter_map(MethodToClause, MatchingMethods, ClausesList),
         list.condense(ClausesList, FlattenedClauses),
-        CombinedMethod = instance_method(PredOrFunc, MethodName,
-            instance_proc_def_clauses(FlattenedClauses), MethodArity,
-            FirstContext),
+        CombinedMethod = instance_method(PredOrFunc,
+            MethodSymName, MethodUserArity,
+            instance_proc_def_clauses(FlattenedClauses), FirstContext),
         ResultList = [CombinedMethod]
     else
         % If there are less than two matching method definitions,
@@ -906,7 +908,7 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
         InstanceTypes0, InstanceConstraints0, InstanceVarSet,
         InstanceModuleName, InstancePredDefn, Context, PredId, InstanceProcIds,
         CheckInfo0, !ModuleInfo, !QualInfo, !Specs) :-
-    CheckInfo0 = check_instance_method_info(PredOrFunc, PredName, Arity,
+    CheckInfo0 = check_instance_method_info(PredOrFunc, PredName, UserArity,
         ExistQVars0, ArgTypes0, ClassMethodClassContext0, ArgModes,
         TVarSet0, InstanceStatus0),
     UnsubstArgTypes = ArgTypes0,
@@ -980,9 +982,8 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
         InstanceStatus = InstanceStatus0
     ),
 
-    adjust_func_arity(PredOrFunc, Arity, PredArity),
-    produce_instance_method_clauses(InstancePredDefn, PredOrFunc,
-        PredArity, ArgTypes, Markers, Context, InstanceStatus, ClausesInfo,
+    produce_instance_method_clauses(InstancePredDefn, PredOrFunc, ArgTypes,
+        Markers, Context, InstanceStatus, ClausesInfo,
         TVarSet2, TVarSet, !ModuleInfo, !QualInfo, !Specs),
 
     % Fill in some information in the pred_info which is used by polymorphism
@@ -997,7 +998,9 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
     PredStatus = pred_status(OldImportStatus),
     CurUserDecl = maybe.no,
     GoalType = goal_not_for_promise(np_goal_type_none),
-    pred_info_init(PredOrFunc, InstanceModuleName, PredName, PredArity,
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+    % XXX ARITY Could get PredFormArity from ArgTypes.
+    pred_info_init(PredOrFunc, InstanceModuleName, PredName, PredFormArity,
         Context, PredOrigin, PredStatus, CurUserDecl, GoalType, Markers,
         ArgTypes, TVarSet, ExistQVars, ClassContext, Proofs, ConstraintMap,
         ClausesInfo, VarNameRemap, PredInfo0),
@@ -1014,7 +1017,9 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
             % Before the simplification pass, HasParallelConj
             % is not meaningful.
             HasParallelConj = has_no_parallel_conj,
-            add_new_proc(Context, ItemNumber, PredArity,
+            % XXX ARITY Should pass PredFormArity, not PredFormArityInt.
+            PredFormArity = pred_form_arity(PredFormArityInt),
+            add_new_proc(Context, ItemNumber, PredFormArityInt,
                 InstVarSet, Modes, yes(Modes), no, detism_decl_implicit,
                 MaybeDet, address_is_taken, HasParallelConj,
                 OldPredInfo, NewPredInfo, NewProcId)
@@ -1860,7 +1865,7 @@ report_unbound_tvars_in_pred_context(Vars, PredInfo) = Spec :-
     PredName = pred_info_name(PredInfo),
     Module = pred_info_module(PredInfo),
     SymName = qualified(Module, PredName),
-    Arity = length(ArgTypes),
+    Arity = arg_list_arity(ArgTypes),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 
     VarsStrs = list.map(mercury_var_to_name_only(TVarSet), Vars),
@@ -1983,7 +1988,7 @@ report_bad_class_ids_in_pred_decl(ModuleInfo, PredInfo,
         PredSymName = qualified(PredModuleName, PredName)
     ),
     pred_info_get_arg_types(PredInfo, _TVarSet, _, ArgTypes),
-    PredArity = length(ArgTypes),
+    PredArity = arg_list_arity(ArgTypes),
     PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredArity),
     StartPieces = [words("In declaration for"),
         unqual_pf_sym_name_orig_arity(PFSymNameArity), suffix(":"), nl],
@@ -2229,11 +2234,11 @@ collect_determined_vars(FunDep @ fundep(Domain, Range), !FunDeps, !Vars) :-
     % Duplicate method definition error.
     %
 :- pred report_duplicate_method_defn(class_id::in, hlds_instance_defn::in,
-    pred_or_func::in, sym_name::in, arity::in, list(instance_method)::in,
+    pred_or_func::in, sym_name::in, user_arity::in, list(instance_method)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
-        Arity, MatchingInstanceMethods, !Specs) :-
+report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodSymName,
+        UserArity, MatchingInstanceMethods, !Specs) :-
     InstanceVarSet = InstanceDefn ^ instdefn_tvarset,
     InstanceTypes = InstanceDefn ^ instdefn_types,
     InstanceContext = InstanceDefn ^ instdefn_context,
@@ -2241,14 +2246,14 @@ report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
     ClassNameString = unqualify_name(ClassName),
     InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
         InstanceTypes),
+    UserArity = user_arity(UserArityInt),
+    SNA = sym_name_arity(MethodSymName, UserArityInt),
     HeaderPieces =
         [words("In instance declaration for"),
         words_quote(ClassNameString ++ "(" ++ InstanceTypesString ++ ")"),
         suffix(":"), nl,
-        words("multiple implementations of type class"),
-        p_or_f(PredOrFunc), words("method"),
-        unqual_sym_name_arity(sym_name_arity(MethodName, Arity)),
-        suffix("."), nl],
+        words("multiple implementations of type class"), p_or_f(PredOrFunc),
+        words("method"), unqual_sym_name_arity(SNA), suffix("."), nl],
     HeadingMsg = simplest_msg(InstanceContext, HeaderPieces),
     (
         MatchingInstanceMethods = [FirstInstance | LaterInstances]
@@ -2275,11 +2280,11 @@ report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
 %---------------------------------------------------------------------------%
 
 :- pred report_undefined_method(class_id::in, hlds_instance_defn::in,
-    pred_or_func::in, sym_name::in, arity::in,
+    pred_or_func::in, sym_name::in, user_arity::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_undefined_method(ClassId, InstanceDefn, PredOrFunc, MethodName, Arity,
-        !Specs) :-
+report_undefined_method(ClassId, InstanceDefn, PredOrFunc,
+        MethodSymName, UserArity, !Specs) :-
     InstanceVarSet = InstanceDefn ^ instdefn_tvarset,
     InstanceTypes = InstanceDefn ^ instdefn_types,
     InstanceContext = InstanceDefn ^ instdefn_context,
@@ -2287,14 +2292,14 @@ report_undefined_method(ClassId, InstanceDefn, PredOrFunc, MethodName, Arity,
     ClassNameString = unqualify_name(ClassName),
     InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
         InstanceTypes),
+    UserArity = user_arity(UserArityInt),
+    SNA = sym_name_arity(MethodSymName, UserArityInt),
 
     Pieces = [words("In instance declaration for"),
         words_quote(ClassNameString ++ "(" ++ InstanceTypesString ++ ")"),
         suffix(":"), nl,
         words("no implementation for type class"), p_or_f(PredOrFunc),
-        words("method"),
-        unqual_sym_name_arity(sym_name_arity(MethodName, Arity)),
-        suffix("."), nl],
+        words("method"), unqual_sym_name_arity(SNA), suffix("."), nl],
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         InstanceContext, Pieces),
     !:Specs = [Spec | !.Specs].
@@ -2307,49 +2312,39 @@ report_undefined_method(ClassId, InstanceDefn, PredOrFunc, MethodName, Arity,
 
 report_unknown_instance_methods(ClassId, HeadMethod, TailMethods, Context,
         !Specs) :-
+    PrefixPieces = [words("In instance declaration for"),
+        unqual_class_id(ClassId), suffix(":"), nl],
     (
         TailMethods = [],
-        HeadMethod = instance_method(HeadPredOrFunc, HeadMethodName, _Defn,
-            HeadArity, _Context),
-        adjust_func_arity(HeadPredOrFunc, HeadArity, HeadPredArity),
-        Pieces = [words("In instance declaration for"),
-            unqual_class_id(ClassId), suffix(":"), nl,
-            words("the type class has no"),
-            p_or_f(HeadPredOrFunc), words("method named"),
-            unqual_sym_name_arity(
-                sym_name_arity(HeadMethodName, HeadPredArity)),
-            suffix("."), nl]
+        HeadMethod = instance_method(PredOrFunc, MethodSymName, UserArity,
+            _Defn, _Context),
+        UserArity = user_arity(UserArityInt),
+        SNA = sym_name_arity(MethodSymName, UserArityInt),
+        Pieces = PrefixPieces ++
+            [words("the type class has no"),
+            p_or_f(PredOrFunc), words("method named"),
+            unqual_sym_name_arity(SNA), suffix("."), nl]
     ;
         TailMethods = [_ | _],
-        Pieces1 = [words("In instance declaration for"),
-            unqual_class_id(ClassId), suffix(":"), nl,
-            words("the type class has none of these methods:"), nl],
-        format_method_names(HeadMethod, TailMethods, Pieces2),
-        Pieces = Pieces1 ++ Pieces2
+        MethodPieces =
+            list.map(format_method_name, [HeadMethod | TailMethods]),
+        Pieces = PrefixPieces ++
+            [words("the type class has none of these methods:"),
+            nl_indent_delta(1)] ++
+            % XXX ARITY We could separate last two MethodPieces with ", or".
+            component_list_to_line_pieces(MethodPieces,
+                [suffix("."), nl_indent_delta(-1)])
     ),
-
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-:- pred format_method_names(instance_method::in, list(instance_method)::in,
-    list(format_component)::out) is det.
+:- func format_method_name(instance_method) = list(format_component).
 
-format_method_names(HeadMethod, TailMethods, Pieces) :-
-    HeadMethod = instance_method(PredOrFunc, Name, _Defn, Arity, _Context),
-    adjust_func_arity(PredOrFunc, Arity, PredArity),
-    (
-        TailMethods = [],
-        Pieces = [p_or_f(PredOrFunc),
-            unqual_sym_name_arity(sym_name_arity(Name, PredArity)),
-            suffix("."), nl]
-    ;
-        TailMethods = [HeadTailMethod | TailTailMethods],
-        format_method_names(HeadTailMethod, TailTailMethods, TailPieces),
-        Pieces = [p_or_f(PredOrFunc),
-            unqual_sym_name_arity(sym_name_arity(Name, PredArity)),
-            suffix(","), words("or"), nl | TailPieces]
-    ).
+format_method_name(Method) = Pieces :-
+    Method = instance_method(PredOrFunc, SymName, UserArity, _, _),
+    PFSymNameArity = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+    Pieces = [unqual_pf_sym_name_user_arity(PFSymNameArity)].
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.check_typeclass.

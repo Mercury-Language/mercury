@@ -33,11 +33,10 @@
     % instance declaration, produce the clauses_info for that definition.
     %
 :- pred do_produce_instance_method_clauses(instance_proc_def::in,
-    pred_or_func::in, arity::in, list(mer_type)::in,
-    pred_markers::in, term.context::in, instance_status::in, clauses_info::out,
-    tvarset::in, tvarset::out, module_info::in, module_info::out,
-    qual_info::in, qual_info::out, list(error_spec)::in, list(error_spec)::out)
-    is det.
+    pred_or_func::in, list(mer_type)::in, pred_markers::in, term.context::in,
+    instance_status::in, clauses_info::out, tvarset::in, tvarset::out,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -356,8 +355,8 @@ add_class_pred_or_func_decl(ClassName, ClassParamVars,
     UnivConstraints = [ImplicitConstraint | UnivConstraints0],
     Constraints = constraints(UnivConstraints, ExistConstraints),
     ClassId = class_id(ClassName, list.length(ClassParamTypes)),
-    MethodId = pf_sym_name_arity(PredOrFunc, PredName,
-        list.length(ArgTypesAndModes)),
+    PredFormArity = arg_list_arity(ArgTypesAndModes),
+    MethodId = pf_sym_name_arity(PredOrFunc, PredName, PredFormArity),
     Origin = compiler_origin_class_method(ClassId, MethodId),
     Attrs = item_compiler_attributes(Origin),
     MaybeAttrs = item_origin_compiler(Attrs),
@@ -694,14 +693,19 @@ same_type_hlds_instance_defn(InstanceDefnA, InstanceDefnB) :-
 
     TypesA = TypesB.
 
-do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
-        ArgTypes, Markers, Context, InstanceStatus, ClausesInfo,
+do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, ArgTypes,
+        Markers, Context, InstanceStatus, ClausesInfo,
         !TVarSet, !ModuleInfo, !QualInfo, !Specs) :-
+    PredFormArity = arg_list_arity(ArgTypes),
     (
         % Handle the `pred(<MethodName>/<Arity>) is <ImplName>' syntax.
         InstanceProcDefn = instance_proc_def_name(InstancePredName),
         % Add the body of the introduced pred.
         % First the goal info, ...
+        PredFormArity = pred_form_arity(PredFormArityInt),
+        varset.init(VarSet0),
+        make_n_fresh_vars("HeadVar__", PredFormArityInt, HeadVars,
+            VarSet0, VarSet),
         set_of_var.list_to_set(HeadVars, NonLocals),
         ( if check_marker(Markers, marker_is_impure) then
             Purity = purity_impure
@@ -715,8 +719,6 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         goal_info_init(NonLocals, DummyInstMapDelta, DummyDetism, Purity,
             Context, GoalInfo),
         % ... and then the goal itself.
-        varset.init(VarSet0),
-        make_n_fresh_vars("HeadVar__", PredArity, HeadVars, VarSet0, VarSet),
         construct_and_record_pred_or_func_call(invalid_pred_id, PredOrFunc,
             InstancePredName, HeadVars, GoalInfo, IntroducedGoal, !QualInfo),
         IntroducedClause = clause(all_modes, IntroducedGoal, impl_lang_mercury,
@@ -733,7 +735,7 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
     ;
         % Handle the arbitrary clauses syntax.
         InstanceProcDefn = instance_proc_def_clauses(InstanceClauses),
-        clauses_info_init(PredOrFunc, PredArity,
+        clauses_info_init(PredOrFunc, PredFormArity,
             init_clause_item_numbers_comp_gen, ClausesInfo0),
         list.foldl5(
             produce_instance_method_clause(PredOrFunc, Context,
@@ -773,9 +775,6 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
             MaybeBodyGoal = ok2(BodyGoal, BodyGoalWarningSpecs),
             !:Specs = BodyGoalWarningSpecs ++ !.Specs,
             expand_bang_state_pairs_in_terms(HeadTerms0, HeadTerms),
-            PredArity = list.length(HeadTerms),
-            adjust_func_arity(PredOrFunc, Arity, PredArity),
-
             % AllProcIds is only used when the predicate has foreign procs,
             % which the instance method pred should not have, so this
             % dummy value should be ok.
@@ -784,13 +783,14 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
             InstanceStatus = instance_status(OldImportStatus),
             PredStatus = pred_status(OldImportStatus),
             clauses_info_add_clause(all_modes, AllProcIds,
-                PredStatus, clause_not_for_promise,
-                PredOrFunc, Arity, HeadTerms,
+                PredStatus, clause_not_for_promise, PredOrFunc, HeadTerms,
                 Context, item_no_seq_num, Warnings,
                 BodyGoal, Goal, ClauseVarSet, VarSet, TVarSet0, TVarSet,
                 !ClausesInfo, !ModuleInfo, !QualInfo, !Specs),
 
-            PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredName, Arity),
+            PredFormArity = arg_list_arity(HeadTerms),
+            PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredName,
+                PredFormArity),
             % Warn about singleton variables.
             warn_singletons(!.ModuleInfo, PFSymNameArity, VarSet, Goal,
                 !Specs),

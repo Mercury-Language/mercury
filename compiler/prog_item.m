@@ -1512,7 +1512,7 @@
     --->    item_initialise_info(
                 % :- initialise pred_name.
                 init_name                       :: sym_name,
-                init_arity                      :: arity,
+                init_arity                      :: user_arity,
                 init_maybe_attrs                :: item_maybe_attrs,
                 init_context                    :: prog_context,
                 init_seq_num                    :: item_seq_num
@@ -1522,7 +1522,7 @@
     --->    item_finalise_info(
                 % :- finalise pred_name.
                 final_name                      :: sym_name,
-                final_arity                     :: arity,
+                final_arity                     :: user_arity,
                 final_maybe_attrs               :: item_maybe_attrs,
                 final_context                   :: prog_context,
                 final_seq_num                   :: item_seq_num

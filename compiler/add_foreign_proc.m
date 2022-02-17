@@ -75,15 +75,15 @@ add_pragma_foreign_procs([ImsSubList | ImsSubLists],
 add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
     PragmaFPInfo = item_pragma_info(FPInfo, Context, SeqNum),
     FPInfo = pragma_info_foreign_proc(Attributes0, PredSymName, PredOrFunc,
-        PVars, ProgVarSet, _InstVarset, PragmaImpl),
+        PragmaVars, ProgVarSet, _InstVarset, PragmaImpl),
     (
         PredSymName = qualified(PredModuleName, PredName)
     ;
         PredSymName = unqualified(_),
         unexpected($pred, "unexpected PredSymName")
     ),
-    list.length(PVars, Arity),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, Arity),
+    PredFormArity = arg_list_arity(PragmaVars),
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
 
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
@@ -104,12 +104,13 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
     % If it is not there, print an error message and insert
     % a dummy declaration for the predicate.
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+    PredFormArity = pred_form_arity(PredFormArityInt),
     predicate_table_lookup_pf_m_n_a(PredTable0, is_fully_qualified,
-        PredOrFunc, PredModuleName, PredName, Arity, PredIds),
+        PredOrFunc, PredModuleName, PredName, PredFormArityInt, PredIds),
     (
         PredIds = [],
         preds_add_implicit_report_error(PredOrFunc, PredModuleName, PredName,
-            Arity, PredStatus, is_not_a_class_method,
+            PredFormArity, PredStatus, is_not_a_class_method,
             Context, origin_user(PredSymName),
             [pragma_decl("foreign_proc"), words("declaration")],
             PredId, !ModuleInfo, !Specs)
@@ -205,7 +206,7 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
             % Add the pragma declaration to the proc_info for this procedure.
             pred_info_get_proc_table(!.PredInfo, Procs),
             map.to_assoc_list(Procs, ExistingProcs),
-            pragma_get_modes(PVars, Modes),
+            pragma_get_modes(PragmaVars, Modes),
             ( if
                 % The inst variables for the foreign_proc declaration
                 % and predmode declarations are from different varsets.
@@ -224,14 +225,14 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
                 pred_info_get_purity(!.PredInfo, Purity),
                 pred_info_get_markers(!.PredInfo, Markers),
                 clauses_info_add_pragma_foreign_proc(Purity, Attributes,
-                    PredId, ProcId, ProgVarSet, PVars, ArgTypes, PragmaImpl,
-                    Context, PredOrFunc, PredModuleName, PredName, Arity,
+                    PredId, ProcId, ProgVarSet, PragmaVars, ArgTypes,
+                    PragmaImpl, Context, PredOrFunc, PredModuleName, PredName,
                     Markers, ClausesInfo1, ClausesInfo, !ModuleInfo, !Specs),
                 pred_info_set_clauses_info(ClausesInfo, !PredInfo),
                 pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
 
                 module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo),
-                pragma_get_var_infos(PVars, ArgInfoBox),
+                pragma_get_var_infos(PragmaVars, ArgInfoBox),
                 ArgInfo = list.map(
                     foreign_arg_name_mode_box_project_maybe_name_mode,
                     ArgInfoBox),
@@ -279,13 +280,14 @@ is_applicable_for_current_backend(CurrentBackend, [Attr | Attrs]) = Result :-
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     prog_varset::in, list(pragma_var)::in, list(mer_type)::in,
     pragma_foreign_proc_impl::in, prog_context::in,
-    pred_or_func::in, module_name::in, string::in, arity::in, pred_markers::in,
+    pred_or_func::in, module_name::in, string::in, pred_markers::in,
     clauses_info::in, clauses_info::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+% XXX ARITY arg order
 clauses_info_add_pragma_foreign_proc(Purity, Attributes0,
-        PredId, ProcId, PVarSet, PVars, OrigArgTypes, PragmaImpl0,
-        Context, PredOrFunc, PredModuleName, PredName, Arity, Markers,
+        PredId, ProcId, VarSet, PragmaVars, OrigArgTypes, PragmaImpl0,
+        Context, PredOrFunc, PredModuleName, PredName, Markers,
         !ClausesInfo, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ( if pred_info_is_builtin(PredInfo) then
@@ -307,8 +309,8 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0,
     else
         AllProcIds = pred_info_all_procids(PredInfo),
         clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
-            PredId, ProcId, AllProcIds, PVarSet, PVars, OrigArgTypes,
-            PragmaImpl0, Context, PredOrFunc, PredModuleName, PredName, Arity,
+            PredId, ProcId, AllProcIds, VarSet, PragmaVars, OrigArgTypes,
+            PragmaImpl0, Context, PredOrFunc, PredModuleName, PredName,
             Markers, !ClausesInfo, !ModuleInfo, !Specs)
     ).
 
@@ -316,13 +318,14 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(proc_id)::in, prog_varset::in, list(pragma_var)::in,
     list(mer_type)::in, pragma_foreign_proc_impl::in, prog_context::in,
-    pred_or_func::in, module_name::in, string::in, arity::in, pred_markers::in,
+    pred_or_func::in, module_name::in, string::in, pred_markers::in,
     clauses_info::in, clauses_info::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
-        PredId, ProcId, AllProcIds, PVarSet, PVars, OrigArgTypes, PragmaImpl,
-        Context, PredOrFunc, PredModuleName, PredName, Arity, Markers,
+% XXX ARITY arg order
+clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
+        AllProcIds, PVarSet, PragmaVars, OrigArgTypes, PragmaImpl,
+        Context, PredOrFunc, PredModuleName, PredName, Markers,
         !ClausesInfo, !ModuleInfo, !Specs) :-
     % Our caller should have already added this foreign_proc to ItemNumbers.
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes, TVarNameMap,
@@ -341,12 +344,14 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     NewLang = get_foreign_language(Attributes0),
+    PredFormArity = arg_list_arity(OrigArgTypes),
     add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
-        PredModuleName, PredName, Arity, Context, Target, NewLang,
+        PredModuleName, PredName, PredFormArity, Context, Target, NewLang,
         AllProcIds, ProcId, Overridden, Clauses0, Clauses1, !Specs),
 
-    pragma_get_vars(PVars, Args0),
-    pragma_get_var_infos(PVars, ArgInfo),
+    % XXX ARITY do in one pass
+    pragma_get_vars(PragmaVars, Args0),
+    pragma_get_var_infos(PragmaVars, ArgInfo),
 
     % We used have this code here, but as of 2022 feb 15, and almost certainly
     % for a long, long time before that, it effectively did nothing.
@@ -354,7 +359,7 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
 %   % have to generate an interface to it in a backend language.
 %   globals.get_backend_foreign_languages(Globals, BackendForeignLanguages),
 %   foreign.extrude_pragma_implementation(
-%       PredOrFunc, PredModuleName, PredName, PVars, Context, !ModuleInfo,
+%       PredOrFunc, PredModuleName, PredName, PragmaVars, Context, !ModuleInfo,
 %       Attributes0, Attributes1, PragmaImpl0, PragmaImpl),
 
     % Check for arguments occurring more than once.
@@ -369,12 +374,13 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
 
     (
         MultiplyOccurringArgVars = [_ | _],
-        adjust_func_arity(PredOrFunc, OrigArity, Arity),
+        user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
         PredSymName = qualified(PredModuleName, PredName),
-        PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, OrigArity),
+        PFSymNameArity =
+            pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
         Pieces1 = [words("In"), pragma_decl("foreign_proc"),
             words("declaration for"),
-            qual_pf_sym_name_orig_arity(PFSymNameArity), suffix(":"), nl],
+            qual_pf_sym_name_user_arity(PFSymNameArity), suffix(":"), nl],
         (
             MultiplyOccurringArgVars = [MultiplyOccurringArgVar],
             BadVarStr =
@@ -411,12 +417,14 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
                 true
             else
                 PredSymName = qualified(PredModuleName, PredName),
+                user_arity_pred_form_arity(PredOrFunc, UserArity,
+                    PredFormArity),
                 PFSymNameArity =
-                    pf_sym_name_arity(PredOrFunc, PredSymName, Arity),
+                    pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
                 purity_name(ForeignAttributePurity, ForeignAttributePurityStr),
                 purity_name(Purity, PurityStr),
                 Pieces = [words("Error: foreign clause for"),
-                    unqual_pf_sym_name_orig_arity(PFSymNameArity),
+                    unqual_pf_sym_name_user_arity(PFSymNameArity),
                     words("has purity"), words(ForeignAttributePurityStr),
                     words("but that"), p_or_f(PredOrFunc),
                     words("has been declared"), words(PurityStr),
@@ -492,14 +500,14 @@ maybe_rename_user_annotated_sharing_information(Globals,
     ;       not_overridden_by_old_foreign_proc.
 
 :- pred add_foreign_proc_update_existing_clauses(globals::in, pred_or_func::in,
-    module_name::in, string::in, arity::in, prog_context::in,
+    module_name::in, string::in, pred_form_arity::in, prog_context::in,
     compilation_target::in, foreign_language::in,
     list(proc_id)::in, proc_id::in, overridden_by_old_foreign_proc::out,
     list(clause)::in, list(clause)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
-        PredModuleName, PredName, Arity, NewContext, Target, NewLang,
+        PredModuleName, PredName, PredFormArity, NewContext, Target, NewLang,
         AllProcIds, NewClauseProcId, Overridden, Clauses0, Clauses, !Specs) :-
     (
         Clauses0 = [],
@@ -508,8 +516,8 @@ add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
     ;
         Clauses0 = [FirstClause0 | LaterClauses0],
         add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
-            PredModuleName, PredName, Arity, NewContext, Target, NewLang,
-            AllProcIds, NewClauseProcId, LaterOverridden,
+            PredModuleName, PredName, PredFormArity, NewContext, Target,
+            NewLang, AllProcIds, NewClauseProcId, LaterOverridden,
             LaterClauses0, LaterClauses, !Specs),
         FirstClause0 = clause(ApplProcIds0, Body, FirstClauseLang,
             FirstClauseContext, StateVarWarnings),
@@ -610,8 +618,8 @@ add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
                     % here.
                     ( if OldLang = NewLang then
                         PredSymName = qualified(PredModuleName, PredName),
-                        PFSymNameArity =
-                            pf_sym_name_arity(PredOrFunc, PredSymName, Arity),
+                        PFSymNameArity = pf_sym_name_arity(PredOrFunc,
+                            PredSymName, PredFormArity),
                         OldLangStr = foreign_language_string(OldLang),
                         PiecesA = [words("Error: duplicate"),
                             pragma_decl("foreign_proc"), words("declaration"),

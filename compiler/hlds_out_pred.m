@@ -363,10 +363,13 @@ write_origin(Stream, ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
         Origin = origin_class_method(ClassId, MethodId),
         ClassId = class_id(ClassSymName, ClassArity),
         MethodId = pf_sym_name_arity(MethodPredOrFunc,
-            MethodSymName, MethodArity),
+            MethodSymName, MethodPredFormArity),
+        user_arity_pred_form_arity(MethodPredOrFunc,
+            MethodUserArity, MethodPredFormArity),
+        MethodUserArity = user_arity(MethodUserArityInt),
         io.format(Stream, "%% class method %s %s/%d for %s/%d\n",
             [s(pred_or_func_to_string(MethodPredOrFunc)),
-            s(sym_name_to_string(MethodSymName)), i(MethodArity),
+            s(sym_name_to_string(MethodSymName)), i(MethodUserArityInt),
             s(sym_name_to_string(ClassSymName)), i(ClassArity)], !IO)
     ;
         Origin = origin_transformed(Transformation, _, OrigPredId),

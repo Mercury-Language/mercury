@@ -2083,9 +2083,12 @@ mercury_output_instance_methods(Stream, Methods, !IO) :-
         ",\n", Methods, Stream, !IO).
 
 mercury_output_instance_method(Method, Stream, !IO) :-
-    Method = instance_method(PredOrFunc, MethodName, Defn, Arity, _Context),
+    Method = instance_method(PredOrFunc, MethodSymName, UserArity,
+        Defn, _Context),
+    UserArity = user_arity(UserArityInt),
     (
         Defn = instance_proc_def_name(PredName),
+        % XXX ARITY io.format
         io.write_char(Stream, '\t', !IO),
         (
             PredOrFunc = pf_function,
@@ -2095,16 +2098,16 @@ mercury_output_instance_method(Method, Stream, !IO) :-
             io.write_string(Stream, "pred(", !IO)
         ),
         mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-            MethodName, Stream, !IO),
+            MethodSymName, Stream, !IO),
         io.write_string(Stream, "/", !IO),
-        io.write_int(Stream, Arity, !IO),
+        io.write_int(Stream, UserArityInt, !IO),
         io.write_string(Stream, ") is ", !IO),
         mercury_output_bracketed_sym_name(PredName, Stream, !IO)
     ;
         Defn = instance_proc_def_clauses(Items),
         % XXX should we output the term contexts?
         io.write_string(Stream, "\t(", !IO),
-        write_out_list(output_instance_method_clause(MethodName),
+        write_out_list(output_instance_method_clause(MethodSymName),
             "),\n\t(", Items, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ).
@@ -2116,13 +2119,12 @@ mercury_output_instance_method(Method, Stream, !IO) :-
     io::di, io::uo) is det.
 
 mercury_output_item_initialise(_, Stream, ItemInitialise, !IO) :-
-    ItemInitialise = item_initialise_info(PredSymName, Arity, _, _Context,
+    ItemInitialise = item_initialise_info(PredSymName, UserArity, _, _Context,
         _SeqNum),
-    io.write_string(Stream, ":- initialise ", !IO),
-    mercury_output_sym_name(PredSymName, Stream, !IO),
-    io.write_string(Stream, "/", !IO),
-    io.write_int(Stream, Arity, !IO),
-    io.write_string(Stream, ".\n", !IO).
+    PredSymNameStr = mercury_bracketed_sym_name_to_string(PredSymName),
+    UserArity = user_arity(UserArityInt),
+    io.format(Stream, ":- initialise %s/%d.\n",
+        [s(PredSymNameStr), i(UserArityInt)], !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -2130,13 +2132,12 @@ mercury_output_item_initialise(_, Stream, ItemInitialise, !IO) :-
     io.text_output_stream::in, item_finalise_info::in, io::di, io::uo) is det.
 
 mercury_output_item_finalise(_, Stream, ItemFinalise, !IO) :-
-    ItemFinalise = item_finalise_info(PredSymName, Arity, _, _Context,
+    ItemFinalise = item_finalise_info(PredSymName, UserArity, _, _Context,
         _SeqNum),
-    io.write_string(Stream, ":- finalise ", !IO),
-    mercury_output_sym_name(PredSymName, Stream, !IO),
-    io.write_string(Stream, "/", !IO),
-    io.write_int(Stream, Arity, !IO),
-    io.write_string(Stream, ".\n", !IO).
+    PredSymNameStr = mercury_bracketed_sym_name_to_string(PredSymName),
+    UserArity = user_arity(UserArityInt),
+    io.format(Stream, ":- finalise %s/%d.\n",
+        [s(PredSymNameStr), i(UserArityInt)], !IO).
 
 %---------------------------------------------------------------------------%
 

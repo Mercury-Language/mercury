@@ -189,7 +189,7 @@
     % XXX This isn't quite perfect, I suspect.
     %
 :- pred make_instance_method_pred_name(class_id::in,
-    sym_name::in, arity::in, list(mer_type)::in, string::out) is det.
+    sym_name::in, user_arity::in, list(mer_type)::in, string::out) is det.
 
     % Given a list of types, mangle the names so into a string which
     % identifies them. The types must all have their top level functor
@@ -381,15 +381,16 @@ make_transformed_pred_name(OrigName, Transform, TransformedName) :-
 
 %---------------------------------------------------------------------------%
 
-make_instance_method_pred_name(ClassId, MethodName, Arity, InstanceTypes,
+make_instance_method_pred_name(ClassId, MethodName, UserArity, InstanceTypes,
         PredName) :-
     ClassId = class_id(ClassName, _ClassArity),
     ClassNameStr = sym_name_to_string_sep(ClassName, "__"),
     MethodNameStr = sym_name_to_string_sep(MethodName, "__"),
     % Perhaps we should include the arity in this mangled string?
     make_instance_string(InstanceTypes, InstanceStr),
+    UserArity = user_arity(UserArityInt),
     string.format("ClassMethod_for_%s____%s____%s_%d",
-        [s(ClassNameStr), s(InstanceStr), s(MethodNameStr), i(Arity)],
+        [s(ClassNameStr), s(InstanceStr), s(MethodNameStr), i(UserArityInt)],
         PredName).
 
 make_instance_string(InstanceTypes, InstanceStr) :-

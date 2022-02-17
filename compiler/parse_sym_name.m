@@ -135,6 +135,10 @@
 :- pred parse_implicitly_qualified_symbol_name(module_name::in, varset::in,
     term::in, maybe1(sym_name)::out) is det.
 
+:- type sym_name_specifier
+    --->    sym_name_specifier_name(sym_name)
+    ;       sym_name_specifier_name_arity(sym_name, user_arity).
+
     % A SymbolNameSpecifier is one of
     %   SymbolName
     %   SymbolName/Arity
@@ -534,8 +538,9 @@ parse_implicitly_qualified_symbol_name_specifier(DefaultModule, VarSet, Term,
                     MaybeSymNameSpecifier = error1(Specs)
                 ;
                     MaybeName = ok1(Name),
+                    UserArity = user_arity(Arity),
                     MaybeSymNameSpecifier =
-                        ok1(sym_name_specifier_name_arity(Name, Arity))
+                        ok1(sym_name_specifier_name_arity(Name, UserArity))
                 )
             else
                 Pieces = [words("Error: arity in symbol name specifier"),

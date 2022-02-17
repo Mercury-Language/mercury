@@ -439,7 +439,8 @@ expand_bang_state_pairs_in_terms([HeadArg0 | TailArgs0], Args) :-
     ).
 
 expand_bang_state_pairs_in_instance_method(IM0, IM) :-
-    IM0 = instance_method(PredOrFunc, Method, ProcDef0, Arity0, Ctxt),
+    IM0 = instance_method(PredOrFunc, MethodSymName, UserArity0,
+        ProcDef0, Ctxt),
     (
         ProcDef0 = instance_proc_def_name(_),
         IM = IM0
@@ -450,13 +451,15 @@ expand_bang_state_pairs_in_instance_method(IM0, IM) :-
         (
             ItemClauses = [ItemClause | _],
             Args = ItemClause ^ cl_head_args,
-            adjust_func_arity(PredOrFunc, Arity, list.length(Args))
+            PredFormArity = arg_list_arity(Args),
+            user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity)
         ;
             ItemClauses = [],
-            Arity = Arity0
+            UserArity = UserArity0
         ),
         ProcDef = instance_proc_def_clauses(ItemClauses),
-        IM  = instance_method(PredOrFunc, Method, ProcDef, Arity, Ctxt)
+        IM = instance_method(PredOrFunc, MethodSymName, UserArity,
+            ProcDef, Ctxt)
     ).
 
 :- pred expand_bang_state_pairs_in_clause(item_clause_info::in,

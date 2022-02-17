@@ -1061,13 +1061,13 @@ add_finalise(ModuleInfo, ItemMercuryStatus, FinaliseInfo,
     ;       iof_final.
 
 :- pred implement_initialise_finalise(module_info::in, init_or_final::in,
-    sym_name::in, arity::in, prog_context::in, item_seq_num::in,
+    sym_name::in, user_arity::in, prog_context::in, item_seq_num::in,
     list(item_pragma_info(pragma_info_foreign_proc_export))::in,
     list(item_pragma_info(pragma_info_foreign_proc_export))::out,
     pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, Arity,
+implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, UserArity,
         Context, SeqNum, !RevPragmaFPEInfos, !PredTargetNames, !Specs) :-
     % To implement an `:- initialise pred.' or `:- finalise pred' declaration
     % for C backends, we need to:
@@ -1079,21 +1079,16 @@ implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, Arity,
     %     initialisation/finalisation
 
     module_info_get_predicate_table(ModuleInfo, PredTable),
+    UserArity = user_arity(UserArityInt),
     predicate_table_lookup_pred_sym_arity(PredTable,
-        may_be_partially_qualified, SymName, Arity, PredIds),
+        may_be_partially_qualified, SymName, UserArityInt, PredIds),
     ( InitOrFinal = iof_init,  DeclName = "initialise"
     ; InitOrFinal = iof_final, DeclName = "finalise"
     ),
     (
-        SeqNum = item_seq_num(SeqNumInt)
-    ;
-        SeqNum = item_no_seq_num,
-        unexpected($pred, "item_no_seq_num")
-    ),
-    (
         PredIds = [],
         Pieces = [words("Error:"),
-            qual_sym_name_arity(sym_name_arity(SymName, Arity)),
+            qual_sym_name_arity(sym_name_arity(SymName, UserArityInt)),
             words("used in"), decl(DeclName), words("declaration"),
             words("does not have a corresponding"),
             decl("pred"), words("declaration."), nl],
@@ -1107,31 +1102,32 @@ implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, Arity,
             module_info_get_name(ModuleInfo, ModuleName),
             (
                 InitOrFinal = iof_init,
-                Origin = compiler_origin_initialise,
-                new_user_init_pred(ModuleName, SeqNumInt, SymName, Arity,
-                    CName, !PredTargetNames)
+                NameIoF = "init",
+                Origin = compiler_origin_initialise
             ;
                 InitOrFinal = iof_final,
-                Origin = compiler_origin_finalise,
-                new_user_final_pred(ModuleName, SeqNumInt, SymName, Arity,
-                    CName, !PredTargetNames)
+                NameIoF = "final",
+                Origin = compiler_origin_finalise
             ),
+            new_user_init_or_final_pred_target_name(ModuleName, NameIoF,
+                SeqNum, SymName, UserArity, TargetName, !PredTargetNames),
             module_info_get_globals(ModuleInfo, Globals),
             make_pragma_foreign_proc_export(Globals, SymName,
-                ExpectedHeadModes, CName, Origin, Context, PragmaFPEInfo),
+                ExpectedHeadModes, TargetName, Origin, Context, PragmaFPEInfo),
             !:RevPragmaFPEInfos = [PragmaFPEInfo | !.RevPragmaFPEInfos]
         else
             Pieces = [words("Error:"),
-                qual_sym_name_arity(sym_name_arity(SymName, Arity)),
+                qual_sym_name_arity(sym_name_arity(SymName, UserArityInt)),
                 words("used in"), decl(DeclName), words("declaration"),
                 words("has an invalid signature."), nl,
                 words("A signature is valid only if it has"),
-                words("one of these two forms:"), nl,
+                words("one of these two forms:"),
+                nl_indent_delta(1),
                 quote(":- pred <predname>(io::di, io::uo) is <detism>."), nl,
-                quote(":- impure pred <predname> is <detism>."), nl,
-                words("where"), quote("<detism>"),
-                words("is either"), quote("det"),
-                words("or"), quote("cc_multi"), suffix("."), nl],
+                quote(":- impure pred <predname> is <detism>."),
+                nl_indent_delta(-1),
+                words("where"), quote("<detism>"), words("is either"),
+                quote("det"), words("or"), quote("cc_multi"), suffix("."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -1139,7 +1135,7 @@ implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, Arity,
     ;
         PredIds = [_, _ | _],
         Pieces = [words("Error:"),
-            qual_sym_name_arity(sym_name_arity(SymName, Arity)),
+            qual_sym_name_arity(sym_name_arity(SymName, UserArityInt)),
             words("used in"), decl(DeclName), words("declaration"),
             words("has multiple"), decl("pred"), words("declarations."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,

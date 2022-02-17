@@ -288,10 +288,10 @@ transform_parse_tree_goal_to_hlds_unify(LocKind, Goal, Renaming, HLDSGoal,
 
 transform_parse_tree_goal_to_hlds_call(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    Goal = call_expr(Context, Name, ArgTerms0, Purity),
+    Goal = call_expr(Context, SymName, ArgTerms0, Purity),
     expand_bang_state_pairs_in_terms(ArgTerms0, ArgTerms1),
     ( if
-        Name = unqualified("\\="),
+        SymName = unqualified("\\="),
         ArgTerms1 = [LHSTerm, RHSTerm]
     then
         % `LHS \= RHS' is defined as `not (LHS = RHS)'
@@ -303,7 +303,7 @@ transform_parse_tree_goal_to_hlds_call(LocKind, Goal, Renaming, HLDSGoal,
     else if
         % check for a state var record assignment:
         % !Var ^ field := Value
-        Name = unqualified(":="),
+        SymName = unqualified(":="),
         ArgTerms1 = [LHSTerm0, RHSTerm0],
         LHSTerm0 = functor(atom("^"), [StateVar0, Remainder],
             FieldListContext),
@@ -325,7 +325,7 @@ transform_parse_tree_goal_to_hlds_call(LocKind, Goal, Renaming, HLDSGoal,
         % check for a DCG field access goal:
         % get: Field =^ field
         % set: ^ field := Field
-        ( Name = unqualified(Operator) ),
+        ( SymName = unqualified(Operator) ),
         ( Operator = "=^", AccessType = get
         ; Operator = ":=", AccessType = set
         )
@@ -340,12 +340,13 @@ transform_parse_tree_goal_to_hlds_call(LocKind, Goal, Renaming, HLDSGoal,
             ArgTerms1, ArgTerms),
         make_fresh_arg_vars_subst_svars(ArgTerms, HeadVars, HeadVarsArgTerms,
             !VarSet, !SVarState, !Specs),
-        list.length(ArgTerms, Arity),
+        PredFormArity = arg_list_arity(ArgTerms),
+        PredFormArity = pred_form_arity(PredFormArityInt),
         ( if
             % Check for a higher-order call,
             % i.e. a call to either call/N or ''/N.
-            ( Name = unqualified("call")
-            ; Name = unqualified("")
+            ( SymName = unqualified("call")
+            ; SymName = unqualified("")
             ),
             HeadVars = [PredVar | RealHeadVars]
         then
@@ -353,7 +354,8 @@ transform_parse_tree_goal_to_hlds_call(LocKind, Goal, Renaming, HLDSGoal,
             Modes = [],
             MaybeArgRegs = arg_reg_types_unset,
             Det = detism_erroneous,
-            GenericCall = higher_order(PredVar, Purity, pf_predicate, Arity),
+            GenericCall = higher_order(PredVar, Purity, pf_predicate,
+                PredFormArityInt),
             GoalExpr = generic_call(GenericCall, RealHeadVars, Modes,
                 MaybeArgRegs, Det),
             hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
@@ -364,13 +366,16 @@ transform_parse_tree_goal_to_hlds_call(LocKind, Goal, Renaming, HLDSGoal,
             ModeId = invalid_proc_id,
             MaybeUnifyContext = no,
             GoalExpr = plain_call(PredId, ModeId, HeadVars, not_builtin,
-                MaybeUnifyContext, Name),
-            PFSymNameArity = pf_sym_name_arity(pf_predicate, Name, Arity),
+                MaybeUnifyContext, SymName),
+            PFSymNameArity =
+                pf_sym_name_arity(pf_predicate, SymName, PredFormArity),
             CallId = plain_call_id(PFSymNameArity)
         ),
         goal_info_init_context_purity(Context, Purity, GoalInfo),
         HLDSGoal0 = hlds_goal(GoalExpr, GoalInfo),
-        record_called_pred_or_func(pf_predicate, Name, Arity, !QualInfo),
+        % XXX ARITY We should pass PredFormArity, not PredFormArityInt.
+        record_called_pred_or_func(pf_predicate, SymName, PredFormArityInt,
+            !QualInfo),
         insert_arg_unifications(HeadVarsArgTerms, Context,
             ac_call(CallId), HLDSGoal0, HLDSGoal, !SVarState, !SVarStore,
             !VarSet, !ModuleInfo, !QualInfo, !Specs)
@@ -467,13 +472,14 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
         FieldArgNumber = 2,
         FieldArgContext = ac_functor(InnermostFunctor, umc_explicit,
             InnermostSubContext),
-        ( if Functor = cons(FuncNamePrime, FuncArityPrime, _TypeCtor) then
-            FuncName = FuncNamePrime,
-            FuncArity = FuncArityPrime
+        ( if Functor = cons(ConsNamePrime, ConsArityPrime, _TypeCtor) then
+            ConsName = ConsNamePrime,
+            ConsArity = ConsArityPrime
         else
             unexpected($pred, "not cons")
         ),
-        PFSymNameArity = pf_sym_name_arity(pf_function, FuncName, FuncArity),
+        PFSymNameArity = pf_sym_name_arity(pf_function, ConsName,
+            pred_form_arity(ConsArity)),
         % DCG arguments should always be distinct variables,
         % so this context should never be used.
         OutputTermArgNumber = 3,
@@ -484,13 +490,14 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
             FieldNames, FieldValueVar, TermInputVar, TermOutputVar,
             Functor, InnermostFunctor - _InnermostSubContext, HLDSGoal0,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        ( if InnermostFunctor = cons(FuncNamePrime, FuncArityPrime, _TC) then
-            FuncName = FuncNamePrime,
-            FuncArity = FuncArityPrime
+        ( if InnermostFunctor = cons(ConsNamePrime, ConsArityPrime, _TC) then
+            ConsName = ConsNamePrime,
+            ConsArity = ConsArityPrime
         else
             unexpected($pred, "not cons")
         ),
-        PFSymNameArity = pf_sym_name_arity(pf_function, FuncName, FuncArity),
+        PFSymNameArity = pf_sym_name_arity(pf_function, ConsName,
+            pred_form_arity(ConsArity)),
         FieldArgNumber = 2,
         FieldArgContext = ac_call(plain_call_id(PFSymNameArity)),
         % DCG arguments should always be distinct variables,

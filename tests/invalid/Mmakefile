@@ -223,6 +223,7 @@ SINGLEMODULE_PROGS = \
 	multimode_syntax \
 	multiply_star \
 	multisoln_func \
+	no_method \
 	not_a_switch \
 	not_in_interface \
 	nullary_ho_func_error \

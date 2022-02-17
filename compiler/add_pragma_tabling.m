@@ -88,15 +88,14 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
             ModesOrArity = moa_modes(Modes),
             % The arity needed by predicate_table_lookup_pf_sym_arity
             % includes the return type for functions.
-            list.length(Modes, PredFormArityInt),
-            user_arity_pred_form_arity(PredOrFunc, UserArity,
-                pred_form_arity(PredFormArityInt))
+            PredFormArity = arg_list_arity(Modes),
+            user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity)
         ;
             ModesOrArity = moa_arity(UserArity),
-            user_arity_pred_form_arity(PredOrFunc, UserArity,
-                pred_form_arity(PredFormArityInt))
+            user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity)
         ),
         UserArity = user_arity(UserArityInt),
+        PredFormArity = pred_form_arity(PredFormArityInt),
         % Lookup the pred or func declaration in the predicate table.
         % If it is not there, print an error message and insert
         % a dummy declaration for it.
@@ -107,7 +106,7 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
             TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
             DescPieces = [pragma_decl(TabledMethodStr), words("declaration")],
             preds_add_implicit_report_error(PredOrFunc,
-                PredModuleName, PredName, PredFormArityInt, PredStatus,
+                PredModuleName, PredName, PredFormArity, PredStatus,
                 is_not_a_class_method, Context, origin_user(PredSymName),
                 DescPieces, PredId, !ModuleInfo, !Specs),
             PredIds = [PredId]
@@ -129,10 +128,9 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
             % XXX The pragma does not say whether the user intends to table
             % a predicate or a function, so adding a predicate here is
             % only a guess.
-            user_arity_pred_form_arity(pf_predicate, UserArity,
-                pred_form_arity(PredFormArityInt)),
+            user_arity_pred_form_arity(pf_predicate, UserArity, PredFormArity),
             preds_add_implicit_report_error(pf_predicate,
-                PredModuleName, PredName, PredFormArityInt, PredStatus,
+                PredModuleName, PredName, PredFormArity, PredStatus,
                 is_not_a_class_method, Context, origin_user(PredSymName),
                 DescPieces, PredId, !ModuleInfo, !Specs),
             PredIds = [PredId]
@@ -230,10 +228,8 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM, PredSymName,
     % but would require more extensive changes, including splitting
     % pf_sym_name_arity into two types, one for user_arity and one for
     % pred_form_arity.
-    user_arity_pred_form_arity(PredOrFunc, UserArity,
-        pred_form_arity(PredFormArityInt)),
-    PFSymNameArity =
-        pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArityInt),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
 
     TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
@@ -241,7 +237,7 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM, PredSymName,
         VeryVerbose = yes,
         trace [io(!IO)] (
             IdStr = pf_sym_name_orig_arity_to_string(PredOrFunc,
-                PredSymName, PredFormArityInt),
+                PredSymName, PredFormArity),
             get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             io.format(ProgressStream,
                 "%% Processing `:- pragma %s' for %s...\n",
@@ -671,17 +667,13 @@ tabling_stats_pred_name(PFSymNameArity, ProcId, SingleProc) =
 tabling_reset_pred_name(PFSymNameArity, ProcId, SingleProc) =
     tabling_pred_name("table_reset_for", PFSymNameArity, ProcId, SingleProc).
 
+    % XXX ARITY move to pred_name.m
 :- func tabling_pred_name(string, pf_sym_name_arity, proc_id, bool) = sym_name.
 
 tabling_pred_name(Prefix, PFSymNameArity, ProcId, SingleProc) = NewSymName :-
-    PFSymNameArity = pf_sym_name_arity(PorF, SymName, Arity0),
-    (
-        PorF = pf_predicate,
-        Arity = Arity0
-    ;
-        PorF = pf_function,
-        Arity = Arity0 - 1
-    ),
+    PFSymNameArity = pf_sym_name_arity(PorF, SymName, PredFormArity),
+    user_arity_pred_form_arity(PorF, UserArity, PredFormArity),
+    UserArity = user_arity(UserArityInt),
     (
         SymName = qualified(ModuleName, Name),
         MaybeModuleName = yes(ModuleName)
@@ -689,7 +681,7 @@ tabling_pred_name(Prefix, PFSymNameArity, ProcId, SingleProc) = NewSymName :-
         SymName = unqualified(Name),
         MaybeModuleName = no
     ),
-    NewName0 = Prefix ++ "_" ++ Name ++ "_" ++ int_to_string(Arity),
+    NewName0 = Prefix ++ "_" ++ Name ++ "_" ++ int_to_string(UserArityInt),
     (
         SingleProc = yes,
         NewName = NewName0
@@ -714,8 +706,13 @@ table_info_c_global_var_name(ModuleInfo, PFSymNameArity, ProcId) = VarName :-
     expect(unify(Target, target_c), $pred,
         "memo table statistics and reset are supported only for C"),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    % XXX We should generate a C global variable for a tabled predicate
+    % only when generating code for the module that defines that predicate.
+    % Shouldn't this mean that the module name in PredSymName is guaranteed
+    % to be ModuleName?
     module_info_get_name(ModuleInfo, ModuleName),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, Arity),
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
+    PredFormArity = pred_form_arity(PredFormArityInt),
     PredName = unqualify_name(PredSymName),
     (
         HighLevelCode = yes,
@@ -725,16 +722,16 @@ table_info_c_global_var_name(ModuleInfo, PFSymNameArity, ProcId) = VarName :-
         % of an mlds_tabling_ref should use mlds_std_tabling_proc_label to
         % set these fields to the same values.
         CodeModel = model_det,
-        NoReturnValue = no,
+        NoReturnValue = bool.no,
         MLDS_PredLabel = mlds_user_pred_label(PredOrFunc, MaybeModuleName,
-            PredName, Arity, CodeModel, NoReturnValue),
+            PredName, PredFormArityInt, CodeModel, NoReturnValue),
         MLDS_ProcLabel = mlds_proc_label(MLDS_PredLabel, ProcId),
         VarName = mlds_tabling_data_name(MLDS_ProcLabel, tabling_info)
     ;
         HighLevelCode = no,
         proc_id_to_int(ProcId, ProcIdInt),
         ProcLabel = ordinary_proc_label(ModuleName, PredOrFunc, ModuleName,
-            PredName, Arity, ProcIdInt),
+            PredName, PredFormArityInt, ProcIdInt),
         VarName = proc_tabling_info_var_name(ProcLabel)
     ).
 

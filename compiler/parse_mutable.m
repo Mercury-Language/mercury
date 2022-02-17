@@ -90,10 +90,11 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 MaybeIOM = error1([Spec])
             ;
                 SymNameSpecifier =
-                    sym_name_specifier_name_arity(SymName, Arity),
-                ( if ( Arity = 0 ; Arity = 2 ) then
-                    ItemInitialise = item_initialise_info(SymName, Arity,
-                        item_origin_user, Context, SeqNum),
+                    sym_name_specifier_name_arity(SymName, UserArity),
+                UserArity = user_arity(UserArityInt),
+                ( if ( UserArityInt = 0 ; UserArityInt = 2 ) then
+                    ItemInitialise = item_initialise_info(SymName,
+                        UserArity, item_origin_user, Context, SeqNum),
                     Item = item_initialise(ItemInitialise),
                     MaybeIOM = ok1(iom_item(Item))
                 else
@@ -141,9 +142,10 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 MaybeIOM = error1([Spec])
             ;
                 SymNameSpecifier =
-                    sym_name_specifier_name_arity(SymName, Arity),
-                ( if ( Arity = 0 ; Arity = 2 ) then
-                    ItemFinalise = item_finalise_info(SymName, Arity,
+                    sym_name_specifier_name_arity(SymName, UserArity),
+                UserArity = user_arity(UserArityInt),
+                ( if ( UserArityInt = 0 ; UserArityInt = 2 ) then
+                    ItemFinalise = item_finalise_info(SymName, UserArity,
                         item_origin_user, Context, SeqNum),
                     Item = item_finalise(ItemFinalise),
                     MaybeIOM = ok1(iom_item(Item))

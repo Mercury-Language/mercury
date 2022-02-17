@@ -41,7 +41,7 @@
 %-----------------------------------------------------------------------------%
 
 :- type arg_context
-    --->    ac_head(pred_or_func, arity)
+    --->    ac_head(pred_or_func, pred_form_arity)
             % The arguments in the head of the clause.
 
     ;       ac_call(call_id)
@@ -2085,8 +2085,8 @@ build_lambda_expression(LHSVar, UnificationPurity,
             partition_args_and_lambda_vars(!.ModuleInfo, LambdaArgs1, ArgTerms,
                 NonOutputLambdaVarsArgs, OutputLambdaVarsArgs),
 
-            list.length(ArgTerms, NumArgs),
-            ArgContext = ac_head(PredOrFunc, NumArgs),
+            PredFormArity = arg_list_arity(ArgTerms),
+            ArgContext = ac_head(PredOrFunc, PredFormArity),
 
             % Create the unifications that need to come before the body of the
             % lambda expression; those corresponding to args whose mode is
@@ -2280,12 +2280,16 @@ qualify_lambda_arg_modes(InInt, [LambdaArg0 | LambdaArgs0],
 
 arg_context_to_unify_context(ArgContext, ArgNum, MainContext, SubContexts) :-
     (
-        ArgContext = ac_head(PredOrFunc, Arity),
-        ( if PredOrFunc = pf_function, ArgNum = Arity then
+        ArgContext = ac_head(PredOrFunc, PredFormArity),
+        ( if
+            PredOrFunc = pf_function,
+            PredFormArity = pred_form_arity(PredFormArityInt),
+            ArgNum = PredFormArityInt
+        then
             % It is the function result term in the head.
             MainContext = umc_head_result
         else
-            % It is a head argument.
+            % It is a non-function-result head argument.
             MainContext = umc_head(ArgNum)
         ),
         SubContexts = []

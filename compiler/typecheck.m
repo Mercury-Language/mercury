@@ -1334,16 +1334,14 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
         ),
         GoalExpr = scope(Reason, SubGoal)
     ;
-        GoalExpr0 = plain_call(_, ProcId, ArgVars, BI, UC, Name),
+        GoalExpr0 = plain_call(_, ProcId, ArgVars, BI, UC, SymName),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("call", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
-        list.length(ArgVars, Arity),
-        SymNameArity = sym_name_arity(Name, Arity),
         GoalId = goal_info_get_goal_id(GoalInfo),
-        typecheck_call_pred_name(SymNameArity, Context, GoalId, ArgVars,
+        typecheck_call_pred_name(SymName, Context, GoalId, ArgVars,
             PredId, !TypeAssignSet, !Info),
-        GoalExpr = plain_call(PredId, ProcId, ArgVars, BI, UC, Name)
+        GoalExpr = plain_call(PredId, ProcId, ArgVars, BI, UC, SymName)
     ;
         GoalExpr0 = generic_call(GenericCall, ArgVars, _Modes, _MaybeArgRegs,
             _Detism),
@@ -1654,25 +1652,28 @@ typecheck_event_call(Context, EventName, ArgVars, !TypeAssignSet, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred typecheck_call_pred_name(sym_name_arity::in, prog_context::in,
+:- pred typecheck_call_pred_name(sym_name::in, prog_context::in,
     goal_id::in, list(prog_var)::in, pred_id::out,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_call_pred_name(SymNameArity, Context, GoalId, ArgVars, PredId,
+typecheck_call_pred_name(SymName, Context, GoalId, ArgVars, PredId,
         !TypeAssignSet, !Info) :-
     % Look up the called predicate's arg types.
     typecheck_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
-    SymNameArity = sym_name_arity(SymName, Arity),
+    PredFormArity = arg_list_arity(ArgVars),
+    SymNamePredFormArity = sym_name_pred_form_arity(SymName, PredFormArity),
     typecheck_info_get_calls_are_fully_qualified(!.Info, IsFullyQualified),
+    PredFormArity = pred_form_arity(Arity),
     predicate_table_lookup_pf_sym_arity(PredicateTable, IsFullyQualified,
         pf_predicate, SymName, Arity, PredIds),
     (
         PredIds = [],
         PredId = invalid_pred_id,
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        Spec = report_pred_call_error(ClauseContext, Context, SymNameArity),
+        Spec = report_pred_call_error(ClauseContext, Context,
+            SymNamePredFormArity),
         typecheck_info_add_error(Spec, !Info)
     ;
         PredIds = [HeadPredId | TailPredIds],
@@ -1687,7 +1688,7 @@ typecheck_call_pred_name(SymNameArity, Context, GoalId, ArgVars, PredId,
                 PredId, ArgVars, !TypeAssignSet, !Info)
         ;
             TailPredIds = [_ | _],
-            typecheck_call_overloaded_pred(SymNameArity, Context, GoalId,
+            typecheck_call_overloaded_pred(SymName, Context, GoalId,
                 PredIds, ArgVars, !TypeAssignSet, !Info),
 
             % In general, we can't figure out which predicate it is until
@@ -1740,14 +1741,16 @@ typecheck_call_pred_id(ArgVectorKind, Context, GoalId, PredId, ArgVars,
             PredArgTypes, PredConstraints, !TypeAssignSet, !Info)
     ).
 
-:- pred typecheck_call_overloaded_pred(sym_name_arity::in, prog_context::in,
+:- pred typecheck_call_overloaded_pred(sym_name::in, prog_context::in,
     goal_id::in, list(pred_id)::in, list(prog_var)::in,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_call_overloaded_pred(SymNameArity, Context, GoalId, PredIdList,
+typecheck_call_overloaded_pred(SymName, Context, GoalId, PredIdList,
         ArgVars, TypeAssignSet0, TypeAssignSet, !Info) :-
-    Symbol = overloaded_pred(SymNameArity, PredIdList),
+    PredFormArity = arg_list_arity(ArgVars),
+    SymNamePredFormArity = sym_name_pred_form_arity(SymName, PredFormArity),
+    Symbol = overloaded_pred(SymNamePredFormArity, PredIdList),
     typecheck_info_add_overloaded_symbol(Symbol, Context, !Info),
 
     % Let the new arg_type_assign_set be the cross-product of the current
@@ -1762,7 +1765,8 @@ typecheck_call_overloaded_pred(SymNameArity, Context, GoalId, PredIdList,
 
     % Then unify the types of the call arguments with the
     % called predicates' arg types.
-    VarVectorKind = var_vector_args(arg_vector_plain_pred_call(SymNameArity)),
+    VarVectorKind =
+        var_vector_args(arg_vector_plain_pred_call(SymNamePredFormArity)),
     typecheck_var_has_arg_type_list(VarVectorKind, 1, Context, ArgVars,
         ArgsTypeAssignSet, TypeAssignSet, !Info).
 

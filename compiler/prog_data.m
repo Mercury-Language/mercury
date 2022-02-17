@@ -1159,8 +1159,8 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     --->    instance_method(
                 instance_method_p_or_f          :: pred_or_func,
                 instance_method_name            :: sym_name,
+                instance_method_arity           :: user_arity,
                 instance_method_proc_def        :: instance_proc_def,
-                instance_method_arity           :: arity,
 
                 instance_method_decl_context    :: prog_context
                 % The context of the instance declaration.
@@ -1999,15 +1999,14 @@ valid_trace_grade_name(GradeName) :-
 :- type name_arity
     --->    name_arity(string, arity).
 
-:- type sym_name_specifier
-    --->    sym_name_specifier_name(sym_name)
-    ;       sym_name_specifier_name_arity(sym_name, arity).
-
 :- type sym_name_arity
     --->    sym_name_arity(sym_name, arity).
 
+:- type sym_name_pred_form_arity
+    --->    sym_name_pred_form_arity(sym_name, pred_form_arity).
+
 :- type pf_sym_name_arity
-    --->    pf_sym_name_arity(pred_or_func, sym_name, arity).
+    --->    pf_sym_name_arity(pred_or_func, sym_name, pred_form_arity).
 
     % This type is part of a family of related types, the rest of which are
     % in prog_item.m. Its name fits in with those types.
@@ -2055,6 +2054,8 @@ valid_trace_grade_name(GradeName) :-
 :- type pred_form_arity
     --->    pred_form_arity(int).
 
+:- func arg_list_arity(list(T)) = pred_form_arity.
+
     % Describes whether an item can be used without an explicit module
     % qualifier.
     %
@@ -2067,6 +2068,12 @@ valid_trace_grade_name(GradeName) :-
 :- type has_main
     --->    has_main
     ;       no_main.
+
+%---------------------------------------------------------------------------%
+
+:- implementation.
+
+arg_list_arity(ArgList) = pred_form_arity(list.length(ArgList)).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_data.

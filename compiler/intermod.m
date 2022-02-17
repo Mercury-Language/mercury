@@ -971,14 +971,14 @@ qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
         MethodCallExistQTVars, MethodCallArgTypes),
     pred_info_get_external_type_params(MethodCallPredInfo,
         MethodCallExternalTypeParams),
-    InstanceMethod0 = instance_method(PredOrFunc, MethodName,
-        InstanceMethodDefn0, MethodArity, MethodContext),
+    InstanceMethod0 = instance_method(PredOrFunc, MethodSymName,
+        MethodUserArity, InstanceMethodDefn0, MethodContext),
     (
         InstanceMethodDefn0 = instance_proc_def_name(InstanceMethodName0),
         PredOrFunc = pf_function,
         ( if
             find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
-                MethodArity, MethodCallTVarSet, MethodCallExistQTVars,
+                MethodUserArity, MethodCallTVarSet, MethodCallExistQTVars,
                 MethodCallArgTypes, MethodCallExternalTypeParams,
                 MethodContext, MaybePredId, InstanceMethodName)
         then
@@ -1023,26 +1023,28 @@ qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
         % We can just leave the method definition unchanged.
         InstanceMethodDefn = InstanceMethodDefn0
     ),
-    InstanceMethod = instance_method(PredOrFunc, MethodName,
-        InstanceMethodDefn, MethodArity, MethodContext).
+    InstanceMethod = instance_method(PredOrFunc, MethodSymName,
+        MethodUserArity, InstanceMethodDefn, MethodContext).
 
     % A `func(x/n) is y' method implementation can match an ordinary function,
     % a field access function or a constructor. For now, if there are multiple
     % possible matches, we don't write the instance method.
     %
 :- pred find_func_matching_instance_method(module_info::in, sym_name::in,
-    arity::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
+    user_arity::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
     external_type_params::in, prog_context::in, maybe(pred_id)::out,
     sym_name::out) is semidet.
 
 find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
-        MethodArity, MethodCallTVarSet, MethodCallExistQTVars,
+        MethodUserArity, MethodCallTVarSet, MethodCallExistQTVars,
         MethodCallArgTypes, MethodCallExternalTypeParams, MethodContext,
         MaybePredId, InstanceMethodName) :-
     module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
+    MethodUserArity = user_arity(MethodUserArityInt),
     ( if
+        % XXX ARITY is_field_access_function_name can return FieldDefns
         is_field_access_function_name(ModuleInfo, InstanceMethodName0,
-            MethodArity, _, FieldName),
+            MethodUserArityInt, _, FieldName),
         map.search(CtorFieldTable, FieldName, FieldDefns)
     then
         TypeCtors0 = list.map(
@@ -1054,7 +1056,7 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
     ),
     module_info_get_cons_table(ModuleInfo, Ctors),
     ( if
-        ConsId = cons(InstanceMethodName0, MethodArity,
+        ConsId = cons(InstanceMethodName0, MethodUserArityInt,
             cons_id_dummy_type_ctor),
         search_cons_table(Ctors, ConsId, MatchingConstructors)
     then
@@ -1069,7 +1071,8 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
 
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     predicate_table_lookup_func_sym_arity(PredicateTable,
-        may_be_partially_qualified, InstanceMethodName0, MethodArity, PredIds),
+        may_be_partially_qualified, InstanceMethodName0, MethodUserArityInt,
+        PredIds),
     ( if
         PredIds = [_ | _],
         find_matching_pred_id(ModuleInfo, PredIds, MethodCallTVarSet,

@@ -1097,9 +1097,9 @@ report_nontail_recursive_call(ModuleInfo, CallerPredProcId, CalleePredProcId,
     module_info_pred_info(ModuleInfo, CallerPredId, CallerPredInfo),
     CallerPredOrFunc = pred_info_is_pred_or_func(CallerPredInfo),
     CallerName = pred_info_name(CallerPredInfo),
-    CallerArity = pred_info_orig_arity(CallerPredInfo),
+    CallerPredFormArity = pred_info_pred_form_arity(CallerPredInfo),
     CallerId = pf_sym_name_arity(CallerPredOrFunc, unqualified(CallerName),
-        CallerArity),
+        CallerPredFormArity),
     ( if CallerPredProcId = CalleePredProcId then
         add_message_for_nontail_self_recursive_call(CallerId, CallerProcId,
             Context, Reason, WarnOrError, !Specs)
@@ -1109,9 +1109,9 @@ report_nontail_recursive_call(ModuleInfo, CallerPredProcId, CalleePredProcId,
         CalleePredOrFunc = pred_info_is_pred_or_func(CalleePredInfo),
         CalleeName = qualified(pred_info_module(CalleePredInfo),
             pred_info_name(CalleePredInfo)),
-        CalleeArity = pred_info_orig_arity(CalleePredInfo),
-        CalleeId =
-            pf_sym_name_arity(CalleePredOrFunc, CalleeName, CalleeArity),
+        CalleePredFormArity = pred_info_pred_form_arity(CalleePredInfo),
+        CalleeId = pf_sym_name_arity(CalleePredOrFunc, CalleeName,
+            CalleePredFormArity),
         add_message_for_nontail_mutual_recursive_call(CallerId,
             CallerProcId, CalleeId, Context, Reason, WarnOrError, !Specs)
     ).
@@ -1212,9 +1212,9 @@ maybe_report_no_tail_or_nontail_recursive_calls(PredInfo, ProcInfo,
             ),
             pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
             pred_info_get_name(PredInfo, PredName),
-            pred_info_get_orig_arity(PredInfo, PredArity),
+            PredFormArity = pred_info_pred_form_arity(PredInfo),
             PFSymNameArity = pf_sym_name_arity(PredOrFunc,
-                unqualified(PredName), PredArity),
+                unqualified(PredName), PredFormArity),
             report_no_tail_or_nontail_recursive_calls(PFSymNameArity, Context,
                 !Specs)
         )

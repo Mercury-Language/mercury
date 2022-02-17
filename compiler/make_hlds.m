@@ -131,9 +131,9 @@
     % for that definition.
     %
 :- pred produce_instance_method_clauses(instance_proc_def::in,
-    pred_or_func::in, arity::in, list(mer_type)::in,
-    pred_markers::in, term.context::in, instance_status::in, clauses_info::out,
-    tvarset::in, tvarset::out, module_info::in, module_info::out,
+    pred_or_func::in, list(mer_type)::in, pred_markers::in, term.context::in,
+    instance_status::in, clauses_info::out, tvarset::in, tvarset::out,
+    module_info::in, module_info::out,
     make_hlds_qual_info::in, make_hlds_qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -182,10 +182,10 @@ parse_tree_to_hlds(AugCompilationUnit, Globals, DumpBaseFileName,
         FoundInvalidType, FoundInvalidMode, ModuleInfo, Specs).
 
 produce_instance_method_clauses(InstanceProcDefn,
-        PredOrFunc, PredArity, ArgTypes, Markers, Context, Status,
+        PredOrFunc, ArgTypes, Markers, Context, Status,
         ClausesInfo, !TVarSet, !ModuleInfo, !QualInfo, !Specs) :-
     do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc,
-        PredArity, ArgTypes, Markers, Context, Status, ClausesInfo, !TVarSet,
+        ArgTypes, Markers, Context, Status, ClausesInfo, !TVarSet,
         !ModuleInfo, !QualInfo, !Specs).
 
 set_module_recomp_info(QualInfo, !ModuleInfo) :-

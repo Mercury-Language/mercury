@@ -51,7 +51,7 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred maybe_report_undefined_pred_error(module_info::in,
-    pred_or_func::in, sym_name::in, int::in, pred_status::in,
+    pred_or_func::in, sym_name::in, pred_form_arity::in, pred_status::in,
     maybe_class_method::in, prog_context::in, list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -157,8 +157,8 @@ report_undefined_mode_error(SymName, Arity, Context, DescPieces, !Specs) :-
 
 %---------------------------------------------------------------------------%
 
-maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName, Arity,
-        Status, IsClassMethod, Context, DescPieces, !Specs) :-
+maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName,
+        PredFormArity, Status, IsClassMethod, Context, DescPieces, !Specs) :-
     % Our caller (or one of its ancestors) will add an implicit declaration
     % for every undeclared predicate or function that has a reference to it
     % either in a clause or in some other declaration (e.g. a tabling pragma).
@@ -189,7 +189,7 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName, Arity,
     then
         true
     else
-        PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
+        PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
         PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
         MainPieces = [invis_order_default_start(1),
             words("Error:") | DescPieces] ++ [words("for"),
@@ -203,30 +203,33 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName, Arity,
             is_fully_qualified, PredOrFunc, SymName, AllArityPredIds),
         gather_porf_arities(ModuleInfo, AllArityPredIds, PredOrFunc,
             PorFArities),
-        set.delete(Arity, PorFArities, OtherArities),
+        set.delete(PredFormArity, PorFArities, OtherPredFormArities),
         % The sorting is to make the error message easier to read.
         % There should not be any duplicates among OtherArities, but better
         % safe than sorry ...
-        set.to_sorted_list(OtherArities, OtherAritiesList),
+        set.to_sorted_list(OtherPredFormArities, OtherPredFormAritiesList),
         FullPredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
         (
-            OtherAritiesList = [],
+            OtherPredFormAritiesList = [],
             Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
                 [MainMsg])
         ;
             (
-                OtherAritiesList = [OtherArity],
+                OtherPredFormAritiesList = [OtherPredFormArity],
                 OtherAritiesPieces = [words("However, a"),
                     words(FullPredOrFuncStr), words("of that name"),
-                    words("does exist with arity"), int_fixed(OtherArity),
+                    words("does exist with arity"),
+                        pred_form_arity_to_int_fixed(PredOrFunc,
+                            OtherPredFormArity),
                     suffix("."), nl]
             ;
-                OtherAritiesList = [_, _ | _],
+                OtherPredFormAritiesList = [_, _ | _],
                 OtherAritiesPieces = [words("However,"),
                     words(FullPredOrFuncStr), suffix("s"),
                     words("of that name do exist with arities") |
                     component_list_to_pieces("and",
-                        list.map(wrap_int_fixed, OtherAritiesList))] ++
+                        list.map(pred_form_arity_to_int_fixed(PredOrFunc),
+                            OtherPredFormAritiesList))] ++
                     [suffix("."), nl]
             ),
             OtherAritiesMsg = simplest_msg(Context, OtherAritiesPieces),
@@ -241,7 +244,7 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName, Arity,
     % and return their original arities.
     %
 :- pred gather_porf_arities(module_info::in, list(pred_id)::in,
-    pred_or_func::in, set(int)::out) is det.
+    pred_or_func::in, set(pred_form_arity)::out) is det.
 
 gather_porf_arities(_ModuleInfo, [], _WantedPorF, set.init).
 gather_porf_arities(ModuleInfo, [PredId | PredIds], WantedPorF,
@@ -256,17 +259,20 @@ gather_porf_arities(ModuleInfo, [PredId | PredIds], WantedPorF,
             % would be misleading.
             true
         else
-            pred_info_get_orig_arity(PredInfo, OrigArity),
-            adjust_func_arity(PorF, OrigArity, Arity),
-            set.insert(Arity, !PorFArities)
+            PredFormArity = pred_info_pred_form_arity(PredInfo),
+            set.insert(PredFormArity, !PorFArities)
         )
     else
         true
     ).
 
-:- func wrap_int_fixed(int) = format_component.
+:- func pred_form_arity_to_int_fixed(pred_or_func, pred_form_arity)
+    = format_component.
 
-wrap_int_fixed(N) = int_fixed(N).
+pred_form_arity_to_int_fixed(PredOrFunc, PredFormArity) = Component :-
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+    UserArity = user_arity(UserArityInt),
+    Component = int_fixed(UserArityInt).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds_error.

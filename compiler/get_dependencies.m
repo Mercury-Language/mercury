@@ -604,8 +604,8 @@ acc_implicit_avail_needs_in_instance(ItemInstance, !ImplicitAvailNeeds) :-
 
 acc_implicit_avail_needs_in_instance_method(InstanceMethod,
         !ImplicitAvailNeeds) :-
-    InstanceMethod = instance_method(_PredOrFunc, _MethodName, ProcDef,
-        _Arity, _Context),
+    InstanceMethod = instance_method(_PredOrFunc, _MethodSymName, _UserArity,
+        ProcDef, _Context),
     (
         ProcDef = instance_proc_def_name(_Name)
     ;

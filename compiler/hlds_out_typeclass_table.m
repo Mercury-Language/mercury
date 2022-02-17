@@ -213,11 +213,13 @@ write_instance_defn(Info, Stream, InstanceDefn, !IO) :-
 
 write_instance_methods(_, [], _, !IO).
 write_instance_methods(Stream, [Method | Methods], !.CurMethodNum, !IO) :-
-    Method = instance_method(PredOrFunc, MethodName, _Defn, Arity, _Context),
+    Method = instance_method(PredOrFunc, MethodSymName, UserArity,
+        _Defn, _Context),
+    UserArity = user_arity(UserArityInt),
     write_indent(Stream, 1, !IO),
     io.format(Stream, "%% method %d, %s %s/%d\n",
         [i(!.CurMethodNum), s(pred_or_func_to_str(PredOrFunc)),
-        s(sym_name_to_string(MethodName)), i(Arity)], !IO),
+        s(sym_name_to_string(MethodSymName)), i(UserArityInt)], !IO),
     mercury_output_instance_method(Method, Stream, !IO),
     (
         Methods = [_ | _],
