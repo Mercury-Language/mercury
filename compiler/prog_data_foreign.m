@@ -404,14 +404,15 @@ default_export_enum_attributes =
     %
 :- pred pragma_get_modes(list(pragma_var)::in, list(mer_mode)::out) is det.
 
-    % Extract the vars from the list of pragma_vars.
-    %
-:- pred pragma_get_vars(list(pragma_var)::in, list(prog_var)::out) is det.
-
     % Extract the names from the list of pragma_vars.
     %
 :- pred pragma_get_var_infos(list(pragma_var)::in,
     list(foreign_arg_name_mode_box)::out) is det.
+
+    % Extract the vars and the names from the list of pragma_vars.
+    %
+:- pred pragma_get_vars_and_var_infos(list(pragma_var)::in,
+    list(prog_var)::out, list(foreign_arg_name_mode_box)::out) is det.
 
 :- type proc_affects_liveness
     --->    proc_affects_liveness
@@ -589,17 +590,20 @@ pragma_get_modes([PragmaVar | PragmaVars], [Mode | Modes]) :-
     PragmaVar = pragma_var(_Var, _Name, Mode, _BoxPolicy),
     pragma_get_modes(PragmaVars, Modes).
 
-pragma_get_vars([], []).
-pragma_get_vars([PragmaVar | PragmaVars], [Var | Vars]) :-
-    PragmaVar = pragma_var(Var, _Name, _Mode, _BoxPolicy),
-    pragma_get_vars(PragmaVars, Vars).
-
 pragma_get_var_infos([], []).
 pragma_get_var_infos([PragmaVar | PragmaVars], [Info | Infos]) :-
     PragmaVar = pragma_var(_Var, Name, Mode, BoxPolicy),
     NameMode = foreign_arg_name_mode(Name, Mode),
     Info = foreign_arg_name_mode_box(yes(NameMode), BoxPolicy),
     pragma_get_var_infos(PragmaVars, Infos).
+
+pragma_get_vars_and_var_infos([], [], []).
+pragma_get_vars_and_var_infos([PragmaVar | PragmaVars],
+        [Var | Vars], [Info | Infos]) :-
+    PragmaVar = pragma_var(Var, Name, Mode, BoxPolicy),
+    NameMode = foreign_arg_name_mode(Name, Mode),
+    Info = foreign_arg_name_mode_box(yes(NameMode), BoxPolicy),
+    pragma_get_vars_and_var_infos(PragmaVars, Vars, Infos).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_data_foreign.
