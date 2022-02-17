@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: det_analysis.m - the determinism analysis pass.
 % Main authors: conway, fjh, zs.
@@ -44,7 +44,7 @@
 % bottom-up. The last component is an inherited attribute: it is propagated
 % top-down.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module check_hlds.det_analysis.
 :- interface.
@@ -63,7 +63,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Perform determinism inference for local predicates with no determinism
     % declarations, and determinism checking for all other predicates.
@@ -133,8 +133,8 @@
     --->    all_solns
     ;       first_soln.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -172,7 +172,7 @@
 :- import_module string.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 determinism_pass(!ModuleInfo, Specs) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
@@ -192,7 +192,7 @@ determinism_pass(!ModuleInfo, Specs) :-
             maybe_write_string(ProgressStream, Verbose,
                 "% Doing determinism inference...\n", !IO)
         ),
-        global_inference_pass(!ModuleInfo, UndeclaredProcs, Debug,
+        determinism_inference_to_fixpoint(!ModuleInfo, UndeclaredProcs, Debug,
             InferenceSpecs),
         trace [io(!IO)] (
             get_progress_output_stream(!.ModuleInfo,  ProgressStream, !IO),
@@ -204,7 +204,7 @@ determinism_pass(!ModuleInfo, Specs) :-
         maybe_write_string(ProgressStream, Verbose,
             "% Doing determinism checking...\n", !IO)
     ),
-    global_final_pass(!ModuleInfo, UndeclaredProcs, DeclaredProcs, Debug,
+    determinism_final_pass(!ModuleInfo, UndeclaredProcs, DeclaredProcs, Debug,
         FinalSpecs),
     Specs = InferenceSpecs ++ FinalSpecs,
     trace [io(!IO)] (
@@ -215,20 +215,21 @@ determinism_pass(!ModuleInfo, Specs) :-
 determinism_check_proc(ProcId, PredId, !ModuleInfo, Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_det, Debug),
-    global_final_pass(!ModuleInfo, [], [proc(PredId, ProcId)], Debug, Specs).
+    determinism_final_pass(!ModuleInfo, [], [proc(PredId, ProcId)],
+        Debug, Specs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred global_inference_pass(module_info::in, module_info::out,
+:- pred determinism_inference_to_fixpoint(module_info::in, module_info::out,
     pred_proc_list::in, bool::in, list(error_spec)::out) is det.
 
-global_inference_pass(!ModuleInfo, ProcList, Debug, Specs) :-
+determinism_inference_to_fixpoint(!ModuleInfo, PredProcIds, Debug, Specs) :-
     % Iterate until a fixpoint is reached. This can be expensive if a module
     % has many predicates with undeclared determinisms. If this ever becomes
     % a problem, we should switch to doing iterations only on strongly
     % connected components of the dependency graph.
 
-    global_inference_single_pass(ProcList, Debug, !ModuleInfo, [], Specs1,
+    determinism_inference_one_pass(PredProcIds, Debug, !ModuleInfo, [], Specs1,
         unchanged, Changed),
     trace [io(!IO)] (
         get_debug_output_stream(!.ModuleInfo,  DebugStream, !IO),
@@ -243,7 +244,8 @@ global_inference_pass(!ModuleInfo, ProcList, Debug, Specs) :-
         % to be printed. Instead, we will compute them again from more
         % up-to-date determinism information.
         disable_warning [suspicious_recursion] (
-            global_inference_pass(!ModuleInfo, ProcList, Debug, Specs)
+            determinism_inference_to_fixpoint(!ModuleInfo, PredProcIds,
+                Debug, Specs)
         )
     ;
         Changed = unchanged,
@@ -253,13 +255,13 @@ global_inference_pass(!ModuleInfo, ProcList, Debug, Specs) :-
         Specs = Specs1
     ).
 
-:- pred global_inference_single_pass(pred_proc_list::in, bool::in,
+:- pred determinism_inference_one_pass(pred_proc_list::in, bool::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out,
     maybe_changed::in, maybe_changed::out) is det.
 
-global_inference_single_pass([], _, !ModuleInfo, !Specs, !Changed).
-global_inference_single_pass([proc(PredId, ProcId) | PredProcs], Debug,
+determinism_inference_one_pass([], _, !ModuleInfo, !Specs, !Changed).
+determinism_inference_one_pass([proc(PredId, ProcId) | PredProcs], Debug,
         !ModuleInfo, !Specs, !Changed) :-
     det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs),
     ( if NewDetism = OldDetism then
@@ -273,30 +275,32 @@ global_inference_single_pass([proc(PredId, ProcId) | PredProcs], Debug,
         trace [io(!IO)] (
             get_debug_output_stream(!.ModuleInfo,  DebugStream, !IO),
             NewDetismStr = mercury_det_to_string(NewDetism),
-            ProcStr = pred_proc_id_pair_to_string(!.ModuleInfo, PredId, ProcId),
+            ProcStr =
+                pred_proc_id_pair_to_string(!.ModuleInfo, PredId, ProcId),
             io.format(DebugStream, "%% Inferred %s detism %s for %s\n",
                 [s(ChangeStr), s(NewDetismStr), s(ProcStr)], !IO)
         )
     ;
         Debug = no
     ),
-    global_inference_single_pass(PredProcs, Debug, !ModuleInfo, !Specs,
+    determinism_inference_one_pass(PredProcs, Debug, !ModuleInfo, !Specs,
         !Changed).
 
-:- pred global_final_pass(module_info::in, module_info::out,
+:- pred determinism_final_pass(module_info::in, module_info::out,
     pred_proc_list::in, pred_proc_list::in, bool::in,
     list(error_spec)::out) is det.
 
-global_final_pass(!ModuleInfo, UndeclaredProcs, DeclaredProcs, Debug,
+determinism_final_pass(!ModuleInfo, UndeclaredProcs, DeclaredProcs, Debug,
         !:Specs) :-
-    % We have already iterated global_inference_single_pass to a fixpoint
+    % We have already iterated determinism_inference_one_pass to a fixpoint
     % on the undeclared procs.
-    global_inference_single_pass(DeclaredProcs, Debug, !ModuleInfo,
+    determinism_inference_one_pass(DeclaredProcs, Debug, !ModuleInfo,
         [], !:Specs, unchanged, _),
-    global_checking_pass(UndeclaredProcs ++ DeclaredProcs, !ModuleInfo,
-        !Specs).
+    % This is the second, checking pass.
+    check_determinism_of_preds(UndeclaredProcs ++ DeclaredProcs,
+        !ModuleInfo, !Specs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 det_infer_proc_ignore_msgs(PredId, ProcId, !ModuleInfo) :-
     det_infer_proc(PredId, ProcId, !ModuleInfo, _OldDetism, _NewDetism,
@@ -478,7 +482,7 @@ get_exported_proc_context([Proc | Procs], PredId, ProcId, Context) :-
         get_exported_proc_context(Procs, PredId, ProcId, Context)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 det_infer_goal(Goal0, Goal, InstMap0, !.SolnContext, RightFailingContexts,
         MaybePromiseEqvSolutionSets, Detism, GoalFailingContexts, !DetInfo) :-
@@ -658,7 +662,7 @@ some_goal_is_at_most_many([ConjGoal | ConjGoals]) :-
         some_goal_is_at_most_many(ConjGoals)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred det_infer_goal_expr(hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, instmap::in, soln_context::in,
@@ -786,7 +790,7 @@ det_infer_goal_expr(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
         GoalExpr = shorthand(ShortHand)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred det_infer_conj(list(hlds_goal)::in, list(hlds_goal)::out, instmap::in,
     soln_context::in, list(failing_context)::in, maybe(pess_info)::in,
@@ -989,7 +993,7 @@ det_infer_disj_goals([Goal0 | Goals0], [Goal | Goals], InstMap0, SolnContext,
         !.CanFail, !.MaxSolns, Detism, !DisjFailingContexts, !DetInfo),
     !:DisjFailingContexts = GoalFailingContexts ++ !.DisjFailingContexts.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred det_infer_switch(prog_var::in, can_fail::in,
     list(case)::in, list(case)::out,
@@ -1084,7 +1088,7 @@ det_infer_switch_cases([Case0 | Cases0], [Case | Cases], Var, InstMap0,
         !DetInfo),
     !:SwitchFailingContexts = GoalFailingContexts ++ !.SwitchFailingContexts.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred det_infer_call(pred_id::in, proc_id::in, proc_id::out,
     list(prog_var)::in, hlds_goal_info::in, soln_context::in,
@@ -1295,7 +1299,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
         GoalFailingContexts = []
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred det_infer_unify(prog_var::in, unify_rhs::in,
     unification::in, unify_context::in, unify_rhs::out,
@@ -1383,7 +1387,7 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
         GoalFailingContexts = []
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred det_infer_if_then_else(hlds_goal::in, hlds_goal::out,
     hlds_goal::in, hlds_goal::out, hlds_goal::in, hlds_goal::out,
@@ -1511,7 +1515,7 @@ det_infer_not(Goal0, Goal, GoalInfo, InstMap0, MaybePromiseEqvSolutionSets,
         GoalFailingContexts = []
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred det_infer_atomic(hlds_goal::in, hlds_goal::out,
     list(hlds_goal)::in, list(hlds_goal)::out, instmap::in,
@@ -1612,7 +1616,7 @@ det_infer_orelse_goals([Goal0 | Goals0], [Goal | Goals], InstMap0,
         SolnContext, RightFailingContexts, MaybePromiseEqvSolutionSets,
         !CanFail, !MaxSolns, !DetInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred det_infer_scope(scope_reason::in, hlds_goal::in, hlds_goal::out,
     hlds_goal_info::in, instmap::in, soln_context::in,
@@ -1896,7 +1900,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % det_find_matching_non_cc_mode(DetInfo, PredId, ProcId0, ProcId):
     %
@@ -1904,36 +1908,36 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
     % ProcId0, except that its determinism is non-cc whereas ProcId0's detism
     % is cc. Let ProcId be the first such mode.
     %
-:- pred det_find_matching_non_cc_mode(det_info::in, pred_id::in, proc_id::in,
-    proc_id::out) is semidet.
+:- pred det_find_matching_non_cc_mode(det_info::in, pred_id::in,
+    proc_id::in, proc_id::out) is semidet.
 
-det_find_matching_non_cc_mode(DetInfo, PredId, !ProcId) :-
+det_find_matching_non_cc_mode(DetInfo, PredId, CcProcId, NonCcProcId) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
-    map.to_assoc_list(ProcTable, ProcList),
-    det_find_matching_non_cc_mode_procs(ProcList, ModuleInfo, PredInfo,
-        !ProcId).
+    map.to_assoc_list(ProcTable, ProcIdsInfos),
+    det_find_matching_non_cc_mode_procs(ModuleInfo, PredInfo, ProcIdsInfos, 
+        CcProcId, NonCcProcId).
 
-:- pred det_find_matching_non_cc_mode_procs(assoc_list(proc_id, proc_info)::in,
-    module_info::in, pred_info::in, proc_id::in, proc_id::out) is semidet.
+:- pred det_find_matching_non_cc_mode_procs(module_info::in, pred_info::in,
+    assoc_list(proc_id, proc_info)::in, proc_id::in, proc_id::out) is semidet.
 
-det_find_matching_non_cc_mode_procs([TestProcId - ProcInfo | Rest],
-        ModuleInfo, PredInfo, !ProcId) :-
+det_find_matching_non_cc_mode_procs(ModuleInfo, PredInfo,
+        [ProcId - ProcInfo | ProcIdsInfos], CcProcId, NonCcProcId) :-
     ( if
-        TestProcId \= !.ProcId,
+        ProcId \= CcProcId,
         proc_info_interface_determinism(ProcInfo, Detism),
         determinism_components(Detism, _CanFail, MaxSoln),
         MaxSoln = at_most_many,
-        modes_are_identical_bar_cc(!.ProcId, TestProcId, PredInfo, ModuleInfo)
+        modes_are_identical_bar_cc(CcProcId, ProcId, PredInfo, ModuleInfo)
     then
-        !:ProcId = TestProcId
+        NonCcProcId = ProcId
     else
-        det_find_matching_non_cc_mode_procs(Rest, ModuleInfo, PredInfo,
-            !ProcId)
+        det_find_matching_non_cc_mode_procs(ModuleInfo, PredInfo, ProcIdsInfos,
+            CcProcId, NonCcProcId)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred det_check_for_noncanonical_type(prog_var::in, bool::in, can_fail::in,
     soln_context::in, list(failing_context)::in, list(failing_context)::in,
@@ -2101,7 +2105,7 @@ det_infer_unify_canfail(construct(_, _, _, _, _, _, _), cannot_fail).
 det_infer_unify_canfail(simple_test(_, _), can_fail).
 det_infer_unify_canfail(complicated_unify(_, CanFail, _), CanFail).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 det_get_soln_context(DeclaredDetism, SolnContext) :-
     ( if determinism_components(DeclaredDetism, _, at_most_many_cc) then
@@ -2110,7 +2114,7 @@ det_get_soln_context(DeclaredDetism, SolnContext) :-
         SolnContext = all_solns
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Determinism_declarations takes a module_info as input and returns
     % three lists of procedure ids:
@@ -2215,7 +2219,7 @@ set_non_inferred_proc_determinism(proc(PredId, ProcId), !ModuleInfo) :-
         MaybeDet = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred get_det_debug_output_stream(det_info::in, io.text_output_stream::out,
     io::di, io::uo) is det.
@@ -2224,6 +2228,6 @@ get_det_debug_output_stream(DetInfo, DebugStream, !IO) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
     get_debug_output_stream(ModuleInfo, DebugStream, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module check_hlds.det_analysis.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
