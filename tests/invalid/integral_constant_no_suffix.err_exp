@@ -1,8 +1,10 @@
 integral_constant_no_suffix.m:016: In clause for predicate `main'/2:
 integral_constant_no_suffix.m:016:   in argument 1 of call to predicate
 integral_constant_no_suffix.m:016:   `integral_constant_no_suffix.life_universe_everything'/1:
-integral_constant_no_suffix.m:016:   type error: variable `N' has type `int',
-integral_constant_no_suffix.m:016:   expected type was `uint8'.
+integral_constant_no_suffix.m:016:   type error: variable `N' has type
+integral_constant_no_suffix.m:016:     int,
+integral_constant_no_suffix.m:016:   expected type was
+integral_constant_no_suffix.m:016:     uint8.
 integral_constant_no_suffix.m:016:   A integer constant that consists only of
 integral_constant_no_suffix.m:016:   digits is always of type `int'. Unsigned
 integral_constant_no_suffix.m:016:   integer constants of the default size
@@ -17,8 +19,10 @@ integral_constant_no_suffix.m:024:   in argument 1 of clause head:
 integral_constant_no_suffix.m:024:   type error in unification of variable
 integral_constant_no_suffix.m:024:   `HeadVar__1'
 integral_constant_no_suffix.m:024:   and constant `42'.
-integral_constant_no_suffix.m:024:   variable `HeadVar__1' has type `uint8',
-integral_constant_no_suffix.m:024:   constant `42' has type `int'.
+integral_constant_no_suffix.m:024:   variable `HeadVar__1' has type
+integral_constant_no_suffix.m:024:     uint8,
+integral_constant_no_suffix.m:024:   constant `42' has type
+integral_constant_no_suffix.m:024:     int.
 integral_constant_no_suffix.m:024:   A integer constant that consists only of
 integral_constant_no_suffix.m:024:   digits is always of type `int'. Unsigned
 integral_constant_no_suffix.m:024:   integer constants of the default size

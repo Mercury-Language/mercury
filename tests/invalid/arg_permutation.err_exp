@@ -1,23 +1,31 @@
 arg_permutation.m:020: In clause for predicate `main'/2:
 arg_permutation.m:020:   in call to predicate `arg_permutation.test'/5:
 arg_permutation.m:020:   in argument 1:
-arg_permutation.m:020:     variable `A' has type `float',
-arg_permutation.m:020:     expected type was `int'
+arg_permutation.m:020:     variable `A' has type
+arg_permutation.m:020:       float,
+arg_permutation.m:020:     expected type was
+arg_permutation.m:020:       int
 arg_permutation.m:020:     (the actual type is the same as the expected type of
 arg_permutation.m:020:     argument 2, which is variable `B', and argument 5);
 arg_permutation.m:020:   in argument 2:
-arg_permutation.m:020:     variable `B' has type `int',
-arg_permutation.m:020:     expected type was `float'
+arg_permutation.m:020:     variable `B' has type
+arg_permutation.m:020:       int,
+arg_permutation.m:020:     expected type was
+arg_permutation.m:020:       float
 arg_permutation.m:020:     (the actual type is the same as the expected type of
 arg_permutation.m:020:     argument 1, which is variable `A');
 arg_permutation.m:020:   in argument 4:
-arg_permutation.m:020:     argument has type `float',
-arg_permutation.m:020:     expected type was `string'
+arg_permutation.m:020:     argument has type
+arg_permutation.m:020:       float,
+arg_permutation.m:020:     expected type was
+arg_permutation.m:020:       string
 arg_permutation.m:020:     (the actual type is the same as the expected type of
 arg_permutation.m:020:     argument 2, which is variable `B', and argument 5);
 arg_permutation.m:020:   in argument 5:
-arg_permutation.m:020:     argument has type `string',
-arg_permutation.m:020:     expected type was `float'
+arg_permutation.m:020:     argument has type
+arg_permutation.m:020:       string,
+arg_permutation.m:020:     expected type was
+arg_permutation.m:020:       float
 arg_permutation.m:020:     (the actual type is the same as the expected type of
 arg_permutation.m:020:     argument 4).
 For more information, recompile with `-E'.

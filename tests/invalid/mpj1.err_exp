@@ -4,8 +4,10 @@ mpj1.m:018:   in function result term of clause head:
 mpj1.m:018:   in argument 2 of functor `f/3':
 mpj1.m:018:   type error in unification of argument
 mpj1.m:018:   and constant `2'.
-mpj1.m:018:   argument has type `string',
-mpj1.m:018:   constant `2' has type `int'.
+mpj1.m:018:   argument has type
+mpj1.m:018:     string,
+mpj1.m:018:   constant `2' has type
+mpj1.m:018:     int.
 mpj1.m:018:   The partial type assignment was:
 mpj1.m:018:     HeadVar__2_2: T2
 mpj1.m:018:     L_3: T2

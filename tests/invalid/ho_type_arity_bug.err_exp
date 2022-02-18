@@ -2,18 +2,20 @@ ho_type_arity_bug.m:036: In clause for predicate `p'/1:
 ho_type_arity_bug.m:036:   in argument 3 of functor `option_ops_userdata/3':
 ho_type_arity_bug.m:036:   type error in unification of argument
 ho_type_arity_bug.m:036:   and constant `p_special'.
-ho_type_arity_bug.m:036:   argument has type `pred(
-ho_type_arity_bug.m:036:     ho_type_arity_bug.option,
-ho_type_arity_bug.m:036:     unit.unit,
-ho_type_arity_bug.m:036:     list.list(ho_type_arity_bug.option),
-ho_type_arity_bug.m:036:     list.list(ho_type_arity_bug.option),
-ho_type_arity_bug.m:036:     unit.unit,
-ho_type_arity_bug.m:036:     unit.unit
-ho_type_arity_bug.m:036:   )',
-ho_type_arity_bug.m:036:   constant `p_special' has type `pred(
-ho_type_arity_bug.m:036:     ho_type_arity_bug.option,
-ho_type_arity_bug.m:036:     unit.unit,
-ho_type_arity_bug.m:036:     list.list(ho_type_arity_bug.option),
-ho_type_arity_bug.m:036:     list.list(ho_type_arity_bug.option)
-ho_type_arity_bug.m:036:   )'.
+ho_type_arity_bug.m:036:   argument has type
+ho_type_arity_bug.m:036:     pred(
+ho_type_arity_bug.m:036:       ho_type_arity_bug.option,
+ho_type_arity_bug.m:036:       unit.unit,
+ho_type_arity_bug.m:036:       list.list(ho_type_arity_bug.option),
+ho_type_arity_bug.m:036:       list.list(ho_type_arity_bug.option),
+ho_type_arity_bug.m:036:       unit.unit,
+ho_type_arity_bug.m:036:       unit.unit
+ho_type_arity_bug.m:036:     ),
+ho_type_arity_bug.m:036:   constant `p_special' has type
+ho_type_arity_bug.m:036:     pred(
+ho_type_arity_bug.m:036:       ho_type_arity_bug.option,
+ho_type_arity_bug.m:036:       unit.unit,
+ho_type_arity_bug.m:036:       list.list(ho_type_arity_bug.option),
+ho_type_arity_bug.m:036:       list.list(ho_type_arity_bug.option)
+ho_type_arity_bug.m:036:     ).
 For more information, recompile with `-E'.

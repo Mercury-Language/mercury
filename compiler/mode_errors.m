@@ -39,13 +39,17 @@
 
 :- type mode_error_info
     --->    mode_error_info(
-                set_of_progvar,     % The variables which caused the error
-                                    % (we will attempt to reschedule the goal
-                                    % if one of these variables becomes
-                                    % more instantiated).
-                mode_error,         % The nature of the error.
-                prog_context,       % Where the error occurred.
-                mode_context        % Where the error occurred.
+                % The variables which caused the error (we will attempt
+                % to reschedule the goal if one of these variables becomes
+                % more instantiated).
+                set_of_progvar,
+
+                % The nature of the error.
+                mode_error,
+
+                % Where the error occurred.
+                prog_context,
+                mode_context
             ).
 
 %---------------------%
@@ -133,14 +137,11 @@
     % Mode errors in higher order calls.
 
     ;       mode_error_bad_higher_order_inst(prog_var, mer_inst,
-                pred_or_func, arity)
+                pred_or_func, user_arity, higher_order_mismatch_info)
             % The variable has the given inst, which does not match
             % the expected higher order inst with the given pred_or_func
-            % and the given arity.
-            % XXX We should generate a different error message for
-            % a pred_or_func mismatch than for an arity mismatch,
-            % so we should have an arg specifying the mismatch kind
-            % (since the code that constructs this term has to know that).
+            % and the given arity. The last argument specifies the
+            % nature of the mismatch.
 
     % Mode errors in conjunctions.
 
@@ -219,6 +220,14 @@
     ;       purity_error_lambda_should_be_any(one_or_more(prog_var)).
             % A ground lambda term contains the given nonlocal variables
             % that have inst `any', but is not marked impure.
+
+:- type higher_order_mismatch_info
+    --->    mismatch_not_higher_order_type
+    ;       mismatch_no_higher_order_inst_info
+    ;       mismatch_pred_vs_func(pred_or_func)
+            % actual PorF (expected is in enclosing term)
+    ;       mismatch_on_arity(user_arity).
+            % actual arity (expected is in enclosing term)
 
 %---------------------%
 
@@ -473,9 +482,9 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
             InitialInsts)
     ;
         ModeError = mode_error_bad_higher_order_inst(Var, Inst,
-            ExpectedPredOrFunc, ExpectedArity),
+            ExpectedPredOrFunc, ExpectedUserArity, Mismatch),
         Spec = mode_error_bad_higher_order_inst_to_spec(ModeInfo, Var, Inst,
-            ExpectedPredOrFunc, ExpectedArity)
+            ExpectedPredOrFunc, ExpectedUserArity, Mismatch)
     ;
         ModeError = mode_error_unschedulable_conjuncts(OoMErrors, Culprit),
         Spec = mode_error_unschedulable_conjuncts_to_spec(ModeInfo, OoMErrors,
@@ -1125,30 +1134,60 @@ report_any_never_matching_args(ModeInfo, ArgNumMatchedProcs, NumExtra,
 %---------------------------------------------------------------------------%
 
 :- func mode_error_bad_higher_order_inst_to_spec(mode_info, prog_var, mer_inst,
-    pred_or_func, arity) = error_spec.
+    pred_or_func, user_arity, higher_order_mismatch_info) = error_spec.
 
-mode_error_bad_higher_order_inst_to_spec(ModeInfo, Var, VarInst,
-        ExpectedPredOrFunc, ExpectedArity) = Spec :-
-    Preamble = mode_info_context_preamble(ModeInfo),
+mode_error_bad_higher_order_inst_to_spec(ModeInfo, PredVar, PredVarInst,
+        ExpectedPredOrFunc, ExpectedUserArity, Mismatch) = Spec :-
+    PreamblePieces = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
+    PredVarName = mercury_var_to_name_only(VarSet, PredVar),
+    ExpPFStr = pred_or_func_to_full_str(ExpectedPredOrFunc),
+    ExpectedUserArity = user_arity(ExpUserArityInt),
     % Don't let the specification of the expected arity be broken up,
     % since that would make the error message harder to read.
+    ExpArityPiece = fixed("arity " ++ int_to_string(ExpUserArityInt)),
     (
-        ExpectedPredOrFunc = pf_predicate,
-        ExpectingPieces = [words("expecting higher-order pred inst"),
-            fixed("of arity " ++ int_to_string(ExpectedArity) ++ "."), nl]
+        Mismatch = mismatch_not_higher_order_type,
+        MismatchPieces = [words("mode error: context requires a"),
+            words(ExpPFStr), words("of"), ExpArityPiece, suffix(","),
+            words("but the type of"), words(PredVarName),
+            words("is not a higher order type."), nl]
     ;
-        ExpectedPredOrFunc = pf_function,
-        ExpectingPieces = [words("expecting higher-order func inst"),
-            fixed("of arity " ++ int_to_string(ExpectedArity - 1) ++ "."), nl]
+        Mismatch = mismatch_no_higher_order_inst_info,
+        ( if
+            ( PredVarInst = free
+            ; PredVarInst = free(_)
+            )
+        then
+            BadInstPieces = [words("but"), words(PredVarName),
+                words("is a free variable."), nl]
+        else
+            BadInstPieces = [words("but the inst of"), words(PredVarName),
+                words("is not a higher order inst."), nl]
+        ),
+        MismatchPieces = [words("mode error: context requires a"),
+            words(ExpPFStr), words("of"), ExpArityPiece, suffix(",")] ++
+            BadInstPieces
+    ;
+        Mismatch = mismatch_pred_vs_func(ActualPredOrFunc),
+        ActPFStr = pred_or_func_to_full_str(ActualPredOrFunc),
+        MismatchPieces = [words("mode error: context requires a"),
+            words(ExpPFStr), words("of"), ExpArityPiece, suffix(","),
+            words("but"), words(PredVarName), words("is a"),
+            words(ActPFStr), words("variable."), nl]
+    ;
+        Mismatch = mismatch_on_arity(ActualUserArity),
+        ActualUserArity = user_arity(ActUserArityInt),
+        ActArityPiece = fixed("arity " ++ int_to_string(ActUserArityInt)),
+        MismatchPieces = [words("mode error: context requires a"),
+            words(ExpPFStr), words("of"), ExpArityPiece, suffix(","),
+            words("but"), words(PredVarName), words("has"),
+            ActArityPiece, suffix("."), nl]
     ),
-    Pieces = [words("mode error: variable"),
-        quote(mercury_var_to_name_only(VarSet, Var)) |
-        has_instantiatedness(ModeInfo, VarInst, ",")] ++
-        ExpectingPieces,
-    Spec = simplest_spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = simplest_spec($pred, severity_error, Phase,
+        Context, PreamblePieces ++ MismatchPieces).
 
 %---------------------------------------------------------------------------%
 

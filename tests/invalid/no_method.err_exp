@@ -4,9 +4,10 @@ no_method.m:035:   constructor `one_str'.
 no_method.m:043: In clause for type class method implementation:
 no_method.m:043:   type error in unification of variable `HeadVar__4'
 no_method.m:043:   and functor `three_str'/3.
-no_method.m:043:   variable `HeadVar__4' has type `string',
+no_method.m:043:   variable `HeadVar__4' has type
+no_method.m:043:     string,
 no_method.m:043:   functor `three_str'/3 has type
-no_method.m:043:   `three_str(string, string, string): func(
-no_method.m:043:     int
-no_method.m:043:   ) = string'.
+no_method.m:043:     three_str(string, string, string): func(
+no_method.m:043:       int
+no_method.m:043:     ) = string.
 For more information, recompile with `-E'.

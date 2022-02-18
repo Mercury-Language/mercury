@@ -20,8 +20,10 @@ record_syntax_errors.m:051:   in argument 2 of functor `field6 :=/2':
 record_syntax_errors.m:051:   in unification of argument
 record_syntax_errors.m:051:   and term `'field7 :='(V_10, V_9)':
 record_syntax_errors.m:051:   type error in argument of functor `field7 :='/2.
-record_syntax_errors.m:051:   Argument 2 has type `string',
-record_syntax_errors.m:051:   expected type was `int'.
+record_syntax_errors.m:051:   Argument 2 has type
+record_syntax_errors.m:051:     string,
+record_syntax_errors.m:051:   expected type was
+record_syntax_errors.m:051:     int.
 record_syntax_errors.m:053: Error: clause for predicate `term_type_error'/1
 record_syntax_errors.m:053:   without corresponding `:- pred' declaration.
 record_syntax_errors.m:055: In clause for predicate `term_type_error'/1:
@@ -29,8 +31,10 @@ record_syntax_errors.m:055:   in argument 2 of functor `field6 :=/2':
 record_syntax_errors.m:055:   in unification of argument
 record_syntax_errors.m:055:   and term `'field4 :='(V_10, V_9)':
 record_syntax_errors.m:055:   type error in argument of functor `field4 :='/2.
-record_syntax_errors.m:055:   Argument 1 has type `record_syntax_errors.cons2',
-record_syntax_errors.m:055:   expected type was `record_syntax_errors.cons'.
+record_syntax_errors.m:055:   Argument 1 has type
+record_syntax_errors.m:055:     record_syntax_errors.cons2,
+record_syntax_errors.m:055:   expected type was
+record_syntax_errors.m:055:     record_syntax_errors.cons.
 record_syntax_errors.m:059: In declaration of function `field4'/1:
 record_syntax_errors.m:059:   error: a field access function for an exported
 record_syntax_errors.m:059:   field must also be exported.

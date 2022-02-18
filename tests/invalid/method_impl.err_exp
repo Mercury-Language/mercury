@@ -1,7 +1,9 @@
 method_impl.m:026: In clause for type class method implementation:
 method_impl.m:026:   in argument 2 of predicate `method_impl.foo_m1'/2:
-method_impl.m:026:   type error: variable `HeadVar__2' has type `int',
-method_impl.m:026:   expected type was `string'.
+method_impl.m:026:   type error: variable `HeadVar__2' has type
+method_impl.m:026:     int,
+method_impl.m:026:   expected type was
+method_impl.m:026:     string.
 method_impl.m:026:   The partial type assignment was:
 method_impl.m:026:     HeadVar__1_1: method_impl.foo
 method_impl.m:026:     HeadVar__2_2: int

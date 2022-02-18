@@ -1,9 +1,13 @@
 comparison.m:024: In clause for predicate `test'/2:
 comparison.m:024:   in call to predicate `int.<'/2:
 comparison.m:024:   in argument 1:
-comparison.m:024:     variable `A' has type `float',
-comparison.m:024:     expected type was `int';
+comparison.m:024:     variable `A' has type
+comparison.m:024:       float,
+comparison.m:024:     expected type was
+comparison.m:024:       int;
 comparison.m:024:   in argument 2:
-comparison.m:024:     variable `B' has type `float',
-comparison.m:024:     expected type was `int'.
+comparison.m:024:     variable `B' has type
+comparison.m:024:       float,
+comparison.m:024:     expected type was
+comparison.m:024:       int.
 For more information, recompile with `-E'.

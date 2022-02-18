@@ -26,6 +26,5 @@ anys_in_negated_contexts.m:083:
 anys_in_negated_contexts.m:083:   In clause for `bad_lambda(in)':
 anys_in_negated_contexts.m:083:   in argument 1 (i.e. the predicate term) of
 anys_in_negated_contexts.m:083:   higher-order predicate call:
-anys_in_negated_contexts.m:083:   mode error: variable `P' has instantiatedness
-anys_in_negated_contexts.m:083:   `free',
-anys_in_negated_contexts.m:083:   expecting higher-order pred inst of arity 1.
+anys_in_negated_contexts.m:083:   mode error: context requires a predicate of
+anys_in_negated_contexts.m:083:   arity 1, but P is a free variable.

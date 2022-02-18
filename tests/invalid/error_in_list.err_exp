@@ -3,13 +3,17 @@ error_in_list.m:015:   in function result term of clause head:
 error_in_list.m:015:   in list element #4:
 error_in_list.m:015:   type error in unification of argument
 error_in_list.m:015:   and constant `"five"'.
-error_in_list.m:015:   argument has type `int',
-error_in_list.m:015:   constant `"five"' has type `string'.
+error_in_list.m:015:   argument has type
+error_in_list.m:015:     int,
+error_in_list.m:015:   constant `"five"' has type
+error_in_list.m:015:     string.
 error_in_list.m:015: In clause for function `f'/0:
 error_in_list.m:015:   in function result term of clause head:
 error_in_list.m:015:   in list element #6:
 error_in_list.m:015:   type error in unification of argument
 error_in_list.m:015:   and constant `7.0'.
-error_in_list.m:015:   argument has type `int',
-error_in_list.m:015:   constant `7.0' has type `float'.
+error_in_list.m:015:   argument has type
+error_in_list.m:015:     int,
+error_in_list.m:015:   constant `7.0' has type
+error_in_list.m:015:     float.
 For more information, recompile with `-E'.

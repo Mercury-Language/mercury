@@ -24,22 +24,28 @@ errors2.m:025: Error: no clauses for predicate `produce_string'/1.
 errors2.m:027: Error: no clauses for predicate `expect_int'/1.
 errors2.m:033: In clause for predicate `type_error'/0:
 errors2.m:033:   in argument 1 of call to predicate `errors2.expect_int'/1:
-errors2.m:033:   type error: variable `X' has type `string',
-errors2.m:033:   expected type was `int'.
+errors2.m:033:   type error: variable `X' has type
+errors2.m:033:     string,
+errors2.m:033:   expected type was
+errors2.m:033:     int.
 errors2.m:033:   The partial type assignment was:
 errors2.m:033:     X_1: string
 errors2.m:040: In clause for predicate `type_error_2'/0:
 errors2.m:040:   type error in unification of variable `X'
 errors2.m:040:   and variable `Y'.
-errors2.m:040:   `X' has type `string',
-errors2.m:040:   `Y' has type `int'.
+errors2.m:040:   `X' has type
+errors2.m:040:     string,
+errors2.m:040:   `Y' has type
+errors2.m:040:     int.
 errors2.m:040:   The partial type assignment was:
 errors2.m:040:     X_1: string
 errors2.m:040:     Y_2: int
 errors2.m:047: In clause for predicate `type_error_3'/0:
 errors2.m:047:   in argument 1 of call to predicate `errors2.expect_int'/1:
-errors2.m:047:   type error: variable `Y' has type `string',
-errors2.m:047:   expected type was `int'.
+errors2.m:047:   type error: variable `Y' has type
+errors2.m:047:     string,
+errors2.m:047:   expected type was
+errors2.m:047:     int.
 errors2.m:047:   The partial type assignment was:
 errors2.m:047:     X_1: string
 errors2.m:047:     Y_2: string
@@ -49,8 +55,10 @@ errors2.m:062: In clause for predicate `type_error_4'/0:
 errors2.m:062:   in argument 3 of functor `foo_functor/3':
 errors2.m:062:   type error in unification of argument
 errors2.m:062:   and constant `1.0'.
-errors2.m:062:   argument has type `string',
-errors2.m:062:   constant `1.0' has type `float'.
+errors2.m:062:   argument has type
+errors2.m:062:     string,
+errors2.m:062:   constant `1.0' has type
+errors2.m:062:     float.
 errors2.m:062:   The partial type assignment was:
 errors2.m:062:     Y_1: int
 errors2.m:062:     X_2: errors2.foo_type
@@ -62,8 +70,10 @@ errors2.m:072: In clause for predicate `type_error_5'/0:
 errors2.m:072:   in argument 3 of functor `foo_functor/3':
 errors2.m:072:   type error in unification of argument
 errors2.m:072:   and constant `1.0'.
-errors2.m:072:   argument has type `string',
-errors2.m:072:   constant `1.0' has type `float'.
+errors2.m:072:   argument has type
+errors2.m:072:     string,
+errors2.m:072:   constant `1.0' has type
+errors2.m:072:     float.
 errors2.m:072:   The partial type assignment was:
 errors2.m:072:     Y_1: character
 errors2.m:072:     X_2: errors2.foo_type
@@ -75,8 +85,10 @@ errors2.m:078: In clause for predicate `type_error_6'/0:
 errors2.m:078:   in argument 3 of functor `bar_functor/3':
 errors2.m:078:   type error in unification of argument
 errors2.m:078:   and constant `1.0'.
-errors2.m:078:   argument has type `string',
-errors2.m:078:   constant `1.0' has type `float'.
+errors2.m:078:   argument has type
+errors2.m:078:     string,
+errors2.m:078:   constant `1.0' has type
+errors2.m:078:     float.
 errors2.m:078:   The partial type assignment was:
 errors2.m:078:     Y_1: character
 errors2.m:078:     X_2: errors2.bar_1_type
@@ -88,8 +100,10 @@ errors2.m:084: In clause for predicate `type_error_7'/0:
 errors2.m:084:   warning: variables `A, B, Z' occur only once in this scope.
 errors2.m:085: In clause for predicate `type_error_7'/0:
 errors2.m:085:   in argument 1 of call to predicate `errors2.expect_int'/1:
-errors2.m:085:   type error: variable `C' has type `string',
-errors2.m:085:   expected type was `int'.
+errors2.m:085:   type error: variable `C' has type
+errors2.m:085:     string,
+errors2.m:085:   expected type was
+errors2.m:085:     int.
 errors2.m:085:   The possible partial type assignments were:
 errors2.m:085:     Type assignment 1:
 errors2.m:085:     Y_1: errors2.foo
@@ -133,8 +147,10 @@ errors2.m:092:   an `:- import_module' declaration.
 errors2.m:100: In clause for predicate `type_error_9'/0:
 errors2.m:100:   type error in unification of variable `X'
 errors2.m:100:   and variable `Y'.
-errors2.m:100:   `X' has type `{int, string, character}',
-errors2.m:100:   `Y' has type `{string, character, int}'.
+errors2.m:100:   `X' has type
+errors2.m:100:     {int, string, character},
+errors2.m:100:   `Y' has type
+errors2.m:100:     {string, character, int}.
 errors2.m:100:   The partial type assignment was:
 errors2.m:100:     X_1: {int, string, character}
 errors2.m:100:     Y_2: {string, character, int}

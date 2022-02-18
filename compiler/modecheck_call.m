@@ -73,6 +73,7 @@
 :- import_module hlds.vartypes.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
@@ -393,48 +394,22 @@ modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0, ArgOffset,
 
 %---------------------------------------------------------------------------%
 
-modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
-        ExtraGoals, !ModeInfo) :-
+modecheck_higher_order_call(PredOrFunc, PredVar, ArgVars0, ArgVars,
+        Modes, Detism, ExtraGoals, !ModeInfo) :-
     % First, check that `PredVar' has a higher-order inst,
     % with the right pred_or_func and the appropriate arity.
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     instmap_lookup_var(InstMap0, PredVar, PredVarInst0),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     inst_expand(ModuleInfo0, PredVarInst0, PredVarInst),
-    list.length(Args0, Arity),
-    ( if
-        (
-            PredVarInst = ground(_Uniq, HOInstInfo)
-        ;
-            PredVarInst = any(_Uniq, HOInstInfo)
-        ),
-        (
-            HOInstInfo = higher_order(PredInstInfo)
-        ;
-            % If PredVarInst has no higher-order inst information,
-            % then look for higher-order inst information in the type.
-            % Otherwise, if PredVar has a function type, assume the default
-            % function mode.
-            HOInstInfo = none_or_default_func,
-            mode_info_get_var_types(!.ModeInfo, VarTypes),
-            lookup_var_type(VarTypes, PredVar, Type),
-            strip_kind_annotation(Type) = higher_order_type(TypePredOrFunc,
-                ArgTypes, TypeHOInstInfo, _Purity, _EvalMethod),
-            (
-                TypeHOInstInfo = higher_order(PredInstInfo),
-                PredInstInfo = pred_inst_info(TypeHOPredOrFunc, _, _, _),
-                expect(unify(TypePredOrFunc, TypeHOPredOrFunc), $pred,
-                    "TypePredOrFunc != TypeHOPredOrFunc")
-            ;
-                TypeHOInstInfo = none_or_default_func,
-                TypePredOrFunc = pf_function,
-                list.length(ArgTypes, NumArgs),
-                PredInstInfo = pred_inst_info_default_func_mode(NumArgs)
-            )
-        ),
-        PredInstInfo = pred_inst_info(PredOrFunc, ModesPrime, _, DetPrime),
-        list.length(ModesPrime, Arity)
-    then
+    ActualPredFormArity = arg_list_arity(ArgVars0),
+    user_arity_pred_form_arity(PredOrFunc,
+        ActualUserArity, ActualPredFormArity),
+    get_higher_order_inst_match(!.ModeInfo, PredOrFunc, PredVar, PredVarInst,
+        ActualUserArity, Match),
+    (
+        Match = higher_order_match(PredInstInfo),
+        PredInstInfo = pred_inst_info(_, Modes0, _, Detism0),
         ( if
             % If PredVar is inst `any' then it gets bound. If it is locked,
             % this is a mode error.
@@ -447,34 +422,114 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
                 PredVarInst, BetterPredVarInst),
             mode_info_error(WaitingVars, ModeError, !ModeInfo),
             Modes = [],
-            Det = detism_erroneous,
-            Args = Args0,
+            Detism = detism_erroneous,
+            ArgVars = ArgVars0,
             ExtraGoals = no_extra_goals
         else
-            Det = DetPrime,
-            Modes = ModesPrime,
+            Modes = Modes0,
+            Detism = Detism0,
             ArgOffset = 1,
-            modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args,
+            modecheck_arg_list(ArgOffset, Modes, ExtraGoals, ArgVars0, ArgVars,
                 !ModeInfo),
-
-            ( if determinism_components(Det, _, at_most_zero) then
+            ( if determinism_components(Detism, _, at_most_zero) then
                 instmap.init_unreachable(Instmap),
                 mode_info_set_instmap(Instmap, !ModeInfo)
             else
                 true
             )
         )
-    else
+    ;
+        Match = higher_order_mismatch(Mismatch),
         % The error occurred in argument 1, i.e. the pred term.
         mode_info_set_call_arg_context(1, !ModeInfo),
         WaitingVars = set_of_var.make_singleton(PredVar),
         ModeError = mode_error_bad_higher_order_inst(PredVar, PredVarInst,
-            PredOrFunc, Arity),
+            PredOrFunc, ActualUserArity, Mismatch),
         mode_info_error(WaitingVars, ModeError, !ModeInfo),
         Modes = [],
-        Det = detism_erroneous,
-        Args = Args0,
+        Detism = detism_erroneous,
+        ArgVars = ArgVars0,
         ExtraGoals = no_extra_goals
+    ).
+
+:- type higher_order_match
+    --->    higher_order_match(pred_inst_info)
+    ;       higher_order_mismatch(higher_order_mismatch_info).
+
+:- pred get_higher_order_inst_match(mode_info::in, pred_or_func::in,
+    prog_var::in, mer_inst::in, user_arity::in,
+    higher_order_match::out) is det.
+
+get_higher_order_inst_match(ModeInfo, ExpectedPredOrFunc, PredVar, PredVarInst,
+        ExpectedUserArity, Match) :-
+    ( if
+        ( PredVarInst = ground(_Uniq, HOInstInfo)
+        ; PredVarInst = any(_Uniq, HOInstInfo)
+        )
+    then
+        (
+            HOInstInfo = higher_order(PredInstInfo0),
+            Match0 = higher_order_match(PredInstInfo0)
+        ;
+            % If PredVarInst has no higher-order inst information,
+            % then look for higher-order inst information in the type.
+            % Otherwise, if PredVar has a function type, assume the default
+            % function mode.
+            HOInstInfo = none_or_default_func,
+            mode_info_get_var_types(ModeInfo, VarTypes),
+            lookup_var_type(VarTypes, PredVar, Type0),
+            Type = strip_kind_annotation(Type0),
+            ( if
+                Type = higher_order_type(TypePredOrFunc,
+                    ArgTypes, TypeHOInstInfo, _Purity, _EvalMethod)
+            then
+                (
+                    TypeHOInstInfo = higher_order(PredInstInfo0),
+                    PredInstInfo0 = pred_inst_info(TypeHOPredOrFunc, _, _, _),
+                    expect(unify(TypePredOrFunc, TypeHOPredOrFunc), $pred,
+                        "TypePredOrFunc != TypeHOPredOrFunc"),
+                    Match0 = higher_order_match(PredInstInfo0)
+                ;
+                    TypeHOInstInfo = none_or_default_func,
+                    (
+                        TypePredOrFunc = pf_function,
+                        list.length(ArgTypes, NumArgs),
+                        PredInstInfo0 =
+                            pred_inst_info_default_func_mode(NumArgs),
+                        Match0 = higher_order_match(PredInstInfo0)
+                    ;
+                        TypePredOrFunc = pf_predicate,
+                        Mismatch0 = mismatch_no_higher_order_inst_info,
+                        Match0 = higher_order_mismatch(Mismatch0)
+                    )
+                )
+            else
+                Match0 = higher_order_mismatch(mismatch_not_higher_order_type)
+            )
+        ),
+        (
+            Match0 = higher_order_mismatch(Mismatch),
+            Match = higher_order_mismatch(Mismatch)
+        ;
+            Match0 = higher_order_match(PredInstInfo),
+            PredInstInfo = pred_inst_info(ActualPredOrFunc, Modes, _, _),
+            ( if ExpectedPredOrFunc = ActualPredOrFunc then
+                ActualPredFormArity = arg_list_arity(Modes),
+                user_arity_pred_form_arity(ActualPredOrFunc,
+                    ActualUserArity, ActualPredFormArity),
+                ( if ExpectedUserArity = ActualUserArity then
+                    Match = higher_order_match(PredInstInfo)
+                else
+                    Mismatch = mismatch_on_arity(ActualUserArity),
+                    Match = higher_order_mismatch(Mismatch)
+                )
+            else
+                Mismatch = mismatch_pred_vs_func(ActualPredOrFunc),
+                Match = higher_order_mismatch(Mismatch)
+            )
+        )
+    else
+        Match = higher_order_mismatch(mismatch_no_higher_order_inst_info)
     ).
 
 %---------------------------------------------------------------------------%

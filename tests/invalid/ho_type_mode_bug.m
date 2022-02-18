@@ -4,12 +4,12 @@
 %
 % ho_type_mode_bug.m:
 %
-% This incorrect program produces an unexpected runtime error:
+% This incorrect program once caused a compiler crash with
 %
 % Software error: propagate_types_into_mode_list: length mismatch
 %
-% It seems it's not expecting people to have a different number of types
-% to modes in declarations involving higher-order preds.
+% The compiler was not expecting the number of argument types and the number
+% of argument modes to differ in declarations involving higher-order preds.
 
 :- module ho_type_mode_bug.
 

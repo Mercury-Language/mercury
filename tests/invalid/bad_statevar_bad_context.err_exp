@@ -4,6 +4,8 @@ bad_statevar_bad_context.m:031: In clause for predicate `test_pred'/4:
 bad_statevar_bad_context.m:031:   in argument 3 of functor `f/3':
 bad_statevar_bad_context.m:031:   type error in unification of variable `V_13'
 bad_statevar_bad_context.m:031:   and variable `A'.
-bad_statevar_bad_context.m:031:   `V_13' has type `float',
-bad_statevar_bad_context.m:031:   `A' has type `int'.
+bad_statevar_bad_context.m:031:   `V_13' has type
+bad_statevar_bad_context.m:031:     float,
+bad_statevar_bad_context.m:031:   `A' has type
+bad_statevar_bad_context.m:031:     int.
 For more information, recompile with `-E'.

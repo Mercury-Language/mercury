@@ -3,8 +3,10 @@ types2.m:019: In clause for predicate `q'/0:
 types2.m:019:   error: undefined predicate `zzzzzzzz'/0.
 types2.m:020: In clause for predicate `q'/0:
 types2.m:020:   in argument 1 of call to predicate `types2.p'/1:
-types2.m:020:   type error: argument has type `int',
-types2.m:020:   expected type was `pred'.
+types2.m:020:   type error: argument has type
+types2.m:020:     int,
+types2.m:020:   expected type was
+types2.m:020:     pred.
 types2.m:020:   The partial type assignment was:
 types2.m:020:     V_1: (pred)
 types2.m:020:     V_2: int
@@ -25,8 +27,10 @@ types2.m:027:   error: undefined predicate `b'/1.
 types2.m:046: In clause for predicate `bar'/1:
 types2.m:046:   type error in unification of variable `X'
 types2.m:046:   and constant `0'.
-types2.m:046:   variable `X' has type `(some [BarTypeParam] BarTypeParam)',
-types2.m:046:   constant `0' has type `int'.
+types2.m:046:   variable `X' has type
+types2.m:046:     (some [BarTypeParam] BarTypeParam),
+types2.m:046:   constant `0' has type
+types2.m:046:     int.
 types2.m:046:   The partial type assignment was:
 types2.m:046:     some [BarTypeParam_1]
 types2.m:046:     X_2: BarTypeParam

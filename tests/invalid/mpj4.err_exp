@@ -3,8 +3,10 @@ mpj4.m:028:   in function result term of clause head:
 mpj4.m:028:   in argument 2 of functor `f/3':
 mpj4.m:028:   type error in unification of argument
 mpj4.m:028:   and constant `"foo"'.
-mpj4.m:028:   argument has type `int',
-mpj4.m:028:   constant `"foo"' has type `string'.
+mpj4.m:028:   argument has type
+mpj4.m:028:     int,
+mpj4.m:028:   constant `"foo"' has type
+mpj4.m:028:     string.
 mpj4.m:028:   The partial type assignment was:
 mpj4.m:028:     HeadVar__2_2: mpj4.intlist
 mpj4.m:028:     L_3: mpj4.intlist

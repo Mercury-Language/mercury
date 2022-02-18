@@ -2,7 +2,9 @@ purity_type_error.m:025: In clause for predicate `type_error'/1:
 purity_type_error.m:025:   in argument 1 of clause head:
 purity_type_error.m:025:   type error in unification of variable `HeadVar__1'
 purity_type_error.m:025:   and constant `1.0'.
-purity_type_error.m:025:   variable `HeadVar__1' has type `int',
-purity_type_error.m:025:   constant `1.0' has type `float'.
+purity_type_error.m:025:   variable `HeadVar__1' has type
+purity_type_error.m:025:     int,
+purity_type_error.m:025:   constant `1.0' has type
+purity_type_error.m:025:     float.
 purity_type_error.m:025:   The partial type assignment was:
 purity_type_error.m:025:     HeadVar__1_1: int

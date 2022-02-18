@@ -2,5 +2,7 @@ type_error_in_arg.m:036: In clause for predicate `p'/2:
 type_error_in_arg.m:036:   in unification of variable `X'
 type_error_in_arg.m:036:   and term `t(A, B, C)':
 type_error_in_arg.m:036:   type error in argument of functor `t'/3.
-type_error_in_arg.m:036:   Argument 3 (C) has type `list.list(T)',
-type_error_in_arg.m:036:   expected type was `cord.cord(int)'.
+type_error_in_arg.m:036:   Argument 3 (C) has type
+type_error_in_arg.m:036:     list.list(T),
+type_error_in_arg.m:036:   expected type was
+type_error_in_arg.m:036:     cord.cord(int).
