@@ -816,114 +816,124 @@ type_to_pieces(VarNamePrint, MaybeAddQuotes, TVarSet, InstVarSet,
         Type = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity,
             _LambdaEvalMethod)
     then
-        ( Purity = purity_pure,     PurityPieces = []
-        ; Purity = purity_semipure, PurityPieces = [words("semipure")]
-        ; Purity = purity_impure,   PurityPieces = [words("impure")]
+        Pieces = higher_order_type_to_pieces(VarNamePrint,
+            StartQuotePieces, EndQuotePieces, TVarSet, InstVarSet,
+            ExternalTypeParams, PorF, ArgTypes, HOInstInfo, Purity)
+    else
+        unparse_type(Type, Term0),
+        list.map(term.coerce_var, ExternalTypeParams, ExistQVars),
+        maybe_add_existential_quantifier(ExistQVars, Term0, Term),
+        varset.coerce(TVarSet, VarSet),
+        TermPiece = words(mercury_term_to_string(VarSet, VarNamePrint, Term)),
+        Pieces = StartQuotePieces ++ [TermPiece] ++ EndQuotePieces
+    ).
+
+:- func higher_order_type_to_pieces(var_name_print,
+    list(format_component), list(format_component),
+    tvarset, inst_varset, list(tvar), pred_or_func, list(mer_type),
+    ho_inst_info, purity) = list(format_component).
+
+higher_order_type_to_pieces(VarNamePrint, StartQuotePieces, EndQuotePieces,
+        TVarSet, InstVarSet, ExternalTypeParams,
+        PorF, ArgTypes, HOInstInfo, Purity) = Pieces :-
+    ( Purity = purity_pure,     PurityPieces = []
+    ; Purity = purity_semipure, PurityPieces = [words("semipure")]
+    ; Purity = purity_impure,   PurityPieces = [words("impure")]
+    ),
+    ( PorF = pf_predicate,      PorFPieces = [words("pred")]
+    ; PorF = pf_function,       PorFPieces = [words("func")]
+    ),
+    (
+        HOInstInfo = none_or_default_func,
+        ArgPieces = list.map(
+            type_to_pieces(VarNamePrint, do_not_add_quotes,
+                TVarSet, InstVarSet, ExternalTypeParams),
+            ArgTypes),
+        FuncResultPrefixPieces = [],
+        FuncResultSuffixPieces = [],
+        DetismPieces = [],
+        PorFMismatchPieces = [],
+        ArityMismatchPieces = []
+    ;
+        HOInstInfo = higher_order(PredInstInfo),
+        PorFStr = pred_or_func_to_full_str(PorF),
+        PredInstInfo = pred_inst_info(HOPorF, ArgModes, _ArgRegs, Detism),
+        ( if PorF = HOPorF then
+            PorFMismatchPieces = []
+        else
+            HOPorFStr = pred_or_func_to_full_str(HOPorF),
+            PorFMismatchPieces = [nl,
+                words("The type says this is a"),
+                words(PorFStr), error_util.suffix(","),
+                words("but its mode says it is a"),
+                words(HOPorFStr), error_util.suffix(".")]
         ),
-        ( PorF = pf_predicate,      PorFPieces = [words("pred")]
-        ; PorF = pf_function,       PorFPieces = [words("func")]
-        ),
-        (
-            HOInstInfo = none_or_default_func,
+        list.length(ArgTypes, NumArgTypes),
+        list.length(ArgModes, NumArgModes),
+        ( if NumArgTypes = NumArgModes then
+            assoc_list.from_corresponding_lists(ArgTypes, ArgModes,
+                ArgTypesModes),
+            % If this higher order type is a function, then the type::mode
+            % for the function result must be wrapped in parentheses.
+            FuncResultPrefixPieces = [error_util.prefix("(")],
+            FuncResultSuffixPieces = [error_util.suffix(")")],
+            ArgPieces = list.map(
+                type_and_mode_to_pieces(TVarSet, InstVarSet,
+                    ExternalTypeParams),
+                ArgTypesModes),
+            ArityMismatchPieces = []
+        else
             ArgPieces = list.map(
                 type_to_pieces(VarNamePrint, do_not_add_quotes,
                     TVarSet, InstVarSet, ExternalTypeParams),
                 ArgTypes),
             FuncResultPrefixPieces = [],
             FuncResultSuffixPieces = [],
-            DetismPieces = [],
-            PorFMismatchPieces = [],
-            ArityMismatchPieces = []
-        ;
-            HOInstInfo = higher_order(PredInstInfo),
-            PorFStr = pred_or_func_to_full_str(PorF),
-            PredInstInfo = pred_inst_info(HOPorF, ArgModes, _ArgRegs, Detism),
-            ( if PorF = HOPorF then
-                PorFMismatchPieces = []
-            else
-                HOPorFStr = pred_or_func_to_full_str(HOPorF),
-                PorFMismatchPieces = [nl,
-                    words("The type says this is a"),
-                    words(PorFStr), error_util.suffix(","),
-                    words("but its mode says it is a"),
-                    words(HOPorFStr), error_util.suffix(".")]
-            ),
-            list.length(ArgTypes, NumArgTypes),
-            list.length(ArgModes, NumArgModes),
-            ( if NumArgTypes = NumArgModes then
-                assoc_list.from_corresponding_lists(ArgTypes, ArgModes,
-                    ArgTypesModes),
-                % If this higher order type is a function, then the type::mode
-                % for the function result must be wrapped in parentheses.
-                FuncResultPrefixPieces = [error_util.prefix("(")],
-                FuncResultSuffixPieces = [error_util.suffix(")")],
-                ArgPieces = list.map(
-                    type_and_mode_to_pieces(TVarSet, InstVarSet,
-                        ExternalTypeParams),
-                    ArgTypesModes),
-                ArityMismatchPieces = []
-            else
-                ArgPieces = list.map(
-                    type_to_pieces(VarNamePrint, do_not_add_quotes,
-                        TVarSet, InstVarSet, ExternalTypeParams),
-                    ArgTypes),
-                FuncResultPrefixPieces = [],
-                FuncResultSuffixPieces = [],
-                ArityMismatchPieces = [nl,
-                    words("The type says this"), words(PorFStr),
-                    words("has"), int_fixed(NumArgTypes), words("arguments,"),
-                    words("but its mode says it has"),
-                    int_fixed(NumArgModes), error_util.suffix(".")]
-            ),
-            DetismPieces = [words("is"), words(determinism_to_string(Detism))]
+            ArityMismatchPieces = [nl,
+                words("The type says this"), words(PorFStr),
+                words("has"), int_fixed(NumArgTypes), words("arguments,"),
+                words("but its mode says it has"),
+                int_fixed(NumArgModes), error_util.suffix(".")]
         ),
+        DetismPieces = [words("is"), words(determinism_to_string(Detism))]
+    ),
+    (
+        PorF = pf_predicate,
         (
-            PorF = pf_predicate,
-            (
-                ArgPieces = [],
-                ArgBlockPieces = []
-            ;
-                ArgPieces = [_ | _],
-                ArgBlockPieces =
-                    [error_util.suffix("("), nl_indent_delta(1)] ++
-                    component_list_to_line_pieces(ArgPieces,
-                        [nl_indent_delta(-1)]) ++
-                    [fixed(")")]
-            )
+            ArgPieces = [],
+            ArgBlockPieces = []
         ;
-            PorF = pf_function,
-            (
-                ArgPieces = [],
-                unexpected($pred, "function has no arguments")
-            ;
-                ArgPieces = [ReturnValuePieces],
-                ArgBlockPieces = [fixed("=")] ++
-                    FuncResultPrefixPieces ++ ReturnValuePieces ++
-                    FuncResultSuffixPieces
-            ;
-                ArgPieces = [_, _ | _],
-                list.det_split_last(ArgPieces, FuncArgPieces,
-                    ReturnValuePieces),
-                ArgBlockPieces = [suffix("("), nl_indent_delta(1)] ++
-                    component_list_to_line_pieces(FuncArgPieces,
-                        [nl_indent_delta(-1)]) ++
-                    [fixed(") =")] ++ FuncResultPrefixPieces ++
-                    ReturnValuePieces ++ FuncResultSuffixPieces
-            )
-        ),
-        Pieces = StartQuotePieces ++
-            PurityPieces ++ PorFPieces ++ ArgBlockPieces ++ DetismPieces ++
-            EndQuotePieces ++
-            PorFMismatchPieces ++ ArityMismatchPieces
-    else
-        unparse_type(Type, Term0),
-        list.map(term.coerce_var, ExternalTypeParams, ExistQVars),
-        maybe_add_existential_quantifier(ExistQVars, Term0, Term),
-        varset.coerce(TVarSet, VarSet),
-        TermPiece =
-            words(mercury_term_to_string(VarSet, VarNamePrint, Term)),
-        Pieces = StartQuotePieces ++ [TermPiece] ++ EndQuotePieces
-    ).
+            ArgPieces = [_ | _],
+            ArgBlockPieces =
+                [error_util.suffix("("), nl_indent_delta(1)] ++
+                component_list_to_line_pieces(ArgPieces,
+                    [nl_indent_delta(-1)]) ++
+                [fixed(")")]
+        )
+    ;
+        PorF = pf_function,
+        (
+            ArgPieces = [],
+            unexpected($pred, "function has no arguments")
+        ;
+            ArgPieces = [ReturnValuePieces],
+            ArgBlockPieces = [fixed("=")] ++
+                FuncResultPrefixPieces ++ ReturnValuePieces ++
+                FuncResultSuffixPieces
+        ;
+            ArgPieces = [_, _ | _],
+            list.det_split_last(ArgPieces, FuncArgPieces, ReturnValuePieces),
+            ArgBlockPieces = [suffix("("), nl_indent_delta(1)] ++
+                component_list_to_line_pieces(FuncArgPieces,
+                    [nl_indent_delta(-1)]) ++
+                [fixed(") =")] ++ FuncResultPrefixPieces ++
+                ReturnValuePieces ++ FuncResultSuffixPieces
+        )
+    ),
+    Pieces = StartQuotePieces ++
+        PurityPieces ++ PorFPieces ++ ArgBlockPieces ++ DetismPieces ++
+        EndQuotePieces ++
+        PorFMismatchPieces ++ ArityMismatchPieces.
 
 :- func type_and_mode_to_pieces(tvarset, inst_varset, list(tvar),
     pair(mer_type, mer_mode)) = list(format_component).
