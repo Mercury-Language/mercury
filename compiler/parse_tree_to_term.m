@@ -69,8 +69,8 @@ unparse_type(Type, Term) :-
         Var = term.coerce_var(TVar),
         Term = term.variable(Var, Context)
     ;
-        Type = defined_type(SymName, Args, _),
-        unparse_type_list(Args, ArgTerms),
+        Type = defined_type(SymName, ArgTypes, _),
+        unparse_type_list(ArgTypes, ArgTerms),
         unparse_qualified_term(SymName, ArgTerms, Term)
     ;
         Type = builtin_type(BuiltinType),
@@ -103,13 +103,13 @@ unparse_type(Type, Term) :-
         maybe_add_purity_annotation(Purity, Term2, Term3),
         maybe_add_detism(HOInstInfo, Term3, Term)
     ;
-        Type = tuple_type(Args, _),
-        unparse_type_list(Args, ArgTerms),
+        Type = tuple_type(ArgTypes, _),
+        unparse_type_list(ArgTypes, ArgTerms),
         Term = term.functor(term.atom("{}"), ArgTerms, Context)
     ;
-        Type = apply_n_type(TVar, Args, _),
+        Type = apply_n_type(TVar, ArgTypes, _),
         Var = term.coerce_var(TVar),
-        unparse_type_list(Args, ArgTerms),
+        unparse_type_list(ArgTypes, ArgTerms),
         Term = term.functor(term.atom(""),
             [term.variable(Var, Context) | ArgTerms], Context)
     ;
