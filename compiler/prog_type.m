@@ -746,34 +746,41 @@ construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType,
     Type = higher_order_type(pf_function, ArgTypes ++ [RetType],
         higher_order(PredInstInfo), Purity, EvalMethod).
 
-strip_builtin_qualifiers_from_type(type_variable(Var, Kind),
-        type_variable(Var, Kind)).
-strip_builtin_qualifiers_from_type(defined_type(Name0, ArgTypes0, Kind),
-        defined_type(Name, ArgTypes, Kind)) :-
-    ( if
-        Name0 = qualified(Module, Name1),
-        Module = mercury_public_builtin_module
-    then
-        Name = unqualified(Name1)
-    else
-        Name = Name0
-    ),
-    strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes).
-strip_builtin_qualifiers_from_type(builtin_type(BuiltinType),
-        builtin_type(BuiltinType)).
-strip_builtin_qualifiers_from_type(
-        higher_order_type(PorF, ArgTypes0, HOInstInfo, Purity, EvalMethod),
-        higher_order_type(PorF, ArgTypes, HOInstInfo, Purity, EvalMethod)) :-
-    strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes).
-strip_builtin_qualifiers_from_type(tuple_type(ArgTypes0, Kind),
-        tuple_type(ArgTypes, Kind)) :-
-    strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes).
-strip_builtin_qualifiers_from_type(apply_n_type(Var, ArgTypes0, Kind),
-        apply_n_type(Var, ArgTypes, Kind)) :-
-    strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes).
-strip_builtin_qualifiers_from_type(kinded_type(Type0, Kind),
-        kinded_type(Type, Kind)) :-
-    strip_builtin_qualifiers_from_type(Type0, Type).
+strip_builtin_qualifiers_from_type(Type0, Type) :-
+    (
+        ( Type0 = type_variable(_, _)
+        ; Type0 = builtin_type(_)
+        ),
+        Type = Type0
+    ;
+        Type0 = defined_type(SymName0, ArgTypes0, Kind),
+        ( if
+            SymName0 = qualified(ModuleName, Name),
+            ModuleName = mercury_public_builtin_module
+        then
+            SymName = unqualified(Name)
+        else
+            SymName = SymName0
+        ),
+        strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes),
+        Type = defined_type(SymName, ArgTypes, Kind)
+    ;
+        Type0 = higher_order_type(PorF, ArgTypes0, HOInstInfo, Purity, EM),
+        strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes),
+        Type = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity, EM)
+    ;
+        Type0 = tuple_type(ArgTypes0, Kind),
+        strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes),
+        Type = tuple_type(ArgTypes, Kind)
+    ;
+        Type0 = apply_n_type(Var, ArgTypes0, Kind),
+        strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes),
+        Type = apply_n_type(Var, ArgTypes, Kind)
+    ;
+        Type0 = kinded_type(SubType0, Kind),
+        strip_builtin_qualifiers_from_type(SubType0, SubType),
+        Type = kinded_type(SubType, Kind)
+    ).
 
 strip_builtin_qualifiers_from_type_list(Types0, Types) :-
     list.map(strip_builtin_qualifiers_from_type, Types0, Types).
