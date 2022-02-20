@@ -133,8 +133,8 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeForType = no,
         ForTypeSpecs = []
     ),
-    parse_implicitly_qualified_sym_name_and_args(ModuleName, NameTerm,
-        VarSet, ContextPieces, MaybeSymNameAndArgs),
+    parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
+        ContextPieces, NameTerm, MaybeSymNameAndArgs),
     (
         MaybeSymNameAndArgs = error2(SymNameAndArgSpecs),
         Specs = SymNameAndArgSpecs ++ ForTypeSpecs,
@@ -178,8 +178,8 @@ parse_abstract_inst_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
     (
         HeadTerms = [HeadTerm],
         ContextPieces = cord.singleton(words("In inst definition:")),
-        parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
-            VarSet, ContextPieces, MaybeNameAndArgs),
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
+            ContextPieces, HeadTerm, MaybeNameAndArgs),
         (
             MaybeNameAndArgs = error2(Specs),
             MaybeIOM = error1(Specs)
@@ -229,8 +229,8 @@ parse_abstract_inst_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
 parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeIOM) :-
     ContextPieces = cord.singleton(words("In mode definition:")),
-    parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
-        VarSet, ContextPieces, MaybeSymNameAndArgs),
+    parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
+        ContextPieces, HeadTerm, MaybeSymNameAndArgs),
     (
         MaybeSymNameAndArgs = error2(Specs),
         MaybeIOM = error1(Specs)
@@ -269,8 +269,8 @@ parse_abstract_mode_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
     (
         HeadTerms = [HeadTerm],
         ContextPieces = cord.singleton(words("In abstract_mode definition:")),
-        parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
-            VarSet, ContextPieces, MaybeSymNameAndArgs),
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
+            ContextPieces, HeadTerm, MaybeSymNameAndArgs),
         (
             MaybeSymNameAndArgs = error2(Specs),
             MaybeIOM = error1(Specs)

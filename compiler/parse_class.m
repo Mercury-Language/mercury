@@ -339,8 +339,8 @@ parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
     ( if is_the_name_a_variable(VarSet, vtk_class_decl, NameTerm, Spec) then
         MaybeTypeClassInfo = error1([Spec])
     else
-        parse_implicitly_qualified_sym_name_and_args(ModuleName, NameTerm,
-            VarSet, ContextPieces, MaybeClassName),
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
+            ContextPieces, NameTerm, MaybeClassName),
         (
             MaybeClassName = ok2(ClassName, TermVars0),
             list.map(term.coerce, TermVars0, TermVars),
@@ -710,24 +710,24 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
             MaybeInstanceMethod = error1([Spec])
         )
     else
-        % For the clauses in an instance declaration, the default module name
-        % for the clause heads is the module name of the class that this is an
-        % instance declaration for, but we don't necessarily know what module
-        % that is at this point, since the class name hasn't been fully
-        % qualified yet. So here we give the special module name "" as the
-        % default, which means that there is no default. (If the module
-        % qualifiers in the clauses don't match the module name of the class,
-        % we will pick that up later, in check_typeclass.m.)
+        ( if MethodTerm = term.functor(term.atom(":-"), [_], _) then
+            Spec = report_unexpected_method_term(VarSet, MethodTerm),
+            MaybeInstanceMethod = error1([Spec])
+        else
+            % For the clauses in an instance declaration, the default
+            % module name for the clause heads is the module name of the class
+            % that this is an instance declaration for, but we don't
+            % necessarily know what module that is at this point,
+            % since the class name hasn't been fully qualified yet.
+            % So here we pass "no" in the first argument to indicate
+            % the absence of a default module name. (If the module qualifiers
+            % in the clauses don't match the module name of the class,
+            % we will pick that up later, in check_typeclass.m.)
 
-        DefaultModuleName = unqualified(""),
-        parse_item_or_marker(DefaultModuleName, VarSet, MethodTerm,
-            item_no_seq_num, MaybeIOM),
-        (
-            MaybeIOM = ok1(IOM),
-            ( if
-                IOM = iom_item(Item),
-                Item = item_clause(ItemClause)
-            then
+            parse_clause_term(no, VarSet, MethodTerm, item_no_seq_num,
+                MaybeClause),
+            (
+                MaybeClause = ok1(ItemClause),
                 ItemClause = item_clause_info(PredOrFunc, ClassMethodName,
                     ArgTerms, _VarSet, _ClauseBody, Context, _SeqNum),
                 PredFormArity = arg_list_arity(ArgTerms),
@@ -737,24 +737,24 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 InstanceMethod = instance_method(PredOrFunc, ClassMethodName,
                     UserArity, ProcDef, Context),
                 MaybeInstanceMethod = ok1(InstanceMethod)
-            else
-                MethodTermStr = describe_error_term(VarSet, MethodTerm),
-                Pieces = [words("Error: expected clause or"),
-                    quote("pred(<Name> / <Arity>) is <InstanceName>"),
-                    words("or"),
-                    quote("func(<Name> / <Arity>) is <InstanceName>"),
-                    suffix(","),
-                    words("not"), words(MethodTermStr), suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree,
-                    get_term_context(MethodTerm), Pieces),
-                MaybeInstanceMethod = error1([Spec])
+            ;
+                MaybeClause = error1(Specs),
+                MaybeInstanceMethod = error1(Specs)
             )
-        ;
-            MaybeIOM = error1(Specs),
-            MaybeInstanceMethod = error1(Specs)
         )
     ).
+
+:- func report_unexpected_method_term(varset, term) = error_spec.
+
+report_unexpected_method_term(VarSet, MethodTerm) = Spec :-
+    MethodTermStr = describe_error_term(VarSet, MethodTerm),
+    Pieces = [words("Error: expected clause or"),
+        quote("pred(<Name> / <Arity>) is <InstanceName>"),
+        words("or"),
+        quote("func(<Name> / <Arity>) is <InstanceName>"), suffix(","),
+        words("not"), words(MethodTermStr), suffix("."), nl],
+    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        get_term_context(MethodTerm), Pieces).
 
 %---------------------------------------------------------------------------%
 %

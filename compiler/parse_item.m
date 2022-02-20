@@ -22,6 +22,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
+:- import_module maybe.
 :- import_module term.
 :- import_module varset.
 
@@ -44,6 +45,18 @@
 :- pred parse_item_or_marker(module_name::in, varset::in, term::in,
     item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
+    % parse_clause_term(MaybeDefaultModuleName, VarSet, Term, SeqNum,
+    %   MaybeItemOrMarker):
+    %
+    % The part of parse_item_or_marker that parses clauses. Implicit
+    % qualification happens only if the caller passes a module name
+    % in the first argument.
+    %
+    % Exported for use by parse_class.m.
+    %
+:- pred parse_clause_term(maybe(module_name)::in, varset::in, term::in,
+    item_seq_num::in, maybe1(item_clause_info)::out) is det.
+
     % parse_class_decl(ModuleName, VarSet, Term, MaybeClassDecl):
     %
     % Parse Term as a declaration that may appear in the body of a
@@ -52,7 +65,7 @@
     % Qualify appropriate parts of the declaration with ModuleName
     % as the module name.
     %
-    %ino Exported for use by parse_class.m.
+    % Exported for use by parse_class.m.
     %
 :- pred parse_class_decl(module_name::in, varset::in, term::in,
     maybe1(class_decl)::out) is det.
@@ -122,7 +135,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module maybe.
 :- import_module one_or_more.
 :- import_module string.
 
@@ -133,8 +145,14 @@ parse_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
         parse_decl_term_item_or_marker(ModuleName, VarSet, DeclTerm,
             SeqNum, MaybeIOM)
     else
-        parse_clause_term_item_or_marker(ModuleName, VarSet, Term,
-            SeqNum, MaybeIOM)
+        parse_clause_term(yes(ModuleName), VarSet, Term, SeqNum, MaybeClause),
+        (
+            MaybeClause = ok1(ItemClause),
+            MaybeIOM = ok1(iom_item(item_clause(ItemClause)))
+        ;
+            MaybeClause = error1(Specs),
+            MaybeIOM = error1(Specs)
+        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -152,7 +170,7 @@ parse_decl_term_item_or_marker(ModuleName, VarSet, DeclTerm,
         then
             MaybeIOM = MaybeIOMPrime
         else
-            Spec = decl_functor_is_not_valid(DeclTerm, Functor),
+            Spec = decl_functor_is_not_valid(Functor, Context),
             MaybeIOM = error1([Spec])
         )
     else
@@ -170,10 +188,9 @@ decl_is_not_an_atom(VarSet, Term) = Spec :-
     Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
         Context, Pieces).
 
-:- func decl_functor_is_not_valid(term, string) = error_spec.
+:- func decl_functor_is_not_valid(string, prog_context) = error_spec.
 
-decl_functor_is_not_valid(Term, Functor) = Spec :-
-    Context = get_term_context(Term),
+decl_functor_is_not_valid(Functor, Context) = Spec :-
     Pieces = [words("Error:"), quote(Functor),
         words("is not a valid declaration type."), nl],
     Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
@@ -389,18 +406,16 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
 
 %---------------------------------------------------------------------------%
 
-:- pred parse_clause_term_item_or_marker(module_name::in, varset::in, term::in,
-    item_seq_num::in, maybe1(item_or_marker)::out) is det.
-:- pragma inline(pred(parse_clause_term_item_or_marker/5)).
+:- pragma inline(pred(parse_clause_term/5)).
 
-parse_clause_term_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
+parse_clause_term(MaybeModuleName, VarSet, Term, SeqNum, MaybeClause) :-
     ( if
         Term = term.functor(term.atom("-->"), [DCGHeadTerm, DCGBodyTerm],
             DCGContext)
     then
         % Term is a DCG clause.
-        parse_dcg_clause(ModuleName, VarSet, DCGHeadTerm, DCGBodyTerm,
-            DCGContext, SeqNum, MaybeIOM)
+        parse_dcg_clause(MaybeModuleName, VarSet, DCGHeadTerm, DCGBodyTerm,
+            DCGContext, SeqNum, MaybeClause)
     else
         % Term is a clause; either a fact or a rule.
         ( if
@@ -417,8 +432,8 @@ parse_clause_term_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
             ClauseContext = get_term_context(HeadTerm),
             BodyTerm = term.functor(term.atom("true"), [], ClauseContext)
         ),
-        parse_clause(ModuleName, VarSet, HeadTerm, BodyTerm,
-            ClauseContext, SeqNum, MaybeIOM)
+        parse_clause(MaybeModuleName, VarSet, HeadTerm, BodyTerm,
+            ClauseContext, SeqNum, MaybeClause)
     ).
 
 parse_class_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
@@ -584,7 +599,7 @@ parse_attributed_decl(ModuleName, VarSet, Term, IsInClass, _Context, SeqNum,
         then
             MaybeIOM = MaybeIOMPrime
         else
-            Spec = decl_functor_is_not_valid(Term, Functor),
+            Spec = decl_functor_is_not_valid(Functor, FunctorContext),
             MaybeIOM = error1([Spec])
         )
     else
@@ -862,11 +877,11 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred parse_clause(module_name::in, varset::in, term::in, term::in,
-    term.context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
+:- pred parse_clause(maybe(module_name)::in, varset::in, term::in, term::in,
+    term.context::in, item_seq_num::in, maybe1(item_clause_info)::out) is det.
 
-parse_clause(ModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
-        MaybeIOM) :-
+parse_clause(MaybeModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
+        MaybeClause) :-
     varset.coerce(VarSet0, ProgVarSet0),
     GoalContextPieces = cord.init,
     parse_goal(BodyTerm0, GoalContextPieces, MaybeBodyGoal,
@@ -886,8 +901,15 @@ parse_clause(ModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
         else
             HeadContextPieces =
                 cord.from_list([words("In equation head:"), nl]),
-            parse_implicitly_qualified_sym_name_and_args(ModuleName,
-                FuncHeadTerm, VarSet, HeadContextPieces, MaybeFunctor)
+            (
+                MaybeModuleName = no,
+                parse_sym_name_and_args(VarSet,
+                    HeadContextPieces, FuncHeadTerm, MaybeFunctor)
+            ;
+                MaybeModuleName = yes(ModuleName),
+                parse_implicitly_qualified_sym_name_and_args(ModuleName,
+                    VarSet, HeadContextPieces, FuncHeadTerm, MaybeFunctor)
+            )
         )
     else
         MaybeFuncResultTerm = no,
@@ -898,11 +920,17 @@ parse_clause(ModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
         else
             HeadContextPieces =
                 cord.from_list([words("In clause head:"), nl]),
-            parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
-                VarSet, HeadContextPieces, MaybeFunctor)
+            (
+                MaybeModuleName = no,
+                parse_sym_name_and_args(VarSet,
+                    HeadContextPieces, HeadTerm, MaybeFunctor)
+            ;
+                MaybeModuleName = yes(ModuleName),
+                parse_implicitly_qualified_sym_name_and_args(ModuleName,
+                    VarSet, HeadContextPieces, HeadTerm, MaybeFunctor)
+            )
         )
     ),
-
     (
         MaybeFunctor = ok2(SymName, ArgTerms0),
         (
@@ -917,12 +945,11 @@ parse_clause(ModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
         list.map(term.coerce, ArgTerms, ProgArgTerms),
         ItemClause = item_clause_info(PredOrFunc, SymName, ProgArgTerms,
             ProgVarSet, MaybeBodyGoal, Context, SeqNum),
-        Item = item_clause(ItemClause),
-        MaybeIOM = ok1(iom_item(Item))
+        MaybeClause = ok1(ItemClause)
     ;
         MaybeFunctor = error2(FunctorSpecs),
         Specs = FunctorSpecs ++ get_any_errors_warnings2(MaybeBodyGoal),
-        MaybeIOM = error1(Specs)
+        MaybeClause = error1(Specs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1062,7 +1089,7 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
             MaybeIOM = error1([Spec])
         else
             parse_implicitly_qualified_sym_name_and_args(ModuleName,
-                PredTypeTerm, VarSet, ContextPieces, MaybePredNameAndArgs),
+                VarSet, ContextPieces, PredTypeTerm, MaybePredNameAndArgs),
             (
                 MaybePredNameAndArgs = error2(Specs),
                 MaybeIOM = error1(Specs)
@@ -1172,7 +1199,7 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, IsInClass, Context,
             else
                 FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
                 parse_implicitly_qualified_sym_name_and_args(ModuleName,
-                    FuncTerm, VarSet, ContextPieces, MaybeFuncNameAndArgs),
+                    VarSet, ContextPieces, FuncTerm, MaybeFuncNameAndArgs),
                 (
                     MaybeFuncNameAndArgs = error2(Specs),
                     MaybeIOM = error1(Specs)
@@ -1461,8 +1488,8 @@ parse_mode_decl_base(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
             FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
             ContextPieces = cord.from_list([words("In function"), decl("mode"),
                 words("declaration:"), nl]),
-            parse_implicitly_qualified_sym_name_and_args(ModuleName, FuncTerm,
-                VarSet, ContextPieces, MaybeFunctorArgs),
+            parse_implicitly_qualified_sym_name_and_args(ModuleName,
+                VarSet, ContextPieces, FuncTerm, MaybeFunctorArgs),
             (
                 MaybeFunctorArgs = error2(Specs),
                 MaybeIOM = error1(Specs)
@@ -1483,8 +1510,8 @@ parse_mode_decl_base(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
         else
             ContextPieces = cord.from_list([words("In"), decl("mode"),
                 words("declaration:"), nl]),
-            parse_implicitly_qualified_sym_name_and_args(ModuleName, Term,
-                VarSet, ContextPieces, MaybeFunctorArgs),
+            parse_implicitly_qualified_sym_name_and_args(ModuleName,
+                VarSet, ContextPieces, Term, MaybeFunctorArgs),
             (
                 MaybeFunctorArgs = error2(Specs),
                 MaybeIOM = error1(Specs)

@@ -310,7 +310,6 @@ check_inst_defn_has_matching_type(TypeTable, FunctorsToTypesMap, InstCtor,
                 MaybeForTypeKind = yes(ftk_float)
             else if
                 ( ForTypeCtorName = unqualified(CName)
-                ; ForTypeCtorName = qualified(unqualified(""), CName)
                 ; ForTypeCtorName = qualified(unqualified("char"), CName)
                 ),
                 ( CName = "char"
@@ -408,7 +407,6 @@ check_inst_defn_has_matching_type(TypeTable, FunctorsToTypesMap, InstCtor,
 
 sym_name_for_builtin_type(SymName, TypeName) :-
     ( SymName = unqualified(TypeName)
-    ; SymName = qualified(unqualified(""), TypeName)
     ; SymName = qualified(unqualified(TypeName), TypeName)
     ).
 

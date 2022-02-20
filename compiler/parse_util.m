@@ -207,27 +207,26 @@
 
 %---------------------------------------------------------------------------%
 
-parse_implicitly_qualified_name_and_arity(ModuleName, PredAndArityTerm,
-        SymName, Arity) :-
-    PredAndArityTerm = term.functor(term.atom("/"),
-        [PredNameTerm, ArityTerm], _),
-    try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
-        PredNameTerm, SymName),
+parse_implicitly_qualified_name_and_arity(DefaultModuleName,
+        Term, SymName, Arity) :-
+    Term = term.functor(term.atom("/"), [PredNameTerm, ArityTerm], _),
+    try_parse_sym_name_and_no_args(PredNameTerm, SymName0),
+    try_to_implicitly_qualify_sym_name(DefaultModuleName, SymName0, SymName),
     decimal_term_to_int(ArityTerm, Arity).
 
 parse_unqualified_name_and_arity(Term, SymName, Arity) :-
-    parse_implicitly_qualified_name_and_arity(unqualified(""),
-        Term, SymName, Arity).
+    Term = term.functor(term.atom("/"), [PredNameTerm, ArityTerm], _),
+    try_parse_sym_name_and_no_args(PredNameTerm, SymName),
+    decimal_term_to_int(ArityTerm, Arity).
 
 parse_pred_or_func_name_and_arity(PorFPredAndArityTerm,
         PredOrFunc, SymName, Arity) :-
-    PorFPredAndArityTerm = term.functor(term.atom(PredOrFuncStr), Args, _),
+    PorFPredAndArityTerm = term.functor(term.atom(PredOrFuncStr), ArgTerms, _),
     ( PredOrFuncStr = "pred", PredOrFunc = pf_predicate
     ; PredOrFuncStr = "func", PredOrFunc = pf_function
     ),
-    Args = [Arg],
-    ModuleName = unqualified(""),
-    parse_implicitly_qualified_name_and_arity(ModuleName, Arg, SymName, Arity).
+    ArgTerms = [ArgTerm],
+    parse_unqualified_name_and_arity(ArgTerm, SymName, Arity).
 
 %---------------------------------------------------------------------------%
 
@@ -259,12 +258,12 @@ parse_pred_or_func_and_args_general(MaybeModuleName, PredAndArgsTerm,
     varset.coerce(VarSet, GenericVarSet),
     (
         MaybeModuleName = yes(ModuleName),
-        parse_implicitly_qualified_sym_name_and_args(ModuleName, FunctorTerm,
-            GenericVarSet, ContextPieces, Result)
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, GenericVarSet,
+            ContextPieces, FunctorTerm, Result)
     ;
         MaybeModuleName = no,
-        parse_sym_name_and_args(GenericVarSet, ContextPieces,
-            FunctorTerm, Result)
+        parse_sym_name_and_args(GenericVarSet,
+            ContextPieces, FunctorTerm, Result)
     ),
     (
         Result = ok2(SymName, Args),

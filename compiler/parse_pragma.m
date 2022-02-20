@@ -1043,8 +1043,10 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             term.context_file(SpecContext, FileName),
             not string.remove_suffix(FileName, ".m", _),
 
-            try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
-                SpecSymNameTerm, SpecializedSymName),
+            try_parse_sym_name_and_no_args(SpecSymNameTerm,
+                SpecializedSymName0),
+            try_to_implicitly_qualify_sym_name(ModuleName,
+                SpecializedSymName0, SpecializedSymName),
             MaybeSpecSymName = yes(SpecializedSymName)
         )
     then

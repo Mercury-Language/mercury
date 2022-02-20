@@ -201,7 +201,6 @@
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_item.
-:- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_types.
 :- import_module recompilation.
 
@@ -1475,7 +1474,7 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
     % is taken to be a non-nested module unless explicitly qualified).
     mercury_term_parser.read_term_from_linestr(!.SourceFileName,
         FileString, FileStringLen, !LineContext, !LinePosn, FirstReadTerm),
-    read_term_to_iom_result(root_module_name, !.SourceFileName,
+    read_term_to_iom_result(DefaultModuleName, !.SourceFileName,
         FirstReadTerm, MaybeFirstIOM, !SeqNumCounter),
     (
         MaybeFirstIOM = read_iom_ok(FirstVarSet, FirstTerm, FirstIOM),

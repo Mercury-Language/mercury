@@ -39,7 +39,6 @@
 
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_pragma_foreign.
-:- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_type_defn.
 :- import_module parse_tree.parse_type_name.
@@ -63,7 +62,7 @@ parse_type_repn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
     ( if ArgTerms = [TypeTerm, RepnTerm] then
         TypeContextPieces = cord.from_list([words("In the first argument of"),
             quote("type_representation"), words("item:")]),
-        parse_type_defn_head(TypeContextPieces, root_module_name, VarSet,
+        parse_type_defn_head(TypeContextPieces, ModuleName, VarSet,
             TypeTerm, MaybeTypeSymNameAndArgs),
         ( if
             RepnTerm = term.functor(term.atom(AtomStr), RepnArgs, RepnContext),

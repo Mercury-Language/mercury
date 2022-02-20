@@ -462,8 +462,8 @@ parse_constructor(ModuleName, VarSet, Ordinal, ExistQVars, Term,
             MainTerm = BeforeConstraintsTerm
         ),
         ContextPieces = cord.singleton(words("In constructor definition:")),
-        parse_implicitly_qualified_sym_name_and_args(ModuleName, MainTerm,
-            VarSet, ContextPieces, MaybeFunctorAndArgTerms),
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
+            ContextPieces, MainTerm, MaybeFunctorAndArgTerms),
         (
             MaybeFunctorAndArgTerms = error2(FAASpecs),
             Functor = unqualified(""),  % won't be used due to the other errors
@@ -526,8 +526,8 @@ convert_constructor_arg_list(ModuleName, VarSet, [Term | Terms])
         = MaybeConstructorArgs :-
     ( if Term = term.functor(term.atom("::"), [NameTerm, TypeTerm], _) then
         ContextPieces = cord.singleton(words("In field name:")),
-        parse_implicitly_qualified_sym_name_and_args(ModuleName, NameTerm,
-            VarSet, ContextPieces, MaybeSymNameAndArgs),
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
+            ContextPieces, NameTerm, MaybeSymNameAndArgs),
         (
             MaybeSymNameAndArgs = error2(Specs),
             MaybeConstructorArgs = error1(Specs)
@@ -1608,8 +1608,8 @@ parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
         MaybeTypeCtorAndArgs = error2([Spec])
     ;
         Term = term.functor(_Functor, _ArgTerms, Context),
-        parse_implicitly_qualified_sym_name_and_args(ModuleName, Term, VarSet,
-            ContextPieces, MaybeSymNameArgs),
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
+            ContextPieces, Term, MaybeSymNameArgs),
         (
             MaybeSymNameArgs = error2(Specs),
             MaybeTypeCtorAndArgs = error2(Specs)

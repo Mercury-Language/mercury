@@ -27,19 +27,20 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.maybe_error.
-:- import_module parse_tree.parse_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
 :- import_module cord.
 :- import_module list.
+:- import_module maybe.
 :- import_module term.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
 
-:- pred parse_dcg_clause(module_name::in, varset::in, term::in, term::in,
-    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
+:- pred parse_dcg_clause(maybe(module_name)::in, varset::in,
+    term::in, term::in, prog_context::in, item_seq_num::in,
+    maybe1(item_clause_info)::out) is det.
 
     % parse_dcg_pred_goal(GoalTerm, MaybeGoal, DCGVar0, DCGVar, !VarSet):
     %
@@ -65,18 +66,25 @@
 
 %---------------------------------------------------------------------------%
 
-parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, Context, SeqNum,
-        MaybeIOM) :-
+parse_dcg_clause(MaybeModuleName, VarSet0, DCG_HeadTerm, DCG_BodyTerm,
+        Context, SeqNum, MaybeClause) :-
     varset.coerce(VarSet0, ProgVarSet0),
     new_dcg_var(ProgVarSet0, ProgVarSet1, counter.init(0), Counter0,
         DCGVar0),
     BodyContextPieces = cord.init,
-    parse_dcg_goal(DCG_Body, BodyContextPieces, MaybeBodyGoal,
+    parse_dcg_goal(DCG_BodyTerm, BodyContextPieces, MaybeBodyGoal,
         ProgVarSet1, ProgVarSet, Counter0, _Counter, DCGVar0, DCGVar),
 
     HeadContextPieces = cord.singleton(words("In DCG clause head:")),
-    parse_implicitly_qualified_sym_name_and_args(ModuleName, DCG_Head,
-        VarSet0, HeadContextPieces, MaybeFunctor),
+    (
+        MaybeModuleName = no,
+        parse_sym_name_and_args(VarSet0,
+            HeadContextPieces, DCG_HeadTerm, MaybeFunctor)
+    ;
+        MaybeModuleName = yes(ModuleName),
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet0,
+            HeadContextPieces, DCG_HeadTerm, MaybeFunctor)
+    ),
     (
         MaybeFunctor = ok2(SymName, ArgTerms0),
         list.map(term.coerce, ArgTerms0, ArgTerms1),
@@ -85,12 +93,11 @@ parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, Context, SeqNum,
             term.variable(DCGVar, Context)],
         ItemClause = item_clause_info(pf_predicate, SymName, ArgTerms,
             ProgVarSet, MaybeBodyGoal, Context, SeqNum),
-        Item = item_clause(ItemClause),
-        MaybeIOM = ok1(iom_item(Item))
+        MaybeClause = ok1(ItemClause)
     ;
         MaybeFunctor = error2(FunctorSpecs),
         Specs = FunctorSpecs ++ get_any_errors_warnings2(MaybeBodyGoal),
-        MaybeIOM = error1(Specs)
+        MaybeClause = error1(Specs)
     ).
 
 %---------------------------------------------------------------------------%
