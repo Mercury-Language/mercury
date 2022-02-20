@@ -543,7 +543,7 @@ parse_pragma_ordinary_foreign_proc(ModuleName, VarSet, ForeignLanguage,
         VarSet, PredAndVarsContextPieces, MaybePredAndArgs),
     (
         MaybePredAndArgs =
-            ok2(PredName0, NonFuncArgTerms - MaybeFuncResultTerm),
+            ok3(PredName0, NonFuncArgTerms, MaybeFuncResultTerm),
         % Is this a function or a predicate?
         (
             MaybeFuncResultTerm = yes(FuncResultTerm),
@@ -564,7 +564,7 @@ parse_pragma_ordinary_foreign_proc(ModuleName, VarSet, ForeignLanguage,
             MaybeNamePFPragmaVars = error3(PragmaVarsSpecs)
         )
     ;
-        MaybePredAndArgs = error2(PredAndArgsSpecs),
+        MaybePredAndArgs = error3(PredAndArgsSpecs),
         MaybeNamePFPragmaVars = error3(PredAndArgsSpecs)
     ),
     FlagsContextPieces = cord.from_list([words("In the third argument of"),

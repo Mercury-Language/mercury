@@ -41,7 +41,6 @@
 :- import_module integer.
 :- import_module maybe.
 :- import_module one_or_more.
-:- import_module pair.
 :- import_module term.
 :- import_module varset.
 
@@ -58,8 +57,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % Either ok2(SymName, Args - MaybeFuncRetArg) or error2(Specs).
-:- type maybe_pred_or_func(T) == maybe2(sym_name, pair(list(T), maybe(T))).
+    % Either ok3(SymName, Args, MaybeFuncRetArg) or error3(Specs).
+:- type maybe_pred_or_func(T) == maybe3(sym_name, list(T), maybe(T)).
 
 :- pred parse_pred_or_func_and_args(term(T)::in,
     pred_or_func::out, sym_name::out, list(term(T))::out) is semidet.
@@ -267,10 +266,10 @@ parse_pred_or_func_and_args_general(MaybeModuleName, PredAndArgsTerm,
     ),
     (
         Result = ok2(SymName, Args),
-        PredAndArgsResult = ok2(SymName, Args - MaybeFuncResult)
+        PredAndArgsResult = ok3(SymName, Args, MaybeFuncResult)
     ;
         Result = error2(Specs),
-        PredAndArgsResult = error2(Specs)
+        PredAndArgsResult = error3(Specs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -408,7 +407,7 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, ContextPieces, VarSet,
     parse_pred_or_func_and_args_general(MaybeModuleName, PredAndModesTerm,
         VarSet, ContextPieces, MaybePredAndArgs),
     (
-        MaybePredAndArgs = ok2(PredName, ArgModeTerms - MaybeRetModeTerm),
+        MaybePredAndArgs = ok3(PredName, ArgModeTerms, MaybeRetModeTerm),
         (
             MaybeRetModeTerm = no,
             parse_modes(allow_constrained_inst_var, VarSet, ContextPieces,
@@ -444,7 +443,7 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, ContextPieces, VarSet,
             )
         )
     ;
-        MaybePredAndArgs = error2(Specs),
+        MaybePredAndArgs = error3(Specs),
         MaybeNameAndModes = error3(Specs)
     ).
 
