@@ -1034,20 +1034,10 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
     ( if
         (
             PragmaTerms = [PredAndModesTerm, TypeSubnTerm],
-            MaybeSpecSymName = no
+            MaybeSpecSymNameTerm = no
         ;
-            PragmaTerms = [PredAndModesTerm, TypeSubnTerm, SpecSymNameTerm],
-
-            % This form of the pragma should not appear in source files.
-            SpecSymNameTerm = term.functor(_, _, SpecContext),
-            term.context_file(SpecContext, FileName),
-            not string.remove_suffix(FileName, ".m", _),
-
-            try_parse_sym_name_and_no_args(SpecSymNameTerm,
-                SpecializedSymName0),
-            try_to_implicitly_qualify_sym_name(ModuleName,
-                SpecializedSymName0, SpecializedSymName),
-            MaybeSpecSymName = yes(SpecializedSymName)
+            PragmaTerms = [PredAndModesTerm, TypeSubnTerm, SpecSymNameTerm0],
+            MaybeSpecSymNameTerm = yes(SpecSymNameTerm0)
         )
     then
         ArityOrModesContextPieces = cord.from_list(
@@ -1057,7 +1047,40 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             ArityOrModesContextPieces, VarSet, PredAndModesTerm,
             MaybePredOrProcSpec),
         (
+            MaybeSpecSymNameTerm = no,
+            MaybeSpecSymName = no,
+            SpecSymNameSpecs = []
+        ;
+            MaybeSpecSymNameTerm = yes(SpecSymNameTerm),
+            ( if
+                % This form of the pragma should not appear in source files.
+                SpecSymNameTerm = term.functor(_, _, SpecContext),
+                term.context_file(SpecContext, FileName),
+                not string.remove_suffix(FileName, ".m", _),
+
+                try_parse_sym_name_and_no_args(SpecSymNameTerm,
+                    SpecializedSymName0),
+                try_to_implicitly_qualify_sym_name(ModuleName,
+                    SpecializedSymName0, SpecializedSymName)
+            then
+                MaybeSpecSymName = yes(SpecializedSymName),
+                SpecSymNameSpecs = []
+            else
+                MaybeSpecSymName = no,
+                SpecSymNamePieces = [words("Malformed third argument of"),
+                    pragma_decl("type_spec"), words("declaration."), nl,
+                    words("This represents an internal error in the"),
+                    words("Mercury compiler that generated this file."), nl],
+                SpecSymNameSpec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree,
+                    get_term_context(SpecSymNameTerm), SpecSymNamePieces),
+                SpecSymNameSpecs = [SpecSymNameSpec]
+            )
+        ),
+        ( if
             MaybePredOrProcSpec = ok1(PredOrProcSpec),
+            SpecSymNameSpecs = []
+        then
             PredOrProcSpec = pred_or_proc_pfumm_name(PFUMM, PredName),
             conjunction_to_list(TypeSubnTerm, TypeSubnTerms),
 
@@ -1093,8 +1116,8 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                     phase_term_to_parse_tree, TypeSubnContext, Pieces),
                 MaybeIOM = error1([Spec])
             )
-        ;
-            MaybePredOrProcSpec = error1(Specs),
+        else
+            Specs = get_any_errors1(MaybePredOrProcSpec) ++ SpecSymNameSpecs,
             MaybeIOM = error1(Specs)
         )
     else
