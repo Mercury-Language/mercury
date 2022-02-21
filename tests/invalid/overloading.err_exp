@@ -7,5 +7,12 @@ overloading.m:057:   type error in argument of functor `opt_info'/9.
 overloading.m:057:   Argument 3 (CurIntervalId) has type
 overloading.m:057:     overloading.interval_id,
 overloading.m:057:   expected type was
-overloading.m:057:     tree234.tree234(term.var(term.generic),
-overloading.m:057:     tree234.tree234(overloading.goal_path, string)).
+overloading.m:057:     tree234.tree234(
+overloading.m:057:       term.var(
+overloading.m:057:         term.generic
+overloading.m:057:       ),
+overloading.m:057:       tree234.tree234(
+overloading.m:057:         overloading.goal_path,
+overloading.m:057:         string
+overloading.m:057:       )
+overloading.m:057:     ).

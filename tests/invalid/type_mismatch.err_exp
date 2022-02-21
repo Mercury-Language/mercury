@@ -19,9 +19,9 @@ type_mismatch.m:029:   in unification of variable `Tuple'
 type_mismatch.m:029:   and term `f3(V_5, Field, V_6)':
 type_mismatch.m:029:   type error in argument of functor `f3'/3.
 type_mismatch.m:029:   Argument 2 (Field) has type
-type_mismatch.m:029:     (some [F3c] F3c),
+type_mismatch.m:029:     some [F3c] (F3c),
 type_mismatch.m:029:   expected type was
-type_mismatch.m:029:     (some [F3b] F3b).
+type_mismatch.m:029:     some [F3b] (F3b).
 type_mismatch.m:036: In clause for predicate `p4a'/2:
 type_mismatch.m:036:   in unification of variable `Tuple'
 type_mismatch.m:036:   and term `f4(Field, V_5, V_6)':
@@ -29,7 +29,7 @@ type_mismatch.m:036:   type error in argument of functor `f4'/3.
 type_mismatch.m:036:   Argument 1 (Field) has type
 type_mismatch.m:036:     float,
 type_mismatch.m:036:   expected type was
-type_mismatch.m:036:     (some [F4] F4).
+type_mismatch.m:036:     some [F4] (F4).
 type_mismatch.m:039: In clause for predicate `p4b'/3:
 type_mismatch.m:039:   in unification of variable `Tuple'
 type_mismatch.m:039:   and term `f4(Field1, Field2, V_7)':
@@ -37,7 +37,7 @@ type_mismatch.m:039:   type error in arguments of functor `f4'/3.
 type_mismatch.m:039:   Argument 1 (Field1) has type
 type_mismatch.m:039:     float,
 type_mismatch.m:039:   expected type was
-type_mismatch.m:039:     (some [F4] F4).
+type_mismatch.m:039:     some [F4] (F4).
 type_mismatch.m:039:   Argument 2 (Field2) has type
 type_mismatch.m:039:     float,
 type_mismatch.m:039:   expected type was

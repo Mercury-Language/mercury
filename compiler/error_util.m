@@ -312,7 +312,7 @@
     --->    do_not_add_quotes
     ;       add_quotes.
 
-    % type_to_pieces(VarNamePrint, MaybeAddQuotes, TVarSet, InstVarSet,
+    % type_to_pieces(TVarSet, InstVarSet, VarNamePrint, MaybeAddQuotes,
     %   ExternalTypeParams, Type) = Pieces:
     %
     % Format Type for printing as part of an error message. Use TVarSet
@@ -321,7 +321,7 @@
     % higher order types. Put an existential quantifier in front of any type
     % that contains any of the type variables in ExternalTypeParams.
     %
-:- func type_to_pieces(var_name_print, maybe_add_quotes, tvarset, inst_varset,
+:- func type_to_pieces(tvarset, inst_varset, var_name_print, maybe_add_quotes,
     list(tvar), mer_type) = list(format_component).
 
 %---------------------------------------------------------------------------%
@@ -645,8 +645,8 @@
     % Convert Lines, a list of lines (each given by a list of format_components
     % *without* a final nl) into a condensed list of format_components
     % in which adjacent lines are separated by commas and newlines.
-    % What goes between the last line and the newline ending is not
-    % a comma but the value of Final.
+    % What goes after the end of the last line is not a comma, but
+    % the value of Final.
     %
 :- func component_list_to_line_pieces(list(list(format_component)),
     list(format_component)) = list(format_component).
@@ -693,6 +693,8 @@
 :- pred write_error_pieces_maybe_with_context(io.text_output_stream::in,
     globals::in, maybe(prog_context)::in, int::in,
     list(format_component)::in, io::di, io::uo) is det.
+
+:- func filter_out_newlines(list(format_component)) = list(format_component).
 
 :- func error_pieces_to_string(list(format_component)) = string.
 
@@ -794,60 +796,180 @@ extract_spec_msgs(Globals, Spec, Msgs) :-
 
 %---------------------------------------------------------------------------%
 
-type_to_pieces(VarNamePrint, MaybeAddQuotes, TVarSet, InstVarSet,
-        ExternalTypeParams, Type0) = Pieces :-
-    strip_builtin_qualifiers_from_type(Type0, Type),
+type_to_pieces(TVarSet, InstVarSet, VarNamePrint, MaybeAddQuotes,
+        ExternalTypeParams, Type) = Pieces :-
+    quote_pieces(MaybeAddQuotes, StartQuotePieces, EndQuotePieces),
     (
-        MaybeAddQuotes = do_not_add_quotes,
-        StartQuotePieces = [],
-        EndQuotePieces = []
+        ExternalTypeParams = [],
+        % Optimize the common case.
+        ExistQVars = []
     ;
-        MaybeAddQuotes = add_quotes,
-        StartQuotePieces = [error_util.prefix("`")],
-        EndQuotePieces = [error_util.suffix("'")]
+        ExternalTypeParams = [_ | _],
+        type_vars(Type, TypeVars),
+        set.list_to_set(ExternalTypeParams, ExternalTypeParamsSet),
+        set.list_to_set(TypeVars, TypeVarsSet),
+        set.intersect(ExternalTypeParamsSet, TypeVarsSet, ExistQVarsSet),
+        set.to_sorted_list(ExistQVarsSet, ExistQVars)
     ),
-    % For most types, we convert the type back to a term, and print that.
-    % This is done by the final else part of this if-then-else.
-    % This is ok for most types, which tend to be small.
-    ( if
-        % We handle higher order types differently, because when the
-        % actual and expected types differ in e.g. arity, having each
-        % argument type on its own line helps readability a *lot*.
-        Type = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity,
-            _LambdaEvalMethod)
-    then
-        Pieces = higher_order_type_to_pieces(VarNamePrint,
-            StartQuotePieces, EndQuotePieces, TVarSet, InstVarSet,
-            ExternalTypeParams, PorF, ArgTypes, HOInstInfo, Purity)
+    % We switch on ExistQVars because *both* arms of the above switch
+    % on ExternalTypeParams can generate ExistQVars = [].
+    (
+        ExistQVars = [],
+        FullPieces =
+            StartQuotePieces ++
+            type_pieces(TVarSet, InstVarSet, VarNamePrint,
+                EndQuotePieces, Type)
+    ;
+        ExistQVars = [_ | _],
+        ExistQVarStrs = list.map(mercury_var_to_string(TVarSet, VarNamePrint),
+            ExistQVars),
+        ExistPieces = strict_list_to_pieces(ExistQVarStrs),
+        ExistListPieces = [prefix("[")] ++ ExistPieces ++ [suffix("]")],
+        % We wrap the parentheses around the quantified type
+        % in prefix() and suffix() respectively because
+        %
+        % - these work the same as wrapping them in fixed()
+        %   when FullPieces are used as is, including the newlines, and
+        %
+        % - they generate better looking output when our caller strips
+        %   all the newlines out.
+        FullPieces = StartQuotePieces ++
+            [fixed("some")] ++ ExistListPieces ++ [prefix("(")] ++
+            [nl_indent_delta(1)] ++
+            type_pieces(TVarSet, InstVarSet, VarNamePrint, [], Type) ++
+            [nl_indent_delta(-1)] ++
+            [suffix(")")] ++ EndQuotePieces
+    ),
+
+    NoNlPieces = filter_out_newlines(FullPieces),
+    NoNlStr = error_pieces_to_string(NoNlPieces),
+    ( if string.count_codepoints(NoNlStr) < max_one_line_type_length then
+        Pieces = NoNlPieces
     else
-        unparse_type(Type, Term0),
-        list.map(term.coerce_var, ExternalTypeParams, ExistQVars),
-        maybe_add_existential_quantifier(ExistQVars, Term0, Term),
-        varset.coerce(TVarSet, VarSet),
-        TermPiece = words(mercury_term_to_string(VarSet, VarNamePrint, Term)),
-        Pieces = StartQuotePieces ++ [TermPiece] ++ EndQuotePieces
+        Pieces = FullPieces
     ).
 
-:- func higher_order_type_to_pieces(var_name_print,
-    list(format_component), list(format_component),
-    tvarset, inst_varset, list(tvar), pred_or_func, list(mer_type),
-    ho_inst_info, purity) = list(format_component).
+:- func max_one_line_type_length = int.
 
-higher_order_type_to_pieces(VarNamePrint, StartQuotePieces, EndQuotePieces,
-        TVarSet, InstVarSet, ExternalTypeParams,
-        PorF, ArgTypes, HOInstInfo, Purity) = Pieces :-
+max_one_line_type_length = 40.
+
+:- func type_pieces(tvarset, inst_varset, var_name_print,
+    list(format_component), mer_type) = list(format_component).
+
+type_pieces(TVarSet, InstVarSet, VarNamePrint, SuffixPieces, Type) = Pieces :-
+    % XXX Should we test whether a version of Pieces that has its
+    % newlines stripped from it is shorter than max_one_line_type_length?
+    % XXX The ideal solution would be to return some representation
+    % that would allow the code that converts error_specs to strings
+    % to pick
+    %
+    % - the version without the newlines, if there is enough space
+    %   left on the current line for it (using certain knowledge, not
+    %   the guess represented by max_one_line_type_length), but
+    % - falling back to the version with the newlines, if there is
+    %   not enough space.
+    %
+    % However, the multi-phase approach we use for converting format_components
+    % to strings does not make implementing the above approach straightforward.
+    (
+        Type = kinded_type(SubType, _Kind),
+        Pieces = type_pieces(TVarSet, InstVarSet, VarNamePrint,
+            SuffixPieces, SubType)
+    ;
+        Type = type_variable(TVar, _),
+        TVarStr = mercury_var_to_string(TVarSet, VarNamePrint, TVar),
+        Pieces = [fixed(TVarStr) | SuffixPieces]
+    ;
+        Type = builtin_type(BuiltinType),
+        builtin_type_to_string(BuiltinType, BuiltinTypeStr),
+        Pieces = [fixed(BuiltinTypeStr) | SuffixPieces]
+    ;
+        (
+            Type = defined_type(TypeCtorSymName0, ArgTypes, _),
+            strip_builtin_qualifier_from_sym_name(TypeCtorSymName0,
+                TypeCtorSymName),
+            TypeCtorNameList0 = sym_name_to_list(TypeCtorSymName),
+            TypeCtorNameList = list.map(maybe_quote_name, TypeCtorNameList0),
+            TypeCtorStr = string.join_list(".", TypeCtorNameList),
+            Const = TypeCtorStr,
+            NonConstStart = TypeCtorStr ++ "(",
+            NonConstEnd = ")"
+        ;
+            Type = tuple_type(ArgTypes, _),
+            Const = "{}",
+            NonConstStart = "{",
+            NonConstEnd = "}"
+        ;
+            Type = apply_n_type(TVar, ArgTypes, _),
+            % XXX None of the test cases cover the output we generate
+            % for apply_n_type, so I (zs) don't know whether this is ok.
+            TVarStr = mercury_var_to_string(TVarSet, VarNamePrint, TVar),
+            Const = TVarStr,
+            NonConstStart = TVarStr ++ "(",
+            NonConstEnd = ")"
+        ),
+        (
+            ArgTypes = [],
+            Pieces = [fixed(Const) | SuffixPieces]
+        ;
+            ArgTypes = [_ | _],
+            ArgTypePiecesList = list.map(
+                type_pieces(TVarSet, InstVarSet, VarNamePrint, []),
+                ArgTypes),
+            % We wrap NonConstStart and NonConstEnd in prefix() and suffix()
+            % respectively because
+            %
+            % - these work the same as wrapping them in fixed()
+            %   when the Pieces we generate are used as is, including the
+            %   newlines, and
+            %
+            % - they generate better looking output when our caller strips
+            %   all the newlines out of Pieces.
+            Pieces = [prefix(NonConstStart), nl_indent_delta(1)] ++
+                component_list_to_line_pieces(ArgTypePiecesList,
+                    [nl_indent_delta(-1)]) ++
+                [suffix(NonConstEnd) | SuffixPieces]
+        )
+    ;
+        Type = higher_order_type(_, _, _, _, _),
+        Pieces = higher_order_type_pieces(TVarSet, InstVarSet, VarNamePrint,
+            SuffixPieces, Type)
+    ).
+
+:- func maybe_quote_name(string) = string.
+
+maybe_quote_name(Name0) = Name :-
+    FunctorGraphicChars = string_graphic_chars(Name0),
+    (
+        FunctorGraphicChars = no_graphic_chars,
+        Name = Name0
+    ;
+        ( FunctorGraphicChars = some_graphic_chars
+        ; FunctorGraphicChars = all_graphic_chars
+        ),
+        Name = add_quotes(Name0)
+    ).
+
+:- inst mer_type_higher_order for mer_type/0
+    --->    higher_order_type(ground, ground, ground, ground, ground).
+
+:- func higher_order_type_pieces(tvarset::in, inst_varset::in,
+    var_name_print::in, list(format_component)::in,
+    mer_type::in(mer_type_higher_order))
+    = (list(format_component)::out) is det.
+
+higher_order_type_pieces(TVarSet, InstVarSet, VarNamePrint, SuffixPieces,
+        HigherOrderType) = Pieces :-
+    HigherOrderType = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity,
+        _LambdaEvalMethod),
     ( Purity = purity_pure,     PurityPieces = []
     ; Purity = purity_semipure, PurityPieces = [words("semipure")]
     ; Purity = purity_impure,   PurityPieces = [words("impure")]
     ),
-    ( PorF = pf_predicate,      PorFPieces = [words("pred")]
-    ; PorF = pf_function,       PorFPieces = [words("func")]
-    ),
     (
         HOInstInfo = none_or_default_func,
-        ArgPieces = list.map(
-            type_to_pieces(VarNamePrint, do_not_add_quotes,
-                TVarSet, InstVarSet, ExternalTypeParams),
+        ArgPiecesList = list.map(
+            type_pieces(TVarSet, InstVarSet, VarNamePrint, []),
             ArgTypes),
         FuncResultPrefixPieces = [],
         FuncResultSuffixPieces = [],
@@ -877,15 +999,13 @@ higher_order_type_to_pieces(VarNamePrint, StartQuotePieces, EndQuotePieces,
             % for the function result must be wrapped in parentheses.
             FuncResultPrefixPieces = [error_util.prefix("(")],
             FuncResultSuffixPieces = [error_util.suffix(")")],
-            ArgPieces = list.map(
-                type_and_mode_to_pieces(TVarSet, InstVarSet,
-                    ExternalTypeParams),
+            ArgPiecesList = list.map(
+                type_and_mode_to_pieces(TVarSet, InstVarSet),
                 ArgTypesModes),
             ArityMismatchPieces = []
         else
-            ArgPieces = list.map(
-                type_to_pieces(VarNamePrint, do_not_add_quotes,
-                    TVarSet, InstVarSet, ExternalTypeParams),
+            ArgPiecesList = list.map(
+                type_pieces(TVarSet, InstVarSet, VarNamePrint, []),
                 ArgTypes),
             FuncResultPrefixPieces = [],
             FuncResultSuffixPieces = [],
@@ -893,89 +1013,83 @@ higher_order_type_to_pieces(VarNamePrint, StartQuotePieces, EndQuotePieces,
                 words("The type says this"), words(PorFStr),
                 words("has"), int_fixed(NumArgTypes), words("arguments,"),
                 words("but its mode says it has"),
-                int_fixed(NumArgModes), error_util.suffix(".")]
+                int_fixed(NumArgModes), suffix(".")]
         ),
         DetismPieces = [words("is"), words(determinism_to_string(Detism))]
     ),
+    % For predicates and functions that have arguments,
+    % we wrap "pred(" and "func(" in prefix() and the closing ")" in suffix
+    % because
+    %
+    % - these work the same as wrapping them in fixed()
+    %   when the Pieces we generate are used as is, including the
+    %   newlines, and
+    %
+    % - they generate better looking output when our caller strips
+    %   all the newlines out of Pieces.
     (
         PorF = pf_predicate,
         (
-            ArgPieces = [],
-            ArgBlockPieces = []
+            ArgPiecesList = [],
+            PorFArgBlockPieces = [fixed("pred")]
         ;
-            ArgPieces = [_ | _],
-            ArgBlockPieces =
-                [error_util.suffix("("), nl_indent_delta(1)] ++
-                component_list_to_line_pieces(ArgPieces,
+            ArgPiecesList = [_ | _],
+            PorFArgBlockPieces =
+                [prefix("pred("), nl_indent_delta(1)] ++
+                component_list_to_line_pieces(ArgPiecesList,
                     [nl_indent_delta(-1)]) ++
-                [fixed(")")]
+                [suffix(")")]
         )
     ;
         PorF = pf_function,
         (
-            ArgPieces = [],
-            unexpected($pred, "function has no arguments")
+            ArgPiecesList = [],
+            unexpected($pred, "function has no return value")
         ;
-            ArgPieces = [ReturnValuePieces],
-            ArgBlockPieces = [fixed("=")] ++
+            ArgPiecesList = [ReturnValuePieces],
+            PorFArgBlockPieces = [fixed("(func)"), fixed("=")] ++
                 FuncResultPrefixPieces ++ ReturnValuePieces ++
                 FuncResultSuffixPieces
         ;
-            ArgPieces = [_, _ | _],
-            list.det_split_last(ArgPieces, FuncArgPieces, ReturnValuePieces),
-            ArgBlockPieces = [suffix("("), nl_indent_delta(1)] ++
-                component_list_to_line_pieces(FuncArgPieces,
+            ArgPiecesList = [_, _ | _],
+            list.det_split_last(ArgPiecesList,
+                FuncArgPiecesList, ReturnValuePieces),
+            PorFArgBlockPieces = [prefix("func("), nl_indent_delta(1)] ++
+                component_list_to_line_pieces(FuncArgPiecesList,
                     [nl_indent_delta(-1)]) ++
-                [fixed(") =")] ++ FuncResultPrefixPieces ++
+                [suffix(")"), fixed("=")] ++ FuncResultPrefixPieces ++
                 ReturnValuePieces ++ FuncResultSuffixPieces
         )
     ),
-    Pieces = StartQuotePieces ++
-        PurityPieces ++ PorFPieces ++ ArgBlockPieces ++ DetismPieces ++
-        EndQuotePieces ++
+    Pieces =
+        PurityPieces ++ PorFArgBlockPieces ++ DetismPieces ++
+        SuffixPieces ++
         PorFMismatchPieces ++ ArityMismatchPieces.
 
-:- func type_and_mode_to_pieces(tvarset, inst_varset, list(tvar),
+:- func type_and_mode_to_pieces(tvarset, inst_varset,
     pair(mer_type, mer_mode)) = list(format_component).
 
-type_and_mode_to_pieces(TVarSet, InstVarSet, ExternalTypeParams,
-        Type - Mode) = Pieces :-
-    TypePieces = type_to_pieces(print_name_only, do_not_add_quotes,
-        TVarSet, InstVarSet, ExternalTypeParams, Type),
+type_and_mode_to_pieces(TVarSet, InstVarSet, Type - Mode) = Pieces :-
+    TypePieces = type_pieces(TVarSet, InstVarSet, print_name_only, [], Type),
     ModeTerm0 = mode_to_term(output_mercury, Mode),
     term.coerce(ModeTerm0, ModeTerm),
     ModePiece =
         words(mercury_term_to_string(InstVarSet, print_name_only, ModeTerm)),
     Pieces = TypePieces ++ [fixed("::"), ModePiece].
 
-    % Check if any of the variables in the term are existentially quantified
-    % (occur in the first argument), and if so, add the appropriate
-    % quantification to the term. Otherwise, return the term unchanged.
-    %
-:- pred maybe_add_existential_quantifier(list(var)::in, term::in, term::out)
-    is det.
+:- pred quote_pieces(maybe_add_quotes::in,
+    list(format_component)::out, list(format_component)::out) is det.
 
-maybe_add_existential_quantifier(ExternalTypeParams, !Term) :-
-    term.vars(!.Term, Vars),
-    ExistQVars = set.to_sorted_list(set.intersect(
-        set.list_to_set(ExternalTypeParams), set.list_to_set(Vars))),
+quote_pieces(MaybeAddQuotes, StartQuotePieces, EndQuotePieces) :-
     (
-        ExistQVars = []
+        MaybeAddQuotes = do_not_add_quotes,
+        StartQuotePieces = [],
+        EndQuotePieces = []
     ;
-        ExistQVars = [_ | _],
-        QTerm = make_list_term(ExistQVars),
-        !:Term = term.functor(term.atom("some"), [QTerm, !.Term],
-            term.context_init)
+        MaybeAddQuotes = add_quotes,
+        StartQuotePieces = [prefix("`")],
+        EndQuotePieces = [suffix("'")]
     ).
-
-:- func make_list_term(list(var)) = term.
-
-make_list_term([]) =
-    term.functor(term.atom("[]"), [], term.context_init).
-make_list_term([Var | Vars]) =
-    term.functor(term.atom("[|]"),
-        [term.variable(Var, context_init), make_list_term(Vars)],
-        term.context_init).
 
 %---------------------------------------------------------------------------%
 
@@ -1835,13 +1949,13 @@ write_msg_components(Stream, [Component | Components], MaybeContext, Indent,
 string_to_words_piece(Str) = words(Str).
 
 list_to_pieces([]) = [].
-list_to_pieces([Elem]) = [words(Elem)].
+list_to_pieces([Elem]) = [fixed(Elem)].
 list_to_pieces([Elem1, Elem2]) = [fixed(Elem1), words("and"), fixed(Elem2)].
 list_to_pieces([Elem1, Elem2, Elem3 | Elems]) =
     [fixed(Elem1 ++ ",") | list_to_pieces([Elem2, Elem3 | Elems])].
 
 strict_list_to_pieces([]) = [].
-strict_list_to_pieces([Elem]) = [words(Elem)].
+strict_list_to_pieces([Elem]) = [fixed(Elem)].
 strict_list_to_pieces([Elem1, Elem2 | Elems]) =
     [fixed(Elem1 ++ ",") | strict_list_to_pieces([Elem2 | Elems])].
 
@@ -2093,6 +2207,21 @@ write_msg_line_rest(Stream, [Word | Words], !IO) :-
     io.write_char(Stream, ' ', !IO),
     io.write_string(Stream, Word, !IO),
     write_msg_line_rest(Stream, Words, !IO).
+
+%---------------------------------------------------------------------------%
+
+filter_out_newlines([]) = [].
+filter_out_newlines([Piece | Pieces]) = FilteredPieces :-
+    FilteredPiecesTail = filter_out_newlines(Pieces),
+    ( if
+        ( Piece = nl
+        ; Piece = nl_indent_delta(_)
+        )
+    then
+        FilteredPieces = FilteredPiecesTail
+    else
+        FilteredPieces = [Piece | FilteredPiecesTail]
+    ).
 
 error_pieces_to_string(Components) =
     error_pieces_to_string_2(first_in_msg, Components).

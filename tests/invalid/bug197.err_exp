@@ -5,18 +5,9 @@ bug197.m:025:   However, a predicate of that name does exist with arity 4.
 bug197.m:026: In clause for predicate `foo'/3:
 bug197.m:026:   in argument 1 of call to predicate `list.foldl'/4:
 bug197.m:026:   type error: argument has type
-bug197.m:026:     pred(
-bug197.m:026:       string,
-bug197.m:026:       T,
-bug197.m:026:       V_6,
-bug197.m:026:       V_6
-bug197.m:026:     ),
+bug197.m:026:     pred(string, T, V_6, V_6),
 bug197.m:026:   expected type was
-bug197.m:026:     pred(
-bug197.m:026:       L,
-bug197.m:026:       A,
-bug197.m:026:       A
-bug197.m:026:     ).
+bug197.m:026:     pred(L, A, A).
 bug197.m:032: Error: cannot use !:SS here due to the surrounding lambda
 bug197.m:032:   expression; you may only refer to !.SS.
 bug197.m:026:   Here is the surrounding context that makes state variable SS

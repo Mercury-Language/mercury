@@ -28,7 +28,7 @@ types2.m:046: In clause for predicate `bar'/1:
 types2.m:046:   type error in unification of variable `X'
 types2.m:046:   and constant `0'.
 types2.m:046:   variable `X' has type
-types2.m:046:     (some [BarTypeParam] BarTypeParam),
+types2.m:046:     some [BarTypeParam] (BarTypeParam),
 types2.m:046:   constant `0' has type
 types2.m:046:     int.
 types2.m:046:   The partial type assignment was:

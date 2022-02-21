@@ -4,16 +4,9 @@ higher_order_mode_mismatch.m:028:   and term `P(In1, V_7)':
 higher_order_mode_mismatch.m:028:   type error in arguments of higher-order
 higher_order_mode_mismatch.m:028:   term (with arity 2).
 higher_order_mode_mismatch.m:028:   Functor (P) has type
-higher_order_mode_mismatch.m:028:     pred(
-higher_order_mode_mismatch.m:028:       int,
-higher_order_mode_mismatch.m:028:       int,
-higher_order_mode_mismatch.m:028:       int
-higher_order_mode_mismatch.m:028:     ),
+higher_order_mode_mismatch.m:028:     pred(int, int, int),
 higher_order_mode_mismatch.m:028:   expected type was
-higher_order_mode_mismatch.m:028:     func(
-higher_order_mode_mismatch.m:028:       V_1,
-higher_order_mode_mismatch.m:028:       V_2
-higher_order_mode_mismatch.m:028:     ) = int.
+higher_order_mode_mismatch.m:028:     func(V_1, V_2) = int.
 higher_order_mode_mismatch.m:028:   Argument 1 (In1) has type
 higher_order_mode_mismatch.m:028:     int,
 higher_order_mode_mismatch.m:028:   expected type was
@@ -22,30 +15,16 @@ higher_order_mode_mismatch.m:031: In clause for predicate `test_2'/3:
 higher_order_mode_mismatch.m:031:   in argument 1 (i.e. the predicate term) of
 higher_order_mode_mismatch.m:031:   higher-order predicate call:
 higher_order_mode_mismatch.m:031:   type error: variable `F' has type
-higher_order_mode_mismatch.m:031:     func(
-higher_order_mode_mismatch.m:031:       int,
-higher_order_mode_mismatch.m:031:       int
-higher_order_mode_mismatch.m:031:     ) = int,
+higher_order_mode_mismatch.m:031:     func(int, int) = int,
 higher_order_mode_mismatch.m:031:   expected type was
-higher_order_mode_mismatch.m:031:     pred(
-higher_order_mode_mismatch.m:031:       V_1,
-higher_order_mode_mismatch.m:031:       V_2,
-higher_order_mode_mismatch.m:031:       V_3
-higher_order_mode_mismatch.m:031:     ).
+higher_order_mode_mismatch.m:031:     pred(V_1, V_2, V_3).
 higher_order_mode_mismatch.m:034: In clause for predicate `test_3'/3:
 higher_order_mode_mismatch.m:034:   in argument 1 (i.e. the predicate term) of
 higher_order_mode_mismatch.m:034:   higher-order predicate call:
 higher_order_mode_mismatch.m:034:   type error: variable `F' has type
-higher_order_mode_mismatch.m:034:     func(
-higher_order_mode_mismatch.m:034:       int,
-higher_order_mode_mismatch.m:034:       int
-higher_order_mode_mismatch.m:034:     ) = int,
+higher_order_mode_mismatch.m:034:     func(int, int) = int,
 higher_order_mode_mismatch.m:034:   expected type was
-higher_order_mode_mismatch.m:034:     pred(
-higher_order_mode_mismatch.m:034:       V_1,
-higher_order_mode_mismatch.m:034:       V_2,
-higher_order_mode_mismatch.m:034:       V_3
-higher_order_mode_mismatch.m:034:     ).
+higher_order_mode_mismatch.m:034:     pred(V_1, V_2, V_3).
 higher_order_mode_mismatch.m:037: In clause for predicate `test_4'/3:
 higher_order_mode_mismatch.m:037:   in unification of variable `Out'
 higher_order_mode_mismatch.m:037:   and term `In1(In2)':
@@ -54,9 +33,7 @@ higher_order_mode_mismatch.m:037:   term (with arity 1).
 higher_order_mode_mismatch.m:037:   Functor (In1) has type
 higher_order_mode_mismatch.m:037:     int,
 higher_order_mode_mismatch.m:037:   expected type was
-higher_order_mode_mismatch.m:037:     func(
-higher_order_mode_mismatch.m:037:       V_1
-higher_order_mode_mismatch.m:037:     ) = int.
+higher_order_mode_mismatch.m:037:     func(V_1) = int.
 higher_order_mode_mismatch.m:037:   Argument 1 (In2) has type
 higher_order_mode_mismatch.m:037:     int,
 higher_order_mode_mismatch.m:037:   expected type was
@@ -67,8 +44,5 @@ higher_order_mode_mismatch.m:040:   higher-order predicate call:
 higher_order_mode_mismatch.m:040:   type error: variable `In1' has type
 higher_order_mode_mismatch.m:040:     int,
 higher_order_mode_mismatch.m:040:   expected type was
-higher_order_mode_mismatch.m:040:     pred(
-higher_order_mode_mismatch.m:040:       V_1,
-higher_order_mode_mismatch.m:040:       V_2
-higher_order_mode_mismatch.m:040:     ).
+higher_order_mode_mismatch.m:040:     pred(V_1, V_2).
 For more information, recompile with `-E'.

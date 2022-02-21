@@ -7,11 +7,8 @@ type_error_ambiguous.m:039:   variable `X' has overloaded actual/expected types
 type_error_ambiguous.m:039:   {
 type_error_ambiguous.m:039:     (expected) int,
 type_error_ambiguous.m:039:     (inferred) character,
-type_error_ambiguous.m:039:     (inferred) pred(
-type_error_ambiguous.m:039:       int,
-type_error_ambiguous.m:039:       string
-type_error_ambiguous.m:039:     ),
 type_error_ambiguous.m:039:     (inferred) type_error_ambiguous.t1,
-type_error_ambiguous.m:039:     (inferred) type_error_ambiguous.t2
+type_error_ambiguous.m:039:     (inferred) type_error_ambiguous.t2,
+type_error_ambiguous.m:039:     (inferred) pred(int, string)
 type_error_ambiguous.m:039:   }.
 For more information, recompile with `-E'.

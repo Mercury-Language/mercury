@@ -115,6 +115,15 @@
 
 %---------------------------------------------------------------------------%
 
+:- type graphic_char_in_string
+    --->    no_graphic_chars
+    ;       some_graphic_chars
+    ;       all_graphic_chars.
+
+:- func string_graphic_chars(string) = graphic_char_in_string.
+
+%---------------------------------------------------------------------------%
+
     % Is this string a Mercury operator?
     %
 :- pred mercury_op(string::in) is semidet.
@@ -124,6 +133,7 @@
 
 :- implementation.
 
+:- import_module char.
 :- import_module int.
 :- import_module mercury_term_lexer.
 :- import_module ops.
@@ -520,6 +530,44 @@ mercury_format_quoted_atom(NextToGraphicToken, Name, S, !U) :-
         add_string("'", S, !U)
     else
         add_quoted_atom(Name, S, !U)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- type graphic_char
+    --->    not_seen_graphic_char
+    ;       seen_graphic_char.
+
+:- type non_graphic_char
+    --->    not_seen_non_graphic_char
+    ;       seen_non_graphic_char.
+
+string_graphic_chars(Str) = Result :-
+    string.foldl2(string_graphic_chars_acc, Str,
+        not_seen_graphic_char, Graphic, not_seen_non_graphic_char, NonGraphic),
+    (
+        Graphic = not_seen_graphic_char,
+        Result = no_graphic_chars
+    ;
+        Graphic = seen_graphic_char,
+        (
+            NonGraphic = not_seen_non_graphic_char,
+            Result = all_graphic_chars
+        ;
+            NonGraphic = seen_non_graphic_char,
+            Result = some_graphic_chars
+        )
+    ).
+
+:- pred string_graphic_chars_acc(char::in,
+    graphic_char::in, graphic_char::out,
+    non_graphic_char::in, non_graphic_char::out) is det.
+
+string_graphic_chars_acc(Char, !Graphic, !NonGraphic) :-
+    ( if mercury_term_lexer.graphic_token_char(Char) then
+        !:Graphic = seen_graphic_char
+    else
+        !:NonGraphic = seen_non_graphic_char
     ).
 
 %---------------------------------------------------------------------------%

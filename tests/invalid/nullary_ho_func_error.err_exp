@@ -5,7 +5,7 @@ nullary_ho_func_error.m:026:   in argument 1 of functor `apply_nullary_func/1':
 nullary_ho_func_error.m:026:   type error in unification of argument
 nullary_ho_func_error.m:026:   and constant `pi'.
 nullary_ho_func_error.m:026:   argument has type
-nullary_ho_func_error.m:026:     func = T,
+nullary_ho_func_error.m:026:     (func) = T,
 nullary_ho_func_error.m:026:   constant `pi' has type
 nullary_ho_func_error.m:026:     float.
 nullary_ho_func_error.m:026:   The partial type assignment was:
