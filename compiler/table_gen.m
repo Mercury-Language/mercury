@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
 % Copyright (C) 2015-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: table_gen.m.
 % Main authors: zs, ohutch.
@@ -35,7 +35,7 @@
 % negated contexts in general. However, the detection is done at runtime,
 % since there is no known way of doing this compile time.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.table_gen.
 :- interface.
@@ -47,12 +47,12 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred table_gen_process_module(module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -110,8 +110,8 @@
 :- import_module unit.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Values of this type map the pred_id of a minimal_model tabled
     % predicate to the pred_id of its generator variant.
@@ -197,7 +197,7 @@ table_gen_process_proc(TraceTableIO, PredId, ProcId, ProcInfo0, PredInfo0,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred table_gen_process_io_proc(pred_id::in, proc_id::in, proc_info::in,
     pred_info::in, module_info::in, module_info::out,
@@ -367,7 +367,7 @@ report_missing_tabled_for_io(ModuleInfo, PredInfo, PredId, ProcId) = Spec :-
     Spec = simplest_spec($pred, severity_error, phase_code_gen,
         Context, Pieces).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred table_gen_transform_proc_if_possible(tabled_eval_method::in,
     pred_id::in, proc_id::in, proc_info::in, proc_info::out,
@@ -424,32 +424,20 @@ find_grade_problems_for_tabling(ModuleInfo, PredId, ProcId, TabledMethod,
         ( Target = target_csharp
         ; Target = target_java
         ),
-        tabling_grade_error_prefix_pieces(ModuleInfo, PredId, ProcId,
-            TabledMethod, TargetContext, TargetPrefixPieces),
-        TargetPieces = TargetPrefixPieces ++
-            [words("tabling is implemented only on the C backend."), nl],
-        TargetSpec = simplest_spec($pred, severity_informational,
-            phase_code_gen, TargetContext, TargetPieces),
+        general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId,
+            TabledMethod, gen_reason_non_c_backend, TargetSpec),
         !:Specs = [TargetSpec | !.Specs]
     ),
     globals.get_gc_method(Globals, GC),
     (
         GC = gc_accurate,
-        tabling_grade_error_prefix_pieces(ModuleInfo, PredId, ProcId,
-            TabledMethod, GcContext, GcPrefixPieces),
-        GcPieces = GcPrefixPieces ++
-            [words("tabling is not compatible with --gc accurate."), nl],
-        GcSpec = simplest_spec($pred, severity_informational,
-            phase_code_gen, GcContext, GcPieces),
+        general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId,
+            TabledMethod, gen_reason_gc_accurate, GcSpec),
         !:Specs = [GcSpec | !.Specs]
     ;
         GC = gc_hgc,
-        tabling_grade_error_prefix_pieces(ModuleInfo, PredId, ProcId,
-            TabledMethod, GcContext, GcPrefixPieces),
-        GcPieces = GcPrefixPieces ++
-            [words("tabling is not compatible with --gc hgc."), nl],
-        GcSpec = simplest_spec($pred, severity_informational,
-            phase_code_gen, GcContext, GcPieces),
+        general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId,
+            TabledMethod, gen_reason_gc_hgc, GcSpec),
         !:Specs = [GcSpec | !.Specs]
     ;
         ( GC = gc_automatic
@@ -463,12 +451,8 @@ find_grade_problems_for_tabling(ModuleInfo, PredId, ProcId, TabledMethod,
         Parallel = no
     ;
         Parallel = yes,
-        tabling_grade_error_prefix_pieces(ModuleInfo, PredId, ProcId,
-            TabledMethod, ParContext, ParPrefixPieces),
-        ParPieces = ParPrefixPieces ++
-            [words("tabling is not compatible with parallel execution."), nl],
-        ParSpec = simplest_spec($pred, severity_informational,
-            phase_code_gen, ParContext, ParPieces),
+        general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId,
+            TabledMethod, gen_reason_parallel, ParSpec),
         !:Specs = [ParSpec | !.Specs]
     ),
     (
@@ -476,28 +460,15 @@ find_grade_problems_for_tabling(ModuleInfo, PredId, ProcId, TabledMethod,
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         (
             HighLevelCode = yes,
-            tabling_grade_error_prefix_pieces(ModuleInfo, PredId, ProcId,
-                TabledMethod, HighLevelCodeContext, HighLevelCodePrefixPieces),
-            HighLevelCodePieces = HighLevelCodePrefixPieces ++
-                [words("minimal model tabling"),
-                words("is not compatible with generating high level code."),
-                nl],
-            HighLevelCodeSpec = simplest_spec($pred, severity_informational,
-                phase_code_gen, HighLevelCodeContext, HighLevelCodePieces),
-            !:Specs = [HighLevelCodeSpec | !.Specs]
+            mm_cannot_table_reason_spec(mm_reason_hlc, HLCSpec),
+            !:Specs = [HLCSpec | !.Specs]
         ;
             HighLevelCode = no
         ),
         globals.lookup_bool_option(Globals, use_trail, UseTrail),
         (
             UseTrail = yes,
-            tabling_grade_error_prefix_pieces(ModuleInfo, PredId, ProcId,
-                TabledMethod, TrailContext, TrailPrefixPieces),
-            TrailPieces = TrailPrefixPieces ++
-                [words("minimal model tabling"),
-                words("is not compatible with trailing."), nl],
-            TrailSpec = simplest_spec($pred, severity_informational,
-                phase_code_gen, TrailContext, TrailPieces),
+            mm_cannot_table_reason_spec(mm_reason_trailing, TrailSpec),
             !:Specs = [TrailSpec | !.Specs]
         ;
             UseTrail = no
@@ -505,13 +476,7 @@ find_grade_problems_for_tabling(ModuleInfo, PredId, ProcId, TabledMethod,
         globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
         globals.lookup_bool_option(Globals, profile_deep, ProfileDeep),
         ( if ( ProfileCalls = yes ; ProfileDeep = yes ) then
-            tabling_grade_error_prefix_pieces(ModuleInfo, PredId, ProcId,
-                TabledMethod, ProfContext, ProfPrefixPieces),
-            ProfPieces = ProfPrefixPieces ++
-                [words("minimal model tabling"),
-                words("is not compatible with profiling."), nl],
-            ProfSpec = simplest_spec($pred, severity_informational,
-                phase_code_gen, ProfContext, ProfPieces),
+            mm_cannot_table_reason_spec(mm_reason_profiling, ProfSpec),
             !:Specs = [ProfSpec | !.Specs]
         else
             true
@@ -523,20 +488,106 @@ find_grade_problems_for_tabling(ModuleInfo, PredId, ProcId, TabledMethod,
         )
     ).
 
-:- pred tabling_grade_error_prefix_pieces(module_info::in,
-    pred_id::in, proc_id::in, tabled_eval_method::in,
-    prog_context::out, list(format_component)::out) is det.
+%---------------------%
 
-tabling_grade_error_prefix_pieces(ModuleInfo, PredId, ProcId, TabledMethod,
-        Context, PrefixPieces) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_context(PredInfo, Context),
-    ProcPieces = describe_one_proc_name(ModuleInfo, should_module_qualify,
-        proc(PredId, ProcId)),
-    TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
-    PrefixPieces = [words("Ignoring the"), pragma_decl(TabledMethodStr),
-        words("declaration for")] ++ ProcPieces ++
-        [suffix(","), words("because")].
+:- pred general_cannot_table_reason_spec(module_info::in,
+    pred_id::in, proc_id::in, tabled_eval_method::in,
+    general_cannot_table_reason::in, error_spec::out) is det.
+
+general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId, TabledMethod,
+        Reason, Spec) :-
+    (
+        ( TabledMethod = tabled_loop_check
+        ; TabledMethod = tabled_memo(_)
+        ),
+        TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        ProcPieces = describe_one_proc_name(ModuleInfo, should_module_qualify,
+            proc(PredId, ProcId)),
+        pred_info_get_context(PredInfo, Context),
+        Pieces = [words("Ignoring the"), pragma_decl(TabledMethodStr),
+            words("declaration for")] ++ ProcPieces ++ [suffix(","),
+            words("because tabling")] ++ gen_cannot_table_reason_desc(Reason),
+        Spec = simplest_spec($pred, severity_informational, phase_code_gen,
+            Context, Pieces)
+    ;
+        TabledMethod = tabled_io(_, _),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        pred_info_get_context(PredInfo, Context),
+        Pieces = [words("Warning: debugging implicitly tables"),
+            words("all predicates that perform I/O"),
+            words("(to make the mdb command `retry' safe across I/O),"),
+            words("but tabling")] ++ gen_cannot_table_reason_desc(Reason),
+        Spec = simplest_spec($pred, severity_informational, phase_code_gen,
+            Context, Pieces)
+    ;
+        TabledMethod = tabled_minimal(_),
+        Pieces = [words("Error: minimal model tabling")] ++
+            gen_cannot_table_reason_desc(Reason),
+        % We generate one no-context error_spec for each affected predicate,
+        % but we print only one copy of each duplicated error_spec.
+        Spec = simplest_no_context_spec($pred, severity_error, phase_code_gen,
+            Pieces)
+    ).
+
+:- type general_cannot_table_reason
+    --->    gen_reason_non_c_backend
+    ;       gen_reason_gc_accurate
+    ;       gen_reason_gc_hgc
+    ;       gen_reason_parallel.
+
+:- func gen_cannot_table_reason_desc(general_cannot_table_reason)
+    = list(format_component).
+
+gen_cannot_table_reason_desc(Reason) = Desc :-
+    (
+        Reason = gen_reason_non_c_backend,
+        Desc = [words("is implemented only on the C backend."), nl]
+    ;
+        Reason = gen_reason_gc_accurate,
+        Desc = [words("is not compatible with --gc accurate."), nl]
+    ;
+        Reason = gen_reason_gc_hgc,
+        Desc = [words("is not compatible with --gc hgc."), nl]
+    ;
+        Reason = gen_reason_parallel,
+        Desc = [words("is not compatible with parallel execution."), nl]
+    ).
+
+%---------------------%
+
+:- pred mm_cannot_table_reason_spec(mm_cannot_table_reason::in,
+    error_spec::out) is det.
+
+mm_cannot_table_reason_spec(Reason, Spec) :-
+    Pieces = [words("Error: minimal model tabling is not compatible with")] ++
+        mm_cannot_table_reason_desc(Reason),
+    % We generate one no-context error_spec for each affected predicate,
+    % but we print only one copy of each duplicated error_spec.
+    Spec = simplest_no_context_spec($pred, severity_error, phase_code_gen,
+        Pieces).
+
+:- type mm_cannot_table_reason
+    --->    mm_reason_hlc
+    ;       mm_reason_trailing
+    ;       mm_reason_profiling.
+
+:- func mm_cannot_table_reason_desc(mm_cannot_table_reason)
+    = list(format_component).
+
+mm_cannot_table_reason_desc(Reason) = Desc :-
+    (
+        Reason = mm_reason_hlc,
+        Desc = [words("generating high level code."), nl]
+    ;
+        Reason = mm_reason_trailing,
+        Desc = [words("trailing."), nl]
+    ;
+        Reason = mm_reason_profiling,
+        Desc = [words("profiling."), nl]
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- pred table_gen_transform_proc(tabled_eval_method::in,
     pred_id::in, proc_id::in,
@@ -735,7 +786,7 @@ table_gen_transform_proc(TabledMethod, PredId, ProcId, !ProcInfo, !PredInfo,
     repuritycheck_proc(!.ModuleInfo, proc(PredId, ProcId), !PredInfo),
     module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % Example of transformation for model_det loopcheck:
 %
@@ -965,7 +1016,7 @@ create_new_loop_goal(OrigGoal, Statistics, PredId, ProcId,
         purity_impure, Context, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % Example of transformation for model_det memo:
 %
@@ -1321,7 +1372,7 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
         Context, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % Example of transformation for tabling I/O, for I/O primitives (i.e.
 % predicates defined by foreign_procs that take an input/output pair of
@@ -1615,7 +1666,7 @@ create_new_io_goal(OrigGoal, TableIoEntryKind, Unitize, TableIoStates,
         purity_impure, Context, BodyGoalInfo),
     Goal = hlds_goal(BodyGoalExpr, BodyGoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % Example of transformation for nondet minimal_model:
 %
@@ -1732,7 +1783,7 @@ create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
         purity_impure, Context, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % Example of transformation for nondet minimal_model_own_stack:
 %
@@ -2212,7 +2263,7 @@ keep_marker(marker_has_format_call) = yes.
 keep_marker(marker_has_rhs_lambda) = yes.
 keep_marker(marker_fact_table_semantic_errors) = no.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred generate_gen_proc_table_info(table_info::in, pred_id::in, proc_id::in,
     tabled_eval_method::in,
@@ -2243,7 +2294,7 @@ generate_gen_proc_table_info(TableInfo, PredId, ProcId, TabledMethod,
         Context, NumInputs, NumOutputs, InputSteps, MaybeOutputSteps,
         TableArgTypeInfo, TabledMethod).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a goal for doing lookups in call tables for
     % loopcheck and memo predicates.
@@ -2415,7 +2466,7 @@ generate_mm_call_table_lookup_goal(NumberedVars, PredId, ProcId,
         detism_det, purity_impure, Context, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % Utility predicates used when creating table lookup goals.
 
@@ -2534,7 +2585,7 @@ attach_call_table_tip(Goal0, Goal) :-
     goal_info_set_features(Features, GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a sequence of lookup goals for the given variables.
     % The generated code is used for lookups in both call tables
@@ -2820,7 +2871,7 @@ gen_general_lookup_call(IsAddr, MaybeAddrString, Type, ForeignArg, ArgName,
         cur_table_node_name ++ ", " ++ TypeInfoArgName ++ ", " ++
         ArgName ++ ", " ++ next_table_node_name ++ ");\n".
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a goal for saving the output arguments in an answer block
     % in memo predicates.
@@ -2997,7 +3048,7 @@ generate_all_save_goals(NumberedSaveVars, BaseVarName, BlockSize,
         answer_block_name ++ ");\n",
     CreateSaveCodeStr = CreateCodeStr ++ SaveCodeStr.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a sequence of save goals for the given variables.
     %
@@ -3127,7 +3178,7 @@ gen_save_call_for_type(CtorCat, Type, Var, Offset, DebugArgStr, Context,
             ++ Name ++ ");\n"
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a goal for restoring the output arguments from
     % an answer block in memo predicates.
@@ -3288,7 +3339,7 @@ generate_mm_restore_or_suspend_goal(PredName, Detism, Purity,
         Context, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a sequence of restore goals for the given variables.
     %
@@ -3340,7 +3391,7 @@ gen_restore_call_for_type(DebugArgStr, CtorCat, Type, OrigInstmapDelta, Var,
         answer_block_name ++ ", " ++ int_to_string(Offset) ++ ", " ++
         Name ++ ");\n".
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func infinite_recursion_msg = string.
 
@@ -3379,7 +3430,7 @@ generate_error_goal(TableInfo, Context, Msg, !VarSet, !VarTypes, Goal) :-
         detism_erroneous, purity_impure, Context, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred generate_new_table_var(string::in, mer_type::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
@@ -3454,7 +3505,7 @@ append_fail(Goal, GoalAndThenFail) :-
     GoalAndThenFail =
         hlds_goal(conj(plain_conj, [Goal, fail_goal]), ConjGoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func consumer_type = mer_type.
 
@@ -3561,7 +3612,7 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
         unexpected($pred, "bad var")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred create_instmap_delta(hlds_goals::in, instmap_delta::out) is det.
 
@@ -3573,7 +3624,7 @@ create_instmap_delta([Goal | Rest], IMD) :-
     create_instmap_delta(Rest, IMD1),
     instmap_delta_apply_instmap_delta(IMD0, IMD1, test_size, IMD).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred add_proc_table_struct(pred_proc_id::in, proc_table_struct_info::in,
     proc_info::in, module_info::in, module_info::out) is det.
@@ -3593,7 +3644,7 @@ add_proc_table_struct(PredProcId, ProcTableStructInfo, ProcInfo,
         TableStructMap0, TableStructMap),
     module_info_set_table_struct_map(TableStructMap, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type var_mode_method
     --->    var_mode_method(
@@ -3711,7 +3762,7 @@ goal_info_init_hide(NonLocals, InstmapDelta, Detism, Purity, Context,
         GoalInfo0),
     goal_info_add_feature(feature_hide_debug_event, GoalInfo0, GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % For backward compatibility, we treat type_info_type as user_type.
     % This used to make the tabling of type_infos more expensive than
@@ -3821,7 +3872,7 @@ type_save_category(CtorCat, Name) :-
         unexpected($pred, "unexpected category")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred get_enum_max_int_tag(type_table::in, type_ctor::in, int::out) is det.
 
@@ -3864,7 +3915,7 @@ max_enum_int_tag(CtorRepn, !MaxIntTag) :-
         unexpected($pred, "enum has non-int tag")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func get_debug_arg_string(table_info) = string.
 
@@ -3940,7 +3991,7 @@ maybe_step_stats_arg_addr(MaybeStatsRef, SeqNum) = ArgStr :-
 step_stats_arg_addr(StatsRef, SeqNum) = ArgStr :-
     ArgStr = StatsRef ++ ".MR_ts_steps" ++ "[" ++ int_to_string(SeqNum) ++ "]".
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred table_gen_make_type_info_var(mer_type::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
@@ -3984,7 +4035,7 @@ table_gen_make_type_info_vars(Types, Context, !VarSet, !VarTypes,
     % Put the new module_info, pred_info, and proc_info back in the table_info.
     table_info_init(ModuleInfo, PredInfo, ProcInfo, !:TableInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred var_mode_pos_is_io_state(vartypes::in, var_mode_pos_method::in)
     is semidet.
@@ -4004,7 +4055,7 @@ var_is_io_state(VarTypes, Var) :-
     lookup_var_type(VarTypes, Var, VarType),
     type_is_io_state(VarType).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func tabling_c_attributes_dupl = pragma_foreign_proc_attributes.
 
@@ -4034,7 +4085,7 @@ dummy_type_var = Type :-
     varset.new_var(DummyTVar, DummyTVarSet0, _),
     Type = type_variable(DummyTVar, kind_star).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func loop_inactive_cons_id = cons_id.
 :- func loop_active_cons_id = cons_id.
@@ -4145,7 +4196,7 @@ mm_status_type_ctor = TypeCtor :-
     TypeSymName = qualified(TypeModule, "mm_status"),
     TypeCtor = type_ctor(TypeSymName, 0).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func proc_table_info_type = mer_type.
 :- func trie_node_type = mer_type.
@@ -4199,7 +4250,7 @@ mm_status_type = Type :-
     TB = mercury_table_builtin_module,
     construct_type(type_ctor(qualified(TB, "mm_status"), 0), [], Type).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func proc_table_info_name = string.
 :- func cur_table_node_name = string.
@@ -4244,7 +4295,7 @@ generator_name = "generator".
 generator_pred_name = "generator_pred".
 returning_generator_locn = "MR_mmos_returning_generator".
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type table_info
     --->    table_info(
@@ -4265,6 +4316,6 @@ table_info_init(ModuleInfo, PredInfo, ProcInfo, TableInfo) :-
 table_info_extract(TableInfo, ModuleInfo, PredInfo, ProcInfo) :-
     TableInfo = table_info(ModuleInfo, PredInfo, ProcInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.table_gen.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
