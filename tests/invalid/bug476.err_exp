@@ -1,5 +1,5 @@
-bug476.m:058: In instance declaration for `input_stream'/1:
-bug476.m:058:   the type class has no predicate method named `mark'/4.
+bug476.m:059: In instance declaration for `input_stream'/1:
+bug476.m:059:   the type class has no predicate method named `mark'/4.
 bug476.m:068: Error: pred `bug476.mark'/4 multiply defined.
 bug476.m:034:   Here is the previous definition of pred `bug476.mark'/4.
 bug476.m:070: Error: clause for predicate `input_stream_mark'/3

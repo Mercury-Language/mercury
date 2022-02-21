@@ -635,36 +635,37 @@ check_concrete_class_instance(ClassId, Vars, ClassInterface, MethodPredProcIds,
         % XXX This is not a check for *left over* methods, since we don't
         % subtract the methods we have successfully processed from any
         % initial InstanceMethods.
-        Context = !.InstanceDefn ^ instdefn_context,
-        check_for_unknown_methods(InstanceMethods, ClassId, ClassPredIds,
-            Context, !.ModuleInfo, !Specs)
+        InstanceDefnContext = !.InstanceDefn ^ instdefn_context,
+        check_for_unknown_methods(!.ModuleInfo, ClassId,
+            InstanceMethods, ClassPredIds, InstanceDefnContext, !Specs)
     ).
 
     % Check if there are any instance methods left over, which did not match
     % any of the methods from the class interface. If so, add an appropriate
     % error message to the list of error messages.
     %
-:- pred check_for_unknown_methods(list(instance_method)::in, class_id::in,
-    list(pred_id)::in, prog_context::in, module_info::in,
+:- pred check_for_unknown_methods(module_info::in, class_id::in,
+    list(instance_method)::in, list(pred_id)::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_unknown_methods(InstanceMethods, ClassId, ClassPredIds, Context,
-        ModuleInfo, !Specs) :-
+check_for_unknown_methods(ModuleInfo, ClassId, InstanceMethods, ClassPredIds,
+        InstanceDefnContext, !Specs) :-
     module_info_get_predicate_table(ModuleInfo, PredTable),
-    list.filter(method_is_known(PredTable, ClassPredIds), InstanceMethods,
+    set.list_to_set(ClassPredIds, ClassPredIdSet),
+    list.filter(method_is_known(PredTable, ClassPredIdSet), InstanceMethods,
         _KnownInstanceMethods, UnknownInstanceMethods),
     (
         UnknownInstanceMethods = []
     ;
         UnknownInstanceMethods = [HeadMethod | TailMethods],
         report_unknown_instance_methods(ClassId, HeadMethod, TailMethods,
-            Context, !Specs)
+            InstanceDefnContext, !Specs)
     ).
 
-:- pred method_is_known(predicate_table::in, list(pred_id)::in,
+:- pred method_is_known(predicate_table::in, set(pred_id)::in,
     instance_method::in) is semidet.
 
-method_is_known(PredTable, ClassPredIds, Method) :-
+method_is_known(PredTable, ClassPredIdSet, Method) :-
     % Find this method definition's p/f, name, arity.
     Method = instance_method(MethodPredOrFunc, MethodName, MethodUserArity,
         _MethodDefn, _Context),
@@ -675,10 +676,18 @@ method_is_known(PredTable, ClassPredIds, Method) :-
         pred_form_arity(MethodPredFormArityInt)),
     predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
         MethodPredOrFunc, MethodName, MethodPredFormArityInt, MatchingPredIds),
-    % XXX ARITY Code this as an intersection test.
-    some [PredId] (
-        list.member(PredId, MatchingPredIds),
-        list.member(PredId, ClassPredIds)
+    % Given that we have specified every aspect of the method predicate,
+    % MatchingPredIds can contain at most one pred_id.
+    % If it contains zero pred_ids, the method is not known.
+    (
+        MatchingPredIds = [],
+        fail
+    ;
+        MatchingPredIds = [MatchingPredId],
+        set.contains(ClassPredIdSet, MatchingPredId)
+    ;
+        MatchingPredIds = [_, _ | _],
+        unexpected($pred, "more than once MatchingPredId")
     ).
 
 %---------------------------------------------------------------------------%
@@ -2307,17 +2316,19 @@ report_undefined_method(ClassId, InstanceDefn, PredOrFunc,
 %---------------------------------------------------------------------------%
 
 :- pred report_unknown_instance_methods(class_id::in,
-    instance_method::in, list(instance_method)::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+    instance_method::in, list(instance_method)::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-report_unknown_instance_methods(ClassId, HeadMethod, TailMethods, Context,
-        !Specs) :-
+report_unknown_instance_methods(ClassId, HeadMethod, TailMethods,
+        InstanceDefnContext, !Specs) :-
     PrefixPieces = [words("In instance declaration for"),
         unqual_class_id(ClassId), suffix(":"), nl],
     (
         TailMethods = [],
         HeadMethod = instance_method(PredOrFunc, MethodSymName, UserArity,
-            _Defn, _Context),
+            _Defn, Context),
+        % If we have a context for the specific incorrect method, use it.
+        SelectedContext = Context,
         UserArity = user_arity(UserArityInt),
         SNA = sym_name_arity(MethodSymName, UserArityInt),
         Pieces = PrefixPieces ++
@@ -2326,6 +2337,7 @@ report_unknown_instance_methods(ClassId, HeadMethod, TailMethods, Context,
             unqual_sym_name_arity(SNA), suffix("."), nl]
     ;
         TailMethods = [_ | _],
+        SelectedContext = InstanceDefnContext,
         MethodPieces =
             list.map(format_method_name, [HeadMethod | TailMethods]),
         Pieces = PrefixPieces ++
@@ -2336,7 +2348,7 @@ report_unknown_instance_methods(ClassId, HeadMethod, TailMethods, Context,
                 [suffix("."), nl_indent_delta(-1)])
     ),
     Spec = simplest_spec($pred, severity_error, phase_type_check,
-        Context, Pieces),
+        SelectedContext, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- func format_method_name(instance_method) = list(format_component).

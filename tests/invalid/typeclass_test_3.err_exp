@@ -1,6 +1,6 @@
 typeclass_test_3.m:019: In instance declaration for `numbered_type(int)':
 typeclass_test_3.m:019:   no implementation for type class function method
 typeclass_test_3.m:019:   `type_num'/1.
-typeclass_test_3.m:019: In instance declaration for `numbered_type'/1:
-typeclass_test_3.m:019:   the type class has no function method named
-typeclass_test_3.m:019:   `type_num'/0.
+typeclass_test_3.m:020: In instance declaration for `numbered_type'/1:
+typeclass_test_3.m:020:   the type class has no function method named
+typeclass_test_3.m:020:   `type_num'/0.
