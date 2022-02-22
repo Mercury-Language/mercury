@@ -34,7 +34,7 @@ patching configure to tell it to assume that they work.
 (The way to do this is shown in the patch appended below.)
 But more likely it will also require a little bit
 of ABI-dependent code in runtime/mercury_goto.h, similar to the
-existing stuff there for or __sparc.
+existing stuff there for __sparc.
 
 > checking for sys/siginfo.h... no
 > checking for ucontext.h... no
