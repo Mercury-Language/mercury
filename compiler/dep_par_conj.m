@@ -3136,9 +3136,9 @@ allocate_future(ModuleInfo, SharedVar, Goals, !VarSet, !VarTypes,
     (
         ShouldInline = do_not_inline_par_builtins,
         ArgVars = [FutureNameVar, FutureVar],
-        generate_simple_call(ModuleInfo, ModuleName, PredName, pf_predicate,
-            only_mode, detism_det, purity_pure, [], ArgVars, Features,
-            InstMapDelta, Context, AllocGoal)
+        generate_plain_call(ModuleInfo, pf_predicate, ModuleName, PredName,
+            [], ArgVars, InstMapDelta, only_mode, detism_det, purity_pure,
+            Features, Context, AllocGoal)
     ;
         ShouldInline = inline_par_builtins,
         ForeignAttrs = par_builtin_foreign_proc_attributes(purity_pure, no),
@@ -3152,10 +3152,10 @@ allocate_future(ModuleInfo, SharedVar, Goals, !VarSet, !VarTypes,
         Args = [ArgName, ArgFuture],
         ExtraArgs = [],
         Code = new_future_code,
-        generate_foreign_proc(ModuleInfo, ModuleName, PredName, pf_predicate,
-            only_mode, detism_det, purity_pure, ForeignAttrs,
-            [], Args, ExtraArgs, no, Code, Features, InstMapDelta,
-            Context, AllocGoal)
+        generate_call_foreign_proc(ModuleInfo, pf_predicate,
+            ModuleName, PredName, [], Args, ExtraArgs, InstMapDelta,
+            only_mode, detism_det, purity_pure, Features, ForeignAttrs,
+            no, Code, Context, AllocGoal)
     ),
     Goals = [SetNameGoal, AllocGoal].
 
@@ -3241,9 +3241,9 @@ make_wait_or_get(ModuleInfo, VarTypes, FutureVar, ConsumedVar, WaitOrGetPred,
     (
         ShouldInline = do_not_inline_par_builtins,
         ArgVars = [FutureVar, ConsumedVar],
-        generate_simple_call(ModuleInfo, ModuleName, PredName, pf_predicate,
-            only_mode, detism_det, Purity, [], ArgVars, Features,
-            InstMapDelta, Context, WaitGoal)
+        generate_plain_call(ModuleInfo, pf_predicate, ModuleName, PredName,
+            [], ArgVars, InstMapDelta, only_mode, detism_det, Purity,
+            Features, Context, WaitGoal)
     ;
         ShouldInline = inline_par_builtins,
         ForeignAttrs = par_builtin_foreign_proc_attributes(Purity, no),
@@ -3257,9 +3257,10 @@ make_wait_or_get(ModuleInfo, VarTypes, FutureVar, ConsumedVar, WaitOrGetPred,
             ConsumedVarType, bp_native_if_possible),
         Args = [Arg1, Arg2],
         ExtraArgs = [],
-        generate_foreign_proc(ModuleInfo, ModuleName, PredName, pf_predicate,
-            only_mode, detism_det, Purity, ForeignAttrs, [], Args, ExtraArgs,
-            no, Code, Features, InstMapDelta, Context, WaitGoal)
+        generate_call_foreign_proc(ModuleInfo, pf_predicate,
+            ModuleName, PredName, [], Args, ExtraArgs, InstMapDelta, only_mode,
+            detism_det, Purity, Features, ForeignAttrs,
+            no, Code, Context, WaitGoal)
     ).
 
 :- pred make_signal_goal(module_info::in, future_map::in, prog_var::in,
@@ -3276,9 +3277,9 @@ make_signal_goal(ModuleInfo, FutureMap, ProducedVar, VarTypes, SignalGoal) :-
     (
         ShouldInline = do_not_inline_par_builtins,
         ArgVars = [FutureVar, ProducedVar],
-        generate_simple_call(ModuleInfo, ModuleName, PredName, pf_predicate,
-            only_mode, detism_det, purity_impure, [], ArgVars, Features,
-            InstMapDelta, Context, SignalGoal)
+        generate_plain_call(ModuleInfo, pf_predicate, ModuleName, PredName,
+            [], ArgVars, InstMapDelta, only_mode, detism_det, purity_impure,
+            Features, Context, SignalGoal)
     ;
         ShouldInline = inline_par_builtins,
         ForeignAttrs = par_builtin_foreign_proc_attributes(purity_impure,
@@ -3294,10 +3295,10 @@ make_signal_goal(ModuleInfo, FutureMap, ProducedVar, VarTypes, SignalGoal) :-
         Args = [Arg1, Arg2],
         ExtraArgs = [],
         Code = "MR_par_builtin_signal_future(Future, Value);",
-        generate_foreign_proc(ModuleInfo, ModuleName, PredName, pf_predicate,
-            only_mode, detism_det, purity_impure, ForeignAttrs,
-            [], Args, ExtraArgs, no, Code, Features, InstMapDelta,
-            Context, SignalGoal)
+        generate_call_foreign_proc(ModuleInfo, pf_predicate,
+            ModuleName, PredName, [], Args, ExtraArgs, InstMapDelta,
+            only_mode, detism_det, purity_impure, Features, ForeignAttrs,
+            no, Code, Context, SignalGoal)
     ).
 
 :- pred is_wait_goal(hlds_goal::in) is semidet.

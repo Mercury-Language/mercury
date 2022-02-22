@@ -364,8 +364,8 @@
     hlds_goal::in, hlds_goal::in, bool::out,
     module_info::in, module_info::out) is det.
 
-    % generate_simple_call(ModuleInfo, ModuleName, ProcName, PredOrFunc,
-    %   ModeNo, Detism, Purity, TIArgVars, ArgVars, Features, InstMapDelta,
+    % generate_plain_call(ModuleInfo, PredOrFunc, ModuleName, ProcName,
+    %   TIArgVars, ArgVars, InstMapDelta, ModeNo, Detism, Purity, Features,
     %   Context, CallGoal):
     %
     % Generate a call to a builtin procedure (e.g. from the private_builtin
@@ -377,31 +377,29 @@
     %
     % If ModeNo = mode_no(N) then the Nth procedure is used, counting from 0.
     %
-:- pred generate_simple_call(module_info::in, module_name::in, string::in,
-    pred_or_func::in, mode_no::in, determinism::in, purity::in,
-    list(prog_var)::in, list(prog_var)::in, list(goal_feature)::in,
-    instmap_delta::in, term.context::in, hlds_goal::out) is det.
+:- pred generate_plain_call(module_info::in, pred_or_func::in,
+    module_name::in, string::in, list(prog_var)::in, list(prog_var)::in,
+    instmap_delta::in, mode_no::in, determinism::in, purity::in,
+    list(goal_feature)::in, term.context::in, hlds_goal::out) is det.
 
-    % generate_foreign_proc(ModuleInfo, ModuleName, ProcName, PredOrFunc,
-    %   ModeNo, Detism, Purity, Attributes, TIArgs, Args, ExtraArgs,
-    %   MaybeTraceRuntimeCond, Code, Features, InstMapDelta, Context,
-    %   CallGoal):
+    % generate_call_foreign_proc(ModuleInfo, PredOrFunc, ModuleName, ProcName,
+    %   TIArgs, Args, ExtraArgs, InstMapDelta, ModeNo, Detism, Purity,
+    %   Features, Attributes, MaybeTraceRuntimeCond, Code, Context, CallGoal):
     %
-    % generate_foreign_proc is similar to generate_simple_call,
+    % generate_call_foreign_proc is similar to generate_plain_call,
     % but also assumes that the called predicate is defined via a
     % foreign_proc, that the foreign_proc's arguments are as given in
     % TIArgs and Args, its attributes are Attributes, and its code is Code.
     % As well as returning a foreign_code instead of a call, effectively
-    % inlining the call, generate_foreign_proc also passes ExtraArgs
+    % inlining the call, generate_call_foreign_proc also passes ExtraArgs
     % as well as TIArgs and Args.
     %
-:- pred generate_foreign_proc(module_info::in, module_name::in, string::in,
-    pred_or_func::in, mode_no::in, determinism::in, purity::in,
-    pragma_foreign_proc_attributes::in,
-    list(foreign_arg)::in, list(foreign_arg)::in, list(foreign_arg)::in,
-    maybe(trace_expr(trace_runtime))::in, string::in,
-    list(goal_feature)::in, instmap_delta::in,
-    term.context::in, hlds_goal::out) is det.
+:- pred generate_call_foreign_proc(module_info::in, pred_or_func::in,
+    module_name::in, string::in, list(foreign_arg)::in, list(foreign_arg)::in,
+    list(foreign_arg)::in, instmap_delta::in, mode_no::in,
+    determinism::in, purity::in, list(goal_feature)::in,
+    pragma_foreign_proc_attributes::in, maybe(trace_expr(trace_runtime))::in,
+    string::in, term.context::in, hlds_goal::out) is det.
 
     % Generate a cast goal. The input and output insts are just ground.
     %
@@ -1985,9 +1983,9 @@ goal_depends_on_earlier_goal(LaterGoal, EarlierGoal, InstMapBeforeEarlierGoal,
 
 %-----------------------------------------------------------------------------%
 
-generate_simple_call(ModuleInfo, ModuleName, ProcName, PredOrFunc, ModeNo,
-        Detism, Purity, TIArgVars, NonTIArgVars, Features, InstMapDelta0,
-        Context, Goal) :-
+generate_plain_call(ModuleInfo, PredOrFunc, ModuleName, ProcName,
+        TIArgVars, NonTIArgVars, InstMapDelta0, ModeNo, Detism, Purity,
+        Features, Context, Goal) :-
     PredFormArity = arg_list_arity(NonTIArgVars),
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
@@ -2022,9 +2020,9 @@ generate_simple_call(ModuleInfo, ModuleName, ProcName, PredOrFunc, ModeNo,
     list.foldl(goal_info_add_feature, Features, GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-generate_foreign_proc(ModuleInfo, ModuleName, ProcName, PredOrFunc, ModeNo,
-        Detism, Purity, Attributes, TIArgs, NonTIArgs, ExtraArgs,
-        MaybeTraceRuntimeCond, Code, Features, InstMapDelta0, Context, Goal) :-
+generate_call_foreign_proc(ModuleInfo, PredOrFunc, ModuleName, ProcName,
+        TIArgs, NonTIArgs, ExtraArgs, InstMapDelta0, ModeNo, Detism, Purity,
+        Features, Attributes, MaybeTraceRuntimeCond, Code, Context, Goal) :-
     PredFormArity = arg_list_arity(NonTIArgs),
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,

@@ -885,10 +885,11 @@ make_try_call(PredName, LambdaVar, ResultVar, ExtraArgs, OutputTupleType,
     % The mode will be fixed up by a later analysis.
     Mode = mode_no(0),
     Features = [],
-    generate_simple_call(!.ModuleInfo, mercury_exception_module, PredName,
-        pf_predicate, Mode, detism_cc_multi, purity_pure,
-        [TypeInfoVar], [LambdaVar, ResultVar] ++ ExtraArgs, Features,
-        instmap_delta_bind_no_var, Context, CallGoal0),
+    generate_plain_call(!.ModuleInfo, pf_predicate,
+        mercury_exception_module, PredName,
+        [TypeInfoVar], [LambdaVar, ResultVar] ++ ExtraArgs,
+        instmap_delta_bind_no_var, Mode,
+        detism_cc_multi, purity_pure, Features, Context, CallGoal0),
 
     goal_info_init(Context, GoalInfo),
 
@@ -911,9 +912,10 @@ make_try_call(PredName, LambdaVar, ResultVar, ExtraArgs, OutputTupleType,
 :- pred make_unreachable_call(module_info::in, hlds_goal::out) is det.
 
 make_unreachable_call(ModuleInfo, Goal) :-
-    generate_simple_call(ModuleInfo, mercury_exception_module, "unreachable",
-        pf_predicate, only_mode, detism_erroneous, purity_pure,
-        [], [], [], instmap_delta_bind_no_var, term.context_init, Goal).
+    generate_plain_call(ModuleInfo, pf_predicate,
+        mercury_exception_module, "unreachable",
+        [], [], instmap_delta_bind_no_var, only_mode,
+        detism_erroneous, purity_pure, [], term.context_init, Goal).
 
 :- pred make_output_tuple_inst_cast(prog_var::in, prog_var::in,
     list(mer_inst)::in, hlds_goal::out) is det.

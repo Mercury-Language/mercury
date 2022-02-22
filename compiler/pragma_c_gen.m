@@ -41,7 +41,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_foreign_proc_code(code_model::in,
+:- pred generate_code_for_foreign_proc(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in,
     maybe(trace_expr(trace_runtime))::in, pragma_foreign_proc_impl::in,
@@ -310,7 +310,7 @@
 % The procedure prolog creates a nondet stack frame that includes space for
 % a struct that is saved across calls. Since the position of this struct in
 % the nondet stack frame is not known until the procedure prolog is created,
-% which is *after* the call to generate_foreign_proc_code, the prolog will
+% which is *after* the call to generate_code_for_foreign_proc, the prolog will
 % #define MR_ORDINARY_SLOTS as the number of ordinary slots in the nondet
 % frame. From the size of the fixed portion of the nondet stack frame, from
 % MR_ORDINARY_SLOTS and from the size of the save struct itself, one can
@@ -367,7 +367,7 @@
 
 %---------------------------------------------------------------------------%
 
-generate_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
+generate_code_for_foreign_proc(CodeModel, Attributes, PredId, ProcId,
         Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaImpl, GoalInfo, Code,
         !CI, !CLD) :-
     PragmaImpl = fp_impl_ordinary(C_Code, Context),

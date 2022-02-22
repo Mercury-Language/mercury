@@ -859,11 +859,11 @@ build_bulk_unify_foreign_proc(ModuleInfo, Ptag, TermType, TermVarX, TermVarY,
         WordsArgs, WordsGoals, !VarSet, !VarTypes),
 
     ForeignArgs = [TermVarArgX, TermVarArgY] ++ WordsArgs,
-    generate_foreign_proc(ModuleInfo, mercury_private_builtin_module,
-        PredName, pf_predicate, only_mode, detism_semi,
-        purity_pure, pure_proc_foreign_attributes, [], ForeignArgs, [],
-        no, ForeignCode, [], instmap_delta_bind_no_var,
-        Context, UnifyRemoteArgWordGoal),
+    generate_call_foreign_proc(ModuleInfo, pf_predicate,
+        mercury_private_builtin_module, PredName,
+        [], ForeignArgs, [], instmap_delta_bind_no_var, only_mode,
+        detism_semi, purity_pure, [], pure_proc_foreign_attributes,
+        no, ForeignCode, Context, UnifyRemoteArgWordGoal),
     Goals = WordsGoals ++ [UnifyRemoteArgWordGoal].
 
 :- func pure_proc_foreign_attributes = pragma_foreign_proc_attributes.
@@ -2076,12 +2076,11 @@ select_and_build_signed_comparison_foreign_proc(ModuleInfo, ArgsLocn,
     ForeignCode = WordsDecl ++ ValuesDecl ++
         WordsCode ++ ValuesCode ++ CompareValuesCode,
 
-    generate_foreign_proc(ModuleInfo, mercury_private_builtin_module,
-        ComparePredName, pf_predicate, only_mode,
-        detism_semi, purity_pure, pure_proc_foreign_attributes,
-        [], ForeignArgs, [], no, ForeignCode, [],
-        instmap_delta_bind_var(CompareResultVar),
-        Context, CompareGoal),
+    generate_call_foreign_proc(ModuleInfo, pf_predicate,
+        mercury_private_builtin_module, ComparePredName,
+        [], ForeignArgs, [], instmap_delta_bind_var(CompareResultVar),
+        only_mode, detism_semi, purity_pure, [], pure_proc_foreign_attributes,
+        no, ForeignCode, Context, CompareGoal),
     CompareConjGoalExpr = conj(plain_conj,
         MaybeWordsGoals ++ [MakeShiftGoal, CompareGoal]),
     goal_info_init(Context, ContextGoalInfo),
@@ -2204,12 +2203,11 @@ select_and_build_bulk_comparison_foreign_proc(ModuleInfo, ArgsLocn,
     ForeignCode = WordsDecl ++ ValuesDecl ++
         WordsCode ++ ValuesCode ++ CompareValuesCode,
 
-    generate_foreign_proc(ModuleInfo, mercury_private_builtin_module,
-        ComparePredName, pf_predicate, only_mode,
-        detism_semi, purity_pure, pure_proc_foreign_attributes,
-        [], ForeignArgs, [], no, ForeignCode, [],
-        instmap_delta_bind_var(CompareResultVar),
-        Context, CompareGoal),
+    generate_call_foreign_proc(ModuleInfo, pf_predicate,
+        mercury_private_builtin_module, ComparePredName,
+        [], ForeignArgs, [], instmap_delta_bind_var(CompareResultVar),
+        only_mode, detism_semi, purity_pure, [], pure_proc_foreign_attributes,
+        no, ForeignCode, Context, CompareGoal),
     CompareConjGoalExpr = conj(plain_conj,
         MaybeWordsGoals ++ MaybeShiftMaskGoals ++ [CompareGoal]),
     goal_info_init(Context, ContextGoalInfo),
@@ -2625,9 +2623,9 @@ merge_tvarsets_and_subst_type_args(TVarSet, TypeArgs,
     list(prog_var)::in, prog_context::in, hlds_goal::out) is det.
 
 build_simple_call(ModuleInfo, ModuleName, PredName, ArgVars, Context, Goal) :-
-    generate_simple_call(ModuleInfo, ModuleName, PredName, pf_predicate,
-        mode_no(0), detism_erroneous, purity_pure, [], ArgVars, [],
-        instmap_delta_bind_no_var, Context, Goal).
+    generate_plain_call(ModuleInfo, pf_predicate, ModuleName, PredName,
+        [], ArgVars, instmap_delta_bind_no_var, mode_no(0),
+        detism_erroneous, purity_pure, [], Context, Goal).
 
 :- pred build_spec_pred_call(type_ctor::in, special_pred_id::in,
     list(prog_var)::in, instmap_delta::in, determinism::in,

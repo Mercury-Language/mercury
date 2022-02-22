@@ -2099,21 +2099,21 @@ maybe_add_foreign_proc_error(ModuleInfo, DirectArgProcMap,
         DirectArgProcInOutMap, PredProcId, !Specs) :-
     ( if map.search(DirectArgProcMap, PredProcId, DirectArgProc) then
         % The original procedure has been deleted; we want
-        % generate_foreign_proc_error to look up its name and context
+        % generate_call_foreign_proc_error to look up its name and context
         % in its clone.
         map.lookup(DirectArgProcInOutMap, PredProcId, ProcInOut),
         ProcInOut = direct_arg_proc_in_out(ClonePredProcId, _),
-        generate_foreign_proc_error(ModuleInfo, ClonePredProcId, DirectArgProc,
+        generate_call_foreign_proc_error(ModuleInfo, ClonePredProcId, DirectArgProc,
             Spec),
         !:Specs = [Spec | !.Specs]
     else
         true
     ).
 
-:- pred generate_foreign_proc_error(module_info::in, pred_proc_id::in,
+:- pred generate_call_foreign_proc_error(module_info::in, pred_proc_id::in,
     direct_arg_proc::in, error_spec::out) is det.
 
-generate_foreign_proc_error(ModuleInfo, PredProcId, DirectArgProc, Spec) :-
+generate_call_foreign_proc_error(ModuleInfo, PredProcId, DirectArgProc, Spec) :-
     StartPieces = [words("Error: a procedure implemented using a"),
         pragma_decl("foreign_proc"), words("declaration"),
         words("may not have any arguments"),

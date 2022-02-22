@@ -859,7 +859,7 @@ region_name_to_var_with_renaming(Name0, ResurRenaming, RegVar,
     % The region name in a region instruction is subjected to renaming due
     % to if-then-else and region resurrection. This predicate turns such an
     % instruction into a call to a suitable region builtin.
-    % XXX Call to generate_simple_call here seems to be an overkill because we
+    % XXX Call to generate_plain_call here seems to be an overkill because we
     % will recompute nonlocals, instmap delta anyway.
     %
 :- pred region_instruction_to_conj(module_info::in, term.context::in,
@@ -874,18 +874,18 @@ region_instruction_to_conj(ModuleInfo, Context, ResurRenaming, IteRenaming,
         RegionInstruction = create_region(RegionName),
         region_name_to_var_with_both_renamings(RegionName, ResurRenaming,
             IteRenaming, RegionVar, !NameToVar, !VarSet, !VarTypes),
-        generate_simple_call(ModuleInfo, mercury_region_builtin_module,
-            create_region_pred_name, pf_predicate, only_mode, detism_det,
-            purity_impure, [], [RegionVar], [], instmap_delta_bind_no_var,
-            Context, CallGoal)
+        generate_plain_call(ModuleInfo, pf_predicate,
+            mercury_region_builtin_module, create_region_pred_name,
+            [], [RegionVar], instmap_delta_bind_no_var, only_mode,
+            detism_det, purity_impure, [], Context, CallGoal)
     ;
         RegionInstruction = remove_region(RegionName),
         region_name_to_var_with_both_renamings(RegionName, ResurRenaming,
             IteRenaming, RegionVar, !NameToVar, !VarSet, !VarTypes),
-        generate_simple_call(ModuleInfo, mercury_region_builtin_module,
-            remove_region_pred_name, pf_predicate, only_mode, detism_det,
-            purity_impure, [], [RegionVar], [], instmap_delta_bind_no_var,
-            Context, CallGoal)
+        generate_plain_call(ModuleInfo, pf_predicate,
+            mercury_region_builtin_module, remove_region_pred_name,
+            [], [RegionVar], instmap_delta_bind_no_var, only_mode,
+            detism_det, purity_impure, [], Context, CallGoal)
     ;
         RegionInstruction = rename_region(_, _),
         unexpected($pred, "neither create nor remove instruction")
@@ -908,19 +908,19 @@ region_instruction_to_conj_before(ModuleInfo, Context, ResurRenaming,
         RegionInstruction = create_region(RegionName),
         region_name_to_var_with_both_renamings(RegionName, ResurRenaming,
             IteRenaming, RegionVar, !NameToVar, !VarSet, !VarTypes),
-        generate_simple_call(ModuleInfo, mercury_region_builtin_module,
-            create_region_pred_name, pf_predicate, only_mode, detism_det,
-            purity_impure, [], [RegionVar], [], instmap_delta_bind_no_var,
-            Context, CallGoal)
+        generate_plain_call(ModuleInfo, pf_predicate,
+            mercury_region_builtin_module, create_region_pred_name,
+            [], [RegionVar], instmap_delta_bind_no_var, only_mode,
+            detism_det, purity_impure, [], Context, CallGoal)
     ;
         RegionInstruction = remove_region(RegionName),
         region_name_to_var_with_both_renamings_before(RegionName,
             ResurRenaming, IteRenaming, RegionVar, !NameToVar, !VarSet,
             !VarTypes),
-        generate_simple_call(ModuleInfo, mercury_region_builtin_module,
-            remove_region_pred_name, pf_predicate, only_mode, detism_det,
-            purity_impure, [], [RegionVar], [], instmap_delta_bind_no_var,
-            Context, CallGoal)
+        generate_plain_call(ModuleInfo, pf_predicate,
+            mercury_region_builtin_module, remove_region_pred_name,
+            [], [RegionVar], instmap_delta_bind_no_var, only_mode,
+            detism_det, purity_impure, [], Context, CallGoal)
     ;
         RegionInstruction = rename_region(_, _),
         unexpected($pred, "neither create nor remove instruction")

@@ -366,9 +366,10 @@ new_var(Name, Type, Var, !Info) :-
 heap_generate_call(Info, PredName, ArgVars, InstMapDelta, Detism, Purity, 
         Context, CallGoal) :-
     ModuleInfo = Info ^ heap_module_info,
-    generate_simple_call(ModuleInfo, mercury_private_builtin_module,
-        PredName, pf_predicate, only_mode, Detism, Purity, [], ArgVars, [],
-        InstMapDelta, Context, CallGoal).
+    generate_plain_call(ModuleInfo, pf_predicate,
+        mercury_private_builtin_module, PredName,
+        [], ArgVars, InstMapDelta, only_mode,
+        Detism, Purity, [], Context, CallGoal).
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.add_heap_ops.

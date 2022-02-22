@@ -320,11 +320,11 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
 
         % We extract the superclass typeclass_info by inserting a call
         % to superclass_from_typeclass_info in private_builtin.
-        generate_simple_call(ModuleInfo,
+        generate_plain_call(ModuleInfo, pf_predicate,
             mercury_private_builtin_module, "superclass_from_typeclass_info",
-            pf_predicate, only_mode, detism_det, purity_pure,
-            [], [SubClassVar, IndexVar, TypeClassInfoVar], [],
-            instmap_delta_bind_no_var, term.context_init, SuperClassGoal),
+            [], [SubClassVar, IndexVar, TypeClassInfoVar],
+            instmap_delta_bind_no_var, only_mode, detism_det, purity_pure, [],
+            term.context_init, SuperClassGoal),
         Goals = SubClassVarGoals ++ IndexGoals ++ [SuperClassGoal],
         MaybeTCIConstArg = no,
 

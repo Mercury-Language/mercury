@@ -2313,9 +2313,9 @@ create_simple_call(ModuleName, ProcName, PredOrFunc, TIArgVars, NonTIArgVars,
         !NewPredInfo) :-
     Context = !.NewPredInfo ^ new_pred_context,
     ModuleInfo = !.NewPredInfo ^ new_pred_module_info,
-    generate_simple_call(ModuleInfo, ModuleName, ProcName, PredOrFunc, Mode,
-        Detism, Purity, TIArgVars, NonTIArgVars, GoalFeatures, InstmapDelta,
-        Context, Goal).
+    generate_plain_call(ModuleInfo, PredOrFunc, ModuleName, ProcName,
+        TIArgVars, NonTIArgVars, InstmapDelta, Mode,
+        Detism, Purity, GoalFeatures, Context, Goal).
 
     % Creates a closure for a predicate.
     %

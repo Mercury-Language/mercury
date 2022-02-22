@@ -313,7 +313,7 @@ generate_goal_expr(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
         Lang = get_foreign_language(Attributes),
         (
             Lang = lang_c,
-            generate_foreign_proc_code(CodeModel, Attributes,
+            generate_code_for_foreign_proc(CodeModel, Attributes,
                 PredId, ProcId, Args, ExtraArgs, MaybeTraceRuntimeCond,
                 PragmaCode, GoalInfo, Code, !CI, !CLD)
         ;

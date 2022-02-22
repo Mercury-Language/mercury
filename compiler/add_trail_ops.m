@@ -446,7 +446,7 @@ gen_store_ticket(TicketVar, Context, SaveTicketGoal, Info) :-
             yes(foreign_arg_name_mode("Ticket", out_mode)),
             ticket_type, bp_native_if_possible),
         ForeignCode = "MR_store_ticket(Ticket);",
-        trail_generate_foreign_proc(Info, "store_ticket", [Arg1],
+        trail_generate_call_foreign_proc(Info, "store_ticket", [Arg1],
             instmap_delta_bind_var(TicketVar), purity_impure, Context,
             ForeignCode, SaveTicketGoal)
     ).
@@ -467,7 +467,7 @@ gen_reset_ticket_undo(TicketVar, Context, ResetTicketGoal, Info) :-
             yes(foreign_arg_name_mode("Ticket", in_mode)),
             ticket_type, bp_native_if_possible),
         ForeignCode = "MR_reset_ticket(Ticket, MR_undo);",
-        trail_generate_foreign_proc(Info, "reset_ticket_undo", [Arg1],
+        trail_generate_call_foreign_proc(Info, "reset_ticket_undo", [Arg1],
             instmap_delta_bind_no_var, purity_impure, Context,
             ForeignCode, ResetTicketGoal)
     ).
@@ -488,7 +488,7 @@ gen_reset_ticket_solve(TicketVar, Context, ResetTicketGoal, Info) :-
             yes(foreign_arg_name_mode("Ticket", in_mode)),
             ticket_type, bp_native_if_possible),
         ForeignCode = "MR_reset_ticket(Ticket, MR_solve);",
-        trail_generate_foreign_proc(Info, "reset_ticket_solve", [Arg1],
+        trail_generate_call_foreign_proc(Info, "reset_ticket_solve", [Arg1],
             instmap_delta_bind_no_var, purity_impure, Context,
             ForeignCode, ResetTicketGoal)
     ).
@@ -509,7 +509,7 @@ gen_reset_ticket_commit(TicketVar, Context, ResetTicketGoal, Info) :-
             yes(foreign_arg_name_mode("Ticket", in_mode)),
             ticket_type, bp_native_if_possible),
         ForeignCode = "MR_reset_ticket(Ticket, MR_commit);",
-        trail_generate_foreign_proc(Info, "reset_ticket_commit", [Arg1],
+        trail_generate_call_foreign_proc(Info, "reset_ticket_commit", [Arg1],
             instmap_delta_bind_no_var, purity_impure, Context,
             ForeignCode, ResetTicketGoal)
     ).
@@ -527,7 +527,7 @@ gen_prune_ticket(Context, PruneTicketGoal, Info) :-
     ;
         GenerateInline = gen_trail_ops_inline,
         ForeignCode = "MR_prune_ticket();",
-        trail_generate_foreign_proc(Info, "prune_ticket", [],
+        trail_generate_call_foreign_proc(Info, "prune_ticket", [],
             instmap_delta_bind_no_var, purity_impure, Context,
             ForeignCode, PruneTicketGoal)
     ).
@@ -545,7 +545,7 @@ gen_discard_ticket(Context, DiscardTicketGoal, Info) :-
     ;
         GenerateInline = gen_trail_ops_inline,
         ForeignCode = "MR_discard_ticket();",
-        trail_generate_foreign_proc(Info, "discard_ticket", [],
+        trail_generate_call_foreign_proc(Info, "discard_ticket", [],
             instmap_delta_bind_no_var, purity_impure, Context,
             ForeignCode, DiscardTicketGoal)
     ).
@@ -567,7 +567,7 @@ gen_mark_ticket_stack(SavedTicketCounterVar, Context, MarkTicketStackGoal,
             yes(foreign_arg_name_mode("TicketCounter", out_mode)),
             ticket_counter_type, bp_native_if_possible),
         ForeignCode = "MR_mark_ticket_stack(TicketCounter);",
-        trail_generate_foreign_proc(Info, "mark_ticket_stack", [Arg1],
+        trail_generate_call_foreign_proc(Info, "mark_ticket_stack", [Arg1],
             instmap_delta_bind_no_var, purity_impure, Context,
             ForeignCode, MarkTicketStackGoal)
     ).
@@ -589,7 +589,7 @@ gen_prune_tickets_to(SavedTicketCounterVar, Context, PruneTicketsToGoal,
             yes(foreign_arg_name_mode("TicketCounter", in_mode)),
             ticket_counter_type, bp_native_if_possible),
         ForeignCode = "MR_prune_tickets_to(TicketCounter);",
-        trail_generate_foreign_proc(Info, "prune_tickets_to", [Arg1],
+        trail_generate_call_foreign_proc(Info, "prune_tickets_to", [Arg1],
             instmap_delta_bind_no_var, purity_impure, Context,
             ForeignCode, PruneTicketsToGoal)
     ).
@@ -638,17 +638,17 @@ ticket_counter_type = c_pointer_type.
 trail_generate_call(Info, PredName, ArgVars, InstMapDelta, Detism,
         Purity, Context, CallGoal) :-
     ModuleInfo = Info ^ trail_module_info,
-    generate_simple_call(ModuleInfo, mercury_private_builtin_module,
-        PredName, pf_predicate, only_mode, Detism, Purity, [], ArgVars, [],
-        InstMapDelta, Context, CallGoal).
+    generate_plain_call(ModuleInfo, pf_predicate,
+        mercury_private_builtin_module, PredName, [], ArgVars, InstMapDelta,
+        only_mode, Detism, Purity, [], Context, CallGoal).
 
 %-----------------------------------------------------------------------------%
 
-:- pred trail_generate_foreign_proc(trail_ops_info::in, string::in,
+:- pred trail_generate_call_foreign_proc(trail_ops_info::in, string::in,
     list(foreign_arg)::in, instmap_delta::in, purity::in, term.context::in,
     string::in, hlds_goal::out) is det.
 
-trail_generate_foreign_proc(Info, PredName, Args, InstMapDelta,
+trail_generate_call_foreign_proc(Info, PredName, Args, InstMapDelta,
         Purity, Context, ForeignCode, ForeignProcGoal) :-
     ModuleInfo = Info ^ trail_module_info,
     PrivateBuiltinModule = mercury_private_builtin_module,
@@ -662,10 +662,10 @@ trail_generate_foreign_proc(Info, PredName, Args, InstMapDelta,
     ),
     ExtraArgs  = [],
     MaybeTraceRuntimeCond = no,
-    goal_util.generate_foreign_proc(ModuleInfo, PrivateBuiltinModule, PredName,
-        pf_predicate, only_mode, Detism, Purity, FinalForeignProcAttrs,
-        [], Args, ExtraArgs, MaybeTraceRuntimeCond, ForeignCode, [],
-        InstMapDelta, Context, ForeignProcGoal).
+    generate_call_foreign_proc(ModuleInfo, pf_predicate,
+        PrivateBuiltinModule, PredName, [], Args, ExtraArgs, InstMapDelta,
+        only_mode, Detism, Purity, [], FinalForeignProcAttrs,
+        MaybeTraceRuntimeCond, ForeignCode, Context, ForeignProcGoal).
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.add_trail_ops.
