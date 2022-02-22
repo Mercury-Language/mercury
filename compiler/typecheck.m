@@ -808,7 +808,7 @@ generate_stub_clause_2(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     ),
     generate_simple_call(ModuleInfo, mercury_private_builtin_module,
         CalleeName, pf_predicate, only_mode, detism_det, purity_pure,
-        [PredNameVar], [], instmap_delta_bind_no_var, Context, CallGoal),
+        [], [PredNameVar], [], instmap_delta_bind_no_var, Context, CallGoal),
 
     % Combine the unification and call into a conjunction.
     goal_info_init(Context, GoalInfo),
@@ -1665,9 +1665,8 @@ typecheck_call_pred_name(SymName, Context, GoalId, ArgVars, PredId,
     PredFormArity = arg_list_arity(ArgVars),
     SymNamePredFormArity = sym_name_pred_form_arity(SymName, PredFormArity),
     typecheck_info_get_calls_are_fully_qualified(!.Info, IsFullyQualified),
-    PredFormArity = pred_form_arity(Arity),
     predicate_table_lookup_pf_sym_arity(PredicateTable, IsFullyQualified,
-        pf_predicate, SymName, Arity, PredIds),
+        pf_predicate, SymName, PredFormArity, PredIds),
     (
         PredIds = [],
         PredId = invalid_pred_id,
@@ -3016,19 +3015,20 @@ builtin_field_access_function_type(Info, GoalId, ConsId, Arity,
     module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
     map.search(CtorFieldTable, FieldName, FieldDefns),
 
+    UserArity = user_arity(Arity),
     list.filter_map(
         make_field_access_function_cons_type_info(Info, GoalId, Name,
-            Arity, AccessType, FieldName),
+            UserArity, AccessType, FieldName),
         FieldDefns, MaybeConsTypeInfos).
 
 :- pred make_field_access_function_cons_type_info(typecheck_info::in,
-    goal_id::in, sym_name::in, arity::in, field_access_type::in,
+    goal_id::in, sym_name::in, user_arity::in, field_access_type::in,
     sym_name::in, hlds_ctor_field_defn::in,
     maybe_cons_type_info::out) is semidet.
 
-make_field_access_function_cons_type_info(Info, GoalId, FuncName, Arity,
+make_field_access_function_cons_type_info(Info, GoalId, FuncName, UserArity,
         AccessType, FieldName, FieldDefn, ConsTypeInfo) :-
-    get_field_access_constructor(Info, GoalId, FuncName, Arity,
+    get_field_access_constructor(Info, GoalId, FuncName, UserArity,
         AccessType, FieldDefn, OrigExistTVars,
         MaybeFunctorConsTypeInfo),
     (
@@ -3044,10 +3044,11 @@ make_field_access_function_cons_type_info(Info, GoalId, FuncName, Arity,
     ).
 
 :- pred get_field_access_constructor(typecheck_info::in, goal_id::in,
-    sym_name::in, arity::in, field_access_type::in, hlds_ctor_field_defn::in,
+    sym_name::in, user_arity::in, field_access_type::in,
+    hlds_ctor_field_defn::in,
     existq_tvars::out, maybe_cons_type_info::out) is semidet.
 
-get_field_access_constructor(Info, GoalId, FuncName, Arity, AccessType,
+get_field_access_constructor(Info, GoalId, FuncName, UserArity, AccessType,
         FieldDefn, OrigExistTVars, FunctorConsTypeInfo) :-
     FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, ConsId, _),
     TypeCtor = type_ctor(qualified(TypeModule, _), _),
@@ -3065,7 +3066,7 @@ get_field_access_constructor(Info, GoalId, FuncName, Arity, AccessType,
     (
         IsFieldAccessFunc = no,
         predicate_table_lookup_func_m_n_a(PredTable, is_fully_qualified,
-            TypeModule, UnqualFuncName, Arity, PredIds),
+            TypeModule, UnqualFuncName, UserArity, PredIds),
         list.all_false(
             is_field_access_function_for_type_ctor(ModuleInfo, AccessType,
                 TypeCtor),

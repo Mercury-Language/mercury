@@ -167,7 +167,7 @@ process_compl_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
         Context = goal_info_get_context(GoalInfo0),
         generate_simple_call(ModuleInfo, mercury_private_builtin_module,
             "builtin_unify_pred", pf_predicate, mode_no(0), detism_semi,
-            purity_pure, [XVar, YVar], [], instmap_delta_bind_no_var,
+            purity_pure, [], [XVar, YVar], [], instmap_delta_bind_no_var,
             Context, hlds_goal(Call0, _)),
         simplify_goal_expr(Call0, Call1, GoalInfo0, GoalInfo,
             NestedContext0, InstMap0, !Common, !Info),
@@ -197,7 +197,7 @@ process_compl_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
             Context = goal_info_get_context(GoalInfo0),
             generate_simple_call(ModuleInfo, mercury_private_builtin_module,
                 "builtin_compound_eq", pf_predicate, only_mode, detism_semi,
-                purity_pure, [XVar, YVar], [], instmap_delta_bind_no_var,
+                purity_pure, [], [XVar, YVar], [], instmap_delta_bind_no_var,
                 Context, Call)
         else if
             hlds_pred.in_in_unification_proc_id(ProcId),
@@ -237,11 +237,11 @@ process_compl_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
 
 call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, _, _, GoalInfo,
         Call) :-
-    ArgVars = [TypeInfoVar, XVar, YVar],
     Context = goal_info_get_context(GoalInfo),
     generate_simple_call(ModuleInfo, mercury_public_builtin_module, "unify",
-        pf_predicate, mode_no(0), detism_semi, purity_pure, ArgVars,
-        [], instmap_delta_bind_no_var, Context, Call).
+        pf_predicate, mode_no(0), detism_semi, purity_pure,
+        [TypeInfoVar], [XVar, YVar], [], instmap_delta_bind_no_var,
+        Context, Call).
 
 :- pred call_specific_unify(type_ctor::in, list(prog_var)::in,
     prog_var::in, prog_var::in, proc_id::in,

@@ -413,7 +413,7 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
             Context = goal_info_get_context(GoalInfo0),
             generate_foreign_proc(ModuleInfo, PrivateBuiltin, EvalPredName,
                 pf_predicate, only_mode, detism_semi, purity_semipure,
-                EvalAttributes, [], [], yes(RuntimeExpr), EvalCode,
+                EvalAttributes, [], [], [], yes(RuntimeExpr), EvalCode,
                 EvalFeatures, instmap_delta_bind_no_var, Context, CondGoal),
             GoalExpr = if_then_else([], CondGoal, SubGoal, true_goal),
             Goal = hlds_goal(GoalExpr, GoalInfo0)

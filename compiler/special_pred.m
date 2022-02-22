@@ -406,8 +406,11 @@ get_special_proc(ModuleInfo, TypeCtor, SpecialPredId,
         MaybeCategoryName = yes(CategoryName),
         special_pred_name_arity(SpecialPredId, SpecialName, _, Arity),
         Name = "builtin_" ++ SpecialName ++ "_" ++ CategoryName,
+        % None of the special preds are in fact functions, so for them,
+        % user arity and pred form arity are the same.
+        UserArity = user_arity(Arity),
         lookup_builtin_pred_proc_id(ModuleInfo, mercury_private_builtin_module,
-            Name, pf_predicate, Arity, only_mode, PredId, ProcId),
+            Name, pf_predicate, UserArity, only_mode, PredId, ProcId),
         PredName = qualified(mercury_private_builtin_module, Name)
     ).
 

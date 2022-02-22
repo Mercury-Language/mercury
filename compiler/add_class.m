@@ -385,7 +385,7 @@ add_class_mode_decl(ItemMercuryStatus, PredStatus, ModeInfo,
     ModeInfo = class_mode_info(PredSymName, MaybePredOrFunc, Modes,
         _WithInst, MaybeDetism, InstVarSet, Context),
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
-    PredArity = list.length(Modes) : int,
+    PredFormArity = arg_list_arity(Modes),
     (
         MaybePredOrFunc = no,
         % The only way this could have happened now is if a `with_inst`
@@ -395,11 +395,11 @@ add_class_mode_decl(ItemMercuryStatus, PredStatus, ModeInfo,
         MaybePredOrFunc = yes(PredOrFunc)
     ),
     predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
-        PredOrFunc, PredSymName, PredArity, PredIds),
+        PredOrFunc, PredSymName, PredFormArity, PredIds),
     (
         PredIds = [],
-        PredSNA = sym_name_arity(PredSymName, PredArity),
-        missing_pred_or_func_method_error(PredOrFunc, PredSNA, Context, !Specs)
+        missing_pred_or_func_method_error(PredOrFunc, PredSymName,
+            PredFormArity, Context, !Specs)
     ;
         PredIds = [HeadPredId | TailPredIds],
         (
@@ -421,9 +421,8 @@ add_class_mode_decl(ItemMercuryStatus, PredStatus, ModeInfo,
                 % XXX It may also be worth reporting that although there
                 % wasn't a matching class method, there was a matching
                 % predicate/function.
-                PredSNA = sym_name_arity(PredSymName, PredArity),
-                missing_pred_or_func_method_error(PredOrFunc, PredSNA, Context,
-                    !Specs)
+                missing_pred_or_func_method_error(PredOrFunc, PredSymName,
+                    PredFormArity, Context, !Specs)
             )
         ;
             TailPredIds = [_ | _],
@@ -452,10 +451,10 @@ handle_no_mode_decl(PredOrFuncInfo, !PredProcIds, !ModuleInfo, !Specs) :-
         % by the parser at the time it is read in.
         unexpected($pred, "unqualified")
     ),
-    list.length(TypesAndModes, PredArity),
+    PredFormArity = arg_list_arity(TypesAndModes),
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     predicate_table_lookup_pf_m_n_a(PredTable, is_fully_qualified,
-        PorF, ModuleName, PredOrFuncName, PredArity, PredIds),
+        PorF, ModuleName, PredOrFuncName, PredFormArity, PredIds),
     (
         PredIds = [PredId],
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
@@ -826,13 +825,17 @@ report_instance_for_undefined_typeclass(ClassId, Context, !Specs) :-
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-:- pred missing_pred_or_func_method_error(pred_or_func::in, sym_name_arity::in,
-    prog_context::in,
+:- pred missing_pred_or_func_method_error(pred_or_func::in, sym_name::in,
+    pred_form_arity::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-missing_pred_or_func_method_error(PredOrFunc, MethodSNA, Context, !Specs) :-
+missing_pred_or_func_method_error(PredOrFunc, SymName, PredFormArity,
+        Context, !Specs) :-
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+    UserArity = user_arity(UserArityInt),
+    SNA = sym_name_arity(SymName, UserArityInt),
     Pieces = [words("Error: mode declaration for type class method"),
-        qual_sym_name_arity(MethodSNA), words("without corresponding"),
+        qual_sym_name_arity(SNA), words("without corresponding"),
         p_or_f(PredOrFunc), words("method declaration."), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),

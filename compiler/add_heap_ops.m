@@ -171,7 +171,6 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
         determinism_components(Determinism, _CanFail, NumSolns),
         True = true_goal_with_context(Context),
         Fail = fail_goal_with_context(Context),
-        ModuleInfo = !.Info ^ heap_module_info,
         (
             NumSolns = at_most_zero,
             % The "then" part of the if-then-else will be unreachable, but to
@@ -179,8 +178,8 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
             % need to make sure that it can't fail. So we use a call to
             % `private_builtin.unused' (which will call error/1) rather than
             % `fail' for the "then" part.
-            heap_generate_call("unused", detism_det, purity_pure, [],
-                instmap_delta_bind_no_var, ModuleInfo, Context, ThenGoal)
+            heap_generate_call(!.Info, "unused", [], instmap_delta_bind_no_var,
+                detism_det, purity_pure, Context, ThenGoal)
         ;
             ( NumSolns = at_most_one
             ; NumSolns = at_most_many
@@ -327,17 +326,17 @@ cases_add_heap_ops([Case0 | Cases0], [Case | Cases], !Info) :-
     heap_ops_info::in, heap_ops_info::out) is det.
 
 gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info) :-
-    heap_generate_call("mark_hp", detism_det, purity_impure,
+    heap_generate_call(!.Info, "mark_hp",
         [SavedHeapPointerVar], instmap_delta_bind_var(SavedHeapPointerVar),
-        !.Info ^ heap_module_info, Context, MarkHeapPointerGoal).
+        detism_det, purity_impure, Context, MarkHeapPointerGoal).
 
 :- pred gen_restore_hp(prog_var::in, prog_context::in, hlds_goal::out,
     heap_ops_info::in, heap_ops_info::out) is det.
 
 gen_restore_hp(SavedHeapPointerVar, Context, RestoreHeapPointerGoal, !Info) :-
-    heap_generate_call("restore_hp", detism_det, purity_impure,
+    heap_generate_call(!.Info, "restore_hp",
         [SavedHeapPointerVar], instmap_delta_bind_no_var,
-        !.Info ^ heap_module_info, Context, RestoreHeapPointerGoal).
+        detism_det, purity_impure, Context, RestoreHeapPointerGoal).
 
 %-----------------------------------------------------------------------------%
 
@@ -360,14 +359,15 @@ new_var(Name, Type, Var, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred heap_generate_call(string::in, determinism::in, purity::in,
-    list(prog_var)::in, instmap_delta::in, module_info::in,
+:- pred heap_generate_call(heap_ops_info::in, string::in,
+    list(prog_var)::in, instmap_delta::in, determinism::in, purity::in,
     term.context::in, hlds_goal::out) is det.
 
-heap_generate_call(PredName, Detism, Purity, ArgVars, InstMapDelta, ModuleInfo,
+heap_generate_call(Info, PredName, ArgVars, InstMapDelta, Detism, Purity, 
         Context, CallGoal) :-
+    ModuleInfo = Info ^ heap_module_info,
     generate_simple_call(ModuleInfo, mercury_private_builtin_module,
-        PredName, pf_predicate, only_mode, Detism, Purity, ArgVars, [],
+        PredName, pf_predicate, only_mode, Detism, Purity, [], ArgVars, [],
         InstMapDelta, Context, CallGoal).
 
 %-----------------------------------------------------------------------------%

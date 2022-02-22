@@ -68,18 +68,16 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
         MaybePredOrFunc = yes(PredOrFunc),
         (
             ModesOrArity = moa_modes(Modes),
-            list.length(Modes, PredArityInt),
-            user_arity_pred_form_arity(PredOrFunc, UserArity, 
-                pred_form_arity(PredArityInt)),
+            PredFormArity = arg_list_arity(Modes),
+            user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
             MaybeModes = yes(Modes)
         ;
             ModesOrArity = moa_arity(UserArity),
-            user_arity_pred_form_arity(PredOrFunc, UserArity, 
-                pred_form_arity(PredArityInt)),
+            user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
             MaybeModes = no
         ),
         predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
-            PredOrFunc, SymName, PredArityInt, PredIds),
+            PredOrFunc, SymName, PredFormArity, PredIds),
         predicate_table_lookup_pf_sym(PredTable, is_fully_qualified,
             PredOrFunc, SymName, AllArityPredIds),
         UserArity = user_arity(UserArityInt)
@@ -91,7 +89,7 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
         MaybePredOrFunc = no,
         MaybeModes = no,
         predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
-            SymName, UserArityInt, PredIds),
+            SymName, UserArity, PredIds),
         predicate_table_lookup_sym(PredTable, is_fully_qualified,
             SymName, AllArityPredIds)
     ),

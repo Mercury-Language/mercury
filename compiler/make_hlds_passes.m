@@ -860,11 +860,11 @@ maybe_add_default_mode(PredDecl, !ModuleInfo) :-
             PredOrFunc = pf_predicate
         ;
             PredOrFunc = pf_function,
-            list.length(TypesAndModes, Arity),
-            adjust_func_arity(pf_function, FuncArity, Arity),
+            PredFormArity = arg_list_arity(TypesAndModes),
+            user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
             module_info_get_predicate_table(!.ModuleInfo, PredTable0),
             predicate_table_lookup_func_sym_arity(PredTable0,
-                is_fully_qualified, PredSymName, FuncArity, PredIds),
+                is_fully_qualified, PredSymName, UserArity, PredIds),
             (
                 PredIds = [_ | _],
                 predicate_table_get_pred_id_table(PredTable0, PredIdTable0),
@@ -1081,7 +1081,7 @@ implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, UserArity,
     module_info_get_predicate_table(ModuleInfo, PredTable),
     UserArity = user_arity(UserArityInt),
     predicate_table_lookup_pred_sym_arity(PredTable,
-        may_be_partially_qualified, SymName, UserArityInt, PredIds),
+        may_be_partially_qualified, SymName, UserArity, PredIds),
     ( InitOrFinal = iof_init,  DeclName = "initialise"
     ; InitOrFinal = iof_final, DeclName = "finalise"
     ),

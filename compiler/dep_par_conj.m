@@ -3137,7 +3137,7 @@ allocate_future(ModuleInfo, SharedVar, Goals, !VarSet, !VarTypes,
         ShouldInline = do_not_inline_par_builtins,
         ArgVars = [FutureNameVar, FutureVar],
         generate_simple_call(ModuleInfo, ModuleName, PredName, pf_predicate,
-            only_mode, detism_det, purity_pure, ArgVars, Features,
+            only_mode, detism_det, purity_pure, [], ArgVars, Features,
             InstMapDelta, Context, AllocGoal)
     ;
         ShouldInline = inline_par_builtins,
@@ -3153,8 +3153,9 @@ allocate_future(ModuleInfo, SharedVar, Goals, !VarSet, !VarTypes,
         ExtraArgs = [],
         Code = new_future_code,
         generate_foreign_proc(ModuleInfo, ModuleName, PredName, pf_predicate,
-            only_mode, detism_det, purity_pure, ForeignAttrs, Args, ExtraArgs,
-            no, Code, Features, InstMapDelta, Context, AllocGoal)
+            only_mode, detism_det, purity_pure, ForeignAttrs,
+            [], Args, ExtraArgs, no, Code, Features, InstMapDelta,
+            Context, AllocGoal)
     ),
     Goals = [SetNameGoal, AllocGoal].
 
@@ -3241,7 +3242,7 @@ make_wait_or_get(ModuleInfo, VarTypes, FutureVar, ConsumedVar, WaitOrGetPred,
         ShouldInline = do_not_inline_par_builtins,
         ArgVars = [FutureVar, ConsumedVar],
         generate_simple_call(ModuleInfo, ModuleName, PredName, pf_predicate,
-            only_mode, detism_det, Purity, ArgVars, Features,
+            only_mode, detism_det, Purity, [], ArgVars, Features,
             InstMapDelta, Context, WaitGoal)
     ;
         ShouldInline = inline_par_builtins,
@@ -3257,7 +3258,7 @@ make_wait_or_get(ModuleInfo, VarTypes, FutureVar, ConsumedVar, WaitOrGetPred,
         Args = [Arg1, Arg2],
         ExtraArgs = [],
         generate_foreign_proc(ModuleInfo, ModuleName, PredName, pf_predicate,
-            only_mode, detism_det, Purity, ForeignAttrs, Args, ExtraArgs,
+            only_mode, detism_det, Purity, ForeignAttrs, [], Args, ExtraArgs,
             no, Code, Features, InstMapDelta, Context, WaitGoal)
     ).
 
@@ -3276,7 +3277,7 @@ make_signal_goal(ModuleInfo, FutureMap, ProducedVar, VarTypes, SignalGoal) :-
         ShouldInline = do_not_inline_par_builtins,
         ArgVars = [FutureVar, ProducedVar],
         generate_simple_call(ModuleInfo, ModuleName, PredName, pf_predicate,
-            only_mode, detism_det, purity_impure, ArgVars, Features,
+            only_mode, detism_det, purity_impure, [], ArgVars, Features,
             InstMapDelta, Context, SignalGoal)
     ;
         ShouldInline = inline_par_builtins,
@@ -3295,7 +3296,7 @@ make_signal_goal(ModuleInfo, FutureMap, ProducedVar, VarTypes, SignalGoal) :-
         Code = "MR_par_builtin_signal_future(Future, Value);",
         generate_foreign_proc(ModuleInfo, ModuleName, PredName, pf_predicate,
             only_mode, detism_det, purity_impure, ForeignAttrs,
-            Args, ExtraArgs, no, Code, Features, InstMapDelta,
+            [], Args, ExtraArgs, no, Code, Features, InstMapDelta,
             Context, SignalGoal)
     ).
 

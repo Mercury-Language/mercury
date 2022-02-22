@@ -117,10 +117,12 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
         ConsId0 = cons(PredName, _, _),
 
         pred_info_get_markers(!.PredInfo, Markers),
+        IsFullyQualified = calls_are_fully_qualified(Markers),
         module_info_get_predicate_table(ModuleInfo, PredTable),
+        UserArity = user_arity(Arity),
         % This search will usually fail, so do it first.
-        predicate_table_lookup_func_sym_arity(PredTable,
-            calls_are_fully_qualified(Markers), PredName, Arity, PredIds),
+        predicate_table_lookup_func_sym_arity(PredTable, IsFullyQualified,
+            PredName, UserArity, PredIds),
         PredIds = [_ | _],
 
         % We don't do this for compiler-generated predicates; they are assumed

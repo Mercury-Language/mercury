@@ -1937,7 +1937,7 @@ make_store_goal(ModuleInfo, InstMap, GroundVar - StoreTarget, Goal,
         MaybeFieldId = no,
         generate_simple_call(ModuleInfo, mercury_private_builtin_module,
             "store_at_ref_impure", pf_predicate, only_mode, detism_det,
-            purity_impure, [AddrVar, GroundVar], [],
+            purity_impure, [], [AddrVar, GroundVar], [],
             instmap_delta_bind_vars([]), term.context_init, Goal)
     ;
         % High-level data.

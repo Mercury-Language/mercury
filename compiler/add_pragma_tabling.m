@@ -96,12 +96,11 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
             user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity)
         ),
         UserArity = user_arity(UserArityInt),
-        PredFormArity = pred_form_arity(PredFormArityInt),
         % Lookup the pred or func declaration in the predicate table.
         % If it is not there, print an error message and insert
         % a dummy declaration for it.
         predicate_table_lookup_pf_m_n_a(PredicateTable0, is_fully_qualified,
-            PredOrFunc, PredModuleName, PredName, PredFormArityInt, PredIds0),
+            PredOrFunc, PredModuleName, PredName, PredFormArity, PredIds0),
         (
             PredIds0 = [],
             TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
@@ -122,7 +121,7 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
             PredSymName, Context, !Specs),
         UserArity = user_arity(UserArityInt),
         predicate_table_lookup_m_n_a(PredicateTable0, is_fully_qualified,
-            PredModuleName, PredName, UserArityInt, PredIds0),
+            PredModuleName, PredName, UserArity, PredIds0),
         (
             PredIds0 = [],
             DescPieces = [pragma_decl(TabledMethodStr), words("declaration")],

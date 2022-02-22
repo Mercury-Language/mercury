@@ -739,10 +739,9 @@ gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
     new_type_info_var_raw(Type, type_info, TypeInfoVar,
         !VarSet, !VarTypes, !RttiVarMaps),
     generate_simple_call(ModuleInfo, mercury_private_builtin_module,
-        "type_info_from_typeclass_info", pf_predicate, only_mode,
-        detism_det, purity_pure, [TypeClassInfoVar, IndexVar, TypeInfoVar], [],
-        instmap_delta_bind_var(TypeInfoVar), Context,
-        CallGoal),
+        "type_info_from_typeclass_info", pf_predicate, only_mode, detism_det,
+        purity_pure, [], [TypeClassInfoVar, IndexVar, TypeInfoVar], [],
+        instmap_delta_bind_var(TypeInfoVar), Context, CallGoal),
     Goals = IndexGoals ++ [CallGoal].
 
 polymorphism_extract_type_info(TypeVar, TypeClassInfoVar, Index, Context,

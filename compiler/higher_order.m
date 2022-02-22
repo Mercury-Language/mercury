@@ -1272,7 +1272,7 @@ get_unconstrained_instance_type_infos(ModuleInfo, TypeClassInfoVar,
 get_typeclass_info_args(ModuleInfo, TypeClassInfoVar, PredName, MakeResultType,
         Args, Index, Goals, Vars, !ProcInfo) :-
     lookup_builtin_pred_proc_id(ModuleInfo, mercury_private_builtin_module,
-        PredName, pf_predicate, 3, only_mode, ExtractArgPredId,
+        PredName, pf_predicate, user_arity(3), only_mode, ExtractArgPredId,
         ExtractArgProcId),
     get_typeclass_info_args_loop(TypeClassInfoVar,
         ExtractArgPredId, ExtractArgProcId,

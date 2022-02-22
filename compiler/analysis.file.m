@@ -701,7 +701,7 @@ write_imdg_arc(Compiler, AnalysisName, FuncId, Arc, !IO) :-
 :- pred parse_func_id(term::in, func_id::out) is semidet.
 
 parse_func_id(Term, FuncId) :-
-    Term = functor(atom(PF), [NameTerm, ArityTerm, ProcTerm], _),
+    Term = term.functor(term.atom(PF), [NameTerm, ArityTerm, ProcTerm], _),
     (
         PF = "p",
         PredOrFunc = pf_predicate
@@ -709,11 +709,11 @@ parse_func_id(Term, FuncId) :-
         PF = "f",
         PredOrFunc = pf_function
     ),
-    NameTerm = functor(atom(Name), [], _),
+    NameTerm = term.functor(term.atom(Name), [], _),
     decimal_term_to_int(ArityTerm, Arity),
-    decimal_term_to_int(ProcTerm, ProcInt),
-    proc_id_to_int(ProcId, ProcInt),
-    FuncId = func_id(PredOrFunc, Name, Arity, ProcId).
+    decimal_term_to_int(ProcTerm, ProcIdInt),
+    proc_id_to_int(ProcId, ProcIdInt),
+    FuncId = func_id(PredOrFunc, Name, pred_form_arity(Arity), ProcId).
 
 %---------------------%
 
@@ -826,7 +826,8 @@ read_analysis_file_2(Stream, ParseEntry, Results0, Results, !IO) :-
 
 :- func func_id_to_string(func_id) = string.
 
-func_id_to_string(func_id(PredOrFunc, Name, Arity, ProcId)) = String :-
+func_id_to_string(FuncId) = String :-
+    FuncId = func_id(PredOrFunc, Name, PredFormArity, ProcId),
     (
         PredOrFunc = pf_predicate,
         PFStr = "p"
@@ -834,6 +835,7 @@ func_id_to_string(func_id(PredOrFunc, Name, Arity, ProcId)) = String :-
         PredOrFunc = pf_function,
         PFStr = "f"
     ),
+    PredFormArity = pred_form_arity(Arity),
     NameStr = term_io.quoted_atom(Name),
     string.format("%s(%s, %d, %d)",
         [s(PFStr), s(NameStr), i(Arity), i(proc_id_to_int(ProcId))], String).

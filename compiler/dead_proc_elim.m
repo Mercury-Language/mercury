@@ -1411,20 +1411,20 @@ dead_pred_initialize_maybe_canonical(ModuleInfo, MaybeCanon, !NeededPreds) :-
         (
             NonCanonical = noncanon_uni_cmp(UniPredSymName, CmpPredSymName),
             predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
-                UniPredSymName, 2, UniPredIds),
+                UniPredSymName, user_arity(2), UniPredIds),
             predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
-                CmpPredSymName, 3, CmpPredIds),
+                CmpPredSymName, user_arity(3), CmpPredIds),
             set_tree234.insert_list(UniPredIds, !NeededPreds),
             set_tree234.insert_list(CmpPredIds, !NeededPreds)
         ;
             NonCanonical = noncanon_uni_only(UniPredSymName),
             predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
-                UniPredSymName, 2, UniPredIds),
+                UniPredSymName, user_arity(2), UniPredIds),
             set_tree234.insert_list(UniPredIds, !NeededPreds)
         ;
             NonCanonical = noncanon_cmp_only(CmpPredSymName),
             predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
-                CmpPredSymName, 3, CmpPredIds),
+                CmpPredSymName, user_arity(3), CmpPredIds),
             set_tree234.insert_list(CmpPredIds, !NeededPreds)
         ;
             NonCanonical = noncanon_abstract(_IsSolverType)

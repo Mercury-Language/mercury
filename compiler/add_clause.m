@@ -123,8 +123,8 @@ module_add_clause(PredStatus, ClauseType, ClauseInfo,
     PredFormArity = pred_form_arity(Arity),
     some [!PredInfo] (
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable),
-        predicate_table_lookup_pf_sym_arity(PredicateTable,
-            is_fully_qualified, PredOrFunc, PredSymName, Arity, PredIds),
+        predicate_table_lookup_pf_sym_arity(PredicateTable, is_fully_qualified,
+            PredOrFunc, PredSymName, PredFormArity, PredIds),
         ( if PredIds = [PredIdPrime] then
             MaybePredId = yes(PredIdPrime),
             (

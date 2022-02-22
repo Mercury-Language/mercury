@@ -1753,11 +1753,12 @@ module_info_user_final_pred_procs(MI, PredProcIds) :-
 :- pred get_unique_pred_proc_id_for_pred_sym_name_arity(module_info::in,
     sym_name_arity::in, pred_proc_id::out) is det.
 
-get_unique_pred_proc_id_for_pred_sym_name_arity(MI,
-        sym_name_arity(SymName, Arity), PredProcId) :-
+get_unique_pred_proc_id_for_pred_sym_name_arity(MI, SNA, PredProcId) :-
     module_info_get_predicate_table(MI, PredTable),
+    SNA = sym_name_arity(SymName, Arity),
+    UserArity = user_arity(Arity),
     predicate_table_lookup_pred_sym_arity(PredTable,
-        may_be_partially_qualified, SymName, Arity, PredIds),
+        may_be_partially_qualified, SymName, UserArity, PredIds),
     ( if PredIds = [PredId] then
         pred_table.get_single_proc_id(MI, PredId, ProcId),
         PredProcId = proc(PredId, ProcId)

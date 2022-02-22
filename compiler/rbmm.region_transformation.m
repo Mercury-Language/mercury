@@ -876,7 +876,7 @@ region_instruction_to_conj(ModuleInfo, Context, ResurRenaming, IteRenaming,
             IteRenaming, RegionVar, !NameToVar, !VarSet, !VarTypes),
         generate_simple_call(ModuleInfo, mercury_region_builtin_module,
             create_region_pred_name, pf_predicate, only_mode, detism_det,
-            purity_impure, [RegionVar], [], instmap_delta_bind_no_var,
+            purity_impure, [], [RegionVar], [], instmap_delta_bind_no_var,
             Context, CallGoal)
     ;
         RegionInstruction = remove_region(RegionName),
@@ -884,7 +884,7 @@ region_instruction_to_conj(ModuleInfo, Context, ResurRenaming, IteRenaming,
             IteRenaming, RegionVar, !NameToVar, !VarSet, !VarTypes),
         generate_simple_call(ModuleInfo, mercury_region_builtin_module,
             remove_region_pred_name, pf_predicate, only_mode, detism_det,
-            purity_impure, [RegionVar], [], instmap_delta_bind_no_var,
+            purity_impure, [], [RegionVar], [], instmap_delta_bind_no_var,
             Context, CallGoal)
     ;
         RegionInstruction = rename_region(_, _),
@@ -910,7 +910,7 @@ region_instruction_to_conj_before(ModuleInfo, Context, ResurRenaming,
             IteRenaming, RegionVar, !NameToVar, !VarSet, !VarTypes),
         generate_simple_call(ModuleInfo, mercury_region_builtin_module,
             create_region_pred_name, pf_predicate, only_mode, detism_det,
-            purity_impure, [RegionVar], [], instmap_delta_bind_no_var,
+            purity_impure, [], [RegionVar], [], instmap_delta_bind_no_var,
             Context, CallGoal)
     ;
         RegionInstruction = remove_region(RegionName),
@@ -919,7 +919,7 @@ region_instruction_to_conj_before(ModuleInfo, Context, ResurRenaming,
             !VarTypes),
         generate_simple_call(ModuleInfo, mercury_region_builtin_module,
             remove_region_pred_name, pf_predicate, only_mode, detism_det,
-            purity_impure, [RegionVar], [], instmap_delta_bind_no_var,
+            purity_impure, [], [RegionVar], [], instmap_delta_bind_no_var,
             Context, CallGoal)
     ;
         RegionInstruction = rename_region(_, _),

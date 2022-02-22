@@ -370,11 +370,8 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual, PredOrFunc,
         Context, PredOrigin, PredStatus, MaybeCurUserDecl, GoalType,
         Markers, Types, TVarSet, ExistQVars, Constraints, Proofs,
         ConstraintMap, ClausesInfo, VarNameRemap, PredInfo0),
-    PredFormArity = pred_form_arity(PredFormArityInt),
-    % XXX ARITY Make these take a PredFormArity, not PredFormArityInt.
-    % Likewise with all other lookup predicates that take an arity.
     predicate_table_lookup_pf_m_n_a(PredTable0, is_fully_qualified,
-        PredOrFunc, PredModuleName, PredName, PredFormArityInt, PredIds),
+        PredOrFunc, PredModuleName, PredName, PredFormArity, PredIds),
     (
         PredIds = [OrigPred | _],
         Succeeded = no,
@@ -735,10 +732,9 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
         % for the predicate; it is presumed to be local, and its type
         % will be inferred automatically.
         PredFormArity = arg_list_arity(Modes),
-        PredFormArity = pred_form_arity(PredFormArityInt),
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
         predicate_table_lookup_pf_m_n_a(PredicateTable0, is_fully_qualified,
-            PredOrFunc, PredModuleName, PredName, PredFormArityInt, PredIds),
+            PredOrFunc, PredModuleName, PredName, PredFormArity, PredIds),
         ( if PredIds = [PredIdPrime] then
             PredId = PredIdPrime
         else
@@ -975,7 +971,7 @@ preds_do_add_implicit(PredOrFunc, PredModuleName, PredName, PredFormArity,
     pred_info_set_markers(Markers, PredInfo0, PredInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     predicate_table_lookup_pf_m_n_a(PredicateTable0, is_fully_qualified,
-        PredOrFunc, PredModuleName, PredName, PredFormArityInt, PredIds),
+        PredOrFunc, PredModuleName, PredName, PredFormArity, PredIds),
     (
         PredIds = [],
         module_info_get_partial_qualifier_info(!.ModuleInfo, MQInfo),

@@ -475,10 +475,9 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
         PredSpec, PredId, !SeqNum, !Specs) :-
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     PredSpec = pred_pf_name_arity(PredOrFunc, PredName, UserArity),
-    user_arity_pred_form_arity(PredOrFunc, UserArity,
-        pred_form_arity(PredFormArityInt)),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     predicate_table_lookup_pf_sym_arity(PredicateTable, is_fully_qualified,
-        PredOrFunc, PredName, PredFormArityInt, PredIds),
+        PredOrFunc, PredName, PredFormArity, PredIds),
     (
         PredIds = [],
         predicate_table_lookup_sym(PredicateTable, is_fully_qualified,
@@ -567,9 +566,8 @@ add_pragma_termination_info(TermInfo, Context, !ModuleInfo, !Specs) :-
     TermInfo = pragma_info_termination_info(PredNameModesPF,
         MaybePragmaArgSizeInfo, MaybePragmaTerminationInfo),
     PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
-    list.length(Modes, PredFormArityInt),
-    user_arity_pred_form_arity(PredOrFunc, UserArity,
-        pred_form_arity(PredFormArityInt)),
+    PredFormArity = arg_list_arity(Modes),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     % XXX lfh_ignore:
     % This happens in `.trans_opt' files sometimes, so just ignore it.
     look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
@@ -957,14 +955,14 @@ add_pragma_external_proc(ExternalInfo, Context, !ModuleInfo, !Specs) :-
         (
             PredOrFunc = pf_predicate,
             predicate_table_lookup_pred_sym_arity(PredicateTable0,
-                is_fully_qualified, SymName, UserArityInt, PredIds),
+                is_fully_qualified, SymName, UserArity, PredIds),
             predicate_table_lookup_pred_sym(PredicateTable0,
                 is_fully_qualified, SymName, AllArityPredIds),
             MissingPieces = [decl("external_pred"), words("pragma")]
         ;
             PredOrFunc = pf_function,
             predicate_table_lookup_func_sym_arity(PredicateTable0,
-                is_fully_qualified, SymName, UserArityInt, PredIds),
+                is_fully_qualified, SymName, UserArity, PredIds),
             predicate_table_lookup_func_sym(PredicateTable0,
                 is_fully_qualified, SymName, AllArityPredIds),
             MissingPieces = [decl("external_func"), words("pragma")]
@@ -1784,21 +1782,18 @@ get_matching_pred_ids(ModuleInfo, PFU, SymName, UserArity, PredIds,
         SymName = qualified(_, _),
         (
             PFU = pfu_unknown,
-            UserArity = user_arity(UserArityInt),
             predicate_table_lookup_sym_arity(PredTable0, is_fully_qualified,
-                SymName, UserArityInt, PredIds)
+                SymName, UserArity, PredIds)
         ;
             PFU = pfu_predicate,
-            user_arity_pred_form_arity(pf_predicate, UserArity,
-                pred_form_arity(PredFormArityInt)),
+            user_arity_pred_form_arity(pf_predicate, UserArity, PredFormArity),
             predicate_table_lookup_pf_sym_arity(PredTable0, is_fully_qualified,
-                pf_predicate, SymName, PredFormArityInt, PredIds)
+                pf_predicate, SymName, PredFormArity, PredIds)
         ;
             PFU = pfu_function,
-            user_arity_pred_form_arity(pf_function, UserArity,
-                pred_form_arity(PredFormArityInt)),
+            user_arity_pred_form_arity(pf_function, UserArity, PredFormArity),
             predicate_table_lookup_pf_sym_arity(PredTable0, is_fully_qualified,
-                pf_function, SymName, PredFormArityInt, PredIds)
+                pf_function, SymName, PredFormArity, PredIds)
         ),
         (
             PredIds = [],
@@ -1865,10 +1860,9 @@ transform_selected_mode_of_pred(PredId, PFNameArity, Modes,
 look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
         Context, PragmaName, PredOrFunc, SymName, UserArity, MaybePredId) :-
     module_info_get_predicate_table(ModuleInfo, PredTable),
-    user_arity_pred_form_arity(PredOrFunc, UserArity,
-        pred_form_arity(PredFormArityInt)),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     predicate_table_lookup_pf_sym_arity(PredTable, IsFullyQualified,
-        PredOrFunc, SymName, PredFormArityInt, PredIds),
+        PredOrFunc, SymName, PredFormArity, PredIds),
     (
         PredIds = [],
         (

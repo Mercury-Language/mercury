@@ -884,19 +884,19 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompAvail, OldTimestamp,
         !.MaybeStoppingReason = yes(_)
     ;
         !.MaybeStoppingReason = no,
-        list.length(Args, PredFormArity),
+        list.length(Args, PredFormArityInt),
         (
             WithType = no,
             % XXX Given that we use pred_form_arity elsewhere
             % when we process resolved_functor_pred_or_func,
             % setting Arity here to the user_arity looks to be a bug.
             % Unfortunately, ...
-            adjust_func_arity(PredOrFunc, UserArity, PredFormArity)
+            adjust_func_arity(PredOrFunc, UserArityInt, PredFormArityInt)
         ;
             WithType = yes(_),
             % ... in the presence of with_type, we have no idea what even
             % the actual pred_form_arity is.
-            UserArity = PredFormArity
+            UserArityInt = PredFormArityInt
         ),
         ( if
             (
@@ -906,12 +906,12 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompAvail, OldTimestamp,
                     PredOrFunc = pf_predicate,
                     PredMap = VersionNumbers ^ mivn_predicates,
                     item_is_new_or_changed(OldTimestamp, PredMap,
-                        SymName, UserArity)
+                        SymName, UserArityInt)
                 ;
                     PredOrFunc = pf_function,
                     FuncMap = VersionNumbers ^ mivn_functions,
                     item_is_new_or_changed(OldTimestamp, FuncMap,
-                        SymName, UserArity)
+                        SymName, UserArityInt)
                 )
             )
         then
@@ -929,7 +929,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompAvail, OldTimestamp,
             ( if map.search(UsedItemMap, Name, MatchingArityList) then
                 list.foldl2(
                     check_for_pred_or_func_item_ambiguity_1(WithType,
-                        ItemType, RecompAvail, SymName, UserArity),
+                        ItemType, RecompAvail, SymName, UserArityInt),
                     MatchingArityList, no, !:MaybeStoppingReason, !Info)
             else
                 !:MaybeStoppingReason = no
@@ -943,10 +943,11 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompAvail, OldTimestamp,
                     AritiesToMatch = match_arity_any
                 ;
                     WithType = no,
-                    AritiesToMatch = match_arity_less_than_or_equal(UserArity)
+                    AritiesToMatch =
+                        match_arity_less_than_or_equal(UserArityInt)
                 ),
                 ResolvedFunctor = resolved_functor_pred_or_func(InvPredId,
-                    PredOrFunc, ModuleName, pred_form_arity(PredFormArity)),
+                    PredOrFunc, ModuleName, pred_form_arity(PredFormArityInt)),
                 check_functor_ambiguities_by_name(RecompAvail, SymName,
                     AritiesToMatch, ResolvedFunctor,
                     !MaybeStoppingReason, !Info)

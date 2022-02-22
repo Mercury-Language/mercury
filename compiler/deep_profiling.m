@@ -1621,21 +1621,21 @@ classify_call(ModuleInfo, Expr) = Class :-
         ( if
             lookup_builtin_pred_proc_id(ModuleInfo,
                 mercury_public_builtin_module, "unify",
-                pf_predicate, 2, mode_no(0), PredId, _),
+                pf_predicate, user_arity(2), mode_no(0), PredId, _),
             Args = [TypeInfoVar | _]
         then
             Class = call_class_special(proc(PredId, ProcId), TypeInfoVar)
         else if
             lookup_builtin_pred_proc_id(ModuleInfo,
                 mercury_public_builtin_module, "compare",
-                pf_predicate, 3, mode_no(0), PredId, _),
+                pf_predicate, user_arity(3), mode_no(0), PredId, _),
             Args = [TypeInfoVar | _]
         then
             Class = call_class_special(proc(PredId, ProcId), TypeInfoVar)
         else if
             lookup_builtin_pred_proc_id(ModuleInfo,
                 mercury_public_builtin_module,
-                "compare_representation", pf_predicate, 3,
+                "compare_representation", pf_predicate, user_arity(3),
                 mode_no(0), PredId, _),
             Args = [TypeInfoVar | _]
         then
@@ -1904,7 +1904,7 @@ get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
     ModuleName = mercury_profiling_builtin_module,
     module_info_get_predicate_table(ModuleInfo, PredTable),
     predicate_table_lookup_pred_m_n_a(PredTable,
-        is_fully_qualified, ModuleName, Name, Arity, PredIds),
+        is_fully_qualified, ModuleName, Name, user_arity(Arity), PredIds),
     (
         PredIds = [],
         unexpected($pred, "no pred_id")

@@ -344,13 +344,13 @@
     % when making this decision.
     %
     % NOTE: this version is deprecated; new code should use the following
-    %       version because it supports the intermodule-analysis framework.
+    % version because it supports the intermodule-analysis framework.
     %
 :- pred reordering_maintains_termination_old(module_info::in, bool::in,
     hlds_goal::in, hlds_goal::in) is semidet.
 
     % reordering_maintains_termination(FullyStrict, Goal1, Goal2, Result,
-    %   !ModuleInfo, !IO).
+    %   !ModuleInfo).
     %
     % Result is `yes' if any possible change in termination behaviour from
     % reordering the goals is allowed according to the semantics options.
@@ -358,14 +358,15 @@
     % when making this decision.
     %
     % NOTE: new code should use this version as it supports the
-    %       intermodule-analysis framework.
+    % intermodule-analysis framework.
     %
-:- pred reordering_maintains_termination(bool::in, hlds_goal::in,
-    hlds_goal::in, bool::out, module_info::in, module_info::out) is det.
+:- pred reordering_maintains_termination(bool::in,
+    hlds_goal::in, hlds_goal::in, bool::out,
+    module_info::in, module_info::out) is det.
 
     % generate_simple_call(ModuleInfo, ModuleName, ProcName, PredOrFunc,
-    %   ModeNo, Detism, Purity, Args, Features, InstMapDelta, Context,
-    %   CallGoal):
+    %   ModeNo, Detism, Purity, TIArgVars, ArgVars, Features, InstMapDelta,
+    %   Context, CallGoal):
     %
     % Generate a call to a builtin procedure (e.g. from the private_builtin
     % or table_builtin module). This is used by HLDS->HLDS transformation
@@ -378,26 +379,26 @@
     %
 :- pred generate_simple_call(module_info::in, module_name::in, string::in,
     pred_or_func::in, mode_no::in, determinism::in, purity::in,
-    list(prog_var)::in, list(goal_feature)::in, instmap_delta::in,
-    term.context::in, hlds_goal::out) is det.
+    list(prog_var)::in, list(prog_var)::in, list(goal_feature)::in,
+    instmap_delta::in, term.context::in, hlds_goal::out) is det.
 
     % generate_foreign_proc(ModuleInfo, ModuleName, ProcName, PredOrFunc,
-    %   ModeNo, Detism, Purity, Attributes, Args, ExtraArgs,
+    %   ModeNo, Detism, Purity, Attributes, TIArgs, Args, ExtraArgs,
     %   MaybeTraceRuntimeCond, Code, Features, InstMapDelta, Context,
     %   CallGoal):
     %
     % generate_foreign_proc is similar to generate_simple_call,
     % but also assumes that the called predicate is defined via a
     % foreign_proc, that the foreign_proc's arguments are as given in
-    % Args, its attributes are Attributes, and its code is Code.
+    % TIArgs and Args, its attributes are Attributes, and its code is Code.
     % As well as returning a foreign_code instead of a call, effectively
     % inlining the call, generate_foreign_proc also passes ExtraArgs
-    % as well as Args.
+    % as well as TIArgs and Args.
     %
 :- pred generate_foreign_proc(module_info::in, module_name::in, string::in,
     pred_or_func::in, mode_no::in, determinism::in, purity::in,
     pragma_foreign_proc_attributes::in,
-    list(foreign_arg)::in, list(foreign_arg)::in,
+    list(foreign_arg)::in, list(foreign_arg)::in, list(foreign_arg)::in,
     maybe(trace_expr(trace_runtime))::in, string::in,
     list(goal_feature)::in, instmap_delta::in,
     term.context::in, hlds_goal::out) is det.
@@ -1947,9 +1948,7 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
     else
         % Don't convert (can_fail, can_loop) into (can_loop, can_fail), since
         % this could worsen the termination properties of the program.
-        %
-        goal_can_loop_or_throw(LaterGoal, LaterCanLoopOrThrow,
-            !ModuleInfo),
+        goal_can_loop_or_throw(LaterGoal, LaterCanLoopOrThrow, !ModuleInfo),
         ( if
             EarlierCanFail = can_fail,
             LaterCanLoopOrThrow = can_loop_or_throw
@@ -1987,10 +1986,12 @@ goal_depends_on_earlier_goal(LaterGoal, EarlierGoal, InstMapBeforeEarlierGoal,
 %-----------------------------------------------------------------------------%
 
 generate_simple_call(ModuleInfo, ModuleName, ProcName, PredOrFunc, ModeNo,
-        Detism, Purity, Args, Features, InstMapDelta0, Context, Goal) :-
-    list.length(Args, Arity),
+        Detism, Purity, TIArgVars, NonTIArgVars, Features, InstMapDelta0,
+        Context, Goal) :-
+    PredFormArity = arg_list_arity(NonTIArgVars),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
-        PredOrFunc, Arity, ModeNo, PredId, ProcId),
+        PredOrFunc, UserArity, ModeNo, PredId, ProcId),
 
     % builtin_state only uses this to work out whether
     % this is the "recursive" clause generated for the compiler
@@ -1998,9 +1999,10 @@ generate_simple_call(ModuleInfo, ModuleName, ProcName, PredOrFunc, ModeNo,
     InvalidPredId = invalid_pred_id,
     BuiltinState = builtin_state(ModuleInfo, InvalidPredId, PredId, ProcId),
 
-    GoalExpr = plain_call(PredId, ProcId, Args, BuiltinState, no,
+    ArgVars = TIArgVars ++ NonTIArgVars,
+    GoalExpr = plain_call(PredId, ProcId, ArgVars, BuiltinState, no,
         qualified(ModuleName, ProcName)),
-    set_of_var.list_to_set(Args, NonLocals),
+    set_of_var.list_to_set(ArgVars, NonLocals),
     determinism_components(Detism, _CanFail, NumSolns),
     (
         NumSolns = at_most_zero,
@@ -2021,12 +2023,14 @@ generate_simple_call(ModuleInfo, ModuleName, ProcName, PredOrFunc, ModeNo,
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 generate_foreign_proc(ModuleInfo, ModuleName, ProcName, PredOrFunc, ModeNo,
-        Detism, Purity, Attributes, Args, ExtraArgs, MaybeTraceRuntimeCond,
-        Code, Features, InstMapDelta0, Context, Goal) :-
-    list.length(Args, Arity),
+        Detism, Purity, Attributes, TIArgs, NonTIArgs, ExtraArgs,
+        MaybeTraceRuntimeCond, Code, Features, InstMapDelta0, Context, Goal) :-
+    PredFormArity = arg_list_arity(NonTIArgs),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
-        PredOrFunc, Arity, ModeNo, PredId, ProcId),
+        PredOrFunc, UserArity, ModeNo, PredId, ProcId),
 
+    Args = TIArgs ++ NonTIArgs,
     GoalExpr = call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
         MaybeTraceRuntimeCond, fp_impl_ordinary(Code, no)),
     ArgVars = list.map(foreign_arg_var, Args),

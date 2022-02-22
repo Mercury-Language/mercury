@@ -672,10 +672,10 @@ method_is_known(PredTable, ClassPredIdSet, Method) :-
     % Search for pred_ids matching that p/f, name, arity, and succeed
     % if the method definition p/f, name, and arity matches at least one
     % of the methods from the class interface.
-    user_arity_pred_form_arity(MethodPredOrFunc, MethodUserArity,
-        pred_form_arity(MethodPredFormArityInt)),
+    user_arity_pred_form_arity(MethodPredOrFunc,
+        MethodUserArity, MethodPredFormArity),
     predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
-        MethodPredOrFunc, MethodName, MethodPredFormArityInt, MatchingPredIds),
+        MethodPredOrFunc, MethodName, MethodPredFormArity, MatchingPredIds),
     % Given that we have specified every aspect of the method predicate,
     % MatchingPredIds can contain at most one pred_id.
     % If it contains zero pred_ids, the method is not known.

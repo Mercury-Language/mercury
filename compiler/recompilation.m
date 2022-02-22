@@ -100,8 +100,15 @@
     ;       functor_item        % The RHS of a var-functor unification.
     ;       predicate_item
     ;       function_item
+            % XXX ARITY The arity we record next to function_items *seems*
+            % to be the user_arity (though its type is just "arity"),
+            % but in the presence of with_type annotations, even that is
+            % in question.
     ;       mutable_item
     ;       foreign_proc_item.
+            % XXX ARITY This does not say whether the foreign_proc is for
+            % a predicate or a function, which affects the interpretation
+            % of the associated arity.
 
 :- inst simple_item for item_type/0
     --->    type_name_item

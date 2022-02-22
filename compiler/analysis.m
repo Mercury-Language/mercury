@@ -32,6 +32,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
@@ -170,7 +171,7 @@
     --->    func_id(
                 fid_pf      :: pred_or_func,
                 fid_name    :: string,
-                fid_arity   :: int,
+                fid_arity   :: pred_form_arity,
                 fid_mode    :: proc_id
             ).
 

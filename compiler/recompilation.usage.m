@@ -197,6 +197,9 @@ process_imported_items_in_queue(!.Queue, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 record_used_pred_or_func(PredOrFunc, Id, !Info) :-
+    % XXX ARITY This Arity appears to represent a user_arity,
+    % but any connection to the original pred_info is so tenuous
+    % that I (zs) cannot be sure.
     Id = item_name(SymName, Arity),
     UsedItems0 = !.Info ^ resolved_used_items,
     (
@@ -225,9 +228,15 @@ do_record_used_pred_or_func(PredOrFunc, ModuleQualifier,
         SymName, Arity, Recorded, !MatchingNames, !Info) :-
     ModuleInfo = !.Info ^ module_info,
     module_info_get_predicate_table(ModuleInfo, PredTable),
-    adjust_func_arity(PredOrFunc, OrigArity, Arity),
+    % XXX ARITY BUG See the comment in record_used_pred_or_func about Arity,
+    % which makes this adjustment look *very* strange. Since the pred form
+    % arity is supposed to be the *last* argument of adjust_func_arity,
+    % I (zs) strongly suspect that this call should be
+    % adjust_func_arity(PredOrFunc, Arity, PredFormArityInt),
+    adjust_func_arity(PredOrFunc, PredFormArityInt, Arity),
+    PredFormArity = pred_form_arity(PredFormArityInt),
     predicate_table_lookup_pf_sym_arity(PredTable, may_be_partially_qualified,
-        PredOrFunc, SymName, OrigArity, MatchingPredIds),
+        PredOrFunc, SymName, PredFormArity, MatchingPredIds),
     (
         MatchingPredIds = [_ | _],
         Recorded = recorded,

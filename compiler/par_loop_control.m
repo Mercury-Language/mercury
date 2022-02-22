@@ -1559,12 +1559,12 @@ get_lc_finish_loop_control_proc(ModuleInfo, PredId, ProcId) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred lookup_lc_pred_proc(module_info::in, string::in, arity::in,
+:- pred lookup_lc_pred_proc(module_info::in, string::in, int::in,
     pred_id::out, proc_id::out) is det.
 
 lookup_lc_pred_proc(ModuleInfo, Name, Arity, PredId, ProcId) :-
     lookup_builtin_pred_proc_id(ModuleInfo, mercury_par_builtin_module,
-        Name, pf_predicate, Arity, only_mode, PredId, ProcId).
+        Name, pf_predicate, user_arity(Arity), only_mode, PredId, ProcId).
 
 %---------------------------------------------------------------------------%
 :- end_module transform_hlds.par_loop_control.

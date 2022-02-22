@@ -697,8 +697,8 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
 
                     % Decrement GranularityVar before the call.
                     lookup_builtin_pred_proc_id(ModuleInfo,
-                        unqualified("int"), "minus", pf_function, 2, only_mode,
-                        MinusPredId, MinusProcId),
+                        unqualified("int"), "minus", pf_function,
+                        user_arity(2), only_mode, MinusPredId, MinusProcId),
                     MinusCallArgs = [GranularityVar, Var, VarResult],
                     MinusCallBuiltin = inline_builtin,
                     MinusCallSymName = qualified(unqualified("int"), "minus"),

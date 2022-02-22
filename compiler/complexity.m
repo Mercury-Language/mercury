@@ -512,9 +512,9 @@ complexity_generate_foreign_proc(PredName, Detism, Args, ExtraArgs,
     set_may_call_mercury(proc_will_not_call_mercury, Attrs0, Attrs),
     MaybeTraceRuntimeCond = no,
     goal_util.generate_foreign_proc(ModuleInfo, BuiltinModule, PredName,
-        pf_predicate, only_mode, Detism, purity_impure, Attrs, Args, ExtraArgs,
-        MaybeTraceRuntimeCond, Code, [], instmap_delta_bind_vars(BoundVars),
-        Context, Goal).
+        pf_predicate, only_mode, Detism, purity_impure, Attrs,
+        [], Args, ExtraArgs, MaybeTraceRuntimeCond, Code, [],
+        instmap_delta_bind_vars(BoundVars), Context, Goal).
 
 %-----------------------------------------------------------------------------%
 

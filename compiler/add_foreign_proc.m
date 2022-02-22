@@ -104,9 +104,8 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
     % If it is not there, print an error message and insert
     % a dummy declaration for the predicate.
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-    PredFormArity = pred_form_arity(PredFormArityInt),
     predicate_table_lookup_pf_m_n_a(PredTable0, is_fully_qualified,
-        PredOrFunc, PredModuleName, PredName, PredFormArityInt, PredIds),
+        PredOrFunc, PredModuleName, PredName, PredFormArity, PredIds),
     (
         PredIds = [],
         preds_add_implicit_report_error(PredOrFunc, PredModuleName, PredName,

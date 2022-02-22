@@ -1042,6 +1042,7 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
     module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
     MethodUserArity = user_arity(MethodUserArityInt),
     ( if
+        % XXX ARITY is_field_access_function_name can take user_arity
         % XXX ARITY is_field_access_function_name can return FieldDefns
         is_field_access_function_name(ModuleInfo, InstanceMethodName0,
             MethodUserArityInt, _, FieldName),
@@ -1071,7 +1072,7 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
 
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     predicate_table_lookup_func_sym_arity(PredicateTable,
-        may_be_partially_qualified, InstanceMethodName0, MethodUserArityInt,
+        may_be_partially_qualified, InstanceMethodName0, MethodUserArity,
         PredIds),
     ( if
         PredIds = [_ | _],
