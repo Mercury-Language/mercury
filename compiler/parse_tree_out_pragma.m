@@ -852,13 +852,13 @@ extra_attribute_to_string(needs_call_standard_output_registers) =
 
 mercury_format_pragma_foreign_proc_export(Lang, FPEInfo, S, !U) :-
     FPEInfo = pragma_info_foreign_proc_export(_Origin, ForeignLang,
-        PredNameModesPF, ExportName),
+        PredNameModesPF, ExportName, VarSet),
     PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
     add_string(":- pragma foreign_export(", S, !U),
     mercury_format_foreign_language_string(ForeignLang, S, !U),
     add_string(", ", S, !U),
     mercury_format_sym_name(SymName, S, !U),
-    varset.init(InstVarSet), % The varset isn't really used.
+    varset.coerce(VarSet, InstVarSet),
     (
         PredOrFunc = pf_function,
         pred_args_to_func_args(Modes, ArgModes, RetMode),

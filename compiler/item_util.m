@@ -1302,7 +1302,7 @@ impl_pragma_needs_foreign_imports(ImplPragma) = Langs :-
             FCInfo = pragma_info_foreign_code(Lang, _)
         ;
             ImplPragma = impl_pragma_foreign_proc_export(FPEInfo),
-            FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _)
+            FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _, _)
         ),
         Langs = [Lang]
     ;

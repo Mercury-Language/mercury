@@ -1219,7 +1219,7 @@ acc_foreign_export_langs_from_impl_pragma(ItemImplPragma, !Langs) :-
     ItemImplPragma = item_pragma_info(ImplPragma, _, _),
     (
         ImplPragma = impl_pragma_foreign_proc_export(FPEInfo),
-        FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _),
+        FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _, _),
         set.insert(Lang, !Langs)
     ;
         ( ImplPragma = impl_pragma_foreign_decl(_)
@@ -1263,7 +1263,7 @@ acc_foreign_code_langs_from_impl_pragma(ItemImplPragma, !Langs) :-
             % foreign procs in that language, so this mechanism is unnecessary.
         ;
             ImplPragma = impl_pragma_foreign_proc_export(FPEInfo),
-            FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _)
+            FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _, _)
         ;
             ImplPragma = impl_pragma_fact_table(_),
             Lang = lang_c

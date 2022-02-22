@@ -46,14 +46,11 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.mode_errors.
 :- import_module hlds.add_pred.
 :- import_module hlds.default_func_mode.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_code_util.
-:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
@@ -63,6 +60,7 @@
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds.state_var.
 :- import_module hlds.make_hlds.superhomogeneous.
+:- import_module hlds.make_hlds_error.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pre_quantification.
 :- import_module hlds.pred_table.
@@ -73,9 +71,6 @@
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.parse_inst_mode_name.
-:- import_module parse_tree.parse_tree_out_info.
-:- import_module parse_tree.parse_tree_out_pred_decl.
-:- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_util.
@@ -455,14 +450,14 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
     ;
         ModeAnnotationSpecs = [],
         (
-            ModeAnnotations = ma_modes(ModeList0),
+            ModeAnnotations = ma_modes(ArgModes0),
 
             % The user specified some mode annotations on this clause.
             % First module-qualify the mode annotations. The annotations on
             % clauses from `.opt' files will already be fully module qualified.
 
             ( if PredStatus = pred_status(status_opt_imported) then
-                ModeList = ModeList0
+                ArgModes = ArgModes0
             else
                 Exported =
                     pred_status_is_exported_to_non_submodules(PredStatus),
@@ -475,7 +470,7 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
                 ),
                 qual_info_get_mq_info(!.QualInfo, MQInfo0),
                 qualify_clause_mode_list(InInt, Context,
-                    ModeList0, ModeList, MQInfo0, MQInfo, !Specs),
+                    ArgModes0, ArgModes, MQInfo0, MQInfo, !Specs),
                 qual_info_set_mq_info(MQInfo, !QualInfo)
             ),
 
@@ -484,12 +479,12 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
             map.to_assoc_list(Procs, ExistingProcs),
             ( if
                 get_procedure_matching_declmodes_with_renaming(!.ModuleInfo,
-                    ExistingProcs, ModeList, ProcId)
+                    ExistingProcs, ArgModes, ProcId)
             then
                 ApplProcIds = selected_modes([ProcId])
             else
-                add_undeclared_mode_error(!.ModuleInfo, PredInfo, PredId,
-                    VarSet, ModeList, Context, !Specs),
+                report_undeclared_mode_error(!.ModuleInfo, PredId, PredInfo,
+                    VarSet, ArgModes, [words("clause")], Context, !Specs),
                 % Apply the clause to all modes.
                 % XXX Would it be better to apply it to none?
                 ApplProcIds = selected_modes(AllProcIds)
@@ -606,64 +601,6 @@ add_annotation(yes(Mode), ma_modes(Modes), ma_modes(Modes ++ [Mode])).
 add_annotation(no,        ma_none, ma_none).
 add_annotation(yes(_),    ma_none, ma_mixed).
 add_annotation(_,         ma_mixed, ma_mixed).
-
-%-----------------%
-
-:- pred add_undeclared_mode_error(module_info::in, pred_info::in, pred_id::in,
-    prog_varset::in, list(mer_mode)::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_undeclared_mode_error(ModuleInfo, PredInfo, PredId, VarSet, ModeList,
-        Context, !Specs) :-
-    PredIdPieces = describe_one_pred_name(ModuleInfo,
-        should_not_module_qualify, PredId),
-    strip_builtin_qualifiers_from_mode_list(ModeList, StrippedModeList),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    Name = pred_info_name(PredInfo),
-    MaybeDet = no,
-    SubDeclStr = mercury_mode_subdecl_to_string(output_debug, PredOrFunc,
-        varset.coerce(VarSet), unqualified(Name), StrippedModeList, MaybeDet),
-
-    MainPieces = [words("In clause for")] ++ PredIdPieces ++ [suffix(":"), nl,
-        words("error: mode annotation specifies undeclared mode"),
-        quote(SubDeclStr), suffix("."), nl],
-    ProcIds = pred_info_all_procids(PredInfo),
-    (
-        ProcIds = [],
-        VerbosePieces = [words("(There are no declared modes for this"),
-            p_or_f(PredOrFunc), suffix(".)"), nl]
-    ;
-        ProcIds = [ProcIdsHead | ProcIdsTail],
-        (
-            ProcIdsTail = [],
-            VerbosePieces = [words("The declared mode for this"),
-                p_or_f(PredOrFunc), words("is:"),
-                nl_indent_delta(1)] ++
-                mode_decl_for_pred_info_to_pieces(PredInfo, ProcIdsHead) ++
-                [nl_indent_delta(-1)]
-        ;
-            ProcIdsTail = [_ | _],
-            VerbosePieces = [words("The declared modes for this"),
-                p_or_f(PredOrFunc), words("are the following:"),
-                nl_indent_delta(1)] ++
-                component_list_to_line_pieces(
-                    list.map(mode_decl_for_pred_info_to_pieces(PredInfo),
-                        ProcIds),
-                    [nl_indent_delta(-1)])
-        )
-    ),
-    Msg = simple_msg(Context,
-        [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds, [Msg]),
-    !:Specs = [Spec | !.Specs].
-
-:- func mode_decl_for_pred_info_to_pieces(pred_info, proc_id)
-    = list(format_component).
-
-mode_decl_for_pred_info_to_pieces(PredInfo, ProcId) =
-    [words(":- mode"),
-    words(mode_decl_to_string(output_debug, ProcId, PredInfo)),
-    suffix(".")].
 
 %-----------------------------------------------------------------------------%
 

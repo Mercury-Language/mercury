@@ -20,6 +20,7 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -42,12 +43,9 @@
     list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-    % Similar to report_undeclared_mode_error, but gives less information.
-    % XXX perhaps we should get rid of this, and change the callers to
-    % instead call undeclared_mode_error.
-    %
-:- pred report_undefined_mode_error(sym_name::in, int::in, prog_context::in,
-    list(format_component)::in,
+:- pred report_undeclared_mode_error(module_info::in,
+    pred_id::in, pred_info::in, prog_varset::in, list(mer_mode)::in,
+    list(format_component)::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred maybe_report_undefined_pred_error(module_info::in,
@@ -60,17 +58,23 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_pred.
+:- import_module check_hlds.
+:- import_module check_hlds.mode_errors.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_pred_decl.
+:- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module set.
 :- import_module string.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -147,13 +151,60 @@ report_undefined_pred_or_func_error(MaybePorF, SymName, Arity, OtherArities,
         Context, MainPieces ++ OtherArityPieces),
     !:Specs = [Spec | !.Specs].
 
-report_undefined_mode_error(SymName, Arity, Context, DescPieces, !Specs) :-
-    SNA = sym_name_arity(SymName, Arity),
-    Pieces = [words("Error:") | DescPieces] ++ [words("for"),
-        qual_sym_name_arity(SNA), words("specifies non-existent mode."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
+%---------------------------------------------------------------------------%
+
+report_undeclared_mode_error(ModuleInfo, PredId, PredInfo, VarSet, ArgModes,
+        DescPieces, Context, !Specs) :-
+    PredIdPieces = describe_one_pred_name(ModuleInfo,
+        should_not_module_qualify, PredId),
+    strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    Name = pred_info_name(PredInfo),
+    MaybeDet = no,
+    SubDeclStr = mercury_mode_subdecl_to_string(output_debug, PredOrFunc,
+        varset.coerce(VarSet), unqualified(Name), StrippedArgModes, MaybeDet),
+
+    MainPieces = [words("In") | DescPieces] ++ [words("for")] ++
+        PredIdPieces ++ [suffix(":"), nl,
+        words("error: mode annotation specifies undeclared mode"),
+        quote(SubDeclStr), suffix("."), nl],
+    ProcIds = pred_info_all_procids(PredInfo),
+    (
+        ProcIds = [],
+        VerbosePieces = [words("(There are no declared modes for this"),
+            p_or_f(PredOrFunc), suffix(".)"), nl]
+    ;
+        ProcIds = [ProcIdsHead | ProcIdsTail],
+        (
+            ProcIdsTail = [],
+            VerbosePieces = [words("The declared mode for this"),
+                p_or_f(PredOrFunc), words("is:"),
+                nl_indent_delta(1)] ++
+                mode_decl_for_pred_info_to_pieces(PredInfo, ProcIdsHead) ++
+                [nl_indent_delta(-1)]
+        ;
+            ProcIdsTail = [_ | _],
+            VerbosePieces = [words("The declared modes for this"),
+                p_or_f(PredOrFunc), words("are the following:"),
+                nl_indent_delta(1)] ++
+                component_list_to_line_pieces(
+                    list.map(mode_decl_for_pred_info_to_pieces(PredInfo),
+                        ProcIds),
+                    [nl_indent_delta(-1)])
+        )
+    ),
+    Msg = simple_msg(Context,
+        [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
+    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
+
+:- func mode_decl_for_pred_info_to_pieces(pred_info, proc_id)
+    = list(format_component).
+
+mode_decl_for_pred_info_to_pieces(PredInfo, ProcId) =
+    [words(":- mode"),
+    words(mode_decl_to_string(output_debug, ProcId, PredInfo)),
+    suffix(".")].
 
 %---------------------------------------------------------------------------%
 

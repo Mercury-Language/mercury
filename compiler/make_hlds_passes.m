@@ -1186,8 +1186,12 @@ make_pragma_foreign_proc_export(Globals, SymName, HeadModes, CName,
     globals.get_target(Globals, CompilationTarget),
     ExportLang = target_lang_to_foreign_export_lang(CompilationTarget),
     PredNameModesPF = proc_pf_name_modes(pf_predicate, SymName, HeadModes),
+    % Since the pragma is not coming from the user, we won't be
+    % generating any error messages for it, which means that
+    % the varset won't be used.
+    varset.init(VarSet),
     FPEInfo = pragma_info_foreign_proc_export(PEOrigin, ExportLang,
-        PredNameModesPF, CName),
+        PredNameModesPF, CName, VarSet),
     PragmaFPEInfo = item_pragma_info(FPEInfo, Context, item_no_seq_num).
 
 %---------------------------------------------------------------------------%

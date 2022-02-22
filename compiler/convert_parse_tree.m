@@ -2376,7 +2376,7 @@ classify_src_items_imp([Item | Items],
             set.insert(Lang, !SelfFIMLangs)
         ;
             ImplPragma = impl_pragma_foreign_proc_export(FPEInfo),
-            FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _),
+            FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _, _),
             set.insert(Lang, !SelfFIMLangs)
         ;
             ImplPragma = impl_pragma_foreign_proc(FPInfo),

@@ -1689,14 +1689,14 @@ qualify_impl_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
     ;
         Pragma0 = impl_pragma_foreign_proc_export(FPEInfo0),
         FPEInfo0 = pragma_info_foreign_proc_export(Origin, Lang,
-            PredNameModesPF0, CFunc),
+            PredNameModesPF0, CFunc, VarSet),
         PredNameModesPF0 = proc_pf_name_modes(PredOrFunc, Name, Modes0),
         ErrorContext = mqec_pragma_impl(Context, Pragma0),
         qualify_mode_list(InInt, ErrorContext, Modes0, Modes,
             !Info, !Specs),
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, Name, Modes),
         FPEInfo = pragma_info_foreign_proc_export(Origin, Lang,
-            PredNameModesPF, CFunc),
+            PredNameModesPF, CFunc, VarSet),
         Pragma = impl_pragma_foreign_proc_export(FPEInfo)
     ).
 

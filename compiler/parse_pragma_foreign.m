@@ -1154,8 +1154,9 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             MaybeFunction = ok1(Function)
         then
             PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredName, Modes),
+            varset.coerce(VarSet, ProgVarSet),
             FPEInfo = pragma_info_foreign_proc_export(item_origin_user,
-                ForeignLang, PredNameModesPF, Function),
+                ForeignLang, PredNameModesPF, Function, ProgVarSet),
             Pragma = impl_pragma_foreign_proc_export(FPEInfo),
             ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
             Item = item_impl_pragma(ItemPragma),

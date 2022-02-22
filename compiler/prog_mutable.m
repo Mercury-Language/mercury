@@ -1007,7 +1007,7 @@ define_init_pred(ModuleName, Lang, ItemMutable, InitSetPredName,
         InitPredName, user_arity(0), TargetName, !PredTargetNames),
     PredNameModesPF = proc_pf_name_modes(pf_predicate, InitPredName, []),
     FPEInfo = pragma_info_foreign_proc_export(Origin, Lang,
-        PredNameModesPF, TargetName),
+        PredNameModesPF, TargetName, VarSetMutable),
     PragmaFPEInfo = item_pragma_info(FPEInfo, Context, item_no_seq_num).
 
 %---------------------------------------------------------------------------%

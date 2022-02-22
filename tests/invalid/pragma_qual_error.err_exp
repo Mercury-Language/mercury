@@ -21,10 +21,12 @@ pragma_qual_error.m:088:   declaration for undeclared mode of predicate
 pragma_qual_error.m:088:   `pragma_qual_error.tc'/2.
 pragma_qual_error.m:088: In `:- pragma minimal_model' declaration:
 pragma_qual_error.m:088:   error: undefined mode `not_a_mode'/0.
-pragma_qual_error.m:112: Error: `:- pragma type_spec' declaration for
-pragma_qual_error.m:112:   `pragma_qual_error.type_spec_pred'/2 specifies
-pragma_qual_error.m:112:   non-existent mode.
 pragma_qual_error.m:112: In `:- pragma type_spec' declaration:
 pragma_qual_error.m:112:   error: undefined mode `not_a_mode'/0.
 pragma_qual_error.m:112: In `:- pragma type_spec' declaration:
 pragma_qual_error.m:112:   error: undefined type `not_a_type'/0.
+pragma_qual_error.m:112: In `:- pragma type_spec' declaration for predicate
+pragma_qual_error.m:112:   `type_spec_pred'/2:
+pragma_qual_error.m:112:   error: mode annotation specifies undeclared mode
+pragma_qual_error.m:112:   `type_spec_pred(in, not_a_mode)'.
+For more information, recompile with `-E'.

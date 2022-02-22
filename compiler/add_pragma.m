@@ -836,11 +836,10 @@ add_pragma_info_foreign_proc_export(PragmaFPEInfo, !ModuleInfo, !Specs) :-
 
 add_pragma_foreign_proc_export(FPEInfo, Context, !ModuleInfo, !Specs) :-
     FPEInfo = pragma_info_foreign_proc_export(Origin, Lang,
-        PrednameModesPF, ExportedName),
-    PrednameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
-    list.length(Modes, PredFormArityInt),
-    user_arity_pred_form_arity(PredOrFunc, UserArity,
-        pred_form_arity(PredFormArityInt)),
+        PredNameModesPF, ExportedName, VarSet),
+    PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, ArgModes),
+    PredFormArity = arg_list_arity(ArgModes),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     look_up_pragma_pf_sym_arity(!.ModuleInfo, may_be_partially_qualified,
         lfh_user_error, Context, "foreign_export",
         PredOrFunc, SymName, UserArity, MaybePredId),
@@ -853,7 +852,7 @@ add_pragma_foreign_proc_export(FPEInfo, Context, !ModuleInfo, !Specs) :-
         map.to_assoc_list(Procs, ExistingProcs),
         ( if
             get_procedure_matching_declmodes_with_renaming(!.ModuleInfo,
-                ExistingProcs, Modes, ProcId)
+                ExistingProcs, ArgModes, ProcId)
         then
             map.lookup(Procs, ProcId, ProcInfo0),
             proc_info_get_declared_determinism(ProcInfo0, MaybeDetism),
@@ -904,10 +903,10 @@ add_pragma_foreign_proc_export(FPEInfo, Context, !ModuleInfo, !Specs) :-
         else
             (
                 Origin = item_origin_user,
-                UserArity = user_arity(UserArityInt),
-                report_undefined_mode_error(SymName, UserArityInt, Context,
+                DescPieces =
                     [pragma_decl("foreign_export"), words("declaration")],
-                    !Specs)
+                report_undeclared_mode_error(!.ModuleInfo, PredId, PredInfo,
+                    VarSet, ArgModes, DescPieces, Context, !Specs)
             ;
                 Origin = item_origin_compiler(_CompilerAttrs)
                 % We do not warn about errors in export pragmas created by

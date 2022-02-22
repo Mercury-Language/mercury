@@ -116,8 +116,8 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeModes, Context, PredId,
-        !ModuleInfo, !QualInfo, !Specs) :-
+add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeArgModes, Context,
+        PredId, !ModuleInfo, !QualInfo, !Specs) :-
     TSInfo0 = pragma_info_type_spec(_PFUMM, SymName, SpecSymName, Subst,
         TVarSet0, ExpandedItems),
     (
@@ -133,8 +133,9 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeModes, Context, PredId,
     (
         SubstOk = yes(RenamedSubst),
         pred_info_get_proc_table(PredInfo0, Procs0),
-        handle_pragma_type_spec_modes(SymName, UserArity, Context, MaybeModes,
-            MaybeProcIds, Procs0, Procs1, !ModuleInfo, !Specs),
+        handle_pragma_type_spec_modes(PredId, PredInfo0, TVarSet0,
+            MaybeArgModes, Context, MaybeProcIds, Procs0, Procs1,
+            !ModuleInfo, !Specs),
         % Remove any imported structure sharing and reuse information for the
         % original procedure as they won't be (directly) applicable.
         map.map_values_only(reset_imported_structure_sharing_reuse,
@@ -164,7 +165,6 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeModes, Context, PredId,
             % to force the specialization. For imported predicates this forces
             % the creation of the proper interface.
             %
-            PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
             varset.init(ArgVarSet0),
             user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
             PredFormArity = pred_form_arity(PredFormArityInt),
@@ -248,12 +248,13 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeModes, Context, PredId,
                 SpecMap = SpecMap0
             ),
             (
-                MaybeModes = no,
+                MaybeArgModes = no,
                 ModesOrArity = moa_arity(UserArity)
             ;
-                MaybeModes = yes(Modes),
-                ModesOrArity = moa_modes(Modes)
+                MaybeArgModes = yes(ArgModes),
+                ModesOrArity = moa_modes(ArgModes)
             ),
+            PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
             (
                 PredOrFunc = pf_predicate,
                 PFUMM = pfumm_predicate(ModesOrArity)
@@ -513,19 +514,19 @@ report_variables(SubExistQVars, VarSet) =
     % Check that the mode list for a `:- pragma type_spec' declaration
     % specifies a known procedure.
     %
-:- pred handle_pragma_type_spec_modes(sym_name::in, user_arity::in,
-    prog_context::in, maybe(list(mer_mode))::in,
+:- pred handle_pragma_type_spec_modes(pred_id::in, pred_info::in,
+    tvarset::in, maybe(list(mer_mode))::in, prog_context::in,
     maybe(list(proc_id))::out, proc_table::in, proc_table::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-handle_pragma_type_spec_modes(SymName, UserArity, Context, MaybeModes,
-        MaybeProcIds, !Procs, !ModuleInfo, !Specs) :-
+handle_pragma_type_spec_modes(PredId, PredInfo, TVarSet, MaybeArgModes,
+        Context, MaybeProcIds, !Procs, !ModuleInfo, !Specs) :-
     (
-        MaybeModes = yes(Modes),
+        MaybeArgModes = yes(ArgModes),
         map.to_assoc_list(!.Procs, ExistingProcs),
         ( if
-            get_procedure_matching_argmodes(ExistingProcs, Modes,
+            get_procedure_matching_argmodes(ExistingProcs, ArgModes,
                 !.ModuleInfo, ProcId)
         then
             map.lookup(!.Procs, ProcId, ProcInfo),
@@ -533,13 +534,14 @@ handle_pragma_type_spec_modes(SymName, UserArity, Context, MaybeModes,
             ProcIds = [ProcId],
             MaybeProcIds = yes(ProcIds)
         else
-            UserArity = user_arity(UserArityInt),
-            report_undefined_mode_error(SymName, UserArityInt, Context,
-                [pragma_decl("type_spec"), words("declaration")], !Specs),
+            varset.coerce(TVarSet, VarSet),
+            DescPieces = [pragma_decl("type_spec"), words("declaration")],
+            report_undeclared_mode_error(!.ModuleInfo, PredId, PredInfo,
+                VarSet, ArgModes, DescPieces, Context, !Specs),
             MaybeProcIds = no
         )
     ;
-        MaybeModes = no,
+        MaybeArgModes = no,
         map.keys(!.Procs, ProcIds),
         MaybeProcIds = yes(ProcIds)
     ).

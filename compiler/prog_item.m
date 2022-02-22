@@ -2574,7 +2574,12 @@
                 exp_language            :: foreign_language,
                 % Predname, Predicate/function, Modes, foreign function name.
                 exp_pred_id             :: proc_pf_name_modes,
-                exp_foreign_name        :: string
+                exp_foreign_name        :: string,
+
+                % Specified the names of any variables in the modes above.
+                % Used for generating error messages about foreign_export
+                % pragmas for undeclared modes.
+                exp_varaset             :: prog_varset
             ).
 
 :- type pragma_info_external_proc
