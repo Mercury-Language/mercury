@@ -225,16 +225,16 @@ inst_to_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
     ;
         Inst = inst_var(Var),
         InstVarSet = Info ^ imi_inst_varset,
-        mercury_format_var(InstVarSet, print_name_only, Var, unit, "", Name),
+        Name = mercury_var_to_string(InstVarSet, print_name_only, Var),
         Pieces = [fixed(Name) | Suffix]
     ;
-        Inst = constrained_inst_vars(Vars, ConstrainedInst),
+        Inst = constrained_inst_vars(Vars, SubInst),
         InstVarSet = Info ^ imi_inst_varset,
-        mercury_format_vars(InstVarSet, print_name_only,
-            set.to_sorted_list(Vars), unit, "", Names),
-        inst_to_pieces(Info, !Expansions, ConstrainedInst,
-            [fixed(")") | Suffix], InstPieces),
-        Pieces = [fixed("("), words(Names), fixed("=<") | InstPieces]
+        Names = mercury_vars_to_string(InstVarSet, print_name_only,
+            set.to_sorted_list(Vars)),
+        inst_to_pieces(Info, !Expansions, SubInst, [], SubInstPieces),
+        Pieces = [fixed("("), words(Names), fixed("=<") | SubInstPieces] ++
+            [fixed(")") | Suffix]
     ;
         Inst = abstract_inst(Name, ArgInsts),
         InstName = user_inst(Name, ArgInsts),
@@ -300,13 +300,13 @@ inst_to_inline_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
         mercury_format_var(InstVarSet, print_name_only, Var, unit, "", Name),
         Pieces = [fixed(Name) | Suffix]
     ;
-        Inst = constrained_inst_vars(Vars, ConstrainedInst),
+        Inst = constrained_inst_vars(Vars, SubInst),
         InstVarSet = Info ^ imi_inst_varset,
-        mercury_format_vars(InstVarSet, print_name_only,
-            set.to_sorted_list(Vars), unit, "", Names),
-        inst_to_inline_pieces(Info, !Expansions, ConstrainedInst,
-            [fixed(")") | Suffix], InstPieces),
-        Pieces = [fixed("("), words(Names), fixed("=<") | InstPieces]
+        Names = mercury_vars_to_string(InstVarSet, print_name_only,
+            set.to_sorted_list(Vars)),
+        inst_to_inline_pieces(Info, !Expansions, SubInst, [], SubInstPieces),
+        Pieces = [fixed("("), words(Names), fixed("=<") | SubInstPieces] ++
+            [fixed(")") | Suffix]
     ;
         Inst = abstract_inst(Name, ArgInsts),
         InstName = user_inst(Name, ArgInsts),

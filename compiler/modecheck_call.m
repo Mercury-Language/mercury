@@ -297,9 +297,8 @@ no_matching_modes(PredId, ArgVars, ProcInitialInsts, MaybeDetism, WaitingVars,
     else
         NewProcId = invalid_proc_id,    % dummy value
         mode_info_get_instmap(!.ModeInfo, InstMap),
-        instmap_lookup_vars(InstMap, ArgVars, ArgInsts),
         mode_info_set_call_arg_context(0, !ModeInfo),
-        ModeError = mode_error_no_matching_mode(ArgVars, ArgInsts,
+        ModeError = mode_error_no_matching_mode(InstMap, ArgVars,
             ProcInitialInsts),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).

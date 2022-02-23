@@ -21,6 +21,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
@@ -118,13 +119,14 @@
             % *functions* without mode declarations: if the user does not
             % provide one, the compiler will.
 
-    ;       mode_error_no_matching_mode(list(prog_var), list(mer_inst),
+    ;       mode_error_no_matching_mode(instmap, list(prog_var),
                 list(list(mer_inst)))
             % Call to a predicate with an insufficiently instantiated variable
             % (for preds with >1 mode).
             %
-            % The first two arguments give the argument vars of the call
-            % and their insts at the time of the call.
+            % The secord argument gives the argument vars of the call,
+            % and lookup them in the instmap gives their insts at the time
+            % of the call.
             %
             % If the third argument is a nonempty list, then every member
             % of that list gives the list of the required initial insts
@@ -477,9 +479,10 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
         ModeError = mode_error_callee_pred_has_no_mode_decl,
         Spec = mode_error_callee_pred_has_no_mode_decl_to_spec(ModeInfo)
     ;
-        ModeError = mode_error_no_matching_mode(Vars, Insts, InitialInsts),
-        Spec = mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts,
-            InitialInsts)
+        ModeError = mode_error_no_matching_mode(InstMap, ArgVars,
+            ProcInitialInsts),
+        Spec = mode_error_no_matching_mode_to_spec(ModeInfo, InstMap, ArgVars,
+            ProcInitialInsts)
     ;
         ModeError = mode_error_bad_higher_order_inst(Var, Inst,
             ExpectedPredOrFunc, ExpectedUserArity, Mismatch),
@@ -873,15 +876,11 @@ mode_error_callee_pred_has_no_mode_decl_to_spec(ModeInfo) = Spec :-
 
 %---------------------------------------------------------------------------%
 
-:- func mode_error_no_matching_mode_to_spec(mode_info, list(prog_var),
-    list(mer_inst), list(list(mer_inst))) = error_spec.
+:- func mode_error_no_matching_mode_to_spec(mode_info, instmap, list(prog_var),
+    list(list(mer_inst))) = error_spec.
 
-mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts, InitialInsts)
+mode_error_no_matching_mode_to_spec(ModeInfo, InstMap, Vars, ProcInitialInsts)
         = Spec :-
-    list.length(Vars, NumVars),
-    list.length(Insts, NumInsts),
-    expect(unify(NumVars, NumInsts), $pred, "NumVars != NumInsts"),
-
     PrefixPieces = mode_info_context_preamble(ModeInfo) ++
         [words("mode error:")],
     mode_info_get_mode_context(ModeInfo, ModeContext),
@@ -915,6 +914,7 @@ mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts, InitialInsts)
             module_info_pred_info(ModuleInfo, PredId, PredInfo),
             pred_info_get_orig_arity(PredInfo, OrigArity),
             PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+            list.length(Vars, NumVars),
             NumExtra = NumVars - OrigArity
         )
     ;
@@ -937,30 +937,30 @@ mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts, InitialInsts)
         % their instantiation states, but we do so separately, in an effort
         % to avoid confusing users.
         list.det_split_list(NumExtra, Vars, ExtraVars, UserVars),
-        list.det_split_list(NumExtra, Insts, ExtraInsts, UserInsts),
         UserArgPieces = [words("argument")],
         UserVarInstPieces = arg_inst_mismatch_pieces(ModeInfo, UserArgPieces,
-            PredOrFunc, UserVars, UserInsts),
-        ( if list.all_true(inst_is_ground(ModuleInfo), ExtraInsts) then
+            PredOrFunc, InstMap, UserVars),
+        ( if var_insts_are_all_ground(ModuleInfo, InstMap, ExtraVars) then
             VarListInstPieces = UserVarInstPieces
         else
             ExtraArgPieces = [words("the compiler-generated argument")],
             ExtraVarInstPieces = arg_inst_mismatch_pieces(ModeInfo,
-                ExtraArgPieces, pf_predicate, ExtraVars, ExtraInsts),
+                ExtraArgPieces, pf_predicate, InstMap, ExtraVars),
             VarListInstPieces =  ExtraVarInstPieces ++ UserVarInstPieces
         )
     else
         UserArgPieces = [words("argument")],
         VarListInstPieces = arg_inst_mismatch_pieces(ModeInfo, UserArgPieces,
-            PredOrFunc, Vars, Insts)
+            PredOrFunc, InstMap, Vars)
     ),
     NoMatchPieces =
         [words("which does not match any of the modes for"),
         words(call_id_to_string(CallId)), suffix("."), nl],
     mode_info_get_var_types(ModeInfo, VarTypes),
-    construct_argnum_var_type_inst_tuples(VarTypes, Vars, Insts, 1, ArgTuples),
-    find_satisfied_initial_insts_in_procs(ModuleInfo, ArgTuples, InitialInsts,
-        0, map.init, ArgNumMatchedProcs),
+    construct_argnum_var_type_inst_tuples(VarTypes, InstMap, 1,
+        Vars, ArgTuples),
+    find_satisfied_initial_insts_in_procs(ModuleInfo, ArgTuples,
+        ProcInitialInsts, 0, map.init, ArgNumMatchedProcs),
     report_any_never_matching_args(ModeInfo, ArgNumMatchedProcs, NumExtra,
         ArgTuples, BadArgPieces),
     Pieces = PrefixPieces ++ VarListInstPieces ++ NoMatchPieces ++
@@ -969,17 +969,27 @@ mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts, InitialInsts)
     Spec = simplest_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Pieces).
 
-:- func arg_inst_mismatch_pieces(mode_info, list(format_component),
-    pred_or_func, list(prog_var), list(mer_inst)) = list(format_component).
+:- pred var_insts_are_all_ground(module_info::in, instmap::in,
+    list(prog_var)::in) is semidet.
 
-arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, Vars, Insts)
+var_insts_are_all_ground(_, _, []).
+var_insts_are_all_ground(ModuleInfo, InstMap, [Var | Vars]) :-
+    instmap_lookup_var(InstMap, Var, VarInst),
+    inst_is_ground(ModuleInfo, VarInst),
+    var_insts_are_all_ground(ModuleInfo, InstMap, Vars).
+
+:- func arg_inst_mismatch_pieces(mode_info, list(format_component),
+    pred_or_func, instmap, list(prog_var)) = list(format_component).
+
+arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, InstMap, Vars)
         = Pieces :-
-    mode_info_get_varset(ModeInfo, VarSet),
     (
         Vars = [],
         Pieces = []
     ;
         Vars = [HeadVar | TailVars],
+        instmap_lookup_vars(InstMap, Vars, Insts),
+        mode_info_get_varset(ModeInfo, VarSet),
         (
             PredOrFunc = pf_predicate,
             (
@@ -1029,21 +1039,17 @@ arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, Vars, Insts)
 :- type argnum_var_type_inst
     --->    argnum_var_type_inst(int, prog_var, mer_type, mer_inst).
 
-:- pred construct_argnum_var_type_inst_tuples(vartypes::in,
-    list(prog_var)::in, list(mer_inst)::in, int::in,
-    list(argnum_var_type_inst)::out) is det.
+:- pred construct_argnum_var_type_inst_tuples(vartypes::in, instmap::in,
+    int::in, list(prog_var)::in, list(argnum_var_type_inst)::out) is det.
 
-construct_argnum_var_type_inst_tuples(_VarTypes, [], [], _ArgNum, []).
-construct_argnum_var_type_inst_tuples(_VarTypes, [], [_ | _], _ArgNum, _) :-
-    unexpected($pred, "length mismatch").
-construct_argnum_var_type_inst_tuples(_VarTypes, [_ | _], [], _ArgNum, _) :-
-    unexpected($pred, "length mismatch").
-construct_argnum_var_type_inst_tuples(VarTypes, [Var | Vars], [Inst | Insts],
-        ArgNum, [ArgTuple | ArgTuples]) :-
+construct_argnum_var_type_inst_tuples(_, _, _, [], []).
+construct_argnum_var_type_inst_tuples(VarTypes, InstMap, ArgNum,
+        [Var | Vars], [ArgTuple | ArgTuples]) :-
     lookup_var_type(VarTypes, Var, Type),
+    instmap_lookup_var(InstMap, Var, Inst),
     ArgTuple = argnum_var_type_inst(ArgNum, Var, Type, Inst),
-    construct_argnum_var_type_inst_tuples(VarTypes, Vars, Insts,
-        ArgNum + 1, ArgTuples).
+    construct_argnum_var_type_inst_tuples(VarTypes, InstMap, ArgNum + 1,
+        Vars, ArgTuples).
 
 %---------------------%
 
@@ -1993,12 +1999,12 @@ inst_list_to_sep_lines(_ModeInfo, []) = [].
 inst_list_to_sep_lines(ModeInfo, [Inst | Insts]) = Pieces :-
     (
         Insts = [],
-        Pieces = report_inst(ModeInfo, fixed_short_inst, [nl_indent_delta(-1)],
-            [], [nl_indent_delta(-1)], Inst)
+        Pieces = report_inst(ModeInfo, fixed_short_inst, [], [], [], Inst) ++
+            [nl_indent_delta(-1)]
     ;
         Insts = [_ | _],
-        HeadPieces = report_inst(ModeInfo, fixed_short_inst, [suffix(","), nl],
-            [], [suffix(","), nl], Inst),
+        HeadPieces = report_inst(ModeInfo, fixed_short_inst, [suffix(",")],
+            [], [suffix(",")], Inst) ++ [nl],
         TailPieces = inst_list_to_sep_lines(ModeInfo, Insts),
         Pieces = HeadPieces ++ TailPieces
     ).

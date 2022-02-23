@@ -562,9 +562,8 @@ modecheck_head_inst_vars(Vars, InstVarSub, !ModeInfo) :-
         true
     else
         mode_info_get_instmap(!.ModeInfo, InstMap),
-        instmap_lookup_vars(InstMap, Vars, VarInsts),
         WaitingVars = set_of_var.list_to_set(Vars),
-        ModeError = mode_error_no_matching_mode(Vars, VarInsts, []),
+        ModeError = mode_error_no_matching_mode(InstMap, Vars, []),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
