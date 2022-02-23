@@ -377,14 +377,12 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual, PredOrFunc,
         Succeeded = no,
         module_info_pred_info(!.ModuleInfo, OrigPred, OrigPredInfo),
         pred_info_get_context(OrigPredInfo, OrigContext),
-        DeclString = pred_or_func_to_str(PredOrFunc),
         ( if PredStatus0 = pred_status(status_opt_imported) then
             true
         else
+            PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
             user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-            UserArity = user_arity(UserArityInt),
-            % XXX ARITY Pass UserArity, not UserArityInt.
-            report_multiple_def_error(PredSymName, UserArityInt, DeclString,
+            report_multiply_defined(PredOrFuncStr, PredSymName, UserArity,
                 Context, OrigContext, [], !Specs)
         )
     ;

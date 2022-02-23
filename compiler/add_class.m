@@ -139,8 +139,8 @@ add_typeclass_defn(ItemMercuryStatus, TypeClassStatus0, NeedQual,
         then
             % Always report the error, even in `.opt' files.
             Extras = [words("The superclass constraints do not match."), nl],
-            report_multiple_def_error(ClassName, ClassArity, "typeclass",
-                Context, OldContext, Extras, !Specs),
+            report_multiply_defined("typeclass", ClassName,
+                user_arity(ClassArity), Context, OldContext, Extras, !Specs),
             HasIncompatibility = yes(OldDefn)
         else if
             % Check that the functional dependencies are identical.
@@ -148,8 +148,8 @@ add_typeclass_defn(ItemMercuryStatus, TypeClassStatus0, NeedQual,
         then
             % Always report the error, even in `.opt' files.
             Extras = [words("The functional dependencies do not match."), nl],
-            report_multiple_def_error(ClassName, ClassArity, "typeclass",
-                Context, OldContext, Extras, !Specs),
+            report_multiply_defined("typeclass", ClassName,
+                user_arity(ClassArity), Context, OldContext, Extras, !Specs),
             HasIncompatibility = yes(OldDefn)
         else if
             Interface = class_interface_concrete(_),
@@ -158,9 +158,8 @@ add_typeclass_defn(ItemMercuryStatus, TypeClassStatus0, NeedQual,
             ( if TypeClassStatus = typeclass_status(status_opt_imported) then
                 true
             else
-                Extras = [],
-                report_multiple_def_error(ClassName, ClassArity, "typeclass",
-                    Context, OldContext, Extras, !Specs)
+                report_multiply_defined("typeclass", ClassName,
+                    user_arity(ClassArity), Context, OldContext, [], !Specs)
             ),
             HasIncompatibility = yes(OldDefn)
         else

@@ -310,7 +310,7 @@ module_add_type_defn_mercury(TypeStatus1, TypeCtor, TypeParams,
             hlds_data.get_type_defn_body(OldDefn, OldDefnBody),
             OldDefnBody \= hlds_abstract_type(_)
         then
-            maybe_report_multiple_def_error(TypeStatus, TypeCtor, Context,
+            maybe_report_multiply_defined_type(TypeStatus, TypeCtor, Context,
                 OldDefn, !ModuleInfo, !FoundInvalidType, !Specs)
         else
             replace_type_ctor_defn(TypeCtor, TypeDefn, TypeTable0, TypeTable),
@@ -392,8 +392,8 @@ module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
                 module_info_set_type_table(TypeTable, !ModuleInfo)
             else
                 % ... or not.
-                maybe_report_multiple_def_error(TypeStatus, TypeCtor, Context,
-                    OldDefn, !ModuleInfo, !FoundInvalidType, !Specs)
+                maybe_report_multiply_defined_type(TypeStatus, TypeCtor,
+                    Context, OldDefn, !ModuleInfo, !FoundInvalidType, !Specs)
             )
         )
     else
@@ -611,12 +611,12 @@ merge_maybe(no, yes(T), yes(T)).
 % Predicates that check for errors and/or report them.
 %
 
-:- pred maybe_report_multiple_def_error(type_status::in, type_ctor::in,
+:- pred maybe_report_multiply_defined_type(type_status::in, type_ctor::in,
     prog_context::in, hlds_type_defn::in, module_info::in, module_info::out,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_report_multiple_def_error(TypeStatus, TypeCtor, Context, OldDefn,
+maybe_report_multiply_defined_type(TypeStatus, TypeCtor, Context, OldDefn,
         !ModuleInfo, !FoundInvalidType, !Specs) :-
     % Issue an error message if the second definition wasn't read
     % while reading .opt files.
@@ -626,8 +626,8 @@ maybe_report_multiple_def_error(TypeStatus, TypeCtor, Context, OldDefn,
     else
         TypeCtor = type_ctor(SymName, Arity),
         hlds_data.get_type_defn_context(OldDefn, OldContext),
-        report_multiple_def_error(SymName, Arity, "type", Context, OldContext,
-            [], !Specs),
+        report_multiply_defined("type", SymName, user_arity(Arity),
+            Context, OldContext, [], !Specs),
         !:FoundInvalidType = found_invalid_type
     ).
 

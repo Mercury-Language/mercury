@@ -170,9 +170,8 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
             ReportDup = yes,
             map.lookup(!.UserInstTable, InstCtor, OrigInstDefn),
             OrigContext = OrigInstDefn ^ inst_context,
-            Extras = [],
-            report_multiple_def_error(InstSymName, InstArity, "inst",
-                Context, OrigContext, Extras, !Specs)
+            report_multiply_defined("inst", InstSymName, user_arity(InstArity),
+                Context, OrigContext, [], !Specs)
         )
     ).
 
@@ -218,9 +217,8 @@ modes_add(VarSet, Name, Params, ModeBody, Context, ModeStatus,
             mode_table_get_mode_defns(!.ModeTable, ModeDefns),
             map.lookup(ModeDefns, ModeCtor, OrigModeDefn),
             OrigModeDefn = hlds_mode_defn(_, _, _, OrigContext, _),
-            Extras = [],
-            report_multiple_def_error(Name, Arity, "mode",
-                Context, OrigContext, Extras, !Specs)
+            report_multiply_defined("mode", Name, user_arity(Arity),
+                Context, OrigContext, [], !Specs)
         )
     ).
 

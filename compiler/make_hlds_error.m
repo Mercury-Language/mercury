@@ -34,7 +34,15 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred report_multiple_def_error(sym_name::in, int::in, string::in,
+    % Report that an instance of the kind of entity described by the first
+    % argument has more than one definition. The instance is specified
+    % by the second and third arguments, and the current and previous
+    % definitions are located at the two contexts given.
+    %
+    % If the format_component list is not empty, it is added to the end
+    % of the message we generate for the first context.
+    % 
+:- pred report_multiply_defined(string::in, sym_name::in, user_arity::in,
     prog_context::in, prog_context::in, list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -78,7 +86,7 @@
 
 %---------------------------------------------------------------------------%
 
-report_multiple_def_error(SymName, Arity, DefType, Context, OrigContext,
+report_multiply_defined(EntityKind, SymName, UserArity, Context, OrigContext,
         ExtraPieces, !Specs) :-
     % The flattening of source item blocks by modules.m puts
     % all items in a given section together. Since the original
@@ -98,11 +106,12 @@ report_multiple_def_error(SymName, Arity, DefType, Context, OrigContext,
         SecondContext = OrigContext
     ),
 
-    SNA = sym_name_arity(SymName, Arity),
-    SecondDeclPieces = [words("Error:"), fixed(DefType),
+    UserArity = user_arity(UserArityInt),
+    SNA = sym_name_arity(SymName, UserArityInt),
+    SecondDeclPieces = [words("Error:"), fixed(EntityKind),
         qual_sym_name_arity(SNA), words("multiply defined."), nl],
     FirstDeclPieces = [words("Here is the previous definition of"),
-        fixed(DefType), qual_sym_name_arity(SNA), suffix("."), nl],
+        fixed(EntityKind), qual_sym_name_arity(SNA), suffix("."), nl],
     SecondDeclMsg = simplest_msg(SecondContext, SecondDeclPieces),
     FirstDeclMsg = simplest_msg(FirstContext, FirstDeclPieces),
     (
