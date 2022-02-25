@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1999,2001-2004, 2006-2012 The University of Melbourne.
-# Copyright (C) 2013-2020 The Mercury team.
+# Copyright (C) 2013-2022 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -765,6 +765,52 @@ else
     # This shouldn't happen as we have already checked for this.
     AC_MSG_ERROR([unexpected: $CC cannot create executable])
 fi
+])
+
+#-----------------------------------------------------------------------------#
+#
+# Check if the C compiler targets x86.
+# Note that checking $host is insufficient as we may be cross-compiling.
+#
+
+AC_DEFUN([MERCURY_CC_TARGETS_X86], [
+AC_MSG_CHECKING(whether C compiler targets x86)
+
+AC_CACHE_VAL(mercury_cv_cc_targets_x86,
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
+            #ifdef __i386__
+            #else
+            #error "target is not x86"
+            #endif
+        ]])],
+        [mercury_cv_cc_targets_x86=yes],
+        [mercury_cv_cc_targets_x86=no])
+)
+
+AC_MSG_RESULT($mercury_cv_cc_targets_x86)
+])
+
+#-----------------------------------------------------------------------------#
+#
+# Check if the C compiler is configured to generate position-independent code.
+# This may be the case even when not creating shared libraries.
+#
+
+AC_DEFUN([MERCURY_CC_GENERATES_PIC], [
+AC_MSG_CHECKING(whether C compiler generates PIC)
+
+AC_CACHE_VAL(mercury_cv_cc_generates_pic,
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
+            #if defined(__PIC__) || defined(__pic__)
+            #else
+            #error "not PIC"
+            #endif
+        ]])],
+        [mercury_cv_cc_generates_pic=yes],
+        [mercury_cv_cc_generates_pic=no])
+)
+
+AC_MSG_RESULT($mercury_cv_cc_generates_pic)
 ])
 
 #-----------------------------------------------------------------------------#

@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 expandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2012 The University of Melbourne.
-# Copyright (C) 2013-2021 The Mercury team.
+# Copyright (C) 2013-2022 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -2332,47 +2332,34 @@ case "$ac_cv_c_compiler_gnu" in yes)
 
             # An old hack allowing non-local gotos to work with PIC on x86
             # will no longer work with GCC 5+ (see mercury_goto.h).
-            # The following disables non-local gotos if dynamic linking
-            # is enabled, even though statically linked libraries (non-PIC)
-            # would still work.
-            # Alternatively, we may wish to consider using non-PIC in shared
-            # libraries, accepting whatever drawbacks that entails.
-            #
-            # XXX Not all platforms use PIC for dynamic linking, so this should
-            # be contingent on CFLAGS_FOR_PIC which is set further down.
-            #
-            allow_pic_nonlocal_gotos=no
+            pic_conflicts_with_nonlocal_gotos=no
             case $C_COMPILER_TYPE in
                 gcc_3_*|gcc_4_*)
-                    allow_pic_nonlocal_gotos=yes
+                    ;;
+                gcc_*)
+                    MERCURY_CC_TARGETS_X86
+                    if test "$mercury_cv_cc_targets_x86" = yes
+                    then
+                        if test "$mercury_cv_enable_shared_libs" = yes
+                        then
+                            case "$host" in
+                                *cygwin*|*mingw*)
+                                    # Windows DLLs do not use PIC, and
+                                    # we do not support DLLs yet anyway.
+                                    ;;
+                                *)
+                                    # Assume shared libraries use PIC.
+                                    pic_conflicts_with_nonlocal_gotos=yes
+                                    ;;
+                            esac
+                        else
+                            MERCURY_CC_GENERATES_PIC
+                            pic_conflicts_with_nonlocal_gotos="$mercury_cv_cc_generates_pic"
+                        fi
+                    fi
                     ;;
             esac
-            case "$host" in
-                *cygwin*|*mingw*)
-                    # Windows doesn't use PIC and we don't yet support DLLs
-                    # anyway.
-                    allow_pic_nonlocal_gotos=yes
-                    ;;
-                *)
-                    # Run the compiler to check what it is targeting.
-                    # Even if $host is x86_64, gcc -m32 or gcc -mx32
-                    # may be used to target x86.
-                    AC_MSG_CHECKING(whether C compiler targets x86_64)
-                    AC_CACHE_VAL(mercury_cv_target_x86_64,
-                        AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-                                #ifndef __x86_64__
-                                #error "Target is not x86_64"
-                                #endif
-                            ]])],
-                            [mercury_cv_target_x86_64=yes],
-                            [mercury_cv_target_x86_64=no])
-                    )
-                    AC_MSG_RESULT($mercury_cv_target_x86_64)
-                    allow_pic_nonlocal_gotos="$mercury_cv_target_x86_64"
-                    ;;
-            esac
-            if test "$mercury_cv_enable_shared_libs" = yes && \
-                test "$allow_pic_nonlocal_gotos" = no
+            if test "$pic_conflicts_with_nonlocal_gotos" = yes
             then
                 MERCURY_MSG("gcc labels do not work with PIC on x86")
                 mercury_cv_asm_labels=no
