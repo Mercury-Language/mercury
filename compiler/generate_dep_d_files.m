@@ -125,11 +125,11 @@ build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
         ParseTreeSrc, Specs0, ReadModuleErrors, !IO),
     ParseTreeSrc = parse_tree_src(ModuleName, _, _),
     parse_tree_src_to_burdened_module_list(Globals, FileNameDotM,
-        ParseTreeSrc, ReadModuleErrors, Specs0, Specs, ModuleBaggageList),
+        ParseTreeSrc, ReadModuleErrors, Specs0, Specs, BurdenedModules),
     get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
     write_error_specs(ErrorStream, Globals, Specs, !IO),
     map.init(DepsMap0),
-    list.foldl(insert_into_deps_map, ModuleBaggageList, DepsMap0, DepsMap).
+    list.foldl(insert_into_deps_map, BurdenedModules, DepsMap0, DepsMap).
 
 %---------------------------------------------------------------------------%
 
@@ -242,11 +242,11 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
             TransOptDepsOrdering, DepsMap, !IO)
     ),
 
-    % For Java, the main target is actually a shell script which will
-    % set CLASSPATH appropriately and invoke java on the appropriate
-    % .class file. Rather than generating an Mmake rule to build this
-    % file when it is needed, we just generate this file "mmake depend"
-    % time, since that is simpler and probably more efficient anyway.
+    % For Java, the main target is actually a shell script which will set
+    % CLASSPATH appropriately and invoke java on the appropriate .class file.
+    % Rather than generating an Mmake rule to build this file when it is
+    % needed, we just generate this file "mmake depend" time, since that is
+    % simpler and probably more efficient anyway.
 
     globals.get_target(Globals, Target),
     ( if
