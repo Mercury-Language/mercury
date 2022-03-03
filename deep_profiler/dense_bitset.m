@@ -32,14 +32,12 @@
 :- pred member(int, dense_bitset).
 :- mode member(in, array_ui) is semidet.
 
-:- func insert(dense_bitset, int) = dense_bitset.
-:- mode (insert(array_di, in) = array_uo) is det.
+:- pred insert(int::in, dense_bitset::array_di, dense_bitset::array_uo) is det.
 
-:- func delete(dense_bitset, int) = dense_bitset.
-:- mode (delete(array_di, in) = array_uo) is det.
+:- pred delete(int::in, dense_bitset::array_di, dense_bitset::array_uo) is det.
 
-:- func union(dense_bitset, dense_bitset) = dense_bitset.
-:- mode (union(array_di, array_di) = array_uo) is det.
+:- pred union(dense_bitset::array_di, dense_bitset::array_di,
+    dense_bitset::array_uo) is det.
 
 % Not yet implemented.
 % :- func intersection(dense_bitset, dense_bitset) = dense_bitset.
@@ -50,10 +48,12 @@
 % :- mode (difference(array_di, array_di) = array_uo) is det.
 
 :- pred foldl(pred(int, T, T), dense_bitset, T, T).
-:- mode foldl(pred(in, in, out) is det, array_ui, in, out) is det.
-:- mode foldl(pred(in, di, uo) is det, array_ui, di, uo) is det.
-:- mode foldl(pred(in, array_di, array_uo) is det, array_ui,
-        array_di, array_uo) is det.
+:- mode foldl(in(pred(in, in, out) is det),
+    array_ui, in, out) is det.
+:- mode foldl(in(pred(in, di, uo) is det),
+    array_ui, di, uo) is det.
+:- mode foldl(in(pred(in, array_di, array_uo) is det),
+    array_ui, array_di, array_uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -77,11 +77,11 @@ member(I, A) :-
         fail
     ).
 
-insert(A0, I) = A :-
+insert(I, A0, A) :-
     max(A0, Max),
     ( if word(I) > Max then
         resize((Max + 1) * 2, 0, A0, A1),
-        A = insert(A1, I)
+        insert(I, A1, A)
     else if I >= 0 then
         lookup(A0, word(I), Word0),
         Word = Word0 \/ bit(I),
@@ -90,7 +90,7 @@ insert(A0, I) = A :-
         unexpected($pred, "cannot use indexes < 0")
     ).
 
-delete(A0, I) = A :-
+delete(I, A0, A) :-
     max(A0, Max),
     ( if I > Max then
         A = A0
@@ -102,20 +102,20 @@ delete(A0, I) = A :-
         unexpected($pred, "cannot use indexes < 0")
     ).
 
-union(A, B) = C :-
-    dense_bitset.foldl((pred(I::in, C0::in, C1::out) is det :-
-        C1 = insert(C0, I)
-    ), A, B, C).
+union(A, B, C) :-
+    dense_bitset.foldl(dense_bitset.insert, A, B, C).
 
 foldl(P, A0, !Acc) :-
     max(A0, Max),
     foldl1(0, Max, P, A0, !Acc).
 
 :- pred foldl1(int, int, pred(int, T, T), dense_bitset, T, T).
-:- mode foldl1(in, in, pred(in, in, out) is det, array_ui, in, out) is det.
-:- mode foldl1(in, in, pred(in, di, uo) is det, array_ui, di, uo) is det.
-:- mode foldl1(in, in, pred(in, array_di, array_uo) is det, array_ui,
-        array_di, array_uo) is det.
+:- mode foldl1(in, in, in(pred(in, in, out) is det),
+    array_ui, in, out) is det.
+:- mode foldl1(in, in, in(pred(in, di, uo) is det),
+    array_ui, di, uo) is det.
+:- mode foldl1(in, in, in(pred(in, array_di, array_uo) is det),
+    array_ui, array_di, array_uo) is det.
 
 foldl1(Min, Max, P, A0, !Acc) :-
     ( if Min =< Max then
@@ -126,10 +126,12 @@ foldl1(Min, Max, P, A0, !Acc) :-
     ).
 
 :- pred foldl2(int, int, pred(int, T, T), dense_bitset, T, T).
-:- mode foldl2(in, in, pred(in, in, out) is det, array_ui, in, out) is det.
-:- mode foldl2(in, in, pred(in, di, uo) is det, array_ui, di, uo) is det.
-:- mode foldl2(in, in, pred(in, array_di, array_uo) is det, array_ui,
-        array_di, array_uo) is det.
+:- mode foldl2(in, in, in(pred(in, in, out) is det),
+    array_ui, in, out) is det.
+:- mode foldl2(in, in, in(pred(in, di, uo) is det),
+    array_ui, di, uo) is det.
+:- mode foldl2(in, in, in(pred(in, array_di, array_uo) is det),
+    array_ui, array_di, array_uo) is det.
 
 foldl2(B, W, P, A0, !Acc) :-
     ( if B =< 31 then

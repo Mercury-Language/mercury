@@ -229,7 +229,7 @@ dfs([Node | Nodes], Graph, Visit0, Dfs0, Visit, Dfs) :-
             io.format(OutputStream, "dfs new %d\n", [i(Node)], !IO)
         ),
 
-        Visit1 = dense_bitset.insert(Visit0, Node),
+        dense_bitset.insert(Node, Visit0, Visit1),
         successors(Graph, Node, Succ),
         set.to_sorted_list(Succ, SuccList),
         dfs(SuccList, Graph, Visit1, Dfs0, Visit2, Dfs1),
