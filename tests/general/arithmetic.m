@@ -43,25 +43,23 @@ test(X, Y, !IO) :-
     Y = X `xor` BitXor3,
     BitNeg = \ X,
 
-    write_message("X: ", X, !IO),
-    write_message("Y: ", Y, !IO),
-    write_message("X + Y: ", Plus, !IO),
-    write_message("X * Y: ", Times, !IO),
-    write_message("X - Y: ", Minus, !IO),
-    write_message("X / Y: ", Div, !IO),
-    write_message("X mod Y: ", Mod, !IO),
-    write_message("X << Y: ", LeftShift, !IO),
-    write_message("X >> Y: ", RightShift, !IO),
-    write_message("X /\\ Y: ", BitAnd, !IO),
-    write_message("X \\/ Y: ", BitOr, !IO),
-    write_message("X `xor` Y: ", BitXor, !IO),
-    write_message("Z such that X = Z `xor` Y: ", BitXor2, !IO),
-    write_message("Z such that Y = X `xor` Z: ", BitXor3, !IO),
-    write_message("\\ X: ", BitNeg, !IO).
+    write_message("X", X, !IO),
+    write_message("Y", Y, !IO),
+    write_message("X + Y", Plus, !IO),
+    write_message("X * Y", Times, !IO),
+    write_message("X - Y", Minus, !IO),
+    write_message("X / Y", Div, !IO),
+    write_message("X mod Y", Mod, !IO),
+    write_message("X << Y", LeftShift, !IO),
+    write_message("X >> Y", RightShift, !IO),
+    write_message("X /\\ Y", BitAnd, !IO),
+    write_message("X \\/ Y", BitOr, !IO),
+    write_message("X `xor` Y", BitXor, !IO),
+    write_message("Z such that X = Z `xor` Y", BitXor2, !IO),
+    write_message("Z such that Y = X `xor` Z", BitXor3, !IO),
+    write_message("\\ X", BitNeg, !IO).
 
 :- pred write_message(string::in, int::in, io::di, io::uo) is det.
 
-write_message(String, Int, !IO) :-
-    io.write_string(String, !IO),
-    io.write_int(Int, !IO),
-    io.nl(!IO).
+write_message(Msg, N, !IO) :-
+    io.format("%s: %d\n", [s(Msg), i(N)], !IO).

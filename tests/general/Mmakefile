@@ -35,7 +35,6 @@ ORDINARY_PROGS = \
 	hlc_name_mangling		\
 	ho_spec_branch_bug		\
 	intermod_type			\
-	interpreter			\
 	io_foldl			\
 	io_regression			\
 	liveness			\
@@ -110,11 +109,6 @@ include Mercury.options
 #
 # Some test cases need special handling.
 #
-
-interpreter.m: ../../samples/interpreter.m
-	chmod u+w interpreter.m
-	cp ../../samples/interpreter.m .
-	chmod a-w interpreter.m
 
 # string_format_test_2 and string_format_test_3 are expected to fail
 # (string.format should call error/1 for these test cases)

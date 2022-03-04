@@ -21,34 +21,32 @@ main(!IO) :-
 :- pred test(string::in, string::in, io::di, io::uo) is det.
 
 test(X, Y, !IO) :-
-    write_message("X: ", X, !IO),
-    write_message("Y: ", Y, !IO),
+    write_message("X", X, !IO),
+    write_message("Y", Y, !IO),
     string.append(X, Y, Z),
-    write_message("X append Y: ", Z, !IO),
+    write_message("X append Y", Z, !IO),
     string.capitalize_first(X, CapX),
-    write_message("capitalize_first X: ", CapX, !IO),
+    write_message("capitalize_first X", CapX, !IO),
     string.uncapitalize_first(CapX, UnCapX),
-    write_message("uncapitalize_first CapX: ", UnCapX, !IO),
+    write_message("uncapitalize_first CapX", UnCapX, !IO),
     string.int_to_string(1234, Num),
-    write_message("int_to_string 1234: ", Num, !IO),
+    write_message("int_to_string 1234", Num, !IO),
     string.int_to_base_string(1234, 8, Num8),
-    write_message("octal 1234: ", Num8, !IO),
+    write_message("octal 1234", Num8, !IO),
     string.int_to_base_string(1234, 16, Num16),
-    write_message("hexadecimal 1234: ", Num16, !IO),
+    write_message("hexadecimal 1234", Num16, !IO),
     NumG1 = string.int_to_base_string_group(1234, 10, 3, ","),
-    write_message("Grouped 1234: ", NumG1, !IO),
+    write_message("Grouped 1234", NumG1, !IO),
     NumG2 = string.int_to_base_string_group(113, 2, 1, "--"),
-    write_message("Grouped 113: ", NumG2, !IO),
+    write_message("Grouped 113", NumG2, !IO),
     NumG3 = string.int_to_string_thousands(1300000),
-    write_message("Grouped 1300000: ", NumG3, !IO),
+    write_message("Grouped 1300000", NumG3, !IO),
     NumG4 = string.int_to_base_string_group(45999, 10, 0, ","),
-    write_message("Non Grouped 45999: ", NumG4, !IO),
+    write_message("Non Grouped 45999", NumG4, !IO),
     string.duplicate_char('f', 5, FiveFs),
     string.duplicate_char('φ', 5, FivePhis),
     ( if string.to_int("5678", Num5678) then
-        io.write_string("string_to_int 5678: ", !IO),
-        io.write_int(Num5678, !IO),
-        io.write_string("\n", !IO)
+        io.format("string_to_int 5678: %d\n", [i(Num5678)], !IO)
     else
         error("string.to_int(""5678"", _) failed")
     ),
@@ -57,17 +55,16 @@ test(X, Y, !IO) :-
     else
         true
     ),
-    write_message("Five f's: ", FiveFs, !IO),
+    write_message("Five f's", FiveFs, !IO),
     string.pad_right(FiveFs, '.', 10, FsAndDots),
-    write_message("Five f's and five dots: ", FsAndDots, !IO),
+    write_message("Five f's and five dots", FsAndDots, !IO),
     string.pad_left(FsAndDots, '-', 15, DashesFsAndDots),
-    write_message("Five dashes, five f's and five dots: ",
-        DashesFsAndDots, !IO),
-    write_message("Five φ's: ", FivePhis, !IO),
+    write_message("Five dashes, five f's and five dots", DashesFsAndDots, !IO),
+    write_message("Five φ's", FivePhis, !IO),
     string.pad_right(FivePhis, '.', 10, PhisAndDots),
-    write_message("Five φ's and five dots: ", PhisAndDots, !IO),
+    write_message("Five φ's and five dots", PhisAndDots, !IO),
     string.pad_left(PhisAndDots, '-', 15, DashesPhisAndDots),
-    write_message("Five dashes, five φ's and five dots: ",
+    write_message("Five dashes, five φ's and five dots",
         DashesPhisAndDots, !IO),
     Table = string.format_table([
         left(["aaa", "b", "cc"]),
@@ -109,7 +106,5 @@ test(X, Y, !IO) :-
 
 :- pred write_message(string::in, string::in, io::di, io::uo) is det.
 
-write_message(Message, String, !IO) :-
-    io.write_string(Message, !IO),
-    io.write_string(String, !IO),
-    io.write_string("\n", !IO).
+write_message(Msg, String, !IO) :-
+    io.format("%s: %s\n", [s(Msg), s(String)], !IO).

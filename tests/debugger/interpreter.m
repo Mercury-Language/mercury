@@ -21,8 +21,7 @@
 %
 %---------------------------------------------------------------------------%
 %
-% This module is also used as a test case in two test directories, debugger
-% and general.
+% This module is also used as a test case in tests/debugger.
 %
 %---------------------------------------------------------------------------%
 
