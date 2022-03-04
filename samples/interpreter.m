@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et
+% vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
 % File: interpreter.m.
@@ -9,9 +9,9 @@
 % (i.e. pure Prolog with no negation or if-then-else.)
 %
 % This is just intended as a demonstration of the use of the
-% meta-programming library modules term, varset, and term_io.
+% meta-programming library modules term, term_io, and varset.
 %
-% There are many extensions that could be made;
+% There are many extensions/improvements that could be made;
 % they are left as an exercise for the reader.
 %
 % For a more efficient version (using backtrackable destructive update),
@@ -20,6 +20,10 @@
 % This source file is hereby placed in the public domain. -fjh (the author).
 %
 %---------------------------------------------------------------------------%
+%
+% This module is also used as a test case in two test directories, debugger
+% and general.
+%
 %---------------------------------------------------------------------------%
 
 :- module interpreter.
@@ -33,6 +37,7 @@
 :- implementation.
 
 :- import_module list.
+:- import_module mercury_term_parser.
 :- import_module require.
 :- import_module solutions.
 :- import_module string.
@@ -40,77 +45,54 @@
 :- import_module term_io.
 :- import_module varset.
 
-%---------------------------------------------------------------------------%
-
 main(!IO) :-
     io.write_string("Pure Prolog Interpreter.\n\n", !IO),
     io.command_line_arguments(Args, !IO),
+    database_init(Database0),
     (
         Args = [],
-        io.stderr_stream(StdErr, !IO),
-        io.write_string(StdErr, "Usage: interpreter <filename> ...\n", !IO),
-        io.set_exit_status(1, !IO)
+        io.write_string("No files consulted.\n", !IO),
+        Database = Database0
     ;
         Args = [_ | _],
-        database_init(Database0),
-        consult_files(Args, Database0, Database, !IO),
+        consult_files(Args, Database0, Database, !IO)
+    ),
+    main_loop(Database, !IO).
+
+:- pred main_loop(database::in, io::di, io::uo) is det.
+
+main_loop(Database, !IO) :-
+    io.write_string("?- ", !IO),
+    read_term(ReadTerm, !IO),
+    (
+        ReadTerm = eof
+    ;
+        ReadTerm = error(ErrorMessage, LineNumber),
+        io.format("Error reading term at line %d of standard input: %s\n",
+            [i(LineNumber), s(ErrorMessage)], !IO),
+        main_loop(Database, !IO)
+    ;
+        ReadTerm = term(VarSet0, Goal),
+        % Any special commands with side-effects (such as `consult'
+        % and `listing') could be identified and processed here.
+        solutions(solve(Database, Goal, VarSet0), Solutions),
+        (
+            Solutions = [],
+            io.write_string("No.\n", !IO)
+        ;
+            Solutions = [_ | _],
+            write_solutions(Solutions, Goal, !IO),
+            io.write_string("Yes.\n", !IO)
+        ),
         main_loop(Database, !IO)
     ).
 
-%---------------------------------------------------------------------------%
+:- pred write_solutions(list(varset)::in, term::in, io::di, io::uo) is det.
 
-% We store the database as a list of clauses.
-%
-% This makes the code simple and readable, but it severely limits its
-% performance on anything bigger than toy programs.
-%
-% It would be more realistic to index the database on the predicate name/arity,
-% and subindex on the name/arity of the first argument.
-
-:- type database == list(clause).
-
-:- type clause
-    --->    clause(
-                clause_vars :: varset,
-                clause_head :: term,
-                clause_body :: term
-            ).
-
-:- pred database_init(database::out) is det.
-
-database_init([]).
-
-:- pred database_assert_clause(varset::in, term::in,
-    database::in, database::out) is det.
-
-database_assert_clause(VarSet, Term, !Database) :-
-    ( if Term = term.functor(term.atom(":-"), [HeadPrime, BodyPrime], _) then
-        % Term is a rule.
-        Head = HeadPrime,
-        Body = BodyPrime
-    else
-        % Term is a fact.
-        Head = Term,
-        term.context_init(Context),
-        Body = term.functor(term.atom("true"), [], Context)
-    ),
-    Clause = clause(VarSet, Head, Body),
-    !:Database = [Clause | !.Database].
-
-    % database_lookup_clause(Database, Goal, VarSet, Head, Body):
-    %
-    % For each clause in Database whose head may unify with Goal,
-    % return the representation of that clause: its varset, head and body.
-    %
-    % Since our database has no indexing, we ignore the goal, and return
-    % *all* clauses.
-    %
-:- pred database_lookup_clause(database::in, term::in, varset::out,
-    term::out, term::out) is nondet.
-
-database_lookup_clause(Database, _Goal, VarSet, Head, Body) :-
-    list.member(Clause, Database),
-    Clause = clause(VarSet, Head, Body).
+write_solutions([], _, !IO).
+write_solutions([VarSet | VarSets], Goal, !IO) :-
+    term_io.write_term_nl(VarSet, Goal, !IO),
+    write_solutions(VarSets, Goal, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -118,66 +100,42 @@ database_lookup_clause(Database, _Goal, VarSet, Head, Body) :-
     io::di, io::uo) is det.
 
 consult_files([], !Database, !IO).
-consult_files([FileName | FileNames], !Database, !IO) :-
-    consult_file(FileName, !Database, !IO),
-    consult_files(FileNames, !Database, !IO).
+consult_files([File | Files], !Database, !IO) :-
+    consult_file(File, !Database, !IO),
+    consult_files(Files, !Database, !IO).
 
 :- pred consult_file(string::in, database::in, database::out,
     io::di, io::uo) is det.
 
-consult_file(FileName, !Database, !IO) :-
-    io.format("Consulting file `%s'...\n", [s(FileName)], !IO),
-    io.see(FileName, Result, !IO),
+consult_file(File, Database0, Database, !IO) :-
+    io.format("Consulting file `%s'...\n", [s(File)], !IO),
+    io.open_input(File, OpenResult, !IO),
     (
-        Result = ok,
-        consult_until_eof(!Database, !IO),
-        io.seen(!IO)
+        OpenResult = ok(Stream),
+        consult_until_eof(Stream, Database0, Database, !IO),
+        io.close_input(Stream, !IO)
     ;
-        Result = error(Error),
-        io.error_message(Error, ErrorMessage),
-        io.format("Error opening file `%s' for input: %s\n",
-            [s(FileName), s(ErrorMessage)], !IO)
+        OpenResult = error(_),
+        io.format("Error opening file `%s' for input.\n", [s(File)], !IO),
+        Database = Database0
     ).
 
-:- pred consult_until_eof(database::in, database::out, io::di, io::uo) is det.
+:- pred consult_until_eof(io.text_input_stream::in,
+    database::in, database::out, io::di, io::uo) is det.
 
-consult_until_eof(!Database, !IO) :-
-    term_io.read_term(ReadTerm, !IO),
+consult_until_eof(Stream, !Database, !IO) :-
+    read_term(Stream, ReadTerm, !IO),
     (
         ReadTerm = eof
     ;
         ReadTerm = error(ErrorMessage, LineNumber),
         io.format("Error reading term at line %d of standard input: %s\n",
             [i(LineNumber), s(ErrorMessage)], !IO),
-        consult_until_eof(!Database, !IO)
+        consult_until_eof(Stream, !Database, !IO)
     ;
         ReadTerm = term(VarSet, Term),
         database_assert_clause(VarSet, Term, !Database),
-        consult_until_eof(!Database, !IO)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred main_loop(database::in, io::di, io::uo) is det.
-
-main_loop(Database, !IO) :-
-    io.write_string("?- ", !IO),
-    io.flush_output(!IO),
-    term_io.read_term(ReadTerm, !IO),
-    (
-        ReadTerm = eof
-    ;
-        ReadTerm = error(ErrorMessage, LineNumber),
-        io.format("Error reading term at line %d of standard input: %s\n",
-            [i(LineNumber), s(ErrorMessage)], !IO),
-        main_loop(Database, !IO)
-    ;
-        ReadTerm = term(VarSet, Goal),
-        % Any special queries with side-effects, such as `consult' or
-        % `listing', should be identified and processed here.
-        solutions(solve(Database, Goal, VarSet), SolutionVarSets),
-        write_solutions(SolutionVarSets, Goal, !IO),
-        main_loop(Database, !IO)
+        consult_until_eof(Stream, !Database, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -188,15 +146,15 @@ main_loop(Database, !IO) :-
     % producing a new substitution and perhaps introducing some new vars,
     % and returns the varset thus updated as the result.
     %
-    % We represent goals simply as terms. We parse (i.e. discover the structure
-    % of) the body of each clause every time we interpret that clause.
-    % Definite logic programs do not allow disjunctions in the bodies
-    % of clauses, but we do, so for us, each clause is a boolean expression
-    % built up (using the conjunction operator "," and/or the disjunction
-    % operator ";") from three kinds of primitives: `true', unifications,
-    % and calls to user-defined predicates.
+    % We represent goals simply as terms. We parse (i.e. we discover
+    % the structure of) the body of each clause every time we interpret
+    % that clause. Definite logic programs do not allow disjunctions
+    % in the bodies of clauses, but we do, so for us, each clause is
+    % a boolean expression built up (using the conjunction operator ","
+    % and/or the disjunction operator ";") from three kinds of primitives:
+    % `true', unifications, and calls to user-defined predicates.
     %
-    % Parsing each clause just once, before it is put into the database,
+    % Parsing each clause just once, before we put it into the database,
     % would be more efficient.
     %
     % Not looking up the database of user-defined predicates on goals
@@ -207,7 +165,7 @@ main_loop(Database, !IO) :-
 
 solve(Database, Goal, !VarSet) :-
     (
-        Goal = term.functor(term.atom(","), [SubGoalA, SubGoalB], _),
+        Goal = term.functor(term.atom(", "), [SubGoalA, SubGoalB], _),
         solve(Database, SubGoalA, !VarSet),
         solve(Database, SubGoalB, !VarSet)
     ;
@@ -226,6 +184,8 @@ solve(Database, Goal, !VarSet) :-
         unify_term_pair(Goal, Head, !VarSet),
         solve(Database, Body, !VarSet)
     ).
+
+%---------------------------------------------------------------------------%
 
 :- pred rename_apart(varset::in, list(term)::in, list(term)::out,
     varset::in, varset::out) is det.
@@ -282,8 +242,8 @@ unify_term_pair(TermX, TermY, !VarSet) :-
                 ( if VarX = VarY then
                     true
                 else
-                    varset.bind_var(VarX, term.variable(VarY, context_init),
-                        !VarSet)
+                    TermY = term.variable(VarY, term.context_init),
+                    varset.bind_var(VarX, TermY, !VarSet)
                 )
             )
         )
@@ -330,38 +290,6 @@ unify_term_pairs([TermX | TermXs], [TermY | TermYs], !VarSet) :-
 
 %---------------------------------------------------------------------------%
 
-    % apply_rec_substitution(VarSet, Term0, Term):
-    %
-    % Recursively apply the substitution in VarSet to Term0 until no more
-    % substitutions can be applied. Return the result as Term.
-    %
-:- pred apply_rec_substitution(varset::in, term::in, term::out) is det.
-
-apply_rec_substitution(VarSet, Term0, Term) :-
-    (
-        Term0 = term.variable(Var0, _),
-        ( if varset.search_var(VarSet, Var0, ReplacementTerm1) then
-            % Recursively apply the substitution to the replacement.
-            apply_rec_substitution(VarSet, ReplacementTerm1, Term)
-        else
-            Term = Term0
-        )
-    ;
-        Term0 = term.functor(Functor, ArgTerms0, Context),
-        apply_rec_substitution_to_list(VarSet, ArgTerms0, ArgTerms),
-        Term = term.functor(Functor, ArgTerms, Context)
-    ).
-
-:- pred apply_rec_substitution_to_list(varset::in,
-    list(term)::in, list(term)::out) is det.
-
-apply_rec_substitution_to_list(_VarSet, [], []).
-apply_rec_substitution_to_list(VarSet, [Term0 | Terms0], [Term | Terms]) :-
-    apply_rec_substitution(VarSet, Term0, Term),
-    apply_rec_substitution_to_list(VarSet, Terms0, Terms).
-
-%---------------------------------------------------------------------------%
-
     % var_occurs_in_term(VarX, TermY, VarSet):
     %
     % Succeed iff VarX occurs in TermY, either as is,
@@ -403,25 +331,85 @@ var_occurs_in_terms(VarX, [TermY | TermsY], VarSet) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred write_solutions(list(varset)::in, term::in, io::di, io::uo) is det.
+    % apply_rec_substitution(VarSet, Term0, Term):
+    %
+    % Recursively apply substitution to Term0 until no more substitions
+    % can be applied, and then return the result in Term.
+    %
+:- pred apply_rec_substitution(varset::in, term::in, term::out) is det.
 
-write_solutions(VarSets, Goal, !IO) :-
+apply_rec_substitution(VarSet, Term0, Term) :-
     (
-        VarSets = [],
-        io.write_string("No.\n", !IO)
+        Term0 = term.variable(Var, _),
+        ( if varset.search_var(VarSet, Var, Replacement) then
+            % Recursively apply the substitution to the replacement.
+            apply_rec_substitution(VarSet, Replacement, Term)
+        else
+            Term = term.variable(Var, context_init)
+        )
     ;
-        VarSets = [_ | _],
-        write_each_solution(VarSets, Goal, !IO),
-        io.write_string("Yes.\n", !IO)
+        Term0 = term.functor(Name, ArgTerms0, Context),
+        apply_rec_substitution_to_list(VarSet, ArgTerms0, ArgTerms),
+        Term = term.functor(Name, ArgTerms, Context)
     ).
 
-:- pred write_each_solution(list(varset)::in, term::in, io::di, io::uo) is det.
+:- pred apply_rec_substitution_to_list(varset::in, list(term)::in,
+    list(term)::out) is det.
 
-write_each_solution([], _, !IO).
-write_each_solution([VarSet | VarSets], Goal, !IO) :-
-    term_io.write_term_nl(VarSet, Goal, !IO),
-    write_each_solution(VarSets, Goal, !IO).
+apply_rec_substitution_to_list(_VarSet, [], []).
+apply_rec_substitution_to_list(VarSet, [Term0 | Terms0], [Term | Terms]) :-
+    apply_rec_substitution(VarSet, Term0, Term),
+    apply_rec_substitution_to_list(VarSet, Terms0, Terms).
 
 %---------------------------------------------------------------------------%
-:- end_module interpreter.
+
+% We store the database just as a list of clauses.
+%
+% This makes the code simple and readable, but it severely limits its
+% performance on anything bigger than toy programs.
+%
+% It would be more realistic to index the database on the predicate name/arity,
+% and subindex on the name/arity of the first argument.
+
+:- type database == list(clause).
+:- type clause
+    --->    clause(
+                clause_vars :: varset,
+                clause_head :: term,
+                clause_body :: term
+            ).
+
+:- pred database_init(database::out) is det.
+
+database_init([]).
+
+:- pred database_assert_clause(varset::in, term::in,
+    database::in, database::out) is det.
+
+database_assert_clause(VarSet, Term, Database, [Clause | Database]) :-
+    ( if Term = term.functor(term.atom(":-"), [H, B], _) then
+        Head = H,
+        Body = B
+    else
+        Head = Term,
+        term.context_init(Context),
+        Body = term.functor(term.atom("true"), [], Context)
+    ),
+    Clause = clause(VarSet, Head, Body).
+
+    % database_lookup_clause(Database, Goal, VarSet, Head, Body):
+    %
+    % For each clause in Database whose head may unify with Goal,
+    % return the representation of that clause: its varset, head and body.
+    %
+    % Since our database has no indexing, we ignore the goal, and return
+    % *all* the clauses.
+    %
+:- pred database_lookup_clause(database::in, term::in,
+    varset::out, term::out, term::out) is nondet.
+
+database_lookup_clause(Database, _Goal, VarSet, Head, Body) :-
+    list.member(Clause, Database),
+    Clause = clause(VarSet, Head, Body).
+
 %---------------------------------------------------------------------------%

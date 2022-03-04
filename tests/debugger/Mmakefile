@@ -474,6 +474,11 @@ loopcheck.out: loopcheck loopcheck.$(INP)
 		true;						\
 	fi
 
+interpreter.m: ../../samples/interpreter.m
+	chmod u+w interpreter.m
+	cp ../../samples/interpreter.m .
+	chmod a-w interpreter.m
+
 interpreter.out: interpreter interpreter.inp
 	$(MDB_STD) ./interpreter interpreter.m < interpreter.inp \
 		> interpreter.out 2>&1

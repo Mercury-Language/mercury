@@ -1,5 +1,6 @@
 Pure Prolog Interpreter.
 
+No files consulted.
 ?- a = a.
 Yes.
 ?- X = X.
