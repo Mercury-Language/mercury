@@ -2261,7 +2261,6 @@
 :- import_module stream.string_writer.
 :- import_module term.
 :- import_module term_conversion.
-:- import_module term_io.
 :- import_module type_desc.
 :- import_module uint8.
 :- import_module uint16.
@@ -8774,7 +8773,7 @@ write_bitmap(binary_output_stream(Stream), Bitmap, Start, NumBytes, !IO) :-
 %
 
 read(Result, !IO) :-
-    term_io.read_term(ReadResult, !IO),
+    mercury_term_parser.read_term(ReadResult, !IO),
     get_line_number(LineNumber, !IO),
     process_read_term(ReadResult, LineNumber, Result).
 

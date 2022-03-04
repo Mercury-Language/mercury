@@ -215,7 +215,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term_io.
 :- import_module varset.
 
 :- type missing_section_start_warning

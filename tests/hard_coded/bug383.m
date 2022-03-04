@@ -16,6 +16,7 @@
 
 :- import_module int.
 :- import_module list.
+:- import_module mercury_term_parser.
 :- import_module term_io.
 :- import_module ops.
 :- import_module pair.
@@ -24,7 +25,7 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    term_io.read_term_with_op_table(cadmium_op_table, Res, !IO),
+    read_term_with_op_table(cadmium_op_table, Res : read_term, !IO),
     io.print_line(Res, !IO).
 
 %---------------------------------------------------------------------------%

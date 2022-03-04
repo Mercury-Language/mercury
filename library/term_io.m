@@ -10,9 +10,10 @@
 % Main author: fjh.
 % Stability: medium to high.
 %
-% This file encapsulates all the term I/O.
-% This exports predicates to read and write terms in the
-% nice ground representation provided in term.m.
+% This module provides predicates to write out terms that use the ground
+% representation defined in term.m.
+%
+% Predicates to read in such terms are available in mercury_term_parser.m.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -26,39 +27,6 @@
 :- import_module stream.
 :- import_module term.
 :- import_module varset.
-
-%---------------------------------------------------------------------------%
-
-:- type read_term(T)
-    --->    eof
-            % We have reached the end-of-file.
-    ;       error(string, int)
-            % We have found an error described the message string
-            % on the given line number in the input.
-    ;       term(varset(T), term(T)).
-            % We have read in the given term with the given varset.
-
-:- type read_term == read_term(generic).
-
-    % Read a term from the current input stream or from the given input stream.
-    %
-    % Similar to NU-Prolog read_term/2, except that resulting term
-    % is in the ground representation.
-    %
-    % Binds Result to either `eof', `term(VarSet, Term)', or
-    % `error(Message, LineNumber)'.
-    %
-:- pred read_term(read_term(T)::out, io::di, io::uo) is det.
-:- pred read_term(io.text_input_stream::in, read_term(T)::out,
-    io::di, io::uo) is det.
-
-    % As above, except uses the given operator table instead of
-    % the standard Mercury operators.
-    %
-:- pred read_term_with_op_table(Ops::in,
-    read_term(T)::out, io::di, io::uo) is det <= op_table(Ops).
-:- pred read_term_with_op_table(io.text_input_stream::in, Ops::in,
-    read_term(T)::out, io::di, io::uo) is det <= op_table(Ops).
 
 %---------------------------------------------------------------------------%
 
@@ -286,28 +254,10 @@
 :- import_module integer.
 :- import_module list.
 :- import_module mercury_term_lexer.
-:- import_module mercury_term_parser.
 :- import_module string.
 :- import_module stream.string_writer.
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-read_term(Result, !IO) :-
-    io.input_stream(InStream, !IO),
-    term_io.read_term(InStream, Result, !IO).
-
-read_term(InStream, Result, !IO) :-
-    io.get_op_table(Ops, !IO),
-    term_io.read_term_with_op_table(InStream, Ops, Result, !IO).
-
-read_term_with_op_table(Ops, Result, !IO) :-
-    io.input_stream(InStream, !IO),
-    term_io.read_term_with_op_table(InStream, Ops, Result, !IO).
-
-read_term_with_op_table(InStream, Ops, Result, !IO) :-
-    mercury_term_parser.read_term_with_op_table(InStream, Ops, Result, !IO).
-
 %---------------------------------------------------------------------------%
 
 write_term(VarSet, Term, !IO) :-

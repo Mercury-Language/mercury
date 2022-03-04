@@ -194,7 +194,7 @@ query_external(QueryType, Imports, Options, Names, Values, SocketIn, SocketOut,
 :- pred query_external_2(query_env::in, io::di, io::uo) is cc_multi.
 
 query_external_2(Env, !IO) :-
-    term_io.read_term(Env ^ qe_instream, Result, !IO),
+    mercury_term_parser.read_term(Env ^ qe_instream, Result, !IO),
     (
         Result = eof,
         query_send_term_to_socket(Env ^ qe_outstream, iq_eof, !IO)

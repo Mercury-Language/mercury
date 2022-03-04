@@ -4,14 +4,14 @@ Command echo enabled.
 mdb> context none
 Contexts will not be printed.
 mdb> register --quiet
-mdb> b consult
- 0: + stop  interface pred interpreter.consult/5-0 (det)
+mdb> b consult_file
+ 0: + stop  interface pred interpreter.consult_file/5-0 (det)
 mdb> c
 Pure Prolog Interpreter.
 
-      E2:     C2 CALL pred interpreter.consult/5-0 (det)
+      E2:     C2 CALL pred interpreter.consult_file/5-0 (det)
 mdb> delete 0
- 0: E stop  interface pred interpreter.consult/5-0 (det)
+ 0: E stop  interface pred interpreter.consult_file/5-0 (det)
 mdb> vars
         1 File (arg 1)
         2 Database0 (arg 2)
@@ -40,12 +40,12 @@ mdb> print *
        Database (arg 3)       	[]
        HeadVar__4             	[clause(varset(var_supply/1, empty, empty), functor(atom/1, [|]/2, context/2), functor(atom/1, [], context/2))]
 mdb> 
-      E5:     C4 CALL pred interpreter.consult_until_eof/4-0 (det)
+      E5:     C4 CALL pred interpreter.consult_until_eof/5-0 (det)
 mdb> finish -n
-      E6:     C4 EXIT pred interpreter.consult_until_eof/4-0 (det)
+      E6:     C4 EXIT pred interpreter.consult_until_eof/5-0 (det)
 mdb> 
-      E7:     C5 EXIT pred interpreter.consult_until_eof_2/5-0 (det)
+      E7:     C5 EXIT pred interpreter.consult_until_eof/5-0 (det)
 mdb> 
-      E8:     C6 EXIT pred interpreter.consult_until_eof/4-0 (det)
+      E8:     C2 EXIT pred interpreter.consult_file/5-0 (det)
 mdb> continue
 ?- 

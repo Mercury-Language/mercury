@@ -224,7 +224,6 @@
 :- import_module mercury_term_parser.
 :- import_module require.
 :- import_module string.
-:- import_module term_io.
 :- import_module unit.
 
 %---------------------------------------------------------------------------%

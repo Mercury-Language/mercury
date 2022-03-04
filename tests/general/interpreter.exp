@@ -1,7 +1,9 @@
 Pure Prolog Interpreter.
 
-?- Yes.
-?- Yes.
+?- a = a.
+Yes.
+?- X = X.
+Yes.
 ?- No.
 ?- No.
 ?- 

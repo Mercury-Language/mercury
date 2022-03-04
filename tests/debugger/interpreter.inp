@@ -1,7 +1,7 @@
 echo on
 context none
 register --quiet
-b consult
+b consult_file
 c
 delete 0
 vars

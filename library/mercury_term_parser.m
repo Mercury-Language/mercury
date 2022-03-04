@@ -30,14 +30,26 @@
 :- import_module io.
 :- import_module mercury_term_lexer.
 :- import_module ops.
-:- import_module term_io.
+:- import_module term.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
+
+:- type read_term(T)
+    --->    eof
+            % We have reached the end-of-file.
+    ;       error(string, int)
+            % We have found an error described the message string
+            % on the given line number in the input.
+    ;       term(varset(T), term(T)).
+            % We have read in the given term with the given varset.
+
+:- type read_term == read_term(generic).
 
     % read_term(Result, !IO):
     % read_term(Stream, Result, !IO):
     %
-    % Reads a Mercury term from the current input stream or from Stream.
+    % Reads a Mercury term from the current input stream, or from Stream.
     %
 :- pred read_term(read_term(T)::out, io::di, io::uo) is det.
 :- pred read_term(io.text_input_stream::in, read_term(T)::out,
@@ -46,7 +58,7 @@
     % read_term_with_op_table(Ops, Result, !IO):
     % read_term_with_op_table(Stream, Ops, Result, !IO):
     %
-    % Reads a term from the current input stream or from Stream,
+    % Reads a term from the current input stream, or from Stream,
     % using the given op_table to interpret the operators.
     %
 :- pred read_term_with_op_table(Ops::in,
@@ -57,7 +69,7 @@
     % read_term_filename(FileName, Result, !IO):
     % read_term_filename(Stream, FileName, Result, !IO):
     %
-    % Reads a term from the current input stream or from Stream.
+    % Reads a term from the current input stream, or from Stream.
     % The string is the filename to use for the stream; this is used
     % in constructing the term.contexts in the read term.
     % This interface is used to support the `:- pragma source_file' directive.
@@ -147,8 +159,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
-:- import_module term.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
