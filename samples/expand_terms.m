@@ -35,6 +35,7 @@
 
 :- import_module list.
 :- import_module string.
+:- import_module mercury_term_parser.
 :- import_module term.
 :- import_module term_io.
 :- import_module varset.
@@ -86,7 +87,7 @@ expand_terms_stream(Stream, !IO) :-
 :- pred expand_terms(io::di, io::uo) is det.
 
 expand_terms(!IO) :-
-    term_io.read_term(Result, !IO),
+    mercury_term_parser.read_term(Result, !IO),
     expand_terms_2(Result, !IO).
 
 :- pred expand_terms_2(read_term::in, io::di, io::uo) is det.
@@ -97,7 +98,7 @@ expand_terms_2(Result, !IO) :-
         expand_term(Term0, VarSet0, Term, VarSet),
         term_io.write_term(VarSet, Term, !IO),
         io.write_string(".\n", !IO),
-        term_io.read_term(NextResult, !IO),
+        mercury_term_parser.read_term(NextResult, !IO),
         expand_terms_2(NextResult, !IO)
     ;
         Result = eof
