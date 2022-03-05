@@ -30,6 +30,7 @@
 :- import_module int.
 :- import_module integer.
 :- import_module list.
+:- import_module mercury_term_parser.
 :- import_module ops.
 :- import_module string.
 :- import_module term.
