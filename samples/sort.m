@@ -36,79 +36,84 @@
 main(!IO) :-
     io.command_line_arguments(Args, !IO),
     (
-        Args = [],
-        handle_args(no, no, !IO),
-        sort(!IO)
-    ;
-        Args = [Input],
-        handle_args(yes(Input), no, !IO),
-        sort(!IO)
-    ;
-        Args = [Input, Output],
-        handle_args(yes(Input), yes(Output), !IO),
-        sort(!IO)
+        (
+            Args = [],
+            handle_args(no, InputFile, no, OutputFile, !IO)
+        ;
+            Args = [Input],
+            handle_args(yes(Input), InputFile, no, OutputFile, !IO)
+        ;
+            Args = [Input, Output],
+            handle_args(yes(Input), InputFile, yes(Output), OutputFile, !IO)
+        ),
+        sort(InputFile, OutputFile, !IO)
     ;
         Args = [_, _, _ | _],
         io.write_string("Usage: sort [Input [Output]]\\n", !IO)
     ).
 
-:- pred handle_args(maybe(string)::in, maybe(string)::in, io::di, io::uo)
+:- pred handle_args(maybe(string)::in, io.text_input_stream::out,
+    maybe(string)::in, io.text_output_stream::out, io::di, io::uo)
     is det.
 
-handle_args(InArg, OutArg, !IO) :-
+handle_args(InArg, InFile, OutArg, OutFile, !IO) :-
     (
         InArg = yes(InFilename),
-        io.see(InFilename, InResult, !IO),
+        io.open_input(InFilename, InResult, !IO),
         (
-            InResult = ok
+            InResult = ok(InFile)
         ;
             InResult = error(InError),
             io.error_message(InError, InMsg),
             error(InMsg)
         )
     ;
-        InArg = no
+        InArg = no,
+        io.stdin_stream(InFile, !IO)
     ),
     (
         OutArg = yes(OutFilename),
-        io.tell(OutFilename, OutResult, !IO),
+        io.open_output(OutFilename, OutResult, !IO),
         (
-            OutResult = ok
+            OutResult = ok(OutFile)
         ;
             OutResult = error(OutError),
             io.error_message(OutError, OutMsg),
             error(OutMsg)
         )
     ;
-        OutArg = no
+        OutArg = no,
+        io.stdout_stream(OutFile, !IO)
     ).
 
-:- pred sort(io::di, io::uo) is det.
+:- pred sort(io.text_input_stream::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-sort(!IO) :-
-    sort_2([], !IO).
+sort(InFile, OutFile, !IO) :-
+    sort_2(InFile, OutFile, [], !IO).
 
-:- pred sort_2(list(string)::in, io::di, io::uo) is det.
+:- pred sort_2(io.text_input_stream::in, io.text_output_stream::in,
+    list(string)::in, io::di, io::uo) is det.
 
-sort_2(Lines0, !IO) :-
-    io.read_line_as_string(Result, !IO),
+sort_2(InFile, OutFile, !.Lines, !IO) :-
+    io.read_line_as_string(InFile, Result, !IO),
     (
         Result = error(Error),
         io.error_message(Error, Msg),
         error(Msg)
     ;
         Result = eof,
-        output_sorted_lines(Lines0, !IO)
+        output_sorted_lines(OutFile, !.Lines, !IO)
     ;
         Result = ok(Line),
-        insert(Lines0, Line, Lines1),
-        sort_2(Lines1, !IO)
+        insert_line(Line, !Lines),
+        sort_2(InFile, OutFile, !.Lines, !IO)
     ).
 
-:- pred insert(list(T)::in, T::in, list(T)::out) is det.
+:- pred insert_line(string::in, list(string)::in, list(string)::out) is det.
 
-insert([], I, [I]).
-insert([H | T], I, L) :-
+insert_line(I, [], [I]).
+insert_line(I, [H | T], L) :-
     compare(R, I, H),
     (
         R = (<),
@@ -117,16 +122,17 @@ insert([H | T], I, L) :-
         ( R = (=)
         ; R = (>)
         ),
-        insert(T, I, NT),
+        insert_line(I, T, NT),
         L = [H | NT]
     ).
 
-:- pred output_sorted_lines(list(string)::in, io::di, io::uo) is det.
+:- pred output_sorted_lines(io.text_output_stream::in, list(string)::in,
+    io::di, io::uo) is det.
 
-output_sorted_lines([], !IO).
-output_sorted_lines([Line | Lines], !IO) :-
-    io.write_string(Line, !IO),
-    output_sorted_lines(Lines, !IO).
+output_sorted_lines(_, [], !IO).
+output_sorted_lines(OutFile, [Line | Lines], !IO) :-
+    io.write_string(OutFile, Line, !IO),
+    output_sorted_lines(OutFile, Lines, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module sort.
