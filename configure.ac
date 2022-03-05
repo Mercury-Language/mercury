@@ -4368,6 +4368,14 @@ case "$mercury_cv_cc_type" in
         # and why, see scripts/mgnuc.in.
         CFLAGS_FOR_WARNINGS="-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes"
 
+        # See scripts/mgnuc.in for an explanation of why we set
+        # -Wno-array-bounds here.
+        case "$C_COMPILER_TYPE" in
+            gcc_9_*|gcc_10_*|gcc_11_*)
+                CFLAGS_FOR_WARNINGS="$CFLAGS_FOR_WARNINGS -Wno-array-bounds"
+            ;;
+        esac
+
         # Enabling -fomit-frame-pointer causes setjmp/longjmp to misbehave
         # with MinGW on Windows XP.
         case "$host" in

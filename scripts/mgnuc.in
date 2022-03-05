@@ -570,6 +570,17 @@ case "${FULLARCH}" in
         ;;
 esac
 
+# gcc versions 9, 10 and 11 replace calls to strcmp and related functions with
+# specialised code when some of the arguments are string constants.
+# The above versions of gcc emit spurious warnings about the code they
+# introduce when -Warray-bounds is enabled.
+# 
+case "${C_COMPILER_TYPE}" in
+    gcc_9_*|gcc_10_*|gcc_11_*)
+        CHECK_OPTS="${CHECK_OPTS} -Wno-array-bounds"
+    ;;
+esac
+
 case ${COMPILER} in gcc)
     case "${FULLARCH}" in
         i*86*)
