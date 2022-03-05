@@ -8,8 +8,24 @@ Changes that may break compatibility
   read_term_with_op_table/5 have been removed from the `term_io` module
   of the Mercury standard library.
 
+* Some obsolete predicates have been removed from the `io` module;
+  see below.
+
 Changes to the Mercury standard library
 ---------------------------------------
+
+### Changes to the `io` module
+
+* The following obsolete predicates have been removed:
+
+    - pred `see/3`                  (replacement: `prolog.see/3`)
+    - pred `see_binary/3`           (replacement: `prolog.see_binary/3`)
+    - pred `seen/2`                 (replacement: `prolog.seen/2`)
+    - pred `seen_binary/2`          (replacement: `prolog.seen_binary/2`)
+    - pred `tell/4`                 (replacement: `prolog.tell/4`)
+    - pred `tell_binary/4`          (replacement: `prolog.tell_binary/4`)
+    - pred `told/2`                 (replacement: `prolog.told/2`)
+    - pred `told_binary/2`          (replacement: `prolog.told_binary/2`)
 
 ### Changes to the `term_io` module
 

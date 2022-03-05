@@ -56,6 +56,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module pair.
+:- import_module prolog.
 :- import_module std_util.
 :- import_module string.
 
@@ -82,16 +83,16 @@ main(!IO) :-
 parse_file(Filename, !IO) :-
     global_table_reset(!IO),
     io.write_string(Filename, !IO),
-    io.see(Filename, _, !IO),
+    prolog.see(Filename, _, !IO),
     io.read_file_as_string(Result, !IO),
     ( if Result = ok(Str) then
-        promise_pure ( impure set_input_string(Str),
-        ( if compilation_unit(0, _)
-        then
-            io.print(" parsed successfully\n", !IO)
-        else
-            io.print(" failed to parse\n", !IO)
-        )
+        promise_pure (
+            impure set_input_string(Str),
+            ( if compilation_unit(0, _) then
+                io.print(" parsed successfully\n", !IO)
+            else
+                io.print(" failed to parse\n", !IO)
+            )
         )
     else
         throw(Result)

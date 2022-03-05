@@ -31,19 +31,21 @@ main(!IO) :-
         throw(Error)
     ),
     %%%%%%% io.print("Temp file name = ", !IO), io.print_line(Name, !IO),
-    io.tell(Name, TellResult, !IO),
+    io.open_output(Name, OpenOutputResult, !IO),
     (
-        TellResult = io.ok,
-        io.print_line("Just testing", !IO),
-        io.told(!IO),
+        OpenOutputResult = io.ok(Stream),
+        io.print_line(Stream, "Just testing", !IO),
+        io.close_output(Stream, !IO),
         io.remove_file(Name, RemoveResult, !IO),
         (
             RemoveResult = io.ok,
-            io.see(Name, SeeResult, !IO),
-            ( if SeeResult = io.ok then
+            io.open_input(Name, OpenInputResult, !IO),
+            (
+                OpenInputResult = io.ok(_Stream),
                 io.print("Remove didn't remove file\n", !IO),
                 io.set_exit_status(1, !IO)
-            else
+            ;
+                OpenInputResult = io.error(_),
                 io.print("Test passed\n", !IO)
             )
         ;
@@ -65,9 +67,9 @@ main(!IO) :-
             io.print_line(RemoveAgainErrorMsg, !IO)
         )
     ;
-        TellResult = io.error(TellError),
-        io.print("Tell failed: ", !IO),
-        io.error_message(TellError, TellErrorMsg),
-        io.print_line(TellErrorMsg, !IO),
+        OpenOutputResult = io.error(OpenOutputError),
+        io.print("Open for output failed: ", !IO),
+        io.error_message(OpenOutputError, OpenOutputErrorMsg),
+        io.print_line(OpenOutputErrorMsg, !IO),
         io.set_exit_status(1, !IO)
     ).

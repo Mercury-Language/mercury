@@ -21,13 +21,13 @@
 %
 % Java grammar taken from
 % http://java.sun.com/docs/books/jls/second_edition/html/syntax.doc.html
-% and converted to Mercury DCGs.  And then corrected because the grammar
+% and converted to Mercury DCGs. And then corrected because the grammar
 % at the above page contains bugs...
 %
 % Usage: parse_java <filename> ...
 %
 % This implementation only recognises Java programs; it does not construct an
-% ADT or perform any kind of analysis.  However, it has been written in a
+% ADT or perform any kind of analysis. However, it has been written in a
 % style that should make it fairly easy to add construction of an ADT.
 %
 % To compile this as a packrat parser, uncomment all of the pragma memo
@@ -45,7 +45,7 @@
 
 :- import_module io.
 
-:- pred main(io :: di, io :: uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -56,11 +56,12 @@
 :- import_module exception.
 :- import_module int.
 :- import_module list.
+:- import_module prolog.
 :- import_module std_util.
 :- import_module string.
 
-    % The parser "state".  This is just the offset into the input string,
-    % which is stored in a C global.  We do this to (a) avoid memoizing the
+    % The parser "state". This is just the offset into the input string,
+    % which is stored in a C global. We do this to (a) avoid memoizing the
     % input string if we are memoing any rules and (b) to obtain a fair
     % timing comparison with the Rats! Java parser
     % (www.cs.nyu.edu/rgrimm/xtc/rats.html).
@@ -78,7 +79,7 @@ main(!IO) :-
 
 parse_file(Filename, !IO) :-
     io.write_string(Filename, !IO),
-    io.see(Filename, _, !IO),
+    prolog.see(Filename, _, !IO),
     io.read_file_as_string(Result, !IO),
     ( if Result = ok(Str) then
         impure set_input_string(Str),
@@ -135,7 +136,7 @@ eof(Offset, Offset) :-
     % to be pure because I don't want to pollute my code with impurity
     % annotations.
     %
-    % XXX Also, I do not check for negative offsets.  I probably should.
+    % XXX Also, I do not check for negative offsets. I probably should.
     %
 :- pred char(char::out, int::in, int::out) is semidet.
 :- pragma promise_pure(char/3).

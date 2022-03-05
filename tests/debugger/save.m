@@ -25,20 +25,20 @@ main(!IO) :-
     else
         io.write_string("No solution\n", !IO)
     ),
-    io.see("save_file", SeeRes, !IO),
+    io.open_input("save_file", OpenResult, !IO),
     (
-        SeeRes = ok,
-        io.read_file_as_string(ReadRes, !IO),
+        OpenResult = ok(Stream),
+        io.read_file_as_string(Stream, ReadResult, !IO),
         (
-            ReadRes = ok(FileContents),
+            ReadResult = ok(FileContents),
             io.write_string(FileContents, !IO)
         ;
-            ReadRes = error(_PartialFileContents, ReadError),
+            ReadResult = error(_PartialFileContents, ReadError),
             io.error_message(ReadError, ReadMsg),
             io.write_string("Read error: " ++ ReadMsg ++ "\n", !IO)
         )
     ;
-        SeeRes = error(SeeError),
+        OpenResult = error(SeeError),
         io.error_message(SeeError, SeeMsg),
         io.write_string("See error: " ++ SeeMsg ++ "\n", !IO)
     ).

@@ -20,10 +20,10 @@ main(!IO) :-
     (
         nop(!IO)
     &
-        io.see("no such file", Res, !IO)
+        io.open_input("no such file", Res, !IO)
     &
         (
-            Res = ok
+            Res = ok(_)
         ;
             Res = error(_),
             (

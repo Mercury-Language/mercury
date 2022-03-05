@@ -20,11 +20,11 @@ main(!IO) :-
     (
         nop(!IO)
     &
-        io.see("no such file", Res, !IO)
+        io.open_input("no such file", Res, !IO)
         % call to procedure we don't have the code for
     &
         (
-            Res = ok
+            Res = ok(_)
         ;
             Res = error(_),
             (

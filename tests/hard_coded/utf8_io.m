@@ -24,37 +24,35 @@ main(!IO) :-
     io.write_string("********************\n", !IO),
     io.write_string("** Standard input **\n", !IO),
     io.write_string("********************\n\n", !IO),
-    do_test(!IO),
+    io.stdin_stream(StdIn, !IO),
+    do_test(StdIn, !IO),
 
     io.write_string("\n***********************\n", !IO),
     io.write_string(  "** Text stream input **\n", !IO),
     io.write_string(  "***********************\n\n", !IO),
-    io.see("utf8_io.inp", SeeRes, !IO),
+    io.open_input("utf8_io.inp", OpenResult, !IO),
     (
-        SeeRes = ok,
-        do_test(!IO),
-        io.seen(!IO)
+        OpenResult = ok(InputStream),
+        do_test(InputStream, !IO),
+        io.close_input(InputStream, !IO)
     ;
-        SeeRes = error(Error),
-        io.write(Error, !IO),
-        io.nl(!IO)
+        OpenResult = error(Error),
+        io.write_line(Error, !IO)
     ).
 
-:- pred do_test(io::di, io::uo) is det.
+:- pred do_test(io.text_input_stream::in, io::di, io::uo) is det.
 
-do_test(!IO) :-
+do_test(InputStream, !IO) :-
     io.write_string("read_char:\n", !IO),
-    io.read_char(RC, !IO),
-    io.write(RC, !IO),
-    io.nl(!IO),
+    io.read_char(InputStream, RC, !IO),
+    io.write_line(RC, !IO),
 
     (
         RC = ok(C),
         io.write_string("\nputback_char:\n", !IO),
-        io.putback_char(C, !IO),
-        io.read_char(RC2, !IO),
-        io.write(RC2, !IO),
-        io.nl(!IO)
+        io.putback_char(InputStream, C, !IO),
+        io.read_char(InputStream, RC2, !IO),
+        io.write_line(RC2, !IO)
     ;
         RC = eof
     ;
@@ -63,23 +61,19 @@ do_test(!IO) :-
     io.ignore_whitespace(_, !IO),
 
     io.write_string("\nread_word:\n", !IO),
-    io.read_word(RW, !IO),
-    io.write(RW, !IO),
-    io.nl(!IO),
-    io.read_word(RW2, !IO),
-    io.write(RW2, !IO),
-    io.nl(!IO),
-    io.ignore_whitespace(_, !IO),
+    io.read_word(InputStream, RW, !IO),
+    io.write_line(RW, !IO),
+    io.read_word(InputStream, RW2, !IO),
+    io.write_line(RW2, !IO),
+    io.ignore_whitespace(InputStream, _, !IO),
 
     io.write_string("\nread_line:\n", !IO),
-    io.read_line(RL, !IO),
-    io.write(RL, !IO),
-    io.nl(!IO),
+    io.read_line(InputStream, RL, !IO),
+    io.write_line(RL, !IO),
 
     io.write_string("\nread_line_as_string:\n", !IO),
-    io.read_line_as_string(RLAS, !IO),
-    io.write(RLAS, !IO),
-    io.nl(!IO),
+    io.read_line_as_string(InputStream, RLAS, !IO),
+    io.write_line(RLAS, !IO),
 
     io.write_string("\nwrite_char:\n", !IO),
     io.write_char('ß', !IO),
@@ -93,6 +87,5 @@ do_test(!IO) :-
     io.format("<%4s><%-4.1s>\n", [s("aß"), s("ξ啕")], !IO),
 
     io.write_string("\nread_file_as_string:\n", !IO),
-    io.read_file_as_string(RFAS, !IO),
-    io.write(RFAS, !IO),
-    io.nl(!IO).
+    io.read_file_as_string(InputStream, RFAS, !IO),
+    io.write_line(RFAS, !IO).
