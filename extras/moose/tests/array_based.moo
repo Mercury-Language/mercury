@@ -53,7 +53,7 @@ scan(Cs0, Toks0, Toks) :-
 		 then
 				scan(Cs, Toks0, Toks)
 		 else if 
-				char.digit_to_int(C, Num)
+				char.decimal_digit_to_int(C, Num)
 		 then
 				scan(Cs, array_cons(num(Num), Toks0), Toks)
 		 else if 	

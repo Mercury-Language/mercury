@@ -42,6 +42,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module pair.
+:- import_module prolog.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -83,14 +84,14 @@ main2(_Options, [], !IO) :-
     help(!IO).
 main2(Options, [Name0 | Names], !IO) :-
     figure_out_names(Name0, InName, OutName),
-    io.see(InName, Res0, !IO),
+    prolog.see(InName, Res0, !IO),
     (
         Res0 = ok,
-        io.tell(OutName, Res1, !IO),
+        prolog.tell(OutName, Res1, !IO),
         (
             Res1 = ok,
             process(Options, !IO),
-            io.told(!IO)
+            prolog.told(!IO)
         ;
             Res1 = error(Err),
             io.error_message(Err, Msg),

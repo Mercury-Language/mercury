@@ -80,6 +80,7 @@
 :- implementation.
 
 :- import_module int.
+:- import_module mercury_term_parser.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
