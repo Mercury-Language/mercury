@@ -897,6 +897,8 @@
 :- pred read_bitmap(io.binary_input_stream::in,
     bitmap::bitmap_di, bitmap::bitmap_uo,
     int::out, io.res::out, io::di, io::uo) is det.
+:- pragma obsolete(pred(read_bitmap/6), [bitmap.read_bitmap/6]).
+:- pragma obsolete(pred(read_bitmap/7), [bitmap.read_bitmap/7]).
 
     % read_bitmap(StartByte, NumBytes, !Bitmap, BytesRead, Result, !IO)
     %
@@ -911,6 +913,8 @@
 :- pred read_bitmap(io.binary_input_stream::in, byte_index::in, num_bytes::in,
     bitmap::bitmap_di, bitmap::bitmap_uo, num_bytes::out, io.res::out,
     io::di, io::uo) is det.
+:- pragma obsolete(pred(read_bitmap/8), [bitmap.read_bitmap_range/8]).
+:- pragma obsolete(pred(read_bitmap/9), [bitmap.read_bitmap_range/9]).
 
 %---------------------%
 
@@ -924,6 +928,8 @@
 :- pred write_bitmap(io.binary_output_stream, bitmap, io, io).
 %:- mode write_bitmap(in, bitmap_ui, di, uo) is det.
 :- mode write_bitmap(in, in, di, uo) is det.
+:- pragma obsolete(pred(write_bitmap/3), [bitmap.write_bitmap/3]).
+:- pragma obsolete(pred(write_bitmap/4), [bitmap.write_bitmap/4]).
 
     % write_bitmap(BM, StartByte, NumBytes, !IO):
     % write_bitmap(Stream, BM, StartByte, NumBytes, !IO):
@@ -937,6 +943,8 @@
 :- pred write_bitmap(io.binary_output_stream, bitmap, int, int, io, io).
 %:- mode write_bitmap(in, bitmap_ui, in, in, di, uo) is det.
 :- mode write_bitmap(in, in, in, in, di, uo) is det.
+:- pragma obsolete(pred(write_bitmap/5), [bitmap.write_bitmap_range/5]).
+:- pragma obsolete(pred(write_bitmap/6), [bitmap.write_bitmap_range/6]).
 
 %---------------------------------------------------------------------------%
 %
@@ -1829,8 +1837,13 @@
     %
     % Does not modify the I/O state.
     %
+    % The globals field is obsolete. A mutable declaration will provide
+    % the same functionality with better type safety.
+    %
 :- pred get_globals(univ::out, io::di, io::uo) is det.
 :- pred set_globals(univ::in, io::di, io::uo) is det.
+:- pragma obsolete(pred(get_globals/3)).
+:- pragma obsolete(pred(set_globals/3)).
 
     % update_globals(UpdatePred, !IO).
     % Update the `globals' field in the I/O state based upon its current value.
@@ -1844,8 +1857,12 @@
     % If `UpdatePred' throws an exception then the `globals' field is
     % left unchanged.
     %
+    % The globals field is obsolete. A mutable declaration will provide
+    % the same functionality with better type safety.
+    %
 :- pred update_globals(pred(univ, univ)::in(pred(in, out) is det),
     io::di, io::uo) is det.
+:- pragma obsolete(pred(update_globals/3)).
 
 %---------------------------------------------------------------------------%
 %
@@ -2046,6 +2063,11 @@
 :- pred make_maybe_win32_err_msg(system_error::in, string::in, string::out,
     io::di, io::uo) is det.
 
+    % For use by bitmap.m, and other standard library modules
+    % that want to do I/O.
+    %
+:- pred throw_on_output_error(system_error::in, io::di, io::uo) is det.
+
     % Return a unique identifier for the given file (after following
     % symlinks in FileName).
     % XXX On Cygwin sometimes two files will have the same file_id.
@@ -2057,6 +2079,17 @@
     %
 :- type file_id.
 :- pred file_id(string::in, io.res(file_id)::out, io::di, io::uo) is det.
+
+%---------------------%
+%
+% For use by bitmap.m.
+%
+
+:- type stream.
+:- func input_stream_get_stream(input_stream) = stream.
+:- func output_stream_get_stream(output_stream) = stream.
+:- func binary_input_stream_get_stream(binary_input_stream) = stream.
+:- func binary_output_stream_get_stream(binary_output_stream) = stream.
 
 %---------------------%
 %
@@ -2523,12 +2556,11 @@ result0_to_stream_result0(error(Error)) = error(Error).
     )
 ].
 
-:- instance stream.bulk_reader(binary_input_stream, int,
-        bitmap, io, io.error)
+:- instance stream.bulk_reader(binary_input_stream, int, bitmap, io, io.error)
     where
 [
     ( bulk_get(Stream, Index, Int, !Store, NumRead, Result, !State) :-
-        read_bitmap(Stream, Index, Int, !Store, NumRead,
+        bitmap.read_bitmap_range(Stream, Index, Int, !Store, NumRead,
             Result0, !State),
         Result = res_to_stream_res(Result0)
     )
@@ -2614,14 +2646,14 @@ res_to_stream_res(error(E)) = error(E).
 :- instance stream.writer(binary_output_stream, bitmap, io)
     where
 [
-    pred(put/4) is write_bitmap
+    pred(put/4) is bitmap.write_bitmap
 ].
 
 :- instance stream.writer(binary_output_stream, bitmap.slice, io)
     where
 [
     ( put(Stream, Slice, !IO) :-
-        write_bitmap(Stream, Slice ^ slice_bitmap,
+        bitmap.write_bitmap_range(Stream, Slice ^ slice_bitmap,
             Slice ^ slice_start_byte_index, Slice ^ slice_num_bytes, !IO)
     )
 ].
@@ -8435,222 +8467,32 @@ ignore_whitespace(Stream, Result, !IO) :-
 %
 
 read_bitmap(!Bitmap, BytesRead, Result, !IO) :-
-    binary_input_stream(Stream, !IO),
-    read_bitmap(Stream, !Bitmap, BytesRead, Result, !IO).
+    bitmap.read_bitmap(!Bitmap, BytesRead, Result, !IO).
 
 read_bitmap(Stream, !Bitmap, BytesRead, Result, !IO) :-
-    ( if NumBytes = !.Bitmap ^ num_bytes then
-        io.read_bitmap(Stream, 0, NumBytes, !Bitmap, BytesRead, Result, !IO)
-    else
-        error($pred, "bitmap contains partial final byte")
-    ).
+    bitmap.read_bitmap(Stream, !Bitmap, BytesRead, Result, !IO).
 
 read_bitmap(StartByte, NumBytes, !Bitmap, BytesRead, Result, !IO) :-
-    binary_input_stream(Stream, !IO),
-    read_bitmap(Stream, StartByte, NumBytes, !Bitmap, BytesRead, Result, !IO).
+    bitmap.read_bitmap_range(StartByte, NumBytes, !Bitmap,
+        BytesRead, Result, !IO).
 
-read_bitmap(binary_input_stream(Stream), Start, NumBytes, !Bitmap,
-        BytesRead, Result, !IO) :-
-    ( if
-        NumBytes > 0,
-        byte_in_range(!.Bitmap, Start),
-        byte_in_range(!.Bitmap, Start + NumBytes - 1)
-    then
-        do_read_bitmap(Stream, Start, NumBytes,
-            !Bitmap, 0, BytesRead, Error, !IO),
-        is_error(Error, "read failed: ", MaybeIOError, !IO),
-        (
-            MaybeIOError = yes(IOError),
-            Result = error(IOError)
-        ;
-            MaybeIOError = no,
-            Result = ok
-        )
-    else if
-        NumBytes = 0,
-        byte_in_range(!.Bitmap, Start)
-    then
-        Result = ok,
-        BytesRead = 0
-    else
-        bitmap.throw_bounds_error(!.Bitmap, "io.read_bitmap",
-            Start * bits_per_byte, NumBytes * bits_per_byte)
-    ).
-
-:- pred do_read_bitmap(stream::in, byte_index::in, num_bytes::in,
-    bitmap::bitmap_di, bitmap::bitmap_uo, num_bytes::in, num_bytes::out,
-    system_error::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_read_bitmap(Stream::in, StartByte::in, NumBytes::in,
-        Bitmap0::bitmap_di, Bitmap::bitmap_uo, BytesRead0::in, BytesRead::out,
-        Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    size_t nread;
-
-    Bitmap = Bitmap0;
-    nread = MR_READ(*Stream, Bitmap->elements + StartByte, NumBytes);
-    BytesRead = BytesRead0 + nread;
-    if (nread < NumBytes && MR_FERROR(*Stream)) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_read_bitmap(Stream::in, StartByte::in, NumBytes::in,
-        Bitmap0::bitmap_di, Bitmap::bitmap_uo, BytesRead0::in, BytesRead::out,
-        Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    io.MR_MercuryFileStruct mf = Stream;
-
-    Bitmap = Bitmap0;
-    BytesRead = BytesRead0;
-
-    if (mf.putback != -1) {
-        Bitmap.elements[StartByte] = (byte) mf.putback;
-        BytesRead++;
-        StartByte++;
-        NumBytes--;
-        mf.putback = -1;
-    }
-
-    try {
-        BytesRead += mf.stream.Read(Bitmap.elements, StartByte, NumBytes);
-        Error = null;
-    } catch (System.Exception e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_read_bitmap(Stream::in, StartByte::in, NumBytes::in,
-        Bitmap0::bitmap_di, Bitmap::bitmap_uo, BytesRead0::in, BytesRead::out,
-        Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    MR_BinaryInputFile mf = (MR_BinaryInputFile) Stream;
-    Bitmap = Bitmap0;
-    BytesRead = BytesRead0;
-
-    final int nread = mf.read_pushback(Bitmap.elements, StartByte, NumBytes);
-    BytesRead += nread;
-    StartByte += nread;
-    NumBytes -= nread;
-
-    try {
-        BytesRead +=
-            mf.read_non_pushback(Bitmap.elements, StartByte, NumBytes);
-        Error = null;
-    } catch (java.lang.Exception e) {
-        Error = e;
-    }
-").
-
-    % Default implementation.
-    %
-do_read_bitmap(Stream, Start, NumBytes, !Bitmap, !BytesRead, Error, !IO) :-
-    ( if NumBytes > 0 then
-        read_byte_val(input_stream(Stream), ResultCode, Byte, Error0, !IO),
-        (
-            ResultCode = result_code_ok,
-            !:Bitmap = !.Bitmap ^ unsafe_byte(Start) := Byte,
-            !:BytesRead = !.BytesRead + 1,
-            do_read_bitmap(Stream, Start + 1, NumBytes - 1,
-                !Bitmap, !BytesRead, Error, !IO)
-        ;
-            ResultCode = result_code_eof,
-            Error = Error0
-        ;
-            ResultCode = result_code_error,
-            Error = Error0
-        )
-    else
-        Error = no_error
-    ).
+read_bitmap(Stream, Start, NumBytes, !Bitmap, BytesRead, Result, !IO) :-
+    bitmap.read_bitmap_range(Stream, Start, NumBytes, !Bitmap,
+        BytesRead, Result, !IO).
 
 %---------------------%
 
 write_bitmap(Bitmap, !IO) :-
-    binary_output_stream(Stream, !IO),
-    write_bitmap(Stream, Bitmap, !IO).
+    bitmap.write_bitmap(Bitmap, !IO).
 
-write_bitmap(binary_output_stream(Stream), Bitmap, !IO) :-
-    ( if NumBytes = Bitmap ^ num_bytes then
-        do_write_bitmap(Stream, Bitmap, 0, NumBytes, Error, !IO),
-        throw_on_output_error(Error, !IO)
-    else
-        error($pred, "bitmap contains partial final byte")
-    ).
+write_bitmap(Stream, Bitmap, !IO) :-
+    bitmap.write_bitmap(Stream, Bitmap, !IO).
 
 write_bitmap(Bitmap, Start, NumBytes, !IO) :-
-    binary_output_stream(Stream, !IO),
-    write_bitmap(Stream, Bitmap, Start, NumBytes, !IO).
+    bitmap.write_bitmap_range(Bitmap, Start, NumBytes, !IO).
 
-write_bitmap(binary_output_stream(Stream), Bitmap, Start, NumBytes, !IO) :-
-    ( if NumBytes = 0 then
-        true
-    else if
-        NumBytes > 0,
-        byte_in_range(Bitmap, Start),
-        byte_in_range(Bitmap, Start + NumBytes - 1)
-    then
-        do_write_bitmap(Stream, Bitmap, Start, NumBytes, Error, !IO),
-        throw_on_output_error(Error, !IO)
-    else
-        bitmap.throw_bounds_error(Bitmap, "io.write_bitmap",
-            Start * bits_per_byte, NumBytes * bits_per_byte)
-    ).
-
-:- pred do_write_bitmap(stream, bitmap, int, int, system_error, io, io).
-%:- mode do_write_bitmap(in, bitmap_ui, in, in, out, di, uo) is det.
-:- mode do_write_bitmap(in, in, in, in, out, di, uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_bitmap(Stream::in, Bitmap::in, Start::in, Length::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        no_sharing],
-"
-    MR_Integer bytes_written =
-        (MR_Integer)MR_WRITE(*Stream, Bitmap->elements + Start, Length);
-    if (bytes_written != Length) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_bitmap(Stream::in, Bitmap::in, Start::in, Length::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        no_sharing],
-"
-    try {
-        Stream.stream.Write(Bitmap.elements, Start, Length);
-        Error = null;
-    } catch (System.Exception e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_bitmap(Stream::in, Bitmap::in, Start::in, Length::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        no_sharing],
-"
-    try {
-        ((MR_BinaryOutputFile) Stream).write(Bitmap.elements, Start, Length);
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
+write_bitmap(Stream, Bitmap, Start, NumBytes, !IO) :-
+    bitmap.write_bitmap_range(Stream, Bitmap, Start, NumBytes, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -9314,19 +9156,19 @@ read_binary_file_as_bitmap(Stream, Result, !IO) :-
         RemainingSizeInt64 = FileSize - CurrentOffset,
         ( if
             int.bits_per_int = 32,
-            RemainingSizeInt64 > from_int(int.max_int)
+            RemainingSizeInt64 > int64.from_int(int.max_int)
         then
             Result = error(io_error("io.read_binary_file_as_bitmap: " ++
                 "file size exceeds maximum buffer size"))
         else
-            RemainingSize = cast_to_int(RemainingSizeInt64),
+            RemainingSize = int64.cast_to_int(RemainingSizeInt64),
             some [!BM] (
                 !:BM = bitmap.init(RemainingSize * bits_per_byte),
                 ( if RemainingSize = 0 then
                     Result = ok(!.BM)
                 else
-                    read_bitmap(Stream, 0, RemainingSize, !BM, BytesRead,
-                        ReadResult, !IO),
+                    bitmap.read_bitmap_range(Stream, 0, RemainingSize, !BM,
+                        BytesRead, ReadResult, !IO),
                     (
                         ReadResult = ok,
                         ( if BytesRead = RemainingSize then
@@ -9345,7 +9187,7 @@ read_binary_file_as_bitmap(Stream, Result, !IO) :-
         )
     else
         BufferSize = 4000,
-        read_binary_file_as_bitmap_2(Stream, BufferSize,
+        read_binary_file_as_bitmap_from_stream(Stream, BufferSize,
             Res, [], RevBitmaps, !IO),
         (
             Res = ok,
@@ -9356,14 +9198,15 @@ read_binary_file_as_bitmap(Stream, Result, !IO) :-
         )
     ).
 
-:- pred read_binary_file_as_bitmap_2(io.binary_input_stream::in,
+:- pred read_binary_file_as_bitmap_from_stream(io.binary_input_stream::in,
     num_bytes::in, io.res::out, list(bitmap)::in, list(bitmap)::out,
     io::di, io::uo) is det.
 
-read_binary_file_as_bitmap_2(Stream, BufferSize, Res, !BMs, !IO) :-
+read_binary_file_as_bitmap_from_stream(Stream, BufferSize, Res, !BMs, !IO) :-
     some [!BM] (
         !:BM = bitmap.init(BufferSize * bits_per_byte),
-        read_bitmap(Stream, 0, BufferSize, !BM, NumBytesRead, ReadRes, !IO),
+        bitmap.read_bitmap_range(Stream, 0, BufferSize, !BM, NumBytesRead,
+            ReadRes, !IO),
         (
             ReadRes = ok,
             ( if NumBytesRead < BufferSize then
@@ -9375,7 +9218,7 @@ read_binary_file_as_bitmap_2(Stream, BufferSize, Res, !BMs, !IO) :-
                 !:BMs = [!.BM | !.BMs],
 
                 % Double the buffer size each time.
-                read_binary_file_as_bitmap_2(Stream, BufferSize * 2,
+                read_binary_file_as_bitmap_from_stream(Stream, BufferSize * 2,
                     Res, !BMs, !IO)
             )
         ;
@@ -9402,6 +9245,7 @@ binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
     stream_file_size(Stream, Size, !IO).
 
     % stream_file_size(Stream, Size):
+    %
     % If Stream is a regular file, then Size is its size (in bytes),
     % otherwise Size is -1.
     %
@@ -12677,8 +12521,6 @@ throw_on_error(Error, Prefix, !IO) :-
         MaybeIOError = no
     ).
 
-:- pred throw_on_output_error(system_error::in, io::di, io::uo) is det.
-
 throw_on_output_error(Error, !IO) :-
     throw_on_error(Error, "error writing to output file: ", !IO).
 
@@ -12816,6 +12658,16 @@ file_id(FileName, Result, !IO) :-
     Error = new java.lang.UnsupportedOperationException(
         ""io.file_id not supported on this platform"");
 ").
+
+%---------------------------------------------------------------------------%
+%
+% For use by bitmap.m.
+%
+
+input_stream_get_stream(input_stream(Stream)) = Stream.
+output_stream_get_stream(output_stream(Stream)) = Stream.
+binary_input_stream_get_stream(binary_input_stream(Stream)) = Stream.
+binary_output_stream_get_stream(binary_output_stream(Stream)) = Stream.
 
 %---------------------------------------------------------------------------%
 %

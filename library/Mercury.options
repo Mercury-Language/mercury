@@ -39,7 +39,13 @@ MGNUCFLAGS-io                   += --no-ansi
 # This is needed to avoid errors on the calls that implement e.g. io.format/3
 # in terms of io.format/4, and string.format/2 in terms of string.format/3.
 # varset.trans_opt includes the relevant part of string.opt.
-MCFLAGS-io                      += --no-warn-unknown-format-calls
+#
+# We have obsoleted the predicates that get and set the globals field
+# in the I/O state. However, until we delete that field, the initialization
+# of the I/O state must still initialize the globals, which unavoidably
+# calls a now-obsolete predicate.
+MCFLAGS-io                      += --no-warn-unknown-format-calls \
+                                    --no-warn-obsolete
 MCFLAGS-stream                  += --no-warn-unknown-format-calls
 MCFLAGS-stream.string_writer    += --no-warn-unknown-format-calls
 MCFLAGS-string                  += --no-warn-unknown-format-calls

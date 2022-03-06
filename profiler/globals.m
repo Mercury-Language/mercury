@@ -45,27 +45,22 @@
 
 %---------------------------------------------------------------------------%
 %
-% Access predicates for the `globals' structure
+% Access predicates for the `globals' structure.
 %
 
-:- pred globals.init(option_table::in, globals::out) is det.
+:- pred get_what_to_profile(globals::in, what_to_profile::out) is det.
+:- pred get_options(globals::in, option_table::out) is det.
 
-:- pred globals.get_what_to_profile(globals::in, what_to_profile::out) is det.
-:- pred globals.get_options(globals::in, option_table::out) is det.
-
-:- pred globals.set_what_to_profile(what_to_profile::in,
+:- pred set_what_to_profile(what_to_profile::in,
     globals::in, globals::out) is det.
-:- pred globals.set_options(option_table::in, globals::in, globals::out)
-    is det.
+:- pred set_options(option_table::in, globals::in, globals::out) is det.
 
-:- pred globals.lookup_option(globals::in, option::in, option_data::out)
-    is det.
+:- pred lookup_option(globals::in, option::in, option_data::out) is det.
 
-:- pred globals.lookup_bool_option(globals::in, option::in, bool::out) is det.
-:- pred globals.lookup_int_option(globals::in, option::in, int::out) is det.
-:- pred globals.lookup_string_option(globals::in, option::in, string::out)
-    is det.
-:- pred globals.lookup_accumulating_option(globals::in, option::in,
+:- pred lookup_bool_option(globals::in, option::in, bool::out) is det.
+:- pred lookup_int_option(globals::in, option::in, int::out) is det.
+:- pred lookup_string_option(globals::in, option::in, string::out) is det.
+:- pred lookup_accumulating_option(globals::in, option::in,
     list(string)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -73,25 +68,21 @@
     % Access predicates for storing a `globals' structure in the
     % io using io.set_globals and io.get_globals.
 
-:- pred globals.io_init(option_table::in, io::di, io::uo) is det.
+:- pred io_init(option_table::in, io::di, io::uo) is det.
 
-:- pred globals.io_get_globals(globals::out, io::di, io::uo) is det.
+:- pred io_get_globals(globals::out, io::di, io::uo) is det.
 
-:- pred globals.io_set_globals(globals::in, io::di, io::uo) is det.
+:- pred io_set_globals(globals::in, io::di, io::uo) is det.
 
-:- pred globals.io_lookup_option(option::in, option_data::out,
+:- pred io_lookup_option(option::in, option_data::out, io::di, io::uo) is det.
+
+:- pred io_set_option(option::in, option_data::in, io::di, io::uo) is det.
+
+:- pred io_lookup_bool_option(option::in, bool::out, io::di, io::uo) is det.
+:- pred io_lookup_int_option(option::in, int::out, io::di, io::uo) is det.
+:- pred io_lookup_string_option(option::in, string::out,
     io::di, io::uo) is det.
-
-:- pred globals.io_set_option(option::in, option_data::in,
-    io::di, io::uo) is det.
-
-:- pred globals.io_lookup_bool_option(option::in, bool::out, io::di, io::uo)
-    is det.
-:- pred globals.io_lookup_int_option(option::in, int::out,
-    io::di, io::uo) is det.
-:- pred globals.io_lookup_string_option(option::in, string::out,
-    io::di, io::uo) is det.
-:- pred globals.io_lookup_accumulating_option(option::in, list(string)::out,
+:- pred io_lookup_accumulating_option(option::in, list(string)::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -102,7 +93,6 @@
 :- import_module map.
 :- import_module require.
 :- import_module string.
-:- import_module univ.
 
 %---------------------------------------------------------------------------%
 
@@ -119,22 +109,21 @@ what_to_profile("real-time", real_time).
                 option_table    :: option_table
             ).
 
-globals.init(Options, globals(user_plus_system_time, Options)).
+get_what_to_profile(Globals, Globals ^ what_to_profile).
+get_options(Globals, Globals ^ option_table).
 
-globals.get_what_to_profile(Globals, Globals ^ what_to_profile).
-globals.get_options(Globals, Globals ^ option_table).
+set_what_to_profile(WhatToProfile, !Globals) :-
+    !Globals ^ what_to_profile := WhatToProfile.
+set_options(Options, !Globals) :-
+    !Globals ^ option_table := Options.
 
-globals.set_what_to_profile(WhatToProfile,
-    Globals, Globals ^ what_to_profile := WhatToProfile).
-globals.set_options(Options, Globals, Globals ^ option_table := Options).
-
-globals.lookup_option(Globals, Option, OptionData) :-
+lookup_option(Globals, Option, OptionData) :-
     globals.get_options(Globals, OptionTable),
     map.lookup(OptionTable, Option, OptionData).
 
 %---------------------------------------------------------------------------%
 
-globals.lookup_bool_option(Globals, Option, Value) :-
+lookup_bool_option(Globals, Option, Value) :-
     globals.lookup_option(Globals, Option, OptionData),
     ( if OptionData = bool(Bool) then
         Value = Bool
@@ -142,7 +131,7 @@ globals.lookup_bool_option(Globals, Option, Value) :-
         error("globals.lookup_bool_option: invalid bool option")
     ).
 
-globals.lookup_int_option(Globals, Option, Value) :-
+lookup_int_option(Globals, Option, Value) :-
     globals.lookup_option(Globals, Option, OptionData),
     ( if OptionData = int(Int) then
         Value = Int
@@ -150,7 +139,7 @@ globals.lookup_int_option(Globals, Option, Value) :-
         error("globals.lookup_int_option: invalid int option")
     ).
 
-globals.lookup_string_option(Globals, Option, Value) :-
+lookup_string_option(Globals, Option, Value) :-
     globals.lookup_option(Globals, Option, OptionData),
     ( if OptionData = string(String) then
         Value = String
@@ -158,7 +147,7 @@ globals.lookup_string_option(Globals, Option, Value) :-
         error("globals.lookup_string_option: invalid string option")
     ).
 
-globals.lookup_accumulating_option(Globals, Option, Value) :-
+lookup_accumulating_option(Globals, Option, Value) :-
     globals.lookup_option(Globals, Option, OptionData),
     ( if OptionData = accumulating(Accumulating) then
         Value = Accumulating
@@ -170,31 +159,34 @@ globals.lookup_accumulating_option(Globals, Option, Value) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-globals.io_init(Options, !IO) :-
-    globals.init(Options, Globals),
-    globals.io_set_globals(Globals, !IO).
+:- mutable(profiler_globals, globals, init_profiler_globals, ground,
+    [untrailed, attach_to_io_state]).
 
-globals.io_get_globals(Globals, !IO) :-
-    io.get_globals(UnivGlobals, !IO),
-    ( if univ_to_type(UnivGlobals, Globals0) then
-        Globals = Globals0
-    else
-        error("globals.io_get_globals: univ_to_type failed")
-    ).
+:- func init_profiler_globals = globals.
 
-globals.io_set_globals(Globals0, !IO) :-
-    unsafe_promise_unique(Globals0, Globals),
-    type_to_univ(Globals, UnivGlobals),
-    io.set_globals(UnivGlobals, !IO).
+init_profiler_globals = Globals :-
+    Globals = globals(user_plus_system_time, map.init).
 
 %---------------------------------------------------------------------------%
 
-globals.io_lookup_option(Option, OptionData, !IO) :-
+io_init(Options, !IO) :-
+    Globals = globals(user_plus_system_time, Options),
+    set_profiler_globals(Globals, !IO).
+
+io_get_globals(Globals, !IO) :-
+    get_profiler_globals(Globals, !IO).
+
+io_set_globals(Globals, !IO) :-
+    set_profiler_globals(Globals, !IO).
+
+%---------------------------------------------------------------------------%
+
+io_lookup_option(Option, OptionData, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.get_options(Globals, OptionTable),
     map.lookup(OptionTable, Option, OptionData).
 
-globals.io_set_option(Option, OptionData, !IO) :-
+io_set_option(Option, OptionData, !IO) :-
     globals.io_get_globals(Globals0, !IO),
     globals.get_options(Globals0, OptionTable0),
     map.set(Option, OptionData, OptionTable0, OptionTable),
@@ -203,19 +195,19 @@ globals.io_set_option(Option, OptionData, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-globals.io_lookup_bool_option(Option, Value, !IO) :-
+io_lookup_bool_option(Option, Value, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.lookup_bool_option(Globals, Option, Value).
 
-globals.io_lookup_int_option(Option, Value, !IO) :-
+io_lookup_int_option(Option, Value, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.lookup_int_option(Globals, Option, Value).
 
-globals.io_lookup_string_option(Option, Value, !IO) :-
+io_lookup_string_option(Option, Value, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.lookup_string_option(Globals, Option, Value).
 
-globals.io_lookup_accumulating_option(Option, Value, !IO) :-
+io_lookup_accumulating_option(Option, Value, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.lookup_accumulating_option(Globals, Option, Value).
 

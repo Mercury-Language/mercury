@@ -8,11 +8,25 @@ Changes that may break compatibility
   read_term_with_op_table/5 have been removed from the `term_io` module
   of the Mercury standard library.
 
-* Some obsolete predicates have been removed from the `io` module;
-  see below.
+* The `io` module is being reorganized. Some predicates have been
+  marked as obsolete, while other predicates have been marked obsolete
+  before the release of Mercury 22.01 have been removed.
 
 Changes to the Mercury standard library
 ---------------------------------------
+
+### Changes to the `bitmap` module
+
+* The following predicates have been added:
+
+    - pred `read_bitmap/6`
+    - pred `read_bitmap/7`
+    - pred `read_bitmap_range/8`
+    - pred `read_bitmap_range/9`
+    - pred `write_bitmap/3`
+    - pred `write_bitmap/4`
+    - pred `write_bitmap_range/5`
+    - pred `write_bitmap_range/6`
 
 ### Changes to the `io` module
 
@@ -26,6 +40,21 @@ Changes to the Mercury standard library
     - pred `tell_binary/4`          (replacement: `prolog.tell_binary/4`)
     - pred `told/2`                 (replacement: `prolog.told/2`)
     - pred `told_binary/2`          (replacement: `prolog.told_binary/2`)
+
+* The following predicates have been marked obsolete:
+
+    - pred `read_bitmap/6`          (replacement: `bitmap.read_bitmap/6)
+    - pred `read_bitmap/7`          (replacement: `bitmap.read_bitmap/7)
+    - pred `read_bitmap/8`          (replacement: `bitmap.read_bitmap_range/8)
+    - pred `read_bitmap/9`          (replacement: `bitmap.read_bitmap_range/9)
+    - pred `write_bitmap/3`         (replacement: `bitmap.write_bitmap/3)
+    - pred `write_bitmap/4`         (replacement: `bitmap.write_bitmap/4)
+    - pred `write_bitmap/5`         (replacement: `bitmap.write_bitmap_range/5)
+    - pred `write_bitmap/6`         (replacement: `bitmap.write_bitmap_range/6)
+
+    - pred `get_globals/3`          (replacement: a mutable)
+    - pred `set_globals/3`          (replacement: a mutable)
+    - pred `update_globals/3`       (replacement: a mutable)
 
 ### Changes to the `term_io` module
 

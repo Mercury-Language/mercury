@@ -26,6 +26,7 @@
 :- interface.
 
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
@@ -433,6 +434,14 @@
 
 %---------------------------------------------------------------------------%
 
+    % Compute a hash function for a bitmap.
+    %
+:- func hash(bitmap) = int.
+% :- mode hash(bitmap_ui) = out is det.
+:- mode hash(in) = out is det.
+
+%---------------------------------------------------------------------------%
+
     % Convert a bitmap to a string of the form "<length:hex digits>",
     % e.g. "<24:10AFBD>".
     %
@@ -459,12 +468,63 @@
 :- mode to_byte_string(in) = out is det.
 
 %---------------------------------------------------------------------------%
+%
+% Bitmap input and output predicates.
+%
 
-    % Compute a hash function for a bitmap.
+    % Fill a bitmap from the current binary input stream
+    % or from the specified binary input stream.
+    % Return the number of bytes read. On end-of-file, the number of
+    % bytes read will be less than the size of the bitmap, and
+    % the result will be `ok'.
+    % Throws an exception if the bitmap has a partial final byte.
     %
-:- func hash(bitmap) = int.
-% :- mode hash(bitmap_ui) = out is det.
-:- mode hash(in) = out is det.
+:- pred read_bitmap(bitmap::bitmap_di, bitmap::bitmap_uo,
+    int::out, io.res::out, io::di, io::uo) is det.
+:- pred read_bitmap(io.binary_input_stream::in,
+    bitmap::bitmap_di, bitmap::bitmap_uo,
+    int::out, io.res::out, io::di, io::uo) is det.
+
+    % read_bitmap(StartByte, NumBytes, !Bitmap, BytesRead, Result, !IO)
+    %
+    % Read NumBytes bytes into a bitmap starting at StartByte from the
+    % current binary input stream, or from the specified binary input stream.
+    % Return the number of bytes read. On end-of-file, the number of
+    % bytes read will be less than NumBytes, and the result will be `ok'.
+    %
+:- pred read_bitmap_range(byte_index::in, num_bytes::in,
+    bitmap::bitmap_di, bitmap::bitmap_uo, num_bytes::out, io.res::out,
+    io::di, io::uo) is det.
+:- pred read_bitmap_range(io.binary_input_stream::in,
+    byte_index::in, num_bytes::in,
+    bitmap::bitmap_di, bitmap::bitmap_uo, num_bytes::out, io.res::out,
+    io::di, io::uo) is det.
+
+%---------------------%
+
+    % Write a bitmap to the current binary output stream
+    % or to the specified binary output stream. The bitmap must not contain
+    % a partial final byte.
+    %
+:- pred write_bitmap(bitmap, io, io).
+%:- mode write_bitmap(bitmap_ui, di, uo) is det.
+:- mode write_bitmap(in, di, uo) is det.
+:- pred write_bitmap(io.binary_output_stream, bitmap, io, io).
+%:- mode write_bitmap(in, bitmap_ui, di, uo) is det.
+:- mode write_bitmap(in, in, di, uo) is det.
+
+    % write_bitmap_range(BM, StartByte, NumBytes, !IO):
+    % write_bitmap_range(Stream, BM, StartByte, NumBytes, !IO):
+    %
+    % Write part of a bitmap to the current binary output stream
+    % or to the specified binary output stream.
+    %
+:- pred write_bitmap_range(bitmap, int, int, io, io).
+%:- mode write_bitmap_range(bitmap_ui, in, in, di, uo) is det.
+:- mode write_bitmap_range(in, in, in, di, uo) is det.
+:- pred write_bitmap_range(io.binary_output_stream, bitmap, int, int, io, io).
+%:- mode write_bitmap_range(in, bitmap_ui, in, in, di, uo) is det.
+:- mode write_bitmap_range(in, in, in, in, di, uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -472,9 +532,9 @@
 :- implementation.
 :- interface.
 
-    % Used by io.m.
-
     % throw_bounds_error(BM, PredName, Index, NumBits):
+    %
+    % Exported for use by bit_buffer.read.
     %
 :- pred throw_bounds_error(bitmap::in, string::in, bit_index::in, num_bits::in)
     is erroneous.
@@ -486,6 +546,7 @@
 :- import_module char.
 :- import_module exception.
 :- import_module int.
+:- import_module maybe.
 :- import_module require.
 :- import_module string.
 
@@ -1721,6 +1782,37 @@ choose_copy_direction(SameBM, SrcStartBit, DestStartBit) =
 
 %---------------------------------------------------------------------------%
 
+hash(BM) = HashVal :-
+    % NOTE: bitmap.hash is also defined as MR_hash_bitmap in
+    % runtime/mercury_bitmap.h. The two definitions must be kept identical.
+    NumBits = num_bits(BM),
+    NumBytes0 = NumBits `unchecked_quotient` bits_per_byte,
+    ( if NumBits `unchecked_rem` bits_per_byte = 0 then
+        NumBytes = NumBytes0
+    else
+        NumBytes = NumBytes0 + 1
+    ),
+    hash_2(BM, 0, NumBytes, 0, HashVal0),
+    HashVal = HashVal0 `xor` NumBits.
+
+:- pred hash_2(bitmap::in, byte_index::in, int::in, int::in, int::out) is det.
+
+hash_2(BM, Index, Length, !HashVal) :-
+    ( if Index < Length then
+        combine_hash(unsafe_get_byte(BM, Index), !HashVal),
+        hash_2(BM, Index + 1, Length, !HashVal)
+    else
+        true
+    ).
+
+:- pred combine_hash(int::in, int::in, int::out) is det.
+
+combine_hash(X, H0, H) :-
+    H1 = H0 `xor` (H0 << 5),
+    H = H1 `xor` X.
+
+%---------------------------------------------------------------------------%
+
 to_string(BM) = Str :-
     % Note: this should be kept in sync with MR_bitmap_to_string in
     % runtime/mercury_bitmap.c.
@@ -1830,35 +1922,242 @@ bitmap_to_byte_strings(BM, NumBits, !.Strs) = !:Strs :-
     ).
 
 %---------------------------------------------------------------------------%
+%
+% Bitmap input and output predicates.
+%
+% The modules io.m and bit_buffer.read.m also contain code
+% for reading in bitmaps. The read_binary_file_as_bitmap predicate in io.m
+% calls read_bitmap_range below for all of the actual I/O, while the
+% get_bitmap predicate in bit_buffer.read.m duplicates much of the logic
+% of read_bitmap_range.
+%
 
-hash(BM) = HashVal :-
-    % NOTE: bitmap.hash is also defined as MR_hash_bitmap in
-    % runtime/mercury_bitmap.h. The two definitions must be kept identical.
-    NumBits = num_bits(BM),
-    NumBytes0 = NumBits `unchecked_quotient` bits_per_byte,
-    ( if NumBits `unchecked_rem` bits_per_byte = 0 then
-        NumBytes = NumBytes0
+read_bitmap(!Bitmap, BytesRead, Result, !IO) :-
+    binary_input_stream(Stream, !IO),
+    bitmap.read_bitmap(Stream, !Bitmap, BytesRead, Result, !IO).
+
+read_bitmap(Stream, !Bitmap, BytesRead, Result, !IO) :-
+    ( if NumBytes = !.Bitmap ^ num_bytes then
+        bitmap.read_bitmap_range(Stream, 0, NumBytes, !Bitmap,
+            BytesRead, Result, !IO)
     else
-        NumBytes = NumBytes0 + 1
-    ),
-    hash_2(BM, 0, NumBytes, 0, HashVal0),
-    HashVal = HashVal0 `xor` NumBits.
-
-:- pred hash_2(bitmap::in, byte_index::in, int::in, int::in, int::out) is det.
-
-hash_2(BM, Index, Length, !HashVal) :-
-    ( if Index < Length then
-        combine_hash(unsafe_get_byte(BM, Index), !HashVal),
-        hash_2(BM, Index + 1, Length, !HashVal)
-    else
-        true
+        error($pred, "bitmap contains partial final byte")
     ).
 
-:- pred combine_hash(int::in, int::in, int::out) is det.
+read_bitmap_range(StartByte, NumBytes, !Bitmap, BytesRead, Result, !IO) :-
+    binary_input_stream(Stream, !IO),
+    bitmap.read_bitmap_range(Stream, StartByte, NumBytes, !Bitmap,
+        BytesRead, Result, !IO).
 
-combine_hash(X, H0, H) :-
-    H1 = H0 `xor` (H0 << 5),
-    H = H1 `xor` X.
+read_bitmap_range(InputStream, Start, NumBytes, !Bitmap,
+        BytesRead, Result, !IO) :-
+    % The overall logic of this predicate is also followed by get_bitmap/8
+    % in bit_buffer.m.
+    ( if
+        NumBytes > 0,
+        byte_in_range(!.Bitmap, Start),
+        byte_in_range(!.Bitmap, Start + NumBytes - 1)
+    then
+        Stream = binary_input_stream_get_stream(InputStream),
+        do_read_bitmap_range(Stream, Start, NumBytes,
+            !Bitmap, 0, BytesRead, Error, !IO),
+        is_error(Error, "read failed: ", MaybeIOError, !IO),
+        (
+            MaybeIOError = yes(IOError),
+            Result = error(IOError)
+        ;
+            MaybeIOError = no,
+            Result = ok
+        )
+    else if
+        NumBytes = 0,
+        byte_in_range(!.Bitmap, Start)
+    then
+        Result = ok,
+        BytesRead = 0
+    else
+        bitmap.throw_bounds_error(!.Bitmap, "io.read_bitmap",
+            Start * bits_per_byte, NumBytes * bits_per_byte)
+    ).
+
+:- pred do_read_bitmap_range(stream::in, byte_index::in, num_bytes::in,
+    bitmap::bitmap_di, bitmap::bitmap_uo, num_bytes::in, num_bytes::out,
+    system_error::out, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    do_read_bitmap_range(Stream::in, StartByte::in, NumBytes::in,
+        Bitmap0::bitmap_di, Bitmap::bitmap_uo, BytesRead0::in, BytesRead::out,
+        Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    size_t nread;
+
+    Bitmap = Bitmap0;
+    nread = MR_READ(*Stream, Bitmap->elements + StartByte, NumBytes);
+    BytesRead = BytesRead0 + nread;
+    if (nread < NumBytes && MR_FERROR(*Stream)) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    do_read_bitmap_range(Stream::in, StartByte::in, NumBytes::in,
+        Bitmap0::bitmap_di, Bitmap::bitmap_uo, BytesRead0::in, BytesRead::out,
+        Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    io.MR_MercuryFileStruct mf = Stream;
+
+    Bitmap = Bitmap0;
+    BytesRead = BytesRead0;
+
+    if (mf.putback != -1) {
+        Bitmap.elements[StartByte] = (byte) mf.putback;
+        BytesRead++;
+        StartByte++;
+        NumBytes--;
+        mf.putback = -1;
+    }
+
+    try {
+        BytesRead += mf.stream.Read(Bitmap.elements, StartByte, NumBytes);
+        Error = null;
+    } catch (System.Exception e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    do_read_bitmap_range(Stream::in, StartByte::in, NumBytes::in,
+        Bitmap0::bitmap_di, Bitmap::bitmap_uo, BytesRead0::in, BytesRead::out,
+        Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    io.MR_BinaryInputFile mf = (io.MR_BinaryInputFile) Stream;
+    Bitmap = Bitmap0;
+    BytesRead = BytesRead0;
+
+    final int nread = mf.read_pushback(Bitmap.elements, StartByte, NumBytes);
+    BytesRead += nread;
+    StartByte += nread;
+    NumBytes -= nread;
+
+    try {
+        BytesRead +=
+            mf.read_non_pushback(Bitmap.elements, StartByte, NumBytes);
+        Error = null;
+    } catch (java.lang.Exception e) {
+        Error = e;
+    }
+").
+
+    % Default implementation.
+    % XXX This has been unused since the deletion of the Erlang backend.
+    %
+do_read_bitmap_range(Stream, Start, NumBytes, !Bitmap, !BytesRead,
+        Error, !IO) :-
+    ( if NumBytes > 0 then
+        read_byte_val(input_stream(Stream), ResultCode, Byte, Error0, !IO),
+        (
+            ResultCode = result_code_ok,
+            !:Bitmap = !.Bitmap ^ unsafe_byte(Start) := Byte,
+            !:BytesRead = !.BytesRead + 1,
+            do_read_bitmap_range(Stream, Start + 1, NumBytes - 1,
+                !Bitmap, !BytesRead, Error, !IO)
+        ;
+            ResultCode = result_code_eof,
+            Error = Error0
+        ;
+            ResultCode = result_code_error,
+            Error = Error0
+        )
+    else
+        Error = no_error
+    ).
+
+%---------------------%
+
+write_bitmap(Bitmap, !IO) :-
+    binary_output_stream(Stream, !IO),
+    bitmap.write_bitmap(Stream, Bitmap, !IO).
+
+write_bitmap(OutputStream, Bitmap, !IO) :-
+    ( if NumBytes = Bitmap ^ num_bytes then
+        Stream = binary_output_stream_get_stream(OutputStream),
+        do_write_bitmap_range(Stream, Bitmap, 0, NumBytes, Error, !IO),
+        throw_on_output_error(Error, !IO)
+    else
+        error($pred, "bitmap contains partial final byte")
+    ).
+
+write_bitmap_range(Bitmap, Start, NumBytes, !IO) :-
+    binary_output_stream(Stream, !IO),
+    bitmap.write_bitmap_range(Stream, Bitmap, Start, NumBytes, !IO).
+
+write_bitmap_range(OutputStream, Bitmap, Start, NumBytes, !IO) :-
+    ( if NumBytes = 0 then
+        true
+    else if
+        NumBytes > 0,
+        byte_in_range(Bitmap, Start),
+        byte_in_range(Bitmap, Start + NumBytes - 1)
+    then
+        Stream = binary_output_stream_get_stream(OutputStream),
+        do_write_bitmap_range(Stream, Bitmap, Start, NumBytes, Error, !IO),
+        throw_on_output_error(Error, !IO)
+    else
+        bitmap.throw_bounds_error(Bitmap, "io.write_bitmap",
+            Start * bits_per_byte, NumBytes * bits_per_byte)
+    ).
+
+:- pred do_write_bitmap_range(stream, bitmap, int, int, system_error, io, io).
+%:- mode do_write_bitmap(in, bitmap_ui, in, in, out, di, uo) is det.
+:- mode do_write_bitmap_range(in, in, in, in, out, di, uo) is det.
+
+:- pragma foreign_proc("C",
+    do_write_bitmap_range(Stream::in, Bitmap::in, Start::in, Length::in,
+        Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        no_sharing],
+"
+    MR_Integer bytes_written =
+        (MR_Integer)MR_WRITE(*Stream, Bitmap->elements + Start, Length);
+    if (bytes_written != Length) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    do_write_bitmap_range(Stream::in, Bitmap::in, Start::in, Length::in,
+        Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        no_sharing],
+"
+    try {
+        Stream.stream.Write(Bitmap.elements, Start, Length);
+        Error = null;
+    } catch (System.Exception e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    do_write_bitmap_range(Stream::in, Bitmap::in, Start::in, Length::in,
+        Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        no_sharing],
+"
+    try {
+        ((io.MR_BinaryOutputFile) Stream).write(Bitmap.elements, Start, Length);
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
 
 %---------------------------------------------------------------------------%
 %

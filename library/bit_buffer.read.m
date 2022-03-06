@@ -39,13 +39,13 @@
 :- import_module bitmap.
 
 :- type read_buffer(Stream, State, Error).
-        % <= stream.bulk_reader(Stream, byte_index, bitmap, State, Error).
+    % <= stream.bulk_reader(Stream, byte_index, bitmap, State, Error).
 
 :- type read_buffer ==
-            read_buffer(error_stream, error_state, error_stream_error).
+    read_buffer(error_stream, error_state, error_stream_error).
 
 :- type io_read_buffer ==
-            read_buffer(io.binary_input_stream, io.state, io.error).
+    read_buffer(io.binary_input_stream, io.state, io.error).
 
 :- inst uniq_read_buffer == ground.   % XXX Should be unique.
 :- mode read_buffer_di == in(uniq_read_buffer).
@@ -159,44 +159,40 @@
 :- mode finalize(read_buffer_di, out, uo, bitmap_uo, out, out) is det.
 
 %---------------------------------------------------------------------------%
-:- implementation.
 
-/*
-** None of these instances work because of limitations in the type and
-** RTTI system.
-**
-
-:- interface.
-
-    %
-    % A bit buffer is a stream of bits.
-    %
-
-:- type read_stream(Stream)
-    ---> read_stream.
-
-:- instance stream.stream(read_stream(Stream, Error),
-            read_buffer(Stream, State, Error))
-    <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error).
-
-:- instance stream.input(read_stream(Stream, Error),
-        read_buffer(Stream, State, Error))
-    <= stream.input(Stream, State).
-
-:- instance stream.reader(read_stream(Stream, Error), bool,
-            read_buffer(Stream, State, Error), Error)
-    <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error).
-
-:- instance stream.bulk_reader(read_stream(Stream, Error),
-            bit_index, word, read_buffer(Stream, State, Error), Error)
-    <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error).
-
-:- instance stream.bulk_reader(read_stream(Stream, Error),
-            bit_index, bitmap, read_buffer(Stream, State, Error), Error)
-    <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error).
-*/
+% None of these instances work because of limitations in the type and
+% RTTI systems.
+%
+% :- implementation.
+% :- interface.
+% 
+%     % A bit buffer is a stream of bits.
+%     %
+% :- type read_stream(Stream)
+%     ---> read_stream.
+% 
+% :- instance stream.stream(read_stream(Stream, Error),
+%         read_buffer(Stream, State, Error))
+%     <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error).
+% 
+% :- instance stream.input(read_stream(Stream, Error),
+%         read_buffer(Stream, State, Error))
+%     <= stream.input(Stream, State).
+% 
+% :- instance stream.reader(read_stream(Stream, Error), bool,
+%         read_buffer(Stream, State, Error), Error)
+%     <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error).
+% 
+% :- instance stream.bulk_reader(read_stream(Stream, Error),
+%         bit_index, word, read_buffer(Stream, State, Error), Error)
+%     <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error).
+% 
+% :- instance stream.bulk_reader(read_stream(Stream, Error),
+%         bit_index, bitmap, read_buffer(Stream, State, Error), Error)
+%     <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error).
 
 %---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module require.
@@ -356,6 +352,7 @@ get_bitmap(!BM, NumBitsRead, Result, !Buffer) :-
 
 get_bitmap(Index, NumBits, !BM, NumBitsRead, Result,
         read_buffer(!.Buffer), read_buffer(!:Buffer)) :-
+    % This code is based on read_bitmap_range in bitmap.m.
     Status = !.Buffer ^ read_status,
     (
         Status = ok,
@@ -433,7 +430,7 @@ recursively_get_bitmap(!.Index, !.NumBits, !BM, !NumBitsRead,
                         LastBitsResult = ok,
 
                         % !.NumBits is correct here, if we didn't read
-                        % enough bits this will just fill the rest of the
+                        % enough bits, this will just fill the rest of the
                         % range with zero bits.
                         !:BM = !.BM ^ bits(!.Index, !.NumBits) := LastBits,
                         Result = ok
@@ -611,14 +608,14 @@ do_set_buffer_error(Error, !Buffer) :-
 %---------------------------------------------------------------------------%
 
 % None of these instances work because of limitations in the type and
-% RTTI system.
+% RTTI systems.
 %
 % :- instance stream.stream(read_stream(Stream, Error),
-%                 read_buffer(Stream, State, Error))
-%         <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error)
+%         read_buffer(Stream, State, Error))
+%     <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error)
 %     where
 % [
-%     (name(_, Name, !Buffer) :-
+%     ( name(_, Name, !Buffer) :-
 %         name(!.Buffer ^ read_stream, StreamName,
 %             !.Buffer ^ read_buffer_state, State),
 %         Name = "bit_buffer.read.read_buffer(" ++ StreamName ++ ")",
@@ -628,37 +625,37 @@ do_set_buffer_error(Error, !Buffer) :-
 % ].
 %
 % :- instance stream.input(read_stream(Stream, Error),
-%             read_buffer(Stream, State, Error))
-%         <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error)
+%         read_buffer(Stream, State, Error))
+%     <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error)
 %     where [].
 %
 % :- instance stream.reader(read_stream(Stream, Error), bool,
-%                 read_buffer(Stream, State, Error), Error)
-%         <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error)
+%         read_buffer(Stream, State, Error), Error)
+%     <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error)
 %     where
 % [
-%         (get(_, Result, !Buffer) :-
-%             get_bit(Result, !Buffer)
-%         )
-% ].
-%
-% :- instance stream.bulk_reader(read_stream(Stream, Error),
-%             bit_index, word, read_buffer(Stream, State, Error), Error)
-%         <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error)
-%     where
-% [
-%     (bulk_get(_, Index, NumBits, !Word, NumBitsRead, Result, !Buffer) :-
-%             get_bits(Index, NumBits, !Word, NumBitsRead, Result, !Buffer)
+%     ( get(_, Result, !Buffer) :-
+%         get_bit(Result, !Buffer)
 %     )
 % ].
 %
 % :- instance stream.bulk_reader(read_stream(Stream, Error),
-%             bit_index, bitmap, read_buffer(Stream, State, Error), Error)
-%         <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error)
+%         bit_index, word, read_buffer(Stream, State, Error), Error)
+%     <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error)
 %     where
 % [
-%     (bulk_get(_, Index, NumBits, !BM, NumBitsRead, Result, !Buffer) :-
-%             get_bitmap(Index, NumBits, !BM, NumBitsRead, Result, !Buffer)
+%     ( bulk_get(_, Index, NumBits, !Word, NumBitsRead, Result, !Buffer) :-
+%         get_bits(Index, NumBits, !Word, NumBitsRead, Result, !Buffer)
+%     )
+% ].
+%
+% :- instance stream.bulk_reader(read_stream(Stream, Error),
+%         bit_index, bitmap, read_buffer(Stream, State, Error), Error)
+%     <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error)
+%     where
+% [
+%     ( bulk_get(_, Index, NumBits, !BM, NumBitsRead, Result, !Buffer) :-
+%         get_bitmap(Index, NumBits, !BM, NumBitsRead, Result, !Buffer)
 %     )
 % ].
 
