@@ -10,9 +10,9 @@ This directory contains some example Mercury programs.
   to the standard output stream.
 
 * [sort.m](sort.m) -- An implementation of a simple version of the standard
-  UNIX filter `sort`, which reads lines from its input files or the standard
-  input stream, sorts them, and then writes the result to the standard output
-  stream.
+  UNIX filter `sort`, which reads lines from its input file or the standard
+  input stream, sorts them, and then writes the result to its output file or
+  the standard output stream.
 
 * [calculator.m](calculator.m) -- A simple four-function arithmetic calculator,
   with a parser written using Definite Clause Grammar (DCG) notation.
