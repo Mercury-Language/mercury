@@ -218,33 +218,36 @@ define_mutable_global_var_c(ModuleParams, TargetMutableName, Type,
         ; IsThreadLocal = mutable_thread_local
         )
     then
-        LockDeclStrs = [],
-        LockDefnStrs = []
+        LockDeclStr = "",
+        LockDefnStr = ""
     else
         MutexVarName = mutable_mutex_var_name(TargetMutableName),
-        LockDeclStrs = [
-            "#ifdef MR_THREAD_SAFE\n",
-            "    extern MercuryLock ", MutexVarName, ";\n",
-            "#endif\n"
-        ],
-        LockDefnStrs = [
-            "#ifdef MR_THREAD_SAFE\n",
-            "    MercuryLock ", MutexVarName, ";\n",
-            "#endif\n"
-        ]
+        LockDeclStr = string.format(
+            "#ifdef MR_THREAD_SAFE\n" ++
+            "    extern MercuryLock %s;\n" ++
+            "#endif\n",
+            [s(MutexVarName)]),
+        LockDefnStr = string.format(
+            "#ifdef MR_THREAD_SAFE\n" ++
+            "    MercuryLock %s;\n" ++
+            "#endif\n",
+            [s(MutexVarName)])
     ),
-    DeclBody = string.append_list([
-        "#ifdef MR_HIGHLEVEL_CODE\n",
-        "    extern ", HighLevelTypeName, " ", TargetMutableName, ";\n",
-        "#else\n",
-        "    extern ", LowLevelTypeName, " ", TargetMutableName, ";\n",
-        "#endif\n" | LockDeclStrs]),
+    DeclBodyStr = string.format(
+        "#ifdef MR_HIGHLEVEL_CODE\n" ++
+        "    extern %s %s;\n" ++
+        "#else\n" ++
+        "    extern %s %s;\n" ++
+        "#endif\n",
+        [s(HighLevelTypeName), s(TargetMutableName),
+        s(LowLevelTypeName), s(TargetMutableName)]),
+    DeclLiteral = floi_literal(DeclBodyStr ++ LockDeclStr),
     ForeignDeclCode = foreign_decl_code(lang_c, foreign_decl_is_exported,
-        floi_literal(DeclBody), Context),
-    DefnBody = string.append_list([
-        TypeName, " ", TargetMutableName, ";\n" | LockDefnStrs]),
-    ForeignBodyCode =
-        foreign_body_code(lang_c, floi_literal(DefnBody), Context).
+        DeclLiteral, Context),
+    DefnBodyStr = string.format("%s %s;\n",
+        [s(TypeName), s(TargetMutableName)]),
+    DefnLiteral = floi_literal(DefnBodyStr ++ LockDefnStr),
+    ForeignBodyCode = foreign_body_code(lang_c, DefnLiteral, Context).
 
     % Define the global variable used to hold the mutable on the C# backend.
     %
@@ -266,9 +269,10 @@ define_mutable_global_var_csharp(TargetMutableName, Type, Const, Context,
         IsThreadLocal = mutable_thread_local,
         TypeStr = "int"
     ),
-    DefnBody = "static " ++ TypeStr ++ " " ++ TargetMutableName ++ ";\n",
+    DefnBodyStr = string.format("static %s %s;\n",
+        [s(TypeStr), s(TargetMutableName)]),
     ForeignBodyCode =
-        foreign_body_code(lang_csharp, floi_literal(DefnBody), Context).
+        foreign_body_code(lang_csharp, floi_literal(DefnBodyStr), Context).
 
     % Define the global variable used to hold the mutable on the Java backend.
     %
@@ -289,7 +293,8 @@ define_mutable_global_var_java(TargetMutableName, Type, Const, Context,
         else
             TypeStr = "java.lang.Object"
         ),
-        DefnBody = "static " ++ TypeStr ++ " " ++ TargetMutableName ++ ";\n"
+        DefnBodyStr = string.format("static %s %s;\n",
+            [s(TypeStr), s(TargetMutableName)])
     ;
         IsThreadLocal = mutable_thread_local,
         ( if Type = int_type then
@@ -297,14 +302,13 @@ define_mutable_global_var_java(TargetMutableName, Type, Const, Context,
         else
             TypeStr = "java.lang.Object"
         ),
-        DefnBody = string.append_list([
-            "static java.lang.ThreadLocal<", TypeStr, "> ",
-            TargetMutableName,
-            " = new java.lang.InheritableThreadLocal<", TypeStr, ">();\n"
-        ])
+        DefnBodyStr = string.format(
+            "static java.lang.ThreadLocal<%s> %s = " ++
+                "new java.lang.InheritableThreadLocal<%s>();\n",
+            [s(TypeStr), s(TargetMutableName), s(TypeStr)])
     ),
     ForeignBodyCode =
-        foreign_body_code(lang_java, floi_literal(DefnBody), Context).
+        foreign_body_code(lang_java, floi_literal(DefnBodyStr), Context).
 
 %---------------------------------------------------------------------------%
 
@@ -515,22 +519,22 @@ define_pre_init_pred(ModuleName, TargetParams, MutableName, Local, Context,
         Lang = lang_c,
         (
             Local = mutable_is_not_thread_local(_),
-            PreInitCode = string.append_list([
-                "#ifdef MR_THREAD_SAFE\n",
-                "   pthread_mutex_init(&",
-                        mutable_mutex_var_name(TargetMutableName),
-                        ", MR_MUTEX_ATTR);\n",
-                "#endif\n"
-            ])
+            PreInitCode = string.format(
+                "#ifdef MR_THREAD_SAFE\n" ++
+                "   pthread_mutex_init(&%s, MR_MUTEX_ATTR);\n" ++
+                "#endif\n",
+                [s(mutable_mutex_var_name(TargetMutableName))])
         ;
             Local = mutable_is_thread_local,
-            PreInitCode = TargetMutableName ++
-                " = MR_new_thread_local_mutable_index();\n"
+            PreInitCode = string.format(
+                "%s = MR_new_thread_local_mutable_index();\n",
+                [s(TargetMutableName)])
         )
     ;
         Lang = lang_csharp,
-        PreInitCode = TargetMutableName ++
-            " = runtime.ThreadLocalMutables.new_index();\n"
+        PreInitCode = string.format(
+            "%s = runtime.ThreadLocalMutables.new_index();\n",
+            [s(TargetMutableName)])
     ;
         Lang = lang_java,
         unexpected($pred, "preinit for java")
@@ -580,22 +584,20 @@ define_lock_unlock_preds(ModuleName, TargetParams, MutableName, Local, Context,
             Local = mutable_is_not_thread_local(_),
             % XXX The second argument of both calls should be the name of
             % the Mercury predicate, with chars escaped as appropriate.
-            LockForeignProcBody = string.append_list([
-                "#ifdef MR_THREAD_SAFE\n",
-                "  MR_LOCK(&" ++ MutableMutexVarName ++ ",
-                    \"" ++ MutableMutexVarName ++ "\");\n" ++
-                "#endif\n"
-            ]),
-            UnlockForeignProcBody = string.append_list([
-                "#ifdef MR_THREAD_SAFE\n",
-                "  MR_UNLOCK(&" ++ MutableMutexVarName ++ ",
-                    \"" ++ MutableMutexVarName ++ "\");\n" ++
-                "#endif\n"
-            ])
+            LockForeignProcBodyStr = string.format(
+                "#ifdef MR_THREAD_SAFE\n" ++
+                "  MR_LOCK(&%s, \"%s\");\n" ++
+                "#endif\n",
+                [s(MutableMutexVarName), s(MutableMutexVarName)]),
+            UnlockForeignProcBodyStr = string.format(
+                "#ifdef MR_THREAD_SAFE\n" ++
+                "  MR_UNLOCK(&%s, \"%s\");\n" ++
+                "#endif\n",
+                [s(MutableMutexVarName), s(MutableMutexVarName)])
         ;
             Local = mutable_is_thread_local,
-            LockForeignProcBody = "",
-            UnlockForeignProcBody = ""
+            LockForeignProcBodyStr = "",
+            UnlockForeignProcBodyStr = ""
         ),
         LockPredName =
             mutable_lock_pred_name(ModuleName, MutableName),
@@ -607,7 +609,7 @@ define_lock_unlock_preds(ModuleName, TargetParams, MutableName, Local, Context,
             [],
             varset.init,    % ProgVarSet
             varset.init,    % InstVarSet
-            fp_impl_ordinary(LockForeignProcBody, yes(Context))
+            fp_impl_ordinary(LockForeignProcBodyStr, yes(Context))
         ),
         UnlockFCInfo = pragma_info_foreign_proc(LockAndUnlockAttrs,
             UnlockPredName,
@@ -615,7 +617,7 @@ define_lock_unlock_preds(ModuleName, TargetParams, MutableName, Local, Context,
             [],
             varset.init,    % ProgVarSet
             varset.init,    % InstVarSet
-            fp_impl_ordinary(UnlockForeignProcBody, yes(Context))
+            fp_impl_ordinary(UnlockForeignProcBodyStr, yes(Context))
         ),
         LockForeignProc =
             item_pragma_info(LockFCInfo, Context, item_no_seq_num),
@@ -682,21 +684,23 @@ define_unsafe_get_set_preds(ModuleParams, TargetParams, MutableName,
             Trailed = mutable_trailed,
             % We have already checked that we are in a
             % trailing grade.
-            TrailCode = "MR_trail_current_value(&" ++
-                TargetMutableName ++ ");\n"
+            TrailCode = string.format("MR_trail_current_value(&%s);\n",
+                [s(TargetMutableName)])
         ),
         (
             Local = mutable_is_not_thread_local(_Trail),
-            UnsafeGetCode = "X = " ++ TargetMutableName ++ ";\n",
-            UnsafeSetCode = TargetMutableName ++ " = X;\n"
+            UnsafeGetCode = string.format("X = %s;\n", [s(TargetMutableName)]),
+            UnsafeSetCode = string.format("%s = X;\n", [s(TargetMutableName)])
         ;
             Local = mutable_is_thread_local,
             TypeName =
                 global_foreign_type_name(ModuleParams, BoxPolicy, Lang, Type),
-            UnsafeGetCode = "MR_get_thread_local_mutable(" ++
-                TypeName ++ ", X, " ++ TargetMutableName ++ ");\n",
-            UnsafeSetCode = "MR_set_thread_local_mutable(" ++
-                TypeName ++ ", X, " ++ TargetMutableName ++ ");\n"
+            UnsafeGetCode = string.format(
+                "MR_get_thread_local_mutable(%s, X, %s);\n",
+                [s(TypeName), s(TargetMutableName)]),
+            UnsafeSetCode = string.format(
+                "MR_set_thread_local_mutable(%s, X, %s);\n",
+                [s(TypeName), s(TargetMutableName)])
         )
     ;
         Lang = lang_csharp,
@@ -705,8 +709,10 @@ define_unsafe_get_set_preds(ModuleParams, TargetParams, MutableName,
         TrailCode = "",
         (
             Local = mutable_is_not_thread_local(_Trail),
-            UnsafeGetCode = "\tX = " ++ TargetMutableName ++ ";\n",
-            UnsafeSetCode = "\t" ++ TargetMutableName ++ " = X;\n"
+            UnsafeGetCode =
+                string.format("\tX = %s;\n", [s(TargetMutableName)]),
+            UnsafeSetCode =
+                string.format("\t%s = X;\n", [s(TargetMutableName)])
         ;
             Local = mutable_is_thread_local,
             ( if Type = int_type then
@@ -714,11 +720,12 @@ define_unsafe_get_set_preds(ModuleParams, TargetParams, MutableName,
             else
                 Cast = ""
             ),
-            UnsafeGetCode = "\tX = " ++ Cast ++
-                "runtime.ThreadLocalMutables.get(" ++
-                TargetMutableName ++ ");\n",
-            UnsafeSetCode = "\truntime.ThreadLocalMutables.set(" ++
-                TargetMutableName ++ ", X);\n"
+            UnsafeGetCode = string.format(
+                "\tX = %sruntime.ThreadLocalMutables.get(%s);\n",
+                [s(Cast), s(TargetMutableName)]),
+            UnsafeSetCode = string.format(
+                "\truntime.ThreadLocalMutables.set(%s, X);\n",
+                [s(TargetMutableName)])
         )
     ;
         Lang = lang_java,
@@ -727,12 +734,16 @@ define_unsafe_get_set_preds(ModuleParams, TargetParams, MutableName,
         TrailCode = "",
         (
             Local = mutable_is_not_thread_local(_Trail),
-            UnsafeGetCode = "\tX = " ++ TargetMutableName ++ ";\n",
-            UnsafeSetCode = "\t" ++ TargetMutableName ++ " = X;\n"
+            UnsafeGetCode =
+                string.format("\tX = %s;\n", [s(TargetMutableName)]),
+            UnsafeSetCode =
+                string.format("\t%s = X;\n", [s(TargetMutableName)])
         ;
             Local = mutable_is_thread_local,
-            UnsafeGetCode = "\tX = " ++ TargetMutableName ++ ".get();\n",
-            UnsafeSetCode = "\t" ++ TargetMutableName ++ ".set(X);\n"
+            UnsafeGetCode =
+                string.format("\tX = %s.get();\n", [s(TargetMutableName)]),
+            UnsafeSetCode =
+                string.format("\t%s.set(X);\n", [s(TargetMutableName)])
         )
     ),
     UnsafeGetPredName =
@@ -807,8 +818,8 @@ define_constant_get_set_preds(ModuleName, TargetParams, MutableName, Inst,
         ; Lang = lang_csharp
         ; Lang = lang_java
         ),
-        ConstantGetCode = "X = " ++ TargetMutableName ++ ";\n",
-        ConstantSetCode = TargetMutableName ++ " = X;\n"
+        ConstantGetCode = string.format("X = %s;\n", [s(TargetMutableName)]),
+        ConstantSetCode = string.format("%s = X;\n", [s(TargetMutableName)])
     ),
     ConstantGetFCInfo = pragma_info_foreign_proc(ConstantGetAttrs,
         ConstantGetPredName,
