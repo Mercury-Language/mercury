@@ -282,6 +282,10 @@ define_mutable_global_var_csharp(TargetMutableName, Type, Const, Context,
 
 define_mutable_global_var_java(TargetMutableName, Type, Const, Context,
         ForeignBodyCode) :-
+    % XXX The reason why we use java.lang.Object as the type of the mutable
+    % variable is documented in the commit message of a commit on 2009 Sep 2,
+    % commit ac3d1c60271951ab98d07cf24bd73332925beb92. That message also
+    % explains how we can make an exception for integers.
     IsThreadLocal = mutable_var_thread_local(Const),
     (
         IsThreadLocal = mutable_not_thread_local,
