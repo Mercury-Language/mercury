@@ -157,7 +157,7 @@ value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
         type_ctor_module_name(TypeCtor) = "array"
     then
         % Now that we know the element type, we can constrain the type of
-        % the variable `Array' so that we can use det_dynamic_cast.
+        % the variable Array so that we can use det_dynamic_cast.
         %
         has_type(Elem, ElemType),
         same_array_elem_type(Array, Elem),

@@ -44,7 +44,7 @@
     ;       closed.
 
     % Take an item from the start of the channel, blocking until an item is
-    % available or until the channel is closed. Returns `ok(Item)' if `Item'
+    % available or until the channel is closed. Returns `ok(Item)' if Item
     % was taken, or `closed' if the channel is closed.
     %
 :- pred take(closeable_channel(T)::in, take_result(T)::out, io::di, io::uo)
@@ -56,7 +56,7 @@
     ;       would_block.
 
     % Take an item from the start of the channel, but do not block.
-    % Returns `ok(Item)' if `Item' was taken from the channel,
+    % Returns `ok(Item)' if Item was taken from the channel,
     % `closed' if no item was taken because the channel is closed, or
     % `would_block' if no item could be taken from the channel without
     % blocking. `would_block' may be returned even if the channel is not

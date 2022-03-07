@@ -347,7 +347,7 @@ benchmark_det(Pred, In, Out, Repeats, Time) :-
 
 benchmark_det_loop(Pred, In, Out, Repeats) :-
     % The call to do_nothing/1 here is to make sure the compiler
-    % doesn't optimize away the call to `Pred'.
+    % doesn't optimize away the call to Pred.
     Pred(In, Out0),
     impure do_nothing(Out0),
     ( if Repeats > 1 then
@@ -370,7 +370,7 @@ benchmark_func(Func, In, Out, Repeats, Time) :-
 
 benchmark_func_loop(Func, In, Out, Repeats) :-
     % The call to do_nothing/1 here is to make sure the compiler
-    % doesn't optimize away the call to `Func'.
+    % doesn't optimize away the call to Func.
     Out0 = Func(In),
     impure do_nothing(Out0),
     ( if Repeats > 1 then
@@ -395,7 +395,7 @@ benchmark_det_io(Pred, InA, OutA, InB, OutB, Repeats, Time) :-
 
 benchmark_det_loop_io(Pred, InA, OutA, InB, OutB, Repeats) :-
     % The call to do_nothing/1 here is to make sure the compiler
-    % doesn't optimize away the call to `Pred'.
+    % doesn't optimize away the call to Pred.
     Pred(InA, OutA0, InB, OutB0),
     impure do_nothing(OutA0),
     ( if Repeats > 1 then

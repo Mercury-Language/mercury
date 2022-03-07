@@ -59,7 +59,7 @@
 
     % member(X, Bag):
     %
-    % True iff `Bag' contains at least one occurrence of `X'.
+    % True iff Bag contains at least one occurrence of X.
     %
 :- pred member(T::in, bag(T)::in) is semidet.
 

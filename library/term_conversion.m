@@ -57,7 +57,7 @@
 %---------------------------------------------------------------------------%
 %
 % The following predicates can convert values of (almost) any type
-% to the type `term' and back again.
+% to the type term and back again.
 %
 
     % try_term_to_type(Term, Result):
@@ -379,7 +379,7 @@ term_to_univ_special_case(ModuleName, TypeCtorName, TypeArgs, Term,
             ValueTerm = functor(float(Float), [], _),
             Univ = univ(Float)
         ),
-        % The result is a `univ', but it is also wrapped in a `univ'
+        % The result is a univ, but it is also wrapped in a univ
         % like all the other results returned from this procedure.
         Result = ok(univ(Univ))
     ).

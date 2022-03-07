@@ -18,8 +18,8 @@
 %
 % The parser is a relatively straight-forward top-down recursive descent
 % parser, made somewhat complicated by the need to handle operator precedences.
-% It uses `mercury_term_lexer.get_token_list' to read a list of tokens.
-% It uses the routines from the module `ops' to look up operator precedences.
+% It uses mercury_term_lexer.get_token_list to read a list of tokens.
+% It uses the routines from the ops module to look up operator precedences.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -93,9 +93,9 @@
 
     % The read_term_from_string predicates are the same as the read_term
     % predicates, except that the term is read from a string rather than from
-    % the current input stream. The returned value `EndPos' is the position
-    % one character past the end of the term read. The arguments `StringLen'
-    % and `StartPos' in the read_term_from_substring* versions specify
+    % the current input stream. The returned value EndPos is the position
+    % one character past the end of the term read. The arguments StringLen
+    % and StartPos in the read_term_from_substring* versions specify
     % the length of the string and the position within the string
     % at which to start parsing.
 
@@ -707,7 +707,7 @@ parse_backquoted_operator_qualifier(MaybeQualifier0, MaybeQualifier, OpCtxt0,
     % term --> name("-") integer    % priority 0
     % term --> name("-") float      % priority 0
     % term --> atom(NonOp)          % priority 0
-    % term --> atom(Op)             % priority `max_priority' + 1
+    % term --> atom(Op)             % priority max_priority + 1
     %   atom --> name
     %   atom --> open_list, close_list
     %   atom --> open_curly, close_curly

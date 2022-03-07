@@ -14,8 +14,8 @@
 % implementation of Reduced Ordered Binary Decision Diagrams (ROBDDs).
 % ROBDDs are an efficient representation for Boolean constraints.
 %
-% Boolean variables are represented using the type var(T) from the `term'
-% library module (see the `term' module documentation for more information).
+% Boolean variables are represented using the type var(T) from the term
+% library module (see the term module documentation for more information).
 %
 % Example usage:
 %

@@ -12,8 +12,8 @@
 %
 % This module exports a typeclass `ops.op_table' which is used to define
 % operator precedence tables for use by
-% `mercury_term_parser.read_term_with_op_table' and
-% `term_io.write_term_with_op_table'.
+% mercury_term_parser.read_term_with_op_table and
+% term_io.write_term_with_op_table.
 %
 % It also exports an instance `ops.mercury_op_table' that implements the
 % Mercury operator table defined in the Mercury Language Reference Manual.
@@ -102,8 +102,8 @@
         op_info::out, list(op_info)::out) is semidet,
 
         % Operator terms are terms of the form `X `Op` Y', where `Op' is
-        % a variable or a name and `X' and `Y' are terms. If operator terms
-        % are included in `Table', return their precedence and associativity.
+        % a variable or a name and X and Y are terms. If operator terms
+        % are included in Table, return their precedence and associativity.
         %
     pred lookup_operator_term(Table::in, ops.priority::out,
         ops.assoc::out, ops.assoc::out) is semidet,
@@ -116,7 +116,7 @@
         % functor of an argument of a compound term.
         %
         % This will generally be the precedence of `,/2' less one.
-        % If `,/2' does not appear in the op_table, `ops.max_priority' plus one
+        % If `,/2' does not appear in the op_table, ops.max_priority plus one
         % may be a reasonable value.
         %
     func arg_priority(Table) = ops.priority

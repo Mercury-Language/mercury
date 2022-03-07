@@ -93,7 +93,7 @@
     % new_cyclic_mutvar(Func, Mutvar, !S):
     %
     % Create a new mutable variable, whose value is initialized with the value
-    % returned from the specified function `Func'. The argument passed to the
+    % returned from the specified function Func. The argument passed to the
     % function is the mutvar itself, whose value has not yet been initialized
     % (this is safe because the function does not get passed the store, so it
     % cannot examine the uninitialized value).
@@ -135,7 +135,7 @@
     % new_ref(Val, Ref):
     %   /* In C: Ref = malloc(...); *Ref = Val; */
     %
-    % Given a value of any type `T', insert a copy of the term
+    % Given a value of any type T, insert a copy of the term
     % into the store and return a new reference to that term.
     % (This does not actually perform a copy, it just returns a view
     % of the representation of that value.
@@ -220,17 +220,17 @@
 %
 % These procedures may vanish in some future version of Mercury.
 
-    % `unsafe_arg_ref' is the same as `arg_ref',
-    % and `unsafe_new_arg_ref' is the same as `new_arg_ref'
+    % unsafe_arg_ref is the same as arg_ref,
+    % and unsafe_new_arg_ref is the same as new_arg_ref
     % except that they doesn't check for errors,
-    % and they don't work for `no_tag' types (types with
+    % and they don't work for no_tag types (types with
     % exactly one functor which has exactly one argument),
     % and they don't work for arguments which occupy a word with other
     % arguments,
     % and they don't work for types with >4 functors.
     % If the argument number is out of range,
     % or if the argument reference has the wrong type,
-    % or if the argument is a `no_tag' type,
+    % or if the argument is a no_tag type,
     % or if the argument uses a packed representation,
     % then the behaviour is undefined, and probably harmful.
 

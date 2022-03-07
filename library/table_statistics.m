@@ -10,7 +10,7 @@
 % Author: zs.
 % Stability: low.
 %
-% This file is automatically imported, as if via `use_module', into every
+% This file is automatically imported, as if via ":- use_module", into every
 % module that contains a `pragma memo' that asks the compiler to create
 % a predicate for returning statistics about the memo table. It defines
 % the data structure that this predicate will return, and some operations

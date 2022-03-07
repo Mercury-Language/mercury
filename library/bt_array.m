@@ -134,7 +134,8 @@
     % from_list(Low, List, BtArray) takes a list (of possibly zero
     % length), and returns a bt_array containing % those elements in the same
     % order that they occurred in the list. The lower bound of the new array
-    % is `Low'.
+    % is Low.
+    %
 :- pred from_list(int::in, list(T)::in, bt_array(T)::out) is det.
 :- func from_list(int, list(T)) = bt_array(T).
 

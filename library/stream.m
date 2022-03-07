@@ -377,7 +377,7 @@
 % Misc. operations on input streams.
 %
 
-    % Discard all the whitespace characters satisfying `char.is_whitespace'
+    % Discard all the whitespace characters satisfying char.is_whitespace
     % from the specified stream.
     %
 :- pred ignore_whitespace(Stream::in, result(Error)::out,

@@ -55,8 +55,8 @@
     %
 :- func init = tree_bitset(T).
 
-    % `make_singleton_set(Elem)' returns a set containing just the single
-    % element `Elem'.
+    % make_singleton_set(Elem) returns a set containing just the single
+    % element Elem.
     %
 :- func make_singleton_set(T) = tree_bitset(T) <= enum(T).
 
@@ -83,14 +83,14 @@
 % Membership tests.
 %
 
-    % `member(X, Set)' is true iff `X' is a member of `Set'.
+    % member(X, Set) is true iff X is a member of Set.
     % Takes O(card(Set)) time for the semidet mode.
     %
 :- pred member(T, tree_bitset(T)) <= enum(T).
 :- mode member(in, in) is semidet.
 :- mode member(out, in) is nondet.
 
-    % `contains(Set, X)' is true iff `X' is a member of `Set'.
+    % contains(Set, X) is true iff X is a member of Set.
     % Takes O(log(card(Set))) time.
     %
 :- pred contains(tree_bitset(T)::in, T::in) is semidet <= enum(T).
@@ -100,22 +100,22 @@
 % Insertions and deletions.
 %
 
-    % `insert(Set, X)' returns the union of `Set' and the set containing
-    % only `X'. Takes O(log(card(Set))) time and space.
+    % insert(Set, X) returns the union of Set and the set containing
+    % only X. Takes O(log(card(Set))) time and space.
     %
 :- func insert(tree_bitset(T), T) = tree_bitset(T) <= enum(T).
 :- pred insert(T::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is det <= enum(T).
 
-    % `insert_new(X, Set0, Set)' returns the union of `Set' and the set
-    % containing only `X' is `Set0' does not contain 'X'; if it does, it fails.
+    % insert_new(X, Set0, Set) returns the union of Set and the set
+    % containing only X is Set0 does not contain 'X'; if it does, it fails.
     % Takes O(log(card(Set))) time and space.
     %
 :- pred insert_new(T::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is semidet <= enum(T).
 
-    % `insert_list(Set, X)' returns the union of `Set' and the set containing
-    % only the members of `X'. Same as `union(Set, list_to_set(X))', but may be
+    % insert_list(Set, X) returns the union of Set and the set containing
+    % only the members of X. Same as `union(Set, list_to_set(X))', but may be
     % more efficient.
     %
 :- func insert_list(tree_bitset(T), list(T)) = tree_bitset(T) <= enum(T).
@@ -124,53 +124,53 @@
 
 %---------------------%
 
-    % `delete(Set, X)' returns the difference of `Set' and the set containing
-    % only `X'. Takes O(card(Set)) time and space.
+    % delete(Set, X) returns the difference of Set and the set containing
+    % only X. Takes O(card(Set)) time and space.
     %
 :- func delete(tree_bitset(T), T) = tree_bitset(T) <= enum(T).
 :- pred delete(T::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is det <= enum(T).
 
-    % `delete_list(Set, X)' returns the difference of `Set' and the set
-    % containing only the members of `X'. Same as
+    % delete_list(Set, X) returns the difference of Set and the set
+    % containing only the members of X. Same as
     % `difference(Set, list_to_set(X))', but may be more efficient.
     %
 :- func delete_list(tree_bitset(T), list(T)) = tree_bitset(T) <= enum(T).
 :- pred delete_list(list(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is det <= enum(T).
 
-    % `remove(X, Set0, Set)' returns in `Set' the difference of `Set0'
-    % and the set containing only `X', failing if `Set0' does not contain `X'.
+    % remove(X, Set0, Set) returns in Set the difference of Set0
+    % and the set containing only X, failing if Set0 does not contain X.
     % Takes O(log(card(Set))) time and space.
     %
 :- pred remove(T::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is semidet <= enum(T).
 
-    % `remove_list(X, Set0, Set)' returns in `Set' the difference of `Set0'
-    % and the set containing all the elements of `X', failing if any element
-    % of `X' is not in `Set0'. Same as `subset(list_to_set(X), Set0),
+    % remove_list(X, Set0, Set) returns in Set the difference of Set0
+    % and the set containing all the elements of X, failing if any element
+    % of X is not in Set0. Same as `subset(list_to_set(X), Set0),
     % difference(Set0, list_to_set(X), Set)', but may be more efficient.
     %
 :- pred remove_list(list(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is semidet <= enum(T).
 
-    % `remove_leq(Set, X)' returns `Set' with all elements less than or equal
-    % to `X' removed. In other words, it returns the set containing all the
-    % elements of `Set' which are greater than `X'. Takes O(log(card(Set)))
+    % remove_leq(Set, X) returns Set with all elements less than or equal
+    % to X removed. In other words, it returns the set containing all the
+    % elements of Set which are greater than X. Takes O(log(card(Set)))
     % time and space.
     %
 :- func remove_leq(tree_bitset(T), T) = tree_bitset(T) <= enum(T).
 
-    % `remove_gt(Set, X)' returns `Set' with all elements greater than `X'
+    % remove_gt(Set, X) returns Set with all elements greater than X
     % removed. In other words, it returns the set containing all the elements
-    % of `Set' which are less than or equal to `X'. Takes O(log(card(Set)))
+    % of Set which are less than or equal to X. Takes O(log(card(Set)))
     % time and space.
     %
 :- func remove_gt(tree_bitset(T), T) = tree_bitset(T) <= enum(T).
 
-    % `remove_least(Set0, X, Set)' is true iff `X' is the least element in
-    % `Set0', and `Set' is the set which contains all the elements of `Set0'
-    % except `X'. Takes O(1) time and space.
+    % remove_least(Set0, X, Set) is true iff X is the least element in
+    % Set0, and Set is the set which contains all the elements of Set0
+    % except X. Takes O(1) time and space.
     %
 :- pred remove_least(T::out, tree_bitset(T)::in, tree_bitset(T)::out)
     is semidet <= enum(T).
@@ -180,17 +180,17 @@
 % Comparisons between sets.
 %
 
-    % `equal(SetA, SetB)' is true iff `SetA' and `SetB' contain the same
+    % equal(SetA, SetB) is true iff SetA and SetB contain the same
     % elements. Takes O(min(card(SetA), card(SetB))) time.
     %
 :- pred equal(tree_bitset(T)::in, tree_bitset(T)::in) is semidet <= enum(T).
 
-    % `subset(Subset, Set)' is true iff `Subset' is a subset of `Set'.
+    % subset(Subset, Set) is true iff Subset is a subset of Set.
     % Same as `intersect(Set, Subset, Subset)', but may be more efficient.
     %
 :- pred subset(tree_bitset(T)::in, tree_bitset(T)::in) is semidet.
 
-    % `superset(Superset, Set)' is true iff `Superset' is a superset of `Set'.
+    % superset(Superset, Set) is true iff Superset is a superset of Set.
     % Same as `intersect(Superset, Set, Set)', but may be more efficient.
     %
 :- pred superset(tree_bitset(T)::in, tree_bitset(T)::in) is semidet.
@@ -200,7 +200,7 @@
 % Operations on two or more sets.
 %
 
-    % `union(SetA, SetB)' returns the union of `SetA' and `SetB'. The
+    % union(SetA, SetB) returns the union of SetA and SetB. The
     % efficiency of the union operation is not sensitive to the argument
     % ordering. Takes somewhere between O(log(card(SetA)) + log(card(SetB)))
     % and O(card(SetA) + card(SetB)) time and space.
@@ -209,12 +209,12 @@
 :- pred union(tree_bitset(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is det.
 
-    % `union_list(Sets, Set)' returns the union of all the sets in Sets.
+    % union_list(Sets, Set) returns the union of all the sets in Sets.
     %
 :- func union_list(list(tree_bitset(T))) = tree_bitset(T).
 :- pred union_list(list(tree_bitset(T))::in, tree_bitset(T)::out) is det.
 
-    % `intersect(SetA, SetB)' returns the intersection of `SetA' and `SetB'.
+    % intersect(SetA, SetB) returns the intersection of SetA and SetB.
     % The efficiency of the intersection operation is not sensitive to the
     % argument ordering. Takes somewhere between
     % O(log(card(SetA)) + log(card(SetB))) and O(card(SetA) + card(SetB)) time,
@@ -224,14 +224,14 @@
 :- pred intersect(tree_bitset(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is det.
 
-    % `intersect_list(Sets, Set)' returns the intersection of all the sets
+    % intersect_list(Sets, Set) returns the intersection of all the sets
     % in Sets.
     %
 :- func intersect_list(list(tree_bitset(T))) = tree_bitset(T).
 :- pred intersect_list(list(tree_bitset(T))::in, tree_bitset(T)::out) is det.
 
-    % `difference(SetA, SetB)' returns the set containing all the elements
-    % of `SetA' except those that occur in `SetB'. Takes somewhere between
+    % difference(SetA, SetB) returns the set containing all the elements
+    % of SetA except those that occur in SetB. Takes somewhere between
     % O(log(card(SetA)) + log(card(SetB))) and O(card(SetA) + card(SetB)) time,
     % and O(card(SetA)) space.
     %
@@ -263,14 +263,14 @@
 % Converting lists to sets.
 %
 
-    % `list_to_set(List)' returns a set containing only the members of `List'.
+    % list_to_set(List) returns a set containing only the members of List.
     % Takes O(length(List)) time and space.
     %
 :- func list_to_set(list(T)) = tree_bitset(T) <= enum(T).
 :- pred list_to_set(list(T)::in, tree_bitset(T)::out) is det <= enum(T).
 
-    % `sorted_list_to_set(List)' returns a set containing only the members
-    % of `List'. `List' must be sorted. Takes O(length(List)) time and space.
+    % sorted_list_to_set(List) returns a set containing only the members
+    % of List. List must be sorted. Takes O(length(List)) time and space.
     %
 :- func sorted_list_to_set(list(T)) = tree_bitset(T) <= enum(T).
 :- pred sorted_list_to_set(list(T)::in, tree_bitset(T)::out) is det <= enum(T).
@@ -280,7 +280,7 @@
 % Converting sets to lists.
 %
 
-    % `to_sorted_list(Set)' returns a list containing all the members of `Set',
+    % to_sorted_list(Set)' returns a list containing all the members of Set,
     % in sorted order. Takes O(card(Set)) time and space.
     %
 :- func to_sorted_list(tree_bitset(T)) = list(T) <= enum(T).
@@ -291,13 +291,13 @@
 % Converting between different kinds of sets.
 %
 
-    % `from_set(Set)' returns a bitset containing only the members of `Set'.
+    % from_set(Set) returns a bitset containing only the members of Set.
     % Takes O(card(Set)) time and space.
     %
 :- func from_set(set.set(T)) = tree_bitset(T) <= enum(T).
 
-    % `to_sorted_list(Set)' returns a set.set containing all the members
-    % of `Set', in sorted order. Takes O(card(Set)) time and space.
+    % to_sorted_list(Set) returns a set.set containing all the members
+    % of Set, in sorted order. Takes O(card(Set)) time and space.
     %
 :- func to_set(tree_bitset(T)) = set.set(T) <= enum(T).
 
@@ -306,7 +306,7 @@
 % Counting.
 %
 
-    % `count(Set)' returns the number of elements in `Set'.
+    % count(Set) returns the number of elements in Set.
     % Takes O(card(Set)) time.
     %
 :- func count(tree_bitset(T)) = int <= enum(T).
@@ -322,21 +322,20 @@
 :- pred all_true(pred(T)::in(pred(in) is semidet), tree_bitset(T)::in)
     is semidet <= enum(T).
 
-    % `filter(Pred, Set) = TrueSet' returns the elements of Set for which
-    % Pred succeeds.
+    % filter(Pred, Set) returns the elements of Set for which Pred succeeds.
     %
 :- func filter(pred(T), tree_bitset(T)) = tree_bitset(T) <= enum(T).
 :- mode filter(pred(in) is semidet, in) = out is det.
 
-    % `filter(Pred, Set, TrueSet, FalseSet)' returns the elements of Set
+    % filter(Pred, Set, TrueSet, FalseSet) returns the elements of Set
     % for which Pred succeeds, and those for which it fails.
     %
 :- pred filter(pred(T), tree_bitset(T), tree_bitset(T), tree_bitset(T))
     <= enum(T).
 :- mode filter(pred(in) is semidet, in, out, out) is det.
 
-    % `foldl(Func, Set, Start)' calls Func with each element of `Set'
-    % (in sorted order) and an accumulator (with the initial value of `Start'),
+    % foldl(Func, Set, Start) calls Func with each element of Set
+    % (in sorted order) and an accumulator (with the initial value of Start),
     % and returns the final value. Takes O(card(Set)) time.
     %
 :- func foldl(func(T, U) = U, tree_bitset(T), U) = U <= enum(T).
@@ -368,9 +367,9 @@
 :- mode foldl2(pred(in, in, out, in, out) is cc_multi, in, in, out, in, out)
     is cc_multi.
 
-    % `foldr(Func, Set, Start)' calls Func with each element of `Set'
+    % foldr(Func, Set, Start) calls Func with each element of Set
     % (in reverse sorted order) and an accumulator (with the initial value
-    % of `Start'), and returns the final value. Takes O(card(Set)) time.
+    % of Start), and returns the final value. Takes O(card(Set)) time.
     %
 :- func foldr(func(T, U) = U, tree_bitset(T), U) = U <= enum(T).
 
@@ -524,8 +523,8 @@
     % and the first bit after the last bit it represents.
     %
     % Leaf nodes contain bitmaps directly. Given leaf_node(Offset, Bits),
-    % the bits of `Bits' describe which of the elements of the range
-    % `Offset' .. `Offset + bits_per_int - 1' are in the set.
+    % the bits of Bits describe which of the elements of the range
+    % Offset .. (Offset + bits_per_int - 1) are in the set.
     %
     % Interior nodes contain bitmaps only indirectly; they contain a list
     % of nodes one level down. For level 1 interior nodes, this means
@@ -4165,8 +4164,8 @@ set_bit(Int0, Bit) = Int0 \/ unchecked_left_shift(1u, Bit).
 
 clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_shift(1u, Bit).
 
-    % `mask(N)' returns a mask which can be `and'ed with an integer to return
-    % the lower `N' bits of the integer. `N' must be less than bits_per_int.
+    % mask(N) returns a mask which can be `and'ed with an integer to return
+    % the lower N bits of the integer. N must be less than bits_per_int.
     %
 :- func mask(int) = uint.
 :- pragma inline(func(mask/1)).

@@ -157,28 +157,28 @@
 
     % difftime(Time1, Time0) = Diff:
     %
-    % Computes the number of seconds elapsed between `Time1' and `Time0'.
+    % Computes the number of seconds elapsed between Time1 and Time0.
     %
 :- func difftime(time_t, time_t) = float.
 
     % localtime(Time, TM, !IO):
     %
-    % Converts the (simple) calendar time `Time' to a broken-down
-    % representation `TM', expressed relative to the current time zone.
+    % Converts the (simple) calendar time Time to a broken-down
+    % representation TM, expressed relative to the current time zone.
     %
 :- pred localtime(time_t::in, tm::out, io::di, io::uo) is det.
 
     % gmtime(Time) = TM:
     %
-    % Converts the (simple) calendar time `Time' to a broken-down
-    % representation `TM', expressed as UTC (Universal Coordinated Time).
+    % Converts the (simple) calendar time Time to a broken-down
+    % representation TM, expressed as UTC (Universal Coordinated Time).
     %
 :- func gmtime(time_t) = tm.
 
     % mktime(TM, Time, !IO):
     %
-    % Converts the broken-down time value `TM' to a (simple) calendar time
-    % `Time'. That is, `TM' is relative to the current time zone.
+    % Converts the broken-down time value TM to a (simple) calendar time
+    % Time. That is, TM is relative to the current time zone.
     % The `tm_wday' and `tm_yday' fields of `TM' are ignored.
     %
 :- pred mktime(tm::in, time_t::out, io::di, io::uo) is det.
@@ -187,8 +187,7 @@
 
     % asctime(TM) = String:
     %
-    % Converts the broken-down time value `TM' to a string in a standard
-    % format.
+    % Converts the broken-down time value TM to a string in a standard format.
     %
 :- func asctime(tm) = string.
 

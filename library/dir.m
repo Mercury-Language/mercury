@@ -200,7 +200,7 @@
 
     % foldl2(Pred, DirName, InitialData, Result, !IO):
     %
-    % Apply `Pred' to all files and directories in the given directory.
+    % Apply Pred to all files and directories in the given directory.
     % Directories are not processed recursively.
     % Processing will stop if the boolean (Continue) output of Pred is bound
     % to `no'.
@@ -214,7 +214,7 @@
     %
     % As above, but recursively process subdirectories.
     % Subdirectories are processed depth-first, processing the directory itself
-    % before its contents. If `FollowSymLinks' is `yes', recursively process
+    % before its contents. If FollowSymLinks is `yes', recursively process
     % the directories referenced by symbolic links.
     %
 :- pred recursive_foldl2(foldl_pred(T)::in(foldl_pred),

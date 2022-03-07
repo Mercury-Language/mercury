@@ -1472,7 +1472,7 @@ call_handler(Handler, Exception, Result) :-
     "ML_call_goal_det").
 
 % This causes problems because the LLDS back-end does not let you export
-% code with determinism `nondet'. Instead for C backends we hand-code it...
+% code with determinism nondet. Instead for C backends we hand-code it...
 % see below. Hand-coding it also avoids the casting needed to use MR_Word
 % (which `pragma export' procedures use for polymorphically typed arguments)
 % rather than MR_Box.

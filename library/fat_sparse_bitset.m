@@ -20,14 +20,14 @@
 % Efficiency notes:
 %
 % A fat_sparse bitset is represented as a sorted fat list of pairs of integers.
-% For a pair `Offset - Bits', `Offset' is a multiple of `int.bits_per_int'.
-% The bits of `Bits' describe which of the elements of the range
-% `Offset' .. `Offset + bits_per_int - 1' are in the set.
-% Pairs with the same value of `Offset' are merged.
-% Pairs in which `Bits' is zero are removed.
+% For a pair `Offset - Bits', Offset is a multiple of int.bits_per_int.
+% The bits of Bits describe which of the elements of the range
+% Offset .. (Offset + bits_per_int - 1) are in the set.
+% Pairs with the same value of Offset are merged.
+% Pairs in which Bits is zero are removed.
 %
-% The values of `Offset' in the list need not be *contiguous* multiples
-% of `bits_per_int', hence the name *sparse* bitset.
+% The values of Offset in the list need not be *contiguous* multiples
+% of bits_per_int, hence the name *sparse* bitset.
 %
 % A fat_sparse_bitset is suitable for storing sets of integers which
 % can be represented using only a few `Offset - Bits' pairs.
@@ -36,8 +36,8 @@
 % the operations should not be too much slower.
 %
 % In the asymptotic complexities of the operations below,
-% `rep_size(Set)' is the number of pairs needed to represent `Set',
-% and `card(Set)' is the number of elements in `Set'.
+% rep_size(Set) is the number of pairs needed to represent Set,
+% and card(Set) is the number of elements in Set.
 %
 %---------------------------------------------------------------------------%
 
@@ -70,8 +70,8 @@
     %
 :- pred singleton_set(fat_sparse_bitset(T)::out, T::in) is det <= enum(T).
 
-    % `make_singleton_set(Elem)' returns a set containing just the single
-    % element `Elem'.
+    % make_singleton_set(Elem) returns a set containing just the single
+    % element Elem.
     %
 :- func make_singleton_set(T) = fat_sparse_bitset(T) <= enum(T).
 
@@ -98,14 +98,14 @@
 % Membership tests.
 %
 
-    % `member(X, Set)' is true iff `X' is a member of `Set'.
+    % member(X, Set) is true iff X is a member of Set.
     % Takes O(rep_size(Set)) time.
     %
 :- pred member(T, fat_sparse_bitset(T)) <= enum(T).
 :- mode member(in, in) is semidet.
 :- mode member(out, in) is nondet.
 
-    % `contains(Set, X)' is true iff `X' is a member of `Set'.
+    % contains(Set, X) is true iff X is a member of Set.
     % Takes O(rep_size(Set)) time.
     %
 :- pred contains(fat_sparse_bitset(T)::in, T::in) is semidet <= enum(T).
@@ -115,22 +115,22 @@
 % Insertions and deletions.
 %
 
-    % `insert(Set, X)' returns the union of `Set' and the set containing
-    % only `X'. Takes O(rep_size(Set)) time and space.
+    % insert(Set, X) returns the union of Set and the set containing
+    % only X. Takes O(rep_size(Set)) time and space.
     %
 :- func insert(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= enum(T).
 :- pred insert(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
     is det <= enum(T).
 
-    % `insert_new(X, Set0, Set)' returns the union of `Set0' and the set
-    % containing only `X' if `Set0' does not already contain `X'; if it does,
+    % insert_new(X, Set0, Set) returns the union of Set0 and the set
+    % containing only X if Set0 does not already contain X; if it does,
     % it fails. Takes O(rep_size(Set)) time and space.
     %
 :- pred insert_new(T::in,
     fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is semidet <= enum(T).
 
-    % `insert_list(Set, X)' returns the union of `Set' and the set containing
-    % only the members of `X'. Same as `union(Set, list_to_set(X))', but may be
+    % insert_list(Set, X) returns the union of Set and the set containing
+    % only the members of X. Same as `union(Set, list_to_set(X))', but may be
     % more efficient.
     %
 :- func insert_list(fat_sparse_bitset(T), list(T)) = fat_sparse_bitset(T)
@@ -140,15 +140,15 @@
 
 %---------------------%
 
-    % `delete(Set, X)' returns the difference of `Set' and the set containing
-    % only `X'. Takes O(rep_size(Set)) time and space.
+    % delete(Set, X) returns the difference of Set and the set containing
+    % only X. Takes O(rep_size(Set)) time and space.
     %
 :- func delete(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= enum(T).
 :- pred delete(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
     is det <= enum(T).
 
-    % `delete_list(Set, X)' returns the difference of `Set' and the set
-    % containing only the members of `X'. Same as
+    % delete_list(Set, X) returns the difference of Set and the set
+    % containing only the members of X. Same as
     % `difference(Set, list_to_set(X))', but may be more efficient.
     %
 :- func delete_list(fat_sparse_bitset(T), list(T)) = fat_sparse_bitset(T)
@@ -156,40 +156,40 @@
 :- pred delete_list(list(T)::in,
     fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is det <= enum(T).
 
-    % `remove(X, Set0, Set)' returns in `Set' the difference of `Set0'
-    % and the set containing only `X', failing if `Set0' does not contain `X'.
+    % remove(X, Set0, Set) returns in Set the difference of Set0
+    % and the set containing only X, failing if Set0 does not contain X.
     % Takes O(rep_size(Set)) time and space.
     %
 :- pred remove(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
     is semidet <= enum(T).
 
-    % `remove_list(X, Set0, Set)' returns in `Set' the difference of `Set0'
-    % and the set containing all the elements of `X', failing if any element
-    % of `X' is not in `Set0'. Same as `subset(list_to_set(X), Set0),
+    % remove_list(X, Set0, Set) returns in Set the difference of Set0
+    % and the set containing all the elements of X, failing if any element
+    % of X is not in Set0. Same as `subset(list_to_set(X), Set0),
     % difference(Set0, list_to_set(X), Set)', but may be more efficient.
     %
 :- pred remove_list(list(T)::in,
     fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is semidet <= enum(T).
 
-    % `remove_leq(Set, X)' returns `Set' with all elements less than or equal
-    % to `X' removed. In other words, it returns the set containing all the
-    % elements of `Set' which are greater than `X'.
+    % remove_leq(Set, X) returns Set with all elements less than or equal
+    % to X removed. In other words, it returns the set containing all the
+    % elements of `Set which are greater than X.
     %
 :- func remove_leq(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= enum(T).
 :- pred remove_leq(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
     is det <= enum(T).
 
-    % `remove_gt(Set, X)' returns `Set' with all elements greater than `X'
+    % remove_gt(Set, X) returns Set with all elements greater than X
     % removed. In other words, it returns the set containing all the elements
-    % of `Set' which are less than or equal to `X'.
+    % of Set which are less than or equal to X.
     %
 :- func remove_gt(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= enum(T).
 :- pred remove_gt(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
     is det <= enum(T).
 
-    % `remove_least(Set0, X, Set)' is true iff `X' is the least element in
-    % `Set0', and `Set' is the set which contains all the elements of `Set0'
-    % except `X'. Takes O(1) time and space.
+    % remove_least(Set0, X, Set) is true iff X is the least element in
+    % Set0, and Set is the set which contains all the elements of Set0
+    % except X. Takes O(1) time and space.
     %
 :- pred remove_least(T::out,
     fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is semidet <= enum(T).
@@ -199,17 +199,17 @@
 % Comparisons between sets.
 %
 
-    % `equal(SetA, SetB' is true iff `SetA' and `SetB' contain the same
+    % equal(SetA, SetB) is true iff SetA and SetB contain the same
     % elements. Takes O(min(rep_size(SetA), rep_size(SetB))) time.
     %
 :- pred equal(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in) is semidet.
 
-    % `subset(Subset, Set)' is true iff `Subset' is a subset of `Set'.
+    % subset(Subset, Set) is true iff Subset is a subset of Set.
     % Same as `intersect(Set, Subset, Subset)', but may be more efficient.
     %
 :- pred subset(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in) is semidet.
 
-    % `superset(Superset, Set)' is true iff `Superset' is a superset of `Set'.
+    % superset(Superset, Set) is true iff Superset is a superset of Set.
     % Same as `intersect(Superset, Set, Set)', but may be more efficient.
     %
 :- pred superset(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in)
@@ -220,7 +220,7 @@
 % Operations on two or more sets.
 %
 
-    % `union(SetA, SetB)' returns the union of `SetA' and `SetB'. The
+    % union(SetA, SetB) returns the union of SetA and SetB. The
     % efficiency of the union operation is not sensitive to the argument
     % ordering. Takes O(rep_size(SetA) + rep_size(SetB)) time and space.
     %
@@ -229,13 +229,13 @@
 :- pred union(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in,
     fat_sparse_bitset(T)::out) is det.
 
-    % `union_list(Sets, Set)' returns the union of all the sets in Sets.
+    % union_list(Sets, Set) returns the union of all the sets in Sets.
     %
 :- func union_list(list(fat_sparse_bitset(T))) = fat_sparse_bitset(T).
 :- pred union_list(list(fat_sparse_bitset(T))::in, fat_sparse_bitset(T)::out)
     is det.
 
-    % `intersect(SetA, SetB)' returns the intersection of `SetA' and `SetB'.
+    % intersect(SetA, SetB) returns the intersection of SetA and SetB.
     % The efficiency of the intersection operation is not sensitive to the
     % argument ordering. Takes O(rep_size(SetA) + rep_size(SetB)) time and
     % O(min(rep_size(SetA)), rep_size(SetB)) space.
@@ -245,15 +245,15 @@
 :- pred intersect(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in,
     fat_sparse_bitset(T)::out) is det.
 
-    % `intersect_list(Sets, Set)' returns the intersection of all the sets
+    % intersect_list(Sets, Set) returns the intersection of all the sets
     % in Sets.
     %
 :- func intersect_list(list(fat_sparse_bitset(T))) = fat_sparse_bitset(T).
 :- pred intersect_list(list(fat_sparse_bitset(T))::in,
     fat_sparse_bitset(T)::out) is det.
 
-    % `difference(SetA, SetB)' returns the set containing all the elements
-    % of `SetA' except those that occur in `SetB'. Takes
+    % difference(SetA, SetB) returns the set containing all the elements
+    % of SetA except those that occur in SetB. Takes
     % O(rep_size(SetA) + rep_size(SetB)) time and O(rep_size(SetA)) space.
     %
 :- func difference(fat_sparse_bitset(T), fat_sparse_bitset(T))
@@ -285,7 +285,7 @@
 % Converting lists to sets.
 %
 
-    % `list_to_set(List)' returns a set containing only the members of `List'.
+    % list_to_set(List) returns a set containing only the members of List.
     % In the worst case this will take O(length(List)^2) time and space.
     % If the elements of the list are closely grouped, it will be closer
     % to O(length(List)).
@@ -293,8 +293,8 @@
 :- func list_to_set(list(T)) = fat_sparse_bitset(T) <= enum(T).
 :- pred list_to_set(list(T)::in, fat_sparse_bitset(T)::out) is det <= enum(T).
 
-    % `sorted_list_to_set(List)' returns a set containing only the members
-    % of `List'. `List' must be sorted. Takes O(length(List)) time and space.
+    % sorted_list_to_set(List) returns a set containing only the members
+    % of List. List must be sorted. Takes O(length(List)) time and space.
     %
 :- func sorted_list_to_set(list(T)) = fat_sparse_bitset(T) <= enum(T).
 :- pred sorted_list_to_set(list(T)::in, fat_sparse_bitset(T)::out)
@@ -305,7 +305,7 @@
 % Converting sets to lists.
 %
 
-    % `to_sorted_list(Set)' returns a list containing all the members of `Set',
+    % to_sorted_list(Set) returns a list containing all the members of Set,
     % in sorted order. Takes O(card(Set)) time and space.
     %
 :- func to_sorted_list(fat_sparse_bitset(T)) = list(T) <= enum(T).
@@ -317,13 +317,13 @@
 % Converting between different kinds of sets.
 %
 
-    % `from_set(Set)' returns a bitset containing only the members of `Set'.
+    % from_set(Set) returns a bitset containing only the members of Set.
     % Takes O(card(Set)) time and space.
     %
 :- func from_set(set.set(T)) = fat_sparse_bitset(T) <= enum(T).
 
-    % `to_sorted_list(Set)' returns a set.set containing all the members
-    % of `Set', in sorted order. Takes O(card(Set)) time and space.
+    % to_sorted_list(Set) returns a set.set containing all the members
+    % of Set, in sorted order. Takes O(card(Set)) time and space.
     %
 :- func to_set(fat_sparse_bitset(T)) = set.set(T) <= enum(T).
 
@@ -332,7 +332,7 @@
 % Counting.
 %
 
-    % `count(Set)' returns the number of elements in `Set'.
+    % count(Set) returns the number of elements in Set.
     % Takes O(card(Set)) time.
     %
 :- func count(fat_sparse_bitset(T)) = int <= enum(T).
@@ -348,21 +348,20 @@
 :- pred all_true(pred(T)::in(pred(in) is semidet), fat_sparse_bitset(T)::in)
     is semidet <= enum(T).
 
-    % `filter(Pred, Set) = TrueSet' returns the elements of Set for which
-    % Pred succeeds.
+    % filter(Pred, Set) returns the elements of Set for which Pred succeeds.
     %
 :- func filter(pred(T)::in(pred(in) is semidet), fat_sparse_bitset(T)::in)
     = (fat_sparse_bitset(T)::out) is det <= enum(T).
 
-    % `filter(Pred, Set, TrueSet, FalseSet)' returns the elements of Set
+    % filter(Pred, Set, TrueSet, FalseSet) returns the elements of Set
     % for which Pred succeeds, and those for which it fails.
     %
 :- pred filter(pred(T)::in(pred(in) is semidet),
     fat_sparse_bitset(T)::in,
     fat_sparse_bitset(T)::out, fat_sparse_bitset(T)::out) is det <= enum(T).
 
-    % `foldl(Func, Set, Start)' calls Func with each element of `Set'
-    % (in sorted order) and an accumulator (with the initial value of `Start'),
+    % foldl(Func, Set, Start) calls Func with each element of Set
+    % (in sorted order) and an accumulator (with the initial value of Start),
     % and returns the final value. Takes O(card(Set)) time.
     %
 :- func foldl(func(T, U) = U, fat_sparse_bitset(T), U) = U <= enum(T).
@@ -400,9 +399,9 @@
 :- mode foldl2(pred(in, di, uo, di, uo) is cc_multi, in, di, uo, di, uo)
     is cc_multi.
 
-    % `foldr(Func, Set, Start)' calls Func with each element of `Set'
+    % foldr(Func, Set, Start) calls Func with each element of Set
     % (in reverse sorted order) and an accumulator (with the initial value
-    % of `Start'), and returns the final value. Takes O(card(Set)) time.
+    % of Start), and returns the final value. Takes O(card(Set)) time.
     %
 :- func foldr(func(T, U) = U, fat_sparse_bitset(T), U) = U <= enum(T).
 
@@ -569,8 +568,8 @@ is_singleton(fat_sparse_bitset(bitset_cons(Offset, Bits, bitset_nil)), Elem) :-
     ( if ElemPrime = from_int(SetOffset) then
         Elem = ElemPrime
     else
-        % We only apply `from_int/1' to integers returned
-        % by `to_int/1', so it should never fail.
+        % We only apply from_int/1 to integers returned
+        % by to_int/1, so it should never fail.
         unexpected($pred, "`enum.from_int/1' failed")
     ).
 
@@ -616,8 +615,8 @@ member(Elem::out, fat_sparse_bitset(Set)::in) :-
     ( if Elem0 = from_int(Index) then
         Elem = Elem0
     else
-        % We only apply `from_int/1' to integers returned
-        % by `to_int/1', so it should never fail.
+        % We only apply from_int/1 to integers returned
+        % by to_int/1, so it should never fail.
         unexpected($pred, "`enum.from_int/1' failed")
     ).
 
@@ -1762,8 +1761,8 @@ set_bit(Int0, Bit) = Int0 \/ unchecked_left_shift(1u, Bit).
 
 clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_shift(1u, Bit).
 
-    % `mask(N)' returns a mask which can be `and'ed with an integer to return
-    % the lower `N' bits of the integer. `N' must be less than bits_per_int.
+    % mask(N) returns a mask which can be `and'ed with an integer to return
+    % the lower N bits of the integer. N must be less than bits_per_int.
     %
 :- func mask(int) = uint.
 :- pragma inline(func(mask/1)).

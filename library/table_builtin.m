@@ -10,7 +10,7 @@
 % Main authors: zs, fjh, ohutch.
 % Stability: low.
 %
-% This file is automatically imported, as if via `use_module', into every
+% This file is automatically imported, as if via ":- use_module:, into every
 % module that contains a tabling pragma (`pragma loopcheck', `pragma memo',
 % or `pragma minimal_model'). It is intended for the builtin procedures
 % that the compiler generates implicit calls to when implementing tabling.

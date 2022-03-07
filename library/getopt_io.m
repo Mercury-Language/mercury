@@ -422,15 +422,15 @@
     % These four predicates do effectively the same job, differing
     % from each other in two minor ways.
     %
-    % The job they all do is scanning through 'Args' looking for options.
+    % The job they all do is scanning through Args looking for options.
     % The various fields of the OptionOps structure specify the names
     % (both short and long) of the options to look for, as well as their
     % default values, and possibly the handler for the special options.
-    % The structure of the `OptionOps' argument is documented above,
+    % The structure of the OptionOps argument is documented above,
     % at the definition of the option_ops type.
     %
     % All these predicates place all the non-option arguments in
-    % 'NonOptionArgs', and the predicates that have an `OptionArgs' argument
+    % 'NonOptionArgs', and the predicates that have an OptionArgs argument
     % place the option arguments there. (While some callers will want
     % the arguments contain the options, other callers will not, considering
     % that the only information they want from them is that contained in
@@ -438,13 +438,13 @@
     %
     % If they find a problem, such as an unknown option name, an option
     % being given an argument of the wrong type, or the failure of the handler
-    % for a special option, all the predicates will put into `Result'
-    % an `error' wrapped around an error code. That error code can be turned
+    % for a special option, all the predicates will put into Result
+    % an error() wrapped around an error code. That error code can be turned
     % into an error message using the option_error_to_string function below.
     %
     % If they do not find a problem, all these predicates will place into
-    % `Result' an `ok' wrapped around an option table, which maps each option
-    % to its final value. Unless updated by an option in `Args', this will be
+    % Result an ok() wrapped around an option table, which maps each option
+    % to its final value. Unless updated by an option in Args, this will be
     % its default value.
     %
     % The predicate versions whose names end in `io' take a pair of I/O state

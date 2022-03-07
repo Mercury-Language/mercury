@@ -115,7 +115,7 @@
     % maybe_incomplete_result is returned when reading multibyte values from a
     % binary stream. `incomplete(Bytes)' is returned when at least one byte of
     % a value has already been read but there are insufficient bytes
-    % remaining the stream to complete the value. In that case, `Bytes' will
+    % remaining the stream to complete the value. In that case, Bytes will
     % contain the bytes that have already been read from the stream, in the
     % order in which they were read.
     %
@@ -481,7 +481,7 @@
     % You can even put back something that you didn't actually read.
     %
     % On some systems and backends, only one byte of pushback is guaranteed.
-    % `putback_char' will throw an io.error exception if the pushback buffer
+    % putback_char will throw an io.error exception if the pushback buffer
     % is full.
     %
 :- pred putback_char(char::in, io::di, io::uo) is det.
@@ -544,7 +544,7 @@
     % You can even put back something that you did not actually read.
     %
     % On some systems and backends, only one byte of pushback is guaranteed.
-    % `putback_byte' will throw an io.error exception if the pushback buffer
+    % putback_byte will throw an io.error exception if the pushback buffer
     % is full.
     %
     % Pushing back a byte decrements the file position by one, except when
@@ -845,7 +845,7 @@
     % Read a whitespace delimited word from the current input stream
     % or from the specified stream.
     %
-    % See `char.is_whitespace' for the definition of whitespace characters
+    % See char.is_whitespace for the definition of whitespace characters
     % used by this predicate.
     %
 :- pred read_word(io.result(list(char))::out, io::di, io::uo) is det.
@@ -855,7 +855,7 @@
     % Read a line from the current input stream or from the specified
     % stream, returning the result as a list of characters (code points).
     %
-    % See the documentation for `string.line' for the definition of a line.
+    % See the documentation for string.line for the definition of a line.
     %
 :- pred read_line(io.result(list(char))::out, io::di, io::uo) is det.
 :- pred read_line(io.text_input_stream::in, io.result(list(char))::out,
@@ -864,7 +864,7 @@
     % Read a line from the current input stream or from the specified
     % stream, returning the result as a string.
     %
-    % See the documentation for `string.line' for the definition of a line.
+    % See the documentation for string.line for the definition of a line.
     %
     % WARNING: the returned string is NOT guaranteed to be valid UTF-8
     % or UTF-16.
@@ -873,7 +873,7 @@
 :- pred read_line_as_string(io.text_input_stream::in, io.result(string)::out,
     io::di, io::uo) is det.
 
-    % Discards all the whitespace characters satisfying `char.is_whitespace'
+    % Discards all the whitespace characters satisfying char.is_whitespace
     % from the current stream or from the specified stream.
     %
 :- pred ignore_whitespace(io.result::out, io::di, io::uo) is det.
@@ -954,7 +954,7 @@
     % Read a ground term of any type, written using standard Mercury syntax,
     % from the current stream or from the specified input stream.
     % The type of the term read is determined by the context from which
-    % `io.read' is called.
+    % io.read is called.
     %
     % This predicate reads the input stream until reaching one of
     % an end-of-term token, end-of-file, or I/O error.
@@ -977,7 +977,7 @@
     % - If it encounters an I/O error, then it also returns
     %   `error(Message, LineNumber)'.
     %
-    % See `char.is_whitespace' for the definition of whitespace characters
+    % See char.is_whitespace for the definition of whitespace characters
     % used by this predicate.
     %
 :- pred read(io.read_result(T)::out, io::di, io::uo) is det.
@@ -1519,18 +1519,18 @@
 %
 
     % remove_file(FileName, Result, !IO) attempts to remove the file
-    % `FileName', binding Result to ok/0 if it succeeds, or error/1 if it
-    % fails. If `FileName' names a file that is currently open, the behaviour
+    % FileName, binding Result to ok/0 if it succeeds, or error/1 if it
+    % fails. If FileName names a file that is currently open, the behaviour
     % is implementation-dependent.
     %
 :- pred remove_file(string::in, io.res::out, io::di, io::uo) is det.
 
     % remove_file_recursively(FileName, Result, !IO) attempts to remove
-    % the file `FileName', binding Result to ok/0 if it succeeds, or error/1
-    % if it fails. If `FileName' names a file that is currently open, the
+    % the file FileName, binding Result to ok/0 if it succeeds, or error/1
+    % if it fails. If FileName names a file that is currently open, the
     % behaviour is implementation-dependent.
     %
-    % Unlike `remove_file', this predicate will attempt to remove non-empty
+    % Unlike remove_file, this predicate will attempt to remove non-empty
     % directories (recursively). If it fails, some of the directory elements
     % may already have been removed.
     %
@@ -1539,13 +1539,13 @@
 
     % rename_file(OldFileName, NewFileName, Result, !IO).
     %
-    % Attempts to rename the file `OldFileName' as `NewFileName', binding
-    % Result to ok/0 if it succeeds, or error/1 if it fails. If `OldFileName'
+    % Attempts to rename the file OldFileName as NewFileName, binding
+    % Result to ok/0 if it succeeds, or error/1 if it fails. If OldFileName
     % names a file that is currently open, the behaviour is
-    % implementation-dependent. If `NewFileName' names a file that already
+    % implementation-dependent. If NewFileName names a file that already
     % exists the behaviour is also implementation-dependent; on some systems,
-    % the file previously named `NewFileName' will be deleted and replaced
-    % with the file previously named `OldFileName'.
+    % the file previously named NewFileName will be deleted and replaced
+    % with the file previously named OldFileName.
     %
 :- pred rename_file(string::in, string::in, io.res::out, io::di, io::uo)
     is det.
@@ -1558,17 +1558,17 @@
 
     % make_symlink(FileName, LinkFileName, Result, !IO).
     %
-    % Attempts to make `LinkFileName' be a symbolic link to `FileName'.
-    % If `FileName' is a relative path, it is interpreted relative
-    % to the directory containing `LinkFileName'.
+    % Attempts to make LinkFileName be a symbolic link to FileName.
+    % If FileName is a relative path, it is interpreted relative
+    % to the directory containing LinkFileName.
     %
 :- pred make_symlink(string::in, string::in, io.res::out, io::di, io::uo)
     is det.
 
     % read_symlink(FileName, Result, !IO) returns `ok(LinkTarget)'
-    % if `FileName' is a symbolic link pointing to `LinkTarget', and
-    % `error(Error)' otherwise. If `LinkTarget' is a relative path,
-    % it should be interpreted relative the directory containing `FileName',
+    % if FileName is a symbolic link pointing to LinkTarget, and
+    % `error(Error)' otherwise. If LinkTarget is a relative path,
+    % it should be interpreted relative the directory containing FileName,
     % not the current directory.
     %
 :- pred read_symlink(string::in, io.res(string)::out, io::di, io::uo) is det.
@@ -1583,7 +1583,7 @@
     % check_file_accessibility(FileName, AccessTypes, Result):
     %
     % Check whether the current process can perform the operations given
-    % in `AccessTypes' on `FileName'.
+    % in AccessTypes on FileName.
     % XXX When using the .NET CLI, this predicate will sometimes report
     % that a directory is writable when in fact it is not.
     %
@@ -1832,7 +1832,7 @@
 
     % The I/O state includes a `globals' field which is not used by the
     % standard library, but can be used by the application. The globals field
-    % is of type `univ' so that the application can store any data it wants
+    % is of type univ so that the application can store any data it wants
     % there. The following predicates can be used to access this global state.
     %
     % Does not modify the I/O state.
@@ -1846,7 +1846,7 @@
 :- pragma obsolete(pred(set_globals/3)).
 
     % update_globals(UpdatePred, !IO).
-    % Update the `globals' field in the I/O state based upon its current value.
+    % Update the globals field in the I/O state based upon its current value.
     % This is equivalent to the following:
     %
     %   get_globals(Globals0, !IO),
@@ -1854,7 +1854,7 @@
     %   set_globals(Globals, !IO)
     %
     % In parallel grades calls to update_globals/3 are atomic.
-    % If `UpdatePred' throws an exception then the `globals' field is
+    % If UpdatePred throws an exception then the globals field is
     % left unchanged.
     %
     % The globals field is obsolete. A mutable declaration will provide
@@ -1900,14 +1900,14 @@
     io::di, io::uo) is det.
 :- pred report_standard_stats(io::di, io::uo) is det.
 
-    % `report_full_memory_stats/3' reports a full memory profile
+    % report_full_memory_stats/3 reports a full memory profile
     % to the specified output stream, or (if none) to stderr.
     %
 :- pred report_full_memory_stats(io.text_output_stream::in,
     io::di, io::uo) is det.
 :- pred report_full_memory_stats(io::di, io::uo) is det.
 
-    % `report_tabling_statistics/3', as its name says, reports statistics
+    % report_tabling_statistics/3, as its name says, reports statistics
     % about tabling to the specified output stream, or (if none) to stderr.
     %
     % XXX For now, these predicates work only with the C backend.
@@ -2033,32 +2033,32 @@
 :- pragma foreign_type(java, system_error, "java.lang.Exception").
 
     % is_error(Error, MessagePrefix, MaybeIOError, !IO):
-    % Returns `yes(IOError)' if `Error' indicates an error (not success).
-    % `IOError' contains an error message obtained by looking up the message
-    % for the given errno value and prepending `MessagePrefix'.
+    % Returns `yes(IOError)' if Error indicates an error (not success).
+    % IOError contains an error message obtained by looking up the message
+    % for the given errno value and prepending MessagePrefix.
     %
 :- pred is_error(system_error::in, string::in, maybe(io.error)::out,
     io::di, io::uo) is det.
 
     % is_maybe_win32_error(Error, MessagePrefix, MaybeIOError, !IO):
-    % Same as is_error except that `Error' is a Win32 error value on Windows.
+    % Same as is_error except that Error is a Win32 error value on Windows.
     %
 :- pred is_maybe_win32_error(system_error::in, string::in,
     maybe(io.error)::out, io::di, io::uo) is det.
 
     % make_err_msg(Error, MessagePrefix, Message, !IO):
-    % `Message' is an error message obtained by looking up the message for the
-    % given errno value and prepending `MessagePrefix'.
+    % Message is an error message obtained by looking up the message for the
+    % given errno value and prepending MessagePrefix.
     %
 :- pred make_err_msg(system_error::in, string::in, string::out,
     io::di, io::uo) is det.
 
     % make_maybe_win32_err_msg(Error, MessagePrefix, Message, !IO):
     %
-    % `Message' is an error message obtained by looking up the error message
-    % for `Error' and prepending `MessagePrefix'.
-    % On Win32 systems, `Error' is obtained by calling GetLastError.
-    % On other systems `Error' is obtained by reading errno.
+    % Message is an error message obtained by looking up the error message
+    % for Error and prepending MessagePrefix.
+    % On Win32 systems, Error is obtained by calling GetLastError.
+    % On other systems Error is obtained by reading errno.
     %
 :- pred make_maybe_win32_err_msg(system_error::in, string::in, string::out,
     io::di, io::uo) is det.
@@ -2231,7 +2231,7 @@
 % Private type definitions.
 %
 
-    % Values of type `io.state' are never really used:
+    % Values of type io.state are never really used:
     % instead we store data in global variables.
     % The reason this is defined as a foreign type is to prevent attempts
     % to deconstruct values of the type.
@@ -9297,7 +9297,7 @@ binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
 
 %---------------------%
 
-% A `buffer' is an array of chars.
+% A buffer is an array of chars.
 % For C backends, it is a C array of C chars.
 % For other backends, it is a Mercury array of Mercury chars.
 
@@ -11973,7 +11973,7 @@ unlock_globals :-
 
 %---------------------%
 
-    % NOTE: io.unsafe_{get, set}_globals/3 are marked as `thread_safe' so that
+    % NOTE: io.unsafe_{get, set}_globals/3 are marked as thread_safe so that
     % calling them to does not acquire the global lock. Since calls to these
     % predicates should be surrounded by calls to io.{lock, unlock}_globals/2,
     % this is safe.
@@ -12319,7 +12319,7 @@ have_dotnet :-
 #include <errno.h>
 
 // ML_make_err_msg(errnum, msg, alloc_id, error_msg):
-// Append `msg' and a message for errnum to give `error_msg'.
+// Append msg and a message for errnum to give error_msg.
 //
 // WARNING: this must only be called when the `hp' register is valid.
 // That means it must only be called from procedures declared
@@ -12343,8 +12343,8 @@ have_dotnet :-
     } while(0)
 
 // ML_make_win32_err_msg(error, msg, alloc_id, error_msg):
-// Append `msg' and the string returned by the Win32 API function
-// FormatMessage() for the last error to give `error_msg'.
+// Append msg and the string returned by the Win32 API function
+// FormatMessage() for the last error to give error_msg.
 //
 // WARNING: this must only be called when the `hp' register is valid.
 // That means it must only be called from procedures declared

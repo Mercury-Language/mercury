@@ -61,7 +61,7 @@
 
     % Standard append predicate:
     % append(Start, End, List) is true iff
-    % `List' is the result of concatenating `Start' and `End'.
+    % List is the result of concatenating Start and End.
     %
 :- pred append(one_or_more(T), one_or_more(T), one_or_more(T)).
 :- mode append(di, di, uo) is det.
@@ -103,15 +103,15 @@
 
     % length(List, Length):
     %
-    % True iff `Length' is the length of `List', i.e. if `List' contains
-    % `Length' elements.
+    % True iff Length is the length of List, i.e. if List contains
+    % Length elements.
     %
 :- func length(one_or_more(T)) = int.
 :- pred length(one_or_more(T)::in, int::out) is det.
 
     % same_length(ListA, ListB):
     %
-    % True iff `ListA' and `ListB' have the same length,
+    % True iff ListA and ListB have the same length,
     % i.e. iff they both contain the same number of elements.
     %
 :- pred same_length(one_or_more(T1)::in, one_or_more(T2)::in) is semidet.
@@ -125,7 +125,7 @@
 
     % member(Elem, List):
     %
-    % True iff `List' contains `Elem'.
+    % True iff List contains Elem.
     %
 :- pred member(T, one_or_more(T)).
 :- mode member(in, in) is semidet.
@@ -133,7 +133,7 @@
 
     % member_index0(Elem, List, Index).
     %
-    % True iff `List' contains `Elem' at the zero-based index `Index'.
+    % True iff List contains Elem at the zero-based index Index.
     %
 :- pred member_index0(T, one_or_more(T), int).
 :- mode member_index0(in, in, in) is semidet.
@@ -142,8 +142,8 @@
 
     % member_indexes0(Elem, List, Indexes).
     %
-    % True iff `List' contains `Elem' at the zero-based indexes `Indexes'.
-    % `Indexes' will be sorted.
+    % True iff List contains Elem at the zero-based indexes Indexes.
+    % Indexes will be sorted.
     %
 :- pred member_indexes0(T::in, one_or_more(T)::in, list(int)::out) is det.
 
@@ -205,7 +205,7 @@
 
     % reverse(List, Reverse):
     %
-    % `Reverse' is a list containing the same elements as `List'
+    % Reverse is a list containing the same elements as List
     % but in reverse order.
     %
 :- func reverse(one_or_more(T)) = one_or_more(T).
@@ -217,8 +217,8 @@
 
     % delete(List, Elem, Remainder):
     %
-    % True iff `Elem' occurs in `List', and `Remainder' is the result of
-    % deleting one occurrence of `Elem' from `List'.
+    % True iff Elem occurs in List, and Remainder is the result of
+    % deleting one occurrence of Elem from List.
     %
 :- pred delete(one_or_more(T)::in, T::in, list(T)::out) is nondet.
 
@@ -402,8 +402,8 @@
 
     % split_list(N, List, Start, End):
     %
-    % splits `List' into a prefix `Start' of length `N', and a remainder
-    % `End'. Fails if `N' is not in `0 .. length(List)'.
+    % splits List into a prefix Start of length N, and a remainder
+    % End. Fails if N is not in `0 .. length(List)'.
     % See also: take, drop and split_upto.
     %
 :- pred split_list(int::in, one_or_more(T)::in, list(T)::out, list(T)::out)
@@ -412,15 +412,15 @@
     % det_split_list(N, List, Start, End):
     %
     % A deterministic version of split_list, which throws an exception
-    % instead of failing if `N' is not in 0 .. length(List).
+    % instead of failing if N is not in 0 .. length(List).
     %
 :- pred det_split_list(int::in, one_or_more(T)::in, list(T)::out, list(T)::out)
     is det.
 
     % split_upto(N, List, Start, End):
     %
-    % splits `List' into a prefix `Start' of length `min(N, length(List))',
-    % and a remainder `End'. Throws an exception if `N' < 0.
+    % splits List into a prefix Start of length `min(N, length(List))',
+    % and a remainder End. Throws an exception if N < 0.
     % See also: split_list, take, drop.
     %
 :- pred split_upto(int::in, one_or_more(T)::in, list(T)::out, list(T)::out)
@@ -448,18 +448,18 @@
 
     % condense(ListOfOoMs) = List:
     %
-    % `List' is the result of concatenating all the elements of `ListOfOoMs'.
+    % List is the result of concatenating all the elements of ListOfOoMs.
     %
 :- func condense(list(one_or_more(T))) = list(T).
 :- pred condense(list(one_or_more(T))::in, list(T)::out) is det.
 
     % chunk(List, ChunkSize) = Chunks:
     %
-    % Takes a list `List' and breaks it into a list of lists `Chunks',
-    % such that the length of each list in `Chunks' is at most `ChunkSize.
-    % (More precisely, the length of each list in `Chunks' other than the
-    % last one is exactly `ChunkSize', and the length of the last list in
-    % `Chunks' is between one and `ChunkSize'.)
+    % Takes a list List and breaks it into a list of lists Chunks,
+    % such that the length of each list in Chunks is at most ChunkSize.
+    % (More precisely, the length of each list in Chunks other than the
+    % last one is exactly ChunkSize, and the length of the last list in
+    % Chunks is between one and ChunkSize.)
     %
 :- func chunk(one_or_more(T), int) = one_or_more(one_or_more(T)).
 :- pred chunk(one_or_more(T)::in, int::in, one_or_more(one_or_more(T))::out)
@@ -483,7 +483,7 @@
 
     % perm(List0, List):
     %
-    % True iff `List' is a permutation of `List0'.
+    % True iff List is a permutation of List0.
     %
 :- pred perm(one_or_more(T)::in, one_or_more(T)::out) is multi.
 
@@ -576,7 +576,7 @@
     list(T)::out, list(T)::out) is det.
 
     % negated_filter(Pred, List) = FalseList takes a closure with one
-    % input argument and for each member of List `X', calls the closure.
+    % input argument and for each member of List X, calls the closure.
     % X is included in FalseList iff Pred(X) is false.
     %
 :- func negated_filter(pred(T)::in(pred(in) is semidet), one_or_more(T)::in)

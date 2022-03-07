@@ -10,7 +10,7 @@
 % Main author: fjh.
 % Stability: medium.
 %
-% The universal type `univ'
+% The universal type `univ'.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -29,17 +29,17 @@
 
     % type_to_univ(Object, Univ).
     %
-    % True iff the type stored in `Univ' is the same as the type of `Object',
-    % and the value stored in `Univ' is equal to the value of `Object'.
+    % True iff the type stored in `Univ' is the same as the type of Object,
+    % and the value stored in Univ is equal to the value of Object.
     %
     % Operationally,
     %
     % - the forward modes (the di,uo mode and the in,out mode)
-    %   convert `Object' to type univ;
+    %   convert Object to type univ;
     %
-    % - the reverse mode (out,in) checks whether the value stored in `Univ'
+    % - the reverse mode (out,in) checks whether the value stored in Univ
     %   is of type T. If this type test succeeds, it returns that value
-    %   as `Object', but if the test fails, it fails as well.
+    %   as Object, but if the test fails, it fails as well.
     %
 :- pred type_to_univ(T, univ).
 :- mode type_to_univ(di, uo) is det.
@@ -70,7 +70,7 @@
 
     % univ_type(Univ).
     %
-    % Returns the type_desc for the type stored in `Univ'.
+    % Returns the type_desc for the type stored in Univ.
     %
 :- func univ_type(univ) = type_desc.
 

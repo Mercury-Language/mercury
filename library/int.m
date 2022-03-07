@@ -486,7 +486,7 @@
     % floor_to_multiple_of_bits_per_int(Int):
     %
     % Returns the largest multiple of bits_per_int which is less than or
-    % equal to `Int'.
+    % equal to Int.
     %
     % Used by sparse_bitset.m. Makes it clearer to gcc that parts of this
     % operation can be optimized into shifts, without turning up the

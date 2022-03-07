@@ -86,7 +86,7 @@
 
     % Cord = condense(CordOfCords):
     %
-    % `Cord' is the result of concatenating all the elements of `CordOfCords'.
+    % Cord is the result of concatenating all the elements of CordOfCords.
     %
 :- func condense(cord(cord(T))) = cord(T).
 

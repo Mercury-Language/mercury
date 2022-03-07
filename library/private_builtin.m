@@ -10,7 +10,7 @@
 % Main authors: fjh, zs.
 % Stability: medium.
 %
-% This file is automatically imported, as if via `use_module', into every
+% This file is automatically imported, as if via ":- use_module", into every
 % module. It is intended for builtins that are just implementation details,
 % such as procedures that the compiler generates implicit calls to when
 % implementing polymorphism, unification, compare/3, etc.
@@ -1350,7 +1350,7 @@ __Compare____base_typeclass_info_1_0(
 
 %---------------------------------------------------------------------------%
 
-% Code to define the `heap_pointer' and `ref' types for the .NET back-end.
+% Code to define the heap_pointer and ref types for the .NET back-end.
 % (For the C back-ends, they're defined in runtime/mercury_builtin_types.[ch].)
 
 :- pragma foreign_code("C#", "

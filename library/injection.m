@@ -10,8 +10,8 @@
 % Author: mark.
 % Stability: low.
 %
-% This module provides the `injection' ADT.  An injection is like a `map'
-% (see map.m) but it allows efficient reverse lookups, similarly to `bimap'.
+% This module provides the `injection' ADT.  An injection is like a map
+% (see map.m) but it allows efficient reverse lookups, similarly to bimap.
 % This time efficiency comes at the expense of using twice as much space
 % or more.  The difference between an injection and a bimap is that there
 % can be values in the range of the injection that are not returned for any

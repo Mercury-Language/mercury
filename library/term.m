@@ -461,8 +461,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % generic_term(Term) is true iff `Term' is a term of type
-    % `term' ie `term(generic)'. It is useful because in some instances
+    % generic_term(Term) is true iff Term is a term of type
+    % `term' i.e. `term(generic)'. It is useful because in some instances
     % it doesn't matter what the type of a term is, and passing it to this
     % predicate will ground the type avoiding unbound type variable warnings.
     % NOTE_TO_IMPLEMENTORS XXX This is not all that useful,
@@ -470,17 +470,17 @@
     %
 :- pred generic_term(term::in) is det.
 
-    % Coerce a term of type `T' into a term of type `U'.
+    % Coerce a term of type T into a term of type U.
     %
 :- func coerce(term(T)) = term(U).
 :- pred coerce(term(T)::in, term(U)::out) is det.
 
-    % Coerce a var of type `T' into a var of type `U'.
+    % Coerce a var of type T into a var of type U.
     %
 :- func coerce_var(var(T)) = var(U).
 :- pred coerce_var(var(T)::in, var(U)::out) is det.
 
-    % Coerce a var_supply of type `T' into a var_supply of type `U'.
+    % Coerce a var_supply of type T into a var_supply of type U.
     %
 :- func coerce_var_supply(var_supply(T)) = var_supply(U).
 :- pred coerce_var_supply(var_supply(T)::in, var_supply(U)::out) is det.

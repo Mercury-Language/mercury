@@ -194,14 +194,14 @@
 
     % merge(MultiMapA, MultiMapB, MultiMap):
     %
-    % Merge `MultiMapA' and `MultiMapB' so that
+    % Merge MultiMapA and MultiMapB so that
     %
-    % - if a key occurs in both `MultiMapA' and `MultiMapB', then the values
-    %   corresponding to that key in `MultiMap' will be the concatenation
-    %   of the values to that key from `MultiMapA' and `MultiMapB'; while
-    % - if a key occurs in only one of `MultiMapA' and `MultiMapB', then
+    % - if a key occurs in both MultiMapA and MultiMapB, then the values
+    %   corresponding to that key in MultiMap will be the concatenation
+    %   of the values to that key from MultiMapA and MultiMapB; while
+    % - if a key occurs in only one of MultiMapA and MultiMapB, then
     %   the values corresponding to it in that map will be carried over
-    %   to `MultiMap'.
+    %   to MultiMap.
     %
 :- func merge(one_or_more_map(K, V), one_or_more_map(K, V))
     = one_or_more_map(K, V).

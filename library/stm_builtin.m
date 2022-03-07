@@ -51,7 +51,7 @@
 
     % new_stm_var(Value, TVar, !IO):
     %
-    % Create a new transaction variable with initial value `Value'.
+    % Create a new transaction variable with initial value Value.
     %
 :- pred new_stm_var(T::in, stm_var(T)::out, io::di, io::uo) is det.
 
@@ -136,8 +136,8 @@
 
     % stm_create_nested_transaction_log(Parent, Child):
     %
-    % `Child' is a new transaction log whose enclosing transaction's log
-    % is given by `Parent'.
+    % Child is a new transaction log whose enclosing transaction's log
+    % is given by Parent.
     %
 :- impure pred stm_create_nested_transaction_log(stm::ui, stm::uo) is det.
 

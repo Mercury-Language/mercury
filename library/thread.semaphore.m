@@ -28,36 +28,36 @@
 
 :- type semaphore.
 
-    % init(Count, Sem, !IO) creates a new semaphore `Sem' with its counter
-    % initialized to `Count'.
+    % init(Count, Sem, !IO) creates a new semaphore Sem with its counter
+    % initialized to Count.
     %
 :- pred init(int::in, semaphore::uo, io::di, io::uo) is det.
 
-    % init(Sem, !IO) creates a new semaphore `Sem' with its counter
+    % init(Sem, !IO) creates a new semaphore Sem with its counter
     % initialized to 0.
     %
 :- pred init(semaphore::uo, io::di, io::uo) is det.
 
-    % Sem = init(Count) returns a new semaphore `Sem' with its counter
-    % initialized to `Count'.
+    % Sem = init(Count) returns a new semaphore Sem with its counter
+    % initialized to Count.
     %
 :- impure func impure_init(int::in) = (semaphore::uo) is det.
 
-    % signal(Sem, !IO) increments the counter associated with `Sem'
+    % signal(Sem, !IO) increments the counter associated with Sem
     % and if the resulting counter has a value greater than 0, it wakes
     % one or more threads that are waiting on this semaphore (if
     % any).
     %
 :- pred signal(semaphore::in, io::di, io::uo) is det.
 
-    % wait(Sem, !IO) blocks until the counter associated with `Sem'
+    % wait(Sem, !IO) blocks until the counter associated with Sem
     % becomes greater than 0, whereupon it wakes, decrements the
     % counter and returns.
     %
 :- pred wait(semaphore::in, io::di, io::uo) is det.
 
     % try_wait(Sem, Succ, !IO) is the same as wait/3, except that
-    % instead of blocking, it binds `Succ' to a boolean indicating
+    % instead of blocking, it binds Succ to a boolean indicating
     % whether the call succeeded in obtaining the semaphore or not.
     %
 :- pred try_wait(semaphore::in, bool::out, io::di, io::uo) is det.

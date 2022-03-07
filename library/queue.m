@@ -10,7 +10,7 @@
 % Main author: fjh.
 % Stability: high.
 %
-% This file contains a `queue' ADT.
+% This file contains a queue ADT.
 % A queue holds a sequence of values, and provides operations
 % to insert values at the end of the queue (put) and remove them from
 % the front of the queue (get).
@@ -30,7 +30,7 @@
 
 :- type queue(T).
 
-    % `init(Queue)' is true iff `Queue' is an empty queue.
+    % init(Queue) is true iff Queue is an empty queue.
     %
 :- func init = queue(T).
 :- pred init(queue(T)::out) is det.
@@ -40,46 +40,46 @@
     %
 :- pred equal(queue(T)::in, queue(T)::in) is semidet.
 
-    % `is_empty(Queue)' is true iff `Queue' is an empty queue.
+    % is_empty(Queue) is true iff Queue is an empty queue.
     %
 :- pred is_empty(queue(T)::in) is semidet.
 
-    % `is_full(Queue)' is intended to be true iff `Queue' is a queue
+    % is_full(Queue) is intended to be true iff Queue is a queue
     % whose capacity is exhausted. This implementation allows arbitrary-sized
     % queues, so is_full always fails.
     %
 :- pred is_full(queue(T)::in) is semidet.
 
-    % `put(Elem, Queue0, Queue)' is true iff `Queue' is the queue
-    % which results from appending `Elem' onto the end of `Queue0'.
+    % put(Elem, Queue0, Queue) is true iff Queue is the queue
+    % which results from appending Elem onto the end of Queue0.
     %
 :- func put(queue(T), T) = queue(T).
 :- pred put(T::in, queue(T)::in, queue(T)::out) is det.
 
-    % `put_list(Elems, Queue0, Queue)' is true iff `Queue' is the queue
-    % which results from inserting the items in the list `Elems' into `Queue0'.
+    % put_list(Elems, Queue0, Queue) is true iff Queue is the queue
+    % which results from inserting the items in the list Elems into Queue0.
     %
 :- func put_list(queue(T), list(T)) = queue(T).
 :- pred put_list(list(T)::in, queue(T)::in, queue(T)::out) is det.
 
-    % `first(Queue, Elem)' is true iff `Queue' is a non-empty queue
-    % whose first element is `Elem'.
+    % first(Queue, Elem) is true iff Queue is a non-empty queue
+    % whose first element is Elem.
     %
 :- pred first(queue(T)::in, T::out) is semidet.
 
-    % `get(Elem, Queue0, Queue)' is true iff `Queue0' is a non-empty
-    % queue whose first element is `Elem', and `Queue' the queue which results
-    % from removing that element from the front of `Queue0'.
+    % get(Elem, Queue0, Queue) is true iff Queue0 is a non-empty
+    % queue whose first element is Elem, and Queue the queue which results
+    % from removing that element from the front of Queue0.
     %
 :- pred get(T::out, queue(T)::in, queue(T)::out) is semidet.
 
-    % `length(Queue, Length)' is true iff `Queue' is a queue
-    % containing `Length' elements.
+    % length(Queue, Length) is true iff Queue is a queue
+    % containing Length elements.
     %
 :- func length(queue(T)) = int.
 :- pred length(queue(T)::in, int::out) is det.
 
-    % `list_to_queue(List, Queue)' is true iff `Queue' is a queue
+    % list_to_queue(List, Queue) is true iff Queue is a queue
     % containing the elements of List, with the first element of List at
     % the head of the queue.
     %
@@ -90,32 +90,32 @@
     %
 :- func from_list(list(T)) = queue(T).
 
-    % `to_list(Queue) = List' is the inverse of from_list/1.
+    % to_list(Queue) = List is the inverse of from_list/1.
     %
 :- func to_list(queue(T)) = list(T).
 
-    % `delete_all(Elem, Queue0, Queue)' is true iff `Queue' is the same
-    % queue as `Queue0' with all occurrences of `Elem' removed from it.
+    % delete_all(Elem, Queue0, Queue) is true iff Queue is the same
+    % queue as Queue0 with all occurrences of Elem removed from it.
     %
 :- func delete_all(queue(T), T) = queue(T).
 :- pred delete_all(T::in, queue(T)::in, queue(T)::out) is det.
 
-    % `put_on_front(Queue0, Elem) = Queue' pushes `Elem' on to
-    % the front of `Queue0', giving `Queue'.
+    % put_on_front(Queue0, Elem) = Queue pushes Elem on to
+    % the front of Queue0, giving Queue.
     %
 :- func put_on_front(queue(T), T) = queue(T).
 :- pred put_on_front(T::in, queue(T)::in, queue(T)::out) is det.
 
-    % `put_list_on_front(Queue0, Elems) = Queue' pushes `Elems'
-    % on to the front of `Queue0', giving `Queue' (the N'th member
-    % of `Elems' becomes the N'th member from the front of `Queue').
+    % put_list_on_front(Queue0, Elems) = Queue pushes Elems
+    % on to the front of Queue0, giving Queue (the N'th member
+    % of Elems becomes the N'th member from the front of Queue).
     %
 :- func put_list_on_front(queue(T), list(T)) = queue(T).
 :- pred put_list_on_front(list(T)::in, queue(T)::in, queue(T)::out)
     is det.
 
-    % `get_from_back(Elem, Queue0, Queue)' removes `Elem' from
-    % the back of `Queue0', giving `Queue'.
+    % get_from_back(Elem, Queue0, Queue) removes Elem from
+    % the back of Queue0, giving Queue.
     %
 :- pred get_from_back(T::out, queue(T)::in, queue(T)::out) is semidet.
 

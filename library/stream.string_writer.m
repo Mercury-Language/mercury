@@ -944,7 +944,7 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
                 ArgTypeDescs = [ElemType]
             then
                 % Now that we know the element type, we can constrain the type
-                % of the variable `Array' so that we can use det_univ_to_type.
+                % of the variable Array so that we can use det_univ_to_type.
                 has_type(Elem, ElemType),
                 same_array_elem_type(Array, Elem),
                 det_univ_to_type(Univ, Array),

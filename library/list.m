@@ -23,10 +23,10 @@
 
 %---------------------------------------------------------------------------%
 
-    % The definition of the type `list(T)'.
+    % The definition of the type list(T).
     % A list is either an empty list, denoted `[]',
-    % or an element `Head' of type `T' followed by a tail `Tail'
-    % of type `list(T)', denoted `[Head | Tail]'.
+    % or an element Head of type T followed by a tail Tail
+    % of type list(T), denoted `[Head | Tail]'.
     %
 :- type list(T)
     --->    []
@@ -87,7 +87,7 @@
 
     % Standard append predicate:
     % append(Start, End, List) is true iff
-    % `List' is the result of concatenating `Start' and `End'.
+    % List is the result of concatenating Start and End.
     %
 :- pred append(list(T), list(T), list(T)).
 :- mode append(di, di, uo) is det.
@@ -133,8 +133,8 @@
     % length(List) = Length:
     % length(List, Length):
     %
-    % True iff `Length' is the length of `List', i.e. if `List' contains
-    % `Length' elements.
+    % True iff Length is the length of List, i.e. if List contains
+    % Length elements.
     %
 :- func length(list(T)) = int.
 
@@ -145,7 +145,7 @@
 
     % same_length(ListA, ListB):
     %
-    % True iff `ListA' and `ListB' have the same length,
+    % True iff ListA and ListB have the same length,
     % i.e. iff they both contain the same number of elements.
     %
     % Does not traverse *either* list further than the length
@@ -174,7 +174,7 @@
 
     % member(Elem, List):
     %
-    % True iff `List' contains `Elem'.
+    % True iff List contains Elem.
     %
 :- pred member(T, list(T)).
 :- mode member(in, in) is semidet.
@@ -182,15 +182,15 @@
 
     % member(Elem, List, SubList):
     %
-    % True iff `List' contains `Elem', and `SubList' is a suffix of `List'
-    % beginning with `Elem'.
+    % True iff List contains Elem, and SubList is a suffix of List
+    % beginning with Elem.
     % Same as `SubList = [Elem | _], append(_, SubList, List)'.
     %
 :- pred member(T::out, list(T)::in, list(T)::out) is nondet.
 
     % member_index0(Elem, List, Index):
     %
-    % True iff `List' contains `Elem' at the zero-based index `Index'.
+    % True iff List contains Elem at the zero-based index Index.
     %
 :- pred member_index0(T, list(T), int).
 :- mode member_index0(in, in, in) is semidet.
@@ -199,8 +199,8 @@
 
     % member_indexes0(Elem, List, Indexes):
     %
-    % True iff `List' contains `Elem' at the zero-based indexes `Indexes'.
-    % `Indexes' will be sorted.
+    % True iff List contains Elem at the zero-based indexes Indexes.
+    % Indexes will be sorted.
     %
 :- pred member_indexes0(T::in, list(T)::in, list(int)::out) is det.
 
@@ -266,7 +266,7 @@
 
     % reverse(List, Reverse):
     %
-    % `Reverse' is a list containing the same elements as `List'
+    % Reverse is a list containing the same elements as List
     % but in reverse order.
     %
 :- pred reverse(list(T), list(T)).
@@ -286,7 +286,7 @@
 
     % insert(Elem, List0, List):
     %
-    % `List' is the result of inserting `Elem' somewhere in `List0'.
+    % List is the result of inserting Elem somewhere in List0.
     % Same as `delete(List, Elem, List0)'.
     %
 :- pred insert(T, list(T), list(T)).
@@ -297,8 +297,8 @@
 
     % delete(List, Elem, Remainder):
     %
-    % True iff `Elem' occurs in `List', and `Remainder' is the result of
-    % deleting one occurrence of `Elem' from `List'.
+    % True iff Elem occurs in List, and Remainder is the result of
+    % deleting one occurrence of Elem from List.
     %
 :- pred delete(list(T), T, list(T)).
 :- mode delete(in, in, in) is semidet.
@@ -520,8 +520,8 @@
 
     % split_list(N, List, Start, End):
     %
-    % Splits `List' into a prefix `Start' of length `N', and a remainder
-    % `End'. Fails if `N' is not in `0 .. length(List)'.
+    % Splits List into a prefix Start of length N, and a remainder End.
+    % Fails if N is not in `0 .. length(List)'.
     % See also: take, drop and split_upto.
     %
 :- pred split_list(int::in, list(T)::in, list(T)::out, list(T)::out)
@@ -530,15 +530,15 @@
     % det_split_list(N, List, Start, End):
     %
     % A deterministic version of split_list, which throws an exception
-    % instead of failing if `N' is not in 0 .. length(List).
+    % instead of failing if N is not in 0 .. length(List).
     %
 :- pred det_split_list(int::in, list(T)::in, list(T)::out, list(T)::out)
     is det.
 
     % split_upto(N, List, Start, End):
     %
-    % Splits `List' into a prefix `Start' of length `min(N, length(List))',
-    % and a remainder `End'. Throws an exception if `N' < 0.
+    % Splits List into a prefix Start of length `min(N, length(List))',
+    % and a remainder End. Throws an exception if N < 0.
     % See also: split_list, take, drop.
     %
 :- pred split_upto(int::in, list(T)::in, list(T)::out, list(T)::out) is det.
@@ -577,8 +577,8 @@
 
     % take(N, List, Start):
     %
-    % `Start' is the first `Len' elements of `List'.
-    % Fails if `N' is not in `0 .. length(List)'.
+    % Start is the first Len elements of List.
+    % Fails if N is not in `0 .. length(List)'.
     %
 :- pred take(int::in, list(T)::in, list(T)::out) is semidet.
 
@@ -590,8 +590,8 @@
 
     % take_upto(Len, List) = Start:
     %
-    % `Start' is the first `Len' elements of `List'. If `List' has less than
-    % `Len' elements, return the entire list. Throws an exception if `N' < 0.
+    % Start is the first Len elements of List. If List has less than
+    % Len elements, return the entire list. Throws an exception if N < 0.
     %
 :- func take_upto(int, list(T)) = list(T).
 :- pred take_upto(int::in, list(T)::in, list(T)::out) is det.
@@ -600,16 +600,16 @@
 
     % drop(N, List, End):
     %
-    % `End' is the remainder of `List' after removing the first `N' elements.
-    % Fails if `N' is not in `0 .. length(List)'.
+    % End is the remainder of List after removing the first N elements.
+    % Fails if N is not in `0 .. length(List)'.
     % See also: split_list.
     %
 :- pred drop(int::in, list(T)::in, list(T)::out) is semidet.
 
     % det_drop(N, List, End):
     %
-    % `End' is the remainder of `List' after removing the first `N' elements.
-    % Throws an exception if `N' is not in `0 .. length(List)'.
+    % End is the remainder of List after removing the first N elements.
+    % Throws an exception if N is not in `0 .. length(List)'.
     % See also: split_list.
     %
 :- pred det_drop(int::in, list(T)::in, list(T)::out) is det.
@@ -667,18 +667,18 @@
 
     % condense(ListOfLists) = List:
     %
-    % `List' is the result of concatenating all the elements of `ListOfLists'.
+    % List is the result of concatenating all the elements of ListOfLists.
     %
 :- func condense(list(list(T))) = list(T).
 :- pred condense(list(list(T))::in, list(T)::out) is det.
 
     % chunk(List, ChunkSize) = Chunks:
     %
-    % Takes a list `List' and breaks it into a list of lists `Chunks',
-    % such that the length of each list in `Chunks' is at most `ChunkSize.
-    % (More precisely, the length of each list in `Chunks' other than the
-    % last one is exactly `ChunkSize', while the length of the last list in
-    % `Chunks' may vary between one and `ChunkSize'.)
+    % Takes a list List and breaks it into a list of lists Chunks,
+    % such that the length of each list in Chunks is at most ChunkSize.
+    % (More precisely, the length of each list in Chunks other than the
+    % last one is exactly ChunkSize, while the length of the last list in
+    % Chunks may vary between one and ChunkSize.)
     %
 :- func chunk(list(T), int) = list(list(T)).
 :- pred chunk(list(T)::in, int::in, list(list(T))::out) is det.
@@ -700,7 +700,7 @@
 
     % perm(List0, List):
     %
-    % True iff `List' is a permutation of `List0'.
+    % True iff List is a permutation of List0.
     %
 :- pred perm(list(T)::in, list(T)::out) is multi.
 

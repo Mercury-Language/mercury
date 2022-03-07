@@ -10,7 +10,7 @@
 % Author: stayl.
 % Stability: medium
 %
-% This module provides the typeclass `enum', which describes types
+% This module provides the typeclass enum, which describes types
 % which can be converted to and from integers without loss of information.
 %
 %---------------------------------------------------------------------------%
@@ -43,8 +43,8 @@
     func from_int(int) = T is semidet
 ].
 
-    % `det_from_int(I)' returns the result of `from_int(I)', but throws an
-    % exception if `from_int' fails.
+    % det_from_int(I) returns the result of from_int(I), but throws an
+    % exception if from_int fails.
     %
 :- func det_from_int(int) = T <= enum(T).
 

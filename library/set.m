@@ -32,13 +32,13 @@
 % Initial creation of sets.
 %
 
-    % `init(Set)' is true iff `Set' is an empty set.
+    % init(Set) is true iff Set is an empty set.
     %
 :- func init = set(T).
 :- pred init(set(T)::uo) is det.
 
-    % `singleton_set(Elem, Set)' is true iff `Set' is the set
-    % containing just the single element `Elem'.
+    % singleton_set(Elem, Set) is true iff Set is the set
+    % containing just the single element Elem.
     %
 :- pred singleton_set(T, set(T)).
 :- mode singleton_set(in, out) is det.
@@ -51,14 +51,14 @@
 % Emptiness and singleton-ness tests.
 %
 
-    % `empty(Set)' is true iff `Set' is an empty set.
+    % empty(Set) is true iff Set is an empty set.
     % `is_empty' is a synonym for `empty'.
     %
 :- pred empty(set(T)::in) is semidet.
 :- pred is_empty(set(T)::in) is semidet.
 :- pragma obsolete(pred(empty/1), [is_empty/1]).
 
-    % `non_empty(Set)' is true iff `Set' is not an empty set.
+    % non_empty(Set) is true iff Set is not an empty set.
     % `is_non_empty' is a synonym for `non_empty'.
     %
 :- pred non_empty(set(T)::in) is semidet.
@@ -72,18 +72,18 @@
 % Membership tests.
 %
 
-    % `member(X, Set)' is true iff `X' is a member of `Set'.
+    % member(X, Set) is true iff X is a member of Set.
     %
 :- pred member(T, set(T)).
 :- mode member(in, in) is semidet.
 :- mode member(out, in) is nondet.
 
-    % `is_member(X, Set, Result)' returns `Result = yes'
-    % iff `X' is a member of `Set'.
+    % is_member(X, Set, Result) returns `Result = yes'
+    % iff X is a member of Set.
     %
 :- pred is_member(T::in, set(T)::in, bool::out) is det.
 
-    % `contains(Set, X)' is true iff `X' is a member of `Set'.
+    % contains(Set, X) is true iff X is a member of Set.
     %
 :- pred contains(set(T)::in, T::in) is semidet.
 
@@ -92,63 +92,62 @@
 % Insertions and deletions.
 %
 
-    % `insert(X, Set0, Set)' is true iff `Set' is the union of
-    % `Set0' and the set containing only `X'.
+    % insert(X, Set0, Set) is true iff Set is the union of
+    % Set0 and the set containing only X.
     %
 :- func insert(set(T), T) = set(T).
 :- pred insert(T::in, set(T)::in, set(T)::out) is det.
 
-    % `insert_new(X, Set0, Set)' is true iff `Set0' does not contain
-    % `X', and `Set' is the union of `Set0' and the set containing only `X'.
+    % insert_new(X, Set0, Set) is true iff Set0 does not contain
+    % X, and Set is the union of Set0 and the set containing only X.
     %
 :- pred insert_new(T::in, set(T)::in, set(T)::out) is semidet.
 
-    % `insert_list(Xs, Set0, Set)' is true iff `Set' is the union of
-    % `Set0' and the set containing only the members of `Xs'.
+    % insert_list(Xs, Set0, Set) is true iff Set is the union of
+    % Set0 and the set containing only the members of Xs.
     %
 :- func insert_list(set(T), list(T)) = set(T).
 :- pred insert_list(list(T)::in, set(T)::in, set(T)::out) is det.
 
-    % `delete(X, Set0, Set)' is true iff `Set' is the relative
-    % complement of `Set0' and the set containing only `X', i.e.
-    % if `Set' is the set which contains all the elements of `Set0'
-    % except `X'.
+    % delete(X, Set0, Set) is true iff Set is the relative
+    % complement of Set0 and the set containing only X, i.e.
+    % if Set is the set which contains all the elements of Set0
+    % except X.
     %
 :- func delete(set(T), T) = set(T).
 :- pred delete(T::in, set(T)::in, set(T)::out) is det.
 
-    % `delete_list(Set0, Xs, Set)' is true iff `Set' is the relative
-    % complement of `Set0' and the set containing only the members of
-    % `Xs'.
+    % delete_list(Set0, Xs, Set) is true iff Set is the relative
+    % complement of Set0 and the set containing only the members of Xs.
     %
 :- func delete_list(set(T), list(T)) = set(T).
 :- pred delete_list(list(T)::in, set(T)::in, set(T)::out) is det.
 
-    % `remove(X, Set0, Set)' is true iff `Set0' contains `X',
-    % and `Set' is the relative complement of `Set0' and the set
-    % containing only `X', i.e.  if `Set' is the set which contains
-    % all the elements of `Set0' except `X'.
+    % remove(X, Set0, Set) is true iff Set0 contains X,
+    % and Set is the relative complement of Set0 and the set
+    % containing only X, i.e.  if Set is the set which contains
+    % all the elements of Set0 except X.
     %
     % The det_remove version throws an exception instead of failing.
     %
 :- pred remove(T::in, set(T)::in, set(T)::out) is semidet.
 :- pred det_remove(T::in, set(T)::in, set(T)::out) is det.
 
-    % `remove_list(Xs, Set0, Set)' is true iff `Xs' does not
-    % contain any duplicates, `Set0' contains every member of `Xs',
-    % and `Set' is the relative complement of `Set0' and the set
-    % containing only the members of `Xs'.
+    % remove_list(Xs, Set0, Set) is true iff Xs does not
+    % contain any duplicates, Set0 contains every member of Xs,
+    % and Set is the relative complement of Set0 and the set
+    % containing only the members of Xs.
     %
     % The det_remove_list version throws an exception instead of failing.
     %
 :- pred remove_list(list(T)::in, set(T)::in, set(T)::out) is semidet.
 :- pred det_remove_list(list(T)::in, set(T)::in, set(T)::out) is det.
 
-    % `remove_least(Elem, Set0, Set)' is true iff
-    % `Set0' is not empty, `Elem' is the smallest element in `Set0'
+    % remove_least(Elem, Set0, Set) is true iff
+    % Set0 is not empty, Elem is the smallest element in Set0
     % (with elements ordered using the standard ordering given
-    % by compare/3), and `Set' is the set containing all the
-    % elements of `Set0' except `Elem'.
+    % by compare/3), and Set is the set containing all the
+    % elements of Set0 except Elem.
     %
 :- pred remove_least(T::out, set(T)::in, set(T)::out) is semidet.
 
@@ -157,17 +156,17 @@
 % Comparisons between sets.
 %
 
-    % `equal(SetA, SetB)' is true iff
-    % `SetA' and `SetB' contain the same elements.
+    % equal(SetA, SetB) is true iff
+    % SetA and SetB contain the same elements.
     %
 :- pred equal(set(T)::in, set(T)::in) is semidet.
 
-    % `subset(SetA, SetB)' is true iff `SetA' is a subset of `SetB'.
+    % subset(SetA, SetB) is true iff SetA is a subset of SetB.
     %
 :- pred subset(set(T)::in, set(T)::in) is semidet.
 
-    % `superset(SetA, SetB)' is true iff `SetA' is a
-    % superset of `SetB'.
+    % superset(SetA, SetB) is true iff SetA is a
+    % superset of SetB.
     %
 :- pred superset(set(T)::in, set(T)::in) is semidet.
 
@@ -176,9 +175,9 @@
 % Operations on two or more sets.
 %
 
-    % `union(SetA, SetB, Set)' is true iff `Set' is the union of
-    % `SetA' and `SetB'.  If the sets are known to be of different
-    % sizes, then for efficiency make `SetA' the larger of the two.
+    % union(SetA, SetB, Set) is true iff Set is the union of
+    % SetA and SetB.  If the sets are known to be of different
+    % sizes, then for efficiency make SetA the larger of the two.
     % (The current implementation using sorted lists with duplicates
     % removed is not sensitive to the ordering of the input arguments,
     % but other set implementations may be, so observing this convention
@@ -188,19 +187,19 @@
 :- func union(set(T), set(T)) = set(T).
 :- pred union(set(T)::in, set(T)::in, set(T)::out) is det.
 
-    % `union_list(A, B)' is true iff `B' is the union of
-    % all the sets in `A'.
+    % union_list(A, B) is true iff B is the union of
+    % all the sets in A.
     %
 :- func union_list(list(set(T))) = set(T).
 
-    % `power_union(A, B)' is true iff `B' is the union of
-    % all the sets in `A'.
+    % power_union(A, B) is true iff B is the union of
+    % all the sets in A.
     %
 :- func power_union(set(set(T))) = set(T).
 :- pred power_union(set(set(T))::in, set(T)::out) is det.
 
-    % `intersect(SetA, SetB, Set)' is true iff `Set' is the
-    % intersection of `SetA' and `SetB'. If the two sets are
+    % intersect(SetA, SetB, Set) is true iff Set is the
+    % intersection of SetA and SetB. If the two sets are
     % known to be unequal in size, then making SetA be the larger
     % set will usually be more efficient.
     % (The current implementation, using sorted lists with duplicates
@@ -212,20 +211,20 @@
 :- func intersect(set(T), set(T)) = set(T).
 :- pred intersect(set(T)::in, set(T)::in, set(T)::out) is det.
 
-    % `intersect_list(A, B)' is true iff `B' is the intersection of
-    % all the sets in `A'.
+    % intersect_list(A, B) is true iff B is the intersection of
+    % all the sets in A.
     %
 :- func intersect_list(list(set(T))) = set(T).
 
-    % `power_intersect(A, B)' is true iff `B' is the intersection of
-    % all the sets in `A'.
+    % power_intersect(A, B) is true iff B is the intersection of
+    % all the sets in A.
     %
 :- func power_intersect(set(set(T))) = set(T).
 :- pred power_intersect(set(set(T))::in, set(T)::out) is det.
 
-    % `difference(SetA, SetB, Set)' is true iff `Set' is the
-    % set containing all the elements of `SetA' except those that
-    % occur in `SetB'.
+    % difference(SetA, SetB, Set) is true iff Set is the
+    % set containing all the elements of SetA except those that
+    % occur in SetB.
     %
 :- func difference(set(T), set(T)) = set(T).
 :- pred difference(set(T)::in, set(T)::in, set(T)::out) is det.
@@ -260,8 +259,8 @@
 % Converting lists to sets.
 %
 
-    % `list_to_set(List, Set)' is true iff `Set' is the set
-    % containing only the members of `List'.
+    % list_to_set(List, Set) is true iff Set is the set
+    % containing only the members of List.
     %
 :- func list_to_set(list(T)) = set(T).
 :- pred list_to_set(list(T)::in, set(T)::out) is det.
@@ -272,15 +271,15 @@
 :- func set(list(T)) = set(T).
 :- pragma obsolete(func(set/1), [list_to_set/1]).
 
-    % `sorted_list_to_set(List, Set)' is true iff `Set' is the set
-    % containing only the members of `List'.  `List' must be sorted
+    % sorted_list_to_set(List, Set) is true iff Set is the set
+    % containing only the members of List. List must be sorted
     % and must not contain any duplicates.
     %
 :- func sorted_list_to_set(list(T)) = set(T).
 :- pred sorted_list_to_set(list(T)::in, set(T)::out) is det.
 
-    % `rev_sorted_list_to_set(List) = Set' is true iff `Set' is the set
-    % containing only the members of `List'. `List' must be sorted
+    % rev_sorted_list_to_set(List) = Set is true iff Set is the set
+    % containing only the members of List. List must be sorted
     % in descending order and must not contain any duplicates.
     %
 :- func rev_sorted_list_to_set(list(T)) = set(T).
@@ -295,8 +294,8 @@
 % Converting sets to lists.
 %
 
-    % `to_sorted_list(Set, List)' is true iff `List' is the list
-    % of all the members of `Set', in sorted order without any
+    % to_sorted_list(Set, List) is true iff List is the list
+    % of all the members of Set, in sorted order without any
     % duplicates.
     %
 :- func to_sorted_list(set(T)) = list(T).
@@ -307,8 +306,8 @@
 % Counting.
 %
 
-    % `count(Set, Count)' is true iff `Set' has `Count' elements.
-    % i.e. `Count' is the cardinality (size) of the
+    % count(Set, Count) is true iff Set has Count elements.
+    % i.e. Count is the cardinality (size) of the
     %
 :- func count(set(T)) = int.
 :- pred count(set(T)::in, int::out) is det.

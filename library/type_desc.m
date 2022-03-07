@@ -106,16 +106,16 @@
 
     % type_ctor_and_args(Type, TypeCtor, TypeArgs):
     %
-    % True iff `TypeCtor' is a representation of the top-level type constructor
-    % for `Type', and `TypeArgs' is a list of the corresponding type arguments
-    % to `TypeCtor', and `TypeCtor' is not an equivalence type.
+    % True iff TypeCtor is a representation of the top-level type constructor
+    % for Type, and TypeArgs is a list of the corresponding type arguments
+    % to TypeCtor, and TypeCtor is not an equivalence type.
     %
     % For example, type_ctor_and_args(type_of([2,3]), TypeCtor, TypeArgs)
-    % will bind `TypeCtor' to a representation of the type constructor list/1,
-    % and will bind `TypeArgs' to the list `[Int]', where `Int' is a
+    % will bind TypeCtor to a representation of the type constructor list/1,
+    % and will bind TypeArgs to the list `[Int]', where Int is a
     % representation of the type `int'.
     %
-    % Note that the requirement that `TypeCtor' not be an equivalence type
+    % Note that the requirement that TypeCtor not be an equivalence type
     % is fulfilled by fully expanding any equivalence types. For example,
     % if you have a declaration `:- type foo == bar.', then
     % type_ctor_and_args/3 will always return a representation of type
@@ -127,9 +127,9 @@
 
     % pseudo_type_ctor_and_args(Type, TypeCtor, TypeArgs):
     %
-    % True iff `TypeCtor' is a representation of the top-level type constructor
-    % for `Type', and `TypeArgs' is a list of the corresponding type arguments
-    % to `TypeCtor', and `TypeCtor' is not an equivalence type.
+    % True iff TypeCtor is a representation of the top-level type constructor
+    % for Type, and TypeArgs is a list of the corresponding type arguments
+    % to TypeCtor, and TypeCtor is not an equivalence type.
     %
     % Similar to type_ctor_and_args, but works on pseudo_type_infos.
     % Fails if the input pseudo_type_info is a variable.
@@ -184,8 +184,8 @@
 
     % make_type(TypeCtor, TypeArgs) = Type:
     %
-    % True iff `Type' is a type constructed by applying the type constructor
-    % `TypeCtor' to the type arguments `TypeArgs'.
+    % True iff Type is a type constructed by applying the type constructor
+    % TypeCtor to the type arguments TypeArgs.
     %
     % Operationally, the forwards mode returns the type formed by applying
     % the specified type constructor to the specified argument types, or fails
@@ -203,7 +203,7 @@
     %
     % Returns the type formed by applying the specified type constructor
     % to the specified argument types. Throws an exception if the length of
-    % `TypeArgs' is not the same as the arity of `TypeCtor'.
+    % TypeArgs is not the same as the arity of TypeCtor.
     %
 :- func det_make_type(type_ctor_desc, list(type_desc)) = type_desc.
 

@@ -154,7 +154,7 @@
     % destructive update. It is used to work around limitations in
     % the current support for unique modes.
     % `unsafe_promise_unique(X, Y)' is the same as `Y = X' except that
-    % the compiler will assume that `Y' is unique.
+    % the compiler will assume that Y is unique.
     %
     % Note that misuse of this predicate may lead to unsound results:
     % if there is more than one reference to the data in question,
@@ -184,7 +184,7 @@
 %---------------------------------------------------------------------------%
 
     % A call to the function `promise_only_solution(Pred)' constitutes a
-    % promise on the part of the caller that `Pred' has at most one
+    % promise on the part of the caller that Pred has at most one
     % solution, i.e. that `not some [X1, X2] (Pred(X1), Pred(X2), X1 \=
     % X2)'. `promise_only_solution(Pred)' presumes that this assumption is
     % satisfied, and returns the X for which Pred(X) is true, if there is
@@ -212,10 +212,10 @@
     %
     % A call to `promise_only_solution_io(P, X, IO0, IO)' constitutes a
     % promise on the part of the caller that for the given IO0, there is
-    % only one value of `X' and `IO' for which `P(X, IO0, IO)' is true.
+    % only one value of X and IO for which `P(X, IO0, IO)' is true.
     % `promise_only_solution_io(P, X, IO0, IO)' presumes that this
-    % assumption is satisfied, and returns the X and IO for which `P(X,
-    % IO0, IO)' is true.
+    % assumption is satisfied, and returns the X and IO for which
+    % `P(X, IO0, IO)' is true.
     %
     % Note that misuse of this predicate may lead to unsound results: if
     % the assumption is not satisfied, the behaviour is undefined. (If you
@@ -262,7 +262,7 @@
 :- mode compare(uo, in, ui) is det.
 
     % For use in defining user-defined comparison predicates.
-    % For a value `ComparePred' of type `compare', the following
+    % For a value ComparePred of type `compare', the following
     % conditions must hold:
     %
     % - the relation
@@ -547,7 +547,7 @@ X @>= Y :-
 
 % We implement these predicates in Mercury mainly to allow the compiler
 % to perform the deep profiling transformation on them. init_runtime_hooks
-% sets fields in `MR_special_pred_hooks' structure to point to the actual
+% sets fields in MR_special_pred_hooks structure to point to the actual
 % implementations, because we do not want the runtime to have unresolved
 % references into the library when it is built.
 

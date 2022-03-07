@@ -55,12 +55,12 @@
 :- func init = diet(T).
 :- pred init(diet(T)::out) is det.
 
-    % `make_singleton_set(Elem)' returns a set containing just the single
-    % element `Elem'.
+    % make_singleton_set(Elem) returns a set containing just the single
+    % element Elem.
     %
 :- func make_singleton_set(T) = diet(T) <= diet_element(T).
 
-    % `make_interval_set(X, Y)' returns a set containing just the elements in
+    % make_interval_set(X, Y) returns a set containing just the elements in
     % the interval [X, Y]. Throws an exception if Y < X.
     %
 :- func make_interval_set(T, T) = diet(T) <= diet_element(T).
@@ -79,8 +79,8 @@
 
 :- pred is_non_empty(diet(T)::in) is semidet.
 
-    % `is_singleton(Set, X)' is true iff `Set' is a singleton containing the
-    % element `X'.
+    % is_singleton(Set, X) is true iff Set is a singleton containing the
+    % element X.
     %
 :- pred is_singleton(diet(T)::in, T::out) is semidet <= diet_element(T).
 
@@ -89,13 +89,13 @@
 % Membership tests.
 %
 
-    % `member(X, Set)' is true iff `X' is a member of `Set'.
+    % member(X, Set) is true iff X is a member of Set.
     %
 :- pred member(T, diet(T)) <= diet_element(T).
 :- mode member(in, in) is semidet.
 :- mode member(out, in) is nondet.
 
-    % `contains(Set, X)' is true iff `X' is a member of `Set'.
+    % contains(Set, X) is true iff X is a member of Set.
     %
 :- pred contains(diet(T)::in, T::in) is semidet <= diet_element(T).
 
@@ -104,66 +104,66 @@
 % Insertions and deletions.
 %
 
-    % `insert(X, Set0, Set)' is true iff `Set' is the union of
-    % `Set0' and the set containing only `X'.
+    % insert(X, Set0, Set) is true iff Set is the union of
+    % Set0 and the set containing only X.
     %
 :- func insert(diet(T), T) = diet(T) <= diet_element(T).
 :- pred insert(T::in, diet(T)::in, diet(T)::out) is det <= diet_element(T).
 
-    % `insert_interval(X, Y, Set0, Set)' is true iff `Set' is the union of
-    % `Set0' and the set containing only the elements of the interval [X, Y].
+    % insert_interval(X, Y, Set0, Set) is true iff Set is the union of
+    % Set0 and the set containing only the elements of the interval [X, Y].
     % Throws an exception if Y < X.
     %
 :- pred insert_interval(T::in, T::in, diet(T)::in, diet(T)::out) is det
     <= diet_element(T).
 
-    % `insert_new(X, Set0, Set)' is true iff `Set0' does not contain
-    % `X', and `Set' is the union of `Set0' and the set containing only `X'.
+    % insert_new(X, Set0, Set) is true iff Set0 does not contain
+    % X, and Set is the union of Set0 and the set containing only X.
     %
 :- pred insert_new(T::in, diet(T)::in, diet(T)::out) is semidet
     <= diet_element(T).
 
-    % `insert_list(Xs, Set0, Set)' is true iff `Set' is the union of
-    % `Set0' and the set containing only the members of `Xs'.
+    % insert_list(Xs, Set0, Set) is true iff Set is the union of
+    % Set0 and the set containing only the members of Xs.
     %
 :- func insert_list(diet(T), list(T)) = diet(T) <= diet_element(T).
 :- pred insert_list(list(T)::in, diet(T)::in, diet(T)::out) is det
     <= diet_element(T).
 
-    % `delete(X, Set0, Set)' is true iff `Set' is the relative
-    % complement of `Set0' and the set containing only `X', i.e.
-    % if `Set' is the set which contains all the elements of `Set0'
-    % except `X'.
+    % delete(X, Set0, Set) is true iff Set is the relative
+    % complement of Set0 and the set containing only X, i.e.
+    % if Set is the set which contains all the elements of Set0
+    % except X.
     %
 :- func delete(diet(T), T) = diet(T) <= diet_element(T).
 :- pred delete(T::in, diet(T)::in, diet(T)::out) is det <= diet_element(T).
 
-    % `delete_list(Set, X)' returns the difference of `Set' and the set
-    % containing only the members of `X'. Same as
+    % delete_list(Set, X) returns the difference of Set and the set
+    % containing only the members of X. Same as
     % `difference(Set, list_to_set(X))', but may be more efficient.
     %
 :- func delete_list(diet(T), list(T)) = diet(T) <= diet_element(T).
 :- pred delete_list(list(T)::in, diet(T)::in, diet(T)::out) is det
     <= diet_element(T).
 
-    % `remove(X, Set0, Set)' is true iff `Set0' contains `X',
-    % and `Set' is the relative complement of `Set0' and the set
-    % containing only `X', i.e.  if `Set' is the set which contains
-    % all the elements of `Set0' except `X'.
+    % remove(X, Set0, Set) is true iff Set0 contains X,
+    % and Set is the relative complement of Set0 and the set
+    % containing only X, i.e.  if Set is the set which contains
+    % all the elements of Set0 except X.
     %
 :- pred remove(T::in, diet(T)::in, diet(T)::out) is semidet <= diet_element(T).
 
-    % `remove_list(X, Set0, Set)' returns in `Set' the difference of `Set0'
-    % and the set containing all the elements of `X', failing if any element
-    % of `X' is not in `Set0'. Same as `subset(list_to_set(X), Set0),
+    % remove_list(X, Set0, Set) returns in Set the difference of Set0
+    % and the set containing all the elements of X, failing if any element
+    % of X is not in Set0. Same as `subset(list_to_set(X), Set0),
     % difference(Set0, list_to_set(X), Set)', but may be more efficient.
     %
 :- pred remove_list(list(T)::in, diet(T)::in, diet(T)::out) is semidet
     <= diet_element(T).
 
-    % `remove_least(X, Set0, Set)' is true iff `X' is the least element in
-    % `Set0', and `Set' is the set which contains all the elements of `Set0'
-    % except `X'.
+    % remove_least(X, Set0, Set) is true iff X is the least element in
+    % Set0, and Set is the set which contains all the elements of Set0
+    % except X.
     %
 :- pred remove_least(T::out, diet(T)::in, diet(T)::out) is semidet
     <= diet_element(T).
@@ -173,16 +173,16 @@
 % Comparisons between sets.
 %
 
-    % `equal(SetA, SetB)' is true iff `SetA' and `SetB' contain the same
+    % equal(SetA, SetB) is true iff SetA and SetB contain the same
     % elements.
     %
 :- pred equal(diet(T)::in, diet(T)::in) is semidet <= diet_element(T).
 
-    % `subset(Subset, Set)' is true iff `Subset' is a subset of `Set'.
+    % subset(Subset, Set) is true iff Subset is a subset of Set.
     %
 :- pred subset(diet(T)::in, diet(T)::in) is semidet <= diet_element(T).
 
-    % `superset(Superset, Set)' is true iff `Superset' is a superset of `Set'.
+    % superset(Superset, Set) is true iff Superset is a superset of Set.
     %
 :- pred superset(diet(T)::in, diet(T)::in) is semidet <= diet_element(T).
 
@@ -191,34 +191,33 @@
 % Operations on two or more sets.
 %
 
-    % `union(SetA, SetB, Set)' is true iff `Set' is the union of
-    % `SetA' and `SetB'.
+    % union(SetA, SetB, Set) is true iff Set is the union of SetA and SetB.
     %
 :- func union(diet(T), diet(T)) = diet(T) <= diet_element(T).
 :- pred union(diet(T)::in, diet(T)::in, diet(T)::out) is det
     <= diet_element(T).
 
-    % `union_list(Sets, Set)' returns the union of all the sets in Sets.
+    % union_list(Sets, Set) returns the union of all the sets in Sets.
     %
 :- func union_list(list(diet(T))) = diet(T) <= diet_element(T).
 :- pred union_list(list(diet(T))::in, diet(T)::out) is det <= diet_element(T).
 
-    % `intersect(SetA, SetB, Set)' is true iff `Set' is the
-    % intersection of `SetA' and `SetB'.
+    % intersect(SetA, SetB, Set) is true iff Set is the
+    % intersection of SetA and SetB.
     %
 :- func intersect(diet(T), diet(T)) = diet(T) <= diet_element(T).
 :- pred intersect(diet(T)::in, diet(T)::in, diet(T)::out) is det
     <= diet_element(T).
 
-    % `intersect_list(Sets, Set)' returns the intersection of all the sets
+    % intersect_list(Sets, Set) returns the intersection of all the sets
     % in Sets.
     %
 :- func intersect_list(list(diet(T))) = diet(T) <= diet_element(T).
 :- pred intersect_list(list(diet(T))::in, diet(T)::out) is det
     <= diet_element(T).
 
-    % `difference(SetA, SetB)' returns the set containing all the elements
-    % of `SetA' except those that occur in `SetB'.
+    % difference(SetA, SetB) returns the set containing all the elements
+    % of SetA except those that occur in SetB.
     %
 :- func difference(diet(T), diet(T)) = diet(T) <= diet_element(T).
 :- pred difference(diet(T)::in, diet(T)::in, diet(T)::out) is det
@@ -229,10 +228,10 @@
 % Operations that divide a set into two parts.
 %
 
-    % `split(X, Set, Lesser, IsPresent, Greater)' is true iff
-    % `Lesser' is the set of elements in `Set' which are less than `X' and
-    % `Greater' is the set of elements in `Set' which are greater than `X'.
-    % `IsPresent' is `yes' if `Set' contains `X', and `no' otherwise.
+    % split(X, Set, Lesser, IsPresent, Greater) is true iff
+    % Lesser is the set of elements in Set which are less than X and
+    % Greater is the set of elements in Set which are greater than X.
+    % IsPresent is `yes' if Set contains X, and `no' otherwise.
     %
 :- pred split(T::in, diet(T)::in, diet(T)::out, bool::out, diet(T)::out) is det
     <= diet_element(T).
@@ -256,7 +255,7 @@
 % Converting lists to sets.
 %
 
-    % `list_to_set(List)' returns a set containing only the members of `List'.
+    % list_to_set(List) returns a set containing only the members of List.
     %
 :- func list_to_set(list(T)) = diet(T) <= diet_element(T).
 :- pred list_to_set(list(T)::in, diet(T)::out) is det <= diet_element(T).
@@ -264,7 +263,7 @@
 :- func from_list(list(T)) = diet(T) <= diet_element(T).
 :- pred from_list(list(T)::in, diet(T)::out) is det <= diet_element(T).
 
-    % `from_interval_list(Intervals, Set)' returns a Set containing the
+    % from_interval_list(Intervals, Set) returns a Set containing the
     % elements of all intervals [X, Y] in Intervals, where each interval is
     % represented by a tuple. Throws an exception if any interval has Y < X.
     % The intervals may overlap.
@@ -272,8 +271,8 @@
 :- pred from_interval_list(list({T, T})::in, diet(T)::out) is det
     <= diet_element(T).
 
-    % `sorted_list_to_set(List)' returns a set containing only the members
-    % of `List'. `List' must be sorted.
+    % sorted_list_to_set(List) returns a set containing only the members
+    % of List. List must be sorted.
     %
 :- func sorted_list_to_set(list(T)) = diet(T) <= diet_element(T).
 :- pred sorted_list_to_set(list(T)::in, diet(T)::out) is det
@@ -284,13 +283,13 @@
 % Converting sets to lists.
 %
 
-    % `to_sorted_list(Set)' returns a list containing all the members of `Set',
+    % to_sorted_list(Set) returns a list containing all the members of Set,
     % in sorted order.
     %
 :- func to_sorted_list(diet(T)) = list(T) <= diet_element(T).
 :- pred to_sorted_list(diet(T)::in, list(T)::out) is det <= diet_element(T).
 
-    % `to_sorted_interval_list(Set)' returns a list of intervals in `Set'
+    % to_sorted_interval_list(Set) returns a list of intervals in Set
     % in sorted order, where each interval is represented by a tuple.
     % The intervals do not overlap.
     %
@@ -302,7 +301,7 @@
 % Counting.
 %
 
-    % `count(Set)' returns the number of elements in Set.
+    % count(Set) returns the number of elements in Set.
     %
 :- func count(diet(T)) = int <= enum(T).
 
@@ -317,21 +316,20 @@
 :- pred all_true(pred(T)::in(pred(in) is semidet), diet(T)::in) is semidet
     <= diet_element(T).
 
-    % `filter(Pred, Set) = TrueSet' returns the elements of Set for which
-    % Pred succeeds.
+    % filter(Pred, Set) returns the elements of Set for which Pred succeeds.
     %
 :- func filter(pred(T), diet(T)) = diet(T) <= diet_element(T).
 :- mode filter(pred(in) is semidet, in) = out is det.
 
-    % `filter(Pred, Set, TrueSet, FalseSet)' returns the elements of Set
+    % filter(Pred, Set, TrueSet, FalseSet) returns the elements of Set
     % for which Pred succeeds, and those for which it fails.
     %
 :- pred filter(pred(T), diet(T), diet(T), diet(T)) <= diet_element(T).
 :- mode filter(pred(in) is semidet, in, out, out) is det.
 
-    % `foldl_intervals(Pred, Set, Start)' calls Pred with each interval of
-    % `Set' (in sorted order) and an accumulator (with the initial value of
-    % `Start'), and returns the final value.
+    % foldl_intervals(Pred, Set, Start) calls Pred with each interval of
+    % Set (in sorted order) and an accumulator (with the initial value of
+    % Start), and returns the final value.
     %
 :- pred foldl_intervals(pred(T, T, A, A), diet(T), A, A) <= diet_element(T).
 :- mode foldl_intervals(pred(in, in, in, out) is det, in, in, out) is det.
@@ -339,9 +337,9 @@
 :- mode foldl_intervals(pred(in, in, in, out) is semidet, in, in, out)
     is semidet.
 
-    % `foldr_intervals(Pred, Set, Start)' calls Pred with each interval of
-    % `Set' (in reverse sorted order) and an accumulator (with the initial
-    % value of `Start'), and returns the final value.
+    % foldr_intervals(Pred, Set, Start) calls Pred with each interval of
+    % Set (in reverse sorted order) and an accumulator (with the initial
+    % value of Start), and returns the final value.
     %
 :- pred foldr_intervals(pred(T, T, A, A), diet(T), A, A) <= diet_element(T).
 :- mode foldr_intervals(pred(in, in, in, out) is det, in, in, out) is det.
@@ -349,8 +347,8 @@
 :- mode foldr_intervals(pred(in, in, in, out) is semidet, in, in, out)
     is semidet.
 
-    % `foldl(Func, Set, Start)' calls Func with each element of `Set'
-    % (in sorted order) and an accumulator (with the initial value of `Start'),
+    % foldl(Func, Set, Start) calls Func with each element of Set
+    % (in sorted order) and an accumulator (with the initial value of Start),
     % and returns the final value.
     %
 :- func foldl(func(T, A) = A, diet(T), A) = A <= diet_element(T).
