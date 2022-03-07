@@ -71,21 +71,21 @@ Changes to the Mercury standard library
     - pred `write_bitmap/6`         (replacement: `bitmap.write_bitmap_range/6`)
 
     - pred `report_stats/3`
-            (replacement: `benchmarking.report_stats/3')
+            (replacement: `benchmarking.report_stats/3`)
     - pred `report_stats/4`
-            (replacement: `benchmarking.report_stats/4')
+            (replacement: `benchmarking.report_stats/4`)
     - pred `report_standard_stats/2`
-            (replacement: `benchmarking.report_standard_stats/2')
+            (replacement: `benchmarking.report_standard_stats/2`)
     - pred `report_standard_stats/3`
-            (replacement: `benchmarking.report_standard_stats/3')
+            (replacement: `benchmarking.report_standard_stats/3`)
     - pred `report_full_memory_stats/2`
-            (replacement: `benchmarking.report_full_memory_stats/2')
+            (replacement: `benchmarking.report_full_memory_stats/2`)
     - pred `report_full_memory_stats/3`
-            (replacement: `benchmarking.report_full_memory_stats/3')
+            (replacement: `benchmarking.report_full_memory_stats/3`)
     - pred `report_tabling_statistics/2`
-            (replacement: `benchmarking.report_tabling_statistics/2')
+            (replacement: `benchmarking.report_tabling_statistics/2`)
     - pred `report_tabling_statistics/3`
-            (replacement: `benchmarking.report_tabling_statistics/3')
+            (replacement: `benchmarking.report_tabling_statistics/3`)
 
     - pred `get_globals/3`          (replacement: a mutable)
     - pred `set_globals/3`          (replacement: a mutable)
