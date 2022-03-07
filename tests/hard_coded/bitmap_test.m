@@ -380,14 +380,14 @@ test_binary_io(!IO) :-
     io.open_binary_output(FileName, OpenRes, !IO),
     (
         OpenRes = ok(Stream),
-        io.write_bitmap(Stream, BMa, !IO),
-        io.write_bitmap(Stream, BMb, 2, 3, !IO),
+        bitmap.write_bitmap(Stream, BMa, !IO),
+        bitmap.write_bitmap_range(Stream, BMb, 2, 3, !IO),
         io.close_binary_output(Stream, !IO),
         io.open_binary_input(FileName, OpenInputRes, !IO),
         (
             OpenInputRes = ok(IStream),
             InputBMa0 = bitmap.init(64, no),
-            io.read_bitmap(IStream, InputBMa0, InputBMa,
+            bitmap.read_bitmap(IStream, InputBMa0, InputBMa,
                 BytesReadA, ReadResA, !IO),
             ( if
                 ReadResA = ok,
@@ -399,11 +399,11 @@ test_binary_io(!IO) :-
                 io.write_string("First read failed\n", !IO)
             ),
             InputBMb0 = bitmap.init(32, no),
-            io.read_bitmap(IStream, InputBMb0, InputBMb1,
+            bitmap.read_bitmap(IStream, InputBMb0, InputBMb1,
                 BytesReadB, ReadResB, !IO),
 
-            % Check that we're at eof.
-            io.read_bitmap(IStream, InputBMb1, InputBMb,
+            % Check that we are at eof.
+            bitmap.read_bitmap(IStream, InputBMb1, InputBMb,
                 BytesReadB2, ReadResB2, !IO),
             ( if
                 ReadResB = ok,
@@ -462,9 +462,7 @@ test_text_io(!IO) :-
                 throw(ReadResA)
             ),
             io.read(IStream, ReadResB, !IO),
-            ( if
-                ReadResB = ok(BMb)
-            then
+            ( if ReadResB = ok(BMb) then
                 io.write_string("Second read succeeded\n", !IO)
             else
                 io.write_string("Second read failed\n", !IO),
