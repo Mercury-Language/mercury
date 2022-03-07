@@ -405,11 +405,12 @@ HEADER_CLEAN_FILTER = \
 		exit 1; \
 	fi
 
-# These rules help to check that header files is self-contained, i.e. that each
-# header file foo.h includes any other header files that define types
-# used by foo.h. It creates a foo.check_hdr.c file that contains only a single
-# `#include' statement that includes foo.h; compiling foo.check_hdr.c will fail
-# if foo.h is not self-contained. Similarly for .mh files.
+# These rules help to check that each header file is self-contained,
+# i.e. that each header file foo.h includes any other header files
+# that define types used by foo.h. It creates a foo.check_hdr.c file
+# that contains only a single `#include' statement that includes foo.h;
+# compiling foo.check_hdr.c will fail if foo.h is not self-contained.
+# Similarly for .mh files.
 
 %.check_hdr.c: %.h
 	@echo "#include \"$*.h\"" > $*.check_hdr.c
