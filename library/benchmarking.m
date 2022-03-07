@@ -23,6 +23,24 @@
 :- import_module io.
 :- import_module maybe.
 
+    % report_memory_attribution(Label, Collect, !IO) is a procedure intended
+    % for use in profiling the memory usage by a program. It is supported in
+    % `memprof.gc' grades only, in other grades it is a no-op. It reports a
+    % summary of the objects on the heap to a data file. See ``Using mprof -s
+    % for profiling memory retention'' in the Mercury User's Guide. The label
+    % is for your reference. If Collect is yes, it has the effect of forcing a
+    % garbage collection before building the report.
+    %
+:- pred report_memory_attribution(string::in, bool::in, io::di, io::uo) is det.
+:- impure pred report_memory_attribution(string::in, bool::in) is det.
+
+    % report_memory_attribution(Label, !IO) is the same as
+    % report_memory_attribution/4 above, except that it always forces a
+    % collection (in 'memprof.gc' grades).
+    %
+:- pred report_memory_attribution(string::in, io::di, io::uo) is det.
+:- impure pred report_memory_attribution(string::in) is det.
+
     % `report_stats/0' is a non-logical procedure intended for use in profiling
     % the performance of a program. It has the side-effect of reporting
     % some memory and time usage statistics about the time period since
@@ -44,23 +62,7 @@
 % NOTE_TO_IMPLEMENTORS :- pragma obsolete(report_full_memory_stats/0,
 % NOTE_TO_IMPLEMENTORS [io.report_full_memory_stats/3, io.report_full_memory_stats/4]).
 
-    % report_memory_attribution(Label, Collect, !IO) is a procedure intended
-    % for use in profiling the memory usage by a program. It is supported in
-    % `memprof.gc' grades only, in other grades it is a no-op. It reports a
-    % summary of the objects on the heap to a data file. See ``Using mprof -s
-    % for profiling memory retention'' in the Mercury User's Guide. The label
-    % is for your reference. If Collect is yes, it has the effect of forcing a
-    % garbage collection before building the report.
-    %
-:- pred report_memory_attribution(string::in, bool::in, io::di, io::uo) is det.
-:- impure pred report_memory_attribution(string::in, bool::in) is det.
-
-    % report_memory_attribution(Label, !IO) is the same as
-    % report_memory_attribution/4 above, except that it always forces a
-    % collection (in 'memprof.gc' grades).
-    %
-:- pred report_memory_attribution(string::in, io::di, io::uo) is det.
-:- impure pred report_memory_attribution(string::in) is det.
+%---------------------------------------------------------------------------%
 
     % benchmark_det(Pred, In, Out, Repeats, Time) is for benchmarking the det
     % predicate Pred. We call Pred with the input In and the output Out, and
@@ -178,22 +180,6 @@
 #include ""mercury_report_stats.h""
 ").
 
-%---------------------%
-
-report_stats :-
-    trace [io(!IO)] (
-        io.report_standard_stats(!IO)
-    ),
-    impure impure_true.
-
-%---------------------%
-
-report_full_memory_stats :-
-    trace [io(!IO)] (
-        io.report_full_memory_stats(!IO)
-    ),
-    impure impure_true.
-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
@@ -217,11 +203,29 @@ report_memory_attribution(Label, Collect) :-
     ),
     impure impure_true.
 
+%---------------------%
+
 report_memory_attribution(Label, !IO) :-
     report_memory_attribution(Label, yes, !IO).
 
 report_memory_attribution(Label) :-
     impure report_memory_attribution(Label, yes).
+
+%---------------------%
+
+report_stats :-
+    trace [io(!IO)] (
+        io.report_standard_stats(!IO)
+    ),
+    impure impure_true.
+
+%---------------------%
+
+report_full_memory_stats :-
+    trace [io(!IO)] (
+        io.report_full_memory_stats(!IO)
+    ),
+    impure impure_true.
 
 %---------------------------------------------------------------------------%
 
