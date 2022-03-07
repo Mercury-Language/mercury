@@ -10,7 +10,9 @@
 % Main author: fjh.
 % Stability: medium.
 %
-% The universal type `univ'.
+% The universal type `univ', which can represent values of any type
+% chosen at runtime. This type is Mercury's mechanism to allow the
+% deferral of some type checks from compile time to runtime.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -22,8 +24,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % An object of type `univ' can hold the type and value of an object of any
-    % other type.
+    % A variable of type `univ' can hold the type and value
+    % of any other variable of any type.
     %
 :- type univ.
 
