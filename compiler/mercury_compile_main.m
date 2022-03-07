@@ -105,6 +105,7 @@
 :- import_module top_level.mercury_compile_middle_passes.
 :- import_module top_level.mercury_compile_mlds_back_end.
 
+:- import_module benchmarking.
 :- import_module bool.
 :- import_module char.
 :- import_module cord.
@@ -1043,7 +1044,7 @@ do_op_mode_args(Globals, OpModeArgs, FileNamesFromStdin, DetectedGradeFlags,
     globals.lookup_bool_option(Globals, statistics, Statistics),
     (
         Statistics = yes,
-        io.report_stats(StdErr, "full_memory_stats", !IO)
+        benchmarking.report_full_memory_stats(StdErr, !IO)
     ;
         Statistics = no
     ).

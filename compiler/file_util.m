@@ -194,6 +194,7 @@
 :- import_module libs.compute_grade.
 :- import_module libs.options.
 
+:- import_module benchmarking.
 :- import_module dir.
 :- import_module exception.
 :- import_module string.
@@ -512,11 +513,11 @@ maybe_report_stats(Statistics, !IO) :-
     maybe_report_stats(Stream, Statistics, !IO).
 
 maybe_report_stats(Stream, yes, !IO) :-
-    io.report_standard_stats(Stream, !IO).
+    benchmarking.report_standard_stats(Stream, !IO).
 maybe_report_stats(_Stream, no, !IO).
 
 maybe_report_stats_to_stream(yes(Stream), !IO) :-
-    io.report_standard_stats(Stream, !IO).
+    benchmarking.report_standard_stats(Stream, !IO).
 maybe_report_stats_to_stream(no, !IO).
 
 %---------------------%

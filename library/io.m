@@ -1866,13 +1866,17 @@
 
 %---------------------------------------------------------------------------%
 %
-% Predicates that report statistics about the current program execution.
+% Predicates that report statistics about the execution of the current process
+% so far.
 %
 
+    % report_stats(Stream, Selector, !IO):
+    % report_stats(Selector, !IO):
+    %
     % Write selected statistics to the specified stream, or (if none)
-    % to stderr. What statistics will be written is controlled by
-    % the first argument, which acts a selector. What selector values
-    % cause what statistics to be printed is implementation defined.
+    % to stderr. What statistics will be written is controlled by the
+    % Selector argument. What selector values cause what statistics
+    % to be printed is implementation defined.
     %
     % The Melbourne implementation supports the following selectors:
     %
@@ -1892,6 +1896,8 @@
 :- pred report_stats(io.text_output_stream::in, string::in,
     io::di, io::uo) is det.
 :- pred report_stats(string::in, io::di, io::uo) is det.
+:- pragma obsolete(pred(report_stats/4), [benchmarking.report_stats/4]).
+:- pragma obsolete(pred(report_stats/3), [benchmarking.report_stats/3]).
 
     % Write standard memory/time usage statistics to the specified stream,
     % or (if none) to stderr.
@@ -1899,6 +1905,10 @@
 :- pred report_standard_stats(io.text_output_stream::in,
     io::di, io::uo) is det.
 :- pred report_standard_stats(io::di, io::uo) is det.
+:- pragma obsolete(pred(report_standard_stats/3),
+    [benchmarking.report_standard_stats/3]).
+:- pragma obsolete(pred(report_standard_stats/2),
+    [benchmarking.report_standard_stats/2]).
 
     % report_full_memory_stats/3 reports a full memory profile
     % to the specified output stream, or (if none) to stderr.
@@ -1906,6 +1916,10 @@
 :- pred report_full_memory_stats(io.text_output_stream::in,
     io::di, io::uo) is det.
 :- pred report_full_memory_stats(io::di, io::uo) is det.
+:- pragma obsolete(pred(report_full_memory_stats/3),
+    [benchmarking.report_full_memory_stats/3]).
+:- pragma obsolete(pred(report_full_memory_stats/2),
+    [benchmarking.report_full_memory_stats/2]).
 
     % report_tabling_statistics/3, as its name says, reports statistics
     % about tabling to the specified output stream, or (if none) to stderr.
@@ -1915,6 +1929,10 @@
 :- pred report_tabling_statistics(io.text_output_stream::in,
     io::di, io::uo) is det.
 :- pred report_tabling_statistics(io::di, io::uo) is det.
+:- pragma obsolete(pred(report_tabling_statistics/3),
+    [benchmarking.report_tabling_statistics/3]).
+:- pragma obsolete(pred(report_tabling_statistics/2),
+    [benchmarking.report_tabling_statistics/2]).
 
 %---------------------------------------------------------------------------%
 %
@@ -2201,6 +2219,7 @@
 :- implementation.
 
 :- import_module assoc_list.
+:- import_module benchmarking.
 :- import_module dir.
 :- import_module exception.
 :- import_module int.
@@ -12035,137 +12054,34 @@ unlock_globals :-
 %
 
 report_stats(Stream, Selector, !IO) :-
-    ( if Selector = "standard" then
-        report_standard_stats(Stream, !IO)
-    else if Selector = "full_memory_stats" then
-        report_full_memory_stats(Stream, !IO)
-    else if Selector = "tabling" then
-        report_tabling_statistics(Stream, !IO)
-    else
-        string.format("io.report_stats: selector `%s' not understood",
-            [s(Selector)], Message),
-        error(Message)
-    ).
+    benchmarking.report_stats(Stream, Selector, !IO).
 
 report_stats(Selector, !IO) :-
-    io.stderr_stream(StdErr, !IO),
-    report_stats(StdErr, Selector, !IO).
+    benchmarking.report_stats(Selector, !IO).
 
 %---------------------%
 
 report_standard_stats(output_stream(Stream), !IO) :-
-    report_standard_stats_2(Stream, Error, !IO),
-    throw_on_output_error(Error, !IO).
+    benchmarking.report_standard_stats(output_stream(Stream), !IO).
 
 report_standard_stats(!IO) :-
-    io.stderr_stream(StdErr, !IO),
-    report_standard_stats(StdErr, !IO).
-
-:- pred report_standard_stats_2(io.stream::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    report_standard_stats_2(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, tabled_for_io,
-        does_not_affect_liveness],
-"
-    Error = MR_report_standard_stats(MR_file(*Stream),
-        &MR_line_number(*Stream));
-").
-
-:- pragma foreign_proc("C#",
-    report_standard_stats_2(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury],
-"
-    try {
-        benchmarking.ML_report_standard_stats(Stream);
-        Error = null;
-    } catch (System.SystemException e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    report_standard_stats_2(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury],
-"
-    try {
-        jmercury.benchmarking.ML_report_standard_stats(
-            (jmercury.io.MR_TextOutputFile) Stream);
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
+    benchmarking.report_standard_stats(!IO).
 
 %---------------------%
 
 report_full_memory_stats(output_stream(Stream), !IO) :-
-    report_full_memory_stats_2(Stream, Error, !IO),
-    throw_on_output_error(Error, !IO).
+    benchmarking.report_full_memory_stats(output_stream(Stream), !IO).
 
 report_full_memory_stats(!IO) :-
-    io.stderr_stream(StdErr, !IO),
-    report_full_memory_stats(StdErr, !IO).
-
-:- pred report_full_memory_stats_2(io.stream::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    report_full_memory_stats_2(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, tabled_for_io,
-        does_not_affect_liveness],
-"
-    Error = MR_report_full_memory_stats(MR_file(*Stream),
-        &MR_line_number(*Stream));
-").
-
-:- pragma foreign_proc("C#",
-    report_full_memory_stats_2(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury],
-"
-    try {
-        benchmarking.ML_report_full_memory_stats(Stream);
-        Error = null;
-    } catch (System.SystemException e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    report_full_memory_stats_2(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury],
-"
-    try {
-        jmercury.benchmarking.ML_report_full_memory_stats(
-            (jmercury.io.MR_TextOutputFile) Stream);
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
+    benchmarking.report_full_memory_stats(!IO).
 
 %---------------------%
 
 report_tabling_statistics(output_stream(Stream), !IO) :-
-    report_tabling_statistics_2(Stream, !IO).
+    benchmarking.report_tabling_statistics(output_stream(Stream), !IO).
 
 report_tabling_statistics(!IO) :-
-    io.stderr_stream(StdErr, !IO),
-    report_tabling_statistics(StdErr, !IO).
-
-:- pred report_tabling_statistics_2(io.stream::in, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    report_tabling_statistics_2(Stream::in, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, tabled_for_io,
-        does_not_affect_liveness],
-"
-    MR_table_report_statistics(MR_file(*Stream));
-").
-
-report_tabling_statistics_2(_Stream, !IO) :-
-    private_builtin.sorry("report_tabling_statistics").
+    benchmarking.report_tabling_statistics(!IO).
 
 %---------------------------------------------------------------------------%
 %
