@@ -445,11 +445,19 @@ must be positioned above the predicate or function declaration.
 It should be formatted as in the following example:
 
 <pre>
-		% Description of predicate foo.
+		% foo(Arg1, Arg2, Result, !Acc),
+        %
+        % Returns the foo of Arg1 and Arg2, while updating !Acc by ...
 		%
 	:- pred foo(...
 	:- mode foo(...
 </pre>
+
+The arguments of the predicate or function should be given descriptive names,
+although a one-character non-descriptive name such as X
+is acceptable when the semantics of an argument is obvious anyway.
+Neither the name of the predicate nor the names of the arguments
+should be quoted in any way.
 
 A group of related predicate, mode and function declarations
 may be grouped together under a single description,
