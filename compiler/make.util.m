@@ -272,6 +272,7 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module int.
+:- import_module io.file.
 :- import_module map.
 :- import_module require.
 :- import_module set.
@@ -553,7 +554,7 @@ make_remove_module_file(Globals, VerboseOption, ModuleName, Ext, !Info, !IO) :-
 make_remove_file(Globals, VerboseOption, FileName, !Info, !IO) :-
     verbose_make_msg_option(Globals, VerboseOption,
         report_remove_file(FileName), !IO),
-    io.remove_file_recursively(FileName, _, !IO),
+    io.file.remove_file_recursively(FileName, _, !IO),
     FileTimestamps0 = !.Info ^ mki_file_timestamps,
     map.delete(FileName, FileTimestamps0, FileTimestamps),
     !Info ^ mki_file_timestamps := FileTimestamps.

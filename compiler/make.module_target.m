@@ -108,6 +108,7 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module int.
+:- import_module io.file.
 :- import_module float.
 :- import_module map.
 :- import_module maybe.
@@ -397,7 +398,7 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
         % We need a temporary file to pass the arguments to the mmc process
         % which will do the compilation. It is created here (not in invoke_mmc)
         % so it can be cleaned up by teardown_checking_for_interrupt.
-        io.make_temp_file(ArgFileNameResult, !IO),
+        io.file.make_temp_file(ArgFileNameResult, !IO),
         (
             ArgFileNameResult = ok(ArgFileName),
             MaybeArgFileName = yes(ArgFileName),
@@ -485,7 +486,7 @@ cleanup_files(Globals, MaybeArgFileName, TouchedTargetFiles, TouchedFiles,
         TouchedFiles, !MakeInfo, !IO),
     (
         MaybeArgFileName = yes(ArgFileName2),
-        io.remove_file(ArgFileName2, _, !IO)
+        io.file.remove_file(ArgFileName2, _, !IO)
     ;
         MaybeArgFileName = no
     ).
@@ -761,7 +762,7 @@ invoke_mmc(Globals, ProgressStream, ErrorStream,
         io.format("Error opening `%s' for output: %s\n",
             [s(ArgFileName), s(ErrorMsg)], !IO)
     ),
-    io.remove_file(ArgFileName, _, !IO).
+    io.file.remove_file(ArgFileName, _, !IO).
 
 :- pred target_is_java is semidet.
 

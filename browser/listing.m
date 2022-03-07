@@ -110,6 +110,7 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module int.
+:- import_module io.file.
 :- import_module maybe.
 :- import_module string.
 :- import_module type_desc.
@@ -312,7 +313,7 @@ find_file([], _, no, !IO).
 find_file([Dir | Path], FileName0, Result, !IO) :-
     FileName = Dir / FileName0,
     FollowSymLinks = yes,
-    io.file_type(FollowSymLinks, FileName, FileTypeRes, !IO),
+    io.file.file_type(FollowSymLinks, FileName, FileTypeRes, !IO),
     (
         FileTypeRes = ok(FileType),
         (

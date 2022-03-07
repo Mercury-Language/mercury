@@ -87,9 +87,60 @@ Changes to the Mercury standard library
     - pred `report_tabling_statistics/3`
             (replacement: `benchmarking.report_tabling_statistics/3`)
 
+    - pred `remove_file/4`
+            (replacement: `io.file.remove_file/4`)
+    - pred `remove_file_recursively/4`
+            (replacement: `io.file.remove_file_recursively/4`)
+    - pred `rename_file/5`
+            (replacement: `io.file.rename_file/5`)
+    - pred `have_symlinks/0`
+            (replacement: `io.file.have_symlinks/0`)
+    - pred `make_symlink/5`
+            (replacement: `io.file.make_symlink/5`)
+    - pred `read_symlink/4`
+            (replacement: `io.file.read_symlink/4`)
+    - pred `check_file_accessibility/5`
+            (replacement: `io.file.check_file_accessibility/5`)
+    - pred `file_type/5`
+            (replacement: `io.file.file_type/5`)
+    - pred `file_modification_time/4`
+            (replacement: `io.file.file_modification_time/4`)
+    - pred `make_temp_file/3`
+            (replacement: `io.file.make_temp_file/3`)
+    - pred `make_temp_file/6`
+            (replacement: `io.file.make_temp_file/6`)
+    - pred `make_temp_directory/3`
+            (replacement: `io.file.make_temp_directory/3`)
+    - pred `make_temp_directory/6`
+            (replacement: `io.file.make_temp_directory/6`)
+    - pred `have_make_temp_directory/0`
+            (replacement: `io.file.have_make_temp_directory/0`)
+    - pred `get_temp_directory/3`
+            (replacement: `io.file.get_temp_directory/3`)
+
     - pred `get_globals/3`          (replacement: a mutable)
     - pred `set_globals/3`          (replacement: a mutable)
     - pred `update_globals/3`       (replacement: a mutable)
+
+### New `io.file` module
+
+This module module has these predicates:
+
+    - pred `remove_file/4`
+    - pred `remove_file_recursively/4`
+    - pred `rename_file/5`
+    - pred `have_symlinks/0`
+    - pred `make_symlink/5`
+    - pred `read_symlink/4`
+    - pred `check_file_accessibility/5`
+    - pred `file_type/5`
+    - pred `file_modification_time/4`
+    - pred `make_temp_file/3`
+    - pred `make_temp_file/6`
+    - pred `make_temp_directory/3`
+    - pred `make_temp_directory/6`
+    - pred `have_make_temp_directory/0`
+    - pred `get_temp_directory/3`
 
 ### Changes to the `term_io` module
 

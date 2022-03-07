@@ -21,9 +21,10 @@
 :- implementation.
 
 :- import_module exception.
+:- import_module io.file.
 
 main(!IO) :-
-    io.make_temp_file(NameResult, !IO),
+    io.file.make_temp_file(NameResult, !IO),
     (
         NameResult = ok(Name)
     ;
@@ -36,7 +37,7 @@ main(!IO) :-
         OpenOutputResult = io.ok(Stream),
         io.print_line(Stream, "Just testing", !IO),
         io.close_output(Stream, !IO),
-        io.remove_file(Name, RemoveResult, !IO),
+        io.file.remove_file(Name, RemoveResult, !IO),
         (
             RemoveResult = io.ok,
             io.open_input(Name, OpenInputResult, !IO),
@@ -55,7 +56,7 @@ main(!IO) :-
             io.print_line(RemoveErrorMsg, !IO),
             io.set_exit_status(1, !IO)
         ),
-        io.remove_file(Name, RemoveAgainResult, !IO),
+        io.file.remove_file(Name, RemoveAgainResult, !IO),
         (
             RemoveAgainResult = io.ok,
             io.print("Second remove didn't report failure\n", !IO),

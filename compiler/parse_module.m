@@ -208,6 +208,7 @@
 :- import_module cord.
 :- import_module counter.
 :- import_module int.
+:- import_module io.file.
 :- import_module mercury_term_lexer.
 :- import_module mercury_term_parser.
 :- import_module one_or_more.
@@ -473,7 +474,8 @@ do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
             ( ReadModuleAndTimestamps = always_read_module(do_return_timestamp)
             ; ReadModuleAndTimestamps = dont_read_module_if_match(_)
             ),
-            io.file_modification_time(FileStreamName, TimestampResult, !IO),
+            io.file.file_modification_time(FileStreamName,
+                TimestampResult, !IO),
             (
                 TimestampResult = ok(Timestamp),
                 MaybeModuleTimestampRes =

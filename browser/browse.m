@@ -188,6 +188,7 @@
 :- import_module dir.
 :- import_module getopt.
 :- import_module int.
+:- import_module io.file.
 :- import_module map.
 :- import_module pair.
 :- import_module pretty_printer.
@@ -1390,15 +1391,15 @@ save_and_browse_browser_term_web(OutputStream, ErrorStream, Term, State,
         MaybeBrowserCmd = State ^ web_browser_cmd,
         (
             MaybeBrowserCmd = yes(BrowserCmd),
-            io.get_temp_directory(TmpDir, !IO),
-            io.make_temp_file(TmpDir, "mdb", ".html", TmpResult, !IO),
+            io.file.get_temp_directory(TmpDir, !IO),
+            io.file.make_temp_file(TmpDir, "mdb", ".html", TmpResult, !IO),
             (
                 TmpResult = ok(TmpFileName0),
                 ( if string.suffix(TmpFileName0, ".html") then
                     TmpFileName = TmpFileName0
                 else
                     % Work around io.make_temp_file ignoring suffix.
-                    io.remove_file(TmpFileName0, _, !IO),
+                    io.file.remove_file(TmpFileName0, _, !IO),
                     TmpFileName = TmpFileName0 ++ ".html"
                 ),
                 save_term_to_file_web(TmpFileName, Term, MdbDir,

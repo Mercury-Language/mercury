@@ -169,6 +169,7 @@
 :- import_module char.
 :- import_module getopt.
 :- import_module int.
+:- import_module io.file.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -267,7 +268,7 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
         with_locked_stdout(!.Info,
             write_error_opening_file(TmpErrorFileName, Error), !IO)
     ),
-    io.remove_file(TmpErrorFileName, _, !IO).
+    io.file.remove_file(TmpErrorFileName, _, !IO).
 
 :- pred make_write_error_streams(string::in, io.input_stream::in,
     io.text_output_stream::in, io.text_output_stream::in, int::in,

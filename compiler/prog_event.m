@@ -72,6 +72,7 @@
 :- import_module bimap.
 :- import_module digraph.
 :- import_module int.
+:- import_module io.file.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -123,7 +124,7 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
             ErrorSpecs = [ErrorSpec]
         ),
         io.close_input(TermStream, !IO),
-        io.remove_file(TermFileName, _RemoveRes, !IO)
+        io.file.remove_file(TermFileName, _RemoveRes, !IO)
     ;
         TermFileResult = error(ErrorMessage),
         EventSetName = "",
@@ -149,6 +150,7 @@ read_specs_file(SpecsFile, TermFile, Result, !IO) :-
 "
 #include ""mercury_event_spec.h""
 #include <stdio.h>
+#include <fcntl.h>
 
 MR_String   read_specs_file_2(MR_AllocSiteInfoPtr alloc_id,
                 MR_String specs_file_name, MR_String term_file_name);

@@ -86,6 +86,7 @@
 :- import_module dir.
 :- import_module getopt.
 :- import_module int.
+:- import_module io.file.
 :- import_module library.
 :- import_module map.
 :- import_module maybe.
@@ -2660,7 +2661,7 @@ handle_target_compile_link_symlink_options(!Globals) :-
 
     option_implies(target_debug, strip, bool(no), !Globals),
 
-    ( if io.have_symlinks then
+    ( if io.file.have_symlinks then
         true
     else
         globals.set_option(use_symlinks, bool(no), !Globals)

@@ -19,6 +19,7 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module exception.
+:- import_module io.file.
 :- import_module list.
 :- import_module require.
 :- import_module string.
@@ -60,10 +61,11 @@ main(!IO) :-
     test_make_path_name("foo/", "bar/baz", !IO),
 
     io.write_string("checking whether `unwritable' is readable...", !IO),
-    io.check_file_accessibility("unwritable", [read], ReadResult, !IO),
+    io.file.check_file_accessibility("unwritable", [read], ReadResult, !IO),
     io.write_line(ReadResult, !IO),
 
-    io.check_file_accessibility("unwritable", [read, write], WriteResult, !IO),
+    io.file.check_file_accessibility("unwritable", [read, write],
+        WriteResult, !IO),
     ( if WriteResult = ok then
         io.write_string("Error: unwritable file found to be writable\n", !IO)
     else
@@ -72,7 +74,8 @@ main(!IO) :-
 
     % Execute permissions are not handled correctly on all platforms so
     % just check that it doesn't crash.
-    io.check_file_accessibility("unwritable", [execute], _ExecuteResult, !IO),
+    io.file.check_file_accessibility("unwritable", [execute],
+        _ExecuteResult, !IO),
 
     dir.current_directory(CwdResult, !IO),
     (
@@ -108,13 +111,13 @@ main(!IO) :-
     test0("make_single_directory 2",
         dir.make_single_directory(Dir2/"d2"), !IO),
 
-    test1("file_type", io.file_type(yes, Dir1), Type, !IO),
+    test1("file_type", io.file.file_type(yes, Dir1), Type, !IO),
     io.write_string("type of ", !IO),
     io.write_string(Dir1, !IO),
     io.write_string(" is ", !IO),
     io.write_line(Type, !IO),
 
-    test1("file_type 2", io.file_type(yes, "dir_test.m"), Type2, !IO),
+    test1("file_type 2", io.file.file_type(yes, "dir_test.m"), Type2, !IO),
     io.write_string("type of ", !IO),
     io.write_string("dir_test.m", !IO),
     io.write_string(" is ", !IO),
@@ -137,22 +140,24 @@ main(!IO) :-
             "as ordinary file failed (as expected).\n", !IO)
     ),
 
-    ( if io.have_symlinks then
-        test0("making symlink 1", io.make_symlink("baz", Dir1/"bar"), !IO),
-        test0("making symlink 2", io.make_symlink("d1", "test_dir"/"d3"), !IO),
+    ( if io.file.have_symlinks then
+        test0("making symlink 1",
+            io.file.make_symlink("baz", Dir1/"bar"), !IO),
+        test0("making symlink 2",
+            io.file.make_symlink("d1", "test_dir"/"d3"), !IO),
 
         % Make a loop.
         test0("making symlink 3",
-            io.make_symlink(dir.parent_directory, Dir1/"parent"), !IO),
+            io.file.make_symlink(dir.parent_directory, Dir1/"parent"), !IO),
 
         test1("following symlink",
-            io.read_symlink(Dir1/"bar"), LinkTarget, !IO),
+            io.file.read_symlink(Dir1/"bar"), LinkTarget, !IO),
         io.write_string(Dir1/"bar", !IO),
         io.write_string(" points to ", !IO),
         io.write_string(LinkTarget, !IO),
         io.nl(!IO),
 
-        test1("file_type 3", io.file_type(no, Dir1/"bar"), Type3, !IO),
+        test1("file_type 3", io.file.file_type(no, Dir1/"bar"), Type3, !IO),
         io.write_string("type of ", !IO),
         io.write_string(Dir1/"bar", !IO),
         io.write_string(" is ", !IO),

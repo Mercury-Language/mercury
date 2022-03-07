@@ -1093,6 +1093,7 @@ read_file_as_bytecode(FileName, Result, !IO) :-
 :- pragma foreign_decl("C", "
 #ifdef MR_HAVE_SYS_STAT_H
 #include <sys/stat.h>
+#include <fcntl.h>
 #endif
 ").
 

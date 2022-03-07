@@ -24,6 +24,7 @@
 :- import_module bitmap.
 :- import_module exception.
 :- import_module int.
+:- import_module io.file.
 :- import_module list.
 :- import_module string.
 
@@ -47,7 +48,7 @@ main(!IO) :-
         io.error_message(IOError, Msg),
         io.print_line(Msg, !IO)
     ),
-    io.remove_file(test_file, _, !IO).
+    io.file.remove_file(test_file, _, !IO).
 
 :- pred do_test(int::in, io::di, io::uo) is det.
 

@@ -17,11 +17,12 @@
 
 :- implementation.
 
+:- import_module io.file.
 :- import_module list.
 :- import_module string.
 
 main(!IO) :-
-    io.make_temp_file(MakeTempResult, !IO),
+    io.file.make_temp_file(MakeTempResult, !IO),
     (
         MakeTempResult = ok(TempFileName),
         main_2(TempFileName, !IO)
@@ -75,7 +76,7 @@ main_2(FileName, !IO) :-
         io.error_message(IO_Error, Msg),
         io.print_line(Msg, !IO)
     ),
-    io.remove_file(FileName, _, !IO).
+    io.file.remove_file(FileName, _, !IO).
 
 :- pred print_byte(int::in, io::di, io::uo) is det.
 

@@ -41,6 +41,7 @@
 :- import_module char.
 :- import_module getopt.
 :- import_module int.
+:- import_module io.file.
 :- import_module library.
 :- import_module list.
 :- import_module map.
@@ -420,7 +421,7 @@ handle_query_from_existing_server(Cmd, PrefInd, ToServerPipe, FromServerPipe,
         % Leave the response file to be examined.
     ;
         Debug = no,
-        io.remove_file(ResponseFileName, _, !IO)
+        io.file.remove_file(ResponseFileName, _, !IO)
     ).
 
     % Handle the given query and then become the new server. Delete the mutex
@@ -705,8 +706,8 @@ make_pipes(FileName, Success, !IO) :-
         % create both pipes), and if we can't remove a named pipe we did
         % succeed in creating, then something is so screwed up that probably
         % there is nothing we can do to fix the situation.
-        io.remove_file(ToServerPipe, _, !IO),
-        io.remove_file(FromServerPipe, _, !IO),
+        io.file.remove_file(ToServerPipe, _, !IO),
+        io.file.remove_file(FromServerPipe, _, !IO),
         Success = no
     ).
 

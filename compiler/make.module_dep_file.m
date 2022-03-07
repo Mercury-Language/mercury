@@ -71,6 +71,7 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module getopt.
+:- import_module io.file.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -563,7 +564,7 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
                 SourceFileExists = ok
             ;
                 SourceFileExists = error(_),
-                io.remove_file(ModuleDepFile, _, !IO)
+                io.file.remove_file(ModuleDepFile, _, !IO)
             )
         else
             SourceFileExists = ok
@@ -755,7 +756,7 @@ some_bad_module_dependency(Info, ModuleNames) :-
 
 check_regular_file_exists(FileName, FileExists, !IO) :-
     FollowSymLinks = yes,
-    io.file_type(FollowSymLinks, FileName, ResFileType, !IO),
+    io.file.file_type(FollowSymLinks, FileName, ResFileType, !IO),
     (
         ResFileType = ok(FileType),
         (
@@ -871,7 +872,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                 !Info, !IO),
             module_name_to_file_name(Globals, $pred, do_not_create_dirs,
                 ext_other(other_ext(".err")), ModuleName, ErrFileName, !IO),
-            io.remove_file(ErrFileName, _, !IO),
+            io.file.remove_file(ErrFileName, _, !IO),
 
             ModuleDepMap0 = !.Info ^ mki_module_dependencies,
             % XXX Could this be map.det_update?

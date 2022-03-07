@@ -21,6 +21,7 @@
 
 :- implementation.
 
+:- import_module io.file.
 :- import_module list.
 :- import_module string.
 :- import_module int32.
@@ -35,7 +36,7 @@ main(!IO) :-
 :- pred run_test(byte_order::in, test_case::in, io::di, io::uo) is det.
 
 run_test(ByteOrder, TestBytes, !IO) :-
-    io.remove_file(test_file, _, !IO),
+    io.file.remove_file(test_file, _, !IO),
     io.write_string("================\n", !IO),
     io.open_binary_output(test_file, OpenOutResult, !IO),
     (
@@ -90,7 +91,7 @@ run_test(ByteOrder, TestBytes, !IO) :-
                 io.format("Result: Error (%s)\n",
                     [s(io.error_message(IO_Error))], !IO)
             ),
-            io.remove_file(test_file, _, !IO)
+            io.file.remove_file(test_file, _, !IO)
         ;
             OpenInResult = error(IO_Error),
             io.format("I/O ERROR: %s\n", [s(io.error_message(IO_Error))],

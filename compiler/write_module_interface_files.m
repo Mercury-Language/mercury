@@ -127,6 +127,7 @@
 :- import_module bool.
 :- import_module list.
 :- import_module getopt.
+:- import_module io.file.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -586,7 +587,8 @@ report_file_not_written(ErrorStream, Globals, Specs, PrefixPieces,
     % out-of-date. If we did not do this, compilations that read in the
     % now-obsolete interface files could generate error messages about
     % errors that do not now exist in the source files at all.
-    list.map_foldl(io.remove_file, ToRemoveFileNames, _RemoveResults, !IO).
+    list.map_foldl(io.file.remove_file,
+        ToRemoveFileNames, _RemoveResults, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.write_module_interface_files.

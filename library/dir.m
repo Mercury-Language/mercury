@@ -335,6 +335,7 @@
 :- import_module char.
 :- import_module exception.
 :- import_module int.
+:- import_module io.file.
 :- import_module maybe.
 :- import_module require.
 :- import_module std_util.
@@ -1019,7 +1020,8 @@ make_directory(PathName, Result, !IO) :-
             % current directory is not accessible, the mkdir will fail.
             make_directory_or_check_exists(PathName, Result, !IO)
         else
-            io.check_file_accessibility(DirName, [], ParentAccessResult, !IO),
+            io.file.check_file_accessibility(DirName, [],
+                ParentAccessResult, !IO),
             (
                 ParentAccessResult = ok,
                 make_directory_or_check_exists(PathName, Result, !IO)
@@ -1047,7 +1049,7 @@ make_directory_or_check_exists(DirName, Result, !IO) :-
         Result = ok
     ;
         MakeDirStatus = name_exists,
-        io.file_type(yes, DirName, TypeResult, !IO),
+        io.file.file_type(yes, DirName, TypeResult, !IO),
         ( if TypeResult = ok(directory) then
             check_dir_accessibility(DirName, Result, !IO)
         else
@@ -1070,7 +1072,8 @@ make_directory_or_check_exists(DirName, Result, !IO) :-
 
 check_dir_accessibility(DirName, Result, !IO) :-
     % Check whether we can read and write the directory.
-    io.check_file_accessibility(DirName, [read, write, execute], Result, !IO).
+    io.file.check_file_accessibility(DirName, [read, write, execute],
+        Result, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1498,7 +1501,7 @@ foldl2_process_dir_entries(Params, Pred, DirName, DirStream, SymLinkParent,
         (
             ReadResult = ok(FileName),
             PathName = make_path_name(DirName, FileName),
-            io.file_type(no, PathName, FileTypeResult, !IO),
+            io.file.file_type(no, PathName, FileTypeResult, !IO),
             (
                 FileTypeResult = ok(FileType),
                 Pred(DirName, FileName, FileType, PredSaysContinue,
@@ -1517,7 +1520,8 @@ foldl2_process_dir_entries(Params, Pred, DirName, DirStream, SymLinkParent,
                         FileType = symbolic_link,
                         Params ^ fp_subdirs = enter_subdirs(follow_symlinks)
                     then
-                        io.file_type(yes, PathName, TargetTypeResult, !IO),
+                        io.file.file_type(yes, PathName,
+                            TargetTypeResult, !IO),
                         (
                             TargetTypeResult = ok(TargetType),
                             (
@@ -1582,7 +1586,7 @@ foldl2_process_dir_entries(Params, Pred, DirName, DirStream, SymLinkParent,
     list(file_id)::in, maybe_loop::out, io::di, io::uo) is det.
 
 check_for_symlink_loop(DirName, SymLinkParent, ParentIds0, MaybeLoop, !IO) :-
-    ( if io.have_symlinks then
+    ( if io.file.have_symlinks then
         io.file_id(DirName, IdResult, !IO),
         (
             IdResult = ok(Id),
@@ -1774,12 +1778,12 @@ open_2(DirName, DirPattern, Result, !IO) :-
     io::di, io::uo) is det.
 
 check_dir_readable(DirName, Result, !IO) :-
-    io.file_type(yes, DirName, FileTypeResult, !IO),
+    io.file.file_type(yes, DirName, FileTypeResult, !IO),
     (
         FileTypeResult = ok(FileType),
         (
             FileType = directory,
-            io.check_file_accessibility(DirName, [read, execute],
+            io.file.check_file_accessibility(DirName, [read, execute],
                 CheckResult, !IO),
             (
                 CheckResult = ok,

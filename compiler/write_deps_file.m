@@ -139,6 +139,7 @@
 :- import_module cord.
 :- import_module digraph.
 :- import_module dir.
+:- import_module io.file.
 :- import_module library.
 :- import_module map.
 :- import_module one_or_more.
@@ -161,7 +162,7 @@ write_dependency_file(Globals, BurdenedAugCompUnit, IntermodDeps, AllDeps,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".d")), ModuleName, DependencyFileName, !IO),
-    io.make_temp_file(dir.dirname(DependencyFileName), "tmp_d", "",
+    io.file.make_temp_file(dir.dirname(DependencyFileName), "tmp_d", "",
         TmpDependencyFileNameRes, !IO),
     get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
     get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
@@ -197,13 +198,13 @@ write_dependency_file(Globals, BurdenedAugCompUnit, IntermodDeps, AllDeps,
             write_mmakefile(DepStream, MmakeFile, !IO),
             io.close_output(DepStream, !IO),
 
-            io.rename_file(TmpDependencyFileName, DependencyFileName,
+            io.file.rename_file(TmpDependencyFileName, DependencyFileName,
                 FirstRenameResult, !IO),
             (
                 FirstRenameResult = error(_),
                 % On some systems, we need to remove the existing file first,
                 % if any. So try again that way.
-                io.remove_file(DependencyFileName, RemoveResult, !IO),
+                io.file.remove_file(DependencyFileName, RemoveResult, !IO),
                 (
                     RemoveResult = error(Error4),
                     maybe_write_string(ProgressStream, Verbose,
@@ -215,8 +216,8 @@ write_dependency_file(Globals, BurdenedAugCompUnit, IntermodDeps, AllDeps,
                     report_error(ErrorStream, Message, !IO)
                 ;
                     RemoveResult = ok,
-                    io.rename_file(TmpDependencyFileName, DependencyFileName,
-                        SecondRenameResult, !IO),
+                    io.file.rename_file(TmpDependencyFileName,
+                        DependencyFileName, SecondRenameResult, !IO),
                     (
                         SecondRenameResult = error(Error5),
                         maybe_write_string(ProgressStream, Verbose,

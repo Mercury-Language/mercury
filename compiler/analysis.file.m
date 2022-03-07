@@ -123,6 +123,7 @@
 :- import_module char.
 :- import_module dir.
 :- import_module exception.
+:- import_module io.file.
 :- import_module mercury_term_parser.
 :- import_module require.
 :- import_module string.
@@ -316,9 +317,10 @@ read_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
                 ModuleResults, !IO)
         else
             CacheFileName = make_cache_filename(CacheDir, AnalysisFileName),
-            io.file_modification_time(AnalysisFileName, AnalysisTimeResult,
-                !IO),
-            io.file_modification_time(CacheFileName, CacheTimeResult, !IO),
+            io.file.file_modification_time(AnalysisFileName,
+                AnalysisTimeResult, !IO),
+            io.file.file_modification_time(CacheFileName,
+                CacheTimeResult, !IO),
             ( if
                 AnalysisTimeResult = ok(AnalysisTime),
                 CacheTimeResult = ok(CacheTime),
@@ -919,7 +921,7 @@ empty_request_file(Info, Globals, ModuleName, !IO) :-
             io.write_string(RequestFileName, !IO),
             io.nl(!IO)
         ), !IO),
-    io.remove_file(RequestFileName, _, !IO).
+    io.file.remove_file(RequestFileName, _, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -957,14 +959,14 @@ write_analysis_cache_file(CacheFileName, ModuleResults, !IO) :-
         TmpFileResult = ok(TmpFileStream),
         pickle(TmpFileStream, init_analysis_picklers, ModuleResults, !IO),
         io.close_binary_output(TmpFileStream, !IO),
-        io.rename_file(TmpFileName, CacheFileName, RenameRes, !IO),
+        io.file.rename_file(TmpFileName, CacheFileName, RenameRes, !IO),
         (
             RenameRes = ok
         ;
             RenameRes = error(Error),
             io.format("Error renaming %s: %s\n",
                 [s(CacheFileName), s(io.error_message(Error))], !IO),
-            io.remove_file(TmpFileName, _, !IO)
+            io.file.remove_file(TmpFileName, _, !IO)
         )
     ;
         TmpFileResult = error(Error),

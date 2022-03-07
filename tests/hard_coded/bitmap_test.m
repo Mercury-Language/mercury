@@ -19,6 +19,7 @@
 :- import_module deconstruct.
 :- import_module exception.
 :- import_module int.
+:- import_module io.file.
 :- import_module list.
 :- import_module string.
 :- import_module univ.
@@ -417,7 +418,7 @@ test_binary_io(!IO) :-
                 io.write_string("Second read failed\n", !IO)
             ),
             io.close_binary_input(IStream, !IO),
-            io.remove_file(FileName, _, !IO)
+            io.file.remove_file(FileName, _, !IO)
         ;
             OpenInputRes = error(Error),
             throw(Error)
@@ -470,7 +471,7 @@ test_text_io(!IO) :-
                 throw(ReadResB)
             ),
             io.close_input(IStream, !IO),
-            io.remove_file(FileName, _, !IO)
+            io.file.remove_file(FileName, _, !IO)
         ;
             OpenInputRes = error(Error),
             throw(Error)

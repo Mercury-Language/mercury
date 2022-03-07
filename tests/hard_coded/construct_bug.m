@@ -16,6 +16,7 @@
 :- import_module construct_bug_submodule.
 
 :- import_module int.
+:- import_module io.file.
 :- import_module list.
 :- import_module require.
 :- import_module std_util.
@@ -74,7 +75,7 @@ main(!IO) :-
         io.write_string("The representations are different.\n", !IO)
     ),
 
-    io.remove_file(FileName, RmResult, !IO),
+    io.file.remove_file(FileName, RmResult, !IO),
     (
         RmResult = ok
     ;

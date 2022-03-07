@@ -16,11 +16,12 @@
 :- implementation.
 
 :- import_module int.
-:- import_module list.
 :- import_module int8.
+:- import_module io.file.
+:- import_module list.
 
 main(!IO) :-
-    io.make_temp_file(MakeTempResult, !IO),
+    io.file.make_temp_file(MakeTempResult, !IO),
     (
         MakeTempResult = ok(TempFileName),
         main_2(TempFileName, !IO)
@@ -67,7 +68,7 @@ main_2(FileName, !IO) :-
         io.error_message(IO_Error, Msg),
         io.print_line(Msg, !IO)
     ),
-    io.remove_file(FileName, _, !IO).
+    io.file.remove_file(FileName, _, !IO).
 
 :- pred read_int8s(io.binary_input_stream::in,
     list(int8)::in, io.res(list(int8))::out, io::di, io::uo) is det.

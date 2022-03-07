@@ -44,6 +44,7 @@
 
 :- implementation.
 
+:- import_module io.file.
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
@@ -84,7 +85,7 @@ server_name(ServerName, !IO) :-
 :- pred server_name_2(string::out, io::di, io::uo) is det.
 
 server_name_2(ServerName, !IO) :-
-    io.make_temp_file(TmpFileResult, !IO),
+    io.file.make_temp_file(TmpFileResult, !IO),
     (
         TmpFileResult = ok(TmpFile),
         hostname_cmd(HostnameCmd),
@@ -118,7 +119,7 @@ server_name_2(ServerName, !IO) :-
                     unexpected($pred,
                         "cannot open file to find the server's name")
                 ),
-                io.remove_file(TmpFile, _, !IO)
+                io.file.remove_file(TmpFile, _, !IO)
             else
                 unexpected($pred,
                     "cannot execute cmd to find the server's name")

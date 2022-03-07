@@ -205,6 +205,7 @@
 :- import_module benchmarking.
 :- import_module bool.
 :- import_module int.
+:- import_module io.file.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -528,7 +529,7 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
                 % If a previous dump exists with this name, leaving it around
                 % would be quite misleading. However, there is nothing useful
                 % we can do if the removal fails.
-                io.remove_file(DumpFileName, _Result, !IO)
+                io.file.remove_file(DumpFileName, _Result, !IO)
             ;
                 DumpSameHLDS = yes,
                 CurDumpFileName = PrevDumpFileName,

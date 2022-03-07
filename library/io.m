@@ -32,6 +32,8 @@
 :- module io.
 :- interface.
 
+:- include_module file.
+
 :- import_module array.
 :- import_module bitmap.
 :- import_module bool.
@@ -1518,77 +1520,36 @@
 % File handling predicates.
 %
 
-    % remove_file(FileName, Result, !IO) attempts to remove the file
-    % FileName, binding Result to ok/0 if it succeeds, or error/1 if it
-    % fails. If FileName names a file that is currently open, the behaviour
-    % is implementation-dependent.
-    %
-:- pred remove_file(string::in, io.res::out, io::di, io::uo) is det.
-
-    % remove_file_recursively(FileName, Result, !IO) attempts to remove
-    % the file FileName, binding Result to ok/0 if it succeeds, or error/1
-    % if it fails. If FileName names a file that is currently open, the
-    % behaviour is implementation-dependent.
-    %
-    % Unlike remove_file, this predicate will attempt to remove non-empty
-    % directories (recursively). If it fails, some of the directory elements
-    % may already have been removed.
-    %
-:- pred remove_file_recursively(string::in, io.res::out, io::di, io::uo)
-    is det.
-
-    % rename_file(OldFileName, NewFileName, Result, !IO).
-    %
-    % Attempts to rename the file OldFileName as NewFileName, binding
-    % Result to ok/0 if it succeeds, or error/1 if it fails. If OldFileName
-    % names a file that is currently open, the behaviour is
-    % implementation-dependent. If NewFileName names a file that already
-    % exists the behaviour is also implementation-dependent; on some systems,
-    % the file previously named NewFileName will be deleted and replaced
-    % with the file previously named OldFileName.
-    %
-:- pred rename_file(string::in, string::in, io.res::out, io::di, io::uo)
-    is det.
-
-%---------------------%
-
-    % Succeeds if this platform can read and create symbolic links.
-    %
-:- pred have_symlinks is semidet.
-
-    % make_symlink(FileName, LinkFileName, Result, !IO).
-    %
-    % Attempts to make LinkFileName be a symbolic link to FileName.
-    % If FileName is a relative path, it is interpreted relative
-    % to the directory containing LinkFileName.
-    %
-:- pred make_symlink(string::in, string::in, io.res::out, io::di, io::uo)
-    is det.
-
-    % read_symlink(FileName, Result, !IO) returns `ok(LinkTarget)'
-    % if FileName is a symbolic link pointing to LinkTarget, and
-    % `error(Error)' otherwise. If LinkTarget is a relative path,
-    % it should be interpreted relative the directory containing FileName,
-    % not the current directory.
-    %
-:- pred read_symlink(string::in, io.res(string)::out, io::di, io::uo) is det.
-
-%---------------------%
-
+% NOTE_TO_IMPLEMENTORS The definitions of access_type and file_type logically
+% NOTE_TO_IMPLEMENTORS belong in io.file.m, and they should be moved there
+% NOTE_TO_IMPLEMENTORS when the forwarding predicates below to io.file.m
+% NOTE_TO_IMPLEMENTORS are removed. However, while the forwarding predicates
+% NOTE_TO_IMPLEMENTORS are here, the types that some of them depend on
+% NOTE_TO_IMPLEMENTORS should be here as well.
+% NOTE_TO_IMPLEMENTORS 
+% NOTE_TO_IMPLEMENTORS Keeping the definitions of these types here suits both
+% NOTE_TO_IMPLEMENTORS old code and new code.
+% NOTE_TO_IMPLEMENTORS 
+% NOTE_TO_IMPLEMENTORS - Old code can call all the forwarding predicates,
+% NOTE_TO_IMPLEMENTORS   and pass them values of these types, while importing
+% NOTE_TO_IMPLEMENTORS   only io.m.
+% NOTE_TO_IMPLEMENTORS 
+% NOTE_TO_IMPLEMENTORS - New code using io.file.m must also import io.m anyway,
+% NOTE_TO_IMPLEMENTORS   not just because io.m is io.file.m's parent
+% NOTE_TO_IMPLEMENTORS   (a requirement that we may eliminate in the future),
+% NOTE_TO_IMPLEMENTORS   but because all the operations in io.file.m take
+% NOTE_TO_IMPLEMENTORS   a pair of I/O state arguments, and the I/O state type
+% NOTE_TO_IMPLEMENTORS   is defined here.
+% NOTE_TO_IMPLEMENTORS 
+% NOTE_TO_IMPLEMENTORS On the other hand, if we moved the definitions of
+% NOTE_TO_IMPLEMENTORS these types to io.file.m, new code would still work,
+% NOTE_TO_IMPLEMENTORS but old code would break immediately, in a way that
+% NOTE_TO_IMPLEMENTORS shutting up warnings about obsolete predicates
+% NOTE_TO_IMPLEMENTORS would not overcode.
 :- type access_type
     --->    read
     ;       write
     ;       execute.
-
-    % check_file_accessibility(FileName, AccessTypes, Result):
-    %
-    % Check whether the current process can perform the operations given
-    % in AccessTypes on FileName.
-    % XXX When using the .NET CLI, this predicate will sometimes report
-    % that a directory is writable when in fact it is not.
-    %
-:- pred check_file_accessibility(string::in, list(access_type)::in,
-    io.res::out, io::di, io::uo) is det.
 
 :- type file_type
     --->    regular_file
@@ -1603,17 +1564,96 @@
     ;       shared_memory
     ;       unknown.
 
+    % remove_file(FileName, Result, !IO) attempts to remove the file
+    % FileName, binding Result to ok/0 if it succeeds, or error/1 if it
+    % fails. If FileName names a file that is currently open, the behaviour
+    % is implementation-dependent.
+    %
+:- pred remove_file(string::in, io.res::out, io::di, io::uo) is det.
+:- pragma obsolete(pred(remove_file/4), [io.file.remove_file/4]).
+
+    % remove_file_recursively(FileName, Result, !IO) attempts to remove
+    % the file FileName, binding Result to ok/0 if it succeeds, or error/1
+    % if it fails. If FileName names a file that is currently open, the
+    % behaviour is implementation-dependent.
+    %
+    % Unlike remove_file, this predicate will attempt to remove non-empty
+    % directories (recursively). If it fails, some of the directory elements
+    % may already have been removed.
+    %
+:- pred remove_file_recursively(string::in, io.res::out, io::di, io::uo)
+    is det.
+:- pragma obsolete(pred(remove_file_recursively/4),
+    [io.file.remove_file_recursively/4]).
+
+    % rename_file(OldFileName, NewFileName, Result, !IO).
+    %
+    % Attempts to rename the file OldFileName as NewFileName, binding
+    % Result to ok/0 if it succeeds, or error/1 if it fails. If OldFileName
+    % names a file that is currently open, the behaviour is
+    % implementation-dependent. If NewFileName names a file that already
+    % exists the behaviour is also implementation-dependent; on some systems,
+    % the file previously named NewFileName will be deleted and replaced
+    % with the file previously named OldFileName.
+    %
+:- pred rename_file(string::in, string::in, io.res::out, io::di, io::uo)
+    is det.
+:- pragma obsolete(pred(rename_file/5), [io.file.rename_file/5]).
+
+%---------------------%
+
+    % Succeeds if this platform can read and create symbolic links.
+    %
+:- pred have_symlinks is semidet.
+:- pragma obsolete(pred(have_symlinks/0), [io.file.have_symlinks/0]).
+
+    % make_symlink(FileName, LinkFileName, Result, !IO).
+    %
+    % Attempts to make LinkFileName be a symbolic link to FileName.
+    % If FileName is a relative path, it is interpreted relative
+    % to the directory containing LinkFileName.
+    %
+:- pred make_symlink(string::in, string::in, io.res::out, io::di, io::uo)
+    is det.
+:- pragma obsolete(pred(make_symlink/5), [io.file.make_symlink/5]).
+
+    % read_symlink(FileName, Result, !IO) returns `ok(LinkTarget)'
+    % if FileName is a symbolic link pointing to LinkTarget, and
+    % `error(Error)' otherwise. If LinkTarget is a relative path,
+    % it should be interpreted relative the directory containing FileName,
+    % not the current directory.
+    %
+:- pred read_symlink(string::in, io.res(string)::out, io::di, io::uo) is det.
+:- pragma obsolete(pred(read_symlink/4), [io.file.read_symlink/4]).
+
+%---------------------%
+
+    % check_file_accessibility(FileName, AccessTypes, Result):
+    %
+    % Check whether the current process can perform the operations given
+    % in AccessTypes on FileName.
+    % XXX When using the .NET CLI, this predicate will sometimes report
+    % that a directory is writable when in fact it is not.
+    %
+:- pred check_file_accessibility(string::in, list(access_type)::in,
+    io.res::out, io::di, io::uo) is det.
+:- pragma obsolete(pred(check_file_accessibility/5),
+    [io.file.check_file_accessibility/5]).
+
     % file_type(FollowSymLinks, FileName, TypeResult)
     % finds the type of the given file.
     %
 :- pred file_type(bool::in, string::in, io.res(file_type)::out,
     io::di, io::uo) is det.
+:- pragma obsolete(pred(file_type/5), [io.file.file_type/5]).
 
     % file_modification_time(FileName, TimeResult)
     % finds the last modification time of the given file.
     %
 :- pred file_modification_time(string::in, io.res(time_t)::out,
     io::di, io::uo) is det.
+:- pragma obsolete(pred(file_modification_time/4),
+    [io.file.file_modification_time/4]).
 
 %---------------------------------------------------------------------------%
 %
@@ -1632,6 +1672,7 @@
     % should not be used when security is required.
     %
 :- pred make_temp_file(io.res(string)::out, io::di, io::uo) is det.
+:- pragma obsolete(pred(make_temp_file/3), [io.file.make_temp_file/3]).
 
     % make_temp_file(Dir, Prefix, Suffix, Result, !IO) creates an empty file
     % whose name is different to the name of any existing file. The file will
@@ -1659,6 +1700,7 @@
     %
 :- pred make_temp_file(string::in, string::in, string::in, io.res(string)::out,
     io::di, io::uo) is det.
+:- pragma obsolete(pred(make_temp_file/6), [io.file.make_temp_file/6]).
 
     % make_temp_directory(Result, !IO) creates an empty directory whose name
     % is different from the name of any existing directory.
@@ -1666,6 +1708,8 @@
     % On the Java backend this is insecure as the file permissions are not set.
     %
 :- pred make_temp_directory(io.res(string)::out, io::di, io::uo) is det.
+:- pragma obsolete(pred(make_temp_directory/3),
+    [io.file.make_temp_directory/3]).
 
     % make_temp_directory(Dir, Prefix, Suffix, Result, !IO) creates an empty
     % directory whose name is different from the name of any existing
@@ -1686,11 +1730,15 @@
     %
 :- pred make_temp_directory(string::in, string::in, string::in,
     io.res(string)::out, io::di, io::uo) is det.
+:- pragma obsolete(pred(make_temp_directory/6),
+    [io.file.make_temp_directory/6]).
 
     % Test if the make_temp_directory predicates are available.
     % This is false for C backends without support for mkdtemp(3).
     %
 :- pred have_make_temp_directory is semidet.
+:- pragma obsolete(pred(have_make_temp_directory/0),
+    [io.file.have_make_temp_directory/0]).
 
     % get_temp_directory(DirName, !IO)
     %
@@ -1713,6 +1761,7 @@
     %    on Microsoft Windows systems it is typically "c:\\temp".
     %
 :- pred get_temp_directory(string::out, io::di, io::uo) is det.
+:- pragma obsolete(pred(get_temp_directory/3), [io.file.get_temp_directory/3]).
 
 %---------------------------------------------------------------------------%
 %
@@ -2227,6 +2276,7 @@
 :- import_module int16.
 :- import_module int32.
 :- import_module int64.
+:- import_module io.file.
 :- import_module mercury_term_parser.
 :- import_module pair.
 :- import_module require.
@@ -9905,968 +9955,31 @@ chunk_size = 1000.
 %
 
 remove_file(FileName, Result, !IO) :-
-    remove_file_2(FileName, Error, !IO),
-    is_error(Error, "remove failed: ", MaybeIOError, !IO),
-    (
-        MaybeIOError = yes(IOError),
-        Result = error(IOError)
-    ;
-        MaybeIOError = no,
-        Result = ok
-    ).
-
-:- pred remove_file_2(string::in, system_error::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    remove_file_2(FileName::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    int rc;
-#ifdef MR_WIN32
-    rc = _wremove(ML_utf8_to_wide(FileName));
-#else
-    rc = remove(FileName);
-#endif
-    if (rc == 0) {
-        Error = 0;
-    } else {
-        Error = errno;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    remove_file_2(FileName::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        if (System.IO.File.Exists(FileName)) {
-            System.IO.File.Delete(FileName);
-            Error = null;
-        } else {
-            Error = new System.IO.FileNotFoundException();
-        }
-    }
-    catch (System.Exception e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    remove_file_2(FileName::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    // Java 7 java.nio.file.Files.delete() provides more detailed information
-    // about failure to delete.
-
-    try {
-        java.io.File file = new java.io.File(FileName);
-
-        if (file.delete()) {
-            Error = null;
-        } else {
-            Error = new java.io.IOException(""remove_file failed"");
-        }
-    } catch (java.lang.Exception e) {
-        Error = e;
-    }
-").
-
-%---------------------%
+    io.file.remove_file(FileName, Result, !IO).
 
 remove_file_recursively(FileName, Res, !IO) :-
-    FollowSymLinks = no,
-    file_type(FollowSymLinks, FileName, ResFileType, !IO),
-    (
-        ResFileType = ok(FileType),
-        (
-            FileType = directory,
-            dir.foldl2(remove_directory_entry, FileName, ok, Res0, !IO),
-            (
-                Res0 = ok(MaybeError),
-                (
-                    MaybeError = ok,
-                    remove_file(FileName, Res, !IO)
-                ;
-                    MaybeError = error(Error),
-                    Res = error(Error)
-                )
-            ;
-                Res0 = error(_, Error),
-                Res = error(Error)
-            )
-        ;
-            ( FileType = regular_file
-            ; FileType = symbolic_link
-            ; FileType = named_pipe
-            ; FileType = socket
-            ; FileType = character_device
-            ; FileType = block_device
-            ; FileType = message_queue
-            ; FileType = semaphore
-            ; FileType = shared_memory
-            ; FileType = unknown
-            ),
-            remove_file(FileName, Res, !IO)
-        )
-    ;
-        ResFileType = error(Error),
-        Res = error(Error)
-    ).
-
-:- pred remove_directory_entry(string::in, string::in, file_type::in,
-    bool::out, io.res::in, io.res::out, io::di, io::uo) is det.
-
-remove_directory_entry(DirName, FileName, _FileType, Continue, _, Res, !IO) :-
-    remove_file_recursively(DirName / FileName, Res0, !IO),
-    (
-        Res0 = ok,
-        Res = ok,
-        Continue = yes
-    ;
-        Res0 = error(_),
-        Res = Res0,
-        Continue = no
-    ).
-
-%---------------------%
+    io.file.remove_file_recursively(FileName, Res, !IO).
 
 rename_file(OldFileName, NewFileName, Result, !IO) :-
-    rename_file_2(OldFileName, NewFileName, Error, !IO),
-    is_error(Error, "rename failed: ", MaybeIOError, !IO),
-    (
-        MaybeIOError = yes(IOError),
-        Result = error(IOError)
-    ;
-        MaybeIOError = no,
-        Result = ok
-    ).
-
-:- pred rename_file_2(string::in, string::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    rename_file_2(OldFileName::in, NewFileName::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    int rc;
-#ifdef MR_WIN32
-    rc = _wrename(ML_utf8_to_wide(OldFileName),
-        ML_utf8_to_wide(NewFileName));
-#else
-    rc = rename(OldFileName, NewFileName);
-#endif
-    if (rc == 0) {
-        Error = 0;
-    } else {
-        Error = errno;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    rename_file_2(OldFileName::in, NewFileName::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        if (System.IO.File.Exists(OldFileName)) {
-            System.IO.File.Move(OldFileName, NewFileName);
-            Error = null;
-        } else {
-            Error = new System.IO.FileNotFoundException();
-        }
-    }
-    catch (System.Exception e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    rename_file_2(OldFileName::in, NewFileName::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    // Java 7 java.nio.file.Files.move may provide more detailed information
-    // about failure to rename.
-
-    try {
-        java.io.File file = new java.io.File(OldFileName);
-
-        if (file.exists()) {
-            if (file.renameTo(new java.io.File(NewFileName))) {
-                Error = null;
-            } else {
-                Error = new java.io.IOException(""rename_file failed"");
-            }
-        } else {
-            Error = new java.io.IOException(""No such file or directory"");
-        }
-    } catch (java.lang.Exception e) {
-        Error = e;
-    }
-").
-
-%---------------------%
-
-:- pragma foreign_proc("C",
-    have_symlinks,
-    [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-#if defined(MR_HAVE_SYMLINK) && defined(MR_HAVE_READLINK)
-    SUCCESS_INDICATOR = MR_TRUE;
-#else
-    SUCCESS_INDICATOR = MR_FALSE;
-#endif
-").
+    io.file.rename_file(OldFileName, NewFileName, Result, !IO).
 
 have_symlinks :-
-    semidet_fail.
-
-%---------------------%
+    io.file.have_symlinks.
 
 make_symlink(FileName, LinkFileName, Result, !IO) :-
-    ( if io.have_symlinks then
-        make_symlink_2(FileName, LinkFileName, Error, !IO),
-        is_error(Error, "io.make_symlink failed: ", MaybeIOError, !IO),
-        (
-            MaybeIOError = yes(IOError),
-            Result = error(IOError)
-        ;
-            MaybeIOError = no,
-            Result = ok
-        )
-    else
-        Result = error(make_io_error(
-            "io.make_symlink not supported on this platform"))
-    ).
-
-:- pred make_symlink_2(string::in, string::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    make_symlink_2(FileName::in, LinkFileName::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-#ifdef MR_HAVE_SYMLINK
-    if (symlink(FileName, LinkFileName) == 0) {
-        Error = 0;
-    } else {
-        Error = errno;
-    }
-#else
-    Error = ENOSYS;
-#endif
-").
-
-% XXX MISSING C# make_symlink_2
-
-    % Since io.have_symlinks will fail for Java, this procedure
-    % should never be called:
-    % XXX Java 7 has createSymbolicLink, readSymbolicLink
-:- pragma foreign_proc("Java",
-    make_symlink_2(_FileName::in, _LinkFileName::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    Error = new java.lang.UnsupportedOperationException(
-        ""io.make_symlink_2 not implemented"");
-").
-
-%---------------------%
+    io.file.make_symlink(FileName, LinkFileName, Result, !IO).
 
 read_symlink(FileName, Result, !IO) :-
-    ( if have_symlinks then
-        read_symlink_2(FileName, TargetFileName, Error, !IO),
-        is_error(Error, "io.read_symlink failed: ", MaybeIOError, !IO),
-        (
-            MaybeIOError = yes(IOError),
-            Result = error(IOError)
-        ;
-            MaybeIOError = no,
-            Result = ok(TargetFileName)
-        )
-    else
-        Result = error(make_io_error(
-            "io.read_symlink not supported on this platform"))
-    ).
-
-:- pred read_symlink_2(string::in, string::out, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    read_symlink_2(FileName::in, TargetFileName::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-#ifdef MR_HAVE_READLINK
-  #ifndef PATH_MAX
-    #define PATH_MAX 256
-  #endif
-    int     num_chars;
-    char    *buffer2 = NULL;
-    int     buffer_size2 = PATH_MAX;
-    char    buffer[PATH_MAX + 1];
-
-    // readlink() does not null-terminate the buffer.
-    num_chars = readlink(FileName, buffer, PATH_MAX);
-
-    if (num_chars == PATH_MAX) {
-        do {
-            buffer_size2 *= 2;
-            buffer2 = MR_RESIZE_ARRAY(buffer2, char, buffer_size2);
-            num_chars = readlink(FileName, buffer2, buffer_size2);
-        } while (num_chars == buffer_size2);
-
-        // Invariant: num_chars < buffer_size2.
-
-        if (num_chars == -1) {
-            TargetFileName = MR_make_string_const("""");
-            Error = errno;
-        } else {
-            buffer2[num_chars] = '\\0';
-            MR_make_aligned_string_copy_msg(TargetFileName, buffer2,
-                MR_ALLOC_ID);
-            Error = 0;
-        }
-        MR_free(buffer2);
-    } else if (num_chars == -1) {
-        TargetFileName = MR_make_string_const("""");
-        Error = errno;
-    } else {
-        buffer[num_chars] = '\\0';
-        MR_make_aligned_string_copy_msg(TargetFileName, buffer, MR_ALLOC_ID);
-        Error = 0;
-    }
-#else // !MR_HAVE_READLINK
-    TargetFileName = MR_make_string_const("""");
-    Error = ENOSYS;
-#endif
-").
-
-% XXX MISSING C# read_symlink_2
-
-    % Since io.have_symlinks will fail for Java, this procedure
-    % should never be called:
-    % XXX Java 7 has createSymbolicLink, readSymbolicLink
-:- pragma foreign_proc("Java",
-    read_symlink_2(_FileName::in, TargetFileName::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    TargetFileName = """";
-    Error = new java.lang.UnsupportedOperationException(
-        ""io.read_symlink_2 not implemented"");
-").
-
-%---------------------%
+    io.file.read_symlink(FileName, Result, !IO).
 
 check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
-    ( if have_dotnet then
-        check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO)
-    else
-        CheckRead = pred_to_bool(contains(AccessTypes, read)),
-        CheckWrite = pred_to_bool(contains(AccessTypes, write)),
-        CheckExecute = pred_to_bool(contains(AccessTypes, execute)),
-        check_file_accessibility_2(FileName, CheckRead, CheckWrite,
-            CheckExecute, Error, !IO),
-        is_error(Error, "file not accessible: ", MaybeIOError, !IO),
-        (
-            MaybeIOError = yes(IOError),
-            Result = error(IOError)
-        ;
-            MaybeIOError = no,
-            Result = ok
-        )
-    ).
-
-:- pred check_file_accessibility_2(string::in, bool::in, bool::in, bool::in,
-    system_error::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    check_file_accessibility_2(FileName::in, CheckRead::in,
-        CheckWrite::in, CheckExecute::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-#if defined(MR_HAVE_ACCESS)
-  #ifdef F_OK
-    const int MODE_EXISTS = F_OK;
-  #else
-    const int MODE_EXISTS = 0;
-  #endif
-  #ifdef X_OK
-    const int MODE_EXECUTE = X_OK;
-  #else
-    const int MODE_EXECUTE = 1;
-  #endif
-  #ifdef W_OK
-    const int MODE_WRITE = W_OK;
-  #else
-    const int MODE_WRITE = 2;
-  #endif
-  #ifdef R_OK
-    const int MODE_READ = R_OK;
-  #else
-    const int MODE_READ = 4;
-  #endif
-
-    int mode = MODE_EXISTS;
-    int access_result;
-
-  #if !defined(MR_WIN32) || defined(MR_CYGWIN)
-    // Earlier versions of MSVCRT ignored flags it does not support,
-    // later versions return an error (e.g. on Vista).
-    if (CheckExecute) {
-        mode |= MODE_EXECUTE;
-    }
-  #endif
-    if (CheckWrite) {
-        mode |= MODE_WRITE;
-    }
-    if (CheckRead) {
-        mode |= MODE_READ;
-    }
-
-  #ifdef MR_WIN32
-    access_result = _waccess(ML_utf8_to_wide(FileName), mode);
-  #else
-    access_result = access(FileName, mode);
-  #endif
-
-    if (access_result == 0) {
-        Error = 0;
-    } else {
-        Error = errno;
-    }
-#else // !MR_HAVE_ACCESS
-    Error = ENOSYS;
-#endif
-").
-
-:- pragma foreign_proc("Java",
-    check_file_accessibility_2(FileName::in, CheckRead::in, CheckWrite::in,
-        CheckExecute::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    java.io.File file = new java.io.File(FileName);
-    try {
-        boolean ok = true;
-
-        if (CheckRead == bool.YES) {
-            ok = file.canRead();
-        }
-
-        if (ok && CheckWrite == bool.YES) {
-            ok = file.canWrite();
-        }
-
-        if (ok && CheckExecute == bool.YES) {
-            ok = file.canExecute();
-        }
-
-        if (ok) {
-            Error = null;
-        } else {
-            Error = new java.io.FileNotFoundException(""Permission denied"");
-        }
-    }
-    catch (java.lang.Exception e) {
-        Error = e;
-    }
-").
-
-    % XXX why not write this as check_file_accessibility_2?
-    %
-:- pred check_file_accessibility_dotnet(string::in, list(access_type)::in,
-    io.res::out, io::di, io::uo) is det.
-
-check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
-    % The .NET CLI doesn't provide an equivalent of access(), so we have to
-    % try to open the file to see if it is accessible.
-
-    CheckRead0 = pred_to_bool(contains(AccessTypes, read)),
-    CheckWrite = pred_to_bool(contains(AccessTypes, write)),
-    CheckExec = pred_to_bool(contains(AccessTypes, execute)),
-    % We need to be able to read a file to execute it.
-    CheckRead = bool.or(CheckRead0, CheckExec),
-
-    file_type(yes, FileName, FileTypeRes, !IO),
-    (
-        FileTypeRes = ok(FileType),
-        ( if FileType = directory then
-            check_directory_accessibility_dotnet(FileName,
-                CheckRead, CheckWrite, Error, !IO),
-            is_error(Error, "file not accessible: ", MaybeIOError, !IO),
-            (
-                MaybeIOError = yes(IOError),
-                Result = error(IOError)
-            ;
-                MaybeIOError = no,
-                Result = ok
-            )
-        else
-            (
-                CheckRead = yes,
-                open_input(FileName, InputRes, !IO),
-                (
-                    InputRes = ok(InputStream),
-                    io.close_input(InputStream, !IO),
-                    CheckReadRes = ok
-                ;
-                    InputRes = error(InputError),
-                    CheckReadRes = error(InputError)
-                )
-            ;
-                CheckRead = no,
-                CheckReadRes = ok
-            ),
-            ( if
-                CheckReadRes = ok,
-                CheckWrite = yes
-            then
-                open_append(FileName, OutputRes, !IO),
-                (
-                    OutputRes = ok(OutputStream),
-                    io.close_output(OutputStream, !IO),
-                    CheckWriteRes = ok
-                ;
-                    OutputRes = error(OutputError),
-                    CheckWriteRes = error(OutputError)
-                )
-            else
-                CheckWriteRes = CheckReadRes
-            ),
-            ( if
-                CheckWriteRes = ok,
-                % Unix programs need to check whether the execute bit is set
-                % for the directory, but we can't actually execute the
-                % directory.
-                CheckExec = yes
-            then
-                have_dotnet_exec_permission(Error, !IO),
-                is_error(Error, "file not accessible: ", MaybeIOError, !IO),
-                (
-                    MaybeIOError = yes(IOError),
-                    Result = error(IOError)
-                ;
-                    MaybeIOError = no,
-                    Result = ok
-                )
-            else
-                Result = CheckWriteRes
-            )
-        )
-    ;
-        FileTypeRes = error(FileTypeError),
-        Result = error(FileTypeError)
-    ).
-
-:- pred have_dotnet_exec_permission(system_error::out, io::di, io::uo) is det.
-
-have_dotnet_exec_permission(Error, !IO) :-
-    % Avoid determinism warnings.
-    ( if semidet_succeed then
-        error("io.have_dotnet_exec_permission invoked " ++
-            "for non-.NET CLI backend")
-    else
-        % Never reached.
-        Error = no_error
-    ).
-
-:- pragma foreign_proc("C#",
-    have_dotnet_exec_permission(Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    try {
-        // We need unrestricted permissions to execute unmanaged code.
-        (new System.Security.Permissions.SecurityPermission(
-            System.Security.Permissions.SecurityPermissionFlag.
-            AllFlags)).Demand();
-        Error = null;
-    } catch (System.Exception e) {
-        Error = e;
-    }
-").
-
-:- pred check_directory_accessibility_dotnet(string::in, bool::in, bool::in,
-    system_error::out, io::di, io::uo) is det.
-
-check_directory_accessibility_dotnet(_, _, _, Error, !IO) :-
-    % Avoid determinism warnings.
-    ( if semidet_succeed then
-        error("io.check_directory_accessibility_dotnet called " ++
-            "for non-.NET CLI backend")
-    else
-        % Never reached.
-        Error = no_error
-    ).
-
-:- pragma foreign_proc("C#",
-    check_directory_accessibility_dotnet(FileName::in, CheckRead::in,
-        CheckWrite::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        Error = null;
-        if (CheckRead == mr_bool.YES) {
-            // XXX This is less efficient than I would like.
-            // Unfortunately the .NET CLI has no function
-            // corresponding to access() or opendir().
-            System.IO.Directory.GetFileSystemEntries(FileName);
-        }
-        if (CheckWrite == mr_bool.YES) {
-            // This will fail if the .NET CLI security regime
-            // we're operating under doesn't allow writing
-            // to the file. Even if this succeeds, the file
-            // system may disallow write access.
-            System.IO.Directory.SetLastAccessTime(FileName,
-                System.DateTime.Now);
-
-            // XXX This isn't quite right. Just because the directory
-            // isn't read-only doesn't mean we have permission to write to it.
-            // The only way to test whether a directory is writable is to
-            // write a file to it. The ideal way to do that would be
-            // io.make_temp, but currently the C# backend version of that
-            // ignores the directory passed to it.
-            System.IO.FileAttributes attrs =
-                System.IO.File.GetAttributes(FileName);
-            if ((attrs & System.IO.FileAttributes.ReadOnly) ==
-                System.IO.FileAttributes.ReadOnly)
-            {
-                Error = new System.Exception(""file is read-only"");
-            }
-        }
-    } catch (System.Exception e) {
-        Error = e;
-    }
-").
-
-%---------------------%
-
-:- pragma foreign_export_enum("C", file_type/0,
-    [prefix("ML_FILE_TYPE_"), uppercase]).
-:- pragma foreign_export_enum("C#", file_type/0,
-    [prefix("ML_FILE_TYPE_"), uppercase]).
-:- pragma foreign_export_enum("Java", file_type/0,
-    [prefix("ML_FILE_TYPE_"), uppercase]).
+    io.file.check_file_accessibility(FileName, AccessTypes, Result, !IO).
 
 file_type(FollowSymLinks, FileName, Result, !IO) :-
-    (
-        FollowSymLinks = yes,
-        FollowSymLinksInt = 1
-    ;
-        FollowSymLinks = no,
-        FollowSymLinksInt = 0
-    ),
-    file_type_2(FollowSymLinksInt, FileName, FileType, Error,  !IO),
-    is_error(Error, "can't find file type: ", MaybeIOError, !IO),
-    (
-        MaybeIOError = yes(IOError),
-        Result = error(IOError)
-    ;
-        MaybeIOError = no,
-        Result = ok(FileType)
-    ).
-
-:- pred file_type_2(int::in, string::in, file_type::out, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    file_type_2(FollowSymLinks::in, FileName::in, FileType::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-#ifdef MR_HAVE_STAT
-  #ifdef MR_WIN32
-    struct _stat s;
-    int stat_result = _wstat(ML_utf8_to_wide(FileName), &s);
-  #else
-    struct stat s;
-    int stat_result;
-
-    if (FollowSymLinks == 1) {
-        stat_result = stat(FileName, &s);
-    } else {
-        #ifdef MR_HAVE_LSTAT
-            stat_result = lstat(FileName, &s);
-        #else
-            stat_result = stat(FileName, &s);
-        #endif
-    }
-  #endif
-
-    if (stat_result == 0) {
-        // Do we still need the non-POSIX S_IFMT style?
-        if
-            #if defined(S_ISREG)
-                (S_ISREG(s.st_mode))
-            #elif defined(S_IFMT) && defined(S_IFREG)
-                ((s.st_mode & S_IFMT) == S_IFREG)
-            #else
-                (0)
-            #endif
-        {
-            FileType = ML_FILE_TYPE_REGULAR_FILE;
-        }
-        else if
-            #if defined(S_ISDIR)
-                (S_ISDIR(s.st_mode))
-            #elif defined(S_IFMT) && defined(S_IFDIR)
-                ((s.st_mode & S_IFMT) == S_IFDIR)
-            #else
-                (0)
-            #endif
-        {
-            FileType = ML_FILE_TYPE_DIRECTORY;
-        }
-        else if
-            #if defined(S_ISBLK)
-                (S_ISBLK(s.st_mode))
-            #elif defined(S_IFMT) && defined(S_IFBLK)
-                ((s.st_mode & S_IFMT) == S_IFBLK)
-            #else
-                (0)
-            #endif
-        {
-            FileType = ML_FILE_TYPE_BLOCK_DEVICE;
-        }
-        else if
-            #if defined(S_ISCHR)
-                (S_ISCHR(s.st_mode))
-            #elif defined(S_IFMT) && defined(S_IFCHR)
-                ((s.st_mode & S_IFMT) == S_IFCHR)
-            #else
-                (0)
-            #endif
-        {
-            FileType = ML_FILE_TYPE_CHARACTER_DEVICE;
-        }
-        else if
-            #if defined(S_ISFIFO)
-                (S_ISFIFO(s.st_mode))
-            #elif defined(S_IFMT) && defined(S_IFIFO)
-                ((s.st_mode & S_IFMT) == S_IFIFO)
-            #else
-                (0)
-            #endif
-        {
-            FileType = ML_FILE_TYPE_NAMED_PIPE;
-        }
-        else if
-            #if defined(S_ISLNK)
-                (S_ISLNK(s.st_mode))
-            #elif defined(S_IFMT) && defined(S_IFLNK)
-                ((s.st_mode & S_IFMT) == S_IFLNK)
-            #else
-                (0)
-            #endif
-        {
-            FileType = ML_FILE_TYPE_SYMBOLIC_LINK;
-        }
-        else if
-            #if defined(S_ISSOCK)
-                (S_ISSOCK(s.st_mode))
-            #elif defined(S_IFMT) && defined(S_IFSOCK)
-                ((s.st_mode & S_IFMT) == S_IFSOCK)
-            #else
-                (0)
-            #endif
-        {
-            FileType = ML_FILE_TYPE_SOCKET;
-        } else {
-
-        #ifdef S_TYPEISMQ
-            if (S_TYPEISMQ(&s)) {
-                FileType = ML_FILE_TYPE_MESSAGE_QUEUE;
-            } else
-        #endif
-
-        #ifdef S_TYPEISSEM
-            if (S_TYPEISSEM(&s)) {
-                FileType = ML_FILE_TYPE_SEMAPHORE;
-            } else
-        #endif
-
-        #ifdef S_TYPEISSHM
-            if (S_TYPEISSHM(&s)) {
-                FileType = ML_FILE_TYPE_SHARED_MEMORY;
-            } else
-        #endif
-
-            {
-                FileType = ML_FILE_TYPE_UNKNOWN;
-            }
-        }
-        Error = 0;
-    } else {
-        FileType = ML_FILE_TYPE_UNKNOWN;
-        Error = errno;
-    }
-#else
-    FileType = ML_FILE_TYPE_UNKNOWN;
-    Error = ENOSYS;
-#endif
-").
-
-:- pragma foreign_proc("C#",
-    file_type_2(_FollowSymLinks::in, FileName::in, FileType::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        System.IO.FileAttributes attrs =
-            System.IO.File.GetAttributes(FileName);
-        if ((attrs & System.IO.FileAttributes.Directory) ==
-            System.IO.FileAttributes.Directory)
-        {
-            FileType = io.ML_FILE_TYPE_DIRECTORY;
-        }
-        else if ((attrs & System.IO.FileAttributes.Device) ==
-            System.IO.FileAttributes.Device)
-        {
-            // XXX It may be a block device, but .NET doesn't
-            // distinguish between character and block devices.
-            FileType = io.ML_FILE_TYPE_CHARACTER_DEVICE;
-        }
-        else
-        {
-            FileType = io.ML_FILE_TYPE_REGULAR_FILE;
-        }
-        Error = null;
-    } catch (System.Exception e) {
-        FileType = ML_FILE_TYPE_UNKNOWN;
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    file_type_2(_FollowSymLinks::in, FileName::in, FileType::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    // The Java implementation can distinguish between regular files and
-    // directories, and for everything else it just returns unknown.
-
-    FileType = io.ML_FILE_TYPE_UNKNOWN;
-    Error = null;
-
-    try {
-        java.io.File file = new java.io.File(FileName);
-        if (file.isFile()) {
-            FileType = io.ML_FILE_TYPE_REGULAR_FILE;
-        } else if (file.isDirectory()) {
-            FileType = io.ML_FILE_TYPE_DIRECTORY;
-        } else if (file.exists()) {
-            FileType = io.ML_FILE_TYPE_UNKNOWN;
-        } else {
-            Error = new java.io.FileNotFoundException(
-                ""File not found or I/O error"");
-        }
-    } catch (java.lang.Exception e) {
-        Error = e;
-    }
-").
-
-%---------------------%
+    io.file.file_type(FollowSymLinks, FileName, Result, !IO).
 
 file_modification_time(File, Result, !IO) :-
-    file_modification_time_2(File, Time, Error, !IO),
-    is_error(Error, "can't get file modification time: ", MaybeIOError, !IO),
-    (
-        MaybeIOError = yes(IOError),
-        Result = error(IOError)
-    ;
-        MaybeIOError = no,
-        Result = ok(Time)
-    ).
-
-:- pred file_modification_time_2(string::in, time_t::out, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    file_modification_time_2(FileName::in, Time::out, Error::out,
-        _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-#ifdef MR_HAVE_STAT
-  #ifdef MR_WIN32
-    struct _stat s;
-    int stat_result = _wstat(ML_utf8_to_wide(FileName), &s);
-  #else
-    struct stat s;
-    int stat_result = stat(FileName, &s);
-  #endif
-
-    if (stat_result == 0) {
-        // XXX avoid ML_construct_time_t by returning time_t_rep?
-        Time = ML_construct_time_t(s.st_mtime);
-        Error = 0;
-    } else {
-        Error = errno;
-        Time = 0;
-    }
-#else
-    Error = ENOSYS;
-    Time = 0;
-#endif
-").
-
-:- pragma foreign_proc("C#",
-    file_modification_time_2(FileName::in, Time::out, Error::out,
-        _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        if (System.IO.File.Exists(FileName)) {
-            System.DateTime t = System.IO.File.GetLastWriteTime(FileName);
-            Time = time.ML_construct_time_t(t);
-            Error = null;
-        } else {
-            Error = new System.IO.FileNotFoundException();
-            Time = null;
-        }
-    } catch (System.Exception e) {
-        Error = e;
-        Time = null;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    file_modification_time_2(FileName::in, Time::out, Error::out,
-        _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    try {
-        long modtime = (new java.io.File(FileName)).lastModified();
-        if (modtime == 0) {
-            Error = new java.io.FileNotFoundException(
-                ""File not found or I/O error"");
-            Time = null;
-        } else {
-            Time = time.ML_construct_time_t(
-                java.time.Instant.ofEpochMilli(modtime));
-            Error = null;
-        }
-    } catch (java.lang.Exception e) {
-        Error = e;
-        Time = null;
-    }
-").
+    io.file.file_modification_time(File, Result, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -10874,419 +9987,22 @@ file_modification_time(File, Result, !IO) :-
 %
 
 make_temp_file(Result, !IO) :-
-    get_temp_directory(Dir, !IO),
-    make_temp_file(Dir, "mtmp", "", Result, !IO).
+    io.file.make_temp_file(Result, !IO).
 
 make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
-    do_make_temp(Dir, Prefix, Suffix, char_to_string(dir.directory_separator),
-        Name, Error, !IO),
-    is_error(Error, "error creating temporary file: ", MaybeIOError, !IO),
-    (
-        MaybeIOError = yes(IOError),
-        Result = error(IOError)
-    ;
-        MaybeIOError = no,
-        Result = ok(Name)
-    ).
-
-%---------------------%
-
-% XXX The code for io.make_temp assumes POSIX. It uses the functions open(),
-% close(), and getpid() and the macros EEXIST, O_WRONLY, O_CREAT, and O_EXCL.
-% We should be using conditional compilation here to avoid these POSIX
-% dependencies.
-
-:- pred do_make_temp(string::in, string::in, string::in, string::in,
-    string::out, system_error::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_make_temp(Dir::in, Prefix::in, Suffix::in, Sep::in, FileName::out,
-        Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure,
-        not_thread_safe, % due to ML_io_tempnam_counter
-        tabled_for_io, does_not_affect_liveness],
-"
-#ifdef MR_HAVE_MKSTEMP
-    int err, fd;
-
-    // We cannot append Suffix because the last six chars in the argument
-    // to mkstemp() must be XXXXXX.
-    FileName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX"",
-        Dir, Sep, Prefix);
-    fd = mkstemp(FileName);
-    if (fd == -1) {
-        Error = errno;
-    } else {
-        do {
-            err = close(fd);
-        } while (err == -1 && MR_is_eintr(errno));
-        if (err == 0) {
-            Error = 0;
-        } else {
-            Error = errno;
-        }
-    }
-#else
-    // Constructs a temporary name by concatenating Dir, `/', the first 5 chars
-    // of Prefix, six hex digits, and Suffix. The six digit hex number is
-    // generated by starting with the pid of this process. Uses
-    // `open(..., O_CREATE | O_EXCL, ...)' to create the file, checking that
-    // there was no existing file with that name.
-
-    int     err, fd, num_tries;
-    int     flags;
-
-    if (ML_io_tempnam_counter == 0) {
-        ML_io_tempnam_counter = getpid();
-    }
-    num_tries = 0;
-    do {
-        FileName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5s%06lX%s"",
-            Dir, Sep, Prefix, ML_io_tempnam_counter & 0xffffffL, Suffix);
-        flags = O_WRONLY | O_CREAT | O_EXCL;
-        do {
-            #ifdef MR_WIN32
-                fd = _wopen(ML_utf8_to_wide(FileName), flags, 0600);
-            #else
-                fd = open(FileName, flags, 0600);
-            #endif
-        } while (fd == -1 && MR_is_eintr(errno));
-        num_tries++;
-        ML_io_tempnam_counter += (1 << num_tries);
-    } while (fd == -1 && errno == EEXIST &&
-        num_tries < ML_MAX_TEMPNAME_TRIES);
-    if (fd == -1) {
-        Error = errno;
-    }  else {
-        do {
-            err = close(fd);
-        } while (err == -1 && MR_is_eintr(errno));
-        if (err == 0) {
-            Error = 0;
-        } else {
-            Error = errno;
-        }
-    }
-#endif
-").
-
-:- pragma foreign_proc("C#",
-    do_make_temp(_Dir::in, _Prefix::in, _Suffix::in, _Sep::in, FileName::out,
-        Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        FileName = System.IO.Path.GetTempFileName();
-        Error = null;
-    } catch (System.Exception e) {
-        FileName = """";
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_make_temp(Dir::in, Prefix::in, Suffix::in, _Sep::in, FileName::out,
-        Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    try {
-        File    new_file;
-
-        if (Prefix.length() > 5) {
-            // The documentation for io.make_temp says that we should only use
-            // the first five characters of Prefix.
-            Prefix = Prefix.substring(0, 5);
-        }
-
-        new_file = new File(new File(Dir), makeTempName(Prefix, Suffix));
-        if (new_file.createNewFile()) {
-            FileName = new_file.getAbsolutePath();
-            Error = null;
-        } else {
-            FileName = """";
-            Error = new java.io.IOException(""Could not create file"");
-        }
-    } catch (IOException e) {
-        FileName = """";
-        Error = e;
-    }
-").
-
-%---------------------%
+    io.file.make_temp_file(Dir, Prefix, Suffix, Result, !IO).
 
 make_temp_directory(Result, !IO) :-
-    get_temp_directory(Dir, !IO),
-    make_temp_directory(Dir, "mtmp", "", Result, !IO).
+    io.file.make_temp_directory(Result, !IO).
 
 make_temp_directory(Dir, Prefix, Suffix, Result, !IO) :-
-    do_make_temp_directory(Dir, Prefix, Suffix,
-        char_to_string(dir.directory_separator), DirName, Error, !IO),
-    is_error(Error, "error creating temporary directory: ", MaybeIOError, !IO),
-    (
-        MaybeIOError = yes(IOError),
-        Result = error(IOError)
-    ;
-        MaybeIOError = no,
-        Result = ok(DirName)
-    ).
+    io.file.make_temp_directory(Dir, Prefix, Suffix, Result, !IO).
 
-:- pred do_make_temp_directory(string::in, string::in, string::in, string::in,
-    string::out, system_error::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_make_temp_directory(Dir::in, Prefix::in, Suffix::in, Sep::in,
-        DirName::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        does_not_affect_liveness],
-"
-#ifdef MR_HAVE_MKDTEMP
-    int err;
-
-    // We cannot append Suffix because the last six chars in the argument
-    // to mkdtemp() must be XXXXXX.
-
-    DirName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX"",
-        Dir, Sep, Prefix);
-    DirName = mkdtemp(DirName);
-    if (DirName == NULL) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-#else
-    Error = ENOSYS;
-    DirName = MR_make_string_const("""");
-#endif // HAVE_MKDTEMP
-").
-
-:- pragma foreign_proc("C#",
-    do_make_temp_directory(Dir::in, _Prefix::in, _Suffix::in, _Sep::in,
-        DirName::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"{
-    try
-    {
-        DirName = Path.Combine(Dir, Path.GetRandomFileName());
-
-        switch (Environment.OSVersion.Platform)
-        {
-            case PlatformID.Win32NT:
-                // obtain the owner of the temporary directory
-                IdentityReference tempInfo =
-                    new DirectoryInfo(Dir)
-                        .GetAccessControl(AccessControlSections.Owner)
-                        .GetOwner(typeof(SecurityIdentifier));
-
-                DirectorySecurity security = new DirectorySecurity();
-                security.AddAccessRule(
-                    new FileSystemAccessRule(tempInfo,
-                        FileSystemRights.ListDirectory
-                            | FileSystemRights.Read
-                            | FileSystemRights.Modify,
-                        InheritanceFlags.None,
-                        PropagationFlags.None,
-                        AccessControlType.Allow
-                    )
-                );
-                Directory.CreateDirectory(DirName, security);
-                Error = null;
-                break;
-
-#if __MonoCS__
-            case PlatformID.Unix:
-            case (PlatformID)6: // MacOSX:
-                int errorNo = ML_sys_mkdir(DirName, 0x7 << 6);
-                if (errorNo == 0)
-                {
-                    Error = null;
-                }
-                else
-                {
-                    Error = new System.Exception(string.Format(
-                        ""Creating directory {0} failed with: {1:X}"",
-                        DirName, errorNo));
-                }
-                break;
-#endif
-
-            default:
-                Error = new System.Exception(
-                    ""Changing folder permissions is not supported for: "" +
-                    Environment.OSVersion);
-                break;
-        }
-    }
-    catch (System.Exception e)
-    {
-        DirName = string.Empty;
-        Error = e;
-    }
-}").
-
-:- pragma foreign_proc("Java",
-    do_make_temp_directory(Dir::in, Prefix::in, Suffix::in, _Sep::in,
-        DirName::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    File    new_dir;
-
-    if (Prefix.length() > 5) {
-        // The documentation for io.make_temp says that we should only use
-        // the first five characters of Prefix.
-        Prefix = Prefix.substring(0, 5);
-    }
-
-    new_dir = new File(new File(Dir), makeTempName(Prefix, Suffix));
-    if (new_dir.mkdir()) {
-        DirName = new_dir.getAbsolutePath();
-        Error = null;
-    } else {
-        DirName = """";
-        Error = new java.io.IOException(""Couldn't create directory"");
-    }
-").
-
-%---------------------%
-
-:- pragma foreign_proc("C",
-    have_make_temp_directory,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-#ifdef MR_HAVE_MKDTEMP
-    SUCCESS_INDICATOR = MR_TRUE;
-#else
-    SUCCESS_INDICATOR = MR_FALSE;
-#endif
-").
-
-:- pragma foreign_proc("Java",
-    have_make_temp_directory,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = true;
-").
-
-:- pragma foreign_proc("C#",
-    have_make_temp_directory,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = true;
-").
-
-%---------------------%
-
-:- pragma foreign_decl("C", "
-#ifdef MR_HAVE_UNISTD_H
-    #include <unistd.h>
-#endif
-    #include <sys/types.h>
-    #include <sys/stat.h>
-    #include <fcntl.h>
-
-    #define ML_MAX_TEMPNAME_TRIES   (6 * 4)
-
-    extern long ML_io_tempnam_counter;
-").
-
-:- pragma foreign_code("C", "
-    long    ML_io_tempnam_counter = 0;
-").
-
-:- pragma foreign_decl("Java", local, "
-import java.io.File;
-import java.io.IOException;
-import java.util.Random;
-").
-
-:- pragma foreign_code("Java", "
-    public static Random ML_rand = new Random();
-
-    public static String makeTempName(String prefix, String suffix)
-    {
-        StringBuilder sb = new StringBuilder();
-
-        sb.append(prefix);
-        // Make an 8-digit mixed case alpha-numeric code.
-        for (int i = 0; i < 8; i++) {
-            char c;
-            int c_num = ML_rand.nextInt(10+26+26);
-            if (c_num < 10) {
-                c_num = c_num + '0';
-            } else if (c_num < 10+26) {
-                c_num = c_num + 'A' - 10;
-            } else{
-                c_num = c_num + 'a' - 10 - 26;
-            }
-            c = (char)c_num;
-            sb.append(c);
-        }
-        sb.append(suffix);
-
-        return sb.toString();
-    }
-").
-
-%---------------------%
+have_make_temp_directory :-
+    io.file.have_make_temp_directory.
 
 get_temp_directory(Dir, !IO) :-
-    % If using the Java or C# backend then use their API to get the location of
-    % temporary files.
-    system_temp_dir(Dir0, OK, !IO),
-    ( if OK = 1 then
-        Dir = Dir0
-    else
-        % Either this is not a Java or C# grade or the Java or C# backend
-        % couldn't determine the temporary directory.
-        %
-        % We need to do an explicit check of TMPDIR because not all
-        % systems check TMPDIR for us (eg Linux #$%*@&).
-        Var = ( if dir.use_windows_paths then "TMP" else "TMPDIR" ),
-        get_environment_var(Var, Result, !IO),
-        (
-            Result = yes(Dir)
-        ;
-            Result = no,
-            ( if dir.use_windows_paths then
-                Dir = dir.this_directory
-            else
-                Dir = "/tmp"
-            )
-        )
-    ).
-
-:- pred system_temp_dir(string::out, int::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("Java",
-    system_temp_dir(Dir::out, OK::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    try {
-        Dir = java.lang.System.getProperty(""java.io.tmpdir"");
-        OK = (Dir != null) ? 1 : 0;
-    } catch (Exception e) {
-        Dir = null;
-        OK = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    system_temp_dir(Dir::out, OK::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    try {
-        Dir = System.IO.Path.GetTempPath();
-        OK = (Dir != null) ? 1 : 0;
-    } catch (System.Exception _) {
-        Dir = null;
-        OK = 0;
-    }
-").
-
-system_temp_dir("", 0, !IO).
+    io.file.get_temp_directory(Dir, !IO).
 
 %---------------------------------------------------------------------------%
 %

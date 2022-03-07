@@ -88,6 +88,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module io.file.
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
@@ -323,7 +324,7 @@ require_recompilation_if_not_up_to_date(RecordedTimestamp, TargetFile,
         !.MaybeStoppingReason = yes(_)
     ;
         !.MaybeStoppingReason = no,
-        io.file_modification_time(TargetFile, TargetModTimeResult, !IO),
+        io.file.file_modification_time(TargetFile, TargetModTimeResult, !IO),
         ( if
             TargetModTimeResult = ok(TargetModTime),
             compare(TargetModTimeCompare, time_t_to_timestamp(TargetModTime),

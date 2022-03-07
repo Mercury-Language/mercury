@@ -20,6 +20,7 @@
 :- import_module bool.
 :- import_module exception.
 :- import_module int.
+:- import_module io.file.
 :- import_module list.
 :- import_module pair.
 :- import_module stream.
@@ -181,7 +182,7 @@ main(!IO) :-
                         bits(BM2 ^ bits(64, 8), 8)],
         test_error_sequence(timebomb(8), 8, !.Seq, !.ErrorSeq, !IO)
     ),
-    io.remove_file(bit_buffer_test_tmp_file, _, !IO).
+    io.file.remove_file(bit_buffer_test_tmp_file, _, !IO).
 
 :- pred test_sequence(num_bytes::in, list(request)::in, io::di, io::uo) is det.
 

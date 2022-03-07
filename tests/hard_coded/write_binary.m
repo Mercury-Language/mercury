@@ -19,6 +19,7 @@
 :- import_module char.
 :- import_module exception.
 :- import_module int.
+:- import_module io.file.
 :- import_module list.
 :- import_module map.
 :- import_module require.
@@ -208,7 +209,7 @@ do_test(Term, !IO) :-
     ).
 
 do_test_2(Term, TermRead, !IO) :-
-    io.make_temp_file(FileNameRes, !IO),
+    io.file.make_temp_file(FileNameRes, !IO),
     ( if FileNameRes = ok(FileName) then
         io.open_binary_output(FileName, OutputRes, !IO),
         ( if OutputRes = ok(OutputStream) then
@@ -228,19 +229,19 @@ do_test_2(Term, TermRead, !IO) :-
                     Result = ok(TermRead0),
                     TermRead0 = Term
                 then
-                    io.remove_file(FileName, _, !IO),
+                    io.file.remove_file(FileName, _, !IO),
                     io.print("ok... ", !IO),
                     TermRead = TermRead0
                 else
-                    io.remove_file(FileName, _, !IO),
+                    io.file.remove_file(FileName, _, !IO),
                     throw("error reading term back in again")
                 )
             else
-                io.remove_file(FileName, _, !IO),
+                io.file.remove_file(FileName, _, !IO),
                 throw(InputRes)
             )
         else
-            io.remove_file(FileName, _, !IO),
+            io.file.remove_file(FileName, _, !IO),
             throw(OutputRes)
         )
     else

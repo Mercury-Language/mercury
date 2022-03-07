@@ -69,6 +69,7 @@
 
 :- import_module bool.
 :- import_module exception.
+:- import_module io.file.
 :- import_module map.
 :- import_module maybe.
 :- import_module mercury_term_parser.
@@ -674,7 +675,7 @@ cleanup_query(_Options, !IO) :-
 :- pred cleanup_file(string::in, string::in, io::di, io::uo) is det.
 
 cleanup_file(Prefix, Suffix, !IO) :-
-    io.remove_file(Prefix ++ query_module_name ++ Suffix, _, !IO).
+    io.file.remove_file(Prefix ++ query_module_name ++ Suffix, _, !IO).
 
     % `grade_option' returns MR_GRADE_OPT, which is defined in
     % runtime/mercury_grade.h. This is a string containing the grade

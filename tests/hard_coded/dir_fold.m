@@ -16,6 +16,7 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module int.
+:- import_module io.file.
 :- import_module unit.
 
 %---------------------------------------------------------------------------%
@@ -29,7 +30,7 @@ main(!IO) :-
         % Repeat enough times to make it apparent.  On Linux, the default
         % maximum number of open files to a process is 1024.
         repeat(DirName, 1025, Res, !IO),
-        io.remove_file(DirName, _, !IO),
+        io.file.remove_file(DirName, _, !IO),
         (
             Res = ok,
             io.write_string("done.\n", !IO)
@@ -45,7 +46,7 @@ main(!IO) :-
 :- pred repeat(string::in, int::in, io.res::out, io::di, io::uo) is det.
 
 repeat(DirName, Count, Res, !IO) :-
-    ( Count > 0 ->
+    ( if Count > 0 then
         dir.foldl2(nothing, DirName, unit, Res0, !IO),
         (
             Res0 = ok(_ : unit),
@@ -54,7 +55,7 @@ repeat(DirName, Count, Res, !IO) :-
             Res0 = error(_, Error),
             Res = error(Error)
         )
-    ;
+    else
         Res = ok
     ).
 

@@ -197,6 +197,7 @@
 :- import_module benchmarking.
 :- import_module dir.
 :- import_module exception.
+:- import_module io.file.
 :- import_module string.
 :- import_module univ.
 
@@ -312,7 +313,8 @@ search_for_file_mod_time_loop(AllDirs, Dirs, FileName, MaybeModTime, !IO) :-
     ;
         Dirs = [HeadDir | TailDirs],
         make_path_name_noncanon(HeadDir, FileName, HeadFilePathNameNC),
-        io.file_modification_time(HeadFilePathNameNC, MaybeHeadModTime, !IO),
+        io.file.file_modification_time(HeadFilePathNameNC,
+            MaybeHeadModTime, !IO),
         (
             MaybeHeadModTime = ok(HeadModTime),
             MaybeModTime = ok(HeadModTime)
@@ -408,7 +410,7 @@ output_to_file_stream(Globals, ModuleName, FileName, Action0,
 
 write_include_file_contents(OutputStream, FileName, Res, !IO) :-
     FollowSymLinks = yes,
-    io.file_type(FollowSymLinks, FileName, MaybeFileType, !IO),
+    io.file.file_type(FollowSymLinks, FileName, MaybeFileType, !IO),
     (
         MaybeFileType = ok(FileType),
         ( if possibly_regular_file(FileType) then
@@ -588,11 +590,11 @@ make_install_dir_command(Globals, SourceDirName, InstallDir) = Command :-
 
 open_temp_output(Dir, Prefix, Suffix, Result, !IO) :-
     % XXX Both open_temp_output and io.make_temp_file are ambiguous.
-    io.make_temp_file(Dir, Prefix, Suffix, TempFileResult, !IO),
+    io.file.make_temp_file(Dir, Prefix, Suffix, TempFileResult, !IO),
     open_temp_output_2(TempFileResult, Result, !IO).
 
 open_temp_output(Result, !IO) :-
-    io.make_temp_file(TempFileResult, !IO),
+    io.file.make_temp_file(TempFileResult, !IO),
     open_temp_output_2(TempFileResult, Result, !IO).
 
 :- pred open_temp_output_2(io.res(string)::in,
@@ -607,7 +609,7 @@ open_temp_output_2(TempFileResult, Result, !IO) :-
             Result = ok({TempFileName, Stream})
         ;
             OpenResult = error(Error),
-            io.remove_file(TempFileName, _, !IO),
+            io.file.remove_file(TempFileName, _, !IO),
             Result = error(format(
                 "could not open temporary file `%s': %s",
                 [s(TempFileName), s(error_message(Error))]))
@@ -619,7 +621,7 @@ open_temp_output_2(TempFileResult, Result, !IO) :-
     ).
 
 open_temp_input(Result, Pred, !IO) :-
-    io.make_temp_file(TempFileResult, !IO),
+    io.file.make_temp_file(TempFileResult, !IO),
     (
         TempFileResult = ok(TempFileName),
         Pred(TempFileName, PredResult, !IO),
@@ -633,11 +635,11 @@ open_temp_input(Result, Pred, !IO) :-
                 OpenResult = error(Error),
                 Result = error(format("could not open `%s': %s",
                     [s(TempFileName), s(error_message(Error))])),
-                remove_file(TempFileName, _, !IO)
+                io.file.remove_file(TempFileName, _, !IO)
             )
         ;
             PredResult = error(ErrorMessage),
-            io.remove_file(TempFileName, _, !IO),
+            io.file.remove_file(TempFileName, _, !IO),
             Result = error(ErrorMessage)
         )
     ;

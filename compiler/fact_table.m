@@ -159,6 +159,7 @@
 :- import_module float.
 :- import_module int.
 :- import_module integer.
+:- import_module io.file.
 :- import_module library.
 :- import_module map.
 :- import_module maybe.
@@ -726,7 +727,7 @@ compile_fact_table_in_file(FileStream, FileName, OutputStream, FactTableSize,
         infer_determinism_pass_2(ModuleInfo, GenInfo, ProcFiles,
             ProcTable0, ProcTable, !Specs, !IO),
         pred_info_set_proc_table(ProcTable, !PredInfo),
-        io.make_temp_file(DataFileNameResult, !IO),
+        io.file.make_temp_file(DataFileNameResult, !IO),
         (
             DataFileNameResult = ok(DataFileName),
             write_fact_table_arrays(OutputStream, FactTableSize, ModuleInfo,
@@ -3830,7 +3831,7 @@ fact_table_size(Globals, FactTableSize) :-
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 delete_temporary_file(FileName, !Specs, !IO) :-
-    io.remove_file(FileName, Result, !IO),
+    io.file.remove_file(FileName, Result, !IO),
     (
         Result = ok
     ;

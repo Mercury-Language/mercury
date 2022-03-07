@@ -9,7 +9,7 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
-
+:- import_module io.file.
 :- import_module list.
 
 :- type big
@@ -19,8 +19,8 @@
 
 main(!IO) :-
     % In case we have these files lying around.
-    io.remove_file("browser_test.save.1", _, !IO),
-    io.remove_file("browser_test.save.2", _, !IO),
+    io.file.remove_file("browser_test.save.1", _, !IO),
+    io.file.remove_file("browser_test.save.2", _, !IO),
     big_data(Data),
     io.print(Data, !IO),
     io.write_string(".\n", !IO),
@@ -30,8 +30,8 @@ main(!IO) :-
     print_file("browser_test.save.1", !IO),
     print_file("browser_test.save.2", !IO),
     % Clean up after the test.
-    io.remove_file("browser_test.save.1", _, !IO),
-    io.remove_file("browser_test.save.2", _, !IO),
+    io.file.remove_file("browser_test.save.1", _, !IO),
+    io.file.remove_file("browser_test.save.2", _, !IO),
     a_func(Data) = Data2,
     write(Data2, !IO),
     nl(!IO).

@@ -110,6 +110,7 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
+:- import_module io.file.
 :- import_module library.
 :- import_module list.
 :- import_module map.
@@ -734,7 +735,7 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
                 _Succeeded, !IO)
         ;
             Errors = [_ | _],
-            io.remove_file(TmpFileName, _, !IO),
+            io.file.remove_file(TmpFileName, _, !IO),
             % report_error sets the exit status.
             get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
             list.foldl(report_error(ErrorStream), Errors, !IO)

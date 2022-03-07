@@ -243,6 +243,7 @@
 
 :- import_module dir.
 :- import_module getopt.
+:- import_module io.file.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -1157,7 +1158,7 @@ make_library_init_file_2(Globals, ProgressStream, ErrorStream,
                     MainModuleName, UserDirFileName, !IO),
                 % Remove the target of the symlink/copy in case it already
                 % exists.
-                io.remove_file(UserDirFileName, _, !IO),
+                io.file.remove_file(UserDirFileName, _, !IO),
                 make_symlink_or_copy_file(Globals, ProgressStream, ErrorStream,
                     InitFileName, UserDirFileName, Succeeded, !IO)
             ;
@@ -1198,7 +1199,7 @@ invoke_mkinit(Globals, ProgressStream, ErrorStream, InitFileStream, Verbosity,
         invoke_system_command(Globals, ProgressStream, ErrorStream,
             InitFileStream, Verbosity, MkInitCmd, MkInitSucceeded0, !IO),
 
-        io.remove_file(TmpFile, RemoveResult, !IO),
+        io.file.remove_file(TmpFile, RemoveResult, !IO),
         (
             RemoveResult = ok,
             MkInitSucceeded = MkInitSucceeded0
@@ -1481,8 +1482,8 @@ file_as_new_as(FileNameA, Rel, FileNameB, !IO) :-
     maybe(comparison_result)::out, io::di, io::uo) is det.
 
 compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO) :-
-    io.file_modification_time(FileNameA, TimeResultA, !IO),
-    io.file_modification_time(FileNameB, TimeResultB, !IO),
+    io.file.file_modification_time(FileNameA, TimeResultA, !IO),
+    io.file.file_modification_time(FileNameB, TimeResultB, !IO),
     ( if
         TimeResultA = ok(TimeA),
         TimeResultB = ok(TimeB)
@@ -1694,11 +1695,11 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         TraceFlagsOpt = shlib_linker_trace_flags,
         globals.lookup_bool_option(Globals, allow_undefined, AllowUndef),
         (
-            AllowUndef = yes,
+            AllowUndef = bool.yes,
             globals.lookup_string_option(Globals, linker_allow_undefined_flag,
                 UndefOpt)
         ;
-            AllowUndef = no,
+            AllowUndef = bool.no,
             globals.lookup_string_option(Globals,
                 linker_error_undefined_flag, UndefOpt)
         ),
@@ -1722,7 +1723,7 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
     globals.lookup_bool_option(Globals, strip, Strip),
     ( if
         LinkTargetType = executable,
-        Strip = yes
+        Strip = bool.yes
     then
         globals.lookup_string_option(Globals, linker_strip_flag,
             LinkerStripOpt),
@@ -1743,10 +1744,10 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
 
     globals.lookup_bool_option(Globals, target_debug, TargetDebug),
     (
-        TargetDebug = yes,
+        TargetDebug = bool.yes,
         globals.lookup_string_option(Globals, DebugFlagsOpt, DebugOpts)
     ;
-        TargetDebug = no,
+        TargetDebug = bool.no,
         DebugOpts = ""
     ),
 
@@ -1767,7 +1768,7 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
     % Are the thread libraries needed?
     use_thread_libs(Globals, UseThreadLibs),
     (
-        UseThreadLibs = yes,
+        UseThreadLibs = bool.yes,
         globals.lookup_string_option(Globals, ThreadFlagsOpt, ThreadOpts),
 
         % Determine which options are needed to link to libhwloc, if
@@ -1781,7 +1782,7 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         ),
         globals.lookup_string_option(Globals, HwlocFlagsOpt, HwlocOpts)
     ;
-        UseThreadLibs = no,
+        UseThreadLibs = bool.no,
         ThreadOpts = "",
         HwlocOpts = ""
     ),
@@ -1818,7 +1819,7 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
     globals.lookup_bool_option(Globals, shlib_linker_use_install_name,
         UseInstallName),
     ( if
-        UseInstallName = yes,
+        UseInstallName = bool.yes,
         LinkTargetType = shared_library
     then
         % NOTE: `ShLibFileName' must *not* be prefixed with a directory.
@@ -1849,7 +1850,7 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
     get_link_libraries(Globals, MaybeLinkLibraries, !IO),
     globals.lookup_string_option(Globals, linker_opt_separator, LinkOptSep),
     (
-        MaybeLinkLibraries = yes(LinkLibrariesList),
+        MaybeLinkLibraries = maybe.yes(LinkLibrariesList),
         join_quoted_string_list(LinkLibrariesList, "", "", " ",
             LinkLibraries),
 
@@ -1862,8 +1863,9 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
             % we first create an archive of all of the object files.
             RestrictedCommandLine = yes,
             globals.lookup_string_option(Globals, library_extension, LibExt),
-            io.get_temp_directory(TempDir, !IO),
-            io.make_temp_file(TempDir, "mtmp", LibExt, TmpArchiveResult, !IO),
+            io.file.get_temp_directory(TempDir, !IO),
+            io.file.make_temp_file(TempDir, "mtmp", LibExt,
+                TmpArchiveResult, !IO),
             (
                 TmpArchiveResult = ok(TmpArchive),
                 % Only include actual object files in the temporary archive,
@@ -1872,7 +1874,7 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
                     ProperObjectFiles, NonObjectFiles),
                 % Delete the currently empty output file first, otherwise ar
                 % will fail to recognise its file format.
-                remove_file(TmpArchive, _, !IO),
+                io.file.remove_file(TmpArchive, _, !IO),
                 create_archive(Globals, ProgressStream, ErrorStream,
                     TmpArchive, yes, ProperObjectFiles, ArchiveSucceeded, !IO),
                 MaybeDeleteTmpArchive = yes(TmpArchive),
@@ -1929,13 +1931,13 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
 
             globals.lookup_bool_option(Globals, demangle, Demangle),
             (
-                Demangle = yes,
+                Demangle = bool.yes,
                 globals.lookup_string_option(Globals, demangle_command,
                     DemangleCmd),
-                MaybeDemangleCmd = yes(DemangleCmd)
+                MaybeDemangleCmd = maybe.yes(DemangleCmd)
             ;
-                Demangle = no,
-                MaybeDemangleCmd = no
+                Demangle = bool.no,
+                MaybeDemangleCmd = maybe.no
             ),
 
             invoke_system_command_maybe_filter_output(Globals,
@@ -1961,13 +1963,13 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
             Succeeded = did_not_succeed
         ),
         (
-            MaybeDeleteTmpArchive = yes(FileToDelete),
-            io.remove_file(FileToDelete, _, !IO)
+            MaybeDeleteTmpArchive = maybe.yes(FileToDelete),
+            io.file.remove_file(FileToDelete, _, !IO)
         ;
-            MaybeDeleteTmpArchive = no
+            MaybeDeleteTmpArchive = maybe.no
         )
     ;
-        MaybeLinkLibraries = no,
+        MaybeLinkLibraries = maybe.no,
         Succeeded = did_not_succeed
     ).
 
@@ -2437,7 +2439,7 @@ post_link_make_symlink_or_copy(Globals, ProgressStream, ErrorStream,
         ;
             SameTimestamp = no,
             % Remove the target of the symlink/copy in case it already exists.
-            io.remove_file_recursively(UserDirFileName, _, !IO),
+            io.file.remove_file_recursively(UserDirFileName, _, !IO),
 
             make_symlink_or_copy_file(Globals, ProgressStream, ErrorStream,
                 OutputFileName, UserDirFileName, Succeeded0, !IO),
@@ -2476,7 +2478,7 @@ post_link_make_symlink_or_copy(Globals, ProgressStream, ErrorStream,
                 ScriptSameTimestamp = no,
                 % Remove the target of the symlink/copy in case
                 % it already exists.
-                io.remove_file_recursively(UserDirScriptName, _, !IO),
+                io.file.remove_file_recursively(UserDirScriptName, _, !IO),
                 make_symlink_or_copy_file(Globals, ProgressStream, ErrorStream,
                     OutputScriptName, UserDirScriptName, Succeeded, !IO)
             )
@@ -2932,12 +2934,12 @@ create_java_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
             [Jar, " cf ", JarFileName, " @", TempFileName]),
         invoke_system_command(Globals, ProgressStream, ErrorStream,
             ErrorStream, cmd_verbose_commands, Cmd, Succeeded0, !IO),
-        io.remove_file(TempFileName, _, !IO),
+        io.file.remove_file(TempFileName, _, !IO),
         (
             Succeeded0 = succeeded
         ;
             Succeeded0 = did_not_succeed,
-            io.remove_file(JarFileName, _, !IO)
+            io.file.remove_file(JarFileName, _, !IO)
         )
     ;
         TempFileResult = error(ErrorMessage),
@@ -3329,7 +3331,7 @@ invoke_long_system_command_maybe_filter_output(Globals,
                 ProgressStream, ErrorStream, CmdOutputStream, Verbosity,
                 FullCmd, MaybeProcessOutput, Succeeded0, !IO),
 
-            io.remove_file(TmpFile, RemoveResult, !IO),
+            io.file.remove_file(TmpFile, RemoveResult, !IO),
             (
                 RemoveResult = ok,
                 Succeeded = Succeeded0

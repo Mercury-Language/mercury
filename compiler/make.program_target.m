@@ -85,6 +85,7 @@
 :- import_module dir.
 :- import_module getopt.
 :- import_module int.
+:- import_module io.file.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -1157,7 +1158,7 @@ choose_cache_dir_name(Globals, DirName, !IO) :-
 remove_cache_dir(Globals, CacheDir, !Info, !IO) :-
     verbose_make_msg_option(Globals, verbose_make,
         io.format("Removing %s\n", [s(CacheDir)]), !IO),
-    io.remove_file_recursively(CacheDir, _, !IO).
+    io.file.remove_file_recursively(CacheDir, _, !IO).
 
 %---------------------------------------------------------------------------%
 

@@ -112,6 +112,7 @@
 :- import_module dir.
 :- import_module gc.
 :- import_module getopt.
+:- import_module io.file.
 :- import_module library.
 :- import_module map.
 :- import_module maybe.
@@ -585,7 +586,7 @@ find_mercury_stdlib(Globals, Variables, MaybeMerStdLibDir, !IO) :-
     is det.
 
 can_you_read_dir(MerStdLibDir, MaybeMerStdLibDir, !IO) :-
-    io.check_file_accessibility(MerStdLibDir, [read], CanRead, !IO),
+    io.file.check_file_accessibility(MerStdLibDir, [read], CanRead, !IO),
     (
         CanRead = ok,
         MaybeMerStdLibDir = ok1(MerStdLibDir)
@@ -634,7 +635,7 @@ do_detect_libgrade_using_init_file(DirName, GradeFileName,
     (
         GradeFileType = directory,
         InitFile = DirName / GradeFileName / "mer_std.init",
-        io.check_file_accessibility(InitFile, [read], Result, !IO),
+        io.file.check_file_accessibility(InitFile, [read], Result, !IO),
         (
             Result = ok,
             set.insert(GradeFileName, !Grades)
@@ -671,7 +672,7 @@ do_detect_libgrade_using_lib_file(DirName, GradeFileName, GradeFileType,
             csharp_or_java_libgrade_target(GradeFileName, LibFile)
         then
             TargetFile = DirName / GradeFileName / LibFile,
-            io.check_file_accessibility(TargetFile, [read], Result, !IO),
+            io.file.check_file_accessibility(TargetFile, [read], Result, !IO),
             (
                 Result = ok,
                 set.insert(GradeFileName, !Grades)
@@ -2660,7 +2661,7 @@ after_front_end_passes(Globals, OpModeCodeGen, MaybeTopModule,
     module_info_get_name(!.HLDS, ModuleName),
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
         ext_other(other_ext(".used")), ModuleName, UsageFileName, !IO),
-    io.remove_file(UsageFileName, _, !IO),
+    io.file.remove_file(UsageFileName, _, !IO),
 
     FrontEndErrors =
         contains_errors_or_warnings_treated_as_errors(Globals, !.Specs),

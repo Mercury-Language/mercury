@@ -230,6 +230,7 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module int.
+:- import_module io.file.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -260,7 +261,7 @@ update_interface_return_changed(Globals, ModuleName, OutputFileName,
                 string.format("%% `%s' has not changed.\n",
                     [s(OutputFileName)], NoChangeMsg),
                 maybe_write_string(ProgressStream, Verbose, NoChangeMsg, !IO),
-                io.remove_file(TmpOutputFileName, _, !IO)
+                io.file.remove_file(TmpOutputFileName, _, !IO)
             ;
                 FilesDiffer = ok(ok(yes)),
                 update_interface_create_file(Globals,
@@ -344,7 +345,7 @@ update_interface_create_file(Globals, ProgressStream, ErrorStream,
         io.format(ErrorStream, "Error creating `%s': %s\n",
             [s(OutputFileName), s(io.error_message(MoveError))], !IO)
     ),
-    io.remove_file(TmpOutputFileName, _, !IO).
+    io.file.remove_file(TmpOutputFileName, _, !IO).
 
 :- pred binary_input_stream_cmp(io.binary_input_stream::in,
     io.binary_input_stream::in, io.maybe_partial_res(io.res(bool))::out,
@@ -446,8 +447,8 @@ maybe_make_symlink(Globals, LinkTarget, LinkName, Result, !IO) :-
     globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
     (
         UseSymLinks = yes,
-        io.remove_file_recursively(LinkName, _, !IO),
-        io.make_symlink(LinkTarget, LinkName, LinkResult, !IO),
+        io.file.remove_file_recursively(LinkName, _, !IO),
+        io.file.make_symlink(LinkTarget, LinkName, LinkResult, !IO),
         Result = ( if LinkResult = ok then succeeded else did_not_succeed )
     ;
         UseSymLinks = no,
@@ -469,7 +470,7 @@ make_symlink_or_copy_file(Globals, ProgressStream, ErrorStream,
         ;
             PrintCommand = no
         ),
-        io.make_symlink(SourceFileName, DestinationFileName, Result, !IO)
+        io.file.make_symlink(SourceFileName, DestinationFileName, Result, !IO)
     ;
         UseSymLinks = no,
         LinkOrCopy = "copying",
@@ -503,7 +504,7 @@ make_symlink_or_copy_dir(Globals, ProgressStream, ErrorStream,
     globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
     (
         UseSymLinks = yes,
-        io.make_symlink(SourceDirName, DestinationDirName, Result, !IO),
+        io.file.make_symlink(SourceDirName, DestinationDirName, Result, !IO),
         (
             Result = ok,
             Succeeded = succeeded
@@ -604,7 +605,7 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
     % the output from the command would go to the current C output
     % and error streams.
 
-    io.make_temp_file(TmpFileResult, !IO),
+    io.file.make_temp_file(TmpFileResult, !IO),
     (
         TmpFileResult = ok(TmpFile),
         ( if use_dotnet then
@@ -663,7 +664,7 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
         % We can't do bash style redirection on .NET.
         not use_dotnet
     then
-        io.make_temp_file(ProcessedTmpFileResult, !IO),
+        io.file.make_temp_file(ProcessedTmpFileResult, !IO),
         (
             ProcessedTmpFileResult = ok(ProcessedTmpFile),
 
@@ -686,7 +687,7 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
             ),
             io.call_system_return_signal(ProcessOutputRedirected,
                 ProcessOutputResult, !IO),
-            io.remove_file(TmpFile, _, !IO),
+            io.file.remove_file(TmpFile, _, !IO),
             (
                 ProcessOutputResult = ok(exited(ProcessOutputStatus)),
                 maybe_write_string(ProgressStream, PrintCommand,
@@ -740,7 +741,7 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
             "error opening command output: " ++ io.error_message(TmpFileError),
             !IO)
     ),
-    io.remove_file(ProcessedTmpFile, _, !IO),
+    io.file.remove_file(ProcessedTmpFile, _, !IO),
     io.set_exit_status(OldStatus, !IO).
 
 make_command_string(String0, QuoteType, String) :-
@@ -1127,7 +1128,7 @@ create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
         "% Generating shell script `" ++ FileName ++ "'...\n", !IO),
 
     % Remove symlink in the way, if any.
-    io.remove_file(FileName, _, !IO),
+    io.file.remove_file(FileName, _, !IO),
     io.open_output(FileName, OpenResult, !IO),
     (
         OpenResult = ok(Stream),
@@ -1166,7 +1167,7 @@ create_launcher_batch_file(Globals, MainModuleName, Pred, Succeeded, !IO) :-
         "% Generating batch file `" ++ FileName ++ "'...\n", !IO),
 
     % Remove an existing batch file of the same name, if any.
-    io.remove_file(FileName, _, !IO),
+    io.file.remove_file(FileName, _, !IO),
     io.open_output(FileName, OpenResult, !IO),
     (
         OpenResult = ok(Stream),
