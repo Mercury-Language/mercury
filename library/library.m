@@ -120,6 +120,9 @@
 :- import_module int64.
 :- import_module integer.
 :- import_module io.
+:- import_module io.call_system.
+:- import_module io.environment.
+:- import_module io.file.
 :- import_module kv_list.
 :- import_module lazy.
 :- import_module list.
@@ -290,6 +293,9 @@ stdlib_module_doc_undoc("int32",                        doc).
 stdlib_module_doc_undoc("int64",                        doc).
 stdlib_module_doc_undoc("integer",                      doc).
 stdlib_module_doc_undoc("io",                           doc).
+stdlib_module_doc_undoc("io.call_system",               doc).
+stdlib_module_doc_undoc("io.environment",               doc).
+stdlib_module_doc_undoc("io.file",                      doc).
 stdlib_module_doc_undoc("kv_list",                      doc).
 stdlib_module_doc_undoc("lazy",                         doc).
 stdlib_module_doc_undoc("library",                      doc).

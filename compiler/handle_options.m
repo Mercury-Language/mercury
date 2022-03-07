@@ -86,6 +86,7 @@
 :- import_module dir.
 :- import_module getopt.
 :- import_module int.
+:- import_module io.environment.
 :- import_module io.file.
 :- import_module library.
 :- import_module map.
@@ -1875,7 +1876,7 @@ maybe_update_event_set_file_name(!Globals, !IO) :-
     globals.lookup_string_option(!.Globals, event_set_file_name,
         EventSetFileName0),
     ( if EventSetFileName0 = "" then
-        io.get_environment_var("MERCURY_EVENT_SET_FILE_NAME",
+        io.environment.get_environment_var("MERCURY_EVENT_SET_FILE_NAME",
             MaybeEventSetFileName, !IO),
         (
             MaybeEventSetFileName = maybe.yes(EventSetFileName),

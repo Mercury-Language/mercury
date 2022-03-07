@@ -188,6 +188,8 @@
 :- import_module dir.
 :- import_module getopt.
 :- import_module int.
+:- import_module io.call_system.
+:- import_module io.environment.
 :- import_module io.file.
 :- import_module map.
 :- import_module pair.
@@ -1440,7 +1442,8 @@ save_and_browse_browser_term_web(OutputStream, ErrorStream, Term, State,
 :- pred get_mdb_dir(maybe(string)::out, io::di, io::uo) is det.
 
 get_mdb_dir(Res, !IO) :-
-    get_environment_var("MERCURY_DEBUGGER_INIT", MaybeValue, !IO),
+    io.environment.get_environment_var("MERCURY_DEBUGGER_INIT",
+        MaybeValue, !IO),
     ( if
         MaybeValue = yes(Path),
         dir.path_name_is_absolute(Path),
@@ -1471,7 +1474,7 @@ save_term_to_file_web(FileName, BrowserTerm, MdbDir, FileStreamRes,
 launch_web_browser(OutputStream, ErrorStream, CommandStr, !IO) :-
     io.write_string(OutputStream, "Launching web browser...\n", !IO),
     io.flush_output(OutputStream, !IO),
-    io.call_system_return_signal(CommandStr, Result, !IO),
+    io.call_system.call_system_return_signal(CommandStr, Result, !IO),
     (
         Result = ok(ExitStatus),
         (

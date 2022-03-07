@@ -32,6 +32,8 @@
 :- module io.
 :- interface.
 
+:- include_module call_system.
+:- include_module environment.
 :- include_module file.
 
 :- import_module array.
@@ -1800,6 +1802,13 @@
 
 %---------------------%
 
+% NOTE_TO_IMPLEMENTORS This type is here for the same reason that
+% NOTE_TO_IMPLEMENTORS the access_type type is here. See the comment there.
+    % Values of this type map the names of environment variables
+    % to their values.
+    %
+:- type environment_var_map == map(string, string).
+
     % The following predicates provide an interface to the environment list.
     % Do not attempt to put spaces or '=' signs in the names of environment
     % variables, or bad things may result!
@@ -1810,6 +1819,8 @@
     %
 :- pred get_environment_var(string::in, maybe(string)::out,
     io::di, io::uo) is det.
+:- pragma obsolete(pred(get_environment_var/4),
+    [io.environment.get_environment_var/4]).
 
     % First argument is the name of the environment variable, second argument
     % is the value to be assigned to that variable. Res is 'ok' on success or
@@ -1820,32 +1831,41 @@
     %
 :- pred set_environment_var(string::in, string::in, io.res::out,
     io::di, io::uo) is det.
+:- pragma obsolete(pred(set_environment_var/5),
+    [io.environment.set_environment_var/5]).
 
     % Same as set_environment_var/5, but throws an exception if an error
     % occurs.
     %
 :- pred set_environment_var(string::in, string::in, io::di, io::uo) is det.
+:- pragma obsolete(pred(set_environment_var/4),
+    [io.environment.set_environment_var/4]).
 
     % Test if the set_environment_var/{4,5} predicates are available.
     % This is false for Java backends.
     %
 :- pred have_set_environment_var is semidet.
-
-    % Values of this type map the names of environment variables
-    % to their values.
-    %
-:- type environment_var_map == map(string, string).
+:- pragma obsolete(pred(have_set_environment_var/0),
+    [io.environment.have_set_environment_var/0]).
 
     % Return a map containing all the environment variables in the current
     % environment, together with their values.
     %
 :- pred get_environment_var_map(environment_var_map::out,
     io::di, io::uo) is det.
+:- pragma obsolete(pred(get_environment_var_map/3),
+    [io.environment.get_environment_var_map/3]).
 
 %---------------------------------------------------------------------------%
 %
 % System access predicates.
 %
+
+% NOTE_TO_IMPLEMENTORS This type is here for the same reason that
+% NOTE_TO_IMPLEMENTORS the access_type type is here. See the comment there.
+:- type system_result
+    --->    exited(int)
+    ;       signalled(int).
 
     % Invokes the operating system shell with the specified Command.
     % Result is either `ok(ExitStatus)', if it was possible to invoke
@@ -1855,10 +1875,8 @@
     % indicating which signal occurred.
     %
 :- pred call_system(string::in, io.res(int)::out, io::di, io::uo) is det.
-
-:- type system_result
-    --->    exited(int)
-    ;       signalled(int).
+:- pragma obsolete(pred(call_system_return_signal/4),
+    [io.call_system.call_system/4]).
 
     % call_system_return_signal(Command, Result, !IO):
     %
@@ -1871,8 +1889,10 @@
     % If the command ran to completion then ExitCode will be 0 if the command
     % ran successfully and the return value of the command otherwise.
     %
-:- pred call_system_return_signal(string::in,
-    io.res(system_result)::out, io::di, io::uo) is det.
+:- pred call_system_return_signal(string::in, io.res(system_result)::out,
+    io::di, io::uo) is det.
+:- pragma obsolete(pred(call_system_return_signal/4),
+    [io.call_system.call_system_return_signal/4]).
 
 %---------------------------------------------------------------------------%
 %
@@ -2267,7 +2287,6 @@
 
 :- implementation.
 
-:- import_module assoc_list.
 :- import_module benchmarking.
 :- import_module dir.
 :- import_module exception.
@@ -2276,9 +2295,10 @@
 :- import_module int16.
 :- import_module int32.
 :- import_module int64.
+:- import_module io.call_system.
+:- import_module io.environment.
 :- import_module io.file.
 :- import_module mercury_term_parser.
-:- import_module pair.
 :- import_module require.
 :- import_module stream.string_writer.
 :- import_module term.
@@ -10142,277 +10162,19 @@ progname_base(DefaultName, PrognameBase, !IO) :-
 %---------------------%
 
 get_environment_var(Var, OptValue, !IO) :-
-    promise_pure (
-        ( if semipure getenv(Var, Value) then
-            OptValue0 = yes(Value)
-        else
-            OptValue0 = no
-        ),
-        OptValue = OptValue0
-    ).
+    io.environment.get_environment_var(Var, OptValue, !IO).
 
 set_environment_var(Var, Value, Res, !IO) :-
-    promise_pure (
-        ( if have_set_environment_var then
-            ( if impure setenv(Var, Value) then
-                Res = ok
-            else
-                string.format("Could not set environment variable `%s'",
-                    [s(Var)], Message),
-                Res = error(io_error(Message))
-            )
-        else
-            Message = "Cannot set environment variables on this platform",
-            Res = error(io_error(Message))
-        )
-    ).
+    io.environment.set_environment_var(Var, Value, Res, !IO).
 
-set_environment_var(Var, Value, IO0, IO) :-
-    io.set_environment_var(Var, Value, Res, IO0, IO1),
-    (
-        Res = ok,
-        IO = IO1
-    ;
-        Res = error(ErrorCode),
-        error(io.error_message(ErrorCode))
-    ).
+set_environment_var(Var, Value, !IO) :-
+    io.environment.set_environment_var(Var, Value, !IO).
 
-:- pragma foreign_proc("C",
-    have_set_environment_var,
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    SUCCESS_INDICATOR = MR_TRUE;
-").
-
-:- pragma foreign_proc("Java",
-    have_set_environment_var,
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    SUCCESS_INDICATOR = false;
-").
-
-:- pragma foreign_proc("C#",
-    have_set_environment_var,
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    SUCCESS_INDICATOR = true;
-").
-
-%---------------------%
+have_set_environment_var :-
+    io.environment.have_set_environment_var.
 
 get_environment_var_map(EnvVarMap, !IO) :-
-    get_environment_var_assoc_list([], EnvVarAL, !IO),
-    map.from_assoc_list(EnvVarAL, EnvVarMap).
-
-:- type env_var_assoc_list == assoc_list(string, string).
-
-:- pred get_environment_var_assoc_list(
-    env_var_assoc_list::in, env_var_assoc_list::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    get_environment_var_assoc_list(EnvVarAL0::in, EnvVarAL::out,
-        _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io],
-"
-    MR_Word cur_env = EnvVarAL0;
-    MR_Word next_env;
-    int     i;
-    char    **environ_vars;
-
-    // See the comments about the environ global below for an
-    // explanation of this.
-    #if defined(MR_MAC_OSX)
-        environ_vars = (*_NSGetEnviron());
-    #else
-        environ_vars = environ;
-    #endif
-
-    for (i = 0; environ_vars[i] != NULL; i++) {
-        ML_record_env_var_equal_value(environ_vars[i], cur_env, &next_env);
-        cur_env = next_env;
-    }
-
-    EnvVarAL = cur_env;
-").
-
-:- pragma foreign_proc("Java",
-    get_environment_var_assoc_list(EnvVarAL0::in, EnvVarAL::out,
-        _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure],
-"
-    EnvVarAL = EnvVarAL0;
-    java.util.Map<String, String> env = java.lang.System.getenv();
-    for (java.util.Map.Entry<String, String> entry : env.entrySet()) {
-        String name = entry.getKey();
-        String value = entry.getValue();
-        EnvVarAL = ML_record_env_var_and_value(name, value, EnvVarAL);
-    }
-").
-
-:- pragma foreign_proc("C#",
-    get_environment_var_assoc_list(EnvVarAL0::in, EnvVarAL::out,
-        _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure],
-"
-    EnvVarAL = EnvVarAL0;
-    System.Collections.IDictionary env =
-        System.Environment.GetEnvironmentVariables();
-    foreach (System.Collections.DictionaryEntry entry in env) {
-        string name = (string) entry.Key;
-        string value = (string) entry.Value;
-        EnvVarAL = ML_record_env_var_and_value(name, value, EnvVarAL);
-    }
-").
-
-:- pred record_env_var_equal_value(string::in,
-    env_var_assoc_list::in, env_var_assoc_list::out) is det.
-:- pragma foreign_export("C", record_env_var_equal_value(in, in, out),
-    "ML_record_env_var_equal_value").
-
-record_env_var_equal_value(EnvVarNameEqValue, !EnvVarAL) :-
-    ( if
-        sub_string_search(EnvVarNameEqValue, "=", IndexOfEq),
-        string.split(EnvVarNameEqValue, IndexOfEq, EnvVarName, EqEnvVarValue),
-        string.first_char(EqEnvVarValue, _Eq, EnvVarValue)
-    then
-        !:EnvVarAL = [EnvVarName - EnvVarValue | !.EnvVarAL]
-    else
-        unexpected($pred, "No = in environment entry")
-    ).
-
-:- pred record_env_var_and_value(string::in, string::in,
-    env_var_assoc_list::in, env_var_assoc_list::out) is det.
-:- pragma foreign_export("C#", record_env_var_and_value(in, in, in, out),
-    "ML_record_env_var_and_value").
-:- pragma foreign_export("Java", record_env_var_and_value(in, in, in, out),
-    "ML_record_env_var_and_value").
-
-record_env_var_and_value(EnvVarName, EnvVarValue, !EnvVarAL) :-
-    !:EnvVarAL = [EnvVarName - EnvVarValue | !.EnvVarAL].
-
-%---------------------%
-
-:- pragma foreign_decl("C", "
-#include <stdlib.h> // for getenv() and setenv()
-").
-
-:- pragma foreign_decl("C", "
-// A note regarding the declaration of the environ global variable
-// that follows:
-//
-// The man page (on Linux) says that it should be declared by the user
-// program.
-//
-// On MinGW, environ is a macro (defined in stdlib.h) that expands to a
-// function call that returns the user environment; no additional
-// declaration is required.
-//
-// On Mac OS X shared libraries do not have direct access to environ.
-// The man page for environ(7) says that we should look it up at
-// runtime using _NSGetEnviron().
-
-#if defined(MR_HAVE_ENVIRON) && !defined(MR_MAC_OSX)
-    #include <unistd.h>
-
-    #if !defined(MR_MINGW)
-        extern char **environ;
-    #endif
-#endif
-
-#if defined(MR_MAC_OSX)
-    #include <crt_externs.h>
-#endif
-
-#ifdef MR_HAVE_SPAWN_H
-    #include <spawn.h>
-#endif
-").
-
-    % getenv(Var, Value):
-    %
-    % Gets the value Value associated with the environment variable Var.
-    % Fails if the variable was not set.
-    %
-:- semipure pred getenv(string::in, string::out) is semidet.
-
-:- pragma foreign_proc("C",
-    getenv(Var::in, Value::out),
-    [promise_semipure, will_not_call_mercury, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-"
-#ifdef MR_WIN32
-    wchar_t *ValueW = _wgetenv(ML_utf8_to_wide(Var));
-    if (ValueW != NULL) {
-        Value = ML_wide_to_utf8(ValueW, MR_ALLOC_ID);
-    } else {
-        Value = NULL;
-    }
-#else
-    Value = getenv(Var);
-#endif
-    SUCCESS_INDICATOR = (Value != 0);
-").
-
-:- pragma foreign_proc("C#",
-    getenv(Var::in, Value::out),
-    [promise_semipure, will_not_call_mercury, tabled_for_io],
-"
-    Value = System.Environment.GetEnvironmentVariable(Var);
-    SUCCESS_INDICATOR = (Value != null);
-").
-
-:- pragma foreign_proc("Java",
-    getenv(Var::in, Value::out),
-    [promise_semipure, will_not_call_mercury, tabled_for_io,
-        may_not_duplicate],
-"
-    Value = System.getenv(Var);
-    SUCCESS_INDICATOR = (Value != null);
-").
-
-    % setenv(NameString, ValueString):
-    %
-    % Sets the named environment variable to the specified value.
-    % Fails if the operation does not work.
-    %
-:- impure pred setenv(string::in, string::in) is semidet.
-
-:- pragma foreign_proc("C",
-    setenv(Var::in, Value::in),
-    [will_not_call_mercury, not_thread_safe, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-"
-#ifdef MR_WIN32
-    SUCCESS_INDICATOR =
-        (_wputenv_s(ML_utf8_to_wide(Var), ML_utf8_to_wide(Value)) == 0);
-#else
-    SUCCESS_INDICATOR = (setenv(Var, Value, 1) == 0);
-#endif
-").
-
-:- pragma foreign_proc("C#",
-    setenv(Var::in, Value::in),
-    [will_not_call_mercury, tabled_for_io],
-"
-    try {
-        System.Environment.SetEnvironmentVariable(Var, Value);
-        SUCCESS_INDICATOR = true;
-    } catch (System.Exception) {
-        SUCCESS_INDICATOR = false;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    setenv(Var::in, Value::in),
-    [will_not_call_mercury, tabled_for_io, may_not_duplicate],
-"
-    // Java does not provide a method to set environment variables, only a way
-    // to modify the environment when creating a new process.
-
-    // Avoid warning: Var, Value
-    SUCCESS_INDICATOR = false;
-").
+    io.environment.get_environment_var_map(EnvVarMap, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -10420,207 +10182,10 @@ record_env_var_and_value(EnvVarName, EnvVarValue, !EnvVarAL) :-
 %
 
 call_system(Command, Result, !IO) :-
-    call_system_return_signal(Command, Result0, !IO),
-    (
-        Result0 = ok(exited(Code)),
-        Result = ok(Code)
-    ;
-        Result0 = ok(signalled(Signal)),
-        string.int_to_string(Signal, SignalStr),
-        ErrMsg = "system command killed by signal number " ++ SignalStr,
-        Result = error(io_error(ErrMsg))
-    ;
-        Result0 = error(Error),
-        Result = error(Error)
-    ).
+    io.call_system.call_system(Command, Result, !IO).
 
 call_system_return_signal(Command, Result, !IO) :-
-    call_system_code(Command, Status, Error, !IO),
-     is_error(Error, "error invoking system command: ", MaybeIOError, !IO),
-    (
-        MaybeIOError = yes(IOError),
-        Result = error(IOError)
-    ;
-        MaybeIOError = no,
-        Result = decode_system_command_exit_code(Status)
-    ).
-
-    % call_system_code(Command, Status, Error, !IO):
-    %
-    % Invokes the operating system shell with the specified Command.
-    % Status is valid when Error indicates success.
-    %
-:- pred call_system_code(string::in, int::out, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    call_system_code(Command::in, Status::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    // In multithreaded grades, try to use posix_spawn() instead of system().
-    // There were problems with threads and system() on Linux/glibc, probably
-    // because system() uses fork().
-#if defined(MR_THREAD_SAFE) && defined(MR_HAVE_POSIX_SPAWN) && \
-        defined(MR_HAVE_ENVIRON)
-
-    char    *argv[4];
-    pid_t   pid;
-    int     err;
-    int     st;
-
-    argv[0] = (char *) ""sh"";
-    argv[1] = (char *) ""-c"";
-    argv[2] = Command;
-    argv[3] = NULL;
-
-    // Protect `environ' from concurrent modifications.
-    MR_OBTAIN_GLOBAL_LOCK(""io.call_system_code/5"");
-
-    // See the comment at the head of the body of preceding foreign_decl
-    // for details of why Mac OS X is different here.
-    #if defined(MR_MAC_OSX)
-        err = posix_spawn(&pid, ""/bin/sh"", NULL, NULL, argv,
-            *_NSGetEnviron());
-    #else
-        err = posix_spawn(&pid, ""/bin/sh"", NULL, NULL, argv, environ);
-    #endif
-
-    MR_RELEASE_GLOBAL_LOCK(""io.call_system_code/5"");
-
-    if (err != 0) {
-        // Spawn failed.
-        Error = errno;
-    } else {
-        // Wait for the spawned process to exit.
-        do {
-            err = waitpid(pid, &st, 0);
-        } while (err == -1 && MR_is_eintr(errno));
-        if (err == -1) {
-            Error = errno;
-        } else {
-            Status = st;
-            Error = 0;
-        }
-    }
-
-#else   // !MR_THREAD_SAFE || !MR_HAVE_POSIX_SPAWN || !MR_HAVE_ENVIRON
-
-  #ifdef MR_WIN32
-    Status = _wsystem(ML_utf8_to_wide(Command));
-  #else
-    Status = system(Command);
-  #endif
-
-    if (Status == -1) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-
-#endif  // !MR_THREAD_SAFE || !MR_HAVE_POSIX_SPAWN || !MR_HAVE_ENVIRON
-").
-
-:- pragma foreign_proc("C#",
-    call_system_code(Command::in, Status::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    try {
-        // XXX This could be better... need to handle embedded spaces
-        // in the command name ...
-        // XXX ... and redirection, and everything else done by sh.
-        int index = Command.IndexOf("" "");
-        string command, arguments;
-        if (index > 0) {
-            command = Command.Substring(0, index);
-            arguments = Command.Remove(0, index + 1);
-        } else {
-            command = Command;
-            arguments = """";
-        }
-
-        System.Diagnostics.Process process = new System.Diagnostics.Process();
-        // Never interpret the command as a document to open with whatever
-        // application is registered for that document type. This also
-        // prevents creating a new window for console programs on Windows.
-        process.StartInfo.UseShellExecute = false;
-        process.StartInfo.FileName = command;
-        process.StartInfo.Arguments = arguments;
-        process.Start();
-        process.WaitForExit();
-        Status = process.ExitCode;
-        Error = null;
-    }
-    catch (System.Exception e) {
-        Status = 1;
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    call_system_code(Command::in, Status::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
-"
-    boolean has_sh;
-    try {
-        SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            sm.checkExec(""/bin/sh"");
-            has_sh = true;
-        } else {
-            // If there is no security manager installed we just check if the
-            // file exists.
-            has_sh = new java.io.File(""/bin/sh"").exists();
-        }
-    } catch (java.lang.Exception e) {
-        has_sh = false;
-    }
-
-    try {
-        // Emulate system() if /bin/sh is available.
-        java.lang.Process process;
-        if (has_sh) {
-            final String[] args = {""/bin/sh"", ""-c"", Command};
-            process = java.lang.Runtime.getRuntime().exec(args);
-        } else {
-            process = java.lang.Runtime.getRuntime().exec(Command);
-        }
-
-        StreamPipe stdin = new StreamPipe(mercury_stdin,
-            process.getOutputStream());
-        StreamPipe stdout = new StreamPipe(process.getInputStream(),
-            mercury_stdout);
-        StreamPipe stderr = new StreamPipe(process.getErrorStream(),
-            mercury_stderr);
-        stdin.start();
-        stdout.start();
-        stderr.start();
-
-        Status = process.waitFor();
-        Error = null;
-
-        // The stdin StreamPipe is killed off after the Process is finished
-        // so as not to waste CPU cycles with a pointless thread.
-        stdin.interrupt();
-
-        // Wait for all the outputs to be written.
-        stdout.join();
-        stderr.join();
-
-        if (stdin.exception != null) {
-            throw stdin.exception;
-        }
-        if (stdout.exception != null) {
-            throw stdout.exception;
-        }
-        if (stderr.exception != null) {
-            throw stderr.exception;
-        }
-    } catch (java.lang.Exception e) {
-        Status  = 1;
-        Error = e;
-    }
-").
+    io.call_system.call_system_return_signal(Command, Result, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -10642,9 +10207,10 @@ update_globals(UpdatePred, !IO) :-
         lock_globals(!IO),
         unsafe_get_globals(Globals0, !IO),
         promise_equivalent_solutions [!:IO] (
-            Update = (pred(G::out) is det :-
-                UpdatePred(Globals0, G)
-            ),
+            Update =
+                ( pred(G::out) is det :-
+                    UpdatePred(Globals0, G)
+                ),
             try(Update, UpdateResult),
             (
                 UpdateResult = succeeded(Globals),

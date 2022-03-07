@@ -137,6 +137,7 @@
 :- import_module char.
 :- import_module dir.
 :- import_module int.
+:- import_module io.environment.
 :- import_module one_or_more.
 :- import_module map.
 :- import_module pair.
@@ -181,7 +182,7 @@ options_variables_init(EnvVarMap) = Variables :-
 
 read_options_files_named_in_options_file_option(OptionSearchDirs, OptionsFiles,
         Variables, Specs, UndefSpecs, !IO) :-
-    io.get_environment_var_map(EnvVarMap, !IO),
+    io.environment.get_environment_var_map(EnvVarMap, !IO),
     Variables0 = options_variables_init(EnvVarMap),
     list.foldl5(
         read_options_file_set_params(OptionSearchDirs), OptionsFiles,
@@ -221,7 +222,7 @@ read_named_options_file(OptionsPathName, !Variables, Specs, UndefSpecs, !IO) :-
 %---------------------%
 
 read_args_file(OptionsFile, MaybeMCFlags, Specs, UndefSpecs, !IO) :-
-    io.get_environment_var_map(EnvVarMap, !IO),
+    io.environment.get_environment_var_map(EnvVarMap, !IO),
     Variables0 = options_variables_init(EnvVarMap),
     read_named_options_file(OptionsFile, Variables0, Variables,
         Specs0, UndefSpecs, !IO),

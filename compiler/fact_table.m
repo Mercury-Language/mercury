@@ -159,6 +159,7 @@
 :- import_module float.
 :- import_module int.
 :- import_module integer.
+:- import_module io.call_system.
 :- import_module io.file.
 :- import_module library.
 :- import_module map.
@@ -1419,13 +1420,13 @@ infer_determinism_pass_2(ModuleInfo, GenInfo,
     globals.lookup_bool_option(Globals, verbose, Verbose),
     (
         Verbose = no,
-        io.call_system(Command, Result, !IO)
+        io.call_system.call_system(Command, Result, !IO)
     ;
         Verbose = yes,
         get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
         io.format(ProgressStream, "%% Invoking system command `%s' ...",
             [s(Command)], !IO),
-        io.call_system(Command, Result, !IO),
+        io.call_system.call_system(Command, Result, !IO),
         io.write_string(ProgressStream, "done.\n", !IO)
     ),
     (
@@ -1636,12 +1637,12 @@ append_data_table(ModuleInfo, OutputFileName, DataFileName, !Specs, !IO) :-
     get_maybe_progress_output_stream(ModuleInfo, MaybeProgressStream, !IO),
     (
         MaybeProgressStream = no,
-        io.call_system(Command, Result, !IO)
+        io.call_system.call_system(Command, Result, !IO)
     ;
         MaybeProgressStream = yes(ProgressStream),
         io.format(ProgressStream, "%% Invoking system command `%s' ...",
             [s(Command)], !IO),
-        io.call_system(Command, Result, !IO),
+        io.call_system.call_system(Command, Result, !IO),
         io.write_string(ProgressStream, "done.\n", !IO)
     ),
     (

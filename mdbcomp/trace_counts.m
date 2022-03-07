@@ -185,6 +185,7 @@
 :- import_module exception.
 :- import_module int.
 :- import_module integer.
+:- import_module io.call_system.
 :- import_module mercury_term_lexer.
 :- import_module require.
 :- import_module string.
@@ -368,7 +369,7 @@ read_trace_counts(FileName, ReadResult, !IO) :-
     % XXX ... and we certainly shouldn't be hardcoding the names of the
     % gzip / gunzip executables. juliensf.
     ( if string.remove_suffix(FileName, ".gz", BaseName) then
-        io.call_system("gunzip " ++ FileName, _UnzipResult, !IO),
+        io.call_system.call_system("gunzip " ++ FileName, _UnzipResult, !IO),
         ActualFileName = BaseName,
         GzipCmd = "gzip " ++ BaseName
     else
@@ -397,7 +398,7 @@ read_trace_counts(FileName, ReadResult, !IO) :-
     ( if GzipCmd = "" then
         true
     else
-        io.call_system(GzipCmd, _ZipResult, !IO)
+        io.call_system.call_system(GzipCmd, _ZipResult, !IO)
     ).
 
 :- pred read_trace_counts_from_stream(io.text_input_stream::in,

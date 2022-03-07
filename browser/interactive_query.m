@@ -69,6 +69,8 @@
 
 :- import_module bool.
 :- import_module exception.
+:- import_module io.call_system.
+:- import_module io.environment.
 :- import_module io.file.
 :- import_module map.
 :- import_module maybe.
@@ -282,10 +284,11 @@ term_to_list(term.functor(term.atom("[|]"),
 
 run_query(Env, Goal, Varset, !IO) :-
     SourceFile = query_module_name ++ ".m",
-    io.get_environment_var("MERCURY_OPTIONS", MaybeMercuryOptions, !IO),
+    io.environment.get_environment_var("MERCURY_OPTIONS",
+        MaybeMercuryOptions, !IO),
     (
         MaybeMercuryOptions = yes(MercuryOptions),
-        io.set_environment_var("MERCURY_OPTIONS", "", !IO),
+        io.environment.set_environment_var("MERCURY_OPTIONS", "", !IO),
         make_program(Env, Goal, Varset, Program),
         % XXX Shouldn't our caller give us this information?
         io.get_line_number(Env ^ qe_instream, LineNumberForDirective, !IO),
@@ -299,7 +302,8 @@ run_query(Env, Goal, Varset, !IO) :-
             Succeeded = no
         ),
         cleanup_query(Env ^ qe_options, !IO),
-        io.set_environment_var("MERCURY_OPTIONS", MercuryOptions, !IO)
+        io.environment.set_environment_var("MERCURY_OPTIONS",
+            MercuryOptions, !IO)
     ;
         MaybeMercuryOptions = no,
         io.write_string(Env ^ qe_outstream,
@@ -715,7 +719,7 @@ invoke_system_command(OutputStream, Command, Succeeded, !IO) :-
     ;
         Verbose = no
     ),
-    io.call_system(Command, Result, !IO),
+    io.call_system.call_system(Command, Result, !IO),
     (
         Result = ok(Status),
         ( if Status = 0 then

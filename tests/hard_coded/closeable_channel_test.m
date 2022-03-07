@@ -16,6 +16,7 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module io.environment.
 :- import_module list.
 :- import_module maybe.
 :- import_module string.
@@ -37,7 +38,7 @@ main(!IO) :-
 run_test(!IO) :-
     % Output from worker threads is disabled by default as it is
     % non-deterministic.
-    io.get_environment_var("VERBOSE", Verbose, !IO),
+    io.environment.get_environment_var("VERBOSE", Verbose, !IO),
     (
         Verbose = yes(_),
         LogA = log_on("huey"),

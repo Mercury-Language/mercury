@@ -44,6 +44,8 @@
 
 :- implementation.
 
+:- import_module io.call_system.
+:- import_module io.environment.
 :- import_module io.file.
 :- import_module list.
 :- import_module maybe.
@@ -74,7 +76,7 @@ server_name_port(Machine, !IO) :-
 :- pred server_name(string::out, io::di, io::uo) is det.
 
 server_name(ServerName, !IO) :-
-    io.get_environment_var("SERVER_NAME", MaybeServerName, !IO),
+    io.environment.get_environment_var("SERVER_NAME", MaybeServerName, !IO),
     (
         MaybeServerName = yes(ServerName)
     ;
@@ -91,7 +93,7 @@ server_name_2(ServerName, !IO) :-
         hostname_cmd(HostnameCmd),
         ServerRedirectCmd =
             string.format("%s > %s", [s(HostnameCmd), s(TmpFile)]),
-        io.call_system(ServerRedirectCmd, Res1, !IO),
+        io.call_system.call_system(ServerRedirectCmd, Res1, !IO),
         (
             Res1 = ok(ResCode),
             ( if ResCode = 0 then
@@ -137,10 +139,10 @@ server_name_2(ServerName, !IO) :-
 :- pred maybe_server_port(maybe(string)::out, io::di, io::uo) is det.
 
 maybe_server_port(MaybeServerPort, !IO) :-
-    io.get_environment_var("SERVER_PORT", MaybeServerPort, !IO).
+    io.environment.get_environment_var("SERVER_PORT", MaybeServerPort, !IO).
 
 script_name(ScriptName, !IO) :-
-    io.get_environment_var("SCRIPT_NAME", MaybeScriptName, !IO),
+    io.environment.get_environment_var("SCRIPT_NAME", MaybeScriptName, !IO),
     (
         MaybeScriptName = yes(ScriptName)
     ;

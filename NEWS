@@ -118,13 +118,46 @@ Changes to the Mercury standard library
     - pred `get_temp_directory/3`
             (replacement: `io.file.get_temp_directory/3`)
 
+    - pred `get_environment_var/4`
+            (replacement: `io.environment.get_environment_var/4`)
+    - pred `set_environment_var/5`
+            (replacement: `io.environment.set_environment_var/5`)
+    - pred `set_environment_var/4`
+            (replacement: `io.environment.set_environment_var/4`)
+    - pred `have_set_environment_var/0`
+            (replacement: `io.environment.have_set_environment_var/0`)
+    - pred `get_environment_var_map/3`
+            (replacement: `io.environment.get_environment_var_map/3`)
+
+    - pred `call_system/4`
+            (replacement: `io.call_system.call_system/4`)
+    - pred `call_system_return_signal/4`
+            (replacement: `io.call_system.call_system_return_signal/4`)
+
     - pred `get_globals/3`          (replacement: a mutable)
     - pred `set_globals/3`          (replacement: a mutable)
     - pred `update_globals/3`       (replacement: a mutable)
 
+### New `io.call_system` module
+
+This new module has these predicates:
+
+    - pred `call_system/4`
+    - pred `call_system_return_signal/4`
+
+### New `io.environment` module
+
+This new module has these predicates:
+
+    - pred `get_environment_var/4`
+    - pred `set_environment_var/5`
+    - pred `set_environment_var/4`
+    - pred `have_set_environment_var/0`
+    - pred `get_environment_var_map/3`
+
 ### New `io.file` module
 
-This module module has these predicates:
+This new module has these predicates:
 
     - pred `remove_file/4`
     - pred `remove_file_recursively/4`

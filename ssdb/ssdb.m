@@ -150,6 +150,7 @@
 :- import_module char.
 :- import_module dir.
 :- import_module int.
+:- import_module io.environment.
 :- import_module io.file.
 :- import_module map.
 :- import_module maybe.
@@ -363,8 +364,8 @@ init_list_params = list_params(new_list_path, 2).
 :- pred init_debugger_state(io::di, io::uo) is det.
 
 init_debugger_state(!IO) :-
-    io.get_environment_var("SSDB", MaybeEnv, !IO),
-    io.get_environment_var("SSDB_TTY", MaybeTTY, !IO),
+    io.environment.get_environment_var("SSDB", MaybeEnv, !IO),
+    io.environment.get_environment_var("SSDB_TTY", MaybeTTY, !IO),
     ( if
         ( MaybeEnv = yes(_)
         ; MaybeTTY = yes(_)
@@ -406,7 +407,7 @@ init_debugger_state(!IO) :-
 :- pred add_source_commands(io::di, io::uo) is det.
 
 add_source_commands(!IO) :-
-    io.get_environment_var("HOME", MaybeHome, !IO),
+    io.environment.get_environment_var("HOME", MaybeHome, !IO),
     (
         MaybeHome = yes(Home),
         maybe_add_source_commands(Home / ".ssdbrc", !IO)

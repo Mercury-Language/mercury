@@ -65,6 +65,7 @@
 :- import_module dir.
 :- import_module int.
 :- import_module io.
+:- import_module io.call_system.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -223,7 +224,7 @@ need_opt_debug_info(Info, Name, Arity, PredProcId, MaybeBaseName) :-
     list(instruction)::in, counter::in, io::di, io::uo) is det.
 
 output_first_opt_debug(Info, FileName, ProcLabel, Instrs0, Counter, !IO) :-
-    io.call_system("mkdir -p " ++ opt_subdir_name, MkdirRes, !IO),
+    io.call_system.call_system("mkdir -p " ++ opt_subdir_name, MkdirRes, !IO),
     ( if MkdirRes = ok(0) then
         io.open_output(FileName, Res, !IO),
         (
@@ -309,7 +310,7 @@ maybe_opt_debug(Info, Instrs, Counter, Suffix, Msg, ProcLabel,
                 % of --debug-opt (zs) strongly prefers -u to -c.
                 DiffCommand = "diff -u '" ++ PrevFileName ++ "' '" ++
                     OptFileName ++ "' > '" ++ DiffFileName ++ "'",
-                io.call_system(DiffCommand, _, !IO)
+                io.call_system.call_system(DiffCommand, _, !IO)
             )
         )
     ;

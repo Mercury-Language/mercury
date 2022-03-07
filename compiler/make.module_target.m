@@ -108,6 +108,7 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module int.
+:- import_module io.environment.
 :- import_module io.file.
 :- import_module float.
 :- import_module map.
@@ -714,7 +715,8 @@ invoke_mmc(Globals, ProgressStream, ErrorStream,
         ; target_is_java
         )
     then
-        io.get_environment_var("MERCURY_COMPILER", MaybeMercuryCompiler, !IO),
+        io.environment.get_environment_var("MERCURY_COMPILER",
+            MaybeMercuryCompiler, !IO),
         (
             MaybeMercuryCompiler = yes(MercuryCompiler)
         ;

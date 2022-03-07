@@ -230,6 +230,8 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module int.
+:- import_module io.call_system.
+:- import_module io.environment.
 :- import_module io.file.
 :- import_module require.
 :- import_module set.
@@ -621,9 +623,10 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
             CommandRedirected = string.format("%s > %s 2>&1",
                 [s(Command), s(TmpFile)])
         ),
-        io.call_system_return_signal(CommandRedirected, Result, !IO),
+        io.call_system.call_system_return_signal(CommandRedirected,
+            CmdResult, !IO),
         (
-            Result = ok(exited(Status)),
+            CmdResult = ok(exited(Status)),
             maybe_write_string(ProgressStream, PrintCommand, "% done.\n", !IO),
             ( if Status = 0 then
                 CommandSucceeded = succeeded
@@ -632,7 +635,7 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
                 CommandSucceeded = did_not_succeed
             )
         ;
-            Result = ok(signalled(Signal)),
+            CmdResult = ok(signalled(Signal)),
             string.format("system command received signal %d.", [i(Signal)],
                 ErrorMsg),
             report_error(ErrorStream, ErrorMsg, !IO),
@@ -647,7 +650,7 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
             raise_signal(Signal, !IO),
             CommandSucceeded = did_not_succeed
         ;
-            Result = error(Error),
+            CmdResult = error(Error),
             report_error(ErrorStream, io.error_message(Error), !IO),
             CommandSucceeded = did_not_succeed
         )
@@ -685,7 +688,7 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
                 ProcessOutputRedirected = string.format("%s < %s > %s 2>&1",
                     [s(ProcessOutput), s(TmpFile), s(ProcessedTmpFile)])
             ),
-            io.call_system_return_signal(ProcessOutputRedirected,
+            io.call_system.call_system_return_signal(ProcessOutputRedirected,
                 ProcessOutputResult, !IO),
             io.file.remove_file(TmpFile, _, !IO),
             (
@@ -833,8 +836,8 @@ create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
     file_name::in, io.text_output_stream::in, io::di, io::uo) is det.
 
 write_java_shell_script(Globals, MainModuleName, JarFileName, Stream, !IO) :-
-    io.get_environment_var("MERCURY_STAGE2_LAUNCHER_BASE", MaybeStage2Base,
-        !IO),
+    io.environment.get_environment_var("MERCURY_STAGE2_LAUNCHER_BASE",
+        MaybeStage2Base, !IO),
     (
         MaybeStage2Base = no,
         get_mercury_std_libs_for_java(Globals, MercuryStdLibs)
@@ -1102,12 +1105,12 @@ file_error_is_relevant(NestedClassPrefixes, FileError) :-
 %-----------------------------------------------------------------------------%
 
 get_env_classpath(Classpath, !IO) :-
-    io.get_environment_var("CLASSPATH", MaybeCP, !IO),
+    io.environment.get_environment_var("CLASSPATH", MaybeCP, !IO),
     (
         MaybeCP = yes(Classpath)
     ;
         MaybeCP = no,
-        io.get_environment_var("java.class.path", MaybeJCP, !IO),
+        io.environment.get_environment_var("java.class.path", MaybeJCP, !IO),
         (
             MaybeJCP = yes(Classpath)
         ;
@@ -1134,7 +1137,7 @@ create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
         OpenResult = ok(Stream),
         Pred(Stream, !IO),
         io.close_output(Stream, !IO),
-        io.call_system("chmod a+x " ++ FileName, ChmodResult, !IO),
+        io.call_system.call_system("chmod a+x " ++ FileName, ChmodResult, !IO),
         (
             ChmodResult = ok(Status),
             ( if Status = 0 then

@@ -16,5 +16,7 @@
 
 :- implementation.
 
+:- import_module io.call_system.
+
 main(!IO) :-
-    io.call_system("sort", _, !IO).
+    io.call_system.call_system("sort", _, !IO).

@@ -40,6 +40,7 @@
 :- import_module char.
 :- import_module getopt.
 :- import_module int.
+:- import_module io.call_system.
 :- import_module library.
 :- import_module list.
 :- import_module maybe.
@@ -227,7 +228,7 @@ write_help_message(OutputStream, ProgName, !IO) :-
 test_server(Pref, Deep, Options, !IO) :-
     lookup_string_option(Options, test_dir, DirName),
     string.format("test -d %s || mkdir -p %s", [s(DirName), s(DirName)], Cmd),
-    io.call_system(Cmd, _, !IO),
+    io.call_system.call_system(Cmd, _, !IO),
 
     %XXX: These features have been disabled.  Configuration options should be
     % introduced to enable them as the user desires.
@@ -346,7 +347,7 @@ write_test_html(Options, BaseName, Num, HTML, !IO) :-
     ( if (Num - 1) rem 1000 = 0 then
         string.format("test -d %s || mkdir -p %s",
             [s(BunchName), s(BunchName)], Cmd),
-        io.call_system(Cmd, _, !IO)
+        io.call_system.call_system(Cmd, _, !IO)
     else
         true
     ),
@@ -361,7 +362,7 @@ write_test_html(Options, BaseName, Num, HTML, !IO) :-
         (
             Compress = yes,
             string.format("gzip %s", [s(FileName)], GzipCmd),
-            io.call_system(GzipCmd, _, !IO)
+            io.call_system.call_system(GzipCmd, _, !IO)
         ;
             Compress = no
         )

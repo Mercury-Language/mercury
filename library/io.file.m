@@ -206,6 +206,8 @@
 
 :- implementation.
 
+:- import_module io.environment.
+
 %---------------------------------------------------------------------------%
 %
 % File handling predicates.
@@ -1550,7 +1552,7 @@ get_temp_directory(Dir, !IO) :-
         % We need to do an explicit check of TMPDIR because not all
         % systems check TMPDIR for us (eg Linux #$%*@&).
         Var = ( if dir.use_windows_paths then "TMP" else "TMPDIR" ),
-        get_environment_var(Var, Result, !IO),
+        io.environment.get_environment_var(Var, Result, !IO),
         (
             Result = yes(Dir)
         ;

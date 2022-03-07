@@ -26,6 +26,7 @@
 :- implementation.
 
 :- import_module bool.
+:- import_module io.environment.
 :- import_module list.
 :- import_module maybe.
 :- import_module string.
@@ -40,7 +41,8 @@ main(!IO) :-
 
     ( try [io(!IO)] (
         % So set it...
-        io.set_environment_var("SHOULD_NOT_BE_SET", "Hello World!", !IO)
+        io.environment.set_environment_var("SHOULD_NOT_BE_SET",
+            "Hello World!", !IO)
     )
     then
         % Did that work?
@@ -54,7 +56,7 @@ main(!IO) :-
     io::di, io::uo) is det.
 
 test(Var, ShouldBeSet, ShouldBePrinted, !IO) :-
-    io.get_environment_var(Var, MaybeValue, !IO),
+    io.environment.get_environment_var(Var, MaybeValue, !IO),
     io.write_strings(["Variable \"", Var, "\" is set "], !IO),
     (
         MaybeValue = yes(Value),

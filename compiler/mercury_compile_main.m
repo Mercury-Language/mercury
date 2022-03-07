@@ -112,6 +112,7 @@
 :- import_module dir.
 :- import_module gc.
 :- import_module getopt.
+:- import_module io.environment.
 :- import_module io.file.
 :- import_module library.
 :- import_module map.
@@ -234,7 +235,7 @@ expand_file_into_arg_list(S, Res, !IO) :-
 :- pred real_main_after_expansion(list(string)::in, io::di, io::uo) is det.
 
 real_main_after_expansion(CmdLineArgs, !IO) :-
-    io.get_environment_var_map(EnvVarMap, !IO),
+    io.environment.get_environment_var_map(EnvVarMap, !IO),
     % XXX Processing the options up to three times is not what you call
     % elegant.
     ( if CmdLineArgs = ["--arg-file", ArgFile | ExtraArgs] then
@@ -718,7 +719,7 @@ report_detected_libgrade(Stream, Grade, !IO) :-
 
 main_for_make(Globals, Args, !IO) :-
     DetectedGradeFlags = [],
-    io.get_environment_var_map(EnvVarMap, !IO),
+    io.environment.get_environment_var_map(EnvVarMap, !IO),
     Variables = options_variables_init(EnvVarMap),
     OptionArgs = [],
     main_after_setup(Globals, DetectedGradeFlags, Variables, OptionArgs,
