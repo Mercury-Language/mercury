@@ -2055,7 +2055,6 @@
 :- instance stream.writer(binary_output_stream, byte, io).
 :- instance stream.writer(binary_output_stream, int8, io).
 :- instance stream.writer(binary_output_stream, uint8, io).
-:- instance stream.writer(binary_output_stream, bitmap.slice, io).
 :- instance stream.seekable(binary_output_stream, io).
 
 :- instance stream.stream(binary_input_stream,  io).
@@ -2065,7 +2064,6 @@
 :- instance stream.reader(binary_input_stream, uint8, io, io.error).
 :- instance stream.unboxed_reader(binary_input_stream, int8, io, io.error).
 :- instance stream.unboxed_reader(binary_input_stream, uint8, io, io.error).
-:- instance stream.bulk_reader(binary_input_stream, int, bitmap, io, io.error).
 :- instance stream.putback(binary_input_stream, int, io, io.error).
 :- instance stream.putback(binary_input_stream, int8, io, io.error).
 :- instance stream.putback(binary_input_stream, uint8, io, io.error).
@@ -2636,16 +2634,6 @@ result0_to_stream_result0(error(Error)) = error(Error).
     )
 ].
 
-:- instance stream.bulk_reader(binary_input_stream, int, bitmap, io, io.error)
-    where
-[
-    ( bulk_get(Stream, Index, Int, !Store, NumRead, Result, !State) :-
-        bitmap.read_bitmap_range(Stream, Index, Int, !Store, NumRead,
-            Result0, !State),
-        Result = res_to_stream_res(Result0)
-    )
-].
-
 :- instance stream.putback(binary_input_stream, int, io, io.error)
     where
 [
@@ -2683,11 +2671,6 @@ stream_whence_to_io_whence(set) = set.
 stream_whence_to_io_whence(cur) = cur.
 stream_whence_to_io_whence(end) = end.
 
-:- func io.res_to_stream_res(io.res) = stream.res(io.error).
-
-res_to_stream_res(ok) = ok.
-res_to_stream_res(error(E)) = error(E).
-
 %---------------------%
 %
 % Binary output streams.
@@ -2721,21 +2704,6 @@ res_to_stream_res(error(E)) = error(E).
     where
 [
     pred(put/4) is write_binary_uint8
-].
-
-:- instance stream.writer(binary_output_stream, bitmap, io)
-    where
-[
-    pred(put/4) is bitmap.write_bitmap
-].
-
-:- instance stream.writer(binary_output_stream, bitmap.slice, io)
-    where
-[
-    ( put(Stream, Slice, !IO) :-
-        bitmap.write_bitmap_range(Stream, Slice ^ slice_bitmap,
-            Slice ^ slice_start_byte_index, Slice ^ slice_num_bytes, !IO)
-    )
 ].
 
 :- instance stream.seekable(binary_output_stream, io)

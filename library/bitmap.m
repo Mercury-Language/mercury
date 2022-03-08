@@ -28,6 +28,7 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
+:- import_module stream.
 
 %---------------------------------------------------------------------------%
 
@@ -525,6 +526,11 @@
 :- pred write_bitmap_range(io.binary_output_stream, bitmap, int, int, io, io).
 %:- mode write_bitmap_range(in, bitmap_ui, in, in, di, uo) is det.
 :- mode write_bitmap_range(in, in, in, in, di, uo) is det.
+
+%---------------------------------------------------------------------------%
+
+:- instance stream.bulk_reader(binary_input_stream, int, bitmap, io, io.error).
+:- instance stream.writer(binary_output_stream, bitmap.slice, io).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -2497,6 +2503,38 @@ throw_bounds_error(BM, Pred, Index, NumBits) :-
 
 throw_bitmap_error(Msg) :-
     throw(bitmap_error(Msg)).
+
+%---------------------------------------------------------------------------%
+
+:- instance stream.bulk_reader(binary_input_stream, int, bitmap, io, io.error)
+    where
+[
+    ( bulk_get(Stream, Index, Int, !Store, NumRead, Result, !State) :-
+        bitmap.read_bitmap_range(Stream, Index, Int, !Store, NumRead,
+            Result0, !State),
+        Result = res_to_stream_res(Result0)
+    )
+].
+
+:- instance stream.writer(binary_output_stream, bitmap, io)
+    where
+[
+    pred(put/4) is bitmap.write_bitmap
+].
+
+:- instance stream.writer(binary_output_stream, bitmap.slice, io)
+    where
+[
+    ( put(Stream, Slice, !IO) :-
+        bitmap.write_bitmap_range(Stream, Slice ^ slice_bitmap,
+            Slice ^ slice_start_byte_index, Slice ^ slice_num_bytes, !IO)
+    )
+].
+
+:- func res_to_stream_res(io.res) = stream.res(io.error).
+
+res_to_stream_res(ok) = ok.
+res_to_stream_res(error(E)) = error(E).
 
 %---------------------------------------------------------------------------%
 :- end_module bitmap.
