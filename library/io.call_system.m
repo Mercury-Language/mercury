@@ -17,18 +17,7 @@
 :- module io.call_system.
 :- interface.
 
-:- import_module array.
-:- import_module bitmap.
-:- import_module bool.
-:- import_module char.
-:- import_module deconstruct.
-:- import_module list.
-:- import_module map.
-:- import_module maybe.
-:- import_module stream.
 :- import_module string.
-:- import_module time.
-:- import_module univ.
 
     % Invokes the operating system shell with the specified Command.
     % Result is either `ok(ExitStatus)', if it was possible to invoke
@@ -60,6 +49,18 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module array.
+:- import_module bitmap.
+:- import_module bool.
+:- import_module char.
+:- import_module deconstruct.
+:- import_module list.
+:- import_module map.
+:- import_module maybe.
+:- import_module stream.
+:- import_module time.
+:- import_module univ.
 
 %---------------------------------------------------------------------------%
 
