@@ -1076,7 +1076,7 @@ ml_gen_foreign_proc_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
             % like `int', but it doesn't do any harm.) Note that we can't
             % easily obtain the type string for the RHS of the assignment,
             % so instead we cast the LHS.
-            LHS_Cast = "* (" ++ TypeString ++ " *) &",
+            LHS_Cast = string.format("* (%s *) &", [s(TypeString)]),
             RHS_Cast = ""
         ;
             HighLevelData = no,
@@ -1096,7 +1096,7 @@ ml_gen_foreign_proc_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
         ),
         string.format(" = %s%s;\n", [s(RHS_Cast), s(ArgName)],
             AssignFromArgName),
-        string.format("\t%s ", [s(LHS_Cast)], AssignTo),
+        string.format("\t%s", [s(LHS_Cast)], AssignTo),
         AssignOutput = [
             raw_target_code(AssignTo),
             target_code_output(ArgLval),

@@ -175,10 +175,11 @@ mlds_output_function_name(Stream, FunctionName, !IO) :-
         PlainFuncName = mlds_plain_func_name(FuncLabel, _PredId),
         FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
-        mlds_output_pred_label(Stream, PredLabel, !IO),
         proc_id_to_int(ProcId, ModeNum),
         FuncIdSuffix = mlds_maybe_aux_func_id_to_suffix(MaybeAux),
-        io.format(Stream, "_%d%s", [i(ModeNum), s(FuncIdSuffix)], !IO)
+        io.format(Stream, "%s_%d%s",
+            [s(mlds_pred_label_to_string(PredLabel)),
+            i(ModeNum), s(FuncIdSuffix)], !IO)
     ;
         FunctionName = mlds_function_export(Name),
         io.write_string(Stream, Name, !IO)
@@ -204,9 +205,9 @@ mlds_output_fully_qualified_proc_label(Stream, QualProcLabel, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_proc_label(Stream, mlds_proc_label(PredLabel, ProcId), !IO) :-
-    mlds_output_pred_label(Stream, PredLabel, !IO),
     proc_id_to_int(ProcId, ModeNum),
-    io.format(Stream, "_%d", [i(ModeNum)], !IO).
+    io.format(Stream, "%s_%d",
+        [s(mlds_pred_label_to_string(PredLabel)), i(ModeNum)], !IO).
 
 :- func mlds_proc_label_to_string(mlds_proc_label) = string.
 
@@ -216,53 +217,8 @@ mlds_proc_label_to_string(mlds_proc_label(PredLabel, ProcId)) =
 
 %---------------------%
 
-    % mlds_output_pred_label should be kept in sync with
-    % mlds_pred_label_to_string and browser/name_mangle.m.
-    %
-:- pred mlds_output_pred_label(io.text_output_stream::in, mlds_pred_label::in,
-    io::di, io::uo) is det.
-
-mlds_output_pred_label(Stream, PredLabel, !IO) :-
-    (
-        PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
-            Name, PredArity, _CodeModel, _NonOutputFunc),
-        (
-            PredOrFunc = pf_predicate,
-            Suffix = "p",
-            OrigArity = PredArity
-        ;
-            PredOrFunc = pf_function,
-            Suffix = "f",
-            OrigArity = PredArity - 1
-        ),
-        MangledName = name_mangle(Name),
-        io.format(Stream, "%s_%d_%s",
-            [s(MangledName), i(OrigArity), s(Suffix)], !IO),
-        (
-            MaybeDefiningModule = yes(DefiningModule),
-            MangledDefiningModule = sym_name_mangle(DefiningModule),
-            io.format(Stream, "_in__%s", [s(MangledDefiningModule)], !IO)
-        ;
-            MaybeDefiningModule = no
-        )
-    ;
-        PredLabel = mlds_special_pred_label(PredName, MaybeTypeModule,
-            TypeName, TypeArity),
-        MangledPredName = name_mangle(PredName),
-        MangledTypeName = name_mangle(TypeName),
-        io.format(Stream, "%s__", [s(MangledPredName)], !IO),
-        (
-            MaybeTypeModule = yes(TypeModule),
-            MangledTypeModule = sym_name_mangle(TypeModule),
-            io.format(Stream, "__%s", [s(MangledTypeModule)], !IO)
-        ;
-            MaybeTypeModule = no
-        ),
-        io.format(Stream, "%s_%d", [s(MangledTypeName), i(TypeArity)], !IO)
-    ).
-
     % mlds_pred_label_to_string should be kept in sync with
-    % mlds_output_pred_label and browser/name_mangle.m.
+    % browser/name_mangle.m.
     %
 :- func mlds_pred_label_to_string(mlds_pred_label) = string.
 
@@ -273,37 +229,51 @@ mlds_pred_label_to_string(PredLabel) = Str :-
         (
             PredOrFunc = pf_predicate,
             Suffix = "p",
-            OrigArity = PredArity
+            UserArity = PredArity
         ;
             PredOrFunc = pf_function,
             Suffix = "f",
-            OrigArity = PredArity - 1
+            UserArity = PredArity - 1
         ),
         MangledName = name_mangle(Name),
-        MainStr = MangledName ++ "_" ++ string.int_to_string(OrigArity)
-            ++ "_" ++ Suffix,
         (
             MaybeDefiningModule = yes(DefiningModule),
-            Str = MainStr ++ "_in__" ++ sym_name_mangle(DefiningModule)
+            Str = string.format("%s_%d_%s_in__%s",
+                [s(MangledName), i(UserArity), s(Suffix),
+                s(sym_name_mangle(DefiningModule))])
         ;
             MaybeDefiningModule = no,
-            Str = MainStr
+            Str = string.format("%s_%d_%s",
+                [s(MangledName), i(UserArity), s(Suffix)])
         )
     ;
         PredLabel = mlds_special_pred_label(PredName, MaybeTypeModule,
             TypeName, TypeArity),
         MangledPredName = name_mangle(PredName),
         MangledTypeName = name_mangle(TypeName),
-        PrefixStr = MangledPredName ++ "__",
         (
             MaybeTypeModule = yes(TypeModule),
-            MidStr = sym_name_mangle(TypeModule) ++ "__"
+            MangledTypeModule = sym_name_mangle(TypeModule),
+            % XXX The old mlds_output_pred_label predicate, which used to be
+            % called from mlds_output_function_name and mlds_output_proc_label
+            % (calls which have been replaced by calls to this function)
+            % used the equivalent of the format string "%s____%s%s_%d",
+            % which was almost certainly a bug.
+            %
+            % However, since the MaybeTypeModule field is yes(_) *only* when
+            % we are generating code in module A for a unify/compare/index
+            % predicate for a type defined in module B where A != B,
+            % that predicate *will* be private to module A, so we can call it
+            % by any name we want in the C code we generate, provided it is
+            % consistent.
+            Str = string.format("%s__%s__%s_%d",
+                [s(MangledPredName), s(MangledTypeModule),
+                s(MangledTypeName), i(TypeArity)])
         ;
             MaybeTypeModule = no,
-            MidStr = ""
-        ),
-        Str = PrefixStr ++ MidStr ++ MangledTypeName ++ "_" ++
-            int_to_string(TypeArity)
+            Str = string.format("%s__%s_%d",
+                [s(MangledPredName), s(MangledTypeName), i(TypeArity)])
+        )
     ).
 
 %---------------------------------------------------------------------------%
