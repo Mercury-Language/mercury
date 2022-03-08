@@ -146,6 +146,7 @@
 
 :- implementation.
 
+:- import_module io.call_system.
 :- import_module list.
 :- import_module require.   % Required by non-C grades.
 :- import_module string.
@@ -546,7 +547,7 @@ do_wait(_, _, _, _, _, _) :-
 wait_pid(Pid, Res, !IO) :-
     do_wait(Pid, Error, _MaybeWaitedPid, WStatus, !IO),
     ( if Error = "" then
-        Res = decode_system_command_exit_code(WStatus)
+        Res = io.call_system.decode_system_command_exit_code(WStatus)
     else
         Res = error(io.make_io_error(Error))
     ).
@@ -559,7 +560,7 @@ wait_any(MaybeWaitedPid, Res, !IO) :-
         else
             MaybeWaitedPid = yes(MaybeWaitedPid0)
         ),
-        Res = decode_system_command_exit_code(WStatus)
+        Res = io.call_system.decode_system_command_exit_code(WStatus)
     else
         MaybeWaitedPid = no,
         Res = error(io.make_io_error(Error))

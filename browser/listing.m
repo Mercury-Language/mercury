@@ -110,6 +110,7 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module int.
+:- import_module io.call_system.
 :- import_module io.file.
 :- import_module maybe.
 :- import_module string.
@@ -427,7 +428,7 @@ execute_command_with_redirects(Prog, Args, OutStrm, ErrStrm, Result, !IO) :-
     else if Status = -2 then
         Result = error("posix_spawn not supported on this platform")
     else
-        Result0 = io.decode_system_command_exit_code(Status),
+        Result0 = io.call_system.decode_system_command_exit_code(Status),
         (
             Result0 = ok(exited(ExitStatus)),
             ( if ExitStatus = 0 then

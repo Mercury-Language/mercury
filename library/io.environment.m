@@ -6,7 +6,7 @@
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% File: io.environmentm.
+% File: io.environment.m.
 %
 % This provides read and write access to the environment variables
 % inherited by this process from its parent process.
@@ -66,7 +66,6 @@
 
 :- implementation.
 
-% ZZZ
 :- import_module assoc_list.
 :- import_module pair.
 

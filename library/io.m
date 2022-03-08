@@ -2266,15 +2266,6 @@
 
 %---------------------%
 %
-% For use by compiler/process_util.m.
-%
-
-    % Interpret the child process exit status returned by
-    % system() or wait().
-    %
-:- func decode_system_command_exit_code(int) = io.res(io.system_result).
-
-%
 % For use by the compiler transformation that implements trace [io(!IO)].
 % Both of these are builtins.
 %
@@ -11101,62 +11092,6 @@ source_name(stderr) = "<standard error>".
 "
     Id = Stream.id;
 ").
-
-%---------------------------------------------------------------------------%
-%
-% For use by compiler/process_util.m.
-%
-
-decode_system_command_exit_code(Code0) = Status :-
-    decode_system_command_exit_code(Code0, Exited, ExitCode, Signalled,
-        Signal),
-    (
-        Exited = yes,
-        Status = ok(exited(ExitCode))
-    ;
-        Exited = no,
-        (
-            Signalled = yes,
-            Status = ok(signalled(Signal))
-        ;
-            Signalled = no,
-            Status = error(io_error("unknown result code from system command"))
-        )
-    ).
-
-    % Interpret the child process exit status returned by system() or wait():
-    %
-:- pred decode_system_command_exit_code(int::in, bool::out, int::out,
-    bool::out, int::out) is det.
-
-:- pragma foreign_proc("C",
-    decode_system_command_exit_code(Status0::in, Exited::out, Status::out,
-        Signalled::out, Signal::out),
-    [will_not_call_mercury, thread_safe, promise_pure,
-        does_not_affect_liveness, no_sharing],
-"
-    Exited = MR_NO;
-    Status = 0;
-    Signalled = MR_NO;
-    Signal = 0;
-
-    #if defined (WIFEXITED) && defined (WEXITSTATUS) && \
-            defined (WIFSIGNALED) && defined (WTERMSIG)
-        if (WIFEXITED(Status0)) {
-            Exited = MR_YES;
-            Status = WEXITSTATUS(Status0);
-        } else if (WIFSIGNALED(Status0)) {
-            Signalled = MR_YES;
-            Signal = -WTERMSIG(Status0);
-        }
-    #else
-        Exited = MR_YES;
-        Status = Status0;
-    #endif
-").
-
-% This is a fall-back for back-ends that don't support the C interface.
-decode_system_command_exit_code(Status, yes, Status, no, 0).
 
 %---------------------------------------------------------------------------%
 %
