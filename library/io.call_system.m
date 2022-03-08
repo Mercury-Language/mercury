@@ -53,15 +53,7 @@
 :- pred call_system_return_signal(string::in, io.res(system_result)::out,
     io::di, io::uo) is det.
 
-%---------------------------------------------------------------------------%
-
-:- implementation.
-:- interface.
-
-    % Interpret the child process exit status returned by
-    % system() or wait().
-    %
-    % Exported for use by browser/listing.m and compiler/process_util.m.
+    % Interpret the child process exit status returned by system() or wait().
     %
 :- func decode_system_command_exit_code(int) = io.res(io.system_result).
 
@@ -85,6 +77,8 @@ call_system(Command, Result, !IO) :-
         Result0 = error(Error),
         Result = error(Error)
     ).
+
+%---------------------------------------------------------------------------%
 
 call_system_return_signal(Command, Result, !IO) :-
     call_system_code(Command, Status, Error, !IO),
