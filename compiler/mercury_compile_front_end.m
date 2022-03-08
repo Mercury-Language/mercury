@@ -1350,43 +1350,36 @@ maybe_generate_style_warnings(Verbose, Stats, !HLDS, !Specs, !IO) :-
         InconsistentPredOrderForeignProcs = no,
         (
             InconsistentPredOrderClauses = no,
-            InconsistentPredOrder = no
+            WarnPredDeclDefnOrder = do_not_warn_pred_decl_vs_defn_order
         ;
             InconsistentPredOrderClauses = yes,
-            InconsistentPredOrder = yes(only_clauses)
+            WarnPredDeclDefnOrder = warn_pred_decl_vs_defn_order(only_clauses)
         )
     ;
         InconsistentPredOrderForeignProcs = yes,
-        InconsistentPredOrder = yes(clauses_and_foreign_procs)
+        WarnPredDeclDefnOrder =
+            warn_pred_decl_vs_defn_order(clauses_and_foreign_procs)
     ),
-    (
+    ( if
         NonContiguousDecls = no,
-        InconsistentPredOrder = no,
-        MaybeTask = no
-    ;
-        NonContiguousDecls = no,
-        InconsistentPredOrder = yes(DefnKinds),
-        MaybeTask = yes(inconsistent_pred_order_only(DefnKinds))
-    ;
-        NonContiguousDecls = yes,
-        InconsistentPredOrder = no,
-        MaybeTask = yes(non_contiguous_decls_only)
-    ;
-        NonContiguousDecls = yes,
-        InconsistentPredOrder = yes(DefnKinds),
-        MaybeTask =
-            yes(non_contiguous_decls_and_inconsistent_pred_order(DefnKinds))
-    ),
-    (
-        MaybeTask = yes(Task),
+        WarnPredDeclDefnOrder = do_not_warn_pred_decl_vs_defn_order
+    then
+        true
+    else
+        (
+            NonContiguousDecls = no,
+            WarnNonContigPreds = do_not_warn_non_contiguous_pred_decls
+        ;
+            NonContiguousDecls = yes,
+            WarnNonContigPreds = warn_non_contiguous_pred_decls
+        ),
         maybe_write_string(Verbose,
             "% Generating style warnings...\n", !IO),
-        generate_style_warnings(!.HLDS, Task, StyleSpecs),
+        generate_style_warnings(!.HLDS, WarnNonContigPreds,
+            WarnPredDeclDefnOrder,  StyleSpecs),
         !:Specs = StyleSpecs ++ !.Specs,
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
-    ;
-        MaybeTask = no
     ).
 
 %---------------------------------------------------------------------------%
