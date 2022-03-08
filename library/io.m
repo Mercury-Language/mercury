@@ -2024,8 +2024,45 @@
 
 :- instance stream.error(io.error).
 
-:- instance stream.stream(text_output_stream, io).
-:- instance stream.output(text_output_stream, io).
+% Text input stream instances.
+:- instance stream.stream(text_input_stream,        io).
+:- instance stream.input(text_input_stream,         io).
+:- instance stream.line_oriented(text_input_stream, io).
+
+:- instance stream.reader(text_input_stream,         char,      io, io.error).
+:- instance stream.reader(text_input_stream,         line,      io, io.error).
+:- instance stream.reader(text_input_stream,         text_file, io, io.error).
+
+:- instance stream.unboxed_reader(text_input_stream, char,      io, io.error).
+
+:- instance stream.putback(text_input_stream,        char,      io, io.error).
+
+% Binary input stream instances.
+:- instance stream.stream(binary_input_stream,      io).
+:- instance stream.input(binary_input_stream,       io).
+:- instance stream.seekable(binary_input_stream,    io).
+
+:- instance stream.reader(binary_input_stream,         int,   io, io.error).
+:- instance stream.reader(binary_input_stream,         int8,  io, io.error).
+:- instance stream.reader(binary_input_stream,         uint8, io, io.error).
+% XXX IO_INSTANCE reader for int calls read_byte
+% XXX IO_INSTANCE inconsistent: no instance for uint
+
+:- instance stream.unboxed_reader(binary_input_stream, int8,  io, io.error).
+:- instance stream.unboxed_reader(binary_input_stream, uint8, io, io.error).
+% XXX IO_INSTANCE no instance for int
+
+:- instance stream.putback(binary_input_stream,        int,   io, io.error).
+:- instance stream.putback(binary_input_stream,        int8,  io, io.error).
+:- instance stream.putback(binary_input_stream,        uint8, io, io.error).
+% XXX IO_INSTANCE putback for int calls putback_byte
+% XXX IO_INSTANCE inconsistent: no instance for uint
+
+% Text output stream instances.
+:- instance stream.stream(text_output_stream,        io).
+:- instance stream.output(text_output_stream,        io).
+:- instance stream.line_oriented(text_output_stream, io).
+
 :- instance stream.writer(text_output_stream, char,   io).
 :- instance stream.writer(text_output_stream, float,  io).
 :- instance stream.writer(text_output_stream, int,    io).
@@ -2035,39 +2072,19 @@
 :- instance stream.writer(text_output_stream, uint,   io).
 :- instance stream.writer(text_output_stream, uint8,  io).
 :- instance stream.writer(text_output_stream, uint16, io).
-:- instance stream.writer(text_output_stream, uint8,  io).
+:- instance stream.writer(text_output_stream, uint32, io).
 :- instance stream.writer(text_output_stream, string, io).
 :- instance stream.writer(text_output_stream, univ,   io).
-:- instance stream.line_oriented(text_output_stream, io).
+% XXX IO_INSTANCE no instances fo {int,uint}64
 
-:- instance stream.stream(text_input_stream, io).
-:- instance stream.input(text_input_stream, io).
-:- instance stream.reader(text_input_stream, char, io, io.error).
-:- instance stream.unboxed_reader(text_input_stream, char, io, io.error).
-:- instance stream.reader(text_input_stream, line, io, io.error).
-:- instance stream.reader(text_input_stream, text_file, io, io.error).
-
-:- instance stream.line_oriented(text_input_stream, io).
-:- instance stream.putback(text_input_stream, char, io, io.error).
-
+% Binary output stream instances.
 :- instance stream.stream(binary_output_stream, io).
 :- instance stream.output(binary_output_stream, io).
-:- instance stream.writer(binary_output_stream, byte, io).
-:- instance stream.writer(binary_output_stream, int8, io).
-:- instance stream.writer(binary_output_stream, uint8, io).
 :- instance stream.seekable(binary_output_stream, io).
 
-:- instance stream.stream(binary_input_stream,  io).
-:- instance stream.input(binary_input_stream, io).
-:- instance stream.reader(binary_input_stream, int, io, io.error).
-:- instance stream.reader(binary_input_stream, int8, io, io.error).
-:- instance stream.reader(binary_input_stream, uint8, io, io.error).
-:- instance stream.unboxed_reader(binary_input_stream, int8, io, io.error).
-:- instance stream.unboxed_reader(binary_input_stream, uint8, io, io.error).
-:- instance stream.putback(binary_input_stream, int, io, io.error).
-:- instance stream.putback(binary_input_stream, int8, io, io.error).
-:- instance stream.putback(binary_input_stream, uint8, io, io.error).
-:- instance stream.seekable(binary_input_stream, io).
+:- instance stream.writer(binary_output_stream, byte,  io).
+:- instance stream.writer(binary_output_stream, int8,  io).
+:- instance stream.writer(binary_output_stream, uint8, io).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -2389,335 +2406,6 @@ io_state_compare(_, _, _) :-
     [prefix("ML_"), uppercase]).
 :- pragma foreign_export_enum("Java", maybe_incomplete_result_code/0,
     [prefix("ML_"), uppercase]).
-
-%---------------------------------------------------------------------------%
-%
-% Instances of the stream typeclasses.
-%
-
-:- instance stream.error(error) where [
-    func(stream.error_message/1) is io.error_message
-].
-
-%---------------------%
-%
-% Text input streams.
-%
-
-:- instance stream.stream(input_stream, io) where [
-    pred(name/4) is input_stream_name
-].
-
-:- instance stream.input(input_stream, io) where [].
-
-:- instance stream.reader(input_stream, char, io, io.error)
-    where
-[
-    ( get(Stream, Result, !IO) :-
-        read_char(Stream, Result0, !IO),
-        Result = io.result1_to_stream_result1(Result0)
-    )
-].
-
-:- instance stream.unboxed_reader(input_stream, char, io, io.error)
-    where
-[
-    ( unboxed_get(Stream, Result, Char, !IO) :-
-        read_char_unboxed(Stream, Result0, Char, !IO),
-        Result = io.result0_to_stream_result0(Result0)
-    )
-].
-
-:- instance stream.reader(input_stream, line, io, io.error)
-    where
-[
-    ( get(Stream, Result, !IO) :-
-        read_line_as_string(Stream, Result0, !IO),
-        (
-            Result0 = ok(String),
-            Result = ok(line(String))
-        ;
-            Result0 = eof,
-            Result = eof
-        ;
-            Result0 = error(Error),
-            Result = error(Error)
-        )
-    )
-].
-
-:- instance stream.reader(input_stream, text_file, io, io.error)
-    where
-[
-    ( get(Stream, Result, !IO) :-
-        read_file_as_string(Stream, Result0, !IO),
-        (
-            Result0 = ok(String),
-            Result = ok(text_file(String))
-        ;
-            Result0 = error(_PartialString, Error),
-            Result = error(Error)
-        )
-    )
-].
-
-:- instance stream.putback(input_stream, char, io, io.error) where
-[
-    pred(unget/4) is putback_char
-].
-
-:- instance stream.line_oriented(input_stream, io) where
-[
-    pred(get_line/4) is io.get_line_number,
-    pred(set_line/4) is io.set_line_number
-].
-
-:- func result1_to_stream_result1(io.result(T)) = stream.result(T, io.error).
-
-result1_to_stream_result1(ok(T)) = ok(T).
-result1_to_stream_result1(eof) = eof.
-result1_to_stream_result1(error(Error)) = error(Error).
-
-:- func result0_to_stream_result0(io.result) = stream.result(io.error).
-
-result0_to_stream_result0(ok) = ok.
-result0_to_stream_result0(eof) = eof.
-result0_to_stream_result0(error(Error)) = error(Error).
-
-%---------------------%
-%
-% Text output streams.
-%
-
-:- instance stream.stream(output_stream, io) where [
-    pred(name/4) is output_stream_name
-].
-
-:- instance stream.output(output_stream, io) where [
-    pred(flush/3) is flush_output
-].
-
-:- instance stream.writer(output_stream, char, io)
-    where
-[
-    pred(put/4) is write_char
-].
-
-:- instance stream.writer(output_stream, float, io)
-    where
-[
-    pred(put/4) is write_float
-].
-
-:- instance stream.writer(output_stream, int, io)
-    where
-[
-    pred(put/4) is write_int
-].
-
-:- instance stream.writer(output_stream, int8, io)
-    where
-[
-    pred(put/4) is write_int8
-].
-
-:- instance stream.writer(output_stream, int16, io)
-    where
-[
-    pred(put/4) is write_int16
-].
-
-:- instance stream.writer(output_stream, int32, io)
-    where
-[
-    pred(put/4) is write_int32
-].
-
-:- instance stream.writer(output_stream, uint, io)
-    where
-[
-    pred(put/4) is write_uint
-].
-
-:- instance stream.writer(output_stream, uint8, io)
-    where
-[
-    pred(put/4) is write_uint8
-].
-
-:- instance stream.writer(output_stream, uint16, io)
-    where
-[
-    pred(put/4) is write_uint16
-].
-
-:- instance stream.writer(output_stream, uint32, io)
-    where
-[
-    pred(put/4) is write_uint32
-].
-
-:- instance stream.writer(output_stream, string, io)
-    where
-[
-    pred(put/4) is write_string
-].
-
-:- instance stream.writer(output_stream, univ, io)
-    where
-[
-    pred(put/4) is stream.string_writer.write_univ
-].
-
-:- instance stream.line_oriented(output_stream, io) where
-[
-    pred(get_line/4) is get_output_line_number,
-    pred(set_line/4) is set_output_line_number
-].
-
-%---------------------%
-%
-% Binary input streams.
-%
-
-:- instance stream.stream(binary_input_stream, io)
-    where
-[
-    pred(name/4) is binary_input_stream_name
-].
-
-:- instance stream.input(binary_input_stream, io)
-    where [].
-
-:- instance stream.reader(binary_input_stream, int, io, io.error)
-    where
-[
-    ( get(Stream, Result, !IO) :-
-        read_byte(Stream, Result0, !IO),
-        Result = result1_to_stream_result1(Result0)
-    )
-].
-
-:- instance stream.reader(binary_input_stream, int8, io, io.error)
-    where
-[
-    ( get(Stream, Result, !IO) :-
-        read_binary_int8(Stream, Result0, !IO),
-        Result = result1_to_stream_result1(Result0)
-    )
-].
-
-:- instance stream.reader(binary_input_stream, uint8, io, io.error)
-    where
-[
-    ( get(Stream, Result, !IO) :-
-        read_binary_uint8(Stream, Result0, !IO),
-        Result = result1_to_stream_result1(Result0)
-    )
-].
-
-:- instance stream.unboxed_reader(binary_input_stream, int8, io, io.error)
-    where
-[
-    ( unboxed_get(Stream, Result, Int8, !IO) :-
-        read_binary_int8_unboxed(Stream, Result0, Int8, !IO),
-        Result = io.result0_to_stream_result0(Result0)
-    )
-].
-
-:- instance stream.unboxed_reader(binary_input_stream, uint8, io, io.error)
-    where
-[
-    ( unboxed_get(Stream, Result, UInt8, !IO) :-
-        read_binary_uint8_unboxed(Stream, Result0, UInt8, !IO),
-        Result = io.result0_to_stream_result0(Result0)
-    )
-].
-
-:- instance stream.putback(binary_input_stream, int, io, io.error)
-    where
-[
-    pred(unget/4) is putback_byte
-].
-
-:- instance stream.putback(binary_input_stream, int8, io, io.error)
-    where
-[
-    pred(unget/4) is putback_int8
-].
-
-:- instance stream.putback(binary_input_stream, uint8, io, io.error)
-    where
-[
-    pred(unget/4) is putback_uint8
-].
-
-:- instance stream.seekable(binary_input_stream, io)
-    where
-[
-    ( seek(Stream, Whence0, OffSet, !IO) :-
-        Whence = stream_whence_to_io_whence(Whence0),
-        seek_binary_input(Stream, Whence, OffSet, !IO)
-    ),
-    ( seek64(Stream, Whence0, OffSet, !IO) :-
-        Whence = stream_whence_to_io_whence(Whence0),
-        seek_binary_input64(Stream, Whence, OffSet, !IO)
-    )
-].
-
-:- func stream_whence_to_io_whence(stream.whence) = io.whence.
-
-stream_whence_to_io_whence(set) = set.
-stream_whence_to_io_whence(cur) = cur.
-stream_whence_to_io_whence(end) = end.
-
-%---------------------%
-%
-% Binary output streams.
-%
-
-:- instance stream.stream(binary_output_stream, io)
-    where
-[
-    pred(name/4) is binary_output_stream_name
-].
-
-:- instance stream.output(binary_output_stream, io)
-    where
-[
-    pred(flush/3) is flush_binary_output
-].
-
-:- instance stream.writer(binary_output_stream, byte, io)
-    where
-[
-    pred(put/4) is write_byte
-].
-
-:- instance stream.writer(binary_output_stream, int8, io)
-    where
-[
-    pred(put/4) is write_binary_int8
-].
-
-:- instance stream.writer(binary_output_stream, uint8, io)
-    where
-[
-    pred(put/4) is write_binary_uint8
-].
-
-:- instance stream.seekable(binary_output_stream, io)
-    where
-[
-    ( seek(Stream, Whence0, OffSet, !IO) :-
-        Whence = stream_whence_to_io_whence(Whence0),
-        seek_binary_output(Stream, Whence, OffSet, !IO)
-    ),
-    ( seek64(Stream, Whence0, Offset, !IO) :-
-        Whence = stream_whence_to_io_whence(Whence0),
-        seek_binary_output64(Stream, Whence, Offset, !IO)
-    )
-].
 
 %---------------------------------------------------------------------------%
 
@@ -11112,6 +10800,354 @@ restore_input_stream(_DummyPred, Stream, ok, !IO) :-
 
 restore_output_stream(_DummyPred, Stream, ok, !IO) :-
     set_output_stream(Stream, _OldStream, !IO).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Instances of the stream typeclasses.
+%
+
+:- instance stream.error(error) where [
+    func(stream.error_message/1) is io.error_message
+].
+
+%---------------------------------------------------------------------------%
+%
+% Text input streams.
+%
+
+:- instance stream.stream(text_input_stream, io) where [
+    pred(name/4) is input_stream_name
+].
+
+:- instance stream.input(text_input_stream, io) where [].
+
+:- instance stream.line_oriented(text_input_stream, io) where
+[
+    pred(get_line/4) is io.get_line_number,
+    pred(set_line/4) is io.set_line_number
+].
+
+%---------------------%
+
+:- instance stream.reader(text_input_stream, char, io, io.error)
+    where
+[
+    ( get(Stream, Result, !IO) :-
+        read_char(Stream, Result0, !IO),
+        Result = io.result1_to_stream_result1(Result0)
+    )
+].
+
+:- instance stream.reader(text_input_stream, line, io, io.error)
+    where
+[
+    ( get(Stream, Result, !IO) :-
+        read_line_as_string(Stream, Result0, !IO),
+        (
+            Result0 = ok(String),
+            Result = ok(line(String))
+        ;
+            Result0 = eof,
+            Result = eof
+        ;
+            Result0 = error(Error),
+            Result = error(Error)
+        )
+    )
+].
+
+:- instance stream.reader(text_input_stream, text_file, io, io.error)
+    where
+[
+    ( get(Stream, Result, !IO) :-
+        read_file_as_string(Stream, Result0, !IO),
+        (
+            Result0 = ok(String),
+            Result = ok(text_file(String))
+        ;
+            Result0 = error(_PartialString, Error),
+            Result = error(Error)
+        )
+    )
+].
+
+%---------------------%
+
+:- instance stream.unboxed_reader(text_input_stream, char, io, io.error)
+    where
+[
+    ( unboxed_get(Stream, Result, Char, !IO) :-
+        read_char_unboxed(Stream, Result0, Char, !IO),
+        Result = io.result0_to_stream_result0(Result0)
+    )
+].
+
+%---------------------%
+
+:- instance stream.putback(text_input_stream, char, io, io.error) where
+[
+    pred(unget/4) is putback_char
+].
+
+%---------------------------------------------------------------------------%
+%
+% Binary input streams.
+%
+
+:- instance stream.stream(binary_input_stream, io)
+    where
+[
+    pred(name/4) is binary_input_stream_name
+].
+
+:- instance stream.input(binary_input_stream, io)
+    where [].
+
+:- instance stream.seekable(binary_input_stream, io)
+    where
+[
+    ( seek(Stream, Whence0, OffSet, !IO) :-
+        Whence = stream_whence_to_io_whence(Whence0),
+        seek_binary_input(Stream, Whence, OffSet, !IO)
+    ),
+    ( seek64(Stream, Whence0, OffSet, !IO) :-
+        Whence = stream_whence_to_io_whence(Whence0),
+        seek_binary_input64(Stream, Whence, OffSet, !IO)
+    )
+].
+
+%---------------------%
+
+:- instance stream.reader(binary_input_stream, int, io, io.error)
+    where
+[
+    ( get(Stream, Result, !IO) :-
+        read_byte(Stream, Result0, !IO),
+        Result = result1_to_stream_result1(Result0)
+    )
+].
+
+:- instance stream.reader(binary_input_stream, int8, io, io.error)
+    where
+[
+    ( get(Stream, Result, !IO) :-
+        read_binary_int8(Stream, Result0, !IO),
+        Result = result1_to_stream_result1(Result0)
+    )
+].
+
+:- instance stream.reader(binary_input_stream, uint8, io, io.error)
+    where
+[
+    ( get(Stream, Result, !IO) :-
+        read_binary_uint8(Stream, Result0, !IO),
+        Result = result1_to_stream_result1(Result0)
+    )
+].
+
+%---------------------%
+
+:- instance stream.unboxed_reader(binary_input_stream, int8, io, io.error)
+    where
+[
+    ( unboxed_get(Stream, Result, Int8, !IO) :-
+        read_binary_int8_unboxed(Stream, Result0, Int8, !IO),
+        Result = io.result0_to_stream_result0(Result0)
+    )
+].
+
+:- instance stream.unboxed_reader(binary_input_stream, uint8, io, io.error)
+    where
+[
+    ( unboxed_get(Stream, Result, UInt8, !IO) :-
+        read_binary_uint8_unboxed(Stream, Result0, UInt8, !IO),
+        Result = io.result0_to_stream_result0(Result0)
+    )
+].
+
+%---------------------%
+
+:- instance stream.putback(binary_input_stream, int, io, io.error)
+    where
+[
+    pred(unget/4) is putback_byte
+].
+
+:- instance stream.putback(binary_input_stream, int8, io, io.error)
+    where
+[
+    pred(unget/4) is putback_int8
+].
+
+:- instance stream.putback(binary_input_stream, uint8, io, io.error)
+    where
+[
+    pred(unget/4) is putback_uint8
+].
+
+%---------------------------------------------------------------------------%
+%
+% Text output streams.
+%
+
+:- instance stream.stream(text_output_stream, io) where [
+    pred(name/4) is output_stream_name
+].
+
+:- instance stream.output(text_output_stream, io) where [
+    pred(flush/3) is flush_output
+].
+
+:- instance stream.line_oriented(text_output_stream, io) where
+[
+    pred(get_line/4) is get_output_line_number,
+    pred(set_line/4) is set_output_line_number
+].
+
+%---------------------%
+
+:- instance stream.writer(text_output_stream, char, io)
+    where
+[
+    pred(put/4) is write_char
+].
+
+:- instance stream.writer(text_output_stream, float, io)
+    where
+[
+    pred(put/4) is write_float
+].
+
+:- instance stream.writer(text_output_stream, int, io)
+    where
+[
+    pred(put/4) is write_int
+].
+
+:- instance stream.writer(text_output_stream, int8, io)
+    where
+[
+    pred(put/4) is write_int8
+].
+
+:- instance stream.writer(text_output_stream, int16, io)
+    where
+[
+    pred(put/4) is write_int16
+].
+
+:- instance stream.writer(text_output_stream, int32, io)
+    where
+[
+    pred(put/4) is write_int32
+].
+
+:- instance stream.writer(text_output_stream, uint, io)
+    where
+[
+    pred(put/4) is write_uint
+].
+
+:- instance stream.writer(text_output_stream, uint8, io)
+    where
+[
+    pred(put/4) is write_uint8
+].
+
+:- instance stream.writer(text_output_stream, uint16, io)
+    where
+[
+    pred(put/4) is write_uint16
+].
+
+:- instance stream.writer(text_output_stream, uint32, io)
+    where
+[
+    pred(put/4) is write_uint32
+].
+
+:- instance stream.writer(text_output_stream, string, io)
+    where
+[
+    pred(put/4) is write_string
+].
+
+:- instance stream.writer(text_output_stream, univ, io)
+    where
+[
+    pred(put/4) is stream.string_writer.write_univ
+].
+
+%---------------------------------------------------------------------------%
+%
+% Binary output streams.
+%
+
+:- instance stream.stream(binary_output_stream, io)
+    where
+[
+    pred(name/4) is binary_output_stream_name
+].
+
+:- instance stream.output(binary_output_stream, io)
+    where
+[
+    pred(flush/3) is flush_binary_output
+].
+
+:- instance stream.seekable(binary_output_stream, io)
+    where
+[
+    ( seek(Stream, Whence0, OffSet, !IO) :-
+        Whence = stream_whence_to_io_whence(Whence0),
+        seek_binary_output(Stream, Whence, OffSet, !IO)
+    ),
+    ( seek64(Stream, Whence0, Offset, !IO) :-
+        Whence = stream_whence_to_io_whence(Whence0),
+        seek_binary_output64(Stream, Whence, Offset, !IO)
+    )
+].
+
+%---------------------%
+
+:- instance stream.writer(binary_output_stream, byte, io)
+    where
+[
+    pred(put/4) is write_byte
+].
+
+:- instance stream.writer(binary_output_stream, int8, io)
+    where
+[
+    pred(put/4) is write_binary_int8
+].
+
+:- instance stream.writer(binary_output_stream, uint8, io)
+    where
+[
+    pred(put/4) is write_binary_uint8
+].
+
+%---------------------------------------------------------------------------%
+
+:- func result1_to_stream_result1(io.result(T)) = stream.result(T, io.error).
+
+result1_to_stream_result1(ok(T)) = ok(T).
+result1_to_stream_result1(eof) = eof.
+result1_to_stream_result1(error(Error)) = error(Error).
+
+:- func result0_to_stream_result0(io.result) = stream.result(io.error).
+
+result0_to_stream_result0(ok) = ok.
+result0_to_stream_result0(eof) = eof.
+result0_to_stream_result0(error(Error)) = error(Error).
+
+:- func stream_whence_to_io_whence(stream.whence) = io.whence.
+
+stream_whence_to_io_whence(set) = set.
+stream_whence_to_io_whence(cur) = cur.
+stream_whence_to_io_whence(end) = end.
 
 %---------------------------------------------------------------------------%
 :- end_module io.
