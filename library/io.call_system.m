@@ -316,7 +316,7 @@ decode_system_command_exit_code(Code0) = Status :-
             Status = WEXITSTATUS(Status0);
         } else if (WIFSIGNALED(Status0)) {
             Signalled = MR_YES;
-            Signal = -WTERMSIG(Status0);
+            Signal = WTERMSIG(Status0);
         }
     #else
         Exited = MR_YES;
