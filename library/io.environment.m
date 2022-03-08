@@ -17,8 +17,6 @@
 :- module io.environment.
 :- interface.
 
-:- include_module file.
-
 :- import_module list.
 :- import_module map.
 
