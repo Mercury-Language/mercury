@@ -1528,21 +1528,21 @@
 % NOTE_TO_IMPLEMENTORS are removed. However, while the forwarding predicates
 % NOTE_TO_IMPLEMENTORS are here, the types that some of them depend on
 % NOTE_TO_IMPLEMENTORS should be here as well.
-% NOTE_TO_IMPLEMENTORS 
+% NOTE_TO_IMPLEMENTORS
 % NOTE_TO_IMPLEMENTORS Keeping the definitions of these types here suits both
 % NOTE_TO_IMPLEMENTORS old code and new code.
-% NOTE_TO_IMPLEMENTORS 
+% NOTE_TO_IMPLEMENTORS
 % NOTE_TO_IMPLEMENTORS - Old code can call all the forwarding predicates,
 % NOTE_TO_IMPLEMENTORS   and pass them values of these types, while importing
 % NOTE_TO_IMPLEMENTORS   only io.m.
-% NOTE_TO_IMPLEMENTORS 
+% NOTE_TO_IMPLEMENTORS
 % NOTE_TO_IMPLEMENTORS - New code using io.file.m must also import io.m anyway,
 % NOTE_TO_IMPLEMENTORS   not just because io.m is io.file.m's parent
 % NOTE_TO_IMPLEMENTORS   (a requirement that we may eliminate in the future),
 % NOTE_TO_IMPLEMENTORS   but because all the operations in io.file.m take
 % NOTE_TO_IMPLEMENTORS   a pair of I/O state arguments, and the I/O state type
 % NOTE_TO_IMPLEMENTORS   is defined here.
-% NOTE_TO_IMPLEMENTORS 
+% NOTE_TO_IMPLEMENTORS
 % NOTE_TO_IMPLEMENTORS On the other hand, if we moved the definitions of
 % NOTE_TO_IMPLEMENTORS these types to io.file.m, new code would still work,
 % NOTE_TO_IMPLEMENTORS but old code would break immediately, in a way that
@@ -3520,12 +3520,6 @@ using System.Security.Principal;
     static readonly System.Text.Encoding text_encoding =
         new System.Text.UTF8Encoding(false);
 
-#if __MonoCS__
-    // int chmod(const char *path, mode_t mode);
-    [DllImport(""libc"", SetLastError=true, EntryPoint=""mkdir"",
-        CallingConvention=CallingConvention.Cdecl)]
-    static extern int ML_sys_mkdir (string path, uint mode);
-#endif
 ").
 
 :- pragma foreign_code("C#", "

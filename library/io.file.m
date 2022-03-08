@@ -1040,18 +1040,18 @@ file_type(FollowSymLinks, FileName, Result, !IO) :-
         if ((attrs & System.IO.FileAttributes.Directory) ==
             System.IO.FileAttributes.Directory)
         {
-            FileType = io.ML_FILE_TYPE_DIRECTORY;
+            FileType = mercury.io__file.ML_FILE_TYPE_DIRECTORY;
         }
         else if ((attrs & System.IO.FileAttributes.Device) ==
             System.IO.FileAttributes.Device)
         {
             // XXX It may be a block device, but .NET doesn't
             // distinguish between character and block devices.
-            FileType = io.ML_FILE_TYPE_CHARACTER_DEVICE;
+            FileType = mercury.io__file.ML_FILE_TYPE_CHARACTER_DEVICE;
         }
         else
         {
-            FileType = io.ML_FILE_TYPE_REGULAR_FILE;
+            FileType = mercury.io__file.ML_FILE_TYPE_REGULAR_FILE;
         }
         Error = null;
     } catch (System.Exception e) {
@@ -1501,6 +1501,23 @@ make_temp_directory(Dir, Prefix, Suffix, Result, !IO) :-
 
 :- pragma foreign_code("C", "
     long    ML_io_tempnam_counter = 0;
+").
+
+:- pragma foreign_decl("C#", "
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.AccessControl;
+using System.Security.Principal;
+").
+
+:- pragma foreign_code("C#", "
+#if __MonoCS__
+    // int chmod(const char *path, mode_t mode);
+    [DllImport(""libc"", SetLastError=true, EntryPoint=""mkdir"",
+        CallingConvention=CallingConvention.Cdecl)]
+    static extern int ML_sys_mkdir (string path, uint mode);
+#endif
 ").
 
 :- pragma foreign_decl("Java", local, "

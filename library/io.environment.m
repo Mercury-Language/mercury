@@ -189,7 +189,8 @@ get_environment_var_map(EnvVarMap, !IO) :-
     foreach (System.Collections.DictionaryEntry entry in env) {
         string name = (string) entry.Key;
         string value = (string) entry.Value;
-        EnvVarAL = ML_record_env_var_and_value(name, value, EnvVarAL);
+        EnvVarAL = mercury.io__environment.ML_record_env_var_and_value(name,
+            value, EnvVarAL);
     }
 ").
 
