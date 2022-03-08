@@ -1069,17 +1069,17 @@ file_type(FollowSymLinks, FileName, Result, !IO) :-
     // The Java implementation can distinguish between regular files and
     // directories, and for everything else it just returns unknown.
 
-    FileType = io.ML_FILE_TYPE_UNKNOWN;
+    FileType = jmercury.io__file.ML_FILE_TYPE_UNKNOWN;
     Error = null;
 
     try {
         java.io.File file = new java.io.File(FileName);
         if (file.isFile()) {
-            FileType = io.ML_FILE_TYPE_REGULAR_FILE;
+            FileType = jmercury.io__file.ML_FILE_TYPE_REGULAR_FILE;
         } else if (file.isDirectory()) {
-            FileType = io.ML_FILE_TYPE_DIRECTORY;
+            FileType = jmercury.io__file.ML_FILE_TYPE_DIRECTORY;
         } else if (file.exists()) {
-            FileType = io.ML_FILE_TYPE_UNKNOWN;
+            FileType = jmercury.io__file.ML_FILE_TYPE_UNKNOWN;
         } else {
             Error = new java.io.FileNotFoundException(
                 ""File not found or I/O error"");

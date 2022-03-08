@@ -3376,46 +3376,6 @@ ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
             binary_output.close();
         }
     }
-
-    // StreamPipe is a mechanism for connecting streams to those of a
-    // Runtime.exec() Process.
-
-    private static class StreamPipe extends java.lang.Thread {
-        MR_TextInputFile        in;
-        MR_TextOutputFile       out;
-        boolean                 closeOutput = false;
-        java.lang.Exception     exception = null;
-
-        StreamPipe(java.io.InputStream in, MR_TextOutputFile out) {
-            this.in  = new MR_TextInputFile(in);
-            this.out = out;
-        }
-
-        StreamPipe(MR_TextInputFile in, java.io.OutputStream out) {
-            this.in  = in;
-            this.out = new MR_TextOutputFile(out);
-            closeOutput = true;
-        }
-
-        public void run() {
-            try {
-                while (true) {
-                    int c = in.read_char();
-                    if (c == -1 || interrupted()) {
-                        break;
-                    }
-                    out.put((char) c);
-                }
-                out.flush();
-                if (closeOutput) {
-                    out.close();
-                }
-            }
-            catch (java.lang.Exception e) {
-                exception = e;
-            }
-        }
-    } // class StreamPipe
 ").
 
 :- pragma foreign_code("Java", "

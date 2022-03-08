@@ -232,12 +232,12 @@ call_system_return_signal(Command, Result, !IO) :-
             process = java.lang.Runtime.getRuntime().exec(Command);
         }
 
-        StreamPipe stdin = new StreamPipe(mercury_stdin,
+        StreamPipe stdin = new StreamPipe(jmercury.io.mercury_stdin,
             process.getOutputStream());
         StreamPipe stdout = new StreamPipe(process.getInputStream(),
-            mercury_stdout);
+            jmercury.io.mercury_stdout);
         StreamPipe stderr = new StreamPipe(process.getErrorStream(),
-            mercury_stderr);
+            jmercury.io.mercury_stderr);
         stdin.start();
         stdout.start();
         stderr.start();
@@ -266,6 +266,49 @@ call_system_return_signal(Command, Result, !IO) :-
         Status  = 1;
         Error = e;
     }
+").
+
+:- pragma foreign_code("Java", "
+
+    // StreamPipe is a mechanism for connecting streams to those of a
+    // Runtime.exec() Process.
+
+    private static class StreamPipe extends java.lang.Thread {
+        jmercury.io.MR_TextInputFile        in;
+        jmercury.io.MR_TextOutputFile       out;
+        boolean                 closeOutput = false;
+        java.lang.Exception     exception = null;
+
+        StreamPipe(java.io.InputStream in, jmercury.io.MR_TextOutputFile out) {
+            this.in  = new jmercury.io.MR_TextInputFile(in);
+            this.out = out;
+        }
+
+        StreamPipe(jmercury.io.MR_TextInputFile in, java.io.OutputStream out) {
+            this.in  = in;
+            this.out = new jmercury.io.MR_TextOutputFile(out);
+            closeOutput = true;
+        }
+
+        public void run() {
+            try {
+                while (true) {
+                    int c = in.read_char();
+                    if (c == -1 || interrupted()) {
+                        break;
+                    }
+                    out.put((char) c);
+                }
+                out.flush();
+                if (closeOutput) {
+                    out.close();
+                }
+            }
+            catch (java.lang.Exception e) {
+                exception = e;
+            }
+        }
+    } // class StreamPipe
 ").
 
 %---------------------------------------------------------------------------%
