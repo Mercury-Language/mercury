@@ -507,8 +507,14 @@ do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
             (
                 MaybeResult = ok2(FileString, NumCodeUnits),
                 FileStringLen = string.length(FileString),
-                expect(unify(NumCodeUnits, FileStringLen), $pred,
-                    "NumCodeUnits != FileStringLen"),
+                ( if NumCodeUnits = FileStringLen then
+                    true
+                else
+                    Msg = string.format(
+                        "NumCodeUnits = %d, FileStringLen = %d\n<<<\n%s>>>\n",
+                        [i(NumCodeUnits), i(FileStringLen), s(FileString)]),
+                    unexpected($pred, Msg)
+                ),
                 LineContext0 = line_context(1, 0),
                 LinePosn0 = line_posn(0),
                 ReadParseTree(FileStreamName, FileString, FileStringLen,
