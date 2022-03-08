@@ -530,6 +530,7 @@
 %---------------------------------------------------------------------------%
 
 :- instance stream.bulk_reader(binary_input_stream, int, bitmap, io, io.error).
+:- instance stream.writer(binary_output_stream, bitmap, io).
 :- instance stream.writer(binary_output_stream, bitmap.slice, io).
 
 %---------------------------------------------------------------------------%
