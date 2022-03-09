@@ -4,12 +4,12 @@ NEWS since Mercury 22.01
 Changes that may break compatibility
 ------------------------------------
 
-* The predicates read_term/3, read_term/4, read_term_with_op_table/4,
-  read_term_with_op_table/5 have been removed from the `term_io` module
+* The predicates `read_term/3`, `read_term/4`, `read_term_with_op_table/4`,
+  `read_term_with_op_table/5` have been removed from the `term_io` module
   of the Mercury standard library.
 
-* The `io` module is being reorganized. Some predicates have been
-  marked as obsolete, while other predicates have been marked obsolete
+* The `io` module is being reorganized. Some predicates have been marked
+  as obsolete, while other predicates that had been marked as obsolete
   before the release of Mercury 22.01 have been removed.
 
 Changes to the Mercury standard library
