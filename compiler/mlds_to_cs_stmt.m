@@ -766,10 +766,8 @@ output_atomic_stmt_for_csharp(Info, Stream, Indent, AtomicStmt,
         AtomicStmt = inline_target_code(TargetLang, Components),
         (
             TargetLang = ml_target_csharp,
-            output_pragma_warning_restore(Stream, !IO),
             list.foldl(output_target_code_component_for_csharp(Info, Stream),
-                Components, !IO),
-            output_pragma_warning_disable(Stream, !IO)
+                Components, !IO)
         ;
             ( TargetLang = ml_target_c
             ; TargetLang = ml_target_java
@@ -813,6 +811,7 @@ output_init_args_for_csharp(Info, Stream, Indent, HeadArg, TailArgs, !IO) :-
 output_target_code_component_for_csharp(Info, Stream, TargetCode, !IO) :-
     (
         TargetCode = user_target_code(CodeString, MaybeUserContext),
+        output_pragma_warning_restore(Stream, !IO),
         io.write_string(Stream, "{\n", !IO),
         (
             MaybeUserContext = yes(ProgContext),
@@ -824,7 +823,8 @@ output_target_code_component_for_csharp(Info, Stream, TargetCode, !IO) :-
         io.write_string(Stream, CodeString, !IO),
         io.write_string(Stream, "}\n", !IO),
         cs_output_default_context(Stream,
-            Info ^ csoi_foreign_line_numbers, !IO)
+            Info ^ csoi_foreign_line_numbers, !IO),
+        output_pragma_warning_disable(Stream, !IO)
     ;
         TargetCode = raw_target_code(CodeString),
         io.write_string(Stream, CodeString, !IO)
