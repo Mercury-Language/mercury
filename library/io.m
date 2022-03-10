@@ -8755,7 +8755,7 @@ read_file_as_string_and_num_code_units(input_stream(Stream), Result, !IO) :-
     NullCharError = bool.NO;
 ").
 
-read_file_as_string_2(Stream, String, NumCUs, Error, NullCharError, !IO) :-
+read_file_as_string_2(Stream, Str, NumCUs, Error, NullCharError, !IO) :-
     % Check if the stream is a regular file; if so, allocate a buffer
     % according to the size of the file. Otherwise, just use a default buffer
     % size of 4k minus a bit (to give malloc some room).
@@ -8766,40 +8766,50 @@ read_file_as_string_2(Stream, String, NumCUs, Error, NullCharError, !IO) :-
         BufferSize0 = 4000
     ),
     alloc_buffer(BufferSize0, Buffer0),
-
     % Read the file into the buffer (resizing it as we go if necessary),
     % convert the buffer into a string, and see if anything went wrong.
-    NumCUs0 = 0,
-    read_file_as_string_loop(input_stream(Stream),
-        Buffer0, Buffer, BufferSize0, BufferSize, NumCUs0, NumCUs, Error, !IO),
-    require(NumCUs < BufferSize, "io.read_file_as_string: overflow"),
-    ( if buffer_to_string(Buffer, NumCUs, StringPrime) then
-        String = StringPrime,
-        NullCharError = no
-    else
-        String = "",
-        NullCharError = yes
-    ).
+    %
+    % When targeting C, Pos counts UTF-8 code *units*.
+    % When targeting C#, Pos counts code *points*.
+    % When targeting Java, the foreign_proc above replaces this clause.
+    Pos0 = 0,
+    read_file_as_string_loop(input_stream(Stream), Buffer0, BufferSize0, Pos0,
+        Str, NumCUs, Error, NullCharError, !IO).
 
 :- pred read_file_as_string_loop(input_stream::in, buffer::buffer_di,
-    buffer::buffer_uo, int::in, int::out, int::in, int::out, system_error::out,
+    int::in, int::in, string::out, int::out, system_error::out, bool::out,
     io::di, io::uo) is det.
+% This predicate is not used when compiling to Java; this pragma avoids
+% a warning even in that case.
 :- pragma consider_used(pred(read_file_as_string_loop/10)).
 
-read_file_as_string_loop(Stream, !Buffer, BufferSize0, BufferSize,
-        !NumCUs, Error, !IO) :-
+read_file_as_string_loop(Stream, !.Buffer, BufferSize0, !.Pos,
+        Str, NumCUs, Error, NullCharError, !IO) :-
     Stream = input_stream(RealStream),
-    read_into_buffer(RealStream, !Buffer, BufferSize0, !NumCUs, Error0, !IO),
-    ( if !.NumCUs < BufferSize0 then
-        % Buffer not full: end-of-file or error.
-        BufferSize = BufferSize0,
+    read_into_buffer(RealStream, !Buffer, BufferSize0, !Pos, Error0, !IO),
+    ( if !.Pos < BufferSize0 then
+        % Buffer is not full: end-of-file or error.
+        require(!.Pos < BufferSize0, "io.read_file_as_string: overflow"),
+        ( if
+            buffer_and_pos_to_string_and_length(!.Buffer, !.Pos,
+                StrPrime, NumCUsPrime)
+        then
+            Str = StrPrime,
+            NumCUs = NumCUsPrime,
+            NullCharError = no
+        else
+            Str = "",
+            NumCUs = 0,
+            NullCharError = yes
+        ),
         Error = Error0
-    else if !.NumCUs = BufferSize0 then
-        % Full buffer.
+    else if !.Pos = BufferSize0 then
+        % Buffer is full; make room for more of the file.
+        % Doubling its size should catch up to its actual size quickly.
         BufferSize1 = BufferSize0 * 2,
         resize_buffer(BufferSize0, BufferSize1, !Buffer),
-        read_file_as_string_loop(Stream, !Buffer, BufferSize1, BufferSize,
-            !NumCUs, Error, !IO)
+        read_file_as_string_loop(Stream, !.Buffer, BufferSize1, !.Pos,
+            Str, NumCUs, Error, NullCharError, !IO)
     else
         error("io.read_file_as_string: buffer overflow")
     ).
@@ -9072,28 +9082,49 @@ resize_buffer(_OldSize, NewSize, buffer(Array0), buffer(Array)) :-
     char.det_from_int(0, Char),
     array.resize(NewSize, Char, Array0, Array).
 
-:- pred buffer_to_string(buffer::buffer_di, int::in, string::uo) is semidet.
-:- pragma consider_used(pred(buffer_to_string/3)).
+:- pred buffer_and_pos_to_string_and_length(buffer::buffer_di, int::in,
+    string::out, int::out) is semidet.
+% This predicate is used when compiling to C and C#; this pragma avoids
+% a warning when compiling to Java.
+:- pragma consider_used(pred(buffer_and_pos_to_string_and_length/4)).
 
 :- pragma foreign_proc("C",
-    buffer_to_string(Buffer::buffer_di, Len::in, Str::uo),
+    buffer_and_pos_to_string_and_length(Buffer::buffer_di, Pos::in,
+        Str::out, NumCUs::out),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "{
     Str = Buffer;
-    Str[Len] = '\\0';
+    Str[Pos] = '\\0';
 
     // Check that the string does not contain null characters.
-    if (strlen(Str) != Len) {
+    if (strlen(Str) != Pos) {
         SUCCESS_INDICATOR = MR_FALSE;
     } else {
         SUCCESS_INDICATOR = MR_TRUE;
     }
+
+    // In C, Pos counts UTF-8 code units. NumCUs is expected to be
+    // in the code units native to the target language, and this is UTF-8,
+    // so no conversion needs to be done. (Compare to the C# case below.)
+    NumCUs = Pos;
 }").
 
-buffer_to_string(buffer(Array), Len, String) :-
-    array.fetch_items(Array, min(Array), min(Array) + Len - 1, List),
-    string.semidet_from_char_list(List, String).
+buffer_and_pos_to_string_and_length(buffer(Array), Pos, Str, NumCUs) :-
+    % This predicate is used only when compiling to C and C#, and when
+    % targeting C, we use the foreign_proc above, so this clause is used
+    % only when targeting C#.
+    %
+    % In C#, Pos counts chars, i.e. code points. Most code points occupy
+    % just one UTF-16 code unit, but some occupy two. The call below to
+    % semidet_from_char_list will do this expansion as necessary.
+    % We can't know how many code units the final string contains
+    % until we count them. (Compare to the C case above.)
+    % XXX Unless we provide a version of semidet_from_char_list that
+    % returns the number of code units as well, which should be possible.
+    array.fetch_items(Array, min(Array), min(Array) + Pos - 1, List),
+    string.semidet_from_char_list(List, Str),
+    string.length(Str, NumCUs).
 
 :- pred read_into_buffer(stream::in, buffer::buffer_di, buffer::buffer_uo,
     int::in, int::in, int::out, system_error::out, io::di, io::uo) is det.
@@ -9131,6 +9162,8 @@ read_into_buffer(Stream, buffer(Array0), buffer(Array), BufferSize,
 :- pred read_into_array(input_stream::in,
     array(char)::array_di, array(char)::array_uo, int::in, int::in, int::out,
     system_error::out, io::di, io::uo) is det.
+% This predicate is not used when compiling to C or Java; this pragma avoids
+% a warning even in those cases.
 :- pragma consider_used(pred(read_into_array/9)).
 
 read_into_array(Stream, !Array, ArraySize, !Pos, Error, !IO) :-
