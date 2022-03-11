@@ -1603,15 +1603,13 @@ get_temp_directory(Dir, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
-#pragma warning disable 162, 168, 169, 219, 1717
     try {
         Dir = System.IO.Path.GetTempPath();
         OK = (Dir != null) ? 1 : 0;
-    } catch (System.Exception _) {
+    } catch (System.Exception) {
         Dir = null;
         OK = 0;
     }
-#pragma warning restore
 ").
 
 system_temp_dir("", 0, !IO).
