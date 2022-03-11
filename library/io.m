@@ -77,10 +77,6 @@
 :- type binary_input_stream.
 :- type binary_output_stream.
 
-    % A unique identifier for an I/O stream.
-    %
-:- type stream_id.
-
     % Various types used for the result from the access predicates.
     %
 :- type res
@@ -8643,6 +8639,14 @@ read_file_as_string_2(Stream, Str, NumCUs, Error, NullCharError, !IO) :-
     % size of 4k minus a bit (to give malloc some room).
     input_stream_file_size(input_stream(Stream), FileSize, !IO),
     ( if FileSize >= 0 then
+        % When targeting C, this reserves just enough space for all the bytes
+        % in the file, plus the final NUL character.
+        %
+        % When targeting C#, this reserves one slot in an array of code points
+        % for each byte in the file, plus the NUL. This means that the buffer
+        % we reserve may be bigger than needed. How much bigger depends on
+        % the number of code points in the file that take more than one
+        % UTF-16 code units.
         BufferSize0 = FileSize + 1
     else
         BufferSize0 = 4000
@@ -8651,7 +8655,8 @@ read_file_as_string_2(Stream, Str, NumCUs, Error, NullCharError, !IO) :-
     % Read the file into the buffer (resizing it as we go if necessary),
     % convert the buffer into a string, and see if anything went wrong.
     %
-    % When targeting C, Pos counts UTF-8 code *units*.
+    % When targeting C, Pos counts UTF-8 code *units* (in the usual case
+    % where the input is valid UTF-8; otherwise, it counts bytes).
     % When targeting C#, Pos counts code *points*.
     % When targeting Java, the foreign_proc above replaces this clause.
     Pos0 = 0,
@@ -8671,7 +8676,6 @@ read_file_as_string_loop(Stream, !.Buffer, BufferSize0, !.Pos,
     read_into_buffer(RealStream, !Buffer, BufferSize0, !Pos, Error0, !IO),
     ( if !.Pos < BufferSize0 then
         % Buffer is not full: end-of-file or error.
-        require(!.Pos < BufferSize0, "io.read_file_as_string: overflow"),
         ( if
             buffer_and_pos_to_string_and_length(!.Buffer, !.Pos,
                 StrPrime, NumCUsPrime)
@@ -8986,9 +8990,10 @@ resize_buffer(_OldSize, NewSize, buffer(Array0), buffer(Array)) :-
         SUCCESS_INDICATOR = MR_TRUE;
     }
 
-    // In C, Pos counts UTF-8 code units. NumCUs is expected to be
-    // in the code units native to the target language, and this is UTF-8,
-    // so no conversion needs to be done. (Compare to the C# case below.)
+    // In C, Pos counts bytes, which are the same size as UTF-8 code units.
+    // NumCUs is expected to be in the code units native to the target
+    // language, and this is UTF-8, so no conversion needs to be done.
+    // (Compare to the C# case below.)
     NumCUs = Pos;
 }").
 
@@ -9002,8 +9007,14 @@ buffer_and_pos_to_string_and_length(buffer(Array), Pos, Str, NumCUs) :-
     % semidet_from_char_list will do this expansion as necessary.
     % We can't know how many code units the final string contains
     % until we count them. (Compare to the C case above.)
-    % XXX Unless we provide a version of semidet_from_char_list that
-    % returns the number of code units as well, which should be possible.
+    %
+    % XXX The current implementation of read_file_as_string_2
+    % reads in code units one by one, converts them to code points
+    % to store them in array slots, then converts the array to a string,
+    % which converts each code point back into one or two UTF-16 code units.
+    % A fully C#-specific implementation of read_file_as_string_2,
+    % one not shared with C, should be able to dispense with all the
+    % redundant conversions.
     array.fetch_items(Array, min(Array), min(Array) + Pos - 1, List),
     string.semidet_from_char_list(List, Str),
     string.length(Str, NumCUs).
