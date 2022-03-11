@@ -2208,76 +2208,7 @@
 % For use by browser/browse.m.
 %
 
-% Types and predicates for managing the stream info database.
-
-:- type stream_db ==    map(stream_id, stream_info).
-
-:- type stream_info
-    --->    stream(
-                stream_id               :: int,
-                stream_mode             :: stream_mode,
-                stream_content          :: stream_content,
-                stream_source           :: stream_source
-            ).
-
-:- type maybe_stream_info
-    --->    stream(
-                maybe_stream_id         :: int,
-                maybe_stream_mode       :: stream_mode,
-                maybe_stream_content    :: stream_content,
-                maybe_stream_source     :: stream_source
-            )
-    ;       unknown_stream.
-
-:- type stream_mode
-    --->    input
-    ;       output
-    ;       append.
-
-:- type stream_content
-    --->    text
-    ;       binary
-    ;       preopen.
-
-:- type stream_source
-    --->    file(string)    % the file name
-    ;       stdin
-    ;       stdout
-    ;       stderr.
-
-    % Retrieves the database mapping streams to the information we have
-    % about those streams.
-    %
-:- pred get_stream_db(stream_db::out, io::di, io::uo) is det.
-:- impure pred get_stream_db_with_locking(stream_db::out) is det.
-
-    % Returns the information associated with the specified input
-    % stream in the given stream database.
-    %
-:- func input_stream_info(stream_db, io.text_input_stream)
-    = maybe_stream_info.
-
-    % Returns the information associated with the specified binary input
-    % stream in the given stream database.
-    %
-:- func binary_input_stream_info(stream_db, io.binary_input_stream)
-    = maybe_stream_info.
-
-    % Returns the information associated with the specified output
-    % stream in the given stream database.
-    %
-:- func output_stream_info(stream_db, io.text_output_stream)
-    = maybe_stream_info.
-
-    % Returns the information associated with the specified binary output
-    % stream in the given stream database.
-    %
-:- func binary_output_stream_info(stream_db, io.binary_output_stream)
-    = maybe_stream_info.
-
-    % If the univ contains an I/O stream, return information about that
-    % stream, otherwise fail.
-:- func get_io_stream_info(stream_db, T) = maybe_stream_info is semidet.
+:- include_module stream_db.
 
 %---------------------%
 %
@@ -2304,6 +2235,7 @@
 :- import_module io.call_system.
 :- import_module io.environment.
 :- import_module io.file.
+:- import_module io.stream_db.
 :- import_module mercury_term_parser.
 :- import_module require.
 :- import_module stream.string_writer.
@@ -2487,7 +2419,6 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
 ").
 
 :- pragma foreign_decl("C", "
-extern MR_Word          ML_io_stream_db;
 extern MR_Word          ML_io_user_globals;
 
 extern int              ML_next_stream_id;
@@ -2496,14 +2427,12 @@ extern int              ML_next_stream_id;
 #endif
 
 #ifdef MR_THREAD_SAFE
-    extern MercuryLock  ML_io_stream_db_lock;
     extern MercuryLock  ML_io_user_globals_lock;
     extern MercuryLock  ML_io_next_stream_id_lock;
 #endif
 ").
 
 :- pragma foreign_code("C", "
-MR_Word         ML_io_stream_db;
 MR_Word         ML_io_user_globals;
 
 // A counter used to generate unique stream ids.
@@ -2513,7 +2442,6 @@ int             ML_next_stream_id;
 #endif
 
 #ifdef MR_THREAD_SAFE
-    MercuryLock ML_io_stream_db_lock;
     MercuryLock ML_io_user_globals_lock;
     MercuryLock ML_io_next_stream_id_lock;
 #endif
@@ -2927,8 +2855,6 @@ ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
 %---------------------%
 
 :- pragma foreign_code("Java", "
-    public static tree234.Tree234_2<Integer, Stream_info_0> ML_io_stream_db
-        = new tree234.Tree234_2.Empty_0<Integer, Stream_info_0>();
     public static univ.Univ_0 ML_io_user_globals = null;
 ").
 
@@ -3458,8 +3384,6 @@ using System.Security.Principal;
     // since the C# code all gets generated inside a class,
     // but we keep them for consistency with the C code.
 
-    public static tree234.Tree234_2 ML_io_stream_db =
-        new tree234.Tree234_2.Empty_0();
     public static univ.Univ_0       ML_io_user_globals;
 
     // a counter used to generate unique stream ids
@@ -3484,12 +3408,15 @@ using System.Security.Principal;
 
 :- pragma foreign_code("C#", "
     public enum ML_line_ending_kind {
-        ML_OS_line_ending,      // file uses the usual line-ending convention
-                                // for the OS (e.g. CR-LF for DOS/Windows).
+        // file uses the usual line-ending convention
+        // for the OS (e.g. CR-LF for DOS/Windows).
+        ML_OS_line_ending,
 
-        ML_Unix_line_ending,    // file uses the Unix line-encoding convention.
+        // file uses the Unix line-encoding convention.
+        ML_Unix_line_ending,
 
-        ML_raw_binary           // file stores bytes
+        // file stores bytes
+        ML_raw_binary
     };
 
     public class MR_MercuryFileStruct {
@@ -3499,15 +3426,16 @@ using System.Security.Principal;
         // field must check for null and initialize it if needed.
         // Likewise for the `writer' field.
 
-        public System.IO.Stream     stream; // The stream itself
-        public System.IO.TextReader reader; // The stream reader for it
-        public System.IO.TextWriter writer; // The stream writer for it
-        public int                  putback;
-                                    // the next character or byte to read,
-                                    // or -1 if no putback char/byte is stored
+        public System.IO.Stream     stream; // The stream itself.
+        public System.IO.TextReader reader; // The stream reader for it.
+        public System.IO.TextWriter writer; // The stream writer for it.
 
+        // The next character or byte to read,
+        // or -1 if no putback char/byte is stored.
+        public int                  putback;
+
+        // DOS, Unix, or raw binary.
         public ML_line_ending_kind  line_ending;
-                                    // DOS, Unix, or raw binary
 
         public int                  line_number;
         public int                  id;
@@ -4783,52 +4711,6 @@ binary_output_stream_name(binary_output_stream(Stream), Name, !IO) :-
     stream_name(Stream, Name, !IO).
 
 %---------------------------------------------------------------------------%
-
-:- pred insert_stream_info(stream::in, stream_info::in,
-    io::di, io::uo) is det.
-
-insert_stream_info(Stream, Name, !IO) :-
-    lock_stream_db(!IO),
-    get_stream_db(StreamDb0, !IO),
-    map.set(get_stream_id(Stream), Name, StreamDb0, StreamDb),
-    set_stream_db(StreamDb, !IO),
-    unlock_stream_db(!IO).
-
-:- pred maybe_delete_stream_info(io.stream::in, io::di, io::uo) is det.
-
-maybe_delete_stream_info(Stream, !IO) :-
-    may_delete_stream_info(MayDeleteStreamInfo, !IO),
-    ( if MayDeleteStreamInfo = 0 then
-        true
-    else
-        lock_stream_db(!IO),
-        get_stream_db(StreamDb0, !IO),
-        map.delete(get_stream_id(Stream), StreamDb0, StreamDb),
-        set_stream_db(StreamDb, !IO),
-        unlock_stream_db(!IO)
-    ).
-
-    % Return an integer that is nonzero if and only if we should delete
-    % the information we have about stream when that stream is closed.
-    % The debugger may need this information in order to display the stream id
-    % in a user-friendly manner even after the stream is closed (e.g. after
-    % performing a retry after the close), so if debugging is enabled, we
-    % hang on to the stream info until the end of the execution. This is a
-    % space leak, but one that is acceptable in a program being debugged.
-    %
-:- pred may_delete_stream_info(int::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    may_delete_stream_info(MayDelete::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    MayDelete = !MR_debug_ever_enabled;
-").
-
-may_delete_stream_info(1, !IO).
-
-%---------------------%
 
 :- pragma foreign_proc("C",
     get_line_number(LineNum::out, _IO0::di, _IO::uo),
@@ -10030,7 +9912,7 @@ init_state(!IO) :-
     io.gc_init(type_of(StreamDb), type_of(Globals), !IO),
     map.init(StreamDb),
     type_to_univ("<globals>", Globals),
-    io.set_stream_db(StreamDb, !IO),
+    io.stream_db.set_stream_db(StreamDb, !IO),
     io.set_op_table(ops.init_mercury_op_table, !IO),
     io.set_globals(Globals, !IO),
     io.insert_std_stream_names(!IO).
@@ -10511,230 +10393,6 @@ binary_output_stream_get_stream(binary_output_stream(Stream)) = Stream.
 get_op_table(ops.init_mercury_op_table, !IO).
 
 set_op_table(_OpTable, !IO).
-
-%---------------------%
-%
-% For use by browser/browse.m.
-%
-
-    % Caller must hold the stream_db lock.
-
-:- pragma foreign_proc("C",
-    get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        does_not_affect_liveness],
-"
-    StreamDb = ML_io_stream_db;
-").
-
-:- pragma foreign_proc("C#",
-    get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    StreamDb = io.ML_io_stream_db;
-").
-
-:- pragma foreign_proc("Java",
-    get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    StreamDb = io.ML_io_stream_db;
-").
-
-%---------------------%
-
-    % Caller must NOT hold the stream_db lock.
-
-:- pragma foreign_proc("C",
-    get_stream_db_with_locking(StreamDb::out),
-    [will_not_call_mercury, thread_safe, tabled_for_io],
-"
-    MR_LOCK(&ML_io_stream_db_lock, ""io.get_stream_db/1"");
-    StreamDb = ML_io_stream_db;
-    MR_UNLOCK(&ML_io_stream_db_lock, ""io.get_stream_db/1"");
-").
-
-:- pragma foreign_proc("C#",
-    get_stream_db_with_locking(StreamDb::out),
-    [will_not_call_mercury, tabled_for_io],
-"
-    StreamDb = io.ML_io_stream_db;
-").
-
-:- pragma foreign_proc("Java",
-    get_stream_db_with_locking(StreamDb::out),
-    [will_not_call_mercury, tabled_for_io],
-"
-    StreamDb = io.ML_io_stream_db;
-").
-
-%---------------------%
-
-    % Caller must hold the stream_db lock.
-    %
-:- pred set_stream_db(io.stream_db::in, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-"
-    ML_io_stream_db = StreamDb;
-").
-
-:- pragma foreign_proc("C#",
-    set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    io.ML_io_stream_db = StreamDb;
-").
-
-:- pragma foreign_proc("Java",
-    set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    io.ML_io_stream_db = StreamDb;
-").
-
-%---------------------%
-
-:- pred lock_stream_db(io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    io.lock_stream_db(_IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        no_sharing],
-"
-    MR_LOCK(&ML_io_stream_db_lock, ""io.lock_stream_db/2"");
-").
-
-lock_stream_db(!IO).
-
-:- pred unlock_stream_db(io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    unlock_stream_db(_IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        no_sharing],
-"
-    MR_UNLOCK(&ML_io_stream_db_lock, ""io.unlock_stream_db/2"");
-").
-
-unlock_stream_db(!IO).
-
-%---------------------%
-
-:- pred stream_name(stream::in, string::out, io::di, io::uo) is det.
-
-stream_name(Stream, Name, !IO) :-
-    stream_info(Stream, MaybeInfo, !IO),
-    (
-        MaybeInfo = yes(Info),
-        Info = stream(_, _, _, Source),
-        Name = source_name(Source)
-    ;
-        MaybeInfo = no,
-        Name = "<stream name unavailable>"
-    ).
-
-:- pred stream_info(io.stream::in, maybe(stream_info)::out,
-    io::di, io::uo) is det.
-
-stream_info(Stream, MaybeInfo, !IO) :-
-    lock_stream_db(!IO),
-    get_stream_db(StreamDb, !IO),
-    unlock_stream_db(!IO),
-    ( if map.search(StreamDb, get_stream_id(Stream), Info) then
-        MaybeInfo = yes(Info)
-    else
-        MaybeInfo = no
-    ).
-
-%---------------------%
-
-input_stream_info(StreamDb, input_stream(Stream)) =
-    maybe_stream_info(StreamDb, Stream).
-
-binary_input_stream_info(StreamDb, binary_input_stream(Stream)) =
-    maybe_stream_info(StreamDb, Stream).
-
-%---------------------%
-
-output_stream_info(StreamDb, output_stream(Stream)) =
-    maybe_stream_info(StreamDb, Stream).
-
-binary_output_stream_info(StreamDb, binary_output_stream(Stream)) =
-    maybe_stream_info(StreamDb, Stream).
-
-%---------------------%
-
-:- func maybe_stream_info(io.stream_db, io.stream) = maybe_stream_info.
-
-maybe_stream_info(StreamDb, Stream) = Info :-
-    ( if map.search(StreamDb, get_stream_id(Stream), Info0) then
-        % Info0 and Info have different types.
-        Info0 = stream(Id, Mode, Content, Source),
-        Info  = stream(Id, Mode, Content, Source)
-    else
-        Info  = unknown_stream
-    ).
-
-get_io_stream_info(StreamDB, Stream) = StreamInfo :-
-    ( if dynamic_cast(Stream, input_stream(IOStream0)) then
-        IOStream = IOStream0
-    else if dynamic_cast(Stream, output_stream(IOStream0)) then
-        IOStream = IOStream0
-    else if dynamic_cast(Stream, binary_input_stream(IOStream0)) then
-        IOStream = IOStream0
-    else if dynamic_cast(Stream, binary_output_stream(IOStream0)) then
-        IOStream = IOStream0
-    else if dynamic_cast(Stream, IOStream0) then
-        IOStream = IOStream0
-    else
-        fail
-    ),
-    StreamInfo = io.maybe_stream_info(StreamDB, IOStream).
-
-:- func source_name(stream_source) = string.
-
-source_name(file(Name)) = Name.
-source_name(stdin) = "<standard input>".
-source_name(stdout) = "<standard output>".
-source_name(stderr) = "<standard error>".
-
-%---------------------%
-
-:- func get_stream_id(stream) = stream_id.
-
-:- pragma foreign_proc("C",
-    get_stream_id(Stream::in) = (Id::out),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-#ifndef MR_NATIVE_GC
-    // Most of the time, we can just use the pointer to the stream
-    // as a unique identifier.
-    Id = (MR_Word) Stream;
-#else
-    // For accurate GC we embed an ID in the MercuryFile
-    // and retrieve it here.
-    Id = (Stream)->id;
-#endif
-").
-
-:- pragma foreign_proc("C#",
-    get_stream_id(Stream::in) = (Id::out),
-    [will_not_call_mercury, promise_pure],
-"
-    Id = Stream.id;
-").
-
-:- pragma foreign_proc("Java",
-    get_stream_id(Stream::in) = (Id::out),
-    [will_not_call_mercury, promise_pure, may_not_duplicate],
-"
-    Id = Stream.id;
-").
 
 %---------------------------------------------------------------------------%
 %

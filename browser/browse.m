@@ -191,6 +191,7 @@
 :- import_module io.call_system.
 :- import_module io.environment.
 :- import_module io.file.
+:- import_module io.stream_db.
 :- import_module map.
 :- import_module pair.
 :- import_module pretty_printer.
@@ -700,7 +701,7 @@ portray_flat(Debugger, BrowserTerm, Params, !IO) :-
         io.output_stream(Stream, !IO),
         portray_flat_write_browser_term(Stream, BrowserTerm, !IO)
     else
-        io.get_stream_db(StreamDb, !IO),
+        io.stream_db.get_stream_db(StreamDb, !IO),
         BrowserDb = browser_db(StreamDb),
         browser_term_to_string(BrowserDb, BrowserTerm, Params ^ size,
             Params ^ depth, Str),
@@ -748,7 +749,7 @@ put_comma_space(Stream, !State) :-
     io::di, io::uo) is cc_multi.
 
 portray_verbose(Debugger, BrowserTerm, Params, !IO) :-
-    io.get_stream_db(StreamDb, !IO),
+    io.stream_db.get_stream_db(StreamDb, !IO),
     BrowserDb = browser_db(StreamDb),
     browser_term_to_string_verbose(BrowserDb, BrowserTerm, Params ^ size,
         Params ^ depth, Params ^ width, Params ^ lines, Str),
@@ -765,7 +766,7 @@ portray_pretty(Debugger, BrowserTerm, Params, !IO) :-
     io::di, io::uo) is cc_multi.
 
 portray_raw_pretty(Debugger, BrowserTerm, Params, !IO) :-
-    io.get_stream_db(StreamDb, !IO),
+    io.stream_db.get_stream_db(StreamDb, !IO),
     BrowserDb = browser_db(StreamDb),
     sized_pretty.browser_term_to_string_line(BrowserDb, BrowserTerm,
         Params ^ width, Params ^ lines, Str),
@@ -1508,7 +1509,7 @@ browser_term_to_html_flat_string(BrowserTerm, Str, Elided, !IO) :-
         Str = to_string(State),
         Elided = no
     else
-        io.get_stream_db(StreamDb, !IO),
+        io.stream_db.get_stream_db(StreamDb, !IO),
         BrowserDb = browser_db(StreamDb),
         MaxSize = 10,
         MaxDepth = 5,

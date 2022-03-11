@@ -236,6 +236,7 @@
 :- import_module calendar.
 :- import_module int.
 :- import_module integer.
+:- import_module io.stream_db.
 :- import_module require.
 :- import_module rtti_implementation.
 :- import_module term_io.
@@ -926,7 +927,7 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
         ;
             TypeCtorModuleName = "io",
             ( if
-                impure io.get_stream_db_with_locking(StreamDB),
+                impure get_stream_db_with_locking(StreamDB),
                 StreamInfo = get_io_stream_info(StreamDB, univ_value(Univ))
             then
                 type_to_univ(StreamInfo, StreamInfoUniv),

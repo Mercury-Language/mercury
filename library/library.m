@@ -123,6 +123,7 @@
 :- import_module io.call_system.
 :- import_module io.environment.
 :- import_module io.file.
+:- import_module io.stream_db.
 :- import_module kv_list.
 :- import_module lazy.
 :- import_module list.
@@ -296,6 +297,7 @@ stdlib_module_doc_undoc("io",                           doc).
 stdlib_module_doc_undoc("io.call_system",               doc).
 stdlib_module_doc_undoc("io.environment",               doc).
 stdlib_module_doc_undoc("io.file",                      doc).
+stdlib_module_doc_undoc("io.stream_db",                 undoc).
 stdlib_module_doc_undoc("kv_list",                      doc).
 stdlib_module_doc_undoc("lazy",                         doc).
 stdlib_module_doc_undoc("library",                      doc).

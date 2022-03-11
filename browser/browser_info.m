@@ -26,6 +26,7 @@
 :- import_module bool.
 :- import_module getopt.
 :- import_module io.
+:- import_module io.stream_db.
 :- import_module list.
 :- import_module maybe.
 :- import_module stream.
@@ -311,7 +312,7 @@
 
 :- type browser_db
     --->    browser_db(
-                browser_stream_db   :: io.stream_db
+                browser_stream_db   :: io.stream_db.stream_db
             ).
 
 :- pred deconstruct_browser_term_cc(browser_db::in, browser_term::in,
@@ -1160,21 +1161,22 @@ functor_browser_term_cc(BrowserDb, BrowserTerm, Functor, Arity, IsFunc) :-
 :- some [T] func pretty_value(browser_db, univ) = T.
 
 pretty_value(BrowserDb, Univ0) = Value :-
+    StreamDb = BrowserDb ^ browser_stream_db,
     ( if univ_to_type(Univ0, InputStream) then
-        io.input_stream_info(BrowserDb ^ browser_stream_db,
-            InputStream) = InputStreamInfo,
+        io.stream_db.input_stream_info(StreamDb, InputStream)
+            = InputStreamInfo,
         type_to_univ(InputStreamInfo, Univ)
     else if univ_to_type(Univ0, OutputStream) then
-        io.output_stream_info(BrowserDb ^ browser_stream_db,
-            OutputStream) = OutputStreamInfo,
+        io.stream_db.output_stream_info(StreamDb, OutputStream)
+            = OutputStreamInfo,
         type_to_univ(OutputStreamInfo, Univ)
     else if univ_to_type(Univ0, BinaryInputStream) then
-        io.binary_input_stream_info(BrowserDb ^ browser_stream_db,
-            BinaryInputStream) = BinaryInputStreamInfo,
+        io.stream_db.binary_input_stream_info(StreamDb, BinaryInputStream)
+            = BinaryInputStreamInfo,
         type_to_univ(BinaryInputStreamInfo, Univ)
     else if univ_to_type(Univ0, BinaryOutputStream) then
-        io.binary_output_stream_info(BrowserDb ^ browser_stream_db,
-            BinaryOutputStream) = BinaryOutputStreamInfo,
+        io.stream_db.binary_output_stream_info(StreamDb, BinaryOutputStream)
+            = BinaryOutputStreamInfo,
         type_to_univ(BinaryOutputStreamInfo, Univ)
     else
         Univ = Univ0
