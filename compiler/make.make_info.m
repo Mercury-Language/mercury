@@ -110,7 +110,7 @@
 
                 % Used for reporting which module imported a nonexistent
                 % module.
-                mki_importing_module    :: maybe(module_name),
+                mki_importing_module    :: maybe(import_or_include),
 
                 % Targets specified on the command line.
                 mki_command_line_targets
@@ -131,6 +131,10 @@
                 % so we never have to read and parse each file more than once.
                 mki_mi_read_module_maps :: have_read_module_maps
             ).
+
+:- type import_or_include
+    --->    ioi_import(module_name)
+    ;       ioi_include(module_name).
 
 %---------------------------------------------------------------------------%
 

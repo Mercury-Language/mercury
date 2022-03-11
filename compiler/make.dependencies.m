@@ -980,9 +980,9 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                 )
             then
                 module_dep_info_get_fims(ModuleDepInfo, FIMSpecs),
-                module_dep_info_get_module_name(ModuleDepInfo, MAIModuleName),
-                expect(unify(ModuleName, MAIModuleName), $pred,
-                    "ModuleName != MAIModuleName"),
+                module_dep_info_get_module_name(ModuleDepInfo, MDI_ModuleName),
+                expect(unify(ModuleName, MDI_ModuleName), $pred,
+                    "ModuleName != MDI_ModuleName"),
                 Ancestors = get_ancestors_set(ModuleName),
                 module_dep_info_get_children(ModuleDepInfo, Children),
                 module_dep_info_get_int_deps(ModuleDepInfo, IntDeps),
@@ -992,33 +992,48 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                     % Anywhere the interface of the child module is needed,
                     % the ancestors must also have been imported.
                     DependenciesType = interface_imports,
-                    ImportsToCheck = IntDeps
+                    ImportsToCheck = IntDeps,
+                    IncludesToCheck = set.init
                 ;
                     DependenciesType = all_dependencies,
                     set.map((pred(fim_spec(_, Mod)::in, Mod::out) is det),
                         FIMSpecs, ForeignDeps),
                     ImportsToCheck = set.union_list([
-                        Ancestors, Children, IntDeps, ImpDeps, ForeignDeps
-                    ])
+                        Ancestors, IntDeps, ImpDeps, ForeignDeps
+                    ]),
+                    IncludesToCheck = Children
                 ;
                     DependenciesType = all_imports,
                     set.map((pred(fim_spec(_, Mod)::in, Mod::out) is det),
                         FIMSpecs, ForeignDeps),
                     ImportsToCheck = set.union_list([
                         Ancestors, IntDeps, ImpDeps, ForeignDeps
-                    ])
+                    ]),
+                    IncludesToCheck = set.init
                 ),
                 module_names_to_index_set(set.to_sorted_list(ImportsToCheck),
                     ImportsToCheckSet, !Info),
-                ImportingModule = !.Info ^ mki_importing_module,
-                !Info ^ mki_importing_module := yes(ModuleName),
+                module_names_to_index_set(set.to_sorted_list(IncludesToCheck),
+                    IncludesToCheckSet, !Info),
                 Modules1 = insert(Modules0, ModuleIndex),
+                % XXX The pattern of use of the mki_importing_module field
+                % here suggest that it should not be a field of make_info
+                % at all, but rather a separate parameter of this predicate.
+                OldImportingModule = !.Info ^ mki_importing_module,
+                !Info ^ mki_importing_module := yes(ioi_import(ModuleName)),
                 deps_set_foldl3_maybe_stop_at_error(KeepGoing,
                     find_transitive_module_dependencies_2(KeepGoing,
                         DependenciesType, ModuleLocn),
-                    Globals, ImportsToCheckSet, Succeeded, Modules1, Modules,
+                    Globals, ImportsToCheckSet, SucceededA, Modules1, Modules2,
                     !Info, !IO),
-                !Info ^ mki_importing_module := ImportingModule
+                !Info ^ mki_importing_module := yes(ioi_include(ModuleName)),
+                deps_set_foldl3_maybe_stop_at_error(KeepGoing,
+                    find_transitive_module_dependencies_2(KeepGoing,
+                        DependenciesType, ModuleLocn),
+                    Globals, IncludesToCheckSet, SucceededB, Modules2, Modules,
+                    !Info, !IO),
+                !Info ^ mki_importing_module := OldImportingModule,
+                Succeeded = SucceededA `and` SucceededB
             else
                 Succeeded = succeeded,
                 Modules = Modules0

@@ -1019,14 +1019,22 @@ cleanup_module_dep_file(Globals, ModuleName, !Info, !IO) :-
     make_remove_module_file(Globals, verbose_make, ModuleName,
         ext_other(make_module_dep_file_extension), !Info, !IO).
 
-:- pred maybe_write_importing_module(module_name::in, maybe(module_name)::in,
-    io::di, io::uo) is det.
+:- pred maybe_write_importing_module(module_name::in,
+    maybe(import_or_include)::in, io::di, io::uo) is det.
 
 maybe_write_importing_module(_, no, !IO).
-maybe_write_importing_module(ModuleName, yes(ImportingModuleName), !IO) :-
-    io.format("** Module `%s' is imported or included by module `%s'.\n",
-        [s(sym_name_to_escaped_string(ModuleName)),
-        s(sym_name_to_escaped_string(ImportingModuleName))], !IO).
+maybe_write_importing_module(ModuleName, yes(ImportOrInclude), !IO) :-
+    (
+        ImportOrInclude = ioi_import(ImportingModuleName),
+        io.format("** Module `%s' is imported by module `%s'.\n",
+            [s(sym_name_to_escaped_string(ModuleName)),
+            s(sym_name_to_escaped_string(ImportingModuleName))], !IO)
+    ;
+        ImportOrInclude = ioi_include(IncludingModuleName),
+        io.format("** Module `%s' is included by module `%s'.\n",
+            [s(sym_name_to_escaped_string(ModuleName)),
+            s(sym_name_to_escaped_string(IncludingModuleName))], !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module make.module_dep_file.
