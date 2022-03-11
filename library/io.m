@@ -2171,9 +2171,9 @@
     % XXX On Cygwin sometimes two files will have the same file_id.
     % This is because MS-Windows does not use inodes, so Cygwin hashes
     % the absolute file name. On Windows without Cygwin this will always
-    % return error(_). That doesn't matter, because this function is only used
-    % for checking for symlink loops in dir.foldl2, but plain Windows
-    % doesn't support symlinks.
+    % return error(_). That does not matter, because this function is
+    % only used for checking for symlink loops in dir.foldl2, but
+    % plain Windows doesn't support symlinks.
     %
 :- type file_id.
 :- pred file_id(string::in, io.res(file_id)::out, io::di, io::uo) is det.
@@ -2355,9 +2355,7 @@ io_state_compare(_, _, _) :-
 #include ""mercury_types.h""            // for MR_Integer
 #include ""mercury_library_types.h""    // for MercuryFilePtr
 #include ""mercury_int.h""              // for MR_*_reverse_bytes
-").
 
-:- pragma foreign_decl("C", "
 #include ""mercury_init.h""
 #include ""mercury_wrapper.h""
 #include ""mercury_type_info.h""
@@ -2383,49 +2381,31 @@ io_state_compare(_, _, _) :-
 #ifdef MR_WIN32
   #include ""mercury_windows.h""
 #endif
-
-#if defined(MR_MSVC)
-    typedef SSIZE_T ML_ssize_t;
-#else
-    typedef ssize_t ML_ssize_t;
-#endif
-
-extern MercuryFile mercury_stdin;
-extern MercuryFile mercury_stdout;
-extern MercuryFile mercury_stderr;
-extern MercuryFile mercury_stdin_binary;
-extern MercuryFile mercury_stdout_binary;
-extern MR_Unsigned mercury_current_text_input_index;
-extern MR_Unsigned mercury_current_text_output_index;
-extern MR_Unsigned mercury_current_binary_input_index;
-extern MR_Unsigned mercury_current_binary_output_index;
-
-#define MR_initial_io_state()       0   // some random number
-#define MR_final_io_state(r)        ((void) 0)
-
-void            mercury_init_io(void);
-MercuryFilePtr  mercury_current_text_input(void);
-MercuryFilePtr  mercury_current_text_output(void);
-MercuryFilePtr  mercury_current_binary_input(void);
-MercuryFilePtr  mercury_current_binary_output(void);
-int             mercury_next_stream_id(void);
-MercuryFilePtr  mercury_open(const char *filename, const char *openmode,
-                    MR_AllocSiteInfoPtr alloc_id);
-int             mercury_get_byte(MercuryFilePtr mf);
-int             mercury_close(MercuryFilePtr mf);
-int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
-
-#ifdef MR_WIN32
-    wchar_t     *ML_utf8_to_wide(const char *s);
-    char        *ML_wide_to_utf8(const wchar_t *ws,
-                    MR_AllocSiteInfoPtr alloc_id);
-#endif
 ").
 
 :- pragma foreign_decl("C", "
+#if defined(MR_MSVC)
+    typedef SSIZE_T     ML_ssize_t;
+#else
+    typedef ssize_t     ML_ssize_t;
+#endif
+
+extern MercuryFile      mercury_stdin;
+extern MercuryFile      mercury_stdout;
+extern MercuryFile      mercury_stderr;
+extern MercuryFile      mercury_stdin_binary;
+extern MercuryFile      mercury_stdout_binary;
+
+extern MR_Unsigned      mercury_current_text_input_index;
+extern MR_Unsigned      mercury_current_text_output_index;
+extern MR_Unsigned      mercury_current_binary_input_index;
+extern MR_Unsigned      mercury_current_binary_output_index;
+
+// A counter used to generate unique stream ids.
+extern int              ML_next_stream_id;
+
 extern MR_Word          ML_io_user_globals;
 
-extern int              ML_next_stream_id;
 #if 0
     extern MR_Word      ML_io_ops_table;
 #endif
@@ -2434,13 +2414,46 @@ extern int              ML_next_stream_id;
     extern MercuryLock  ML_io_user_globals_lock;
     extern MercuryLock  ML_io_next_stream_id_lock;
 #endif
+
+#define MR_initial_io_state()       0   // some random number
+#define MR_final_io_state(r)        ((void) 0)
+
+void                    mercury_init_io(void);
+MercuryFilePtr          mercury_current_text_input(void);
+MercuryFilePtr          mercury_current_text_output(void);
+MercuryFilePtr          mercury_current_binary_input(void);
+MercuryFilePtr          mercury_current_binary_output(void);
+int                     mercury_next_stream_id(void);
+MercuryFilePtr          mercury_open(const char *filename,
+                             const char *openmode,
+                             MR_AllocSiteInfoPtr alloc_id);
+int                     mercury_get_byte(MercuryFilePtr mf);
+int                     mercury_close(MercuryFilePtr mf);
+int                     ML_fprintf(MercuryFilePtr mf, const char *format, ...);
+
+#ifdef MR_WIN32
+    wchar_t             *ML_utf8_to_wide(const char *s);
+    char                *ML_wide_to_utf8(const wchar_t *ws,
+                            MR_AllocSiteInfoPtr alloc_id);
+#endif
 ").
 
 :- pragma foreign_code("C", "
+MercuryFile     mercury_stdin;
+MercuryFile     mercury_stdout;
+MercuryFile     mercury_stderr;
+MercuryFile     mercury_stdin_binary;
+MercuryFile     mercury_stdout_binary;
+
+MR_Unsigned     mercury_current_text_input_index;
+MR_Unsigned     mercury_current_text_output_index;
+MR_Unsigned     mercury_current_binary_input_index;
+MR_Unsigned     mercury_current_binary_output_index;
+
+int             ML_next_stream_id;
+
 MR_Word         ML_io_user_globals;
 
-// A counter used to generate unique stream ids.
-int             ML_next_stream_id;
 #if 0
     MR_Word     ML_io_ops_table;
 #endif
@@ -2449,19 +2462,6 @@ int             ML_next_stream_id;
     MercuryLock ML_io_user_globals_lock;
     MercuryLock ML_io_next_stream_id_lock;
 #endif
-").
-
-:- pragma foreign_code("C", "
-MercuryFile mercury_stdin;
-MercuryFile mercury_stdout;
-MercuryFile mercury_stderr;
-MercuryFile mercury_stdin_binary;
-MercuryFile mercury_stdout_binary;
-
-MR_Unsigned mercury_current_text_input_index;
-MR_Unsigned mercury_current_text_output_index;
-MR_Unsigned mercury_current_binary_input_index;
-MR_Unsigned mercury_current_binary_output_index;
 
 static void
 mercury_set_binary_mode(FILE *f)
@@ -2478,16 +2478,16 @@ mercury_set_binary_mode(FILE *f)
 void
 mercury_init_io(void)
 {
-    MR_mercuryfile_init(stdin, 1, &mercury_stdin);
+    MR_mercuryfile_init(stdin,  1, &mercury_stdin);
     MR_mercuryfile_init(stdout, 1, &mercury_stdout);
     MR_mercuryfile_init(stderr, 1, &mercury_stderr);
 
     MR_mercuryfile_init(NULL, 1, &mercury_stdin_binary);
     MR_mercuryfile_init(NULL, 1, &mercury_stdout_binary);
 
-    mercury_current_text_input_index = MR_new_thread_local_mutable_index();
-    mercury_current_text_output_index = MR_new_thread_local_mutable_index();
-    mercury_current_binary_input_index = MR_new_thread_local_mutable_index();
+    mercury_current_text_input_index =    MR_new_thread_local_mutable_index();
+    mercury_current_text_output_index =   MR_new_thread_local_mutable_index();
+    mercury_current_binary_input_index =  MR_new_thread_local_mutable_index();
     mercury_current_binary_output_index = MR_new_thread_local_mutable_index();
 
 #if defined(MR_HAVE_FDOPEN) && (defined(MR_HAVE_FILENO) || defined(fileno)) \
@@ -2499,13 +2499,12 @@ mercury_init_io(void)
         // The call to fdopen() may fail if stdin is not available.
         // We don't abort since we still want Mercury programs to be runnable
         // in such a circumstance (aside from those that use stdin).
-        // For the same reason we treat binary stdout identically below.
+        // For the same reason, we treat binary stdout identically below.
         //
         // NOTE: some versions of nohup may also cause the above call to
-        //       fdopen() to fail because they redirect stdin to /dev/null
-        //       in *write* mode. Setting binary stdin to stdin in such
-        //       a case also ensures that we work with those versions of
-        //       nohup.
+        // fdopen() to fail, because they redirect stdin to /dev/null
+        // in *write* mode. Setting binary stdin to stdin in such a case
+        // also ensures that we work with those versions of nohup.
         MR_file(mercury_stdin_binary) = stdin;
     }
 
@@ -2569,14 +2568,13 @@ int
 mercury_next_stream_id(void)
 {
     int id;
+    // XXX We don't know whether the new stream is text or binary.
     MR_LOCK(&ML_io_next_stream_id_lock, ""io.do_open_text"");
     id = ML_next_stream_id++;
     MR_UNLOCK(&ML_io_next_stream_id_lock, ""io.do_open_text"");
     return id;
 }
-").
 
-:- pragma foreign_code("C", "
 MercuryFilePtr
 mercury_open(const char *filename, const char *openmode,
     MR_AllocSiteInfoPtr alloc_id)
@@ -2621,9 +2619,7 @@ mercury_open(const char *filename, const char *openmode,
     MR_mercuryfile_init(f, 1, mf);
     return mf;
 }
-").
 
-:- pragma foreign_code("C", "
 int
 mercury_get_byte(MercuryFilePtr mf)
 {
@@ -2633,10 +2629,46 @@ mercury_get_byte(MercuryFilePtr mf)
     }
     return c;
 }
-").
 
-:- pragma foreign_code("C", "
-#include <errno.h>
+#ifdef MR_WIN32
+
+// Accessing Unicode file names on Windows requires that we use the functions
+// taking wide character strings.
+wchar_t *
+ML_utf8_to_wide(const char *s)
+{
+    int     wslen;
+    wchar_t *ws;
+
+    wslen = MultiByteToWideChar(CP_UTF8, 0, s, -1, NULL, 0);
+    if (wslen == 0) {
+        MR_fatal_error(""ML_utf8_to_wide: MultiByteToWideChar failed"");
+    }
+    ws = MR_GC_NEW_ARRAY(wchar_t, wslen);
+    if (0 == MultiByteToWideChar(CP_UTF8, 0, s, -1, ws, wslen)) {
+        MR_fatal_error(""ML_utf8_to_wide: MultiByteToWideChar failed"");
+    }
+    return ws;
+}
+
+char *
+ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
+{
+    char    *s;
+    int     bytes;
+
+    bytes = WideCharToMultiByte(CP_UTF8, 0, ws, -1, NULL, 0, NULL, NULL);
+    if (bytes == 0) {
+        MR_fatal_error(""ML_wide_to_utf8: WideCharToMultiByte failed"");
+    }
+    MR_allocate_aligned_string_msg(s, bytes, alloc_id);
+    if (0 == WideCharToMultiByte(CP_UTF8, 0, ws, -1, s, bytes, NULL, NULL)) {
+        MR_fatal_error(""ML_wide_to_utf8: WideCharToMultiByte failed"");
+    }
+    return s;
+}
+
+#endif // MR_WIN32
 
 #ifdef EBADF
   #define MR_CLOSED_FILE_ERROR  EBADF
@@ -2732,9 +2764,9 @@ int
 mercury_close(MercuryFilePtr mf)
 {
     // On some systems, attempting to close a file stream that has been
-    // previously closed will lead to a segmentation fault. We check
-    // that we have not previously closed the file stream here so we
-    // can give the user some idea about what has happened.
+    // previously closed will lead to a segmentation fault. We check that
+    // we have not previously closed the file stream here, so we can give
+    // the user some idea about what has happened.
     if (MR_file(*mf) == NULL) {
         errno = MR_CLOSED_FILE_ERROR;
         return EOF;
@@ -2754,9 +2786,9 @@ mercury_close(MercuryFilePtr mf)
     // so we use MR_memcpy() instead.
     MR_memcpy(mf, &MR_closed_stream, sizeof(*mf));
 
-    // XXX It would be nice to have an autoconf check for the GNU libc
-    // function fopencookie(); we could use that to do a similar thing to what
-    // we do in the MR_NEW_MERCURYFILE_STRUCT case.
+    // XXX It would be nice to have an autoconf check for the GNU libc function
+    // fopencookie(); we could use that to do a similar thing to what we do
+    // in the MR_NEW_MERCURYFILE_STRUCT case.
 
 /****
 #elif defined(HAVE_FOPENCOOKIE)
@@ -2797,9 +2829,7 @@ mercury_close(MercuryFilePtr mf)
 
     return 0;
 }
-").
 
-:- pragma foreign_code("C", "
 int
 ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 {
@@ -2812,48 +2842,6 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
     return rc;
 }
-").
-
-:- pragma foreign_code("C", "
-#ifdef MR_WIN32
-
-// Accessing Unicode file names on Windows requires that we use the functions
-// taking wide character strings.
-wchar_t *
-ML_utf8_to_wide(const char *s)
-{
-    int     wslen;
-    wchar_t *ws;
-
-    wslen = MultiByteToWideChar(CP_UTF8, 0, s, -1, NULL, 0);
-    if (wslen == 0) {
-        MR_fatal_error(""ML_utf8_to_wide: MultiByteToWideChar failed"");
-    }
-    ws = MR_GC_NEW_ARRAY(wchar_t, wslen);
-    if (0 == MultiByteToWideChar(CP_UTF8, 0, s, -1, ws, wslen)) {
-        MR_fatal_error(""ML_utf8_to_wide: MultiByteToWideChar failed"");
-    }
-    return ws;
-}
-
-char *
-ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
-{
-    char    *s;
-    int     bytes;
-
-    bytes = WideCharToMultiByte(CP_UTF8, 0, ws, -1, NULL, 0, NULL, NULL);
-    if (bytes == 0) {
-        MR_fatal_error(""ML_wide_to_utf8: WideCharToMultiByte failed"");
-    }
-    MR_allocate_aligned_string_msg(s, bytes, alloc_id);
-    if (0 == WideCharToMultiByte(CP_UTF8, 0, ws, -1, s, bytes, NULL, NULL)) {
-        MR_fatal_error(""ML_wide_to_utf8: WideCharToMultiByte failed"");
-    }
-    return s;
-}
-
-#endif // MR_WIN32
 ").
 
 %---------------------%
@@ -3028,8 +3016,8 @@ ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
 
         private void unget_code_unit(char c) {
             // If necessary, shift the unread characters in the input buffer
-            // to make room at the front of the buffer. If the buffer is full
-            // then allocate a bigger buffer.
+            // to make room at the front of the buffer. If the buffer is full,
+            // allocate a bigger buffer.
             if (buf_pos == 0) {
                 if (buf_end < buf.length) {
                     int offset = buf.length - buf_end;
@@ -3309,21 +3297,17 @@ ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
 ").
 
 :- pragma foreign_code("Java", "
-public static MR_TextInputFile mercury_stdin =
+public static MR_TextInputFile  mercury_stdin =
     new MR_TextInputFile(java.lang.System.in);
-
 public static MR_TextOutputFile mercury_stdout =
     new MR_TextOutputFile(java.lang.System.out);
-
 public static MR_TextOutputFile mercury_stderr =
     new MR_TextOutputFile(java.lang.System.err);
 
 // We initialize mercury_stdin_binary and mercury_stdout_binary
 // only when they are needed, because the initialization code
 // does not work on Google's App Engine.
-
-private static MR_BinaryInputFile mercury_stdin_binary = null;
-
+private static MR_BinaryInputFile  mercury_stdin_binary = null;
 private static MR_BinaryOutputFile mercury_stdout_binary = null;
 
 private static void ensure_init_mercury_stdin_binary() {
@@ -3393,6 +3377,18 @@ using System.Security.Principal;
     // a counter used to generate unique stream ids
     static int                      ML_next_stream_id;
 
+    public enum ML_line_ending_kind {
+        // file uses the usual line-ending convention
+        // for the OS (e.g. CR-LF for DOS/Windows).
+        ML_OS_line_ending,
+
+        // file uses the Unix line-encoding convention.
+        ML_Unix_line_ending,
+
+        // file stores bytes
+        ML_raw_binary
+    };
+
     // This specifies the default encoding used for text files.
     // It must be either ML_OS_text_encoding or ML_Unix_text_encoding.
     //
@@ -3407,21 +3403,6 @@ using System.Security.Principal;
     // a byte order mark.
     static readonly System.Text.Encoding text_encoding =
         new System.Text.UTF8Encoding(false);
-
-").
-
-:- pragma foreign_code("C#", "
-    public enum ML_line_ending_kind {
-        // file uses the usual line-ending convention
-        // for the OS (e.g. CR-LF for DOS/Windows).
-        ML_OS_line_ending,
-
-        // file uses the Unix line-encoding convention.
-        ML_Unix_line_ending,
-
-        // file stores bytes
-        ML_raw_binary
-    };
 
     public class MR_MercuryFileStruct {
         // Note that stream reader and writer are initialized lazily;
@@ -3463,11 +3444,10 @@ mercury_file_init(System.IO.Stream stream,
     return mf;
 }
 
-    // Note: for Windows GUI programs, the Console is set to the equivalent
-    // of /dev/null. This could perhaps be considered a problem. But if so,
-    // it is a problem in Windows, not in Mercury -- I don't think it is one
-    // that the Mercury implementation should try to solve.
-
+// Note: for Windows GUI programs, the Console is set to the equivalent
+// of /dev/null. This could perhaps be considered a problem. But if so,
+// it is a problem in Windows, not in Mercury -- I don't think it is one
+// that the Mercury implementation should try to solve.
 public static MR_MercuryFileStruct mercury_stdin =
     mercury_file_init(System.Console.OpenStandardInput(),
         System.Console.In, null, ML_default_line_ending);
@@ -3478,7 +3458,7 @@ public static MR_MercuryFileStruct mercury_stderr =
     mercury_file_init(System.Console.OpenStandardError(),
         null, System.Console.Error, ML_default_line_ending);
 
-    // XXX should we use BufferedStreams here?
+// XXX should we use BufferedStreams here?
 public static MR_MercuryFileStruct mercury_stdin_binary =
     mercury_file_init(System.Console.OpenStandardInput(),
         System.Console.In, null, ML_line_ending_kind.ML_raw_binary);
@@ -3544,49 +3524,20 @@ MR_MercuryFileStruct mercury_open(string filename, string openmode,
     return mercury_file_init(new System.IO.BufferedStream(stream),
         null, null, line_ending);
 }
-").
 
-:- pragma foreign_code("C#", "
-// Any changes here should also be reflected in the code for io.write_char,
-// which (for efficiency) uses its own inline code, rather than calling
-// this function.
 public static void
-mercury_print_string(MR_MercuryFileStruct mf, string s)
+mercury_close(MR_MercuryFileStruct mf)
 {
-    if (mf.writer == null) {
-        mf.writer = new System.IO.StreamWriter(mf.stream, text_encoding);
+    if (mf.reader != null) {
+        mf.reader.Close();
+        mf.reader = null;
     }
-
-    switch (mf.line_ending) {
-    case ML_line_ending_kind.ML_raw_binary:
-    case ML_line_ending_kind.ML_Unix_line_ending:
-        mf.writer.Write(s);
-        for (int i = 0; i < s.Length; i++) {
-            if (s[i] == '\\n') {
-                mf.line_number++;
-            }
-        }
-        break;
-    case ML_line_ending_kind.ML_OS_line_ending:
-        // We can't just use the System.TextWriter.Write(String) method,
-        // since that method doesn't convert newline characters to the
-        // system's newline convention (e.g. CR-LF on Windows).
-        // Only the WriteLine(...) method handles those properly.
-        // So we have to output each character separately.
-
-        for (int i = 0; i < s.Length; i++) {
-            if (System.Char.IsSurrogate(s[i])) {
-                mf.writer.Write(s.Substring(i, 2));
-                i++;
-            } else if (s[i] == '\\n') {
-                mf.line_number++;
-                mf.writer.WriteLine("""");
-            } else {
-                mf.writer.Write(s[i]);
-            }
-        }
-        break;
+    if (mf.writer != null) {
+        mf.writer.Close();
+        mf.writer = null;
     }
+    mf.stream.Close();
+    mf.stream = null;
 }
 ").
 
@@ -3625,7 +3576,7 @@ mercury_getc(MR_MercuryFileStruct mf)
         }
         break;
     case ML_line_ending_kind.ML_OS_line_ending:
-        // First, check if the character we've read matches
+        // First, check if the character we have read matches
         // System.Environment.NewLine.
         // We assume that System.Environment.NewLine is non-null
         // and that System.Environment.NewLine.Length > 0.
@@ -3670,9 +3621,7 @@ mercury_getc(MR_MercuryFileStruct mf)
     }
     return c;
 }
-").
 
-:- pragma foreign_code("C#", "
 public static void
 mercury_write_codepoint(System.IO.TextWriter w, int c)
 {
@@ -3683,21 +3632,47 @@ mercury_write_codepoint(System.IO.TextWriter w, int c)
     }
 }
 
+// Any changes here should also be reflected in the code for io.write_char,
+// which (for efficiency) uses its own inline code, rather than calling
+// this function.
 public static void
-mercury_close(MR_MercuryFileStruct mf)
+mercury_print_string(MR_MercuryFileStruct mf, string s)
 {
-    if (mf.reader != null) {
-        mf.reader.Close();
-        mf.reader = null;
+    if (mf.writer == null) {
+        mf.writer = new System.IO.StreamWriter(mf.stream, text_encoding);
     }
-    if (mf.writer != null) {
-        mf.writer.Close();
-        mf.writer = null;
-    }
-    mf.stream.Close();
-    mf.stream = null;
-}
 
+    switch (mf.line_ending) {
+    case ML_line_ending_kind.ML_raw_binary:
+    case ML_line_ending_kind.ML_Unix_line_ending:
+        mf.writer.Write(s);
+        for (int i = 0; i < s.Length; i++) {
+            if (s[i] == '\\n') {
+                mf.line_number++;
+            }
+        }
+        break;
+    case ML_line_ending_kind.ML_OS_line_ending:
+        // We can't just use the System.TextWriter.Write(String) method,
+        // since that method doesn't convert newline characters to the
+        // system's newline convention (e.g. CR-LF on Windows).
+        // Only the WriteLine(...) method handles those properly.
+        // So we have to output each character separately.
+
+        for (int i = 0; i < s.Length; i++) {
+            if (System.Char.IsSurrogate(s[i])) {
+                mf.writer.Write(s.Substring(i, 2));
+                i++;
+            } else if (s[i] == '\\n') {
+                mf.line_number++;
+                mf.writer.WriteLine("""");
+            } else {
+                mf.writer.Write(s[i]);
+            }
+        }
+        break;
+    }
+}
 ").
 
 %---------------------------------------------------------------------------%
@@ -7166,7 +7141,7 @@ write_binary_uint16(binary_output_stream(Stream), UInt16, !IO) :-
     do_write_binary_uint16(Stream::in, U16::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    if (MR_WRITE(*Stream, (unsigned char *)(&U16), 2) != 2) {
+    if (MR_WRITE(*Stream, (unsigned char *) (&U16), 2) != 2) {
         Error = errno;
     } else {
         Error = 0;
@@ -7233,7 +7208,7 @@ write_binary_uint16_le(binary_output_stream(Stream), UInt16, !IO) :-
         U16 = MR_uint16_reverse_bytes(U16);
     #endif
 
-    if (MR_WRITE(*Stream, (unsigned char *)(&U16), 2) != 2) {
+    if (MR_WRITE(*Stream, (unsigned char *) (&U16), 2) != 2) {
         Error = errno;
     } else {
         Error = 0;
@@ -7305,7 +7280,7 @@ write_binary_uint16_be(binary_output_stream(Stream), UInt16, !IO) :-
         U16 = MR_uint16_reverse_bytes(U16);
     #endif
 
-    if (MR_WRITE(*Stream, (unsigned char *)(&U16), 2) != 2) {
+    if (MR_WRITE(*Stream, (unsigned char *) (&U16), 2) != 2) {
         Error = errno;
     } else {
         Error = 0;
@@ -7373,7 +7348,7 @@ write_binary_uint32(binary_output_stream(Stream), UInt32, !IO) :-
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    if (MR_WRITE(*Stream, (unsigned char *)(&U32), 4) != 4) {
+    if (MR_WRITE(*Stream, (unsigned char *) (&U32), 4) != 4) {
         Error = errno;
     } else {
         Error = 0;
@@ -7441,7 +7416,7 @@ write_binary_uint32_le(binary_output_stream(Stream), UInt32, !IO) :-
         U32 = MR_uint32_reverse_bytes(U32);
     #endif
 
-    if (MR_WRITE(*Stream, (unsigned char *)(&U32), 4) != 4) {
+    if (MR_WRITE(*Stream, (unsigned char *) (&U32), 4) != 4) {
         Error = errno;
     } else {
         Error = 0;
@@ -7513,7 +7488,7 @@ write_binary_uint32_be(binary_output_stream(Stream), UInt32, !IO) :-
         U32 = MR_uint32_reverse_bytes(U32);
     #endif
 
-    if (MR_WRITE(*Stream, (unsigned char *)(&U32), 4) != 4) {
+    if (MR_WRITE(*Stream, (unsigned char *) (&U32), 4) != 4) {
         Error = errno;
     } else {
         Error = 0;
@@ -7581,7 +7556,7 @@ write_binary_uint64(binary_output_stream(Stream), UInt64, !IO) :-
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    if (MR_WRITE(*Stream, (unsigned char *)(&U64), 8) != 8) {
+    if (MR_WRITE(*Stream, (unsigned char *) (&U64), 8) != 8) {
         Error = errno;
     } else {
         Error = 0;
@@ -7649,7 +7624,7 @@ write_binary_uint64_le(binary_output_stream(Stream), UInt64, !IO) :-
         U64 = MR_uint64_reverse_bytes(U64);
     #endif
 
-    if (MR_WRITE(*Stream, (unsigned char *)(&U64), 8) != 8) {
+    if (MR_WRITE(*Stream, (unsigned char *) (&U64), 8) != 8) {
         Error = errno;
     } else {
         Error = 0;
@@ -7721,7 +7696,7 @@ write_binary_uint64_be(binary_output_stream(Stream), UInt64, !IO) :-
         U64 = MR_uint64_reverse_bytes(U64);
     #endif
 
-    if (MR_WRITE(*Stream, (unsigned char *)(&U64), 8) != 8) {
+    if (MR_WRITE(*Stream, (unsigned char *) (&U64), 8) != 8) {
         Error = errno;
     } else {
         Error = 0;
@@ -8144,7 +8119,7 @@ read_binary_from_current_input_stream(Result, !IO) :-
     read(ReadResult, !IO),
     (
         ReadResult = ok(T),
-        % We've read the newline and the trailing full stop.
+        % We have read the newline and the trailing full stop.
         % Now skip the newline after the full stop.
         read_char(NewLineRes, !IO),
         (
@@ -8298,50 +8273,53 @@ write_strings(Stream, [S | Ss], !IO) :-
 
 %---------------------%
 
-write_many(Poly_list, !IO) :-
+write_many(Vals, !IO) :-
     output_stream(Stream, !IO),
-    write_many(Stream, Poly_list, !IO).
+    write_many(Stream, Vals, !IO).
 
 write_many(_Stream, [], !IO).
-write_many(Stream, [c(C) | Rest], !IO) :-
-    write_char(Stream, C, !IO),
-    write_many(Stream, Rest, !IO).
-write_many(Stream, [i(I) | Rest], !IO) :-
-    write_int(Stream, I, !IO),
-    write_many(Stream, Rest, !IO).
-write_many(Stream, [i8(I) | Rest], !IO) :-
-    write_int8(Stream, I, !IO),
-    write_many(Stream, Rest, !IO).
-write_many(Stream, [i16(I) | Rest], !IO) :-
-    write_int16(Stream, I, !IO),
-    write_many(Stream, Rest, !IO).
-write_many(Stream, [i32(I) | Rest], !IO) :-
-    write_int32(Stream, I, !IO),
-    write_many(Stream, Rest, !IO).
-write_many(Stream, [i64(I) | Rest], !IO) :-
-    write_int64(Stream, I, !IO),
-    write_many(Stream, Rest, !IO).
-write_many(Stream, [u(U) | Rest], !IO) :-
-    write_uint(Stream, U, !IO),
-    write_many(Stream, Rest, !IO).
-write_many(Stream, [u8(U) | Rest], !IO) :-
-    write_uint8(Stream, U, !IO),
-    write_many(Stream, Rest, !IO).
-write_many(Stream, [u16(U) | Rest], !IO) :-
-    write_uint16(Stream, U, !IO),
-    write_many(Stream, Rest, !IO).
-write_many(Stream, [u32(U) | Rest], !IO) :-
-    write_uint32(Stream, U, !IO),
-    write_many(Stream, Rest, !IO).
-write_many(Stream, [u64(U) | Rest], !IO) :-
-    write_uint64(Stream, U, !IO),
-    write_many(Stream, Rest, !IO).
-write_many(Stream, [s(S) | Rest], !IO) :-
-    write_string(Stream, S, !IO),
-    write_many(Stream, Rest, !IO).
-write_many(Stream, [f(F) | Rest], !IO) :-
-    write_float(Stream, F, !IO),
-    write_many(Stream, Rest, !IO).
+write_many(Stream, [Val | Vals], !IO) :-
+    (
+        Val = c(C),
+        write_char(Stream, C, !IO)
+    ;
+        Val = i(I),
+        write_int(Stream, I, !IO)
+    ;
+        Val = i8(I),
+        write_int8(Stream, I, !IO)
+    ;
+        Val = i16(I),
+        write_int16(Stream, I, !IO)
+    ;
+        Val = i32(I),
+        write_int32(Stream, I, !IO)
+    ;
+        Val = i64(I),
+        write_int64(Stream, I, !IO)
+    ;
+        Val = u(U),
+        write_uint(Stream, U, !IO)
+    ;
+        Val = u8(U),
+        write_uint8(Stream, U, !IO)
+    ;
+        Val = u16(U),
+        write_uint16(Stream, U, !IO)
+    ;
+        Val = u32(U),
+        write_uint32(Stream, U, !IO)
+    ;
+        Val = u64(U),
+        write_uint64(Stream, U, !IO)
+    ;
+        Val = s(S),
+        write_string(Stream, S, !IO)
+    ;
+        Val = f(F),
+        write_float(Stream, F, !IO)
+    ),
+    write_many(Stream, Vals, !IO).
 
 %---------------------%
 
@@ -8412,8 +8390,6 @@ write_array(Stream, Array, Separator, OutputPred, !IO) :-
 %
 % Flushing output to the operating system.
 %
-
-%---------------------%
 
 flush_output(!IO) :-
     output_stream(Stream, !IO),
@@ -9223,6 +9199,16 @@ binary_input_stream_foldl_io_plain(Stream, Pred, Res, !IO) :-
         Res = error(Error)
     ).
 
+:- type chunk_inner_res0
+    --->    cir0_ok
+    ;       cir0_error(io.error)
+    ;       cir0_more.
+
+:- type chunk_inner_res(T)
+    --->    cir_ok(T)
+    ;       cir_error(T, io.error)
+    ;       cir_more(T).
+
 :- pred binary_input_stream_foldl_io_chunk(binary_input_stream,
     pred(int, io, io), io.res, io, io).
 :- mode binary_input_stream_foldl_io_chunk(in,
@@ -9234,13 +9220,13 @@ binary_input_stream_foldl_io_chunk(Stream, Pred, Res, !IO) :-
     binary_input_stream_foldl_io_inner(chunk_size, Stream, Pred,
         InnerRes, !IO),
     (
-        InnerRes = ok,
+        InnerRes = cir0_ok,
         Res = ok
     ;
-        InnerRes = error(Error),
+        InnerRes = cir0_error(Error),
         Res = error(Error)
     ;
-        InnerRes = more,
+        InnerRes = cir0_more,
         binary_input_stream_foldl_io_chunk(Stream, Pred, Res, !IO)
     ).
 
@@ -9261,13 +9247,13 @@ binary_input_stream_foldl_io_inner(Left, Stream, Pred, Res, !IO) :-
                 Stream, Pred, Res, !IO)
         ;
             ByteResult = eof,
-            Res = ok
+            Res = cir0_ok
         ;
             ByteResult = error(Error),
-            Res = error(Error)
+            Res = cir0_error(Error)
         )
     else
-        Res = more
+        Res = cir0_more
     ).
 
 binary_input_stream_foldl2_io(Pred, T0, Res, !IO) :-
@@ -9316,13 +9302,13 @@ binary_input_stream_foldl2_io_chunk(Stream, Pred, T0, Res, !IO) :-
     binary_input_stream_foldl2_io_inner(chunk_size, Stream, Pred, T0,
         InnerRes, !IO),
     (
-        InnerRes = ok(T),
+        InnerRes = cir_ok(T),
         Res = ok(T)
     ;
-        InnerRes = error(T, Error),
+        InnerRes = cir_error(T, Error),
         Res = error(T, Error)
     ;
-        InnerRes = more(T1),
+        InnerRes = cir_more(T1),
         binary_input_stream_foldl2_io_chunk(Stream, Pred, T1, Res, !IO)
     ).
 
@@ -9343,13 +9329,13 @@ binary_input_stream_foldl2_io_inner(Left, Stream, Pred, T0, Res, !IO) :-
                 Stream, Pred, T1, Res, !IO)
         ;
             ByteResult = eof,
-            Res = ok(T0)
+            Res = cir_ok(T0)
         ;
             ByteResult = error(Error),
-            Res = error(T0, Error)
+            Res = cir_error(T0, Error)
         )
     else
-        Res = more(T0)
+        Res = cir_more(T0)
     ).
 
 binary_input_stream_foldl2_io_maybe_stop(Pred, T0, Res, !IO) :-
@@ -9389,8 +9375,8 @@ binary_input_stream_foldl2_io_maybe_stop_plain(Stream, Pred, T0, Res,
             Res = ok(T1)
         ;
             Continue = yes,
-            binary_input_stream_foldl2_io_maybe_stop_plain(
-                Stream, Pred, T1, Res, !IO)
+            binary_input_stream_foldl2_io_maybe_stop_plain(Stream, Pred, T1,
+                Res, !IO)
         )
     ;
         ByteResult = eof,
@@ -9415,15 +9401,15 @@ binary_input_stream_foldl2_io_maybe_stop_chunk(Stream, Pred, T0, Res,
     binary_input_stream_foldl2_io_maybe_stop_inner(chunk_size,
         Stream, Pred, T0, InnerRes, !IO),
     (
-        InnerRes = ok(T),
+        InnerRes = cir_ok(T),
         Res = ok(T)
     ;
-        InnerRes = error(T, Error),
+        InnerRes = cir_error(T, Error),
         Res = error(T, Error)
     ;
-        InnerRes = more(T1),
-        binary_input_stream_foldl2_io_maybe_stop_chunk(Stream,
-            Pred, T1, Res, !IO)
+        InnerRes = cir_more(T1),
+        binary_input_stream_foldl2_io_maybe_stop_chunk(Stream, Pred, T1,
+            Res, !IO)
     ).
 
 :- pred binary_input_stream_foldl2_io_maybe_stop_inner(int,
@@ -9445,32 +9431,22 @@ binary_input_stream_foldl2_io_maybe_stop_inner(Left, Stream, Pred, T0, Res,
             Pred(Byte, Continue, T0, T1, !IO),
             (
                 Continue = no,
-                Res = ok(T1)
+                Res = cir_ok(T1)
             ;
                 Continue = yes,
-                binary_input_stream_foldl2_io_maybe_stop_inner(
-                    Left - 1, Stream, Pred, T1, Res, !IO)
+                binary_input_stream_foldl2_io_maybe_stop_inner(Left - 1,
+                    Stream, Pred, T1, Res, !IO)
             )
         ;
             ByteResult = eof,
-            Res = ok(T0)
+            Res = cir_ok(T0)
         ;
             ByteResult = error(Error),
-            Res = error(T0, Error)
+            Res = cir_error(T0, Error)
         )
     else
-        Res = more(T0)
+        Res = cir_more(T0)
     ).
-
-:- type chunk_inner_res0
-    --->    ok
-    ;       error(io.error)
-    ;       more.
-
-:- type chunk_inner_res(T)
-    --->    ok(T)
-    ;       error(T, io.error)
-    ;       more(T).
 
 :- pred should_reduce_stack_usage(bool::out) is det.
 
@@ -9602,7 +9578,7 @@ progname_base(DefaultName, PrognameBase, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness, may_not_duplicate,
         no_sharing],
-    % no_sharing is okay because the string elements can't reused.
+    % no_sharing is okay because the string elements can't be reused.
 "{
     int i;
 
