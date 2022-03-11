@@ -2215,6 +2215,14 @@
 :- semipure pred unsafe_get_io_state(io::uo) is det.
 :- impure pred unsafe_set_io_state(io::di) is det.
 
+%---------------------%
+%
+% Workaround for problem in commit 318e708.
+% XXX Not exporting a declaration for this type causes a compiler abort
+% when installing the java grade.
+
+:- type stream_id.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
