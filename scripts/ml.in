@@ -145,11 +145,14 @@ esac
 # We cannot determine if we are using MSVC by looking at FULLARCH;
 # we must use static linkage with it as we do not currently support
 # the use of DLLs on Windows.
-case "$C_COMPILER_TYPE" in
-    msvc*)
-        mercury_libs=static
-    ;;
-esac
+if test "$mercury_libs" != "none"
+then
+    case "$C_COMPILER_TYPE" in
+        msvc*)
+            mercury_libs=static
+        ;;
+    esac
+fi
 
 # If you haven't set all_libs, set it to the default value
 # (shared on most systems).
