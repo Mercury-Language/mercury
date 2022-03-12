@@ -2335,6 +2335,42 @@ io_state_compare(_, _, _) :-
 :- pragma foreign_export_enum("Java", result_code/0,
     [prefix("ML_"), uppercase]).
 
+:- pred interpret_result_code0(system_error::in, result_code::in,
+    io.result::out, io::di, io::uo) is det.
+:- pragma inline(pred(interpret_result_code0/5)).
+
+interpret_result_code0(Error, ResultCode, Result, !IO) :-
+    (
+        ResultCode = result_code_ok,
+        Result = ok
+    ;
+        ResultCode = result_code_eof,
+        Result = eof
+    ;
+        ResultCode = result_code_error,
+        make_err_msg(Error, "read failed: ", Msg, !IO),
+        Result = error(io_error(Msg))
+    ).
+
+:- pred interpret_result_code1(T::in, system_error::in, result_code::in,
+    io.result(T)::out, io::di, io::uo) is det.
+:- pragma inline(pred(interpret_result_code1/6)).
+
+interpret_result_code1(Value, Error, ResultCode, Result, !IO) :-
+    (
+        ResultCode = result_code_ok,
+        Result = ok(Value)
+    ;
+        ResultCode = result_code_eof,
+        Result = eof
+    ;
+        ResultCode = result_code_error,
+        make_err_msg(Error, "read failed: ", Msg, !IO),
+        Result = error(io_error(Msg))
+    ).
+
+%---------------------%
+
 :- type maybe_incomplete_result_code
     --->    mirc_ok
     ;       mirc_eof
@@ -2347,6 +2383,28 @@ io_state_compare(_, _, _) :-
     [prefix("ML_"), uppercase]).
 :- pragma foreign_export_enum("Java", maybe_incomplete_result_code/0,
     [prefix("ML_"), uppercase]).
+
+:- pred interpret_maybe_incomplete_result_code(T::in, list(uint8)::in,
+    system_error::in, maybe_incomplete_result_code::in,
+    maybe_incomplete_result(T)::out, io::di, io::uo) is det.
+:- pragma inline(pred(interpret_maybe_incomplete_result_code/7)).
+
+interpret_maybe_incomplete_result_code(Value, IncompleteBytes, Error,
+        ResultCode, Result, !IO) :-
+    (
+        ResultCode = mirc_ok,
+        Result = ok(Value)
+    ;
+        ResultCode = mirc_eof,
+        Result = eof
+    ;
+        ResultCode = mirc_incomplete,
+        Result = incomplete(IncompleteBytes)
+    ;
+        ResultCode = mirc_error,
+        make_err_msg(Error, "read failed: ", Msg, !IO),
+        Result = error(io_error(Msg))
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -4917,32 +4975,12 @@ read_char(Result, !IO) :-
 :- pragma inline(pred(read_char/4)).          % Inline to allow deforestation.
 read_char(Stream, Result, !IO) :-
     read_char_code(Stream, ResultCode, Char, Error, !IO),
-    (
-        ResultCode = result_code_ok,
-        Result = ok(Char)
-    ;
-        ResultCode = result_code_eof,
-        Result = eof
-    ;
-        ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    interpret_result_code1(Char, Error, ResultCode, Result, !IO).
 
 :- pragma inline(pred(read_char_unboxed/5)).  % Inline to allow deforestation.
 read_char_unboxed(Stream, Result, Char, !IO) :-
     read_char_code(Stream, ResultCode, Char, Error, !IO),
-    (
-        ResultCode = result_code_ok,
-        Result = ok
-    ;
-        ResultCode = result_code_eof,
-        Result = eof
-    ;
-        ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    interpret_result_code0(Error, ResultCode, Result, !IO).
 
 %---------------------%
 %---------------------%
@@ -4970,17 +5008,7 @@ read_byte(Result, !IO) :-
 :- pragma inline(pred(read_byte/4)).          % Inline to allow deforestation.
 read_byte(binary_input_stream(Stream), Result, !IO) :-
     read_byte_val(input_stream(Stream), ResultCode, Byte, Error, !IO),
-    (
-        ResultCode = result_code_ok,
-        Result = ok(Byte)
-    ;
-        ResultCode = result_code_eof,
-        Result = eof
-    ;
-        ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    interpret_result_code1(Byte, Error, ResultCode, Result, !IO).
 
 read_binary_int8(Result, !IO) :-
     binary_input_stream(Stream, !IO),
@@ -4988,33 +5016,13 @@ read_binary_int8(Result, !IO) :-
 
 read_binary_int8(binary_input_stream(Stream), Result, !IO) :-
     read_byte_val(input_stream(Stream), ResultCode, Int, Error, !IO),
-    (
-        ResultCode = result_code_ok,
-        Int8 = cast_from_int(Int),
-        Result = ok(Int8)
-    ;
-        ResultCode = result_code_eof,
-        Result = eof
-    ;
-        ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    Int8 = cast_from_int(Int), % This call cannot throw an exception.
+    interpret_result_code1(Int8, Error, ResultCode, Result, !IO).
 
 read_binary_int8_unboxed(binary_input_stream(Stream), Result, Int8, !IO) :-
     read_byte_val(input_stream(Stream), ResultCode, Int, Error, !IO),
     Int8 = cast_from_int(Int),
-    (
-        ResultCode = result_code_ok,
-        Result = ok
-    ;
-        ResultCode = result_code_eof,
-        Result = eof
-    ;
-        ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    interpret_result_code0(Error, ResultCode, Result, !IO).
 
 read_binary_uint8(Result, !IO) :-
     binary_input_stream(Stream, !IO),
@@ -5022,33 +5030,13 @@ read_binary_uint8(Result, !IO) :-
 
 read_binary_uint8(binary_input_stream(Stream), Result, !IO) :-
     read_byte_val(input_stream(Stream), ResultCode, Int, Error, !IO),
-    (
-        ResultCode = result_code_ok,
-        UInt8 = cast_from_int(Int),
-        Result = ok(UInt8)
-    ;
-        ResultCode = result_code_eof,
-        Result = eof
-    ;
-        ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    UInt8 = cast_from_int(Int), % This call cannot throw an exception.
+    interpret_result_code1(UInt8, Error, ResultCode, Result, !IO).
 
 read_binary_uint8_unboxed(binary_input_stream(Stream), Result, UInt8, !IO) :-
     read_byte_val(input_stream(Stream), ResultCode, Int, Error, !IO),
     UInt8 = cast_from_int(Int),
-    (
-        ResultCode = result_code_ok,
-        Result = ok
-    ;
-        ResultCode = result_code_eof,
-        Result = eof
-    ;
-        ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    interpret_result_code0(Error, ResultCode, Result, !IO).
 
 %---------------------%
 %---------------------%
@@ -5118,23 +5106,10 @@ read_binary_int16_le(Result, !IO) :-
 
 read_binary_int16_le(binary_input_stream(Stream), Result, !IO) :-
     do_read_binary_uint16(Stream, little_endian, ResultCode, UInt16,
-        IncompleteBytes,
-        Error, !IO),
-    (
-        ResultCode = mirc_ok,
-        Int16 = cast_from_uint16(UInt16),
-        Result = ok(Int16)
-    ;
-        ResultCode = mirc_eof,
-        Result = eof
-    ;
-        ResultCode = mirc_incomplete,
-        Result = incomplete(IncompleteBytes)
-    ;
-        ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+        IncompleteBytes, Error, !IO),
+    Int16 = cast_from_uint16(UInt16), % This call cannot throw an exception.
+    interpret_maybe_incomplete_result_code(Int16, IncompleteBytes, Error,
+        ResultCode, Result, !IO).
 
 %---------------------%
 
@@ -5145,21 +5120,9 @@ read_binary_int16_be(Result, !IO) :-
 read_binary_int16_be(binary_input_stream(Stream), Result, !IO) :-
     do_read_binary_uint16(Stream, big_endian, ResultCode, UInt16,
         IncompleteBytes, Error, !IO),
-    (
-        ResultCode = mirc_ok,
-        Int16 = cast_from_uint16(UInt16),
-        Result = ok(Int16)
-    ;
-        ResultCode = mirc_eof,
-        Result = eof
-    ;
-        ResultCode = mirc_incomplete,
-        Result = incomplete(IncompleteBytes)
-    ;
-        ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    Int16 = cast_from_uint16(UInt16), % This call cannot throw an exception.
+    interpret_maybe_incomplete_result_code(Int16, IncompleteBytes, Error,
+        ResultCode, Result, !IO).
 
 %---------------------%
 
@@ -5183,20 +5146,8 @@ read_binary_uint16_le(Result, !IO) :-
 read_binary_uint16_le(binary_input_stream(Stream), Result, !IO) :-
     do_read_binary_uint16(Stream, little_endian, ResultCode, UInt16,
         IncompleteBytes, Error, !IO),
-    (
-        ResultCode = mirc_ok,
-        Result = ok(UInt16)
-    ;
-        ResultCode = mirc_eof,
-        Result = eof
-    ;
-        ResultCode = mirc_incomplete,
-        Result = incomplete(IncompleteBytes)
-    ;
-        ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    interpret_maybe_incomplete_result_code(UInt16, IncompleteBytes, Error,
+        ResultCode, Result, !IO).
 
 %---------------------%
 
@@ -5207,20 +5158,8 @@ read_binary_uint16_be(Result, !IO) :-
 read_binary_uint16_be(binary_input_stream(Stream), Result, !IO) :-
     do_read_binary_uint16(Stream, big_endian, ResultCode, UInt16,
         IncompleteBytes, Error, !IO),
-    (
-        ResultCode = mirc_ok,
-        Result = ok(UInt16)
-    ;
-        ResultCode = mirc_eof,
-        Result = eof
-    ;
-        ResultCode = mirc_incomplete,
-        Result = incomplete(IncompleteBytes)
-    ;
-        ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    interpret_maybe_incomplete_result_code(UInt16, IncompleteBytes, Error,
+        ResultCode, Result, !IO).
 
 %---------------------%
 
@@ -5244,21 +5183,9 @@ read_binary_int32_le(Result, !IO) :-
 read_binary_int32_le(binary_input_stream(Stream), Result, !IO) :-
     do_read_binary_uint32(Stream, little_endian, ResultCode, UInt32,
         IncompleteBytes, Error, !IO),
-    (
-        ResultCode = mirc_ok,
-        Int32 = cast_from_uint32(UInt32),
-        Result = ok(Int32)
-    ;
-        ResultCode = mirc_eof,
-        Result = eof
-    ;
-        ResultCode = mirc_incomplete,
-        Result = incomplete(IncompleteBytes)
-    ;
-        ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    Int32 = cast_from_uint32(UInt32), % This call cannot throw an exception.
+    interpret_maybe_incomplete_result_code(Int32, IncompleteBytes, Error,
+        ResultCode, Result, !IO).
 
 %---------------------%
 
@@ -5269,21 +5196,9 @@ read_binary_int32_be(Result, !IO) :-
 read_binary_int32_be(binary_input_stream(Stream), Result, !IO) :-
     do_read_binary_uint32(Stream, big_endian, ResultCode, UInt32,
         IncompleteBytes, Error, !IO),
-    (
-        ResultCode = mirc_ok,
-        Int32 = cast_from_uint32(UInt32),
-        Result = ok(Int32)
-    ;
-        ResultCode = mirc_eof,
-        Result = eof
-    ;
-        ResultCode = mirc_incomplete,
-        Result = incomplete(IncompleteBytes)
-    ;
-        ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    Int32 = cast_from_uint32(UInt32), % This call cannot throw an exception.
+    interpret_maybe_incomplete_result_code(Int32, IncompleteBytes, Error,
+        ResultCode, Result, !IO).
 
 %---------------------%
 
@@ -5307,20 +5222,8 @@ read_binary_uint32_le(Result, !IO) :-
 read_binary_uint32_le(binary_input_stream(Stream), Result, !IO) :-
     do_read_binary_uint32(Stream, little_endian, ResultCode, UInt32,
         IncompleteBytes, Error, !IO),
-    (
-        ResultCode = mirc_ok,
-        Result = ok(UInt32)
-    ;
-        ResultCode = mirc_eof,
-        Result = eof
-    ;
-        ResultCode = mirc_incomplete,
-        Result = incomplete(IncompleteBytes)
-    ;
-        ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    interpret_maybe_incomplete_result_code(UInt32, IncompleteBytes, Error,
+        ResultCode, Result, !IO).
 
 %---------------------%
 
@@ -5331,20 +5234,8 @@ read_binary_uint32_be(Result, !IO) :-
 read_binary_uint32_be(binary_input_stream(Stream), Result, !IO) :-
     do_read_binary_uint32(Stream, big_endian, ResultCode, UInt32,
         IncompleteBytes, Error, !IO),
-    (
-        ResultCode = mirc_ok,
-        Result = ok(UInt32)
-    ;
-        ResultCode = mirc_eof,
-        Result = eof
-    ;
-        ResultCode = mirc_incomplete,
-        Result = incomplete(IncompleteBytes)
-    ;
-        ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    interpret_maybe_incomplete_result_code(UInt32, IncompleteBytes, Error,
+        ResultCode, Result, !IO).
 
 %---------------------%
 %---------------------%
@@ -5369,21 +5260,9 @@ read_binary_int64_le(Result, !IO) :-
 read_binary_int64_le(binary_input_stream(Stream), Result, !IO) :-
     do_read_binary_uint64(Stream, little_endian, ResultCode, UInt64,
         IncompleteBytes, Error, !IO),
-    (
-        ResultCode = mirc_ok,
-        Int64 = cast_from_uint64(UInt64),
-        Result = ok(Int64)
-    ;
-        ResultCode = mirc_eof,
-        Result = eof
-    ;
-        ResultCode = mirc_incomplete,
-        Result = incomplete(IncompleteBytes)
-    ;
-        ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    Int64 = cast_from_uint64(UInt64), % This call cannot throw an exception.
+    interpret_maybe_incomplete_result_code(Int64, IncompleteBytes, Error,
+        ResultCode, Result, !IO).
 
 %---------------------%
 
@@ -5394,21 +5273,9 @@ read_binary_int64_be(Result, !IO) :-
 read_binary_int64_be(binary_input_stream(Stream), Result, !IO) :-
     do_read_binary_uint64(Stream, big_endian, ResultCode, UInt64,
         IncompleteBytes, Error, !IO),
-    (
-        ResultCode = mirc_ok,
-        Int64 = cast_from_uint64(UInt64),
-        Result = ok(Int64)
-    ;
-        ResultCode = mirc_eof,
-        Result = eof
-    ;
-        ResultCode = mirc_incomplete,
-        Result = incomplete(IncompleteBytes)
-    ;
-        ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    Int64 = cast_from_uint64(UInt64), % This call cannot throw an exception.
+    interpret_maybe_incomplete_result_code(Int64, IncompleteBytes, Error,
+        ResultCode, Result, !IO).
 
 %---------------------%
 
@@ -5432,20 +5299,8 @@ read_binary_uint64_le(Result, !IO) :-
 read_binary_uint64_le(binary_input_stream(Stream), Result, !IO) :-
     do_read_binary_uint64(Stream, little_endian, ResultCode, UInt64,
         IncompleteBytes, Error, !IO),
-    (
-        ResultCode = mirc_ok,
-        Result = ok(UInt64)
-    ;
-        ResultCode = mirc_eof,
-        Result = eof
-    ;
-        ResultCode = mirc_incomplete,
-        Result = incomplete(IncompleteBytes)
-    ;
-        ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    interpret_maybe_incomplete_result_code(UInt64, IncompleteBytes, Error,
+        ResultCode, Result, !IO).
 
 %---------------------%
 
@@ -5456,20 +5311,8 @@ read_binary_uint64_be(Result, !IO) :-
 read_binary_uint64_be(binary_input_stream(Stream), Result, !IO) :-
     do_read_binary_uint64(Stream, big_endian, ResultCode, UInt64,
         IncompleteBytes, Error, !IO),
-    (
-        ResultCode = mirc_ok,
-        Result = ok(UInt64)
-    ;
-        ResultCode = mirc_eof,
-        Result = eof
-    ;
-        ResultCode = mirc_incomplete,
-        Result = incomplete(IncompleteBytes)
-    ;
-        ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
+    interpret_maybe_incomplete_result_code(UInt64, IncompleteBytes, Error,
+        ResultCode, Result, !IO).
 
 %---------------------%
 
@@ -5684,8 +5527,6 @@ write_binary_uint8(binary_output_stream(Stream), UInt8, !IO) :-
 
 %---------------------%
 
-%---------------------%
-
 write_binary_int16(Int16, !IO) :-
     UInt16 = uint16.cast_from_int16(Int16),
     write_binary_uint16(UInt16, !IO).
@@ -5701,8 +5542,6 @@ write_binary_uint16(UInt16, !IO) :-
 write_binary_uint16(binary_output_stream(Stream), UInt16, !IO) :-
     do_write_binary_uint16(Stream, UInt16, Error, !IO),
     throw_on_output_error(Error, !IO).
-
-%---------------------%
 
 %---------------------%
 
@@ -5724,8 +5563,6 @@ write_binary_uint16_le(binary_output_stream(Stream), UInt16, !IO) :-
 
 %---------------------%
 
-%---------------------%
-
 write_binary_int16_be(Int16, !IO) :-
     UInt16 = uint16.cast_from_int16(Int16),
     write_binary_uint16_be(UInt16, !IO).
@@ -5741,8 +5578,6 @@ write_binary_uint16_be(UInt16, !IO) :-
 write_binary_uint16_be(binary_output_stream(Stream), UInt16, !IO) :-
     do_write_binary_uint16_be(Stream, UInt16, Error, !IO),
     throw_on_output_error(Error, !IO).
-
-%---------------------%
 
 %---------------------%
 
@@ -5764,8 +5599,6 @@ write_binary_uint32(binary_output_stream(Stream), UInt32, !IO) :-
 
 %---------------------%
 
-%---------------------%
-
 write_binary_int32_le(Int32, !IO) :-
     UInt32 = uint32.cast_from_int32(Int32),
     write_binary_uint32_le(UInt32, !IO).
@@ -5781,8 +5614,6 @@ write_binary_uint32_le(UInt32, !IO) :-
 write_binary_uint32_le(binary_output_stream(Stream), UInt32, !IO) :-
     do_write_binary_uint32_le(Stream, UInt32, Error, !IO),
     throw_on_output_error(Error, !IO).
-
-%---------------------%
 
 %---------------------%
 
@@ -5804,8 +5635,6 @@ write_binary_uint32_be(binary_output_stream(Stream), UInt32, !IO) :-
 
 %---------------------%
 
-%---------------------%
-
 write_binary_int64(Int64, !IO) :-
     UInt64 = uint64.cast_from_int64(Int64),
     write_binary_uint64(UInt64, !IO).
@@ -5821,8 +5650,6 @@ write_binary_uint64(UInt64, !IO) :-
 write_binary_uint64(binary_output_stream(Stream), UInt64, !IO) :-
     do_write_binary_uint64(Stream, UInt64, Error, !IO),
     throw_on_output_error(Error, !IO).
-
-%---------------------%
 
 %---------------------%
 
@@ -5844,8 +5671,6 @@ write_binary_uint64_le(binary_output_stream(Stream), UInt64, !IO) :-
 
 %---------------------%
 
-%---------------------%
-
 write_binary_int64_be(Int64, !IO) :-
     UInt64 = uint64.cast_from_int64(Int64),
     write_binary_uint64_be(UInt64, !IO).
@@ -5861,8 +5686,6 @@ write_binary_uint64_be(UInt64, !IO) :-
 write_binary_uint64_be(binary_output_stream(Stream), UInt64, !IO) :-
     do_write_binary_uint64_be(Stream, UInt64, Error, !IO),
     throw_on_output_error(Error, !IO).
-
-%---------------------%
 
 %---------------------------------------------------------------------------%
 %
