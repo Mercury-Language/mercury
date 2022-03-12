@@ -2030,6 +2030,7 @@
 :- instance stream.writer(binary_output_stream, byte, io).
 :- instance stream.writer(binary_output_stream, int8, io).
 :- instance stream.writer(binary_output_stream, uint8, io).
+:- instance stream.writer(binary_output_stream, bitmap, io).
 :- instance stream.writer(binary_output_stream, bitmap.slice, io).
 :- instance stream.seekable(binary_output_stream, io).
 
