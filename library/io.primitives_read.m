@@ -40,8 +40,6 @@
 :- pred read_byte_val(input_stream::in, result_code::out, int::out,
     system_error::out, io::di, io::uo) is det.
 
-:- pred putback_byte_2(stream::in, int::in, bool::out, io::di, io::uo) is det.
-
 :- pred putback_uint8_2(stream::in, uint8::in, bool::out,
     io::di, io::uo) is det.
 
@@ -334,42 +332,6 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
         ByteVal = 0;
         Error = e;
     }
-").
-
-%---------------------------------------------------------------------------%
-
-:- pragma foreign_proc("C",
-    putback_byte_2(Stream::in, Character::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-"
-    MercuryFilePtr mf = Stream;
-    if (MR_UNGETCH(*mf, Character) == EOF) {
-        Ok = MR_FALSE;
-    } else {
-        Ok = MR_TRUE;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    putback_byte_2(File::in, Byte::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
-"
-    io.MR_MercuryFileStruct mf = File;
-    if (mf.putback == -1) {
-        mf.putback = Byte;
-        Ok = mr_bool.YES;
-    } else {
-        Ok = mr_bool.NO;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    putback_byte_2(File::in, Byte::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    ((io.MR_BinaryInputFile) File).ungetc((byte) Byte);
-    Ok = bool.YES;
 ").
 
 %---------------------------------------------------------------------------%

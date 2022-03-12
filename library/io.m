@@ -5041,18 +5041,13 @@ read_binary_uint8_unboxed(binary_input_stream(Stream), Result, UInt8, !IO) :-
 %---------------------%
 %---------------------%
 
-putback_byte(Char, !IO) :-
+putback_byte(Int, !IO) :-
     binary_input_stream(Stream, !IO),
-    putback_byte(Stream, Char, !IO).
+    putback_byte(Stream, Int, !IO).
 
-putback_byte(binary_input_stream(Stream), Character, !IO) :-
-    putback_byte_2(Stream, Character, Ok, !IO),
-    (
-        Ok = yes
-    ;
-        Ok = no,
-        throw(io_error("failed to put back byte"))
-    ).
+putback_byte(Stream, Int, !IO) :-
+    UInt8 = uint8.cast_from_int(Int /\ 0xff),
+    putback_uint8(Stream, UInt8, !IO).
 
 %---------------------%
 
