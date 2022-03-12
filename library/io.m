@@ -2228,6 +2228,9 @@
 
 :- implementation.
 
+:- include_module primitives_read.
+:- include_module primitives_write.
+
 :- import_module benchmarking.
 :- import_module dir.
 :- import_module exception.
@@ -2239,6 +2242,8 @@
 :- import_module io.call_system.
 :- import_module io.environment.
 :- import_module io.file.
+:- import_module io.primitives_read.
+:- import_module io.primitives_write.
 :- import_module io.stream_db.
 :- import_module mercury_term_parser.
 :- import_module require.
@@ -3401,7 +3406,7 @@ using System.Security.Principal;
 
     // Assume UTF-8 encoding on files. When writing a file, don't emit
     // a byte order mark.
-    static readonly System.Text.Encoding text_encoding =
+    public static readonly System.Text.Encoding text_encoding =
         new System.Text.UTF8Encoding(false);
 
     public class MR_MercuryFileStruct {
@@ -4940,145 +4945,6 @@ read_char_unboxed(Stream, Result, Char, !IO) :-
     ).
 
 %---------------------%
-
-    % We communicate results from foreign_procs as separate simple arguments
-    % so the C/Java/etc code does not depend on how Mercury stores its
-    % discriminated union data types. It also avoids memory allocation in
-    % inner loops.
-
-    % Reads a character (code point) from specified stream. This may
-    % involve converting external character encodings into Mercury's internal
-    % character representation and (for text streams) converting OS line
-    % indicators, e.g. CR-LF for Windows, to '\n' characters.
-    %
-:- pred read_char_code(input_stream::in, result_code::out, char::out,
-    system_error::out, io::di, io::uo) is det.
-
-read_char_code(input_stream(Stream), ResultCode, Char, Error, !IO) :-
-    read_char_code_2(Stream, ResultCode, Char, Error, !IO).
-
-:- pred read_char_code_2(stream::in, result_code::out, char::out,
-    system_error::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    read_char_code_2(Stream::in, ResultCode::out, Char::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing, may_not_duplicate],
-"
-    char    buf[5];
-    int     nbytes;
-    int     i;
-    int     c;
-    unsigned int    uc;
-
-    c = mercury_get_byte(Stream);
-    uc = c;
-    if (uc <= 0x7f) {
-        ResultCode = ML_RESULT_CODE_OK;
-        Char = uc;
-        Error = 0;
-    } else if (c == EOF) {
-        if (MR_FERROR(*Stream)) {
-            ResultCode = ML_RESULT_CODE_ERROR;
-            Error = errno;
-            Char = 0;
-        } else {
-            ResultCode = ML_RESULT_CODE_EOF;
-            Error = 0;
-            Char = 0;
-        }
-    } else {
-        if ((uc & 0xE0) == 0xC0) {
-            nbytes = 2;
-        } else if ((uc & 0xF0) == 0xE0) {
-            nbytes = 3;
-        } else if ((uc & 0xF8) == 0xF0) {
-            nbytes = 4;
-        } else {
-            nbytes = 0;
-        }
-        if (nbytes > 0) {
-            buf[0] = (char) uc;
-            for (i = 1; i < nbytes; i++) {
-                c = mercury_get_byte(Stream);
-                uc = c;
-                if (c == EOF) {
-                    // Illegal byte sequence whether EOF or I/O error.
-                    ResultCode = ML_RESULT_CODE_ERROR;
-                    Error = MR_FERROR(*Stream) ? errno : EILSEQ;
-                    Char = 0;
-                    break;
-                }
-                buf[i] = uc;
-            }
-            if (i == nbytes) {
-                buf[i] = '\\0';
-                c = MR_utf8_get(buf, 0);
-                if (c < 0) {
-                    ResultCode = ML_RESULT_CODE_ERROR;
-                    Error = EILSEQ;
-                    Char = 0;
-                } else {
-                    ResultCode = ML_RESULT_CODE_OK;
-                    Char = c;
-                    Error = 0;
-                }
-            }
-        } else {
-            // Invalid lead byte.
-            ResultCode = ML_RESULT_CODE_ERROR;
-            Error = EILSEQ;
-            Char = 0;
-        }
-    }
-").
-
-:- pragma foreign_proc("C#",
-    read_char_code_2(File::in, ResultCode::out, Char::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
-"
-    io.MR_MercuryFileStruct mf = File;
-    try {
-        int c = io.mercury_getc(mf);
-        if (c == -1) {
-            ResultCode = io.ML_RESULT_CODE_EOF;
-            Char = 0;
-        } else {
-            ResultCode = io.ML_RESULT_CODE_OK;
-            Char = c;
-        }
-        Error = null;
-    } catch (System.Exception e) {
-        ResultCode = io.ML_RESULT_CODE_ERROR;
-        Char = 0;
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    read_char_code_2(File::in, ResultCode::out, CharCode::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        int c = ((io.MR_TextInputFile) File).read_char();
-        if (c == -1) {
-            ResultCode = io.ML_RESULT_CODE_EOF;
-            CharCode = 0;
-        } else {
-            ResultCode = io.ML_RESULT_CODE_OK;
-            CharCode = c;
-        }
-        Error = null;
-    } catch (java.io.IOException e) {
-        ResultCode = io.ML_RESULT_CODE_ERROR;
-        CharCode = 0;
-        Error = e;
-    }
-").
-
 %---------------------%
 
 putback_char(Char, !IO) :-
@@ -5093,62 +4959,6 @@ putback_char(input_stream(Stream), Character, !IO) :-
         Ok = no,
         throw(io_error("failed to put back character"))
     ).
-
-:- pred putback_char_2(stream::in, char::in, bool::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    putback_char_2(Stream::in, Character::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing, may_not_duplicate],
-"
-    MercuryFilePtr mf = Stream;
-    Ok = MR_TRUE;
-    if (Character <= 0x7f) {
-        if (MR_UNGETCH(*mf, Character) == EOF) {
-            Ok = MR_FALSE;
-        } else {
-            if (Character == '\\n') {
-                MR_line_number(*mf)--;
-            }
-        }
-    } else {
-        // This requires multiple pushback in the underlying C library.
-        char        buf[5];
-        ML_ssize_t  len;
-        len = MR_utf8_encode(buf, Character);
-        // XXX ILSEQ Error if len==0
-        for (; len > 0; len--) {
-            if (MR_UNGETCH(*mf, buf[len - 1]) == EOF) {
-                Ok = MR_FALSE;
-                break;
-            }
-        }
-    }
-").
-
-:- pragma foreign_proc("C#",
-    putback_char_2(File::in, Character::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
-"
-    io.MR_MercuryFileStruct mf = File;
-    if (mf.putback == -1) {
-        mf.putback = Character;
-        if (Character == '\\n') {
-            mf.line_number--;
-        }
-        Ok = mr_bool.YES;
-    } else {
-        Ok = mr_bool.NO;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    putback_char_2(File::in, Character::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    ((io.MR_TextInputFile) File).ungetc(Character);
-    Ok = bool.YES;
-").
 
 %---------------------%
 
@@ -5241,98 +5051,6 @@ read_binary_uint8_unboxed(binary_input_stream(Stream), Result, UInt8, !IO) :-
     ).
 
 %---------------------%
-
-    % We communicate results from foreign_procs as separate simple arguments
-    % so the C/Java/etc code does not depend on how Mercury stores its
-    % discriminated union data types. It also avoids memory allocation in
-    % inner loops.
-
-    % Reads a byte from specified stream.
-    %
-:- pred read_byte_val(input_stream::in, result_code::out, int::out,
-    system_error::out, io::di, io::uo) is det.
-
-read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
-    read_byte_val_2(Stream, Result, ByteVal, Error, !IO).
-
-:- pred read_byte_val_2(stream::in, result_code::out, int::out,
-    system_error::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    read_byte_val_2(Stream::in, ResultCode::out, ByteVal::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-"
-    int b = mercury_get_byte(Stream);
-    if (b == EOF) {
-        if (MR_FERROR(*Stream)) {
-            ResultCode = ML_RESULT_CODE_ERROR;
-            Error = errno;
-        } else {
-            ResultCode = ML_RESULT_CODE_EOF;
-            Error = 0;
-        }
-        ByteVal = 0;
-    } else {
-        ResultCode = ML_RESULT_CODE_OK;
-        ByteVal = b;
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    read_byte_val_2(File::in, ResultCode::out, ByteVal::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
-"
-    io.MR_MercuryFileStruct mf = File;
-    if (mf.putback != -1) {
-        ResultCode = io.ML_RESULT_CODE_OK;
-        ByteVal = mf.putback;
-        Error = null;
-        mf.putback = -1;
-    } else {
-        try {
-            int b = mf.stream.ReadByte();
-            if (b == -1) {
-                ResultCode = io.ML_RESULT_CODE_EOF;
-                ByteVal = 0;
-            } else {
-                ResultCode = io.ML_RESULT_CODE_OK;
-                ByteVal = b;
-            }
-            Error = null;
-        } catch (System.Exception e) {
-            ResultCode = io.ML_RESULT_CODE_ERROR;
-            ByteVal = 0;
-            Error = e;
-        }
-    }
-").
-
-:- pragma foreign_proc("Java",
-    read_byte_val_2(File::in, ResultCode::out, ByteVal::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        int b = ((io.MR_BinaryInputFile) File).read_byte();
-        if (b == -1) {
-            ResultCode = io.ML_RESULT_CODE_EOF;
-            ByteVal = 0;
-        } else {
-            ResultCode = io.ML_RESULT_CODE_OK;
-            ByteVal = b;
-        }
-        Error = null;
-    } catch (java.io.IOException e) {
-        ResultCode = io.ML_RESULT_CODE_ERROR;
-        ByteVal = 0;
-        Error = e;
-    }
-").
-
 %---------------------%
 
 putback_byte(Char, !IO) :-
@@ -5347,42 +5065,6 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
         Ok = no,
         throw(io_error("failed to put back byte"))
     ).
-
-:- pred putback_byte_2(stream::in, int::in, bool::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    putback_byte_2(Stream::in, Character::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-"
-    MercuryFilePtr mf = Stream;
-    if (MR_UNGETCH(*mf, Character) == EOF) {
-        Ok = MR_FALSE;
-    } else {
-        Ok = MR_TRUE;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    putback_byte_2(File::in, Byte::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
-"
-    io.MR_MercuryFileStruct mf = File;
-    if (mf.putback == -1) {
-        mf.putback = Byte;
-        Ok = mr_bool.YES;
-    } else {
-        Ok = mr_bool.NO;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    putback_byte_2(File::in, Byte::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    ((io.MR_BinaryInputFile) File).ungetc((byte) Byte);
-    Ok = bool.YES;
-").
 
 %---------------------%
 
@@ -5414,43 +5096,6 @@ putback_uint8(binary_input_stream(Stream), UInt8, !IO) :-
         Ok = no,
         throw(io_error("failed to put back uint8"))
     ).
-
-:- pred putback_uint8_2(stream::in, uint8::in, bool::out, io::di, io::uo)
-    is det.
-
-:- pragma foreign_proc("C",
-    putback_uint8_2(Stream::in, UInt8::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-"
-    MercuryFilePtr mf = Stream;
-    if (MR_UNGETCH(*mf, UInt8) == EOF) {
-        Ok = MR_FALSE;
-    } else {
-        Ok = MR_TRUE;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    putback_uint8_2(File::in, UInt8::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
-"
-    io.MR_MercuryFileStruct mf = File;
-    if (mf.putback == -1) {
-        mf.putback = UInt8;
-        Ok = mr_bool.YES;
-    } else {
-        Ok = mr_bool.NO;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    putback_uint8_2(File::in, UInt8::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    ((io.MR_BinaryInputFile) File).ungetc((byte) UInt8);
-    Ok = bool.YES;
-").
 
 %---------------------%
 
@@ -5577,109 +5222,6 @@ read_binary_uint16_be(binary_input_stream(Stream), Result, !IO) :-
         Result = error(io_error(Msg))
     ).
 
-:- pred do_read_binary_uint16(stream::in, byte_order::in,
-    maybe_incomplete_result_code::out, uint16::out, list(uint8)::out,
-    system_error::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_read_binary_uint16(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt16::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        tabled_for_io],
-"
-    ML_do_read_binary_uintN(2, 16, Stream, ByteOrder, ResultCode, UInt16,
-        IncompleteBytes, Error);
-").
-
-:- pragma foreign_proc("C#",
-    do_read_binary_uint16(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt16::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    byte[] buffer = new byte[2];
-    io.MR_MercuryFileStruct mf = Stream;
-    UInt16 = 0;
-    IncompleteBytes = list.empty_list();
-
-    int nread = 0;
-
-    if (mf.putback != -1) {
-        buffer[nread] = (byte) mf.putback;
-        nread++;
-        mf.putback = -1;
-    }
-
-    try {
-        for ( ; nread < 2; nread++) {
-            int b = mf.stream.ReadByte();
-            if (b == -1) {
-                break;
-            }
-            buffer[nread] = (byte) b;
-        }
-        if (nread < 2) {
-            if (nread > 0) {
-                ResultCode = io.ML_MIRC_INCOMPLETE;
-                IncompleteBytes = list.cons(buffer[0], IncompleteBytes);
-            } else {
-                ResultCode = io.ML_MIRC_EOF;
-            }
-        } else {
-            ResultCode = io.ML_MIRC_OK;
-            if (ByteOrder == io.ML_LITTLE_ENDIAN) {
-                UInt16 = (ushort) (buffer[1] << 8 | (buffer[0] & 0x00ff));
-            } else {
-                UInt16 = (ushort) (buffer[0] << 8 | (buffer[1] & 0x00ff));
-            }
-        }
-        Error = null;
-    } catch (System.Exception e) {
-        ResultCode = io.ML_MIRC_ERROR;
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_read_binary_uint16(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt16::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    byte[] buffer = new byte[2];
-    MR_BinaryInputFile mf = (MR_BinaryInputFile) Stream;
-    UInt16 = 0;
-    IncompleteBytes = list.empty_list();
-
-    try {
-        int nread;
-        for (nread = 0; nread < 2; nread++) {
-            int next = mf.read_byte();
-            if (next == -1) {
-                break;
-            }
-            buffer[nread] = (byte) next;
-        }
-        if (nread < 2) {
-            if (nread > 0) {
-                ResultCode = io.ML_MIRC_INCOMPLETE;
-                IncompleteBytes = list.cons(buffer[0], IncompleteBytes);
-            } else {
-                ResultCode = io.ML_MIRC_EOF;
-            }
-        } else {
-            ResultCode = io.ML_MIRC_OK;
-            if (ByteOrder == io.ML_LITTLE_ENDIAN) {
-                UInt16 = (short) (buffer[1] << 8 | (buffer[0] & 0x00ff));
-            } else {
-                UInt16 = (short) (buffer[0] << 8 | (buffer[1] & 0x00ff));
-            }
-        }
-        Error = null;
-    } catch (java.lang.Exception e) {
-        ResultCode = io.ML_MIRC_ERROR;
-        Error = e;
-    }
-").
-
 %---------------------%
 
 read_binary_int32(Result, !IO) :-
@@ -5805,130 +5347,6 @@ read_binary_uint32_be(binary_input_stream(Stream), Result, !IO) :-
     ).
 
 %---------------------%
-
-:- pred do_read_binary_uint32(stream::in, byte_order::in,
-    maybe_incomplete_result_code::out, uint32::out, list(uint8)::out,
-    system_error::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_read_binary_uint32(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt32::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        tabled_for_io],
-"
-    ML_do_read_binary_uintN(4, 32, Stream, ByteOrder, ResultCode, UInt32,
-        IncompleteBytes, Error);
-").
-
-:- pragma foreign_proc("C#",
-    do_read_binary_uint32(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt32::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    byte[] buffer = new byte[4];
-    io.MR_MercuryFileStruct mf = Stream;
-    UInt32 = 0;
-    IncompleteBytes = list.empty_list();
-
-    int nread = 0;
-
-    if (mf.putback != -1) {
-        buffer[nread] = (byte) mf.putback;
-        nread++;
-        mf.putback = -1;
-    }
-
-    try {
-        for ( ; nread < 4; nread++) {
-            int b = mf.stream.ReadByte();
-            if (b == -1) {
-                break;
-            }
-            buffer[nread] = (byte) b;
-        }
-        if (nread < 4) {
-            if (nread > 0) {
-                ResultCode = io.ML_MIRC_INCOMPLETE;
-                for (int i = nread - 1; i >= 0; i--) {
-                    IncompleteBytes = list.cons(buffer[i], IncompleteBytes);
-                }
-            } else {
-                ResultCode = io.ML_MIRC_EOF;
-            }
-        } else {
-            ResultCode = io.ML_MIRC_OK;
-            if (ByteOrder == io.ML_LITTLE_ENDIAN) {
-                UInt32 = (uint) (
-                    buffer[3] << 24 |
-                    buffer[2] << 16 |
-                    buffer[1] << 8  |
-                    buffer[0]);
-            } else {
-                UInt32 = (uint) (
-                    buffer[0] << 24 |
-                    buffer[1] << 16 |
-                    buffer[2] << 8  |
-                    buffer[3]);
-            }
-        }
-        Error = null;
-    } catch (System.Exception e) {
-        ResultCode = io.ML_MIRC_ERROR;
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_read_binary_uint32(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt32::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    byte[] buffer = new byte[4];
-    MR_BinaryInputFile mf = (MR_BinaryInputFile) Stream;
-    UInt32 = 0;
-    IncompleteBytes = list.empty_list();
-
-    try {
-        int nread;
-        for (nread = 0; nread < 4; nread++) {
-            int next = mf.read_byte();
-            if (next == -1) {
-                break;
-            }
-            buffer[nread] = (byte) next;
-        }
-        if (nread < 4) {
-            if (nread > 0) {
-                ResultCode = io.ML_MIRC_INCOMPLETE;
-                for (int i = nread - 1; i >= 0; i--) {
-                    IncompleteBytes = list.cons(buffer[i], IncompleteBytes);
-                }
-            } else {
-                ResultCode = io.ML_MIRC_EOF;
-            }
-        } else {
-            ResultCode = io.ML_MIRC_OK;
-            if (ByteOrder == io.ML_LITTLE_ENDIAN) {
-                UInt32 =
-                    (buffer[3] & 0xff) << 24 |
-                    (buffer[2] & 0xff) << 16 |
-                    (buffer[1] & 0xff) << 8  |
-                    (buffer[0] & 0xff);
-            } else {
-                UInt32 =
-                    (buffer[0] & 0xff) << 24 |
-                    (buffer[1] & 0xff) << 16 |
-                    (buffer[2] & 0xff) << 8  |
-                    (buffer[3] & 0xff);
-            }
-        }
-        Error = null;
-    } catch (java.lang.Exception e) {
-        ResultCode = io.ML_MIRC_ERROR;
-        Error = e;
-    }
-").
-
 %---------------------%
 
 read_binary_int64(Result, !IO) :-
@@ -6055,147 +5473,6 @@ read_binary_uint64_be(binary_input_stream(Stream), Result, !IO) :-
 
 %---------------------%
 
-:- pred do_read_binary_uint64(stream::in, byte_order::in,
-    maybe_incomplete_result_code::out, uint64::out, list(uint8)::out,
-    system_error::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_read_binary_uint64(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt64::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        tabled_for_io],
-"
-    ML_do_read_binary_uintN(8, 64, Stream, ByteOrder, ResultCode, UInt64,
-        IncompleteBytes, Error);
-").
-
-:- pragma foreign_proc("C#",
-    do_read_binary_uint64(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt64::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    byte[] buffer = new byte[8];
-    io.MR_MercuryFileStruct mf = Stream;
-    UInt64 = 0;
-    IncompleteBytes = list.empty_list();
-
-    int nread = 0;
-
-    if (mf.putback != -1) {
-        buffer[nread] = (byte) mf.putback;
-        nread++;
-        mf.putback = -1;
-    }
-
-    try {
-        for ( ; nread < 8; nread++) {
-            int b = mf.stream.ReadByte();
-            if (b == -1) {
-                break;
-            }
-            buffer[nread] = (byte) b;
-        }
-        if (nread < 8) {
-            if (nread > 0) {
-                ResultCode = io.ML_MIRC_INCOMPLETE;
-                for (int i = nread - 1; i >=0; i--) {
-                    IncompleteBytes = list.cons(buffer[i], IncompleteBytes);
-                }
-            } else {
-                ResultCode = io.ML_MIRC_EOF;
-            }
-        } else {
-            ResultCode = io.ML_MIRC_OK;
-            if (ByteOrder == io.ML_LITTLE_ENDIAN) {
-                UInt64 = (ulong) (
-                    (ulong) buffer[7] << 56 |
-                    (ulong) buffer[6] << 48 |
-                    (ulong) buffer[5] << 40 |
-                    (ulong) buffer[4] << 32 |
-                    (ulong) buffer[3] << 24 |
-                    (ulong) buffer[2] << 16 |
-                    (ulong) buffer[1] << 8  |
-                    (ulong) buffer[0]);
-            } else {
-                UInt64 = (ulong) (
-                    (ulong) buffer[0] << 56 |
-                    (ulong) buffer[1] << 48 |
-                    (ulong) buffer[2] << 40 |
-                    (ulong) buffer[3] << 32 |
-                    (ulong) buffer[4] << 24 |
-                    (ulong) buffer[5] << 16 |
-                    (ulong) buffer[6] << 8  |
-                    (ulong) buffer[7]);
-            }
-        }
-        Error = null;
-    } catch (System.Exception e) {
-        ResultCode = io.ML_MIRC_ERROR;
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_read_binary_uint64(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt64::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    byte[] buffer = new byte[8];
-    MR_BinaryInputFile mf = (MR_BinaryInputFile) Stream;
-    UInt64 = 0;
-    IncompleteBytes = list.empty_list();
-
-    try {
-        int nread;
-        for (nread = 0; nread < 8; nread++) {
-            int next = mf.read_byte();
-            if (next == -1) {
-                break;
-            }
-            buffer[nread] = (byte) next;
-        }
-        if (nread < 8) {
-            if (nread > 0) {
-                ResultCode = io.ML_MIRC_INCOMPLETE;
-                for (int i = nread - 1; i >= 0; i--) {
-                    IncompleteBytes = list.cons(buffer[i], IncompleteBytes);
-                }
-            } else {
-                ResultCode = io.ML_MIRC_EOF;
-            }
-        } else {
-            ResultCode = io.ML_MIRC_OK;
-            if (ByteOrder == io.ML_LITTLE_ENDIAN) {
-                UInt64 =
-                    (long) (buffer[7] & 0xff) << 56 |
-                    (long) (buffer[6] & 0xff) << 48 |
-                    (long) (buffer[5] & 0xff) << 40 |
-                    (long) (buffer[4] & 0xff) << 32 |
-                    (long) (buffer[3] & 0xff) << 24 |
-                    (long) (buffer[2] & 0xff) << 16 |
-                    (long) (buffer[1] & 0xff) << 8  |
-                    (long) (buffer[0] & 0xff);
-            } else {
-                UInt64 =
-                    (long) (buffer[0] & 0xff) << 56 |
-                    (long) (buffer[1] & 0xff) << 48 |
-                    (long) (buffer[2] & 0xff) << 40 |
-                    (long) (buffer[3] & 0xff) << 32 |
-                    (long) (buffer[4] & 0xff) << 24 |
-                    (long) (buffer[5] & 0xff) << 16 |
-                    (long) (buffer[6] & 0xff) << 8  |
-                    (long) (buffer[7] & 0xff);
-            }
-        }
-        Error = null;
-    } catch (java.lang.Exception e) {
-        ResultCode = io.ML_MIRC_ERROR;
-        Error = e;
-    }
-").
-
-%---------------------%
-
 :- type byte_order
     --->    big_endian
     ;       little_endian.
@@ -6235,109 +5512,6 @@ read_binary_uint64_be(binary_input_stream(Stream), Result, !IO) :-
         (java.nio.ByteOrder.nativeOrder() == java.nio.ByteOrder.BIG_ENDIAN);
 ").
 
-%---------------------%
-%
-% C implementation of reading multibyte integers from binary streams.
-%
-
-:- pragma foreign_decl("C", "
-// ML_N_BIT_UINT_T(n) expands to the name of an n-bit unsigned integer type
-// in C, if N is 8, 16, 32 or 64.
-//
-#define ML_N_BIT_INT_T(n) \
-    MR_PASTE3(uint, n, _t)
-
-// ML_REVERSE_BYTES_FUNC(n) expands to the name a function exported by the
-// Mercury runtime that can be used to reverse the bytes in an n-bit
-// unsigned integer, if N is 16, 32 or 64.
-//
-#define ML_REVERSE_BYTES_FUNC(n) \
-    MR_PASTE3(MR_uint, n, _reverse_bytes)
-
-// ML_build_uintN(int n, MR_Word byte_order, unsigned char *buffer,
-//     uintN_t value):
-//
-// Build an n-bit unsigned integer using the bytes stored in the array
-// 'buffer'. The order of the bytes in the buffer are given by 'byte_order'.
-// The result is assigned to the lvalue 'value'
-//
-// We have two definitions of this macro, one for big-endian machines
-// and one for little-endian machines.
-//
-#if defined(MR_BIG_ENDIAN)
-#define ML_build_uintN(n, byte_order, buffer, value)                 \
-    do {                                                             \
-        if (byte_order == ML_LITTLE_ENDIAN) {                        \
-            value = ML_REVERSE_BYTES_FUNC(n)(                        \
-                *((ML_N_BIT_INT_T(n) *) buffer));                    \
-        } else {                                                     \
-            value = *((ML_N_BIT_INT_T(n) *) buffer);                 \
-        }                                                            \
-    } while (0)
-#else
-#define ML_build_uintN(n, byte_order, buffer, value)                 \
-    do {                                                             \
-        if (byte_order == ML_LITTLE_ENDIAN) {                        \
-            value = *((ML_N_BIT_INT_T(n) *) buffer);                 \
-        } else {                                                     \
-            value = ML_REVERSE_BYTES_FUNC(n)(                        \
-                *((ML_N_BIT_INT_T(n) *) buffer));                    \
-        }                                                            \
-    } while (0)
-#endif
-
-// ML_do_read_binary_uintN(int nbytes, int nbits, MR_Word stream,
-//     MR_Word byte_order, MR_Word result_code, MR_Word result_value,
-//     MR_Word result_incomplete, MR_Word result_error):
-//
-// This macro implements the do_read_binary_uint{16 32,64}/8 predicates.
-// It expands to code for reading an 'nbits'-bit ('nbytes'-byte) unsigned
-// integer from the binary stream 'stream', with the bytes in the stream
-// being in 'byte_order' order.
-//
-// The result is returned as follows:
-//
-// 'result_code' is set the status code (maybe_incomplete_result_code/0)
-// for the read.
-// 'result_value' is the value of the integer read on a successful read
-// and zero otherwise.
-// 'result_incomplete' is the list of bytes read so far for an incomplete
-// read, and the empty list otherwise.
-// 'result_error' is the errno if an I/O error occurs, and zero otherwise.
-//
-#define ML_do_read_binary_uintN(nbytes, nbits, stream, byte_order,           \
-       result_code, result_value, result_incomplete, result_error)           \
-    do {                                                                     \
-        unsigned char buffer[nbytes];                                        \
-        size_t nread = MR_READ(*stream, buffer, nbytes);                     \
-        result_incomplete = MR_list_empty();                                 \
-                                                                             \
-        if (nread < nbytes) {                                                \
-            result_value = 0;                                                \
-            if (MR_FERROR(*stream)) {                                        \
-                result_code = ML_MIRC_ERROR,                                 \
-                result_error = errno;                                        \
-            } else if (nread > 0) {                                          \
-                int i;                                                       \
-                result_code = ML_MIRC_INCOMPLETE;                            \
-                for (i = nread - 1; i >= 0; i--) {                           \
-                    result_incomplete =                                      \
-                        MR_list_cons(buffer[i],                              \
-                        result_incomplete);                                  \
-                }                                                            \
-                result_error = 0;                                            \
-            } else {                                                         \
-                result_code = ML_MIRC_EOF;                                   \
-                result_error = 0;                                            \
-            }                                                                \
-        } else {                                                             \
-            result_code = ML_MIRC_OK;                                        \
-            ML_build_uintN(nbits, byte_order, buffer, result_value);         \
-            result_error = 0;                                                \
-        }                                                                    \
-    } while (0)
-").
-
 %---------------------------------------------------------------------------%
 %
 % Writing values of primitive types.
@@ -6351,84 +5525,6 @@ write_char(output_stream(Stream), Character, !IO) :-
     do_write_char(Stream, Character, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred do_write_char(stream::in, char::in, system_error::out, io::di, io::uo)
-    is det.
-
-:- pragma foreign_proc("C",
-    do_write_char(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    Error = 0;
-    if (Character <= 0x7f) {
-        if (MR_PUTCH(*Stream, Character) < 0) {
-            Error = errno;
-        } else if (Character == '\\n') {
-            MR_line_number(*Stream)++;
-        }
-    } else {
-        char    buf[5];
-        size_t  len;
-        size_t  i;
-        len = MR_utf8_encode(buf, Character);
-        // XXX ILSEQ Error if len==0
-        for (i = 0; i < len; i++) {
-            if (MR_PUTCH(*Stream, buf[i]) < 0) {
-                Error = errno;
-                break;
-            }
-        }
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_char(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        may_not_duplicate],
-"
-    io.MR_MercuryFileStruct stream = Stream;
-    try {
-        // See mercury_print_string().
-        if (stream.writer == null) {
-            stream.writer = new System.IO.StreamWriter(stream.stream,
-                text_encoding);
-        }
-        System.IO.TextWriter w = stream.writer;
-        if (Character == '\\n') {
-            switch (stream.line_ending) {
-            case io.ML_line_ending_kind.ML_raw_binary:
-            case io.ML_line_ending_kind.ML_Unix_line_ending:
-                mercury_write_codepoint(w, Character);
-                break;
-            case io.ML_line_ending_kind.ML_OS_line_ending:
-                w.WriteLine("""");
-                break;
-            }
-            stream.line_number++;
-        } else {
-            mercury_write_codepoint(w, Character);
-        }
-        Error = null;
-    } catch (System.SystemException e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_char(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        char[] buf = java.lang.Character.toChars(Character);
-        for (char c : buf) {
-            ((io.MR_TextOutputFile) Stream).put(c);
-        }
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
-
 %---------------------%
 
 write_int(Val, !IO) :-
@@ -6438,45 +5534,6 @@ write_int(Val, !IO) :-
 write_int(output_stream(Stream), Val, !IO) :-
     do_write_int(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
-
-:- pred do_write_int(stream::in, int::in, system_error::out, io::di, io::uo)
-    is det.
-
-:- pragma foreign_proc("C",
-    do_write_int(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    if (ML_fprintf(Stream, ""%"" MR_INTEGER_LENGTH_MODIFIER ""d"", Val) < 0) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_int(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        io.mercury_print_string(Stream, Val.ToString());
-        Error = null;
-    } catch (System.SystemException e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_int(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        ((io.MR_TextOutputFile) Stream).write(String.valueOf(Val));
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
 
 %---------------------%
 
@@ -6488,46 +5545,6 @@ write_uint(output_stream(Stream), Val, !IO) :-
     do_write_uint(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred do_write_uint(stream::in, uint::in, system_error::out, io::di, io::uo)
-    is det.
-
-:- pragma foreign_proc("C",
-    do_write_uint(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    if (ML_fprintf(Stream, ""%"" MR_INTEGER_LENGTH_MODIFIER ""u"", Val) < 0) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_uint(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        io.mercury_print_string(Stream, Val.ToString());
-        Error = null;
-    } catch (System.SystemException e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_uint(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        ((io.MR_TextOutputFile) Stream).write(
-            java.lang.Long.toString(Val & 0xffffffffL));
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
-
 %---------------------%
 
 write_int8(Val, !IO) :-
@@ -6537,45 +5554,6 @@ write_int8(Val, !IO) :-
 write_int8(output_stream(Stream), Val, !IO) :-
     do_write_int8(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
-
-:- pred do_write_int8(stream::in, int8::in, system_error::out, io::di, io::uo)
-    is det.
-
-:- pragma foreign_proc("C",
-    do_write_int8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    if (ML_fprintf(Stream, ""%"" PRId8, Val) < 0) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_int8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        io.mercury_print_string(Stream, Val.ToString());
-        Error = null;
-    } catch (System.SystemException e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_int8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        ((io.MR_TextOutputFile) Stream).write(String.valueOf(Val));
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
 
 %---------------------%
 
@@ -6587,46 +5565,6 @@ write_uint8(output_stream(Stream), Val, !IO) :-
     do_write_uint8(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred do_write_uint8(stream::in, uint8::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_uint8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    if (ML_fprintf(Stream, ""%"" PRIu8, Val) < 0) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_uint8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        io.mercury_print_string(Stream, Val.ToString());
-        Error = null;
-    } catch (System.SystemException e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_uint8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        ((io.MR_TextOutputFile) Stream).write(
-            java.lang.Integer.toString(Val & 0xff));
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
-
 %---------------------%
 
 write_int16(Val, !IO) :-
@@ -6636,45 +5574,6 @@ write_int16(Val, !IO) :-
 write_int16(output_stream(Stream), Val, !IO) :-
     do_write_int16(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
-
-:- pred do_write_int16(stream::in, int16::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_int16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    if (ML_fprintf(Stream, ""%"" PRId16, Val) < 0) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_int16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        io.mercury_print_string(Stream, Val.ToString());
-        Error = null;
-    } catch (System.SystemException e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_int16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        ((io.MR_TextOutputFile) Stream).write(String.valueOf(Val));
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
 
 %---------------------%
 
@@ -6686,46 +5585,6 @@ write_uint16(output_stream(Stream), Val, !IO) :-
     do_write_uint16(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred do_write_uint16(stream::in, uint16::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_uint16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    if (ML_fprintf(Stream, ""%"" PRIu16, Val) < 0) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_uint16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        io.mercury_print_string(Stream, Val.ToString());
-        Error = null;
-    } catch (System.SystemException e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_uint16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        ((io.MR_TextOutputFile) Stream).write(
-            java.lang.Integer.toString(Val & 0xffff));
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
-
 %---------------------%
 
 write_int32(Val, !IO) :-
@@ -6735,45 +5594,6 @@ write_int32(Val, !IO) :-
 write_int32(output_stream(Stream), Val, !IO) :-
     do_write_int32(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
-
-:- pred do_write_int32(stream::in, int32::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_int32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    if (ML_fprintf(Stream, ""%"" PRId32, Val) < 0) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_int32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        io.mercury_print_string(Stream, Val.ToString());
-        Error = null;
-    } catch (System.SystemException e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_int32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        ((io.MR_TextOutputFile) Stream).write(String.valueOf(Val));
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
 
 %---------------------%
 
@@ -6785,46 +5605,6 @@ write_uint32(output_stream(Stream), Val, !IO) :-
     do_write_uint32(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred do_write_uint32(stream::in, uint32::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_uint32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    if (ML_fprintf(Stream, ""%"" PRIu32, Val) < 0) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_uint32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        io.mercury_print_string(Stream, Val.ToString());
-        Error = null;
-    } catch (System.SystemException e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_uint32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        ((io.MR_TextOutputFile) Stream).write(
-            java.lang.Long.toString(Val & 0xffffffffL));
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
-
 %---------------------%
 
 write_int64(Val, !IO) :-
@@ -6834,45 +5614,6 @@ write_int64(Val, !IO) :-
 write_int64(output_stream(Stream), Val, !IO) :-
     do_write_int64(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
-
-:- pred do_write_int64(stream::in, int64::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_int64(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    if (ML_fprintf(Stream, ""%"" PRId64, Val) < 0) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_int64(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        io.mercury_print_string(Stream, Val.ToString());
-        Error = null;
-    } catch (System.SystemException e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_int64(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        ((io.MR_TextOutputFile) Stream).write(String.valueOf(Val));
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
 
 %---------------------%
 
@@ -6884,46 +5625,6 @@ write_uint64(output_stream(Stream), Val, !IO) :-
     do_write_uint64(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred do_write_uint64(stream::in, uint64::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_uint64(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    if (ML_fprintf(Stream, ""%"" PRIu64, Val) < 0) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_uint64(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        io.mercury_print_string(Stream, Val.ToString());
-        Error = null;
-    } catch (System.SystemException e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_uint64(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        ((io.MR_TextOutputFile) Stream).write(
-            java.lang.Long.toUnsignedString(Val));
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
-
 %---------------------%
 
 write_float(Val, !IO) :-
@@ -6934,52 +5635,6 @@ write_float(output_stream(Stream), Val, !IO) :-
     do_write_float(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
-:- pred do_write_float(stream::in, float::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_float(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    char buf[MR_SPRINTF_FLOAT_BUF_SIZE];
-    MR_sprintf_float(buf, Val);
-    if (ML_fprintf(Stream, ""%s"", buf) < 0) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-% XXX MISSING C# do_write_float
-
-:- pragma foreign_proc("Java",
-    do_write_float(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    io.MR_TextOutputFile stream = (io.MR_TextOutputFile) Stream;
-
-    try {
-        if (Double.isNaN(Val)) {
-            stream.write(""nan"");
-        } else if (Double.isInfinite(Val)) {
-            if (Val < 0.0) {
-                stream.write(""-infinity"");
-            } else {
-                stream.write(""infinity"");
-            }
-        } else {
-            stream.write(Double.toString(Val));
-        }
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
-
-do_write_float(Stream, Float, Error, !IO) :-
-    do_write_string(Stream, string.float_to_string(Float), Error, !IO).
-
 %---------------------%
 
 write_string(Message, !IO) :-
@@ -6989,51 +5644,6 @@ write_string(Message, !IO) :-
 write_string(output_stream(Stream), Message, !IO) :-
     do_write_string(Stream, Message, Error, !IO),
     throw_on_output_error(Error, !IO).
-
-:- pred do_write_string(stream::in, string::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_string(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    const char *s = Message;
-    if (ML_fprintf(Stream, ""%s"", s) < 0) {
-        Error = errno;
-    } else {
-        Error = 0;
-        while (*s) {
-            if (*s++ == '\\n') {
-                MR_line_number(*Stream)++;
-            }
-        }
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_string(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        io.mercury_print_string(Stream, Message);
-        Error = null;
-    } catch (System.SystemException e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_string(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        ((io.MR_TextOutputFile) Stream).write(Message);
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
 
 %---------------------%
 
@@ -7074,46 +5684,6 @@ write_binary_uint8(binary_output_stream(Stream), UInt8, !IO) :-
 
 %---------------------%
 
-:- pred do_write_byte(stream::in, int::in, system_error::out, io::di, io::uo)
-    is det.
-
-:- pragma foreign_proc("C",
-    do_write_byte(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    // Call putc with a strictly non-negative byte-sized integer.
-    if (MR_PUTCH(*Stream, (int) ((unsigned char) Byte)) < 0) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_byte(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        Stream.stream.WriteByte(System.Convert.ToByte(Byte));
-        Error = null;
-    } catch (System.SystemException e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_byte(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        ((io.MR_BinaryOutputFile) Stream).put((byte) Byte);
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
-
 %---------------------%
 
 write_binary_int16(Int16, !IO) :-
@@ -7133,48 +5703,6 @@ write_binary_uint16(binary_output_stream(Stream), UInt16, !IO) :-
     throw_on_output_error(Error, !IO).
 
 %---------------------%
-
-:- pred do_write_binary_uint16(stream::in, uint16::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_binary_uint16(Stream::in, U16::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    if (MR_WRITE(*Stream, (unsigned char *) (&U16), 2) != 2) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_binary_uint16(Stream::in, U16::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(2);
-        buffer.order(java.nio.ByteOrder.nativeOrder());
-        buffer.putShort(U16);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 2);
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_binary_uint16(Stream::in, U16::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    byte[] bytes = BitConverter.GetBytes(U16);
-    try {
-        Stream.stream.Write(bytes, 0, 2);
-        Error = null;
-    } catch (System.Exception e) {
-        Error = e;
-    }
-").
 
 %---------------------%
 
@@ -7196,58 +5724,6 @@ write_binary_uint16_le(binary_output_stream(Stream), UInt16, !IO) :-
 
 %---------------------%
 
-:- pred do_write_binary_uint16_le(stream::in, uint16::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_binary_uint16_le(Stream::in, U16::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    #if defined(MR_BIG_ENDIAN)
-        U16 = MR_uint16_reverse_bytes(U16);
-    #endif
-
-    if (MR_WRITE(*Stream, (unsigned char *) (&U16), 2) != 2) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_binary_uint16_le(Stream::in, U16::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    byte[] bytes = BitConverter.GetBytes(U16);
-    if (!BitConverter.IsLittleEndian) {
-        Array.Reverse(bytes);
-    }
-    try {
-        Stream.stream.Write(bytes, 0, 2);
-        Error = null;
-    } catch (System.Exception e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_binary_uint16_le(Stream::in, U16::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(2);
-        buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
-        buffer.putShort(U16);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 2);
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
-
 %---------------------%
 
 write_binary_int16_be(Int16, !IO) :-
@@ -7267,58 +5743,6 @@ write_binary_uint16_be(binary_output_stream(Stream), UInt16, !IO) :-
     throw_on_output_error(Error, !IO).
 
 %---------------------%
-
-:- pred do_write_binary_uint16_be(stream::in, uint16::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_binary_uint16_be(Stream::in, U16::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    #if defined(MR_LITTLE_ENDIAN)
-        U16 = MR_uint16_reverse_bytes(U16);
-    #endif
-
-    if (MR_WRITE(*Stream, (unsigned char *) (&U16), 2) != 2) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_binary_uint16_be(Stream::in, U16::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    byte[] bytes = BitConverter.GetBytes(U16);
-    if (BitConverter.IsLittleEndian) {
-        Array.Reverse(bytes);
-    }
-    try {
-        Stream.stream.Write(bytes, 0, 2);
-        Error = null;
-    } catch (System.Exception e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_binary_uint16_be(Stream::in, U16::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(2);
-        // Order in a byte buffer is big endian by default.
-        buffer.putShort(U16);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 2);
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
 
 %---------------------%
 
@@ -7340,50 +5764,6 @@ write_binary_uint32(binary_output_stream(Stream), UInt32, !IO) :-
 
 %---------------------%
 
-:- pred do_write_binary_uint32(stream::in, uint32::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_binary_uint32(Stream::in, U32::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    if (MR_WRITE(*Stream, (unsigned char *) (&U32), 4) != 4) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_binary_uint32(Stream::in, U32::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    byte[] bytes = BitConverter.GetBytes(U32);
-    try {
-        Stream.stream.Write(bytes, 0, 4);
-        Error = null;
-    } catch (System.Exception e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_binary_uint32(Stream::in, U32::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(4);
-        buffer.order(java.nio.ByteOrder.nativeOrder());
-        buffer.putInt(U32);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 4);
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
-
 %---------------------%
 
 write_binary_int32_le(Int32, !IO) :-
@@ -7403,58 +5783,6 @@ write_binary_uint32_le(binary_output_stream(Stream), UInt32, !IO) :-
     throw_on_output_error(Error, !IO).
 
 %---------------------%
-
-:- pred do_write_binary_uint32_le(stream::in, uint32::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_binary_uint32_le(Stream::in, U32::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    #if defined(MR_BIG_ENDIAN)
-        U32 = MR_uint32_reverse_bytes(U32);
-    #endif
-
-    if (MR_WRITE(*Stream, (unsigned char *) (&U32), 4) != 4) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_binary_uint32_le(Stream::in, U32::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    byte[] bytes = BitConverter.GetBytes(U32);
-    if (!BitConverter.IsLittleEndian) {
-        Array.Reverse(bytes);
-    }
-    try {
-        Stream.stream.Write(bytes, 0, 4);
-        Error = null;
-    } catch (System.Exception e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_binary_uint32_le(Stream::in, U32::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(4);
-        buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
-        buffer.putInt(U32);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 4);
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
 
 %---------------------%
 
@@ -7476,58 +5804,6 @@ write_binary_uint32_be(binary_output_stream(Stream), UInt32, !IO) :-
 
 %---------------------%
 
-:- pred do_write_binary_uint32_be(stream::in, uint32::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_binary_uint32_be(Stream::in, U32::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    #if defined(MR_LITTLE_ENDIAN)
-        U32 = MR_uint32_reverse_bytes(U32);
-    #endif
-
-    if (MR_WRITE(*Stream, (unsigned char *) (&U32), 4) != 4) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_binary_uint32_be(Stream::in, U32::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    byte[] bytes = BitConverter.GetBytes(U32);
-    if (BitConverter.IsLittleEndian) {
-        Array.Reverse(bytes);
-    }
-    try {
-        Stream.stream.Write(bytes, 0, 4);
-        Error = null;
-    } catch (System.Exception e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_binary_uint32_be(Stream::in, U32::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(4);
-        // Order in a byte buffer is big endian by default.
-        buffer.putInt(U32);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 4);
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
-
 %---------------------%
 
 write_binary_int64(Int64, !IO) :-
@@ -7547,50 +5823,6 @@ write_binary_uint64(binary_output_stream(Stream), UInt64, !IO) :-
     throw_on_output_error(Error, !IO).
 
 %---------------------%
-
-:- pred do_write_binary_uint64(stream::in, uint64::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_binary_uint64(Stream::in, U64::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    if (MR_WRITE(*Stream, (unsigned char *) (&U64), 8) != 8) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_binary_uint64(Stream::in, U64::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    byte[] bytes = BitConverter.GetBytes(U64);
-    try {
-        Stream.stream.Write(bytes, 0, 8);
-        Error = null;
-    } catch (System.Exception e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_binary_uint64(Stream::in, U64::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(8);
-        buffer.order(java.nio.ByteOrder.nativeOrder());
-        buffer.putLong(U64);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 8);
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
 
 %---------------------%
 
@@ -7612,58 +5844,6 @@ write_binary_uint64_le(binary_output_stream(Stream), UInt64, !IO) :-
 
 %---------------------%
 
-:- pred do_write_binary_uint64_le(stream::in, uint64::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_binary_uint64_le(Stream::in, U64::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    #if defined(MR_BIG_ENDIAN)
-        U64 = MR_uint64_reverse_bytes(U64);
-    #endif
-
-    if (MR_WRITE(*Stream, (unsigned char *) (&U64), 8) != 8) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_binary_uint64_le(Stream::in, U64::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    byte[] bytes = BitConverter.GetBytes(U64);
-    if (!BitConverter.IsLittleEndian) {
-        Array.Reverse(bytes);
-    }
-    try {
-        Stream.stream.Write(bytes, 0, 8);
-        Error = null;
-    } catch (System.Exception e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_binary_uint64_le(Stream::in, U64::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(8);
-        buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
-        buffer.putLong(U64);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 8);
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
-
 %---------------------%
 
 write_binary_int64_be(Int64, !IO) :-
@@ -7683,58 +5863,6 @@ write_binary_uint64_be(binary_output_stream(Stream), UInt64, !IO) :-
     throw_on_output_error(Error, !IO).
 
 %---------------------%
-
-:- pred do_write_binary_uint64_be(stream::in, uint64::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_write_binary_uint64_be(Stream::in, U64::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    #if defined(MR_LITTLE_ENDIAN)
-        U64 = MR_uint64_reverse_bytes(U64);
-    #endif
-
-    if (MR_WRITE(*Stream, (unsigned char *) (&U64), 8) != 8) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_write_binary_uint64_be(Stream::in, U64::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    byte[] bytes = BitConverter.GetBytes(U64);
-    if (BitConverter.IsLittleEndian) {
-        Array.Reverse(bytes);
-    }
-    try {
-        Stream.stream.Write(bytes, 0, 8);
-        Error = null;
-    } catch (System.Exception e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_write_binary_uint64_be(Stream::in, U64::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    try {
-        java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(8);
-        // Order in a byte buffer is big endian by default.
-        buffer.putLong(U64);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 8);
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
 
 %---------------------------------------------------------------------------%
 %

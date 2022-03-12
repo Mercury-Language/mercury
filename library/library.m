@@ -297,6 +297,8 @@ stdlib_module_doc_undoc("io",                           doc).
 stdlib_module_doc_undoc("io.call_system",               doc).
 stdlib_module_doc_undoc("io.environment",               doc).
 stdlib_module_doc_undoc("io.file",                      doc).
+stdlib_module_doc_undoc("io.primitives_read",           undoc).
+stdlib_module_doc_undoc("io.primitives_write",          undoc).
 stdlib_module_doc_undoc("io.stream_db",                 undoc).
 stdlib_module_doc_undoc("kv_list",                      doc).
 stdlib_module_doc_undoc("lazy",                         doc).
