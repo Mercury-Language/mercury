@@ -505,14 +505,14 @@ public static class SigIntHandler implements sun.misc.SignalHandler {
     try {
         System.Console.TreatControlCAsInput = false;
     }
-    catch (System.Exception e) {}
+    catch (System.Exception) {}
 
     try {
         System.Console.CancelKeyPress += new System.ConsoleCancelEventHandler(
             ssdb.sigint_handler
         );
     }
-    catch (System.Exception e) {}
+    catch (System.Exception) {}
 ").
 
 :- pragma foreign_proc("Java",

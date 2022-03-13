@@ -11567,7 +11567,7 @@ get_temp_directory(Dir, !IO) :-
     try {
         Dir = System.IO.Path.GetTempPath();
         OK = (Dir != null) ? 1 : 0;
-    } catch (System.Exception _) {
+    } catch (System.Exception) {
         Dir = null;
         OK = 0;
     }
