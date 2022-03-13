@@ -120,8 +120,8 @@ Changes to the Mercury standard library
 
 * The following new predicates have been added:
 
-    - pred `record_arguments/8'
-    - pred `expand_file_specials/8'
+    - pred `record_arguments/8`
+    - pred `expand_file_specials/8`
 
 * The following variants of the existing process_options predicate
   have been added:
