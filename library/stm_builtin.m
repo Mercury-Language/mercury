@@ -354,7 +354,7 @@
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     STM = NULL;
-    MR_final_io_state(IO);
+    // ignore IO
 ").
 
 :- pragma foreign_proc("C",
@@ -362,7 +362,7 @@
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     STM0 = NULL;
-    IO = MR_initial_io_state();
+    IO = 0; // The value does not matter.
 ").
 
 %---------------------------------------------------------------------------%

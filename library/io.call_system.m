@@ -233,12 +233,13 @@ call_system_return_signal(Command, Result, !IO) :-
             process = java.lang.Runtime.getRuntime().exec(Command);
         }
 
-        StreamPipe stdin = new StreamPipe(jmercury.io.mercury_stdin,
+        StreamPipe stdin = new StreamPipe(
+            jmercury.io__stream_ops.mercury_stdin,
             process.getOutputStream());
         StreamPipe stdout = new StreamPipe(process.getInputStream(),
-            jmercury.io.mercury_stdout);
+            jmercury.io__stream_ops.mercury_stdout);
         StreamPipe stderr = new StreamPipe(process.getErrorStream(),
-            jmercury.io.mercury_stderr);
+            jmercury.io__stream_ops.mercury_stderr);
         stdin.start();
         stdout.start();
         stderr.start();
@@ -270,24 +271,27 @@ call_system_return_signal(Command, Result, !IO) :-
 ").
 
 :- pragma foreign_code("Java", "
-
     // StreamPipe is a mechanism for connecting streams to those of a
     // Runtime.exec() Process.
 
     private static class StreamPipe extends java.lang.Thread {
-        jmercury.io.MR_TextInputFile        in;
-        jmercury.io.MR_TextOutputFile       out;
+        jmercury.io__stream_ops.MR_TextInputFile        in;
+        jmercury.io__stream_ops.MR_TextOutputFile       out;
         boolean                 closeOutput = false;
         java.lang.Exception     exception = null;
 
-        StreamPipe(java.io.InputStream in, jmercury.io.MR_TextOutputFile out) {
-            this.in  = new jmercury.io.MR_TextInputFile(in);
+        StreamPipe(java.io.InputStream in,
+            jmercury.io__stream_ops.MR_TextOutputFile out)
+        {
+            this.in  = new jmercury.io__stream_ops.MR_TextInputFile(in);
             this.out = out;
         }
 
-        StreamPipe(jmercury.io.MR_TextInputFile in, java.io.OutputStream out) {
+        StreamPipe(jmercury.io__stream_ops.MR_TextInputFile in,
+            java.io.OutputStream out)
+        {
             this.in  = in;
-            this.out = new jmercury.io.MR_TextOutputFile(out);
+            this.out = new jmercury.io__stream_ops.MR_TextOutputFile(out);
             closeOutput = true;
         }
 

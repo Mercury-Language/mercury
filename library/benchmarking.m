@@ -302,7 +302,7 @@ report_standard_stats(!IO) :-
 "
     try {
         jmercury.benchmarking.ML_report_standard_stats(
-            (jmercury.io.MR_TextOutputFile) Stream);
+            (jmercury.io__stream_ops.MR_TextOutputFile) Stream);
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -350,7 +350,7 @@ report_full_memory_stats(!IO) :-
 "
     try {
         jmercury.benchmarking.ML_report_full_memory_stats(
-            (jmercury.io.MR_TextOutputFile) Stream);
+            (jmercury.io__stream_ops.MR_TextOutputFile) Stream);
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -432,6 +432,10 @@ report_full_memory_stats :-
 
 %---------------------------------------------------------------------------%
 
+:- pragma foreign_import_module("C#",   io.primitives_write).
+:- pragma foreign_import_module("C#",   io.stream_ops).
+:- pragma foreign_import_module("Java", io.stream_ops).
+
 :- pragma foreign_code("C#",
 "
 private static double user_time_at_start
@@ -444,7 +448,7 @@ private static long real_time_at_start
 private static long real_time_at_last_stat;
 
 public static void
-ML_report_standard_stats(io.MR_MercuryFileStruct stream)
+ML_report_standard_stats(mercury.io__stream_ops.MR_MercuryFileStruct stream)
 {
     double user_time_at_prev_stat = user_time_at_last_stat;
     user_time_at_last_stat = System.Diagnostics.Process.GetCurrentProcess()
@@ -453,26 +457,28 @@ ML_report_standard_stats(io.MR_MercuryFileStruct stream)
     long real_time_at_prev_stat = real_time_at_last_stat;
     real_time_at_last_stat = System.DateTime.Now.Ticks;
 
-    io.mercury_print_string(stream, System.String.Format(
-        ""[User time: +{0:F2}s, {1:F2}s Real time: +{2:F2}s, {3:F2}s]\\n"",
-        (user_time_at_last_stat - user_time_at_prev_stat),
-        (user_time_at_last_stat - user_time_at_start),
-        ((real_time_at_last_stat - real_time_at_prev_stat)
-            / (double) System.TimeSpan.TicksPerSecond),
-        ((real_time_at_last_stat - real_time_at_start)
-           / (double) System.TimeSpan.TicksPerSecond)
-    ));
+    mercury.io__primitives_write.mercury_print_string(stream,
+        System.String.Format(
+            ""[User time: +{0:F2}s, {1:F2}s Real time: +{2:F2}s, {3:F2}s]\\n"",
+            (user_time_at_last_stat - user_time_at_prev_stat),
+            (user_time_at_last_stat - user_time_at_start),
+            ((real_time_at_last_stat - real_time_at_prev_stat)
+                / (double) System.TimeSpan.TicksPerSecond),
+            ((real_time_at_last_stat - real_time_at_start)
+               / (double) System.TimeSpan.TicksPerSecond)
+            )
+        );
     // XXX At this point there should be a whole bunch of memory usage
     // statistics.
 }
 
 public static void
-ML_report_full_memory_stats(io.MR_MercuryFileStruct stream)
+ML_report_full_memory_stats(mercury.io__stream_ops.MR_MercuryFileStruct stream)
 {
     // XXX The support for this predicate is even worse. Since we don't have
     // access to memory usage statistics, all you get here is an apology.
     // But at least it doesn't just crash with an error.
-    io.mercury_print_string(stream,
+    mercury.io__primitives_write.mercury_print_string(stream,
         ""Sorry, report_full_memory_stats is not yet "" +
             ""implemented for the C# back-end.\\n"");
 }
@@ -496,7 +502,7 @@ ML_initialise()
 }
 
 public static void
-ML_report_standard_stats(jmercury.io.MR_TextOutputFile stream)
+ML_report_standard_stats(jmercury.io__stream_ops.MR_TextOutputFile stream)
     throws java.io.IOException
 {
     int user_time_at_prev_stat = user_time_at_last_stat;
@@ -525,7 +531,7 @@ ML_report_standard_stats(jmercury.io.MR_TextOutputFile stream)
 }
 
 public static void
-ML_report_full_memory_stats(jmercury.io.MR_TextOutputFile stream)
+ML_report_full_memory_stats(jmercury.io__stream_ops.MR_TextOutputFile stream)
     throws java.io.IOException
 {
     // XXX The support for this predicate is even worse. Since we don't have

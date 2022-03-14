@@ -96,13 +96,6 @@
 
 :- implementation.
 
-:- pragma foreign_decl("C", "
-#include ""mercury_types.h""            // for MR_Integer
-#include ""mercury_int.h""              // for MR_*_reverse_bytes
-
-#include <inttypes.h>
-").
-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
@@ -137,27 +130,28 @@
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
-    io.MR_MercuryFileStruct stream = Stream;
+    mercury.io__stream_ops.MR_MercuryFileStruct stream = Stream;
     try {
         // See mercury_print_string().
         if (stream.writer == null) {
             stream.writer = new System.IO.StreamWriter(stream.stream,
-                io.text_encoding);
+                mercury.io__stream_ops.text_encoding);
         }
         System.IO.TextWriter w = stream.writer;
         if (Character == '\\n') {
             switch (stream.line_ending) {
-            case io.ML_line_ending_kind.ML_raw_binary:
-            case io.ML_line_ending_kind.ML_Unix_line_ending:
-                mercury.io.mercury_write_codepoint(w, Character);
+            case mercury.io__stream_ops.ML_line_ending_kind.ML_raw_binary:
+            case mercury.io__stream_ops.ML_line_ending_kind.ML_Unix_line_ending:
+                mercury.io__primitives_write.mercury_write_codepoint(w,
+                    Character);
                 break;
-            case io.ML_line_ending_kind.ML_OS_line_ending:
+            case mercury.io__stream_ops.ML_line_ending_kind.ML_OS_line_ending:
                 w.WriteLine("""");
                 break;
             }
             stream.line_number++;
         } else {
-            mercury.io.mercury_write_codepoint(w, Character);
+            mercury.io__primitives_write.mercury_write_codepoint(w, Character);
         }
         Error = null;
     } catch (System.SystemException e) {
@@ -172,7 +166,7 @@
     try {
         char[] buf = java.lang.Character.toChars(Character);
         for (char c : buf) {
-            ((io.MR_TextOutputFile) Stream).put(c);
+            ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).put(c);
         }
         Error = null;
     } catch (java.io.IOException e) {
@@ -199,7 +193,8 @@
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        io.mercury_print_string(Stream, Val.ToString());
+        mercury.io__primitives_write.mercury_print_string(Stream,
+            Val.ToString());
         Error = null;
     } catch (System.SystemException e) {
         Error = e;
@@ -211,7 +206,8 @@
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
-        ((io.MR_TextOutputFile) Stream).write(String.valueOf(Val));
+        ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
+            String.valueOf(Val));
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -237,7 +233,8 @@
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        io.mercury_print_string(Stream, Val.ToString());
+        mercury.io__primitives_write.mercury_print_string(Stream,
+            Val.ToString());
         Error = null;
     } catch (System.SystemException e) {
         Error = e;
@@ -249,7 +246,7 @@
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
-        ((io.MR_TextOutputFile) Stream).write(
+        ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
             java.lang.Long.toString(Val & 0xffffffffL));
         Error = null;
     } catch (java.io.IOException e) {
@@ -276,7 +273,8 @@
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        io.mercury_print_string(Stream, Val.ToString());
+        mercury.io__primitives_write.mercury_print_string(Stream,
+            Val.ToString());
         Error = null;
     } catch (System.SystemException e) {
         Error = e;
@@ -288,7 +286,8 @@
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
-        ((io.MR_TextOutputFile) Stream).write(String.valueOf(Val));
+        ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
+            String.valueOf(Val));
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -314,7 +313,8 @@
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        io.mercury_print_string(Stream, Val.ToString());
+        mercury.io__primitives_write.mercury_print_string(Stream,
+            Val.ToString());
         Error = null;
     } catch (System.SystemException e) {
         Error = e;
@@ -326,7 +326,7 @@
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
-        ((io.MR_TextOutputFile) Stream).write(
+        ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
             java.lang.Integer.toString(Val & 0xff));
         Error = null;
     } catch (java.io.IOException e) {
@@ -353,7 +353,8 @@
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        io.mercury_print_string(Stream, Val.ToString());
+        mercury.io__primitives_write.mercury_print_string(Stream,
+            Val.ToString());
         Error = null;
     } catch (System.SystemException e) {
         Error = e;
@@ -365,7 +366,8 @@
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
-        ((io.MR_TextOutputFile) Stream).write(String.valueOf(Val));
+        ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
+            String.valueOf(Val));
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -391,7 +393,8 @@
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        io.mercury_print_string(Stream, Val.ToString());
+        mercury.io__primitives_write.mercury_print_string(Stream,
+            Val.ToString());
         Error = null;
     } catch (System.SystemException e) {
         Error = e;
@@ -403,7 +406,7 @@
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
-        ((io.MR_TextOutputFile) Stream).write(
+        ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
             java.lang.Integer.toString(Val & 0xffff));
         Error = null;
     } catch (java.io.IOException e) {
@@ -430,7 +433,8 @@
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        io.mercury_print_string(Stream, Val.ToString());
+        mercury.io__primitives_write.mercury_print_string(Stream,
+            Val.ToString());
         Error = null;
     } catch (System.SystemException e) {
         Error = e;
@@ -442,7 +446,8 @@
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
-        ((io.MR_TextOutputFile) Stream).write(String.valueOf(Val));
+        ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
+            String.valueOf(Val));
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -468,7 +473,8 @@
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        io.mercury_print_string(Stream, Val.ToString());
+        mercury.io__primitives_write.mercury_print_string(Stream,
+            Val.ToString());
         Error = null;
     } catch (System.SystemException e) {
         Error = e;
@@ -480,7 +486,7 @@
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
-        ((io.MR_TextOutputFile) Stream).write(
+        ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
             java.lang.Long.toString(Val & 0xffffffffL));
         Error = null;
     } catch (java.io.IOException e) {
@@ -507,7 +513,8 @@
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        io.mercury_print_string(Stream, Val.ToString());
+        mercury.io__primitives_write.mercury_print_string(Stream,
+            Val.ToString());
         Error = null;
     } catch (System.SystemException e) {
         Error = e;
@@ -519,7 +526,8 @@
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
-        ((io.MR_TextOutputFile) Stream).write(String.valueOf(Val));
+        ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
+            String.valueOf(Val));
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -545,7 +553,8 @@
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        io.mercury_print_string(Stream, Val.ToString());
+        mercury.io__primitives_write.mercury_print_string(Stream,
+            Val.ToString());
         Error = null;
     } catch (System.SystemException e) {
         Error = e;
@@ -557,7 +566,7 @@
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
-        ((io.MR_TextOutputFile) Stream).write(
+        ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(
             java.lang.Long.toUnsignedString(Val));
         Error = null;
     } catch (java.io.IOException e) {
@@ -587,7 +596,8 @@
     do_write_float(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    io.MR_TextOutputFile stream = (io.MR_TextOutputFile) Stream;
+    jmercury.io__stream_ops.MR_TextOutputFile stream =
+        (jmercury.io__stream_ops.MR_TextOutputFile) Stream;
 
     try {
         if (Double.isNaN(Val)) {
@@ -635,7 +645,7 @@ do_write_float(Stream, Float, Error, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        io.mercury_print_string(Stream, Message);
+        mercury.io__primitives_write.mercury_print_string(Stream, Message);
         Error = null;
     } catch (System.SystemException e) {
         Error = e;
@@ -647,7 +657,7 @@ do_write_float(Stream, Float, Error, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        ((io.MR_TextOutputFile) Stream).write(Message);
+        ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).write(Message);
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -686,7 +696,8 @@ do_write_float(Stream, Float, Error, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        ((io.MR_BinaryOutputFile) Stream).put((byte) Byte);
+        ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).put(
+            (byte) Byte);
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -714,7 +725,8 @@ do_write_float(Stream, Float, Error, !IO) :-
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(2);
         buffer.order(java.nio.ByteOrder.nativeOrder());
         buffer.putShort(U16);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 2);
+        ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).write(
+            buffer.array(), 0, 2);
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -778,7 +790,8 @@ do_write_float(Stream, Float, Error, !IO) :-
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(2);
         buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
         buffer.putShort(U16);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 2);
+        ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).write(
+            buffer.array(), 0, 2);
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -829,7 +842,8 @@ do_write_float(Stream, Float, Error, !IO) :-
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(2);
         // Order in a byte buffer is big endian by default.
         buffer.putShort(U16);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 2);
+        ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).write(
+            buffer.array(), 0, 2);
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -872,7 +886,8 @@ do_write_float(Stream, Float, Error, !IO) :-
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(4);
         buffer.order(java.nio.ByteOrder.nativeOrder());
         buffer.putInt(U32);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 4);
+        ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).write(
+            buffer.array(), 0, 4);
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -923,7 +938,8 @@ do_write_float(Stream, Float, Error, !IO) :-
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(4);
         buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
         buffer.putInt(U32);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 4);
+        ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).write(
+            buffer.array(), 0, 4);
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -974,7 +990,8 @@ do_write_float(Stream, Float, Error, !IO) :-
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(4);
         // Order in a byte buffer is big endian by default.
         buffer.putInt(U32);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 4);
+        ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).write(
+            buffer.array(), 0, 4);
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -1017,7 +1034,8 @@ do_write_float(Stream, Float, Error, !IO) :-
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(8);
         buffer.order(java.nio.ByteOrder.nativeOrder());
         buffer.putLong(U64);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 8);
+        ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).write(
+            buffer.array(), 0, 8);
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -1068,7 +1086,8 @@ do_write_float(Stream, Float, Error, !IO) :-
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(8);
         buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
         buffer.putLong(U64);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 8);
+        ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).write(
+            buffer.array(), 0, 8);
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -1119,11 +1138,113 @@ do_write_float(Stream, Float, Error, !IO) :-
         java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(8);
         // Order in a byte buffer is big endian by default.
         buffer.putLong(U64);
-        ((io.MR_BinaryOutputFile) Stream).write(buffer.array(), 0, 8);
+        ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).write(
+            buffer.array(), 0, 8);
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
     }
+").
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_decl("C", "
+// XXX zs: I don't know which other #includes from io.m, if any,
+// we should have here to make the C code for this module self-contained.
+
+#include ""mercury_types.h""            // for MR_Integer
+#include ""mercury_library_types.h""    // for MercuryFilePtr, MR_PUTCH etc
+#include ""mercury_int.h""              // for MR_*_reverse_bytes
+
+#include <stdio.h>
+#include <stdarg.h>
+#include <inttypes.h>
+
+int ML_fprintf(MercuryFilePtr mf, const char *format, ...);
+").
+
+:- pragma foreign_code("C", "
+int
+ML_fprintf(MercuryFilePtr mf, const char *format, ...)
+{
+    int     rc;
+    va_list args;
+
+    va_start(args, format);
+    rc = MR_VFPRINTF(*mf, format, args);
+    va_end(args);
+
+    return rc;
+}
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_import_module("C#", io.stream_ops).
+
+:- pragma foreign_decl("C#", "
+// XXX zs: I don't know which of these are needed.
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.AccessControl;
+using System.Security.Principal;
+").
+
+:- pragma foreign_code("C#", "
+public static void
+mercury_write_codepoint(System.IO.TextWriter w, int c)
+{
+    if (c <= 0xffff) {
+        w.Write((char) c);
+    } else {
+        w.Write(System.Char.ConvertFromUtf32(c));
+    }
+}
+
+// Any changes here should also be reflected in the code for io.write_char,
+// which (for efficiency) uses its own inline code, rather than calling
+// this function.
+public static void
+mercury_print_string(mercury.io__stream_ops.MR_MercuryFileStruct mf, string s)
+{
+    if (mf.writer == null) {
+        mf.writer = new System.IO.StreamWriter(mf.stream,
+            mercury.io__stream_ops.text_encoding);
+    }
+
+    switch (mf.line_ending) {
+    case mercury.io__stream_ops.ML_line_ending_kind.ML_raw_binary:
+    case mercury.io__stream_ops.ML_line_ending_kind.ML_Unix_line_ending:
+        mf.writer.Write(s);
+        for (int i = 0; i < s.Length; i++) {
+            if (s[i] == '\\n') {
+                mf.line_number++;
+            }
+        }
+        break;
+    case mercury.io__stream_ops.ML_line_ending_kind.ML_OS_line_ending:
+        // We can't just use the System.TextWriter.Write(String) method,
+        // since that method doesn't convert newline characters to the
+        // system's newline convention (e.g. CR-LF on Windows).
+        // Only the WriteLine(...) method handles those properly.
+        // So we have to output each character separately.
+
+        for (int i = 0; i < s.Length; i++) {
+            if (System.Char.IsSurrogate(s[i])) {
+                mf.writer.Write(s.Substring(i, 2));
+                i++;
+            } else if (s[i] == '\\n') {
+                mf.line_number++;
+                mf.writer.WriteLine("""");
+            } else {
+                mf.writer.Write(s[i]);
+            }
+        }
+        break;
+    }
+}
 ").
 
 %---------------------------------------------------------------------------%

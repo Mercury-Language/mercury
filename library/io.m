@@ -2094,7 +2094,12 @@
 
 :- interface.
 
-%---------------------------------------------------------------------------%
+:- include_module primitives_read.  % Include exported for symmetry.
+:- include_module primitives_write. % Include exported for benchmarking.m.
+:- include_module stream_db.        % Include exported for browser/browse.m.
+:- include_module stream_ops.       % Include exported for benchmarking.m.
+
+%---------------------%
 %
 % For use by library.m.
 %
@@ -2201,13 +2206,6 @@
 
 %---------------------%
 %
-% For use by browser/browse.m.
-%
-
-:- include_module stream_db.
-
-%---------------------%
-%
 % For use by the compiler transformation that implements trace [io(!IO)].
 % Both of these are builtins.
 %
@@ -2228,9 +2226,6 @@
 
 :- implementation.
 
-:- include_module primitives_read.
-:- include_module primitives_write.
-
 :- import_module benchmarking.
 :- import_module dir.
 :- import_module exception.
@@ -2245,6 +2240,7 @@
 :- import_module io.primitives_read.
 :- import_module io.primitives_write.
 :- import_module io.stream_db.
+:- import_module io.stream_ops.
 :- import_module mercury_term_parser.
 :- import_module require.
 :- import_module stream.string_writer.
@@ -2312,10 +2308,12 @@ io_state_compare(_, _, _) :-
 
 :- type stream
     --->    stream(c_pointer).
-:- pragma foreign_type("C", stream, "MercuryFilePtr",
-    [can_pass_as_mercury_type]).
-:- pragma foreign_type("C#", stream, "io.MR_MercuryFileStruct").
-:- pragma foreign_type("Java", stream, "io.MR_MercuryFileStruct").
+:- pragma foreign_type("C", stream,
+    "MercuryFilePtr", [can_pass_as_mercury_type]).
+:- pragma foreign_type("C#", stream,
+    "mercury.io__stream_ops.MR_MercuryFileStruct").
+:- pragma foreign_type("Java", stream,
+    "jmercury.io__stream_ops.MR_MercuryFileStruct").
 
     % A unique identifier for an I/O stream.
     %
@@ -2422,7 +2420,6 @@ interpret_maybe_incomplete_result_code(Value, IncompleteBytes, Error,
 #include ""mercury_init.h""
 #include ""mercury_wrapper.h""
 #include ""mercury_type_info.h""
-#include ""mercury_library_types.h""
 #include ""mercury_file.h""
 #include ""mercury_heap.h""
 #include ""mercury_misc.h""
@@ -2444,55 +2441,17 @@ interpret_maybe_incomplete_result_code(Value, IncompleteBytes, Error,
 #ifdef MR_WIN32
   #include ""mercury_windows.h""
 #endif
-").
-
-:- pragma foreign_decl("C", "
-#if defined(MR_MSVC)
-    typedef SSIZE_T     ML_ssize_t;
-#else
-    typedef ssize_t     ML_ssize_t;
-#endif
-
-extern MercuryFile      mercury_stdin;
-extern MercuryFile      mercury_stdout;
-extern MercuryFile      mercury_stderr;
-extern MercuryFile      mercury_stdin_binary;
-extern MercuryFile      mercury_stdout_binary;
-
-extern MR_Unsigned      mercury_current_text_input_index;
-extern MR_Unsigned      mercury_current_text_output_index;
-extern MR_Unsigned      mercury_current_binary_input_index;
-extern MR_Unsigned      mercury_current_binary_output_index;
-
-// A counter used to generate unique stream ids.
-extern int              ML_next_stream_id;
 
 extern MR_Word          ML_io_user_globals;
+#ifdef MR_THREAD_SAFE
+    extern MercuryLock  ML_io_user_globals_lock;
+#endif
 
 #if 0
     extern MR_Word      ML_io_ops_table;
 #endif
 
-#ifdef MR_THREAD_SAFE
-    extern MercuryLock  ML_io_user_globals_lock;
-    extern MercuryLock  ML_io_next_stream_id_lock;
-#endif
-
-#define MR_initial_io_state()       0   // some random number
-#define MR_final_io_state(r)        ((void) 0)
-
 void                    mercury_init_io(void);
-MercuryFilePtr          mercury_current_text_input(void);
-MercuryFilePtr          mercury_current_text_output(void);
-MercuryFilePtr          mercury_current_binary_input(void);
-MercuryFilePtr          mercury_current_binary_output(void);
-int                     mercury_next_stream_id(void);
-MercuryFilePtr          mercury_open(const char *filename,
-                             const char *openmode,
-                             MR_AllocSiteInfoPtr alloc_id);
-int                     mercury_get_byte(MercuryFilePtr mf);
-int                     mercury_close(MercuryFilePtr mf);
-int                     ML_fprintf(MercuryFilePtr mf, const char *format, ...);
 
 #ifdef MR_WIN32
     wchar_t             *ML_utf8_to_wide(const char *s);
@@ -2502,28 +2461,13 @@ int                     ML_fprintf(MercuryFilePtr mf, const char *format, ...);
 ").
 
 :- pragma foreign_code("C", "
-MercuryFile     mercury_stdin;
-MercuryFile     mercury_stdout;
-MercuryFile     mercury_stderr;
-MercuryFile     mercury_stdin_binary;
-MercuryFile     mercury_stdout_binary;
-
-MR_Unsigned     mercury_current_text_input_index;
-MR_Unsigned     mercury_current_text_output_index;
-MR_Unsigned     mercury_current_binary_input_index;
-MR_Unsigned     mercury_current_binary_output_index;
-
-int             ML_next_stream_id;
-
 MR_Word         ML_io_user_globals;
+#ifdef MR_THREAD_SAFE
+    MercuryLock ML_io_user_globals_lock;
+#endif
 
 #if 0
     MR_Word     ML_io_ops_table;
-#endif
-
-#ifdef MR_THREAD_SAFE
-    MercuryLock ML_io_user_globals_lock;
-    MercuryLock ML_io_next_stream_id_lock;
 #endif
 
 static void
@@ -2591,108 +2535,6 @@ mercury_init_io(void)
 #endif
 }
 
-MercuryFilePtr
-mercury_current_text_input(void)
-{
-    MercuryFilePtr stream;
-    MR_get_thread_local_mutable(MercuryFilePtr, stream,
-        mercury_current_text_input_index);
-    return stream;
-}
-
-MercuryFilePtr
-mercury_current_text_output(void)
-{
-    MercuryFilePtr stream;
-    MR_get_thread_local_mutable(MercuryFilePtr, stream,
-        mercury_current_text_output_index);
-    return stream;
-}
-
-MercuryFilePtr
-mercury_current_binary_input(void)
-{
-    MercuryFilePtr stream;
-    MR_get_thread_local_mutable(MercuryFilePtr, stream,
-        mercury_current_binary_input_index);
-    return stream;
-}
-
-MercuryFilePtr
-mercury_current_binary_output(void)
-{
-    MercuryFilePtr stream;
-    MR_get_thread_local_mutable(MercuryFilePtr, stream,
-        mercury_current_binary_output_index);
-    return stream;
-}
-
-int
-mercury_next_stream_id(void)
-{
-    int id;
-    // XXX We don't know whether the new stream is text or binary.
-    MR_LOCK(&ML_io_next_stream_id_lock, ""io.do_open_text"");
-    id = ML_next_stream_id++;
-    MR_UNLOCK(&ML_io_next_stream_id_lock, ""io.do_open_text"");
-    return id;
-}
-
-MercuryFilePtr
-mercury_open(const char *filename, const char *openmode,
-    MR_AllocSiteInfoPtr alloc_id)
-{
-    MercuryFilePtr  mf;
-    FILE            *f;
-
-#ifdef MR_WIN32
-    f = _wfopen(ML_utf8_to_wide(filename), ML_utf8_to_wide(openmode));
-#else
-    f = fopen(filename, openmode);
-#endif
-
-    if (f == NULL) {
-        return NULL;
-    }
-
-    // Check if the opened file is actually a directory.
-    // If fileno or fstat are not available then we assume the OS would not
-    // let us open a directory as a file anyway.
-#if defined(MR_HAVE_FSTAT) && \
-        (defined(MR_HAVE_FILENO) || defined(fileno)) && defined(S_ISDIR)
-    {
-        struct stat stat_info;
-        int         stat_errno;
-
-        if (0 != fstat(fileno(f), &stat_info)) {
-            stat_errno = errno;
-            fclose(f);
-            errno = stat_errno;
-            return NULL;
-        }
-        if (S_ISDIR(stat_info.st_mode)) {
-            fclose(f);
-            errno = EISDIR;
-            return NULL;
-        }
-    }
-#endif
-
-    mf = MR_GC_NEW_ATTRIB(MercuryFile, alloc_id);
-    MR_mercuryfile_init(f, 1, mf);
-    return mf;
-}
-
-int
-mercury_get_byte(MercuryFilePtr mf)
-{
-    int c = MR_GETCH(*mf);
-    if (c == '\\n') {
-        MR_line_number(*mf)++;
-    }
-    return c;
-}
-
 #ifdef MR_WIN32
 
 // Accessing Unicode file names on Windows requires that we use the functions
@@ -2732,179 +2574,6 @@ ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
 }
 
 #endif // MR_WIN32
-
-#ifdef EBADF
-  #define MR_CLOSED_FILE_ERROR  EBADF
-#else
-  // ANSI/ISO C guarantees that EDOM will exist.
-  #define MR_CLOSED_FILE_ERROR  EDOM
-#endif
-
-#ifdef MR_NEW_MERCURYFILE_STRUCT
-
-static int
-ME_closed_stream_close(MR_StreamInfo *info)
-{
-    errno = MR_CLOSED_FILE_ERROR;
-    return EOF;
-}
-
-static int
-ME_closed_stream_read(MR_StreamInfo *info, void *buffer, size_t size)
-{
-    errno = MR_CLOSED_FILE_ERROR;
-    return -1;  // XXX should this be 0?
-}
-
-static int
-ME_closed_stream_write(MR_StreamInfo *info, const void *buffer, size_t size)
-{
-    errno = MR_CLOSED_FILE_ERROR;
-    return -1;  // XXX should this be 0?
-}
-
-static int
-ME_closed_stream_flush(MR_StreamInfo *info)
-{
-    errno = MR_CLOSED_FILE_ERROR;
-    return EOF;
-}
-
-static int
-ME_closed_stream_ungetch(MR_StreamInfo *info, int ch)
-{
-    errno = MR_CLOSED_FILE_ERROR;
-    return EOF;
-}
-
-static int
-ME_closed_stream_getch(MR_StreamInfo *info)
-{
-    errno = MR_CLOSED_FILE_ERROR;
-    return EOF;
-}
-
-static int
-ME_closed_stream_vfprintf(MR_StreamInfo *info, const char *format, va_list ap)
-{
-    errno = MR_CLOSED_FILE_ERROR;
-    return EOF;
-}
-
-static int
-ME_closed_stream_putch(MR_StreamInfo *info, int ch)
-{
-    errno = MR_CLOSED_FILE_ERROR;
-    return EOF;
-}
-
-static int
-ME_closed_stream_ferror(MR_StreamInfo *info)
-{
-    return 0;
-}
-
-static const MercuryFile MR_closed_stream = {
-    /* stream_type  = */    MR_USER_STREAM,
-    /* stream_info  = */    { NULL },
-    /* line_number  = */    0,
-
-    /* close    = */    ME_closed_stream_close,
-    /* read     = */    ME_closed_stream_read,
-    /* write    = */    ME_closed_stream_write,
-
-    /* flush    = */    ME_closed_stream_flush,
-    /* ungetc   = */    ME_closed_stream_ungetch,
-    /* getc     = */    ME_closed_stream_getch,
-    /* vprintf  = */    ME_closed_stream_vfprintf,
-    /* putc     = */    ME_closed_stream_putch,
-    /* ferror   = */    ME_closed_stream_ferror
-};
-
-#endif // MR_NEW_MERCURYFILE_STRUCT
-
-int
-mercury_close(MercuryFilePtr mf)
-{
-    // On some systems, attempting to close a file stream that has been
-    // previously closed will lead to a segmentation fault. We check that
-    // we have not previously closed the file stream here, so we can give
-    // the user some idea about what has happened.
-    if (MR_file(*mf) == NULL) {
-        errno = MR_CLOSED_FILE_ERROR;
-        return EOF;
-    }
-
-    if (MR_CLOSE(*mf) < 0) {
-        return EOF;
-    }
-
-#ifdef MR_NEW_MERCURYFILE_STRUCT
-
-    // MR_closed_stream is a dummy stream object containing pointers to
-    // functions that always return an error indication. Doing this ensures
-    // that future accesses to the file will fail nicely.
-
-    // gcc 2.95.2 barfs on `*mf = MR_closed_stream;'
-    // so we use MR_memcpy() instead.
-    MR_memcpy(mf, &MR_closed_stream, sizeof(*mf));
-
-    // XXX It would be nice to have an autoconf check for the GNU libc function
-    // fopencookie(); we could use that to do a similar thing to what we do
-    // in the MR_NEW_MERCURYFILE_STRUCT case.
-
-/****
-#elif defined(HAVE_FOPENCOOKIE)
-    MR_file(*mf) = MR_closed_file;
-****/
-
-#else
-
-    // We want future accesses to the file to fail nicely. Ideally they would
-    // throw an exception, but that would require a check at every I/O
-    // operation, and for simple operations like putchar() or getchar(),
-    // that would be too expensive. Instead we just set the file pointer
-    // to NULL; on systems which trap null pointer dereferences, or if
-    // library/io.m is compiled with MR_assert assertions enabled
-    // (i.e. -DMR_LOWLEVEL_DEBUG), this will ensure that accessing closed files
-    // traps immediately rather than causing problems at some later point.
-    MR_mercuryfile_init(NULL, 0, mf);
-
-#endif // ! MR_NEW_MERCURYFILE_STRUCT
-
-#ifndef MR_CONSERVATIVE_GC
-    if (mf == &mercury_stdin ||
-        mf == &mercury_stdout ||
-        mf == &mercury_stderr ||
-        mf == &mercury_stdin_binary ||
-        mf == &mercury_stdout_binary)
-    {
-        // The memory for these streams is allocated statically,
-        // so there is nothing to free.
-    } else {
-        // For the accurate GC or no GC cases, we need to explicitly deallocate
-        // the memory here, to avoid a memory leak. Note that the accurate
-        // collector will not reclaim io_streams, since the io.stream type
-        // is defined as a foreign_type.
-        MR_GC_free(mf);
-    }
-#endif // !MR_CONSERVATIVE_GC
-
-    return 0;
-}
-
-int
-ML_fprintf(MercuryFilePtr mf, const char *format, ...)
-{
-    int     rc;
-    va_list args;
-
-    va_start(args, format);
-    rc = MR_VFPRINTF(*mf, format, args);
-    va_end(args);
-
-    return rc;
-}
 ").
 
 %---------------------%
@@ -2913,516 +2582,10 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
     public static univ.Univ_0 ML_io_user_globals = null;
 ").
 
-:- pragma foreign_code("Java", "
-    // While strings are stored internally as UTF-16, all text file I/O
-    // (including stdin/stdout/stderr) is run through stream readers/writers
-    // that use UTF-8 encoding.
-    // Binary files are opened via RandomAccessFile, which supports seek,
-    // but not character encoding/decoding or buffering.
-    // Binary stdin and stdout are a special case. They are opened via
-    // FileInput/OutputStreams and seeking is controlled through use of
-    // FileChannels.
-    //
-    // The use of the methods in this implementation is not very flexible.
-    // You may not perform text mode operations on a binary file or vice versa.
-    // XXX This causes problems for io.read_binary and io.write_binary,
-    // for which the current implementations attempt to access binary
-    // streams using text mode operations (and so will definitely break.)
-
-    public abstract static class MR_MercuryFileStruct {
-        public  static int                  ML_next_stream_id = 0;
-        public  int                         id;
-
-        protected MR_MercuryFileStruct() {
-            assign_id();
-        }
-
-        private synchronized void assign_id() {
-            id = ML_next_stream_id++;
-        }
-
-        abstract public void close() throws java.io.IOException;
-    }
-
-    public static class MR_TextInputFile
-        extends MR_MercuryFileStruct
-    {
-        private java.io.InputStreamReader   input       = null;
-        private char[]                      buf         = new char[1024];
-        private int                         buf_pos     = 0;
-        private int                         buf_end     = 0;
-        public  int                         line_number = 1;
-
-        public MR_TextInputFile(java.io.InputStream stream) {
-            input = new java.io.InputStreamReader(stream,
-                java.nio.charset.StandardCharsets.UTF_8);
-        }
-
-        // refill_buffer():
-        // Returns true if the end of the stream has not been reached.
-        private boolean refill_buffer()
-            throws java.io.IOException
-        {
-            if (buf_end == buf_pos) {
-                int n = input.read(buf, 0, buf.length);
-                if (n == -1) {
-                    return false;
-                }
-                buf_end = n;
-                buf_pos = 0;
-            }
-            return true;
-        }
-
-        private int read_code_unit()
-            throws java.io.IOException
-        {
-            if (!refill_buffer()) {
-                return -1;
-            }
-
-            char c = buf[buf_pos];
-            buf_pos++;
-            return (int) c;
-        }
-
-        // read_char(): [Java]
-        //
-        // Reads one character in from a text input file using the default
-        // charset decoding. Returns -1 at end of file.
-        public int read_char()
-            throws java.io.IOException
-        {
-            final int c1 = read_code_unit();
-            if (c1 == -1) {
-                return -1;
-            }
-            if (c1 == '\\n') {
-                line_number++;
-            }
-            if (!Character.isHighSurrogate((char) c1)) {
-                return c1;
-            }
-            final int c2 = read_code_unit();
-            if (c2 != -1 && !Character.isLowSurrogate((char) c2)) {
-                // Return replacement character.
-                return 0xfffd;
-            }
-            return Character.toCodePoint((char) c1, (char) c2);
-        }
-
-        // read_line(): [Java]
-        //
-        // Reads in a line of a text input file using the default
-        // charset decoding. Returns null at end of file.
-        public String read_line()
-            throws java.io.IOException
-        {
-            if (!refill_buffer()) {
-                return null;
-            }
-
-            // Commonly, the buffer already contains a complete line.
-            for (int i = buf_pos; i < buf_end; i++) {
-                if (buf[i] == '\\n') {
-                    String s = new String(buf, buf_pos, i - buf_pos + 1);
-                    buf_pos = i + 1;
-                    line_number++;
-                    return s;
-                }
-            }
-
-            // The buffer doesn't contain a complete line.
-            StringBuilder sb = new StringBuilder();
-
-            sb.append(buf, buf_pos, buf_end - buf_pos);
-            buf_pos = buf_end;
-
-            while (refill_buffer()) {
-                for (int i = buf_pos; i < buf_end; i++) {
-                    if (buf[i] == '\\n') {
-                        sb.append(buf, buf_pos, i - buf_pos + 1);
-                        buf_pos = i + 1;
-                        line_number++;
-                        return sb.toString();
-                    }
-                }
-
-                sb.append(buf, buf_pos, buf_end - buf_pos);
-                buf_pos = buf_end;
-            }
-
-            return sb.toString();
-        }
-
-        // read_file(): [Java]
-        //
-        // Reads in the rest of a text input file using the default
-        // charset decoding.
-        public void read_file(StringBuilder sb)
-            throws java.io.IOException
-        {
-            int n;
-
-            sb.append(buf, buf_pos, buf_end - buf_pos);
-            buf_pos = buf_end;
-
-            while ((n = input.read(buf)) > -1) {
-                for (int i = 0; i < n; i++) {
-                    if (buf[i] == '\\n') {
-                        line_number++;
-                    }
-                }
-                sb.append(buf, 0, n);
-            }
-        }
-
-        private void unget_code_unit(char c) {
-            // If necessary, shift the unread characters in the input buffer
-            // to make room at the front of the buffer. If the buffer is full,
-            // allocate a bigger buffer.
-            if (buf_pos == 0) {
-                if (buf_end < buf.length) {
-                    int offset = buf.length - buf_end;
-                    System.arraycopy(buf, 0, buf, offset, buf_end);
-                    buf_pos = offset;
-                    buf_end = buf.length;
-                } else {
-                    char[] new_buf = new char[buf.length * 2];
-                    int offset = new_buf.length - buf_end;
-                    System.arraycopy(buf, 0, new_buf, offset, buf_end);
-                    buf = new_buf;
-                    buf_pos = offset;
-                    buf_end = new_buf.length;
-                }
-            }
-
-            buf[--buf_pos] = c;
-        }
-
-        public void ungetc(int c) {
-            if (Character.charCount(c) == 1) {
-                unget_code_unit((char) c);
-                if (c == '\\n') {
-                    line_number--;
-                }
-            } else {
-                char[] units = Character.toChars(c);
-                unget_code_unit(units[1]);
-                unget_code_unit(units[0]);
-            }
-        }
-
-        @Override
-        public void close()
-            throws java.io.IOException
-        {
-            input.close();
-        }
-    } // class MR_TextInputFile
-
-    public static class MR_TextOutputFile
-        extends MR_MercuryFileStruct
-    {
-        private java.io.BufferedWriter  output      = null;
-        public  int                     line_number = 1;
-
-        public MR_TextOutputFile(java.io.OutputStream stream) {
-            output = new java.io.BufferedWriter(
-                new java.io.OutputStreamWriter(stream,
-                    java.nio.charset.StandardCharsets.UTF_8));
-        }
-
-        public void put(char c)
-            throws java.io.IOException
-        {
-            output.write(c);
-            if (c == '\\n') {
-                output.flush();
-                line_number++;
-            }
-        }
-
-        public void write(java.lang.String s)
-            throws java.io.IOException
-        {
-            output.write(s);
-
-            int old_line_number = line_number;
-            for (int i = 0; i < s.length(); i++) {
-                if (s.charAt(i) == '\\n') {
-                    line_number++;
-                }
-            }
-
-            // Flush if we saw a newline.
-            if (old_line_number != line_number) {
-                output.flush();
-            }
-        }
-
-        public void flush()
-            throws java.io.IOException
-        {
-            output.flush();
-        }
-
-        @Override
-        public void close()
-            throws java.io.IOException
-        {
-            output.close();
-        }
-    } // class MR_TextOutputFile
-
-    public abstract static class MR_BinaryFile
-        extends MR_MercuryFileStruct
-    {
-        // These must match whence_to_int.
-        protected static final int  SEEK_SET = 0;
-        protected static final int  SEEK_CUR = 1;
-        protected static final int  SEEK_END = 2;
-
-        // channel is used for positioning the stream. Read/write operations
-        // use randomaccess, binary_input, binary_output instead.
-        protected java.nio.channels.FileChannel channel = null;
-
-        // size(): [Java]
-        //
-        // Returns the length of a file.
-        public long size()
-            throws java.io.IOException
-        {
-            return channel.size();
-        }
-
-        // getOffset():
-        //
-        // Returns the current position in a binary file.
-        abstract public long getOffset() throws java.io.IOException;
-
-        // seek(): [Java]
-        //
-        // Seek relative to start, current position or end depending on the
-        // flag.
-        public void seek_binary(int flag, long offset)
-            throws java.io.IOException
-        {
-            long position;
-
-            switch (flag) {
-                case SEEK_SET:
-                    position = offset;
-                    break;
-                case SEEK_CUR:
-                    position = getOffset() + offset;
-                    break;
-                case SEEK_END:
-                    position = size() + offset;
-                    break;
-                default:
-                    throw new java.lang.
-                        RuntimeException(""Invalid seek flag"");
-            }
-
-            channel.position(position);
-        }
-    }
-
-    public static class MR_BinaryInputFile
-        extends MR_BinaryFile
-    {
-        private java.io.FileInputStream     binary_input = null;
-        protected java.util.Stack<Byte>     pushback
-                                                = new java.util.Stack<Byte>();
-
-        public MR_BinaryInputFile(java.io.FileInputStream in) {
-            this.binary_input = in;
-            this.channel = in.getChannel();
-        }
-
-        // read_byte(): [Java]
-        //
-        // Reads one byte in from a binary file. Returns -1 at end of file.
-        public int read_byte()
-            throws java.io.IOException
-        {
-            int c;
-            if (pushback.empty()) {
-                c = binary_input.read();
-            } else {
-                c = pushback.pop() & 0xff; // make unsigned
-            }
-            return c;
-        }
-
-        public void ungetc(byte b) {
-            pushback.push(b);
-        }
-
-        public int read_pushback(byte[] b, int start, int len)
-        {
-            final int end = start + len;
-            int cur = start;
-            while (cur < end && !pushback.empty()) {
-                b[cur] = pushback.pop();
-                cur++;
-            }
-            return cur - start;
-        }
-
-        public int read_non_pushback(byte[] b, int start, int len)
-            throws java.io.IOException
-        {
-            int n = binary_input.read(b, start, len);
-            if (n < 0) {
-                return 0;
-            }
-            return n;
-        }
-
-        @Override
-        public long getOffset()
-            throws java.io.IOException
-        {
-            return channel.position() - pushback.size();
-        }
-
-        @Override
-        public void seek_binary(int flag, long offset)
-            throws java.io.IOException
-        {
-            super.seek_binary(flag, offset);
-
-            pushback = new java.util.Stack<Byte>();
-        }
-
-        @Override
-        public void close()
-            throws java.io.IOException
-        {
-            binary_input.close();
-        }
-    }
-
-    public static class MR_BinaryOutputFile
-        extends MR_BinaryFile
-    {
-        private java.io.FileOutputStream    binary_output = null;
-
-        public MR_BinaryOutputFile(java.io.FileOutputStream out) {
-            this.binary_output = out;
-            this.channel = out.getChannel();
-        }
-
-        public void put(byte b)
-            throws java.io.IOException
-        {
-            binary_output.write(b);
-        }
-
-        // Obsolete.
-        public void write(java.lang.String s)
-            throws java.io.IOException
-        {
-            for (int i = 0; i < s.length(); i++) {
-                // lower 8 bits of each
-                put((byte) s.charAt(i));
-            }
-        }
-
-        public void write(byte[] bs, int start, int length)
-            throws java.io.IOException
-        {
-            binary_output.write(bs, start, length);
-        }
-
-        public void flush()
-            throws java.io.IOException
-        {
-            binary_output.flush();
-        }
-
-        @Override
-        public long getOffset()
-            throws java.io.IOException
-        {
-            return (int) channel.position();
-        }
-
-        @Override
-        public void close()
-            throws java.io.IOException
-        {
-            binary_output.close();
-        }
-    }
-").
-
-:- pragma foreign_code("Java", "
-public static MR_TextInputFile  mercury_stdin =
-    new MR_TextInputFile(java.lang.System.in);
-public static MR_TextOutputFile mercury_stdout =
-    new MR_TextOutputFile(java.lang.System.out);
-public static MR_TextOutputFile mercury_stderr =
-    new MR_TextOutputFile(java.lang.System.err);
-
-// We initialize mercury_stdin_binary and mercury_stdout_binary
-// only when they are needed, because the initialization code
-// does not work on Google's App Engine.
-private static MR_BinaryInputFile  mercury_stdin_binary = null;
-private static MR_BinaryOutputFile mercury_stdout_binary = null;
-
-private static void ensure_init_mercury_stdin_binary() {
-    if (mercury_stdin_binary == null) {
-        mercury_stdin_binary = new MR_BinaryInputFile(
-            new java.io.FileInputStream(java.io.FileDescriptor.in));
-    }
-}
-
-private static void ensure_init_mercury_stdout_binary() {
-    if (mercury_stdout_binary == null) {
-        mercury_stdout_binary = new MR_BinaryOutputFile(
-            new java.io.FileOutputStream(java.io.FileDescriptor.out));
-    }
-}
-
-// Note: these are also set in io.init_state.
-
-public static ThreadLocal<MR_TextInputFile> mercury_current_text_input =
-    new InheritableThreadLocal<MR_TextInputFile>() {
-        protected MR_TextInputFile initialValue() {
-            return mercury_stdin;
-        }
-    };
-
-public static ThreadLocal<MR_TextOutputFile> mercury_current_text_output =
-    new InheritableThreadLocal<MR_TextOutputFile>() {
-        protected MR_TextOutputFile initialValue() {
-            return mercury_stdout;
-        }
-    };
-
-public static ThreadLocal<MR_BinaryInputFile> mercury_current_binary_input =
-    new InheritableThreadLocal<MR_BinaryInputFile>() {
-        protected MR_BinaryInputFile initialValue() {
-            ensure_init_mercury_stdin_binary();
-            return mercury_stdin_binary;
-        }
-    };
-
-public static ThreadLocal<MR_BinaryOutputFile> mercury_current_binary_output =
-    new InheritableThreadLocal<MR_BinaryOutputFile>() {
-        protected MR_BinaryOutputFile initialValue() {
-            ensure_init_mercury_stdout_binary();
-            return mercury_stdout_binary;
-        }
-    };
-").
-
 %---------------------%
 
 :- pragma foreign_decl("C#", "
+// XXX zs: I don't know which of these are still needed.
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -3431,311 +2594,11 @@ using System.Security.Principal;
 ").
 
 :- pragma foreign_code("C#", "
-    // The ML_ prefixes here are not really needed,
-    // since the C# code all gets generated inside a class,
-    // but we keep them for consistency with the C code.
+// The ML_ prefixes here are not really needed,
+// since the C# code all gets generated inside a class,
+// but we keep them for consistency with the C code.
 
-    public static univ.Univ_0       ML_io_user_globals;
-
-    // a counter used to generate unique stream ids
-    static int                      ML_next_stream_id;
-
-    public enum ML_line_ending_kind {
-        // file uses the usual line-ending convention
-        // for the OS (e.g. CR-LF for DOS/Windows).
-        ML_OS_line_ending,
-
-        // file uses the Unix line-encoding convention.
-        ML_Unix_line_ending,
-
-        // file stores bytes
-        ML_raw_binary
-    };
-
-    // This specifies the default encoding used for text files.
-    // It must be either ML_OS_text_encoding or ML_Unix_text_encoding.
-    //
-    // XXX The initial setting for this should be controlled
-    // by an environment variable. (This might require moving
-    // the code which initializes mercury_stdin, etc.)
-    //
-    static readonly ML_line_ending_kind ML_default_line_ending =
-        ML_line_ending_kind.ML_OS_line_ending;
-
-    // Assume UTF-8 encoding on files. When writing a file, don't emit
-    // a byte order mark.
-    public static readonly System.Text.Encoding text_encoding =
-        new System.Text.UTF8Encoding(false);
-
-    public class MR_MercuryFileStruct {
-        // Note that stream reader and writer are initialized lazily;
-        // that is, if the stream has not yet been used for reading,
-        // the `reader' field may be null. Any code which accesses that
-        // field must check for null and initialize it if needed.
-        // Likewise for the `writer' field.
-
-        public System.IO.Stream     stream; // The stream itself.
-        public System.IO.TextReader reader; // The stream reader for it.
-        public System.IO.TextWriter writer; // The stream writer for it.
-
-        // The next character or byte to read,
-        // or -1 if no putback char/byte is stored.
-        public int                  putback;
-
-        // DOS, Unix, or raw binary.
-        public ML_line_ending_kind  line_ending;
-
-        public int                  line_number;
-        public int                  id;
-    };
-").
-
-:- pragma foreign_code("C#", "
-static MR_MercuryFileStruct
-mercury_file_init(System.IO.Stream stream,
-    System.IO.TextReader reader, System.IO.TextWriter writer,
-    ML_line_ending_kind line_ending)
-{
-    MR_MercuryFileStruct mf = new MR_MercuryFileStruct();
-    mf.stream = stream;
-    mf.reader = reader;
-    mf.putback = -1;
-    mf.writer = writer;
-    mf.line_ending = line_ending;
-    mf.line_number = 1;
-    mf.id = ML_next_stream_id++;
-    return mf;
-}
-
-// Note: for Windows GUI programs, the Console is set to the equivalent
-// of /dev/null. This could perhaps be considered a problem. But if so,
-// it is a problem in Windows, not in Mercury -- I don't think it is one
-// that the Mercury implementation should try to solve.
-public static MR_MercuryFileStruct mercury_stdin =
-    mercury_file_init(System.Console.OpenStandardInput(),
-        System.Console.In, null, ML_default_line_ending);
-public static MR_MercuryFileStruct mercury_stdout =
-    mercury_file_init(System.Console.OpenStandardOutput(),
-        null, System.Console.Out, ML_default_line_ending);
-public static MR_MercuryFileStruct mercury_stderr =
-    mercury_file_init(System.Console.OpenStandardError(),
-        null, System.Console.Error, ML_default_line_ending);
-
-// XXX should we use BufferedStreams here?
-public static MR_MercuryFileStruct mercury_stdin_binary =
-    mercury_file_init(System.Console.OpenStandardInput(),
-        System.Console.In, null, ML_line_ending_kind.ML_raw_binary);
-public static MR_MercuryFileStruct mercury_stdout_binary =
-    mercury_file_init(System.Console.OpenStandardOutput(),
-        null, System.Console.Out, ML_line_ending_kind.ML_raw_binary);
-
-// Note: these are set again in io.init_state.
-public static MR_MercuryFileStruct mercury_current_text_input =
-    mercury_stdin;
-public static MR_MercuryFileStruct mercury_current_text_output =
-    mercury_stdout;
-public static MR_MercuryFileStruct mercury_current_binary_input =
-    mercury_stdin_binary;
-public static MR_MercuryFileStruct mercury_current_binary_output =
-    mercury_stdout_binary;
-
-").
-
-:- pragma foreign_code("C#", "
-public static
-MR_MercuryFileStruct mercury_open(string filename, string openmode,
-    ML_line_ending_kind line_ending)
-{
-    System.IO.FileMode      mode;
-    System.IO.FileAccess    access;
-    System.IO.FileShare     share;
-    System.IO.Stream        stream = null;
-
-    if (openmode == ""r"" || openmode == ""rb"") {
-        // Like '<' in Bourne shell.
-        // Read a file. The file must exist already.
-        mode   = System.IO.FileMode.Open;
-        access = System.IO.FileAccess.Read;
-    } else if (openmode == ""w"" || openmode == ""wb"") {
-        // Like '>' in Bourne shell.
-        // Overwrite an existing file, or create a new file.
-        mode   = System.IO.FileMode.Create;
-        access = System.IO.FileAccess.Write;
-    } else if (openmode == ""a"" || openmode == ""ab"") {
-        // Like '>>' in Bourne shell.
-        // Append to an existing file, or create a new file.
-        mode   = System.IO.FileMode.Append;
-        access = System.IO.FileAccess.Write;
-    } else {
-        runtime.Errors.SORRY(System.String.Concat(
-            ""foreign code for this function, open mode:"",
-            openmode));
-        // Needed to convince the C# compiler that mode and
-        // access are always initialized.
-        throw new System.Exception();
-    }
-
-    // For Unix compatibility, we allow files
-    // to be read or written by multiple processes
-    // simultaneously. XXX Is this a good idea?
-    share = System.IO.FileShare.ReadWrite;
-
-    stream = System.IO.File.Open(filename, mode, access, share);
-
-    // We initialize the `reader' and `writer' fields to null;
-    // they will be filled in later if they are needed.
-    return mercury_file_init(new System.IO.BufferedStream(stream),
-        null, null, line_ending);
-}
-
-public static void
-mercury_close(MR_MercuryFileStruct mf)
-{
-    if (mf.reader != null) {
-        mf.reader.Close();
-        mf.reader = null;
-    }
-    if (mf.writer != null) {
-        mf.writer.Close();
-        mf.writer = null;
-    }
-    mf.stream.Close();
-    mf.stream = null;
-}
-").
-
-:- pragma foreign_code("C#", "
-// Read in a character. This means reading in one or more bytes,
-// converting the bytes from the system's default encoding to Unicode,
-// and possibly converting CR-LF to newline. Returns -1 on EOF, and
-// throws an exception on error.
-
-private static readonly string NewLine = System.Environment.NewLine;
-
-public static int
-mercury_getc(MR_MercuryFileStruct mf)
-{
-    int c;
-
-    if (mf.putback != -1) {
-        c = mf.putback;
-        mf.putback = -1;
-        if (c == '\\n') {
-            mf.line_number++;
-        }
-        return c;
-    }
-
-    if (mf.reader == null) {
-        mf.reader = new System.IO.StreamReader(mf.stream, text_encoding);
-    }
-
-    c = mf.reader.Read();
-    switch (mf.line_ending) {
-    case ML_line_ending_kind.ML_raw_binary:
-    case ML_line_ending_kind.ML_Unix_line_ending:
-        if (c == '\\n') {
-            mf.line_number++;
-        }
-        break;
-    case ML_line_ending_kind.ML_OS_line_ending:
-        // First, check if the character we have read matches
-        // System.Environment.NewLine.
-        // We assume that System.Environment.NewLine is non-null
-        // and that System.Environment.NewLine.Length > 0.
-        if (c != io.NewLine[0]) {
-            if (c == '\\n') {
-                // the input file was ill-formed, e.g. it contained only raw
-                // LFs rather than CR-LF. Perhaps we should throw an exception?
-                // If not, we still need to treat this as a newline, and thus
-                // increment the line counter.
-                mf.line_number++;
-            } else if (System.Char.IsSurrogate((char) c)) {
-                int c2 = mf.reader.Read();
-                c = System.Char.ConvertToUtf32((char) c, (char) c2);
-            }
-        } else /* c == NewLine[0] */ {
-            switch (io.NewLine.Length) {
-            case 1:
-                mf.line_number++;
-                c = '\\n';
-                break;
-            case 2:
-                if (mf.reader.Peek() == io.NewLine[1]) {
-                    mf.reader.Read();
-                    mf.line_number++;
-                    c = '\\n';
-                } else if (c == '\\n') {
-                    // the input file was ill-formed, e.g. it contained only
-                    // raw CRs rather than CR-LF. Perhaps we should throw an
-                    // exception? If not, we still need to treat this
-                    // as a newline, and thus increment the line counter.
-                    mf.line_number++;
-                }
-                break;
-            default:
-                runtime.Errors.SORRY(
-                    ""mercury_getc: Environment.NewLine.Length"" +
-                    ""is neither 1 nor 2"");
-                break;
-            }
-        }
-        break;
-    }
-    return c;
-}
-
-public static void
-mercury_write_codepoint(System.IO.TextWriter w, int c)
-{
-    if (c <= 0xffff) {
-        w.Write((char) c);
-    } else {
-        w.Write(System.Char.ConvertFromUtf32(c));
-    }
-}
-
-// Any changes here should also be reflected in the code for io.write_char,
-// which (for efficiency) uses its own inline code, rather than calling
-// this function.
-public static void
-mercury_print_string(MR_MercuryFileStruct mf, string s)
-{
-    if (mf.writer == null) {
-        mf.writer = new System.IO.StreamWriter(mf.stream, text_encoding);
-    }
-
-    switch (mf.line_ending) {
-    case ML_line_ending_kind.ML_raw_binary:
-    case ML_line_ending_kind.ML_Unix_line_ending:
-        mf.writer.Write(s);
-        for (int i = 0; i < s.Length; i++) {
-            if (s[i] == '\\n') {
-                mf.line_number++;
-            }
-        }
-        break;
-    case ML_line_ending_kind.ML_OS_line_ending:
-        // We can't just use the System.TextWriter.Write(String) method,
-        // since that method doesn't convert newline characters to the
-        // system's newline convention (e.g. CR-LF on Windows).
-        // Only the WriteLine(...) method handles those properly.
-        // So we have to output each character separately.
-
-        for (int i = 0; i < s.Length; i++) {
-            if (System.Char.IsSurrogate(s[i])) {
-                mf.writer.Write(s.Substring(i, 2));
-                i++;
-            } else if (s[i] == '\\n') {
-                mf.line_number++;
-                mf.writer.WriteLine("""");
-            } else {
-                mf.writer.Write(s[i]);
-            }
-        }
-        break;
-    }
-}
+public static univ.Univ_0       ML_io_user_globals;
 ").
 
 %---------------------------------------------------------------------------%
@@ -3827,155 +2690,6 @@ open_binary_append(FileName, Result, !IO) :-
 
 %---------------------%
 
-    % do_open_binary(File, Mode, StreamId, Stream, Error, !IO):
-    % do_open_text(File, Mode, StreamId, Stream, Error, !IO):
-    %
-    % Attempts to open a file in the specified mode.
-    % The Mode is a string suitable for passing to fopen().
-    % StreamId is a unique integer identifying the open.
-    % StreamId and Stream are valid only if Error indicates an error occurred.
-    %
-:- pred do_open_text(string::in, string::in, int::out, stream::out,
-    system_error::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_open_text(FileName::in, Mode::in, StreamId::out, Stream::out,
-        Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    Stream = mercury_open(FileName, Mode, MR_ALLOC_ID);
-    if (Stream != NULL) {
-        StreamId = mercury_next_stream_id();
-        Error = 0;
-    } else {
-        StreamId = -1;
-        Error = errno;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_open_text(FileName::in, Mode::in, StreamId::out, Stream::out,
-        Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        Stream = io.mercury_open(FileName, Mode, io.ML_default_line_ending);
-        StreamId = Stream.id;
-        Error = null;
-    } catch (System.Exception e) {
-        StreamId = -1;
-        Stream = null;
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_open_text(FileName::in, Mode::in, StreamId::out, Stream::out,
-        Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    try {
-        switch (Mode.charAt(0)) {
-            case 'r':
-                Stream = new MR_TextInputFile(
-                    new java.io.FileInputStream(FileName));
-                break;
-            case 'w':
-                Stream = new MR_TextOutputFile(
-                    new java.io.FileOutputStream(FileName));
-                break;
-            case 'a':
-                Stream = new MR_TextOutputFile(
-                    new java.io.FileOutputStream(FileName, true));
-                break;
-            default:
-                throw new RuntimeException(""Invalid file opening mode: "" +
-                    Mode);
-        }
-        StreamId = Stream.id;
-        Error = null;
-    } catch (java.lang.Exception e) {
-        Stream = null;
-        StreamId = -1;
-        Error = e;
-    }
-").
-
-%---------------------%
-
-:- pred do_open_binary(string::in, string::in, int::out, stream::out,
-    system_error::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    do_open_binary(FileName::in, Mode::in, StreamId::out, Stream::out,
-        Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    Stream = mercury_open(FileName, Mode, MR_ALLOC_ID);
-    if (Stream != NULL) {
-        StreamId = mercury_next_stream_id();
-        Error = 0;
-    } else {
-        StreamId = -1;
-        Error = errno;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    do_open_binary(FileName::in, Mode::in, StreamId::out, Stream::out,
-        Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        Stream = io.mercury_open(FileName, Mode,
-            io.ML_line_ending_kind.ML_raw_binary);
-        StreamId = Stream.id;
-        Error = null;
-    } catch (System.Exception e) {
-        StreamId = -1;
-        Stream = null;
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    do_open_binary(FileName::in, Mode::in, StreamId::out, Stream::out,
-        Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    try {
-        switch (Mode.charAt(0)) {
-            case 'r':
-                Stream = new io.MR_BinaryInputFile(
-                    new java.io.FileInputStream(FileName));
-                break;
-            case 'w':
-                Stream = new io.MR_BinaryOutputFile(
-                    new java.io.FileOutputStream(FileName));
-                break;
-            case 'a':
-                Stream = new io.MR_BinaryOutputFile(
-                    new java.io.FileOutputStream(FileName, true));
-                break;
-            default:
-                throw new RuntimeException(""Invalid file opening mode: "" +
-                    Mode);
-        }
-        StreamId = Stream.id;
-        Error = null;
-    } catch (java.lang.Exception e) {
-        Stream = null;
-        StreamId = -1;
-        Error = e;
-    }
-").
-
-%---------------------%
-
 close_input(input_stream(Stream), !IO) :-
     maybe_delete_stream_info(Stream, !IO),
     close_stream(Stream, Error, !IO),
@@ -3998,47 +2712,6 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
     close_stream(Stream, Error, !IO),
     throw_on_close_error(Error, !IO).
 
-%---------------------%
-
-:- pred close_stream(stream::in, system_error::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    close_stream(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    if (mercury_close(Stream) < 0) {
-        Error = errno;
-    } else {
-        Error = 0;
-    }
-").
-
-:- pragma foreign_proc("C#",
-    close_stream(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        io.mercury_close(Stream);
-        Error = null;
-    } catch (System.Exception e) {
-        Error = e;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    close_stream(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    try {
-        Stream.close();
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
-
 %---------------------------------------------------------------------------%
 %
 % Switching streams.
@@ -4047,146 +2720,18 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
 set_input_stream(input_stream(NewStream), input_stream(OutStream), !IO) :-
     set_input_stream_2(NewStream, OutStream, !IO).
 
-:- pred set_input_stream_2(stream::in, stream::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused.
-"
-    OutStream = mercury_current_text_input();
-    MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
-        mercury_current_text_input_index);
-").
-
-:- pragma foreign_proc("C#",
-    set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    OutStream = io.mercury_current_text_input;
-    io.mercury_current_text_input = NewStream;
-").
-
-:- pragma foreign_proc("Java",
-    set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    OutStream = io.mercury_current_text_input.get();
-    io.mercury_current_text_input.set((io.MR_TextInputFile) NewStream);
-").
-
-%---------------------%
-
 set_binary_input_stream(binary_input_stream(NewStream),
         binary_input_stream(OutStream), !IO) :-
     set_binary_input_stream_2(NewStream, OutStream, !IO).
-
-:- pred set_binary_input_stream_2(stream::in, stream::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    set_binary_input_stream_2(NewStream::in, OutStream::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused.
-"
-    OutStream = mercury_current_binary_input();
-    MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
-        mercury_current_binary_input_index);
-").
-
-:- pragma foreign_proc("C#",
-    set_binary_input_stream_2(NewStream::in, OutStream::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    OutStream = io.mercury_current_binary_input;
-    io.mercury_current_binary_input = NewStream;
-").
-
-:- pragma foreign_proc("Java",
-    set_binary_input_stream_2(NewStream::in, OutStream::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    OutStream = io.mercury_current_binary_input.get();
-    io.mercury_current_binary_input.set((io.MR_BinaryInputFile) NewStream);
-").
 
 %---------------------%
 
 set_output_stream(output_stream(NewStream), output_stream(OutStream), !IO) :-
     set_output_stream_2(NewStream, OutStream, !IO).
 
-:- pred set_output_stream_2(stream::in, stream::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused.
-"
-    OutStream = mercury_current_text_output();
-    MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
-        mercury_current_text_output_index);
-").
-
-:- pragma foreign_proc("C#",
-    set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    OutStream = io.mercury_current_text_output;
-    io.mercury_current_text_output = NewStream;
-").
-
-:- pragma foreign_proc("Java",
-    set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    OutStream = io.mercury_current_text_output.get();
-    io.mercury_current_text_output.set((io.MR_TextOutputFile) NewStream);
-").
-
-%---------------------%
-
 set_binary_output_stream(binary_output_stream(NewStream),
         binary_output_stream(OutStream), !IO) :-
     set_binary_output_stream_2(NewStream, OutStream, !IO).
-
-:- pred set_binary_output_stream_2(stream::in, stream::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    set_binary_output_stream_2(NewStream::in, OutStream::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused.
-"
-    OutStream = mercury_current_binary_output();
-    MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
-        mercury_current_binary_output_index);
-").
-
-:- pragma foreign_proc("C#",
-    set_binary_output_stream_2(NewStream::in, OutStream::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    OutStream = io.mercury_current_binary_output;
-    io.mercury_current_binary_output = NewStream;
-").
-
-:- pragma foreign_proc("Java",
-    set_binary_output_stream_2(NewStream::in, OutStream::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    OutStream = io.mercury_current_binary_output.get();
-    io.mercury_current_binary_output.set((io.MR_BinaryOutputFile) NewStream);
-").
 
 %---------------------------------------------------------------------------%
 %
@@ -4214,52 +2759,6 @@ seek_binary_output64(binary_output_stream(Stream), Whence, Offset, !IO) :-
     whence_to_int(Whence, Flag),
     seek_binary_2(Stream, Flag, Offset, Error, !IO),
     throw_on_error(Error, "error seeking in file: ", !IO).
-
-%---------------------%
-
-:- pred whence_to_int(io.whence::in, int::out) is det.
-
-whence_to_int(set, 0).
-whence_to_int(cur, 1).
-whence_to_int(end, 2).
-
-:- pred seek_binary_2(stream::in, int::in, int64::in, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    seek_binary_2(Stream::in, Flag::in, Off::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    static const int seek_flags[] = { SEEK_SET, SEEK_CUR, SEEK_END };
-
-    // XXX check if the stream is seekable.
-    if (MR_IS_FILE_STREAM(*Stream)) {
-        if (MR_fseek(MR_file(*Stream), Off, seek_flags[Flag]) < 0) {
-            Error = errno;
-        } else {
-            Error = 0;
-        }
-    } else {
-        Error = EINVAL;
-    }
-").
-
-% MISSING C# seek_binary_2
-
-:- pragma foreign_proc("Java",
-    seek_binary_2(Stream::in, Flag::in, Off::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        ((io.MR_BinaryFile) Stream).seek_binary(Flag, Off);
-        Error = null;
-    } catch (java.io.IOException e) {
-        Error = e;
-    }
-").
 
 %---------------------%
 
@@ -4291,304 +2790,35 @@ binary_output_stream_offset64(binary_output_stream(Stream), Offset, !IO) :-
     binary_stream_offset_2(Stream, Offset, Error, !IO),
     throw_on_error(Error, "error getting file offset: ", !IO).
 
-%---------------------%
-
-:- pred binary_stream_offset_2(stream::in, int64::out, system_error::out,
-    io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    binary_stream_offset_2(Stream::in, Offset::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-"
-    // XXX should check if the stream is tellable
-    if (MR_IS_FILE_STREAM(*Stream)) {
-        Offset = MR_ftell(MR_file(*Stream));
-        if (Offset < 0) {
-            Error = errno;
-        } else {
-            Error = 0;
-        }
-    } else {
-        Error = EINVAL;
-    }
-").
-
-% MISSING C# binary_stream_offset_2
-
-:- pragma foreign_proc("Java",
-    binary_stream_offset_2(Stream::in, Offset::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        Offset = ((io.MR_BinaryFile) Stream).getOffset();
-        Error = null;
-    } catch (java.io.IOException e) {
-        Offset = -1;
-        Error = e;
-    }
-").
-
 %---------------------------------------------------------------------------%
 %
 % Standard stream id predicates.
 %
 
-:- pragma foreign_export("C", stdin_stream_2(out, di, uo),
-    "ML_io_stdin_stream").
-:- pragma foreign_export("C", stdout_stream_2(out, di, uo),
-    "ML_io_stdout_stream").
-:- pragma foreign_export("C", stderr_stream_2(out, di, uo),
-    "ML_io_stderr_stream").
-
-%---------------------%
-
 stdin_stream = input_stream(stdin_stream_2).
-
-:- func stdin_stream_2 = stream.
-
-:- pragma foreign_proc("C",
-    stdin_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused.
-"
-    Stream = &mercury_stdin;
-").
-
-:- pragma foreign_proc("C#",
-    stdin_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness],
-"
-    Stream = io.mercury_stdin;
-").
-
-:- pragma foreign_proc("Java",
-    stdin_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness],
-"
-    Stream = io.mercury_stdin;
-").
-
-%---------------------%
 
 stdin_stream(input_stream(Stream), !IO) :-
     stdin_stream_2(Stream, !IO).
 
-:- pred stdin_stream_2(stream::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused.
-"
-    Stream = &mercury_stdin;
-").
-
-:- pragma foreign_proc("C#",
-    stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Stream = io.mercury_stdin;
-").
-
-:- pragma foreign_proc("Java",
-    stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Stream = io.mercury_stdin;
-").
-
-%---------------------%
-
 stdin_binary_stream(binary_input_stream(Stream), !IO) :-
     stdin_binary_stream_2(Stream, !IO).
 
-:- pred stdin_binary_stream_2(stream::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused.
-"
-    Stream = &mercury_stdin_binary;
-").
-
-:- pragma foreign_proc("C#",
-    stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Stream = io.mercury_stdin_binary;
-").
-
-:- pragma foreign_proc("Java",
-    stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        may_not_duplicate],
-"
-    io.ensure_init_mercury_stdin_binary();
-    Stream = io.mercury_stdin_binary;
-").
-
 %---------------------%
 
-stdout_stream = output_stream(io.stdout_stream_2).
-
-:- func stdout_stream_2 = stream.
-
-:- pragma foreign_proc("C",
-    stdout_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused.
-"
-    Stream = &mercury_stdout;
-").
-
-:- pragma foreign_proc("C#",
-    stdout_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness],
-"
-    Stream = io.mercury_stdout;
-").
-
-:- pragma foreign_proc("Java",
-    stdout_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness],
-"
-    Stream = io.mercury_stdout;
-").
-
-%---------------------%
+stdout_stream = output_stream(stdout_stream_2).
 
 stdout_stream(output_stream(Stream), !IO) :-
     stdout_stream_2(Stream, !IO).
 
-:- pred stdout_stream_2(stream::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    stdout_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused.
-"
-    Stream = &mercury_stdout;
-").
-
-:- pragma foreign_proc("C#",
-    stdout_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Stream = io.mercury_stdout;
-").
-
-:- pragma foreign_proc("Java",
-    stdout_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Stream = io.mercury_stdout;
-").
-
-%---------------------%
-
 stdout_binary_stream(binary_output_stream(Stream), !IO) :-
     stdout_binary_stream_2(Stream, !IO).
-
-:- pred stdout_binary_stream_2(stream::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused.
-"
-    Stream = &mercury_stdout_binary;
-").
-
-:- pragma foreign_proc("C#",
-    stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Stream = io.mercury_stdout_binary;
-").
-
-:- pragma foreign_proc("Java",
-    stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        may_not_duplicate],
-"
-    io.ensure_init_mercury_stdout_binary();
-    Stream = io.mercury_stdout_binary;
-").
 
 %---------------------%
 
 stderr_stream = output_stream(stderr_stream_2).
 
-:- func stderr_stream_2 = stream.
-
-:- pragma foreign_proc("C",
-    stderr_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused.
-"
-    Stream = &mercury_stderr;
-").
-
-:- pragma foreign_proc("C#",
-    stderr_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness],
-"
-    Stream = io.mercury_stderr;
-").
-
-:- pragma foreign_proc("Java",
-    stderr_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness],
-"
-    Stream = io.mercury_stderr;
-").
-
-%---------------------%
-
 stderr_stream(output_stream(Stream), !IO) :-
     stderr_stream_2(Stream, !IO).
-
-:- pred stderr_stream_2(stream::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    stderr_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused.
-"
-    Stream = &mercury_stderr;
-").
-
-:- pragma foreign_proc("C#",
-    stderr_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Stream = io.mercury_stderr;
-").
-
-:- pragma foreign_proc("Java",
-    stderr_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Stream = io.mercury_stderr;
-").
 
 %---------------------------------------------------------------------------%
 %
@@ -4598,124 +2828,16 @@ stderr_stream(output_stream(Stream), !IO) :-
 input_stream(input_stream(Stream), !IO) :-
     input_stream_2(Stream, !IO).
 
-:- pred input_stream_2(stream::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused.
-"
-    Stream = mercury_current_text_input();
-").
-
-:- pragma foreign_proc("C#",
-    input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    Stream = io.mercury_current_text_input;
-").
-
-:- pragma foreign_proc("Java",
-    input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        may_not_duplicate],
-"
-    Stream = io.mercury_current_text_input.get();
-").
-
-%---------------------%
-
 binary_input_stream(binary_input_stream(Stream), !IO) :-
     binary_input_stream_2(Stream, !IO).
-
-:- pred binary_input_stream_2(stream::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused.
-"
-    Stream = mercury_current_binary_input();
-").
-
-:- pragma foreign_proc("C#",
-    binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    Stream = io.mercury_current_binary_input;
-").
-
-:- pragma foreign_proc("Java",
-    binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        may_not_duplicate],
-"
-    Stream = io.mercury_current_binary_input.get();
-").
 
 %---------------------%
 
 output_stream(output_stream(Stream), !IO) :-
     output_stream_2(Stream, !IO).
 
-:- pred output_stream_2(stream::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    output_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused.
-"
-    Stream = mercury_current_text_output();
-").
-
-:- pragma foreign_proc("C#",
-    output_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    Stream = io.mercury_current_text_output;
-").
-
-:- pragma foreign_proc("Java",
-    output_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        may_not_duplicate],
-"
-    Stream = io.mercury_current_text_output.get();
-").
-
-%---------------------%
-
 binary_output_stream(binary_output_stream(Stream), !IO) :-
     binary_output_stream_2(Stream, !IO).
-
-:- pred binary_output_stream_2(stream::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-    % no_sharing is okay as io.stream is a foreign type so can't be reused.
-"
-    Stream = mercury_current_binary_output();
-").
-
-:- pragma foreign_proc("C#",
-    binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    Stream = io.mercury_current_binary_output;
-").
-
-:- pragma foreign_proc("Java",
-    binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        may_not_duplicate],
-"
-    Stream = io.mercury_current_binary_output.get();
-").
 
 %---------------------------------------------------------------------------%
 %
@@ -4754,213 +2876,39 @@ binary_output_stream_name(binary_output_stream(Stream), Name, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C",
-    get_line_number(LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-"
-    LineNum = MR_line_number(*mercury_current_text_input());
-").
-
-:- pragma foreign_proc("C#",
-    get_line_number(LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    LineNum = io.mercury_current_text_input.line_number;
-").
-
-:- pragma foreign_proc("Java",
-    get_line_number(LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    LineNum = io.mercury_current_text_input.get().line_number;
-").
-
-%---------------------%
+get_line_number(LineNum, !IO) :-
+    input_stream_2(Stream, !IO),
+    get_input_line_number_2(Stream, LineNum, !IO).
 
 get_line_number(input_stream(Stream), LineNum, !IO) :-
-    get_line_number_2(Stream, LineNum, !IO).
-
-:- pred get_line_number_2(stream::in, int::out, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-"
-    LineNum = MR_line_number(*Stream);
-").
-:- pragma foreign_proc("C#",
-    get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    LineNum = Stream.line_number;
-").
-
-:- pragma foreign_proc("Java",
-    get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    LineNum = ((io.MR_TextInputFile) Stream).line_number;
-").
+    get_input_line_number_2(Stream, LineNum, !IO).
 
 %---------------------%
 
-:- pragma foreign_proc("C",
-    set_line_number(LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-"
-    MR_line_number(*mercury_current_text_input()) = LineNum;
-").
-
-:- pragma foreign_proc("C#",
-    set_line_number(LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    io.mercury_current_text_input.line_number = LineNum;
-").
-
-:- pragma foreign_proc("Java",
-    set_line_number(LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    io.mercury_current_text_input.get().line_number = LineNum;
-").
-
-%---------------------%
+set_line_number(LineNum, !IO) :-
+    output_stream_2(Stream, !IO),
+    set_input_line_number_2(Stream, LineNum, !IO).
 
 set_line_number(input_stream(Stream), LineNum, !IO) :-
-    set_line_number_2(Stream, LineNum,!IO).
-
-:- pred set_line_number_2(stream::in, int::in, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-"
-    MR_line_number(*Stream) = LineNum;
-").
-
-:- pragma foreign_proc("C#",
-    set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
-    Stream.line_number = LineNum;
-}").
-
-:- pragma foreign_proc("Java",
-    set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    ((io.MR_TextInputFile) Stream).line_number = LineNum;
-").
+    set_input_line_number_2(Stream, LineNum,!IO).
 
 %---------------------%
 
-:- pragma foreign_proc("C",
-    get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-"
-    LineNum = MR_line_number(*mercury_current_text_output());
-").
-
-:- pragma foreign_proc("C#",
-    get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    LineNum = io.mercury_current_text_output.line_number;
-").
-
-:- pragma foreign_proc("Java",
-    get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    LineNum = io.mercury_current_text_output.get().line_number;
-").
-
-%---------------------%
+get_output_line_number(LineNum, !IO) :-
+    output_stream_2(Stream, !IO),
+    get_output_line_number_2(Stream, LineNum, !IO).
 
 get_output_line_number(output_stream(Stream), LineNum, !IO) :-
     get_output_line_number_2(Stream, LineNum, !IO).
 
-:- pred get_output_line_number_2(stream::in, int::out, io::di, io::uo)
-    is det.
-
-:- pragma foreign_proc("C",
-    get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-"
-    LineNum = MR_line_number(*Stream);
-").
-:- pragma foreign_proc("C#",
-    get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
-    LineNum = Stream.line_number;
-}").
-
-:- pragma foreign_proc("Java",
-    get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    LineNum = ((io.MR_TextOutputFile) Stream).line_number;
-").
-
 %---------------------%
 
-:- pragma foreign_proc("C",
-    set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-"
-    MR_line_number(*mercury_current_text_output()) = LineNum;
-").
-:- pragma foreign_proc("C#",
-    set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    io.mercury_current_text_output.line_number = LineNum;
-").
-
-:- pragma foreign_proc("Java",
-    set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    io.mercury_current_text_output.get().line_number = LineNum;
-").
-
-%---------------------%
+set_output_line_number(LineNum, !IO) :-
+    output_stream_2(Stream, !IO),
+    set_output_line_number_2(Stream, LineNum, !IO).
 
 set_output_line_number(output_stream(Stream), LineNum, !IO) :-
     set_output_line_number_2(Stream, LineNum, !IO).
-
-:- pred set_output_line_number_2(stream::in, int::in, io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
-"
-    MR_line_number(*Stream) = LineNum;
-").
-
-:- pragma foreign_proc("C#",
-    set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
-    Stream.line_number = LineNum;
-}").
-
-:- pragma foreign_proc("Java",
-    set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    ((io.MR_TextOutputFile) Stream).line_number = LineNum;
-").
 
 %---------------------------------------------------------------------------%
 %
@@ -4982,7 +2930,6 @@ read_char_unboxed(Stream, Result, Char, !IO) :-
     read_char_code(Stream, ResultCode, Char, Error, !IO),
     interpret_result_code0(Error, ResultCode, Result, !IO).
 
-%---------------------%
 %---------------------%
 
 putback_char(Char, !IO) :-
@@ -5038,7 +2985,6 @@ read_binary_uint8_unboxed(binary_input_stream(Stream), Result, UInt8, !IO) :-
     UInt8 = cast_from_int(Int),
     interpret_result_code0(Error, ResultCode, Result, !IO).
 
-%---------------------%
 %---------------------%
 
 putback_byte(Int, !IO) :-
@@ -5232,7 +3178,6 @@ read_binary_uint32_be(binary_input_stream(Stream), Result, !IO) :-
     interpret_maybe_incomplete_result_code(UInt32, IncompleteBytes, Error,
         ResultCode, Result, !IO).
 
-%---------------------%
 %---------------------%
 
 read_binary_int64(Result, !IO) :-
@@ -5886,7 +3831,8 @@ read_line_as_string(input_stream(Stream), Result, !IO) :-
         does_not_affect_liveness, may_not_duplicate],
 "
     try {
-        RetString = ((io.MR_TextInputFile) Stream).read_line();
+        RetString =
+            ((jmercury.io__stream_ops.MR_TextInputFile) Stream).read_line();
         if (RetString != null) {
             Res = ML_READ_LINE_AS_STRING_OK;
         } else {
@@ -6376,7 +4322,7 @@ flush_output(output_stream(Stream), !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        ((io.MR_TextOutputFile) Stream).flush();
+        ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).flush();
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -6425,7 +4371,7 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        ((io.MR_BinaryOutputFile) Stream).flush();
+        ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).flush();
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -6553,7 +4499,7 @@ read_file_as_string_and_num_code_units(input_stream(Stream), Result, !IO) :-
 "
     StringBuilder sb = new StringBuilder();
     try {
-        ((io.MR_TextInputFile) Stream).read_file(sb);
+        ((jmercury.io__stream_ops.MR_TextInputFile) Stream).read_file(sb);
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
@@ -6805,7 +4751,7 @@ binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        Size = ((MR_BinaryFile) Stream).size();
+        Size = ((jmercury.io__stream_ops.MR_BinaryFile) Stream).size();
     } catch (java.io.IOException e) {
         Size = -1;
     }

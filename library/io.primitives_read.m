@@ -61,13 +61,6 @@
 
 :- implementation.
 
-:- pragma foreign_decl("C", "
-#include ""mercury_types.h""            // for MR_Integer
-#include ""mercury_int.h""              // for MR_*_reverse_bytes
-
-#include <inttypes.h>
-").
-
 %---------------------------------------------------------------------------%
 
 read_char_code(input_stream(Stream), ResultCode, Char, Error, !IO) :-
@@ -155,9 +148,9 @@ read_char_code(input_stream(Stream), ResultCode, Char, Error, !IO) :-
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
-    io.MR_MercuryFileStruct mf = File;
+    mercury.io__stream_ops.MR_MercuryFileStruct mf = File;
     try {
-        int c = io.mercury_getc(mf);
+        int c = mercury.io__primitives_read.mercury_getc(mf);
         if (c == -1) {
             ResultCode = io.ML_RESULT_CODE_EOF;
             Char = 0;
@@ -179,7 +172,7 @@ read_char_code(input_stream(Stream), ResultCode, Char, Error, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        int c = ((io.MR_TextInputFile) File).read_char();
+        int c = ((jmercury.io__stream_ops.MR_TextInputFile) File).read_char();
         if (c == -1) {
             ResultCode = io.ML_RESULT_CODE_EOF;
             CharCode = 0;
@@ -231,7 +224,7 @@ read_char_code(input_stream(Stream), ResultCode, Char, Error, !IO) :-
     putback_char_2(File::in, Character::in, Ok::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
-    io.MR_MercuryFileStruct mf = File;
+    mercury.io__stream_ops.MR_MercuryFileStruct mf = File;
     if (mf.putback == -1) {
         mf.putback = Character;
         if (Character == '\\n') {
@@ -247,7 +240,7 @@ read_char_code(input_stream(Stream), ResultCode, Char, Error, !IO) :-
     putback_char_2(File::in, Character::in, Ok::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    ((io.MR_TextInputFile) File).ungetc(Character);
+    ((jmercury.io__stream_ops.MR_TextInputFile) File).ungetc(Character);
     Ok = bool.YES;
 ").
 
@@ -287,7 +280,7 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
-    io.MR_MercuryFileStruct mf = File;
+    mercury.io__stream_ops.MR_MercuryFileStruct mf = File;
     if (mf.putback != -1) {
         ResultCode = io.ML_RESULT_CODE_OK;
         ByteVal = mf.putback;
@@ -318,7 +311,8 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        int b = ((io.MR_BinaryInputFile) File).read_byte();
+        int b =
+            ((jmercury.io__stream_ops.MR_BinaryInputFile) File).read_byte();
         if (b == -1) {
             ResultCode = io.ML_RESULT_CODE_EOF;
             ByteVal = 0;
@@ -353,7 +347,7 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
     putback_uint8_2(File::in, UInt8::in, Ok::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
-    io.MR_MercuryFileStruct mf = File;
+    mercury.io__stream_ops.MR_MercuryFileStruct mf = File;
     if (mf.putback == -1) {
         mf.putback = UInt8;
         Ok = mr_bool.YES;
@@ -366,7 +360,7 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
     putback_uint8_2(File::in, UInt8::in, Ok::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    ((io.MR_BinaryInputFile) File).ungetc((byte) UInt8);
+    ((jmercury.io__stream_ops.MR_BinaryInputFile) File).ungetc((byte) UInt8);
     Ok = bool.YES;
 ").
 
@@ -388,7 +382,7 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] buffer = new byte[2];
-    io.MR_MercuryFileStruct mf = Stream;
+    mercury.io__stream_ops.MR_MercuryFileStruct mf = Stream;
     UInt16 = 0;
     IncompleteBytes = list.empty_list();
 
@@ -436,7 +430,8 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] buffer = new byte[2];
-    io.MR_BinaryInputFile mf = (io.MR_BinaryInputFile) Stream;
+    jmercury.io__stream_ops.MR_BinaryInputFile mf =
+        (jmercury.io__stream_ops.MR_BinaryInputFile) Stream;
     UInt16 = 0;
     IncompleteBytes = list.empty_list();
 
@@ -489,7 +484,7 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] buffer = new byte[4];
-    io.MR_MercuryFileStruct mf = Stream;
+    mercury.io__stream_ops.MR_MercuryFileStruct mf = Stream;
     UInt32 = 0;
     IncompleteBytes = list.empty_list();
 
@@ -547,7 +542,8 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] buffer = new byte[4];
-    io.MR_BinaryInputFile mf = (io.MR_BinaryInputFile) Stream;
+    jmercury.io__stream_ops.MR_BinaryInputFile mf =
+        (jmercury.io__stream_ops.MR_BinaryInputFile) Stream;
     UInt32 = 0;
     IncompleteBytes = list.empty_list();
 
@@ -610,7 +606,7 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] buffer = new byte[8];
-    io.MR_MercuryFileStruct mf = Stream;
+    mercury.io__stream_ops.MR_MercuryFileStruct mf = Stream;
     UInt64 = 0;
     IncompleteBytes = list.empty_list();
 
@@ -676,7 +672,8 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] buffer = new byte[8];
-    io.MR_BinaryInputFile mf = (io.MR_BinaryInputFile) Stream;
+    jmercury.io__stream_ops.MR_BinaryInputFile mf =
+        (jmercury.io__stream_ops.MR_BinaryInputFile) Stream;
     UInt64 = 0;
     IncompleteBytes = list.empty_list();
 
@@ -729,12 +726,36 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
     }
 ").
 
-%---------------------%
-%
-% C implementation of reading multibyte integers from binary streams.
-%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
+#ifdef MR_HAVE_UNISTD_H
+    #include <unistd.h>
+#endif
+
+#include ""mercury_types.h""            // for MR_Integer
+#include ""mercury_int.h""              // for MR_*_reverse_bytes
+
+#include <inttypes.h>
+
+#ifdef MR_WIN32
+    // This is for SSIZE_T.
+  #include ""mercury_windows.h""
+#endif
+
+#if defined(MR_MSVC)
+    typedef SSIZE_T     ML_ssize_t;
+#else
+    typedef ssize_t     ML_ssize_t;
+#endif
+
+int     mercury_get_byte(MercuryFilePtr mf);
+
+///////////////////////////////////////////////////////////////////////////
+//
+// The C implementation of reading multibyte integers from binary streams.
+//
+
 // ML_N_BIT_UINT_T(n) expands to the name of an n-bit unsigned integer type
 // in C, if N is 8, 16, 32 or 64.
 //
@@ -830,6 +851,116 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
             result_error = 0;                                                \
         }                                                                    \
     } while (0)
+").
+
+:- pragma foreign_code("C", "
+int
+mercury_get_byte(MercuryFilePtr mf)
+{
+    int c = MR_GETCH(*mf);
+    if (c == '\\n') {
+        MR_line_number(*mf)++;
+    }
+    return c;
+}
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_import_module("C#", io.stream_ops).
+
+:- pragma foreign_decl("C#", "
+// XXX zs: I don't know which of these are needed.
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.AccessControl;
+using System.Security.Principal;
+").
+
+:- pragma foreign_code("C#", "
+// Read in a character. This means reading in one or more bytes,
+// converting the bytes from the system's default encoding to Unicode,
+// and possibly converting CR-LF to newline. Returns -1 on EOF, and
+// throws an exception on error.
+
+private static readonly string NewLine = System.Environment.NewLine;
+
+public static int
+mercury_getc(mercury.io__stream_ops.MR_MercuryFileStruct mf)
+{
+    int c;
+
+    if (mf.putback != -1) {
+        c = mf.putback;
+        mf.putback = -1;
+        if (c == '\\n') {
+            mf.line_number++;
+        }
+        return c;
+    }
+
+    if (mf.reader == null) {
+        mf.reader = new System.IO.StreamReader(mf.stream,
+            mercury.io__stream_ops.text_encoding);
+    }
+
+    c = mf.reader.Read();
+    switch (mf.line_ending) {
+    case mercury.io__stream_ops.ML_line_ending_kind.ML_raw_binary:
+    case mercury.io__stream_ops.ML_line_ending_kind.ML_Unix_line_ending:
+        if (c == '\\n') {
+            mf.line_number++;
+        }
+        break;
+    case mercury.io__stream_ops.ML_line_ending_kind.ML_OS_line_ending:
+        // First, check if the character we have read matches
+        // System.Environment.NewLine.
+        // We assume that System.Environment.NewLine is non-null
+        // and that System.Environment.NewLine.Length > 0.
+        if (c != mercury.io__primitives_read.NewLine[0]) {
+            if (c == '\\n') {
+                // the input file was ill-formed, e.g. it contained only raw
+                // LFs rather than CR-LF. Perhaps we should throw an exception?
+                // If not, we still need to treat this as a newline, and thus
+                // increment the line counter.
+                mf.line_number++;
+            } else if (System.Char.IsSurrogate((char) c)) {
+                int c2 = mf.reader.Read();
+                c = System.Char.ConvertToUtf32((char) c, (char) c2);
+            }
+        } else /* c == NewLine[0] */ {
+            switch (mercury.io__primitives_read.NewLine.Length) {
+            case 1:
+                mf.line_number++;
+                c = '\\n';
+                break;
+            case 2:
+                if (mf.reader.Peek() ==
+                    mercury.io__primitives_read.NewLine[1])
+                {
+                    mf.reader.Read();
+                    mf.line_number++;
+                    c = '\\n';
+                } else if (c == '\\n') {
+                    // the input file was ill-formed, e.g. it contained only
+                    // raw CRs rather than CR-LF. Perhaps we should throw an
+                    // exception? If not, we still need to treat this
+                    // as a newline, and thus increment the line counter.
+                    mf.line_number++;
+                }
+                break;
+            default:
+                runtime.Errors.SORRY(
+                    ""mercury_getc: Environment.NewLine.Length"" +
+                    ""is neither 1 nor 2"");
+                break;
+            }
+        }
+        break;
+    }
+    return c;
+}
 ").
 
 %---------------------------------------------------------------------------%

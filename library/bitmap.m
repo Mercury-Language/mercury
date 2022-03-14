@@ -557,6 +557,9 @@
 :- import_module require.
 :- import_module string.
 
+:- pragma foreign_import_module("C#",   io.stream_ops).
+:- pragma foreign_import_module("Java", io.stream_ops).
+
 %---------------------------------------------------------------------------%
 
 init(N, B) = BM :-
@@ -2015,7 +2018,7 @@ read_bitmap_range(InputStream, Start, NumBytes, !Bitmap,
         Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    io.MR_MercuryFileStruct mf = Stream;
+    mercury.io__stream_ops.MR_MercuryFileStruct mf = Stream;
 
     Bitmap = Bitmap0;
     BytesRead = BytesRead0;
@@ -2042,7 +2045,8 @@ read_bitmap_range(InputStream, Start, NumBytes, !Bitmap,
         Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-    io.MR_BinaryInputFile mf = (io.MR_BinaryInputFile) Stream;
+    jmercury.io__stream_ops.MR_BinaryInputFile mf =
+        (jmercury.io__stream_ops.MR_BinaryInputFile) Stream;
     Bitmap = Bitmap0;
     BytesRead = BytesRead0;
 
@@ -2159,7 +2163,8 @@ write_bitmap_range(OutputStream, Bitmap, Start, NumBytes, !IO) :-
         no_sharing],
 "
     try {
-        ((io.MR_BinaryOutputFile) Stream).write(Bitmap.elements, Start, Length);
+        ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).write(
+            Bitmap.elements, Start, Length);
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
