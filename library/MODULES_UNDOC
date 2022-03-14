@@ -3,6 +3,7 @@ io.primitives_read.m
 io.primitives_write.m
 io.stream_db.m
 io.stream_ops.m
+io.text_read.m
 mer_std.m
 mutvar.m
 par_builtin.m

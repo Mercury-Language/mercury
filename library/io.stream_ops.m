@@ -51,6 +51,13 @@
 
 %---------------------%
 
+:- pred flush_text_output_2(stream::in, system_error::out,
+    io::di, io::uo) is det.
+:- pred flush_binary_output_2(stream::in, system_error::out,
+    io::di, io::uo) is det.
+
+%---------------------%
+
 :- pred get_input_line_number_2(stream::in, int::out, io::di, io::uo) is det.
 :- pred set_input_line_number_2(stream::in, int::in, io::di, io::uo) is det.
 :- pred get_output_line_number_2(stream::in, int::out, io::di, io::uo) is det.
@@ -79,13 +86,10 @@
 
 :- pred set_input_stream_2(stream::in, stream::out,
     io::di, io::uo) is det.
-
 :- pred set_binary_input_stream_2(stream::in, stream::out,
     io::di, io::uo) is det.
-
 :- pred set_output_stream_2(stream::in, stream::out,
     io::di, io::uo) is det.
-
 :- pred set_binary_output_stream_2(stream::in, stream::out,
     io::di, io::uo) is det.
 
@@ -127,7 +131,6 @@
         Error = e;
     }
 ").
-
 :- pragma foreign_proc("Java",
     do_open_text(FileName::in, Mode::in, StreamId::out, Stream::out,
         Error::out, _IO0::di, _IO::uo),
@@ -178,7 +181,6 @@
         Error = errno;
     }
 ").
-
 :- pragma foreign_proc("C#",
     do_open_binary(FileName::in, Mode::in, StreamId::out, Stream::out,
         Error::out, _IO0::di, _IO::uo),
@@ -195,7 +197,6 @@
         Error = e;
     }
 ").
-
 :- pragma foreign_proc("Java",
     do_open_binary(FileName::in, Mode::in, StreamId::out, Stream::out,
         Error::out, _IO0::di, _IO::uo),
@@ -242,7 +243,6 @@
         Error = 0;
     }
 ").
-
 :- pragma foreign_proc("C#",
     close_stream(Stream::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
@@ -254,7 +254,6 @@
         Error = e;
     }
 ").
-
 :- pragma foreign_proc("Java",
     close_stream(Stream::in, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
@@ -295,9 +294,7 @@ whence_to_int(end, 2).
         Error = EINVAL;
     }
 ").
-
 % MISSING C# seek_binary_2
-
 :- pragma foreign_proc("Java",
     seek_binary_2(Stream::in, Flag::in, Off::in, Error::out,
         _IO0::di, _IO::uo),
@@ -332,9 +329,7 @@ whence_to_int(end, 2).
         Error = EINVAL;
     }
 ").
-
 % MISSING C# binary_stream_offset_2
-
 :- pragma foreign_proc("Java",
     binary_stream_offset_2(Stream::in, Offset::out, Error::out,
         _IO0::di, _IO::uo),
@@ -349,12 +344,87 @@ whence_to_int(end, 2).
     }
 ").
 
-%---------------------%
+%---------------------------------------------------------------------------%
+%
+% The implementations of flush_text_output_2 and flush_binary_output_2
+% are identical for C and C#, but they differ in Java: one casts the stream
+% to MR_TextOutputFile, the other to MR_BinaryOutputFile.
+%
+
+:- pragma foreign_proc("C",
+    flush_text_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        does_not_affect_liveness, no_sharing],
+"
+    if (MR_FLUSH(*Stream) < 0) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+:- pragma foreign_proc("C#",
+    flush_text_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        Stream.stream.Flush();
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
+    }
+").
+:- pragma foreign_proc("Java",
+    flush_text_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        ((jmercury.io__stream_ops.MR_TextOutputFile) Stream).flush();
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("C",
+    flush_binary_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        does_not_affect_liveness, no_sharing],
+"
+    if (MR_FLUSH(*Stream) < 0) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+:- pragma foreign_proc("C#",
+    flush_binary_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        Stream.stream.Flush();
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
+    }
+").
+:- pragma foreign_proc("Java",
+    flush_binary_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    try {
+        ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).flush();
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+%---------------------------------------------------------------------------%
 %
 % The implementations of get_input_line_number_2 and get_output_line_number_2
 % are identical for C and C#, but they differ in Java: one casts the stream
 % to MR_TextInputFile, the other to MR_TextOutputFile. Likewise for the
-% predicate that sets the line number.
+% predicates that set the line number.
 %
 
 :- pragma foreign_proc("C",
@@ -396,6 +466,8 @@ whence_to_int(end, 2).
 "
     ((jmercury.io__stream_ops.MR_TextInputFile) Stream).line_number = LineNum;
 ").
+
+%---------------------%
 
 :- pragma foreign_proc("C",
     get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
@@ -456,7 +528,6 @@ whence_to_int(end, 2).
 "
     Stream = &mercury_stdin;
 ").
-
 :- pragma foreign_proc("C#",
     stdin_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe,
@@ -464,7 +535,6 @@ whence_to_int(end, 2).
 "
     Stream = mercury.io__stream_ops.mercury_stdin;
 ").
-
 :- pragma foreign_proc("Java",
     stdin_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe,
@@ -488,14 +558,12 @@ stdin_stream_2(Stream, !IO) :-
 "
     Stream = &mercury_stdin_binary;
 ").
-
 :- pragma foreign_proc("C#",
     stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = mercury.io__stream_ops.mercury_stdin_binary;
 ").
-
 :- pragma foreign_proc("Java",
     stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
@@ -515,7 +583,6 @@ stdin_stream_2(Stream, !IO) :-
 "
     Stream = &mercury_stdout;
 ").
-
 :- pragma foreign_proc("C#",
     stdout_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe,
@@ -523,7 +590,6 @@ stdin_stream_2(Stream, !IO) :-
 "
     Stream = mercury.io__stream_ops.mercury_stdout;
 ").
-
 :- pragma foreign_proc("Java",
     stdout_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe,
@@ -547,14 +613,12 @@ stdout_stream_2(Stream, !IO) :-
 "
     Stream = &mercury_stdout_binary;
 ").
-
 :- pragma foreign_proc("C#",
     stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = mercury.io__stream_ops.mercury_stdout_binary;
 ").
-
 :- pragma foreign_proc("Java",
     stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
@@ -574,7 +638,6 @@ stdout_stream_2(Stream, !IO) :-
 "
     Stream = &mercury_stderr;
 ").
-
 :- pragma foreign_proc("C#",
     stderr_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe,
@@ -582,7 +645,6 @@ stdout_stream_2(Stream, !IO) :-
 "
     Stream = mercury.io__stream_ops.mercury_stderr;
 ").
-
 :- pragma foreign_proc("Java",
     stderr_stream_2 = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe,
@@ -606,14 +668,12 @@ stderr_stream_2(Stream, !IO) :-
 "
     Stream = mercury_current_text_input();
 ").
-
 :- pragma foreign_proc("C#",
     input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = mercury.io__stream_ops.mercury_current_text_input;
 ").
-
 :- pragma foreign_proc("Java",
     input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
@@ -632,14 +692,12 @@ stderr_stream_2(Stream, !IO) :-
 "
     Stream = mercury_current_binary_input();
 ").
-
 :- pragma foreign_proc("C#",
     binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = mercury.io__stream_ops.mercury_current_binary_input;
 ").
-
 :- pragma foreign_proc("Java",
     binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
@@ -658,14 +716,12 @@ stderr_stream_2(Stream, !IO) :-
 "
     Stream = mercury_current_text_output();
 ").
-
 :- pragma foreign_proc("C#",
     output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = mercury.io__stream_ops.mercury_current_text_output;
 ").
-
 :- pragma foreign_proc("Java",
     output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
@@ -684,14 +740,12 @@ stderr_stream_2(Stream, !IO) :-
 "
     Stream = mercury_current_binary_output();
 ").
-
 :- pragma foreign_proc("C#",
     binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Stream = mercury.io__stream_ops.mercury_current_binary_output;
 ").
-
 :- pragma foreign_proc("Java",
     binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
@@ -712,7 +766,6 @@ stderr_stream_2(Stream, !IO) :-
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
         mercury_current_text_input_index);
 ").
-
 :- pragma foreign_proc("C#",
     set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
@@ -720,7 +773,6 @@ stderr_stream_2(Stream, !IO) :-
     OutStream = mercury.io__stream_ops.mercury_current_text_input;
     mercury.io__stream_ops.mercury_current_text_input = NewStream;
 ").
-
 :- pragma foreign_proc("Java",
     set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
@@ -743,7 +795,6 @@ stderr_stream_2(Stream, !IO) :-
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
         mercury_current_binary_input_index);
 ").
-
 :- pragma foreign_proc("C#",
     set_binary_input_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
@@ -752,7 +803,6 @@ stderr_stream_2(Stream, !IO) :-
     OutStream = mercury.io__stream_ops.mercury_current_binary_input;
     mercury.io__stream_ops.mercury_current_binary_input = NewStream;
 ").
-
 :- pragma foreign_proc("Java",
     set_binary_input_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
@@ -775,7 +825,6 @@ stderr_stream_2(Stream, !IO) :-
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
         mercury_current_text_output_index);
 ").
-
 :- pragma foreign_proc("C#",
     set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
@@ -783,7 +832,6 @@ stderr_stream_2(Stream, !IO) :-
     OutStream = mercury.io__stream_ops.mercury_current_text_output;
     mercury.io__stream_ops.mercury_current_text_output = NewStream;
 ").
-
 :- pragma foreign_proc("Java",
     set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
@@ -806,7 +854,6 @@ stderr_stream_2(Stream, !IO) :-
     MR_set_thread_local_mutable(MercuryFilePtr, NewStream,
         mercury_current_binary_output_index);
 ").
-
 :- pragma foreign_proc("C#",
     set_binary_output_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),
@@ -815,7 +862,6 @@ stderr_stream_2(Stream, !IO) :-
     OutStream = mercury.io__stream_ops.mercury_current_binary_output;
     mercury.io__stream_ops.mercury_current_binary_output = NewStream;
 ").
-
 :- pragma foreign_proc("Java",
     set_binary_output_stream_2(NewStream::in, OutStream::out,
         _IO0::di, _IO::uo),

@@ -304,6 +304,7 @@ stdlib_module_doc_undoc("io.primitives_read",           undoc).
 stdlib_module_doc_undoc("io.primitives_write",          undoc).
 stdlib_module_doc_undoc("io.stream_db",                 undoc).
 stdlib_module_doc_undoc("io.stream_ops",                undoc).
+stdlib_module_doc_undoc("io.text_read",                 undoc).
 stdlib_module_doc_undoc("kv_list",                      doc).
 stdlib_module_doc_undoc("lazy",                         doc).
 stdlib_module_doc_undoc("library",                      doc).

@@ -53,11 +53,11 @@ MCFLAGS-string                  += --no-warn-unknown-format-calls
 MCFLAGS-mer_std                 += --no-warn-nothing-exported
 
 # Avoid warnings about insts with non-existent function symbols in their
-# bound lists.  The non-existent function symbols are used here to represent
+# bound lists. The non-existent function symbols are used here to represent
 # insts for foreign types.
 MCFLAGS-array                   += --no-warn-insts-without-matching-type
 MCFLAGS-bitmap                  += --no-warn-insts-without-matching-type
-MCFLAGS-io                      += --no-warn-insts-without-matching-type
+MCFLAGS-io.text_read            += --no-warn-insts-without-matching-type
 
 # Avoid warnings about unused imports.
 MCFLAGS-builtin                 += --no-warn-unused-imports
