@@ -28,8 +28,8 @@
     % character representation and (for text streams) converting OS line
     % indicators, e.g. CR-LF for Windows, to '\n' characters.
     %
-:- pred read_char_code(input_stream::in, result_code::out, char::out,
-    system_error::out, io::di, io::uo) is det.
+:- pred read_char_code(input_stream::in, result_code::out, system_error::out,
+    char::out, io::di, io::uo) is det.
 
 :- pred putback_char_2(stream::in, char::in, bool::out, io::di, io::uo) is det.
 
@@ -37,8 +37,8 @@
 
     % Reads a byte from specified stream.
     %
-:- pred read_byte_val(input_stream::in, result_code::out, int::out,
-    system_error::out, io::di, io::uo) is det.
+:- pred read_byte_val(input_stream::in, result_code::out, system_error::out,
+    int::out, io::di, io::uo) is det.
 
 :- pred putback_uint8_2(stream::in, uint8::in, bool::out,
     io::di, io::uo) is det.
@@ -46,16 +46,16 @@
 %---------------------%
 
 :- pred do_read_binary_uint16(stream::in, byte_order::in,
-    maybe_incomplete_result_code::out, uint16::out, list(uint8)::out,
-    system_error::out, io::di, io::uo) is det.
+    maybe_incomplete_result_code::out, system_error::out, list(uint8)::out,
+    uint16::out, io::di, io::uo) is det.
 
 :- pred do_read_binary_uint32(stream::in, byte_order::in,
-    maybe_incomplete_result_code::out, uint32::out, list(uint8)::out,
-    system_error::out, io::di, io::uo) is det.
+    maybe_incomplete_result_code::out, system_error::out, list(uint8)::out,
+    uint32::out, io::di, io::uo) is det.
 
 :- pred do_read_binary_uint64(stream::in, byte_order::in,
-    maybe_incomplete_result_code::out, uint64::out, list(uint8)::out,
-    system_error::out, io::di, io::uo) is det.
+    maybe_incomplete_result_code::out, system_error::out, list(uint8)::out,
+    uint64::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -63,14 +63,14 @@
 
 %---------------------------------------------------------------------------%
 
-read_char_code(input_stream(Stream), ResultCode, Char, Error, !IO) :-
-    read_char_code_2(Stream, ResultCode, Char, Error, !IO).
+read_char_code(input_stream(Stream), ResultCode, Error, Char, !IO) :-
+    read_char_code_2(Stream, ResultCode, Error, Char, !IO).
 
-:- pred read_char_code_2(stream::in, result_code::out, char::out,
-    system_error::out, io::di, io::uo) is det.
+:- pred read_char_code_2(stream::in, result_code::out, system_error::out,
+    char::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    read_char_code_2(Stream::in, ResultCode::out, Char::out, Error::out,
+    read_char_code_2(Stream::in, ResultCode::out, Error::out, Char::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing, may_not_duplicate],
@@ -144,7 +144,7 @@ read_char_code(input_stream(Stream), ResultCode, Char, Error, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    read_char_code_2(File::in, ResultCode::out, Char::out, Error::out,
+    read_char_code_2(File::in, ResultCode::out, Error::out, Char::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
@@ -167,7 +167,7 @@ read_char_code(input_stream(Stream), ResultCode, Char, Error, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    read_char_code_2(File::in, ResultCode::out, CharCode::out, Error::out,
+    read_char_code_2(File::in, ResultCode::out, Error::out, CharCode::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
@@ -246,14 +246,14 @@ read_char_code(input_stream(Stream), ResultCode, Char, Error, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
-    read_byte_val_2(Stream, Result, ByteVal, Error, !IO).
+read_byte_val(input_stream(Stream), Result, Error, ByteVal, !IO) :-
+    read_byte_val_2(Stream, Result, Error, ByteVal, !IO).
 
-:- pred read_byte_val_2(stream::in, result_code::out, int::out,
-    system_error::out, io::di, io::uo) is det.
+:- pred read_byte_val_2(stream::in, result_code::out, system_error::out,
+    int::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    read_byte_val_2(Stream::in, ResultCode::out, ByteVal::out, Error::out,
+    read_byte_val_2(Stream::in, ResultCode::out, Error::out, ByteVal::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
@@ -276,7 +276,7 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    read_byte_val_2(File::in, ResultCode::out, ByteVal::out, Error::out,
+    read_byte_val_2(File::in, ResultCode::out, Error::out, ByteVal::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
@@ -306,7 +306,7 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    read_byte_val_2(File::in, ResultCode::out, ByteVal::out, Error::out,
+    read_byte_val_2(File::in, ResultCode::out, Error::out, ByteVal::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
@@ -368,17 +368,17 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
 
 :- pragma foreign_proc("C",
     do_read_binary_uint16(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt16::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
+        Error::out, IncompleteBytes::out, UInt16::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         tabled_for_io],
 "
-    ML_do_read_binary_uintN(2, 16, Stream, ByteOrder, ResultCode, UInt16,
-        IncompleteBytes, Error);
+    ML_do_read_binary_uintN(2, 16, Stream, ByteOrder, ResultCode, Error,
+        IncompleteBytes, UInt16);
 ").
 
 :- pragma foreign_proc("C#",
     do_read_binary_uint16(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt16::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
+        Error::out, IncompleteBytes::out, UInt16::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] buffer = new byte[2];
@@ -426,7 +426,7 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
 
 :- pragma foreign_proc("Java",
     do_read_binary_uint16(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt16::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
+        Error::out, IncompleteBytes::out, UInt16::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] buffer = new byte[2];
@@ -470,17 +470,17 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
 
 :- pragma foreign_proc("C",
     do_read_binary_uint32(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt32::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
+        Error::out, IncompleteBytes::out, UInt32::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         tabled_for_io],
 "
-    ML_do_read_binary_uintN(4, 32, Stream, ByteOrder, ResultCode, UInt32,
-        IncompleteBytes, Error);
+    ML_do_read_binary_uintN(4, 32, Stream, ByteOrder, ResultCode, Error,
+        IncompleteBytes, UInt32);
 ").
 
 :- pragma foreign_proc("C#",
     do_read_binary_uint32(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt32::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
+        Error::out, IncompleteBytes::out, UInt32::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] buffer = new byte[4];
@@ -538,7 +538,7 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
 
 :- pragma foreign_proc("Java",
     do_read_binary_uint32(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt32::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
+        Error::out, IncompleteBytes::out, UInt32::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] buffer = new byte[4];
@@ -592,17 +592,17 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
 
 :- pragma foreign_proc("C",
     do_read_binary_uint64(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt64::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
+        Error::out, IncompleteBytes::out, UInt64::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         tabled_for_io],
 "
-    ML_do_read_binary_uintN(8, 64, Stream, ByteOrder, ResultCode, UInt64,
-        IncompleteBytes, Error);
+    ML_do_read_binary_uintN(8, 64, Stream, ByteOrder, ResultCode, Error,
+        IncompleteBytes, UInt64);
 ").
 
 :- pragma foreign_proc("C#",
     do_read_binary_uint64(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt64::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
+        Error::out, IncompleteBytes::out, UInt64::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] buffer = new byte[8];
@@ -668,7 +668,7 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
 
 :- pragma foreign_proc("Java",
     do_read_binary_uint64(Stream::in, ByteOrder::in, ResultCode::out,
-        UInt64::out, IncompleteBytes::out, Error::out, _IO0::di, _IO::uo),
+        Error::out, IncompleteBytes::out, UInt64::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     byte[] buffer = new byte[8];
@@ -802,8 +802,8 @@ int     mercury_get_byte(MercuryFilePtr mf);
 #endif
 
 // ML_do_read_binary_uintN(int nbytes, int nbits, MR_Word stream,
-//     MR_Word byte_order, MR_Word result_code, MR_Word result_value,
-//     MR_Word result_incomplete, MR_Word result_error):
+//     MR_Word byte_order, MR_Word result_code, MR_Word result_error,
+//     MR_Word result_incomplete, MR_Word result_value):
 //
 // This macro implements the do_read_binary_uint{16 32,64}/8 predicates.
 // It expands to code for reading an 'nbits'-bit ('nbytes'-byte) unsigned
@@ -814,14 +814,14 @@ int     mercury_get_byte(MercuryFilePtr mf);
 //
 // 'result_code' is set the status code (maybe_incomplete_result_code/0)
 // for the read.
-// 'result_value' is the value of the integer read on a successful read
-// and zero otherwise.
+// 'result_error' is the errno if an I/O error occurs, and zero otherwise.
 // 'result_incomplete' is the list of bytes read so far for an incomplete
 // read, and the empty list otherwise.
-// 'result_error' is the errno if an I/O error occurs, and zero otherwise.
+// 'result_value' is the value of the integer read on a successful read
+// and zero otherwise.
 //
 #define ML_do_read_binary_uintN(nbytes, nbits, stream, byte_order,           \
-       result_code, result_value, result_incomplete, result_error)           \
+       result_code, result_error, result_incomplete, result_value)           \
     do {                                                                     \
         unsigned char buffer[nbytes];                                        \
         size_t nread = MR_READ(*stream, buffer, nbytes);                     \

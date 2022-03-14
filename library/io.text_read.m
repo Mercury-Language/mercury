@@ -96,7 +96,7 @@ read_word_2(Stream, Result, !IO) :-
 %---------------------------------------------------------------------------%
 
 read_line_2(Stream, Result, Error, Chars, !IO) :-
-    read_char_code(Stream, Result0, Char, Error0, !IO),
+    read_char_code(Stream, Result0, Error0, Char, !IO),
     (
         Result0 = result_code_ok,
         ( if Char = '\n' then
@@ -214,7 +214,7 @@ read_line_2(Stream, Result, Error, Chars, !IO) :-
 read_line_as_string_2(Stream, FirstCall, Res, Error, String, !IO) :-
     % XXX This is terribly inefficient, a better approach would be
     % to use a buffer like what is done for io.read_file_as_string.
-    read_char_code(input_stream(Stream), ResultCode, Char, Error0, !IO),
+    read_char_code(input_stream(Stream), ResultCode, Error0, Char, !IO),
     (
         ResultCode = result_code_ok,
         ( if Char = '\n' then
@@ -666,7 +666,7 @@ read_into_array(Stream, !Array, ArraySize, !Pos, Error, !IO) :-
     ( if !.Pos >= ArraySize then
         Error = no_error
     else
-        read_char_code(Stream, ResultCode, Char, Error0, !IO),
+        read_char_code(Stream, ResultCode, Error0, Char, !IO),
         (
             ResultCode = result_code_ok,
             array.set(!.Pos, Char, !Array),

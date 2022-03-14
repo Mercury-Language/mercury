@@ -2647,13 +2647,13 @@ read_char(Result, !IO) :-
 
 :- pragma inline(pred(read_char/4)).          % Inline to allow deforestation.
 read_char(Stream, Result, !IO) :-
-    read_char_code(Stream, ResultCode, Char, Error, !IO),
-    interpret_result_code1(Char, Error, ResultCode, Result, !IO).
+    read_char_code(Stream, ResultCode, Error, Char, !IO),
+    interpret_result_code1(ResultCode, Error, Char, Result, !IO).
 
 :- pragma inline(pred(read_char_unboxed/5)).  % Inline to allow deforestation.
 read_char_unboxed(Stream, Result, Char, !IO) :-
-    read_char_code(Stream, ResultCode, Char, Error, !IO),
-    interpret_result_code0(Error, ResultCode, Result, !IO).
+    read_char_code(Stream, ResultCode, Error, Char, !IO),
+    interpret_result_code0(ResultCode, Error, Result, !IO).
 
 %---------------------%
 
@@ -2679,36 +2679,36 @@ read_byte(Result, !IO) :-
 
 :- pragma inline(pred(read_byte/4)).          % Inline to allow deforestation.
 read_byte(binary_input_stream(Stream), Result, !IO) :-
-    read_byte_val(input_stream(Stream), ResultCode, Byte, Error, !IO),
-    interpret_result_code1(Byte, Error, ResultCode, Result, !IO).
+    read_byte_val(input_stream(Stream), ResultCode, Error, Byte, !IO),
+    interpret_result_code1(ResultCode, Error, Byte, Result, !IO).
 
 read_binary_int8(Result, !IO) :-
     binary_input_stream(Stream, !IO),
     read_binary_int8(Stream, Result, !IO).
 
 read_binary_int8(binary_input_stream(Stream), Result, !IO) :-
-    read_byte_val(input_stream(Stream), ResultCode, Int, Error, !IO),
+    read_byte_val(input_stream(Stream), ResultCode, Error, Int, !IO),
     Int8 = cast_from_int(Int), % This call cannot throw an exception.
-    interpret_result_code1(Int8, Error, ResultCode, Result, !IO).
+    interpret_result_code1(ResultCode, Error, Int8, Result, !IO).
 
 read_binary_int8_unboxed(binary_input_stream(Stream), Result, Int8, !IO) :-
-    read_byte_val(input_stream(Stream), ResultCode, Int, Error, !IO),
+    read_byte_val(input_stream(Stream), ResultCode, Error, Int, !IO),
     Int8 = cast_from_int(Int),
-    interpret_result_code0(Error, ResultCode, Result, !IO).
+    interpret_result_code0(ResultCode, Error, Result, !IO).
 
 read_binary_uint8(Result, !IO) :-
     binary_input_stream(Stream, !IO),
     read_binary_uint8(Stream, Result, !IO).
 
 read_binary_uint8(binary_input_stream(Stream), Result, !IO) :-
-    read_byte_val(input_stream(Stream), ResultCode, Int, Error, !IO),
+    read_byte_val(input_stream(Stream), ResultCode, Error, Int, !IO),
     UInt8 = cast_from_int(Int), % This call cannot throw an exception.
-    interpret_result_code1(UInt8, Error, ResultCode, Result, !IO).
+    interpret_result_code1(ResultCode, Error, UInt8, Result, !IO).
 
 read_binary_uint8_unboxed(binary_input_stream(Stream), Result, UInt8, !IO) :-
-    read_byte_val(input_stream(Stream), ResultCode, Int, Error, !IO),
+    read_byte_val(input_stream(Stream), ResultCode, Error, Int, !IO),
     UInt8 = cast_from_int(Int),
-    interpret_result_code0(Error, ResultCode, Result, !IO).
+    interpret_result_code0(ResultCode, Error, Result, !IO).
 
 %---------------------%
 
@@ -2771,11 +2771,11 @@ read_binary_int16_le(Result, !IO) :-
     read_binary_int16_le(Stream, Result, !IO).
 
 read_binary_int16_le(binary_input_stream(Stream), Result, !IO) :-
-    do_read_binary_uint16(Stream, little_endian, ResultCode, UInt16,
-        IncompleteBytes, Error, !IO),
+    do_read_binary_uint16(Stream, little_endian, ResultCode, Error,
+        IncompleteBytes, UInt16, !IO),
     Int16 = cast_from_uint16(UInt16), % This call cannot throw an exception.
-    interpret_maybe_incomplete_result_code(Int16, IncompleteBytes, Error,
-        ResultCode, Result, !IO).
+    interpret_maybe_incomplete_result_code(ResultCode, Error, IncompleteBytes,
+        Int16, Result, !IO).
 
 %---------------------%
 
@@ -2784,11 +2784,11 @@ read_binary_int16_be(Result, !IO) :-
     read_binary_int16_be(Stream, Result, !IO).
 
 read_binary_int16_be(binary_input_stream(Stream), Result, !IO) :-
-    do_read_binary_uint16(Stream, big_endian, ResultCode, UInt16,
-        IncompleteBytes, Error, !IO),
+    do_read_binary_uint16(Stream, big_endian, ResultCode, Error,
+        IncompleteBytes, UInt16, !IO),
     Int16 = cast_from_uint16(UInt16), % This call cannot throw an exception.
-    interpret_maybe_incomplete_result_code(Int16, IncompleteBytes, Error,
-        ResultCode, Result, !IO).
+    interpret_maybe_incomplete_result_code(ResultCode, Error, IncompleteBytes,
+        Int16, Result, !IO).
 
 %---------------------%
 
@@ -2810,10 +2810,10 @@ read_binary_uint16_le(Result, !IO) :-
     read_binary_uint16_le(Stream, Result, !IO).
 
 read_binary_uint16_le(binary_input_stream(Stream), Result, !IO) :-
-    do_read_binary_uint16(Stream, little_endian, ResultCode, UInt16,
-        IncompleteBytes, Error, !IO),
-    interpret_maybe_incomplete_result_code(UInt16, IncompleteBytes, Error,
-        ResultCode, Result, !IO).
+    do_read_binary_uint16(Stream, little_endian, ResultCode, Error,
+        IncompleteBytes, UInt16, !IO),
+    interpret_maybe_incomplete_result_code(ResultCode, Error, IncompleteBytes,
+        UInt16, Result, !IO).
 
 %---------------------%
 
@@ -2822,10 +2822,10 @@ read_binary_uint16_be(Result, !IO) :-
     read_binary_uint16_be(Stream, Result, !IO).
 
 read_binary_uint16_be(binary_input_stream(Stream), Result, !IO) :-
-    do_read_binary_uint16(Stream, big_endian, ResultCode, UInt16,
-        IncompleteBytes, Error, !IO),
-    interpret_maybe_incomplete_result_code(UInt16, IncompleteBytes, Error,
-        ResultCode, Result, !IO).
+    do_read_binary_uint16(Stream, big_endian, ResultCode, Error,
+        IncompleteBytes, UInt16, !IO),
+    interpret_maybe_incomplete_result_code(ResultCode, Error, IncompleteBytes,
+        UInt16, Result, !IO).
 
 %---------------------%
 
@@ -2847,11 +2847,11 @@ read_binary_int32_le(Result, !IO) :-
     read_binary_int32_le(Stream, Result, !IO).
 
 read_binary_int32_le(binary_input_stream(Stream), Result, !IO) :-
-    do_read_binary_uint32(Stream, little_endian, ResultCode, UInt32,
-        IncompleteBytes, Error, !IO),
+    do_read_binary_uint32(Stream, little_endian, ResultCode, Error,
+        IncompleteBytes, UInt32, !IO),
     Int32 = cast_from_uint32(UInt32), % This call cannot throw an exception.
-    interpret_maybe_incomplete_result_code(Int32, IncompleteBytes, Error,
-        ResultCode, Result, !IO).
+    interpret_maybe_incomplete_result_code(ResultCode, Error, IncompleteBytes,
+        Int32, Result, !IO).
 
 %---------------------%
 
@@ -2860,11 +2860,11 @@ read_binary_int32_be(Result, !IO) :-
     read_binary_int32_be(Stream, Result, !IO).
 
 read_binary_int32_be(binary_input_stream(Stream), Result, !IO) :-
-    do_read_binary_uint32(Stream, big_endian, ResultCode, UInt32,
-        IncompleteBytes, Error, !IO),
+    do_read_binary_uint32(Stream, big_endian, ResultCode, Error,
+        IncompleteBytes, UInt32, !IO),
     Int32 = cast_from_uint32(UInt32), % This call cannot throw an exception.
-    interpret_maybe_incomplete_result_code(Int32, IncompleteBytes, Error,
-        ResultCode, Result, !IO).
+    interpret_maybe_incomplete_result_code(ResultCode, Error, IncompleteBytes,
+        Int32, Result, !IO).
 
 %---------------------%
 
@@ -2886,10 +2886,10 @@ read_binary_uint32_le(Result, !IO) :-
     read_binary_uint32_le(Stream, Result, !IO).
 
 read_binary_uint32_le(binary_input_stream(Stream), Result, !IO) :-
-    do_read_binary_uint32(Stream, little_endian, ResultCode, UInt32,
-        IncompleteBytes, Error, !IO),
-    interpret_maybe_incomplete_result_code(UInt32, IncompleteBytes, Error,
-        ResultCode, Result, !IO).
+    do_read_binary_uint32(Stream, little_endian, ResultCode, Error,
+        IncompleteBytes, UInt32, !IO),
+    interpret_maybe_incomplete_result_code(ResultCode, Error, IncompleteBytes,
+        UInt32, Result, !IO).
 
 %---------------------%
 
@@ -2898,10 +2898,10 @@ read_binary_uint32_be(Result, !IO) :-
     read_binary_uint32_be(Stream, Result, !IO).
 
 read_binary_uint32_be(binary_input_stream(Stream), Result, !IO) :-
-    do_read_binary_uint32(Stream, big_endian, ResultCode, UInt32,
-        IncompleteBytes, Error, !IO),
-    interpret_maybe_incomplete_result_code(UInt32, IncompleteBytes, Error,
-        ResultCode, Result, !IO).
+    do_read_binary_uint32(Stream, big_endian, ResultCode, Error,
+        IncompleteBytes, UInt32, !IO),
+    interpret_maybe_incomplete_result_code(ResultCode, Error, IncompleteBytes,
+        UInt32, Result, !IO).
 
 %---------------------%
 
@@ -2923,11 +2923,11 @@ read_binary_int64_le(Result, !IO) :-
     read_binary_int64_le(Stream, Result, !IO).
 
 read_binary_int64_le(binary_input_stream(Stream), Result, !IO) :-
-    do_read_binary_uint64(Stream, little_endian, ResultCode, UInt64,
-        IncompleteBytes, Error, !IO),
+    do_read_binary_uint64(Stream, little_endian, ResultCode, Error,
+        IncompleteBytes, UInt64, !IO),
     Int64 = cast_from_uint64(UInt64), % This call cannot throw an exception.
-    interpret_maybe_incomplete_result_code(Int64, IncompleteBytes, Error,
-        ResultCode, Result, !IO).
+    interpret_maybe_incomplete_result_code(ResultCode, Error, IncompleteBytes,
+        Int64, Result, !IO).
 
 %---------------------%
 
@@ -2936,11 +2936,11 @@ read_binary_int64_be(Result, !IO) :-
     read_binary_int64_be(Stream, Result, !IO).
 
 read_binary_int64_be(binary_input_stream(Stream), Result, !IO) :-
-    do_read_binary_uint64(Stream, big_endian, ResultCode, UInt64,
-        IncompleteBytes, Error, !IO),
+    do_read_binary_uint64(Stream, big_endian, ResultCode, Error,
+        IncompleteBytes, UInt64, !IO),
     Int64 = cast_from_uint64(UInt64), % This call cannot throw an exception.
-    interpret_maybe_incomplete_result_code(Int64, IncompleteBytes, Error,
-        ResultCode, Result, !IO).
+    interpret_maybe_incomplete_result_code(ResultCode, Error, IncompleteBytes,
+        Int64, Result, !IO).
 
 %---------------------%
 
@@ -2962,10 +2962,10 @@ read_binary_uint64_le(Result, !IO) :-
     read_binary_uint64_le(Stream, Result, !IO).
 
 read_binary_uint64_le(binary_input_stream(Stream), Result, !IO) :-
-    do_read_binary_uint64(Stream, little_endian, ResultCode, UInt64,
-        IncompleteBytes, Error, !IO),
-    interpret_maybe_incomplete_result_code(UInt64, IncompleteBytes, Error,
-        ResultCode, Result, !IO).
+    do_read_binary_uint64(Stream, little_endian, ResultCode, Error,
+        IncompleteBytes, UInt64, !IO),
+    interpret_maybe_incomplete_result_code(ResultCode, Error, IncompleteBytes,
+        UInt64, Result, !IO).
 
 %---------------------%
 
@@ -2974,10 +2974,10 @@ read_binary_uint64_be(Result, !IO) :-
     read_binary_uint64_be(Stream, Result, !IO).
 
 read_binary_uint64_be(binary_input_stream(Stream), Result, !IO) :-
-    do_read_binary_uint64(Stream, big_endian, ResultCode, UInt64,
-        IncompleteBytes, Error, !IO),
-    interpret_maybe_incomplete_result_code(UInt64, IncompleteBytes, Error,
-        ResultCode, Result, !IO).
+    do_read_binary_uint64(Stream, big_endian, ResultCode, Error,
+        IncompleteBytes, UInt64, !IO),
+    interpret_maybe_incomplete_result_code(ResultCode, Error, IncompleteBytes,
+        UInt64, Result, !IO).
 
 %---------------------%
 
@@ -5518,11 +5518,11 @@ stream_whence_to_io_whence(end) = end.
 :- pragma foreign_export_enum("Java", result_code/0,
     [prefix("ML_"), uppercase]).
 
-:- pred interpret_result_code0(system_error::in, result_code::in,
+:- pred interpret_result_code0(result_code::in, system_error::in,
     io.result::out, io::di, io::uo) is det.
 :- pragma inline(pred(interpret_result_code0/5)).
 
-interpret_result_code0(Error, ResultCode, Result, !IO) :-
+interpret_result_code0(ResultCode, Error, Result, !IO) :-
     (
         ResultCode = result_code_ok,
         Result = ok
@@ -5535,11 +5535,11 @@ interpret_result_code0(Error, ResultCode, Result, !IO) :-
         Result = error(io_error(Msg))
     ).
 
-:- pred interpret_result_code1(T::in, system_error::in, result_code::in,
-    io.result(T)::out, io::di, io::uo) is det.
+:- pred interpret_result_code1(result_code::in, system_error::in,
+    T::in, io.result(T)::out, io::di, io::uo) is det.
 :- pragma inline(pred(interpret_result_code1/6)).
 
-interpret_result_code1(Value, Error, ResultCode, Result, !IO) :-
+interpret_result_code1(ResultCode, Error, Value, Result, !IO) :-
     (
         ResultCode = result_code_ok,
         Result = ok(Value)
@@ -5567,13 +5567,13 @@ interpret_result_code1(Value, Error, ResultCode, Result, !IO) :-
 :- pragma foreign_export_enum("Java", maybe_incomplete_result_code/0,
     [prefix("ML_"), uppercase]).
 
-:- pred interpret_maybe_incomplete_result_code(T::in, list(uint8)::in,
-    system_error::in, maybe_incomplete_result_code::in,
-    maybe_incomplete_result(T)::out, io::di, io::uo) is det.
+:- pred interpret_maybe_incomplete_result_code(
+    maybe_incomplete_result_code::in, system_error::in, list(uint8)::in,
+    T::in, maybe_incomplete_result(T)::out, io::di, io::uo) is det.
 :- pragma inline(pred(interpret_maybe_incomplete_result_code/7)).
 
-interpret_maybe_incomplete_result_code(Value, IncompleteBytes, Error,
-        ResultCode, Result, !IO) :-
+interpret_maybe_incomplete_result_code(ResultCode, Error, IncompleteBytes,
+        Value, Result, !IO) :-
     (
         ResultCode = mirc_ok,
         Result = ok(Value)
