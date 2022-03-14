@@ -2135,6 +2135,44 @@
 :- pragma foreign_type("C#", system_error, "System.Exception").
 :- pragma foreign_type(java, system_error, "java.lang.Exception").
 
+    % Return a unique identifier for the given file (after following
+    % symlinks in FileName).
+    % XXX On Cygwin sometimes two files will have the same file_id.
+    % This is because MS-Windows does not use inodes, so Cygwin hashes
+    % the absolute file name. On Windows without Cygwin this will always
+    % return error(_). That does not matter, because this function is
+    % only used for checking for symlink loops in dir.foldl2, but
+    % plain Windows doesn't support symlinks.
+    %
+:- type file_id.
+:- pred file_id(string::in, io.res(file_id)::out, io::di, io::uo) is det.
+
+%---------------------%
+%
+% For use by bitmap.m.
+%
+
+:- type stream.
+:- func input_stream_get_stream(input_stream) = stream.
+:- func output_stream_get_stream(output_stream) = stream.
+:- func binary_input_stream_get_stream(binary_input_stream) = stream.
+:- func binary_output_stream_get_stream(binary_output_stream) = stream.
+
+%---------------------%
+%
+% For use by term_io.m.
+%
+
+:- import_module ops.
+
+:- pred get_op_table(ops.table::out, io::di, io::uo) is det.
+:- pred set_op_table(ops.table::di, io::di, io::uo) is det.
+
+%---------------------%
+%
+% Error handling.
+%
+
     % is_error(Error, MessagePrefix, MaybeIOError, !IO):
     % Returns `yes(IOError)' if Error indicates an error (not success).
     % IOError contains an error message obtained by looking up the message
@@ -2170,39 +2208,6 @@
     % that want to do I/O.
     %
 :- pred throw_on_output_error(system_error::in, io::di, io::uo) is det.
-
-    % Return a unique identifier for the given file (after following
-    % symlinks in FileName).
-    % XXX On Cygwin sometimes two files will have the same file_id.
-    % This is because MS-Windows does not use inodes, so Cygwin hashes
-    % the absolute file name. On Windows without Cygwin this will always
-    % return error(_). That does not matter, because this function is
-    % only used for checking for symlink loops in dir.foldl2, but
-    % plain Windows doesn't support symlinks.
-    %
-:- type file_id.
-:- pred file_id(string::in, io.res(file_id)::out, io::di, io::uo) is det.
-
-%---------------------%
-%
-% For use by bitmap.m.
-%
-
-:- type stream.
-:- func input_stream_get_stream(input_stream) = stream.
-:- func output_stream_get_stream(output_stream) = stream.
-:- func binary_input_stream_get_stream(binary_input_stream) = stream.
-:- func binary_output_stream_get_stream(binary_output_stream) = stream.
-
-%---------------------%
-%
-% For use by term_io.m.
-%
-
-:- import_module ops.
-
-:- pred get_op_table(ops.table::out, io::di, io::uo) is det.
-:- pred set_op_table(ops.table::di, io::di, io::uo) is det.
 
 %---------------------%
 %
@@ -2318,288 +2323,6 @@ io_state_compare(_, _, _) :-
     % A unique identifier for an I/O stream.
     %
 :- type stream_id == int.
-
-%---------------------%
-
-:- type result_code
-    --->    result_code_ok
-    ;       result_code_eof
-    ;       result_code_error.
-
-:- pragma foreign_export_enum("C", result_code/0,
-    [prefix("ML_"), uppercase]).
-:- pragma foreign_export_enum("C#", result_code/0,
-    [prefix("ML_"), uppercase]).
-:- pragma foreign_export_enum("Java", result_code/0,
-    [prefix("ML_"), uppercase]).
-
-:- pred interpret_result_code0(system_error::in, result_code::in,
-    io.result::out, io::di, io::uo) is det.
-:- pragma inline(pred(interpret_result_code0/5)).
-
-interpret_result_code0(Error, ResultCode, Result, !IO) :-
-    (
-        ResultCode = result_code_ok,
-        Result = ok
-    ;
-        ResultCode = result_code_eof,
-        Result = eof
-    ;
-        ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
-
-:- pred interpret_result_code1(T::in, system_error::in, result_code::in,
-    io.result(T)::out, io::di, io::uo) is det.
-:- pragma inline(pred(interpret_result_code1/6)).
-
-interpret_result_code1(Value, Error, ResultCode, Result, !IO) :-
-    (
-        ResultCode = result_code_ok,
-        Result = ok(Value)
-    ;
-        ResultCode = result_code_eof,
-        Result = eof
-    ;
-        ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
-
-%---------------------%
-
-:- type maybe_incomplete_result_code
-    --->    mirc_ok
-    ;       mirc_eof
-    ;       mirc_incomplete
-    ;       mirc_error.
-
-:- pragma foreign_export_enum("C", maybe_incomplete_result_code/0,
-    [prefix("ML_"), uppercase]).
-:- pragma foreign_export_enum("C#", maybe_incomplete_result_code/0,
-    [prefix("ML_"), uppercase]).
-:- pragma foreign_export_enum("Java", maybe_incomplete_result_code/0,
-    [prefix("ML_"), uppercase]).
-
-:- pred interpret_maybe_incomplete_result_code(T::in, list(uint8)::in,
-    system_error::in, maybe_incomplete_result_code::in,
-    maybe_incomplete_result(T)::out, io::di, io::uo) is det.
-:- pragma inline(pred(interpret_maybe_incomplete_result_code/7)).
-
-interpret_maybe_incomplete_result_code(Value, IncompleteBytes, Error,
-        ResultCode, Result, !IO) :-
-    (
-        ResultCode = mirc_ok,
-        Result = ok(Value)
-    ;
-        ResultCode = mirc_eof,
-        Result = eof
-    ;
-        ResultCode = mirc_incomplete,
-        Result = incomplete(IncompleteBytes)
-    ;
-        ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pragma foreign_decl("C", "
-#ifdef MR_HAVE_UNISTD_H
-    #include <unistd.h>
-#endif
-#ifdef MR_HAVE_SYS_STAT_H
-    #include <sys/stat.h>
-#endif
-#include ""mercury_types.h""            // for MR_Integer
-#include ""mercury_library_types.h""    // for MercuryFilePtr
-#include ""mercury_int.h""              // for MR_*_reverse_bytes
-
-#include ""mercury_init.h""
-#include ""mercury_wrapper.h""
-#include ""mercury_type_info.h""
-#include ""mercury_file.h""
-#include ""mercury_heap.h""
-#include ""mercury_misc.h""
-#include ""mercury_runtime_util.h""
-#include ""mercury_report_stats.h""
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <errno.h>
-#include <inttypes.h>
-#include <limits.h>
-
-#ifdef MR_HAVE_SYS_WAIT_H
-  #include <sys/wait.h>     // for WIFEXITED, WEXITSTATUS, etc.
-#endif
-
-#ifdef MR_WIN32
-  #include ""mercury_windows.h""
-#endif
-
-extern MR_Word          ML_io_user_globals;
-#ifdef MR_THREAD_SAFE
-    extern MercuryLock  ML_io_user_globals_lock;
-#endif
-
-#if 0
-    extern MR_Word      ML_io_ops_table;
-#endif
-
-void                    mercury_init_io(void);
-
-#ifdef MR_WIN32
-    wchar_t             *ML_utf8_to_wide(const char *s);
-    char                *ML_wide_to_utf8(const wchar_t *ws,
-                            MR_AllocSiteInfoPtr alloc_id);
-#endif
-").
-
-:- pragma foreign_code("C", "
-MR_Word         ML_io_user_globals;
-#ifdef MR_THREAD_SAFE
-    MercuryLock ML_io_user_globals_lock;
-#endif
-
-#if 0
-    MR_Word     ML_io_ops_table;
-#endif
-
-static void
-mercury_set_binary_mode(FILE *f)
-{
-#if defined(MR_MSVC) || defined(MR_MINGW)
-    // Calling fdopen with 'b' in the mode string does not necessarily put the
-    // standard input or standard output file into binary translation mode on
-    // Windows. This is the case with MinGW and MSVC. The cause is likely the
-    // MSVC CRT. The solution is to change the mode on the file after opening.
-    _setmode(_fileno(f), _O_BINARY);
-#endif
-}
-
-void
-mercury_init_io(void)
-{
-    MR_mercuryfile_init(stdin,  1, &mercury_stdin);
-    MR_mercuryfile_init(stdout, 1, &mercury_stdout);
-    MR_mercuryfile_init(stderr, 1, &mercury_stderr);
-
-    MR_mercuryfile_init(NULL, 1, &mercury_stdin_binary);
-    MR_mercuryfile_init(NULL, 1, &mercury_stdout_binary);
-
-    mercury_current_text_input_index =    MR_new_thread_local_mutable_index();
-    mercury_current_text_output_index =   MR_new_thread_local_mutable_index();
-    mercury_current_binary_input_index =  MR_new_thread_local_mutable_index();
-    mercury_current_binary_output_index = MR_new_thread_local_mutable_index();
-
-#if defined(MR_HAVE_FDOPEN) && (defined(MR_HAVE_FILENO) || defined(fileno)) \
-        && defined(MR_HAVE_DUP)
-    MR_file(mercury_stdin_binary) = fdopen(dup(fileno(stdin)), ""rb"");
-    if (MR_file(mercury_stdin_binary) != NULL) {
-        mercury_set_binary_mode(MR_file(mercury_stdin_binary));
-    } else {
-        // The call to fdopen() may fail if stdin is not available.
-        // We don't abort since we still want Mercury programs to be runnable
-        // in such a circumstance (aside from those that use stdin).
-        // For the same reason, we treat binary stdout identically below.
-        //
-        // NOTE: some versions of nohup may also cause the above call to
-        // fdopen() to fail, because they redirect stdin to /dev/null
-        // in *write* mode. Setting binary stdin to stdin in such a case
-        // also ensures that we work with those versions of nohup.
-        MR_file(mercury_stdin_binary) = stdin;
-    }
-
-    MR_file(mercury_stdout_binary) = fdopen(dup(fileno(stdout)), ""wb"");
-    if (MR_file(mercury_stdout_binary) != NULL) {
-        mercury_set_binary_mode(MR_file(mercury_stdout_binary));
-    } else {
-        MR_file(mercury_stdout_binary) = stdout;
-    }
-#else
-    // XXX Standard ANSI/ISO C provides no way to set stdin/stdout
-    // to binary mode. I guess we just have to punt...
-    MR_file(mercury_stdin_binary) = stdin;
-    MR_file(mercury_stdout_binary) = stdout;
-#endif
-
-#ifdef MR_THREAD_SAFE
-    pthread_mutex_init(&ML_io_stream_db_lock, MR_MUTEX_ATTR);
-    pthread_mutex_init(&ML_io_user_globals_lock, MR_MUTEX_ATTR);
-    pthread_mutex_init(&ML_io_next_stream_id_lock, MR_MUTEX_ATTR);
-#endif
-}
-
-#ifdef MR_WIN32
-
-// Accessing Unicode file names on Windows requires that we use the functions
-// taking wide character strings.
-wchar_t *
-ML_utf8_to_wide(const char *s)
-{
-    int     wslen;
-    wchar_t *ws;
-
-    wslen = MultiByteToWideChar(CP_UTF8, 0, s, -1, NULL, 0);
-    if (wslen == 0) {
-        MR_fatal_error(""ML_utf8_to_wide: MultiByteToWideChar failed"");
-    }
-    ws = MR_GC_NEW_ARRAY(wchar_t, wslen);
-    if (0 == MultiByteToWideChar(CP_UTF8, 0, s, -1, ws, wslen)) {
-        MR_fatal_error(""ML_utf8_to_wide: MultiByteToWideChar failed"");
-    }
-    return ws;
-}
-
-char *
-ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
-{
-    char    *s;
-    int     bytes;
-
-    bytes = WideCharToMultiByte(CP_UTF8, 0, ws, -1, NULL, 0, NULL, NULL);
-    if (bytes == 0) {
-        MR_fatal_error(""ML_wide_to_utf8: WideCharToMultiByte failed"");
-    }
-    MR_allocate_aligned_string_msg(s, bytes, alloc_id);
-    if (0 == WideCharToMultiByte(CP_UTF8, 0, ws, -1, s, bytes, NULL, NULL)) {
-        MR_fatal_error(""ML_wide_to_utf8: WideCharToMultiByte failed"");
-    }
-    return s;
-}
-
-#endif // MR_WIN32
-").
-
-%---------------------%
-
-:- pragma foreign_code("Java", "
-    public static univ.Univ_0 ML_io_user_globals = null;
-").
-
-%---------------------%
-
-:- pragma foreign_decl("C#", "
-// XXX zs: I don't know which of these are still needed.
-using System;
-using System.IO;
-using System.Runtime.InteropServices;
-using System.Security.AccessControl;
-using System.Security.Principal;
-").
-
-:- pragma foreign_code("C#", "
-// The ML_ prefixes here are not really needed,
-// since the C# code all gets generated inside a class,
-// but we keep them for consistency with the C code.
-
-public static univ.Univ_0       ML_io_user_globals;
-").
 
 %---------------------------------------------------------------------------%
 %
@@ -5357,11 +5080,11 @@ should_reduce_stack_usage(yes).
 #endif
 ").
 
-    % Chunk_size gives the maximum number of recursive calls we want to
-    % allow in the binary_input_stream_foldl*_inner predicates. Without
-    % such a limit, the depth of recursion, which depends on the size of
-    % the file they read, will cause exhaustion of the det stack in debug
-    % grades, since there is no tail recursion in such grades.
+    % Chunk_size gives the maximum number of recursive calls we want to allow
+    % in the binary_input_stream_foldl*_inner predicates. Without such a limit,
+    % the depth of recursion, which depends on the size of the file they read,
+    % will cause exhaustion of the det stack in debug grades, since there is
+    % no tail recursion in such grades.
     %
     % With this arrangement, the maximum number of stack frames needed
     % to process a file of size N is N/1000 + 1000, the former being the
@@ -5913,224 +5636,7 @@ have_cygwin :-
 have_dotnet :-
     semidet_fail.
 
-%---------------------%
-
-:- pragma foreign_decl("C", "
-#include <string.h>
-#include <errno.h>
-
-// ML_make_err_msg(errnum, msg, alloc_id, error_msg):
-// Append msg and a message for errnum to give error_msg.
-//
-// WARNING: this must only be called when the `hp' register is valid.
-// That means it must only be called from procedures declared
-// `[will_not_call_mercury, promise_pure]'.
-//
-// This is defined as a macro rather than a C function
-// to avoid worrying about the `hp' register being
-// invalidated by the function call.
-
-#define ML_make_err_msg(errnum, msg, alloc_id, error_msg)                   \\
-    do {                                                                    \\
-        char    errbuf[MR_STRERROR_BUF_SIZE];                               \\
-        const char *errno_msg;                                              \\
-        size_t  total_len;                                                  \\
-                                                                            \\
-        errno_msg = MR_strerror(errnum, errbuf, sizeof(errbuf));            \\
-        total_len = strlen(msg) + strlen(errno_msg);                        \\
-        MR_allocate_aligned_string_msg((error_msg), total_len, (alloc_id)); \\
-        strcpy((error_msg), msg);                                           \\
-        strcat((error_msg), errno_msg);                                     \\
-    } while(0)
-
-// ML_make_win32_err_msg(error, msg, alloc_id, error_msg):
-// Append msg and the string returned by the Win32 API function
-// FormatMessage() for the last error to give error_msg.
-//
-// WARNING: this must only be called when the `hp' register is valid.
-// That means it must only be called from procedures declared
-// `[will_not_call_mercury]'.
-//
-// This is defined as a macro rather than a C function
-// to avoid worrying about the `hp' register being
-// invalidated by the function call.
-
-#ifdef MR_WIN32
-
-#define ML_make_win32_err_msg(error, msg, alloc_id, error_msg)              \\
-    do {                                                                    \\
-        size_t total_len;                                                   \\
-        LPVOID  err_buf;                                                    \\
-        MR_bool free_err_buf = MR_TRUE;                                     \\
-                                                                            \\
-        if (!FormatMessage(                                                 \\
-                FORMAT_MESSAGE_ALLOCATE_BUFFER                              \\
-                | FORMAT_MESSAGE_FROM_SYSTEM                                \\
-                | FORMAT_MESSAGE_IGNORE_INSERTS,                            \\
-                NULL,                                                       \\
-                error,                                                      \\
-                MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),                  \\
-                (LPTSTR) &err_buf,                                          \\
-                0,                                                          \\
-                NULL))                                                      \\
-        {                                                                   \\
-            free_err_buf = MR_FALSE;                                        \\
-            err_buf = (LPVOID) ""could not retrieve error message"";        \\
-        }                                                                   \\
-        total_len = strlen(msg) + strlen((char *)err_buf);                  \\
-        MR_allocate_aligned_string_msg((error_msg), total_len, (alloc_id)); \\
-        strcpy((error_msg), msg);                                           \\
-        strcat((error_msg), (char *)err_buf);                               \\
-        if (free_err_buf) {                                                 \\
-            LocalFree(err_buf);                                             \\
-        }                                                                   \\
-    } while(0)
-
-#endif // !MR_WIN32
-").
-
-:- func no_error = system_error.
-
-:- pragma foreign_proc("C",
-    no_error = (Error::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Error = 0;
-").
-
-:- pragma foreign_proc("C#",
-    no_error = (Error::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Error = null;
-").
-
-:- pragma foreign_proc("Java",
-    no_error = (Error::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Error = null;
-").
-
-:- pred is_success(system_error::in) is semidet.
-
-:- pragma foreign_proc("C",
-    is_success(Error::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    // This works for errno and Win32 error values (ERROR_SUCCESS == 0).
-    SUCCESS_INDICATOR = (Error == 0) ? MR_TRUE : MR_FALSE;
-").
-
-:- pragma foreign_proc("C#",
-    is_success(Error::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = (Error == null);
-").
-
-:- pragma foreign_proc("Java",
-    is_success(Error::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = (Error == null);
-").
-
-is_error(Error, Prefix, MaybeError, !IO) :-
-    ( if is_success(Error) then
-        MaybeError = no
-    else
-        make_err_msg(Error, Prefix, Message, !IO),
-        IOError = io_error(Message),
-        MaybeError = yes(IOError)
-    ).
-
-is_maybe_win32_error(Error, Prefix, MaybeError, !IO) :-
-    ( if is_success(Error) then
-        MaybeError = no
-    else
-        make_maybe_win32_err_msg(Error, Prefix, Message, !IO),
-        IOError = io_error(Message),
-        MaybeError = yes(IOError)
-    ).
-
-:- pragma foreign_proc("C",
-    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness, no_sharing, tabled_for_io],
-"
-    ML_make_err_msg(Error, Msg0, MR_ALLOC_ID, Msg);
-").
-
-:- pragma foreign_proc("C#",
-    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Msg = System.String.Concat(Msg0, Error.Message);
-").
-
-:- pragma foreign_proc("Java",
-    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    if (Error.getMessage() != null) {
-        Msg = Msg0 + Error.getMessage();
-    } else {
-        Msg = Msg0;
-    }
-").
-
-make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
-    ( if have_win32 then
-        make_win32_err_msg(Error, Msg0, Msg, !IO)
-    else
-        make_err_msg(Error, Msg0, Msg, !IO)
-    ).
-
-:- pred make_win32_err_msg(system_error::in, string::in, string::out,
-    io::di, io::uo) is det.
-
-make_win32_err_msg(_, _, "", !IO) :-
-    ( if semidet_succeed then
-        error("io.make_win32_err_msg called for non Win32 back-end")
-    else
-        true
-    ).
-
-    % Is FormatMessage thread-safe?
-    %
-:- pragma foreign_proc("C",
-    make_win32_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, does_not_affect_liveness,
-        no_sharing, tabled_for_io],
-"
-#ifdef MR_WIN32
-    ML_make_win32_err_msg(Error, Msg0, MR_ALLOC_ID, Msg);
-#else
-    MR_fatal_error(""io.make_win32_err_msg called on non-Windows platform"");
-#endif
-").
-
-:- pred throw_on_error(system_error::in, string::in, io::di, io::uo) is det.
-
-throw_on_error(Error, Prefix, !IO) :-
-    is_error(Error, Prefix, MaybeIOError, !IO),
-    (
-        MaybeIOError = yes(IOError),
-        throw(IOError)
-    ;
-        MaybeIOError = no
-    ).
-
-throw_on_output_error(Error, !IO) :-
-    throw_on_error(Error, "error writing to output file: ", !IO).
-
-:- pred throw_on_close_error(system_error::in, io::di, io::uo) is det.
-
-throw_on_close_error(Error, !IO) :-
-    throw_on_error(Error, "error closing file: ", !IO).
-
-%---------------------%
+%---------------------------------------------------------------------------%
 
 :- type file_id
     --->    file_id.
@@ -6661,7 +6167,10 @@ restore_output_stream(_DummyPred, Stream, ok, !IO) :-
     pred(put/4) is write_binary_uint8
 ].
 
-%---------------------------------------------------------------------------%
+%---------------------%
+%
+% Functions used only by concrete instance methods.
+%
 
 :- func result1_to_stream_result1(io.result(T)) = stream.result(T, io.error).
 
@@ -6680,6 +6189,511 @@ result0_to_stream_result0(error(Error)) = error(Error).
 stream_whence_to_io_whence(set) = set.
 stream_whence_to_io_whence(cur) = cur.
 stream_whence_to_io_whence(end) = end.
+
+%---------------------------------------------------------------------------%
+%
+% Error handling.
+%
+% The predicates interpreting result codes ought to stay in io.m,
+% because moving them to e.g. new io.error.m submodule would prevent them
+% from being inlined into their call sites above at low optimization levels,
+% and some of those call sites (e.g. in read_char) can be expected to be
+% heavily used in some programs.
+%
+% The rest of the error handling code below is not big enough to warrant
+% a module of its own.
+%
+
+:- type result_code
+    --->    result_code_ok
+    ;       result_code_eof
+    ;       result_code_error.
+
+:- pragma foreign_export_enum("C", result_code/0,
+    [prefix("ML_"), uppercase]).
+:- pragma foreign_export_enum("C#", result_code/0,
+    [prefix("ML_"), uppercase]).
+:- pragma foreign_export_enum("Java", result_code/0,
+    [prefix("ML_"), uppercase]).
+
+:- pred interpret_result_code0(system_error::in, result_code::in,
+    io.result::out, io::di, io::uo) is det.
+:- pragma inline(pred(interpret_result_code0/5)).
+
+interpret_result_code0(Error, ResultCode, Result, !IO) :-
+    (
+        ResultCode = result_code_ok,
+        Result = ok
+    ;
+        ResultCode = result_code_eof,
+        Result = eof
+    ;
+        ResultCode = result_code_error,
+        make_err_msg(Error, "read failed: ", Msg, !IO),
+        Result = error(io_error(Msg))
+    ).
+
+:- pred interpret_result_code1(T::in, system_error::in, result_code::in,
+    io.result(T)::out, io::di, io::uo) is det.
+:- pragma inline(pred(interpret_result_code1/6)).
+
+interpret_result_code1(Value, Error, ResultCode, Result, !IO) :-
+    (
+        ResultCode = result_code_ok,
+        Result = ok(Value)
+    ;
+        ResultCode = result_code_eof,
+        Result = eof
+    ;
+        ResultCode = result_code_error,
+        make_err_msg(Error, "read failed: ", Msg, !IO),
+        Result = error(io_error(Msg))
+    ).
+
+%---------------------%
+
+:- type maybe_incomplete_result_code
+    --->    mirc_ok
+    ;       mirc_eof
+    ;       mirc_incomplete
+    ;       mirc_error.
+
+:- pragma foreign_export_enum("C", maybe_incomplete_result_code/0,
+    [prefix("ML_"), uppercase]).
+:- pragma foreign_export_enum("C#", maybe_incomplete_result_code/0,
+    [prefix("ML_"), uppercase]).
+:- pragma foreign_export_enum("Java", maybe_incomplete_result_code/0,
+    [prefix("ML_"), uppercase]).
+
+:- pred interpret_maybe_incomplete_result_code(T::in, list(uint8)::in,
+    system_error::in, maybe_incomplete_result_code::in,
+    maybe_incomplete_result(T)::out, io::di, io::uo) is det.
+:- pragma inline(pred(interpret_maybe_incomplete_result_code/7)).
+
+interpret_maybe_incomplete_result_code(Value, IncompleteBytes, Error,
+        ResultCode, Result, !IO) :-
+    (
+        ResultCode = mirc_ok,
+        Result = ok(Value)
+    ;
+        ResultCode = mirc_eof,
+        Result = eof
+    ;
+        ResultCode = mirc_incomplete,
+        Result = incomplete(IncompleteBytes)
+    ;
+        ResultCode = mirc_error,
+        make_err_msg(Error, "read failed: ", Msg, !IO),
+        Result = error(io_error(Msg))
+    ).
+
+%---------------------%
+
+:- func no_error = system_error.
+
+:- pragma foreign_proc("C",
+    no_error = (Error::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Error = 0;
+").
+
+:- pragma foreign_proc("C#",
+    no_error = (Error::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Error = null;
+").
+
+:- pragma foreign_proc("Java",
+    no_error = (Error::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Error = null;
+").
+
+:- pred is_success(system_error::in) is semidet.
+
+:- pragma foreign_proc("C",
+    is_success(Error::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // This works for errno and Win32 error values (ERROR_SUCCESS == 0).
+    SUCCESS_INDICATOR = (Error == 0) ? MR_TRUE : MR_FALSE;
+").
+
+:- pragma foreign_proc("C#",
+    is_success(Error::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = (Error == null);
+").
+
+:- pragma foreign_proc("Java",
+    is_success(Error::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = (Error == null);
+").
+
+is_error(Error, Prefix, MaybeError, !IO) :-
+    ( if is_success(Error) then
+        MaybeError = no
+    else
+        make_err_msg(Error, Prefix, Message, !IO),
+        IOError = io_error(Message),
+        MaybeError = yes(IOError)
+    ).
+
+is_maybe_win32_error(Error, Prefix, MaybeError, !IO) :-
+    ( if is_success(Error) then
+        MaybeError = no
+    else
+        make_maybe_win32_err_msg(Error, Prefix, Message, !IO),
+        IOError = io_error(Message),
+        MaybeError = yes(IOError)
+    ).
+
+:- pragma foreign_proc("C",
+    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness, no_sharing, tabled_for_io],
+"
+    ML_make_err_msg(Error, Msg0, MR_ALLOC_ID, Msg);
+").
+
+:- pragma foreign_proc("C#",
+    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Msg = System.String.Concat(Msg0, Error.Message);
+").
+
+:- pragma foreign_proc("Java",
+    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (Error.getMessage() != null) {
+        Msg = Msg0 + Error.getMessage();
+    } else {
+        Msg = Msg0;
+    }
+").
+
+make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
+    ( if have_win32 then
+        make_win32_err_msg(Error, Msg0, Msg, !IO)
+    else
+        make_err_msg(Error, Msg0, Msg, !IO)
+    ).
+
+:- pred make_win32_err_msg(system_error::in, string::in, string::out,
+    io::di, io::uo) is det.
+
+make_win32_err_msg(_, _, "", !IO) :-
+    ( if semidet_succeed then
+        error("io.make_win32_err_msg called for non Win32 back-end")
+    else
+        true
+    ).
+
+    % Is FormatMessage thread-safe?
+    %
+:- pragma foreign_proc("C",
+    make_win32_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, does_not_affect_liveness,
+        no_sharing, tabled_for_io],
+"
+#ifdef MR_WIN32
+    ML_make_win32_err_msg(Error, Msg0, MR_ALLOC_ID, Msg);
+#else
+    MR_fatal_error(""io.make_win32_err_msg called on non-Windows platform"");
+#endif
+").
+
+:- pred throw_on_error(system_error::in, string::in, io::di, io::uo) is det.
+
+throw_on_error(Error, Prefix, !IO) :-
+    is_error(Error, Prefix, MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
+        throw(IOError)
+    ;
+        MaybeIOError = no
+    ).
+
+throw_on_output_error(Error, !IO) :-
+    throw_on_error(Error, "error writing to output file: ", !IO).
+
+:- pred throw_on_close_error(system_error::in, io::di, io::uo) is det.
+
+throw_on_close_error(Error, !IO) :-
+    throw_on_error(Error, "error closing file: ", !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_decl("C", "
+#ifdef MR_HAVE_UNISTD_H
+    #include <unistd.h>
+#endif
+#ifdef MR_HAVE_SYS_STAT_H
+    #include <sys/stat.h>
+#endif
+#include ""mercury_types.h""            // for MR_Integer
+#include ""mercury_library_types.h""    // for MercuryFilePtr
+#include ""mercury_int.h""              // for MR_*_reverse_bytes
+
+#include ""mercury_init.h""
+#include ""mercury_wrapper.h""
+#include ""mercury_type_info.h""
+#include ""mercury_file.h""
+#include ""mercury_heap.h""
+#include ""mercury_misc.h""
+#include ""mercury_runtime_util.h""
+#include ""mercury_report_stats.h""
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <limits.h>
+
+#ifdef MR_HAVE_SYS_WAIT_H
+  #include <sys/wait.h>     // for WIFEXITED, WEXITSTATUS, etc.
+#endif
+
+#ifdef MR_WIN32
+  #include ""mercury_windows.h""
+#endif
+
+extern MR_Word          ML_io_user_globals;
+#ifdef MR_THREAD_SAFE
+    extern MercuryLock  ML_io_user_globals_lock;
+#endif
+
+#if 0
+    extern MR_Word      ML_io_ops_table;
+#endif
+
+void                    mercury_init_io(void);
+
+#ifdef MR_WIN32
+    wchar_t             *ML_utf8_to_wide(const char *s);
+    char                *ML_wide_to_utf8(const wchar_t *ws,
+                            MR_AllocSiteInfoPtr alloc_id);
+#endif
+
+// ML_make_err_msg(errnum, msg, alloc_id, error_msg):
+// Append msg and a message for errnum to give error_msg.
+//
+// WARNING: this must only be called when the `hp' register is valid.
+// That means it must only be called from procedures declared
+// `[will_not_call_mercury, promise_pure]'.
+//
+// This is defined as a macro rather than a C function to avoid worrying
+// about the `hp' register being invalidated by the function call.
+
+#define ML_make_err_msg(errnum, msg, alloc_id, error_msg)                   \\
+    do {                                                                    \\
+        char    errbuf[MR_STRERROR_BUF_SIZE];                               \\
+        const char *errno_msg;                                              \\
+        size_t  total_len;                                                  \\
+                                                                            \\
+        errno_msg = MR_strerror(errnum, errbuf, sizeof(errbuf));            \\
+        total_len = strlen(msg) + strlen(errno_msg);                        \\
+        MR_allocate_aligned_string_msg((error_msg), total_len, (alloc_id)); \\
+        strcpy((error_msg), msg);                                           \\
+        strcat((error_msg), errno_msg);                                     \\
+    } while(0)
+
+// ML_make_win32_err_msg(error, msg, alloc_id, error_msg):
+// Append msg and the string returned by the Win32 API function
+// FormatMessage() for the last error to give error_msg.
+//
+// WARNING: this must only be called when the `hp' register is valid.
+// That means it must only be called from foreign_procs with the
+// will_not_call_mercury attribute.
+//
+// This is defined as a macro rather than a C function
+// to avoid worrying about the `hp' register being
+// invalidated by the function call.
+
+#ifdef MR_WIN32
+
+#define ML_make_win32_err_msg(error, msg, alloc_id, error_msg)              \\
+    do {                                                                    \\
+        size_t total_len;                                                   \\
+        LPVOID  err_buf;                                                    \\
+        MR_bool free_err_buf = MR_TRUE;                                     \\
+                                                                            \\
+        if (!FormatMessage(                                                 \\
+            FORMAT_MESSAGE_ALLOCATE_BUFFER                                  \\
+            | FORMAT_MESSAGE_FROM_SYSTEM                                    \\
+            | FORMAT_MESSAGE_IGNORE_INSERTS,                                \\
+            NULL,                                                           \\
+            error,                                                          \\
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),                      \\
+            (LPTSTR) &err_buf,                                              \\
+            0,                                                              \\
+            NULL))                                                          \\
+        {                                                                   \\
+            free_err_buf = MR_FALSE;                                        \\
+            err_buf = (LPVOID) ""could not retrieve error message"";        \\
+        }                                                                   \\
+        total_len = strlen(msg) + strlen((char *) err_buf);                 \\
+        MR_allocate_aligned_string_msg((error_msg), total_len, (alloc_id)); \\
+        strcpy((error_msg), msg);                                           \\
+        strcat((error_msg), (char *) err_buf);                              \\
+        if (free_err_buf) {                                                 \\
+            LocalFree(err_buf);                                             \\
+        }                                                                   \\
+    } while(0)
+
+#endif // !MR_WIN32
+").
+
+:- pragma foreign_code("C", "
+MR_Word         ML_io_user_globals;
+#ifdef MR_THREAD_SAFE
+    MercuryLock ML_io_user_globals_lock;
+#endif
+
+#if 0
+    MR_Word     ML_io_ops_table;
+#endif
+
+static void
+mercury_set_binary_mode(FILE *f)
+{
+#if defined(MR_MSVC) || defined(MR_MINGW)
+    // Calling fdopen with 'b' in the mode string does not necessarily put the
+    // standard input or standard output file into binary translation mode on
+    // Windows. This is the case with MinGW and MSVC. The cause is likely the
+    // MSVC CRT. The solution is to change the mode on the file after opening.
+    _setmode(_fileno(f), _O_BINARY);
+#endif
+}
+
+void
+mercury_init_io(void)
+{
+    MR_mercuryfile_init(stdin,  1, &mercury_stdin);
+    MR_mercuryfile_init(stdout, 1, &mercury_stdout);
+    MR_mercuryfile_init(stderr, 1, &mercury_stderr);
+
+    MR_mercuryfile_init(NULL, 1, &mercury_stdin_binary);
+    MR_mercuryfile_init(NULL, 1, &mercury_stdout_binary);
+
+    mercury_current_text_input_index =    MR_new_thread_local_mutable_index();
+    mercury_current_text_output_index =   MR_new_thread_local_mutable_index();
+    mercury_current_binary_input_index =  MR_new_thread_local_mutable_index();
+    mercury_current_binary_output_index = MR_new_thread_local_mutable_index();
+
+#if defined(MR_HAVE_FDOPEN) && (defined(MR_HAVE_FILENO) || defined(fileno)) \
+        && defined(MR_HAVE_DUP)
+    MR_file(mercury_stdin_binary) = fdopen(dup(fileno(stdin)), ""rb"");
+    if (MR_file(mercury_stdin_binary) != NULL) {
+        mercury_set_binary_mode(MR_file(mercury_stdin_binary));
+    } else {
+        // The call to fdopen() may fail if stdin is not available.
+        // We don't abort since we still want Mercury programs to be runnable
+        // in such a circumstance (aside from those that use stdin).
+        // For the same reason, we treat binary stdout identically below.
+        //
+        // NOTE: some versions of nohup may also cause the above call to
+        // fdopen() to fail, because they redirect stdin to /dev/null
+        // in *write* mode. Setting binary stdin to stdin in such a case
+        // also ensures that we work with those versions of nohup.
+        MR_file(mercury_stdin_binary) = stdin;
+    }
+
+    MR_file(mercury_stdout_binary) = fdopen(dup(fileno(stdout)), ""wb"");
+    if (MR_file(mercury_stdout_binary) != NULL) {
+        mercury_set_binary_mode(MR_file(mercury_stdout_binary));
+    } else {
+        MR_file(mercury_stdout_binary) = stdout;
+    }
+#else
+    // XXX Standard ANSI/ISO C provides no way to set stdin/stdout
+    // to binary mode. I guess we just have to punt...
+    MR_file(mercury_stdin_binary) = stdin;
+    MR_file(mercury_stdout_binary) = stdout;
+#endif
+
+#ifdef MR_THREAD_SAFE
+    pthread_mutex_init(&ML_io_stream_db_lock, MR_MUTEX_ATTR);
+    pthread_mutex_init(&ML_io_user_globals_lock, MR_MUTEX_ATTR);
+    pthread_mutex_init(&ML_io_next_stream_id_lock, MR_MUTEX_ATTR);
+#endif
+}
+
+#ifdef MR_WIN32
+
+// Accessing Unicode file names on Windows requires that we use the functions
+// taking wide character strings.
+wchar_t *
+ML_utf8_to_wide(const char *s)
+{
+    int     wslen;
+    wchar_t *ws;
+
+    wslen = MultiByteToWideChar(CP_UTF8, 0, s, -1, NULL, 0);
+    if (wslen == 0) {
+        MR_fatal_error(""ML_utf8_to_wide: MultiByteToWideChar failed"");
+    }
+    ws = MR_GC_NEW_ARRAY(wchar_t, wslen);
+    if (0 == MultiByteToWideChar(CP_UTF8, 0, s, -1, ws, wslen)) {
+        MR_fatal_error(""ML_utf8_to_wide: MultiByteToWideChar failed"");
+    }
+    return ws;
+}
+
+char *
+ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
+{
+    char    *s;
+    int     bytes;
+
+    bytes = WideCharToMultiByte(CP_UTF8, 0, ws, -1, NULL, 0, NULL, NULL);
+    if (bytes == 0) {
+        MR_fatal_error(""ML_wide_to_utf8: WideCharToMultiByte failed"");
+    }
+    MR_allocate_aligned_string_msg(s, bytes, alloc_id);
+    if (0 == WideCharToMultiByte(CP_UTF8, 0, ws, -1, s, bytes, NULL, NULL)) {
+        MR_fatal_error(""ML_wide_to_utf8: WideCharToMultiByte failed"");
+    }
+    return s;
+}
+
+#endif // MR_WIN32
+").
+
+%---------------------%
+
+:- pragma foreign_code("Java", "
+    public static univ.Univ_0 ML_io_user_globals = null;
+").
+
+%---------------------%
+
+:- pragma foreign_decl("C#", "
+// XXX zs: I don't know which of these are still needed.
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.AccessControl;
+using System.Security.Principal;
+").
+
+:- pragma foreign_code("C#", "
+// The ML_ prefixes here are not really needed,
+// since the C# code all gets generated inside a class,
+// but we keep them for consistency with the C code.
+
+public static univ.Univ_0       ML_io_user_globals;
+").
 
 %---------------------------------------------------------------------------%
 :- end_module io.
