@@ -247,46 +247,29 @@ update_interface_return_changed(Globals, ModuleName, OutputFileName,
     maybe_write_string(ProgressStream, Verbose,
         "% Updating interface:\n", !IO),
     TmpOutputFileName = OutputFileName ++ ".tmp",
-    io.open_binary_input(OutputFileName, OutputFileRes, !IO),
+    io.read_named_file_as_string(OutputFileName, OutputFileRes, !IO),
     (
-        OutputFileRes = ok(OutputFileStream),
-        io.open_binary_input(TmpOutputFileName, TmpOutputFileRes, !IO),
+        OutputFileRes = ok(OutputFileStr),
+        io.read_named_file_as_string(TmpOutputFileName, TmpOutputFileRes, !IO),
         (
-            TmpOutputFileRes = ok(TmpOutputFileStream),
-            binary_input_stream_cmp(OutputFileStream, TmpOutputFileStream,
-                FilesDiffer, !IO),
-            io.close_binary_input(OutputFileStream, !IO),
-            io.close_binary_input(TmpOutputFileStream, !IO),
-            (
-                FilesDiffer = ok(ok(no)),
+            TmpOutputFileRes = ok(TmpOutputFileStr),
+            ( if OutputFileStr = TmpOutputFileStr then
                 Result = interface_unchanged,
                 string.format("%% `%s' has not changed.\n",
                     [s(OutputFileName)], NoChangeMsg),
                 maybe_write_string(ProgressStream, Verbose, NoChangeMsg, !IO),
                 io.file.remove_file(TmpOutputFileName, _, !IO)
-            ;
-                FilesDiffer = ok(ok(yes)),
+            else
                 update_interface_create_file(Globals,
                     ProgressStream, ErrorStream, "CHANGED",
                     OutputFileName, TmpOutputFileName, Result, !IO)
-            ;
-                FilesDiffer = ok(error(TmpFileError)),
-                io.error_message(TmpFileError, TmpFileErrorMsg),
-                Result = interface_error,
-                io.format(ErrorStream, "Error reading `%s': %s\n",
-                    [s(TmpOutputFileName), s(TmpFileErrorMsg)], !IO)
-            ;
-                FilesDiffer = error(_, _),
-                update_interface_create_file(Globals,
-                    ProgressStream, ErrorStream, "been CREATED",
-                    OutputFileName, TmpOutputFileName, Result, !IO)
             )
         ;
-
             TmpOutputFileRes = error(TmpOutputFileError),
             io.error_message(TmpOutputFileError, TmpOutputFileErrorMsg),
             Result = interface_error,
-            io.close_binary_input(OutputFileStream, !IO),
+            % The error message is about TmpOutputFileName, but the
+            % message we print does not mention that file name.
             io.format(ErrorStream, "Error creating `%s': %s\n",
                 [s(OutputFileName), s(TmpOutputFileErrorMsg)], !IO)
         )
@@ -348,58 +331,6 @@ update_interface_create_file(Globals, ProgressStream, ErrorStream,
             [s(OutputFileName), s(io.error_message(MoveError))], !IO)
     ),
     io.file.remove_file(TmpOutputFileName, _, !IO).
-
-:- pred binary_input_stream_cmp(io.binary_input_stream::in,
-    io.binary_input_stream::in, io.maybe_partial_res(io.res(bool))::out,
-    io::di, io::uo) is det.
-
-binary_input_stream_cmp(OutputFileStream, TmpOutputFileStream, FilesDiffer,
-        !IO) :-
-    io.binary_input_stream_foldl2_io_maybe_stop(OutputFileStream,
-        binary_input_stream_cmp_2(TmpOutputFileStream),
-        ok(no), FilesDiffer0, !IO),
-
-    % Check whether there is anything left in TmpOutputFileStream
-    ( if FilesDiffer0 = ok(ok(no)) then
-        io.read_byte(TmpOutputFileStream, TmpByteResult2, !IO),
-        (
-            TmpByteResult2 = ok(_),
-            FilesDiffer = ok(ok(yes))
-        ;
-            TmpByteResult2 = eof,
-            FilesDiffer = FilesDiffer0
-        ;
-            TmpByteResult2 = error(Error),
-            FilesDiffer = ok(error(Error))
-        )
-    else
-        FilesDiffer = FilesDiffer0
-    ).
-
-:- pred binary_input_stream_cmp_2(io.binary_input_stream::in, int::in,
-    bool::out, io.res(bool)::in, io.res(bool)::out, io::di, io::uo) is det.
-
-binary_input_stream_cmp_2(TmpOutputFileStream, Byte, Continue, _, Differ,
-        !IO) :-
-    io.read_byte(TmpOutputFileStream, TmpByteResult, !IO),
-    (
-        TmpByteResult = ok(TmpByte),
-        ( if TmpByte = Byte then
-            Differ = ok(no),
-            Continue = yes
-        else
-            Differ = ok(yes),
-            Continue = no
-        )
-    ;
-        TmpByteResult = eof,
-        Differ = ok(yes),
-        Continue = no
-    ;
-        TmpByteResult = error(TmpByteError),
-        Differ = error(TmpByteError) : io.res(bool),
-        Continue = no
-    ).
 
 %-----------------------------------------------------------------------------%
 
