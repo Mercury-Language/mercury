@@ -3474,77 +3474,70 @@ write_bitmap(Stream, Bitmap, Start, NumBytes, !IO) :-
 %
 
 read(Result, !IO) :-
-    mercury_term_parser.read_term(ReadResult, !IO),
-    get_line_number(LineNumber, !IO),
-    process_read_term(ReadResult, LineNumber, Result).
+    io.input_stream(Stream, !IO),
+    mercury_term_parser.read_term(Stream, ReadResult, !IO),
+    get_line_number(Stream, LineNumber, !IO),
+    process_read_term($pred, ReadResult, LineNumber, Result).
 
 read(Stream, Result, !IO) :-
-    % The term parser does not accept an explicit stream argument (yet)
-    % so we must change the current input stream.
-    with_input_stream(Stream, read, Result, !IO).
+    mercury_term_parser.read_term(Stream, ReadResult, !IO),
+    get_line_number(Stream, LineNumber, !IO),
+    process_read_term($pred, ReadResult, LineNumber, Result).
 
 read_from_string(FileName, String, Len, Result, !Posn) :-
     mercury_term_parser.read_term_from_substring(FileName, String, Len,
         !Posn, ReadResult),
     !.Posn = posn(LineNumber, _, _),
-    process_read_term(ReadResult, LineNumber, Result).
+    process_read_term($pred, ReadResult, LineNumber, Result).
 
-:- pred process_read_term(read_term::in, int::in, io.read_result(T)::out)
-    is det.
+:- pred process_read_term(string::in, read_term::in, int::in,
+    io.read_result(T)::out) is det.
 
-process_read_term(ReadResult, LineNumber, Result) :-
+process_read_term(PredId, ReadResult, LineNumber, Result) :-
     (
         ReadResult = term(_VarSet, Term),
         ( if term_to_type(Term, Type) then
             Result = ok(Type)
         else
             ( if term.is_ground(Term) then
-                Result = error(
-                    "io.read: the term read did not have the right type",
-                    LineNumber)
+                Msg = "the term read did not have the right type"
             else
-                Result = error("io.read: the term read was not a ground term",
-                    LineNumber)
-            )
+                Msg = "the term read was not a ground term"
+            ),
+            Result = error(PredId ++ ": " ++ Msg, LineNumber)
         )
     ;
         ReadResult = eof,
         Result = eof
     ;
-        ReadResult = error(String, Int),
-        Result = error(String, Int)
+        ReadResult = error(Msg, LN),
+        Result = error(Msg, LN)
     ).
 
 %---------------------%
 
 read_binary(Result, !IO) :-
-    % A quick-and-dirty implementation... not very space-efficient
-    % (not really binary!)
-    % XXX This will not work for the Java back-end. See the comment at the
-    % top of the MR_MercuryFileStruct class definition.
-    binary_input_stream(binary_input_stream(Stream), !IO),
-    with_input_stream(input_stream(Stream),
-        read_binary_from_current_input_stream, Result, !IO).
+    binary_input_stream(BinaryInputStream, !IO),
+    read_binary(BinaryInputStream, Result, !IO).
 
-read_binary(binary_input_stream(Stream), Result, !IO) :-
-    % We would prefer not to change the current input stream but the
-    % quick-and-dirty implementation of read_binary uses io.read,
-    % and io.read internally reads from the current text input stream.
-    % XXX This will not work for the Java back-end. See the comment at the
-    % top of the MR_MercuryFileStruct class definition.
-    with_input_stream(input_stream(Stream),
-        read_binary_from_current_input_stream, Result, !IO).
+read_binary(BinaryInputStream, Result, !IO) :-
+    % XXX This "cast" will not work for the Java back-end.
+    % See the comment at the top of the MR_MercuryFileStruct class definition
+    % in io.stream_ops.m.
+    BinaryInputStream = binary_input_stream(Stream),
+    TextInputStream = input_stream(Stream),
+    read_binary_from_text_input_stream(TextInputStream, Result, !IO).
 
-:- pred read_binary_from_current_input_stream(io.result(T)::out,
-    io::di, io::uo) is det.
+:- pred read_binary_from_text_input_stream(io.text_input_stream::in,
+    io.result(T)::out, io::di, io::uo) is det.
 
-read_binary_from_current_input_stream(Result, !IO) :-
-    read(ReadResult, !IO),
+read_binary_from_text_input_stream(Stream, Result, !IO) :-
+    read(Stream, ReadResult, !IO),
     (
         ReadResult = ok(T),
         % We have read the newline and the trailing full stop.
         % Now skip the newline after the full stop.
-        read_char(NewLineRes, !IO),
+        read_char(Stream, NewLineRes, !IO),
         (
             NewLineRes = error(Error),
             Result = error(Error)
@@ -5095,16 +5088,6 @@ set_op_table(_OpTable, !IO).
 % XXX We should not need these if we passed streams explicitly everywhere.
 %
 
-:- pred with_input_stream(input_stream, pred(T, io, io), T, io, io).
-:- mode with_input_stream(in, pred(out, di, uo) is det, out, di, uo) is det.
-:- mode with_input_stream(in, pred(out, di, uo) is cc_multi, out, di, uo)
-    is cc_multi.
-
-with_input_stream(Stream, Pred, Result, !IO) :-
-    set_input_stream(Stream, OrigStream, !IO),
-    finally(Pred, Result,
-        restore_input_stream(Pred, OrigStream), _CleanupRes, !IO).
-
 :- pred with_output_stream(output_stream, pred(io, io), io, io).
 :- mode with_output_stream(in, pred(di, uo) is det, di, uo) is det.
 :- mode with_output_stream(in, pred(di, uo) is cc_multi, di, uo) is cc_multi.
@@ -5121,16 +5104,6 @@ with_output_stream(Stream, Pred, !IO) :-
 
 call_pred_no_result(Pred, {}, !IO) :-
     Pred(!IO).
-
-:- pred restore_input_stream(pred(T, io, io), input_stream, io.res, io, io).
-:- mode restore_input_stream(pred(out, di, uo) is det, in, out, di, uo)
-    is det.
-:- mode restore_input_stream(pred(out, di, uo) is cc_multi, in, out, di, uo)
-    is cc_multi.
-:- pragma no_determinism_warning(pred(restore_input_stream/5)).
-
-restore_input_stream(_DummyPred, Stream, ok, !IO) :-
-    set_input_stream(Stream, _OldStream, !IO).
 
 :- pred restore_output_stream(pred(io, io), output_stream, io.res, io, io).
 :- mode restore_output_stream(pred(di, uo) is det, in, out, di, uo) is det.

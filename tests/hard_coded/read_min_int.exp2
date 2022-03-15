@@ -3,11 +3,11 @@ foo(2147483647)
 foo(2147483648)
 foo(-9223372036854775808)
 foo(9223372036854775807)
-io.read: the term read did not have the right type
+predicate `io.read'/3: the term read did not have the right type
 
 foo(-2147483648)
 foo(2147483647)
 foo(2147483648)
 foo(-9223372036854775808)
 foo(9223372036854775807)
-io.read: the term read did not have the right type
+predicate `io.read_from_string'/6: the term read did not have the right type
