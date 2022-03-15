@@ -45,7 +45,6 @@
 
 :- import_module list.
 :- import_module pretty_printer.
-:- import_module random.
 
 :- type array(T).
 
@@ -825,13 +824,6 @@
     % Make C a concatenation of the arrays A and B.
     %
 :- func append(array(T)::in, array(T)::in) = (array(T)::array_uo) is det.
-
-    % random_permutation(A0, A, RS0, RS) permutes the elements in
-    % A0 given random seed RS0 and returns the permuted array in A
-    % and the next random seed in RS.
-    %
-:- pred random_permutation(array(T)::array_di, array(T)::array_uo,
-    random.supply::mdi, random.supply::muo) is det.
 
     % Convert an array to a pretty_printer.doc for formatting.
     %
@@ -2578,37 +2570,6 @@ append(A, B) = C :-
         ArrayC->elements[offset + i] = ArrayB->elements[i];
     }
 ").
-
-%---------------------------------------------------------------------------%
-
-random_permutation(A0, A, RS0, RS) :-
-    Lo = array.min(A0),
-    Hi = array.max(A0),
-    Sz = array.size(A0),
-    permutation_2(Lo, Lo, Hi, Sz, A0, A, RS0, RS).
-
-:- pred permutation_2(int::in, int::in, int::in, int::in,
-    array(T)::array_di, array(T)::array_uo,
-    random.supply::mdi, random.supply::muo) is det.
-
-permutation_2(I, Lo, Hi, Sz, !A, !RS) :-
-    ( if I > Hi then
-        true
-    else
-        random.random(R, !RS),
-        J  = Lo + (R `rem` Sz),
-        swap_elems(I, J, !A),
-        permutation_2(I + 1, Lo, Hi, Sz, !A, !RS)
-    ).
-
-:- pred swap_elems(int::in, int::in, array(T)::array_di, array(T)::array_uo)
-    is det.
-
-swap_elems(I, J, !A) :-
-    array.lookup(!.A, I, XI),
-    array.lookup(!.A, J, XJ),
-    array.unsafe_set(I, XJ, !A),
-    array.unsafe_set(J, XI, !A).
 
 %---------------------------------------------------------------------------%
 

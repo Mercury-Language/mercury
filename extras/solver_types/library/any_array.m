@@ -283,14 +283,24 @@
 :- mode any_array.foldr(func(ia, ia) = oa is det, any_array_ui, ia) = oa
         is det.
 
-    % any_array.random_permutation(A0, A, RS0, RS) permutes the elements in
-    % A0 given random seed RS0 and returns the permuted any_array in A
-    % and the next random seed in RS.
+    % any_array.random_permutation(A0, A, R0, R) permutes the elements in A0
+    % given random number generator R0 and returns the permuted any_array in A
+    % and the next random generator in R.
     %
 :- pred any_array.random_permutation(any_array(T), any_array(T),
-        random.supply, random.supply).
+    R, R) <= random(R).
 :- mode any_array.random_permutation(any_array_di, any_array_uo,
-        mdi, muo) is det.
+    in, out) is det.
+
+    % any_array.random_permutation(RNG, A0, A, RS0, RS) permutes the elements
+    % in A0 given unique random number generator RNG and initial random state
+    % RS0. It returns the permuted any_array in A and the updated random
+    % number generator state in RS.
+    %
+:- pred any_array.random_permutation(P, any_array(T), any_array(T),
+    S, S) <= urandom(P, S).
+:- mode any_array.random_permutation(in, any_array_di, any_array_uo,
+    di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -797,25 +807,44 @@ Array ^ elem(Index) =
 
 %------------------------------------------------------------------------------%
 
-any_array.random_permutation(A0, A, RS0, RS) :-
+random_permutation(A0, A, !R) :-
     Lo = any_array.min(A0),
     Hi = any_array.max(A0),
     Sz = any_array.size(A0),
-    permutation_2(Lo, Lo, Hi, Sz, A0, A, RS0, RS).
+    permutation_2(Lo, Lo, Hi, Sz, A0, A, !R).
 
-:- pred permutation_2(int, int, int, int, any_array(T), any_array(T),
-        random.supply, random.supply).
-:- mode permutation_2(in, in, in, in, any_array_di, any_array_uo, mdi, muo) is det.
+:- pred permutation_2(int::in, int::in, int::in, int::in,
+    any_array(T)::any_array_di, any_array(T)::any_array_uo, R::in, R::out) is det
+    <= random(R).
 
-permutation_2(I, Lo, Hi, Sz, A0, A, RS0, RS) :-
-    ( I > Hi ->
-        A  = A0,
-        RS = RS0
-    ;
-        random.random(R, RS0, RS1),
-        J  = Lo + (R `rem` Sz),
-        A1 = swap_elems(A0, I, J),
-        permutation_2(I + 1, Lo, Hi, Sz, A1, A, RS1, RS)
+permutation_2(I, Lo, Hi, Sz, !A, !R) :-
+    ( if I > Hi then
+        true
+    else
+        uniform_int_in_range(Lo, Sz, J, !R),
+        !:A = swap_elems(!.A, I, J),
+        permutation_2(I + 1, Lo, Hi, Sz, !A, !R)
+    ).
+
+%------------------------------------------------------------------------------%
+
+any_array.random_permutation(P, A0, A, !S) :-
+    Lo = any_array.min(A0),
+    Hi = any_array.max(A0),
+    Sz = any_array.size(A0),
+    permutation_2(P, Lo, Lo, Hi, Sz, A0, A, !S).
+
+:- pred permutation_2(P::in, int::in, int::in, int::in, int::in,
+    any_array(T)::any_array_di, any_array(T)::any_array_uo, S::di, S::uo)
+    is det <= urandom(P, S).
+
+permutation_2(P, I, Lo, Hi, Sz, !A, !S) :-
+    ( if I > Hi then
+        true
+    else
+        uniform_int_in_range(P, Lo, Sz, J, !S),
+        !:A = swap_elems(!.A, I, J),
+        permutation_2(P, I + 1, Lo, Hi, Sz, !A, !S)
     ).
 
 %------------------------------------------------------------------------------%

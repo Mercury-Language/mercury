@@ -27,15 +27,15 @@
 :- import_module char.
 :- import_module int.
 :- import_module list.
+:- import_module maybe.
 :- import_module random.
+:- import_module random.sfc32.
+:- import_module random.system_rng.
 :- import_module require.
 :- import_module std_util.
 :- import_module string.
-:- import_module time.
 
 %-----------------------------------------------------------------------------%
-
-:- type rs == random.supply.
 
 :- type world
     --->    world(
@@ -66,34 +66,50 @@
 :- type apple
     --->    no_apple
     ;       apple(
-                x   :: int,
-                y   :: int,
-                repr    :: int
+                x    :: int,
+                y    :: int,
+                repr :: int
             ).
 
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
-    time.time(Now, !IO),
-    time.localtime(Now, LocalNow, !IO),
-    random.init(LocalNow ^ tm_min * 60 + LocalNow ^ tm_sec, RS),
-    curs.start(!IO),
-    curs.nodelay(yes, !IO),
-    curs.rows_cols(Rows, Cols, !IO),
-    curs.flushinp(!IO),
-    play_game(Cols, Rows, !IO, RS, _RS1),
-    curs.stop(!IO).
+    open_system_rng(MaybeSystemRNG, !IO),
+    (
+        MaybeSystemRNG = ok(SystemRNG),
+        system_rng.generate_uint32(SystemRNG, SeedA, !IO),
+        system_rng.generate_uint32(SystemRNG, SeedB, !IO),
+        system_rng.generate_uint32(SystemRNG, SeedC, !IO),
+        close_system_rng(SystemRNG, !IO),
 
-:- pred play_game(int::in, int::in, io::di, io::uo, rs::mdi, rs::muo) is det.
+        sfc32.seed(SeedA, SeedB, SeedC, RNG0, RS),
+        make_io_urandom(RNG0, RS, RNG, !IO),
 
-play_game(Cols, Rows, !IO, !RS) :-
+        curs.start(!IO),
+        curs.nodelay(yes, !IO),
+        curs.rows_cols(Rows, Cols, !IO),
+        curs.flushinp(!IO),
+        play_game(RNG, Cols, Rows, !IO),
+        curs.stop(!IO)
+    ;
+        MaybeSystemRNG = error(ErrMsg),
+        io.stderr_stream(Stderr, !IO),
+        io.format(Stderr, "Error %s.\n", [s(ErrMsg)], !IO),
+        io.set_exit_status(1, !IO)
+    ).
+
+:- pred play_game(io_urandom(P, S)::in, int::in, int::in, io::di, io::uo) is det
+    <= urandom(P, S).
+
+play_game(RNG, Cols, Rows, !IO) :-
     Snake = snake(right, {Cols / 2, Rows / 2}, [], 10),
     World = world(Cols, Rows, Snake, 1, no_apple, 0),
-    game_loop(World, !IO, !RS).
+    game_loop(RNG, World, !IO).
 
-:- pred game_loop(world::in, io::di, io::uo, rs::mdi, rs::muo) is det.
+:- pred game_loop(io_urandom(P, S)::in, world::in, io::di, io::uo) is det
+    <= urandom(P, S).
 
-game_loop(!.World, !IO, !RS) :-
+game_loop(RNG, !.World, !IO) :-
     handle_input(!World, !IO, Quit),
     (
         Quit = no,
@@ -104,8 +120,8 @@ game_loop(!.World, !IO, !RS) :-
             show_game_over(!IO)
         else
             sleep.usleep(50000, !IO),
-            maybe_replenish_apple(!World, !RS),
-            game_loop(!.World, !IO, !RS)
+            maybe_replenish_apple(RNG, !World, !IO),
+            game_loop(RNG, !.World, !IO)
         )
     ;
         Quit = yes
@@ -237,11 +253,12 @@ snake_is_dead(World) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_replenish_apple(world::in, world::out, rs::mdi, rs::muo) is det.
+:- pred maybe_replenish_apple(io_urandom(P, S)::in, world::in, world::out,
+    io::di, io::uo) is det <= urandom(P, S).
 
-maybe_replenish_apple(World0, World, !RS) :-
+maybe_replenish_apple(RNG, World0, World, !IO) :-
     ( if World0 ^ apple = no_apple then
-        new_apple(World0, !RS, NewApple),
+        new_apple(RNG, World0, NewApple, !IO),
         NextAppleNum = inc_apple_num(World0 ^ next_apple_num),
         World = ((World0
             ^ apple := NewApple)
@@ -250,13 +267,14 @@ maybe_replenish_apple(World0, World, !RS) :-
         World = World0
     ).
 
-:- pred new_apple(world::in, rs::mdi, rs::muo, apple::out) is det.
+:- pred new_apple(io_urandom(P, S)::in, world::in, apple::out, io::di, io::uo)
+    is det <= urandom(P, S).
 
-new_apple(World, !RS, Apple) :-
-    random.random(1, World ^ cols-2, X, !RS),
-    random.random(1, World ^ rows-2, Y, !RS),
+new_apple(RNG, World, Apple, !IO) :-
+    uniform_int_in_range(RNG, 1, World ^ cols - 2, X, !IO),
+    uniform_int_in_range(RNG, 1, World ^ rows - 2, Y, !IO),
     ( if touches_snake(X, Y, World) then
-        new_apple(World, !RS, Apple)
+        new_apple(RNG, World, Apple, !IO)
     else
         Apple = apple(X, Y, apple_char(World ^ next_apple_num))
     ).

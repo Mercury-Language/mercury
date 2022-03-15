@@ -26,13 +26,14 @@
 :- import_module int.
 :- import_module list.
 :- import_module random.
+:- import_module random.sfc32.
 :- import_module require.
 :- import_module string.
 
 main(!IO) :-
     MaxLength = 1024,
-    random.init(1, RS0),
-    test(MaxLength, yes, Succeeded, RS0, _, !IO),
+    sfc32.init(RNG, RS0),
+    test(RNG, MaxLength, yes, Succeeded, RS0, _, !IO),
     (
         Succeeded = yes,
         io.write_string("all tests succeeded\n", !IO)
@@ -41,14 +42,14 @@ main(!IO) :-
         io.write_string("some tests failed\n", !IO)
     ).
 
-:- pred test(int::in, bool::in, bool::out,
-    random.supply::mdi, random.supply::muo, io::di, io::uo) is det.
+:- pred test(RNG::in, int::in, bool::in, bool::out,
+    State::di, State::uo, io::di, io::uo) is det <= urandom(RNG, State).
 
-test(Length, !Succeeded, !RS, !IO) :-
+test(RNG, Length, !Succeeded, !RS, !IO) :-
     ( if Length < 0 then
         true
     else
-        make_char_list(Length, [], List, !RS),
+        make_char_list(RNG, Length, [], List, !RS),
         string.from_char_list(List, String),
 
         LibHash1 = string.hash(String),
@@ -75,30 +76,30 @@ test(Length, !Succeeded, !RS, !IO) :-
         RuntimeHash6 = runtime_string_hash6(String),
         test_hash("hash6", LibHash6, RuntimeHash6, String, !Succeeded, !IO),
 
-        test(Length - 1, !Succeeded, !RS, !IO)
+        test(RNG, Length - 1, !Succeeded, !RS, !IO)
     ).
 
-:- pred make_char_list(int::in, list(char)::in, list(char)::out,
-    random.supply::mdi, random.supply::muo) is det.
+:- pred make_char_list(RNG::in, int::in, list(char)::in, list(char)::out,
+    State::di, State::uo) is det <= urandom(RNG, State).
 
-make_char_list(Length, !List, !RS) :-
+make_char_list(RNG, Length, !List, !RS) :-
     ( if Length = 0 then
         true
     else
-        rand_char(Char, !RS),
+        rand_char(RNG, Char, !RS),
         !:List = [Char | !.List],
-        make_char_list(Length - 1, !List, !RS)
+        make_char_list(RNG, Length - 1, !List, !RS)
     ).
 
-:- pred rand_char(char::out, random.supply::mdi, random.supply::muo) is det.
+:- pred rand_char(RNG::in, char::out, State::di, State::uo) is det
+    <= urandom(RNG, State).
 
-rand_char(Char, !RS) :-
-    random.random(Rand, !RS),
+rand_char(RNG, Char, !RS) :-
     % U+0001..U+10ffff (avoid null character).
-    Int = 1 + (Rand `mod` char.max_char_value),
+    uniform_int_in_range(RNG, 1, char.max_char_value, Int, !RS),
     char.det_from_int(Int, Char0),
     ( if is_surrogate(Char0) then
-        rand_char(Char, !RS)
+        rand_char(RNG, Char, !RS)
     else
         Char = Char0
     ).

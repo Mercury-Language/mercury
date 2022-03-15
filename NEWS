@@ -12,8 +12,17 @@ Changes that may break compatibility
   as obsolete, while other predicates that had been marked as obsolete
   before the release of Mercury 22.01 have been removed.
 
+* The old random number generator in the `random` module has been removed.
+
 Changes to the Mercury standard library
 ---------------------------------------
+
+### Changes to the `array` module
+
+* The following predicate has been removed:
+
+    - pred `random_permutation/4`
+      (replacement: `random.shuffle_array/4` or `random.shuffle_array/5`)
 
 ### Changes to the `benchmarking` module
 
@@ -186,6 +195,20 @@ This new module has these predicates:
     - pred `chunk_foldl4/11`
     - pred `gap_foldl/5`
     - pred `last_gap_foldl/6`
+
+### Changes to the `random` module
+
+The old random number generator has been removed. It has been replaced by the
+new type class random number generation framework defined in this module.
+As a result, the following predicates have been removed:
+
+   - pred `init/2`
+   - pred `random/3`
+   - pred `random/5`
+   - pred `randmax/3`
+   - pred `randcount/3`
+   - pred `permutation/4`
+            (replacement: `random.shuffle_list/4` or `random.shuffle_list/5`)
 
 ### Changes to the `term_io` module
 

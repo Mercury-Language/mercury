@@ -327,8 +327,6 @@ ORDINARY_PROGS = \
 	quantifier \
 	quantifier2 \
 	quoting_bug_test \
-	random_permutation \
-	random_simple \
 	rational_test \
 	read_binary_int16 \
 	read_binary_int32 \
