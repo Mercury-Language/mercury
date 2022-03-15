@@ -212,8 +212,9 @@ process_imported_term_info(ProcInfo, !Term2Info) :-
     size_var_map::in, map(int, size_var)::out) is det.
 
 create_substitution_map(Ids, IdToProgVar, SizeVarMap, IdToSizeVar) :-
-    list.foldl((pred(Id::in, !.Map::in, !:Map::out) is det :-
-            ProgVar = IdToProgVar ^ det_elem(Id),
+    list.foldl(
+        ( pred(Id::in, !.Map::in, !:Map::out) is det :-
+            map.lookup(IdToProgVar, Id, ProgVar),
             SizeVar = map.lookup(SizeVarMap, ProgVar),
             map.set(Id, SizeVar, !Map)
         ), Ids, map.init, IdToSizeVar).
@@ -243,7 +244,7 @@ create_arg_size_constraint(SubstMap, eq(Terms0, Constant), Constraint) :-
 
 create_lp_term(SubstMap, ArgSizeTerm, Var - Coefficient) :-
     ArgSizeTerm = arg_size_term(VarId, Coefficient),
-    Var = SubstMap ^ det_elem(VarId).
+    map.lookup(SubstMap, VarId, Var).
 
 %----------------------------------------------------------------------------%
 %
@@ -390,7 +391,7 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
 set_generated_terminates([], _, _, !ProcTable).
 set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
         !ProcTable) :-
-    ProcInfo0 = !.ProcTable ^ det_elem(ProcId),
+    map.lookup(!.ProcTable, ProcId, ProcInfo0),
     proc_info_get_headvars(ProcInfo0, HeadVars),
     proc_info_get_vartypes(ProcInfo0, VarTypes),
     special_pred_id_to_termination(SpecialPredId, HeadVars, ModuleInfo,
@@ -488,7 +489,7 @@ make_spec_pred_constr_term_info(HeadProgVars, ModuleInfo, VarTypes,
 set_builtin_terminates([], _, _, _, !ProcTable).
 set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
         !ProcTable) :-
-    ProcInfo0 = !.ProcTable ^ det_elem(ProcId),
+    map.lookup(!.ProcTable, ProcId, ProcInfo0),
     proc_info_get_headvars(ProcInfo0, HeadVars),
     PredModule = pred_info_module(PredInfo),
     PredName   = pred_info_name(PredInfo),
@@ -677,7 +678,7 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
 
 initialise_size_var_maps([], !ProcTable).
 initialise_size_var_maps([ProcId | ProcIds], !ProcTable) :-
-    ProcInfo0 = !.ProcTable ^ det_elem(ProcId),
+    map.lookup(!.ProcTable, ProcId, ProcInfo0),
     proc_info_get_termination2_info(ProcInfo0, Term2Info0),
     proc_info_get_headvars(ProcInfo0, HeadVars),
     make_size_var_map(HeadVars, _SizeVarset, SizeVarMap),
