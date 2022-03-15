@@ -144,6 +144,7 @@ ORDINARY_PROGS = \
 	float_reg \
 	float_rounding_bug \
 	fold_days \
+	fold_tests \
 	follow_code_bug \
 	follow_code_bug_2 \
 	foreign_and_mercury \

@@ -176,6 +176,17 @@ This new module has these predicates:
     - pred `have_make_temp_directory/0`
     - pred `get_temp_directory/3`
 
+### Changes to the `list` module
+
+* The following predicates have been added:
+
+    - pred `chunk_foldl/5`
+    - pred `chunk_foldl2/7`
+    - pred `chunk_foldl3/9`
+    - pred `chunk_foldl4/11`
+    - pred `gap_foldl/5`
+    - pred `last_gap_foldl/6`
+
 ### Changes to the `term_io` module
 
 * The following predicates have been removed:

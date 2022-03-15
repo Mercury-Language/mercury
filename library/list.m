@@ -1071,7 +1071,6 @@
 
 %---------------------------------------------------------------------------%
 
-
     % foldl(Func, List, Start) = End:
     % foldl(Pred, List, Start, End):
     %
@@ -1365,6 +1364,105 @@
     in, out, in, out, in, out) is nondet,
     in, in, out, in, out, in, out, in, out, in, out,
     in, out, in, out, in, out) is nondet.
+
+%---------------------%
+
+    % gap_foldl(ProcessPred, GapPred, List, !Acc):
+    %
+    % Invoke ProcessPred on every element of List,
+    % and invoke GapPred on every gap *between* elements in List.
+    % The intended use case is printing a list, using ProcessPred to print
+    % each element, and using GapPred to print e.g. commas between
+    % the elements.
+    %
+:- pred gap_foldl(pred(L, A, A), pred(A, A), list(L), A, A).
+:- mode gap_foldl(pred(in, di, uo) is det, pred(di, uo) is det,
+    in, di, uo) is det.
+:- mode gap_foldl(pred(in, in, out) is det, pred(in, out) is det,
+    in, in, out) is det.
+
+    % last_gap_foldl(ProcessPred, GapPred, LastGapPred, List, !Acc):
+    %
+    % Invoke ProcessPred on every element of List,
+    % invoke GapPred on every gap between elements in List except the last,
+    % and invoke LastGapPred on the last gap between elements.
+    % The intended use case is printing a list, using ProcessPred to print
+    % each element, and using GapPred to print e.g. commas between
+    % the elements, and using LastGapPred to print something else,
+    % such as "and".
+    %
+:- pred last_gap_foldl(pred(L, A, A), pred(A, A), pred(A, A), list(L), A, A).
+:- mode last_gap_foldl(pred(in, di, uo) is det, pred(di, uo) is det,
+    pred(di, uo) is det, in, di, uo) is det.
+:- mode last_gap_foldl(pred(in, in, out) is det, pred(in, out) is det,
+    pred(in, out) is det, in, in, out) is det.
+
+%---------------------%
+
+    % chunk_foldl(ChunkSize, Pred, List, !Acc):
+    %
+    % Does the same job as foldl(Pred, List, !Acc), but using
+    % two nested loops, not one.
+    %
+    % In most grades, the implementation of foldl can handle lists
+    % of arbitrary length, the reason being that tail recursion optimization
+    % allows it to do its work using only one stack frame. However, in some
+    % grades (including debugging and some profiling grades) tail recursion
+    % optimization is not available, which means that foldl will need
+    % a separate stack frame for processing each element. With long lists,
+    % this can exhaust the stack.
+    %
+    % chunk_foldl addresses this issue by replacing foldl's single loop
+    % with an outer and an inner loop. Each invocation of the inner loop
+    % processes one chunk of the list (whose length is given by ChunkSize),
+    % and when it is done with that chunk, the inner loop returns, which
+    % means that it frees up all the stack frames that it used. The outer loop
+    % then continues to invoke the inner loop until all elements of List
+    % have been processed.
+    %
+    % With this arrangement, the maximum number of stack frames needed
+    % to process a list of length N is N/ChunkSize + ChunkSize, the former
+    % being the number of frames used by the outer loop, and the latter
+    % being the max number of frames used by the inner loop. This means that
+    % the optimal ChunkSize for a list of length N is the square root of N,
+    % but usually optimality is not required, and any reasonable chunk size
+    % will work.
+    %
+:- pred chunk_foldl(int, pred(L, A, A), list(L), A, A).
+:- mode chunk_foldl(in, pred(in, di, uo) is det, in, di, uo) is det.
+:- mode chunk_foldl(in, pred(in, in, out) is det, in, in, out) is det.
+
+    % Does the same job of chunk_foldl, but with two accumulators.
+    %
+:- pred chunk_foldl2(int, pred(L, A, A, B, B), list(L), A, A, B, B).
+:- mode chunk_foldl2(in, pred(in, di, uo, di, uo) is det,
+    in, di, uo, di, uo) is det.
+:- mode chunk_foldl2(in, pred(in, in, out, di, uo) is det,
+    in, in, out, di, uo) is det.
+:- mode chunk_foldl2(in, pred(in, in, out, in, out) is det,
+    in, in, out, in, out) is det.
+
+    % Does the same job of chunk_foldl, but with three accumulators.
+    %
+:- pred chunk_foldl3(int, pred(L, A, A, B, B, C, C),
+    list(L), A, A, B, B, C, C).
+:- mode chunk_foldl3(in, pred(in, in, out, di, uo, di, uo) is det,
+    in, in, out, di, uo, di, uo) is det.
+:- mode chunk_foldl3(in, pred(in, in, out, in, out, di, uo) is det,
+    in, in, out, in, out, di, uo) is det.
+:- mode chunk_foldl3(in, pred(in, in, out, in, out, in, out) is det,
+    in, in, out, in, out, in, out) is det.
+
+    % Does the same job of chunk_foldl, but with four accumulators.
+    %
+:- pred chunk_foldl4(int, pred(L, A, A, B, B, C, C, D, D),
+    list(L), A, A, B, B, C, C, D, D).
+:- mode chunk_foldl4(in, pred(in, in, out, in, out, di, uo, di, uo) is det,
+    in, in, out, in, out, di, uo, di, uo) is det.
+:- mode chunk_foldl4(in, pred(in, in, out, in, out, in, out, di, uo) is det,
+    in, in, out, in, out, in, out, di, uo) is det.
+:- mode chunk_foldl4(in, pred(in, in, out, in, out, in, out, in, out) is det,
+    in, in, out, in, out, in, out, in, out) is det.
 
 %---------------------%
 
@@ -3441,6 +3539,161 @@ foldl8(_, [], !A, !B, !C, !D, !E, !F, !G, !H).
 foldl8(P, [H | T], !A, !B, !C, !D, !E, !F, !G, !H) :-
     P(H, !A, !B, !C, !D, !E, !F, !G, !H),
     list.foldl8(P, T, !A, !B, !C, !D, !E, !F, !G, !H).
+
+%---------------------------------------------------------------------------%
+
+gap_foldl(_ProcessPred, _GapPred, [], !A).
+gap_foldl(ProcessPred, GapPred, [H | T], !A) :-
+    gap_foldl_lag(ProcessPred, GapPred, H, T, !A).
+
+:- pred gap_foldl_lag(pred(L, A, A), pred(A, A), L, list(L), A, A).
+:- mode gap_foldl_lag(pred(in, di, uo) is det, pred(di, uo) is det,
+    in, in, di, uo) is det.
+:- mode gap_foldl_lag(pred(in, in, out) is det, pred(in, out) is det,
+    in, in, in, out) is det.
+
+gap_foldl_lag(ProcessPred, GapPred, H, T, !A) :-
+    ProcessPred(H, !A),
+    (
+        T = []
+    ;
+        T = [HT | TT],
+        GapPred(!A),
+        gap_foldl_lag(ProcessPred, GapPred, HT, TT, !A)
+    ).
+
+last_gap_foldl(ProcessPred, GapPred, LastGapPred, List, !A) :-
+    (
+        List = []
+    ;
+        List = [E1],
+        ProcessPred(E1, !A)
+    ;
+        List = [E1, E2 | E3plus],
+        last_gap_foldl_lag(ProcessPred, GapPred, LastGapPred,
+            E1, E2, E3plus, !A)
+    ).
+
+:- pred last_gap_foldl_lag(pred(L, A, A), pred(A, A), pred(A, A),
+    L, L, list(L), A, A).
+:- mode last_gap_foldl_lag(pred(in, di, uo) is det, pred(di, uo) is det,
+    pred(di, uo) is det, in, in, in, di, uo) is det.
+:- mode last_gap_foldl_lag(pred(in, in, out) is det, pred(in, out) is det,
+    pred(in, out) is det, in, in, in, in, out) is det.
+
+last_gap_foldl_lag(ProcessPred, GapPred, LastGapPred, E1, E2, E3plus, !A) :-
+    ProcessPred(E1, !A),
+    (
+        E3plus = [],
+        LastGapPred(!A),
+        ProcessPred(E2, !A)
+    ;
+        E3plus = [E3 | E4plus],
+        GapPred(!A),
+        last_gap_foldl_lag(ProcessPred, GapPred, LastGapPred,
+            E2, E3, E4plus, !A)
+    ).
+
+%---------------------------------------------------------------------------%
+
+chunk_foldl(_, _, [], !A).
+chunk_foldl(ChunkSize, P, List @ [_H | _T], !A) :-
+    chunk_foldl_inner(ChunkSize, P, List, LeftOver, !A),
+    chunk_foldl(ChunkSize, P, LeftOver, !A).
+
+:- pred chunk_foldl_inner(int, pred(L, A, A), list(L), list(L), A, A).
+:- mode chunk_foldl_inner(in, pred(in, di, uo) is det,
+    in, out, di, uo) is det.
+:- mode chunk_foldl_inner(in, pred(in, in, out) is det,
+    in, out, in, out) is det.
+
+chunk_foldl_inner(_, _, [], [], !A).
+chunk_foldl_inner(Left, P, List @ [H | T], LeftOver, !A) :-
+    ( if Left > 0 then
+        P(H, !A),
+        chunk_foldl_inner(Left - 1, P, T, LeftOver, !A)
+    else
+        LeftOver = List
+    ).
+
+%---------------------%
+
+chunk_foldl2(_, _, [], !A, !B).
+chunk_foldl2(ChunkSize, P, List @ [_H | _T], !A, !B) :-
+    chunk_foldl2_inner(ChunkSize, P, List, LeftOver, !A, !B),
+    chunk_foldl2(ChunkSize, P, LeftOver, !A, !B).
+
+:- pred chunk_foldl2_inner(int, pred(L, A, A, B, B),
+    list(L), list(L), A, A, B, B).
+:- mode chunk_foldl2_inner(in, pred(in, di, uo, di, uo) is det,
+    in, out, di, uo, di, uo) is det.
+:- mode chunk_foldl2_inner(in, pred(in, in, out, di, uo) is det,
+    in, out, in, out, di, uo) is det.
+:- mode chunk_foldl2_inner(in, pred(in, in, out, in, out) is det,
+    in, out, in, out, in, out) is det.
+
+chunk_foldl2_inner(_, _, [], [], !A, !B).
+chunk_foldl2_inner(Left, P, List @ [H | T], LeftOver, !A, !B) :-
+    ( if Left > 0 then
+        P(H, !A, !B),
+        chunk_foldl2_inner(Left - 1, P, T, LeftOver, !A, !B)
+    else
+        LeftOver = List
+    ).
+
+%---------------------%
+
+chunk_foldl3(_, _, [], !A, !B, !C).
+chunk_foldl3(ChunkSize, P, List @ [_H | _T], !A, !B, !C) :-
+    chunk_foldl3_inner(ChunkSize, P, List, LeftOver, !A, !B, !C),
+    chunk_foldl3(ChunkSize, P, LeftOver, !A, !B, !C).
+
+:- pred chunk_foldl3_inner(int, pred(L, A, A, B, B, C, C),
+    list(L), list(L), A, A, B, B, C, C).
+:- mode chunk_foldl3_inner(in, pred(in, in, out, di, uo, di, uo) is det,
+    in, out, in, out, di, uo, di, uo) is det.
+:- mode chunk_foldl3_inner(in, pred(in, in, out, in, out, di, uo) is det,
+    in, out, in, out, in, out, di, uo) is det.
+:- mode chunk_foldl3_inner(in, pred(in, in, out, in, out, in, out) is det,
+    in, out, in, out, in, out, in, out) is det.
+
+chunk_foldl3_inner(_, _, [], [], !A, !B, !C).
+chunk_foldl3_inner(Left, P, List @ [H | T], LeftOver, !A, !B, !C) :-
+    ( if Left > 0 then
+        P(H, !A, !B, !C),
+        chunk_foldl3_inner(Left - 1, P, T, LeftOver, !A, !B, !C)
+    else
+        LeftOver = List
+    ).
+
+%---------------------%
+
+chunk_foldl4(_, _, [], !A, !B, !C, !D).
+chunk_foldl4(ChunkSize, P, List @ [_H | _T], !A, !B, !C, !D) :-
+    chunk_foldl4_inner(ChunkSize, P, List, LeftOver, !A, !B, !C, !D),
+    chunk_foldl4(ChunkSize, P, LeftOver, !A, !B, !C, !D).
+
+:- pred chunk_foldl4_inner(int,
+    pred(L, A, A, B, B, C, C, D, D),
+    list(L), list(L), A, A, B, B, C, C, D, D).
+:- mode chunk_foldl4_inner(in,
+    pred(in, in, out, in, out, di, uo, di, uo) is det,
+    in, out, in, out, in, out, di, uo, di, uo) is det.
+:- mode chunk_foldl4_inner(in,
+    pred(in, in, out, in, out, in, out, di, uo) is det,
+    in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode chunk_foldl4_inner(in,
+    pred(in, in, out, in, out, in, out, in, out) is det,
+    in, out, in, out, in, out, in, out, in, out) is det.
+
+chunk_foldl4_inner(_, _, [], [], !A, !B, !C, !D).
+chunk_foldl4_inner(Left, P, List @ [H | T], LeftOver, !A, !B, !C, !D) :-
+    ( if Left > 0 then
+        P(H, !A, !B, !C, !D),
+        chunk_foldl4_inner(Left - 1, P, T, LeftOver, !A, !B, !C, !D)
+    else
+        LeftOver = List
+    ).
 
 %---------------------------------------------------------------------------%
 
