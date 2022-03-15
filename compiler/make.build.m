@@ -234,9 +234,9 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
     io.output_stream_name(ErrorOutputStream, TmpErrorFileName, !IO),
     io.close_output(ErrorOutputStream, !IO),
 
-    io.open_input(TmpErrorFileName, TmpErrorInputRes, !IO),
+    io.read_named_file_as_lines(TmpErrorFileName, TmpErrorLinesRes, !IO),
     (
-        TmpErrorInputRes = ok(TmpErrorInputStream),
+        TmpErrorLinesRes = ok(TmpErrorLines),
         module_name_to_file_name(Globals, $pred, do_create_dirs,
             ext_other(other_ext(".err")), ModuleName, ErrorFileName, !IO),
         ( if set.member(ModuleName, !.Info ^ mki_error_file_modules) then
@@ -250,8 +250,8 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
                 LinesToWrite),
             io.output_stream(CurrentOutputStream, !IO),
             with_locked_stdout(!.Info,
-                make_write_error_streams(TmpErrorFileName, TmpErrorInputStream,
-                    ErrorFileOutputStream, CurrentOutputStream, LinesToWrite),
+                make_write_error_streams(TmpErrorLines, LinesToWrite,
+                    ErrorFileOutputStream, CurrentOutputStream),
                 !IO),
             io.close_output(ErrorFileOutputStream, !IO),
 
@@ -261,55 +261,40 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
             ErrorFileRes = error(Error),
             with_locked_stdout(!.Info,
                 write_error_opening_file(TmpErrorFileName, Error), !IO)
-        ),
-        io.close_input(TmpErrorInputStream, !IO)
+        )
     ;
-        TmpErrorInputRes = error(Error),
+        TmpErrorLinesRes = error(Error),
         with_locked_stdout(!.Info,
             write_error_opening_file(TmpErrorFileName, Error), !IO)
     ),
     io.file.remove_file(TmpErrorFileName, _, !IO).
 
-:- pred make_write_error_streams(string::in, io.input_stream::in,
-    io.text_output_stream::in, io.text_output_stream::in, int::in,
+:- pred make_write_error_streams(list(string)::in, int::in,
+    io.text_output_stream::in, io.text_output_stream::in,
     io::di, io::uo) is det.
 
-make_write_error_streams(FileName, InputStream,
-        FullOutputStream, PartialOutputStream, LinesToWrite, !IO) :-
-    io.input_stream_foldl2_io(InputStream,
-        make_write_error_char(FullOutputStream, PartialOutputStream),
-        LinesToWrite, Res, !IO),
+make_write_error_streams(InputLines, LinesToWrite,
+        FullOutputStream, PartialOutputStream, !IO) :-
+    list.foldl(write_line_nl(FullOutputStream), InputLines, !IO),
+    list.split_upto(LinesToWrite, InputLines,
+        InputLinesToWrite, InputLinesNotToWrite),
+    list.foldl(write_line_nl(PartialOutputStream), InputLinesToWrite, !IO),
     (
-        Res = ok(_)
+        InputLinesNotToWrite = []
     ;
-        Res = error(_, Error),
-        io.format("Error reading `%s': %s\n",
-            [s(FileName), s(io.error_message(Error))], !IO)
-    ).
-
-:- pred make_write_error_char(io.text_output_stream::in,
-    io.text_output_stream::in, char::in, int::in, int::out,
-    io::di, io::uo) is det.
-
-make_write_error_char(FullOutputStream, PartialOutputStream, Char,
-        !LinesRemaining, !IO) :-
-    io.write_char(FullOutputStream, Char, !IO),
-    ( if !.LinesRemaining > 0 then
-        io.write_char(PartialOutputStream, Char, !IO),
-        ( if Char = '\n' then
-            !:LinesRemaining = !.LinesRemaining - 1
-        else
-            true
-        )
-    else if !.LinesRemaining = 0 then
+        InputLinesNotToWrite = [_ | _],
         io.output_stream_name(FullOutputStream, FullOutputFileName, !IO),
         io.format(PartialOutputStream,
             "... error log truncated, see `%s' for the complete log.\n",
-            [s(FullOutputFileName)], !IO),
-        !:LinesRemaining = -1
-    else
-        true
+            [s(FullOutputFileName)], !IO)
     ).
+
+:- pred write_line_nl(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+
+write_line_nl(Stream, Line, !IO) :-
+    io.write_string(Stream, Line, !IO),
+    io.nl(Stream, !IO).
 
 :- pred write_error_opening_file(string::in, io.error::in, io::di, io::uo)
     is det.
