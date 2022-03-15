@@ -2025,44 +2025,34 @@ then
     fi
 
     test_status=0
-    if test -d tests
-    then
-        tests_prefix=""
-    elif test -d ../tests
-    then
-        tests_prefix="../"
-    else
-        echo "cannot find test directory"
-        test_status=1
-    fi
 
     if test "${test_status}" = 0
     then
         if ${test_params}
         then
-            cp ${root}/${stage2dir}/Mmake.params ${tests_prefix}tests
+            cp ${root}/${stage2dir}/Mmake.params tests
         else
-            /bin/rm ${tests_prefix}tests/Mmake.params > /dev/null 2>&1
+            /bin/rm tests/Mmake.params > /dev/null 2>&1
         fi
 
         if cmp \
             ${root}/doc/mdb_command_test.inp \
-            ${tests_prefix}tests/debugger/mdb_command_test.inp
+            tests/debugger/mdb_command_test.inp
         then
             true
         else
             mdb_command_test_inp_status=1
         fi
 
-        cp ${root}/doc/mdb_command_test.inp ${tests_prefix}tests/debugger
+        cp ${root}/doc/mdb_command_test.inp tests/debugger
 
         sed -e "s:@WORKSPACE@:${WORKSPACE}:" \
-            < ${tests_prefix}tests/WS_FLAGS.ws \
-            > ${tests_prefix}tests/WS_FLAGS
+            < tests/WS_FLAGS.ws \
+            > tests/WS_FLAGS
 
         sed -e "s:@WORKSPACE@:${WORKSPACE}:" \
-            < ${tests_prefix}tests/.mgnuc_copts.ws \
-            > ${tests_prefix}tests/.mgnuc_copts
+            < tests/.mgnuc_copts.ws \
+            > tests/.mgnuc_copts
 
         # If you modify this, modify SUBDIRS in tests/Mmakefile as well.
         all_test_dirs="
@@ -2111,8 +2101,8 @@ then
 
         for d in ${all_test_dirs}
         do
-            cp ${tests_prefix}tests/.mgnuc_copts ${tests_prefix}tests/${d}
-            cp ${tests_prefix}tests/.mgnuc_opts ${tests_prefix}tests/${d}
+            cp tests/.mgnuc_copts tests/${d}
+            cp tests/.mgnuc_opts tests/${d}
         done
 
         WORKSPACE_FLAGS=yes
@@ -2137,18 +2127,17 @@ then
 
         case ${error_file_only} in
             true)
-                if test ! -f ${tests_prefix}tests/runtests.errs
+                if test ! -f tests/runtests.errs
                 then
                     echo "bootcheck: \`--failing-tests' specified but" 1>&2
                     echo \
-                    "\`${tests_prefix}tests/runtests.errs' does not exist." \
+                    "\`tests/runtests.errs' does not exist." \
                         1>&2
                     exit 1
                 fi
 
-                mv ${tests_prefix}tests/runtests.errs \
-                    ${tests_prefix}tests/runtests.$$
-                test_log_opt="ERROR_FILE=${root}/${tests_prefix}tests/runtests.$$"
+                mv tests/runtests.errs tests/runtests.$$
+                test_log_opt="ERROR_FILE=${root}/tests/runtests.$$"
                 ;;
             false)
                 test_log_opt=""
@@ -2161,7 +2150,7 @@ then
                 ;;
         esac
 
-        cd ${root}/${tests_prefix}tests
+        cd ${root}/tests
         true > FAILED_TESTS_SUMMARY
         true > NOMAKE_DIRS
 
@@ -2180,9 +2169,9 @@ then
                 specified_test_dir=`dirname ${specified_test}`
                 specified_test_base=`basename ${specified_test}`
                 if test -d \
-                    "${root}/${tests_prefix}/tests/${specified_test_dir}"
+                    "${root}/tests/${specified_test_dir}"
                 then
-                    cd ${root}/${tests_prefix}tests/${specified_test_dir}
+                    cd ${root}/tests/${specified_test_dir}
                     mmake ${mmake_opts} ${target_opt} ${jfactor} \
                         ${test_grade_opt} \
                         SPECIFIED_TESTS="${specified_test_base}" runtests_local
@@ -2203,9 +2192,9 @@ then
             test_status=0
             for testdir in ${testdirs}
             do
-                if test -d ${root}/${tests_prefix}tests/${testdir}
+                if test -d ${root}/tests/${testdir}
                 then
-                    cd ${root}/${tests_prefix}tests/${testdir}
+                    cd ${root}/tests/${testdir}
                     mmake ${mmake_opts} ${target_opt} ${jfactor} \
                         ${test_grade_opt} ${test_log_opt} runtests_dir
                     if test "$?" -ne 0
@@ -2221,7 +2210,7 @@ then
 
         case ${failing_tests_only} in
             true)
-                rm -f ${tests_prefix}tests/runtests.$$
+                rm -f tests/runtests.$$
                 ;;
         esac
 
@@ -2231,7 +2220,7 @@ then
             mv "${type_stats}" "${type_stats}".test.$$
         fi
 
-        cd ${root}/${tests_prefix}tests
+        cd ${root}/tests
         for tcdir in PASSED_TC_DIR FAILED_TC_DIR
         do
             if test "`cat ${tcdir}/NEXT_NUMBER`" -gt 0
@@ -2315,7 +2304,7 @@ then
     mv "${type_stats}".save.$$ "${type_stats}"
 fi
 
-tests_dir="${root}/${tests_prefix}tests"
+tests_dir="${root}/tests"
 
 cat /dev/null > ${tests_dir}/EXPECT_FAIL_TESTS
 
@@ -2371,7 +2360,7 @@ if test "${mdb_command_test_inp_status}" != 0
 then
 
     echo "ERROR EXIT: unexpected change in" \
-        "${tests_prefix}tests/debugger/mdb_command_test.inp"
+        "tests/debugger/mdb_command_test.inp"
     exitstatus=1
 fi
 
