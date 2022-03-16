@@ -180,7 +180,7 @@
 % - one that reads data from a fixed string, marking each position
 %   in the string using two values, of types "line_context" and line_posn".
 %
-% In each such group of three predicates, The first version (in both
+% In each such group of three predicates, the first version (in both
 % the above list and historically) has no prefix. The second has the prefix
 % "string_", while the third has the prefix "linestr_".
 %
@@ -420,8 +420,7 @@ string_ungetchar(String, Posn0, Posn) :-
     Posn0 = posn(LineNum0, LineOffset0, Offset0),
     ( if string.unsafe_prev_index(String, Offset0, Offset, Char) then
         ( if Char = '\n' then
-            LineNum = LineNum0 - 1,
-            Posn = posn(LineNum, Offset, Offset)
+            Posn = posn(LineNum0 - 1, Offset, Offset)
         else
             Posn = posn(LineNum0, LineOffset0, Offset)
         )
@@ -467,6 +466,7 @@ linestr_grab_float_string(String, LinePosn0, LinePosn, FloatString) :-
 
 :- pred unsafe_get_float_between(string::in, int::in, int::in,
     string::uo) is det.
+
 :- pragma foreign_proc("C",
     unsafe_get_float_between(Str::in, Start::in, End::in, FloatStr::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -1012,8 +1012,9 @@ linestr_get_token_2(String, Len, ScannedPastWhiteSpace,
     % Decide on how the given character should be treated. Note that
     % performance suffers significantly if this predicate is not inlined.
     %
-    % Note that string_get_token_2 contains an inlined copy of this predicate,
-    % so any changes here should be reflected there, and vice versa.
+    % Note that string_get_token_2 and linestr_get_token_2 both contain
+    % inlined copies of this predicate, so any changes here should be
+    % reflected there, and vice versa.
     %
 :- pred lookup_token_action(char::in, get_token_action::out) is semidet.
 :- pragma inline(pred(lookup_token_action/2)).
