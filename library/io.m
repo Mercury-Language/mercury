@@ -11817,7 +11817,7 @@ get_environment_var_map(EnvVarMap, !IO) :-
     for (java.util.Map.Entry<String, String> entry : env.entrySet()) {
         String name = entry.getKey();
         String value = entry.getValue();
-        EnvVarAL = ML_record_env_var_and_value(name, value, EnvVarAL);
+        EnvVarAL = jmercury.io.ML_record_env_var_and_value(name, value, EnvVarAL);
     }
 ").
 
