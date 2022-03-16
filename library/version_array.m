@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2012 The University of Melbourne.
-% Copyright (C) 2014-2020 The Mercury Team.
+% Copyright (C) 2014-2022 The Mercury Team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -291,18 +291,17 @@
 
 :- pragma foreign_proc("C#",
     version_array.empty = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     VA = new version_array.ML_sva(version_array.ML_uva.empty());
 ").
 
 :- pragma foreign_proc("Java",
     version_array.empty = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-    VA = new ML_sva(ML_uva.empty());
+    VA = new jmercury.version_array.ML_sva(
+        jmercury.version_array.ML_uva.empty());
 ").
 
 :- pragma foreign_proc("C",
@@ -329,18 +328,16 @@
 
 :- pragma foreign_proc("C#",
     version_array.unsafe_empty = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     VA = version_array.ML_uva.empty();
 ").
 
 :- pragma foreign_proc("Java",
     version_array.unsafe_empty = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-    VA = ML_uva.empty();
+    VA = jmercury.version_array.ML_uva.empty();
 ").
 
 :- pragma foreign_proc("C",
@@ -373,18 +370,17 @@
 
 :- pragma foreign_proc("C#",
     version_array.init(N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     VA = new version_array.ML_sva(version_array.ML_uva.init(N, X));
 ").
 
 :- pragma foreign_proc("Java",
     version_array.init(N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
-    VA = new ML_sva(ML_uva.init(N, X));
+    VA = new jmercury.version_array.ML_sva(
+        jmercury.version_array.ML_uva.init(N, X));
 ").
 
 :- pragma foreign_proc("C",
@@ -416,18 +412,16 @@
 
 :- pragma foreign_proc("C#",
     version_array.unsafe_init(N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     VA = version_array.ML_uva.init(N, X);
 ").
 
 :- pragma foreign_proc("Java",
     version_array.unsafe_init(N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
-    VA = ML_uva.init(N, X);
+    VA = jmercury.version_array.ML_uva.init(N, X);
 ").
 
 %---------------------------------------------------------------------------%
@@ -499,16 +493,14 @@ set(I, X, !VA) :-
 
 :- pragma foreign_proc("C#",
     size(VA::in) = (N::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     N = VA.size();
 ").
 
 :- pragma foreign_proc("Java",
     size(VA::in) = (N::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     N = VA.size();
 ").
@@ -528,16 +520,14 @@ is_empty(VA) :-
 
 :- pragma foreign_proc("C#",
     resize(VA0::in, N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     VA = VA0.resize(N, X);
 ").
 
 :- pragma foreign_proc("Java",
     resize(VA0::in, N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     VA = VA0.resize(N, X);
 ").
@@ -737,7 +727,8 @@ unsafe_rewind(VA, unsafe_rewind(VA)).
 %   locking when the user "knows", and supposedly guarantees, that it is safe
 %   to do so.
 
-:- pragma foreign_type("C", version_array(T), "struct ML_va *")
+:- pragma foreign_type("C", version_array(T), "struct ML_va *",
+        [can_pass_as_mercury_type])
     where
         equality   is eq_version_array,
         comparison is cmp_version_array.
@@ -822,8 +813,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
 
 :- pragma foreign_proc("C#",
     get_if_in_range(VA::in, I::in, X::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         X = VA.get(I);
@@ -836,8 +826,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
 
 :- pragma foreign_proc("Java",
     get_if_in_range(VA::in, I::in, X::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         X = VA.get(I);
@@ -861,8 +850,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
 
 :- pragma foreign_proc("C#",
     set_if_in_range(I::in, X::in, VA0::in, VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         VA = VA0.set(I, X);
@@ -875,8 +863,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
 
 :- pragma foreign_proc("Java",
     set_if_in_range(I::in, X::in, VA0::in, VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
         VA = VA0.set(I, X);
@@ -897,16 +884,14 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
 
 :- pragma foreign_proc("C#",
     unsafe_rewind(VA0::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     VA = VA0.rewind();
 ").
 
 :- pragma foreign_proc("Java",
     unsafe_rewind(VA0::in) = (VA::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     VA = VA0.rewind();
 ").
