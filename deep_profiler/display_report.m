@@ -372,9 +372,7 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
         yes("You can start exploring the deep profile at the following" ++
             " points."), LinksList),
 
-    %
     % Produce the developer-only options list.
-    %
     RecursionTypeFrequenciesCmd = deep_cmd_recursion_types_frequency,
 
     LinksDeveloperCmds = [
@@ -743,49 +741,53 @@ display_recursion_type(RecursionType, Items) :-
             Text = "Clique is non-recursive"
         ;
             RecursionType = rt_mutual_recursion(NumProcs),
-            Text = format("Mutual recursion between %d procedures",
+            Text = string.format("Mutual recursion between %d procedures",
                 [i(NumProcs)])
         ),
         Items = [display_text(Text)]
     ;
         RecursionType = rt_errors(Errors),
-        ErrorItems = map((func(Text) = display_text(Text)), Errors),
+        ErrorItems = list.map((func(Text) = display_text(Text)), Errors),
         Items = [display_list(list_class_vertical_no_bullets,
             yes("Unknown, error(s) occured"), ErrorItems)]
     ;
         (
             RecursionType = rt_single(BaseLevel, RecLevel, AvgDepth,
                 AvgRecCost, AnyRecCost),
-            RowData = [
-                {"Base case", BaseLevel},
+            RowData =
+                [{"Base case", BaseLevel},
                 {"Recursive case", RecLevel}],
             Text = "Single-recursion:",
 
-            MaxDepthI = round_to_int(AvgDepth),
+            MaxDepthI = float.round_to_int(AvgDepth),
+            CostAtDepthFunc =
+                ( func(Level) =
+                    {string.format("Cost at depth %d:", [i(Level)]),
+                        AnyRecCost(Level)}
+                ),
+            CostAtDepths = [0, 1, 2, float.round_to_int(AvgDepth / 2.0),
+                MaxDepthI - 2, MaxDepthI - 1, MaxDepthI],
             ExtraTableRows0 =
                 [{"Average recursion depth:", AvgDepth},
-                 {"Average recursive call cost (excluding the call itself):",
+                {"Average recursive call cost (excluding the call itself):",
                     AvgRecCost}] ++
-                map(
-                    (func(Level) =
-                        {string.format("Cost at depth %d:", [i(Level)]),
-                            AnyRecCost(Level)}),
-                    [0, 1, 2, round_to_int(AvgDepth / 2.0),
-                     MaxDepthI - 2, MaxDepthI - 1, MaxDepthI]),
-            ExtraTableRows = map((func({Label, Value}) = table_row(
-                    [table_cell(td_s(Label)), table_cell(td_f(Value))])),
-                ExtraTableRows0)
+                list.map(CostAtDepthFunc, CostAtDepths),
+            ExtraTableRows = list.map(
+                ( func({Label, Value}) = table_row(
+                    [table_cell(td_s(Label)), table_cell(td_f(Value))])
+                ), ExtraTableRows0)
         ;
             RecursionType = rt_divide_and_conquer(BaseLevel, RecLevel),
-            RowData = [
-                {"Base case", BaseLevel},
+            RowData =
+                [{"Base case", BaseLevel},
                 {"Doubly-recursive case", RecLevel}],
             Text = "Double-recursion (Probably Divide and Conquer):",
 
             ExtraTableRows = []
         ;
             RecursionType = rt_other(Levels),
-            RowData = map((func(Level) = {Label, Level} :-
+            RowData = list.map(
+                ( func(Level) = {Label, Level} :-
                     Label = string.format("Case for %d recursive calls",
                         [i(Level ^ rlr_level)])
                 ), Levels),
@@ -793,24 +795,26 @@ display_recursion_type(RecursionType, Items) :-
 
             ExtraTableRows = []
         ),
-        Rows = map(make_recursion_table_row, RowData),
+        Rows = list.map(make_recursion_table_row, RowData),
 
-        ExtraTable = display_table(table(table_class_do_not_box, 2, no,
-            ExtraTableRows)),
+        ExtraTable = display_table(
+            table(table_class_do_not_box, 2, no, ExtraTableRows)),
 
-        Header = table_header(map(
-            (func({Name, Class}) =
+        NameClassGroupFunc =
+            ( func({Name, Class}) =
                 table_header_group(table_header_group_single(td_s(Name)),
                     Class, column_do_not_colour)
             ),
+        NamesClasses =
             [{"Recursion type", table_column_class_field_name},
-             {"Exec count", table_column_class_number},
-             {"Non recursive calls per-call cost",
+            {"Exec count", table_column_class_number},
+            {"Non recursive calls per-call cost",
                 table_column_class_callseqs},
-             {"Recursive calls per-call cost (ex children)",
-                table_column_class_callseqs}])),
-        Table = display_table(table(table_class_box_if_pref, 4, yes(Header),
-            Rows)),
+            {"Recursive calls per-call cost (ex children)",
+                table_column_class_callseqs}],
+        Header = table_header(list.map(NameClassGroupFunc, NamesClasses)),
+        Table = display_table(
+            table(table_class_box_if_pref, 4, yes(Header), Rows)),
         Description = display_text(Text),
         Items = [Description,
             display_paragraph_break, Table,
@@ -1001,7 +1005,7 @@ display_report_rec_type_freq_rows(Prefs, NumColumns, Type - FreqData, Rows) :-
     Procs0 = values(ProcsMap),
     sort_recursion_type_procs_by_preferences(Prefs, Procs0, Procs1),
     take_upto(Prefs ^ pref_proc_statics_per_rec_type, Procs1, Procs),
-    map(display_report_rec_type_proc_rows(Prefs), Procs, ProcRows),
+    list.map(display_report_rec_type_proc_rows(Prefs), Procs, ProcRows),
 
     Rows = [HeaderRow | [Row | ProcRows ++
         [table_separator_row]]].
@@ -1029,7 +1033,7 @@ display_report_recursion_type_simple(rts_divide_and_conquer,
 display_report_recursion_type_simple(rts_mutual_recursion(NumProcs), String) :-
     format("Mutual recursion between %d procs", [i(NumProcs)], String).
 display_report_recursion_type_simple(rts_other(Levels), String) :-
-    LevelsStr = join_list(", ", map(string, set.to_sorted_list(Levels))),
+    LevelsStr = join_list(", ", list.map(string, set.to_sorted_list(Levels))),
     format("Other recursion with levels: %s", [s(LevelsStr)], String).
 display_report_recursion_type_simple(rts_total_error_instances,
         "Total errors").
@@ -1513,7 +1517,7 @@ display_report_proc(Deep, Prefs, ProcReport, Display) :-
         report_proc_call_site(MaybeCurModuleName, ModuleQual, Prefs),
         CallSitePerfs),
     list.condense(CallSiteRowLists, CallSiteRows),
-    DeveloperRows = map(func(X) = table_developer_row(X),
+    DeveloperRows = list.map((func(X) = table_developer_row(X)),
         [table_section_header(td_s(
             "Callers excluding directly-recursive calls")),
         CallersRow, table_separator_row]),
@@ -2432,15 +2436,18 @@ display_report_call_site_dynamic_var_use(_Prefs, CSDVarUseInfo, Display) :-
         format("Average Cost: %f", [f(AverageCost)])),
 
     format_var_uses(VarUses, 1, VarUseRows),
-    Header = table_header(
-        map((func({Text, Class}) = table_header_group(
-                table_header_group_single(td_s(Text)),
-                Class, column_do_not_colour)
-            ), [{"Argument", table_column_class_ordinal_rank},
-                {"Name", table_column_class_no_class},
-                {"Type", table_column_class_no_class},
-                {"Percent into proc", table_column_class_no_class},
-                {"Time into proc (Callseqs)", table_column_class_callseqs}])),
+    TextClassHdrGroupFunc =
+        ( func({Text, Class}) = table_header_group(
+            table_header_group_single(td_s(Text)),
+            Class, column_do_not_colour)
+        ),
+    TextsClasses =
+        [{"Argument", table_column_class_ordinal_rank},
+        {"Name", table_column_class_no_class},
+        {"Type", table_column_class_no_class},
+        {"Percent into proc", table_column_class_no_class},
+        {"Time into proc (Callseqs)", table_column_class_callseqs}],
+    Header = table_header(list.map(TextClassHdrGroupFunc, TextsClasses)),
     Table = table(table_class_box_if_pref, 5, yes(Header), VarUseRows),
 
     Title = "Dump of var use info",
@@ -3222,8 +3229,8 @@ perf_table_header_memory(TotalsMeaningful, Prefs, MakeHeaderData,
 
 %---------------------------------------------------------------------------%
 
-    % Describes whether a table should be ranked or not,  This means that each
-    % item has an ordinal number associated with it in an initial column
+    % Describes whether a table should be ranked or not. This means that
+    % each item has an ordinal number associated with it in an initial column
     % labeled "Rank".
     %
 :- type ranked
