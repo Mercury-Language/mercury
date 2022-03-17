@@ -1116,6 +1116,15 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         !Info) :-
     Cond = hlds_goal(_, CondGoalInfo),
     CondCodeModel = goal_info_get_code_model(CondGoalInfo),
+    % Given that `not Cond' is equivalent to `if Cond then fail else true',
+    % the only way to reach the end of `not Cond' is to take the else path.
+    % On that path, the failure of Cond makes unavailable to following code
+    % any additions to the const var map, and the `true' in the else branch
+    % obviously does not anything to it either. Therefore the const var map
+    % must be the same at the end of `not Cond' as at its start.
+    %
+    % The same is true for the packed word map.
+    ml_gen_info_get_const_var_map(!.Info, ConstVarMap0),
     ml_gen_info_get_packed_word_map(!.Info, InitPackedWordMap),
     (
         % model_det negation:
@@ -1131,8 +1140,9 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         CodeModel = model_det,
         ml_gen_goal_as_branch(model_semi, Cond,
             LocalVarDefns, FuncDefns, Stmts,
-            [], ReachableConstVarMaps, !Info),
-        ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info)
+            [], _ReachableConstVarMaps, !Info),
+        ml_gen_info_set_const_var_map(ConstVarMap0, !Info),
+        ml_gen_info_set_packed_word_map(InitPackedWordMap, !Info)
     ;
         % model_semi negation, model_det goal:
         %       <succeeded = not(Goal)>
@@ -1143,17 +1153,14 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         CodeModel = model_semi, CondCodeModel = model_det,
         ml_gen_goal_as_branch(model_det, Cond,
             CondLocalVarDefns, CondFuncDefns, CondStmts,
-            [], ReachableConstVarMaps, !Info),
-        ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info),
-        % Start the code after the negation with InitPackedWordMap
-        % to prevent it from trying to use map entries added by a branch
-        % that was not taken.
+            [], _ReachableConstVarMaps, !Info),
+        ml_gen_info_set_const_var_map(ConstVarMap0, !Info),
         ml_gen_info_set_packed_word_map(InitPackedWordMap, !Info),
-        ml_gen_set_success(ml_const(mlconst_false), Context, SetSuccessFalse,
-            !Info),
+        ml_gen_set_success(ml_const(mlconst_false), Context,
+            SetSuccessFalseStmt, !Info),
         LocalVarDefns = CondLocalVarDefns,
         FuncDefns = CondFuncDefns,
-        Stmts = CondStmts ++ [SetSuccessFalse]
+        Stmts = CondStmts ++ [SetSuccessFalseStmt]
     ;
         % model_semi negation, model_semi goal:
         %       <succeeded = not(Goal)>
@@ -1164,18 +1171,15 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         CodeModel = model_semi, CondCodeModel = model_semi,
         ml_gen_goal_as_branch(model_semi, Cond,
             CondLocalVarDefns, CondFuncDefns, CondStmts,
-            [], ReachableConstVarMaps, !Info),
-        ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info),
-        % Start the code after the negation with InitPackedWordMap
-        % to prevent it from trying to use map entries added by a branch
-        % that was not taken.
+            [], _ReachableConstVarMaps, !Info),
+        ml_gen_info_set_const_var_map(ConstVarMap0, !Info),
         ml_gen_info_set_packed_word_map(InitPackedWordMap, !Info),
         ml_gen_test_success(Succeeded, !Info),
         ml_gen_set_success(ml_unop(logical_not, Succeeded),
-            Context, InvertSuccess, !Info),
+            Context, InvertSuccessStmt, !Info),
         LocalVarDefns = CondLocalVarDefns,
         FuncDefns = CondFuncDefns,
-        Stmts = CondStmts ++ [InvertSuccess]
+        Stmts = CondStmts ++ [InvertSuccessStmt]
     ;
         CodeModel = model_semi, CondCodeModel = model_non,
         unexpected($pred, "nondet cond")
