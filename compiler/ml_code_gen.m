@@ -1118,10 +1118,9 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
     CondCodeModel = goal_info_get_code_model(CondGoalInfo),
     % Given that `not Cond' is equivalent to `if Cond then fail else true',
     % the only way to reach the end of `not Cond' is to take the else path.
-    % On that path, the failure of Cond makes unavailable to following code
-    % any additions to the const var map, and the `true' in the else branch
-    % obviously does not anything to it either. Therefore the const var map
-    % must be the same at the end of `not Cond' as at its start.
+    % Since the else path obviously does not add anything to the const var map,
+    % the const var map must be the same at the end of `not Cond' as
+    % at its start.
     %
     % The same is true for the packed word map.
     ml_gen_info_get_const_var_map(!.Info, ConstVarMap0),
