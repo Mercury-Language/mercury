@@ -396,7 +396,7 @@ X / Y = Z :-
 
 :- pragma foreign_proc("C#",
     float_domain_checks,
-    [thread_safe, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
     SUCCESS_INDICATOR = false;
@@ -407,7 +407,7 @@ X / Y = Z :-
 
 :- pragma foreign_proc("Java",
     float_domain_checks,
-    [thread_safe, promise_pure],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = true;
 ").
