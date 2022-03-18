@@ -2041,18 +2041,21 @@
 :- instance stream.reader(binary_input_stream,         int,   io, io.error).
 :- instance stream.reader(binary_input_stream,         int8,  io, io.error).
 :- instance stream.reader(binary_input_stream,         uint8, io, io.error).
-% XXX IO_INSTANCE reader for int calls read_byte
-% XXX IO_INSTANCE inconsistent: no instance for uint
+% The instance for int, which predates the addition of sized integers
+% to Mercury, reads a byte, which it stores in the least significant
+% eight bits. The plan is to eventually delete the instance for int.
 
 :- instance stream.unboxed_reader(binary_input_stream, int8,  io, io.error).
 :- instance stream.unboxed_reader(binary_input_stream, uint8, io, io.error).
-% XXX IO_INSTANCE no instance for int
+% This typeclass was defined after the addition of sized integers
+% to Mercury, which is why there is no instance for int.
 
 :- instance stream.putback(binary_input_stream,        int,   io, io.error).
 :- instance stream.putback(binary_input_stream,        int8,  io, io.error).
 :- instance stream.putback(binary_input_stream,        uint8, io, io.error).
-% XXX IO_INSTANCE putback for int calls putback_byte
-% XXX IO_INSTANCE inconsistent: no instance for uint
+% The instance for int, which predates the addition of sized integers
+% to Mercury, puts back a byte, which it stores in the least significant
+% eight bits. The plan is to eventually delete the instance for int.
 
 % Text output stream instances.
 :- instance stream.stream(text_output_stream,        io).

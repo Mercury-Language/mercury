@@ -62,8 +62,8 @@
 
 :- type const_instance_id
     --->    ciid(
-                % The instance number. This field is first because tests on it
-                % are cheap.
+                % The number in the instance_id. This field is first
+                % because tests on it are cheap.
                 int,
 
                 % The constraint.
