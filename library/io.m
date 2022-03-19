@@ -2010,7 +2010,7 @@
 :- instance stream.writer(text_output_stream, uint,   io).
 :- instance stream.writer(text_output_stream, uint8,  io).
 :- instance stream.writer(text_output_stream, uint16, io).
-:- instance stream.writer(text_output_stream, uint8,  io).
+:- instance stream.writer(text_output_stream, uint32,  io).
 :- instance stream.writer(text_output_stream, string, io).
 :- instance stream.writer(text_output_stream, univ,   io).
 :- instance stream.line_oriented(text_output_stream, io).
