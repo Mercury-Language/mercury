@@ -60,6 +60,7 @@
     % this module and the associated code.
     %
 :- pred separate_items_in_aug_comp_unit(aug_compilation_unit::in,
+    include_module_map::out,
     ims_list(item_avail)::out,
     list(item_fim)::out,
     sec_list(item_type_defn_info)::out,
@@ -148,7 +149,7 @@
                 ia_type_repns       :: module_int_type_ctor_repns
             ).
 
-separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
+separate_items_in_aug_comp_unit(AugCompUnit, InclMap, Avails, FIMs,
         TypeDefnsAbstract, TypeDefnsMercury, TypeDefnsForeign,
         InstDefns, ModeDefns, PredDecls, ModeDecls,
         Promises, TypeClasses, Instances,
@@ -272,6 +273,7 @@ separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
     map.foldl_values(acc_type_repn_map, ModuleIntTypeRepnMap,
         cord.init, TypeCtorRepnsCord),
     map.from_sorted_assoc_list(cord.list(TypeCtorRepnsCord), TypeRepnMap),
+    InclMap = ParseTreeModuleSrc ^ ptms_include_map,
     IntBadPreds = ParseTreeModuleSrc ^ ptms_int_bad_clauses.
 
 :- pred acc_int_type_repn_map(pair(module_name, int_type_ctor_repns)::in,

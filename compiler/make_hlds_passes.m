@@ -101,8 +101,6 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     get_implicit_avail_needs_in_aug_compilation_unit(Globals, AugCompUnit,
         ImplicitlyUsedModules),
     mq_info_get_partial_qualifier_info(MQInfo0, PQInfo),
-    module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
-        UsedModules, ImplicitlyUsedModules, PQInfo, no, !:ModuleInfo),
 
     % Optionally gather statistics about the items in the compilation unit.
     trace [compile_time(flag("item_stats")), io(!IO)] (
@@ -129,11 +127,6 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
             io.close_output(Stream, !IO)
         )
     ),
-
-    map.init(DirectArgMap),
-    TypeRepnDec = type_repn_decision_data(TypeRepnMap, DirectArgMap,
-        ForeignEnums, ForeignExportEnums),
-    module_info_set_type_repn_dec(TypeRepnDec, !ModuleInfo),
 
     TypeSpecs = ParseTreeModuleSrc ^ ptms_type_specs,
     InstModeSpecs = ParseTreeModuleSrc ^ ptms_inst_mode_specs,
@@ -189,7 +182,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     %
     % The constraints of what we have to add before what are documented below.
 
-    separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
+    separate_items_in_aug_comp_unit(AugCompUnit, InclMap, Avails, FIMs,
         TypeDefnsAbstract, TypeDefnsMercury, TypeDefnsForeign,
         InstDefns, ModeDefns, PredDecls, ModeDecls,
         Promises, Typeclasses, Instances, Initialises, Finalises, Mutables,
@@ -201,6 +194,13 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         PragmasGenUnusedArgs, PragmasGenExceptions,
         PragmasGenTrailing, PragmasGenMMTabling,
         Clauses, IntBadClauses),
+
+    map.init(DirectArgMap),
+    TypeRepnDec = type_repn_decision_data(TypeRepnMap, DirectArgMap,
+        ForeignEnums, ForeignExportEnums),
+    module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
+        InclMap, UsedModules, ImplicitlyUsedModules, PQInfo, no, TypeRepnDec,
+        !:ModuleInfo),
 
     % The old pass 1.
 

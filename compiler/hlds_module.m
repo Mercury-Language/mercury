@@ -238,9 +238,9 @@
     % compilation unit.
     %
 :- pred module_info_init(globals::in, module_name::in, prog_context::in,
-    string::in, used_modules::in, set(module_name)::in,
+    string::in, include_module_map::in, used_modules::in, set(module_name)::in,
     partial_qualifier_info::in, maybe(recompilation_info)::in,
-    module_info::out) is det.
+    type_repn_decision_data::in, module_info::out) is det.
 
     % Once the module_info has been built, we call module_info_optimize
     % to attempt to optimize the data structures for lots of accesses
@@ -319,6 +319,8 @@
     prog_context::out) is det.
 :- pred module_info_get_dump_hlds_base_file_name(module_info::in,
     string::out) is det.
+:- pred module_info_get_include_module_map(module_info::in,
+    include_module_map::out) is det.
 :- pred module_info_get_partial_qualifier_info(module_info::in,
     partial_qualifier_info::out) is det.
 :- pred module_info_get_maybe_recompilation_info(module_info::in,
@@ -777,6 +779,8 @@
                 mri_module_name_context         :: prog_context,
                 mri_dump_base_file_name         :: string,
 
+                mri_include_module_map          :: include_module_map,
+
                 mri_partial_qualifier_info      :: partial_qualifier_info,
                 mri_maybe_recompilation_info    :: maybe(recompilation_info),
 
@@ -1015,8 +1019,8 @@
 %---------------------------------------------------------------------------%
 
 module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
-        UsedModules, ImplicitlyUsedModules, QualifierInfo, MaybeRecompInfo,
-        ModuleInfo) :-
+        InclMap, UsedModules, ImplicitlyUsedModules,
+        QualifierInfo, MaybeRecompInfo, TypeRepnDec, ModuleInfo) :-
     SpecialPredMaps = special_pred_maps(map.init, map.init, map.init),
     map.init(ClassTable),
     map.init(InstanceTable),
@@ -1101,12 +1105,12 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
     set.init(OISUProcs),
     TSStringTableSize = 0,
     TSRevStringTable = [],
-    TypeRepnDecision = type_repn_decision_data(map.init, map.init, [], []),
 
     ModuleRareInfo = module_rare_info(
         ModuleName,
         ModuleNameContext,
         DumpBaseFileName,
+        InclMap,
         QualifierInfo,
         MaybeRecompInfo,
         ProcRequests,
@@ -1143,7 +1147,7 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
         OISUProcs,
         TSStringTableSize,
         TSRevStringTable,
-        TypeRepnDecision),
+        TypeRepnDec),
 
     predicate_table_init(PredicateTable),
     TypeTable = init_type_table,
@@ -1257,6 +1261,8 @@ module_info_get_name_context(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_module_name_context.
 module_info_get_dump_hlds_base_file_name(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_dump_base_file_name.
+module_info_get_include_module_map(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_include_module_map.
 module_info_get_partial_qualifier_info(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_partial_qualifier_info.
 module_info_get_maybe_recompilation_info(MI, X) :-
