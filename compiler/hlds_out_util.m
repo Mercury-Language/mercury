@@ -116,6 +116,8 @@
 :- pred maybe_output_context_comment(io.text_output_stream::in, int::in,
     string::in, term.context::in, io::di, io::uo) is det.
 
+:- func context_to_brief_string(term.context) = string.
+
 %---------------------------------------------------------------------------%
 
 :- func call_id_to_string(call_id) = string.
@@ -500,6 +502,15 @@ maybe_output_context_comment(Stream, Indent, Suffix, Context, !IO) :-
         write_indent(Stream, Indent, !IO),
         io.format(Stream, "%% context: file \"%s\", line %d%s\n",
             [s(FileName), i(LineNumber), s(Suffix)], !IO)
+    ).
+
+context_to_brief_string(Context) = Str :-
+    term.context_file(Context, FileName),
+    term.context_line(Context, LineNumber),
+    ( if FileName = "" then
+        Str = "dummy context"
+    else
+        Str = string.format("<%s>:%d", [s(FileName), i(LineNumber)])
     ).
 
 %---------------------------------------------------------------------------%
@@ -915,9 +926,8 @@ write_constraint_proof(Indent, VarNamePrint, TVarSet, Constraint - Proof,
     mercury_output_constraint(TVarSet, VarNamePrint, Constraint, Stream, !IO),
     io.write_string(Stream, ": ", !IO),
     (
-        Proof = apply_instance(Num),
-        io.write_string(Stream, "apply instance decl #", !IO),
-        io.write_int(Stream, Num, !IO)
+        Proof = apply_instance(instance_id(InstanceNum)),
+        io.format(Stream, "apply instance decl #%d", [i(InstanceNum)], !IO)
     ;
         Proof = superclass(Super),
         io.write_string(Stream, "super class of ", !IO),

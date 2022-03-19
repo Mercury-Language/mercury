@@ -88,8 +88,8 @@ gen_infos_for_instances(ModuleInfo, ClassId,
     gen_infos_for_instances(ModuleInfo, ClassId, InstanceDefns, !RttiDatas),
 
     InstanceDefn = hlds_instance_defn(InstanceModule,
-        InstanceTypes, _OriginalTypes, ImportStatus, _TermContext,
-        _InstanceConstraints, Body, _MaybePredProcIds,
+        InstanceTypes, _OriginalTypes, ImportStatus, _Context,
+        _MaybeSubsumedContext, _InstanceConstraints, Body, _MaybePredProcIds,
         _Varset, _SuperClassProofs),
     ( if
         Body = instance_body_concrete(_),

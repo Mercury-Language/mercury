@@ -348,12 +348,14 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
     ).
 
 :- pred make_typeclass_info_from_instance(prog_constraint::in,
-    list(prog_constraint)::in, int::in, existq_tvars::in, prog_context::in,
+    list(prog_constraint)::in, instance_id::in, existq_tvars::in,
+    prog_context::in,
     pair(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
-make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
+make_typeclass_info_from_instance(Constraint, Seen, InstanceId, ExistQVars,
         Context, TypeClassInfoVarMCA, Goals, !Info) :-
+    InstanceId = instance_id(InstanceNum),
     trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
         poly_info_get_selected_pred(SelectedPred, !IO),
         poly_info_get_indent_level(Level, !IO),
@@ -375,7 +377,7 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
             else
                 io.write_line(Stream, Seen, !IO)
             ),
-            io.format(Stream, "%sInstanceNum: %d\n",
+            io.format(Stream, "%sInstanceId: %d\n",
                 [s(IndentStr), i(InstanceNum)], !IO),
             io.format(Stream, "%sExistQVars: ", [s(IndentStr)], !IO),
             io.write_line(Stream, ExistQVars, !IO),
@@ -384,9 +386,9 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
     ),
 
     poly_info_get_const_struct_db(!.Info, ConstStructDb0),
-    InstanceId = ciid(InstanceNum, Constraint, Seen),
+    ConstInstanceId = ciid(InstanceNum, Constraint, Seen),
     ( if
-        search_for_constant_instance(ConstStructDb0, InstanceId,
+        search_for_constant_instance(ConstStructDb0, ConstInstanceId,
             InstanceIdConstNum)
     then
         materialize_typeclass_info_var(Constraint, InstanceIdConstNum,
@@ -419,7 +421,7 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
             )
         )
     else
-        do_make_typeclass_info_from_instance(InstanceId, ExistQVars,
+        do_make_typeclass_info_from_instance(ConstInstanceId, ExistQVars,
             Context, TypeClassInfoVarMCA, Goals, !Info),
         trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
             poly_info_get_selected_pred(SelectedPred, !IO),
@@ -437,8 +439,7 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
 
                 poly_info_get_type_info_var_map(!.Info, TypeInfoVarMap),
                 poly_info_get_typeclass_info_map(!.Info, TypeClassInfoMap),
-                poly_info_get_const_struct_var_map(!.Info,
-                    ConstStructVarMap),
+                poly_info_get_const_struct_var_map(!.Info, ConstStructVarMap),
 
                 io.format(Stream, "%stype_info_var_map: ",
                     [s(IndentStr)], !IO),
@@ -446,7 +447,7 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
                 io.format(Stream, "%stypeclass_info_map: ",
                     [s(IndentStr)], !IO),
                 io.write_line(Stream, TypeClassInfoMap, !IO),
-                io.format(Stream, "%sstricy_var_map: ",
+                io.format(Stream, "%sconst_struct_var_map: ",
                     [s(IndentStr)], !IO),
                 io.write_line(Stream, ConstStructVarMap, !IO),
                 io.nl(Stream, !IO)
@@ -459,7 +460,7 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
     pair(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
-do_make_typeclass_info_from_instance(InstanceId, ExistQVars, Context,
+do_make_typeclass_info_from_instance(ConstInstanceId, ExistQVars, Context,
         TypeClassInfoVarMCA, Goals, !Info) :-
     poly_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_instance_table(ModuleInfo, InstanceTable),
@@ -467,7 +468,7 @@ do_make_typeclass_info_from_instance(InstanceId, ExistQVars, Context,
     poly_info_get_typevarset(!.Info, TypeVarSet),
     poly_info_get_proof_map(!.Info, ProofMap0),
 
-    InstanceId = ciid(InstanceNum, Constraint, Seen),
+    ConstInstanceId = ciid(InstanceNum, Constraint, Seen),
     Constraint = constraint(ClassName, ConstrainedTypes),
 
     list.length(ConstrainedTypes, ClassArity),
@@ -476,7 +477,7 @@ do_make_typeclass_info_from_instance(InstanceId, ExistQVars, Context,
     map.lookup(InstanceTable, ClassId, InstanceList),
     list.det_index1(InstanceList, InstanceNum, ProofInstanceDefn),
 
-    ProofInstanceDefn = hlds_instance_defn(_, InstanceTypes, _, _, _,
+    ProofInstanceDefn = hlds_instance_defn(_, InstanceTypes, _, _, _, _,
         InstanceConstraints, _, _, InstanceTVarset, InstanceProofMap),
 
     % XXX kind inference:
@@ -488,10 +489,9 @@ do_make_typeclass_info_from_instance(InstanceId, ExistQVars, Context,
         UnconstrainedTvars),
 
     % We can ignore the new typevarset because all the type variables
-    % in the instance constraints and superclass proofs must appear
-    % in the arguments of the instance, and all such variables
-    % are bound when we call type_list_subsumes then apply
-    % the resulting bindings.
+    % in the instance constraints and superclass proofs must appear in
+    % the arguments of the instance, and all such variables are bound
+    % when we call type_list_subsumes then apply the resulting bindings.
     tvarset_merge_renaming(TypeVarSet, InstanceTVarset, _NewTVarset, Renaming),
     apply_variable_renaming_to_type_list(Renaming, InstanceTypes,
         RenamedInstanceTypes),
@@ -568,7 +568,7 @@ do_make_typeclass_info_from_instance(InstanceId, ExistQVars, Context,
         poly_info_set_num_reuses(NumReuses + 2, !Info)
     else
         BaseConsId = base_typeclass_info_cons_id(InstanceTable,
-            Constraint, InstanceNum, InstanceTypes),
+            Constraint, instance_id(InstanceNum), InstanceTypes),
         materialize_base_typeclass_info_var(Constraint, BaseConsId, BaseVar,
             BaseGoals, !Info),
         construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
@@ -616,7 +616,7 @@ do_make_typeclass_info_from_instance(InstanceId, ExistQVars, Context,
         TypeClassInfoConstArg = csa_const_struct(TypeClassInfoConstArgNum)
     then
         poly_info_get_const_struct_db(!.Info, ConstStructDb1),
-        insert_constant_instance(InstanceId, TypeClassInfoConstArgNum,
+        insert_constant_instance(ConstInstanceId, TypeClassInfoConstArgNum,
             ConstStructDb1, ConstStructDb),
         poly_info_set_const_struct_db(ConstStructDb, !Info)
     else

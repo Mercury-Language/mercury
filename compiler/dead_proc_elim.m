@@ -397,14 +397,14 @@ dead_proc_initialize_class_methods(Classes, Instances, !Queue, !Needed) :-
     is det.
 
 get_instance_pred_procs(Instance, !Queue, !Needed) :-
-    Instance = hlds_instance_defn(_, _, _, _, _, _, _, PredProcIds, _, _),
+    MaybePredProcIds = Instance ^ instdefn_maybe_method_ppids,
     % We need to keep the instance methods for all instances
     % for optimization of method lookups.
     (
         % This should never happen.
-        PredProcIds = no
+        MaybePredProcIds = no
     ;
-        PredProcIds = yes(Ids),
+        MaybePredProcIds = yes(Ids),
         list.foldl2(get_class_interface_pred_proc, Ids, !Queue, !Needed)
     ).
 

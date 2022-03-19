@@ -278,8 +278,8 @@ gather_local_instance_names(ModuleName, [InstancePair | InstancePairs],
 gather_local_instance_names_for_class(_, _, [], !InstanceDescs).
 gather_local_instance_names_for_class(ModuleName, ClassId,
         [InstanceDefn | InstanceDefns], !InstanceDescs) :-
-    InstanceDefn = hlds_instance_defn(InstanceModuleName, _Types, OrigTypes,
-        _Status, _Context, _Constraints, _Body, _Interface, _TVarSet, _Proofs),
+    InstanceModuleName = InstanceDefn ^ instdefn_module,
+    OrigTypes = InstanceDefn ^ instdefn_orig_types,
     ( if InstanceModuleName = ModuleName then
         ClassId = class_id(ClassSymName, ClassArity),
         ClassName = unqualify_name(ClassSymName),

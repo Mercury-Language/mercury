@@ -1,15 +1,27 @@
-incompatible_instance_constraints.m:030: In instance declaration for class
-incompatible_instance_constraints.m:030:   `incompatible_instance_constraints.tc1'/1:
-incompatible_instance_constraints.m:030:   the instance constraints here are
-incompatible_instance_constraints.m:030:   incompatible with ...
-incompatible_instance_constraints.m:018:   ... the instance constraints here.
-incompatible_instance_constraints.m:031: In instance declaration for class
-incompatible_instance_constraints.m:031:   `incompatible_instance_constraints.tc1'/1:
-incompatible_instance_constraints.m:031:   the instance constraints here are
-incompatible_instance_constraints.m:031:   incompatible with ...
-incompatible_instance_constraints.m:021:   ... the instance constraints here.
-incompatible_instance_constraints.m:032: In instance declaration for class
-incompatible_instance_constraints.m:032:   `incompatible_instance_constraints.tc1'/1:
-incompatible_instance_constraints.m:032:   the instance constraints here are
-incompatible_instance_constraints.m:032:   incompatible with ...
-incompatible_instance_constraints.m:022:   ... the instance constraints here.
+incompatible_instance_constraints.m:018: Error: the instance constraints on
+incompatible_instance_constraints.m:018:   this abstract instance declaration
+incompatible_instance_constraints.m:018:   for class
+incompatible_instance_constraints.m:018:   `incompatible_instance_constraints.tc1'/1
+incompatible_instance_constraints.m:018:   do not match the instance
+incompatible_instance_constraints.m:018:   constraints on the corresponding
+incompatible_instance_constraints.m:018:   concrete instance declaration.
+incompatible_instance_constraints.m:030:   The corresponding concrete instance
+incompatible_instance_constraints.m:030:   declaration is here.
+incompatible_instance_constraints.m:021: Error: the instance constraints on
+incompatible_instance_constraints.m:021:   this abstract instance declaration
+incompatible_instance_constraints.m:021:   for class
+incompatible_instance_constraints.m:021:   `incompatible_instance_constraints.tc1'/1
+incompatible_instance_constraints.m:021:   do not match the instance
+incompatible_instance_constraints.m:021:   constraints on the corresponding
+incompatible_instance_constraints.m:021:   concrete instance declaration.
+incompatible_instance_constraints.m:031:   The corresponding concrete instance
+incompatible_instance_constraints.m:031:   declaration is here.
+incompatible_instance_constraints.m:022: Error: the instance constraints on
+incompatible_instance_constraints.m:022:   this abstract instance declaration
+incompatible_instance_constraints.m:022:   for class
+incompatible_instance_constraints.m:022:   `incompatible_instance_constraints.tc1'/1
+incompatible_instance_constraints.m:022:   do not match the instance
+incompatible_instance_constraints.m:022:   constraints on the corresponding
+incompatible_instance_constraints.m:022:   concrete instance declaration.
+incompatible_instance_constraints.m:032:   The corresponding concrete instance
+incompatible_instance_constraints.m:032:   declaration is here.

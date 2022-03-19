@@ -691,8 +691,8 @@ find_matching_instance_rule(Instances, Constraint, !TVarSet, !ProofMap,
     constraint_proof_map::in, constraint_proof_map::out,
     list(hlds_constraint)::out) is semidet.
 
-find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
-        !TVarSet, !ProofMap, NewConstraints) :-
+find_matching_instance_rule_2([Instance | Instances], CurInstanceNum,
+        Constraint, !TVarSet, !ProofMap, NewConstraints) :-
     Constraint = hlds_constraint(_Ids, _ClassName, ArgTypes),
     ProgConstraints0 = Instance ^ instdefn_constraints,
     InstanceTypes0 = Instance ^ instdefn_types,
@@ -708,12 +708,11 @@ find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
             ProgConstraints1, ProgConstraints),
         init_hlds_constraint_list(ProgConstraints, NewConstraints),
 
-        NewProof = apply_instance(InstanceNum0),
+        NewProof = apply_instance(instance_id(CurInstanceNum)),
         retrieve_prog_constraint(Constraint, ProgConstraint),
         map.set(ProgConstraint, NewProof, !ProofMap)
     else
-        InstanceNum = InstanceNum0 + 1,
-        find_matching_instance_rule_2(Instances, InstanceNum,
+        find_matching_instance_rule_2(Instances, CurInstanceNum + 1,
             Constraint, !TVarSet, !ProofMap, NewConstraints)
     ).
 

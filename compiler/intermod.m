@@ -886,19 +886,17 @@ gather_opt_export_instances_in_class(ModuleInfo, ClassId, InstanceDefns,
 gather_opt_export_instance_in_instance_defn(ModuleInfo, ClassId, InstanceDefn,
         !IntermodInfo) :-
     InstanceDefn = hlds_instance_defn(ModuleName, Types, OriginalTypes,
-        InstanceStatus, Context, InstanceConstraints, Interface0,
-        MaybePredProcIds, TVarSet, Proofs),
+        InstanceStatus, Context, MaybeSubsumedContext, InstanceConstraints,
+        InstanceBody0, MaybePredProcIds, TVarSet, Proofs),
     DefinedThisModule = instance_status_defined_in_this_module(InstanceStatus),
     (
         DefinedThisModule = yes,
-
         % The bodies are always stripped from instance declarations
         % before writing them to `int' files, so the full instance
         % declaration should be written even for exported instances.
-
         SavedIntermodInfo = !.IntermodInfo,
         (
-            Interface0 = instance_body_concrete(Methods0),
+            InstanceBody0 = instance_body_concrete(Methods0),
             (
                 MaybePredProcIds = yes(ClassProcs),
                 ClassPreds0 =
@@ -920,33 +918,33 @@ gather_opt_export_instance_in_instance_defn(ModuleInfo, ClassId, InstanceDefn,
                 list.all_true(unify(may_opt_export_pred),
                     MethodMayOptExportPreds)
             then
-                Interface = instance_body_concrete(Methods)
+                InstanceBody = instance_body_concrete(Methods)
             else
                 % Write an abstract instance declaration if any of the methods
                 % cannot be written to the `.opt' file for any reason.
-                Interface = instance_body_abstract,
+                InstanceBody = instance_body_abstract,
 
                 % Do not write declarations for any of the methods if one
                 % cannot be written.
                 !:IntermodInfo = SavedIntermodInfo
             )
         ;
-            Interface0 = instance_body_abstract,
-            Interface = Interface0
+            InstanceBody0 = instance_body_abstract,
+            InstanceBody = InstanceBody0
         ),
         ( if
             % Don't write an abstract instance declaration
             % if the declaration is already in the `.int' file.
             (
-                Interface = instance_body_abstract
+                InstanceBody = instance_body_abstract
             =>
                 instance_status_is_exported(InstanceStatus) = no
             )
         then
             InstanceDefnToWrite = hlds_instance_defn(ModuleName,
-                Types, OriginalTypes, InstanceStatus, Context,
-                InstanceConstraints, Interface, MaybePredProcIds,
-                TVarSet, Proofs),
+                Types, OriginalTypes, InstanceStatus,
+                Context, MaybeSubsumedContext, InstanceConstraints,
+                InstanceBody, MaybePredProcIds, TVarSet, Proofs),
             intermod_info_get_instances(!.IntermodInfo, Instances0),
             Instances = [ClassId - InstanceDefnToWrite | Instances0],
             intermod_info_set_instances(Instances, !IntermodInfo)
@@ -1731,7 +1729,7 @@ intermod_gather_classes(ModuleInfo, TypeClasses) :-
 
 intermod_gather_class(ModuleName, ClassId, ClassDefn, !TypeClassesCord) :-
     ClassDefn = hlds_class_defn(TypeClassStatus, Constraints, HLDSFunDeps,
-        _Ancestors, TVars, _Kinds, Interface, _HLDSClassInterface, TVarSet,
+        _Ancestors, TVars, _Kinds, InstanceBody, _MaybeMethodPPIds, TVarSet,
         Context, _HasBadDefn),
     ClassId = class_id(QualifiedClassName, _),
     ( if
@@ -1740,7 +1738,7 @@ intermod_gather_class(ModuleName, ClassId, ClassDefn, !TypeClassesCord) :-
     then
         FunDeps = list.map(unmake_hlds_class_fundep(TVars), HLDSFunDeps),
         ItemTypeClass = item_typeclass_info(QualifiedClassName, TVars,
-            Constraints, FunDeps, Interface, TVarSet,
+            Constraints, FunDeps, InstanceBody, TVarSet,
             Context, item_no_seq_num),
         cord.snoc(ItemTypeClass, !TypeClassesCord)
     else
@@ -1778,7 +1776,7 @@ intermod_gather_instances(InstanceDefns, Instances) :-
 
 intermod_gather_instance(ClassId - InstanceDefn, !InstancesCord) :-
     InstanceDefn = hlds_instance_defn(ModuleName, Types, OriginalTypes, _,
-        Context, Constraints, Body, _, TVarSet, _),
+        Context, _, Constraints, Body, _, TVarSet, _),
     ClassId = class_id(ClassName, _),
     ItemInstance = item_instance_info(ClassName, Types, OriginalTypes,
         Constraints, Body, TVarSet, ModuleName, Context, item_no_seq_num),
@@ -2664,23 +2662,23 @@ maybe_opt_export_class_instances(ClassId - InstanceList0,
 
 maybe_opt_export_instance_defn(Instance0, Instance, !ModuleInfo) :-
     Instance0 = hlds_instance_defn(InstanceModule, Types, OriginalTypes,
-        InstanceStatus0, Context, Constraints, Body,
-        HLDSClassInterface, TVarSet, ConstraintProofs),
+        InstanceStatus0, Context, MaybeSubsumedContext, Constraints,
+        Body, MaybeMethodPPIds, TVarSet, ConstraintProofs),
     ToWrite = instance_status_to_write(InstanceStatus0),
     (
         ToWrite = yes,
         InstanceStatus = instance_status(status_exported),
         Instance = hlds_instance_defn(InstanceModule, Types, OriginalTypes,
-            InstanceStatus, Context, Constraints, Body,
-            HLDSClassInterface, TVarSet, ConstraintProofs),
+            InstanceStatus, Context, MaybeSubsumedContext, Constraints,
+            Body, MaybeMethodPPIds, TVarSet, ConstraintProofs),
         (
-            HLDSClassInterface = yes(ClassInterface),
-            class_procs_to_pred_ids(ClassInterface, PredIds),
+            MaybeMethodPPIds = yes(MethodPPIds),
+            class_procs_to_pred_ids(MethodPPIds, PredIds),
             opt_export_preds(PredIds, !ModuleInfo)
         ;
             % This can happen if an instance has multiple
             % declarations, one of which is abstract.
-            HLDSClassInterface = no
+            MaybeMethodPPIds = no
         )
     ;
         ToWrite = no,

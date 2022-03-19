@@ -43,6 +43,8 @@
 
 :- implementation.
 
+:- import_module check_hlds.                    % XXX Temporary import.
+:- import_module check_hlds.check_typeclass.    % XXX Temporary import.
 :- import_module hlds.add_pred.
 :- import_module hlds.default_func_mode.
 :- import_module hlds.hlds_args.
@@ -60,7 +62,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 
@@ -87,8 +88,8 @@ add_typeclass_defns([SecSubList | SecSubLists], !ModuleInfo, !Specs) :-
 add_instance_defns([], !ModuleInfo, !Specs).
 add_instance_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
     ImsSubList = ims_sub_list(ItemMercuryStatus, Items),
-    item_mercury_status_to_instance_status(ItemMercuryStatus, InstanceStatus0),
-    list.foldl2(add_instance_defn(InstanceStatus0), Items,
+    item_mercury_status_to_instance_status(ItemMercuryStatus, InstanceStatus),
+    list.foldl2(add_instance_defn(InstanceStatus), Items,
         !ModuleInfo, !Specs),
     add_instance_defns(ImsSubLists, !ModuleInfo, !Specs).
 
@@ -241,22 +242,6 @@ get_list_index([E | Es], CurPos, X) =
     else
         get_list_index(Es, CurPos + 1, X)
     ).
-
-:- pred constraints_are_identical(list(tvar)::in, tvarset::in,
-    list(prog_constraint)::in, list(tvar)::in, tvarset::in,
-    list(prog_constraint)::in) is semidet.
-
-constraints_are_identical(OldVars0, OldVarSet, OldConstraints0,
-        Vars, VarSet, Constraints) :-
-    tvarset_merge_renaming(VarSet, OldVarSet, _, Renaming),
-    apply_variable_renaming_to_prog_constraint_list(Renaming, OldConstraints0,
-        OldConstraints1),
-    apply_variable_renaming_to_tvar_list(Renaming, OldVars0,  OldVars),
-
-    map.from_corresponding_lists(OldVars, Vars, VarRenaming),
-    apply_variable_renaming_to_prog_constraint_list(VarRenaming,
-        OldConstraints1, OldConstraints),
-    OldConstraints = Constraints.
 
 :- pred class_fundeps_are_identical(hlds_class_fundeps::in,
     hlds_class_fundeps::in) is semidet.
@@ -514,182 +499,21 @@ add_instance_defn(InstanceStatus0, ItemInstanceInfo, !ModuleInfo, !Specs) :-
     list.length(Types, ClassArity),
     ClassId = class_id(ClassName, ClassArity),
     ( if map.search(Classes, ClassId, _) then
-        MaybeClassInterface = maybe.no,
+        % The MaybeSubsumedContext is set later, by check_typeclass.m.
+        MaybeSubsumedContext = maybe.no,
+        MaybeMethodPPIds = maybe.no,
         map.init(ProofMap),
         NewInstanceDefn = hlds_instance_defn(InstanceModuleName,
-            Types, OriginalTypes, InstanceStatus, Context, Constraints,
-            InstanceBody, MaybeClassInterface, VarSet, ProofMap),
+            Types, OriginalTypes, InstanceStatus,
+            Context, MaybeSubsumedContext, Constraints,
+            InstanceBody, MaybeMethodPPIds, VarSet, ProofMap),
         map.lookup(InstanceTable0, ClassId, OldInstanceDefns),
-        check_for_overlapping_instances(NewInstanceDefn, OldInstanceDefns,
-            ClassId, !Specs),
-        check_instance_compatibility(NewInstanceDefn, OldInstanceDefns,
-            ClassId, !Specs),
         map.det_update(ClassId, [NewInstanceDefn | OldInstanceDefns],
             InstanceTable0, InstanceTable),
         module_info_set_instance_table(InstanceTable, !ModuleInfo)
     else
-        report_instance_for_undefined_typeclass(ClassId, Context,
-            !Specs)
+        report_instance_for_undefined_typeclass(ClassId, Context, !Specs)
     ).
-
-:- pred check_for_overlapping_instances(hlds_instance_defn::in,
-    list(hlds_instance_defn)::in, class_id::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_for_overlapping_instances(NewInstanceDefn, OtherInstanceDefns,
-        ClassId, !Specs) :-
-    NewInstanceDefn = hlds_instance_defn(_, NewTypes, _, _, NewContext,
-        _, NewInstanceBody, _, NewTVarSet, _),
-    ( if
-        NewInstanceBody = instance_body_concrete(_) % XXX
-    then
-        report_any_overlapping_instance_declarations(ClassId,
-            NewTypes, NewTVarSet, NewContext, OtherInstanceDefns, !Specs)
-    else
-        true
-    ).
-
-:- pred report_any_overlapping_instance_declarations(class_id::in,
-    list(mer_type)::in, tvarset::in, prog_context::in,
-    list(hlds_instance_defn)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-report_any_overlapping_instance_declarations(_, _, _, _, [], !Specs).
-report_any_overlapping_instance_declarations(ClassId,
-        NewTypes, NewTVarSet, NewContext,
-        [OtherInstanceDefn | OtherInstanceDefns], !Specs) :-
-    OtherInstanceDefn = hlds_instance_defn(_, OtherTypes, _, _, OtherContext,
-        _, OtherInstanceBody, _, OtherTVarSet, _),
-    ( if
-        OtherInstanceBody = instance_body_concrete(_), % XXX
-        tvarset_merge_renaming(NewTVarSet, OtherTVarSet, _MergedTVarSet,
-            Renaming),
-        apply_variable_renaming_to_type_list(Renaming, OtherTypes,
-            NewOtherTypes),
-        type_list_subsumes(NewTypes, NewOtherTypes, _)
-    then
-        % XXX STATUS Multiply defined if type_list_subsumes in BOTH directions.
-        NewPieces = [words("Error: multiply defined (or overlapping)"),
-            words("instance declarations for class"),
-            qual_class_id(ClassId), suffix("."), nl],
-        NewMsg = simplest_msg(NewContext, NewPieces),
-        OtherPieces = [words("Previous instance declaration was here.")],
-        OtherMsg = error_msg(yes(OtherContext), always_treat_as_first, 0,
-            [always(OtherPieces)]),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            [NewMsg, OtherMsg]),
-        !:Specs = [Spec | !.Specs]
-    else
-        true
-    ),
-    % Maybe we shouldn't recurse if we generated an error above,
-    % but triply-defined instances are so rare that it doesn't much matter,
-    % and in some even more rare cases, the extra info may be useful.
-    report_any_overlapping_instance_declarations(ClassId,
-        NewTypes, NewTVarSet, NewContext, OtherInstanceDefns, !Specs).
-
-    % If two instance declarations are about the same type, then one must be
-    % the abstract declaration and the other the concrete definition.
-    % The two must be compatible, i.e. their constraints must be identical.
-    % If they are not, then generate an error message.
-    %
-:- pred check_instance_compatibility(hlds_instance_defn::in,
-    list(hlds_instance_defn)::in, class_id::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_instance_compatibility(InstanceDefn, InstanceDefns, ClassId, !Specs) :-
-    list.filter(same_type_hlds_instance_defn(InstanceDefn),
-        InstanceDefns, EquivInstanceDefns),
-    list.foldl(check_instance_constraints(InstanceDefn, ClassId),
-        EquivInstanceDefns, !Specs).
-
-:- pred check_instance_constraints(hlds_instance_defn::in,
-    class_id::in, hlds_instance_defn::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_instance_constraints(InstanceDefnA, ClassId, InstanceDefnB, !Specs) :-
-    type_vars_list(InstanceDefnA ^ instdefn_types, TVarsA),
-    TVarSetA = InstanceDefnA ^ instdefn_tvarset,
-    ConstraintsA = InstanceDefnA ^ instdefn_constraints,
-
-    type_vars_list(InstanceDefnB ^ instdefn_types, TVarsB),
-    TVarSetB = InstanceDefnB ^ instdefn_tvarset,
-    ConstraintsB = InstanceDefnB ^ instdefn_constraints,
-
-    ( if
-        constraints_are_identical(TVarsA, TVarSetA, ConstraintsA,
-            TVarsB, TVarSetB, ConstraintsB)
-    then
-        true
-    else
-        ContextA = InstanceDefnA ^ instdefn_context,
-        ContextB = InstanceDefnB ^ instdefn_context,
-        % The flattening of source item blocks by modules.m puts
-        % all items in a given section together. Since the original
-        % source code may have had the contents of the different sections
-        % intermingled, this may change the relative order of items.
-        % Put them back in the original order for this error message.
-        compare(CmpRes, ContextA, ContextB),
-        (
-            ( CmpRes = (<)
-            ; CmpRes = (=)
-            ),
-            FirstContext = ContextA,
-            SecondContext = ContextB
-        ;
-            CmpRes = (>),
-            FirstContext = ContextB,
-            SecondContext = ContextA
-        ),
-
-        % Since the first declaration by itself is fine, the first sign
-        % of a problem appears at the second declaration. This is why
-        % we start the report of the problem with *its* context.
-        SecondDeclPieces = [words("In instance declaration for class"),
-            qual_class_id(ClassId), suffix(":"), nl,
-            words("the instance constraints here"),
-            words("are incompatible with ..."), nl],
-        SecondDeclMsg = simplest_msg(SecondContext, SecondDeclPieces),
-
-        FirstDeclPieces = [words("... the instance constraints here."), nl],
-        FirstDeclMsg = simplest_msg(FirstContext, FirstDeclPieces),
-
-        Spec = error_spec($pred, severity_error,
-            phase_parse_tree_to_hlds, [SecondDeclMsg, FirstDeclMsg]),
-        !:Specs = [Spec | !.Specs]
-    ).
-
-    % Do two hlds_instance_defn refer to the same type?
-    % e.g. "instance tc(f(T))" compares equal to "instance tc(f(U))"
-    %
-    % Note we don't check that the constraints of the declarations are the
-    % same.
-    %
-:- pred same_type_hlds_instance_defn(hlds_instance_defn::in,
-    hlds_instance_defn::in) is semidet.
-
-same_type_hlds_instance_defn(InstanceDefnA, InstanceDefnB) :-
-    TypesA = InstanceDefnA ^ instdefn_types,
-    TypesB0 = InstanceDefnB ^ instdefn_types,
-
-    VarSetA = InstanceDefnA ^ instdefn_tvarset,
-    VarSetB = InstanceDefnB ^ instdefn_tvarset,
-
-    % Rename the two lists of types apart.
-    tvarset_merge_renaming(VarSetA, VarSetB, _NewVarSet, RenameApart),
-    apply_variable_renaming_to_type_list(RenameApart, TypesB0, TypesB1),
-
-    type_vars_list(TypesA, TVarsA),
-    type_vars_list(TypesB1, TVarsB),
-
-    % If the lengths are different they can't be the same type.
-    list.length(TVarsA, NumTVars),
-    list.length(TVarsB, NumTVars),
-
-    map.from_corresponding_lists(TVarsB, TVarsA, Renaming),
-    apply_variable_renaming_to_type_list(Renaming, TypesB1, TypesB),
-
-    TypesA = TypesB.
 
 do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, ArgTypes,
         Markers, Context, InstanceStatus, ClausesInfo,

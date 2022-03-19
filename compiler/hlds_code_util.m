@@ -40,7 +40,7 @@
     % Given a type_ctor, return the cons_id that represents its type_ctor_info.
     %
 :- func base_typeclass_info_cons_id(instance_table,
-    prog_constraint, int, list(mer_type)) = cons_id.
+    prog_constraint, instance_id, list(mer_type)) = cons_id.
 
 %-----------------------------------------------------------------------------%
 
@@ -199,11 +199,12 @@ type_ctor_info_cons_id(TypeCtor) = ConsId :-
     type_ctor_module_name_arity(TypeCtor, ModuleName, Name, Arity),
     ConsId = type_ctor_info_const(ModuleName, Name, Arity).
 
-base_typeclass_info_cons_id(InstanceTable, Constraint, InstanceNum,
+base_typeclass_info_cons_id(InstanceTable, Constraint, InstanceId,
         InstanceTypes) = ConsId :-
     Constraint = constraint(ClassName, ConstraintArgTypes),
     ClassId = class_id(ClassName, list.length(ConstraintArgTypes)),
     map.lookup(InstanceTable, ClassId, InstanceList),
+    InstanceId = instance_id(InstanceNum),
     list.det_index1(InstanceList, InstanceNum, InstanceDefn),
     InstanceModuleName = InstanceDefn ^ instdefn_module,
     make_instance_string(InstanceTypes, InstanceString),

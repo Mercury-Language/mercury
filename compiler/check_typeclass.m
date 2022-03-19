@@ -95,12 +95,21 @@
 :- import_module hlds.make_hlds.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
 
 :- pred check_typeclasses(module_info::in, module_info::out,
     make_hlds_qual_info::in, make_hlds_qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
+
+    % XXX Exported to add_class.m.
+    % This export should be temporary, since the code that needs it
+    % should also be moved to this module.
+    %
+:- pred constraints_are_identical(
+    list(tvar)::in, tvarset::in, list(prog_constraint)::in,
+    list(tvar)::in, tvarset::in, list(prog_constraint)::in) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -128,7 +137,6 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.pred_name.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
@@ -139,7 +147,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
-:- import_module multi_map.
 :- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
@@ -207,9 +214,9 @@ check_typeclasses(!ModuleInfo, !QualInfo, !Specs) :-
         trace [io(!IO)] (
             get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             maybe_write_string(ProgressStream, Verbose,
-                "% Checking typeclass constraints...\n", !IO)
+                "% Checking typeclass constraints on predicates...\n", !IO)
         ),
-        check_typeclass_constraints(!.ModuleInfo, !Specs)
+        check_typeclass_constraints_on_preds(!.ModuleInfo, !Specs)
     ;
         !.Specs = [_ | _]
     ).
@@ -569,7 +576,7 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface,
         MethodPredProcIds, ClassVarSet, ClassPredIds, !InstanceDefn,
         !ModuleInfo, !QualInfo, !Specs):-
     % Check conformance of the instance body.
-    !.InstanceDefn = hlds_instance_defn(_, _, _, _, TermContext, _,
+    !.InstanceDefn = hlds_instance_defn(_, _, _, _, TermContext, _, _,
         InstanceBody, _, _, _),
     (
         InstanceBody = instance_body_abstract
@@ -746,7 +753,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
         ), ClassProcProcIds, ArgModes),
 
     InstanceDefn0 = hlds_instance_defn(_, InstanceTypes, _, InstanceStatus,
-        _, _, _, _, _, _),
+        _, _, _, _, _, _, _),
 
     % Work out the name of the predicate that we will generate
     % to check this instance method.
@@ -813,9 +820,9 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
         CheckInfo, InstanceDefn0, InstanceDefn,
         !RevInstanceMethods, !ModuleInfo, !QualInfo, !Specs) :-
     InstanceDefn0 = hlds_instance_defn(InstanceModuleName,
-        InstanceTypes, _OriginalTypes, _InstanceStatus, _InstanceContext,
-        InstanceConstraints, InstanceBody, MaybeInstancePredProcs,
-        InstanceVarSet, _InstanceProofs),
+        InstanceTypes, _OriginalTypes, _InstanceStatus,
+        _Context, _MaybeSubsumedContext, InstanceConstraints, InstanceBody,
+        MaybeInstancePredProcs, InstanceVarSet, _InstanceProofs),
     PredOrFunc = CheckInfo ^ cimi_method_pred_or_func,
     UserArity = CheckInfo ^ cimi_method_arity,
     get_matching_instance_defns(InstanceBody, PredOrFunc, MethodName,
@@ -1056,8 +1063,8 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
 check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
         ClassVarSet, ModuleInfo, InstanceDefn0, InstanceDefn, !Specs) :-
     InstanceDefn0 = hlds_instance_defn(ModuleName,
-        InstanceTypes, OriginalTypes, Status, Context, InstanceProgConstraints,
-        Body, Interface, InstanceVarSet0, Proofs0),
+        InstanceTypes, OriginalTypes, Status, Context, MaybeSubsumedContext,
+        InstanceProgConstraints, Body, Interface, InstanceVarSet0, Proofs0),
     tvarset_merge_renaming(InstanceVarSet0, ClassVarSet, InstanceVarSet1,
         Renaming),
 
@@ -1099,8 +1106,9 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
     (
         UnprovenConstraints = [],
         InstanceDefn = hlds_instance_defn(ModuleName,
-            InstanceTypes, OriginalTypes, Status, Context,
-            InstanceProgConstraints, Body, Interface, InstanceVarSet2, Proofs1)
+            InstanceTypes, OriginalTypes, Status,
+            Context, MaybeSubsumedContext, InstanceProgConstraints, Body,
+            Interface, InstanceVarSet2, Proofs1)
     ;
         UnprovenConstraints = [_ | _],
         ClassId = class_id(ClassName, _ClassArity),
@@ -1146,117 +1154,546 @@ constraint_list_to_comma_strings(VarSet, [C | Cs], Strings) :-
 
 %---------------------------------------------------------------------------%
 
+:- type type_vector_instances_map == map(type_vector, type_vector_instances).
+:- type type_vector == list(mer_type).
+:- type type_vector_instances
+    --->    type_vector_instances(
+                local_abstracts     :: list(hlds_instance_defn),
+                local_concretes     :: list(hlds_instance_defn),
+                nonlocal_abstracts  :: list(hlds_instance_defn),
+                nonlocal_concretes  :: list(hlds_instance_defn)
+            ).
+
     % Check that every abstract instance in the module has a
     % corresponding concrete instance in the implementation.
+    %
+    % XXX That was the original purpose of this predicate. Now it performs
+    % several other checks:
+    %
+    % - It reports errors for duplicate concrete instance declarations
+    %   in both the current module, and in (the visible parts of)
+    %   other modules.
+    %
+    % - It reports errors for concrete local instance declarations
+    %   that duplicate concrete instances from other modules.
+    %
+    % - It reports warnings for duplicate abstract instance declarations
+    %   in the current module.
+    %
+    % - It compares local concrete instance declarations with their
+    %   abstract versions (if any), and report an error if they specify
+    %   different constraints.
+    %
+    % The checks done by the rest of this module on instances should
+    % also be moved here, both to avoid redundant traversals of the
+    % instance table, and because we should be able to generate
+    % better messages using the knowledge we gather here.
+    %
+    % XXX This predicate should be renamed once that is done.
+    % Likewise for many of the predicates in its call tree.
     %
 :- pred check_for_missing_concrete_instances(module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_for_missing_concrete_instances(ModuleInfo, !Specs) :-
     module_info_get_instance_table(ModuleInfo, InstanceTable),
-    % Grab all the instance declarations that occur in this module
-    % and partition them into two sets: abstract instance declarations
-    % and concrete instance declarations.
-    gather_abstract_and_concrete_instances(InstanceTable,
-        AbstractInstances, ConcreteInstances),
-    map.foldl(check_for_corresponding_instances(ConcreteInstances),
-        AbstractInstances, !Specs).
+    map.foldl(check_for_missing_concrete_instances_in_class,
+        InstanceTable, !Specs).
 
-    % Search the instance_table and create a table of abstract instances
-    % that occur in the module and a table of concrete instances that
-    % occur in the module. Imported instances are not included at all.
-    %
-:- pred gather_abstract_and_concrete_instances(instance_table::in,
-    instance_table::out, instance_table::out) is det.
-
-gather_abstract_and_concrete_instances(InstanceTable, Abstracts, Concretes) :-
-    map.foldl2(partition_instances_for_class, InstanceTable,
-        multi_map.init, Abstracts, multi_map.init, Concretes).
-
-    % Partition all the non-imported instances for a particular class
-    % into two groups, those that are abstract and those that are concrete.
-    %
-:- pred partition_instances_for_class(class_id::in,
-    list(hlds_instance_defn)::in, instance_table::in, instance_table::out,
-    instance_table::in, instance_table::out) is det.
-
-partition_instances_for_class(ClassId, Instances, !Abstracts, !Concretes) :-
-    list.foldl2(partition_instances_for_class_2(ClassId), Instances,
-        !Abstracts, !Concretes).
-
-:- pred partition_instances_for_class_2(class_id::in, hlds_instance_defn::in,
-    instance_table::in, instance_table::out,
-    instance_table::in, instance_table::out) is det.
-
-partition_instances_for_class_2(ClassId, InstanceDefn,
-        !Abstracts, !Concretes) :-
-    InstanceStatus = InstanceDefn ^ instdefn_status,
-    IsImported = instance_status_is_imported(InstanceStatus),
-    (
-        IsImported = no,
-        Body = InstanceDefn ^ instdefn_body,
-        (
-            Body = instance_body_abstract,
-            multi_map.add(ClassId, InstanceDefn, !Abstracts)
-        ;
-            Body = instance_body_concrete(_),
-            multi_map.add(ClassId, InstanceDefn, !Concretes)
-        )
-    ;
-        IsImported = yes
-    ).
-
-:- pred check_for_corresponding_instances(instance_table::in,
-    class_id::in, list(hlds_instance_defn)::in,
+:- pred check_for_missing_concrete_instances_in_class(class_id::in,
+    list(hlds_instance_defn)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_corresponding_instances(Concretes, ClassId, InstanceDefns, !Specs) :-
-    list.foldl(check_for_corresponding_instances_2(Concretes, ClassId),
-        InstanceDefns, !Specs).
+check_for_missing_concrete_instances_in_class(ClassId, Instances, !Specs) :-
+    build_type_vector_instances_map(Instances, map.init, VectorInstancesMap),
+    map.to_sorted_assoc_list(VectorInstancesMap, VectorInstancesAL),
+    list.map_foldl(
+        check_for_missing_concrete_instances_in_class_and_vector(ClassId),
+        VectorInstancesAL, PickedInstances, !Specs),
+    % XXX PickedInstances should replace Instances in ClassId's entry
+    % in the instance table.
+    check_for_overlapping_nonidentical_instances(ClassId,
+        PickedInstances, !Specs).
 
-:- pred check_for_corresponding_instances_2(instance_table::in, class_id::in,
+:- pred check_for_overlapping_nonidentical_instances(class_id::in,
+    list(hlds_instance_defn)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_for_overlapping_nonidentical_instances(_, [], !Specs).
+check_for_overlapping_nonidentical_instances(ClassId,
+        [HeadInstanceDefn | TailInstanceDefns], !Specs) :-
+    list.foldl(
+        check_for_overlapping_nonidentical_instance(ClassId, HeadInstanceDefn),
+        TailInstanceDefns, !Specs),
+    check_for_overlapping_nonidentical_instances(ClassId,
+        TailInstanceDefns, !Specs).
+
+:- pred check_for_overlapping_nonidentical_instance(class_id::in,
+    hlds_instance_defn::in, hlds_instance_defn::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_for_overlapping_nonidentical_instance(ClassId,
+        InstanceDefnA, InstanceDefnB, !Specs) :-
+    InstanceDefnA = hlds_instance_defn(_, TypesA, _, _, ContextA,
+        _, _, _, _, TVarSetA, _),
+    InstanceDefnB = hlds_instance_defn(_, TypesB, _, _, ContextB,
+        _, _, _, _, TVarSetB, _),
+    tvarset_merge_renaming(TVarSetA, TVarSetB, _MergedTVarSetAB, RenamingAB),
+    tvarset_merge_renaming(TVarSetB, TVarSetB, _MergedTVarSetBA, RenamingBA),
+    ( if
+        (
+            apply_variable_renaming_to_type_list(RenamingAB, TypesB, TypesBR),
+            type_list_subsumes(TypesA, TypesBR, _)
+        ;
+            apply_variable_renaming_to_type_list(RenamingBA, TypesA, TypesAR),
+            type_list_subsumes(TypesB, TypesAR, _)
+        )
+    then
+        PiecesA = [words("Error: overlapping instance declarations"),
+            words("for class"), qual_class_id(ClassId), suffix("."), nl,
+            words("One instance declaration is here, ..."), nl],
+        MsgA = simplest_msg(ContextA, PiecesA),
+        PiecesB = [words("... and the other is here."), nl],
+        MsgB = simplest_msg(ContextB, PiecesB),
+        Spec = error_spec($pred, severity_error, phase_type_check,
+            [MsgA, MsgB]),
+        !:Specs = [Spec | !.Specs]
+    else
+        true
+    ),
+    check_for_nonidentical_but_same_instance(ClassId,
+        InstanceDefnA, InstanceDefnB, !Specs).
+
+    % The original code in add_class.m to did some of the tests
+    % that are now done by check_for_missing_concrete_instances_in_class
+    % and its subcontractors used the same_type_hlds_instance_defn predicate
+    % as its test whether two hlds_instance_defns were talking about
+    % the same instance, but build_type_vector_instances_map uses
+    % simple unification of the inst_defn_types field. 
+    % This test checks whether build_type_vector_instances_map's method works.
+    %
+    % XXX After two or three weeks of compiler use without seeing
+    % one of these messages about internal compiler errors, we should be
+    % able to delete this sanity check code.
+    %
+:- pred check_for_nonidentical_but_same_instance(class_id::in,
+    hlds_instance_defn::in, hlds_instance_defn::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_for_nonidentical_but_same_instance(ClassId, InstanceDefnA, InstanceDefnB,
+        !Specs) :-
+    ( if same_type_hlds_instance_defn(InstanceDefnA, InstanceDefnB) then
+        ContextA = InstanceDefnA ^ instdefn_context,
+        ContextB = InstanceDefnB ^ instdefn_context,
+        PiecesA = [words("Internal compiler error:"),
+            words("this instance declaration both *is* and *is not*"),
+            words("for the same instance of class"), qual_class_id(ClassId),
+            words("as ..."), nl],
+        MsgA = simplest_msg(ContextA, PiecesA),
+        PiecesB = [words("... this instance declaration."), nl],
+        MsgB = error_msg(yes(ContextB), always_treat_as_first, 0,
+            [always(PiecesB)]),
+        Spec = error_spec($pred, severity_error, phase_type_check,
+            [MsgA, MsgB]),
+        !:Specs = [Spec | !.Specs]
+    else
+        true
+    ).
+
+    % Do two hlds_instance_defn refer to the same type?
+    % e.g. "instance tc(f(T))" compares equal to "instance tc(f(U))"
+    %
+    % Note we don't check that the constraints of the declarations are the
+    % same.
+    %
+:- pred same_type_hlds_instance_defn(hlds_instance_defn::in,
+    hlds_instance_defn::in) is semidet.
+
+same_type_hlds_instance_defn(InstanceDefnA, InstanceDefnB) :-
+    TypesA = InstanceDefnA ^ instdefn_types,
+    TypesB0 = InstanceDefnB ^ instdefn_types,
+
+    VarSetA = InstanceDefnA ^ instdefn_tvarset,
+    VarSetB = InstanceDefnB ^ instdefn_tvarset,
+
+    % Rename the two lists of types apart.
+    tvarset_merge_renaming(VarSetA, VarSetB, _NewVarSet, RenameApart),
+    apply_variable_renaming_to_type_list(RenameApart, TypesB0, TypesB1),
+
+    type_vars_list(TypesA, TVarsA),
+    type_vars_list(TypesB1, TVarsB),
+
+    % If the lengths are different they can't be the same type.
+    list.length(TVarsA, NumTVars),
+    list.length(TVarsB, NumTVars),
+
+    map.from_corresponding_lists(TVarsB, TVarsA, Renaming),
+    apply_variable_renaming_to_type_list(Renaming, TypesB1, TypesB),
+
+    TypesA = TypesB.
+
+%---------------------%
+
+:- pred build_type_vector_instances_map(list(hlds_instance_defn)::in,
+    type_vector_instances_map::in, type_vector_instances_map::out) is det.
+
+build_type_vector_instances_map([], !VectorInstancesMap).
+build_type_vector_instances_map([InstanceDefn | InstanceDefns],
+        !VectorInstancesMap) :-
+    % Two instance declarations can talk about the same instance of a class
+    % even if they look different. Consider these two instances:
+    %
+    % :- instance c1(t1(A, B), t2(A), t3(B)) where ...
+    % :- instance c1(t1(X, Y), t2(X), t3(Y)) where ...
+    %
+    % They look different due to the differences in variable names,
+    % but types contain variable *numbers*, not variable *names*, and
+    % these numbers are allocated sequentially in order of first appearance.
+    % Therefore if two types unify, then they are structurally identical,
+    % and may differ only in variable names. Two instance declarations
+    % talk about the same instance of a class if their type vectors are
+    % identical.
+    TypeVector = InstanceDefn ^ instdefn_types,
+    InstanceStatus = InstanceDefn ^ instdefn_status,
+    IsImported = instance_status_is_imported(InstanceStatus),
+    ( if map.search(!.VectorInstancesMap, TypeVector, VectorInstances0) then
+        categorize_and_add_instance_defn(IsImported, InstanceDefn,
+            VectorInstances0, VectorInstances),
+        map.det_update(TypeVector, VectorInstances, !VectorInstancesMap)
+    else
+        VectorInstances0 = type_vector_instances([], [], [], []),
+        categorize_and_add_instance_defn(IsImported, InstanceDefn,
+            VectorInstances0, VectorInstances),
+        map.det_insert(TypeVector, VectorInstances, !VectorInstancesMap)
+    ),
+    build_type_vector_instances_map(InstanceDefns, !VectorInstancesMap).
+
+:- pred categorize_and_add_instance_defn(bool::in, hlds_instance_defn::in,
+    type_vector_instances::in, type_vector_instances::out) is det.
+
+categorize_and_add_instance_defn(IsImported, InstanceDefn,
+        VectorInstances0, VectorInstances) :-
+    Body = InstanceDefn ^ instdefn_body,
+    (
+        IsImported = no,
+        (
+            Body = instance_body_abstract,
+            LocalAbstracts0 = VectorInstances0 ^ local_abstracts,
+            VectorInstances = VectorInstances0 ^ local_abstracts
+                := [InstanceDefn | LocalAbstracts0]
+        ;
+            Body = instance_body_concrete(_),
+            LocalConcretes0 = VectorInstances0 ^ local_concretes,
+            VectorInstances = VectorInstances0 ^ local_concretes
+                := [InstanceDefn | LocalConcretes0]
+        )
+    ;
+        IsImported = yes,
+        (
+            Body = instance_body_abstract,
+            NonLocalAbstracts0 = VectorInstances0 ^ nonlocal_abstracts,
+            VectorInstances = VectorInstances0 ^ nonlocal_abstracts
+                := [InstanceDefn | NonLocalAbstracts0]
+        ;
+            Body = instance_body_concrete(_),
+            NonLocalConcretes0 = VectorInstances0 ^ nonlocal_concretes,
+            VectorInstances = VectorInstances0 ^ nonlocal_concretes
+                := [InstanceDefn | NonLocalConcretes0]
+        )
+    ).
+
+%---------------------%
+
+    % XXX See the comment on our ancestor check_for_missing_concrete_instances.
+    %
+:- pred check_for_missing_concrete_instances_in_class_and_vector(class_id::in,
+    pair(type_vector, type_vector_instances)::in, hlds_instance_defn::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_for_missing_concrete_instances_in_class_and_vector(ClassId,
+        _TypeVector - VectorInstances, PickedInstance, !Specs) :-
+    % XXX We should use _TypeVector to implement the check
+    % now done by check_instance_declaration_types_for_instance.
+    %
+    % XXX We should also use it to implement --warn-unnecessarily-private-
+    % instance, which (as proposed by Julien on 2022 mar 8) would warn about
+    % non-exported instances whose type vectors contain only non-private
+    % type constructors.
+
+    % We pick a single instance for this type vector in the instance table
+    % using a multi-stage tournament. Most, though not all, instances
+    % that are knocked out of the tournament get an error message generated
+    % for them.
+
+    % The first stage partitions the instance definitions
+    % based on two properties: local/nonlocal, and abstract/concrete.
+    % It then picks the (lexically) first in each category,
+    % and reports all the others as duplicates.
+    VectorInstances = type_vector_instances(LocalAbstracts0, LocalConcretes0,
+        NonLocalAbstracts0, NonLocalConcretes0),
+    list.sort(compare_instance_defns_by_context,
+        LocalAbstracts0, LocalAbstracts),
+    list.sort(compare_instance_defns_by_context,
+        LocalConcretes0, LocalConcretes),
+    list.sort(compare_instance_defns_by_context,
+        NonLocalAbstracts0, NonLocalAbstracts),
+    list.sort(compare_instance_defns_by_context,
+        NonLocalConcretes0, NonLocalConcretes),
+    report_any_duplicate_instance_defns_in_category(ClassId,
+        severity_error, "Error", "concrete",
+        LocalConcretes, MaybeLocalConcrete, [], LocalConcreteSpecs),
+    report_any_duplicate_instance_defns_in_category(ClassId,
+        severity_error, "Error", "imported concrete",
+        NonLocalConcretes, MaybeNonLocalConcrete, [], NonLocalConcreteSpecs),
+    report_any_duplicate_instance_defns_in_category(ClassId,
+        severity_warning, "Warning", "abstract",
+        LocalAbstracts, MaybeLocalAbstract, !Specs),
+    % intermod.m can put an abstract instance declaration into a .opt file
+    % even when an interface file contains that same abstract instance.
+    % We still want to pick a single abstract nonlocal abstract instance,
+    % but we don't want to report duplicates.
+    report_any_duplicate_instance_defns_in_category(ClassId,
+        severity_warning, "Warning", "imported abstract",
+        NonLocalAbstracts, MaybeNonLocalAbstract, !.Specs, _),
+    !:Specs = LocalConcreteSpecs ++ NonLocalConcreteSpecs ++ !.Specs,
+
+    % If there is no concrete instance definition, then there is no
+    % constraint set to check any abstract instance definitions against/
+    % On the other hand, if there was more than one concrete definition,
+    % then an error message about an abstract instance not matching
+    % the picked concrete instance's constraints may be misleading,
+    % since the abstract instance's constraints may match a *non*-picked
+    % concrete instance's constraints.
+    ( if
+        MaybeLocalConcrete = yes(LocalConcrete0),
+        LocalConcreteSpecs = []
+    then
+        list.foldl(
+            check_that_instance_constraints_match(ClassId, LocalConcrete0),
+            LocalAbstracts, !Specs)
+    else
+        true
+    ),
+    ( if
+        MaybeNonLocalConcrete = yes(NonLocalConcrete0),
+        NonLocalConcreteSpecs = []
+    then
+        list.foldl(
+            check_that_instance_constraints_match(ClassId, NonLocalConcrete0),
+            NonLocalAbstracts, !Specs)
+    else
+        true
+    ),
+
+    % The second stage of the tournament picks one local instance
+    % and one nonlocal instance, with concrete trumping abstract.
+    (
+        MaybeLocalConcrete = no,
+        (
+            MaybeLocalAbstract = no,
+            MaybeLocal = no
+        ;
+            MaybeLocalAbstract = yes(LocalAbstract),
+            report_abstract_instance_without_concrete(ClassId,
+                LocalAbstract, !Specs),
+            MaybeLocal = MaybeLocalAbstract
+        )
+    ;
+        MaybeLocalConcrete = yes(LocalConcrete1),
+        (
+            MaybeLocalAbstract = no,
+            MaybeLocal = MaybeLocalConcrete
+        ;
+            MaybeLocalAbstract = yes(LocalAbstract),
+            LocalConcrete = LocalConcrete1 ^ instdefn_subsumed_ctxt :=
+                yes(LocalAbstract ^ instdefn_context),
+            MaybeLocal = yes(LocalConcrete)
+        )
+    ),
+    (
+        MaybeNonLocalConcrete = no,
+        % It is not just ok but expected for the concrete version of a
+        % nonlocal abstract instance declaration to be invisible to us.
+        % Concrete instance declarations are *never* supposed to occur
+        % in in .int* files (we make instance declaration abstract
+        % before putting them into .int* files), but concrete instances
+        % may appear in .opt files.
+        MaybeNonLocal = MaybeNonLocalAbstract
+    ;
+        MaybeNonLocalConcrete = yes(_),
+        MaybeNonLocal = MaybeNonLocalConcrete
+    ),
+
+    % The third and last stage of the tournament picks one the winner,
+    % with local trumping nonlocal.
+    (
+        MaybeLocal = no,
+        (
+            MaybeNonLocal = no,
+            unexpected($pred, "no instance left to pick")
+        ;
+            MaybeNonLocal = yes(NonLocal),
+            PickedInstance = NonLocal
+        )
+    ;
+        MaybeLocal = yes(Local),
+        PickedInstance = Local,
+        (
+            MaybeNonLocal = no
+        ;
+            MaybeNonLocal = yes(NonLocal),
+            report_local_vs_nonlocal_clash(ClassId, Local, NonLocal, !Specs)
+        )
+    ).
+
+:- pred compare_instance_defns_by_context(
+    hlds_instance_defn::in, hlds_instance_defn::in, comparison_result::out)
+    is det.
+
+compare_instance_defns_by_context(InstanceDefnA, InstanceDefnB, Result) :-
+    ContextA = InstanceDefnA ^ instdefn_context,
+    ContextB = InstanceDefnB ^ instdefn_context,
+    compare(Result, ContextA, ContextB).
+
+%---------------------%
+
+:- pred report_any_duplicate_instance_defns_in_category(class_id::in,
+    error_severity::in, string::in, string::in,
+    list(hlds_instance_defn)::in, maybe(hlds_instance_defn)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_any_duplicate_instance_defns_in_category(ClassId, Severity,
+        SeverityWord, Category, InstanceDefns, MaybeInstanceDefn, !Specs) :-
+    (
+        InstanceDefns = [],
+        MaybeInstanceDefn = no
+    ;
+        InstanceDefns = [FirstInstanceDefn | LaterInstanceDefns],
+        MaybeInstanceDefn = yes(FirstInstanceDefn),
+        FirstContext = FirstInstanceDefn ^ instdefn_context,
+        list.foldl(
+            report_duplicate_instance_defn(ClassId, Severity, SeverityWord,
+                Category, FirstContext),
+            LaterInstanceDefns, !Specs)
+    ).
+
+:- pred report_duplicate_instance_defn(class_id::in, error_severity::in,
+    string::in, string::in, prog_context::in, hlds_instance_defn::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_duplicate_instance_defn(ClassId, Severity, SeverityWord, Category,
+        FirstContext, LaterInstanceDefn, !Specs) :-
+    LaterContext = LaterInstanceDefn ^ instdefn_context,
+    LaterPieces = [words(SeverityWord), suffix(":"),
+        words("duplicate"), words(Category), words("instance declaration"),
+        words("for class"), qual_class_id(ClassId), suffix("."), nl],
+    LaterMsg = simplest_msg(LaterContext, LaterPieces),
+    FirstPieces = [words("Previous instance declaration was here."), nl],
+    FirstMsg = error_msg(yes(FirstContext), always_treat_as_first, 0,
+        [always(FirstPieces)]),
+    Spec = error_spec($pred, Severity, phase_type_check, [LaterMsg, FirstMsg]),
+    !:Specs = [Spec | !.Specs].
+
+%---------------------%
+
+:- pred check_that_instance_constraints_match(class_id::in,
+    hlds_instance_defn::in, hlds_instance_defn::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_that_instance_constraints_match(ClassId,
+        ConcreteInstanceDefn, AbstractInstanceDefn, !Specs) :-
+    type_vars_list(ConcreteInstanceDefn ^ instdefn_types, ConcreteTVars),
+    type_vars_list(AbstractInstanceDefn ^ instdefn_types, AbstractTVars),
+    ConcreteTVarSet = ConcreteInstanceDefn ^ instdefn_tvarset,
+    AbstractTVarSet = AbstractInstanceDefn ^ instdefn_tvarset,
+    ConcreteConstraints = ConcreteInstanceDefn ^ instdefn_constraints,
+    AbstractConstraints = AbstractInstanceDefn ^ instdefn_constraints,
+    ( if
+        constraints_are_identical(
+            ConcreteTVars, ConcreteTVarSet, ConcreteConstraints,
+            AbstractTVars, AbstractTVarSet, AbstractConstraints)
+    then
+        true
+    else
+        ConcreteContext = ConcreteInstanceDefn ^ instdefn_context,
+        AbstractContext = AbstractInstanceDefn ^ instdefn_context,
+        AbstractPieces = [words("Error: the instance constraints"),
+            words("on this abstract instance declaration"),
+            words("for class"), qual_class_id(ClassId), 
+            words("do not match the instance constraints"),
+            words("on the corresponding concrete instance declaration."), nl],
+        AbstractMsg = simplest_msg(AbstractContext, AbstractPieces),
+        ConcretePieces = [words("The corresponding"),
+            words("concrete instance declaration is here."), nl],
+        ConcreteMsg = simplest_msg(ConcreteContext, ConcretePieces),
+        Spec = error_spec($pred, severity_error, phase_type_check,
+            [AbstractMsg, ConcreteMsg]),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+constraints_are_identical(OldVars0, OldVarSet, OldConstraints0,
+        Vars, VarSet, Constraints) :-
+    tvarset_merge_renaming(VarSet, OldVarSet, _, Renaming),
+    apply_variable_renaming_to_prog_constraint_list(Renaming, OldConstraints0,
+        OldConstraints1),
+    apply_variable_renaming_to_tvar_list(Renaming, OldVars0,  OldVars),
+
+    map.from_corresponding_lists(OldVars, Vars, VarRenaming),
+    apply_variable_renaming_to_prog_constraint_list(VarRenaming,
+        OldConstraints1, OldConstraints),
+    OldConstraints = Constraints.
+
+%---------------------%
+
+:- pred report_abstract_instance_without_concrete(class_id::in,
     hlds_instance_defn::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
+report_abstract_instance_without_concrete(ClassId, AbstractInstance, !Specs) :-
+    ClassId = class_id(ClassName, _),
+    ClassNameString = sym_name_to_string(ClassName),
+    Types = AbstractInstance ^ instdefn_types,
+    TVarSet = AbstractInstance ^ instdefn_tvarset,
+    TypesStr = mercury_type_list_to_string(TVarSet, Types),
+    string.format("%s(%s)", [s(ClassNameString), s(TypesStr)], InstanceName),
+    % XXX Should we mention any constraints on the instance declaration?
+    Pieces = [words("Error: this abstract instance declaration"),
+        words("for"), quote(InstanceName),
+        words("has no corresponding concrete instance declaration"),
+        words("in the implementation section."), nl],
+    Context = AbstractInstance ^ instdefn_context,
+    Spec = simplest_spec($pred, severity_error, phase_type_check,
+        Context, Pieces),
+    !:Specs = [Spec | !.Specs].
+
+%---------------------%
+
+:- pred report_local_vs_nonlocal_clash(class_id::in,
+    hlds_instance_defn::in, hlds_instance_defn::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_local_vs_nonlocal_clash(ClassId, LocalInstance, NonLocalInstance,
         !Specs) :-
-    AbstractTypes = AbstractInstance ^ instdefn_types,
-    ( if multi_map.search(Concretes, ClassId, ConcreteInstances) then
-        ( if
-            list.member(ConcreteInstance, ConcreteInstances),
-            ConcreteTypes = ConcreteInstance ^ instdefn_types,
-            ConcreteTypes = AbstractTypes
-        then
-            MissingConcreteError = no
-        else
-            % There were concrete instances for ClassId in the implementation
-            % but none of them matches the abstract instance we have.
-            MissingConcreteError = yes
-        )
-    else
-        % There were no concrete instances for ClassId in the implementation.
-        MissingConcreteError = yes
-    ),
-    (
-        MissingConcreteError = yes,
-        ClassId = class_id(ClassName, _),
-        ClassNameString = sym_name_to_string(ClassName),
-        AbstractTypesString = mercury_type_list_to_string(
-            AbstractInstance ^ instdefn_tvarset, AbstractTypes),
-        AbstractInstanceName = ClassNameString ++
-            "(" ++ AbstractTypesString ++ ")",
-        % XXX Should we mention any constraints on the instance declaration?
-        Pieces = [words("Error: abstract instance declaration"),
-            words("for"), quote(AbstractInstanceName),
-            words("has no corresponding concrete"),
-            words("instance in the implementation."), nl],
-        AbstractInstanceContext = AbstractInstance ^ instdefn_context,
-        Spec = simplest_spec($pred, severity_error, phase_type_check,
-            AbstractInstanceContext, Pieces),
-        !:Specs = [Spec | !.Specs]
-    ;
-        MissingConcreteError = no
-    ).
+    ClassId = class_id(ClassName, _),
+    ClassNameString = sym_name_to_string(ClassName),
+    Types = LocalInstance ^ instdefn_types,
+    TVarSet = LocalInstance ^ instdefn_tvarset,
+    TypesStr = mercury_type_list_to_string(TVarSet, Types),
+    string.format("%s(%s)", [s(ClassNameString), s(TypesStr)], InstanceName),
+    % XXX Should we mention any constraints on the instance declaration?
+    LocalPieces = [words("Error: this instance declaration"),
+        words("for"), quote(InstanceName), words("clashes with"),
+        words("an instance declaration in another module."), nl],
+    LocalContext = LocalInstance ^ instdefn_context,
+    LocalMsg = simplest_msg(LocalContext, LocalPieces),
+    NonLocalPieces = [words("The other instance declaration is here."), nl],
+    NonLocalContext = NonLocalInstance ^ instdefn_context,
+    NonLocalMsg = simplest_msg(NonLocalContext, NonLocalPieces),
+    Spec = error_spec($pred, severity_error, phase_type_check,
+        [LocalMsg, NonLocalMsg]),
+    !:Specs = [Spec | !.Specs].
+
+%%%%%%%%%%%%%%%%%%%
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1391,7 +1828,7 @@ report_cyclic_classes(ClassTable, ClassPath) = Spec :-
             qual_class_id(ClassId), nl],
         list.foldl(add_path_element, Tail, cord.init, LaterLinesCord),
         Pieces = StartPieces ++ cord.list(LaterLinesCord),
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Spec = simplest_spec($pred, severity_error, phase_type_check,
             Context, Pieces)
     ).
 
@@ -1628,8 +2065,7 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
     MsgA = simplest_msg(ContextA, PiecesA),
     MsgB = error_msg(yes(ContextB), always_treat_as_first, 0,
         [always(PiecesB)]),
-    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        [MsgA, MsgB]).
+    Spec = error_spec($pred, severity_error, phase_type_check, [MsgA, MsgB]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1641,10 +2077,10 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
     % by the type variables in the constructor arguments and the functional
     % dependencies.
     %
-:- pred check_typeclass_constraints(module_info::in,
+:- pred check_typeclass_constraints_on_preds(module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_typeclass_constraints(ModuleInfo, !Specs) :-
+check_typeclass_constraints_on_preds(ModuleInfo, !Specs) :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     list.foldl(check_typeclass_constraints_on_pred(ModuleInfo),
         PredIds, !Specs),

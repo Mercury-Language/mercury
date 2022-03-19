@@ -618,8 +618,8 @@ instance_used_modules(ModuleInfo, ThisModuleName, ClassId, InstanceDefn,
         !UsedModules) :-
     ClassId = class_id(ClassName, ClassArity),
     InstanceDefn = hlds_instance_defn(InstanceModuleName,
-        Types, _OriginalTypes, InstanceStatus, _Context, Constraints, _Body,
-        _MaybePredProcIds, _VarSet, _ProofMap),
+        Types, _OriginalTypes, InstanceStatus, _Context, _MaybeContext,
+        Constraints, _Body, _MaybePredProcIds, _VarSet, _ProofMap),
 
     ( if ThisModuleName = InstanceModuleName then
         trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (

@@ -146,8 +146,8 @@ write_instance_defns(Info, Stream, ClassId - InstanceDefns, !IO) :-
 
 write_instance_defn(Info, Stream, InstanceDefn, !IO) :-
     InstanceDefn = hlds_instance_defn(_InstanceModule, Types, OriginalTypes,
-        InstanceStatus, Context, Constraints, Body, MaybePredProcIds,
-        VarSet, ProofMap),
+        InstanceStatus, Context, MaybeSubsumedContext, Constraints,
+        Body, MaybePredProcIds, VarSet, ProofMap),
 
     % Separate this instance from any previous ones, or the class id.
     io.nl(Stream, !IO),
@@ -173,10 +173,17 @@ write_instance_defn(Info, Stream, InstanceDefn, !IO) :-
     io.nl(Stream, !IO),
 
     write_indent(Stream, 1, !IO),
-    io.write_string(Stream, "% Status: ", !IO),
-    io.write_string(Stream,
-        instance_import_status_to_string(InstanceStatus), !IO),
-    io.nl(Stream, !IO),
+    io.format(Stream, "%% Status: %s\n",
+        [s(instance_import_status_to_string(InstanceStatus))], !IO),
+
+    (
+        MaybeSubsumedContext = no
+    ;
+        MaybeSubsumedContext = yes(SubsumedContext),
+        write_indent(Stream, 1, !IO),
+        io.format(Stream, "%% Subsumed context: %s\n",
+            [s(context_to_brief_string(SubsumedContext))], !IO)
+    ),
 
     write_indent(Stream, 1, !IO),
     io.write_string(Stream, "% Constraints: ", !IO),

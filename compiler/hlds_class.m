@@ -115,11 +115,24 @@
     % For each class, we keep track of a list of its instances, since there
     % can be more than one instance of each class. Each visible instance
     % is assigned a unique identifier (integers beginning from one).
-    % The position in the list of instances corresponds to the instance_id.
+    % The position in the list of instances corresponds to integer
+    % inside the instance_id.
+    %
+    % We use a list for two reasons.
+    %
+    % First, that a ground type may be the instance of more than one type
+    % containing type variables, and the same is true for vectors of types.
+    % This means that the search for an instance_defn that matches the
+    % particular type vector in a given situation can match more than one
+    % instance_defn, which makes the task of designing a data structure
+    % that does useful indexing much harder.
+    %
+    % Second, in all non-pathological cases, the list is short enough
+    % for the lack of indexing not to be a problem.
     %
 :- type instance_table == map(class_id, list(hlds_instance_defn)).
-
-:- type instance_id == int.
+:- type instance_id
+    --->    instance_id(int).
 
     % Information about a single `instance' declaration.
     % The order of fields is intended to put the list of hlds_instance_defns
@@ -145,6 +158,16 @@
 
                 % Context of declaration.
                 instdefn_context        :: prog_context,
+
+                % If this is a concrete instance definition in the local module
+                % that subsumes an abstract instance definition that is
+                % also local (subsuming it in the sense of being equivalent
+                % to it but providing a definition), then this field should
+                % contain the context of the subsumed definition.
+                %
+                % This field is filled in by the check_typeclass pass.
+                % until that is run, this field should always contain `no'.
+                instdefn_subsumed_ctxt  :: maybe(prog_context),
 
                 % Constraints on the instance declaration.
                 instdefn_constraints    :: list(prog_constraint),
@@ -194,9 +217,8 @@ restrict_list_elements_2([Posn | Posns], Index, [X | Xs], RestrictedXs) :-
     ).
 
 num_extra_instance_args(InstanceDefn, NumExtra) :-
-    InstanceDefn = hlds_instance_defn(_InstanceModule,
-        InstanceTypes, _OrigInstanceTypes, _ImportStatus, _TermContext,
-        InstanceConstraints, _Body, _PredProcIds, _Varset, _SuperClassProofs),
+    InstanceTypes = InstanceDefn ^ instdefn_types,
+    InstanceConstraints = InstanceDefn ^ instdefn_constraints,
     type_vars_list(InstanceTypes, TypeVars),
     get_unconstrained_tvars(TypeVars, InstanceConstraints, Unconstrained),
     list.length(InstanceConstraints, NumConstraints),
@@ -301,7 +323,7 @@ num_extra_instance_args(InstanceDefn, NumExtra) :-
             %
             % - That would require storing a renamed version of the
             %   constraint_proofs for *every* use of an instance declaration.
-            %   This wouldn't even get GCed for a long time because it
+            %   This wouldn't even get GCed for a long time, because it
             %   would be stored in the pred_info.
             %
             % - The superclass proofs stored in the hlds_instance_defn would
