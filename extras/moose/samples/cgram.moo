@@ -24,9 +24,11 @@
 ('sizeof'); ('static'); ('string'); ('struct');
 ('switch'); ('type_name'); ('typedef'); ('union');
 ('unsigned'); ('void'); ('volatile'); ('while');
-('{'); ('|'); ('|='); ('||'); ('}'); ('~').  
+('{'); ('|'); ('|='); ('||'); ('}'); ('~').
 
 :- implementation.
+
+:- import_module string.
 
 :- rule primary_expr.
 primary_expr --->
