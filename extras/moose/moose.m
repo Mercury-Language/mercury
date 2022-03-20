@@ -920,7 +920,7 @@ reduce0(0x%x, _, _, _, _, _, _) :-
 :- mode reduce0_error(in) is erroneous.
 
 reduce0_error(State) :-
-    error(string.format(""reduce in state 0x%%x"", [i(State)])).
+    error(string.format(""reduce in state 0x%x"", [i(State)])).
 
 ",
         !IO).
