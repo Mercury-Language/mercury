@@ -2007,10 +2007,12 @@
 :- instance stream.writer(text_output_stream, int8,   io).
 :- instance stream.writer(text_output_stream, int16,  io).
 :- instance stream.writer(text_output_stream, int32,  io).
+:- instance stream.writer(text_output_stream, int64,  io).
 :- instance stream.writer(text_output_stream, uint,   io).
 :- instance stream.writer(text_output_stream, uint8,  io).
 :- instance stream.writer(text_output_stream, uint16, io).
 :- instance stream.writer(text_output_stream, uint32,  io).
+:- instance stream.writer(text_output_stream, uint64,  io).
 :- instance stream.writer(text_output_stream, string, io).
 :- instance stream.writer(text_output_stream, univ,   io).
 :- instance stream.line_oriented(text_output_stream, io).
@@ -2504,6 +2506,12 @@ result0_to_stream_result0(error(Error)) = error(Error).
     pred(put/4) is write_int32
 ].
 
+:- instance stream.writer(output_stream, int64, io)
+    where
+[
+    pred(put/4) is write_int64
+].
+
 :- instance stream.writer(output_stream, uint, io)
     where
 [
@@ -2526,6 +2534,12 @@ result0_to_stream_result0(error(Error)) = error(Error).
     where
 [
     pred(put/4) is write_uint32
+].
+
+:- instance stream.writer(output_stream, uint64, io)
+    where
+[
+    pred(put/4) is write_uint64
 ].
 
 :- instance stream.writer(output_stream, string, io)
