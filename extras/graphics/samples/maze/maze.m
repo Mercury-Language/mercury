@@ -37,7 +37,6 @@
 
 :- implementation.
 
-:- import_module globals.
 :- import_module glut.
 :- import_module glut.callback.
 :- import_module glut.window.
@@ -82,7 +81,6 @@
 %------------------------------------------------------------------------------%
 
 main(!IO) :-
-    globals.init(!IO),
     % Process the command line options ...
     io.command_line_arguments(Args0, !IO),
     getopt.process_options(option_ops_multi(short, long, defaults),
@@ -100,7 +98,7 @@ main(!IO) :-
             SeedResult = ok({SeedA, SeedB, SeedC}),
             sfc64.seed(SeedA, SeedB, SeedC, RNG0, RndState0),
             make_io_urandom(RNG0, RndState0, RNG, !IO),
-            globals.set("Size", float(XMax), !IO),
+            set_size(float(XMax), !IO),
             XIndexes = 0 .. XMax - 1,
             YIndexes = 0 .. YMax - 1,
             dig(RNG, pos(XMax, YMax), XIndexes, YIndexes, map.init, Maze, !IO),
@@ -138,12 +136,12 @@ main_2(Maze, !IO) :-
     glut.callback.keyboard_func(maze.keyboard, !IO),
     glut.callback.idle_func(maze.idle, !IO),
 
-    globals.set("Maze",  Maze, !IO),
-    globals.set("Pos",   pos(0, 0), !IO),
-    globals.set("Dir",   east, !IO),
-    globals.set("Phi",   0.0,  !IO),
-    globals.set("Theta", 0.0,  !IO),
-    globals.set("W",     w(set.init, []), !IO),
+    set_maze(Maze, !IO),
+    set_pos(pos(0, 0), !IO),
+    set_dir(east, !IO),
+    set_phi(0.0, !IO),
+    set_theta(0.0, !IO),
+    set_w(w(set.init, []), !IO),
 
     glut.main_loop(!IO).
 
@@ -163,9 +161,9 @@ idle(!IO) :-
 :- pred next_pos(io::di, io::uo) is det.
 
 next_pos(!IO) :-
-    globals.get("Maze", Maze, !IO),
-    globals.get("Pos", Pos0, !IO),
-    globals.get("W", w(Visited0, Others0), !IO),
+    get_maze(Maze, !IO),
+    get_pos(Pos0, !IO),
+    get_w(w(Visited0, Others0), !IO),
     Visited = set.insert(Visited0, Pos0),
     AdjSet = Maze ^ det_elem(Pos0),
     Choices0 = set.difference(AdjSet, Visited),
@@ -173,11 +171,11 @@ next_pos(!IO) :-
     Others1 = ChoiceList ++ Others0,
     (
         Others1 = [],
-        globals.set("W", w(set.init, []), !IO)
+        set_w(w(set.init, []), !IO)
     ;
         Others1 = [Pos | Others],
-        globals.set("Pos", Pos, !IO),
-        globals.set("W", w(Visited, Others), !IO)
+        set_pos(Pos, !IO),
+        set_w(w(Visited, Others), !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -250,10 +248,9 @@ wall(pos(X0, Z0), west, !IO) :-
 :- pred display(io::di, io::uo) is det.
 
 display(!IO) :-
-    globals.get("Size", Size, !IO),
+    get_size(Size, !IO),
     mogl.clear_color(0.0, 0.0, 0.0, 0.0, !IO),
     mogl.clear([color, depth], !IO),
-
     mogl.matrix_mode(modelview, !IO),
     mogl.push_matrix(!IO),
         mogl.load_identity(!IO),
@@ -266,9 +263,7 @@ display(!IO) :-
         mogl.light(1, diffuse(0.8, 0.0, 0.7, 1.0),    !IO),
         mogl.light(1, specular(0.0, 0.0, 0.7, 1.0),   !IO),
     mogl.pop_matrix(!IO),
-
     maze.draw_maze(!IO),
-
     glut.window.swap_buffers(!IO).
 
 :- pred reshape(int::in, int::in, io::di, io::uo) is det.
@@ -289,10 +284,10 @@ reshape(Width, Height, !IO) :-
 
 draw_maze(!IO) :-
     mogl.load_identity(!IO),
-    globals.get("W", w(Visited, Other), !IO),
-    globals.get("Size", Size, !IO),
-    globals.get("Phi", Phi, !IO),
-    globals.get("Theta", Theta, !IO),
+    get_w(w(Visited, Other), !IO),
+    get_size(Size, !IO),
+    get_phi(Phi, !IO),
+    get_theta(Theta, !IO),
     R = 1.5 * Size,
     Y = R * sin(Theta),
     Q = R * cos(Theta),
@@ -309,8 +304,8 @@ draw_maze(!IO) :-
     mogl.end(!IO),
     mogl.enable(lighting, !IO),
     mogl.call_list(maze_list, !IO),
-    globals.set("Phi", Phi + 0.005, !IO),
-    globals.set("Theta", Theta + 0.006, !IO).
+    set_phi(Phi + 0.005, !IO),
+    set_theta(Theta + 0.005, !IO).
 
 :- pred draw_vis(pos::in, io::di, io::uo) is det.
 
@@ -428,6 +423,20 @@ knock_out_wall(NewPos, OldPos, !Maze) :-
         OldSet = set.make_singleton_set(NewPos)
     ),
     !Maze ^ elem(OldPos) := OldSet.
+
+%------------------------------------------------------------------------------%
+%
+% Global state.
+%
+
+:- mutable(maze, maze, map.init, ground, [attach_to_io_state, untrailed]).
+:- mutable(size, float, 0.0, ground, [attach_to_io_state, untrailed]).
+:- mutable(pos, pos, pos(0, 0), ground, [attach_to_io_state, untrailed]).
+:- mutable(dir, wall, east, ground, [attach_to_io_state, untrailed]).
+:- mutable(phi, float, 0.0, ground, [attach_to_io_state, untrailed]).
+:- mutable(theta, float, 0.0, ground, [attach_to_io_state, untrailed]).
+:- mutable(w, wander, w(set.init, []), ground,
+    [attach_to_io_state, untrailed]).
 
 %------------------------------------------------------------------------------%
 %
