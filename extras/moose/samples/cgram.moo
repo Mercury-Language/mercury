@@ -28,8 +28,6 @@
 
 :- implementation.
 
-:- import_module string.
-
 :- rule primary_expr.
 primary_expr --->
 	  identifier

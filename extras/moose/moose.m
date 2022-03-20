@@ -767,13 +767,14 @@ mkstartargs(N, !Terms, !Varset) :-
 
 write_reductions(Rules, Table, TT, InAtom, OutAtom, Xfns, !IO) :-
     io.format("\
-:- import_module require, std_util.
+:- import_module require.
+:- import_module string.
 
 :- type statestack == list(int).
 :- type symbolstack == list(stacksymbol).
 :- type stacksymbol
     --->    n(nonterminal)
-    ;    t(%s).
+    ;       t(%s).
 
 ",
         [s(TT)], !IO),
