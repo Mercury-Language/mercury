@@ -16,9 +16,11 @@
 %     -y --height <N> : the height of the maze
 %     -s --seed <N>   : the random number seed to use
 %
+% The random number seed has the form "a,b,c" where each of a, b and c
+% is an unsigned 64-bit integer.
+%
 % GLUT version by juliensf
-% - I've also added a keyboard handler so you can press escape
-%   order to quit.
+% - I've also added a keyboard handler so you can press escape order to quit.
 %
 %-----------------------------------------------------------------------------%
 
@@ -47,11 +49,15 @@
 :- import_module float.
 :- import_module getopt.
 :- import_module int.
+:- import_module integer.
 :- import_module list.
 :- import_module map.
 :- import_module math.
+:- import_module maybe.
 :- import_module pair.
 :- import_module random.
+:- import_module random.sfc64.
+:- import_module random.system_rng.
 :- import_module require.
 :- import_module set.
 :- import_module solutions.
@@ -88,16 +94,25 @@ main(!IO) :-
         io.flush_output(!IO),
         getopt.lookup_int_option(Opts, width, XMax),
         getopt.lookup_int_option(Opts, height, YMax),
-        getopt.lookup_int_option(Opts, seed, Seed),
-        globals.set("Size", float(XMax), !IO),
-        XIndexes = 0 .. XMax - 1,
-        YIndexes = 0 .. YMax - 1,
-        random.init(Seed, Rnd0),
-        dig(pos(XMax, YMax), XIndexes, YIndexes, map.init, Maze, Rnd0, Rnd),
-        io.write_string(" done.\n", !IO),
-        io.flush_output(!IO),
-        globals.set("Rnd", Rnd, !IO),
-        main_2(Maze, !IO)
+        getopt.lookup_string_option(Opts, seed, SeedStr),
+        get_random_seed(SeedStr, SeedResult, !IO),
+        (
+            SeedResult = ok({SeedA, SeedB, SeedC}),
+            sfc64.seed(SeedA, SeedB, SeedC, RNG0, RndState0),
+            make_io_urandom(RNG0, RndState0, RNG, !IO),
+            globals.set("Size", float(XMax), !IO),
+            XIndexes = 0 .. XMax - 1,
+            YIndexes = 0 .. YMax - 1,
+            dig(RNG, pos(XMax, YMax), XIndexes, YIndexes, map.init, Maze, !IO),
+            io.write_string(" done.\n", !IO),
+            io.flush_output(!IO),
+            main_2(Maze, !IO)
+        ;
+            SeedResult = error(Msg),
+            io.stderr_stream(StdErr, !IO),
+            io.format(StdErr, "error: %s\n", [s(Msg)], !IO),
+            io.set_exit_status(1, !IO)
+        )
     ;
         MOpts = error(Str),
         io.stderr_stream(StdErr, !IO),
@@ -340,43 +355,43 @@ remove_side(pos(X0, Y0), pos(X1, Y1), Sides0) = Sides :-
 % Maze creation.
 %
 
-:- pred dig(pos::in, list(int)::in, list(int)::in, maze::in, maze::out,
-    random.supply::mdi, random.supply::muo) is det.
+:- pred dig(RNG::in, pos::in, list(int)::in, list(int)::in, maze::in, maze::out,
+    RngState::di, RngState::uo) is det <= urandom(RNG, RngState).
 
-dig(_, [], _, !Maze, !Rnd).
-dig(FarPos, [X | Xs], Ys, !Maze, !Rnd) :-
-    dig1(FarPos, X, Ys, !Maze, !Rnd),
-    dig(FarPos, Xs, Ys, !Maze, !Rnd).
+dig(_, _, [], _, !Maze, !Rnd).
+dig(RNG, FarPos, [X | Xs], Ys, !Maze, !Rnd) :-
+    dig1(RNG, FarPos, X, Ys, !Maze, !Rnd),
+    dig(RNG, FarPos, Xs, Ys, !Maze, !Rnd).
 
-:- pred dig1(pos::in, int::in, list(int)::in, maze::in, maze::out,
-    random.supply::mdi, random.supply::muo) is det.
+:- pred dig1(RNG::in, pos::in, int::in, list(int)::in, maze::in, maze::out,
+    RngState::di, RngState::uo) is det <= urandom(RNG, RngState).
 
-dig1(_, _, [], !Maze, !Rnd).
-dig1(FarPos, X, [Y | Ys], !Maze, !Rnd) :-
+dig1(_, _, _, [], !Maze, !Rnd).
+dig1(RNG, FarPos, X, [Y | Ys], !Maze, !Rnd) :-
     Pos = pos(X, Y),
-    adj(FarPos, Pos, AdjPoss, !Rnd),
-    dig2(FarPos, AdjPoss, !Maze, !Rnd),
-    dig1(FarPos, X, Ys, !Maze, !Rnd).
+    adj(RNG, FarPos, Pos, AdjPoss, !Rnd),
+    dig2(RNG, FarPos, AdjPoss, !Maze, !Rnd),
+    dig1(RNG, FarPos, X, Ys, !Maze, !Rnd).
 
-:- pred dig2(pos::in, list(adj)::in, maze::in, maze::out,
-    random.supply::mdi, random.supply::muo) is det.
+:- pred dig2(RNG::in, pos::in, list(adj)::in, maze::in, maze::out,
+    RndState::di, RndState::uo) is det <= urandom(RNG, RndState).
 
-dig2(_, [], !Maze, !Rnd).
-dig2(FarPos, [adj(NewPos, OldPos) | Rest], !Maze, !Rnd) :-
+dig2(_, _, [], !Maze, !Rnd).
+dig2(RNG, FarPos, [adj(NewPos, OldPos) | Rest], !Maze, !Rnd) :-
     ( if
         not map.contains(!.Maze, NewPos)
     then
         knock_out_wall(OldPos, NewPos, !Maze),
-        adj(FarPos, NewPos, AdjPoss, !Rnd),
-        dig2(FarPos, AdjPoss, !Maze, !Rnd)
+        adj(RNG, FarPos, NewPos, AdjPoss, !Rnd),
+        dig2(RNG, FarPos, AdjPoss, !Maze, !Rnd)
     else
-        dig2(FarPos, Rest, !Maze, !Rnd)
+        dig2(RNG, FarPos, Rest, !Maze, !Rnd)
     ).
 
-:- pred adj(pos::in, pos::in, list(adj)::out, random.supply::mdi,
-    random.supply::muo) is det.
+:- pred adj(RNG::in, pos::in, pos::in, list(adj)::out,
+    RndState::di, RndState::uo) is det <= urandom(RNG, RndState).
 
-adj(pos(FarX, FarY), pos(X, Y), Adjs, !Rnd) :-
+adj(RNG, pos(FarX, FarY), pos(X, Y), Adjs, !Rnd) :-
     Pred = (pred(Adj::out) is nondet :-
         (
             X1 = X - 1,
@@ -396,7 +411,7 @@ adj(pos(FarX, FarY), pos(X, Y), Adjs, !Rnd) :-
         Y1 >= 0, Y1 < FarY
     ),
     solutions(Pred, Adjs0),
-    shuffle(20, Adjs0, Adjs, !Rnd).
+    shuffle_list(RNG, Adjs0, Adjs, !Rnd).
 
 :- pred knock_out_wall(pos::in, pos::in, maze::in, maze::out) is det.
 
@@ -414,33 +429,6 @@ knock_out_wall(NewPos, OldPos, !Maze) :-
     ),
     !Maze ^ elem(OldPos) := OldSet.
 
-:- pred shuffle(int::in, list(T)::in, list(T)::out, random.supply::mdi,
-    random.supply::muo) is det.
-
-shuffle(C, !List, !Rnd) :-
-    ( if C > 0 then
-        L = list.length(!.List),
-        random.random(J, !Rnd),
-        get_nth(!.List, J mod L, X, !:List),
-        shuffle(C - 1, [X | !.List], !:List, !Rnd)
-    else
-        true
-    ).
-
-:- pred get_nth(list(T)::in, int::in, T::out, list(T)::out) is det.
-
-get_nth([], _, _, _) :-
-    error("get_nth: ran out of items!").
-get_nth([X | Xs], I, Y, Ys) :-
-    ( if I =< 0 then
-        Y = X,
-        Ys = Xs
-    else
-        I1 = I - 1,
-        get_nth(Xs, I1, Y, Zs),
-        Ys = [X | Zs]
-    ).
-
 %------------------------------------------------------------------------------%
 %
 % Keyboard handling.
@@ -454,6 +442,50 @@ keyboard(Key, _, _, !IO) :-
     else
         true
     ).
+
+%-----------------------------------------------------------------------------%
+%
+% Random number generator seed.
+%
+
+:- pred get_random_seed(string::in, maybe_error({uint64, uint64, uint64})::out,
+    io::di, io::uo) is det.
+
+get_random_seed(SeedStr, Result, !IO) :-
+    ( if SeedStr = "" then
+        open_system_rng(OpenResult, !IO),
+        (
+            OpenResult = ok(SysRNG),
+            system_rng.generate_uint64(SysRNG, A, !IO),
+            system_rng.generate_uint64(SysRNG, B, !IO),
+            system_rng.generate_uint64(SysRNG, C, !IO),
+            Result = ok({A, B, C}),
+            close_system_rng(SysRNG, !IO)
+        ;
+            OpenResult = error(Msg),
+            Result = error(Msg)
+        )
+    else if string_to_seed(SeedStr, A, B, C) then
+        Result = ok({A, B, C})
+    else
+        Result = error("invalid value for option '-s'")
+    ).
+
+:- pred string_to_seed(string::in, uint64::out, uint64::out, uint64::out)
+    is semidet.
+
+string_to_seed(SeedStr, A, B, C) :-
+    SeedStrs = string.split_at_char((','), SeedStr),
+    SeedStrs = [AStr, BStr, CStr],
+    string_to_uint64(AStr, A),
+    string_to_uint64(BStr, B),
+    string_to_uint64(CStr, C).
+
+:- pred string_to_uint64(string::in, uint64::out) is semidet.
+
+string_to_uint64(Str, U64) :-
+    integer.from_string(Str, Integer),
+    integer.to_uint64(Integer, U64).
 
 %-----------------------------------------------------------------------------%
 %
@@ -476,7 +508,7 @@ long("seed",   seed).
 
 defaults(width,  int(12)).
 defaults(height, int(12)).
-defaults(seed,   int(0)).
+defaults(seed,   string("")).
 
 %-----------------------------------------------------------------------------%
 %
