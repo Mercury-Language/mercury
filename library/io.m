@@ -2068,13 +2068,14 @@
 :- instance stream.writer(text_output_stream, int8,   io).
 :- instance stream.writer(text_output_stream, int16,  io).
 :- instance stream.writer(text_output_stream, int32,  io).
+:- instance stream.writer(text_output_stream, int64,  io).
 :- instance stream.writer(text_output_stream, uint,   io).
 :- instance stream.writer(text_output_stream, uint8,  io).
 :- instance stream.writer(text_output_stream, uint16, io).
 :- instance stream.writer(text_output_stream, uint32, io).
+:- instance stream.writer(text_output_stream, uint64, io).
 :- instance stream.writer(text_output_stream, string, io).
 :- instance stream.writer(text_output_stream, univ,   io).
-% XXX IO_INSTANCE no instances fo {int,uint}64
 
 % Binary output stream instances.
 :- instance stream.stream(binary_output_stream, io).
@@ -5359,6 +5360,12 @@ restore_output_stream(_DummyPred, Stream, ok, !IO) :-
     pred(put/4) is write_int32
 ].
 
+:- instance stream.writer(text_output_stream, int64, io)
+    where
+[
+    pred(put/4) is write_int64
+].
+
 :- instance stream.writer(text_output_stream, uint, io)
     where
 [
@@ -5381,6 +5388,12 @@ restore_output_stream(_DummyPred, Stream, ok, !IO) :-
     where
 [
     pred(put/4) is write_uint32
+].
+
+:- instance stream.writer(text_output_stream, uint64, io)
+    where
+[
+    pred(put/4) is write_uint64
 ].
 
 :- instance stream.writer(text_output_stream, string, io)
