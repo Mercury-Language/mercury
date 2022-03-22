@@ -1045,7 +1045,7 @@ special_html_char_or_break('_', "_" ++ zero_width_space).
 special_html_char_or_break('/', "/" ++ zero_width_space).
 special_html_char_or_break(':', ":" ++ zero_width_space).
 
-    % U+8203 is the Unicode 'ZERO WIDTH SPACE' character.  It is supported
+    % U+8203 is the Unicode 'ZERO WIDTH SPACE' character. It is supported
     % by modern browsers, but tends to break search as the invisible character
     % is not ignored when searching.
     %
@@ -1055,7 +1055,7 @@ special_html_char_or_break(':', ":" ++ zero_width_space).
 :- func zero_width_space = string.
 
 % zero_width_space = "&#8203;".
-zero_width_space = "<wbr />".
+zero_width_space = "<wbr>".
 
 %---------------------------------------------------------------------------%
 :- end_module html_format.
