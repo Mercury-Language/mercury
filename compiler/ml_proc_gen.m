@@ -81,7 +81,20 @@ ml_gen_preds(Target, ConstStructMap, FuncDefns,
         !GlobalData, !ModuleInfo, !Specs) :-
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
     map.to_sorted_assoc_list(PredIdTable0, PredIdInfos0),
-    ml_find_procs_for_code_gen(PredIdInfos0, PredIdInfos, [], PredProcIds),
+    % For the reason documented by the comment on requantify_codegen_proc,
+    % we must requantify the body of every procedure we intend to generate
+    % code for. We don't *have* to put the requantified proc_infos back
+    % into !ModuleInfo; we *could* call requantify_proc_general from
+    % the initial part of ml_gen_proc. That would work in every way but one:
+    % it would make it harder to debug the MLDS code generator. This is
+    % because the MLDS code we generate for a procedure *has* to be for
+    % the requantified version of the procedure body, but unless we put
+    % that version back into !ModuleInfo, neither any pre-code-gen nor
+    % any post-code-gen HLDS dumps would contain that version. Putting
+    % the requantified proc_infos back into !ModuleInfo here makes them
+    % available in the post-code-gen HLDS dump.
+    ml_find_and_requantify_procs_for_code_gen(PredIdInfos0, PredIdInfos,
+        [], PredProcIds),
     map.from_sorted_assoc_list(PredIdInfos, PredIdTable),
     module_info_set_pred_id_table(PredIdTable, !ModuleInfo),
 
@@ -109,13 +122,13 @@ ml_gen_preds(Target, ConstStructMap, FuncDefns,
         ConstStructMap, BottomUpSCCsWithEntryPoints,
         [], FuncDefns, !GlobalData, !Specs).
 
-:- pred ml_find_procs_for_code_gen(
+:- pred ml_find_and_requantify_procs_for_code_gen(
     assoc_list(pred_id, pred_info)::in,
     assoc_list(pred_id, pred_info)::out,
     list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
-ml_find_procs_for_code_gen([], [], !CodeGenPredProcIds).
-ml_find_procs_for_code_gen([PredIdInfo0 | PredIdInfos0],
+ml_find_and_requantify_procs_for_code_gen([], [], !CodeGenPredProcIds).
+ml_find_and_requantify_procs_for_code_gen([PredIdInfo0 | PredIdInfos0],
         [PredIdInfo | PredIdInfos], !CodeGenPredProcIds) :-
     PredIdInfo0 = PredId - PredInfo0,
     pred_info_get_status(PredInfo0, PredStatus),
@@ -157,7 +170,8 @@ ml_find_procs_for_code_gen([PredIdInfo0 | PredIdInfos0],
         PredProcIds = list.map((func(ProcId) = proc(PredId, ProcId)), ProcIds),
         !:CodeGenPredProcIds = PredProcIds ++ !.CodeGenPredProcIds
     ),
-    ml_find_procs_for_code_gen(PredIdInfos0, PredIdInfos, !CodeGenPredProcIds).
+    ml_find_and_requantify_procs_for_code_gen(PredIdInfos0, PredIdInfos,
+        !CodeGenPredProcIds).
 
     % The specification of the HLDS allows goal_infos to overestimate
     % the set of non-locals. Such overestimates are bad for us for two reasons:
