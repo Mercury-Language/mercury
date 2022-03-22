@@ -512,6 +512,7 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
+:- import_module cord.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -608,9 +609,10 @@ ml_gen_goal(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts, !Info) :-
         ScopeVarDefns, !Info),
 
     % Generate code for the goal in its own code model.
-    GoalCodeModel = goal_info_get_code_model(GoalInfo),
-    ml_gen_goal_expr(GoalExpr, GoalCodeModel, Context, GoalInfo,
-        GoalVarDefns, FuncDefns, Stmts0, !Info),
+    GoalDeterminism = goal_info_get_determinism(GoalInfo),
+    determinism_to_code_model(GoalDeterminism, GoalCodeModel),
+    ml_gen_goal_expr(GoalDeterminism, GoalCodeModel, Context,
+        GoalExpr, GoalInfo, GoalVarDefns, FuncDefns, Stmts0, !Info),
     LocalVarDefns = ScopeVarDefns ++ GoalVarDefns,
 
     % Add whatever wrapper is needed to convert the goal's code model
@@ -622,12 +624,12 @@ ml_gen_goal(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts, !Info) :-
 
     % Generate MLDS code for the different kinds of HLDS goals.
     %
-:- pred ml_gen_goal_expr(hlds_goal_expr::in, code_model::in, prog_context::in,
-    hlds_goal_info::in,
+:- pred ml_gen_goal_expr(determinism::in, code_model::in, prog_context::in,
+    hlds_goal_expr::in, hlds_goal_info::in,
     list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo,
+ml_gen_goal_expr(Determinism, CodeModel, Context, GoalExpr, GoalInfo,
         LocalVarDefns, FuncDefns, Stmts, !Info) :-
     (
         GoalExpr = unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
@@ -675,14 +677,41 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo,
             FuncDefns = []
         )
     ;
-        GoalExpr = conj(_ConjType, Goals),
+        GoalExpr = conj(_ConjType, Conjuncts),
         % XXX Currently we treat parallel conjunction the same as
         % sequential conjunction -- parallelism is not yet implemented.
-        ml_gen_conj(Goals, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
-            !Info)
+        %
+        % The code of ml_gen_conj is not self-contained. It is mutually
+        % recursive with ml_combine_conj, and it is not tail recursive either.
+        % This means it uses two stack frames per conjunct, which destroys
+        % cache locality in stack references. (In theory, it also makes
+        % the code a vulnerable to stack exhaustion on very long conjunctions,
+        % though any conjunction long enough to trigger this would almost
+        % certainly have crashed the compiler during an earlier pass.)
+        % To avoid this loss of cache locality when we can, we special case
+        % the treatment of the common case of detism_det conjunctions.
+        % A disjunction can be detism_det only if *every* conjunct is
+        % detism_det, which means that all the invocations of ml_combine_conj
+        % that ml_gen_conj *would* have made take the same path, which
+        % allows ml_gen_det_conj to effectively replace the call to
+        % ml_combine_conj with the code of that path. This allows some
+        % further rearrangement of the code that constructs LocalVarDefns,
+        % FuncDefns and Stmts to do so via cords, which makes ml_gen_det_conj
+        % self-tail-recursive.
+        ( if Determinism = detism_det then
+            ml_gen_det_conj(Conjuncts,
+                cord.init, LocalVarDefnsCord, cord.init, FuncDefnsCord,
+                cord.init, StmtsCord, !Info),
+            LocalVarDefns = cord.list(LocalVarDefnsCord),
+            FuncDefns = cord.list(FuncDefnsCord),
+            Stmts = cord.list(StmtsCord)
+        else
+            ml_gen_conj(CodeModel, Context, Conjuncts,
+                LocalVarDefns, FuncDefns, Stmts, !Info)
+        )
     ;
-        GoalExpr = disj(Goals),
-        ml_gen_disj(Goals, GoalInfo, CodeModel, Context, Stmts, !Info),
+        GoalExpr = disj(Disjuncts),
+        ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Stmts, !Info),
         LocalVarDefns = [],
         FuncDefns = []
     ;
@@ -1192,11 +1221,11 @@ ml_gen_negation(Cond, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
 % Code for conjunctions.
 %
 
-:- pred ml_gen_conj(hlds_goals::in, code_model::in, prog_context::in,
+:- pred ml_gen_conj(code_model::in, prog_context::in, list(hlds_goal)::in,
     list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_conj(Conjuncts, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
+ml_gen_conj(CodeModel, Context, Conjuncts, LocalVarDefns, FuncDefns, Stmts,
         !Info) :-
     (
         Conjuncts = [],
@@ -1208,22 +1237,58 @@ ml_gen_conj(Conjuncts, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         ml_gen_goal(CodeModel, SingleGoal, LocalVarDefns, FuncDefns, Stmts,
             !Info)
     ;
-        Conjuncts = [First | Rest],
-        Rest = [_ | _],
-        First = hlds_goal(_, FirstGoalInfo),
-        FirstDeterminism = goal_info_get_determinism(FirstGoalInfo),
-        ( if determinism_components(FirstDeterminism, _, at_most_zero) then
-            % the `Rest' code is unreachable
-            ml_gen_goal(CodeModel, First, LocalVarDefns, FuncDefns, Stmts,
-                !Info)
+        Conjuncts = [HeadConjunct | TailConjuncts],
+        TailConjuncts = [_ | _],
+        HeadConjunct = hlds_goal(_, HeadGoalInfo),
+        HeadDeterminism = goal_info_get_determinism(HeadGoalInfo),
+        ( if determinism_components(HeadDeterminism, _, at_most_zero) then
+            % The `TailConjuncts' are unreachable.
+            ml_gen_goal(CodeModel, HeadConjunct,
+                LocalVarDefns, FuncDefns, Stmts, !Info)
         else
-            determinism_to_code_model(FirstDeterminism, FirstCodeModel),
-            DoGenFirst = ml_gen_goal(FirstCodeModel, First),
-            DoGenRest = ml_gen_conj(Rest, CodeModel, Context),
-            ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
+            determinism_to_code_model(HeadDeterminism, HeadCodeModel),
+            DoGenHead = ml_gen_goal(HeadCodeModel, HeadConjunct),
+            DoGenTail = ml_gen_conj(CodeModel, Context, TailConjuncts),
+            ml_combine_conj(HeadCodeModel, Context, DoGenHead, DoGenTail,
                 LocalVarDefns, FuncDefns, Stmts, !Info)
         )
     ).
+
+    % Generate code for a detism_det conjunction.
+    %
+    % For the rationale of the general approach taken by this code,
+    % see the comment on the call to ml_gen_det_conj above.
+    %
+:- pred ml_gen_det_conj(list(hlds_goal)::in,
+    cord(mlds_local_var_defn)::in, cord(mlds_local_var_defn)::out,
+    cord(mlds_function_defn)::in, cord(mlds_function_defn)::out,
+    cord(mlds_stmt)::in, cord(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_det_conj([],
+        !VarsCord, !FuncsCord, !StmtsCord, !Info).
+    % For model_det conjunctions, ml_gen_success generates nothing.
+ml_gen_det_conj([HeadGoal | TailGoals],
+        !VarsCord, !FuncsCord, !StmtsCord, !Info) :-
+    ml_gen_goal(model_det, HeadGoal, HeadVars, HeadFuncs, HeadStmts, !Info),
+    % Most goals do not generate new local variables, and very few generate
+    % new functions, but almost all generate new statements. Optimize the
+    % update of each accumulator for its common case.
+    (
+        HeadVars = []
+    ;
+        HeadVars = [_ | _],
+        !:VarsCord = !.VarsCord ++ cord.from_list(HeadVars)
+    ),
+    (
+        HeadFuncs = []
+    ;
+        HeadFuncs = [_ | _],
+        !:FuncsCord = !.FuncsCord ++ cord.from_list(HeadFuncs)
+    ),
+    !:StmtsCord = !.StmtsCord ++ cord.from_list(HeadStmts),
+    ml_gen_det_conj(TailGoals,
+        !VarsCord, !FuncsCord, !StmtsCord, !Info).
 
 %---------------------------------------------------------------------------%
 
