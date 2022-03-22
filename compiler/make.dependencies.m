@@ -31,7 +31,6 @@
 :- import_module enum.
 :- import_module io.
 :- import_module list.
-:- import_module map.
 :- import_module maybe.
 :- import_module set.
 
@@ -176,6 +175,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module dir.
+:- import_module map.
 :- import_module pair.
 :- import_module require.
 :- import_module sparse_bitset.

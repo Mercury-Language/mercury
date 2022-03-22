@@ -35,8 +35,6 @@
 
 :- import_module list.
 :- import_module maybe.
-:- import_module term.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -232,6 +230,8 @@
 
 :- import_module pair.
 :- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
