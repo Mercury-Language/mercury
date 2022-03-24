@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -404,14 +404,8 @@ output_unop_for_csharp(Info, Stream, UnaryOp, Expr, !IO) :-
             UnaryOp = bitwise_complement(int_type_int8),
             CastStr = "(sbyte) "
         ;
-            UnaryOp = bitwise_complement(int_type_uint8),
-            CastStr = "(byte) "
-        ;
             UnaryOp = bitwise_complement(int_type_int16),
             CastStr = "(short) "
-        ;
-            UnaryOp = bitwise_complement(int_type_uint16),
-            CastStr = "(ushort) "
         ),
         UnaryOpStr = "~",
         io.write_string(Stream, CastStr, !IO),
@@ -419,6 +413,27 @@ output_unop_for_csharp(Info, Stream, UnaryOp, Expr, !IO) :-
         io.write_string(Stream, "(", !IO),
         output_rval_for_csharp(Info, Expr, Stream, !IO),
         io.write_string(Stream, ")", !IO)
+    ;
+        % The result of the bitwise complement of byte or ushort in C# will be
+        % promoted to an int. Casting this back to the original type may result
+        % in a CS0221 error from the C# compiler due to the possible
+        % information loss involved in such a cast. We need to wrap the whole
+        % expression in an unchecked context in order to prevent the C#
+        % compiler from treating it as an error.
+        (
+            UnaryOp = bitwise_complement(int_type_uint8),
+            CastStr = "(byte) "
+        ;
+            UnaryOp = bitwise_complement(int_type_uint16),
+            CastStr = "(ushort) "
+        ),
+        UnaryOpStr = "~",
+        io.write_string(Stream, "unchecked (", !IO),
+        io.write_string(Stream, CastStr, !IO),
+        io.write_string(Stream, UnaryOpStr, !IO),
+        io.write_string(Stream, "(", !IO),
+        output_rval_for_csharp(Info, Expr, Stream, !IO),
+        io.write_string(Stream, "))", !IO)
     ;
         ( UnaryOp = dword_float_get_word0
         ; UnaryOp = dword_float_get_word1
