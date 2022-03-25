@@ -75,11 +75,13 @@
 
 %-----------------------------------------------------------------------%
 %-----------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module bool.
-:- import_module exception.
 :- import_module dir.
+:- import_module exception.
+:- import_module io.file.
 
 %-----------------------------------------------------------------------%
 
@@ -95,7 +97,7 @@ import java.nio.file.attribute.PosixFilePermissions;
 %-----------------------------------------------------------------------%
 
 make_temp(Name, !IO) :-
-    io.get_temp_directory(Dir, !IO),
+    io.file.get_temp_directory(Dir, !IO),
     make_temp.make_temp(Dir, "mtmp", Name, !IO).
 
 make_temp(Dir, Prefix, Name, !IO) :-
@@ -109,7 +111,7 @@ make_temp(Dir, Prefix, Name, !IO) :-
     ).
 
 make_temp_directory(DirName, !IO) :-
-    get_temp_directory(Dir, !IO),
+    io.file.get_temp_directory(Dir, !IO),
     make_temp.make_temp_directory(Dir, "mtmp", DirName, !IO).
 
 make_temp_directory(Dir, Prefix, DirName, !IO) :-
