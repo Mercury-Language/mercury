@@ -135,9 +135,9 @@ esac
 
 # The code in config.guess that distinguishes between the i*86 and x86_64
 # versions of Darwin needs to use the C compiler to make that distinction.
-# In particular, if we wish to build a 32-bit Mercury installation on
+# In particular, if we wish to build a 32-bit Mercury installation on an
 # x86_64 machine, then we need to tell configure that we are using the
-# 32-bit C compiler. If we didn't call the AC_PROG_CC macro at this point
+# 32-bit C compiler. If we didn't call the AC_PROG_CC macro at this point,
 # then configure's --with-cc option would not do that.
 
 AC_PROG_CC
@@ -151,7 +151,6 @@ export CC
 # GCC. However, it also sets it if the C compiler is clang -- because they
 # both define __GNUC__ -- do *NOT* use the GCC variable to check the C compiler
 # type, instead use the value of C_COMPILER_TYPE (defined below).
-#
 MERCURY_CC_TYPE
 
 MERCURY_HAVE_CLANG=no
@@ -1161,7 +1160,6 @@ else
 
     # The `-s' linker option is deprecated on Darwin 9+ and has no effect other
     # than causing the linker to emit a warning. Call the strip tool directly.
-    #
     case "$host" in
         *apple*darwin*)
             LD_STRIP_FLAG=""
@@ -1179,7 +1177,6 @@ else
     # for interactive queries in the Mercury debugger. For gcc, this
     # linker option can be enabled by passing either `-rdynamic' or
     # `-Wl,-export-dynamic' to gcc; we use the former.
-    #
     case $FULLARCH in
         *-linux*)
             LDFLAGS_FOR_TRACE="-rdynamic"
@@ -2278,7 +2275,7 @@ AC_SUBST(MR_DARWIN_SETJMP_WORKAROUND)
 #-----------------------------------------------------------------------------#
 #
 # On sparc, x86, and probably on other architectures,
-# if we're using non-local gotos, then for egcs 1.1, we need
+# if we are using non-local gotos, then for egcs 1.1, we need
 # `-fno-gcse -fno-function-cse', and for gcc 2.8 we need `-fno-function-cse'.
 # Otherwise gcc generates code which initializes registers in the function
 # prologue and expects them to be valid later on, which doesn't work with
@@ -2463,13 +2460,12 @@ esac
 #  MR_decl_static(nrev__nreverse_2_0)
 #  ^
 #
-# The problem is, mfiltercc removes the first line, but lets the rest
-# through. This will confuse users even more than the unfiltered error
-# message would, since they get the all the context but no information about
-# the supposed "error" itself. For gcc versions that by default generate such
-# long error messages, the inclusion of CFLAGS_FOR_ERRMSG_FILTER in
-# CFLAGS_FOR_GOTOS will cause them to deviate from this default and switch
-# them off.
+# The problem is, mfiltercc removes the first line, but lets the rest through.
+# This will confuse users even more than the unfiltered error message would,
+# since they get the all the context but no information about the supposed
+# "error" itself. For gcc versions that by default generate such long error
+# messages, the inclusion of CFLAGS_FOR_ERRMSG_FILTER in CFLAGS_FOR_GOTOS
+# will cause them to deviate from this default and switch them off.
 #
 # We *could* try to find a way to define labels that gcc does not complain
 # about, at all. However, given that we *have* to use assembly code to make
