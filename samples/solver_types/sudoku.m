@@ -31,11 +31,11 @@
 
 main(!IO) :-
     io.command_line_arguments(Args, !IO),
-    ( if Args = [InputFile] then
-        io.see(InputFile, SeeResult, !IO),
+    ( if Args = [InputFileName] then
+        io.open_input(InputFileName, OpenResult, !IO),
         (
-            SeeResult = ok,
-            io.read_file_as_string(ReadResult, !IO),
+            OpenResult = ok(InputFile),
+            io.read_file_as_string(InputFile, ReadResult, !IO),
             (
                 ReadResult = ok(StartString),
                 Start = string.words(StartString),
@@ -51,7 +51,7 @@ main(!IO) :-
                 io.set_exit_status(1, !IO)
             )
         ;
-            SeeResult = error(Error),
+            OpenResult = error(Error),
             io.write_string(io.error_message(Error), !IO),
             io.nl(!IO),
             io.set_exit_status(1, !IO)
