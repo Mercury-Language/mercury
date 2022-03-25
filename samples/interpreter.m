@@ -63,7 +63,7 @@ main(!IO) :-
 
 main_loop(Database, !IO) :-
     io.write_string("?- ", !IO),
-    read_term(ReadTerm, !IO),
+    mercury_term_parser.read_term(ReadTerm, !IO),
     (
         ReadTerm = eof
     ;
@@ -124,7 +124,7 @@ consult_file(File, Database0, Database, !IO) :-
     database::in, database::out, io::di, io::uo) is det.
 
 consult_until_eof(Stream, !Database, !IO) :-
-    read_term(Stream, ReadTerm, !IO),
+    mercury_term_parser.read_term(Stream, ReadTerm, !IO),
     (
         ReadTerm = eof
     ;
