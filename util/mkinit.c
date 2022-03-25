@@ -815,7 +815,7 @@ parse_options(int argc, char *argv[])
     String_List *tmp_slist;
     int         seen_f_option = 0;
 
-    while ((c = getopt(argc, argv, "A:c:f:g:iI:l:o:r:tw:xX:ks")) != EOF) {
+    while ((c = getopt(argc, argv, "A:c:f:g:iI:lo:r:tw:xX:ks")) != EOF) {
         switch (c) {
         case 'A':
             // Add the argument to the end of the list of always executed
