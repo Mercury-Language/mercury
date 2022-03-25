@@ -5,5 +5,6 @@
 % by mmake the correct name.
 %-----------------------------------------------------------------------------%
 :- module c_main.
+:- interface.
 
 :- import_module mercury_lib.
