@@ -73,9 +73,10 @@ main(!IO) :-
 :- pred open_input(maybe(string)::in, bool::out, io::di, io::uo) is det.
 
 open_input(no, Opened, !IO) :-
-    io.see_binary("/dev/midi", Res, !IO),
+    io.open_binary_input("/dev/midi", Res, !IO),
     (
-        Res = ok,
+        Res = ok(DevMidi),
+        io.set_binary_input_stream(DevMidi, _, !IO),
         Opened = yes
     ;
         Res = error(Err),
@@ -85,13 +86,14 @@ open_input(no, Opened, !IO) :-
         Opened = no
     ).
 open_input(yes(FileName), Opened, !IO) :-
-    ( FileName = "-" ->
+    ( if FileName = "-" then
             % use stdin
         Opened = yes
-    ;
-        io.see_binary(FileName, Res, !IO),
+    else
+        io.open_binary_input(FileName, Res, !IO),
         (
-            Res = ok,
+            Res = ok(File),
+            io.set_binary_input_stream(File, _, !IO),
             Opened = yes
         ;
             Res = error(Err),
