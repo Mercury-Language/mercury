@@ -25,8 +25,6 @@
 :- module ll_backend.code_info.
 :- interface.
 
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
@@ -48,6 +46,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
@@ -66,10 +65,11 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.proc_label.
+:- import_module check_hlds.
+:- import_module check_hlds.type_util.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module ll_backend.code_util.
-:- import_module parse_tree.prog_type.
 
 :- import_module cord.
 :- import_module int.

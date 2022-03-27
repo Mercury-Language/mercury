@@ -123,6 +123,7 @@
 :- import_module parse_tree.prog_data_event.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_event.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.

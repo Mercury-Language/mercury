@@ -688,7 +688,11 @@ including the type module_info.
 status.m defines the type that record the import/export status
 of entities such as types, insts, modes, and predicates.
 <li>
-vartypes.m defines the data structure that maps variables to their types.
+vartypes.m defines the data structure that maps each variable to its types.
+New code should use var_table.m, if possible.
+<li>
+var_table.m defines the data structure that maps each variable
+to its name, type, and an indication of whether that type is a dummy type.
 </ul>
 
 Some modules implement a pass that decides

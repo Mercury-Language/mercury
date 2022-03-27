@@ -78,7 +78,6 @@
 
 :- implementation.
 
-:- import_module backend_libs.
 :- import_module check_hlds.
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module hlds.
@@ -88,7 +87,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
-:- import_module hlds.vartypes.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -324,7 +323,7 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
         MLDS_TypeInfoStmt0, MLDS_TypeInfoStmt, NewObjLocalVarDefns),
 
     % Build MLDS code to trace the variable.
-    ml_gen_var(!.Info, TypeInfoVar, TypeInfoLval),
+    ml_gen_var_direct(!.Info, TypeInfoVar, TypeInfoLval),
     ml_gen_trace_var(!.Info, VarName, DeclType, ml_lval(TypeInfoLval), Context,
         MLDS_TraceStmt),
 
@@ -336,12 +335,12 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     % get put in the GC frame, rather than these declarations, which will get
     % ignored.
     % XXX This is not a very robust way of doing things...
-    ml_gen_info_get_varset(!.Info, VarSet),
-    ml_gen_info_get_var_types(!.Info, VarTypes),
+    ml_gen_info_get_var_table(!.Info, VarTable),
     GenLocalVarDecl =
         ( func(Var) = VarDefn :-
-            LocalVarName = ml_gen_local_var_name(VarSet, Var),
-            lookup_var_type(VarTypes, Var, LocalVarType),
+            lookup_var_entry(VarTable, Var, Entry),
+            LocalVarName = ml_gen_local_var_name(Var, Entry),
+            LocalVarType = Entry ^ vte_type,
             VarDefn = ml_gen_mlds_var_decl(LocalVarName,
                 mercury_type_to_mlds_type(ModuleInfo, LocalVarType),
                 gc_no_stmt, Context)
@@ -411,9 +410,10 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
     % Save the new information back in the ml_gen_info.
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
+    % XXX It would be nice to have polymorphism update the var table directly.
+    make_var_table(ModuleInfo, VarSet, VarTypes, VarTable),
     ml_gen_info_set_module_info(ModuleInfo, !Info),
-    ml_gen_info_set_varset(VarSet, !Info),
-    ml_gen_info_set_var_types(VarTypes, !Info).
+    ml_gen_info_set_var_table(VarTable, !Info).
 
 %---------------------------------------------------------------------------%
 

@@ -67,8 +67,6 @@
 
 :- pred vartypes_add_corresponding_lists(list(prog_var)::in,
     list(mer_type)::in, vartypes::in, vartypes::out) is det.
-:- pred vartypes_overlay_corresponding_lists(list(prog_var)::in,
-    list(mer_type)::in, vartypes::in, vartypes::out) is det.
 
 :- pred delete_var_type(prog_var::in,
     vartypes::in, vartypes::out) is det.
@@ -107,7 +105,6 @@
 :- import_module parse_tree.prog_type_subst.
 
 :- import_module map.
-:- import_module require.
 
 :- type vartypes == map(prog_var, mer_type).
 
@@ -171,16 +168,6 @@ vartypes_from_sorted_assoc_list(AssocList, VarTypes) :-
 
 vartypes_add_corresponding_lists(Vars, Types, !VarTypes) :-
     map.det_insert_from_corresponding_lists(Vars, Types, !VarTypes).
-
-vartypes_overlay_corresponding_lists([], [], !VarTypes).
-vartypes_overlay_corresponding_lists([], [_ | _], !VarTypes) :-
-    unexpected($pred, "mismatched list lengths").
-vartypes_overlay_corresponding_lists([_ | _], [], !VarTypes) :-
-    unexpected($pred, "mismatched list lengths").
-vartypes_overlay_corresponding_lists([Var | Vars], [Type | Types],
-        !VarTypes) :-
-    map.set(Var, Type, !VarTypes),
-    vartypes_overlay_corresponding_lists(Vars, Types, !VarTypes).
 
 delete_var_type(Var, !VarTypes) :-
     map.delete(Var, !VarTypes).

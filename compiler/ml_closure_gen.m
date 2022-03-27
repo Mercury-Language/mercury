@@ -83,6 +83,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_module.
 :- import_module hlds.mark_tail_calls.          % for ntrcr_program
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module ll_backend.
@@ -171,13 +172,14 @@ ml_construct_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct,
     MaybeStag = no,
 
     % Generate a `new_object' statement (or static constant) for the closure.
-    ml_variable_type(!.Info, Var, VarType),
+    ml_gen_info_get_var_table(!.Info, VarTable),
+    lookup_var_entry(VarTable, Var, VarEntry),
     specified_arg_types_and_consecutive_full_words(ml_make_boxed_type,
         NumExtraArgRvalsTypes, ArgVars, ArgVarsTypesWidths),
     FirstArgNum = 1,
     TakeAddr = [],
     ml_gen_new_object(MaybeConsId, MaybeConsName, Ptag, MaybeStag,
-        Var, VarType, ExtraArgRvalsTypes, ArgVarsTypesWidths, ArgModes,
+        Var, VarEntry, ExtraArgRvalsTypes, ArgVarsTypesWidths, ArgModes,
         FirstArgNum, TakeAddr, HowToConstruct, Context, Defns, Stmts, !Info).
 
     % Generate a value for the closure layout struct.
@@ -699,7 +701,8 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     CodeModel = proc_info_interface_code_model(ProcInfo),
     proc_info_get_varset(ProcInfo, ProcVarSet),
     ProcArity = list.length(ProcHeadVars),
-    ProcHeadVarNames = ml_gen_local_var_names(ProcVarSet, ProcHeadVars),
+    ProcHeadVarNames =
+        ml_gen_local_var_names_from_varset(ProcVarSet, ProcHeadVars),
 
     % Allocate some fresh type variables to use as the Mercury types
     % of the boxed arguments.
@@ -737,6 +740,15 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     % function, and since the code executed in that interval does not allocate
     % any memory (it has only an assignment to `closure_arg' and some unbox
     % operations), it cannot trigger garbage collection.
+    %
+    % XXX PARAMS We could call a specialized version of
+    % ml_gen_params_no_gc_stmts that
+    %
+    % - allocates each WrapperHeadVarName from a sounter as it goes along,
+    %   and then returns them, saving a nil/cons switch, and
+    %
+    % - knows that every BoxedArgType is a free type var
+    %   (the fact that they are different type vars should not matter).
     ml_gen_params_no_gc_stmts(ModuleInfo, PredOrFunc, CodeModel,
         WrapperHeadVars, WrapperHeadVarNames, WrapperBoxedArgTypes,
         WrapperArgModes, ArgTuples, WrapperParams0),
@@ -1046,7 +1058,7 @@ ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, ArgNum,
     ml_gen_wrapper_arg_lvals(CopyOutWhen, Context, ArgNum + 1, TailArgTuples,
         TailDefns, TailLvals, TailCopyOutRvals, TailOutputLvalsTypes, !Info),
     HeadArgTuple = var_mvar_type_mode(_Var, MLDSVarName, Type, TopFunctorMode),
-    ml_gen_type(!.Info, Type, MLDS_Type),
+    ml_gen_mlds_type(!.Info, Type, MLDS_Type),
     VarLval = ml_local_var(MLDSVarName, MLDS_Type),
     % XXX This code does ignores dummy values if they are copied outputs,
     % but not when they are (a) byref outputs, or (b) inputs. Why?

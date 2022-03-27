@@ -39,11 +39,11 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
+:- import_module hlds.var_table.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_unify_gen_construct.
 :- import_module ml_backend.ml_unify_gen_deconstruct.
+:- import_module parse_tree.prog_type.
 
 :- import_module maybe.
 :- import_module require.
@@ -106,9 +106,9 @@ ml_generate_unification(CodeModel, Unification, Context,
 
 ml_generate_assignment_unification(TargetVar, SourceVar, Context,
         Stmts, !Info) :-
-    ml_variable_type(!.Info, TargetVar, Type),
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    IsDummyType = is_type_a_dummy(ModuleInfo, Type),
+    ml_gen_info_get_var_table(!.Info, VarTable),
+    lookup_var_entry(VarTable, TargetVar, TargetVarEntry),
+    TargetVarEntry = vte(_, _, IsDummyType),
     (
         IsDummyType = is_dummy_type,
         % We want to avoid generating references to variables of dummy types,
@@ -116,8 +116,9 @@ ml_generate_assignment_unification(TargetVar, SourceVar, Context,
         Stmts = []
     ;
         IsDummyType = is_not_dummy_type,
-        ml_gen_var(!.Info, TargetVar, TargetLval),
-        ml_gen_var(!.Info, SourceVar, SourceLval),
+        lookup_var_entry(VarTable, SourceVar, SourceVarEntry),
+        ml_gen_var(!.Info, TargetVar, TargetVarEntry, TargetLval),
+        ml_gen_var(!.Info, SourceVar, SourceVarEntry, SourceLval),
         Stmt = ml_gen_assign(TargetLval, ml_lval(SourceLval), Context),
         Stmts = [Stmt]
     ),
@@ -143,9 +144,9 @@ ml_generate_assignment_unification(TargetVar, SourceVar, Context,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_generate_simple_test_unification(VarA, VarB, Context, Stmt, !Info) :-
-    ml_variable_type(!.Info, VarA, Type),
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    IsDummyType = is_type_a_dummy(ModuleInfo, Type),
+    ml_gen_info_get_var_table(!.Info, VarTable),
+    lookup_var_entry(VarTable, VarA, VarAEntry),
+    VarAEntry = vte(_, Type, IsDummyType),
     (
         IsDummyType = is_dummy_type,
         % We want to avoid generating references to variables of dummy types,
@@ -174,8 +175,9 @@ ml_generate_simple_test_unification(VarA, VarB, Context, Stmt, !Info) :-
             % The else branch handles enumerations.
             EqOp = eq(int_type_int)
         ),
-        ml_gen_var(!.Info, VarA, VarLvalA),
-        ml_gen_var(!.Info, VarB, VarLvalB),
+        lookup_var_entry(VarTable, VarB, VarBEntry),
+        ml_gen_var(!.Info, VarA, VarAEntry, VarLvalA),
+        ml_gen_var(!.Info, VarB, VarBEntry, VarLvalB),
         SidesAreEqualRval =
             ml_binop(EqOp, ml_lval(VarLvalA), ml_lval(VarLvalB))
     ),

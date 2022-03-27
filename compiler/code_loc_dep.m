@@ -81,6 +81,7 @@
 :- import_module ll_backend.var_locn.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_type.
 
 :- import_module cord.
 :- import_module int.

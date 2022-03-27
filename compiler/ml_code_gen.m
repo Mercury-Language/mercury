@@ -417,7 +417,7 @@
 :- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.vartypes.
+:- import_module hlds.var_table.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
@@ -486,8 +486,11 @@
 
     % Generate declarations for a list of local variables.
     %
-:- pred ml_gen_local_var_decls(prog_varset::in, vartypes::in,
-    prog_context::in, list(prog_var)::in, list(mlds_local_var_defn)::out,
+    % Exported to ml_proc_gen.m for use when creating clones of
+    % local variables when implementing copied output vars.
+    %
+:- pred ml_gen_local_var_decls(var_table::in, prog_context::in,
+    list(prog_var)::in, list(mlds_local_var_defn)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -509,6 +512,7 @@
 :- import_module ml_backend.ml_unify_gen.
 :- import_module ml_backend.ml_unify_gen_construct.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
@@ -600,12 +604,11 @@ ml_gen_goal(CodeModel, Goal, LocalVarDefns, FuncDefns, Stmts, !Info) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
 
     % Generate the local variables for this goal.
-    ml_gen_info_get_var_types(!.Info, VarTypes),
-    find_vars_to_declare(VarTypes, GoalExpr, GoalInfo, VarsToDeclare),
+    ml_gen_info_get_var_table(!.Info, VarTable),
+    find_vars_to_declare(VarTable, GoalExpr, GoalInfo, VarsToDeclare),
 
-    ml_gen_info_get_varset(!.Info, VarSet),
     Context = goal_info_get_context(GoalInfo),
-    ml_gen_local_var_decls(VarSet, VarTypes, Context, VarsToDeclare,
+    ml_gen_local_var_decls(VarTable, Context, VarsToDeclare,
         ScopeVarDefns, !Info),
 
     % Generate code for the goal in its own code model.
@@ -716,8 +719,8 @@ ml_gen_goal_expr(Determinism, CodeModel, Context, GoalExpr, GoalInfo,
         FuncDefns = []
     ;
         GoalExpr = switch(Var, CanFail, CasesList),
-        ml_gen_switch(Var, CanFail, CasesList, CodeModel, Context, GoalInfo,
-            LocalVarDefns, Stmts, !Info),
+        ml_gen_switch(Var, CanFail, CodeModel, GoalInfo, Context,
+            CasesList, LocalVarDefns, Stmts, !Info),
         FuncDefns = []
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
@@ -793,10 +796,10 @@ ml_gen_goal_expr(Determinism, CodeModel, Context, GoalExpr, GoalInfo,
     % zero or one, such reordering is guaranteed to be a no-op, so avoid the
     % expense.
     %
-:- pred find_vars_to_declare(vartypes::in,
+:- pred find_vars_to_declare(var_table::in,
     hlds_goal_expr::in, hlds_goal_info::in, list(prog_var)::out) is det.
 
-find_vars_to_declare(VarTypes, GoalExpr, GoalInfo, VarsToDeclare) :-
+find_vars_to_declare(VarTable, GoalExpr, GoalInfo, VarsToDeclare) :-
     goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     set_of_var.difference(SubGoalNonLocals, NonLocals, VarsToDeclareSet),
@@ -808,7 +811,7 @@ find_vars_to_declare(VarTypes, GoalExpr, GoalInfo, VarsToDeclare) :-
         VarsToDeclare = VarsToDeclare0
     ;
         VarsToDeclare0 = [_, _ | _],
-        VarsToDeclare = put_typeinfo_vars_first(VarsToDeclare0, VarTypes)
+        VarsToDeclare = put_typeinfo_vars_first_table(VarTable, VarsToDeclare0)
     ).
 
     % The task of this predicate is to help compute the set of MLDS variables
@@ -1375,22 +1378,20 @@ ml_gen_maybe_convert_goal_code_model(OuterCodeModel, InnerCodeModel, Context,
 
 %---------------------------------------------------------------------------%
 
-ml_gen_local_var_decls(_VarSet, _VarTypes, _Context, [], [], !Info).
-ml_gen_local_var_decls(VarSet, VarTypes, Context, [Var | Vars], Defns,
-        !Info) :-
-    lookup_var_type(VarTypes, Var, Type),
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+ml_gen_local_var_decls(_, _, [], [], !Info).
+ml_gen_local_var_decls(VarTable, Context, [Var | Vars], Defns, !Info) :-
+    lookup_var_entry(VarTable, Var, Entry),
+    Entry = vte(_VarName, Type, IsDummy),
     (
         IsDummy = is_dummy_type,
         % No declaration needed for this variable.
-        ml_gen_local_var_decls(VarSet, VarTypes, Context, Vars, Defns, !Info)
+        ml_gen_local_var_decls(VarTable, Context, Vars, Defns, !Info)
     ;
         IsDummy = is_not_dummy_type,
-        VarName = ml_gen_local_var_name(VarSet, Var),
-        ml_gen_local_var_decl(VarName, Type, Context, Defn, !Info),
-        ml_gen_local_var_decls(VarSet, VarTypes, Context, Vars, Defns0, !Info),
-        Defns = [Defn | Defns0]
+        VarName = ml_gen_local_var_name(Var, Entry),
+        ml_gen_local_var_decl(VarName, Type, Context, HeadDefn, !Info),
+        ml_gen_local_var_decls(VarTable, Context, Vars, TailDefns, !Info),
+        Defns = [HeadDefn | TailDefns]
     ).
 
 %---------------------------------------------------------------------------%

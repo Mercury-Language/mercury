@@ -120,8 +120,8 @@
 
     % Generate MLDS code for a switch.
     %
-:- pred ml_gen_switch(prog_var::in, can_fail::in, list(case)::in,
-    code_model::in, prog_context::in, hlds_goal_info::in,
+:- pred ml_gen_switch(prog_var::in, can_fail::in, code_model::in,
+    hlds_goal_info::in, prog_context::in, list(case)::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -140,6 +140,7 @@
 :- import_module backend_libs.switch_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -162,13 +163,15 @@
 
 %---------------------------------------------------------------------------%
 
-ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
+ml_gen_switch(SwitchVar, CanFail, CodeModel, GoalInfo, Context, Cases,
         Decls, Stmts, !Info) :-
+    ml_gen_info_get_var_table(!.Info, VarTable),
+    lookup_var_entry(VarTable, SwitchVar, SwitchVarEntry),
+    SwitchVarType = SwitchVarEntry ^ vte_type,
     % Lookup the representation of the constructors for the tag tests.
     % Note that you cannot have a switch on a variable whose type's main
     % type constructor is not known.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ml_variable_type(!.Info, SwitchVar, SwitchVarType),
     tag_cases(ModuleInfo, SwitchVarType, Cases, TaggedCases,
         MaybeIntSwitchInfo),
 
@@ -198,9 +201,9 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
             Decls = []
         ;
             SwitchCategory = string_switch,
-            ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases,
-                CodeModel, GoalInfo, EntryPackedWordMap, Context,
-                Decls, Stmts, !Info)
+            ml_gen_smart_string_switch(SwitchVar, SwitchVarEntry,
+                CanFail, CodeModel, GoalInfo, Context, TaggedCases,
+                EntryPackedWordMap, Decls, Stmts, !Info)
         ;
             SwitchCategory = tag_switch,
             num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
@@ -211,9 +214,9 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
                 NumConsIds >= TagSize,
                 NumArms > 1,
                 globals_target_supports_int_switch(Globals) = yes,
-                ml_generate_tag_switch_if_possible(TaggedCases, SwitchVar,
-                    CodeModel, CanFail, EntryPackedWordMap, Context,
-                    StmtsPrime, !Info)
+                ml_generate_tag_switch_if_possible(SwitchVar, SwitchVarEntry,
+                    CodeModel, CanFail, Context, EntryPackedWordMap,
+                    TaggedCases, StmtsPrime, !Info)
             then
                 Stmts = StmtsPrime
             else
@@ -301,13 +304,15 @@ ml_gen_smart_int64_switch(SwitchVar, CanFail, TaggedCases, CodeModel,
             CodeModel, CanFail, EntryPackedWordMap, Context, Stmts, !Info)
     ).
 
-:- pred ml_gen_smart_string_switch(prog_var::in, can_fail::in,
-    list(tagged_case)::in, code_model::in, hlds_goal_info::in,
-    packed_word_map::in, prog_context::in, list(mlds_local_var_defn)::out,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_smart_string_switch(prog_var::in, var_table_entry::in,
+    can_fail::in, code_model::in, hlds_goal_info::in, prog_context::in,
+    list(tagged_case)::in, packed_word_map::in,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel,
-        GoalInfo, EntryPackedWordMap, Context, Decls, Stmts, !Info) :-
+ml_gen_smart_string_switch(SwitchVar, SwitchVarEntry, CanFail, CodeModel,
+        GoalInfo, Context, TaggedCases, EntryPackedWordMap,
+        Decls, Stmts, !Info) :-
     filter_out_failing_cases_if_needed(CodeModel,
         TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
     num_cons_ids_in_tagged_cases(FilteredTaggedCases, NumConsIds, NumArms),
@@ -366,7 +371,7 @@ ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel,
         % language.
         ml_is_lookup_switch(SwitchVar, FilteredTaggedCases, GoalInfo,
             CodeModel, MaybeLookupSwitchInfo, !Info),
-        ml_gen_var(!.Info, SwitchVar, SwitchVarLval),
+        ml_gen_var(!.Info, SwitchVar, SwitchVarEntry, SwitchVarLval),
         SwitchVarRval = ml_lval(SwitchVarLval),
         globals.get_opt_tuple(Globals, OptTuple),
         ( if
@@ -559,9 +564,11 @@ ml_switch_generate_if_then_else_cond(TaggedCase, Var, CondRval, !Info) :-
 
 ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail,
         EntryPackedWordMap, Context, Stmts, !Info) :-
-    ml_variable_type(!.Info, Var, Type),
-    ml_gen_type(!.Info, Type, MLDS_Type),
-    ml_gen_var(!.Info, Var, Lval),
+    ml_gen_info_get_var_table(!.Info, VarTable),
+    lookup_var_entry(VarTable, Var, VarEntry),
+    Type = VarEntry ^ vte_type,
+    ml_gen_mlds_type(!.Info, Type, MLDS_Type),
+    ml_gen_var(!.Info, Var, VarEntry, Lval),
     Rval = ml_lval(Lval),
     ml_switch_gen_range(!.Info, MLDS_Type, Range),
     ml_switch_generate_mlds_cases(Type, MLDS_Type, CodeModel,

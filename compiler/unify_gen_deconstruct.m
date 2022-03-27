@@ -55,6 +55,7 @@
 :- import_module ll_backend.unify_gen_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.prog_type.
 
 :- import_module cord.
 :- import_module int.

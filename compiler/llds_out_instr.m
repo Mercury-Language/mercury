@@ -83,8 +83,6 @@
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.export.
 :- import_module backend_libs.name_mangle.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.

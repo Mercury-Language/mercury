@@ -338,6 +338,7 @@
 :- import_module check_hlds.
 :- import_module check_hlds.mode_top_functor.
 :- import_module check_hlds.type_util.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -345,6 +346,7 @@
 :- import_module ml_backend.ml_accurate_gc.
 :- import_module ml_backend.ml_code_util.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_type.
 
 :- import_module int.
 :- import_module maybe.
@@ -454,7 +456,7 @@ package_vars_types_modes(ModuleInfo, VarSet, Vars, Types, Modes, ArgTuples) :-
             TailVars, TailTypes, TailModes, TailArgTuples),
         mode_to_top_functor_mode(ModuleInfo, HeadMode, HeadType,
             HeadTopFunctorMode),
-        HeadMLDSVarName = ml_gen_local_var_name(VarSet, HeadVar),
+        HeadMLDSVarName = ml_gen_local_var_name_from_varset(VarSet, HeadVar),
         HeadArgTuple = var_mvar_type_mode(HeadVar, HeadMLDSVarName, HeadType,
             HeadTopFunctorMode),
         ArgTuples = [HeadArgTuple | TailArgTuples]
@@ -1084,10 +1086,12 @@ ml_gen_arg(CopyOutWhen, Context, WhatParams, ArgNum,
         CalleeIsDummy = is_not_dummy_type,
         (
             CallerArg = arg_not_for_closure_wrapper(CallerArgVar),
-            ml_gen_info_get_varset(!.Info, VarSet),
-            CallerMLDSVarName = ml_gen_local_var_name(VarSet, CallerArgVar),
-            ml_gen_var(!.Info, CallerArgVar, CallerVarLval),
-            ml_variable_type(!.Info, CallerArgVar, CallerType),
+            ml_gen_info_get_var_table(!.Info, VarTable),
+            lookup_var_entry(VarTable, CallerArgVar, CallerArgVarEntry),
+            CallerMLDSVarName =
+                ml_gen_local_var_name(CallerArgVar, CallerArgVarEntry),
+            ml_gen_var(!.Info, CallerArgVar, CallerArgVarEntry, CallerVarLval),
+            CallerType = CallerArgVarEntry ^ vte_type,
             ForClosureWrapper = no
         ;
             CallerArg = arg_for_closure_wrapper(CallerMLDSVarName,
@@ -1136,7 +1140,7 @@ ml_gen_arg(CopyOutWhen, Context, WhatParams, ArgNum,
                         CopyOutWhen = copy_out_always
                     )
                 then
-                    ml_gen_type(!.Info, CalleeType, OutputType),
+                    ml_gen_mlds_type(!.Info, CalleeType, OutputType),
                     !:OutputLvalsTypes =
                         [ArgLval - OutputType | !.OutputLvalsTypes]
                 else

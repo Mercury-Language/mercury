@@ -368,8 +368,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.
 :- import_module hlds.hlds_llds.
 :- import_module ll_backend.code_util.
@@ -378,6 +376,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_type.
 
 :- import_module int.
 :- import_module require.

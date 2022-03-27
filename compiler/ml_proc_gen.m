@@ -47,7 +47,7 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
-:- import_module hlds.vartypes.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
@@ -623,9 +623,8 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
                 CopiedOutputVars, CopiedOutputVarRvals),
             ml_append_return_statement(CodeModel, ProcContext,
                 CopiedOutputVarRvals, GoalStmts0, GoalStmts),
-            ml_gen_local_var_defns_for_copied_output_vars(ProcInfo,
-                ProcContext, ArgTuples, CopiedOutputVars, OutputVarLocalDefns,
-                !Info),
+            ml_gen_local_var_defns_for_copied_output_vars(!.Info, ProcContext,
+                ArgTuples, CopiedOutputVars, OutputVarLocalDefns, !Info),
             ml_gen_maybe_local_var_defn_for_succeeded(!.Info, ProcContext,
                 SucceededVarDefns),
             LocalVarDefns = SucceededVarDefns ++ OutputVarLocalDefns ++
@@ -648,14 +647,16 @@ ml_gen_proc(ModuleInfo, Target, ConstStructMap, NoneOrSelf,
 :- pred get_var_mlds_lval_and_type(ml_gen_info::in, prog_var::in,
     pair(mlds_lval, mer_type)::out) is det.
 
-get_var_mlds_lval_and_type(Info, Var, VarLval - Type) :-
-    ml_gen_var(Info, Var, VarLval),
-    ml_variable_type(Info, Var, Type).
+get_var_mlds_lval_and_type(Info, Var, VarLval - VarType) :-
+    ml_gen_info_get_var_table(Info, VarTable),
+    lookup_var_entry(VarTable, Var, VarEntry),
+    ml_gen_var(Info, Var, VarEntry, VarLval),
+    VarType = VarEntry ^ vte_type.
 
 :- pred get_var_rval(ml_gen_info::in, prog_var::in, mlds_rval::out) is det.
 
 get_var_rval(Info, Var, VarRval) :-
-    ml_gen_var(Info, Var, VarLval),
+    ml_gen_var_direct(Info, Var, VarLval),
     VarRval = ml_lval(VarLval).
 
 :- pred compute_initial_tail_rec_map_for_none_or_self(module_info::in,
@@ -1745,11 +1746,11 @@ ml_gen_convert_headvars([], _CopiedOutputVars, _Context, [], [], [], !Info).
 ml_gen_convert_headvars([ArgTuple | ArgTuples], CopiedOutputVars, Context,
         LocalVarDefns, InputStmts, OutputStmts, !Info) :-
     ArgTuple = var_mvar_type_mode(Var, MLDSVarName, HeadType, TopFunctorMode),
-    ml_variable_type(!.Info, Var, BodyType),
+    ml_variable_type_direct(!.Info, Var, BodyType),
     ( if
-        % An argument doesn't need any conversion if ...
+        % An argument doesn't need any conversion ...
         (
-            % ... its type is the same in the head as in the body
+            % ... if its type is the same in the head as in the body
             % (modulo contexts), or ...
             map.init(Subst0),
             type_unify(HeadType, BodyType, [], Subst0, Subst),
@@ -1795,11 +1796,11 @@ ml_gen_convert_headvars([ArgTuple | ArgTuples], CopiedOutputVars, Context,
         LocalVarDefns = ConvLocalVarDefns ++ LocalVarDefnsTail
     ).
 
-:- pred ml_gen_local_var_defns_for_copied_output_vars(proc_info::in,
+:- pred ml_gen_local_var_defns_for_copied_output_vars(ml_gen_info::in,
     prog_context::in, list(var_mvar_type_mode)::in, list(prog_var)::in,
     list(mlds_local_var_defn)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_local_var_defns_for_copied_output_vars(ProcInfo, Context, ArgTuples,
+ml_gen_local_var_defns_for_copied_output_vars(Info, Context, ArgTuples,
         CopiedOutputVars, OutputVarLocalDefns, !Info) :-
     % This would generate all the local variables at the top of
     % the function:
@@ -1816,18 +1817,19 @@ ml_gen_local_var_defns_for_copied_output_vars(ProcInfo, Context, ArgTuples,
         OutputVarLocalDefns = []
     ;
         CopiedOutputVars = [_ | _],
-        proc_info_get_varset(ProcInfo, VarSet),
-        proc_info_get_vartypes(ProcInfo, VarTypes),
-        % Note that for headvars we must use the types from
+        ml_gen_info_get_var_table(Info, VarTable0),
+        % Note that for headvars, we must use the types from
         % the procedure interface, not from the procedure body.
-        HeadVars = list.map((func(var_mvar_type_mode(HV, _, _, _)) = HV),
-            ArgTuples),
-        HeadTypes = list.map((func(var_mvar_type_mode(_, _, HT, _)) = HT),
-            ArgTuples),
-        vartypes_overlay_corresponding_lists(HeadVars, HeadTypes,
-            VarTypes, UpdatedVarTypes),
-        ml_gen_local_var_decls(VarSet, UpdatedVarTypes,
-            Context, CopiedOutputVars, OutputVarLocalDefns, !Info)
+        OverrideHeadVarType =
+            ( pred(AT::in, Table0::in, Table::out) is det :-
+                AT = var_mvar_type_mode(HV, _, HT, _),
+                lookup_var_entry(Table0, HV, Entry0),
+                Entry = Entry0 ^ vte_type := HT,
+                update_var_entry(HV, Entry, Table0, Table)
+            ),
+        list.foldl(OverrideHeadVarType, ArgTuples, VarTable0, VarTable1),
+        ml_gen_local_var_decls(VarTable1, Context,
+            CopiedOutputVars, OutputVarLocalDefns, !Info)
     ).
 
 :- pred ml_gen_maybe_local_var_defn_for_succeeded(ml_gen_info::in,

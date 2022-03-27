@@ -12,6 +12,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
+:- import_module hlds.var_table.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_unify_gen_util.
@@ -41,7 +42,7 @@
     --->    rval_type_and_width(mlds_rval, mlds_type, arg_pos_width).
 
     % ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSectag,
-    %   LHSVar, LHSType, ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths,
+    %   LHSVar, LHSVarEntry, ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths,
     %   ArgModes, FirstArgNum, TakeAddr, HowToConstruct, Context,
     %   Stmts, !Info):
     %
@@ -53,7 +54,7 @@
     % Exported for use by ml_closure_gen.m.
     %
 :- pred ml_gen_new_object(maybe(cons_id)::in, maybe(qual_ctor_id)::in,
-    ptag::in, bool::in, prog_var::in, mer_type::in,
+    ptag::in, bool::in, prog_var::in, var_table_entry::in,
     list(mlds_rval_type_and_width)::in,
     list(arg_var_type_and_width)::in, list(unify_mode)::in,
     int::in, list(int)::in, how_to_construct::in, prog_context::in,
@@ -91,7 +92,6 @@
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.optimization_options.
 :- import_module mdbcomp.
@@ -139,8 +139,10 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
         ; ConsTag = table_io_entry_tag(_, _)
         ),
         expect(unify(RHSVars, []), $pred, "constant has arguments"),
-        ml_variable_type(!.Info, LHSVar, LHSType),
-        ml_gen_var(!.Info, LHSVar, LHSLval),
+        ml_gen_info_get_var_table(!.Info, VarTable),
+        lookup_var_entry(VarTable, LHSVar, LHSVarEntry),
+        LHSType = LHSVarEntry ^ vte_type,
+        ml_gen_var(!.Info, LHSVar, LHSVarEntry, LHSLval),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         LHS_MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, LHSType),
         (
@@ -256,10 +258,11 @@ ml_generate_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
         Defns, Stmts, !Info) :-
     ml_gen_info_get_target(!.Info, Target),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ml_gen_info_get_var_types(!.Info, VarTypes),
-    ml_variable_type(!.Info, LHSVar, LHSType),
+    ml_gen_info_get_var_table(!.Info, VarTable),
+    lookup_var_entry(VarTable, LHSVar, LHSVarEntry),
+    LHSType = LHSVarEntry ^ vte_type,
     associate_cons_id_args_with_types_widths(ModuleInfo,
-        lookup_var_type_func(VarTypes), may_have_extra_args,
+        lookup_var_type_func(VarTable), may_have_extra_args,
         LHSType, ConsId, RHSVars, RHSVarsTypesWidths),
 
     % If there is a secondary tag, it goes in the first word, maybe together
@@ -364,7 +367,7 @@ ml_generate_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
         MaybeCtorName = yes(CtorName)
     ),
     ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSectag,
-        LHSVar, LHSType, TagwordRvalsTypesWidths,
+        LHSVar, LHSVarEntry, TagwordRvalsTypesWidths,
         NonTagwordRHSVarsTypesWidths, NonTagwordArgModes,
         FirstArgNum, TakeAddr, HowToConstruct, Context, Defns, Stmts, !Info).
 
@@ -377,10 +380,11 @@ ml_generate_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
 ml_generate_construct_tagword_compound(ConsId, TagFilledBitfield,
         LHSVar, ArgVars, ArgModes, HowToConstruct, Context, Stmts, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ml_gen_info_get_var_types(!.Info, VarTypes),
-    lookup_var_type(VarTypes, LHSVar, LHSType),
+    ml_gen_info_get_var_table(!.Info, VarTable),
+    lookup_var_entry(VarTable, LHSVar, LHSVarEntry),
+    LHSType = LHSVarEntry ^ vte_type,
     associate_cons_id_args_with_types_widths(ModuleInfo,
-        lookup_var_type_func(VarTypes), may_not_have_extra_args,
+        lookup_var_type_func(VarTable), may_not_have_extra_args,
         LHSType, ConsId, ArgVars, ArgVarsTypesWidths),
     (
         (
@@ -400,7 +404,7 @@ ml_generate_construct_tagword_compound(ConsId, TagFilledBitfield,
             TagFilledBitfield, ArgFilledBitfields, TagwordRval),
         CastTagwordRval = ml_cast(LHS_MLDS_Type, TagwordRval),
 
-        ml_gen_var(!.Info, LHSVar, LHSLval),
+        ml_gen_var(!.Info, LHSVar, LHSVarEntry, LHSLval),
         Stmt = ml_gen_assign(LHSLval, CastTagwordRval, Context),
         Stmts = [Stmt],
         (
@@ -422,44 +426,44 @@ ml_generate_construct_tagword_compound(ConsId, TagFilledBitfield,
 %---------------------------------------------------------------------------%
 
 ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSectag,
-        LHSVar, LHSType, ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths,
+        LHSVar, LHSVarEntry, ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths,
         ArgModes, FirstArgNum, TakeAddr, HowToConstruct, Context,
         Defns, Stmts, !Info) :-
     (
         HowToConstruct = construct_dynamically,
         ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName,
-            Ptag, ExplicitSectag, LHSVar, LHSType, ExtraRHSRvalsTypesWidths,
-            RHSVarsTypesWidths, ArgModes, FirstArgNum, TakeAddr, Context,
-            Stmts, !Info),
+            Ptag, ExplicitSectag, LHSVar, LHSVarEntry,
+            ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths,
+            ArgModes, FirstArgNum, TakeAddr, Context, Stmts, !Info),
         Defns = []
     ;
         HowToConstruct = construct_statically(_),
         expect(unify(TakeAddr, []), $pred,
             "cannot take address of static object's field"),
         ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
-            LHSVar, LHSType, ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths,
+            LHSVar, LHSVarEntry, ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths,
             Context, Stmts, !Info),
         Defns = []
     ;
         HowToConstruct = reuse_cell(CellToReuse),
         ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName,
-            Ptag, ExplicitSectag, LHSVar, ExtraRHSRvalsTypesWidths,
-            RHSVarsTypesWidths, ArgModes, TakeAddr, CellToReuse, Context,
-            Defns, Stmts, !Info)
+            Ptag, ExplicitSectag, LHSVar, LHSVarEntry,
+            ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths, ArgModes,
+            TakeAddr, CellToReuse, Context, Defns, Stmts, !Info)
     ;
         HowToConstruct = construct_in_region(_RegVar),
         sorry($pred, "construct_in_region NYI")
     ).
 
 :- pred ml_gen_new_object_dynamically(maybe(cons_id)::in,
-    maybe(qual_ctor_id)::in, ptag::in, bool::in, prog_var::in, mer_type::in,
-    list(mlds_rval_type_and_width)::in,
-    list(arg_var_type_and_width)::in, list(unify_mode)::in,
-    int::in, list(int)::in, prog_context::in, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    maybe(qual_ctor_id)::in, ptag::in, bool::in,
+    prog_var::in, var_table_entry::in,
+    list(mlds_rval_type_and_width)::in, list(arg_var_type_and_width)::in,
+    list(unify_mode)::in, int::in, list(int)::in, prog_context::in,
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, Ptag,
-        ExplicitSectag, LHSVar, LHSType, ExtraRHSRvalsTypesWidths,
+        ExplicitSectag, LHSVar, LHSVarEntry, ExtraRHSRvalsTypesWidths,
         RHSVarsTypesWidths, ArgModes, FirstArgNum, TakeAddr, Context,
         Stmts, !Info) :-
     ml_gen_info_get_use_atomic_cells(!.Info, UseAtomicCells),
@@ -502,10 +506,10 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, Ptag,
     % Generate a `new_object' statement to dynamically allocate the memory
     % for this term from the heap. The `new_object' statement will also
     % initialize the fields of this term with the specified arguments.
-    ml_gen_var(!.Info, LHSVar, LHSLval),
+    ml_gen_var(!.Info, LHSVar, LHSVarEntry, LHSLval),
     ConvFunc = (func(rval_type_and_width(Rv, T, _)) = ml_typed_rval(Rv, T)),
     ArgRvalsTypes = list.map(ConvFunc, RHSRvalsTypesWidths),
-    ml_gen_type(!.Info, LHSType, LHS_MLDS_Type),
+    ml_gen_mlds_type(!.Info, LHSVarEntry ^ vte_type, LHS_MLDS_Type),
     MakeNewObject = new_object(LHSLval, Ptag, ExplicitSectag, LHS_MLDS_Type,
         yes(SizeInWordsRval), MaybeCtorName, ArgRvalsTypes,
         MayUseAtomic, MaybeAllocId),
@@ -517,14 +521,14 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, Ptag,
     Stmts = [MakeNewObjStmt | TakeAddrStmts].
 
 :- pred ml_gen_new_object_statically(maybe(cons_id)::in,
-    maybe(qual_ctor_id)::in, ptag::in, prog_var::in, mer_type::in,
+    maybe(qual_ctor_id)::in, ptag::in, prog_var::in, var_table_entry::in,
     list(mlds_rval_type_and_width)::in, list(arg_var_type_and_width)::in,
     prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
-        LHSVar, LHSType, ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths, Context,
-        Stmts, !Info) :-
+        LHSVar, LHSVarEntry, ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths,
+        Context, Stmts, !Info) :-
     some [!GlobalData] (
         % Generate rvals for the arguments.
         ml_gen_info_get_global_data(!.Info, !:GlobalData),
@@ -562,7 +566,8 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
         ExtraRHSRvals = list.map((func(rval_type_and_width(Rv, _, _)) = Rv),
             BoxedExtraRHSRvalsTypesWidths),
         ml_gen_info_get_target(!.Info, Target),
-        ml_gen_type(!.Info, LHSType, LHS_MLDS_Type),
+        LHSType = LHSVarEntry ^ vte_type,
+        ml_gen_mlds_type(!.Info, LHSType, LHS_MLDS_Type),
 
         construct_static_ground_term(ModuleInfo, Target, HighLevelData,
             Context, LHSType, LHS_MLDS_Type, MaybeConsId, UsesBaseClass,
@@ -574,20 +579,21 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
 
     ml_gen_info_set_const_var(LHSVar, RHSGroundTerm, !Info),
 
-    ml_gen_var(!.Info, LHSVar, LHSLval),
+    ml_gen_var(!.Info, LHSVar, LHSVarEntry, LHSLval),
     RHSGroundTerm = ml_ground_term(RHSRval, _, _),
     AssignStmt = ml_gen_assign(LHSLval, RHSRval, Context),
     Stmts = [AssignStmt].
 
 :- pred ml_gen_new_object_reuse_cell(maybe(cons_id)::in,
-    maybe(qual_ctor_id)::in, ptag::in, bool::in, prog_var::in,
+    maybe(qual_ctor_id)::in, ptag::in, bool::in,
+    prog_var::in, var_table_entry::in,
     list(mlds_rval_type_and_width)::in, list(arg_var_type_and_width)::in,
     list(unify_mode)::in, list(int)::in, cell_to_reuse::in, prog_context::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName,
-        Ptag, ExplicitSectag, LHSVar, ExtraRHSRvalsTypesWidths,
+        Ptag, ExplicitSectag, LHSVar, LHSVarEntry, ExtraRHSRvalsTypesWidths,
         RHSVarsTypesWidths, ArgModes, TakeAddr, CellToReuse, Context,
         Defns, Stmts, !Info) :-
     % NOTE: if it is ever used, NeedsUpdates needs to be modified to take into
@@ -607,7 +613,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName,
         ), ReuseConsIds, ReusePrimaryTags0),
     list.remove_dups(ReusePrimaryTags0, ReusePrimaryTags),
 
-    ml_variable_type(!.Info, LHSVar, LHSType),
+    LHSType = LHSVarEntry ^ vte_type,
     ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
     % XXX ARG_PACK Why PrimaryTag, when we have Ptag?
     % XXX ARG_PACK Our caller should already know the value of InitOffSet.
@@ -619,7 +625,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName,
     ml_field_names_and_types(!.Info, LHSType, ConsId, InitOffSet, RHSVars,
         RHSVarRepns),
 
-    ml_gen_var(!.Info, ReuseVar, ReuseVarLval),
+    ml_gen_var_direct(!.Info, ReuseVar, ReuseVarLval),
 
     list.filter(
         ( pred(ReuseTag::in) is semidet :-
@@ -646,7 +652,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName,
             ml_unop(strip_tag, ml_lval(ReuseVarLval)))
     ),
 
-    ml_gen_type(!.Info, LHSType, LHS_MLDS_Type),
+    ml_gen_mlds_type(!.Info, LHSType, LHS_MLDS_Type),
     CastReuseVarRval = ml_cast(LHS_MLDS_Type, ReuseVarRval),
     HeapTestStmt = ml_stmt_atomic(assign_if_in_heap(LHSLval, CastReuseVarRval),
         Context),
@@ -654,7 +660,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName,
     % For each field in the construction unification we need to generate
     % an rval. ExtraRvalsTypesWidths need to be inserted at the start
     % of the object.
-    ml_gen_var(!.Info, LHSVar, LHSLval),
+    ml_gen_var(!.Info, LHSVar, LHSVarEntry, LHSLval),
     MaybePtag = yes(Ptag),
     ml_gen_extra_arg_assigns(LHSLval, LHS_MLDS_Type, MaybePtag,
         0, ExtraRHSRvalsTypesWidths, Context, ExtraRvalStmts, !Info),
@@ -674,9 +680,9 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName,
     % If the reassignment isn't possible because the target is statically
     % allocated, then fall back to dynamic allocation.
     ml_gen_new_object_dynamically(yes(ConsId), MaybeCtorName,
-        Ptag, ExplicitSectag, LHSVar, LHSType, ExtraRHSRvalsTypesWidths,
-        RHSVarsTypesWidths, ArgModes, FirstArgNum, TakeAddr, Context,
-        DynamicStmts, !Info),
+        Ptag, ExplicitSectag, LHSVar, LHSVarEntry,
+        ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths,
+        ArgModes, FirstArgNum, TakeAddr, Context, DynamicStmts, !Info),
     ElseStmt = ml_stmt_block([], [], DynamicStmts, Context),
     % XXX Using LHSLval on its own as a boolean is not good practice.
     IfStmt = ml_stmt_if_then_else(ml_lval(LHSLval), ThenStmt, yes(ElseStmt),
@@ -704,8 +710,10 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
         FieldId = ml_field_offset(ml_const(mlconst_int(OffsetInt))),
         SourceRval = ml_mem_addr(ml_field(MaybePtag,
             ml_lval(CellLval), CellType, FieldId, FieldType)),
-        ml_gen_var(Info, AddrVar, AddrLval),
-        ml_variable_type(Info, AddrVar, AddrVarType),
+        ml_gen_info_get_var_table(Info, VarTable),
+        lookup_var_entry(VarTable, AddrVar, AddrVarEntry),
+        AddrVarType = AddrVarEntry ^ vte_type,
+        ml_gen_var(Info, AddrVar, AddrVarEntry, AddrLval),
         ml_gen_info_get_module_info(Info, ModuleInfo),
         MLDS_AddrVarType = mercury_type_to_mlds_type(ModuleInfo, AddrVarType),
         CastSourceRval = ml_cast(MLDS_AddrVarType, SourceRval),
@@ -715,7 +723,7 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
         % For high-level data lco.m uses a different transformation where we
         % simply pass the base address of the cell. The transformation does not
         % generate unifications.
-        ml_gen_var(Info, AddrVar, AddrLval),
+        ml_gen_var_direct(Info, AddrVar, AddrLval),
         Assign = ml_gen_assign(AddrLval, ml_lval(CellLval), Context)
     ),
     ml_gen_field_take_address_assigns(TakeAddrInfos, CellLval, CellType,
@@ -733,7 +741,7 @@ ml_gen_box_or_unbox_const_rval_list_hld(Info, Context,
         [ArgVarTypeWidth | ArgVarsTypesWidths],
         [FieldRvalTypeWidth | FieldRvalsTypesWidths], !GlobalData) :-
     ArgVarTypeWidth = arg_type_and_width(ArgVar, ConsArgType, ConsArgPosWidth),
-    ml_variable_type(Info, ArgVar, ArgType),
+    ml_variable_type_direct(Info, ArgVar, ArgType),
     ml_gen_info_lookup_const_var_rval(Info, ArgVar, ArgRval),
     ml_gen_info_get_module_info(Info, ModuleInfo),
     HighLevelData = yes,
@@ -846,8 +854,10 @@ ml_generate_and_pack_dynamic_construct_args(Info,
         ( ArgPosWidth = apw_full(_, _)
         ; ArgPosWidth = apw_double(_, _, _)
         ),
-        ml_gen_var(Info, RHSVar, RHSLval),
-        ml_variable_type(Info, RHSVar, RHSType),
+        ml_gen_info_get_var_table(Info, VarTable),
+        lookup_var_entry(VarTable, RHSVar, RHSVarEntry),
+        RHSType = RHSVarEntry ^ vte_type,
+        ml_gen_var(Info, RHSVar, RHSVarEntry, RHSLval),
         % It is important to use RHSType instead of ConsArgType here.
         % ConsArgType is the declared type of the argument of the cons_id,
         % while ArgType is the actual type of the variable being assigned
@@ -1060,7 +1070,7 @@ ml_maybe_box_unbox_or_null_lval(ModuleInfo, ConsArgType, RHSType, BoxedRHSType,
 ml_maybe_null_var(Info, RHSVar, ConsArgType, ArgMode, BitfieldValue) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ArgMode = unify_modes_li_lf_ri_rf(_, _, RHSInitInst, RHSFinalInst),
-    ml_variable_type(Info, RHSVar, RHSType),
+    ml_variable_type_direct(Info, RHSVar, RHSType),
     ( if
         init_final_insts_to_top_functor_mode(ModuleInfo,
             RHSInitInst, RHSFinalInst, RHSType, top_in),
@@ -1167,8 +1177,10 @@ ml_gen_tagword_statically(Info, [RHSVarTypeWidth | RHSVarsTypesWidths],
 ml_genenate_construct_notag_direct_arg(LHSVar, ConsTag, RHSVars,
         ArgModes, Context, Stmts, !Info) :-
     get_notag_or_direct_arg_arg_mode(RHSVars, ArgModes, RHSVar, ArgMode),
-    ml_variable_type(!.Info, LHSVar, LHSType),
-    ml_gen_var(!.Info, LHSVar, LHSLval),
+    ml_gen_info_get_var_table(!.Info, VarTable),
+    lookup_var_entry(VarTable, LHSVar, LHSVarEntry),
+    LHSType = LHSVarEntry ^ vte_type,
+    ml_gen_var(!.Info, LHSVar, LHSVarEntry, LHSLval),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     LHS_MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, LHSType),
     ( if ml_gen_info_search_const_var(!.Info, RHSVar, RHSGroundTerm) then
@@ -1183,8 +1195,9 @@ ml_genenate_construct_notag_direct_arg(LHSVar, ConsTag, RHSVars,
         Stmt = ml_gen_assign(LHSLval, LHSRval, Context),
         Stmts = [Stmt]
     else
-        ml_gen_var(!.Info, RHSVar, RHSLval),
-        ml_variable_type(!.Info, RHSVar, RHSType),
+        lookup_var_entry(VarTable, RHSVar, RHSVarEntry),
+        RHSType = RHSVarEntry ^ vte_type,
+        ml_gen_var(!.Info, RHSVar, RHSVarEntry, RHSLval),
         (
             ConsTag = no_tag,
             RHSRval0 = ml_lval(RHSLval),
@@ -1196,8 +1209,8 @@ ml_genenate_construct_notag_direct_arg(LHSVar, ConsTag, RHSVars,
             % for assign_nondummy_unused. We don't need to put a ptag on
             % a dummy value if either we have a nondummy value (the then
             % part above), or if there is no ptag (the arm for no_tag above).
-            ml_compute_assign_direction(ModuleInfo, ArgMode, RHSType, LHSType,
-                Dir),
+            ml_compute_assign_direction(ModuleInfo, ArgMode, LHSType,
+                RHSVarEntry, Dir),
             (
                 Dir = assign_nondummy_right,
                 unexpected($pred, "left-to-right data flow in construction")
@@ -1241,18 +1254,18 @@ ml_generate_ground_term(TermVar, Goal, Stmts, !Info) :-
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         ml_gen_info_get_target(!.Info, Target),
         ml_gen_info_get_high_level_data(!.Info, HighLevelData),
-        ml_gen_info_get_var_types(!.Info, VarTypes),
+        ml_gen_info_get_var_table(!.Info, VarTable),
 
         ml_gen_info_get_global_data(!.Info, GlobalData0),
         ml_generate_ground_term_conjuncts(ModuleInfo, Target,
-            HighLevelData, VarTypes, Conjuncts,
+            HighLevelData, VarTable, Conjuncts,
             GlobalData0, GlobalData, map.init, GroundTermMap),
         ml_gen_info_set_global_data(GlobalData, !Info),
 
         map.lookup(GroundTermMap, TermVar, TermVarGroundTerm),
         ml_gen_info_set_const_var(TermVar, TermVarGroundTerm, !Info),
 
-        ml_gen_var(!.Info, TermVar, TermVarLval),
+        ml_gen_var_direct(!.Info, TermVar, TermVarLval),
         TermVarGroundTerm = ml_ground_term(TermVarRval, _, _),
         Context = goal_info_get_context(GoalInfo),
         Stmt = ml_gen_assign(TermVarLval, TermVarRval, Context),
@@ -1260,29 +1273,30 @@ ml_generate_ground_term(TermVar, Goal, Stmts, !Info) :-
     ).
 
 :- pred ml_generate_ground_term_conjuncts(module_info::in,
-    mlds_target_lang::in, bool::in, vartypes::in, list(hlds_goal)::in,
+    mlds_target_lang::in, bool::in, var_table::in, list(hlds_goal)::in,
     ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
 ml_generate_ground_term_conjuncts(_, _, _, _, [],
         !GlobalData, !GroundTermMap).
 ml_generate_ground_term_conjuncts(ModuleInfo, Target, HighLevelData,
-        VarTypes, [Goal | Goals], !GlobalData, !GroundTermMap) :-
+        VarTable, [Goal | Goals], !GlobalData, !GroundTermMap) :-
     ml_generate_ground_term_conjunct(ModuleInfo, Target, HighLevelData,
-        VarTypes, Goal, !GlobalData, !GroundTermMap),
+        VarTable, Goal, !GlobalData, !GroundTermMap),
     ml_generate_ground_term_conjuncts(ModuleInfo, Target, HighLevelData,
-        VarTypes, Goals, !GlobalData, !GroundTermMap).
+        VarTable, Goals, !GlobalData, !GroundTermMap).
 
 :- pred ml_generate_ground_term_conjunct(module_info::in,
-    mlds_target_lang::in, bool::in, vartypes::in, hlds_goal::in,
+    mlds_target_lang::in, bool::in, var_table::in, hlds_goal::in,
     ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
-ml_generate_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
+ml_generate_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTable,
         Goal, !GlobalData, !GroundTermMap) :-
     get_from_ground_term_construct_conjunct_info(Goal, LHSVar, ConsId, RHSVars,
         GoalInfo),
-    lookup_var_type(VarTypes, LHSVar, LHSType),
+    lookup_var_entry(VarTable, LHSVar, LHSVarEntry),
+    LHSType = LHSVarEntry ^ vte_type,
     LHS_MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, LHSType),
     ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
     Context = goal_info_get_context(GoalInfo),
@@ -1339,7 +1353,7 @@ ml_generate_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
         ),
         LocalSectag = local_sectag(_Sectag, PrimSec, _SectagBits),
         associate_cons_id_args_with_types_widths(ModuleInfo,
-            lookup_var_type_func(VarTypes), may_not_have_extra_args,
+            lookup_var_type_func(VarTable), may_not_have_extra_args,
             LHSType, ConsId, RHSVars, RHSVarsTypesWidths),
         expect(unify(HighLevelData, no), $pred, "HighLevelData = yes"),
         list.foldl2(construct_ground_term_tagword_initializer_lld,
@@ -1355,7 +1369,7 @@ ml_generate_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
         % Ordinary compound terms.
         ConsTag = remote_args_tag(RemoteArgsTagInfo),
         ml_generate_ground_term_memory_cell(ModuleInfo, Target,
-            HighLevelData, VarTypes, LHSVar, LHSType, LHS_MLDS_Type,
+            HighLevelData, VarTable, LHSVar, LHSType, LHS_MLDS_Type,
             ConsId, RemoteArgsTagInfo, RHSVars, Context,
             !GlobalData, !GroundTermMap)
     ;
@@ -1380,14 +1394,14 @@ ml_generate_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
     ).
 
 :- pred ml_generate_ground_term_memory_cell(module_info::in,
-    mlds_target_lang::in, bool::in, vartypes::in,
+    mlds_target_lang::in, bool::in, var_table::in,
     prog_var::in, mer_type::in, mlds_type::in,
     cons_id::in, remote_args_tag_info::in, list(prog_var)::in,
     prog_context::in, ml_global_data::in, ml_global_data::out,
     ml_ground_term_map::in, ml_ground_term_map::out) is det.
 
 ml_generate_ground_term_memory_cell(ModuleInfo, Target, HighLevelData,
-        VarTypes, LHSVar, LHSType, LHS_MLDS_Type, ConsId, RemoteArgsTagInfo,
+        VarTable, LHSVar, LHSType, LHS_MLDS_Type, ConsId, RemoteArgsTagInfo,
         RHSVars, Context, !GlobalData, !GroundTermMap) :-
     % This code (loosely) follows the code of
     % ml_generate_dynamic_construct_compound.
@@ -1397,7 +1411,7 @@ ml_generate_ground_term_memory_cell(ModuleInfo, Target, HighLevelData,
     % from_ground_term_construct. Therefore the static struct we are
     % constructing should not need any extra type_info or typeclass_info args.
     associate_cons_id_args_with_types_widths(ModuleInfo,
-        lookup_var_type_func(VarTypes), may_not_have_extra_args,
+        lookup_var_type_func(VarTable), may_not_have_extra_args,
         LHSType, ConsId, RHSVars, RHSVarsTypesWidths),
     (
         (
@@ -2591,7 +2605,7 @@ accumulate_translated_filled_bitfield(Info, FilledBitfield, !RevToOrRvals) :-
     (
         (
             BitfieldValue = bv_var(Var),
-            ml_gen_var(Info, Var, VarLval),
+            ml_gen_var_direct(Info, Var, VarLval),
             ArgRval = ml_lval(VarLval)
         ;
             BitfieldValue = bv_rval(ArgRval)

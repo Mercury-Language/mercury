@@ -152,8 +152,6 @@
 
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.proc_label.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
@@ -166,6 +164,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_type.
 
 :- import_module char.
 :- import_module int.

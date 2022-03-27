@@ -347,7 +347,7 @@
     % Find out how many secondary tags share each primary tag
     % of the given variable.
     %
-:- pred get_ptag_counts(mer_type::in, module_info::in,
+:- pred get_ptag_counts(module_info::in, mer_type::in,
     uint8::out, ptag_count_map::out) is det.
 
     % Group together all the cases that depend on the given variable
@@ -1464,7 +1464,7 @@ add_string_binary_entry(CaseRep, TaggedConsId, !UnsortedTable) :-
 % Stuff for tag switches.
 %
 
-get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
+get_ptag_counts(ModuleInfo, Type, MaxPrimary, PtagCountMap) :-
     type_to_ctor_det(Type, TypeCtor),
     module_info_get_type_table(ModuleInfo, TypeTable),
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),

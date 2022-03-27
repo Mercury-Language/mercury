@@ -76,6 +76,7 @@
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -117,7 +118,9 @@ ml_generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
         % it is the responsibility of the structure reuse phase to ensure
         % that this is safe.
         CanCGC = can_cgc,
-        ml_gen_var(!.Info, LHSVar, LHSVarLval),
+        ml_gen_info_get_var_table(!.Info, VarTable),
+        lookup_var_entry(VarTable, LHSVar, LHSVarEntry),
+        ml_gen_var(!.Info, LHSVar, LHSVarEntry, LHSVarLval),
         % XXX Avoid strip_tag when we know what tag it will have.
         Delete = delete_object(ml_unop(strip_tag, ml_lval(LHSVarLval))),
         CGCStmt = ml_stmt_atomic(Delete, Context),
@@ -269,8 +272,10 @@ ml_generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Context,
                 InitOffset = cell_offset(-42)
             )
         ),
-        ml_variable_type(!.Info, LHSVar, LHSVarType),
-        ml_gen_var(!.Info, LHSVar, LHSVarLval),
+        ml_gen_info_get_var_table(!.Info, VarTable),
+        lookup_var_entry(VarTable, LHSVar, LHSVarEntry),
+        ml_gen_var(!.Info, LHSVar, LHSVarEntry, LHSVarLval),
+        LHSVarType = LHSVarEntry ^ vte_type,
         decide_field_gen(!.Info, LHSVarLval, LHSVarType, ConsId, ConsTag, Ptag,
             FieldGen),
         ml_field_names_and_types(!.Info, LHSVarType, ConsId, InitOffset,
@@ -309,7 +314,9 @@ ml_generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Context,
         )
     ;
         ConsTag = local_args_tag(LocalArgsTagInfo),
-        ml_gen_var(!.Info, LHSVar, LHSVarLval),
+        ml_gen_info_get_var_table(!.Info, VarTable),
+        lookup_var_entry(VarTable, LHSVar, LHSVarEntry),
+        ml_gen_var(!.Info, LHSVar, LHSVarEntry, LHSVarLval),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepnDefn),
         CtorArgRepns = ConsRepnDefn ^ cr_args,
@@ -664,12 +671,14 @@ ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, ArgMode,
         FieldType),
 
     % Generate lvals for the LHS ...
-    ml_gen_type(!.Info, FieldType, MLDS_FieldType),
+    ml_gen_mlds_type(!.Info, FieldType, MLDS_FieldType),
     FieldLval = ml_field(MaybePrimaryTag, AddrRval, AddrType,
         FieldId, MLDS_FieldType),
     % ... and the RHS.
-    ml_gen_var(!.Info, ArgVar, ArgLval),
-    ml_variable_type(!.Info, ArgVar, ArgType),
+    ml_gen_info_get_var_table(!.Info, VarTable),
+    lookup_var_entry(VarTable, ArgVar, ArgVarEntry),
+    ml_gen_var(!.Info, ArgVar, ArgVarEntry, ArgLval),
+    ArgType = ArgVarEntry ^ vte_type,
 
     % Now generate code to unify them.
     % Figure out the direction of data-flow from the mode,
@@ -683,7 +692,8 @@ ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, ArgMode,
     % ml_unused_assign.m can delete both the unused assignments, and the
     % declarations of the unused variables, in most cases.
 
-    ml_compute_assign_direction(ModuleInfo, ArgMode, ArgType, FieldType, Dir),
+    ml_compute_assign_direction(ModuleInfo, ArgMode, FieldType, ArgVarEntry,
+        Dir),
     (
         Dir = assign_nondummy_right,
         ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
@@ -848,8 +858,9 @@ ml_gen_deconstruct_tagword_args_loop(Info, WordRval,
 ml_gen_deconstruct_tagword_arg(Info, WordRval, ArgVar - CtorArgRepn, ArgMode,
         Context, !ToOrRvals, !ToOrMask,
         !RevFilledBitfields, !AllPartialsRight, Stmts) :-
-    ml_gen_var(Info, ArgVar, ArgLval),
-    ml_variable_type(Info, ArgVar, ArgType),
+    ml_gen_info_get_var_table(Info, VarTable),
+    lookup_var_entry(VarTable, ArgVar, ArgVarEntry),
+    ml_gen_var(Info, ArgVar, ArgVarEntry, ArgLval),
 
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ml_gen_info_get_high_level_data(Info, HighLevelData),
@@ -859,7 +870,8 @@ ml_gen_deconstruct_tagword_arg(Info, WordRval, ArgVar - CtorArgRepn, ArgMode,
     ml_type_as_field(ModuleInfo, HighLevelData, FieldRawType, FieldWidth,
         FieldType),
 
-    ml_compute_assign_direction(ModuleInfo, ArgMode, ArgType, FieldType, Dir),
+    ml_compute_assign_direction(ModuleInfo, ArgMode, FieldType, ArgVarEntry,
+        Dir),
     (
         Dir = assign_nondummy_right,
         ml_gen_deconstruct_tagword_arg_assign_right(WordRval,
@@ -942,12 +954,16 @@ ml_gen_deconstruct_tagword_arg_assign_left(_WordRval, ArgPosWidth, ArgLval,
 
 ml_gen_dynamic_deconstruct_direct_arg(Info, Ptag, LHSVar, RHSVar, ArgMode,
         Context, Stmts) :-
-    ml_variable_type(Info, RHSVar, RHSType),
-    ml_variable_type(Info, LHSVar, LHSType),
-    ml_gen_var(Info, RHSVar, RHSLval),
-    ml_gen_var(Info, LHSVar, LHSLval),
+    ml_gen_info_get_var_table(Info, VarTable),
+    lookup_var_entry(VarTable, LHSVar, LHSVarEntry),
+    lookup_var_entry(VarTable, RHSVar, RHSVarEntry),
+    ml_gen_var(Info, LHSVar, LHSVarEntry, LHSLval),
+    ml_gen_var(Info, RHSVar, RHSVarEntry, RHSLval),
+    LHSType = LHSVarEntry ^ vte_type,
+    RHSType = RHSVarEntry ^ vte_type,
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    ml_compute_assign_direction(ModuleInfo, ArgMode, RHSType, LHSType, Dir),
+    ml_compute_assign_direction(ModuleInfo, ArgMode, LHSType, RHSVarEntry,
+        Dir),
     (
         Dir = assign_nondummy_right,
         ml_gen_box_or_unbox_rval(ModuleInfo, LHSType, RHSType,
@@ -987,14 +1003,18 @@ ml_gen_dynamic_deconstruct_direct_arg(Info, Ptag, LHSVar, RHSVar, ArgMode,
 
 ml_gen_dynamic_deconstruct_no_tag(Info, LHSVar, RHSVar, ArgMode, Context,
         Stmts) :-
-    ml_variable_type(Info, RHSVar, RHSType),
-    ml_variable_type(Info, LHSVar, LHSType),
-    ml_gen_var(Info, RHSVar, RHSLval),
-    ml_gen_var(Info, LHSVar, LHSLval),
+    ml_gen_info_get_var_table(Info, VarTable),
+    lookup_var_entry(VarTable, LHSVar, LHSVarEntry),
+    lookup_var_entry(VarTable, RHSVar, RHSVarEntry),
+    ml_gen_var(Info, LHSVar, LHSVarEntry, LHSLval),
+    ml_gen_var(Info, RHSVar, RHSVarEntry, RHSLval),
+    LHSType = LHSVarEntry ^ vte_type,
+    RHSType = RHSVarEntry ^ vte_type,
     ml_gen_info_get_module_info(Info, ModuleInfo),
     ml_gen_info_get_high_level_data(Info, HighLevelData),
     ArgPosWidth = apw_full(arg_only_offset(0), cell_offset(0)),
-    ml_compute_assign_direction(ModuleInfo, ArgMode, RHSType, LHSType, Dir),
+    ml_compute_assign_direction(ModuleInfo, ArgMode, LHSType, RHSVarEntry,
+        Dir),
     (
         Dir = assign_nondummy_right,
         ml_gen_dynamic_deconstruct_arg_unify_assign_right(ModuleInfo,
@@ -1027,8 +1047,8 @@ ml_gen_take_addr_of_arg(Info, ArgVar, CtorArgRepn, CurOffset, TakeAddrInfo) :-
     FieldWidth = arg_pos_width_to_width_only(ArgPosWidth),
     ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
         BoxedFieldType),
-    ml_gen_type(Info, FieldType, MLDS_FieldType),
-    ml_gen_type(Info, BoxedFieldType, MLDS_BoxedFieldType),
+    ml_gen_mlds_type(Info, FieldType, MLDS_FieldType),
+    ml_gen_mlds_type(Info, BoxedFieldType, MLDS_BoxedFieldType),
     TakeAddrInfo = take_addr_info(ArgVar, CurOffset, MLDS_FieldType,
         MLDS_BoxedFieldType).
 

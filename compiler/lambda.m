@@ -567,7 +567,7 @@ create_new_pred_for_lambda(RegWrapperProc, RHS0, OrigVars, ArgVars,
     % work out the arguments, module name, predicate name, arity,
     % arg types, determinism, context, status, etc. for the new predicate.
 
-    ArgVars = put_typeinfo_vars_first(ArgVars1, VarTypes),
+    ArgVars = put_typeinfo_vars_first(VarTypes, ArgVars1),
     AllArgVars = ArgVars ++ Vars,
 
     module_info_get_name(!.ModuleInfo, ModuleName),

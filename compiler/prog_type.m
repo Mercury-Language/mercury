@@ -226,6 +226,10 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type is_dummy_type
+    --->    is_dummy_type
+    ;       is_not_dummy_type.
+
     % The list of type_ctors which are builtins which do not have a
     % hlds_type_defn.
     %

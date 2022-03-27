@@ -26,6 +26,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.var_table.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_gen_info.
@@ -96,9 +97,11 @@
 % Routines for generating types.
 %
 
+:- func var_table_entry_to_mlds_type(module_info, var_table_entry) = mlds_type.
+
     % Convert a Mercury type to an MLDS type.
     %
-:- pred ml_gen_type(ml_gen_info::in, mer_type::in, mlds_type::out) is det.
+:- pred ml_gen_mlds_type(ml_gen_info::in, mer_type::in, mlds_type::out) is det.
 
     % Convert the element type for an array_index operator to an MLDS type.
     %
@@ -171,12 +174,15 @@
     % Generate a list of the mlds_lvals corresponding to a given list
     % of prog_vars.
     %
-:- pred ml_gen_var_list(ml_gen_info::in, list(prog_var)::in,
+:- pred ml_gen_var_direct_list(ml_gen_info::in, list(prog_var)::in,
     list(mlds_lval)::out) is det.
 
     % Generate the mlds_lval corresponding to a given prog_var.
     %
-:- pred ml_gen_var(ml_gen_info::in, prog_var::in, mlds_lval::out) is det.
+:- pred ml_gen_var_direct(ml_gen_info::in, prog_var::in,
+    mlds_lval::out) is det.
+:- pred ml_gen_var(ml_gen_info::in, prog_var::in, var_table_entry::in,
+    mlds_lval::out) is det.
 
     % Generate the mlds_lval corresponding to a given prog_var,
     % with a given type.
@@ -184,23 +190,23 @@
 :- pred ml_gen_var_with_type(ml_gen_info::in, prog_var::in, mer_type::in,
     mlds_lval::out) is det.
 
-    % Lookup the types of a list of variables.
-    %
-:- pred ml_variable_types(ml_gen_info::in, list(prog_var)::in,
-    list(mer_type)::out) is det.
-
     % Lookup the type of a variable.
     %
-:- pred ml_variable_type(ml_gen_info::in, prog_var::in, mer_type::out) is det.
+:- pred ml_variable_type_direct(ml_gen_info::in, prog_var::in,
+    mer_type::out) is det.
 
     % Generate the MLDS variable names for a list of variables.
     %
-:- func ml_gen_local_var_names(prog_varset::in, list(prog_var)::in)
+:- func ml_gen_local_var_names(var_table::in, list(prog_var)::in)
+    = (list(mlds_local_var_name)::out(list_skel(lvn_prog_var))) is det.
+:- func ml_gen_local_var_names_from_varset(prog_varset::in, list(prog_var)::in)
     = (list(mlds_local_var_name)::out(list_skel(lvn_prog_var))) is det.
 
     % Generate the MLDS variable name for a variable.
     %
-:- func ml_gen_local_var_name(prog_varset::in, prog_var::in)
+:- func ml_gen_local_var_name(prog_var::in, var_table_entry::in)
+    = (mlds_local_var_name::out(lvn_prog_var)) is det.
+:- func ml_gen_local_var_name_from_varset(prog_varset::in, prog_var::in)
     = (mlds_local_var_name::out(lvn_prog_var)) is det.
 
     % Generate a declaration for an MLDS variable, given its HLDS type.
@@ -459,7 +465,6 @@
 :- import_module check_hlds.
 :- import_module check_hlds.mode_top_functor.
 :- import_module check_hlds.type_util.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -666,7 +671,10 @@ ml_int_tag_to_rval_const(IntTag, MerType, MLDS_Type) = Rval :-
 % Code for generating types.
 %
 
-ml_gen_type(Info, Type, MLDS_Type) :-
+var_table_entry_to_mlds_type(ModuleInfo, Entry) = MLDSType :-
+    MLDSType = mercury_type_to_mlds_type(ModuleInfo, Entry ^ vte_type).
+
+ml_gen_mlds_type(Info, Type, MLDS_Type) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type).
 
@@ -867,40 +875,80 @@ ml_gen_new_label(Label, !Info) :-
 % Code for dealing with variables.
 %
 
-ml_gen_var_list(_Info, [], []).
-ml_gen_var_list(Info, [Var | Vars], [Lval | Lvals]) :-
-    ml_gen_var(Info, Var, Lval),
-    ml_gen_var_list(Info, Vars, Lvals).
+ml_gen_var_direct_list(_Info, [], []).
+ml_gen_var_direct_list(Info, [Var | Vars], [Lval | Lvals]) :-
+    ml_gen_var_direct(Info, Var, Lval),
+    ml_gen_var_direct_list(Info, Vars, Lvals).
 
-ml_gen_var(Info, Var, Lval) :-
+ml_gen_var_direct(Info, Var, Lval) :-
     % First check the var_lvals override mapping; if an lval has been set
     % for this variable, use it.
-
     ml_gen_info_get_var_lvals(Info, VarLvals),
     ( if map.search(VarLvals, Var, VarLval) then
         Lval = VarLval
     else
         % Otherwise just look up the variable's type and generate an lval
         % for it using the ordinary algorithm.
-
-        ml_variable_type(Info, Var, Type),
-        ml_gen_var_with_type(Info, Var, Type, Lval)
+        ml_gen_info_get_var_table(Info, VarTable),
+        lookup_var_entry(VarTable, Var, Entry),
+        do_gen_var(Info, Var, Entry, Lval)
     ).
 
-ml_gen_var_with_type(Info, Var, Type, Lval) :-
-    ml_gen_info_get_module_info(Info, ModuleInfo),
-    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+ml_gen_var(Info, Var, Entry, Lval) :-
+    % First check the var_lvals override mapping; if an lval has been set
+    % for this variable, use it.
+    ml_gen_info_get_var_lvals(Info, VarLvals),
+    ( if map.search(VarLvals, Var, VarLval) then
+        Lval = VarLval
+    else
+        % Otherwise just look up the variable's type and generate an lval
+        % for it using the ordinary algorithm.
+        do_gen_var(Info, Var, Entry, Lval)
+    ).
+
+:- pred do_gen_var(ml_gen_info::in, prog_var::in, var_table_entry::in,
+    mlds_lval::out) is det.
+
+do_gen_var(Info, Var, Entry, Lval) :-
+    Entry = vte(_, Type, IsDummy),
+    ml_gen_mlds_type(Info, Type, MLDS_Type),
     (
         IsDummy = is_dummy_type,
         % The variable won't have been declared, so we need to generate
         % a dummy lval for this variable.
-        ml_gen_type(Info, Type, MLDS_Type),
         Lval = ml_global_var(global_dummy_var, MLDS_Type)
     ;
         IsDummy = is_not_dummy_type,
-        ml_gen_info_get_varset(Info, VarSet),
-        VarName = ml_gen_local_var_name(VarSet, Var),
-        ml_gen_type(Info, Type, MLDS_Type),
+        VarName = ml_gen_local_var_name(Var, Entry),
+        VarLval = ml_local_var(VarName, MLDS_Type),
+        % Output variables may be passed by reference...
+        ml_gen_info_get_byref_output_vars(Info, ByRefOutputVars),
+        ( if set_of_var.member(ByRefOutputVars, Var) then
+            Lval = ml_mem_ref(ml_lval(VarLval), MLDS_Type)
+        else
+            Lval = VarLval
+        )
+    ).
+
+ml_gen_var_with_type(Info, Var, Type, Lval) :-
+    % NOTE The value of Type here may *differ* from the type recorded
+    % for Var in the var_table field of !.Info. Out of an abundance of caution,
+    % we recompute IsDummy for it as well.
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+    ml_gen_mlds_type(Info, Type, MLDS_Type),
+    (
+        IsDummy = is_dummy_type,
+        % The variable won't have been declared, so we need to generate
+        % a dummy lval for this variable.
+        Lval = ml_global_var(global_dummy_var, MLDS_Type)
+    ;
+        IsDummy = is_not_dummy_type,
+        % The name part of the var table entry for var does not depend
+        % on which form of the var's type we are after.
+        ml_gen_info_get_var_table(Info, VarTable),
+        lookup_var_entry(VarTable, Var, Entry),
+        VarName = ml_gen_local_var_name(Var, Entry),
         VarLval = ml_local_var(VarName, MLDS_Type),
 
         % Output variables may be passed by reference...
@@ -912,27 +960,37 @@ ml_gen_var_with_type(Info, Var, Type, Lval) :-
         )
     ).
 
-ml_variable_types(_Info, [], []).
-ml_variable_types(Info, [Var | Vars], [Type | Types]) :-
-    ml_variable_type(Info, Var, Type),
-    ml_variable_types(Info, Vars, Types).
+ml_variable_type_direct(Info, Var, Type) :-
+    ml_gen_info_get_var_table(Info, VarTable),
+    lookup_var_entry(VarTable, Var, Entry),
+    Type = Entry ^ vte_type.
 
-ml_variable_type(Info, Var, Type) :-
-    ml_gen_info_get_var_types(Info, VarTypes),
-    lookup_var_type(VarTypes, Var, Type).
+ml_gen_local_var_names(_, []) = [].
+ml_gen_local_var_names(VarTable, [Var | Vars])
+        = [MLDSVarName | MLDSVarNames] :-
+    lookup_var_entry(VarTable, Var, VarEntry),
+    MLDSVarName = ml_gen_local_var_name(Var, VarEntry),
+    MLDSVarNames = ml_gen_local_var_names(VarTable, Vars).
 
-ml_gen_local_var_names(_VarSet, []) = [].
-ml_gen_local_var_names(VarSet, [Var | Vars]) = [MLDSVarName | MLDSVarNames] :-
-    MLDSVarName = ml_gen_local_var_name(VarSet, Var),
-    MLDSVarNames = ml_gen_local_var_names(VarSet, Vars).
+ml_gen_local_var_names_from_varset(_, []) = [].
+ml_gen_local_var_names_from_varset(VarSet, [Var | Vars])
+        = [MLDSVarName | MLDSVarNames] :-
+    MLDSVarName = ml_gen_local_var_name_from_varset(VarSet, Var),
+    MLDSVarNames = ml_gen_local_var_names_from_varset(VarSet, Vars).
 
-ml_gen_local_var_name(VarSet, Var) = MLDSVarName :-
+ml_gen_local_var_name(Var, Entry) = MLDSVarName :-
+    VarName = Entry ^ vte_name,
     term.var_to_int(Var, VarNumber),
-    ( if varset.search_name(VarSet, Var, VarName) then
-        MLDSVarName = lvn_prog_var(VarName, VarNumber)
+    MLDSVarName = lvn_prog_var(VarName, VarNumber).
+
+ml_gen_local_var_name_from_varset(VarSet, Var) = MLDSVarName :-
+    ( if varset.search_name(VarSet, Var, VarNamePrime) then
+        VarName = VarNamePrime
     else
-        MLDSVarName = lvn_prog_var("", VarNumber)
-    ).
+        VarName = ""
+    ),
+    term.var_to_int(Var, VarNumber),
+    MLDSVarName = lvn_prog_var(VarName, VarNumber).
 
 ml_gen_local_var_decl(VarName, Type, Context, Defn, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -1287,7 +1345,7 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
             ArgVarName =
                 lvn_comp_var(lvnc_non_prog_var_conv(ConvVarNum, VarNameStr))
         ),
-        ml_gen_type(!.Info, CalleeType, MLDS_CalleeType),
+        ml_gen_mlds_type(!.Info, CalleeType, MLDS_CalleeType),
         (
             ForClosureWrapper = yes,
             % For closure wrappers, the argument type_infos are stored in
@@ -1535,7 +1593,8 @@ ml_gen_set_cond_var(CondVar, Value, Context, Stmt) :-
 ml_initial_cont(Info, OutputVarLvalsTypes, Cont) :-
     % We expect OutputVarLvalsTypes to be empty if `--nondet-copy-out'
     % is not enabled.
-    ml_skip_dummy_argument_types(Info,
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    ml_skip_dummy_argument_types(ModuleInfo,
         OutputVarLvalsTypes, OutputVarLvalsMLDSTypes),
 
     assoc_list.values(OutputVarLvalsMLDSTypes, OutputVarMLDSTypes),
@@ -1546,22 +1605,21 @@ ml_initial_cont(Info, OutputVarLvalsTypes, Cont) :-
     Cont = success_cont(ml_lval(ContLval), ml_lval(ContEnvLval),
         OutputVarLvalsMLDSTypes).
 
-:- pred ml_skip_dummy_argument_types(ml_gen_info::in,
+:- pred ml_skip_dummy_argument_types(module_info::in,
     assoc_list(mlds_lval, mer_type)::in,
     assoc_list(mlds_lval, mlds_type)::out) is det.
 
 ml_skip_dummy_argument_types(_, [], []).
-ml_skip_dummy_argument_types(Info, [Lval - Type | LvalsTypes],
+ml_skip_dummy_argument_types(ModuleInfo, [Lval - Type | LvalsTypes],
         LvalsMLDSTypes) :-
-    ml_skip_dummy_argument_types(Info, LvalsTypes, TailLvalsMLDSTypes),
-    ml_gen_info_get_module_info(Info, ModuleInfo),
+    ml_skip_dummy_argument_types(ModuleInfo, LvalsTypes, TailLvalsMLDSTypes),
     IsDummy = is_type_a_dummy(ModuleInfo, Type),
     (
         IsDummy = is_dummy_type,
         LvalsMLDSTypes = TailLvalsMLDSTypes
     ;
         IsDummy = is_not_dummy_type,
-        ml_gen_type(Info, Type, MLDSType),
+        MLDSType = mercury_type_to_mlds_type(ModuleInfo, Type),
         LvalsMLDSTypes = [Lval - MLDSType |  TailLvalsMLDSTypes]
     ).
 
@@ -1686,7 +1744,7 @@ ml_generate_field_assigns(OutVars, FieldTypes, FieldIds, VectorCommon,
         FieldTypes = [HeadFieldType | TailFieldTypes],
         FieldIds = [HeadFieldId | TailFieldIds]
     then
-        ml_gen_var(!.Info, HeadOutVar, HeadOutVarLval),
+        ml_gen_var_direct(!.Info, HeadOutVar, HeadOutVarLval),
         ml_generate_field_assign(HeadOutVarLval, HeadFieldType, HeadFieldId,
             VectorCommon, StructType, IndexRval, Context, HeadStmt,
             !Info),

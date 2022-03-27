@@ -501,6 +501,7 @@
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.exprn_aux.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.prog_type.
 
 :- import_module cord.
 :- import_module int.

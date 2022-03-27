@@ -126,7 +126,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_module.
-:- import_module hlds.vartypes.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -329,10 +329,10 @@ ml_gen_lookup_disj(OutVars, Solns, Context, Stmts, !Info) :-
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ml_gen_info_get_target(!.Info, Target),
 
-    ml_gen_info_get_var_types(!.Info, VarTypes),
-    lookup_var_types(VarTypes, OutVars, FieldTypes),
+    ml_gen_info_get_var_table(!.Info, VarTable),
+    lookup_var_entries(VarTable, OutVars, OutVarEntries),
     MLDS_FieldTypes =
-        list.map(mercury_type_to_mlds_type(ModuleInfo), FieldTypes),
+        list.map(var_table_entry_to_mlds_type(ModuleInfo), OutVarEntries),
 
     ml_gen_info_get_global_data(!.Info, GlobalData0),
     ml_gen_static_vector_type(MLDS_ModuleName, Context, Target,

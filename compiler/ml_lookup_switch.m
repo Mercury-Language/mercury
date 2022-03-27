@@ -123,7 +123,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_module.
-:- import_module hlds.vartypes.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -168,11 +168,12 @@ ml_is_lookup_switch(SwitchVar, TaggedCases, GoalInfo, CodeModel,
         else
             CaseConsts = some_several_solns(CaseSolnMap, unit)
         ),
-        ml_gen_info_get_var_types(!.Info, VarTypes),
-        lookup_var_types(VarTypes, OutVars, OutTypes),
-        FieldTypes = list.map(mercury_type_to_mlds_type(ModuleInfo), OutTypes),
-        LookupSwitchInfo = ml_lookup_switch_info(CaseConsts, OutVars,
-            FieldTypes),
+        ml_gen_info_get_var_table(!.Info, VarTable),
+        lookup_var_entries(VarTable, OutVars, OutVarEntries),
+        FieldTypes =
+            list.map(var_table_entry_to_mlds_type(ModuleInfo), OutVarEntries),
+        LookupSwitchInfo =
+            ml_lookup_switch_info(CaseConsts, OutVars, FieldTypes),
         MaybeLookupSwitchInfo = yes(LookupSwitchInfo)
     else
         % We keep the original !.Info.
@@ -260,7 +261,7 @@ ml_gen_atomic_lookup_switch(SwitchVar, TaggedCases, LookupSwitchInfo,
         Stmt, !Info) :-
     LookupSwitchInfo =
         ml_lookup_switch_info(CaseIdConstMap, OutVars, FieldTypes),
-    ml_gen_var(!.Info, SwitchVar, SwitchVarLval),
+    ml_gen_var_direct(!.Info, SwitchVar, SwitchVarLval),
     SwitchVarRval = ml_lval(SwitchVarLval),
     ( if StartVal = 0 then
         IndexRval = SwitchVarRval

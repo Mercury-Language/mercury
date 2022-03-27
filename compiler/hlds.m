@@ -20,9 +20,9 @@
 :- include_module assertion.
 :- include_module const_struct.
 :- include_module hlds_args.
-:- include_module hlds_cons.
 :- include_module hlds_class.
 :- include_module hlds_clauses.
+:- include_module hlds_cons.
 :- include_module hlds_data.
 :- include_module hlds_goal.
 :- include_module hlds_inst_mode.
@@ -36,6 +36,7 @@
 :- include_module pred_table.
 :- include_module special_pred.
 :- include_module status.
+:- include_module var_table.
 :- include_module vartypes.
 
 % Modules for creating the HLDS.

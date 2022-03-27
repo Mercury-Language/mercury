@@ -177,11 +177,11 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
+:- import_module hlds.var_table.
 :- import_module ml_backend.ml_accurate_gc.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
@@ -475,43 +475,43 @@ ml_gen_maybe_make_locals_for_output_args(GoalInfo, LocalVarDecls,
 ml_gen_make_locals_for_output_args([], _, [], [], !Info).
 ml_gen_make_locals_for_output_args([Var | Vars], Context,
         LocalDefns, Assigns, !Info) :-
-    ml_gen_make_locals_for_output_args(Vars, Context, LocalDefns0, Assigns0,
-        !Info),
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ml_variable_type(!.Info, Var, Type),
-    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+    ml_gen_make_locals_for_output_args(Vars, Context,
+        LocalDefnsTail, AssignsTail, !Info),
+    ml_gen_info_get_var_table(!.Info, VarTable),
+    lookup_var_entry(VarTable, Var, Entry),
+    IsDummy = Entry ^ vte_is_dummy,
     (
         IsDummy = is_dummy_type,
-        LocalDefns = LocalDefns0,
-        Assigns = Assigns0
+        LocalDefns = LocalDefnsTail,
+        Assigns = AssignsTail
     ;
         IsDummy = is_not_dummy_type,
-        ml_gen_make_local_for_output_arg(Var, Type, Context,
-            LocalDefn, Assign, !Info),
-        LocalDefns = [LocalDefn | LocalDefns0],
-        Assigns = [Assign | Assigns0]
+        ml_gen_make_local_for_output_arg(Var, Entry, Context,
+            HeadLocalDefn, HeadAssign, !Info),
+        LocalDefns = [HeadLocalDefn | LocalDefnsTail],
+        Assigns = [HeadAssign | AssignsTail]
     ).
 
-:- pred ml_gen_make_local_for_output_arg(prog_var::in, mer_type::in,
+:- pred ml_gen_make_local_for_output_arg(prog_var::in, var_table_entry::in,
     prog_context::in, mlds_local_var_defn::out, mlds_stmt::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_make_local_for_output_arg(OutputVar, Type, Context,
+ml_gen_make_local_for_output_arg(OutputVar, OutputVarEntry, Context,
         LocalVarDefn, Assign, !Info) :-
     % Look up the name of the output variable.
-    ml_gen_info_get_varset(!.Info, VarSet),
-    OutputVarName = ml_gen_local_var_name(VarSet, OutputVar),
+    OutputVarName = ml_gen_local_var_name(OutputVar, OutputVarEntry),
 
     % Generate a declaration for a corresponding local variable.
     OutputVarName = lvn_prog_var(OutputVarNameStr, MaybeNum),
     LocalVarName = lvn_local_var(OutputVarNameStr, MaybeNum),
-    ml_gen_type(!.Info, Type, MLDS_Type),
+    Type = OutputVarEntry ^ vte_type,
+    ml_gen_mlds_type(!.Info, Type, MLDS_Type),
     ml_gen_gc_statement(LocalVarName, Type, Context, GCStmt, !Info),
     LocalVarDefn = ml_gen_mlds_var_decl(LocalVarName, MLDS_Type,
         GCStmt, Context),
 
     % Generate code to assign from the local var to the output var.
-    ml_gen_var(!.Info, OutputVar, OutputVarLval),
+    ml_gen_var(!.Info, OutputVar, OutputVarEntry, OutputVarLval),
     LocalVarLval = ml_local_var(LocalVarName, MLDS_Type),
     Assign = ml_gen_assign(OutputVarLval, ml_lval(LocalVarLval), Context),
 

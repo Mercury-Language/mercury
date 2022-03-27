@@ -52,6 +52,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -70,10 +71,12 @@
 %---------------------------------------------------------------------------%
 
 ml_generate_test_var_has_cons_id(Var, ConsId, TestRval, !Info) :-
-    % NOTE: Keep in sync with ml_generate_test_var_has_tagged_cons_id below.
-    ml_gen_var(!.Info, Var, VarLval),
+    % NOTE: Keep in sync with ml_generate_test_var_has_one_tagged_cons_id below.
+    ml_gen_info_get_var_table(!.Info, VarTable),
+    lookup_var_entry(VarTable, Var, VarEntry),
+    VarType = VarEntry ^ vte_type,
+    ml_gen_var(!.Info, Var, VarEntry, VarLval),
     VarRval = ml_lval(VarLval),
-    ml_variable_type(!.Info, Var, VarType),
     ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
     ml_get_maybe_cheaper_tag_test(!.Info, VarType, CheaperTagTest),
     ml_generate_test_rval_has_cons_tag(!.Info, VarRval, VarType,
@@ -84,10 +87,11 @@ ml_generate_test_var_has_cons_id(Var, ConsId, TestRval, !Info) :-
 ml_generate_test_var_has_one_tagged_cons_id(Var,
         MainTaggedConsId, OtherTaggedConsIds, TestRval, !Info) :-
     % NOTE: Keep in sync with ml_generate_test_var_has_cons_id above.
-
-    ml_gen_var(!.Info, Var, VarLval),
+    ml_gen_info_get_var_table(!.Info, VarTable),
+    lookup_var_entry(VarTable, Var, VarEntry),
+    VarType = VarEntry ^ vte_type,
+    ml_gen_var(!.Info, Var, VarEntry, VarLval),
     VarRval = ml_lval(VarLval),
-    ml_variable_type(!.Info, Var, VarType),
     ml_get_maybe_cheaper_tag_test(!.Info, VarType, CheaperTagTest),
 
     ml_generate_test_rval_has_tagged_cons_id(!.Info, VarRval, VarType,

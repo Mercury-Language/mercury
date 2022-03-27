@@ -224,7 +224,7 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
     % Group the cases based on primary tag value and find out how many
     % constructors share each primary tag value.
     get_module_info(!.CI, ModuleInfo),
-    get_ptag_counts(VarType, ModuleInfo, MaxPrimary, PtagCountMap),
+    get_ptag_counts(ModuleInfo, VarType, MaxPrimary, PtagCountMap),
     Params = represent_params(VarName, SwitchGoalInfo, CodeModel, BranchStart,
         EndLabel),
     group_cases_by_ptag(TaggedCases, represent_tagged_case_for_llds(Params),

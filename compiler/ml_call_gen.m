@@ -84,11 +84,13 @@
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_module.
+:- import_module hlds.var_table.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_code_util.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -145,10 +147,18 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 
     % Create the boxed parameter types for the called function.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ml_gen_info_get_varset(!.Info, VarSet),
-    ArgNames = ml_gen_local_var_names(VarSet, ArgVars),
+    ml_gen_info_get_var_table(!.Info, VarTable),
+    ArgNames = ml_gen_local_var_names(VarTable, ArgVars),
     PredOrFunc = generic_call_pred_or_func(GenericCall),
     determinism_to_code_model(Determinism, CodeModel),
+    % XXX PARAMS We could call a specialized version of
+    % ml_gen_params_no_gc_stmts that
+    %
+    % - allocates each ArgName from VarTable as it goes along, and then
+    %   returns them, saving a nil/cons switch on ArgNames, and
+    %
+    % - knows that every BoxedArgType is a free type var
+    %   (the fact that they are different type vars should not matter).
     ml_gen_params_no_gc_stmts(ModuleInfo, PredOrFunc, CodeModel,
         ArgVars, ArgNames, BoxedArgTypes, ArgModes, _ArgTuples, Params0),
 
@@ -170,7 +180,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     % Compute the function address.
     (
         GenericCall = higher_order(ClosureVar, _Purity, _PredOrFunc, _Arity),
-        ml_gen_var(!.Info, ClosureVar, ClosureLval),
+        ml_gen_var_direct(!.Info, ClosureVar, ClosureLval),
         FieldId = ml_field_offset(ml_const(mlconst_int(1))),
         % XXX are these types right?
         FuncLval = ml_field(yes(ptag(0u8)),
@@ -184,7 +194,7 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 
         % Create the lval for the typeclass_info, which is also the closure
         % in this case.
-        ml_gen_var(!.Info, TypeClassInfoVar, TypeClassInfoLval),
+        ml_gen_var_direct(!.Info, TypeClassInfoVar, TypeClassInfoLval),
         ClosureLval = TypeClassInfoLval,
 
         % Extract the base_typeclass_info from the typeclass_info.
@@ -210,7 +220,6 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     % since GNU C (2.95.2) ignores the function attributes on function
     % pointer types in casts.
     % XXX Is this limitation still there in currently used C compilers?
-    %
     ml_gen_info_new_conv_var(ConvVarSeq, !Info),
     ConvVarSeq = conv_seq(ConvVarNum),
     FuncVarName = lvn_comp_var(lvnc_conv_var(ConvVarNum)),
@@ -285,23 +294,24 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_cast(Context, ArgVars, LocalVarDefns, FuncDefns, Stmts, !Info) :-
-    ml_gen_var_list(!.Info, ArgVars, ArgLvals),
-    ml_variable_types(!.Info, ArgVars, ArgTypes),
-    ( if
-        ArgVars = [SrcVar, DestVar],
-        ArgLvals = [SrcLval, DestLval],
-        ArgTypes = [SrcType, DestType]
-    then
-        ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        IsDummy = is_type_a_dummy(ModuleInfo, DestType),
+    (
+        ArgVars = [SrcVar, DstVar],
+        ml_gen_info_get_var_table(!.Info, VarTable),
+        lookup_var_entry(VarTable, SrcVar, SrcVarEntry),
+        lookup_var_entry(VarTable, DstVar, DstVarEntry),
+        ml_gen_var(!.Info, SrcVar, SrcVarEntry, SrcLval),
+        ml_gen_var(!.Info, DstVar, DstVarEntry, DstLval),
+        SrcVarEntry = vte(_, SrcType, _),
+        DstVarEntry = vte(_, DstType, DstIsDummy),
         (
-            IsDummy = is_dummy_type,
+            DstIsDummy = is_dummy_type,
             Stmts = []
         ;
-            IsDummy = is_not_dummy_type,
-            ml_gen_box_or_unbox_rval(ModuleInfo, SrcType, DestType,
+            DstIsDummy = is_not_dummy_type,
+            ml_gen_info_get_module_info(!.Info, ModuleInfo),
+            ml_gen_box_or_unbox_rval(ModuleInfo, SrcType, DstType,
                 bp_native_if_possible, ml_lval(SrcLval), CastRval),
-            Assign = ml_gen_assign(DestLval, CastRval, Context),
+            Assign = ml_gen_assign(DstLval, CastRval, Context),
             Stmts = [Assign]
         ),
         LocalVarDefns = [],
@@ -309,11 +319,15 @@ ml_gen_cast(Context, ArgVars, LocalVarDefns, FuncDefns, Stmts, !Info) :-
         ( if ml_gen_info_search_const_var(!.Info, SrcVar, GroundTerm) then
             % If the source variable is a constant, so is the target after
             % this cast.
-            ml_gen_info_set_const_var(DestVar, GroundTerm, !Info)
+            ml_gen_info_set_const_var(DstVar, GroundTerm, !Info)
         else
             true
         )
-    else
+    ;
+        ( ArgVars = []
+        ; ArgVars = [_]
+        ; ArgVars = [_, _, _ | _]
+        ),
         unexpected($pred, "wrong number of args for cast")
     ).
 
@@ -894,7 +908,7 @@ ml_gen_copy_args_to_locals_loop([LocalLvalType | LocalLvalsTypes], ArgNum,
 
 ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
         LocalVarDefns, FuncDefns, Stmts, !Info) :-
-    ml_gen_var_list(!.Info, ArgVars, ArgLvals),
+    ml_gen_var_direct_list(!.Info, ArgVars, ArgLvals),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ModuleName = predicate_module(ModuleInfo, PredId),
     PredName = predicate_name(ModuleInfo, PredId),

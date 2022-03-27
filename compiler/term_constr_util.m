@@ -209,6 +209,7 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module libs.rat.
+:- import_module parse_tree.prog_type.
 :- import_module transform_hlds.term_constr_errors.
 :- import_module transform_hlds.term_norm.
 

@@ -31,6 +31,7 @@
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
+:- import_module hlds.var_table.
 :- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -137,10 +138,6 @@
     % type is existentially quantified.
     %
 :- pred type_is_existq_type(module_info::in, mer_type::in) is semidet.
-
-:- type is_dummy_type
-    --->    is_dummy_type
-    ;       is_not_dummy_type.
 
     % Certain types are just dummy types used to ensure logical semantics
     % or to act as a placeholder; they contain no information, and thus
@@ -370,7 +367,9 @@
     % order of variables within each group being the same as in the
     % original list).
     %
-:- func put_typeinfo_vars_first(list(prog_var), vartypes) = list(prog_var).
+:- func put_typeinfo_vars_first(vartypes, list(prog_var)) = list(prog_var).
+:- func put_typeinfo_vars_first_table(var_table, list(prog_var))
+    = list(prog_var).
 
     % Given a list of variables, remove all the type_info-related
     % variables.
@@ -1646,14 +1645,19 @@ is_region_var(VarTypes, Var)  :-
 
 %-----------------------------------------------------------------------------%
 
-put_typeinfo_vars_first(VarsList, VarTypes) =
-        TypeInfoVarsList ++ NonTypeInfoVarsList :-
-    split_vars_typeinfo_no_typeinfo(VarsList, VarTypes,
-        TypeInfoVarsList, NonTypeInfoVarsList).
+put_typeinfo_vars_first(VarTypes, Vars0) = Vars :-
+    split_vars_typeinfo_no_typeinfo(VarTypes, Vars0,
+        TypeInfoVars, NonTypeInfoVars),
+    Vars = TypeInfoVars ++ NonTypeInfoVars.
 
-remove_typeinfo_vars(VarTypes, VarsList) = NonTypeInfoVarsList :-
+put_typeinfo_vars_first_table(VarTable, Vars0) = Vars :-
+    split_vars_typeinfo_no_typeinfo_table(VarTable, Vars0,
+        TypeInfoVars, NonTypeInfoVars),
+    Vars = TypeInfoVars ++ NonTypeInfoVars.
+
+remove_typeinfo_vars(VarTypes, Vars) = NonTypeInfoVars :-
     list.negated_filter(var_is_introduced_type_info_type(VarTypes),
-        VarsList, NonTypeInfoVarsList).
+        Vars, NonTypeInfoVars).
 
 remove_typeinfo_vars_from_set(VarTypes, VarsSet0) = VarsSet :-
     VarsList0 = set.to_sorted_list(VarsSet0),
@@ -1666,19 +1670,35 @@ remove_typeinfo_vars_from_set_of_var(VarTypes, VarsSet0) = VarsSet :-
     VarsList = remove_typeinfo_vars(VarTypes, VarsList0),
     VarsSet = set_of_var.sorted_list_to_set(VarsList).
 
-:- pred split_vars_typeinfo_no_typeinfo(list(prog_var)::in,
-    vartypes::in, list(prog_var)::out, list(prog_var)::out) is det.
+:- pred split_vars_typeinfo_no_typeinfo(vartypes::in,
+    list(prog_var)::in, list(prog_var)::out, list(prog_var)::out) is det.
 
-split_vars_typeinfo_no_typeinfo(VarsList, VarTypes, TypeInfoVarsList,
-        NonTypeInfoVarsList) :-
+split_vars_typeinfo_no_typeinfo(VarTypes, Vars,
+        TypeInfoVars, NonTypeInfoVars) :-
     list.filter(var_is_introduced_type_info_type(VarTypes),
-        VarsList, TypeInfoVarsList, NonTypeInfoVarsList).
+        Vars, TypeInfoVars, NonTypeInfoVars).
+
+:- pred split_vars_typeinfo_no_typeinfo_table(var_table::in,
+    list(prog_var)::in, list(prog_var)::out, list(prog_var)::out) is det.
+
+split_vars_typeinfo_no_typeinfo_table(VarTable, Vars,
+        TypeInfoVars, NonTypeInfoVars) :-
+    list.filter(var_is_introduced_type_info_type_table(VarTable),
+        Vars, TypeInfoVars, NonTypeInfoVars).
 
 :- pred var_is_introduced_type_info_type(vartypes::in, prog_var::in)
     is semidet.
 
 var_is_introduced_type_info_type(VarTypes, Var) :-
     lookup_var_type(VarTypes, Var, Type),
+    is_introduced_type_info_type(Type).
+
+:- pred var_is_introduced_type_info_type_table(var_table::in, prog_var::in)
+    is semidet.
+
+var_is_introduced_type_info_type_table(VarTable, Var) :-
+    lookup_var_entry(VarTable, Var, Entry),
+    Type = Entry ^ vte_type,
     is_introduced_type_info_type(Type).
 
 %-----------------------------------------------------------------------------%
