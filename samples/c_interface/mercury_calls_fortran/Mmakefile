@@ -6,7 +6,7 @@
 
 # Define rules for compiling Fortran
 
-FC=g77
+FC=gfortran
 FFLAGS=
 
 .SUFFIXES: .f
@@ -21,12 +21,12 @@ MAIN_TARGET=all
 depend: mercury_main.depend
 all: mercury_main
 
-# tell the Mercury linker to link in fortran_main.o and libf2c
+# Tell the Mercury linker to link in fortran_main.o and libgfortran.
 MLOBJS=fortran_main.o
-MLLIBS=-lg2c
+MLLIBS=-lgfortran
 
-# tell mmake that it needs to make fortran_main.o before it can make
-# mercury_main
+# Tell mmake that it needs to make fortran_main.o before it can make
+# mercury_main.
 mercury_main: fortran_main.o
 
 # make sure that `mmake clean' removes fortran_main.o
