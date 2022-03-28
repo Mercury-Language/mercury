@@ -133,38 +133,52 @@ add_typeclass_defn(ItemMercuryStatus, TypeClassStatus0, NeedQual,
             OldClassMethodPredProcIds = [],
             ClassInterface = Interface
         ),
+        % Check that the superclass constraints are identical.
         ( if
-            % Check that the superclass constraints are identical.
-            not constraints_are_identical(OldClassParamVars, OldVarSet,
+            constraints_are_identical(OldClassParamVars, OldVarSet,
                 OldConstraints, ClassParamVars, VarSet, Constraints)
         then
-            % Always report the error, even in `.opt' files.
-            Extras = [words("The superclass constraints do not match."), nl],
-            report_multiply_defined("typeclass", ClassName,
-                user_arity(ClassArity), Context, OldContext, Extras, !Specs),
-            HasIncompatibility = yes(OldDefn)
-        else if
-            % Check that the functional dependencies are identical.
-            not class_fundeps_are_identical(OldFunDeps, HLDSFunDeps)
-        then
-            % Always report the error, even in `.opt' files.
-            Extras = [words("The functional dependencies do not match."), nl],
-            report_multiply_defined("typeclass", ClassName,
-                user_arity(ClassArity), Context, OldContext, Extras, !Specs),
-            HasIncompatibility = yes(OldDefn)
-        else if
-            Interface = class_interface_concrete(_),
-            OldInterface = class_interface_concrete(_)
-        then
-            ( if TypeClassStatus = typeclass_status(status_opt_imported) then
-                true
-            else
-                report_multiply_defined("typeclass", ClassName,
-                    user_arity(ClassArity), Context, OldContext, [], !Specs)
-            ),
-            HasIncompatibility = yes(OldDefn)
+            SuperClassMismatchPieces = []
         else
-            HasIncompatibility = no
+            SuperClassMismatchPieces =
+                [words("The superclass constraints do not match."), nl]
+        ),
+        % Check that the functional dependencies are identical.
+        ( if class_fundeps_are_identical(OldFunDeps, HLDSFunDeps) then
+            FunDepsMismatchPieces = []
+        else
+            FunDepsMismatchPieces =
+                [words("The functional dependencies do not match."), nl]
+        ),
+        MismatchPieces = SuperClassMismatchPieces ++ FunDepsMismatchPieces,
+        (
+            MismatchPieces = [],
+            ( if
+                Interface = class_interface_concrete(_),
+                OldInterface = class_interface_concrete(_)
+            then
+                TypeClassStatus = typeclass_status(OldImportStatus),
+                % This is a duplicate, but an identical duplicate.
+                ( if OldImportStatus = status_opt_imported then
+                    true
+                else
+                    report_multiply_defined("typeclass", ClassName,
+                        user_arity(ClassArity), Context, OldContext,
+                        [], !Specs)
+                ),
+                HasIncompatibility = yes(OldDefn)
+            else
+                HasIncompatibility = no
+            )
+        ;
+            MismatchPieces = [_ | _],
+            % This is a duplicate typeclass declaration that specifies
+            % different superclasses and/or functional dependencies than
+            % the original. Always report such errors, even in `.opt' files.
+            report_multiply_defined("typeclass", ClassName,
+                user_arity(ClassArity), Context, OldContext,
+                MismatchPieces, !Specs),
+            HasIncompatibility = yes(OldDefn)
         )
     else
         HasIncompatibility = no,
@@ -172,8 +186,10 @@ add_typeclass_defn(ItemMercuryStatus, TypeClassStatus0, NeedQual,
         ClassInterface = Interface,
         TypeClassStatus = TypeClassStatus1,
 
-        % When we find the class declaration, make an entry
-        % for the instances.
+        % When we find the class declaration, initialize the list of its
+        % instances, so that code processing the instances can just do
+        % map.lookups in the instance table once a search in the class table
+        % for the class_id has succeeded.
         module_info_get_instance_table(!.ModuleInfo, Instances0),
         map.det_insert(ClassId, [], Instances0, Instances),
         module_info_set_instance_table(Instances, !ModuleInfo)
@@ -195,7 +211,7 @@ add_typeclass_defn(ItemMercuryStatus, TypeClassStatus0, NeedQual,
         HasIncompatibility = no,
         (
             Interface = class_interface_concrete(ClassDecls),
-            module_add_class_interface(ClassName, ClassParamVars,
+            module_declare_class_method_preds(ClassName, ClassParamVars,
                 TypeClassStatus, ItemMercuryStatus, NeedQual,
                 ClassDecls, ClassMethodPredProcIds, !ModuleInfo, !Specs)
         ;
@@ -254,13 +270,13 @@ class_fundeps_are_identical(OldFunDeps0, FunDeps0) :-
     % sets have a canonical representation.
     OldFunDeps = FunDeps.
 
-:- pred module_add_class_interface(sym_name::in, list(tvar)::in,
+:- pred module_declare_class_method_preds(sym_name::in, list(tvar)::in,
     typeclass_status::in, item_mercury_status::in,
     need_qualifier::in, list(class_decl)::in, list(pred_proc_id)::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_add_class_interface(ClassName, ClassParamVars, TypeClassStatus,
+module_declare_class_method_preds(ClassName, ClassParamVars, TypeClassStatus,
         ItemMercuryStatus, NeedQual, ClassDecls, !:PredProcIds,
         !ModuleInfo, !Specs) :-
     classify_class_decls(ClassDecls, ClassPredOrFuncInfos, ClassModeInfos),
@@ -282,6 +298,11 @@ module_add_class_interface(ClassName, ClassParamVars, TypeClassStatus,
     % At the end, we sort the results, on pred_id and then proc_id.
     % check_typeclass.m assumes this order when it is generating the
     % corresponding list of pred_proc_ids for instance definitions.
+    %
+    % XXX zs: This method of communicating "which pred_proc_id is for which
+    % method" to check_typeclass.m seems very fragile to me. It seems to me
+    % that a map from pred_pf_name_arity to pred_proc_id would be both
+    % simpler and more reliable.
     !:PredProcIds = [],
 
     % XXX STATUS
