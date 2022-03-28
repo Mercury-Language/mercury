@@ -41,7 +41,7 @@
 %   ideographic characters, and combining characters (among others, this
 %   class contains most diacritics); these classes combine to form the
 %   class of letters. Digits and extenders are also distinguished.
-%   
+%
 %   Characters
 %   [84]  Letter ::= BaseChar | Ideographic
 

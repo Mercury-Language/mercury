@@ -331,6 +331,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module pair.
+:- import_module prolog.
 :- import_module require.
 :- import_module string.
 :- import_module unit.
@@ -3427,8 +3428,8 @@ publicID -->
 
 	% The character classes are in a separate module
 	% for compile-time performance!
-:- include_module xml:parse:chars.
-:- import_module xml:parse:chars.
+:- include_module chars.
+:- import_module xml.parse.chars.
 
 %C. XML and SGML (Non-Normative)
 %
