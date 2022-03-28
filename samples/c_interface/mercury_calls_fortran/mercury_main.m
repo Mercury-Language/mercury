@@ -14,7 +14,6 @@
 
 % main just invokes fortran_main
 main(!IO) :-
-	io.write_string("In Mercury main, about to call fortran_main...\n",
-		!IO),
-	fortran_main(!IO),
-	io.write_string("Back in Mercury main.\n", !IO).
+    io.write_string("In Mercury main, about to call fortran_main...\n", !IO),
+    fortran_main(!IO),
+    io.write_string("Back in Mercury main.\n", !IO).
