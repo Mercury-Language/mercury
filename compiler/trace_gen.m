@@ -961,7 +961,7 @@ generate_user_event_code(UserInfo, GoalInfo, Code, !CI, !CLD) :-
     MaybeTraceInfo = no,
     HideEvent = no,
     generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
-        yes(UserInfo), _Label, _TvarDataMap, Code, !CI, !CLD).
+        yes(UserInfo), _Label, _TVarDataMap, Code, !CI, !CLD).
 
 generate_external_event_code(ExternalPort, TraceInfo, Context,
         MaybeExternalInfo, !CI, !CLD) :-
@@ -974,8 +974,8 @@ generate_external_event_code(ExternalPort, TraceInfo, Context,
     (
         NeedPort = yes,
         generate_event_code(Port, port_info_external, yes(TraceInfo), Context,
-            no, no, Label, TvarDataMap, Code, !CI, !CLD),
-        MaybeExternalInfo = yes(external_event_info(Label, TvarDataMap, Code))
+            no, no, Label, TVarDataMap, Code, !CI, !CLD),
+        MaybeExternalInfo = yes(external_event_info(Label, TVarDataMap, Code))
     ;
         NeedPort = no,
         MaybeExternalInfo = no
@@ -990,7 +990,7 @@ generate_tailrec_event_code(TraceInfo, ArgsInfos, GoalId, Context, Code,
     HideEvent = no,
     MaybeUserInfo = no,
     generate_event_code(Port, PortInfo, yes(TraceInfo), Context, HideEvent,
-        MaybeUserInfo, _Label, _TvarDataMap, Code, !CI, !CLD),
+        MaybeUserInfo, _Label, _TVarDataMap, Code, !CI, !CLD),
     MaybeTailRecInfo = TraceInfo ^ ti_tail_rec_info,
     (
         MaybeTailRecInfo = yes(_ - TailRecLabel)
@@ -1104,7 +1104,7 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
-        MaybeUserInfo, Label, TvarDataMap, Code, !CI, !CLD) :-
+        MaybeUserInfo, Label, TVarDataMap, Code, !CI, !CLD) :-
     get_next_label(Label, !CI),
     get_known_variables(!.CLD, LiveVars0),
     (
@@ -1145,7 +1145,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     get_var_table(!.CI, VarTable),
     get_instmap(!.CLD, InstMap),
     trace_produce_vars(LiveVars, VarTable, InstMap, Port,
-        set.init, TvarSet, [], VarInfoList, ProduceCode, !CLD),
+        set.init, TVarSet, [], VarInfoList, ProduceCode, !CLD),
     max_reg_in_use(!.CLD, MaxRegR, MaxRegF),
     get_max_regs_in_use_at_trace(!.CI, MaxTraceRegR0, MaxTraceRegF0),
     int.max(MaxRegR, MaxTraceRegR0, MaxTraceRegR),
@@ -1160,21 +1160,21 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     ),
     variable_locations(!.CLD, VarLocs),
     get_proc_info(!.CI, ProcInfo),
-    set.to_sorted_list(TvarSet, TvarList),
-    continuation_info.find_typeinfos_for_tvars(TvarList, VarLocs, ProcInfo,
-        TvarDataMap),
+    set.to_sorted_list(TVarSet, TVarList),
+    continuation_info.find_typeinfos_for_tvars(ProcInfo, TVarList, VarLocs,
+        TVarDataMap),
 
     % Compute the set of live lvals at the event.
     VarLvals = list.map(find_lval_in_var_info, VarInfoList),
-    map.values(TvarDataMap, TvarLocnSets),
-    TvarLocnSet = set.union_list(TvarLocnSets),
-    set.to_sorted_list(TvarLocnSet, TvarLocns),
-    TvarLvals = list.map(find_lval_in_layout_locn, TvarLocns),
-    list.append(VarLvals, TvarLvals, LiveLvals),
+    map.values(TVarDataMap, TVarLocnSets),
+    TVarLocnSet = set.union_list(TVarLocnSets),
+    set.to_sorted_list(TVarLocnSet, TVarLocns),
+    TVarLvals = list.map(find_lval_in_layout_locn, TVarLocns),
+    list.append(VarLvals, TVarLvals, LiveLvals),
     LiveLvalSet = set.list_to_set(LiveLvals),
 
     set.list_to_set(VarInfoList, VarInfoSet),
-    LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataMap),
+    LayoutLabelInfo = layout_label_info(VarInfoSet, TVarDataMap),
     (
         MaybeUserInfo = no,
         TraceStmt0 = "\t\tMR_EVENT_SYS\n"
@@ -1306,7 +1306,7 @@ trace_produce_vars([Var | Vars], VarTable, InstMap, Port,
     set(tvar)::in, set(tvar)::out, layout_var_info::out, llds_code::out,
     code_loc_dep::in, code_loc_dep::out) is det.
 
-trace_produce_var(Var, Entry, _InstMap, !Tvars, VarInfo, VarCode, !CLD) :-
+trace_produce_var(Var, Entry, _InstMap, !TVars, VarInfo, VarCode, !CLD) :-
     produce_variable_in_reg_or_stack(Var, VarCode, Lval, !CLD),
     Entry = vte(Name, Type, _),
 %   get_module_info(!.CI, ModuleInfo),
@@ -1320,7 +1320,7 @@ trace_produce_var(Var, Entry, _InstMap, !Tvars, VarInfo, VarCode, !CLD) :-
     LiveType = live_value_var(Var, Name, Type, LldsInst),
     VarInfo = layout_var_info(locn_direct(Lval), LiveType, "trace"),
     type_vars(Type, TypeVars),
-    set.insert_list(TypeVars, !Tvars).
+    set.insert_list(TypeVars, !TVars).
 
 %-----------------------------------------------------------------------------%
 

@@ -410,7 +410,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         map.init(FollowVarsMap),
         FollowVars = abs_follow_vars(FollowVarsMap, 1, 1)
     ),
-    basic_stack_layout_for_proc(PredInfo, Globals, BasicStackLayout,
+    basic_stack_layout_for_proc(Globals, PredInfo, BasicStackLayout,
         ForceProcId),
     SaveSuccip = BasicStackLayout,
 

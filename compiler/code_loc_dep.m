@@ -3545,9 +3545,9 @@ generate_return_live_lvalues(CI, CLD, OutputArgLocs, ReturnInstMap,
     get_active_temps_data(CI, CLD, Temps),
     get_proc_info(CI, ProcInfo),
     get_globals(CI, Globals),
-    continuation_info.generate_return_live_lvalues(OutputArgLocs,
-        ReturnInstMap, Vars, VarLocs, Temps, ProcInfo, ModuleInfo,
-        Globals, OkToDeleteAny, LiveLvalues).
+    continuation_info.generate_return_live_lvalues(ModuleInfo, Globals,
+        ProcInfo, OkToDeleteAny, ReturnInstMap, OutputArgLocs,
+        Vars, VarLocs, Temps, LiveLvalues).
 
 :- pred var_has_non_dummy_type(var_table::in, prog_var::in) is semidet.
 
@@ -3567,8 +3567,8 @@ maybe_generate_resume_layout(Label, ResumeMap, !CI, CLD) :-
         get_instmap(CLD, InstMap),
         get_proc_info(!.CI, ProcInfo),
         get_module_info(!.CI, ModuleInfo),
-        continuation_info.generate_resume_layout(ResumeMap, Temps, InstMap,
-            ProcInfo, ModuleInfo, Layout),
+        continuation_info.generate_resume_layout(ModuleInfo, ProcInfo, InstMap,
+            ResumeMap, Temps, Layout),
         add_resume_layout_for_label(Label, Layout, !CI)
     ;
         AgcStackLayout = no
