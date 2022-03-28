@@ -36,6 +36,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_llds.
+:- import_module hlds.var_table.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.opt_util.
@@ -256,8 +257,8 @@ contains_only_builtins_list([Goal | Goals]) = OnlyBuiltins :-
 middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
         Code, !CI, !CLD) :-
     get_stack_slots(!.CI, StackSlots),
-    get_varset(!.CI, VarSet),
-    SlotsComment = explain_stack_slots(StackSlots, VarSet),
+    get_var_table(!.CI, VarTable),
+    SlotsComment = explain_stack_slots(VarTable, StackSlots),
     get_module_info(!.CI, ModuleInfo),
     get_pred_id(!.CI, PredId),
     get_proc_id(!.CI, ProcId),
@@ -266,8 +267,9 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 
     pre_goal_update(SwitchGoalInfo, has_subgoals, !CLD),
     produce_variable(Var, VarCode, VarRval, !CLD),
-    VarName = variable_name(!.CI, Var),
-    VarType = variable_type(!.CI, Var),
+    lookup_var_entry(VarTable, Var, VarEntry),
+    VarName = var_entry_name(Var, VarEntry),
+    VarType = VarEntry ^ vte_type,
     CheaperTagTest = lookup_cheaper_tag_test(!.CI, VarType),
     generate_test_var_has_cons_id(VarRval, VarName, BaseConsId,
         CheaperTagTest, branch_on_success, BaseLabel, TestCode, !CI),

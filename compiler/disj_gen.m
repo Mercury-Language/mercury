@@ -44,7 +44,6 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_llds.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -168,8 +167,8 @@ is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Disjuncts, DisjGoalInfo,
     AddRegionOps = do_not_add_region_ops,
 
     figure_out_output_vars(!.CI, !.CLD, DisjGoalInfo, OutVars),
-    get_vartypes(!.CI, VarTypes),
-    lookup_var_types(VarTypes, OutVars, OutTypes),
+    get_var_table(!.CI, VarTable),
+    OutTypes = list.map(var_table_type(VarTable), OutVars),
 
     produce_vars(set_of_var.to_sorted_list(ResumeVars), ResumeMap,
         FlushCode, !CLD),

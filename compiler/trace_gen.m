@@ -250,6 +250,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.instmap.
+:- import_module hlds.var_table.
 :- import_module hlds.vartypes.
 :- import_module libs.options.
 :- import_module libs.trace_params.
@@ -266,7 +267,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -345,20 +345,44 @@ get_trace_maybe_tail_rec_info(TraceInfo, TraceInfo ^ ti_tail_rec_info).
                 forward_goal_path
             ).
 
+%-----------------------------------------------------------------------------%
+
 trace_fail_vars(ModuleInfo, ProcInfo, FailVars) :-
     proc_info_get_headvars(ProcInfo, HeadVars),
-    proc_info_get_argmodes(ProcInfo, Modes),
-    proc_info_arg_info(ProcInfo, ArgInfos),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    mode_list_get_final_insts(ModuleInfo, Modes, Insts),
+    proc_info_get_argmodes(ProcInfo, Modes),
+    mode_list_get_final_insts(ModuleInfo, Modes, FinalInsts),
+    proc_info_arg_info(ProcInfo, ArgInfos),
     ( if
-        build_fail_vars(HeadVars, Insts, ArgInfos,
-            ModuleInfo, VarTypes, FailVarsList)
+        build_fail_vars(ModuleInfo, VarTypes, HeadVars, FinalInsts, ArgInfos,
+            FailVarsList)
     then
         set_of_var.list_to_set(FailVarsList, FailVars)
     else
         unexpected($pred, "length mismatch")
     ).
+
+:- pred build_fail_vars(module_info::in, vartypes::in,
+    list(prog_var)::in, list(mer_inst)::in, list(arg_info)::in,
+    list(prog_var)::out) is semidet.
+
+build_fail_vars(_, _, [], [], [], []).
+build_fail_vars(ModuleInfo, VarTypes,
+        [Var | Vars], [Inst | Insts], [Info | Infos], FailVars) :-
+    build_fail_vars(ModuleInfo, VarTypes, Vars, Insts, Infos, FailVars0),
+    Info = arg_info(_Loc, ArgMode),
+    ( if
+        ArgMode = top_in,
+        not inst_is_clobbered(ModuleInfo, Inst),
+        lookup_var_type(VarTypes, Var, Type),
+        is_type_a_dummy(ModuleInfo, Type) = is_not_dummy_type
+    then
+        FailVars = [Var | FailVars0]
+    else
+        FailVars = FailVars0
+    ).
+
+%-----------------------------------------------------------------------------%
 
 do_we_need_maxfr_slot(Globals, ModuleInfo, PredInfo0, !ProcInfo) :-
     globals.get_trace_level(Globals, TraceLevel),
@@ -1118,11 +1142,10 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         LiveVars = LiveVars0,
         TailRecResetCode = empty
     ),
-    get_varset(!.CI, VarSet),
-    get_vartypes(!.CI, VarTypes),
+    get_var_table(!.CI, VarTable),
     get_instmap(!.CLD, InstMap),
-    trace_produce_vars(LiveVars, VarSet, VarTypes, InstMap, Port,
-        set.init, TvarSet, [], VarInfoList, ProduceCode, !.CI, !CLD),
+    trace_produce_vars(LiveVars, VarTable, InstMap, Port,
+        set.init, TvarSet, [], VarInfoList, ProduceCode, !CLD),
     max_reg_in_use(!.CLD, MaxRegR, MaxRegF),
     get_max_regs_in_use_at_trace(!.CI, MaxTraceRegR0, MaxTraceRegF0),
     int.max(MaxRegR, MaxTraceRegR0, MaxTraceRegR),
@@ -1258,41 +1281,34 @@ maybe_setup_redo_event(TraceInfo, Code) :-
         Code = empty
     ).
 
-:- pred trace_produce_vars(list(prog_var)::in, prog_varset::in, vartypes::in,
+:- pred trace_produce_vars(list(prog_var)::in, var_table::in,
     instmap::in, trace_port::in, set(tvar)::in, set(tvar)::out,
     list(layout_var_info)::in, list(layout_var_info)::out,
-    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    llds_code::out, code_loc_dep::in, code_loc_dep::out) is det.
 
-trace_produce_vars([], _, _, _, _, !TVars, !VarInfos, empty, _CI, !CLD).
-trace_produce_vars([Var | Vars], VarSet, VarTypes, InstMap, Port,
-        !TVars, !VarInfos, VarCode ++ VarsCode, CI, !CLD) :-
-    lookup_var_type(VarTypes, Var, Type),
-    get_module_info(CI, ModuleInfo),
-    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+trace_produce_vars([], _, _, _, !TVars, !VarInfos, empty, !CLD).
+trace_produce_vars([Var | Vars], VarTable, InstMap, Port,
+        !TVars, !VarInfos, VarCode ++ VarsCode, !CLD) :-
+    lookup_var_entry(VarTable, Var, Entry),
+    IsDummy = Entry ^ vte_is_dummy,
     (
         IsDummy = is_dummy_type,
         VarCode = empty
     ;
         IsDummy = is_not_dummy_type,
-        trace_produce_var(Var, VarSet, InstMap, !TVars, VarInfo, VarCode,
-            CI, !CLD),
+        trace_produce_var(Var, Entry, InstMap, !TVars, VarInfo, VarCode, !CLD),
         !:VarInfos = [VarInfo | !.VarInfos]
     ),
-    trace_produce_vars(Vars, VarSet, VarTypes, InstMap, Port, !TVars,
-        !VarInfos, VarsCode, CI, !CLD).
+    trace_produce_vars(Vars, VarTable, InstMap, Port, !TVars,
+        !VarInfos, VarsCode, !CLD).
 
-:- pred trace_produce_var(prog_var::in, prog_varset::in, instmap::in,
+:- pred trace_produce_var(prog_var::in, var_table_entry::in, instmap::in,
     set(tvar)::in, set(tvar)::out, layout_var_info::out, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+    code_loc_dep::in, code_loc_dep::out) is det.
 
-trace_produce_var(Var, VarSet, _InstMap, !Tvars, VarInfo, VarCode, CI, !CLD) :-
+trace_produce_var(Var, Entry, _InstMap, !Tvars, VarInfo, VarCode, !CLD) :-
     produce_variable_in_reg_or_stack(Var, VarCode, Lval, !CLD),
-    Type = variable_type(CI, Var),
-    ( if varset.search_name(VarSet, Var, SearchName) then
-        Name = SearchName
-    else
-        Name = ""
-    ),
+    Entry = vte(Name, Type, _),
 %   get_module_info(!.CI, ModuleInfo),
 %   instmap_lookup_var(InstMap, Var, Inst),
 %   ( if inst_match.inst_is_ground(ModuleInfo, Inst) then
@@ -1305,28 +1321,6 @@ trace_produce_var(Var, VarSet, _InstMap, !Tvars, VarInfo, VarCode, CI, !CLD) :-
     VarInfo = layout_var_info(locn_direct(Lval), LiveType, "trace"),
     type_vars(Type, TypeVars),
     set.insert_list(TypeVars, !Tvars).
-
-%-----------------------------------------------------------------------------%
-
-:- pred build_fail_vars(list(prog_var)::in, list(mer_inst)::in,
-    list(arg_info)::in, module_info::in, vartypes::in,
-    list(prog_var)::out) is semidet.
-
-build_fail_vars([], [], [], _, _, []).
-build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos], ModuleInfo,
-        VarTypes, FailVars) :-
-    build_fail_vars(Vars, Insts, Infos, ModuleInfo, VarTypes, FailVars0),
-    Info = arg_info(_Loc, ArgMode),
-    ( if
-        ArgMode = top_in,
-        not inst_is_clobbered(ModuleInfo, Inst),
-        lookup_var_type(VarTypes, Var, Type),
-        is_type_a_dummy(ModuleInfo, Type) = is_not_dummy_type
-    then
-        FailVars = [Var | FailVars0]
-    else
-        FailVars = FailVars0
-    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -48,7 +48,7 @@
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.vartypes.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module ll_backend.unify_gen_test.
@@ -81,7 +81,9 @@ generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
     ),
     (
         CanCGC = can_cgc,
-        LHSVarName = variable_name(!.CI, LHSVar),
+        get_var_table(!.CI, VarTable),
+        lookup_var_entry(VarTable, LHSVar, LHSVarEntry),
+        LHSVarName = var_entry_name(LHSVar, LHSVarEntry),
         produce_variable(LHSVar, ProduceVarCode, VarRval, !CLD),
         ( if VarRval = lval(VarLval) then
             save_reused_cell_fields(LHSVar, VarLval, SaveArgsCode, Regs, !CLD),
@@ -116,8 +118,10 @@ generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
 generate_semi_deconstruction(LHSVar, ConsId, RHSVars, Modes, Code,
         !CI, !CLD) :-
     produce_variable(LHSVar, LHSVarCode, LHSVarRval, !CLD),
-    LHSVarName = variable_name(!.CI, LHSVar),
-    LHSVarType = variable_type(!.CI, LHSVar),
+    get_var_table(!.CI, VarTable),
+    lookup_var_entry(VarTable, LHSVar, LHSVarEntry),
+    LHSVarName = var_entry_name(LHSVar, LHSVarEntry),
+    LHSVarType = LHSVarEntry ^ vte_type,
     CheaperTagTest = lookup_cheaper_tag_test(!.CI, LHSVarType),
     generate_test_var_has_cons_id(LHSVarRval, LHSVarName, ConsId,
         CheaperTagTest, branch_on_success, SuccLabel, TagTestCode, !CI),
@@ -205,7 +209,7 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
     ;
         ConsTag = remote_args_tag(RemoteArgsTagInfo),
         LHSBaseRval = var(LHSVar),
-        get_vartypes(CI, VarTypes),
+        get_var_table(CI, VarTable),
         associate_cons_id_args_with_widths(ModuleInfo, ConsId,
             RHSVars, RHSVarsWidths),
         (
@@ -215,14 +219,14 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
             ;
                 RemoteArgsTagInfo = remote_args_unshared(LHSPtag)
             ),
-            generate_deconstruct_unify_args(VarTypes, LHSPtag, LHSBaseRval,
+            generate_deconstruct_unify_args(VarTable, LHSPtag, LHSBaseRval,
                 RHSVarsWidths, ArgModes, Code, CI, !CLD)
         ;
             RemoteArgsTagInfo = remote_args_shared(LHSPtag, RemoteSectag),
             RemoteSectag = remote_sectag(_SectagUint, SectagSize),
             (
                 SectagSize = rsectag_word,
-                generate_deconstruct_unify_args(VarTypes, LHSPtag, LHSBaseRval,
+                generate_deconstruct_unify_args(VarTable, LHSPtag, LHSBaseRval,
                     RHSVarsWidths, ArgModes, Code, CI, !CLD)
             ;
                 SectagSize = rsectag_subword(_),
@@ -258,7 +262,7 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
                     TagwordCode = MaterializeTagwordCode ++
                         AssignRightCode ++ ToOrRvalCode ++ AssignLeftCode
                 ),
-                generate_deconstruct_unify_args(VarTypes, LHSPtag, LHSBaseRval,
+                generate_deconstruct_unify_args(VarTable, LHSPtag, LHSBaseRval,
                     NonTagwordRHSVarsWidths, NonTagwordArgModes,
                     NonTagwordCode, CI, !CLD),
                 Code = TagwordCode ++ NonTagwordCode
@@ -292,7 +296,7 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
     % Generate code to perform a list of deterministic subunifications
     % for the arguments of a construction.
     %
-:- pred generate_deconstruct_unify_args(vartypes::in, ptag::in, rval::in,
+:- pred generate_deconstruct_unify_args(var_table::in, ptag::in, rval::in,
     list(arg_and_width(prog_var))::in, list(unify_mode)::in, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
@@ -301,14 +305,15 @@ generate_deconstruct_unify_args(_, _, _, [], [_ | _], _, _, !CLD) :-
     unexpected($pred, "length mismatch").
 generate_deconstruct_unify_args(_, _, _, [_ | _], [], _, _, !CLD) :-
     unexpected($pred, "length mismatch").
-generate_deconstruct_unify_args(VarTypes, LHSPtag, LHSBaseRval,
+generate_deconstruct_unify_args(VarTable, LHSPtag, LHSBaseRval,
         [RHSVarLHSWidth | RHSVarsLHSWidths], [ArgMode | ArgModes],
         Code, CI, !CLD) :-
     RHSVarLHSWidth = arg_and_width(RHSVar, LHSArgPosWidth),
-    lookup_var_type(VarTypes, RHSVar, RHSType),
+    lookup_var_entry(VarTable, RHSVar, RHSVarEntry),
+    RHSType = RHSVarEntry ^ vte_type,
     generate_deconstruct_unify_arg(LHSPtag, LHSBaseRval, LHSArgPosWidth,
         RHSVar, RHSType, ArgMode, HeadCode, CI, !CLD),
-    generate_deconstruct_unify_args(VarTypes, LHSPtag, LHSBaseRval,
+    generate_deconstruct_unify_args(VarTable, LHSPtag, LHSBaseRval,
         RHSVarsLHSWidths, ArgModes, TailCode, CI, !CLD),
     Code = HeadCode ++ TailCode.
 
@@ -401,8 +406,9 @@ generate_deconstruct_tagword_unify_arg(LHSRval, RHSVarWidth, ArgMode,
         FieldLvals, !ToOrRvals, !ToOrMask, Code, CI, !CLD) :-
     RHSVarWidth = arg_and_width(RHSVar, ArgPosWidth),
     get_module_info(CI, ModuleInfo),
-    get_vartypes(CI, VarTypes),
-    lookup_var_type(VarTypes, RHSVar, RHSType),
+    get_var_table(CI, VarTable),
+    lookup_var_entry(VarTable, RHSVar, RHSVarEntry),
+    RHSType = RHSVarEntry ^ vte_type,
     compute_assign_direction(ModuleInfo, ArgMode, RHSType, Dir),
     (
         Dir = assign_right,

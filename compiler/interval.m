@@ -298,14 +298,12 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
         IntParams = !.IntervalInfo ^ ii_interval_params,
         ModuleInfo = IntParams ^ ip_module_info,
         VarTypes = IntParams ^ ip_var_types,
-        lookup_var_types(VarTypes, ArgVars, ArgTypes),
-        arg_info.generic_call_arg_reg_types(ModuleInfo, VarTypes, GenericCall,
+        arg_info.generic_call_arg_reg_types(ModuleInfo, GenericCall,
             ArgVars, MaybeArgRegs, ArgRegTypes),
-        arg_info.compute_in_and_out_vars_sep_regs(ModuleInfo, ArgVars,
-            ArgModes, ArgTypes, ArgRegTypes, InputArgsR, InputArgsF,
-            _OutputArgsR, _OutputArgsF),
-        list.append(InputArgsR, InputArgsF, InputArgs),
-
+        arg_info.compute_in_and_out_vars_sep_regs(ModuleInfo, VarTypes,
+            ArgVars, ArgModes, ArgRegTypes,
+            InputArgsR, InputArgsF, _OutputArgsR, _OutputArgsF),
+        InputArgs = InputArgsR ++ InputArgsF,
         (
             GenericCall = cast(_),
             % Casts are generated inline.
@@ -321,7 +319,7 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
                 length(InputArgsR), length(InputArgsF), _,
                 GenericVarsArgInfos, _, _),
             assoc_list.keys(GenericVarsArgInfos, GenericVars),
-            list.append(GenericVars, InputArgs, Inputs),
+            Inputs = GenericVars ++ InputArgs,
             build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
                 !IntervalInfo, !Acc)
         )

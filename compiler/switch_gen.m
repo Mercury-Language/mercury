@@ -106,6 +106,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.optimization_options.
 :- import_module libs.globals.
@@ -135,12 +136,14 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
     goal_info_get_store_map(GoalInfo, StoreMap),
     get_next_label(EndLabel, !CI),
     get_module_info(!.CI, ModuleInfo),
-    SwitchVarType = variable_type(!.CI, SwitchVar),
+    get_var_table(!.CI, VarTable),
+    lookup_var_entry(VarTable, SwitchVar, SwitchVarEntry),
+    SwitchVarType = SwitchVarEntry ^ vte_type,
+    SwitchVarName = var_entry_name(SwitchVar, SwitchVarEntry),
     tag_cases(ModuleInfo, SwitchVarType, Cases, TaggedCases0,
         MaybeIntSwitchInfo),
     list.sort_and_remove_dups(TaggedCases0, TaggedCases),
 
-    SwitchVarName = variable_name(!.CI, SwitchVar),
     produce_variable(SwitchVar, SwitchVarCode, SwitchVarRval, !CLD),
 
     find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory,

@@ -83,10 +83,11 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
     % the generic data structures before and after the actual code generation,
     % which is delegated to goal-specific predicates.
 
+    get_proc_info(!.CI, ProcInfo),
     trace [compiletime(flag("codegen_goal")), io(!IO)] (
         some [ModuleInfo, VarSet, GoalDesc] (
             code_info.get_module_info(!.CI, ModuleInfo),
-            code_info.get_varset(!.CI, VarSet),
+            proc_info_get_varset(ProcInfo, VarSet),
             GoalDesc = describe_goal(ModuleInfo, VarSet, Goal),
 
             ( if should_trace_code_gen(!.CI) then
@@ -137,7 +138,6 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
         generate_goal_expr(GoalExpr, GoalInfo, CodeModel,
             ForwardLiveVarsBeforeGoal, GoalCode, !CI, !CLD),
         Features = goal_info_get_features(GoalInfo),
-        get_proc_info(!.CI, ProcInfo),
 
         % If the predicate's evaluation method is memo, loopcheck or minimal
         % model, the goal generated the variable that represents the call table
@@ -150,7 +150,6 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
         % to have a stack slot.
         ( if
             set.member(feature_call_table_gen, Features),
-            get_proc_info(!.CI, ProcInfo),
             proc_info_get_call_table_tip(ProcInfo, MaybeCallTableVar),
             MaybeCallTableVar = yes(CallTableVar),
             get_maybe_trace_info(!.CI, yes(_))
@@ -193,7 +192,7 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
     trace [compiletime(flag("codegen_goal")), io(!IO)] (
         some [ModuleInfo, VarSet, GoalDesc] (
             code_info.get_module_info(!.CI, ModuleInfo),
-            code_info.get_varset(!.CI, VarSet),
+            proc_info_get_varset(ProcInfo, VarSet),
             GoalDesc = describe_goal(ModuleInfo, VarSet, Goal),
 
             ( if should_trace_code_gen(!.CI) then

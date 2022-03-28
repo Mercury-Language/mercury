@@ -100,9 +100,8 @@
 find_input_output_args(ModuleInfo, CalleeProcInfo, Inputs, Outputs) :-
     proc_info_get_headvars(CalleeProcInfo, ArgVars),
     proc_info_get_vartypes(CalleeProcInfo, VarTypes),
-    lookup_var_types(VarTypes, ArgVars, ArgTypes),
     proc_info_get_argmodes(CalleeProcInfo, ArgModes),
-    arg_info.compute_in_and_out_vars(ModuleInfo, ArgVars, ArgModes, ArgTypes,
+    arg_info.compute_in_and_out_vars(ModuleInfo, VarTypes, ArgVars, ArgModes,
         Inputs, Outputs).
 
 region_set_equal(RegionSet1, RegionSet2) :-

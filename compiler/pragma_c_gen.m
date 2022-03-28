@@ -72,7 +72,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
-:- import_module hlds.vartypes.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -1131,9 +1131,9 @@ get_maybe_foreign_type_info(ModuleInfo, Type) = MaybeForeignTypeInfo :-
 is_comp_gen_type_info_arg(CI, Var, ArgName) :-
     % This predicate and ml_is_comp_gen_type_info_arg should be kept in sync.
     string.prefix(ArgName, "TypeInfo_for_"),
-    get_vartypes(CI, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
-    Type = defined_type(TypeCtorSymName, [], kind_star),
+    get_var_table(CI, VarTable),
+    lookup_var_entry(VarTable, Var, Entry),
+    Entry ^ vte_type = defined_type(TypeCtorSymName, [], kind_star),
     TypeCtorSymName = qualified(TypeCtorModuleName, TypeCtorName),
     TypeCtorModuleName = mercury_private_builtin_module,
     TypeCtorName = "type_info".

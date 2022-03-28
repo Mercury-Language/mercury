@@ -166,7 +166,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_form.
-:- import_module hlds.vartypes.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -202,8 +202,8 @@ is_lookup_switch(BranchStart, GetTag, TaggedCases, GoalInfo, StoreMap,
     generate_constants_for_lookup_switch(BranchStart, GetTag, TaggedCases,
         OutVars, ArmNonLocals, StoreMap, Liveness, map.init, CaseSolnMap,
         !MaybeEnd, set_of_var.init, ResumeVars, no, GoalsMayModifyTrail, !CI),
-    get_vartypes(!.CI, VarTypes),
-    lookup_var_types(VarTypes, OutVars, OutTypes),
+    get_var_table(!.CI, VarTable),
+    OutTypes = list.map(lookup_var_type_func(VarTable), OutVars),
     ( if project_all_to_one_solution(CaseSolnMap, CaseValuePairsMap) then
         CaseConsts = all_one_soln(CaseValuePairsMap)
     else

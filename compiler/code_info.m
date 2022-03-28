@@ -32,7 +32,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.vartypes.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -46,7 +46,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
@@ -70,6 +69,7 @@
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module ll_backend.code_util.
+:- import_module parse_tree.prog_type.
 
 :- import_module cord.
 :- import_module int.
@@ -115,8 +115,7 @@
 :- pred get_pred_info(code_info::in, pred_info::out) is det.
 :- pred get_proc_info(code_info::in, proc_info::out) is det.
 :- pred get_proc_label(code_info::in, proc_label::out) is det.
-:- pred get_varset(code_info::in, prog_varset::out) is det.
-:- pred get_vartypes(code_info::in, vartypes::out) is det.
+:- pred get_var_table(code_info::in, var_table::out) is det.
 :- pred get_var_slot_count(code_info::in, int::out) is det.
 :- pred get_maybe_trace_info(code_info::in, maybe(trace_info)::out) is det.
 :- pred get_opt_no_return_calls(code_info::in, bool::out) is det.
@@ -249,8 +248,7 @@
                 cis_proc_label          :: proc_label,
 
                 % The variables in this procedure.
-                cis_varset              :: prog_varset,
-                cis_vartypes            :: vartypes,
+                cis_var_table           :: var_table,
 
                 % The number of stack slots allocated. for storing variables.
                 % (Some extra stack slots are used for saving and restoring
@@ -384,6 +382,7 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
+    make_var_table(ModuleInfo, VarSet, VarTypes, VarTable),
     proc_info_get_stack_slots(ProcInfo, StackSlots),
     max_var_slot(StackSlots, VarSlotMax),
     trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals,
@@ -439,8 +438,7 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         PredInfo,
         ProcInfo,
         ProcLabel,
-        VarSet,
-        VarTypes,
+        VarTable,
         SlotMax,
         MaybeTraceInfo,
         OptNoReturnCalls,
@@ -628,10 +626,8 @@ get_proc_info(CI, X) :-
     X = CI ^ code_info_static ^ cis_proc_info.
 get_proc_label(CI, X) :-
     X = CI ^ code_info_static ^ cis_proc_label.
-get_varset(CI, X) :-
-    X = CI ^ code_info_static ^ cis_varset.
-get_vartypes(CI, X) :-
-    X = CI ^ code_info_static ^ cis_vartypes.
+get_var_table(CI, X) :-
+    X = CI ^ code_info_static ^ cis_var_table.
 get_var_slot_count(CI, X) :-
     X = CI ^ code_info_static ^ cis_var_slot_count.
 get_maybe_trace_info(CI, X) :-
@@ -774,8 +770,7 @@ max_var_slot_loop([Slot | Slots], !Max) :-
     % Find out the type of the given variable.
     %
 :- func variable_type(code_info, prog_var) = mer_type.
-
-:- func variable_is_of_dummy_type(code_info, prog_var) = is_dummy_type.
+:- func var_table_type(var_table, prog_var) = mer_type.
 
     % Compute the principal type constructor of the given type, and return
     % the definition of this type constructor, if it has one (some type
@@ -810,8 +805,6 @@ max_var_slot_loop([Slot | Slots], !Max) :-
     % Get the call argument info for a given mode of a given predicate
     %
 :- func get_pred_proc_arginfo(code_info, pred_id, proc_id) = list(arg_info).
-
-:- func variable_name(code_info, prog_var) = string.
 
 :- type for_call_or_closure
     --->    for_immediate_call
@@ -902,13 +895,14 @@ body_typeinfo_liveness(CI) = TypeInfoLiveness :-
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness).
 
 variable_type(CI, Var) = Type :-
-    get_vartypes(CI, VarTypes),
-    lookup_var_type(VarTypes, Var, Type).
+    get_var_table(CI, VarTable),
+    lookup_var_entry(VarTable, Var, Entry),
+    Type = Entry ^ vte_type.
 
-variable_is_of_dummy_type(CI, Var) = IsDummy :-
-    VarType = variable_type(CI, Var),
-    get_module_info(CI, ModuleInfo),
-    IsDummy = is_type_a_dummy(ModuleInfo, VarType).
+% XXX should be in var_table.m
+var_table_type(VarTable, Var) = Type :-
+    lookup_var_entry(VarTable, Var, Entry),
+    Type = Entry ^ vte_type.
 
 search_type_defn(CI, Type, TypeDefn) :-
     get_module_info(CI, ModuleInfo),
@@ -936,8 +930,8 @@ lookup_cheaper_tag_test(CI, Type) = CheaperTagTest :-
     ).
 
 filter_region_vars(CI, ForwardLiveVarsBeforeGoal) = RegionVars :-
-    get_vartypes(CI, VarTypes),
-    RegionVars = set_of_var.filter(is_region_var(VarTypes),
+    get_var_table(CI, VarTable),
+    RegionVars = set_of_var.filter(is_region_var_table(VarTable),
         ForwardLiveVarsBeforeGoal).
 
 %---------------------------------------------------------------------------%
@@ -962,10 +956,6 @@ get_pred_proc_arginfo(CI, PredId, ProcId) = ArgInfo :-
     get_module_info(CI, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_arg_info(ProcInfo, ArgInfo).
-
-variable_name(CI, Var) = Name :-
-    get_varset(CI, Varset),
-    varset.lookup_name(Varset, Var, Name).
 
 %---------------------------------------------------------------------------%
 
@@ -1166,11 +1156,13 @@ get_variable_slot(CI, Var, Slot) :-
     ( if map.search(StackSlots, Var, SlotLocn) then
         Slot = stack_slot_to_lval(SlotLocn)
     else
-        Name = variable_name(CI, Var),
-        term.var_to_int(Var, Num),
-        string.int_to_string(Num, NumStr),
-        Str = "variable `" ++ Name ++ "' " ++ "(" ++ NumStr ++ ") not found",
-        unexpected($pred, Str)
+        get_var_table(CI, VarTable),
+        lookup_var_entry(VarTable, Var, Entry),
+        Name = var_entry_name(Var, Entry),
+        term.var_to_int(Var, VarNum),
+        string.format("variable `%s' (%d) not found",
+            [s(Name), i(VarNum)], Msg),
+        unexpected($pred, Msg)
     ).
 
 get_total_stackslot_count(CI, NumSlots) :-

@@ -983,8 +983,8 @@ generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel, TraceCallCode,
 generate_entry(CI, CodeModel, Goal, OutsideResumePoint, ProcFrameSlots,
         EntryCode) :-
     get_stack_slots(CI, StackSlots),
-    get_varset(CI, VarSet),
-    SlotsComment = explain_stack_slots(StackSlots, VarSet),
+    get_var_table(CI, VarTable),
+    SlotsComment = explain_stack_slots(VarTable, StackSlots),
     StartComment = from_list([
         llds_instr(comment("Start of procedure prologue"), ""),
         llds_instr(comment(SlotsComment), "")

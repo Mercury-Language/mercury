@@ -250,7 +250,8 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
                 !:FollowVarsMap, !:NextNonReservedR, !:NextNonReservedF)
         )
     ;
-        GoalExpr0 = generic_call(GenericCall, Args, Modes, MaybeArgRegs, Det),
+        GoalExpr0 = generic_call(GenericCall, ArgVars, Modes,
+            MaybeArgRegs, Det),
         GoalExpr = GoalExpr0,
         (
             GenericCall = cast(_)
@@ -261,12 +262,12 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
             ; GenericCall = event_call(_)
             ),
             determinism_to_code_model(Det, CodeModel),
-            lookup_var_types(VarTypes, Args, Types),
-            generic_call_arg_reg_types(ModuleInfo, VarTypes, GenericCall,
-                Args, MaybeArgRegs, ArgRegTypes),
+            generic_call_arg_reg_types(ModuleInfo, GenericCall,
+                ArgVars, MaybeArgRegs, ArgRegTypes),
+            lookup_var_types(VarTypes, ArgVars, Types),
             make_arg_infos(ModuleInfo, CodeModel, Types, Modes, ArgRegTypes,
                 ArgInfos),
-            assoc_list.from_corresponding_lists(Args, ArgInfos, ArgsInfos),
+            assoc_list.from_corresponding_lists(ArgVars, ArgInfos, ArgsInfos),
             % XXX use arg_info.generic_call_arg_reg_types?
             arg_info.partition_args(ArgsInfos, InVarInfos, _),
             list.filter(is_reg_r_arg, InVarInfos, InVarInfosR, InVarInfosF),
@@ -302,11 +303,11 @@ is_reg_r_arg(_ - arg_info(reg(reg_r, _), _)).
 :- pred find_follow_vars_in_call(pred_id::in, proc_id::in, list(prog_var)::in,
     module_info::in, abs_follow_vars_map::out, int::out, int::out) is det.
 
-find_follow_vars_in_call(PredId, ProcId, Args, ModuleInfo,
+find_follow_vars_in_call(PredId, ProcId, ArgVars, ModuleInfo,
         FollowVarsMap, NextNonReservedR, NextNonReservedF) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_arg_info(ProcInfo, ArgInfo),
-    assoc_list.from_corresponding_lists(Args, ArgInfo, ArgsInfos),
+    assoc_list.from_corresponding_lists(ArgVars, ArgInfo, ArgsInfos),
     find_follow_vars_from_arginfo(ArgsInfos, map.init, FollowVarsMap,
         1, NextNonReservedR, 1, NextNonReservedF).
 

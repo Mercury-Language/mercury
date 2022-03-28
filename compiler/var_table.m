@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2022 The Mercury team.
+% Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -74,6 +74,11 @@
 :- pred lookup_var_entries(var_table::in, list(prog_var)::in,
     list(var_table_entry)::out) is det.
 
+:- func var_entry_name(prog_var, var_table_entry) = string.
+:- func var_entry_name_and_number(prog_var, var_table_entry) = string.
+:- func var_table_entry_name(var_table, prog_var) = string.
+:- func var_table_entry_name_and_number(var_table, prog_var) = string.
+
 :- func lookup_var_type_func(var_table, prog_var) = mer_type.
 
 :- pred var_table_vars(var_table::in, list(prog_var)::out) is det.
@@ -129,6 +134,8 @@
 
 :- import_module map.
 :- import_module pair.
+:- import_module string.
+:- import_module term.
 
 :- type var_table == map(prog_var, var_table_entry).
 
@@ -197,6 +204,32 @@ lookup_var_entries(_VarTable, [], []).
 lookup_var_entries(VarTable, [Var | Vars], [Entry | Entries]) :-
     lookup_var_entry(VarTable, Var, Entry),
     lookup_var_entries(VarTable, Vars, Entries).
+
+var_entry_name(Var, Entry) = Name :-
+    Name0 = Entry ^ vte_name,
+    ( if Name0 = "" then
+        term.var_to_int(Var, VarNum),
+        Name = "V_" ++ string.int_to_string(VarNum)
+    else
+        Name = Name0
+    ).
+
+var_entry_name_and_number(Var, Entry) = Name :-
+    Name0 = Entry ^ vte_name,
+    term.var_to_int(Var, VarNum),
+    ( if Name0 = "" then
+        string.format("V_%d", [i(VarNum)], Name)
+    else
+        string.format("%s_%d", [s(Name0), i(VarNum)], Name)
+    ).
+
+var_table_entry_name(VarTable, Var) = Name :-
+    lookup_var_entry(VarTable, Var, Entry),
+    Name = var_entry_name(Var, Entry).
+
+var_table_entry_name_and_number(VarTable, Var) = Name :-
+    lookup_var_entry(VarTable, Var, Entry),
+    Name = var_entry_name_and_number(Var, Entry).
 
 lookup_var_type_func(VarTable, Var) = Type :-
     lookup_var_entry(VarTable, Var, Entry),

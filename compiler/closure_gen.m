@@ -46,7 +46,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.vartypes.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -263,9 +263,9 @@ generate_closure_from_scratch(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     add_scalar_static_cell(ClosureLayoutTypedRvals, ClosureDataAddr, !CI),
     ClosureLayoutRval = const(llconst_data_addr(ClosureDataAddr, no)),
     proc_info_arg_info(ProcInfo, ArgInfo),
-    get_vartypes(!.CI, VarTypes),
+    get_var_table(!.CI, VarTable),
     get_may_use_atomic_alloc(!.CI, MayUseAtomic0),
-    generate_pred_args(!.CI, VarTypes, Args, ArgInfo, ArgsR, ArgsF,
+    generate_pred_args(!.CI, VarTable, Args, ArgInfo, ArgsR, ArgsF,
         MayUseAtomic0, MayUseAtomic),
     list.length(ArgsR, NumArgsR),
     list.length(ArgsF, NumArgsF),
@@ -294,7 +294,9 @@ generate_extra_closure_args([], _, _, empty, _CI, !CLD).
 generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
         CI, !CLD) :-
     FieldLval = field(yes(ptag(0u8)), lval(NewClosure), lval(LoopCounter)),
-    IsDummy = variable_is_of_dummy_type(CI, Var),
+    get_var_table(CI, VarTable),
+    lookup_var_entry(VarTable, Var, Entry),
+    IsDummy = Entry ^ vte_is_dummy,
     (
         IsDummy = is_dummy_type,
         ProduceAssignCode = singleton(
@@ -321,19 +323,20 @@ generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
         CI, !CLD),
     Code = VarCode ++ VarsCode.
 
-:- pred generate_pred_args(code_info::in, vartypes::in, list(prog_var)::in,
+:- pred generate_pred_args(code_info::in, var_table::in, list(prog_var)::in,
     list(arg_info)::in, list(cell_arg)::out, list(cell_arg)::out,
     may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
 
 generate_pred_args(_, _, [], _, [], [], !MayUseAtomic).
 generate_pred_args(_, _, [_ | _], [], _, _, !MayUseAtomic) :-
     unexpected($pred, "insufficient args").
-generate_pred_args(CI, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
+generate_pred_args(CI, VarTable, [Var | Vars], [ArgInfo | ArgInfos],
         ArgsR, ArgsF, !MayUseAtomic) :-
     ArgInfo = arg_info(reg(RegType, _), ArgMode),
+    lookup_var_entry(VarTable, Var, Entry),
+    Entry = vte(_, Type, IsDummy),
     (
         ArgMode = top_in,
-        IsDummy = variable_is_of_dummy_type(CI, Var),
         (
             IsDummy = is_dummy_type,
             Rval = const(llconst_int(0))
@@ -351,10 +354,9 @@ generate_pred_args(CI, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
         % unpacked int64s and uint64s on 32 bit machines.
         CellArg = cell_arg_skip_one_word
     ),
-    lookup_var_type(VarTypes, Var, Type),
     get_module_info(CI, ModuleInfo),
     update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
-    generate_pred_args(CI, VarTypes, Vars, ArgInfos, ArgsR0, ArgsF0,
+    generate_pred_args(CI, VarTable, Vars, ArgInfos, ArgsR0, ArgsF0,
         !MayUseAtomic),
     (
         RegType = reg_r,

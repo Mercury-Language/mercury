@@ -192,8 +192,7 @@
 
     % Lookup the type of a variable.
     %
-:- pred ml_variable_type_direct(ml_gen_info::in, prog_var::in,
-    mer_type::out) is det.
+:- pred ml_variable_type_direct(ml_gen_info::in, prog_var::in, mer_type::out) is det.
 
     % Generate the MLDS variable names for a list of variables.
     %

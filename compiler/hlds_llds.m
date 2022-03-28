@@ -19,6 +19,7 @@
 :- interface.
 
 :- import_module hlds.hlds_goal.
+:- import_module hlds.var_table.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_rename.
@@ -51,7 +52,7 @@
     %
 :- type stack_slots == map(prog_var, stack_slot).
 
-:- func explain_stack_slots(stack_slots, prog_varset) = string.
+:- func explain_stack_slots(var_table, stack_slots) = string.
 
 :- type abs_locn
     --->    any_reg
@@ -311,21 +312,20 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
-explain_stack_slots(StackSlots, VarSet) = Explanation :-
+explain_stack_slots(VarTable, StackSlots) = Explanation :-
     map.to_assoc_list(StackSlots, StackSlotsList),
-    explain_stack_slots_2(StackSlotsList, VarSet, "", Explanation1),
+    explain_stack_slots_2(VarTable, StackSlotsList, "", Explanation1),
     Explanation = "\nStack slot assignments (if any):\n" ++ Explanation1.
 
-:- pred explain_stack_slots_2(assoc_list(prog_var, stack_slot)::in,
-    prog_varset::in, string::in, string::out) is det.
+:- pred explain_stack_slots_2(var_table::in,
+    assoc_list(prog_var, stack_slot)::in, string::in, string::out) is det.
 
-explain_stack_slots_2([], _, !Explanation).
-explain_stack_slots_2([Var - Slot | Rest], VarSet, !Explanation) :-
-    explain_stack_slots_2(Rest, VarSet, !Explanation),
+explain_stack_slots_2(_, [], !Explanation).
+explain_stack_slots_2(VarTable, [Var - Slot | VarsSlots], !Explanation) :-
+    explain_stack_slots_2(VarTable, VarsSlots, !Explanation),
     (
         Slot = det_slot(SlotNum, Width),
         StackStr = "sv"
@@ -345,9 +345,10 @@ explain_stack_slots_2([Var - Slot | Rest], VarSet, !Explanation) :-
         Width = double_width,
         WidthStr = " (double width)"
     ),
-    varset.lookup_name(VarSet, Var, VarName),
-    string.append_list([VarName, "\t ->\t", StackStr, SlotStr, WidthStr, "\n",
-        !.Explanation], !:Explanation).
+    VarName = var_table_entry_name(VarTable, Var),
+    string.format("%s\t ->\t%s%s%s\n%s",
+        [s(VarName), s(StackStr), s(SlotStr), s(WidthStr), s(!.Explanation)],
+        !:Explanation).
 
 %----------------------------------------------------------------------------%
 

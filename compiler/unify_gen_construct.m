@@ -68,7 +68,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.vartypes.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -553,13 +553,14 @@ generate_construct_arg_rval(RHSVar, ArgMode, RHSType, IsReal, RHSRval,
 is_arg_unify_real(CI, RHSVar, ArgMode, RHSType, IsReal) :-
     get_module_info(CI, ModuleInfo),
     ArgMode = unify_modes_li_lf_ri_rf(_, _, RHSInitInst, RHSFinalInst),
-    get_vartypes(CI, VarTypes),
-    lookup_var_type(VarTypes, RHSVar, RHSType),
+    get_var_table(CI, VarTable),
+    lookup_var_entry(VarTable, RHSVar, RHSVarEntry),
+    RHSType = RHSVarEntry ^ vte_type,
     init_final_insts_to_top_functor_mode(ModuleInfo, RHSInitInst, RHSFinalInst,
         RHSType, RHSTopFunctorMode),
     (
         RHSTopFunctorMode = top_in,
-        IsDummy = variable_is_of_dummy_type(CI, RHSVar),
+        IsDummy = RHSVarEntry ^ vte_is_dummy,
         (
             IsDummy = is_dummy_type,
             IsReal = not_real_input_arg
