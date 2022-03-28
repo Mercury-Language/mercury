@@ -3427,8 +3427,8 @@ publicID -->
 
 	% The character classes are in a separate module
 	% for compile-time performance!
-:- include_module xml:parse:chars.
-:- import_module xml:parse:chars.
+:- include_module chars.
+:- import_module xml.parse.chars.
 
 %C. XML and SGML (Non-Normative)
 %
