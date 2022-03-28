@@ -4944,6 +4944,10 @@ have_dotnet :-
     where comparison is compare_file_id.
 
 :- pragma foreign_decl("C", "
+#ifdef MR_WIN32
+  #include <wchar.h>    // for dev_t, ino_t
+#endif
+
 #ifdef MR_HAVE_DEV_T
   typedef   dev_t       ML_dev_t;
 #else
