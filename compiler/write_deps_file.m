@@ -1385,6 +1385,10 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     MmakeVarModuleErrs = mmake_var_defn_list(ModuleMakeVarName ++ ".errs",
         list.map(add_suffix(".err"), SourceFiles)),
 
+    MmakeVarModuleDepErrs = mmake_var_defn_list(
+        ModuleMakeVarName ++ ".dep_errs",
+        list.map(add_suffix(".dep_err"), SourceFiles)),
+
     make_module_file_names_with_suffix(Globals, ext_other(other_ext("")),
         Modules, ModulesSourceFileNames, !IO),
     MmakeVarModuleMods = mmake_var_defn_list(ModuleMakeVarName ++ ".mods",
@@ -1639,7 +1643,8 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
             [s(ModuleMakeVarName)])),
 
     MmakeEntries =
-        [MmakeStartComment, MmakeVarModuleMs, MmakeVarModuleErrs,
+        [MmakeStartComment, MmakeVarModuleMs,
+        MmakeVarModuleDepErrs, MmakeVarModuleErrs,
         MmakeVarModuleMods, MmakeVarModuleParentMods,
         MmakeVarForeignModules, MmakeVarForeignFileNames, MmakeVarForeignDlls,
         MmakeVarInitCs, MmakeVarAllCs, MmakeVarCs, MmakeVarDlls,
@@ -2329,7 +2334,7 @@ generate_dep_file_clean_targets(Globals, ModuleName, ModuleMakeVarName,
     % XXX Put these into a logical order.
     CleanSuffixes = [".dirs", ".cs", ".mihs", ".all_os", ".all_pic_os",
         ".c_dates", ".java_dates", ".useds", ".javas", ".profs",
-        ".errs", ".foreign_cs"],
+        ".dep_errs", ".errs", ".foreign_cs"],
     CleanFiles = [InitCFileName, InitObjFileName, InitPicObjFileName],
     MmakeRulesClean =
         % XXX Why is the first rule not phony?
