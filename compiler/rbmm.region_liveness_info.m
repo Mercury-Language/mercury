@@ -95,7 +95,6 @@
 :- implementation.
 
 :- import_module hlds.arg_info.
-:- import_module hlds.vartypes.
 
 find_input_output_args(ModuleInfo, CalleeProcInfo, Inputs, Outputs) :-
     proc_info_get_headvars(CalleeProcInfo, ArgVars),
