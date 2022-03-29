@@ -640,33 +640,27 @@ add_item_avail(ItemMercuryStatus, Avail, !ModuleInfo) :-
         (
             ItemImport = item_import_int_concrete(ImportLocn),
             (
-                ImportLocn = import_locn_ancestor_int0_interface,
-                module_add_avail_module_name(ModuleName, ms_interface,
+                (
+                    ImportLocn = import_locn_ancestor_int0_interface,
+                    Section = ms_interface
+                ;
+                    ImportLocn = import_locn_ancestor_int0_implementation,
+                    Section = ms_implementation
+                ),
+                module_add_avail_module_name(ModuleName, Section,
                     ImportOrUse, no, !ModuleInfo),
                 % A module that is imported by an ancestor may be used
                 % in that ancestor even if it is not used in this module.
                 % We therefore record it as "used" to avoid reporting
                 % a warning that may be incorrect.
                 %
-                % If the import is not used in the ancestor's interface,
-                % we should be able to generate a warning for that
-                % when we compile the ancestor. XXX We do not currently
-                % do this.
-                module_info_add_parent_to_used_modules(ModuleName, !ModuleInfo)
-            ;
-                ImportLocn = import_locn_ancestor_int0_implementation,
-                module_add_avail_module_name(ModuleName, ms_implementation,
-                    ImportOrUse, no, !ModuleInfo),
-                % A module that is imported by an ancestor may be used
-                % in that ancestor even if it is not used in this module.
-                % We therefore record it as "used" to avoid reporting
-                % a warning that may be incorrect.
-                %
-                % If the import is not used in the ancestor itself,
-                % we should be able to generate a warning for that
-                % when we compile the ancestor. XXX We do not currently
-                % do this.
-                module_info_add_parent_to_used_modules(ModuleName, !ModuleInfo)
+                % If the import is not used in the ancestor's interface
+                % (for Section = ms_interface) or in the ancestor at all
+                % (for Section = ms_implementation), we should be able
+                % to generate a warning for that when we compile the ancestor.
+                % XXX We do not currently do this.
+                module_info_add_module_to_public_used_modules(ModuleName,
+                    !ModuleInfo)
             ;
                 ( ImportLocn = import_locn_interface
                 ; ImportLocn = import_locn_implementation

@@ -631,7 +631,7 @@
 :- pred module_info_get_all_deps(module_info::in,
     set(module_name)::out) is det.
 
-:- pred module_info_add_parent_to_used_modules(module_name::in,
+:- pred module_info_add_module_to_public_used_modules(module_name::in,
     module_info::in, module_info::out) is det.
 
 %---------------------%
@@ -900,9 +900,19 @@
                                                 :: set(module_name),
 
                 % The modules which have already been calculated as being used.
-                % Currently this is the module imports inherited from the
-                % parent modules plus those calculated during expansion of
-                % equivalence types and insts.
+                % This slot is initialized to the set of modules that have
+                % been seen to be used during the expansion of equivalence
+                % types and insts. Later, it has added to it the modules
+                % imported by ancestor modules. These as recorded as being
+                % used in the interface, regardless of the location of the
+                % import inside the ancestor, to avoid generating "unused
+                % import" warnings about modules that this module may not
+                % import at all. XXX However, if the current module
+                % - does not refer to this module but
+                % - does import it locally, as well as through the ancestor,
+                % then this local import *should* be warned about, and the
+                % fact that the presence of the import in the ancestor module
+                % prevents this is a bug.
                 mri_used_modules                :: used_modules,
 
                 % Information about the procedures we are performing
@@ -1716,9 +1726,9 @@ module_info_get_all_deps(ModuleInfo, AllImports) :-
     AllImports = set.union_list([IndirectImports,
         set.list_to_set(DirectImports), set.list_to_set(Parents)]).
 
-module_info_add_parent_to_used_modules(ModuleSpecifier, !MI) :-
+module_info_add_module_to_public_used_modules(ModuleName, !MI) :-
     module_info_get_used_modules(!.MI, UsedModules0),
-    record_module_and_ancestors_as_used(visibility_public, ModuleSpecifier,
+    record_module_and_ancestors_as_used(visibility_public, ModuleName,
         UsedModules0, UsedModules),
     module_info_set_used_modules(UsedModules, !MI).
 

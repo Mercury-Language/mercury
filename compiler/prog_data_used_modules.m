@@ -71,37 +71,35 @@ record_sym_name_module_as_used(Visibility, SymName, !UsedModules) :-
 
 record_module_and_ancestors_as_used(Visibility, ModuleName, !UsedModules) :-
     (
-        ModuleName = unqualified(_),
-        record_module_as_used(Visibility, ModuleName, !UsedModules)
-    ;
-        ModuleName = qualified(ParentModuleName, _),
-        record_module_as_used(Visibility, ModuleName, !UsedModules),
-        record_module_and_ancestors_as_used(Visibility, ParentModuleName,
-            !UsedModules)
-    ).
-
-:- pred record_module_as_used(item_visibility::in, module_name::in,
-    used_modules::in, used_modules::out) is det.
-
-record_module_as_used(Visibility, ModuleName, !UsedModules) :-
-    (
         Visibility = visibility_public,
         IntUsedModules0 = !.UsedModules ^ int_used_modules,
-        set.insert(ModuleName, IntUsedModules0, IntUsedModules),
+        add_module_and_ancestors(ModuleName, IntUsedModules0, IntUsedModules),
         !UsedModules ^ int_used_modules := IntUsedModules
     ;
         Visibility = visibility_private,
-        ImplUsedModules0 = !.UsedModules ^ imp_used_modules,
-        set.insert(ModuleName, ImplUsedModules0, ImplUsedModules),
-        !UsedModules ^ imp_used_modules := ImplUsedModules
+        ImpUsedModules0 = !.UsedModules ^ imp_used_modules,
+        add_module_and_ancestors(ModuleName, ImpUsedModules0, ImpUsedModules),
+        !UsedModules ^ imp_used_modules := ImpUsedModules
+    ).
+
+:- pred add_module_and_ancestors(sym_name::in,
+    set(module_name)::in, set(module_name)::out) is det.
+
+add_module_and_ancestors(ModuleName, !UsedModuleNames) :-
+    set.insert(ModuleName, !UsedModuleNames),
+    (
+        ModuleName = unqualified(_)
+    ;
+        ModuleName = qualified(ParentModuleName, _),
+        add_module_and_ancestors(ParentModuleName, !UsedModuleNames)
     ).
 
 record_format_modules_as_used(!UsedModules) :-
-    ImplUsedModules0 = !.UsedModules ^ imp_used_modules,
+    ImpUsedModules0 = !.UsedModules ^ imp_used_modules,
     FormatModules = [mercury_string_format_module,
         mercury_string_parse_util_module, mercury_stream_module],
-    set.insert_list(FormatModules, ImplUsedModules0, ImplUsedModules),
-    !UsedModules ^ imp_used_modules := ImplUsedModules.
+    set.insert_list(FormatModules, ImpUsedModules0, ImpUsedModules),
+    !UsedModules ^ imp_used_modules := ImpUsedModules.
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_data_used_modules.
