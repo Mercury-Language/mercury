@@ -332,7 +332,7 @@ var_occurs_in_terms(VarX, [TermY | TermsY], VarSet) :-
 
     % apply_rec_substitution(VarSet, Term0, Term):
     %
-    % Recursively apply substitution to Term0 until no more substitions
+    % Recursively apply substitution to Term0 until no more substitutions
     % can be applied, and then return the result in Term.
     %
 :- pred apply_rec_substitution(varset::in, term::in, term::out) is det.
