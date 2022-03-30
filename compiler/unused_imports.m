@@ -64,6 +64,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_used_modules.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -108,34 +109,27 @@ warn_about_unused_imports(ModuleInfo, Specs) :-
     UnusedInterfaceImports =
         set.difference(AvailInterfaceModules, UsedInInterface),
 
-    trace [compile_time(flag("debug_unused_imports")), io(!IO)] (
-        AvailInterface = list.map(sym_name_to_string,
-            set.to_sorted_list(AvailInterfaceModules)),
-        AvailAnywhere = list.map(sym_name_to_string,
-            set.to_sorted_list(AvailAnywhereModules)),
-        UsedInterface = list.map(sym_name_to_string,
-            set.to_sorted_list(UsedInInterface)),
-        UsedImplementation = list.map(sym_name_to_string,
-            set.to_sorted_list(UsedInImplementation)),
-        UnusedInterface = list.map(sym_name_to_string,
-            set.to_sorted_list(UnusedInterfaceImports)),
-        UnusedAnywhere = list.map(sym_name_to_string,
-            set.to_sorted_list(UnusedAnywhereImports)),
-
+    trace [compile_time(flag("debug_unused_imports")),
+        runtime(env("DEBUG_UNUSED_IMPORTS")), io(!IO)]
+    (
         get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+        io.write_string(ProgressStream, "warn_about_unused_imports\n", !IO),
         io.nl(ProgressStream, !IO),
         io.write_string(ProgressStream, "AvailInterfaceModules\n", !IO),
-        io.write_line(ProgressStream, AvailInterface, !IO),
+        output_module_name_set_nl(ProgressStream, AvailInterfaceModules, !IO),
         io.write_string(ProgressStream, "AvailAnywhereModules\n", !IO),
-        io.write_line(ProgressStream, AvailAnywhere, !IO),
+        output_module_name_set_nl(ProgressStream, AvailAnywhereModules, !IO),
         io.write_string(ProgressStream, "UsedInInterface\n", !IO),
-        io.write_line(ProgressStream, UsedInterface, !IO),
+        output_module_name_set_nl(ProgressStream, UsedInInterface, !IO),
         io.write_string(ProgressStream, "UsedInImplementation\n", !IO),
-        io.write_line(ProgressStream, UsedImplementation, !IO),
+        output_module_name_set_nl(ProgressStream, UsedInImplementation, !IO),
         io.write_string(ProgressStream, "UnusedInterfaceImports\n", !IO),
-        io.write_line(ProgressStream, UnusedInterface, !IO),
+        output_module_name_set_nl(ProgressStream, UnusedInterfaceImports, !IO),
         io.write_string(ProgressStream, "UnusedAnywhereImports\n", !IO),
-        io.write_line(ProgressStream, UnusedAnywhere, !IO),
+        output_module_name_set_nl(ProgressStream, UnusedAnywhereImports, !IO),
+        io.write_string(ProgressStream, "AvailModuleMap\n", !IO),
+        list.foldl(io.write_line(ProgressStream),
+            map.to_sorted_assoc_list(AvailModuleMap), !IO),
         io.nl(ProgressStream, !IO)
     ),
 
@@ -173,17 +167,26 @@ get_avail_modules_anywhere_interface([ModuleEntry | ModuleEntries],
 maybe_warn_about_avail(TopModuleName,
         UnusedAnywhereImports, UnusedInterfaceImports,
         ModuleName, AvailEntry, !Specs) :-
-    AvailEntry = avail_module_entry(Section, ImportOrUse, Avails),
+    AvailEntry = avail_module_entry(_Section, _ImportOrUse, Avails),
     list.sort(compare_avails, Avails, SortedAvails),
     (
         SortedAvails = []
     ;
         SortedAvails = [HeadAvail | _],
-        HeadAvail = avail_module(_, _, HeadContext),
+        % NOTE: We *must* get Section and ImportOrUse from one of the elements
+        % of Avail, and *not* from AvailEntry. This is because the first two
+        % fields of AvailEntry are affected by imports and/or uses in
+        % ancestors of the current module, while every element of Avails
+        % is derived from items in the current module. If a module is
+        % imported in the interface section of an ancestor but is imported
+        % in the implementation section of this module, we want the error
+        % message to treat the import as being the implementation section.
+        % The same reasoning applies to ImportOrUse.
+        HeadAvail = avail_module(Section, ImportOrUse, HeadContext),
         maybe_generate_redundant_avail_warnings(ModuleName, SortedAvails,
             [], !Specs),
         ( if set.member(ModuleName, UnusedAnywhereImports) then
-            AnywhereSpec = generate_unused_warning(TopModuleName,
+            AnywhereSpec = generate_unused_import_warning(TopModuleName,
                 ModuleName, ImportOrUse, HeadContext, aoi_anywhere),
             !:Specs = [AnywhereSpec | !.Specs],
             AnywhereWarning = yes
@@ -197,7 +200,7 @@ maybe_warn_about_avail(TopModuleName,
             % if we have generated a report that it is unused *anywhere*.
             AnywhereWarning = no
         then
-            InterfaceSpec = generate_unused_warning(TopModuleName,
+            InterfaceSpec = generate_unused_import_warning(TopModuleName,
                 ModuleName, ImportOrUse, HeadContext, aoi_interface),
             !:Specs = [InterfaceSpec | !.Specs]
         else
@@ -223,7 +226,7 @@ compare_avails(AvailA, AvailB, Result) :-
         SectionB = ms_interface,
         Result = (>)
     ;
-        ( SectionA = ms_interface, SectionB = ms_interface
+        ( SectionA = ms_interface,      SectionB = ms_interface
         ; SectionA = ms_implementation, SectionB = ms_implementation
         ),
         (
@@ -236,7 +239,7 @@ compare_avails(AvailA, AvailB, Result) :-
             Result = (>)
         ;
             ( ImportOrUseA = import_decl, ImportOrUseB = import_decl
-            ; ImportOrUseA = use_decl, ImportOrUseB = use_decl
+            ; ImportOrUseA = use_decl,    ImportOrUseB = use_decl
             ),
             compare(Result, ContextA, ContextB)
         )
@@ -314,10 +317,10 @@ add_msg_if_avail_as_general(ModuleName, ThisAvail, PrevAvail, !Msgs) :-
     --->    aoi_anywhere
     ;       aoi_interface.
 
-:- func generate_unused_warning(module_name, module_name, import_or_use,
+:- func generate_unused_import_warning(module_name, module_name, import_or_use,
     prog_context, anywhere_or_interface) = error_spec.
 
-generate_unused_warning(ModuleName, UnusedModuleName, ImportOrUse,
+generate_unused_import_warning(ModuleName, UnusedModuleName, ImportOrUse,
         Context, AnywhereOrInterface) = Spec :-
     (
         AnywhereOrInterface = aoi_anywhere,
@@ -406,7 +409,9 @@ find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
         ImplicitImports, !UsedModules),
     UsedModulesBuiltin = !.UsedModules,
 
-    trace [compile_time(flag("dump_used_modules_summary")), io(!IO)] (
+    trace [compile_time(flag("dump_used_modules_summary")),
+        runtime(env("DUMP_USED_MODULES_SUMMARY")), io(!IO)]
+    (
         get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
         io.nl(ProgressStream, !IO),
         UsedModulesHistory = [
@@ -434,22 +439,19 @@ dump_used_modules_history(ProgressStream, !.IntUsed, !.ImpUsed,
     Head = HeadStr - used_modules(HeadInt, HeadImp),
     set.difference(HeadInt, !.IntUsed, NewHeadInt),
     set.difference(HeadImp, !.ImpUsed, NewHeadImp),
-    io.format(ProgressStream, "modules added at stage %s\n", [s(HeadStr)], !IO),
+    io.format(ProgressStream, "modules added at stage %s\n\n",
+        [s(HeadStr)], !IO),
     ( if set.is_empty(NewHeadInt) then
         true
     else
-        NewHeadIntList = list.map(sym_name_to_string,
-            set.to_sorted_list(NewHeadInt)),
         io.write_string(ProgressStream, "interface:\n", !IO),
-        io.write_line(ProgressStream, NewHeadIntList, !IO)
+        output_module_name_set_nl(ProgressStream, NewHeadInt, !IO)
     ),
     ( if set.is_empty(NewHeadImp) then
         true
     else
-        NewHeadImpList = list.map(sym_name_to_string,
-            set.to_sorted_list(NewHeadImp)),
         io.write_string(ProgressStream, "implementation:\n", !IO),
-        io.write_line(ProgressStream, NewHeadImpList, !IO)
+        output_module_name_set_nl(ProgressStream, NewHeadImp, !IO)
     ),
     set.union(HeadInt, !IntUsed),
     set.union(HeadImp, !ImpUsed),
@@ -677,7 +679,7 @@ const_struct_used_modules(ConstNum - ConstStruct, !UsedModules) :-
                 io.output_stream(Stream, !IO),
                 io.format(Stream, "in const_struct #%d\n", [i(ConstNum)], !IO),
                 io.write_string(Stream, "new implementation modules: ", !IO),
-                io.write_line(Stream, NewImpModules, !IO),
+                output_module_name_set_nl(Stream, NewImpModules, !IO),
                 ConstStructDoc = pretty_printer.format(ConstStruct),
                 pretty_printer.write_doc(Stream, ConstStructDoc, !IO),
                 io.write_string(Stream, "------\n",!IO)
@@ -712,12 +714,6 @@ pred_info_used_modules(ModuleInfo, PredId, PredInfo, !UsedModules) :-
         DefinedInThisModule = yes,
         InitUsedModules = !.UsedModules,
 
-        trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (
-            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
-            io.format(ProgressStream, "examining pred_info of pred_id %d\n",
-                [i(pred_id_to_int(PredId))], !IO)
-        ),
-
         Visibility = pred_visibility(PredStatus),
 
         pred_info_get_class_context(PredInfo, Constraints),
@@ -733,26 +729,38 @@ pred_info_used_modules(ModuleInfo, PredId, PredInfo, !UsedModules) :-
         pred_info_get_clauses_info(PredInfo, ClausesInfo),
         clauses_info_used_modules(ClausesInfo, !UsedModules),
 
-        trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (
+        trace [compile_time(flag("dump_used_modules_pred_info")),
+            runtime(env("DUMP_USED_MODULES_PRED_INFO")), io(!IO)]
+        (
+            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+            PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+            pred_info_get_module_name(PredInfo, PredModuleName),
+            pred_info_get_name(PredInfo, PredName),
+            user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
+            io.format(ProgressStream,
+                "examining pred_info of pred_id %d: %s %s.%s/%d\n\n",
+                [i(pred_id_to_int(PredId)), s(pred_or_func_to_str(PredOrFunc)),
+                s(sym_name_to_string(PredModuleName)), s(PredName),
+                i(UserArityInt)], !IO),
+
             FinalUsedModules = !.UsedModules,
             InitUsedModules = used_modules(InitIntModules, InitImpModules),
             FinalUsedModules = used_modules(FinalIntModules, FinalImpModules),
             set.difference(FinalIntModules, InitIntModules, NewIntModules),
             set.difference(FinalImpModules, InitImpModules, NewImpModules),
-            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
             ( if set.is_empty(NewIntModules) then
                 true
             else
                 io.write_string(ProgressStream,
                     "new interface modules:\n", !IO),
-                io.write_line(ProgressStream, NewIntModules, !IO)
+                output_module_name_set_nl(ProgressStream, NewIntModules, !IO)
             ),
             ( if set.is_empty(NewImpModules) then
                 true
             else
                 io.write_string(ProgressStream,
                     "new implementation modules:\n", !IO),
-                io.write_line(ProgressStream, NewImpModules, !IO)
+                output_module_name_set_nl(ProgressStream, NewImpModules, !IO)
             )
         )
     ;
@@ -760,9 +768,15 @@ pred_info_used_modules(ModuleInfo, PredId, PredInfo, !UsedModules) :-
 
         trace [compile_time(flag("dump_used_modules_verbose")), io(!IO)] (
             get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+            PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+            pred_info_get_module_name(PredInfo, PredModuleName),
+            pred_info_get_name(PredInfo, PredName),
+            user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
             io.format(ProgressStream,
-                "NOT examining pred_info of pred_id %d\n",
-                [i(pred_id_to_int(PredId))], !IO)
+                "NOT examining pred_info of pred_id %d: %s %s.%s/%d\n",
+                [i(pred_id_to_int(PredId)), s(pred_or_func_to_str(PredOrFunc)),
+                s(sym_name_to_string(PredModuleName)), s(PredName),
+                i(UserArityInt)], !IO)
         )
     ).
 
@@ -1150,6 +1164,24 @@ exported_to_visibility(Exported) = Visibility :-
         Exported = no,
         Visibility = visibility_private
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred output_module_name_set_nl(io.text_output_stream::in,
+    set(module_name)::in, io::di, io::uo) is det.
+
+output_module_name_set_nl(Stream, ModuleNameSet, !IO) :-
+    ModuleNameStrSet = set.map(sym_name_to_string, ModuleNameSet),
+    set.to_sorted_list(ModuleNameStrSet, ModuleNameStrs),
+    list.foldl(write_string_nl(Stream), ModuleNameStrs, !IO),
+    io.nl(Stream, !IO).
+
+:- pred write_string_nl(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+
+write_string_nl(Stream, Str, !IO) :-
+    io.write_string(Stream, Str, !IO),
+    io.nl(Stream, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.unused_imports.

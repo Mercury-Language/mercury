@@ -44,7 +44,6 @@
 :- import_module array.
 :- import_module bitmap.
 :- import_module int.
-:- import_module pair.
 :- import_module type_desc.
 :- import_module univ.
 :- import_module version_array.

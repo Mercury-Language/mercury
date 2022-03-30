@@ -61,7 +61,6 @@
 :- import_module int.
 :- import_module int64.
 :- import_module io.primitives_read.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 

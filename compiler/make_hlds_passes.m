@@ -87,6 +87,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module varset.
 
@@ -205,7 +206,10 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % The old pass 1.
 
     % Record the import_module and use_module declarations.
-    add_item_avails(Avails, !ModuleInfo),
+    add_item_avails(Avails, set.init, AncestorAvailModules, !ModuleInfo),
+    module_info_get_ancestor_avail_modules(!.ModuleInfo, AncestorAvailSet0),
+    set.union(AncestorAvailModules, AncestorAvailSet0, AncestorAvailSet),
+    module_info_set_ancestor_avail_modules(AncestorAvailSet, !ModuleInfo),
 
     % Record type definitions.
     %
@@ -603,18 +607,21 @@ add_builtin_type_ctor_special_preds_in_builtin_module(TypeCtor, !ModuleInfo) :-
 %---------------------------------------------------------------------------%
 
 :- pred add_item_avails(ims_list(item_avail)::in,
+    set(module_name)::in, set(module_name)::out,
     module_info::in, module_info::out) is det.
 
-add_item_avails([], !ModuleInfo).
-add_item_avails([ImsList | ImsLists], !ModuleInfo) :-
+add_item_avails([], !AncestorAvailModules, !ModuleInfo).
+add_item_avails([ImsList | ImsLists], !AncestorAvailModules, !ModuleInfo) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Avails),
-    list.foldl(add_item_avail(ItemMercuryStatus), Avails, !ModuleInfo),
-    add_item_avails(ImsLists, !ModuleInfo).
+    list.foldl2(add_item_avail(ItemMercuryStatus), Avails,
+        !AncestorAvailModules, !ModuleInfo),
+    add_item_avails(ImsLists, !AncestorAvailModules, !ModuleInfo).
 
 :- pred add_item_avail(item_mercury_status::in, item_avail::in,
+    set(module_name)::in, set(module_name)::out,
     module_info::in, module_info::out) is det.
 
-add_item_avail(ItemMercuryStatus, Avail, !ModuleInfo) :-
+add_item_avail(ItemMercuryStatus, Avail, !AncestorAvailModules, !ModuleInfo) :-
     (
         Avail = avail_import(avail_import_info(ModuleName, Context, _SeqNum)),
         ImportOrUse = import_decl
@@ -649,18 +656,7 @@ add_item_avail(ItemMercuryStatus, Avail, !ModuleInfo) :-
                 ),
                 module_add_avail_module_name(ModuleName, Section,
                     ImportOrUse, no, !ModuleInfo),
-                % A module that is imported by an ancestor may be used
-                % in that ancestor even if it is not used in this module.
-                % We therefore record it as "used" to avoid reporting
-                % a warning that may be incorrect.
-                %
-                % If the import is not used in the ancestor's interface
-                % (for Section = ms_interface) or in the ancestor at all
-                % (for Section = ms_implementation), we should be able
-                % to generate a warning for that when we compile the ancestor.
-                % XXX We do not currently do this.
-                module_info_add_module_to_public_used_modules(ModuleName,
-                    !ModuleInfo)
+                set.insert(ModuleName, !AncestorAvailModules)
             ;
                 ( ImportLocn = import_locn_interface
                 ; ImportLocn = import_locn_implementation

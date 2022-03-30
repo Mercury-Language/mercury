@@ -223,6 +223,12 @@ As a result, the following predicates have been removed:
     - pred `read_term_with_op_table/5`
             (replacement: `mercury_term_parser.read_term_with_op_table/5`)
 
+Changes to the Mercury compiler
+-------------------------------
+
+* We have fixed a bug where --warn-unused-imports did not warn about
+  unused modules that are also imported by an ancestor of the current module.
+
 NEWS for Mercury 22.01
 ======================
 

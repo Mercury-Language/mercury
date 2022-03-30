@@ -49,7 +49,6 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.pred_name.
-:- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.

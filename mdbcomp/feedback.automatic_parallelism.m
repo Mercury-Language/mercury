@@ -30,7 +30,6 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module set.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -364,11 +363,7 @@
 
 :- implementation.
 
-:- import_module exception.
 :- import_module float.
-:- import_module require.
-:- import_module unit.
-:- import_module univ.
 
 %---------------------------------------------------------------------------%
 %

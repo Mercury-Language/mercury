@@ -361,6 +361,8 @@
     avail_module_map::out) is det.
 :- pred module_info_get_used_modules(module_info::in,
     used_modules::out) is det.
+:- pred module_info_get_ancestor_avail_modules(module_info::in,
+    set(module_name)::out) is det.
 :- pred module_info_get_maybe_complexity_proc_map(module_info::in,
     maybe(pair(int, complexity_proc_map))::out) is det.
 :- pred module_info_get_complexity_proc_infos(module_info::in,
@@ -453,6 +455,8 @@
 :- pred module_info_set_table_struct_map(table_struct_map::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_used_modules(used_modules::in,
+    module_info::in, module_info::out) is det.
+:- pred module_info_set_ancestor_avail_modules(set(module_name)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_maybe_complexity_proc_map(
     maybe(pair(int, complexity_proc_map))::in,
@@ -863,25 +867,39 @@
                 % the same file.
                 mri_atomics_per_context         :: map(prog_context, counter),
 
-                % The names of all the directly imported modules
-                % (used during type checking, and by the MLDS back-end).
-                % XXX CLEANUP The above is COMPLETELY WRONG.
+                % The add_item_avails predicate in make_hlds_passes.m fills
+                % this field with information about all the import- and
+                % use_module declarations both in the module being compiled,
+                % and in the .int0 interface files of its ancestors.
+                %
+                % Each entry in the avail_module_map will specify
+                %
+                % - whether the module is imported or used in the interface
+                %   of either the module or its ancestors, and
+                %
+                % - whether the module is imported (as opposed to used)
+                %   in either the module or its ancestors.
+                %
+                % Each entry will also contain a list of avail_modules
+                % *for import/use_module declarations in this module only*;
+                % there won't be any entries for imports/uses in ancestors.
                 %
                 % This field is used by:
                 %
                 % - intermod.m to (over-)estimate the set of use_module decls
-                %   needed by the code put into a .opt file
+                %   needed by the code put into a .opt file;
                 %
                 % - try_expand.m to see whether exception is imported
                 %   and hence whether it has anything to do at all
                 %   (since we import exception.m implicitly if some code
-                %   contains a try goal)
+                %   contains a try goal);
                 %
                 % - by unused_imports.m to decide what import_module and/or
-                %   use_module declarations to warn about
+                %   use_module declarations to warn about;
                 %
-                % - by xml_documentation to prettyprint a module as XML
+                % - by xml_documentation to prettyprint a module as XML;
                 %
+                % and possibly more.
                 mri_avail_module_map            :: avail_module_map,
 
                 % The names of all the indirectly imported modules
@@ -902,18 +920,16 @@
                 % The modules which have already been calculated as being used.
                 % This slot is initialized to the set of modules that have
                 % been seen to be used during the expansion of equivalence
-                % types and insts. Later, it has added to it the modules
-                % imported by ancestor modules. These as recorded as being
-                % used in the interface, regardless of the location of the
-                % import inside the ancestor, to avoid generating "unused
-                % import" warnings about modules that this module may not
-                % import at all. XXX However, if the current module
-                % - does not refer to this module but
-                % - does import it locally, as well as through the ancestor,
-                % then this local import *should* be warned about, and the
-                % fact that the presence of the import in the ancestor module
-                % prevents this is a bug.
+                % types and insts.
                 mri_used_modules                :: used_modules,
+
+                % The set of modules imported by ancestor modules.
+                %
+                % We used to add these to mri_used_modules, but that prevented
+                % the compiler from generating useful warnings about unused
+                % local imports/uses of those modules. We now keep this info
+                % on a "may be useful later" basis; it is current unused.
+                mri_ancestor_avail_modules      :: set(module_name),
 
                 % Information about the procedures we are performing
                 % complexity experiments on.
@@ -1094,6 +1110,7 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
 
     set.init(IndirectlyImportedModules),
 
+    set.init(AncestorAvailModules),
     MaybeComplexityMap = no,
     ComplexityProcInfos = [],
     set.init(ProcAnalysisKinds),
@@ -1144,6 +1161,7 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
         AvailModuleMap,
         IndirectlyImportedModules,
         UsedModules,
+        AncestorAvailModules,
         MaybeComplexityMap,
         ComplexityProcInfos,
         ProcAnalysisKinds,
@@ -1319,6 +1337,8 @@ module_info_get_indirectly_imported_module_names(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_indirectly_imported_module_names.
 module_info_get_used_modules(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_used_modules.
+module_info_get_ancestor_avail_modules(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_ancestor_avail_modules.
 module_info_get_maybe_complexity_proc_map(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_maybe_complexity_proc_map.
 module_info_get_complexity_proc_infos(MI, X) :-
@@ -1445,6 +1465,8 @@ module_info_set_atomics_per_context(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_atomics_per_context := X.
 module_info_set_used_modules(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_used_modules := X.
+module_info_set_ancestor_avail_modules(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_ancestor_avail_modules := X.
 module_info_set_maybe_complexity_proc_map(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_maybe_complexity_proc_map := X.
 module_info_set_complexity_proc_infos(X, !MI) :-
@@ -1666,6 +1688,13 @@ module_add_avail_module_name(ModuleName, NewSection, NewImportOrUse,
     AvailMap0 = !.MI ^ mi_rare_info ^ mri_avail_module_map,
     ( if map.search(AvailMap0, ModuleName, OldEntry) then
         OldEntry = avail_module_entry(OldSection, OldImportOrUse, OldAvails),
+        % XXX: If one of the entries (new or old) is a use_module in the
+        % interface section, while the other is an import_module in the
+        % implementation section, the result *ought* to be something like
+        % the int_use_imp_import alternative of the section_import_or_use type,
+        % BUT the design of avail_module_entry has no way to express that.
+        % The code of combine_old_new_avail_attrs returns "import_module in the
+        % interface section" in such cases, which is almost certainly a bug.
         combine_old_new_avail_attrs(OldSection, NewSection,
             OldImportOrUse, NewImportOrUse, Section, ImportOrUse),
         Avails = NewAvails ++ OldAvails,

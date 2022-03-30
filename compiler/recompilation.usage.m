@@ -38,8 +38,6 @@
 :- import_module hlds.hlds_inst_mode.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
-:- import_module libs.
-:- import_module libs.timestamp.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -58,7 +56,6 @@
 :- import_module queue.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 

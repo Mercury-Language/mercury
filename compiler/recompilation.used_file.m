@@ -222,7 +222,6 @@
 :- import_module list.
 :- import_module mercury_term_lexer.
 :- import_module mercury_term_parser.
-:- import_module require.
 :- import_module string.
 :- import_module unit.
 

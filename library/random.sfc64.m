@@ -79,7 +79,6 @@
 
 :- import_module array.
 :- import_module int.
-:- import_module list.
 :- import_module uint8.
 :- import_module uint16.
 :- import_module uint32.

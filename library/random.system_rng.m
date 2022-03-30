@@ -91,7 +91,6 @@
 
 :- import_module bool.
 :- import_module exception.
-:- import_module list.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
