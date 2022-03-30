@@ -91,7 +91,7 @@ Limitations
 
 Currently only static linkage is supported, as dynamic linkage searches the
 host for the Mercury runtime library, which might not be installed or not
-binary compatible. Similary, `--use-grade-subdirs` is not supported as it
+binary compatible. Similarly, `--use-grade-subdirs` is not supported as it
 uses symbolic links that do not work properly on all platforms, but might work
 in a Linux only environment. Windows containers are not supported yet, but
 will be in the future. For this multi-arch files can be utilised.
