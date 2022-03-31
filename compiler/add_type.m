@@ -21,9 +21,12 @@
 
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
+:- import_module hlds.make_hlds.make_hlds_types.
+:- import_module hlds.status.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
 :- import_module list.
 

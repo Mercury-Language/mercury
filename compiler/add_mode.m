@@ -16,6 +16,8 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module hlds.make_hlds.make_hlds_types.
+:- import_module hlds.status.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
@@ -58,6 +60,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 
 :- import_module assoc_list.

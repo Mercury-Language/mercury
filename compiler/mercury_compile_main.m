@@ -53,6 +53,9 @@
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.
+:- import_module hlds.make_hlds.make_hlds_passes.
+:- import_module hlds.make_hlds.make_hlds_types.
+:- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.passes_aux.
 :- import_module libs.check_libgrades.
 :- import_module libs.compute_grade.
@@ -1974,7 +1977,7 @@ disable_warning_options(Globals0, Globals) :-
 
 :- pred pre_hlds_pass(globals::in, op_mode_augment::in, maybe_write_d_file::in,
     module_baggage::in, aug_compilation_unit::in, module_info::out,
-    make_hlds_qual_info::out, maybe(module_timestamp_map)::out,
+    qual_info::out, maybe(module_timestamp_map)::out,
     bool::out, bool::out, bool::out,
     dump_info::in, dump_info::out, list(error_spec)::in, list(error_spec)::out,
     have_read_module_maps::in, have_read_module_maps::out,
@@ -2438,7 +2441,7 @@ maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
 
 :- pred make_hlds(globals::in, aug_compilation_unit::in,
     event_set::in, mq_info::in, type_eqv_map::in, used_modules::in,
-    bool::in, bool::in, module_info::out, make_hlds_qual_info::out,
+    bool::in, bool::in, module_info::out, qual_info::out,
     found_invalid_type::out, found_invalid_inst_or_mode::out, bool::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 

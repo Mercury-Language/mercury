@@ -15,17 +15,23 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module hlds.make_hlds.make_hlds_types.
 :- import_module hlds.make_hlds.qual_info.
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module parse_tree.
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.module_qual.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_used_modules.
+:- import_module parse_tree.prog_item.
 
 :- import_module list.
 
 %---------------------------------------------------------------------------%
 
-    % do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo,
+    % parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo,
     %   TypeEqvMap, UsedModules, QualInfo, InvalidTypes, InvalidModes,
     %   HLDS, Specs):
     %
@@ -37,7 +43,7 @@
     % QualInfo is an abstract type that check_typeclass.m will later pass
     % to produce_instance_method_clauses.
     %
-:- pred do_parse_tree_to_hlds(aug_compilation_unit::in, globals::in,
+:- pred parse_tree_to_hlds(aug_compilation_unit::in, globals::in,
     string::in, mq_info::in, type_eqv_map::in, used_modules::in,
     qual_info::out, found_invalid_type::out, found_invalid_inst_or_mode::out,
     module_info::out, list(error_spec)::out) is det.
@@ -66,14 +72,13 @@
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
-:- import_module libs.
-:- import_module libs.globals.
+:- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.maybe_error.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_item_stats.
 :- import_module parse_tree.prog_mode.
@@ -89,11 +94,12 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module term.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
 
-do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
+parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         TypeEqvMap, UsedModules, !:QualInfo,
         !:FoundInvalidType, !:FoundInvalidInstOrMode, !:ModuleInfo, !:Specs) :-
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,

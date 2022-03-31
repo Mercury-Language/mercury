@@ -10,6 +10,8 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module hlds.make_hlds.make_hlds_types.
+:- import_module hlds.status.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
@@ -30,8 +32,10 @@
 
 :- import_module hlds.add_pred.
 :- import_module hlds.hlds_args.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.passes_aux.
@@ -39,18 +43,21 @@
 :- import_module hlds.quantification.
 :- import_module hlds.vartypes.
 :- import_module libs.
+:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_ctgc.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
-:- import_module bool.
 :- import_module bag.
+:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.

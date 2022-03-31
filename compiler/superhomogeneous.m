@@ -146,6 +146,7 @@
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.goal_expr_to_goal.
 :- import_module hlds.passes_aux.
+:- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.  % for get_maybe_from_ground_term_threshold
 :- import_module libs.options.  % for warn_suspected_occurs_check_failure
@@ -159,6 +160,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_type_name.
 :- import_module parse_tree.parse_util.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.

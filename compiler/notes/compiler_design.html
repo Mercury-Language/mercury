@@ -563,9 +563,12 @@ and it is defined in the hlds.m package.
 <p>
 The last stage of parsing is this conversion to HLDS,
 which is done mostly by the following submodules
-of the make_hlds module in the hlds package.
+of the make_hlds subpackage in the hlds package.
 
 <ul>
+<li>
+make_hlds_types.m defines the types used
+by many of the submodules of make_hlds.m.
 <li>
 make_hlds_passes.m calls the other modules to perform the conversion.
 <li>
@@ -609,7 +612,10 @@ add_solver.m adds to the HLDS the casting predicates needed by solver types.
 add_mutable_aux_preds.m adds to the HLDS
 the auxiliary predicates (init, get, set, lock, unlock) needed by mutables.
 <li>
-add_class.m handles typeclass and instance declarations.
+add_class.m checks and records typeclass and instance declarations.
+<li>
+instance_method_clauses.m generates the definitions
+of the predicates that implement instance methods.
 <li>
 qual_info.m handles the abstract data types used for module qualification.
 <li>

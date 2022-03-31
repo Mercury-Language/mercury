@@ -93,6 +93,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.
+:- import_module hlds.make_hlds.qual_info.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
@@ -100,7 +101,7 @@
 :- import_module list.
 
 :- pred check_typeclasses(module_info::in, module_info::out,
-    make_hlds_qual_info::in, make_hlds_qual_info::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % XXX Exported to add_class.m.
@@ -124,6 +125,7 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.make_hlds.instance_method_clauses.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
@@ -501,7 +503,7 @@ bad_instance_type_msg(ClassId, InstanceDefn, EndPieces, Kind) = Spec :-
 %---------------------------------------------------------------------------%
 
 :- pred check_instance_decls(module_info::in, module_info::out,
-    make_hlds_qual_info::in, make_hlds_qual_info::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_instance_decls(!ModuleInfo, !QualInfo, !Specs) :-
@@ -524,7 +526,7 @@ check_instance_decls(!ModuleInfo, !QualInfo, !Specs) :-
 :- pred check_one_class(class_table::in, class_id::in,
     list(hlds_instance_defn)::in, list(hlds_instance_defn)::out,
     module_info::in, module_info::out,
-    make_hlds_qual_info::in, make_hlds_qual_info::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_one_class(ClassTable, ClassId, InstanceDefns0, InstanceDefns,
@@ -569,7 +571,7 @@ check_one_class(ClassTable, ClassId, InstanceDefns0, InstanceDefns,
     tvarset::in, list(pred_id)::in,
     hlds_instance_defn::in, hlds_instance_defn::out,
     module_info::in, module_info::out,
-    make_hlds_qual_info::in, make_hlds_qual_info::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_class_instance(ClassId, SuperClasses, Vars, ClassInterface,
@@ -597,7 +599,7 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface,
     list(pred_id)::in, term.context::in,
     list(instance_method)::in, hlds_instance_defn::in, hlds_instance_defn::out,
     module_info::in, module_info::out,
-    make_hlds_qual_info::in, make_hlds_qual_info::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_concrete_class_instance(ClassId, Vars, ClassInterface, MethodPredProcIds,
@@ -706,7 +708,7 @@ method_is_known(PredTable, ClassPredIdSet, Method) :-
     hlds_instance_defn::in, hlds_instance_defn::out,
     list(instance_method)::in, list(instance_method)::out,
     module_info::in, module_info::out,
-    make_hlds_qual_info::in, make_hlds_qual_info::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
@@ -813,7 +815,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
     hlds_instance_defn::in, hlds_instance_defn::out,
     list(instance_method)::in, list(instance_method)::out,
     module_info::in, module_info::out,
-    make_hlds_qual_info::in, make_hlds_qual_info::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
@@ -917,7 +919,7 @@ get_matching_instance_defns(instance_body_concrete(InstanceMethods),
     tvarset::in, module_name::in, instance_proc_def::in, prog_context::in,
     pred_id::out, list(proc_id)::out,
     check_instance_method_info::in, module_info::in, module_info::out,
-    make_hlds_qual_info::in, make_hlds_qual_info::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,

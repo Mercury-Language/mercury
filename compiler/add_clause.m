@@ -9,15 +9,19 @@
 :- module hlds.make_hlds.add_clause.
 :- interface.
 
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.quantification.
+:- import_module hlds.status.
 :- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
 :- import_module list.
 
@@ -83,6 +87,7 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
+:- import_module term.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

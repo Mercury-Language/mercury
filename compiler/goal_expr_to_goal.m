@@ -16,6 +16,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
 :- import_module list.
 
@@ -63,6 +64,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_tree_out_info.
@@ -80,6 +82,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module term.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

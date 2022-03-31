@@ -9,10 +9,13 @@
 :- module hlds.make_hlds.add_solver.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
 :- import_module list.
 
@@ -65,8 +68,7 @@
 
 :- implementation.
 
-:- import_module libs.
-:- import_module libs.globals.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.

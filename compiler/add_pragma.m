@@ -10,6 +10,7 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module hlds.make_hlds.make_hlds_types.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
@@ -85,6 +86,7 @@
 :- include_module hlds.make_hlds.add_pragma.add_pragma_tabling.
 :- include_module hlds.make_hlds.add_pragma.add_pragma_type_spec.
 
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
@@ -95,6 +97,7 @@
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_table.
+:- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.op_mode.
@@ -102,8 +105,10 @@
 :- import_module ll_backend.
 :- import_module ll_backend.fact_table.
 :- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_foreign.
@@ -123,6 +128,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module term.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%

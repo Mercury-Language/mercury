@@ -21,9 +21,11 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module hlds.make_hlds.make_hlds_types.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_item.
 
 :- import_module list.
 
@@ -51,6 +53,7 @@
 :- import_module backend_libs.foreign.
 :- import_module hlds.error_msg_inst.
 :- import_module hlds.hlds_inst_mode.
+:- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.

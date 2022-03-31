@@ -23,6 +23,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.
+:- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.passes_aux.
 :- import_module libs.
 :- import_module libs.op_mode.
@@ -33,7 +34,7 @@
 :- import_module io.
 :- import_module list.
 
-:- pred frontend_pass(op_mode_augment::in, make_hlds_qual_info::in,
+:- pred frontend_pass(op_mode_augment::in, qual_info::in,
     bool::in, bool::in, bool::in, bool::out, module_info::in, module_info::out,
     dump_info::in, dump_info::out, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
@@ -176,7 +177,7 @@ frontend_pass(OpModeAugment, QualInfo0,
         check_typeclasses(!HLDS, QualInfo0, QualInfo, [], TypeClassSpecs),
         !:Specs = TypeClassSpecs ++ !.Specs,
         maybe_dump_hlds(!.HLDS, 5, "typeclass", !DumpInfo, !IO),
-        set_module_recomp_info(QualInfo, !HLDS),
+        set_module_recompilation_info(QualInfo, !HLDS),
 
         TypeClassErrors = contains_errors(Globals, TypeClassSpecs),
         (
