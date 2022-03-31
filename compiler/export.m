@@ -403,8 +403,8 @@ get_export_info_for_lang_c(ModuleInfo, PredIdTable, PredId, ProcId,
         ArgInfos = ArgInfos0
     ;
         MaybeArgInfos = no,
-        generate_proc_arg_info(Markers, ArgTypes, ModuleInfo, ProcInfo,
-            NewProcInfo),
+        generate_proc_arg_info(ModuleInfo, Markers, ArgTypes,
+            ProcInfo, NewProcInfo),
         proc_info_arg_info(NewProcInfo, ArgInfos)
     ),
     CodeModel = proc_info_interface_code_model(ProcInfo),

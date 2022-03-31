@@ -909,7 +909,7 @@ prepare_proc_for_counting(PredProcId, !ReverseGoalPathMapMap, !ModuleInfo) :-
             PredInfo, !:ProcInfo),
         pred_info_get_markers(PredInfo, Markers),
         pred_info_get_arg_types(PredInfo, ArgTypes),
-        generate_proc_arg_info(Markers, ArgTypes, !.ModuleInfo, !ProcInfo),
+        generate_proc_arg_info(!.ModuleInfo, Markers, ArgTypes, !ProcInfo),
 
         detect_liveness_proc(!.ModuleInfo, PredProcId, !ProcInfo),
         initial_liveness(!.ModuleInfo, PredInfo, !.ProcInfo, Liveness0),

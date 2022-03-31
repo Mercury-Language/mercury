@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2000,2002-2007, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: arg_info.m.
 % Main author: fjh.
@@ -21,7 +21,7 @@
 % of how this kind of partitioning can be done in the presence of undefined
 % modes, see superhomogeneous.partition_args_and_lambda_vars/8.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.arg_info.
 :- interface.
@@ -40,7 +40,7 @@
 :- import_module list.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Annotate every procedure in the module with information
     % about its argument passing interface.
@@ -50,8 +50,8 @@
     % Annotate a single procedure with information
     % about its argument passing interface.
     %
-:- pred generate_proc_arg_info(pred_markers::in, list(mer_type)::in,
-    module_info::in, proc_info::in, proc_info::out) is det.
+:- pred generate_proc_arg_info(module_info::in, pred_markers::in,
+    list(mer_type)::in, proc_info::in, proc_info::out) is det.
 
     % Given the list of types and modes of the arguments of a procedure
     % and its code model, return the standard argument passing interface
@@ -66,7 +66,7 @@
     % passed via the regular registers instead of float registers.
     %
 :- pred make_arg_infos(module_info::in, code_model::in,
-    list(mer_type)::in, list(mer_mode)::in, list(reg_type)::in, 
+    list(mer_type)::in, list(mer_mode)::in, list(reg_type)::in,
     list(arg_info)::out) is det.
 
     % Return the register type to use for each argument of a generic call.
@@ -140,8 +140,8 @@
     list(prog_var)::in, list(mer_type)::in, list(mer_mode)::in,
     set(prog_var)::out, set(prog_var)::out, set(prog_var)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -159,46 +159,78 @@
 :- import_module require.
 :- import_module int.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This whole section just traverses the module structure
 %
 
-generate_arg_info(ModuleInfo0, ModuleInfo) :-
-    module_info_get_pred_id_table(ModuleInfo0, PredIdTable),
-    map.keys(PredIdTable, PredIds),
-    generate_pred_arg_info(PredIds, ModuleInfo0, ModuleInfo).
+generate_arg_info(!ModuleInfo) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, use_float_registers, UseFloatRegs),
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
+    map.to_sorted_assoc_list(PredIdTable0, PredIdsInfos0),
+    generate_arg_infos_for_preds(!.ModuleInfo, UseFloatRegs, PredIdsInfos0,
+        [], RevPredIdsInfos),
+    map.from_rev_sorted_assoc_list(RevPredIdsInfos, PredIdTable),
+    module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
-:- pred generate_pred_arg_info(list(pred_id)::in,
-    module_info::in, module_info::out) is det.
+    % We use an accumulator because the list of predicates can be quite long.
+    %
+:- pred generate_arg_infos_for_preds(module_info::in, bool::in,
+    assoc_list(pred_id, pred_info)::in,
+    assoc_list(pred_id, pred_info)::in,
+    assoc_list(pred_id, pred_info)::out) is det.
 
-generate_pred_arg_info([], !ModuleInfo).
-generate_pred_arg_info([PredId | PredIds], !ModuleInfo) :-
-    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    generate_proc_list_arg_info(PredId, pred_info_valid_procids(PredInfo),
-        !ModuleInfo),
-    generate_pred_arg_info(PredIds, !ModuleInfo).
-
-:- pred generate_proc_list_arg_info(pred_id::in, list(proc_id)::in,
-    module_info::in, module_info::out) is det.
-
-generate_proc_list_arg_info(_PredId, [], !ModuleInfo).
-generate_proc_list_arg_info(PredId, [ProcId | ProcIds], !ModuleInfo) :-
-    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+generate_arg_infos_for_preds(_, _, [], !RevPredIdsInfos).
+generate_arg_infos_for_preds(ModuleInfo, UseFloatRegs,
+        [PredIdInfo0 | PredIdsInfos0], !RevPredIdsInfos) :-
+    PredIdInfo0 = PredId - PredInfo0,
     pred_info_get_markers(PredInfo0, Markers),
     pred_info_get_arg_types(PredInfo0, ArgTypes),
-    pred_info_proc_info(PredInfo0, ProcId, ProcInfo0),
-    generate_proc_arg_info(Markers, ArgTypes, !.ModuleInfo,
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
+    map.to_sorted_assoc_list(ProcTable0, ProcIdsInfos0),
+    generate_arg_infos_for_procs(ModuleInfo, UseFloatRegs, Markers, ArgTypes,
+        ProcIdsInfos0, ProcIdsInfos),
+    map.from_sorted_assoc_list(ProcIdsInfos, ProcTable),
+    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
+    PredIdInfo = PredId - PredInfo,
+    !:RevPredIdsInfos = [PredIdInfo | !.RevPredIdsInfos],
+    generate_arg_infos_for_preds(ModuleInfo, UseFloatRegs,
+        PredIdsInfos0, !RevPredIdsInfos).
+
+    % We *don't* use an accumulator because in practice,
+    % the list of procedures is never too long except in pathological code.
+    %
+:- pred generate_arg_infos_for_procs(module_info::in, bool::in,
+    pred_markers::in, list(mer_type)::in,
+    assoc_list(proc_id, proc_info)::in,
+    assoc_list(proc_id, proc_info)::out) is det.
+
+generate_arg_infos_for_procs(_, _, _, _, [], []).
+generate_arg_infos_for_procs(ModuleInfo, UseFloatRegs, Markers, ArgTypes,
+        [ProcIdInfo0 | ProcIdInfos0], [ProcIdInfo | ProcIdInfos]) :-
+    ProcIdInfo0 = ProcId - ProcInfo0,
+    generate_arg_infos_for_proc(ModuleInfo, UseFloatRegs, Markers, ArgTypes,
         ProcInfo0, ProcInfo),
-    pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo),
-    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
+    ProcIdInfo = ProcId - ProcInfo,
+    generate_arg_infos_for_procs(ModuleInfo, UseFloatRegs, Markers, ArgTypes,
+        ProcIdInfos0, ProcIdInfos).
 
-    generate_proc_list_arg_info(PredId, ProcIds, !ModuleInfo).
-
-generate_proc_arg_info(Markers, ArgTypes, ModuleInfo, !ProcInfo) :-
+generate_proc_arg_info(ModuleInfo, Markers, ArgTypes, !ProcInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, use_float_registers, UseFloatRegs),
+    generate_arg_infos_for_proc(ModuleInfo, UseFloatRegs, Markers, ArgTypes,
+        !ProcInfo).
+
+:- pred generate_arg_infos_for_proc(module_info::in, bool::in,
+    pred_markers::in, list(mer_type)::in,
+    proc_info::in, proc_info::out) is det.
+
+generate_arg_infos_for_proc(ModuleInfo, UseFloatRegs, Markers, ArgTypes,
+        !ProcInfo) :-
     proc_info_get_headvars(!.ProcInfo, HeadVars),
+    proc_info_get_argmodes(!.ProcInfo, ArgModes),
+    CodeModel = proc_info_interface_code_model(!.ProcInfo),
     ( if
         UseFloatRegs = yes,
         % XXX we don't yet use float registers for class method calls
@@ -206,15 +238,14 @@ generate_proc_arg_info(Markers, ArgTypes, ModuleInfo, !ProcInfo) :-
     then
         proc_info_get_reg_r_headvars(!.ProcInfo, RegR_HeadVars),
         list.map_corresponding(reg_type_for_headvar(RegR_HeadVars),
-            HeadVars, ArgTypes, ArgRegTypes)
+            HeadVars, ArgTypes, ArgRegTypes),
+        make_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes, ArgRegTypes,
+            ArgInfos)
     else
-        list.duplicate(list.length(HeadVars), reg_r, ArgRegTypes)
+        make_reg_r_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes,
+            ArgInfos)
     ),
-    proc_info_get_argmodes(!.ProcInfo, ArgModes),
-    CodeModel = proc_info_interface_code_model(!.ProcInfo),
-    make_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes, ArgRegTypes,
-        ArgInfo),
-    proc_info_set_arg_info(ArgInfo, !ProcInfo).
+    proc_info_set_arg_info(ArgInfos, !ProcInfo).
 
 :- pred reg_type_for_headvar(set_of_progvar::in, prog_var::in, mer_type::in,
     reg_type::out) is det.
@@ -232,82 +263,173 @@ reg_type_for_headvar(RegR_HeadVars, HeadVar, Type, RegType) :-
 
 %---------------------------------------------------------------------------%
 
-make_standard_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes, ArgInfo) :-
-    % This is the useful part of the code ;-).
-    %
-    % This code is one of the places where we make assumptions about the
-    % calling convention. This is the only place in the compiler that makes
-    % such assumptions, but there are other places scattered around the
-    % runtime and the library that also rely on it.
-    %
-    % We assume all input arguments always go in sequentially numbered
-    % registers starting at registers r1 and f1. We also assume that all output
-    % arguments go in sequentially numbered registers starting at r1 and f1,
-    % except for model_semi procedures, where r1 is reserved for the result and
-    % hence the output arguments start at registers r2 and f1.
-    %
-    % We allocate unused args as if they were regular (non-floating point)
-    % outputs. The calling convention requires that we allocate them a
-    % register, and the choice should not matter since unused args should be
-    % rare. However, we do have to make sure that all the predicates in this
-    % module implement this decision consistently. (No code outside this module
-    % should know about the outcome of this decision.)
-    %
+make_standard_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes, ArgInfos) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, use_float_registers, FloatRegs),
     (
         FloatRegs = yes,
-        FloatRegType = reg_f
+        make_std_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes,
+            ArgInfos)
     ;
         FloatRegs = no,
-        FloatRegType = reg_r
-    ),
-    list.map(standard_reg_type_for_type(FloatRegType), ArgTypes, RegTypes),
-    make_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes, RegTypes,
-        ArgInfo).
-
-:- pred standard_reg_type_for_type(reg_type::in, mer_type::in, reg_type::out)
-    is det.
-
-standard_reg_type_for_type(FloatRegType, Type, RegType) :-
-    ( if Type = float_type then
-        RegType = FloatRegType
-    else
-        RegType = reg_r
+        make_reg_r_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes,
+            ArgInfos)
     ).
 
-make_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes, ArgRegTypes,
-        ArgInfo) :-
-    (
-        CodeModel = model_semi,
-        FirstOutRegR = 2
-    ;
-        ( CodeModel = model_det
-        ; CodeModel = model_non
+%---------------------------------------------------------------------------%
+%
+% This is the useful part of the code ;-).
+%
+% This code the only place in the compiler where we make assumptions about
+% the calling convention, though there are other places scattered around
+% the runtime and the library that also rely on it.
+%
+% We assume all input arguments always go in sequentially numbered
+% registers starting at registers r1 and f1. We also assume that all output
+% arguments go in sequentially numbered registers starting at r1 and f1,
+% except for model_semi procedures, where r1 is reserved for the result and
+% hence the output arguments start at registers r2 and f1.
+%
+% We allocate unused args as if they were regular (non-floating point)
+% outputs. The calling convention requires that we allocate them a
+% register, and the choice should not matter since unused args should be
+% rare. However, we do have to make sure that all the predicates in this
+% module implement this decision consistently. (No code outside this module
+% should know about the outcome of this decision.)
+%
+% The next three sections of code define
+%
+% - make_std_arg_infos,
+% - make_reg_r_arg_infos, and
+% - make_arg_infos.
+%
+% These all do variations of the same job, so a change in one may require
+% corresponding changes in the other two as well.
+%
+% make_arg_infos is the most general version, in that it allows the caller
+% to specify the reg_type for every argument individually. However, this
+% also makes it the slowest. The other two are specialized versions that
+% do not take a separate reg_type for every argument. make_reg_r_arg_infos
+% allocates every argument a reg_r register, while make_std_arg_infos
+% allocates every argument whose type is not "float" a reg_r register.
+%
+%---------------------------------------------------------------------------%
+
+:- pred make_std_arg_infos(module_info::in, code_model::in,
+    list(mer_type)::in, list(mer_mode)::in, list(arg_info)::out) is det.
+
+make_std_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes, ArgInfos) :-
+    initial_r_regs(CodeModel, FirstInRegR, FirstOutRegR),
+    FirstInRegF = 1,
+    FirstOutRegF = 1,
+    make_std_arg_infos_loop(ModuleInfo, ArgTypes, ArgModes,
+        FirstInRegR, FirstInRegF, FirstOutRegR, FirstOutRegF, ArgInfos).
+
+:- pred make_std_arg_infos_loop(module_info::in,
+    list(mer_type)::in, list(mer_mode)::in,
+    int::in, int::in, int::in, int::in, list(arg_info)::out) is det.
+
+make_std_arg_infos_loop(_, [], [], _, _, _, _, []).
+make_std_arg_infos_loop(_, [], [_ | _], _, _, _, _, _) :-
+    unexpected($pred, "length mismatch").
+make_std_arg_infos_loop(_, [_ | _], [], _, _, _, _, _) :-
+    unexpected($pred, "length mismatch").
+make_std_arg_infos_loop(ModuleInfo, [Type | Types], [Mode | Modes],
+        !.InRegR, !.InRegF, !.OutRegR, !.OutRegF, [ArgInfo | ArgInfos]) :-
+    require_det (
+        mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
+        (
+            TopFunctorMode = top_in,
+            get_std_arg_loc(Type, ArgLoc, !InRegR, !InRegF)
+        ;
+            ( TopFunctorMode = top_out
+            ; TopFunctorMode = top_unused
+            ),
+            get_std_arg_loc(Type, ArgLoc, !OutRegR, !OutRegF)
         ),
-        FirstOutRegR = 1
+        ArgInfo = arg_info(ArgLoc, TopFunctorMode)
     ),
-    FirstInRegR = 1,
+    make_std_arg_infos_loop(ModuleInfo, Types, Modes,
+        !.InRegR, !.InRegF, !.OutRegR, !.OutRegF, ArgInfos).
+
+:- pred get_std_arg_loc(mer_type::in, arg_loc::out, int::in, int::out,
+    int::in, int::out) is det.
+
+get_std_arg_loc(Type, ArgLoc, !RegR, !RegF) :-
+    ( if Type = float_type then
+        ArgLoc = reg(reg_f, !.RegF),
+        !:RegF = !.RegF + 1
+    else
+        ArgLoc = reg(reg_r, !.RegR),
+        !:RegR = !.RegR + 1
+    ).
+
+%---------------------%
+
+:- pred make_reg_r_arg_infos(module_info::in, code_model::in,
+    list(mer_type)::in, list(mer_mode)::in, list(arg_info)::out) is det.
+
+make_reg_r_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes, ArgInfos) :-
+    initial_r_regs(CodeModel, FirstInRegR, FirstOutRegR),
+    make_reg_r_arg_infos_loop(ModuleInfo, ArgTypes, ArgModes,
+        FirstInRegR, FirstOutRegR, ArgInfos).
+
+:- pred make_reg_r_arg_infos_loop(module_info::in,
+    list(mer_type)::in, list(mer_mode)::in,
+    int::in, int::in, list(arg_info)::out) is det.
+
+make_reg_r_arg_infos_loop(_, [], [], _, _, []).
+make_reg_r_arg_infos_loop(_, [], [_ | _], _, _, _) :-
+    unexpected($pred, "length mismatch").
+make_reg_r_arg_infos_loop(_, [_ | _], [], _, _, _) :-
+    unexpected($pred, "length mismatch").
+make_reg_r_arg_infos_loop(ModuleInfo, [Type | Types], [Mode | Modes],
+        !.InRegR, !.OutRegR, [ArgInfo | ArgInfos]) :-
+    mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
+    (
+        TopFunctorMode = top_in,
+        get_reg_r_arg_loc(ArgLoc, !InRegR)
+    ;
+        ( TopFunctorMode = top_out
+        ; TopFunctorMode = top_unused
+        ),
+        get_reg_r_arg_loc(ArgLoc, !OutRegR)
+    ),
+    ArgInfo = arg_info(ArgLoc, TopFunctorMode),
+    make_reg_r_arg_infos_loop(ModuleInfo, Types, Modes,
+        !.InRegR, !.OutRegR, ArgInfos).
+
+:- pred get_reg_r_arg_loc(arg_loc::out, int::in, int::out) is det.
+
+get_reg_r_arg_loc(ArgLoc, !RegR) :-
+    ArgLoc = reg(reg_r, !.RegR),
+    !:RegR = !.RegR + 1.
+
+%---------------------%
+
+make_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes, ArgRegTypes,
+        ArgInfos) :-
+    initial_r_regs(CodeModel, FirstInRegR, FirstOutRegR),
     FirstInRegF = 1,
     FirstOutRegF = 1,
     ( if
-        make_arg_infos_loop(ModuleInfo, ArgModes, ArgTypes, ArgRegTypes,
+        make_arg_infos_loop(ModuleInfo, ArgTypes, ArgModes, ArgRegTypes,
             FirstInRegR, FirstInRegF, FirstOutRegR, FirstOutRegF,
-            ArgInfoPrime)
+            ArgInfosPrime)
     then
-        ArgInfo = ArgInfoPrime
+        ArgInfos = ArgInfosPrime
     else
         unexpected($pred, "length mismatch")
     ).
 
 :- pred make_arg_infos_loop(module_info::in,
-    list(mer_mode)::in, list(mer_type)::in, list(reg_type)::in,
+    list(mer_type)::in, list(mer_mode)::in, list(reg_type)::in,
     int::in, int::in, int::in, int::in, list(arg_info)::out) is semidet.
 
 make_arg_infos_loop(_, [], [], [], _, _, _, _, []).
-make_arg_infos_loop(ModuleInfo, [Mode | Modes], [Type | Types],
-        [RegType | RegTypes], !.InRegR, !.InRegF, !.OutRegR, !.OutRegF,
-        [ArgInfo | ArgInfos]) :-
+make_arg_infos_loop(ModuleInfo,
+        [Type | Types], [Mode | Modes], [RegType | RegTypes],
+        !.InRegR, !.InRegF, !.OutRegR, !.OutRegF, [ArgInfo | ArgInfos]) :-
     require_det (
         mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
         (
@@ -321,8 +443,8 @@ make_arg_infos_loop(ModuleInfo, [Mode | Modes], [Type | Types],
         ),
         ArgInfo = arg_info(ArgLoc, TopFunctorMode)
     ),
-    make_arg_infos_loop(ModuleInfo, Modes, Types, RegTypes, !.InRegR, !.InRegF,
-        !.OutRegR, !.OutRegF, ArgInfos).
+    make_arg_infos_loop(ModuleInfo, Types, Modes, RegTypes,
+        !.InRegR, !.InRegF, !.OutRegR, !.OutRegF, ArgInfos).
 
 :- pred get_arg_loc(reg_type::in, arg_loc::out, int::in, int::out,
     int::in, int::out) is det.
@@ -338,7 +460,24 @@ get_arg_loc(RegType, ArgLoc, !RegR, !RegF) :-
         !:RegF = !.RegF + 1
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------%
+
+:- pred initial_r_regs(code_model::in, int::out, int::out) is det.
+:- pragma inline(pred(initial_r_regs/3)).
+
+initial_r_regs(CodeModel, FirstInRegR, FirstOutRegR) :-
+    FirstInRegR = 1,
+    (
+        CodeModel = model_semi,
+        FirstOutRegR = 2
+    ;
+        ( CodeModel = model_det
+        ; CodeModel = model_non
+        ),
+        FirstOutRegR = 1
+    ).
+
+%---------------------------------------------------------------------------%
 
 generic_call_arg_reg_types(ModuleInfo, GenericCall, ArgVars,
         MaybeArgRegs, ArgRegTypes) :-
@@ -373,7 +512,7 @@ generic_call_arg_reg_types(ModuleInfo, GenericCall, ArgVars,
 arg_reg_to_reg_type(ho_arg_reg_r) = reg_r.
 arg_reg_to_reg_type(ho_arg_reg_f) = reg_f.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 compute_in_and_out_vars(_, _, [], [], [], []).
 compute_in_and_out_vars(_, _, [], [_ | _], _, _) :-
@@ -419,7 +558,7 @@ compute_in_and_out_vars_table(ModuleInfo, VarTable,
         !:OutVars = [Var | !.OutVars]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 compute_in_and_out_vars_sep_regs(ModuleInfo, VarTypes,
         Vars, Modes, ArgRegTypes,
@@ -529,8 +668,8 @@ partition_args(Args, Ins, Outs) :-
     list.append(Outs0, Unuseds, Outs).
 
 partition_args([], [], [], []).
-partition_args([Var - ArgInfo | Rest], !:Ins, !:Outs, !:Unuseds) :-
-    partition_args(Rest, !:Ins, !:Outs, !:Unuseds),
+partition_args([Var - ArgInfo | VarsArgInfos], !:Ins, !:Outs, !:Unuseds) :-
+    partition_args(VarsArgInfos, !:Ins, !:Outs, !:Unuseds),
     ArgInfo = arg_info(_, ArgMode),
     (
         ArgMode = top_in,
@@ -607,6 +746,6 @@ partition_proc_args_2([Var | Vars], [Type | Types], [Mode | Modes],
     partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
         !Inputs, !Outputs, !Unuseds).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.arg_info.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
