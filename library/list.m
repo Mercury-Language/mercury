@@ -2408,32 +2408,32 @@ nth_member_lookup(Xs, SearchX, N) :-
 
 %---------------------------------------------------------------------------%
 
-index0_of_first_occurrence(Xs, SearchX, N) :-
-    list.index0_of_first_occurrence_2(Xs, SearchX, 0, N).
+index0_of_first_occurrence(Xs, SearchX, Index) :-
+    list.index0_of_first_occurrence_loop(Xs, SearchX, 0, Index).
 
-:- pred index0_of_first_occurrence_2(list(T)::in, T::in,
+:- pred index0_of_first_occurrence_loop(list(T)::in, T::in,
     int::in, int::out) is semidet.
 
-index0_of_first_occurrence_2([X | Xs], SearchX, Cur, N) :-
+index0_of_first_occurrence_loop([X | Xs], SearchX, CurIndex, Index) :-
     ( if X = SearchX then
-        N = Cur
+        Index = CurIndex
     else
-        list.index0_of_first_occurrence_2(Xs, SearchX, Cur + 1, N)
+        list.index0_of_first_occurrence_loop(Xs, SearchX, CurIndex + 1, Index)
     ).
 
-index1_of_first_occurrence(Xs, SearchX, N + 1) :-
-    list.index0_of_first_occurrence(Xs, SearchX, N).
+index1_of_first_occurrence(Xs, SearchX, Index0 + 1) :-
+    list.index0_of_first_occurrence(Xs, SearchX, Index0).
 
-det_index0_of_first_occurrence(Xs, SearchX) = N :-
-    ( if list.index0_of_first_occurrence(Xs, SearchX, N0) then
-        N = N0
+det_index0_of_first_occurrence(Xs, SearchX) = Index :-
+    ( if list.index0_of_first_occurrence(Xs, SearchX, Index0) then
+        Index = Index0
     else
         unexpected($pred, "item not found")
     ).
 
-det_index1_of_first_occurrence(Xs, SearchX) = N :-
-    ( if list.index1_of_first_occurrence(Xs, SearchX, N0) then
-        N = N0
+det_index1_of_first_occurrence(Xs, SearchX) = Index :-
+    ( if list.index1_of_first_occurrence(Xs, SearchX, Index0) then
+        Index = Index0
     else
         unexpected($pred, "item not found")
     ).

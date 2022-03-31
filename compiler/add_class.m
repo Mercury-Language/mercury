@@ -50,7 +50,6 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module term.
-:- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -228,32 +227,21 @@ make_hlds_fundep(TVars, ProgFunDeps) = HLDSFunDeps :-
 :- pred convert_vars_to_arg_posns(list(tvar)::in, list(tvar)::in,
     set(hlds_class_argpos)::out) is det.
 
-convert_vars_to_arg_posns(TVars, List, ArgPosnsSet) :-
-    TVarToArgPosFunc = (func(TVar) = get_list_index(TVars, 1, TVar)),
-    ArgPosns = list.map(TVarToArgPosFunc, List),
+convert_vars_to_arg_posns(ProgTVars, HLDSTVars, ArgPosnsSet) :-
+    ArgPosns =
+        list.map(list.det_index1_of_first_occurrence(ProgTVars), HLDSTVars),
     set.list_to_set(ArgPosns, ArgPosnsSet).
-
-:- func get_list_index(list(T), hlds_class_argpos, T) = hlds_class_argpos.
-
-get_list_index([], _, _) = _ :-
-    unexpected($pred, "element not found").
-get_list_index([E | Es], CurPos, X) =
-    ( if X = E then
-        CurPos
-    else
-        get_list_index(Es, CurPos + 1, X)
-    ).
 
 :- pred class_fundeps_are_identical(hlds_class_fundeps::in,
     hlds_class_fundeps::in) is semidet.
 
-class_fundeps_are_identical(OldFunDeps0, FunDeps0) :-
+class_fundeps_are_identical(OldFunDeps, FunDeps) :-
     % Allow for the functional dependencies to be in a different order.
-    sort_and_remove_dups(OldFunDeps0, OldFunDeps),
-    sort_and_remove_dups(FunDeps0, FunDeps),
+    sort_and_remove_dups(OldFunDeps, SortedOldFunDeps),
+    sort_and_remove_dups(FunDeps, SortedFunDeps),
     % The list elements we are comparing are sets; we rely on the fact that
     % sets have a canonical representation.
-    OldFunDeps = FunDeps.
+    SortedOldFunDeps = SortedFunDeps.
 
 :- pred module_declare_class_method_preds(sym_name::in, list(tvar)::in,
     typeclass_status::in, item_mercury_status::in,
