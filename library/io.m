@@ -3013,7 +3013,7 @@ read_binary_uint64_be(binary_input_stream(Stream), Result, !IO) :-
     native_byte_order_is_big_endian,
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    SUCCESS_INDICATOR = !(BitConverter.IsLittleEndian);
+    SUCCESS_INDICATOR = !(System.BitConverter.IsLittleEndian);
 ").
 
 :- pragma foreign_proc("Java",
@@ -5972,15 +5972,6 @@ ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
 ").
 
 %---------------------%
-
-:- pragma foreign_decl("C#", "
-// XXX zs: I don't know which of these are still needed.
-using System;
-using System.IO;
-using System.Runtime.InteropServices;
-using System.Security.AccessControl;
-using System.Security.Principal;
-").
 
 :- pragma foreign_code("C#", "
 // The ML_ prefixes here are not really needed,
