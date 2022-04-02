@@ -17,6 +17,7 @@
 :- module hlds.add_pred.
 :- interface.
 
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.
@@ -74,16 +75,16 @@
     %   :- pred p(T1, T2, ..., Tn).
     % for that predicate; the real types will be inferred by type inference.
     %
-:- pred preds_add_implicit_report_error(pred_or_func::in,
+:- pred add_implicit_pred_decl_report_error(pred_or_func::in,
     module_name::in, string::in, pred_form_arity::in, pred_status::in,
     maybe_class_method::in, prog_context::in, pred_origin::in,
     list(format_component)::in, pred_id::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred preds_add_implicit_for_assertion(pred_or_func::in,
-    module_name::in, string::in, pred_form_arity::in, list(prog_var)::in,
-    pred_status::in, promise_type::in, prog_context::in, pred_id::out,
+:- pred add_implicit_pred_decl(pred_or_func::in, module_name::in, string::in,
+    pred_form_arity::in, pred_status::in, prog_context::in, pred_origin::in,
+    goal_type::in, clauses_info::in, pred_id::out,
     module_info::in, module_info::out) is det.
 
 :- pred check_preds_if_field_access_function(module_info::in,
@@ -96,7 +97,6 @@
 :- implementation.
 
 :- import_module hlds.hlds_args.
-:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
@@ -117,8 +117,11 @@
 :- import_module bool.
 :- import_module map.
 :- import_module require.
+:- import_module string.
 :- import_module term.
 :- import_module varset.
+
+%---------------------------------------------------------------------------%
 
 module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
         MaybePredProcId, !ModuleInfo, !Specs) :-
@@ -737,7 +740,7 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
         ( if PredIds = [PredIdPrime] then
             PredId = PredIdPrime
         else
-            preds_add_implicit_report_error(PredOrFunc,
+            add_implicit_pred_decl_report_error(PredOrFunc,
                 PredModuleName, PredName, PredFormArity, PredStatus,
                 IsClassMethod, Context, origin_user(PredSymName),
                 [decl("mode"), words("declaration")], PredId,
@@ -904,7 +907,7 @@ unspecified_det_for_local(PFSymNameArity, Context, !Specs) :-
 
 %---------------------------------------------------------------------------%
 
-preds_add_implicit_report_error(PredOrFunc, PredModuleName, PredName,
+add_implicit_pred_decl_report_error(PredOrFunc, PredModuleName, PredName,
         PredFormArity, Status, IsClassMethod, Context, PredOrigin, DescPieces,
         PredId, !ModuleInfo, !Specs) :-
     PredSymName = qualified(PredModuleName, PredName),
@@ -922,28 +925,11 @@ preds_add_implicit_report_error(PredOrFunc, PredModuleName, PredName,
     clauses_info_init(PredOrFunc, PredFormArity, init_clause_item_numbers_user,
         ClausesInfo),
     GoalType = goal_not_for_promise(np_goal_type_none),
-    preds_do_add_implicit(PredOrFunc, PredModuleName, PredName, PredFormArity,
+    add_implicit_pred_decl(PredOrFunc, PredModuleName, PredName, PredFormArity,
         Status, Context, PredOrigin, GoalType, ClausesInfo,
         PredId, !ModuleInfo).
 
-preds_add_implicit_for_assertion(PredOrFunc, PredModuleName, PredName,
-        PredFormArity, HeadVars, Status, PromiseType, Context,
-        PredId, !ModuleInfo) :-
-    clauses_info_init_for_assertion(HeadVars, ClausesInfo),
-    term.context_file(Context, FileName),
-    term.context_line(Context, LineNum),
-    PredOrigin = origin_assertion(FileName, LineNum),
-    GoalType = goal_for_promise(PromiseType),
-    preds_do_add_implicit(PredOrFunc, PredModuleName, PredName, PredFormArity,
-        Status, Context, PredOrigin, GoalType, ClausesInfo,
-        PredId, !ModuleInfo).
-
-:- pred preds_do_add_implicit(pred_or_func::in, module_name::in, string::in,
-    pred_form_arity::in, pred_status::in, prog_context::in, pred_origin::in,
-    goal_type::in, clauses_info::in, pred_id::out,
-    module_info::in, module_info::out) is det.
-
-preds_do_add_implicit(PredOrFunc, PredModuleName, PredName, PredFormArity,
+add_implicit_pred_decl(PredOrFunc, PredModuleName, PredName, PredFormArity,
         PredStatus, Context, PredOrigin, GoalType, ClausesInfo,
         PredId, !ModuleInfo) :-
     MaybeCurUserDecl = maybe.no,
@@ -979,7 +965,20 @@ preds_do_add_implicit(PredOrFunc, PredModuleName, PredName, PredFormArity,
         module_info_set_predicate_table(PredicateTable, !ModuleInfo)
     ;
         PredIds = [_ | _],
-        unexpected($pred, "search succeeded")
+        ( if PredOrigin = origin_assertion(_, _) then
+            % We add promises to the HLDS *after* we add all user predicate
+            % declarations.
+            PredSymName = qualified(PredModuleName, PredName),
+            NameString = sym_name_to_string(PredSymName),
+            string.format("%s %s %s (%s).\n",
+                [s("Attempted to introduce a predicate for a promise"),
+                s("with a name that is identical to the name of"),
+                s("an existing predicate"), s(NameString)],
+                UnexpectedMsg),
+            unexpected($pred, UnexpectedMsg)
+        else
+            unexpected($pred, "search succeeded")
+        )
     ).
 
 %---------------------------------------------------------------------------%

@@ -125,22 +125,12 @@ module_add_clause(PredStatus, ClauseType, ClauseInfo,
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable),
         predicate_table_lookup_pf_sym_arity(PredicateTable, is_fully_qualified,
             PredOrFunc, PredSymName, PredFormArity, PredIds),
-        ( if PredIds = [PredIdPrime] then
-            MaybePredId = yes(PredIdPrime),
-            (
-                ClauseType = clause_for_promise(_),
-                NameString = sym_name_to_string(PredSymName),
-                string.format("%s %s %s (%s).\n",
-                    [s("Attempted to introduce a predicate"),
-                    s("for a promise with a name that is identical"),
-                    s("to the name to an existing predicate"),
-                    s(NameString)], UnexpectedMsg),
-                unexpected($pred, UnexpectedMsg)
-            ;
-                ClauseType = clause_not_for_promise
-            )
+        ( if PredIds = [PredId] then
+            module_add_clause_2(PredStatus, ClauseType, PredId,
+                PredOrFunc, PredSymName, ArgTerms, PredFormArity,
+                ClauseVarSet, MaybeBodyGoal, Context, SeqNum,
+                IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs)
         else if PredName = ",", Arity = 2 then
-            MaybePredId = no,
             SNA = sym_name_arity(unqualified(","), 2),
             Pieces = [words("Attempt to define a clause for"),
                 unqual_sym_name_arity(SNA), suffix("."),
@@ -153,28 +143,21 @@ module_add_clause(PredStatus, ClauseType, ClauseInfo,
         else
             % A promise will not have a corresponding pred declaration.
             (
-                ClauseType = clause_for_promise(PromiseType),
-                HeadVars = term.term_list_to_var_list(ArgTerms),
-                preds_add_implicit_for_assertion(PredOrFunc,
-                    PredModuleName, PredName, PredFormArity, HeadVars,
-                    PredStatus, PromiseType, Context, NewPredId, !ModuleInfo)
+                ClauseType = clause_for_promise(_PromiseType),
+                % add_promise in make_hlds_passes.m should have declared
+                % this predicate before calling us to add this clause.
+                unexpected($pred, "clause for undeclared promise")
             ;
                 ClauseType = clause_not_for_promise,
-                preds_add_implicit_report_error(PredOrFunc,
+                add_implicit_pred_decl_report_error(PredOrFunc,
                     PredModuleName, PredName, PredFormArity, PredStatus,
                     is_not_a_class_method, Context, origin_user(PredSymName),
-                    [words("clause")], NewPredId, !ModuleInfo, !Specs)
+                    [words("clause")], PredId, !ModuleInfo, !Specs)
             ),
-            MaybePredId = yes(NewPredId)
-        ),
-        (
-            MaybePredId = yes(PredId),
             module_add_clause_2(PredStatus, ClauseType, PredId,
                 PredOrFunc, PredSymName, ArgTerms, PredFormArity,
                 ClauseVarSet, MaybeBodyGoal, Context, SeqNum,
                 IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs)
-        ;
-            MaybePredId = no
         )
     ).
 

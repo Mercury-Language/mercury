@@ -58,6 +58,7 @@
 :- import_module hlds.add_pred.
 :- import_module hlds.add_special_pred.
 :- import_module hlds.default_func_mode.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.add_class.
@@ -441,11 +442,6 @@ parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     add_clauses(MutableClauses,
         !ModuleInfo, !QualInfo, !Specs),
     % Add clauses that record promises.
-    % XXX CLEANUP For each promise, we add a clause, find that there is
-    % no predicate declaration for the predicate that the clause is for,
-    % remember that oh yeah, this is normal for promises, and then add
-    % the implicitly-specified predicate declaration. It would be much simpler
-    % to just construct and add the predicate declaration first.
     add_promises(Promises,
         !ModuleInfo, !QualInfo, !Specs),
 
@@ -943,22 +939,34 @@ add_promise(PredStatus, PromiseInfo, !ModuleInfo, !QualInfo, !Specs) :-
     ;
         PromiseType = promise_type_true
     ),
+    GoalType = goal_for_promise(PromiseType),
     ClauseType = clause_for_promise(PromiseType),
 
-    term.context_line(Context, Line),
-    term.context_file(Context, File),
+    PromiseTypeStr = prog_out.promise_to_string(PromiseType),
+    term.context_file(Context, FileName),
+    term.context_line(Context, LineNumber),
     string.format("%s__%d__%s",
-        [s(prog_out.promise_to_string(PromiseType)), i(Line), s(File)], Name),
+        [s(PromiseTypeStr), i(LineNumber), s(FileName)],
+        PromisePredName),
     module_info_get_name(!.ModuleInfo, ModuleName),
-    PromisePredSymName = qualified(ModuleName, Name),
+    PromiseModuleName = ModuleName,
+    PromisePredSymName = qualified(PromiseModuleName, PromisePredName),
 
     % If the outermost universally quantified variables are placed in the head
     % of the dummy predicate, the typechecker will avoid warning about unbound
     % type variables, as this implicitly adds a universal quantification of the
     % type variables needed.
-    term.var_list_to_term_list(UnivVars, HeadVars),
-    ClauseInfo = item_clause_info(pf_predicate, PromisePredSymName, HeadVars,
-        VarSet, ok2(Goal, []), Context, SeqNum),
+    HeadVars = UnivVars,
+    PredFormArity = arg_list_arity(HeadVars),
+    clauses_info_init_for_assertion(HeadVars, ClausesInfo),
+    PredOrigin = origin_assertion(FileName, LineNumber),
+    add_implicit_pred_decl(pf_predicate, PromiseModuleName, PromisePredName,
+        PredFormArity, PredStatus, Context, PredOrigin, GoalType, ClausesInfo,
+        _PredId, !ModuleInfo),
+
+    term.var_list_to_term_list(HeadVars, HeadVarTerms),
+    ClauseInfo = item_clause_info(pf_predicate, PromisePredSymName,
+        HeadVarTerms, VarSet, ok2(Goal, []), Context, SeqNum),
     module_add_clause(PredStatus, ClauseType, ClauseInfo,
         !ModuleInfo, !QualInfo, !Specs).
 

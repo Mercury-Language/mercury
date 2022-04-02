@@ -115,7 +115,7 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
         PredOrFunc, PredModuleName, PredName, PredFormArity, PredIds),
     (
         PredIds = [],
-        preds_add_implicit_report_error(PredOrFunc, PredModuleName, PredName,
+        add_implicit_pred_decl_report_error(PredOrFunc, PredModuleName, PredName,
             PredFormArity, PredStatus, is_not_a_class_method,
             Context, origin_user(PredSymName),
             [pragma_decl("foreign_proc"), words("declaration")],
