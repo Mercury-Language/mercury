@@ -35,6 +35,7 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 
@@ -395,6 +396,10 @@
     instmap_delta::in, instmap_delta::out, T::in, T::out) is det.
 
 %---------------------------------------------------------------------------%
+
+:- pred record_instmap_delta_restrict_stats(io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -659,21 +664,80 @@ instmapping_set_vars_same(Inst, [Var | Vars], !InstMapping) :-
 
 %---------------------------------------------------------------------------%
 
-instmap_restrict(_, unreachable, unreachable).
-instmap_restrict(Vars, reachable(InstMapping0), reachable(InstMapping)) :-
-    map.select_sorted_list(InstMapping0, set_of_var.to_sorted_list(Vars),
-        InstMapping).
+instmap_restrict(Vars, InstMap0, InstMap) :-
+    (
+        InstMap0 = unreachable,
+        InstMap = unreachable
+    ;
+        InstMap0 = reachable(InstMapping0),
+        map.select_sorted_list(InstMapping0, set_of_var.to_sorted_list(Vars),
+            InstMapping),
+        InstMap = reachable(InstMapping)
+    ).
 
-instmap_delta_restrict(_, unreachable, unreachable).
-instmap_delta_restrict(Vars,
-        reachable(InstMapping0), reachable(InstMapping)) :-
-    map.select_sorted_list(InstMapping0, set_of_var.to_sorted_list(Vars),
-        InstMapping).
+instmap_delta_restrict(Vars, InstMapDelta0, InstMapDelta) :-
+    (
+        InstMapDelta0 = unreachable,
+        InstMapDelta = unreachable
+    ;
+        InstMapDelta0 = reachable(InstMapping0),
+        VarList = set_of_var.to_sorted_list(Vars),
+        % Logically, the operation we want to do here is simply
+        % the code of the else case. The reason why we treat the case
+        % where VarList contains *all* the keys in InstMapping0 is that
+        %
+        % - this happens very often (see below), and
+        % - the test for this common case does the quickest possible
+        %   traversal of both data structures, and allocates *no* memory
+        %   at all.
+        %
+        % Even if the test fails, it is likely to fail very early, because
+        % if VarList is missing about two-thirds of the keys in InstMapping0,
+        % which is the average, then it is extremely likely to miss some
+        % of the early keys as well.
+        %
+        % Overall, the significant savings in the 90% case should more than
+        % pay for this small extra cost in the 10% case.
+        ( if map.sorted_keys_match(InstMapping0, VarList) then
+            InstMapping = InstMapping0,
+            InstMapDelta = InstMapDelta0
+        else
+            map.select_sorted_list(InstMapping0, VarList, InstMapping),
+            InstMapDelta = reachable(InstMapping)
+        ),
+        trace [compile_time(flag("instmap_restrict_stats")), io(!IO)] (
+            % Gather statistics about how often InstMapping is smaller than
+            % InstMapping0, and if it is, by how much.
+            %
+            % The statistics gathered here, aggregated over a bootcheck
+            % on 2022 apr 1, and summarized by tools/restrict_stats,
+            % are as follows:
+            %
+            % calls with no change: 11294590 (90.97%)
+            % calls with changes:    1121268 ( 9.03%)
+            %
+            % calls with changes:
+            % number of vars before:  4416827
+            % number of vars after:   1534399
+            % percentage left after:   34.74%
+            % percentage deleted:      65.26%
+            %
+            % So the InstMapping0Vars = VarList test above succeeds 90+%
+            % of the time, but when it fails, InstMapping has only about
+            % one thirds of the variables in InstMapping0.
+            gather_instmap_delta_restrict_stats(InstMapping0, InstMapping, !IO)
+        )
+    ).
 
-instmap_delta_delete_vars(_, unreachable, unreachable).
-instmap_delta_delete_vars(Vars,
-        reachable(InstMapping0), reachable(InstMapping)) :-
-    map.delete_list(Vars, InstMapping0, InstMapping).
+instmap_delta_delete_vars(Vars, InstMapDelta0, InstMapDelta) :-
+    (
+        InstMapDelta0 = unreachable,
+        InstMapDelta = unreachable
+    ;
+        InstMapDelta0 = reachable(InstMapping0),
+        map.delete_list(Vars, InstMapping0, InstMapping),
+        InstMapDelta = reachable(InstMapping)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -695,10 +759,15 @@ var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstMapDelta, Var) :-
 
 %---------------------------------------------------------------------------%
 
-instmap_bound_vars(_ModuleInfo, unreachable, set_of_var.init).
-instmap_bound_vars(ModuleInfo, reachable(InstMapping), BoundVars) :-
-    map.foldl(instmap_bound_vars_2(ModuleInfo), InstMapping,
-        set_of_var.init, BoundVars).
+instmap_bound_vars(ModuleInfo, InstMap, BoundVars) :-
+    (
+        InstMap = unreachable,
+        set_of_var.init(BoundVars)
+    ;
+        InstMap = reachable(InstMapping),
+        map.foldl(instmap_bound_vars_2(ModuleInfo), InstMapping,
+            set_of_var.init, BoundVars)
+    ).
 
 :- pred instmap_bound_vars_2(module_info::in, prog_var::in, mer_inst::in,
     set_of_progvar::in, set_of_progvar::out) is det.
@@ -1382,10 +1451,73 @@ instmapping_apply_sub_loop([Var0 - Inst | VarInsts0], Must, Renaming,
 
 %---------------------------------------------------------------------------%
 
-instmap_delta_map_foldl(_, unreachable, unreachable, !T).
-instmap_delta_map_foldl(P, reachable(Instmapping0), reachable(Instmapping),
-        !T) :-
-    map.map_foldl(P, Instmapping0, Instmapping, !T).
+instmap_delta_map_foldl(Pred, InstMapDelta0, InstMapDelta, !Acc) :-
+    (
+        InstMapDelta0 = unreachable,
+        InstMapDelta = unreachable
+    ;
+        InstMapDelta0 = reachable(Instmapping0),
+        map.map_foldl(Pred, Instmapping0, Instmapping, !Acc),
+        InstMapDelta = reachable(Instmapping)
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- type restrict_stats
+    --->    restrict_stats(
+                % Counts of the calls to instmap_delta_restrict_stats that
+                % do and do not change the number of vars in the map.
+                calls_no_change     :: int,
+                calls_some_change   :: int,
+
+                % For the calls that do change the number of elements,
+                % the total of the number of vars in the instmap_deltas
+                % before and after the call.
+                total_vars_before   :: int,
+                total_vars_after    :: int
+            ).
+
+:- mutable(instmap_delta_restrict_stats, restrict_stats,
+    restrict_stats(0, 0, 0, 0), ground, [untrailed, attach_to_io_state]).
+
+:- pred gather_instmap_delta_restrict_stats(instmapping::in, instmapping::in,
+    io::di, io::uo) is det.
+
+gather_instmap_delta_restrict_stats(InstMapping0, InstMapping, !IO) :-
+    map.count(InstMapping0, Count0),
+    map.count(InstMapping, Count),
+    get_instmap_delta_restrict_stats(Stats0, !IO),
+    Stats0 = restrict_stats(CountSame0, CountChanged0,
+        TotalBefore0, TotalAfter0),
+    ( if Count0 = Count then
+        Stats = restrict_stats(CountSame0 + 1, CountChanged0,
+            TotalBefore0, TotalAfter0)
+    else
+        Stats = restrict_stats(CountSame0, CountChanged0 + 1,
+            TotalBefore0 + Count0, TotalAfter0 + Count)
+    ),
+    set_instmap_delta_restrict_stats(Stats, !IO).
+
+record_instmap_delta_restrict_stats(!IO) :-
+    get_instmap_delta_restrict_stats(Stats, !IO),
+    Stats = restrict_stats(CountSame, CountChanged, TotalBefore, TotalAfter),
+    ( if CountSame + CountChanged > 0 then
+        io.open_append("/tmp/RESTRICT_STATS", Result, !IO),
+        (
+            Result = error(_)
+        ;
+            Result = ok(Stream),
+            io.format(Stream, "%d %d %d %d\n",
+                [i(CountSame), i(CountChanged), i(TotalBefore), i(TotalAfter)],
+                !IO),
+            io.close_output(Stream, !IO)
+        )
+    else
+        % There are no statistics to report, probably because the gathering
+        % of statistics was not enabled.
+        true
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.instmap.

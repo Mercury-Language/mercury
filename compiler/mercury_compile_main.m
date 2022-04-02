@@ -52,6 +52,7 @@
 :- import_module hlds.hlds_defns.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_module.
+:- import_module hlds.instmap.
 :- import_module hlds.make_hlds.
 :- import_module hlds.make_hlds.make_hlds_passes.
 :- import_module hlds.make_hlds.make_hlds_types.
@@ -150,9 +151,9 @@ real_main(!IO) :-
         Res = error(E),
         io.set_exit_status(1, !IO),
 
-        io.write_string(io.error_message(E), !IO),
-        io.nl(!IO)
+        io.format("%s\n", [s(io.error_message(E))], !IO)
     ),
+    record_instmap_delta_restrict_stats(!IO),
     trace [compile_time(flag("file_name_translations")), io(!TIO)] (
         write_translations_record_if_any(!TIO)
     ),

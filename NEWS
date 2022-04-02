@@ -196,6 +196,12 @@ This new module has these predicates:
     - pred `gap_foldl/5`
     - pred `last_gap_foldl/6`
 
+### Changes to the `list` module
+
+* The following predicates have been added:
+
+    - pred `sorted_keys_match/2`
+
 ### Changes to the `random` module
 
 The old random number generator has been removed. It has been replaced by the
@@ -222,6 +228,12 @@ As a result, the following predicates have been removed:
             (replacement: `mercury_term_parser.read_term_with_op_table/4`)
     - pred `read_term_with_op_table/5`
             (replacement: `mercury_term_parser.read_term_with_op_table/5`)
+
+### Changes to the `tree234` module
+
+* The following predicates have been added:
+
+    - pred `sorted_keys_match/2`
 
 Changes to the Mercury compiler
 -------------------------------

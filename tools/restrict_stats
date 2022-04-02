@@ -1,0 +1,26 @@
+#!/usr/bin/awk -f
+# vim: ft=awk ts=4 sw=4 et
+NF == 4 {
+        count_same += $1;
+        count_changed += $2;
+        total_before += $3;
+        total_after += $4;
+    }
+END {
+        count = count_same + count_changed;
+        percent_same =    (100 * count_same) / count;
+        percent_changed = (100 * count_changed) / count;
+        printf "calls with no change: %8d (%5.2f%%)\n",
+            count_same, percent_same;
+        printf "calls with changes:   %8d (%5.2f%%)\n",
+            count_changed, percent_changed;
+
+        printf "\n";
+        printf "calls with changes:\n";
+        printf "number of vars before: %8d\n", total_before;
+        printf "number of vars after:  %8d\n", total_after;
+        printf "percentage left after:   %5.2f%%\n",
+            ((100 * total_after) / total_before);
+        printf "percentage deleted:      %5.2f%%\n",
+            ((100 * (total_before - total_after)) / total_before);
+    }

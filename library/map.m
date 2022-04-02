@@ -313,6 +313,14 @@
 
 :- pred keys_and_values(map(K, V)::in, list(K)::out, list(V)::out) is det.
 
+    % Given a map, succeed if and only if the given list is the list
+    % of all the keys in the map.
+    % `sorted_keys_match(Map, List)' is equivalent to the conjunction,
+    % `sorted_keys(Map, Keys), Keys = List", but it allocates no memory,
+    % and it traverses Map only up to the first mismatch.
+    %
+:- pred sorted_keys_match(map(K, V)::in, list(K)::in) is semidet.
+
 %---------------------------------------------------------------------------%
 %
 % Operations on values.
@@ -1525,6 +1533,9 @@ values(Map, KeyList) :-
 
 keys_and_values(Map, KeyList, ValueList) :-
     tree234.keys_and_values(Map, KeyList, ValueList).
+
+sorted_keys_match(Map, List) :-
+    tree234.sorted_keys_match(Map, List).
 
 %---------------------------------------------------------------------------%
 
