@@ -80,10 +80,10 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_item_stats.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.
@@ -94,7 +94,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 :- import_module varset.
 
@@ -942,12 +941,9 @@ add_promise(PredStatus, PromiseInfo, !ModuleInfo, !QualInfo, !Specs) :-
     GoalType = goal_for_promise(PromiseType),
     ClauseType = clause_for_promise(PromiseType),
 
-    PromiseTypeStr = prog_out.promise_to_string(PromiseType),
     term.context_file(Context, FileName),
     term.context_line(Context, LineNumber),
-    string.format("%s__%d__%s",
-        [s(PromiseTypeStr), i(LineNumber), s(FileName)],
-        PromisePredName),
+    PromisePredName = promise_pred_name(PromiseType, FileName, LineNumber),
     module_info_get_name(!.ModuleInfo, ModuleName),
     PromiseModuleName = ModuleName,
     PromisePredSymName = qualified(PromiseModuleName, PromisePredName),

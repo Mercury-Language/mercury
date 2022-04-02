@@ -214,6 +214,13 @@
 
 %---------------------%
 
+    % Return the predicate name we should use for promise of the given type
+    % at the given location.
+    %
+:- func promise_pred_name(promise_type, string, int) = string.
+
+%---------------------%
+
     % Return the predicate name we should use for the given uci (special) pred
     % for the given type_ctor.
     %
@@ -450,6 +457,14 @@ instance_type_ctor_to_string(Type, Str) :-
     TypeCtor = type_ctor(TypeName, TypeArity),
     TypeNameStr = sym_name_to_string_sep(TypeName, "__"),
     string.format("%s__arity%i__", [s(TypeNameStr), i(TypeArity)], Str).
+
+%---------------------------------------------------------------------------%
+
+promise_pred_name(PromiseType, FileName, LineNumber) = Name :-
+    % This naming scheme avoids naming conflicts only by luck.
+    PromiseTypeStr = prog_out.promise_to_string(PromiseType),
+    string.format("%s__%d__%s",
+        [s(PromiseTypeStr), i(LineNumber), s(FileName)], Name).
 
 %---------------------------------------------------------------------------%
 
