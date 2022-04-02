@@ -171,11 +171,6 @@ separate_items_in_aug_comp_unit(AugCompUnit, InclMap, Avails, FIMs,
     % with the items in the interface section preceding the items
     % in the implementation section. The final result should be a cord
     % of all the items of that kind in the original forward order.
-    %
-    % XXX ITEM_LIST PlainOpts and TransOpts have separate lists of
-    % the different kinds of pragmas they may contain, but they have to
-    % wrap them up as decl_pragmas or generated_pragmas before adding them
-    % to the accumulator. This should not be necessary.
     some [!Acc] (
         !:Acc = item_accumulator(cord.init, cord.init,
             cord.init, cord.init, cord.init,
