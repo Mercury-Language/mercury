@@ -55,6 +55,17 @@ Changes to the Mercury standard library
     - pred `write_bitmap_range/5`
     - pred `write_bitmap_range/6`
 
+### Changes to the `hash_table` module
+
+The following obsolete predicates have been removed:
+
+    - pred `char_hash/2`
+    - pred `float_hash/2`
+    - pred `generic_hash/2`
+    - pred `int_hash/2`
+    - pred `string_hash/2`
+    - pred `uint_hash/2`
+
 ### Changes to the `io` module
 
 * The following obsolete predicates have been removed:
@@ -234,6 +245,17 @@ As a result, the following predicates have been removed:
 * The following predicates have been added:
 
     - pred `sorted_keys_match/2`
+
+### Changes to the `version_hash_table` module
+
+The following obsolete predicates have been removed:
+
+    - pred `char_hash/2`
+    - pred `float_hash/2`
+    - pred `generic_hash/2`
+    - pred `int_hash/2`
+    - pred `string_hash/2`
+    - pred `uint_hash/2`
 
 Changes to the Mercury compiler
 -------------------------------

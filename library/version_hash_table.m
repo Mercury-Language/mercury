@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2020 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -25,7 +25,6 @@
 :- interface.
 
 :- import_module assoc_list.
-:- import_module char.
 
 %---------------------------------------------------------------------------%
 
@@ -88,23 +87,6 @@
     % Return the number of occupants in a hash table.
     %
 :- func num_occupants(version_hash_table(K, V)) = int.
-
-    % Default hash_preds for ints and strings and everything.
-    % They are very simple and almost certainly not very good
-    % for your purpose, whatever your purpose is.
-    %
-:- pred int_hash(int::in, int::out) is det.
-:- pragma obsolete(pred(int_hash/2), [int.hash/2]).
-:- pred uint_hash(uint::in, int::out) is det.
-:- pragma obsolete(pred(uint_hash/2), [uint.hash/2]).
-:- pred char_hash(char::in, int::out) is det.
-:- pragma obsolete(pred(char_hash/2), [char.hash/2]).
-:- pred string_hash(string::in, int::out) is det.
-:- pragma obsolete(pred(string_hash/2), [string.hash/2]).
-:- pred float_hash(float::in, int::out) is det.
-:- pragma obsolete(pred(float_hash/2), [float.hash/2]).
-:- pred generic_hash(T::in, int::out) is det.
-:- pragma obsolete(pred(generic_hash/2)).
 
     % Copy the hash table explicitly.
     %
@@ -214,19 +196,14 @@
 
 :- implementation.
 
-:- import_module array.
 :- import_module bool.
-:- import_module deconstruct.
 :- import_module exception.
 :- import_module float.
 :- import_module int.
 :- import_module list.
 :- import_module pair.
 :- import_module require.
-:- import_module string.
-:- import_module uint.
 :- import_module unit.
-:- import_module univ.
 :- import_module version_array.
 
 %---------------------------------------------------------------------------%
@@ -350,54 +327,6 @@ find_slot_2(HashPred, K, NumBuckets, H) :-
 "
     HashPred = HashPred0;
 ").
-
-%---------------------------------------------------------------------------%
-
-int_hash(Key, Hash) :-
-    int.hash(Key, Hash).
-
-uint_hash(Key, Hash) :-
-    uint.hash(Key, Hash).
-
-char_hash(C, H) :-
-    char.hash(C, H).
-
-string_hash(S, H) :-
-    string.hash(S, H).
-
-float_hash(F, H) :-
-    float.hash(F, H).
-
-generic_hash(T, H) :-
-    % This, again, is straight off the top of my head.
-    ( if dynamic_cast(T, Int) then
-        int_hash(Int, H)
-    else if dynamic_cast(T, String) then
-        string_hash(String, H)
-    else if dynamic_cast(T, Float) then
-        float_hash(Float, H)
-    else if dynamic_cast(T, Char) then
-        char_hash(Char, H)
-    else if dynamic_cast(T, Univ) then
-        generic_hash(univ_value(Univ), H)
-    else if dynamic_cast_to_array(T, Array) then
-        SubHash =
-            ( func(X, HA0) = HA :-
-                generic_hash(X, HX),
-                munge(HX, HA0) = HA
-            ),
-        H = array.foldl(SubHash, Array, 0)
-    else
-        deconstruct(T, canonicalize, FunctorName, Arity, Args),
-        string_hash(FunctorName, H0),
-        munge(Arity, H0) = H1,
-        SubHash =
-            ( pred(U::in, HA0::in, HA::out) is det :-
-                generic_hash(U, HUA),
-                munge(HUA, HA0) = HA
-            ),
-        list.foldl(SubHash, Args, H1, H)
-    ).
 
 %---------------------------------------------------------------------------%
 
@@ -723,14 +652,6 @@ unsafe_insert(K, V, HashPred, NumBuckets, Buckets0, Buckets) :-
         AL = ht_cons(K, V, AL0)
     ),
     Buckets = Buckets0 ^ elem(H) := AL.
-
-%---------------------------------------------------------------------------%
-
-:- func munge(int, int) = int.
-
-munge(N, X) =
-    (X `unchecked_left_shift` N) `xor`
-    (X `unchecked_right_shift` (int.bits_per_int - N)).
 
 %---------------------------------------------------------------------------%
 

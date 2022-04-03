@@ -37,7 +37,7 @@ main(!IO) :-
 
 do_test(_, !RNG, !NumFails, !IO) :-
     next(Num, !RNG),
-    int_hash(Num, LibHash),
+    int.hash(Num, LibHash),
     cint_hash(Num, OrigHash),
     %io.format("hash(%d) = %d\n", [i(Num), i(LibHash)], !IO),
     ( if LibHash = OrigHash then
