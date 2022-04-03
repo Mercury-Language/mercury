@@ -679,8 +679,8 @@ compile_fact_table_in_file(FileStream, FileName, OutputStream, FactTableSize,
     % iterations just process one entry, but when the entry is the last
     % entry in what *would have been* a chunk, we also output the epilogue,
     % and if there are any more entries after it, then the prologue as
-    % well. This requires us to handle the initial prologue here,
-    % and possibly the final epilogue as well.
+    % well. This requires us to handle the initial prologue and the final
+    % epilogue here, outside the loop.
     (
         WriteDataTable = write_data_table,
         (
@@ -725,7 +725,7 @@ compile_fact_table_in_file(FileStream, FileName, OutputStream, FactTableSize,
     (
         OpenCompileSpecs = [],
         pred_info_get_proc_table(!.PredInfo, ProcTable0),
-        infer_determinism_pass_2(ModuleInfo, GenInfo, ProcFiles,
+        infer_determinism_pass_2(MaybeProgressStream, GenInfo, ProcFiles,
             ProcTable0, ProcTable, !Specs, !IO),
         pred_info_set_proc_table(ProcTable, !PredInfo),
         io.file.make_temp_file(DataFileNameResult, !IO),
@@ -1267,7 +1267,7 @@ close_sort_files([ProcStream | ProcStreams], [ProcId - FileName | ProcFiles],
     % position of the fact in the original input table.
     %
     % Note lines written out here need to be read back in by
-    % read_sort_file_line so if any changes are made here, corresponding
+    % read_sort_file_line, so if any changes are made here, corresponding
     % changes should be made there too.
     %
 :- pred write_sort_file_lines(string::in, list(fact_arg)::in,
@@ -1393,12 +1393,13 @@ key_from_chars_loop([Char | Chars], !EscapedCharsCord) :-
     % If they are, the procedure is semidet, otherwise it is nondet.
     % Return the updated proc_table.
     %
-:- pred infer_determinism_pass_2(module_info::in, fact_table_gen_info::in,
-    assoc_list(proc_id, string)::in, proc_table::in, proc_table::out,
+:- pred infer_determinism_pass_2(maybe(io.text_output_stream)::in,
+    fact_table_gen_info::in, assoc_list(proc_id, string)::in,
+    proc_table::in, proc_table::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 infer_determinism_pass_2(_, _, [], !ProcTable, !Specs, !IO).
-infer_determinism_pass_2(ModuleInfo, GenInfo,
+infer_determinism_pass_2(MaybeProgressStream, GenInfo,
         [ProcId - FileName | ProcFiles], !ProcTable, !Specs, !IO) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     % XXX This sends the output to the *input* file.
@@ -1416,14 +1417,11 @@ infer_determinism_pass_2(ModuleInfo, GenInfo,
         "cut -d'~' -f1 %s | LC_ALL=C sort -cu >/dev/null 2>&1",
         [s(FileName), s(FileName), s(FileName)], Command0),
     make_command_string(Command0, double, Command),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
     (
-        Verbose = no,
+        MaybeProgressStream = no,
         io.call_system.call_system(Command, Result, !IO)
     ;
-        Verbose = yes,
-        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+        MaybeProgressStream = yes(ProgressStream),
         io.format(ProgressStream, "%% Invoking system command `%s' ...",
             [s(Command)], !IO),
         io.call_system.call_system(Command, Result, !IO),
@@ -1481,7 +1479,7 @@ infer_determinism_pass_2(ModuleInfo, GenInfo,
     ),
     proc_info_set_inferred_determinism(Determinism, ProcInfo0, ProcInfo),
     map.det_update(ProcId, ProcInfo, !ProcTable),
-    infer_determinism_pass_2(ModuleInfo, GenInfo, ProcFiles,
+    infer_determinism_pass_2(MaybeProgressStream, GenInfo, ProcFiles,
         !ProcTable, !Specs, !IO).
 
 %---------------------------------------------------------------------------%
@@ -2539,10 +2537,10 @@ write_hash_table_loop(Stream, HashTable, CurIndex, MaxIndex, !IO) :-
 
 %---------------------%
 
-    % Return 's' for string, 'i' for int, 'f' for float, 'a' for atom.
+    % Return 's' for string, 'i' for int, 'f' for float.
     % Don't call this with an empty hash table.
     %
-:- pred get_hash_table_type(hash_table::in, char::out) is det.
+:- pred get_hash_table_type(hash_table::in, char::out(key_char)) is det.
 
 get_hash_table_type(HashTable, TableType) :-
     HashTable = hash_table(_Size, Map),
@@ -2552,8 +2550,8 @@ get_hash_table_type(HashTable, TableType) :-
         get_hash_table_type_loop(Map, 0, TableType)
     ).
 
-:- pred get_hash_table_type_loop(map(int, hash_entry)::in, int::in, char::out)
-    is det.
+:- pred get_hash_table_type_loop(map(int, hash_entry)::in, int::in,
+    char::out(key_char)) is det.
 
 get_hash_table_type_loop(Map, Index, TableType) :-
     ( if map.search(Map, Index, Entry) then
@@ -3295,10 +3293,8 @@ generate_hash_int_code(FactTableSize, PredName, VarName, LabelName, LabelNum,
     CodeTemplate = "
 
         // calculate hash value for an integer
-
-        hashsize = ((struct MR_fact_table_hash_table_i *)current_table)
+        hashsize = ((struct MR_fact_table_hash_table_i *) current_table)
             ->size;
-
         hashval = (%s >= 0 ? %s : -%s) %% hashsize;
 
         current_key = %s;
@@ -3325,10 +3321,8 @@ generate_hash_float_code(FactTableSize, PredName, VarName, LabelName, LabelNum,
     CodeTemplate = "
 
         // calculate hash value for a float
-
-        hashsize = ((struct MR_fact_table_hash_table_f *)current_table)
+        hashsize = ((struct MR_fact_table_hash_table_f *) current_table)
             ->size;
-
         hashval = MR_hash_float(%s);
         hashval = (hashval >= 0 ? hashval : -hashval) %% hashsize;
 
@@ -3404,7 +3398,8 @@ generate_hash_string_code(FactTableSize, PredName, VarName, LabelName, LabelNum,
     % "strcmp(%s, %s) == 0" for strings.
     %
 :- pred generate_hash_lookup_code(string::in, string::in, int::in,
-    comparison_kind::in, char::in, maybe_test_keys::in, string::out) is det.
+    comparison_kind::in, char::in(key_char), maybe_test_keys::in,
+    string::out) is det.
 
 generate_hash_lookup_code(VarName, LabelName, LabelNum,
         ComparisonKind, KeyType, TestKeys, HashLookupCode) :-
@@ -3424,8 +3419,7 @@ generate_hash_lookup_code(VarName, LabelName, LabelNum,
     HashLookupCodeTemplate = "
 
         do {
-            if (MR_FACT_TABLE_HASH_ENTRY_TYPE(%s) != 0 && %s)
-            {
+            if (MR_FACT_TABLE_HASH_ENTRY_TYPE(%s) != 0 && %s) {
                 ind = (MR_Word) %s.index;
                 goto found_%s_%d;
             }
@@ -3697,7 +3691,7 @@ convert_arg_type_to_mercury(RvalStr, Type, TargetArgLoc, ConvertedRvalStr) :-
     fact_arg_type::in, string::out) is det.
 
 convert_arg_type_from_mercury(SourceArgLoc, RvalStr, Type, ConvertedRvalStr) :-
-    % This code is a version of convert_type_to_mercury
+    % This code is a version of convert_type_from_mercury
     % cut down to handle only fact_arg_types.
     (
         Type = fact_arg_type_int,
