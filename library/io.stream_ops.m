@@ -1683,14 +1683,6 @@ public static ThreadLocal<MR_BinaryOutputFile> mercury_current_binary_output =
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_decl("C#", "
-using System;
-using System.IO;
-using System.Runtime.InteropServices;
-using System.Security.AccessControl;
-using System.Security.Principal;
-").
-
 :- pragma foreign_code("C#", "
 // The ML_ prefixes here are not really needed,
 // since the C# code all gets generated inside a class,

@@ -1183,15 +1183,6 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_import_module("C#", io.stream_ops).
 
-:- pragma foreign_decl("C#", "
-// XXX zs: I don't know which of these are needed.
-using System;
-using System.IO;
-using System.Runtime.InteropServices;
-using System.Security.AccessControl;
-using System.Security.Principal;
-").
-
 :- pragma foreign_code("C#", "
 public static void
 mercury_write_codepoint(System.IO.TextWriter w, int c)

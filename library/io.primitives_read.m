@@ -869,15 +869,6 @@ mercury_get_byte(MercuryFilePtr mf)
 
 :- pragma foreign_import_module("C#", io.stream_ops).
 
-:- pragma foreign_decl("C#", "
-// XXX zs: I don't know which of these are needed.
-using System;
-using System.IO;
-using System.Runtime.InteropServices;
-using System.Security.AccessControl;
-using System.Security.Principal;
-").
-
 :- pragma foreign_code("C#", "
 // Read in a character. This means reading in one or more bytes,
 // converting the bytes from the system's default encoding to Unicode,
