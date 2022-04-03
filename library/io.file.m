@@ -1372,7 +1372,8 @@ make_temp_directory(Dir, Prefix, Suffix, Result, !IO) :-
 :- pragma foreign_proc("C#",
     do_make_temp_directory(Dir::in, _Prefix::in, _Suffix::in, _Sep::in,
         DirName::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
 "{
     try
     {
@@ -1504,11 +1505,11 @@ make_temp_directory(Dir, Prefix, Suffix, Result, !IO) :-
 ").
 
 :- pragma foreign_decl("C#", "
-using System;
-using System.IO;
-using System.Runtime.InteropServices;
-using System.Security.AccessControl;
-using System.Security.Principal;
+using System;      // For Environment, PlatformID.
+using System.IO;   // For Directory, Path, DirectoryInfo.
+using System.Runtime.InteropServices; // For DllImport.
+using System.Security.AccessControl;  // For DirectorySecurity etc.
+using System.Security.Principal;      // For IdentifyReference etc.
 ").
 
 :- pragma foreign_code("C#", "
