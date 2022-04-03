@@ -1781,10 +1781,8 @@ write_secondary_hash_tables(OutputStream, FactTableSize, ModuleInfo,
         % The type is declared just to stop the C compiler emitting warnings.
         string.format(
             "extern struct MR_fact_table_hash_table_i %s0;\n",
-            [s(HashTableName)], NewHeaderCode),
-        % XXX CLEANUP This prepends to !HeaderCode, when appending
-        % would look to be more appropriate.
-        string.append(NewHeaderCode, !HeaderCode),
+            [s(HashTableName)], StructDeclCode),
+        !:HeaderCode = !.HeaderCode ++ StructDeclCode,
         map.lookup(FactTableProcMap, ProcId, FactTableProcInfo),
         FactTableProcInfo = fact_table_proc_info(FactTableVars, _, _),
         FactTableModes = list.map((func(fact_table_var(_, M, _, _)) = M),
@@ -2856,9 +2854,8 @@ generate_cc_multi_code_loop(StructName, [FactTableVar | FactTableVars], ArgNum,
         !ProcCode) :-
     FactTableVar = fact_table_var(VarName, _, _, _),
     string.format("\t\t%s = %s[0][0].V_%d;\n", [s(VarName), s(StructName),
-        i(ArgNum)], NewProcCode),
-    % XXX CLEANUP This puts NewProcCode *before* !.ProcCode.
-    string.append(NewProcCode, !ProcCode),
+        i(ArgNum)], ArgAssignCode),
+    !:ProcCode = !.ProcCode ++ ArgAssignCode,
     generate_cc_multi_code_loop(StructName, FactTableVars, ArgNum + 1,
         !ProcCode).
 
