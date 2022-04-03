@@ -132,6 +132,7 @@ gather_and_write_item_stats(Stream, AugCompUnit, !IO) :-
     % Initialize an item_stats structure.
     %
 :- func init_item_stats = item_stats.
+:- pragma consider_used(func(init_item_stats/0)).
 
 init_item_stats =
     item_stats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -140,6 +141,7 @@ init_item_stats =
     % Initialize a goal_stats structure.
     %
 :- func init_goal_stats = goal_stats.
+:- pragma consider_used(func(init_goal_stats/0)).
 
 init_goal_stats =
     goal_stats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -189,35 +191,35 @@ gather_stats_in_aug_comp_unit(AugCompUnit, !:CompUnitStats) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Update an item_stats structure based on the contents of the given
-    % item block.
-    %
-:- pred gather_stats_in_item_blocks((func(MS) = string)::in,
-    list(item_block(MS))::in,
-    comp_unit_stats::in, comp_unit_stats::out) is det.
-:- pragma consider_used(pred(gather_stats_in_item_blocks/4)).
-
-gather_stats_in_item_blocks(_, [], !CompUnitStats).
-gather_stats_in_item_blocks(SectionFunc, [ItemBlock | ItemBlocks],
-        !CompUnitStats) :-
-    ItemBlock = item_block(_, Section, _, _, _, Items),
-    SectionName = SectionFunc(Section),
-    ( if map.search(!.CompUnitStats, SectionName, SectionStats0) then
-        SectionStats0 = section_stats(ItemStats0, GoalStats0),
-        gather_stats_in_items(Items,
-            ItemStats0, ItemStats, GoalStats0, GoalStats),
-        SectionStats = section_stats(ItemStats, GoalStats),
-        map.det_update(SectionName, SectionStats, !CompUnitStats)
-    else
-        gather_stats_in_items(Items,
-            init_item_stats, ItemStats, init_goal_stats, GoalStats),
-        SectionStats = section_stats(ItemStats, GoalStats),
-        map.det_insert(SectionName, SectionStats, !CompUnitStats)
-    ),
-    gather_stats_in_item_blocks(SectionFunc, ItemBlocks, !CompUnitStats).
+%     % Update an item_stats structure based on the contents of the given
+%     % item block.
+%     %
+% :- pred gather_stats_in_item_blocks((func(MS) = string)::in,
+%     list(item_block(MS))::in,
+%     comp_unit_stats::in, comp_unit_stats::out) is det.
+% 
+% gather_stats_in_item_blocks(_, [], !CompUnitStats).
+% gather_stats_in_item_blocks(SectionFunc, [ItemBlock | ItemBlocks],
+%         !CompUnitStats) :-
+%     ItemBlock = item_block(_, Section, _, _, _, Items),
+%     SectionName = SectionFunc(Section),
+%     ( if map.search(!.CompUnitStats, SectionName, SectionStats0) then
+%         SectionStats0 = section_stats(ItemStats0, GoalStats0),
+%         gather_stats_in_items(Items,
+%             ItemStats0, ItemStats, GoalStats0, GoalStats),
+%         SectionStats = section_stats(ItemStats, GoalStats),
+%         map.det_update(SectionName, SectionStats, !CompUnitStats)
+%     else
+%         gather_stats_in_items(Items,
+%             init_item_stats, ItemStats, init_goal_stats, GoalStats),
+%         SectionStats = section_stats(ItemStats, GoalStats),
+%         map.det_insert(SectionName, SectionStats, !CompUnitStats)
+%     ),
+%     gather_stats_in_item_blocks(SectionFunc, ItemBlocks, !CompUnitStats).
 
 :- pred gather_stats_in_items(list(item)::in,
     item_stats::in, item_stats::out, goal_stats::in, goal_stats::out) is det.
+:- pragma consider_used(pred(gather_stats_in_items/5)).
 
 gather_stats_in_items([], !ItemStats, !GoalStats).
 gather_stats_in_items([Item | Items], !ItemStats, !GoalStats) :-

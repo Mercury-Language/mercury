@@ -797,40 +797,24 @@
 
 %---------------------------------------------------------------------------%
 %
-% A raw compilation unit is one module to be compiled. A parse_tree_src
-% that contains N nested submodules corresponds to 1 + N raw_compilation_units,
-% one for the top level module and one for each (possibly deeply) nested
+% A parse_tree_module_src is one module to be compiled. A parse_tree_src that
+% contains N nested submodules corresponds to 1 + N parse_tree_module_srcs,
+% one for the top level module, and one for each (possibly deeply) nested
 % submodule.
 %
 % A raw compilation unit consists of some raw item blocks, with each raw
 % item block containing the items in an interface or implementation section
 % of its module.
 %
-% XXX CLEANUP We should stop using raw_compilation_units completely,
-% replacing their use with a parse_tree_module_src. That also contains
-% the same components (includes, avails, fims and items), but in a more
-% convenient form, with different kinds of separated out and with
-% e.g. duplicate imports and type definitions already handled.
-%
-% Before we convert a raw compilation unit into the HLDS, we augment it
+% Before we convert a parse_tree_module_src into the HLDS, we augment it
 % with the contents of the interface files of the modules it imports
 % (directly or indirectly), and if requested, with the contents of the
 % optimization files of those modules as well. The augmented compilation unit
 % will consist of the following for compiler invocations that generate
-% target language code. (For compiler invocations that generate .int and
-% .int2 files, all the interface files mentioned below will be replaced
-% by .int3 files.)
+% target language code. (Compiler invocations that generate .int and .int2
+% files will construct an aug_make_int_unit, not an aug_compilation_unit.)
 %
-% - The module_src field contains the original raw_compilation_unit
-%   after being transformed into a parse_tree_module_src.
-%
-%   Once upon a time, we depended on the raw compilation unit
-%   having item blocks marked as "implementation section but exported
-%   to submodules", but now we rely on the fact that some kinds of items
-%   in the implementation section are *always* exported to the current
-%   module's submodules (if there are any), while others are *never* exported
-%   to submodules, and these are already separated in the
-%   parse_tree_module_src.
+% - The module_src field contains the original parse_tree_module_src.
 %
 % - The ancestor_int_specs field contains the .int0 interface files of
 %   the ancestors of this module, which are always implicitly imported.
@@ -884,8 +868,8 @@
 %   the ancestor-, direct- or indirect-imported modules than their
 %   .int0, .int or .int2 files do. Unfortunately, they often also
 %   *duplicate* items in those interface files, which leads to
-%   double definitions, which may then lead to test case failures
-%   (such as submodules/ts if I -zs- recall correctly).
+%   double definitions, which the submodules of make_hlds.m have to
+%   be prepared to detect and ignore.
 %
 % - Provided transitive intermodule optimization is enabled, the trans_opts
 %   field will contain the .trans_opt files of the modules named in
@@ -921,18 +905,6 @@
 %   in the augmented compilation unit will lead to wasted work, which means
 %   that we should avoid doing that if possible.
 %
-
-:- type raw_compilation_unit
-    --->    raw_compilation_unit(
-                % The name of the module.
-                rcu_module_name                 :: module_name,
-
-                % The context of the `:- module' declaration.
-                rcu_module_name_context         :: prog_context,
-
-                % The items in the module.
-                rcu_raw_item_blocks             :: list(raw_item_block)
-            ).
 
 :- type aug_compilation_unit
     --->    aug_compilation_unit(
@@ -1136,18 +1108,6 @@
             %
             % Record recomp_avail_imp_use as recompilation reason.
             % (Since there is no recomp_avail_indirect_use_imp, yet).
-
-:- type raw_item_block == item_block(module_section).
-
-:- type item_block(MS)
-    --->    item_block(
-                module_name,
-                MS,
-                list(item_include),
-                list(item_avail),
-                list(item_fim),
-                list(item)
-            ).
 
 %---------------------------------------------------------------------------%
 

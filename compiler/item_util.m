@@ -175,39 +175,6 @@
 
 %---------------------------------------------------------------------------%
 %
-% Operations to construct item blocks.
-%
-
-:- pred make_and_add_item_block(module_name::in, MS::in,
-    list(item_include)::in, list(item_avail)::in,
-    list(item_fim)::in, list(item)::in,
-    list(item_block(MS))::in, list(item_block(MS))::out) is det.
-
-:- pred int_imp_items_to_item_blocks(module_name::in, MS::in, MS::in,
-    list(item_include)::in, list(item_include)::in,
-    list(item_avail)::in, list(item_avail)::in,
-    list(item_fim)::in, list(item_fim)::in, list(item)::in, list(item)::in,
-    list(item_block(MS))::out) is det.
-
-%---------------------------------------------------------------------------%
-%
-% Operations to deconstruct item blocks.
-%
-
-    % get_raw_components(RawItemBlocks, IntIncls, ImpIncls,
-    %     IntAvails, ImpAvails, IntItems, ImpItems):
-    %
-    % Return the includes, avails (i.e. imports and uses), and items
-    % from both the interface and implementation blocks in RawItemBlocks.
-    %
-:- pred get_raw_components(list(raw_item_block)::in,
-    list(item_include)::out, list(item_include)::out,
-    list(item_avail)::out, list(item_avail)::out,
-    list(item_fim)::out, list(item_fim)::out,
-    list(item)::out, list(item)::out) is det.
-
-%---------------------------------------------------------------------------%
-%
 % Describing items for error messages.
 %
 
@@ -222,7 +189,6 @@
 % Projection operations.
 %
 
-:- func raw_compilation_unit_project_name(raw_compilation_unit) = module_name.
 :- func parse_tree_module_src_project_name(parse_tree_module_src)
     = module_name.
 
@@ -1329,69 +1295,6 @@ impl_pragma_needs_foreign_imports(ImplPragma) = Langs :-
 
 %---------------------------------------------------------------------------%
 
-make_and_add_item_block(ModuleName, Section, Incls, Avails, FIMs, Items,
-        !ItemBlocks) :-
-    ( if
-        Incls = [],
-        Avails = [],
-        FIMs = [],
-        Items = []
-    then
-        true
-    else
-        Block = item_block(ModuleName, Section,
-            Incls, Avails, FIMs, Items),
-        !:ItemBlocks = [Block | !.ItemBlocks]
-    ).
-
-int_imp_items_to_item_blocks(ModuleName, IntSection, ImpSection,
-        IntIncls, ImpIncls, IntAvails, ImpAvails, IntFIMs, ImpFIMs,
-        IntItems, ImpItems, !:ItemBlocks) :-
-    make_and_add_item_block(ModuleName, ImpSection,
-        ImpIncls, ImpAvails, ImpFIMs, ImpItems, [], !:ItemBlocks),
-    make_and_add_item_block(ModuleName, IntSection,
-        IntIncls, IntAvails, IntFIMs, IntItems, !ItemBlocks).
-
-%---------------------------------------------------------------------------%
-
-get_raw_components(RawItemBlocks, !:IntIncls, !:ImpIncls,
-        !:IntAvails, !:ImpAvails, !:IntFIMs, !:ImpFIMs,
-        !:IntItems, !:ImpItems) :-
-    % While lists of items can be very long, this just about never happens
-    % with lists of item BLOCKS, so we don't need tail recursion.
-    (
-        RawItemBlocks = [],
-        !:IntIncls = [],
-        !:ImpIncls = [],
-        !:IntAvails = [],
-        !:ImpAvails = [],
-        !:IntFIMs = [],
-        !:ImpFIMs = [],
-        !:IntItems = [],
-        !:ImpItems = []
-    ;
-        RawItemBlocks = [HeadRawItemBlock | TailRawItemBlocks],
-        get_raw_components(TailRawItemBlocks, !:IntIncls, !:ImpIncls,
-            !:IntAvails, !:ImpAvails, !:IntFIMs, !:ImpFIMs,
-            !:IntItems, !:ImpItems),
-        HeadRawItemBlock = item_block(_, Section, Incls, Avails, FIMs, Items),
-        (
-            Section = ms_interface,
-            !:IntIncls = Incls ++ !.IntIncls,
-            !:IntAvails = Avails ++ !.IntAvails,
-            !:IntFIMs = FIMs ++ !.IntFIMs,
-            !:IntItems = Items ++ !.IntItems
-        ;
-            Section = ms_implementation,
-            !:ImpIncls = Incls ++ !.ImpIncls,
-            !:ImpAvails = Avails ++ !.ImpAvails,
-            !:ImpFIMs = FIMs ++ !.ImpFIMs,
-            !:ImpItems = Items ++ !.ImpItems
-        )
-    ).
-
-%---------------------------------------------------------------------------%
-
 item_desc_pieces(Item) = Pieces :-
     (
         Item = item_clause(_),
@@ -1597,9 +1500,6 @@ gen_pragma_desc_pieces(Pragma) = Pieces :-
     ).
 
 %---------------------------------------------------------------------------%
-
-raw_compilation_unit_project_name(RawCompUnit) =
-    RawCompUnit ^ rcu_module_name.
 
 parse_tree_module_src_project_name(ParseTreeModuleSrc) =
     ParseTreeModuleSrc ^ ptms_module_name.

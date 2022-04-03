@@ -118,6 +118,30 @@
 
 %---------------------------------------------------------------------------%
 
+:- type raw_compilation_unit
+    --->    raw_compilation_unit(
+                % The name of the module.
+                rcu_module_name                 :: module_name,
+
+                % The context of the `:- module' declaration.
+                rcu_module_name_context         :: prog_context,
+
+                % The items in the module.
+                rcu_raw_item_blocks             :: list(raw_item_block)
+            ).
+
+    % We used to have several kinds of item blocks, but raw item blocks
+    % are the only ones we still use.
+:- type raw_item_block
+    --->    item_block(
+                module_name,
+                module_section,
+                list(item_include),
+                list(item_avail),
+                list(item_fim),
+                list(item)
+            ).
+
 :- pred check_convert_raw_comp_unit_to_module_src(globals::in,
     raw_compilation_unit::in, parse_tree_module_src::out,
     list(error_spec)::in, list(error_spec)::out) is det.
