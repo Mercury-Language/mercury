@@ -796,25 +796,23 @@ generate_interfaces_int1_int2(Globals, AugMakeIntUnit,
     generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-        IntTypeClasses, IntInstances, TypeCtorRepnMap, ParseTreeInt1, !Specs),
+        TypeCtorRepnMap, ParseTreeInt1, !Specs),
     generate_interface_int2(AugMakeIntUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-        IntTypeClasses, IntInstances, TypeCtorRepnMap, ParseTreeInt2).
+        TypeCtorRepnMap, ParseTreeInt2).
 
 :- pred generate_interface_int1(globals::in, aug_make_int_unit::in,
     module_names_contexts::out, set(fim_spec)::out, set(fim_spec)::out,
     type_ctor_checked_map::out,
     inst_ctor_checked_map::out, mode_ctor_checked_map::out,
-    list(item_typeclass_info)::out, list(item_instance_info)::out,
     type_ctor_repn_map::out, parse_tree_int1::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeCtorCheckedMap, IntInstCtorCheckedMap, IntModeCtorCheckedMap,
-        IntTypeClasses, IntInstances, TypeCtorRepnMap,
-        ParseTreeInt1, !Specs) :-
+        TypeCtorRepnMap, ParseTreeInt1, !Specs) :-
     % We return some of our intermediate results to our caller, for use
     % in constructing the .int2 file.
     AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc,
@@ -2215,23 +2213,22 @@ make_subtype_defn_abstract(SubDefn) = AbstractDefn :-
 
     % generate_interface_int2(AugMakeIntUnit, IntImportUseMap,
     %   IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
-    %   IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-    %   ImpTypeDefns, TypeCtorRepnMap, ParseTreeInt2):
+    %   TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
+    %   TypeCtorRepnMap, ParseTreeInt2):
     %
     % The input arguments should be the relevant parts of the .int1 file
     % computed by our parent.
     %
 :- pred generate_interface_int2(aug_make_int_unit::in,
     module_names_contexts::in, set(fim_spec)::in, set(fim_spec)::in,
-    type_ctor_checked_map::in,
-    inst_ctor_checked_map::in, mode_ctor_checked_map::in,
-    list(item_typeclass_info)::in, list(item_instance_info)::in,
-    type_ctor_repn_map::in, parse_tree_int2::out) is det.
+    type_ctor_checked_map::in, inst_ctor_checked_map::in,
+    mode_ctor_checked_map::in, type_ctor_repn_map::in,
+    parse_tree_int2::out) is det.
 
 generate_interface_int2(AugMakeIntUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-        IntTypeClasses, IntInstances, TypeCtorRepnMap, ParseTreeInt2) :-
+        TypeCtorRepnMap, ParseTreeInt2) :-
     AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, _, _, _, _),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameContext = ParseTreeModuleSrc ^ ptms_module_name_context,
@@ -2239,9 +2236,9 @@ generate_interface_int2(AugMakeIntUnit, IntImportUseMap,
     IntInclMap = ParseTreeModuleSrc ^ ptms_int_includes,
     InclMap = ParseTreeModuleSrc ^ ptms_include_map,
     map.foldl(add_only_int_include, InclMap, map.init, ShortInclMap),
+    IntTypeClasses = ParseTreeModuleSrc ^ ptms_int_typeclasses,
+    IntInstances = ParseTreeModuleSrc ^ ptms_int_instances,
 
-    % XXX CLEANUP start from ParseTreeModuleSrc, not from
-    % ParseTreeInt1's components, where these are the same.
     some [!UnqualSymNames, !UsedModuleNames] (
         !:UnqualSymNames = no_unqual_symnames,
         set.init(!:UsedModuleNames),
