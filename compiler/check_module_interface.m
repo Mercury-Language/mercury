@@ -6,15 +6,13 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: check_raw_comp_unit.m.
+% File: check_module_interface.m.
 %
 % Check whether the interface of a module exports anything.
-% XXX The name of this module is now misleading, since it does not operate
-% on raw_compilation_units.
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.check_raw_comp_unit.
+:- module parse_tree.check_module_interface.
 :- interface.
 
 :- import_module libs.
@@ -145,5 +143,5 @@ generate_no_exports_warning(ModuleName, Context, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.check_raw_comp_unit.
+:- end_module parse_tree.check_module_interface.
 %---------------------------------------------------------------------------%

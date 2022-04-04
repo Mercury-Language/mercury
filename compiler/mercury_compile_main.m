@@ -77,7 +77,7 @@
 :- import_module mdbcomp.shared_utilities.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.check_raw_comp_unit.
+:- import_module parse_tree.check_module_interface.
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
