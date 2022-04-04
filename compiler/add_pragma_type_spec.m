@@ -272,12 +272,12 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeArgModes, Context,
             IsImported = pred_status_is_imported(PredStatus),
             (
                 IsImported = yes,
-                ItemType = pred_or_func_to_item_type(PredOrFunc),
+                ItemType = pred_or_func_to_recomp_item_type(PredOrFunc),
                 UserArity = user_arity(UserArityInt),
+                ItemName = recomp_item_name(SymName, UserArityInt),
+                ItemId = recomp_item_id(ItemType, ItemName),
                 apply_to_recompilation_info(
-                    recompilation.record_expanded_items(
-                        item_id(ItemType, item_name(SymName, UserArityInt)),
-                        ExpandedItems),
+                    recompilation.record_expanded_items(ItemId, ExpandedItems),
                     !QualInfo)
             ;
                 IsImported = no

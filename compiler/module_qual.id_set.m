@@ -294,8 +294,8 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
         SymName = qualified(UniqModuleName, BaseName),
         mq_info_set_module_used(InInt, UniqModuleName, !Info),
         UsedItemType = convert_used_item_type(IdType),
-        ItemName0 = item_name(SymName0, Arity),
-        ItemName = item_name(SymName, Arity),
+        ItemName0 = recomp_item_name(SymName0, Arity),
+        ItemName = recomp_item_name(SymName, Arity),
         update_recompilation_info(
             recompilation.record_used_item(UsedItemType, ItemName0, ItemName),
             !Info)

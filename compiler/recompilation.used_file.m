@@ -114,9 +114,10 @@
                 ufc_module_timestamp_map    :: module_timestamp_map,
                 ufc_mi_version_numbers_map  :: module_item_version_numbers_map,
                 ufc_resolved_used_items     :: resolved_used_items,
-                ufc_used_typeclasses        :: set(item_name),
+                ufc_used_typeclasses        :: set(recomp_item_name),
                 ufc_imported_items          :: imported_items,
-                ufc_module_instances        :: map(module_name, set(item_name))
+                ufc_module_instances        :: map(module_name,
+                                                set(recomp_item_name))
             ).
 
 :- type imported_items == map(module_name, module_imported_items).
@@ -185,7 +186,7 @@
 
                 % XXX document the meanings of these fields.
                 resolved_used_items,
-                list(item_name),
+                list(recomp_item_name),
                 list(recomp_used_module)
             ).
 
@@ -341,14 +342,15 @@ used_items_to_string(ResolvedUsedItems) = Str :-
     ResolvedUsedItems = resolved_used_items(UsedTypeNameSet, UsedTypeDefnSet,
         UsedInstSet, UsedModeSet, UsedClassSet, UsedFunctorSet,
         UsedPredSet, UsedFuncSet),
-
-    MS1 = maybe_simple_item_matches_to_string(type_name_item, UsedTypeNameSet),
-    MS2 = maybe_simple_item_matches_to_string(type_defn_item, UsedTypeDefnSet),
-    MS3 = maybe_simple_item_matches_to_string(inst_item, UsedInstSet),
-    MS4 = maybe_simple_item_matches_to_string(mode_item, UsedModeSet),
-    MS5 = maybe_simple_item_matches_to_string(typeclass_item, UsedClassSet),
-    MS6 = maybe_pred_or_func_matches_to_string(predicate_item, UsedPredSet),
-    MS7 = maybe_pred_or_func_matches_to_string(function_item, UsedFuncSet),
+    MS1 = maybe_simple_item_matches_to_string(recomp_type_name,
+        UsedTypeNameSet),
+    MS2 = maybe_simple_item_matches_to_string(recomp_type_defn,
+        UsedTypeDefnSet),
+    MS3 = maybe_simple_item_matches_to_string(recomp_inst, UsedInstSet),
+    MS4 = maybe_simple_item_matches_to_string(recomp_mode, UsedModeSet),
+    MS5 = maybe_simple_item_matches_to_string(recomp_typeclass, UsedClassSet),
+    MS6 = maybe_pred_or_func_matches_to_string(recomp_predicate, UsedPredSet),
+    MS7 = maybe_pred_or_func_matches_to_string(recomp_function, UsedFuncSet),
     % XXX no item_type wrapper
     MS8 = maybe_functor_matches_to_string(UsedFunctorSet),
     MatchStrs = MS1 ++ MS2 ++ MS3 ++ MS4 ++ MS5 ++ MS6 ++ MS7 ++ MS8,
@@ -364,14 +366,14 @@ used_items_to_string(ResolvedUsedItems) = Str :-
 
 %---------------------%
 
-:- func maybe_simple_item_matches_to_string(item_type, simple_item_set)
+:- func maybe_simple_item_matches_to_string(recomp_item_type, simple_item_set)
     = list(string).
 
 maybe_simple_item_matches_to_string(ItemType, ItemSet) = Strs :-
     ( if map.is_empty(ItemSet) then
         Strs = []
     else
-        string_to_item_type(ItemTypeStr, ItemType),
+        string_to_recomp_item_type(ItemTypeStr, ItemType),
         map.to_assoc_list(ItemSet, ItemList),
         ItemStrs = list.map(simple_item_matches_to_string_3, ItemList),
         ItemsStr = string.join_list(",\n\t\t", ItemStrs),
@@ -408,7 +410,7 @@ simple_item_matches_to_string_4(Qualifier - ModuleName) = Str :-
 
 %---------------------%
 
-:- func maybe_pred_or_func_matches_to_string(item_type,
+:- func maybe_pred_or_func_matches_to_string(recomp_item_type,
     resolved_pred_or_func_set) = list(string).
 
 maybe_pred_or_func_matches_to_string(ItemType, ItemSet) = Strs :-
@@ -433,7 +435,8 @@ pred_or_func_matches_to_string_3(Qualifier - PredIdModuleNames) = Str :-
         ModuleNameStrs =
             list.map(mercury_bracketed_sym_name_to_string, ModuleNames),
         ModuleNamesStr = string.join_list(", ", ModuleNameStrs),
-        string.format("%s => (%s)", [s(QualifierStr), s(ModuleNamesStr)], Str)).
+        string.format("%s => (%s)", [s(QualifierStr), s(ModuleNamesStr)], Str)
+    ).
 
 %---------------------%
 
@@ -444,7 +447,7 @@ maybe_functor_matches_to_string(ItemSet) = Strs :-
         Strs = []
     else
         MatchesStr = resolved_item_set_to_string(functor_matches_to_string_2,
-            functor_item, ItemSet),
+            recomp_functor, ItemSet),
         Strs = [MatchesStr]
     ).
 
@@ -492,10 +495,10 @@ resolved_functor_to_string(ResolvedFunctor) = Str :-
 
 :- func resolved_item_set_to_string(
     (func(pair(module_qualifier, T)) = string),
-    item_type, resolved_item_set(T)) = string.
+    recomp_item_type, resolved_item_set(T)) = string.
 
 resolved_item_set_to_string(MatchesToStr, ItemType, ItemSet) = Str :-
-    string_to_item_type(ItemTypeStr, ItemType),
+    string_to_recomp_item_type(ItemTypeStr, ItemType),
     map.to_assoc_list(ItemSet, ItemList),
     ItemStrs = list.map(resolved_item_set_to_string_2(MatchesToStr), ItemList),
     ItemsStr = string.join_list(",\n\t\t", ItemStrs),
@@ -526,7 +529,7 @@ resolved_item_set_to_string_3(MatchesToStr, Arity - Matches) = Str :-
 
 %---------------------------------------------------------------------------%
 
-:- func used_classes_to_string(set(item_name)) = string.
+:- func used_classes_to_string(set(recomp_item_name)) = string.
 
 used_classes_to_string(UsedClasses) = Str :-
     UsedClassList = set.to_sorted_list(UsedClasses),
@@ -541,10 +544,10 @@ used_classes_to_string(UsedClasses) = Str :-
         string.format("used_classes(%s).\n\n", [s(UsedClassesStr)], Str)
     ).
 
-:- func used_classname_and_arity_to_string(item_name) = string.
+:- func used_classname_and_arity_to_string(recomp_item_name) = string.
 
 used_classname_and_arity_to_string(ItemName) = Str :-
-    ItemName = item_name(ClassName, ClassArity),
+    ItemName = recomp_item_name(ClassName, ClassArity),
     ClassNameStr = mercury_bracketed_sym_name_to_string(ClassName),
     string.format("%s/%i", [s(ClassNameStr), i(ClassArity)], Str).
 
@@ -911,56 +914,56 @@ read_and_parse_used_items(UsedFileName, UsedFileString, MaxOffset,
 parse_used_item_set(Term, !UsedItems, !Errors) :-
     ( if
         Term = term.functor(term.atom(ItemTypeStr), ItemTerms, _),
-        string_to_item_type(ItemTypeStr, ItemType)
+        string_to_recomp_item_type(ItemTypeStr, ItemType)
     then
         (
-            ( ItemType = type_name_item
-            ; ItemType = type_defn_item
-            ; ItemType = inst_item
-            ; ItemType = mode_item
-            ; ItemType = typeclass_item
+            ( ItemType = recomp_type_name
+            ; ItemType = recomp_type_defn
+            ; ItemType = recomp_inst
+            ; ItemType = recomp_mode
+            ; ItemType = recomp_typeclass
             ),
             list.foldl2(parse_simple_item, ItemTerms,
                 map.init, SimpleItems, cord.init, ItemErrors),
             ( if cord.is_empty(ItemErrors) then
                 (
-                    ItemType = type_name_item,
+                    ItemType = recomp_type_name,
                     !UsedItems ^ rui_type_names := SimpleItems
                 ;
-                    ItemType = type_defn_item,
+                    ItemType = recomp_type_defn,
                     !UsedItems ^ rui_type_defns := SimpleItems
                 ;
-                    ItemType = inst_item,
+                    ItemType = recomp_inst,
                     !UsedItems ^ rui_insts := SimpleItems
                 ;
-                    ItemType = mode_item,
+                    ItemType = recomp_mode,
                     !UsedItems ^ rui_modes := SimpleItems
                 ;
-                    ItemType = typeclass_item,
+                    ItemType = recomp_typeclass,
                     !UsedItems ^ rui_typeclasses := SimpleItems
                 )
             else
                 !:Errors = !.Errors ++ ItemErrors
             )
         ;
-            ( ItemType = predicate_item
-            ; ItemType = function_item
+            ( ItemType = recomp_predicate
+            ; ItemType = recomp_function
             ),
             list.foldl2(parse_pred_or_func_item, ItemTerms,
                 map.init, PredOrFuncItems, cord.init, ItemErrors),
             ( if cord.is_empty(ItemErrors) then
                 (
-                    ItemType = predicate_item,
+                    ItemType = recomp_predicate,
                     !UsedItems ^ rui_predicates := PredOrFuncItems
                 ;
-                    ItemType = function_item,
+                    ItemType = recomp_function,
                     !UsedItems ^ rui_functions := PredOrFuncItems
                 )
             else
                 !:Errors = !.Errors ++ ItemErrors
             )
         ;
-            ItemType = functor_item,
+            ItemType = recomp_functor,
             list.foldl2(parse_functor_item, ItemTerms,
                 map.init, CtorItems, cord.init, ItemErrors),
             ( if cord.is_empty(ItemErrors) then
@@ -969,8 +972,8 @@ parse_used_item_set(Term, !UsedItems, !Errors) :-
                 !:Errors = !.Errors ++ ItemErrors
             )
         ;
-            ( ItemType = mutable_item
-            ; ItemType = foreign_proc_item
+            ( ItemType = recomp_mutable
+            ; ItemType = recomp_foreign_proc
             ),
             Context = get_term_context(Term),
             Msg = "error in used items: unknown item type: " ++ ItemTypeStr,
@@ -1237,7 +1240,7 @@ parse_resolved_item_arity_matches(ParseMatches, Term,
 
 :- pred read_and_parse_used_classes(string::in, string::in, int::in,
     line_context::in, line_context::out, line_posn::in, line_posn::out,
-    used_file_result(set(item_name))::out) is det.
+    used_file_result(set(recomp_item_name))::out) is det.
 
 read_and_parse_used_classes(UsedFileName, UsedFileString, MaxOffset,
         !LineContext, !LinePosn, ParseUsedClasses) :-
@@ -1271,12 +1274,12 @@ read_and_parse_used_classes(UsedFileName, UsedFileString, MaxOffset,
     ).
 
 :- pred parse_name_and_arity_item_add_to_set(term::in,
-    set(item_name)::in, set(item_name)::out,
+    set(recomp_item_name)::in, set(recomp_item_name)::out,
     cord(used_file_error)::in, cord(used_file_error)::out) is det.
 
 parse_name_and_arity_item_add_to_set(Term, !UsedClasses, !Errors) :-
     ( if parse_unqualified_name_and_arity(Term, ClassName, ClassArity) then
-        UsedClass = item_name(ClassName, ClassArity),
+        UsedClass = recomp_item_name(ClassName, ClassArity),
         set.insert(UsedClass, !UsedClasses)
     else
         Context = get_term_context(Term),

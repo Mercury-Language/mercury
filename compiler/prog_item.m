@@ -64,7 +64,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module recompilation.
+:- import_module recompilation.                 % XXX undesirable dependency
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.maybe_error.
@@ -2570,7 +2570,7 @@
                 tspec_tvarset           :: tvarset,
 
                 % The equivalence types used.
-                tspec_items             :: set(item_id)
+                tspec_items             :: set(recomp_item_id)
             ).
 
 :- type pragma_info_unused_args

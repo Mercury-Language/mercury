@@ -467,21 +467,21 @@ check_module_used_items(ModuleName, RecompAvail, OldTimestamp,
 
     !:MaybeStoppingReason = no,
     % Check whether any of the items which were used have changed.
-    check_name_arity_version_numbers(ModuleName, type_name_item,
+    check_name_arity_version_numbers(ModuleName, recomp_type_name,
         UsedTypeNameMap, NewTypeNameMap, !MaybeStoppingReason, !Info),
-    check_name_arity_version_numbers(ModuleName, type_defn_item,
+    check_name_arity_version_numbers(ModuleName, recomp_type_defn,
         UsedTypeDefnMap, NewTypeDefnMap, !MaybeStoppingReason, !Info),
-    check_name_arity_version_numbers(ModuleName, inst_item,
+    check_name_arity_version_numbers(ModuleName, recomp_inst,
         UsedInstMap, NewInstMap, !MaybeStoppingReason, !Info),
-    check_name_arity_version_numbers(ModuleName, mode_item,
+    check_name_arity_version_numbers(ModuleName, recomp_mode,
         UsedModeMap, NewModeMap, !MaybeStoppingReason, !Info),
-    check_name_arity_version_numbers(ModuleName, typeclass_item,
+    check_name_arity_version_numbers(ModuleName, recomp_typeclass,
         UsedClassMap, NewClassMap, !MaybeStoppingReason, !Info),
     check_item_name_version_numbers(ModuleName,
         UsedInstanceMap, NewInstanceMap, !MaybeStoppingReason, !Info),
-    check_name_arity_version_numbers(ModuleName, predicate_item,
+    check_name_arity_version_numbers(ModuleName, recomp_predicate,
         UsedPredMap, NewPredMap, !MaybeStoppingReason, !Info),
-    check_name_arity_version_numbers(ModuleName, function_item,
+    check_name_arity_version_numbers(ModuleName, recomp_function,
         UsedFuncMap, NewFuncMap, !MaybeStoppingReason, !Info),
 
     % Check whether added or modified items could cause name resolution
@@ -534,14 +534,15 @@ check_module_used_items(ModuleName, RecompAvail, OldTimestamp,
         )
     ).
 
-:- func make_item_id(module_name, item_type, name_arity) = item_id.
+:- func make_item_id(module_name, recomp_item_type, name_arity)
+    = recomp_item_id.
 
 make_item_id(Module, ItemType, name_arity(Name, Arity)) =
-    item_id(ItemType, item_name(qualified(Module, Name), Arity)).
+    recomp_item_id(ItemType, recomp_item_name(qualified(Module, Name), Arity)).
 
 %---------------------------------------------------------------------------%
 
-:- pred check_name_arity_version_numbers(module_name::in, item_type::in,
+:- pred check_name_arity_version_numbers(module_name::in, recomp_item_type::in,
     name_arity_version_map::in, name_arity_version_map::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
@@ -558,7 +559,7 @@ check_name_arity_version_numbers(ModuleName, ItemType,
             UsedVersionMap, !MaybeStoppingReason, !Info)
     ).
 
-:- pred check_name_arity_version_number(module_name::in, item_type::in,
+:- pred check_name_arity_version_number(module_name::in, recomp_item_type::in,
     name_arity_version_map::in, name_arity::in, version_number::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
@@ -586,7 +587,7 @@ check_name_arity_version_number(ModuleName, ItemType, NewVersionMap,
     ).
 
 :- pred check_item_name_version_numbers(module_name::in,
-    item_name_version_map::in, item_name_version_map::in,
+    recomp_item_name_version_map::in, recomp_item_name_version_map::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
@@ -597,7 +598,7 @@ check_item_name_version_numbers(ModuleName, UsedVersionMap, NewVersionMap,
         UsedVersionMap, !MaybeStoppingReason, !Info).
 
 :- pred check_item_name_version_number(module_name::in,
-    item_name_version_map::in, item_name::in, version_number::in,
+    recomp_item_name_version_map::in, recomp_item_name::in, version_number::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
@@ -660,7 +661,7 @@ check_type_defn_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
         _, _, _),
     list.length(TypeParams, TypeArity),
     check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
-        VersionNumbers ^ mivn_type_names, type_name_item,
+        VersionNumbers ^ mivn_type_names, recomp_type_name,
         TypeSymName, TypeArity, NeedsCheck, !MaybeStoppingReason, !Info),
     (
         NeedsCheck = yes,
@@ -685,7 +686,7 @@ check_inst_defn_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
         _MaybeForTypeCtor, _, _, _, _),
     list.length(InstParams, InstArity),
     check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
-        VersionNumbers ^ mivn_insts, inst_item, InstSymName, InstArity,
+        VersionNumbers ^ mivn_insts, recomp_inst, InstSymName, InstArity,
         _NeedsCheck, !MaybeStoppingReason, !Info).
 
 %---------------------%
@@ -700,7 +701,7 @@ check_mode_defn_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
     ItemModeDefn = item_mode_defn_info(ModeSymName, ModeParams, _, _, _, _),
     list.length(ModeParams, ModeArity),
     check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
-        VersionNumbers ^ mivn_modes, mode_item, ModeSymName, ModeArity,
+        VersionNumbers ^ mivn_modes, recomp_mode, ModeSymName, ModeArity,
         _NeedsCheck, !MaybeStoppingReason, !Info).
 
 %---------------------%
@@ -716,7 +717,7 @@ check_typeclass_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
         _, _, Interface, _, _, _),
     list.length(TypeClassParams, TypeClassArity),
     check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
-        VersionNumbers ^ mivn_typeclasses, typeclass_item,
+        VersionNumbers ^ mivn_typeclasses, recomp_typeclass,
         TypeClassSymName, TypeClassArity,
         NeedsCheck, !MaybeStoppingReason, !Info),
     ( if
@@ -766,8 +767,8 @@ check_pred_decl_info_for_ambiguities(RecompAvail, OldTimestamp,
 
 %---------------------------------------------------------------------------%
 
-:- pred check_for_simple_item_ambiguity(recomp_avail::in,
-    timestamp::in, name_arity_version_map::in, item_type::in(simple_item),
+:- pred check_for_simple_item_ambiguity(recomp_avail::in, timestamp::in,
+    name_arity_version_map::in, recomp_item_type::in(recomp_simple),
     sym_name::in, arity::in, bool::out,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
@@ -789,19 +790,19 @@ check_for_simple_item_ambiguity(RecompAvail, UsedFileTimestamp,
             NeedsCheck = yes,
             UsedItems = !.Info ^ rci_used_items,
             (
-                ItemType = type_name_item,
+                ItemType = recomp_type_name,
                 UsedItemMap = UsedItems ^ rui_type_names
             ;
-                ItemType = type_defn_item,
+                ItemType = recomp_type_defn,
                 unexpected($pred, "type_body_item")
             ;
-                ItemType = inst_item,
+                ItemType = recomp_inst,
                 UsedItemMap = UsedItems ^ rui_insts
             ;
-                ItemType = mode_item,
+                ItemType = recomp_mode,
                 UsedItemMap = UsedItems ^ rui_modes
             ;
-                ItemType = typeclass_item,
+                ItemType = recomp_typeclass,
                 UsedItemMap = UsedItems ^ rui_typeclasses
             ),
             NameArity = name_arity(unqualify_name(SymName), Arity),
@@ -818,7 +819,7 @@ check_for_simple_item_ambiguity(RecompAvail, UsedFileTimestamp,
         )
     ).
 
-:- pred check_for_simple_item_ambiguity_2(item_type::in,
+:- pred check_for_simple_item_ambiguity_2(recomp_item_type::in,
     recomp_avail::in, sym_name::in, arity::in,
     module_qualifier::in, module_name::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
@@ -849,10 +850,12 @@ check_for_simple_item_ambiguity_2(ItemType, RecompAvail, SymName, Arity,
             partial_sym_name_matches_full(QualifiedName, SymName),
             not SymName = qualified(OldMatchingModuleName, _)
         then
-            OldMatchingName = qualified(OldMatchingModuleName, Name),
+            OldMatchingSymName = qualified(OldMatchingModuleName, Name),
+            ItemName = recomp_item_name(SymName, Arity),
+            OldItemName = recomp_item_name(OldMatchingSymName, Arity),
             Reason = recompile_for_item_ambiguity(
-                item_id(ItemType, item_name(SymName, Arity)),
-                [item_id(ItemType, item_name(OldMatchingName, Arity))]),
+                recomp_item_id(ItemType, ItemName),
+                [recomp_item_id(ItemType, OldItemName)]),
             record_recompilation_reason(Reason, !:MaybeStoppingReason, !Info)
         else
             true
@@ -919,11 +922,11 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompAvail, OldTimestamp,
             UsedItems = !.Info ^ rci_used_items,
             (
                 PredOrFunc = pf_predicate,
-                ItemType = predicate_item,
+                ItemType = recomp_predicate,
                 UsedItemMap = UsedItems ^ rui_predicates
             ;
                 PredOrFunc = pf_function,
-                ItemType = function_item,
+                ItemType = recomp_function,
                 UsedItemMap = UsedItems ^ rui_functions
             ),
             Name = unqualify_name(SymName),
@@ -962,7 +965,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompAvail, OldTimestamp,
     ).
 
 :- pred check_for_pred_or_func_item_ambiguity_1(maybe(mer_type)::in,
-    item_type::in, recomp_avail::in, sym_name::in, arity::in,
+    recomp_item_type::in, recomp_avail::in, sym_name::in, arity::in,
     pair(arity, map(sym_name, set(pair(pred_id, module_name))))::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
@@ -987,7 +990,7 @@ check_for_pred_or_func_item_ambiguity_1(WithType, ItemType, RecompAvail,
         true
     ).
 
-:- pred check_for_pred_or_func_item_ambiguity_2(item_type::in,
+:- pred check_for_pred_or_func_item_ambiguity_2(recomp_item_type::in,
     recomp_avail::in, sym_name::in, arity::in, module_qualifier::in,
     set(pair(pred_id, module_name))::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
@@ -1024,11 +1027,12 @@ check_for_pred_or_func_item_ambiguity_2(ItemType, RecompAvail,
             AmbiguousDecls = list.map(
                 ( func(_ - OldMatchingModule) = Item :-
                     OldMatchingName = qualified(OldMatchingModule, Name),
-                    Item = item_id(ItemType, item_name(OldMatchingName, Arity))
+                    Item = recomp_item_id(ItemType,
+                        recomp_item_name(OldMatchingName, Arity))
                 ),
                 set.to_sorted_list(OldMatchingModuleNames)),
-            Reason = recompile_for_item_ambiguity(item_id(ItemType,
-                item_name(SymName, Arity)), AmbiguousDecls),
+            Reason = recompile_for_item_ambiguity(recomp_item_id(ItemType,
+                recomp_item_name(SymName, Arity)), AmbiguousDecls),
             record_recompilation_reason(Reason, !:MaybeStoppingReason, !Info)
         else
             !:MaybeStoppingReason = no
@@ -1240,7 +1244,7 @@ check_functor_ambiguity(RecompAvail, SymName, Arity, ResolvedCtor,
                 rci_sub_modules             :: list(module_name),
                 rci_have_read_module_maps   :: have_read_module_maps,
                 rci_used_items              :: resolved_used_items,
-                rci_used_typeclasses        :: set(item_name),
+                rci_used_typeclasses        :: set(recomp_item_name),
                 rci_modules_to_recompile    :: modules_to_recompile,
                 rci_collect_all_reasons     :: bool,
                 rci_recompilation_reasons   :: list(recompile_reason)
@@ -1258,28 +1262,28 @@ check_functor_ambiguity(RecompAvail, SymName, Arity, ResolvedCtor,
                 file_name
             )
     ;       recompile_for_item_ambiguity(
-                item_id,                % new item.
-                list(item_id)           % ambiguous declarations.
+                recomp_item_id,                 % new item.
+                list(recomp_item_id)            % ambiguous declarations.
             )
     ;       recompile_for_functor_ambiguity(
                 sym_name,
                 arity,
-                resolved_functor,       % new item.
-                list(resolved_functor)  % ambiguous declarations.
+                resolved_functor,               % new item.
+                list(resolved_functor)          % ambiguous declarations.
             )
     ;       recompile_for_changed_item(
-                item_id
+                recomp_item_id
             )
     ;       recompile_for_removed_item(
-                item_id
+                recomp_item_id
             )
     ;       recompile_for_changed_or_added_instance(
                 module_name,
-                item_name               % class name
+                recomp_item_name                % class name
             )
     ;       recompile_for_removed_instance(
                 module_name,
-                item_name               % class name
+                recomp_item_name                % class name
             ).
 
 :- pred add_module_to_recompile(module_name::in, recompilation_check_info::in,
@@ -1410,14 +1414,14 @@ write_recompile_reason(Globals, Stream, ThisModuleName, Reason, !IO) :-
         Pieces = describe_item(Item) ++ [words("was removed."), nl]
     ;
         Reason = recompile_for_changed_or_added_instance(ModuleName,
-            item_name(ClassName, ClassArity)),
+            recomp_item_name(ClassName, ClassArity)),
         Pieces = [words("an instance for class"),
             qual_sym_name_arity(sym_name_arity(ClassName, ClassArity)),
             words("in module"), qual_sym_name(ModuleName),
             words("was added or modified."), nl]
     ;
         Reason = recompile_for_removed_instance(ModuleName,
-            item_name(ClassName, ClassArity)),
+            recomp_item_name(ClassName, ClassArity)),
         Pieces = [words("an instance for class "),
             qual_sym_name_arity(sym_name_arity(ClassName, ClassArity)),
             words("in module"), qual_sym_name(ModuleName),
@@ -1430,22 +1434,25 @@ write_recompile_reason(Globals, Stream, ThisModuleName, Reason, !IO) :-
     % or errors.
     write_error_spec(Stream, Globals, Spec, !IO).
 
-:- func describe_item(item_id) = list(format_component).
+:- func describe_item(recomp_item_id) = list(format_component).
 
-describe_item(item_id(ItemType0, item_name(SymName, Arity))) = Pieces :-
-    ( if body_item(ItemType0, ItemType1) then
-        string_to_item_type(ItemTypeStr, ItemType1),
+describe_item(ItemId) = Pieces :-
+    ItemId = recomp_item_id(ItemType0, ItemName),
+    ( if is_body_of_item(ItemType0, ItemType1) then
+        string_to_recomp_item_type(ItemTypeStr, ItemType1),
         ItemPieces = [words("body of"), words(ItemTypeStr)]
     else
-        string_to_item_type(ItemTypeStr, ItemType0),
+        string_to_recomp_item_type(ItemTypeStr, ItemType0),
         ItemPieces = [words(ItemTypeStr)]
     ),
+    ItemName = recomp_item_name(SymName, Arity),
     Pieces = ItemPieces ++
         [qual_sym_name_arity(sym_name_arity(SymName, Arity))].
 
-:- pred body_item(item_type::in, item_type::out) is semidet.
+:- pred is_body_of_item(recomp_item_type::in, recomp_item_type::out)
+    is semidet.
 
-body_item(type_defn_item, type_name_item).
+is_body_of_item(recomp_type_defn, recomp_type_name).
 
 :- func describe_resolved_functor(sym_name, arity, resolved_functor) =
     list(format_component).

@@ -1061,7 +1061,8 @@ replace_in_type_ctor_checked_defn(ModuleName, MaybeRecordInt, MaybeRecordImp,
             SolverDefn0 = solver_type_abstract(_, _),
             SolverDefn = SolverDefn0
         ;
-            SolverDefn0 = solver_type_full(MaybeAbstractDefn0, ItemSolverDefn0),
+            SolverDefn0 =
+                solver_type_full(MaybeAbstractDefn0, ItemSolverDefn0),
             replace_in_type_defn_info_general(replace_in_type_defn_solver,
                 ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
                 ItemSolverDefn0, ItemSolverDefn,
@@ -1162,7 +1163,8 @@ replace_in_type_defn_info_general(ReplaceInTypeDefn, ModuleName, MaybeRecord,
     ReplaceInTypeDefn(MaybeRecord, TypeEqvMap, InstEqvMap, TypeCtor, Context,
         TypeDefn0, TypeDefn, TVarSet0, TVarSet,
         UsedTypeCtors0, UsedTypeCtors, !UsedModules, Specs),
-    ItemId = item_id(type_defn_item, item_name(SymName, Arity)),
+    ItemName = recomp_item_name(SymName, Arity),
+    ItemId = recomp_item_id(recomp_type_defn, ItemName),
     finish_recording_expanded_items(ItemId, UsedTypeCtors, !RecompInfo),
     Info = item_type_defn_info(SymName, ArgTypeVars, TypeDefn, TVarSet,
         Context, SeqNum).
@@ -1226,7 +1228,8 @@ replace_in_type_repn_info(ModuleName, MaybeRecord, TypeEqvMap,
         TVarSet = TVarSet0,
         UsedTypeCtors = UsedTypeCtors0
     ),
-    ItemId = item_id(type_defn_item, item_name(SymName, Arity)),
+    ItemName = recomp_item_name(SymName, Arity),
+    ItemId = recomp_item_id(recomp_type_defn, ItemName),
     finish_recording_expanded_items(ItemId, UsedTypeCtors, !RecompInfo),
     Info = item_type_repn_info(SymName, ArgTypeVars, TypeRepn, TVarSet,
         Context, SeqNum).
@@ -1269,10 +1272,11 @@ replace_in_pred_decl_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
         MaybeWithType0, MaybeWithType, MaybeWithInst0, MaybeWithInst,
         MaybeDetism0, MaybeDetism, ExpandedItems0, ExpandedItems,
         !UsedModules, Specs),
-    ItemType = pred_or_func_to_item_type(PredOrFunc),
+    ItemType = pred_or_func_to_recomp_item_type(PredOrFunc),
     list.length(TypesAndModes, Arity),
     adjust_func_arity(PredOrFunc, OrigArity, Arity),
-    ItemId = item_id(ItemType, item_name(PredName, OrigArity)),
+    ItemName = recomp_item_name(PredName, OrigArity),
+    ItemId = recomp_item_id(ItemType, ItemName),
     finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo),
     Info = item_pred_decl_info(PredName, PredOrFunc, TypesAndModes,
         MaybeWithType, MaybeWithInst, MaybeDetism, Origin,
@@ -1305,10 +1309,11 @@ replace_in_mode_decl_info(ModuleName, MaybeRecord, _TypeEqvMap, InstEqvMap,
     ),
     (
         MaybePredOrFunc = yes(PredOrFunc),
-        ItemType = pred_or_func_to_item_type(PredOrFunc),
+        ItemType = pred_or_func_to_recomp_item_type(PredOrFunc),
         list.length(Modes, Arity),
         adjust_func_arity(PredOrFunc, OrigArity, Arity),
-        ItemId = item_id(ItemType, item_name(PredName, OrigArity)),
+        ItemName = recomp_item_name(PredName, OrigArity),
+        ItemId = recomp_item_id(ItemType, ItemName),
         finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo)
     ;
         MaybePredOrFunc = no
@@ -1344,7 +1349,8 @@ replace_in_typeclass_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
             !UsedModules, [], Specs),
         ClassInterface = class_interface_concrete(Methods)
     ),
-    ItemId = item_id(typeclass_item, item_name(ClassName, Arity)),
+    ItemName = recomp_item_name(ClassName, Arity),
+    ItemId = recomp_item_id(recomp_typeclass, ItemName),
     finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo),
     Info = item_typeclass_info(ClassName, Vars, Constraints, FunDeps,
         ClassInterface, TVarSet, Context, SeqNum).
@@ -1376,8 +1382,8 @@ replace_in_instance_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
         _, _, TVarSet1, TVarSet, UsedTypeCtors1, UsedTypeCtors, !UsedModules),
     % We specifically do NOT expand equivalence types in OriginalTypes.
     % If we did, that would defeat the purpose of the field.
-    list.length(Types0, Arity),
-    ItemId = item_id(typeclass_item, item_name(ClassName, Arity)),
+    ItemName = recomp_item_name(ClassName, list.length(Types0)),
+    ItemId = recomp_item_id(recomp_typeclass, ItemName),
     finish_recording_expanded_items(ItemId, UsedTypeCtors, !RecompInfo),
     InstanceInfo = item_instance_info(ClassName, Types, OriginalTypes,
         Constraints, InstanceBody, TVarSet, ContainingModuleName,
@@ -1528,10 +1534,9 @@ replace_in_pragma_info_foreign_proc(ModuleName, MaybeRecord,
         else
             Attrs = Attrs0
         ),
-        list.length(ProcVars, Arity),
-        ItemId = item_id(foreign_proc_item, item_name(PName, Arity)),
-        finish_recording_expanded_items(ItemId, !.EquivTypeInfo,
-            !RecompInfo)
+        ItemName = recomp_item_name(PName, list.length(ProcVars)),
+        ItemId = recomp_item_id(recomp_foreign_proc, ItemName),
+        finish_recording_expanded_items(ItemId, !.EquivTypeInfo, !RecompInfo)
     ),
     FPInfo = pragma_info_foreign_proc(Attrs, PName, PredOrFunc,
         ProcVars, ProcVarset, ProcInstVarset, ProcImpl).
@@ -1550,7 +1555,7 @@ replace_in_mutable_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
         ExpandedItems0),
     replace_in_mutable_defn(MaybeRecord, TypeEqvMap, InstEqvMap, Info0, Info,
         ExpandedItems0, ExpandedItems, !UsedModules),
-    ItemId = item_id(mutable_item, item_name(QualName, 0)),
+    ItemId = recomp_item_id(recomp_mutable, recomp_item_name(QualName, 0)),
     finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo).
 
 :- pred replace_in_mutable_defn(maybe_record_sym_name_use::in,
@@ -1961,8 +1966,8 @@ replace_type_ctor(MaybeRecord, TypeEqvMap, TypeCtorsAlreadyExpanded, Type0,
         !:Changed = changed,
         map.apply_to_list(Args0, Renaming, Args),
         apply_variable_renaming_to_type(Renaming, Body0, Body1),
-        TypeCtorItem = type_ctor_to_item_name(TypeCtor),
-        record_expanded_item(item_id(type_name_item, TypeCtorItem),
+        TypeCtorItem = type_ctor_to_recomp_item_name(TypeCtor),
+        record_expanded_item(recomp_item_id(recomp_type_name, TypeCtorItem),
             !EquivTypeInfo),
         map.from_corresponding_lists(Args, TArgs, Subst),
         apply_subst_to_type(Subst, Body1, Body),
@@ -2103,8 +2108,8 @@ replace_in_prog_constraints(TypeEqvMap, Cs0, Cs, !TVarSet, !EquivTypeInfo) :-
     tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_prog_constraints_location(MaybeRecord, TypeEqvMap, Cs0, Cs, !TVarSet,
-        !EquivTypeInfo, !UsedModules) :-
+replace_in_prog_constraints_location(MaybeRecord, TypeEqvMap, Cs0, Cs,
+        !TVarSet, !EquivTypeInfo, !UsedModules) :-
     Cs0 = constraints(UnivCs0, ExistCs0),
     replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
         UnivCs0, UnivCs, !TVarSet, !EquivTypeInfo, !UsedModules),
@@ -2298,8 +2303,8 @@ replace_in_inst_location(MaybeRecord, InstEqvMap, ExpandedInstCtors,
             EqvInstBody = eqv_inst_body(EqvInstParams, EqvInst)
         then
             inst_substitute_arg_list(EqvInstParams, ArgInsts, EqvInst, Inst1),
-            InstCtorItem = inst_ctor_to_item_name(InstCtor),
-            record_expanded_item(item_id(inst_item, InstCtorItem),
+            InstCtorItem = inst_ctor_to_recomp_item_name(InstCtor),
+            record_expanded_item(recomp_item_id(recomp_inst, InstCtorItem),
                 !EquivTypeInfo),
             replace_in_inst_location(MaybeRecord, InstEqvMap,
                 set.insert(ExpandedInstCtors, InstCtor), Inst1, Inst,
@@ -2441,8 +2446,9 @@ replace_in_pred_type(MaybeRecord, PredName, PredOrFunc, Context,
         TypesAndModes = TypesAndModes1
     ;
         ExtraTypesAndModes = [_ | _],
-        OrigItemId = item_id(pred_or_func_to_item_type(PredOrFunc),
-            item_name(PredName, list.length(TypesAndModes0))),
+        OrigItemType = pred_or_func_to_recomp_item_type(PredOrFunc),
+        OrigItemName = recomp_item_name(PredName, list.length(TypesAndModes0)),
+        OrigItemId = recomp_item_id(OrigItemType, OrigItemName),
         record_expanded_item(OrigItemId, !EquivTypeInfo),
         TypesAndModes = TypesAndModes1 ++ ExtraTypesAndModes
     ).
@@ -2498,8 +2504,9 @@ replace_in_pred_mode(MaybeRecord, InstEqvMap, PredName, OrigArity, Context,
             ;
                 MaybePredOrFunc0 = yes(RecordedPredOrFunc)
             ),
-            OrigItemId = item_id(pred_or_func_to_item_type(RecordedPredOrFunc),
-                item_name(PredName, OrigArity)),
+            ItemType = pred_or_func_to_recomp_item_type(RecordedPredOrFunc),
+            ItemName = recomp_item_name(PredName, OrigArity),
+            OrigItemId = recomp_item_id(ItemType, ItemName),
             record_expanded_item(OrigItemId, !EquivTypeInfo),
             Specs = []
         else

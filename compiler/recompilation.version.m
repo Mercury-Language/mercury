@@ -263,8 +263,8 @@ compute_name_arity_version_map_entry(SourceFileTime,
     ).
 
 :- pred compute_item_name_version_map(timestamp::in,
-    gathered_item_multi_map_in::in, item_name_version_map::in,
-    gathered_item_multi_map_in::in, item_name_version_map::out) is det.
+    gathered_item_multi_map_in::in, recomp_item_name_version_map::in,
+    gathered_item_multi_map_in::in, recomp_item_name_version_map::out) is det.
 
 compute_item_name_version_map(SourceFileTime,
         OldGatheredMap, OldVersionMap, CurGatheredMap, NewVersionMap) :-
@@ -274,8 +274,8 @@ compute_item_name_version_map(SourceFileTime,
         CurGatheredMap, NewVersionMap).
 
 :- pred compute_item_name_version_map_entry(timestamp::in,
-    gathered_item_multi_map_in::in, item_name_version_map::in,
-    item_name::in, assoc_list(module_section, item)::in,
+    gathered_item_multi_map_in::in, recomp_item_name_version_map::in,
+    recomp_item_name::in, assoc_list(module_section, item)::in,
     version_number::out) is det.
 
 compute_item_name_version_map_entry(SourceFileTime,
@@ -499,7 +499,7 @@ gather_items_in_parse_tree_int2(ParseTreeInt2, GatheredItems) :-
 :- type gathered_item_multi_map_na ==
     multi_map(name_arity, pair(module_section, item)).
 :- type gathered_item_multi_map_in ==
-    multi_map(item_name, pair(module_section, item)).
+    multi_map(recomp_item_name, pair(module_section, item)).
     % XXX RECOMP The generic item type here should be replaced with
     % a different (set of) item-kind-specific types for each field.
 
@@ -712,7 +712,7 @@ gather_in_mode_decl(Section, ItemModeDecl, !PredMap, !FuncMap) :-
             )
         ;
             MaybePredOrFunc = no
-            % We don't have an item_id, so we cannot gather the item.
+            % We don't have an recomp_item_id, so we cannot gather the item.
             % XXX This *will* lead to missing needed recompilations.
         )
     ).
@@ -805,7 +805,7 @@ gather_in_instance(Section, ItemInstance, !InstanceMap) :-
     ItemInstance = item_instance_info(ClassName, ClassParams,
         _, _, _, _, _, _, _),
     Item = item_instance(ItemInstance),
-    ClassNA = item_name(ClassName, list.length(ClassParams)),
+    ClassNA = recomp_item_name(ClassName, list.length(ClassParams)),
     multi_map.add(ClassNA, Section - Item, !InstanceMap).
 
 %---------------------%
@@ -1583,13 +1583,13 @@ module_item_version_numbers_to_string(ModuleItemVersionNumbers) = Str :-
         module_item_version_numbers(TypeNameMap, TypeDefnMap,
             InstMap, ModeMap, ClassMap, InstanceMap, PredMap, FuncMap),
     ItemTypeMaybeStrs = [
-        item_type_and_versions_to_string_na(type_name_item, TypeNameMap),
-        item_type_and_versions_to_string_na(type_defn_item, TypeDefnMap),
-        item_type_and_versions_to_string_na(inst_item, InstMap),
-        item_type_and_versions_to_string_na(mode_item, ModeMap),
-        item_type_and_versions_to_string_na(predicate_item, PredMap),
-        item_type_and_versions_to_string_na(function_item, FuncMap),
-        item_type_and_versions_to_string_na(typeclass_item, ClassMap),
+        item_type_and_versions_to_string_na(recomp_type_name, TypeNameMap),
+        item_type_and_versions_to_string_na(recomp_type_defn, TypeDefnMap),
+        item_type_and_versions_to_string_na(recomp_inst, InstMap),
+        item_type_and_versions_to_string_na(recomp_mode, ModeMap),
+        item_type_and_versions_to_string_na(recomp_predicate, PredMap),
+        item_type_and_versions_to_string_na(recomp_function, FuncMap),
+        item_type_and_versions_to_string_na(recomp_typeclass, ClassMap),
         item_type_and_versions_to_string_in("instance", InstanceMap)
     ],
     list.filter_map(maybe_is_yes, ItemTypeMaybeStrs, ItemTypeStrs),
@@ -1598,14 +1598,14 @@ module_item_version_numbers_to_string(ModuleItemVersionNumbers) = Str :-
 
 %---------------------%
 
-:- func item_type_and_versions_to_string_na(item_type,
+:- func item_type_and_versions_to_string_na(recomp_item_type,
     map(name_arity, version_number)) = maybe(string).
 
 item_type_and_versions_to_string_na(ItemType, VersionMap) = MaybeStr :-
     ( if map.is_empty(VersionMap) then
         MaybeStr = no
     else
-        string_to_item_type(ItemTypeStr, ItemType),
+        string_to_recomp_item_type(ItemTypeStr, ItemType),
         map.to_assoc_list(VersionMap, VersionsAL),
         ItemVersionStrs =
             list.map(name_arity_version_number_to_string, VersionsAL),
@@ -1616,7 +1616,7 @@ item_type_and_versions_to_string_na(ItemType, VersionMap) = MaybeStr :-
     ).
 
 :- func item_type_and_versions_to_string_in(string,
-    map(item_name, version_number)) = maybe(string).
+    map(recomp_item_name, version_number)) = maybe(string).
 
 item_type_and_versions_to_string_in(ItemTypeStr, VersionMap) = MaybeStr :-
     ( if map.is_empty(VersionMap) then
@@ -1624,7 +1624,7 @@ item_type_and_versions_to_string_in(ItemTypeStr, VersionMap) = MaybeStr :-
     else
         map.to_assoc_list(VersionMap, VersionsAL),
         ItemVersionStrs =
-            list.map(item_name_version_number_to_string, VersionsAL),
+            list.map(recomp_item_name_version_number_to_string, VersionsAL),
         ItemVersionsStr = string.join_list(",\n", ItemVersionStrs),
         string.format("%s(\n%s\n\t)",
             [s(ItemTypeStr), s(ItemVersionsStr)], Str),
@@ -1644,11 +1644,11 @@ name_arity_version_number_to_string(NameArity - VersionNumber) = Str :-
     string.format("\t\t%s/%i - %s",
         [s(SymNameStr), i(Arity), s(VersionNumberStr)], Str).
 
-:- func item_name_version_number_to_string(pair(item_name, version_number))
-    = string.
+:- func recomp_item_name_version_number_to_string(
+    pair(recomp_item_name, version_number)) = string.
 
-item_name_version_number_to_string(ItemName - VersionNumber) = Str :-
-    ItemName = item_name(SymName, Arity),
+recomp_item_name_version_number_to_string(ItemName - VersionNumber) = Str :-
+    ItemName = recomp_item_name(SymName, Arity),
     SymNameStr = mercury_bracketed_sym_name_to_string_ngt(
         next_to_graphic_token, SymName),
     VersionNumberStr = version_number_to_string(VersionNumber),
@@ -1680,35 +1680,35 @@ parse_module_item_version_numbers(VersionNumbersTerm, Result) :-
                 (
                     VNResult = items(ItemType, ItemVNs),
                     (
-                        ItemType = type_name_item,
+                        ItemType = recomp_type_name,
                         VNs = VNs0 ^ mivn_type_names := ItemVNs
                     ;
-                        ItemType = type_defn_item,
+                        ItemType = recomp_type_defn,
                         VNs = VNs0 ^ mivn_type_defns := ItemVNs
                     ;
-                        ItemType = inst_item,
+                        ItemType = recomp_inst,
                         VNs = VNs0 ^ mivn_insts := ItemVNs
                     ;
-                        ItemType = mode_item,
+                        ItemType = recomp_mode,
                         VNs = VNs0 ^ mivn_modes := ItemVNs
                     ;
-                        ItemType = typeclass_item,
+                        ItemType = recomp_typeclass,
                         VNs = VNs0 ^ mivn_typeclasses := ItemVNs
                     ;
-                        ItemType = functor_item,
-                        unexpected($pred, "functor_item")
+                        ItemType = recomp_functor,
+                        unexpected($pred, "recomp_functor")
                     ;
-                        ItemType = predicate_item,
+                        ItemType = recomp_predicate,
                         VNs = VNs0 ^ mivn_predicates := ItemVNs
                     ;
-                        ItemType = function_item,
+                        ItemType = recomp_function,
                         VNs = VNs0 ^ mivn_functions := ItemVNs
                     ;
-                        ItemType = mutable_item,
-                        unexpected($pred, "mutable_item")
+                        ItemType = recomp_mutable,
+                        unexpected($pred, "recomp_mutable")
                     ;
-                        ItemType = foreign_proc_item,
-                        unexpected($pred, "foreign_proc_item")
+                        ItemType = recomp_foreign_proc,
+                        unexpected($pred, "recomp_foreign_proc")
                     )
                 ;
                     VNResult = instances(InstancesVNs),
@@ -1725,8 +1725,8 @@ parse_module_item_version_numbers(VersionNumbersTerm, Result) :-
     ).
 
 :- type item_version_numbers_result
-    --->    items(item_type, name_arity_version_map)
-    ;       instances(item_name_version_map).
+    --->    items(recomp_item_type, name_arity_version_map)
+    ;       instances(recomp_item_name_version_map).
 
 :- pred parse_item_type_version_numbers(term::in,
     maybe1(item_version_numbers_result)::out) is det.
@@ -1734,7 +1734,7 @@ parse_module_item_version_numbers(VersionNumbersTerm, Result) :-
 parse_item_type_version_numbers(Term, Result) :-
     ( if
         Term = term.functor(term.atom(ItemTypeStr), ItemsVNsTerms, _),
-        string_to_item_type(ItemTypeStr, ItemType)
+        string_to_recomp_item_type(ItemTypeStr, ItemType)
     then
         ParseName =
             ( pred(NameTerm::in, Name::out) is semidet :-
@@ -1795,7 +1795,7 @@ parse_key_version_number(ParseName, Term, Result) :-
 
 :- pred parse_item_version_number(
     pred(term, sym_name)::(pred(in, out) is semidet), term::in,
-    maybe1(pair(item_name, version_number))::out) is det.
+    maybe1(pair(recomp_item_name, version_number))::out) is det.
 
 parse_item_version_number(ParseName, Term, Result) :-
     ( if
@@ -1807,7 +1807,7 @@ parse_item_version_number(ParseName, Term, Result) :-
         decimal_term_to_int(ArityTerm, Arity),
         parse_version_number_term(VersionNumberTerm, VersionNumber)
     then
-        Result = ok1(item_name(SymName, Arity) - VersionNumber)
+        Result = ok1(recomp_item_name(SymName, Arity) - VersionNumber)
     else
         Pieces = [words("Error in item version number."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,

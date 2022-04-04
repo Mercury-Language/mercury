@@ -72,11 +72,11 @@
 % XXX ITEM_LIST Document what prog_item.item, or what sequence of
 % prog_item.items, each item_type may correspond to.
 
-:- type item_id
-    --->    item_id(item_type, item_name).
+:- type recomp_item_id
+    --->    recomp_item_id(recomp_item_type, recomp_item_name).
 
-:- type item_name
-    --->    item_name(sym_name, arity).
+:- type recomp_item_name
+    --->    recomp_item_name(sym_name, arity).
 
     % XXX RECOMP Consider splitting this type into two or more types,
     % one for each separate purpose. We use this, amongst other things,
@@ -86,55 +86,55 @@
     % so some of these item_types *have* no corresponding field in some
     % of those structures.
     %
-:- type item_type
-    --->    type_name_item
+:- type recomp_item_type
+    --->    recomp_type_name
             % Just the name of the type, not its body. It is common
             % for a value of a type to be passed through a predicate without
             % inspecting the value -- such predicates do not need to be
             % recompiled if the body of the type changes (except for
             % equivalence types).
-    ;       type_defn_item
-    ;       inst_item
-    ;       mode_item
-    ;       typeclass_item
-    ;       functor_item        % The RHS of a var-functor unification.
-    ;       predicate_item
-    ;       function_item
+    ;       recomp_type_defn
+    ;       recomp_inst
+    ;       recomp_mode
+    ;       recomp_typeclass
+    ;       recomp_functor        % The RHS of a var-functor unification.
+    ;       recomp_predicate
+    ;       recomp_function
             % XXX ARITY The arity we record next to function_items *seems*
             % to be the user_arity (though its type is just "arity"),
             % but in the presence of with_type annotations, even that is
             % in question.
-    ;       mutable_item
-    ;       foreign_proc_item.
+    ;       recomp_mutable
+    ;       recomp_foreign_proc.
             % XXX ARITY This does not say whether the foreign_proc is for
             % a predicate or a function, which affects the interpretation
             % of the associated arity.
 
-:- inst simple_item for item_type/0
-    --->    type_name_item
-    ;       type_defn_item
-    ;       inst_item
-    ;       mode_item
-    ;       typeclass_item.
+:- inst recomp_simple for recomp_item_type/0
+    --->    recomp_type_name
+    ;       recomp_type_defn
+    ;       recomp_inst
+    ;       recomp_mode
+    ;       recomp_typeclass.
 
-:- inst pred_or_func_item for item_type/0
-    --->    predicate_item
-    ;       function_item.
+:- inst recomp_pred_or_func for recomp_item_type/0
+    --->    recomp_predicate
+    ;       recomp_function.
 
-:- func pred_or_func_to_item_type(pred_or_func::in)
-    = (item_type::out(pred_or_func_item)) is det.
+:- func pred_or_func_to_recomp_item_type(pred_or_func::in)
+    = (recomp_item_type::out(recomp_pred_or_func)) is det.
 
-:- pred string_to_item_type(string, item_type).
-:- mode string_to_item_type(in, out) is semidet.
-:- mode string_to_item_type(out, in) is det.
+:- pred string_to_recomp_item_type(string, recomp_item_type).
+:- mode string_to_recomp_item_type(in, out) is semidet.
+:- mode string_to_recomp_item_type(out, in) is det.
 
-:- func type_ctor_to_item_name(type_ctor) = item_name.
-:- func inst_ctor_to_item_name(inst_ctor) = item_name.
-:- func mode_ctor_to_item_name(mode_ctor) = item_name.
+:- func type_ctor_to_recomp_item_name(type_ctor) = recomp_item_name.
+:- func inst_ctor_to_recomp_item_name(inst_ctor) = recomp_item_name.
+:- func mode_ctor_to_recomp_item_name(mode_ctor) = recomp_item_name.
 
-:- func item_name_to_type_ctor(item_name) = type_ctor.
-:- func item_name_to_inst_ctor(item_name) = inst_ctor.
-:- func item_name_to_mode_ctor(item_name) = mode_ctor.
+:- func recomp_item_name_to_type_ctor(recomp_item_name) = type_ctor.
+:- func recomp_item_name_to_inst_ctor(recomp_item_name) = inst_ctor.
+:- func recomp_item_name_to_mode_ctor(recomp_item_name) = mode_ctor.
 
 %-----------------------------------------------------------------------------%
 
@@ -150,7 +150,8 @@
                 % on equivalence types. The rest of the dependencies can be
                 % found by examining the pred_infos, type_defns etc of the
                 % items recorded in the used_items field above.
-                recomp_dependencies     :: map(item_id, set(item_id)),
+                recomp_dependencies     :: map(recomp_item_id,
+                                            set(recomp_item_id)),
 
                 recomp_version_numbers  :: module_item_version_numbers_map
             ).
@@ -218,14 +219,14 @@
                 mivn_insts          :: name_arity_version_map,
                 mivn_modes          :: name_arity_version_map,
                 mivn_typeclasses    :: name_arity_version_map,
-                mivn_instances      :: item_name_version_map,
+                mivn_instances      :: recomp_item_name_version_map,
                 mivn_predicates     :: name_arity_version_map,
                 mivn_functions      :: name_arity_version_map
             ).
 
 :- type name_arity_version_map == map(name_arity, version_number).
 
-:- type item_name_version_map == map(item_name, version_number).
+:- type recomp_item_name_version_map == map(recomp_item_name, version_number).
 
 :- func init_module_item_version_numbers = module_item_version_numbers.
 
@@ -246,7 +247,8 @@
     % is the only match. If a new declaration is added so that
     % QualifiedId is not the only match, we need to recompile.
     %
-:- pred record_used_item(used_item_type::in, item_name::in, item_name::in,
+:- pred record_used_item(used_item_type::in,
+    recomp_item_name::in, recomp_item_name::in,
     recompilation_info::in, recompilation_info::out) is det.
 
     % For each imported item we need to record which equivalence types
@@ -260,7 +262,7 @@
     % of the `with_type` annotation, so that needs to be recorded
     % here as well.
     %
-:- pred record_expanded_items(item_id::in, set(item_id)::in,
+:- pred record_expanded_items(recomp_item_id::in, set(recomp_item_id)::in,
     recompilation_info::in, recompilation_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -273,7 +275,7 @@
     %
 :- type eqv_expand_info
     --->    no_eqv_expand_info
-    ;       eqv_expand_info(module_name, set(item_id)).
+    ;       eqv_expand_info(module_name, set(recomp_item_id)).
             % The module_name field contains the name of the module
             % currently being compiled.
             %
@@ -286,12 +288,13 @@
 :- pred maybe_start_recording_expanded_items(module_name::in, sym_name::in,
     maybe(recompilation_info)::in, eqv_expand_info::out) is det.
 
-:- pred record_expanded_item(item_id::in,
+:- pred record_expanded_item(recomp_item_id::in,
     eqv_expand_info::in, eqv_expand_info::out) is det.
 
     % Record all the expanded items in the recompilation_info.
     %
-:- pred finish_recording_expanded_items(item_id::in, eqv_expand_info::in,
+:- pred finish_recording_expanded_items(recomp_item_id::in,
+    eqv_expand_info::in,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -318,27 +321,35 @@ version_number_to_string(VersionNumber) = VersionNumberStr :-
 
 %-----------------------------------------------------------------------------%
 
-pred_or_func_to_item_type(pf_predicate) = predicate_item.
-pred_or_func_to_item_type(pf_function) = function_item.
+pred_or_func_to_recomp_item_type(pf_predicate) = recomp_predicate.
+pred_or_func_to_recomp_item_type(pf_function) = recomp_function.
 
-string_to_item_type("type", type_name_item).        % for historical reasons
-string_to_item_type("type_body", type_defn_item).   % for historical reasons
-string_to_item_type("inst", inst_item).
-string_to_item_type("mode", mode_item).
-string_to_item_type("typeclass", typeclass_item).
-string_to_item_type("functor", functor_item).
-string_to_item_type("predicate", predicate_item).
-string_to_item_type("function", function_item).
-string_to_item_type("mutable", mutable_item).
-string_to_item_type("foreign_proc", foreign_proc_item).
+% The mismatch between the string and the recomp_item_type for type and
+% type_body is for historical reasons.
+string_to_recomp_item_type("type", recomp_type_name).
+string_to_recomp_item_type("type_body", recomp_type_defn).
+string_to_recomp_item_type("inst", recomp_inst).
+string_to_recomp_item_type("mode", recomp_mode).
+string_to_recomp_item_type("typeclass", recomp_typeclass).
+string_to_recomp_item_type("functor", recomp_functor).
+string_to_recomp_item_type("predicate", recomp_predicate).
+string_to_recomp_item_type("function", recomp_function).
+string_to_recomp_item_type("mutable", recomp_mutable).
+string_to_recomp_item_type("foreign_proc", recomp_foreign_proc).
 
-type_ctor_to_item_name(type_ctor(SymName, Arity)) = item_name(SymName, Arity).
-inst_ctor_to_item_name(inst_ctor(SymName, Arity)) = item_name(SymName, Arity).
-mode_ctor_to_item_name(mode_ctor(SymName, Arity)) = item_name(SymName, Arity).
+type_ctor_to_recomp_item_name(type_ctor(SymName, Arity))
+    = recomp_item_name(SymName, Arity).
+inst_ctor_to_recomp_item_name(inst_ctor(SymName, Arity))
+    = recomp_item_name(SymName, Arity).
+mode_ctor_to_recomp_item_name(mode_ctor(SymName, Arity))
+    = recomp_item_name(SymName, Arity).
 
-item_name_to_type_ctor(item_name(SymName, Arity)) = type_ctor(SymName, Arity).
-item_name_to_inst_ctor(item_name(SymName, Arity)) = inst_ctor(SymName, Arity).
-item_name_to_mode_ctor(item_name(SymName, Arity)) = mode_ctor(SymName, Arity).
+recomp_item_name_to_type_ctor(recomp_item_name(SymName, Arity))
+    = type_ctor(SymName, Arity).
+recomp_item_name_to_inst_ctor(recomp_item_name(SymName, Arity))
+    = inst_ctor(SymName, Arity).
+recomp_item_name_to_mode_ctor(recomp_item_name(SymName, Arity))
+    = mode_ctor(SymName, Arity).
 
 %-----------------------------------------------------------------------------%
 
@@ -401,7 +412,7 @@ module_qualify_name(Qualifier, Name) =
 %-----------------------------------------------------------------------------%
 
 record_used_item(UsedItemType, Id, QualifiedId, !Info) :-
-    QualifiedId = item_name(QualifiedName, Arity),
+    QualifiedId = recomp_item_name(QualifiedName, Arity),
     ( if
         % Don't record builtin items (QualifiedId may be unqualified
         % for predicates, functions and functors because they aren't
@@ -416,7 +427,7 @@ record_used_item(UsedItemType, Id, QualifiedId, !Info) :-
         UnqualifiedName = unqualify_name(QualifiedName),
         ModuleName = find_module_qualifier(QualifiedName),
         UnqualifiedId = name_arity(UnqualifiedName, Arity),
-        Id = item_name(SymName, _),
+        Id = recomp_item_name(SymName, _),
         ModuleQualifier = find_module_qualifier(SymName),
         ( if map.search(IdSet0, UnqualifiedId, MatchingNames0) then
             ( if map.contains(MatchingNames0, ModuleQualifier) then
@@ -494,8 +505,8 @@ record_expanded_item(ItemId, !ExpandInfo) :-
         !.ExpandInfo = no_eqv_expand_info
     ;
         !.ExpandInfo = eqv_expand_info(ModuleName, ExpandedItemIds0),
-        ItemId = item_id(_, ItemName),
-        ( if ItemName = item_name(qualified(ModuleName, _), _) then
+        ItemId = recomp_item_id(_, ItemName),
+        ( if ItemName = recomp_item_name(qualified(ModuleName, _), _) then
             % We don't need to record local items.
             true
         else

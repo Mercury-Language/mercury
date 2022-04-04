@@ -1182,7 +1182,7 @@ qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
     BoundInst0 = bound_functor(ConsId, Insts0),
     (
         ConsId = cons(Name, Arity, _),
-        Id = item_name(Name, Arity),
+        Id = recomp_item_name(Name, Arity),
         update_recompilation_info(
             recompilation.record_used_item(used_functor, Id, Id), !Info)
     ;

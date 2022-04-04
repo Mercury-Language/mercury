@@ -289,7 +289,7 @@ make_atomic_unification(Var, RHS, Context, MainContext, SubContext,
 
 record_called_pred_or_func(PredOrFunc, SymName, UserArity, !QualInfo) :-
     UserArity = user_arity(UserArityInt),
-    Id = item_name(SymName, UserArityInt),
+    Id = recomp_item_name(SymName, UserArityInt),
     ( PredOrFunc = pf_predicate, UsedItemType = used_predicate
     ; PredOrFunc = pf_function,  UsedItemType = used_function
     ),
@@ -300,7 +300,7 @@ record_called_pred_or_func(PredOrFunc, SymName, UserArity, !QualInfo) :-
 
 record_used_functor(ConsId, !QualInfo) :-
     ( if ConsId = cons(SymName, Arity, _) then
-        Id = item_name(SymName, Arity),
+        Id = recomp_item_name(SymName, Arity),
         apply_to_recompilation_info(record_used_item(used_functor, Id, Id),
             !QualInfo)
     else
@@ -321,8 +321,8 @@ construct_pred_or_func_call(PredId, PredOrFunc, SymName, ArgVars,
         GoalInfo, Goal) :-
     (
         PredOrFunc = pf_predicate,
-        GoalExpr = plain_call(PredId, invalid_proc_id, ArgVars, not_builtin, no,
-            SymName),
+        GoalExpr = plain_call(PredId, invalid_proc_id, ArgVars, not_builtin,
+            no, SymName),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         PredOrFunc = pf_function,
