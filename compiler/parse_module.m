@@ -240,7 +240,7 @@ peek_at_file(FileStream, DefaultModuleName, DefaultExpectationContexts,
             LineContext0, _LineContext, LinePosn0, _LinePosn),
         (
             ModuleDeclPresent = no_module_decl_present(_MaybeLookAhead,
-                _NoModuleSpec, _NoModuleError),
+                _Context, _NoModuleSpec, _NoModuleError),
             ModuleName = DefaultModuleName
         ;
             ModuleDeclPresent = wrong_module_decl_present(ModuleName,
@@ -683,7 +683,7 @@ read_parse_tree_int(IntFileKind, SourceFileName,
 read_any_version_number_item(FileString, FileStringLen,
         ModuleName, SourceFileName, InitLookAhead, FinalLookAhead,
         VersionNumberResult, !SeqNumCounter, !LineContext, !LinePosn) :-
-    read_next_item_or_marker(SourceFileName, FileString, FileStringLen,
+    get_next_item_or_marker(SourceFileName, FileString, FileStringLen,
         InitLookAhead, ModuleName, ReadIOMResult,
         !SeqNumCounter, !LineContext, !LinePosn),
     (
@@ -702,14 +702,13 @@ read_any_version_number_item(FileString, FileStringLen,
         FinalLookAhead = no_lookahead,
         VersionNumberResult = vnr_error(ItemSpec, rme_could_not_read_term)
     ;
-        ReadIOMResult = read_iom_parse_item_errors(IOMVarSet, IOMTerm,
-            _ItemSpecs, _ItemErrors),
+        ReadIOMResult = read_iom_parse_item_errors(_, _, _, _),
         % Ignore the errors; our caller will compute them again,
         % and record them, if and when it parses FinalLookAhead again.
-        FinalLookAhead = lookahead(IOMVarSet, IOMTerm),
+        FinalLookAhead = lookahead(ReadIOMResult),
         VersionNumberResult = vnr_ok(no_version_numbers)
     ;
-        ReadIOMResult = read_iom_ok(IOMVarSet, IOMTerm, IOM),
+        ReadIOMResult = read_iom_ok(_IOMVarSet, _IOMTerm, IOM),
         % If the term we have read in is a version number item, return it.
         % If the term is anything else, leave it in the input to be handled
         % later.
@@ -731,7 +730,7 @@ read_any_version_number_item(FileString, FileStringLen,
             % to iom_item_and_specs.
             ; IOM = iom_handled(_)
             ),
-            FinalLookAhead = lookahead(IOMVarSet, IOMTerm),
+            FinalLookAhead = lookahead(ReadIOMResult),
             VersionNumberResult = vnr_ok(no_version_numbers)
         )
     ).
@@ -841,7 +840,7 @@ read_parse_tree_int_section(FileString, FileStringLen,
         ModuleName, SourceFileName, ExpectedSectionKindStr,
         InitLookAhead, FinalLookAhead, MaybeRawItemBlock,
         !SeqNumCounter, !Specs, !Errors, !LineContext, !LinePosn) :-
-    read_next_item_or_marker(SourceFileName, FileString, FileStringLen,
+    get_next_item_or_marker(SourceFileName, FileString, FileStringLen,
         InitLookAhead, ModuleName, ReadIOMResult, !SeqNumCounter,
         !LineContext, !LinePosn),
     (
@@ -860,7 +859,7 @@ read_parse_tree_int_section(FileString, FileStringLen,
         MaybeRawItemBlock = no,
         FinalLookAhead = no_lookahead
     ;
-        ReadIOMResult = read_iom_ok(IOMVarSet, IOMTerm, IOM),
+        ReadIOMResult = read_iom_ok(_IOMVarSet, IOMTerm, IOM),
         (
             IOM = iom_marker_section(SectionKind, SectionContext,
                 _SectionSeqNum),
@@ -897,7 +896,7 @@ read_parse_tree_int_section(FileString, FileStringLen,
                 phase_term_to_parse_tree, Context, Pieces),
             !:Specs = [Spec | !.Specs],
             % XXX Should we update !Errors?
-            FinalLookAhead = lookahead(IOMVarSet, IOMTerm),
+            FinalLookAhead = lookahead(ReadIOMResult),
             MaybeRawItemBlock = no
         )
     ).
@@ -951,21 +950,14 @@ read_parse_tree_src(!.SourceFileName, FileString, FileStringLen,
             !SeqNumCounter, !LineContext, !LinePosn),
         (
             ModuleDeclPresent = no_module_decl_present(InitLookAhead,
-                NoModuleSpec, NoModuleError),
+                InitLookAheadContext, NoModuleSpec, NoModuleError),
             !:Specs = [NoModuleSpec | !.Specs],
             set.insert(NoModuleError, !Errors),
             % Reparse the first term, this time treating it as occuring within
             % the scope of the implicit `:- module' decl rather than in the
             % root module.
             ModuleName = DefaultModuleName,
-            (
-                InitLookAhead = no_lookahead,
-                ModuleNameContext = term.context_init
-            ;
-                InitLookAhead =
-                    lookahead(_InitLookAheadVarSet, InitLookAheadTerm),
-                ModuleNameContext = get_term_context(InitLookAheadTerm)
-            )
+            ModuleNameContext = InitLookAheadContext
         ;
             % XXX ITEM_LIST wrong_module_decl_present and
             % right_module_decl_present do the same thing.
@@ -1024,7 +1016,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
         InitLookAhead, FinalLookAhead, !ModuleComponents,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors,
         !LineContext, !LinePosn) :-
-    read_next_item_or_marker(!.SourceFileName, FileString, FileStringLen,
+    get_next_item_or_marker(!.SourceFileName, FileString, FileStringLen,
         InitLookAhead, CurModuleName, ReadIOMResult, !SeqNumCounter,
         !LineContext, !LinePosn),
     (
@@ -1044,7 +1036,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
             !SourceFileName, !SeqNumCounter, !Specs, !Errors,
             !LineContext, !LinePosn)
     ;
-        ReadIOMResult = read_iom_parse_item_errors(IOMVarSet, IOMTerm,
+        ReadIOMResult = read_iom_parse_item_errors(_IOMVarSet, IOMTerm,
             _Specs, _Errors),
         % Generate an error for the missing section marker.
         % Leave the term in the lookahead, but otherwise handle the term
@@ -1056,7 +1048,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
             !Specs, !Errors),
         SectionKind = ms_implementation,
         SectionContext = term.context_init,
-        ItemSeqInitLookAhead = lookahead(IOMVarSet, IOMTerm),
+        ItemSeqInitLookAhead = lookahead(ReadIOMResult),
         read_item_sequence(FileString, FileStringLen, CurModuleName,
             ItemSeqInitLookAhead, ItemSeqFinalLookAhead,
             cord.init, InclsCord, cord.init, AvailsCord,
@@ -1074,7 +1066,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
             !SourceFileName, !SeqNumCounter, !Specs, !Errors,
             !LineContext, !LinePosn)
     ;
-        ReadIOMResult = read_iom_ok(IOMVarSet, IOMTerm, IOM),
+        ReadIOMResult = read_iom_ok(_IOMVarSet, IOMTerm, IOM),
         (
             IOM = iom_marker_src_file(!:SourceFileName),
             read_parse_tree_src_components(FileString, FileStringLen,
@@ -1178,7 +1170,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
                     SectionKind = ms_implementation,
                     SectionContext = term.context_init
                 ),
-                ItemSeqInitLookAhead = lookahead(IOMVarSet, IOMTerm)
+                ItemSeqInitLookAhead = lookahead(ReadIOMResult)
             ),
             % The following code is duplicated in the case for
             % read_iom_parse_item_errors above.
@@ -1203,8 +1195,8 @@ read_parse_tree_src_components(FileString, FileStringLen,
             IOM = iom_marker_module_end(EndedModuleName, EndContext,
                 _EndSeqNum),
             handle_module_end_marker(CurModuleName, ContainingModules,
-                IOMVarSet, IOMTerm, EndedModuleName, EndContext,
-                FinalLookAhead, !Specs, !Errors)
+                ReadIOMResult, EndedModuleName, EndContext, FinalLookAhead,
+                !Specs, !Errors)
         )
     ).
 
@@ -1308,11 +1300,11 @@ read_parse_tree_src_submodule(FileString, FileStringLen, ContainingModules,
     !:ModuleComponents = cord.snoc(!.ModuleComponents, Component).
 
 :- pred handle_module_end_marker(module_name::in, list(module_name)::in,
-    varset::in, term::in, module_name::in, prog_context::in,
+    read_iom_result::in, module_name::in, prog_context::in,
     maybe_lookahead::out, list(error_spec)::in, list(error_spec)::out,
     read_module_errors::in, read_module_errors::out) is det.
 
-handle_module_end_marker(CurModuleName, ContainingModules, IOMVarSet, IOMTerm,
+handle_module_end_marker(CurModuleName, ContainingModules, ReadIOMResult,
         EndedModuleName, EndContext, FinalLookAhead, !Specs, !Errors) :-
     ( if CurModuleName = EndedModuleName then
         FinalLookAhead = no_lookahead
@@ -1327,7 +1319,7 @@ handle_module_end_marker(CurModuleName, ContainingModules, IOMVarSet, IOMTerm,
             EndContext, Pieces),
         !:Specs = [Spec | !.Specs],
         set.insert(rme_bad_module_end, !Errors),
-        FinalLookAhead = lookahead(IOMVarSet, IOMTerm)
+        FinalLookAhead = lookahead(ReadIOMResult)
     else
         Pieces = [words("Error: this"), decl("end_module"),
             words("declaration for"), qual_sym_name(EndedModuleName),
@@ -1389,7 +1381,7 @@ read_module_header(FileString, FileStringLen,
         may_not_change_source_file_name, SourceFileName, _SourceFileName,
         !SeqNumCounter, !LineContext, !LinePosn),
     (
-        ModuleDeclPresent = no_module_decl_present(_MaybeLookAhead,
+        ModuleDeclPresent = no_module_decl_present(_MaybeLookAhead, _Context,
             NoModuleSpec, NoModuleError),
         MaybeModuleHeader = no_valid_module_header(term.dummy_context_init,
             [NoModuleSpec], [NoModuleError])
@@ -1413,6 +1405,11 @@ read_module_header(FileString, FileStringLen,
                 % ONLY to allow us to continue parsing .m files after
                 % a missing initial ":- module" decl.
                 maybe_lookahead,
+
+                % The context of the term that is there instead of the module
+                % declaration. Will contain term.context_init if there is
+                % no such term.
+                prog_context,
 
                 % A message and a category for the error. The category is
                 % always rme_no_module_decl_at_start.
@@ -1484,15 +1481,15 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
     read_term_to_iom_result(DefaultModuleName, !.SourceFileName,
         FirstReadTerm, MaybeFirstIOM, !SeqNumCounter),
     (
-        MaybeFirstIOM = read_iom_ok(FirstVarSet, FirstTerm, FirstIOM),
+        MaybeFirstIOM = read_iom_ok(_FirstVarSet, FirstTerm, FirstIOM),
         (
             FirstIOM = iom_marker_src_file(!:SourceFileName),
             (
                 MayChangeSourceFileName = may_not_change_source_file_name,
-                FirstLookAhead = lookahead(FirstVarSet, FirstTerm),
+                FirstLookAhead = lookahead(MaybeFirstIOM),
                 FirstContext = get_term_context(FirstTerm),
                 ModuleDeclPresent = no_module_decl_present(FirstLookAhead,
-                    report_missing_module_start(FirstContext),
+                    FirstContext, report_missing_module_start(FirstContext),
                     rme_no_module_decl_at_start)
             ;
                 MayChangeSourceFileName = may_change_source_file_name,
@@ -1531,18 +1528,19 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
             ; FirstIOM = iom_item_and_specs(_, _)   % Ignore the error_specs.
             ; FirstIOM = iom_handled(_)
             ),
-            FirstLookAhead = lookahead(FirstVarSet, FirstTerm),
+            FirstLookAhead = lookahead(MaybeFirstIOM),
             FirstContext = get_term_context(FirstTerm),
             ModuleDeclPresent = no_module_decl_present(FirstLookAhead,
+                get_term_context(FirstTerm),
                 report_missing_module_start(FirstContext),
                 rme_no_module_decl_at_start)
         )
     ;
-        MaybeFirstIOM = read_iom_parse_item_errors(FirstVarSet, FirstTerm,
-            _, _),
-        LookAhead = lookahead(FirstVarSet, FirstTerm),
+        MaybeFirstIOM = read_iom_parse_item_errors(_, FirstTerm, _, _),
+        LookAhead = lookahead(MaybeFirstIOM),
         FirstContext = get_term_context(FirstTerm),
         ModuleDeclPresent = no_module_decl_present(LookAhead,
+            get_term_context(FirstTerm),
             report_missing_module_start(FirstContext),
             rme_no_module_decl_at_start)
     ;
@@ -1551,7 +1549,7 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
         ),
         term.context_init(!.SourceFileName, 1, FirstContext),
         ModuleDeclPresent = no_module_decl_present(no_lookahead,
-            report_missing_module_start(FirstContext),
+            term.context_init, report_missing_module_start(FirstContext),
             rme_no_module_decl_at_start)
         % XXX ITEM_LIST Should report "stop processing".
     ).
@@ -1565,8 +1563,6 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
     %
     % We use the standard two level loop to avoid running out of stack
     % on long item sequences in grades that do not allow tail recursion.
-    %
-    % XXX ITEM_LIST specialize the modes for lookahead/no_lookahead.
     %
 :- pred read_item_sequence(string::in, int::in, module_name::in,
     maybe_lookahead::in, maybe_lookahead::out,
@@ -1584,8 +1580,11 @@ read_item_sequence(FileString, FileStringLen, ModuleName,
         !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors,
         !LineContext, !LinePosn) :-
+    get_next_item_or_marker(!.SourceFileName, FileString, FileStringLen,
+        InitLookAhead, ModuleName, ReadIOMResult,
+        !SeqNumCounter, !LineContext, !LinePosn),
     read_item_sequence_inner(FileString, FileStringLen, ModuleName,
-        1024, NumItemsLeft, InitLookAhead, MidLookAhead,
+        1024, NumItemsLeft, ReadIOMResult, MidLookAhead,
         !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors,
         !LineContext, !LinePosn),
@@ -1599,11 +1598,9 @@ read_item_sequence(FileString, FileStringLen, ModuleName,
         FinalLookAhead = MidLookAhead
     ).
 
-    % XXX ITEM_LIST specialize the modes for lookahead/no_lookahead.
-    %
 :- pred read_item_sequence_inner(string::in, int::in,
     module_name::in, int::in, int::out,
-    maybe_lookahead::in, maybe_lookahead::out,
+    read_iom_result::in, maybe_lookahead::out,
     cord(item_include)::in, cord(item_include)::out,
     cord(item_avail)::in, cord(item_avail)::out,
     cord(item_fim)::in, cord(item_fim)::out,
@@ -1613,16 +1610,13 @@ read_item_sequence(FileString, FileStringLen, ModuleName,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
 read_item_sequence_inner(FileString, FileStringLen, ModuleName,
-        !NumItemsLeft, InitLookAhead, FinalLookAhead,
+        !NumItemsLeft, ReadIOMResult, FinalLookAhead,
         !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
         !SourceFileName, !SeqNumCounter, !Specs, !Errors,
         !LineContext, !LinePosn) :-
     ( if !.NumItemsLeft =< 0 then
-        FinalLookAhead = InitLookAhead
+        FinalLookAhead = lookahead(ReadIOMResult)
     else
-        read_next_item_or_marker(!.SourceFileName, FileString, FileStringLen,
-            InitLookAhead, ModuleName, ReadIOMResult, !SeqNumCounter,
-            !LineContext, !LinePosn),
         (
             ReadIOMResult = read_iom_eof,
             FinalLookAhead = no_lookahead
@@ -1637,20 +1631,23 @@ read_item_sequence_inner(FileString, FileStringLen, ModuleName,
             ),
             !:Specs = ItemSpecs ++ !.Specs,
             !:Errors = set.union(!.Errors, ItemErrors),
+            read_next_item_or_marker(!.SourceFileName,
+                FileString, FileStringLen, ModuleName, NextReadIOMResult,
+                !SeqNumCounter, !LineContext, !LinePosn),
             read_item_sequence_inner(FileString, FileStringLen, ModuleName,
-                !NumItemsLeft, no_lookahead, FinalLookAhead,
+                !NumItemsLeft, NextReadIOMResult, FinalLookAhead,
                 !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
                 !SourceFileName, !SeqNumCounter, !Specs, !Errors,
                 !LineContext, !LinePosn)
         ;
-            ReadIOMResult = read_iom_ok(IOMVarSet, IOMTerm, IOM),
+            ReadIOMResult = read_iom_ok(_IOMVarSet, IOMTerm, IOM),
             !:NumItemsLeft = !.NumItemsLeft - 1,
             (
                 ( IOM = iom_marker_module_start(_, _, _)
                 ; IOM = iom_marker_module_end(_, _, _)
                 ; IOM = iom_marker_section(_, _, _)
                 ),
-                FinalLookAhead = lookahead(IOMVarSet, IOMTerm)
+                FinalLookAhead = lookahead(ReadIOMResult)
             ;
                 (
                     IOM = iom_marker_src_file(!:SourceFileName)
@@ -1686,8 +1683,11 @@ read_item_sequence_inner(FileString, FileStringLen, ModuleName,
                     IOM = iom_handled(HandledSpecs),
                     !:Specs = HandledSpecs ++ !.Specs
                 ),
+                read_next_item_or_marker(!.SourceFileName,
+                    FileString, FileStringLen, ModuleName, NextReadIOMResult,
+                    !SeqNumCounter, !LineContext, !LinePosn),
                 read_item_sequence_inner(FileString, FileStringLen, ModuleName,
-                    !NumItemsLeft, no_lookahead, FinalLookAhead,
+                    !NumItemsLeft, NextReadIOMResult, FinalLookAhead,
                     !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
                     !SourceFileName, !SeqNumCounter, !Specs, !Errors,
                     !LineContext, !LinePosn)
@@ -1699,27 +1699,34 @@ read_item_sequence_inner(FileString, FileStringLen, ModuleName,
 
 :- type maybe_lookahead
     --->    no_lookahead
-    ;       lookahead(varset, term).
+    ;       lookahead(read_iom_result).
 
-:- pred read_next_item_or_marker(file_name::in, string::in, int::in,
+:- pred get_next_item_or_marker(file_name::in, string::in, int::in,
     maybe_lookahead::in, module_name::in, read_iom_result::out,
     counter::in, counter::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_next_item_or_marker(FileName, FileString, FileStringLen, InitLookAhead,
+get_next_item_or_marker(FileName, FileString, FileStringLen, InitLookAhead,
         ModuleName, ReadIOMResult, !SeqNumCounter, !LineContext, !LinePosn) :-
     (
         InitLookAhead = no_lookahead,
-        mercury_term_parser.read_term_from_linestr(FileName,
-            FileString, FileStringLen, !LineContext, !LinePosn,
-            ReadTermResult),
-        read_term_to_iom_result(ModuleName, FileName, ReadTermResult,
-            ReadIOMResult, !SeqNumCounter)
+        read_next_item_or_marker(FileName, FileString, FileStringLen,
+            ModuleName, ReadIOMResult, !SeqNumCounter,
+            !LineContext, !LinePosn)
     ;
-        InitLookAhead = lookahead(LookAheadVarSet, LookAheadTerm),
-        term_to_iom_result(ModuleName, LookAheadVarSet, LookAheadTerm,
-            ReadIOMResult, !SeqNumCounter)
+        InitLookAhead = lookahead(ReadIOMResult)
     ).
+
+:- pred read_next_item_or_marker(file_name::in, string::in, int::in,
+    module_name::in, read_iom_result::out, counter::in, counter::out,
+    line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
+
+read_next_item_or_marker(FileName, FileString, FileStringLen, ModuleName,
+        ReadIOMResult, !SeqNumCounter, !LineContext, !LinePosn) :-
+    mercury_term_parser.read_term_from_linestr(FileName,
+        FileString, FileStringLen, !LineContext, !LinePosn, ReadTermResult),
+    read_term_to_iom_result(ModuleName, FileName, ReadTermResult,
+        ReadIOMResult, !SeqNumCounter).
 
 %---------------------------------------------------------------------------%
 
@@ -1822,7 +1829,7 @@ report_wrong_module_start(FirstContext, Expected, Actual) = Spec :-
 check_for_unexpected_item_at_end(SourceFileName, FileString, FileStringLen,
         ModuleName, FileKind, FinalLookAhead, SeqNumCounter0,
         !Specs, !Errors, !.LineContext, !.LinePosn) :-
-    read_next_item_or_marker(SourceFileName, FileString, FileStringLen,
+    get_next_item_or_marker(SourceFileName, FileString, FileStringLen,
         FinalLookAhead, ModuleName, IOMResult,
         SeqNumCounter0, _SeqNumCounter, !.LineContext, _, !.LinePosn, _),
     (
