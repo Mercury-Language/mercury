@@ -3,7 +3,7 @@ test_feature_set.m:013:   supports memoisation.
 test_feature_set.m:013: Error: this module must be compiled in a grade that
 test_feature_set.m:013:   supports trailing.
 test_feature_set.m:013:   Grades that support trailing contain the grade
-test_feature_set.m:013:   modifiers `tr' or `trseg'.
+test_feature_set.m:013:   modifier `tr'.
 test_feature_set.m:013: Error: this module must be compiled in a grade that
 test_feature_set.m:013:   uses single precision floats.
 test_feature_set.m:013:   Grades that use single precision floats contain the

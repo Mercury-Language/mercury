@@ -263,6 +263,9 @@ Changes to the Mercury compiler
 * We have fixed a bug where `--warn-unused-imports` did not warn about
   unused modules that are also imported by an ancestor of the current module.
 
+* The deprecated option `--trail-segments` has been deleted and the grade
+  component `trseg` is no longer accepted as a synonym for `tr`.
+
 NEWS for Mercury 22.01
 ======================
 

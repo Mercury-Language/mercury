@@ -8179,7 +8179,6 @@ as these are the two fastest.
 @cindex .stseg (grade modifier)
 @cindex .threadscope (grade modifier)
 @cindex .tr (grade modifier)
-@cindex .trseg (grade modifier)
 
 The grade modifiers may be given in any order.
 Each grade modifier sets one or more compilation model options.
@@ -8213,7 +8212,6 @@ all of which are available only when targeting C.
 @item trailing
 The default is no trailing.
 Applications that need trailing should specify the grade modifier @samp{.tr}.
-@samp{.trseg} is currently accepted as synonym for @samp{.tr}.
 Trailing is available only when targeting C.
 
 (A trail is a data structure
@@ -8431,9 +8429,6 @@ they are followed by descriptions of those options.
 @c
 @item @samp{.tr}
 @code{--use-trail --no-trail-segments}.
-
-@item @samp{.trseg}
-@code{--use-trail --trail-segments}.
 
 @c @item @samp{.tsw}
 @c @code{--record-term-sizes-as-words}.
@@ -8766,7 +8761,7 @@ This is the case for the C# and Java back-ends, which always use
 the underlying implementation's garbage collector.
 
 @sp 1
-@item @code{--use-trail} (grades: any grade containing @samp{.tr} or @samp{.trseg})
+@item @code{--use-trail} (grades: any grade containing @samp{.tr})
 @findex --use-trail
 @cindex Trailing
 @cindex Constraint solving
@@ -8776,15 +8771,6 @@ Enable use of a trail.
 This is necessary for interfacing with constraint solvers,
 or for backtrackable destructive update.
 This option is only supported by the C back-ends.
-
-@item @code{--trail-segments} (grades: any grade containing @samp{.trseg})
-@findex --trail-segments
-@cindex Trailing
-@cindex Constraint solving
-@cindex Backtrackable destructive update
-@cindex Destructive update, backtrackable
-This option is deprecated as trailing now always uses trail segments.
-The @samp{.trseg} grade modifier is a synonym for @samp{.tr}.
 
 @sp 1
 @item @code{--parallel}

@@ -6,7 +6,7 @@
 # This file is distributed under the terms specified in COPYING.LIB.
 #-----------------------------------------------------------------------------#
 
-GRADEFLAGS += --use-trail --trail-segments
+GRADEFLAGS += --use-trail
 
 # enable C debugging
 MGNUCFLAGS = -g

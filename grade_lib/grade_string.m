@@ -677,9 +677,7 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
         Setting = svar_term_size_prof - svalue_term_size_prof_words,
         Settings = []
     ;
-        ( ComponentStr = "tr"
-        ; ComponentStr = "trseg"
-        ),
+        ComponentStr = "tr",
         Setting = svar_trail - svalue_trail_yes,
         Settings = []
     ;

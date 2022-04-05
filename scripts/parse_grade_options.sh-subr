@@ -439,10 +439,6 @@
                     use_trail=true
                     ;;
 
-                trseg)
-                    use_trail=true
-                    ;;
-                
                 mm)
                     use_minimal_model_stack_copy=true
                     minimal_model_debug=false

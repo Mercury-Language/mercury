@@ -111,10 +111,6 @@
     --->    grade_var_trail_no
     ;       grade_var_trail_yes.
 
-:- type grade_var_trail_segments
-    --->    grade_var_trail_segments_no
-    ;       grade_var_trail_segments_yes.
-
 :- type grade_var_minmodel
     --->    grade_var_minmodel_no
     ;       grade_var_minmodel_stack_copy

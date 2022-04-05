@@ -2226,9 +2226,6 @@ handle_option_to_option_implications(!Globals) :-
     option_implies(exec_trace, stack_trace, bool(yes), !Globals),
     option_implies(profile_deep, stack_trace, bool(yes), !Globals),
 
-    % Using trail segments implies the use of the trail.
-    option_implies(trail_segments, use_trail, bool(yes), !Globals),
-
     % The results of trail usage analysis assume that trail usage
     % optimization is being done, i.e. that redundant trailing
     % operations are really being eliminated.

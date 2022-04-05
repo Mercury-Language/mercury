@@ -176,14 +176,8 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
     % Trailing is only supported by the C back-ends.
     %
     globals.lookup_bool_option(Globals, use_trail,  UseTrail),
-    globals.lookup_bool_option(Globals, trail_segments, TrailSegments),
-    ( if
-        % NOTE: We haven't yet implicitly enabled use_trail segments
-        % if trail_segments are enabled, so we must check both here.
-        ( UseTrail = yes
-        ; TrailSegments = yes
-        )
-    then
+    (
+        UseTrail = yes,
         (
             ( Target = target_java
             ; Target = target_csharp
@@ -195,8 +189,8 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
         ;
             Target = target_c
         )
-    else
-        true
+    ;
+        UseTrail = no
     ),
 
     % Stack segments are only supported by the low level C back-end.
@@ -633,11 +627,7 @@ grade_component_table("tsc", comp_term_size,
 
     % Trailing components.
 grade_component_table("tr", comp_trail,
-    [use_trail - bool(yes), trail_segments - bool(yes)], no, yes).
-    % NOTE: we do no include `.trseg' in grades strings because it
-    % it is just a synonym for `.tr'.
-grade_component_table("trseg", comp_trail,
-    [use_trail - bool(yes), trail_segments - bool(yes)], no, no).
+    [use_trail - bool(yes)], no, yes).
 
     % Minimal model tabling components.
     % NOTE: we do not include `.mm' and `.dmm' in grade strings
@@ -736,7 +726,6 @@ grade_start_values(profile_time - bool(no)).
 grade_start_values(profile_calls - bool(no)).
 grade_start_values(profile_memory - bool(no)).
 grade_start_values(use_trail - bool(no)).
-grade_start_values(trail_segments - bool(no)).
 grade_start_values(use_minimal_model_stack_copy - bool(no)).
 grade_start_values(use_minimal_model_own_stacks - bool(no)).
 grade_start_values(minimal_model_debug - bool(no)).

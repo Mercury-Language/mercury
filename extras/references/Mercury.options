@@ -1,12 +1,12 @@
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2011 The University of Melbourne.
-# Copyright (C) 2018 The Mercury team.
+# Copyright (C) 2018, 2022 The Mercury team.
 # This file is distributed under the terms specified in COPYING.LIB.
 #-----------------------------------------------------------------------------#
 
-MCFLAGS = --use-trail --trail-segments        \
-	  --use-grade-subdirs		      \
-          --libgrades-include-component trseg \
+MCFLAGS = --use-trail	        		\
+	  --use-grade-subdirs		      	\
+          --libgrades-include-component tr 	\
 	  --extra-library-header c_reference.h
 
 MCFLAGS-global = --no-warn-nothing-exported --no-warn-interface-imports

@@ -510,7 +510,6 @@
     ;       parallel
     ;       threadscope
     ;       use_trail
-    ;       trail_segments
     ;       use_minimal_model_stack_copy
     ;       use_minimal_model_own_stacks
     ;       minimal_model_debug
@@ -1518,7 +1517,6 @@ optdef(oc_grade, gc,                                    string("boehm")).
 optdef(oc_grade, parallel,                              bool(no)).
 optdef(oc_grade, threadscope,                           bool(no)).
 optdef(oc_grade, use_trail,                             bool(no)).
-optdef(oc_grade, trail_segments,                        bool(no)).
 optdef(oc_grade, maybe_thread_safe_opt,                 string("no")).
 optdef(oc_grade, extend_stacks_when_needed,             bool(no)).
 optdef(oc_grade, stack_segments,                        bool(no)).
@@ -2483,7 +2481,6 @@ long_option("gc",                   gc).
 long_option("garbage-collection",   gc).
 long_option("parallel",             parallel).
 long_option("use-trail",            use_trail).
-long_option("trail-segments",       trail_segments).
 long_option("type-layout",          type_layout).
 long_option("maybe-thread-safe",    maybe_thread_safe_opt).
 long_option("extend-stacks-when-needed",    extend_stacks_when_needed).
@@ -5368,9 +5365,6 @@ options_help_compilation_model(Stream, !IO) :-
         "\tThis is necessary for interfacing with constraint solvers,",
         "\tor for backtrackable destructive update.",
         "\tThis option is not yet supported for the C# or Java backends.",
-        "--trail-segments\t\t\t(grade modifier: `.trseg')",
-        "\tThis option is deprecated as trail segments are now used by",
-        "\tdefault. The `.trseg' grade modifier is a synonym for `.tr'.",
         "--parallel\t\t(grade modifier: `.par')",
         "\tEnable parallel execution support for the low-level C grades.",
         "\tEnable concurrency (via pthreads) for the high-level C grades.",
