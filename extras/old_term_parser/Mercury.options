@@ -1,1 +1,0 @@
-MCFLAGS-old_term_parser = --no-warn-nothing-exported --no-warn-interface-imports

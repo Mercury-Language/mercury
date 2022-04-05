@@ -266,6 +266,11 @@ Changes to the Mercury compiler
 * The deprecated option `--trail-segments` has been deleted and the grade
   component `trseg` is no longer accepted as a synonym for `tr`.
 
+Changes to the extras distribution
+----------------------------------
+
+* We have deleted the `old_term_parser` library.
+
 NEWS for Mercury 22.01
 ======================
 
