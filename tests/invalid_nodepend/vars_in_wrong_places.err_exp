@@ -3,9 +3,10 @@ vars_in_wrong_places.m:005:   `vars_in_wrong_places' does not export anything.
 vars_in_wrong_places.m:005:   To be useful, a module should export something. A
 vars_in_wrong_places.m:005:   file should contain at least one declaration
 vars_in_wrong_places.m:005:   other than `:- import_module' in its interface
-vars_in_wrong_places.m:005:   section(s). This would normally be a `:- pred',
-vars_in_wrong_places.m:005:   `:- func', `:- type', `:- inst' or `:- mode'
-vars_in_wrong_places.m:005:   declaration.
+vars_in_wrong_places.m:005:   section(s). This would normally be a `:- pred' or
+vars_in_wrong_places.m:005:   `:- func' declaration, or a `:- type', `:- inst',
+vars_in_wrong_places.m:005:   `:- mode', `:- typeclass' or `:- instance'
+vars_in_wrong_places.m:005:   definition.
 vars_in_wrong_places.m:006: Error: module `vars_in_wrong_places' should start
 vars_in_wrong_places.m:006:   with either an `:- interface' or an
 vars_in_wrong_places.m:006:   `:- implementation' declaration.

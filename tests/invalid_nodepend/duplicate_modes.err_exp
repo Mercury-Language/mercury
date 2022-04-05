@@ -3,8 +3,9 @@ duplicate_modes.m:005:   not export anything.
 duplicate_modes.m:005:   To be useful, a module should export something. A file
 duplicate_modes.m:005:   should contain at least one declaration other than
 duplicate_modes.m:005:   `:- import_module' in its interface section(s). This
-duplicate_modes.m:005:   would normally be a `:- pred', `:- func', `:- type',
-duplicate_modes.m:005:   `:- inst' or `:- mode' declaration.
+duplicate_modes.m:005:   would normally be a `:- pred' or `:- func'
+duplicate_modes.m:005:   declaration, or a `:- type', `:- inst', `:- mode',
+duplicate_modes.m:005:   `:- typeclass' or `:- instance' definition.
 duplicate_modes.m:007: Error: module `duplicate_modes' should start with either
 duplicate_modes.m:007:   an `:- interface' or an `:- implementation'
 duplicate_modes.m:007:   declaration.

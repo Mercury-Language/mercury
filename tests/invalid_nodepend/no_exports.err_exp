@@ -3,8 +3,9 @@ no_exports.m:008:   anything.
 no_exports.m:008:   To be useful, a module should export something. A file
 no_exports.m:008:   should contain at least one declaration other than
 no_exports.m:008:   `:- import_module' in its interface section(s). This would
-no_exports.m:008:   normally be a `:- pred', `:- func', `:- type', `:- inst' or
-no_exports.m:008:   `:- mode' declaration.
+no_exports.m:008:   normally be a `:- pred' or `:- func' declaration, or a
+no_exports.m:008:   `:- type', `:- inst', `:- mode', `:- typeclass' or
+no_exports.m:008:   `:- instance' definition.
 no_exports.m:012: Error: module `no_exports' should start with either an
 no_exports.m:012:   `:- interface' or an `:- implementation' declaration.
 no_exports.m:012:   The following assumes that the missing declaration is an

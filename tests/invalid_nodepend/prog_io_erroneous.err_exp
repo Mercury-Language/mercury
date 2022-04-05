@@ -3,8 +3,9 @@ prog_io_erroneous.m:005:   does not export anything.
 prog_io_erroneous.m:005:   To be useful, a module should export something. A
 prog_io_erroneous.m:005:   file should contain at least one declaration other
 prog_io_erroneous.m:005:   than `:- import_module' in its interface section(s).
-prog_io_erroneous.m:005:   This would normally be a `:- pred', `:- func',
-prog_io_erroneous.m:005:   `:- type', `:- inst' or `:- mode' declaration.
+prog_io_erroneous.m:005:   This would normally be a `:- pred' or `:- func'
+prog_io_erroneous.m:005:   declaration, or a `:- type', `:- inst', `:- mode',
+prog_io_erroneous.m:005:   `:- typeclass' or `:- instance' definition.
 prog_io_erroneous.m:007: Error: module `prog_io_erroneous' should start with
 prog_io_erroneous.m:007:   either an `:- interface' or an `:- implementation'
 prog_io_erroneous.m:007:   declaration.

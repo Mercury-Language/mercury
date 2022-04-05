@@ -3,7 +3,8 @@ typeclass_test_11.m:005:   does not export anything.
 typeclass_test_11.m:005:   To be useful, a module should export something. A
 typeclass_test_11.m:005:   file should contain at least one declaration other
 typeclass_test_11.m:005:   than `:- import_module' in its interface section(s).
-typeclass_test_11.m:005:   This would normally be a `:- pred', `:- func',
-typeclass_test_11.m:005:   `:- type', `:- inst' or `:- mode' declaration.
+typeclass_test_11.m:005:   This would normally be a `:- pred' or `:- func'
+typeclass_test_11.m:005:   declaration, or a `:- type', `:- inst', `:- mode',
+typeclass_test_11.m:005:   `:- typeclass' or `:- instance' definition.
 typeclass_test_11.m:008: Error: constraints on class declarations may only
 typeclass_test_11.m:008:   constrain type variables and ground types.

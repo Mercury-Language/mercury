@@ -3,8 +3,8 @@ errors2.m:005:   anything.
 errors2.m:005:   To be useful, a module should export something. A file should
 errors2.m:005:   contain at least one declaration other than `:- import_module'
 errors2.m:005:   in its interface section(s). This would normally be a
-errors2.m:005:   `:- pred', `:- func', `:- type', `:- inst' or `:- mode'
-errors2.m:005:   declaration.
+errors2.m:005:   `:- pred' or `:- func' declaration, or a `:- type', `:- inst',
+errors2.m:005:   `:- mode', `:- typeclass' or `:- instance' definition.
 errors2.m:009: Error: module `errors2' should start with either an
 errors2.m:009:   `:- interface' or an `:- implementation' declaration.
 errors2.m:009:   The following assumes that the missing declaration is an

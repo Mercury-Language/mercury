@@ -5,8 +5,9 @@ typeclass_missing_det_3.m:008:   To be useful, a module should export
 typeclass_missing_det_3.m:008:   something. A file should contain at least one
 typeclass_missing_det_3.m:008:   declaration other than `:- import_module' in
 typeclass_missing_det_3.m:008:   its interface section(s). This would normally
-typeclass_missing_det_3.m:008:   be a `:- pred', `:- func', `:- type',
-typeclass_missing_det_3.m:008:   `:- inst' or `:- mode' declaration.
+typeclass_missing_det_3.m:008:   be a `:- pred' or `:- func' declaration, or a
+typeclass_missing_det_3.m:008:   `:- type', `:- inst', `:- mode',
+typeclass_missing_det_3.m:008:   `:- typeclass' or `:- instance' definition.
 typeclass_missing_det_3.m:017: Error: no determinism declaration for type class
 typeclass_missing_det_3.m:017:   method predicate
 typeclass_missing_det_3.m:017:   `typeclass_missing_det_3.write'/3.

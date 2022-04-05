@@ -6,9 +6,11 @@
 # Mercury.options - module-specific flags for Mmake and `mmc --make'.
 #-----------------------------------------------------------------------------#
 
-MCFLAGS-array_util = --trace minimum
-MCFLAGS-cliques = --trace minimum
-MCFLAGS-read_profile = --trace minimum
+MCFLAGS-array_util =        --trace minimum
+MCFLAGS-cliques =           --trace minimum
+MCFLAGS-read_profile =      --trace minimum
+
+MCFLAGS-mdprof_fb =         --no-warn-nothing-exported
 
 # Uncomment this to debug the automatic parallelism code.
 #MCFLAGS-branch_and_bound = \

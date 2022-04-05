@@ -8,8 +8,8 @@ bigtest.m:005:   anything.
 bigtest.m:005:   To be useful, a module should export something. A file should
 bigtest.m:005:   contain at least one declaration other than `:- import_module'
 bigtest.m:005:   in its interface section(s). This would normally be a
-bigtest.m:005:   `:- pred', `:- func', `:- type', `:- inst' or `:- mode'
-bigtest.m:005:   declaration.
+bigtest.m:005:   `:- pred' or `:- func' declaration, or a `:- type', `:- inst',
+bigtest.m:005:   `:- mode', `:- typeclass' or `:- instance' definition.
 bigtest.m:005: Error: `export_sym' is not a valid declaration type.
 bigtest.m:006: Error: `export_pred' is not a valid declaration type.
 bigtest.m:007: Error: `export_type' is not a valid declaration type.
