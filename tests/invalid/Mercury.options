@@ -23,6 +23,7 @@ MCFLAGS-children                = --no-intermodule-optimization
 MCFLAGS-coerce_implied_mode     = --halt-at-warn
 MCFLAGS-coerce_infer            = --infer-all
 MCFLAGS-coerce_void             = --halt-at-warn
+MCFLAGS-duplicate_instance_2    = --no-intermodule-optimization
 MCFLAGS-ee_invalid              = --verbose-error-messages
 MCFLAGS-empty_interface         = --halt-at-warn -E
 MCFLAGS-exported_mode           = --infer-all --no-intermodule-optimization
