@@ -958,6 +958,12 @@ replace_in_parse_tree_trans_opt(_ModuleName, _TypeEqvMap, _InstEqvMap,
 
 %---------------------------------------------------------------------------%
 
+:- type maybe_record_sym_name_use
+    --->    dont_record_sym_name_use
+    ;       record_sym_name_use(item_visibility).
+
+%---------------------------------------------------------------------------%
+
 :- pred replace_in_maybe(module_name::in, maybe_record_sym_name_use::in,
     type_eqv_map::in, inst_eqv_map::in,
     pred(module_name, maybe_record_sym_name_use, type_eqv_map, inst_eqv_map,
@@ -1039,10 +1045,6 @@ replace_in_list_loop(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
         ReplaceInItem, Items0, !RevItems, !RecompInfo, !UsedModules, !Specs).
 
 %---------------------------------------------------------------------------%
-
-:- type maybe_record_sym_name_use
-    --->    dont_record_sym_name_use
-    ;       record_sym_name_use(item_visibility).
 
 :- pred replace_in_type_ctor_checked_defn(module_name::in,
     maybe_record_sym_name_use::in, maybe_record_sym_name_use::in,
@@ -1283,6 +1285,8 @@ replace_in_pred_decl_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
         TVarSet, InstVarSet, ExistQVars, Purity, ClassContext,
         Context, SeqNum).
 
+%---------------------%
+
 :- pred replace_in_mode_decl_info(module_name::in,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
     item_mode_decl_info::in, item_mode_decl_info::out,
@@ -1321,6 +1325,8 @@ replace_in_mode_decl_info(ModuleName, MaybeRecord, _TypeEqvMap, InstEqvMap,
     Info = item_mode_decl_info(PredName, MaybePredOrFunc, Modes,
         WithInst, MaybeDetism, InstVarSet, Context, SeqNum).
 
+%---------------------%
+
 :- pred replace_in_typeclass_info(module_name::in,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
     item_typeclass_info::in, item_typeclass_info::out,
@@ -1355,6 +1361,8 @@ replace_in_typeclass_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
     Info = item_typeclass_info(ClassName, Vars, Constraints, FunDeps,
         ClassInterface, TVarSet, Context, SeqNum).
 
+%---------------------%
+
 :- pred replace_in_instance_info(module_name::in,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
     item_instance_info::in, item_instance_info::out,
@@ -1388,6 +1396,8 @@ replace_in_instance_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
     InstanceInfo = item_instance_info(ClassName, Types, OriginalTypes,
         Constraints, InstanceBody, TVarSet, ContainingModuleName,
         Context, SeqNum).
+
+%---------------------%
 
 :- pred replace_in_decl_pragma_info(module_name::in,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
@@ -1466,6 +1476,8 @@ replace_in_pragma_info_type_spec(ModuleName, MaybeRecord,
     TypeSpecInfo = pragma_info_type_spec(PFUMM, PredName, NewName,
         Subst, TVarSet, ItemIds).
 
+%---------------------%
+
 :- pred replace_in_impl_pragma_info(module_name::in,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
     item_impl_pragma_info::in, item_impl_pragma_info::out,
@@ -1541,6 +1553,8 @@ replace_in_pragma_info_foreign_proc(ModuleName, MaybeRecord,
     FPInfo = pragma_info_foreign_proc(Attrs, PName, PredOrFunc,
         ProcVars, ProcVarset, ProcInstVarset, ProcImpl).
 
+%---------------------%
+
 :- pred replace_in_mutable_info(module_name::in, maybe_record_sym_name_use::in,
     type_eqv_map::in, inst_eqv_map::in,
     item_mutable_info::in, item_mutable_info::out,
@@ -1575,6 +1589,8 @@ replace_in_mutable_defn(MaybeRecord, TypeEqvMap, InstEqvMap, Info0, Info,
         !UsedModules),
     Info = item_mutable_info(MutName, OrigType, Type, OrigInst, Inst,
         InitValue, Attrs, Varset, Context, SeqNum).
+
+%---------------------%
 
 :- pred replace_in_event_specs(type_eqv_map::in,
     assoc_list(string, event_spec)::in, assoc_list(string, event_spec)::out,
