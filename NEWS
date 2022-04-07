@@ -68,6 +68,11 @@ The following obsolete predicates have been removed:
 
 ### Changes to the `io` module
 
+* The following predicates have been added:
+
+    - pred `write_binary_string_utf8/3`
+    - pred `write_binary_string_utf8/4`
+
 * The following obsolete predicates have been removed:
 
     - pred `see/3`                  (replacement: `prolog.see/3`)

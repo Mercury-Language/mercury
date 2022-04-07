@@ -837,6 +837,16 @@
 :- pred write_binary_uint64_be(io.binary_output_stream::in, uint64::in,
     io::di, io::uo) is det.
 
+%---------------------%
+
+    % Write the UTF-8 encoding of a string to the current binary output stream
+    % or the specified binary output stream. If the given string is not
+    % well-formed, then the behaviour is implementation dependent.
+    %
+:- pred write_binary_string_utf8(string::in, io::di, io::uo) is det.
+:- pred write_binary_string_utf8(io.binary_output_stream::in, string::in,
+    io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 %
 % Text input predicates.
@@ -3354,6 +3364,16 @@ write_binary_uint64_be(UInt64, !IO) :-
 
 write_binary_uint64_be(binary_output_stream(Stream), UInt64, !IO) :-
     do_write_binary_uint64_be(Stream, UInt64, Error, !IO),
+    throw_on_output_error(Error, !IO).
+
+%---------------------%
+
+write_binary_string_utf8(String, !IO) :-
+    binary_output_stream(Stream, !IO),
+    write_binary_string_utf8(Stream, String, !IO).
+
+write_binary_string_utf8(binary_output_stream(Stream), String, !IO) :-
+    do_write_binary_string_utf8(Stream, String, Error, !IO),
     throw_on_output_error(Error, !IO).
 
 %---------------------------------------------------------------------------%

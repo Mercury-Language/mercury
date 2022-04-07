@@ -92,6 +92,9 @@
 :- pred do_write_binary_uint64_be(stream::in, uint64::in, system_error::out,
     io::di, io::uo) is det.
 
+:- pred do_write_binary_string_utf8(stream::in, string::in, system_error::out,
+    io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -1140,6 +1143,50 @@ do_write_float(Stream, Float, Error, !IO) :-
         buffer.putLong(U64);
         ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).write(
             buffer.array(), 0, 8);
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    do_write_binary_string_utf8(Stream::in, String::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    size_t len = strlen(String);
+    if (MR_WRITE(*Stream, (unsigned char *) String, len) != len) {
+        Error = errno;
+    } else {
+        Error = 0;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    do_write_binary_string_utf8(Stream::in, String::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    byte[] bytes = mercury.io__stream_ops.text_encoding.GetBytes(String);
+    try {
+        Stream.stream.Write(bytes, 0, bytes.Length);
+        Error = null;
+    } catch (System.Exception e) {
+        Error = e;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    do_write_binary_string_utf8(Stream::in, String::in, Error::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    byte[] bytes = String.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    try {
+        ((jmercury.io__stream_ops.MR_BinaryOutputFile) Stream).write(
+            bytes, 0, bytes.length);
         Error = null;
     } catch (java.io.IOException e) {
         Error = e;
