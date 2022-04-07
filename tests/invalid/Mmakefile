@@ -187,6 +187,7 @@ SINGLEMODULE_PROGS = \
 	incompatible_instance_constraints \
 	inconsistent_instances \
 	inline_conflict \
+	inst_for_eqv_type \
 	inst_matches_final_bug \
 	instance_no_type \
 	instance_var_bug \

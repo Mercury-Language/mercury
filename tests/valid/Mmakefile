@@ -159,6 +159,7 @@ OTHER_PROGS = \
 	indexing \
 	inhibit_warn_test \
 	inlining_bug \
+	inst_for_char_type \
 	inst_perf_bug_1 \
 	inst_perf_bug_2 \
 	instmap_generic_failure \

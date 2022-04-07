@@ -10,8 +10,19 @@
 % Original author: maclarty.
 % Rewritten by zs.
 %
-% This module exports a predicate that checks that each user defined inst is
-% consistent with at least one type in scope.
+% This module's main jobs are
+%
+% - to check that each user defined inst that is declared to be used with
+%   a specific type is consistent with that type, and
+%
+% - to check that each user defined inst that is not declared to be used with
+%   a specific type is consistent with at least one type in scope.
+%
+% It also does a minor bit of canonicalization. We can refer to the type
+% of characters using either the unqualified name "character" or as
+% "char.char". The original name is "character", but the preferred name
+% is the shorter "char". This module replaces references to "char.char"
+% in inst definitions with the canonical name "character".
 %
 % TODO
 % The code in this module checks only that the cons_ids in the sequence of
@@ -48,12 +59,21 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
+:- import_module bool.
 :- import_module list.
 
-    % This predicate issues a warning for each user defined bound inst
-    % that is not consistent with at least one type in scope.
+    % Check user defined insts that say they are intended for use
+    % with a specific type that they are consistent with that type,
+    % and generate error messages if they are not.
     %
-:- pred check_insts_have_matching_types(module_info::in, module_info::out,
+    % If the first argument is "yes", generate a warning for each
+    % user defined bound inst that
+    %
+    % - does not specify what type it is for, and
+    % - is not consistent with *any* of the types in scope.
+    %
+:- pred check_insts_have_matching_types(bool::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -75,7 +95,6 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module cord.
 :- import_module int.
 :- import_module map.
@@ -89,7 +108,8 @@
 
 %---------------------------------------------------------------------------%
 
-check_insts_have_matching_types(!ModuleInfo, !Specs) :-
+check_insts_have_matching_types(WarnInstsWithoutMatchingType,
+        !ModuleInfo, !Specs) :-
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_user_insts(InstTable0, UserInstTable0),
     map.to_sorted_assoc_list(UserInstTable0, InstCtorDefnPairs0),
@@ -97,7 +117,8 @@ check_insts_have_matching_types(!ModuleInfo, !Specs) :-
     get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
     index_visible_types_by_unqualified_functors(TypeCtorsDefns,
         multi_map.init, FunctorsToTypeDefns),
-    check_inst_defns_have_matching_types(TypeTable, FunctorsToTypeDefns,
+    check_inst_defns_have_matching_types(WarnInstsWithoutMatchingType,
+        TypeTable, FunctorsToTypeDefns,
         InstCtorDefnPairs0, InstCtorDefnPairs, !Specs),
     map.from_sorted_assoc_list(InstCtorDefnPairs, UserInstTable),
     inst_table_set_user_insts(UserInstTable, InstTable0, InstTable),
@@ -208,30 +229,32 @@ constructor_to_functor_name_and_arity(Ctor, FunctorNameAndArity) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred check_inst_defns_have_matching_types(type_table::in,
+:- pred check_inst_defns_have_matching_types(bool::in, type_table::in,
     functors_to_types_map::in,
     assoc_list(inst_ctor, hlds_inst_defn)::in,
     assoc_list(inst_ctor, hlds_inst_defn)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_inst_defns_have_matching_types(_TypeTable, _FunctorsToTypeDefns,
-        [], [], !Specs).
-check_inst_defns_have_matching_types(TypeTable, FunctorsToTypeDefns,
+check_inst_defns_have_matching_types(_, _, _, [], [], !Specs).
+check_inst_defns_have_matching_types(WarnInstsWithoutMatchingType,
+        TypeTable, FunctorsToTypeDefns,
         [InstCtorDefnPair0 | InstCtorDefnPairs0],
         [InstCtorDefnPair | InstCtorDefnPairs], !Specs) :-
     InstCtorDefnPair0 = InstCtor - InstDefn0,
-    check_inst_defn_has_matching_type(TypeTable, FunctorsToTypeDefns,
-        InstCtor, InstDefn0, InstDefn, !Specs),
+    check_inst_defn_has_matching_type(WarnInstsWithoutMatchingType,
+        TypeTable, FunctorsToTypeDefns, InstCtor, InstDefn0, InstDefn, !Specs),
     InstCtorDefnPair = InstCtor - InstDefn,
-    check_inst_defns_have_matching_types(TypeTable, FunctorsToTypeDefns,
+    check_inst_defns_have_matching_types(WarnInstsWithoutMatchingType,
+        TypeTable, FunctorsToTypeDefns,
         InstCtorDefnPairs0, InstCtorDefnPairs, !Specs).
 
-:- pred check_inst_defn_has_matching_type(type_table::in,
+:- pred check_inst_defn_has_matching_type(bool::in, type_table::in,
     functors_to_types_map::in, inst_ctor::in,
     hlds_inst_defn::in, hlds_inst_defn::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_inst_defn_has_matching_type(TypeTable, FunctorsToTypesMap, InstCtor,
+check_inst_defn_has_matching_type(WarnInstsWithoutMatchingType,
+        TypeTable, FunctorsToTypesMap, InstCtor,
         InstDefn0, InstDefn, !Specs) :-
     InstDefn0 = hlds_inst_defn(InstVarSet, InstParams, InstBody,
         IFTC0, Context, Status),
@@ -276,8 +299,9 @@ check_inst_defn_has_matching_type(TypeTable, FunctorsToTypesMap, InstCtor,
                 check_for_type_bound_insts(ForTypeKind, BoundInsts,
                     cord.init, MismatchesCord),
                 Mismatches = cord.list(MismatchesCord),
-                maybe_issue_type_match_error(InstCtor, InstDefn0,
-                    ForTypeKind, IFTC, Mismatches, MatchSpecs),
+                maybe_issue_type_match_error(WarnInstsWithoutMatchingType,
+                    InstCtor, InstDefn0, ForTypeKind, Mismatches,
+                    IFTC, MatchSpecs),
                 !:Specs = MatchSpecs ++ !.Specs
             ),
             InstDefn = hlds_inst_defn(InstVarSet, InstParams, InstBody,
@@ -294,7 +318,8 @@ check_inst_defn_has_matching_type(TypeTable, FunctorsToTypesMap, InstCtor,
                 TypeableFunctors = all_typeable_functors,
                 PossibleTypesSet = set.intersect_list(PossibleTypeSets),
                 PossibleTypes = set.to_sorted_list(PossibleTypesSet),
-                maybe_issue_no_matching_types_warning(InstCtor, InstDefn0,
+                maybe_issue_no_matching_types_warning(
+                    WarnInstsWithoutMatchingType, InstCtor, InstDefn0,
                     BoundInsts, PossibleTypes, PossibleTypeSets, !Specs),
                 list.map(type_defn_or_builtin_to_type_ctor, PossibleTypes,
                     PossibleTypeCtors),
@@ -785,18 +810,19 @@ maybe_issue_no_such_type_error(InstCtor, InstDefn, TypeCtor, !Specs) :-
         !:Specs = [Spec | !.Specs]
     ).
 
-:- pred maybe_issue_type_match_error(inst_ctor::in, hlds_inst_defn::in,
-    for_type_kind::in, inst_for_type_ctor::out, list(cons_mismatch)::in,
-    list(error_spec)::out) is det.
+:- pred maybe_issue_type_match_error(bool::in, inst_ctor::in,
+    hlds_inst_defn::in, for_type_kind::in, list(cons_mismatch)::in,
+    inst_for_type_ctor::out, list(error_spec)::out) is det.
 
-maybe_issue_type_match_error(InstCtor, InstDefn, ForTypeKind, IFTC, Mismatches,
-        !:Specs) :-
+maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
+        ForTypeKind, Mismatches0, IFTC, !:Specs) :-
     !:Specs = [],
     Context = InstDefn ^ inst_context,
     InstStatus = InstDefn ^ inst_status,
     InstDefinedInThisModule = inst_status_defined_in_this_module(InstStatus),
     (
-        ForTypeKind = ftk_builtin(ForTypeCtor, _BuiltinType)
+        ForTypeKind = ftk_builtin(ForTypeCtor, _BuiltinType),
+        Mismatches = Mismatches0
     ;
         ForTypeKind = ftk_user(ForTypeCtor, ForTypeDefn),
         InstIsExported =
@@ -814,13 +840,49 @@ maybe_issue_type_match_error(InstCtor, InstDefn, ForTypeKind, IFTC, Mismatches,
             !:Specs = [VisSpec | !.Specs]
         else
             true
+        ),
+        get_type_defn_body(ForTypeDefn, ForTypeDefnBody),
+        (
+            ( ForTypeDefnBody = hlds_du_type(_)
+            ; ForTypeDefnBody = hlds_foreign_type(_)
+            ; ForTypeDefnBody = hlds_solver_type(_)
+            ; ForTypeDefnBody = hlds_abstract_type(_)
+            ),
+            Mismatches = Mismatches0
+        ;
+            ForTypeDefnBody = hlds_eqv_type(_),
+            (
+                Mismatches0 = []
+            ;
+                Mismatches0 = [_ | _],
+                EqvPieces = [words("Error: inst"),
+                    unqual_inst_ctor(InstCtor), words("is declared to be"),
+                    words("for type"), qual_type_ctor(ForTypeCtor), suffix(","),
+                    words("but that type is an equivalence type,"),
+                    words("and thus has no function symbols of its own."),
+                    words("Change the inst definition to refer"),
+                    words("to the type constructor that"),
+                    qual_type_ctor(ForTypeCtor),
+                    words("expands to."), nl],
+                EqvSpec = simplest_spec($pred, severity_error,
+                    phase_inst_check, Context, EqvPieces),
+                !:Specs = [EqvSpec | !.Specs]
+            ),
+            Mismatches = []
         )
     ),
-
-    (
-        Mismatches = []
-    ;
-        Mismatches = [_ | MismatchesTail],
+    ( if
+        % XXX We turn off --warn-insts-without-matching-type in library
+        % modules that define insts for types that have definitions
+        % in both Mercury and some foreign languages. In such cases,
+        % the mismatches we are looking at here *should* be derived from
+        % the Mercury definition of the type, but the foreign definitions
+        % will override that. We should fix that by having the Mercury
+        % definition available even if the actual definition we will use
+        % is the foreign language definition.
+        WarnInstsWithoutMatchingType = yes,
+        Mismatches = [_ | MismatchesTail]
+    then
         cons_id_strs_and_near_misses(Mismatches, MismatchConsIdComponents,
             NearMisses),
         FuncSymbolPhrase = choose_number(Mismatches,
@@ -853,6 +915,8 @@ maybe_issue_type_match_error(InstCtor, InstDefn, ForTypeKind, IFTC, Mismatches,
         MismatchSpec = simplest_spec($pred, severity_error, phase_inst_check,
             Context, MismatchPieces ++ NearMissPieces),
         !:Specs = [MismatchSpec | !.Specs]
+    else
+        true
     ),
     (
         !.Specs = [],
@@ -905,20 +969,21 @@ project_if_several(near_miss_cons_mismatch(_, IfSeveral)) = IfSeveral.
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_issue_no_matching_types_warning(
+:- pred maybe_issue_no_matching_types_warning(bool::in,
     inst_ctor::in, hlds_inst_defn::in,
     list(bound_inst)::in, list(type_defn_or_builtin)::in,
     list(set(type_defn_or_builtin))::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_issue_no_matching_types_warning(InstCtor, InstDefn, BoundInsts,
+maybe_issue_no_matching_types_warning(WarnInstsWithoutMatchingType,
+        InstCtor, InstDefn, BoundInsts,
         PossibleTypes, PossibleTypeSets, !Specs) :-
     InstStatus = InstDefn ^ inst_status,
     DefinedInThisModule = inst_status_defined_in_this_module(InstStatus),
-    (
-        DefinedInThisModule = no
-    ;
-        DefinedInThisModule = yes,
+    ( if
+        WarnInstsWithoutMatchingType = yes,
+        DefinedInThisModule = yes
+    then
         (
             PossibleTypes = [],
             Context = InstDefn ^ inst_context,
@@ -993,6 +1058,8 @@ maybe_issue_no_matching_types_warning(InstCtor, InstDefn, BoundInsts,
                 !:Specs = [Spec | !.Specs]
             )
         )
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%

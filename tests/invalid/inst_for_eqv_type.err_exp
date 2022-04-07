@@ -1,0 +1,6 @@
+inst_for_eqv_type.m:014: Error: inst `one_two'/0 is declared to be for type
+inst_for_eqv_type.m:014:   `inst_for_eqv_type.et'/0, but that type is an
+inst_for_eqv_type.m:014:   equivalence type, and thus has no function symbols
+inst_for_eqv_type.m:014:   of its own. Change the inst definition to refer to
+inst_for_eqv_type.m:014:   the type constructor that `inst_for_eqv_type.et'/0
+inst_for_eqv_type.m:014:   expands to.

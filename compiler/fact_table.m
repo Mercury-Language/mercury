@@ -3374,8 +3374,6 @@ generate_hash_string_code(FactTableSize, PredName, VarName, LabelName, LabelNum,
     --->    plain_equals
     ;       string_equals.
 
-    % XXX CLEANUP Due to a compiler limitation, we can't specify
-    % that KeyType below has mode in(key_char), not simply in.
 :- inst key_char for char/0
     --->    ('s')
     ;       ('i')

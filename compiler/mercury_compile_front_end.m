@@ -206,7 +206,7 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
 
     maybe_eliminate_dead_preds(OpModeAugment, Verbose, Stats, Globals,
         !HLDS, !DumpInfo, !Specs, !IO),
-    maybe_warn_about_insts_without_matching_type(Verbose, Stats, Globals,
+    check_insts_for_matching_types(Verbose, Stats, Globals,
         !HLDS, !DumpInfo, !Specs, !IO),
     do_typecheck(Verbose, Stats, Globals, FoundSyntaxError, FoundTypeError,
         NumberOfIterations, !HLDS, !DumpInfo, !Specs, !IO),
@@ -306,29 +306,25 @@ maybe_eliminate_dead_preds(OpModeAugment, Verbose, Stats, Globals,
         true
     ).
 
-:- pred maybe_warn_about_insts_without_matching_type(bool::in, bool::in,
+:- pred check_insts_for_matching_types(bool::in, bool::in,
     globals::in, module_info::in, module_info::out,
     dump_info::in, dump_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_warn_about_insts_without_matching_type(Verbose, Stats, Globals,
+check_insts_for_matching_types(Verbose, Stats, Globals,
         !HLDS, !DumpInfo, !Specs, !IO) :-
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
+    maybe_write_string(Verbose,
+        "% Checking that insts have matching types... ", !IO),
     globals.lookup_bool_option(Globals, warn_insts_without_matching_type,
         WarnInstsWithNoMatchingType),
-    (
-        WarnInstsWithNoMatchingType = yes,
-        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
-        maybe_write_string(Verbose,
-            "% Checking that insts have matching types... ", !IO),
-        check_insts_have_matching_types(!HLDS, !Specs),
-        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
-        maybe_write_string(Verbose, "done.\n", !IO),
-        maybe_report_stats(Stats, !IO),
-        maybe_dump_hlds(!.HLDS, 12, "warn_insts_without_matching_type",
-            !DumpInfo, !IO)
-    ;
-        WarnInstsWithNoMatchingType = no
-    ).
+    check_insts_have_matching_types(WarnInstsWithNoMatchingType,
+        !HLDS, !Specs),
+    maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
+    maybe_write_string(Verbose, "done.\n", !IO),
+    maybe_report_stats(Stats, !IO),
+    maybe_dump_hlds(!.HLDS, 12, "warn_insts_without_matching_type",
+        !DumpInfo, !IO).
 
 :- pred do_typecheck(bool::in, bool::in, globals::in,
     maybe_clause_syntax_errors::out, bool::out, number_of_iterations::out,
