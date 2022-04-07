@@ -443,7 +443,7 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
         ),
         ProcPPId = proc(PredId, ProcId),
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-        proc_info_get_varset(ProcInfo, Varset),
+        proc_info_get_varset_vartypes(ProcInfo, Varset, _VarTypes),
         term_errors_var_bag_description(OutputSuppliers, Varset,
             OutputSuppliersNames),
         list.map((pred(OS::in, FOS::out) is det :- FOS = fixed(OS)),

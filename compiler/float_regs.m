@@ -517,8 +517,7 @@ insert_reg_wrappers_proc_2(!ProcInfo, !PredInfo, !ModuleInfo, !Specs) :-
     % Grab the appropriate fields from the pred_info and proc_info.
     pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
     proc_info_get_headvars(!.ProcInfo, HeadVars),
-    proc_info_get_varset(!.ProcInfo, VarSet0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
@@ -562,8 +561,7 @@ insert_reg_wrappers_proc_2(!ProcInfo, !PredInfo, !ModuleInfo, !Specs) :-
 
     % Set the new values of the fields in proc_info and pred_info.
     proc_info_set_goal(Goal, !ProcInfo),
-    proc_info_set_varset(VarSet, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
     proc_info_set_headvars(HeadVars, !ProcInfo),
     ensure_all_headvars_are_named(!ProcInfo),

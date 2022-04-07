@@ -148,7 +148,7 @@ reverse_renaming(RevSubst, K0, V0, !Acc) :-
 %---------------------------------------------------------------------------%
 
 var_needs_sharing_analysis(ModuleInfo, ProcInfo, Var) :-
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     lookup_var_type(VarTypes, Var, Type),
     type_needs_sharing_analysis(ModuleInfo, Type).
 

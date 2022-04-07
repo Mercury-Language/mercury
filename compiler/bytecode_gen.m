@@ -135,8 +135,7 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
     map.lookup(ProcTable, ProcId, ProcInfo),
 
     proc_info_get_goal(ProcInfo, Goal),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
-    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
     proc_info_interface_determinism(ProcInfo, Detism),
     determinism_to_code_model(Detism, CodeModel),
 

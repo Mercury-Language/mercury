@@ -603,8 +603,7 @@ table_gen_transform_proc(TabledMethod, PredId, ProcId, !ProcInfo, !PredInfo,
     proc_info_interface_determinism(!.ProcInfo, Detism),
     determinism_to_code_model(Detism, CodeModel),
     proc_info_get_headvars(!.ProcInfo, HeadVars),
-    proc_info_get_varset(!.ProcInfo, VarSet0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
     proc_info_get_goal(!.ProcInfo, OrigGoal),
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
     proc_info_get_table_attributes(!.ProcInfo, MaybeAttributes),
@@ -749,8 +748,7 @@ table_gen_transform_proc(TabledMethod, PredId, ProcId, !ProcInfo, !PredInfo,
     % Set the new values of the fields in proc_info and pred_info
     % and save in the module info.
     proc_info_set_goal(Goal, !ProcInfo),
-    proc_info_set_varset(VarSet, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
     proc_info_set_call_table_tip(MaybeCallTableTip, !ProcInfo),
 
     (
@@ -2081,8 +2079,7 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
     Goal = hlds_goal(GoalExpr, OrigGoalInfo),
     proc_info_set_goal(Goal, !ProcInfo),
 
-    proc_info_set_vartypes(!.VarTypes, !ProcInfo),
-    proc_info_set_varset(!.VarSet, !ProcInfo),
+    proc_info_set_varset_vartypes(!.VarSet, !.VarTypes, !ProcInfo),
 
     GenTabledMethod = tabled_minimal(own_stacks_generator),
     InputVarModeMethods = list.map(project_out_pos, NumberedInputVars),
@@ -2171,8 +2168,7 @@ clone_pred_info(OrigPredId, OrigProcId, PredInfo0, HeadVars,
 clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
     pred_info_proc_info(PredInfo, ProcId, ProcInfo),
     proc_info_get_context(ProcInfo, ProcContext),
-    proc_info_get_varset(ProcInfo, ProcVarSet),
-    proc_info_get_vartypes(ProcInfo, ProcVarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, ProcVarSet, ProcVarTypes),
     proc_info_get_headvars(ProcInfo, ProcHeadVars),
     proc_info_get_inst_varset(ProcInfo, ProcInstVarSet),
     proc_info_get_argmodes(ProcInfo, ProcHeadModes),
@@ -4023,17 +4019,15 @@ table_gen_make_type_info_vars(Types, Context, !VarSet, !VarTypes,
 
     % Put the varset and vartypes from the simplify_info
     % back in the proc_info.
-    proc_info_set_vartypes(!.VarTypes, ProcInfo0, ProcInfo1),
-    proc_info_set_varset(!.VarSet, ProcInfo1, ProcInfo2),
+    proc_info_set_varset_vartypes(!.VarSet, !.VarTypes, ProcInfo0, ProcInfo1),
 
     % Generate the code that creates the type_infos.
     polymorphism_make_type_info_vars_raw(Types, Context,
         TypeInfoVars, TypeInfoGoals, ModuleInfo0, ModuleInfo,
-        PredInfo0, PredInfo, ProcInfo2, ProcInfo),
+        PredInfo0, PredInfo, ProcInfo1, ProcInfo),
 
     % Get the new varset and vartypes from the proc_info.
-    proc_info_get_vartypes(ProcInfo, !:VarTypes),
-    proc_info_get_varset(ProcInfo, !:VarSet),
+    proc_info_get_varset_vartypes(ProcInfo, !:VarSet, !:VarTypes),
 
     % Put the new module_info, pred_info, and proc_info back in the table_info.
     table_info_init(ModuleInfo, PredInfo, ProcInfo, !:TableInfo).

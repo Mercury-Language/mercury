@@ -555,7 +555,7 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcIds, !OptProcs,
         then
             true
         else
-            proc_info_get_vartypes(ProcInfo, VarTypes),
+            proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
             vartypes_vars(VarTypes, Vars),
             initialise_vardep(Vars, !VarDep),
             setup_output_args(!.ModuleInfo, ProcInfo, !VarDep),
@@ -1290,13 +1290,12 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule, PredName,
     proc_info_interface_determinism(!.OldProc, Determinism),
     goal_info_set_determinism(Determinism, GoalInfo0, GoalInfo1),
 
-    proc_info_get_vartypes(!.OldProc, VarTypes0),
+    proc_info_get_varset_vartypes(!.OldProc, VarSet0, VarTypes0),
     set.list_to_set(HeadVars, NonLocals),
     lookup_var_types(VarTypes0, HeadVars, VarTypeList),
     vartypes_from_corresponding_lists(HeadVars, VarTypeList, VarTypes1),
     % The varset should probably be fixed up, but it shouldn't make
     % too much difference.
-    proc_info_get_varset(!.OldProc, VarSet0),
     proc_info_get_rtti_varmaps(!.OldProc, RttiVarMaps0),
     remove_listof_elements(1, UnusedArgs, HeadVars, NewHeadVars),
     GoalExpr = plain_call(NewPredId, NewProcId, NewHeadVars,
@@ -1306,8 +1305,7 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule, PredName,
         set_to_bitset(NonLocals), _, Goal1, Goal, VarSet0, VarSet,
         VarTypes1, VarTypes, RttiVarMaps0, RttiVarMaps),
     proc_info_set_goal(Goal, !OldProc),
-    proc_info_set_varset(VarSet, !OldProc),
-    proc_info_set_vartypes(VarTypes, !OldProc),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !OldProc),
     proc_info_set_rtti_varmaps(RttiVarMaps, !OldProc).
 
     % Create a pred_info for an imported pred with a pragma unused_args
@@ -1429,10 +1427,9 @@ do_unused_args_fixup_proc(VarUsage, OldPredProcId, ProcCallInfo,
     map.keys(UsageInfos, UnusedVars),
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         PredInfo0, ProcInfo0),
-    proc_info_get_vartypes(ProcInfo0, VarTypes0),
+    proc_info_get_varset_vartypes(ProcInfo0, VarSet0, VarTypes0),
     proc_info_get_headvars(ProcInfo0, HeadVars0),
     proc_info_get_argmodes(ProcInfo0, ArgModes0),
-    proc_info_get_varset(ProcInfo0, VarSet0),
     proc_info_get_goal(ProcInfo0, Goal0),
     remove_listof_elements(1, UnusedArgs, HeadVars0, HeadVars),
     remove_listof_elements(1, UnusedArgs, ArgModes0, ArgModes),
@@ -1459,8 +1456,7 @@ do_unused_args_fixup_proc(VarUsage, OldPredProcId, ProcCallInfo,
                 NonLocals, _, !Goal, VarSet1, VarSet, VarTypes1, VarTypes,
                 RttiVarMaps0, RttiVarMaps),
             proc_info_set_goal(!.Goal, !ProcInfo),
-            proc_info_set_varset(VarSet, !ProcInfo),
-            proc_info_set_vartypes(VarTypes, !ProcInfo),
+            proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
             proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo)
         ;
             Changed = no
@@ -2100,7 +2096,7 @@ write_var_usage(Stream, ModuleInfo, PredProcId - VarDepMap, !IO) :-
     io.format(Stream, "\n%s:\n", [s(PredProcIdStr)], !IO),
     map.to_assoc_list(VarDepMap, VarDepList),
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
-    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
     list.foldl2(write_usage_info(Stream, ModuleInfo, VarSet), VarDepList,
         [], RevNoDependVars, !IO),
     list.reverse(RevNoDependVars, NoDependVars),
@@ -2151,7 +2147,7 @@ write_arg_var_in_proc(Stream, ModuleInfo, ArgVarInProc, !IO) :-
     ArgVarInProc = arg_var_in_proc(PredProcId, Var),
     PredProcIdStr = pred_proc_id_to_string(ModuleInfo, PredProcId),
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
-    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
     VarStr = mercury_var_to_string(VarSet, print_name_and_num, Var),
     io.format(Stream, "%s: %s\n", [s(PredProcIdStr), s(VarStr)], !IO).
 

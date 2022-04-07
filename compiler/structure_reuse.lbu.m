@@ -56,7 +56,7 @@
 
 backward_use_information(_ModuleInfo, !ProcInfo):-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
 
     % Before the first goal, the set of variables in LBU is empty.
     LBU0 = set_of_var.init,

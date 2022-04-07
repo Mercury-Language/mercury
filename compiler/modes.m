@@ -942,8 +942,7 @@ do_modecheck_proc(WhatToCheck, MayChangeCalledProc,
         mode_info_get_var_types(!.ModeInfo, VarTypes),
         mode_info_get_need_to_requantify(!.ModeInfo, NeedToRequantify),
         proc_info_set_goal(Body, !ProcInfo),
-        proc_info_set_varset(VarSet, !ProcInfo),
-        proc_info_set_vartypes(VarTypes, !ProcInfo),
+        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
         proc_info_set_argmodes(ArgModes, !ProcInfo),
         (
             NeedToRequantify = do_not_need_to_requantify

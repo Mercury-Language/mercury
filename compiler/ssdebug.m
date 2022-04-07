@@ -493,14 +493,12 @@ insert_context_update_call(ModuleInfo, Goal0, Goal, !ProcInfo) :-
     Context = term.context(FileName, LineNumber),
 
     some [!VarSet, !VarTypes] (
-        proc_info_get_varset(!.ProcInfo, !:VarSet),
-        proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
+        proc_info_get_varset_vartypes(!.ProcInfo, !:VarSet, !:VarTypes),
         make_string_const_construction_alloc(FileName, yes("FileName"),
             MakeFileName, FileNameVar, !VarSet, !VarTypes),
         make_int_const_construction_alloc(LineNumber, yes("LineNumber"),
             MakeLineNumber, LineNumberVar, !VarSet, !VarTypes),
-        proc_info_set_varset(!.VarSet, !ProcInfo),
-        proc_info_set_vartypes(!.VarTypes, !ProcInfo)
+        proc_info_set_varset_vartypes(!.VarSet, !.VarTypes, !ProcInfo)
     ),
 
     ArgVars = [FileNameVar, LineNumberVar],
@@ -605,8 +603,7 @@ ssdebug_process_proc_det(SSTraceLevel, PredId, ProcId,
     some [!PredInfo, !VarSet, !VarTypes] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
-        proc_info_get_varset(!.ProcInfo, !:VarSet),
-        proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
+        proc_info_get_varset_vartypes(!.ProcInfo, !:VarSet, !:VarTypes),
         get_stripped_headvars(!.PredInfo, !.ProcInfo, FullHeadVars, HeadVars,
             ArgModes),
 
@@ -699,8 +696,7 @@ ssdebug_process_proc_semi(SSTraceLevel, PredId, ProcId,
     some [!PredInfo, !VarSet, !VarTypes] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
-        proc_info_get_varset(!.ProcInfo, !:VarSet),
-        proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
+        proc_info_get_varset_vartypes(!.ProcInfo, !:VarSet, !:VarTypes),
         get_stripped_headvars(!.PredInfo, !.ProcInfo, FullHeadVars, HeadVars,
             ArgModes),
 
@@ -829,8 +825,7 @@ ssdebug_process_proc_nondet(SSTraceLevel, PredId, ProcId,
     some [!PredInfo, !VarSet, !VarTypes] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
-        proc_info_get_varset(!.ProcInfo, !:VarSet),
-        proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
+        proc_info_get_varset_vartypes(!.ProcInfo, !:VarSet, !:VarTypes),
         get_stripped_headvars(!.PredInfo, !.ProcInfo, FullHeadVars, HeadVars,
             _ArgModes),
 
@@ -929,8 +924,7 @@ ssdebug_process_proc_failure(SSTraceLevel, PredId, ProcId,
     some [!PredInfo, !VarSet, !VarTypes] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
-        proc_info_get_varset(!.ProcInfo, !:VarSet),
-        proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
+        proc_info_get_varset_vartypes(!.ProcInfo, !:VarSet, !:VarTypes),
         get_stripped_headvars(!.PredInfo, !.ProcInfo, FullHeadVars, HeadVars,
             _ArgModes),
 
@@ -997,8 +991,7 @@ ssdebug_process_proc_erroneous(SSTraceLevel, PredId, ProcId,
     some [!PredInfo, !VarSet, !VarTypes] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
-        proc_info_get_varset(!.ProcInfo, !:VarSet),
-        proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
+        proc_info_get_varset_vartypes(!.ProcInfo, !:VarSet, !:VarTypes),
         get_stripped_headvars(!.PredInfo, !.ProcInfo, _FullHeadVars, HeadVars,
             _ArgModes),
 
@@ -1179,8 +1172,7 @@ commit_goal_changes(ConjGoals, PredId, ProcId, !.PredInfo, !ProcInfo,
     Purity = goal_info_get_purity(OrigGoalInfo),
     Goal = hlds_goal(scope(promise_purity(Purity), Conj), ScopeGoalInfo),
 
-    proc_info_set_varset(VarSet, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo),
     requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
     recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
@@ -1422,8 +1414,7 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         % polymorphism_make_type_info_var uses a prog_var which is
         % already bound.
 
-        proc_info_set_varset(!.VarSet, !ProcInfo),
-        proc_info_set_vartypes(!.VarTypes, !ProcInfo),
+        proc_info_set_varset_vartypes(!.VarSet, !.VarTypes, !ProcInfo),
 
         % Create dynamic constructor for the value of the argument.
         %
@@ -1438,9 +1429,7 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         polymorphism_make_type_info_var_raw(MerType, Context,
             TypeInfoVar, TypeInfoGoals0, !ModuleInfo, !PredInfo, !ProcInfo),
 
-        proc_info_get_varset(!.ProcInfo, !:VarSet),
-        proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
-
+        proc_info_get_varset_vartypes(!.ProcInfo, !:VarSet, !:VarTypes),
         % Constructor of the variable's description.
         ConsId = cons(qualified(SSDBModule, "bound_head_var"), 3,
             VarValueTypeCtor),

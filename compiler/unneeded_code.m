@@ -245,15 +245,13 @@ unneeded_process_proc_msg(PredProcId, !ProcInfo, !ModuleInfo) :-
 unneeded_pre_process_proc(!ProcInfo) :-
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_varset(!.ProcInfo, VarSet0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     implicitly_quantify_clause_body_general(ordinary_nonlocals_no_lambda,
         HeadVars, _Warnings, Goal0, Goal,
         VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
     proc_info_set_goal(Goal, !ProcInfo),
-    proc_info_set_varset(VarSet, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo).
 
 % The source-to-source transform operates in two phases.
@@ -304,8 +302,7 @@ unneeded_pre_process_proc(!ProcInfo) :-
 unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
     fill_goal_id_slots_in_proc(!.ModuleInfo, ContainingGoalMap, !ProcInfo),
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_varset(!.ProcInfo, VarSet0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
     proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InitInstMap),
     Goal0 = hlds_goal(_, GoalInfo0),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
@@ -375,8 +372,7 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
         recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
             Goal3, Goal, VarTypes, InstVarSet, InitInstMap, !ModuleInfo),
         proc_info_set_goal(Goal, !ProcInfo),
-        proc_info_set_varset(VarSet, !ProcInfo),
-        proc_info_set_vartypes(VarTypes, !ProcInfo),
+        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
         ( if Pass > 3 then
             true

@@ -285,8 +285,7 @@ detect_cse_in_proc_pass(ModuleInfo, Redo, !ProcInfo) :-
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
-    proc_info_get_varset(!.ProcInfo, Varset0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, Varset0, VarTypes0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     Redo0 = no,
     CseInfo0 =
@@ -310,8 +309,7 @@ detect_cse_in_proc_pass(ModuleInfo, Redo, !ProcInfo) :-
             VarSet1, VarSet, VarTypes1, VarTypes, RttiVarMaps1, RttiVarMaps),
 
         proc_info_set_goal(Goal, !ProcInfo),
-        proc_info_set_varset(VarSet, !ProcInfo),
-        proc_info_set_vartypes(VarTypes, !ProcInfo),
+        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo)
     ).
 

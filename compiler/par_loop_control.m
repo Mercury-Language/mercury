@@ -151,7 +151,7 @@ maybe_par_loop_control_proc(DepInfo, PredProcId, !ProcInfo, !ModuleInfo) :-
         proc_info_get_goal(!.ProcInfo, Body0),
 
         % Re-calculate goal ids.
-        proc_info_get_vartypes(!.ProcInfo, VarTypes),
+        proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
         fill_goal_id_slots_in_proc_body(!.ModuleInfo, VarTypes,
             ContainingGoalMap, Body0, Body),
         proc_info_set_goal(Body, !ProcInfo),
@@ -625,8 +625,7 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         % in the body.
         proc_info_get_argmodes(OldProcInfo, ArgModes0),
         proc_info_get_headvars(OldProcInfo, HeadVars0),
-        proc_info_get_varset(OldProcInfo, !:VarSet),
-        proc_info_get_vartypes(OldProcInfo, !:VarTypes),
+        proc_info_get_varset_vartypes(OldProcInfo, !:VarSet, !:VarTypes),
         proc_info_get_goal(OldProcInfo, !:Body),
 
         varset.new_named_var("LC", LCVar, !VarSet),
@@ -1357,7 +1356,7 @@ update_outer_proc(PredProcId, InnerPredProcId, InnerPredName, ModuleInfo,
         % Re-build the variables in the procedure with smaller sets.
         varset.init(!:VarSet),
         init_vartypes(!:VarTypes),
-        proc_info_get_varset(!.ProcInfo, OldVarSet),
+        proc_info_get_varset_vartypes(!.ProcInfo, OldVarSet, _OldVarTypes),
         list.foldl3_corresponding(add_old_var_to_sets(OldVarSet), HeadVars0,
             HeadVarTypes, !VarSet, !VarTypes, map.init, Remap),
         list.map(map.lookup(Remap), HeadVars0, HeadVars),
@@ -1428,8 +1427,7 @@ update_outer_proc(PredProcId, InnerPredProcId, InnerPredName, ModuleInfo,
         ),
 
         proc_info_set_goal(Body, !ProcInfo),
-        proc_info_set_varset(!.VarSet, !ProcInfo),
-        proc_info_set_vartypes(!.VarTypes, !ProcInfo)
+        proc_info_set_varset_vartypes(!.VarSet, !.VarTypes, !ProcInfo)
     ).
 
 :- pred add_old_var_to_sets(prog_varset::in, prog_var::in, mer_type::in,

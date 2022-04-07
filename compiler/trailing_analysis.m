@@ -300,7 +300,7 @@ trail_maybe_analysis_status(ProcResult, AnalysisStatus) :-
 check_proc_for_trail_mods(SCC, PPId, !Results, !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, _, ProcInfo),
     proc_info_get_goal(ProcInfo, Body),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     check_goal_for_trail_mods(SCC, VarTypes, Body,
         Result, MaybeAnalysisStatus, !ModuleInfo),
     list.cons(trail_proc_result(PPId, Result, MaybeAnalysisStatus), !Results).
@@ -834,7 +834,7 @@ trail_annotate_proc(PPId, !ModuleInfo) :-
     some [!ProcInfo, !Body] (
       module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, !:ProcInfo),
       proc_info_get_goal(!.ProcInfo, !:Body),
-      proc_info_get_vartypes(!.ProcInfo, VarTypes),
+      proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
       trail_annotate_goal(VarTypes, !Body, _Status, !ModuleInfo),
       proc_info_set_goal(!.Body, !ProcInfo),
       module_info_set_pred_proc_info(PPId, PredInfo, !.ProcInfo, !ModuleInfo)

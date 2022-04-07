@@ -335,8 +335,7 @@ create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
     pred_info_get_tvar_kind_map(PredInfo, TypeVarKinds),
     pred_info_get_constraint_proof_map(PredInfo, ProofMap),
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
-    proc_info_get_varset(ProcInfo, VarSet),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     map.init(TypeInfoVarMap),
     map.init(TypeClassInfoMap),
@@ -367,8 +366,7 @@ poly_info_extract(Info, Specs, !PredInfo, !ProcInfo, !:ModuleInfo) :-
     module_info_set_const_struct_db(ConstStructDb, !ModuleInfo),
 
     % Set the new values of the fields in proc_info and pred_info.
-    proc_info_set_varset(VarSet, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
     pred_info_set_typevarset(TypeVarSet, !PredInfo),
     pred_info_set_tvar_kind_map(TypeVarKinds, !PredInfo).

@@ -80,8 +80,7 @@ saved_vars_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_varset(!.ProcInfo, Varset0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, Varset0, VarTypes0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     init_slot_info(Varset0, VarTypes0, RttiVarMaps0, TypeInfoLiveness,
         SlotInfo0),
@@ -115,8 +114,7 @@ saved_vars_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
     ),
 
     proc_info_set_goal(Goal, !ProcInfo),
-    proc_info_set_varset(Varset, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo),
+    proc_info_set_varset_vartypes(Varset, VarTypes, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo).
 
 %-----------------------------------------------------------------------------%

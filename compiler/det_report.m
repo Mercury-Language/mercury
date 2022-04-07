@@ -254,8 +254,7 @@ check_determinism_of_pred(PredProcId, !ModuleInfo, !Specs) :-
             ; Cmp = first_detism_incomparable
             ),
             proc_info_get_goal(ProcInfo, Goal),
-            proc_info_get_varset(ProcInfo, VarSet),
-            proc_info_get_vartypes(ProcInfo, VarTypes),
+            proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
             proc_info_get_initial_instmap(!.ModuleInfo, ProcInfo, InstMap0),
             det_info_init(!.ModuleInfo, PredProcId, VarSet, VarTypes,
                 pess_extra_vars_report, [], DetInfo0),
@@ -359,8 +358,7 @@ make_reqscope_checks_if_needed(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         )
     then
         proc_info_get_goal(ProcInfo, Goal),
-        proc_info_get_varset(ProcInfo, VarSet),
-        proc_info_get_vartypes(ProcInfo, VarTypes),
+        proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
         proc_info_get_initial_instmap(ModuleInfo, ProcInfo, InstMap0),
         det_info_init(ModuleInfo, PredProcId, VarSet, VarTypes,
             pess_extra_vars_ignore, [], DetInfo0),
@@ -1571,8 +1569,7 @@ reqscope_check_goal_detism_for_cases(RequiredDetism, Var, VarType,
 
 generate_error_not_switch_on_required_var(RequiredVar, ScopeWord,
         ScopeGoalInfo, !DetInfo) :-
-    det_get_proc_info(!.DetInfo, ProcInfo),
-    proc_info_get_varset(ProcInfo, VarSet),
+    det_info_get_varset(!.DetInfo, VarSet),
     RequiredVarStr = mercury_var_to_name_only(VarSet, RequiredVar),
     Pieces = [words("Error: the goal inside the"),
         words(ScopeWord), fixed("[" ++ RequiredVarStr ++ "]"), words("scope"),
@@ -1679,8 +1676,7 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
         Var, Cases, NestingPieces, VarStr, MaybeMissingInfo) :-
     det_diagnose_switch_context(DetInfo, SwitchContexts, NestingPieces),
 
-    det_get_proc_info(DetInfo, ProcInfo),
-    proc_info_get_varset(ProcInfo, VarSet),
+    det_info_get_varset(DetInfo, VarSet),
     VarStr = mercury_var_to_name_only(VarSet, Var),
     det_info_get_module_info(DetInfo, ModuleInfo),
     instmap_lookup_var(InstMap0, Var, VarInst),
@@ -1688,6 +1684,7 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
         det_info_get_vartypes(DetInfo, VarTypes),
         lookup_var_type(VarTypes, Var, VarType),
         type_to_ctor_det(VarType, VarTypeCtor),
+        module_info_get_type_table(ModuleInfo, TypeTable),
         ( if
             inst_is_bound_to_functors(ModuleInfo, VarInst, BoundInsts)
         then
@@ -1703,7 +1700,7 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
             % only for the switch variable's type is a du type, and not
             % a builtin type such as int or string.
             ( if
-                det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn),
+                search_type_ctor_defn(TypeTable, VarTypeCtor, TypeDefn),
                 hlds_data.get_type_defn_body(TypeDefn, TypeBody),
                 TypeBody = hlds_du_type(TypeBodyDu),
                 TypeBodyDu = type_body_du(TypeConstructors, _, _, _, _)
@@ -1719,7 +1716,7 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
                 PossibleConsIdsSet = BoundConsIdsSet
             )
         else
-            det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn),
+            search_type_ctor_defn(TypeTable, VarTypeCtor, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             TypeBody = hlds_du_type(TypeBodyDu),
             TypeBodyDu = type_body_du(TypeConstructors, _, _, _, _),
@@ -1882,7 +1879,7 @@ det_diagnose_switch_context(_, [], []).
 det_diagnose_switch_context(DetInfo, [SwitchContext | SwitchContexts],
         Pieces) :-
     det_get_proc_info(DetInfo, ProcInfo),
-    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
     SwitchContext = switch_context(Var, MainMatch, OtherMatches),
     MainMatchStr = switch_match_to_string(VarSet, MainMatch),
     OtherMatchStrs = list.map(switch_match_to_string(VarSet), OtherMatches),
@@ -1974,7 +1971,7 @@ det_report_unify_context(!.First, Last, _Context, UnifyContext, DetInfo,
     unify_context_first_to_pieces(!First, UnifyContext, [],
         UnifyContextPieces),
     det_get_proc_info(DetInfo, ProcInfo),
-    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
     det_info_get_module_info(DetInfo, ModuleInfo),
     (
         !.First = is_first,

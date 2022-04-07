@@ -749,10 +749,9 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
 
     proc_info_get_goal(ProcInfo, Goal @ hlds_goal(_GoalExpr, GoalInfo)),
     pred_info_get_typevarset(PredInfo, TVarSet),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
     pred_info_get_class_context(PredInfo, ClassContext),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
-    proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_origin(PredInfo, OrigOrigin),
@@ -942,8 +941,7 @@ gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, Replacement, Body0,
     % Put the new procedure body into the module_info.
     PredProcId = proc(PredId, ProcId),
 
-    proc_info_get_varset(ProcInfo0, VarSet),
-    proc_info_get_vartypes(ProcInfo0, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo0, VarSet, VarTypes),
     proc_info_get_headvars(ProcInfo0, HeadVars),
     proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps),
 

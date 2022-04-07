@@ -189,7 +189,7 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
             goal_info_set_maybe_rbmm(yes(rbmm_info_init), !Info)
         else
             CallSite = program_point_init(!.Info),
-            proc_info_get_vartypes(ProcInfo, VarTypes),
+            proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
             RegionArgs = list.filter(is_region_var(VarTypes), Args),
             map.lookup(ActualRegionsArgsProc, CallSite, ActualRegionArgs),
             ActualRegionArgs = region_args(Constants, Inputs, _Outputs),
@@ -245,7 +245,7 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
         % by all the conjuncts.
         RbmmInfo0 = rbmm_goal_info(Created, Removed, _, AllocatedInto, Used),
         NonLocals = goal_info_get_nonlocals(!.Info),
-        proc_info_get_vartypes(ProcInfo, VarTypes),
+        proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
         NonLocalRegionsSet =
             set_of_var.filter(is_region_var(VarTypes), NonLocals),
         NonLocalRegions = set_of_var.bitset_to_set(NonLocalRegionsSet),

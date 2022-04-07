@@ -82,21 +82,19 @@
                 heap_module_info    :: module_info
             ).
 
-add_heap_ops(ModuleInfo0, !Proc) :-
-    proc_info_get_goal(!.Proc, Goal0),
-    proc_info_get_varset(!.Proc, VarSet0),
-    proc_info_get_vartypes(!.Proc, VarTypes0),
+add_heap_ops(ModuleInfo0, !ProcInfo) :-
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
     TrailOpsInfo0 = heap_ops_info(VarSet0, VarTypes0, ModuleInfo0),
     goal_add_heap_ops(Goal0, Goal, TrailOpsInfo0, TrailOpsInfo),
     TrailOpsInfo = heap_ops_info(VarSet, VarTypes, _),
-    proc_info_set_goal(Goal, !Proc),
-    proc_info_set_varset(VarSet, !Proc),
-    proc_info_set_vartypes(VarTypes, !Proc),
+    proc_info_set_goal(Goal, !ProcInfo),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
     % The code below does not maintain the non-local variables,
     % so we need to requantify.
     % XXX it would be more efficient to maintain them rather than recomputing
     % them every time.
-    requantify_proc_general(ordinary_nonlocals_no_lambda, !Proc).
+    requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo).
 
 :- pred goal_add_heap_ops(hlds_goal::in, hlds_goal::out,
     heap_ops_info::in, heap_ops_info::out) is det.

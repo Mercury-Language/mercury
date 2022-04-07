@@ -433,7 +433,7 @@ pred_has_a_higher_order_input_arg(ModuleInfo, PredInfo) :-
 proc_has_a_higher_order_input_arg(ModuleInfo, ProcInfo) :-
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_argmodes(ProcInfo, ArgModes),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     some_input_arg_is_higher_order(ModuleInfo, VarTypes, HeadVars, ArgModes).
 
 :- pred some_input_arg_is_higher_order(module_info::in, vartypes::in,

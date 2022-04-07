@@ -19,7 +19,6 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -106,9 +105,6 @@
 
 :- pred det_get_proc_info(det_info::in, proc_info::out) is det.
 
-:- pred det_lookup_var_type(module_info::in, proc_info::in, prog_var::in,
-    hlds_type_defn::out) is semidet.
-
 :- pred det_no_output_vars(det_info::in, instmap::in, instmap_delta::in,
     set_of_progvar::in) is semidet.
 
@@ -144,7 +140,6 @@
 
 :- implementation.
 
-:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
 :- import_module map.
@@ -223,16 +218,9 @@ det_get_proc_info(DetInfo, ProcInfo) :-
     det_info_get_pred_proc_id(DetInfo, PredProcId),
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo).
 
-det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
-    proc_info_get_vartypes(ProcInfo, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
-    type_to_ctor_det(Type, TypeCtor),
-    module_info_get_type_table(ModuleInfo, TypeTable),
-    search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn).
-
 det_no_output_vars(DetInfo, InstMap, InstMapDelta, Vars) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
-    VarTypes = DetInfo ^ di_vartypes,
+    det_info_get_vartypes(DetInfo, VarTypes),
     instmap_delta_no_output_vars(ModuleInfo, VarTypes, InstMap, InstMapDelta,
         Vars).
 

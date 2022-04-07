@@ -380,8 +380,7 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     % argument PredInfo
     % argument ProcInfo
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
-    proc_info_get_varset(ProcInfo, VarSet),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
     make_var_table(ModuleInfo, VarSet, VarTypes, VarTable),
     proc_info_get_stack_slots(ProcInfo, StackSlots),
     max_var_slot(StackSlots, VarSlotMax),
@@ -770,7 +769,6 @@ max_var_slot_loop([Slot | Slots], !Max) :-
     % Find out the type of the given variable.
     %
 :- func variable_type(code_info, prog_var) = mer_type.
-:- func var_table_type(var_table, prog_var) = mer_type.
 
     % Compute the principal type constructor of the given type, and return
     % the definition of this type constructor, if it has one (some type
@@ -896,11 +894,6 @@ body_typeinfo_liveness(CI) = TypeInfoLiveness :-
 
 variable_type(CI, Var) = Type :-
     get_var_table(CI, VarTable),
-    lookup_var_entry(VarTable, Var, Entry),
-    Type = Entry ^ vte_type.
-
-% XXX should be in var_table.m
-var_table_type(VarTable, Var) = Type :-
     lookup_var_entry(VarTable, Var, Entry),
     Type = Entry ^ vte_type.
 

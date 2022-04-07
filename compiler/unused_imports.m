@@ -784,7 +784,7 @@ pred_info_used_modules(ModuleInfo, PredId, PredInfo, !UsedModules) :-
     used_modules::in, used_modules::out) is det.
 
 proc_info_used_modules(Visibility, _ProcId, ProcInfo, !UsedModules) :-
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     proc_info_get_headvars(ProcInfo, HeadVars),
     lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
     list.foldl(mer_type_used_modules(Visibility), HeadVarTypes, !UsedModules),

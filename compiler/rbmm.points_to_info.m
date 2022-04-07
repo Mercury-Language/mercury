@@ -87,7 +87,7 @@ rpta_info_table_set_rpta_info(PredProcId, RptaInfo, !Table) :-
     !Table ^ elem(PredProcId) := RptaInfo.
 
 rpta_info_init(ProcInfo) = RptaInfo :-
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     vartypes_vars(VarTypes, Vars),
     list.foldl2(add_node_from_var(VarTypes), Vars, 1, _Reg,
         rpt_graph_init, Graph),

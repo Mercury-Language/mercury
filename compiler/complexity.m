@@ -267,8 +267,7 @@ complexity_process_proc(NumProcs, ProcNum, FullName, PredId,
     determinism_to_code_model(Detism, CodeModel),
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
-    proc_info_get_varset(!.ProcInfo, VarSet),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet, VarTypes),
     proc_info_get_goal(!.ProcInfo, OrigGoal),
     Context = goal_info_get_context(OrigGoalInfo),
     % Even if the original goal doesn't use all of the headvars, the code
@@ -462,13 +461,13 @@ generate_size_goals([Var - VarSeqNum | NumberedVars], Context, NumProfiledVars,
 generate_size_goal(ArgVar, VarSeqNum, Context, NumProfiledVars, ProcVarName,
         SlotVarName, PredId, !ProcInfo, !ModuleInfo, Goals,
         ForeignArgs, CodeStr) :-
-    proc_info_get_vartypes(!.ProcInfo, VarTypes1),
+    proc_info_get_varset_vartypes(!.ProcInfo, _VarSet1, VarTypes1),
     lookup_var_type(VarTypes1, ArgVar, VarType),
     MacroName = "MR_complexity_fill_size_slot",
     make_type_info_var(VarType, Context, PredId, !ProcInfo, !ModuleInfo,
         TypeInfoVar, Goals),
     % Since we just created TypeInfoVar, it isn't in VarTypes1.
-    proc_info_get_vartypes(!.ProcInfo, VarTypes2),
+    proc_info_get_varset_vartypes(!.ProcInfo, _VarSet2, VarTypes2),
     lookup_var_type(VarTypes2, TypeInfoVar, TypeInfoType),
     ArgName = "arg" ++ int_to_string(VarSeqNum),
     TypeInfoArgName = "input_typeinfo" ++ int_to_string(VarSeqNum),
@@ -493,12 +492,10 @@ generate_size_goal(ArgVar, VarSeqNum, Context, NumProfiledVars, ProcVarName,
     proc_info::in, proc_info::out, prog_var::out) is det.
 
 generate_new_var(Name, Type, !ProcInfo, Var) :-
-    proc_info_get_varset(!.ProcInfo, VarSet0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
     varset.new_named_var(Name, Var, VarSet0, VarSet),
     add_var_type(Var, Type, VarTypes0, VarTypes),
-    proc_info_set_varset(VarSet, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo).
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo).
 
 :- pred complexity_generate_call_foreign_proc(string::in, determinism::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,

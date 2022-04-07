@@ -1357,8 +1357,7 @@ pred_info_create(PredOrFunc, PredModuleName, PredName, Context, Origin, Status,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
         VarNameRemap, Assertions, ObsoleteInFavourOf, InstanceMethodArgTypes),
 
-    proc_info_get_varset(ProcInfo, VarSet),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
     map.init(TVarNameMap),
     proc_info_get_headvars(ProcInfo, HeadVars),
     HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
@@ -2157,9 +2156,9 @@ marker_list_to_markers(Markers, MarkerSet) :-
                 dob_body                :: hlds_goal,
                 dob_head_vars           :: list(prog_var),
                 dob_instmap             :: instmap,
+                dob_varset              :: prog_varset,
                 dob_vartypes            :: vartypes,
-                dob_detism              :: determinism,
-                dob_varset              :: prog_varset
+                dob_detism              :: determinism
             ).
 
 :- type table_arg_infos
@@ -2476,8 +2475,8 @@ marker_list_to_markers(Markers, MarkerSet) :-
 
 :- pred proc_info_get_headvars(proc_info::in, list(prog_var)::out) is det.
 :- pred proc_info_get_goal(proc_info::in, hlds_goal::out) is det.
-:- pred proc_info_get_varset(proc_info::in, prog_varset::out) is det.
-:- pred proc_info_get_vartypes(proc_info::in, vartypes::out) is det.
+:- pred proc_info_get_varset_vartypes(proc_info::in,
+    prog_varset::out, vartypes::out) is det.
 :- pred proc_info_get_rtti_varmaps(proc_info::in, rtti_varmaps::out) is det.
 :- pred proc_info_get_inst_varset(proc_info::in, inst_varset::out) is det.
 :- pred proc_info_get_maybe_declared_argmodes(proc_info::in,
@@ -2560,9 +2559,7 @@ marker_list_to_markers(Markers, MarkerSet) :-
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_goal(hlds_goal::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_varset(prog_varset::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_vartypes(vartypes::in,
+:- pred proc_info_set_varset_vartypes(prog_varset::in, vartypes::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_rtti_varmaps(rtti_varmaps::in,
     proc_info::in, proc_info::out) is det.
@@ -3593,10 +3590,9 @@ proc_info_get_headvars(PI, X) :-
     X = PI ^ proc_head_vars.
 proc_info_get_goal(PI, X) :-
     X = PI ^ proc_body.
-proc_info_get_varset(PI, X) :-
-    X = PI ^ proc_prog_varset.
-proc_info_get_vartypes(PI, X) :-
-    X = PI ^ proc_var_types.
+proc_info_get_varset_vartypes(PI, X, Y) :-
+    X = PI ^ proc_prog_varset,
+    Y = PI ^ proc_var_types.
 proc_info_get_rtti_varmaps(PI, X) :-
     X = PI ^ proc_rtti_varmaps.
 proc_info_get_inst_varset(PI, X) :-
@@ -3687,10 +3683,9 @@ proc_info_set_headvars(X, !PI) :-
     !PI ^ proc_head_vars := X.
 proc_info_set_goal(X, !PI) :-
     !PI ^ proc_body := X.
-proc_info_set_varset(X, !PI) :-
-    !PI ^ proc_prog_varset := X.
-proc_info_set_vartypes(X, !PI) :-
-    !PI ^ proc_var_types := X.
+proc_info_set_varset_vartypes(X, Y, !PI) :-
+    !PI ^ proc_prog_varset := X,
+    !PI ^ proc_var_types := Y.
 proc_info_set_rtti_varmaps(X, !PI) :-
     !PI ^ proc_rtti_varmaps := X.
 proc_info_set_inst_varset(X, !PI) :-
@@ -3900,54 +3895,51 @@ proc_info_get_initial_instmap(ModuleInfo, ProcInfo, InstMap) :-
     InstMap = instmap_from_assoc_list(InstAL).
 
 proc_info_ensure_unique_names(!ProcInfo) :-
-    proc_info_get_vartypes(!.ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes),
     vartypes_vars(VarTypes, AllVars),
-    proc_info_get_varset(!.ProcInfo, VarSet0),
     varset.ensure_unique_names(AllVars, "p", VarSet0, VarSet),
-    proc_info_set_varset(VarSet, !ProcInfo).
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo).
 
 proc_info_create_var_from_type(Type, MaybeName, NewVar, !ProcInfo) :-
-    proc_info_get_varset(!.ProcInfo, VarSet0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
     varset.new_maybe_named_var(MaybeName, NewVar, VarSet0, VarSet),
     add_var_type(NewVar, Type, VarTypes0, VarTypes),
-    proc_info_set_varset(VarSet, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo).
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo).
 
 proc_info_create_vars_from_types(Types, NewVars, !ProcInfo) :-
     list.length(Types, NumVars),
-    proc_info_get_varset(!.ProcInfo, VarSet0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
     varset.new_vars(NumVars, NewVars, VarSet0, VarSet),
     vartypes_add_corresponding_lists(NewVars, Types, VarTypes0, VarTypes),
-    proc_info_set_varset(VarSet, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo).
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo).
 
 proc_info_instantiated_head_vars(ModuleInfo, ProcInfo, ChangedInstHeadVars) :-
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_argmodes(ProcInfo, ArgModes),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     assoc_list.from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
-    IsInstChanged = (pred(VarMode::in, Var::out) is semidet :-
-        VarMode = Var - Mode,
-        lookup_var_type(VarTypes, Var, Type),
-        mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
-        not inst_matches_binding(ModuleInfo, Type, Inst1, Inst2)
-    ),
+    IsInstChanged =
+        ( pred(VarMode::in, Var::out) is semidet :-
+            VarMode = Var - Mode,
+            lookup_var_type(VarTypes, Var, Type),
+            mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
+            not inst_matches_binding(ModuleInfo, Type, Inst1, Inst2)
+        ),
     list.filter_map(IsInstChanged, HeadVarModes, ChangedInstHeadVars).
 
 proc_info_uninstantiated_head_vars(ModuleInfo, ProcInfo,
         UnchangedInstHeadVars) :-
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_argmodes(ProcInfo, ArgModes),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     assoc_list.from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
-    IsInstUnchanged = (pred(VarMode::in, Var::out) is semidet :-
-        VarMode = Var - Mode,
-        lookup_var_type(VarTypes, Var, Type),
-        mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
-        inst_matches_binding(ModuleInfo, Type, Inst1, Inst2)
-    ),
+    IsInstUnchanged =
+        ( pred(VarMode::in, Var::out) is semidet :-
+            VarMode = Var - Mode,
+            lookup_var_type(VarTypes, Var, Type),
+            mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
+            inst_matches_binding(ModuleInfo, Type, Inst1, Inst2)
+        ),
     list.filter_map(IsInstUnchanged, HeadVarModes, UnchangedInstHeadVars).
 
 proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId, Globals,
@@ -4032,7 +4024,7 @@ non_special_body_should_use_typeinfo_liveness(Globals, BodyTypeInfoLiveness) :-
 proc_info_has_io_state_pair(ModuleInfo, ProcInfo, InArgNum, OutArgNum) :-
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_argmodes(ProcInfo, ArgModes),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     proc_info_has_io_state_pair_from_details(ModuleInfo, HeadVars,
         ArgModes, VarTypes, InArgNum, OutArgNum).
 
@@ -4129,22 +4121,22 @@ proc_info_is_valid_mode(ProcInfo) :-
 
 ensure_all_headvars_are_named(!ProcInfo) :-
     proc_info_get_headvars(!.ProcInfo, HeadVars),
-    proc_info_get_varset(!.ProcInfo, VarSet0),
-    ensure_all_headvars_are_named_2(HeadVars, 1, VarSet0, VarSet),
-    proc_info_set_varset(VarSet, !ProcInfo).
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
+    ensure_all_headvars_are_named_loop(HeadVars, 1, VarSet0, VarSet),
+    proc_info_set_varset_vartypes(VarSet, VarTypes0, !ProcInfo).
 
-:- pred ensure_all_headvars_are_named_2(list(prog_var)::in, int::in,
+:- pred ensure_all_headvars_are_named_loop(list(prog_var)::in, int::in,
     prog_varset::in, prog_varset::out) is det.
 
-ensure_all_headvars_are_named_2([], _, !VarSet).
-ensure_all_headvars_are_named_2([Var | Vars], SeqNum, !VarSet) :-
+ensure_all_headvars_are_named_loop([], _, !VarSet).
+ensure_all_headvars_are_named_loop([Var | Vars], SeqNum, !VarSet) :-
     ( if varset.search_name(!.VarSet, Var, _Name) then
         true
     else
         Name = "HeadVar__" ++ int_to_string(SeqNum),
         varset.name_var(Var, Name, !VarSet)
     ),
-    ensure_all_headvars_are_named_2(Vars, SeqNum + 1, !VarSet).
+    ensure_all_headvars_are_named_loop(Vars, SeqNum + 1, !VarSet).
 
 var_is_of_dummy_type(ModuleInfo, VarTypes, Var) :-
     lookup_var_type(VarTypes, Var, Type),

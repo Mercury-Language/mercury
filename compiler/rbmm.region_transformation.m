@@ -217,8 +217,7 @@ region_transform_proc(RptaInfoTable, FormalRegionArgTable,
     PPId = proc(PredId, ProcId),
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, ProcInfo0),
     fill_goal_path_slots_in_proc(!.ModuleInfo, ProcInfo0, ProcInfo1),
-    proc_info_get_varset(ProcInfo1, VarSet0),
-    proc_info_get_vartypes(ProcInfo1, VarTypes0),
+    proc_info_get_varset_vartypes(ProcInfo1, VarSet0, VarTypes0),
     proc_info_get_headvars(ProcInfo1, HeadVars0),
     proc_info_get_argmodes(ProcInfo1, ActualArgModes0),
     proc_info_get_goal(ProcInfo1, Goal0),
@@ -322,9 +321,8 @@ annotate_proc(ModuleInfo, PredInfo, Graph, FormalRegionArgProc,
             ++ OutModes ++ [LastHeadMode]
     ),
 
-    proc_info_set_varset(!.VarSet, !ProcInfo),
+    proc_info_set_varset_vartypes(!.VarSet, !.VarTypes, !ProcInfo),
     proc_info_set_goal(!.Goal, !ProcInfo),
-    proc_info_set_vartypes(!.VarTypes, !ProcInfo),
     proc_info_set_headvars(!.HeadVars, !ProcInfo),
     proc_info_set_argmodes(!.ActualArgModes, !ProcInfo).
 

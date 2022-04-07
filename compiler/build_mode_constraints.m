@@ -716,7 +716,7 @@ mode_decls_constraints(ModuleInfo, VarMap, PredId, Decls, HeadVarsList,
 add_mode_decl_constraints(ModuleInfo, PredId, ProcId, Decl, Args,
         !VarInfo, !Constraints) :-
     module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
-    proc_info_get_varset(ProcInfo, ProgVarset),
+    proc_info_get_varset_vartypes(ProcInfo, ProgVarset, _VarTypes),
     proc_info_get_context(ProcInfo, Context),
 
     prog_vars_at_path(ProgVarset, PredId, Args, goal_id(0), ArgsAtHead,

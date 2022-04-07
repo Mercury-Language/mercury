@@ -111,7 +111,7 @@ allocate_store_maps(RunType, ModuleInfo, proc(PredId, _), !ProcInfo) :-
     build_input_arg_list(!.ProcInfo, InputArgLvals),
     LastLocns0 = initial_last_locns(InputArgLvals),
     proc_info_get_stack_slots(!.ProcInfo, StackSlots),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
     globals.lookup_bool_option(Globals, use_float_registers, FloatRegs),
     (
         FloatRegs = yes,

@@ -678,8 +678,8 @@ construct_proc_layout(Params, PLI, ProcLayoutName, Kind, InternalLabelInfos,
 
                 DeepOriginalBody = DeepProfInfo ^ pdpi_orig_body,
                 DeepOriginalBody = deep_original_body(BytecodeBody,
-                    BytecodeHeadVars, BytecodeInstMap, BytecodeVarTypes,
-                    BytecodeDetism, BytecodeVarSet),
+                    BytecodeHeadVars, BytecodeInstMap,
+                    BytecodeVarSet, BytecodeVarTypes, BytecodeDetism),
                 compute_var_number_map(BytecodeHeadVars, BytecodeVarSet, [],
                     BytecodeBody, BytecodeVarNumMap)
             ;

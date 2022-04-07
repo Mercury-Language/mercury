@@ -358,7 +358,7 @@ make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
     pred_info_get_arg_types(PredInfo, ArgTypes),
-    proc_info_get_varset(ProcInfo, ProcVarSet),
+    proc_info_get_varset_vartypes(ProcInfo, ProcVarSet, _ProcVarTypes),
     proc_info_get_headvars(ProcInfo, ProcHeadVars),
     proc_info_get_argmodes(ProcInfo, ProcModes),
     proc_info_interface_determinism(ProcInfo, ProcDetism),
@@ -372,7 +372,7 @@ make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
             then yes else no),
     pred_info_get_origin(PredInfo, Origin),
     ProcHeadVarsWithNames = list.map(
-        (func(Var) = Var - Name :-
+        ( func(Var) = Var - Name :-
             Name = varset.lookup_name(ProcVarSet, Var)
         ), ProcHeadVars),
     ( if

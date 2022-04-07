@@ -234,7 +234,7 @@ deforest_proc_deltas(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo) :-
             requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
             proc_info_get_goal(!.ProcInfo, !:Goal),
             proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
-            proc_info_get_vartypes(!.ProcInfo, VarTypes),
+            proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
             proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
             recompute_instmap_delta(recompute_atomic_instmap_deltas, !Goal,
                 VarTypes, InstVarSet, InstMap0, !ModuleInfo),
@@ -1290,7 +1290,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             pd_info_get_parent_versions(!.PDInfo, Parents0),
 
             pd_info_get_proc_info(!.PDInfo, ProcInfo1),
-            proc_info_get_vartypes(ProcInfo1, VarTypes),
+            proc_info_get_varset_vartypes(ProcInfo1, _VarSet, VarTypes),
             lookup_var_types(VarTypes, NonLocalsList, ArgTypes),
             VersionInfo = version_info(FoldGoal, CalledPreds, NonLocalsList,
                 ArgTypes, InstMap0, 0, 0, Parents0, MaybeGeneralised),
@@ -1356,8 +1356,7 @@ create_call_goal(proc(PredId, ProcId), VersionInfo, Renaming, TypeSubn, Goal,
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
     pd_info_get_pred_info(!.PDInfo, PredInfo0),
 
-    proc_info_get_vartypes(ProcInfo0, VarTypes0),
-    proc_info_get_varset(ProcInfo0, VarSet0),
+    proc_info_get_varset_vartypes(ProcInfo0, VarSet0, VarTypes0),
     pred_info_get_typevarset(PredInfo0, TVarSet0),
 
     % Rename the argument types using the current pred's tvarset.
@@ -1368,8 +1367,7 @@ create_call_goal(proc(PredId, ProcId), VersionInfo, Renaming, TypeSubn, Goal,
 
     create_deforest_call_args(OldArgs, ArgTypes1, Renaming,
         TypeSubn, Args, VarSet0, VarSet, VarTypes0, VarTypes),
-    proc_info_set_vartypes(VarTypes, ProcInfo0, ProcInfo1),
-    proc_info_set_varset(VarSet, ProcInfo1, ProcInfo),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, ProcInfo0, ProcInfo),
     pd_info_set_proc_info(ProcInfo, !PDInfo),
 
     % Compute a goal_info.
@@ -1464,7 +1462,7 @@ try_generalisation(EarlierGoal, BetweenGoals, MaybeLaterGoal,
         VersionArgTypes, VersionInstMap, _, _, _, _),
     pd_info_get_versions(!.PDInfo, Versions),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
     ( if
         pd_util.goals_match(ModuleInfo, VersionGoal, VersionArgs,
             VersionArgTypes, FoldGoal, VarTypes, Renaming, _)
@@ -1477,7 +1475,6 @@ try_generalisation(EarlierGoal, BetweenGoals, MaybeLaterGoal,
         % matching against that. This happens when attempting two
         % deforestations in a row and the first deforestation required
         % generalisation.
-        proc_info_get_varset(ProcInfo, VarSet),
         match_generalised_version(ModuleInfo, VersionGoal,
             VersionArgs, VersionArgTypes, EarlierGoal, BetweenGoals,
             MaybeLaterGoal, ConjNonLocals, VarSet, VarTypes, Versions,
@@ -1597,8 +1594,8 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
 
     module_info_pred_proc_info(ModuleInfo, FirstPredId, FirstProcId,
         _, FirstProcInfo),
-    proc_info_get_varset(FirstProcInfo, FirstVersionVarSet),
-    proc_info_get_vartypes(FirstProcInfo, FirstVersionVarTypes),
+    proc_info_get_varset_vartypes(FirstProcInfo,
+        FirstVersionVarSet, FirstVersionVarTypes),
 
     clone_variables(FirstVersionVars,
         FirstVersionVarSet, FirstVersionVarTypes,
@@ -2016,7 +2013,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
     globals.get_opt_tuple(Globals, OptTuple),
     VarsThreshold = OptTuple ^ ot_deforestation_vars_threshold,
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
-    proc_info_get_varset(ProcInfo0, VarSet0),
+    proc_info_get_varset_vartypes(ProcInfo0, VarSet0, VarTypes0),
     varset.vars(VarSet0, Vars),
     list.length(Vars, NumVars),
     globals.lookup_bool_option(Globals, debug_pd, DebugPD),
@@ -2037,7 +2034,6 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
             CalledPredInfo, CalledProcInfo),
         pred_info_get_typevarset(PredInfo0, TypeVarSet0),
         pred_info_get_univ_quant_tvars(PredInfo0, UnivQVars),
-        proc_info_get_vartypes(ProcInfo0, VarTypes0),
         proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps0),
         inlining.do_inline_call(UnivQVars, Args, CalledPredInfo,
             CalledProcInfo, VarSet0, VarSet, VarTypes0, VarTypes,
@@ -2045,17 +2041,16 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         pred_info_set_typevarset(TypeVarSet, PredInfo0, PredInfo),
         proc_info_get_has_parallel_conj(CalledProcInfo, CalledHasParallelConj),
 
-        proc_info_set_varset(VarSet, ProcInfo0, ProcInfo1),
-        proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2),
-        proc_info_set_rtti_varmaps(RttiVarMaps, ProcInfo2, ProcInfo3),
+        proc_info_set_varset_vartypes(VarSet, VarTypes, ProcInfo0, ProcInfo1),
+        proc_info_set_rtti_varmaps(RttiVarMaps, ProcInfo1, ProcInfo2),
         (
             CalledHasParallelConj = has_parallel_conj,
             proc_info_set_has_parallel_conj(has_parallel_conj,
-                ProcInfo3, ProcInfo)
+                ProcInfo2, ProcInfo)
         ;
             CalledHasParallelConj = has_no_parallel_conj,
             % Leave the has_parallel_conj field of the proc_info as it is.
-            ProcInfo = ProcInfo3
+            ProcInfo = ProcInfo2
         ),
 
         pd_info_set_pred_info(PredInfo, !PDInfo),

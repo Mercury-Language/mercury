@@ -216,8 +216,7 @@ propagate_constraints(!Goal, !PDInfo) :-
         ),
         pd_info_get_proc_info(!.PDInfo, ProcInfo0),
         pd_info_get_instmap(!.PDInfo, InstMap),
-        proc_info_get_vartypes(ProcInfo0, VarTypes0),
-        proc_info_get_varset(ProcInfo0, VarSet0),
+        proc_info_get_varset_vartypes(ProcInfo0, VarSet0, VarTypes0),
         constraint_info_init(ModuleInfo0, VarTypes0, VarSet0, InstMap, CInfo0),
         Goal0 = hlds_goal(_, GoalInfo0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
@@ -225,8 +224,7 @@ propagate_constraints(!Goal, !PDInfo) :-
         constraint_info_deconstruct(CInfo, ModuleInfo, VarTypes, VarSet,
             Changed),
         pd_info_set_module_info(ModuleInfo, !PDInfo),
-        proc_info_set_vartypes(VarTypes, ProcInfo0, ProcInfo1),
-        proc_info_set_varset(VarSet, ProcInfo1, ProcInfo),
+        proc_info_set_varset_vartypes(VarSet, VarTypes, ProcInfo0, ProcInfo),
         pd_info_set_proc_info(ProcInfo, !PDInfo),
         (
             Changed = yes,
@@ -315,8 +313,7 @@ unique_modecheck_goal_live_vars(LiveVars, Goal0, Goal, Errors, !PDInfo) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         PredInfo, ProcInfo1),
     pd_info_set_pred_info(PredInfo, !PDInfo),
-    proc_info_set_varset(VarSet, ProcInfo1, ProcInfo2),
-    proc_info_set_vartypes(VarTypes, ProcInfo2, ProcInfo),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, ProcInfo1, ProcInfo),
     pd_info_set_proc_info(ProcInfo, !PDInfo).
 
     % Work out which vars are live later in the computation based on
@@ -374,8 +371,7 @@ rerun_det_analysis(Goal0, Goal, !PDInfo) :-
     module_info_set_pred_proc_info(PredProcId, PredInfo, ProcInfo,
         ModuleInfo0, ModuleInfo1),
 
-    proc_info_get_varset(ProcInfo, VarSet),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
     det_info_init(ModuleInfo1, PredProcId, VarSet, VarTypes,
         pess_extra_vars_ignore, [], DetInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap),
@@ -397,7 +393,7 @@ rerun_det_analysis(Goal0, Goal, !PDInfo) :-
 
 get_branch_vars_proc(PredProcId, ProcInfo, !ModuleInfo, !ArgInfo) :-
     proc_info_get_goal(ProcInfo, Goal),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     instmap.init_reachable(InstMap0),
     map.init(Vars0),
     set_of_var.init(LeftVars0),
@@ -491,7 +487,7 @@ get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
     pd_info_get_instmap(!.PDInfo, InstMap0),
     pd_info_get_proc_arg_info(!.PDInfo, ProcArgInfo),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     set_of_var.init(LeftVars0),
     map.init(Vars0),
     ( if
@@ -767,14 +763,12 @@ combine_vars(BranchNo, [ExtraVar | ExtraVars], !Vars) :-
 pd_requantify_goal(NonLocals, Goal0, Goal, !PDInfo) :-
     some [!ProcInfo] (
         pd_info_get_proc_info(!.PDInfo, !:ProcInfo),
-        proc_info_get_varset(!.ProcInfo, VarSet0),
-        proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+        proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
         implicitly_quantify_goal_general(ordinary_nonlocals_no_lambda,
             NonLocals, _, Goal0, Goal, VarSet0, VarSet,
             VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
-        proc_info_set_varset(VarSet, !ProcInfo),
-        proc_info_set_vartypes(VarTypes, !ProcInfo),
+        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
         pd_info_set_proc_info(!.ProcInfo, !PDInfo)
     ).
@@ -783,7 +777,7 @@ pd_recompute_instmap_delta(Goal0, Goal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     recompute_instmap_delta(recompute_atomic_instmap_deltas,
         Goal0, Goal, VarTypes, InstVarSet, InstMap, ModuleInfo0, ModuleInfo),

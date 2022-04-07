@@ -408,8 +408,7 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
     module_info_set_pred_proc_info(PredProcId, PredInfo, ProcInfo,
         ModuleInfo1, ModuleInfo),
     % Save the new information back in the ml_gen_info.
-    proc_info_get_varset(ProcInfo, VarSet),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
     % XXX It would be nice to have polymorphism update the var table directly.
     make_var_table(ModuleInfo, VarSet, VarTypes, VarTable),
     ml_gen_info_set_module_info(ModuleInfo, !Info),

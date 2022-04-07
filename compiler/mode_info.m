@@ -611,8 +611,7 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
     ),
 
     module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
-    proc_info_get_varset(ProcInfo, VarSet),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
 
     bag.from_sorted_list(set_of_var.to_sorted_list(LiveVars), LiveVarsBag),

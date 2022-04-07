@@ -126,8 +126,7 @@ copy_clauses_to_maybe_imported_proc_in_proc_info(PredInfo, ClausesInfo,
         clauses_info_get_vartypes(ClausesInfo, VarTypes),
         clauses_info_get_rtti_varmaps(ClausesInfo, RttiVarMaps),
         proc_info_set_headvars(HeadVarList, !ProcInfo),
-        proc_info_set_varset(VarSet, !ProcInfo),
-        proc_info_set_vartypes(VarTypes, !ProcInfo),
+        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo)
     else
         copy_clauses_to_proc_in_proc_info(PredInfo, ProcId, !ProcInfo)

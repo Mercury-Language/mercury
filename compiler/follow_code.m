@@ -66,8 +66,7 @@
 
 move_follow_code_in_proc(_PredProcId, !ProcInfo, !ModuleInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_varset(!.ProcInfo, Varset0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, Varset0, VarTypes0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     move_follow_code_in_goal(Goal0, Goal1, RttiVarMaps0, no, Changed),
     (
@@ -85,8 +84,7 @@ move_follow_code_in_proc(_PredProcId, !ProcInfo, !ModuleInfo) :-
         recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
             Goal2, Goal, VarTypes, InstVarSet, InstMap0, !ModuleInfo),
         proc_info_set_goal(Goal, !ProcInfo),
-        proc_info_set_varset(Varset, !ProcInfo),
-        proc_info_set_vartypes(VarTypes, !ProcInfo),
+        proc_info_set_varset_vartypes(Varset, VarTypes, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo)
     ;
         Changed = no

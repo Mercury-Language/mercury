@@ -191,8 +191,7 @@ code_loc_dep_init(FollowVars, ResumePoint, !CI, !:CLD) :-
     proc_info_get_liveness_info(ProcInfo, Liveness),
     CodeModel = proc_info_interface_code_model(ProcInfo),
     build_input_arg_list(ProcInfo, ArgList),
-    proc_info_get_varset(ProcInfo, VarSet),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
     proc_info_get_stack_slots(ProcInfo, StackSlots),
     globals.lookup_bool_option(Globals, use_float_registers, UseFloatRegs),
     (
@@ -3442,7 +3441,7 @@ compute_forward_live_var_saves(CI, CLD, OutArgs, VarLocs) :-
     Vars0 = set_of_var.list_to_set(Variables0),
     TypeInfoLiveness = body_typeinfo_liveness(CI),
     get_proc_info(CI, ProcInfo),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness, VarTypes,
         RttiVarMaps, Vars1),

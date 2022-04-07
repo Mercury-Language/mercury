@@ -68,7 +68,7 @@ delay_construct_proc(ModuleInfo, proc(PredId, ProcId), !ProcInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     body_should_use_typeinfo_liveness(PredInfo, Globals, BodyTypeinfoLiveness),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps),
     proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
     DelayInfo = delay_construct_info(ModuleInfo, BodyTypeinfoLiveness,

@@ -267,12 +267,11 @@ parallelise_proc(CPCProc, PredInfo, !ProcInfo,
     proc_info_get_goal(!.ProcInfo, Goal0),
     Context = goal_info_get_context(Goal0 ^ hg_info),
     term.context_file(Context, FileName),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet, VarTypes),
     % VarNumRep is not used by goal_to_goal_rep, var_num_1_byte
     % is an arbitrary value. XXX zs: I don't think this is true.
     VarNumRep = var_num_1_byte,
     proc_info_get_headvars(!.ProcInfo, HeadVars),
-    proc_info_get_varset(!.ProcInfo, VarSet),
     compute_var_number_map(HeadVars, VarSet, [], Goal0, VarNumMap),
     ProgRepInfo = prog_rep_info(!.ModuleInfo, FileName, VarTypes, VarNumMap,
         VarNumRep, flatten_par_conjs),

@@ -678,7 +678,7 @@ generate_resume_layout(ModuleInfo, ProcInfo, InstMap, ResumeMap, Temps,
         Layout) :-
     map.to_assoc_list(ResumeMap, ResumeList),
     set.init(TVars0),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     generate_resume_layout_for_vars(ResumeList, InstMap, VarTypes, ProcInfo,
         ModuleInfo, [], VarInfos, TVars0, TVars),
     set.list_to_set(VarInfos, VarInfoSet),
@@ -755,8 +755,7 @@ generate_temp_var_infos([Temp | Temps], [Live | Lives]) :-
 
 generate_layout_for_var(_ModuleInfo, ProcInfo, _InstMap, Var, LiveValueType,
         TypeVars) :-
-    proc_info_get_varset(ProcInfo, VarSet),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
     ( if varset.search_name(VarSet, Var, GivenName) then
         Name = GivenName
     else
@@ -849,7 +848,7 @@ build_closure_info([Var | Vars], [Type0 | Types],
 %---------------------------------------------------------------------------%
 
 find_typeinfos_for_tvars(ProcInfo, TypeVars, VarLocs, TypeInfoDataMap) :-
-    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     list.foldl(
         gather_type_info_layout_locns_for_tvar(VarSet, RttiVarMaps, VarLocs),
@@ -888,8 +887,7 @@ gather_type_info_layout_locn(TypeInfoLocn, Lval, !Locns) :-
 %---------------------------------------------------------------------------%
 
 generate_table_arg_type_info(ProcInfo, NumberedVars, TableArgInfos) :-
-    proc_info_get_varset(ProcInfo, VarSet),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
     set.init(TypeVars0),
     build_table_arg_info(VarSet, VarTypes, NumberedVars, ArgLayouts,
         TypeVars0, TypeVars),
@@ -921,7 +919,7 @@ build_table_arg_info(VarSet, VarTypes, [Var - SlotNum | NumberedVars],
 
 find_typeinfos_for_tvars_table(ProcInfo, TypeVars, NumberedVars,
         TypeInfoDataMap) :-
-    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     list.map(rtti_lookup_type_info_locn(RttiVarMaps), TypeVars,
         TypeInfoLocns),

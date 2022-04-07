@@ -701,8 +701,7 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
         pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
 
         proc_info_get_goal(!.ProcInfo, Goal0),
-        proc_info_get_varset(!.ProcInfo, VarSet0),
-        proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+        proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
 
         InlineInfo0 = inline_info(!.ModuleInfo, VarThresh, HighLevelCode,
@@ -719,8 +718,7 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
 
         pred_info_set_typevarset(TypeVarSet, !PredInfo),
 
-        proc_info_set_varset(VarSet, !ProcInfo),
-        proc_info_set_vartypes(VarTypes, !ProcInfo),
+        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
         proc_info_set_goal(Goal, !ProcInfo),
 
@@ -910,14 +908,15 @@ inlining_in_call(GoalExpr0, GoalInfo0, Goal, !Info) :-
             UserReq = not_user_req,
             % Okay, but will we exceed the number-of-variables threshold?
             varset.vars(VarSet0, ListOfVars),
-            list.length(ListOfVars, ThisMany),
+            list.length(ListOfVars, NumVarsInVarSet),
 
             % We need to find out how many variables the Callee has.
-            proc_info_get_varset(ProcInfo, CalleeVarSet),
+            proc_info_get_varset_vartypes(ProcInfo,
+                CalleeVarSet, _CalleeVarTypes),
             varset.vars(CalleeVarSet, CalleeListOfVars),
-            list.length(CalleeListOfVars, CalleeThisMany),
-            TotalVars = ThisMany + CalleeThisMany,
-            TotalVars =< VarThresh
+            list.length(CalleeListOfVars, NumVarsInCallee),
+            TotalNumVars = NumVarsInVarSet + NumVarsInCallee,
+            TotalNumVars =< VarThresh
         ),
         % XXX Work around bug #142.
         not may_encounter_bug_142(ProcInfo, ArgVars)
@@ -1011,8 +1010,7 @@ do_inline_call(ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
 
     pred_info_get_typevarset(PredInfo, CalleeTypeVarSet),
     proc_info_get_headvars(ProcInfo, HeadVars),
-    proc_info_get_vartypes(ProcInfo, CalleeVarTypes0),
-    proc_info_get_varset(ProcInfo, CalleeVarSet),
+    proc_info_get_varset_vartypes(ProcInfo, CalleeVarSet, CalleeVarTypes0),
     proc_info_get_rtti_varmaps(ProcInfo, CalleeRttiVarMaps0),
 
     % Substitute the appropriate types into the type mapping of the called

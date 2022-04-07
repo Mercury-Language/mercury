@@ -1325,10 +1325,10 @@ move_variables_to_new_pred(AtomicGoal0, AtomicGoal, AtomicGoalVars,
         InnerDI, InnerUO, !NewPredInfo, !StmInfo) :-
     NewProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
     OldProcInfo0 = !.StmInfo ^ stm_info_proc_info,
-    proc_info_get_varset(NewProcInfo0, NewPredVarSet0),
-    proc_info_get_vartypes(NewProcInfo0, NewPredVarTypes0),
-    proc_info_get_varset(OldProcInfo0, OldPredVarSet0),
-    proc_info_get_vartypes(OldProcInfo0, OldPredVarTypes0),
+    proc_info_get_varset_vartypes(NewProcInfo0,
+        NewPredVarSet0, NewPredVarTypes0),
+    proc_info_get_varset_vartypes(OldProcInfo0,
+        OldPredVarSet0, OldPredVarTypes0),
     AtomicGoalVars = stm_goal_vars(_, LocalVars, _, OrigInnerDI, OrigInnerUO),
     LocalVarList = set_of_var.to_sorted_list(LocalVars),
 
@@ -1346,10 +1346,10 @@ move_variables_to_new_pred(AtomicGoal0, AtomicGoal, AtomicGoalVars,
     ),
 
     rename_some_vars_in_goal(VarMapping, AtomicGoal0, AtomicGoal),
-    proc_info_set_varset(NewPredVarSet, NewProcInfo0, NewProcInfo1),
-    proc_info_set_vartypes(NewPredVarTypes, NewProcInfo1, NewProcInfo),
-    proc_info_set_varset(OldPredVarSet, OldProcInfo0, OldProcInfo1),
-    proc_info_set_vartypes(OldPredVarTypes, OldProcInfo1, OldProcInfo),
+    proc_info_set_varset_vartypes(NewPredVarSet, NewPredVarTypes,
+        NewProcInfo0, NewProcInfo),
+    proc_info_set_varset_vartypes(OldPredVarSet, OldPredVarTypes,
+        OldProcInfo0, OldProcInfo),
     !NewPredInfo ^ new_pred_proc_info := NewProcInfo,
     !StmInfo ^ stm_info_proc_info := OldProcInfo.
 
@@ -2129,8 +2129,8 @@ construct_output(Context, AtomicGoalVars, ResultType, ResultVar, StmInfo,
 rename_var_in_wrapper_pred(Name, ResultVar0, ResultType, ResultVar,
         !NewPredInfo, !Goal) :-
     NewProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
-    proc_info_get_varset(NewProcInfo0, NewPredVarSet0),
-    proc_info_get_vartypes(NewProcInfo0, NewPredVarTypes0),
+    proc_info_get_varset_vartypes(NewProcInfo0,
+        NewPredVarSet0, NewPredVarTypes0),
     proc_info_get_headvars(NewProcInfo0, NewHeadVars0),
     varset.delete_var(ResultVar0, NewPredVarSet0, NewPredVarSet1),
     delete_var_type(ResultVar0, NewPredVarTypes0, NewPredVarTypes1),
@@ -2150,9 +2150,9 @@ rename_var_in_wrapper_pred(Name, ResultVar0, ResultType, ResultVar,
     list.map(MapLambda, NewHeadVars0, NewHeadVars),
 
     rename_some_vars_in_goal(VarMapping, !Goal),
-    proc_info_set_varset(NewPredVarSet, NewProcInfo0, NewProcInfo1),
-    proc_info_set_vartypes(NewPredVarTypes, NewProcInfo1, NewProcInfo2),
-    proc_info_set_headvars(NewHeadVars, NewProcInfo2, NewProcInfo),
+    proc_info_set_varset_vartypes(NewPredVarSet, NewPredVarTypes,
+        NewProcInfo0, NewProcInfo1),
+    proc_info_set_headvars(NewHeadVars, NewProcInfo1, NewProcInfo),
     !NewPredInfo ^ new_pred_proc_info := NewProcInfo.
 
 %-----------------------------------------------------------------------------%
@@ -2453,8 +2453,7 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes, CloneKind,
 
     pred_info_proc_info(PredInfo, ProcId, ProcInfo),
     proc_info_get_context(ProcInfo, ProcContext),
-    proc_info_get_varset(ProcInfo, ProcVarSet),
-    proc_info_get_vartypes(ProcInfo, ProcVarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, ProcVarSet, ProcVarTypes),
     proc_info_get_inst_varset(ProcInfo, ProcInstVarSet),
     (
         MaybeDetism = yes(ProcDetism)
@@ -2583,15 +2582,14 @@ new_pred_set_goal(Goal, !NewPredInfo) :-
     ProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
     goal_vars(Goal, GoalVars),
     GoalVarsSet = set_of_var.bitset_to_set(GoalVars),
-    proc_info_get_varset(ProcInfo0, ProcVarSet0),
-    proc_info_get_vartypes(ProcInfo0, ProcVarTypes0),
+    proc_info_get_varset_vartypes(ProcInfo0, ProcVarSet0, ProcVarTypes0),
 
     varset.select(GoalVarsSet, ProcVarSet0, ProgVarSet),
     vartypes_select(GoalVarsSet, ProcVarTypes0, ProcVarTypes),
 
-    proc_info_set_varset(ProgVarSet, ProcInfo0, ProcInfo1),
-    proc_info_set_goal(Goal, ProcInfo1, ProcInfo2),
-    proc_info_set_vartypes(ProcVarTypes, ProcInfo2, ProcInfo),
+    proc_info_set_varset_vartypes(ProgVarSet, ProcVarTypes,
+        ProcInfo0, ProcInfo1),
+    proc_info_set_goal(Goal, ProcInfo1, ProcInfo),
     !NewPredInfo ^ new_pred_proc_info := ProcInfo.
 
     % Returns the pred_proc_id of the new predicate.
@@ -2628,7 +2626,7 @@ get_input_output_varlist(StmGoalVars, Input, Output) :-
 
 get_input_output_types(StmGoalVars, StmInfo, InputTypes, OutputTypes) :-
     ProcInfo0 = StmInfo ^ stm_info_proc_info,
-    proc_info_get_vartypes(ProcInfo0, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo0, _VarSet, VarTypes),
     get_input_output_varlist(StmGoalVars, InputVars, OutputVars),
 
     lookup_var_types(VarTypes, InputVars, InputTypes),

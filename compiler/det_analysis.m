@@ -351,8 +351,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     % Infer the determinism of the goal.
     proc_info_get_goal(ProcInfo0, Goal0),
     proc_info_get_initial_instmap(!.ModuleInfo, ProcInfo0, InstMap0),
-    proc_info_get_varset(ProcInfo0, VarSet),
-    proc_info_get_vartypes(ProcInfo0, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo0, VarSet, VarTypes),
     det_info_init(!.ModuleInfo, proc(PredId, ProcId), VarSet, VarTypes,
         pess_extra_vars_report, !.Specs, DetInfo0),
     det_infer_goal(Goal0, Goal, InstMap0, SolnContext, [], no,
@@ -1131,7 +1130,7 @@ det_infer_call(PredId, ProcId0, ProcId, Args, GoalInfo, SolnContext,
         else
             GoalContext = goal_info_get_context(GoalInfo),
             det_get_proc_info(!.DetInfo, ProcInfo),
-            proc_info_get_varset(ProcInfo, VarSet),
+            proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
             PredPieces = describe_one_pred_name(ModuleInfo,
                 should_module_qualify, PredId),
             FirstPieces = [words("Error: call to")] ++ PredPieces ++
@@ -1182,7 +1181,7 @@ det_infer_generic_call(GenericCall, CallDetism, GoalInfo,
         % This error can only occur for higher-order calls.
         % Class method calls are only introduced by polymorphism.
         det_get_proc_info(!.DetInfo, ProcInfo),
-        proc_info_get_varset(ProcInfo, VarSet),
+        proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
         FirstPieces = [words("Error: higher-order call to predicate with"),
             words("determinism"), quote(mercury_det_to_string(CallDetism)),
             words("occurs in a context which requires all solutions."), nl],
@@ -1254,7 +1253,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
             SolnContext = all_solns
         then
             GoalContext = goal_info_get_context(GoalInfo),
-            proc_info_get_varset(ProcInfo, VarSet),
+            proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
             WrongContextPredPieces = describe_one_pred_name(ModuleInfo,
                 should_module_qualify, PredId),
             WrongContextFirstPieces = [words("Error: call to")] ++
@@ -1633,7 +1632,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
     (
         Reason = promise_solutions(Vars, Kind),
         det_get_proc_info(!.DetInfo, ProcInfo),
-        proc_info_get_varset(ProcInfo, VarSet),
+        proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
 
         Context = goal_info_get_context(GoalInfo),
         (
@@ -1732,7 +1731,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             var_is_any_in_instmap(ModuleInfo, InstMap0),
             NonLocalVars),
         BoundVars0 = set_of_var.union(GroundBoundVars, AnyBoundVars),
-        proc_info_get_vartypes(ProcInfo, VarTypes),
+        proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
         BoundVars = remove_typeinfo_vars_from_set_of_var(VarTypes, BoundVars0),
 
         % Which vars were bound inside the scope but not listed
@@ -1954,14 +1953,13 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
 
         ExaminesRepresentation = yes,
         det_get_proc_info(!.DetInfo, ProcInfo),
-        proc_info_get_vartypes(ProcInfo, VarTypes),
+        proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
         lookup_var_type(VarTypes, Var, Type),
         det_type_has_user_defined_equality_pred(!.DetInfo, Type)
     then
         (
             CanFail = can_fail,
             Context = goal_info_get_context(GoalInfo),
-            proc_info_get_varset(ProcInfo, VarSet),
             (
                 GoalContext = ccuc_switch,
                 VarStr = mercury_var_to_name_only(VarSet, Var),
@@ -2004,7 +2002,6 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
             (
                 SolnContext = all_solns,
                 Context = goal_info_get_context(GoalInfo),
-                proc_info_get_varset(ProcInfo, VarSet),
                 (
                     GoalContext = ccuc_switch,
                     VarStr = mercury_var_to_name_only(VarSet, Var),

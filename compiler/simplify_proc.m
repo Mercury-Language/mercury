@@ -182,8 +182,7 @@ simplify_goal_update_vars_in_proc(SimplifyTasks, !ModuleInfo,
     simplify_info_get_varset(SimplifyInfo, VarSet),
     simplify_info_get_var_types(SimplifyInfo, VarTypes),
     simplify_info_get_rtti_varmaps(SimplifyInfo, RttiVarMaps),
-    proc_info_set_varset(VarSet, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
 
     simplify_info_get_cost_delta(SimplifyInfo, CostDelta).
@@ -290,8 +289,7 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
     else
         VarSet = VarSet0
     ),
-    proc_info_set_varset(VarSet, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
 
     simplify_info_get_has_parallel_conj(Info, HasParallelConj),
@@ -348,7 +346,7 @@ simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
             TurnOffCommonStructByRequest = no
         )
     ),
-    proc_info_get_vartypes(ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet0, VarTypes0),
     vartypes_count(VarTypes0, NumVars),
     ( if
         ( TurnOffCommonStructByRequest = yes
@@ -410,15 +408,13 @@ simplify_proc_maybe_mark_modecheck_clauses(!ProcInfo) :-
 simplify_proc_analyze_and_format_calls(!ModuleInfo, ImplicitStreamWarnings,
         PredId, ProcId, FormatSpecs, !ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_varset(!.ProcInfo, VarSet0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
     analyze_and_optimize_format_calls(!.ModuleInfo, ImplicitStreamWarnings,
         Goal0, MaybeGoal, FormatSpecs, VarSet0, VarSet, VarTypes0, VarTypes),
     (
         MaybeGoal = yes(Goal),
         proc_info_set_goal(Goal, !ProcInfo),
-        proc_info_set_varset(VarSet, !ProcInfo),
-        proc_info_set_vartypes(VarTypes, !ProcInfo),
+        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
 
         % The goals we replace format calls with are created with the
         % correct nonlocals, but analyze_and_optimize_format_calls can
@@ -688,8 +684,7 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
             simplify_info_get_pred_proc_id(!.Info, PredProcId),
             module_info_pred_proc_info(!.ModuleInfo, PredProcId,
                 PredInfo, !:ProcInfo),
-            proc_info_set_vartypes(!.VarTypes, !ProcInfo),
-            proc_info_set_varset(!.VarSet, !ProcInfo),
+            proc_info_set_varset_vartypes(!.VarSet, !.VarTypes, !ProcInfo),
             proc_info_set_rtti_varmaps(!.RttiVarMaps, !ProcInfo),
             module_info_set_pred_proc_info(PredProcId,
                 PredInfo, !.ProcInfo, !ModuleInfo),

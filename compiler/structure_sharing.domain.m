@@ -544,7 +544,7 @@ sharing_from_unification(ModuleInfo, ProcInfo, Unification, GoalInfo)
 :- pred is_introduced_typeinfo_arg(proc_info::in, prog_var::in) is semidet.
 
 is_introduced_typeinfo_arg(ProcInfo, Var) :-
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     lookup_var_type(VarTypes, Var, Type),
     is_introduced_type_info_type(Type).
 
@@ -645,11 +645,12 @@ add_foreign_proc_sharing(ModuleInfo, PredInfo, ProcInfo, ForeignPPId,
         Attributes, ForeignPPId, GoalContext),
 
     ActualVars = list.map(foreign_arg_var, Args),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     lookup_var_types(VarTypes, ActualVars, ActualTypes),
     pred_info_get_typevarset(PredInfo, CallerTypeVarSet),
     pred_info_get_external_type_params(PredInfo, CallerExternalTypeParams),
 
+    % XXX We should pass VarTypes instead of ActualTypes.
     sharing_as_rename_using_module_info(ModuleInfo, ForeignPPId,
         ActualVars, ActualTypes, CallerTypeVarSet,
         CallerExternalTypeParams, ForeignSharing, ActualSharing),
@@ -862,11 +863,12 @@ lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable,
     lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, FormalSharing,
         _Status, _IsPredicted),
 
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     lookup_var_types(VarTypes, ActualVars, ActualTypes),
 
     pred_info_get_typevarset(PredInfo, CallerTypeVarSet),
     pred_info_get_univ_quant_tvars(PredInfo, CallerExternalTypeParams),
+    % XXX We should pass VarTypes instead of ActualTypes.
     sharing_as_rename_using_module_info(ModuleInfo, PPId,
         ActualVars, ActualTypes, CallerTypeVarSet, CallerExternalTypeParams,
         FormalSharing, ActualSharing),
@@ -953,7 +955,7 @@ bottom_sharing_is_safe_approximation(ModuleInfo, PredInfo, ProcInfo) :-
     ;
         proc_info_get_headvars(ProcInfo, HeadVars),
         proc_info_get_argmodes(ProcInfo, Modes),
-        proc_info_get_vartypes(ProcInfo, VarTypes),
+        proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
         lookup_var_types(VarTypes, HeadVars, Types),
         bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes, Types)
     ).
@@ -1218,7 +1220,7 @@ sharing_set_extend_datastruct(ModuleInfo, ProcInfo, Datastruct, SharingSet)
     ( if map.search(SharingMap, Var, SelectorSet) then
         % The type of the variable is needed to be able to compare
         % datastructures.
-        proc_info_get_vartypes(ProcInfo, VarTypes),
+        proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
         lookup_var_type(VarTypes, Var, VarType),
         Datastructures = selector_sharing_set_extend_datastruct(ModuleInfo,
             ProcInfo, VarType, Selector, SelectorSet)
@@ -1416,7 +1418,7 @@ sharing_set_altclos_2(ModuleInfo, ProcInfo, NewSharingSet, OldSharingSet)
     map.select(NewMap, CommonVarsSet, NewMap1),
     map.select(OldMap, CommonVarsSet, OldMap1),
 
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     %
     % for each common var V, compute the sharing pairs A-B, such that
     % \exists X where var(X) = V, and X-A \in NewSharingSet, and X-B \in
@@ -1515,7 +1517,7 @@ sharing_set_subsumes_sharing_pair(ModuleInfo, ProcInfo, SharingSet,
         check_normalized(ModuleInfo, Type2, Sel2)
     ),
 
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     lookup_var_type(VarTypes, Var1, Type1),
     lookup_var_type(VarTypes, Var2, Type2),
 
@@ -1576,7 +1578,7 @@ sharing_set_subsumed_subset(ModuleInfo, ProcInfo, SharingSet, SharingPair,
         check_normalized(ModuleInfo, Type2, Sel2)
     ),
 
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     lookup_var_type(VarTypes, Var1, Type1),
     lookup_var_type(VarTypes, Var2, Type2),
 

@@ -661,7 +661,7 @@ make_deep_original_body(ModuleInfo, ProcInfo, DeepOriginalBody) :-
     proc_info_get_goal(ProcInfo, Body),
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_initial_instmap(ModuleInfo, ProcInfo, Instmap),
-    proc_info_get_vartypes(ProcInfo, Vartypes),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
     proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
     (
         MaybeDetism = yes(Detism)
@@ -669,9 +669,8 @@ make_deep_original_body(ModuleInfo, ProcInfo, DeepOriginalBody) :-
         MaybeDetism = no,
         proc_info_get_inferred_determinism(ProcInfo, Detism)
     ),
-    proc_info_get_varset(ProcInfo, Varset),
-    DeepOriginalBody = deep_original_body(Body, HeadVars, Instmap, Vartypes,
-        Detism, Varset).
+    DeepOriginalBody = deep_original_body(Body, HeadVars, Instmap,
+        VarSet, VarTypes, Detism).
 
 %-----------------------------------------------------------------------------%
 
@@ -701,8 +700,7 @@ deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
     fill_goal_id_slots_in_proc(ModuleInfo, ContainingGoalMap, !ProcInfo),
 
     module_info_get_globals(ModuleInfo, Globals),
-    proc_info_get_varset(!.ProcInfo, VarSet0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
     some [!VarInfo, !DeepInfo, !Goal] (
         proc_info_get_goal(!.ProcInfo, !:Goal),
         !.Goal = hlds_goal(_, GoalInfo0),
@@ -787,9 +785,8 @@ deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
                 GoalInfo0, BindProcStaticVarGoal, !Goal)
         ),
 
-        !.VarInfo = prog_var_set_types(Vars, VarTypes),
-        proc_info_set_varset(Vars, !ProcInfo),
-        proc_info_set_vartypes(VarTypes, !ProcInfo),
+        !.VarInfo = prog_var_set_types(VarSet, VarTypes),
+        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
         proc_info_set_goal(!.Goal, !ProcInfo),
         DeepLayoutInfo = hlds_deep_layout(ProcStatic, ExcpVars)
     ).
@@ -808,8 +805,7 @@ deep_prof_transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     Goal0 = hlds_goal(_, GoalInfo0),
-    proc_info_get_varset(!.ProcInfo, VarSet0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
     VarInfo0 = prog_var_set_types(VarSet0, VarTypes0),
     generate_var("MiddleCSD", c_pointer_type, MiddleCSD, VarInfo0, VarInfo1),
 
@@ -825,9 +821,7 @@ deep_prof_transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
 
     VarInfo = DeepInfo ^ deep_varinfo,
     VarInfo = prog_var_set_types(VarSet, VarTypes),
-
-    proc_info_set_varset(VarSet, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo).
 
 :- func is_proc_in_interface(module_info, pred_id, proc_id) = bool.

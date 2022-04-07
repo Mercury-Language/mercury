@@ -236,7 +236,7 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
     pred_id_to_int(PredId, PredIdInt),
 
     proc_info_get_goal(!.ProcInfo, GoalBeforeQuant),
-    proc_info_get_varset(!.ProcInfo, VarSetBeforeQuant),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSetBeforeQuant, _),
 
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nbefore requantify",
@@ -245,8 +245,7 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
     requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
 
     proc_info_get_goal(!.ProcInfo, GoalAfterQuant),
-    proc_info_get_varset(!.ProcInfo, VarSet),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet, VarTypes),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
@@ -1787,14 +1786,9 @@ require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
 initial_liveness(ModuleInfo, PredInfo, ProcInfo, !:Liveness) :-
     proc_info_get_headvars(ProcInfo, Vars),
     proc_info_get_argmodes(ProcInfo, Modes),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
-    lookup_var_types(VarTypes, Vars, Types),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     !:Liveness = set_of_var.init,
-    ( if initial_liveness_2(ModuleInfo, Vars, Types, Modes, !Liveness) then
-        true
-    else
-        unexpected($pred, "length mismatch")
-    ),
+    initial_liveness_2(ModuleInfo, VarTypes, Vars, Modes, !Liveness),
 
     % If a variable is unused in the goal, it shouldn't be in the initial
     % liveness. (If we allowed it to start live, it wouldn't ever become dead,
@@ -1811,19 +1805,24 @@ initial_liveness(ModuleInfo, PredInfo, ProcInfo, !:Liveness) :-
         RttiVarMaps, NonLocals),
     set_of_var.intersect(!.Liveness, NonLocals, !:Liveness).
 
-:- pred initial_liveness_2(module_info::in,
-    list(prog_var)::in, list(mer_type)::in, list(mer_mode)::in,
-    set_of_progvar::in, set_of_progvar::out) is semidet.
+:- pred initial_liveness_2(module_info::in, vartypes::in,
+    list(prog_var)::in, list(mer_mode)::in,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
-initial_liveness_2(_ModuleInfo, [], [], [], !Liveness).
-initial_liveness_2(ModuleInfo, [Var | Vars], [Type | Types], [Mode | Modes],
+initial_liveness_2(_, _, [], [], !Liveness).
+initial_liveness_2(_, _, [], [_ | _], !Liveness) :-
+    unexpected($pred, "length mismatch").
+initial_liveness_2(_, _, [_ | _], [], !Liveness) :-
+    unexpected($pred, "length mismatch").
+initial_liveness_2(ModuleInfo, VarTypes, [Var | Vars], [Mode | Modes],
         !Liveness) :-
+    lookup_var_type(VarTypes, Var, Type),
     ( if mode_to_top_functor_mode(ModuleInfo, Mode, Type, top_in) then
         set_of_var.insert(Var, !Liveness)
     else
         true
     ),
-    initial_liveness_2(ModuleInfo, Vars, Types, Modes, !Liveness).
+    initial_liveness_2(ModuleInfo, VarTypes, Vars, Modes, !Liveness).
 
 %-----------------------------------------------------------------------------%
 
@@ -1839,7 +1838,7 @@ initial_deadness(ModuleInfo, ProcInfo, LiveInfo, Deadness) :-
 
     % If doing typeinfo liveness, the corresponding typeinfos need to be added
     % to these.
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     maybe_complete_with_typeinfo_vars(set_to_bitset(Deadness0),
         LiveInfo ^ li_typeinfo_liveness, VarTypes, RttiVarMaps, Deadness).

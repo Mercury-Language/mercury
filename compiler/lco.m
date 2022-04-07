@@ -404,8 +404,7 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
         io.write_line(DebugStream, CurProc, !IO),
         io.flush_output(DebugStream, !IO)
     ),
-    proc_info_get_varset(ProcInfo0, VarSet0),
-    proc_info_get_vartypes(ProcInfo0, VarTypes0),
+    proc_info_get_varset_vartypes(ProcInfo0, VarSet0, VarTypes0),
     proc_info_get_headvars(ProcInfo0, HeadVars),
     proc_info_get_argmodes(ProcInfo0, ArgModes),
     arg_info.compute_in_and_out_vars(!.ModuleInfo, VarTypes0,
@@ -448,8 +447,7 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
         ),
         some [!ProcInfo] (
             !:ProcInfo = ProcInfo0,
-            proc_info_set_varset(VarSet, !ProcInfo),
-            proc_info_set_vartypes(VarTypes, !ProcInfo),
+            proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
             proc_info_set_goal(Goal, !ProcInfo),
             % See the comment in transform_call_and_unifies for why these
             % are needed.
@@ -671,7 +669,7 @@ potentially_transformable_recursive_call(Info, ConstInfo, Goal, OutArgs) :-
 
     ModuleInfo = Info ^ lco_module_info,
     ProcInfo = ConstInfo ^ lci_cur_proc_proc,
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
 
     module_info_proc_info(ModuleInfo, PredId, ProcId, CalleeProcInfo),
     proc_info_get_argmodes(CalleeProcInfo, CalleeArgModes),
@@ -798,7 +796,7 @@ acceptable_construct_unification(ConstInfo, DelayForVars, Goal,
         bag.insert_list(ConstructArgVars, !UnifyInputVars),
         trace [compiletime(flag("lco")), io(!IO)] (
             ProcInfo = ConstInfo ^ lci_cur_proc_proc,
-            proc_info_get_varset(ProcInfo, VarSet),
+            proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
             ConstructedVarStr =
                 mercury_var_to_string(VarSet, print_name_and_num,
                     ConstructedVar),
@@ -869,7 +867,7 @@ transform_call_and_unifies(CallGoal, CallOutArgVars, UnifyGoals,
     CallGoal = hlds_goal(CallGoalExpr, CallGoalInfo),
     ModuleInfo = !.Info ^ lco_module_info,
     ProcInfo = ConstInfo ^ lci_cur_proc_proc,
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     ( if
         CallGoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin,
             UnifyContext, _SymName),
@@ -1401,7 +1399,7 @@ update_variant_pred_info(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
         VariantProcInfo, !ModuleInfo),
 
     proc_info_get_headvars(VariantProcInfo, HeadVars),
-    proc_info_get_vartypes(VariantProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(VariantProcInfo, _VarSet, VarTypes),
     lookup_var_types(VarTypes, HeadVars, ArgTypes),
 
     some [!VariantPredInfo] (
@@ -1427,16 +1425,14 @@ update_variant_pred_info(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
 lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
         !:VariantProcInfo, !ModuleInfo) :-
     !:VariantProcInfo = ProcInfo,
-    proc_info_get_varset(ProcInfo, VarSet0),
-    proc_info_get_vartypes(ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet0, VarTypes0),
     proc_info_get_headvars(ProcInfo, HeadVars0),
     proc_info_get_argmodes(ProcInfo, ArgModes0),
     make_addr_vars(!.ModuleInfo, 1, HeadVars0, HeadVars, ArgModes0, ArgModes,
         AddrOutArgs, VarToAddr, VarSet0, VarSet, VarTypes0, VarTypes),
     proc_info_set_headvars(HeadVars, !VariantProcInfo),
     proc_info_set_argmodes(ArgModes, !VariantProcInfo),
-    proc_info_set_varset(VarSet, !VariantProcInfo),
-    proc_info_set_vartypes(VarTypes, !VariantProcInfo),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !VariantProcInfo),
 
     proc_info_get_initial_instmap(!.ModuleInfo, ProcInfo, InstMap0),
     proc_info_get_goal(ProcInfo, Goal0),
@@ -1821,7 +1817,7 @@ lco_transform_variant_plain_call(ModuleInfo, Transforms, VariantMap, VarToAddr,
         CallPredProcId = proc(CallPredId, CallProcId),
         module_info_proc_info(ModuleInfo, CallPredId, CallProcId,
             CalleeProcInfo),
-        proc_info_get_vartypes(!.ProcInfo, VarTypes),
+        proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
         proc_info_get_argmodes(CalleeProcInfo, CalleeArgModes),
         ( if
             multi_map.search(VariantMap, CallPredProcId, ExistingVariantIds),

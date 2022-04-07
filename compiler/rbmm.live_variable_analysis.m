@@ -372,7 +372,7 @@ collect_void_vars(ProgPoint, ProducedSet, ProcInfo, !ProcVoidVar) :-
     ( if map.search(!.ProcVoidVar, ProgPoint, _DeadVars) then
         true
     else
-        proc_info_get_varset(ProcInfo, VarSet),
+        proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
         set.fold(void_var(VarSet), ProducedSet, set.init, VoidVars),
         map.set(ProgPoint, VoidVars, !ProcVoidVar)
     ).

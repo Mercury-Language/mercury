@@ -281,7 +281,7 @@ accu_transform_proc(proc(PredId, ProcId), PredInfo, !ProcInfo, !ModuleInfo,
                 [option_is_set(warn_accumulator_swaps, yes,
                     [always(InPieces)])]),
 
-            proc_info_get_varset(!.ProcInfo, VarSet),
+            proc_info_get_varset_vartypes(!.ProcInfo, VarSet, _VarTypes),
             generate_warnings(!.ModuleInfo, VarSet, Warnings, WarnMsgs),
             (
                 Warnings = [_],
@@ -405,7 +405,7 @@ should_attempt_accu_transform(!ModuleInfo, PredId, ProcId, PredInfo,
 should_attempt_accu_transform_2(!ModuleInfo, PredId, PredInfo, !ProcInfo,
         HeadVars, InitialInstMap, TopLevel, FullyStrict, DoLCMC,
         [Id | Ids], C, M, Rec, Warnings) :-
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes0),
     identify_out_and_out_prime(!.ModuleInfo, VarTypes0, InitialInstMap,
         Id, Rec, HeadVars, Out, OutPrime, HeadToCallSubst, CallToHeadSubst),
     ( if
@@ -1153,8 +1153,7 @@ accu_stage2(ModuleInfo, ProcInfo0, GoalId, GoalStore, Sets, OutPrime, Out,
         set_of_var.init, AfterNonLocals),
     InitAccs = set_of_var.intersect(BeforeNonLocals, AfterNonLocals),
 
-    proc_info_get_varset(ProcInfo0, !:VarSet),
-    proc_info_get_vartypes(ProcInfo0, !:VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo0, !:VarSet, !:VarTypes),
 
     accu_substs_init(set_of_var.to_sorted_list(InitAccs), !VarSet, !VarTypes,
         !:Substs),
@@ -1495,8 +1494,7 @@ accu_stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
         AccBaseGoal, AccRecGoal, OrigGoal, AccGoal),
 
     proc_info_set_goal(OrigGoal, !OrigProcInfo),
-    proc_info_set_varset(VarSet, !OrigProcInfo),
-    proc_info_set_vartypes(VarTypes, !OrigProcInfo),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !OrigProcInfo),
 
     requantify_proc_general(ordinary_nonlocals_no_lambda, !OrigProcInfo),
     update_accumulator_pred(AccPredId, AccProcId, AccGoal, !ModuleInfo).

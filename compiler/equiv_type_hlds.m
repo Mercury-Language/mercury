@@ -293,7 +293,7 @@ replace_in_inst_table(TypeEqvMap, !InstTable, !Cache) :-
 %
 %   inst_table_get_user_insts(!.InstTable, UserInsts0),
 %   map.map_values(
-%       (pred(_::in, Defn0::in, Defn::out) is det :-
+%       ( pred(_::in, Defn0::in, Defn::out) is det :-
 %           Body0 = Defn0 ^ inst_body,
 %           (
 %               Body0 = abstract_inst,
@@ -655,15 +655,15 @@ replace_in_proc(TypeEqvMap, !ProcInfo, !ModuleInfo, !PredInfo, !Cache) :-
             MaybeDeclModes0 = no
         ),
 
-        proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+        proc_info_get_varset_vartypes(!.ProcInfo, VarSet, VarTypes0),
         transform_foldl_var_types(hlds_replace_in_type(TypeEqvMap),
             VarTypes0, VarTypes, !TVarSet),
-        proc_info_set_vartypes(VarTypes, !ProcInfo),
+        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
 
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
         rtti_varmaps_types(RttiVarMaps0, AllTypes),
         list.foldl2(
-            (pred(OldType::in, !.TMap::in, !:TMap::out,
+            ( pred(OldType::in, !.TMap::in, !:TMap::out,
                     !.TVarSet::in, !:TVarSet::out) is det :-
                 hlds_replace_in_type(TypeEqvMap, OldType, NewType, !TVarSet),
                 map.set(OldType, NewType, !TMap)
@@ -1604,7 +1604,7 @@ replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
     ;
         GoalExpr0 = unify(Var, _, _, _, _),
         module_info_get_type_table(!.Info ^ ethri_module_info, TypeTable),
-        proc_info_get_vartypes(!.Info ^ ethri_proc_info, VarTypes),
+        proc_info_get_varset_vartypes(!.Info ^ ethri_proc_info, _, VarTypes),
         proc_info_get_rtti_varmaps(!.Info ^ ethri_proc_info, RttiVarMaps),
         lookup_var_type(VarTypes, Var, VarType),
         TypeCtorCat = classify_type(!.Info ^ ethri_module_info, VarType),

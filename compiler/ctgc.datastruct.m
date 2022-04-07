@@ -125,7 +125,7 @@ datastruct_termshift(ModuleInfo, ProcInfo, Sel, Data0) = Data :-
         selector_termshift(DSel, Sel, NewSel0),
 
         % Keep datastruct seletors normalized.
-        proc_info_get_vartypes(ProcInfo, VarTypes),
+        proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
         lookup_var_type(VarTypes, Var, Type),
         normalize_selector_with_type_information(ModuleInfo, Type,
             NewSel0, NewSel),
@@ -135,7 +135,7 @@ datastruct_termshift(ModuleInfo, ProcInfo, Sel, Data0) = Data :-
 
 normalize_datastruct(ModuleInfo, ProcInfo, Data0) = Data :-
     Data0 = selected_cel(Var, DSel0),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     lookup_var_type(VarTypes, Var, Type),
     normalize_selector_with_type_information(ModuleInfo, Type, DSel0, DSel),
     Data = selected_cel(Var, DSel).
@@ -144,7 +144,7 @@ datastruct_subsumed_by_return_selector(ModuleInfo, ProcInfo, Data1, Data2,
         Extension) :-
     Data1 = selected_cel(Var, Sel1),
     Data2 = selected_cel(Var, Sel2),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     lookup_var_type(VarTypes, Var, Type),
     selector_subsumed_by(ModuleInfo, already_normalized,
         Sel1, Sel2, Type, Extension).
@@ -189,7 +189,7 @@ datastruct_lists_least_upper_bound(ModuleInfo, ProcInfo, Data1, Data2)
 
 datastruct_apply_widening(ModuleInfo, ProcInfo, Data0, Data) :-
     Data0 = selected_cel(Var, Sel0),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     lookup_var_type(VarTypes, Var, Type),
     selector_apply_widening(ModuleInfo, Type, Sel0, Sel),
     Data = selected_cel(Var, Sel).

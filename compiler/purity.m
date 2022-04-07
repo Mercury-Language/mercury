@@ -401,8 +401,7 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     pred_info_get_proc_table(!.PredInfo, Procs0),
     map.lookup(Procs0, ProcId, ProcInfo0),
     proc_info_get_goal(ProcInfo0, Goal0),
-    proc_info_get_vartypes(ProcInfo0, VarTypes0),
-    proc_info_get_varset(ProcInfo0, VarSet0),
+    proc_info_get_varset_vartypes(ProcInfo0, VarSet0, VarTypes0),
     PurityInfo0 = purity_info(ModuleInfo, do_not_run_post_typecheck_tasks,
         do_not_need_to_requantify, have_not_converted_unify, !.PredInfo,
         VarTypes0, VarSet0, []),
@@ -410,15 +409,14 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     PurityInfo = purity_info(_, _, NeedToRequantify, _, !:PredInfo,
         VarTypes, VarSet, _),
     proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
-    proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2),
-    proc_info_set_varset(VarSet, ProcInfo2, ProcInfo3),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, ProcInfo1, ProcInfo2),
     (
         NeedToRequantify = need_to_requantify,
         requantify_proc_general(ordinary_nonlocals_maybe_lambda,
-            ProcInfo3, ProcInfo)
+            ProcInfo2, ProcInfo)
     ;
         NeedToRequantify = do_not_need_to_requantify,
-        ProcInfo = ProcInfo3
+        ProcInfo = ProcInfo2
     ),
     map.det_update(ProcId, ProcInfo, Procs0, Procs),
     pred_info_set_proc_table(Procs, !PredInfo),

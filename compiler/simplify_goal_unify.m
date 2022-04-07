@@ -287,8 +287,7 @@ make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
         % this information from the pred_info and proc_info.
         module_info_pred_proc_info(ModuleInfo0, PredProcId,
             !:PredInfo, !:ProcInfo),
-        proc_info_set_vartypes(VarTypes0, !ProcInfo),
-        proc_info_set_varset(VarSet0, !ProcInfo),
+        proc_info_set_varset_vartypes(VarSet0, VarTypes0, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps0, !ProcInfo),
 
         % Generate the code that creates the type_infos.
@@ -297,8 +296,7 @@ make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
             TypeInfoVars, TypeInfoGoals, ModuleInfo0, ModuleInfo1,
             !PredInfo, !ProcInfo),
 
-        proc_info_get_vartypes(!.ProcInfo, VarTypes),
-        proc_info_get_varset(!.ProcInfo, VarSet),
+        proc_info_get_varset_vartypes(!.ProcInfo, VarSet, VarTypes),
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps),
         simplify_info_set_var_types(VarTypes, !Info),
         simplify_info_set_varset(VarSet, !Info),

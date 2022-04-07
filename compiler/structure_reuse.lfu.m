@@ -57,7 +57,7 @@
 %-----------------------------------------------------------------------------%
 
 forward_use_information(!ProcInfo) :-
-    proc_info_get_vartypes(!.ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
     proc_info_get_goal(!.ProcInfo, Goal0),
 
     % Set of variables initially instantiated.

@@ -1188,18 +1188,16 @@ modecheck_make_type_info_var_for_type(Type, Context, TypeInfoVar,
     % unifications to handle implied modes.
     mode_info_get_var_types(!.ModeInfo, VarTypes0),
     mode_info_get_varset(!.ModeInfo, VarSet0),
-    proc_info_set_varset(VarSet0, ProcInfo0, ProcInfo1),
-    proc_info_set_vartypes(VarTypes0, ProcInfo1, ProcInfo2),
+    proc_info_set_varset_vartypes(VarSet0, VarTypes0, ProcInfo0, ProcInfo1),
 
     polymorphism_make_type_info_var_raw(Type, Context,
         TypeInfoVar, TypeInfoGoals, ModuleInfo0, ModuleInfo1,
-        PredInfo0, PredInfo, ProcInfo2, ProcInfo),
+        PredInfo0, PredInfo, ProcInfo1, ProcInfo),
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
         ModuleInfo1, ModuleInfo),
 
     % Update the information in the mode_info.
-    proc_info_get_varset(ProcInfo, VarSet),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
     mode_info_set_varset(VarSet, !ModeInfo),
     mode_info_set_var_types(VarTypes, !ModeInfo),
     mode_info_set_module_info(ModuleInfo, !ModeInfo).

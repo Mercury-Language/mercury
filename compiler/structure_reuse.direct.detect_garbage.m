@@ -224,7 +224,7 @@ determine_dead_deconstructions_generic_call(ModuleInfo, ProcInfo,
         ( GenDetails = higher_order(_, _, _, _)
         ; GenDetails = class_method(_, _, _, _)
         ),
-        proc_info_get_vartypes(ProcInfo, CallerVarTypes),
+        proc_info_get_varset_vartypes(ProcInfo, _CallerVarSet, CallerVarTypes),
         lookup_var_types(CallerVarTypes, CallArgs, ActualTypes),
         ( if
             bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes,
@@ -274,7 +274,7 @@ unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, Unification,
             Arity \= 0,
 
             % No-tag values don't have a cell to reuse.
-            proc_info_get_vartypes(ProcInfo, VarTypes),
+            proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
             lookup_var_type(VarTypes, Var, Type),
             not type_is_no_tag_type(ModuleInfo, Type),
 

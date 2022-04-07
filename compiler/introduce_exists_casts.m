@@ -124,8 +124,7 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     OrigArity = pred_info_orig_arity(PredInfo),
     NumExtraHeadVars = list.length(ArgTypes) - OrigArity,
 
-    proc_info_get_varset(!.ProcInfo, VarSet0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
     proc_info_get_headvars(!.ProcInfo, HeadVars0),
     proc_info_get_goal(!.ProcInfo, Body0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),

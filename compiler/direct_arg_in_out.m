@@ -995,8 +995,7 @@ transform_direct_arg_in_out_calls_in_proc(DirectArgProcMap,
                 "Direct arg in out transforming", PredId, ProcId, !IO)
         )
     ),
-    proc_info_get_varset(!.ProcInfo, VarSet0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
     proc_info_get_goal(!.ProcInfo, Goal0),
     module_info_get_name(!.ModuleInfo, ModuleName),
     trace [compile_time(flag("daio-debug")), io(!IO)] (
@@ -1013,8 +1012,7 @@ transform_direct_arg_in_out_calls_in_proc(DirectArgProcMap,
     PredProcId = proc(PredId, ProcId),
     proc_info_get_headvars(!.ProcInfo, HeadVars0),
     Info = daio_info(_, _, VarSet, VarTypes, CloneForeignProcs),
-    proc_info_set_varset(VarSet, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo),
 
     ( if

@@ -531,7 +531,7 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
         !PredInfo, !ProcInfo, !ModuleInfo) :-
     some [!VarTypes] (
         % Get the type of the output tuple.
-        proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
+        proc_info_get_varset_vartypes(!.ProcInfo, VarSet, !:VarTypes),
         GoalOutputVars = set_of_var.to_sorted_list(GoalOutputVarsSet),
         lookup_var_types(!.VarTypes, GoalOutputVars, GoalOutputVarTypes),
         OutputTupleType = tuple_type(GoalOutputVarTypes, kind_star),
@@ -542,7 +542,7 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
             qualified(mercury_exception_module, "exception_result"),
             [OutputTupleType], kind_star),
         update_var_type(ResultVar, RealResultVarType, !VarTypes),
-        proc_info_set_vartypes(!.VarTypes, !ProcInfo)
+        proc_info_set_varset_vartypes(VarSet, !.VarTypes, !ProcInfo)
     ),
 
     make_try_lambda(Goal1, GoalOutputVarsSet, OutputTupleType, MaybeIO,
@@ -833,13 +833,11 @@ make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
     conjoin_goals(Body0, MakeOutputTuple, LambdaBody0),
 
     % Rename away output variables in the lambda body.
-    proc_info_get_varset(!.ProcInfo, VarSet0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
     clone_variables(set_of_var.to_sorted_list(OutputVarsSet),
         VarSet0, VarTypes0, VarSet0, VarSet, VarTypes0, VarTypes,
         map.init, Renaming),
-    proc_info_set_varset(VarSet, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
     rename_some_vars_in_goal(Renaming, LambdaBody0, LambdaBody),
 
     % Get the determinism of the lambda.

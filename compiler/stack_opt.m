@@ -259,8 +259,7 @@ init_opt_stack_alloc = opt_stack_alloc(set_of_var.init).
 optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
         PredIdInt) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-    proc_info_get_varset(!.ProcInfo, VarSet0),
+    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
     OptAlloc = opt_stack_alloc(ParConjOwnSlot),
     arg_info.partition_proc_args(!.ProcInfo, ModuleInfo,
         InputArgs, OutputArgs, UnusedArgs),
@@ -330,8 +329,7 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
         apply_headvar_correction(set_to_bitset(HeadVars), RenameMap,
             Goal1, Goal),
         proc_info_set_goal(Goal, !ProcInfo),
-        proc_info_set_varset(VarSet, !ProcInfo),
-        proc_info_set_vartypes(VarTypes, !ProcInfo),
+        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
         Changed = yes
     ).
 
@@ -1053,7 +1051,7 @@ maybe_write_progress_message(Message, DebugStackOpt, PredIdInt, ProcInfo,
         ModuleInfo, !IO) :-
     ( if DebugStackOpt = PredIdInt then
         proc_info_get_goal(ProcInfo, Goal),
-        proc_info_get_varset(ProcInfo, VarSet),
+        proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
         module_info_get_globals(ModuleInfo, Globals),
         io.output_stream(Stream, !IO),
         io.write_string(Stream, Message, !IO),

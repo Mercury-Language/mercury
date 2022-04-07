@@ -214,7 +214,7 @@ compute_goal_modes_in_pred(ModuleInfo, ValidPredIds, PredId, !PredInfo) :-
 
 compute_goal_modes_in_proc(ModuleInfo, !ProcInfo) :-
     ( if proc_info_is_valid_mode(!.ProcInfo) then
-        proc_info_get_vartypes(!.ProcInfo, VarTypes),
+        proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
         proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
         proc_info_get_goal(!.ProcInfo, Goal0),
         compute_goal_modes_in_goal(ModuleInfo, VarTypes, InstMap0, _InstMap,

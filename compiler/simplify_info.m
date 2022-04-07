@@ -410,8 +410,7 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
 
     % SimplifyTasks
     % ModuleInfo
-    proc_info_get_varset(ProcInfo, VarSet),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
     RerunQuant = do_not_rerun_quant_instmap_deltas,
     RerunDet = do_not_rerun_det,
 

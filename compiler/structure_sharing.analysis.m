@@ -585,7 +585,7 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
         ),
 
         % Rename
-        proc_info_get_vartypes(ProcInfo, CallerVarTypes),
+        proc_info_get_varset_vartypes(ProcInfo, _CallerVarSet, CallerVarTypes),
         lookup_var_types(CallerVarTypes, CallArgs, ActualTypes),
         pred_info_get_typevarset(PredInfo, CallerTypeVarSet),
         pred_info_get_univ_quant_tvars(PredInfo, CallerHeadParams),
@@ -754,7 +754,7 @@ analyse_generic_call(ModuleInfo, ProcInfo, GenDetails, CallArgs, Modes,
         ( GenDetails = higher_order(_, _, _, _)
         ; GenDetails = class_method(_, _, _, _)
         ),
-        proc_info_get_vartypes(ProcInfo, CallerVarTypes),
+        proc_info_get_varset_vartypes(ProcInfo, _CallerVarSet, CallerVarTypes),
         lookup_var_types(CallerVarTypes, CallArgs, ActualTypes),
         ( if
             bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes,
@@ -914,7 +914,9 @@ wrapped_init(_Id) = sharing_as_and_status(sharing_as_init, optimal).
     --->    structure_sharing_answer_bottom
     ;       structure_sharing_answer_top
     ;       structure_sharing_answer_real(
-                ssar_vars       :: prog_vars,
+                % XXX The next two fields should be a list of pairs,
+                % not a pair of lists.
+                ssar_vars       :: list(prog_var),
                 ssar_types      :: list(mer_type),
                 ssar_sharing    :: structure_sharing
                 % We cannot keep this as a sharing_as. When the analysis
@@ -981,7 +983,7 @@ analysis_name = "structure_sharing".
 
         FuncInfo = structure_sharing_func_info(ModuleInfo, ProcInfo),
         proc_info_get_headvars(ProcInfo, HeadVars),
-        proc_info_get_vartypes(ProcInfo, VarTypes),
+        proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
         lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
         structure_sharing_answer_to_domain(no, HeadVarTypes, ProcInfo,
             Answer1, Sharing1),
@@ -1002,7 +1004,7 @@ analysis_name = "structure_sharing".
         ;
             FuncInfo = structure_sharing_func_info(ModuleInfo, ProcInfo),
             proc_info_get_headvars(ProcInfo, HeadVars),
-            proc_info_get_vartypes(ProcInfo, VarTypes),
+            proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
             lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
             structure_sharing_answer_to_domain(no, HeadVarTypes, ProcInfo,
                 Answer1, Sharing1),
@@ -1140,7 +1142,7 @@ maybe_record_sharing_analysis_result_2(ModuleInfo, SharingAsTable, PredId,
         ;
             Sharing = structure_sharing_real(SharingPairs),
             proc_info_get_headvars(ProcInfo, HeadVars),
-            proc_info_get_vartypes(ProcInfo, VarTypes),
+            proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
             lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
             Answer = structure_sharing_answer_real(HeadVars, HeadVarTypes,
                 SharingPairs),
