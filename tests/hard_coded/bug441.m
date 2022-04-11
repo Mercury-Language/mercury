@@ -13,7 +13,8 @@
 
 :- import_module bug441_sub.
 
-main(!IO) :- do_fmain(hello, !IO).
+main(!IO) :-
+    do_fmain(hello, !IO).
 
 :- func hello : fmain `with_inst` fmain.
 
