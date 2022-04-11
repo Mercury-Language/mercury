@@ -240,10 +240,11 @@ module_qualify_type_ctor_checked_defn(CheckedDefn0, CheckedDefn,
             SolverDefn = SolverDefn0
         ;
             SolverDefn0 = solver_type_full(MaybeAbsDefn0, FullDefn0),
-            % Abstract definitions do not need qualification.
+            % Non-abstract definitions can occur only in the implementation
+            % section.
+            InInt = mq_not_used_in_interface,
             module_qualify_item_type_defn(qualify_type_defn_solver,
-                mq_not_used_in_interface, FullDefn0, FullDefn,
-                !Info, !.Specs, _),
+                InInt, FullDefn0, FullDefn, !Info, !Specs),
             SolverDefn = solver_type_full(MaybeAbsDefn0, FullDefn)
         ),
         SrcDefns0 = src_defns_solver(MaybeIntDefn0, MaybeImpDefn0),
@@ -258,31 +259,31 @@ module_qualify_type_ctor_checked_defn(CheckedDefn0, CheckedDefn,
         CheckedDefn0 = checked_defn_std(StdDefn0, SrcDefns0),
         (
             StdDefn0 = std_mer_type_eqv(EqvStatus, EqvDefn0),
+            InInt = std_eqv_status_section(EqvStatus),
             module_qualify_item_type_defn(qualify_type_defn_eqv,
-                mq_not_used_in_interface, EqvDefn0, EqvDefn,
-                !Info, !.Specs, _),
+                InInt, EqvDefn0, EqvDefn, !Info, !Specs),
             StdDefn = std_mer_type_eqv(EqvStatus, EqvDefn)
         ;
             StdDefn0 = std_mer_type_subtype(SubStatus, SubDefn0),
+            InInt = std_sub_status_section(SubStatus),
             module_qualify_item_type_defn(qualify_type_defn_sub,
-                mq_not_used_in_interface, SubDefn0, SubDefn,
-                !Info, !.Specs, _),
+                InInt, SubDefn0, SubDefn, !Info, !Specs),
             StdDefn = std_mer_type_subtype(SubStatus, SubDefn)
         ;
             StdDefn0 = std_mer_type_du_all_plain_constants(DuStatus, DuDefn0,
                 HeadCtor, TailCtors, CJCsDefnOrEnum),
+            InInt = std_du_status_section(DuStatus),
             module_qualify_item_type_defn(qualify_type_defn_du,
-                mq_not_used_in_interface, DuDefn0, DuDefn,
-                !Info, !.Specs, _),
+                InInt, DuDefn0, DuDefn, !Info, !Specs),
             % Foreign types and foreign enums need no qualification.
             StdDefn = std_mer_type_du_all_plain_constants(DuStatus, DuDefn,
                 HeadCtor, TailCtors, CJCsDefnOrEnum)
         ;
             StdDefn0 = std_mer_type_du_not_all_plain_constants(DuStatus,
                 DuDefn0, CJCsDefnOrEnum),
+            InInt = std_du_status_section(DuStatus),
             module_qualify_item_type_defn(qualify_type_defn_du,
-                mq_not_used_in_interface, DuDefn0, DuDefn,
-                !Info, !.Specs, _),
+                InInt, DuDefn0, DuDefn, !Info, !Specs),
             % Foreign types and foreign enums need no qualification.
             StdDefn = std_mer_type_du_not_all_plain_constants(DuStatus,
                 DuDefn, CJCsDefnOrEnum)
@@ -320,8 +321,9 @@ module_qualify_inst_ctor_checked_defn(CheckedDefn0, CheckedDefn,
     StdInstDefn0 = std_inst_defn(Status, MaybeAbstractDefn0),
     % Because of the inst_for_type_constructor field,
     % even abstract inst definitions need qualifying.
-    module_qualify_item_inst_defn(qualify_inst_defn, mq_not_used_in_interface,
-        MaybeAbstractDefn0, MaybeAbstractDefn, !Info, !.Specs, _),
+    InInt = std_inst_status_section(Status),
+    module_qualify_item_inst_defn(qualify_inst_defn, InInt,
+        MaybeAbstractDefn0, MaybeAbstractDefn, !Info, !Specs),
     StdInstDefn = std_inst_defn(Status, MaybeAbstractDefn),
     SrcDefns0 = src_defns_inst(MaybeIntDefn0, MaybeImpDefn0),
     QualifyPred = module_qualify_item_inst_defn(qualify_inst_defn),
@@ -343,8 +345,9 @@ module_qualify_mode_ctor_checked_defn(CheckedDefn0, CheckedDefn,
     StdModeDefn0 = std_mode_defn(Status, MaybeAbstractDefn0),
     % Abstract mode definitions don't need qualifying NOW, but will
     % in the future when we add a new mode_for_type_constructor field.
-    module_qualify_item_mode_defn(qualify_mode_defn, mq_not_used_in_interface,
-        MaybeAbstractDefn0, MaybeAbstractDefn, !Info, !.Specs, _),
+    InInt = std_mode_status_section(Status),
+    module_qualify_item_mode_defn(qualify_mode_defn, InInt,
+        MaybeAbstractDefn0, MaybeAbstractDefn, !Info, !Specs),
     StdModeDefn = std_mode_defn(Status, MaybeAbstractDefn),
     SrcDefns0 = src_defns_mode(MaybeIntDefn0, MaybeImpDefn0),
     QualifyPred = module_qualify_item_mode_defn(qualify_mode_defn),
@@ -372,6 +375,42 @@ maybe_qualify_defn(QualifyPred, InInt, MaybeDefn0, MaybeDefn, !Info, !Specs) :-
         QualifyPred(InInt, Defn0, Defn, !Info, !Specs),
         MaybeDefn = yes(Defn)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- func std_eqv_status_section(std_eqv_type_status) = mq_in_interface.
+
+std_eqv_status_section(std_eqv_type_mer_exported) = mq_used_in_interface.
+std_eqv_status_section(std_eqv_type_abstract_exported) =
+    mq_not_used_in_interface.
+std_eqv_status_section(std_eqv_type_all_private) = mq_not_used_in_interface.
+
+:- func std_du_status_section(std_du_type_status) = mq_in_interface.
+
+std_du_status_section(std_du_type_mer_ft_exported) = mq_used_in_interface.
+std_du_status_section(std_du_type_mer_exported) = mq_used_in_interface.
+std_du_status_section(std_du_type_abstract_exported) =
+    mq_not_used_in_interface.
+std_du_status_section(std_du_type_all_private) = mq_not_used_in_interface.
+
+:- func std_sub_status_section(std_subtype_status) = mq_in_interface.
+
+std_sub_status_section(std_sub_type_mer_exported) = mq_used_in_interface.
+std_sub_status_section(std_sub_type_abstract_exported) =
+    mq_not_used_in_interface.
+std_sub_status_section(std_sub_type_all_private) = mq_not_used_in_interface.
+
+:- func std_inst_status_section(std_inst_status) = mq_in_interface.
+
+std_inst_status_section(std_inst_exported) = mq_used_in_interface.
+std_inst_status_section(std_inst_abstract_exported) = mq_not_used_in_interface.
+std_inst_status_section(std_inst_all_private) = mq_not_used_in_interface.
+
+:- func std_mode_status_section(std_mode_status) = mq_in_interface.
+
+std_mode_status_section(std_mode_exported) = mq_used_in_interface.
+std_mode_status_section(std_mode_abstract_exported) = mq_not_used_in_interface.
+std_mode_status_section(std_mode_all_private) = mq_not_used_in_interface.
 
 %---------------------------------------------------------------------------%
 
