@@ -276,6 +276,14 @@ Changes to the extras distribution
 
 * We have deleted the `old_term_parser` library.
 
+NEWS for Mercury 22.01.1
+========================
+
+This is a bug-fix release.
+
+* [Mantis bug #557]. We have fixed a bug in module qualification that was
+  causing the compiler to fail without printing an error message.
+
 NEWS for Mercury 22.01
 ======================
 
