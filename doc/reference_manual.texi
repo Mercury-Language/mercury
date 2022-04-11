@@ -5979,7 +5979,7 @@ See the Mercury Library Reference Manual for a list of the available modules,
 and for the documentation of each module.
 
 @node An example module
-@section An example module.
+@section An example module
 
 For illustrative purposes,
 here is the definition of a simple module for managing queues:
