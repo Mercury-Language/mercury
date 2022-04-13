@@ -184,7 +184,7 @@ Changes to the Mercury standard library
 
 ### New `io.call_system` module
 
-This new module has these predicates and functions:
+* This new module has these predicates and functions:
 
     - pred `call_system/4`
     - pred `call_system_return_signal/4`
@@ -192,7 +192,7 @@ This new module has these predicates and functions:
 
 ### New `io.environment` module
 
-This new module has these predicates:
+* This new module has these predicates:
 
     - pred `get_environment_var/4`
     - pred `set_environment_var/5`
@@ -202,7 +202,7 @@ This new module has these predicates:
 
 ### New `io.file` module
 
-This new module has these predicates:
+* This new module has these predicates:
 
     - pred `remove_file/4`
     - pred `remove_file_recursively/4`
@@ -239,9 +239,9 @@ This new module has these predicates:
 
 ### Changes to the `random` module
 
-The old random number generator has been removed. It has been replaced by the
-new type class random number generation framework defined in this module.
-As a result, the following predicates have been removed:
+* The old random number generator has been removed. It has been replaced by the
+  new type class random number generation framework defined in this module.
+  As a result, the following predicates have been removed:
 
    - pred `init/2`
    - pred `random/3`
@@ -337,7 +337,7 @@ As a result, the following predicates have been removed:
 
 ### Changes to the `version_hash_table` module
 
-The following obsolete predicates have been removed:
+* The following obsolete predicates have been removed:
 
     - pred `char_hash/2`
     - pred `float_hash/2`
