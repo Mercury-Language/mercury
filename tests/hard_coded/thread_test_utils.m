@@ -126,12 +126,12 @@ write_all_thread_output(AllOutput, !IO) :-
 
 get_all_messages(AllOutput, OpenThreads, !Messages, !IO) :-
     AllOutput = all_threads_output(Chan),
-    ( empty(OpenThreads) ->
+    ( is_empty(OpenThreads) ->
         % If this might be the end of the messages then we only try and
         % take, so we know if we should exit.
         try_take(Chan, MaybeMessage, !IO)
     ;
-        % OTOH, if there may be threads that havn't finished sending our
+        % OTOH, if there may be threads that have not finished sending our
         % messages, then we use a blocking take to ensure that we don't miss
         % their messages.
         take(Chan, Message0, !IO),
