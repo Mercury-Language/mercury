@@ -183,54 +183,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % A call to the function `promise_only_solution(Pred)' constitutes a
-    % promise on the part of the caller that Pred has at most one
-    % solution, i.e. that `not some [X1, X2] (Pred(X1), Pred(X2), X1 \=
-    % X2)'. `promise_only_solution(Pred)' presumes that this assumption is
-    % satisfied, and returns the X for which Pred(X) is true, if there is
-    % one.
-    %
-    % You can use `promise_only_solution' as a way of introducing
-    % `cc_multi' or `cc_nondet' code inside a `det' or `semidet' procedure.
-    %
-    % Note that misuse of this function may lead to unsound results: if the
-    % assumption is not satisfied, the behaviour is undefined. (If you lie
-    % to the compiler, the compiler will get its revenge!)
-    %
-    % NOTE: This function is deprecated and will be removed in a future
-    % release. Use a `promise_equivalent_solutions' goal instead.
-    %
-:- pragma obsolete(func(promise_only_solution/1)).
-:- func promise_only_solution(pred(T)) = T.
-:- mode promise_only_solution(pred(out) is cc_multi) = out is det.
-:- mode promise_only_solution(pred(uo) is cc_multi) = uo is det.
-:- mode promise_only_solution(pred(out) is cc_nondet) = out is semidet.
-:- mode promise_only_solution(pred(uo) is cc_nondet) = uo is semidet.
-
-    % `promise_only_solution_io' is like `promise_only_solution', but for
-    % procedures with unique modes (e.g. those that do IO).
-    %
-    % A call to `promise_only_solution_io(P, X, IO0, IO)' constitutes a
-    % promise on the part of the caller that for the given IO0, there is
-    % only one value of X and IO for which `P(X, IO0, IO)' is true.
-    % `promise_only_solution_io(P, X, IO0, IO)' presumes that this
-    % assumption is satisfied, and returns the X and IO for which
-    % `P(X, IO0, IO)' is true.
-    %
-    % Note that misuse of this predicate may lead to unsound results: if
-    % the assumption is not satisfied, the behaviour is undefined. (If you
-    % lie to the compiler, the compiler will get its revenge!)
-    %
-    % NOTE: This predicate is deprecated and will be removed in a future
-    % release. Use a `promise_equivalent_solutions' goal instead.
-    %
-:- pragma obsolete(pred(promise_only_solution_io/4)).
-:- pred promise_only_solution_io(
-    pred(T, IO, IO)::in(pred(out, di, uo) is cc_multi), T::out,
-    IO::di, IO::uo) is det.
-
-%---------------------------------------------------------------------------%
-
     % unify(X, Y) is true iff X = Y.
     %
 :- pred unify(T::in, T::in) is semidet.
@@ -433,22 +385,6 @@
 :- pred compare_representation(comparison_result, T, T).
 :- mode compare_representation(uo, in, in) is cc_multi.
 
-    % `get_one_solution' and `get_one_solution_io' are impure alternatives
-    % to `promise_one_solution' and `promise_one_solution_io', respectively.
-    % They get a solution to the procedure, without requiring any promise
-    % that there is only one solution. However, they can only be used in
-    % impure code.
-    %
-:- pragma obsolete(func(get_one_solution/1)).
-:- impure func get_one_solution(pred(T)) = T.
-:-        mode get_one_solution(pred(out) is cc_multi) = out is det.
-:-        mode get_one_solution(pred(out) is cc_nondet) = out is semidet.
-
-:- pragma obsolete(pred(get_one_solution_io/4)).
-:- impure pred get_one_solution_io(pred(T, IO, IO), T, IO, IO).
-:-        mode get_one_solution_io(pred(out, di, uo) is cc_multi,
-        out, di, uo) is det.
-
     % Set up Mercury runtime to call special predicates implemented in this
     % module.
     %
@@ -468,26 +404,6 @@
 
 false :-
     fail.
-
-%---------------------------------------------------------------------------%
-
-    % XXX The calls to unsafe_promise_unique below work around
-    % mode checker limitations.
-:- pragma promise_pure(func(promise_only_solution/1)).
-promise_only_solution(CCPred::(pred(out) is cc_multi)) = (OutVal::out) :-
-    impure OutVal = get_one_solution(CCPred).
-promise_only_solution(CCPred::(pred(uo) is cc_multi)) = (OutVal::uo) :-
-    impure OutVal0 = get_one_solution(CCPred),
-    OutVal = unsafe_promise_unique(OutVal0).
-promise_only_solution(CCPred::(pred(out) is cc_nondet)) = (OutVal::out) :-
-    impure OutVal = get_one_solution(CCPred).
-promise_only_solution(CCPred::(pred(uo) is cc_nondet)) = (OutVal::uo) :-
-    impure OutVal0 = get_one_solution(CCPred),
-    OutVal = unsafe_promise_unique(OutVal0).
-
-:- pragma promise_pure(pred(promise_only_solution_io/4)).
-promise_only_solution_io(Pred, X, !IO) :-
-    impure get_one_solution_io(Pred, X, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1292,20 +1208,6 @@ dynamic_cast(X, Y) :-
 "
     Y = X;
 ").
-
-%---------------------------------------------------------------------------%
-
-get_one_solution(CCPred) = OutVal :-
-    promise_equivalent_solutions [OutVal] (
-        CCPred(OutVal),
-        impure impure_true
-    ).
-
-get_one_solution_io(Pred, X, !IO) :-
-    promise_equivalent_solutions [!:IO, X] (
-        Pred(X, !IO),
-        impure impure_true
-    ).
 
 %---------------------------------------------------------------------------%
 

@@ -43,14 +43,11 @@ main(!IO) :-
 :- pred compare_foo(comparison_result::uo, foo::in, foo::in) is det.
 
 compare_foo(Res, Foo1, Foo2) :-
-    Res1 = promise_only_solution(
-        (pred(Res0::uo) is cc_multi :-
-                Foo1 = foo(Int1),
-                Foo2 = foo(Int2),
-                compare(Res0, Int2, Int1)
-        )
-    ),
-    Res = Res1.
+    promise_equivalent_solutions [Res] (
+        Foo1 = foo(Int1),
+        Foo2 = foo(Int2),
+        compare(Res, Int2, Int1)
+    ).
 
 :- type foreign.
 :- pragma foreign_type(c, foreign, "int") where

@@ -59,7 +59,9 @@ q(MaybeExcp, Solutions) :-
 r(Sols) :-
     % This is a lie, but is the only way I seem to be able to call try_all
     % in a failing context.
-    Sols = promise_only_solution(t),
+    promise_equivalent_solutions [Sols] (
+        t(Sols)
+    ),
     semidet_fail.
 
 :- pred s(int::out) is multi.

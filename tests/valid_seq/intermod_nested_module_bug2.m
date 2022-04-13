@@ -21,7 +21,9 @@
 :- implementation.
 
 get_request(Res, !IO) :-
-    Res = promise_only_solution(get_request0).
+    promise_equivalent_solutions [Res] (
+        get_request0(Res)
+    ).
 
 :- pred get_request0(maybe_error(cgi)::out) is cc_multi.
 

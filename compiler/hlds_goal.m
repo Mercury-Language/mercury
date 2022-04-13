@@ -465,11 +465,6 @@
             % context, and the determinism of the scope() goal itself
             % will indicate that it cannot succeed more than once.
             %
-            % This acts like the builtin.promise_only_solution predicate,
-            % but without requiring the construction of a closure, a
-            % higher order call, and the squeezing of all outputs into
-            % a single variable.
-            %
             % The promise is valid only if the list of outputs of the goal
             % inside the scope is a subset of the variables listed here.
             % If it is not valid, the compiler must emit an error message.

@@ -3,11 +3,8 @@ untrust 0
 context none
 echo on
 trust trust_1.
-*
 trusted
 untrust 1
-trusted
-untrust 2
 trusted
 trust trust_2
 trust trust.
@@ -15,25 +12,24 @@ trust trust.
 trusted
 trust trust_2
 trusted
-untrust 3
+untrust 2
 trust trust_1
 trust no_such_module
 trust trust_2.
 trust std lib
 trust standard library
 trusted
-untrust 4
+untrust 3
 trusted
-untrust 4
+untrust 3
 untrust 99
+untrust 4
 untrust 5
-untrust 6
 step
 finish
 dd -d 3 -n 7
 n
 trust
-trust module
 trust module
 y
 continue

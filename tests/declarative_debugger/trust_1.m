@@ -17,14 +17,9 @@
 :- implementation.
 
 w_cmp(R, W1, W2) :-
-    R = unsafe_promise_unique(
-        promise_only_solution(
-            ( pred(R1::out) is cc_multi :-
-                W1 = w(S1),
-                W2 = w(S2),
-                compare(R1, to_upper(S1)`with_type`string,
-                    to_upper(S2))
-            )
-        )
-    ).
-
+    promise_equivalent_solutions [R1] (
+        W1 = w(S1),
+        W2 = w(S2),
+        compare(R1, to_upper(S1) : string, to_upper(S2))
+    ),
+    R = unsafe_promise_unique(R1).

@@ -151,7 +151,10 @@ quit_key(27).   % escape
 
 :- pred direction_key(int::in, direction::out) is semidet.
 
-direction_key(Key, promise_only_solution(direction_key_2(Key))).
+direction_key(Key, Direction) :-
+    promise_equivalent_solutions [Direction] (
+        direction_key_2(Key, Direction)
+    ).
 
 :- pred direction_key_2(int::in, direction::out) is cc_nondet.
 

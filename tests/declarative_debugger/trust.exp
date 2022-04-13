@@ -3,22 +3,11 @@ mdb> mdb> mdb> Contexts will not be printed.
 mdb> echo on
 Command echo enabled.
 mdb> trust trust_1.
-Ambiguous predicate or function specification. The matches are:
-0: pred trust_1.w_cmp/3
-1: pred trust_1.lambda_trust_1_m_21/3
-
-Which predicate or function do you want to trust (0-1 or *)? *
 Trusting pred trust_1.w_cmp/3
-Trusting pred trust_1.lambda_trust_1_m_21/3
 mdb> trusted
 Trusted Objects:
 1: predicate trust_1.w_cmp/3
-2: predicate trust_1.lambda_trust_1_m_21/3
 mdb> untrust 1
-mdb> trusted
-Trusted Objects:
-2: predicate trust_1.lambda_trust_1_m_21/3
-mdb> untrust 2
 mdb> trusted
 There are no trusted modules, predicates or functions.
 mdb> trust trust_2
@@ -32,15 +21,15 @@ Which predicate or function do you want to trust (0-1 or *)? 0
 Trusting pred trust.main/2
 mdb> trusted
 Trusted Objects:
-3: module trust_2
-4: predicate trust.main/2
+2: module trust_2
+3: predicate trust.main/2
 mdb> trust trust_2
 Trusting module trust_2
 mdb> trusted
 Trusted Objects:
-3: module trust_2
-4: predicate trust.main/2
-mdb> untrust 3
+2: module trust_2
+3: predicate trust.main/2
+mdb> untrust 2
 mdb> trust trust_1
 Trusting module trust_1
 mdb> trust no_such_module
@@ -53,22 +42,22 @@ mdb> trust standard library
 Trusting the Mercury standard library
 mdb> trusted
 Trusted Objects:
-4: predicate trust.main/2
-5: module trust_1
-6: predicate trust_2.concat/3
-7: the Mercury standard library
-mdb> untrust 4
+3: predicate trust.main/2
+4: module trust_1
+5: predicate trust_2.concat/3
+6: the Mercury standard library
+mdb> untrust 3
 mdb> trusted
 Trusted Objects:
-5: module trust_1
-6: predicate trust_2.concat/3
-7: the Mercury standard library
-mdb> untrust 4
+4: module trust_1
+5: predicate trust_2.concat/3
+6: the Mercury standard library
+mdb> untrust 3
 mdb: no such trusted object
 mdb> untrust 99
 mdb: no such trusted object
+mdb> untrust 4
 mdb> untrust 5
-mdb> untrust 6
 mdb> step
       E2:     C2 CALL pred trust.dostuff/2-0 (cc_multi)
 mdb> finish
@@ -79,8 +68,6 @@ Valid? n
 w_cmp('=', w("aaB"), w("aAB"))
 Valid? trust
 concat(w("aaa"), w("bbb"), w("aaabbb"))
-Valid? trust module
-lambda_trust_1_m_21(w("aaB"), w("aAB"), '=')
 Valid? trust module
 Found incorrect contour:
 w_cmp('=', w("aaB"), w("aAB"))

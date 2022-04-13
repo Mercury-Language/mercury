@@ -52,12 +52,10 @@ set(List) = set_rep(List).
 
 set_to_list(set_rep(List), List).
 
-set_to_sorted_list(Set) =
-    promise_only_solution(
-        ( pred(Sorted::out) is cc_multi :-
-            Set = set_rep(Unsorted),
-            list.sort(Unsorted, Sorted)
-        )
+set_to_sorted_list(Set) = Sorted :-
+    promise_equivalent_solutions [Sorted] (
+        Set = set_rep(Unsorted),
+        list.sort(Unsorted, Sorted)
     ).
 
 {} = set_rep([]).
@@ -65,21 +63,18 @@ set_to_sorted_list(Set) =
 {X} = set_rep([X]).
 
 is_empty(Set) :-
-    promise_only_solution(
-        ( pred(Empty::out) is cc_multi :-
-            Set = set_rep(List),
-            Empty = (if List = [] then yes else no)
-        )
-    ) = yes.
+    promise_equivalent_solutions [Empty] (
+        Set = set_rep(List),
+        Empty = (if List = [] then yes else no)
+    ),
+    Empty = yes.
 
-Set1 + Set2 =
-    promise_only_solution(
-        ( pred(Union::out) is cc_multi :-
-            Set1 = set_rep(List1),
-            Set2 = set_rep(List2),
-            list.append(List1, List2, UnionList),
-            Union = set_rep(UnionList)
-        )
+Set1 + Set2 = Union :-
+    promise_equivalent_solutions [Union] (
+        Set1 = set_rep(List1),
+        Set2 = set_rep(List2),
+        list.append(List1, List2, UnionList),
+        Union = set_rep(UnionList)
     ).
 
 % [Element | set_rep(Rest)] = set_rep([Element | Rest]).
