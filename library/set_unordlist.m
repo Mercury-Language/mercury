@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-1997,1999-2002, 2004-2006, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2019, 2021-2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -51,19 +51,13 @@
 % Emptiness and singleton-ness tests.
 %
 
-    % empty(Set) is true iff Set is an empty set.
-    % `is_empty' is a synonym of `empty'.
+    % is_empty(Set) is true iff Set is an empty set.
     %
-:- pred empty(set_unordlist(_T)::in) is semidet.
 :- pred is_empty(set_unordlist(_T)::in) is semidet.
-:- pragma obsolete(pred(empty/1), [is_empty/1]).
 
-    % non_empty(Set) is true iff Set is not an empty set.
-    % `is_non_empty' is a synonym of `non_empty'.
+    % is_non_empty(Set) is true iff Set is not an empty set.
     %
-:- pred non_empty(set_unordlist(_T)::in) is semidet.
 :- pred is_non_empty(set_unordlist(_T)::in) is semidet.
-:- pragma obsolete(pred(non_empty/1), [is_non_empty/1]).
 
 :- pred is_singleton(set_unordlist(T)::in, T::out) is semidet.
 
@@ -456,10 +450,8 @@ make_singleton_set(T) = S :-
 
 %---------------------------------------------------------------------------%
 
-empty(sul([])).
 is_empty(sul([])).
 
-non_empty(sul([_ | _])).
 is_non_empty(sul([_ | _])).
 
 is_singleton(sul(Xs), X) :-

@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -49,19 +49,13 @@
 % Emptiness and singleton-ness tests.
 %
 
-    % empty(Set) is true iff Set is an empty set.
-    % `is_empty' is a synonym for `empty'.
+    % is_empty(Set) is true iff Set is an empty set.
     %
-:- pred empty(set_tree234(_T)::in) is semidet.
 :- pred is_empty(set_tree234(_T)::in) is semidet.
-:- pragma obsolete(pred(empty/1), [is_empty/1]).
 
-    % non_empty(Set) is true iff Set is not an empty set.
-    % `is_non_empty' is a synonym for `non_empty'.
+    % is_non_empty(Set) is true iff Set is not an empty set.
     %
-:- pred non_empty(set_tree234(T)::in) is semidet.
 :- pred is_non_empty(set_tree234(T)::in) is semidet.
-:- pragma obsolete(pred(non_empty/1), [is_non_empty/1]).
 
 :- pred is_singleton(set_tree234(T)::in, T::out) is semidet.
 
@@ -654,13 +648,7 @@ make_singleton_set(X) = two(X, empty, empty).
 
 %---------------------------------------------------------------------------%
 
-empty(empty).
-
 is_empty(empty).
-
-non_empty(two(_, _, _)).
-non_empty(three(_, _, _, _, _)).
-non_empty(four(_, _, _, _, _, _, _)).
 
 is_non_empty(two(_, _, _)).
 is_non_empty(three(_, _, _, _, _)).

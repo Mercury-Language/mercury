@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2007, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -77,11 +77,6 @@
 %
 % Emptiness and singleton-ness tests.
 %
-
-:- pred empty(sparse_bitset(T)).
-:- mode empty(in) is semidet.
-:- mode empty(out) is det.
-:- pragma obsolete(pred(empty/1), [init/0, is_empty/1]).
 
 :- pred is_empty(sparse_bitset(T)::in) is semidet.
 
@@ -540,8 +535,6 @@ singleton_set(make_singleton_set(A), A).
 make_singleton_set(A) = insert(init, A).
 
 %---------------------------------------------------------------------------%
-
-empty(sparse_bitset([])).
 
 is_empty(sparse_bitset([])).
 

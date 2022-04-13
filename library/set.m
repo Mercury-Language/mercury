@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1997, 1999-2012 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018 The Mercury team.
+% Copyright (C) 2014-2016, 2018-2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -51,19 +51,13 @@
 % Emptiness and singleton-ness tests.
 %
 
-    % empty(Set) is true iff Set is an empty set.
-    % `is_empty' is a synonym for `empty'.
+    % is_empty(Set) is true iff Set is an empty set.
     %
-:- pred empty(set(T)::in) is semidet.
 :- pred is_empty(set(T)::in) is semidet.
-:- pragma obsolete(pred(empty/1), [is_empty/1]).
 
-    % non_empty(Set) is true iff Set is not an empty set.
-    % `is_non_empty' is a synonym for `non_empty'.
+    % is_non_empty(Set) is true iff Set is not an empty set.
     %
-:- pred non_empty(set(T)::in) is semidet.
 :- pred is_non_empty(set(T)::in) is semidet.
-:- pragma obsolete(pred(non_empty/1), [is_non_empty/1]).
 
 :- pred is_singleton(set(T)::in, T::out) is semidet.
 
@@ -268,8 +262,6 @@
     % Synonyms for list_to_set/1.
     %
 :- func from_list(list(T)) = set(T).
-:- func set(list(T)) = set(T).
-:- pragma obsolete(func(set/1), [list_to_set/1]).
 
     % sorted_list_to_set(List, Set) is true iff Set is the set
     % containing only the members of List. List must be sorted
@@ -623,14 +615,8 @@ make_singleton_set(T) = S :-
 
 %---------------------------------------------------------------------------%
 
-empty(Set) :-
-    set_ordlist.is_empty(Set).
-
 is_empty(Set) :-
     set_ordlist.is_empty(Set).
-
-non_empty(Set) :-
-    set_ordlist.is_non_empty(Set).
 
 is_non_empty(Set) :-
     set_ordlist.is_non_empty(Set).
@@ -773,8 +759,6 @@ list_to_set(List, Set) :-
     set_ordlist.list_to_set(List, Set).
 
 from_list(List) = set_ordlist.from_list(List).
-
-set(List) = set_ordlist.from_list(List).
 
 sorted_list_to_set(List) = Set :-
     set.sorted_list_to_set(List, Set).

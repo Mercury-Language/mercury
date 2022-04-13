@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2018, 2021-2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -64,11 +64,6 @@
 %
 % Emptiness and singleton-ness tests.
 %
-
-:- pred empty(tree_bitset(T)).
-:- mode empty(in) is semidet.
-:- mode empty(out) is det.
-:- pragma obsolete(pred(empty/1), [init/0, is_empty/1]).
 
 :- pred is_empty(tree_bitset(T)::in) is semidet.
 
@@ -967,8 +962,6 @@ init = wrap_tree_bitset(leaf_list([])).
 make_singleton_set(A) = insert(init, A).
 
 %---------------------------------------------------------------------------%
-
-empty(init).
 
 is_empty(init).
 

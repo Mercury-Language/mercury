@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2012-2014 YesLogic Pty. Ltd.
-% Copyright (C) 2014-2015, 2017-2018 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2018, 2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -69,11 +69,6 @@
 %
 % Emptiness and singleton-ness tests.
 %
-
-:- pred empty(diet(T)).
-:- mode empty(in) is semidet.
-:- mode empty(out) is det.
-:- pragma obsolete(pred(empty/1), [init/0, init/1, is_empty/1]).
 
 :- pred is_empty(diet(T)::in) is semidet.
 
@@ -754,8 +749,6 @@ make_interval_set(X, Y) = T :-
     ).
 
 %---------------------------------------------------------------------------%
-
-empty(empty).
 
 is_empty(empty).
 

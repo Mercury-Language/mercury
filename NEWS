@@ -62,6 +62,18 @@ Changes to the Mercury standard library
     - func `promise_only_solution/1`
     - pred `promise_only_solution_io/4`
 
+### Changes to the `diet` module
+
+* The following obsolete predicate has been removed:
+
+   - pred `empty/1`
+
+### Changes to the `fat_sparse_bitset` module
+
+* The following obsolete predicate has been removed:
+
+   - pred `empty/1`
+
 ### Changes to the `hash_table` module
 
 * The following obsolete predicates have been removed:
@@ -238,6 +250,61 @@ As a result, the following predicates have been removed:
    - pred `randcount/3`
    - pred `permutation/4`
             (replacement: `random.shuffle_list/4` or `random.shuffle_list/5`)
+
+### Changes to the `set` module
+
+* The following obsolete predicates and function have been removed:
+
+   - pred `empty/1`
+   - pred `non_empty/1` 
+   - func `set/1`
+
+### Changes to the `set_bbbtree` module
+
+* The following obsolete predicates have been removed:
+
+   - pred `empty/1`
+   - pred `non_empty/1`
+
+### Changes to the `set_ctree234` module
+
+* The following obsolete predicates have been removed:
+
+   - pred `empty/1`
+   - pred `non_empty/1`
+
+### Changes to the `set_ordlist` module
+
+* The following obsolete predicates have been removed:
+
+   - pred `empty/1`
+   - pred `non_empty/1`
+
+### Changes to the `set_tree234` module
+
+* The following obsolete predicates have been removed:
+
+   - pred `empty/1`
+   - pred `non_empty/1`
+
+### Changes to the `set_unordlist` module
+
+* The following obsolete predicates have been removed:
+
+   - pred `empty/1`
+   - pred `non_empty/1`
+
+### Changes to the `sparse_bitset` module
+
+* The following obsolete predicates has been removed:
+
+   - pred `empty/1`
+
+### Changes to the `tree_bitset` module
+
+* The following obsolete predicates has been removed:
+
+   - pred `empty/1`
 
 ### Changes to the `string` module
 
