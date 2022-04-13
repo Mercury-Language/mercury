@@ -19,9 +19,9 @@
 % character as the string terminator. A single code point requires one to four
 % bytes (code units) to encode.
 %
-% When Mercury is compiled to Java, strings are represented using the
-% Java String type. When Mercury is compiler to C#, strings are represented
-% using C# `System.String' type. Both of these types use the UTF-16 encoding.
+% When Mercury is compiled to Java, strings are represented using Java's
+% String type. When Mercury is compiled to C#, strings are represented using
+% C#'s `System.String' type. Both of these types use the UTF-16 encoding.
 % A single code point requires one or two 16-bit integers (code units)
 % to encode.
 %
@@ -29,13 +29,13 @@
 % constants. However, it is possible to produce strings containing invalid
 % UTF-8 or UTF-16 via I/O, foreign code, and substring operations.
 % Predicates or functions that inspect strings may fail, throw an exception,
-% or else behave in some special way when an ill-formed code unit sequence is
-% encountered.
+% or else behave in some special way when they encounter an ill-formed
+% code unit sequence.
 %
 % Unexpected null characters embedded in the middle of strings can be a source
 % of security vulnerabilities, so the Mercury library predicates and functions
-% which create strings from (lists of) characters throw an exception if a null
-% character is detected. Programmers must not create strings that might
+% which create strings from (lists of) characters throw an exception if they
+% detect such a null character. Programmers must not create strings that might
 % contain null characters using the foreign language interface.
 %
 % The builtin comparison operation on strings is also implementation
@@ -132,9 +132,9 @@
     % Convert the string to a list of characters (code points) in reverse
     % order.
     %
-    % If strings use UTF-8 encoding then each code unit in an ill-formed
+    % If strings use UTF-8 encoding, then each code unit in an ill-formed
     % sequence is replaced by U+FFFD REPLACEMENT CHARACTER in the list.
-    % If strings use UTF-16 encoding then each unpaired surrogate code point
+    % If strings use UTF-16 encoding, then each unpaired surrogate code point
     % is returned as a separate code point in the list.
     %
 :- func to_rev_char_list(string) = list(char).
