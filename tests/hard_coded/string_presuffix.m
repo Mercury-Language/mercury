@@ -42,11 +42,6 @@ main(!IO) :-
         io.write_string("fail\n", !IO)
     ),
 
-    io.write_string("\nprefix(in, out):\n", !IO),
-    solutions(pred(Pre::out) is multi :- string.prefix(Str, Pre), Prefixes),
-    io.write(Prefixes, !IO),
-    io.nl(!IO),
-
     io.write_string("\nsuffix(in, in):\n", !IO),
     ( if
         not string.suffix(Str, "aßξ啕𐀀.z"),
@@ -62,11 +57,6 @@ main(!IO) :-
     else
         io.write_string("fail\n", !IO)
     ),
-
-    io.write_string("\nsuffix(in, out):\n", !IO),
-    solutions(pred(Suf::out) is multi :- string.suffix(Str, Suf), Suffixes),
-    io.write(Suffixes, !IO),
-    io.nl(!IO),
 
     io.write_string("\nremove_prefix:\n", !IO),
     ( if

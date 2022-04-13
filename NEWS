@@ -239,6 +239,16 @@ As a result, the following predicates have been removed:
    - pred `permutation/4`
             (replacement: `random.shuffle_list/4` or `random.shuffle_list/5`)
 
+### Changes to the `string` module
+
+* The following obsolete modes have been removed from the following predicates:
+
+   - pred `to_char_list(uo, in)`
+   - pred `to_rev_char_list(in, out)`
+   - pred `append(out, out, in)`
+   - pred `prefix(in, out)`
+   - pred `suffix(in, out)`
+
 ### Changes to the `term_io` module
 
 * The following predicates have been removed:

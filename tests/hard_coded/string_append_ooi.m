@@ -24,8 +24,7 @@
 main(!IO) :-
     unsorted_solutions(
         ( pred(L - R::out) is multi :-
-            string.append(L, R, "cat")
+            string.nondet_append(L, R, "cat")
         ), UnsortedSolutions),
     list.sort(UnsortedSolutions, Solutions),
-    io.write(Solutions, !IO),
-    io.nl(!IO).
+    io.write_line(Solutions, !IO).

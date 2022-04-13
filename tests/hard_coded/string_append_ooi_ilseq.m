@@ -38,7 +38,7 @@ main(!IO) :-
 :- pred test_append_ooi(string::in, pair(string, string)::out) is multi.
 
 test_append_ooi(S, L - R) :-
-    string.append(L, R, S).
+    string.nondet_append(L, R, S).
 
 :- pred write_result(pair(string, string)::in, io::di, io::uo) is det.
 

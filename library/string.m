@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2020 The Mercury team.
+% Copyright (C) 2013-2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -121,65 +121,32 @@
 
     % Convert the string to a list of characters (code points).
     %
-    % In the forward mode:
-    % If strings use UTF-8 encoding then each code unit in an ill-formed
+    % If strings use UTF-8 encoding, then each code unit in an ill-formed
     % sequence is replaced by U+FFFD REPLACEMENT CHARACTER in the list.
-    % If strings use UTF-16 encoding then each unpaired surrogate code point
+    % If strings use UTF-16 encoding, then each unpaired surrogate code point
     % is returned as a separate code point in the list.
     %
-    % The reverse mode of the predicate throws an exception if the list
-    % contains a null character or code point that cannot be encoded in a
-    % string (namely, surrogate code points cannot be encoded in UTF-8
-    % strings).
-    %
-    % The reverse mode of to_char_list/2 is deprecated because the implied
-    % ability to round trip convert a string to a list then back to the same
-    % string does not hold in the presence of ill-formed code unit sequences.
-    %
-:- pragma obsolete_proc(to_char_list(uo, in), [from_char_list/2]).
 :- func to_char_list(string) = list(char).
-:- pred to_char_list(string, list(char)).
-:- mode to_char_list(in, out) is det.
-:- mode to_char_list(uo, in) is det.
+:- pred to_char_list(string::in, list(char)::out) is det.
 
     % Convert the string to a list of characters (code points) in reverse
     % order.
     %
-    % In the forward mode:
     % If strings use UTF-8 encoding then each code unit in an ill-formed
     % sequence is replaced by U+FFFD REPLACEMENT CHARACTER in the list.
     % If strings use UTF-16 encoding then each unpaired surrogate code point
     % is returned as a separate code point in the list.
     %
-    % The reverse mode of the predicate throws an exception if the list
-    % contains a null character or code point that cannot be encoded in a
-    % string (namely, surrogate code points cannot be encoded in UTF-8
-    % strings).
-    %
-    % The reverse mode of to_rev_char_list/2 is deprecated because the implied
-    % ability to round trip convert a string to a list then back to the same
-    % string does not hold in the presence of ill-formed code unit sequences.
-    %
-:- pragma obsolete_proc(to_rev_char_list(uo, in), [from_rev_char_list/2]).
 :- func to_rev_char_list(string) = list(char).
-:- pred to_rev_char_list(string, list(char)).
-:- mode to_rev_char_list(in, out) is det.
-:- mode to_rev_char_list(uo, in) is det.
+:- pred to_rev_char_list(string::in, list(char)::out) is det.
 
     % Convert a list of characters (code points) to a string.
     % Throws an exception if the list contains a null character or code point
     % that cannot be encoded in a string (namely, surrogate code points cannot
     % be encoded in UTF-8 strings).
     %
-    % The reverse mode of from_char_list/2 is deprecated because the implied
-    % ability to round trip convert a string to a list then back to the same
-    % string does not hold in the presence of ill-formed code unit sequences.
-    %
-:- pragma obsolete_proc(from_char_list(out, in), [to_char_list/2]).
 :- func from_char_list(list(char)::in) = (string::uo) is det.
-:- pred from_char_list(list(char), string).
-:- mode from_char_list(in, uo) is det.
-:- mode from_char_list(out, in) is det.
+:- pred from_char_list(list(char)::in, string::uo) is det.
 
     % As above, but fail instead of throwing an exception if the list contains
     % a null character or code point that cannot be encoded in a string.
@@ -713,17 +680,11 @@
     % ill-formed code unit sequence at the start of S2 to produce a valid
     % encoding of a code point in S3.
     %
-    % The append(out, out, in) mode is deprecated because it does not match
-    % the semantics of the forwards modes in the presence of ill-formed code
-    % unit sequences. Use nondet_append/3 instead.
-    %
-:- pragma obsolete_proc(append(out, out, in), [nondet_append/3]).
 :- pred append(string, string, string).
 :- mode append(in, in, in) is semidet.  % implied
 :- mode append(in, uo, in) is semidet.
 :- mode append(in, in, uo) is det.
 :- mode append(uo, in, in) is semidet.
-:- mode append(out, out, in) is multi.
 
     % nondet_append(S1, S2, S3):
     %
@@ -972,18 +933,14 @@
     % prefix(String, Prefix) is true iff Prefix is a prefix of String.
     % Same as append(Prefix, _, String).
     %
-:- pragma obsolete_proc(prefix(in, out)).
 :- pred prefix(string, string).
 :- mode prefix(in, in) is semidet.
-:- mode prefix(in, out) is multi.
 
     % suffix(String, Suffix) is true iff Suffix is a suffix of String.
     % Same as append(_, Suffix, String).
     %
-:- pragma obsolete_proc(suffix(in, out)).
 :- pred suffix(string, string).
 :- mode suffix(in, in) is semidet.
-:- mode suffix(in, out) is multi.
 
     % remove_prefix(Prefix, String, Suffix):
     %
@@ -1777,16 +1734,7 @@
 to_char_list(S) = Cs :-
     to_char_list(S, Cs).
 
-:- pragma promise_equivalent_clauses(pred(to_char_list/2)).
-
-to_char_list(Str::in, CharList::out) :-
-    do_to_char_list(Str, CharList).
-to_char_list(Str::uo, CharList::in) :-
-    from_char_list(CharList, Str).
-
-:- pred do_to_char_list(string::in, list(char)::out) is det.
-
-do_to_char_list(Str, CharList) :-
+to_char_list(Str, CharList) :-
     do_to_char_list_loop(Str, length(Str), [], CharList).
 
 :- pred do_to_char_list_loop(string::in, int::in,
@@ -1805,16 +1753,7 @@ do_to_char_list_loop(Str, Index0, !CharList) :-
 to_rev_char_list(S) = Cs :-
     to_rev_char_list(S, Cs).
 
-:- pragma promise_equivalent_clauses(pred(to_rev_char_list/2)).
-
-to_rev_char_list(Str::in, CharList::out) :-
-    do_to_rev_char_list(Str, CharList).
-to_rev_char_list(Str::uo, CharList::in) :-
-    from_rev_char_list(CharList, Str).
-
-:- pred do_to_rev_char_list(string::in, list(char)::out) is det.
-
-do_to_rev_char_list(Str, RevCharList) :-
+to_rev_char_list(Str, RevCharList) :-
     do_to_rev_char_list_loop(Str, 0, [], RevCharList).
 
 :- pred do_to_rev_char_list_loop(string::in, int::in,
@@ -1837,11 +1776,7 @@ do_to_rev_char_list_loop(Str, Index0, !RevCharList) :-
 from_char_list(Cs) = S :-
     from_char_list(Cs, S).
 
-:- pragma promise_equivalent_clauses(pred(from_char_list/2)).
-
-from_char_list(Chars::out, Str::in) :-
-    to_char_list(Str, Chars).
-from_char_list(Chars::in, Str::uo) :-
+from_char_list(Chars, Str) :-
     ( if semidet_from_char_list(Chars, Str0) then
         Str = Str0
     else
@@ -3637,8 +3572,6 @@ append(S1::in, S2::in, S3::uo) :-
     append_iio(S1, S2, S3).
 append(S1::uo, S2::in, S3::in) :-
     append_oii(S1, S2, S3).
-append(S1::out, S2::out, S3::in) :-
-    nondet_append(S1, S2, S3).
 
 :- pred append_iii(string::in, string::in, string::in) is semidet.
 
@@ -4438,43 +4371,14 @@ split_into_lines_loop(Str, CurPos, !RevLines) :-
 % Dealing with prefixes and suffixes.
 %
 
-:- pragma promise_equivalent_clauses(pred(prefix/2)).
-
-prefix(String::in, Prefix::in) :-
+prefix(String, Prefix) :-
     compare_substrings((=), String, 0, Prefix, 0, length(Prefix)).
-prefix(String::in, Prefix::out) :-
-    prefix_2_ioi(String, Prefix, 0).
 
-:- pred prefix_2_ioi(string::in, string::out, int::in) is multi.
-
-prefix_2_ioi(String, Prefix, Cur) :-
-    (
-        Prefix = unsafe_between(String, 0, Cur)
-    ;
-        unsafe_index_next(String, Cur, Next, _),
-        prefix_2_ioi(String, Prefix, Next)
-    ).
-
-:- pragma promise_equivalent_clauses(pred(suffix/2)).
-
-suffix(String::in, Suffix::in) :-
+suffix(String, Suffix) :-
     StringLength = length(String),
     SuffixLength = length(Suffix),
     StringStart = StringLength - SuffixLength,
     compare_substrings((=), String, StringStart, Suffix, 0, SuffixLength).
-suffix(String::in, Suffix::out) :-
-    Len = length(String),
-    suffix_2_ioii(String, Suffix, Len, Len).
-
-:- pred suffix_2_ioii(string::in, string::out, int::in, int::in) is multi.
-
-suffix_2_ioii(String, Suffix, Cur, Len) :-
-    (
-        unsafe_between(String, Cur, Len, Suffix)
-    ;
-        unsafe_prev_index(String, Cur, Prev, _),
-        suffix_2_ioii(String, Suffix, Prev, Len)
-    ).
 
 %---------------------%
 

@@ -1,14 +1,8 @@
 prefix(in, in):
 pass
 
-prefix(in, out):
-["", "a", "aß", "aßξ", "aßξ啕", "aßξ啕𐀀", "aßξ啕𐀀."]
-
 suffix(in, in):
 pass
-
-suffix(in, out):
-["", ".", "aßξ啕𐀀.", "ßξ啕𐀀.", "ξ啕𐀀.", "啕𐀀.", "𐀀."]
 
 remove_prefix:
 pass
