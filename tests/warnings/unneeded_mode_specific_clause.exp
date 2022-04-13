@@ -1,0 +1,3 @@
+unneeded_mode_specific_clause.m:014: Warning: the predicate `test_x'/2 has only
+unneeded_mode_specific_clause.m:014:   one mode, so there is no need to
+unneeded_mode_specific_clause.m:014:   restrict a clause for it to that mode.

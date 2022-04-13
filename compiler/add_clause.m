@@ -55,6 +55,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_code_util.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
@@ -469,7 +470,35 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
                 get_procedure_matching_declmodes_with_renaming(!.ModuleInfo,
                     ExistingProcs, ArgModes, ProcId)
             then
-                ApplProcIds = selected_modes([ProcId])
+                ApplProcIds = selected_modes([ProcId]),
+                (
+                    ExistingProcs = []
+                    % A mode-specific clause for a predicate/function
+                    % that has no modes is a bug (in the usual case where
+                    % mode inference is not turned on), but it is a bug that
+                    % should be reported elsewhere.
+                ;
+                    ExistingProcs = [_],
+                    module_info_get_globals(!.ModuleInfo, Globals),
+                    globals.lookup_bool_option(Globals,
+                        warn_unneeded_mode_specific_clause, Warn),
+                    (
+                        Warn = yes,
+                        PredDescPieces = describe_one_pred_info_name(
+                            should_not_module_qualify, PredInfo),
+                        Pieces = [words("Warning: the")] ++ PredDescPieces ++
+                            [words("has only one mode,"),
+                            words("so there is no need to restrict"),
+                            words("a clause for it to that mode."), nl],
+                        Spec = simplest_spec($pred, severity_warning,
+                            phase_parse_tree_to_hlds, Context, Pieces),
+                        !:Specs = [Spec | !.Specs]
+                    ;
+                        Warn = no
+                    )
+                ;
+                    ExistingProcs = [_, _ | _]
+                )
             else
                 report_undeclared_mode_error(!.ModuleInfo, PredId, PredInfo,
                     VarSet, ArgModes, [words("clause")], Context, !Specs),

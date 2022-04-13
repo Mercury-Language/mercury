@@ -234,6 +234,7 @@
     ;       warn_suspicious_foreign_procs
     ;       warn_suspicious_foreign_code
     ;       warn_state_var_shadowing
+    ;       warn_unneeded_mode_specific_clause
     ;       warn_suspected_occurs_check_failure
     ;       warn_potentially_ambiguous_pragma
     ;       warn_stdlib_shadowing
@@ -1298,6 +1299,7 @@ optdef(oc_warn, warn_unresolved_polymorphism,           bool(yes)).
 optdef(oc_warn, warn_suspicious_foreign_procs,          bool(no)).
 optdef(oc_warn, warn_suspicious_foreign_code,           bool(no)).
 optdef(oc_warn, warn_state_var_shadowing,               bool(yes)).
+optdef(oc_warn, warn_unneeded_mode_specific_clause,     bool(yes)).
 optdef(oc_warn, warn_suspected_occurs_check_failure,    bool(yes)).
 optdef(oc_warn, warn_potentially_ambiguous_pragma,      bool(no)).
 optdef(oc_warn, warn_stdlib_shadowing,                  bool(yes)).
@@ -2195,6 +2197,8 @@ long_option("warn-unresolved-polymorphism", warn_unresolved_polymorphism).
 long_option("warn-suspicious-foreign-procs", warn_suspicious_foreign_procs).
 long_option("warn-suspicious-foreign-code", warn_suspicious_foreign_code).
 long_option("warn-state-var-shadowing", warn_state_var_shadowing).
+long_option("warn-unneeded-mode-specific-clause",
+                                        warn_unneeded_mode_specific_clause).
 long_option("warn-suspected-occurs-failure",
                                         warn_suspected_occurs_check_failure).
 long_option("warn-suspected-occurs-check-failure",
@@ -3983,6 +3987,7 @@ style_warning_options = [
     inform_incomplete_switch,
     warn_suspicious_foreign_procs,
     warn_state_var_shadowing,
+    warn_unneeded_mode_specific_clause,
     inform_suboptimal_packing
 ].
 
@@ -4392,6 +4397,9 @@ options_help_warning(Stream, !IO) :-
         "\tpragmas.",
         "--no-warn-state-var-shadowing",
         "\tDo not warn about one state variable shadowing another.",
+        "--no-warn-unneeded-mode-specific-clause",
+        "\tDo not warn about clauses that neededlessly specify",
+        "\tthe modes of their arguments.",
         "--no-warn-suspected-occurs-check-failure",
         "\tDo not warn about code that looks like it unifies a variable",
         "\twith a term that contains that same variable. Such code cannot",

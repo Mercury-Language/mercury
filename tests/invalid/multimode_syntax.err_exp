@@ -19,6 +19,9 @@ multimode_syntax.m:023: In the head of a clause for
 multimode_syntax.m:023:   function `multimode_syntax.func1'/1:
 multimode_syntax.m:023:   syntax error: some but not all arguments have mode
 multimode_syntax.m:023:   annotations.
+multimode_syntax.m:027: Warning: the function `func2'/2 has only one mode, so
+multimode_syntax.m:027:   there is no need to restrict a clause for it to that
+multimode_syntax.m:027:   mode.
 multimode_syntax.m:029: In clause for function `func2'/2:
 multimode_syntax.m:029:   error: mode annotation specifies undeclared mode
 multimode_syntax.m:029:   `func2(in, out) = out'.

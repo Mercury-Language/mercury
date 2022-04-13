@@ -52,6 +52,7 @@ ERRORCHECK_PROGS = \
 	unify_f_g \
 	unify_x_f_x \
 	unknown_warning \
+	unneeded_mode_specific_clause \
 	unsigned_zero_cmp \
 	unused_args_test \
 	unused_import \

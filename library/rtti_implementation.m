@@ -1351,7 +1351,7 @@ type_info_get_functor_lex(TypeInfo0, Ordinal, FunctorNumber) :-
     SUCCESS_INDICATOR = (Boolean) P.call___0_0(X, Y);
 ").
 
-semidet_call_3(_::in, _::in, _::in) :-
+semidet_call_3(_, _, _) :-
     semidet_unimplemented("semidet_call_3").
 
 %---------------------%
@@ -1374,7 +1374,7 @@ semidet_call_3(_::in, _::in, _::in) :-
     SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, X, Y);
 ").
 
-semidet_call_4(_::in, _::in, _::in, _::in) :-
+semidet_call_4(_, _, _, _) :-
     semidet_unimplemented("semidet_call_4").
 
 %---------------------%
@@ -1397,7 +1397,7 @@ semidet_call_4(_::in, _::in, _::in, _::in) :-
     SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, B, X, Y);
 ").
 
-semidet_call_5(_::in, _::in, _::in, _::in, _::in) :-
+semidet_call_5(_, _, _, _, _) :-
     semidet_unimplemented("semidet_call_5").
 
 %---------------------%
@@ -1421,7 +1421,7 @@ semidet_call_5(_::in, _::in, _::in, _::in, _::in) :-
     SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, B, C, X, Y);
 ").
 
-semidet_call_6(_::in, _::in, _::in, _::in, _::in, _::in) :-
+semidet_call_6(_, _, _, _, _, _) :-
     semidet_unimplemented("semidet_call_6").
 
 %---------------------%
@@ -1447,7 +1447,7 @@ semidet_call_6(_::in, _::in, _::in, _::in, _::in, _::in) :-
     SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, B, C, D, X, Y);
 ").
 
-semidet_call_7(_::in, _::in, _::in, _::in, _::in, _::in, _::in) :-
+semidet_call_7(_, _, _, _, _, _, _) :-
     semidet_unimplemented("semidet_call_7").
 
 %---------------------%
@@ -1474,7 +1474,7 @@ semidet_call_7(_::in, _::in, _::in, _::in, _::in, _::in, _::in) :-
     SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, B, C, D, E, X, Y);
 ").
 
-semidet_call_8(_::in, _::in, _::in, _::in, _::in, _::in, _::in, _::in) :-
+semidet_call_8(_, _, _, _, _, _, _, _) :-
     semidet_unimplemented("semidet_call_8").
 
 %---------------------%
@@ -1500,7 +1500,7 @@ semidet_call_8(_::in, _::in, _::in, _::in, _::in, _::in, _::in, _::in) :-
     Res = (builtin.Comparison_result_0) P.call___0_0(X, Y);
 ").
 
-result_call_4(_::in, (=)::out, _::in, _::in) :-
+result_call_4(_, (=), _, _) :-
     det_unimplemented("result_call_4").
 
 %---------------------%
@@ -1524,7 +1524,7 @@ result_call_4(_::in, (=)::out, _::in, _::in) :-
     Res = (builtin.Comparison_result_0) P.call___0_0(A, X, Y);
 ").
 
-result_call_5(_::in, (=)::out, _::in, _::in, _::in) :-
+result_call_5(_, (=), _, _, _) :-
     det_unimplemented("comparison_result").
 
 %---------------------%
@@ -1548,7 +1548,7 @@ result_call_5(_::in, (=)::out, _::in, _::in, _::in) :-
     Res = (builtin.Comparison_result_0) P.call___0_0(A, B, X, Y);
 ").
 
-result_call_6(_::in, (=)::out, _::in, _::in, _::in, _::in) :-
+result_call_6(_, (=), _, _, _, _) :-
     det_unimplemented("comparison_result").
 
 %---------------------%
@@ -1573,7 +1573,7 @@ result_call_6(_::in, (=)::out, _::in, _::in, _::in, _::in) :-
     Res = (builtin.Comparison_result_0) P.call___0_0(A, B, C, X, Y);
 ").
 
-result_call_7(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in) :-
+result_call_7(_, (=), _, _, _, _, _) :-
     det_unimplemented("comparison_result").
 
 %---------------------%
@@ -1601,7 +1601,7 @@ result_call_7(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in) :-
     Res = (builtin.Comparison_result_0) P.call___0_0(A, B, C, D, X, Y);
 ").
 
-result_call_8(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in, _::in) :-
+result_call_8(_, (=), _, _, _, _, _, _) :-
     det_unimplemented("comparison_result").
 
 %---------------------%
@@ -1629,8 +1629,7 @@ result_call_8(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in, _::in) :-
     Res = (builtin.Comparison_result_0) P.call___0_0(A, B, C, D, E, X, Y);
 ").
 
-result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
-        _::in, _::in) :-
+result_call_9(_, (=), _, _, _, _, _, _, _) :-
     det_unimplemented("result_call_9").
 
 %---------------------------------------------------------------------------%
@@ -4134,7 +4133,7 @@ get_primary_tag(_) = 0u8 :-
     }
 ").
 
-get_remote_secondary_tag(_::in) = (0::out) :-
+get_remote_secondary_tag(_) = 0 :-
     det_unimplemented("get_remote_secondary_tag").
 
 %---------------------------------------------------------------------------%

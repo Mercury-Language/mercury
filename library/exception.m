@@ -691,7 +691,7 @@ exc_univ_value(Univ) = univ.univ_value(Univ).
 % By default, we call the external implementation, but specific backends
 % can provide their own definition using foreign_proc.
 
-throw_impl(Univ::in) :-
+throw_impl(Univ) :-
     builtin_throw(Univ).
 
 :- pragma foreign_proc("C#",

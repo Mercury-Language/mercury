@@ -2006,7 +2006,7 @@ from_rev_char_list(Chars, Str) :-
     Str = new string(arr);
 ").
 
-semidet_from_rev_char_list(Chars::in, Str::uo) :-
+semidet_from_rev_char_list(Chars, Str) :-
     semidet_from_char_list(list.reverse(Chars), Str).
 
 %---------------------%

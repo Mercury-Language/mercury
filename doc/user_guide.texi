@@ -6941,6 +6941,12 @@ some actual errors may not be detected at all.
 Do not warn about one state variable shadowing another.
 
 @sp 1
+@item --no-warn-unneeded-mode-specific-clause
+@findex --no-warn-unneeded-mode-specific-clause
+Do not warn about clauses that neededlessly specify
+the modes of their arguments.
+
+@sp 1
 @item --no-warn-suspected-occurs-check-failure
 @findex --no-warn-suspected-occurs-check-failure
 Do not warn about code that looks like it unifies a variable

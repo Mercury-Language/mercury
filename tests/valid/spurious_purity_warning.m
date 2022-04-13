@@ -11,18 +11,11 @@
 :- implementation.
 :- import_module require.
 
-foo(X::out) :-
+foo(X) :-
     ( if semidet_succeed then
         error("foo/1")
     else
         X = 5
-    ).
-
-bar(_::in) :-
-    ( if semidet_succeed then
-        error("bar/1")
-    else
-        true
     ).
 
 :- pragma foreign_proc("C", foo(X::out),
@@ -30,6 +23,13 @@ bar(_::in) :-
 "
     X = 0;
 ").
+
+bar(_) :-
+    ( if semidet_succeed then
+        error("bar/1")
+    else
+        true
+    ).
 
 :- pragma foreign_proc("C", bar(_X::in),
     [will_not_call_mercury, thread_safe],

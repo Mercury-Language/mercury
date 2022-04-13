@@ -972,7 +972,7 @@ floor_to_multiple_of_bits_per_int(X) = Floor :-
     Div = Int / ML_BITS_PER_INT;
 ").
 
-quot_bits_per_int(Int::in) = (Result::out) :-
+quot_bits_per_int(Int) = Result :-
     Result = Int // bits_per_int.
 
 :- pragma foreign_proc("C",
@@ -983,7 +983,7 @@ quot_bits_per_int(Int::in) = (Result::out) :-
     Result = Int * ML_BITS_PER_INT;
 ").
 
-times_bits_per_int(Int::in) = (Result::out) :-
+times_bits_per_int(Int) = Result :-
     Result = Int * bits_per_int.
 
 :- pragma foreign_proc("C",
@@ -994,7 +994,7 @@ times_bits_per_int(Int::in) = (Result::out) :-
     Rem = Int % ML_BITS_PER_INT;
 ").
 
-rem_bits_per_int(Int::in) = (Result::out) :-
+rem_bits_per_int(Int) = Result :-
     Result = Int rem bits_per_int.
 
 %---------------------------------------------------------------------------%
