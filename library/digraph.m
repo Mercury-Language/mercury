@@ -35,9 +35,10 @@
     %
 :- type digraph(T).
 
-    % The abstract type that indexes vertices in a digraph. Each key is only
-    % valid with the digraph it was created from -- predicates and functions
-    % in this module may throw an exception if an invalid key is used.
+    % The abstract type that indexes vertices in a digraph.
+    % Each key is valid only with the digraph it was created from, and
+    % the predicates and functions in this module may throw an exception
+    % if their caller passes them an invalid key.
     %
 :- type digraph_key(T).
 
@@ -343,10 +344,12 @@
 :- func rtc(digraph(T)) = digraph(T).
 :- pred rtc(digraph(T)::in, digraph(T)::out) is det.
 
-    % traverse(G, ProcessVertex, ProcessEdge) will traverse a digraph
-    % calling ProcessVertex for each vertex in the digraph and ProcessEdge for
-    % each edge in the digraph. Each vertex is processed followed by all the
-    % edges originating at that vertex, until all vertices have been processed.
+    % traverse(G, ProcessVertex, ProcessEdge, !Acc) will traverse the digraph G
+    % - calling ProcessVertex for each vertex in the digraph, and
+    % - calling ProcessEdge for each edge in the digraph.
+    % The processing of each vertex is followed by the processing of
+    % all the edges originating at that vertex, until all vertices
+    % have been processed.
     %
 :- pred traverse(digraph(T), pred(T, A, A), pred(T, T, A, A), A, A).
 :- mode traverse(in, pred(in, di, uo) is det,
