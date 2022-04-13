@@ -4829,9 +4829,9 @@ and if it fails, call the library predicate @samp{error/1}.
 :- mode q(in, out) is det.
 
 q(A, B) :-
-    ( goal_that_should_never_fail(A, B0) ->
+    ( if goal_that_should_never_fail(A, B0) then
         B = B0
-    ;
+    else
         error("goal_that_should_never_fail failed!")
     ).
 @end example
@@ -8365,9 +8365,9 @@ append(S1, S2, S3) :-
 :- pred append_2(int::in, int::in, string::out, string::out, string::in) is multi.
 
 append_2(NextS1Len, S3Len, S1, S2, S3) :-
-    ( NextS1Len = S3Len ->
+    ( if NextS1Len = S3Len then
         append_3(NextS1Len, S3Len, S1, S2, S3)
-    ;
+    else
         (
             append_3(NextS1Len, S3Len, S1, S2, S3)
         ;
@@ -11331,11 +11331,11 @@ time_consuming_task(In, Out) :-
         state(logging_level, !LoggingLevel)
     ] (
         io.write_string("Time_consuming_task start\n", !IO),
-        ( !.LoggingLevel > 1 ->
+        ( if !.LoggingLevel > 1 then
             io.write_string("Input is ", !IO),
             io.write(In, !IO),
             io.nl(!IO)
-        ;
+        else
             true
         )
     ),
