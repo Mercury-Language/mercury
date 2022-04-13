@@ -155,6 +155,11 @@ MCFLAGS-unused_float_box_test =	--infer-all
 MCFLAGS-target_mlobjs	= 	--pre-link-command "mmake target_mlobjs_c.o"
 MLOBJS-target_mlobjs	=	target_mlobjs_c.o
 
+# We can get this warning if the user-provided type-specific compare predicate
+# compare_foo is inlined at some call sites. Since our setup asks the C
+# compiler to treat any warning as an error, we turn off the warning.
+CFLAGS-user_compare = -Wno-tautological-compare
+
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), mode_choice needs to be linked
 # with `--no-strip', otherwise it gets a seg fault. 
