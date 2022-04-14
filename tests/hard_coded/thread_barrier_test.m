@@ -7,7 +7,6 @@
 %---------------------------------------------------------------------------%
 
 :- module thread_barrier_test.
-
 :- interface.
 
 :- import_module io.
@@ -35,8 +34,10 @@
 :- func fib(integer) = integer.
 
 fib(N) = Fib :-
-    ( N < integer(2) -> Fib = integer(1)
-    ; Fib = fib(N-integer(1)) + fib(N-integer(2))
+    ( if N < integer(2) then
+        Fib = integer(1)
+    else
+        Fib = fib(N - integer(1)) + fib(N - integer(2))
     ).
 
 :- pred test_spawn_and_wait(int::in, io::di, io::uo) is cc_multi.
@@ -52,7 +53,7 @@ test_spawn_and_wait(ThreadCount, !IO) :-
             !IO),
         spawn(test_spawn_and_wait_thread(Thread, AllThreadOutput, Barrier),
             !IO)
-    ), 1 `..` ThreadCount, !IO),
+    ), 1 .. ThreadCount, !IO),
     barrier.wait(Barrier, !IO),
     t_write_string(Output, "-- test finished", !IO),
     close_thread_output(Output, !IO),
@@ -97,7 +98,7 @@ test_release(AbortAt, ThreadCount, !IO) :-
             release_thread(AllThreadOutput, Thread, AbortAt, Barrier,
                 StateMvar),
             !IO)
-    ), 1 `..` ThreadCount, !IO),
+    ), 1 .. ThreadCount, !IO),
     % There is no guarantee that we will reach this point before the AbortAt
     % thread releases the barrier, so don't log the state as expected.
     t_write_string(Output, "waiting", !IO),
@@ -116,13 +117,13 @@ release_thread(AllOutput, Thread, AbortAt, Barrier, StateMvar, !IO) :-
     N = 5 + Thread * 5,
     t_write_string(Output, format("fib(%d) = %s",
         [i(N), s(integer.to_string(fib(integer(N))))]), !IO),
-    ( Thread = AbortAt ->
+    ( if Thread = AbortAt then
         t_write_string(Output, "releasing barrier", !IO),
         mvar.take(StateMvar, _, !IO),
         barrier.release(Barrier, !IO),
         mvar.put(StateMvar, state_after_release, !IO),
         t_write_string(Output, "released.", !IO)
-    ;
+    else
         % There is no guarantee that we will reach this point before the
         % AbortAt thread releases the barrier, so don't log the state as
         % expected.
@@ -149,12 +150,12 @@ log_with_state(Output, StateMvar, String, !IO) :-
     mvar.put(StateMvar, State, !IO).
 
 main(!IO) :-
-    ( thread.can_spawn ->
+    ( if thread.can_spawn then
         io.write_string("Test spawn and wait\n", !IO),
         test_spawn_and_wait(5, !IO),
         io.write_string("\nTest release\n", !IO),
         test_release(3, 5, !IO)
-    ;
+    else
         unexpected($file, $pred, $grade ++ " does not support thread spawning")
     ).
 

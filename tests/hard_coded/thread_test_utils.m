@@ -49,7 +49,7 @@
 :- pred t_write_string(thread_output::in, string::in, io::di, io::uo) is det.
 
     % Close this threads output stream.  All streams must be closed as
-    % write_all_thread_output/3 will use this to make sure it's recieved all
+    % write_all_thread_output/3 will use this to ensure it has received all
     % the messages it should have.
     %
 :- pred close_thread_output(thread_output::in, io::di, io::uo) is det.
@@ -105,7 +105,7 @@ init_thread_output(AllOutput, Thread, Output, !IO) :-
     AllOutput = all_threads_output(Chan),
     Output = thread_output(Thread, Chan),
 
-    % Pust a message that will be used later to show that this Output has
+    % Put a message that will be used later to show that this Output has
     % been opened.
     put(Chan, message_open(Thread), !IO).
 
@@ -118,19 +118,18 @@ write_all_thread_output(AllOutput, !IO) :-
 
     % Messages indexed by thread.  Each list is stored in reverse order.
     %
-:- type messages
-    == map(int, list(string)).
+:- type messages == map(int, list(string)).
 
 :- pred get_all_messages(all_threads_output::in, set(int)::in,
     messages::in, messages::out, io::di, io::uo) is det.
 
 get_all_messages(AllOutput, OpenThreads, !Messages, !IO) :-
     AllOutput = all_threads_output(Chan),
-    ( is_empty(OpenThreads) ->
+    ( if is_empty(OpenThreads) then
         % If this might be the end of the messages then we only try and
         % take, so we know if we should exit.
         try_take(Chan, MaybeMessage, !IO)
-    ;
+    else
         % OTOH, if there may be threads that have not finished sending our
         % messages, then we use a blocking take to ensure that we don't miss
         % their messages.
@@ -141,9 +140,9 @@ get_all_messages(AllOutput, OpenThreads, !Messages, !IO) :-
         MaybeMessage = yes(Message),
         (
             Message = message_output(Thread, String),
-            ( map.search(!.Messages, Thread, TMessages0) ->
+            ( if map.search(!.Messages, Thread, TMessages0) then
                 TMessages = [String | TMessages0]
-            ;
+            else
                 TMessages = [String]
             ),
             map.set(Thread, TMessages, !Messages),
