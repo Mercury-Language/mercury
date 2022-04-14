@@ -29,7 +29,7 @@ main(!IO) :-
     io.nl(!IO).
 
 :- instance solver_for(float, string) where [
-    coerce(Float) = string__float_to_string(Float)
+    coerce(Float) = string.float_to_string(Float)
 ].
 
 :- instance solver_for_float(string) where [].

@@ -99,7 +99,7 @@ new_interpreter_state =
     bug_130_unreachable.state::in, bug_130_unreachable.state::out) is det.
 
 interpret(Code, !State) :-
-    map__init(Env0),
+    map.init(Env0),
     Stack0 = [],
     interpret(Code, Env0, Stack0, _Env, _Stack, !State).
 

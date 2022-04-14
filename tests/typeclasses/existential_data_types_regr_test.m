@@ -53,7 +53,7 @@ to_natural_number(I) = Result :-
         nat(N1) = to_natural_number(I-1),
         Result = 'new nat'(succ(N1))
     else
-        require__error("to_natural_number: cannot convert negative integer")
+        require.error("to_natural_number: cannot convert negative integer")
     ).
 
 :- func zero_value(zero) = int.

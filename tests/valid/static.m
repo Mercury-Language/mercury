@@ -95,12 +95,12 @@ t(X, Result, Y) :-
 u(Result, Y, Z) :-
     (
         Result = f("hello", 0),
-        list__member(Z, [1, 2]),
+        list.member(Z, [1, 2]),
         Y = g(Result, Result)
     ;
         Result = f("hello again", 0),
         Result2 = f("GoodBye", 0),
-        list__member(Z, [3, 4]),
+        list.member(Z, [3, 4]),
         Y = g(Result, Result2)
     ).
 
@@ -110,11 +110,11 @@ u(Result, Y, Z) :-
 v(Result, Y, Z) :-
     (
         Result = f("xxxxx", 0),
-        list__member(Z, [1, 2]),
+        list.member(Z, [1, 2]),
         Y = g(Result, Result)
     ;
         Result = f("yyyyyyyyyyy", 0),
         Result2 = f("zzzzzzz", 0),
-        list__member(Z, [3, 4]),
+        list.member(Z, [3, 4]),
         Y = g(Result, Result2)
     ).

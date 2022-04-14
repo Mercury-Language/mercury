@@ -13,6 +13,6 @@
 :- implementation.
 
 call_ho(!IO) :-
-    ( call(io__write_string, "First\n", !IO)
-    ; call(io__write_string, "Second\n", !IO)
+    ( call(io.write_string, "First\n", !IO)
+    ; call(io.write_string, "Second\n", !IO)
     ).

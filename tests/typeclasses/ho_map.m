@@ -16,9 +16,8 @@
 :- import_module list.
 
 main(!IO) :-
-    list__map(p, [1, 2], X),
-    io.write(X, !IO),
-    io.nl(!IO).
+    list.map(p, [1, 2], X),
+    io.write_line(X, !IO).
 
 :- typeclass foo(T) where [
     pred p(T::in, T::out) is det

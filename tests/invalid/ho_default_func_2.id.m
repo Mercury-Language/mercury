@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module ho_default_func_2__id.
+:- module ho_default_func_2.id.
 :- interface.
 
 :- type id(T).

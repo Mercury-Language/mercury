@@ -13,10 +13,10 @@
 
 :- pred hello(io::di, io::uo) is det.
 
-  :- module include_parent__nested.
+  :- module include_parent.nested.
   :- interface.
   :- pred hello(io::di, io::uo) is det.
-  :- end_module include_parent__nested.
+  :- end_module include_parent.nested.
 
 :- implementation.
 
@@ -25,12 +25,12 @@ hello(!IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- module include_parent__nested.
+:- module include_parent.nested.
 :- implementation.
 
 hello(!IO) :-
     io.write_string("include_parent__nested: hello\n", !IO).
 
-:- end_module include_parent__nested.
+:- end_module include_parent.nested.
 
 %---------------------------------------------------------------------------%

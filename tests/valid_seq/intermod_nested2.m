@@ -6,14 +6,14 @@
 
 :- interface.
 
-    :- module intermod_nested2__bar.
+    :- module intermod_nested2.bar.
 
     :- interface.
 
     :- type bar
         --->    bar.
 
-    :- end_module intermod_nested2__bar.
+    :- end_module intermod_nested2.bar.
 
 :- implementation.
 

@@ -50,7 +50,7 @@ main(!IO) :-
     foldit([i(23), s("42"), f(4.2)], Thing, 0, Stuff),
     write(Stuff, !IO).
 
-:- pred foldit(list(string__poly_type), f(T), T, T).
+:- pred foldit(list(string.poly_type), f(T), T, T).
 :- mode foldit(in, in(f), in, out) is det.
 
 foldit([], _F, T, T).

@@ -24,8 +24,8 @@
 :- type eq(T1, T2) == foobar.
 
 main -->
-    io__write_int(type_num(42)),
-    io__nl.
+    io.write_int(type_num(42)),
+    io.nl.
 
 :- typeclass numbered_type(T) where [
     func type_num(T) = int,

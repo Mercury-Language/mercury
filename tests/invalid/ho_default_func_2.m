@@ -14,11 +14,11 @@
 
 :- implementation.
 
-:- include_module ho_default_func_2__sub.
-:- include_module ho_default_func_2__id.
+:- include_module ho_default_func_2.sub.
+:- include_module ho_default_func_2.id.
 
-:- import_module ho_default_func_2__sub.
-:- import_module ho_default_func_2__id.
+:- import_module ho_default_func_2.sub.
+:- import_module ho_default_func_2.id.
 
 :- import_module int.
 :- import_module std_util.

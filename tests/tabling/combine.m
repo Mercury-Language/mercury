@@ -19,8 +19,7 @@
 
 main(!IO) :-
     solutions(a, Solns),
-    io__write(Solns, !IO),
-    io__nl(!IO).
+    io.write_line(Solns, !IO).
 
 :- pred a(int::out) is nondet.
 :- pred b(int::out) is multi.

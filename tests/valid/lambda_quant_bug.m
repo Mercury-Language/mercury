@@ -4,7 +4,7 @@
 %
 % Regression test: a bug in quantification caused a software abort with the
 % message "assoc_list__from_corresponding_lists: different lengths".
-% 
+%
 % A cursory examination showed that the compiler thought that "Proj"
 % was local to the switch on "MProj" after the first simplification pass.
 
@@ -34,10 +34,10 @@ all_reports(MProj, MTuples, !IO) :-
         MTemp = ok(_),
         (
             MProj = yes,
-            list__map(find, [], Proj)
+            list.map(find, [], Proj)
         ;
             MProj = no,
-            list__map(find, [], Proj)
+            list.map(find, [], Proj)
         ),
         list.map_foldl(adjust_tuple(Proj), [], _, !IO),
         MTuples = ok(42)

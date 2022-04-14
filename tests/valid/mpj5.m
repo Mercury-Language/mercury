@@ -38,7 +38,7 @@
 % :- instance coll(w(T), list(T)) where [
 %   (e = []),
 %   (i(w(E), L) = [E | L]),
-%   (m(w(E), L) :- list__member(E, L))
+%   (m(w(E), L) :- list.member(E, L))
 % ].
 
 % :- instance coll(w(T), cf(T)) where [

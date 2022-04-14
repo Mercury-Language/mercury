@@ -36,7 +36,7 @@
 
 compile_display_list([mon(PPos, 1) | DList]) -->
     { PPos = 1 - 1 },
-    { map__init(MapIKnow) },
+    { map.init(MapIKnow) },
     { for(0, 1, (pred(X::in, in, out) is det -->
         for(0, 1, (pred(Y::in, in, out) is det -->
             ( if { search(MapIKnow, pos(X, Y), Place) } then

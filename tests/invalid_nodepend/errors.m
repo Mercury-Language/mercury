@@ -99,6 +99,6 @@ pred_with_singleton_vars(X).
 :- use_module io.
 
 :- type needs_qualification == state.
-:- type has_qualification == io__state.
+:- type has_qualification == io.state.
 
 %---------------------------------------------------------------------------%

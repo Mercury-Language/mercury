@@ -99,6 +99,6 @@ print_list_2([X | Xs], !IO) :-
         Xs = []
     ;
         Xs = [_ | _],
-        io__write_string(", ", !IO),
+        io.write_string(", ", !IO),
         print_list_2(Xs, !IO)
     ).

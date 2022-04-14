@@ -16,14 +16,14 @@
 
 :- pred foo_field1(foo::in, int::out) is cc_nondet.
 
-    :- module intermod_user_equality_nested2__sub.
+    :- module intermod_user_equality_nested2.sub.
 
     :- interface.
 
     :- type bar
         --->    bar(foo).
 
-    :- end_module intermod_user_equality_nested2__sub.
+    :- end_module intermod_user_equality_nested2.sub.
 
 :- implementation.
 

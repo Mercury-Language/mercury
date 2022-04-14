@@ -13,7 +13,7 @@
 foo(X, Y) :-
     bar(X, Y).
 
-:- pred inline_conflict__bar(int::in, int::out) is det.
+:- pred inline_conflict.bar(int::in, int::out) is det.
 
 :- pragma inline(bar/2).
 :- pragma no_inline(bar/2).

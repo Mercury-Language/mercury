@@ -96,7 +96,7 @@ new_interpreter_state =
 :- pred interpret(code::in, my_state::in, my_state::out) is det.
 
 interpret(Code, !State) :-
-    map__init(Env0),
+    map.init(Env0),
     Stack0 = [],
     interpret(Code, Env0, Stack0, _Env, _Stack, !State).
 

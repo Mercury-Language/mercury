@@ -21,7 +21,7 @@
 :- type graph(N) == graph(N, unit).
 :- type arc == arc(unit).
 
-:- pred mc_hhf_nonlocals_bug__insert_edge(graph(N, A)::in, node(N)::in,
+:- pred mc_hhf_nonlocals_bug.insert_edge(graph(N, A)::in, node(N)::in,
     node(N)::in, A::in, arc(A)::out, graph(N, A)::out) is semidet.
 
 %---------------------------------------------------------------------------%
@@ -49,12 +49,12 @@
 :- type arc_info(N, A)
     --->    arc_info(node(N), node(N), A).
 
-mc_hhf_nonlocals_bug__insert_edge(!.G, Start, End, Info, Arc, !:G) :-
+mc_hhf_nonlocals_bug.insert_edge(!.G, Start, End, Info, Arc, !:G) :-
     AS0 = !.G ^ arc_supply,
-    counter__allocate(A, AS0, AS),
+    counter.allocate(A, AS0, AS),
     Arc = arc(A),
     !:G = !.G ^ arc_supply := AS,
 
     Arcs0 = !.G ^ arc_map,
-    map__insert(Arc, arc_info(Start, End, Info), Arcs0, Arcs),
+    map.insert(Arc, arc_info(Start, End, Info), Arcs0, Arcs),
     !:G = !.G ^ arc_map := Arcs.

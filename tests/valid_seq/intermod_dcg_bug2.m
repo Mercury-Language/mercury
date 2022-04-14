@@ -18,14 +18,14 @@
 :- pragma inline(foo/2).
 
 foo -->
-    { list__foldl(
+    { list.foldl(
         (pred(_::in, di, uo) is det -->
             =(Var0),
             :=(Var0 + 1)
         ), [1, 2, 3], 0, Count) },
-    io__write_int(Count),
+    io.write_int(Count),
 
-    list__foldl(
+    list.foldl(
         (pred(X::in, di, uo) is det -->
-            io__write(X)
+            io.write(X)
         ), [1, 2, 3]).

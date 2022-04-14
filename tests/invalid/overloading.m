@@ -22,8 +22,8 @@
 main -->
     { q(A, B, C) },
     { p(A, B, C, T) },
-    io__write(T),
-    io__nl.
+    io.write(T),
+    io.nl.
 
 :- type var_save_map    ==  map(var, save_map).
 :- type save_map        ==  map(goal_path, string).
@@ -47,15 +47,15 @@ main -->
 :- pred p(set(var)::in, set(var)::in, set(var)::in, opt_info::out) is det.
 
 p(MustHaveOwnSlot, EverOnStack, OutputVars, OptInfo) :-
-    Counter0 = counter__init(1),
-    counter__allocate(CurInterval, Counter0, Counter1),
+    Counter0 = counter.init(1),
+    counter.allocate(CurInterval, Counter0, Counter1),
     CurIntervalId = interval_id(CurInterval),
-    EndMap0 = map__det_insert(map__init, CurIntervalId, anchor("end")),
-    StartMap0 = map__init,
-    VarsMap0 = map__det_insert(map__init, CurIntervalId, OutputVars),
-    SuccMap0 = map__init,
+    EndMap0 = map.det_insert(map.init, CurIntervalId, anchor("end")),
+    StartMap0 = map.init,
+    VarsMap0 = map.det_insert(map.init, CurIntervalId, OutputVars),
+    SuccMap0 = map.init,
     OptInfo = opt_info(MustHaveOwnSlot, EverOnStack,
-        CurIntervalId, map__init, Counter1, StartMap0, EndMap0,
+        CurIntervalId, map.init, Counter1, StartMap0, EndMap0,
         VarsMap0, SuccMap0).
 
 :- pred q(set(var)::out, set(var)::out, set(var)::out) is det.

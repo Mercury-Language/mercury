@@ -85,12 +85,12 @@
     --->    ok(option_table(OptionType))
     ;       error(string).
 
-:- pred agc_ho_pred__process_options(option_ops(OptionType)::in(option_ops),
+:- pred agc_ho_pred.process_options(option_ops(OptionType)::in(option_ops),
     list(pair(OptionType, option_data))::out) is det.
 
 :- implementation.
 
-agc_ho_pred__process_options(OptionOps, Args) :-
+agc_ho_pred.process_options(OptionOps, Args) :-
     (
         OptionOps = option_ops(_, _, OptionDefaultsPred)
     ;

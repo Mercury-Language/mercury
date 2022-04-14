@@ -34,10 +34,10 @@ main(!IO) :-
 :- pred p(int::in, int::out) is nondet.
 
 p(1, X) :-
-    untraced_subgoal_sub__q(X).
+    untraced_subgoal_sub.q(X).
 
 p(2, X) :-
-    untraced_subgoal_sub__q(X),
+    untraced_subgoal_sub.q(X),
     r(X, Y),
     s(Y).
 

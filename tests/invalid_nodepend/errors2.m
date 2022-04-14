@@ -90,7 +90,7 @@ type_error_7 :-
 
 type_error_8 :-
     from_char_list([], Str),
-    string__from_char_list(list.[], Str).
+    string.from_char_list(list.[], Str).
 
 :- pred type_error_9.
 

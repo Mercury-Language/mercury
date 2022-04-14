@@ -5,7 +5,7 @@
 % This tests that the compiler handles deterministic complicated
 % unifications on enums and compound types correctly.
 % Version 0.4 of the compiler failed this test, as did some versions of
-% an optimization in unify_proc__generate_du_unify_clauses.
+% an optimization in unify_proc.generate_du_unify_clauses.
 
 :- module det_complicated_unify2.
 :- interface.
@@ -42,7 +42,7 @@ main(!IO) :-
     r2(fum2(baz2), fum2(baz2)),
     s1(baz1, baz1),
     s2(baz2, baz2),
-    io__write_string("worked\n", !IO).
+    io.write_string("worked\n", !IO).
 
 :- pred p(foo::in(bound(foo(bound(bar)))), foo::in(bound(foo(bound(bar)))))
     is det.

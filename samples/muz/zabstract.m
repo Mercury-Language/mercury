@@ -146,8 +146,7 @@
 
 :- func expr1Portray(operators, expr1) = string.
 
-:- pred writeSpec(spec, io__state, io__state).
-:- mode writeSpec(in, di, uo) is det.
+:- pred writeSpec(spec::in, io::di, io::uo) is det.
 
 :- func display_to_string(display) = string.
 

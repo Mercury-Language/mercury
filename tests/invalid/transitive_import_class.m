@@ -19,5 +19,5 @@
 :- import_module transitive_import_class2.
 
 semidet_id(X) =
-    transitive_import_class3__to_int(
-        transitive_import_class3__from_int(X) `with_type` int).
+    transitive_import_class3.to_int(
+        transitive_import_class3.from_int(X) `with_type` int).

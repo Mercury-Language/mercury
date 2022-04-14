@@ -53,4 +53,4 @@
 :- implementation.
 
 main(!IO) :-
-    io__write_string("All's well that ends well.\n", !IO).
+    io.write_string("All's well that ends well.\n", !IO).

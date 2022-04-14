@@ -20,7 +20,7 @@
             ).
 
 main(!IO) :-
-    List = list__map(field(info(1)), [1, 2, 3]),
+    List = list.map(field(info(1)), [1, 2, 3]),
     io.write_line(List, !IO).
 
 :- func field(info, int) = int.

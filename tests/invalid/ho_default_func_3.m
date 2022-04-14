@@ -19,7 +19,7 @@
 
 main(!IO) :-
     baz(foo, F),
-    io__write_int(F(42), !IO),
+    io.write_int(F(42), !IO),
     io.nl(!IO).
 
 :- func foo(int) = int.

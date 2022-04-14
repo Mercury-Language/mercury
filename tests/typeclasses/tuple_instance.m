@@ -29,7 +29,7 @@ main(!IO) :-
 ].
 
 :- instance size(string) where [
-    func(size/1) is string__length
+    func(size/1) is string.length
 ].
 
 :- func tuple_size({T, U}) = int <= (size(T), size(U)).

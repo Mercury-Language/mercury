@@ -33,7 +33,7 @@
 :- import_module univ.
 
 lookup_call_pattern(CallPattern, Results, AnswerPatterns) :-
-    AnswerPatterns = list__filter_map(filter_results(CallPattern), Results).
+    AnswerPatterns = list.filter_map(filter_results(CallPattern), Results).
 
 :- func filter_results(Call, analysis) = Answer is semidet
     <= (call_pattern(Call), answer_pattern(Answer)).

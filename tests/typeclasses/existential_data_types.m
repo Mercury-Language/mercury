@@ -70,7 +70,7 @@ int_foo(X, 2*X).
 
 :- pred string_foo(string::in, int::out) is det.
 
-string_foo(S, N) :- string__length(S, N).
+string_foo(S, N) :- string.length(S, N).
 
 :- pred do_foo(T::in, io::di, io::uo) is det <= fooable(T).
 

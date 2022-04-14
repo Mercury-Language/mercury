@@ -10,7 +10,7 @@
 
 :- type bar == map(int, int).
 
-:- pred p(univ__univ::in) is det.
+:- pred p(univ.univ::in) is det.
 :- pred q(list(int)::in) is det.
 
 :- implementation.

@@ -60,9 +60,9 @@
 shade(Scene, Ray, Intersection, Attributes, Colour) :-
     Colour0 = colour(Attributes),
     Ambient = scale(ambient(Scene), Colour0),
-    list__map(shade_from_light(Scene, Ray, Intersection, Colour0),
+    list.map(shade_from_light(Scene, Ray, Intersection, Colour0),
             lights(Scene), Colours),
-    list__foldl(add_colours, Colours, Ambient, Colour).
+    list.foldl(add_colours, Colours, Ambient, Colour).
 
 :- pred shade_from_light(scene, ray, ray, colour, light, colour).
 :- mode shade_from_light(in(scene), in, in, in, in, out) is det.

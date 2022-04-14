@@ -15,5 +15,5 @@
 :- import_module require.
 
 main(!IO) :-
-    io.input_stream_foldl_io(io__write_char, Res, !IO),
+    io.input_stream_foldl_io(io.write_char, Res, !IO),
     require(unify(Res, ok), "Error reading file.").

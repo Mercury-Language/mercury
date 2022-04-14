@@ -34,17 +34,17 @@
 get_planar_coords(IndList, VertArr, PlaneList, Norm) :-
     ( if IndList = [Ind1, Ind2, Ind3 | _IndList1] then
         % lookup first 3 vertices and calculate normal
-        array__lookup(VertArr, Ind1+1, V1),
-        array__lookup(VertArr, Ind2+1, V2),
-        array__lookup(VertArr, Ind3+1, V3),
+        array.lookup(VertArr, Ind1+1, V1),
+        array.lookup(VertArr, Ind2+1, V2),
+        array.lookup(VertArr, Ind3+1, V3),
         Norm = unit(cross(V3 - V2, V1 - V2)),
         get_angles_from_z_axis(Norm, Theta, Phi),
 
         % need to rotate -Theta about Z axis then -Phi about Y axis
-        CosZ = math__cos(-Theta),
-        SinZ = math__sin(-Theta),
-        CosY = math__cos(-Phi),
-        SinY = math__sin(-Phi),
+        CosZ = math.cos(-Theta),
+        SinZ = math.sin(-Theta),
+        CosY = math.cos(-Phi),
+        SinY = math.sin(-Phi),
         MZ = mat(vec(CosZ, -SinZ, 0.0), vec(SinZ, CosZ, 0.0),
             vec(0.0, 0.0, 1.0)),
         MY = mat(vec(CosY, 0.0, SinY), vec(0.0, 1.0, 0.0),
@@ -63,7 +63,7 @@ get_angles_from_z_axis(Vec, Theta, Phi) :-
         Vec = vec(X, Y, Z),
         Vector_radius = mag(Vec),
         XY_radius = mag(vec(X, Y, 0.0)), % magnitude of xy projection
-        Pi = math__pi,   % get a useful constant
+        Pi = math.pi,   % get a useful constant
         ( if Vector_radius = 0.0 then
             error("get_angles_from_z_axis: vector should not be zero-length")
         else
@@ -72,9 +72,9 @@ get_angles_from_z_axis(Vec, Theta, Phi) :-
                 Theta = 0.0,
                 Phi = 0.0
             else
-                Xabs = float__abs(X),
-                Theta1 = math__asin(Xabs / XY_radius),
-                Phi1 = math__asin(XY_radius / Vector_radius),
+                Xabs = float.abs(X),
+                Theta1 = math.asin(Xabs / XY_radius),
+                Phi1 = math.asin(XY_radius / Vector_radius),
 
                 % angles have been calculated for the first octant
                 % they need to be corrected for the octant they are actually in

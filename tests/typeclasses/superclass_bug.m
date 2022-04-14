@@ -54,8 +54,8 @@
 
 :- implementation.
 
-main -->
-    io__write_string("Hello world.\n").
+main(!IO) :-
+    io.write_string("Hello world.\n", !IO).
 
 %---------------------------------------------------------------------------%
 

@@ -20,10 +20,10 @@
     list_to_set(List, Set).
 
 A /\ B = C :-
-    set__intersect(A, B, C).
+    set.intersect(A, B, C).
 
 A \/ B = C :-
-    set__union(A, B, C).
+    set.union(A, B, C).
 
 A - B = C :-
-    set__difference(A, B, C).
+    set.difference(A, B, C).
