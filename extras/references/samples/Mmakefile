@@ -13,7 +13,7 @@ MAIN_TARGET = all
 # with trail segments enabled.  It won't work unless the trseg variant
 # of the default grade is also installed.
 #
-GRADEFLAGS += --use-trail --trail-segments
+GRADEFLAGS += --use-trail
 
 EXTRA_LIB_DIRS = $(INSTALL_PREFIX)/extras/lib/mercury
 
