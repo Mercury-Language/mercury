@@ -144,7 +144,6 @@ SINGLEMODULE_PROGS = \
 	det_errors \
 	det_errors_cc \
 	ee_invalid \
-	empty_interface \
 	erroneous_throw_promise \
 	error_in_list \
 	exist_foreign_error \
@@ -158,7 +157,6 @@ SINGLEMODULE_PROGS = \
 	foreign_enum_invalid \
 	foreign_procs_exist_type \
 	foreign_purity_mismatch \
-	foreign_singleton \
 	foreign_solver_type \
 	foreign_type_2 \
 	foreign_type_visibility \
@@ -229,7 +227,6 @@ SINGLEMODULE_PROGS = \
 	not_a_switch \
 	not_in_interface \
 	nullary_ho_func_error \
-	obsolete_proc_pragma \
 	oisu_check_add_pragma_errors \
 	oisu_check_semantic_errors \
 	one_member \

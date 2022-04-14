@@ -28,6 +28,8 @@ ERRORCHECK_PROGS = \
 	double_underscore \
 	duplicate_call \
 	duplicate_const \
+	empty_interface \
+	foreign_singleton \
 	gh85 \
 	inconsistent_pred_order \
 	inf_recursion_lambda \
@@ -37,6 +39,7 @@ ERRORCHECK_PROGS = \
 	missing_if \
 	non_contiguous_decls \
 	non_stratification \
+	obsolete_proc_pragma \
 	occurs \
 	pragma_source_file \
 	purity_warnings \
