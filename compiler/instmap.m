@@ -1239,35 +1239,35 @@ merge_instmap_delta(InstMap, NonLocals, VarTypes,
             MaybeInstMapping = MaybeInstMappingA
         ;
             MaybeInstMappingB = reachable(InstMappingB),
-            merge_instmapping_delta(InstMap, NonLocals, VarTypes,
+            merge_instmapping_delta(NonLocals, VarTypes, InstMap,
                 InstMappingA, InstMappingB, InstMapping, !ModuleInfo),
             MaybeInstMapping = reachable(InstMapping)
         )
     ).
 
-:- pred merge_instmapping_delta(instmap::in, set_of_progvar::in, vartypes::in,
-    instmapping::in, instmapping::in, instmapping::out,
+:- pred merge_instmapping_delta(set_of_progvar::in, vartypes::in,
+    instmap::in, instmapping::in, instmapping::in, instmapping::out,
     module_info::in, module_info::out) is det.
 
-merge_instmapping_delta(InstMap, NonLocals, VarTypes,
+merge_instmapping_delta(NonLocals, VarTypes, InstMap,
         InstMappingA, InstMappingB, InstMapping, !ModuleInfo) :-
     map.keys(InstMappingA, VarsInA),
     map.keys(InstMappingB, VarsInB),
-    set_of_var.sorted_list_to_set(VarsInA, SetofVarsInA),
-    set_of_var.sorted_list_to_set(VarsInB, SetofVarsInB),
-    set_of_var.union(SetofVarsInA, SetofVarsInB, SetofVars0),
-    set_of_var.intersect(SetofVars0, NonLocals, SetofVars),
-    set_of_var.to_sorted_list(SetofVars, ListofVars),
-    merge_instmapping_delta_vars(ListofVars, InstMap, VarTypes,
+    set_of_var.sorted_list_to_set(VarsInA, SetOfVarsInA),
+    set_of_var.sorted_list_to_set(VarsInB, SetOfVarsInB),
+    set_of_var.union(SetOfVarsInA, SetOfVarsInB, SetOfVars0),
+    set_of_var.intersect(SetOfVars0, NonLocals, SetOfVars),
+    set_of_var.to_sorted_list(SetOfVars, ListOfVars),
+    merge_instmapping_delta_vars(VarTypes, ListOfVars, InstMap,
         InstMappingA, InstMappingB, map.init, InstMapping, !ModuleInfo).
 
-:- pred merge_instmapping_delta_vars(list(prog_var)::in, instmap::in,
-    vartypes::in, instmapping::in, instmapping::in,
+:- pred merge_instmapping_delta_vars(vartypes::in, list(prog_var)::in,
+    instmap::in, instmapping::in, instmapping::in,
     instmapping::in, instmapping::out,
     module_info::in, module_info::out) is det.
 
-merge_instmapping_delta_vars([], _, _, _, _, !InstMapping, !ModuleInfo).
-merge_instmapping_delta_vars([Var | Vars], InstMap, VarTypes,
+merge_instmapping_delta_vars(_, [], _, _, _, !InstMapping, !ModuleInfo).
+merge_instmapping_delta_vars(VarTypes, [Var | Vars], InstMap,
         InstMappingA, InstMappingB, !InstMapping, !ModuleInfo) :-
     ( if map.search(InstMappingA, Var, InstInA) then
         InstA = InstInA
@@ -1296,7 +1296,6 @@ merge_instmapping_delta_vars([Var | Vars], InstMap, VarTypes,
         % At present, I believe that the cases we mishandle here can
         % arise only after inlining, as in puzzle_detism_bug.m in
         % tests/hard_coded. -zs
-
         Inst = InstAB,
         map.det_insert(Var, Inst, !InstMapping)
     else
@@ -1304,16 +1303,16 @@ merge_instmapping_delta_vars([Var | Vars], InstMap, VarTypes,
         string.format("error merging var %i", [i(VarInt)], Msg),
         unexpected($pred, Msg)
     ),
-    merge_instmapping_delta_vars(Vars, InstMap, VarTypes,
+    merge_instmapping_delta_vars(VarTypes, Vars, InstMap,
         InstMappingA, InstMappingB, !InstMapping, !ModuleInfo).
 
 %---------------------------------------------------------------------------%
 
 merge_instmap_deltas(InstMap, NonLocals, VarTypes, Deltas,
         MergedDelta, !ModuleInfo) :-
-    % We use the same technique for merge_instmap_deltas as for merge_var,
-    % and for the same reason.
-    merge_instmap_deltas_2(InstMap, NonLocals, VarTypes, Deltas,
+    % Each call to merge_instmap_deltas divides the number of Deltas by four,
+    % rounding up. We keep calling it until we get down to one MergedDelta.
+    merge_instmap_deltas_pass(InstMap, NonLocals, VarTypes, Deltas,
         [], MergedDeltas, !ModuleInfo),
     (
         MergedDeltas = [],
@@ -1326,11 +1325,12 @@ merge_instmap_deltas(InstMap, NonLocals, VarTypes, Deltas,
             MergedDelta, !ModuleInfo)
     ).
 
-:- pred merge_instmap_deltas_2(instmap::in, set_of_progvar::in, vartypes::in,
+:- pred merge_instmap_deltas_pass(instmap::in, set_of_progvar::in,
+    vartypes::in,
     list(instmap_delta)::in, list(instmap_delta)::in, list(instmap_delta)::out,
     module_info::in, module_info::out) is det.
 
-merge_instmap_deltas_2(InstMap, NonLocals, VarTypes, Deltas,
+merge_instmap_deltas_pass(InstMap, NonLocals, VarTypes, Deltas,
         !MergedDeltas, !ModuleInfo) :-
     (
         Deltas = []
@@ -1358,7 +1358,7 @@ merge_instmap_deltas_2(InstMap, NonLocals, VarTypes, Deltas,
         merge_instmap_delta(InstMap, NonLocals, VarTypes, Delta12, Delta34,
             Delta1234, !ModuleInfo),
         !:MergedDeltas = [Delta1234 | !.MergedDeltas],
-        merge_instmap_deltas_2(InstMap, NonLocals, VarTypes, MoreDeltas,
+        merge_instmap_deltas_pass(InstMap, NonLocals, VarTypes, MoreDeltas,
             !MergedDeltas, !ModuleInfo)
     ).
 
@@ -1381,19 +1381,19 @@ unify_instmapping_delta(InstMap, NonLocals, InstMappingA, InstMappingB,
         InstMapping, !ModuleInfo) :-
     map.keys(InstMappingA, VarsInA),
     map.keys(InstMappingB, VarsInB),
-    set_of_var.sorted_list_to_set(VarsInA, SetofVarsInA),
-    set_of_var.insert_list(VarsInB, SetofVarsInA, SetofVars0),
-    set_of_var.intersect(SetofVars0, NonLocals, SetofVars),
-    set_of_var.to_sorted_list(SetofVars, ListofVars),
-    unify_instmapping_delta_2(ListofVars, InstMap, InstMappingA, InstMappingB,
-        map.init, InstMapping, !ModuleInfo).
+    set_of_var.sorted_list_to_set(VarsInA, SetOfVarsInA),
+    set_of_var.insert_list(VarsInB, SetOfVarsInA, SetOfVars0),
+    set_of_var.intersect(SetOfVars0, NonLocals, SetOfVars),
+    set_of_var.to_sorted_list(SetOfVars, ListOfVars),
+    unify_instmapping_delta_loop(ListOfVars, InstMap,
+        InstMappingA, InstMappingB, map.init, InstMapping, !ModuleInfo).
 
-:- pred unify_instmapping_delta_2(list(prog_var)::in, instmap::in,
+:- pred unify_instmapping_delta_loop(list(prog_var)::in, instmap::in,
     instmapping::in, instmapping::in, instmapping::in, instmapping::out,
     module_info::in, module_info::out) is det.
 
-unify_instmapping_delta_2([], _, _, _, !InstMapping, !ModuleInfo).
-unify_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
+unify_instmapping_delta_loop([], _, _, _, !InstMapping, !ModuleInfo).
+unify_instmapping_delta_loop([Var | Vars], InstMap, InstMappingA, InstMappingB,
         !InstMapping, !ModuleInfo) :-
     ( if map.search(InstMappingA, Var, InstA) then
         ( if map.search(InstMappingB, Var, InstB) then
@@ -1401,7 +1401,6 @@ unify_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
                 % We can ignore the determinism of the unification: if it
                 % isn't det, then there will be a mode error or a determinism
                 % error in one of the parallel conjuncts.
-
                 abstractly_unify_inst(is_live, InstA, InstB,
                     fake_unify, Inst, _Det, !ModuleInfo)
             then
@@ -1419,7 +1418,7 @@ unify_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
             true
         )
     ),
-    unify_instmapping_delta_2(Vars, InstMap, InstMappingA, InstMappingB,
+    unify_instmapping_delta_loop(Vars, InstMap, InstMappingA, InstMappingB,
         !InstMapping, !ModuleInfo).
 
 %---------------------------------------------------------------------------%
