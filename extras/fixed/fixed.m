@@ -94,8 +94,7 @@
 %------------------------------------------------------------------------------%
 
 :- typeclass fixed(T) where [
-        % Return the fixed point representation of T, with the supplied
-        % precision
+    % Return the fixed point representation of T, with the supplied precision.
     func to_fixed(int, T) = fixed
 ].
 
@@ -132,8 +131,8 @@
 
 :- type fixed
     --->    fixed(
-                precision   :: int,
-                number      :: integer
+                precision :: int,
+                number    :: integer
             ).
 
 %------------------------------------------------------------------------------%
@@ -182,24 +181,27 @@ X * Y = fixed(X ^ precision + Y ^ precision, X ^ number * Y ^ number).
 
 div(MinP, X, Y) = fixed(P, N) :-
     Diff = X ^ precision - Y ^ precision,
-    ( Diff < MinP ->
+    ( if Diff < MinP then
         P = MinP,
         N = (X ^ number * scale(MinP - Diff)) // Y ^ number
-    ;
+    else
         P = Diff,
         N = X ^ number // Y ^ number
     ).
 
 precision(DesiredP, fixed(ActualP, N0)) = fixed(DesiredP, N) :-
     compare(Result, DesiredP, ActualP),
-    ( Result = (<),
+    (
+        Result = (<),
         N = N0 // scale(ActualP - DesiredP)
-    ; Result = (=),
+    ;
+        Result = (=),
         N = N0
-    ; Result = (>),
+    ;
+        Result = (>),
         N = N0 * scale(DesiredP - ActualP)
     ).
-    
+
 :- func scale(int) = integer.
 
 scale(X) = integer(10) `pow` integer(X).
@@ -212,9 +214,9 @@ round(DesiredP, fixed(ActualP, N0)) = fixed(DesiredP, N) :-
         Result = (<),
         Scale = scale(ActualP - DesiredP),
         Rem = N0 rem Scale,
-        ( Rem << 1 >= Scale ->
+        ( if Rem << 1 >= Scale then
             N = N0 // Scale + integer.one
-        ;
+        else
             N = N0 // Scale
         )
     ;
@@ -224,9 +226,9 @@ round(DesiredP, fixed(ActualP, N0)) = fixed(DesiredP, N) :-
         Result = (>),
         N = N0 * scale(DesiredP - ActualP)
     ).
-    
+
 is_zero(N) :-
-    N ^ number = integer.zero.
+    integer.is_zero(N ^ number).
 
 fixed_precision(N) = N ^ precision.
 
@@ -264,11 +266,11 @@ X >= Y :-
 
 compare_fixed(X, Y) = Result :-
     Z = (X - Y) ^ number,
-    ( Z < integer.zero ->
+    ( if Z < integer.zero then
         Result = (<)
-    ; Z = integer.zero ->
+    else if Z = integer.zero then
         Result = (=)
-    ;
+    else
         Result = (>)
     ).
 
@@ -290,14 +292,14 @@ compare_fixed(X, Y) = Result :-
 %-----------------------------------------------------------------------------%
 
 to_string(fixed(N, Int)) = Str :-
-    ( N = 0 ->
+    ( if N = 0 then
         Str = integer.to_string(Int)
-    ;
+    else
         Cs0 = to_char_list(integer.to_string(Int)),
         insert_decimal_point(N, Cs0, P, Cs1),
-        ( N >= P ->
+        ( if N >= P then
             Cs = ['0', '.'] ++ list.duplicate(N - P, '0') ++ Cs1
-        ;
+        else
             Cs = Cs1
         ),
         Str = from_char_list(Cs)
@@ -307,17 +309,18 @@ to_string(fixed(N, Int)) = Str :-
     int::out, list(char)::out) is det.
 
 insert_decimal_point(_, [], 0, []).
-insert_decimal_point(N, [C|Cs], P+1, L) :-
+insert_decimal_point(N, [C | Cs], P + 1, L) :-
     insert_decimal_point(N, Cs, P, L0),
-    ( N = P ->
+    ( if N = P then
         L = [C, '.' | L0]
-    ;
+    else
         L = [C | L0]
     ).
 
 %-----------------------------------------------------------------------------%
 
-to_int(F) = det_to_int(I) :- fixed(_, I) = precision(0, F).
+to_int(F) = det_to_int(I) :-
+    fixed(_, I) = precision(0, F).
 
 to_float(fixed(P, N)) = float(N) / pow(10.0, P).
 
@@ -329,9 +332,9 @@ to_float(fixed(P, N)) = float(N) / pow(10.0, P).
 :- func scaled_integer(int, string) = integer.
 
 scaled_integer(N, Str) =
-    ( scaled_integer(N, Str, ScaledInteger) ->
+    ( if scaled_integer(N, Str, ScaledInteger) then
         ScaledInteger
-    ;
+    else
         func_error("scaled_integer: " ++ Str)
     ).
 
@@ -349,12 +352,12 @@ scaled_integer(N, Str) =
 scaled_integer(N, Str, ScaledInteger) :-
     Str \= "",
     L = to_char_list(Str),
-    ( L = ['-' | Cs] ->
+    ( if L = ['-' | Cs] then
         scaled_integer(N, Cs, integer(0), ScaledInteger0),
         ScaledInteger = integer(-1) * ScaledInteger0
-    ; L = ['+' | Cs] ->
+    else if L = ['+' | Cs] then
         scaled_integer(N, Cs, integer(0), ScaledInteger)
-    ;
+    else
         scaled_integer(N, L, integer(0), ScaledInteger)
     ).
 
@@ -365,34 +368,21 @@ scaled_integer(N, Str, ScaledInteger) :-
 scaled_integer(N, [], A0, A) :-
     A = A0 * scale(N).
 scaled_integer(N, [C|Cs], A0, A) :-
-    ( C = ('.') ->
+    ( if C = ('.') then
         L = list.take_upto(N, Cs),
         fraction(L, A0, A1),
         A = A1 * (integer(10) `pow` integer(N - length(L)))
-    ;
-        char_to_int(C, I),
+    else
+        decimal_digit_to_int(C, I),
         scaled_integer(N, Cs, A0 * integer(10) + integer(I), A)
     ).
 
 :- pred fraction(list(char)::in, integer::in, integer::out) is semidet.
 
 fraction([], A, A).
-fraction([C|Cs], A0, A) :-
-    char_to_int(C, I),
+fraction([C | Cs], A0, A) :-
+    decimal_digit_to_int(C, I),
     fraction(Cs, A0 * integer(10) + integer(I), A).
-
-:- pred char_to_int(char::in, int::out) is semidet.
-
-char_to_int('0', 0).
-char_to_int('1', 1).
-char_to_int('2', 2).
-char_to_int('3', 3).
-char_to_int('4', 4).
-char_to_int('5', 5).
-char_to_int('6', 6).
-char_to_int('7', 7).
-char_to_int('8', 8).
-char_to_int('9', 9).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -401,22 +391,22 @@ char_to_int('9', 9).
 
 to_fixed(Str) = Fixed :-
     L = to_char_list(Str),
-    ( L = ['-' | Cs] ->
+    ( if L = ['-' | Cs] then
         Factor = integer(-1),
         List = Cs
-    ; L = ['+' | Cs] ->
+    else if L = ['+' | Cs] then
         Factor = integer(+1),
         List = Cs
-    ; L = [_|_] ->
+    else if L = [_ | _] then
         Factor = integer(+1),
         List = L
-    ;
+    else
         error("to_fixed: empty string")
     ),
-    ( parse_fixed(List, integer(0), N0, no, P) ->
+    ( if parse_fixed(List, integer(0), N0, no, P) then
         N = Factor * N0,
         Fixed = fixed(P, N)
-    ;
+    else
         error("to_fixed: " ++ Str)
     ).
 
@@ -426,16 +416,16 @@ to_fixed(Str) = Fixed :-
 parse_fixed([], I, I, no, 0).
 parse_fixed([], I, I, yes(P), P).
 parse_fixed([C | Cs], I0, I, no, P) :-
-    ( C = ('.') ->
+    ( if C = ('.') then
         parse_fixed(Cs, I0, I, yes(0), P)
-    ;
-        char_to_int(C, CInt),
+    else
+        decimal_digit_to_int(C, CInt),
         parse_fixed(Cs, integer(10) * I0 + integer(CInt), I, no, P)
     ).
 parse_fixed([C | Cs], I0, I, yes(P0), P) :-
-    char_to_int(C, CInt),
+    decimal_digit_to_int(C, CInt),
     parse_fixed(Cs, integer(10) * I0 + integer(CInt), I, yes(P0 + 1), P).
-    
+
 %-----------------------------------------------------------------------------%
 
 get_fraction_part_string(fixed(Precision, N)) = FracStr :-
