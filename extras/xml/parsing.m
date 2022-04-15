@@ -1,6 +1,8 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
 % Copyright (C) 2000, 2005-2006, 2011 The University of Melbourne.
-% Copyright (C) 2014, 2016-2018 The Mercury team.
+% Copyright (C) 2014, 2016-2018, 2021-2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -29,44 +31,51 @@
 %
 % This does have a slight runtime cost (doing the return), but it has
 % the benefit that it makes that great big combinator expression a
-% constants - a big win.
+% constant - a big win.
 %
 %---------------------------------------------------------------------------%
-:- module parsing.
 
+:- module parsing.
 :- interface.
 
-:- import_module string, unicode.
-:- import_module io, list, map, unit, univ.
+:- import_module unicode.
+
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module string.
+:- import_module unit.
+:- import_module univ.
+
+%---------------------------------------------------------------------------%
 
 :- mode pdi == in.
 :- mode puo == out.
 
 :- type entityName
-	--->	anon
-	;	internal(string)
-	;	external(string)
-	.
+    --->    anon
+    ;       internal(string)
+    ;       external(string).
 
 :- type entity
-	--->	entity(
-		    curr	:: int,
-		    leng	:: int,
-		    text	:: string,
-		    name	:: entityName
-		).
+    --->    entity(
+                curr :: int,
+                leng :: int,
+                text :: string,
+                name :: entityName
+            ).
 
 :- type encoding
-	--->	some [Enc] (enc(Enc) => encoding(Enc)).
+    --->    some [Enc] (enc(Enc) => encoding(Enc)).
 
 :- func mkEntity(string) = entity.
 :- func mkEntity(entityName, string) = entity.
 
 :- typeclass encoding(Enc) where [
-	(pred decode(Enc, unicode, entity, entity)),
-	(mode decode(in, out, in, out) is semidet),
-	(pred encode(Enc, list(unicode), string)),
-	(mode encode(in, in, out) is det)
+    (pred decode(Enc, unicode, entity, entity)),
+    (mode decode(in, out, in, out) is semidet),
+    (pred encode(Enc, list(unicode), string)),
+    (mode encode(in, in, out) is det)
 ].
 
 :- func (mkEncoding(Enc) = encoding) <= encoding(Enc).
@@ -78,8 +87,8 @@
 :- type pstate(T).
 
 :- type parse(T)
-	--->	ok(T)
-	;	error(string).
+    --->    ok(T)
+    ;       error(string).
 
 :- pred pstate(entity, encoding, globals, io, pstate(unit)).
 :- mode pstate(in, in, in, di, puo) is det.
@@ -88,14 +97,14 @@
 :- mode finish(out, pdi, uo) is det.
 
 :- pred try(parser(T1, T2),
-	    pred(T2, pstate(T2), pstate(T3)),
-	    pred(string, pstate(T1), pstate(T3)),
-	    pred(string, pstate(T1), pstate(T3)),
-	    pstate(T1), pstate(T3)).
+        pred(T2, pstate(T2), pstate(T3)),
+        pred(string, pstate(T1), pstate(T3)),
+        pred(string, pstate(T1), pstate(T3)),
+        pstate(T1), pstate(T3)).
 :- mode try(in(parser),
-	    pred(in, pdi, puo) is det,
-	    pred(in, pdi, puo) is det,
-	    pred(in, pdi, puo) is det, pdi, puo) is det.
+        pred(in, pdi, puo) is det,
+        pred(in, pdi, puo) is det,
+        pred(in, pdi, puo) is det, pdi, puo) is det.
 
 :- pred parse(parser(T1, T2), parse(T2), pstate(T1), pstate(T2)).
 :- mode parse(in(parser), out, pdi, puo) is det.
@@ -178,11 +187,11 @@
 :- mode opt(in(parser), pdi, puo) is det.
 
 :- pred opt(opt(T0), pred(T0, pstate(T1), pstate(T2)),
-		parser(T1, T2), pstate(T1), pstate(T2)).
+        parser(T1, T2), pstate(T1), pstate(T2)).
 :- mode opt(in, in(pred(in, pdi, puo) is det), in(parser), pdi, puo) is det.
 
 :- pred upto(parser(T1, T2), parser(T1, T3),
-		pstate(T1), pstate((list(T2), T3))).
+        pstate(T1), pstate((list(T2), T3))).
 :- mode upto(in(parser), in(parser), pdi, puo) is det.
 
 :- pred range(unicode, unicode, pstate(_), pstate(unicode)).
@@ -230,26 +239,30 @@
 :- pred set(K, V, pstate(T3), pstate(T3)) <= global(K, V).
 :- mode set(in, in, pdi, puo) is det.
 
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module char.
 :- import_module int.
 
+%---------------------------------------------------------------------------%
+
 :- type pstate(T)
-	--->	s(
-		    count	:: int,
-		    entity	:: entity,
-		    encoding	:: encoding,
-		    status	:: status(T),
-		    globals	:: globals,
-		    io		:: io
-		).
+    --->    s(
+                count    :: int,
+                entity   :: entity,
+                encoding :: encoding,
+                status   :: status(T),
+                globals  :: globals,
+                io       :: io
+            ).
 
 :- type status(T)
-	--->	ok(T)
-	;	fail(string)
-	;	error(string)
-	.
+    --->    ok(T)
+    ;       fail(string)
+    ;       error(string).
 
 mkEntity(Str) = entity(0, Leng, Str, anon) :-
     length(Str, Leng).
@@ -265,42 +278,42 @@ pstate(Entity, Enc, Globs, IO, PS) :-
 finish(Res, PS0, IO) :-
     status(Status, PS0, PS),
     (
-	Status = ok(Stuff),
-	Res = ok(Stuff)
+        Status = ok(Stuff),
+        Res = ok(Stuff)
     ;
-	Status = fail(Msg),
-	Res = error(Msg)
+        Status = fail(Msg),
+        Res = error(Msg)
     ;
-	Status = error(Msg),
-	Res = error(Msg)
+        Status = error(Msg),
+        Res = error(Msg)
     ),
-    IO = u(PS^io).
+    IO = u(PS ^ io).
 
 parse(P, Res) -->
     call(P),
     status(Status),
     {
-	Status = ok(Stuff),
-	Res = ok(Stuff)
+        Status = ok(Stuff),
+        Res = ok(Stuff)
     ;
-	Status = fail(Msg),
-	Res = error(Msg)
+        Status = fail(Msg),
+        Res = error(Msg)
     ;
-	Status = error(Msg),
-	Res = error(Msg)
+        Status = error(Msg),
+        Res = error(Msg)
     }.
 
 parseEntity(Parser, Entity, PS0, PS) :-
-    E0 = PS0^entity,
-    PS1 = PS0^entity := Entity,
+    E0 = PS0 ^ entity,
+    PS1 = PS0 ^ entity := Entity,
     call(Parser, PS1, PS2),
-    E1 = PS2^entity,
-    (
-        E1^curr = E1^leng
-    ->
-    	PS = PS2^entity := E0
-    ;
-    	error("parse finished before the end of the entity", PS2, PS)
+    E1 = PS2 ^ entity,
+    ( if
+        E1 ^ curr = E1 ^ leng
+    then
+        PS = PS2 ^ entity := E0
+    else
+        error("parse finished before the end of the entity", PS2, PS)
     ).
 
 :- pred actuate(parser(T1, T2), pstate(T1), pstate(T2)).
@@ -309,14 +322,14 @@ parseEntity(Parser, Entity, PS0, PS) :-
 actuate(P) -->
     status(Status),
     (
-    	{ Status = ok(_) },
-	call(P)
+        { Status = ok(_) },
+        call(P)
     ;
-    	{ Status = fail(Msg) },
-	fail(Msg)
+        { Status = fail(Msg) },
+        fail(Msg)
     ;
-    	{ Status = error(Msg) },
-	error(Msg)
+        { Status = error(Msg) },
+        error(Msg)
     ).
 
 try(P, S, F, E) -->
@@ -325,54 +338,54 @@ try(P, S, F, E) -->
     actuate(P),
     status(Status),
     (
-    	{ Status = ok(X) },
-	call(S, X)
+        { Status = ok(X) },
+        call(S, X)
     ;
-    	{ Status = fail(Msg) },
-	setStatus(Status0),
-	reset(M, Ent),
-	call(F, Msg)
+        { Status = fail(Msg) },
+        setStatus(Status0),
+        reset(M, Ent),
+        call(F, Msg)
     ;
-    	{ Status = error(Msg) },
-	setStatus(Status0),
-	call(E, Msg)
+        { Status = error(Msg) },
+        setStatus(Status0),
+        call(E, Msg)
     ).
 
 then(P, T) -->
     actuate(P),
     status(Status1),
     (
-    	{ Status1 = ok(X) },
-	call(T, X)
+        { Status1 = ok(X) },
+        call(T, X)
     ;
-    	{ Status1 = fail(Msg) },
-	setStatus(fail(Msg))
+        { Status1 = fail(Msg) },
+        setStatus(fail(Msg))
     ;
-    	{ Status1 = error(Msg) },
-	setStatus(error(Msg))
+        { Status1 = error(Msg) },
+        setStatus(error(Msg))
     ).
 
 :- pred mark(int, entity, pstate(T), pstate(T)).
 :- mode mark(out, out, pdi, puo) is det.
 
-mark(PS^count, PS^entity, PS, PS).
+mark(PS ^ count, PS ^ entity, PS, PS).
 
 :- pred reset(int, entity, pstate(T), pstate(T)).
 :- mode reset(in, in, pdi, puo) is det.
 
 reset(Curr, Entity, PS0, PS) :-
-    PS1 = PS0^count := Curr,
-    PS = PS1^entity := Entity.
+    PS1 = PS0 ^ count := Curr,
+    PS = PS1 ^ entity := Entity.
 
 tok(PS0, PS) :-
-    Entity0 = PS0^entity,
-    enc(Enc) = PS0^encoding,
-    ( decode(Enc, Uni, Entity0, Entity) ->
-        PS1 = PS0^status := ok(Uni),
-	PS2 = PS1^entity := Entity,
-	PS = PS2^count := (PS2^count + 1)
-    ;
-        PS = PS0^status := fail("eof")
+    Entity0 = PS0 ^ entity,
+    enc(Enc) = PS0 ^ encoding,
+    ( if decode(Enc, Uni, Entity0, Entity) then
+        PS1 = PS0 ^ status := ok(Uni),
+        PS2 = PS1 ^ entity := Entity,
+        PS = PS2 ^ count := (PS2 ^ count + 1)
+    else
+        PS = PS0 ^ status := fail("eof")
     ).
 
 return(X, PS0, PS) :-
@@ -382,51 +395,51 @@ return -->
     return(unit).
 
 fail(Msg, PS0, PS) :-
-    PS = PS0^status := fail(Msg).
+    PS = PS0 ^ status := fail(Msg).
 
 error(Msg, PS0, PS) :-
-    PS = PS0^status := error(Msg).
+    PS = PS0 ^ status := error(Msg).
 
 setEncoding(Enc, PS0, PS) :-
-	PS = PS0^encoding := Enc.
+    PS = PS0 ^ encoding := Enc.
 
 getEncoding(PS^encoding, PS, PS).
 
 :- pred status(status(T), pstate(T), pstate(T)).
 :- mode status(out, pdi, puo) is det.
 
-status(PS^status, PS, PS).
+status(PS ^ status, PS, PS).
 
 :- pred setStatus(status(T1), pstate(T2), pstate(T1)).
 :- mode setStatus(in, pdi, puo) is det.
 
-setStatus(S, PS, PS^status := S).
+setStatus(S, PS, PS ^ status := S).
 
 lit1(U, R) -->
-    tok				    then (pred(C::in, pdi, puo) is det -->
-    ( { U = C } ->
-    	return(R)
-    ;
-    	fail("character didn't match")
+    tok                 then (pred(C::in, pdi, puo) is det -->
+    ( if { U = C } then
+        return(R)
+    else
+        fail("character didn't match")
     )).
 
 lit1(U) -->
-    tok				    then (pred(C::in, pdi, puo) is det -->
-    ( { U = C } ->
-    	return(U)
-    ;
-    	fail("character didn't match")
+    tok                 then (pred(C::in, pdi, puo) is det -->
+    ( if { U = C } then
+        return(U)
+    else
+        fail("character didn't match")
     )).
 
 lit(Str) -->
     { string.to_char_list(Str, Chars) },
-    (lit2(Chars)		    then (pred(_::in, pdi, puo) is det -->
+    (lit2(Chars)            then (pred(_::in, pdi, puo) is det -->
     return(Str)
     )).
 
 lit(Str, Thing) -->
     { string.to_char_list(Str, Chars) },
-    (lit2(Chars)		    then (pred(_::in, pdi, puo) is det -->
+    (lit2(Chars)            then (pred(_::in, pdi, puo) is det -->
     return(Thing)
     )).
 
@@ -435,50 +448,52 @@ lit(Str, Thing) -->
 
 lit2([]) -->
     return(unit).
-lit2([C|Is]) -->
+lit2([C | Is]) -->
     { char.to_int(C, I) },
-    (tok			    then (pred(I0::in, pdi, puo) is det -->
-    ( { I = I0 } ->
-	lit2(Is)
-    ;
-    	fail("literal failed to match")
+    (tok                then (pred(I0::in, pdi, puo) is det -->
+    ( if { I = I0 } then
+        lit2(Is)
+    else
+        fail("literal failed to match")
     ))).
 
 quote -->
-    tok				    then (pred(Q::in, pdi, puo) is det -->
-    ( {
-        Q = ('''')
-    ;
-        Q = ('"')
-    } ->
-    	return(Q)
-    ;
-    	fail("expected a quote")
+    tok                 then (pred(Q::in, pdi, puo) is det -->
+    ( if
+        {
+            Q = ('''')
+        ;
+            Q = ('"')
+        }
+    then
+        return(Q)
+    else 
+        fail("expected a quote")
     )).
 
 io(Pred, Res, PS0, PS) :-
-    call(Pred, Res, u(PS0^io), IO),
-    PS = PS0^io := IO.
+    call(Pred, Res, u(PS0 ^ io), IO),
+    PS = PS0 ^ io := IO.
 
 io(Pred, PS0, PS) :-
-    call(Pred, u(PS0^io), IO),
-    PS = PS0^io := IO.
+    call(Pred, u(PS0 ^ io), IO),
+    PS = PS0 ^ io := IO.
 
 mkString(UniCodes, String, PS, PS) :-
-    enc(Enc) = PS^encoding,
+    enc(Enc) = PS ^ encoding,
     encode(Enc, UniCodes, String).
 
 (A and B) -->
-    actuate(A)			    then (pred(X::in, pdi, puo) is det -->
-    actuate(B)			    then (pred(Y::in, pdi, puo) is det -->
+    actuate(A)              then (pred(X::in, pdi, puo) is det -->
+    actuate(B)              then (pred(Y::in, pdi, puo) is det -->
     return((X, Y))
     )).
 
 (A or B) -->
     try(A,
-    	return,
-	(pred(_::in, pdi, puo) is det --> call(B)),
-	error).
+        return,
+    (pred(_::in, pdi, puo) is det --> call(B)),
+    error).
 
 star(P) -->
     star(P, []).
@@ -490,36 +505,36 @@ star(P, Xs0) -->
     status(Status0),
     mark(Start, _Ent),
     try(P,
-    	(pred(X::in, pdi, puo) is det -->
-	    mark(End, _EEnt),
-	    ( { Start \= End } ->
-		setStatus(Status0),
-		star(P, [X|Xs0])
-	    ;
-	    	fail("star(null)")
-	    )
-	),
-	(pred(_::in, pdi, puo) is det -->
-	    { reverse(Xs0, Xs) },
-	    return(Xs)
-	),
-	error
+        (pred(X::in, pdi, puo) is det -->
+        mark(End, _EEnt),
+        ( if { Start \= End } then
+            setStatus(Status0),
+            star(P, [X|Xs0])
+        else
+            fail("star(null)")
+        )
+    ),
+    (pred(_::in, pdi, puo) is det -->
+        { reverse(Xs0, Xs) },
+        return(Xs)
+    ),
+    error
     ).
 
 plus(P) -->
     status(Status0),
-    (actuate(P)			   then (pred(X::in, pdi, puo) is det -->
+    (actuate(P)            then (pred(X::in, pdi, puo) is det -->
     setStatus(Status0),
     star(P, [X])
     )).
 
 opt(P, Def) -->
     try(P,
-    	return,
-	(pred(_::in, pdi, puo) is det -->
-	    return(Def)
-	),
-	error
+        return,
+    (pred(_::in, pdi, puo) is det -->
+        return(Def)
+    ),
+    error
     ).
 
 opt(no, _Yes, No) -->
@@ -529,90 +544,90 @@ opt(yes(Thing), Yes, _No) -->
 
 opt(P) -->
     try(P,
-    	(pred(X::in, pdi, puo) is det -->
-	    return(yes(X))
-	),
-    	(pred(_::in, pdi, puo) is det -->
-	    return(no)
-	),
-	error
+        (pred(X::in, pdi, puo) is det -->
+        return(yes(X))
+    ),
+        (pred(_::in, pdi, puo) is det -->
+        return(no)
+    ),
+    error
     ).
 
 upto(Rep, Fin) -->
     upto(Rep, Fin, []).
 
 :- pred upto(parser(T1, T2), parser(T1, T3), list(T2),
-		pstate(T1), pstate((list(T2), T3))).
+        pstate(T1), pstate((list(T2), T3))).
 :- mode upto(in(parser), in(parser), in, pdi, puo) is det.
 
 upto(Rep, Fin, Rs0) -->
     status(Status0),
     try(Fin,
-    	(pred(F::in, pdi, puo) is det -->
-	    { reverse(Rs0, Rs) },
-	    return((Rs, F))
-	),
-	(pred(_::in, pdi, puo) is det -->
-	    setStatus(Status0),
-	    (Rep		    then (pred(R::in, pdi, puo) is det -->
-	    setStatus(Status0),
-	    upto(Rep, Fin, [R|Rs0])
-	))),
-	error
+        (pred(F::in, pdi, puo) is det -->
+        { reverse(Rs0, Rs) },
+        return((Rs, F))
+    ),
+    (pred(_::in, pdi, puo) is det -->
+        setStatus(Status0),
+        (Rep            then (pred(R::in, pdi, puo) is det -->
+        setStatus(Status0),
+        upto(Rep, Fin, [R|Rs0])
+    ))),
+    error
     ).
 
 range(F, L) -->
-    tok				    then (pred(C::in, pdi, puo) is det -->
+    tok                 then (pred(C::in, pdi, puo) is det -->
     ( { F =< C, C =< L } ->
-    	return(C)
+        return(C)
     ;
-    	fail("not in range")
+        fail("not in range")
     )).
 
 (F - L) -->
     range(F, L).
 
 wrap(P, Q) -->
-    P				    then (pred(X::in, pdi, puo) is det -->
+    P                   then (pred(X::in, pdi, puo) is det -->
     { call(Q, X, W) },
     return(W)
     ).
 
 x(P) -->
-    P				    then (pred(_::in, pdi, puo) is det -->
+    P                   then (pred(_::in, pdi, puo) is det -->
     return(unit)
     ).
 
 fst(P) -->
-    P				    then (pred((T, _)::in, pdi, puo) is det -->
+    P                   then (pred((T, _)::in, pdi, puo) is det -->
     return(T)
     ).
 
 snd(P) -->
-    P				    then (pred((_, T)::in, pdi, puo) is det -->
+    P                   then (pred((_, T)::in, pdi, puo) is det -->
     return(T)
     ).
 
 except(Exclusions) -->
-    tok				    then (pred(C::in, pdi, puo) is det -->
-    ( { not member(C, Exclusions) } ->
+    tok                 then (pred(C::in, pdi, puo) is det -->
+    ( if { not member(C, Exclusions) } then
         return(C)
-    ;
-    	fail("excluded character")
+    else
+        fail("excluded character")
     )).
 
 no(Parser) -->
-    Parser			    then (pred(_::in, pdi, puo) is det -->
+    Parser              then (pred(_::in, pdi, puo) is det -->
     return(no)
     ).
 
 yes(Parser) -->
-    Parser			    then (pred(X::in, pdi, puo) is det -->
+    Parser              then (pred(X::in, pdi, puo) is det -->
     return(yes(X))
     ).
 
 filter(Parser) -->
-    Parser			    then (pred(Xs0::in, pdi, puo) is det -->
+    Parser              then (pred(Xs0::in, pdi, puo) is det -->
     { filter1(Xs0, Xs) },
     return(Xs)
     ).
@@ -620,18 +635,18 @@ filter(Parser) -->
 :- pred filter1(list(opt(T))::in, list(T)::out) is det.
 
 filter1([], []).
-filter1([X0|Xs0], Xs) :-
+filter1([X0 | Xs0], Xs) :-
     (
-    	X0 = yes(X),
-	filter1(Xs0, Xs1),
-	Xs = [X|Xs1]
+        X0 = yes(X),
+        filter1(Xs0, Xs1),
+        Xs = [X | Xs1]
     ;
-    	X0 = no,
-	filter1(Xs0, Xs)
+        X0 = no,
+        filter1(Xs0, Xs)
     ).
 
 list(P) -->
-    P				    then (pred(X::in, pdi, puo) is det -->
+    P                   then (pred(X::in, pdi, puo) is det -->
     return([X])
     ).
 
@@ -640,16 +655,15 @@ no(_, no).
 yes(T, yes(T)).
 
 get(Key, Val, PS, PS) :-
-	lookup(PS^globals, univ(Key), Val0),
-	det_univ_to_type(Val0, Val).
+    lookup(PS ^ globals, univ(Key), Val0),
+    det_univ_to_type(Val0, Val).
 
 set(Key, Val, PS0, PS) :-
-	map.set(univ(Key), univ(Val), PS0^globals, Globals),
-	PS = PS0^globals := Globals.
+    map.set(univ(Key), univ(Val), PS0 ^ globals, Globals),
+    PS = PS0 ^ globals := Globals.
 
 :- func u(T) = T.
 :- mode (u(in) = uo) is det.
 
 u(X) = Y :-
     unsafe_promise_unique(X, Y).
-

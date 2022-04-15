@@ -127,13 +127,13 @@ split(C, Str0, Strs) :-
 
 split1(_C, Strs, Strs, [], []).
 split1(C, Strs0, Strs) -->
-    =([_|_]),
+    =([_ | _]),
     split2(C, [], Cs0),
     { reverse(Cs0, Cs) },
-    ( { Cs \= [] } ->
+    ( if { Cs \= [] } then
         { string.from_char_list(Cs, Str) },
-        { Strs1 = [Str|Strs0] }
-    ;
+        { Strs1 = [Str | Strs0] }
+    else
         { Strs1 = Strs0 }
     ),
     split1(C, Strs1, Strs).
@@ -144,9 +144,9 @@ split1(C, Strs0, Strs) -->
 split2(_C, Cs, Cs, [], []).
 split2(C, Cs0, Cs) -->
     [C0],
-    ( { C = C0 } ->
+    ( if { C = C0 } then
         { Cs = Cs0 }
-    ;
-        split2(C, [C0|Cs0], Cs)
+    else
+        split2(C, [C0 | Cs0], Cs)
     ).
 

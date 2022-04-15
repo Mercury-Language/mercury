@@ -7,11 +7,12 @@
 % Main author: conway@cs.mu.oz.au.
 %
 %---------------------------------------------------------------------------%
-:- module xml.parse.chars.
 
+:- module xml.parse.chars.
 :- interface.
 
-:- import_module parsing, unicode.
+:- import_module parsing.
+:- import_module unicode.
 
 :- pred letter(pstate(_), pstate(unicode)).
 :- mode letter(in, out) is det.

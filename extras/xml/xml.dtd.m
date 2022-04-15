@@ -1,17 +1,22 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
 % Copyright (C) 2000 The University of Melbourne.
-% Copyright (C) 2014, 2018 The Mercury team.
+% Copyright (C) 2014, 2018, 2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % Main author: conway@cs.mu.oz.au.
 %
 %---------------------------------------------------------------------------%
-:- module xml.dtd.
 
+:- module xml.dtd.
 :- interface.
 
-:- import_module list, map.
+:- import_module list.
+:- import_module map.
+
+%---------------------------------------------------------------------------%
 
 :- type (A -> B) == map(A, B).
 
@@ -21,84 +26,78 @@
 
 :- type [] ---> [].
 
-:- type [T1|T2] == list(T1).
+:- type [T1 | T2] == list(T1).
 
 :- type dtd
-	--->	dtd(
-		root		:: name,
-		elements	:: (name -> element),
-		entities	:: (name -> entityDef),
-		pentities	:: (name -> entityDef)
-	).
+    --->    dtd(
+                root      :: name,
+                elements  :: (name -> element),
+                entities  :: (name -> entityDef),
+                pentities :: (name -> entityDef)
+            ).
 
 :- type element
-	--->	element(
-		    eName	:: name,
-		    eAttrs	:: (name -> attribute),
-		    eContent	:: content
-		).
+    --->    element(
+                eName    :: name,
+                eAttrs   :: (name -> attribute),
+                eContent :: content
+            ).
 
 :- type content
-	--->	empty
-	;	any
-	;	children(contentParticle)
-	;	mixed(mixed).
+    --->    empty
+    ;       any
+    ;       children(contentParticle)
+    ;       mixed(mixed).
 
 :- type contentParticle
-	--->	(children - multiplicity).
+    --->    (children - multiplicity).
 
 :- type children
-	--->	seq(list(contentParticle))
-	;	alt(list(contentParticle))
-	;	element(name)
-	.
+    --->    seq(list(contentParticle))
+    ;       alt(list(contentParticle))
+    ;       element(name).
 
 :- type mixed
-	--->	mixed(list(name)).
+    --->    mixed(list(name)).
 
 :- type multiplicity
- --->		one
-	;	('*')
-	;	('+')
-	;	('?')
-	.
+    --->    one
+    ;       ('*')
+    ;       ('+')
+    ;       ('?').
 
 :- type attribute
-	--->	attribute(
-		    aName	:: name,
-		    aType	:: (type),
-		    aDefault	:: default
-		).
+    --->    attribute(
+                aName    :: name,
+                aType    :: (type),
+                aDefault :: default
+            ).
 
 :- type (type)
-	--->	cdata
-	;	id
-	;	idref
-	;	idrefs
-	;	entity
-	;	entities
-	;	nmtoken
-	;	nmtokens
-	;	notation(list(token))
-	;	enum(list(token))
-	.
+    --->    cdata
+    ;       id
+    ;       idref
+    ;       idrefs
+    ;       entity
+    ;       entities
+    ;       nmtoken
+    ;       nmtokens
+    ;       notation(list(token))
+    ;       enum(list(token)).
 
 :- type default
-	--->	required
-	;	implied
-	;	defaulted(string)
-	;	fixed(string)
-	.
+    --->    required
+    ;       implied
+    ;       defaulted(string)
+    ;       fixed(string).
 
 :- type entityDef
-	--->	internal(entity)
-	;	external(externalId)
-	.
+    --->    internal(entity)
+    ;       external(externalId).
 
 :- type entity == string.
 
 :- type externalId
-	--->	system(string)
-	;	public(string, string)
-	.
+    --->    system(string)
+    ;       public(string, string).
 
