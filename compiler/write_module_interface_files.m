@@ -117,8 +117,8 @@
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.grab_modules.           % undesirable dependency
+:- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_cmds.
-:- import_module parse_tree.module_imports.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.parse_tree_out.
 :- import_module recompilation.

@@ -1,22 +1,19 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: module_imports.m.
-% Original author: fjh.
-% Author of current version: zs.
+% File: module_baggage.m.
 %
-% This module contains the main data structure we use while augmenting
-% a raw compilation unit. It records all the things that are imported,
-% directly or indirectly, by the original raw compilation unit.
+% This module contains the information we gather while reading in a module
+% other than the module's parse tree.
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.module_imports.
+:- module parse_tree.module_baggage.
 :- interface.
 
 :- import_module libs.
@@ -410,5 +407,5 @@ section_import_and_or_use_int_imp(SectionImportUse) = Section :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.module_imports.
+:- end_module parse_tree.module_baggage.
 %---------------------------------------------------------------------------%

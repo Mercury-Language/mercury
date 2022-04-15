@@ -24,7 +24,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.module_imports.
+:- import_module parse_tree.module_baggage.
 
 :- import_module io.
 :- import_module list.

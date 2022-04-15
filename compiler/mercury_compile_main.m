@@ -85,8 +85,8 @@
 :- import_module parse_tree.grab_modules.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_cmds.
-:- import_module parse_tree.module_imports.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_tree_out.

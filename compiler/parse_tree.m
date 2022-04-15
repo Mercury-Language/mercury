@@ -105,10 +105,10 @@
 :- include_module generate_dep_d_files.
 :- include_module get_dependencies.
 :- include_module grab_modules.
+:- include_module module_baggage.
 :- include_module module_cmds.
 :- include_module module_dep_info.
 :- include_module module_deps_graph.
-:- include_module module_imports.
 :- include_module module_qual.
 :- include_module read_modules.
 :- include_module source_file_map.

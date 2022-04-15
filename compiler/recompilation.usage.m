@@ -21,7 +21,7 @@
 :- import_module hlds.hlds_module.
 
 :- import_module parse_tree.
-:- import_module parse_tree.module_imports.
+:- import_module parse_tree.module_baggage.
 :- import_module recompilation.used_file.
 
 :- pred construct_used_file_contents(module_info::in, recompilation_info::in,

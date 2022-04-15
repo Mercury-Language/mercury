@@ -77,8 +77,8 @@
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.item_util.
+:- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_cmds.
-:- import_module parse_tree.module_imports.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.

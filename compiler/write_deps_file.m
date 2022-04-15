@@ -20,8 +20,8 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.deps_map.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_deps_graph.
-:- import_module parse_tree.module_imports.
 
 :- import_module bool.
 :- import_module io.
