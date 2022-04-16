@@ -553,7 +553,7 @@
             % generate code that will execute the goal inside the scope
             % only if the runtime condition is satisfied.
             %
-            % The maybe_io and mutable_vars fields are advisory only in the
+            % The maybe_io and mutable_vars fields are only advisory in the
             % HLDS, since they are fully processed when the corresponding goal
             % in the parse tree is converted to HLDS.
 
@@ -573,7 +573,7 @@
             % control structure.
             %
             % lc_lcs_var identifies the variable that points to the slot in the
-            % loop control structure that should be used to spawn of the work
+            % loop control structure that should be used to spawn off the work
             % within this scope.
 
 :- type promise_solutions_kind
