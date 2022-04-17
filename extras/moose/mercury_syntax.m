@@ -1,7 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003, 2006 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003, 2006, 2011 The University of Melbourne.
+% Copyright (C) 2014, 2020, 2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %---------------------------------------------------------------------------%
@@ -374,9 +375,9 @@ term_to_goal0("fail", [], _, disj([])).
 term_to_goal0(",", [A, B], _, conj([GoalA | Conj])) :-
     term_to_goal(A, GoalA),
     term_to_goal(B, GoalB),
-    ( GoalB = conj(Conj0) ->
+    ( if GoalB = conj(Conj0) then
         Conj = Conj0
-    ;
+    else
         Conj = [GoalB]
     ).
 term_to_goal0(";", [A, B], _, Goal) :-

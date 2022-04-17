@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2000, 2003-2004, 2011 The University of Melbourne.
+% Copyright (C) 2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %---------------------------------------------------------------------------%
@@ -12,7 +13,6 @@
 :- import_module grammar.
 :- import_module lalr.
 
-:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module set.
@@ -51,9 +51,7 @@
 :- implementation.
 
 :- import_module array.
-:- import_module bool.
-:- import_module require.
-:- import_module std_util.
+:- import_module int.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -157,9 +155,9 @@ actions2([A | As], I, Sn, Rules, LA, States, Gotos, Shifts, !Actions, !Errs) :-
     ),
     actions2(As, I, Sn, Rules, LA, States, Gotos, Shifts, !Actions, !Errs).
 
-:- pred addaction(state, terminal, action, action_table, action_table,
-        action_errors, action_errors).
-:- mode addaction(in, in, in, in, out, in, out) is det.
+:- pred addaction(state::in, terminal::in, action::in,
+    action_table::in, action_table::out,
+    action_errors::in, action_errors::out) is det.
 
 addaction(Sn, T, A0, !Actions, !Errs) :-
     ( if map.search(!.Actions, Sn, State0) then

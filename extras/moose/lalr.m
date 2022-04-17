@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2000, 2003, 2006, 2011 The University of Melbourne.
+% Copyright (C) 2014, 2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %---------------------------------------------------------------------------%
@@ -18,7 +19,6 @@
 
 :- import_module grammar.
 
-:- import_module int.
 :- import_module io.
 :- import_module map.
 :- import_module pair.
@@ -64,6 +64,7 @@
 
 :- import_module array.
 :- import_module bool.
+:- import_module int.
 :- import_module list.
 :- import_module require.
 :- import_module term.
@@ -126,7 +127,7 @@ reaches(C, A, !Change, !Reaching) :-
             true
         else
             !:Change = yes,
-            As = As0 `set.union` set.make_singleton_set(A), 
+            As = As0 `set.union` set.make_singleton_set(A),
             map.set(C, As, !Reaching)
         )
     else
@@ -164,7 +165,7 @@ lr0items1(Pending0, Productions, Reaching, !Gotos, !C) :-
         Pending = Pending1 `set.union` NewPending,
         lr0items1(Pending, Productions, Reaching, !Gotos, !C)
     else
-        true    
+        true
     ).
 
 :- type new == set(pair(items, symbol)).
@@ -348,10 +349,10 @@ closure1([AItem | AItems], Rules, First, Index, !I) :-
             set.sorted_list_to_set(NList, N),
             list.append([N], !I)
         else
-            true    
+            true
         )
     else
-        true    
+        true
     ),
     closure1(AItems, Rules, First, Index, !I).
 
@@ -367,8 +368,8 @@ do_union(Is, I) :-
     Is = [_ | _],
     do_union(Is, [], I).
 
-:- pred do_union(list(lr1items), list(lr1items), lr1items).
-:- mode do_union(in, in, out) is det.
+:- pred do_union(list(lr1items)::in, list(lr1items)::in, lr1items::out)
+    is det.
 
 do_union([], [], _) :-
     error("do_union: empty list").
@@ -550,8 +551,7 @@ propagate3([Item | Items], I, Ts0, !Change, !Lookaheads) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred prodnums(rules, list(prodnum)).
-:- mode prodnums(in, out) is det.
+:- pred prodnums(rules::in, list(prodnum)::out) is det.
 
 prodnums(Rules, ProdNums) :-
     map.keys(Rules, ProdNums).

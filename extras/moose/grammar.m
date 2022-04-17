@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2001, 2003, 2006, 2011 The University of Melbourne.
+% Copyright (C) 2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %---------------------------------------------------------------------------%
@@ -26,7 +27,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- type grammar 
+:- type grammar
     --->    grammar(
                 rules,
                 clauses,
@@ -37,9 +38,9 @@
                 follow
             ).
 
-        % index maps from each nonterminal to the list (set) of normalized
-        % rules for that nonterminal.
-:- type index   == map(nonterminal, list(int)).
+    % index maps from each nonterminal to the list (set) of normalized rules
+    % for that nonterminal.
+:- type index == map(nonterminal, list(int)).
 
 :- type clauses == map(nonterminal, list(clause)).
 
@@ -173,8 +174,7 @@ term_to_clause(functor(Atom, Args, Context), VarSet, Id, Rule) :-
     Rule = clause(Head, Prod, VarSet, Context),
     term_to_prod(Body, Prod).
 
-:- pred term_to_prod(term, prod).
-:- mode term_to_prod(in, out) is semidet.
+:- pred term_to_prod(term::in, prod::out) is semidet.
 
 term_to_prod(functor(Atom, Args, Ctxt), Prod) :-
     ( if Atom = atom(","), Args = [Arg1, Arg2] then
@@ -214,9 +214,9 @@ terminals(functor(Atom, Args, _), Prod0, Prod) :-
 
 add_clause(Clauses0, Id, Clause, Clauses) :-
     ( if map.search(Clauses0, Id, These0) then
-            These = [Clause | These0]
+        These = [Clause | These0]
     else
-            These = [Clause]
+        These = [Clause]
     ),
     map.set(Id, These, Clauses0, Clauses).
 
@@ -237,7 +237,7 @@ construct_grammar(Start, AllClauses, XForms, Grammar) :-
     compute_follow0(Grammar2, Grammar3),
     Grammar3 = grammar(Rules3, AllClauses3, XForms3, Nont3, ClauseIndex3,
         First3, Follow3),
-            
+
     % Keep the nonterminals in reverse sorted order
     % for efficient processing in lalr.m
     map.map_values(
@@ -252,10 +252,10 @@ construct_grammar(Start, AllClauses, XForms, Grammar) :-
 
 start_rule(Id, Rule) :-
     (
-            Id = Name/Arity
+        Id = Name / Arity
     ;
-            Id = start,
-            error("epsilon start rule")
+        Id = start,
+        error("epsilon start rule")
     ),
     varset.init(VarSet0),
     varset.new_vars(Arity, Vars, VarSet0, VarSet1),
@@ -270,7 +270,7 @@ start_rule(Id, Rule) :-
     string.append(Name, "'", NewName),
     NewId = start,
     Head = functor(atom(NewName), Args, Context),
-    Body = array([nonterminal(Id)]), 
+    Body = array([nonterminal(Id)]),
     Body1 = [nonterminal(functor(atom(Name), Args, Context))],
     Rule = rule(NewId, Head, Body, Body1, [], VarSet, Context).
 
@@ -515,12 +515,12 @@ collect_nonterminals(Rules, Nonterminals) :-
 :- pred while(pred(T)::in(pred(in) is semidet),
     pred(T, T)::in(pred(in, out) is det), T::in, T::out) is det.
 
-while(Cond, Body, Acc0, Acc) :-
-    ( if call(Cond, Acc0) then
-        call(Body, Acc0, Acc1),
-        while(Cond, Body, Acc1, Acc)
+while(Cond, Body, !Acc) :-
+    ( if Cond(!.Acc) then
+        Body(!Acc),
+        while(Cond, Body, !Acc)
     else
-        Acc = Acc0
+        true
     ).
 
     % YYY This probably belongs in the library somewhere.
@@ -528,12 +528,12 @@ while(Cond, Body, Acc0, Acc) :-
 :- pred until(pred(T, T)::in(pred(in, out) is det),
     pred(T)::in(pred(in) is semidet), T::in, T::out) is det.
 
-until(Body, Cond, Acc0, Acc) :-
-    call(Body, Acc0, Acc1),
-    ( if call(Cond, Acc1) then
-        Acc = Acc1
+until(Body, Cond, !Acc) :-
+    Body(!Acc),
+    ( if Cond(!.Acc) then
+        true
     else
-        until(Body, Cond, Acc1, Acc)
+        until(Body, Cond, !Acc)
     ).
 
 %---------------------------------------------------------------------------%
@@ -636,8 +636,8 @@ get_follow(Id, IdFollow, Stuff, Stuff) :-
         set.init(IdFollow)
     ).
 
-:- pred add_follow(nonterminal, set(terminal), follow_stuff, follow_stuff).
-:- mode add_follow(in, in, in, out) is det.
+:- pred add_follow(nonterminal::in, set(terminal)::in,
+    follow_stuff::in, follow_stuff::out) is det.
 
 add_follow(Id, IdFollow0, Stuff0, Stuff) :-
     Stuff0 = follow_stuff(Ch0, Ns, Rs, Fs, Follow0),
@@ -670,7 +670,7 @@ first(First, Elems, I) = FirstI :-
             Elem = nonterminal(Id),
             map.lookup(First, Id, FirstI0),
             ( if set.member(epsilon, FirstI0) then
-                RestFirst = first(First, Elems, I+1),
+                RestFirst = first(First, Elems, I + 1),
                 set.union(FirstI0, RestFirst, FirstI)
             else
                 FirstI = FirstI0

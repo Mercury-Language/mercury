@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2004, 2006, 2011 The University of Melbourne.
+% Copyright (C) 2015, 2017-2018, 2020-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %
@@ -35,6 +36,7 @@
 :- import_module tables.
 
 :- import_module array.
+:- import_module benchmarking.
 :- import_module bool.
 :- import_module getopt.
 :- import_module int.
@@ -44,7 +46,6 @@
 :- import_module pair.
 :- import_module prolog.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module term_io.
@@ -140,7 +141,7 @@ process(Options, !IO) :-
     lookup_bool_option(Options, verbose, Verbose),
     (
         Verbose = yes,
-        io.report_standard_stats(!IO)
+        benchmarking.report_standard_stats(!IO)
     ;
         Verbose = no
     ),
@@ -182,7 +183,7 @@ process_2(Options, Module, Parser, Decls0, Clauses0, XFormList, !IO) :-
     lookup_bool_option(Options, verbose, Verbose),
     (
         Verbose = yes,
-        io.report_standard_stats(!IO)
+        benchmarking.report_standard_stats(!IO)
     ;
         Verbose = no
     ),
@@ -293,9 +294,9 @@ process_2(Options, Module, Parser, Decls0, Clauses0, XFormList, !IO) :-
 
 write_action_type_class(Where, XForms, Decls, TokenType, InAtom, OutAtom,
         !IO) :-
-    ( Where = (interface) ->
+    ( if Where = (interface) then
         io.write_string(":- interface.\n\n", !IO)
-    ;
+    else
         true
     ),
     io.format("\
@@ -324,12 +325,22 @@ write_action_type_class(Where, XForms, Decls, TokenType, InAtom, OutAtom,
             RuleDecl = rule(_NT, Types, VarSet, _Context),
             io.format("\tfunc %s(", [s(MethodName)], !IO),
             io.write_list(Types, ", ", term_io.write_term(VarSet), !IO),
-            ( Types \= [] -> io.write_string(", ", !IO) ; true ),
+            (
+                Types = []
+            ;
+                Types = [_ | _],
+                io.write_string(", ", !IO)
+            ),
             io.write_string("T) = T,\n", !IO),
 
             io.format("\tmode %s(", [s(MethodName)], !IO),
             io.write_list(Types, ", ", WriteIn, !IO),
-            ( Types \= [] -> io.write_string(", ", !IO) ; true ),
+            (
+                Types = []
+            ;
+                Types = [_ | _],
+                io.write_string(", ", !IO)
+            ),
             io.format("%s) = %s is det", [s(InAtom), s(OutAtom)], !IO)
         ),
     io.write_list(XForms, ",\n", WriteXForm, !IO),

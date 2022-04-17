@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2000, 2003 The University of Melbourne.
+% Copyright (C) 2020, 2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %---------------------------------------------------------------------------%
@@ -12,7 +13,6 @@
 :- import_module getopt.
 :- import_module io.
 :- import_module list.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -37,12 +37,10 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-
 :- implementation.
 
 :- import_module bool.
 :- import_module char.
-:- import_module std_util.
 
 %---------------------------------------------------------------------------%
 
