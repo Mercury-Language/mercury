@@ -83,7 +83,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.term_norm.
 
 :- import_module assoc_list.
@@ -94,7 +94,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -267,7 +266,7 @@ complexity_process_proc(NumProcs, ProcNum, FullName, PredId,
     determinism_to_code_model(Detism, CodeModel),
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
-    proc_info_get_varset_vartypes(!.ProcInfo, VarSet, VarTypes),
+    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
     proc_info_get_goal(!.ProcInfo, OrigGoal),
     Context = goal_info_get_context(OrigGoalInfo),
     % Even if the original goal doesn't use all of the headvars, the code
@@ -280,10 +279,10 @@ complexity_process_proc(NumProcs, ProcNum, FullName, PredId,
     goal_info_set_purity(purity_impure, OrigGoalInfo, ImpureOrigGoalInfo),
 
     IsActiveVarName = "IsActive",
-    generate_new_var(IsActiveVarName, is_active_type, !ProcInfo, IsActiveVar),
+    generate_new_var(!.ModuleInfo, IsActiveVarName, is_active_type,
+        is_not_dummy_type, IsActiveVar, !ProcInfo),
 
-    classify_args(HeadVars, ArgModes, !.ModuleInfo, VarSet, VarTypes,
-        VarInfos),
+    classify_args(!.ModuleInfo, VarTable, HeadVars, ArgModes, VarInfos),
     allocate_slot_numbers_cl(VarInfos, 0, NumberedProfiledVars),
     list.length(NumberedProfiledVars, NumProfiledVars),
     generate_slot_goals(ProcNum, NumberedProfiledVars, NumProfiledVars,
@@ -417,7 +416,8 @@ complexity_process_proc(NumProcs, ProcNum, FullName, PredId,
 generate_slot_goals(ProcNum, NumberedVars, NumProfiledVars, Context, PredId,
         !ProcInfo, !ModuleInfo, SlotVar, SlotVarName, Goals) :-
     SlotVarName = slot_var_name,
-    generate_new_var(SlotVarName, int_type, !ProcInfo, SlotVar),
+    generate_new_var(!.ModuleInfo, SlotVarName, int_type, is_not_dummy_type,
+        SlotVar, !ProcInfo),
     ProcVarName = "proc",
     generate_size_goals(NumberedVars, Context, NumProfiledVars,
         ProcVarName, SlotVarName, PredId, !ProcInfo, !ModuleInfo,
@@ -461,14 +461,17 @@ generate_size_goals([Var - VarSeqNum | NumberedVars], Context, NumProfiledVars,
 generate_size_goal(ArgVar, VarSeqNum, Context, NumProfiledVars, ProcVarName,
         SlotVarName, PredId, !ProcInfo, !ModuleInfo, Goals,
         ForeignArgs, CodeStr) :-
-    proc_info_get_varset_vartypes(!.ProcInfo, _VarSet1, VarTypes1),
-    lookup_var_type(VarTypes1, ArgVar, VarType),
+    % XXX We should pass around !VarTables, not !ProcInfos.
+    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable1),
+    lookup_var_type(VarTable1, ArgVar, VarType),
     MacroName = "MR_complexity_fill_size_slot",
+    % XXX This call is overkill; we can get a new type_info var
+    % without updating !ProcInfo, much less !ModuleInfo.
     make_type_info_var(VarType, Context, PredId, !ProcInfo, !ModuleInfo,
         TypeInfoVar, Goals),
     % Since we just created TypeInfoVar, it isn't in VarTypes1.
-    proc_info_get_varset_vartypes(!.ProcInfo, _VarSet2, VarTypes2),
-    lookup_var_type(VarTypes2, TypeInfoVar, TypeInfoType),
+    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable2),
+    lookup_var_type(VarTable2, TypeInfoVar, TypeInfoType),
     ArgName = "arg" ++ int_to_string(VarSeqNum),
     TypeInfoArgName = "input_typeinfo" ++ int_to_string(VarSeqNum),
     ForeignArg = foreign_arg(ArgVar,
@@ -488,14 +491,14 @@ generate_size_goal(ArgVar, VarSeqNum, Context, NumProfiledVars, ProcVarName,
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_new_var(string::in, mer_type::in,
-    proc_info::in, proc_info::out, prog_var::out) is det.
+:- pred generate_new_var(module_info::in, string::in, mer_type::in,
+    is_dummy_type::in, prog_var::out, proc_info::in, proc_info::out) is det.
 
-generate_new_var(Name, Type, !ProcInfo, Var) :-
-    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
-    varset.new_named_var(Name, Var, VarSet0, VarSet),
-    add_var_type(Var, Type, VarTypes0, VarTypes),
-    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo).
+generate_new_var(ModuleInfo, Name, Type, IsDummy, Var, !ProcInfo) :-
+    Entry = vte(Name, Type, IsDummy),
+    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable0),
+    add_var_entry(Entry, Var, VarTable0, VarTable),
+    proc_info_set_var_table(VarTable, !ProcInfo).
 
 :- pred complexity_generate_call_foreign_proc(string::in, determinism::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
@@ -516,26 +519,31 @@ complexity_generate_call_foreign_proc(PredName, Detism, Args, ExtraArgs,
 
 %-----------------------------------------------------------------------------%
 
-:- pred classify_args(list(prog_var)::in, list(mer_mode)::in, module_info::in,
-    prog_varset::in, vartypes::in,
+:- pred classify_args(module_info::in, var_table::in,
+    list(prog_var)::in, list(mer_mode)::in,
     assoc_list(prog_var, complexity_arg_info)::out) is det.
 
-classify_args([], [], _, _, _, []).
-classify_args([_ | _], [], _, _, _, _) :-
+classify_args(_, _, [], [], []).
+classify_args(_, _, [_ | _], [], _) :-
     unexpected($pred, "lists not same length").
-classify_args([], [_ | _], _, _, _, _) :-
+classify_args(_, _, [], [_ | _], _) :-
     unexpected($pred, "lists not same length").
-classify_args([Var | Vars], [Mode | Modes], ModuleInfo, VarSet, VarTypes,
+classify_args(ModuleInfo, VarTable, [Var | Vars], [Mode | Modes],
         [Var - complexity_arg_info(MaybeName, Kind) | VarInfos]) :-
-    classify_args(Vars, Modes, ModuleInfo, VarSet, VarTypes, VarInfos),
-    ( if varset.search_name(VarSet, Var, Name) then
-        MaybeName = yes(Name)
-    else
+    classify_args(ModuleInfo, VarTable, Vars, Modes, VarInfos),
+    lookup_var_entry(VarTable, Var, Entry),
+    Entry = vte(Name, VarType, IsDummy),
+    ( if Name = "" then
         MaybeName = no
+    else
+        MaybeName = yes(Name)
     ),
     ( if mode_is_fully_input(ModuleInfo, Mode) then
-        lookup_var_type(VarTypes, Var, VarType),
-        ( if zero_size_type(ModuleInfo, VarType) then
+        ( if
+            ( IsDummy = is_dummy_type
+            ; zero_size_type(ModuleInfo, VarType)
+            )
+        then
             Kind = complexity_input_fixed_size
         else
             Kind = complexity_input_variable_size

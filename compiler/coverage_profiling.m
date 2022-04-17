@@ -24,7 +24,7 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module list.
 :- import_module maybe.
@@ -34,9 +34,8 @@
     %
 :- pred coverage_prof_transform_proc_body(module_info::in, pred_proc_id::in,
     containing_goal_map::in, maybe(deep_recursion_info)::in,
-    hlds_goal::in, hlds_goal::out,
-    prog_var_set_types::in, prog_var_set_types::out,
-    list(coverage_point_info)::out) is det.
+    list(coverage_point_info)::out,
+    hlds_goal::in, hlds_goal::out, var_table::in, var_table::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -74,7 +73,7 @@
 
                 % Information about variables, this is updated as variables are
                 % introduced.
-                ci_var_info                 :: prog_var_set_types,
+                ci_var_table                :: var_table,
 
                 % The following fields are static; they are not modified
                 % after initialization.
@@ -158,9 +157,9 @@ init_coverage_profiling_options(ModuleInfo, CoveragePointOptions) :-
 %-----------------------------------------------------------------------------%
 
 coverage_prof_transform_proc_body(ModuleInfo, PredProcId, ContainingGoalMap,
-        MaybeRecInfo, !Goal, !VarInfo, CoveragePoints) :-
+        MaybeRecInfo, CoveragePoints, !Goal, !VarTable) :-
     init_coverage_profiling_options(ModuleInfo, CoverageProfilingOptions),
-    CoverageInfo0 = init_proc_coverage_info(!.VarInfo, ModuleInfo,
+    CoverageInfo0 = init_proc_coverage_info(!.VarTable, ModuleInfo,
         PredProcId, MaybeRecInfo, CoverageProfilingOptions, ContainingGoalMap),
     RunFirstPass = CoverageProfilingOptions ^ cpo_run_first_pass,
     (
@@ -173,7 +172,7 @@ coverage_prof_transform_proc_body(ModuleInfo, PredProcId, ContainingGoalMap,
     coverage_prof_second_pass_goal(!Goal, coverage_before_known, _,
         CoverageInfo0, CoverageInfo, _),
     CoverageInfo ^ ci_coverage_points = CoveragePointsMap,
-    CoverageInfo ^ ci_var_info = !:VarInfo,
+    CoverageInfo ^ ci_var_table = !:VarTable,
     coverage_points_map_list(CoveragePointsMap, CoveragePoints).
 
     % Transform a goal for coverage profiling. This is the second pass of
@@ -752,13 +751,13 @@ coverage_prof_second_pass_ite(DPInfo, ITEExistVars, Cond0, Then0, Else0,
     % Create a coverage info struture, initializing some values to sensible
     % defaults.
     %
-:- func init_proc_coverage_info(prog_var_set_types, module_info, pred_proc_id,
+:- func init_proc_coverage_info(var_table, module_info, pred_proc_id,
     maybe(deep_recursion_info), coverage_profiling_options,
     containing_goal_map) = proc_coverage_info.
 
-init_proc_coverage_info(VarInfo, ModuleInfo, PredProcId, MaybeRecInfo,
+init_proc_coverage_info(VarTable, ModuleInfo, PredProcId, MaybeRecInfo,
         CoverageProfilingOptions, ContainingGoalMap) = CoverageInfo :-
-    CoverageInfo = proc_coverage_info(map.init, counter.init(0), VarInfo,
+    CoverageInfo = proc_coverage_info(map.init, counter.init(0), VarTable,
         ModuleInfo, PredProcId, MaybeRecInfo, CoverageProfilingOptions,
         ContainingGoalMap).
 
@@ -1133,20 +1132,20 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
 
     % Build unifications for the coverage point index and the proc static.
 
-    some [!VarInfo] (
-        !:VarInfo = !.CoverageInfo ^ ci_var_info,
+    some [!VarTable] (
+        !:VarTable = !.CoverageInfo ^ ci_var_table,
 
-        generate_var("CPIndex", int_type, CPIndexVar, !VarInfo),
+        generate_var_int("CPIndex", CPIndexVar, !VarTable),
         generate_deep_const_unify(some_int_const(int_const(CPIndex)),
             CPIndexVar, GoalUnifyIndex),
         % When using dynamic coverage profiling we really on this variable
         % being optimised away later.
-        generate_var("ProcLayout", c_pointer_type, ProcLayoutVar, !VarInfo),
+        generate_var_c_ptr("ProcLayout", ProcLayoutVar, !VarTable),
         proc_static_cons_id(!.CoverageInfo, ProcStaticConsId),
         generate_deep_const_unify(ProcStaticConsId, ProcLayoutVar,
             GoalUnifyProcLayout),
 
-        !CoverageInfo ^ ci_var_info := !.VarInfo
+        !CoverageInfo ^ ci_var_table := !.VarTable
     ),
 
     % Build a call to the instrumentation code.

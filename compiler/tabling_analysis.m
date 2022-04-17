@@ -98,7 +98,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.intermod_analysis.
 :- import_module transform_hlds.mmc_analysis.
 
@@ -293,8 +293,8 @@ check_proc_for_mm_tabling(SCC, PPId, !Results, !ModuleInfo) :-
         ; EvalMethod = eval_tabled(tabled_io(_, _))
         ),
         proc_info_get_goal(ProcInfo, Body),
-        proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-        check_goal_for_mm_tabling(SCC, VarTypes, Body, Result,
+        proc_info_get_var_table(!.ModuleInfo, ProcInfo, VarTable),
+        check_goal_for_mm_tabling(SCC, VarTable, Body, Result,
             MaybeAnalysisStatus, !ModuleInfo)
     ),
     list.cons(mm_tabling_proc_result(PPId, Result, MaybeAnalysisStatus),
@@ -304,11 +304,11 @@ check_proc_for_mm_tabling(SCC, PPId, !Results, !ModuleInfo) :-
 
     % Perform minimal model tabling analysis of a goal.
     %
-:- pred check_goal_for_mm_tabling(scc::in, vartypes::in, hlds_goal::in,
+:- pred check_goal_for_mm_tabling(scc::in, var_table::in, hlds_goal::in,
     mm_tabling_status::out, maybe(analysis_status)::out,
     module_info::in, module_info::out) is det.
 
-check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
+check_goal_for_mm_tabling(SCC, VarTable, Goal, Result, MaybeAnalysisStatus,
         !ModuleInfo) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
@@ -328,7 +328,7 @@ check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
     ;
         GoalExpr = plain_call(CalleePredId, CalleeProcId, CallArgs, _, _, _),
         CalleePPId = proc(CalleePredId, CalleeProcId),
-        check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTypes, Result,
+        check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTable, Result,
             MaybeAnalysisStatus, !ModuleInfo)
     ;
         GoalExpr = generic_call(Details, _Args, _ArgModes, _, _),
@@ -353,7 +353,7 @@ check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
         MaybeAnalysisStatus = yes(optimal)
     ;
         GoalExpr = negation(SubGoal),
-        check_goal_for_mm_tabling(SCC, VarTypes, SubGoal, Result,
+        check_goal_for_mm_tabling(SCC, VarTable, SubGoal, Result,
             MaybeAnalysisStatus, !ModuleInfo)
     ;
         GoalExpr = scope(Reason, SubGoal),
@@ -366,7 +366,7 @@ check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
             Result = mm_tabled_will_not_call,
             MaybeAnalysisStatus = yes(optimal)
         else
-            check_goal_for_mm_tabling(SCC, VarTypes, SubGoal, Result,
+            check_goal_for_mm_tabling(SCC, VarTable, SubGoal, Result,
                 MaybeAnalysisStatus, !ModuleInfo)
         )
     ;
@@ -381,20 +381,20 @@ check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
             GoalExpr = switch(_, _, Cases),
             Goals = list.map((func(case(_, _, CaseGoal)) = CaseGoal), Cases)
         ),
-        check_goals_for_mm_tabling(SCC, VarTypes, Goals, Result,
+        check_goals_for_mm_tabling(SCC, VarTable, Goals, Result,
             MaybeAnalysisStatus, !ModuleInfo)
     ;
         GoalExpr = shorthand(_),
         unexpected($pred, "shorthand")
     ).
 
-:- pred check_goals_for_mm_tabling(scc::in, vartypes::in,
+:- pred check_goals_for_mm_tabling(scc::in, var_table::in,
     hlds_goals::in, mm_tabling_status::out, maybe(analysis_status)::out,
     module_info::in, module_info::out) is det.
 
-check_goals_for_mm_tabling(SCC, VarTypes, Goals, Result, MaybeAnalysisStatus,
+check_goals_for_mm_tabling(SCC, VarTable, Goals, Result, MaybeAnalysisStatus,
         !ModuleInfo) :-
-    list.map2_foldl(check_goal_for_mm_tabling(SCC, VarTypes), Goals,
+    list.map2_foldl(check_goal_for_mm_tabling(SCC, VarTable), Goals,
         Results, MaybeAnalysisStatuses, !ModuleInfo),
     list.foldl(combine_mm_tabling_status, Results, mm_tabled_will_not_call,
         Result),
@@ -404,10 +404,10 @@ check_goals_for_mm_tabling(SCC, VarTypes, Goals, Result, MaybeAnalysisStatus,
 %----------------------------------------------------------------------------%
 
 :- pred check_call_for_mm_tabling(pred_proc_id::in, prog_vars::in,
-    scc::in, vartypes::in, mm_tabling_status::out, maybe(analysis_status)::out,
+    scc::in, var_table::in, mm_tabling_status::out, maybe(analysis_status)::out,
     module_info::in, module_info::out) is det.
 
-check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTypes, Result,
+check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTable, Result,
         MaybeAnalysisStatus, !ModuleInfo) :-
     CalleePPId = proc(CalleePredId, _),
     module_info_pred_info(!.ModuleInfo, CalleePredId, CalleePredInfo),
@@ -471,7 +471,7 @@ check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTypes, Result,
         else
             % Otherwise, the information (if we have any) will be in the
             % mm_tabling_info table.
-            check_call_for_mm_tabling_calls(!.ModuleInfo, VarTypes,
+            check_call_for_mm_tabling_calls(!.ModuleInfo, VarTable,
                 CalleePPId, CallArgs, MaybeResult),
             (
                 MaybeResult = yes(ProcTablingInfo),
@@ -518,10 +518,10 @@ get_mm_tabling_status_from_attributes(Attributes) =
 
     % Additional code for handling calls.
     %
-:- pred check_call_for_mm_tabling_calls(module_info::in, vartypes::in,
+:- pred check_call_for_mm_tabling_calls(module_info::in, var_table::in,
     pred_proc_id::in, prog_vars::in, maybe(proc_mm_tabling_info)::out) is det.
 
-check_call_for_mm_tabling_calls(ModuleInfo, _VarTypes, PPId, _CallArgs,
+check_call_for_mm_tabling_calls(ModuleInfo, _VarTable, PPId, _CallArgs,
         MaybeProcTablingInfo) :-
     module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo, ProcInfo),
     proc_info_get_mm_tabling_info(ProcInfo, MaybeProcTablingInfo).
@@ -571,18 +571,18 @@ mm_tabling_annotate_proc(PPId, !ModuleInfo) :-
     some [!ProcInfo, !Body] (
         module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, !:ProcInfo),
         proc_info_get_goal(!.ProcInfo, !:Body),
-        proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
-        mm_tabling_annotate_goal(VarTypes, !Body, _Status, !ModuleInfo),
+        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
+        mm_tabling_annotate_goal(VarTable, !Body, _Status, !ModuleInfo),
         proc_info_set_goal(!.Body, !ProcInfo),
         module_info_set_pred_proc_info(PPId, PredInfo, !.ProcInfo, !ModuleInfo)
     ).
 
-:- pred mm_tabling_annotate_goal(vartypes::in, hlds_goal::in, hlds_goal::out,
+:- pred mm_tabling_annotate_goal(var_table::in, hlds_goal::in, hlds_goal::out,
     mm_tabling_status::out, module_info::in, module_info::out) is det.
 
-mm_tabling_annotate_goal(VarTypes, !Goal, Status, !ModuleInfo) :-
+mm_tabling_annotate_goal(VarTable, !Goal, Status, !ModuleInfo) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
-    mm_tabling_annotate_goal_2(VarTypes, GoalExpr0, GoalExpr, Status,
+    mm_tabling_annotate_goal_2(VarTable, GoalExpr0, GoalExpr, Status,
         !ModuleInfo),
     (
         Status = mm_tabled_will_not_call,
@@ -596,11 +596,11 @@ mm_tabling_annotate_goal(VarTypes, !Goal, Status, !ModuleInfo) :-
     ),
     !:Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred mm_tabling_annotate_goal_2(vartypes::in,
+:- pred mm_tabling_annotate_goal_2(var_table::in,
     hlds_goal_expr::in, hlds_goal_expr::out, mm_tabling_status::out,
     module_info::in, module_info::out) is det.
 
-mm_tabling_annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
+mm_tabling_annotate_goal_2(VarTable, !GoalExpr, Status, !ModuleInfo) :-
     (
         !.GoalExpr = unify(_, _, _, Kind, _),
         (
@@ -617,7 +617,7 @@ mm_tabling_annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
     ;
         !.GoalExpr = plain_call(CalleePredId, CalleeProcId, CallArgs, _, _, _),
         CalleePPId = proc(CalleePredId, CalleeProcId),
-        mm_tabling_annotate_call(CalleePPId, CallArgs, VarTypes, Status,
+        mm_tabling_annotate_call(VarTable, CalleePPId, CallArgs, Status,
             !ModuleInfo)
     ;
         !.GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
@@ -640,26 +640,26 @@ mm_tabling_annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
         )
     ;
         !.GoalExpr = conj(ConjType, Conjuncts0),
-        mm_tabling_annotate_goal_list(VarTypes, Conjuncts0, Conjuncts, Status,
+        mm_tabling_annotate_goal_list(VarTable, Conjuncts0, Conjuncts, Status,
             !ModuleInfo),
         !:GoalExpr = conj(ConjType, Conjuncts)
     ;
         !.GoalExpr = disj(Disjuncts0),
-        mm_tabling_annotate_goal_list(VarTypes, Disjuncts0, Disjuncts, Status,
+        mm_tabling_annotate_goal_list(VarTable, Disjuncts0, Disjuncts, Status,
             !ModuleInfo),
         !:GoalExpr = disj(Disjuncts)
     ;
         !.GoalExpr = switch(Var, CanFail, Cases0),
-        mm_tabling_annotate_cases(VarTypes, Cases0, Cases, Status,
+        mm_tabling_annotate_cases(VarTable, Cases0, Cases, Status,
             !ModuleInfo),
         !:GoalExpr = switch(Var, CanFail, Cases)
     ;
         !.GoalExpr = if_then_else(Vars, Cond0, Then0, Else0),
-        mm_tabling_annotate_goal(VarTypes, Cond0, Cond, CondStatus,
+        mm_tabling_annotate_goal(VarTable, Cond0, Cond, CondStatus,
             !ModuleInfo),
-        mm_tabling_annotate_goal(VarTypes, Then0, Then, ThenStatus,
+        mm_tabling_annotate_goal(VarTable, Then0, Then, ThenStatus,
             !ModuleInfo),
-        mm_tabling_annotate_goal(VarTypes, Else0, Else, ElseStatus,
+        mm_tabling_annotate_goal(VarTable, Else0, Else, ElseStatus,
             !ModuleInfo),
         ( if
             CondStatus = mm_tabled_will_not_call,
@@ -673,7 +673,7 @@ mm_tabling_annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
         !:GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         !.GoalExpr = negation(SubGoal0),
-        mm_tabling_annotate_goal(VarTypes, SubGoal0, SubGoal, Status,
+        mm_tabling_annotate_goal(VarTable, SubGoal0, SubGoal, Status,
             !ModuleInfo),
         !:GoalExpr = negation(SubGoal)
     ;
@@ -686,7 +686,7 @@ mm_tabling_annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
         then
             Status = mm_tabled_will_not_call
         else
-            mm_tabling_annotate_goal(VarTypes, SubGoal0, SubGoal, Status,
+            mm_tabling_annotate_goal(VarTable, SubGoal0, SubGoal, Status,
                 !ModuleInfo),
             !:GoalExpr = scope(Reason, SubGoal)
         )
@@ -695,39 +695,40 @@ mm_tabling_annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
         unexpected($pred, "shorthand goal")
     ).
 
-:- pred mm_tabling_annotate_goal_list(vartypes::in,
+:- pred mm_tabling_annotate_goal_list(var_table::in,
     list(hlds_goal)::in, list(hlds_goal)::out, mm_tabling_status::out,
     module_info::in, module_info::out) is det.
 
-mm_tabling_annotate_goal_list(VarTypes, !Goals, Status, !ModuleInfo) :-
-    list.map2_foldl(mm_tabling_annotate_goal(VarTypes), !Goals, Statuses,
+mm_tabling_annotate_goal_list(VarTable, !Goals, Status, !ModuleInfo) :-
+    list.map2_foldl(mm_tabling_annotate_goal(VarTable), !Goals, Statuses,
         !ModuleInfo),
     list.foldl(combine_mm_tabling_status, Statuses, mm_tabled_will_not_call,
         Status).
 
-:- pred mm_tabling_annotate_cases(vartypes::in,
+:- pred mm_tabling_annotate_cases(var_table::in,
     list(case)::in, list(case)::out, mm_tabling_status::out,
     module_info::in, module_info::out) is det.
 
-mm_tabling_annotate_cases(VarTypes, !Cases, Status, !ModuleInfo) :-
-    list.map2_foldl(mm_tabling_annotate_case(VarTypes), !Cases, Statuses,
+mm_tabling_annotate_cases(VarTable, !Cases, Status, !ModuleInfo) :-
+    list.map2_foldl(mm_tabling_annotate_case(VarTable), !Cases, Statuses,
         !ModuleInfo),
     list.foldl(combine_mm_tabling_status, Statuses, mm_tabled_will_not_call,
         Status).
 
-:- pred mm_tabling_annotate_case(vartypes::in, case::in, case::out,
+:- pred mm_tabling_annotate_case(var_table::in, case::in, case::out,
     mm_tabling_status::out, module_info::in, module_info::out)
     is det.
 
-mm_tabling_annotate_case(VarTypes, !Case, Status, !ModuleInfo) :-
+mm_tabling_annotate_case(VarTable, !Case, Status, !ModuleInfo) :-
     !.Case = case(MainConsId, OtherConsIds, Goal0),
-    mm_tabling_annotate_goal(VarTypes, Goal0, Goal, Status, !ModuleInfo),
+    mm_tabling_annotate_goal(VarTable, Goal0, Goal, Status, !ModuleInfo),
     !:Case = case(MainConsId, OtherConsIds, Goal).
 
-:- pred mm_tabling_annotate_call(pred_proc_id::in, prog_vars::in, vartypes::in,
-    mm_tabling_status::out, module_info::in, module_info::out) is det.
+:- pred mm_tabling_annotate_call(var_table::in, pred_proc_id::in,
+    list(prog_var)::in, mm_tabling_status::out,
+    module_info::in, module_info::out) is det.
 
-mm_tabling_annotate_call(CalleePPId, CallArgs, VarTypes, Status,
+mm_tabling_annotate_call(VarTable, CalleePPId, CallArgs, Status,
         !ModuleInfo) :-
     CalleePPId = proc(CalleePredId, _),
     module_info_pred_info(!.ModuleInfo, CalleePredId, CalleePredInfo),
@@ -780,7 +781,7 @@ mm_tabling_annotate_call(CalleePPId, CallArgs, VarTypes, Status,
                 )
             )
         else
-            check_call_for_mm_tabling_calls(!.ModuleInfo, VarTypes,
+            check_call_for_mm_tabling_calls(!.ModuleInfo, VarTable,
                 CalleePPId, CallArgs, MaybeResult),
             (
                 MaybeResult = yes(CalleeProcTablingInfo),

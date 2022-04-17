@@ -20,6 +20,8 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.var_table.
 :- import_module parse_tree.vartypes.
 
 :- import_module char.
@@ -127,6 +129,22 @@
 :- pred make_const_construction_alloc(cons_id::in, mer_type::in,
     maybe(string)::in, hlds_goal::out, prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+:- pred make_int_const_construction_alloc_vt(int::in, string::in,
+    hlds_goal::out, prog_var::out,
+    var_table::in, var_table::out) is det.
+:- pred make_string_const_construction_alloc_vt(string::in, string::in,
+    hlds_goal::out, prog_var::out,
+    var_table::in, var_table::out) is det.
+:- pred make_float_const_construction_alloc_vt(float::in, string::in,
+    hlds_goal::out, prog_var::out,
+    var_table::in, var_table::out) is det.
+:- pred make_char_const_construction_alloc_vt(char::in, string::in,
+    hlds_goal::out, prog_var::out,
+    var_table::in, var_table::out) is det.
+:- pred make_const_construction_alloc_vt(cons_id::in, mer_type::in,
+    is_dummy_type::in, string::in, hlds_goal::out, prog_var::out,
+    var_table::in, var_table::out) is det.
 
     % Produce a goal to construct or deconstruct a unification with a functor.
     % It fills in the non-locals, instmap_delta and determinism fields
@@ -335,6 +353,38 @@ make_const_construction_alloc(ConsId, Type, MaybeName, Goal, Var,
         !VarSet, !VarTypes) :-
     varset.new_maybe_named_var(MaybeName, Var, !VarSet),
     add_var_type(Var, Type, !VarTypes),
+    make_const_construction(term.context_init, Var, ConsId, Goal).
+
+%---------------------------------------------------------------------------%
+
+make_int_const_construction_alloc_vt(Int, Name, Goal, Var,
+        !VarTable) :-
+    Entry = vte(Name, int_type, is_not_dummy_type),
+    add_var_entry(Entry, Var, !VarTable),
+    make_int_const_construction(term.context_init, Var, Int, Goal).
+
+make_string_const_construction_alloc_vt(String, Name, Goal, Var,
+        !VarTable) :-
+    Entry = vte(Name, string_type, is_not_dummy_type),
+    add_var_entry(Entry, Var, !VarTable),
+    make_string_const_construction(term.context_init, Var, String, Goal).
+
+make_float_const_construction_alloc_vt(Float, Name, Goal, Var,
+        !VarTable) :-
+    Entry = vte(Name, float_type, is_not_dummy_type),
+    add_var_entry(Entry, Var, !VarTable),
+    make_float_const_construction(term.context_init, Var, Float, Goal).
+
+make_char_const_construction_alloc_vt(Char, Name, Goal, Var,
+        !VarTable) :-
+    Entry = vte(Name, char_type, is_not_dummy_type),
+    add_var_entry(Entry, Var, !VarTable),
+    make_char_const_construction(term.context_init, Var, Char, Goal).
+
+make_const_construction_alloc_vt(ConsId, Type, IsDummyType, Name, Goal, Var,
+        !VarTable) :-
+    Entry = vte(Name, Type, IsDummyType),
+    add_var_entry(Entry, Var, !VarTable),
     make_const_construction(term.context_init, Var, ConsId, Goal).
 
 %---------------------------------------------------------------------------%

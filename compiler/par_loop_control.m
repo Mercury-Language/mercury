@@ -98,6 +98,8 @@
 
 :- implementation.
 
+:- import_module check_hlds.
+:- import_module check_hlds.type_util.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_dependency_graph.
@@ -118,10 +120,12 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module digraph.
@@ -603,7 +607,7 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
     pred_info_get_class_context(OldPredInfo, ClassConstraints),
     pred_info_get_arg_types(OldPredInfo, ArgTypes0),
 
-    some [!PredInfo, !Body, !VarSet, !VarTypes] (
+    some [!PredInfo, !Body, !VarTable] (
         % Construct the pred info structure. We initially construct it with
         % the old proc info which will be replaced below.
         GoalType = goal_not_for_promise(np_goal_type_none),
@@ -625,11 +629,11 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         % in the body.
         proc_info_get_argmodes(OldProcInfo, ArgModes0),
         proc_info_get_headvars(OldProcInfo, HeadVars0),
-        proc_info_get_varset_vartypes(OldProcInfo, !:VarSet, !:VarTypes),
+        proc_info_get_var_table(!.ModuleInfo, OldProcInfo, !:VarTable),
         proc_info_get_goal(OldProcInfo, !:Body),
 
-        varset.new_named_var("LC", LCVar, !VarSet),
-        add_var_type(LCVar, loop_control_var_type, !VarTypes),
+        LCVarEntry = vte("LC", loop_control_var_type, is_not_dummy_type),
+        add_var_entry(LCVarEntry, LCVar, !VarTable),
         should_preserve_tail_recursion(!.ModuleInfo, PreserveTailRecursion),
         get_lc_wait_free_slot_proc(!.ModuleInfo, WaitFreeSlotProc),
         get_lc_join_and_terminate_proc(!.ModuleInfo, JoinAndTerminateProc),
@@ -640,7 +644,7 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
             WaitFreeSlotProc, lc_wait_free_slot_sym_name,
             JoinAndTerminateProc, lc_join_and_terminate_sym_name),
         goal_loop_control_all_recursive_paths(Info, RecParConjIds,
-            ContainingGoalMap, !Body, !VarSet, !VarTypes),
+            ContainingGoalMap, !Body, !VarTable),
 
         % Fixup the remaining recursive calls, and add barriers in the base
         % cases.
@@ -657,7 +661,7 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         proc_info_get_inst_varset(OldProcInfo, InstVarSet),
         proc_info_get_rtti_varmaps(OldProcInfo, RttiVarMaps),
         proc_info_get_inferred_determinism(OldProcInfo, Detism),
-        proc_info_create(Context, SeqNum, !.VarSet, !.VarTypes, HeadVars,
+        proc_info_create_vt(Context, SeqNum, !.VarTable, HeadVars,
             InstVarSet, ArgModes, detism_decl_none, Detism, !.Body,
             RttiVarMaps, address_is_not_taken, has_parallel_conj, map.init,
             ProcInfo),
@@ -711,26 +715,25 @@ should_preserve_tail_recursion(ModuleInfo, PreserveTailRecursion) :-
 
 :- pred goal_loop_control_all_recursive_paths(loop_control_info::in,
     list(goal_id)::in, containing_goal_map::in, hlds_goal::in, hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 goal_loop_control_all_recursive_paths(Info, GoalIds, ContainingGoalMap, !Goal,
-        !VarSet, !VarTypes) :-
+        !VarTable) :-
     GoalPaths = list.map(goal_id_to_forward_path(ContainingGoalMap), GoalIds),
-    list.foldl3(goal_loop_control_one_recursive_path(Info,
+    list.foldl2(goal_loop_control_one_recursive_path(Info,
             goal_is_last_goal_on_path),
-        GoalPaths, !Goal, !VarSet, !VarTypes).
+        GoalPaths, !Goal, !VarTable).
 
 :- pred goal_loop_control_one_recursive_path(loop_control_info::in,
     goal_is_last_goal_on_path::in, forward_goal_path::in,
-    hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+    hlds_goal::in, hlds_goal::out, var_table::in, var_table::out) is det.
 
-goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0, !Goal,
-        !VarSet, !VarTypes) :-
+goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0,
+        !Goal, !VarTable) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo),
     ( if goal_path_remove_first(GoalPath0, GoalPath, Step) then
-        format("Couldn't follow goal path step: \"%s\"", [s(string(Step))],
-            ErrorString),
+        string.format("Couldn't follow goal path step: \"%s\"",
+            [s(string(Step))], ErrorString),
         (
             Step = step_conj(N),
             ( if
@@ -749,7 +752,7 @@ goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0, !Goal,
                     IsLastGoalConj = IsLastGoal
                 ),
                 goal_loop_control_one_recursive_path(Info, IsLastGoalConj,
-                    GoalPath, Conj0, Conj, !VarSet, !VarTypes),
+                    GoalPath, Conj0, Conj, !VarTable),
                 det_replace_nth(Conjs0, N, Conj, Conjs),
                 GoalExpr = conj(plain_conj, Conjs)
             else
@@ -763,7 +766,7 @@ goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0, !Goal,
             then
                 Goal0 = Case0 ^ case_goal,
                 goal_loop_control_one_recursive_path(Info, IsLastGoal,
-                    GoalPath, Goal0, Goal, !VarSet, !VarTypes),
+                    GoalPath, Goal0, Goal, !VarTable),
                 Case = Case0 ^ case_goal := Goal,
                 det_replace_nth(Cases0, N, Case, Cases),
                 GoalExpr = switch(Var, CanFail, Cases)
@@ -774,7 +777,7 @@ goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0, !Goal,
             Step = step_ite_then,
             ( if GoalExpr0 = if_then_else(Vars, Cond, Then0, Else) then
                 goal_loop_control_one_recursive_path(Info, IsLastGoal,
-                    GoalPath, Then0, Then, !VarSet, !VarTypes),
+                    GoalPath, Then0, Then, !VarTable),
                 GoalExpr = if_then_else(Vars, Cond, Then, Else)
             else
                 unexpected($pred, ErrorString)
@@ -783,7 +786,7 @@ goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0, !Goal,
             Step = step_ite_else,
             ( if GoalExpr0 = if_then_else(Vars, Cond, Then, Else0) then
                 goal_loop_control_one_recursive_path(Info, IsLastGoal,
-                    GoalPath, Else0, Else, !VarSet, !VarTypes),
+                    GoalPath, Else0, Else, !VarTable),
                 GoalExpr = if_then_else(Vars, Cond, Then, Else)
             else
                 unexpected($pred, ErrorString)
@@ -792,7 +795,7 @@ goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0, !Goal,
             Step = step_scope(_),
             ( if GoalExpr0 = scope(Reason, SubGoal0) then
                 goal_loop_control_one_recursive_path(Info, IsLastGoal,
-                    GoalPath, SubGoal0, SubGoal, !VarSet, !VarTypes),
+                    GoalPath, SubGoal0, SubGoal, !VarTable),
                 GoalExpr = scope(Reason, SubGoal)
             else
                 unexpected($pred, ErrorString)
@@ -814,8 +817,8 @@ goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0, !Goal,
         fixup_goal_info(Info, !Goal)
     else
         ( if GoalExpr0 = conj(parallel_conj, Conjs) then
-            par_conj_loop_control(Info, Conjs, IsLastGoal, GoalInfo, !:Goal,
-                !VarSet, !VarTypes)
+            par_conj_loop_control(Info, Conjs, IsLastGoal, GoalInfo,
+                !:Goal, !VarTable)
         else
             unexpected($pred, "expected parallel conjunction")
         )
@@ -823,10 +826,10 @@ goal_loop_control_one_recursive_path(Info, IsLastGoal, GoalPath0, !Goal,
 
 :- pred par_conj_loop_control(loop_control_info::in, list(hlds_goal)::in,
     goal_is_last_goal_on_path::in, hlds_goal_info::in, hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
-par_conj_loop_control(Info, Conjuncts0, IsLastGoal, GoalInfo, Goal, !VarSet,
-        !VarTypes) :-
+par_conj_loop_control(Info, Conjuncts0, IsLastGoal, GoalInfo, Goal,
+        !VarTable) :-
     list.det_split_last(Conjuncts0, EarlierConjuncts0, LastConjunct0),
     % Re-write the recursive call in the last conjunct.
     goal_rewrite_recursive_call(Info, IsLastGoal, LastConjunct0, LastConjunct,
@@ -835,7 +838,7 @@ par_conj_loop_control(Info, Conjuncts0, IsLastGoal, GoalInfo, Goal, !VarSet,
 
     % Process the remaining conjuncts.
     rewrite_nonrecursive_par_conjuncts(Info, UseParentStack,
-        EarlierConjuncts0, EarlierConjuncts, !VarSet, !VarTypes),
+        EarlierConjuncts0, EarlierConjuncts, !VarTable),
     Conjuncts = EarlierConjuncts ++ LastConjGoals,
     % XXX The point of calling create_conj_from_list is that it sets up
     % the goal_info of Goal0 appropriately. Why call it if we then immediately
@@ -848,14 +851,13 @@ par_conj_loop_control(Info, Conjuncts0, IsLastGoal, GoalInfo, Goal, !VarSet,
     %
 :- pred rewrite_nonrecursive_par_conjuncts(loop_control_info::in,
     lc_use_parent_stack::in, list(hlds_goal)::in, list(hlds_goal)::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
-rewrite_nonrecursive_par_conjuncts(_, _, [], [], !VarSet, !VarTypes).
+rewrite_nonrecursive_par_conjuncts(_, _, [], [], !VarTable).
 rewrite_nonrecursive_par_conjuncts(Info, UseParentStack,
-        [Conjunct0 | Conjuncts0], Goals, !VarSet, !VarTypes) :-
+        [Conjunct0 | Conjuncts0], Goals, !VarTable) :-
     % Create the "get free slot" call.
-    create_get_free_slot_goal(Info, LCSVar, GetFreeSlotGoal,
-        !VarSet, !VarTypes),
+    create_get_free_slot_goal(Info, LCSVar, GetFreeSlotGoal, !VarTable),
 
     % Add a join_and_terminate goal to the end of Conjunct0 forming Conjunct.
     create_join_and_terminate_goal(Info, LCVar, LCSVar, JoinAndTerminateGoal),
@@ -879,7 +881,7 @@ rewrite_nonrecursive_par_conjuncts(Info, UseParentStack,
     ScopeGoal = hlds_goal(ScopeGoalExpr, ScopeGoalInfo),
 
     rewrite_nonrecursive_par_conjuncts(Info, UseParentStack, Conjuncts0,
-        TailGoals, !VarSet, !VarTypes),
+        TailGoals, !VarTable),
     Goals = [GetFreeSlotGoal, ScopeGoal | TailGoals].
 
     % Rewrite any recursive calls in this goal.
@@ -1247,12 +1249,11 @@ case_update_non_loop_control_paths(Info, RecParConjIds, !Case,
 %---------------------------------------------------------------------------%
 
 :- pred create_get_free_slot_goal(loop_control_info::in, prog_var::out,
-    hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+    hlds_goal::out, var_table::in, var_table::out) is det.
 
-create_get_free_slot_goal(Info, LCSVar, Goal, !VarSet, !VarTypes) :-
-    varset.new_named_var("LCS", LCSVar, !VarSet),
-    add_var_type(LCSVar, loop_control_slot_var_type, !VarTypes),
+create_get_free_slot_goal(Info, LCSVar, Goal, !VarTable) :-
+    LCSVarEntry = vte("LCS", loop_control_slot_var_type, is_not_dummy_type),
+    add_var_entry(LCSVarEntry, LCSVar, !VarTable),
     LCVar = Info ^ lci_lc_var,
     proc(PredId, ProcId) = Info ^ lci_wait_free_slot_proc,
     SymName = Info ^ lci_wait_free_slot_proc_name,
@@ -1267,13 +1268,12 @@ create_get_free_slot_goal(Info, LCSVar, Goal, !VarSet, !VarTypes) :-
 %---------------------------------------------------------------------------%
 
 :- pred create_create_loop_control_goal(module_info::in, prog_var::in,
-    prog_var::out, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+    prog_var::out, hlds_goal::out, var_table::in, var_table::out) is det.
 
 create_create_loop_control_goal(ModuleInfo, NumContextsVar, LCVar, Goal,
-        !VarSet, !VarTypes) :-
-    varset.new_named_var("LC", LCVar, !VarSet),
-    add_var_type(LCVar, loop_control_var_type, !VarTypes),
+        !VarTable) :-
+    LCVarEntry = vte("LC", loop_control_var_type, is_not_dummy_type),
+    add_var_entry(LCVarEntry, LCVar, !VarTable),
     get_lc_create_proc(ModuleInfo, LCCreatePredId, LCCreateProcId),
     GoalExpr = plain_call(LCCreatePredId, LCCreateProcId,
         [NumContextsVar, LCVar], not_builtin, no, lc_create_sym_name),
@@ -1352,13 +1352,12 @@ update_outer_proc(PredProcId, InnerPredProcId, InnerPredName, ModuleInfo,
     proc_info_get_inferred_determinism(!.ProcInfo, Detism),
     proc_info_get_goal(!.ProcInfo, OrigGoal),
     OrigInstmapDelta = goal_info_get_instmap_delta(OrigGoal ^ hg_info),
-    some [!VarSet, !VarTypes] (
+    some [!VarTable] (
         % Re-build the variables in the procedure with smaller sets.
-        varset.init(!:VarSet),
-        init_vartypes(!:VarTypes),
-        proc_info_get_varset_vartypes(!.ProcInfo, OldVarSet, _OldVarTypes),
-        list.foldl3_corresponding(add_old_var_to_sets(OldVarSet), HeadVars0,
-            HeadVarTypes, !VarSet, !VarTypes, map.init, Remap),
+        init_var_table(!:VarTable),
+        proc_info_get_var_table(ModuleInfo, !.ProcInfo, OldVarTable),
+        list.foldl2_corresponding(add_old_var_to_sets(ModuleInfo, OldVarTable),
+            HeadVars0, HeadVarTypes, !VarTable, map.init, Remap),
         list.map(map.lookup(Remap), HeadVars0, HeadVars),
         proc_info_set_headvars(HeadVars, !ProcInfo),
 
@@ -1372,9 +1371,8 @@ update_outer_proc(PredProcId, InnerPredProcId, InnerPredName, ModuleInfo,
         % in the compiler so that it can be adjusted using profiler feedback
         % (for auto-parallelisation), but for now we just set it using
         % a runtime call so that it can be tuned.
-        varset.new_named_var("NumContexts", NumContextsVar, !VarSet),
-        add_var_type(NumContextsVar,
-            builtin_type(builtin_type_int(int_type_int)), !VarTypes),
+        NumContextsEntry = vte("NumContexts", int_type, is_not_dummy_type),
+        add_var_entry(NumContextsEntry, NumContextsVar, !VarTable),
         get_lc_default_num_contexts_proc(ModuleInfo,
             LCDefaultNumContextsPredId, LCDefaultNumContextsProcId),
         goal_info_init(set_of_var.list_to_set([NumContextsVar]),
@@ -1388,7 +1386,7 @@ update_outer_proc(PredProcId, InnerPredProcId, InnerPredName, ModuleInfo,
 
         % Create the call to lc_create
         create_create_loop_control_goal(ModuleInfo, NumContextsVar, LCVar,
-            LCCreateGoal, !VarSet, !VarTypes),
+            LCCreateGoal, !VarTable),
 
         % Create the inner call.
         InnerCallArgs = [LCVar | HeadVars],
@@ -1427,21 +1425,20 @@ update_outer_proc(PredProcId, InnerPredProcId, InnerPredName, ModuleInfo,
         ),
 
         proc_info_set_goal(Body, !ProcInfo),
-        proc_info_set_varset_vartypes(!.VarSet, !.VarTypes, !ProcInfo)
+        proc_info_set_var_table(!.VarTable, !ProcInfo)
     ).
 
-:- pred add_old_var_to_sets(prog_varset::in, prog_var::in, mer_type::in,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+:- pred add_old_var_to_sets(module_info::in, var_table::in,
+    prog_var::in, mer_type::in, var_table::in, var_table::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
-add_old_var_to_sets(OldVarSet, OldVar, VarType, !VarSet, !VarTypes,
-        !Remap) :-
-    ( if varset.search_name(OldVarSet, OldVar, Name) then
-        varset.new_named_var(Name, Var, !VarSet)
-    else
-        varset.new_var(Var, !VarSet)
-    ),
-    add_var_type(Var, VarType, !VarTypes),
+add_old_var_to_sets(ModuleInfo, OldVarTable, OldVar, VarType,
+        !VarTable, !Remap) :-
+    lookup_var_entry(OldVarTable, OldVar, OldVarEntry),
+    OldVarEntry = vte(OldName, _, _),
+    VarTypeIsDummy = is_type_a_dummy(ModuleInfo, VarType),
+    Entry = vte(OldName, VarType, VarTypeIsDummy),
+    add_var_entry(Entry, Var, !VarTable),
     map.det_insert(OldVar, Var, !Remap).
 
 :- pred remap_instmap(map(prog_var, prog_var)::in,
@@ -1451,7 +1448,7 @@ remap_instmap(Remap, OldInstmapDelta, !:InstmapDelta) :-
     instmap_delta_to_assoc_list(OldInstmapDelta, VarInsts),
     instmap_delta_init_reachable(!:InstmapDelta),
     list.foldl(
-        (pred((OldVar - Inst)::in, IMD0::in, IMD::out) is det :-
+        ( pred((OldVar - Inst)::in, IMD0::in, IMD::out) is det :-
             map.lookup(Remap, OldVar, Var),
             instmap_delta_set_var(Var, Inst, IMD0, IMD)
         ), VarInsts, !InstmapDelta).

@@ -27,6 +27,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module list.
@@ -99,6 +100,9 @@
     maybe(prog_var)::in, prog_var::out, hlds_goal::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     rtti_varmaps::in, rtti_varmaps::out) is det.
+:- pred init_type_info_var_vt(mer_type::in, list(prog_var)::in,
+    maybe(prog_var)::in, prog_var::out, hlds_goal::out,
+    var_table::in, var_table::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
     % init_const_type_ctor_info_var(Type, TypeCtor,
     %   TypeCtorInfoVar, TypeCtorConsId, TypeCtorInfoGoal,
@@ -122,6 +126,10 @@
     prog_var::out, cons_id::out, hlds_goal::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     rtti_varmaps::in, rtti_varmaps::out) is det.
+:- pred init_const_type_ctor_info_var_vt(mer_type::in, type_ctor::in,
+    prog_var::out, cons_id::out, hlds_goal::out,
+    var_table::in, var_table::out,
+    rtti_varmaps::in, rtti_varmaps::out) is det.
 
 %---------------------%
 
@@ -135,6 +143,9 @@
 :- pred new_type_info_var_raw(mer_type::in, type_info_kind::in,
     prog_var::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
+:- pred new_type_info_var_raw_vt(mer_type::in, type_info_kind::in,
+    prog_var::out,
+    var_table::in, var_table::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
 %---------------------%
 
@@ -362,9 +373,11 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         VarTypes1 = VarTypes0,
         RttiVarMaps1 = RttiVarMaps0
     else
-        init_const_type_ctor_info_var_from_cons_id(Type, TypeCtorConsId,
-            TypeCtorVar, TypeCtorGoal, VarSet0, VarSet1, VarTypes0, VarTypes1,
+        new_type_info_var_raw(Type, type_ctor_info, TypeCtorVar,
+            VarSet0, VarSet1, VarTypes0, VarTypes1,
             RttiVarMaps0, RttiVarMaps1),
+        init_const_type_ctor_info_var_from_cons_id(TypeCtorConsId, TypeCtorVar,
+            TypeCtorGoal),
         TypeCtorGoals = [TypeCtorGoal],
         map.det_insert(TypeCtorConsIdConstArg, TypeCtorVar,
             ConstStructVarMap0, ConstStructVarMap1),
@@ -548,23 +561,8 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
 
 %---------------------%
 
-init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
-        !VarSet, !VarTypes, !RttiVarMaps) :-
-    type_to_ctor_det(Type, TypeCtor),
-    Cell = type_info_cell(TypeCtor),
-    ConsId = cell_cons_id(Cell),
-    do_init_type_info_var(Type, Cell, ConsId, ArgVars, MaybePreferredVar,
-        TypeInfoVar, TypeInfoGoal, !VarSet, !VarTypes, !RttiVarMaps).
-
-:- pred do_init_type_info_var(mer_type::in, polymorphism_cell::in, cons_id::in,
-    list(prog_var)::in, maybe(prog_var)::in, prog_var::out, hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    rtti_varmaps::in, rtti_varmaps::out) is det.
-
-do_init_type_info_var(Type, Cell, ConsId, ArgVars, MaybePreferredVar,
-        TypeInfoVar, TypeInfoGoal, !VarSet, !VarTypes, !RttiVarMaps) :-
-    TypeInfoRHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars),
-    % Introduce a new variable.
+init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar,
+        TypeInfoGoal, !VarSet, !VarTypes, !RttiVarMaps) :-
     (
         MaybePreferredVar = yes(TypeInfoVar)
     ;
@@ -572,6 +570,30 @@ do_init_type_info_var(Type, Cell, ConsId, ArgVars, MaybePreferredVar,
         new_type_info_var_raw(Type, type_info, TypeInfoVar,
             !VarSet, !VarTypes, !RttiVarMaps)
     ),
+    do_init_type_info_var(Type, ArgVars, TypeInfoVar, TypeInfoGoal,
+        !RttiVarMaps).
+
+init_type_info_var_vt(Type, ArgVars, MaybePreferredVar, TypeInfoVar,
+        TypeInfoGoal, !VarTable, !RttiVarMaps) :-
+    (
+        MaybePreferredVar = yes(TypeInfoVar)
+    ;
+        MaybePreferredVar = no,
+        new_type_info_var_raw_vt(Type, type_info, TypeInfoVar,
+            !VarTable, !RttiVarMaps)
+    ),
+    do_init_type_info_var(Type, ArgVars, TypeInfoVar, TypeInfoGoal,
+        !RttiVarMaps).
+
+:- pred do_init_type_info_var(mer_type::in, list(prog_var)::in, prog_var::in,
+    hlds_goal::out, rtti_varmaps::in, rtti_varmaps::out) is det.
+
+do_init_type_info_var(Type, ArgVars, TypeInfoVar, TypeInfoGoal,
+        !RttiVarMaps) :-
+    type_to_ctor_det(Type, TypeCtor),
+    Cell = type_info_cell(TypeCtor),
+    ConsId = cell_cons_id(Cell),
+    TypeInfoRHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars),
 
     % Create the construction unification to initialize the variable.
     Ground = ground(shared, none_or_default_func),
@@ -608,19 +630,24 @@ do_init_type_info_var(Type, Cell, ConsId, ArgVars, MaybePreferredVar,
 init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
         ConsId, TypeCtorInfoGoal, !VarSet, !VarTypes, !RttiVarMaps) :-
     ConsId = type_ctor_info_cons_id(TypeCtor),
-    init_const_type_ctor_info_var_from_cons_id(Type, ConsId,
-        TypeCtorInfoVar, TypeCtorInfoGoal, !VarSet, !VarTypes, !RttiVarMaps).
-
-:- pred init_const_type_ctor_info_var_from_cons_id(mer_type::in, cons_id::in,
-    prog_var::out, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
-
-init_const_type_ctor_info_var_from_cons_id(Type, ConsId,
-        TypeCtorInfoVar, TypeCtorInfoGoal, !VarSet, !VarTypes, !RttiVarMaps) :-
-    % Introduce a new variable.
     new_type_info_var_raw(Type, type_ctor_info, TypeCtorInfoVar,
         !VarSet, !VarTypes, !RttiVarMaps),
+    init_const_type_ctor_info_var_from_cons_id(ConsId, TypeCtorInfoVar,
+        TypeCtorInfoGoal).
 
+init_const_type_ctor_info_var_vt(Type, TypeCtor, TypeCtorInfoVar,
+        ConsId, TypeCtorInfoGoal, !VarTable, !RttiVarMaps) :-
+    ConsId = type_ctor_info_cons_id(TypeCtor),
+    new_type_info_var_raw_vt(Type, type_ctor_info, TypeCtorInfoVar,
+        !VarTable, !RttiVarMaps),
+    init_const_type_ctor_info_var_from_cons_id(ConsId, TypeCtorInfoVar,
+        TypeCtorInfoGoal).
+
+:- pred init_const_type_ctor_info_var_from_cons_id(cons_id::in, prog_var::in,
+    hlds_goal::out) is det.
+
+init_const_type_ctor_info_var_from_cons_id(ConsId, TypeCtorInfoVar,
+        TypeCtorInfoGoal) :-
     % Create the construction unification to initialize the variable.
     TypeInfoRHS = rhs_functor(ConsId, is_not_exist_constr, []),
     Unification = construct(TypeCtorInfoVar, ConsId, [], [],
@@ -660,13 +687,30 @@ new_type_info_var_raw(Type, Kind, Var, !VarSet, !VarTypes, !RttiVarMaps) :-
     ;
         Kind = type_ctor_info,
         Prefix = "TypeCtorInfo_"
-
         % XXX Perhaps we should record the variables holding
         % type_ctor_infos in the rtti_varmaps somewhere.
     ),
     Name = Prefix ++ VarNumStr,
     varset.name_var(Var, Name, !VarSet),
     add_var_type(Var, type_info_type, !VarTypes).
+
+new_type_info_var_raw_vt(Type, Kind, Var, !VarTable, !RttiVarMaps) :-
+    % This predicate should only be called on type_infos and typeclass_infos,
+    % none of which are dummy types.
+    (
+        Kind = type_info,
+        Prefix = "TypeInfo_",
+        add_prefix_number_var_entry(Prefix, Type, is_not_dummy_type, Var,
+            !VarTable),
+        rtti_det_insert_type_info_type(Var, Type, !RttiVarMaps)
+    ;
+        Kind = type_ctor_info,
+        Prefix = "TypeCtorInfo_",
+        add_prefix_number_var_entry(Prefix, Type, is_not_dummy_type, Var,
+            !VarTable)
+        % XXX Perhaps we should record the variables holding
+        % type_ctor_infos in the rtti_varmaps somewhere.
+    ).
 
 %---------------------%
 

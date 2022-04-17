@@ -242,6 +242,8 @@
     %
 :- pred instmap_changed_vars(module_info::in, vartypes::in,
     instmap::in, instmap::in, set_of_progvar::out) is det.
+:- pred instmap_changed_vars_vt(module_info::in, var_table::in,
+    instmap::in, instmap::in, set_of_progvar::out) is det.
 
     % Return the set of variables whose instantiations have changed
     % (or our knowledge about them has changed) across an instmap_delta.
@@ -824,8 +826,8 @@ var_is_not_output(ModuleInfo, VarTypes, InstMap0, InstMapDeltaMap, Var) :-
 
 instmap_changed_vars(ModuleInfo, VarTypes, InstMapA, InstMapB, ChangedVars) :-
     instmap_vars_list(InstMapB, VarsB),
-    instmap_changed_vars_loop(ModuleInfo, VarTypes, VarsB, InstMapA, InstMapB,
-        ChangedVars).
+    instmap_changed_vars_loop(ModuleInfo, VarTypes, VarsB,
+        InstMapA, InstMapB, ChangedVars).
 
 :- pred instmap_changed_vars_loop(module_info::in, vartypes::in,
     prog_vars::in, instmap::in, instmap::in, set_of_progvar::out) is det.
@@ -840,6 +842,33 @@ instmap_changed_vars_loop(ModuleInfo, VarTypes, [VarB | VarBs],
     instmap_lookup_var(InstMapA, VarB, InitialInst),
     instmap_lookup_var(InstMapB, VarB, FinalInst),
     lookup_var_type(VarTypes, VarB, Type),
+    ( if
+        inst_matches_final_typed(ModuleInfo, Type, InitialInst, FinalInst)
+    then
+        ChangedVars = ChangedVars0
+    else
+        set_of_var.insert(VarB, ChangedVars0, ChangedVars)
+    ).
+
+instmap_changed_vars_vt(ModuleInfo, VarTable, InstMapA, InstMapB,
+        ChangedVars) :-
+    instmap_vars_list(InstMapB, VarsB),
+    instmap_changed_vars_vt_loop(ModuleInfo, VarTable, VarsB,
+        InstMapA, InstMapB, ChangedVars).
+
+:- pred instmap_changed_vars_vt_loop(module_info::in, var_table::in,
+    prog_vars::in, instmap::in, instmap::in, set_of_progvar::out) is det.
+
+instmap_changed_vars_vt_loop(_ModuleInfo, _VarTable, [],
+        _InstMapA, _InstMapB, ChangedVars) :-
+    set_of_var.init(ChangedVars).
+instmap_changed_vars_vt_loop(ModuleInfo, VarTable, [VarB | VarBs],
+        InstMapA, InstMapB, ChangedVars) :-
+    instmap_changed_vars_vt_loop(ModuleInfo, VarTable, VarBs,
+        InstMapA, InstMapB, ChangedVars0),
+    instmap_lookup_var(InstMapA, VarB, InitialInst),
+    instmap_lookup_var(InstMapB, VarB, FinalInst),
+    lookup_var_type(VarTable, VarB, Type),
     ( if
         inst_matches_final_typed(ModuleInfo, Type, InitialInst, FinalInst)
     then

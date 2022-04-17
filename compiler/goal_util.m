@@ -336,7 +336,11 @@
 :- pred can_reorder_goals_old(module_info::in, vartypes::in, bool::in,
     instmap::in, hlds_goal::in, instmap::in, hlds_goal::in) is semidet.
 
-    % can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeGoal1, Goal1,
+:- type can_reorder_goals
+    --->    cannot_reorder_goals
+    ;       can_reorder_goals.
+
+    % can_reorder_goals(VarTypeSrc, FullyStrict, InstmapBeforeGoal1, Goal1,
     %   InstmapBeforeGoal2, Goal2, Result, !ModuleInfo).
     %
     % Result is `yes' if the goals can be reordered; no otherwise.
@@ -350,8 +354,8 @@
     % NOTE: new code should use this version as it supports the
     %       intermodule-analysis framework.
     %
-:- pred can_reorder_goals(vartypes::in, bool::in, instmap::in,
-    hlds_goal::in, instmap::in, hlds_goal::in, bool::out,
+:- pred can_reorder_goals(var_type_source::in, bool::in, instmap::in,
+    hlds_goal::in, instmap::in, hlds_goal::in, can_reorder_goals::out,
     module_info::in, module_info::out) is det.
 
     % reordering_maintains_termination_old(ModuleInfo, FullyStrict,
@@ -368,6 +372,10 @@
 :- pred reordering_maintains_termination_old(module_info::in, bool::in,
     hlds_goal::in, hlds_goal::in) is semidet.
 
+:- type reorder_maintains_termination
+    --->    reorder_maintains_termination
+    ;       reorder_does_not_maintain_termination.
+
     % reordering_maintains_termination(FullyStrict, Goal1, Goal2, Result,
     %   !ModuleInfo).
     %
@@ -380,7 +388,7 @@
     % intermodule-analysis framework.
     %
 :- pred reordering_maintains_termination(bool::in,
-    hlds_goal::in, hlds_goal::in, bool::out,
+    hlds_goal::in, hlds_goal::in, reorder_maintains_termination::out,
     module_info::in, module_info::out) is det.
 
     % generate_plain_call(ModuleInfo, PredOrFunc, ModuleName, ProcName,
@@ -1881,17 +1889,17 @@ can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
 
     % Don't reorder the goals if the later goal depends on the outputs
     % of the current goal.
-    not goal_depends_on_earlier_goal(LaterGoal, EarlierGoal,
-        InstmapBeforeEarlierGoal, VarTypes, ModuleInfo),
+    not goal_depends_on_earlier_goal(ModuleInfo, vts_vartypes(VarTypes),
+        LaterGoal, EarlierGoal, InstmapBeforeEarlierGoal),
 
     % Don't reorder the goals if the later goal changes the instantiatedness
     % of any of the non-locals of the earlier goal. This is necessary if the
     % later goal clobbers any of the non-locals of the earlier goal, and
     % avoids rerunning full mode analysis in other cases.
-    not goal_depends_on_earlier_goal(EarlierGoal, LaterGoal,
-        InstmapBeforeLaterGoal, VarTypes, ModuleInfo).
+    not goal_depends_on_earlier_goal(ModuleInfo, vts_vartypes(VarTypes),
+        EarlierGoal, LaterGoal, InstmapBeforeLaterGoal).
 
-can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeEarlierGoal,
+can_reorder_goals(VarTypeSrc, FullyStrict, InstmapBeforeEarlierGoal,
         EarlierGoal, InstmapBeforeLaterGoal, LaterGoal, CanReorder,
         !ModuleInfo) :-
     % The logic here is mostly duplicated in can_reorder_goals_old above
@@ -1910,23 +1918,23 @@ can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeEarlierGoal,
         ; LaterTrace = contains_trace_goal
         )
     then
-        CanReorder = no
+        CanReorder = cannot_reorder_goals
     else
         reordering_maintains_termination(FullyStrict,
             EarlierGoal, LaterGoal, MaintainsTermination, !ModuleInfo),
         (
-            MaintainsTermination = no,
-            CanReorder = no
+            MaintainsTermination = reorder_does_not_maintain_termination,
+            CanReorder = cannot_reorder_goals
         ;
-            MaintainsTermination = yes,
+            MaintainsTermination = reorder_maintains_termination,
             ( if
                 % Don't reorder the goals if the later goal depends on the
                 % outputs of the current goal.
                 %
-                goal_depends_on_earlier_goal(LaterGoal, EarlierGoal,
-                    InstmapBeforeEarlierGoal, VarTypes, !.ModuleInfo)
+                goal_depends_on_earlier_goal(!.ModuleInfo, VarTypeSrc,
+                    LaterGoal, EarlierGoal, InstmapBeforeEarlierGoal)
             then
-                CanReorder = no
+                CanReorder = cannot_reorder_goals
             else if
                 % Don't reorder the goals if the later goal changes the
                 % instantiatedness of any of the non-locals of the earlier
@@ -1934,12 +1942,12 @@ can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeEarlierGoal,
                 % the non-locals of the earlier goal, and avoids rerunning
                 % full mode analysis in other cases.
                 %
-                goal_depends_on_earlier_goal(EarlierGoal, LaterGoal,
-                    InstmapBeforeLaterGoal, VarTypes, !.ModuleInfo)
+                goal_depends_on_earlier_goal(!.ModuleInfo, VarTypeSrc,
+                    EarlierGoal, LaterGoal, InstmapBeforeLaterGoal)
             then
-                CanReorder = no
+                CanReorder = cannot_reorder_goals
             else
-                CanReorder = yes
+                CanReorder = can_reorder_goals
             )
         )
     ).
@@ -1991,7 +1999,7 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
         EarlierCanLoopOrThrow = can_loop_or_throw,
         LaterCanFail = can_fail
     then
-        MaintainsTermination = no
+        MaintainsTermination = reorder_does_not_maintain_termination
     else
         % Don't convert (can_fail, can_loop) into (can_loop, can_fail), since
         % this could worsen the termination properties of the program.
@@ -2000,9 +2008,9 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
             EarlierCanFail = can_fail,
             LaterCanLoopOrThrow = can_loop_or_throw
         then
-            MaintainsTermination = no
+            MaintainsTermination = reorder_does_not_maintain_termination
         else
-            MaintainsTermination = yes
+            MaintainsTermination = reorder_maintains_termination
         )
     ).
 
@@ -2012,20 +2020,27 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
     %
     % This code does work on the alias branch.
     %
-:- pred goal_depends_on_earlier_goal(hlds_goal::in, hlds_goal::in, instmap::in,
-    vartypes::in, module_info::in) is semidet.
+:- pred goal_depends_on_earlier_goal(module_info::in, var_type_source::in,
+    hlds_goal::in, hlds_goal::in, instmap::in) is semidet.
 
-goal_depends_on_earlier_goal(LaterGoal, EarlierGoal, InstMapBeforeEarlierGoal,
-        VarTypes, ModuleInfo) :-
+goal_depends_on_earlier_goal(ModuleInfo, VarTypeSrc,
+        LaterGoal, EarlierGoal, InstMapBeforeEarlierGoal) :-
     LaterGoal = hlds_goal(_, LaterGoalInfo),
     EarlierGoal = hlds_goal(_, EarlierGoalInfo),
     EarlierInstMapDelta = goal_info_get_instmap_delta(EarlierGoalInfo),
     apply_instmap_delta(EarlierInstMapDelta,
         InstMapBeforeEarlierGoal, InstMapAfterEarlierGoal),
-
-    instmap_changed_vars(ModuleInfo, VarTypes,
-        InstMapBeforeEarlierGoal, InstMapAfterEarlierGoal, EarlierChangedVars),
-
+    (
+        VarTypeSrc = vts_vartypes(VarTypes),
+        instmap_changed_vars(ModuleInfo, VarTypes,
+            InstMapBeforeEarlierGoal, InstMapAfterEarlierGoal,
+            EarlierChangedVars)
+    ;
+        VarTypeSrc = vts_var_table(VarTable),
+        instmap_changed_vars_vt(ModuleInfo, VarTable,
+            InstMapBeforeEarlierGoal, InstMapAfterEarlierGoal,
+            EarlierChangedVars)
+    ),
     LaterGoalNonLocals = goal_info_get_nonlocals(LaterGoalInfo),
     set_of_var.intersect(EarlierChangedVars, LaterGoalNonLocals, Intersection),
     not set_of_var.is_empty(Intersection).

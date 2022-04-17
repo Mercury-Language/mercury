@@ -68,6 +68,9 @@
 :- pred add_var_entry(var_table_entry::in, prog_var::out,
     var_table::in, var_table::out) is det.
 
+:- pred add_prefix_number_var_entry(string::in, mer_type::in,
+    is_dummy_type::in, prog_var::out, var_table::in, var_table::out) is det.
+
 :- pred update_var_entry(prog_var::in, var_table_entry::in,
     var_table::in, var_table::out) is det.
 
@@ -247,6 +250,15 @@ add_var_entry(Entry, Var, !VarTable) :-
     !.VarTable = var_table(Counter0, VarTableMap0),
     counter.allocate(VarNum, Counter0, Counter),
     Var = force_construct_var(VarNum),
+    map.det_insert(Var, Entry, VarTableMap0, VarTableMap),
+    !:VarTable = var_table(Counter, VarTableMap).
+
+add_prefix_number_var_entry(Prefix, Type, IsDummy, Var, !VarTable) :-
+    !.VarTable = var_table(Counter0, VarTableMap0),
+    counter.allocate(VarNum, Counter0, Counter),
+    Var = force_construct_var(VarNum),
+    string.format("%s_%d", [s(Prefix), i(VarNum)], Name),
+    Entry = vte(Name, Type, IsDummy),
     map.det_insert(Var, Entry, VarTableMap0, VarTableMap),
     !:VarTable = var_table(Counter, VarTableMap).
 

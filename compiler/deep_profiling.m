@@ -25,7 +25,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module list.
 :- import_module maybe.
@@ -40,14 +40,19 @@
 :- pred generate_deep_const_unify(cons_id::in, prog_var::in, hlds_goal::out)
     is det.
 
-    % Create a variable with the given name and type, adding it to the
-    % prog_var_set_types structure.
-    %
-:- pred generate_var(string::in, mer_type::in, prog_var::out,
-    prog_var_set_types::in, prog_var_set_types::out) is det.
-
 :- pred get_deep_profile_builtin_ppid(module_info::in, string::in, int::in,
     pred_id::out, proc_id::out) is det.
+
+%-----------------------------------------------------------------------------%
+%
+% Utility functions exported to coverage_profiling.m.
+%
+
+:- pred generate_var_int(string::in, prog_var::out,
+    var_table::in, var_table::out) is det.
+
+:- pred generate_var_c_ptr(string::in, prog_var::out,
+    var_table::in, var_table::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -685,7 +690,7 @@ make_deep_original_body(ModuleInfo, ProcInfo, DeepOriginalBody) :-
                 deep_current_csd        :: prog_var,
                 deep_site_num_counter   :: counter,
                 deep_call_sites         :: cord(call_site_static_data),
-                deep_varinfo            :: prog_var_set_types,
+                deep_var_table          :: var_table,
                 deep_proc_filename      :: string,
                 deep_maybe_rec_info     :: maybe(deep_recursion_info)
             ).
@@ -700,16 +705,14 @@ deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
     fill_goal_id_slots_in_proc(ModuleInfo, ContainingGoalMap, !ProcInfo),
 
     module_info_get_globals(ModuleInfo, Globals),
-    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
-    some [!VarInfo, !DeepInfo, !Goal] (
+    some [!VarTable, !DeepInfo, !Goal] (
+        proc_info_get_var_table(ModuleInfo, !.ProcInfo, !:VarTable),
         proc_info_get_goal(!.ProcInfo, !:Goal),
         !.Goal = hlds_goal(_, GoalInfo0),
 
-        !:VarInfo = prog_var_set_types(VarSet0, VarTypes0),
-        generate_var("TopCSD", c_pointer_type, TopCSD, !VarInfo),
-        generate_var("MiddleCSD", c_pointer_type, MiddleCSD, !VarInfo),
-        generate_var("ProcStaticLayout", c_pointer_type, ProcStaticVar,
-            !VarInfo),
+        generate_var_c_ptr("TopCSD", TopCSD, !VarTable),
+        generate_var_c_ptr("MiddleCSD", MiddleCSD, !VarTable),
+        generate_var_c_ptr("ProcStaticLayout", ProcStaticVar, !VarTable),
 
         proc_info_get_context(!.ProcInfo, Context),
         FileName = term.context_file(Context),
@@ -718,12 +721,12 @@ deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
         proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepProfInfo),
         extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo),
         !:DeepInfo = deep_info(ModuleInfo, PredProcId, ContainingGoalMap,
-            MiddleCSD, counter.init(0), cord.empty, !.VarInfo, FileName,
+            MiddleCSD, counter.init(0), cord.empty, !.VarTable, FileName,
             MaybeRecInfo),
 
         % This call transforms the goals of the procedure.
         deep_prof_transform_goal(!Goal, _, !DeepInfo),
-        !:VarInfo = !.DeepInfo ^ deep_varinfo,
+        !:VarTable = !.DeepInfo ^ deep_var_table,
         CallSites = cord.list(!.DeepInfo ^ deep_call_sites),
 
         % Do coverage profiling if requested.
@@ -732,8 +735,8 @@ deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
         (
             DoCoverageProfiling = yes,
             coverage_prof_transform_proc_body(ModuleInfo, PredProcId,
-                ContainingGoalMap, MaybeRecInfo, !Goal, !VarInfo,
-                CoveragePoints)
+                ContainingGoalMap, MaybeRecInfo, CoveragePoints,
+                !Goal, !VarTable)
         ;
             DoCoverageProfiling = no,
             CoveragePoints = []
@@ -766,27 +769,26 @@ deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
         (
             CodeModel = model_det,
             maybe_generate_activation_ptr(UseActivationCounts, TopCSD,
-                MiddleCSD, MaybeActivationPtr, ExcpVars, !VarInfo),
+                MiddleCSD, MaybeActivationPtr, ExcpVars, !VarTable),
             build_det_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
                 MaybeActivationPtr, GoalInfo0, BindProcStaticVarGoal, !Goal)
         ;
             CodeModel = model_semi,
             maybe_generate_activation_ptr(UseActivationCounts, TopCSD,
-                MiddleCSD, MaybeActivationPtr, ExcpVars, !VarInfo),
+                MiddleCSD, MaybeActivationPtr, ExcpVars, !VarTable),
             build_semi_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
                 MaybeActivationPtr, GoalInfo0, BindProcStaticVarGoal, !Goal)
         ;
             CodeModel = model_non,
             generate_outermost_proc_dyns(UseActivationCounts, TopCSD,
                 MiddleCSD, MaybeOldActivationPtr, NewOutermostProcDyn,
-                ExcpVars, !VarInfo),
+                ExcpVars, !VarTable),
             build_non_proc_body(ModuleInfo, TopCSD, MiddleCSD,
                 ProcStaticVar, MaybeOldActivationPtr, NewOutermostProcDyn,
                 GoalInfo0, BindProcStaticVarGoal, !Goal)
         ),
 
-        !.VarInfo = prog_var_set_types(VarSet, VarTypes),
-        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+        proc_info_set_var_table(!.VarTable, !ProcInfo),
         proc_info_set_goal(!.Goal, !ProcInfo),
         DeepLayoutInfo = hlds_deep_layout(ProcStatic, ExcpVars)
     ).
@@ -805,9 +807,8 @@ deep_prof_transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     Goal0 = hlds_goal(_, GoalInfo0),
-    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
-    VarInfo0 = prog_var_set_types(VarSet0, VarTypes0),
-    generate_var("MiddleCSD", c_pointer_type, MiddleCSD, VarInfo0, VarInfo1),
+    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable0),
+    generate_var_c_ptr("MiddleCSD", MiddleCSD, VarTable0, VarTable1),
 
     Context = goal_info_get_context(GoalInfo0),
     FileName = term.context_file(Context),
@@ -815,13 +816,12 @@ deep_prof_transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepProfInfo),
     extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo),
     DeepInfo0 = deep_info(ModuleInfo, PredProcId, ContainingGoalMap, MiddleCSD,
-        counter.init(0), cord.empty, VarInfo1, FileName, MaybeRecInfo),
+        counter.init(0), cord.empty, VarTable1, FileName, MaybeRecInfo),
 
     deep_prof_transform_goal(Goal0, Goal, _, DeepInfo0, DeepInfo),
 
-    VarInfo = DeepInfo ^ deep_varinfo,
-    VarInfo = prog_var_set_types(VarSet, VarTypes),
-    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+    VarTable = DeepInfo ^ deep_var_table,
+    proc_info_set_var_table(VarTable, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo).
 
 :- func is_proc_in_interface(module_info, pred_id, proc_id) = bool.
@@ -1261,11 +1261,11 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
 
     SiteNumCounter0 = !.DeepInfo ^ deep_site_num_counter,
     counter.allocate(SiteNum, SiteNumCounter0, SiteNumCounter),
-    VarInfo0 = !.DeepInfo ^ deep_varinfo,
-    generate_var("SiteNum", int_type, SiteNumVar, VarInfo0, VarInfo1),
+    VarTable0 = !.DeepInfo ^ deep_var_table,
+    generate_var_int("SiteNum", SiteNumVar, VarTable0, VarTable1),
     generate_deep_const_unify(some_int_const(int_const(SiteNum)),
         SiteNumVar, SiteNumVarGoal),
-    !DeepInfo ^ deep_varinfo := VarInfo1,
+    !DeepInfo ^ deep_var_table := VarTable1,
     !DeepInfo ^ deep_site_num_counter := SiteNumCounter,
 
     Context = goal_info_get_context(GoalInfo0),
@@ -1323,10 +1323,9 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
             CallSite = higher_order_call(FileName, LineNumber, GoalPath)
         ;
             Generic = class_method(TypeClassInfoVar, MethodNum, _, _),
-            VarInfo2 = !.DeepInfo ^ deep_varinfo,
-            generate_var("MethodNum", int_type, MethodNumVar, VarInfo2,
-                VarInfo3),
-            !DeepInfo ^ deep_varinfo := VarInfo3,
+            VarTable2 = !.DeepInfo ^ deep_var_table,
+            generate_var_int("MethodNum", MethodNumVar, VarTable2, VarTable3),
+            !DeepInfo ^ deep_var_table := VarTable3,
             generate_deep_const_unify(some_int_const(int_const(MethodNum)),
                 MethodNumVar, MethodNumVarGoal),
             generate_deep_det_call(ModuleInfo, "prepare_for_method_call", 3,
@@ -1435,17 +1434,17 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
 
 deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
         !DeepInfo) :-
-    some [!VarInfo] (
-        !:VarInfo = !.DeepInfo ^ deep_varinfo,
+    some [!VarTable] (
+        !:VarTable = !.DeepInfo ^ deep_var_table,
 
-        generate_var("SavedPtr", c_pointer_type, SavedPtrVar, !VarInfo),
+        generate_var_c_ptr("SavedPtr", SavedPtrVar, !VarTable),
 
         globals.lookup_bool_option(Globals, use_activation_counts,
             UseActivationCounts),
         (
             UseActivationCounts = yes,
 
-            generate_var("SavedCounter", int_type, SavedCountVar, !VarInfo),
+            generate_var_int("SavedCounter", SavedCountVar, !VarTable),
             ExtraNonLocals =
                 set_of_var.list_to_set([SavedCountVar, SavedPtrVar]),
 
@@ -1475,7 +1474,7 @@ deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
                 [], [], ReZeroStuff)
         ),
 
-        !DeepInfo ^ deep_varinfo := !.VarInfo
+        !DeepInfo ^ deep_var_table := !.VarTable
     ),
 
     Goal0 = hlds_goal(_, GoalInfo0),
@@ -1563,8 +1562,8 @@ deep_prof_wrap_foreign_code(Goal0, Goal, !DeepInfo) :-
 
     SiteNumCounter0 = !.DeepInfo ^ deep_site_num_counter,
     counter.allocate(SiteNum, SiteNumCounter0, SiteNumCounter),
-    generate_var("SiteNum", int_type, SiteNumVar, !.DeepInfo ^ deep_varinfo,
-        VarInfo),
+    generate_var_int("SiteNum", SiteNumVar,
+        !.DeepInfo ^ deep_var_table, VarTable),
     generate_deep_const_unify(some_int_const(int_const(SiteNum)),
         SiteNumVar, SiteNumVarGoal),
 
@@ -1583,7 +1582,7 @@ deep_prof_wrap_foreign_code(Goal0, Goal, !DeepInfo) :-
     GoalExpr = conj(plain_conj, [SiteNumVarGoal, PrepareGoal, Goal0]),
     Goal = hlds_goal(GoalExpr, GoalInfo),
     !DeepInfo ^ deep_site_num_counter := SiteNumCounter,
-    !DeepInfo ^ deep_varinfo := VarInfo,
+    !DeepInfo ^ deep_var_table := VarTable,
     !DeepInfo ^ deep_call_sites :=
         cord.snoc(!.DeepInfo ^ deep_call_sites, CallSite).
 
@@ -1726,10 +1725,10 @@ generate_recursion_counter_saves_and_restores_2([Chunk | Chunks], CSDVar,
     deep_info::in, deep_info::out) is det.
 
 generate_depth_var(CSN, DepthVar, !DeepInfo) :-
-    VarInfo0 = !.DeepInfo ^ deep_varinfo,
+    VarTable0 = !.DeepInfo ^ deep_var_table,
     VarName = string.format("Depth%d", [i(CSN)]),
-    generate_var(VarName, int_type, DepthVar, VarInfo0, VarInfo),
-    !DeepInfo ^ deep_varinfo:= VarInfo.
+    generate_var_int(VarName, DepthVar, VarTable0, VarTable),
+    !DeepInfo ^ deep_var_table := VarTable.
 
 :- pred generate_csn_vector(int::in, list(int)::in, list(prog_var)::out,
     list(hlds_goal)::out, prog_var::out,
@@ -1757,13 +1756,14 @@ generate_csn_vector(Length, CSNs, CSNVars, UnifyGoals, CellVar, !DeepInfo) :-
     prog_var::out, hlds_goal::out, deep_info::in, deep_info::out) is det.
 
 generate_csn_vector_cell(Length, CSNVars, CellVar, CellGoal, !DeepInfo) :-
-    VarInfo0 = !.DeepInfo ^ deep_varinfo,
     ProfilingBuiltin = mercury_profiling_builtin_module,
     CellTypeName = string.format("call_site_nums_%d", [i(Length)]),
     CellTypeCtor = type_ctor(qualified(ProfilingBuiltin, CellTypeName), 0),
     construct_type(CellTypeCtor, [], CellType),
-    generate_var("CSNCell", CellType, CellVar, VarInfo0, VarInfo),
-    !DeepInfo ^ deep_varinfo := VarInfo,
+    CellVarEntry = vte("CSNCell", CellType, is_not_dummy_type),
+    VarTable0 = !.DeepInfo ^ deep_var_table,
+    add_var_entry(CellVarEntry, CellVar, VarTable0, VarTable),
+    !DeepInfo ^ deep_var_table := VarTable,
     ConsId = cons(qualified(ProfilingBuiltin, CellTypeName), Length,
         CellTypeCtor),
     generate_deep_cell_unify(Length, ConsId, CSNVars, CellVar, CellGoal).
@@ -1772,10 +1772,10 @@ generate_csn_vector_cell(Length, CSNVars, CellVar, CellGoal, !DeepInfo) :-
     pair(prog_var, hlds_goal)::out, deep_info::in, deep_info::out) is det.
 
 generate_single_csn_unify(CSN, CSNVar - UnifyGoal, !DeepInfo) :-
-    VarInfo0 = !.DeepInfo ^ deep_varinfo,
+    VarTable0 = !.DeepInfo ^ deep_var_table,
     VarName = string.format("CSN%d", [i(CSN)]),
-    generate_var(VarName, int_type, CSNVar, VarInfo0, VarInfo),
-    !DeepInfo ^ deep_varinfo := VarInfo,
+    generate_var_int(VarName, CSNVar, VarTable0, VarTable),
+    !DeepInfo ^ deep_var_table := VarTable,
     generate_deep_const_unify(some_int_const(int_const(CSN)),
         CSNVar, UnifyGoal).
 
@@ -1837,34 +1837,15 @@ generate_deep_cell_unify(Length, ConsId, Args, Var, Goal) :-
         GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-generate_var(Name, Type, Var, !VarInfo) :-
-    some [!VarSet, !VarTypes]
-    (
-        !.VarInfo = prog_var_set_types(!:VarSet, !:VarTypes),
-        generate_var_2(Name, Type, Var, !VarSet, !VarTypes),
-        !:VarInfo = prog_var_set_types(!.VarSet, !.VarTypes)
-    ).
-
-    % Create a variable with the given name and type, adding it to the
-    % separate prog_varset and vartypes structures.
-    %
-:- pred generate_var_2(string::in, mer_type::in, prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
-
-generate_var_2(Name, Type, Var, !VarSet, !VarTypes) :-
-    varset.new_named_var(Name, Var, !VarSet),
-    add_var_type(Var, Type, !VarTypes).
-
 :- pred maybe_generate_activation_ptr(bool::in, prog_var::in, prog_var::in,
     maybe(prog_var)::out, hlds_deep_excp_vars::out,
-    prog_var_set_types::in, prog_var_set_types::out) is det.
+    var_table::in, var_table::out) is det.
 
 maybe_generate_activation_ptr(UseActivationCounts, TopCSD, MiddleCSD,
-    MaybeActivationPtr, ExcpVars, !VarInfo) :-
+    MaybeActivationPtr, ExcpVars, !VarTable) :-
     (
         UseActivationCounts = no,
-        generate_var("ActivationPtr", c_pointer_type, ActivationPtr0,
-            !VarInfo),
+        generate_var_c_ptr("ActivationPtr", ActivationPtr0, !VarTable),
         MaybeActivationPtr = yes(ActivationPtr0)
     ;
         UseActivationCounts = yes,
@@ -1874,22 +1855,20 @@ maybe_generate_activation_ptr(UseActivationCounts, TopCSD, MiddleCSD,
 
 :- pred generate_outermost_proc_dyns(bool::in, prog_var::in, prog_var::in,
     maybe(prog_var)::out, prog_var::out, hlds_deep_excp_vars::out,
-    prog_var_set_types::in, prog_var_set_types::out) is det.
+    var_table::in, var_table::out) is det.
 
 generate_outermost_proc_dyns(UseActivationCounts, TopCSD, MiddleCSD,
-        MaybeOldActivationPtr, NewOutermostProcDyn, ExcpVars, !VarInfo) :-
+        MaybeOldActivationPtr, NewOutermostProcDyn, ExcpVars, !VarTable) :-
     (
         UseActivationCounts = no,
-        generate_var("OldOutermost", c_pointer_type, OldOutermostProcDyn0,
-            !VarInfo),
+        generate_var_c_ptr("OldOutermost", OldOutermostProcDyn0, !VarTable),
         MaybeOldActivationPtr = yes(OldOutermostProcDyn0)
     ;
         UseActivationCounts = yes,
         MaybeOldActivationPtr = no
     ),
     ExcpVars = hlds_deep_excp_vars(TopCSD, MiddleCSD, MaybeOldActivationPtr),
-    generate_var("NewOutermost", c_pointer_type, NewOutermostProcDyn,
-        !VarInfo).
+    generate_var_c_ptr("NewOutermost", NewOutermostProcDyn, !VarTable).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1934,6 +1913,16 @@ extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo) :-
         MaybeDeepProfInfo = no,
         MaybeRecInfo = no
     ).
+
+%-----------------------------------------------------------------------------%
+
+generate_var_int(Name, Var, !VarTable) :-
+    Entry = vte(Name, int_type, is_not_dummy_type),
+    add_var_entry(Entry, Var, !VarTable).
+
+generate_var_c_ptr(Name, Var, !VarTable) :-
+    Entry = vte(Name, c_pointer_type, is_not_dummy_type),
+    add_var_entry(Entry, Var, !VarTable).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.deep_profiling.
