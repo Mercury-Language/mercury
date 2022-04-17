@@ -106,10 +106,9 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
-:- import_module hlds.var_table.
 :- import_module libs.
-:- import_module libs.optimization_options.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.dense_switch.
 :- import_module ll_backend.lookup_switch.
@@ -118,6 +117,7 @@
 :- import_module ll_backend.trace_gen.
 :- import_module ll_backend.unify_gen_test.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module cord.

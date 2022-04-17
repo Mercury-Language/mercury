@@ -70,7 +70,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
 :- import_module hlds.status.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.file_util.
@@ -87,6 +86,7 @@
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.vartypes.
 :- import_module transform_hlds.ctgc.fixpoint_table.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 :- import_module transform_hlds.ctgc.util.

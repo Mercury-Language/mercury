@@ -14,8 +14,8 @@
 :- interface.
 
 :- import_module ml_backend.mlds.
-:- import_module ml_backend.mlds_to_c_util.
 :- import_module ml_backend.mlds_to_c_type.
+:- import_module ml_backend.mlds_to_c_util.
 :- import_module ml_backend.mlds_to_target_util.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.

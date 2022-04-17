@@ -70,11 +70,11 @@
 :- import_module check_hlds.proc_requests.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
-:- import_module hlds.vartypes.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module map.

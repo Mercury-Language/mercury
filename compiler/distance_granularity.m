@@ -150,10 +150,10 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.pred_table.
-:- import_module hlds.quantification.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module hlds.pred_table.
+:- import_module hlds.quantification.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -167,8 +167,8 @@
 :- import_module bool.
 :- import_module int.
 :- import_module list.
-:- import_module pair.
 :- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module term.
 

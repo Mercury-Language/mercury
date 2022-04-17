@@ -38,10 +38,10 @@
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.smm_common.
 
-:- import_module pair.
-:- import_module require.
 :- import_module list.
 :- import_module map.
+:- import_module pair.
+:- import_module require.
 
 %-----------------------------------------------------------------------------%
 %

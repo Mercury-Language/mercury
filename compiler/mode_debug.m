@@ -34,14 +34,14 @@
 
 :- implementation.
 
-:- import_module libs.
-:- import_module libs.file_util.
-:- import_module libs.globals.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.instmap.
+:- import_module libs.
+:- import_module libs.file_util.
+:- import_module libs.globals.
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.

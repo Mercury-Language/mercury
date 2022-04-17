@@ -75,6 +75,7 @@
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.var_table.
 
 :- import_module set.
 
@@ -177,8 +178,8 @@ pd_debug_output_version(Stream, ModuleInfo, PredProcId, Version,
     io.nl(Stream, !IO),
     module_info_get_globals(ModuleInfo, Globals),
     OutInfo = init_hlds_out_info(Globals, output_debug),
-    write_goal(OutInfo, Stream, ModuleInfo, VarSet, print_name_and_num,
-        1, "\n", Goal, !IO),
+    write_goal(OutInfo, Stream, ModuleInfo, vns_varset(VarSet),
+        print_name_and_num, 1, "\n", Goal, !IO),
     io.nl(Stream, !IO),
     set.to_sorted_list(Parents, ParentsList),
     ParentStrs = list.map(pred_proc_id_to_string(ModuleInfo), ParentsList),
@@ -189,8 +190,8 @@ pd_debug_output_version(Stream, ModuleInfo, PredProcId, Version,
         WriteUnfoldedGoal = yes,
         proc_info_get_goal(ProcInfo, ProcGoal),
         io.write_string(Stream, "Unfolded goal\n", !IO),
-        write_goal(OutInfo, Stream, ModuleInfo, VarSet, print_name_and_num,
-            1, "\n", ProcGoal, !IO),
+        write_goal(OutInfo, Stream, ModuleInfo, vns_varset(VarSet),
+            print_name_and_num, 1, "\n", ProcGoal, !IO),
         io.nl(Stream, !IO)
     ;
         WriteUnfoldedGoal = no
@@ -250,8 +251,8 @@ pd_debug_output_goal(PDInfo, Msg, Goal, !IO) :-
         io.write_string(Stream, Msg, !IO),
         write_instmap(Stream, VarSet, print_name_and_num, 1, VarsInstMap, !IO),
         io.nl(Stream, !IO),
-        write_goal(OutInfo, Stream, ModuleInfo, VarSet, print_name_and_num,
-            1, "\n", Goal, !IO),
+        write_goal(OutInfo, Stream, ModuleInfo, vns_varset(VarSet),
+            print_name_and_num, 1, "\n", Goal, !IO),
         io.nl(Stream, !IO),
         io.flush_output(Stream, !IO)
     ).

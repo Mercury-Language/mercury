@@ -71,6 +71,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -1316,7 +1317,7 @@ transform_parse_tree_goal_to_hlds_atomic(LocKind, Goal, Renaming, HLDSGoal,
         module_info_get_globals(!.ModuleInfo, Globals),
         OutInfo = init_hlds_out_info(Globals, output_debug),
         io.write_string(DebugStream, "atomic:\n", !IO),
-        write_goal_nl(OutInfo, DebugStream, !.ModuleInfo, !.VarSet,
+        write_goal_nl(OutInfo, DebugStream, !.ModuleInfo, vns_varset(!.VarSet),
             print_name_and_num, 0, "\n", HLDSGoal, !IO)
     ).
 

@@ -71,10 +71,10 @@
 :- import_module parse_tree.deps_map.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.module_deps_graph.
-:- import_module parse_tree.module_baggage.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.

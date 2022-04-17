@@ -149,7 +149,6 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -161,6 +160,7 @@
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module bool.

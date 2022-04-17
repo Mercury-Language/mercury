@@ -86,7 +86,6 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
@@ -101,6 +100,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.vartypes.
 :- import_module transform_hlds.intermod_analysis.
 :- import_module transform_hlds.mmc_analysis.
 

@@ -176,8 +176,8 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
@@ -187,7 +187,6 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
@@ -197,6 +196,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
@@ -207,6 +207,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bag.
@@ -216,8 +217,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module map.
-:- import_module multi_map.
 :- import_module maybe.
+:- import_module multi_map.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -279,8 +280,7 @@
     --->    lco_info(
                 lco_module_info         :: module_info,
                 lco_cur_scc_variants    :: variant_map,
-                lco_var_set             :: prog_varset,
-                lco_var_types           :: vartypes,
+                lco_var_table           :: var_table,
                 lco_permitted           :: lco_is_permitted_on_scc,
                 lco_changed             :: proc_changed
             ).
@@ -404,10 +404,10 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
         io.write_line(DebugStream, CurProc, !IO),
         io.flush_output(DebugStream, !IO)
     ),
-    proc_info_get_varset_vartypes(ProcInfo0, VarSet0, VarTypes0),
+    proc_info_get_var_table(!.ModuleInfo, ProcInfo0, VarTable0),
     proc_info_get_headvars(ProcInfo0, HeadVars),
     proc_info_get_argmodes(ProcInfo0, ArgModes),
-    arg_info.compute_in_and_out_vars(!.ModuleInfo, VarTypes0,
+    arg_info.compute_in_and_out_vars_table(!.ModuleInfo, VarTable0,
         HeadVars, ArgModes, _InputHeadVars, OutputHeadVars),
     proc_info_get_inferred_determinism(ProcInfo0, CurProcDetism),
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -428,11 +428,11 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
     ConstInfo = lco_const_info(LowerSCCVariants, SCC,
         CurProc, PredInfo, ProcInfo0, OutputHeadVars, CurProcDetism,
         AllowFloatAddr, HighLevelData),
-    Info0 = lco_info(!.ModuleInfo, !.CurSCCVariants, VarSet0, VarTypes0,
+    Info0 = lco_info(!.ModuleInfo, !.CurSCCVariants, VarTable0,
         lco_is_permitted_on_scc, proc_not_changed),
     proc_info_get_goal(ProcInfo0, Goal0),
     lco_in_goal(Goal0, Goal, Info0, Info, ConstInfo),
-    Info = lco_info(!:ModuleInfo, !:CurSCCVariants, VarSet, VarTypes,
+    Info = lco_info(!:ModuleInfo, !:CurSCCVariants, VarTable,
         !:Permitted, Changed),
     ( if
         !.Permitted = lco_is_permitted_on_scc,
@@ -441,13 +441,15 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
         trace [compiletime(flag("lco")), io(!IO)] (
             get_lco_debug_output_stream(Info, DebugStream, !IO),
             io.write_string(DebugStream, "\ngoal before lco:\n", !IO),
-            dump_goal_nl(DebugStream, !.ModuleInfo, VarSet, Goal0, !IO),
+            dump_goal_nl(DebugStream, !.ModuleInfo, vns_var_table(VarTable),
+                Goal0, !IO),
             io.write_string(DebugStream, "\ngoal after lco:\n", !IO),
-            dump_goal_nl(DebugStream, !.ModuleInfo, VarSet, Goal, !IO)
+            dump_goal_nl(DebugStream, !.ModuleInfo, vns_var_table(VarTable),
+                Goal, !IO)
         ),
         some [!ProcInfo] (
             !:ProcInfo = ProcInfo0,
-            proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+            proc_info_set_var_table(VarTable, !ProcInfo),
             proc_info_set_goal(Goal, !ProcInfo),
             % See the comment in transform_call_and_unifies for why these
             % are needed.
@@ -669,11 +671,11 @@ potentially_transformable_recursive_call(Info, ConstInfo, Goal, OutArgs) :-
 
     ModuleInfo = Info ^ lco_module_info,
     ProcInfo = ConstInfo ^ lci_cur_proc_proc,
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
 
     module_info_proc_info(ModuleInfo, PredId, ProcId, CalleeProcInfo),
     proc_info_get_argmodes(CalleeProcInfo, CalleeArgModes),
-    classify_proc_call_args(ModuleInfo, VarTypes, Args, CalleeArgModes,
+    classify_proc_call_args(ModuleInfo, VarTable, Args, CalleeArgModes,
         _InArgs, OutArgs, UnusedArgs),
     UnusedArgs = [],
 
@@ -796,14 +798,15 @@ acceptable_construct_unification(ConstInfo, DelayForVars, Goal,
         bag.insert_list(ConstructArgVars, !UnifyInputVars),
         trace [compiletime(flag("lco")), io(!IO)] (
             ProcInfo = ConstInfo ^ lci_cur_proc_proc,
-            proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
+            proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+            VarNameSrc = vns_var_table(VarTable),
             ConstructedVarStr =
-                mercury_var_to_string(VarSet, print_name_and_num,
+                mercury_var_to_string_src(VarNameSrc, print_name_and_num,
                     ConstructedVar),
             ConsIdStr = mercury_cons_id_to_string(output_debug,
                 does_not_need_brackets, ConsId),
             ConstructArgVarStrs = list.map(
-                mercury_var_to_string(VarSet, print_name_and_num),
+                mercury_var_to_string_src(VarNameSrc, print_name_and_num),
                 ConstructArgVars),
             ConstructArgVarsStr = string.join_list(", ", ConstructArgVarStrs),
             get_debug_output_stream(ModuleInfo, DebugStream, !IO),
@@ -866,8 +869,7 @@ transform_call_and_unifies(CallGoal, CallOutArgVars, UnifyGoals,
         UnifyInputVars, MaybeGoals, !Info, ConstInfo) :-
     CallGoal = hlds_goal(CallGoalExpr, CallGoalInfo),
     ModuleInfo = !.Info ^ lco_module_info,
-    ProcInfo = ConstInfo ^ lci_cur_proc_proc,
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
+    CurProcInfo = ConstInfo ^ lci_cur_proc_proc,
     ( if
         CallGoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin,
             UnifyContext, _SymName),
@@ -902,12 +904,13 @@ transform_call_and_unifies(CallGoal, CallOutArgVars, UnifyGoals,
             UnifyGoals, UpdatedUnifyGoals, map.init, AddrFieldIds, !Info),
         trace [compiletime(flag("lco")), io(!IO)] (
             get_debug_output_stream(ModuleInfo, DebugStream, !IO),
-            VarSet = !.Info ^ lco_var_set,
+            VarTable = !.Info ^ lco_var_table,
+            VarNameSrc = vns_var_table(VarTable),
             io.write_string(DebugStream, "original unifies:\n", !IO),
-            list.foldl(dump_goal_nl(DebugStream, ModuleInfo, VarSet),
+            list.foldl(dump_goal_nl(DebugStream, ModuleInfo, VarNameSrc),
                 UnifyGoals, !IO),
             io.write_string(DebugStream, "updated unifies:\n", !IO),
-            list.foldl(dump_goal_nl(DebugStream, ModuleInfo, VarSet),
+            list.foldl(dump_goal_nl(DebugStream, ModuleInfo, VarNameSrc),
                 UpdatedUnifyGoals, !IO),
             io.write_string(DebugStream, "addr field ids:\n", !IO),
             map.to_assoc_list(AddrFieldIds, AddrFieldIdsAL),
@@ -919,9 +922,10 @@ transform_call_and_unifies(CallGoal, CallOutArgVars, UnifyGoals,
         ensure_variant_exists(PredId, ProcId, VariantArgs,
             VariantPredProcId, VariantSymName, !Info)
     then
+        proc_info_get_var_table(ModuleInfo, CurProcInfo, CurProcVarTable),
         module_info_proc_info(ModuleInfo, PredId, ProcId, CalleeProcInfo),
         proc_info_get_argmodes(CalleeProcInfo, CalleeModes),
-        update_call_args(ModuleInfo, VarTypes, CalleeModes, ArgVars,
+        update_call_args(ModuleInfo, CurProcVarTable, CalleeModes, ArgVars,
             UpdatedCallOutArgs, UpdatedArgs),
         VariantPredProcId = proc(VariantPredId, VariantProcId),
         UpdatedGoalExpr = plain_call(VariantPredId, VariantProcId,
@@ -981,24 +985,24 @@ transform_call_and_unifies(CallGoal, CallOutArgVars, UnifyGoals,
 occurs_once(Bag, Var) :-
     bag.count_value(Bag, Var, 1).
 
-:- pred update_call_args(module_info::in, vartypes::in, list(mer_mode)::in,
+:- pred update_call_args(module_info::in, var_table::in, list(mer_mode)::in,
     list(prog_var)::in, list(prog_var)::in, list(prog_var)::out) is det.
 
-update_call_args(_ModuleInfo, _VarTypes, [], [], UpdatedCallOutArgVars, []) :-
+update_call_args(_ModuleInfo, _VarTable, [], [], UpdatedCallOutArgVars, []) :-
     expect(unify(UpdatedCallOutArgVars, []), $pred,
         "updating nonexistent arg").
-update_call_args(_ModuleInfo, _VarTypes, [], [_ | _], _, _) :-
+update_call_args(_ModuleInfo, _VarTable, [], [_ | _], _, _) :-
     unexpected($pred, "mismatched lists").
-update_call_args(_ModuleInfo, _VarTypes, [_ | _], [], _, _) :-
+update_call_args(_ModuleInfo, _VarTable, [_ | _], [], _, _) :-
     unexpected($pred, "mismatched lists").
-update_call_args(ModuleInfo, VarTypes, [CalleeMode | CalleeModes],
+update_call_args(ModuleInfo, VarTable, [CalleeMode | CalleeModes],
         [ArgVar | ArgVars], !.UpdatedCallOutArgVars, !:UpdatedArgVars) :-
-    lookup_var_type(VarTypes, ArgVar, CalleeType),
+    lookup_var_type(VarTable, ArgVar, CalleeType),
     mode_to_top_functor_mode(ModuleInfo, CalleeMode, CalleeType,
         TopFunctorMode),
     (
         TopFunctorMode = top_in,
-        update_call_args(ModuleInfo, VarTypes, CalleeModes, ArgVars,
+        update_call_args(ModuleInfo, VarTable, CalleeModes, ArgVars,
             !.UpdatedCallOutArgVars, !:UpdatedArgVars),
         !:UpdatedArgVars = [ArgVar | !.UpdatedArgVars]
     ;
@@ -1009,7 +1013,7 @@ update_call_args(ModuleInfo, VarTypes, [CalleeMode | CalleeModes],
             !.UpdatedCallOutArgVars = [],
             unexpected($pred, "no UpdatedCallOutArgs")
         ),
-        update_call_args(ModuleInfo, VarTypes, CalleeModes, ArgVars,
+        update_call_args(ModuleInfo, VarTable, CalleeModes, ArgVars,
             !.UpdatedCallOutArgVars, !:UpdatedArgVars),
         !:UpdatedArgVars = [UpdatedArgVar | !.UpdatedArgVars]
     ;
@@ -1019,20 +1023,20 @@ update_call_args(ModuleInfo, VarTypes, [CalleeMode | CalleeModes],
 
 %---------------------------------------------------------------------------%
 
-:- pred classify_proc_call_args(module_info::in, vartypes::in,
+:- pred classify_proc_call_args(module_info::in, var_table::in,
     list(prog_var)::in, list(mer_mode)::in,
     list(prog_var)::out, list(prog_var)::out, list(prog_var)::out) is det.
 
-classify_proc_call_args(_ModuleInfo, _VarTypes, [], [], [], [], []).
-classify_proc_call_args(_ModuleInfo, _VarTypes, [], [_ | _], _, _, _) :-
+classify_proc_call_args(_ModuleInfo, _VarTable, [], [], [], [], []).
+classify_proc_call_args(_ModuleInfo, _VarTable, [], [_ | _], _, _, _) :-
     unexpected($pred, "mismatched lists").
-classify_proc_call_args(_ModuleInfo, _VarTypes, [_ | _], [], _, _, _) :-
+classify_proc_call_args(_ModuleInfo, _VarTable, [_ | _], [], _, _, _) :-
     unexpected($pred, "mismatched lists").
-classify_proc_call_args(ModuleInfo, VarTypes, [Arg | Args],
+classify_proc_call_args(ModuleInfo, VarTable, [Arg | Args],
         [CalleeMode | CalleeModes], !:InArgs, !:OutArgs, !:UnusedArgs) :-
-    classify_proc_call_args(ModuleInfo, VarTypes, Args, CalleeModes,
+    classify_proc_call_args(ModuleInfo, VarTable, Args, CalleeModes,
         !:InArgs, !:OutArgs, !:UnusedArgs),
-    lookup_var_type(VarTypes, Arg, CalleeType),
+    lookup_var_type(VarTable, Arg, CalleeType),
     mode_to_top_functor_mode(ModuleInfo, CalleeMode, CalleeType,
         TopFunctorMode),
     (
@@ -1062,7 +1066,7 @@ find_args_to_pass_by_addr(ConstInfo, UnifyInputVars,
         ArgNum + 1, MismatchesTail, UpdatedCallArgs, !Subst, !Info),
     ( if
         ConstInfo ^ lci_allow_float_addr = do_not_allow_float_addr,
-        lookup_var_type(!.Info ^ lco_var_types, CallArg, CallArgType),
+        lookup_var_type(!.Info ^ lco_var_table, CallArg, CallArgType),
         type_to_ctor(CallArgType, CallArgTypeCtor),
         CallArgTypeCtor = type_ctor(unqualified("float"), 0)
     then
@@ -1111,24 +1115,23 @@ find_args_to_pass_by_addr(ConstInfo, UnifyInputVars,
     lco_info::in, lco_info::out) is det.
 
 make_address_var(ConstInfo, Var, AddrVar, !Info) :-
-    VarSet0 = !.Info ^ lco_var_set,
-    VarTypes0 = !.Info ^ lco_var_types,
-    varset.lookup_name(VarSet0, Var, "SCCcallarg", Name),
-    AddrName = "Addr" ++ Name,
-    varset.new_named_var(AddrName, AddrVar, VarSet0, VarSet),
+    VarTable0 = !.Info ^ lco_var_table,
+    lookup_var_entry(VarTable0, Var, VarEntry),
+    Name = var_entry_name_default(Var, VarEntry, "SCCcallarg"),
+    VarEntry = vte(_, VarType, _VarTypeIsDummy),
     HighLevelData = ConstInfo ^ lci_highlevel_data,
     (
         HighLevelData = no,
-        lookup_var_type(VarTypes0, Var, FieldType),
-        AddrVarType = make_ref_type(FieldType),
-        add_var_type(AddrVar, AddrVarType, VarTypes0, VarTypes)
+        AddrVarType = make_ref_type(VarType)
     ;
         HighLevelData = yes,
-        % We set the type later when it is more convenient.
-        VarTypes = VarTypes0
+        % We set the actual type later when it is more convenient.
+        AddrVarType = void_type
     ),
-    !Info ^ lco_var_set := VarSet,
-    !Info ^ lco_var_types := VarTypes.
+    AddrName = "Addr" ++ Name,
+    AddrVarEntry = vte(AddrName, AddrVarType, is_not_dummy_type),
+    add_var_entry(AddrVarEntry, AddrVar, VarTable0, VarTable),
+    !Info ^ lco_var_table := VarTable.
 
 :- func make_ref_type(mer_type) = mer_type.
 
@@ -1267,13 +1270,15 @@ update_construct(ConstInfo, Subst, Goal0, Goal, !AddrVarFieldIds, !Info) :-
         % partial instantiation is incomplete, instmaps for the assignments are
         % likely to be recomputed incorrectly.
         HighLevelData = ConstInfo ^ lci_highlevel_data,
-        VarTypes0 = !.Info ^ lco_var_types,
-        lookup_var_type(VarTypes0, Var, VarType),
+        VarTable0 = !.Info ^ lco_var_table,
+        lookup_var_entry(VarTable0, Var, VarEntry),
+        VarEntry = vte(_, VarType, IsDummy),
         InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
-        update_construct_args(Subst, HighLevelData, VarType, ConsId, 1,
-            ArgVars, UpdatedArgVars, AddrFields, InstMapDelta0, InstMapDelta,
-            !AddrVarFieldIds, VarTypes0, VarTypes),
-        !Info ^ lco_var_types := VarTypes,
+        update_construct_args(Subst, HighLevelData, VarType, IsDummy,
+            ConsId, 1, ArgVars, UpdatedArgVars, AddrFields,
+            InstMapDelta0, InstMapDelta, !AddrVarFieldIds,
+            VarTable0, VarTable),
+        !Info ^ lco_var_table := VarTable,
         (
             AddrFields = [],
             Goal = Goal0
@@ -1309,19 +1314,19 @@ update_construct(ConstInfo, Subst, Goal0, Goal, !AddrVarFieldIds, !Info) :-
     ).
 
 :- pred update_construct_args(map(prog_var, prog_var)::in, bool::in,
-    mer_type::in, cons_id::in, int::in, list(prog_var)::in,
+    mer_type::in, is_dummy_type::in, cons_id::in, int::in, list(prog_var)::in,
     list(prog_var)::out, list(int)::out, instmap_delta::in, instmap_delta::out,
     map(prog_var, field_id)::in, map(prog_var, field_id)::out,
-    vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
-update_construct_args(_, _, _, _, _, [], [], [],
-        !InstMapDelta, !AddrFieldIds, !VarTypes).
-update_construct_args(Subst, HighLevelData, VarType, ConsId, ArgNum,
-        [OrigVar | OrigVars], [UpdatedVar | UpdatedVars], AddrArgs,
-        !InstMapDelta, !AddrFieldIds, !VarTypes) :-
-    update_construct_args(Subst, HighLevelData, VarType, ConsId, ArgNum + 1,
-        OrigVars, UpdatedVars, AddrArgsTail, !InstMapDelta, !AddrFieldIds,
-        !VarTypes),
+update_construct_args(_, _, _, _, _, _, [], [], [],
+        !InstMapDelta, !AddrFieldIds, !VarTable).
+update_construct_args(Subst, HighLevelData, VarType, IsDummyType,
+        ConsId, ArgNum, [OrigVar | OrigVars], [UpdatedVar | UpdatedVars],
+        AddrArgs, !InstMapDelta, !AddrFieldIds, !VarTable) :-
+    update_construct_args(Subst, HighLevelData, VarType, IsDummyType,
+        ConsId, ArgNum + 1, OrigVars, UpdatedVars, AddrArgsTail,
+        !InstMapDelta, !AddrFieldIds, !VarTable),
     ( if map.search(Subst, OrigVar, AddrVar) then
         UpdatedVar = AddrVar,
         (
@@ -1332,11 +1337,16 @@ update_construct_args(Subst, HighLevelData, VarType, ConsId, ArgNum,
             BoundInst = bound_inst_with_free_arg(ConsId, ArgNum),
             FinalInst = bound(shared, inst_test_no_results, [BoundInst]),
             % We didn't do this when we initially created the variable.
-            add_var_type(AddrVar, VarType, !VarTypes)
+            lookup_var_entry(!.VarTable, AddrVar, AddrVarEntry0),
+            AddrVarEntry0 = vte(AddrVarName, _, _),
+            % XXX Why is it that VarType, and its IsDummyType companion,
+            % do not depend on which field we are taking the address of?
+            AddrVarEntry = vte(AddrVarName, VarType, IsDummyType),
+            update_var_entry(AddrVar, AddrVarEntry, !VarTable)
         ),
         instmap_delta_set_var(AddrVar, FinalInst, !InstMapDelta),
-        map.det_insert(OrigVar, field_id(VarType, ConsId, ArgNum),
-            !AddrFieldIds),
+        FieldId = field_id(VarType, ConsId, ArgNum),
+        map.det_insert(OrigVar, FieldId, !AddrFieldIds),
         AddrArgs = [ArgNum | AddrArgsTail]
     else
         UpdatedVar = OrigVar,
@@ -1399,8 +1409,8 @@ update_variant_pred_info(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
         VariantProcInfo, !ModuleInfo),
 
     proc_info_get_headvars(VariantProcInfo, HeadVars),
-    proc_info_get_varset_vartypes(VariantProcInfo, _VarSet, VarTypes),
-    lookup_var_types(VarTypes, HeadVars, ArgTypes),
+    proc_info_get_var_table(!.ModuleInfo, VariantProcInfo, VarTable),
+    lookup_var_types(VarTable, HeadVars, ArgTypes),
 
     some [!VariantPredInfo] (
         module_info_pred_info(!.ModuleInfo, VariantPredId, !:VariantPredInfo),
@@ -1425,14 +1435,14 @@ update_variant_pred_info(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
 lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
         !:VariantProcInfo, !ModuleInfo) :-
     !:VariantProcInfo = ProcInfo,
-    proc_info_get_varset_vartypes(ProcInfo, VarSet0, VarTypes0),
+    proc_info_get_var_table(!.ModuleInfo, ProcInfo, VarTable0),
     proc_info_get_headvars(ProcInfo, HeadVars0),
     proc_info_get_argmodes(ProcInfo, ArgModes0),
     make_addr_vars(!.ModuleInfo, 1, HeadVars0, HeadVars, ArgModes0, ArgModes,
-        AddrOutArgs, VarToAddr, VarSet0, VarSet, VarTypes0, VarTypes),
+        AddrOutArgs, VarToAddr, VarTable0, VarTable),
     proc_info_set_headvars(HeadVars, !VariantProcInfo),
     proc_info_set_argmodes(ArgModes, !VariantProcInfo),
-    proc_info_set_varset_vartypes(VarSet, VarTypes, !VariantProcInfo),
+    proc_info_set_var_table(VarTable, !VariantProcInfo),
 
     proc_info_get_initial_instmap(!.ModuleInfo, ProcInfo, InstMap0),
     proc_info_get_goal(ProcInfo, Goal0),
@@ -1448,9 +1458,11 @@ lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
         ;
             Changed = yes,
             io.write_string(DebugStream, "goal before:\n", !IO),
-            dump_goal_nl(DebugStream, !.ModuleInfo, VarSet, Goal0, !IO),
+            dump_goal_nl(DebugStream, !.ModuleInfo, vns_var_table(VarTable),
+                Goal0, !IO),
             io.write_string(DebugStream, "\ngoal after:\n", !IO),
-            dump_goal_nl(DebugStream, !.ModuleInfo, VarSet, Goal, !IO)
+            dump_goal_nl(DebugStream, !.ModuleInfo, vns_var_table(VarTable),
+                Goal, !IO)
         )
     ),
     proc_info_set_goal(Goal, !VariantProcInfo),
@@ -1475,20 +1487,20 @@ lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
     list(prog_var)::in, list(prog_var)::out,
     list(mer_mode)::in, list(mer_mode)::out,
     list(variant_arg)::in, var_to_target::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
-make_addr_vars(_, _, [], [], [], [], AddrOutArgs, [],
-        !VarSet, !VarTypes) :-
+make_addr_vars(_, _, [], [], [], [], AddrOutArgs, [], !VarTable) :-
     expect(unify(AddrOutArgs, []), $pred, "AddrOutArgs != []").
-make_addr_vars(_, _, [], _, [_ | _], _, _, _, !VarSet, !VarTypes) :-
+make_addr_vars(_, _, [], _, [_ | _], _, _, _, !VarTable) :-
     unexpected($pred, "mismatched lists").
-make_addr_vars(_, _, [_ | _], _, [], _, _, _, !VarSet, !VarTypes) :-
+make_addr_vars(_, _, [_ | _], _, [], _, _, _, !VarTable) :-
     unexpected($pred, "mismatched lists").
 make_addr_vars(ModuleInfo, NextOutArgNum,
         [HeadVar0 | HeadVars0], [HeadVar | HeadVars],
         [Mode0 | Modes0], [Mode | Modes],
-        !.AddrOutArgs, VarToAddr, !VarSet, !VarTypes) :-
-    lookup_var_type(!.VarTypes, HeadVar0, HeadVarType),
+        !.AddrOutArgs, VarToAddr, !VarTable) :-
+    lookup_var_entry(!.VarTable, HeadVar0, HeadVarEntry0),
+    HeadVarType = HeadVarEntry0 ^ vte_type,
     mode_to_top_functor_mode(ModuleInfo, Mode0, HeadVarType, TopFunctorMode),
     (
         TopFunctorMode = top_in,
@@ -1496,37 +1508,38 @@ make_addr_vars(ModuleInfo, NextOutArgNum,
         Mode = Mode0,
         make_addr_vars(ModuleInfo, NextOutArgNum,
             HeadVars0, HeadVars, Modes0, Modes,
-            !.AddrOutArgs, VarToAddr, !VarSet, !VarTypes)
+            !.AddrOutArgs, VarToAddr, !VarTable)
     ;
         TopFunctorMode = top_out,
         ( if
             !.AddrOutArgs = [AddrOutArg | !:AddrOutArgs],
             AddrOutArg = variant_arg(NextOutArgNum, MaybeFieldId)
         then
-            varset.lookup_name(!.VarSet, HeadVar0, Name),
-            AddrName = "AddrOf" ++ Name,
-            varset.new_named_var(AddrName, AddrVar, !VarSet),
-            HeadVar = AddrVar,
-            lookup_var_type(!.VarTypes, HeadVar0, OldType),
+            HeadVarName = var_entry_name(HeadVar0, HeadVarEntry0),
+            AddrVarName = "AddrOf" ++ HeadVarName,
             (
                 MaybeFieldId = no,
                 % For low-level data we replace the output argument with a
                 % store_at_ref_type(T) input argument.
-                add_var_type(AddrVar, make_ref_type(OldType), !VarTypes),
+                AddrVarType = make_ref_type(HeadVarType),
+                AddrVarTypeIsDummy = is_not_dummy_type,
                 Mode = in_mode
             ;
                 MaybeFieldId = yes(field_id(AddrVarType, ConsId, ArgNum)),
                 % For high-level data we replace the output argument with a
                 % partially instantiated structure. The structure has one
                 % argument left unfilled.
-                add_var_type(AddrVar, AddrVarType, !VarTypes),
+                AddrVarTypeIsDummy = is_type_a_dummy(ModuleInfo, AddrVarType),
                 BoundInst = bound_inst_with_free_arg(ConsId, ArgNum),
                 InitialInst = bound(shared, inst_test_no_results, [BoundInst]),
                 Mode = from_to_mode(InitialInst, ground_inst)
             ),
+            AddrVarEntry = vte(AddrVarName, AddrVarType, AddrVarTypeIsDummy),
+            add_var_entry(AddrVarEntry, AddrVar, !VarTable),
+            HeadVar = AddrVar,
             make_addr_vars(ModuleInfo, NextOutArgNum + 1,
                 HeadVars0, HeadVars, Modes0, Modes,
-                !.AddrOutArgs, VarToAddrTail, !VarSet, !VarTypes),
+                !.AddrOutArgs, VarToAddrTail, !VarTable),
             VarToAddrHead = HeadVar0 - store_target(AddrVar, MaybeFieldId),
             VarToAddr = [VarToAddrHead | VarToAddrTail]
         else
@@ -1534,7 +1547,7 @@ make_addr_vars(ModuleInfo, NextOutArgNum,
             Mode = Mode0,
             make_addr_vars(ModuleInfo, NextOutArgNum + 1,
                 HeadVars0, HeadVars, Modes0, Modes,
-                !.AddrOutArgs, VarToAddr, !VarSet, !VarTypes)
+                !.AddrOutArgs, VarToAddr, !VarTable)
         )
     ;
         TopFunctorMode = top_unused,
@@ -1817,11 +1830,11 @@ lco_transform_variant_plain_call(ModuleInfo, Transforms, VariantMap, VarToAddr,
         CallPredProcId = proc(CallPredId, CallProcId),
         module_info_proc_info(ModuleInfo, CallPredId, CallProcId,
             CalleeProcInfo),
-        proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
+        proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
         proc_info_get_argmodes(CalleeProcInfo, CalleeArgModes),
         ( if
             multi_map.search(VariantMap, CallPredProcId, ExistingVariantIds),
-            classify_proc_call_args(ModuleInfo, VarTypes,
+            classify_proc_call_args(ModuleInfo, VarTable,
                 ArgVars, CalleeArgModes,
                 _InArgVars, OutArgVars, _UnusedArgVars),
             grounding_to_variant_args(GroundingVarToAddr, 1, OutArgVars, Subst,

@@ -41,7 +41,6 @@
 
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_llds.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -55,6 +54,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.vartypes.
 
 :- import_module array.
 :- import_module bool.

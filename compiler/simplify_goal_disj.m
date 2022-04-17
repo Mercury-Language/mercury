@@ -56,20 +56,20 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_goal.
-:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module string.
 :- import_module set.
+:- import_module string.
 :- import_module term.
 :- import_module varset.
 

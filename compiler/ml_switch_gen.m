@@ -140,7 +140,6 @@
 :- import_module backend_libs.switch_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
-:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -153,6 +152,7 @@
 :- import_module ml_backend.ml_tag_switch.
 :- import_module ml_backend.ml_target_util.
 :- import_module ml_backend.ml_unify_gen_test.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.

@@ -16,6 +16,7 @@
 
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 
 :- import_module io.
 :- import_module list.
@@ -53,6 +54,13 @@
 :- pred mercury_format_var(varset(T)::in, var_name_print::in, var(T)::in,
     S::in, U::di, U::uo) is det <= output(S, U).
 
+:- pred mercury_output_var_src(var_name_source::in, var_name_print::in,
+    prog_var::in, io.text_output_stream::in, io::di, io::uo) is det.
+:- func mercury_var_to_string_src(var_name_source, var_name_print, prog_var)
+    = string.
+:- pred mercury_format_var_src(var_name_source::in, var_name_print::in,
+    prog_var::in, S::in, U::di, U::uo) is det <= output(S, U).
+
     % Output a comma-separated list of variables.
     %
 :- pred mercury_output_vars(varset(T)::in, var_name_print::in,
@@ -62,10 +70,20 @@
 :- pred mercury_format_vars(varset(T)::in, var_name_print::in,
     list(var(T))::in, S::in, U::di, U::uo) is det <= output(S, U).
 
+:- pred mercury_output_vars_src(var_name_source::in, var_name_print::in,
+    list(prog_var)::in, io.text_output_stream::in, io::di, io::uo) is det.
+:- func mercury_vars_to_string_src(var_name_source, var_name_print,
+    list(prog_var)) = string.
+:- pred mercury_format_vars_src(var_name_source::in, var_name_print::in,
+    list(prog_var)::in, S::in, U::di, U::uo) is det <= output(S, U).
+
     % Output a variable or a list of variables with print_name_only.
     %
 :- func mercury_var_to_name_only(varset(T), var(T)) = string.
 :- func mercury_vars_to_name_only(varset(T), list(var(T))) = string.
+:- func mercury_var_to_name_only_src(var_name_source, prog_var) = string.
+:- func mercury_vars_to_name_only_src(var_name_source, list(prog_var))
+    = string.
 
 %---------------------------------------------------------------------------%
 
@@ -81,6 +99,13 @@
 :- pred mercury_format_term(varset(T)::in, var_name_print::in, term(T)::in,
     S::in, U::di, U::uo) is det <= output(S, U).
 
+:- pred mercury_output_term_src(var_name_source::in, var_name_print::in,
+    prog_term::in, io.text_output_stream::in, io::di, io::uo) is det.
+:- func mercury_term_to_string_src(var_name_source, var_name_print, prog_term)
+    = string.
+:- pred mercury_format_term_src(var_name_source::in, var_name_print::in,
+    prog_term::in, S::in, U::di, U::uo) is det <= output(S, U).
+
 :- pred mercury_output_term_nq(varset(T)::in, var_name_print::in,
     needs_quotes::in, term(T)::in, io.text_output_stream::in,
     io::di, io::uo) is det.
@@ -89,9 +114,21 @@
 :- pred mercury_format_term_nq(varset(T)::in, var_name_print::in,
     needs_quotes::in, term(T)::in, S::in, U::di, U::uo) is det <= output(S, U).
 
-:- pred mercury_format_comma_separated_terms(varset(T)::in, var_name_print::in,
-    term(T)::in, list(term(T))::in, S::in, U::di, U::uo) is det
+:- pred mercury_output_term_nq_src(var_name_source::in, var_name_print::in,
+    needs_quotes::in, prog_term::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
+:- func mercury_term_nq_to_string_src(var_name_source, var_name_print,
+    needs_quotes, prog_term) = string.
+:- pred mercury_format_term_nq_src(var_name_source::in, var_name_print::in,
+    needs_quotes::in, prog_term::in, S::in, U::di, U::uo) is det
     <= output(S, U).
+
+:- pred mercury_format_comma_separated_terms(varset(T)::in,
+    var_name_print::in, term(T)::in, list(term(T))::in,
+    S::in, U::di, U::uo) is det <= output(S, U).
+:- pred mercury_format_comma_separated_terms_src(var_name_source::in,
+    var_name_print::in, prog_term::in, list(prog_term)::in,
+    S::in, U::di, U::uo) is det <= output(S, U).
 
 :- pred mercury_output_limited_term(varset(T)::in, var_name_print::in, int::in,
     term(T)::in, io.text_output_stream::in, io::di, io::uo) is det.
@@ -189,7 +226,45 @@ mercury_var_to_string(VarSet, VarNamePrint, Var) = String :-
     mercury_format_var(VarSet, VarNamePrint, Var, unit, "", String).
 
 mercury_format_var(VarSet, VarNamePrint, Var, S, !U) :-
+    % Please keep in sync with mercury_format_var_src.
     ( if varset.search_name(VarSet, Var, Name) then
+        (
+            VarNamePrint = print_num_only,
+            term.var_to_int(Var, VarNum),
+            add_string("V_", S, !U),
+            add_int(VarNum, S, !U)
+        ;
+            ( VarNamePrint = print_name_only
+            ; VarNamePrint = print_name_and_num
+            ),
+            mercury_convert_var_name(Name, ConvertedName),
+            add_string(ConvertedName, S, !U),
+            (
+                VarNamePrint = print_name_only
+            ;
+                VarNamePrint = print_name_and_num,
+                term.var_to_int(Var, VarNum),
+                add_string("_", S, !U),
+                add_int(VarNum, S, !U)
+            )
+        )
+    else
+        term.var_to_int(Var, VarNum),
+        add_string("V_", S, !U),
+        add_int(VarNum, S, !U)
+    ).
+
+%---------------------%
+
+mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO) :-
+    mercury_format_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO).
+
+mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var) = String :-
+    mercury_format_var_src(VarNameSrc, VarNamePrint, Var, unit, "", String).
+
+mercury_format_var_src(VarNameSrc, VarNamePrint, Var, S, !U) :-
+    % Please keep in sync with mercury_format_var.
+    ( if var_table.search_var_name_in_source(VarNameSrc, Var, Name) then
         (
             VarNamePrint = print_num_only,
             term.var_to_int(Var, VarNum),
@@ -227,6 +302,16 @@ mercury_vars_to_string(VarSet, VarNamePrint, Vars) = String :-
 mercury_format_vars(VarSet, VarNamePrint, Vars, S, !U) :-
     add_list(mercury_format_var(VarSet, VarNamePrint), ", ", Vars, S, !U).
 
+mercury_output_vars_src(VarNameSrc, VarNamePrint, Vars, Stream, !IO) :-
+    mercury_format_vars_src(VarNameSrc, VarNamePrint, Vars, Stream, !IO).
+
+mercury_vars_to_string_src(VarNameSrc, VarNamePrint, Vars) = String :-
+    mercury_format_vars_src(VarNameSrc, VarNamePrint, Vars, unit, "", String).
+
+mercury_format_vars_src(VarNameSrc, VarNamePrint, Vars, S, !U) :-
+    add_list(mercury_format_var_src(VarNameSrc, VarNamePrint), ", ", Vars,
+        S, !U).
+
 %---------------------%
 
 mercury_var_to_name_only(VarSet, Var) =
@@ -234,6 +319,12 @@ mercury_var_to_name_only(VarSet, Var) =
 
 mercury_vars_to_name_only(VarSet, Vars) =
     mercury_vars_to_string(VarSet, print_name_only, Vars).
+
+mercury_var_to_name_only_src(VarNameSrc, Var) =
+    mercury_var_to_string_src(VarNameSrc, print_name_only, Var).
+
+mercury_vars_to_name_only_src(VarNameSrc, Vars) =
+    mercury_vars_to_string_src(VarNameSrc, print_name_only, Vars).
 
 %---------------------------------------------------------------------------%
 
@@ -254,16 +345,28 @@ max_term_string_size_in_syntax_error = 80.
 %---------------------------------------------------------------------------%
 
 mercury_output_term(VarSet, VarNamePrint, Term, Stream, !IO) :-
-    mercury_output_term_nq(VarSet, VarNamePrint, not_next_to_graphic_token,
-        Term, Stream, !IO).
+    mercury_output_term_nq(VarSet, VarNamePrint,
+        not_next_to_graphic_token, Term, Stream, !IO).
 
 mercury_term_to_string(VarSet, VarNamePrint, Term) =
-    mercury_term_nq_to_string(VarSet, VarNamePrint, not_next_to_graphic_token,
-        Term).
+    mercury_term_nq_to_string(VarSet, VarNamePrint,
+        not_next_to_graphic_token, Term).
 
 mercury_format_term(VarSet, VarNamePrint, Term, S, !U) :-
-    mercury_format_term_nq(VarSet, VarNamePrint, not_next_to_graphic_token,
-        Term, S, !U).
+    mercury_format_term_nq(VarSet, VarNamePrint,
+        not_next_to_graphic_token, Term, S, !U).
+
+mercury_output_term_src(VarNameSrc, VarNamePrint, Term, Stream, !IO) :-
+    mercury_output_term_nq_src(VarNameSrc, VarNamePrint,
+        not_next_to_graphic_token, Term, Stream, !IO).
+
+mercury_term_to_string_src(VarNameSrc, VarNamePrint, Term) =
+    mercury_term_nq_to_string_src(VarNameSrc, VarNamePrint,
+        not_next_to_graphic_token, Term).
+
+mercury_format_term_src(VarNameSrc, VarNamePrint, Term, S, !U) :-
+    mercury_format_term_nq_src(VarNameSrc, VarNamePrint,
+        not_next_to_graphic_token, Term, S, !U).
 
 %---------------------%
 
@@ -278,6 +381,7 @@ mercury_term_nq_to_string(VarSet, VarNamePrint, NextToGraphicToken, Term)
         unit, "", String).
 
 mercury_format_term_nq(VarSet, VarNamePrint, NextToGraphicToken, Term, S, !U) :-
+    % Please keep in sync with mercury_format_term_nq_src.
     (
         Term = term.variable(Var, _),
         mercury_format_var(VarSet, VarNamePrint, Var, S, !U)
@@ -388,10 +492,139 @@ mercury_format_term_nq(VarSet, VarNamePrint, NextToGraphicToken, Term, S, !U) :-
         )
     ).
 
+%---------------------%
+
+mercury_output_term_nq_src(VarNameSrc, VarNamePrint, NextToGraphicToken,
+        Term, Stream, !IO) :-
+    mercury_format_term_nq_src(VarNameSrc, VarNamePrint, NextToGraphicToken,
+        Term, Stream, !IO).
+
+mercury_term_nq_to_string_src(VarNameSrc, VarNamePrint, NextToGraphicToken,
+        Term) = String :-
+    mercury_format_term_nq_src(VarNameSrc, VarNamePrint, NextToGraphicToken,
+        Term, unit, "", String).
+
+mercury_format_term_nq_src(VarNameSrc, VarNamePrint, NextToGraphicToken,
+        Term, S, !U) :-
+    % Please keep in sync with mercury_format_term_nq.
+    (
+        Term = term.variable(Var, _),
+        mercury_format_var_src(VarNameSrc, VarNamePrint, Var, S, !U)
+    ;
+        Term = term.functor(Functor, Args, _),
+        ( if
+            Functor = term.atom(""),
+            Args = [F, X | Xs]
+        then
+            mercury_format_term_nq_src(VarNameSrc, VarNamePrint,
+                NextToGraphicToken, F, S, !U),
+            add_string("(", S, !U),
+            mercury_format_comma_separated_terms_src(VarNameSrc, VarNamePrint,
+                X, Xs, S, !U),
+            add_string(")", S, !U)
+        else if
+            Functor = term.atom("[|]"),
+            Args = [X, Xs]
+        then
+            add_string("[", S, !U),
+            mercury_format_term_src(VarNameSrc, VarNamePrint, X, S, !U),
+            mercury_format_list_args_src(VarNameSrc, VarNamePrint, Xs, S, !U),
+            add_string("]", S, !U)
+        else if
+            Functor = term.atom("{}"),
+            Args = [X]
+        then
+            % A unary tuple is usually a DCG escape,
+            % so add some extra space.
+            add_string("{ ", S, !U),
+            mercury_format_term_src(VarNameSrc, VarNamePrint, X, S, !U),
+            add_string(" }", S, !U)
+        else if
+            Functor = term.atom("{}"),
+            Args = [X | Xs]
+        then
+            add_string("{", S, !U),
+            mercury_format_comma_separated_terms_src(VarNameSrc, VarNamePrint,
+                X, Xs, S, !U),
+            add_string("}", S, !U)
+        else if
+            Args = [BinaryPrefixArg1, BinaryPrefixArg2],
+            Functor = term.atom(FunctorName),
+            mercury_binary_prefix_op(FunctorName)
+        then
+            add_string("(", S, !U),
+            add_string(FunctorName, S, !U),
+            add_string(" ", S, !U),
+            mercury_format_term_src(VarNameSrc, VarNamePrint,
+                BinaryPrefixArg1, S, !U), add_string(" ", S, !U),
+            mercury_format_term_src(VarNameSrc, VarNamePrint,
+                BinaryPrefixArg2, S, !U),
+            add_string(")", S, !U)
+        else if
+            Args = [PrefixArg],
+            Functor = term.atom(FunctorName),
+            mercury_unary_prefix_op(FunctorName)
+        then
+            add_string("(", S, !U),
+            add_string(FunctorName, S, !U),
+            add_string(" ", S, !U),
+            mercury_format_term_src(VarNameSrc, VarNamePrint,
+                PrefixArg, S, !U),
+            add_string(")", S, !U)
+        else if
+            Args = [PostfixArg],
+            Functor = term.atom(FunctorName),
+            mercury_unary_postfix_op(FunctorName)
+        then
+            add_string("(", S, !U),
+            mercury_format_term_src(VarNameSrc, VarNamePrint,
+                PostfixArg, S, !U),
+            add_string(" ", S, !U),
+            add_string(FunctorName, S, !U),
+            add_string(")", S, !U)
+        else if
+            Args = [Arg1, Arg2],
+            Functor = term.atom(FunctorName),
+            mercury_infix_op(FunctorName)
+        then
+            ( if FunctorName = "." then
+                mercury_format_term_nq_src(VarNameSrc, VarNamePrint,
+                    next_to_graphic_token, Arg1, S, !U),
+                add_string(".", S, !U),
+                mercury_format_term_nq_src(VarNameSrc, VarNamePrint,
+                    next_to_graphic_token, Arg2, S, !U)
+            else
+                add_string("(", S, !U),
+                mercury_format_term_nq_src(VarNameSrc, VarNamePrint,
+                    not_next_to_graphic_token, Arg1, S, !U),
+                add_string(" ", S, !U),
+                add_string(FunctorName, S, !U),
+                add_string(" ", S, !U),
+                mercury_format_term_nq_src(VarNameSrc, VarNamePrint,
+                    not_next_to_graphic_token, Arg2, S, !U),
+                add_string(")", S, !U)
+            )
+        else
+            (
+                Args = [Y | Ys],
+                mercury_format_constant(NextToGraphicToken, Functor, S, !U),
+                add_string("(", S, !U),
+                mercury_format_comma_separated_terms_src(VarNameSrc,
+                    VarNamePrint, Y, Ys, S, !U),
+                add_string(")", S, !U)
+            ;
+                Args = [],
+                mercury_format_bracketed_constant_ngt(NextToGraphicToken,
+                    Functor, S, !U)
+            )
+        )
+    ).
+
 :- pred mercury_format_list_args(varset(T)::in, var_name_print::in,
     term(T)::in, S::in, U::di, U::uo) is det <= output(S, U).
 
 mercury_format_list_args(VarSet, VarNamePrint, Term, S, !U) :-
+    % Please keep in sync with mercury_format_list_args_src.
     ( if
         Term = term.functor(term.atom("[|]"), Args, _),
         Args = [X, Xs]
@@ -408,10 +641,39 @@ mercury_format_list_args(VarSet, VarNamePrint, Term, S, !U) :-
         mercury_format_term(VarSet, VarNamePrint, Term, S, !U)
     ).
 
+:- pred mercury_format_list_args_src(var_name_source::in, var_name_print::in,
+    prog_term::in, S::in, U::di, U::uo) is det <= output(S, U).
+
+mercury_format_list_args_src(VarNameSrc, VarNamePrint, Term, S, !U) :-
+    % Please keep in sync with mercury_format_list_args.
+    ( if
+        Term = term.functor(term.atom("[|]"), Args, _),
+        Args = [X, Xs]
+    then
+        add_string(", ", S, !U),
+        mercury_format_term_src(VarNameSrc, VarNamePrint, X, S, !U),
+        mercury_format_list_args_src(VarNameSrc, VarNamePrint, Xs, S, !U)
+    else if
+        Term = term.functor(term.atom("[]"), [], _)
+    then
+        true
+    else
+        add_string(" | ", S, !U),
+        mercury_format_term_src(VarNameSrc, VarNamePrint, Term, S, !U)
+    ).
+
+%---------------------------------------------------------------------------%
+
 mercury_format_comma_separated_terms(VarSet, VarNamePrint,
         HeadTerm, TailTerms, S, !U) :-
     mercury_format_term(VarSet, VarNamePrint, HeadTerm, S, !U),
     mercury_format_remaining_terms(VarSet, VarNamePrint, TailTerms, S, !U).
+
+mercury_format_comma_separated_terms_src(VarNameSrc, VarNamePrint,
+        HeadTerm, TailTerms, S, !U) :-
+    mercury_format_term_src(VarNameSrc, VarNamePrint, HeadTerm, S, !U),
+    mercury_format_remaining_terms_src(VarNameSrc, VarNamePrint, TailTerms,
+        S, !U).
 
 :- pred mercury_format_remaining_terms(varset(T)::in, var_name_print::in,
     list(term(T))::in, S::in, U::di, U::uo) is det <= output(S, U).
@@ -421,6 +683,19 @@ mercury_format_remaining_terms(VarSet, VarNamePrint, [Term | Terms], S, !U) :-
     add_string(", ", S, !U),
     mercury_format_term(VarSet, VarNamePrint, Term, S, !U),
     mercury_format_remaining_terms(VarSet, VarNamePrint, Terms, S, !U).
+
+:- pred mercury_format_remaining_terms_src(var_name_source::in,
+    var_name_print::in, list(prog_term)::in, S::in, U::di, U::uo)
+    is det <= output(S, U).
+
+mercury_format_remaining_terms_src(_VarNameSrc, _VarNamePrint, [], _S, !U).
+mercury_format_remaining_terms_src(VarNameSrc, VarNamePrint, [Term | Terms],
+        S, !U) :-
+    add_string(", ", S, !U),
+    mercury_format_term_src(VarNameSrc, VarNamePrint, Term, S, !U),
+    mercury_format_remaining_terms_src(VarNameSrc, VarNamePrint, Terms, S, !U).
+
+%---------------------------------------------------------------------------%
 
 :- pred mercury_format_bracketed_constant_ngt(needs_quotes::in, const::in,
     S::in, U::di, U::uo) is det <= output(S, U).

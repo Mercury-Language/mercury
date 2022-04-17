@@ -11,10 +11,9 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module hlds.vartypes.
+:- module parse_tree.vartypes.
 :- interface.
 
-:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -205,5 +204,5 @@ foldl_var_types(Pred, VarTypes, !Acc) :-
     map.foldl_values(Pred, VarTypes, !Acc).
 
 %---------------------------------------------------------------------------%
-:- end_module hlds.vartypes.
+:- end_module parse_tree.vartypes.
 %---------------------------------------------------------------------------%

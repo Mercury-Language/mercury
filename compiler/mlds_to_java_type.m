@@ -83,8 +83,8 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
-:- import_module ml_backend.mlds_to_target_util.
 :- import_module ml_backend.mlds_to_java_name.
+:- import_module ml_backend.mlds_to_target_util.
 :- import_module parse_tree.builtin_lib_types.
 
 :- import_module bool.

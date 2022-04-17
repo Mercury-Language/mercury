@@ -75,11 +75,11 @@
 :- import_module bool.
 :- import_module counter.
 :- import_module digraph.
-:- import_module map.
-:- import_module maybe.
 :- import_module int16.
 :- import_module int32.
 :- import_module int8.
+:- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.

@@ -270,7 +270,7 @@
 
 :- implementation.
 
-:- import_module hlds.vartypes.
+:- import_module parse_tree.vartypes.
 :- import_module transform_hlds.smm_common.
 
 :- import_module assoc_list.

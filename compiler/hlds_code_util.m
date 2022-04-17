@@ -18,8 +18,8 @@
 
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 

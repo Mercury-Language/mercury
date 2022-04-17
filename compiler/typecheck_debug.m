@@ -33,13 +33,13 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.
 :- import_module hlds.hlds_class.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module list.

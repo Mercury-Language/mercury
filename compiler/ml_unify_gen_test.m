@@ -52,7 +52,6 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -61,6 +60,7 @@
 :- import_module ml_backend.ml_unify_gen_util.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.var_table.
 
 :- import_module maybe.
 :- import_module require.

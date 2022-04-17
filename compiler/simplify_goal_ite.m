@@ -49,14 +49,14 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_goal.
-:- import_module hlds.var_table.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_detism.
+:- import_module parse_tree.var_table.
+:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module list.

@@ -134,10 +134,11 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
-:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_rename.
+:- import_module parse_tree.var_table.
+:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -253,11 +254,11 @@ delay_partial_inst_proc(ModuleInfo, PredId, ProcTable, ProcId,
                 io.output_stream(Stream, !IO),
                 io.write_string(Stream,
                     "predicate body BEFORE delay_partial_inst:\n", !IO),
-                dump_goal(Stream, ModuleInfo, VarSet0, Goal0, !IO),
+                dump_goal(Stream, ModuleInfo, vns_varset(VarSet0), Goal0, !IO),
                 io.nl(Stream, !IO),
                 io.write_string(Stream,
                     "predicate body AFTER delay_partial_inst:\n", !IO),
-                dump_goal(Stream, ModuleInfo, VarSet, Goal, !IO),
+                dump_goal(Stream, ModuleInfo, vns_varset(VarSet), Goal, !IO),
                 io.nl(Stream, !IO)
             )
         ;

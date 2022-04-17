@@ -26,8 +26,8 @@
 :- module ml_backend.ml_simplify_switch.
 :- interface.
 
-:- import_module ml_backend.mlds.
 :- import_module ml_backend.ml_gen_info.
+:- import_module ml_backend.mlds.
 
 :- pred ml_simplify_switch(mlds_stmt::in, mlds_stmt::out,
     ml_gen_info::in, ml_gen_info::out) is det.

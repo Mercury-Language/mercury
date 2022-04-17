@@ -76,8 +76,8 @@
 :- import_module backend_libs.rtti.
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module ml_backend.mlds_to_c_data.
 :- import_module ml_backend.mlds_to_c_class.
+:- import_module ml_backend.mlds_to_c_data.
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module ml_backend.mlds_to_c_stmt.
 :- import_module ml_backend.mlds_to_c_type.

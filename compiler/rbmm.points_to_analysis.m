@@ -57,10 +57,10 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module transform_hlds.rbmm.points_to_graph.
-:- import_module transform_hlds.smm_common.
 :- import_module transform_hlds.ctgc.
 :- import_module transform_hlds.ctgc.fixpoint_table.
+:- import_module transform_hlds.rbmm.points_to_graph.
+:- import_module transform_hlds.smm_common.
 
 :- import_module bool.
 :- import_module int.

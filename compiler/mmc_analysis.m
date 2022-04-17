@@ -53,19 +53,19 @@
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
 :- import_module transform_hlds.ctgc.
-:- import_module transform_hlds.ctgc.structure_sharing.
-:- import_module transform_hlds.ctgc.structure_sharing.analysis.
 :- import_module transform_hlds.ctgc.structure_reuse.
 :- import_module transform_hlds.ctgc.structure_reuse.analysis.
+:- import_module transform_hlds.ctgc.structure_sharing.
+:- import_module transform_hlds.ctgc.structure_sharing.analysis.
 :- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.tabling_analysis.
 :- import_module transform_hlds.trailing_analysis.
 :- import_module transform_hlds.unused_args.
 
+:- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
-:- import_module io.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%

@@ -56,7 +56,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
 :- import_module hlds.status.
-:- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
@@ -65,6 +64,7 @@
 :- import_module parse_tree.prog_data_used_modules.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module bool.

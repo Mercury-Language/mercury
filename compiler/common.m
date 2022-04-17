@@ -171,13 +171,13 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.status.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.vartypes.
 :- import_module transform_hlds.
 :- import_module transform_hlds.pd_cost.
 

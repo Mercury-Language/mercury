@@ -338,7 +338,6 @@
 :- import_module check_hlds.
 :- import_module check_hlds.mode_top_functor.
 :- import_module check_hlds.type_util.
-:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -347,6 +346,7 @@
 :- import_module ml_backend.ml_code_util.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.var_table.
 
 :- import_module int.
 :- import_module maybe.

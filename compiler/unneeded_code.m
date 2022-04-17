@@ -87,7 +87,6 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -98,6 +97,8 @@
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
+:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -342,8 +343,9 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
                     io.format(Stream, "%% Starting unneededed code pass %d\n",
                         [i(Pass)], !IO),
                     OutInfo = init_hlds_out_info(Globals, output_debug),
-                    write_goal(OutInfo, Stream, !.ModuleInfo, VarSet0,
-                        print_name_and_num, 0, ".\n", Goal0, !IO)
+                    write_goal(OutInfo, Stream, !.ModuleInfo,
+                        vns_varset(VarSet0), print_name_and_num,
+                        0, ".\n", Goal0, !IO)
                 else
                     true
                 )

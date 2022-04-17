@@ -48,7 +48,6 @@
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module ll_backend.unify_gen_test.
@@ -56,6 +55,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.var_table.
 
 :- import_module cord.
 :- import_module int.

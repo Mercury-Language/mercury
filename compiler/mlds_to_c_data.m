@@ -73,18 +73,18 @@
 :- import_module bool.
 :- import_module char.
 :- import_module int.
-:- import_module int8.
 :- import_module int16.
 :- import_module int32.
+:- import_module int8.
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module term.
 :- import_module uint.
-:- import_module uint8.
 :- import_module uint16.
 :- import_module uint32.
+:- import_module uint8.
 
 %---------------------------------------------------------------------------%
 

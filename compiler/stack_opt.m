@@ -104,7 +104,6 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -121,6 +120,8 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
+:- import_module parse_tree.vartypes.
 
 :- import_module array.
 :- import_module bool.
@@ -1057,8 +1058,8 @@ maybe_write_progress_message(Message, DebugStackOpt, PredIdInt, ProcInfo,
         io.write_string(Stream, Message, !IO),
         io.write_string(Stream, ":\n", !IO),
         OutInfo = init_hlds_out_info(Globals, output_debug),
-        write_goal(OutInfo, Stream, ModuleInfo, VarSet, print_name_and_num,
-            0, "\n", Goal, !IO),
+        write_goal(OutInfo, Stream, ModuleInfo, vns_varset(VarSet),
+            print_name_and_num, 0, "\n", Goal, !IO),
         io.write_string(Stream, "\n", !IO)
     else
         true

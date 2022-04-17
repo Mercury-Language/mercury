@@ -17,14 +17,14 @@
 :- interface.
 
 :- import_module libs.
-:- import_module libs.globals.
 :- import_module libs.file_util.
+:- import_module libs.globals.
 :- import_module libs.maybe_succeeded.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_dep_info.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 
 :- import_module bool.
 :- import_module io.

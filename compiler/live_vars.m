@@ -27,11 +27,11 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.vartypes.
 
 :- import_module array.
 :- import_module bool.
@@ -83,14 +83,14 @@
 
 :- implementation.
 
+:- import_module check_hlds.
+:- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module parse_tree.prog_data_foreign.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 
 :- import_module assoc_list.
 :- import_module enum.

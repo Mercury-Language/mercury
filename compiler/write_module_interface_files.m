@@ -125,9 +125,9 @@
 :- import_module recompilation.version.
 
 :- import_module bool.
-:- import_module list.
 :- import_module getopt.
 :- import_module io.file.
+:- import_module list.
 :- import_module require.
 :- import_module set.
 :- import_module string.

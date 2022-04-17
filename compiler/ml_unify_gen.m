@@ -39,11 +39,11 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module hlds.var_table.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_unify_gen_construct.
 :- import_module ml_backend.ml_unify_gen_deconstruct.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.var_table.
 
 :- import_module maybe.
 :- import_module require.

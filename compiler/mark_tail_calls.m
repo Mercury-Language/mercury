@@ -230,12 +230,12 @@
 :- import_module check_hlds.mode_top_functor.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.var_table.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module int.

@@ -102,7 +102,6 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.status.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.op_mode.
@@ -115,6 +114,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -123,9 +123,9 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
+:- import_module set_tree234.
 :- import_module solutions.
 :- import_module string.
-:- import_module set_tree234.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%

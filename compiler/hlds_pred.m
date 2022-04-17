@@ -21,8 +21,8 @@
 :- import_module check_hlds.
 :- import_module check_hlds.mode_constraint_robdd.
 :- import_module check_hlds.mode_errors.
-:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_class.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
@@ -33,8 +33,6 @@
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
-:- import_module hlds.vartypes.
-:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -47,6 +45,8 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
+:- import_module parse_tree.vartypes.
 :- import_module transform_hlds.
 :- import_module transform_hlds.term_constr_main_types.
 :- import_module transform_hlds.term_util.
@@ -67,16 +67,17 @@
 :- import_module check_hlds.mode_test.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.
+:- import_module hlds.hlds_data.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
+:- import_module counter.
 :- import_module int.
 :- import_module require.
 :- import_module string.
@@ -2658,6 +2659,8 @@ marker_list_to_markers(Markers, MarkerSet) :-
 :- pred proc_info_set_var_table(var_table::in,
     proc_info::in, proc_info::out) is det.
 
+:- pred split_var_table(var_table::in, prog_varset::out, vartypes::out) is det.
+
 :- pred proc_info_get_structure_sharing(proc_info::in,
     maybe(structure_sharing_domain_and_status)::out) is det.
 
@@ -3798,6 +3801,80 @@ proc_info_get_var_table(ModuleInfo, PI, VarTable) :-
 proc_info_set_var_table(VarTable, !PI) :-
     split_var_table(VarTable, VarSet, VarTypes),
     proc_info_set_varset_vartypes(VarSet, VarTypes, !PI).
+
+%---------------------------------------------------------------------------%
+
+:- pred make_var_table(module_info::in, prog_varset::in, vartypes::in,
+    var_table::out) is det.
+
+make_var_table(ModuleInfo, VarSet, VarTypes, VarTable) :-
+    vartypes_to_sorted_assoc_list(VarTypes, VarTypesAL),
+    make_var_table_loop(ModuleInfo, VarSet, VarTypesAL, [], RevVarTableAL),
+    map.from_rev_sorted_assoc_list(RevVarTableAL, VarTableMap),
+    (
+        RevVarTableAL = [],
+        NextAllocVarNum = 1
+    ;
+        RevVarTableAL = [Var - _ | _],
+        NextAllocVarNum = var_to_int(Var) + 1
+    ),
+    counter.init(NextAllocVarNum, Counter),
+    construct_var_table(Counter, VarTableMap, VarTable).
+
+:- pred make_var_table_loop(module_info::in, prog_varset::in,
+    assoc_list(prog_var, mer_type)::in,
+    assoc_list(prog_var, var_table_entry)::in,
+    assoc_list(prog_var, var_table_entry)::out) is det.
+
+make_var_table_loop(_, _, [], !RevVarTableAL).
+make_var_table_loop(ModuleInfo, VarSet, [Var - Type | VarsTypes],
+        !RevVarTableAL) :-
+    ( if varset.search_name(VarSet, Var, NamePrime) then
+        Name = NamePrime
+    else
+        Name = ""
+    ),
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+    Entry = vte(Name, Type, IsDummy),
+    !:RevVarTableAL = [Var - Entry | !.RevVarTableAL],
+    make_var_table_loop(ModuleInfo, VarSet, VarsTypes, !RevVarTableAL).
+
+%---------------------------------------------------------------------------%
+
+split_var_table(VarTable, VarSet, VarTypes) :-
+    deconstruct_var_table(VarTable, Counter, VarTableMap),
+    map.to_sorted_assoc_list(VarTableMap, VarsEntries),
+    split_var_table_loop(VarsEntries, [], RevVarTypes, [], RevVarNames),
+    vartypes_from_rev_sorted_assoc_list(RevVarTypes, VarTypes),
+    map.from_rev_sorted_assoc_list(RevVarNames, VarNameMap),
+    (
+        RevVarTypes = [],
+        LastVarNum = 0
+    ;
+        RevVarTypes = [Var - _ | _],
+        LastVarNum = var_to_int(Var)
+    ),
+    counter.allocate(NextVarNum, Counter, _),
+    expect(unify(LastVarNum + 1, NextVarNum), $pred,
+        "LastVarNum + 1 != NextVarNum"),
+    construct_varset(LastVarNum, VarNameMap, VarSet).
+
+:- pred split_var_table_loop(assoc_list(prog_var, var_table_entry)::in,
+    assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out,
+    assoc_list(prog_var, string)::in, assoc_list(prog_var, string)::out)
+    is det.
+
+split_var_table_loop([], !RevVarTypes, !RevVarNames).
+split_var_table_loop([Var - Entry | VarsEntries],
+        !RevVarTypes, !RevVarNames) :-
+    Entry = vte(Name, Type, _IsDummy),
+    !:RevVarTypes = [Var - Type | !.RevVarTypes],
+    ( if Name = "" then
+        true
+    else
+        !:RevVarNames = [Var - Name | !.RevVarNames]
+    ),
+    split_var_table_loop(VarsEntries, !RevVarTypes, !RevVarNames).
 
 %---------------------------------------------------------------------------%
 

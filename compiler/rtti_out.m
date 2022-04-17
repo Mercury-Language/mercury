@@ -28,10 +28,10 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.rtti.
-:- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.llds_out.llds_out_util.
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 
 :- import_module bool.
 :- import_module io.

@@ -80,7 +80,6 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.status.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
@@ -91,6 +90,7 @@
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.vartypes.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.fixpoint_table.
 :- import_module transform_hlds.ctgc.livedata.

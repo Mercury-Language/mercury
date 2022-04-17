@@ -23,11 +23,11 @@
 :- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_llds.
-:- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.livemap.
 :- import_module ll_backend.llds.
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 
 :- import_module assoc_list.
 :- import_module bool.

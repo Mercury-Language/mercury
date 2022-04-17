@@ -17,8 +17,8 @@
 :- module ml_backend.ml_accurate_gc.
 :- interface.
 
-:- import_module ml_backend.mlds.
 :- import_module ml_backend.ml_gen_info.
+:- import_module ml_backend.mlds.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -87,7 +87,6 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
-:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -100,6 +99,7 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module cord.
@@ -408,9 +408,7 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
     module_info_set_pred_proc_info(PredProcId, PredInfo, ProcInfo,
         ModuleInfo1, ModuleInfo),
     % Save the new information back in the ml_gen_info.
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
-    % XXX It would be nice to have polymorphism update the var table directly.
-    make_var_table(ModuleInfo, VarSet, VarTypes, VarTable),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     ml_gen_info_set_module_info(ModuleInfo, !Info),
     ml_gen_info_set_var_table(VarTable, !Info).
 

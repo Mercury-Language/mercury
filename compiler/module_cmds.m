@@ -16,16 +16,16 @@
 :- module parse_tree.module_cmds.
 :- interface.
 
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.maybe_succeeded.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_names.
 
-:- import_module list.
 :- import_module io.
+:- import_module list.
 :- import_module maybe.
 
 %-----------------------------------------------------------------------------%

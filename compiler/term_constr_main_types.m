@@ -17,10 +17,10 @@
 :- module transform_hlds.term_constr_main_types.
 :- interface.
 
-:- import_module parse_tree.
-:- import_module parse_tree.prog_data_pragma.
 :- import_module libs.
 :- import_module libs.polyhedron.
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_errors.
 

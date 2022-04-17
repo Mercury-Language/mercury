@@ -107,8 +107,8 @@
 
 :- import_module bool.
 :- import_module maybe.
-:- import_module std_util.
 :- import_module set.
+:- import_module std_util.
 
 %----------------------------------------------------------------------------%
 %

@@ -23,9 +23,10 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
+:- import_module parse_tree.
+:- import_module parse_tree.vartypes.
 
 %-----------------------------------------------------------------------------%
 %
@@ -66,7 +67,6 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
-:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.

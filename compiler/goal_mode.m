@@ -100,9 +100,9 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
-:- import_module hlds.vartypes.
-:- import_module parse_tree.set_of_var.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.set_of_var.
+:- import_module parse_tree.vartypes.
 
 :- import_module map.
 :- import_module require.

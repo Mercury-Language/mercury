@@ -122,8 +122,8 @@
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_type_defn.
-:- import_module parse_tree.parse_type_repn.
 :- import_module parse_tree.parse_type_name.
+:- import_module parse_tree.parse_type_repn.
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.parse_vars.
 :- import_module parse_tree.prog_mode.

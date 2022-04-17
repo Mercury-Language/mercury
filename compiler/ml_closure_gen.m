@@ -83,7 +83,6 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_module.
 :- import_module hlds.mark_tail_calls.          % for ntrcr_program
-:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module ll_backend.
@@ -102,6 +101,7 @@
 :- import_module ml_backend.rtti_to_mlds.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.

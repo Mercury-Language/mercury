@@ -138,8 +138,8 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
-:- import_module parse_tree.prog_item.      % undesirable dependency
 :- import_module parse_tree.prog_data_pragma.
+:- import_module parse_tree.prog_item.      % undesirable dependency
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -150,8 +150,8 @@
 :- import_module pair.
 :- import_module queue.
 :- import_module require.
-:- import_module set_tree234.
 :- import_module set.
+:- import_module set_tree234.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

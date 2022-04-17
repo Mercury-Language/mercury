@@ -76,7 +76,6 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
-:- import_module hlds.var_table.
 :- import_module libs.options.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.continuation_info.
@@ -87,6 +86,7 @@
 :- import_module parse_tree.prog_event.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module cord.

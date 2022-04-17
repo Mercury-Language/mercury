@@ -1,0 +1,34 @@
+#!/usr/bin/awk -f
+# vim: ft=awk ts=4 sw=4 et
+#
+# Replace every contiguous sequence of lines starting with ":- import_module"
+# with a sorted version of that sequence.
+#
+
+BEGIN {
+        line_num = 1;
+    }
+/^:- import_module / {
+        imports[line_num] = $0;
+        line_num++;
+        next;
+    }
+    {
+        if (line_num > 1) {
+            n = asort(imports);
+            for (i = 1; i <= n; i++) {
+                printf "%s\n", imports[i];
+                delete imports[i];
+            }
+            line_num = 1;
+        }
+        printf "%s\n", $0;
+    }
+END {
+        if (line_num > 1) {
+            n = asort(imports);
+            for (i = 1; i <= n; i++) {
+                printf "%s\n", imports[i];
+            }
+        }
+    }

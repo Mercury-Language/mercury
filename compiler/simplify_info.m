@@ -25,13 +25,13 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.optimization_options.
 :- import_module libs.trace_params.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module list.

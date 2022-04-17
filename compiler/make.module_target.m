@@ -107,10 +107,10 @@
 
 :- import_module bool.
 :- import_module dir.
+:- import_module float.
 :- import_module int.
 :- import_module io.environment.
 :- import_module io.file.
-:- import_module float.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.

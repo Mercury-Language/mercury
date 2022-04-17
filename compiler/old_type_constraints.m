@@ -44,7 +44,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
-:- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
@@ -57,6 +56,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module bimap.

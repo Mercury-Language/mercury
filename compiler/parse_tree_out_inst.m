@@ -108,8 +108,8 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module require.
-:- import_module varset.
 :- import_module unit.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

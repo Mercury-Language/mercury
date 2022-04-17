@@ -166,13 +166,13 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_form.
-:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.lookup_util.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.

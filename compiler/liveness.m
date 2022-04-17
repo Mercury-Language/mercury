@@ -199,7 +199,6 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -209,11 +208,13 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.var_table.
+:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module io.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
@@ -333,8 +334,8 @@ maybe_debug_liveness(ModuleInfo, Message, DebugLiveness, PredIdInt, VarSet,
         io.write_string(Stream, ":\n", !IO),
         module_info_get_globals(ModuleInfo, Globals),
         OutInfo = init_hlds_out_info(Globals, output_debug),
-        write_goal(OutInfo, Stream, ModuleInfo, VarSet, print_name_and_num,
-            0, "\n", Goal, !IO)
+        write_goal(OutInfo, Stream, ModuleInfo, vns_varset(VarSet),
+            print_name_and_num, 0, "\n", Goal, !IO)
     else
         true
     ).

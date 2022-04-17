@@ -79,7 +79,6 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
-:- import_module hlds.var_table.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -90,6 +89,7 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.var_table.
 
 :- import_module list.
 :- import_module maybe.

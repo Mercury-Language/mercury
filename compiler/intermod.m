@@ -114,18 +114,17 @@
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_inst_mode.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_pred.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_promise.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -146,6 +145,8 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.var_table.
+:- import_module parse_tree.vartypes.
 :- import_module transform_hlds.inlining.
 :- import_module transform_hlds.intermod_order_pred_info.
 
@@ -2117,8 +2118,8 @@ write_promise(Info, Stream, ModuleInfo, VarSet, PromiseType, HeadVars,
             [s(HeadVarsStr), s(promise_to_string(PromiseType))], !IO)
     ),
     Goal = Clause ^ clause_body,
-    do_write_goal(Info, Stream, ModuleInfo, VarSet, no_varset_vartypes,
-        print_name_only, 1, "\n).\n", Goal, !IO).
+    do_write_goal(Info, Stream, ModuleInfo, vns_varset(VarSet),
+        no_varset_vartypes, print_name_only, 1, "\n).\n", Goal, !IO).
 
 :- pred intermod_write_clause(hlds_out_info::in, io.text_output_stream::in,
     module_info::in, pred_id::in, sym_name::in, pred_or_func::in,

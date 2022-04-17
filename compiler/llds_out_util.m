@@ -21,8 +21,8 @@
 :- import_module hlds.
 :- import_module hlds.hlds_pred.
 :- import_module libs.
-:- import_module libs.optimization_options.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.trace_params.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.llds.

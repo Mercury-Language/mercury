@@ -65,10 +65,10 @@
 :- module ml_backend.mlds_to_java_file.
 :- interface.
 
-:- import_module libs.
-:- import_module libs.maybe_succeeded.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module libs.
+:- import_module libs.maybe_succeeded.
 :- import_module ml_backend.mlds.
 
 :- import_module io.
@@ -91,13 +91,13 @@
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_rename_classes.
 :- import_module ml_backend.ml_util.
-:- import_module ml_backend.mlds_to_target_util.
 :- import_module ml_backend.mlds_to_java_class.
 :- import_module ml_backend.mlds_to_java_export.
 :- import_module ml_backend.mlds_to_java_func.
 :- import_module ml_backend.mlds_to_java_global.
 :- import_module ml_backend.mlds_to_java_util.
 :- import_module ml_backend.mlds_to_java_wrap.
+:- import_module ml_backend.mlds_to_target_util.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.java_names.

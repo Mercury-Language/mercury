@@ -19,11 +19,11 @@
 :- interface.
 
 :- import_module hlds.hlds_goal.
-:- import_module hlds.var_table.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module list.

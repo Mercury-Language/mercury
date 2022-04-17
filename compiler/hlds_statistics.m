@@ -33,9 +33,9 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.hlds_error_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.

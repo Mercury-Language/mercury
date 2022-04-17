@@ -97,8 +97,8 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.modecheck_util.
-:- import_module hlds.vartypes.
 :- import_module parse_tree.prog_detism.
+:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module map.

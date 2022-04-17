@@ -36,11 +36,11 @@
 
 :- implementation.
 
-:- import_module hlds.
-:- import_module hlds.hlds_pred.
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
+:- import_module hlds.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_pred.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.

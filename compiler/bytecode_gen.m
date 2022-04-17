@@ -59,7 +59,6 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
-:- import_module hlds.vartypes.
 :- import_module ll_backend.
 :- import_module ll_backend.call_gen.  % XXX for arg passing convention
 :- import_module mdbcomp.
@@ -69,6 +68,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module cord.

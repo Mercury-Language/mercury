@@ -68,8 +68,8 @@
 :- import_module assoc_list.
 :- import_module map.
 :- import_module maybe.
-:- import_module set.
 :- import_module pair.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -250,8 +250,6 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.instmap.
-:- import_module hlds.var_table.
-:- import_module hlds.vartypes.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module ll_backend.code_util.
@@ -259,6 +257,8 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.var_table.
+:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module cord.

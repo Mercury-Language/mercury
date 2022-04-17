@@ -1,0 +1,21 @@
+#!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
+#
+# This scripts sorts all blocks of consecutive ":- import_module" declarations
+# in the files named on the command line.
+
+usage="sort_imports file [...]"
+
+if test $# = 0
+then
+    echo $usage
+    exit 1
+fi
+
+for file in "$@"
+do
+    filter_sort_imports < "${file}" > "${file}.next"
+    mv -f "${file}.next" "${file}"
+done
+
+exit 0

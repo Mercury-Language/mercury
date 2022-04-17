@@ -68,7 +68,6 @@
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.var_table.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
 :- import_module libs.trace_params.
@@ -78,6 +77,7 @@
 :- import_module ll_backend.var_locn.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.var_table.
 
 :- import_module cord.
 :- import_module int.

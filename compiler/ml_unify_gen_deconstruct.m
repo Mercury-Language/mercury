@@ -76,7 +76,6 @@
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -86,6 +85,7 @@
 :- import_module ml_backend.ml_unify_gen_test.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module int.

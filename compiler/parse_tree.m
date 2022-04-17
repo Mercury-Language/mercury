@@ -70,6 +70,8 @@
 
 % Utility data structures.
 :- include_module set_of_var.
+:- include_module var_table.
+:- include_module vartypes.
 
 % Utility routines.
 :- include_module builtin_lib_types.

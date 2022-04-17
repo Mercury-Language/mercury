@@ -15,8 +15,8 @@
 :- interface.
 
 :- import_module ml_backend.mlds.
-:- import_module ml_backend.mlds_to_target_util.
 :- import_module ml_backend.mlds_to_java_util.
+:- import_module ml_backend.mlds_to_target_util.
 
 :- import_module io.
 :- import_module list.

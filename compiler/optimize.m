@@ -50,11 +50,11 @@
 :- import_module ll_backend.frameopt.
 :- import_module ll_backend.jumpopt.
 :- import_module ll_backend.labelopt.
-:- import_module ll_backend.stdlabel.
 :- import_module ll_backend.opt_debug.
 :- import_module ll_backend.opt_util.
 :- import_module ll_backend.peephole.
 :- import_module ll_backend.reassign.
+:- import_module ll_backend.stdlabel.
 :- import_module ll_backend.use_local_vars.
 :- import_module ll_backend.wrap_blocks.
 :- import_module mdbcomp.prim_data.

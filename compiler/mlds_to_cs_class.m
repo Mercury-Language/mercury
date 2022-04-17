@@ -42,8 +42,8 @@
 :- import_module ml_backend.mlds_to_cs_name.
 :- import_module ml_backend.mlds_to_cs_type.
 :- import_module parse_tree.
-:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.java_names.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.

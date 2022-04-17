@@ -120,10 +120,10 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.vartypes.
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -173,6 +173,7 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module counter.
@@ -393,8 +394,8 @@ analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
     trace [io(!IO), compiletime(flag("debug_format_call"))] (
         io.output_stream(Stream, !IO),
         io.write_string(Stream, "\n\nBEFORE TRANSFORM:\n", !IO),
-        write_goal(OutInfo, Stream, ModuleInfo, !.VarSet, print_name_and_num,
-            0, "\n", Goal1, !IO)
+        write_goal(OutInfo, Stream, ModuleInfo, vns_varset(!.VarSet),
+            print_name_and_num, 0, "\n", Goal1, !IO)
     ),
 
     format_call_traverse_goal(ModuleInfo, Goal1, _, [], FormatCallSites,
@@ -437,7 +438,7 @@ analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
         trace [io(!IO), compiletime(flag("debug_format_call"))] (
             io.output_stream(Stream, !IO),
             io.write_string(Stream, "\n\nAFTER TRANSFORM:\n", !IO),
-            write_goal(OutInfo, Stream, ModuleInfo, !.VarSet,
+            write_goal(OutInfo, Stream, ModuleInfo, vns_varset(!.VarSet),
                 print_name_and_num, 0, "\n", Goal, !IO)
         ),
         MaybeGoal = yes(Goal)

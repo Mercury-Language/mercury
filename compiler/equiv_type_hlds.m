@@ -34,8 +34,8 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.polymorphism_type_info.
+:- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
@@ -46,7 +46,6 @@
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
-:- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
@@ -55,6 +54,7 @@
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.vartypes.
 :- import_module recompilation.
 
 :- import_module assoc_list.

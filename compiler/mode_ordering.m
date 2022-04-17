@@ -46,10 +46,10 @@
 :- import_module check_hlds.clause_to_proc.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.inst_graph.
-:- import_module mode_robdd.
-:- import_module mode_robdd.tfeirn.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
+:- import_module mode_robdd.
+:- import_module mode_robdd.tfeirn.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.

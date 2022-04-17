@@ -41,14 +41,14 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
+:- import_module counter.
 :- import_module list.
-:- import_module assoc_list.
 :- import_module map.
 :- import_module maybe.
 :- import_module set.
-:- import_module counter.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%

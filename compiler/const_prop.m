@@ -22,11 +22,11 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.instmap.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.vartypes.
 
 :- import_module list.
 
@@ -58,19 +58,19 @@
 :- import_module bool.
 :- import_module float.
 :- import_module int.
-:- import_module int8.
 :- import_module int16.
 :- import_module int32.
 :- import_module int64.
+:- import_module int8.
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
 :- import_module term.
 :- import_module uint.
-:- import_module uint8.
 :- import_module uint16.
 :- import_module uint32.
 :- import_module uint64.
+:- import_module uint8.
 
 %---------------------------------------------------------------------------%
 

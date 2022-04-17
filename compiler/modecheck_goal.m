@@ -126,7 +126,6 @@
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
-:- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
@@ -140,6 +139,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.vartypes.
 
 :- import_module bag.
 :- import_module list.

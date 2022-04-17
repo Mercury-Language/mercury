@@ -31,8 +31,8 @@
 :- import_module bimap.
 :- import_module bool.
 :- import_module io.
-:- import_module map.
 :- import_module list.
+:- import_module map.
 
 %---------------------------------------------------------------------------%
 

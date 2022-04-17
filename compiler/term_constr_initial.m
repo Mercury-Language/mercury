@@ -55,7 +55,6 @@
 
 :- import_module hlds.hlds_pred.
 :- import_module hlds.status.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.lp_rational.
 :- import_module libs.polyhedron.
@@ -67,6 +66,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
+:- import_module parse_tree.vartypes.
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_errors.
 :- import_module transform_hlds.term_constr_main_types.

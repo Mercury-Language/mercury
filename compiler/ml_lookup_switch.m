@@ -123,7 +123,6 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_module.
-:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -131,6 +130,7 @@
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.

@@ -365,14 +365,13 @@
 
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_test.
-:- import_module hlds.hlds_module.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.error_msg_inst.
 :- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.op_mode.
@@ -384,6 +383,8 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.var_table.
+:- import_module parse_tree.vartypes.
 
 :- import_module int.
 :- import_module io.            % used only for a typeclass instance
@@ -587,8 +588,8 @@ mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, Args,
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
     mode_info_get_module_info(ModeInfo, ModuleInfo),
-    FunctorConsIdStr = functor_cons_id_to_string(ModuleInfo, VarSet,
-        print_name_only, ConsId, Args),
+    FunctorConsIdStr = functor_cons_id_to_string(ModuleInfo,
+        vns_varset(VarSet), print_name_only, ConsId, Args),
     ConsIdStr = mercury_cons_id_to_string(output_mercury,
         does_not_need_brackets, ConsId),
     FakeTermInst = defined_inst(user_inst(unqualified(ConsIdStr), ArgInsts)),
@@ -732,15 +733,15 @@ mode_error_higher_order_unify_to_spec(ModeInfo, LHSVar, RHS, Type, PredOrFunc)
         RHSStr = mercury_var_to_name_only(VarSet, Y)
     ;
         RHS = error_at_functor(ConsId, ArgVars),
-        RHSStr = functor_cons_id_to_string(ModuleInfo, VarSet, print_name_only,
-            ConsId, ArgVars)
+        RHSStr = functor_cons_id_to_string(ModuleInfo, vns_varset(VarSet),
+            print_name_only, ConsId, ArgVars)
     ;
         RHS = error_at_lambda(ArgVars, ArgFromToInsts),
         ArgModes = list.map(from_to_insts_to_mode, ArgFromToInsts),
         assoc_list.from_corresponding_lists(ArgVars, ArgModes, ArgVarsModes),
         RHSStr = "lambda(["
-            ++ var_modes_to_string(output_debug, VarSet, InstVarSet,
-                print_name_only, ArgVarsModes)
+            ++ var_modes_to_string(output_debug, vns_varset(VarSet),
+                InstVarSet, print_name_only, ArgVarsModes)
             ++ "] ... )"
     ),
     varset.init(TypeVarSet),
@@ -1360,8 +1361,8 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
         io.write_string(Stream, "\t\t", !IO),
         module_info_get_globals(ModuleInfo, Globals),
         OutInfo = init_hlds_out_info(Globals, output_debug),
-        write_goal(OutInfo, Stream, ModuleInfo, VarSet, print_name_only, 2,
-            ".\n", Goal, !IO)
+        write_goal(OutInfo, Stream, ModuleInfo, vns_varset(VarSet),
+            print_name_only, 2, ".\n", Goal, !IO)
     )
 ].
 

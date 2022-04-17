@@ -60,8 +60,8 @@
 :- import_module check_hlds.mode_test.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism_type_info.
-:- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.purity.
+:- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
@@ -74,7 +74,6 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -87,12 +86,13 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module bool.

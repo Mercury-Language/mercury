@@ -100,8 +100,8 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
 
-:- import_module int.
 :- import_module cord.
+:- import_module int.
 :- import_module library.   % for the version number.
 :- import_module list.
 :- import_module map.

@@ -137,10 +137,10 @@
 :- import_module bool.
 :- import_module char.
 :- import_module int.
-:- import_module int8.
 :- import_module int16.
 :- import_module int32.
 :- import_module int64.
+:- import_module int8.
 :- import_module map.
 :- import_module require.
 :- import_module string.

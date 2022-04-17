@@ -136,7 +136,6 @@
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.status.
-:- import_module hlds.vartypes.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -151,6 +150,8 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
+:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -1896,8 +1897,8 @@ det_diagnose_switch_context(DetInfo, [SwitchContext | SwitchContexts],
 :- func switch_match_to_string(prog_varset, switch_match) = string.
 
 switch_match_to_string(VarSet, switch_match(ConsId, MaybeArgVars)) =
-    cons_id_and_vars_or_arity_to_string(VarSet, do_not_qualify_cons_id,
-        ConsId, MaybeArgVars).
+    cons_id_and_vars_or_arity_to_string(vns_varset(VarSet),
+        do_not_qualify_cons_id, ConsId, MaybeArgVars).
 
 %---------------------------------------------------------------------------%
 
@@ -2002,13 +2003,15 @@ det_report_unify_context(!.First, Last, _Context, UnifyContext, DetInfo,
                 words(add_quotes(LHSVarName))]
         else
             RHSStr =
-                unify_rhs_to_string(ModuleInfo, VarSet, print_name_only, RHS),
+                unify_rhs_to_string(ModuleInfo, vns_varset(VarSet),
+                    print_name_only, RHS),
             Pieces = [words(StartWords), words("of"),
                 words(add_quotes(LHSVarName)), words("and"),
                 words(add_quotes(RHSStr))]
         )
     else
-        RHSStr = unify_rhs_to_string(ModuleInfo, VarSet, print_name_only, RHS),
+        RHSStr = unify_rhs_to_string(ModuleInfo, vns_varset(VarSet),
+            print_name_only, RHS),
         Pieces = [words(StartWords), words("with"),
             words(add_quotes(RHSStr))]
     ),

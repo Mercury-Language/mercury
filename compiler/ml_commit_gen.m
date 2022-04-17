@@ -177,12 +177,12 @@
 
 :- implementation.
 
-:- import_module hlds.var_table.
 :- import_module ml_backend.ml_accurate_gc.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module map.

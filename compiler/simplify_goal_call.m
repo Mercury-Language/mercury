@@ -79,7 +79,6 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.int_emu.
@@ -97,6 +96,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.vartypes.
 :- import_module transform_hlds.
 :- import_module transform_hlds.const_prop.
 

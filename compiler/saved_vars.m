@@ -50,12 +50,13 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
-:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
+:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module io.
@@ -103,14 +104,14 @@ saved_vars_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
         OutInfo = hlds_out_util.init_hlds_out_info(Globals, output_debug),
         io.output_stream(Stream, !IO),
         io.write_string(Stream, "initial version:\n", !IO),
-        hlds_out_goal.write_goal(OutInfo, Stream, !.ModuleInfo, Varset0,
-            print_name_and_num, 0, "\n", Goal0, !IO),
+        hlds_out_goal.write_goal(OutInfo, Stream, !.ModuleInfo,
+            vns_varset(Varset0), print_name_and_num, 0, "\n", Goal0, !IO),
         io.write_string(Stream, "after transformation:\n", !IO),
-        hlds_out_goal.write_goal(OutInfo, Stream, !.ModuleInfo, Varset1,
-            print_name_and_num, 0, "\n", Goal1, !IO),
+        hlds_out_goal.write_goal(OutInfo, Stream, !.ModuleInfo,
+            vns_varset(Varset1), print_name_and_num, 0, "\n", Goal1, !IO),
         io.write_string(Stream, "final version:\n", !IO),
-        hlds_out_goal.write_goal(OutInfo, Stream, !.ModuleInfo, Varset,
-            print_name_and_num, 0, "\n", Goal, !IO)
+        hlds_out_goal.write_goal(OutInfo, Stream, !.ModuleInfo,
+            vns_varset(Varset), print_name_and_num, 0, "\n", Goal, !IO)
     ),
 
     proc_info_set_goal(Goal, !ProcInfo),

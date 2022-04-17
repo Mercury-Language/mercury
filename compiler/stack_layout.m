@@ -108,7 +108,6 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -125,6 +124,7 @@
 :- import_module parse_tree.prog_event.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module cord.

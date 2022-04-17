@@ -64,21 +64,21 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module recompilation.                 % XXX undesirable dependency
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
+:- import_module recompilation.                 % XXX undesirable dependency
 
 :- import_module assoc_list.
 :- import_module cord.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module one_or_more_map.
 :- import_module one_or_more.
+:- import_module one_or_more_map.
 :- import_module pair.
 :- import_module set.
 

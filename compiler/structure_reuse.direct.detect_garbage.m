@@ -39,11 +39,11 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
-:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.vartypes.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.livedata.
 

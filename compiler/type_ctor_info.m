@@ -101,9 +101,9 @@
 :- import_module string.
 :- import_module term.
 :- import_module uint.
-:- import_module uint8.
 :- import_module uint16.
 :- import_module uint32.
+:- import_module uint8.
 :- import_module univ.
 :- import_module varset.
 

@@ -41,8 +41,6 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.make_goal.
-:- import_module hlds.var_table.
-:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_detism.
@@ -50,6 +48,8 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
+:- import_module parse_tree.vartypes.
 :- import_module transform_hlds.
 :- import_module transform_hlds.pd_cost.
 

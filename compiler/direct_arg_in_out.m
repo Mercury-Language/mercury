@@ -153,10 +153,10 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.vartypes.
 
 :- import_module list.
 
@@ -221,6 +221,7 @@
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bimap.
@@ -1002,7 +1003,7 @@ transform_direct_arg_in_out_calls_in_proc(DirectArgProcMap,
         get_debug_output_stream(Globals, ModuleName, Stream, !IO),
         io.format(Stream, "transforming proc(%d, %d)\n",
             [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))], !IO),
-        dump_goal_nl(Stream, !.ModuleInfo, VarSet0, Goal0, !IO)
+        dump_goal_nl(Stream, !.ModuleInfo, vns_varset(VarSet0), Goal0, !IO)
     ),
     bimap.init(VarMap0),
     Info0 = daio_info(!.ModuleInfo, DirectArgProcInOutMap,
@@ -1470,7 +1471,7 @@ expand_daio_in_unify(GoalInfo0, GoalExpr0, GoalExpr, InstMap0,
         ModuleInfo = !.Info ^ daio_module_info,
         trace [compile_time(flag("daio-debug")), io(!IO)] (
             get_daio_debug_stream(!.Info, Stream, !IO),
-            dump_goal_nl(Stream, ModuleInfo, !.Info ^ daio_varset,
+            dump_goal_nl(Stream, ModuleInfo, vns_varset(!.Info ^ daio_varset),
                 hlds_goal(GoalExpr0, GoalInfo0), !IO),
             io.flush_output(Stream, !IO)
         ),
@@ -1521,8 +1522,8 @@ expand_daio_in_unify(GoalInfo0, GoalExpr0, GoalExpr, InstMap0,
             trace [compile_time(flag("daio-debug")), io(!IO)] (
                 get_daio_debug_stream(!.Info, Stream, !IO),
                 io.write_string(Stream, "CopyGoal:\n", !IO),
-                dump_goal_nl(Stream, ModuleInfo, !.Info ^ daio_varset,
-                    CopyGoal, !IO),
+                dump_goal_nl(Stream, ModuleInfo,
+                    vns_varset(!.Info ^ daio_varset), CopyGoal, !IO),
                 io.flush_output(Stream, !IO)
             )
         else

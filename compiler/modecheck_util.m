@@ -209,10 +209,10 @@
 :- import_module check_hlds.modecheck_goal.
 :- import_module check_hlds.modecheck_unify.
 :- import_module check_hlds.type_util.
-:- import_module hlds.vartypes.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module int.

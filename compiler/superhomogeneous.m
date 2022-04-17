@@ -165,6 +165,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module cord.
@@ -2129,13 +2130,14 @@ build_lambda_expression(LHSVar, UnificationPurity,
                 io.write_line(DebugStream, LambdaVars, !IO),
                 io.write_string(DebugStream,
                     "lambda arg unifies before:\n", !IO),
-                dump_goal_nl(DebugStream, !.ModuleInfo, !.VarSet,
+                dump_goal_nl(DebugStream, !.ModuleInfo, vns_varset(!.VarSet),
                     HeadBefore, !IO),
                 io.write_string(DebugStream, "lambda body:\n", !IO),
-                dump_goal_nl(DebugStream, !.ModuleInfo, !.VarSet, Body, !IO),
+                dump_goal_nl(DebugStream, !.ModuleInfo, vns_varset(!.VarSet),
+                    Body, !IO),
                 io.write_string(DebugStream,
                     "lambda arg unifies after:\n", !IO),
-                dump_goal_nl(DebugStream, !.ModuleInfo, !.VarSet,
+                dump_goal_nl(DebugStream, !.ModuleInfo, vns_varset(!.VarSet),
                     HeadAfter, !IO),
                 map.to_assoc_list(FinalSVarMap, FinalSVarList),
                 io.write_string(DebugStream, "FinalSVarMap:\n", !IO),

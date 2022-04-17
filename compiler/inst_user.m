@@ -37,8 +37,8 @@
 :- import_module list.
 :- import_module map.
 :- import_module pair.
-:- import_module set.
 :- import_module require.
+:- import_module set.
 
 :- type maybe_user_inst
     --->    user_inst_being_processed

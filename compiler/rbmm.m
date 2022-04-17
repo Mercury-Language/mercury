@@ -45,13 +45,13 @@
 
 :- implementation.
 
+:- import_module transform_hlds.rbmm.add_rbmm_goal_infos.
 :- import_module transform_hlds.rbmm.condition_renaming.
 :- import_module transform_hlds.rbmm.execution_path.
 :- import_module transform_hlds.rbmm.interproc_region_lifetime.
 :- import_module transform_hlds.rbmm.live_region_analysis.
 :- import_module transform_hlds.rbmm.live_variable_analysis.
 :- import_module transform_hlds.rbmm.points_to_analysis.
-:- import_module transform_hlds.rbmm.add_rbmm_goal_infos.
 :- import_module transform_hlds.rbmm.region_arguments.
 :- import_module transform_hlds.rbmm.region_instruction.
 :- import_module transform_hlds.rbmm.region_resurrection_renaming.

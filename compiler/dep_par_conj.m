@@ -143,7 +143,6 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
@@ -161,6 +160,8 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
+:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -321,11 +322,11 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
                 io.output_stream(Stream, !IO),
                 io.format(Stream, "Pred/Proc: %s/%s before dep-par-conj:\n",
                     [s(string(PredId)), s(string(ProcId))], !IO),
-                write_goal(OutInfo, Stream, !.ModuleInfo, !.VarSet,
+                write_goal(OutInfo, Stream, !.ModuleInfo, vns_varset(!.VarSet),
                     print_name_and_num, 0, "", GoalBeforeDepParConj, !IO),
                 io.nl(Stream, !IO),
                 io.write_string(Stream, "After dep-par-conj:\n", !IO),
-                write_goal(OutInfo, Stream, !.ModuleInfo, !.VarSet,
+                write_goal(OutInfo, Stream, !.ModuleInfo, vns_varset(!.VarSet),
                     print_name_and_num, 0, "", !.Goal, !IO),
                 io.nl(Stream, !IO)
             else
@@ -1579,7 +1580,7 @@ find_specialization_requests_in_proc(DoneProcs, InitialModuleInfo, PredProcId,
                 io.format(Stream,
                     "About to search %d/%d for dependant par conjs:\n",
                     [i(PredIdInt), i(proc_id_to_int(ProcId))], !IO),
-                write_goal(OutInfo, Stream, !.ModuleInfo, VarSet,
+                write_goal(OutInfo, Stream, !.ModuleInfo, vns_varset(VarSet),
                     print_name_and_num, 0, "", !.Goal, !IO),
                 io.nl(Stream, !IO)
             else

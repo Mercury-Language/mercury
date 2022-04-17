@@ -67,6 +67,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module int.
@@ -97,8 +98,8 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
     trace [compiletime(flag("debug_push_goals")), io(!IO)] (
         get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
         io.write_string(DebugStream, "Goal before pushes:\n", !IO),
-        write_goal_nl(OutInfo, DebugStream, !.ModuleInfo, VarSet0,
-            print_name_and_num, 0, "", Goal0, !IO)
+        write_goal_nl(OutInfo, DebugStream, !.ModuleInfo,
+            vns_varset(VarSet0), print_name_and_num, 0, "", Goal0, !IO)
     ),
     do_push_list(PushInfo, PushGoals, OverallResult, Goal0, Goal1),
     (
@@ -108,8 +109,8 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
         trace [compiletime(flag("debug_push_goals")), io(!IO)] (
             get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
             io.write_string(DebugStream, "Goal after pushes:\n", !IO),
-            write_goal_nl(OutInfo, DebugStream, !.ModuleInfo, VarSet0,
-                print_name_and_num, 0, "", Goal1, !IO)
+            write_goal_nl(OutInfo, DebugStream, !.ModuleInfo,
+                vns_varset(VarSet0), print_name_and_num, 0, "", Goal1, !IO)
         ),
 
         % We need to fix up the goal_infos of the goals touched directly or
@@ -142,8 +143,8 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
         trace [compiletime(flag("debug_push_goals")), io(!IO)] (
             get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
             io.write_string(DebugStream, "Goal after fixups:\n", !IO),
-            write_goal_nl(OutInfo, DebugStream, !.ModuleInfo, VarSet,
-                print_name_and_num, 0, "", Goal, !IO)
+            write_goal_nl(OutInfo, DebugStream, !.ModuleInfo,
+                vns_varset(VarSet), print_name_and_num, 0, "", Goal, !IO)
         )
     ).
 

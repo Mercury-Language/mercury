@@ -58,16 +58,16 @@
 :- import_module libs.file_util.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
-:- import_module ml_backend.add_trail_ops.          % HLDS -> HLDS
 :- import_module ml_backend.add_heap_ops.           % HLDS -> HLDS
-:- import_module ml_backend.ml_top_gen.             % HLDS -> MLDS
-:- import_module ml_backend.rtti_to_mlds.           % HLDS/RTTI -> MLDS
+:- import_module ml_backend.add_trail_ops.          % HLDS -> HLDS
 :- import_module ml_backend.ml_elim_nested.         % MLDS -> MLDS
 :- import_module ml_backend.ml_optimize.            % MLDS -> MLDS
+:- import_module ml_backend.ml_top_gen.             % HLDS -> MLDS
 :- import_module ml_backend.mlds_to_c_file.         % MLDS -> C
 :- import_module ml_backend.mlds_to_c_util.
-:- import_module ml_backend.mlds_to_java_file.      % MLDS -> Java
 :- import_module ml_backend.mlds_to_cs_file.        % MLDS -> C#
+:- import_module ml_backend.mlds_to_java_file.      % MLDS -> Java
+:- import_module ml_backend.rtti_to_mlds.           % HLDS/RTTI -> MLDS
 :- import_module parse_tree.file_names.
 :- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.

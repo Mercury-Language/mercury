@@ -188,7 +188,6 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.pred_table.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -199,6 +198,8 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.var_table.
+:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -904,8 +905,8 @@ report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
     VarSet = ClauseContext ^ tecc_varset,
     get_inst_varset(ClauseContext, InstVarSet),
     strip_builtin_qualifier_from_cons_id(Functor, StrippedFunctor),
-    StrippedFunctorStr = functor_cons_id_to_string(ModuleInfo, VarSet,
-        print_name_only, StrippedFunctor, ArgVars),
+    StrippedFunctorStr = functor_cons_id_to_string(ModuleInfo,
+        vns_varset(VarSet), print_name_only, StrippedFunctor, ArgVars),
     list.length(ArgVars, Arity),
 
     % If we have consistent information about the argument types,

@@ -66,9 +66,9 @@
 
 :- implementation.
 
-:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module int.

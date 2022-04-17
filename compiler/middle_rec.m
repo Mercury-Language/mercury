@@ -36,7 +36,6 @@
 :- import_module hlds.code_model.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_llds.
-:- import_module hlds.var_table.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.opt_util.
@@ -44,6 +43,7 @@
 :- import_module ll_backend.unify_gen_test.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.

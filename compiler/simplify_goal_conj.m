@@ -51,13 +51,14 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_goal.
 :- import_module hlds.passes_aux.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.trace_params.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
+:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module cord.
@@ -119,11 +120,12 @@ simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
         simplify_info_get_varset(!.Info, VarSet),
         io.write_string(Stream, "\n------------------------\n", !IO),
         io.write_string(Stream, "\nBEFORE SIMPLIFY_GOAL_PLAIN_CONJ\n\n", !IO),
-        list.foldl(dump_goal_nl(Stream, ModuleInfo, VarSet), Goals0, !IO),
+        VarNameSrc = vns_varset(VarSet),
+        list.foldl(dump_goal_nl(Stream, ModuleInfo, VarNameSrc), Goals0, !IO),
         io.write_string(Stream, "\nAFTER EXCESS ASSIGN\n\n", !IO),
-        list.foldl(dump_goal_nl(Stream, ModuleInfo, VarSet), Goals1, !IO),
+        list.foldl(dump_goal_nl(Stream, ModuleInfo, VarNameSrc), Goals1, !IO),
         io.write_string(Stream, "\nAFTER SIMPLIFY_CONJ\n\n", !IO),
-        list.foldl(dump_goal_nl(Stream, ModuleInfo, VarSet), Goals, !IO),
+        list.foldl(dump_goal_nl(Stream, ModuleInfo, VarNameSrc), Goals, !IO),
         io.flush_output(Stream, !IO)
     ).
 

@@ -40,9 +40,9 @@
 
 :- import_module bool.
 :- import_module list.
-:- import_module set.
 :- import_module map.
 :- import_module maybe.
+:- import_module set.
 :- import_module univ.
 
 %-----------------------------------------------------------------------------%

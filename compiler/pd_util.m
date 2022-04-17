@@ -25,10 +25,10 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.vartypes.
 :- import_module transform_hlds.pd_info.
 
 :- import_module bool.
@@ -168,8 +168,8 @@
 :- import_module check_hlds.mode_info.
 :- import_module check_hlds.mode_test.
 :- import_module check_hlds.recompute_instmap_deltas.
-:- import_module check_hlds.unique_modes.
 :- import_module check_hlds.simplify.simplify_proc.
+:- import_module check_hlds.unique_modes.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.instmap.

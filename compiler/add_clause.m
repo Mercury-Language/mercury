@@ -79,6 +79,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module cord.
@@ -801,9 +802,11 @@ add_clause_transform(Renaming, HeadVars, ArgTerms0, ParseTreeBodyGoal, Context,
             io.write_string(DebugStream, "head vars:\n", !IO),
             io.write_line(DebugStream, HeadVarList, !IO),
             io.write_string(DebugStream, "arg unifies:\n", !IO),
-            dump_goal_nl(DebugStream, !.ModuleInfo, !.VarSet, HeadGoal, !IO),
+            dump_goal_nl(DebugStream, !.ModuleInfo, vns_varset(!.VarSet),
+                HeadGoal, !IO),
             io.write_string(DebugStream, "clause body:\n", !IO),
-            dump_goal_nl(DebugStream, !.ModuleInfo, !.VarSet, BodyGoal, !IO),
+            dump_goal_nl(DebugStream, !.ModuleInfo, vns_varset(!.VarSet),
+                BodyGoal, !IO),
             map.to_assoc_list(FinalSVarMap, FinalSVarList),
             io.write_string(DebugStream, "FinalSVarMap:\n", !IO),
             io.write_line(DebugStream, FinalSVarList, !IO)

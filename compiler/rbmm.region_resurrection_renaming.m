@@ -24,10 +24,10 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_pred.
-:- import_module transform_hlds.smm_common.
 :- import_module transform_hlds.rbmm.points_to_info.
 :- import_module transform_hlds.rbmm.region_instruction.
 :- import_module transform_hlds.rbmm.region_liveness_info.
+:- import_module transform_hlds.smm_common.
 
 :- import_module list.
 :- import_module map.

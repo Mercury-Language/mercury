@@ -29,6 +29,7 @@
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module io.
@@ -138,31 +139,31 @@
     % Return a printable representation of a functor and its arguments.
     % The prog_varset gives the names of any variables.
     %
-:- func functor_to_string(prog_varset, var_name_print, const, list(prog_var))
-    = string.
+:- func functor_to_string(var_name_source, var_name_print, const,
+    list(prog_var)) = string.
 
-:- func functor_to_string_maybe_needs_quotes(prog_varset, var_name_print,
+:- func functor_to_string_maybe_needs_quotes(var_name_source, var_name_print,
     needs_quotes, const, list(prog_var)) = string.
 
-:- func qualified_functor_to_string(prog_varset, var_name_print,
+:- func qualified_functor_to_string(var_name_source, var_name_print,
     module_name, const, list(prog_var)) = string.
 
-:- func qualified_functor_with_term_args_to_string(prog_varset, var_name_print,
-    module_name, const, list(prog_term)) = string.
+:- func qualified_functor_with_term_args_to_string(var_name_source,
+    var_name_print, module_name, const, list(prog_term)) = string.
 
     % Return a printable representation of a cons_id and arguments.
     % The prog_varset gives the names of any variables, while the module_info
     % allows the interpretation of cons_ids that are shrouded references
     % to procedures.
     %
-:- func functor_cons_id_to_string(module_info, prog_varset, var_name_print,
+:- func functor_cons_id_to_string(module_info, var_name_source, var_name_print,
     cons_id, list(prog_var)) = string.
 
 :- type maybe_qualify_cons_id
     --->    qualify_cons_id
     ;       do_not_qualify_cons_id.
 
-:- func cons_id_and_vars_or_arity_to_string(prog_varset,
+:- func cons_id_and_vars_or_arity_to_string(var_name_source,
     maybe_qualify_cons_id, cons_id, maybe(list(prog_var))) = string.
 
 %---------------------------------------------------------------------------%
@@ -177,10 +178,10 @@
     % corresponding modes (e.g. for a lambda expressions). The varsets
     % give the context.
     %
-:- func var_modes_to_string(output_lang, prog_varset, inst_varset,
+:- func var_modes_to_string(output_lang, var_name_source, inst_varset,
     var_name_print, assoc_list(prog_var, mer_mode)) = string.
 
-:- func var_mode_to_string(output_lang, prog_varset, inst_varset,
+:- func var_mode_to_string(output_lang, var_name_source, inst_varset,
     var_name_print, pair(prog_var, mer_mode)) = string.
 
 %---------------------------------------------------------------------------%
@@ -221,8 +222,8 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_inst.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_item.  % undesirable dependency
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
 :- import_module int.
@@ -639,57 +640,57 @@ arg_number_to_string(CallId, ArgNum) = Str :-
 % Write out functors.
 %
 
-functor_to_string(VarSet, VarNamePrint, Functor, ArgVars)  =
-    functor_to_string_maybe_needs_quotes(VarSet, VarNamePrint,
+functor_to_string(VarNameSrc, VarNamePrint, Functor, ArgVars)  =
+    functor_to_string_maybe_needs_quotes(VarNameSrc, VarNamePrint,
         not_next_to_graphic_token, Functor, ArgVars).
 
-functor_to_string_maybe_needs_quotes(VarSet, VarNamePrint, NextToGraphicToken,
-        Functor, ArgVars) = Str :-
+functor_to_string_maybe_needs_quotes(VarNameSrc, VarNamePrint,
+        NextToGraphicToken, Functor, ArgVars) = Str :-
     term.context_init(Context),
     term.var_list_to_term_list(ArgVars, ArgTerms),
     Term = term.functor(Functor, ArgTerms, Context),
-    Str = mercury_term_nq_to_string(VarSet, VarNamePrint, NextToGraphicToken,
-        Term).
+    Str = mercury_term_nq_to_string_src(VarNameSrc, VarNamePrint,
+        NextToGraphicToken, Term).
 
-qualified_functor_to_string(VarSet, VarNamePrint, ModuleName, Functor,
+qualified_functor_to_string(VarNameSrc, VarNamePrint, ModuleName, Functor,
         ArgVars) = Str :-
     ModuleNameStr = mercury_bracketed_sym_name_to_string(ModuleName),
-    FunctorStr = functor_to_string_maybe_needs_quotes(VarSet, VarNamePrint,
+    FunctorStr = functor_to_string_maybe_needs_quotes(VarNameSrc, VarNamePrint,
         next_to_graphic_token, Functor, ArgVars),
     Str = ModuleNameStr ++ "." ++ FunctorStr.
 
-qualified_functor_with_term_args_to_string(VarSet, VarNamePrint,
+qualified_functor_with_term_args_to_string(VarNameSrc, VarNamePrint,
         ModuleName, Functor, ArgTerms) = Str :-
     ModuleNameStr = mercury_bracketed_sym_name_to_string(ModuleName),
     term.context_init(Context),
     Term = term.functor(Functor, ArgTerms, Context),
-    TermStr = mercury_term_nq_to_string(VarSet, VarNamePrint,
+    TermStr = mercury_term_nq_to_string_src(VarNameSrc, VarNamePrint,
         next_to_graphic_token, Term),
     Str = ModuleNameStr ++ "." ++ TermStr.
 
-functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
-        = Str :-
+functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
+        ConsId, ArgVars) = Str :-
     (
         ConsId = cons(SymName, _, _),
         (
             SymName = qualified(Module, Name),
-            Str = qualified_functor_to_string(VarSet, VarNamePrint,
+            Str = qualified_functor_to_string(VarNameSrc, VarNamePrint,
                 Module, term.atom(Name), ArgVars)
         ;
             SymName = unqualified(Name),
-            Str = functor_to_string_maybe_needs_quotes(VarSet, VarNamePrint,
+            Str = functor_to_string_maybe_needs_quotes(VarNameSrc, VarNamePrint,
                 next_to_graphic_token, term.atom(Name), ArgVars)
         )
     ;
         ConsId = tuple_cons(_),
-        Str = functor_to_string_maybe_needs_quotes(VarSet, VarNamePrint,
+        Str = functor_to_string_maybe_needs_quotes(VarNameSrc, VarNamePrint,
             next_to_graphic_token, term.atom("{}"), ArgVars)
     ;
         ConsId = some_int_const(IntConst),
         Str = int_const_to_string_with_suffix(IntConst)
     ;
         ConsId = float_const(Float),
-        Str = functor_to_string(VarSet, VarNamePrint,
+        Str = functor_to_string(VarNameSrc, VarNamePrint,
             term.float(Float), ArgVars)
     ;
         ConsId = char_const(Char),
@@ -702,7 +703,7 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
         Str = "(" ++ term_io.quoted_char(Char) ++ ")"
     ;
         ConsId = string_const(String),
-        Str = functor_to_string(VarSet, VarNamePrint,
+        Str = functor_to_string(VarNameSrc, VarNamePrint,
             term.string(String), ArgVars)
     ;
         ConsId = impl_defined_const(IDCKind),
@@ -716,7 +717,7 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
         PredSymName = qualified(PredModule, PredName),
         PredConsId = cons(PredSymName, list.length(ArgVars),
             cons_id_dummy_type_ctor),
-        Str = functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint,
+        Str = functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
             PredConsId, ArgVars)
     ;
         ConsId = type_ctor_info_const(Module, Name, Arity),
@@ -732,12 +733,12 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
             ++ ", " ++ string.int_to_string(Arity) ++ "), " ++ Instance ++ ")"
     ;
         ConsId = type_info_cell_constructor(_),
-        Str = functor_to_string_maybe_needs_quotes(VarSet, VarNamePrint,
+        Str = functor_to_string_maybe_needs_quotes(VarNameSrc, VarNamePrint,
             next_to_graphic_token,
             term.atom("type_info_cell_constructor"), ArgVars)
     ;
         ConsId = typeclass_info_cell_constructor,
-        Str = functor_to_string_maybe_needs_quotes(VarSet, VarNamePrint,
+        Str = functor_to_string_maybe_needs_quotes(VarNameSrc, VarNamePrint,
             next_to_graphic_token,
             term.atom("typeclass_info_cell_constructor"), ArgVars)
     ;
@@ -748,7 +749,7 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
         Str = "typeclass_info_const(" ++ int_to_string(TCIConstNum) ++ ")"
     ;
         ConsId = ground_term_const(ConstNum, SubConsId),
-        SubStr = functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint,
+        SubStr = functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
             SubConsId, []),
         Str = "ground_term_const(" ++ int_to_string(ConstNum) ++ ", " ++
             SubStr ++ ")"
@@ -775,7 +776,7 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
             ++ " (mode " ++ int_to_string(ProcIdInt) ++ "))"
     ).
 
-cons_id_and_vars_or_arity_to_string(VarSet, Qual, ConsId, MaybeArgVars)
+cons_id_and_vars_or_arity_to_string(VarNameSrc, Qual, ConsId, MaybeArgVars)
         = String :-
     (
         ConsId = cons(SymName0, Arity, _TypeCtor),
@@ -812,7 +813,7 @@ cons_id_and_vars_or_arity_to_string(VarSet, Qual, ConsId, MaybeArgVars)
                 String = SymNameString ++ "/" ++ string.int_to_string(Arity)
             ;
                 ArgVars = [_ | _],
-                ArgStr = mercury_vars_to_name_only(VarSet, ArgVars),
+                ArgStr = mercury_vars_to_name_only_src(VarNameSrc, ArgVars),
                 String = SymNameString ++ "(" ++ ArgStr ++ ")"
             )
         )
@@ -828,7 +829,7 @@ cons_id_and_vars_or_arity_to_string(VarSet, Qual, ConsId, MaybeArgVars)
                 String = "{}/" ++ string.int_to_string(Arity)
             ;
                 ArgVars = [_ | _],
-                ArgStr = mercury_vars_to_name_only(VarSet, ArgVars),
+                ArgStr = mercury_vars_to_name_only_src(VarNameSrc, ArgVars),
                 String = "{" ++ ArgStr ++ "}"
             )
         )
@@ -939,13 +940,15 @@ write_constraint_proof(Indent, VarNamePrint, TVarSet, Constraint - Proof,
 % Write out modes.
 %
 
-var_modes_to_string(Lang, VarSet, InstVarSet, VarNamePrint, VarModes) = Str :-
-    Strs = list.map(var_mode_to_string(Lang, VarSet, InstVarSet, VarNamePrint),
+var_modes_to_string(Lang, VarNameSrc, InstVarSet, VarNamePrint, VarModes)
+        = Str :-
+    Strs = list.map(
+        var_mode_to_string(Lang, VarNameSrc, InstVarSet, VarNamePrint),
         VarModes),
     Str = string.join_list(", ", Strs).
 
-var_mode_to_string(Lang, VarSet, InstVarSet, VarNamePrint, Var - Mode) =
-    mercury_var_to_string(VarSet, VarNamePrint, Var)
+var_mode_to_string(Lang, VarNameSrc, InstVarSet, VarNamePrint, Var - Mode) =
+    mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var)
         ++ "::" ++ mercury_mode_to_string(Lang, InstVarSet, Mode).
 
 %---------------------------------------------------------------------------%

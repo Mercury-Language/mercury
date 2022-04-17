@@ -36,8 +36,6 @@
 :- include_module pred_table.
 :- include_module special_pred.
 :- include_module status.
-:- include_module var_table.
-:- include_module vartypes.
 
 % Modules for creating the HLDS.
 :- include_module add_foreign_enum.

@@ -23,10 +23,10 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module string.
-:- import_module string.parse_util.
 :- import_module char.
 :- import_module list.
+:- import_module string.
+:- import_module string.parse_util.
 
 %---------------------------------------------------------------------------%
 

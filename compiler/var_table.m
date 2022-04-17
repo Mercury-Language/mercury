@@ -15,25 +15,26 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module hlds.var_table.
+:- module parse_tree.var_table.
 :- interface.
 
-:- import_module hlds.hlds_module.
-:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
+:- import_module counter.
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module set.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
 :- type var_table.
 
+:- type var_table_map == map(prog_var, var_table_entry).
 :- type var_table_entry
     --->    vte(
                 vte_name        :: string,
@@ -41,12 +42,17 @@
                 vte_is_dummy    :: is_dummy_type
             ).
 
-:- pred make_var_table(module_info::in, prog_varset::in, vartypes::in,
+    % These predicates are exported for use by hlds_pred.m. No other module
+    % should call them.
+    %
+:- pred construct_var_table(counter::in, var_table_map::in,
     var_table::out) is det.
-
-:- pred split_var_table(var_table::in, prog_varset::out, vartypes::out) is det.
+:- pred deconstruct_var_table(var_table::in,
+    counter::out, var_table_map::out) is det.
 
 :- pred init_var_table(var_table::out) is det.
+
+:- pred var_table_map_to_var_table(var_table_map::in, var_table::out) is det.
 
 :- pred var_table_is_empty(var_table::in) is semidet.
 
@@ -85,9 +91,15 @@
     list(mer_type)::out) is det.
 
 :- func var_entry_name(prog_var, var_table_entry) = string.
+:- func var_entry_name_default(prog_var, var_table_entry, string) = string.
 :- func var_entry_name_and_number(prog_var, var_table_entry) = string.
+:- func var_entry_name_and_number_default(prog_var, var_table_entry, string)
+    = string.
 :- func var_table_entry_name(var_table, prog_var) = string.
+:- func var_table_entry_name_default(var_table, prog_var, string) = string.
 :- func var_table_entry_name_and_number(var_table, prog_var) = string.
+:- func var_table_entry_name_and_number_default(var_table, prog_var, string)
+    = string.
 
 :- pred var_table_vars(var_table::in, list(prog_var)::out) is det.
 :- pred var_table_entries(var_table::in, list(var_table_entry)::out) is det.
@@ -144,6 +156,19 @@
 
 %---------------------------------------------------------------------------%
 
+    % Transitional type for compiler passes that need only name information.
+    %
+:- type var_name_source
+    --->    vns_varset(prog_varset)
+    ;       vns_var_table(var_table).
+
+:- pred search_var_name_in_source(var_name_source::in, prog_var::in,
+    string::out) is semidet.
+:- pred lookup_var_name_in_source(var_name_source::in, prog_var::in,
+    string::out) is det.
+
+%---------------------------------------------------------------------------%
+
     % Transitional type for compiler passes that need both name and
     % type information.
     %
@@ -155,19 +180,15 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module parse_tree.prog_type_subst.
 
-:- import_module counter.
 :- import_module int.
-:- import_module map.
 :- import_module pair.
-:- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module varset.
 
-:- type var_table_map == map(prog_var, var_table_entry).
+%---------------------------------------------------------------------------%
 
 :- type var_table
     --->    var_table(
@@ -175,81 +196,20 @@
                 vt_map      :: var_table_map
             ).
 
+construct_var_table(Counter, Map, var_table(Counter, Map)).
+deconstruct_var_table(var_table(Counter, Map), Counter, Map).
+
 %---------------------------------------------------------------------------%
 
-make_var_table(ModuleInfo, VarSet, VarTypes, VarTable) :-
-    vartypes_to_sorted_assoc_list(VarTypes, VarTypesAL),
-    make_var_table_loop(ModuleInfo, VarSet, VarTypesAL, [], RevVarTableAL),
-    map.from_rev_sorted_assoc_list(RevVarTableAL, VarTableMap),
-    (
-        RevVarTableAL = [],
-        NextAllocVarNum = 1
-    ;
-        RevVarTableAL = [Var - _ | _],
-        NextAllocVarNum = var_to_int(Var) + 1
-    ),
-    counter.init(NextAllocVarNum, Counter),
+init_var_table(VarTable) :-
+    counter.init(1, Counter),
+    map.init(VarTableMap),
     VarTable = var_table(Counter, VarTableMap).
 
-:- pred make_var_table_loop(module_info::in, prog_varset::in,
-    assoc_list(prog_var, mer_type)::in,
-    assoc_list(prog_var, var_table_entry)::in,
-    assoc_list(prog_var, var_table_entry)::out) is det.
-
-make_var_table_loop(_, _, [], !RevVarTableAL).
-make_var_table_loop(ModuleInfo, VarSet, [Var - Type | VarsTypes],
-        !RevVarTableAL) :-
-    ( if varset.search_name(VarSet, Var, NamePrime) then
-        Name = NamePrime
-    else
-        Name = ""
-    ),
-    IsDummy = is_type_a_dummy(ModuleInfo, Type),
-    Entry = vte(Name, Type, IsDummy),
-    !:RevVarTableAL = [Var - Entry | !.RevVarTableAL],
-    make_var_table_loop(ModuleInfo, VarSet, VarsTypes, !RevVarTableAL).
-
 %---------------------------------------------------------------------------%
 
-split_var_table(VarTable, VarSet, VarTypes) :-
-    VarTable = var_table(Counter, VarTableMap),
-    map.to_sorted_assoc_list(VarTableMap, VarsEntries),
-    split_var_table_loop(VarsEntries, [], RevVarTypes, [], RevVarNames),
-    vartypes_from_rev_sorted_assoc_list(RevVarTypes, VarTypes),
-    map.from_rev_sorted_assoc_list(RevVarNames, VarNameMap),
-    (
-        RevVarTypes = [],
-        LastVarNum = 0
-    ;
-        RevVarTypes = [Var - _ | _],
-        LastVarNum = var_to_int(Var)
-    ),
-    counter.allocate(NextVarNum, Counter, _),
-    expect(unify(LastVarNum + 1, NextVarNum), $pred,
-        "LastVarNum + 1 != NextVarNum"),
-    construct_varset(LastVarNum, VarNameMap, VarSet).
-
-:- pred split_var_table_loop(assoc_list(prog_var, var_table_entry)::in,
-    assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out,
-    assoc_list(prog_var, string)::in, assoc_list(prog_var, string)::out)
-    is det.
-
-split_var_table_loop([], !RevVarTypes, !RevVarNames).
-split_var_table_loop([Var - Entry | VarsEntries],
-        !RevVarTypes, !RevVarNames) :-
-    Entry = vte(Name, Type, _IsDummy),
-    !:RevVarTypes = [Var - Type | !.RevVarTypes],
-    ( if Name = "" then
-        true
-    else
-        !:RevVarNames = [Var - Name | !.RevVarNames]
-    ),
-    split_var_table_loop(VarsEntries, !RevVarTypes, !RevVarNames).
-
-:- pred var_table_map_to_var_table(var_table_map::in, var_table::out) is det.
-
 var_table_map_to_var_table(VarTableMap, VarTable) :-
-    ( if map.max_key(VarTableMap) = MaxVar then     % ZZZ
+    ( if map.max_key(VarTableMap) = MaxVar then
         NextAllocVarNum = var_to_int(MaxVar) + 1
     else
         NextAllocVarNum = 1
@@ -258,11 +218,6 @@ var_table_map_to_var_table(VarTableMap, VarTable) :-
     VarTable = var_table(Counter, VarTableMap).
 
 %---------------------------------------------------------------------------%
-
-init_var_table(VarTable) :-
-    counter.init(1, Counter),
-    map.init(VarTableMap),
-    VarTable = var_table(Counter, VarTableMap).
 
 var_table_is_empty(VarTable) :-
     map.is_empty(VarTable ^ vt_map).
@@ -274,6 +229,8 @@ var_table_max_var_num(VarTable, MaxVarNum) :-
     counter.allocate(NextVarNum, VarTable ^ vt_counter, _),
     MaxVarNum = NextVarNum - 1.
 
+%---------------------------------------------------------------------------%
+
 var_table_select(SelectedVars, !VarTable) :-
     !.VarTable = var_table(Counter, VarTableMap0),
     map.select(VarTableMap0, SelectedVars, VarTableMap),
@@ -283,6 +240,8 @@ var_table_optimize(!VarTable) :-
     !.VarTable = var_table(Counter, VarTableMap0),
     map.optimize(VarTableMap0, VarTableMap),
     !:VarTable = var_table(Counter, VarTableMap).
+
+%---------------------------------------------------------------------------%
 
 add_var_entry(Entry, Var, !VarTable) :-
     !.VarTable = var_table(Counter0, VarTableMap0),
@@ -301,6 +260,8 @@ search_insert_var_entry(Var, NewEntry, MaybeOldEntry, !VarTable) :-
     map.search_insert(Var, NewEntry, MaybeOldEntry,
         VarTableMap0, VarTableMap),
     !:VarTable = var_table(Counter, VarTableMap).
+
+%---------------------------------------------------------------------------%
 
 is_in_var_table(VarTable, Var) :-
     map.contains(VarTable ^ vt_map, Var).
@@ -331,11 +292,22 @@ lookup_var_types(VarTable, [Var | Vars], [Type | Types]) :-
     lookup_var_type(VarTable, Var, Type),
     lookup_var_types(VarTable, Vars, Types).
 
+%---------------------------------------------------------------------------%
+
 var_entry_name(Var, Entry) = Name :-
     Name0 = Entry ^ vte_name,
     ( if Name0 = "" then
         term.var_to_int(Var, VarNum),
-        Name = "V_" ++ string.int_to_string(VarNum)
+        string.format("V_%d", [i(VarNum)], Name)
+    else
+        Name = Name0
+    ).
+
+var_entry_name_default(Var, Entry, DefaultPrefix) = Name :-
+    Name0 = Entry ^ vte_name,
+    ( if Name0 = "" then
+        term.var_to_int(Var, VarNum),
+        string.format("%s_%d", [s(DefaultPrefix), i(VarNum)], Name)
     else
         Name = Name0
     ).
@@ -349,19 +321,42 @@ var_entry_name_and_number(Var, Entry) = Name :-
         string.format("%s_%d", [s(Name0), i(VarNum)], Name)
     ).
 
+var_entry_name_and_number_default(Var, Entry, DefaultPrefix) = Name :-
+    Name0 = Entry ^ vte_name,
+    term.var_to_int(Var, VarNum),
+    ( if Name0 = "" then
+        string.format("%s_%d", [s(DefaultPrefix), i(VarNum)], Name)
+    else
+        string.format("%s_%d", [s(Name0), i(VarNum)], Name)
+    ).
+
+%---------------------%
+
 var_table_entry_name(VarTable, Var) = Name :-
     lookup_var_entry(VarTable, Var, Entry),
     Name = var_entry_name(Var, Entry).
 
+var_table_entry_name_default(VarTable, Var, DefaultPrefix) = Name :-
+    lookup_var_entry(VarTable, Var, Entry),
+    Name = var_entry_name_default(Var, Entry, DefaultPrefix).
+
 var_table_entry_name_and_number(VarTable, Var) = Name :-
     lookup_var_entry(VarTable, Var, Entry),
     Name = var_entry_name_and_number(Var, Entry).
+
+var_table_entry_name_and_number_default(VarTable, Var, DefaultPrefix) = Name :-
+    lookup_var_entry(VarTable, Var, Entry),
+    Name = var_entry_name_and_number_default(Var, Entry, DefaultPrefix).
+
+%---------------------------------------------------------------------------%
 
 var_table_vars(VarTable, Vars) :-
     map.keys(VarTable ^ vt_map, Vars).
 
 var_table_entries(VarTable, Entries) :-
     map.values(VarTable ^ vt_map, Entries).
+
+%---------------------------------------------------------------------------%
 
 var_table_to_sorted_assoc_list(VarTable, AssocList) :-
     map.to_sorted_assoc_list(VarTable ^ vt_map, AssocList).
@@ -384,6 +379,8 @@ var_table_add_corresponding_lists(Vars, Entries, !VarTable) :-
         VarTableMap0, VarTableMap),
     !:VarTable = var_table(Counter, VarTableMap).
 
+%---------------------------------------------------------------------------%
+
 delete_var_entry(Var, !VarTable) :-
     !.VarTable = var_table(Counter, VarTableMap0),
     map.delete(Var, VarTableMap0, VarTableMap),
@@ -399,6 +396,8 @@ delete_sorted_var_entries(SortedVars, !VarTable) :-
     map.delete_sorted_list(SortedVars, VarTableMap0, VarTableMap),
     !:VarTable = var_table(Counter, VarTableMap).
 
+%---------------------------------------------------------------------------%
+
 apply_variable_renaming_to_var_table(Renaming, !VarTable) :-
     transform_var_table(apply_variable_renaming_to_type_in_vte(Renaming),
         !VarTable).
@@ -411,6 +410,8 @@ apply_variable_renaming_to_type_in_vte(Renaming, Entry0, Entry) :-
     apply_variable_renaming_to_type(Renaming, Type0, Type),
     Entry = Entry0 ^ vte_type := Type.
 
+%---------------------%
+
 apply_subst_to_var_table(Subst, !VarTable) :-
     transform_var_table(apply_subst_to_type_in_vte(Subst), !VarTable).
 
@@ -421,6 +422,8 @@ apply_subst_to_type_in_vte(Subst, Entry0, Entry) :-
     Type0 = Entry0 ^ vte_type,
     apply_subst_to_type(Subst, Type0, Type),
     Entry = Entry0 ^ vte_type := Type.
+
+%---------------------%
 
 apply_rec_subst_to_var_table(Subst, !VarTable) :-
     transform_var_table(apply_rec_subst_to_type_in_vte(Subst), !VarTable).
@@ -433,6 +436,8 @@ apply_rec_subst_to_type_in_vte(Subst, Entry0, Entry) :-
     apply_rec_subst_to_type(Subst, Type0, Type),
     Entry = Entry0 ^ vte_type := Type.
 
+%---------------------%
+
 :- pred transform_var_table(
     pred(var_table_entry, var_table_entry)::in(pred(in, out) is det),
     var_table::in, var_table::out) is det.
@@ -441,6 +446,8 @@ transform_var_table(Transform, !VarTable) :-
     !.VarTable = var_table(Counter, VarTableMap0),
     map.map_values_only(Transform, VarTableMap0, VarTableMap),
     !:VarTable = var_table(Counter, VarTableMap).
+
+%---------------------------------------------------------------------------%
 
 transform_foldl_var_table(Transform, !VarTable, !Acc) :-
     !.VarTable = var_table(Counter, VarTableMap0),
@@ -461,6 +468,29 @@ lookup_var_type_in_source(VarTypeSrc, Var, Type) :-
         var_table.lookup_var_type(VarTable, Var, Type)
     ).
 
+%---------------------%
+
+search_var_name_in_source(VarNameSrc, Var, Name) :-
+    (
+        VarNameSrc = vns_varset(VarSet),
+        varset.search_name(VarSet, Var, Name)
+    ;
+        VarNameSrc = vns_var_table(VarTable),
+        var_table.lookup_var_entry(VarTable, Var, Entry),
+        Name = Entry ^ vte_name,
+        Name \= ""
+    ).
+
+lookup_var_name_in_source(VarNameSrc, Var, Name) :-
+    (
+        VarNameSrc = vns_varset(VarSet),
+        varset.lookup_name(VarSet, Var, Name)
+    ;
+        VarNameSrc = vns_var_table(VarTable),
+        var_table.lookup_var_entry(VarTable, Var, Entry),
+        Name = var_entry_name(Var, Entry)
+    ).
+
 %---------------------------------------------------------------------------%
-:- end_module hlds.var_table.
+:- end_module parse_tree.var_table.
 %---------------------------------------------------------------------------%

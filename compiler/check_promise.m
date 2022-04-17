@@ -38,11 +38,11 @@
 :- import_module hlds.hlds_promise.
 :- import_module hlds.passes_aux.
 :- import_module hlds.status.
-:- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module require.

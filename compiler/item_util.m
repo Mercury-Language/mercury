@@ -25,8 +25,8 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
-:- import_module one_or_more.
 :- import_module map.
+:- import_module one_or_more.
 :- import_module set.
 
 %---------------------------------------------------------------------------%

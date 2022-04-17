@@ -62,7 +62,6 @@
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
-:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
@@ -76,6 +75,7 @@
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.vartypes.
 :- import_module transform_hlds.inlining.
 :- import_module transform_hlds.pd_cost.
 :- import_module transform_hlds.pd_debug.

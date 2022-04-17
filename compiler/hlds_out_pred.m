@@ -19,12 +19,12 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.vartypes.
 
 :- import_module io.
 :- import_module list.
@@ -83,6 +83,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.
 :- import_module transform_hlds.term_util.
 
@@ -641,8 +642,8 @@ write_clause(Info, Stream, Lang, ModuleInfo,PredId, PredOrFunc, VarSet,
         io.write_string(Stream, ".\n", !IO)
     else
         io.write_string(Stream, " :-\n", !IO),
-        do_write_goal(Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint,
-            Indent1, ".\n", Goal, !IO)
+        do_write_goal(Info, Stream, ModuleInfo, vns_varset(VarSet),
+            TypeQual, VarNamePrint, Indent1, ".\n", Goal, !IO)
     ).
 
 :- pred write_annotated_clause_heads(io.text_output_stream::in,
@@ -722,8 +723,8 @@ write_clause_head(Stream, ModuleInfo, VarSet, VarNamePrint, PredId, PredOrFunc,
         PredOrFunc = pf_function,
         pred_args_to_func_args(HeadTerms, FuncArgs, RetVal),
         io.write_string(Stream,
-            qualified_functor_with_term_args_to_string(VarSet, VarNamePrint,
-                ModuleName, term.atom(PredName), FuncArgs),
+            qualified_functor_with_term_args_to_string(vns_varset(VarSet),
+                VarNamePrint, ModuleName, term.atom(PredName), FuncArgs),
             !IO),
         io.write_string(Stream, " = ", !IO),
         mercury_output_term_nq(VarSet, VarNamePrint, next_to_graphic_token,
@@ -731,8 +732,8 @@ write_clause_head(Stream, ModuleInfo, VarSet, VarNamePrint, PredId, PredOrFunc,
     ;
         PredOrFunc = pf_predicate,
         io.write_string(Stream,
-            qualified_functor_with_term_args_to_string(VarSet, VarNamePrint,
-                ModuleName, term.atom(PredName), HeadTerms),
+            qualified_functor_with_term_args_to_string(vns_varset(VarSet),
+                VarNamePrint, ModuleName, term.atom(PredName), HeadTerms),
             !IO)
     ).
 
@@ -856,7 +857,7 @@ write_proc(Info, Stream, VarNamePrint, ModuleInfo, PredId, PredInfo,
         write_clause_head(Stream, ModuleInfo, VarSet, VarNamePrint,
             PredId, PredOrFunc, HeadTerms, !IO),
         io.write_string(Stream, " :-\n", !IO),
-        write_goal(Info, Stream, ModuleInfo, VarSet, VarNamePrint,
+        write_goal(Info, Stream, ModuleInfo, vns_varset(VarSet), VarNamePrint,
             Indent1, ".\n", Goal, !IO)
     ).
 
@@ -1389,7 +1390,8 @@ write_stack_slots(Stream, VarSet, VarNamePrint, StackSlots, !IO) :-
     map.to_assoc_list(StackSlots, VarSlotList0),
     VarSlotList = assoc_list.map_values_only(stack_slot_to_abs_locn,
         VarSlotList0),
-    write_var_to_abs_locns(Stream, VarSet, VarNamePrint, 0, VarSlotList, !IO).
+    write_var_to_abs_locns(Stream, vns_varset(VarSet), VarNamePrint,
+        0, VarSlotList, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_pred.

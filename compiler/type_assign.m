@@ -20,9 +20,9 @@
 :- import_module hlds.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.vartypes.
 
 :- import_module list.
 

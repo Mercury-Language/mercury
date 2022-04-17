@@ -310,11 +310,11 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.status.
-:- import_module hlds.vartypes.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.vartypes.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.selector.
 :- import_module transform_hlds.ctgc.util.

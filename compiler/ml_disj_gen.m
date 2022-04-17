@@ -106,8 +106,8 @@
 :- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
-:- import_module ml_backend.mlds.
 :- import_module ml_backend.ml_gen_info.
+:- import_module ml_backend.mlds.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -126,7 +126,6 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_module.
-:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -135,6 +134,7 @@
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module maybe.
