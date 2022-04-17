@@ -1319,7 +1319,7 @@ trace_produce_var(Var, Entry, _InstMap, !TVars, VarInfo, VarCode, !CLD) :-
     LldsInst = llds_inst_better_be_ground,
     LiveType = live_value_var(Var, Name, Type, LldsInst),
     VarInfo = layout_var_info(locn_direct(Lval), LiveType, "trace"),
-    type_vars(Type, TypeVars),
+    type_vars_in_type(Type, TypeVars),
     set.insert_list(TypeVars, !TVars).
 
 %-----------------------------------------------------------------------------%

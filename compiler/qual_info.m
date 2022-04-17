@@ -228,7 +228,7 @@ process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
 
     % Find any new type variables introduced by this type, and
     % add them to the var-name index and the variable renaming.
-    type_vars(Type1, TVars),
+    type_vars_in_type(Type1, TVars),
     get_new_tvars(TVars, VarSet, TVarSet0, TVarSet1,
         TVarNameMap0, TVarNameMap, TVarRenaming0, TVarRenaming),
 

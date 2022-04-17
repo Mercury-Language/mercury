@@ -219,7 +219,7 @@ restrict_list_elements_2([Posn | Posns], Index, [X | Xs], RestrictedXs) :-
 num_extra_instance_args(InstanceDefn, NumExtra) :-
     InstanceTypes = InstanceDefn ^ instdefn_types,
     InstanceConstraints = InstanceDefn ^ instdefn_constraints,
-    type_vars_list(InstanceTypes, TypeVars),
+    type_vars_in_types(InstanceTypes, TypeVars),
     get_unconstrained_tvars(TypeVars, InstanceConstraints, Unconstrained),
     list.length(InstanceConstraints, NumConstraints),
     list.length(Unconstrained, NumUnconstrained),

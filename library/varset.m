@@ -314,6 +314,11 @@
 
 :- func num_allocated(varset(T)) = int.
 
+:- pred get_var_names(varset(T)::in, map(var(T), string)::out) is det.
+
+:- pred construct_varset(int::in, map(var(T), string)::in,
+    varset(T)::out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -931,6 +936,14 @@ max_var(varset(VarSupply, _, _)) = term.var_supply_max_var(VarSupply).
 
 num_allocated(varset(VarSupply, _, _)) =
     term.var_supply_num_allocated(VarSupply).
+
+get_var_names(VarSet, VarNameMap) :-
+    VarSet = varset(_, VarNameMap, _).
+
+construct_varset(N, VarNameMap, VarSet) :-
+    VarSupply = force_construct_var_supply(N),
+    map.init(VarValueMap),
+    VarSet = varset(VarSupply, VarNameMap, VarValueMap).
 
 %---------------------------------------------------------------------------%
 :- end_module varset.

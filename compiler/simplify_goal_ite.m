@@ -49,6 +49,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_goal.
+:- import_module hlds.var_table.
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.options.
@@ -246,7 +247,7 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
     some [!ModuleInfo] (
         simplify_info_get_module_info(!.Info, !:ModuleInfo),
         simplify_info_get_var_types(!.Info, VarTypes),
-        merge_instmap_deltas(InstMap0, NonLocals, VarTypes,
+        merge_instmap_deltas(vts_vartypes(VarTypes), NonLocals, InstMap0,
             [CondThenDelta, ElseDelta], NewDelta, !ModuleInfo),
         simplify_info_set_module_info(!.ModuleInfo, !Info)
     ),

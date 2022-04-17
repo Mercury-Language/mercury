@@ -77,6 +77,7 @@
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module require.
+:- import_module set.
 
 %---------------------------------------------------------------------------%
 
@@ -592,9 +593,8 @@ check_tvars_in_instance_constraint(ItemInstanceInfo, NameTerm, MaybeSpec) :-
     % declaration.
     ( if
         prog_type.constraint_list_get_tvars(Constraints, TVars),
-        type_vars_list(Types, TypesVars),
-        list.filter(list.contains(TypesVars), TVars, _BoundTVars,
-            UnboundTVars),
+        set_of_type_vars_in_types(Types, TypesVars),
+        list.filter(set.contains(TypesVars), TVars, _BoundTVars, UnboundTVars),
         UnboundTVars = [_ | _]
     then
         UnboundTVarStrs = list.map(mercury_var_to_name_only(TVarSet),

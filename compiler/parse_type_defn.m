@@ -437,8 +437,8 @@ parse_constructor(ModuleName, VarSet, Ordinal, ExistQVars, Term,
             list.condense(ConstrainedTypeLists, ConstrainedTypes),
             % We compute ConstrainedQVars in this roundabout way to give it
             % the same ordering as ExistQVars. Also, the list returned
-            % by type_vars_list may contain duplicates.
-            type_vars_list(ConstrainedTypes, ConstrainedQVars0),
+            % by type_vars_in_types may contain duplicates.
+            type_vars_in_types(ConstrainedTypes, ConstrainedQVars0),
             list.delete_elems(ExistQVars, ConstrainedQVars0,
                 UnconstrainedQVars),
             list.delete_elems(ExistQVars, UnconstrainedQVars,
@@ -586,7 +586,7 @@ convert_constructor_arg_list_2(ModuleName, VarSet, MaybeCtorFieldName,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 check_supertype_vars(Params, VarSet, SuperType, Context, !Specs) :-
-    type_vars(SuperType, VarsInSuperType0),
+    type_vars_in_type(SuperType, VarsInSuperType0),
     list.sort_and_remove_dups(VarsInSuperType0, VarsInSuperType),
     list.delete_elems(VarsInSuperType, Params, FreeVars),
     (
@@ -625,7 +625,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         % existentially quantified, or occur in the head of the type.
 
         CtorArgTypes = list.map(func(C) = C ^ arg_type, CtorArgs),
-        type_vars_list(CtorArgTypes, VarsInCtorArgTypes0),
+        type_vars_in_types(CtorArgTypes, VarsInCtorArgTypes0),
         list.sort_and_remove_dups(VarsInCtorArgTypes0, VarsInCtorArgTypes),
         ExistQVarsParams = ExistQVars ++ Params,
         list.filter(list.contains(ExistQVarsParams), VarsInCtorArgTypes,
@@ -684,7 +684,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         % of the typeclasses mentioned in the constraints.
 
         CtorArgTypes = list.map(func(C) = C ^ arg_type, CtorArgs),
-        type_vars_list(CtorArgTypes, VarsInCtorArgTypes0),
+        type_vars_in_types(CtorArgTypes, VarsInCtorArgTypes0),
         list.sort_and_remove_dups(VarsInCtorArgTypes0, VarsInCtorArgTypes),
         constraint_list_get_tvars(Constraints, ConstraintTVars),
         list.filter(list.contains(VarsInCtorArgTypes ++ ConstraintTVars),
@@ -714,7 +714,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         ConstraintArgTypeLists =
             list.map(prog_constraint_get_arg_types, Constraints),
         list.condense(ConstraintArgTypeLists, ConstraintArgTypes),
-        type_vars_list(ConstraintArgTypes, VarsInCtorArgTypes0),
+        type_vars_in_types(ConstraintArgTypes, VarsInCtorArgTypes0),
         list.sort_and_remove_dups(VarsInCtorArgTypes0, VarsInCtorArgTypes),
         list.filter(list.contains(ExistQVars), VarsInCtorArgTypes,
             _ExistQArgTypes, NotExistQArgTypes),
@@ -1729,9 +1729,8 @@ check_user_type_name(SymName, Context, NameSpecs) :-
 
 check_no_free_body_vars(TVarSet, ParamTVars, BodyType, BodyContext, Specs) :-
     % Check that all the variables in the body occur in the head.
-    type_vars(BodyType, BodyTVars),
+    set_of_type_vars_in_type(BodyType, BodyTVarSet),
     set.list_to_set(ParamTVars, ParamTVarSet),
-    set.list_to_set(BodyTVars, BodyTVarSet),
     set.difference(BodyTVarSet, ParamTVarSet, OnlyBodyTVarSet),
     set.to_sorted_list(OnlyBodyTVarSet, OnlyBodyTVars),
     (

@@ -2842,7 +2842,7 @@ gen_general_lookup_call(IsAddr, MaybeAddrString, Type, ForeignArg, ArgName,
         VarSeqNum, MaybeStatsRef, DebugArgStr, BackArgStr, Context,
         !VarSet, !VarTypes, !TableInfo, Step, ExtraArgs, PrefixGoals,
         LookupCodeStr) :-
-    type_vars(Type, TypeVars),
+    type_vars_in_type(Type, TypeVars),
     (
         TypeVars = [],
         MaybePolyString = "",

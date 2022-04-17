@@ -24,6 +24,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module hlds.var_table.
 :- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
@@ -49,8 +50,11 @@
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 :- pred recompute_instmap_delta(recompute_atomic_instmap_deltas::in,
-    hlds_goal::in, hlds_goal::out, vartypes::in, inst_varset::in,
-    instmap::in, module_info::in, module_info::out) is det.
+    vartypes::in, inst_varset::in, instmap::in, hlds_goal::in, hlds_goal::out,
+    module_info::in, module_info::out) is det.
+:- pred recompute_instmap_delta_vt(recompute_atomic_instmap_deltas::in,
+    var_table::in, inst_varset::in, instmap::in, hlds_goal::in, hlds_goal::out,
+    module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -86,13 +90,20 @@ recompute_instmap_delta_proc(RecomputeAtomic, !ProcInfo, !ModuleInfo) :-
     proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
-    recompute_instmap_delta(RecomputeAtomic, Goal0, Goal,
-        VarTypes, InstVarSet, InstMap0, !ModuleInfo),
+    recompute_instmap_delta(RecomputeAtomic, VarTypes, InstVarSet, InstMap0,
+        Goal0, Goal, !ModuleInfo),
     proc_info_set_goal(Goal, !ProcInfo).
 
-recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, VarTypes, InstVarSet,
-        InstMap0, ModuleInfo0, ModuleInfo) :-
-    Params = recompute_params(RecomputeAtomic, VarTypes),
+recompute_instmap_delta(RecomputeAtomic, VarTypes, InstVarSet, InstMap0,
+        Goal0, Goal, ModuleInfo0, ModuleInfo) :-
+    Params = recompute_params(RecomputeAtomic, vts_vartypes(VarTypes)),
+    RI0 = recompute_info(ModuleInfo0, InstVarSet),
+    recompute_instmap_delta_1(Params, InstMap0, _, Goal0, Goal, RI0, RI),
+    ModuleInfo = RI ^ ri_module_info.
+
+recompute_instmap_delta_vt(RecomputeAtomic, VarTable, InstVarSet, InstMap0,
+        Goal0, Goal, ModuleInfo0, ModuleInfo) :-
+    Params = recompute_params(RecomputeAtomic, vts_var_table(VarTable)),
     RI0 = recompute_info(ModuleInfo0, InstVarSet),
     recompute_instmap_delta_1(Params, InstMap0, _, Goal0, Goal, RI0, RI),
     ModuleInfo = RI ^ ri_module_info.
@@ -102,7 +113,7 @@ recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, VarTypes, InstVarSet,
 :- type recompute_params
     --->    recompute_params(
                 recompute_atomic_instmap_deltas,
-                vartypes
+                var_type_source
             ).
 
 :- pred recompute_instmap_delta_1(recompute_params::in,
@@ -165,8 +176,8 @@ recompute_instmap_delta_1(Params, InstMap0, InstMapDelta, Goal0, Goal, !RI) :-
             test_size, InstMapDeltaCondThen),
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
         ModuleInfo0 = !.RI ^ ri_module_info,
-        Params = recompute_params(_, VarTypes),
-        merge_instmap_delta(InstMap0, NonLocals0, VarTypes,
+        Params = recompute_params(_, VarTypeSrc),
+        merge_instmap_delta(VarTypeSrc, NonLocals0, InstMap0,
             InstMapDeltaElse, InstMapDeltaCondThen, InstMapDelta1,
             ModuleInfo0, ModuleInfo),
         !RI ^ ri_module_info := ModuleInfo,
@@ -352,9 +363,9 @@ recompute_instmap_delta_disj(Params, NonLocals, InstMap, InstMapDelta,
         instmap_delta_init_unreachable(InstMapDelta)
     ;
         InstMapDeltas = [_ | _],
-        Params = recompute_params(_, VarTypes),
+        Params = recompute_params(_, VarTypeSrc),
         ModuleInfo0 = !.RI ^ ri_module_info,
-        merge_instmap_deltas(InstMap, NonLocals, VarTypes, InstMapDeltas,
+        merge_instmap_deltas(VarTypeSrc, NonLocals, InstMap, InstMapDeltas,
             InstMapDelta, ModuleInfo0, ModuleInfo),
         !RI ^ ri_module_info := ModuleInfo
     ).
@@ -389,9 +400,9 @@ recompute_instmap_delta_switch(Params, Var, NonLocals, InstMap0, InstMapDelta,
         instmap_delta_init_unreachable(InstMapDelta)
     ;
         InstMapDeltas = [_ | _],
-        Params = recompute_params(_, VarTypes),
+        Params = recompute_params(_, VarTypeSrc),
         ModuleInfo0 = !.RI ^ ri_module_info,
-        merge_instmap_deltas(InstMap0, NonLocals, VarTypes, InstMapDeltas,
+        merge_instmap_deltas(VarTypeSrc, NonLocals, InstMap0, InstMapDeltas,
             InstMapDelta, ModuleInfo0, ModuleInfo),
         !RI ^ ri_module_info := ModuleInfo
     ).
@@ -407,8 +418,8 @@ recompute_instmap_delta_cases(Params, Var, NonLocals, InstMap0,
         [Case0 | Cases0], [Case | Cases],
         [InstMapDelta | InstMapDeltas], !RI) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    Params = recompute_params(_, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
+    Params = recompute_params(_, VarTypeSrc),
+    lookup_var_type_in_source(VarTypeSrc, Var, Type),
     ModuleInfo0 = !.RI ^ ri_module_info,
     bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
         InstMap0, InstMap1, ModuleInfo0, ModuleInfo1),
@@ -451,8 +462,8 @@ recompute_instmap_delta_call(Params, PredId, ProcId, ArgVars, InstMap,
         % of the called procedure and the insts of the argument variables.
         ( if instmap_is_reachable(InstMap) then
             map.init(InstVarSub0),
-            Params = recompute_params(_, VarTypes),
-            compute_inst_var_sub(VarTypes, InstMap, ArgVars, InitialInsts,
+            Params = recompute_params(_, VarTypeSrc),
+            compute_inst_var_sub(VarTypeSrc, InstMap, ArgVars, InitialInsts,
                 InstVarSub0, InstVarSub, ModuleInfo0, ModuleInfo1),
 
             % Apply the inst_var substitution to the argument modes.
@@ -474,7 +485,7 @@ recompute_instmap_delta_call(Params, PredId, ProcId, ArgVars, InstMap,
             InstMapDelta)
     ).
 
-:- pred compute_inst_var_sub(vartypes::in, instmap::in,
+:- pred compute_inst_var_sub(var_type_source::in, instmap::in,
     list(prog_var)::in, list(mer_inst)::in,
     inst_var_sub::in, inst_var_sub::out,
     module_info::in, module_info::out) is det.
@@ -484,13 +495,13 @@ compute_inst_var_sub(_, _, [_ | _], [], !Sub, !ModuleInfo) :-
     unexpected($pred, "length mismatch").
 compute_inst_var_sub(_, _, [], [_ | _], !Sub, !ModuleInfo) :-
     unexpected($pred, "length mismatch").
-compute_inst_var_sub(VarTypes, InstMap, [ArgVar | ArgVars], [Inst | Insts],
+compute_inst_var_sub(VarTypeSrc, InstMap, [ArgVar | ArgVars], [Inst | Insts],
         !Sub, !ModuleInfo) :-
     % This is similar to modecheck_var_has_inst.
     SaveModuleInfo = !.ModuleInfo,
     SaveSub = !.Sub,
     instmap_lookup_var(InstMap, ArgVar, ArgInst),
-    lookup_var_type(VarTypes, ArgVar, Type),
+    lookup_var_type_in_source(VarTypeSrc, ArgVar, Type),
     ( if inst_matches_initial_sub(Type, ArgInst, Inst, !ModuleInfo, !Sub) then
         true
     else
@@ -503,7 +514,8 @@ compute_inst_var_sub(VarTypes, InstMap, [ArgVar | ArgVars], [Inst | Insts],
         !:ModuleInfo = SaveModuleInfo,
         !:Sub = SaveSub
     ),
-    compute_inst_var_sub(VarTypes, InstMap, ArgVars, Insts, !Sub, !ModuleInfo).
+    compute_inst_var_sub(VarTypeSrc, InstMap, ArgVars, Insts,
+        !Sub, !ModuleInfo).
 
 :- pred recompute_instmap_delta_call_args(list(prog_var)::in, instmap::in,
     list(mer_mode)::in, list(mer_mode)::out, module_info::in, module_info::out)

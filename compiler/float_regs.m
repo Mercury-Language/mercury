@@ -162,7 +162,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
-:- import_module hlds.vartypes.
+:- import_module hlds.var_table.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
@@ -517,7 +517,7 @@ insert_reg_wrappers_proc_2(!ProcInfo, !PredInfo, !ModuleInfo, !Specs) :-
     % Grab the appropriate fields from the pred_info and proc_info.
     pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
     proc_info_get_headvars(!.ProcInfo, HeadVars),
-    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
+    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
@@ -526,12 +526,11 @@ insert_reg_wrappers_proc_2(!ProcInfo, !PredInfo, !ModuleInfo, !Specs) :-
     proc_info_get_has_parallel_conj(!.ProcInfo, HasParallelConj),
 
     % Process the goal.
-    init_lambda_info(!.ModuleInfo, !.PredInfo, VarSet0, TypeVarSet0,
-        InstVarSet0, VarTypes0, RttiVarMaps0, HasParallelConj, Info0),
+    init_lambda_info(!.ModuleInfo, !.PredInfo, TypeVarSet0, InstVarSet0,
+        VarTable0, RttiVarMaps0, HasParallelConj, Info0),
     insert_reg_wrappers_proc_body(HeadVars, ArgModes, Goal0, Goal1, InstMap0,
         Info0, Info1, !Specs),
-    lambda_info_get_varset(Info1, VarSet1),
-    lambda_info_get_vartypes(Info1, VarTypes1),
+    lambda_info_get_var_table(Info1, VarTable1),
     lambda_info_get_tvarset(Info1, TypeVarSet),
     lambda_info_get_rtti_varmaps(Info1, RttiVarMaps1),
     lambda_info_get_module_info(Info1, !:ModuleInfo),
@@ -540,28 +539,24 @@ insert_reg_wrappers_proc_2(!ProcInfo, !PredInfo, !ModuleInfo, !Specs) :-
     % Check if we need to requantify.
     (
         MustRecomputeNonLocals = must_recompute_nonlocals,
-        implicitly_quantify_clause_body_general(ordinary_nonlocals_no_lambda,
-            HeadVars, _Warnings, Goal1, Goal2, VarSet1, VarSet2,
-            VarTypes1, VarTypes2, RttiVarMaps1, RttiVarMaps2)
+        implicitly_quantify_clause_body_general_vt(
+            ordinary_nonlocals_no_lambda, HeadVars, _Warnings, Goal1, Goal2,
+            VarTable1, VarTable, RttiVarMaps1, RttiVarMaps)
     ;
         MustRecomputeNonLocals = need_not_recompute_nonlocals,
         Goal2 = Goal1,
-        VarSet2 = VarSet1,
-        VarTypes2 = VarTypes1,
-        RttiVarMaps2 = RttiVarMaps1
+        VarTable = VarTable1,
+        RttiVarMaps = RttiVarMaps1
     ),
 
     % We recomputed instmap deltas for atomic goals during the second phase,
     % so we only need to recompute instmap deltas for compound goals now.
-    recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
-        Goal2, Goal, VarTypes2, InstVarSet0, InstMap0, !ModuleInfo),
-    VarSet = VarSet2,
-    VarTypes = VarTypes2,
-    RttiVarMaps = RttiVarMaps2,
+    recompute_instmap_delta_vt(do_not_recompute_atomic_instmap_deltas,
+        VarTable, InstVarSet0, InstMap0, Goal2, Goal, !ModuleInfo),
 
     % Set the new values of the fields in proc_info and pred_info.
     proc_info_set_goal(Goal, !ProcInfo),
-    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+    proc_info_set_var_table(VarTable, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
     proc_info_set_headvars(HeadVars, !ProcInfo),
     ensure_all_headvars_are_named(!ProcInfo),
@@ -740,11 +735,11 @@ finish_call_goal(WrapGoals, CallGoalExpr0, CallGoalInfo0, Goal,
     instmap::in, lambda_info::in, lambda_info::out) is det.
 
 do_recompute_atomic_instmap_delta(Goal0, Goal, InstMap, !Info) :-
-    lambda_info_get_vartypes(!.Info, VarTypes),
+    lambda_info_get_var_table(!.Info, VarTable),
     lambda_info_get_inst_varset(!.Info, InstVarSet),
     lambda_info_get_module_info(!.Info, ModuleInfo0),
-    recompute_instmap_delta(recompute_atomic_instmap_deltas, Goal0, Goal,
-        VarTypes, InstVarSet, InstMap, ModuleInfo0, ModuleInfo),
+    recompute_instmap_delta_vt(recompute_atomic_instmap_deltas, VarTable,
+        InstVarSet, InstMap, Goal0, Goal, ModuleInfo0, ModuleInfo),
     lambda_info_set_module_info(ModuleInfo, !Info).
 
 :- pred update_instmap_if_unreachable(hlds_goal::in, instmap::in, instmap::out)
@@ -866,8 +861,8 @@ insert_reg_wrappers_construct(CellVar, ConsId, OrigVars, Vars,
         ArgModes0, ArgModes, MaybeWrappedGoals, InstMap0, Context,
         !Info, !Specs) :-
     lambda_info_get_module_info(!.Info, ModuleInfo),
-    lambda_info_get_vartypes(!.Info, VarTypes),
-    lookup_var_type(VarTypes, CellVar, CellType),
+    lambda_info_get_var_table(!.Info, VarTable),
+    lookup_var_type(VarTable, CellVar, CellType),
     ( if
         % Replace all type parameters by phony type variables.
         % See EXAMPLE 3 at the top of the file.
@@ -1097,8 +1092,8 @@ insert_reg_wrappers_disjunct(InstMap0, Goal0, Goal, InstMap, !Info, !Specs) :-
 
 insert_reg_wrappers_switch(Var, Cases0, Cases, NonLocals, InstMap0, InstMap,
         !Info, !Specs) :-
-    lambda_info_get_vartypes(!.Info, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
+    lambda_info_get_var_table(!.Info, VarTable),
+    lookup_var_type(VarTable, Var, Type),
     list.map2_foldl2(insert_reg_wrappers_case(Var, Type, InstMap0),
         Cases0, Cases1, InstMaps1, !Info, !Specs),
     common_instmap_delta(InstMap0, NonLocals, InstMaps1, CommonDelta, !Info),
@@ -1115,8 +1110,8 @@ insert_reg_wrappers_switch(Var, Cases0, Cases, NonLocals, InstMap0, InstMap,
     case::in, case::out, instmap::out, lambda_info::in, lambda_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-insert_reg_wrappers_case(Var, Type, InstMap0, Case0, Case, InstMap, !Info,
-        !Specs) :-
+insert_reg_wrappers_case(Var, Type, InstMap0, Case0, Case, InstMap,
+        !Info, !Specs) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     lambda_info_get_module_info(!.Info, ModuleInfo0),
     bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
@@ -1196,8 +1191,8 @@ insert_reg_wrappers_plain_call(PredId, ProcId, Vars0, Vars, WrapGoals,
 insert_reg_wrappers_higher_order_call(CallVar, Vars0, Vars, ArgModes, ArgRegs,
         WrapGoals, InstMap0, Context, !Info, !Specs) :-
     lambda_info_get_module_info(!.Info, ModuleInfo),
-    lambda_info_get_vartypes(!.Info, VarTypes),
-    lookup_var_type(VarTypes, CallVar, CallVarType),
+    lambda_info_get_var_table(!.Info, VarTable),
+    lookup_var_type(VarTable, CallVar, CallVarType),
     instmap_lookup_var(InstMap0, CallVar, CallVarInst),
     type_is_higher_order_details_det(CallVarType, _, PredOrFunc, _, ArgTypes),
     list.length(ArgTypes, Arity),
@@ -1335,14 +1330,14 @@ match_args(InstMap0, Context, ArgTypes, Insts, OrigVars, Vars, !WrapGoals,
 match_arg(InstMapBefore, Context, ArgType, ExpectInst, OrigVar, Var,
         !WrapGoals, !Info, !Specs) :-
     lambda_info_get_module_info(!.Info, ModuleInfo),
-    lambda_info_get_vartypes(!.Info, VarTypes),
+    lambda_info_get_var_table(!.Info, VarTable),
     ( if
         inst_is_bound(ModuleInfo, ExpectInst),
         type_is_higher_order_details(ArgType, _, PredOrFunc, _,
             ArgPredArgTypes),
         ArgPredArgTypes = [_ | _]
     then
-        lookup_var_type(VarTypes, OrigVar, OrigVarType),
+        lookup_var_type(VarTable, OrigVar, OrigVarType),
         type_is_higher_order_details_det(OrigVarType, _, _, _,
             OrigPredArgTypes),
         list.length(OrigPredArgTypes, Arity),
@@ -1366,9 +1361,8 @@ match_arg(InstMapBefore, Context, ArgType, ExpectInst, OrigVar, Var,
             )
         else
             lambda_info_get_pred_info(!.Info, PredInfo),
-            lambda_info_get_varset(!.Info, VarSet),
-            maybe_report_missing_pred_inst(PredInfo, VarSet, OrigVar, Context,
-                OrigPredArgTypes, ArgPredArgTypes, !Specs),
+            maybe_report_missing_pred_inst(PredInfo, VarTable, OrigVar,
+                Context, OrigPredArgTypes, ArgPredArgTypes, !Specs),
             Var = OrigVar
         )
     else
@@ -1448,11 +1442,11 @@ get_ho_arg_regs(PredInstInfo, ArgTypes, ArgRegs) :-
     %
     % XXX improve the conditions for which an error is reported
     %
-:- pred maybe_report_missing_pred_inst(pred_info::in, prog_varset::in,
+:- pred maybe_report_missing_pred_inst(pred_info::in, var_table::in,
     prog_var::in, prog_context::in, list(mer_type)::in, list(mer_type)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_report_missing_pred_inst(PredInfo, VarSet, Var, Context,
+maybe_report_missing_pred_inst(PredInfo, VarTable, Var, Context,
         ArgTypesA, ArgTypesB, !Specs) :-
     ( if
         ( list.member(float_type, ArgTypesA)
@@ -1462,19 +1456,20 @@ maybe_report_missing_pred_inst(PredInfo, VarSet, Var, Context,
         pred_info_get_origin(PredInfo, Origin),
         Origin \= origin_special_pred(_, _)
     then
-        Spec = report_missing_higher_order_inst(PredInfo, VarSet, Var,
+        Spec = report_missing_higher_order_inst(PredInfo, VarTable, Var,
             Context),
         list.cons(Spec, !Specs)
     else
         true
     ).
 
-:- func report_missing_higher_order_inst(pred_info, prog_varset, prog_var,
+:- func report_missing_higher_order_inst(pred_info, var_table, prog_var,
     prog_context) = error_spec.
 
-report_missing_higher_order_inst(PredInfo, VarSet, Var, Context) = Spec :-
+report_missing_higher_order_inst(PredInfo, VarTable, Var, Context) = Spec :-
     PredPieces = describe_one_pred_info_name(should_module_qualify, PredInfo),
-    varset.lookup_name(VarSet, Var, VarName),
+    lookup_var_entry(VarTable, Var, Entry),
+    VarName = var_entry_name(Var, Entry),
     InPieces = [words("In") | PredPieces] ++ [suffix(":"), nl],
     ErrorPieces = [words("error: missing higher-order inst for variable"),
         quote(VarName), suffix("."), nl],
@@ -1513,10 +1508,10 @@ common_instmap_delta(InstMap0, NonLocals, InstMaps, CommonDelta, !Info) :-
         instmap_delta_init_unreachable(CommonDelta)
     ;
         InstMapDeltas = [_ | _],
-        lambda_info_get_vartypes(!.Info, VarTypes),
+        lambda_info_get_var_table(!.Info, VarTable),
         lambda_info_get_module_info(!.Info, ModuleInfo0),
-        merge_instmap_deltas(InstMap0, NonLocals, VarTypes, InstMapDeltas,
-            CommonDelta, ModuleInfo0, ModuleInfo),
+        merge_instmap_deltas(vts_var_table(VarTable), NonLocals, InstMap0,
+            InstMapDeltas, CommonDelta, ModuleInfo0, ModuleInfo),
         lambda_info_set_module_info(ModuleInfo, !Info)
     ).
 
@@ -1582,11 +1577,11 @@ match_vars_insts(VarsExpectInsts, InstMap0, Context, !Renaming, !WrapGoals,
 match_var_inst(Var, ExpectInst, InstMap0, Context, !Renaming, !WrapGoals,
         !Info, !Specs) :-
     lambda_info_get_module_info(!.Info, ModuleInfo),
-    lambda_info_get_vartypes(!.Info, VarTypes),
+    lambda_info_get_var_table(!.Info, VarTable),
     ( if inst_is_free(ModuleInfo, ExpectInst) then
         true
     else
-        lookup_var_type(VarTypes, Var, VarType),
+        lookup_var_type(VarTable, Var, VarType),
         match_arg(InstMap0, Context, VarType, ExpectInst, Var, SubstVar,
             [], WrapGoals, !Info, !Specs),
         ( if Var = SubstVar then
@@ -1606,18 +1601,18 @@ match_var_inst(Var, ExpectInst, InstMap0, Context, !Renaming, !WrapGoals,
 
 create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
         Context, LHSVar, UnifyGoal, !Info) :-
-    lambda_info_get_varset(!.Info, VarSet0),
-    lambda_info_get_vartypes(!.Info, VarTypes0),
+    lambda_info_get_var_table(!.Info, VarTable0),
     lambda_info_get_module_info(!.Info, ModuleInfo0),
 
-    lookup_var_type(VarTypes0, OrigVar, OrigVarType),
+    lookup_var_entry(VarTable0, OrigVar, OrigVarEntry),
+    OrigVarEntry = vte(_, OrigVarType, OrigVarIsDummy),
     type_is_higher_order_details_det(OrigVarType, Purity, PredOrFunc,
         EvalMethod, PredArgTypes),
 
     % Create variables for the head variables of the wrapper procedure.
     % These are also the variables in the call in the procedure body.
-    create_fresh_vars(PredArgTypes, CallVars, VarSet0, VarSet1,
-        VarTypes0, VarTypes1),
+    create_fresh_vars(ModuleInfo0, PredArgTypes, CallVars,
+        VarTable0, VarTable1),
     PredFormArity = arg_list_arity(CallVars),
 
     % Create the in the body of the wrapper procedure.
@@ -1635,14 +1630,13 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     CallGoal = hlds_goal(CallGoalExpr, CallGoalInfo),
 
     % Create the replacement variable LHSVar.
-    varset.new_var(LHSVar, VarSet1, VarSet),
-    add_var_type(LHSVar, OrigVarType, VarTypes1, VarTypes),
-    lambda_info_set_varset(VarSet, !Info),
-    lambda_info_set_vartypes(VarTypes, !Info),
+    ReplacementEntry = vte("", OrigVarType, OrigVarIsDummy),
+    add_var_entry(ReplacementEntry, LHSVar, VarTable1, VarTable),
+    lambda_info_set_var_table(VarTable, !Info),
 
     % RegR_HeadVars are the wrapper procedure's headvars which must use regular
     % registers.
-    list.foldl_corresponding(make_reg_r_headvars(VarTypes),
+    list.foldl_corresponding(make_reg_r_headvars(VarTable),
         CallVars, OuterArgRegs, set_of_var.init, RegR_HeadVars),
 
     % Create the wrapper procedure.
@@ -1677,23 +1671,24 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
 
     lambda_info_set_recompute_nonlocals(must_recompute_nonlocals, !Info).
 
-:- pred create_fresh_vars(list(mer_type)::in, list(prog_var)::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+:- pred create_fresh_vars(module_info::in, list(mer_type)::in,
+    list(prog_var)::out, var_table::in, var_table::out) is det.
 
-create_fresh_vars([], [], !VarSet, !VarTypes).
-create_fresh_vars([Type | Types], [Var | Vars], !VarSet, !VarTypes) :-
-    varset.new_var(Var, !VarSet),
-    add_var_type(Var, Type, !VarTypes),
-    create_fresh_vars(Types, Vars, !VarSet, !VarTypes).
+create_fresh_vars(_, [], [], !VarTable).
+create_fresh_vars(ModuleInfo, [Type | Types], [Var | Vars], !VarTable) :-
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+    Entry = vte("", Type, IsDummy),
+    add_var_entry(Entry, Var, !VarTable),
+    create_fresh_vars(ModuleInfo, Types, Vars, !VarTable).
 
-:- pred make_reg_r_headvars(vartypes::in, prog_var::in, ho_arg_reg::in,
+:- pred make_reg_r_headvars(var_table::in, prog_var::in, ho_arg_reg::in,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-make_reg_r_headvars(VarTypes, Var, RegType, !RegR_HeadVars) :-
+make_reg_r_headvars(VarTable, Var, RegType, !RegR_HeadVars) :-
     (
         RegType = ho_arg_reg_r,
-        lookup_var_type(VarTypes, Var, VarType),
-        ( if VarType = float_type then
+        lookup_var_entry(VarTable, Var, Entry),
+        ( if Entry ^ vte_type = float_type then
             set_of_var.insert(Var, !RegR_HeadVars)
         else
             true

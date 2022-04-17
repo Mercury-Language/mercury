@@ -659,8 +659,8 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
             % in the instmap_delta for a goal.
             simplify_info_get_module_info(!.Info, !:ModuleInfo),
             simplify_info_get_inst_varset(!.Info, InstVarSet),
-            recompute_instmap_delta(recompute_atomic_instmap_deltas, !Goal,
-                !.VarTypes, InstVarSet, InstMap0, !ModuleInfo),
+            recompute_instmap_delta(recompute_atomic_instmap_deltas,
+                !.VarTypes, InstVarSet, InstMap0, !Goal, !ModuleInfo),
             simplify_info_set_module_info(!.ModuleInfo, !Info)
         )
     ;

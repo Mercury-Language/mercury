@@ -786,7 +786,7 @@ generate_layout_for_var(_ModuleInfo, ProcInfo, _InstMap, Var, LiveValueType,
 
     LldsInst = llds_inst_better_be_ground,
     LiveValueType = live_value_var(Var, Name, Type, LldsInst),
-    type_vars(Type, TypeVars).
+    type_vars_in_type(Type, TypeVars).
 
 %---------------------------------------------------------------------------%
 
@@ -840,7 +840,7 @@ build_closure_info([Var | Vars], [Type0 | Types],
     arg_loc_to_register(ArgLoc, Reg),
     Locations = set.make_singleton_set(Reg),
     map.det_insert(Var, Locations, !VarLocs),
-    type_vars(Type, VarTypeVars),
+    type_vars_in_type(Type, VarTypeVars),
     set.insert_list(VarTypeVars, !TypeVars),
     build_closure_info(Vars, Types, ArgInfos, Layouts, InstMap, UseFloatRegs,
         !VarLocs, !TypeVars).
@@ -907,8 +907,8 @@ build_table_arg_info(VarSet, VarTypes, [Var - SlotNum | NumberedVars],
     varset.lookup_name(VarSet, Var, VarName),
     lookup_var_type(VarTypes, Var, Type),
     ArgLayout = table_arg_info(VarNum, VarName, SlotNum, Type),
-    type_vars(Type, VarTypeVars),
-    set.insert_list(VarTypeVars, !TypeVars),
+    set_of_type_vars_in_type(Type, VarTypeVars),
+    set.union(VarTypeVars, !TypeVars),
     build_table_arg_info(VarSet, VarTypes, NumberedVars,
         ArgLayouts, !TypeVars).
 

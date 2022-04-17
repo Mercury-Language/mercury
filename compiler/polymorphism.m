@@ -606,7 +606,7 @@ setup_headvars_instance_method(PredInfo,
     InstanceMethodConstraints = instance_method_constraints(_,
         InstanceTypes, InstanceConstraints, ClassContext),
 
-    type_vars_list(InstanceTypes, InstanceTVars),
+    type_vars_in_types(InstanceTypes, InstanceTVars),
     get_unconstrained_tvars(InstanceTVars, InstanceConstraints,
         UnconstrainedInstanceTVars),
     pred_info_get_arg_types(PredInfo, ArgTypeVarSet, _, _),
@@ -700,7 +700,7 @@ setup_headvars_2(PredInfo, ClassContext,
     make_typeclass_info_head_vars(do_record_type_info_locns, UnivConstraints,
         UnivHeadTypeClassInfoVars, !Info),
 
-    type_vars_list(ArgTypes, HeadTypeVars),
+    type_vars_in_types(ArgTypes, HeadTypeVars),
     list.delete_elems(HeadTypeVars, UnivConstrainedTVars,
         UnconstrainedTVars0),
     list.delete_elems(UnconstrainedTVars0, ExistConstrainedTVars,
@@ -1285,7 +1285,7 @@ polymorphism_process_unify(LHSVar, RHS0, Mode, Unification0, UnifyContext,
 unification_typeinfos(Type, !Unification, !GoalInfo, Changed, !Info) :-
     % Compute the type_info/type_class_info variables that would be used
     % if this unification ends up being a complicated_unify.
-    type_vars(Type, TypeVars),
+    type_vars_in_type(Type, TypeVars),
     (
         TypeVars = [],
         Changed = no
@@ -1303,7 +1303,7 @@ unification_typeinfos_rtti_varmaps(Type, RttiVarMaps,
 
     % Compute the type_info/type_class_info variables that would be used
     % if this unification ends up being a complicated_unify.
-    type_vars(Type, TypeVars),
+    type_vars_in_type(Type, TypeVars),
     list.map(rtti_lookup_type_info_locn(RttiVarMaps), TypeVars,
         TypeInfoLocns),
     add_unification_typeinfos(TypeInfoLocns, !Unification, !GoalInfo).
@@ -1619,7 +1619,7 @@ polymorphism_process_foreign_proc_args(PredInfo, Impl, Vars, Args) :-
     ExistVars0 = list.map(get_constrained_vars, ExistCs),
     list.condense(ExistVars0, ExistConstrainedVars),
 
-    type_vars_list(PredArgTypes, PredTypeVars0),
+    type_vars_in_types(PredArgTypes, PredTypeVars0),
     list.remove_dups(PredTypeVars0, PredTypeVars1),
     list.delete_elems(PredTypeVars1, UnivConstrainedVars, PredTypeVars2),
     list.delete_elems(PredTypeVars2, ExistConstrainedVars, PredTypeVars),
@@ -1663,7 +1663,7 @@ polymorphism_process_foreign_proc_args(PredInfo, Impl, Vars, Args) :-
 
 get_constrained_vars(Constraint) = CVars :-
     Constraint = constraint(_, CTypes),
-    type_vars_list(CTypes, CVars).
+    type_vars_in_types(CTypes, CVars).
 
 :- pred foreign_proc_add_typeclass_info(mer_mode::in,
     pragma_foreign_proc_impl::in, tvarset::in, prog_constraint::in,
@@ -1673,7 +1673,7 @@ foreign_proc_add_typeclass_info(Mode, Impl, TypeVarSet, Constraint,
         MaybeArgNameBox) :-
     Constraint = constraint(SymName, Types),
     Name = sym_name_to_string_sep(SymName, "__"),
-    type_vars_list(Types, TypeVars),
+    type_vars_in_types(Types, TypeVars),
     TypeVarNames = list.map(underscore_and_tvar_name(TypeVarSet), TypeVars),
     string.append_list(["TypeClassInfo_for_", Name | TypeVarNames],
         ConstraintVarName),
@@ -1820,7 +1820,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
             PredToParentTypeRenaming),
         apply_variable_renaming_to_type_list(PredToParentTypeRenaming,
             PredArgTypes, ParentArgTypes),
-        type_vars_list(ParentArgTypes, ParentTVars),
+        type_vars_in_types(ParentArgTypes, ParentTVars),
         apply_variable_renaming_to_tvar_kind_map(PredToParentTypeRenaming,
             PredKindMap, ParentKindMap),
         apply_variable_renaming_to_tvar_list(PredToParentTypeRenaming,

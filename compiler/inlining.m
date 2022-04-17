@@ -168,6 +168,7 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.complexity.
 :- import_module transform_hlds.dead_proc_elim.
 
@@ -280,7 +281,7 @@
 
 :- type have_we_changed_detism
     --->    have_not_changed_detism
-    ;       have_changed_detism.
+    ;       may_have_changed_detism.
 
 :- type have_we_changed_purity
     --->    have_not_changed_purity
@@ -572,7 +573,6 @@ should_proc_be_inlined(Params, ModuleInfo, PredProcId) :-
         SimpleThreshold = Params ^ ip_simple_goal_threshold,
         is_simple_goal(CalledGoal, SimpleThreshold)
     ;
-        CompoundThreshold > 0,
         NeededMap = Params ^ ip_needed_map,
         map.search(NeededMap, Entity, Needed),
         Needed = maybe_eliminable(NumUses),
@@ -582,6 +582,7 @@ should_proc_be_inlined(Params, ModuleInfo, PredProcId) :-
         % CallCost is the user-provided approximation of the size of the call.
         CallCost = Params ^ ip_call_cost,
         CompoundThreshold = Params ^ ip_compound_size_threshold,
+        CompoundThreshold > 0,
         (Size - CallCost) * NumUses =< CompoundThreshold
     ;
         Params ^ ip_single_use = inline_single_use,
@@ -759,7 +760,7 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
         % determinism analysis, because propagating the determinism information
         % through the procedure may lead to more efficient code.
         (
-            DetChanged = have_changed_detism,
+            DetChanged = may_have_changed_detism,
             det_infer_proc_ignore_msgs(PredId, ProcId, !ModuleInfo)
         ;
             DetChanged = have_not_changed_detism
@@ -937,15 +938,23 @@ inlining_in_call(GoalExpr0, GoalInfo0, Goal, !Info) :-
         ),
 
         Goal1 = hlds_goal(_, GoalInfo1),
-        % If the inferred determinism of the called goal differs from the
-        % declared determinism, flag that we should rerun determinism analysis
-        % on this proc.
+        % If the determinism of the call is the same as the determinism
+        % of the callee (which it should be, unless something has changed
+        % since determinism analysis) *and* all the argument variables are
+        % used outside the call, then there is no need to rerun determinism
+        % analysis. We *do* have to rerun it if we have not met one of the
+        % above preconditions.
         Determinism0 = goal_info_get_determinism(GoalInfo0),
         Determinism1 = goal_info_get_determinism(GoalInfo1),
-        ( if Determinism0 = Determinism1 then
+        ArgVarSet = set_of_var.list_to_set(ArgVars),
+        NonLocals = goal_info_get_nonlocals(GoalInfo0),
+        ( if
+            Determinism0 = Determinism1,
+            set_of_var.subset(ArgVarSet, NonLocals)
+        then
             DetChanged = DetChanged0
         else
-            DetChanged = have_changed_detism
+            DetChanged = may_have_changed_detism
         ),
 
         Purity0 = goal_info_get_purity(GoalInfo0),
@@ -1051,7 +1060,7 @@ do_inline_call(ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
         ExternalTypeParams, CalleeExistQVars, TypeSubn),
 
     % Handle the common case of non-existentially typed preds specially,
-    % since we can do things more efficiently in that case
+    % since we can do things more efficiently in that case.
     (
         CalleeExistQVars = [],
         % Update types in callee only.
@@ -1073,10 +1082,9 @@ do_inline_call(ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
         CalleeRttiVarMaps0, CalleeRttiVarMaps1),
 
     % Prefer the type_info_locn from the caller.
-    % The type_infos or typeclass_infos passed to the callee may
-    % have been produced by extracting type_infos or typeclass_infos
-    % from typeclass_infos in the caller, so they won't necessarily
-    % be the same.
+    % The type_infos or typeclass_infos passed to the callee may have been
+    % produced by extracting type_infos or typeclass_infos from
+    % typeclass_infos in the caller, so they won't necessarily be the same.
     rtti_varmaps_overlay(CalleeRttiVarMaps1, RttiVarMaps0, RttiVarMaps).
 
 rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet, VarSet, VarTypes1,

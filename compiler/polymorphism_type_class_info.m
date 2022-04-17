@@ -484,7 +484,7 @@ do_make_typeclass_info_from_instance(ConstInstanceId, ExistQVars, Context,
     % we assume all tvars have kind `star'.
     map.init(KindMap),
 
-    type_vars_list(InstanceTypes, InstanceTvars),
+    type_vars_in_types(InstanceTypes, InstanceTvars),
     get_unconstrained_tvars(InstanceTvars, InstanceConstraints,
         UnconstrainedTvars),
 
@@ -918,7 +918,7 @@ record_constraint_type_info_locns(Constraint, ExtraHeadVar, !Info) :-
 record_tci_slots_for_unseen_or_in_type_info_tvars(_, [], _, !RttiVarMaps).
 record_tci_slots_for_unseen_or_in_type_info_tvars(ExtraHeadVar,
         [ClassType | ClassTypes], CurIndex, !RttiVarMaps) :-
-    type_vars(ClassType, TypeVars),
+    type_vars_in_type(ClassType, TypeVars),
     list.filter(is_unseen_or_in_type_info_tvar(!.RttiVarMaps),
         TypeVars, UnSeenOrInTypeInfoTypeVars),
     Location = typeclass_info(ExtraHeadVar, CurIndex),

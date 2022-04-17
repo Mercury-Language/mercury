@@ -267,7 +267,7 @@ size_prof_process_proc(Transform, proc(PredId, ProcId), !ProcInfo,
         Info ^ spi_varset, VarSet, Info ^ spi_vartypes, VarTypes,
         Info ^ spi_rtti_varmaps, RttiVarMaps),
     recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
-        Goal2, Goal, VarTypes, InstVarSet, InstMap0, !ModuleInfo),
+        VarTypes, InstVarSet, InstMap0, Goal2, Goal, !ModuleInfo),
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo).

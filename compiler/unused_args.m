@@ -301,8 +301,7 @@ unused_args_process_module(!ModuleInfo, Specs, UnusedArgInfos) :-
         OptUnusedArgs = opt_unused_args,
         list.foldl2(unused_args_create_new_pred(UnusedArgInfo),
             PredProcIdsToFix, ProcCallInfo0, ProcCallInfo, !ModuleInfo),
-        % maybe_write_string(VeryVerbose, "% Finished new preds.\n",
-        %   !IO),
+        % maybe_write_string(VeryVerbose, "% Finished new preds.\n", !IO),
         unused_args_fixup_module(VeryVerbose, VarUsage,
             PredProcIds, ProcCallInfo, !ModuleInfo),
         % maybe_write_string(VeryVerbose, "% Fixed up goals.\n", !IO),
@@ -614,7 +613,7 @@ setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, RttiVarMaps,
 
 setup_typeinfo_dep(Var, VarTypeMap, PredProcId, RttiVarMaps, !VarDep) :-
     lookup_var_type(VarTypeMap, Var, Type),
-    type_vars(Type, TVars),
+    type_vars_in_type(Type, TVars),
     list.map(tvar_to_type_info_var(RttiVarMaps), TVars, TypeInfoVars),
     list.foldl(add_rev_arg_dep(Var, PredProcId), TypeInfoVars, !VarDep).
 
@@ -1076,13 +1075,14 @@ get_unused_arg_info(ModuleInfo, [PredProcId | PredProcIds], VarUsage,
     proc_call_info::in, proc_call_info::out,
     module_info::in, module_info::out) is det.
 
-unused_args_create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
-        !ModuleInfo) :-
-    map.lookup(UnusedArgInfo, proc(PredId, ProcId), UnusedArgs),
-    module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
+unused_args_create_new_pred(UnusedArgInfo, OrigPredProcId,
+        !ProcCallInfo, !ModuleInfo) :-
+    map.lookup(UnusedArgInfo, OrigPredProcId, UnusedArgs),
+    module_info_pred_proc_info(!.ModuleInfo, OrigPredProcId,
         OrigPredInfo, OrigProcInfo),
     PredModule = pred_info_module(OrigPredInfo),
 
+    OrigPredProcId = proc(OrigPredId, ProcId),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, intermodule_analysis, Intermod),
     (
@@ -1140,7 +1140,7 @@ unused_args_create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
             PredStatus = pred_status(status_local)
         ),
         make_new_pred_info(!.ModuleInfo, UnusedArgs, PredStatus,
-            proc(PredId, ProcId), OrigPredInfo, NewPredInfo0),
+            OrigPredProcId, OrigPredInfo, NewPredInfo0),
         NewPredName = pred_info_name(NewPredInfo0),
         pred_info_get_proc_table(NewPredInfo0, NewProcs0),
 
@@ -1156,25 +1156,24 @@ unused_args_create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
 
         % Add the new proc to the proc_call_info map.
         PredSymName = qualified(PredModule, NewPredName),
-        map.det_insert(proc(PredId, ProcId),
-            call_info(NewPredId, ProcId, PredSymName, UnusedArgs),
-            !ProcCallInfo),
+        OrigToNew = call_info(NewPredId, ProcId, PredSymName, UnusedArgs),
+        map.det_insert(OrigPredProcId, OrigToNew, !ProcCallInfo),
 
         % Add a forwarding predicate with the original interface.
         create_call_goal(UnusedArgs, NewPredId, ProcId, PredModule,
             NewPredName, OrigProcInfo, ForwardingProcInfo),
-        module_info_set_pred_proc_info(PredId, ProcId, OrigPredInfo,
+        module_info_set_pred_proc_info(OrigPredId, ProcId, OrigPredInfo,
             ForwardingProcInfo, !ModuleInfo),
 
         % Add forwarding predicates for results produced in previous
         % compilations.
-        % XXX this only works "once" due to the analysis framework now
-        % discarding all but the best answer.  If we compile this module
-        % again without changing anything else, we won't remember to
-        % produce the same forwarding predicates.  If some callers refer
-        % to those forwarding predicates then linking will fail.
+        % XXX This only works "once" due to the analysis framework now
+        % discarding all but the best answer. If we compile this module again
+        % without changing anything else, we won't remember to produce
+        % the same forwarding predicates. If some callers refer to those
+        % forwarding predicates, then linking will fail.
         list.foldl(
-            make_intermod_proc(PredId, NewPredId, ProcId, NewPredName,
+            make_intermod_proc(OrigPredId, NewPredId, ProcId, NewPredName,
                 OrigPredInfo, OrigProcInfo, UnusedArgs),
             IntermodOldArgLists, !ModuleInfo)
     ).
@@ -1380,6 +1379,8 @@ get_unused_arg_nos(LocalVars, [HeadVar | HeadVars], ArgNo, UnusedArgs) :-
     else
         UnusedArgs = UnusedArgsTail
     ).
+
+%-----------------------------------------------------------------------------%
 
 :- pred unused_args_fixup_module(bool::in, var_usage::in,
     list(pred_proc_id)::in, proc_call_info::in,

@@ -26,6 +26,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
+:- import_module hlds.var_table.
 :- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
@@ -86,6 +87,13 @@
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     prog_var_renaming::in, prog_var_renaming::out, prog_var::out) is det.
 
+    % clone_variable_var_table(OldVar, !VarTable, !Renaming, CloneVar):
+    %
+    % A version of clone_variable using var_tables.
+    %
+:- pred clone_variable_var_table(prog_var::in, var_table::in, var_table::out,
+    prog_var_renaming::in, prog_var_renaming::out, prog_var::out) is det.
+
     % clone_variables(OldVars, OldVarSet, OldVarTypes,
     %   !VarSet, !VarTypes, !Renaming):
     %
@@ -96,6 +104,14 @@
     %
 :- pred clone_variables(list(prog_var)::in, prog_varset::in, vartypes::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    prog_var_renaming::in, prog_var_renaming::out) is det.
+
+    % clone_variables_var_table(OldVars, !VarTable, !Renaming):
+    %
+    % A version of clone_variables using var_tables.
+    %
+:- pred clone_variables_var_table(list(prog_var)::in,
+    var_table::in, var_table::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
     % Return all the variables in the goal or goal expression.
@@ -131,7 +147,7 @@
 :- mode attach_features_to_all_goals(in,
     in(bound(do_not_attach_in_from_ground_term)), in, out) is det.
 
-    % extra_nonlocal_typeinfos_typeclass_infos(TypeInfoMap, TypeClassInfoMap,
+    % extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps,
     %   VarTypes, ExistQVars, NonLocals, NonLocalTypeInfos):
     %
     % Compute which type-info and type-class-info variables may need to be
@@ -151,6 +167,9 @@
     %
 :- pred extra_nonlocal_typeinfos_typeclass_infos(rtti_varmaps::in,
     vartypes::in, existq_tvars::in,
+    set_of_progvar::in, set_of_progvar::out) is det.
+:- pred extra_nonlocal_typeinfos_typeclass_infos_vt(rtti_varmaps::in,
+    var_table::in, existq_tvars::in,
     set_of_progvar::in, set_of_progvar::out) is det.
 
 :- type is_leaf
@@ -551,6 +570,15 @@ clone_variable(Var, OldVarNames, OldVarTypes, !VarSet, !VarTypes, !Renaming,
         )
     ).
 
+clone_variable_var_table(Var, !VarTable, !Renaming, CloneVar) :-
+    ( if map.search(!.Renaming, Var, CloneVarPrime) then
+        CloneVar = CloneVarPrime
+    else
+        lookup_var_entry(!.VarTable, Var, Entry),
+        add_var_entry(Entry, CloneVar, !VarTable),
+        map.det_insert(Var, CloneVar, !Renaming)
+    ).
+
 clone_variables([], _, _, !VarSet, !VarTypes, !Renaming).
 clone_variables([Var | Vars], OldVarNames, OldVarTypes, !VarSet, !VarTypes,
         !Renaming) :-
@@ -558,6 +586,11 @@ clone_variables([Var | Vars], OldVarNames, OldVarTypes, !VarSet, !VarTypes,
         !Renaming, _CloneVar),
     clone_variables(Vars, OldVarNames, OldVarTypes, !VarSet, !VarTypes,
         !Renaming).
+
+clone_variables_var_table([], !VarTable, !Renaming).
+clone_variables_var_table([Var | Vars], !VarTable, !Renaming) :-
+    clone_variable_var_table(Var, !VarTable, !Renaming, _CloneVar),
+    clone_variables_var_table(Vars, !VarTable, !Renaming).
 
 %-----------------------------------------------------------------------------%
 
@@ -845,13 +878,29 @@ attach_features_to_goal_expr(Features, InFromGroundTerm,
 %-----------------------------------------------------------------------------%
 
 extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps, VarTypes, ExistQVars,
-        NonLocals, NonLocalTypeInfos) :-
+        NonLocals, NonLocalTiTciVars) :-
     % Find all non-local type vars. That is, type vars that are existentially
     % quantified or type vars that appear in the type of a non-local prog_var.
-
     set_of_var.to_sorted_list(NonLocals, NonLocalsList),
     lookup_var_types(VarTypes, NonLocalsList, NonLocalsTypes),
-    type_vars_list(NonLocalsTypes, NonLocalTypeVarsList0),
+    do_extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps, NonLocalsTypes,
+        ExistQVars, NonLocalTiTciVars).
+
+extra_nonlocal_typeinfos_typeclass_infos_vt(RttiVarMaps, VarTable, ExistQVars,
+        NonLocals, NonLocalTiTciVars) :-
+    % Find all non-local type vars. That is, type vars that are existentially
+    % quantified or type vars that appear in the type of a non-local prog_var.
+    set_of_var.to_sorted_list(NonLocals, NonLocalsList),
+    lookup_var_types(VarTable, NonLocalsList, NonLocalsTypes),
+    do_extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps, NonLocalsTypes,
+        ExistQVars, NonLocalTiTciVars).
+
+:- pred do_extra_nonlocal_typeinfos_typeclass_infos(rtti_varmaps::in,
+    list(mer_type)::in, existq_tvars::in, set_of_progvar::out) is det.
+
+do_extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps, NonLocalsTypes,
+        ExistQVars, NonLocalTiTciVars) :-
+    type_vars_in_types(NonLocalsTypes, NonLocalTypeVarsList0),
     NonLocalTypeVarsList = ExistQVars ++ NonLocalTypeVarsList0,
     set_of_var.list_to_set(NonLocalTypeVarsList, NonLocalTypeVars),
 
@@ -884,8 +933,8 @@ extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps, VarTypes, ExistQVars,
         ), NonLocalTypeClassInfoVarsList),
     set_of_var.sorted_list_to_set(NonLocalTypeClassInfoVarsList,
         NonLocalTypeClassInfoVars),
-    NonLocalTypeInfos = set_of_var.union(NonLocalTypeInfoVars,
-        NonLocalTypeClassInfoVars).
+    set_of_var.union(NonLocalTypeInfoVars, NonLocalTypeClassInfoVars,
+        NonLocalTiTciVars).
 
 %-----------------------------------------------------------------------------%
 

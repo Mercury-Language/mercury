@@ -530,7 +530,7 @@ ho_fixup_proc_info(MustRecompute, !.Goal, !Info) :-
             proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
             proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
             recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
-                !Goal, VarTypes, InstVarSet, InstMap, !ModuleInfo),
+                VarTypes, InstVarSet, InstMap, !Goal, !ModuleInfo),
             proc_info_set_goal(!.Goal, !ProcInfo),
             !Info ^ hoi_proc_info := !.ProcInfo,
             !Info ^ hoi_global_info ^ hogi_module_info := !.ModuleInfo
@@ -1112,7 +1112,7 @@ maybe_specialize_method_call(TypeClassInfoVar, Method, Args, Goal0, Goal,
         list.det_index1(InstanceList, Instance, InstanceDefn),
         InstanceDefn = hlds_instance_defn(_, InstanceTypes0, _, _, _, _,
             InstanceConstraints, _, yes(ClassInterface), _, _),
-        type_vars_list(InstanceTypes0, InstanceTvars),
+        type_vars_in_types(InstanceTypes0, InstanceTvars),
         get_unconstrained_tvars(InstanceTvars,
             InstanceConstraints, UnconstrainedTVars),
         NumArgsToExtract = list.length(InstanceConstraints)
@@ -1217,7 +1217,7 @@ instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
         InstanceTypes),
     apply_variable_renaming_to_prog_constraint_list(Renaming, Constraints0,
         Constraints1),
-    type_vars_list(InstanceTypes, InstanceTVars),
+    type_vars_in_types(InstanceTypes, InstanceTVars),
     get_unconstrained_tvars(InstanceTVars, Constraints1, UnconstrainedTVars0),
 
     type_list_subsumes(InstanceTypes, ClassTypes, Subst),
@@ -1854,7 +1854,7 @@ compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars) :-
     ProcInfo = Info ^ hoi_proc_info,
     proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     lookup_var_types(VarTypes, Args, ArgTypes),
-    type_vars_list(ArgTypes, AllTVars),
+    type_vars_in_types(ArgTypes, AllTVars),
     (
         AllTVars = [],
         ExtraTypeInfoTVars = []

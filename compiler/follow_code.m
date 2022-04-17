@@ -82,7 +82,7 @@ move_follow_code_in_proc(_PredProcId, !ProcInfo, !ModuleInfo) :-
         proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
         proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
         recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
-            Goal2, Goal, VarTypes, InstVarSet, InstMap0, !ModuleInfo),
+            VarTypes, InstVarSet, InstMap0, Goal2, Goal, !ModuleInfo),
         proc_info_set_goal(Goal, !ProcInfo),
         proc_info_set_varset_vartypes(Varset, VarTypes, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo)

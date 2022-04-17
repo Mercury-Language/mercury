@@ -230,7 +230,7 @@
 :- import_module check_hlds.mode_top_functor.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.vartypes.
+:- import_module hlds.var_table.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -537,11 +537,11 @@ do_mark_tail_rec_calls_in_proc(Params, ModuleInfo, SCC, PredId, ProcId,
             proc_info_get_goal(!.ProcInfo, Goal0),
             proc_info_get_argmodes(!.ProcInfo, Modes),
             proc_info_get_headvars(!.ProcInfo, HeadVars),
-            proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
+            proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
             find_output_args(ModuleInfo, Types, Modes, HeadVars, Outputs),
 
             Info0 = mark_tail_rec_calls_info(ModuleInfo, PredInfo,
-                proc(PredId, ProcId), SCC, VarTypes, Params,
+                proc(PredId, ProcId), SCC, VarTable, Params,
                 has_no_self_tail_rec_call, has_no_mutual_tail_rec_call,
                 not_found_any_rec_calls, []),
             mark_tail_rec_calls_in_goal(Goal0, Goal, at_tail(Outputs), _,
@@ -630,7 +630,7 @@ find_output_args(ModuleInfo, Types, Modes, Vars, OutputVars) :-
                 mtc_pred_info               :: pred_info,
                 mtc_cur_proc                :: pred_proc_id,
                 mtc_cur_scc                 :: set(pred_proc_id),
-                mtc_vartypes                :: vartypes,
+                mtc_var_table               :: var_table,
                 mtc_params                  :: tail_rec_params,
                 mtc_self_tail_rec_calls     :: has_self_tail_rec_call,
                 mtc_mutual_tail_rec_calls   :: has_mutual_tail_rec_call,
@@ -737,15 +737,18 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
         ),
         Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo0)
     ;
-        GoalExpr0 = unify(LHS, _, _, Unify0, _),
+        GoalExpr0 = unify(LHSVar, _, _, Unify0, _),
         Goal = Goal0,
-        ModuleInfo = !.Info ^ mtc_module,
-        VarTypes = !.Info ^ mtc_vartypes,
-        ( if var_is_of_dummy_type(ModuleInfo, VarTypes, LHS) then
+        VarTable = !.Info ^ mtc_var_table,
+        lookup_var_entry(VarTable, LHSVar, LHSVarEntry),
+        LHSVarIsDummy = LHSVarEntry ^ vte_is_dummy,
+        (
+            LHSVarIsDummy = is_dummy_type,
             % Unifications involving dummy type variables are no-ops,
             % and do not inhibit a preceding tail call.
             AtTail = AtTail0
-        else
+        ;
+            LHSVarIsDummy = is_not_dummy_type,
             (
                 ( Unify0 = construct(_, _, _, _, _, _, _)
                 ; Unify0 = deconstruct(_, _, _, _, _, _)

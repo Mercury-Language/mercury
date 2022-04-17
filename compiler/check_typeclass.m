@@ -950,7 +950,7 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
     % the instance constraints. (Type variables in the existq_tvars must
     % occur either in the argument types or in the class method context;
     % type variables in the instance types must appear in the arguments.)
-    type_vars_list(ArgTypes1, ArgTVars),
+    type_vars_in_types(ArgTypes1, ArgTVars),
     prog_constraints_get_tvars(ClassMethodClassContext1, MethodContextTVars),
     constraint_list_get_tvars(InstanceConstraints1, InstanceTVars),
     list.condense([ArgTVars, MethodContextTVars, InstanceTVars], VarsToKeep0),
@@ -1322,8 +1322,8 @@ same_type_hlds_instance_defn(InstanceDefnA, InstanceDefnB) :-
     tvarset_merge_renaming(VarSetA, VarSetB, _NewVarSet, RenameApart),
     apply_variable_renaming_to_type_list(RenameApart, TypesB0, TypesB1),
 
-    type_vars_list(TypesA, TVarsA),
-    type_vars_list(TypesB1, TVarsB),
+    type_vars_in_types(TypesA, TVarsA),
+    type_vars_in_types(TypesB1, TVarsB),
 
     % If the lengths are different they can't be the same type.
     list.length(TVarsA, NumTVars),
@@ -1604,8 +1604,8 @@ report_duplicate_instance_defn(ClassId, Severity, SeverityWord, Category,
 
 check_that_instance_constraints_match(ClassId,
         ConcreteInstanceDefn, AbstractInstanceDefn, !Specs) :-
-    type_vars_list(ConcreteInstanceDefn ^ instdefn_types, ConcreteTVars),
-    type_vars_list(AbstractInstanceDefn ^ instdefn_types, AbstractTVars),
+    type_vars_in_types(ConcreteInstanceDefn ^ instdefn_types, ConcreteTVars),
+    type_vars_in_types(AbstractInstanceDefn ^ instdefn_types, AbstractTVars),
     ConcreteTVarSet = ConcreteInstanceDefn ^ instdefn_tvarset,
     AbstractTVarSet = AbstractInstanceDefn ^ instdefn_tvarset,
     ConcreteConstraints = ConcreteInstanceDefn ^ instdefn_constraints,
@@ -1934,11 +1934,11 @@ check_coverage_for_instance_defn(ModuleInfo, ClassId, InstanceDefn, FunDep,
     Types = InstanceDefn ^ instdefn_types,
     FunDep = fundep(Domain, Range),
     DomainTypes = restrict_list_elements(Domain, Types),
-    type_vars_list(DomainTypes, DomainVars),
     RangeTypes = restrict_list_elements(Range, Types),
-    type_vars_list(RangeTypes, RangeVars),
+    type_vars_in_types(DomainTypes, DomainTVars),
+    type_vars_in_types(RangeTypes, RangeTVars),
     Constraints = InstanceDefn ^ instdefn_constraints,
-    get_unbound_tvars(ModuleInfo, TVarSet, DomainVars, RangeVars,
+    get_unbound_tvars(ModuleInfo, TVarSet, DomainTVars, RangeTVars,
         Constraints, UnboundVars),
     (
         UnboundVars = []
@@ -2193,7 +2193,7 @@ check_pred_type_ambiguities(ModuleInfo, PredInfo, !Specs) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_get_arg_types(PredInfo, ArgTypes),
     pred_info_get_class_context(PredInfo, Constraints),
-    type_vars_list(ArgTypes, ArgTVars),
+    type_vars_in_types(ArgTypes, ArgTVars),
     prog_constraints_get_tvars(Constraints, ConstrainedTVars),
     Constraints = constraints(UnivCs, ExistCs),
     get_unbound_tvars(ModuleInfo, TVarSet, ArgTVars, ConstrainedTVars,
@@ -2261,7 +2261,7 @@ check_typeclass_constraints_on_data_ctor(ModuleInfo, TypeCtor, TypeDefn,
             % Any ambiguity errors can be reported *after* the programmer
             % fixes the references to nonexistent typeclasses.
             get_ctor_arg_types(CtorArgs, ArgTypes),
-            type_vars_list(ArgTypes, ArgTVars),
+            type_vars_in_types(ArgTypes, ArgTVars),
             list.filter((pred(V::in) is semidet :- list.member(V, ExistQVars)),
                 ArgTVars, ExistQArgTVars),
             % Sanity check.
@@ -2632,10 +2632,10 @@ induced_fundep(Args, fundep(Domain0, Range0), !FunDeps) :-
 
 :- func induced_vars(list(mer_type), int, set(tvar)) = set(tvar).
 
-induced_vars(Args, ArgNum, Vars) = union(Vars, NewVars) :-
-    Arg = list.det_index1(Args, ArgNum),
-    type_vars(Arg, ArgVars),
-    NewVars = set.list_to_set(ArgVars).
+induced_vars(ArgTypes, ArgNum, TVars) = union(TVars, NewTVars) :-
+    ArgType = list.det_index1(ArgTypes, ArgNum),
+    type_vars_in_type(ArgType, ArgTVars),
+    NewTVars = set.list_to_set(ArgTVars).
 
 :- func compute_fundeps_closure(induced_fundeps, set(tvar)) = set(tvar).
 

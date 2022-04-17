@@ -97,7 +97,7 @@ saved_vars_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
     proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
     proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
     recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
-        Goal2, Goal, VarTypes, InstVarSet, InstMap0, !ModuleInfo),
+        VarTypes, InstVarSet, InstMap0, Goal2, Goal, !ModuleInfo),
 
     trace [io(!IO), compile_time(flag("debug_saved_vars"))] (
         OutInfo = hlds_out_util.init_hlds_out_info(Globals, output_debug),

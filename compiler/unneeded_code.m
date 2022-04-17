@@ -370,7 +370,7 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
             Goal2, Goal3, VarSet0, VarSet, VarTypes0, VarTypes,
             RttiVarMaps0, RttiVarMaps),
         recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
-            Goal3, Goal, VarTypes, InstVarSet, InitInstMap, !ModuleInfo),
+            VarTypes, InstVarSet, InitInstMap, Goal3, Goal, !ModuleInfo),
         proc_info_set_goal(Goal, !ProcInfo),
         proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),

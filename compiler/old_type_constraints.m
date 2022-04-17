@@ -327,7 +327,7 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
         % Create a set of constraints on the types of the head variables.
         clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
         pred_info_get_arg_types(!.PredInfo, HeadTypes),
-        prog_type.type_vars_list(HeadTypes, HeadTVars),
+        type_vars_in_types(HeadTypes, HeadTVars),
         ( if list.same_length(HeadTypes, HeadVars) then
             list.foldl_corresponding(variable_assignment_constraint(Context),
                 HeadVars, HeadTypes, tconstr_info(bimap.init, counter.init(0),
@@ -890,7 +890,7 @@ pred_call_constraint(PredTable, Info, ArgTVars, PredId, Constraint, TVars,
             PredArgTypes0, PredArgTypes),
         Constraints = list.map_corresponding(create_stconstr, ArgTVars,
             PredArgTypes),
-        prog_type.type_vars_list(PredArgTypes, TVars)
+        type_vars_in_types(PredArgTypes, TVars)
     else
         Pieces = [words("The predicate with id"),
             int_fixed(pred_id_to_int(PredId)),
@@ -1015,11 +1015,11 @@ shorthand_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
     mer_type::in, type_constraint_info::in, type_constraint_info::out) is det.
 
 variable_assignment_constraint(Context, Var, Type, !TCInfo) :-
-    prog_type.type_vars(Type, TypeVariables),
+    type_vars_in_type(Type, TVars),
     get_var_type(Var, TVar, !TCInfo),
     Constraint = ctconstr([stconstr(TVar, Type)], tconstr_active, Context,
         no, no),
-    add_type_constraint([Constraint], [TVar | TypeVariables], !TCInfo).
+    add_type_constraint([Constraint], [TVar | TVars], !TCInfo).
 
 %---------------------------------------------------------------------------%
 %
@@ -1922,7 +1922,7 @@ tvars_in_constraint(tconstr_disj(Disjuncts0, _), TVars) :-
     list(tvar)::out) is det.
 
 tvars_in_simple_constraint(stconstr(TVar, Type), [TVar | TVars]) :-
-    prog_type.type_vars(Type, TVars).
+    type_vars_in_type(Type, TVars).
 
 :- pred constraint_has_no_solutions(type_domain_map::in) is semidet.
 

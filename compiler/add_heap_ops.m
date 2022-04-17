@@ -50,19 +50,19 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
-:- import_module hlds.vartypes.
+:- import_module hlds.var_table.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_type.
 
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -77,19 +77,18 @@
     %
 :- type heap_ops_info
     --->    heap_ops_info(
-                heap_varset         :: prog_varset,
-                heap_var_types      :: vartypes,
-                heap_module_info    :: module_info
+                heap_module_info    :: module_info,
+                heap_var_table      :: var_table
             ).
 
 add_heap_ops(ModuleInfo0, !ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
-    TrailOpsInfo0 = heap_ops_info(VarSet0, VarTypes0, ModuleInfo0),
+    proc_info_get_var_table(ModuleInfo0, !.ProcInfo, VarTable0),
+    TrailOpsInfo0 = heap_ops_info(ModuleInfo0, VarTable0),
     goal_add_heap_ops(Goal0, Goal, TrailOpsInfo0, TrailOpsInfo),
-    TrailOpsInfo = heap_ops_info(VarSet, VarTypes, _),
+    TrailOpsInfo = heap_ops_info(_, VarTable),
     proc_info_set_goal(Goal, !ProcInfo),
-    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+    proc_info_set_var_table(VarTable, !ProcInfo),
     % The code below does not maintain the non-local variables,
     % so we need to requantify.
     % XXX it would be more efficient to maintain them rather than recomputing
@@ -342,18 +341,16 @@ gen_restore_hp(SavedHeapPointerVar, Context, RestoreHeapPointerGoal, !Info) :-
     heap_ops_info::in, heap_ops_info::out) is det.
 
 new_saved_hp_var(Var, !Info) :-
-    new_var("HeapPointer", heap_pointer_type, Var, !Info).
+    new_var("HeapPointer", heap_pointer_type, is_not_dummy_type, Var, !Info).
 
-:- pred new_var(string::in, mer_type::in, prog_var::out,
+:- pred new_var(string::in, mer_type::in, is_dummy_type::in, prog_var::out,
     heap_ops_info::in, heap_ops_info::out) is det.
 
-new_var(Name, Type, Var, !Info) :-
-    VarSet0 = !.Info ^ heap_varset,
-    VarTypes0 = !.Info ^ heap_var_types,
-    varset.new_named_var(Name, Var, VarSet0, VarSet),
-    add_var_type(Var, Type, VarTypes0, VarTypes),
-    !Info ^ heap_varset := VarSet,
-    !Info ^ heap_var_types := VarTypes.
+new_var(Name, Type, IsDummy, Var, !Info) :-
+    VarTable0 = !.Info ^ heap_var_table,
+    Entry = vte(Name, Type, IsDummy),
+    add_var_entry(Entry, Var, VarTable0, VarTable),
+    !Info ^ heap_var_table := VarTable.
 
 %-----------------------------------------------------------------------------%
 

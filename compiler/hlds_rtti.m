@@ -884,7 +884,7 @@ get_typeinfo_vars(Vars, VarTypes, RttiVarMaps, TypeInfoVars) :-
 get_typeinfo_vars_acc([], _, _, !TypeInfoVars).
 get_typeinfo_vars_acc([Var | Vars], VarTypes, TVarMap, !TypeInfoVars) :-
     lookup_var_type(VarTypes, Var, Type),
-    type_vars(Type, TypeVars),
+    type_vars_in_type(Type, TypeVars),
     (
         TypeVars = [],
         % Optimize common case,

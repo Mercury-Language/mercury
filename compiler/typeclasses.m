@@ -560,7 +560,7 @@ unify_on_elements(Elements, TypesA, TypesB, ExternalTypeParams, !Bindings) :-
 subsumes_on_elements(Elements, TypesA, TypesB, Subst) :-
     RTypesA = restrict_list_elements(Elements, TypesA),
     RTypesB = restrict_list_elements(Elements, TypesB),
-    type_vars_list(RTypesB, RTypesBVars),
+    type_vars_in_types(RTypesB, RTypesBVars),
     map.init(Subst0),
     type_unify_list(RTypesA, RTypesB, RTypesBVars, Subst0, Subst).
 

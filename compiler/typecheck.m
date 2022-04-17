@@ -466,7 +466,7 @@ handle_stubs_and_non_contiguous_clauses(ModuleInfo, PredId, !PredInfo,
             % We also need to set the external_type_params field
             % to indicate that all the existentially quantified tvars
             % in the head of this pred are indeed bound by this predicate.
-            type_vars_list(ArgTypes, HeadVarsInclExistentials),
+            type_vars_in_types(ArgTypes, HeadVarsInclExistentials),
             pred_info_set_external_type_params(HeadVarsInclExistentials,
                 !PredInfo),
             ContainsErrors = no,
@@ -541,7 +541,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, NextIteration) :-
                 write_pred_progress_message(ModuleInfo,
                     "Type-checking", PredId, !IO)
             ),
-            type_vars_list(ArgTypes0, !:ExternalTypeParams),
+            type_vars_in_types(ArgTypes0, !:ExternalTypeParams),
             pred_info_get_class_context(!.PredInfo, PredConstraints),
             constraint_list_get_tvars(PredConstraints ^ univ_constraints,
                 UnivTVars),
@@ -609,7 +609,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, NextIteration) :-
         % only to the head variables, and those that apply to type variables
         % which occur only in the body.
         lookup_var_types(InferredVarTypes, HeadVars, ArgTypes),
-        type_vars_list(ArgTypes, ArgTypeVars),
+        type_vars_in_types(ArgTypes, ArgTypeVars),
         restrict_to_head_vars(InferredTypeConstraints0, ArgTypeVars,
             InferredTypeConstraints, UnprovenBodyConstraints),
 
@@ -3164,7 +3164,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
         %   Pair0 = 1 - 'a',
         %   Pair = Pair0 ^ snd := 2.
 
-        type_vars(FieldType, TVarsInField),
+        type_vars_in_type(FieldType, TVarsInField),
         % Most of the time, TVarsInField is [], so provide a fast path
         % for this case.
         (
@@ -3193,7 +3193,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
             %
             list.det_replace_nth(ConsArgTypes, FieldNumber, int_type,
                 ArgTypesWithoutField),
-            type_vars_list(ArgTypesWithoutField, TVarsInOtherArgs),
+            type_vars_in_types(ArgTypesWithoutField, TVarsInOtherArgs),
             set.intersect(
                 set.list_to_set(TVarsInField),
                 set.intersect(
@@ -3220,7 +3220,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
                 % onto the set of type variables occurring in the types of the
                 % arguments of the call to `'field :='/2'. Note that we have
                 % already flipped the constraints.
-                type_vars_list([FunctorType, FieldType], CallTVars0),
+                type_vars_in_types([FunctorType, FieldType], CallTVars0),
                 set.list_to_set(CallTVars0, CallTVars),
                 project_and_rename_constraints(ClassTable, TVarSet, CallTVars,
                     TVarRenaming, Constraints0, Constraints),
@@ -3268,7 +3268,7 @@ project_and_rename_constraints(ClassTable, TVarSet, CallTVars, TVarRenaming,
 
 project_constraint(CallTVars, Constraint) :-
     Constraint = hlds_constraint(_Ids, _ClassName, TypesToCheck),
-    type_vars_list(TypesToCheck, TVarsToCheck0),
+    type_vars_in_types(TypesToCheck, TVarsToCheck0),
     set.list_to_set(TVarsToCheck0, TVarsToCheck),
     set.intersect(TVarsToCheck, CallTVars, RelevantTVars),
     set.is_non_empty(RelevantTVars).
@@ -3727,7 +3727,7 @@ build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable, CurTypeCtor,
                     % parameters.
                     true
                 else
-                    type_vars_list(ArgTypes, TypeVars),
+                    type_vars_in_types(ArgTypes, TypeVars),
                     set.insert_list(TypeVars, !InvariantSet)
                 )
             ;
@@ -3735,7 +3735,7 @@ build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable, CurTypeCtor,
                 ; TypeBody = hlds_abstract_type(_)
                 ; TypeBody = hlds_solver_type(_)
                 ),
-                type_vars_list(ArgTypes, TypeVars),
+                type_vars_in_types(ArgTypes, TypeVars),
                 set.insert_list(TypeVars, !InvariantSet)
             ;
                 TypeBody = hlds_eqv_type(_),
@@ -3753,7 +3753,7 @@ build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable, CurTypeCtor,
     ;
         CtorArgType = higher_order_type(_PredOrFunc, ArgTypes, _HOInstInfo,
             _Purity, _EvalMethod),
-        type_vars_list(ArgTypes, TypeVars),
+        type_vars_in_types(ArgTypes, TypeVars),
         set.insert_list(TypeVars, !InvariantSet)
     ;
         CtorArgType = apply_n_type(_, _, _),

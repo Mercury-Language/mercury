@@ -476,7 +476,7 @@ find_unresolved_types_in_vars_inner([Var - Type | VarTypes],
     ( if VarsToDo < 0 then
         LeftOverVarTypes = [Var - Type | VarTypes]
     else
-        type_vars(Type, TVars),
+        type_vars_in_type(Type, TVars),
         set.list_to_set(TVars, TVarsSet0),
         set.delete_list(ExternalTypeParams, TVarsSet0, TVarsSet1),
         ( if set.is_empty(TVarsSet1) then

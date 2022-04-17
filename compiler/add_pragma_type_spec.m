@@ -342,7 +342,7 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
                 set.list_to_set(VarsToSub, VarsToSubSet),
 
                 assoc_list.values(Subst, SubstTypes0),
-                type_vars_list(SubstTypes0, TVarsInSubstTypes0),
+                type_vars_in_types(SubstTypes0, TVarsInSubstTypes0),
                 set.list_to_set(TVarsInSubstTypes0, TVarsInSubstTypes),
 
                 set.intersect(TVarsInSubstTypes, VarsToSubSet, RecSubstTVars0),

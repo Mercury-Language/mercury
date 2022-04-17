@@ -79,7 +79,7 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
-:- import_module hlds.vartypes.
+:- import_module hlds.var_table.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -89,12 +89,12 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_type.
 
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -110,22 +110,21 @@
     %
 :- type trail_ops_info
     --->    trail_ops_info(
-                trail_varset        :: prog_varset,
-                trail_var_types     :: vartypes,
                 trail_module_info   :: module_info,
                 opt_trail_usage     :: bool,
-                inline_ops          :: maybe_gen_trail_ops_inline
+                inline_ops          :: maybe_gen_trail_ops_inline,
+                trail_var_table     :: var_table
             ).
 
 add_trail_ops(OptTrailUsage, GenerateInline, ModuleInfo0, !ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
-    TrailOpsInfo0 = trail_ops_info(VarSet0, VarTypes0, ModuleInfo0,
-        OptTrailUsage, GenerateInline),
+    proc_info_get_var_table(ModuleInfo0, !.ProcInfo, VarTable0),
+    TrailOpsInfo0 = trail_ops_info(ModuleInfo0, OptTrailUsage, GenerateInline,
+        VarTable0),
     goal_add_trail_ops(Goal0, Goal, TrailOpsInfo0, TrailOpsInfo),
-    TrailOpsInfo = trail_ops_info(VarSet, VarTypes, _, _, _),
+    TrailOpsInfo = trail_ops_info(_, _, _, VarTable),
     proc_info_set_goal(Goal, !ProcInfo),
-    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+    proc_info_set_var_table(VarTable, !ProcInfo),
     % The code below does not maintain the non-local variables,
     % so we need to requantify.
     % XXX it would be more efficient to maintain them rather than
@@ -598,24 +597,23 @@ gen_prune_tickets_to(SavedTicketCounterVar, Context, PruneTicketsToGoal,
     trail_ops_info::in, trail_ops_info::out) is det.
 
 new_ticket_var(Var, !Info) :-
-    new_var("TrailTicket", ticket_type, Var, !Info).
+    new_var("TrailTicket", ticket_type, is_not_dummy_type, Var, !Info).
 
 :- pred new_ticket_counter_var(prog_var::out,
     trail_ops_info::in, trail_ops_info::out) is det.
 
 new_ticket_counter_var(Var, !Info) :-
-    new_var("SavedTicketCounter", ticket_counter_type, Var, !Info).
+    new_var("SavedTicketCounter", ticket_counter_type, is_not_dummy_type,
+        Var, !Info).
 
-:- pred new_var(string::in, mer_type::in, prog_var::out,
+:- pred new_var(string::in, mer_type::in, is_dummy_type::in, prog_var::out,
     trail_ops_info::in, trail_ops_info::out) is det.
 
-new_var(Name, Type, Var, !Info) :-
-    VarSet0 = !.Info ^ trail_varset,
-    VarTypes0 = !.Info ^ trail_var_types,
-    varset.new_named_var(Name, Var, VarSet0, VarSet),
-    add_var_type(Var, Type, VarTypes0, VarTypes),
-    !Info ^ trail_varset := VarSet,
-    !Info ^ trail_var_types := VarTypes.
+new_var(Name, Type, IsDummy, Var, !Info) :-
+    VarTable0 = !.Info ^ trail_var_table,
+    Entry = vte(Name, Type, IsDummy),
+    add_var_entry(Entry, Var, VarTable0, VarTable),
+    !Info ^ trail_var_table := VarTable.
 
 %-----------------------------------------------------------------------------%
 

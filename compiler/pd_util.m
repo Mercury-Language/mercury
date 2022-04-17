@@ -780,7 +780,7 @@ pd_recompute_instmap_delta(Goal0, Goal, !PDInfo) :-
     proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     recompute_instmap_delta(recompute_atomic_instmap_deltas,
-        Goal0, Goal, VarTypes, InstVarSet, InstMap, ModuleInfo0, ModuleInfo),
+        VarTypes, InstVarSet, InstMap, Goal0, Goal, ModuleInfo0, ModuleInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo).
 
 %---------------------------------------------------------------------------%

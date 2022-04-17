@@ -34,6 +34,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -1278,7 +1279,7 @@ pred_info_init(PredOrFunc, PredModuleName, PredName, PredFormArity, Context,
     % XXX kind inference:
     % we assume all tvars have kind `star'.
     map.init(ExistQVarBindings),
-    type_vars_list(ArgTypes, TVars),
+    type_vars_in_types(ArgTypes, TVars),
     list.delete_elems(TVars, ExistQVars, HeadTypeParams),
     % argument ClassProofs
     % argument ClassConstraintMap
@@ -1339,7 +1340,7 @@ pred_info_create(PredOrFunc, PredModuleName, PredName, Context, Origin, Status,
     % XXX kind inference:
     % we assume all tvars have kind `star'.
     map.init(ExistQVarBindings),
-    type_vars_list(ArgTypes, TVars),
+    type_vars_in_types(ArgTypes, TVars),
     list.delete_elems(TVars, ExistQVars, HeadTypeParams),
     map.init(ClassProofs),
     map.init(ClassConstraintMap),
@@ -1811,7 +1812,7 @@ pred_info_set_arg_types(X, Y, Z, !PredInfo) :-
 
 pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
     pred_info_get_arg_types(PredInfo, ArgTypes),
-    type_vars_list(ArgTypes, ArgTypeVars0),
+    type_vars_in_types(ArgTypes, ArgTypeVars0),
     list.sort_and_remove_dups(ArgTypeVars0, ArgTypeVars),
     pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
     list.delete_elems(ArgTypeVars, ExistQVars, UnivQVars).
@@ -2333,6 +2334,13 @@ marker_list_to_markers(Markers, MarkerSet) :-
     rtti_varmaps::in, is_address_taken::in, has_parallel_conj::in,
     map(prog_var, string)::in, proc_info::out) is det.
 
+:- pred proc_info_create_vt(prog_context::in, item_seq_num::in,
+    var_table::in, list(prog_var)::in,
+    inst_varset::in, list(mer_mode)::in,
+    detism_decl::in, determinism::in, hlds_goal::in,
+    rtti_varmaps::in, is_address_taken::in, has_parallel_conj::in,
+    map(prog_var, string)::in, proc_info::out) is det.
+
 %---------------------%
 
 % proc_prepare_to_clone returns all the fields of an existing proc_info,
@@ -2643,6 +2651,11 @@ marker_list_to_markers(Markers, MarkerSet) :-
 :- pred proc_info_set_trailing_info(maybe(proc_trailing_info)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_mm_tabling_info(maybe(proc_mm_tabling_info)::in,
+    proc_info::in, proc_info::out) is det.
+
+:- pred proc_info_get_var_table(module_info::in, proc_info::in,
+    var_table::out) is det.
+:- pred proc_info_set_var_table(var_table::in,
     proc_info::in, proc_info::out) is det.
 
 :- pred proc_info_get_structure_sharing(proc_info::in,
@@ -3325,6 +3338,14 @@ proc_info_create(Context, ItemNumber, VarSet, VarTypes, HeadVars,
         DetismDecl, yes(Detism), Detism, Goal, RttiVarMaps, IsAddressTaken,
         HasParallelConj, VarNameRemap, ProcInfo).
 
+proc_info_create_vt(Context, ItemNumber, VarTable, HeadVars,
+        InstVarSet, HeadModes, DetismDecl, Detism, Goal, RttiVarMaps,
+        IsAddressTaken, HasParallelConj, VarNameRemap, ProcInfo) :-
+    split_var_table(VarTable, VarSet, VarTypes),
+    proc_info_create(Context, ItemNumber, VarSet, VarTypes, HeadVars,
+        InstVarSet, HeadModes, DetismDecl, Detism, Goal, RttiVarMaps,
+        IsAddressTaken, HasParallelConj, VarNameRemap, ProcInfo).
+
 :- pred proc_info_create_with_declared_detism(prog_context::in,
     item_seq_num::in, prog_varset::in, vartypes::in, list(prog_var)::in,
     inst_varset::in, list(mer_mode)::in,
@@ -3767,6 +3788,18 @@ proc_info_set_trailing_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_trailing_info := X.
 proc_info_set_mm_tabling_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_mm_tabling_info := X.
+
+%---------------------------------------------------------------------------%
+
+proc_info_get_var_table(ModuleInfo, PI, VarTable) :-
+    proc_info_get_varset_vartypes(PI, VarSet, VarTypes),
+    make_var_table(ModuleInfo, VarSet, VarTypes, VarTable).
+
+proc_info_set_var_table(VarTable, !PI) :-
+    split_var_table(VarTable, VarSet, VarTypes),
+    proc_info_set_varset_vartypes(VarSet, VarTypes, !PI).
+
+%---------------------------------------------------------------------------%
 
 proc_info_get_structure_sharing(ProcInfo, MaybeSharing) :-
     MaybeSharing = ProcInfo ^ proc_sub_info ^ psi_structure_sharing

@@ -805,9 +805,8 @@ type_to_pieces(TVarSet, InstVarSet, VarNamePrint, MaybeAddQuotes,
         ExistQVars = []
     ;
         ExternalTypeParams = [_ | _],
-        type_vars(Type, TypeVars),
+        set_of_type_vars_in_type(Type, TypeVarsSet),
         set.list_to_set(ExternalTypeParams, ExternalTypeParamsSet),
-        set.list_to_set(TypeVars, TypeVarsSet),
         set.intersect(ExternalTypeParamsSet, TypeVarsSet, ExistQVarsSet),
         set.to_sorted_list(ExistQVarsSet, ExistQVars)
     ),

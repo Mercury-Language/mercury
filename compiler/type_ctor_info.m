@@ -985,7 +985,7 @@ first_matching_type_class_info([], _, !N, _, _) :-
 first_matching_type_class_info([Constraint | Constraints], TVar,
         !N, MatchingConstraint, TypeInfoIndex) :-
     Constraint = constraint(_, ArgTypes),
-    type_vars_list(ArgTypes, TVs),
+    type_vars_in_types(ArgTypes, TVs),
     ( if list.index1_of_first_occurrence(TVs, TVar, Index) then
         MatchingConstraint = Constraint,
         TypeInfoIndex = Index

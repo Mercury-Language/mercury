@@ -77,7 +77,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module uint8.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -380,8 +379,7 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     % argument PredInfo
     % argument ProcInfo
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
-    make_var_table(ModuleInfo, VarSet, VarTypes, VarTable),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     proc_info_get_stack_slots(ProcInfo, StackSlots),
     max_var_slot(StackSlots, VarSlotMax),
     trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals,

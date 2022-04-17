@@ -271,7 +271,7 @@ type_assign_set_get_final_info(TypeAssignSet,
         ConstraintProofMap = ConstraintProofMap0,
         ConstraintMap1 = ConstraintMap0,
         vartypes_types(VarTypes1, Types1),
-        type_vars_list(Types1, TypeVars1)
+        type_vars_in_types(Types1, TypeVars1)
     else
         transform_foldl_var_types(expand_types(TypeBindings),
             VarTypes0, VarTypes1, set.init, TypeVarsSet1),
@@ -323,7 +323,7 @@ type_assign_set_get_final_info(TypeAssignSet,
     % (XXX should we do the same for TypeConstraints and ConstraintProofMap
     % too?)
     vartypes_types(OldExplicitVarTypes, ExplicitTypes),
-    type_vars_list(ExplicitTypes, ExplicitTypeVars0),
+    type_vars_in_types(ExplicitTypes, ExplicitTypeVars0),
     map.keys(ExistTypeRenaming, ExistQVarsToBeRenamed),
     list.delete_elems(OldExistQVars, ExistQVarsToBeRenamed,
         ExistQVarsToRemain),
@@ -363,7 +363,7 @@ type_assign_set_get_final_info(TypeAssignSet,
 
 expand_types(TypeSubst, Type0, Type, !TypeVarsSet) :-
     apply_rec_subst_to_type(TypeSubst, Type0, Type),
-    type_vars(Type, TypeVars),
+    type_vars_in_type(Type, TypeVars),
     set.insert_list(TypeVars, !TypeVarsSet).
 
     % We rename any existentially quantified type variables which get mapped

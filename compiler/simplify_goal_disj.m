@@ -56,6 +56,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_goal.
+:- import_module hlds.var_table.
 :- import_module libs.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
@@ -100,8 +101,8 @@ simplify_goal_disj(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             simplify_info_get_module_info(!.Info, ModuleInfo1),
             NonLocals = goal_info_get_nonlocals(GoalInfo0),
             simplify_info_get_var_types(!.Info, VarTypes),
-            merge_instmap_deltas(InstMap0, NonLocals, VarTypes, InstMapDeltas,
-                NewDelta, ModuleInfo1, ModuleInfo2),
+            merge_instmap_deltas(vts_vartypes(VarTypes), NonLocals,
+                InstMap0, InstMapDeltas, NewDelta, ModuleInfo1, ModuleInfo2),
             simplify_info_set_module_info(ModuleInfo2, !Info),
             goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo),
 
