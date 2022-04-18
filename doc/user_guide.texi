@@ -6943,7 +6943,7 @@ Do not warn about one state variable shadowing another.
 @sp 1
 @item --no-warn-unneeded-mode-specific-clause
 @findex --no-warn-unneeded-mode-specific-clause
-Do not warn about clauses that neededlessly specify
+Do not warn about clauses that needlessly specify
 the modes of their arguments.
 
 @sp 1

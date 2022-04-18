@@ -4398,7 +4398,7 @@ options_help_warning(Stream, !IO) :-
         "--no-warn-state-var-shadowing",
         "\tDo not warn about one state variable shadowing another.",
         "--no-warn-unneeded-mode-specific-clause",
-        "\tDo not warn about clauses that neededlessly specify",
+        "\tDo not warn about clauses that needlessly specify",
         "\tthe modes of their arguments.",
         "--no-warn-suspected-occurs-check-failure",
         "\tDo not warn about code that looks like it unifies a variable",
