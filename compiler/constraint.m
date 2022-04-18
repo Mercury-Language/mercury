@@ -24,8 +24,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
 :- import_module parse_tree.
-:- import_module parse_tree.prog_data.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 
@@ -42,11 +41,11 @@
 :- pred propagate_constraints_in_goal(hlds_goal::in, hlds_goal::out,
     constraint_info::in, constraint_info::out) is det.
 
-:- pred constraint_info_init(module_info::in, vartypes::in, prog_varset::in,
+:- pred constraint_info_init(module_info::in, var_table::in,
     instmap::in, constraint_info::out) is det.
 
 :- pred constraint_info_deconstruct(constraint_info::in, module_info::out,
-    vartypes::out, prog_varset::out, bool::out) is det.
+    var_table::out, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -59,6 +58,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
 :- import_module cord.
@@ -66,7 +66,6 @@
 :- import_module map.
 :- import_module require.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -303,9 +302,9 @@ propagate_conj(Constraints, Goals0, Goals, !Info) :-
         else
             InstMap0 = !.Info ^ constr_instmap,
             ModuleInfo = !.Info ^ constr_module_info,
-            VarTypes = !.Info ^ constr_vartypes,
+            VarTable = !.Info ^ constr_var_table,
             annotate_conj_output_vars(Goals0, ModuleInfo,
-                VarTypes, InstMap0, [], RevAnnotatedGoals1),
+                VarTable, InstMap0, [], RevAnnotatedGoals1),
             annotate_conj_constraints(ModuleInfo, RevAnnotatedGoals1,
                 Constraints, [], AnnotatedGoals2, !Info),
             propagate_conj_constraints(AnnotatedGoals2, cord.init, GoalsCord,
@@ -317,16 +316,16 @@ propagate_conj(Constraints, Goals0, Goals, !Info) :-
     % Annotate each conjunct with the variables it produces.
     %
 :- pred annotate_conj_output_vars(list(hlds_goal)::in, module_info::in,
-    vartypes::in, instmap::in, annotated_conj::in, annotated_conj::out) is det.
+    var_table::in, instmap::in, annotated_conj::in, annotated_conj::out) is det.
 
 annotate_conj_output_vars([], _, _, _, !RevAnnotatedGoals).
-annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
+annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTable, InstMap0,
         !RevAnnotatedGoals) :-
     Goal = hlds_goal(_, GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
 
     apply_instmap_delta(InstMapDelta, InstMap0, InstMap),
-    instmap_changed_vars(ModuleInfo, VarTypes, InstMap0, InstMap,
+    instmap_changed_vars_vt(ModuleInfo, VarTable, InstMap0, InstMap,
         ChangedVars0),
 
     instmap_vars_list(InstMap, InstMapVars),
@@ -341,7 +340,7 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
         ( pred(Var::in) is semidet :-
             instmap_lookup_var(InstMap0, Var, InstBefore),
             instmap_delta_search_var(InstMapDelta, Var, InstAfter),
-            lookup_var_type(VarTypes, Var, Type),
+            lookup_var_type(VarTable, Var, Type),
             not inst_matches_initial(ModuleInfo, Type, InstAfter, InstBefore)
         ),
     IncompatibleInstVars = set_of_var.list_to_set(
@@ -355,7 +354,7 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
         ( pred(Var::in) is semidet :-
             instmap_lookup_var(InstMap0, Var, InstBefore),
             instmap_delta_search_var(InstMapDelta, Var, InstAfter),
-            lookup_var_type(VarTypes, Var, Type),
+            lookup_var_type(VarTable, Var, Type),
             not inst_matches_binding(ModuleInfo, Type, InstAfter, InstBefore)
         ),
     BoundVars = set_of_var.list_to_set(list.filter(Bound, InstMapVars)),
@@ -368,7 +367,7 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
     AnnotatedConjunct = annotated_conjunct(Goal, ChangedVars, BoundVars,
         IncompatibleInstVars),
     !:RevAnnotatedGoals = [AnnotatedConjunct | !.RevAnnotatedGoals],
-    annotate_conj_output_vars(Goals, ModuleInfo, VarTypes, InstMap,
+    annotate_conj_output_vars(Goals, ModuleInfo, VarTable, InstMap,
         !RevAnnotatedGoals).
 
 %-----------------------------------------------------------------------------%
@@ -589,13 +588,13 @@ add_constant_construction(ConstructVar, Construct0,
         ConstraintNonLocals = goal_info_get_nonlocals(ConstraintInfo),
         set_of_var.member(ConstraintNonLocals, ConstructVar)
     then
-        VarSet0 = !.Info ^ constr_varset,
-        VarTypes0 = !.Info ^ constr_vartypes,
-        varset.new_var(NewVar, VarSet0, VarSet),
-        lookup_var_type(VarTypes0, ConstructVar, VarType),
-        add_var_type(NewVar, VarType, VarTypes0, VarTypes),
-        !Info ^ constr_varset := VarSet,
-        !Info ^ constr_vartypes := VarTypes,
+        VarTable0 = !.Info ^ constr_var_table,
+        lookup_var_entry(VarTable0, ConstructVar, ConstructVarEntry),
+        ConstructVarEntry = vte(_, ConstructVarType, ConstructVarTypeIsDummy),
+        NewVarEntry = vte("", ConstructVarType, ConstructVarTypeIsDummy),
+        add_var_entry(NewVarEntry, NewVar, VarTable0, VarTable),
+        !Info ^ constr_var_table := VarTable,
+
         Subn = map.singleton(ConstructVar, NewVar),
         rename_some_vars_in_goal(Subn, Construct0, Construct),
         Constructs = [Construct | Constructs0],
@@ -777,19 +776,16 @@ goal_is_simple(Goal) :-
 :- type constraint_info
     --->    constraint_info(
                 constr_module_info  :: module_info,
-                constr_vartypes     :: vartypes,
-                constr_varset       :: prog_varset,
+                constr_var_table    :: var_table,
                 constr_instmap      :: instmap,
                 constr_changed      :: bool     % has anything changed.
             ).
 
-constraint_info_init(ModuleInfo, VarTypes, VarSet, InstMap, ConstraintInfo) :-
-    ConstraintInfo = constraint_info(ModuleInfo, VarTypes, VarSet,
-        InstMap, no).
+constraint_info_init(ModuleInfo, VarTable, InstMap, ConstraintInfo) :-
+    ConstraintInfo = constraint_info(ModuleInfo, VarTable, InstMap, no).
 
-constraint_info_deconstruct(ConstraintInfo, ModuleInfo,
-        VarTypes, VarSet, Changed) :-
-    ConstraintInfo = constraint_info(ModuleInfo, VarTypes, VarSet, _, Changed).
+constraint_info_deconstruct(ConstraintInfo, ModuleInfo, VarTable, Changed) :-
+    ConstraintInfo = constraint_info(ModuleInfo, VarTable, _, Changed).
 
 :- pred constraint_info_update_goal(hlds_goal::in,
     constraint_info::in, constraint_info::out) is det.
@@ -806,8 +802,8 @@ constraint_info_update_goal(hlds_goal(_, GoalInfo), !Info) :-
 constraint_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !Info) :-
     InstMap0 = !.Info ^ constr_instmap,
     ModuleInfo0 = !.Info ^ constr_module_info,
-    VarTypes = !.Info ^ constr_vartypes,
-    lookup_var_type(VarTypes, Var, Type),
+    VarTable = !.Info ^ constr_var_table,
+    lookup_var_type(VarTable, Var, Type),
     bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
         InstMap0, InstMap, ModuleInfo0, ModuleInfo),
     !Info ^ constr_instmap := InstMap,

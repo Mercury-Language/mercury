@@ -94,7 +94,8 @@
     %
     % A version of clone_variable using var_tables.
     %
-:- pred clone_variable_var_table(prog_var::in, var_table::in, var_table::out,
+:- pred clone_variable_var_table(prog_var::in, var_table::in,
+    var_table::in, var_table::out,
     prog_var_renaming::in, prog_var_renaming::out, prog_var::out) is det.
 
     % clone_variables(OldVars, OldVarSet, OldVarTypes,
@@ -114,7 +115,7 @@
     % A version of clone_variables using var_tables.
     %
 :- pred clone_variables_var_table(list(prog_var)::in,
-    var_table::in, var_table::out,
+    var_table::in, var_table::in, var_table::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
     % Return all the variables in the goal or goal expression.
@@ -626,11 +627,11 @@ clone_variable(Var, OldVarNames, OldVarTypes, !VarSet, !VarTypes, !Renaming,
         )
     ).
 
-clone_variable_var_table(Var, !VarTable, !Renaming, CloneVar) :-
+clone_variable_var_table(Var, OldVarTable, !VarTable, !Renaming, CloneVar) :-
     ( if map.search(!.Renaming, Var, CloneVarPrime) then
         CloneVar = CloneVarPrime
     else
-        lookup_var_entry(!.VarTable, Var, Entry),
+        lookup_var_entry(OldVarTable, Var, Entry),
         add_var_entry(Entry, CloneVar, !VarTable),
         map.det_insert(Var, CloneVar, !Renaming)
     ).
@@ -643,10 +644,10 @@ clone_variables([Var | Vars], OldVarNames, OldVarTypes, !VarSet, !VarTypes,
     clone_variables(Vars, OldVarNames, OldVarTypes, !VarSet, !VarTypes,
         !Renaming).
 
-clone_variables_var_table([], !VarTable, !Renaming).
-clone_variables_var_table([Var | Vars], !VarTable, !Renaming) :-
-    clone_variable_var_table(Var, !VarTable, !Renaming, _CloneVar),
-    clone_variables_var_table(Vars, !VarTable, !Renaming).
+clone_variables_var_table([], _, !VarTable, !Renaming).
+clone_variables_var_table([Var | Vars], OldVarTable, !VarTable, !Renaming) :-
+    clone_variable_var_table(Var, OldVarTable, !VarTable, !Renaming, _Clone),
+    clone_variables_var_table(Vars, OldVarTable, !VarTable, !Renaming).
 
 %-----------------------------------------------------------------------------%
 

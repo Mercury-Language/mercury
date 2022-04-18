@@ -89,7 +89,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module list.
 :- import_module map.
@@ -108,8 +108,9 @@
 
 :- pred is_simple_goal(hlds_goal::in, int::in) is semidet.
 
-    % do_inline_call(UnivQVars, Args, CalledPredInfo, CalledProcInfo,
-    %   !VarSet, !VarTypes, !TVarSet, !RttiVarMaps, !RttiVarMaps, Goal):
+    % do_inline_call(ModuleInfo, UnivQVars, Args,
+    %   CalledPredInfo, CalledProcInfo, !TVarSet, !VarTable, !RttiVarMaps,
+    %   Goal):
     %
     % Given the universally quantified type variables in the caller's type,
     % the arguments to the call, the pred_info and proc_info for the called
@@ -117,19 +118,17 @@
     % procedure currently being analysed, rename the goal for the called
     % procedure so that it can be inlined.
     %
-:- pred do_inline_call(list(tvar)::in, list(prog_var)::in,
-    pred_info::in, proc_info::in, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, tvarset::in, tvarset::out,
-    rtti_varmaps::in, rtti_varmaps::out, hlds_goal::out) is det.
+:- pred do_inline_call(module_info::in, list(tvar)::in, list(prog_var)::in,
+    pred_info::in, proc_info::in, tvarset::in, tvarset::out,
+    var_table::in, var_table::out, rtti_varmaps::in, rtti_varmaps::out,
+    hlds_goal::out) is det.
 
     % rename_goal(CalledProcHeadVars, CallArgs,
-    %   CallerVarSet0, CalleeVarSet, CallerVarSet,
     %   CallerVarTypes0, CalleeVarTypes, CallerVarTypes,
     %   VarRenaming, CalledGoal, RenamedGoal).
     %
 :- pred rename_goal(list(prog_var)::in, list(prog_var)::in,
-    prog_varset::in, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::in, vartypes::out,
+    var_table::in, var_table::in, var_table::out,
     map(prog_var, prog_var)::out, hlds_goal::in, hlds_goal::out) is det.
 
 :- type may_inline_purity_promised_pred
@@ -249,9 +248,8 @@
 
             % The fields we can update while doing inlining in a goal.
 
-                i_prog_varset           :: prog_varset,
-                i_vartypes              :: vartypes,
                 i_tvarset               :: tvarset,
+                i_var_table             :: var_table,
 
                 % Information about locations of type_infos and
                 % typeclass_infos.
@@ -702,24 +700,24 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
         pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
 
         proc_info_get_goal(!.ProcInfo, Goal0),
-        proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
+        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTypes0),
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
 
         InlineInfo0 = inline_info(!.ModuleInfo, VarThresh, HighLevelCode,
             UnivQTVars, ShouldInlineTailProcs, ShouldInlineProcs,
-            VarSet0, VarTypes0, TypeVarSet0, RttiVarMaps0,
+            TypeVarSet0, VarTypes0, RttiVarMaps0,
             we_have_not_inlined, we_have_not_inlined_parallel_conj,
             have_not_changed_detism, have_not_changed_purity),
 
         inlining_in_goal(Goal0, Goal, InlineInfo0, InlineInfo),
 
         InlineInfo = inline_info(_, _, _, _, _, _,
-            VarSet, VarTypes, TypeVarSet, RttiVarMaps,
+            TypeVarSet, VarTypes, RttiVarMaps,
             DidInlining, InlinedParallel, DetChanged, PurityChanged),
 
         pred_info_set_typevarset(TypeVarSet, !PredInfo),
 
-        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+        proc_info_set_var_table(VarTypes, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
         proc_info_set_goal(Goal, !ProcInfo),
 
@@ -894,7 +892,7 @@ inlining_in_par_conj([HeadGoal0 | TailGoals0], Goals, !Info) :-
 inlining_in_call(GoalExpr0, GoalInfo0, Goal, !Info) :-
     !.Info = inline_info(ModuleInfo, VarThresh, HighLevelCode,
         ExternalTypeParams, ShouldInlineTailProcs, ShouldInlineProcs,
-        VarSet0, VarTypes0, TypeVarSet0, RttiVarMaps0, _DidInlining0,
+        TypeVarSet0, VarTable0, RttiVarMaps0, _DidInlining0,
         InlinedParallel0, DetChanged0, PurityChanged0),
     GoalExpr0 =
         plain_call(PredId, ProcId, ArgVars, _Builtin, _Context, _SymName),
@@ -908,22 +906,19 @@ inlining_in_call(GoalExpr0, GoalInfo0, Goal, !Info) :-
         ;
             UserReq = not_user_req,
             % Okay, but will we exceed the number-of-variables threshold?
-            varset.vars(VarSet0, ListOfVars),
-            list.length(ListOfVars, NumVarsInVarSet),
+            var_table_count(VarTable0, NumVarsInVarTable),
 
             % We need to find out how many variables the Callee has.
-            proc_info_get_varset_vartypes(ProcInfo,
-                CalleeVarSet, _CalleeVarTypes),
-            varset.vars(CalleeVarSet, CalleeListOfVars),
-            list.length(CalleeListOfVars, NumVarsInCallee),
-            TotalNumVars = NumVarsInVarSet + NumVarsInCallee,
+            proc_info_get_var_table(ModuleInfo, ProcInfo, CalleeVarTable),
+            var_table_count(CalleeVarTable, NumVarsInCallee),
+            TotalNumVars = NumVarsInVarTable + NumVarsInCallee,
             TotalNumVars =< VarThresh
         ),
         % XXX Work around bug #142.
         not may_encounter_bug_142(ProcInfo, ArgVars)
     then
-        do_inline_call(ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
-            VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet,
+        do_inline_call(ModuleInfo, ExternalTypeParams, ArgVars,
+            PredInfo, ProcInfo, TypeVarSet0, TypeVarSet, VarTable0, VarTable,
             RttiVarMaps0, RttiVarMaps, Goal1),
 
         DidInlining = we_have_inlined,
@@ -967,7 +962,7 @@ inlining_in_call(GoalExpr0, GoalInfo0, Goal, !Info) :-
 
         !:Info = inline_info(ModuleInfo, VarThresh, HighLevelCode,
             ExternalTypeParams, ShouldInlineTailProcs, ShouldInlineProcs,
-            VarSet, VarTypes, TypeVarSet, RttiVarMaps, DidInlining,
+            TypeVarSet, VarTable, RttiVarMaps, DidInlining,
             InlinedParallel, DetChanged, PurityChanged),
 
         (
@@ -1010,8 +1005,8 @@ tci_vars_different_constraints(RttiVarMaps, [VarA, VarB | Vars]) :-
 
 %---------------------------------------------------------------------------%
 
-do_inline_call(ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
-        VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet,
+do_inline_call(ModuleInfo, ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
+        TypeVarSet0, TypeVarSet, VarTable0, VarTable,
         RttiVarMaps0, RttiVarMaps, Goal) :-
     proc_info_get_goal(ProcInfo, CalledGoal),
 
@@ -1019,7 +1014,7 @@ do_inline_call(ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
 
     pred_info_get_typevarset(PredInfo, CalleeTypeVarSet),
     proc_info_get_headvars(ProcInfo, HeadVars),
-    proc_info_get_varset_vartypes(ProcInfo, CalleeVarSet, CalleeVarTypes0),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, CalleeVarTable0),
     proc_info_get_rtti_varmaps(ProcInfo, CalleeRttiVarMaps0),
 
     % Substitute the appropriate types into the type mapping of the called
@@ -1034,26 +1029,26 @@ do_inline_call(ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
     % First, rename apart the type variables in the callee. (We can almost
     % throw away the new typevarset, since we are about to substitute away
     % any new type variables, but any unbound type variables in the callee
-    % will not be substituted away)
+    % will not be substituted away.)
 
     tvarset_merge_renaming(TypeVarSet0, CalleeTypeVarSet, TypeVarSet,
         TypeRenaming),
-    apply_variable_renaming_to_vartypes(TypeRenaming,
-        CalleeVarTypes0, CalleeVarTypes1),
+    apply_variable_renaming_to_var_table(TypeRenaming,
+        CalleeVarTable0, CalleeVarTable1),
 
     % Next, compute the type substitution and then apply it.
 
-    % Note: there's no need to update the type_info locations maps,
+    % Note: there is no need to update the type_info locations maps,
     % either for the caller or callee, since for any type vars in the
     % callee which get bound to type vars in the caller, the type_info
-    % location will be given by the entry in the caller's
-    % type_info locations map (and vice versa).  It doesn't matter if the
-    % final type_info locations map contains some entries
-    % for type variables which have been substituted away,
-    % because those entries simply won't be used.
+    % location will be given by the entry in the caller's type_info
+    % locations map (and vice versa).  It doesn't matter if the final
+    % type_info locations map contains some entries for type variables
+    % which have been substituted away, because those entries simply
+    % won't be used.
 
-    lookup_var_types(CalleeVarTypes1, HeadVars, HeadTypes),
-    lookup_var_types(VarTypes0, ArgVars, ArgTypes),
+    lookup_var_types(CalleeVarTable1, HeadVars, HeadTypes),
+    lookup_var_types(VarTable0, ArgVars, ArgTypes),
 
     pred_info_get_exist_quant_tvars(PredInfo, CalleeExistQVars),
     compute_caller_callee_type_substitution(HeadTypes, ArgTypes,
@@ -1064,19 +1059,21 @@ do_inline_call(ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
     (
         CalleeExistQVars = [],
         % Update types in callee only.
-        apply_rec_subst_to_vartypes(TypeSubn, CalleeVarTypes1, CalleeVarTypes),
-        VarTypes1 = VarTypes0
+        apply_rec_subst_to_var_table(TypeSubn,
+            CalleeVarTable1, CalleeVarTable),
+        VarTable1 = VarTable0
     ;
         CalleeExistQVars = [_ | _],
         % Update types in callee.
-        apply_rec_subst_to_vartypes(TypeSubn, CalleeVarTypes1, CalleeVarTypes),
+        apply_rec_subst_to_var_table(TypeSubn,
+            CalleeVarTable1, CalleeVarTable),
         % Update types in caller.
-        apply_rec_subst_to_vartypes(TypeSubn, VarTypes0, VarTypes1)
+        apply_rec_subst_to_var_table(TypeSubn, VarTable0, VarTable1)
     ),
 
     % Now rename apart the variables in the called goal.
-    rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet, VarSet, VarTypes1,
-        CalleeVarTypes, VarTypes, Subn, CalledGoal, Goal),
+    rename_goal(HeadVars, ArgVars, VarTable1, CalleeVarTable, VarTable,
+        Subn, CalledGoal, Goal),
 
     apply_substitutions_to_rtti_varmaps(TypeRenaming, TypeSubn, Subn,
         CalleeRttiVarMaps0, CalleeRttiVarMaps1),
@@ -1087,12 +1084,12 @@ do_inline_call(ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
     % typeclass_infos in the caller, so they won't necessarily be the same.
     rtti_varmaps_overlay(CalleeRttiVarMaps1, RttiVarMaps0, RttiVarMaps).
 
-rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet, VarSet, VarTypes1,
-        CalleeVarTypes, VarTypes, Renaming, CalledGoal, Goal) :-
+rename_goal(HeadVars, ArgVars, VarTable0, CalleeVarTable, VarTable,
+        Renaming, CalledGoal, Goal) :-
     map.from_corresponding_lists(HeadVars, ArgVars, Renaming0),
-    varset.vars(CalleeVarSet, CalleeListOfVars),
-    clone_variables(CalleeListOfVars, CalleeVarSet, CalleeVarTypes,
-        VarSet0, VarSet, VarTypes1, VarTypes, Renaming0, Renaming),
+    var_table_vars(CalleeVarTable, CalleeListOfVars),
+    clone_variables_var_table(CalleeListOfVars, CalleeVarTable,
+        VarTable0, VarTable, Renaming0, Renaming),
     must_rename_vars_in_goal(Renaming, CalledGoal, Goal).
 
 %---------------------------------------------------------------------------%
@@ -1126,7 +1123,7 @@ rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet, VarSet, VarTypes1,
 should_inline_at_call_site(Info, GoalExpr0, GoalInfo0, ShouldInline) :-
     Info = inline_info(ModuleInfo, _VarThresh, HighLevelCode,
         _ExternalTypeParams, ShouldInlineTailProcs, ShouldInlineProcs,
-        _VarSet, _VarTypes, _TypeVarSet, _RttiVarMaps, _DidInlining,
+        _TypeVarSet, _VarTypes, _RttiVarMaps, _DidInlining,
         _InlinedParallel, _DetChanged, _PurityChanged),
     GoalExpr0 =
         plain_call(PredId, ProcId, _ArgVars, Builtin, _Context, _SymName),

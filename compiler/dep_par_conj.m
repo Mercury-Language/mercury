@@ -646,7 +646,7 @@ sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, SharedVars, FutureMap,
 
         % Each consumer will have its own local name for the consumed variable,
         % so they can each wait for it when they need to.
-        clone_variables_var_table(ConsumedVarsList, !VarTable,
+        clone_variables_var_table(ConsumedVarsList, !.VarTable, !VarTable,
             map.init, Renaming),
         rename_some_vars_in_goal(Renaming, !Goal)
     ),
@@ -890,7 +890,7 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
             % variables. We do so by renaming any occurrences of ConsumedVar
             % in this goal.
             % so we shouldn't update the argument of waited_in_conjunct.
-            clone_variable_var_table(ConsumedVar, !VarTable,
+            clone_variable_var_table(ConsumedVar, !.VarTable, !VarTable,
                 map.init, Renaming, _CloneVar),
             rename_some_vars_in_goal(Renaming, Goal1, Goal2)
         )
@@ -1045,7 +1045,7 @@ insert_wait_in_par_conj(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
             !.WaitedInConjunct = waited_in_conjunct(_),
             % This is not the first conjunct that waits for ConsumedVar,
             % so we shouldn't update the argument of waited_in_conjunct.
-            clone_variable_var_table(ConsumedVar, !VarTable,
+            clone_variable_var_table(ConsumedVar, !.VarTable, !VarTable,
                 map.init, Renaming, _CloneVar),
             rename_some_vars_in_goal(Renaming, Goal1, Goal)
         )

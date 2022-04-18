@@ -54,6 +54,7 @@
 :- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_tasks.
+:- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_dependency_graph.
@@ -75,7 +76,7 @@
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.inlining.
 :- import_module transform_hlds.pd_cost.
 :- import_module transform_hlds.pd_debug.
@@ -234,10 +235,10 @@ deforest_proc_deltas(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo) :-
             requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
             proc_info_get_goal(!.ProcInfo, !:Goal),
             proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
-            proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
+            proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
             proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
-            recompute_instmap_delta(recompute_atomic_instmap_deltas,
-                VarTypes, InstVarSet, InstMap0, !Goal, !ModuleInfo),
+            recompute_instmap_delta_vt(recompute_atomic_instmap_deltas,
+                VarTable, InstVarSet, InstMap0, !Goal, !ModuleInfo),
             pd_info_set_module_info(!.ModuleInfo, !PDInfo),
             pd_info_get_pred_info(!.PDInfo, !:PredInfo),
             proc_info_set_goal(!.Goal, !ProcInfo),
@@ -1290,8 +1291,8 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             pd_info_get_parent_versions(!.PDInfo, Parents0),
 
             pd_info_get_proc_info(!.PDInfo, ProcInfo1),
-            proc_info_get_varset_vartypes(ProcInfo1, _VarSet, VarTypes),
-            lookup_var_types(VarTypes, NonLocalsList, ArgTypes),
+            proc_info_get_var_table(ModuleInfo, ProcInfo1, VarTable),
+            lookup_var_types(VarTable, NonLocalsList, ArgTypes),
             VersionInfo = version_info(FoldGoal, CalledPreds, NonLocalsList,
                 ArgTypes, InstMap0, 0, 0, Parents0, MaybeGeneralised),
             pd_info_get_global_term_info(!.PDInfo, TermInfo0),
@@ -1323,9 +1324,9 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             MaybeCallGoal = no
         ),
 
-        % The varset and vartypes fields were increased when we unfolded
-        % the first call, but all the new variables are only used in the
-        % new version, so it is safe to reset the proc_info.
+        % The var_table field was updated when we unfolded the first call,
+        % but all the new variables are only used in the new version,
+        % so it is safe to reset the proc_info.
         pd_info_set_proc_info(ProcInfo0, !PDInfo),
         pd_info_set_instmap(InstMap0, !PDInfo)
     else
@@ -1356,7 +1357,7 @@ create_call_goal(proc(PredId, ProcId), VersionInfo, Renaming, TypeSubn, Goal,
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
     pd_info_get_pred_info(!.PDInfo, PredInfo0),
 
-    proc_info_get_varset_vartypes(ProcInfo0, VarSet0, VarTypes0),
+    proc_info_get_var_table(ModuleInfo, ProcInfo0, VarTable0),
     pred_info_get_typevarset(PredInfo0, TVarSet0),
 
     % Rename the argument types using the current pred's tvarset.
@@ -1365,9 +1366,9 @@ create_call_goal(proc(PredId, ProcId), VersionInfo, Renaming, TypeSubn, Goal,
     pd_info_set_pred_info(PredInfo, !PDInfo),
     apply_variable_renaming_to_type_list(TypeRenaming, ArgTypes0, ArgTypes1),
 
-    create_deforest_call_args(OldArgs, ArgTypes1, Renaming,
-        TypeSubn, Args, VarSet0, VarSet, VarTypes0, VarTypes),
-    proc_info_set_varset_vartypes(VarSet, VarTypes, ProcInfo0, ProcInfo),
+    create_deforest_call_args(ModuleInfo, Renaming, TypeSubn,
+        OldArgs, ArgTypes1, Args, VarTable0, VarTable),
+    proc_info_set_var_table(VarTable, ProcInfo0, ProcInfo),
     pd_info_set_proc_info(ProcInfo, !PDInfo),
 
     % Compute a goal_info.
@@ -1384,28 +1385,29 @@ create_call_goal(proc(PredId, ProcId), VersionInfo, Renaming, TypeSubn, Goal,
         qualified(PredModule, PredName)),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred create_deforest_call_args(list(prog_var)::in, list(mer_type)::in,
+:- pred create_deforest_call_args(module_info::in,
     map(prog_var, prog_var)::in, tsubst::in,
-    list(prog_var)::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+    list(prog_var)::in, list(mer_type)::in, list(prog_var)::out,
+    var_table::in, var_table::out) is det.
 
-create_deforest_call_args([], [], _, _, [], !VarSet, !VarTypes).
-create_deforest_call_args([], [_|_], _, _, _, !VarSet, !VarTypes) :-
+create_deforest_call_args(_, _, _, [], [], [], !VarTable).
+create_deforest_call_args(_, _, _, [], [_ | _], _, !VarTable) :-
     unexpected($pred, "length mismatch").
-create_deforest_call_args([_|_], [], _, _, _, !VarSet, !VarTypes) :-
+create_deforest_call_args(_, _, _, [_ | _], [], _, !VarTable) :-
     unexpected($pred, "length mismatch").
-create_deforest_call_args([OldArg | OldArgs], [ArgType | ArgTypes],
-        Renaming, TypeSubn, [Arg | Args], !VarSet, !VarTypes) :-
+create_deforest_call_args(ModuleInfo, Renaming, TypeSubn,
+        [OldArg | OldArgs], [ArgType | ArgTypes], [Arg | Args], !VarTable) :-
     ( if map.search(Renaming, OldArg, ArgPrime) then
         Arg = ArgPrime
     else
         % The variable is local to the call. Create a fresh variable.
-        varset.new_var(Arg, !VarSet),
         apply_subst_to_type(TypeSubn, ArgType, SubnArgType),
-        add_var_type(Arg, SubnArgType, !VarTypes)
+        IsDummy = is_type_a_dummy(ModuleInfo, SubnArgType),
+        ArgEntry = vte("", SubnArgType, IsDummy),
+        add_var_entry(ArgEntry, Arg, !VarTable)
     ),
-    create_deforest_call_args(OldArgs, ArgTypes, Renaming,
-        TypeSubn, Args, !VarSet, !VarTypes).
+    create_deforest_call_args(ModuleInfo, Renaming, TypeSubn,
+        OldArgs, ArgTypes, Args, !VarTable).
 
 %-----------------------------------------------------------------------------%
 
@@ -1458,16 +1460,16 @@ try_generalisation(EarlierGoal, BetweenGoals, MaybeLaterGoal,
     ),
     pd_info_get_versions(!.PDInfo, VersionIndex),
     map.lookup(VersionIndex, CoveringPredProcId, Version),
-    Version = version_info(VersionGoal, _, VersionArgs,
+    Version = version_info(VersionGoal, _, VersionArgVars,
         VersionArgTypes, VersionInstMap, _, _, _, _),
     pd_info_get_versions(!.PDInfo, Versions),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     ( if
-        pd_util.goals_match(ModuleInfo, VersionGoal, VersionArgs,
-            VersionArgTypes, FoldGoal, VarTypes, Renaming, _)
+        pd_util.goals_match(ModuleInfo, VersionGoal, VersionArgVars,
+            VersionArgTypes, FoldGoal, vts_var_table(VarTable), Renaming, _)
     then
-        do_generalisation(VersionArgs, Renaming, VersionInstMap,
+        do_generalisation(VersionArgVars, Renaming, VersionInstMap,
             EarlierGoal, BetweenGoals, MaybeLaterGoal, FoldGoal, ConjNonLocals,
             ProcPair, Size, CoveringPredProcId, MaybeGoal, !PDInfo)
     else if
@@ -1476,15 +1478,15 @@ try_generalisation(EarlierGoal, BetweenGoals, MaybeLaterGoal,
         % deforestations in a row and the first deforestation required
         % generalisation.
         match_generalised_version(ModuleInfo, VersionGoal,
-            VersionArgs, VersionArgTypes, EarlierGoal, BetweenGoals,
-            MaybeLaterGoal, ConjNonLocals, VarSet, VarTypes, Versions,
+            VersionArgVars, VersionArgTypes, EarlierGoal, BetweenGoals,
+            MaybeLaterGoal, ConjNonLocals, VarTable, Versions,
             Renaming)
     then
         trace [io(!IO)] (
             pd_debug_message(DebugPD, "matched with generalised version\n", [],
                 !IO)
         ),
-        do_generalisation(VersionArgs, Renaming, VersionInstMap,
+        do_generalisation(VersionArgVars, Renaming, VersionInstMap,
             EarlierGoal, BetweenGoals, MaybeLaterGoal, FoldGoal, ConjNonLocals,
             ProcPair, Size, CoveringPredProcId, MaybeGoal, !PDInfo)
     else
@@ -1501,7 +1503,7 @@ try_generalisation(EarlierGoal, BetweenGoals, MaybeLaterGoal,
     pred_proc_id::in, maybe(hlds_goal)::out,
     pd_info::in, pd_info::out) is det.
 
-do_generalisation(VersionArgs, Renaming, VersionInstMap, EarlierGoal,
+do_generalisation(VersionArgVars, Renaming, VersionInstMap, EarlierGoal,
         BetweenGoals, MaybeLaterGoal, FoldGoal, ConjNonLocals,
         ProcPair, Size, Generalised, MaybeGoal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
@@ -1511,13 +1513,13 @@ do_generalisation(VersionArgs, Renaming, VersionInstMap, EarlierGoal,
         pd_debug_message(DebugPD, "goals match, trying MSG\n", [], !IO)
     ),
     pd_info_get_instmap(!.PDInfo, InstMap0),
-    instmap_lookup_vars(VersionInstMap, VersionArgs, VersionInsts),
+    instmap_lookup_vars(VersionInstMap, VersionArgVars, VersionInsts),
     pd_util.inst_list_size(ModuleInfo, VersionInsts, VersionInstSizes),
     set_of_var.to_sorted_list(ConjNonLocals, ConjNonLocalsList),
     ( if
         % Check whether we can do a most specific generalisation of insts
         % of the non-locals.
-        try_MSG(ModuleInfo, VersionInstMap, VersionArgs, Renaming,
+        try_MSG(ModuleInfo, VersionInstMap, Renaming, VersionArgVars,
             InstMap0, InstMap),
         instmap_lookup_vars(InstMap, ConjNonLocalsList, ArgInsts),
         pd_util.inst_list_size(ModuleInfo, ArgInsts, NewInstSizes),
@@ -1538,30 +1540,30 @@ do_generalisation(VersionArgs, Renaming, VersionInstMap, EarlierGoal,
     ),
     pd_info_set_instmap(InstMap0, !PDInfo).
 
-:- pred try_MSG(module_info::in, instmap::in, list(prog_var)::in,
-    map(prog_var, prog_var)::in, instmap::in, instmap::out) is semidet.
+:- pred try_MSG(module_info::in, instmap::in, map(prog_var, prog_var)::in,
+    list(prog_var)::in, instmap::in, instmap::out) is semidet.
 
-try_MSG(_, _, [], _, !InstMap).
-try_MSG(ModuleInfo, VersionInstMap, [VersionArg | VersionArgs], Renaming,
+try_MSG(_, _, _, [], !InstMap).
+try_MSG(ModuleInfo, VersionInstMap, Renaming, [VersionArgVar | VersionArgVars],
         !InstMap) :-
-    instmap_lookup_var(VersionInstMap, VersionArg, VersionInst),
+    instmap_lookup_var(VersionInstMap, VersionArgVar, VersionInst),
     ( if
-        map.search(Renaming, VersionArg, Arg),
-        instmap_lookup_var(!.InstMap, Arg, VarInst),
+        map.search(Renaming, VersionArgVar, ArgVar),
+        instmap_lookup_var(!.InstMap, ArgVar, VarInst),
         inst_MSG(VersionInst, VarInst, ModuleInfo, Inst)
     then
-        instmap_set_var(Arg, Inst, !InstMap)
+        instmap_set_var(ArgVar, Inst, !InstMap)
     else
         true
     ),
-    try_MSG(ModuleInfo, VersionInstMap, VersionArgs, Renaming, !InstMap).
+    try_MSG(ModuleInfo, VersionInstMap, Renaming, VersionArgVars, !InstMap).
 
 %-----------------------------------------------------------------------------%
 
     % If the global termination check and generalisation failed and
-    % the first goal in the conjunction to be specialised is a
-    % generalisation of another version, try matching and generalising
-    % using that (non-generalised) version.
+    % the first goal in the conjunction to be specialised is a generalisation
+    % of another version, try matching and generalising using that
+    % (non-generalised) version.
     %
     % This predicate maps the call to the generalised predicate back
     % onto the non-generalised version. This makes the goal match
@@ -1573,33 +1575,34 @@ try_MSG(ModuleInfo, VersionInstMap, [VersionArg | VersionArgs], Renaming,
 :- pred match_generalised_version(module_info::in,
     hlds_goal::in, list(prog_var)::in, list(mer_type)::in,
     hlds_goal::in, list(hlds_goal)::in, maybe(hlds_goal)::in,
-    set_of_progvar::in, prog_varset::in, vartypes::in,
+    set_of_progvar::in, var_table::in,
     version_index::in, map(prog_var, prog_var)::out) is semidet.
 
-match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
+match_generalised_version(ModuleInfo, VersionGoal, VersionArgVars,
         VersionArgTypes, FirstGoal, BetweenGoals, MaybeLastGoal,
-        ConjNonLocals, !.VarSet, !.VarTypes, Versions, Renaming) :-
-    FirstGoal =
-        hlds_goal(plain_call(FirstPredId, FirstProcId, FirstArgs, _, _, _), _),
+        ConjNonLocals, !.VarTable, Versions, Renaming) :-
+    FirstGoal = hlds_goal(FirstGoalExpr, _),
+    FirstGoalExpr =
+        plain_call(FirstPredId, FirstProcId, FirstArgVars, _, _, _),
 
     % Look up the version which the first goal calls.
     map.search(Versions, proc(FirstPredId, FirstProcId), FirstVersionInfo),
-    FirstVersionInfo = version_info(FirstVersionGoal, _, FirstVersionArgs,
+    FirstVersionInfo = version_info(FirstVersionGoal, _, FirstVersionArgVars,
         _, _, _, _, _, MaybeNonGeneralisedVersion),
     MaybeNonGeneralisedVersion = yes(NonGeneralisedPredProcId),
-    map.from_corresponding_lists(FirstVersionArgs, FirstArgs, FirstRenaming0),
+    map.from_corresponding_lists(FirstVersionArgVars, FirstArgVars,
+        FirstRenaming0),
 
     goal_util.goal_vars(FirstVersionGoal, FirstVersionVars0),
     set_of_var.to_sorted_list(FirstVersionVars0, FirstVersionVars),
 
     module_info_pred_proc_info(ModuleInfo, FirstPredId, FirstProcId,
         _, FirstProcInfo),
-    proc_info_get_varset_vartypes(FirstProcInfo,
-        FirstVersionVarSet, FirstVersionVarTypes),
+    proc_info_get_var_table(ModuleInfo, FirstProcInfo,
+        FirstVersionVarTable),
 
-    clone_variables(FirstVersionVars,
-        FirstVersionVarSet, FirstVersionVarTypes,
-        !VarSet, !VarTypes, FirstRenaming0, FirstRenaming),
+    clone_variables_var_table(FirstVersionVars, FirstVersionVarTable,
+        !VarTable, FirstRenaming0, FirstRenaming),
     must_rename_vars_in_goal(FirstRenaming,
         FirstVersionGoal, RenamedFirstVersionGoal),
 
@@ -1617,29 +1620,30 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
     map.search(Versions, NonGeneralisedPredProcId,
         NonGeneralisedVersion),
     NonGeneralisedVersion = version_info(NonGeneralisedGoal, _,
-        NonGeneralisedArgs, NonGeneralisedArgTypes,_,_,_,_,_),
+        NonGeneralisedArgVars, NonGeneralisedArgTypes,_,_,_,_,_),
     pd_util.goals_match(ModuleInfo, NonGeneralisedGoal,
-        NonGeneralisedArgs, NonGeneralisedArgTypes,
-        RenamedFirstVersionGoal, !.VarTypes, GeneralRenaming, TypeRenaming),
+        NonGeneralisedArgVars, NonGeneralisedArgTypes,
+        RenamedFirstVersionGoal, vts_var_table(!.VarTable),
+        GeneralRenaming, TypeRenaming),
 
     module_info_pred_info(ModuleInfo, NonGeneralisedPredId,
         NonGeneralisedPredInfo),
     pred_info_get_arg_types(NonGeneralisedPredInfo, NonGeneralisedArgTypes),
-    create_deforest_call_args(NonGeneralisedArgs,
-        NonGeneralisedArgTypes, GeneralRenaming, TypeRenaming, NewArgs,
-        !.VarSet, _, !.VarTypes, _),
+    create_deforest_call_args(ModuleInfo, GeneralRenaming, TypeRenaming,
+        NonGeneralisedArgVars, NonGeneralisedArgTypes, NewArgVars,
+        !.VarTable, _),
 
     % Only fill in as much as pd_util.goals_match actually looks at.
     goal_info_init(GoalInfo),
     NonGeneralFirstGoalExpr = plain_call(NonGeneralisedPredId,
-        NonGeneralisedProcId, NewArgs, not_builtin, no, unqualified("")),
+        NonGeneralisedProcId, NewArgVars, not_builtin, no, unqualified("")),
     NonGeneralFirstGoal = hlds_goal(NonGeneralFirstGoalExpr, GoalInfo),
     create_conj(NonGeneralFirstGoal, BetweenGoals, MaybeLastGoal,
         ConjNonLocals, GoalToMatch),
 
     % Check whether the entire conjunction matches.
-    pd_util.goals_match(ModuleInfo, VersionGoal, VersionArgs,
-        VersionArgTypes, GoalToMatch, !.VarTypes, Renaming, _).
+    pd_util.goals_match(ModuleInfo, VersionGoal, VersionArgVars,
+        VersionArgTypes, GoalToMatch, vts_var_table(!.VarTable), Renaming, _).
 
 %-----------------------------------------------------------------------------%
 
@@ -2013,9 +2017,8 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
     globals.get_opt_tuple(Globals, OptTuple),
     VarsThreshold = OptTuple ^ ot_deforestation_vars_threshold,
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
-    proc_info_get_varset_vartypes(ProcInfo0, VarSet0, VarTypes0),
-    varset.vars(VarSet0, Vars),
-    list.length(Vars, NumVars),
+    proc_info_get_var_table(ModuleInfo, ProcInfo0, VarTable0),
+    var_table_count(VarTable0, NumVars),
     globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     ( if
         % Check that we haven't already got too many variables.
@@ -2035,13 +2038,13 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         pred_info_get_typevarset(PredInfo0, TypeVarSet0),
         pred_info_get_univ_quant_tvars(PredInfo0, UnivQVars),
         proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps0),
-        inlining.do_inline_call(UnivQVars, Args, CalledPredInfo,
-            CalledProcInfo, VarSet0, VarSet, VarTypes0, VarTypes,
-            TypeVarSet0, TypeVarSet, RttiVarMaps0, RttiVarMaps, Goal1),
+        inlining.do_inline_call(ModuleInfo, UnivQVars, Args,
+            CalledPredInfo, CalledProcInfo, TypeVarSet0, TypeVarSet,
+            VarTable0, VarTable, RttiVarMaps0, RttiVarMaps, Goal1),
         pred_info_set_typevarset(TypeVarSet, PredInfo0, PredInfo),
         proc_info_get_has_parallel_conj(CalledProcInfo, CalledHasParallelConj),
 
-        proc_info_set_varset_vartypes(VarSet, VarTypes, ProcInfo0, ProcInfo1),
+        proc_info_set_var_table(VarTable, ProcInfo0, ProcInfo1),
         proc_info_set_rtti_varmaps(RttiVarMaps, ProcInfo1, ProcInfo2),
         (
             CalledHasParallelConj = has_parallel_conj,

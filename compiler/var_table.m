@@ -156,6 +156,8 @@
 
 :- pred lookup_var_type_in_source(var_type_source::in, prog_var::in,
     mer_type::out) is det.
+:- pred lookup_var_types_in_source(var_type_source::in, list(prog_var)::in,
+    list(mer_type)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -478,6 +480,15 @@ lookup_var_type_in_source(VarTypeSrc, Var, Type) :-
     ;
         VarTypeSrc = vts_var_table(VarTable),
         var_table.lookup_var_type(VarTable, Var, Type)
+    ).
+
+lookup_var_types_in_source(VarTypeSrc, Vars, Types) :-
+    (
+        VarTypeSrc = vts_vartypes(VarTypes),
+        vartypes.lookup_var_types(VarTypes, Vars, Types)
+    ;
+        VarTypeSrc = vts_var_table(VarTable),
+        var_table.lookup_var_types(VarTable, Vars, Types)
     ).
 
 %---------------------%

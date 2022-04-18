@@ -126,6 +126,7 @@
 :- import_module parse_tree.pred_name.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.pd_debug.
 :- import_module transform_hlds.pd_util.
 
@@ -598,7 +599,7 @@ pd_info_goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
         OldArgTypes, NewGoal, NewInstMap, NewVarTypes, PredProcId,
         Version, MaybeVersion) :-
     pd_util.goals_match(ModuleInfo, OldGoal, OldArgs, OldArgTypes,
-        NewGoal, NewVarTypes, OldNewRenaming, TypeRenaming),
+        NewGoal, vts_vartypes(NewVarTypes), OldNewRenaming, TypeRenaming),
     OldGoal = hlds_goal(_, OldGoalInfo),
     OldNonLocals0 = goal_info_get_nonlocals(OldGoalInfo),
     set_of_var.to_sorted_list(OldNonLocals0, OldNonLocalsList),
