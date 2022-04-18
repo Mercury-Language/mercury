@@ -101,7 +101,6 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -168,7 +167,7 @@ apply_deep_prof_tail_rec_transform_to_proc(PredProcId, !ModuleInfo) :-
         SolnCount \= at_most_many,
         proc_info_get_headvars(ProcInfo0, HeadVars),
         proc_info_get_argmodes(ProcInfo0, Modes),
-        find_list_of_output_args(HeadVars, Modes, Types, !.ModuleInfo,
+        find_list_of_output_args(!.ModuleInfo, HeadVars, Types, Modes,
             Outputs),
         clone_proc_id(ProcTable0, ProcId, CloneProcId),
         ClonePredProcId = proc(PredId, CloneProcId),
@@ -213,25 +212,25 @@ apply_deep_prof_tail_rec_transform_to_proc(PredProcId, !ModuleInfo) :-
         true
     ).
 
-:- pred find_list_of_output_args(list(prog_var)::in, list(mer_mode)::in,
-    list(mer_type)::in, module_info::in, list(prog_var)::out) is det.
+:- pred find_list_of_output_args(module_info::in, list(prog_var)::in,
+    list(mer_type)::in, list(mer_mode)::in, list(prog_var)::out) is det.
 
-find_list_of_output_args(Vars, Modes, Types, ModuleInfo, !:Outputs) :-
+find_list_of_output_args(ModuleInfo, Vars, Types, Modes, !:Outputs) :-
     ( if
-        find_list_of_output_args_2(Vars, Modes, Types, ModuleInfo, !:Outputs)
+        find_list_of_output_args_2(ModuleInfo, Vars, Types, Modes, !:Outputs)
     then
         true
     else
         unexpected($pred, "list length mismatch")
     ).
 
-:- pred find_list_of_output_args_2(list(prog_var)::in, list(mer_mode)::in,
-    list(mer_type)::in, module_info::in, list(prog_var)::out) is semidet.
+:- pred find_list_of_output_args_2(module_info::in, list(prog_var)::in,
+    list(mer_type)::in, list(mer_mode)::in, list(prog_var)::out) is semidet.
 
-find_list_of_output_args_2([], [], [], _, []).
-find_list_of_output_args_2([Var | Vars], [Mode | Modes], [Type | Types],
-        ModuleInfo, Outputs) :-
-    find_list_of_output_args_2(Vars, Modes, Types, ModuleInfo, LaterOutputs),
+find_list_of_output_args_2(_, [], [], [], []).
+find_list_of_output_args_2(ModuleInfo, [Var | Vars], [Type | Types],
+        [Mode | Modes], Outputs) :-
+    find_list_of_output_args_2(ModuleInfo, Vars, Types, Modes, LaterOutputs),
     mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
     (
         TopFunctorMode = top_in,
@@ -341,7 +340,7 @@ apply_deep_prof_tail_rec_to_goal(Goal0, Goal, TailRecInfo, !FoundTailCall,
         Goal = Goal0,
         Continue = no
     ;
-        GoalExpr0 = plain_call(PredId, ProcId, Args, Builtin, UnifyContext,
+        GoalExpr0 = plain_call(PredId, ProcId, ArgVars, Builtin, UnifyContext,
             SymName),
         ( if
             PredProcId = proc(PredId, ProcId),
@@ -353,13 +352,13 @@ apply_deep_prof_tail_rec_to_goal(Goal0, Goal, TailRecInfo, !FoundTailCall,
             CallDetism = TailRecInfo ^ dptri_detism,
             pred_info_get_arg_types(PredInfo, Types),
             proc_info_get_argmodes(ProcInfo, Modes),
-            find_list_of_output_args(Args, Modes, Types,
-                TailRecInfo ^ dptri_moduleinfo, CallOutputs),
+            find_list_of_output_args(TailRecInfo ^ dptri_moduleinfo,
+                ArgVars, Types, Modes, CallOutputs),
             CallOutputs = TailRecInfo ^ dptri_outputs,
             Builtin = not_builtin
         then
             ClonePredProcId = proc(ClonePredId, CloneProcId),
-            GoalExpr = plain_call(ClonePredId, CloneProcId, Args,
+            GoalExpr = plain_call(ClonePredId, CloneProcId, ArgVars,
                 Builtin, UnifyContext, SymName),
             goal_info_add_feature(feature_deep_self_tail_rec_call,
                 GoalInfo0, GoalInfo),
@@ -666,7 +665,7 @@ make_deep_original_body(ModuleInfo, ProcInfo, DeepOriginalBody) :-
     proc_info_get_goal(ProcInfo, Body),
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_initial_instmap(ModuleInfo, ProcInfo, Instmap),
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
     (
         MaybeDetism = yes(Detism)
@@ -675,7 +674,7 @@ make_deep_original_body(ModuleInfo, ProcInfo, DeepOriginalBody) :-
         proc_info_get_inferred_determinism(ProcInfo, Detism)
     ),
     DeepOriginalBody = deep_original_body(Body, HeadVars, Instmap,
-        VarSet, VarTypes, Detism).
+        VarTable, Detism).
 
 %-----------------------------------------------------------------------------%
 
@@ -1610,19 +1609,19 @@ compress_filename(Deep, FileName0, FileName) :-
 
 classify_call(ModuleInfo, Expr) = Class :-
     (
-        Expr = plain_call(PredId, ProcId, Args, _, _, _),
+        Expr = plain_call(PredId, ProcId, ArgVars, _, _, _),
         ( if
             lookup_builtin_pred_proc_id(ModuleInfo,
                 mercury_public_builtin_module, "unify",
                 pf_predicate, user_arity(2), mode_no(0), PredId, _),
-            Args = [TypeInfoVar | _]
+            ArgVars = [TypeInfoVar | _]
         then
             Class = call_class_special(proc(PredId, ProcId), TypeInfoVar)
         else if
             lookup_builtin_pred_proc_id(ModuleInfo,
                 mercury_public_builtin_module, "compare",
                 pf_predicate, user_arity(3), mode_no(0), PredId, _),
-            Args = [TypeInfoVar | _]
+            ArgVars = [TypeInfoVar | _]
         then
             Class = call_class_special(proc(PredId, ProcId), TypeInfoVar)
         else if
@@ -1630,7 +1629,7 @@ classify_call(ModuleInfo, Expr) = Class :-
                 mercury_public_builtin_module,
                 "compare_representation", pf_predicate, user_arity(3),
                 mode_no(0), PredId, _),
-            Args = [TypeInfoVar | _]
+            ArgVars = [TypeInfoVar | _]
         then
             Class = call_class_special(proc(PredId, ProcId), TypeInfoVar)
         else
@@ -1821,16 +1820,16 @@ generate_deep_const_unify(ConsId, Var, Goal) :-
 :- pred generate_deep_cell_unify(int::in, cons_id::in, list(prog_var)::in,
     prog_var::in, hlds_goal::out) is det.
 
-generate_deep_cell_unify(Length, ConsId, Args, Var, Goal) :-
+generate_deep_cell_unify(Length, ConsId, ArgVars, Var, Goal) :-
     Ground = ground(shared, none_or_default_func),
     UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
     list.duplicate(Length, UnifyMode, ArgModes),
-    Unification = construct(Var, ConsId, Args, ArgModes,
+    Unification = construct(Var, ConsId, ArgVars, ArgModes,
         construct_statically(born_static), cell_is_shared,
         no_construct_sub_info),
-    GoalExpr = unify(Var, rhs_functor(ConsId, is_not_exist_constr, Args),
+    GoalExpr = unify(Var, rhs_functor(ConsId, is_not_exist_constr, ArgVars),
         UnifyMode, Unification, unify_context(umc_explicit, [])),
-    NonLocals = set_of_var.list_to_set([Var | Args]),
+    NonLocals = set_of_var.list_to_set([Var | ArgVars]),
     InstMapDelta = instmap_delta_bind_var(Var),
     Determinism = detism_det,
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_pure,

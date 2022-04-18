@@ -71,7 +71,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -88,74 +88,73 @@
     %
 :- type proc_layout_info
     --->    proc_layout_info(
-                pli_detism              :: determinism,
                 % Determines which stack is used.
+                pli_detism              :: determinism,
 
-                pli_eff_trace_level     :: trace_level,
                 % The effective trace level of the procedure.
+                pli_eff_trace_level     :: trace_level,
 
-                pli_eval_method         :: eval_method,
                 % The evaluation method of the procedure.
+                pli_eval_method         :: eval_method,
 
-                pli_trace_body_rep      :: trace_needs_body_rep,
                 % Does the level of execution tracing of this procedure require
                 % a representation of the procedure body in the layout
                 % structures? Note that even if this field is set to
                 % trace_does_not_need_body_rep, other options (such as deep
                 % profiling) may still ask for the body to be included.
+                pli_trace_body_rep      :: trace_needs_body_rep,
 
-                pli_need_proc_id        :: bool,
                 % Do we require the procedure id section of the procedure
                 % layout to be present, even if the option procid_stack_layout
                 % is not set?
+                pli_need_proc_id        :: bool,
 
-                pli_need_all_names      :: bool,
                 % True iff we need the names of all the variables.
+                pli_need_all_names      :: bool,
 
-                pli_rtti_proc_label     :: rtti_proc_label,
                 % The identity of the procedure.
+                pli_rtti_proc_label     :: rtti_proc_label,
 
                 pli_entry_label         :: label,
 
-                pli_stack_slot_count    :: int,
                 % Number of stack slots.
+                pli_stack_slot_count    :: int,
 
-                pli_succip_slot         :: maybe(int),
                 % Location of succip on stack.
+                pli_succip_slot         :: maybe(int),
 
-                pli_call_label          :: maybe(label),
                 % If the trace level is not none, this contains the label
                 % associated with the call event, whose stack layout says
                 % which variables were live and where on entry.
+                pli_call_label          :: maybe(label),
 
-                pli_max_trace_reg_r     :: int,
-                pli_max_trace_reg_f     :: int,
                 % The number of the highest numbered rN and fN registers that
                 % can contain useful information during a call to MR_trace from
                 % within this procedure.
+                pli_max_trace_reg_r     :: int,
+                pli_max_trace_reg_f     :: int,
 
-                pli_head_vars           :: list(prog_var),
                 % The head variables, in order, including the ones introduced
                 % by the compiler.
+                pli_head_vars           :: list(prog_var),
 
-                pli_arg_modes           :: list(mer_mode),
                 % The modes of the head variables.
+                pli_arg_modes           :: list(mer_mode),
 
-                pli_proc_body           :: hlds_goal,
                 % The body of the procedure.
+                pli_proc_body           :: hlds_goal,
 
-                pli_initial_instmap     :: instmap,
                 % The instmap at the start of the procedure body.
+                pli_initial_instmap     :: instmap,
 
-                pli_trace_slot_info     :: trace_slot_info,
                 % Info about the stack slots used for tracing.
+                pli_trace_slot_info     :: trace_slot_info,
 
-                pli_varset              :: prog_varset,
-                pli_vartypes            :: vartypes,
                 % The names and types of all the variables.
+                pli_var_table           :: var_table,
 
-                pli_internal_map        :: proc_label_layout_info,
                 % Info for each internal label, needed for basic_stack_layouts.
+                pli_internal_map        :: proc_label_layout_info,
 
                 pli_maybe_table_info    :: maybe(proc_layout_table_info),
 
@@ -402,10 +401,11 @@
     % For each type variable in the given list, find out where the
     % typeinfo var for that type variable is.
     %
-:- pred find_typeinfos_for_tvars(proc_info::in, list(tvar)::in,
-    map(prog_var, set(lval))::in, map(tvar, set(layout_locn))::out) is det.
+:- pred find_typeinfos_for_tvars(var_table::in, rtti_varmaps::in,
+    list(tvar)::in, map(prog_var, set(lval))::in,
+    map(tvar, set(layout_locn))::out) is det.
 
-:- pred generate_table_arg_type_info(proc_info::in,
+:- pred generate_table_arg_type_info(var_table::in, rtti_varmaps::in,
     assoc_list(prog_var, int)::in, table_arg_infos::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -413,8 +413,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_llds.
 :- import_module libs.options.
 :- import_module ll_backend.code_util.
@@ -425,7 +423,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -609,7 +606,9 @@ generate_return_live_lvalues(ModuleInfo, Globals, ProcInfo, OkToDeleteAny,
     proc_info_get_stack_slots(ProcInfo, StackSlots),
     find_return_var_lvals(StackSlots, OkToDeleteAny, OutputArgLocs,
         Vars, VarLvals),
-    generate_var_live_lvalues(ModuleInfo, ProcInfo, WantReturnVarLayout,
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
+    generate_var_live_lvalues(VarTable, RttiVarMaps, WantReturnVarLayout,
         ReturnInstMap, VarLocs, VarLvals, VarLiveLvalues),
     generate_temp_live_lvalues(Temps, TempLiveLvalues),
     LiveLvalues = VarLiveLvalues ++ TempLiveLvalues.
@@ -651,25 +650,26 @@ generate_temp_live_lvalues([Temp | Temps], [Live | Lives]) :-
     Live = live_lvalue(locn_direct(Slot), LiveLvalueType, Empty),
     generate_temp_live_lvalues(Temps, Lives).
 
-:- pred generate_var_live_lvalues(module_info::in, proc_info::in, bool::in,
+:- pred generate_var_live_lvalues(var_table::in, rtti_varmaps::in, bool::in,
     instmap::in, map(prog_var, set(lval))::in,
     assoc_list(prog_var, lval)::in, list(liveinfo)::out) is det.
 
 generate_var_live_lvalues(_, _, _, _, _, [], []).
-generate_var_live_lvalues(ModuleInfo, ProcInfo, WantReturnVarLayout,
+generate_var_live_lvalues(VarTable, RttiVarMaps, WantReturnVarLayout,
         InstMap, VarLocs, [Var - Lval | VarLvals], [Live | Lives]) :-
     (
         WantReturnVarLayout = yes,
-        generate_layout_for_var(ModuleInfo, ProcInfo, InstMap, Var,
-            LiveValueType, TypeVars),
-        find_typeinfos_for_tvars(ProcInfo, TypeVars, VarLocs, TypeParams),
+        generate_layout_for_var(VarTable, InstMap, Var, LiveValueType,
+            TypeVars),
+        find_typeinfos_for_tvars(VarTable, RttiVarMaps, TypeVars, VarLocs,
+            TypeParams),
         Live = live_lvalue(locn_direct(Lval), LiveValueType, TypeParams)
     ;
         WantReturnVarLayout = no,
         map.init(Empty),
         Live = live_lvalue(locn_direct(Lval), live_value_unwanted, Empty)
     ),
-    generate_var_live_lvalues(ModuleInfo, ProcInfo, WantReturnVarLayout,
+    generate_var_live_lvalues(VarTable, RttiVarMaps, WantReturnVarLayout,
         InstMap, VarLocs, VarLvals, Lives).
 
 %---------------------------------------------------------------------------%
@@ -678,44 +678,45 @@ generate_resume_layout(ModuleInfo, ProcInfo, InstMap, ResumeMap, Temps,
         Layout) :-
     map.to_assoc_list(ResumeMap, ResumeList),
     set.init(TVars0),
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-    generate_resume_layout_for_vars(ResumeList, InstMap, VarTypes, ProcInfo,
-        ModuleInfo, [], VarInfos, TVars0, TVars),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
+    generate_resume_layout_for_vars(VarTable, InstMap, ResumeList,
+        [], VarInfos, TVars0, TVars),
     set.list_to_set(VarInfos, VarInfoSet),
     set.to_sorted_list(TVars, TVarList),
-    find_typeinfos_for_tvars(ProcInfo, TVarList, ResumeMap, TVarInfoMap),
+    find_typeinfos_for_tvars(VarTable, RttiVarMaps, TVarList, ResumeMap,
+        TVarInfoMap),
     generate_temp_var_infos(Temps, TempInfos),
     set.list_to_set(TempInfos, TempInfoSet),
     set.union(VarInfoSet, TempInfoSet, AllInfoSet),
     Layout = layout_label_info(AllInfoSet, TVarInfoMap).
 
-:- pred generate_resume_layout_for_vars(assoc_list(prog_var, set(lval))::in,
-    instmap::in, vartypes::in, proc_info::in, module_info::in,
+:- pred generate_resume_layout_for_vars(var_table::in, instmap::in,
+    assoc_list(prog_var, set(lval))::in,
     list(layout_var_info)::in, list(layout_var_info)::out,
     set(tvar)::in, set(tvar)::out) is det.
 
-generate_resume_layout_for_vars([], _, _, _, _, !VarInfos, !TVars).
-generate_resume_layout_for_vars([Var - LvalSet | VarLvals], InstMap,
-        VarTypes, ProcInfo, ModuleInfo, !VarInfos, !TVars) :-
-    ( if
-        lookup_var_type(VarTypes, Var, Type),
-        is_type_a_dummy(ModuleInfo, Type) = is_dummy_type
-    then
-        true
-    else
-        generate_resume_layout_for_var(Var, LvalSet, InstMap, ProcInfo,
-            ModuleInfo, VarInfo, TypeVars),
+generate_resume_layout_for_vars(_, _, [], !VarInfos, !TVars).
+generate_resume_layout_for_vars(VarTable, InstMap, [Var - LvalSet | VarLvals],
+        !VarInfos, !TVars) :-
+    lookup_var_entry(VarTable, Var, Entry),
+    Entry = vte(_Name, _Type, IsDummy),
+    (
+        IsDummy = is_dummy_type
+    ;
+        IsDummy = is_not_dummy_type,
+        generate_resume_layout_for_var(VarTable, InstMap, Var, LvalSet,
+            VarInfo, TypeVars),
         set.insert_list(TypeVars, !TVars),
         !:VarInfos = [VarInfo | !.VarInfos]
     ),
-    generate_resume_layout_for_vars(VarLvals, InstMap, VarTypes, ProcInfo,
-        ModuleInfo, !VarInfos, !TVars).
+    generate_resume_layout_for_vars(VarTable, InstMap, VarLvals,
+        !VarInfos, !TVars).
 
-:- pred generate_resume_layout_for_var(prog_var::in, set(lval)::in,
-    instmap::in, proc_info::in, module_info::in,
-    layout_var_info::out, list(tvar)::out) is det.
+:- pred generate_resume_layout_for_var(var_table::in, instmap::in,
+    prog_var::in, set(lval)::in, layout_var_info::out, list(tvar)::out) is det.
 
-generate_resume_layout_for_var(Var, LvalSet, InstMap, ProcInfo, ModuleInfo,
+generate_resume_layout_for_var(VarTable, InstMap, Var, LvalSet,
         VarInfo, TypeVars) :-
     set.to_sorted_list(LvalSet, LvalList),
     ( if LvalList = [LvalPrime] then
@@ -725,15 +726,14 @@ generate_resume_layout_for_var(Var, LvalSet, InstMap, ProcInfo, ModuleInfo,
     ),
     ( if Lval = stackvar(N) then
         expect(N > 0, $pred, "bad stackvar")
-    else if Lval = stackvar(N) then
+    else if Lval = framevar(N) then
         expect(N > 0, $pred, "bad framevar")
     else if Lval = double_stackvar(_, N) then
-        expect(N > 0, $pred, "bad stackvar")
+        expect(N > 0, $pred, "bad double_stackvar")
     else
         true
     ),
-    generate_layout_for_var(ModuleInfo, ProcInfo, InstMap, Var, LiveValueType,
-        TypeVars),
+    generate_layout_for_var(VarTable, InstMap, Var, LiveValueType, TypeVars),
     VarInfo = layout_var_info(locn_direct(Lval), LiveValueType,
         "generate_result_layout_for_var").
 
@@ -750,18 +750,12 @@ generate_temp_var_infos([Temp | Temps], [Live | Lives]) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_layout_for_var(module_info::in, proc_info::in,
-    instmap::in, prog_var::in, live_value_type::out, list(tvar)::out) is det.
+:- pred generate_layout_for_var(var_table::in, instmap::in, prog_var::in,
+    live_value_type::out, list(tvar)::out) is det.
 
-generate_layout_for_var(_ModuleInfo, ProcInfo, _InstMap, Var, LiveValueType,
-        TypeVars) :-
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
-    ( if varset.search_name(VarSet, Var, GivenName) then
-        Name = GivenName
-    else
-        Name = ""
-    ),
-    lookup_var_type(VarTypes, Var, Type),
+generate_layout_for_var(VarTable, _InstMap, Var, LiveValueType, TypeVars) :-
+    lookup_var_entry(VarTable, Var, VarEntry),
+    VarEntry = vte(Name, Type, _IsDummy),
 
 %   In some programs, specifically zm_enum.m, the Mercury program generated
 %   for the enum.zinc g12 test case, this call to inst_is_ground can be
@@ -794,6 +788,8 @@ generate_closure_layout(ModuleInfo, PredId, ProcId, ClosureLayout) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, use_float_registers, UseFloatRegs),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_arg_info(ProcInfo, ArgInfos),
     pred_info_get_arg_types(PredInfo, ArgTypes),
@@ -805,7 +801,7 @@ generate_closure_layout(ModuleInfo, PredId, ProcId, ClosureLayout) :-
             UseFloatRegs, VarLocs0, VarLocs, TypeVars0, TypeVars)
     then
         set.to_sorted_list(TypeVars, TypeVarsList),
-        find_typeinfos_for_tvars(ProcInfo, TypeVarsList, VarLocs,
+        find_typeinfos_for_tvars(VarTable, RttiVarMaps, TypeVarsList, VarLocs,
             TypeInfoDataMap),
         ClosureLayout = closure_layout_info(ArgLayouts, TypeInfoDataMap)
     else
@@ -847,18 +843,17 @@ build_closure_info([Var | Vars], [Type0 | Types],
 
 %---------------------------------------------------------------------------%
 
-find_typeinfos_for_tvars(ProcInfo, TypeVars, VarLocs, TypeInfoDataMap) :-
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
-    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
+find_typeinfos_for_tvars(VarTable, RttiVarMaps, TypeVars, VarLocs,
+        TypeInfoDataMap) :-
     list.foldl(
-        gather_type_info_layout_locns_for_tvar(VarSet, RttiVarMaps, VarLocs),
+        gather_type_info_layout_locns_for_tvar(VarTable, RttiVarMaps, VarLocs),
         TypeVars, map.init, TypeInfoDataMap).
 
-:- pred gather_type_info_layout_locns_for_tvar(prog_varset::in,
-    rtti_varmaps::in, map(prog_var, set(lval))::in, tvar::in,
+:- pred gather_type_info_layout_locns_for_tvar(var_table::in, rtti_varmaps::in,
+    map(prog_var, set(lval))::in, tvar::in,
     map(tvar, set(layout_locn))::in, map(tvar, set(layout_locn))::out) is det.
 
-gather_type_info_layout_locns_for_tvar(VarSet, RttiVarMaps, VarLocs, TypeVar,
+gather_type_info_layout_locns_for_tvar(VarTable, RttiVarMaps, VarLocs, TypeVar,
         !TypeInfoDataMap) :-
     rtti_lookup_type_info_locn(RttiVarMaps, TypeVar, TypeInfoLocn),
     type_info_locn_var(TypeInfoLocn, TypeInfoVar),
@@ -867,8 +862,9 @@ gather_type_info_layout_locns_for_tvar(VarSet, RttiVarMaps, VarLocs, TypeVar,
             set.init, Locns),
         map.det_insert(TypeVar, Locns, !TypeInfoDataMap)
     else
-        varset.lookup_name(VarSet, TypeInfoVar, VarName),
-        unexpected($pred, "can't find rval for type_info var " ++ VarName)
+        TypeInfoVarName = var_table_entry_name(VarTable, TypeInfoVar),
+        unexpected($pred,
+            "can't find rval for type_info var " ++ TypeInfoVarName)
     ).
 
 :- pred gather_type_info_layout_locn(type_info_locn::in, lval::in,
@@ -886,41 +882,40 @@ gather_type_info_layout_locn(TypeInfoLocn, Lval, !Locns) :-
 
 %---------------------------------------------------------------------------%
 
-generate_table_arg_type_info(ProcInfo, NumberedVars, TableArgInfos) :-
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
+generate_table_arg_type_info(VarTable, RttiVarMaps, NumberedVars,
+        TableArgInfos) :-
     set.init(TypeVars0),
-    build_table_arg_info(VarSet, VarTypes, NumberedVars, ArgLayouts,
+    build_table_arg_info(VarTable, NumberedVars, ArgLayouts,
         TypeVars0, TypeVars),
     set.to_sorted_list(TypeVars, TypeVarsList),
-    find_typeinfos_for_tvars_table(ProcInfo, TypeVarsList, NumberedVars,
-        TypeInfoDataMap),
+    find_typeinfos_for_tvars_table(VarTable, RttiVarMaps, TypeVarsList,
+        NumberedVars, TypeInfoDataMap),
     TableArgInfos = table_arg_infos(ArgLayouts, TypeInfoDataMap).
 
-:- pred build_table_arg_info(prog_varset::in, vartypes::in,
+:- pred build_table_arg_info(var_table::in,
     assoc_list(prog_var, int)::in, list(table_arg_info)::out,
     set(tvar)::in, set(tvar)::out) is det.
 
-build_table_arg_info(_, _, [], [], !TypeVars).
-build_table_arg_info(VarSet, VarTypes, [Var - SlotNum | NumberedVars],
+build_table_arg_info(_, [], [], !TypeVars).
+build_table_arg_info(VarTable, [Var - SlotNum | NumberedVars],
         [ArgLayout | ArgLayouts], !TypeVars) :-
     term.var_to_int(Var, VarNum),
-    varset.lookup_name(VarSet, Var, VarName),
-    lookup_var_type(VarTypes, Var, Type),
+    lookup_var_entry(VarTable, Var, Entry),
+    VarName = var_entry_name(Var, Entry),
+    Type = Entry ^ vte_type,
     ArgLayout = table_arg_info(VarNum, VarName, SlotNum, Type),
     set_of_type_vars_in_type(Type, VarTypeVars),
     set.union(VarTypeVars, !TypeVars),
-    build_table_arg_info(VarSet, VarTypes, NumberedVars,
-        ArgLayouts, !TypeVars).
+    build_table_arg_info(VarTable, NumberedVars, ArgLayouts, !TypeVars).
 
 %---------------------------------------------------------------------------%
 
-:- pred find_typeinfos_for_tvars_table(proc_info::in, list(tvar)::in,
-    assoc_list(prog_var, int)::in, map(tvar, table_locn)::out) is det.
+:- pred find_typeinfos_for_tvars_table(var_table::in, rtti_varmaps::in,
+    list(tvar)::in, assoc_list(prog_var, int)::in,
+    map(tvar, table_locn)::out) is det.
 
-find_typeinfos_for_tvars_table(ProcInfo, TypeVars, NumberedVars,
+find_typeinfos_for_tvars_table(VarTable, RttiVarMaps, TypeVars, NumberedVars,
         TypeInfoDataMap) :-
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
-    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     list.map(rtti_lookup_type_info_locn(RttiVarMaps), TypeVars,
         TypeInfoLocns),
     FindLocn =
@@ -939,7 +934,7 @@ find_typeinfos_for_tvars_table(ProcInfo, TypeVars, NumberedVars,
                 Locn = LocnPrime
             else
                 type_info_locn_var(TypeInfoLocn, TypeInfoVar),
-                varset.lookup_name(VarSet, TypeInfoVar, VarName),
+                VarName = var_table_entry_name(VarTable, TypeInfoVar),
                 unexpected($pred,
                     "can't find slot for type_info var " ++ VarName)
             )

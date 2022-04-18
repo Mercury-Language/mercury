@@ -68,6 +68,9 @@
 :- pred create_renaming(list(prog_var)::in, instmap_delta::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     list(hlds_goal)::out, list(prog_var)::out, prog_var_renaming::out) is det.
+:- pred create_renaming_vt(list(prog_var)::in, instmap_delta::in,
+    var_table::in, var_table::out,
+    list(hlds_goal)::out, list(prog_var)::out, prog_var_renaming::out) is det.
 
     % clone_variable(OldVar, OldVarSet, OldVarTypes,
     %   !VarSet, !VarTypes, !Renaming, CloneVar):
@@ -518,6 +521,9 @@ update_instmap_goal_info(GoalInfo0, !InstMap) :-
     apply_instmap_delta(DeltaInstMap, !InstMap).
 
 %-----------------------------------------------------------------------------%
+%
+% Please keep in sync with create_renaming_vt.
+%
 
 create_renaming(OrigVars, InstMapDelta, !VarSet, !VarTypes, Unifies, NewVars,
         Renaming) :-
@@ -554,6 +560,48 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
     map.det_insert(OrigVar, NewVar, !Renaming),
     !:RevNewVars = [NewVar | !.RevNewVars],
     create_renaming_2(OrigVars, InstMapDelta, !VarSet, !VarTypes,
+        !RevUnifies, !RevNewVars, !Renaming).
+
+%-----------------------------------------------------------------------------%
+%
+% Please keep in sync with create_renaming.
+%
+
+create_renaming_vt(OrigVars, InstMapDelta, !VarTable, Unifies, NewVars,
+        Renaming) :-
+    create_renaming_vt_2(OrigVars, InstMapDelta, !VarTable,
+        [], RevUnifies, [], RevNewVars, map.init, Renaming),
+    list.reverse(RevNewVars, NewVars),
+    list.reverse(RevUnifies, Unifies).
+
+:- pred create_renaming_vt_2(list(prog_var)::in, instmap_delta::in,
+    var_table::in, var_table::out, list(hlds_goal)::in, list(hlds_goal)::out,
+    list(prog_var)::in, list(prog_var)::out,
+    prog_var_renaming::in, prog_var_renaming::out) is det.
+
+create_renaming_vt_2([], _, !VarTable, !RevUnifies, !RevNewVars,
+        !Renaming).
+create_renaming_vt_2([OrigVar | OrigVars], InstMapDelta, !VarTable,
+        !RevUnifies, !RevNewVars, !Renaming) :-
+    lookup_var_entry(!.VarTable, OrigVar, OrigEntry),
+    OrigEntry = vte(_, OrigType, OrigTypeIsDummy),
+    NewEntry = vte("", OrigType, OrigTypeIsDummy),
+    add_var_entry(NewEntry, NewVar, !VarTable),
+    instmap_delta_lookup_var(InstMapDelta, OrigVar, NewInst),
+    UnifyMode = unify_modes_li_lf_ri_rf(NewInst, NewInst, free, NewInst),
+    Unification = assign(OrigVar, NewVar),
+    UnifyContext = unify_context(umc_explicit, []),
+    GoalExpr = unify(OrigVar, rhs_var(NewVar), UnifyMode, Unification,
+        UnifyContext),
+    set_of_var.list_to_set([OrigVar, NewVar], NonLocals),
+    UnifyInstMapDelta = instmap_delta_from_assoc_list([OrigVar - NewInst]),
+    goal_info_init(NonLocals, UnifyInstMapDelta, detism_det, purity_pure,
+        term.context_init, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    !:RevUnifies = [Goal | !.RevUnifies],
+    map.det_insert(OrigVar, NewVar, !Renaming),
+    !:RevNewVars = [NewVar | !.RevNewVars],
+    create_renaming_vt_2(OrigVars, InstMapDelta, !VarTable,
         !RevUnifies, !RevNewVars, !Renaming).
 
 %-----------------------------------------------------------------------------%

@@ -102,8 +102,8 @@
     % stack slots used for tracing purposes.
     %
 :- pred code_info_init(module_info::in, pred_id::in, proc_id::in,
-    pred_info::in, proc_info::in, bool::in, static_cell_info::in,
-    const_struct_map::in, maybe(containing_goal_map)::in,
+    pred_info::in, proc_info::in, var_table::in, bool::in,
+    static_cell_info::in, const_struct_map::in, maybe(containing_goal_map)::in,
     list(string)::in, int::in, trace_slot_info::out, code_info::out) is det.
 
 :- pred get_module_info(code_info::in, module_info::out) is det.
@@ -368,7 +368,7 @@
 
 %---------------------------------------------------------------------------%
 
-code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
+code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo, VarTable,
         SaveSuccip, StaticCellInfo, ConstStructMap, MaybeContainingGoalMap,
         TSRevStringTable, TSStringTableSize, TraceSlotInfo, CodeInfo) :-
     % argument ModuleInfo
@@ -379,7 +379,6 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     % argument PredInfo
     % argument ProcInfo
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     proc_info_get_stack_slots(ProcInfo, StackSlots),
     max_var_slot(StackSlots, VarSlotMax),
     trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals,

@@ -45,6 +45,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module list.
@@ -90,7 +91,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred compute_var_number_map(list(prog_var)::in, prog_varset::in,
+:- pred compute_var_number_map(var_table::in, list(prog_var)::in,
     assoc_list(int, internal_layout_info)::in, hlds_goal::in,
     var_num_map::out) is det.
 
@@ -124,7 +125,6 @@
 :- import_module parse_tree.prog_event.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module cord.
@@ -134,7 +134,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module term.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -443,10 +442,10 @@ construct_proc_and_label_layouts_for_proc(Params, PLI, !LabelTables,
         _NeedGoalRep, ForceProcIdLayout, _NeedsAllNames,
         RttiProcLabel, EntryLabel, _StackSlots, _SuccipLoc,
         _MaybeCallLabel, _MaxTraceRegR, _MaxTraceRegF, HeadVars, _ArgModes,
-        Goal, _InstMap, _TraceSlotInfo, VarSet, _VarTypes,
+        Goal, _InstMap, _TraceSlotInfo, VarTable,
         InternalMap, MaybeTableIoEntry, _OISUKindFors, _MaybeDeepProfInfo),
     map.to_assoc_list(InternalMap, Internals),
-    compute_var_number_map(HeadVars, VarSet, Internals, Goal, VarNumMap),
+    compute_var_number_map(VarTable, HeadVars, Internals, Goal, VarNumMap),
 
     ProcLabel = get_proc_label(EntryLabel),
     bool.or(Params ^ slp_procid_stack_layout, ForceProcIdLayout, ProcIdLayout),
@@ -599,7 +598,7 @@ construct_proc_layout(Params, PLI, ProcLayoutName, Kind, InternalLabelInfos,
         NeedGoalRep, _ForceProcIdLayout, NeedsAllNames,
         RttiProcLabel, EntryLabel, StackSlots, SuccipLoc,
         MaybeCallLabel, MaxTraceRegR, MaxTraceRegF, HeadVars, ArgModes,
-        Goal, InstMap, TraceSlotInfo, VarSet, VarTypes,
+        Goal, InstMap, TraceSlotInfo, VarTable,
         InternalMap, MaybeTableInfo, OISUKindFors, MaybeDeepProfInfo),
     construct_proc_traversal(Params, EntryLabel, Detism, StackSlots,
         SuccipLoc, Traversal),
@@ -632,7 +631,7 @@ construct_proc_layout(Params, PLI, ProcLayoutName, Kind, InternalLabelInfos,
             construct_exec_trace_layout(Params, RttiProcLabel,
                 EvalMethod, EffTraceLevel, MaybeCallLabel, MaybeTableSlotName,
                 MaxTraceRegR, MaxTraceRegF, HeadVars, ArgModes, TraceSlotInfo,
-                VarSet, VarTypes, MaybeTableInfo, NeedsAllNames,
+                VarTable, MaybeTableInfo, NeedsAllNames,
                 VarNumMap, InternalLabelInfos, ExecTraceSlotName,
                 LabelLayoutInfo, !StringTable,
                 ExecTraceInfo0, ExecTraceInfo),
@@ -679,8 +678,8 @@ construct_proc_layout(Params, PLI, ProcLayoutName, Kind, InternalLabelInfos,
                 DeepOriginalBody = DeepProfInfo ^ pdpi_orig_body,
                 DeepOriginalBody = deep_original_body(BytecodeBody,
                     BytecodeHeadVars, BytecodeInstMap,
-                    BytecodeVarSet, BytecodeVarTypes, BytecodeDetism),
-                compute_var_number_map(BytecodeHeadVars, BytecodeVarSet, [],
+                    BytecodeVarTable, BytecodeDetism),
+                compute_var_number_map(BytecodeVarTable, BytecodeHeadVars, [],
                     BytecodeBody, BytecodeVarNumMap)
             ;
                 MaybeDeepProfInfo = no,
@@ -688,12 +687,12 @@ construct_proc_layout(Params, PLI, ProcLayoutName, Kind, InternalLabelInfos,
                 BytecodeHeadVars = HeadVars,
                 BytecodeBody = Goal,
                 BytecodeInstMap = InstMap,
-                BytecodeVarTypes = VarTypes,
+                BytecodeVarTable = VarTable,
                 BytecodeDetism = Detism,
                 BytecodeVarNumMap = VarNumMap
             ),
             represent_proc_as_bytecodes(BytecodeHeadVars, BytecodeBody,
-                BytecodeInstMap, BytecodeVarTypes, BytecodeVarNumMap,
+                BytecodeInstMap, BytecodeVarTable, BytecodeVarNumMap,
                 ModuleInfo, IncludeVarNameTable, IncludeVarTypes,
                 BytecodeDetism, !StringTable, !TypeTable, ProcBytes),
 
@@ -916,8 +915,7 @@ init_proc_statics_info = Info :-
 :- pred construct_exec_trace_layout(stack_layout_params::in,
     rtti_proc_label::in, eval_method::in, trace_level::in, maybe(label)::in,
     maybe(layout_slot_name)::in, int::in, int::in,
-    list(prog_var)::in, list(mer_mode)::in,
-    trace_slot_info::in, prog_varset::in, vartypes::in,
+    list(prog_var)::in, list(mer_mode)::in, trace_slot_info::in, var_table::in,
     maybe(proc_layout_table_info)::in, bool::in, var_num_map::in,
     list(internal_label_info)::in, layout_slot_name::out,
     label_layouts_info::in,
@@ -926,8 +924,8 @@ init_proc_statics_info = Info :-
 
 construct_exec_trace_layout(Params, RttiProcLabel, EvalMethod,
         EffTraceLevel, MaybeCallLabel, MaybeTableSlotName,
-        MaxTraceRegR, MaxTraceRegF,
-        HeadVars, ArgModes, TraceSlotInfo, _VarSet, VarTypes, MaybeTableInfo,
+        MaxTraceRegR, MaxTraceRegF, HeadVars, ArgModes,
+        TraceSlotInfo, VarTable, MaybeTableInfo,
         NeedsAllNames, VarNumMap, InternalLabelInfos, ExecTraceName,
         LabelLayoutInfo, !StringTable, !ExecTraceInfo) :-
     collect_event_data_addrs(InternalLabelInfos,
@@ -1051,7 +1049,7 @@ construct_exec_trace_layout(Params, RttiProcLabel, EvalMethod,
         MaybeVarNamesSlotName = no
     ),
 
-    encode_exec_trace_flags(ModuleInfo, HeadVars, ArgModes, VarTypes, Flags),
+    encode_exec_trace_flags(ModuleInfo, VarTable, HeadVars, ArgModes, Flags),
     ExecTrace = proc_layout_exec_trace(MaybeCallLabelSlotName,
         EventLayoutsSlotName, NumProcEventLayouts, MaybeTable,
         MaybeHeadVarsSlotName, NumHeadVars, MaybeVarNamesSlotName,
@@ -1196,24 +1194,24 @@ collect_event_data_addrs([Info | Infos], !RevInterfaces, !RevInternals) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred encode_exec_trace_flags(module_info::in, list(prog_var)::in,
-    list(mer_mode)::in, vartypes::in, int::out) is det.
+:- pred encode_exec_trace_flags(module_info::in, var_table::in,
+    list(prog_var)::in, list(mer_mode)::in, int::out) is det.
 
-encode_exec_trace_flags(ModuleInfo, HeadVars, ArgModes, VarTypes, !:Flags) :-
+encode_exec_trace_flags(ModuleInfo, VarTable, HeadVars, ArgModes, !:Flags) :-
     % The values of the flags are defined in runtime/mercury_stack_layout.h;
     % look for the reference to this function.
     !:Flags = 0,
     ( if
-        proc_info_has_io_state_pair_from_details(ModuleInfo, HeadVars,
-            ArgModes, VarTypes, _, _)
+        proc_info_has_io_state_pair_from_details(ModuleInfo,
+            vts_var_table(VarTable), HeadVars, ArgModes, _, _)
     then
         !:Flags = !.Flags + 1
     else
         true
     ),
     ( if
-        proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTypes,
-            HeadVars)
+        proc_info_has_higher_order_arg_from_details(ModuleInfo,
+            vts_var_table(VarTable), HeadVars)
     then
         !:Flags = !.Flags + 2
     else
@@ -2549,26 +2547,26 @@ init_stack_layout_params(ModuleInfo) = Params :-
 
 %---------------------------------------------------------------------------%
 
-compute_var_number_map(HeadVars, VarSet, Internals, Goal, VarNumMap) :-
+compute_var_number_map(VarTable, HeadVars, Internals, Goal, VarNumMap) :-
     some [!VarNumMap, !Counter] (
         !:VarNumMap = map.init,
         !:Counter = counter.init(1), % to match term.var_supply_init
         goal_util.goal_vars(Goal, GoalVarSet),
         set_of_var.to_sorted_list(GoalVarSet, GoalVars),
-        list.foldl2(add_var_to_var_number_map(VarSet), GoalVars,
+        list.foldl2(add_var_to_var_number_map(VarTable), GoalVars,
             !VarNumMap, !Counter),
-        list.foldl2(add_var_to_var_number_map(VarSet), HeadVars,
+        list.foldl2(add_var_to_var_number_map(VarTable), HeadVars,
             !VarNumMap, !Counter),
-        list.foldl2(internal_var_number_map(VarSet), Internals, !VarNumMap,
+        list.foldl2(internal_var_number_map(VarTable), Internals, !VarNumMap,
             !.Counter, _),
         VarNumMap = !.VarNumMap
     ).
 
-:- pred internal_var_number_map(prog_varset::in,
+:- pred internal_var_number_map(var_table::in,
     pair(int, internal_layout_info)::in,
     var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
 
-internal_var_number_map(VarSet, _Label - Internal, !VarNumMap, !Counter) :-
+internal_var_number_map(VarTable, _Label - Internal, !VarNumMap, !Counter) :-
     Internal = internal_layout_info(MaybeTrace, MaybeResume, MaybeReturn),
     (
         MaybeTrace = yes(Trace),
@@ -2579,7 +2577,7 @@ internal_var_number_map(VarSet, _Label - Internal, !VarNumMap, !Counter) :-
         ;
             MaybeUser = yes(UserEvent),
             UserEvent = user_event_info(_UserEventNumber, Attributes),
-            list.foldl2(user_attribute_var_num_map(VarSet), Attributes,
+            list.foldl2(user_attribute_var_num_map(VarTable), Attributes,
                 !VarNumMap, !Counter)
         )
     ;
@@ -2614,28 +2612,25 @@ label_layout_var_number_map(LabelLayout, !VarNumMap, !Counter) :-
     list.foldl2(add_named_var_to_var_number_map, VarsNames,
         !VarNumMap, !Counter).
 
-:- pred user_attribute_var_num_map(prog_varset::in, maybe(user_attribute)::in,
+:- pred user_attribute_var_num_map(var_table::in, maybe(user_attribute)::in,
     var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
 
-user_attribute_var_num_map(VarSet, MaybeAttribute, !VarNumMap, !Counter) :-
+user_attribute_var_num_map(VarTable, MaybeAttribute, !VarNumMap, !Counter) :-
     (
         MaybeAttribute = yes(Attribute),
         Attribute = user_attribute(_Locn, Var),
-        add_var_to_var_number_map(VarSet, Var, !VarNumMap, !Counter)
+        add_var_to_var_number_map(VarTable, Var, !VarNumMap, !Counter)
     ;
         MaybeAttribute = no
     ).
 
-:- pred add_var_to_var_number_map(prog_varset::in, prog_var::in,
+:- pred add_var_to_var_number_map(var_table::in, prog_var::in,
     var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
 
-add_var_to_var_number_map(VarSet, Var, !VarNumMap, !Counter) :-
-    ( if varset.search_name(VarSet, Var, VarName) then
-        Name = VarName
-    else
-        Name = ""
-    ),
-    add_named_var_to_var_number_map(Var - Name, !VarNumMap, !Counter).
+add_var_to_var_number_map(VarTable, Var, !VarNumMap, !Counter) :-
+    lookup_var_entry(VarTable, Var, VarEntry),
+    VarEntry = vte(VarName, _, _),
+    add_named_var_to_var_number_map(Var - VarName, !VarNumMap, !Counter).
 
 :- pred add_named_var_to_var_number_map(pair(prog_var, string)::in,
     var_num_map::in, var_num_map::out, counter::in, counter::out) is det.

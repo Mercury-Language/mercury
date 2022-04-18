@@ -2158,8 +2158,7 @@ marker_list_to_markers(Markers, MarkerSet) :-
                 dob_body                :: hlds_goal,
                 dob_head_vars           :: list(prog_var),
                 dob_instmap             :: instmap,
-                dob_varset              :: prog_varset,
-                dob_vartypes            :: vartypes,
+                dob_var_table           :: var_table,
                 dob_detism              :: determinism
             ).
 
@@ -2776,11 +2775,11 @@ marker_list_to_markers(Markers, MarkerSet) :-
     int::out, int::out) is semidet.
 
 :- pred proc_info_has_io_state_pair_from_details(module_info::in,
-    list(prog_var)::in, list(mer_mode)::in, vartypes::in,
+    var_type_source::in, list(prog_var)::in, list(mer_mode)::in,
     int::out, int::out) is semidet.
 
 :- pred proc_info_has_higher_order_arg_from_details(module_info::in,
-    vartypes::in, list(prog_var)::in) is semidet.
+    var_type_source::in, list(prog_var)::in) is semidet.
 
     % Given a procedure table and the id of a procedure in that table,
     % return a procedure id to be attached to a clone of that procedure.
@@ -4135,14 +4134,14 @@ proc_info_has_io_state_pair(ModuleInfo, ProcInfo, InArgNum, OutArgNum) :-
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_argmodes(ProcInfo, ArgModes),
     proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-    proc_info_has_io_state_pair_from_details(ModuleInfo, HeadVars,
-        ArgModes, VarTypes, InArgNum, OutArgNum).
+    proc_info_has_io_state_pair_from_details(ModuleInfo,
+        vts_vartypes(VarTypes), HeadVars, ArgModes, InArgNum, OutArgNum).
 
-proc_info_has_io_state_pair_from_details(ModuleInfo, HeadVars, ArgModes,
-        VarTypes, InArgNum, OutArgNum) :-
+proc_info_has_io_state_pair_from_details(ModuleInfo, VarTypeSrc,
+        HeadVars, ArgModes, InArgNum, OutArgNum) :-
     assoc_list.from_corresponding_lists(HeadVars, ArgModes, HeadVarsModes),
-    proc_info_has_io_state_pair_2(HeadVarsModes, ModuleInfo, VarTypes,
-        1, no, MaybeIn, no, MaybeOut),
+    proc_info_has_io_state_pair_2(ModuleInfo, VarTypeSrc, 1, HeadVarsModes,
+        no, MaybeIn, no, MaybeOut),
     ( if
         MaybeIn = yes(In),
         MaybeOut = yes(Out)
@@ -4153,16 +4152,16 @@ proc_info_has_io_state_pair_from_details(ModuleInfo, HeadVars, ArgModes,
         fail
     ).
 
-:- pred proc_info_has_io_state_pair_2(assoc_list(prog_var, mer_mode)::in,
-    module_info::in, vartypes::in, int::in,
+:- pred proc_info_has_io_state_pair_2(module_info::in, var_type_source::in,
+    int::in, assoc_list(prog_var, mer_mode)::in,
     maybe(int)::in, maybe(int)::out, maybe(int)::in, maybe(int)::out)
     is semidet.
 
-proc_info_has_io_state_pair_2([], _, _, _, !MaybeIn, !MaybeOut).
-proc_info_has_io_state_pair_2([Var - Mode | VarModes], ModuleInfo, VarTypes,
-        ArgNum, !MaybeIn, !MaybeOut) :-
+proc_info_has_io_state_pair_2(_, _, _, [], !MaybeIn, !MaybeOut).
+proc_info_has_io_state_pair_2(ModuleInfo, VarTypeSrc, ArgNum,
+        [Var - Mode | VarModes], !MaybeIn, !MaybeOut) :-
     ( if
-        lookup_var_type(VarTypes, Var, VarType),
+        lookup_var_type_in_source(VarTypeSrc, Var, VarType),
         type_is_io_state(VarType)
     then
         ( if mode_is_fully_input(ModuleInfo, Mode) then
@@ -4194,16 +4193,16 @@ proc_info_has_io_state_pair_2([Var - Mode | VarModes], ModuleInfo, VarTypes,
     else
         true
     ),
-    proc_info_has_io_state_pair_2(VarModes, ModuleInfo, VarTypes,
-        ArgNum + 1, !MaybeIn, !MaybeOut).
+    proc_info_has_io_state_pair_2(ModuleInfo, VarTypeSrc, ArgNum + 1,
+        VarModes, !MaybeIn, !MaybeOut).
 
-proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTypes,
+proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTypeSrc,
         [HeadVar | HeadVars]) :-
     (
-        lookup_var_type(VarTypes, HeadVar, VarType),
+        lookup_var_type_in_source(VarTypeSrc, HeadVar, VarType),
         type_is_higher_order(VarType)
     ;
-        proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTypes,
+        proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTypeSrc,
             HeadVars)
     ).
 

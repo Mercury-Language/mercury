@@ -1099,7 +1099,8 @@
             % Two consecutive stack slots for storing a double-precision float.
             % The number is the offset relative to one of the stack pointers
             % and represents the lower-numbered of two consecutive slots.
-            % As our stacks grow downward, the higher-number slot has the
+            % As our stacks grow upward, they are addressed relative to the
+            % stack pointer at the top, so the higher-numbered slot has the
             % lower address, and must be aligned for the target architecture.
             %
             % - stackvar(Slot), stackvar(Slot + 1)

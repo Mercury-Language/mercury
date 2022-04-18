@@ -30,7 +30,7 @@
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module cord.
@@ -61,7 +61,7 @@
     % Create the bytecodes for the given procedure.
     %
 :- pred represent_proc_as_bytecodes(list(prog_var)::in, hlds_goal::in,
-    instmap::in, vartypes::in, var_num_map::in, module_info::in,
+    instmap::in, var_table::in, var_num_map::in, module_info::in,
     maybe_include_var_name_table::in, maybe_include_var_types::in,
     determinism::in, string_table_info::in, string_table_info::out,
     type_table_info::in, type_table_info::out, list(int)::out) is det.
@@ -72,7 +72,7 @@
     --->    prog_rep_info(
                 pri_module_info         :: module_info,
                 pri_filename            :: string,
-                pri_vartypes            :: vartypes,
+                pri_var_table           :: var_table,
                 pri_var_num_map         :: var_num_map,
                 pri_var_num_rep         :: var_num_rep,
                 pri_flatten_par_conjs   :: flatten_par_conjs
@@ -238,16 +238,16 @@ string_proclabel_kind_special = 2.
 
 %-----------------------------------------------------------------------------%
 
-represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
+represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTable, VarNumMap,
         ModuleInfo, IncludeVarNameTable, IncludeVarTypes, ProcDetism,
         !StringTable, !TypeTable, ProcRepBytes) :-
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
     term.context_file(Context, FileName),
     represent_var_table_as_bytecode(IncludeVarNameTable, IncludeVarTypes,
-        VarTypes, VarNumMap, VarNumRep, VarNameTableBytes,
+        VarTable, VarNumMap, VarNumRep, VarNameTableBytes,
         !StringTable, !TypeTable),
-    Info = prog_rep_info(ModuleInfo, FileName, VarTypes, VarNumMap, VarNumRep,
+    Info = prog_rep_info(ModuleInfo, FileName, VarTable, VarNumMap, VarNumRep,
         expect_no_par_conjs),
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
 
@@ -272,13 +272,13 @@ represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
     % restricts the number of possible variables in a procedure to 2^31.
     %
 :- pred represent_var_table_as_bytecode(maybe_include_var_name_table::in,
-    maybe_include_var_types::in, vartypes::in,
+    maybe_include_var_types::in, var_table::in,
     var_num_map::in, var_num_rep::out, list(int)::out,
     string_table_info::in, string_table_info::out,
     type_table_info::in, type_table_info::out) is det.
 
 represent_var_table_as_bytecode(IncludeVarNameTable, IncludeVarTypes,
-        VarTypes, VarNumMap, VarNumRep, Bytes, !StringTable, !TypeTable) :-
+        VarTable, VarNumMap, VarNumRep, Bytes, !StringTable, !TypeTable) :-
     map.foldl(max_var_num, VarNumMap, 0) = MaxVarNum,
     ( if MaxVarNum =< 127 then
         VarNumRep = var_num_1_byte
@@ -310,7 +310,7 @@ represent_var_table_as_bytecode(IncludeVarNameTable, IncludeVarTypes,
             )
         ;
             IncludeVarTypes = include_var_types,
-            map.foldl4(encode_var_name_type_table_entry(VarNumRep, VarTypes),
+            map.foldl4(encode_var_name_type_table_entry(VarNumRep, VarTable),
                 VarNumMap, 0, NumVars,
                 [], VarNameTableEntriesBytes, !StringTable, !TypeTable)
         ),
@@ -383,16 +383,16 @@ encode_var_name_table_entry_4_byte(_ProgVar, VarNum - VarName,
         !:VarNameTableBytes = VarBytes ++ VarNameBytes ++ !.VarNameTableBytes
     ).
 
-:- pred encode_var_name_type_table_entry(var_num_rep::in, vartypes::in,
+:- pred encode_var_name_type_table_entry(var_num_rep::in, var_table::in,
     prog_var::in, pair(int, string)::in, int::in, int::out,
     list(int)::in, list(int)::out,
     string_table_info::in, string_table_info::out,
     type_table_info::in, type_table_info::out) is det.
 
-encode_var_name_type_table_entry(VarNumRep, VarTypes, Var, VarNum - VarName,
+encode_var_name_type_table_entry(VarNumRep, VarTable, Var, VarNum - VarName,
         !NumVars, !VarNameTableBytes, !StringTable, !TypeTable) :-
     !:NumVars = !.NumVars + 1,
-    lookup_var_type(VarTypes, Var, Type),
+    lookup_var_type(VarTable, Var, Type),
     (
         VarNumRep = var_num_1_byte,
         VarBytes = [VarNum]

@@ -1160,9 +1160,10 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     ),
     variable_locations(!.CLD, VarLocs),
     get_proc_info(!.CI, ProcInfo),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     set.to_sorted_list(TVarSet, TVarList),
-    continuation_info.find_typeinfos_for_tvars(ProcInfo, TVarList, VarLocs,
-        TVarDataMap),
+    continuation_info.find_typeinfos_for_tvars(VarTable, RttiVarMaps,
+        TVarList, VarLocs, TVarDataMap),
 
     % Compute the set of live lvals at the event.
     VarLvals = list.map(find_lval_in_var_info, VarInfoList),
