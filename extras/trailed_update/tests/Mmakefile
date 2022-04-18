@@ -9,7 +9,7 @@
 MAIN_TARGET = all
 
 # We need to use a grade with trailing
-GRADEFLAGS += --use-trail --trail-segments
+GRADEFLAGS += --use-trail
 
 MCFLAGS = --infer-all
 

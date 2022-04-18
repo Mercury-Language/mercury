@@ -8369,8 +8369,6 @@ they are followed by descriptions of those options.
 @findex --memory-profiling
 @findex --deep-profiling
 @findex --use-trail
-@findex --trail-segments
-@findex --no-trail-segments
 @findex --record-term-sizes-as-words
 @findex --record-term-sizes-as-cells
 @findex --single-prec-float
@@ -8434,7 +8432,7 @@ they are followed by descriptions of those options.
 @c @code{--profile-calls}.
 @c
 @item @samp{.tr}
-@code{--use-trail --no-trail-segments}.
+@code{--use-trail}.
 
 @c @item @samp{.tsw}
 @c @code{--record-term-sizes-as-words}.
