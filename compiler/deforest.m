@@ -1550,7 +1550,7 @@ try_MSG(ModuleInfo, VersionInstMap, Renaming, [VersionArgVar | VersionArgVars],
     ( if
         map.search(Renaming, VersionArgVar, ArgVar),
         instmap_lookup_var(!.InstMap, ArgVar, VarInst),
-        inst_MSG(VersionInst, VarInst, ModuleInfo, Inst)
+        inst_MSG(ModuleInfo, VersionInst, VarInst, Inst)
     then
         instmap_set_var(ArgVar, Inst, !InstMap)
     else

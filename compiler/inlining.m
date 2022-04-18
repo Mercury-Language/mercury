@@ -1054,20 +1054,16 @@ do_inline_call(ModuleInfo, ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
     compute_caller_callee_type_substitution(HeadTypes, ArgTypes,
         ExternalTypeParams, CalleeExistQVars, TypeSubn),
 
+    % Update types in the callee.
+    apply_rec_subst_to_var_table(TypeSubn, CalleeVarTable1, CalleeVarTable),
     % Handle the common case of non-existentially typed preds specially,
     % since we can do things more efficiently in that case.
     (
         CalleeExistQVars = [],
-        % Update types in callee only.
-        apply_rec_subst_to_var_table(TypeSubn,
-            CalleeVarTable1, CalleeVarTable),
         VarTable1 = VarTable0
     ;
         CalleeExistQVars = [_ | _],
-        % Update types in callee.
-        apply_rec_subst_to_var_table(TypeSubn,
-            CalleeVarTable1, CalleeVarTable),
-        % Update types in caller.
+        % Update types in the caller.
         apply_rec_subst_to_var_table(TypeSubn, VarTable0, VarTable1)
     ),
 
