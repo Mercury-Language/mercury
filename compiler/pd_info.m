@@ -676,10 +676,9 @@ pd_info_define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
     % XXX handle the extra typeinfo arguments for
     % --typeinfo-liveness properly.
     hlds_pred.define_new_pred(NewPredSymName, Origin,
-        TVarSet, VarTypes, ClassContext, RttiVarMaps,
-        InstVarSet, InstMap, VarSet, VarNameRemap,
-        Markers, address_is_not_taken, HasParallelConj, PredProcId,
-        Args, _ExtraArgs, Goal, CallGoal, ModuleInfo0, ModuleInfo),
+        TVarSet, InstVarSet, VarSet, VarTypes, RttiVarMaps, ClassContext,
+        InstMap, VarNameRemap, Markers, address_is_not_taken, HasParallelConj,
+        PredProcId, Args, _ExtraArgs, Goal, CallGoal, ModuleInfo0, ModuleInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo).
 
 %---------------------------------------------------------------------------%

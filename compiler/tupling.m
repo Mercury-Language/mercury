@@ -809,12 +809,12 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
         AuxPredSymName,         % in
         Origin,                 % in
         TVarSet,                % in
-        VarTypes,               % in
-        ClassContext,           % in
-        RttiVarMaps,            % in
         InstVarSet,             % in
-        InitialAuxInstMap,      % in
         VarSet,                 % in
+        VarTypes,               % in
+        RttiVarMaps,            % in
+        ClassContext,           % in
+        InitialAuxInstMap,      % in
         VarNameRemap,           % in
         Markers,                % in
         address_is_not_taken,   % in

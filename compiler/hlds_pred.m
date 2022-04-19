@@ -671,8 +671,8 @@
 
 %---------------------%
 
-    % define_new_pred(SymName, Origin, TVarSet, VarTypes
-    %   ClassContext, RttiVarMaps, InstVarSet, InstMap0, VarSet, VarNameRemap,
+    % define_new_pred(SymName, Origin, TVarSet, InstVarSet, VarSet, VarTypes,
+    %   RttiVarMaps, ClassContext, InstMap0, VarNameRemap,
     %   Markers, IsAddressTaken, HasParallelConj, PredProcId,
     %   ArgVars, ExtraTiTcis, Goal0, CallGoal, !ModuleInfo):
     %
@@ -682,10 +682,10 @@
     % which were added to the front of the argument list.
     %
 :- pred define_new_pred(sym_name::in, pred_origin::in,
-    tvarset::in, vartypes::in, prog_constraints::in, rtti_varmaps::in,
-    inst_varset::in, instmap::in, prog_varset::in, map(prog_var, string)::in,
-    pred_markers::in, is_address_taken::in, has_parallel_conj::in,
-    pred_proc_id::out,
+    tvarset::in, inst_varset::in, prog_varset::in, vartypes::in,
+    rtti_varmaps::in, prog_constraints::in, instmap::in,
+    map(prog_var, string)::in, pred_markers::in,
+    is_address_taken::in, has_parallel_conj::in, pred_proc_id::out,
     list(prog_var)::in, list(prog_var)::out, hlds_goal::in, hlds_goal::out,
     module_info::in, module_info::out) is det.
 
@@ -1421,8 +1421,8 @@ pred_create(ModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
 
-define_new_pred(PredSymName, Origin, TVarSet, VarTypes0,
-        ClassContext, RttiVarMaps, InstVarSet, InstMap0, VarSet0, VarNameRemap,
+define_new_pred(PredSymName, Origin, TVarSet, InstVarSet,
+        VarSet0, VarTypes0, RttiVarMaps, ClassContext, InstMap0, VarNameRemap,
         Markers, IsAddressTaken, HasParallelConj, PredProcId,
         ArgVars0, ExtraTiTcis, Goal0, CallGoal, !ModuleInfo) :-
     Goal0 = hlds_goal(_GoalExpr, GoalInfo),
@@ -1473,8 +1473,8 @@ define_new_pred(PredSymName, Origin, TVarSet, VarTypes0,
     goal_util.goal_vars(Goal0, GoalVars0),
     set_of_var.insert_list(ArgVars, GoalVars0, GoalVars),
     GoalVarsSet = set_of_var.bitset_to_set(GoalVars),
-    vartypes_select(GoalVarsSet, VarTypes0, VarTypes),
     varset.select(GoalVarsSet, VarSet0, VarSet),
+    vartypes_select(GoalVarsSet, VarTypes0, VarTypes),
 
     % Approximate the termination information for the new procedure.
     ( if goal_cannot_loop(!.ModuleInfo, Goal0) then

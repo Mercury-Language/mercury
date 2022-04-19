@@ -781,12 +781,12 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
         AuxPredSymName, % in    - The name of the new aux proc.
         Origin,         % in    - The origin of this new predicate
         TVarSet,        % in    - ???
-        VarTypes,       % in    - The var -> type mapping for the new aux proc.
-        ClassContext,   % in    - Typeclass constraints on the new aux proc.
-        RttiVarMaps,    % in    - type_info and typeclass_info locations.
         InstVarSet,     % in    - ???
-        InitialAuxInstMap, % in - The initial instmap for the new aux proc.
         VarSet,         % in    - ???
+        VarTypes,       % in    - The var -> type mapping for the new aux proc.
+        RttiVarMaps,    % in    - type_info and typeclass_info locations.
+        ClassContext,   % in    - Typeclass constraints on the new aux proc.
+        InitialAuxInstMap, % in - The initial instmap for the new aux proc.
         VarNameRemap,   % in
         Markers,        % in    - Markers for the new aux proc.
         address_is_not_taken,
