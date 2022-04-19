@@ -1190,7 +1190,7 @@ modecheck_make_type_info_var_for_type(Type, Context, TypeInfoVar,
     mode_info_get_varset(!.ModeInfo, VarSet0),
     proc_info_set_varset_vartypes(VarSet0, VarTypes0, ProcInfo0, ProcInfo1),
 
-    polymorphism_make_type_info_var_raw(Type, Context,
+    polymorphism_make_type_info_var_mi(Type, Context,
         TypeInfoVar, TypeInfoGoals, ModuleInfo0, ModuleInfo1,
         PredInfo0, PredInfo, ProcInfo1, ProcInfo),
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,

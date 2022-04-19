@@ -2418,7 +2418,7 @@ create_plain_conj(GoalsInConj, ConjGoal) :-
 make_type_info(Type, TypeInfoVar, Goals, NewPredInfo0, NewPredInfo) :-
     NewPredInfo0 = stm_new_pred_info(ModuleInfo0, PredId, ProcId,
         PredInfo0, ProcInfo0, Context, VarCnt),
-    polymorphism_make_type_info_var_raw(Type, Context, TypeInfoVar, Goals,
+    polymorphism_make_type_info_var_mi(Type, Context, TypeInfoVar, Goals,
         ModuleInfo0, ModuleInfo, PredInfo0, PredInfo, ProcInfo0, ProcInfo),
     NewPredInfo = stm_new_pred_info(ModuleInfo, PredId, ProcId,
         PredInfo, ProcInfo, Context, VarCnt).

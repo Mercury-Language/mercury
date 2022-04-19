@@ -591,7 +591,7 @@ is_active_type = Type :-
 make_type_info_var(Type, Context, PredId, !ProcInfo, !ModuleInfo,
         TypeInfoVar, TypeInfoGoals) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-    polymorphism_make_type_info_var_raw(Type, Context,
+    polymorphism_make_type_info_var_mi(Type, Context,
         TypeInfoVar, TypeInfoGoals, !ModuleInfo,
         PredInfo0, PredInfo, !ProcInfo),
     expect(unify(PredInfo0, PredInfo), $pred, "modified pred_info").

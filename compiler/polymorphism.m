@@ -36,68 +36,6 @@
 %
 %---------------------------------------------------------------------------%
 %
-% Representation of type information:
-%
-% IMPORTANT: ANY CHANGES TO THE DOCUMENTATION HERE MUST BE REFLECTED BY
-% SIMILAR CHANGES TO THE #defines IN "runtime/mercury_type_info.h" AND
-% TO THE TYPE SPECIALIZATION CODE IN "compiler/higher_order.m".
-%
-% Type information is represented using one or two cells. The cell which
-% is always present is the type_ctor_info structure, whose structure is
-% defined in runtime/mercury_type_info.h. The other cell is the type_info
-% structure, laid out like this:
-%
-%   word 0      <pointer to the type_ctor_info structure>
-%   word 1+     <the type_infos for the type params, at least one>
-%
-%   (but see note below for how variable arity types differ)
-%
-%---------------------------------------------------------------------------%
-%
-% Optimization of common case (zero arity types):
-%
-% The type_info structure itself is redundant if the type has no type
-% parameters (i.e. its arity is zero). Therefore if the arity is zero,
-% we pass the address of the type_ctor_info structure directly, instead of
-% wrapping it up in another cell. The runtime system will look at the first
-% field of the cell it is passed. If this field is zero, the cell is a
-% type_ctor_info structure for an arity zero type. If this field is not zero,
-% the cell is a new type_info structure, with the first field being the
-% pointer to the type_ctor_info structure.
-%
-%---------------------------------------------------------------------------%
-%
-% Variable arity types:
-%
-% There is a slight variation on this for variable-arity type constructors, of
-% there are exactly three: pred, func and tuple. Typeinfos of these types
-% always have a pointer to the pred/0, func/0 or tuple/0 type_ctor_info,
-% regardless of their true arity, so we store the real arity in the type_info
-% as well.
-%
-%   word 0      <pointer to the arity 0 type_ctor_info structure>
-%   word 1      <arity of predicate>
-%   word 2+     <the type_infos for the type params, if any>
-%
-%---------------------------------------------------------------------------%
-%
-% Sharing type_ctor_info structures:
-%
-% For compilation models that can put code addresses in static ground terms,
-% we can arrange to create one copy of the type_ctor_info structure statically,
-% avoiding the need to create other copies at runtime. For compilation models
-% that cannot put code addresses in static ground terms, there are a couple
-% of things we could do:
-%
-%   1. allocate all cells at runtime.
-%   2. use a shared static type_ctor_info, but initialize its code
-%      addresses during startup (that is, during the module
-%      initialization code).
-%
-% We use option 2.
-%
-%---------------------------------------------------------------------------%
-%
 % Example of transformation:
 %
 % Take the following code as an example, ignoring the requirement for
@@ -1291,7 +1229,8 @@ unification_typeinfos(Type, !Unification, !GoalInfo, Changed, !Info) :-
         Changed = no
     ;
         TypeVars = [_ | _],
-        list.map_foldl(get_type_info_locn, TypeVars, TypeInfoLocns, !Info),
+        list.map_foldl(poly_get_type_info_locn, TypeVars, TypeInfoLocns,
+            !Info),
         add_unification_typeinfos(TypeInfoLocns, !Unification, !GoalInfo),
         Changed = yes
     ).

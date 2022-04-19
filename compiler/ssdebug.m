@@ -213,6 +213,7 @@
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.purity.
 :- import_module check_hlds.recompute_instmap_deltas.
+:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
@@ -234,7 +235,7 @@
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module int.
 :- import_module list.
@@ -242,7 +243,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -293,19 +293,21 @@ ssdebug_first_pass_in_proc(PredId, ProcId, !ProxyMap, !ModuleInfo) :-
     some [!ProcInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId, PredInfo,
             !:ProcInfo),
+        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
         proc_info_get_goal(!.ProcInfo, Goal0),
-        ssdebug_first_pass_in_goal(Goal0, Goal, !ProcInfo, !ProxyMap,
-            !ModuleInfo),
+        ssdebug_first_pass_in_goal(Goal0, Goal, VarTable0, VarTable,
+            !ProxyMap, !ModuleInfo),
+        proc_info_set_var_table(VarTable, !ProcInfo),
         proc_info_set_goal(Goal, !ProcInfo),
         module_info_set_pred_proc_info(PredId, ProcId, PredInfo, !.ProcInfo,
             !ModuleInfo)
     ).
 
 :- pred ssdebug_first_pass_in_goal(hlds_goal::in, hlds_goal::out,
-    proc_info::in, proc_info::out, proxy_map::in, proxy_map::out,
+    var_table::in, var_table::out, proxy_map::in, proxy_map::out,
     module_info::in, module_info::out) is det.
 
-ssdebug_first_pass_in_goal(!Goal, !ProcInfo, !ProxyMap, !ModuleInfo) :-
+ssdebug_first_pass_in_goal(!Goal, !VarTable, !ProxyMap, !ModuleInfo) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(_, _, _, Unification0, _),
@@ -348,53 +350,53 @@ ssdebug_first_pass_in_goal(!Goal, !ProcInfo, !ProxyMap, !ModuleInfo) :-
             ;
                 MaybeNewPredId = no
             ),
-            insert_context_update_call(!.ModuleInfo, !Goal, !ProcInfo)
+            insert_context_update_call(!.ModuleInfo, !Goal, !VarTable)
         ;
             Builtin = inline_builtin
         )
     ;
         GoalExpr0 = generic_call(_, _, _, _, _),
-        insert_context_update_call(!.ModuleInfo, !Goal, !ProcInfo)
+        insert_context_update_call(!.ModuleInfo, !Goal, !VarTable)
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
     ;
         GoalExpr0 = conj(ConjType, Goals0),
-        list.map_foldl3(ssdebug_first_pass_in_goal, Goals0, Goals, !ProcInfo,
-            !ProxyMap, !ModuleInfo),
+        list.map_foldl3(ssdebug_first_pass_in_goal, Goals0, Goals,
+            !VarTable, !ProxyMap, !ModuleInfo),
         GoalExpr = conj(ConjType, Goals),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Goals0),
-        list.map_foldl3(ssdebug_first_pass_in_goal, Goals0, Goals, !ProcInfo,
-            !ProxyMap, !ModuleInfo),
+        list.map_foldl3(ssdebug_first_pass_in_goal, Goals0, Goals,
+            !VarTable, !ProxyMap, !ModuleInfo),
         GoalExpr = disj(Goals),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        list.map_foldl3(ssdebug_first_pass_in_case, Cases0, Cases, !ProcInfo,
-            !ProxyMap, !ModuleInfo),
+        list.map_foldl3(ssdebug_first_pass_in_case, Cases0, Cases,
+            !VarTable, !ProxyMap, !ModuleInfo),
         GoalExpr = switch(Var, CanFail, Cases),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(SubGoal0),
-        ssdebug_first_pass_in_goal(SubGoal0, SubGoal, !ProcInfo, !ProxyMap,
-            !ModuleInfo),
+        ssdebug_first_pass_in_goal(SubGoal0, SubGoal,
+            !VarTable, !ProxyMap, !ModuleInfo),
         GoalExpr = negation(SubGoal),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ssdebug_first_pass_in_goal(SubGoal0, SubGoal, !ProcInfo, !ProxyMap,
-            !ModuleInfo),
+        ssdebug_first_pass_in_goal(SubGoal0, SubGoal,
+            !VarTable, !ProxyMap, !ModuleInfo),
         GoalExpr = scope(Reason, SubGoal),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        ssdebug_first_pass_in_goal(Cond0, Cond, !ProcInfo, !ProxyMap,
-            !ModuleInfo),
-        ssdebug_first_pass_in_goal(Then0, Then, !ProcInfo, !ProxyMap,
-            !ModuleInfo),
-        ssdebug_first_pass_in_goal(Else0, Else, !ProcInfo, !ProxyMap,
-            !ModuleInfo),
+        ssdebug_first_pass_in_goal(Cond0, Cond,
+            !VarTable, !ProxyMap, !ModuleInfo),
+        ssdebug_first_pass_in_goal(Then0, Then,
+            !VarTable, !ProxyMap, !ModuleInfo),
+        ssdebug_first_pass_in_goal(Else0, Else,
+            !VarTable, !ProxyMap, !ModuleInfo),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -404,12 +406,12 @@ ssdebug_first_pass_in_goal(!Goal, !ProcInfo, !ProxyMap, !ModuleInfo) :-
     ).
 
 :- pred ssdebug_first_pass_in_case(case::in, case::out,
-    proc_info::in, proc_info::out,
-    proxy_map::in, proxy_map::out, module_info::in, module_info::out) is det.
+    var_table::in, var_table::out, proxy_map::in, proxy_map::out,
+    module_info::in, module_info::out) is det.
 
-ssdebug_first_pass_in_case(Case0, Case, !ProcInfo, !ProxyMap, !ModuleInfo) :-
+ssdebug_first_pass_in_case(Case0, Case, !VarTable, !ProxyMap, !ModuleInfo) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    ssdebug_first_pass_in_goal(Goal0, Goal, !ProcInfo, !ProxyMap, !ModuleInfo),
+    ssdebug_first_pass_in_goal(Goal0, Goal, !VarTable, !ProxyMap, !ModuleInfo),
     Case = case(MainConsId, OtherConsIds, Goal).
 
     % Look up the proxy for a predicate, creating one if appropriate.
@@ -485,21 +487,17 @@ create_proxy_proc(PredId, ProcId, !PredInfo, !ModuleInfo) :-
     ).
 
 :- pred insert_context_update_call(module_info::in,
-    hlds_goal::in, hlds_goal::out, proc_info::in, proc_info::out) is det.
+    hlds_goal::in, hlds_goal::out, var_table::in, var_table::out) is det.
 
-insert_context_update_call(ModuleInfo, Goal0, Goal, !ProcInfo) :-
+insert_context_update_call(ModuleInfo, Goal0, Goal, !VarTable) :-
     Goal0 = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
     Context = term.context(FileName, LineNumber),
 
-    some [!VarSet, !VarTypes] (
-        proc_info_get_varset_vartypes(!.ProcInfo, !:VarSet, !:VarTypes),
-        make_string_const_construction_alloc(FileName, yes("FileName"),
-            MakeFileName, FileNameVar, !VarSet, !VarTypes),
-        make_int_const_construction_alloc(LineNumber, yes("LineNumber"),
-            MakeLineNumber, LineNumberVar, !VarSet, !VarTypes),
-        proc_info_set_varset_vartypes(!.VarSet, !.VarTypes, !ProcInfo)
-    ),
+    make_string_const_construction_alloc_vt(FileName, "FileName",
+        MakeFileName, FileNameVar, !VarTable),
+    make_int_const_construction_alloc_vt(LineNumber, "LineNumber",
+        MakeLineNumber, LineNumberVar, !VarTable),
 
     ArgVars = [FileNameVar, LineNumberVar],
     Features = [],
@@ -600,38 +598,37 @@ ssdebug_process_proc(SSTraceLevel, PredProcId, !ProcInfo, !ModuleInfo) :-
 
 ssdebug_process_proc_det(SSTraceLevel, PredId, ProcId,
         !ProcInfo, !ModuleInfo) :-
-    some [!PredInfo, !VarSet, !VarTypes] (
+    some [!PredInfo, !VarTable] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
-        proc_info_get_varset_vartypes(!.ProcInfo, !:VarSet, !:VarTypes),
+        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, !:VarTable),
         get_stripped_headvars(!.PredInfo, !.ProcInfo, FullHeadVars, HeadVars,
             ArgModes),
 
         % Make the ssdb_proc_id.
         make_proc_id_construction(!.ModuleInfo, !.PredInfo, ProcIdGoals,
-            ProcIdVar, !VarSet, !VarTypes),
+            ProcIdVar, !VarTable),
 
         % Make a list which records the value for each of the head
         % variables at the call port.
         proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InitInstMap),
         make_arg_list(0, InitInstMap, HeadVars, map.init, CallArgListVar,
-            CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
-            !VarTypes, map.init, BoundVarDescsAtCall),
+            CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarTable,
+            map.init, BoundVarDescsAtCall),
 
         % Set the ssdb_tracing_level.
-        make_level_construction(SSTraceLevel,
-            ConstructLevelGoal, LevelVar, !VarSet, !VarTypes),
+        make_level_construction(SSTraceLevel, ConstructLevelGoal, LevelVar,
+            !VarTable),
 
         % Generate the call to handle_event_call(ProcId, VarList).
-        make_handle_event("handle_event_call",
-            [ProcIdVar, CallArgListVar, LevelVar], HandleEventCallGoal,
-            !ModuleInfo, !VarSet, !VarTypes),
+        make_handle_event(!.ModuleInfo, "handle_event_call",
+            [ProcIdVar, CallArgListVar, LevelVar], HandleEventCallGoal),
 
         % In the case of a retry, the output variables will be bound by the
         % retried call.
         get_output_args(!.ModuleInfo, HeadVars, ArgModes, OutputVars),
         rename_outputs(OutputVars, OrigBodyGoal, RenamedBodyGoal,
-            AssignOutputsGoal, Renaming, !VarSet, !VarTypes),
+            AssignOutputsGoal, Renaming, !VarTable),
 
         % If the procedure (which we call recursively on retry) is declared
         % cc_nondet but inferred cc_multi, then we must put the original body
@@ -653,14 +650,13 @@ ssdebug_process_proc_det(SSTraceLevel, PredId, ProcId,
         % for the call port.
         update_instmap(OrigBodyGoal, InitInstMap, FinalInstMap),
         make_arg_list(0, FinalInstMap, HeadVars, Renaming, ExitArgListVar,
-            ExitArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
-            !VarTypes, BoundVarDescsAtCall, _BoundVarDescsAtExit),
+            ExitArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarTable,
+            BoundVarDescsAtCall, _BoundVarDescsAtExit),
 
         % Generate the call to handle_event_exit.
-        make_retry_var("DoRetry", RetryVar, !VarSet, !VarTypes),
-        make_handle_event("handle_event_exit",
-            [ProcIdVar, ExitArgListVar, RetryVar], HandleEventExitGoal,
-            !ModuleInfo, !VarSet, !VarTypes),
+        make_retry_var("DoRetry", RetryVar, !VarTable),
+        make_handle_event(!.ModuleInfo, "handle_event_exit",
+            [ProcIdVar, ExitArgListVar, RetryVar], HandleEventExitGoal),
 
         % Generate the recursive call in the case of a retry.
         make_recursive_call(!.PredInfo, !.ModuleInfo, PredId, ProcId,
@@ -681,8 +677,8 @@ ssdebug_process_proc_det(SSTraceLevel, PredId, ProcId,
             [HandleEventExitGoal],
             [SwitchGoal]
         ]),
-        commit_goal_changes(BodyGoals, PredId, ProcId, !.PredInfo, !ProcInfo,
-            !ModuleInfo, !.VarSet, !.VarTypes)
+        commit_goal_changes(BodyGoals, PredId, ProcId, !.PredInfo, !.VarTable,
+            !ProcInfo, !ModuleInfo)
     ).
 
     % Source-to-source transformation for a semidet goal.
@@ -693,52 +689,50 @@ ssdebug_process_proc_det(SSTraceLevel, PredId, ProcId,
 
 ssdebug_process_proc_semi(SSTraceLevel, PredId, ProcId,
         !ProcInfo, !ModuleInfo) :-
-    some [!PredInfo, !VarSet, !VarTypes] (
+    some [!PredInfo, !VarTable] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
-        proc_info_get_varset_vartypes(!.ProcInfo, !:VarSet, !:VarTypes),
+        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, !:VarTable),
         get_stripped_headvars(!.PredInfo, !.ProcInfo, FullHeadVars, HeadVars,
             ArgModes),
 
         % Make the ssdb_proc_id.
         make_proc_id_construction(!.ModuleInfo, !.PredInfo, ProcIdGoals,
-            ProcIdVar, !VarSet, !VarTypes),
+            ProcIdVar, !VarTable),
 
         % Make a list which records the value for each of the head
         % variables at the call port.
         proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InitInstMap),
         make_arg_list(0, InitInstMap, HeadVars, map.init, CallArgListVar,
-            CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
-            !VarTypes, map.init, BoundVarDescsAtCall),
+            CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarTable,
+            map.init, BoundVarDescsAtCall),
 
         % Set the ssdb_tracing_level.
-        make_level_construction(SSTraceLevel,
-            ConstructLevelGoal, LevelVar, !VarSet, !VarTypes),
+        make_level_construction(SSTraceLevel, ConstructLevelGoal, LevelVar,
+            !VarTable),
 
         % Generate the call to handle_event_call.
-        make_handle_event("handle_event_call",
-            [ProcIdVar, CallArgListVar, LevelVar],
-            HandleEventCallGoal, !ModuleInfo, !VarSet, !VarTypes),
+        make_handle_event(!.ModuleInfo, "handle_event_call",
+            [ProcIdVar, CallArgListVar, LevelVar], HandleEventCallGoal),
 
         % In the case of a retry, the output variables will be bound by the
         % retried call.
         get_output_args(!.ModuleInfo, HeadVars, ArgModes, OutputVars),
         rename_outputs(OutputVars, OrigBodyGoal, RenamedBodyGoal,
-            AssignOutputsGoal, Renaming, !VarSet, !VarTypes),
+            AssignOutputsGoal, Renaming, !VarTable),
 
         % Make the variable list at the exit port. It's currently a
         % completely new list instead of adding on to the list generated
         % for the call port.
         update_instmap(OrigBodyGoal, InitInstMap, FinalInstMap),
         make_arg_list(0, FinalInstMap, HeadVars, Renaming, ExitArgListVar,
-            ExitArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
-            !VarTypes, BoundVarDescsAtCall, _BoundVarDescsAtExit),
+            ExitArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarTable,
+            BoundVarDescsAtCall, _BoundVarDescsAtExit),
 
         % Generate the call to handle_event_exit.
-        make_retry_var("DoRetryA", RetryAVar, !VarSet, !VarTypes),
-        make_handle_event("handle_event_exit",
-            [ProcIdVar, ExitArgListVar, RetryAVar], HandleEventExitGoal,
-            !ModuleInfo, !VarSet, !VarTypes),
+        make_retry_var("DoRetryA", RetryAVar, !VarTable),
+        make_handle_event(!.ModuleInfo, "handle_event_exit",
+            [ProcIdVar, ExitArgListVar, RetryAVar], HandleEventExitGoal),
 
         % Generate the recursive call in the case of a retry.
         make_recursive_call(!.PredInfo, !.ModuleInfo, PredId, ProcId,
@@ -746,14 +740,13 @@ ssdebug_process_proc_semi(SSTraceLevel, PredId, ProcId,
 
         % Generate the list of arguments at the fail port.
         make_arg_list(0, InitInstMap, [], Renaming, FailArgListVar,
-            FailArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
-            !VarTypes, BoundVarDescsAtCall, _BoundVarDescsAtFail),
+            FailArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarTable,
+            BoundVarDescsAtCall, _BoundVarDescsAtFail),
 
         % Generate the call to handle_event_fail.
-        make_retry_var("DoRetryB", RetryBVar, !VarSet, !VarTypes),
-        make_handle_event("handle_event_fail",
-            [ProcIdVar, FailArgListVar, RetryBVar], HandleEventFailGoal,
-            !ModuleInfo, !VarSet, !VarTypes),
+        make_retry_var("DoRetryB", RetryBVar, !VarTable),
+        make_handle_event(!.ModuleInfo, "handle_event_fail",
+            [ProcIdVar, FailArgListVar, RetryBVar], HandleEventFailGoal),
 
         proc_info_interface_determinism(!.ProcInfo, ProcDetism),
         ImpureGoalInfo = impure_goal_info(ProcDetism),
@@ -810,8 +803,8 @@ ssdebug_process_proc_semi(SSTraceLevel, PredId, ProcId,
             [HandleEventCallGoal],
             [IteGoal]
         ]),
-        commit_goal_changes(BodyGoals, PredId, ProcId, !.PredInfo, !ProcInfo,
-            !ModuleInfo, !.VarSet, !.VarTypes)
+        commit_goal_changes(BodyGoals, PredId, ProcId, !.PredInfo, !.VarTable,
+            !ProcInfo, !ModuleInfo)
     ).
 
     % Source-to-source transformation for a nondeterministic procedure.
@@ -822,52 +815,49 @@ ssdebug_process_proc_semi(SSTraceLevel, PredId, ProcId,
 
 ssdebug_process_proc_nondet(SSTraceLevel, PredId, ProcId,
         !ProcInfo, !ModuleInfo) :-
-    some [!PredInfo, !VarSet, !VarTypes] (
+    some [!PredInfo, !VarTable] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
-        proc_info_get_varset_vartypes(!.ProcInfo, !:VarSet, !:VarTypes),
+        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, !:VarTable),
         get_stripped_headvars(!.PredInfo, !.ProcInfo, FullHeadVars, HeadVars,
             _ArgModes),
 
         % Make the ssdb_proc_id.
         make_proc_id_construction(!.ModuleInfo, !.PredInfo, ProcIdGoals,
-            ProcIdVar, !VarSet, !VarTypes),
+            ProcIdVar, !VarTable),
 
         % Make a list which records the value for each of the head
         % variables at the call port.
         proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InitInstMap),
         make_arg_list(0, InitInstMap, HeadVars, map.init, CallArgListVar,
-            CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
-            !VarTypes, map.init, BoundVarDescsAtCall),
+            CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarTable,
+            map.init, BoundVarDescsAtCall),
 
         % Set the ssdb_tracing_level.
-        make_level_construction(SSTraceLevel,
-            ConstructLevelGoal, LevelVar, !VarSet, !VarTypes),
+        make_level_construction(SSTraceLevel, ConstructLevelGoal, LevelVar,
+            !VarTable),
 
         % Generate the call to handle_event_call.
-        make_handle_event("handle_event_call_nondet",
-            [ProcIdVar, CallArgListVar, LevelVar],
-            HandleEventCallGoal, !ModuleInfo, !VarSet, !VarTypes),
+        make_handle_event(!.ModuleInfo, "handle_event_call_nondet",
+            [ProcIdVar, CallArgListVar, LevelVar], HandleEventCallGoal),
 
         % Make the variable list at the exit port. It's currently a
         % completely new list instead of adding on to the list generated
         % for the call port.
         update_instmap(OrigBodyGoal, InitInstMap, FinalInstMap),
         make_arg_list(0, FinalInstMap, HeadVars, map.init, ExitArgListVar,
-            ExitArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
-            !VarTypes, BoundVarDescsAtCall, _BoundVarDescsAtExit),
+            ExitArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarTable,
+            BoundVarDescsAtCall, _BoundVarDescsAtExit),
 
         proc_info_interface_determinism(!.ProcInfo, ProcDetism),
 
         % Create the disjunct that handles call, exit and redo ports.
-        make_handle_event("handle_event_exit_nondet",
-            [ProcIdVar, ExitArgListVar],
-            HandleEventExitGoal, !ModuleInfo, !VarSet, !VarTypes),
+        make_handle_event(!.ModuleInfo, "handle_event_exit_nondet",
+            [ProcIdVar, ExitArgListVar], HandleEventExitGoal),
         ExitDisjunct = HandleEventExitGoal,
 
-        make_handle_event("handle_event_redo_nondet",
-            [ProcIdVar, ExitArgListVar],
-            HandleEventRedoGoal, !ModuleInfo, !VarSet, !VarTypes),
+        make_handle_event(!.ModuleInfo, "handle_event_redo_nondet",
+            [ProcIdVar, ExitArgListVar], HandleEventRedoGoal),
         RedoDisjunct = hlds_goal(conj(plain_conj,
             [HandleEventRedoGoal, fail_goal]),
             impure_backtrack_goal_info(detism_failure)),
@@ -889,10 +879,9 @@ ssdebug_process_proc_nondet(SSTraceLevel, PredId, ProcId,
         % Create the disjunct that handles the fail port.
         FailArgListVar = CallArgListVar,
         FailArgListGoals = CallArgListGoals,
-        make_retry_var("DoRetry", RetryVar, !VarSet, !VarTypes),
-        make_handle_event("handle_event_fail_nondet",
-            [ProcIdVar, FailArgListVar, RetryVar],
-            HandleEventFailGoal, !ModuleInfo, !VarSet, !VarTypes),
+        make_retry_var("DoRetry", RetryVar, !VarTable),
+        make_handle_event(!.ModuleInfo, "handle_event_fail_nondet",
+            [ProcIdVar, FailArgListVar, RetryVar], HandleEventFailGoal),
         make_recursive_call(!.PredInfo, !.ModuleInfo, PredId, ProcId,
             FullHeadVars, RecursiveGoal),
         make_switch_goal(RetryVar, RecursiveGoal, fail_goal,
@@ -909,8 +898,8 @@ ssdebug_process_proc_nondet(SSTraceLevel, PredId, ProcId,
         BodyDisj = hlds_goal(disj([CallExitRedoDisjunct, FailDisjunct]),
             impure_goal_info(ProcDetism)),
         BodyGoals = ProcIdGoals ++ [BodyDisj],
-        commit_goal_changes(BodyGoals, PredId, ProcId, !.PredInfo, !ProcInfo,
-            !ModuleInfo, !.VarSet, !.VarTypes)
+        commit_goal_changes(BodyGoals, PredId, ProcId, !.PredInfo, !.VarTable,
+            !ProcInfo, !ModuleInfo)
     ).
 
     % Source-to-source transformation for a failure procedure.
@@ -921,39 +910,37 @@ ssdebug_process_proc_nondet(SSTraceLevel, PredId, ProcId,
 
 ssdebug_process_proc_failure(SSTraceLevel, PredId, ProcId,
         !ProcInfo, !ModuleInfo) :-
-    some [!PredInfo, !VarSet, !VarTypes] (
+    some [!PredInfo, !VarTable] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
-        proc_info_get_varset_vartypes(!.ProcInfo, !:VarSet, !:VarTypes),
+        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, !:VarTable),
         get_stripped_headvars(!.PredInfo, !.ProcInfo, FullHeadVars, HeadVars,
             _ArgModes),
 
         % Make the ssdb_proc_id.
         make_proc_id_construction(!.ModuleInfo, !.PredInfo, ProcIdGoals,
-            ProcIdVar, !VarSet, !VarTypes),
+            ProcIdVar, !VarTable),
 
         % Make a list which records the value for each of the head
         % variables at the call port.
         proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InitInstMap),
         make_arg_list(0, InitInstMap, HeadVars, map.init, CallArgListVar,
-            CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
-            !VarTypes, map.init, _BoundVarDescsAtCall),
+            CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarTable,
+            map.init, _BoundVarDescsAtCall),
 
         % Set the ssdb_tracing_level.
-        make_level_construction(SSTraceLevel,
-            ConstructLevelGoal, LevelVar, !VarSet, !VarTypes),
+        make_level_construction(SSTraceLevel, ConstructLevelGoal, LevelVar,
+            !VarTable),
 
         % Generate the call to handle_event_call.
-        make_handle_event("handle_event_call",
-            [ProcIdVar, CallArgListVar, LevelVar],
-            HandleEventCallGoal, !ModuleInfo, !VarSet, !VarTypes),
+        make_handle_event(!.ModuleInfo, "handle_event_call",
+            [ProcIdVar, CallArgListVar, LevelVar], HandleEventCallGoal),
 
         % Generate the call to handle_event_fail.
         FailArgListVar = CallArgListVar,
-        make_retry_var("DoRetry", RetryVar, !VarSet, !VarTypes),
-        make_handle_event("handle_event_fail",
-            [ProcIdVar, FailArgListVar, RetryVar],
-            HandleEventFailGoal, !ModuleInfo, !VarSet, !VarTypes),
+        make_retry_var("DoRetry", RetryVar, !VarTable),
+        make_handle_event(!.ModuleInfo, "handle_event_fail",
+            [ProcIdVar, FailArgListVar, RetryVar], HandleEventFailGoal),
 
         % Generate the recursive call in the case of a retry.
         make_recursive_call(!.PredInfo, !.ModuleInfo, PredId, ProcId,
@@ -976,8 +963,8 @@ ssdebug_process_proc_failure(SSTraceLevel, PredId, ProcId,
             [HandleEventCallGoal],
             [DisjGoal]
         ]),
-        commit_goal_changes(BodyGoals, PredId, ProcId, !.PredInfo, !ProcInfo,
-            !ModuleInfo, !.VarSet, !.VarTypes)
+        commit_goal_changes(BodyGoals, PredId, ProcId, !.PredInfo, !.VarTable,
+            !ProcInfo, !ModuleInfo)
     ).
 
     % Source-to-source transformation for an erroneous procedure.
@@ -988,32 +975,31 @@ ssdebug_process_proc_failure(SSTraceLevel, PredId, ProcId,
 
 ssdebug_process_proc_erroneous(SSTraceLevel, PredId, ProcId,
         !ProcInfo, !ModuleInfo) :-
-    some [!PredInfo, !VarSet, !VarTypes] (
+    some [!PredInfo, !VarTable] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
-        proc_info_get_varset_vartypes(!.ProcInfo, !:VarSet, !:VarTypes),
+        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, !:VarTable),
         get_stripped_headvars(!.PredInfo, !.ProcInfo, _FullHeadVars, HeadVars,
             _ArgModes),
 
         % Make the ssdb_proc_id.
         make_proc_id_construction(!.ModuleInfo, !.PredInfo, ProcIdGoals,
-            ProcIdVar, !VarSet, !VarTypes),
+            ProcIdVar, !VarTable),
 
         % Make a list which records the value for each of the head
         % variables at the call port.
         proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InitInstMap),
         make_arg_list(0, InitInstMap, HeadVars, map.init, CallArgListVar,
-            CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
-            !VarTypes, map.init, _BoundVarDescsAtCall),
+            CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarTable,
+            map.init, _BoundVarDescsAtCall),
 
         % Set the ssdb_tracing_level.
-        make_level_construction(SSTraceLevel,
-            ConstructLevelGoal, LevelVar, !VarSet, !VarTypes),
+        make_level_construction(SSTraceLevel, ConstructLevelGoal, LevelVar,
+            !VarTable),
 
         % Generate the call to handle_event_call(ProcId, VarList).
-        make_handle_event("handle_event_call",
-            [ProcIdVar, CallArgListVar, LevelVar],
-            HandleEventCallGoal, !ModuleInfo, !VarSet, !VarTypes),
+        make_handle_event(!.ModuleInfo, "handle_event_call",
+            [ProcIdVar, CallArgListVar, LevelVar], HandleEventCallGoal),
 
         % Put it all together.
         BodyGoals = list.condense([
@@ -1023,8 +1009,8 @@ ssdebug_process_proc_erroneous(SSTraceLevel, PredId, ProcId,
             [HandleEventCallGoal],
             [OrigBodyGoal]
         ]),
-        commit_goal_changes(BodyGoals, PredId, ProcId, !.PredInfo, !ProcInfo,
-            !ModuleInfo, !.VarSet, !.VarTypes)
+        commit_goal_changes(BodyGoals, PredId, ProcId, !.PredInfo, !.VarTable,
+            !ProcInfo, !ModuleInfo)
     ).
 
 :- pred get_stripped_headvars(pred_info::in, proc_info::in,
@@ -1053,13 +1039,13 @@ get_output_args(ModuleInfo, HeadVars, ArgModes, OutputVars) :-
     OutputVars = list.filter_map_corresponding(F, HeadVars, ArgModes).
 
 :- pred rename_outputs(list(prog_var)::in, hlds_goal::in, hlds_goal::out,
-    hlds_goal::out, prog_var_renaming::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+    hlds_goal::out, prog_var_renaming::out,
+    var_table::in, var_table::out) is det.
 
-rename_outputs(OutputVars, !Goal, UnifyGoal, Renaming, !VarSet, !VarTypes) :-
+rename_outputs(OutputVars, !Goal, UnifyGoal, Renaming, !VarTable) :-
     GoalInfo0 = get_hlds_goal_info(!.Goal),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
-    create_renaming(OutputVars, InstMapDelta, !VarSet, !VarTypes,
+    create_renaming_vt(OutputVars, InstMapDelta, !VarTable,
         UnifyGoals, _NewVars, Renaming),
     goal_info_init(UnifyGoalInfo0),
     goal_info_set_determinism(detism_det, UnifyGoalInfo0, UnifyGoalInfo),
@@ -1079,14 +1065,14 @@ add_promise_equivalent_solutions(OutputVars, Goal0, Goal) :-
     % Create the output variable DoRetry.
     %
 :- pred make_retry_var(string::in, prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
-make_retry_var(VarName, RetryVar, !VarSet, !VarTypes) :-
+make_retry_var(VarName, RetryVar, !VarTable) :-
     SSDBModule = mercury_ssdb_builtin_module,
     TypeCtor = type_ctor(qualified(SSDBModule, "ssdb_retry"), 0),
     construct_type(TypeCtor, [], RetryType),
-    varset.new_named_var(VarName, RetryVar, !VarSet),
-    add_var_type(RetryVar, RetryType, !VarTypes).
+    RetryVarEntry = vte(VarName, RetryType, is_not_dummy_type),
+    add_var_entry(RetryVarEntry, RetryVar, !VarTable).
 
     % Create the goal for recursive call in the case of a retry.
     %
@@ -1156,11 +1142,11 @@ make_switch_goal(SwitchVar, DoRetryGoal, DoNotRetryGoal, SwitchGoal) :-
     % source-to-source transformation.
     %
 :- pred commit_goal_changes(list(hlds_goal)::in, pred_id::in, proc_id::in,
-    pred_info::in, proc_info::in, proc_info::out,
-    module_info::in, module_info::out, prog_varset::in, vartypes::in) is det.
+    pred_info::in, var_table::in, proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
 
-commit_goal_changes(ConjGoals, PredId, ProcId, !.PredInfo, !ProcInfo,
-        !ModuleInfo, VarSet, VarTypes) :-
+commit_goal_changes(ConjGoals, PredId, ProcId, !.PredInfo, VarTable,
+        !ProcInfo, !ModuleInfo) :-
     goal_list_determinism(ConjGoals, ConjDetism),
     ConjGoalInfo = impure_goal_info(ConjDetism),
     Conj = hlds_goal(conj(plain_conj, ConjGoals), ConjGoalInfo),
@@ -1172,7 +1158,7 @@ commit_goal_changes(ConjGoals, PredId, ProcId, !.PredInfo, !ProcInfo,
     Purity = goal_info_get_purity(OrigGoalInfo),
     Goal = hlds_goal(scope(promise_purity(Purity), Conj), ScopeGoalInfo),
 
-    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+    proc_info_set_var_table(VarTable, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo),
     requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
     recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
@@ -1201,33 +1187,27 @@ impure_backtrack_goal_info(Detism) = GoalInfo :-
     % EVENT = call,exit,fail or redo
     % Argument = ProcId, ListHeadVars and eventually Retry
     %
-:- pred make_handle_event(string::in, list(prog_var)::in, hlds_goal::out,
-    module_info::in, module_info::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+:- pred make_handle_event(module_info::in, string::in, list(prog_var)::in,
+    hlds_goal::out) is det.
 
-make_handle_event(HandleTypeString, ArgVars, HandleEventGoal, !ModuleInfo,
-        !VarSet, !VarTypes) :-
+make_handle_event(ModuleInfo, ProcName, ArgVars, HandleEventGoal) :-
     SSDBModule = mercury_ssdb_builtin_module,
     Features = [],
     Context = term.context_init,
-    generate_plain_call(!.ModuleInfo, pf_predicate,
-        SSDBModule, HandleTypeString,
-        [], ArgVars, instmap_delta_bind_no_var, only_mode,
-        detism_det, purity_impure, Features, Context, HandleEventGoal).
+    generate_plain_call(ModuleInfo, pf_predicate, SSDBModule, ProcName,
+        [], ArgVars, instmap_delta_bind_no_var, only_mode, detism_det,
+        purity_impure, Features, Context, HandleEventGoal).
 
-    % make_proc_id_construction(ModuleInfo, PredInfo, Goals, Var,
-    %   !VarSet, !VarTypes)
+    % make_proc_id_construction(ModuleInfo, PredInfo, Goals, Var, !VarTable)
     %
     % Returns a set of goals, Goals, which build the ssdb_proc_id structure
     % for the given pred and proc infos. The Var returned holds the
     % ssdb_proc_id.
     %
 :- pred make_proc_id_construction(module_info::in, pred_info::in,
-    hlds_goals::out, prog_var::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+    hlds_goals::out, prog_var::out, var_table::in, var_table::out) is det.
 
-make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar,
-        !VarSet, !VarTypes) :-
+make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar, !VarTable) :-
     pred_info_get_origin(PredInfo, Origin),
     ( if
         Origin = origin_transformed(transform_source_to_source_debug, _,
@@ -1242,19 +1222,19 @@ make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar,
     ModuleName = sym_name_to_string(SymModuleName),
     PredName = pred_info_name(OrigPredInfo),
 
-    make_string_const_construction_alloc(ModuleName, yes("ModuleName"),
-        ConstructModuleName, ModuleNameVar, !VarSet, !VarTypes),
+    make_string_const_construction_alloc_vt(ModuleName, "ModuleName",
+        ConstructModuleName, ModuleNameVar, !VarTable),
 
-    make_string_const_construction_alloc(PredName, yes("PredName"),
-        ConstructPredName, PredNameVar, !VarSet, !VarTypes),
+    make_string_const_construction_alloc_vt(PredName, "PredName",
+        ConstructPredName, PredNameVar, !VarTable),
 
     SSDBModule = mercury_ssdb_builtin_module,
     TypeCtor = type_ctor(qualified(SSDBModule, "ssdb_proc_id"), 0),
 
-    varset.new_named_var("ProcId", ProcIdVar, !VarSet),
     ConsId = cons(qualified(SSDBModule, "ssdb_proc_id"), 2, TypeCtor),
     construct_type(TypeCtor, [], ProcIdType),
-    add_var_type(ProcIdVar, ProcIdType, !VarTypes),
+    ProcIdVarEntry = vte("ProcId", ProcIdType, is_not_dummy_type),
+    add_var_entry(ProcIdVarEntry, ProcIdVar, !VarTable),
     construct_functor(ProcIdVar, ConsId, [ModuleNameVar, PredNameVar],
         ConstructProcIdGoal),
 
@@ -1264,10 +1244,9 @@ make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar,
     % the current goal. ie Level = shallow
     %
 :- pred make_level_construction(ssdb_trace_level::in(shallow_or_deep),
-    hlds_goal::out, prog_var::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+    hlds_goal::out, prog_var::out, var_table::in, var_table::out) is det.
 
-make_level_construction(SSTraceLevel, Goal, LevelVar, !VarSet, !VarTypes) :-
+make_level_construction(SSTraceLevel, Goal, LevelVar, !VarTable) :-
     (
         SSTraceLevel = ssdb_shallow,
         ConsId = shallow_cons_id
@@ -1275,8 +1254,8 @@ make_level_construction(SSTraceLevel, Goal, LevelVar, !VarSet, !VarTypes) :-
         SSTraceLevel = ssdb_deep,
         ConsId = deep_cons_id
     ),
-    make_const_construction_alloc(ConsId, ssdb_tracing_level_type,
-        yes("Level"), Goal, LevelVar, !VarSet, !VarTypes).
+    make_const_construction_alloc_vt(ConsId, ssdb_tracing_level_type,
+        is_not_dummy_type,"Level", Goal, LevelVar, !VarTable).
 
     % Succeed if all the given argument modes are fully input or fully output.
     % XXX At the moment, we don't handle arguments modes other than
@@ -1296,13 +1275,13 @@ all_args_fully_input_or_output(ModuleInfo, HeadModes) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-    % The following code concern predicates which create the list argument at
-    % event point.
-    %
+%
+% The following code concern predicates which create the list argument at
+% event point.
+%
 
     % make_arg_list(Pos, InstMap, Vars, RenamedVar, FullListVar, Goals,
-    %   !ModuleInfo, !ProcInfo, !PredInfo, !VarSet, !VarTypes, !BoundedVarDesc)
+    %   !ModuleInfo, !ProcInfo, !PredInfo, !VarTable, !BoundedVarDesc)
     %
     % Processes each variable in Vars creating a list(var_value) named
     % FullListVar which records the value of each of the variables. Vars points
@@ -1320,27 +1299,24 @@ all_args_fully_input_or_output(ModuleInfo, HeadModes) :-
 :- pred make_arg_list(int::in, instmap::in, list(prog_var)::in,
     map(prog_var, prog_var)::in, prog_var::out, list(hlds_goal)::out,
     module_info::in, module_info::out, proc_info::in, proc_info::out,
-    pred_info::in, pred_info::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out,
+    pred_info::in, pred_info::out, var_table::in, var_table::out,
     map(prog_var, prog_var)::in, map(prog_var, prog_var)::out) is det.
 
 make_arg_list(_Pos, _InstMap, [], _Renaming, OutVar, [Goal], !ModuleInfo,
-        !ProcInfo, !PredInfo, !VarSet, !VarTypes, !BoundVarDescs) :-
-    varset.new_named_var("EmptyVarList", OutVar, !VarSet),
-    add_var_type(OutVar, list_var_value_type, !VarTypes),
+        !ProcInfo, !PredInfo, !VarTable, !BoundVarDescs) :-
+    OutVarEntry = vte("EmptyVarList", list_var_value_type, is_not_dummy_type),
+    add_var_entry(OutVarEntry, OutVar, !VarTable),
     ListTypeSymName = qualified(mercury_list_module, "list"),
     ListTypeCtor = type_ctor(ListTypeSymName, 1),
     ConsId = cons(qualified(mercury_list_module, "[]" ), 0, ListTypeCtor),
     construct_functor(OutVar, ConsId, [], Goal).
-
-make_arg_list(Pos0, InstMap, [ProgVar | ProgVars], Renaming, OutVar,
-        Goals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet, !VarTypes,
-        !BoundVarDescs) :-
+make_arg_list(Pos0, InstMap, [ProgVar | ProgVars], Renaming, OutVar, Goals,
+        !ModuleInfo, !ProcInfo, !PredInfo, !VarTable, !BoundVarDescs) :-
     Pos = Pos0 + 1,
     make_arg_list(Pos, InstMap, ProgVars, Renaming, OutVar0, Goals0,
-        !ModuleInfo, !ProcInfo, !PredInfo, !VarSet, !VarTypes, !BoundVarDescs),
+        !ModuleInfo, !ProcInfo, !PredInfo, !VarTable, !BoundVarDescs),
 
-    lookup_var_type(!.VarTypes, ProgVar, ProgVarType),
+    lookup_var_type(!.VarTable, ProgVar, ProgVarType),
     ( if
         ( ProgVarType = io_state_type
         ; ProgVarType = io_io_type
@@ -1359,12 +1335,13 @@ make_arg_list(Pos0, InstMap, [ProgVar | ProgVars], Renaming, OutVar,
             VarDesc = ExistingVarDesc
         else
             make_var_value(InstMap, ProgVar, Renaming, VarDesc, Pos0,
-                ValueGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
-                !VarTypes, !BoundVarDescs)
+                ValueGoals, !ModuleInfo, !ProcInfo, !PredInfo,
+                !VarTable, !BoundVarDescs)
         ),
 
-        varset.new_named_var("FullListVar", OutVar, !VarSet),
-        add_var_type(OutVar, list_var_value_type, !VarTypes),
+        OutVarEntry =
+            vte("FullListVar", list_var_value_type, is_not_dummy_type),
+        add_var_entry(OutVarEntry, OutVar, !VarTable),
         ListTypeSymName = qualified(mercury_list_module, "list"),
         ListTypeCtor = type_ctor(ListTypeSymName, 1),
         ConsId = cons(qualified(unqualified("list"), "[|]" ), 2, ListTypeCtor),
@@ -1392,29 +1369,29 @@ list_var_value_type = ListVarValueType :-
 :- pred make_var_value(instmap::in, prog_var::in, map(prog_var, prog_var)::in,
     prog_var::out, int::in, list(hlds_goal)::out,
     module_info::in, module_info::out, proc_info::in, proc_info::out,
-    pred_info::in, pred_info::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, map(prog_var, prog_var)::in,
-    map(prog_var, prog_var)::out) is det.
+    pred_info::in, pred_info::out, var_table::in, var_table::out,
+    map(prog_var, prog_var)::in, map(prog_var, prog_var)::out) is det.
 
 make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
-        !ModuleInfo, !ProcInfo, !PredInfo, !VarSet, !VarTypes,
-        !BoundVarDescs) :-
+        !ModuleInfo, !ProcInfo, !PredInfo, !VarTable, !BoundVarDescs) :-
     SSDBModule = mercury_ssdb_builtin_module,
     VarValueTypeCtor = type_ctor(qualified(SSDBModule, "var_value"), 0),
     construct_type(VarValueTypeCtor, [], VarValueType),
-    varset.lookup_name(!.VarSet, VarToInspect, VarName),
-    make_string_const_construction_alloc(VarName, yes("VarName"),
-        ConstructVarName, VarNameVar, !VarSet, !VarTypes),
-    make_int_const_construction_alloc(VarPos, yes("VarPos"),
-        ConstructVarPos, VarPosVar, !VarSet, !VarTypes),
+    VarName = var_table_entry_name(!.VarTable, VarToInspect),
+    make_string_const_construction_alloc_vt(VarName, "VarName",
+        ConstructVarName, VarNameVar, !VarTable),
+    make_int_const_construction_alloc_vt(VarPos, "VarPos",
+        ConstructVarPos, VarPosVar, !VarTable),
 
-    varset.new_named_var("VarDesc", VarDesc, !VarSet),
+    VarValueTypeIsDummy = is_type_a_dummy(!.ModuleInfo, VarValueType),
+    VarDescEntry = vte("VarDesc", VarValueType, VarValueTypeIsDummy),
+    add_var_entry(VarDescEntry, VarDesc, !VarTable),
     ( if var_is_ground_in_instmap(!.ModuleInfo, InstMap, VarToInspect) then
         % Update proc_varset and proc_vartypes; without this,
         % polymorphism_make_type_info_var uses a prog_var which is
         % already bound.
 
-        proc_info_set_varset_vartypes(!.VarSet, !.VarTypes, !ProcInfo),
+        proc_info_set_var_table(!.VarTable, !ProcInfo),
 
         % Create dynamic constructor for the value of the argument.
         %
@@ -1425,25 +1402,26 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         %   some[T] bound_head_var(type_of_T, string, int, T)
 
         term.context_init(Context),
-        lookup_var_type(!.VarTypes, VarToInspect, MerType),
-        polymorphism_make_type_info_var_raw(MerType, Context,
+        lookup_var_type(!.VarTable, VarToInspect, MerType),
+        polymorphism_make_type_info_var_mi(MerType, Context,
             TypeInfoVar, TypeInfoGoals0, !ModuleInfo, !PredInfo, !ProcInfo),
 
-        proc_info_get_varset_vartypes(!.ProcInfo, !:VarSet, !:VarTypes),
+        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, !:VarTable),
         % Constructor of the variable's description.
         ConsId = cons(qualified(SSDBModule, "bound_head_var"), 3,
             VarValueTypeCtor),
-        add_var_type(VarDesc, VarValueType, !VarTypes),
 
         % Renaming contains the names of all instantiated arguments
         % during the execution of the procedure's body.
         ( if map.is_empty(Renaming) then
-            construct_functor(VarDesc, ConsId, [TypeInfoVar, VarNameVar,
-                VarPosVar, VarToInspect], ConstructVarGoal)
+            construct_functor(VarDesc, ConsId,
+                [TypeInfoVar, VarNameVar, VarPosVar, VarToInspect],
+                ConstructVarGoal)
         else
             map.lookup(Renaming, VarToInspect, RenamedVar),
-            construct_functor(VarDesc, ConsId, [TypeInfoVar, VarNameVar,
-                VarPosVar, RenamedVar], ConstructVarGoal)
+            construct_functor(VarDesc, ConsId,
+                [TypeInfoVar, VarNameVar, VarPosVar, RenamedVar],
+                ConstructVarGoal)
         ),
 
         % The type_info of an existentally typed variable is an output, so
@@ -1459,7 +1437,6 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
     else
         ConsId = cons(qualified(SSDBModule, "unbound_head_var"), 2,
             VarValueTypeCtor),
-        add_var_type(VarDesc, VarValueType, !VarTypes),
         construct_functor(VarDesc, ConsId, [VarNameVar, VarPosVar],
             ConstructVarGoal),
 

@@ -3995,7 +3995,7 @@ table_gen_make_type_info_vars(Types, Context, !VarTable, !TableInfo,
     proc_info_set_var_table(!.VarTable, ProcInfo0, ProcInfo1),
 
     % Generate the code that creates the type_infos.
-    polymorphism_make_type_info_vars_raw(Types, Context,
+    polymorphism_make_type_info_vars_mi(Types, Context,
         TypeInfoVars, TypeInfoGoals, ModuleInfo0, ModuleInfo,
         PredInfo0, PredInfo, ProcInfo1, ProcInfo),
 

@@ -1,16 +1,80 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2012, 2014 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2021-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: polymorphism_info.m.
+% File: polymorphism_type_info.m.
 % Main authors: fjh and zs (when this code was in polymorphism.m).
 %
-% This module defines the poly_info structure used by polymorphism.m.
+% This module provides predicates that construct type_infos, the structures
+% that provide type information to the parts of the runtime system that need
+% such information. These are mainly the predicates that unify, compare,
+% construct, deconstruct, read in, or write out values of arbitrary types,
+% and the debugger.
+%
+%---------------------------------------------------------------------------%
+%
+% Representation of type information:
+%
+% IMPORTANT: ANY CHANGES TO THE DOCUMENTATION HERE MUST BE REFLECTED BY
+% SIMILAR CHANGES TO THE #defines IN "runtime/mercury_type_info.h" AND
+% TO THE TYPE SPECIALIZATION CODE IN "compiler/higher_order.m".
+%
+% Type information is represented using one or two cells. The cell which
+% is always present is the type_ctor_info structure, whose structure is
+% defined in runtime/mercury_type_info.h. The other cell is the type_info
+% structure, laid out like this:
+%
+%   word 0      <pointer to the type_ctor_info structure>
+%   word 1+     <the type_infos for the type params, at least one>
+%
+%   (but see note below for how variable arity types differ)
+%
+%---------------------------------------------------------------------------%
+%
+% Optimization of common case (zero arity types):
+%
+% The type_info structure itself is redundant if the type has no type
+% parameters (i.e. its arity is zero). Therefore if the arity is zero,
+% we pass the address of the type_ctor_info structure directly, instead of
+% wrapping it up in another cell. The runtime system will look at the first
+% field of the cell it is passed. If this field is zero, the cell is a
+% type_ctor_info structure for an arity zero type. If this field is not zero,
+% the cell is a new type_info structure, with the first field being the
+% pointer to the type_ctor_info structure.
+%
+%---------------------------------------------------------------------------%
+%
+% Variable arity types:
+%
+% There is a slight variation on this for variable-arity type constructors, of
+% there are exactly three: pred, func and tuple. Typeinfos of these types
+% always have a pointer to the pred/0, func/0 or tuple/0 type_ctor_info,
+% regardless of their true arity, so we store the real arity in the type_info
+% as well.
+%
+%   word 0      <pointer to the arity 0 type_ctor_info structure>
+%   word 1      <arity of predicate>
+%   word 2+     <the type_infos for the type params, if any>
+%
+%---------------------------------------------------------------------------%
+%
+% Sharing type_ctor_info structures:
+%
+% For compilation models that can put code addresses in static ground terms,
+% we can arrange to create one copy of the type_ctor_info structure statically,
+% avoiding the need to create other copies at runtime. For compilation models
+% that cannot put code addresses in static ground terms, there are two
+% approaches we could take:
+%
+%   1. allocate all cells at runtime.
+%   2. use a shared static type_ctor_info, but initialize its code addresses
+%      during startup (that is, during the module initialization code).
+%
+% We take approach 2.
 %
 %---------------------------------------------------------------------------%
 
@@ -69,11 +133,11 @@
     % These do not store the updated pred_infos and proc_infos back into
     % the module_info.
     %
-:- pred polymorphism_make_type_info_var_raw(mer_type::in,
+:- pred polymorphism_make_type_info_var_mi(mer_type::in,
     term.context::in, prog_var::out, list(hlds_goal)::out,
     module_info::in, module_info::out,
     pred_info::in, pred_info::out, proc_info::in, proc_info::out) is det.
-:- pred polymorphism_make_type_info_vars_raw(list(mer_type)::in,
+:- pred polymorphism_make_type_info_vars_mi(list(mer_type)::in,
     term.context::in, list(prog_var)::out, list(hlds_goal)::out,
     module_info::in, module_info::out,
     pred_info::in, pred_info::out, proc_info::in, proc_info::out) is det.
@@ -139,7 +203,6 @@
 
 :- pred new_type_info_var(mer_type::in, type_info_kind::in,
     prog_var::out, poly_info::in, poly_info::out) is det.
-
 :- pred new_type_info_var_raw(mer_type::in, type_info_kind::in,
     prog_var::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
@@ -149,8 +212,14 @@
 
 %---------------------%
 
-:- pred get_type_info_locn(tvar::in, type_info_locn::out,
+:- pred poly_get_type_info_locn(tvar::in, type_info_locn::out,
     poly_info::in, poly_info::out) is det.
+:- pred poly_get_type_info_locn_raw(tvar_kind_map::in,
+    tvar::in, type_info_locn::out, prog_varset::in, prog_varset::out,
+    vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
+:- pred poly_get_type_info_locn_raw_vt(tvar_kind_map::in,
+    tvar::in, type_info_locn::out,
+    var_table::in, var_table::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
 %---------------------%
 
@@ -177,6 +246,10 @@
     list(hlds_goal)::out, prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     rtti_varmaps::in, rtti_varmaps::out) is det.
+:- pred gen_extract_type_info_vt(module_info::in, tvar::in, kind::in,
+    prog_var::in, int_or_var::in, prog_context::in,
+    list(hlds_goal)::out, prog_var::out,
+    var_table::in, var_table::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
     % A version of gen_extract_type_info that gets its data from the poly_info,
     % and puts the updated date there as well.
@@ -205,7 +278,6 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
-:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
@@ -231,8 +303,7 @@ polymorphism_make_type_info_vars(Types, Context, Vars, ExtraGoals, !Info) :-
     poly_info::in, poly_info::out) is det.
 
 polymorphism_do_make_type_info_var(Type, Context, VarMCA, ExtraGoals, !Info) :-
-    % First handle statically known types (i.e. types which are not
-    % type variables).
+    % ZZZ
     ( if type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs) then
         % This occurs for code where a predicate calls a polymorphic predicate
         % with a type whose type constructor is of variable arity. The
@@ -245,8 +316,8 @@ polymorphism_do_make_type_info_var(Type, Context, VarMCA, ExtraGoals, !Info) :-
         % XXX FIXME (RTTI for higher order impure code)
         % we should not ignore the purity of higher order procs;
         % it should get included in the RTTI.
-        polymorphism_make_type_info(Type, TypeCtor, TypeArgs, yes,
-            Context, VarMCA, ExtraGoals, !Info)
+        polymorphism_make_type_info(Type, TypeCtor, TypeArgs,
+            tc_is_var_arity, Context, VarMCA, ExtraGoals, !Info)
     else
         (
             ( Type = defined_type(_, _, _)
@@ -261,13 +332,11 @@ polymorphism_do_make_type_info_var(Type, Context, VarMCA, ExtraGoals, !Info) :-
             % predicate with a known value of the type variable. The
             % transformation we perform is shown in the comment at the top
             % of the module.
-            polymorphism_make_type_info(Type, TypeCtor, TypeArgs, no,
-                Context, VarMCA, ExtraGoals, !Info)
+            polymorphism_make_type_info(Type, TypeCtor, TypeArgs,
+                tc_is_not_var_arity, Context, VarMCA, ExtraGoals, !Info)
         ;
-            % Now handle the cases of types which are not known statically,
-            % i.e. type variables.
             Type = type_variable(TypeVar, _),
-            get_type_info_locn(TypeVar, TypeInfoLocn, !Info),
+            poly_get_type_info_locn(TypeVar, TypeInfoLocn, !Info),
             get_type_info_from_locn(TypeVar, TypeInfoLocn, Context,
                 Var, ExtraGoals, !Info),
             VarMCA = Var - no
@@ -286,7 +355,7 @@ polymorphism_do_make_type_info_vars([Type | Types], Context,
 
 %---------------------%
 
-polymorphism_make_type_info_var_raw(Type, Context, Var, ExtraGoals,
+polymorphism_make_type_info_var_mi(Type, Context, Var, ExtraGoals,
         !ModuleInfo, !PredInfo, !ProcInfo) :-
     create_poly_info(!.ModuleInfo, !.PredInfo, !.ProcInfo, PolyInfo0),
     polymorphism_make_type_info_var(Type, Context, Var, ExtraGoals,
@@ -294,7 +363,7 @@ polymorphism_make_type_info_var_raw(Type, Context, Var, ExtraGoals,
     poly_info_extract(PolyInfo, PolySpecs, !PredInfo, !ProcInfo, !:ModuleInfo),
     expect(unify(PolySpecs, []), $pred, "errors while making type_info var").
 
-polymorphism_make_type_info_vars_raw(Types, Context, Vars, ExtraGoals,
+polymorphism_make_type_info_vars_mi(Types, Context, Vars, ExtraGoals,
         !ModuleInfo, !PredInfo, !ProcInfo) :-
     create_poly_info(!.ModuleInfo, !.PredInfo, !.ProcInfo, PolyInfo0),
     polymorphism_make_type_info_vars(Types, Context, Vars, ExtraGoals,
@@ -304,13 +373,18 @@ polymorphism_make_type_info_vars_raw(Types, Context, Vars, ExtraGoals,
 
 %---------------------%
 
+:- type type_ctor_is_var_arity
+    --->    tc_is_not_var_arity
+    ;       tc_is_var_arity.
+
 :- pred polymorphism_make_type_info(mer_type::in, type_ctor::in,
-    list(mer_type)::in, bool::in, prog_context::in,
+    list(mer_type)::in, type_ctor_is_var_arity::in, prog_context::in,
     pair(prog_var, maybe(const_struct_arg))::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 polymorphism_make_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         Context, TypeInfoVarMCA, ExtraGoals, !Info) :-
+    % ZZZ
     poly_info_get_type_info_var_map(!.Info, TypeInfoVarMap0),
     ( if
         map.search(TypeInfoVarMap0, TypeCtor, TypeCtorVarMap0),
@@ -342,22 +416,19 @@ polymorphism_make_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
     ).
 
 :- pred polymorphism_construct_type_info(mer_type::in, type_ctor::in,
-    list(mer_type)::in, bool::in, prog_context::in,
+    list(mer_type)::in, type_ctor_is_var_arity::in, prog_context::in,
     prog_var::out, maybe(const_struct_arg)::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         Context, Var, MCA, ExtraGoals, !Info) :-
+    % ZZZ
     get_var_maps_snapshot("polymorphism_construct_type_info",
         InitialVarMapsSnapshot, !Info),
 
     % Create the typeinfo vars for the arguments.
     polymorphism_do_make_type_info_vars(TypeArgs, Context,
         ArgTypeInfoVarsMCAs, ArgTypeInfoGoals, !Info),
-
-    poly_info_get_varset(!.Info, VarSet0),
-    poly_info_get_var_types(!.Info, VarTypes0),
-    poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
 
     TypeCtorConsId = type_ctor_info_cons_id(TypeCtor),
     TypeCtorConsIdConstArg = csa_constant(TypeCtorConsId, type_info_type),
@@ -368,11 +439,11 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         poly_info_get_num_reuses(!.Info, NumReuses),
         poly_info_set_num_reuses(NumReuses + 1, !Info),
         TypeCtorVar = OldTypeCtorVar,
-        TypeCtorGoals = [],
-        VarSet1 = VarSet0,
-        VarTypes1 = VarTypes0,
-        RttiVarMaps1 = RttiVarMaps0
+        TypeCtorGoals = []
     else
+        poly_info_get_varset(!.Info, VarSet0),
+        poly_info_get_var_types(!.Info, VarTypes0),
+        poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
         new_type_info_var_raw(Type, type_ctor_info, TypeCtorVar,
             VarSet0, VarSet1, VarTypes0, VarTypes1,
             RttiVarMaps0, RttiVarMaps1),
@@ -381,25 +452,34 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         TypeCtorGoals = [TypeCtorGoal],
         map.det_insert(TypeCtorConsIdConstArg, TypeCtorVar,
             ConstStructVarMap0, ConstStructVarMap1),
-        poly_info_set_const_struct_var_map(ConstStructVarMap1, !Info)
+        poly_info_set_const_struct_var_map(ConstStructVarMap1, !Info),
+        poly_info_set_varset_types_rtti(VarSet1, VarTypes1, RttiVarMaps1,
+            !Info)
     ),
 
-    poly_info_set_varset_types_rtti(VarSet1, VarTypes1, RttiVarMaps1, !Info),
+    polymorphism_maybe_construct_second_type_info_cell(Type, TypeCtor,
+        TypeCtorIsVarArity, TypeCtorVar, TypeCtorConsId, TypeCtorGoals,
+        ArgTypeInfoVarsMCAs, ArgTypeInfoGoals, InitialVarMapsSnapshot,
+        Var, MCA, ExtraGoals, !Info).
 
-    % The rest of this predicate create code that constructs the second cell
-    % of a type_info for Type if we need a second cell for Type. This cell
-    % will usually be of the form:
+:- type maybe_need_arity
+    --->    do_not_need_arity
+    ;       need_arity_in_second_ti_cell.
+
+    % Create code that constructs the second cell of a type_info for Type
+    % if we need a second cell for Type. This cell will usually have the form:
     %
     %   TypeInfoVar = type_info(TypeCtorVar, ArgTypeInfoVars...)
     %
-    % However, if TypeCtorIsVarArity is true and we are not compiling for
-    % the Java backend, then it will be of the form
+    % However, if TypeCtorIsVarArity is tc_is_var_arity and we are
+    % not compiling for the Java backend, then it will be of the form
     %
     %   TypeInfoVar = type_info(TypeCtorVar, Arity, ArgTypeInfoVars...)
     %
     % TypeCtorVar should be the variable holding the type_ctor_info for the
     % principal type constructor of Type, and TypeCtorIsVarArity should be
-    % true iff the type constructor it represents has a variable arity.
+    % tc_is_var_arity iff the type constructor it represents has a
+    % variable arity.
     %
     % ArgTypeInfoVars should be variables holding the type_infos (or
     % type_ctor_infos for zero-arity types) of the argument types of Type.
@@ -412,31 +492,70 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
     % consistent with:
     %   rtti_to_mlds.gen_type_info_defn/6
     %   java/runtime/TypeInfo_Struct.java
+    %
+:- pred polymorphism_maybe_construct_second_type_info_cell(mer_type::in,
+    type_ctor::in, type_ctor_is_var_arity::in,
+    prog_var::in, cons_id::in, list(hlds_goal)::in,
+    assoc_list(prog_var, maybe(const_struct_arg))::in, list(hlds_goal)::in,
+    var_maps::in, prog_var::out, maybe(const_struct_arg)::out,
+    list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
-    % Determine if we need to explicitly pass the arity.
+polymorphism_maybe_construct_second_type_info_cell(Type, TypeCtor,
+        TypeCtorIsVarArity, TypeCtorVar, TypeCtorConsId, TypeCtorGoals,
+        ArgTypeInfoVarsMCAs, ArgTypeInfoGoals, InitialVarMapsSnapshot,
+        Var, MCA, ExtraGoals, !Info) :-
+    % We have eight situations in which we have to choose between
+    % three courses of action.
+    %
+    % The eight situations are a 2x2x2 matrix, based on
+    %
+    % - whether the type_ctor has arg types or not,
+    % - whether the type_ctor is variable arity or not,
+    % - whether we are targeting java or not.
+    %
+    % The three possible courses of action are
+    %
+    % - use a one cell type_info
+    % - use a two cell type_info with no arity slot
+    % - use a two cell type_info with arity slot
+    %
+    % The decision table is as follows:
+    %
+    % #     args?         arity?      java?       decision
+    %
+    % 1     none          fixed       no          one cell
+    % 2     none          fixed       yes         one cell
+    % 3     none          variable    no          two cell arity slot
+    % 4     none          variable    yes         one cell
+    % 5     some          fixed       no          two cell no arity slot
+    % 6     some          fixed       yes         two cell no arity slot
+    % 7     some          variable    no          two cell arity slot
+    % 8     some          variable    yes         two cell no arity slot
+
+    % Determine if we need to explicitly record the arity.
     (
-        TypeCtorIsVarArity = no,
-        PassArity = no
+        TypeCtorIsVarArity = tc_is_not_var_arity,
+        NeedTypeCtorArity = do_not_need_arity
     ;
-        TypeCtorIsVarArity = yes,
+        TypeCtorIsVarArity = tc_is_var_arity,
         poly_info_get_module_info(!.Info, ModuleInfo),
         module_info_get_globals(ModuleInfo, Globals),
         get_target(Globals, Target),
         (
             Target = target_java,
-            PassArity = no
+            NeedTypeCtorArity = do_not_need_arity
         ;
             ( Target = target_c
             ; Target = target_csharp
             ),
-            PassArity = yes
+            NeedTypeCtorArity = need_arity_in_second_ti_cell
         )
     ),
 
     ( if
-        % Unfortunately, if the type's type constructor has variable arity,
-        % we cannot use a one-cell representation for that type.
-        PassArity = no,
+        % If the type's type constructor has variable arity and we need
+        % to record its actual arity, we cannot use a one-cell representation.
+        NeedTypeCtorArity = do_not_need_arity,
         ArgTypeInfoVarsMCAs = []
     then
         % We do not need a second cell for a separate typeinfo; we will use
@@ -445,118 +564,131 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         % Since this type_ctor_info is pretending to be a type_info,
         % we need to adjust its type. We handle type_ctor_info_const cons_ids
         % specially to make sure that this causes no problems.
-        TypeInfoType = type_info_type,
-        Var = TypeCtorVar,
         TypeCtorConstArg = csa_constant(TypeCtorConsId, type_info_type),
         MCA = yes(TypeCtorConstArg),
         ExtraGoals = ArgTypeInfoGoals ++ TypeCtorGoals,
-        update_var_type(TypeCtorVar, TypeInfoType, VarTypes1, VarTypes),
-        poly_info_set_varset_types(VarSet1, VarTypes, !Info)
+        TypeInfoType = type_info_type,
+        poly_info_get_varset(!.Info, VarSet),
+        poly_info_get_var_types(!.Info, VarTypes2),
+        update_var_type(TypeCtorVar, TypeInfoType, VarTypes2, VarTypes),
+        poly_info_set_varset_types(VarSet, VarTypes, !Info),
+        Var = TypeCtorVar
     else
         % We do need a second cell for a separate typeinfo.
-        Cell = type_info_cell(TypeCtor),
-        ConsId = cell_cons_id(Cell),
+        polymorphism_construct_second_type_info_cell(Type, TypeCtor,
+            NeedTypeCtorArity, TypeCtorVar, TypeCtorConsId, TypeCtorGoals,
+            ArgTypeInfoVarsMCAs, ArgTypeInfoGoals, InitialVarMapsSnapshot,
+            Var, MCA, ExtraGoals, !Info)
+    ).
 
-        poly_info_get_const_struct_db(!.Info, ConstStructDb0),
-        const_struct_db_get_poly_enabled(ConstStructDb0, Enabled),
-        ( if
-            Enabled = enable_const_struct_poly,
-            all_are_const_struct_args(ArgTypeInfoVarsMCAs,
-                ArgTypeInfoConstArgs)
-        then
-            TypeCtorConstArg = csa_constant(TypeCtorConsId, type_info_type),
-            TypeCtorInst = bound(shared, inst_test_results_fgtc,
-                [bound_functor(TypeCtorConsId, [])]),
-            list.map(get_inst_of_const_struct_arg(ConstStructDb0),
-                ArgTypeInfoConstArgs, ArgTypeInfoInsts),
-            (
-                PassArity = yes,
-                list.length(ArgTypeInfoVarsMCAs, ActualArity),
-                ArityConsId = some_int_const(int_const(ActualArity)),
-                ArityConstArg = csa_constant(ArityConsId, int_type),
-                ArityInst = bound(shared, inst_test_results_fgtc,
-                    [bound_functor(ArityConsId, [])]),
-                StructConstArgs =
-                    [TypeCtorConstArg, ArityConstArg | ArgTypeInfoConstArgs],
-                StructArgInsts = [TypeCtorInst, ArityInst | ArgTypeInfoInsts]
-            ;
-                PassArity = no,
-                StructConstArgs = [TypeCtorConstArg | ArgTypeInfoConstArgs],
-                StructArgInsts = [TypeCtorInst | ArgTypeInfoInsts]
-            ),
-            StructType = type_info_type,
-            list.length(StructConstArgs, NumArgs),
-            InstConsId = cell_inst_cons_id(Cell, NumArgs),
-            StructInst = bound(shared, inst_test_results_fgtc,
-                [bound_functor(InstConsId, StructArgInsts)]),
+:- pred polymorphism_construct_second_type_info_cell(mer_type::in,
+    type_ctor::in, maybe_need_arity::in,
+    prog_var::in, cons_id::in, list(hlds_goal)::in,
+    assoc_list(prog_var, maybe(const_struct_arg))::in, list(hlds_goal)::in,
+    var_maps::in, prog_var::out, maybe(const_struct_arg)::out,
+    list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
-            poly_info_get_defined_where(!.Info, DefinedWhere),
-            ConstStruct = const_struct(ConsId, StructConstArgs,
-                StructType, StructInst, DefinedWhere),
-            lookup_insert_const_struct(ConstStruct, ConstNum,
-                ConstStructDb0, ConstStructDb),
-            MCA = yes(csa_const_struct(ConstNum)),
-            poly_info_set_const_struct_db(ConstStructDb, !Info),
+polymorphism_construct_second_type_info_cell(Type, TypeCtor, NeedTypeCtorArity,
+        TypeCtorVar, TypeCtorConsId, TypeCtorGoals,
+        ArgTypeInfoVarsMCAs, ArgTypeInfoGoals, InitialVarMapsSnapshot,
+        Var, MCA, ExtraGoals, !Info) :-
+    Cell = type_info_cell(TypeCtor),
+    ConsId = cell_cons_id(Cell),
 
-            set_var_maps_snapshot("maybe_init_second_cell",
-                InitialVarMapsSnapshot, !Info),
+    poly_info_get_const_struct_db(!.Info, ConstStructDb0),
+    const_struct_db_get_poly_enabled(ConstStructDb0, Enabled),
+    ( if
+        Enabled = enable_const_struct_poly,
+        all_are_const_struct_args(ArgTypeInfoVarsMCAs, ArgTypeInfoConstArgs)
+    then
+        TypeCtorConstArg = csa_constant(TypeCtorConsId, type_info_type),
+        TypeCtorInst = bound(shared, inst_test_results_fgtc,
+            [bound_functor(TypeCtorConsId, [])]),
+        list.map(get_inst_of_const_struct_arg(ConstStructDb0),
+            ArgTypeInfoConstArgs, ArgTypeInfoInsts),
+        (
+            NeedTypeCtorArity = need_arity_in_second_ti_cell,
+            list.length(ArgTypeInfoVarsMCAs, ActualArity),
+            ArityConsId = some_int_const(int_const(ActualArity)),
+            ArityConstArg = csa_constant(ArityConsId, int_type),
+            ArityInst = bound(shared, inst_test_results_fgtc,
+                [bound_functor(ArityConsId, [])]),
+            StructConstArgs =
+                [TypeCtorConstArg, ArityConstArg | ArgTypeInfoConstArgs],
+            StructArgInsts = [TypeCtorInst, ArityInst | ArgTypeInfoInsts]
+        ;
+            NeedTypeCtorArity = do_not_need_arity,
+            StructConstArgs = [TypeCtorConstArg | ArgTypeInfoConstArgs],
+            StructArgInsts = [TypeCtorInst | ArgTypeInfoInsts]
+        ),
+        StructType = type_info_type,
+        list.length(StructConstArgs, NumArgs),
+        InstConsId = cell_inst_cons_id(Cell, NumArgs),
+        StructInst = bound(shared, inst_test_results_fgtc,
+            [bound_functor(InstConsId, StructArgInsts)]),
 
-            new_type_info_var(Type, type_info, Var, !Info),
-            Unification = construct(Var, type_info_const(ConstNum),
-                [], [], construct_statically(born_static), cell_is_shared,
-                no_construct_sub_info),
-            Ground = ground(shared, none_or_default_func),
-            UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
-            % XXX The UnifyContext is wrong.
-            UnifyContext = unify_context(umc_explicit, []),
-            TypeInfoRHS = rhs_functor(type_info_const(ConstNum),
-                is_not_exist_constr, []),
-            Unify = unify(Var, TypeInfoRHS, UnifyMode, Unification,
-                UnifyContext),
+        poly_info_get_defined_where(!.Info, DefinedWhere),
+        ConstStruct = const_struct(ConsId, StructConstArgs,
+            StructType, StructInst, DefinedWhere),
+        lookup_insert_const_struct(ConstStruct, ConstNum,
+            ConstStructDb0, ConstStructDb),
+        MCA = yes(csa_const_struct(ConstNum)),
+        poly_info_set_const_struct_db(ConstStructDb, !Info),
 
-            % Create a goal_info for the unification.
-            NonLocals = set_of_var.make_singleton(Var),
-            % Note that we could be more accurate than `ground(shared)',
-            % but it shouldn't make any difference.
-            VarInst = bound(shared, inst_test_results_fgtc,
-                [bound_functor(InstConsId, [])]),
-            InstMapDelta = instmap_delta_from_assoc_list([Var - VarInst]),
-            goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
-                GoalInfo),
-            TypeInfoGoal = hlds_goal(Unify, GoalInfo),
-            ExtraGoals = [TypeInfoGoal]
-        else
-            assoc_list.keys(ArgTypeInfoVarsMCAs, ArgTypeInfoVars),
-            (
-                PassArity = yes,
-                list.length(ArgTypeInfoVars, ActualArity),
-                get_poly_const(ActualArity, ArityVar, ArityGoals, !Info),
-                % The call get_poly_const may (and probably will) allocate
-                % a variable, so VarSet1, VarTypes1 and RttiVarMaps1 are
-                % all out of date.
-                poly_info_get_varset(!.Info, VarSet2),
-                poly_info_get_var_types(!.Info, VarTypes2),
-                poly_info_get_rtti_varmaps(!.Info, RttiVarMaps2),
-                init_type_info_var(Type,
-                    [TypeCtorVar, ArityVar | ArgTypeInfoVars],
-                    no, Var, TypeInfoGoal,
-                    VarSet2, VarSet, VarTypes2, VarTypes,
-                    RttiVarMaps2, RttiVarMaps),
-                ExtraGoals = TypeCtorGoals ++ ArityGoals ++ ArgTypeInfoGoals
-                    ++ [TypeInfoGoal]
-            ;
-                PassArity = no,
-                init_type_info_var(Type, [TypeCtorVar | ArgTypeInfoVars],
-                    no, Var, TypeInfoGoal,
-                    VarSet1, VarSet, VarTypes1, VarTypes,
-                    RttiVarMaps1, RttiVarMaps),
-                ExtraGoals = TypeCtorGoals ++ ArgTypeInfoGoals ++
-                    [TypeInfoGoal]
-            ),
-            poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps,
-                !Info),
-            MCA = no
-        )
+        set_var_maps_snapshot("maybe_init_second_cell",
+            InitialVarMapsSnapshot, !Info),
+
+        new_type_info_var(Type, type_info, Var, !Info),
+        Unification = construct(Var, type_info_const(ConstNum),
+            [], [], construct_statically(born_static), cell_is_shared,
+            no_construct_sub_info),
+        Ground = ground(shared, none_or_default_func),
+        UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
+        % XXX The UnifyContext is wrong.
+        UnifyContext = unify_context(umc_explicit, []),
+        TypeInfoRHS = rhs_functor(type_info_const(ConstNum),
+            is_not_exist_constr, []),
+        Unify = unify(Var, TypeInfoRHS, UnifyMode, Unification, UnifyContext),
+
+        % Create a goal_info for the unification.
+        NonLocals = set_of_var.make_singleton(Var),
+        % Note that we could be more accurate than `ground(shared)',
+        % but it shouldn't make any difference.
+        VarInst = bound(shared, inst_test_results_fgtc,
+            [bound_functor(InstConsId, [])]),
+        InstMapDelta = instmap_delta_from_assoc_list([Var - VarInst]),
+        goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
+            GoalInfo),
+        TypeInfoGoal = hlds_goal(Unify, GoalInfo),
+        ExtraGoals = [TypeInfoGoal]
+    else
+        assoc_list.keys(ArgTypeInfoVarsMCAs, ArgTypeInfoVars),
+        (
+            NeedTypeCtorArity = need_arity_in_second_ti_cell,
+            list.length(ArgTypeInfoVars, ActualArity),
+            get_poly_const(ActualArity, ArityVar, ArityGoals, !Info),
+            % The call get_poly_const may (and probably will) allocate
+            % a variable.
+            poly_info_get_varset(!.Info, VarSet1),
+            poly_info_get_var_types(!.Info, VarTypes1),
+            poly_info_get_rtti_varmaps(!.Info, RttiVarMaps1),
+            init_type_info_var(Type, [TypeCtorVar, ArityVar | ArgTypeInfoVars],
+                no, Var, TypeInfoGoal, VarSet1, VarSet, VarTypes1, VarTypes,
+                RttiVarMaps1, RttiVarMaps),
+            ExtraGoals = TypeCtorGoals ++ ArityGoals ++ ArgTypeInfoGoals
+                ++ [TypeInfoGoal]
+        ;
+            NeedTypeCtorArity = do_not_need_arity,
+            poly_info_get_varset(!.Info, VarSet0),
+            poly_info_get_var_types(!.Info, VarTypes0),
+            poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+            init_type_info_var(Type, [TypeCtorVar | ArgTypeInfoVars],
+                no, Var, TypeInfoGoal, VarSet0, VarSet, VarTypes0, VarTypes,
+                RttiVarMaps0, RttiVarMaps),
+            ExtraGoals = TypeCtorGoals ++ ArgTypeInfoGoals ++ [TypeInfoGoal]
+        ),
+        poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps, !Info),
+        MCA = no
     ).
 
 %---------------------%
@@ -714,7 +846,7 @@ new_type_info_var_raw_vt(Type, Kind, Var, !VarTable, !RttiVarMaps) :-
 
 %---------------------%
 
-get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
+poly_get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
     % If we have already allocated a location for this type_info, then all
     % we need to do is to extract the type_info variable from its location.
     ( if
@@ -745,6 +877,73 @@ get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
             RttiVarMaps1, RttiVarMaps),
         poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
     ).
+
+poly_get_type_info_locn_raw(TVarKindMap, TypeVar, TypeInfoLocn,
+        !VarSet, !VarTypes, !RttiVarMaps) :-
+    % If we have already allocated a location for this type_info, then all
+    % we need to do is to extract the type_info variable from its location.
+    ( if rtti_search_type_info_locn(!.RttiVarMaps, TypeVar, TypeInfoLocn0) then
+        TypeInfoLocn = TypeInfoLocn0
+    else
+        poly_make_type_info_locn_raw(TVarKindMap, TypeVar, TypeInfoLocn,
+            !VarSet, !VarTypes, !RttiVarMaps)
+    ).
+
+poly_get_type_info_locn_raw_vt(TVarKindMap, TypeVar, TypeInfoLocn,
+        !VarTable, !RttiVarMaps) :-
+    % If we have already allocated a location for this type_info, then all
+    % we need to do is to extract the type_info variable from its location.
+    ( if rtti_search_type_info_locn(!.RttiVarMaps, TypeVar, TypeInfoLocn0) then
+        TypeInfoLocn = TypeInfoLocn0
+    else
+        poly_make_type_info_locn_raw_vt(TVarKindMap, TypeVar, TypeInfoLocn,
+            !VarTable, !RttiVarMaps)
+    ).
+
+    % Create a new type_info variable, and set the location for the given
+    %   type variable to be that type_info variable.
+    %
+:- pred poly_make_type_info_locn_raw(tvar_kind_map::in,
+    tvar::in, type_info_locn::out, prog_varset::in, prog_varset::out,
+    vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
+
+poly_make_type_info_locn_raw(TVarKindMap, TypeVar, TypeInfoLocn,
+        !VarSet, !VarTypes, !RttiVarMaps) :-
+    % This is wrong if the type variable is one of the existentially
+    % quantified variables of a called predicate and the variable occurs
+    % in an existential typeclass constraint. In that case the type_info
+    % will be stored in the typeclass_info variable produced by the
+    % predicate, not in a type_info variable. maybe_extract_type_info
+    % will fix this up when the typeclass_info is created.
+    get_tvar_kind(TVarKindMap, TypeVar, Kind),
+    Type = type_variable(TypeVar, Kind),
+    new_type_info_var_raw(Type, type_info, Var,
+        !VarSet, !VarTypes, !RttiVarMaps),
+    TypeInfoLocn = type_info(Var),
+    rtti_det_insert_type_info_locn(TypeVar, TypeInfoLocn, !RttiVarMaps).
+
+    % Create a new type_info variable, and set the location for the given
+    %   type variable to be that type_info variable.
+    %
+:- pred poly_make_type_info_locn_raw_vt(tvar_kind_map::in,
+    tvar::in, type_info_locn::out, var_table::in, var_table::out,
+    rtti_varmaps::in, rtti_varmaps::out) is det.
+
+poly_make_type_info_locn_raw_vt(TVarKindMap, TypeVar, TypeInfoLocn,
+        !VarTable, !RttiVarMaps) :-
+    % This is wrong if the type variable is one of the existentially
+    % quantified variables of a called predicate and the variable occurs
+    % in an existential typeclass constraint. In that case the type_info
+    % will be stored in the typeclass_info variable produced by the
+    % predicate, not in a type_info variable. maybe_extract_type_info
+    % will fix this up when the typeclass_info is created.
+    get_tvar_kind(TVarKindMap, TypeVar, Kind),
+    Type = type_variable(TypeVar, Kind),
+    new_type_info_var_raw_vt(Type, type_info, Var, !VarTable, !RttiVarMaps),
+    TypeInfoLocn = type_info(Var),
+    rtti_det_insert_type_info_locn(TypeVar, TypeInfoLocn, !RttiVarMaps).
+
+%---------------------------------------------------------------------------%
 
     % Generate code to get the value of a type variable.
     %
@@ -782,6 +981,29 @@ gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
     Type = type_variable(TypeVar, Kind),
     new_type_info_var_raw(Type, type_info, TypeInfoVar,
         !VarSet, !VarTypes, !RttiVarMaps),
+    generate_plain_call(ModuleInfo, pf_predicate,
+        mercury_private_builtin_module, "type_info_from_typeclass_info",
+        [], [TypeClassInfoVar, IndexVar, TypeInfoVar],
+        instmap_delta_bind_var(TypeInfoVar), only_mode,
+        detism_det, purity_pure, [], Context, CallGoal),
+    Goals = IndexGoals ++ [CallGoal].
+
+gen_extract_type_info_vt(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
+        IndexIntOrVar, Context, Goals, TypeInfoVar,
+        !VarTable, !RttiVarMaps) :-
+    (
+        IndexIntOrVar = iov_int(Index),
+        % We cannot call get_poly_const since we don't have a poly_info.
+        make_int_const_construction_alloc_vt(Index, "TypeInfoIndex",
+            IndexGoal, IndexVar, !VarTable),
+        IndexGoals = [IndexGoal]
+    ;
+        IndexIntOrVar = iov_var(IndexVar),
+        IndexGoals = []
+    ),
+    Type = type_variable(TypeVar, Kind),
+    new_type_info_var_raw_vt(Type, type_info, TypeInfoVar,
+        !VarTable, !RttiVarMaps),
     generate_plain_call(ModuleInfo, pf_predicate,
         mercury_private_builtin_module, "type_info_from_typeclass_info",
         [], [TypeClassInfoVar, IndexVar, TypeInfoVar],

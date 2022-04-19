@@ -402,7 +402,7 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
     ml_gen_info_get_pred_proc_id(!.Info, PredProcId),
     module_info_pred_proc_info(ModuleInfo0, PredProcId, PredInfo0, ProcInfo0),
     % Generate the HLDS code to create the type_infos.
-    polymorphism_make_type_info_var_raw(Type, Context,
+    polymorphism_make_type_info_var_mi(Type, Context,
         TypeInfoVar, TypeInfoGoals, ModuleInfo0, ModuleInfo1,
         PredInfo0, PredInfo, ProcInfo0, ProcInfo),
     module_info_set_pred_proc_info(PredProcId, PredInfo, ProcInfo,

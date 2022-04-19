@@ -1901,7 +1901,7 @@ construct_extra_type_infos(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
     PredInfo0 = !.Info ^ hoi_pred_info,
     ProcInfo0 = !.Info ^ hoi_proc_info,
     term.context_init(Context),
-    polymorphism_make_type_info_vars_raw(Types, Context,
+    polymorphism_make_type_info_vars_mi(Types, Context,
         TypeInfoVars, TypeInfoGoals, ModuleInfo0, ModuleInfo,
         PredInfo0, PredInfo, ProcInfo0, ProcInfo),
     !Info ^ hoi_pred_info := PredInfo,

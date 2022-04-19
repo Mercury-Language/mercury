@@ -877,7 +877,7 @@ detism_to_try_lambda_detism(detism_failure, detism_semi).
 
 make_try_call(PredName, LambdaVar, ResultVar, ExtraArgs, OutputTupleType,
         GoalPurity, Context, OverallGoal, !PredInfo, !ProcInfo, !ModuleInfo) :-
-    polymorphism_make_type_info_var_raw(OutputTupleType, Context,
+    polymorphism_make_type_info_var_mi(OutputTupleType, Context,
         TypeInfoVar, MakeTypeInfoGoals, !ModuleInfo, !PredInfo, !ProcInfo),
 
     % The mode will be fixed up by a later analysis.

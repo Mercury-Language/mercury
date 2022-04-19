@@ -1636,7 +1636,7 @@ replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
                 ),
                 unexpected($pred, "info not found")
             ),
-            polymorphism_make_type_info_var_raw(TypeInfoType,
+            polymorphism_make_type_info_var_mi(TypeInfoType,
                 term.context_init, TypeInfoVar, Goals0,
                 ModuleInfo0, ModuleInfo,
                 PredInfo1, PredInfo, ProcInfo0, ProcInfo),

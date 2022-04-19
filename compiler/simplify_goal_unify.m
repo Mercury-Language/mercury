@@ -292,7 +292,7 @@ make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
 
         % Generate the code that creates the type_infos.
         term.context_init(Context),
-        polymorphism_make_type_info_vars_raw(Types, Context,
+        polymorphism_make_type_info_vars_mi(Types, Context,
             TypeInfoVars, TypeInfoGoals, ModuleInfo0, ModuleInfo1,
             !PredInfo, !ProcInfo),
 
