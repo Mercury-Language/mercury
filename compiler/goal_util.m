@@ -325,7 +325,7 @@
 :- pred create_conj_from_list(list(hlds_goal)::in, conj_type::in,
     hlds_goal::out) is det.
 
-    % can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
+    % can_reorder_goals_old(ModuleInfo, VarTable, FullyStrict,
     %   InstmapBeforeGoal1, Goal1, InstmapBeforeGoal2, Goal2).
     %
     % Goals can be reordered if
@@ -337,7 +337,7 @@
     % NOTE: this version is deprecated; new code should use the following
     %       version because it supports the intermodule-analysis framework.
     %
-:- pred can_reorder_goals_old(module_info::in, vartypes::in, bool::in,
+:- pred can_reorder_goals_old(module_info::in, var_table::in, bool::in,
     instmap::in, hlds_goal::in, instmap::in, hlds_goal::in) is semidet.
 
 :- type can_reorder_goals
@@ -1916,7 +1916,7 @@ create_conj_from_list(Conjuncts, ConjType, ConjGoal) :-
 
 %-----------------------------------------------------------------------------%
 
-can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
+can_reorder_goals_old(ModuleInfo, VarTable, FullyStrict,
         InstmapBeforeEarlierGoal, EarlierGoal,
         InstmapBeforeLaterGoal, LaterGoal) :-
     % The logic here is mostly duplicated in can_reorder_goals below
@@ -1938,14 +1938,14 @@ can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
 
     % Don't reorder the goals if the later goal depends on the outputs
     % of the current goal.
-    not goal_depends_on_earlier_goal(ModuleInfo, vts_vartypes(VarTypes),
+    not goal_depends_on_earlier_goal(ModuleInfo, vts_var_table(VarTable),
         LaterGoal, EarlierGoal, InstmapBeforeEarlierGoal),
 
     % Don't reorder the goals if the later goal changes the instantiatedness
     % of any of the non-locals of the earlier goal. This is necessary if the
     % later goal clobbers any of the non-locals of the earlier goal, and
     % avoids rerunning full mode analysis in other cases.
-    not goal_depends_on_earlier_goal(ModuleInfo, vts_vartypes(VarTypes),
+    not goal_depends_on_earlier_goal(ModuleInfo, vts_var_table(VarTable),
         EarlierGoal, LaterGoal, InstmapBeforeLaterGoal).
 
 can_reorder_goals(VarTypeSrc, FullyStrict, InstmapBeforeEarlierGoal,

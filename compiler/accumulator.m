@@ -188,7 +188,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.goal_store.
 
 :- import_module assoc_list.
@@ -281,8 +281,8 @@ accu_transform_proc(proc(PredId, ProcId), PredInfo, !ProcInfo, !ModuleInfo,
                 [option_is_set(warn_accumulator_swaps, yes,
                     [always(InPieces)])]),
 
-            proc_info_get_varset_vartypes(!.ProcInfo, VarSet, _VarTypes),
-            generate_warnings(!.ModuleInfo, VarSet, Warnings, WarnMsgs),
+            proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
+            generate_warnings(!.ModuleInfo, VarTable, Warnings, WarnMsgs),
             (
                 Warnings = [_],
                 EnsurePieces = [words("Please ensure that this"),
@@ -331,25 +331,23 @@ accu_transform_proc(proc(PredId, ProcId), PredInfo, !ProcInfo, !ModuleInfo,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred generate_warnings(module_info::in, prog_varset::in,
+:- pred generate_warnings(module_info::in, var_table::in,
     list(accu_warning)::in, list(error_msg)::out) is det.
 
 generate_warnings(_, _, [], []).
-generate_warnings(ModuleInfo, VarSet, [Warning | Warnings], [Msg | Msgs]) :-
-    generate_warning(ModuleInfo, VarSet, Warning, Msg),
-    generate_warnings(ModuleInfo, VarSet, Warnings, Msgs).
+generate_warnings(ModuleInfo, VarTable, [Warning | Warnings], [Msg | Msgs]) :-
+    generate_warning(ModuleInfo, VarTable, Warning, Msg),
+    generate_warnings(ModuleInfo, VarTable, Warnings, Msgs).
 
-:- pred generate_warning(module_info::in, prog_varset::in, accu_warning::in,
+:- pred generate_warning(module_info::in, var_table::in, accu_warning::in,
     error_msg::out) is det.
 
-generate_warning(ModuleInfo, VarSet, Warning, Msg) :-
+generate_warning(ModuleInfo, VarTable, Warning, Msg) :-
     Warning = accu_warn(Context, PredId, VarA, VarB),
     PredPieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
         PredId),
-
-    varset.lookup_name(VarSet, VarA, VarAName),
-    varset.lookup_name(VarSet, VarB, VarBName),
-
+    VarAName = var_table_entry_name(VarTable, VarA),
+    VarBName = var_table_entry_name(VarTable, VarB),
     Pieces = [words("warning: the call to")] ++ PredPieces ++
         [words("has had the location of the variables"),
         quote(VarAName), words("and"), quote(VarBName),
@@ -405,16 +403,15 @@ should_attempt_accu_transform(!ModuleInfo, PredId, ProcId, PredInfo,
 should_attempt_accu_transform_2(!ModuleInfo, PredId, PredInfo, !ProcInfo,
         HeadVars, InitialInstMap, TopLevel, FullyStrict, DoLCMC,
         [Id | Ids], C, M, Rec, Warnings) :-
-    proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes0),
-    identify_out_and_out_prime(!.ModuleInfo, VarTypes0, InitialInstMap,
+    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
+    identify_out_and_out_prime(!.ModuleInfo, VarTable0, InitialInstMap,
         Id, Rec, HeadVars, Out, OutPrime, HeadToCallSubst, CallToHeadSubst),
     ( if
-        accu_stage1(!.ModuleInfo, VarTypes0, FullyStrict, DoLCMC, Id, M, C,
+        accu_stage1(!.ModuleInfo, VarTable0, FullyStrict, DoLCMC, Id, M, C,
             Sets),
         accu_stage2(!.ModuleInfo, !.ProcInfo, Id, C, Sets, OutPrime, Out,
-            VarSet, VarTypes, Accs, BaseCase, BasePairs, Substs, CS,
-            WarningsPrime),
-        accu_stage3(Id, Accs, VarSet, VarTypes, C, CS, Substs,
+            VarTable, Accs, BaseCase, BasePairs, Substs, CS, WarningsPrime),
+        accu_stage3(Id, Accs, VarTable, C, CS, Substs,
             HeadToCallSubst, CallToHeadSubst, BaseCase, BasePairs, Sets, Out,
             TopLevel, PredId, PredInfo, !ProcInfo, !ModuleInfo)
     then
@@ -623,12 +620,12 @@ identify_recursive_calls(PredId, ProcId, GoalStore, Ids) :-
     % to be accumulated, as there may be other output variables which are
     % produced prior to the recursive call.
     %
-:- pred identify_out_and_out_prime(module_info::in, vartypes::in, instmap::in,
+:- pred identify_out_and_out_prime(module_info::in, var_table::in, instmap::in,
     accu_goal_id::in, list(hlds_goal)::in,
     list(prog_var)::in, list(prog_var)::out, list(prog_var)::out,
     accu_subst::out, accu_subst::out) is det.
 
-identify_out_and_out_prime(ModuleInfo, VarTypes, InitialInstMap, GoalId,
+identify_out_and_out_prime(ModuleInfo, VarTable, InitialInstMap, GoalId,
         Rec, HeadVars, Out, OutPrime, HeadToCallSubst, CallToHeadSubst) :-
     GoalId = accu_goal_id(_Case, K),
     ( if
@@ -643,7 +640,7 @@ identify_out_and_out_prime(ModuleInfo, VarTypes, InitialInstMap, GoalId,
         goal_list_instmap_delta(Rest, InstMapDelta),
         apply_instmap_delta(InstMapDelta, InstMapBeforeRest, InstMapAfterRest),
 
-        instmap_changed_vars(ModuleInfo, VarTypes,
+        instmap_changed_vars_vt(ModuleInfo, VarTable,
             InstMapBeforeRest, InstMapAfterRest, ChangedVars),
 
         assoc_list.from_corresponding_lists(HeadVars, Args, HeadArg0),
@@ -686,16 +683,16 @@ identify_out_and_out_prime(ModuleInfo, VarTypes, InitialInstMap, GoalId,
     % Stage 1 is responsible for identifying which goals are associative,
     % which can be moved before the recursive call and so on.
     %
-:- pred accu_stage1(module_info::in, vartypes::in, bool::in,
+:- pred accu_stage1(module_info::in, var_table::in, bool::in,
     maybe_opt_lcmc_accumulator::in, accu_goal_id::in, int::in,
     accu_goal_store::in, accu_sets::out) is semidet.
 
-accu_stage1(ModuleInfo, VarTypes, FullyStrict, DoLCMC, GoalId, M, GoalStore,
+accu_stage1(ModuleInfo, VarTable, FullyStrict, DoLCMC, GoalId, M, GoalStore,
         Sets) :-
     GoalId = accu_goal_id(Case, K),
     NextGoalId = accu_goal_id(Case, K + 1),
     accu_sets_init(Sets0),
-    accu_stage1_2(ModuleInfo, VarTypes, FullyStrict, NextGoalId, K, M,
+    accu_stage1_2(ModuleInfo, VarTable, FullyStrict, NextGoalId, K, M,
         GoalStore, Sets0, Sets1),
     Sets1 = accu_sets(Before, Assoc,
         ConstructAssoc, Construct, Update, Reject),
@@ -724,11 +721,11 @@ accu_stage1(ModuleInfo, VarTypes, FullyStrict, DoLCMC, GoalId, M, GoalStore,
     % For each goal after the recursive call decide which set
     % the goal belongs to.
     %
-:- pred accu_stage1_2(module_info::in, vartypes::in, bool::in,
+:- pred accu_stage1_2(module_info::in, var_table::in, bool::in,
     accu_goal_id::in, int::in, int::in, accu_goal_store::in,
     accu_sets::in, accu_sets::out) is det.
 
-accu_stage1_2(ModuleInfo, VarTypes, FullyStrict, GoalId, K, M, GoalStore,
+accu_stage1_2(ModuleInfo, VarTable, FullyStrict, GoalId, K, M, GoalStore,
         !Sets) :-
     GoalId = accu_goal_id(Case, I),
     NextGoalId = accu_goal_id(Case, I + 1),
@@ -736,40 +733,40 @@ accu_stage1_2(ModuleInfo, VarTypes, FullyStrict, GoalId, K, M, GoalStore,
         true
     else
         ( if
-            accu_before(ModuleInfo, VarTypes, FullyStrict, GoalId, K,
+            accu_before(ModuleInfo, VarTable, FullyStrict, GoalId, K,
                 GoalStore, !.Sets)
         then
             !Sets ^ as_before := set.insert(!.Sets ^ as_before, GoalId),
-            accu_stage1_2(ModuleInfo, VarTypes, FullyStrict, NextGoalId, K, M,
+            accu_stage1_2(ModuleInfo, VarTable, FullyStrict, NextGoalId, K, M,
                 GoalStore, !Sets)
         else if
-            accu_assoc(ModuleInfo, VarTypes, FullyStrict, GoalId, K,
+            accu_assoc(ModuleInfo, VarTable, FullyStrict, GoalId, K,
                 GoalStore, !.Sets)
         then
             !Sets ^ as_assoc := set.insert(!.Sets ^ as_assoc, GoalId),
-            accu_stage1_2(ModuleInfo, VarTypes, FullyStrict, NextGoalId, K, M,
+            accu_stage1_2(ModuleInfo, VarTable, FullyStrict, NextGoalId, K, M,
                 GoalStore, !Sets)
         else if
-            accu_construct(ModuleInfo, VarTypes, FullyStrict, GoalId, K,
+            accu_construct(ModuleInfo, VarTable, FullyStrict, GoalId, K,
                 GoalStore, !.Sets)
         then
             !Sets ^ as_construct := set.insert(!.Sets ^ as_construct, GoalId),
-            accu_stage1_2(ModuleInfo, VarTypes, FullyStrict, NextGoalId, K, M,
+            accu_stage1_2(ModuleInfo, VarTable, FullyStrict, NextGoalId, K, M,
                 GoalStore, !Sets)
         else if
-            accu_construct_assoc(ModuleInfo, VarTypes, FullyStrict, GoalId, K,
+            accu_construct_assoc(ModuleInfo, VarTable, FullyStrict, GoalId, K,
                 GoalStore, !.Sets)
         then
             !Sets ^ as_construct_assoc :=
                 set.insert(!.Sets ^ as_construct_assoc, GoalId),
-            accu_stage1_2(ModuleInfo, VarTypes, FullyStrict, NextGoalId, K, M,
+            accu_stage1_2(ModuleInfo, VarTable, FullyStrict, NextGoalId, K, M,
                 GoalStore, !Sets)
         else if
-            accu_update(ModuleInfo, VarTypes, FullyStrict, GoalId, K,
+            accu_update(ModuleInfo, VarTable, FullyStrict, GoalId, K,
                 GoalStore, !.Sets)
         then
             !Sets ^ as_update := set.insert(!.Sets ^ as_update, GoalId),
-            accu_stage1_2(ModuleInfo, VarTypes, FullyStrict, NextGoalId, K, M,
+            accu_stage1_2(ModuleInfo, VarTable, FullyStrict, NextGoalId, K, M,
                 GoalStore, !Sets)
         else
             !Sets ^ as_reject := set.insert(!.Sets ^ as_reject, GoalId)
@@ -809,17 +806,17 @@ set_upto(Case, K) = Set :-
     % which are before the recursive call or can be moved before the recursive
     % call (member of the before set).
     %
-:- pred accu_before(module_info::in, vartypes::in, bool::in,
+:- pred accu_before(module_info::in, var_table::in, bool::in,
     accu_goal_id::in, int::in, accu_goal_store::in, accu_sets::in) is semidet.
 
-accu_before(ModuleInfo, VarTypes, FullyStrict, GoalId, K, GoalStore, Sets) :-
+accu_before(ModuleInfo, VarTable, FullyStrict, GoalId, K, GoalStore, Sets) :-
     GoalId = accu_goal_id(Case, _I),
     Before = Sets ^ as_before,
     goal_store_lookup(GoalStore, GoalId, stored_goal(LaterGoal, LaterInstMap)),
     (
         member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId,
             stored_goal(EarlierGoal, EarlierInstMap)),
-        not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
+        not can_reorder_goals_old(ModuleInfo, VarTable, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
     =>
@@ -832,10 +829,10 @@ accu_before(ModuleInfo, VarTypes, FullyStrict, GoalId, K, GoalStore, Sets) :-
     % before the recursive call (member of the before set) AND the goal
     % is associative.
     %
-:- pred accu_assoc(module_info::in, vartypes::in, bool::in,
+:- pred accu_assoc(module_info::in, var_table::in, bool::in,
     accu_goal_id::in, int::in, accu_goal_store::in, accu_sets::in) is semidet.
 
-accu_assoc(ModuleInfo, VarTypes, FullyStrict, GoalId, K, GoalStore, Sets) :-
+accu_assoc(ModuleInfo, VarTable, FullyStrict, GoalId, K, GoalStore, Sets) :-
     GoalId = accu_goal_id(Case, _I),
     Before = Sets ^ as_before,
     goal_store_lookup(GoalStore, GoalId, stored_goal(LaterGoal, LaterInstMap)),
@@ -846,7 +843,7 @@ accu_assoc(ModuleInfo, VarTypes, FullyStrict, GoalId, K, GoalStore, Sets) :-
         % See the diff with the previous version.
         member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId,
             stored_goal(EarlierGoal, EarlierInstMap)),
-        not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
+        not can_reorder_goals_old(ModuleInfo, VarTable, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
     =>
@@ -859,10 +856,10 @@ accu_assoc(ModuleInfo, VarTypes, FullyStrict, GoalId, K, GoalStore, Sets) :-
     % can be moved before the recursive call (member of the before set)
     % AND the goal is construction unification.
     %
-:- pred accu_construct(module_info::in, vartypes::in, bool::in,
+:- pred accu_construct(module_info::in, var_table::in, bool::in,
     accu_goal_id::in, int::in, accu_goal_store::in, accu_sets::in) is semidet.
 
-accu_construct(ModuleInfo, VarTypes, FullyStrict, GoalId, K, GoalStore,
+accu_construct(ModuleInfo, VarTable, FullyStrict, GoalId, K, GoalStore,
         Sets) :-
     GoalId = accu_goal_id(Case, _I),
     Before = Sets ^ as_before,
@@ -875,7 +872,7 @@ accu_construct(ModuleInfo, VarTypes, FullyStrict, GoalId, K, GoalStore,
         % See the diff with the previous version.
         member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId,
             stored_goal(EarlierGoal, EarlierInstMap)),
-        not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
+        not can_reorder_goals_old(ModuleInfo, VarTable, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
     =>
@@ -893,10 +890,10 @@ accu_construct(ModuleInfo, VarTypes, FullyStrict, GoalId, K, GoalStore,
     % as a call to the member of the assoc set which the construction
     % unification depends on.
     %
-:- pred accu_construct_assoc(module_info::in, vartypes::in, bool::in,
+:- pred accu_construct_assoc(module_info::in, var_table::in, bool::in,
     accu_goal_id::in, int::in, accu_goal_store::in, accu_sets::in) is semidet.
 
-accu_construct_assoc(ModuleInfo, VarTypes, FullyStrict,
+accu_construct_assoc(ModuleInfo, VarTable, FullyStrict,
         GoalId, K, GoalStore, Sets) :-
     GoalId = accu_goal_id(Case, _I),
     Before = Sets ^ as_before,
@@ -906,8 +903,8 @@ accu_construct_assoc(ModuleInfo, VarTypes, FullyStrict,
     LaterGoal = hlds_goal(unify(_, _, _, Unify, _), _GoalInfo),
     Unify = construct(_, ConsId, _, _, _, _, _),
 
-    goal_store_all_ancestors(GoalStore, GoalId, VarTypes, ModuleInfo,
-        FullyStrict, Ancestors),
+    goal_store_all_ancestors(ModuleInfo, VarTable, GoalStore, FullyStrict,
+        GoalId, Ancestors),
 
     set.is_singleton(Assoc `intersect` Ancestors, AssocId),
     goal_store_lookup(GoalStore, AssocId,
@@ -920,7 +917,7 @@ accu_construct_assoc(ModuleInfo, VarTypes, FullyStrict,
         % See the diff with the previous version.
         member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId,
             stored_goal(EarlierGoal, EarlierInstMap)),
-        not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
+        not can_reorder_goals_old(ModuleInfo, VarTable, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
     =>
@@ -935,10 +932,10 @@ accu_construct_assoc(ModuleInfo, VarTypes, FullyStrict,
     % can be moved before the recursive call (member of the before set)
     % AND the goal updates some state.
     %
-:- pred accu_update(module_info::in, vartypes::in, bool::in,
+:- pred accu_update(module_info::in, var_table::in, bool::in,
     accu_goal_id::in, int::in, accu_goal_store::in, accu_sets::in) is semidet.
 
-accu_update(ModuleInfo, VarTypes, FullyStrict, GoalId, K, GoalStore, Sets) :-
+accu_update(ModuleInfo, VarTable, FullyStrict, GoalId, K, GoalStore, Sets) :-
     GoalId = accu_goal_id(Case, _I),
     Before = Sets ^ as_before,
     goal_store_lookup(GoalStore, GoalId, stored_goal(LaterGoal, LaterInstMap)),
@@ -949,7 +946,7 @@ accu_update(ModuleInfo, VarTypes, FullyStrict, GoalId, K, GoalStore, Sets) :-
         % See the diff with the previous version.
         member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId,
             stored_goal(EarlierGoal, EarlierInstMap)),
-        not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
+        not can_reorder_goals_old(ModuleInfo, VarTable, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
     =>
@@ -1123,14 +1120,13 @@ is_associative_construction(ModuleInfo, PredId, ConsId) :-
     %
 :- pred accu_stage2(module_info::in, proc_info::in,
     accu_goal_id::in, accu_goal_store::in, accu_sets::in,
-    list(prog_var)::in, list(prog_var)::in, prog_varset::out, vartypes::out,
+    list(prog_var)::in, list(prog_var)::in, var_table::out,
     list(prog_var)::out, accu_base::out, list(pair(prog_var))::out,
     accu_substs::out, accu_goal_store::out, list(accu_warning)::out)
     is semidet.
 
 accu_stage2(ModuleInfo, ProcInfo0, GoalId, GoalStore, Sets, OutPrime, Out,
-        !:VarSet, !:VarTypes, Accs, BaseCase, BasePairs, !:Substs,
-        CS, Warnings) :-
+        !:VarTable, Accs, BaseCase, BasePairs, !:Substs, CS, Warnings) :-
     Sets = accu_sets(Before0, Assoc, ConstructAssoc, Construct, Update, _),
     GoalId = accu_goal_id(Case, K),
     Before = Before0 `union` set_upto(Case, K-1),
@@ -1153,34 +1149,34 @@ accu_stage2(ModuleInfo, ProcInfo0, GoalId, GoalStore, Sets, OutPrime, Out,
         set_of_var.init, AfterNonLocals),
     InitAccs = set_of_var.intersect(BeforeNonLocals, AfterNonLocals),
 
-    proc_info_get_varset_vartypes(ProcInfo0, !:VarSet, !:VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo0, !:VarTable),
 
-    accu_substs_init(set_of_var.to_sorted_list(InitAccs), !VarSet, !VarTypes,
+    accu_substs_init(set_of_var.to_sorted_list(InitAccs), !VarTable,
         !:Substs),
 
     set_of_var.list_to_set(OutPrime, OutPrimeSet),
     accu_process_assoc_set(ModuleInfo, GoalStore, set.to_sorted_list(Assoc),
-        OutPrimeSet, !Substs, !VarSet, !VarTypes, CS, Warnings),
+        OutPrimeSet, !Substs, !VarTable, CS, Warnings),
 
     accu_process_update_set(ModuleInfo, GoalStore, set.to_sorted_list(Update),
-        OutPrimeSet, !Substs, !VarSet, !VarTypes, UpdateOut, UpdateAccOut,
+        OutPrimeSet, !Substs, !VarTable, UpdateOut, UpdateAccOut,
         BasePairs),
 
     Accs = set_of_var.to_sorted_list(InitAccs) ++ UpdateAccOut,
 
-    accu_divide_base_case(ModuleInfo, !.VarTypes, GoalStore, UpdateOut, Out,
+    accu_divide_base_case(ModuleInfo, !.VarTable, GoalStore, UpdateOut, Out,
         UpdateBase, AssocBase, OtherBase),
 
     BaseCase = accu_base(UpdateBase, AssocBase, OtherBase).
 
 %---------------------------------------------------------------------------%
 
-:- pred accu_substs_init(list(prog_var)::in, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, accu_substs::out) is det.
+:- pred accu_substs_init(list(prog_var)::in, var_table::in, var_table::out,
+    accu_substs::out) is det.
 
-accu_substs_init(InitAccs, !VarSet, !VarTypes, Substs) :-
+accu_substs_init(InitAccs, !VarTable, Substs) :-
     map.init(Subst),
-    acc_var_subst_init(InitAccs, !VarSet, !VarTypes, AccVarSubst),
+    acc_var_subst_init(InitAccs, !VarTable, AccVarSubst),
     RecCallSubst = Subst,
     AssocCallSubst = Subst,
     UpdateSubst = Subst,
@@ -1190,28 +1186,26 @@ accu_substs_init(InitAccs, !VarSet, !VarTypes, Substs) :-
     % Initialise the acc_var_subst to be from Var to A_Var where Var is a
     % member of InitAccs and A_Var is a fresh variable of the same type of Var.
     %
-:- pred acc_var_subst_init(list(prog_var)::in,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+:- pred acc_var_subst_init(list(prog_var)::in, var_table::in, var_table::out,
     accu_subst::out) is det.
 
-acc_var_subst_init([], !VarSet, !VarTypes, map.init).
-acc_var_subst_init([Var | Vars], !VarSet, !VarTypes, Subst) :-
-    create_new_var(Var, "A_", AccVar, !VarSet, !VarTypes),
-    acc_var_subst_init(Vars, !VarSet, !VarTypes, Subst0),
+acc_var_subst_init([], !VarTable, map.init).
+acc_var_subst_init([Var | Vars], !VarTable, Subst) :-
+    create_new_var(Var, "A_", AccVar, !VarTable),
+    acc_var_subst_init(Vars, !VarTable, Subst0),
     map.det_insert(Var, AccVar, Subst0, Subst).
 
     % Create a fresh variable which is the same type as the old variable
     % and has the same name except that it begins with the prefix.
     %
 :- pred create_new_var(prog_var::in, string::in, prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
-create_new_var(OldVar, Prefix, NewVar, !VarSet, !VarTypes) :-
-    varset.lookup_name(!.VarSet, OldVar, OldName),
-    string.append(Prefix, OldName, NewName),
-    varset.new_named_var(NewName, NewVar, !VarSet),
-    lookup_var_type(!.VarTypes, OldVar, Type),
-    add_var_type(NewVar, Type, !VarTypes).
+create_new_var(OldVar, Prefix, NewVar, !VarTable) :-
+    lookup_var_entry(!.VarTable, OldVar, OldVarEntry),
+    OldVarEntry = vte(OldName, Type, TypeIsDummy),
+    NewVarEntry = vte(Prefix ++ OldName, Type, TypeIsDummy),
+    add_var_entry(NewVarEntry, NewVar, !VarTable).
 
 %---------------------------------------------------------------------------%
 
@@ -1221,15 +1215,14 @@ create_new_var(OldVar, Prefix, NewVar, !VarSet, !VarTypes) :-
     %
 :- pred accu_process_assoc_set(module_info::in, accu_goal_store::in,
     list(accu_goal_id)::in, set_of_progvar::in,
-    accu_substs::in, accu_substs::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    accu_substs::in, accu_substs::out, var_table::in, var_table::out,
     accu_goal_store::out, list(accu_warning)::out) is semidet.
 
 accu_process_assoc_set(_ModuleInfo, _GS, [], _OutPrime, !Substs,
-        !VarSet, !VarTypes, CS, []) :-
+        !VarTable, CS, []) :-
     goal_store_init(CS).
 accu_process_assoc_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
-        !VarSet, !VarTypes, CS, Warnings) :-
+        !VarTable, CS, Warnings) :-
     !.Substs = accu_substs(AccVarSubst, RecCallSubst0, AssocCallSubst0,
         UpdateSubst),
 
@@ -1244,7 +1237,7 @@ accu_process_assoc_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
         BeforeAssocVar),
 
     map.lookup(AccVarSubst, BeforeAssocVar, AccVar),
-    create_new_var(BeforeAssocVar, "NewAcc_", NewAcc, !VarSet, !VarTypes),
+    create_new_var(BeforeAssocVar, "NewAcc_", NewAcc, !VarTable),
 
     map.det_insert(DuringAssocVar, AccVar, AssocCallSubst0, AssocCallSubst1),
     map.det_insert(AssocOutput, NewAcc, AssocCallSubst1, AssocCallSubst),
@@ -1289,7 +1282,7 @@ accu_process_assoc_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
     ),
 
     accu_process_assoc_set(ModuleInfo, GS, Ids, OutPrime, !Substs,
-        !VarSet, !VarTypes, CS0, Warnings0),
+        !VarTable, CS0, Warnings0),
     goal_store_det_insert(Id, CSGoal, CS0, CS),
     Warnings = Warnings0 ++ CurWarnings.
 
@@ -1316,15 +1309,14 @@ accu_heuristic(unqualified("list"), "append", 3, [_Typeinfo, A, _B, _C],
     %
 :- pred accu_process_update_set(module_info::in, accu_goal_store::in,
     list(accu_goal_id)::in, set_of_progvar::in,
-    accu_substs::in, accu_substs::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    accu_substs::in, accu_substs::out, var_table::in, var_table::out,
     list(prog_var)::out, list(prog_var)::out, list(pair(prog_var))::out)
     is semidet.
 
 accu_process_update_set(_ModuleInfo, _GS, [], _OutPrime, !Substs,
-        !VarSet, !VarTypes, [], [], []).
+        !VarTable, [], [], []).
 accu_process_update_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
-        !VarSet, !VarTypes, StateOutputVars, Accs, BasePairs) :-
+        !VarTable, StateOutputVars, Accs, BasePairs) :-
     !.Substs = accu_substs(AccVarSubst0, RecCallSubst0, AssocCallSubst,
         UpdateSubst0),
     lookup_call(GS, Id, stored_goal(Goal, _InstMap)),
@@ -1341,8 +1333,8 @@ accu_process_update_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
         StateOutputVar = StateVarA
     ),
 
-    create_new_var(StateInputVar, "Acc_", Acc0, !VarSet, !VarTypes),
-    create_new_var(StateOutputVar, "Acc_", Acc, !VarSet, !VarTypes),
+    create_new_var(StateInputVar, "Acc_", Acc0, !VarTable),
+    create_new_var(StateOutputVar, "Acc_", Acc, !VarTable),
 
     map.det_insert(StateInputVar, Acc0, UpdateSubst0, UpdateSubst1),
     map.det_insert(StateOutputVar, Acc, UpdateSubst1, UpdateSubst),
@@ -1352,7 +1344,7 @@ accu_process_update_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
         UpdateSubst),
 
     accu_process_update_set(ModuleInfo, GS, Ids, OutPrime, !Substs,
-        !VarSet, !VarTypes, StateOutputVars0, Accs0, BasePairs0),
+        !VarTable, StateOutputVars0, Accs0, BasePairs0),
 
     % Rather then concatenating to start of the list we concatenate to the end
     % of the list. This allows the accumulator introduction to be applied
@@ -1376,17 +1368,17 @@ accu_process_update_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
     % to initialize a variable in both U and A, so both U and A will contain
     % the same goal_id.
     %
-:- pred accu_divide_base_case(module_info::in, vartypes::in,
+:- pred accu_divide_base_case(module_info::in, var_table::in,
     accu_goal_store::in, list(prog_var)::in, list(prog_var)::in,
     set(accu_goal_id)::out, set(accu_goal_id)::out, set(accu_goal_id)::out)
     is det.
 
-accu_divide_base_case(ModuleInfo, VarTypes, C, UpdateOut, Out,
+accu_divide_base_case(ModuleInfo, VarTable, C, UpdateOut, Out,
         UpdateBase, AssocBase, OtherBase) :-
     list.delete_elems(Out, UpdateOut, AssocOut),
 
-    list.map(accu_related(ModuleInfo, VarTypes, C), UpdateOut, UpdateBaseList),
-    list.map(accu_related(ModuleInfo, VarTypes, C), AssocOut, AssocBaseList),
+    list.map(accu_related(ModuleInfo, VarTable, C), UpdateOut, UpdateBaseList),
+    list.map(accu_related(ModuleInfo, VarTable, C), AssocOut, AssocBaseList),
     UpdateBase = set.power_union(set.list_to_set(UpdateBaseList)),
     AssocBase = set.power_union(set.list_to_set(AssocBaseList)),
 
@@ -1394,24 +1386,22 @@ accu_divide_base_case(ModuleInfo, VarTypes, C, UpdateOut, Out,
     set.to_sorted_list(Set, List),
 
     list.map(
-        ( pred(GoalId::in, Ancestors::out) is det :-
-            goal_store_all_ancestors(C, GoalId, VarTypes,
-                ModuleInfo, no, Ancestors)
-        ), List, OtherBaseList),
+        goal_store_all_ancestors(ModuleInfo, VarTable, C, no),
+        List, OtherBaseList),
 
     OtherBase = set.list_to_set(List) `union`
         (base_case_ids_set(C) `intersect`
         set.power_union(set.list_to_set(OtherBaseList))).
 
-    % accu_related(ModuleInfo, VarTypes, GoalStore, Var, Related):
+    % accu_related(ModuleInfo, VarTable, GoalStore, Var, Related):
     %
     % From GoalStore, return all the goal_ids, Related, which are needed
     % to initialize Var.
     %
-:- pred accu_related(module_info::in, vartypes::in, accu_goal_store::in,
+:- pred accu_related(module_info::in, var_table::in, accu_goal_store::in,
     prog_var::in, set(accu_goal_id)::out) is det.
 
-accu_related(ModuleInfo, VarTypes, GoalStore, Var, Related) :-
+accu_related(ModuleInfo, VarTable, GoalStore, Var, Related) :-
     solutions.solutions(
         ( pred(Key::out) is nondet :-
             goal_store_member(GoalStore, Key, stored_goal(Goal, InstMap0)),
@@ -1419,7 +1409,7 @@ accu_related(ModuleInfo, VarTypes, GoalStore, Var, Related) :-
             Goal = hlds_goal(_GoalExpr, GoalInfo),
             InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
             apply_instmap_delta(InstMapDelta, InstMap0, InstMap),
-            instmap_changed_vars(ModuleInfo, VarTypes,
+            instmap_changed_vars_vt(ModuleInfo, VarTable,
                 InstMap0, InstMap, ChangedVars),
             set_of_var.is_singleton(ChangedVars, Var)
         ), Ids),
@@ -1428,8 +1418,8 @@ accu_related(ModuleInfo, VarTypes, GoalStore, Var, Related) :-
         unexpected($pred, "no Id")
     ;
         Ids = [Id],
-        goal_store_all_ancestors(GoalStore, Id, VarTypes, ModuleInfo, no,
-            Ancestors),
+        goal_store_all_ancestors(ModuleInfo, VarTable, GoalStore, no,
+            Id, Ancestors),
         list.filter((pred(accu_goal_id(accu_base, _)::in) is semidet),
             set.to_sorted_list(set.insert(Ancestors, Id)), RelatedList),
         Related = set.list_to_set(RelatedList)
@@ -1466,17 +1456,17 @@ lookup_call(GoalStore, Id, stored_goal(Call, InstMap)) :-
     % the substitutions determined in stage2. It also redefines the
     % original procedure to call the accumulator version of the procedure.
     %
-:- pred accu_stage3(accu_goal_id::in, list(prog_var)::in, prog_varset::in,
-    vartypes::in, accu_goal_store::in, accu_goal_store::in,
+:- pred accu_stage3(accu_goal_id::in, list(prog_var)::in,
+    var_table::in, accu_goal_store::in, accu_goal_store::in,
     accu_substs::in, accu_subst::in, accu_subst::in,
     accu_base::in, list(pair(prog_var))::in, accu_sets::in,
     list(prog_var)::in, top_level::in, pred_id::in, pred_info::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
-accu_stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
+accu_stage3(RecCallId, Accs, VarTable, C, CS, Substs,
         HeadToCallSubst, CallToHeadSubst, BaseCase, BasePairs, Sets, Out,
         TopLevel, OrigPredId, OrigPredInfo, !OrigProcInfo, !ModuleInfo) :-
-    acc_proc_info(Accs, VarSet, VarTypes, Substs, !.OrigProcInfo,
+    acc_proc_info(Accs, VarTable, Substs, !.OrigProcInfo,
         AccTypes, AccProcInfo),
     acc_pred_info(AccTypes, Out, AccProcInfo, OrigPredId, OrigPredInfo,
         AccProcId, AccPredInfo),
@@ -1494,7 +1484,7 @@ accu_stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
         AccBaseGoal, AccRecGoal, OrigGoal, AccGoal),
 
     proc_info_set_goal(OrigGoal, !OrigProcInfo),
-    proc_info_set_varset_vartypes(VarSet, VarTypes, !OrigProcInfo),
+    proc_info_set_var_table(VarTable, !OrigProcInfo),
 
     requantify_proc_general(ordinary_nonlocals_no_lambda, !OrigProcInfo),
     update_accumulator_pred(AccPredId, AccProcId, AccGoal, !ModuleInfo).
@@ -1503,12 +1493,11 @@ accu_stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
 
     % Construct a proc_info for the introduced predicate.
     %
-:- pred acc_proc_info(list(prog_var)::in, prog_varset::in, vartypes::in,
+:- pred acc_proc_info(list(prog_var)::in, var_table::in,
     accu_substs::in, proc_info::in, list(mer_type)::out, proc_info::out)
     is det.
 
-acc_proc_info(Accs0, VarSet, VarTypes, Substs, OrigProcInfo,
-        AccTypes, AccProcInfo) :-
+acc_proc_info(Accs0, VarTable, Substs, OrigProcInfo, AccTypes, AccProcInfo) :-
     % ProcInfo Stuff that must change.
     proc_info_get_headvars(OrigProcInfo, HeadVars0),
     proc_info_get_argmodes(OrigProcInfo, HeadModes0),
@@ -1540,10 +1529,10 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs, OrigProcInfo,
     list.duplicate(list.length(Accs), list.det_head(Mode), AccModes),
     HeadModes = AccModes ++ HeadModes0,
 
-    lookup_var_types(VarTypes, Accs, AccTypes),
+    lookup_var_types(VarTable, Accs, AccTypes),
 
     SeqNum = item_no_seq_num,
-    proc_info_create(Context, SeqNum, VarSet, VarTypes, HeadVars,
+    proc_info_create_vt(Context, SeqNum, VarTable, HeadVars,
         InstVarSet, HeadModes, detism_decl_none, Detism, Goal, RttiVarMaps,
         IsAddressTaken, HasParallelConj, VarNameRemap, AccProcInfo).
 

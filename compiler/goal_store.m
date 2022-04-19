@@ -23,7 +23,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
 :- import_module parse_tree.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module set.
@@ -46,8 +46,8 @@
 :- pred goal_store_member(goal_store(T)::in, T::out, stored_goal::out)
     is nondet.
 
-:- pred goal_store_all_ancestors(goal_store(T)::in, T::in, vartypes::in,
-    module_info::in, bool::in, set(T)::out) is det.
+:- pred goal_store_all_ancestors(module_info::in, var_table::in,
+    goal_store(T)::in, bool::in, T::in, set(T)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -81,49 +81,50 @@ goal_store_lookup(GS, Id, Goal) :-
 goal_store_member(GoalStore, Key, Goal) :-
     map.member(GoalStore, Key, Goal).
 
-goal_store_all_ancestors(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict,
+goal_store_all_ancestors(ModuleInfo, VarTable, GoalStore, FullyStrict, StartId,
         AncestorIds) :-
-    AncestorIds = ancestors_2(GoalStore, [StartId], set.init,
-        VarTypes, ModuleInfo, FullyStrict).
+    ancestors_loop(ModuleInfo, VarTable, GoalStore, FullyStrict, set.init,
+        [StartId], set.init, AncestorIds).
 
-:- func ancestors_2(goal_store(T), list(T), set(T), vartypes, module_info,
-    bool) = set(T).
+:- pred ancestors_loop(module_info::in, var_table::in, goal_store(T)::in,
+    bool::in, set(T)::in, list(T)::in, set(T)::in, set(T)::out) is det.
 
-ancestors_2(_GoalStore, [], _VisitedIds, _VarTypes, _ModuleInfo, _FullyStrict)
-        = set.init.
-ancestors_2(GoalStore, [Id|Ids], VisitedIds, VarTypes, ModuleInfo, FullyStrict)
-        =  AncestorIds :-
-    ( if set.member(Id, VisitedIds) then
-        AncestorIds = ancestors_2(GoalStore, Ids, VisitedIds, VarTypes,
-            ModuleInfo, FullyStrict)
+ancestors_loop(_, _, _, _, _, [], !AncestorIds).
+ancestors_loop(ModuleInfo, VarTable, GoalStore, FullyStrict, VisitedIds0,
+        [Id | Ids], !AncestorIds) :-
+    ( if set.member(Id, VisitedIds0) then
+        ancestors_loop(ModuleInfo, VarTable, GoalStore, FullyStrict,
+            VisitedIds0, Ids, !AncestorIds)
     else
-        Ancestors = direct_ancestors(GoalStore, Id, VarTypes, ModuleInfo,
-            FullyStrict),
-        AncestorIds = set.list_to_set(Ancestors) `union`
-            ancestors_2(GoalStore, Ancestors `append` Ids,
-                set.insert(VisitedIds, Id), VarTypes, ModuleInfo, FullyStrict)
+        direct_ancestors(ModuleInfo, VarTable, GoalStore, FullyStrict,
+            Id, IdAncestors),
+        set.insert(Id, VisitedIds0, VisitedIds),
+        ToProcessIds = set.to_sorted_list(IdAncestors) ++ Ids,
+        set.union(IdAncestors, !AncestorIds),
+        ancestors_loop(ModuleInfo, VarTable, GoalStore, FullyStrict,
+            VisitedIds, ToProcessIds, !AncestorIds)
     ).
 
-:- func direct_ancestors(goal_store(T), T, vartypes, module_info, bool)
-    = list(T).
+:- pred direct_ancestors(module_info::in, var_table::in, goal_store(T)::in,
+    bool::in, T::in, set(T)::out) is det.
 
-direct_ancestors(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict)
-        = Ancestors :-
-    solutions.solutions(
-        direct_ancestor(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict),
+direct_ancestors(ModuleInfo, VarTable, GoalStore, FullyStrict, StartId,
+        Ancestors) :-
+    solutions.solutions_set(
+        direct_ancestor(ModuleInfo, VarTable, GoalStore, FullyStrict, StartId),
         Ancestors).
 
-:- pred direct_ancestor(goal_store(T)::in, T::in, vartypes::in,
-    module_info::in, bool::in, T::out) is nondet.
+:- pred direct_ancestor(module_info::in, var_table::in, goal_store(T)::in,
+    bool::in, T::in, T::out) is nondet.
 
-direct_ancestor(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict,
-        EarlierId) :-
+direct_ancestor(ModuleInfo, VarTable, GoalStore, FullyStrict,
+        StartId, EarlierId) :-
     goal_store_lookup(GoalStore, StartId,
         stored_goal(LaterGoal, LaterInstMap)),
     goal_store_member(GoalStore, EarlierId,
         stored_goal(EarlierGoal, EarlierInstMap)),
     compare((<), EarlierId, StartId),
-    not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
+    not can_reorder_goals_old(ModuleInfo, VarTable, FullyStrict,
         EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal).
 
 %-----------------------------------------------------------------------------%
