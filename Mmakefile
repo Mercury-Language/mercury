@@ -344,7 +344,7 @@ compiler: dep_compiler scripts util boehm_gc runtime library \
 	+cd compiler && $(SUBDIR_MMAKE)
 
 .PHONY: doc
-doc: 	scripts util
+doc: scripts util compiler profiler
 	+cd doc && $(SUBDIR_MMAKE)
 
 .PHONY: slice
