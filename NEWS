@@ -222,7 +222,7 @@ Changes to the Mercury standard library
 
 ### Changes to the `list` module
 
-* The following predicates have been added:
+* The following predicates and functions have been added:
 
     - pred `chunk_foldl/5`
     - pred `chunk_foldl2/7`
@@ -230,6 +230,9 @@ Changes to the Mercury standard library
     - pred `chunk_foldl4/11`
     - pred `gap_foldl/5`
     - pred `last_gap_foldl/6`
+    - func `take_while_not/2`
+    - pred `take_while_not/3`
+    - pred `take_while_not/4`
 
 ### Changes to the `list` module
 

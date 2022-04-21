@@ -134,6 +134,7 @@ MCFLAGS-top_level.mercury_compile_llds_back_end += --no-warn-implicit-stream-cal
 MCFLAGS-top_level.mercury_compile_main       += --no-warn-implicit-stream-calls
 MCFLAGS-top_level.mercury_compile_middle_passes += --no-warn-implicit-stream-calls
 MCFLAGS-top_level.mercury_compile_mlds_back_end += --no-warn-implicit-stream-calls
+MCFLAGS-top_level.mercury_compile_make_hlds  += --no-warn-implicit-stream-calls
 MCFLAGS-transform_hlds.direct_arg_in_out     += --no-warn-implicit-stream-calls
 MCFLAGS-transform_hlds.pd_debug              += --no-warn-implicit-stream-calls
 MCFLAGS-transform_hlds.pd_util               += --no-warn-implicit-stream-calls

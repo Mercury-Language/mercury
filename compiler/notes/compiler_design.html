@@ -27,9 +27,9 @@ which can be C, Java or C#,
 although it can also translate Mercury to Mercury bytecode,
 for a once-planned but never implemented bytecode interpreter,
 and once upon a time it could also translate a subset of it
-to Aditi and to .NET's IL.
+to Aditi, to Erlang, and to .NET's IL.
 <p>
-The top-level of the compiler is in the file mercury_compiler.m.
+The top-level of the compiler is in the file mercury_compile.m.
 This forwards all of the work to the file mercury_compiler_main.m,
 which is a submodule of the top_level.m package.
 The basic design is that compilation is broken into the following stages:
@@ -65,19 +65,35 @@ in llds_out.m as we are spitting out the C code.
 In addition, the compiler is actually a multi-targeted compiler
 with several different back-ends.
 <p>
-mercury_compile.m itself supervises the parsing (step 1),
-but it subcontracts the supervision of the later steps to other modules.
-Semantic analysis (step 2) is looked after by mercury_compile_front_end.m;
-high level transformations (step 3) by mercury_compile_middle_passes.m;
-and code generation, optimization and output (steps 4, 5 and 6)
-by mercury_compile_llds_backend.m and mercury_compile_mlds_backend.m
-for the LLDS and MLDS backends respectively.
+mercury_compile_main.m is mostly concerned with option and argument processing,
+which is complicated by the fact that
+options can come from files named by other options.
+mercury_compile_main.m itself does oversee
+the reading in and parsing of source files,
+but it then subcontracts the supervision of the later steps to other modules.
+<li>
+Step 1, the conversion of parse trees to the initial version of the HLDS,
+is managed by mercury_compile_make_hlds.m.
+<li>
+Step 2, semantic analysis of the HLDS,
+is managed by mercury_compile_front_end.m.
+<li>
+Step 3, high level transformations on the HLDS,
+is managed by done mercury_compile_middle_passes.m.
+<li>
+Steps 4, 5 and 6, code generation, optimization and output,
+are all managed by
+<ul>
+<li> mercury_compile_llds_backend.m for the LLDS backend, and
+<li> mercury_compile_mlds_backend.m for the MLDS backend.
+</ul>
+</ul>
 <p>
 The modules in the compiler are structured by being grouped into "packages".
 A "package" is just a meta-module,
 i.e. a module that contains other modules as submodules.
 (The submodules are almost always stored in separate files,
-which are named only for their final module name.)
+most of which are named only for their final module name.)
 We have a package for the top-level, a package for each main pass, and
 finally there are also some packages for library modules that are used
 by more than one pass.
@@ -412,7 +428,7 @@ of computations that can either succeed or generate such error messages.
 
 <p>
 The second main use of the parse tree,
-because transformation into HLDS,
+besides transformation into HLDS,
 is the generation and consumption of interface files.
 This is done by the following modules.
 

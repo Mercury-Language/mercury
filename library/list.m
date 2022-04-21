@@ -624,15 +624,34 @@
 :- pred take_while(pred(T)::in(pred(in) is semidet), list(T)::in,
     list(T)::out, list(T)::out) is det.
 
+    % take_while_not(Pred, List, Start, End)
+    %
+    % List = Start ++ End. Start is the longest prefix of List where Pred
+    % fails for every element in Start. End is the remainder of the list.
+    %
+:- pred take_while_not(pred(T)::in(pred(in) is semidet), list(T)::in,
+    list(T)::out, list(T)::out) is det.
+
     % take_while(Pred, List) = Start :-
     %     take_while(Pred, List, Start, _End)
     %
     % Start is the longest prefix of List where Pred succeeds for every element
     % in Start.
     %
-:- func take_while(pred(T), list(T)) = list(T).
-:- mode take_while(pred(in) is semidet, in) = out is det.
+:- func take_while(pred(T)::in(pred(in) is semidet), list(T)::in) =
+    (list(T)::out) is det.
 :- pred take_while(pred(T)::in(pred(in) is semidet), list(T)::in,
+    list(T)::out) is det.
+
+    % take_while(Pred, List) = Start :-
+    %     take_while(Pred, List, Start, _End)
+    %
+    % Start is the longest prefix of List where Pred fails for every element
+    % in Start.
+    %
+:- func take_while_not(pred(T)::in(pred(in) is semidet), list(T)::in) =
+    (list(T)::out) is det.
+:- pred take_while_not(pred(T)::in(pred(in) is semidet), list(T)::in,
     list(T)::out) is det.
 
 %---------------------%
@@ -3038,25 +3057,47 @@ det_drop(N, Xs, FinalXs) :-
 %---------------------------------------------------------------------------%
 
 take_while(_, [], [], []).
-take_while(P, [X | Xs], Ins, Outs) :-
+take_while(P, AllXs @ [X | Xs], Ins, Outs) :-
     ( if P(X) then
-        Ins = [X | Ins0],
-        take_while(P, Xs, Ins0, Outs)
+        take_while(P, Xs, Ins0, Outs),
+        Ins = [X | Ins0]
     else
         Ins = [],
-        Outs = [X | Xs]
+        Outs = AllXs
     ).
 
-take_while(P, Xs) = Start :-
-    take_while(P, Xs, Start).
+take_while_not(_, [], [], []).
+take_while_not(P, AllXs @ [X | Xs], Ins, Outs) :-
+    ( if P(X) then
+        Ins = [],
+        Outs = AllXs
+    else
+        take_while_not(P, Xs, Ins0, Outs),
+        Ins = [X | Ins0]
+    ).
+
+take_while(P, Xs) = In :-
+    take_while(P, Xs, In).
 
 take_while(_, [], []).
-take_while(P, [X | Xs], Start) :-
+take_while(P, [X | Xs], In) :-
     ( if P(X) then
-        take_while(P, Xs, Start0),
-        Start = [X | Start0]
+        take_while(P, Xs, In0),
+        In = [X | In0]
     else
-        Start = []
+        In = []
+    ).
+
+take_while_not(P, Xs) = In :-
+    take_while_not(P, Xs, In).
+
+take_while_not(_, [], []).
+take_while_not(P, [X | Xs], In) :-
+    ( if P(X) then
+        In = []
+    else
+        take_while_not(P, Xs, In0),
+        In = [X | In0]
     ).
 
 %---------------------------------------------------------------------------%

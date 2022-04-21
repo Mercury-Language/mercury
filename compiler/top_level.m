@@ -14,6 +14,7 @@
 :- interface.
 
 :- include_module mercury_compile_main.
+:- include_module mercury_compile_make_hlds.
 :- include_module mercury_compile_front_end.
 :- include_module mercury_compile_middle_passes.
 :- include_module mercury_compile_llds_back_end.
