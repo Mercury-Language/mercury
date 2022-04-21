@@ -363,6 +363,14 @@ Changes to the extras distribution
 
 * We have deleted the `old_term_parser` library.
 
+NEWS for Mercury 22.01.2
+========================
+
+This is a bug-fix release.
+
+* [Mantis bug #558]. We have fixed a bug that was causing some of the
+  manual pages to sometimes build incorrectly.
+
 NEWS for Mercury 22.01.1
 ========================
 
