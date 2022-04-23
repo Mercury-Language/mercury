@@ -117,7 +117,7 @@
     % actually_read_module_src(Globals,
     %   DefaultModuleName, DefaultExpectationContexts,
     %   MaybeFileNameAndStream, ReadModuleAndTimestamps,
-    %   MaybeModuleTimestampRes, ParseTree, Specs, Errors, !IO):
+    %   MaybeModuleTimestampRes, ParseTree, Errors, !IO):
     %
     % Read a Mercury source program from FileNameAndStream, if it exists.
     % Close the stream when the reading is done. Return the parse tree
@@ -133,13 +133,12 @@
     module_name::in, list(prog_context)::in,
     maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    parse_tree_src::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    parse_tree_src::out, read_module_errors::out, io::di, io::uo) is det.
 
     % actually_read_module_intN(Globals,
     %   DefaultModuleName, DefaultExpectationContexts,
     %   MaybeFileNameAndStream, ReadModuleAndTimestamps,
-    %   MaybeModuleTimestampRes, ParseTree, Specs, Errors, !IO):
+    %   MaybeModuleTimestampRes, ParseTree, Errors, !IO):
     %
     % Analogous to actually_read_module_src, but opens the specified kind
     % of interface file for DefaultModuleName.
@@ -148,42 +147,35 @@
     module_name::in, list(prog_context)::in,
     maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    parse_tree_int0::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    parse_tree_int0::out, read_module_errors::out, io::di, io::uo) is det.
 :- pred actually_read_module_int1(globals::in,
     module_name::in, list(prog_context)::in,
     maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    parse_tree_int1::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    parse_tree_int1::out, read_module_errors::out, io::di, io::uo) is det.
 :- pred actually_read_module_int2(globals::in,
     module_name::in, list(prog_context)::in,
     maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    parse_tree_int2::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    parse_tree_int2::out, read_module_errors::out, io::di, io::uo) is det.
 :- pred actually_read_module_int3(globals::in,
     module_name::in, list(prog_context)::in,
     maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    parse_tree_int3::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    parse_tree_int3::out, read_module_errors::out, io::di, io::uo) is det.
 
     % actually_read_module_{plain,trans}_opt(Globals, FileName,
-    %   DefaultModuleName, MaybeFileNameAndStream,
-    %   ParseTree, Specs, Errors, !IO):
+    %   DefaultModuleName, MaybeFileNameAndStream, ParseTree, Errors, !IO):
     %
     % Analogous to actually_read_module_src, but opens the specified kind
     % of optimization file for DefaultModuleName.
     %
 :- pred actually_read_module_plain_opt(globals::in,
     module_name::in, maybe_error(path_name_and_stream)::in,
-    parse_tree_plain_opt::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    parse_tree_plain_opt::out, read_module_errors::out, io::di, io::uo) is det.
 :- pred actually_read_module_trans_opt(globals::in,
     module_name::in, maybe_error(path_name_and_stream)::in,
-    parse_tree_trans_opt::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    parse_tree_trans_opt::out, read_module_errors::out, io::di, io::uo) is det.
 
 :- type maybe_require_module_decl
     --->    dont_require_module_decl
@@ -213,7 +205,6 @@
 :- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -240,11 +231,11 @@ peek_at_file(FileStream, DefaultModuleName, DefaultExpectationContexts,
             LineContext0, _LineContext, LinePosn0, _LinePosn),
         (
             ModuleDeclPresent = no_module_decl_present(_MaybeLookAhead,
-                _Context, _NoModuleSpec, _NoModuleError),
+                _Context, _NoModuleSpec),
             ModuleName = DefaultModuleName
         ;
             ModuleDeclPresent = wrong_module_decl_present(ModuleName,
-                _ModuleNameContext, _WrongSpec, _WrongError)
+                _ModuleNameContext, _WrongSpec)
         ;
             ModuleDeclPresent = right_module_decl_present(ModuleName,
                 _ModuleNameContext)
@@ -255,7 +246,8 @@ peek_at_file(FileStream, DefaultModuleName, DefaultExpectationContexts,
         ModuleName = DefaultModuleName,
         io.error_message(ErrorCode, ErrorMsg0),
         ErrorMsg = "I/O error: " ++ ErrorMsg0,
-        read_error_msg(ErrorMsg, Specs, !IO)
+        io_error_to_error_spec(ErrorMsg, Spec, !IO),
+        Specs = [Spec]
     ).
 
 %---------------------------------------------------------------------------%
@@ -263,112 +255,113 @@ peek_at_file(FileStream, DefaultModuleName, DefaultExpectationContexts,
 actually_read_module_src(_Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
-        MaybeModuleTimestampRes, ParseTree, Specs, Errors, !IO) :-
+        MaybeModuleTimestampRes, ParseTree, Errors, !IO) :-
     do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         make_dummy_parse_tree_src, read_parse_tree_src,
-        ParseTree, Specs, Errors, !IO).
+        ParseTree, Errors, !IO).
 
 %---------------------------------------------------------------------------%
 
 actually_read_module_int0(Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
-        MaybeModuleTimestampRes, ParseTreeInt0, Specs, Errors, !IO) :-
+        MaybeModuleTimestampRes, ParseTreeInt0, Errors, !IO) :-
     IntFileKind = ifk_int0,
     do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         make_dummy_parse_tree_int(IntFileKind),
         read_parse_tree_int(IntFileKind),
-        InitParseTreeInt, ReadSpecs, Errors, !IO),
+        InitParseTreeInt, Errors0, !IO),
     check_convert_parse_tree_int_to_int0(InitParseTreeInt, ParseTreeInt0,
-        ReadSpecs, ReadConvertSpecs),
-    filter_convert_specs(Globals, ReadSpecs, ReadConvertSpecs, Specs).
+        [], ConvertSpecs),
+    maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors).
 
 actually_read_module_int1(Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
-        MaybeModuleTimestampRes, ParseTreeInt1, Specs, Errors, !IO) :-
+        MaybeModuleTimestampRes, ParseTreeInt1, Errors, !IO) :-
     IntFileKind = ifk_int1,
     do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         make_dummy_parse_tree_int(IntFileKind),
         read_parse_tree_int(IntFileKind),
-        InitParseTreeInt, ReadSpecs, Errors, !IO),
+        InitParseTreeInt, Errors0, !IO),
     check_convert_parse_tree_int_to_int1(InitParseTreeInt, ParseTreeInt1,
-        ReadSpecs, ReadConvertSpecs),
-    filter_convert_specs(Globals, ReadSpecs, ReadConvertSpecs, Specs).
+        [], ConvertSpecs),
+    maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors).
 
 actually_read_module_int2(Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
-        MaybeModuleTimestampRes, ParseTreeInt2, Specs, Errors, !IO) :-
+        MaybeModuleTimestampRes, ParseTreeInt2, Errors, !IO) :-
     IntFileKind = ifk_int2,
     do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         make_dummy_parse_tree_int(IntFileKind),
         read_parse_tree_int(IntFileKind),
-        InitParseTreeInt, ReadSpecs, Errors, !IO),
+        InitParseTreeInt, Errors0, !IO),
     check_convert_parse_tree_int_to_int2(InitParseTreeInt, ParseTreeInt2,
-        ReadSpecs, ReadConvertSpecs),
-    filter_convert_specs(Globals, ReadSpecs, ReadConvertSpecs, Specs).
+        [], ConvertSpecs),
+    maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors).
 
 actually_read_module_int3(Globals,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps,
-        MaybeModuleTimestampRes, ParseTreeInt3, Specs, Errors, !IO) :-
+        MaybeModuleTimestampRes, ParseTreeInt3, Errors, !IO) :-
     IntFileKind = ifk_int3,
     do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         make_dummy_parse_tree_int(IntFileKind),
         read_parse_tree_int(IntFileKind),
-        InitParseTreeInt, ReadSpecs, Errors, !IO),
+        InitParseTreeInt, Errors0, !IO),
     check_convert_parse_tree_int_to_int3(InitParseTreeInt, ParseTreeInt3,
-        ReadSpecs, ReadConvertSpecs),
-    filter_convert_specs(Globals, ReadSpecs, ReadConvertSpecs, Specs).
+        [], ConvertSpecs),
+    maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors).
 
-:- pred filter_convert_specs(globals::in,
-    list(error_spec)::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred maybe_add_convert_specs(globals::in, list(error_spec)::in,
+    read_module_errors::in, read_module_errors::out) is det.
 
-filter_convert_specs(Globals, ReadSpecs, ReadConvertSpecs, Specs) :-
+maybe_add_convert_specs(Globals, ConvertSpecs, !Errors) :-
     globals.lookup_bool_option(Globals, halt_at_invalid_interface,
         HaltAtInvalidInterface),
     (
-        HaltAtInvalidInterface = no,
-        Specs = ReadSpecs
+        HaltAtInvalidInterface = no
     ;
         HaltAtInvalidInterface = yes,
-        Specs = ReadConvertSpecs
+        add_any_nec_errors(ConvertSpecs, !Errors)
     ).
 
 %---------------------------------------------------------------------------%
 
 actually_read_module_plain_opt(_Globals, DefaultModuleName,
-        MaybeFileNameAndStream, ParseTreePlainOpt, Specs, Errors, !IO) :-
+        MaybeFileNameAndStream, ParseTreePlainOpt, Errors, !IO) :-
     DefaultExpectationContexts = [],
     do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, always_read_module(dont_return_timestamp), _,
         make_dummy_parse_tree_opt(ofk_opt),
         read_parse_tree_opt(ofk_opt),
-        ParseTreeOpt, Specs0, Errors, !IO),
+        ParseTreeOpt, Errors0, !IO),
     check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
-        Specs0, Specs).
+        [], ConvertSpecs),
+    add_any_nec_errors(ConvertSpecs, Errors0, Errors).
 
 actually_read_module_trans_opt(_Globals, DefaultModuleName,
-        MaybeFileNameAndStream, ParseTreeTransOpt, Specs, Errors, !IO) :-
+        MaybeFileNameAndStream, ParseTreeTransOpt, Errors, !IO) :-
     DefaultExpectationContexts = [],
     do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream, always_read_module(dont_return_timestamp), _,
         make_dummy_parse_tree_opt(ofk_trans_opt),
         read_parse_tree_opt(ofk_trans_opt),
-        ParseTreeOpt, Specs0, Errors, !IO),
+        ParseTreeOpt, Errors0, !IO),
     check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt, ParseTreeTransOpt,
-        Specs0, Specs).
+        [], ConvertSpecs),
+    add_any_nec_errors(ConvertSpecs, Errors0, Errors).
 
 %---------------------------------------------------------------------------%
 
@@ -419,9 +412,9 @@ expectation_context_to_msg(Context, SubMsg) :-
 
 :- type read_parse_tree(PT) ==
     pred(file_name, string, int, line_context, line_posn, module_name,
-        list(prog_context), maybe(PT), list(error_spec), read_module_errors).
+        list(prog_context), maybe(PT), read_module_errors).
 :- inst read_parse_tree
-    == (pred(in, in, in, in, in, in, in, out, out, out) is det).
+    == (pred(in, in, in, in, in, in, in, out, out) is det).
 
 :- type make_dummy_parse_tree(PT) == pred(module_name, PT).
 :- inst make_dummy_parse_tree == (pred(in, out) is det).
@@ -460,12 +453,15 @@ make_dummy_parse_tree_opt(OptFileKind, ModuleName, ParseTree) :-
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
     make_dummy_parse_tree(PT)::in(make_dummy_parse_tree),
     read_parse_tree(PT)::in(read_parse_tree), PT::out,
-    list(error_spec)::out, read_module_errors::out, io::di, io::uo) is det.
+    read_module_errors::out, io::di, io::uo) is det.
 
 do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        MakeDummyParseTree, ReadParseTree, ParseTree, Specs, Errors, !IO) :-
+        MakeDummyParseTree, ReadParseTree, ParseTree, Errors, !IO) :-
+    % XXX Our caller's caller should give it, and therefore us,
+    % a path_name_and_stream; we shouldn't have to guess what error message
+    % is appropriate if MaybeFileNameAndStream = error(...).
     (
         MaybeFileNameAndStream =
             ok(path_name_and_stream(_FilePathName, FileStream)),
@@ -499,8 +495,7 @@ do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
             % and actually_read_module should never be passed an old timestamp.
 
             MakeDummyParseTree(DefaultModuleName, ParseTree),
-            Specs = [],
-            set.init(Errors)
+            Errors = init_read_module_errors
         else
             io.read_file_as_string_and_num_code_units(FileStream,
                 MaybeResult, !IO),
@@ -520,7 +515,7 @@ do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
                 ReadParseTree(FileStreamName, FileString, FileStringLen,
                     LineContext0, LinePosn0,
                     DefaultModuleName, DefaultExpectationContexts,
-                    MaybeParseTree, Specs, Errors),
+                    MaybeParseTree, Errors),
                 (
                     MaybeParseTree = yes(ParseTree)
                 ;
@@ -532,8 +527,8 @@ do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
                 MakeDummyParseTree(DefaultModuleName, ParseTree),
                 io.error_message(ErrorCode, ErrorMsg0),
                 ErrorMsg = "I/O error: " ++ ErrorMsg0,
-                read_error_msg(ErrorMsg, Specs, !IO),
-                Errors = set.make_singleton_set(rme_could_not_read_term)
+                io_error_to_read_module_errors(ErrorMsg,
+                    frme_could_not_read_file, Errors, !IO)
             )
         ),
         io.close_input(FileStream, !IO)
@@ -541,19 +536,26 @@ do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
         MaybeFileNameAndStream = error(ErrorMsg),
         MakeDummyParseTree(DefaultModuleName, ParseTree),
         MaybeModuleTimestampRes = no,
-        read_error_msg(ErrorMsg, Specs, !IO),
-        Errors = set.make_singleton_set(rme_could_not_open_file)
+        io_error_to_read_module_errors(ErrorMsg,
+            frme_could_not_open_file, Errors, !IO)
     ).
 
-:- pred read_error_msg(string::in, list(error_spec)::out,
+:- pred io_error_to_error_spec(string::in, error_spec::out,
     io::di, io::uo) is det.
 
-read_error_msg(ErrorMsg, Specs, !IO) :-
+io_error_to_error_spec(ErrorMsg, Spec, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
     Pieces = [fixed(ProgName), suffix(":"), words(ErrorMsg), nl],
     Spec = simplest_no_context_spec($pred, severity_error, phase_read_files,
-        Pieces),
-    Specs = [Spec].
+        Pieces).
+
+:- pred io_error_to_read_module_errors(string::in, fatal_read_module_error::in,
+    read_module_errors::out, io::di, io::uo) is det.
+
+io_error_to_read_module_errors(ErrorMsg, FatalError, Errors, !IO) :-
+    io_error_to_error_spec(ErrorMsg, Spec, !IO),
+    Errors0 = init_read_module_errors,
+    add_fatal_error(FatalError, [Spec], Errors0, Errors).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -572,20 +574,18 @@ read_error_msg(ErrorMsg, Specs, !IO) :-
 :- pred read_parse_tree_opt(opt_file_kind::in, file_name::in,
     string::in, int::in, line_context::in, line_posn::in,
     module_name::in, list(prog_context)::in, maybe(parse_tree_opt)::out,
-    list(error_spec)::out, read_module_errors::out) is det.
+    read_module_errors::out) is det.
 
 read_parse_tree_opt(OptFileKind, SourceFileName0,
         FileString, FileStringLen, !.LineContext, !.LinePosn,
         DefaultModuleName, DefaultExpectationContexts,
-        MaybeParseTree, !:Specs, !:Errors) :-
+        MaybeParseTree, !:Errors) :-
     read_module_header(FileString, FileStringLen,
         DefaultModuleName, DefaultExpectationContexts, SourceFileName0,
         MaybeModuleHeader, SeqNumCounter1, !LineContext, !LinePosn),
     (
-        MaybeModuleHeader = no_valid_module_header(_ModuleNameContext,
-            !:Specs, NoModuleErrors),
-        MaybeParseTree = no,
-        set.list_to_set(NoModuleErrors, !:Errors)
+        MaybeModuleHeader = no_valid_module_header(!:Errors),
+        MaybeParseTree = no
     ;
         MaybeModuleHeader = valid_module_header(ModuleName, ModuleNameContext),
         % XXX We should allow the update of SourceFileName.
@@ -594,10 +594,10 @@ read_parse_tree_opt(OptFileKind, SourceFileName0,
             cord.init, InclsCord, cord.init, AvailsCord,
             cord.init, FIMsCord, cord.init, ItemsCord,
             SourceFileName0, SourceFileName, SeqNumCounter1, SeqNumCounter,
-            [], !:Specs, set.init, !:Errors, !LineContext, !LinePosn),
+            init_read_module_errors, !:Errors, !LineContext, !LinePosn),
         check_for_unexpected_item_at_end(SourceFileName, FileString,
             FileStringLen, ModuleName, fk_opt(OptFileKind), FinalLookAhead,
-            SeqNumCounter, !Specs, !Errors, !.LineContext, !.LinePosn),
+            SeqNumCounter, !Errors, !.LineContext, !.LinePosn),
         expect(cord.is_empty(InclsCord), $pred, "Incls != []"),
         Avails = cord.list(AvailsCord),
         avail_imports_uses(Avails, Imports, Uses),
@@ -629,20 +629,18 @@ read_parse_tree_opt(OptFileKind, SourceFileName0,
 :- pred read_parse_tree_int(int_file_kind::in, file_name::in,
     string::in, int::in, line_context::in, line_posn::in,
     module_name::in, list(prog_context)::in, maybe(parse_tree_int)::out,
-    list(error_spec)::out, read_module_errors::out) is det.
+    read_module_errors::out) is det.
 
 read_parse_tree_int(IntFileKind, SourceFileName,
         FileString, FileStringLen, !.LineContext, !.LinePosn,
         DefaultModuleName, DefaultExpectationContexts,
-        MaybeParseTreeInt, !:Specs, !:Errors) :-
+        MaybeParseTreeInt, !:Errors) :-
     some [!SeqNumCounter, !LookAhead] (
         read_module_header(FileString, FileStringLen,
             DefaultModuleName, DefaultExpectationContexts, SourceFileName,
             MaybeModuleHeader, !:SeqNumCounter, !LineContext, !LinePosn),
         (
-            MaybeModuleHeader = no_valid_module_header(_ModuleNameContext,
-                !:Specs, NoModuleErrors),
-            set.list_to_set(NoModuleErrors, !:Errors),
+            MaybeModuleHeader = no_valid_module_header(!:Errors),
             MaybeParseTreeInt = no
         ;
             MaybeModuleHeader =
@@ -653,8 +651,8 @@ read_parse_tree_int(IntFileKind, SourceFileName,
                 !SeqNumCounter, !LineContext, !LinePosn),
             (
                 VersionNumbersResult = vnr_error(Spec, Error),
-                !:Specs = [Spec],
-                !:Errors = set.make_singleton_set(Error),
+                !:Errors = init_read_module_errors,
+                add_nonfatal_error(Error, [Spec], !Errors),
                 MaybeParseTreeInt = no
             ;
                 VersionNumbersResult = vnr_ok(MaybeVersionNumbers),
@@ -662,10 +660,10 @@ read_parse_tree_int(IntFileKind, SourceFileName,
                     ModuleName, ModuleNameContext, IntFileKind,
                     SourceFileName, MaybeVersionNumbers,
                     !LookAhead, MaybeParseTreeInt, !SeqNumCounter,
-                    !:Specs, !:Errors, !LineContext, !LinePosn),
+                    !:Errors, !LineContext, !LinePosn),
                 check_for_unexpected_item_at_end(SourceFileName,
                     FileString, FileStringLen, ModuleName, fk_int(IntFileKind),
-                    !.LookAhead, !.SeqNumCounter, !Specs, !Errors,
+                    !.LookAhead, !.SeqNumCounter, !Errors,
                     !.LineContext, !.LinePosn)
             )
         )
@@ -673,7 +671,7 @@ read_parse_tree_int(IntFileKind, SourceFileName,
 
 :- type version_number_result
     --->    vnr_ok(maybe_version_numbers)
-    ;       vnr_error(error_spec, read_module_error).
+    ;       vnr_error(error_spec, nonfatal_read_module_error).
 
 :- pred read_any_version_number_item(string::in, int::in,
     module_name::in, file_name::in, maybe_lookahead::in, maybe_lookahead::out,
@@ -702,7 +700,7 @@ read_any_version_number_item(FileString, FileStringLen,
         FinalLookAhead = no_lookahead,
         VersionNumberResult = vnr_error(ItemSpec, rme_could_not_read_term)
     ;
-        ReadIOMResult = read_iom_parse_item_errors(_, _, _, _),
+        ReadIOMResult = read_iom_parse_item_errors(_, _, _),
         % Ignore the errors; our caller will compute them again,
         % and record them, if and when it parses FinalLookAhead again.
         FinalLookAhead = lookahead(ReadIOMResult),
@@ -725,10 +723,11 @@ read_any_version_number_item(FileString, FileStringLen,
             ; IOM = iom_marker_avail(_)
             ; IOM = iom_marker_fim(_)
             ; IOM = iom_item(_)
-            ; IOM = iom_item_and_specs(_, _)
+            ; IOM = iom_item_and_error_specs(_, _)
             % The reasoning for read_iom_parse_item_errors also applies
             % to iom_item_and_specs.
-            ; IOM = iom_handled(_)
+            ; IOM = iom_handled_no_error
+            ; IOM = iom_handled_error(_)
             ),
             FinalLookAhead = lookahead(ReadIOMResult),
             VersionNumberResult = vnr_ok(no_version_numbers)
@@ -747,18 +746,18 @@ read_any_version_number_item(FileString, FileStringLen,
 :- pred read_parse_tree_int_sections(string::in, int::in,
     module_name::in, prog_context::in, int_file_kind::in, file_name::in,
     maybe_version_numbers::in, maybe_lookahead::in, maybe_lookahead::out,
-    maybe(parse_tree_int)::out,
-    counter::in, counter::out, list(error_spec)::out, read_module_errors::out,
+    maybe(parse_tree_int)::out, counter::in, counter::out,
+    read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
 read_parse_tree_int_sections(FileString, FileStringLen,
         ModuleName, ModuleNameContext, IntFileKind, SourceFileName,
         MaybeVersionNumbers, !LookAhead, MaybeParseTreeInt, !SeqNumCounter,
-        !:Specs, !:Errors, !LineContext, !LinePosn) :-
+        !:Errors, !LineContext, !LinePosn) :-
     read_parse_tree_int_section(FileString, FileStringLen,
         ModuleName, SourceFileName, "interface", !LookAhead,
         MaybeFirstRawItemBlock, !SeqNumCounter,
-        [], !:Specs, set.init, !:Errors, !LineContext, !LinePosn),
+        init_read_module_errors, !:Errors, !LineContext, !LinePosn),
     (
         MaybeFirstRawItemBlock = no,
         % Ignore MaybeVersionNumbers if the interface is empty,
@@ -776,7 +775,7 @@ read_parse_tree_int_sections(FileString, FileStringLen,
             FirstSectionKind = ms_interface,
             read_parse_tree_int_section(FileString, FileStringLen,
                 ModuleName, SourceFileName, "implementation", !LookAhead,
-                MaybeSecondRawItemBlock, !SeqNumCounter, !Specs, !Errors,
+                MaybeSecondRawItemBlock, !SeqNumCounter, !Errors,
                 !LineContext, !LinePosn),
             (
                 MaybeSecondRawItemBlock = no,
@@ -797,7 +796,7 @@ read_parse_tree_int_sections(FileString, FileStringLen,
                         words("interface sections."), nl],
                     Spec = simplest_spec($pred, severity_error,
                         phase_term_to_parse_tree, SectionContext, Pieces),
-                    !:Specs = [Spec | !.Specs],
+                    add_nonfatal_error(rme_nec, [Spec], !Errors),
                     MaybeParseTreeInt = no
                 ;
                     SecondSectionKind = ms_implementation,
@@ -832,14 +831,13 @@ read_parse_tree_int_sections(FileString, FileStringLen,
     module_name::in, file_name::in, string::in,
     maybe_lookahead::in, maybe_lookahead::out,
     maybe({raw_item_block, prog_context})::out,
-    counter::in, counter::out, list(error_spec)::in, list(error_spec)::out,
-    read_module_errors::in, read_module_errors::out,
+    counter::in, counter::out, read_module_errors::in, read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
 read_parse_tree_int_section(FileString, FileStringLen,
         ModuleName, SourceFileName, ExpectedSectionKindStr,
         InitLookAhead, FinalLookAhead, MaybeRawItemBlock,
-        !SeqNumCounter, !Specs, !Errors, !LineContext, !LinePosn) :-
+        !SeqNumCounter, !Errors, !LineContext, !LinePosn) :-
     get_next_item_or_marker(SourceFileName, FileString, FileStringLen,
         InitLookAhead, ModuleName, ReadIOMResult, !SeqNumCounter,
         !LineContext, !LinePosn),
@@ -848,13 +846,11 @@ read_parse_tree_int_section(FileString, FileStringLen,
             ReadIOMResult = read_iom_eof
         ;
             ReadIOMResult = read_iom_parse_term_error(ItemSpec),
-            !:Specs = [ItemSpec | !.Specs],
-            set.insert(rme_could_not_read_term, !Errors)
+            add_nonfatal_error(rme_could_not_read_term, [ItemSpec], !Errors)
         ;
             ReadIOMResult = read_iom_parse_item_errors(_IOMVarSet, _IOMTerm,
-                ItemSpecs, ItemErrors),
-            !:Specs = ItemSpecs ++ !.Specs,
-            set.union(ItemErrors, !Errors)
+                ItemSpecs),
+            add_nonfatal_error(rme_could_not_parse_item, ItemSpecs, !Errors)
         ),
         MaybeRawItemBlock = no,
         FinalLookAhead = no_lookahead
@@ -868,7 +864,7 @@ read_parse_tree_int_section(FileString, FileStringLen,
                 cord.init, InclsCord, cord.init, AvailsCord,
                 cord.init, FIMsCord, cord.init, ItemsCord,
                 SourceFileName, _UpdatedSourceFileName,
-                !SeqNumCounter, !Specs, !Errors, !LineContext, !LinePosn),
+                !SeqNumCounter, !Errors, !LineContext, !LinePosn),
             RawItemBlock = item_block(ModuleName, SectionKind,
                 cord.list(InclsCord), cord.list(AvailsCord),
                 cord.list(FIMsCord), cord.list(ItemsCord)),
@@ -882,10 +878,11 @@ read_parse_tree_int_section(FileString, FileStringLen,
             ; IOM = iom_marker_avail(_)
             ; IOM = iom_marker_fim(_)
             ; IOM = iom_item(_)
-            ; IOM = iom_item_and_specs(_, _)
             % The fact that IOM is not a section marker trumps any error_specs
-            % in iom_item_and_specs.
-            ; IOM = iom_handled(_)
+            % in iom_item_and_error_specs, and in iom_handled_error.
+            ; IOM = iom_item_and_error_specs(_, _)
+            ; IOM = iom_handled_no_error
+            ; IOM = iom_handled_error(_)
             ),
             Context = get_term_context(IOMTerm),
             IOMPieces = iom_desc_pieces(IOM),
@@ -894,8 +891,7 @@ read_parse_tree_int_section(FileString, FileStringLen,
                 IOMPieces ++ [suffix("."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_term_to_parse_tree, Context, Pieces),
-            !:Specs = [Spec | !.Specs],
-            % XXX Should we update !Errors?
+            add_nonfatal_error(rme_nec, [Spec], !Errors),
             FinalLookAhead = lookahead(ReadIOMResult),
             MaybeRawItemBlock = no
         )
@@ -929,16 +925,14 @@ read_parse_tree_int_section(FileString, FileStringLen,
 
 :- pred read_parse_tree_src(file_name::in, string::in, int::in,
     line_context::in, line_posn::in, module_name::in, list(prog_context)::in,
-    maybe(parse_tree_src)::out,
-    list(error_spec)::out, read_module_errors::out) is det.
+    maybe(parse_tree_src)::out, read_module_errors::out) is det.
 
 read_parse_tree_src(!.SourceFileName, FileString, FileStringLen,
         !.LineContext, !.LinePosn,
         DefaultModuleName, DefaultExpectationContexts,
-        MaybeParseTree, !:Specs, !:Errors) :-
+        MaybeParseTree, !:Errors) :-
     some [!SeqNumCounter] (
-        !:Specs = [],
-        set.init(!:Errors),
+        !:Errors = init_read_module_errors,
         counter.init(1, !:SeqNumCounter),
 
         % We handle the first module declaration specially. Read the
@@ -950,9 +944,9 @@ read_parse_tree_src(!.SourceFileName, FileString, FileStringLen,
             !SeqNumCounter, !LineContext, !LinePosn),
         (
             ModuleDeclPresent = no_module_decl_present(InitLookAhead,
-                InitLookAheadContext, NoModuleSpec, NoModuleError),
-            !:Specs = [NoModuleSpec | !.Specs],
-            set.insert(NoModuleError, !Errors),
+                InitLookAheadContext, NoModuleSpec),
+            add_nonfatal_error(rme_no_module_decl_at_start, [NoModuleSpec],
+                !Errors),
             % Reparse the first term, this time treating it as occuring within
             % the scope of the implicit `:- module' decl rather than in the
             % root module.
@@ -961,11 +955,10 @@ read_parse_tree_src(!.SourceFileName, FileString, FileStringLen,
         ;
             % XXX ITEM_LIST wrong_module_decl_present and
             % right_module_decl_present do the same thing.
-            ModuleDeclPresent =
-                wrong_module_decl_present(ModuleName, ModuleNameContext,
-                WrongSpec, WrongError),
-            !:Specs = [WrongSpec | !.Specs],
-            set.insert(WrongError, !Errors),
+            ModuleDeclPresent = wrong_module_decl_present(ModuleName,
+                ModuleNameContext, WrongSpec),
+            add_nonfatal_error(rme_unexpected_module_name, [WrongSpec],
+                !Errors),
             InitLookAhead = no_lookahead
         ;
             ModuleDeclPresent =
@@ -979,11 +972,10 @@ read_parse_tree_src(!.SourceFileName, FileString, FileStringLen,
             ModuleName, ContainingModules, MaybePrevSection,
             have_not_given_missing_section_start_warning,
             InitLookAhead, FinalLookAhead, cord.init, ModuleComponents,
-            !SourceFileName, !SeqNumCounter, !Specs, !Errors,
-            !LineContext, !LinePosn),
+            !SourceFileName, !SeqNumCounter, !Errors, !LineContext, !LinePosn),
         check_for_unexpected_item_at_end(!.SourceFileName, FileString,
             FileStringLen, ModuleName, fk_src, FinalLookAhead, !.SeqNumCounter,
-            !Specs, !Errors, !.LineContext, !.LinePosn),
+            !Errors, !.LineContext, !.LinePosn),
         ParseTree = parse_tree_src(ModuleName, ModuleNameContext,
             ModuleComponents),
         MaybeParseTree = yes(ParseTree)
@@ -1006,16 +998,14 @@ read_parse_tree_src(!.SourceFileName, FileString, FileStringLen,
     maybe_lookahead::in, maybe_lookahead::out,
     cord(module_component)::in, cord(module_component)::out,
     file_name::in, file_name::out, counter::in, counter::out,
-    list(error_spec)::in, list(error_spec)::out,
     read_module_errors::in, read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
 read_parse_tree_src_components(FileString, FileStringLen,
         CurModuleName, ContainingModules,
         MaybePrevSection, !.MissingStartSectionWarning,
-        InitLookAhead, FinalLookAhead, !ModuleComponents,
-        !SourceFileName, !SeqNumCounter, !Specs, !Errors,
-        !LineContext, !LinePosn) :-
+        InitLookAhead, FinalLookAhead, !ModuleComponents, !SourceFileName,
+        !SeqNumCounter, !Errors, !LineContext, !LinePosn) :-
     get_next_item_or_marker(!.SourceFileName, FileString, FileStringLen,
         InitLookAhead, CurModuleName, ReadIOMResult, !SeqNumCounter,
         !LineContext, !LinePosn),
@@ -1025,19 +1015,16 @@ read_parse_tree_src_components(FileString, FileStringLen,
         FinalLookAhead = no_lookahead
     ;
         ReadIOMResult = read_iom_parse_term_error(ItemSpec),
-        % Add the new errors to the list of errors and continue looking
-        % for a section marker.
-        !:Specs = [ItemSpec | !.Specs],
-        set.insert(rme_could_not_read_term, !Errors),
+        add_nonfatal_error(rme_could_not_read_term, [ItemSpec], !Errors),
+        % Continue looking for a section marker.
         read_parse_tree_src_components(FileString, FileStringLen,
             CurModuleName, ContainingModules,
             MaybePrevSection, !.MissingStartSectionWarning,
-            no_lookahead, FinalLookAhead, !ModuleComponents,
-            !SourceFileName, !SeqNumCounter, !Specs, !Errors,
-            !LineContext, !LinePosn)
+            no_lookahead, FinalLookAhead, !ModuleComponents, !SourceFileName,
+            !SeqNumCounter, !Errors, !LineContext, !LinePosn)
     ;
         ReadIOMResult = read_iom_parse_item_errors(_IOMVarSet, IOMTerm,
-            _Specs, _Errors),
+            _Specs),
         % Generate an error for the missing section marker.
         % Leave the term in the lookahead, but otherwise handle the term
         % as it were an unexpected but perfectly parseable term, i.e. follow
@@ -1045,7 +1032,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
         Context = get_term_context(IOMTerm),
         generate_missing_start_section_warning_src(CurModuleName,
             Context, !.MissingStartSectionWarning, _MissingStartSectionWarning,
-            !Specs, !Errors),
+            !Errors),
         SectionKind = ms_implementation,
         SectionContext = term.context_init,
         ItemSeqInitLookAhead = lookahead(ReadIOMResult),
@@ -1053,8 +1040,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
             ItemSeqInitLookAhead, ItemSeqFinalLookAhead,
             cord.init, InclsCord, cord.init, AvailsCord,
             cord.init, FIMsCord, cord.init, ItemsCord,
-            !SourceFileName, !SeqNumCounter, !Specs, !Errors,
-            !LineContext, !LinePosn),
+            !SourceFileName, !SeqNumCounter, !Errors, !LineContext, !LinePosn),
         add_section_component(CurModuleName, SectionKind, SectionContext,
             InclsCord, AvailsCord, FIMsCord, ItemsCord, !ModuleComponents),
         % We have read in one component; recurse to read in other components.
@@ -1063,8 +1049,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
             yes(SectionKind - SectionContext),
             have_not_given_missing_section_start_warning,
             ItemSeqFinalLookAhead, FinalLookAhead, !ModuleComponents,
-            !SourceFileName, !SeqNumCounter, !Specs, !Errors,
-            !LineContext, !LinePosn)
+            !SourceFileName, !SeqNumCounter, !Errors, !LineContext, !LinePosn)
     ;
         ReadIOMResult = read_iom_ok(_IOMVarSet, IOMTerm, IOM),
         (
@@ -1073,19 +1058,19 @@ read_parse_tree_src_components(FileString, FileStringLen,
                 CurModuleName, ContainingModules, MaybePrevSection,
                 !.MissingStartSectionWarning, no_lookahead, FinalLookAhead,
                 !ModuleComponents, !SourceFileName, !SeqNumCounter,
-                !Specs, !Errors, !LineContext, !LinePosn)
+                !Errors, !LineContext, !LinePosn)
         ;
             IOM = iom_marker_version_numbers(_),
             Pieces = [words("Error: unexpected version_numbers record"),
                 words("in source file."), nl],
             Spec = simplest_spec($pred, severity_error, phase_read_files,
                 get_term_context(IOMTerm), Pieces),
-            !:Specs = [Spec | !.Specs],
+            add_nonfatal_error(rme_nec, [Spec], !Errors),
             read_parse_tree_src_components(FileString, FileStringLen,
                 CurModuleName, ContainingModules, MaybePrevSection,
                 !.MissingStartSectionWarning, no_lookahead, FinalLookAhead,
                 !ModuleComponents, !SourceFileName, !SeqNumCounter,
-                !Specs, !Errors, !LineContext, !LinePosn)
+                !Errors, !LineContext, !LinePosn)
         ;
             IOM = iom_marker_module_start(RawStartModuleName, StartContext,
                 _StartSeqNum),
@@ -1106,7 +1091,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
                         qual_sym_name(CurModuleName), suffix("."), nl],
                     Spec = simplest_spec($pred, severity_error,
                         phase_term_to_parse_tree, StartContext, Pieces),
-                    !:Specs = [Spec | !.Specs],
+                    add_nonfatal_error(rme_nec, [Spec], !Errors),
                     % Recover partially by ignoring the bad module
                     % qualification. The recovery is only partial because
                     % an end_module marker that matches the incorrect module
@@ -1120,23 +1105,24 @@ read_parse_tree_src_components(FileString, FileStringLen,
                 ContainingModules, MaybePrevSection, CurModuleName,
                 StartModuleName, StartContext,
                 no_lookahead, SubModuleFinalLookAhead, !ModuleComponents,
-                !SourceFileName, !SeqNumCounter, !Specs, !Errors,
+                !SourceFileName, !SeqNumCounter, !Errors,
                 !LineContext, !LinePosn),
             % We have read in one component; recurse to read in others.
             read_parse_tree_src_components(FileString, FileStringLen,
                 CurModuleName, ContainingModules, MaybePrevSection,
                 !.MissingStartSectionWarning,
-                SubModuleFinalLookAhead, FinalLookAhead,
-                !ModuleComponents, !SourceFileName, !SeqNumCounter,
-                !Specs, !Errors, !LineContext, !LinePosn)
+                SubModuleFinalLookAhead, FinalLookAhead, !ModuleComponents,
+                !SourceFileName, !SeqNumCounter, !Errors,
+                !LineContext, !LinePosn)
         ;
             ( IOM = iom_marker_section(_, _, _)
             ; IOM = iom_marker_include(_)
             ; IOM = iom_marker_avail(_)
             ; IOM = iom_marker_fim(_)
             ; IOM = iom_item(_)
-            ; IOM = iom_item_and_specs(_, _)
-            ; IOM = iom_handled(_)
+            ; IOM = iom_item_and_error_specs(_, _)
+            ; IOM = iom_handled_no_error
+            ; IOM = iom_handled_error(_)
             ),
             (
                 IOM = iom_marker_section(SectionKind, SectionContext,
@@ -1148,11 +1134,14 @@ read_parse_tree_src_components(FileString, FileStringLen,
                     ; IOM = iom_marker_avail(_)
                     ; IOM = iom_marker_fim(_)
                     ; IOM = iom_item(_)
-                    ; IOM = iom_handled(_)
+                    ; IOM = iom_handled_no_error
                     )
                 ;
-                    IOM = iom_item_and_specs(_, ItemSpecs),
-                    !:Specs = ItemSpecs ++ !.Specs
+                    IOM = iom_handled_error(ItemSpecs),
+                    add_nonfatal_error(rme_nec, ItemSpecs, !Errors)
+                ;
+                    IOM = iom_item_and_error_specs(_, ItemSpecs),
+                    add_nonfatal_error(rme_nec, ItemSpecs, !Errors)
                 ),
                 (
                     MaybePrevSection = yes(SectionKind - SectionContext)
@@ -1164,7 +1153,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
                     Context = get_term_context(IOMTerm),
                     generate_missing_start_section_warning_src(CurModuleName,
                         Context, !.MissingStartSectionWarning,
-                        _MissingStartSectionWarning, !Specs, !Errors),
+                        _MissingStartSectionWarning, !Errors),
                     % The following code is duplicated in the case for
                     % read_iom_parse_item_errors above.
                     SectionKind = ms_implementation,
@@ -1177,9 +1166,8 @@ read_parse_tree_src_components(FileString, FileStringLen,
             read_item_sequence(FileString, FileStringLen, CurModuleName,
                 ItemSeqInitLookAhead, ItemSeqFinalLookAhead,
                 cord.init, InclsCord, cord.init, AvailsCord,
-                cord.init, FIMsCord, cord.init, ItemsCord,
-                !SourceFileName, !SeqNumCounter, !Specs, !Errors,
-                !LineContext, !LinePosn),
+                cord.init, FIMsCord, cord.init, ItemsCord, !SourceFileName,
+                !SeqNumCounter, !Errors, !LineContext, !LinePosn),
             add_section_component(CurModuleName, SectionKind, SectionContext,
                 InclsCord, AvailsCord, FIMsCord, ItemsCord, !ModuleComponents),
             % We have read in one component; recurse to read in other
@@ -1189,14 +1177,14 @@ read_parse_tree_src_components(FileString, FileStringLen,
                 yes(SectionKind - SectionContext),
                 have_not_given_missing_section_start_warning,
                 ItemSeqFinalLookAhead, FinalLookAhead, !ModuleComponents,
-                !SourceFileName, !SeqNumCounter, !Specs, !Errors,
+                !SourceFileName, !SeqNumCounter, !Errors,
                 !LineContext, !LinePosn)
         ;
             IOM = iom_marker_module_end(EndedModuleName, EndContext,
                 _EndSeqNum),
             handle_module_end_marker(CurModuleName, ContainingModules,
                 ReadIOMResult, EndedModuleName, EndContext, FinalLookAhead,
-                !Specs, !Errors)
+                !Errors)
         )
     ).
 
@@ -1223,17 +1211,16 @@ add_section_component(ModuleName, SectionKind, SectionContext,
 :- pred generate_missing_start_section_warning_src(module_name::in,
     prog_context::in,
     missing_section_start_warning::in, missing_section_start_warning::out,
-    list(error_spec)::in, list(error_spec)::out,
     read_module_errors::in, read_module_errors::out) is det.
 
 generate_missing_start_section_warning_src(CurModuleName,
-        Context, !MissingStartSectionWarning, !Specs, !Errors) :-
+        Context, !MissingStartSectionWarning, !Errors) :-
     (
         !.MissingStartSectionWarning =
             have_not_given_missing_section_start_warning,
         !:MissingStartSectionWarning =
             have_given_missing_section_start_warning,
-        MissingSectionPieces = [invis_order_default_start(1),
+        Pieces = [invis_order_default_start(1),
             words("Error: module"),
             qual_sym_name(CurModuleName), words("should start with"),
             words("either an"), decl("interface"), words("or an"),
@@ -1241,10 +1228,9 @@ generate_missing_start_section_warning_src(CurModuleName,
             words("The following assumes that"),
             words("the missing declaration is an"),
             decl("implementation"), words("declaration."), nl],
-        MissingSectionSpec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, Context, MissingSectionPieces),
-        !:Specs = [MissingSectionSpec | !.Specs],
-        set.insert(rme_no_section_decl_at_start, !Errors)
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
+        add_nonfatal_error(rme_no_section_decl_at_start, [Spec], !Errors)
     ;
         !.MissingStartSectionWarning =
             have_given_missing_section_start_warning
@@ -1256,16 +1242,14 @@ generate_missing_start_section_warning_src(CurModuleName,
     module_name::in, module_name::in, prog_context::in,
     maybe_lookahead::in, maybe_lookahead::out,
     cord(module_component)::in, cord(module_component)::out,
-    file_name::in, file_name::out,
-    counter::in, counter::out, list(error_spec)::in, list(error_spec)::out,
+    file_name::in, file_name::out, counter::in, counter::out,
     read_module_errors::in, read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
 read_parse_tree_src_submodule(FileString, FileStringLen, ContainingModules,
         MaybePrevSection, ContainingModuleName, StartModuleName, StartContext,
-        InitLookAhead, FinalLookAhead, !ModuleComponents,
-        !SourceFileName, !SeqNumCounter, !Specs, !Errors,
-        !LineContext, !LinePosn) :-
+        InitLookAhead, FinalLookAhead, !ModuleComponents, !SourceFileName,
+        !SeqNumCounter, !Errors, !LineContext, !LinePosn) :-
     (
         MaybePrevSection = yes(SectionKind - SectionContext)
     ;
@@ -1279,9 +1263,9 @@ read_parse_tree_src_submodule(FileString, FileStringLen, ContainingModules,
             decl("interface"), words("declaration."), nl],
         NoSectionSpec = simplest_spec($pred, severity_error,
             phase_term_to_parse_tree, StartContext, NoSectionPieces),
-        !:Specs = [NoSectionSpec | !.Specs],
         % XXX ITEM_LIST Should this be a situation-specific rme_X value?
-        set.insert(rme_no_section_decl_at_start, !Errors),
+        add_nonfatal_error(rme_no_section_decl_at_start, [NoSectionSpec],
+            !Errors),
         SectionKind = ms_interface,
         SectionContext = term.context_init
     ),
@@ -1291,8 +1275,7 @@ read_parse_tree_src_submodule(FileString, FileStringLen, ContainingModules,
         NestedContainingModules, NestedMaybePrevSection,
         have_not_given_missing_section_start_warning,
         InitLookAhead, FinalLookAhead, cord.init, NestedModuleComponents,
-        !SourceFileName, !SeqNumCounter, !Specs, !Errors,
-        !LineContext, !LinePosn),
+        !SourceFileName, !SeqNumCounter, !Errors, !LineContext, !LinePosn),
     SubModuleParseTreeSrc = parse_tree_src(StartModuleName, StartContext,
         NestedModuleComponents),
     Component = mc_nested_submodule(ContainingModuleName, SectionKind,
@@ -1301,11 +1284,11 @@ read_parse_tree_src_submodule(FileString, FileStringLen, ContainingModules,
 
 :- pred handle_module_end_marker(module_name::in, list(module_name)::in,
     read_iom_result::in, module_name::in, prog_context::in,
-    maybe_lookahead::out, list(error_spec)::in, list(error_spec)::out,
-    read_module_errors::in, read_module_errors::out) is det.
+    maybe_lookahead::out, read_module_errors::in, read_module_errors::out)
+    is det.
 
 handle_module_end_marker(CurModuleName, ContainingModules, ReadIOMResult,
-        EndedModuleName, EndContext, FinalLookAhead, !Specs, !Errors) :-
+        EndedModuleName, EndContext, FinalLookAhead, !Errors) :-
     ( if CurModuleName = EndedModuleName then
         FinalLookAhead = no_lookahead
     else if partial_sym_name_matches_full(EndedModuleName, CurModuleName) then
@@ -1317,8 +1300,7 @@ handle_module_end_marker(CurModuleName, ContainingModules, ReadIOMResult,
             suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             EndContext, Pieces),
-        !:Specs = [Spec | !.Specs],
-        set.insert(rme_bad_module_end, !Errors),
+        add_fatal_error(frme_bad_module_end, [Spec], !Errors),
         FinalLookAhead = lookahead(ReadIOMResult)
     else
         Pieces = [words("Error: this"), decl("end_module"),
@@ -1327,8 +1309,7 @@ handle_module_end_marker(CurModuleName, ContainingModules, ReadIOMResult,
             words("which is"), qual_sym_name(CurModuleName), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             EndContext, Pieces),
-        !:Specs = [Spec | !.Specs],
-        set.insert(rme_bad_module_end, !Errors),
+        add_fatal_error(frme_bad_module_end, [Spec], !Errors),
         % Eat the bad end_module declaration.
         FinalLookAhead = no_lookahead
     ).
@@ -1352,13 +1333,8 @@ is_for_containing_module(EndedModuleName,
 
 :- type maybe_module_header
     --->    no_valid_module_header(
-                % The name of the starting ":- module" declaration, if present,
-                % or a dummy context.
-                prog_context,
-
-                % Messages and error categories for the error(s).
-                list(error_spec),
-                list(read_module_error)
+                % A complete description of the errors involved.
+                read_module_errors
             )
     ;       valid_module_header(
                 % The name in the ":- module" decl, and its context.
@@ -1382,17 +1358,22 @@ read_module_header(FileString, FileStringLen,
         !SeqNumCounter, !LineContext, !LinePosn),
     (
         ModuleDeclPresent = no_module_decl_present(_MaybeLookAhead, _Context,
-            NoModuleSpec, NoModuleError),
-        MaybeModuleHeader = no_valid_module_header(term.dummy_context_init,
-            [NoModuleSpec], [NoModuleError])
+            NoModuleSpec),
+        Errors0 = init_read_module_errors,
+        add_nonfatal_error(rme_no_module_decl_at_start,
+            [NoModuleSpec], Errors0, Errors),
+        MaybeModuleHeader = no_valid_module_header(Errors)
     ;
         ModuleDeclPresent = wrong_module_decl_present(ModuleName,
-            ModuleNameContext, WrongSpec, WrongError),
+            ModuleNameContext, WrongModuleSpec),
         NoModuleSpec = report_wrong_module_start(ModuleNameContext,
             DefaultModuleName, ModuleName),
-        NoModuleError = rme_no_module_decl_at_start,
-        MaybeModuleHeader = no_valid_module_header(ModuleNameContext,
-            [WrongSpec, NoModuleSpec], [WrongError, NoModuleError])
+        Errors0 = init_read_module_errors,
+        add_nonfatal_error(rme_no_module_decl_at_start,
+            [NoModuleSpec], Errors0, Errors1),
+        add_nonfatal_error(rme_unexpected_module_name,
+            [WrongModuleSpec], Errors1, Errors),
+        MaybeModuleHeader = no_valid_module_header(Errors)
     ;
         ModuleDeclPresent =
             right_module_decl_present(ModuleName, ModuleNameContext),
@@ -1411,21 +1392,18 @@ read_module_header(FileString, FileStringLen,
                 % no such term.
                 prog_context,
 
-                % A message and a category for the error. The category is
+                % A message for the error. The error category is
                 % always rme_no_module_decl_at_start.
-                error_spec,
-                read_module_error
+                error_spec
             )
     ;       wrong_module_decl_present(
                 % The name in the ":- module" decl, and its context.
                 module_name,
                 prog_context,
 
-                % A message and a category for the error. The message
-                % may be conditional. The category is always
-                % rme_unexpected_module_name.
-                error_spec,
-                read_module_error
+                % A message for the error, which may be conditional.
+                % The category is always rme_unexpected_module_name.
+                error_spec
             )
     ;       right_module_decl_present(
                 % The name in the ":- module" decl, and its context.
@@ -1489,8 +1467,7 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
                 FirstLookAhead = lookahead(MaybeFirstIOM),
                 FirstContext = get_term_context(FirstTerm),
                 ModuleDeclPresent = no_module_decl_present(FirstLookAhead,
-                    FirstContext, report_missing_module_start(FirstContext),
-                    rme_no_module_decl_at_start)
+                    FirstContext, report_missing_module_start(FirstContext))
             ;
                 MayChangeSourceFileName = may_change_source_file_name,
                 % Apply and then skip `pragma source_file' decls, by calling
@@ -1515,7 +1492,7 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
                     DefaultModuleName, DefaultExpectationContexts,
                     StartModuleName, yes(ModuleNameContext), NameSpec),
                 ModuleDeclPresent = wrong_module_decl_present(StartModuleName,
-                    ModuleNameContext, NameSpec, rme_unexpected_module_name)
+                    ModuleNameContext, NameSpec)
             )
         ;
             ( FirstIOM = iom_marker_module_end(_, _, _)
@@ -1525,32 +1502,32 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
             ; FirstIOM = iom_marker_avail(_)
             ; FirstIOM = iom_marker_fim(_)
             ; FirstIOM = iom_item(_)
-            ; FirstIOM = iom_item_and_specs(_, _)   % Ignore the error_specs.
-            ; FirstIOM = iom_handled(_)
+            % Ignore the error_specs.
+            ; FirstIOM = iom_item_and_error_specs(_, _)
+            ; FirstIOM = iom_handled_no_error
+            % Ignore the error_specs.
+            ; FirstIOM = iom_handled_error(_)
             ),
             FirstLookAhead = lookahead(MaybeFirstIOM),
             FirstContext = get_term_context(FirstTerm),
             ModuleDeclPresent = no_module_decl_present(FirstLookAhead,
                 get_term_context(FirstTerm),
-                report_missing_module_start(FirstContext),
-                rme_no_module_decl_at_start)
+                report_missing_module_start(FirstContext))
         )
     ;
-        MaybeFirstIOM = read_iom_parse_item_errors(_, FirstTerm, _, _),
+        MaybeFirstIOM = read_iom_parse_item_errors(_, FirstTerm, _),
         LookAhead = lookahead(MaybeFirstIOM),
         FirstContext = get_term_context(FirstTerm),
         ModuleDeclPresent = no_module_decl_present(LookAhead,
             get_term_context(FirstTerm),
-            report_missing_module_start(FirstContext),
-            rme_no_module_decl_at_start)
+            report_missing_module_start(FirstContext))
     ;
         ( MaybeFirstIOM = read_iom_eof
         ; MaybeFirstIOM = read_iom_parse_term_error(_)
         ),
         term.context_init(!.SourceFileName, 1, FirstContext),
         ModuleDeclPresent = no_module_decl_present(no_lookahead,
-            term.context_init, report_missing_module_start(FirstContext),
-            rme_no_module_decl_at_start)
+            term.context_init, report_missing_module_start(FirstContext))
         % XXX ITEM_LIST Should report "stop processing".
     ).
 
@@ -1571,14 +1548,13 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
     cord(item_fim)::in, cord(item_fim)::out,
     cord(item)::in, cord(item)::out,
     file_name::in, file_name::out, counter::in, counter::out,
-    list(error_spec)::in, list(error_spec)::out,
     read_module_errors::in, read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
 read_item_sequence(FileString, FileStringLen, ModuleName,
         InitLookAhead, FinalLookAhead,
         !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
-        !SourceFileName, !SeqNumCounter, !Specs, !Errors,
+        !SourceFileName, !SeqNumCounter, !Errors,
         !LineContext, !LinePosn) :-
     get_next_item_or_marker(!.SourceFileName, FileString, FileStringLen,
         InitLookAhead, ModuleName, ReadIOMResult,
@@ -1586,14 +1562,12 @@ read_item_sequence(FileString, FileStringLen, ModuleName,
     read_item_sequence_inner(FileString, FileStringLen, ModuleName,
         1024, NumItemsLeft, ReadIOMResult, MidLookAhead,
         !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
-        !SourceFileName, !SeqNumCounter, !Specs, !Errors,
-        !LineContext, !LinePosn),
+        !SourceFileName, !SeqNumCounter, !Errors, !LineContext, !LinePosn),
     ( if NumItemsLeft = 0 then
         read_item_sequence(FileString, FileStringLen, ModuleName,
             MidLookAhead, FinalLookAhead,
             !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
-            !SourceFileName, !SeqNumCounter, !Specs, !Errors,
-            !LineContext, !LinePosn)
+            !SourceFileName, !SeqNumCounter, !Errors, !LineContext, !LinePosn)
     else
         FinalLookAhead = MidLookAhead
     ).
@@ -1605,15 +1579,13 @@ read_item_sequence(FileString, FileStringLen, ModuleName,
     cord(item_avail)::in, cord(item_avail)::out,
     cord(item_fim)::in, cord(item_fim)::out,
     cord(item)::in, cord(item)::out, file_name::in, file_name::out,
-    counter::in, counter::out, list(error_spec)::in, list(error_spec)::out,
-    read_module_errors::in, read_module_errors::out,
+    counter::in, counter::out, read_module_errors::in, read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
 read_item_sequence_inner(FileString, FileStringLen, ModuleName,
         !NumItemsLeft, ReadIOMResult, FinalLookAhead,
         !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
-        !SourceFileName, !SeqNumCounter, !Specs, !Errors,
-        !LineContext, !LinePosn) :-
+        !SourceFileName, !SeqNumCounter, !Errors, !LineContext, !LinePosn) :-
     ( if !.NumItemsLeft =< 0 then
         FinalLookAhead = lookahead(ReadIOMResult)
     else
@@ -1623,21 +1595,20 @@ read_item_sequence_inner(FileString, FileStringLen, ModuleName,
         ;
             (
                 ReadIOMResult = read_iom_parse_term_error(ItemSpec),
-                ItemSpecs = [ItemSpec],
-                ItemErrors = set.make_singleton_set(rme_could_not_read_term)
+                add_nonfatal_error(rme_could_not_read_term, [ItemSpec],
+                    !Errors)
             ;
-                ReadIOMResult = read_iom_parse_item_errors(_, _,
-                    ItemSpecs, ItemErrors)
+                ReadIOMResult = read_iom_parse_item_errors(_, _, ItemSpecs),
+                add_nonfatal_error(rme_could_not_parse_item, ItemSpecs,
+                    !Errors)
             ),
-            !:Specs = ItemSpecs ++ !.Specs,
-            !:Errors = set.union(!.Errors, ItemErrors),
             read_next_item_or_marker(!.SourceFileName,
                 FileString, FileStringLen, ModuleName, NextReadIOMResult,
                 !SeqNumCounter, !LineContext, !LinePosn),
             read_item_sequence_inner(FileString, FileStringLen, ModuleName,
                 !NumItemsLeft, NextReadIOMResult, FinalLookAhead,
                 !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
-                !SourceFileName, !SeqNumCounter, !Specs, !Errors,
+                !SourceFileName, !SeqNumCounter, !Errors,
                 !LineContext, !LinePosn)
         ;
             ReadIOMResult = read_iom_ok(_IOMVarSet, IOMTerm, IOM),
@@ -1658,7 +1629,7 @@ read_item_sequence_inner(FileString, FileStringLen, ModuleName,
                         words("automatically generated interface files."), nl],
                     Spec = simplest_spec($pred, severity_error,
                         phase_read_files, get_term_context(IOMTerm), Pieces),
-                    !:Specs = [Spec | !.Specs]
+                    add_nonfatal_error(rme_nec, [Spec], !Errors)
                 ;
                     IOM = iom_marker_include(Incls),
                     Incls = one_or_more(HeadIncl, TailIncls),
@@ -1676,12 +1647,14 @@ read_item_sequence_inner(FileString, FileStringLen, ModuleName,
                     IOM = iom_item(Item),
                     !:ItemsCord = cord.snoc(!.ItemsCord, Item)
                 ;
-                    IOM = iom_item_and_specs(Item, ItemSpecs),
+                    IOM = iom_item_and_error_specs(Item, ItemSpecs),
                     !:ItemsCord = cord.snoc(!.ItemsCord, Item),
-                    !:Specs = ItemSpecs ++ !.Specs
+                    add_nonfatal_error(rme_nec, ItemSpecs, !Errors)
                 ;
-                    IOM = iom_handled(HandledSpecs),
-                    !:Specs = HandledSpecs ++ !.Specs
+                    IOM = iom_handled_no_error
+                ;
+                    IOM = iom_handled_error(HandledSpecs),
+                    add_nonfatal_error(rme_nec, HandledSpecs, !Errors)
                 ),
                 read_next_item_or_marker(!.SourceFileName,
                     FileString, FileStringLen, ModuleName, NextReadIOMResult,
@@ -1689,7 +1662,7 @@ read_item_sequence_inner(FileString, FileStringLen, ModuleName,
                 read_item_sequence_inner(FileString, FileStringLen, ModuleName,
                     !NumItemsLeft, NextReadIOMResult, FinalLookAhead,
                     !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
-                    !SourceFileName, !SeqNumCounter, !Specs, !Errors,
+                    !SourceFileName, !SeqNumCounter, !Errors,
                     !LineContext, !LinePosn)
             )
         )
@@ -1737,10 +1710,10 @@ read_next_item_or_marker(FileName, FileString, FileStringLen, ModuleName,
             % The call to mercury_term_parser.read_term_from_linestr
             % has failed, which means that what we found in the file string
             % is not a valid term.
-    ;       read_iom_parse_item_errors(varset, term,
-                list(error_spec), set(read_module_error))
+    ;       read_iom_parse_item_errors(varset, term, list(error_spec))
             % We have successfully read a term from the file string,
             % but could not parse it as an item or marker.
+            % The error category is implicitly rme_could_not_parse_item.
     ;       read_iom_ok(varset, term, item_or_marker).
             % We have successfully read a term from the file string,
             % and parsed it as an item or marker.
@@ -1781,8 +1754,7 @@ term_to_iom_result(ModuleName, VarSet, Term, ReadIOMResult, !SeqNumCounter) :-
         ReadIOMResult = read_iom_ok(VarSet, Term, ItemOrMarker)
     ;
         MaybeItemOrMarker = error1(Specs),
-        ReadIOMResult = read_iom_parse_item_errors(VarSet, Term, Specs,
-            set.make_singleton_set(rme_could_not_parse_item))
+        ReadIOMResult = read_iom_parse_item_errors(VarSet, Term, Specs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1822,13 +1794,12 @@ report_wrong_module_start(FirstContext, Expected, Actual) = Spec :-
 :- pred check_for_unexpected_item_at_end(file_name::in, string::in, int::in,
     module_name::in, file_kind::in,
     maybe_lookahead::in, counter::in,
-    list(error_spec)::in, list(error_spec)::out,
     read_module_errors::in, read_module_errors::out,
     line_context::in, line_posn::in) is det.
 
 check_for_unexpected_item_at_end(SourceFileName, FileString, FileStringLen,
         ModuleName, FileKind, FinalLookAhead, SeqNumCounter0,
-        !Specs, !Errors, !.LineContext, !.LinePosn) :-
+        !Errors, !.LineContext, !.LinePosn) :-
     get_next_item_or_marker(SourceFileName, FileString, FileStringLen,
         FinalLookAhead, ModuleName, IOMResult,
         SeqNumCounter0, _SeqNumCounter, !.LineContext, _, !.LinePosn, _),
@@ -1836,24 +1807,20 @@ check_for_unexpected_item_at_end(SourceFileName, FileString, FileStringLen,
         IOMResult = read_iom_eof
     ;
         IOMResult = read_iom_parse_term_error(ItemSpec),
-        !:Specs = [ItemSpec | !.Specs],
-        set.insert(rme_could_not_read_term, !Errors)
+        add_nonfatal_error(rme_could_not_read_term, [ItemSpec], !Errors)
     ;
-        IOMResult = read_iom_parse_item_errors(_VarSet, Term,
-            ItemSpecs, ItemErrors),
-        !:Specs = ItemSpecs ++ !.Specs,
-        !:Errors = set.union(!.Errors, ItemErrors),
-        report_unexpected_term_at_end(FileKind, Term, !Specs, !Errors)
+        IOMResult = read_iom_parse_item_errors(_VarSet, Term, ItemSpecs),
+        add_nonfatal_error(rme_could_not_parse_item, ItemSpecs, !Errors),
+        report_unexpected_term_at_end(FileKind, Term, !Errors)
     ;
         IOMResult = read_iom_ok(_IOMVarSet, IOMTerm, _IOM),
-        report_unexpected_term_at_end(FileKind, IOMTerm, !Specs, !Errors)
+        report_unexpected_term_at_end(FileKind, IOMTerm, !Errors)
     ).
 
 :- pred report_unexpected_term_at_end(file_kind::in, term::in,
-    list(error_spec)::in, list(error_spec)::out,
     read_module_errors::in, read_module_errors::out) is det.
 
-report_unexpected_term_at_end(FileKind, Term, !Specs, !Errors) :-
+report_unexpected_term_at_end(FileKind, Term, !Errors) :-
     Context = get_term_context(Term),
     (
         FileKind = fk_src,
@@ -1871,8 +1838,7 @@ report_unexpected_term_at_end(FileKind, Term, !Specs, !Errors) :-
     ),
     Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
         Context, Pieces),
-    !:Specs = [Spec | !.Specs],
-    set.insert(Error, !Errors).
+    add_nonfatal_error(Error, [Spec], !Errors).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_module.

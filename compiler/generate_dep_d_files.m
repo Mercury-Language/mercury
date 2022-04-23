@@ -122,10 +122,10 @@ build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
     FileNameDotM = FileName ++ ".m",
     read_module_src_from_file(Globals, FileName, FileNameDotM, rrm_file,
         do_not_search, always_read_module(dont_return_timestamp), _,
-        ParseTreeSrc, Specs0, ReadModuleErrors, !IO),
+        ParseTreeSrc, ReadModuleErrors, !IO),
     ParseTreeSrc = parse_tree_src(ModuleName, _, _),
     parse_tree_src_to_burdened_module_list(Globals, FileNameDotM,
-        ParseTreeSrc, ReadModuleErrors, Specs0, Specs, BurdenedModules),
+        ParseTreeSrc, ReadModuleErrors, Specs, BurdenedModules),
     get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
     write_error_specs(ErrorStream, Globals, Specs, !IO),
     map.init(DepsMap0),
@@ -152,10 +152,10 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
     ModuleDep = deps(_, BurdenedModule),
     BurdenedModule = burdened_module(Baggage, _ParseTreeModuleSrc),
     Errors = Baggage ^ mb_errors,
-    set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+    FatalErrors = Errors ^ rm_fatal_errors,
     ( if set.is_non_empty(FatalErrors) then
         ModuleNameStr = sym_name_to_string(ModuleName),
-        ( if set.contains(FatalErrors, rme_could_not_open_file) then
+        ( if set.contains(FatalErrors, frme_could_not_open_file) then
             string.format("cannot read source file for module `%s'.",
                 [s(ModuleNameStr)], Message)
         else
@@ -264,22 +264,22 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
 :- pred deps_list_to_deps_graph(list(deps)::in, deps_map::in,
     deps_graph::in, deps_graph::out, deps_graph::in, deps_graph::out) is det.
 
-deps_list_to_deps_graph([], _, !IntDepsGraph, !ImplDepsGraph).
+deps_list_to_deps_graph([], _, !IntDepsGraph, !ImpDepsGraph).
 deps_list_to_deps_graph([Deps | DepsList], DepsMap,
-        !IntDepsGraph, !ImplDepsGraph) :-
+        !IntDepsGraph, !ImpDepsGraph) :-
     Deps = deps(_, BurdenedModule),
     Baggage = BurdenedModule ^ bm_baggage,
-    ModuleErrors = Baggage ^ mb_errors,
-    set.intersect(ModuleErrors, fatal_read_module_errors, FatalModuleErrors),
-    ( if set.is_empty(FatalModuleErrors) then
+    Errors = Baggage ^ mb_errors,
+    FatalErrors = Errors ^ rm_fatal_errors,
+    ( if set.is_empty(FatalErrors) then
         ModuleDepInfo = module_dep_info_full(BurdenedModule),
         add_module_dep_info_to_deps_graph(ModuleDepInfo,
             lookup_module_and_imports_in_deps_map(DepsMap),
-            !IntDepsGraph, !ImplDepsGraph)
+            !IntDepsGraph, !ImpDepsGraph)
     else
         true
     ),
-    deps_list_to_deps_graph(DepsList, DepsMap, !IntDepsGraph, !ImplDepsGraph).
+    deps_list_to_deps_graph(DepsList, DepsMap, !IntDepsGraph, !ImpDepsGraph).
 
 :- func lookup_module_and_imports_in_deps_map(deps_map, module_name)
     = module_dep_info.

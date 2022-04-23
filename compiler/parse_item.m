@@ -848,7 +848,7 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
                 Spec = conditional_spec($pred, warn_smart_recompilation, yes,
                     severity_error, phase_term_to_parse_tree,
                     [simplest_msg(Context, Pieces)]),
-                MaybeIOM = ok1(iom_handled([Spec]))
+                MaybeIOM = ok1(iom_handled_error([Spec]))
             )
         else
             Pieces = [words("Error: invalid version number in"),

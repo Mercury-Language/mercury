@@ -266,20 +266,20 @@ should_recompile_3(Globals, UsedFile, IsSubModule, FindTargetFiles,
         read_module_src(Globals, rrm_std(ModuleName),
             do_not_ignore_errors, do_search, ModuleName, [], FileName,
             dont_read_module_if_match(RecordedTimestamp),
-            MaybeNewTimestamp, ParseTree, Specs, Errors, !IO),
+            MaybeNewTimestamp, ParseTree, Errors, !IO),
         ( if
             MaybeNewTimestamp = yes(NewTimestamp),
             NewTimestamp \= RecordedTimestamp
         then
             record_read_file_src(ModuleName, FileName,
                 ModuleTimestamp ^ mts_timestamp := NewTimestamp,
-                ParseTree, Specs, Errors, !Info),
+                ParseTree, Errors, !Info),
             !Info ^ rci_modules_to_recompile := all_modules,
             ChangedReason = recompile_for_module_changed(FileName),
             record_recompilation_reason(ChangedReason,
                 MaybeStoppingReason0, !Info)
         else if
-            ( set.is_non_empty(Errors)
+            ( there_are_some_errors(Errors)
             ; MaybeNewTimestamp = no
             )
         then
@@ -391,22 +391,21 @@ check_imported_module(Globals, UsedModule, MaybeStoppingReason, !Info, !IO) :-
         find_read_module_some_int(HaveReadModuleMaps,
             ImportedModuleName, IntFileKind,
             do_return_timestamp, FileNamePrime, MaybeNewTimestampPrime,
-            ParseTreeSomeIntPrime, SpecsPrime, ErrorsPrime)
+            ParseTreeSomeIntPrime, ErrorsPrime)
     then
         Recorded = bool.yes,
         FileName = FileNamePrime,
         MaybeNewTimestamp = MaybeNewTimestampPrime,
         ParseTreeSomeInt = ParseTreeSomeIntPrime,
-        Specs = SpecsPrime,
         Errors = ErrorsPrime
     else
         Recorded = bool.no,
         read_module_some_int(Globals, rrm_std(ImportedModuleName),
             do_not_ignore_errors, do_search, ImportedModuleName, IntFileKind,
             FileName, dont_read_module_if_match(RecordedTimestamp),
-            MaybeNewTimestamp, ParseTreeSomeInt, Specs, Errors, !IO)
+            MaybeNewTimestamp, ParseTreeSomeInt, Errors, !IO)
     ),
-    ( if set.is_empty(Errors) then
+    ( if there_are_no_errors(Errors) then
         ( if
             MaybeNewTimestamp = yes(NewTimestamp),
             NewTimestamp \= RecordedTimestamp
@@ -415,7 +414,7 @@ check_imported_module(Globals, UsedModule, MaybeStoppingReason, !Info, !IO) :-
                 Recorded = no,
                 record_read_file_some_int(ImportedModuleName, FileName,
                     ModuleTimestamp ^ mts_timestamp := NewTimestamp,
-                    ParseTreeSomeInt, Specs, Errors, !Info)
+                    ParseTreeSomeInt, Errors, !Info)
             ;
                 Recorded = yes
             ),
@@ -1299,58 +1298,56 @@ add_module_to_recompile(Module, !Info) :-
     ).
 
 :- pred record_read_file_src(module_name::in, file_name::in,
-    module_timestamp::in, parse_tree_src::in, list(error_spec)::in,
-    read_module_errors::in,
+    module_timestamp::in, parse_tree_src::in, read_module_errors::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
 record_read_file_src(ModuleName, FileName, ModuleTimestamp,
-        ParseTree, Specs, Errors, !Info) :-
+        ParseTree, Errors, !Info) :-
     HaveReadModuleMaps0 = !.Info ^ rci_have_read_module_maps,
     HaveReadModuleMapSrc0 = HaveReadModuleMaps0 ^ hrmm_src,
     ModuleTimestamp = module_timestamp(_, Timestamp, _),
     map.set(ModuleName,
         have_successfully_read_module(FileName, yes(Timestamp),
-            ParseTree, Specs, Errors),
+            ParseTree, Errors),
         HaveReadModuleMapSrc0, HaveReadModuleMapSrc),
     HaveReadModuleMaps =
         HaveReadModuleMaps0 ^ hrmm_src := HaveReadModuleMapSrc,
     !Info ^ rci_have_read_module_maps := HaveReadModuleMaps.
 
 :- pred record_read_file_some_int(module_name::in, file_name::in,
-    module_timestamp::in, parse_tree_some_int::in, list(error_spec)::in,
-    read_module_errors::in,
+    module_timestamp::in, parse_tree_some_int::in, read_module_errors::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
 record_read_file_some_int(ModuleName, FileName, ModuleTimestamp,
-        ParseTreeSomeInt, Specs, Errors, !Info) :-
+        ParseTreeSomeInt, Errors, !Info) :-
     ModuleTimestamp = module_timestamp(_, Timestamp, _),
     HaveReadModuleMaps0 = !.Info ^ rci_have_read_module_maps,
     (
         ParseTreeSomeInt = parse_tree_some_int0(ParseTreeInt0),
         HRMM0 = HaveReadModuleMaps0 ^ hrmm_int0,
         ReadResult = have_successfully_read_module(FileName, yes(Timestamp),
-            ParseTreeInt0, Specs, Errors),
+            ParseTreeInt0, Errors),
         map.set(ModuleName, ReadResult, HRMM0, HRMM),
         HaveReadModuleMaps = HaveReadModuleMaps0 ^ hrmm_int0 := HRMM
     ;
         ParseTreeSomeInt = parse_tree_some_int1(ParseTreeInt1),
         HRMM0 = HaveReadModuleMaps0 ^ hrmm_int1,
         ReadResult = have_successfully_read_module(FileName, yes(Timestamp),
-            ParseTreeInt1, Specs, Errors),
+            ParseTreeInt1, Errors),
         map.set(ModuleName, ReadResult, HRMM0, HRMM),
         HaveReadModuleMaps = HaveReadModuleMaps0 ^ hrmm_int1 := HRMM
     ;
         ParseTreeSomeInt = parse_tree_some_int2(ParseTreeInt2),
         HRMM0 = HaveReadModuleMaps0 ^ hrmm_int2,
         ReadResult = have_successfully_read_module(FileName, yes(Timestamp),
-            ParseTreeInt2, Specs, Errors),
+            ParseTreeInt2, Errors),
         map.set(ModuleName, ReadResult, HRMM0, HRMM),
         HaveReadModuleMaps = HaveReadModuleMaps0 ^ hrmm_int2 := HRMM
     ;
         ParseTreeSomeInt = parse_tree_some_int3(ParseTreeInt3),
         HRMM0 = HaveReadModuleMaps0 ^ hrmm_int3,
         ReadResult = have_successfully_read_module(FileName, yes(Timestamp),
-            ParseTreeInt3, Specs, Errors),
+            ParseTreeInt3, Errors),
         map.set(ModuleName, ReadResult, HRMM0, HRMM),
         HaveReadModuleMaps = HaveReadModuleMaps0 ^ hrmm_int3 := HRMM
     ),

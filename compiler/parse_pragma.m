@@ -1222,7 +1222,7 @@ parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
                 ConflictSpecs = [],
                 (
                     FeatureList = [],
-                    MaybeIOM = ok1(iom_handled([]))
+                    MaybeIOM = ok1(iom_handled_no_error)
                 ;
                     FeatureList = [_ | _],
                     FeatureSet = set.list_to_set(FeatureList),

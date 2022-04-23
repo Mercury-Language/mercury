@@ -328,15 +328,15 @@ write_module_dep_file(Globals, BurdenedModule0, !IO) :-
     BurdenedModule0 = burdened_module(Baggage0, ParseTreeModuleSrc),
     Baggage0 = module_baggage(SourceFileName, _SourceFileDir,
         SourceFileModuleName, MaybeTopModule, _MaybeTimestampMap,
-        _GrabbedFileMap, Specs, _Errors),
+        _GrabbedFileMap, _Errors),
 
     MaybeTimestampMap = maybe.no,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
-    set.init(Errors),
+    Errors = init_read_module_errors,
     Baggage = module_baggage(SourceFileName, dir.this_directory,
         SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
-        GrabbedFileMap, Specs, Errors),
+        GrabbedFileMap, Errors),
 
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
     do_write_module_dep_file(Globals, BurdenedModule, !IO).
@@ -831,13 +831,14 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             do_not_ignore_errors, do_not_search,
             ModuleName, [], SourceFileName,
             always_read_module(do_return_timestamp), _,
-            ParseTreeSrc, Specs0, ReadModuleErrors, !IO),
+            ParseTreeSrc, ReadModuleErrors, !IO),
 
-        set.intersect(ReadModuleErrors, fatal_read_module_errors, FatalErrors),
+        FatalErrors = ReadModuleErrors ^ rm_fatal_errors,
+        NonFatalErrors = ReadModuleErrors ^ rm_nonfatal_errors,
         ( if set.is_non_empty(FatalErrors) then
             FatalReadError = yes,
             DisplayErrorReadingFile = yes
-        else if set.contains(ReadModuleErrors, rme_unexpected_module_name) then
+        else if set.contains(NonFatalErrors, rme_unexpected_module_name) then
             % If the source file does not contain the expected module, then
             % do not make the .module_dep file; it would leave a .module_dep
             % file for the wrong module lying around, which the user needs
@@ -850,6 +851,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         ),
         (
             FatalReadError = yes,
+            Specs0 = get_read_module_specs(ReadModuleErrors),
             write_error_specs(ErrorStream, Globals, Specs0, !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
             (
@@ -882,7 +884,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         ;
             FatalReadError = no,
             parse_tree_src_to_burdened_module_list(Globals,
-                SourceFileName, ParseTreeSrc, ReadModuleErrors, Specs0, Specs,
+                SourceFileName, ParseTreeSrc, ReadModuleErrors, Specs,
                 BurdenedModules),
             ParseTreeModuleSrcs = list.map(
                 (func(burdened_module(_, PTMS)) = PTMS),
@@ -903,7 +905,8 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             % while we have the contents of the module. The `int3' file
             % does not depend on anything else.
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-            ( if set.is_empty(ReadModuleErrors) then
+            % We already know FatalReadError is empty.
+            ( if set.is_empty(NonFatalErrors) then
                 Target = target_file(ModuleName, module_target_int3),
                 maybe_make_target_message_to_stream(Globals, OldOutputStream,
                     Target, !IO),

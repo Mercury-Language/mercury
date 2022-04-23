@@ -1092,8 +1092,9 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
     ;
         OpModeArgs = opma_convert_to_mercury,
         read_module_or_file(Globals0, Globals, FileOrModule, ModuleName, _,
-            dont_return_timestamp, _, ParseTreeSrc, Specs, Errors,
+            dont_return_timestamp, _, ParseTreeSrc, Errors,
             !HaveReadModuleMaps, !IO),
+        Specs = get_read_module_specs(Errors),
         write_error_specs(Globals, Specs, !IO),
         ( if halt_at_module_error(Globals, Errors) then
             true
@@ -1157,7 +1158,8 @@ do_process_compiler_arg_make_interface(Globals0, InterfaceFile, FileOrModule,
     ),
     read_module_or_file(Globals0, Globals, FileOrModule,
         ModuleName, FileName, ReturnTimestamp, MaybeTimestamp,
-        ParseTreeSrc, ReadSpecs, ReadErrors, !HaveReadModuleMaps, !IO),
+        ParseTreeSrc, ReadErrors, !HaveReadModuleMaps, !IO),
+    ReadSpecs = get_read_module_specs(ReadErrors),
     ( if halt_at_module_error(Globals, ReadErrors) then
         write_error_specs(Globals, ReadSpecs, !IO)
     else
@@ -1323,9 +1325,10 @@ read_augment_and_process_module(Globals0, OpModeAugment, OptionArgs,
     ),
 
     read_module_or_file(Globals0, Globals, FileOrModule, ModuleName, FileName,
-        do_return_timestamp, MaybeTimestamp, ParseTreeSrc, Specs0, Errors,
+        do_return_timestamp, MaybeTimestamp, ParseTreeSrc, Errors,
         !HaveReadModuleMaps, !IO),
 
+    Specs0 = get_read_module_specs(Errors),
     ( if halt_at_module_error(Globals, Errors) then
         write_error_specs(Globals, Specs0, !IO),
         ModulesToLink = [],
@@ -1423,13 +1426,13 @@ file_or_module_to_module_name(fm_module(ModuleName)) = ModuleName.
 :- pred read_module_or_file(globals::in, globals::out, file_or_module::in,
     module_name::out, file_name::out,
     maybe_return_timestamp::in, maybe(timestamp)::out,
-    parse_tree_src::out, list(error_spec)::out, read_module_errors::out,
+    parse_tree_src::out, read_module_errors::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
 read_module_or_file(Globals0, Globals, FileOrModuleName,
         ModuleName, FileNameDotM, ReturnTimestamp, MaybeTimestamp,
-        ParseTreeSrc, Specs, Errors, !HaveReadModuleMaps, !IO) :-
+        ParseTreeSrc, Errors, !HaveReadModuleMaps, !IO) :-
     (
         FileOrModuleName = fm_module(ModuleName),
         globals.lookup_bool_option(Globals0, verbose, Verbose),
@@ -1442,7 +1445,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             % by recompilation_version.m.
             find_read_module_src(!.HaveReadModuleMaps ^ hrmm_src, ModuleName,
                 ReturnTimestamp, FileNameDotMPrime, MaybeTimestampPrime,
-                ParseTreeSrcPrime, SpecsPrime, ErrorsPrime)
+                ParseTreeSrcPrime, ErrorsPrime)
         then
             Globals = Globals0,
             % XXX When we have read the module before, it *could* have had
@@ -1454,7 +1457,6 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             FileNameDotM = FileNameDotMPrime,
             MaybeTimestamp = MaybeTimestampPrime,
             ParseTreeSrc = ParseTreeSrcPrime,
-            Specs = SpecsPrime,
             Errors = ErrorsPrime
         else
             % We don't search `--search-directories' for source files
@@ -1464,7 +1466,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
                 do_not_ignore_errors, do_not_search,
                 ModuleName, [], FileNameDotM,
                 always_read_module(ReturnTimestamp), MaybeTimestamp,
-                ParseTreeSrc, Specs, Errors, !IO),
+                ParseTreeSrc, Errors, !IO),
             io_get_disable_smart_recompilation(DisableSmart, !IO),
             (
                 DisableSmart = disable_smart_recompilation,
@@ -1491,7 +1493,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             % by recompilation_version.m.
             find_read_module_src(!.HaveReadModuleMaps ^ hrmm_src,
                 DefaultModuleName, ReturnTimestamp, _, MaybeTimestampPrime,
-                ParseTreeSrcPrime, SpecsPrime, ErrorsPrime)
+                ParseTreeSrcPrime, ErrorsPrime)
         then
             Globals = Globals0,
             % XXX When we have read the module before, it *could* have had
@@ -1503,7 +1505,6 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             ModuleName = DefaultModuleName,
             MaybeTimestamp = MaybeTimestampPrime,
             ParseTreeSrc = ParseTreeSrcPrime,
-            Specs = SpecsPrime,
             Errors = ErrorsPrime
         else
             % We don't search `--search-directories' for source files
@@ -1512,7 +1513,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             read_module_src_from_file(Globals0, FileName, FileNameDotM,
                 rrm_file, do_not_search,
                 always_read_module(ReturnTimestamp), MaybeTimestamp,
-                ParseTreeSrc, Specs, Errors, !IO),
+                ParseTreeSrc, Errors, !IO),
             ParseTreeSrc = parse_tree_src(ModuleName, _, _),
             io_get_disable_smart_recompilation(DisableSmart, !IO),
             (
@@ -1608,10 +1609,9 @@ augment_and_process_module(Globals, OpModeAugment, SourceFileName,
     grab_qual_imported_modules_augment(Globals, SourceFileName,
         SourceFileModuleName, MaybeTimestamp, MaybeTopModule,
         ParseTreeModuleSrc, Baggage, AugCompUnit, !HaveReadModuleMaps, !IO),
-    !:Specs = Baggage ^ mb_specs ++ !.Specs,
     Errors = Baggage ^ mb_errors,
-    set.intersect(Errors, fatal_read_module_errors, FatalErrors),
-    ( if set.is_empty(FatalErrors) then
+    !:Specs = get_read_module_specs(Errors) ++ !.Specs,
+    ( if set.is_empty(Errors ^ rm_fatal_errors) then
         process_augmented_module(Globals, OpModeAugment,
             Baggage, AugCompUnit, FindTimestampFiles, ExtraObjFiles,
             no_prev_dump, _, !Specs, !HaveReadModuleMaps, !IO)
@@ -2027,13 +2027,12 @@ dump_arg(Arg, !IO) :-
 :- pred halt_at_module_error(globals::in, read_module_errors::in) is semidet.
 
 halt_at_module_error(Globals, Errors) :-
-    set.is_non_empty(Errors),
     (
+        set.is_non_empty(Errors ^ rm_fatal_errors)
+    ;
+        set.is_non_empty(Errors ^ rm_nonfatal_errors),
         globals.lookup_bool_option(Globals, halt_at_syntax_errors, HaltSyntax),
         HaltSyntax = yes
-    ;
-        set.intersect(Errors, fatal_read_module_errors, FatalErrors),
-        set.is_non_empty(FatalErrors)
     ).
 
 %---------------------------------------------------------------------------%

@@ -317,9 +317,9 @@ read_dependencies(Globals, Search, ModuleName, ExpectationContexts,
     read_module_src(Globals, rrm_get_deps(ModuleName), ignore_errors, Search,
         ModuleName, ExpectationContexts, SourceFileName,
         always_read_module(dont_return_timestamp), _,
-        ParseTreeSrc, SrcSpecs, SrcReadModuleErrors, !IO),
+        ParseTreeSrc, SrcReadModuleErrors, !IO),
     parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
-        ParseTreeSrc, SrcReadModuleErrors, SrcSpecs, Specs, BurdenedModules),
+        ParseTreeSrc, SrcReadModuleErrors, Specs, BurdenedModules),
     !:Specs = Specs ++ !.Specs.
 
 %---------------------------------------------------------------------------%

@@ -19,7 +19,6 @@
 :- import_module libs.timestamp.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.parse_error.
@@ -100,7 +99,6 @@
                 % that the read return the timestamp of the file.
                 maybe(timestamp),
                 PT,
-                list(error_spec),
                 read_module_errors
             )
     ;       tried_to_read_module_failed.
@@ -187,8 +185,7 @@
     maybe_ignore_errors::in, maybe_search::in,
     module_name::in, list(term.context)::in, file_name::out,
     read_module_and_timestamps::in, maybe(timestamp)::out,
-    parse_tree_src::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    parse_tree_src::out, read_module_errors::out, io::di, io::uo) is det.
 
     % read_module_src_from_file(Globals, FileName, FileNameDotM,
     %   ReadReasonMsg, Search, ReadModuleAndTimestamps, MaybeTimestamp,
@@ -207,7 +204,7 @@
 :- pred read_module_src_from_file(globals::in, file_name::in, file_name::in,
     read_reason_msg::in, maybe_search::in, read_module_and_timestamps::in,
     maybe(timestamp)::out, parse_tree_src::out,
-    list(error_spec)::out, read_module_errors::out, io::di, io::uo) is det.
+    read_module_errors::out, io::di, io::uo) is det.
 
     % read_module_some_int(Globals, ReadReasonMsg, IgnoreErrors, Search,
     %   ModuleName, IntFileKind, FileName, ReturnTimestamp, MaybeTimestamp,
@@ -227,8 +224,7 @@
     maybe_ignore_errors::in, maybe_search::in,
     module_name::in, int_file_kind::in, file_name::out,
     read_module_and_timestamps::in, maybe(timestamp)::out,
-    parse_tree_some_int::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    parse_tree_some_int::out, read_module_errors::out, io::di, io::uo) is det.
 
     % read_module_intN(Globals, ReadReasonMsg, IgnoreErrors, Search,
     %   ModuleName, FileName, ReadModuleAndTimestamps, MaybeTimestamp,
@@ -250,26 +246,22 @@
     maybe_ignore_errors::in, maybe_search::in,
     module_name::in, file_name::out,
     read_module_and_timestamps::in, maybe(timestamp)::out,
-    parse_tree_int0::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    parse_tree_int0::out, read_module_errors::out, io::di, io::uo) is det.
 :- pred read_module_int1(globals::in, read_reason_msg::in,
     maybe_ignore_errors::in, maybe_search::in,
     module_name::in, file_name::out,
     read_module_and_timestamps::in, maybe(timestamp)::out,
-    parse_tree_int1::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    parse_tree_int1::out, read_module_errors::out, io::di, io::uo) is det.
 :- pred read_module_int2(globals::in, read_reason_msg::in,
     maybe_ignore_errors::in, maybe_search::in,
     module_name::in, file_name::out,
     read_module_and_timestamps::in, maybe(timestamp)::out,
-    parse_tree_int2::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    parse_tree_int2::out, read_module_errors::out, io::di, io::uo) is det.
 :- pred read_module_int3(globals::in, read_reason_msg::in,
     maybe_ignore_errors::in, maybe_search::in,
     module_name::in, file_name::out,
     read_module_and_timestamps::in, maybe(timestamp)::out,
-    parse_tree_int3::out, list(error_spec)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    parse_tree_int3::out, read_module_errors::out, io::di, io::uo) is det.
 
     % read_module_{plain,trans}_opt(Globals, ModuleName, FileName,
     %   ParseTreeOpt, Specs, Errors, !IO):
@@ -294,16 +286,16 @@
     %
 :- pred read_module_plain_opt(globals::in,
     module_name::in, file_name::out, parse_tree_plain_opt::out,
-    list(error_spec)::out, read_module_errors::out, io::di, io::uo) is det.
+    read_module_errors::out, io::di, io::uo) is det.
 :- pred read_module_trans_opt(globals::in,
     module_name::in, file_name::out, parse_tree_trans_opt::out,
-    list(error_spec)::out, read_module_errors::out, io::di, io::uo) is det.
+    read_module_errors::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
     % maybe_read_module_intN(Globals, ReadReasonMsg, Search,
     %     ModuleName, IntFileKind, FileName, ReturnTimestamp, MaybeTimestamp,
-    %     ParseTreeInt, Specs, Errors, !HaveReadModuleMaps, !IO):
+    %     ParseTreeInt, Errors, !HaveReadModuleMaps, !IO):
     %
     % If HaveReadModuleMap contains the already-read contents of the
     % relevant kind of interface file for ModuleName, then return
@@ -313,31 +305,31 @@
     %
 :- pred maybe_read_module_int0(globals::in, maybe_search::in, module_name::in,
     file_name::out, maybe_return_timestamp::in, maybe(timestamp)::out,
-    parse_tree_int0::out, list(error_spec)::out, read_module_errors::out,
+    parse_tree_int0::out, read_module_errors::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 :- pred maybe_read_module_int1(globals::in, maybe_search::in, module_name::in,
     file_name::out, maybe_return_timestamp::in, maybe(timestamp)::out,
-    parse_tree_int1::out, list(error_spec)::out, read_module_errors::out,
+    parse_tree_int1::out, read_module_errors::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 :- pred maybe_read_module_int2(globals::in, maybe_search::in, module_name::in,
     file_name::out, maybe_return_timestamp::in, maybe(timestamp)::out,
-    parse_tree_int2::out, list(error_spec)::out, read_module_errors::out,
+    parse_tree_int2::out, read_module_errors::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 :- pred maybe_read_module_int3(globals::in, maybe_search::in, module_name::in,
     file_name::out, maybe_return_timestamp::in, maybe(timestamp)::out,
-    parse_tree_int3::out, list(error_spec)::out, read_module_errors::out,
+    parse_tree_int3::out, read_module_errors::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
     % find_read_module_src(HaveReadModuleMap, ModuleName,
-    %   ReturnTimestamp, FileName, MaybeTimestamp, ParseTree, Specs, Errors):
+    %   ReturnTimestamp, FileName, MaybeTimestamp, ParseTree, Errors):
     % find_read_module_int(HaveReadModuleMap, ModuleName, IntFileKind,
-    %   ReturnTimestamp, FileName, MaybeTimestamp, ParseTree, Specs, Errors):
+    %   ReturnTimestamp, FileName, MaybeTimestamp, ParseTree, Errors):
     %
     % Check whether HaveReadModuleMap contains the already-read contents
     % of the specified source file or interface file. If it does, return
@@ -345,35 +337,29 @@
     %
 :- pred find_read_module_src(have_read_module_src_map::in, module_name::in,
     maybe_return_timestamp::in, file_name::out, maybe(timestamp)::out,
-    parse_tree_src::out, list(error_spec)::out, read_module_errors::out)
-    is semidet.
+    parse_tree_src::out, read_module_errors::out) is semidet.
 
     % XXX CLEANUP This predicate should be moves to recompilation.check.m.
     %
 :- pred find_read_module_some_int(have_read_module_maps::in,
     module_name::in, int_file_kind::in,
     maybe_return_timestamp::in, file_name::out, maybe(timestamp)::out,
-    parse_tree_some_int::out, list(error_spec)::out, read_module_errors::out)
-    is semidet.
+    parse_tree_some_int::out, read_module_errors::out) is semidet.
 
     % Versions of find_read_module_int that return a non-generic parse tree.
     %
 :- pred find_read_module_int0(have_read_module_int0_map::in, module_name::in,
     maybe_return_timestamp::in, file_name::out, maybe(timestamp)::out,
-    parse_tree_int0::out, list(error_spec)::out, read_module_errors::out)
-    is semidet.
+    parse_tree_int0::out, read_module_errors::out) is semidet.
 :- pred find_read_module_int1(have_read_module_int1_map::in, module_name::in,
     maybe_return_timestamp::in, file_name::out, maybe(timestamp)::out,
-    parse_tree_int1::out, list(error_spec)::out, read_module_errors::out)
-    is semidet.
+    parse_tree_int1::out, read_module_errors::out) is semidet.
 :- pred find_read_module_int2(have_read_module_int2_map::in, module_name::in,
     maybe_return_timestamp::in, file_name::out, maybe(timestamp)::out,
-    parse_tree_int2::out, list(error_spec)::out, read_module_errors::out)
-    is semidet.
+    parse_tree_int2::out, read_module_errors::out) is semidet.
 :- pred find_read_module_int3(have_read_module_int3_map::in, module_name::in,
     maybe_return_timestamp::in, file_name::out, maybe(timestamp)::out,
-    parse_tree_int3::out, list(error_spec)::out, read_module_errors::out)
-    is semidet.
+    parse_tree_int3::out, read_module_errors::out) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -381,6 +367,7 @@
 :- implementation.
 
 :- import_module libs.options.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.find_module.
 :- import_module parse_tree.parse_module.
 :- import_module parse_tree.source_file_map.
@@ -403,7 +390,7 @@ init_have_read_module_maps =
 read_module_src(Globals, ReadReasonMsg, IgnoreErrors, Search,
         ModuleName, ExpectationContexts, FileName,
         ReadModuleAndTimestamps, MaybeTimestamp,
-        ParseTreeSrc, Specs, Errors, !IO) :-
+        ParseTreeSrc, Errors, !IO) :-
     read_module_begin(Globals, ReadReasonMsg, Search, ModuleName, fk_src,
         FileName0, ReadDoneMsg, SearchDirs, !IO),
     % For `.m' files, we need to deal with the case where the module name
@@ -412,7 +399,7 @@ read_module_src(Globals, ReadReasonMsg, IgnoreErrors, Search,
         MaybeFileNameAndStream, !IO),
     actually_read_module_src(Globals, ModuleName, ExpectationContexts,
         MaybeFileNameAndStream, ReadModuleAndTimestamps, MaybeTimestampRes,
-        ParseTreeSrc0, ModuleSpecs, Errors, !IO),
+        ParseTreeSrc0, Errors0, !IO),
     ParseTreeSrc0 = parse_tree_src(_ActualModuleName, ActualModuleNameContext,
         ComponentsCord),
     % If ModuleName = ActualModuleName, this obviously does the right thing.
@@ -425,11 +412,11 @@ read_module_src(Globals, ReadReasonMsg, IgnoreErrors, Search,
         ComponentsCord),
     read_module_end_module(Globals, IgnoreErrors, fk_src,
         ReadDoneMsg, MaybeFileNameAndStream, FileName0, FileName,
-        MaybeTimestampRes, MaybeTimestamp, ModuleSpecs, Specs, Errors, !IO).
+        MaybeTimestampRes, MaybeTimestamp, Errors0, Errors, !IO).
 
 read_module_src_from_file(Globals, FileName, FileNameDotM, ReadReasonMsg,
         Search, ReadModuleAndTimestamps, MaybeTimestamp,
-        ParseTreeSrc, Specs, Errors, !IO) :-
+        ParseTreeSrc, Errors, !IO) :-
     read_module_begin_from_file(Globals, ReadReasonMsg, Search,
         FileName, FileNameDotM, DefaultModuleName,
         ReadDoneMsg, SearchDirs, !IO),
@@ -437,97 +424,97 @@ read_module_src_from_file(Globals, FileName, FileNameDotM, ReadReasonMsg,
         MaybeFileNameAndStream, !IO),
     actually_read_module_src(Globals, DefaultModuleName, [],
         MaybeFileNameAndStream, ReadModuleAndTimestamps, MaybeTimestampRes,
-        ParseTreeSrc, ModuleSpecs, Errors, !IO),
+        ParseTreeSrc, Errors0, !IO),
     read_module_end_file(Globals, fk_src, ReadDoneMsg, FileNameDotM,
-        MaybeTimestampRes, MaybeTimestamp, ModuleSpecs, Specs, Errors, !IO).
+        MaybeTimestampRes, MaybeTimestamp, Errors0, Errors, !IO).
 
 read_module_some_int(Globals, ReadReasonMsg, IgnoreErrors, Search, ModuleName,
         IntFileKind, FileName, ReadModuleAndTimestamps, MaybeTimestamp,
-        ParseTreeSomeInt, Specs, Errors, !IO) :-
+        ParseTreeSomeInt, Errors, !IO) :-
     (
         IntFileKind = ifk_int0,
         read_module_int0(Globals, ReadReasonMsg, IgnoreErrors, Search,
             ModuleName, FileName, ReadModuleAndTimestamps, MaybeTimestamp,
-            ParseTreeInt0, Specs, Errors, !IO),
+            ParseTreeInt0, Errors, !IO),
         ParseTreeSomeInt = parse_tree_some_int0(ParseTreeInt0)
     ;
         IntFileKind = ifk_int1,
         read_module_int1(Globals, ReadReasonMsg, IgnoreErrors, Search,
             ModuleName, FileName, ReadModuleAndTimestamps, MaybeTimestamp,
-            ParseTreeInt1, Specs, Errors, !IO),
+            ParseTreeInt1, Errors, !IO),
         ParseTreeSomeInt = parse_tree_some_int1(ParseTreeInt1)
     ;
         IntFileKind = ifk_int2,
         read_module_int2(Globals, ReadReasonMsg, IgnoreErrors, Search,
             ModuleName, FileName, ReadModuleAndTimestamps, MaybeTimestamp,
-            ParseTreeInt2, Specs, Errors, !IO),
+            ParseTreeInt2, Errors, !IO),
         ParseTreeSomeInt = parse_tree_some_int2(ParseTreeInt2)
     ;
         IntFileKind = ifk_int3,
         read_module_int3(Globals, ReadReasonMsg, IgnoreErrors, Search,
             ModuleName, FileName, ReadModuleAndTimestamps, MaybeTimestamp,
-            ParseTreeInt3, Specs, Errors, !IO),
+            ParseTreeInt3, Errors, !IO),
         ParseTreeSomeInt = parse_tree_some_int3(ParseTreeInt3)
     ).
 
 read_module_int0(Globals, ReadReasonMsg, IgnoreErrors, Search, ModuleName,
         FileName, ReadModuleAndTimestamps, MaybeTimestamp,
-        ParseTreeInt0, Specs, Errors, !IO) :-
+        ParseTreeInt0, Errors, !IO) :-
     read_module_begin(Globals, ReadReasonMsg, Search, ModuleName,
         fk_int(ifk_int0), FileName0, ReadDoneMsg, SearchDirs, !IO),
     search_for_file_and_stream(SearchDirs, FileName0,
         MaybeFileNameAndStream, !IO),
     actually_read_module_int0(Globals, ModuleName, [],
         MaybeFileNameAndStream, ReadModuleAndTimestamps, MaybeTimestampRes,
-        ParseTreeInt0, ModuleSpecs, Errors, !IO),
+        ParseTreeInt0, Errors0, !IO),
     read_module_end_module(Globals, IgnoreErrors, fk_int(ifk_int3),
         ReadDoneMsg, MaybeFileNameAndStream, FileName0, FileName,
-        MaybeTimestampRes, MaybeTimestamp, ModuleSpecs, Specs, Errors, !IO).
+        MaybeTimestampRes, MaybeTimestamp, Errors0, Errors, !IO).
 
 read_module_int1(Globals, ReadReasonMsg, IgnoreErrors, Search, ModuleName,
         FileName, ReadModuleAndTimestamps, MaybeTimestamp,
-        ParseTreeInt1, Specs, Errors, !IO) :-
+        ParseTreeInt1, Errors, !IO) :-
     read_module_begin(Globals, ReadReasonMsg, Search, ModuleName,
         fk_int(ifk_int1), FileName0, ReadDoneMsg, SearchDirs, !IO),
     search_for_file_and_stream(SearchDirs, FileName0,
         MaybeFileNameAndStream, !IO),
     actually_read_module_int1(Globals, ModuleName, [],
         MaybeFileNameAndStream, ReadModuleAndTimestamps, MaybeTimestampRes,
-        ParseTreeInt1, ModuleSpecs, Errors, !IO),
+        ParseTreeInt1, Errors0, !IO),
     read_module_end_module(Globals, IgnoreErrors, fk_int(ifk_int3),
         ReadDoneMsg, MaybeFileNameAndStream, FileName0, FileName,
-        MaybeTimestampRes, MaybeTimestamp, ModuleSpecs, Specs, Errors, !IO).
+        MaybeTimestampRes, MaybeTimestamp, Errors0, Errors, !IO).
 
 read_module_int2(Globals, ReadReasonMsg, IgnoreErrors, Search, ModuleName,
         FileName, ReadModuleAndTimestamps, MaybeTimestamp,
-        ParseTreeInt2, Specs, Errors, !IO) :-
+        ParseTreeInt2, Errors, !IO) :-
     read_module_begin(Globals, ReadReasonMsg, Search, ModuleName,
         fk_int(ifk_int2), FileName0, ReadDoneMsg, SearchDirs, !IO),
     search_for_file_and_stream(SearchDirs, FileName0,
         MaybeFileNameAndStream, !IO),
     actually_read_module_int2(Globals, ModuleName, [],
         MaybeFileNameAndStream, ReadModuleAndTimestamps, MaybeTimestampRes,
-        ParseTreeInt2, ModuleSpecs, Errors, !IO),
+        ParseTreeInt2, Errors0, !IO),
     read_module_end_module(Globals, IgnoreErrors, fk_int(ifk_int3),
         ReadDoneMsg, MaybeFileNameAndStream, FileName0, FileName,
-        MaybeTimestampRes, MaybeTimestamp, ModuleSpecs, Specs, Errors, !IO).
+        MaybeTimestampRes, MaybeTimestamp, Errors0, Errors, !IO).
 
 read_module_int3(Globals, ReadReasonMsg, IgnoreErrors, Search, ModuleName,
         FileName, ReadModuleAndTimestamps, MaybeTimestamp,
-        ParseTreeInt3, Specs, Errors, !IO) :-
+        ParseTreeInt3, Errors, !IO) :-
     read_module_begin(Globals, ReadReasonMsg, Search, ModuleName,
         fk_int(ifk_int3), FileName0, ReadDoneMsg, SearchDirs, !IO),
     search_for_file_and_stream(SearchDirs, FileName0,
         MaybeFileNameAndStream, !IO),
     actually_read_module_int3(Globals, ModuleName, [],
         MaybeFileNameAndStream, ReadModuleAndTimestamps, MaybeTimestampRes,
-        ParseTreeInt3, ModuleSpecs, Errors, !IO),
+        ParseTreeInt3, Errors0, !IO),
     read_module_end_module(Globals, IgnoreErrors, fk_int(ifk_int3),
         ReadDoneMsg, MaybeFileNameAndStream, FileName0, FileName,
-        MaybeTimestampRes, MaybeTimestamp, ModuleSpecs, Specs, Errors, !IO).
+        MaybeTimestampRes, MaybeTimestamp, Errors0, Errors, !IO).
 
 read_module_plain_opt(Globals, ModuleName, FileName, ParseTreePlainOpt,
-        Specs, Errors, !IO) :-
+        Errors, !IO) :-
     ReadReasonMsg = rrm_std(ModuleName),
     Search = do_search,
     IgnoreErrors = do_not_ignore_errors,
@@ -538,13 +525,13 @@ read_module_plain_opt(Globals, ModuleName, FileName, ParseTreePlainOpt,
     search_for_file_and_stream(SearchDirs, FileName0,
         MaybeFileNameAndStream, !IO),
     actually_read_module_plain_opt(Globals, ModuleName, MaybeFileNameAndStream,
-        ParseTreePlainOpt, ModuleSpecs, Errors, !IO),
+        ParseTreePlainOpt, Errors0, !IO),
     read_module_end_module(Globals, IgnoreErrors, fk_opt(ofk_opt),
         ReadDoneMsg, MaybeFileNameAndStream, FileName0, FileName,
-        MaybeTimestampRes, _MaybeTimestamp, ModuleSpecs, Specs, Errors, !IO).
+        MaybeTimestampRes, _MaybeTimestamp, Errors0, Errors, !IO).
 
 read_module_trans_opt(Globals, ModuleName, FileName, ParseTreeTransOpt,
-        Specs, Errors, !IO) :-
+        Errors, !IO) :-
     ReadReasonMsg = rrm_std(ModuleName),
     Search = do_search,
     IgnoreErrors = do_not_ignore_errors,
@@ -555,10 +542,10 @@ read_module_trans_opt(Globals, ModuleName, FileName, ParseTreeTransOpt,
     search_for_file_and_stream(SearchDirs, FileName0,
         MaybeFileNameAndStream, !IO),
     actually_read_module_trans_opt(Globals, ModuleName, MaybeFileNameAndStream,
-        ParseTreeTransOpt, ModuleSpecs, Errors, !IO),
+        ParseTreeTransOpt, Errors0, !IO),
     read_module_end_module(Globals, IgnoreErrors, fk_opt(ofk_trans_opt),
         ReadDoneMsg, MaybeFileNameAndStream, FileName0, FileName,
-        MaybeTimestampRes, _MaybeTimestamp, ModuleSpecs, Specs, Errors, !IO).
+        MaybeTimestampRes, _MaybeTimestamp, Errors0, Errors, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -641,12 +628,11 @@ read_module_begin(Globals, ReadReasonMsg, Search, ModuleName, FileKind,
     file_kind::in, read_done_msg::in, maybe_error(path_name_and_stream)::in,
     file_name::in, file_name::out,
     maybe(io.res(timestamp))::in, maybe(timestamp)::out,
-    list(error_spec)::in, list(error_spec)::out, read_module_errors::in,
-    io::di, io::uo) is det.
+    read_module_errors::in, read_module_errors::out, io::di, io::uo) is det.
 
 read_module_end_module(Globals, IgnoreErrors, FileKind, ReadDoneMsg,
         MaybeFileNameAndStream, FileName0, FileName,
-        MaybeTimestampRes, MaybeTimestamp, ModuleSpecs, Specs, Errors, !IO) :-
+        MaybeTimestampRes, MaybeTimestamp, Errors0, Errors, !IO) :-
     % The code of read_module_end_module and read_module_end_file
     % should be kept in sync.
     (
@@ -659,59 +645,70 @@ read_module_end_module(Globals, IgnoreErrors, FileKind, ReadDoneMsg,
         MaybeTimestampRes, MaybeTimestamp, !IO),
     (
         IgnoreErrors = ignore_errors,
-        ( if set.contains(Errors, rme_could_not_open_file) then
+        FatalErrors0 = Errors0 ^ rm_fatal_errors,
+        ( if set.contains(FatalErrors0, frme_could_not_open_file) then
             output_read_done_msg(ReadDoneMsg, "not found.\n", !IO),
-            Specs = []
+            % According to IgnoreErrors = ignore_errors, being unable to
+            % read the file is not an error, so delete all the error_specs,
+            % but keep the fatal error to prevent this module from being put
+            % into deps_maps. This is because modules in deps_maps get .d files
+            % created for them, which is not appropriate for a file
+            % that does not exist, at least in the current directory.
+            Errors = read_module_errors(
+                set.make_singleton_set(frme_could_not_open_file), [],
+                set.init, [], [])
         else
             % XXX CLEANUP we should not print "done" if Errors is nonempty.
             output_read_done_msg(ReadDoneMsg, "done.\n", !IO),
-            Specs = ModuleSpecs
+            Errors = Errors0
         )
     ;
         IgnoreErrors = do_not_ignore_errors,
-        handle_any_read_module_errors(Globals, FileKind, ReadDoneMsg, Errors,
-            ModuleSpecs, Specs, !IO)
+        handle_any_read_module_errors(Globals, FileKind, ReadDoneMsg,
+            Errors0, Errors, !IO)
     ),
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     maybe_report_stats(Statistics, !IO).
 
 :- pred read_module_end_file(globals::in, file_kind::in, read_done_msg::in,
     file_name::in, maybe(io.res(timestamp))::in, maybe(timestamp)::out,
-    list(error_spec)::in, list(error_spec)::out, read_module_errors::in,
+    read_module_errors::in, read_module_errors::out,
     io::di, io::uo) is det.
 
 read_module_end_file(Globals, FileKind, ReadDoneMsg, FileName,
-        MaybeTimestampRes, MaybeTimestamp,
-        ModuleSpecs, Specs, Errors, !IO) :-
+        MaybeTimestampRes, MaybeTimestamp, Errors0, Errors, !IO) :-
     % The code of read_module_end_module and read_module_end_file
     % should be kept in sync.
     %
     % Unlike read_module_end_module, we assume do_not_ignore_errors.
     check_timestamp_report_if_needed_and_missing(Globals, FileName,
         MaybeTimestampRes, MaybeTimestamp, !IO),
-    handle_any_read_module_errors(Globals, FileKind, ReadDoneMsg, Errors,
-        ModuleSpecs, Specs, !IO).
+    handle_any_read_module_errors(Globals, FileKind, ReadDoneMsg,
+        Errors0, Errors, !IO).
 
 :- pred handle_any_read_module_errors(globals::in, file_kind::in,
-    read_done_msg::in, read_module_errors::in,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    read_done_msg::in, 
+    read_module_errors::in, read_module_errors::out, io::di, io::uo) is det.
 
 handle_any_read_module_errors(Globals, FileKind, ReadDoneMsg,
-        Errors, !Specs, !IO) :-
-    ( if set.is_empty(Errors) then
+        Errors0, Errors, !IO) :-
+    ( if there_are_no_errors(Errors0) then
+        Errors = Errors0,
         % XXX CLEANUP This should just print "done".
         output_read_done_msg(ReadDoneMsg, "successful parse.\n", !IO)
     else
-        set.intersect(Errors, fatal_read_module_errors, FatalErrors),
-        ( if set.contains(Errors, rme_could_not_open_file) then
+        FatalErrors0 = Errors0 ^ rm_fatal_errors,
+        ( if set.contains(FatalErrors0, frme_could_not_open_file) then
             output_read_done_msg(ReadDoneMsg, "not found.\n", !IO)
-        else if set.is_non_empty(FatalErrors) then
+        else if set.is_non_empty(FatalErrors0) then
             output_read_done_msg(ReadDoneMsg, "fatal error(s).\n", !IO)
         else
+            % XXX CLEANUP Some of the errors are not PARSE errors.
             output_read_done_msg(ReadDoneMsg, "parse error(s).\n", !IO)
         ),
         (
-            FileKind = fk_opt(_)
+            FileKind = fk_opt(_),
+            Errors = Errors0
         ;
             ( FileKind = fk_src
             ; FileKind = fk_int(_)
@@ -725,8 +722,15 @@ handle_any_read_module_errors(Globals, FileKind, ReadDoneMsg,
                 ),
                 WriteOutErrors = yes
             ),
+            FatalErrorSpecs0 = Errors0 ^ rm_fatal_error_specs,
+            NonFatalErrorSpecs0 = Errors0 ^ rm_nonfatal_error_specs,
             pre_hlds_maybe_write_out_errors(WriteOutErrors, Globals,
-                !Specs, !IO),
+                FatalErrorSpecs0, FatalErrorSpecs, !IO),
+            pre_hlds_maybe_write_out_errors(WriteOutErrors, Globals,
+                NonFatalErrorSpecs0, NonFatalErrorSpecs, !IO),
+            Errors = ((Errors0
+                ^ rm_fatal_error_specs := FatalErrorSpecs)
+                ^ rm_nonfatal_error_specs := NonFatalErrorSpecs),
             io.set_exit_status(1, !IO)
         )
     ).
@@ -803,24 +807,24 @@ output_read_done_msg(ReadDoneMsg, Msg, !IO) :-
 
 maybe_read_module_int0(Globals, Search,
         ModuleName, FileName, ReturnTimestamp, MaybeTimestamp,
-        ParseTreeInt0, Specs, Errors, !HaveReadModuleMaps, !IO) :-
+        ParseTreeInt0, Errors, !HaveReadModuleMaps, !IO) :-
     OrigHaveReadModuleMapInt0 = !.HaveReadModuleMaps ^ hrmm_int0,
     ( if
         find_read_module_int0(OrigHaveReadModuleMapInt0, ModuleName,
             ReturnTimestamp, FileNamePrime, MaybeTimestampPrime,
-            ParseTreeInt0Prime, SpecsPrime, ErrorsPrime)
+            ParseTreeInt0Prime, ErrorsPrime)
     then
         FileName = FileNamePrime,
         MaybeTimestamp = MaybeTimestampPrime,
         ParseTreeInt0 = ParseTreeInt0Prime,
-        Specs = SpecsPrime,
         Errors = ErrorsPrime
     else
         read_module_int0(Globals, rrm_std(ModuleName),
             do_not_ignore_errors, Search, ModuleName, FileName,
             always_read_module(ReturnTimestamp), MaybeTimestamp,
-            ParseTreeInt0, Specs, Errors, !IO),
-        ( if set.member(rme_could_not_open_file, Errors) then
+            ParseTreeInt0, Errors, !IO),
+        FatalErrors = Errors ^ rm_fatal_errors,
+        ( if set.contains(FatalErrors, frme_could_not_open_file) then
             HaveReadModule = tried_to_read_module_failed,
             map.set(ModuleName, HaveReadModule,
                 OrigHaveReadModuleMapInt0, HaveReadModuleMapInt0)
@@ -828,7 +832,7 @@ maybe_read_module_int0(Globals, Search,
             expect(unify(ModuleName, ParseTreeInt0 ^ pti0_module_name), $pred,
                 "ModuleName != module name in ParseTreeInt0"),
             HaveReadModule = have_successfully_read_module(FileName,
-                MaybeTimestamp, ParseTreeInt0, Specs, Errors),
+                MaybeTimestamp, ParseTreeInt0, Errors),
             map.det_insert(ModuleName, HaveReadModule,
                 OrigHaveReadModuleMapInt0, HaveReadModuleMapInt0)
         ),
@@ -837,24 +841,24 @@ maybe_read_module_int0(Globals, Search,
 
 maybe_read_module_int1(Globals, Search,
         ModuleName, FileName, ReturnTimestamp, MaybeTimestamp,
-        ParseTreeInt1, Specs, Errors, !HaveReadModuleMaps, !IO) :-
+        ParseTreeInt1, Errors, !HaveReadModuleMaps, !IO) :-
     OrigHaveReadModuleMapInt1 = !.HaveReadModuleMaps ^ hrmm_int1,
     ( if
         find_read_module_int1(OrigHaveReadModuleMapInt1, ModuleName,
             ReturnTimestamp, FileNamePrime, MaybeTimestampPrime,
-            ParseTreeInt1Prime, SpecsPrime, ErrorsPrime)
+            ParseTreeInt1Prime, ErrorsPrime)
     then
         FileName = FileNamePrime,
         MaybeTimestamp = MaybeTimestampPrime,
         ParseTreeInt1 = ParseTreeInt1Prime,
-        Specs = SpecsPrime,
         Errors = ErrorsPrime
     else
         read_module_int1(Globals, rrm_std(ModuleName),
             do_not_ignore_errors, Search, ModuleName, FileName,
             always_read_module(ReturnTimestamp), MaybeTimestamp,
-            ParseTreeInt1, Specs, Errors, !IO),
-        ( if set.member(rme_could_not_open_file, Errors) then
+            ParseTreeInt1, Errors, !IO),
+        FatalErrors = Errors ^ rm_fatal_errors,
+        ( if set.contains(FatalErrors, frme_could_not_open_file) then
             HaveReadModule = tried_to_read_module_failed,
             map.set(ModuleName, HaveReadModule,
                 OrigHaveReadModuleMapInt1, HaveReadModuleMapInt1)
@@ -862,7 +866,7 @@ maybe_read_module_int1(Globals, Search,
             expect(unify(ModuleName, ParseTreeInt1 ^ pti1_module_name), $pred,
                 "ModuleName != module name in ParseTreeInt1"),
             HaveReadModule = have_successfully_read_module(FileName,
-                MaybeTimestamp, ParseTreeInt1, Specs, Errors),
+                MaybeTimestamp, ParseTreeInt1, Errors),
             map.det_insert(ModuleName, HaveReadModule,
                 OrigHaveReadModuleMapInt1, HaveReadModuleMapInt1)
         ),
@@ -871,24 +875,24 @@ maybe_read_module_int1(Globals, Search,
 
 maybe_read_module_int2(Globals, Search,
         ModuleName, FileName, ReturnTimestamp, MaybeTimestamp,
-        ParseTreeInt2, Specs, Errors, !HaveReadModuleMaps, !IO) :-
+        ParseTreeInt2, Errors, !HaveReadModuleMaps, !IO) :-
     OrigHaveReadModuleMapInt2 = !.HaveReadModuleMaps ^ hrmm_int2,
     ( if
         find_read_module_int2(OrigHaveReadModuleMapInt2, ModuleName,
             ReturnTimestamp, FileNamePrime, MaybeTimestampPrime,
-            ParseTreeInt2Prime, SpecsPrime, ErrorsPrime)
+            ParseTreeInt2Prime, ErrorsPrime)
     then
         FileName = FileNamePrime,
         MaybeTimestamp = MaybeTimestampPrime,
         ParseTreeInt2 = ParseTreeInt2Prime,
-        Specs = SpecsPrime,
         Errors = ErrorsPrime
     else
         read_module_int2(Globals, rrm_std(ModuleName),
             do_not_ignore_errors, Search, ModuleName, FileName,
             always_read_module(ReturnTimestamp), MaybeTimestamp,
-            ParseTreeInt2, Specs, Errors, !IO),
-        ( if set.member(rme_could_not_open_file, Errors) then
+            ParseTreeInt2, Errors, !IO),
+        FatalErrors = Errors ^ rm_fatal_errors,
+        ( if set.contains(FatalErrors, frme_could_not_open_file) then
             HaveReadModule = tried_to_read_module_failed,
             map.set(ModuleName, HaveReadModule,
                 OrigHaveReadModuleMapInt2, HaveReadModuleMapInt2)
@@ -896,7 +900,7 @@ maybe_read_module_int2(Globals, Search,
             expect(unify(ModuleName, ParseTreeInt2 ^ pti2_module_name), $pred,
                 "ModuleName != module name in ParseTreeInt2"),
             HaveReadModule = have_successfully_read_module(FileName,
-                MaybeTimestamp, ParseTreeInt2, Specs, Errors),
+                MaybeTimestamp, ParseTreeInt2, Errors),
             map.det_insert(ModuleName, HaveReadModule,
                 OrigHaveReadModuleMapInt2, HaveReadModuleMapInt2)
         ),
@@ -905,24 +909,24 @@ maybe_read_module_int2(Globals, Search,
 
 maybe_read_module_int3(Globals, Search,
         ModuleName, FileName, ReturnTimestamp, MaybeTimestamp,
-        ParseTreeInt3, Specs, Errors, !HaveReadModuleMaps, !IO) :-
+        ParseTreeInt3, Errors, !HaveReadModuleMaps, !IO) :-
     OrigHaveReadModuleMapInt3 = !.HaveReadModuleMaps ^ hrmm_int3,
     ( if
         find_read_module_int3(OrigHaveReadModuleMapInt3, ModuleName,
             ReturnTimestamp, FileNamePrime, MaybeTimestampPrime,
-            ParseTreeInt3Prime, SpecsPrime, ErrorsPrime)
+            ParseTreeInt3Prime, ErrorsPrime)
     then
         FileName = FileNamePrime,
         MaybeTimestamp = MaybeTimestampPrime,
         ParseTreeInt3 = ParseTreeInt3Prime,
-        Specs = SpecsPrime,
         Errors = ErrorsPrime
     else
         read_module_int3(Globals, rrm_std(ModuleName),
             do_not_ignore_errors, Search, ModuleName, FileName,
             always_read_module(ReturnTimestamp), MaybeTimestamp,
-            ParseTreeInt3, Specs, Errors, !IO),
-        ( if set.member(rme_could_not_open_file, Errors) then
+            ParseTreeInt3, Errors, !IO),
+        FatalErrors = Errors ^ rm_fatal_errors,
+        ( if set.contains(FatalErrors, frme_could_not_open_file) then
             HaveReadModule = tried_to_read_module_failed,
             map.set(ModuleName, HaveReadModule,
                 OrigHaveReadModuleMapInt3, HaveReadModuleMapInt3)
@@ -930,7 +934,7 @@ maybe_read_module_int3(Globals, Search,
             expect(unify(ModuleName, ParseTreeInt3 ^ pti3_module_name), $pred,
                 "ModuleName != module name in ParseTreeInt3"),
             HaveReadModule = have_successfully_read_module(FileName,
-                MaybeTimestamp, ParseTreeInt3, Specs, Errors),
+                MaybeTimestamp, ParseTreeInt3, Errors),
             map.det_insert(ModuleName, HaveReadModule,
                 OrigHaveReadModuleMapInt3, HaveReadModuleMapInt3)
         ),
@@ -940,75 +944,75 @@ maybe_read_module_int3(Globals, Search,
 %---------------------------------------------------------------------------%
 
 find_read_module_src(HaveReadModuleMapSrc, ModuleName, ReturnTimestamp,
-        FileName, MaybeTimestamp, ParseTreeSrc, Specs, Errors) :-
+        FileName, MaybeTimestamp, ParseTreeSrc, Errors) :-
     map.search(HaveReadModuleMapSrc, ModuleName, HaveReadModule),
     HaveReadModule = have_successfully_read_module(FileName, MaybeTimestamp0,
-        ParseTreeSrc, Specs, Errors),
+        ParseTreeSrc, Errors),
     return_timestamp_if_needed(ReturnTimestamp, MaybeTimestamp0,
         MaybeTimestamp).
 
 find_read_module_some_int(HaveReadModuleMaps, ModuleName, IntFileKind,
         ReturnTimestamp, FileName, MaybeTimestamp,
-        ParseTreeSomeInt, Specs, Errors) :-
+        ParseTreeSomeInt, Errors) :-
     (
         IntFileKind = ifk_int0,
         find_read_module_int0(HaveReadModuleMaps ^ hrmm_int0, ModuleName,
             ReturnTimestamp, FileName, MaybeTimestamp,
-            ParseTreeInt0, Specs, Errors),
+            ParseTreeInt0, Errors),
         ParseTreeSomeInt = parse_tree_some_int0(ParseTreeInt0)
     ;
         IntFileKind = ifk_int1,
         find_read_module_int1(HaveReadModuleMaps ^ hrmm_int1, ModuleName,
             ReturnTimestamp, FileName, MaybeTimestamp,
-            ParseTreeInt1, Specs, Errors),
+            ParseTreeInt1, Errors),
         ParseTreeSomeInt = parse_tree_some_int1(ParseTreeInt1)
     ;
         IntFileKind = ifk_int2,
         find_read_module_int2(HaveReadModuleMaps ^ hrmm_int2, ModuleName,
             ReturnTimestamp, FileName, MaybeTimestamp,
-            ParseTreeInt2, Specs, Errors),
+            ParseTreeInt2, Errors),
         ParseTreeSomeInt = parse_tree_some_int2(ParseTreeInt2)
     ;
         IntFileKind = ifk_int3,
         find_read_module_int3(HaveReadModuleMaps ^ hrmm_int3, ModuleName,
             ReturnTimestamp, FileName, MaybeTimestamp,
-            ParseTreeInt3, Specs, Errors),
+            ParseTreeInt3, Errors),
         ParseTreeSomeInt = parse_tree_some_int3(ParseTreeInt3)
     ).
 
 find_read_module_int0(HaveReadModuleMapInt0, ModuleName,
         ReturnTimestamp, FileName, MaybeTimestamp,
-        ParseTreeInt0, Specs, Errors) :-
+        ParseTreeInt0, Errors) :-
     map.search(HaveReadModuleMapInt0, ModuleName, HaveReadModule),
     HaveReadModule = have_successfully_read_module(FileName, MaybeTimestamp0,
-        ParseTreeInt0, Specs, Errors),
+        ParseTreeInt0, Errors),
     return_timestamp_if_needed(ReturnTimestamp, MaybeTimestamp0,
         MaybeTimestamp).
 
 find_read_module_int1(HaveReadModuleMapInt1, ModuleName,
         ReturnTimestamp, FileName, MaybeTimestamp,
-        ParseTreeInt1, Specs, Errors) :-
+        ParseTreeInt1, Errors) :-
     map.search(HaveReadModuleMapInt1, ModuleName, HaveReadModule),
     HaveReadModule = have_successfully_read_module(FileName, MaybeTimestamp0,
-        ParseTreeInt1, Specs, Errors),
+        ParseTreeInt1, Errors),
     return_timestamp_if_needed(ReturnTimestamp, MaybeTimestamp0,
         MaybeTimestamp).
 
 find_read_module_int2(HaveReadModuleMapInt2, ModuleName,
         ReturnTimestamp, FileName, MaybeTimestamp,
-        ParseTreeInt2, Specs, Errors) :-
+        ParseTreeInt2, Errors) :-
     map.search(HaveReadModuleMapInt2, ModuleName, HaveReadModule),
     HaveReadModule = have_successfully_read_module(FileName, MaybeTimestamp0,
-        ParseTreeInt2, Specs, Errors),
+        ParseTreeInt2, Errors),
     return_timestamp_if_needed(ReturnTimestamp, MaybeTimestamp0,
         MaybeTimestamp).
 
 find_read_module_int3(HaveReadModuleMapInt3, ModuleName,
         ReturnTimestamp, FileName, MaybeTimestamp,
-        ParseTreeInt3, Specs, Errors) :-
+        ParseTreeInt3, Errors) :-
     map.search(HaveReadModuleMapInt3, ModuleName, HaveReadModule),
     HaveReadModule = have_successfully_read_module(FileName, MaybeTimestamp0,
-        ParseTreeInt3, Specs, Errors),
+        ParseTreeInt3, Errors),
     return_timestamp_if_needed(ReturnTimestamp, MaybeTimestamp0,
         MaybeTimestamp).
 

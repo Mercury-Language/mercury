@@ -1307,8 +1307,8 @@ generate_dependencies_write_d_file(Globals, Dep,
     % Note that even if a fatal error occured for one of the files
     % that the current Module depends on, a .d file is still produced,
     % even though it probably contains incorrect information.
-    Errors = Baggage ^ mb_errors,
-    set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+    ModuleErrors = Baggage ^ mb_errors,
+    FatalErrors = ModuleErrors ^ rm_fatal_errors,
     ( if set.is_empty(FatalErrors) then
         init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit),
         BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
@@ -1374,7 +1374,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         ModuleNameString, SourceFileName, Version, FullArch),
 
     map.keys(DepsMap, Modules0),
-    select_ok_modules(Modules0, DepsMap, Modules1),
+    select_ok_modules(DepsMap, Modules0, Modules1),
     list.sort(compare_module_names, Modules1, Modules),
 
     module_name_to_make_var_name(ModuleName, ModuleMakeVarName),
@@ -1667,20 +1667,20 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
 
 %---------------------%
 
-:- pred select_ok_modules(list(module_name)::in, deps_map::in,
+:- pred select_ok_modules(deps_map::in, list(module_name)::in,
     list(module_name)::out) is det.
 
-select_ok_modules([], _, []).
-select_ok_modules([Module | Modules0], DepsMap, Modules) :-
-    select_ok_modules(Modules0, DepsMap, ModulesTail),
-    map.lookup(DepsMap, Module, deps(_, BurdenedModule)),
+select_ok_modules(_, [], []).
+select_ok_modules(DepsMap, [ModuleName | ModuleNames0], ModuleNames) :-
+    select_ok_modules(DepsMap, ModuleNames0, ModuleNamesTail),
+    map.lookup(DepsMap, ModuleName, deps(_, BurdenedModule)),
     Baggage = BurdenedModule ^ bm_baggage,
-    Errors = Baggage ^ mb_errors,
-    set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+    ModuleErrors = Baggage ^ mb_errors,
+    FatalErrors = ModuleErrors ^ rm_fatal_errors,
     ( if set.is_empty(FatalErrors) then
-        Modules = [Module | ModulesTail]
+        ModuleNames = [ModuleName | ModuleNamesTail]
     else
-        Modules = ModulesTail
+        ModuleNames = ModuleNamesTail
     ).
 
 %---------------------%

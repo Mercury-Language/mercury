@@ -120,6 +120,7 @@
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_qual.
+:- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_tree_out.
 :- import_module recompilation.
 :- import_module recompilation.version.
@@ -129,7 +130,6 @@
 :- import_module io.file.
 :- import_module list.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 
@@ -176,13 +176,13 @@ write_private_interface_file_int0(ProgressStream, ErrorStream, Globals,
         !HaveReadModuleMaps, !IO),
 
     % Check whether we succeeded.
-    GetSpecs = Baggage ^ mb_specs,
     GetErrors = Baggage ^ mb_errors,
+    GetSpecs = get_read_module_specs(GetErrors),
     GetSpecsEffectivelyErrors =
         contains_errors_or_warnings_treated_as_errors(Globals, GetSpecs),
     ( if
         GetSpecsEffectivelyErrors = no,
-        set.is_empty(GetErrors)
+        there_are_no_errors(GetErrors)
     then
         % Module-qualify all items.
         % XXX ITEM_LIST We don't need grab_unqual_imported_modules
@@ -245,13 +245,13 @@ write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
         !HaveReadModuleMaps, !IO),
 
     % Check whether we succeeded.
-    GetSpecs = Baggage ^ mb_specs,
     GetErrors = Baggage ^ mb_errors,
+    GetSpecs = get_read_module_specs(GetErrors),
     GetSpecsEffectivelyErrors =
         contains_errors_or_warnings_treated_as_errors(Globals, GetSpecs),
     ( if
         GetSpecsEffectivelyErrors = no,
-        set.is_empty(GetErrors)
+        there_are_no_errors(GetErrors)
     then
         % Module-qualify the aug_make_int_unit.
         %
@@ -434,8 +434,8 @@ maybe_read_old_int0_and_compare_for_smart_recomp(NoLineNumGlobals,
         read_module_int0(NoLineNumGlobals, rrm_old(ModuleName),
             ignore_errors, do_search, ModuleName, _OldIntFileName,
             always_read_module(dont_return_timestamp), _OldTimestamp,
-            OldParseTreeInt0, _OldSpecs, OldErrors, !IO),
-        ( if set.is_empty(OldErrors) then
+            OldParseTreeInt0, OldModuleErrors, !IO),
+        ( if there_are_no_errors(OldModuleErrors) then
             MaybeOldParseTreeInt0 = yes(OldParseTreeInt0)
         else
             % If we can't read in the old file, the timestamps will
@@ -467,8 +467,8 @@ maybe_read_old_int1_and_compare_for_smart_recomp(NoLineNumGlobals,
         read_module_int1(NoLineNumGlobals, rrm_old(ModuleName),
             ignore_errors, do_search, ModuleName, _OldIntFileName,
             always_read_module(dont_return_timestamp), _OldTimestamp,
-            OldParseTreeInt1, _OldSpecs, OldErrors, !IO),
-        ( if set.is_empty(OldErrors) then
+            OldParseTreeInt1, OldModuleErrors, !IO),
+        ( if there_are_no_errors(OldModuleErrors) then
             MaybeOldParseTreeInt1 = yes(OldParseTreeInt1)
         else
             % If we can't read in the old file, the timestamps will
@@ -500,8 +500,8 @@ maybe_read_old_int2_and_compare_for_smart_recomp(NoLineNumGlobals,
         read_module_int2(NoLineNumGlobals, rrm_old(ModuleName),
             ignore_errors, do_search, ModuleName, _OldIntFileName,
             always_read_module(dont_return_timestamp), _OldTimestamp,
-            OldParseTreeInt2, _OldSpecs, OldErrors, !IO),
-        ( if set.is_empty(OldErrors) then
+            OldParseTreeInt2, OldModuleErrors, !IO),
+        ( if there_are_no_errors(OldModuleErrors) then
             MaybeOldParseTreeInt2 = yes(OldParseTreeInt2)
         else
             % If we can't read in the old file, the timestamps will

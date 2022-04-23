@@ -128,8 +128,7 @@ make_hlds_pass(Globals, OpModeAugment, WriteDFile0, Baggage0, AugCompUnit0,
         !HaveReadModuleMaps, !IO),
     MaybeTimestampMap = Baggage1 ^ mb_maybe_timestamp_map,
 
-    % We pay attention to IntermodError instead of _Error. XXX Is this right?
-    !:Specs = Baggage1 ^ mb_specs ++ !.Specs,
+    !:Specs = get_read_module_specs(Baggage1 ^ mb_errors) ++ !.Specs,
 
     globals.lookup_string_option(Globals, event_set_file_name,
         EventSetFileName),
@@ -166,7 +165,6 @@ make_hlds_pass(Globals, OpModeAugment, WriteDFile0, Baggage0, AugCompUnit0,
     maybe_report_stats(Stats, !IO),
 
     mq_info_get_recompilation_info(MQInfo0, RecompInfo0),
-    pre_hlds_maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose,
         "% Expanding equivalence types and insts...\n", !IO),
     maybe_flush_output(Verbose, !IO),
@@ -220,8 +218,7 @@ make_hlds_pass(Globals, OpModeAugment, WriteDFile0, Baggage0, AugCompUnit0,
         module_info_get_all_deps(HLDS0, AllDeps),
         % XXX When creating the .d and .module_dep files, why are we using
         % BurdenedAugCompUnit0 instead of BurdenedAugCompUnit1?
-        BurdenedAugCompUnit0 =
-            burdened_aug_comp_unit(Baggage0, AugCompUnit0),
+        BurdenedAugCompUnit0 = burdened_aug_comp_unit(Baggage0, AugCompUnit0),
         write_dependency_file(Globals, BurdenedAugCompUnit0,
             no_intermod_deps, AllDeps, MaybeTransOptDeps, !IO),
         globals.lookup_bool_option(Globals,
@@ -372,8 +369,8 @@ maybe_read_d_file_for_trans_opt_deps(Globals, ModuleName,
             maybe_write_string(Verbose, " failed.\n", !IO),
             maybe_flush_output(Verbose, !IO),
             io.error_message(IOError, IOErrorMessage),
-            string.append_list(["error opening file `", DependencyFileName,
-                "' for input: ", IOErrorMessage], Message),
+            string.format("error opening file `%s for input: %s",
+                [s(DependencyFileName), s(IOErrorMessage)], Message),
             report_error(Message, !IO),
             MaybeTransOptDeps = no
         )
@@ -466,7 +463,7 @@ maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
             !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO),
         maybe_write_string(Verbose, "% Done.\n", !IO)
     else
-        PlainOptError = no
+        PlainOptError = no_opt_file_error
     ),
     (
         OpModeAugment = opmau_make_trans_opt,
@@ -478,7 +475,7 @@ maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
                 !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO)
         ;
             MaybeTransOptDeps = no,
-            TransOptError = no,
+            TransOptError = no_opt_file_error,
             ParseTreeModuleSrc = !.AugCompUnit ^ acu_module_src,
             ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
             globals.lookup_bool_option(Globals, warn_missing_trans_opt_deps,
@@ -501,7 +498,7 @@ maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
         % If we are making the `.opt' file, then we cannot read any
         % `.trans_opt' files, since `.opt' files aren't allowed to depend on
         % `.trans_opt' files.
-        TransOptError = no
+        TransOptError = no_opt_file_error
     ;
         ( OpModeAugment = opmau_make_analysis_registry
         ; OpModeAugment = opmau_make_xml_documentation
@@ -531,10 +528,17 @@ maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
                 !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO)
         ;
             TransOpt = no,
-            TransOptError = no
+            TransOptError = no_opt_file_error
         )
     ),
-    bool.or(PlainOptError, TransOptError, Error).
+    ( if
+        PlainOptError = no_opt_file_error,
+        TransOptError = no_opt_file_error
+    then
+        Error = no
+    else
+        Error = yes
+    ).
 
 %---------------------%
 

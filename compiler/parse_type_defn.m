@@ -296,7 +296,7 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
                 IOM = iom_item(Item)
             ;
                 RecoverableSpecs = [_ | _],
-                IOM = iom_item_and_specs(Item, RecoverableSpecs)
+                IOM = iom_item_and_error_specs(Item, RecoverableSpecs)
             ),
             MaybeIOM = ok1(IOM)
         ;

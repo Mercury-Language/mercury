@@ -78,9 +78,8 @@
 
                 mb_grabbed_file_map         :: grabbed_file_map,
 
-                % Whether an error has been encountered when reading in
-                % this module.
-                mb_specs                    :: list(error_spec),
+                % Any errors we have encountered when reading in this module,
+                % and their diagnostics.
                 mb_errors                   :: read_module_errors
             ).
 
@@ -247,8 +246,7 @@
     %
 :- pred parse_tree_src_to_burdened_module_list(globals::in,
     file_name::in, parse_tree_src::in, read_module_errors::in,
-    list(error_spec)::in, list(error_spec)::out,
-    list(burdened_module)::out) is det.
+    list(error_spec)::out, list(burdened_module)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -296,31 +294,46 @@ get_nested_children_list_of_top_module(MaybeTopModule) = Modules :-
 %---------------------------------------------------------------------------%
 
 parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
-        ParseTreeSrc, ReadModuleErrors, !Specs, BurdenedModules) :-
-    % XXX This predicate and augment_and_process_all_submodules
-    % do very similar jobs. See whether we can unify the two.
+        ParseTreeSrc, ReadModuleErrors, !:Specs, BurdenedModules) :-
+    !:Specs = get_read_module_specs(ReadModuleErrors),
     split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
         ParseTreeModuleSrcs, !Specs),
     ParseTreeSrc = parse_tree_src(TopModuleName, _, _),
     AllModuleNames = set.list_to_set(
         list.map(parse_tree_module_src_project_name, ParseTreeModuleSrcs)),
-    BaggageSpecs0 = [],
-    % XXX This will create a separate grabbed_file_map in each element
-    % or BurdenedAugCompUnitList. It would be better for our caller
-    % to thread a single grabbed_file_map through the augment processing
-    % of all its aug_compilation_units.
+    % Including all the error_specs in ReadModuleErrors in *all* of the
+    % modules in ParseTreeSrc would needlessly duplicate them in situations
+    % in which ParseTreeSrc contains more than one module. We could avoid
+    % this duplication by adding the error_specs only to the baggage
+    % of the top-level module, or by adding the error_specs to the baggage
+    % of none of the modules, returning them as a separate output argument.
+    % We do the latter, both because it is simpler, and because (with our
+    % current design) there is no way to tell which submodule any error_spec
+    % actually complains about.
+    %
+    % We do duplicate the sets of error kinds, both fatal and nonfatal,
+    % in ReadModuleErrors, once for each module in ParseTreeSrc.
+    % This is an overestimation, since it associates each error kind
+    % not just with the (sub)module in which it occurred, but with
+    % all (sub)modules. However, (a) this is the best we can do without
+    % recording error kinds per submodule, not per file, and (b) this
+    % overestimation does not prevent us from doing anything we want to do,
+    % or are even are likely to want to do in the foreseeable future.
+    ReadModuleErrors =
+        read_module_errors(FatalErrors, _, NonFatalErrors, _, _),
+    NoSpecReadModuleErrors =
+        read_module_errors(FatalErrors, [], NonFatalErrors, [], []),
     list.map(
         maybe_nested_init_burdened_module(SourceFileName,
-            TopModuleName, AllModuleNames, BaggageSpecs0, ReadModuleErrors),
+            TopModuleName, AllModuleNames, NoSpecReadModuleErrors),
         ParseTreeModuleSrcs, BurdenedModules).
 
 :- pred maybe_nested_init_burdened_module(file_name::in,
-    module_name::in, set(module_name)::in,
-    list(error_spec)::in, read_module_errors::in,
+    module_name::in, set(module_name)::in, read_module_errors::in,
     parse_tree_module_src::in, burdened_module::out) is det.
 
 maybe_nested_init_burdened_module(SourceFileName,
-        SourceFileModuleName, AllModuleNames, Specs, Errors,
+        SourceFileModuleName, AllModuleNames, ReadModuleErrors,
         ParseTreeModuleSrc, BurdenedModule) :-
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ( if ModuleName = SourceFileModuleName then
@@ -333,7 +346,7 @@ maybe_nested_init_burdened_module(SourceFileName,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     Baggage = module_baggage(SourceFileName, dir.this_directory,
         SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
-        GrabbedFileMap, Specs, Errors),
+        GrabbedFileMap, ReadModuleErrors),
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc).
 
 %---------------------------------------------------------------------------%
