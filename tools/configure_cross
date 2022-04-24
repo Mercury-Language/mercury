@@ -71,7 +71,7 @@ fi
 
 # Set values which would otherwise be determined with AC_TRY_RUN.
 case $host in
-    i686-*-mingw32 | x86_64-*-mingw32)
+    i686-*-mingw32* | x86_64-*-mingw32*)
         # Taken from the config.cache file after running configure -C in msys.
         mercury_cv_cc_type=gcc
         mercury_cv_siginfo_t=no
