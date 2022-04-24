@@ -4393,9 +4393,9 @@ should_reduce_stack_usage(yes).
         does_not_affect_liveness],
 "
 #ifdef  MR_EXEC_TRACE
-    ShouldReduce = MR_TRUE;
+    ShouldReduce = MR_YES;
 #else
-    ShouldReduce = MR_FALSE;
+    ShouldReduce = MR_NO;
 #endif
 ").
 
