@@ -825,6 +825,11 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
     prepare_to_redirect_output(ModuleName, MaybeErrorStream, !Info, !IO),
     (
         MaybeErrorStream = yes(ErrorStream),
+        % Both make_module_dependencies_fatal_error and
+        % make_module_dependencies_no_fatal_error call unredirect_output,
+        % but factoring that call out of the latter would be non-trivial,
+        % and is better left for when we replace the whole redirect/unredirect
+        % machinery with the use of explicit streams.
         io.set_output_stream(ErrorStream, OldOutputStream, !IO),
         % XXX Why ask for the timestamp if we then ignore it?
         read_module_src(Globals, rrm_get_deps(ModuleName),
@@ -836,126 +841,138 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         FatalErrors = ReadModuleErrors ^ rm_fatal_errors,
         NonFatalErrors = ReadModuleErrors ^ rm_nonfatal_errors,
         ( if set.is_non_empty(FatalErrors) then
-            FatalReadError = yes,
-            DisplayErrorReadingFile = yes
+            DisplayErrorReadingFile = yes,
+            make_module_dependencies_fatal_error(Globals,
+                OldOutputStream, ErrorStream, SourceFileName, ModuleName,
+                ReadModuleErrors, DisplayErrorReadingFile, !Info, !IO)
         else if set.contains(NonFatalErrors, rme_unexpected_module_name) then
             % If the source file does not contain the expected module, then
             % do not make the .module_dep file; it would leave a .module_dep
             % file for the wrong module lying around, which the user needs
             % to delete manually.
-            FatalReadError = yes,
-            DisplayErrorReadingFile = no
+            DisplayErrorReadingFile = no,
+            make_module_dependencies_fatal_error(Globals,
+                OldOutputStream, ErrorStream, SourceFileName, ModuleName,
+                ReadModuleErrors, DisplayErrorReadingFile, !Info, !IO)
         else
-            FatalReadError = no,
-            DisplayErrorReadingFile = no
-        ),
-        (
-            FatalReadError = yes,
-            Specs0 = get_read_module_specs(ReadModuleErrors),
-            write_error_specs(ErrorStream, Globals, Specs0, !IO),
-            io.set_output_stream(OldOutputStream, _, !IO),
-            (
-                DisplayErrorReadingFile = yes,
-                io.format(
-                    "** Error reading file `%s' to generate dependencies.\n",
-                    [s(SourceFileName)], !IO),
-                maybe_write_importing_module(ModuleName,
-                    !.Info ^ mki_importing_module, !IO)
-            ;
-                DisplayErrorReadingFile = no
-            ),
-
-            % Display the contents of the `.err' file, then remove it
-            % so we don't leave `.err' files lying around for nonexistent
-            % modules.
-            globals.set_option(output_compile_error_lines, int(10000),
-                Globals, UnredirectGlobals),
-            unredirect_output(UnredirectGlobals, ModuleName, ErrorStream,
-                !Info, !IO),
-            module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-                ext_other(other_ext(".err")), ModuleName, ErrFileName, !IO),
-            io.file.remove_file(ErrFileName, _, !IO),
-
-            ModuleDepMap0 = !.Info ^ mki_module_dependencies,
-            % XXX Could this be map.det_update?
-            map.set(ModuleName, no_module_dep_info,
-                ModuleDepMap0, ModuleDepMap),
-            !Info ^ mki_module_dependencies := ModuleDepMap
-        ;
-            FatalReadError = no,
-            parse_tree_src_to_burdened_module_list(Globals,
-                SourceFileName, ParseTreeSrc, ReadModuleErrors, Specs,
-                BurdenedModules),
-            ParseTreeModuleSrcs = list.map(
-                (func(burdened_module(_, PTMS)) = PTMS),
-                BurdenedModules),
-            SubModuleNames = list.map(parse_tree_module_src_project_name,
-                 ParseTreeModuleSrcs),
-
-            io.set_output_stream(ErrorStream, _, !IO),
-            % XXX Why are we ignoring all previously reported errors?
-            io.set_exit_status(0, !IO),
-            write_error_specs(Globals, Specs, !IO),
-            io.set_output_stream(OldOutputStream, _, !IO),
-
-            list.foldl(make_info_add_module_and_imports_as_dep,
-                BurdenedModules, !Info),
-
-            % If there were no errors, write out the `.int3' file
-            % while we have the contents of the module. The `int3' file
-            % does not depend on anything else.
-            globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-            % We already know FatalReadError is empty.
-            ( if set.is_empty(NonFatalErrors) then
-                Target = target_file(ModuleName, module_target_int3),
-                maybe_make_target_message_to_stream(Globals, OldOutputStream,
-                    Target, !IO),
-                setup_checking_for_interrupt(CookieMSI, !IO),
-
-                DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
-                OptionVariables = !.Info ^ mki_options_variables,
-                OptionArgs = !.Info ^ mki_option_args,
-                ExtraOptions = ["--make-short-interface"],
-                setup_for_build_with_module_options(invoked_by_mmc_make,
-                    ModuleName, DetectedGradeFlags, OptionVariables,
-                    OptionArgs, ExtraOptions, MayBuild, !IO),
-                (
-                    MayBuild = may_not_build(MSISpecs),
-                    write_error_specs(ErrorStream, Globals,
-                        MSISpecs, !IO),
-                    Succeeded0 = did_not_succeed
-                ;
-                    MayBuild = may_build(_AllOptions, BuildGlobals),
-                    % Printing progress to the current output stream
-                    % preserves old behavior.
-                    % XXX Our caller should pass us ProgressStream.
-                    io.output_stream(ProgressStream, !IO),
-                    make_int3_files(ProgressStream, ErrorStream, BuildGlobals,
-                        ParseTreeModuleSrcs, Succeeded0, !Info, !IO)
-                ),
-
-                CleanupMSI = cleanup_int3_files(Globals, SubModuleNames),
-                teardown_checking_for_interrupt(VeryVerbose, CookieMSI,
-                    CleanupMSI, Succeeded0, Succeeded, !Info, !IO)
-            else
-                Succeeded = did_not_succeed
-            ),
-
-            setup_checking_for_interrupt(CookieWMDF, !IO),
-            list.foldl(do_write_module_dep_file(Globals),
-                BurdenedModules, !IO),
-            CleanupWMDF = cleanup_module_dep_files(Globals, SubModuleNames),
-            teardown_checking_for_interrupt(VeryVerbose, CookieWMDF,
-                CleanupWMDF, succeeded, _Succeeded, !Info, !IO),
-
-            MadeTarget = target_file(ModuleName, module_target_int3),
-            record_made_target(Globals, MadeTarget,
-                process_module(task_make_int3), Succeeded, !Info, !IO),
-            unredirect_output(Globals, ModuleName, ErrorStream, !Info, !IO)
+            make_module_dependencies_no_fatal_error(Globals,
+                OldOutputStream, ErrorStream, SourceFileName, ModuleName,
+                ParseTreeSrc, ReadModuleErrors, !Info, !IO)
         )
     ;
         MaybeErrorStream = no
     ).
+
+:- pred make_module_dependencies_fatal_error(globals::in,
+    io.text_output_stream::in, io.text_output_stream::in,
+    file_name::in, module_name::in, read_module_errors::in, bool::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+make_module_dependencies_fatal_error(Globals, OldOutputStream, ErrorStream,
+        SourceFileName, ModuleName, ReadModuleErrors, DisplayErrorReadingFile,
+        !Info, !IO) :-
+    Specs0 = get_read_module_specs(ReadModuleErrors),
+    write_error_specs(ErrorStream, Globals, Specs0, !IO),
+    io.set_output_stream(OldOutputStream, _, !IO),
+    (
+        DisplayErrorReadingFile = yes,
+        io.format("** Error reading file `%s' to generate dependencies.\n",
+            [s(SourceFileName)], !IO),
+        maybe_write_importing_module(ModuleName,
+            !.Info ^ mki_importing_module, !IO)
+    ;
+        DisplayErrorReadingFile = no
+    ),
+
+    % Display the contents of the `.err' file, then remove it
+    % so we don't leave `.err' files lying around for nonexistent modules.
+    globals.set_option(output_compile_error_lines, int(10000),
+        Globals, UnredirectGlobals),
+    unredirect_output(UnredirectGlobals, ModuleName, ErrorStream, !Info, !IO),
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(other_ext(".err")), ModuleName, ErrFileName, !IO),
+    io.file.remove_file(ErrFileName, _, !IO),
+
+    ModuleDepMap0 = !.Info ^ mki_module_dependencies,
+    % XXX Could this be map.det_update?
+    map.set(ModuleName, no_module_dep_info, ModuleDepMap0, ModuleDepMap),
+    !Info ^ mki_module_dependencies := ModuleDepMap.
+
+:- pred make_module_dependencies_no_fatal_error(globals::in,
+    io.text_output_stream::in, io.text_output_stream::in,
+    file_name::in, module_name::in, parse_tree_src::in,
+    read_module_errors::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
+        SourceFileName, ModuleName, ParseTreeSrc, ReadModuleErrors,
+        !Info, !IO) :-
+    parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
+        ParseTreeSrc, ReadModuleErrors, Specs, BurdenedModules),
+    ParseTreeModuleSrcs = list.map((func(burdened_module(_, PTMS)) = PTMS),
+        BurdenedModules),
+    SubModuleNames = list.map(parse_tree_module_src_project_name,
+         ParseTreeModuleSrcs),
+
+    io.set_output_stream(ErrorStream, _, !IO),
+    % XXX Why are we ignoring all previously reported errors?
+    io.set_exit_status(0, !IO),
+    write_error_specs(Globals, Specs, !IO),
+    io.set_output_stream(OldOutputStream, _, !IO),
+
+    list.foldl(make_info_add_module_and_imports_as_dep,
+        BurdenedModules, !Info),
+
+    % If there were no errors, write out the `.int3' file
+    % while we have the contents of the module. The `int3' file
+    % does not depend on anything else.
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    % We already know FatalReadError is empty.
+    NonFatalErrors = ReadModuleErrors ^ rm_nonfatal_errors,
+    ( if set.is_empty(NonFatalErrors) then
+        Target = target_file(ModuleName, module_target_int3),
+        maybe_make_target_message_to_stream(Globals, OldOutputStream,
+            Target, !IO),
+        setup_checking_for_interrupt(CookieMSI, !IO),
+
+        DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
+        OptionVariables = !.Info ^ mki_options_variables,
+        OptionArgs = !.Info ^ mki_option_args,
+        ExtraOptions = ["--make-short-interface"],
+        setup_for_build_with_module_options(invoked_by_mmc_make,
+            ModuleName, DetectedGradeFlags, OptionVariables,
+            OptionArgs, ExtraOptions, MayBuild, !IO),
+        (
+            MayBuild = may_not_build(MSISpecs),
+            write_error_specs(ErrorStream, Globals, MSISpecs, !IO),
+            Succeeded0 = did_not_succeed
+        ;
+            MayBuild = may_build(_AllOptions, BuildGlobals),
+            % Printing progress to the current output stream
+            % preserves old behavior.
+            % XXX Our caller should pass us ProgressStream.
+            io.output_stream(ProgressStream, !IO),
+            make_int3_files(ProgressStream, ErrorStream, BuildGlobals,
+                ParseTreeModuleSrcs, Succeeded0, !Info, !IO)
+        ),
+
+        CleanupMSI = cleanup_int3_files(Globals, SubModuleNames),
+        teardown_checking_for_interrupt(VeryVerbose, CookieMSI,
+            CleanupMSI, Succeeded0, Succeeded, !Info, !IO)
+    else
+        Succeeded = did_not_succeed
+    ),
+
+    setup_checking_for_interrupt(CookieWMDF, !IO),
+    list.foldl(do_write_module_dep_file(Globals), BurdenedModules, !IO),
+    CleanupWMDF = cleanup_module_dep_files(Globals, SubModuleNames),
+    teardown_checking_for_interrupt(VeryVerbose, CookieWMDF,
+        CleanupWMDF, succeeded, _Succeeded, !Info, !IO),
+
+    MadeTarget = target_file(ModuleName, module_target_int3),
+    record_made_target(Globals, MadeTarget,
+        process_module(task_make_int3), Succeeded, !Info, !IO),
+    unredirect_output(Globals, ModuleName, ErrorStream, !Info, !IO).
 
 :- pred make_info_add_module_and_imports_as_dep(burdened_module::in,
     make_info::in, make_info::out) is det.
