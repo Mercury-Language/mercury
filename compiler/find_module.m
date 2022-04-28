@@ -96,17 +96,17 @@ search_for_module_source_and_stream(Dirs, ModuleName,
 
 find_source_error(ModuleName, Dirs, MaybeBetterMatch) = Msg :-
     ModuleNameStr = sym_name_to_string(ModuleName),
-    Msg0 = "cannot find source for module `" ++ ModuleNameStr ++
-        "' in directories " ++
-        string.join_list(", ",
-            map((func(Dir) = "`" ++ Dir ++ "'"), Dirs)),
+    WrapInQuotes = (func(N) = "`" ++ N ++ "'"),
+    DirsStr = string.join_list(", ", list.map(WrapInQuotes, Dirs)),
+    string.format("cannot find source for module `%s' in directories %s",
+        [s(ModuleNameStr), s(DirsStr)], Msg0),
     (
         MaybeBetterMatch = no,
         Msg = Msg0
     ;
         MaybeBetterMatch = yes(BetterMatchFile),
-        Msg = Msg0 ++ ", but found " ++ BetterMatchFile ++
-            " in interface search path"
+        string.format("%s, but found `%s' in interface search path",
+            [s(Msg0), s(BetterMatchFile)], Msg)
     ).
 
 %---------------------------------------------------------------------------%
