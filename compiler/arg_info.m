@@ -128,9 +128,12 @@
     % proc_info of the callee, we need to pass the types of the arguments
     % (in the caller) separately.
     %
-:- pred partition_proc_call_args(proc_info::in, vartypes::in,
-    module_info::in, list(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::out, set(prog_var)::out) is det.
+:- pred partition_proc_call_args(module_info::in, proc_info::in,
+    vartypes::in, list(prog_var)::in,
+    set(prog_var)::out, set(prog_var)::out, set(prog_var)::out) is det.
+:- pred partition_proc_call_args_table(module_info::in, proc_info::in,
+    var_table::in, list(prog_var)::in,
+    set(prog_var)::out, set(prog_var)::out, set(prog_var)::out) is det.
 
     % Like partition_proc_call_args, but partitions the actual
     % arguments of a generic call, so instead of looking up the types and modes
@@ -692,10 +695,17 @@ partition_proc_args(ProcInfo, ModuleInfo, Inputs, Outputs, Unuseds) :-
     do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         Inputs, Outputs, Unuseds).
 
-partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo, Vars,
+partition_proc_call_args(ModuleInfo, ProcInfo, VarTypes, Vars,
         Inputs, Outputs, Unuseds) :-
     proc_info_get_argmodes(ProcInfo, Modes),
     lookup_var_types(VarTypes, Vars, Types),
+    do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
+        Inputs, Outputs, Unuseds).
+
+partition_proc_call_args_table(ModuleInfo, ProcInfo, VarTable, Vars,
+        Inputs, Outputs, Unuseds) :-
+    proc_info_get_argmodes(ProcInfo, Modes),
+    lookup_var_types(VarTable, Vars, Types),
     do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         Inputs, Outputs, Unuseds).
 
@@ -711,7 +721,7 @@ partition_generic_call_args(ModuleInfo, Vars, Types, Modes,
 do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         !:Inputs, !:Outputs, !:Unuseds) :-
     ( if
-        partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
+        partition_proc_args_2(ModuleInfo, Vars, Types, Modes,
             set.init, !:Inputs, set.init, !:Outputs,
             set.init, !:Unuseds)
     then
@@ -720,16 +730,16 @@ do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         unexpected($pred, "list length mismatch")
     ).
 
-:- pred partition_proc_args_2(list(prog_var)::in, list(mer_type)::in,
-    list(mer_mode)::in, module_info::in,
+:- pred partition_proc_args_2(module_info::in, list(prog_var)::in,
+    list(mer_type)::in, list(mer_mode)::in,
     set(prog_var)::in, set(prog_var)::out,
     set(prog_var)::in, set(prog_var)::out,
     set(prog_var)::in, set(prog_var)::out) is semidet.
 
-partition_proc_args_2([], [], [], _ModuleInfo,
+partition_proc_args_2(_ModuleInfo, [], [], [],
         !Inputs, !Outputs, !Unuseds).
-partition_proc_args_2([Var | Vars], [Type | Types], [Mode | Modes],
-        ModuleInfo, !Inputs, !Outputs, !Unuseds) :-
+partition_proc_args_2(ModuleInfo, [Var | Vars], [Type | Types], [Mode | Modes],
+        !Inputs, !Outputs, !Unuseds) :-
     require_det (
         mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
         (
@@ -743,7 +753,7 @@ partition_proc_args_2([Var | Vars], [Type | Types], [Mode | Modes],
             set.insert(Var, !Unuseds)
         )
     ),
-    partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
+    partition_proc_args_2(ModuleInfo, Vars, Types, Modes,
         !Inputs, !Outputs, !Unuseds).
 
 %---------------------------------------------------------------------------%

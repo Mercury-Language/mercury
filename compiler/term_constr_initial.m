@@ -66,7 +66,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_errors.
 :- import_module transform_hlds.term_constr_main_types.
@@ -379,23 +379,23 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
             PredOrigin = origin_special_pred(SpecialPredId, _)
         )
     then
-        set_generated_terminates(ProcIds, SpecialPredId, ModuleInfo,
+        set_generated_terminates(ModuleInfo, SpecialPredId, ProcIds,
             !ProcTable)
     else
         fail
     ).
 
-:- pred set_generated_terminates(list(proc_id)::in, special_pred_id::in,
-    module_info::in, proc_table::in, proc_table::out) is det.
+:- pred set_generated_terminates(module_info::in, special_pred_id::in,
+    list(proc_id)::in, proc_table::in, proc_table::out) is det.
 
-set_generated_terminates([], _, _, !ProcTable).
-set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
+set_generated_terminates(_, _, [], !ProcTable).
+set_generated_terminates(ModuleInfo, SpecialPredId, [ProcId | ProcIds],
         !ProcTable) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     proc_info_get_headvars(ProcInfo0, HeadVars),
-    proc_info_get_varset_vartypes(ProcInfo0, _VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo0, VarTable),
     special_pred_id_to_termination(SpecialPredId, HeadVars, ModuleInfo,
-        VarTypes, ArgSize, Termination, VarMap, HeadSizeVars),
+        VarTable, ArgSize, Termination, VarMap, HeadSizeVars),
     some [!Term2Info] (
         proc_info_get_termination2_info(ProcInfo0, !:Term2Info),
         term2_info_set_success_constrs(yes(ArgSize), !Term2Info),
@@ -408,27 +408,27 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
         proc_info_set_termination2_info(!.Term2Info, ProcInfo0, ProcInfo)
     ),
     map.det_update(ProcId, ProcInfo, !ProcTable),
-    set_generated_terminates(ProcIds, SpecialPredId, ModuleInfo, !ProcTable).
+    set_generated_terminates(ModuleInfo, SpecialPredId, ProcIds, !ProcTable).
 
     % Handle the generation of constraints for special predicates.
     % XXX argument size constraints for unify predicates for types
     % with user-defined equality may not be correct.
     %
 :- pred special_pred_id_to_termination(special_pred_id::in, prog_vars::in,
-    module_info::in, vartypes::in, constr_arg_size_info::out,
+    module_info::in, var_table::in, constr_arg_size_info::out,
     constr_termination_info::out, size_var_map::out, size_vars::out) is det.
 
 special_pred_id_to_termination(SpecialPredId, HeadProgVars, ModuleInfo,
-        VarTypes, ArgSizeInfo, Termination, SizeVarMap, HeadSizeVars) :-
+        VarTable, ArgSizeInfo, Termination, SizeVarMap, HeadSizeVars) :-
     (
         SpecialPredId = spec_pred_compare,
-        make_spec_pred_constr_term_info(HeadProgVars, ModuleInfo, VarTypes,
+        make_spec_pred_constr_term_info(HeadProgVars, ModuleInfo, VarTable,
             ArgSizeInfo, Termination, SizeVarMap, HeadSizeVars)
     ;
         SpecialPredId = spec_pred_unify,
         make_size_var_map(HeadProgVars, _SizeVarset, SizeVarMap),
         HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadProgVars),
-        Zeros = find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes),
+        Zeros = find_zero_size_vars(ModuleInfo, VarTable, SizeVarMap),
         NonZeroHeadSizeVars = list.filter(isnt(is_zero_size_var(Zeros)),
             HeadSizeVars),
         % Unify may have more than two input arguments if one of them is a
@@ -455,7 +455,7 @@ special_pred_id_to_termination(SpecialPredId, HeadProgVars, ModuleInfo,
         SpecialPredId = spec_pred_index,
         NumToDrop = list.length(HeadProgVars) - 2,
         ( if list.drop(NumToDrop, HeadProgVars, _ZeroSizeHeadVars) then
-            make_spec_pred_constr_term_info(HeadProgVars, ModuleInfo, VarTypes,
+            make_spec_pred_constr_term_info(HeadProgVars, ModuleInfo, VarTable,
                 ArgSizeInfo, Termination, SizeVarMap, HeadSizeVars)
         else
             unexpected($pred, "less than two arguments to builtin index")
@@ -467,13 +467,13 @@ special_pred_id_to_termination(SpecialPredId, HeadProgVars, ModuleInfo,
     % are either zero sized or unconstrained in size.
     %
 :- pred make_spec_pred_constr_term_info(list(prog_var)::in, module_info::in,
-    vartypes::in, constr_arg_size_info::out, constr_termination_info::out,
+    var_table::in, constr_arg_size_info::out, constr_termination_info::out,
     size_var_map::out, size_vars::out) is det.
 
-make_spec_pred_constr_term_info(HeadProgVars, ModuleInfo, VarTypes,
+make_spec_pred_constr_term_info(HeadProgVars, ModuleInfo, VarTable,
         ArgSize, Termination, SizeVarMap, HeadSizeVars) :-
     make_size_var_map(HeadProgVars, _SizeVarset, SizeVarMap),
-    Zeros = find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes),
+    Zeros = find_zero_size_vars(ModuleInfo, VarTable, SizeVarMap),
     Constraints = create_nonneg_constraints(SizeVarMap, Zeros),
     Polyhedron = polyhedron.from_constraints(Constraints),
     ArgSize = Polyhedron,

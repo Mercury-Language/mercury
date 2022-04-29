@@ -688,6 +688,13 @@
     is_address_taken::in, has_parallel_conj::in, pred_proc_id::out,
     list(prog_var)::in, list(prog_var)::out, hlds_goal::in, hlds_goal::out,
     module_info::in, module_info::out) is det.
+:- pred define_new_pred_vt(sym_name::in, pred_origin::in,
+    tvarset::in, inst_varset::in, var_table::in,
+    rtti_varmaps::in, prog_constraints::in, instmap::in,
+    map(prog_var, string)::in, pred_markers::in,
+    is_address_taken::in, has_parallel_conj::in, pred_proc_id::out,
+    list(prog_var)::in, list(prog_var)::out, hlds_goal::in, hlds_goal::out,
+    module_info::in, module_info::out) is det.
 
     % Various predicates for accessing the information stored in the
     % pred_id and pred_info data structures.
@@ -1505,6 +1512,16 @@ define_new_pred(PredSymName, Origin, TVarSet, InstVarSet,
         plain_call(PredId, ProcId, ArgVars, not_builtin, no, PredSymName),
     CallGoal = hlds_goal(CallGoalExpr, GoalInfo),
     PredProcId = proc(PredId, ProcId).
+
+define_new_pred_vt(PredSymName, Origin, TVarSet, InstVarSet,
+        VarTable0, RttiVarMaps, ClassContext, InstMap0, VarNameRemap,
+        Markers, IsAddressTaken, HasParallelConj, PredProcId,
+        ArgVars0, ExtraTiTcis, Goal0, CallGoal, !ModuleInfo) :-
+    split_var_table(VarTable0, VarSet0, VarTypes0),
+    define_new_pred(PredSymName, Origin, TVarSet, InstVarSet,
+        VarSet0, VarTypes0, RttiVarMaps, ClassContext, InstMap0, VarNameRemap,
+        Markers, IsAddressTaken, HasParallelConj, PredProcId,
+        ArgVars0, ExtraTiTcis, Goal0, CallGoal, !ModuleInfo).
 
 :- pred compute_arg_types_modes(list(prog_var)::in, vartypes::in,
     instmap::in, instmap::in, list(mer_type)::out, list(mer_mode)::out) is det.

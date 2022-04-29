@@ -26,7 +26,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.term_errors.
 :- import_module transform_hlds.term_norm.
 :- import_module transform_hlds.term_util.
@@ -104,7 +104,7 @@
 :- type term_traversal_params.
 
 :- pred init_term_traversal_params(functor_info::in,
-    pred_proc_id::in, prog_context::in, vartypes::in,
+    pred_proc_id::in, prog_context::in, var_table::in,
     used_args::in, used_args::in, int::in, int::in,
     term_traversal_params::out) is det.
 
@@ -219,8 +219,8 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
         ( if
             % XXX This is an overapproximation, since it includes
             % higher order outputs.
-            params_get_var_types(Params, VarTypes),
-            some_var_is_higher_order(VarTypes, Args)
+            params_get_var_table(Params, VarTable),
+            some_var_is_higher_order(VarTable, Args)
         then
             add_error(Params, Context, horder_args(PPId, CallPPId), !Info)
         else
@@ -553,8 +553,8 @@ compute_rec_start_vars([Var | Vars], [RecInputSupplier | RecInputSuppliers],
 unify_change(ModuleInfo, OutVar, ConsId, Args0, Modes0, Params, Gamma,
         InVars, OutVars) :-
     params_get_functor_info(Params, FunctorInfo),
-    params_get_var_types(Params, VarTypes),
-    lookup_var_type(VarTypes, OutVar, Type),
+    params_get_var_table(Params, VarTable),
+    lookup_var_type(VarTable, OutVar, Type),
     not type_is_higher_order(Type),
     not (
         ConsId = type_info_const(_)
@@ -563,14 +563,14 @@ unify_change(ModuleInfo, OutVar, ConsId, Args0, Modes0, Params, Gamma,
     ),
     require_det (
         type_to_ctor_det(Type, TypeCtor),
-        filter_typeinfos_from_args_and_modes(VarTypes, Args0, Args1,
+        filter_typeinfos_from_args_and_modes(VarTable, Args0, Args1,
             Modes0, Modes1),
         functor_norm(ModuleInfo, FunctorInfo, TypeCtor, ConsId, Gamma,
             Args1, Args, Modes1, Modes),
         split_unification_vars(ModuleInfo, Args, Modes, InVars, OutVars)
     ).
 
-:- pred filter_typeinfos_from_args_and_modes(vartypes::in,
+:- pred filter_typeinfos_from_args_and_modes(var_table::in,
     list(prog_var)::in, list(prog_var)::out,
     list(unify_mode)::in, list(unify_mode)::out) is det.
 
@@ -579,11 +579,11 @@ filter_typeinfos_from_args_and_modes(_, [], _, [_ | _], _) :-
     unexpected($pred, "list length mismatch").
 filter_typeinfos_from_args_and_modes(_, [_ | _], _, [], _) :-
     unexpected($pred, "list length mismatch").
-filter_typeinfos_from_args_and_modes(VarTypes, [Arg0 | Args0], Args,
+filter_typeinfos_from_args_and_modes(VarTable, [Arg0 | Args0], Args,
         [Mode0 | Modes0], Modes) :-
-    filter_typeinfos_from_args_and_modes(VarTypes, Args0, TailArgs,
+    filter_typeinfos_from_args_and_modes(VarTable, Args0, TailArgs,
         Modes0, TailModes),
-    lookup_var_type(VarTypes, Arg0, Type),
+    lookup_var_type(VarTable, Arg0, Type),
     ( if is_introduced_type_info_type(Type) then
         Args = TailArgs,
         Modes = TailModes
@@ -687,7 +687,7 @@ upper_bound_active_vars([Path | Paths], ActiveVars) :-
                 % The context of the procedure.
                 term_trav_context           :: prog_context,
 
-                term_trav_vartypes          :: vartypes,
+                term_trav_var_table         :: var_table,
 
                 % Output suppliers of each procedure.
                 % Empty during pass 2.
@@ -704,11 +704,11 @@ upper_bound_active_vars([Path | Paths], ActiveVars) :-
                 term_trav_max_paths         :: int
         ).
 
-init_term_traversal_params(FunctorInfo, PredProcId, Context, VarTypes,
+init_term_traversal_params(FunctorInfo, PredProcId, Context, VarTable,
         OutputSuppliers, RecInputSuppliers, MaxErrors, MaxPaths,
         Params) :-
     Params = term_traversal_params(FunctorInfo, PredProcId, Context,
-        VarTypes, OutputSuppliers, RecInputSuppliers,
+        VarTable, OutputSuppliers, RecInputSuppliers,
         MaxErrors, MaxPaths).
 
 :- pred params_get_functor_info(term_traversal_params::in, functor_info::out)
@@ -717,7 +717,7 @@ init_term_traversal_params(FunctorInfo, PredProcId, Context, VarTypes,
     is det.
 :- pred params_get_context(term_traversal_params::in, prog_context::out)
     is det.
-:- pred params_get_var_types(term_traversal_params::in, vartypes::out)
+:- pred params_get_var_table(term_traversal_params::in, var_table::out)
     is det.
 :- pred params_get_output_suppliers(term_traversal_params::in,
     map(pred_proc_id, list(bool))::out) is det.
@@ -732,8 +732,8 @@ params_get_ppid(Params, X) :-
     X = Params ^ term_trav_ppid.
 params_get_context(Params, X) :-
     X = Params ^ term_trav_context.
-params_get_var_types(Params, X) :-
-    X = Params ^ term_trav_vartypes.
+params_get_var_table(Params, X) :-
+    X = Params ^ term_trav_var_table.
 params_get_output_suppliers(Params, X) :-
     X = Params ^ term_trav_output_suppliers.
 params_get_rec_input_suppliers(Params, X) :-

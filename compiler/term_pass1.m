@@ -61,7 +61,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.term_traversal.
 
 :- import_module bag.
@@ -220,7 +220,7 @@ find_arg_sizes_pred(ModuleInfo, PassInfo, PPId, OutputSupplierMap0, Result,
     pred_info_get_context(PredInfo, Context),
     proc_info_get_headvars(ProcInfo, Args),
     proc_info_get_argmodes(ProcInfo, ArgModes),
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     proc_info_get_goal(ProcInfo, Goal0),
     % The pretest code we add for compiler-generated unification and comparison
     % predicates uses type casts. It uses them in a way that is guaranteed
@@ -229,7 +229,7 @@ find_arg_sizes_pred(ModuleInfo, PassInfo, PPId, OutputSupplierMap0, Result,
     Goal = maybe_strip_equality_pretest(Goal0),
     map.init(EmptyMap),
     PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
-    init_term_traversal_params(FunctorInfo, PPId, Context, VarTypes,
+    init_term_traversal_params(FunctorInfo, PPId, Context, VarTable,
         OutputSupplierMap0, EmptyMap, MaxErrors, MaxPaths, Params),
 
     partition_call_args(ModuleInfo, ArgModes, Args, InVars, OutVars),
@@ -299,14 +299,14 @@ update_output_suppliers([Arg | Args], ActiveVars,
 check_proc_non_term_calls(ModuleInfo, PPId, !Errors) :-
     module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
     proc_info_get_goal(ProcInfo, Goal),
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-    check_goal_non_term_calls(ModuleInfo, PPId, VarTypes, Goal, !Errors).
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    check_goal_non_term_calls(ModuleInfo, PPId, VarTable, Goal, !Errors).
 
 :- pred check_goal_non_term_calls(module_info::in, pred_proc_id::in,
-    vartypes::in, hlds_goal::in,
+    var_table::in, hlds_goal::in,
     list(term_error)::in, list(term_error)::out) is det.
 
-check_goal_non_term_calls(ModuleInfo, PPId, VarTypes, Goal, !Errors) :-
+check_goal_non_term_calls(ModuleInfo, PPId, VarTable, Goal, !Errors) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = unify(_, _, _, _, _)
@@ -327,7 +327,7 @@ check_goal_non_term_calls(ModuleInfo, PPId, VarTypes, Goal, !Errors) :-
             ; TerminationInfo = no
             )
         ),
-        ( if some_var_is_higher_order(VarTypes, Args) then
+        ( if some_var_is_higher_order(VarTable, Args) then
             HigherOrderErrorKind = horder_args(PPId, CallPPId),
             HigherOrderError = term_error(Context, HigherOrderErrorKind),
             list.cons(HigherOrderError, !Errors)
@@ -347,20 +347,20 @@ check_goal_non_term_calls(ModuleInfo, PPId, VarTypes, Goal, !Errors) :-
         ( GoalExpr = conj(_, Goals)
         ; GoalExpr = disj(Goals)
         ),
-        list.foldl(check_goal_non_term_calls(ModuleInfo, PPId, VarTypes),
+        list.foldl(check_goal_non_term_calls(ModuleInfo, PPId, VarTable),
             Goals, !Errors)
     ;
         GoalExpr = switch(_, _, Cases),
-        list.foldl(check_cases_non_term_calls(ModuleInfo, PPId, VarTypes),
+        list.foldl(check_cases_non_term_calls(ModuleInfo, PPId, VarTable),
             Cases, !Errors)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
         Goals = [Cond, Then, Else],
-        list.foldl(check_goal_non_term_calls(ModuleInfo, PPId, VarTypes),
+        list.foldl(check_goal_non_term_calls(ModuleInfo, PPId, VarTable),
             Goals, !Errors)
     ;
         GoalExpr = negation(SubGoal),
-        check_goal_non_term_calls(ModuleInfo, PPId, VarTypes, SubGoal, !Errors)
+        check_goal_non_term_calls(ModuleInfo, PPId, VarTable, SubGoal, !Errors)
     ;
         GoalExpr = scope(Reason, SubGoal),
         ( if
@@ -372,7 +372,7 @@ check_goal_non_term_calls(ModuleInfo, PPId, VarTypes, Goal, !Errors) :-
             % The scope has no calls, let alone nonterminating calls.
             true
         else
-            check_goal_non_term_calls(ModuleInfo, PPId, VarTypes, SubGoal,
+            check_goal_non_term_calls(ModuleInfo, PPId, VarTable, SubGoal,
                 !Errors)
         )
     ;
@@ -381,12 +381,12 @@ check_goal_non_term_calls(ModuleInfo, PPId, VarTypes, Goal, !Errors) :-
     ).
 
 :- pred check_cases_non_term_calls(module_info::in,
-    pred_proc_id::in, vartypes::in, case::in,
+    pred_proc_id::in, var_table::in, case::in,
     list(term_error)::in, list(term_error)::out) is det.
 
-check_cases_non_term_calls(ModuleInfo, PPId, VarTypes, Case, !Errors) :-
+check_cases_non_term_calls(ModuleInfo, PPId, VarTable, Case, !Errors) :-
     Case = case(_, _, Goal),
-    check_goal_non_term_calls(ModuleInfo, PPId, VarTypes, Goal, !Errors).
+    check_goal_non_term_calls(ModuleInfo, PPId, VarTable, Goal, !Errors).
 
 %-----------------------------------------------------------------------------%
 %

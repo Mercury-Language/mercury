@@ -41,7 +41,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module counter.
@@ -109,7 +109,7 @@
 :- type interval_params
     --->    interval_params(
                 ip_module_info          :: module_info,
-                ip_var_types            :: vartypes,
+                ip_var_table            :: var_table,
                 ip_at_most_zero_calls   :: bool
             ).
 
@@ -153,16 +153,15 @@
 :- pred delete_interval_vars(interval_id::in, set_of_progvar::in,
     set_of_progvar::out, interval_info::in, interval_info::out) is det.
 
-:- type rename_map  ==  map(prog_var, prog_var).
+:- type rename_map == map(prog_var, prog_var).
 
-:- pred record_decisions_in_goal(hlds_goal::in, hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    rename_map::in, rename_map::out, insert_map::in,
-    maybe(goal_feature)::in) is det.
+:- pred record_decisions_in_goal(maybe(goal_feature)::in, insert_map::in,
+    hlds_goal::in, hlds_goal::out, var_table::in, var_table::out,
+    rename_map::in, rename_map::out) is det.
 
-:- pred make_inserted_goal(prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, rename_map::in, rename_map::out,
-    insert_spec::in, maybe(goal_feature)::in, hlds_goal::out) is det.
+:- pred make_inserted_goal(maybe(goal_feature)::in, insert_spec::in,
+    hlds_goal::out, var_table::in, var_table::out,
+    rename_map::in, rename_map::out) is det.
 
     % The final RenameMap may ask for some of the head variables to be renamed.
     % Doing so is inconvenient, e.g. because the debugger wants head variables
@@ -205,7 +204,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -297,10 +295,10 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
         goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall),
         IntParams = !.IntervalInfo ^ ii_interval_params,
         ModuleInfo = IntParams ^ ip_module_info,
-        VarTypes = IntParams ^ ip_var_types,
+        VarTable = IntParams ^ ip_var_table,
         arg_info.generic_call_arg_reg_types(ModuleInfo, GenericCall,
             ArgVars, MaybeArgRegs, ArgRegTypes),
-        arg_info.compute_in_and_out_vars_sep_regs(ModuleInfo, VarTypes,
+        arg_info.compute_in_and_out_vars_sep_regs_table(ModuleInfo, VarTable,
             ArgVars, ArgModes, ArgRegTypes,
             InputArgsR, InputArgsF, _OutputArgsR, _OutputArgsF),
         InputArgs = InputArgsR ++ InputArgsF,
@@ -329,9 +327,9 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
         ModuleInfo = IntParams ^ ip_module_info,
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
             _PredInfo, ProcInfo),
-        VarTypes = IntParams ^ ip_var_types,
-        arg_info.partition_proc_call_args(ProcInfo, VarTypes,
-            ModuleInfo, ArgVars, InputArgs, _, _),
+        VarTable = IntParams ^ ip_var_table,
+        arg_info.partition_proc_call_args_table(ModuleInfo, ProcInfo, VarTable,
+            ArgVars, InputArgs, _, _),
         set.to_sorted_list(InputArgs, Inputs),
         (
             Builtin = inline_builtin,
@@ -351,11 +349,11 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
         ModuleInfo = IntParams ^ ip_module_info,
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
             _PredInfo, ProcInfo),
-        VarTypes = IntParams ^ ip_var_types,
+        VarTable = IntParams ^ ip_var_table,
         ArgVars = list.map(foreign_arg_var, Args),
         ExtraVars = list.map(foreign_arg_var, ExtraArgs),
-        arg_info.partition_proc_call_args(ProcInfo, VarTypes,
-            ModuleInfo, ArgVars, InputArgVarSet, _, _),
+        arg_info.partition_proc_call_args_table(ModuleInfo, ProcInfo, VarTable,
+            ArgVars, InputArgVarSet, _, _),
         set.to_sorted_list(InputArgVarSet, InputArgVars),
         list.append(InputArgVars, ExtraVars, InputVars),
         ( if
@@ -380,7 +378,7 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
             ;
                 % XXX Temporary for the time being.
                 HowToConstruct = construct_in_region(_),
-                unexpected($pred, "construct in region")
+                unexpected($pred, "NYI: construct in region")
             ;
                 ( HowToConstruct = construct_statically(_)
                 ; HowToConstruct = construct_dynamically
@@ -867,31 +865,13 @@ record_model_non_anchor(Anchor, !IntervalInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- type interval_var_info
-    --->    interval_var_info(
-                ivi_varset      :: prog_varset,
-                ivi_vartypes    :: vartypes
-            ).
-
-record_decisions_in_goal(!Goal, VarSet0, VarSet, VarTypes0, VarTypes,
-        !VarRename, InsertMap, MaybeFeature) :-
-    Info0 = interval_var_info(VarSet0, VarTypes0),
-    record_decisions_in_goal(!Goal, Info0, Info, !VarRename,
-        InsertMap, MaybeFeature),
-    Info = interval_var_info(VarSet, VarTypes).
-
-:- pred record_decisions_in_goal(hlds_goal::in, hlds_goal::out,
-    interval_var_info::in, interval_var_info::out,
-    rename_map::in, rename_map::out, insert_map::in, maybe(goal_feature)::in)
-    is det.
-
-record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
-        MaybeFeature) :-
+record_decisions_in_goal(MaybeFeature, InsertMap, Goal0, Goal,
+        !VarTable, !VarRename) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
-        record_decisions_in_conj(Goals0, Goals, !VarInfo, !VarRename,
-            ConjType, InsertMap, MaybeFeature),
+        record_decisions_in_conj(MaybeFeature, ConjType, InsertMap,
+            Goals0, Goals, !VarTable, !VarRename),
         GoalExpr = conj(ConjType, Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -899,16 +879,16 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         construct_anchors(branch_disj, Goal0, StartAnchor, EndAnchor),
         (
             Goals0 = [FirstGoal0 | LaterGoals0],
-            record_decisions_in_goal(FirstGoal0, FirstGoal, !VarInfo,
-                !.VarRename, _, InsertMap, MaybeFeature),
+            record_decisions_in_goal(MaybeFeature, InsertMap,
+                FirstGoal0, FirstGoal, !VarTable, !.VarRename, _),
             lookup_inserts(InsertMap, StartAnchor, StartInserts),
-            record_decisions_in_disj(LaterGoals0, LaterGoals,
-                !VarInfo, !.VarRename, StartInserts, InsertMap, MaybeFeature),
+            record_decisions_in_disj(MaybeFeature, InsertMap, StartInserts,
+                !.VarRename, LaterGoals0, LaterGoals, !VarTable),
             Goals = [FirstGoal | LaterGoals],
             Goal1 = hlds_goal(disj(Goals), GoalInfo0),
             lookup_inserts(InsertMap, EndAnchor, Inserts),
-            insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, Inserts,
-                MaybeFeature)
+            insert_goals_after(MaybeFeature, Inserts, Goal1, Goal,
+                !VarTable, !:VarRename)
         ;
             Goals0 = [],
             GoalExpr = disj(Goals0),
@@ -916,44 +896,43 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         )
     ;
         GoalExpr0 = switch(Var0, Det, Cases0),
-        record_decisions_in_cases(Cases0, Cases, !VarInfo, !.VarRename,
-            InsertMap, MaybeFeature),
+        record_decisions_in_cases(MaybeFeature, InsertMap, !.VarRename,
+            Cases0, Cases, !VarTable),
         rename_var(need_not_rename, !.VarRename, Var0, Var),
         Goal1 = hlds_goal(switch(Var, Det, Cases), GoalInfo0),
         construct_anchors(branch_switch, Goal0, _StartAnchor, EndAnchor),
         lookup_inserts(InsertMap, EndAnchor, Inserts),
-        insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, Inserts,
-            MaybeFeature)
+        insert_goals_after(MaybeFeature, Inserts, Goal1, Goal,
+            !VarTable, !:VarRename)
     ;
         GoalExpr0 = negation(NegGoal0),
-        record_decisions_in_goal(NegGoal0, NegGoal, !VarInfo, !.VarRename, _,
-            InsertMap, MaybeFeature),
+        record_decisions_in_goal(MaybeFeature, InsertMap,
+            NegGoal0, NegGoal, !VarTable, !.VarRename, _),
         Goal1 = hlds_goal(negation(NegGoal), GoalInfo0),
         construct_anchors(branch_neg, Goal0, _StartAnchor, EndAnchor),
         lookup_inserts(InsertMap, EndAnchor, Inserts),
-        % XXX
-        insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, Inserts,
-            MaybeFeature)
+        insert_goals_after(MaybeFeature, Inserts, Goal1, Goal,
+            !VarTable, !:VarRename)
     ;
         GoalExpr0 = if_then_else(Vars0, Cond0, Then0, Else0),
         construct_anchors(branch_ite, Goal0, StartAnchor, EndAnchor),
         rename_var_list(need_not_rename, !.VarRename, Vars0, Vars),
-        record_decisions_in_goal(Cond0, Cond, !VarInfo, !VarRename, InsertMap,
-            MaybeFeature),
-        record_decisions_in_goal(Then0, Then, !VarInfo, !.VarRename, _,
-            InsertMap, MaybeFeature),
+        record_decisions_in_goal(MaybeFeature, InsertMap,
+            Cond0, Cond, !VarTable, !VarRename),
+        record_decisions_in_goal(MaybeFeature, InsertMap,
+            Then0, Then, !VarTable, !.VarRename, _),
         lookup_inserts(InsertMap, StartAnchor, StartInserts),
-        make_inserted_goals(!VarInfo, map.init, VarRenameElse,
-            StartInserts, MaybeFeature, StartInsertGoals),
-        record_decisions_in_goal(Else0, Else1, !VarInfo, VarRenameElse, _,
-            InsertMap, MaybeFeature),
+        make_inserted_goals(MaybeFeature, StartInserts, StartInsertGoals,
+            !VarTable, map.init, VarRenameElse),
+        record_decisions_in_goal(MaybeFeature, InsertMap,
+            Else0, Else1, !VarTable, VarRenameElse, _),
         Else0 = hlds_goal(_, ElseGoalInfo0),
         conj_list_to_goal(list.append(StartInsertGoals, [Else1]),
             ElseGoalInfo0, Else),
         Goal1 = hlds_goal(if_then_else(Vars, Cond, Then, Else), GoalInfo0),
         lookup_inserts(InsertMap, EndAnchor, EndInserts),
-        insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, EndInserts,
-            MaybeFeature)
+        insert_goals_after(MaybeFeature, EndInserts, Goal1, Goal,
+            !VarTable, !:VarRename)
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
         (
@@ -984,8 +963,8 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         else
             % XXX We could treat from_ground_term_deconstruct scopes specially
             % as well.
-            record_decisions_in_goal(SubGoal0, SubGoal, !VarInfo, !VarRename,
-                InsertMap, MaybeFeature),
+            record_decisions_in_goal(MaybeFeature, InsertMap,
+                SubGoal0, SubGoal, !VarTable, !VarRename),
             GoalExpr = scope(Reason, SubGoal),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         )
@@ -1002,8 +981,8 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
             ),
             MustHaveMap = yes
         ),
-        record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,
-            MustHaveMap, InsertMap, MaybeFeature)
+        record_decisions_at_call_site(MaybeFeature, InsertMap, MustHaveMap,
+            Goal0, Goal, !VarTable, !VarRename)
     ;
         GoalExpr0 = plain_call(_, _, _, Builtin, _, _),
         (
@@ -1013,12 +992,12 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
             Builtin = not_builtin,
             MustHaveMap = yes
         ),
-        record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,
-            MustHaveMap, InsertMap, MaybeFeature)
+        record_decisions_at_call_site(MaybeFeature, InsertMap, MustHaveMap,
+            Goal0, Goal, !VarTable, !VarRename)
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
-        record_decisions_at_call_site(Goal0, Goal, !VarInfo,
-            !VarRename, no, InsertMap, MaybeFeature)
+        record_decisions_at_call_site(MaybeFeature, InsertMap, no,
+            Goal0, Goal, !VarTable, !VarRename)
     ;
         GoalExpr0 = unify(_, _, _, _, _),
         rename_some_vars_in_goal(!.VarRename, Goal0, Goal)
@@ -1039,32 +1018,29 @@ lookup_inserts(InsertMap, Anchor, Inserts) :-
         Inserts = []
     ).
 
-:- pred insert_goals_after(hlds_goal::in, hlds_goal::out,
-    interval_var_info::in, interval_var_info::out, rename_map::out,
-    list(insert_spec)::in, maybe(goal_feature)::in) is det.
+:- pred insert_goals_after(maybe(goal_feature)::in, list(insert_spec)::in,
+    hlds_goal::in, hlds_goal::out,
+    var_table::in, var_table::out, rename_map::out) is det.
 
-insert_goals_after(BranchesGoal, Goal, !VarInfo, VarRename, Inserts,
-        MaybeFeature) :-
-    make_inserted_goals(!VarInfo, map.init, VarRename, Inserts, MaybeFeature,
-        InsertGoals),
+insert_goals_after(MaybeFeature, Specs, BranchesGoal, Goal,
+        !VarTable, VarRename) :-
+    make_inserted_goals(MaybeFeature, Specs, InsertGoals,
+        !VarTable, map.init, VarRename),
     BranchesGoal = hlds_goal(_, BranchesGoalInfo),
     conj_list_to_goal([BranchesGoal | InsertGoals], BranchesGoalInfo, Goal).
 
-:- pred make_inserted_goals(interval_var_info::in, interval_var_info::out,
-    rename_map::in, rename_map::out, list(insert_spec)::in,
-    maybe(goal_feature)::in, list(hlds_goal)::out) is det.
+:- pred make_inserted_goals(maybe(goal_feature)::in,
+    list(insert_spec)::in, list(hlds_goal)::out,
+    var_table::in, var_table::out,
+    rename_map::in, rename_map::out) is det.
 
-make_inserted_goals(!VarInfo, !VarRename, [], _MaybeFeature, []).
-make_inserted_goals(!VarInfo, !VarRename, [Spec | Specs], MaybeFeature,
-        [Goal | Goals]) :-
-    make_inserted_goal(!VarInfo, !VarRename, Spec, MaybeFeature, Goal),
-    make_inserted_goals(!VarInfo, !VarRename, Specs, MaybeFeature, Goals).
+make_inserted_goals(_, [], [], !VarTable, !VarRename).
+make_inserted_goals(MaybeFeature, [Spec | Specs], [Goal | Goals],
+        !VarTable, !VarRename) :-
+    make_inserted_goal(MaybeFeature, Spec, Goal, !VarTable, !VarRename),
+    make_inserted_goals(MaybeFeature, Specs, Goals, !VarTable, !VarRename).
 
-:- pred make_inserted_goal(interval_var_info::in, interval_var_info::out,
-    rename_map::in, rename_map::out, insert_spec::in,
-    maybe(goal_feature)::in, hlds_goal::out) is det.
-
-make_inserted_goal(!VarInfo, !VarRename, Spec, MaybeFeature, Goal) :-
+make_inserted_goal(MaybeFeature, Spec, Goal, !VarTable, !VarRename)  :-
     Spec = insert_spec(Goal0, VarsToExtract),
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     ( if
@@ -1082,10 +1058,8 @@ make_inserted_goal(!VarInfo, !VarRename, Spec, MaybeFeature, Goal) :-
             GoalInfo2 = GoalInfo1
         ),
         Goal2 = hlds_goal(GoalExpr1, GoalInfo2),
-        !.VarInfo = interval_var_info(VarSet0, VarTypes0),
-        create_shadow_vars(ArgVars, VarsToExtract, VarSet0, VarSet,
-            VarTypes0, VarTypes, map.init, NewRename, map.init, VoidRename),
-        !:VarInfo = interval_var_info(VarSet, VarTypes),
+        create_shadow_vars(ArgVars, VarsToExtract, !VarTable,
+            map.init, NewRename, map.init, VoidRename),
         map.old_merge(!.VarRename, NewRename, !:VarRename),
         % We rename the original goal.
         rename_some_vars_in_goal(!.VarRename, Goal2, Goal3),
@@ -1094,36 +1068,26 @@ make_inserted_goal(!VarInfo, !VarRename, Spec, MaybeFeature, Goal) :-
         unexpected($pred, "not a deconstruct")
     ).
 
-make_inserted_goal(VarSet0, VarSet, VarTypes0, VarTypes, !RenameMap,
-        InsertSpec, MaybeFeature, Goal) :-
-    Info0 = interval_var_info(VarSet0, VarTypes0),
-    make_inserted_goal(Info0, Info, !RenameMap, InsertSpec,
-        MaybeFeature, Goal),
-    Info = interval_var_info(VarSet, VarTypes).
-
 :- pred create_shadow_vars(list(prog_var)::in, set_of_progvar::in,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    rename_map::in, rename_map::out, rename_map::in, rename_map::out)
-    is det.
+    var_table::in, var_table::out,
+    rename_map::in, rename_map::out, rename_map::in, rename_map::out) is det.
 
-create_shadow_vars([], _, !VarSet, !VarTypes, !VarRename, !VoidRename).
-create_shadow_vars([Arg | Args], VarsToExtract, !VarSet, !VarTypes,
+create_shadow_vars([], _, !VarTable, !VarRename, !VoidRename).
+create_shadow_vars([Arg | Args], VarsToExtract, !VarTable,
         !VarRename, !VoidRename) :-
-    create_shadow_var(Arg, VarsToExtract, !VarSet, !VarTypes,
+    create_shadow_var(Arg, VarsToExtract, !VarTable,
         !VarRename, !VoidRename),
-    create_shadow_vars(Args, VarsToExtract, !VarSet, !VarTypes,
+    create_shadow_vars(Args, VarsToExtract, !VarTable,
         !VarRename, !VoidRename).
 
 :- pred create_shadow_var(prog_var::in, set_of_progvar::in,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    var_table::in, var_table::out,
     rename_map::in, rename_map::out, rename_map::in, rename_map::out) is det.
 
-create_shadow_var(Arg, VarsToExtract, !VarSet, !VarTypes,
+create_shadow_var(Arg, VarsToExtract, !VarTable,
         !VarRename, !VoidRename) :-
-    varset.lookup_name(!.VarSet, Arg, Name),
-    varset.new_named_var(Name, Shadow, !VarSet),
-    lookup_var_type(!.VarTypes, Arg, Type),
-    add_var_type(Shadow, Type, !VarTypes),
+    lookup_var_entry(!.VarTable, Arg, ArgEntry),
+    add_var_entry(ArgEntry, Shadow, !VarTable),
     ( if set_of_var.member(VarsToExtract, Arg) then
         map.det_insert(Arg, Shadow, !VarRename)
     else
@@ -1132,13 +1096,12 @@ create_shadow_var(Arg, VarsToExtract, !VarSet, !VarTypes,
 
 %-----------------------------------------------------------------------------%
 
-:- pred record_decisions_at_call_site(hlds_goal::in, hlds_goal::out,
-    interval_var_info::in, interval_var_info::out,
-    rename_map::in, rename_map::out, bool::in, insert_map::in,
-    maybe(goal_feature)::in) is det.
+:- pred record_decisions_at_call_site(maybe(goal_feature)::in,
+    insert_map::in, bool::in, hlds_goal::in, hlds_goal::out,
+    var_table::in, var_table::out, rename_map::in, rename_map::out) is det.
 
-record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,
-        MustHaveMap, InsertMap, MaybeFeature) :-
+record_decisions_at_call_site(MaybeFeature, InsertMap, MustHaveMap,
+        Goal0, Goal, !VarTable, !VarRename) :-
     Goal0 = hlds_goal(_, GoalInfo0),
     rename_some_vars_in_goal(!.VarRename, Goal0, Goal1),
     ( if
@@ -1149,8 +1112,8 @@ record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,
         GoalId = goal_info_get_goal_id(GoalInfo0),
         Anchor = anchor_call_site(GoalId),
         lookup_inserts(InsertMap, Anchor, Inserts),
-        insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, Inserts,
-            MaybeFeature)
+        insert_goals_after(MaybeFeature, Inserts, Goal1, Goal,
+            !VarTable, !:VarRename)
     else
         (
             MustHaveMap = no,
@@ -1163,18 +1126,18 @@ record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,
 
 %-----------------------------------------------------------------------------%
 
-:- pred record_decisions_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-    interval_var_info::in, interval_var_info::out,
-    rename_map::in, rename_map::out, conj_type::in, insert_map::in,
-    maybe(goal_feature)::in) is det.
+:- pred record_decisions_in_conj(maybe(goal_feature)::in,
+    conj_type::in, insert_map::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    var_table::in, var_table::out, rename_map::in, rename_map::out) is det.
 
-record_decisions_in_conj([], [], !VarInfo, !VarRename, _, _, _).
-record_decisions_in_conj([Goal0 | Goals0], Goals, !VarInfo, !VarRename,
-        ConjType, InsertMap, MaybeFeature) :-
-    record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename,
-        InsertMap, MaybeFeature),
-    record_decisions_in_conj(Goals0, TailGoals, !VarInfo, !VarRename,
-        ConjType, InsertMap, MaybeFeature),
+record_decisions_in_conj(_, _, _, [], [], !VarInfo, !VarRename).
+record_decisions_in_conj(MaybeFeature, ConjType, InsertMap,
+        [Goal0 | Goals0], Goals, !VarInfo, !VarRename) :-
+    record_decisions_in_goal(MaybeFeature, InsertMap, Goal0, Goal,
+        !VarInfo, !VarRename),
+    record_decisions_in_conj(MaybeFeature, ConjType, InsertMap,
+        Goals0, TailGoals, !VarInfo, !VarRename),
     ( if
         Goal = hlds_goal(conj(InnerConjType, SubGoals), _),
         ConjType = InnerConjType
@@ -1184,36 +1147,36 @@ record_decisions_in_conj([Goal0 | Goals0], Goals, !VarInfo, !VarRename,
         Goals = [Goal | TailGoals]
     ).
 
-:- pred record_decisions_in_disj(list(hlds_goal)::in, list(hlds_goal)::out,
-    interval_var_info::in, interval_var_info::out,
-    rename_map::in, list(insert_spec)::in, insert_map::in,
-    maybe(goal_feature)::in) is det.
+:- pred record_decisions_in_disj(maybe(goal_feature)::in, insert_map::in,
+    list(insert_spec)::in, rename_map::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    var_table::in, var_table::out) is det.
 
-record_decisions_in_disj([], [], !VarInfo, _, _, _, _).
-record_decisions_in_disj([Goal0 | Goals0], [Goal | Goals], !VarInfo,
-        VarRename0, Inserts, InsertMap, MaybeFeature) :-
-    make_inserted_goals(!VarInfo, map.init, VarRename1,
-        Inserts, MaybeFeature, InsertGoals),
+record_decisions_in_disj(_, _, _, _, [], [], !VarTable).
+record_decisions_in_disj(MaybeFeature, InsertMap, Inserts, VarRename0,
+        [Goal0 | Goals0], [Goal | Goals], !VarTable) :-
+    make_inserted_goals(MaybeFeature, Inserts, InsertGoals,
+        !VarTable, map.init, VarRename1),
     Goal0 = hlds_goal(_, GoalInfo0),
-    record_decisions_in_goal(Goal0, Goal1, !VarInfo, VarRename1, _,
-        InsertMap, MaybeFeature),
+    record_decisions_in_goal(MaybeFeature, InsertMap, Goal0, Goal1,
+        !VarTable, VarRename1, _),
     conj_list_to_goal(list.append(InsertGoals, [Goal1]), GoalInfo0, Goal),
-    record_decisions_in_disj(Goals0, Goals, !VarInfo, VarRename0,
-        Inserts, InsertMap, MaybeFeature).
+    record_decisions_in_disj(MaybeFeature, InsertMap, Inserts, VarRename0,
+        Goals0, Goals, !VarTable).
 
-:- pred record_decisions_in_cases(list(case)::in, list(case)::out,
-    interval_var_info::in, interval_var_info::out,
-    rename_map::in, insert_map::in, maybe(goal_feature)::in) is det.
+:- pred record_decisions_in_cases(maybe(goal_feature)::in, insert_map::in,
+    rename_map::in, list(case)::in, list(case)::out,
+    var_table::in, var_table::out) is det.
 
-record_decisions_in_cases([], [], !VarInfo, _, _, _).
-record_decisions_in_cases([Case0 | Cases0], [Case | Cases],
-        !VarInfo, VarRename0, InsertMap, MaybeFeature) :-
+record_decisions_in_cases(_, _, _, [], [], !VarTable).
+record_decisions_in_cases(MaybeFeature, InsertMap, VarRename0,
+        [Case0 | Cases0], [Case | Cases], !VarTable) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    record_decisions_in_goal(Goal0, Goal, !VarInfo, VarRename0, _,
-        InsertMap, MaybeFeature),
+    record_decisions_in_goal(MaybeFeature, InsertMap,
+        Goal0, Goal, !VarTable, VarRename0, _),
     Case = case(MainConsId, OtherConsIds, Goal),
-    record_decisions_in_cases(Cases0, Cases, !VarInfo, VarRename0,
-        InsertMap, MaybeFeature).
+    record_decisions_in_cases(MaybeFeature, InsertMap, VarRename0,
+        Cases0, Cases, !VarTable).
 
 %-----------------------------------------------------------------------------%
 

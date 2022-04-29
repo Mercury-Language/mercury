@@ -115,6 +115,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.recompute_instmap_deltas.
+:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
@@ -128,7 +129,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module counter.
@@ -230,7 +231,7 @@ at_least_one_expandable_type([Type | Types], TypeTable) :-
     % variables which are then expanded further, the intermediate
     % variables are not listed in the mapping.
     %
-:- type untuple_map == map(prog_var, prog_vars).
+:- type untuple_map == map(prog_var, list(prog_var)).
 
 :- pred expand_args_in_proc(pred_id::in, proc_id::in, module_info::in,
     module_info::out, transform_map::in, transform_map::out,
@@ -245,16 +246,15 @@ expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap, !Counter) :-
         proc_info_get_headvars(!.ProcInfo, HeadVars0),
         proc_info_get_argmodes(!.ProcInfo, ArgModes0),
         proc_info_get_goal(!.ProcInfo, Goal0),
-        proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
+        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
 
-        expand_args_in_proc_2(HeadVars0, ArgModes0, HeadVars, ArgModes,
-            Goal0, Goal, VarSet0, VarSet, VarTypes0, VarTypes,
-            TypeTable, UntupleMap),
+        expand_args_in_proc_2(!.ModuleInfo, TypeTable, HeadVars0, ArgModes0,
+            HeadVars, ArgModes, Goal0, Goal, UntupleMap, VarTable0, VarTable),
 
         proc_info_set_headvars(HeadVars, !ProcInfo),
         proc_info_set_argmodes(ArgModes, !ProcInfo),
         proc_info_set_goal(Goal, !ProcInfo),
-        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+        proc_info_set_var_table(VarTable, !ProcInfo),
         requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
         recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
             !ProcInfo, !ModuleInfo),
@@ -273,55 +273,56 @@ expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap, !Counter) :-
             !TransformMap)
     ).
 
-:- pred expand_args_in_proc_2(prog_vars::in, list(mer_mode)::in,
-    prog_vars::out, list(mer_mode)::out, hlds_goal::in, hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    type_table::in, untuple_map::out) is det.
+:- pred expand_args_in_proc_2(module_info::in, type_table::in,
+    list(prog_var)::in, list(mer_mode)::in,
+    list(prog_var)::out, list(mer_mode)::out, hlds_goal::in, hlds_goal::out,
+    untuple_map::out, var_table::in, var_table::out) is det.
 
-expand_args_in_proc_2(HeadVars0, ArgModes0, HeadVars, ArgModes,
-        Goal0, hlds_goal(GoalExpr, GoalInfo), !VarSet, !VarTypes, TypeTable,
-        UntupleMap) :-
-    expand_args_in_proc_3(HeadVars0, ArgModes0, ListOfHeadVars,
-        ListOfArgModes, Goal0, hlds_goal(GoalExpr, GoalInfo1), !VarSet,
-        !VarTypes, [], TypeTable),
+expand_args_in_proc_2(ModuleInfo, TypeTable, HeadVars0, ArgModes0,
+        HeadVars, ArgModes, Goal0, Goal, UntupleMap, !VarTable) :-
+    expand_args_in_proc_3(ModuleInfo, TypeTable, [],
+        HeadVars0, ArgModes0, ListOfHeadVars, ListOfArgModes,
+        Goal0, hlds_goal(GoalExpr, GoalInfo1), !VarTable),
     Context = goal_info_get_context(Goal0 ^ hg_info),
     goal_info_set_context(Context, GoalInfo1, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     list.condense(ListOfHeadVars, HeadVars),
     list.condense(ListOfArgModes, ArgModes),
     build_untuple_map(HeadVars0, ListOfHeadVars, map.init, UntupleMap).
 
-:- pred expand_args_in_proc_3(list(prog_var)::in, list(mer_mode)::in,
+:- pred expand_args_in_proc_3(module_info::in, type_table::in,
+    list(mer_type)::in, list(prog_var)::in, list(mer_mode)::in,
     list(list(prog_var))::out, list(list(mer_mode))::out,
-    hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, list(mer_type)::in, type_table::in) is det.
+    hlds_goal::in, hlds_goal::out, var_table::in, var_table::out) is det.
 
-expand_args_in_proc_3([], [], [], [], !_, !_, !_, _, _).
-expand_args_in_proc_3([], [_|_], _, _, !_, !_, !_, _, _) :-
+expand_args_in_proc_3(_, _, _, [], [], [], [], !Goal, !VarTable).
+expand_args_in_proc_3(_, _, _, [], [_ | _], _, _, !Goal, !VarTable) :-
     unexpected($pred, "length mismatch").
-expand_args_in_proc_3([_|_], [], _, _, !_, !_, !_, _, _) :-
+expand_args_in_proc_3(_, _, _, [_ | _], [], _, _, !Goal, !VarTable) :-
     unexpected($pred, "length mismatch").
-expand_args_in_proc_3([HeadVar0 | HeadVars0], [ArgMode0 | ArgModes0],
-        [HeadVar | HeadVars], [ArgMode | ArgModes],
-        !Goal, !VarSet, !VarTypes, ContainerTypes, TypeTable) :-
-    expand_one_arg_in_proc(HeadVar0, ArgMode0, HeadVar, ArgMode,
-        !Goal, !VarSet, !VarTypes, ContainerTypes, TypeTable),
-    expand_args_in_proc_3(HeadVars0, ArgModes0, HeadVars, ArgModes,
-        !Goal, !VarSet, !VarTypes, ContainerTypes, TypeTable).
+expand_args_in_proc_3(ModuleInfo, TypeTable, ContainerTypes,
+        [HeadVar0 | HeadVars0], [ArgMode0 | ArgModes0],
+        [HeadVar | HeadVars], [ArgMode | ArgModes], !Goal, !VarTable) :-
+    expand_one_arg_in_proc(ModuleInfo, TypeTable, ContainerTypes,
+        HeadVar0, ArgMode0, HeadVar, ArgMode, !Goal, !VarTable),
+    expand_args_in_proc_3(ModuleInfo, TypeTable, ContainerTypes,
+        HeadVars0, ArgModes0, HeadVars, ArgModes, !Goal, !VarTable).
 
-:- pred expand_one_arg_in_proc(prog_var::in, mer_mode::in, prog_vars::out,
-    list(mer_mode)::out, hlds_goal::in, hlds_goal::out, prog_varset::in,
-    prog_varset::out, vartypes::in, vartypes::out, list(mer_type)::in,
-    type_table::in) is det.
+:- pred expand_one_arg_in_proc(module_info::in, type_table::in,
+    list(mer_type)::in, prog_var::in, mer_mode::in, list(prog_var)::out,
+    list(mer_mode)::out, hlds_goal::in, hlds_goal::out,
+    var_table::in, var_table::out) is det.
 
-expand_one_arg_in_proc(HeadVar0, ArgMode0, HeadVars, ArgModes,
-        !Goal, !VarSet, !VarTypes, ContainerTypes0, TypeTable) :-
-    expand_one_arg_in_proc_2(HeadVar0, ArgMode0, MaybeHeadVarsAndArgModes,
-        !Goal, !VarSet, !VarTypes, ContainerTypes0, ContainerTypes, TypeTable),
+expand_one_arg_in_proc(ModuleInfo, TypeTable, ContainerTypes0,
+        HeadVar0, ArgMode0, HeadVars, ArgModes, !Goal, !VarTable) :-
+    expand_one_arg_in_proc_2(ModuleInfo, TypeTable, HeadVar0, ArgMode0,
+        MaybeHeadVarsAndArgModes, !Goal, !VarTable,
+        ContainerTypes0, ContainerTypes),
     (
         MaybeHeadVarsAndArgModes = yes(HeadVars1 - ArgModes1),
-        expand_args_in_proc_3(HeadVars1, ArgModes1,
-            ListOfHeadVars, ListOfArgModes, !Goal, !VarSet, !VarTypes,
-            ContainerTypes, TypeTable),
+        expand_args_in_proc_3(ModuleInfo, TypeTable, ContainerTypes,
+            HeadVars1, ArgModes1, ListOfHeadVars, ListOfArgModes,
+            !Goal, !VarTable),
         HeadVars = list.condense(ListOfHeadVars),
         ArgModes = list.condense(ListOfArgModes)
     ;
@@ -330,22 +331,22 @@ expand_one_arg_in_proc(HeadVar0, ArgMode0, HeadVars, ArgModes,
         ArgModes = [ArgMode0]
     ).
 
-:- pred expand_one_arg_in_proc_2(prog_var::in, mer_mode::in,
+:- pred expand_one_arg_in_proc_2(module_info::in, type_table::in,
+    prog_var::in, mer_mode::in,
     maybe(pair(list(prog_var), list(mer_mode)))::out,
-    hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, list(mer_type)::in, list(mer_type)::out,
-    type_table::in) is det.
+    hlds_goal::in, hlds_goal::out, var_table::in, var_table::out,
+    list(mer_type)::in, list(mer_type)::out) is det.
 
-expand_one_arg_in_proc_2(HeadVar0, ArgMode0, MaybeHeadVarsAndArgModes,
-        !Goal, !VarSet, !VarTypes, ContainerTypes0, ContainerTypes,
-        TypeTable) :-
-    lookup_var_type(!.VarTypes, HeadVar0, Type),
+expand_one_arg_in_proc_2(ModuleInfo, TypeTable, HeadVar0, ArgMode0,
+        MaybeHeadVarsAndArgModes, !Goal, !VarTable,
+        ContainerTypes0, ContainerTypes) :-
+    lookup_var_type(!.VarTable, HeadVar0, Type),
     expand_argument(ArgMode0, Type, ContainerTypes0, TypeTable, Expansion),
     (
         Expansion = expansion(ConsId, NewTypes),
-        varset.lookup_name(!.VarSet, HeadVar0, ParentName),
-        create_untuple_vars(ParentName, 0, NewTypes, NewHeadVars,
-            !VarSet, !VarTypes),
+        ParentName = var_table_entry_name(!.VarTable, HeadVar0),
+        create_untuple_vars(ModuleInfo, ParentName, 0, NewTypes, NewHeadVars,
+            !VarTable),
         list.duplicate(list.length(NewHeadVars), ArgMode0, NewArgModes),
         MaybeHeadVarsAndArgModes = yes(NewHeadVars - NewArgModes),
         ( if ArgMode0 = in_mode then
@@ -364,17 +365,19 @@ expand_one_arg_in_proc_2(HeadVar0, ArgMode0, MaybeHeadVarsAndArgModes,
         ContainerTypes = ContainerTypes0
     ).
 
-:- pred create_untuple_vars(string::in, int::in, list(mer_type)::in,
-    list(prog_var)::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+:- pred create_untuple_vars(module_info::in, string::in, int::in,
+    list(mer_type)::in, list(prog_var)::out,
+    var_table::in, var_table::out) is det.
 
-create_untuple_vars(_, _, [], [], !VarSet, !VarTypes).
-create_untuple_vars(ParentName, Num, [Type | Types], [NewVar | NewVars],
-        !VarSet, !VarTypes) :-
+create_untuple_vars(_, _, _, [], [], !VarTable).
+create_untuple_vars(ModuleInfo, ParentName, Num,
+        [Type | Types], [NewVar | NewVars], !VarTable) :-
     string.format("Untupled_%s_%d", [s(ParentName), i(Num)], Name),
-    varset.new_named_var(Name, NewVar, !VarSet),
-    add_var_type(NewVar, Type, !VarTypes),
-    create_untuple_vars(ParentName, Num+1, Types, NewVars, !VarSet, !VarTypes).
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+    Entry = vte(Name, Type, IsDummy),
+    add_var_entry(Entry, NewVar, !VarTable),
+    create_untuple_vars(ModuleInfo, ParentName, Num + 1,
+        Types, NewVars, !VarTable).
 
 :- pred conjoin_goals_keep_detism(hlds_goal::in, hlds_goal::in,
     hlds_goal::out) is det.
@@ -382,7 +385,7 @@ create_untuple_vars(ParentName, Num, [Type | Types], [NewVar | NewVars],
 conjoin_goals_keep_detism(GoalA, GoalB, Goal) :-
     goal_to_conj_list(GoalA, GoalListA),
     goal_to_conj_list(GoalB, GoalListB),
-    list.append(GoalListA, GoalListB, GoalList),
+    GoalList = GoalListA ++ GoalListB,
     goal_list_determinism(GoalList, Determinism),
     goal_info_init(GoalInfo0),
     goal_info_set_determinism(Determinism, GoalInfo0, GoalInfo),
@@ -427,7 +430,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     proc_info_get_goal(ProcInfo, Goal @ hlds_goal(_GoalExpr, GoalInfo)),
     proc_info_get_initial_instmap(!.ModuleInfo, ProcInfo, InitialAuxInstMap),
     pred_info_get_typevarset(PredInfo, TVarSet),
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
+    proc_info_get_var_table(!.ModuleInfo, ProcInfo, VarTable),
     pred_info_get_class_context(PredInfo, ClassContext),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
@@ -448,8 +451,8 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
 
     Origin =
         origin_transformed(transform_untuple(ProcNum), OrigOrigin, PredId),
-    hlds_pred.define_new_pred(AuxPredSymName, Origin,
-        TVarSet, InstVarSet, VarSet, VarTypes, RttiVarMaps, ClassContext,
+    hlds_pred.define_new_pred_vt(AuxPredSymName, Origin,
+        TVarSet, InstVarSet, VarTable, RttiVarMaps, ClassContext,
         InitialAuxInstMap, VarNameRemap, Markers, address_is_not_taken,
         HasParallelConj, AuxPredProcId, AuxHeadVars, _ExtraArgs, Goal,
         CallAux, !ModuleInfo),
@@ -468,15 +471,15 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     % in the transform map, it rewrites the call to use the new procedure
     % instead, inserting unifications before and after the call as necessary.
     %
-:- pred fix_calls_to_expanded_procs(transform_map::in, module_info::in,
-    module_info::out) is det.
+:- pred fix_calls_to_expanded_procs(transform_map::in,
+    module_info::in, module_info::out) is det.
 
 fix_calls_to_expanded_procs(TransformMap, !ModuleInfo) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl(fix_calls_in_pred(TransformMap), PredIds, !ModuleInfo).
 
-:- pred fix_calls_in_pred(transform_map::in, pred_id::in, module_info::in,
-    module_info::out) is det.
+:- pred fix_calls_in_pred(transform_map::in, pred_id::in,
+    module_info::in, module_info::out) is det.
 
 fix_calls_in_pred(TransformMap, PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
@@ -491,14 +494,14 @@ fix_calls_in_proc(TransformMap, PredId, ProcId, !ModuleInfo) :-
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             PredInfo, !:ProcInfo),
         proc_info_get_goal(!.ProcInfo, Goal0),
-        proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
-        fix_calls_in_goal(Goal0, Goal, VarSet0, VarSet,
-            VarTypes0, VarTypes, TransformMap, !.ModuleInfo),
+        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
+        fix_calls_in_goal(!.ModuleInfo, TransformMap,
+            Goal0, Goal, VarTable0, VarTable),
         ( if Goal0 = Goal then
             true
         else
             proc_info_set_goal(Goal, !ProcInfo),
-            proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+            proc_info_set_var_table(VarTable, !ProcInfo),
             requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
             recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
                 !ProcInfo, !ModuleInfo),
@@ -509,11 +512,10 @@ fix_calls_in_proc(TransformMap, PredId, ProcId, !ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred fix_calls_in_goal(hlds_goal::in, hlds_goal::out, prog_varset::in,
-    prog_varset::out, vartypes::in, vartypes::out, transform_map::in,
-    module_info::in) is det.
+:- pred fix_calls_in_goal(module_info::in, transform_map::in,
+    hlds_goal::in, hlds_goal::out, var_table::in, var_table::out) is det.
 
-fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
+fix_calls_in_goal(ModuleInfo, TransformMap, Goal0, Goal, !VarTable) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         ( GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
@@ -531,8 +533,8 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
             module_info_pred_proc_info(ModuleInfo, CalleePredId,
                 CalleeProcId, _CalleePredInfo, CalleeProcInfo),
             proc_info_get_argmodes(CalleeProcInfo, OrigArgModes),
-            expand_call_args(OrigArgs, OrigArgModes, Args,
-                EnterUnifs, ExitUnifs, !VarSet, !VarTypes, TypeTable),
+            expand_call_args(ModuleInfo, TypeTable, OrigArgs, OrigArgModes,
+                Args, EnterUnifs, ExitUnifs, !VarTable),
             ( if CallAux = CallAux0 ^ call_args := Args then
                 Call = hlds_goal(CallAux, CallAuxInfo),
                 ConjList = EnterUnifs ++ [Call] ++ ExitUnifs,
@@ -545,8 +547,8 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
         )
     ;
         GoalExpr0 = negation(SubGoal0),
-        fix_calls_in_goal(SubGoal0, SubGoal, !VarSet, !VarTypes, TransformMap,
-            ModuleInfo),
+        fix_calls_in_goal(ModuleInfo, TransformMap, SubGoal0, SubGoal,
+            !VarTable),
         GoalExpr = negation(SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -560,8 +562,8 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
             % There are no calls in these scopes.
             Goal = Goal0
         else
-            fix_calls_in_goal(SubGoal0, SubGoal, !VarSet, !VarTypes,
-                TransformMap, ModuleInfo),
+            fix_calls_in_goal(ModuleInfo, TransformMap, SubGoal0, SubGoal,
+                !VarTable),
             GoalExpr = scope(Reason, SubGoal),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         )
@@ -569,38 +571,33 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
         GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
-            fix_calls_in_conj(Goals0, Goals, !VarSet, !VarTypes, TransformMap,
-                ModuleInfo)
+            fix_calls_in_conj(ModuleInfo, TransformMap, Goals0, Goals,
+                !VarTable)
         ;
             ConjType = parallel_conj,
             % I am not sure whether parallel conjunctions should be treated
             % with fix_calls_in_goal or fix_calls_in_goal_list. At any rate,
             % this is untested.
-            fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes,
-                TransformMap, ModuleInfo)
+            fix_calls_in_goals(ModuleInfo, TransformMap, Goals0, Goals,
+                !VarTable)
         ),
         GoalExpr = conj(ConjType, Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Goals0),
-        fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes,
-            TransformMap, ModuleInfo),
+        fix_calls_in_goals(ModuleInfo, TransformMap, Goals0, Goals, !VarTable),
         GoalExpr = disj(Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        fix_calls_in_cases(Cases0, Cases, !VarSet, !VarTypes, TransformMap,
-            ModuleInfo),
+        fix_calls_in_cases(ModuleInfo, TransformMap, Cases0, Cases, !VarTable),
         GoalExpr = switch(Var, CanFail, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        fix_calls_in_goal(Cond0, Cond, !VarSet, !VarTypes, TransformMap,
-            ModuleInfo),
-        fix_calls_in_goal(Then0, Then, !VarSet, !VarTypes, TransformMap,
-            ModuleInfo),
-        fix_calls_in_goal(Else0, Else, !VarSet, !VarTypes, TransformMap,
-            ModuleInfo),
+        fix_calls_in_goal(ModuleInfo, TransformMap, Cond0, Cond, !VarTable),
+        fix_calls_in_goal(ModuleInfo, TransformMap, Then0, Then, !VarTable),
+        fix_calls_in_goal(ModuleInfo, TransformMap, Else0, Else, !VarTable),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -611,103 +608,102 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred fix_calls_in_conj(hlds_goals::in, hlds_goals::out, prog_varset::in,
-    prog_varset::out, vartypes::in, vartypes::out, transform_map::in,
-    module_info::in) is det.
+:- pred fix_calls_in_conj(module_info::in, transform_map::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    var_table::in, var_table::out) is det.
 
-fix_calls_in_conj([], [], !VarSet, !VarTypes, _, _).
-fix_calls_in_conj([Goal0 | Goals0], Goals, !VarSet, !VarTypes, TransformMap,
-        ModuleInfo) :-
-    fix_calls_in_goal(Goal0, Goal1, !VarSet, !VarTypes, TransformMap,
-        ModuleInfo),
-    fix_calls_in_conj(Goals0, Goals1, !VarSet, !VarTypes, TransformMap,
-        ModuleInfo),
+fix_calls_in_conj(_, _, [], [], !VarTable).
+fix_calls_in_conj(ModuleInfo, TransformMap,
+        [Goal0 | Goals0], Goals, !VarTable) :-
+    fix_calls_in_goal(ModuleInfo, TransformMap, Goal0, Goal1, !VarTable),
+    fix_calls_in_conj(ModuleInfo, TransformMap, Goals0, Goals1, !VarTable),
     ( if Goal1 = hlds_goal(conj(plain_conj, ConjGoals), _) then
         Goals = ConjGoals ++ Goals1
     else
         Goals = [Goal1 | Goals1]
     ).
 
-:- pred fix_calls_in_goal_list(hlds_goals::in, hlds_goals::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    transform_map::in, module_info::in) is det.
+:- pred fix_calls_in_goals(module_info::in, transform_map::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    var_table::in, var_table::out) is det.
 
-fix_calls_in_goal_list([], [], !VarSet, !VarTypes, _, _).
-fix_calls_in_goal_list([Goal0 | Goals0], [Goal | Goals], !VarSet, !VarTypes,
-        TransformMap, ModuleInfo) :-
-    fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes,
-        TransformMap, ModuleInfo),
-    fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes,
-        TransformMap, ModuleInfo).
+fix_calls_in_goals(_, _, [], [], !VarTable).
+fix_calls_in_goals(ModuleInfo, TransformMap,
+        [Goal0 | Goals0], [Goal | Goals], !VarTable) :-
+    fix_calls_in_goal(ModuleInfo, TransformMap, Goal0, Goal, !VarTable),
+    fix_calls_in_goals(ModuleInfo, TransformMap, Goals0, Goals, !VarTable).
 
-:- pred fix_calls_in_cases(list(case)::in, list(case)::out, prog_varset::in,
-    prog_varset::out, vartypes::in, vartypes::out, transform_map::in,
-    module_info::in) is det.
+:- pred fix_calls_in_cases(module_info::in, transform_map::in,
+    list(case)::in, list(case)::out, var_table::in, var_table::out) is det.
 
-fix_calls_in_cases([], [], !VarSet, !VarTypes, _, _).
-fix_calls_in_cases([Case0 | Cases0], [Case | Cases], !VarSet, !VarTypes,
-        TransformMap, ModuleInfo) :-
+fix_calls_in_cases(_, _, [], [], !VarTable).
+fix_calls_in_cases(ModuleInfo, TransformMap,
+        [Case0 | Cases0], [Case | Cases], !VarTable) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes,
-        TransformMap, ModuleInfo),
+    fix_calls_in_goal(ModuleInfo, TransformMap, Goal0, Goal, !VarTable),
     Case = case(MainConsId, OtherConsIds, Goal),
-    fix_calls_in_cases(Cases0, Cases, !VarSet, !VarTypes,
-        TransformMap, ModuleInfo).
+    fix_calls_in_cases(ModuleInfo, TransformMap, Cases0, Cases, !VarTable).
 
 %-----------------------------------------------------------------------------%
 
-:- pred expand_call_args(prog_vars::in, list(mer_mode)::in, prog_vars::out,
-    hlds_goals::out, hlds_goals::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, type_table::in) is det.
+:- pred expand_call_args(module_info::in, type_table::in,
+    list(prog_var)::in, list(mer_mode)::in,
+    list(prog_var)::out, list(hlds_goal)::out, list(hlds_goal)::out,
+    var_table::in, var_table::out) is det.
 
-expand_call_args(Args0, ArgModes0, Args, EnterUnifs, ExitUnifs,
-        !VarSet, !VarTypes, TypeTable) :-
-    expand_call_args_2(Args0, ArgModes0, Args, EnterUnifs, ExitUnifs,
-        !VarSet, !VarTypes, [], TypeTable).
+expand_call_args(ModuleInfo, TypeTable, Args0, ArgModes0, Args,
+        EnterUnifs, ExitUnifs, !VarTable) :-
+    expand_call_args_2(ModuleInfo, TypeTable, [], Args0, ArgModes0, Args,
+        EnterUnifs, ExitUnifs, !VarTable).
 
-:- pred expand_call_args_2(prog_vars::in, list(mer_mode)::in, prog_vars::out,
-    hlds_goals::out, hlds_goals::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, list(mer_type)::in, type_table::in) is det.
+:- pred expand_call_args_2(module_info::in, type_table::in, list(mer_type)::in,
+    list(prog_var)::in, list(mer_mode)::in,
+    list(prog_var)::out, list(hlds_goal)::out, list(hlds_goal)::out,
+    var_table::in, var_table::out) is det.
 
-expand_call_args_2([], [], [], [], [], !VarSet, !VarTypes, _, _).
-expand_call_args_2([], [_|_], _, _, _, !_, !_, _, _) :-
+expand_call_args_2(_, _, _, [], [], [], [], [], !VarTable).
+expand_call_args_2(_, _, _, [], [_ | _], _, _, _, !VarTable) :-
     unexpected($pred, "length mismatch").
-expand_call_args_2([_|_], [], _, _, _, !_, !_, _, _) :-
+expand_call_args_2(_, _, _, [_ | _], [], _, _, _, !VarTable) :-
     unexpected($pred, "length mismatch").
-expand_call_args_2([Arg0 | Args0], [ArgMode | ArgModes], Args,
-        EnterUnifs, ExitUnifs, !VarSet, !VarTypes,
-        ContainerTypes0, TypeTable) :-
-    lookup_var_type(!.VarTypes, Arg0, Arg0Type),
+expand_call_args_2(ModuleInfo, TypeTable, ContainerTypes0,
+        [Arg0 | Args0], [ArgMode | ArgModes], Args,
+        EnterUnifs, ExitUnifs, !VarTable) :-
+    lookup_var_type(!.VarTable, Arg0, Arg0Type),
     expand_argument(ArgMode, Arg0Type, ContainerTypes0, TypeTable, Expansion),
     (
         Expansion = expansion(ConsId, Types),
-        NumVars = list.length(Types),
-        varset.new_vars(NumVars, ReplacementArgs, !VarSet),
-        vartypes_add_corresponding_lists(ReplacementArgs, Types, !VarTypes),
+        list.length(Types, NumVars),
+        AddUnnamedVarForType =
+            ( pred(T::in, V::out, VT0::in, VT::out) is det :-
+                IsDummy = is_type_a_dummy(ModuleInfo, T),
+                Entry = vte("", T, IsDummy),
+                add_var_entry(Entry, V, VT0, VT)
+            ),
+        list.map_foldl(AddUnnamedVarForType, Types, ReplacementArgs,
+            !VarTable),
         list.duplicate(NumVars, ArgMode, ReplacementModes),
         ContainerTypes = [Arg0Type | ContainerTypes0],
         ( if ArgMode = in_mode then
             deconstruct_functor(Arg0, ConsId, ReplacementArgs, Unif),
             EnterUnifs = [Unif | EnterUnifs1],
-            expand_call_args_2(ReplacementArgs ++ Args0,
-                ReplacementModes ++ ArgModes,
-                Args, EnterUnifs1, ExitUnifs, !VarSet,
-                !VarTypes, ContainerTypes, TypeTable)
+            expand_call_args_2(ModuleInfo, TypeTable, ContainerTypes,
+                ReplacementArgs ++ Args0, ReplacementModes ++ ArgModes,
+                Args, EnterUnifs1, ExitUnifs, !VarTable)
         else if ArgMode = out_mode then
             construct_functor(Arg0, ConsId, ReplacementArgs, Unif),
             ExitUnifs = ExitUnifs1 ++ [Unif],
-            expand_call_args_2(ReplacementArgs ++ Args0,
-                ReplacementModes ++ ArgModes,
-                Args, EnterUnifs, ExitUnifs1, !VarSet,
-                !VarTypes, ContainerTypes, TypeTable)
+            expand_call_args_2(ModuleInfo, TypeTable, ContainerTypes,
+                ReplacementArgs ++ Args0, ReplacementModes ++ ArgModes,
+                Args, EnterUnifs, ExitUnifs1, !VarTable)
         else
             unexpected($pred, "unsupported mode")
         )
     ;
         Expansion = no_expansion,
         Args = [Arg0 | Args1],
-        expand_call_args(Args0, ArgModes, Args1, EnterUnifs,
-            ExitUnifs, !VarSet, !VarTypes, TypeTable)
+        expand_call_args(ModuleInfo, TypeTable, Args0, ArgModes, Args1,
+            EnterUnifs, ExitUnifs, !VarTable)
     ).
 
 %-----------------------------------------------------------------------------%

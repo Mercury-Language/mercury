@@ -25,7 +25,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_main_types.
 
@@ -78,14 +78,14 @@
     % Takes a list of prog_vars and outputs the corresponding
     % list of size_vars, based on the given map.
     %
-:- func prog_vars_to_size_vars(size_var_map, prog_vars) = size_vars.
+:- func prog_vars_to_size_vars(size_var_map, list(prog_var)) = list(size_var).
 :- func prog_var_to_size_var(size_var_map, prog_var) = size_var.
 
     % Returns a set containing all the size_vars corresponding to prog_vars
     % that have a type that is always of zero size. i.e. all those for which
     % the functor norm returns zero for all values of the type.
     %
-:- func find_zero_size_vars(module_info, size_var_map, vartypes) = zero_vars.
+:- func find_zero_size_vars(module_info, var_table, size_var_map) = zero_vars.
 
     % create_nonneg_constraints(SizeVarMap, Zeros) = Constraints.
     %
@@ -101,12 +101,13 @@
     % corresponding elements in `ToVars'. This mapping is many-one.
     % An exception is thrown if `FromVars' contains any duplicate elements.
     %
-:- func create_var_substitution(size_vars, size_vars) = var_substitution.
+:- func create_var_substitution(list(size_var), list(size_var))
+    = var_substitution.
 
     % Create a non-negativity constraint for each size_var in the list,
     % *except* if it has zero size type.
     %
-:- func make_arg_constraints(size_vars, zero_vars) = constraints.
+:- func make_arg_constraints(list(size_var), zero_vars) = constraints.
 
     % Check that a size_var is a member of the set of zero size_vars.
     % XXX Ideally we would just use set.member directly but the arguments
@@ -191,10 +192,10 @@
     string::in, pred_proc_id::in, io::di, io::uo) is det.
 
 :- pred write_size_vars(io.text_output_stream::in, size_varset::in,
-    size_vars::in, io::di, io::uo) is det.
+    list(size_var)::in, io::di, io::uo) is det.
 
 :- pred dump_size_vars(io.text_output_stream::in, size_varset::in,
-    size_vars::in, io::di, io::uo) is det.
+    list(size_var)::in, io::di, io::uo) is det.
 
 :- pred dump_size_varset(io.text_output_stream::in, size_varset::in,
     io::di, io::uo) is det.
@@ -282,20 +283,20 @@ prog_var_to_size_var(SizeVarMap, Var) = SizeVar :-
         unexpected($pred, "prog_var not in size_var_map")
     ).
 
-find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes) = Zeros :-
+find_zero_size_vars(ModuleInfo, VarTable, SizeVarMap) = Zeros :-
     ProgVars = map.keys(SizeVarMap),
-    ZeroProgVars = list.filter(is_zero_size_prog_var(ModuleInfo, VarTypes),
+    ZeroProgVars = list.filter(is_zero_size_prog_var(ModuleInfo, VarTable),
         ProgVars),
 
     % Build zeros from corresponding size_vars.
     ZerosList = prog_vars_to_size_vars(SizeVarMap, ZeroProgVars),
     Zeros = set.list_to_set(ZerosList).
 
-:- pred is_zero_size_prog_var(module_info::in, vartypes::in,
+:- pred is_zero_size_prog_var(module_info::in, var_table::in,
     prog_var::in) is semidet.
 
-is_zero_size_prog_var(ModuleInfo, VarTypes, Var) :-
-    lookup_var_type(VarTypes, Var, Type),
+is_zero_size_prog_var(ModuleInfo, VarTable, Var) :-
+    lookup_var_type(VarTable, Var, Type),
     (
         term_norm.zero_size_type(ModuleInfo, Type)
     ;
@@ -323,7 +324,7 @@ create_nonneg_constraints_2(SizeVarMap, Zeros, NonNegs) :-
 create_var_substitution(Args, HeadVars) = SubstMap :-
     create_var_substitution_2(Args, HeadVars, map.init, SubstMap).
 
-:- pred create_var_substitution_2(size_vars::in, size_vars::in,
+:- pred create_var_substitution_2(list(size_var)::in, list(size_var)::in,
     var_substitution::in, var_substitution::out) is det.
 
 create_var_substitution_2([], [], !Subst).
@@ -469,7 +470,7 @@ dump_size_varset(Stream, VarSet, !IO) :-
     dump_size_varset_loop(Stream, VarSet, Vars, !IO).
 
 :- pred dump_size_varset_loop(io.text_output_stream::in, size_varset::in,
-    size_vars::in, io::di, io::uo) is det.
+    list(size_var)::in, io::di, io::uo) is det.
 
 dump_size_varset_loop(_, _, [], !IO).
 dump_size_varset_loop(Stream, VarSet, [Var | Vars], !IO) :-

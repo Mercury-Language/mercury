@@ -81,7 +81,7 @@
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_main_types.
 :- import_module transform_hlds.term_constr_util.
@@ -214,7 +214,7 @@ term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
 
     module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, ProcInfo),
     pred_info_get_context(PredInfo, Context),
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     proc_info_get_headvars(ProcInfo, HeadProgVars),
     proc_info_get_argmodes(ProcInfo, ArgModes0),
     proc_info_get_goal(ProcInfo, Goal0),
@@ -227,9 +227,9 @@ term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
     % Allocate one size_var for each real var. in the procedure.
     % Work out which variables have zero size.
     allocate_sizevars(HeadProgVars, Goal, SizeVarMap, !SizeVarset),
-    Zeros = find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes),
+    Zeros = find_zero_size_vars(ModuleInfo, VarTable, SizeVarMap),
     Info0 = init_traversal_info(ModuleInfo, Options ^ tbo_functor_info, PPId,
-        Context, VarTypes, Zeros, SizeVarMap, SCC,
+        Context, VarTable, Zeros, SizeVarMap, SCC,
         Options ^ tbo_failure_constrs, Options ^ tbo_arg_size_only),
 
     % Traverse the HLDS and construct the abstract version of this procedure.
@@ -242,7 +242,7 @@ term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
     % An argument may be used if (a) it is input and (b) it has non-zero size.
     ChooseArg =
         ( func(Var, Mode) = UseArg :-
-            lookup_var_type(VarTypes, Var, Type),
+            lookup_var_type(VarTable, Var, Type),
             ( if
                 not zero_size_type(ModuleInfo, Type),
                 mode_is_input(ModuleInfo, Mode)
@@ -325,7 +325,7 @@ term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
                 tti_context                     :: term.context,
 
                 % Types for all prog_vars in the current procedure.
-                tti_vartypes                    :: vartypes,
+                tti_var_table                   :: var_table,
 
                 % size_vars in the current procedure that are known
                 % to have zero size.
@@ -347,7 +347,7 @@ term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
         ).
 
 :- func init_traversal_info(module_info, functor_info, pred_proc_id,
-    term.context, vartypes, zero_vars, size_var_map, scc, bool, bool)
+    term.context, var_table, zero_vars, size_var_map, scc, bool, bool)
     = tti_traversal_info.
 
 init_traversal_info(ModuleInfo, Norm, PPId, Context, Types, Zeros,
@@ -719,9 +719,9 @@ build_abstract_switch_acc(SwitchProgVar, [Case | Cases], !AbstractGoals,
     then
         AbstractGoal = AbstractGoal0
     else
-        TypeMap = !.Info ^ tti_vartypes,
+        VarTable = !.Info ^ tti_var_table,
         SizeVarMap = !.Info ^ tti_size_var_map,
-        lookup_var_type(TypeMap, SwitchProgVar, SwitchVarType),
+        lookup_var_type(VarTable, SwitchProgVar, SwitchVarType),
         SwitchSizeVar = prog_var_to_size_var(SizeVarMap, SwitchProgVar),
         type_to_ctor_det(SwitchVarType, TypeCtor),
         ModuleInfo = !.Info ^ tti_module_info,
@@ -789,8 +789,8 @@ build_abstract_from_ground_term_goal(TermVar, SubGoal, AbstractGoal, !Info) :-
         else
             ModuleInfo = !.Info ^ tti_module_info,
             Norm = !.Info ^ tti_norm,
-            VarTypes = !.Info ^ tti_vartypes,
-            abstract_from_ground_term_conjuncts(ModuleInfo, Norm, VarTypes,
+            VarTable = !.Info ^ tti_var_table,
+            abstract_from_ground_term_conjuncts(ModuleInfo, Norm, VarTable,
                 Conjuncts, map.init, SizeMap),
             map.lookup(SizeMap, TermVar, KnownTermVarSize),
             Terms = [TermSizeVar - one],
@@ -804,32 +804,32 @@ build_abstract_from_ground_term_goal(TermVar, SubGoal, AbstractGoal, !Info) :-
     ).
 
 :- pred abstract_from_ground_term_conjuncts(module_info::in, functor_info::in,
-    vartypes::in, list(hlds_goal)::in,
+    var_table::in, list(hlds_goal)::in,
     map(prog_var, int)::in, map(prog_var, int)::out) is det.
 
-abstract_from_ground_term_conjuncts(_ModuleInfo, _Norm, _VarTypes, [],
+abstract_from_ground_term_conjuncts(_ModuleInfo, _Norm, _VarTable, [],
         !SizeMap).
-abstract_from_ground_term_conjuncts(ModuleInfo, Norm, VarTypes, [Goal | Goals],
+abstract_from_ground_term_conjuncts(ModuleInfo, Norm, VarTable, [Goal | Goals],
         !SizeMap) :-
-    abstract_from_ground_term_conjunct(ModuleInfo, Norm, VarTypes, Goal,
+    abstract_from_ground_term_conjunct(ModuleInfo, Norm, VarTable, Goal,
         !SizeMap),
-    abstract_from_ground_term_conjuncts(ModuleInfo, Norm, VarTypes, Goals,
+    abstract_from_ground_term_conjuncts(ModuleInfo, Norm, VarTable, Goals,
         !SizeMap).
 
 :- pred abstract_from_ground_term_conjunct(module_info::in, functor_info::in,
-    vartypes::in, hlds_goal::in,
+    var_table::in, hlds_goal::in,
     map(prog_var, int)::in, map(prog_var, int)::out) is det.
 
-abstract_from_ground_term_conjunct(ModuleInfo, Norm, VarTypes, Goal,
+abstract_from_ground_term_conjunct(ModuleInfo, Norm, VarTable, Goal,
         !SizeMap) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     ( if
         GoalExpr = unify(_, _, _, Unify, _),
         Unify = construct(Var, ConsId, ArgVars, Modes, _, _, _)
     then
-        strip_typeinfos_from_args_and_modes(VarTypes, ArgVars, FixedArgVars,
+        strip_typeinfos_from_args_and_modes(VarTable, ArgVars, FixedArgVars,
             Modes, FixedModes),
-        lookup_var_type(VarTypes, Var, Type),
+        lookup_var_type(VarTable, Var, Type),
         type_to_ctor_det(Type, TypeCtor),
         functor_norm(ModuleInfo, Norm, TypeCtor, ConsId, ConsIdSize,
             FixedArgVars, CountedVars, FixedModes, _),
@@ -895,8 +895,8 @@ build_abstract_unification(Unification, AbstractGoal, !Info) :-
 
 build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
         !Info) :-
-    VarTypes = !.Info ^ tti_vartypes,
-    lookup_var_type(VarTypes, Var, Type),
+    VarTable = !.Info ^ tti_var_table,
+    lookup_var_type(VarTable, Var, Type),
     ( if
         % The only valid higher-order unifications are assignments.
         % For the purposes of the IR analysis, we can ignore them.
@@ -914,7 +914,7 @@ build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
         % raise a software error if we are using the `num-data-elems'
         % norm and the term has existential typeclass constraints.
 
-        strip_typeinfos_from_args_and_modes(VarTypes, ArgVars, FixedArgVars,
+        strip_typeinfos_from_args_and_modes(VarTable, ArgVars, FixedArgVars,
             Modes, FixedModes),
         ModuleInfo = !.Info ^ tti_module_info,
         Norm = !.Info ^ tti_norm,
@@ -963,26 +963,26 @@ accumulate_nonzero_arg_coeffs(SizeVarMap, Zeros, Coeff, Var, !Terms) :-
         !:Terms = [SizeVar - Coeff | !.Terms]
     ).
 
-:- pred strip_typeinfos_from_args_and_modes(vartypes::in,
+:- pred strip_typeinfos_from_args_and_modes(var_table::in,
     list(prog_var)::in, list(prog_var)::out,
     list(unify_mode)::in, list(unify_mode)::out) is det.
 
-strip_typeinfos_from_args_and_modes(VarTypes, !Args, !Modes) :-
-    ( if strip_typeinfos_from_args_and_modes_2(VarTypes, !Args, !Modes) then
+strip_typeinfos_from_args_and_modes(VarTable, !Args, !Modes) :-
+    ( if strip_typeinfos_from_args_and_modes_2(VarTable, !Args, !Modes) then
         true
     else
         unexpected($pred, "unequal length lists")
     ).
 
-:- pred strip_typeinfos_from_args_and_modes_2(vartypes::in,
+:- pred strip_typeinfos_from_args_and_modes_2(var_table::in,
     list(prog_var)::in, list(prog_var)::out,
     list(unify_mode)::in, list(unify_mode)::out) is semidet.
 
 strip_typeinfos_from_args_and_modes_2(_, [], [], [], []).
-strip_typeinfos_from_args_and_modes_2(VarTypes, [Arg | !.Args], !:Args,
+strip_typeinfos_from_args_and_modes_2(VarTable, [Arg | !.Args], !:Args,
         [Mode | !.Modes], !:Modes) :-
-    strip_typeinfos_from_args_and_modes_2(VarTypes, !Args, !Modes),
-    lookup_var_type(VarTypes, Arg, Type),
+    strip_typeinfos_from_args_and_modes_2(VarTable, !Args, !Modes),
+    lookup_var_type(VarTable, Arg, Type),
     ( if is_introduced_type_info_type(Type) then
         true
     else
@@ -1185,7 +1185,7 @@ find_failure_constraint_for_goal_2(Info, Goal, AbstractGoal) :-
 
         GoalExpr = unify(_, _, _, Unification, _),
         Unification = deconstruct(Var, ConsId, _, _, can_fail, _),
-        lookup_var_type(Info ^ tti_vartypes, Var, Type),
+        lookup_var_type(Info ^ tti_var_table, Var, Type),
         type_to_ctor_det(Type, TypeCtor),
         ModuleInfo = Info ^ tti_module_info,
         type_util.type_constructors(ModuleInfo, Type, Constructors0),

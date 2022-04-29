@@ -28,7 +28,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.term_errors.
 :- import_module transform_hlds.term_norm.
 
@@ -111,7 +111,7 @@
 
     % Succeeds if one or more variables in the list are higher order.
     %
-:- pred some_var_is_higher_order(vartypes::in, list(prog_var)::in) is semidet.
+:- pred some_var_is_higher_order(var_table::in, list(prog_var)::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -313,12 +313,12 @@ make_bool_list_2([_ | Vars], Bools, [no | Out]) :-
 
 %---------------------------------------------------------------------------%
 
-some_var_is_higher_order(VarTypes, [Arg | Args]) :-
-    lookup_var_type(VarTypes, Arg, Type),
+some_var_is_higher_order(VarTable, [Var | Vars]) :-
+    lookup_var_type(VarTable, Var, Type),
     ( if type_is_higher_order(Type) then
         true
     else
-        some_var_is_higher_order(VarTypes, Args)
+        some_var_is_higher_order(VarTable, Vars)
     ).
 
 %---------------------------------------------------------------------------%

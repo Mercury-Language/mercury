@@ -161,6 +161,7 @@
 
 :- import_module hlds.hlds_error_util.
 :- import_module parse_tree.prog_data_pragma.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.term_util.
 
 :- import_module cord.
@@ -171,7 +172,6 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -443,13 +443,13 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
         ),
         ProcPPId = proc(PredId, ProcId),
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-        proc_info_get_varset_vartypes(ProcInfo, Varset, _VarTypes),
-        term_errors_var_bag_description(OutputSuppliers, Varset,
+        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        term_errors_var_bag_description(VarTable, OutputSuppliers,
             OutputSuppliersNames),
         list.map((pred(OS::in, FOS::out) is det :- FOS = fixed(OS)),
             OutputSuppliersNames, OutputSuppliersPieces),
         Pieces3 = [words("is not a subset of the head variables")],
-        term_errors_var_bag_description(HeadVars, Varset, HeadVarsNames),
+        term_errors_var_bag_description(VarTable, HeadVars, HeadVarsNames),
         list.map((pred(HV::in, FHV::out) is det :- FHV = fixed(HV)),
             HeadVarsNames, HeadVarsPieces),
         Pieces = Pieces1 ++ OutputSuppliersPieces ++ Pieces3 ++
@@ -522,42 +522,41 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
 
 %----------------------------------------------------------------------------%
 
-:- pred term_errors_var_bag_description(bag(prog_var)::in, prog_varset::in,
+:- pred term_errors_var_bag_description(var_table::in, bag(prog_var)::in,
     list(string)::out) is det.
 
-term_errors_var_bag_description(HeadVars, Varset, Pieces) :-
-    bag.to_assoc_list(HeadVars, HeadVarCountList),
-    term_errors_var_bag_description_2(HeadVarCountList, Varset, yes, Pieces).
-
-:- pred term_errors_var_bag_description_2(assoc_list(prog_var, int)::in,
-    prog_varset::in, bool::in, list(string)::out) is det.
-
-term_errors_var_bag_description_2([], _, _, ["{}"]).
-term_errors_var_bag_description_2([Var - Count | VarCounts], Varset, First,
-        [Piece | Pieces]) :-
-    varset.lookup_name(Varset, Var, VarName),
-    ( if Count > 1 then
-        string.append(VarName, "*", VarCountPiece0),
-        string.int_to_string(Count, CountStr),
-        string.append(VarCountPiece0, CountStr, VarCountPiece)
-    else
-        VarCountPiece = VarName
-    ),
+term_errors_var_bag_description(VarTable, HeadVars, Pieces) :-
+    bag.to_assoc_list(HeadVars, HeadVarsCounts),
     (
-        First = yes,
-        string.append("{", VarCountPiece, Piece0)
+        HeadVarsCounts = [],
+        Pieces = ["{}"]
     ;
-        First = no,
-        Piece0 = VarCountPiece
+        HeadVarsCounts = [FirstVarCount | LaterVarsCounts],
+        term_errors_var_bag_desc_loop(VarTable, "{",
+            FirstVarCount, LaterVarsCounts, Pieces)
+    ).
+
+:- pred term_errors_var_bag_desc_loop(var_table::in, string::in,
+    pair(prog_var, int)::in, assoc_list(prog_var, int)::in,
+    list(string)::out) is det.
+
+term_errors_var_bag_desc_loop(VarTable, Prefix,
+        Var - Count, VarsCounts, [Piece | Pieces]) :-
+    VarName = var_table_entry_name(VarTable, Var),
+    ( if Count > 1 then
+        string.format("%s%s*%d", [s(Prefix), s(VarName), i(Count)], Piece0)
+    else
+        string.format("%s%s", [s(Prefix), s(VarName)], Piece0)
     ),
     (
-        VarCounts = [],
-        string.append(Piece0, "}.", Piece),
+        VarsCounts = [],
+        Piece = Piece0 ++ "}.",
         Pieces = []
     ;
-        VarCounts = [_ | _],
+        VarsCounts = [HeadVarCount | TailVarsCounts],
         Piece = Piece0,
-        term_errors_var_bag_description_2(VarCounts, Varset, First, Pieces)
+        term_errors_var_bag_desc_loop(VarTable, "",
+            HeadVarCount, TailVarsCounts, Pieces)
     ).
 
 %-----------------------------------------------------------------------------%

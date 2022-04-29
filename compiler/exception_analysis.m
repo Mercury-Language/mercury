@@ -138,7 +138,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.intermod_analysis.
 :- import_module transform_hlds.mmc_analysis.
 
@@ -328,36 +328,36 @@ maybe_analysis_status(ProcResult, ProcResult ^ epr_maybe_analysis_status).
 check_proc_for_exceptions(SCC, PPId, !Results, !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, _, ProcInfo),
     proc_info_get_goal(ProcInfo, Body),
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
+    proc_info_get_var_table(!.ModuleInfo, ProcInfo, VarTable),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
     MaybeAnalysisStatus0 = maybe_optimal(IntermodAnalysis),
     Result0 = excp_proc_result(PPId, will_not_throw, type_will_not_throw,
         MaybeAnalysisStatus0),
-    check_goal_for_exceptions(SCC, VarTypes, Body, Result0, Result,
+    check_goal_for_exceptions(SCC, VarTable, Body, Result0, Result,
         !ModuleInfo),
     list.cons(Result, !Results).
 
-:- pred check_goal_for_exceptions(scc::in, vartypes::in, hlds_goal::in,
+:- pred check_goal_for_exceptions(scc::in, var_table::in, hlds_goal::in,
     excp_proc_result::in, excp_proc_result::out,
     module_info::in, module_info::out) is det.
 
-check_goal_for_exceptions(SCC, VarTypes, hlds_goal(GoalExpr, GoalInfo),
+check_goal_for_exceptions(SCC, VarTable, hlds_goal(GoalExpr, GoalInfo),
         !Result, !ModuleInfo) :-
     ( if goal_info_get_determinism(GoalInfo) = detism_erroneous then
         !Result ^ epr_status := may_throw(user_exception)
     else
-        check_goal_for_exceptions_2(SCC, VarTypes, GoalExpr, GoalInfo,
+        check_goal_for_exceptions_2(SCC, VarTable, GoalExpr, GoalInfo,
             !Result, !ModuleInfo)
     ).
 
-:- pred check_goal_for_exceptions_2(scc::in, vartypes::in,
+:- pred check_goal_for_exceptions_2(scc::in, var_table::in,
     hlds_goal_expr::in, hlds_goal_info::in,
     excp_proc_result::in, excp_proc_result::out,
     module_info::in, module_info::out) is det.
 
-check_goal_for_exceptions_2(SCC, VarTypes, GoalExpr, GoalInfo,
+check_goal_for_exceptions_2(SCC, VarTable, GoalExpr, GoalInfo,
         !Result, !ModuleInfo) :-
     (
         GoalExpr = unify(_, _, _, Kind, _),
@@ -373,11 +373,11 @@ check_goal_for_exceptions_2(SCC, VarTypes, GoalExpr, GoalInfo,
         )
     ;
         GoalExpr = plain_call(CallPredId, CallProcId, Args, _, _, _),
-        check_goal_for_exceptions_plain_call(SCC, VarTypes,
+        check_goal_for_exceptions_plain_call(SCC, VarTable,
             CallPredId, CallProcId, Args, !Result, !ModuleInfo)
     ;
         GoalExpr = generic_call(Details, Args, _, _, _),
-        check_goal_for_exceptions_generic_call(VarTypes, Details, Args,
+        check_goal_for_exceptions_generic_call(VarTable, Details, Args,
             GoalInfo, !Result, !ModuleInfo)
     ;
         GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
@@ -404,19 +404,19 @@ check_goal_for_exceptions_2(SCC, VarTypes, GoalExpr, GoalInfo,
         ( GoalExpr = disj(Goals)
         ; GoalExpr = conj(_, Goals)
         ),
-        check_goals_for_exceptions(SCC, VarTypes, Goals, !Result, !ModuleInfo)
+        check_goals_for_exceptions(SCC, VarTable, Goals, !Result, !ModuleInfo)
     ;
         GoalExpr = switch(_, _, Cases),
         CaseGoals = list.map((func(case(_, _, CaseGoal)) = CaseGoal), Cases),
-        check_goals_for_exceptions(SCC, VarTypes, CaseGoals, !Result,
+        check_goals_for_exceptions(SCC, VarTable, CaseGoals, !Result,
             !ModuleInfo)
     ;
         GoalExpr = if_then_else(_, If, Then, Else),
-        check_goals_for_exceptions(SCC, VarTypes, [If, Then, Else],
+        check_goals_for_exceptions(SCC, VarTable, [If, Then, Else],
             !Result, !ModuleInfo)
     ;
         GoalExpr = negation(SubGoal),
-        check_goal_for_exceptions(SCC, VarTypes, SubGoal, !Result, !ModuleInfo)
+        check_goal_for_exceptions(SCC, VarTable, SubGoal, !Result, !ModuleInfo)
     ;
         GoalExpr = scope(Reason, SubGoal),
         ( if
@@ -427,7 +427,7 @@ check_goal_for_exceptions_2(SCC, VarTypes, GoalExpr, GoalInfo,
         then
             true
         else
-            check_goal_for_exceptions(SCC, VarTypes, SubGoal, !Result,
+            check_goal_for_exceptions(SCC, VarTable, SubGoal, !Result,
                 !ModuleInfo)
         )
     ;
@@ -437,12 +437,12 @@ check_goal_for_exceptions_2(SCC, VarTypes, GoalExpr, GoalInfo,
             "shorthand goal encountered during exception analysis.")
     ).
 
-:- pred check_goal_for_exceptions_plain_call(scc::in, vartypes::in,
+:- pred check_goal_for_exceptions_plain_call(scc::in, var_table::in,
     pred_id::in, proc_id::in, list(prog_var)::in,
     excp_proc_result::in, excp_proc_result::out,
     module_info::in, module_info::out) is det.
 
-check_goal_for_exceptions_plain_call(SCC, VarTypes, CallPredId, CallProcId,
+check_goal_for_exceptions_plain_call(SCC, VarTable, CallPredId, CallProcId,
         CallArgs, !Result, !ModuleInfo) :-
     CallPPId = proc(CallPredId, CallProcId),
     module_info_pred_info(!.ModuleInfo, CallPredId, CallPredInfo),
@@ -450,7 +450,7 @@ check_goal_for_exceptions_plain_call(SCC, VarTypes, CallPredId, CallProcId,
         % Handle (mutually-)recursive calls.
         set.member(CallPPId, SCC)
     then
-        lookup_var_types(VarTypes, CallArgs, Types),
+        lookup_var_types(VarTable, CallArgs, Types),
         TypeStatus = excp_check_types(!.ModuleInfo, Types),
         excp_combine_type_status(TypeStatus, !.Result ^ epr_rec_calls,
             NewTypeStatus),
@@ -487,19 +487,19 @@ check_goal_for_exceptions_plain_call(SCC, VarTypes, CallPredId, CallProcId,
         globals.lookup_bool_option(Globals, intermodule_analysis,
             IntermodAnalysis),
         MaybeAnalysisStatus = maybe_optimal(IntermodAnalysis),
-        excp_check_vars(!.ModuleInfo, VarTypes, CallArgs, MaybeAnalysisStatus,
+        excp_check_vars(!.ModuleInfo, VarTable, CallArgs, MaybeAnalysisStatus,
             !Result)
     else
-        excp_check_nonrecursive_call(VarTypes, CallPPId, CallArgs,
+        excp_check_nonrecursive_call(VarTable, CallPPId, CallArgs,
             CallPredInfo, !Result, !ModuleInfo)
     ).
 
-:- pred check_goal_for_exceptions_generic_call(vartypes::in,
+:- pred check_goal_for_exceptions_generic_call(var_table::in,
     generic_call::in, list(prog_var)::in, hlds_goal_info::in,
     excp_proc_result::in, excp_proc_result::out,
     module_info::in, module_info::out) is det.
 
-check_goal_for_exceptions_generic_call(VarTypes, Details, Args, GoalInfo,
+check_goal_for_exceptions_generic_call(VarTable, Details, Args, GoalInfo,
         !Result, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, intermodule_analysis,
@@ -540,7 +540,7 @@ check_goal_for_exceptions_generic_call(VarTypes, Details, Args, GoalInfo,
                     % out-of-line unifications/comparisons occur to be able to
                     % do better.
 
-                    excp_check_vars(!.ModuleInfo, VarTypes, Args,
+                    excp_check_vars(!.ModuleInfo, VarTable, Args,
                         MaybeAnalysisStatus, !Result)
                 )
             ;
@@ -560,14 +560,14 @@ check_goal_for_exceptions_generic_call(VarTypes, Details, Args, GoalInfo,
         Details = cast(_)
     ).
 
-:- pred check_goals_for_exceptions(scc::in, vartypes::in,
+:- pred check_goals_for_exceptions(scc::in, var_table::in,
     list(hlds_goal)::in, excp_proc_result::in, excp_proc_result::out,
     module_info::in, module_info::out) is det.
 
 check_goals_for_exceptions(_, _, [], !Result, !ModuleInfo).
-check_goals_for_exceptions(SCC, VarTypes, [Goal | Goals], !Result,
+check_goals_for_exceptions(SCC, VarTable, [Goal | Goals], !Result,
         !ModuleInfo) :-
-    check_goal_for_exceptions(SCC, VarTypes, Goal, !Result, !ModuleInfo),
+    check_goal_for_exceptions(SCC, VarTable, Goal, !Result, !ModuleInfo),
 
     % We can stop searching if we find a user exception. However if we find
     % a type exception then we still need to check that there is not a user
@@ -581,7 +581,7 @@ check_goals_for_exceptions(SCC, VarTypes, [Goal | Goals], !Result,
         ; CurrentStatus = throw_conditional
         ; CurrentStatus = may_throw(type_exception)
         ),
-        check_goals_for_exceptions(SCC, VarTypes, Goals, !Result, !ModuleInfo)
+        check_goals_for_exceptions(SCC, VarTable, Goals, !Result, !ModuleInfo)
     ).
 
 %----------------------------------------------------------------------------%
@@ -710,12 +710,12 @@ combine_maybe_analysis_status(MaybeStatusA, MaybeStatusB, MaybeStatus) :-
 % Extra procedures for handling calls.
 %
 
-:- pred excp_check_nonrecursive_call(vartypes::in,
-    pred_proc_id::in, prog_vars::in, pred_info::in,
+:- pred excp_check_nonrecursive_call(var_table::in,
+    pred_proc_id::in, list(prog_var)::in, pred_info::in,
     excp_proc_result::in, excp_proc_result::out,
     module_info::in, module_info::out) is det.
 
-excp_check_nonrecursive_call(VarTypes, PPId, Args, PredInfo, !Result,
+excp_check_nonrecursive_call(VarTable, PPId, Args, PredInfo, !Result,
         !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, intermodule_analysis,
@@ -748,7 +748,7 @@ excp_check_nonrecursive_call(VarTypes, PPId, Args, PredInfo, !Result,
                     MaybeAnalysisStatus, !Result)
             ;
                 CalleeExceptionStatus = throw_conditional,
-                excp_check_vars(!.ModuleInfo, VarTypes, Args,
+                excp_check_vars(!.ModuleInfo, VarTable, Args,
                     MaybeAnalysisStatus, !Result)
             )
         ;
@@ -762,12 +762,12 @@ excp_check_nonrecursive_call(VarTypes, PPId, Args, PredInfo, !Result,
         )
     ).
 
-:- pred excp_check_vars(module_info::in, vartypes::in, prog_vars::in,
+:- pred excp_check_vars(module_info::in, var_table::in, list(prog_var)::in,
     maybe(analysis_status)::in, excp_proc_result::in, excp_proc_result::out)
     is det.
 
-excp_check_vars(ModuleInfo, VarTypes, Vars, MaybeAnalysisStatus, !Result) :-
-    lookup_var_types(VarTypes, Vars, Types),
+excp_check_vars(ModuleInfo, VarTable, Vars, MaybeAnalysisStatus, !Result) :-
+    lookup_var_types(VarTable, Vars, Types),
     TypeStatus = excp_check_types(ModuleInfo, Types),
     (
         TypeStatus = type_will_not_throw
