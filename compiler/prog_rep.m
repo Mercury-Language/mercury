@@ -344,7 +344,7 @@ max_var_num(_, VarNum1 - _, VarNum2) = Max :-
 
 encode_var_name_table_entry_1_byte(_ProgVar, VarNum - VarName,
         !NumVars, !VarNameTableBytes, !StringTable) :-
-    ( if compiler_introduced_varname(VarName) then
+    ( if is_compiler_introduced_varname(VarName) then
         true
     else
         !:NumVars = !.NumVars + 1,
@@ -359,7 +359,7 @@ encode_var_name_table_entry_1_byte(_ProgVar, VarNum - VarName,
 
 encode_var_name_table_entry_2_byte(_ProgVar, VarNum - VarName,
         !NumVars, !VarNameTableBytes, !StringTable) :-
-    ( if compiler_introduced_varname(VarName) then
+    ( if is_compiler_introduced_varname(VarName) then
         true
     else
         !:NumVars = !.NumVars + 1,
@@ -374,7 +374,7 @@ encode_var_name_table_entry_2_byte(_ProgVar, VarNum - VarName,
 
 encode_var_name_table_entry_4_byte(_ProgVar, VarNum - VarName,
         !NumVars, !VarNameTableBytes, !StringTable) :-
-    ( if compiler_introduced_varname(VarName) then
+    ( if is_compiler_introduced_varname(VarName) then
         true
     else
         !:NumVars = !.NumVars + 1,
@@ -410,25 +410,31 @@ encode_var_name_type_table_entry(VarNumRep, VarTable, Var, VarNum - VarName,
 
 %-----------------------------------------------------------------------------%
 
-:- pred compiler_introduced_varname(string::in) is semidet.
+:- pred is_compiler_introduced_varname(string::in) is semidet.
 
-compiler_introduced_varname("").
-compiler_introduced_varname("ProcStaticLayout").
-compiler_introduced_varname("TopCSD").
-compiler_introduced_varname("MiddleCSD").
-compiler_introduced_varname("ActivationPtr").
-compiler_introduced_varname("SiteNum").
-compiler_introduced_varname("MethodNum").
-compiler_introduced_varname(VarName) :-
-    ( Prefix = "V_"
-    ; Prefix = "HeadVar__"
-    ; Prefix = "TypeClassInfo_for_"
-    ; Prefix = "TypeInfo_"
-    ; Prefix = "TypeCtorInfo_"
-    ; Prefix = "STATE_VARIABLE_"
-    ; Prefix = "DCG_"
-    ),
-    prefix(VarName, Prefix).
+is_compiler_introduced_varname(VarName) :-
+    (
+        ( VarName = ""
+        ; VarName = "ProcStaticLayout"
+        ; VarName = "TopCSD"
+        ; VarName = "MiddleCSD"
+        ; VarName = "ActivationPtr"
+        ; VarName = "SiteNum"
+        ; VarName = "MethodNum"
+        )
+    ;
+        some [Prefix] (
+            ( Prefix = "V_"
+            ; Prefix = "HeadVar__"
+            ; Prefix = "TypeClassInfo_for_"
+            ; Prefix = "TypeInfo_"
+            ; Prefix = "TypeCtorInfo_"
+            ; Prefix = "STATE_VARIABLE_"
+            ; Prefix = "DCG_"
+            ),
+            prefix(VarName, Prefix)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 
