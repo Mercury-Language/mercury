@@ -45,7 +45,7 @@ mdb> finish -n
       E6:     C4 EXIT pred interpreter.consult_until_eof/5-0 (det)
 mdb> 
       E7:     C5 EXIT pred interpreter.consult_until_eof/5-0 (det)
-mdb> 
+mdb> finish 1
       E8:     C2 EXIT pred interpreter.consult_file/5-0 (det)
 mdb> continue
 ?- 

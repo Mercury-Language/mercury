@@ -16,5 +16,5 @@ print *
 
 finish -n
 
-
+finish 1
 continue
