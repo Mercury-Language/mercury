@@ -807,13 +807,13 @@ new_type_info_var(Type, Kind, Var, !Info) :-
 new_type_info_var_raw(Type, Kind, Var, !VarSet, !VarTypes, !RttiVarMaps) :-
     (
         Kind = type_info,
-        Prefix = "TypeInfo_",
+        Prefix = "TypeInfo",
         add_prefix_number_var_entry_to_var_set_vartypes(Prefix, type_info_type,
             is_not_dummy_type, Var, !VarSet, !VarTypes),
         rtti_det_insert_type_info_type(Var, Type, !RttiVarMaps)
     ;
         Kind = type_ctor_info,
-        Prefix = "TypeCtorInfo_",
+        Prefix = "TypeCtorInfo",
         add_prefix_number_var_entry_to_var_set_vartypes(Prefix, type_info_type,
             is_not_dummy_type, Var, !VarSet, !VarTypes)
         % XXX Perhaps we should record the variables holding
@@ -823,13 +823,13 @@ new_type_info_var_raw(Type, Kind, Var, !VarSet, !VarTypes, !RttiVarMaps) :-
 new_type_info_var_db(Type, Kind, Var, !VarDb, !RttiVarMaps) :-
     (
         Kind = type_info,
-        Prefix = "TypeInfo_",
+        Prefix = "TypeInfo",
         add_prefix_number_var_entry_to_var_db(Prefix, type_info_type,
             is_not_dummy_type, Var, !VarDb),
         rtti_det_insert_type_info_type(Var, Type, !RttiVarMaps)
     ;
         Kind = type_ctor_info,
-        Prefix = "TypeCtorInfo_",
+        Prefix = "TypeCtorInfo",
         add_prefix_number_var_entry_to_var_db(Prefix, type_info_type,
             is_not_dummy_type, Var, !VarDb)
         % XXX Perhaps we should record the variables holding
@@ -839,13 +839,13 @@ new_type_info_var_db(Type, Kind, Var, !VarDb, !RttiVarMaps) :-
 new_type_info_var_vt(Type, Kind, Var, !VarTable, !RttiVarMaps) :-
     (
         Kind = type_info,
-        Prefix = "TypeInfo_",
+        Prefix = "TypeInfo",
         add_prefix_number_var_entry(Prefix, type_info_type, is_not_dummy_type,
             Var, !VarTable),
         rtti_det_insert_type_info_type(Var, Type, !RttiVarMaps)
     ;
         Kind = type_ctor_info,
-        Prefix = "TypeCtorInfo_",
+        Prefix = "TypeCtorInfo",
         add_prefix_number_var_entry(Prefix, type_info_type, is_not_dummy_type,
             Var, !VarTable)
         % XXX Perhaps we should record the variables holding
