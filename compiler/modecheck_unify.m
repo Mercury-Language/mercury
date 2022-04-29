@@ -81,6 +81,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 :- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
@@ -257,9 +258,18 @@ modecheck_unification_functor(X, ConsId, IsExistConstruction, ArgVars0,
         mode_info_get_varset(!.ModeInfo, VarSet0),
         mode_info_get_context(!.ModeInfo, Context),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        convert_pred_to_lambda_goal(Purity, EvalMethod, X, PredId, ProcId,
-            ArgVars0, PredArgTypes, UnifyContext, GoalInfo0, Context,
-            ModuleInfo0, MaybeRHS0, VarSet0, VarSet, VarTypes0, VarTypes),
+        VarSetVarTypes0 = prog_var_set_types(VarSet0, VarTypes0),
+        VarDb0 = var_db_varset_vartypes(VarSetVarTypes0),
+        convert_pred_to_lambda_goal(ModuleInfo0, Purity, EvalMethod, X,
+            PredId, ProcId, ArgVars0, PredArgTypes, UnifyContext, GoalInfo0,
+            Context, MaybeRHS0, VarDb0, VarDb),
+        (
+            VarDb = var_db_varset_vartypes(VarSetVarTypes),
+            VarSetVarTypes = prog_var_set_types(VarSet, VarTypes)
+        ;
+            VarDb = var_db_var_table(_),
+            unexpected($pred, "var_db_var_table")
+        ),
         mode_info_set_varset(VarSet, !ModeInfo),
         mode_info_set_var_types(VarTypes, !ModeInfo),
 

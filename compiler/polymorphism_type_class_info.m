@@ -94,7 +94,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module int.
 :- import_module io.
@@ -952,29 +952,26 @@ is_unseen_or_in_type_info_tvar(RttiVarMaps, TypeVar) :-
     prog_var::out, mer_type::out, poly_info::in, poly_info::out) is det.
 
 new_typeclass_info_var(Constraint, VarKind, Var, VarType, !Info) :-
-    poly_info_get_varset(!.Info, VarSet0),
-    poly_info_get_var_types(!.Info, VarTypes0),
+    poly_info_get_var_db(!.Info, VarDb0),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
 
     Constraint = constraint(ClassName, _),
     ClassNameString = unqualify_name(ClassName),
 
     % Introduce new variable.
-    varset.new_var(Var, VarSet0, VarSet1),
     (
         VarKind = base_typeclass_info_kind,
-        Name = "BaseTypeClassInfo_for_" ++ ClassNameString
+        VarName = "BaseTypeClassInfo_for_" ++ ClassNameString
     ;
         VarKind = typeclass_info_kind,
-        Name = "TypeClassInfo_for_" ++ ClassNameString
+        VarName = "TypeClassInfo_for_" ++ ClassNameString
     ),
-    varset.name_var(Var, Name, VarSet1, VarSet),
     VarType = typeclass_info_type,
-    add_var_type(Var, VarType, VarTypes0, VarTypes),
+    VarEntry = vte(VarName, VarType, is_not_dummy_type),
+    add_entry_to_var_db(VarEntry, Var, VarDb0, VarDb),
     rtti_det_insert_typeclass_info_var(Constraint, Var,
         RttiVarMaps0, RttiVarMaps),
-
-    poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps, !Info).
+    poly_info_set_var_db_rtti(VarDb, RttiVarMaps, !Info).
 
 %---------------------------------------------------------------------------%
 

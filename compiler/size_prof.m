@@ -888,7 +888,7 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
                 VarTable1 = VarTable0
             else
                 RttiVarMaps0 = !.Info ^ spi_rtti_varmaps,
-                new_type_info_var_raw_vt(Type, type_info, TypeInfoVar,
+                new_type_info_var_vt(Type, type_info, TypeInfoVar,
                     VarTable0, VarTable1, RttiVarMaps0, RttiVarMaps),
                 !Info ^ spi_rtti_varmaps := RttiVarMaps
             ),
@@ -941,16 +941,19 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
         ArgVars = [TypeCtorVar | ArgTypeInfoVars]
     ),
     VarTable2 = !.Info ^ spi_var_table,
-    RttiVarMaps0 = !.Info ^ spi_rtti_varmaps,
+    RttiVarMaps2 = !.Info ^ spi_rtti_varmaps,
     TargetTypeInfoMap = !.Info ^ spi_target_type_info_map,
-    ( if map.search(TargetTypeInfoMap, Type, PrefTIVar) then
-        MaybePreferredVar = yes(PrefTIVar)
+    ( if map.search(TargetTypeInfoMap, Type, TypeInfoVarPrime) then
+        TypeInfoVar = TypeInfoVarPrime,
+        VarTable = VarTable2,
+        RttiVarMaps3 = RttiVarMaps2
     else
-        MaybePreferredVar = no
+        new_type_info_var_vt(Type, type_info, TypeInfoVar,
+            VarTable2, VarTable, RttiVarMaps2, RttiVarMaps3)
     ),
-    init_type_info_var_vt(Type, ArgVars, MaybePreferredVar,
-        TypeInfoVar, TypeInfoGoal, VarTable2, VarTable,
-        RttiVarMaps0, RttiVarMaps),
+    init_type_info_var(Type, ArgVars, TypeInfoVar, TypeInfoGoal,
+        RttiVarMaps3, RttiVarMaps),
+
     !Info ^ spi_var_table := VarTable,
     !Info ^ spi_rtti_varmaps := RttiVarMaps,
     TypeInfoGoals = ArgTypeInfoGoals ++ FrontGoals ++ [TypeInfoGoal].
