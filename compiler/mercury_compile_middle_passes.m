@@ -105,6 +105,7 @@
 :- import_module transform_hlds.par_loop_control.
 :- import_module transform_hlds.parallel_to_plain_conj.
 :- import_module transform_hlds.rbmm.
+:- import_module transform_hlds.rbmm.region_analysis.
 :- import_module transform_hlds.size_prof.
 :- import_module transform_hlds.ssdebug.
 :- import_module transform_hlds.stm_expand.
@@ -1474,7 +1475,7 @@ maybe_region_analysis(Verbose, Stats, !HLDS, !IO) :-
         Analysis = analyse_regions,
         maybe_write_string(Verbose, "% Analysing regions ...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        do_region_analysis(!HLDS, !IO),
+        do_region_analysis(!HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

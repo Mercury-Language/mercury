@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: rbmm.region_resurrection_renaming.m.
 % Main author: Quan Phan.
@@ -17,7 +17,7 @@
 % are needed so that region resurrection is resolved, and after applying
 % the renaming, region variables are regular Mercury variables.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.rbmm.region_resurrection_renaming.
 :- interface.
@@ -33,7 +33,7 @@
 :- import_module map.
 :- import_module multi_map.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type rbmm_renaming_table ==
     map(pred_proc_id, rbmm_renaming_proc).
@@ -145,8 +145,8 @@
 :- pred make_renaming_instruction(string::in, string::in,
     region_instr::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -160,7 +160,7 @@
 :- import_module set.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This predicate traveses execution paths and detects ones in which
     % resurrections of regions happen.
@@ -267,8 +267,8 @@ compute_resurrection_paths_prog_point(LRBeforeProc, LRAfterProc,
     set.difference(set.union(!.RemovedCandidates, BecomeDeadAtProgPoint),
         !.ResurrectedRegionsInExecPath, !:RemovedCandidates).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We will only collect join points in procedures where resurrection
     % happens, therefore use the PathContainsResurrectionTable just for the
@@ -360,8 +360,8 @@ is_join_point_2(ProgPoint, PrevProgPoint, [P1, P2 | Ps]) :-
         is_join_point_2(ProgPoint, PrevProgPoint, [P2 | Ps])
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 collect_paths_containing_join_points(ExecPathTable, JoinPointTable,
         !PathContainsResurrectionTable) :-
@@ -425,8 +425,8 @@ find_join_points_in_path(ProgPointsInPath, JoinPoint, _, !JoinPoints) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 collect_region_resurrection_renaming(BecomeLiveTable, LocalRTable,
         RptaInfoTable, PathContainsResurrectionTable,
@@ -501,10 +501,10 @@ record_renaming_prog_point(Graph, ProgPoint, RenamingCounter, Region,
     ),
     map.set(ProgPoint, RenamingProgPoint, !ResurrectionRenameProc).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Collect renaming at each program point.
 %
@@ -747,6 +747,6 @@ record_annotation(ProgPoint, Annotation, !AnnotationProc) :-
 make_renaming_instruction(OldRegionName, NewRegionName, RenameInstruction) :-
     RenameInstruction = rename_region(OldRegionName, NewRegionName).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.rbmm.region_resurrection_renaming.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2007, 2009-2011 The University of Melbourne.
 % Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File rbmm.interproc_region_lifetime.m.
 % Main author: Quan Phan.
@@ -16,7 +16,7 @@
 % (i.e., ones that do not actually exist if primitive values are not boxed)
 % from analysis information.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.rbmm.interproc_region_lifetime.
 :- interface.
@@ -26,7 +26,7 @@
 :- import_module transform_hlds.rbmm.points_to_info.
 :- import_module transform_hlds.rbmm.region_liveness_info.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This predicate reasons about lifetime of regions across procedure
     % boundary. It will update the initial deadR and bornR sets and compute
@@ -54,8 +54,8 @@
     proc_pp_region_set_table::in, proc_pp_region_set_table::out,
     proc_pp_region_set_table::in, proc_pp_region_set_table::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -77,7 +77,7 @@
 :- import_module set.
 :- import_module solutions.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Computing across procedure region lifetime.
 %
@@ -309,7 +309,7 @@ apply_live_region_rules_exec_path(Rule, [ProgPoint - Goal | ProgPoint_Goals],
         ModuleInfo, PPId, RptaInfo, RptaInfoTable, ProcLRBefore, ProcLRAfter,
         !ProcRegionSetTable).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Live region analysis rules.
 %
@@ -516,7 +516,7 @@ find_alpha_source(ToBeRemovedRegion, Source, Target, !Rs) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Eliminating primitive regions from live region analysis's information.
 %
@@ -589,6 +589,6 @@ retain_non_primitive_regions_at_pp(ModuleInfo, Graph, ProgPoint,
         set.init, RegionSet),
     map.set(ProgPoint, RegionSet, !LRProc).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.rbmm.interproc_region_lifetime.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

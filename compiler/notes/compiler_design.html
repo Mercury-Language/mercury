@@ -1616,6 +1616,30 @@ Its submodules are
 float_regs.m wraps higher-order terms which use float registers
 if passed in contexts where regular registers would be expected,
 and vice versa.
+<li>
+The rbmm.m subpackage implements
+region based memory management (usually abbreviated to RBMM),
+that
+    <ol>
+    <li>
+    analyses programs looking for memory allocations with similar lifetimes,
+    with each such set of memory allocations being grouped into a region,
+    <li>
+    puts annotates on those allocations that tell the code generator
+    to get the new memory from the allocation's region, and
+    <li>
+    adds operations to allocate the regions themselves
+    just before their first use,
+    and to deallocate them just after their last use.
+    </ol>
+This last step, which deallocates an entire region in a few instructions,
+is what gives RBMM the potential to be more efficient
+than traditional garbage collection.
+<p>
+The RBMM system in the Mercury compiler is experimental,
+and not ready for general use.
+The detailed documentation of its component modules
+awaits the next person to work on it.
 </ul>
 
 <p>

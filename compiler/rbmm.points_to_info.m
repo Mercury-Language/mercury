@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File rbmm.points_to_info.m.
 % Main author: Quan Phan.
@@ -13,19 +13,20 @@
 % rpta_info_table maps a procedure to its corresponding rpt information
 % (i.e., the rpt graph and the alpha mappings (at the call sites in it)).
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.rbmm.points_to_info.
 :- interface.
 
 :- import_module hlds.
+:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.smm_common.
 
 :- import_module map.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type rpta_info_table == map(pred_proc_id, rpta_info).
 
@@ -48,7 +49,7 @@
 
 :- pred rpta_info_equal(rpta_info::in, rpta_info::in) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This type represents the alpha mapping of all call sites in a procedure.
     % For documentation of alpha mappings, see Chapter 4 in Quan's thesis;
@@ -61,8 +62,8 @@
     %
 :- type rpt_call_alpha_mapping == map(rptg_node, rptg_node).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -76,7 +77,7 @@
 :- import_module set.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 rpta_info_table_init = map.init.
 
@@ -112,7 +113,7 @@ rpta_info_equal(RptaInfoA, RptaInfoB):-
     rptg_equal(GraphA, GraphB),
     rpt_alpha_mapping_equal(AlphaA, AlphaB).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Alpha mapping at call sites
 %
@@ -161,6 +162,6 @@ rpt_alpha_mapping_at_call_site_equal_2([N | Ns], AMAtCallSiteA,
     NPrimeA = NPrimeB,
     rpt_alpha_mapping_at_call_site_equal_2(Ns, AMAtCallSiteA, AMAtCallSiteB).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.rbmm.points_to_info.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

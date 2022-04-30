@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2007-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: rbmm.region_transformation.m
 % Main author: quan.
@@ -17,7 +17,7 @@
 %   construct terms in a region.
 % - Add region builtin calls (defined in region_builtin.m).
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.rbmm.region_transformation.
 :- interface.
@@ -34,7 +34,7 @@
 
 :- import_module map.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Represent mapping from region name to a program variable that
     % represents the region.
@@ -66,8 +66,8 @@
     name_to_prog_var_table::in, name_to_prog_var_table::out,
     module_info::in, module_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -99,7 +99,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 create_region_pred_name = "create_region".
 remove_region_pred_name = "remove_region".
@@ -990,7 +990,7 @@ make_assignment_goal(LeftRegVar, RightRegVar, Context, AssignmentGoal) :-
         AssignmentInfo),
     AssignmentGoal = hlds_goal(AssignmentExpr, AssignmentInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Recompute instmap delta.
 %
@@ -1013,7 +1013,7 @@ update_instmap_delta_proc(PredId, ProcId, !ModuleInfo) :-
         ProcInfo0, ProcInfo, !ModuleInfo),
     module_info_set_pred_proc_info(PPId, PredInfo, ProcInfo, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Recheck purity.
 %
@@ -1041,6 +1041,6 @@ recheck_purity_proc(PredId, ProcId, !ModuleInfo) :-
     repuritycheck_proc(!.ModuleInfo, PPId, PredInfo0, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.rbmm.region_transformation.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

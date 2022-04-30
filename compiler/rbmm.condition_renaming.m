@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2007-2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: rbmm.condition_renaming.m.
 % Main author: Quan Phan.
@@ -33,7 +33,7 @@
 % variables. This naturally allows N different lifetimes of a region inside a
 % procedure to be represented by N different program variables.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.rbmm.condition_renaming.
 :- interface.
@@ -50,7 +50,7 @@
 :- import_module map.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type proc_goal_path_regions_table ==
     map(pred_proc_id, goal_path_regions_table).
@@ -131,8 +131,8 @@
     rbmm_renaming_table::in, rbmm_renaming_table::out,
     rbmm_renaming_annotation_table::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -140,6 +140,7 @@
 :- import_module hlds.goal_path.
 :- import_module hlds.hlds_goal.
 :- import_module transform_hlds.rbmm.points_to_graph.
+:- import_module transform_hlds.rbmm.region_instruction.
 :- import_module transform_hlds.smm_common.
 
 :- import_module int.
@@ -148,7 +149,7 @@
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 collect_non_local_and_in_cond_regions(ModuleInfo, RptaInfoTable,
         LRBeforeTable, LRAfterTable, ResurRenamingTable,
@@ -563,10 +564,10 @@ collect_non_local_regions_in_ite_case(Graph, LRBeforeProc, LRAfterProc,
     collect_non_local_regions_in_ite(Graph, LRBeforeProc, LRAfterProc,
         ResurRenamingProc, ResurRenamingAnnoProc, Goal, !NonLocalRegionProc).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Collect regions created inside condition goals of if-then-elses.
 %
@@ -743,10 +744,10 @@ collect_regions_created_in_condition_case(Graph,
     collect_regions_created_in_condition(Graph, LRBeforeProc, LRAfterProc,
         ResurRenamingProc, ResurRenamingAnnoProc, Goal, !InCondRegionsProc).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Collect regions that need to be renamed, i.e., both created in a condition
 % goal and non-local to the corresponding if-then-else.
@@ -793,7 +794,7 @@ collect_ite_renamed_regions_ite(NonLocalRegionsProc, PathToCond,
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Derive necessary renaming.
 %
@@ -1021,7 +1022,7 @@ get_closest_condition_in_goal_path(RevPath, RevPathToCond, !HowMany) :-
         RevPathToCond = rgp_nil
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Derive necessary reverse renaming.
 %
@@ -1174,6 +1175,6 @@ introduce_reverse_renaming(ProgPoint, IteRenamingProc, HowMany, RegName,
     ),
     record_annotation(ProgPoint, Annotation, !IteAnnotationProc).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.rbmm.condition_renaming.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

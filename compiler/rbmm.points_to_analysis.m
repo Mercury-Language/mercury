@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
 % Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File rbmm.points_to_analysis.m.
 % Main author: Quan Phan.
@@ -29,7 +29,7 @@
 % Currently the analysis ONLY collects the information, do NOT record it into
 % the HLDS.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.rbmm.points_to_analysis.
 :- interface.
@@ -38,13 +38,13 @@
 :- import_module hlds.hlds_module.
 :- import_module transform_hlds.rbmm.points_to_info.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred region_points_to_analysis(rpta_info_table::out,
     module_info::in, module_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -72,14 +72,14 @@
 :- import_module string.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 region_points_to_analysis(InfoTable, !ModuleInfo) :-
     rpta_info_table_init = InfoTable0,
     intra_proc_rpta(!.ModuleInfo, InfoTable0, InfoTable1),
     inter_proc_rpta(!.ModuleInfo, InfoTable1, InfoTable).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Phase 1: intraprocedural region points-to analysis
 %
@@ -178,7 +178,7 @@ intra_analyse_case(Case, !RptaInfo) :-
     Case = case(_, _, Goal),
     intra_analyse_goal(Goal, !RptaInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % For construction and deconstruction unifications, add an edge from
     % the node of the variable on the LHS to that of each variable on the RHS.
@@ -253,8 +253,8 @@ process_cons_and_decons(LVar, ConsId, RVar, !Component, !Graph) :-
     ),
     !:Component = !.Component + 1.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Phase 2: interprocedural region points-to analysis
 %
@@ -339,7 +339,7 @@ inter_analyse_proc(ModuleInfo, InfoTable, PPId, !FPTable) :-
     %
     rpta_fixpoint_table_new_rpta_info(PPId, ProcRptaInfo, !FPTable).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for interprocedural analysis of goals.
 %
@@ -483,7 +483,7 @@ inter_analyse_case(ModuleInfo, InfoTable, Case, !FPtable, !RptaInfo) :-
     Case = case(_, _, Goal),
     inter_analyse_goal(ModuleInfo, InfoTable, Goal, !FPtable, !RptaInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % As said above, the rpta_info of a procedure when it is looked
     % up in interprocedural analysis is either in the InfoTable or in the
@@ -524,8 +524,8 @@ update_rpta_info_in_rpta_info_table(FPTable, PPId, !InfoTable) :-
     RptaInfo = get_from_fixpoint_table_final(PPId, FPTable),
     rpta_info_table_set_rpta_info(PPId, RptaInfo, !InfoTable).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Invariants for RPTGs.
 %
@@ -754,7 +754,7 @@ rule_3_condition(NZ, NY, Graph, NZ1) :-
     rptg_reachable_and_having_type(Graph, NY, NZType, NZ1),
     NZ \= NZ1.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Rule P4 and alpha mapping.
 %
@@ -801,8 +801,8 @@ alpha_mapping_at_call_site([Xi | Xs], [Yi | Ys], CalleeGraph,
     ),
     alpha_mapping_at_call_site(Xs, Ys, CalleeGraph, !CallerGraph, !AlphaMap).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Rules P5-P8 complete the alpha mapping at a call site and integrate the
 % parts rooted at the formal parameters in the callee's graph into the
@@ -1011,7 +1011,7 @@ rule_8(Edge, CallSite, CalleeRptaInfo, CallerNode,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Fixpoint table used in region points-to analysis.
 %
@@ -1057,6 +1057,6 @@ wrapped_init(InfoTable, PPId) = Entry :-
         unexpected($pred, "no rpta_info")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.rbmm.points_to_analysis.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
