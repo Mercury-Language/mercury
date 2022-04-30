@@ -478,6 +478,8 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         Instructions = Instructions0
     ),
 
+    EffTraceLevel =
+        eff_trace_level_for_proc(ModuleInfo, PredInfo, ProcInfo, TraceLevel),
     proc_info_get_maybe_proc_table_io_info(ProcInfo, MaybeTableIOInfo),
     ( if
         ( BasicStackLayout = yes
@@ -494,8 +496,8 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         proc_info_get_headvars(ProcInfo, HeadVars),
         proc_info_get_argmodes(ProcInfo, ArgModes),
         globals.get_trace_suppress(Globals, TraceSuppress),
-        NeedBodyReps = eff_trace_needs_proc_body_reps(ModuleInfo,
-            PredInfo, ProcInfo, TraceLevel, TraceSuppress),
+        NeedBodyReps =
+            eff_trace_needs_proc_body_reps(EffTraceLevel, TraceSuppress),
         (
             NeedBodyReps = yes,
             NeedGoalRep = trace_needs_body_rep
@@ -503,8 +505,8 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
             NeedBodyReps = no,
             NeedGoalRep = trace_does_not_need_body_rep
         ),
-        NeedsAllNames = eff_trace_needs_all_var_names(ModuleInfo, PredInfo,
-            ProcInfo, TraceLevel, TraceSuppress),
+        NeedsAllNames =
+            eff_trace_needs_all_var_names(EffTraceLevel, TraceSuppress),
         proc_info_get_maybe_deep_profile_info(ProcInfo, MaybeHLDSDeepInfo),
         (
             MaybeHLDSDeepInfo = yes(HLDSDeepInfo),
@@ -514,8 +516,6 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
             MaybeHLDSDeepInfo = no,
             MaybeDeepProfInfo = no
         ),
-        EffTraceLevel = eff_trace_level(ModuleInfo, PredInfo, ProcInfo,
-            TraceLevel),
         module_info_get_table_struct_map(ModuleInfo, TableStructMap),
         PredProcId = proc(PredId, ProcId),
         (
@@ -592,8 +592,8 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
     ),
     get_used_env_vars(CodeInfo, UsedEnvVars),
     CProc = c_procedure(Name, Arity, proc(PredId, ProcId), ProcLabel,
-        CodeModel, ProcInstructions, ProcLabelCounter, MayAlterRtti,
-        UsedEnvVars).
+        CodeModel, EffTraceLevel, ProcInstructions, ProcLabelCounter,
+        MayAlterRtti, UsedEnvVars).
 
 :- pred maybe_set_trace_level(pred_info::in,
     module_info::in, module_info::out) is det.

@@ -184,7 +184,6 @@
 
 code_loc_dep_init(FollowVars, ResumePoint, !CI, !:CLD) :-
     get_module_info(!.CI, ModuleInfo),
-    get_pred_info(!.CI, PredInfo),
     get_proc_info(!.CI, ProcInfo),
     module_info_get_globals(ModuleInfo, Globals),
     proc_info_get_initial_instmap(ModuleInfo, ProcInfo, InstMap),
@@ -201,9 +200,8 @@ code_loc_dep_init(FollowVars, ResumePoint, !CI, !:CLD) :-
         UseFloatRegs = no,
         FloatRegType = reg_r
     ),
-    globals.get_trace_level(Globals, TraceLevel),
-    TraceEnabled = is_exec_trace_enabled_at_eff_trace_level(ModuleInfo,
-        PredInfo, ProcInfo, TraceLevel),
+    get_eff_trace_level(!.CI, EffTraceLevel),
+    TraceEnabled = is_exec_trace_enabled_at_eff_trace_level(EffTraceLevel),
     (
         TraceEnabled = exec_trace_is_enabled,
         trace_fail_vars(ModuleInfo, ProcInfo, FailVars),
@@ -3536,17 +3534,18 @@ generate_input_var_vn([InputArgLoc | InputArgLocs], !Vals) :-
 
 generate_return_live_lvalues(CI, CLD, OutputArgLocs, ReturnInstMap,
         OkToDeleteAny, LiveLvalues) :-
+    get_module_info(CI, ModuleInfo),
+    get_globals(CI, Globals),
+    get_proc_info(CI, ProcInfo),
+    get_eff_trace_level(CI, EffTraceLevel),
     variable_locations(CLD, VarLocs),
     get_known_variables(CLD, Vars0),
     get_var_table(CI, VarTable),
     list.filter(var_has_non_dummy_type(VarTable), Vars0, Vars),
-    get_module_info(CI, ModuleInfo),
     get_active_temps_data(CI, CLD, Temps),
-    get_proc_info(CI, ProcInfo),
-    get_globals(CI, Globals),
-    continuation_info.generate_return_live_lvalues(ModuleInfo, Globals,
-        ProcInfo, OkToDeleteAny, ReturnInstMap, OutputArgLocs,
-        Vars, VarLocs, Temps, LiveLvalues).
+    cont_info_generate_return_live_lvalues(ModuleInfo, Globals, ProcInfo,
+        EffTraceLevel, OutputArgLocs, ReturnInstMap, Vars, VarLocs, Temps,
+        OkToDeleteAny, LiveLvalues).
 
 :- pred var_has_non_dummy_type(var_table::in, prog_var::in) is semidet.
 

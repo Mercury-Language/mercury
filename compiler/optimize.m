@@ -84,7 +84,8 @@ optimize_proc(Globals, ModuleName, GlobalData, CProc0, CProc) :-
     Info = init_llds_opt_info(Globals, ModuleName),
     some [!OptDebugInfo, !LabelNumCounter, !Instrs] (
         CProc0 = c_procedure(Name, Arity, PredProcId, ProcLabel, CodeModel,
-            !:Instrs, !:LabelNumCounter, MayAlterRtti, CGlobalVars),
+            EffTraceLevel, !:Instrs, !:LabelNumCounter,
+            MayAlterRtti, CGlobalVars),
         need_opt_debug_info(Info, Name, Arity, PredProcId, MaybeBaseName),
         (
             MaybeBaseName = no,
@@ -135,7 +136,8 @@ optimize_proc(Globals, ModuleName, GlobalData, CProc0, CProc) :-
             maybe_report_stats(ProgressStream, Statistics, !IO)
         ),
         CProc = c_procedure(Name, Arity, PredProcId, ProcLabel, CodeModel,
-            !.Instrs, !.LabelNumCounter, MayAlterRtti, CGlobalVars)
+            EffTraceLevel, !.Instrs, !.LabelNumCounter,
+            MayAlterRtti, CGlobalVars)
     ).
 
 :- func make_internal_label_for_proc_label(proc_label, int) = label.

@@ -73,8 +73,9 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, ProcId), !ProcInfo) :-
     initial_liveness(ModuleInfo, PredInfo, !.ProcInfo, Liveness0),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_trace_level(Globals, TraceLevel),
-    NeedFailVars = eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo,
-        !.ProcInfo, TraceLevel),
+    EffTraceLevel =
+        eff_trace_level_for_proc(ModuleInfo, PredInfo, !.ProcInfo, TraceLevel),
+    NeedFailVars = eff_trace_level_needs_fail_vars(EffTraceLevel),
     (
         NeedFailVars = yes,
         trace_fail_vars(ModuleInfo, !.ProcInfo, FailVars)
@@ -97,8 +98,8 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, ProcId), !ProcInfo) :-
     proc_info_set_goal(Goal, !ProcInfo),
     SimpleStackAlloc = stack_alloc(LiveSets0),
 
-    do_we_need_maxfr_slot(Globals, ModuleInfo, PredInfo, !ProcInfo),
-    trace_reserved_slots(ModuleInfo, PredInfo, !.ProcInfo, Globals,
+    do_we_need_maxfr_slot(EffTraceLevel, !ProcInfo),
+    trace_reserved_slots(Globals, !.ProcInfo, EffTraceLevel,
         NumReservedSlots, MaybeReservedVarInfo),
     (
         MaybeReservedVarInfo = yes(ResVar - _),

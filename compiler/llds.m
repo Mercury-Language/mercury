@@ -29,6 +29,8 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module ll_backend.layout.
+:- import_module libs.
+:- import_module libs.trace_params.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
@@ -224,6 +226,8 @@
 
                 % The code model of the procedure.
                 cproc_code_model        :: code_model,
+
+                cproc_eff_trace_level   :: eff_trace_level,
 
                 % The code for this procedure.
                 cproc_code              :: list(instruction),

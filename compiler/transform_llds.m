@@ -42,6 +42,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_pred.
 :- import_module libs.options.
+:- import_module libs.trace_params.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -115,7 +116,8 @@ gen_end_label_module(ModuleName, LastModule) = EndLabelModule :-
     Instrs = [llds_instr(label(entry_label(entry_label_local, ProcLabel)),
         "label to indicate end of previous procedure")],
     DummyProc = c_procedure(PredName, Arity, proc(PredId, ProcId), ProcLabel,
-        model_det, Instrs, counter.init(0), must_not_alter_rtti, set.init),
+        model_det, eff_trace_level_none, Instrs, counter.init(0),
+        must_not_alter_rtti, set.init),
     EndLabelModule = comp_gen_c_module(LastModule ++ "_END", [DummyProc]).
 
 %-----------------------------------------------------------------------------%

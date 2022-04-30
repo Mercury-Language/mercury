@@ -101,8 +101,7 @@
     % Initialise the simplify_info.
     %
 :- pred simplify_info_init(module_info::in, pred_id::in, proc_id::in,
-    proc_info::in, simplify_tasks::in,
-    simplify_info::out) is det.
+    proc_info::in, simplify_tasks::in, simplify_info::out) is det.
 
     % Reinitialise the simplify_info before reprocessing a goal.
     %
@@ -163,8 +162,8 @@
     inst_varset::out) is det.
 :- pred simplify_info_get_fully_strict(simplify_info::in,
     maybe_fully_strict::out) is det.
-:- pred simplify_info_get_trace_level_optimized(simplify_info::in,
-    trace_level::out, maybe_trace_optimized::out) is det.
+:- pred simplify_info_get_eff_trace_level_optimized(simplify_info::in,
+    eff_trace_level::out, maybe_trace_optimized::out) is det.
 :- pred simplify_info_get_ignore_marked_static(simplify_info::in,
     maybe_ignore_marked_static::out) is det.
 
@@ -310,7 +309,7 @@
                 % The value of the --fully-strict option.
                 sip_fully_strict            :: maybe_fully_strict,
 
-                sip_trace_level             :: trace_level,
+                sip_eff_trace_level         :: eff_trace_level,
 
                 % The value of the --trace-optimized option.
                 sip_trace_optimized         :: maybe_trace_optimized,
@@ -372,6 +371,9 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
     ; FullyStrict0 = yes, FullyStrict = fully_strict
     ),
     globals.get_trace_level(Globals, TraceLevel),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    EffTraceLevel =
+        eff_trace_level_for_proc(ModuleInfo, PredInfo, ProcInfo, TraceLevel),
     globals.lookup_bool_option(Globals, trace_optimized, TraceOptimized0),
     ( TraceOptimized0 = no,  TraceOptimized = not_trace_optimized
     ; TraceOptimized0 = yes, TraceOptimized = trace_optimized
@@ -386,7 +388,7 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
     ),
 
     Params = simplify_info_params(PredProcId, InstVarSet, FullyStrict,
-        TraceLevel, TraceOptimized, IgnoreMarkedStatic),
+        EffTraceLevel, TraceOptimized, IgnoreMarkedStatic),
 
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     ElimVars = [],
@@ -397,7 +399,6 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
     FoundContainsTrace = no,
     HasUserEvent = has_no_user_event,
     set.init(TraceGoalProcs),
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
     pred_status_defined_in_this_module(PredStatus) = InThisModule,
     ( InThisModule = yes, DefinedWhere = defined_in_this_module
@@ -486,8 +487,8 @@ simplify_info_get_inst_varset(Info, X) :-
     X = Info ^ simp_params ^ sip_inst_varset.
 simplify_info_get_fully_strict(Info, X) :-
     X = Info ^ simp_params ^ sip_fully_strict.
-simplify_info_get_trace_level_optimized(Info, X, Y) :-
-    X = Info ^ simp_params ^ sip_trace_level,
+simplify_info_get_eff_trace_level_optimized(Info, X, Y) :-
+    X = Info ^ simp_params ^ sip_eff_trace_level,
     Y = Info ^ simp_params ^ sip_trace_optimized.
 simplify_info_get_ignore_marked_static(Info, X) :-
     X = Info ^ simp_params ^ sip_ignore_marked_static.

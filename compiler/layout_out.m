@@ -1624,7 +1624,7 @@ output_exec_trace_slot(Info, Stream, ExecTrace, !Slot, !IO) :-
     io.write_string(Stream, ",", !IO),
     write_maybe_slot_num(Stream, MaybeCallTableSlot, !IO),
     io.write_string(Stream, ",", !IO),
-    io.write_string(Stream, trace_level_rep(EffTraceLevel), !IO),
+    io.write_string(Stream, eff_trace_level_rep(EffTraceLevel), !IO),
     io.write_string(Stream, ",\n  ", !IO),
     io.write_int(Stream, Flags, !IO),
     io.write_string(Stream, ",", !IO),

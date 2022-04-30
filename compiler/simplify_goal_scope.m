@@ -519,16 +519,13 @@ evaluate_compile_time_condition_comptime(CompTime, Info) = Result :-
             )
         )
     ;
-        CompTime = trace_trace_level(Level),
-        globals.get_trace_level(Globals, TraceLevel),
-        simplify_info_get_pred_proc_info(Info, PredInfo, ProcInfo),
-        EffTraceLevel = eff_trace_level(ModuleInfo, PredInfo, ProcInfo,
-            TraceLevel),
+        CompTime = trace_trace_level(RequiredLevel),
+        simplify_info_get_eff_trace_level_optimized(Info, EffTraceLevel, _),
         (
-            Level = trace_level_shallow,
+            RequiredLevel = trace_level_shallow,
             Result = at_least_at_shallow(EffTraceLevel)
         ;
-            Level = trace_level_deep,
+            RequiredLevel = trace_level_deep,
             Result = at_least_at_deep(EffTraceLevel)
         )
     ).

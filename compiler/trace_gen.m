@@ -55,6 +55,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.trace_params.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.continuation_info.
@@ -148,7 +149,7 @@
     % Figure out whether we need a slot for storing the value of maxfr
     % on entry, and record the result in the proc info.
     %
-:- pred do_we_need_maxfr_slot(globals::in, module_info::in, pred_info::in,
+:- pred do_we_need_maxfr_slot(eff_trace_level::in,
     proc_info::in, proc_info::out) is det.
 
     % Return the number of slots reserved for tracing information.
@@ -158,16 +159,16 @@
     % If so, the variable and its slot number are returned in the last
     % argument.
     %
-:- pred trace_reserved_slots(module_info::in, pred_info::in, proc_info::in,
-    globals::in, int::out, maybe(pair(prog_var, int))::out) is det.
+:- pred trace_reserved_slots(globals::in, proc_info::in, eff_trace_level::in,
+    int::out, maybe(pair(prog_var, int))::out) is det.
 
     % Construct and return an abstract struct that represents the
     % tracing-specific part of the code generator state. Return also
     % info about the non-fixed slots used by the tracing system,
     % for eventual use in the constructing the procedure's layout structure.
     %
-:- pred trace_setup(module_info::in, pred_info::in, proc_info::in,
-    globals::in, maybe(label)::in, trace_slot_info::out, trace_info::out,
+:- pred trace_setup(globals::in, proc_info::in, eff_trace_level::in,
+    maybe(label)::in, trace_slot_info::out, trace_info::out,
     code_info::in, code_info::out) is det.
 
     % Generate code to fill in the reserved stack slots.
@@ -251,7 +252,6 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.instmap.
 :- import_module libs.options.
-:- import_module libs.trace_params.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.layout_out.
 :- import_module mdbcomp.prim_data.
@@ -274,7 +274,7 @@
     % of a procedure.
 :- type trace_info
     --->    trace_info(
-                ti_trace_level          :: trace_level,
+                ti_eff_trace_level      :: eff_trace_level,
                 ti_trace_suppress_items :: trace_suppress_items,
 
                 % If the trace level is shallow, the lval of the slot
@@ -384,12 +384,11 @@ build_fail_vars(ModuleInfo, VarTypes,
 
 %-----------------------------------------------------------------------------%
 
-do_we_need_maxfr_slot(Globals, ModuleInfo, PredInfo0, !ProcInfo) :-
-    globals.get_trace_level(Globals, TraceLevel),
+do_we_need_maxfr_slot(EffTraceLevel, !ProcInfo) :-
     CodeModel = proc_info_interface_code_model(!.ProcInfo),
     ( if
-        is_exec_trace_enabled_at_eff_trace_level(ModuleInfo,
-            PredInfo0, !.ProcInfo, TraceLevel) = exec_trace_is_enabled,
+        is_exec_trace_enabled_at_eff_trace_level(EffTraceLevel)
+            = exec_trace_is_enabled,
         CodeModel \= model_non,
         proc_info_get_goal(!.ProcInfo, Goal),
         code_util.goal_may_alloc_temp_frame(Goal, yes)
@@ -484,13 +483,11 @@ do_we_need_maxfr_slot(Globals, ModuleInfo, PredInfo0, !ProcInfo) :-
     % exist or not. This is why setup returns TraceSlotInfo, which answers
     % such questions, for later inclusion in the procedure's layout structure.
 
-trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
-        MaybeTableVarInfo) :-
-    globals.get_trace_level(Globals, TraceLevel),
+trace_reserved_slots(Globals, ProcInfo, EffTraceLevel,
+        ReservedSlots, MaybeTableVarInfo) :-
     globals.get_trace_suppress(Globals, TraceSuppress),
     globals.lookup_bool_option(Globals, trace_table_io, TraceTableIo),
-    FixedSlots = eff_trace_level_needs_fixed_slots(ModuleInfo, PredInfo,
-        ProcInfo, TraceLevel),
+    FixedSlots = eff_trace_level_needs_fixed_slots(EffTraceLevel),
     (
         FixedSlots = no,
         ReservedSlots = 0,
@@ -502,20 +499,20 @@ trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
         % Stage 2.
         ( if
             proc_info_interface_code_model(ProcInfo) = model_non,
-            eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo, TraceLevel,
-                TraceSuppress, port_redo) = yes
+            eff_trace_level_needs_port(EffTraceLevel, TraceSuppress,
+                port_redo) = yes
         then
             RedoLayout = 1
         else
             RedoLayout = 0
         ),
         % Stage 3.
-        ( if
-            eff_trace_level_needs_from_full_slot(ModuleInfo, PredInfo,
-                ProcInfo, TraceLevel) = yes
-        then
+        NeedFromFullSlot = eff_trace_level_needs_from_full_slot(EffTraceLevel),
+        (
+            NeedFromFullSlot = yes,
             FromFull = 1
-        else
+        ;
+            NeedFromFullSlot = no,
             FromFull = 0
         ),
         % Stage 4.
@@ -570,14 +567,13 @@ trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
         )
     ).
 
-trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, MaybeTailRecLabel,
+trace_setup(Globals, ProcInfo, EffTraceLevel, MaybeTailRecLabel,
         TraceSlotInfo, TraceInfo, !CI) :-
     CodeModel = get_proc_model(!.CI),
-    globals.get_trace_level(Globals, TraceLevel),
     globals.get_trace_suppress(Globals, TraceSuppress),
     globals.lookup_bool_option(Globals, trace_table_io, TraceTableIo),
-    TraceRedo = eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
-        TraceLevel, TraceSuppress, port_redo),
+    TraceRedo =
+        eff_trace_level_needs_port(EffTraceLevel, TraceSuppress, port_redo),
     some [!NextSlot] (
         % Stages 1 and 2.
         ( if
@@ -595,8 +591,7 @@ trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, MaybeTailRecLabel,
             !:NextSlot = 4
         ),
         % Stage 3.
-        HasFromFullSlot = eff_trace_level_needs_from_full_slot(ModuleInfo,
-            PredInfo, ProcInfo, TraceLevel),
+        HasFromFullSlot = eff_trace_level_needs_from_full_slot(EffTraceLevel),
         StackId = code_model_to_main_stack(CodeModel),
         (
             HasFromFullSlot = yes,
@@ -682,7 +677,7 @@ trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, MaybeTailRecLabel,
     ),
     TraceSlotInfo = trace_slot_info(MaybeFromFullSlot, MaybeIoSeqSlot,
         MaybeTrailSlot, MaybeMaxfrSlot, MaybeCallTableSlot, MaybeTailRecSlot),
-    TraceInfo = trace_info(TraceLevel, TraceSuppress,
+    TraceInfo = trace_info(EffTraceLevel, TraceSuppress,
         MaybeFromFullSlotLval, MaybeIoSeqLval, MaybeTrailLvals,
         MaybeMaxfrLval, MaybeCallTableLval, MaybeTailRecInfo,
         MaybeRedoLayoutLabel).
@@ -885,14 +880,12 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI, !CLD) :-
         else
             unexpected($pred, "bad path")
         ),
-        ( if
-            get_module_info(!.CI, ModuleInfo),
-            get_pred_info(!.CI, PredInfo),
-            get_proc_info(!.CI, ProcInfo),
-            eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
-                TraceInfo ^ ti_trace_level,
-                TraceInfo ^ ti_trace_suppress_items, Port) = yes
-        then
+        EffTraceLevel = TraceInfo ^ ti_eff_trace_level,
+        TraceSuppress = TraceInfo ^ ti_trace_suppress_items,
+        NeedsPort =
+            eff_trace_level_needs_port(EffTraceLevel, TraceSuppress, Port),
+        (
+            NeedsPort = yes,
             goal_info_get_pre_deaths(GoalInfo, PreDeaths),
             Context = goal_info_get_context(GoalInfo),
             ( if
@@ -906,7 +899,8 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI, !CLD) :-
             GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
             generate_event_code(Port, port_info_internal(GoalPath, PreDeaths),
                 yes(TraceInfo), Context, HideEvent, no, _, _, Code, !CI, !CLD)
-        else
+        ;
+            NeedsPort = no,
             Code = empty
         )
     ;
@@ -926,12 +920,9 @@ maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code,
             NegPort = neg_success,
             Port = port_neg_success
         ),
-        get_module_info(!.CI, ModuleInfo),
-        get_pred_info(!.CI, PredInfo),
-        get_proc_info(!.CI, ProcInfo),
-        eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
-            TraceInfo ^ ti_trace_level,
-            TraceInfo ^ ti_trace_suppress_items, Port) = yes
+        EffTraceLevel = TraceInfo ^ ti_eff_trace_level,
+        TraceSuppress = TraceInfo ^ ti_trace_suppress_items,
+        eff_trace_level_needs_port(EffTraceLevel, TraceSuppress, Port) = yes
     then
         Goal = hlds_goal(_, GoalInfo),
         GoalId = goal_info_get_goal_id(GoalInfo),
@@ -966,11 +957,9 @@ generate_user_event_code(UserInfo, GoalInfo, Code, !CI, !CLD) :-
 generate_external_event_code(ExternalPort, TraceInfo, Context,
         MaybeExternalInfo, !CI, !CLD) :-
     Port = convert_external_port_type(ExternalPort),
-    get_module_info(!.CI, ModuleInfo),
-    get_pred_info(!.CI, PredInfo),
-    get_proc_info(!.CI, ProcInfo),
-    NeedPort = eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
-        TraceInfo ^ ti_trace_level, TraceInfo ^ ti_trace_suppress_items, Port),
+    EffTraceLevel = TraceInfo ^ ti_eff_trace_level,
+    TraceSuppress = TraceInfo ^ ti_trace_suppress_items,
+    NeedPort = eff_trace_level_needs_port(EffTraceLevel, TraceSuppress, Port),
     (
         NeedPort = yes,
         generate_event_code(Port, port_info_external, yes(TraceInfo), Context,

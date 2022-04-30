@@ -233,9 +233,8 @@
 // Since label names are quite big, we include them only when needed.
 
 #if defined(MR_INSERT_INTERNAL_LABEL_NAMES)
-  #define MR_insert_internal(n, a, l)   MR_insert_internal_label(             \
-                                            (const struct MR_LabelLayout *) n,\
-                                            a, l)
+  #define MR_insert_internal(n, a, l)   MR_insert_internal_label(n, a,        \
+                                            (const struct MR_LabelLayout *) l)
 #else
   #define MR_insert_internal(n, a, l)   MR_insert_internal_label(NULL, a, l)
 #endif
@@ -261,9 +260,7 @@
 // of the label as well. This is intended for a small number of labels that
 // are frequently needed in debugging, e.g. MR_do_fail.
 
-#define MR_make_label_ai(n, a, l)   MR_insert_internal(                   \
-                                        (const struct MR_LabelLayout *) n,\
-                                        a, NULL)
+#define MR_make_label_ai(n, a, l)   MR_insert_internal(n, a, NULL)
 #define MR_make_label_an(n, a, l)   MR_insert_internal_label(n, a, NULL)
 #define MR_make_label_sl(n, a, l)   MR_insert_internal(n, a, l)
 
@@ -1356,7 +1353,7 @@
 
 #define MR_init_label_nvi1(e, m, l1, s1)                                 \
     MR_init_label_ml_sl(MR_label_name(MR_add_prefix(e), l1),             \
-        &MR_no_var_label_layouts(m)[s1]);
+        (const MR_LabelLayout *) &MR_no_var_label_layouts(m)[s1]);
 
 #define MR_init_label_nvi2(e, m, l1,s1, l2,s2)                           \
     MR_init_label_nvi1(e, m, l1, s1)                                     \
@@ -1395,7 +1392,7 @@
     MR_init_label_nvi1(e, m, l4, s4)                                     \
     MR_init_label_nvi1(e, m, l5, s5)                                     \
     MR_init_label_nvi1(e, m, l6, s6)                                     \
-    MR_init_label_nvi1(e, m, l7, s7\
+    MR_init_label_nvi1(e, m, l7, s7)
 
 #define MR_init_label_nvi8(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7, l8,s8) \
     MR_init_label_nvi1(e, m, l1, s1)                                     \
@@ -1434,7 +1431,7 @@
 
 #define MR_init_label_svi1(e, m, l1, s1)                                 \
     MR_init_label_ml_sl(MR_label_name(MR_add_prefix(e), l1),             \
-        (MR_LabelLayout *) &MR_svar_label_layouts(m)[s1]);
+        (const MR_LabelLayout *) &MR_svar_label_layouts(m)[s1]);
 
 #define MR_init_label_svi2(e, m, l1,s1, l2,s2)                           \
     MR_init_label_svi1(e, m, l1, s1)                                     \

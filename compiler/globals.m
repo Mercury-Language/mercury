@@ -367,7 +367,8 @@
     % Check if we should include variable information in the layout
     % structures of call return sites.
     %
-:- pred want_return_var_layouts(globals::in, bool::out) is det.
+:- pred want_return_var_layouts(globals::in, eff_trace_level::in, bool::out)
+    is det.
 
     % Check that the current grade supports tabling of the specified kind.
     %
@@ -930,7 +931,7 @@ lookup_current_backend(Globals) = CurrentBackend :-
         CurrentBackend = low_level_backend
     ).
 
-want_return_var_layouts(Globals, WantReturnLayouts) :-
+want_return_var_layouts(Globals, EffTraceLevel, WantReturnLayouts) :-
     % We need to generate layout info for call return labels
     % if we are using accurate gc or if the user wants uplevel printing.
     ( if
@@ -938,9 +939,8 @@ want_return_var_layouts(Globals, WantReturnLayouts) :-
             get_gc_method(Globals, GC_Method),
             GC_Method = gc_accurate
         ;
-            get_trace_level(Globals, TraceLevel),
             get_trace_suppress(Globals, TraceSuppress),
-            trace_needs_return_info(TraceLevel, TraceSuppress) = yes
+            eff_trace_needs_return_info(EffTraceLevel, TraceSuppress) = yes
         )
     then
         WantReturnLayouts = yes

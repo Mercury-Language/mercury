@@ -1833,6 +1833,12 @@ handle_debugging_options(Target, TraceLevel, TraceEnabled, SSTraceLevel,
         AllowTraceTailRec = trace_level_allows_tail_rec(TraceLevel),
         (
             AllowTraceTailRec = bool.no,
+            % XXX Any code that checks the exec_trace_tail_rec option
+            % should instead check the effective trace level for whatever
+            % procedure it wants to operate on. However, at the moment,
+            % the only code that looks at this option is mark_tail_calls.m,
+            % which we invoke only in MLDS grades, which do not implement
+            % execution tracing. So this question is moot (for now).
             globals.set_option(exec_trace_tail_rec, bool(no), !Globals)
         ;
             AllowTraceTailRec = bool.yes

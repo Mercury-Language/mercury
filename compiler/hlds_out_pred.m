@@ -70,6 +70,7 @@
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.trace_params.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.sym_name.
@@ -825,6 +826,7 @@ write_proc(Info, Stream, VarNamePrint, ModuleInfo, PredId, PredInfo,
         MaybeUntupleInfo, !IO),
     write_proc_deleted_callee_set(Stream, DeletedCallCalleeSet, !IO),
     write_pred_proc_var_name_remap(Stream, VarSet, VarNameRemap, !IO),
+    write_eff_trace_level(Stream, ModuleInfo, PredInfo, ProcInfo, !IO),
 
     PredSymName = unqualified(predicate_name(ModuleInfo, PredId)),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -1346,6 +1348,19 @@ write_var_name_remap(Stream, VarSet, Head, Tail, !IO) :-
         io.write_string(Stream, ", ", !IO),
         write_var_name_remap(Stream, VarSet, TailHead, TailTail, !IO)
     ).
+
+%---------------------%
+
+:- pred write_eff_trace_level(io.text_output_stream::in, module_info::in,
+    pred_info::in, proc_info::in, io::di, io::uo) is det.
+
+write_eff_trace_level(Stream, ModuleInfo, PredInfo, ProcInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_trace_level(Globals, TraceLevel),
+    EffTraceLevel =
+        eff_trace_level_for_proc(ModuleInfo, PredInfo, ProcInfo, TraceLevel),
+    io.format(Stream, "%% effective trace level: %s\n",
+        [s(eff_trace_level_dump(EffTraceLevel))], !IO).
 
 %---------------------%
 

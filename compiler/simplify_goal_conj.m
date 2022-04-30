@@ -537,12 +537,13 @@ goal_is_excess_assign(Info, ConjNonLocals, Goal0, !Subn) :-
         fail
     ),
 
-    simplify_info_get_trace_level_optimized(Info, TraceLevel, TraceOptimized),
+    simplify_info_get_eff_trace_level_optimized(Info, EffTraceLevel,
+        TraceOptimized),
     % If the module is being compiled with `--trace deep' and
     % `--no-trace-optimized', don't replace a meaningful variable name
     % with `HeadVar__n' or an anonymous variable.
     not (
-        trace_level_needs_meaningful_var_names(TraceLevel) = yes,
+        eff_trace_level_needs_meaningful_var_names(EffTraceLevel) = yes,
         TraceOptimized = not_trace_optimized,
         var_is_named(VarSet, ElimVar),
         not var_is_named(VarSet, ReplacementVar)

@@ -649,8 +649,8 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
-    maybe_polymorphism(Verbose, Stats, ExistsCastPredIds, PolySafeToContinue,
-        !HLDS, !Specs, !IO),
+    main_polymorphism_pass(Verbose, Stats, ExistsCastPredIds,
+        PolySafeToContinue, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 30, "polymorphism", !DumpInfo, !IO),
 
     (
@@ -830,12 +830,12 @@ subst_implementation_defined_literals(Verbose, Stats, !HLDS, !Specs, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_polymorphism(bool::in, bool::in,
+:- pred main_polymorphism_pass(bool::in, bool::in,
     list(pred_id)::out, maybe_safe_to_continue::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_polymorphism(Verbose, Stats, ExistsCastPredIds, SafeToContinue,
+main_polymorphism_pass(Verbose, Stats, ExistsCastPredIds, SafeToContinue,
         !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     maybe_write_out_errors(Verbose, Globals, !Specs, !IO),

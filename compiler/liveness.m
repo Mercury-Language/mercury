@@ -273,9 +273,11 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
             DebugLiveness, PredIdInt, VarTable, GoalAfterDeadness, !IO)
     ),
 
+    globals.get_trace_level(Globals, TraceLevel),
+    EffTraceLevel =
+        eff_trace_level_for_proc(ModuleInfo, PredInfo, !.ProcInfo, TraceLevel),
     ( if
-        globals.get_trace_level(Globals, TraceLevel),
-        AllowDelayDeath = trace_level_allows_delay_death(TraceLevel),
+        AllowDelayDeath = eff_trace_level_allows_delay_death(EffTraceLevel),
         AllowDelayDeath = yes,
         globals.lookup_bool_option(Globals, delay_death, DelayDeath),
         DelayDeath = yes,
@@ -296,9 +298,7 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
         GoalAfterDelayDeath = GoalAfterDeadness
     ),
 
-    globals.get_trace_level(Globals, TraceLevel),
-    NeedsFailVars = eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo,
-        !.ProcInfo, TraceLevel),
+    NeedsFailVars = eff_trace_level_needs_fail_vars(EffTraceLevel),
     (
         NeedsFailVars = yes,
         trace_fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0)

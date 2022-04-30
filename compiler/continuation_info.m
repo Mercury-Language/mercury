@@ -92,7 +92,7 @@
                 pli_detism              :: determinism,
 
                 % The effective trace level of the procedure.
-                pli_eff_trace_level     :: trace_level,
+                pli_eff_trace_level     :: eff_trace_level,
 
                 % The evaluation method of the procedure.
                 pli_eval_method         :: eval_method,
@@ -381,10 +381,10 @@
 
     % Generate the layout information we need for the return point of a call.
     %
-:- pred generate_return_live_lvalues(module_info::in, globals::in,
-    proc_info::in, bool::in, instmap::in, assoc_list(prog_var, arg_loc)::in,
-    list(prog_var)::in, map(prog_var, set(lval))::in,
-    assoc_list(lval, slot_contents)::in, list(liveinfo)::out) is det.
+:- pred cont_info_generate_return_live_lvalues(module_info::in, globals::in,
+    proc_info::in, eff_trace_level::in, assoc_list(prog_var, arg_loc)::in,
+    instmap::in, list(prog_var)::in, map(prog_var, set(lval))::in,
+    assoc_list(lval, slot_contents)::in, bool::in, list(liveinfo)::out) is det.
 
     % Generate the layout information we need for a resumption point,
     % a label where forward execution can restart after backtracking.
@@ -441,7 +441,9 @@ maybe_collect_call_continuations_in_cproc(ModuleInfo, CProc, !GlobalData) :-
     basic_stack_layout_for_proc(Globals, PredInfo, Layout, _),
     (
         Layout = yes,
-        globals.want_return_var_layouts(Globals, WantReturnLayout),
+        EffTraceLevel = CProc ^ cproc_eff_trace_level,
+        globals.want_return_var_layouts(Globals, EffTraceLevel,
+            WantReturnLayout),
         collect_call_continuations_in_cproc(WantReturnLayout, CProc,
             !GlobalData)
     ;
@@ -600,9 +602,11 @@ some_arg_is_higher_order(PredInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-generate_return_live_lvalues(ModuleInfo, Globals, ProcInfo, OkToDeleteAny,
-        ReturnInstMap, OutputArgLocs, Vars, VarLocs, Temps, LiveLvalues) :-
-    globals.want_return_var_layouts(Globals, WantReturnVarLayout),
+cont_info_generate_return_live_lvalues(ModuleInfo, Globals, ProcInfo,
+        EffTraceLevel, OutputArgLocs, ReturnInstMap, Vars, VarLocs, Temps,
+        OkToDeleteAny, LiveLvalues) :-
+    globals.want_return_var_layouts(Globals, EffTraceLevel,
+        WantReturnVarLayout),
     proc_info_get_stack_slots(ProcInfo, StackSlots),
     find_return_var_lvals(StackSlots, OkToDeleteAny, OutputArgLocs,
         Vars, VarLvals),

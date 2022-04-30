@@ -913,8 +913,8 @@ init_proc_statics_info = Info :-
 %
 
 :- pred construct_exec_trace_layout(stack_layout_params::in,
-    rtti_proc_label::in, eval_method::in, trace_level::in, maybe(label)::in,
-    maybe(layout_slot_name)::in, int::in, int::in,
+    rtti_proc_label::in, eval_method::in, eff_trace_level::in,
+    maybe(label)::in, maybe(layout_slot_name)::in, int::in, int::in,
     list(prog_var)::in, list(mer_mode)::in, trace_slot_info::in, var_table::in,
     maybe(proc_layout_table_info)::in, bool::in, var_num_map::in,
     list(internal_label_info)::in, layout_slot_name::out,

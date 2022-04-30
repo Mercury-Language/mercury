@@ -248,7 +248,7 @@
                 plet_eval_method            :: eval_method,
                 plet_maybe_call_table_slot  :: maybe(int),
                 plet_maybe_tail_rec_slot    :: maybe(int),
-                plet_eff_trace_level        :: trace_level,
+                plet_eff_trace_level        :: eff_trace_level,
                 plet_exec_trace_flags       :: int
             ).
 

@@ -35,6 +35,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
+:- import_module libs.trace_params.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.layout.
@@ -67,7 +68,6 @@
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module libs.options.
-:- import_module libs.trace_params.
 :- import_module ll_backend.code_util.
 :- import_module parse_tree.prog_type.
 
@@ -109,6 +109,7 @@
 :- pred get_module_info(code_info::in, module_info::out) is det.
 :- pred get_globals(code_info::in, globals::out) is det.
 :- pred get_exprn_opts(code_info::in, exprn_opts::out) is det.
+:- pred get_eff_trace_level(code_info::in, eff_trace_level::out) is det.
 :- pred get_pred_id(code_info::in, pred_id::out) is det.
 :- pred get_proc_id(code_info::in, proc_id::out) is det.
 :- pred get_pred_info(code_info::in, pred_info::out) is det.
@@ -184,9 +185,8 @@
 
 :- func init_exprn_opts(globals) = exprn_opts.
 
-:- pred init_maybe_trace_info(trace_level::in, globals::in,
-    module_info::in, pred_info::in, proc_info::in, trace_slot_info::out,
-    code_info::in, code_info::out) is det.
+:- pred init_maybe_trace_info(globals::in, proc_info::in, eff_trace_level::in,
+    trace_slot_info::out, code_info::in, code_info::out) is det.
 
 :- pred get_closure_seq_counter(code_info::in, counter::out) is det.
 
@@ -230,6 +230,8 @@
                 % For the code generation options.
                 cis_globals             :: globals,
                 cis_exprn_opts          :: exprn_opts,
+
+                cis_eff_trace_level     :: eff_trace_level,
 
                 % The id of the current predicate.
                 cis_pred_id             :: pred_id,
@@ -381,12 +383,13 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo, VarTable,
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
     proc_info_get_stack_slots(ProcInfo, StackSlots),
     max_var_slot(StackSlots, VarSlotMax),
-    trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals,
-        FixedSlots, _),
+    globals.get_trace_level(Globals, TraceLevel),
+    EffTraceLevel =
+        eff_trace_level_for_proc(ModuleInfo, PredInfo, ProcInfo, TraceLevel),
+    trace_reserved_slots(Globals, ProcInfo, EffTraceLevel, FixedSlots, _),
     int.max(VarSlotMax, FixedSlots, SlotMax),
     MaybeTraceInfo = no,
-    globals.lookup_bool_option(Globals, opt_no_return_calls,
-        OptNoReturnCalls),
+    globals.lookup_bool_option(Globals, opt_no_return_calls, OptNoReturnCalls),
     globals.lookup_bool_option(Globals, use_trail, UseTrail),
     globals.lookup_bool_option(Globals, disable_trail_ops, DisableTrailOps),
     ( if
@@ -429,6 +432,7 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo, VarTable,
         ModuleInfo,
         Globals,
         ExprnOpts,
+        EffTraceLevel,
         PredId,
         ProcId,
         PredInfo,
@@ -454,7 +458,6 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo, VarTable,
 
     LabelNumCounter0 = counter.init(1),
     % argument SaveSuccip
-    globals.get_trace_level(Globals, TraceLevel),
     map.init(LayoutMap),
     ProcTraceEvents = no,
     MaxRegRUsed = -1,
@@ -491,8 +494,8 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo, VarTable,
         OutOfLineCode
     ),
     CodeInfo0 = code_info(CodeInfoStatic0, CodeInfoPersistent0),
-    init_maybe_trace_info(TraceLevel, Globals, ModuleInfo,
-        PredInfo, ProcInfo, TraceSlotInfo, CodeInfo0, CodeInfo).
+    init_maybe_trace_info(Globals, ProcInfo, EffTraceLevel, TraceSlotInfo,
+        CodeInfo0, CodeInfo).
 
 init_exprn_opts(Globals) = ExprnOpts :-
     globals.lookup_bool_option(Globals, gcc_non_local_gotos, OptNLG),
@@ -579,10 +582,8 @@ init_exprn_opts(Globals) = ExprnOpts :-
     ExprnOpts = exprn_opts(NLG, ASM, UBF, UseFloatRegs, DetStackFloatWidth,
         UBI64s, SGCell, SGFloat, SGInt64s, StaticCodeAddrs).
 
-init_maybe_trace_info(TraceLevel, Globals, ModuleInfo, PredInfo,
-        ProcInfo, TraceSlotInfo, !CI) :-
-    TraceEnabled = is_exec_trace_enabled_at_eff_trace_level(ModuleInfo,
-        PredInfo, ProcInfo, TraceLevel),
+init_maybe_trace_info(Globals, ProcInfo, EffTraceLevel, TraceSlotInfo, !CI) :-
+    TraceEnabled = is_exec_trace_enabled_at_eff_trace_level(EffTraceLevel),
     (
         TraceEnabled = exec_trace_is_enabled,
         proc_info_get_has_tail_rec_call(ProcInfo, HasTailRecCall),
@@ -596,7 +597,7 @@ init_maybe_trace_info(TraceLevel, Globals, ModuleInfo, PredInfo,
             HasSelfTailRecCall = has_no_self_tail_rec_call,
             MaybeTailRecLabel = no
         ),
-        trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, MaybeTailRecLabel,
+        trace_setup(Globals, ProcInfo, EffTraceLevel, MaybeTailRecLabel,
             TraceSlotInfo, TraceInfo, !CI),
         set_maybe_trace_info(yes(TraceInfo), !CI)
     ;
@@ -612,6 +613,8 @@ get_globals(CI, X) :-
     X = CI ^ code_info_static ^ cis_globals.
 get_exprn_opts(CI, X) :-
     X = CI ^ code_info_static ^ cis_exprn_opts.
+get_eff_trace_level(CI, X) :-
+    X = CI ^ code_info_static ^ cis_eff_trace_level.
 get_pred_id(CI, X) :-
     X = CI ^ code_info_static ^ cis_pred_id.
 get_proc_id(CI, X) :-
