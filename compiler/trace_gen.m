@@ -247,7 +247,6 @@
 :- import_module check_hlds.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.instmap.
@@ -258,7 +257,6 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.var_table.
-:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module cord.
@@ -348,13 +346,13 @@ get_trace_maybe_tail_rec_info(TraceInfo, TraceInfo ^ ti_tail_rec_info).
 %-----------------------------------------------------------------------------%
 
 trace_fail_vars(ModuleInfo, ProcInfo, FailVars) :-
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     proc_info_get_headvars(ProcInfo, HeadVars),
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
     proc_info_get_argmodes(ProcInfo, Modes),
     mode_list_get_final_insts(ModuleInfo, Modes, FinalInsts),
     proc_info_arg_info(ProcInfo, ArgInfos),
     ( if
-        build_fail_vars(ModuleInfo, VarTypes, HeadVars, FinalInsts, ArgInfos,
+        build_fail_vars(ModuleInfo, VarTable, HeadVars, FinalInsts, ArgInfos,
             FailVarsList)
     then
         set_of_var.list_to_set(FailVarsList, FailVars)
@@ -362,20 +360,20 @@ trace_fail_vars(ModuleInfo, ProcInfo, FailVars) :-
         unexpected($pred, "length mismatch")
     ).
 
-:- pred build_fail_vars(module_info::in, vartypes::in,
+:- pred build_fail_vars(module_info::in, var_table::in,
     list(prog_var)::in, list(mer_inst)::in, list(arg_info)::in,
     list(prog_var)::out) is semidet.
 
 build_fail_vars(_, _, [], [], [], []).
-build_fail_vars(ModuleInfo, VarTypes,
+build_fail_vars(ModuleInfo, VarTable,
         [Var | Vars], [Inst | Insts], [Info | Infos], FailVars) :-
-    build_fail_vars(ModuleInfo, VarTypes, Vars, Insts, Infos, FailVars0),
+    build_fail_vars(ModuleInfo, VarTable, Vars, Insts, Infos, FailVars0),
     Info = arg_info(_Loc, ArgMode),
     ( if
         ArgMode = top_in,
         not inst_is_clobbered(ModuleInfo, Inst),
-        lookup_var_type(VarTypes, Var, Type),
-        is_type_a_dummy(ModuleInfo, Type) = is_not_dummy_type
+        lookup_var_entry(VarTable, Var, Entry),
+        Entry ^ vte_is_dummy = is_not_dummy_type
     then
         FailVars = [Var | FailVars0]
     else
