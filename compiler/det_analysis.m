@@ -1928,7 +1928,7 @@ det_find_matching_non_cc_mode_procs(ModuleInfo, PredInfo,
         proc_info_interface_determinism(ProcInfo, Detism),
         determinism_components(Detism, _CanFail, MaxSoln),
         MaxSoln = at_most_many,
-        modes_are_identical_bar_cc(CcProcId, ProcId, PredInfo, ModuleInfo)
+        modes_are_identical_bar_cc(ModuleInfo, PredInfo, CcProcId, ProcId)
     then
         NonCcProcId = ProcId
     else

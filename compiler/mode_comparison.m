@@ -32,16 +32,16 @@
     % Note that mode declarations which only have different final insts
     % do not count as distinguishable.
     %
-:- pred modes_are_indistinguishable(proc_id::in, proc_id::in, pred_info::in,
-    module_info::in) is semidet.
+:- pred modes_are_indistinguishable(module_info::in, pred_info::in,
+    proc_id::in, proc_id::in) is semidet.
 
     % Given two modes of a predicate, figure out whether they are identical,
     % except that one is cc_nondet/cc_multi and the other is nondet/multi.
     % This is used by determinism analysis to substitute a multi mode
     % for a cc_multi one if the call occurs in a non-cc context.
     %
-:- pred modes_are_identical_bar_cc(proc_id::in, proc_id::in, pred_info::in,
-    module_info::in) is semidet.
+:- pred modes_are_identical_bar_cc(module_info::in, pred_info::in,
+    proc_id::in, proc_id::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -108,10 +108,9 @@
 
 %---------------------------------------------------------------------------%
 
-modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
+modes_are_indistinguishable(ModuleInfo, PredInfo, ProcId, OtherProcId) :-
     % The code of this predicate is similar to the code for
     % modes_are_identical/4 and compare_proc/5 below.
-    %
     pred_info_get_proc_table(PredInfo, Procs),
     map.lookup(Procs, ProcId, ProcInfo),
     map.lookup(Procs, OtherProcId, OtherProcInfo),
@@ -145,7 +144,7 @@ modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
 
 %---------------------------------------------------------------------------%
 
-modes_are_identical_bar_cc(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
+modes_are_identical_bar_cc(ModuleInfo, PredInfo, ProcId, OtherProcId) :-
     % The code of this predicate is similar to the code for
     % compare_proc/5 below and modes_are_indistinguishable/4 above.
 

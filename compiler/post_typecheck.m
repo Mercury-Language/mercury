@@ -935,7 +935,7 @@ check_for_indistinguishable_mode(_, _, _, [], no, !PredInfo, !Specs).
 check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
         [ProcId | ProcIds], Removed, !PredInfo, !Specs) :-
     ( if
-        modes_are_indistinguishable(ProcId, ProcId1, !.PredInfo, ModuleInfo)
+        modes_are_indistinguishable(ModuleInfo, !.PredInfo, ProcId, ProcId1)
     then
         pred_info_get_status(!.PredInfo, Status),
         module_info_get_globals(ModuleInfo, Globals),
