@@ -927,7 +927,7 @@ prepare_proc_for_counting(PredProcId, !ReverseGoalPathMapMap, !ModuleInfo) :-
         OptTupleAlloc0 = opt_tuple_alloc,
         FailVars = set_of_var.init,
         NondetLiveness0 = set_of_var.init,
-        build_live_sets_in_goal_no_par_stack(Goal0, Goal, FailVars, AllocData,
+        build_live_sets_in_goal_no_par_stack(AllocData, FailVars, Goal0, Goal,
             OptTupleAlloc0, _OptTupleAlloc, Liveness0, _Liveness,
             NondetLiveness0, _NondetLiveness),
         proc_info_set_goal(Goal, !ProcInfo),
