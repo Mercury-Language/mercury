@@ -86,7 +86,7 @@
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.ctgc.fixpoint_table.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 :- import_module transform_hlds.ctgc.util.
@@ -504,7 +504,8 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !DepProcs) :-
             sharing_as_project(HeadVars, !Sharing),
             ProjAsDescr = sharing_as_short_description(!.Sharing),
 
-            domain.apply_widening(ModuleInfo, ProcInfo, WideningLimit,
+            proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+            domain.apply_widening(ModuleInfo, VarTable, WideningLimit,
                 WideningDone, !Sharing),
             (
                 WideningDone = yes,
@@ -585,8 +586,8 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
         ),
 
         % Rename
-        proc_info_get_varset_vartypes(ProcInfo, _CallerVarSet, CallerVarTypes),
-        lookup_var_types(CallerVarTypes, CallArgs, ActualTypes),
+        proc_info_get_var_table(ModuleInfo, ProcInfo, CallerVarTable),
+        lookup_var_types(CallerVarTable, CallArgs, ActualTypes),
         pred_info_get_typevarset(PredInfo, CallerTypeVarSet),
         pred_info_get_univ_quant_tvars(PredInfo, CallerHeadParams),
         sharing_as_rename_using_module_info(ModuleInfo, CalleePPId, CallArgs,
@@ -754,8 +755,8 @@ analyse_generic_call(ModuleInfo, ProcInfo, GenDetails, CallArgs, Modes,
         ( GenDetails = higher_order(_, _, _, _)
         ; GenDetails = class_method(_, _, _, _)
         ),
-        proc_info_get_varset_vartypes(ProcInfo, _CallerVarSet, CallerVarTypes),
-        lookup_var_types(CallerVarTypes, CallArgs, ActualTypes),
+        proc_info_get_var_table(ModuleInfo, ProcInfo, CallerVarTable),
+        lookup_var_types(CallerVarTable, CallArgs, ActualTypes),
         ( if
             bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes,
                 ActualTypes)
@@ -983,8 +984,8 @@ analysis_name = "structure_sharing".
 
         FuncInfo = structure_sharing_func_info(ModuleInfo, ProcInfo),
         proc_info_get_headvars(ProcInfo, HeadVars),
-        proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-        lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
+        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        lookup_var_types(VarTable, HeadVars, HeadVarTypes),
         structure_sharing_answer_to_domain(no, HeadVarTypes, ProcInfo,
             Answer1, Sharing1),
         structure_sharing_answer_to_domain(no, HeadVarTypes, ProcInfo,
@@ -1004,8 +1005,8 @@ analysis_name = "structure_sharing".
         ;
             FuncInfo = structure_sharing_func_info(ModuleInfo, ProcInfo),
             proc_info_get_headvars(ProcInfo, HeadVars),
-            proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-            lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
+            proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+            lookup_var_types(VarTable, HeadVars, HeadVarTypes),
             structure_sharing_answer_to_domain(no, HeadVarTypes, ProcInfo,
                 Answer1, Sharing1),
             structure_sharing_answer_to_domain(no, HeadVarTypes, ProcInfo,
@@ -1142,8 +1143,8 @@ maybe_record_sharing_analysis_result_2(ModuleInfo, SharingAsTable, PredId,
         ;
             Sharing = structure_sharing_real(SharingPairs),
             proc_info_get_headvars(ProcInfo, HeadVars),
-            proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-            lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
+            proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+            lookup_var_types(VarTable, HeadVars, HeadVarTypes),
             Answer = structure_sharing_answer_real(HeadVars, HeadVarTypes,
                 SharingPairs),
             Status = Status0

@@ -19,10 +19,10 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
+:- import_module parse_tree.var_table.
 
 :- import_module list.
 
@@ -52,7 +52,7 @@
     % It is assumed that the selector is a valid selector for that
     % datastructure.
     %
-:- func datastruct_termshift(module_info, proc_info, selector, datastruct)
+:- func datastruct_termshift(module_info, var_table, selector, datastruct)
     = datastruct.
 
     % Normalize the representation of the datastructure.
@@ -62,27 +62,27 @@
     % iff none of the term nodes met on the path to the actual selected
     % term by the selector has the same type as the selected node.
     %
-:- func normalize_datastruct(module_info, proc_info, datastruct) = datastruct.
+:- func normalize_datastruct(module_info, var_table, datastruct) = datastruct.
 
-:- pred datastruct_subsumed_by_return_selector(module_info::in, proc_info::in,
+:- pred datastruct_subsumed_by_return_selector(module_info::in, var_table::in,
     datastruct::in, datastruct::in, selector::out) is semidet.
 
-:- pred datastruct_subsumed_by(module_info::in, proc_info::in,
+:- pred datastruct_subsumed_by(module_info::in, var_table::in,
     datastruct::in, datastruct::in) is semidet.
 
-:- pred datastruct_subsumed_by_list(module_info::in, proc_info::in,
+:- pred datastruct_subsumed_by_list(module_info::in, var_table::in,
     datastruct::in, list(datastruct)::in) is semidet.
 
-:- pred datastructs_subsumed_by_list(module_info::in, proc_info::in,
+:- pred datastructs_subsumed_by_list(module_info::in, var_table::in,
     list(datastruct)::in, list(datastruct)::in) is semidet.
 
-:- pred datastructs_that_are_subsumed_by_list(module_info::in, proc_info::in,
+:- pred datastructs_that_are_subsumed_by_list(module_info::in, var_table::in,
     list(datastruct)::in, list(datastruct)::in, list(datastruct)::out) is det.
 
-:- func datastruct_lists_least_upper_bound(module_info, proc_info,
+:- func datastruct_lists_least_upper_bound(module_info, var_table,
     list(datastruct), list(datastruct)) = list(datastruct).
 
-:- pred datastruct_apply_widening(module_info::in, proc_info::in,
+:- pred datastruct_apply_widening(module_info::in, var_table::in,
     datastruct::in, datastruct::out) is det.
 
 :- func datastructs_project(list(prog_var),
@@ -94,7 +94,6 @@
 
 :- implementation.
 
-:- import_module parse_tree.vartypes.
 :- import_module transform_hlds.ctgc.selector.
 
 %---------------------------------------------------------------------------%
@@ -115,7 +114,7 @@ datastruct_refers_to_topcell(Data):-
     DSel = Data ^ sc_selector,
     DSel = [].
 
-datastruct_termshift(ModuleInfo, ProcInfo, Sel, Data0) = Data :-
+datastruct_termshift(ModuleInfo, VarTable, Sel, Data0) = Data :-
     (
         Sel = [],
         Data = Data0
@@ -125,72 +124,68 @@ datastruct_termshift(ModuleInfo, ProcInfo, Sel, Data0) = Data :-
         selector_termshift(DSel, Sel, NewSel0),
 
         % Keep datastruct seletors normalized.
-        proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-        lookup_var_type(VarTypes, Var, Type),
+        lookup_var_type(VarTable, Var, Type),
         normalize_selector_with_type_information(ModuleInfo, Type,
             NewSel0, NewSel),
 
         Data = selected_cel(Var, NewSel)
     ).
 
-normalize_datastruct(ModuleInfo, ProcInfo, Data0) = Data :-
+normalize_datastruct(ModuleInfo, VarTable, Data0) = Data :-
     Data0 = selected_cel(Var, DSel0),
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
+    lookup_var_type(VarTable, Var, Type),
     normalize_selector_with_type_information(ModuleInfo, Type, DSel0, DSel),
     Data = selected_cel(Var, DSel).
 
-datastruct_subsumed_by_return_selector(ModuleInfo, ProcInfo, Data1, Data2,
+datastruct_subsumed_by_return_selector(ModuleInfo, VarTable, Data1, Data2,
         Extension) :-
     Data1 = selected_cel(Var, Sel1),
     Data2 = selected_cel(Var, Sel2),
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
+    lookup_var_type(VarTable, Var, Type),
     selector_subsumed_by(ModuleInfo, already_normalized,
         Sel1, Sel2, Type, Extension).
 
-datastruct_subsumed_by(ModuleInfo, ProcInfo, Data1, Data2) :-
-    datastruct_subsumed_by_return_selector(ModuleInfo, ProcInfo, Data1, Data2,
+datastruct_subsumed_by(ModuleInfo, VarTable, Data1, Data2) :-
+    datastruct_subsumed_by_return_selector(ModuleInfo, VarTable, Data1, Data2,
         _).
 
-datastruct_subsumed_by_list(ModuleInfo, ProcInfo, Data0, [Data | Rest]):-
+datastruct_subsumed_by_list(ModuleInfo, VarTable, Data0, [Data | Rest]):-
     (
-        datastruct_subsumed_by(ModuleInfo, ProcInfo, Data0, Data)
+        datastruct_subsumed_by(ModuleInfo, VarTable, Data0, Data)
     ;
-        datastruct_subsumed_by_list(ModuleInfo, ProcInfo, Data0, Rest)
+        datastruct_subsumed_by_list(ModuleInfo, VarTable, Data0, Rest)
     ).
 
-datastructs_subsumed_by_list(ModuleInfo, ProcInfo, PerhapsSubsumedData,
+datastructs_subsumed_by_list(ModuleInfo, VarTable, PerhapsSubsumedData,
         Data) :-
     all [X] (
         list.member(X, PerhapsSubsumedData)
     =>
-        datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Data, X)
+        datastructs_subsume_datastruct(ModuleInfo, VarTable, Data, X)
     ).
 
-datastructs_that_are_subsumed_by_list(ModuleInfo, ProcInfo,
+datastructs_that_are_subsumed_by_list(ModuleInfo, VarTable,
         PerhapsSubsumedData, Datastructs, SubsumedData) :-
     list.filter(
-        datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Datastructs),
+        datastructs_subsume_datastruct(ModuleInfo, VarTable, Datastructs),
         PerhapsSubsumedData, SubsumedData).
 
-:- pred datastructs_subsume_datastruct(module_info::in, proc_info::in,
+:- pred datastructs_subsume_datastruct(module_info::in, var_table::in,
     list(datastruct)::in, datastruct::in) is semidet.
 
-datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Datastructs, Data):-
-    datastruct_subsumed_by_list(ModuleInfo, ProcInfo, Data, Datastructs).
+datastructs_subsume_datastruct(ModuleInfo, VarTable, Datastructs, Data):-
+    datastruct_subsumed_by_list(ModuleInfo, VarTable, Data, Datastructs).
 
-datastruct_lists_least_upper_bound(ModuleInfo, ProcInfo, Data1, Data2)
+datastruct_lists_least_upper_bound(ModuleInfo, VarTable, Data1, Data2)
         = Data :-
     list.filter(
-        datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Data1),
+        datastructs_subsume_datastruct(ModuleInfo, VarTable, Data1),
         Data2, _SubsumedData, NotSubsumedData),
     Data = list.append(NotSubsumedData, Data1).
 
-datastruct_apply_widening(ModuleInfo, ProcInfo, Data0, Data) :-
+datastruct_apply_widening(ModuleInfo, VarTable, Data0, Data) :-
     Data0 = selected_cel(Var, Sel0),
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
+    lookup_var_type(VarTable, Var, Type),
     selector_apply_widening(ModuleInfo, Type, Sel0, Sel),
     Data = selected_cel(Var, Sel).
 

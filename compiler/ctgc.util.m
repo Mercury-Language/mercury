@@ -21,6 +21,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 
 :- import_module list.
 :- import_module set.
@@ -54,12 +55,12 @@
 :- func get_type_substitution(module_info, pred_proc_id, list(mer_type),
     tvarset, external_type_params) = tsubst.
 
-    % var_needs_sharing_analysis(ModuleInfo, ProcInfo, Var).
+    % var_needs_sharing_analysis(ModuleInfo, VarTable, Var).
     %
     % Succeed iff Var is of a type for which we need to consider structure
     % sharing.
     %
-:- pred var_needs_sharing_analysis(module_info::in, proc_info::in,
+:- pred var_needs_sharing_analysis(module_info::in, var_table::in,
     prog_var::in) is semidet.
 
     % Succeed iff the type is one for which we need to consider structure
@@ -82,7 +83,6 @@
 :- import_module hlds.status.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
-:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module map.
@@ -147,9 +147,8 @@ reverse_renaming(RevSubst, K0, V0, !Acc) :-
 
 %---------------------------------------------------------------------------%
 
-var_needs_sharing_analysis(ModuleInfo, ProcInfo, Var) :-
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
+var_needs_sharing_analysis(ModuleInfo, VarTable, Var) :-
+    lookup_var_type(VarTable, Var, Type),
     type_needs_sharing_analysis(ModuleInfo, Type).
 
 type_needs_sharing_analysis(ModuleInfo, Type) :-

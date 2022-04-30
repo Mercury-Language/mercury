@@ -120,7 +120,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module float.
 :- import_module int.
@@ -160,15 +160,15 @@ determine_reuse(ModuleInfo, ProcInfo, DeadCellTable, !Goal, ReuseAs) :-
                 back_strategy       :: reuse_strategy,
                 back_module_info    :: module_info,
                 back_proc_info      :: proc_info,
-                back_vartypes       :: vartypes
+                back_var_table      :: var_table
             ).
 
 :- func background_info_init(reuse_strategy, module_info, proc_info) =
     background_info.
 
 background_info_init(Strategy, ModuleInfo, ProcInfo) = Background :-
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-    Background = background(Strategy, ModuleInfo, ProcInfo, VarTypes).
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    Background = background(Strategy, ModuleInfo, ProcInfo, VarTable).
 
 %---------------------------------------------------------------------------%
 % Some types and predicates for the administration of the deconstructions,
@@ -828,7 +828,7 @@ find_match_in_goal_2(Background, Goal, !Match) :-
         GoalExpr = unify(_, _, _, Unification, _),
         (
             Unification = construct(Var, Cons, Args, _, _, _, _),
-            lookup_var_type(Background ^ back_vartypes, Var, VarType),
+            lookup_var_type(Background ^ back_var_table, Var, VarType),
             ( if
                 top_cell_may_be_reusable(Background ^ back_module_info,
                     VarType),

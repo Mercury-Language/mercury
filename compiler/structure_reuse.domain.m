@@ -276,6 +276,7 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.util.
 
@@ -417,7 +418,8 @@ reuse_condition_subsumed_by(ModuleInfo, ProcInfo, Cond1, Cond2) :-
         %
         set.subset(Nodes1, Nodes2),
 
-        datastructs_subsumed_by_list(ModuleInfo, ProcInfo,
+        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        datastructs_subsumed_by_list(ModuleInfo, VarTable,
             LocalUse1, LocalUse2),
         sharing_as_is_subsumed_by(ModuleInfo, ProcInfo,
             LocalSharing1, LocalSharing2)
@@ -770,6 +772,7 @@ aliases_between_reuse_nodes(ModuleInfo, ProcInfo, SharingAs, Conditions,
 
 aliases_between_reuse_nodes_2(ModuleInfo, ProcInfo, SharingAs, Node,
         OtherNodes, AliasedNodes) :-
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     SharingNodes0 = extend_datastruct(ModuleInfo, ProcInfo, SharingAs, Node),
     list.delete(SharingNodes0, Node, SharingNodes),
 
@@ -778,7 +781,7 @@ aliases_between_reuse_nodes_2(ModuleInfo, ProcInfo, SharingAs, Node,
     % current node itself.
     (
         list.member(SharingNode, SharingNodes),
-        there_is_a_subsumption_relation(ModuleInfo, ProcInfo,
+        there_is_a_subsumption_relation(ModuleInfo, VarTable,
             [Node | OtherNodes], SharingNode, OtherAliasedNode),
         AliasedNodes = SharingNode - OtherAliasedNode
     ;
@@ -790,19 +793,19 @@ aliases_between_reuse_nodes_2(ModuleInfo, ProcInfo, SharingAs, Node,
     % Succeed if Data is subsumed or subsumes some of the datastructures in
     % Datastructs.
     %
-:- pred there_is_a_subsumption_relation(module_info::in, proc_info::in,
+:- pred there_is_a_subsumption_relation(module_info::in, var_table::in,
     list(datastruct)::in, datastruct::in, datastruct::out) is nondet.
 
-there_is_a_subsumption_relation(ModuleInfo, ProcInfo, [DataB0 | DataBs],
+there_is_a_subsumption_relation(ModuleInfo, VarTable, [DataB0 | DataBs],
         DataA, DataB) :-
     (
-        datastruct_subsumed_by(ModuleInfo, ProcInfo, DataA, DataB),
+        datastruct_subsumed_by(ModuleInfo, VarTable, DataA, DataB),
         DataB = DataB0
     ;
-        datastruct_subsumed_by(ModuleInfo, ProcInfo, DataB, DataA),
+        datastruct_subsumed_by(ModuleInfo, VarTable, DataB, DataA),
         DataB = DataB0
     ;
-        there_is_a_subsumption_relation(ModuleInfo, ProcInfo, DataBs,
+        there_is_a_subsumption_relation(ModuleInfo, VarTable, DataBs,
             DataA, DataB)
     ).
 
@@ -842,7 +845,8 @@ reuse_condition_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs,
                 SharingAs),
             UpdatedLiveData = livedata_add_liveness(ModuleInfo, ProcInfo,
                 InUseNodes, NewSharing, LiveData),
-            nodes_are_not_live(ModuleInfo, ProcInfo, DeadNodes,
+            proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+            nodes_are_not_live(ModuleInfo, VarTable, DeadNodes,
                 UpdatedLiveData, NotLiveResult),
             (
                 NotLiveResult = nodes_all_live,

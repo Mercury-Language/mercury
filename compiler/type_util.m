@@ -376,9 +376,14 @@
     % variables.
     %
 :- func remove_typeinfo_vars(vartypes, list(prog_var)) = list(prog_var).
+:- func remove_typeinfo_vars_vt(var_table, list(prog_var)) = list(prog_var).
 :- func remove_typeinfo_vars_from_set(vartypes, set(prog_var))
     = set(prog_var).
+:- func remove_typeinfo_vars_from_set_vt(var_table, set(prog_var))
+    = set(prog_var).
 :- func remove_typeinfo_vars_from_set_of_var(vartypes, set_of_progvar)
+    = set_of_progvar.
+:- func remove_typeinfo_vars_from_set_of_var_vt(var_table, set_of_progvar)
     = set_of_progvar.
 
 %-----------------------------------------------------------------------------%
@@ -1664,15 +1669,30 @@ remove_typeinfo_vars(VarTypes, Vars) = NonTypeInfoVars :-
     list.negated_filter(var_is_introduced_type_info_type(VarTypes),
         Vars, NonTypeInfoVars).
 
+remove_typeinfo_vars_vt(VarTable, Vars) = NonTypeInfoVars :-
+    list.negated_filter(var_is_introduced_type_info_type_table(VarTable),
+        Vars, NonTypeInfoVars).
+
 remove_typeinfo_vars_from_set(VarTypes, VarsSet0) = VarsSet :-
     VarsList0 = set.to_sorted_list(VarsSet0),
     VarsList = remove_typeinfo_vars(VarTypes, VarsList0),
+    VarsSet = set.sorted_list_to_set(VarsList).
+
+remove_typeinfo_vars_from_set_vt(VarTable, VarsSet0) = VarsSet :-
+    VarsList0 = set.to_sorted_list(VarsSet0),
+    VarsList = remove_typeinfo_vars_vt(VarTable, VarsList0),
     VarsSet = set.sorted_list_to_set(VarsList).
 
 remove_typeinfo_vars_from_set_of_var(VarTypes, VarsSet0) = VarsSet :-
     % XXX could be done more efficiently, operating directly on the set_of_var
     VarsList0 = set_of_var.to_sorted_list(VarsSet0),
     VarsList = remove_typeinfo_vars(VarTypes, VarsList0),
+    VarsSet = set_of_var.sorted_list_to_set(VarsList).
+
+remove_typeinfo_vars_from_set_of_var_vt(VarTable, VarsSet0) = VarsSet :-
+    % XXX could be done more efficiently, operating directly on the set_of_var
+    VarsList0 = set_of_var.to_sorted_list(VarsSet0),
+    VarsList = remove_typeinfo_vars_vt(VarTable, VarsList0),
     VarsSet = set_of_var.sorted_list_to_set(VarsList).
 
 :- pred split_vars_typeinfo_no_typeinfo(vartypes::in,

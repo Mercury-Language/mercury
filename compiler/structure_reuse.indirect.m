@@ -90,7 +90,7 @@
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.fixpoint_table.
 :- import_module transform_hlds.ctgc.livedata.
@@ -372,8 +372,8 @@ ir_background_info_init(ModuleInfo, PPId, PredInfo, ProcInfo, SharingTable,
     % type-info arguments and alike, so we remove them from the list
     % of head variables:
     proc_info_get_headvars(ProcInfo, HeadVars),
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, Vartypes),
-    HeadVarsOfInterest = remove_typeinfo_vars(Vartypes, HeadVars),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    HeadVarsOfInterest = remove_typeinfo_vars_vt(VarTable, HeadVars),
 
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_int_option(Globals, structure_reuse_max_conditions,
@@ -650,8 +650,8 @@ indirect_reuse_analyse_generic_call(BaseInfo, GenDetails, CallArgs, Modes,
         ( GenDetails = higher_order(_, _, _, _)
         ; GenDetails = class_method(_, _, _, _)
         ),
-        proc_info_get_varset_vartypes(ProcInfo, _CallerVarSet, CallerVarTypes),
-        lookup_var_types(CallerVarTypes, CallArgs, ActualTypes),
+        proc_info_get_var_table(ModuleInfo, ProcInfo, CallerVarTable),
+        lookup_var_types(CallerVarTable, CallArgs, ActualTypes),
         ( if
             bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes,
                 ActualTypes)
@@ -926,14 +926,14 @@ verify_indirect_reuse_for_call(BaseInfo, IrInfo, GoalInfo, CalleePPId,
     PredInfo = BaseInfo ^ irb_pred_info,
     ProcInfo = BaseInfo ^ irb_proc_info,
     SharingAs = IrInfo ^ ira_sharing_as,
-    proc_info_get_varset_vartypes(ProcInfo, _, ActualVarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, ActualVarTable),
     pred_info_get_typevarset(PredInfo, CallerTypeVarSet),
     pred_info_get_univ_quant_tvars(PredInfo, CallerHeadTypeParams),
-    lookup_var_types(ActualVarTypes, CalleeArgs, CalleeTypes),
+    lookup_var_types(ActualVarTable, CalleeArgs, CalleeTypes),
     reuse_as_rename_using_module_info(ModuleInfo, CalleePPId,
         CalleeArgs, CalleeTypes, CallerTypeVarSet, CallerHeadTypeParams,
         FormalReuseAs, ActualReuseAs),
-    LiveData = livedata_init_at_goal(ModuleInfo, ProcInfo, GoalInfo,
+    LiveData = livedata_init_at_goal(ModuleInfo, ActualVarTable, GoalInfo,
         SharingAs),
     ProjectedLiveData = livedata_project(CalleeArgs, LiveData),
     StaticVars = set.to_sorted_list(IrInfo ^ ira_static_vars),
@@ -1040,27 +1040,26 @@ maybe_write_verify_indirect_reuse_reason(Stream, BaseInfo, CalleePPId,
         ModuleInfo = BaseInfo ^ irb_module_info,
         GoalReuse = goal_info_get_reuse(GoalInfo),
         Context = goal_info_get_context(GoalInfo),
-        proc_info_get_varset_vartypes(BaseInfo ^ irb_proc_info, VarSet, _),
+        proc_info_get_var_table(ModuleInfo, BaseInfo ^ irb_proc_info,
+            VarTable),
         CalleeStr = pred_proc_id_to_string(ModuleInfo, CalleePPId),
-        io.write_string(Stream, "\tcall to ", !IO),
-        io.write_string(Stream, CalleeStr, !IO),
-        io.write_string(Stream, "\n\tfrom ", !IO),
-        write_context(Stream, Context, !IO),
-        io.write_string(Stream, "\n\twith NoClobbers = ", !IO),
-        io.write_line(Stream, NoClobbers, !IO),
-        io.write_string(Stream, "\t\treuse: ", !IO),
-        io.write_line(Stream, GoalReuse, !IO),
-        io.write_string(Stream, "\t\treason: ", !IO),
-        write_verify_indirect_reuse_reason(Stream, Reason, VarSet, !IO)
+        context_to_string(Context, ContextStr),
+        io.format(Stream, "\tcall to %s\n\tfrom %s\n",
+            [s(CalleeStr), s(ContextStr)], !IO),
+        io.format(Stream, "\twith NoClobbers = %s\n",
+            [s(string.string(NoClobbers))], !IO),
+        io.format(Stream, "\t\treuse: %s\n",
+            [s(string.string(GoalReuse))], !IO),
+        io.format(Stream, "\t\treason: %s\n",
+            [s(verify_indirect_reuse_reason_to_string(VarTable, Reason))], !IO)
     ;
         DebugIndirect = no
     ).
 
-:- pred write_verify_indirect_reuse_reason(io.text_output_stream::in,
-    verify_indirect_reuse_reason::in,
-    prog_varset::in, io::di, io::uo) is det.
+:- func verify_indirect_reuse_reason_to_string(var_table,
+    verify_indirect_reuse_reason) = string.
 
-write_verify_indirect_reuse_reason(Stream, Reason, VarSet, !IO) :-
+verify_indirect_reuse_reason_to_string(VarTable, Reason) = Str :-
     (
         ( Reason = callee_has_no_reuses
         ; Reason = callee_has_only_unconditional_reuse
@@ -1068,12 +1067,12 @@ write_verify_indirect_reuse_reason(Stream, Reason, VarSet, !IO) :-
         ; Reason = reuse_is_unconditional
         ; Reason = reuse_is_conditional
         ),
-        io.write(Stream, Reason, !IO)
+        Str = string.string(Reason)
     ;
         Reason = reuse_is_unsafe(Vars),
-        io.write_string(Stream, "reuse_is_unsafe(", !IO),
-        mercury_output_vars(VarSet, print_name_and_num, Vars, Stream, !IO),
-        io.write_string(Stream, ")\n", !IO)
+        VarsStr = mercury_vars_to_string_src(vns_var_table(VarTable),
+            print_name_and_num, Vars),
+        string.format("reuse_is_unsafe(%s)\n", [s(VarsStr)], Str)
     ).
 
 %---------------------------------------------------------------------------%

@@ -43,7 +43,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.livedata.
 
@@ -224,8 +224,8 @@ determine_dead_deconstructions_generic_call(ModuleInfo, ProcInfo,
         ( GenDetails = higher_order(_, _, _, _)
         ; GenDetails = class_method(_, _, _, _)
         ),
-        proc_info_get_varset_vartypes(ProcInfo, _CallerVarSet, CallerVarTypes),
-        lookup_var_types(CallerVarTypes, CallArgs, ActualTypes),
+        proc_info_get_var_table(ModuleInfo, ProcInfo, CallerVarTable),
+        lookup_var_types(CallerVarTable, CallArgs, ActualTypes),
         ( if
             bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes,
                 ActualTypes)
@@ -274,8 +274,8 @@ unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, Unification,
             Arity \= 0,
 
             % No-tag values don't have a cell to reuse.
-            proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-            lookup_var_type(VarTypes, Var, Type),
+            proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+            lookup_var_type(VarTable, Var, Type),
             not type_is_no_tag_type(ModuleInfo, Type),
 
             % Check if the top cell datastructure of Var is not live.
@@ -284,7 +284,7 @@ unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, Unification,
             not sharing_as_is_top(Sharing),
 
             % Check the live set of data structures at this program point.
-            var_not_live(ModuleInfo, ProcInfo, GoalInfo, Sharing, Var)
+            var_not_live(ModuleInfo, VarTable, GoalInfo, Sharing, Var)
         then
             % If all the above conditions are met, then the top cell
             % data structure based on Var is dead right after this
@@ -306,12 +306,12 @@ unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, Unification,
         unexpected($pred, "complicated_unify")
     ).
 
-:- pred var_not_live(module_info::in, proc_info::in, hlds_goal_info::in,
-    sharing_as::in, prog_var::in) is semidet.
+:- pred var_not_live(module_info::in, var_table::in,
+    hlds_goal_info::in, sharing_as::in, prog_var::in) is semidet.
 
-var_not_live(ModuleInfo, ProcInfo, GoalInfo, Sharing, Var) :-
-    LiveData = livedata_init_at_goal(ModuleInfo, ProcInfo, GoalInfo, Sharing),
-    nodes_are_not_live(ModuleInfo, ProcInfo, [datastruct_init(Var)], LiveData,
+var_not_live(ModuleInfo, VarTable, GoalInfo, Sharing, Var) :-
+    LiveData = livedata_init_at_goal(ModuleInfo, VarTable, GoalInfo, Sharing),
+    nodes_are_not_live(ModuleInfo, VarTable, [datastruct_init(Var)], LiveData,
         NotLive),
     (
         NotLive = nodes_are_live([])
