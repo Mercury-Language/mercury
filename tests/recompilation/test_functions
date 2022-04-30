@@ -10,6 +10,7 @@ ulimit -t 600
 # Set variables `main_module' and `modules' describing the test being run.
 # Copy in the initial versions of the test files.
 test_module () {
+    echo "executing shell function test_module $@"
     if test "$#" = 0
     then
         echo "usage: test_module main_module other_modules"
@@ -18,19 +19,19 @@ test_module () {
 
     main_module="$1"
     modules="$*"
-    echo Testing $main_module
+    echo Testing ${main_module}
 
-    for module in $modules
+    for module in ${modules}
     do
-        rm -f "$module.m"
-        cp "$module.m.1" "$module.m"
+        rm -f "${module}.m"
+        cp "${module}.m.1" "${module}.m"
 
         # The module.m.<n> files are the only ones that should be edited.
-        chmod -w $module.m
+        chmod -w ${module}.m
     done
 
-    rm -f "$main_module.res"
-    touch "$main_module.res"
+    rm -f "${main_module}.res"
+    touch "${main_module}.res"
 
     # XXX Avoid producing output files with the same timestamp as
     # the input source file. The up-to-date check for the output file
@@ -49,6 +50,7 @@ test_module () {
 
 # Simulate a user editing the file.
 update_module () {
+    # echo "executing shell function update_module $@"
     if test "$#" != 2
     then
         echo "usage: update_module module_name version"
@@ -63,79 +65,81 @@ update_module () {
     # that the `.c' file is out of date with respect to the `.m' file.
     sleep 1
 
-    rm -f "$module.m"
-    cp "$module.m.$module_version" "$module.m"
-    chmod -w "$module.m"
+    rm -f "${module}.m"
+    cp "${module}.m.${module_version}" "${module}.m"
+    chmod -w "${module}.m"
 
     # See comment in test_module().
     sleep 1
 }
 
 mmake_depend () {
-    eval mmake $mmakeopts "$main_module.depend" || exit 1
+    # echo "executing shell function mmake_depend $@"
+    eval mmake ${mmakeopts} "${main_module}.depend" || exit 1
 }
 
 # Build the test, then run it and compare the output.
 mmake_test () {
+    # echo "executing shell function mmake_test $@"
     if test "$#" != 2
     then
-        echo "** usage: mmake_test output_file_version should_fail"
+        echo "** usage: mmake_test output_file_version should_{fail,succeed}"
         exit 1
     fi
 
     output_file_version="$1"
-    mmake_should_fail="$2"
+    should="$2"
 
     # XXX This is a hacky way of testing for Java grades.
-    echo "mmakeopts=$mmakeopts"
-    case $mmakeopts in
+    # echo "mmakeopts=${mmakeopts}"
+    case "${mmakeopts}" in
         *java*)
-            target=$main_module.classes
-            run_target="java $main_module"
+            target=${main_module}.classes
+            run_target="java ${main_module}"
             ;;
         *)
-            target=$main_module
-            run_target="./$main_module"
+            target=${main_module}
+            run_target="./${main_module}"
             ;;
     esac
 
-    case $mmake_should_fail in
-        true)
+    case "${should}" in
+        should_succeed)
+            eval mmake ${mmakeopts} "${target}"
+            case "$?" in
+                0)
+                    ${run_target} > "${main_module}.out"
+                    compare_files "${main_module}.exp.${output_file_version}" \
+                        "${main_module}.out"
+                    ;;
+                *)
+                    echo "** Error: mmake ${mmakeopts} ${target} failed" \
+                        "(it was expected to succeed)"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        should_fail)
             # If the compilation is supposed to fail, then we suppress
-            # the mmake output to avoid making it harder to find any
-            # genuine failures in the nightly test logs. The `-k' option
+            # the mmake output, to avoid burying genuine failures in a sea
+            # of expected failures in the nightly test logs. The `-k' option
             # to mmake avoids differences in the output when using
             # parallel mmakes.
-
-            eval mmake $mmakeopts -k "$target" \
-                > "$main_module.failing_make_output" 2>&1
-            ;;
-        false)
-            eval mmake $mmakeopts "$target"
-            ;;
-    esac
-
-    case "$?" in
-        0)
-            case "$mmake_should_fail" in
-                true)
-                    echo "** Error: mmake $mmakeopts $target" \
-                        "succeeded where it should fail"
+            eval mmake ${mmakeopts} -k "${target}" \
+                > "${main_module}.failing_make_output" 2>&1
+            case "$?" in
+                0)
+                    echo "** Error: mmake ${mmakeopts} ${target} succeeded" \
+                        "(it was expected to fail)"
                     exit 1
                     ;;
+                *)
+                    ;;
             esac
-
-            $run_target > "$main_module.out"
-            compare_files "$main_module.exp.$output_file_version" \
-                "$main_module.out"
             ;;
         *)
-            case "$mmake_should_fail" in
-                false)
-                    echo "** Error: mmake $mmakeopts $target failed"
-                    exit 1
-                    ;;
-            esac
+            echo "** Error: bad should ${should}"
+            exit 1
             ;;
     esac
 }
@@ -153,28 +157,30 @@ compare_files () {
     exp_file="$1"
     res_file="$2"
 
-    if test -f "$exp_file"
+    if test -f "${exp_file}"
     then
-        if diff ${DIFF_OPTS-"-c"} "$exp_file" "$res_file" >> "$main_module.res"
+        if diff ${DIFF_OPTS-"-c"} "${exp_file}" "${res_file}" \
+            >> "${main_module}.res"
         then
             :
         else
-            echo "** Error: $exp_file and $res_file differ."
+            echo "** Error: ${exp_file} and ${res_file} differ."
             exit 1
         fi
     else
-        if test "$generate_missing_exp_files" = true
+        if test "${generate_missing_exp_files}" = true
         then
-            echo "** WARNING: generating $exp_file"
-            cp "$res_file" "$exp_file"
+            echo "** WARNING: generating ${exp_file}"
+            cp "${res_file}" "${exp_file}"
         else
-            echo "** Error: $exp_file not found"
+            echo "** Error: ${exp_file} not found"
             exit 1
         fi
     fi
 }
 
 check_err_file () {
+    # echo "executing shell function check_err_file $@"
     if test "$#" != 2
     then
         echo "** usage: check_err_file module message_file_version"
@@ -187,21 +193,23 @@ check_err_file () {
     # the `.err' file ("foo.h has CHANGED"). Filter it out here.
     # Also filter out any references to the directories created by the
     # `--use-subdirs' option.
-    sed -e '/has CHANGED/d' -e 's/Mercury\/.*\///g' "$module.err" \
-        > "$module.err2"
-    mv "$module.err2" "$module.err"
+    sed -e '/has CHANGED/d' -e 's/Mercury\/.*\///g' "${module}.err" \
+        > "${module}.err2"
+    mv "${module}.err2" "${module}.err"
 
-    compare_files "$module.err_exp.$error_file_version" "$module.err"
+    compare_files "${module}.err_exp.${error_file_version}" "${module}.err"
 }
 
 cleanup_test () {
-    case "$cleanup" in
+    # echo "executing shell function cleanup_test $@"
+    # XXX "${cleanup}" does not seem to be set to "true" *anywhere*.
+    case "${cleanup}" in
         true)
-            eval mmake $mmakeopts "$main_module.realclean"
+            eval mmake ${mmakeopts} "${main_module}.realclean"
 
-            for module in $modules
+            for module in ${modules}
             do
-                rm -f "$module.m"
+                rm -f "${module}.m"
             done
             ;;
     esac

@@ -393,12 +393,6 @@
     --->    no_version_numbers
     ;       version_numbers(module_item_version_numbers).
 
-:- type parse_tree_some_int
-    --->    parse_tree_some_int0(parse_tree_int0)
-    ;       parse_tree_some_int1(parse_tree_int1)
-    ;       parse_tree_some_int2(parse_tree_int2)
-    ;       parse_tree_some_int3(parse_tree_int3).
-
 % The representations specific to .int0, .int, .int2 and .int3 files.
 % XXX We should replace the lists of items of various kinds with data
 % structures that encode uniqueness properties, such as "each type constructor

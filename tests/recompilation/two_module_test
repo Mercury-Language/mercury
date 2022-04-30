@@ -6,21 +6,32 @@
 
 . ./test_functions
 
+usage="** usage: two_module_test should_{fail,succeed} module1 module2"
+
 if test "$#" != 3
 then
-    echo "** usage: two_module_test test_should_fail module1 module2"
+    echo "${usage}"
     exit 1
 fi
 
-test_should_fail=$1
+case "$1" in
+    should_fail|should_succeed)
+        expected_mmake_result=$1
+        ;;
+    *)
+        echo "${usage}"
+        exit 1
+        ;;
+esac
+
 module1=$2
 module2=$3
 
-test_module "$module1" "$module2"
+test_module "${module1}" "${module2}"
 mmake_depend
-mmake_test 1 false
-update_module "$module2" 2
-mmake_test 2 "$test_should_fail"
-check_err_file "$module1" 2
-check_err_file "$module2" 2
+mmake_test 1 should_succeed
+update_module "${module2}" 2
+mmake_test 2 "${expected_mmake_result}"
+check_err_file "${module1}" 2
+check_err_file "${module2}" 2
 cleanup_test

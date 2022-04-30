@@ -98,9 +98,10 @@ generate_dep_file_for_module(Globals, ModuleName, !IO) :-
         ModuleName, DepsMap, !IO).
 
 generate_dep_file_for_file(Globals, FileName, !IO) :-
-    build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO),
+    build_initial_deps_map_for_file(Globals, FileName,
+        ModuleName, DepsMap0, !IO),
     generate_dependencies(Globals, output_all_dependencies, do_not_search,
-        ModuleName, DepsMap, !IO).
+        ModuleName, DepsMap0, !IO).
 
 generate_d_file_for_module(Globals, ModuleName, !IO) :-
     map.init(DepsMap),
@@ -108,24 +109,36 @@ generate_d_file_for_module(Globals, ModuleName, !IO) :-
         ModuleName, DepsMap, !IO).
 
 generate_d_file_for_file(Globals, FileName, !IO) :-
-    build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO),
+    build_initial_deps_map_for_file(Globals, FileName,
+        ModuleName, DepsMap0, !IO),
     generate_dependencies(Globals, output_d_file_only, do_search,
-        ModuleName, DepsMap, !IO).
+        ModuleName, DepsMap0, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred build_deps_map(globals::in, file_name::in,
+:- pred build_initial_deps_map_for_file(globals::in, file_name::in,
     module_name::out, deps_map::out, io::di, io::uo) is det.
 
-build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
+build_initial_deps_map_for_file(Globals, FileName, ModuleName, DepsMap, !IO) :-
     % Read in the top-level file (to figure out its module name).
     FileNameDotM = FileName ++ ".m",
     read_module_src_from_file(Globals, FileName, FileNameDotM, rrm_file,
-        do_not_search, always_read_module(dont_return_timestamp), _,
-        ParseTreeSrc, ReadModuleErrors, !IO),
-    ParseTreeSrc = parse_tree_src(ModuleName, _, _),
-    parse_tree_src_to_burdened_module_list(Globals, FileNameDotM,
-        ParseTreeSrc, ReadModuleErrors, Specs, BurdenedModules),
+        do_not_search, always_read_module(dont_return_timestamp),
+        HaveReadModuleSrc, !IO),
+    (
+        HaveReadModuleSrc = have_read_module(_FN, _MTS,
+            ParseTreeSrc, ReadModuleErrors),
+        ParseTreeSrc = parse_tree_src(ModuleName, _, _),
+        parse_tree_src_to_burdened_module_list(Globals, FileNameDotM,
+            ParseTreeSrc, ReadModuleErrors, Specs, BurdenedModules)
+    ;
+        HaveReadModuleSrc = have_not_read_module(_, ReadModuleErrors),
+        get_default_module_name_for_file(FileName, FileNameDotM,
+            ModuleName, !IO),
+        % XXX Caller should not need this info.
+        Specs = get_read_module_specs(ReadModuleErrors),
+        BurdenedModules = []
+    ),
     get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
     write_error_specs(ErrorStream, Globals, Specs, !IO),
     map.init(DepsMap0),

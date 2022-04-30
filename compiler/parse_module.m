@@ -73,10 +73,7 @@
 %
 % Some predicates, when they parse a term, discover that it represents an
 % item or marker that it is not their job to handle. In such cases, they
-% return the term that the item or marker came from, together with its varset,
-% to their caller. This term is lookahead; the next term in the input, which
-% the caller can get directly from the lookahead without reading in its term.
-% If there is no term in the lookahead, the next term has to be read in.
+% return it to their caller, for the next step in the caller to process.
 %
 %---------------------------------------------------------------------------%
 
@@ -114,12 +111,12 @@
     module_name::in, list(prog_context)::in, file_name::in,
     module_name::out, list(error_spec)::out, io::di, io::uo) is det.
 
-    % actually_read_module_src(Globals,
+    % actually_read_module_src(Globals, FileNameAndStream,
     %   DefaultModuleName, DefaultExpectationContexts,
-    %   MaybeFileNameAndStream, ReadModuleAndTimestamps,
-    %   MaybeModuleTimestampRes, ParseTree, Errors, !IO):
+    %   ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+    %   ParseTree, Errors, !IO):
     %
-    % Read a Mercury source program from FileNameAndStream, if it exists.
+    % Read a Mercury source program from FileNameAndStream.
     % Close the stream when the reading is done. Return the parse tree
     % of that module in ParseTree (which may be a dummy if the file
     % couldn't be opened), and an indication of the errors found
@@ -129,53 +126,53 @@
     % read the comments on read_module_src in read_modules.m.
     % XXX ITEM_LIST Move actually_read_module_{src,int,opt} to read_modules.m.
     %
-:- pred actually_read_module_src(globals::in,
+:- pred actually_read_module_src(globals::in, path_name_and_stream::in,
     module_name::in, list(prog_context)::in,
-    maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    parse_tree_src::out, read_module_errors::out, io::di, io::uo) is det.
+    maybe(parse_tree_src)::out, read_module_errors::out,
+    io::di, io::uo) is det.
 
-    % actually_read_module_intN(Globals,
+    % actually_read_module_intN(Globals, FileNameAndStream,
     %   DefaultModuleName, DefaultExpectationContexts,
-    %   MaybeFileNameAndStream, ReadModuleAndTimestamps,
-    %   MaybeModuleTimestampRes, ParseTree, Errors, !IO):
+    %   ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+    %   ParseTree, Errors, !IO):
     %
     % Analogous to actually_read_module_src, but opens the specified kind
     % of interface file for DefaultModuleName.
     %
-:- pred actually_read_module_int0(globals::in,
+:- pred actually_read_module_int0(globals::in, path_name_and_stream::in,
     module_name::in, list(prog_context)::in,
-    maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    parse_tree_int0::out, read_module_errors::out, io::di, io::uo) is det.
-:- pred actually_read_module_int1(globals::in,
+    maybe(parse_tree_int0)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+:- pred actually_read_module_int1(globals::in, path_name_and_stream::in,
     module_name::in, list(prog_context)::in,
-    maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    parse_tree_int1::out, read_module_errors::out, io::di, io::uo) is det.
-:- pred actually_read_module_int2(globals::in,
+    maybe(parse_tree_int1)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+:- pred actually_read_module_int2(globals::in, path_name_and_stream::in,
     module_name::in, list(prog_context)::in,
-    maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    parse_tree_int2::out, read_module_errors::out, io::di, io::uo) is det.
-:- pred actually_read_module_int3(globals::in,
+    maybe(parse_tree_int2)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+:- pred actually_read_module_int3(globals::in, path_name_and_stream::in,
     module_name::in, list(prog_context)::in,
-    maybe_error(path_name_and_stream)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    parse_tree_int3::out, read_module_errors::out, io::di, io::uo) is det.
+    maybe(parse_tree_int3)::out, read_module_errors::out,
+    io::di, io::uo) is det.
 
-    % actually_read_module_{plain,trans}_opt(Globals, FileName,
-    %   DefaultModuleName, MaybeFileNameAndStream, ParseTree, Errors, !IO):
+    % actually_read_module_{plain,trans}_opt(Globals, FileNameAndStream,
+    %   DefaultModuleName, ParseTree, Errors, !IO):
     %
     % Analogous to actually_read_module_src, but opens the specified kind
     % of optimization file for DefaultModuleName.
     %
-:- pred actually_read_module_plain_opt(globals::in,
-    module_name::in, maybe_error(path_name_and_stream)::in,
-    parse_tree_plain_opt::out, read_module_errors::out, io::di, io::uo) is det.
-:- pred actually_read_module_trans_opt(globals::in,
-    module_name::in, maybe_error(path_name_and_stream)::in,
-    parse_tree_trans_opt::out, read_module_errors::out, io::di, io::uo) is det.
+:- pred actually_read_module_plain_opt(globals::in, path_name_and_stream::in,
+    module_name::in, maybe(parse_tree_plain_opt)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+:- pred actually_read_module_trans_opt(globals::in, path_name_and_stream::in,
+    module_name::in, maybe(parse_tree_trans_opt)::out, read_module_errors::out,
+    io::di, io::uo) is det.
 
 :- type maybe_require_module_decl
     --->    dont_require_module_decl
@@ -252,77 +249,100 @@ peek_at_file(FileStream, DefaultModuleName, DefaultExpectationContexts,
 
 %---------------------------------------------------------------------------%
 
-actually_read_module_src(_Globals,
+actually_read_module_src(_Globals, FileNameAndStream,
         DefaultModuleName, DefaultExpectationContexts,
-        MaybeFileNameAndStream, ReadModuleAndTimestamps,
-        MaybeModuleTimestampRes, ParseTree, Errors, !IO) :-
-    do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
-        MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        make_dummy_parse_tree_src, read_parse_tree_src,
-        ParseTree, Errors, !IO).
+        MaybeParseTree, Errors, !IO) :-
+    do_actually_read_module(FileNameAndStream,
+        DefaultModuleName, DefaultExpectationContexts,
+        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+        read_parse_tree_src, MaybeParseTree, Errors, !IO).
 
 %---------------------------------------------------------------------------%
 
-actually_read_module_int0(Globals,
+actually_read_module_int0(Globals, FileNameAndStream,
         DefaultModuleName, DefaultExpectationContexts,
-        MaybeFileNameAndStream, ReadModuleAndTimestamps,
-        MaybeModuleTimestampRes, ParseTreeInt0, Errors, !IO) :-
+        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+        MaybeParseTreeInt0, Errors, !IO) :-
     IntFileKind = ifk_int0,
-    do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
-        MaybeFileNameAndStream,
-        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        make_dummy_parse_tree_int(IntFileKind),
-        read_parse_tree_int(IntFileKind),
-        InitParseTreeInt, Errors0, !IO),
-    check_convert_parse_tree_int_to_int0(InitParseTreeInt, ParseTreeInt0,
-        [], ConvertSpecs),
-    maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors).
-
-actually_read_module_int1(Globals,
+    do_actually_read_module(FileNameAndStream,
         DefaultModuleName, DefaultExpectationContexts,
-        MaybeFileNameAndStream, ReadModuleAndTimestamps,
-        MaybeModuleTimestampRes, ParseTreeInt1, Errors, !IO) :-
+        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+        read_parse_tree_int(IntFileKind), MaybeInitParseTreeInt, Errors0, !IO),
+    (
+        MaybeInitParseTreeInt = yes(InitParseTreeInt),
+        check_convert_parse_tree_int_to_int0(InitParseTreeInt, ParseTreeInt0,
+            [], ConvertSpecs),
+        MaybeParseTreeInt0 = yes(ParseTreeInt0),
+        maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+    ;
+        MaybeInitParseTreeInt = no,
+        MaybeParseTreeInt0 = no,
+        Errors = Errors0
+    ).
+
+actually_read_module_int1(Globals, FileNameAndStream,
+        DefaultModuleName, DefaultExpectationContexts,
+        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+        MaybeParseTreeInt1, Errors, !IO) :-
     IntFileKind = ifk_int1,
-    do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
-        MaybeFileNameAndStream,
-        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        make_dummy_parse_tree_int(IntFileKind),
-        read_parse_tree_int(IntFileKind),
-        InitParseTreeInt, Errors0, !IO),
-    check_convert_parse_tree_int_to_int1(InitParseTreeInt, ParseTreeInt1,
-        [], ConvertSpecs),
-    maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors).
-
-actually_read_module_int2(Globals,
+    do_actually_read_module(FileNameAndStream,
         DefaultModuleName, DefaultExpectationContexts,
-        MaybeFileNameAndStream, ReadModuleAndTimestamps,
-        MaybeModuleTimestampRes, ParseTreeInt2, Errors, !IO) :-
+        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+        read_parse_tree_int(IntFileKind), MaybeInitParseTreeInt, Errors0, !IO),
+    (
+        MaybeInitParseTreeInt = yes(InitParseTreeInt),
+        check_convert_parse_tree_int_to_int1(InitParseTreeInt, ParseTreeInt1,
+            [], ConvertSpecs),
+        MaybeParseTreeInt1 = yes(ParseTreeInt1),
+        maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+    ;
+        MaybeInitParseTreeInt = no,
+        MaybeParseTreeInt1 = no,
+        Errors = Errors0
+    ).
+
+actually_read_module_int2(Globals, FileNameAndStream,
+        DefaultModuleName, DefaultExpectationContexts,
+        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+        MaybeParseTreeInt2, Errors, !IO) :-
     IntFileKind = ifk_int2,
-    do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
-        MaybeFileNameAndStream,
-        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        make_dummy_parse_tree_int(IntFileKind),
-        read_parse_tree_int(IntFileKind),
-        InitParseTreeInt, Errors0, !IO),
-    check_convert_parse_tree_int_to_int2(InitParseTreeInt, ParseTreeInt2,
-        [], ConvertSpecs),
-    maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors).
-
-actually_read_module_int3(Globals,
+    do_actually_read_module(FileNameAndStream,
         DefaultModuleName, DefaultExpectationContexts,
-        MaybeFileNameAndStream, ReadModuleAndTimestamps,
-        MaybeModuleTimestampRes, ParseTreeInt3, Errors, !IO) :-
-    IntFileKind = ifk_int3,
-    do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
-        MaybeFileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        make_dummy_parse_tree_int(IntFileKind),
-        read_parse_tree_int(IntFileKind),
-        InitParseTreeInt, Errors0, !IO),
-    check_convert_parse_tree_int_to_int3(InitParseTreeInt, ParseTreeInt3,
-        [], ConvertSpecs),
-    maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors).
+        read_parse_tree_int(IntFileKind), MaybeInitParseTreeInt, Errors0, !IO),
+    (
+        MaybeInitParseTreeInt = yes(InitParseTreeInt),
+        check_convert_parse_tree_int_to_int2(InitParseTreeInt, ParseTreeInt2,
+            [], ConvertSpecs),
+        MaybeParseTreeInt2 = yes(ParseTreeInt2),
+        maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+    ;
+        MaybeInitParseTreeInt = no,
+        MaybeParseTreeInt2 = no,
+        Errors = Errors0
+    ).
+
+actually_read_module_int3(Globals, FileNameAndStream,
+        DefaultModuleName, DefaultExpectationContexts,
+        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+        MaybeParseTreeInt3, Errors, !IO) :-
+    IntFileKind = ifk_int3,
+    do_actually_read_module(FileNameAndStream,
+        DefaultModuleName, DefaultExpectationContexts,
+        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+        read_parse_tree_int(IntFileKind), MaybeInitParseTreeInt, Errors0, !IO),
+    (
+        MaybeInitParseTreeInt = yes(InitParseTreeInt),
+        check_convert_parse_tree_int_to_int3(InitParseTreeInt, ParseTreeInt3,
+            [], ConvertSpecs),
+        MaybeParseTreeInt3 = yes(ParseTreeInt3),
+        maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+    ;
+        MaybeInitParseTreeInt = no,
+        MaybeParseTreeInt3 = no,
+        Errors = Errors0
+    ).
 
 :- pred maybe_add_convert_specs(globals::in, list(error_spec)::in,
     read_module_errors::in, read_module_errors::out) is det.
@@ -339,29 +359,43 @@ maybe_add_convert_specs(Globals, ConvertSpecs, !Errors) :-
 
 %---------------------------------------------------------------------------%
 
-actually_read_module_plain_opt(_Globals, DefaultModuleName,
-        MaybeFileNameAndStream, ParseTreePlainOpt, Errors, !IO) :-
+actually_read_module_plain_opt(_Globals, FileNameAndStream, DefaultModuleName,
+        MaybeParseTreePlainOpt, Errors, !IO) :-
     DefaultExpectationContexts = [],
-    do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
-        MaybeFileNameAndStream, always_read_module(dont_return_timestamp), _,
-        make_dummy_parse_tree_opt(ofk_opt),
-        read_parse_tree_opt(ofk_opt),
-        ParseTreeOpt, Errors0, !IO),
-    check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
-        [], ConvertSpecs),
-    add_any_nec_errors(ConvertSpecs, Errors0, Errors).
+    do_actually_read_module(FileNameAndStream,
+        DefaultModuleName, DefaultExpectationContexts,
+        always_read_module(dont_return_timestamp), _,
+        read_parse_tree_opt(ofk_opt), MaybeParseTreeOpt, Errors0, !IO),
+    (
+        MaybeParseTreeOpt = yes(ParseTreeOpt),
+        check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt,
+            ParseTreePlainOpt, [], ConvertSpecs),
+        MaybeParseTreePlainOpt = yes(ParseTreePlainOpt),
+        add_any_nec_errors(ConvertSpecs, Errors0, Errors)
+    ;
+        MaybeParseTreeOpt = no,
+        MaybeParseTreePlainOpt = no,
+        Errors = Errors0
+    ).
 
-actually_read_module_trans_opt(_Globals, DefaultModuleName,
-        MaybeFileNameAndStream, ParseTreeTransOpt, Errors, !IO) :-
+actually_read_module_trans_opt(_Globals, FileNameAndStream, DefaultModuleName,
+        MaybeParseTreeTransOpt, Errors, !IO) :-
     DefaultExpectationContexts = [],
-    do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
-        MaybeFileNameAndStream, always_read_module(dont_return_timestamp), _,
-        make_dummy_parse_tree_opt(ofk_trans_opt),
-        read_parse_tree_opt(ofk_trans_opt),
-        ParseTreeOpt, Errors0, !IO),
-    check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt, ParseTreeTransOpt,
-        [], ConvertSpecs),
-    add_any_nec_errors(ConvertSpecs, Errors0, Errors).
+    do_actually_read_module(FileNameAndStream,
+        DefaultModuleName, DefaultExpectationContexts,
+        always_read_module(dont_return_timestamp), _,
+        read_parse_tree_opt(ofk_trans_opt), MaybeParseTreeOpt, Errors0, !IO),
+    (
+        MaybeParseTreeOpt = yes(ParseTreeOpt),
+        check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt,
+            ParseTreeTransOpt, [], ConvertSpecs),
+        MaybeParseTreeTransOpt = yes(ParseTreeTransOpt),
+        add_any_nec_errors(ConvertSpecs, Errors0, Errors)
+    ;
+        MaybeParseTreeOpt = no,
+        MaybeParseTreeTransOpt = no,
+        Errors = Errors0
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -419,27 +453,6 @@ expectation_context_to_msg(Context, SubMsg) :-
 :- type make_dummy_parse_tree(PT) == pred(module_name, PT).
 :- inst make_dummy_parse_tree == (pred(in, out) is det).
 
-%---------------------%
-
-:- pred make_dummy_parse_tree_src(module_name::in, parse_tree_src::out) is det.
-
-make_dummy_parse_tree_src(ModuleName, ParseTree) :-
-    ParseTree = parse_tree_src(ModuleName, term.context_init, cord.init).
-
-:- pred make_dummy_parse_tree_int(int_file_kind::in, module_name::in,
-    parse_tree_int::out) is det.
-
-make_dummy_parse_tree_int(IntFileKind, ModuleName, ParseTree) :-
-    ParseTree = parse_tree_int(ModuleName, IntFileKind, term.context_init,
-        no_version_numbers, [], [], [], [], [], [], [], []).
-
-:- pred make_dummy_parse_tree_opt(opt_file_kind::in, module_name::in,
-    parse_tree_opt::out) is det.
-
-make_dummy_parse_tree_opt(OptFileKind, ModuleName, ParseTree) :-
-    ParseTree = parse_tree_opt(ModuleName, OptFileKind, term.context_init,
-        [], [], []).
-
 %---------------------------------------------------------------------------%
 
     % This predicate implements all three of actually_read_module_{src,int,opt}
@@ -448,114 +461,77 @@ make_dummy_parse_tree_opt(OptFileKind, ModuleName, ParseTree) :-
     % takes place inside ReadParseTree, which will be one of
     % read_parse_tree_src, read_parse_tree_int and read_parse_tree_src.
     %
-:- pred do_actually_read_module(module_name::in, list(prog_context)::in,
-    maybe_error(path_name_and_stream)::in,
+:- pred do_actually_read_module(path_name_and_stream::in,
+    module_name::in, list(prog_context)::in,
     read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    make_dummy_parse_tree(PT)::in(make_dummy_parse_tree),
-    read_parse_tree(PT)::in(read_parse_tree), PT::out,
+    read_parse_tree(PT)::in(read_parse_tree), maybe(PT)::out,
     read_module_errors::out, io::di, io::uo) is det.
 
-do_actually_read_module(DefaultModuleName, DefaultExpectationContexts,
-        MaybeFileNameAndStream,
+do_actually_read_module(FileNameAndStream,
+        DefaultModuleName, DefaultExpectationContexts,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        MakeDummyParseTree, ReadParseTree, ParseTree, Errors, !IO) :-
-    % XXX Our caller's caller should give it, and therefore us,
-    % a path_name_and_stream; we shouldn't have to guess what error message
-    % is appropriate if MaybeFileNameAndStream = error(...).
+        ReadParseTree, MaybeParseTree, Errors, !IO) :-
+    FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
+    io.input_stream_name(FileStream, FileStreamName, !IO),
     (
-        MaybeFileNameAndStream =
-            ok(path_name_and_stream(_FilePathName, FileStream)),
-        io.input_stream_name(FileStream, FileStreamName, !IO),
+        ( ReadModuleAndTimestamps = always_read_module(do_return_timestamp)
+        ; ReadModuleAndTimestamps = dont_read_module_if_match(_)
+        ),
+        io.file.file_modification_time(FileStreamName, TimestampResult, !IO),
         (
-            ( ReadModuleAndTimestamps = always_read_module(do_return_timestamp)
-            ; ReadModuleAndTimestamps = dont_read_module_if_match(_)
-            ),
-            io.file.file_modification_time(FileStreamName,
-                TimestampResult, !IO),
-            (
-                TimestampResult = ok(Timestamp),
-                MaybeModuleTimestampRes =
-                    yes(ok(time_t_to_timestamp(Timestamp)))
-            ;
-                TimestampResult = error(IOError),
-                MaybeModuleTimestampRes = yes(error(IOError))
-            )
+            TimestampResult = ok(Timestamp),
+            MaybeModuleTimestampRes =
+                yes(ok(time_t_to_timestamp(Timestamp)))
         ;
-            ReadModuleAndTimestamps =
-                always_read_module(dont_return_timestamp),
-            MaybeModuleTimestampRes = no
-        ),
-        ( if
-            ReadModuleAndTimestamps = dont_read_module_if_match(OldTimestamp),
-            MaybeModuleTimestampRes = yes(ok(OldTimestamp))
-        then
-            % XXX Currently smart recompilation won't work
-            % if ModuleName \= DefaultModuleName.
-            % In that case, smart recompilation will be disabled
-            % and actually_read_module should never be passed an old timestamp.
-
-            MakeDummyParseTree(DefaultModuleName, ParseTree),
-            Errors = init_read_module_errors
-        else
-            io.read_file_as_string_and_num_code_units(FileStream,
-                MaybeResult, !IO),
-            (
-                MaybeResult = ok2(FileString, NumCodeUnits),
-                FileStringLen = string.length(FileString),
-                ( if NumCodeUnits = FileStringLen then
-                    true
-                else
-                    Msg = string.format(
-                        "NumCodeUnits = %d, FileStringLen = %d\n<<<\n%s>>>\n",
-                        [i(NumCodeUnits), i(FileStringLen), s(FileString)]),
-                    unexpected($pred, Msg)
-                ),
-                LineContext0 = line_context(1, 0),
-                LinePosn0 = line_posn(0),
-                ReadParseTree(FileStreamName, FileString, FileStringLen,
-                    LineContext0, LinePosn0,
-                    DefaultModuleName, DefaultExpectationContexts,
-                    MaybeParseTree, Errors),
-                (
-                    MaybeParseTree = yes(ParseTree)
-                ;
-                    MaybeParseTree = no,
-                    MakeDummyParseTree(DefaultModuleName, ParseTree)
-                )
-            ;
-                MaybeResult = error2(_PartialStr, _PartialLen, ErrorCode),
-                MakeDummyParseTree(DefaultModuleName, ParseTree),
-                io.error_message(ErrorCode, ErrorMsg0),
-                ErrorMsg = "I/O error: " ++ ErrorMsg0,
-                io_error_to_read_module_errors(ErrorMsg,
-                    frme_could_not_read_file, Errors, !IO)
-            )
-        ),
-        io.close_input(FileStream, !IO)
+            TimestampResult = error(IOError),
+            MaybeModuleTimestampRes = yes(error(IOError))
+        )
     ;
-        MaybeFileNameAndStream = error(ErrorMsg),
-        MakeDummyParseTree(DefaultModuleName, ParseTree),
-        MaybeModuleTimestampRes = no,
-        io_error_to_read_module_errors(ErrorMsg,
-            frme_could_not_open_file, Errors, !IO)
-    ).
-
-:- pred io_error_to_error_spec(string::in, error_spec::out,
-    io::di, io::uo) is det.
-
-io_error_to_error_spec(ErrorMsg, Spec, !IO) :-
-    io.progname_base("mercury_compile", ProgName, !IO),
-    Pieces = [fixed(ProgName), suffix(":"), words(ErrorMsg), nl],
-    Spec = simplest_no_context_spec($pred, severity_error, phase_read_files,
-        Pieces).
-
-:- pred io_error_to_read_module_errors(string::in, fatal_read_module_error::in,
-    read_module_errors::out, io::di, io::uo) is det.
-
-io_error_to_read_module_errors(ErrorMsg, FatalError, Errors, !IO) :-
-    io_error_to_error_spec(ErrorMsg, Spec, !IO),
-    Errors0 = init_read_module_errors,
-    add_fatal_error(FatalError, [Spec], Errors0, Errors).
+        ReadModuleAndTimestamps = always_read_module(dont_return_timestamp),
+        MaybeModuleTimestampRes = no
+    ),
+    ( if
+        ReadModuleAndTimestamps = dont_read_module_if_match(OldTimestamp),
+        MaybeModuleTimestampRes = yes(ok(OldTimestamp))
+    then
+        % XXX Currently smart recompilation won't work
+        % if ModuleName \= DefaultModuleName.
+        % In that case, smart recompilation will be disabled
+        % and actually_read_module should never be passed an old timestamp.
+        MaybeParseTree = no,
+        Errors = init_read_module_errors
+    else
+        io.read_file_as_string_and_num_code_units(FileStream,
+            MaybeResult, !IO),
+        (
+            MaybeResult = ok2(FileString, NumCodeUnits),
+            FileStringLen = string.length(FileString),
+            ( if NumCodeUnits = FileStringLen then
+                true
+            else
+                Msg = string.format(
+                    "NumCodeUnits = %d, FileStringLen = %d\n<<<\n%s>>>\n",
+                    [i(NumCodeUnits), i(FileStringLen), s(FileString)]),
+                unexpected($pred, Msg)
+            ),
+            LineContext0 = line_context(1, 0),
+            LinePosn0 = line_posn(0),
+            ReadParseTree(FileStreamName, FileString, FileStringLen,
+                LineContext0, LinePosn0,
+                DefaultModuleName, DefaultExpectationContexts,
+                MaybeParseTree, Errors)
+        ;
+            MaybeResult = error2(_PartialStr, _PartialLen, ErrorCode),
+            MaybeParseTree = no,
+            io.error_message(ErrorCode, ErrorMsg0),
+            ErrorMsg = "I/O error: " ++ ErrorMsg0,
+            io_error_to_read_module_errors(ErrorMsg,
+                frme_could_not_read_file, Errors, !IO)
+        )
+    ),
+    % XXX This should be moved next to the code that opens FileStream,
+    % in one of our ancestors.
+    io.close_input(FileStream, !IO).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -821,7 +797,7 @@ read_parse_tree_int_sections(FileString, FileStringLen,
 
 %---------------------------------------------------------------------------%
 %
-% int_section: 
+% int_section:
 %           STARTHERE interface_marker, item* ENDHERE
 %           STARTHERE implementation_marker, item* ENDHERE
 %

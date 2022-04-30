@@ -432,14 +432,20 @@ maybe_read_old_int0_and_compare_for_smart_recomp(NoLineNumGlobals,
         insist_on_timestamp(MaybeTimestamp, Timestamp),
         % Read in the previous version of the file.
         read_module_int0(NoLineNumGlobals, rrm_old(ModuleName),
-            ignore_errors, do_search, ModuleName, _OldIntFileName,
-            always_read_module(dont_return_timestamp), _OldTimestamp,
-            OldParseTreeInt0, OldModuleErrors, !IO),
-        ( if there_are_no_errors(OldModuleErrors) then
-            MaybeOldParseTreeInt0 = yes(OldParseTreeInt0)
-        else
-            % If we can't read in the old file, the timestamps will
-            % all be set to the modification time of the source file.
+            ignore_errors, do_search, ModuleName,
+            always_read_module(dont_return_timestamp), HaveReadInt0, !IO),
+        (
+            HaveReadInt0 = have_read_module(_FN, _MTS,
+                OldParseTreeInt0, OldModuleErrors),
+            ( if there_are_no_errors(OldModuleErrors) then
+                MaybeOldParseTreeInt0 = yes(OldParseTreeInt0)
+            else
+                % If we can't read in the old file, the timestamps will
+                % all be set to the modification time of the source file.
+                MaybeOldParseTreeInt0 = no
+            )
+        ;
+            HaveReadInt0 = have_not_read_module(_, _),
             MaybeOldParseTreeInt0 = no
         ),
         recompilation.version.compute_version_numbers_int0(
@@ -465,14 +471,20 @@ maybe_read_old_int1_and_compare_for_smart_recomp(NoLineNumGlobals,
         insist_on_timestamp(MaybeTimestamp, Timestamp),
         % Read in the previous version of the file.
         read_module_int1(NoLineNumGlobals, rrm_old(ModuleName),
-            ignore_errors, do_search, ModuleName, _OldIntFileName,
-            always_read_module(dont_return_timestamp), _OldTimestamp,
-            OldParseTreeInt1, OldModuleErrors, !IO),
-        ( if there_are_no_errors(OldModuleErrors) then
-            MaybeOldParseTreeInt1 = yes(OldParseTreeInt1)
-        else
-            % If we can't read in the old file, the timestamps will
-            % all be set to the modification time of the source file.
+            ignore_errors, do_search, ModuleName,
+            always_read_module(dont_return_timestamp), HaveReadInt1, !IO),
+        (
+            HaveReadInt1 = have_read_module(_FN, _MTS,
+                OldParseTreeInt1, OldModuleErrors),
+            ( if there_are_no_errors(OldModuleErrors) then
+                MaybeOldParseTreeInt1 = yes(OldParseTreeInt1)
+            else
+                % If we can't read in the old file, the timestamps will
+                % all be set to the modification time of the source file.
+                MaybeOldParseTreeInt1 = no
+            )
+        ;
+            HaveReadInt1 = have_not_read_module(_, _),
             MaybeOldParseTreeInt1 = no
         ),
         recompilation.version.compute_version_numbers_int1(
@@ -498,14 +510,20 @@ maybe_read_old_int2_and_compare_for_smart_recomp(NoLineNumGlobals,
         insist_on_timestamp(MaybeTimestamp, Timestamp),
         % Read in the previous version of the file.
         read_module_int2(NoLineNumGlobals, rrm_old(ModuleName),
-            ignore_errors, do_search, ModuleName, _OldIntFileName,
-            always_read_module(dont_return_timestamp), _OldTimestamp,
-            OldParseTreeInt2, OldModuleErrors, !IO),
-        ( if there_are_no_errors(OldModuleErrors) then
-            MaybeOldParseTreeInt2 = yes(OldParseTreeInt2)
-        else
-            % If we can't read in the old file, the timestamps will
-            % all be set to the modification time of the source file.
+            ignore_errors, do_search, ModuleName,
+            always_read_module(dont_return_timestamp), HaveReadInt2, !IO),
+        (
+            HaveReadInt2 = have_read_module(_FN, _MTS,
+                OldParseTreeInt2, OldModuleErrors),
+            ( if there_are_no_errors(OldModuleErrors) then
+                MaybeOldParseTreeInt2 = yes(OldParseTreeInt2)
+            else
+                % If we can't read in the old file, the timestamps will
+                % all be set to the modification time of the source file.
+                MaybeOldParseTreeInt2 = no
+            )
+        ;
+            HaveReadInt2 = have_not_read_module(_, _),
             MaybeOldParseTreeInt2 = no
         ),
         recompilation.version.compute_version_numbers_int2(

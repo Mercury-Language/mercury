@@ -18,24 +18,21 @@
 # that problem.
 #
 # This script also has some limitations compared with two_module_test.
-#
-# First, it covers only the initial part of two_module_test's job, because
-# that was enough for the purpose for which this script was created.
-#
-# Second, it covers only one of the several possible paths through each
-# shell function invocation, the one which is appropriate for a test
-# that should succeed with just one expected output.
+# The main one is that it covers only grades that target C.
+# It also handles the <mmake_test 2 should_fail> block differently
+# than two_module_test.
 
 # It is easier to look up the contents of e.g. .used files
 # if they are in the current directory.
 /bin/rm -fr Mercury
 
-test_prog="lambda_mode_r"
+test_prog="add_type_re"
+expected_mmake_result=should_fail
 module_1="${test_prog}"
 module_2="${test_prog}_2"
 modules="${module_1} ${module_2}"
 
-tested_compiler="/path/to/mercury_compile"
+tested_compiler="/home/zs/ws/ws26/compiler/mercury_compile"
 MERCURY_COMPILER="${tested_compiler}"
 export MERCURY_COMPILER
 
@@ -45,8 +42,9 @@ opt_opts="--no-intermodule-optimization"
 smart_opts="--smart-recompilation --find-all-recompilation-reasons"
 std_opts="${grade_opts} ${dir_opts} ${opt_opts} ${smart_opts}"
 
-echo "Setting up ${test_prog}"
+echo "Testing ${test_prog}"
 
+echo "block <test_module ${module_1} ${module_2}>"
 rm -f "${module_1}.m"
 cp "${module_1}.m.1" "${module_1}.m"
 chmod -w "${module_1}.m"
@@ -57,9 +55,10 @@ rm -f "${module_1}.res"
 touch "${module_1}.res"
 sleep 1
 
-echo "Testing ${test_prog}"
-
+echo "block <mmake_depend>"
 mmc --generate-dependencies ${std_opts} ${module_1} > ${module_1}.dep_err 2>&1
+
+echo "block <mmake_test 1 should_succeed>"
 mmc --make-short-interface  ${std_opts} ${module_2}
 mmc --make-interface        ${std_opts} ${module_2}
 mmc --make-interface        ${std_opts} ${module_1}
@@ -69,3 +68,149 @@ mgnuc ${grade_opts} -- -c ${module_1}.c -o ${module_1}.o
 mgnuc ${grade_opts} -- -c ${module_2}.c -o ${module_2}.o
 ml ${grade_opts} -- -o ${module_1} ${module_1}_init.o \
 	${module_1}.o ${module_2}.o
+case "$?" in
+    0)
+        ;;
+    *)
+        echo "exiting due to failure of <mmake_test 1 should_succeed>"
+        exit 1
+        ;;
+esac
+exp_file="${module_1}.exp.1"
+res_file="${module_1}.out"
+./${module_1} > "${res_file}"
+# We assume ${exp_file} exists.
+if diff ${DIFF_OPTS-"-c"} "${exp_file}" "${res_file}" >> "${module_1}.res"
+then
+    true
+else
+    echo "** Error in mmake_test 1 should_succeed: ${exp_file} and ${res_file} differ."
+    cat "${module_1}.res"
+    exit 1
+fi
+
+echo "block <update_module ${module_2} 2>"
+sleep 1
+rm -f "${module_2}.m"
+cp "${module_2}.m.2" "${module_2}.m"
+chmod -w "${module_2}.m"
+sleep 1
+
+case "${expected_mmake_result}" in
+    should_succeed)
+        echo "block <mmake_test 2 should_succeed>"
+        mmc --make-short-interface  ${std_opts} ${module_2}
+        mmc --make-interface        ${std_opts} ${module_2}
+        mmc --make-interface        ${std_opts} ${module_1}
+        # mdb mmc --compile-to-c      ${std_opts} ${module_1}
+        mmc --compile-to-c          ${std_opts} ${module_1} \
+            > ${module_1}.err 2>&1
+        echo --- ${module_1}.err ---
+        cat ${module_1}.err
+        echo status = $?
+        exit 0
+        mmc --compile-to-c          ${std_opts} ${module_2} \
+            > ${module_2}.err 2>&1
+        mgnuc ${grade_opts} -- -c ${module_1}.c -o ${module_1}.o
+        mgnuc ${grade_opts} -- -c ${module_2}.c -o ${module_2}.o
+        ml ${grade_opts} -- -o ${module_1} ${module_1}_init.o \
+            ${module_1}.o ${module_2}.o
+        case "$?" in
+            0)
+                ;;
+            *)
+                echo "Error: <mmake_test 2 should_succeed> has failed"
+                exit 1
+                ;;
+        esac
+        exp_file="${module_1}.exp.2"
+        res_file="${module_1}.out"
+        ./${module_1} > "${res_file}"
+        # We assume ${exp_file} exists.
+        if diff ${DIFF_OPTS-"-c"} "${exp_file}" "${res_file}" \
+            >> "${module_1}.res"
+        then
+            true
+        else
+            echo "** Error in mmake_test 2 should_succeed: ${exp_file} and ${res_file} differ."
+            cat "${module_1}.res"
+            exit 1
+        fi
+        ;;
+    should_fail)
+        echo "block <mmake_test 2 should_fail>"
+        > "${module_1}.should_fail"
+        ( \
+            mmc --make-short-interface  ${std_opts} ${module_2}; \
+            if test "$?" != 0; \
+            then \
+                echo "failure" >> "${module_1}.should_fail"; \
+            fi; \
+            mmc --make-interface        ${std_opts} ${module_2}; \
+            if test "$?" != 0; \
+            then \
+                echo "failure" >> "${module_1}.should_fail"; \
+            fi; \
+            mmc --make-interface        ${std_opts} ${module_1}; \
+            if test "$?" != 0; \
+            then \
+                echo "failure" >> "${module_1}.should_fail"; \
+            fi; \
+            mmc --compile-to-c          ${std_opts} ${module_1} \
+                > ${module_1}.err 2>&1; \
+            if test "$?" != 0; \
+            then \
+                echo "failure" >> "${module_1}.should_fail"; \
+            fi; \
+            mmc --compile-to-c          ${std_opts} ${module_2} \
+                > ${module_2}.err 2>&1; \
+            if test "$?" != 0; \
+            then \
+                echo "failure" >> "${module_1}.should_fail"; \
+            fi; \
+        ) > "${module_1}.failing_mail_output"
+        if test ! -s "${module_1}.should_fail)"
+        then
+            echo "Error: <mmake_test 2 should_fail> has succeeded"
+            exit 1
+        fi
+        ;;
+    *)
+        echo "** Error: bad expected_mmake_result ${expected_mmake_result}"
+        exit 1
+        ;;
+esac
+
+echo "block <check_err_file ${module_1} 2>"
+sed -e '/has CHANGED/d' -e 's/Mercury\/.*\///g' "${module_1}.err" \
+    > "${module_1}.err2"
+mv "${module_1}.err2" "${module_1}.err"
+exp_file="${module_1}.err_exp.2"
+res_file="${module_1}.err"
+# We assume ${exp_file} exists.
+if diff ${DIFF_OPTS-"-c"} "${exp_file}" "${res_file}" >> "${module_1}.res"
+then
+    true
+else
+    echo "** Error in check_err_file ${module_1} 2: ${exp_file} and ${res_file} differ."
+    cat "${module_1}.res"
+    exit 1
+fi
+
+echo "block <check_err_file ${module_2} 2>"
+sed -e '/has CHANGED/d' -e 's/Mercury\/.*\///g' "${module_2}.err" \
+    > "${module_2}.err2"
+mv "${module_2}.err2" "${module_2}.err"
+exp_file="${module_2}.err_exp.2"
+res_file="${module_2}.err"
+# We assume ${exp_file} exists.
+if diff ${DIFF_OPTS-"-c"} "${exp_file}" "${res_file}" >> "${module_2}.res"
+then
+    true
+else
+    echo "** Error in check_err_file ${module_2} 2: ${exp_file} and ${res_file} differ."
+    cat "${module_2}.res"
+    exit 1
+fi
+
+exit 0

@@ -11,6 +11,7 @@
 
 :- import_module parse_tree.error_util.
 
+:- import_module io.
 :- import_module list.
 :- import_module set.
 
@@ -178,6 +179,14 @@
     %
 :- func get_read_module_specs(read_module_errors) = list(error_spec).
 
+%---------------------%
+
+:- pred io_error_to_error_spec(string::in, error_spec::out,
+    io::di, io::uo) is det.
+
+:- pred io_error_to_read_module_errors(string::in, fatal_read_module_error::in,
+    read_module_errors::out, io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 :- implementation.
 %---------------------------------------------------------------------------%
@@ -236,6 +245,19 @@ get_read_module_specs(Errors) = Specs :-
     Errors = read_module_errors(_FatalErrors, FatalSpecs,
         _NonFatalErrors, NonFatalSpecs, WarningSpecs),
     Specs = FatalSpecs ++ NonFatalSpecs ++ WarningSpecs.
+
+%---------------------%
+
+io_error_to_error_spec(ErrorMsg, Spec, !IO) :-
+    io.progname_base("mercury_compile", ProgName, !IO),
+    Pieces = [fixed(ProgName), suffix(":"), words(ErrorMsg), nl],
+    Spec = simplest_no_context_spec($pred, severity_error, phase_read_files,
+        Pieces).
+
+io_error_to_read_module_errors(ErrorMsg, FatalError, Errors, !IO) :-
+    io_error_to_error_spec(ErrorMsg, Spec, !IO),
+    Errors0 = init_read_module_errors,
+    add_fatal_error(FatalError, [Spec], Errors0, Errors).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_error.

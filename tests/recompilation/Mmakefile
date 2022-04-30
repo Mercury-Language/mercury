@@ -57,7 +57,7 @@ include ../Mmake.common
 include Mercury.options
 
 $(TESTS_SHOULD_SUCCEED:%=%.runtest): %.runtest:
-	+@if ./two_module_test false $* $*_2; then \
+	+@if ./two_module_test should_succeed $* $*_2; then \
 		:; \
 	else \
 		cat $*.res; \
@@ -65,7 +65,7 @@ $(TESTS_SHOULD_SUCCEED:%=%.runtest): %.runtest:
 	fi
 
 $(NO_PARALLEL_MAKE_TESTS:%=%.runtest): %.runtest:
-	+@if mmakeopts=-j1 ./two_module_test false $* $*_2; then \
+	+@if mmakeopts=-j1 ./two_module_test should_succeed $* $*_2; then \
 		:; \
 	else \
 		cat $*.res; \
@@ -73,7 +73,7 @@ $(NO_PARALLEL_MAKE_TESTS:%=%.runtest): %.runtest:
 	fi
 
 $(TESTS_SHOULD_FAIL:%=%.runtest): %.runtest:
-	+@if ./two_module_test true $* $*_2; then \
+	+@if ./two_module_test should_fail $* $*_2; then \
 		rm $*.failing_make_output; \
 	else \
 		cat $*.res; \

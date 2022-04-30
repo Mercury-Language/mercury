@@ -1091,22 +1091,30 @@ do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
         ExtraObjFiles = []
     ;
         OpModeArgs = opma_convert_to_mercury,
-        read_module_or_file(Globals0, Globals, FileOrModule, ModuleName, _,
-            dont_return_timestamp, _, ParseTreeSrc, Errors,
-            !HaveReadModuleMaps, !IO),
-        Specs = get_read_module_specs(Errors),
-        write_error_specs(Globals, Specs, !IO),
-        ( if halt_at_module_error(Globals, Errors) then
-            true
-        else
-            module_name_to_file_name(Globals, $pred, do_create_dirs,
-                ext_other(other_ext(".ugly")),
-                ModuleName, OutputFileName, !IO),
-            get_progress_output_stream(Globals, ModuleName, ProgressStream,
-                !IO),
-            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-            output_parse_tree_src(ProgressStream, ErrorStream, Globals,
-                OutputFileName, ParseTreeSrc, _Succeeded, !IO)
+        read_module_or_file(Globals0, Globals, FileOrModule,
+            dont_return_timestamp, HaveReadSrc, !HaveReadModuleMaps, !IO),
+        (
+            HaveReadSrc = have_not_read_module(_FileName, Errors),
+            Specs = get_read_module_specs(Errors),
+            write_error_specs(Globals, Specs, !IO)
+        ;
+            HaveReadSrc = have_read_module(_FileName, _MaybeTimestamp,
+                ParseTreeSrc, Errors),
+            Specs = get_read_module_specs(Errors),
+            write_error_specs(Globals, Specs, !IO),
+            ( if halt_at_module_error(Globals, Errors) then
+                true
+            else
+                ModuleName = ParseTreeSrc ^ pts_module_name,
+                module_name_to_file_name(Globals, $pred, do_create_dirs,
+                    ext_other(other_ext(".ugly")),
+                    ModuleName, OutputFileName, !IO),
+                get_progress_output_stream(Globals, ModuleName, ProgressStream,
+                    !IO),
+                get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+                output_parse_tree_src(ProgressStream, ErrorStream, Globals,
+                    OutputFileName, ParseTreeSrc, _Succeeded, !IO)
+            )
         ),
         ModulesToLink = [],
         ExtraObjFiles = []
@@ -1157,37 +1165,48 @@ do_process_compiler_arg_make_interface(Globals0, InterfaceFile, FileOrModule,
             version_numbers_return_timestamp(GenerateVersionNumbers)
     ),
     read_module_or_file(Globals0, Globals, FileOrModule,
-        ModuleName, FileName, ReturnTimestamp, MaybeTimestamp,
-        ParseTreeSrc, ReadErrors, !HaveReadModuleMaps, !IO),
-    ReadSpecs = get_read_module_specs(ReadErrors),
-    ( if halt_at_module_error(Globals, ReadErrors) then
+        ReturnTimestamp, HaveReadSrc, !HaveReadModuleMaps, !IO),
+    (
+        HaveReadSrc = have_not_read_module(_FileName, ReadErrors),
+        ReadSpecs = get_read_module_specs(ReadErrors),
         write_error_specs(Globals, ReadSpecs, !IO)
-    else
-        split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
-            ParseTreeModuleSrcs, ReadSpecs, ReadSplitSpecs),
-        filter_interface_generation_specs(Globals, ReadSplitSpecs, Specs, !IO),
-        get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
-        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-        write_error_specs(ErrorStream, Globals, Specs, !IO),
-        maybe_print_delayed_error_messages(ErrorStream, Globals, !IO),
-        (
-            InterfaceFile = omif_int0,
-            list.map_foldl2(
-                write_private_interface_file_int0(ProgressStream, ErrorStream,
-                    Globals0, FileName, ModuleName, MaybeTimestamp),
-                ParseTreeModuleSrcs, _Succeededs, !HaveReadModuleMaps, !IO)
-        ;
-            InterfaceFile = omif_int1_int2,
-            list.map_foldl2(
-                write_interface_file_int1_int2(ProgressStream, ErrorStream,
-                    Globals0, FileName, ModuleName, MaybeTimestamp),
-                ParseTreeModuleSrcs, _Succeededs, !HaveReadModuleMaps, !IO)
-        ;
-            InterfaceFile = omif_int3,
-            list.map_foldl(
-                write_short_interface_file_int3(ProgressStream, ErrorStream,
-                    Globals0),
-                ParseTreeModuleSrcs, _Succeededs, !IO)
+    ;
+        HaveReadSrc = have_read_module(FileName, MaybeTimestamp, ParseTreeSrc,
+            ReadErrors),
+        ReadSpecs = get_read_module_specs(ReadErrors),
+        ( if halt_at_module_error(Globals, ReadErrors) then
+            write_error_specs(Globals, ReadSpecs, !IO)
+        else
+            ModuleName = ParseTreeSrc ^ pts_module_name,
+            split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
+                ParseTreeModuleSrcs, ReadSpecs, ReadSplitSpecs),
+            filter_interface_generation_specs(Globals,
+                ReadSplitSpecs, Specs, !IO),
+            get_progress_output_stream(Globals, ModuleName,
+                ProgressStream, !IO),
+            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+            write_error_specs(ErrorStream, Globals, Specs, !IO),
+            maybe_print_delayed_error_messages(ErrorStream, Globals, !IO),
+            (
+                InterfaceFile = omif_int0,
+                list.map_foldl2(
+                    write_private_interface_file_int0(ProgressStream,
+                        ErrorStream, Globals0, FileName, ModuleName,
+                        MaybeTimestamp),
+                    ParseTreeModuleSrcs, _Succeededs, !HaveReadModuleMaps, !IO)
+            ;
+                InterfaceFile = omif_int1_int2,
+                list.map_foldl2(
+                    write_interface_file_int1_int2(ProgressStream, ErrorStream,
+                        Globals0, FileName, ModuleName, MaybeTimestamp),
+                    ParseTreeModuleSrcs, _Succeededs, !HaveReadModuleMaps, !IO)
+            ;
+                InterfaceFile = omif_int3,
+                list.map_foldl(
+                    write_short_interface_file_int3(ProgressStream,
+                        ErrorStream, Globals0),
+                    ParseTreeModuleSrcs, _Succeededs, !IO)
+            )
         )
     ).
 
@@ -1323,64 +1342,85 @@ read_augment_and_process_module(Globals0, OpModeAugment, OptionArgs,
             ReportCmdLineArgsDotErr),
         maybe_report_cmd_line(ReportCmdLineArgsDotErr, OptionArgs, [], !IO)
     ),
-
-    read_module_or_file(Globals0, Globals, FileOrModule, ModuleName, FileName,
-        do_return_timestamp, MaybeTimestamp, ParseTreeSrc, Errors,
-        !HaveReadModuleMaps, !IO),
-
-    Specs0 = get_read_module_specs(Errors),
-    ( if halt_at_module_error(Globals, Errors) then
+    read_module_or_file(Globals0, Globals, FileOrModule, do_return_timestamp,
+        HaveReadSrc, !HaveReadModuleMaps, !IO),
+    (
+        HaveReadSrc = have_not_read_module(_, Errors),
+        Specs0 = get_read_module_specs(Errors),
         write_error_specs(Globals, Specs0, !IO),
         ModulesToLink = [],
         ExtraObjFiles = []
-    else
-        split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
-            ParseTreeModuleSrcs0, Specs0, Specs1),
-        (
-            MaybeModulesToRecompile = some_modules(ModulesToRecompile),
-            ToRecompile =
-                ( pred(PTMS::in) is semidet :-
-                    list.member(PTMS ^ ptms_module_name, ModulesToRecompile)
-                ),
-            list.filter(ToRecompile, ParseTreeModuleSrcs0,
-                ParseTreeModuleSrcsToRecompile)
-        ;
-            MaybeModulesToRecompile = all_modules,
-            ParseTreeModuleSrcsToRecompile = ParseTreeModuleSrcs0
-        ),
-        ParseTreeModuleNames = set.list_to_set(
-            list.map(parse_tree_module_src_project_name,
-                ParseTreeModuleSrcs0)),
-        set.delete(ModuleName, ParseTreeModuleNames, NestedModuleNames),
-
-        find_timestamp_files(Globals, FindTimestampFiles),
-
-        globals.lookup_bool_option(Globals, trace_prof, TraceProf),
-        ( if
-            non_traced_mercury_builtin_module(ModuleName),
-            not (
-                ModuleName = mercury_profiling_builtin_module,
-                TraceProf = yes
-            )
-        then
-            % Some predicates in the builtin modules are missing typeinfo
-            % arguments, which means that execution tracing will not work
-            % on them. Predicates defined there should never be part of
-            % an execution trace anyway; they are effectively language
-            % primitives. (They may still be parts of stack traces.)
-            globals.set_option(trace_stack_layout, bool(no),
-                Globals, GlobalsNoTrace0),
-            globals.set_trace_level_none(
-                GlobalsNoTrace0, GlobalsNoTrace),
-            GlobalsToUse = GlobalsNoTrace
+    ;
+        HaveReadSrc = have_read_module(FileName, MaybeTimestamp, ParseTreeSrc,
+            Errors),
+        Specs0 = get_read_module_specs(Errors),
+        ( if halt_at_module_error(Globals, Errors) then
+            write_error_specs(Globals, Specs0, !IO),
+            ModulesToLink = [],
+            ExtraObjFiles = []
         else
-            GlobalsToUse = Globals
-        ),
-        augment_and_process_all_submodules(GlobalsToUse, OpModeAugment,
-            FileName, MaybeTimestamp, ModuleName, NestedModuleNames,
-            FindTimestampFiles, ParseTreeModuleSrcsToRecompile,
-            Specs1, ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO)
+            read_augment_and_process_module_ok(Globals, OpModeAugment,
+                FileName, MaybeTimestamp, ParseTreeSrc, Errors,
+                MaybeModulesToRecompile, ModulesToLink, ExtraObjFiles,
+                !HaveReadModuleMaps, !IO)
+        )
     ).
+
+:- pred read_augment_and_process_module_ok(globals::in, op_mode_augment::in,
+    file_name::in, maybe(timestamp)::in, parse_tree_src::in,
+    read_module_errors::in, modules_to_recompile::in,
+    list(string)::out, list(string)::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    io::di, io::uo) is det.
+
+read_augment_and_process_module_ok(Globals, OpModeAugment,
+        FileName, MaybeTimestamp, ParseTreeSrc, Errors,
+        MaybeModulesToRecompile, ModulesToLink, ExtraObjFiles,
+        !HaveReadModuleMaps, !IO) :-
+    Specs0 = get_read_module_specs(Errors),
+    ModuleName = ParseTreeSrc ^ pts_module_name,
+    split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
+        ParseTreeModuleSrcs0, Specs0, Specs1),
+    (
+        MaybeModulesToRecompile = some_modules(ModulesToRecompile),
+        ToRecompile =
+            ( pred(PTMS::in) is semidet :-
+                list.member(PTMS ^ ptms_module_name, ModulesToRecompile)
+            ),
+        list.filter(ToRecompile, ParseTreeModuleSrcs0,
+            ParseTreeModuleSrcsToRecompile)
+    ;
+        MaybeModulesToRecompile = all_modules,
+        ParseTreeModuleSrcsToRecompile = ParseTreeModuleSrcs0
+    ),
+    ParseTreeModuleNames = set.list_to_set(
+        list.map(parse_tree_module_src_project_name,
+            ParseTreeModuleSrcs0)),
+    set.delete(ModuleName, ParseTreeModuleNames, NestedModuleNames),
+
+    find_timestamp_files(Globals, FindTimestampFiles),
+    globals.lookup_bool_option(Globals, trace_prof, TraceProf),
+    ( if
+        non_traced_mercury_builtin_module(ModuleName),
+        not (
+            ModuleName = mercury_profiling_builtin_module,
+            TraceProf = yes
+        )
+    then
+        % Some predicates in the builtin modules are missing typeinfo
+        % arguments, which means that execution tracing will not work
+        % on them. Predicates defined there should never be part of
+        % an execution trace anyway; they are effectively language
+        % primitives. (They may still be parts of stack traces.)
+        globals.set_option(trace_stack_layout, bool(no), Globals, Globals1),
+        globals.set_trace_level_none(Globals1, GlobalsToUse)
+    else
+        GlobalsToUse = Globals
+    ),
+    augment_and_process_all_submodules(GlobalsToUse, OpModeAugment,
+        FileName, MaybeTimestamp, ModuleName, NestedModuleNames,
+        FindTimestampFiles, ParseTreeModuleSrcsToRecompile,
+        Specs1, ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO).
 
 :- pred maybe_report_cmd_line(bool::in, list(string)::in, list(string)::in,
     io::di, io::uo) is det.
@@ -1424,49 +1464,44 @@ file_or_module_to_module_name(fm_file(FileName)) = ModuleName :-
 file_or_module_to_module_name(fm_module(ModuleName)) = ModuleName.
 
 :- pred read_module_or_file(globals::in, globals::out, file_or_module::in,
-    module_name::out, file_name::out,
-    maybe_return_timestamp::in, maybe(timestamp)::out,
-    parse_tree_src::out, read_module_errors::out,
+    maybe_return_timestamp::in, have_read_module(parse_tree_src)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
-read_module_or_file(Globals0, Globals, FileOrModuleName,
-        ModuleName, FileNameDotM, ReturnTimestamp, MaybeTimestamp,
-        ParseTreeSrc, Errors, !HaveReadModuleMaps, !IO) :-
+read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
+        HaveReadSrc, !HaveReadModuleMaps, !IO) :-
     (
         FileOrModuleName = fm_module(ModuleName),
         globals.lookup_bool_option(Globals0, verbose, Verbose),
-        maybe_write_string(Verbose, "% Parsing module `", !IO),
         ModuleNameString = sym_name_to_string(ModuleName),
+        maybe_write_string(Verbose, "% Parsing module `", !IO),
         maybe_write_string(Verbose, ModuleNameString, !IO),
         maybe_write_string(Verbose, "' and imported interfaces...\n", !IO),
         ( if
             % Avoid rereading the module if it was already read
             % by recompilation_version.m.
-            find_read_module_src(!.HaveReadModuleMaps ^ hrmm_src, ModuleName,
-                ReturnTimestamp, FileNameDotMPrime, MaybeTimestampPrime,
-                ParseTreeSrcPrime, ErrorsPrime)
+            map.search(!.HaveReadModuleMaps ^ hrmm_src, ModuleName,
+                HaveReadSrc0),
+            HaveReadSrc0 = have_read_module(FN, MaybeTimestamp0, PT, E),
+            return_timestamp_if_needed(ReturnTimestamp,
+                MaybeTimestamp0, MaybeTimestamp),
+            HaveReadSrc1 = have_read_module(FN, MaybeTimestamp, PT, E)
         then
             Globals = Globals0,
+            HaveReadSrc = HaveReadSrc1,
             % XXX When we have read the module before, it *could* have had
             % problems that should cause smart recompilation to be disabled.
             HaveReadModuleMapSrc0 = !.HaveReadModuleMaps ^ hrmm_src,
             map.delete(ModuleName,
                 HaveReadModuleMapSrc0, HaveReadModuleMapSrc),
-            !HaveReadModuleMaps ^ hrmm_src := HaveReadModuleMapSrc,
-            FileNameDotM = FileNameDotMPrime,
-            MaybeTimestamp = MaybeTimestampPrime,
-            ParseTreeSrc = ParseTreeSrcPrime,
-            Errors = ErrorsPrime
+            !HaveReadModuleMaps ^ hrmm_src := HaveReadModuleMapSrc
         else
             % We don't search `--search-directories' for source files
             % because that can result in the generated interface files
             % being created in the wrong directory.
             read_module_src(Globals0, rrm_std(ModuleName),
-                do_not_ignore_errors, do_not_search,
-                ModuleName, [], FileNameDotM,
-                always_read_module(ReturnTimestamp), MaybeTimestamp,
-                ParseTreeSrc, Errors, !IO),
+                do_not_ignore_errors, do_not_search, ModuleName, [],
+                always_read_module(ReturnTimestamp), HaveReadSrc, !IO),
             io_get_disable_smart_recompilation(DisableSmart, !IO),
             (
                 DisableSmart = disable_smart_recompilation,
@@ -1476,9 +1511,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
                 DisableSmart = do_not_disable_smart_recompilation,
                 Globals = Globals0
             )
-        ),
-        globals.lookup_bool_option(Globals, statistics, Stats),
-        maybe_report_stats(Stats, !IO)
+        )
     ;
         FileOrModuleName = fm_file(FileName),
         FileNameDotM = FileName ++ ".m",
@@ -1491,30 +1524,28 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
         ( if
             % Avoid rereading the module if it was already read
             % by recompilation_version.m.
-            find_read_module_src(!.HaveReadModuleMaps ^ hrmm_src,
-                DefaultModuleName, ReturnTimestamp, _, MaybeTimestampPrime,
-                ParseTreeSrcPrime, ErrorsPrime)
+            map.search(!.HaveReadModuleMaps ^ hrmm_src, DefaultModuleName,
+                HaveReadSrc0),
+            HaveReadSrc0 = have_read_module(FN, MaybeTimestamp0, PT, E),
+            return_timestamp_if_needed(ReturnTimestamp,
+                MaybeTimestamp0, MaybeTimestamp),
+            HaveReadSrc1 = have_read_module(FN, MaybeTimestamp, PT, E)
         then
             Globals = Globals0,
+            HaveReadSrc = HaveReadSrc1,
             % XXX When we have read the module before, it *could* have had
             % problems that should cause smart recompilation to be disabled.
             HaveReadModuleMapSrc0 = !.HaveReadModuleMaps ^ hrmm_src,
-            map.delete(ModuleName,
+            map.delete(DefaultModuleName,
                 HaveReadModuleMapSrc0, HaveReadModuleMapSrc),
-            !HaveReadModuleMaps ^ hrmm_src := HaveReadModuleMapSrc,
-            ModuleName = DefaultModuleName,
-            MaybeTimestamp = MaybeTimestampPrime,
-            ParseTreeSrc = ParseTreeSrcPrime,
-            Errors = ErrorsPrime
+            !HaveReadModuleMaps ^ hrmm_src := HaveReadModuleMapSrc
         else
             % We don't search `--search-directories' for source files
             % because that can result in the generated interface files
             % being created in the wrong directory.
             read_module_src_from_file(Globals0, FileName, FileNameDotM,
-                rrm_file, do_not_search,
-                always_read_module(ReturnTimestamp), MaybeTimestamp,
-                ParseTreeSrc, Errors, !IO),
-            ParseTreeSrc = parse_tree_src(ModuleName, _, _),
+                rrm_file, do_not_search, always_read_module(ReturnTimestamp),
+                HaveReadSrc, !IO),
             io_get_disable_smart_recompilation(DisableSmart, !IO),
             (
                 DisableSmart = disable_smart_recompilation,
@@ -1524,10 +1555,10 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
                 DisableSmart = do_not_disable_smart_recompilation,
                 Globals = Globals0
             )
-        ),
-        globals.lookup_bool_option(Globals, detailed_statistics, Stats),
-        maybe_report_stats(Stats, !IO)
-    ).
+        )
+    ),
+    globals.lookup_bool_option(Globals, detailed_statistics, Stats),
+    maybe_report_stats(Stats, !IO).
 
 %---------------------------------------------------------------------------%
 

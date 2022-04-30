@@ -832,32 +832,45 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         % machinery with the use of explicit streams.
         io.set_output_stream(ErrorStream, OldOutputStream, !IO),
         % XXX Why ask for the timestamp if we then ignore it?
+        % NOTE: Asking for a timestamp and then ignoring it *could* make sense
+        % if we recorded HaveReadSrc in a have_read_module_map, because
+        % it would make the timestamp available for a later lookup,
+        % However, we do not record HaveReadSrc in a have_read_module_map.
         read_module_src(Globals, rrm_get_deps(ModuleName),
-            do_not_ignore_errors, do_not_search,
-            ModuleName, [], SourceFileName,
-            always_read_module(do_return_timestamp), _,
-            ParseTreeSrc, ReadModuleErrors, !IO),
+            do_not_ignore_errors, do_not_search, ModuleName, [],
+            always_read_module(do_return_timestamp), HaveReadSrc, !IO),
+        (
+            HaveReadSrc = have_read_module(SourceFileName, _MaybeTimestamp,
+                ParseTreeSrc, ReadModuleErrors),
 
-        FatalErrors = ReadModuleErrors ^ rm_fatal_errors,
-        NonFatalErrors = ReadModuleErrors ^ rm_nonfatal_errors,
-        ( if set.is_non_empty(FatalErrors) then
+            Fatal = ReadModuleErrors ^ rm_fatal_errors,
+            NonFatal = ReadModuleErrors ^ rm_nonfatal_errors,
+            ( if set.is_non_empty(Fatal) then
+                DisplayErrorReadingFile = yes,
+                make_module_dependencies_fatal_error(Globals,
+                    OldOutputStream, ErrorStream, SourceFileName, ModuleName,
+                    ReadModuleErrors, DisplayErrorReadingFile, !Info, !IO)
+            else if set.contains(NonFatal, rme_unexpected_module_name) then
+                % If the source file does not contain the expected module, then
+                % do not make the .module_dep file; it would leave a
+                % .module_dep file for the wrong module lying around,
+                % which the user needs to delete manually.
+                DisplayErrorReadingFile = no,
+                make_module_dependencies_fatal_error(Globals,
+                    OldOutputStream, ErrorStream, SourceFileName, ModuleName,
+                    ReadModuleErrors, DisplayErrorReadingFile, !Info, !IO)
+            else
+                make_module_dependencies_no_fatal_error(Globals,
+                    OldOutputStream, ErrorStream, SourceFileName, ModuleName,
+                    ParseTreeSrc, ReadModuleErrors, !Info, !IO)
+            )
+        ;
+            HaveReadSrc = have_not_read_module(SourceFileName,
+                ReadModuleErrors),
             DisplayErrorReadingFile = yes,
             make_module_dependencies_fatal_error(Globals,
                 OldOutputStream, ErrorStream, SourceFileName, ModuleName,
                 ReadModuleErrors, DisplayErrorReadingFile, !Info, !IO)
-        else if set.contains(NonFatalErrors, rme_unexpected_module_name) then
-            % If the source file does not contain the expected module, then
-            % do not make the .module_dep file; it would leave a .module_dep
-            % file for the wrong module lying around, which the user needs
-            % to delete manually.
-            DisplayErrorReadingFile = no,
-            make_module_dependencies_fatal_error(Globals,
-                OldOutputStream, ErrorStream, SourceFileName, ModuleName,
-                ReadModuleErrors, DisplayErrorReadingFile, !Info, !IO)
-        else
-            make_module_dependencies_no_fatal_error(Globals,
-                OldOutputStream, ErrorStream, SourceFileName, ModuleName,
-                ParseTreeSrc, ReadModuleErrors, !Info, !IO)
         )
     ;
         MaybeErrorStream = no
