@@ -256,9 +256,9 @@ var_table_max_var_num(VarTable, MaxVarNum) :-
 %---------------------------------------------------------------------------%
 
 var_table_select(SelectedVars, !VarTable) :-
-    !.VarTable = var_table(Counter, VarTableMap0),
+    !.VarTable = var_table(_Counter, VarTableMap0),
     map.select(VarTableMap0, SelectedVars, VarTableMap),
-    !:VarTable = var_table(Counter, VarTableMap).
+    var_table_map_to_var_table(VarTableMap, !:VarTable).
 
 var_table_optimize(!VarTable) :-
     !.VarTable = var_table(Counter, VarTableMap0),

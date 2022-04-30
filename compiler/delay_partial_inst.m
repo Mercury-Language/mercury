@@ -138,7 +138,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.var_table.
-:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -156,8 +155,7 @@
                 dpi_module_info :: module_info,
 
                 % Read-write.
-                dpi_varset      :: prog_varset,
-                dpi_vartypes    :: vartypes,
+                dpi_var_table   :: var_table,
                 dpi_changed     :: bool
             ).
 
@@ -230,22 +228,20 @@ delay_partial_inst_proc(ModuleInfo, PredId, ProcTable, ProcId,
     ),
     some [!ProcInfo] (
         map.lookup(ProcTable, ProcId, !:ProcInfo),
-        proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
+        proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable0),
         proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
         proc_info_get_goal(!.ProcInfo, Goal0),
 
         Changed0 = no,
-        DelayInfo0 = delay_partial_inst_info(ModuleInfo,
-            VarSet0, VarTypes0, Changed0),
+        DelayInfo0 = delay_partial_inst_info(ModuleInfo, VarTable0, Changed0),
         delay_partial_inst_in_goal(InstMap0, Goal0, Goal,
             map.init, _ConstructMap, DelayInfo0, DelayInfo),
-        DelayInfo = delay_partial_inst_info(_,
-            VarSet, VarTypes, Changed),
+        DelayInfo = delay_partial_inst_info(_, VarTable, Changed),
 
         (
             Changed = yes,
             proc_info_set_goal(Goal, !ProcInfo),
-            proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+            proc_info_set_var_table(VarTable, !ProcInfo),
             requantify_proc_general(ordinary_nonlocals_maybe_lambda,
                 !ProcInfo),
             !:ChangedProcs = [ProcId - !.ProcInfo | !.ChangedProcs],
@@ -254,11 +250,13 @@ delay_partial_inst_proc(ModuleInfo, PredId, ProcTable, ProcId,
                 io.output_stream(Stream, !IO),
                 io.write_string(Stream,
                     "predicate body BEFORE delay_partial_inst:\n", !IO),
-                dump_goal(Stream, ModuleInfo, vns_varset(VarSet0), Goal0, !IO),
+                dump_goal(Stream, ModuleInfo, vns_var_table(VarTable0),
+                    Goal0, !IO),
                 io.nl(Stream, !IO),
                 io.write_string(Stream,
                     "predicate body AFTER delay_partial_inst:\n", !IO),
-                dump_goal(Stream, ModuleInfo, vns_varset(VarSet), Goal, !IO),
+                dump_goal(Stream, ModuleInfo, vns_var_table(VarTable),
+                    Goal, !IO),
                 io.nl(Stream, !IO)
             )
         ;
@@ -517,13 +515,11 @@ delay_partial_inst_in_partial_construct(GoalInfo0, Unify, Goal,
     delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
 
 create_canonical_variables(OrigVars, CanonVars, !DelayInfo) :-
-    VarSet0 = !.DelayInfo ^ dpi_varset,
-    VarTypes0 = !.DelayInfo ^ dpi_vartypes,
-    clone_variables(OrigVars, VarSet0, VarTypes0,
-        VarSet0, VarSet, VarTypes0, VarTypes, map.init, Renaming),
+    VarTable0 = !.DelayInfo ^ dpi_var_table,
+    clone_variables_var_table(OrigVars, VarTable0, VarTable0, VarTable,
+        map.init, Renaming),
     rename_var_list(must_rename, Renaming, OrigVars, CanonVars),
-    !DelayInfo ^ dpi_varset := VarSet,
-    !DelayInfo ^ dpi_vartypes := VarTypes.
+    !DelayInfo ^ dpi_var_table := VarTable.
 
 :- pred add_to_construct_map(prog_var::in, cons_id::in, prog_vars::in,
     construct_map::in, construct_map::out) is det.

@@ -125,7 +125,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.pred_name.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
 :- import_module parse_tree.var_table.
 :- import_module transform_hlds.pd_debug.
 :- import_module transform_hlds.pd_util.
@@ -213,8 +212,8 @@ pd_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !PDInfo) :-
     pd_info_get_instmap(!.PDInfo, InstMap0),
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
+    proc_info_get_var_table(ModuleInfo0, ProcInfo, VarTable),
+    lookup_var_type(VarTable, Var, Type),
     bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
         InstMap0, InstMap, ModuleInfo0, ModuleInfo),
     pd_info_set_instmap(InstMap, !PDInfo),
@@ -493,11 +492,11 @@ pd_info_search_version(PDInfo, Goal, MaybeVersion) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
     pd_info_get_proc_info(PDInfo, ProcInfo),
     pd_info_get_instmap(PDInfo, InstMap),
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     ( if
         map.search(GoalVersionIndex, CalledPreds, VersionIds),
         pd_info_get_matching_version(ModuleInfo, Goal, InstMap,
-            VarTypes, VersionIds, Versions, MaybeVersion0)
+            VarTable, VersionIds, Versions, MaybeVersion0)
     then
         MaybeVersion = MaybeVersion0
     else
@@ -510,24 +509,24 @@ pd_info_search_version(PDInfo, Goal, MaybeVersion) :-
 %---------------------------------------------------------------------------%
 
 :- pred pd_info_get_matching_version(module_info::in, hlds_goal::in,
-    instmap::in, vartypes::in, list(pred_proc_id)::in,
+    instmap::in, var_table::in, list(pred_proc_id)::in,
     version_index::in, maybe_version::out) is semidet.
 
 pd_info_get_matching_version(_, _, _, _, [], _, no_version).
-pd_info_get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
+pd_info_get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTable,
         [VersionId | VersionIds], Versions, MaybeVersion) :-
     map.lookup(Versions, VersionId, Version),
     Version = version_info(OldGoal, _, OldArgs, OldArgTypes,
         OldInstMap, _, _, _, _),
     ( if
         pd_info_goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
-            OldArgTypes, ThisGoal, ThisInstMap, VarTypes, VersionId, Version,
+            OldArgTypes, ThisGoal, ThisInstMap, VarTable, VersionId, Version,
             MaybeVersion1)
     then
         (
             MaybeVersion1 = no_version,
             pd_info_get_matching_version(ModuleInfo, ThisGoal, ThisInstMap,
-                VarTypes, VersionIds, Versions, MaybeVersion)
+                VarTable, VersionIds, Versions, MaybeVersion)
         ;
             MaybeVersion1 = version(exact, _, _, _, _),
             MaybeVersion = MaybeVersion1
@@ -535,14 +534,14 @@ pd_info_get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
             MaybeVersion1 = version(more_general, PredProcId,
                 MoreGeneralVersion, Renaming, TypeSubn),
             pd_info_get_matching_version(ModuleInfo, ThisGoal,
-                ThisInstMap, VarTypes, VersionIds,
+                ThisInstMap, VarTable, VersionIds,
                 Versions, MaybeVersion2),
             pd_info_pick_version(ModuleInfo, PredProcId, Renaming,
                 TypeSubn, MoreGeneralVersion, MaybeVersion2, MaybeVersion)
         )
     else
         pd_info_get_matching_version(ModuleInfo, ThisGoal, ThisInstMap,
-            VarTypes, VersionIds, Versions, MaybeVersion)
+            VarTable, VersionIds, Versions, MaybeVersion)
     ).
 
 %---------------------------------------------------------------------------%
@@ -592,19 +591,19 @@ pd_info_pick_version(_ModuleInfo, PredProcId1, Renaming1, TSubn1, Version1,
     %
 :- pred pd_info_goal_is_more_general(module_info::in, hlds_goal::in,
     instmap::in, list(prog_var)::in, list(mer_type)::in, hlds_goal::in,
-    instmap::in, vartypes::in, pred_proc_id::in,
+    instmap::in, var_table::in, pred_proc_id::in,
     version_info::in, maybe_version::out) is semidet.
 
 pd_info_goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
-        OldArgTypes, NewGoal, NewInstMap, NewVarTypes, PredProcId,
+        OldArgTypes, NewGoal, NewInstMap, NewVarTable, PredProcId,
         Version, MaybeVersion) :-
     pd_util.goals_match(ModuleInfo, OldGoal, OldArgs, OldArgTypes,
-        NewGoal, vts_vartypes(NewVarTypes), OldNewRenaming, TypeRenaming),
+        NewGoal, vts_var_table(NewVarTable), OldNewRenaming, TypeRenaming),
     OldGoal = hlds_goal(_, OldGoalInfo),
     OldNonLocals0 = goal_info_get_nonlocals(OldGoalInfo),
     set_of_var.to_sorted_list(OldNonLocals0, OldNonLocalsList),
     pd_info_check_insts(ModuleInfo, OldNonLocalsList, OldNewRenaming,
-        OldInstMap, NewInstMap, NewVarTypes, exact, Exact),
+        OldInstMap, NewInstMap, NewVarTable, exact, Exact),
 
     MaybeVersion = version(Exact, PredProcId, Version,
         OldNewRenaming, TypeRenaming).
@@ -615,16 +614,16 @@ pd_info_goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
     % general as the insts in the new version.
     %
 :- pred pd_info_check_insts(module_info::in, list(prog_var)::in,
-    map(prog_var, prog_var)::in, instmap::in, instmap::in, vartypes::in,
+    map(prog_var, prog_var)::in, instmap::in, instmap::in, var_table::in,
     version_is_exact::in, version_is_exact::out) is semidet.
 
 pd_info_check_insts(_, [], _, _, _, _, !ExactSoFar).
 pd_info_check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
-        NewInstMap, VarTypes, !ExactSoFar) :-
+        NewInstMap, VarTable, !ExactSoFar) :-
     instmap_lookup_var(OldInstMap, OldVar, OldVarInst),
     map.lookup(VarRenaming, OldVar, NewVar),
     instmap_lookup_var(NewInstMap, NewVar, NewVarInst),
-    lookup_var_type(VarTypes, NewVar, Type),
+    lookup_var_type(VarTable, NewVar, Type),
     inst_matches_initial(ModuleInfo, Type, NewVarInst, OldVarInst),
     (
         !.ExactSoFar = exact,
@@ -642,7 +641,7 @@ pd_info_check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
         !.ExactSoFar = more_general
     ),
     pd_info_check_insts(ModuleInfo, Vars, VarRenaming, OldInstMap,
-        NewInstMap, VarTypes, !ExactSoFar).
+        NewInstMap, VarTable, !ExactSoFar).
 
 %---------------------------------------------------------------------------%
 
@@ -668,15 +667,15 @@ pd_info_define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_class_context(PredInfo, ClassContext),
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo0, ProcInfo, VarTable),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
     proc_info_get_var_name_remap(ProcInfo, VarNameRemap),
     % XXX handle the extra typeinfo arguments for
     % --typeinfo-liveness properly.
-    hlds_pred.define_new_pred(NewPredSymName, Origin,
-        TVarSet, InstVarSet, VarSet, VarTypes, RttiVarMaps, ClassContext,
+    hlds_pred.define_new_pred_vt(NewPredSymName, Origin,
+        TVarSet, InstVarSet, VarTable, RttiVarMaps, ClassContext,
         InstMap, VarNameRemap, Markers, address_is_not_taken, HasParallelConj,
         PredProcId, Args, _ExtraArgs, Goal, CallGoal, ModuleInfo0, ModuleInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo).

@@ -172,6 +172,7 @@
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.recompute_instmap_deltas.
+:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
@@ -191,7 +192,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -243,8 +244,8 @@
                 vars_input               :: set_of_progvar,
                 vars_local               :: set_of_progvar,
                 vars_output              :: set_of_progvar,
-                vars_innerDI             :: prog_var,       % inner STM di var
-                vars_innerUO             :: prog_var        % inner STM uo var
+                vars_inner_di            :: prog_var,       % inner STM di var
+                vars_inner_uo            :: prog_var        % inner STM uo var
             ).
 
 %-----------------------------------------------------------------------------%
@@ -1294,22 +1295,22 @@ create_rollback_pred_2(Context, AtomicGoalVarList, RecCallGoal,
 %
 % Predicates involved in moving local variables from the original predicate
 % to the newly created wrapper predicate.
+%
 
     % Moves a single variable, along with its type, from the original
     % predicate to the newly created wrapper predicate.
     %
-:- pred apply_varset_to_preds(prog_var::in, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out,
+:- pred apply_varset_to_preds(prog_var::in,
+    var_table::in, var_table::out, var_table::in, var_table::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
-apply_varset_to_preds(ProgVar, !NewPredVarSet, !NewPredVarTypes,
-        !OldPredVarSet, !OldPredVarTypes, !VarMapping) :-
-    lookup_var_type(!.OldPredVarTypes, ProgVar, ProgType),
-%   delete_var(!.OldPredVarSet, ProgVar, !:OldPredVarSet),
-%   map.delete(!.OldPredVarTypes, ProgVar, !:OldPredVarTypes),
-    varset.new_var(NewProgVar, !NewPredVarSet),
-    add_var_type(NewProgVar, ProgType, !NewPredVarTypes),
+apply_varset_to_preds(ProgVar, !NewPredVarTable, !OldPredVarTable,
+        !VarMapping) :-
+    lookup_var_entry(!.OldPredVarTable, ProgVar, ProgVarEntry),
+    ProgVarEntry = vte(_, ProgVarType, ProgVarIsDummy),
+    NewProgVarEntry = vte("", ProgVarType, ProgVarIsDummy),
+%   map.delete(!.OldPredVarTable, ProgVar, !:OldPredVarTable),
+    add_var_entry(NewProgVarEntry, NewProgVar, !NewPredVarTable),
     map.det_insert(ProgVar, NewProgVar, !VarMapping).
 
     % Moves all local variables from the original predicate to the newly
@@ -1323,19 +1324,17 @@ apply_varset_to_preds(ProgVar, !NewPredVarSet, !NewPredVarTypes,
 
 move_variables_to_new_pred(AtomicGoal0, AtomicGoal, AtomicGoalVars,
         InnerDI, InnerUO, !NewPredInfo, !StmInfo) :-
+    ModuleInfo = !.StmInfo ^ stm_info_module_info,
     NewProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
     OldProcInfo0 = !.StmInfo ^ stm_info_proc_info,
-    proc_info_get_varset_vartypes(NewProcInfo0,
-        NewPredVarSet0, NewPredVarTypes0),
-    proc_info_get_varset_vartypes(OldProcInfo0,
-        OldPredVarSet0, OldPredVarTypes0),
+    proc_info_get_var_table(ModuleInfo, NewProcInfo0, NewPredVarTable0),
+    proc_info_get_var_table(ModuleInfo, OldProcInfo0, OldPredVarTable0),
     AtomicGoalVars = stm_goal_vars(_, LocalVars, _, OrigInnerDI, OrigInnerUO),
     LocalVarList = set_of_var.to_sorted_list(LocalVars),
 
     VarMapping0 = map.init,
-    list.foldl5(apply_varset_to_preds, LocalVarList,
-        NewPredVarSet0, NewPredVarSet, NewPredVarTypes0, NewPredVarTypes,
-        OldPredVarSet0, OldPredVarSet, OldPredVarTypes0, OldPredVarTypes,
+    list.foldl3(apply_varset_to_preds, LocalVarList,
+        NewPredVarTable0, NewPredVarTable, OldPredVarTable0, OldPredVarTable,
         VarMapping0, VarMapping1),
 
     ( if OrigInnerDI = OrigInnerUO then
@@ -1346,10 +1345,8 @@ move_variables_to_new_pred(AtomicGoal0, AtomicGoal, AtomicGoalVars,
     ),
 
     rename_some_vars_in_goal(VarMapping, AtomicGoal0, AtomicGoal),
-    proc_info_set_varset_vartypes(NewPredVarSet, NewPredVarTypes,
-        NewProcInfo0, NewProcInfo),
-    proc_info_set_varset_vartypes(OldPredVarSet, OldPredVarTypes,
-        OldProcInfo0, OldProcInfo),
+    proc_info_set_var_table(NewPredVarTable, NewProcInfo0, NewProcInfo),
+    proc_info_set_var_table(OldPredVarTable, OldProcInfo0, OldProcInfo),
     !NewPredInfo ^ new_pred_proc_info := NewProcInfo,
     !StmInfo ^ stm_info_proc_info := OldProcInfo.
 
@@ -1391,8 +1388,8 @@ create_wrapper_for_goal_list(Context, AtomicGoalVarList, ResultType, ResultVar,
 %       copy_input_vars_in_goallist(AtomicGoalVars, AtomicGoalVarList,
 %           AtomicGoalVarList1),
         AtomicGoalVarList1 = AtomicGoalVarList,
-        StmDI = AtomicGoalVars ^ vars_innerDI,
-        StmUO = AtomicGoalVars ^ vars_innerUO,
+        StmDI = AtomicGoalVars ^ vars_inner_di,
+        StmUO = AtomicGoalVars ^ vars_inner_uo,
 
         create_or_else_pred(Context, AtomicGoalVars, AtomicGoalVarList1,
             PPIDList, StmDI, StmUO, NewAtomicGoal, !StmInfo),
@@ -1418,8 +1415,8 @@ create_wrapper_pred(AtomicGoalVars, ResultType, ResultVar0, AtomicGoal,
 
 create_wrapper_pred_2(AtomicGoalVars, ResultType, ResultVar0,
         !.AtomicGoal, PredProcId, !:NewPredInfo, CallGoal, !StmInfo) :-
-    InnerDI = AtomicGoalVars ^ vars_innerDI,
-    InnerUO0 = AtomicGoalVars ^ vars_innerUO,
+    InnerDI = AtomicGoalVars ^ vars_inner_di,
+    InnerUO0 = AtomicGoalVars ^ vars_inner_uo,
 
     get_input_output_varlist(AtomicGoalVars, InputVars, _),
     get_input_output_types(AtomicGoalVars, !.StmInfo, InputTypes, _),
@@ -1576,8 +1573,8 @@ create_simple_wrapper_pred(Context, AtomicGoalVars, ResultType, ResultVar0,
 
 create_simple_wrapper_pred_2(Context, AtomicGoalVars, ResultType, ResultVar0,
         !.AtomicGoal, PredProcId, !:NewPredInfo, CallGoal, !StmInfo) :-
-    InnerDI = AtomicGoalVars ^ vars_innerDI,
-    InnerUO0 = AtomicGoalVars ^ vars_innerUO,
+    InnerDI = AtomicGoalVars ^ vars_inner_di,
+    InnerUO0 = AtomicGoalVars ^ vars_inner_uo,
 
     get_input_output_varlist(AtomicGoalVars, InputVars, _),
     get_input_output_types(AtomicGoalVars, !.StmInfo, InputTypes, _),
@@ -2128,15 +2125,15 @@ construct_output(Context, AtomicGoalVars, ResultType, ResultVar, StmInfo,
 
 rename_var_in_wrapper_pred(Name, ResultVar0, ResultType, ResultVar,
         !NewPredInfo, !Goal) :-
+    ModuleInfo = !.NewPredInfo ^ new_pred_module_info,
     NewProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
-    proc_info_get_varset_vartypes(NewProcInfo0,
-        NewPredVarSet0, NewPredVarTypes0),
+    proc_info_get_var_table(ModuleInfo, NewProcInfo0, NewPredVarTable0),
     proc_info_get_headvars(NewProcInfo0, NewHeadVars0),
-    varset.delete_var(ResultVar0, NewPredVarSet0, NewPredVarSet1),
-    delete_var_type(ResultVar0, NewPredVarTypes0, NewPredVarTypes1),
+    delete_var_entry(ResultVar0, NewPredVarTable0, NewPredVarTable1),
 
-    varset.new_named_var(Name, ResultVar, NewPredVarSet1, NewPredVarSet),
-    add_var_type(ResultVar, ResultType, NewPredVarTypes1, NewPredVarTypes),
+    ResultIsDummy = is_type_a_dummy(ModuleInfo, ResultType),
+    ResultVarEntry = vte(Name, ResultType, ResultIsDummy),
+    add_var_entry(ResultVarEntry, ResultVar, NewPredVarTable1, NewPredVarTable),
     VarMapping = map.singleton(ResultVar0, ResultVar),
 
     MapLambda =
@@ -2150,8 +2147,7 @@ rename_var_in_wrapper_pred(Name, ResultVar0, ResultType, ResultVar,
     list.map(MapLambda, NewHeadVars0, NewHeadVars),
 
     rename_some_vars_in_goal(VarMapping, !Goal),
-    proc_info_set_varset_vartypes(NewPredVarSet, NewPredVarTypes,
-        NewProcInfo0, NewProcInfo1),
+    proc_info_set_var_table(NewPredVarTable, NewProcInfo0, NewProcInfo1),
     proc_info_set_headvars(NewHeadVars, NewProcInfo1, NewProcInfo),
     !NewPredInfo ^ new_pred_proc_info := NewProcInfo.
 
@@ -2453,7 +2449,7 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes, CloneKind,
 
     pred_info_proc_info(PredInfo, ProcId, ProcInfo),
     proc_info_get_context(ProcInfo, ProcContext),
-    proc_info_get_varset_vartypes(ProcInfo, ProcVarSet, ProcVarTypes),
+    proc_info_get_var_table(ModuleInfo0, ProcInfo, ProcVarTable),
     proc_info_get_inst_varset(ProcInfo, ProcInstVarSet),
     (
         MaybeDetism = yes(ProcDetism)
@@ -2466,8 +2462,7 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes, CloneKind,
     proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
     proc_info_get_var_name_remap(ProcInfo, VarNameRemap),
     SeqNum = item_no_seq_num,
-    proc_info_create(ProcContext, SeqNum,
-        ProcVarSet, ProcVarTypes, ProcHeadVars,
+    proc_info_create_vt(ProcContext, SeqNum, ProcVarTable, ProcHeadVars,
         ProcInstVarSet, ProcHeadModes, detism_decl_none, ProcDetism,
         ProcGoal, ProcRttiVarMaps, address_is_not_taken, HasParallelConj,
         VarNameRemap, NewProcInfo),
@@ -2579,16 +2574,15 @@ run_quantification_over_pred(!NewPredInfo) :-
     stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
 new_pred_set_goal(Goal, !NewPredInfo) :-
+    ModuleInfo = !.NewPredInfo ^ new_pred_module_info,
     ProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
     goal_vars(Goal, GoalVars),
     GoalVarsSet = set_of_var.bitset_to_set(GoalVars),
-    proc_info_get_varset_vartypes(ProcInfo0, ProcVarSet0, ProcVarTypes0),
+    proc_info_get_var_table(ModuleInfo, ProcInfo0, ProcVarTable0),
 
-    varset.select(GoalVarsSet, ProcVarSet0, ProgVarSet),
-    vartypes_select(GoalVarsSet, ProcVarTypes0, ProcVarTypes),
+    var_table_select(GoalVarsSet, ProcVarTable0, ProcVarTable),
 
-    proc_info_set_varset_vartypes(ProgVarSet, ProcVarTypes,
-        ProcInfo0, ProcInfo1),
+    proc_info_set_var_table(ProcVarTable, ProcInfo0, ProcInfo1),
     proc_info_set_goal(Goal, ProcInfo1, ProcInfo),
     !NewPredInfo ^ new_pred_proc_info := ProcInfo.
 
@@ -2625,12 +2619,13 @@ get_input_output_varlist(StmGoalVars, Input, Output) :-
     list(mer_type)::out, list(mer_type)::out) is det.
 
 get_input_output_types(StmGoalVars, StmInfo, InputTypes, OutputTypes) :-
+    ModuleInfo = StmInfo ^ stm_info_module_info,
     ProcInfo0 = StmInfo ^ stm_info_proc_info,
-    proc_info_get_varset_vartypes(ProcInfo0, _VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo0, VarTable),
     get_input_output_varlist(StmGoalVars, InputVars, OutputVars),
 
-    lookup_var_types(VarTypes, InputVars, InputTypes),
-    lookup_var_types(VarTypes, OutputVars, OutputTypes).
+    lookup_var_types(VarTable, InputVars, InputTypes),
+    lookup_var_types(VarTable, OutputVars, OutputTypes).
 
     % Used by "get_input_output_modes".
     %

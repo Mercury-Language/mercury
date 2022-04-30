@@ -68,7 +68,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module cord.
@@ -82,7 +82,6 @@
 :- import_module term.
 :- import_module uint.
 :- import_module uint8.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -135,7 +134,7 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
     map.lookup(ProcTable, ProcId, ProcInfo),
 
     proc_info_get_goal(ProcInfo, Goal),
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     proc_info_interface_determinism(ProcInfo, Detism),
     determinism_to_code_model(Detism, CodeModel),
 
@@ -144,9 +143,9 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
     set_of_var.insert_list(ArgVars, GoalVars, Vars),
     set_of_var.to_sorted_list(Vars, VarList),
     map.init(VarMap0),
-    create_varmap(VarList, VarSet, VarTypes, 0, VarMap0, VarMap, VarInfos),
+    create_varmap(VarList, VarTable, 0, VarMap0, VarMap, VarInfos),
 
-    init_byte_info(ModuleInfo, VarMap, VarTypes, ByteInfo0),
+    init_byte_info(ModuleInfo, VarMap, VarTable, ByteInfo0),
     get_next_label(ZeroLabel, ByteInfo0, ByteInfo1),
 
     proc_info_arg_info(ProcInfo, ArgInfo),
@@ -961,17 +960,17 @@ ptag_to_int(Ptag) = PtagInt :-
 
 %---------------------------------------------------------------------------%
 
-:- pred create_varmap(list(prog_var)::in, prog_varset::in,
-    vartypes::in, int::in, map(prog_var, byte_var)::in,
-    map(prog_var, byte_var)::out, list(byte_var_info)::out) is det.
+:- pred create_varmap(list(prog_var)::in, var_table::in,
+    int::in, map(prog_var, byte_var)::in, map(prog_var, byte_var)::out,
+    list(byte_var_info)::out) is det.
 
-create_varmap([], _, _, _, !VarMap, []).
-create_varmap([Var | VarList], VarSet, VarTypes, N0, !VarMap, VarInfos) :-
+create_varmap([], _, _, !VarMap, []).
+create_varmap([Var | VarList], VarTable, N0, !VarMap, VarInfos) :-
     map.det_insert(Var, N0, !VarMap),
-    N1 = N0 + 1,
-    varset.lookup_name(VarSet, Var, VarName),
-    lookup_var_type(VarTypes, Var, VarType),
-    create_varmap(VarList, VarSet, VarTypes, N1, !VarMap, VarInfosTail),
+    lookup_var_entry(VarTable, Var, VarEntry),
+    VarName = var_entry_name(Var, VarEntry),
+    VarType = VarEntry ^ vte_type,
+    create_varmap(VarList, VarTable, N0 + 1, !VarMap, VarInfosTail),
     VarInfos = [var_info(VarName, VarType) | VarInfosTail].
 
 %---------------------------------------------------------------------------%(
@@ -979,17 +978,17 @@ create_varmap([Var | VarList], VarSet, VarTypes, N0, !VarMap, VarInfos) :-
 :- type byte_info
     --->    byte_info(
                 byteinfo_varmap         :: map(prog_var, byte_var),
-                byteinfo_vartypes       :: vartypes,
+                byteinfo_var_table      :: var_table,
                 byteinfo_moduleinfo     :: module_info,
                 byteinfo_label_counter  :: counter,
                 byteinfo_temp_counter   :: counter
             ).
 
 :- pred init_byte_info(module_info::in, map(prog_var, byte_var)::in,
-    vartypes::in, byte_info::out) is det.
+    var_table::in, byte_info::out) is det.
 
-init_byte_info(ModuleInfo, VarMap, VarTypes, ByteInfo) :-
-    ByteInfo = byte_info(VarMap, VarTypes, ModuleInfo,
+init_byte_info(ModuleInfo, VarMap, VarTable, ByteInfo) :-
+    ByteInfo = byte_info(VarMap, VarTable, ModuleInfo,
         counter.init(0), counter.init(0)).
 
 :- pred get_module_info(byte_info::in, module_info::out) is det.
@@ -1020,7 +1019,7 @@ map_var(ByteInfo, Var, ByteVar) :-
     mer_type::out) is det.
 
 get_var_type(ByteInfo, Var, Type) :-
-    lookup_var_type(ByteInfo ^ byteinfo_vartypes, Var, Type).
+    lookup_var_type(ByteInfo ^ byteinfo_var_table, Var, Type).
 
 :- pred get_next_label(int::out, byte_info::in, byte_info::out)
     is det.

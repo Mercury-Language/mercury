@@ -154,7 +154,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.intermod_order_pred_info.
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_main_types.
@@ -781,7 +781,8 @@ gather_pragma_structure_sharing_for_proc(ModuleInfo, OrderPredInfo,
         proc_info_get_structure_sharing(ProcInfo, MaybeSharingStatus),
         MaybeSharingStatus = yes(SharingStatus)
     then
-        proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
+        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        split_var_table(VarTable, VarSet, _VarTypes),
         pred_info_get_typevarset(PredInfo, TypeVarSet),
         ModuleName = pred_info_module(PredInfo),
         PredSymName = qualified(ModuleName, PredName),
@@ -789,7 +790,7 @@ gather_pragma_structure_sharing_for_proc(ModuleInfo, OrderPredInfo,
         PredNameModesPF = proc_pf_name_modes(PredOrFunc,
             PredSymName, ArgModes),
         proc_info_get_headvars(ProcInfo, HeadVars),
-        lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
+        lookup_var_types(VarTable, HeadVars, HeadVarTypes),
         SharingStatus = structure_sharing_domain_and_status(Sharing, _Status),
         SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
             HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Sharing)),
@@ -831,7 +832,8 @@ gather_pragma_structure_reuse_for_proc(ModuleInfo, OrderPredInfo,
         proc_info_get_structure_reuse(ProcInfo, MaybeStructureReuseDomain),
         MaybeStructureReuseDomain = yes(StructureReuseDomain)
     then
-        proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
+        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        split_var_table(VarTable, VarSet, _VarTypes),
         pred_info_get_typevarset(PredInfo, TypeVarSet),
         ModuleName = pred_info_module(PredInfo),
         PredSymName = qualified(ModuleName, PredName),
@@ -839,7 +841,7 @@ gather_pragma_structure_reuse_for_proc(ModuleInfo, OrderPredInfo,
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredSymName,
             ArgModes),
         proc_info_get_headvars(ProcInfo, HeadVars),
-        lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
+        lookup_var_types(VarTable, HeadVars, HeadVarTypes),
         StructureReuseDomain =
             structure_reuse_domain_and_status(Reuse, _Status),
         ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
