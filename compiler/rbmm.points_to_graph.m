@@ -270,7 +270,7 @@
 
 :- implementation.
 
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.smm_common.
 
 :- import_module assoc_list.
@@ -667,22 +667,21 @@ rptg_reach_from_a_variable(Graph, HLDS, ProcInfo, X, !Reach_X) :-
     rptg_get_node_by_variable(Graph, X, N_X),
     Node_Selector = pair(N_X, []),
 
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-    lookup_var_type(VarTypes, X, TypeX),
+    proc_info_get_var_table(HLDS, ProcInfo, VarTable),
+    lookup_var_type(VarTable, X, TypeX),
 
     % Find regions reached from X.
-    reach_from_a_variable_2([Node_Selector], Graph, HLDS,
-        TypeX, [], !Reach_X).
+    reach_from_a_variable_2([Node_Selector], Graph, HLDS, TypeX, [], !Reach_X).
 
     % This predicate receives a (remembered) list of nodes that are
     % reached from X, along with the valid selectors to those nodes
     % from the node of X.
     % Algorithm:
-    %   1. each node is recorded into the reach_from_x set,
-    %   2. if an target of a node's out-edge can be reached by a valid
-    %   selector, we "remember" the target as reachable from X but not
-    %   record it yet,
-    %   3. do until the remembered list is empty.
+    %
+    % 1. each node is recorded into the reach_from_x set,
+    % 2. if an target of a node's out-edge can be reached by a valid selector,
+    %    , we "remember" the target as reachable from X but not record it yet,
+    % 3. do until the remembered list is empty.
     %
 :- pred reach_from_a_variable_2(assoc_list(rptg_node, selector)::in,
     rpt_graph::in, module_info::in, mer_type::in, list(rptg_node)::in,

@@ -87,8 +87,9 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.smm_common.
 
@@ -217,7 +218,7 @@ region_transform_proc(RptaInfoTable, FormalRegionArgTable,
     PPId = proc(PredId, ProcId),
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, ProcInfo0),
     fill_goal_path_slots_in_proc(!.ModuleInfo, ProcInfo0, ProcInfo1),
-    proc_info_get_varset_vartypes(ProcInfo1, VarSet0, VarTypes0),
+    proc_info_get_var_table(!.ModuleInfo, ProcInfo1, VarTable0),
     proc_info_get_headvars(ProcInfo1, HeadVars0),
     proc_info_get_argmodes(ProcInfo1, ActualArgModes0),
     proc_info_get_goal(ProcInfo1, Goal0),
@@ -240,22 +241,22 @@ region_transform_proc(RptaInfoTable, FormalRegionArgTable,
     ),
     map.lookup(RegionInstructionTable, PPId, RegionInstructionProc),
     NameToVar0 = map.init,
+    % ZZZ
     annotate_proc(!.ModuleInfo, PredInfo0, Graph, FormalRegionArgProc,
         ActualRegionArgProc, ResurRenamingProc, IteRenamingProc,
         RegionInstructionProc, ResurRenamingAnnoProc, IteRenamingAnnoProc,
-        VarSet0, _, VarTypes0, _, HeadVars0, _, ActualArgModes0, _,
-        Goal0, _, NameToVar0, NameToVar, ProcInfo1, ProcInfo2),
+        VarTable0, HeadVars0, ActualArgModes0, Goal0, NameToVar0, NameToVar,
+        ProcInfo1, ProcInfo2),
     requantify_proc_general(ordinary_nonlocals_no_lambda, ProcInfo2, ProcInfo),
     module_info_set_pred_proc_info(PPId, PredInfo0, ProcInfo, !ModuleInfo),
     map.det_insert(PPId, NameToVar, !NameToVarTable).
 
     % Currently for a procedure we annotate the following information:
     %
-    % 1. VarSet with region variables
-    % 2. VarTypes with region variables and their types
-    % 3. HeadVars with formal region arguments
-    % 4. ActualHeadModes with the modes for region variables
-    % 5. Body:
+    % 1. VarTable with region variables and their types
+    % 2. HeadVars with formal region arguments
+    % 3. ActualHeadModes with the modes for region variables
+    % 3. Body:
     %    + new region arguments at calls
     %    + new calls to region instructions
     %
@@ -263,21 +264,19 @@ region_transform_proc(RptaInfoTable, FormalRegionArgTable,
     region_args::in, pp_actual_region_args_table::in, rbmm_renaming_proc::in,
     rbmm_renaming_proc::in, region_instr_proc::in,
     rbmm_renaming_annotation_proc::in, rbmm_renaming_annotation_proc::in,
-    prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, list(prog_var)::in, list(prog_var)::out,
-    list(mer_mode)::in, list(mer_mode)::out, hlds_goal::in, hlds_goal::out,
+    var_table::in, list(prog_var)::in, list(mer_mode)::in, hlds_goal::in,
     name_to_prog_var::in, name_to_prog_var::out, proc_info::in,
     proc_info::out) is det.
 
 annotate_proc(ModuleInfo, PredInfo, Graph, FormalRegionArgProc,
         ActualRegionArgProc, ResurRenamingProc, IteRenamingProc,
         RegionInstructionProc, ResurRenamingAnnoProc, IteRenamingAnnoProc,
-        !VarSet, !VarTypes, !HeadVars, !ActualArgModes, !Goal,
+        !.VarTable, !.HeadVars, !.ActualArgModes, !.Goal,
         !NameToVar, !ProcInfo) :-
     region_transform_goal(ModuleInfo, Graph, ResurRenamingProc,
         IteRenamingProc, ActualRegionArgProc,
         RegionInstructionProc, ResurRenamingAnnoProc, IteRenamingAnnoProc,
-        !Goal, !NameToVar, !VarSet, !VarTypes),
+        !Goal, !NameToVar, !VarTable),
 
     % Add extra variables to the head of the procedure that correspond
     % to the introduced region arguments.
@@ -297,8 +296,8 @@ annotate_proc(ModuleInfo, PredInfo, Graph, FormalRegionArgProc,
     FormalRegionArgProc = region_args(Constants, Deads, Borns),
     FormalInputNodes = Constants ++ Deads,
     FormalNodes = FormalInputNodes ++ Borns,
-    list.map_foldl3(node_to_var(Graph), FormalNodes, FormalRegionArgs,
-        !NameToVar, !VarSet, !VarTypes),
+    list.map_foldl2(node_to_var(Graph), FormalNodes, FormalRegionArgs,
+        !NameToVar, !VarTable),
 
     InMode = in_mode,
     OutMode = out_mode,
@@ -321,7 +320,7 @@ annotate_proc(ModuleInfo, PredInfo, Graph, FormalRegionArgProc,
             ++ OutModes ++ [LastHeadMode]
     ),
 
-    proc_info_set_varset_vartypes(!.VarSet, !.VarTypes, !ProcInfo),
+    proc_info_set_var_table(!.VarTable, !ProcInfo),
     proc_info_set_goal(!.Goal, !ProcInfo),
     proc_info_set_headvars(!.HeadVars, !ProcInfo),
     proc_info_set_argmodes(!.ActualArgModes, !ProcInfo).
@@ -343,13 +342,19 @@ annotate_proc(ModuleInfo, PredInfo, Graph, FormalRegionArgProc,
     pp_actual_region_args_table::in, region_instr_proc::in,
     rbmm_renaming_annotation_proc::in, rbmm_renaming_annotation_proc::in,
     hlds_goal::in, hlds_goal::out, name_to_prog_var::in, name_to_prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
         ActualRegionArgProc, RegionInstructionProc, ResurRenamingAnnoProc,
-        IteRenamingAnnoProc, !Goal, !NameToVar, !VarSet, !VarTypes) :-
+        IteRenamingAnnoProc, !Goal, !NameToVar, !VarTable) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     HasSubGoals = goal_expr_has_subgoals(GoalExpr0),
+    % XXX The switch on HasSubGoals should be replaced with a switch that
+    % enumerates the kinds of goal_exprs in each branch, so that the
+    % subcontractors of this predicate, region_transform_goal_expr and
+    % region_transform_compound_goal (the first of which should be renamed
+    % region_transform_atomic_goal) can each specify which goal_exprs
+    % they handle using the inst of their goal_expr arguments.
     (
         HasSubGoals = does_not_have_subgoals,
         ProgPoint = program_point_init(GoalInfo0),
@@ -362,11 +367,11 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
         % - a construction unification with a region to construct in.
         region_transform_goal_expr(ModuleInfo, Graph, ResurRenaming,
             IteRenaming, ActualRegionArgProc, ProgPoint, GoalExpr0, GoalExpr,
-            GoalInfo0, GoalInfo, !NameToVar, !VarSet, !VarTypes),
+            GoalInfo0, GoalInfo, !NameToVar, !VarTable),
 
         % Assignment unifications due to ite renaming.
         assignments_from_ite_renaming_anno(IteRenamingAnnoProc, ProgPoint,
-            !NameToVar, !VarSet, !VarTypes, [], IteRenamingAssignments),
+            !NameToVar, !VarTable, [], IteRenamingAssignments),
 
         % Region instructions before and after this program point.
         ( if
@@ -374,17 +379,17 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
                 instrs_before_after(Before, After))
         then
             % Region instructions before this program point.
-            list.foldl4(region_instruction_to_conj_before(ModuleInfo, Context,
+            list.foldl3(region_instruction_to_conj_before(ModuleInfo, Context,
                 ResurRenaming, IteRenaming), Before, !NameToVar,
-                !VarSet, !VarTypes, IteRenamingAssignments, Conjs1),
+                !VarTable, IteRenamingAssignments, Conjs1),
 
             % The goal at this program point itself.
             Conjs2 = Conjs1 ++ [hlds_goal(GoalExpr, GoalInfo)],
 
             % Region instructions after this program point.
-            list.foldl4(region_instruction_to_conj(ModuleInfo, Context,
+            list.foldl3(region_instruction_to_conj(ModuleInfo, Context,
                 ResurRenaming, IteRenaming), After, !NameToVar,
-                !VarSet, !VarTypes, Conjs2, Conjs3)
+                !VarTable, Conjs2, Conjs3)
         else
             % The goal at this program point itself.
             Conjs3 = IteRenamingAssignments ++ [hlds_goal(GoalExpr, GoalInfo)]
@@ -392,8 +397,7 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
 
         % Assignment unifications due to region resurrection renaming.
         assignments_from_resur_renaming_anno(ResurRenamingAnnoProc,
-            ProgPoint, IteRenaming, !NameToVar, !VarSet, !VarTypes,
-            Conjs3, Conjs),
+            ProgPoint, IteRenaming, !NameToVar, !VarTable, Conjs3, Conjs),
 
         ( if Conjs = [_, _ | _] then
             !:Goal = hlds_goal(conj(plain_conj, Conjs), GoalInfo)
@@ -405,87 +409,75 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
         region_transform_compound_goal(ModuleInfo, Graph,
             ResurRenamingProc, IteRenamingProc, ActualRegionArgProc,
             RegionInstructionProc, ResurRenamingAnnoProc,
-            IteRenamingAnnoProc, !Goal, !NameToVar, !VarSet, !VarTypes)
+            IteRenamingAnnoProc, !Goal, !NameToVar, !VarTable)
     ).
 
+    % Annotate goals with actual region arguments.
+    %
 :- pred region_transform_goal_expr(module_info::in, rpt_graph::in,
     rbmm_renaming::in, rbmm_renaming::in, pp_actual_region_args_table::in,
     program_point::in, hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out, name_to_prog_var::in,
-    name_to_prog_var::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+    name_to_prog_var::out, var_table::in, var_table::out) is det.
 
-    % Annotate procedure calls with actual region arguments.
-    %
 region_transform_goal_expr(ModuleInfo, Graph, ResurRenaming, IteRenaming,
         ActualRegionArgProc, ProgPoint, !GoalExpr, !GoalInfo,
-        !NameToVar, !VarSet, !VarTypes) :-
-    !.GoalExpr = plain_call(CalleePredId, CalleeProcId, Args0, Builtin,
-        Context, Name),
-    % XXX Callee may be a builtin or an imported procedure that we have
-    % not analysed, we just ignore such a call for now.
-    ( if map.search(ActualRegionArgProc, ProgPoint, ActualNodes0) then
-        ActualNodes = ActualNodes0
-    else
-        ActualNodes = region_args([], [], [])
-    ),
-    ActualNodes = region_args(Constants, Ins, Outs),
-    AllNodes = Constants ++ Ins ++ Outs,
-    list.map_foldl3(
-        node_to_var_with_both_renamings(Graph, ResurRenaming, IteRenaming),
-        AllNodes, ActualRegionArgs, !NameToVar, !VarSet, !VarTypes),
-    module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
-    CalleePredOrFunc = pred_info_is_pred_or_func(CalleePredInfo),
+        !NameToVar, !VarTable) :-
     (
-        CalleePredOrFunc = pf_predicate,
-        Args = Args0 ++ ActualRegionArgs
+        !.GoalExpr = plain_call(CalleePredId, CalleeProcId, Args0, Builtin,
+            Context, Name),
+        % XXX Callee may be a builtin or an imported procedure that we have
+        % not analysed, we just ignore such a call for now.
+        ( if map.search(ActualRegionArgProc, ProgPoint, ActualNodes0) then
+            ActualNodes = ActualNodes0
+        else
+            ActualNodes = region_args([], [], [])
+        ),
+        ActualNodes = region_args(Constants, Ins, Outs),
+        AllNodes = Constants ++ Ins ++ Outs,
+        list.map_foldl2(
+            node_to_var_with_both_renamings(Graph, ResurRenaming, IteRenaming),
+            AllNodes, ActualRegionArgs, !NameToVar, !VarTable),
+        module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
+        CalleePredOrFunc = pred_info_is_pred_or_func(CalleePredInfo),
+        (
+            CalleePredOrFunc = pf_predicate,
+            Args = Args0 ++ ActualRegionArgs
+        ;
+            CalleePredOrFunc = pf_function,
+            % The output of function is always at the last.
+            list.det_split_last(Args0, BeforeLast, Last),
+            Args = BeforeLast ++ ActualRegionArgs ++ [Last]
+        ),
+        !:GoalExpr = plain_call(CalleePredId, CalleeProcId, Args, Builtin,
+            Context, Name)
     ;
-        CalleePredOrFunc = pf_function,
-        % The output of function is always at the last.
-        list.det_split_last(Args0, BeforeLast, Last),
-        Args = BeforeLast ++ ActualRegionArgs ++ [Last]
-    ),
-
-    !:GoalExpr = plain_call(CalleePredId, CalleeProcId, Args, Builtin,
-        Context, Name).
-
-    % Annotate construction unifications with regions to construct in.
-    %
-region_transform_goal_expr(ModuleInfo, Graph, ResurRenaming, IteRenaming,
-        _, _, !GoalExpr, !GoalInfo, !NameToVar, !VarSet, !VarTypes) :-
-    !.GoalExpr = unify(LHS, RHS, Mode, Unification0, Context),
-    annotate_constructions_unification(ModuleInfo, Graph,
-        ResurRenaming, IteRenaming, Unification0, Unification,
-        !NameToVar, !VarSet, !VarTypes),
-    !:GoalExpr = unify(LHS, RHS, Mode, Unification, Context).
-
-region_transform_goal_expr(_, _, _, _, _, _, !GoalExpr, !GoalInfo, !NameToVar,
-        !VarSet, !VarTypes) :-
-    !.GoalExpr = generic_call(_, _, _, _, _),
-    sorry($pred, "generic call").
-
-region_transform_goal_expr(_, _, _, _, _, _, !GoalExpr, !GoalInfo, !NameToVar,
-        !VarSet, !VarTypes) :-
-    !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-    sorry($pred, "call_foreign_proc").
-
-region_transform_goal_expr(_, _, _, _, _, _, !GoalExpr, !GoalInfo, !NameToVar,
-        !VarSet, !VarTypes) :-
-    ( !.GoalExpr = conj(_, [])
-    ; !.GoalExpr = disj([])
+        !.GoalExpr = unify(LHS, RHS, Mode, Unification0, Context),
+        annotate_constructions_unification(ModuleInfo, Graph,
+            ResurRenaming, IteRenaming, Unification0, Unification,
+            !NameToVar, !VarTable),
+        !:GoalExpr = unify(LHS, RHS, Mode, Unification, Context)
+    ;
+        !.GoalExpr = generic_call(_, _, _, _, _),
+        sorry($pred, "generic call")
+    ;
+        !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
+        sorry($pred, "call_foreign_proc")
+    ;
+        ( !.GoalExpr = conj(_, [])
+        ; !.GoalExpr = disj([])
+        )
+    ;
+        ( !.GoalExpr = conj(_, [_ | _])
+        ; !.GoalExpr = disj([_ | _])
+        ; !.GoalExpr = if_then_else(_, _, _, _)
+        ; !.GoalExpr = negation(_)
+        ; !.GoalExpr = switch(_, _, _)
+        ; !.GoalExpr = scope(_, _)
+        ; !.GoalExpr = shorthand(_)
+        ),
+        unexpected($pred, "compound goal")
     ).
-
-region_transform_goal_expr(_, _, _, _, _, _, !GoalExpr, !GoalInfo, !NameToVar,
-        !VarSet, !VarTypes) :-
-    ( !.GoalExpr = conj(_, [_ | _])
-    ; !.GoalExpr = disj([_ | _])
-    ; !.GoalExpr = if_then_else(_, _, _, _)
-    ; !.GoalExpr = negation(_)
-    ; !.GoalExpr = switch(_, _, _)
-    ; !.GoalExpr = scope(_, _)
-    ; !.GoalExpr = shorthand(_)
-    ),
-    unexpected($pred, "compound goal").
 
     % Because an atomic goal is turned into a conjunction, we need to
     % flatten its compounding conjunction if it is in one.
@@ -494,45 +486,45 @@ region_transform_goal_expr(_, _, _, _, _, _, !GoalExpr, !GoalInfo, !NameToVar,
     pp_actual_region_args_table::in, region_instr_proc::in,
     rbmm_renaming_annotation_proc::in, rbmm_renaming_annotation_proc::in,
     hlds_goal::in, hlds_goal::out, name_to_prog_var::in, name_to_prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 region_transform_compound_goal(ModuleInfo, Graph,
         ResurRenamingProc, IteRenamingProc, ActualRegionArgProc,
         RegionInstructionProc, ResurRenamingAnnoProc, IteRenamingAnnoProc,
         hlds_goal(!.GoalExpr, !.GoalInfo), hlds_goal(!:GoalExpr, !:GoalInfo),
-        !NameToVar, !VarSet, !VarTypes) :-
+        !NameToVar, !VarTable) :-
     (
         !.GoalExpr = conj(ConjType, [Conj0 | Conjs0]),
-        list.map_foldl3(region_transform_goal(ModuleInfo, Graph,
+        list.map_foldl2(region_transform_goal(ModuleInfo, Graph,
             ResurRenamingProc, IteRenamingProc,
             ActualRegionArgProc, RegionInstructionProc,
             ResurRenamingAnnoProc, IteRenamingAnnoProc),
-            [Conj0 | Conjs0], Conjs1, !NameToVar, !VarSet, !VarTypes),
+            [Conj0 | Conjs0], Conjs1, !NameToVar, !VarTable),
         flatten_conj(Conjs1, Conjs),
         !:GoalExpr = conj(ConjType, Conjs)
     ;
         !.GoalExpr = disj([Disj0 | Disjs0]),
-        list.map_foldl3(region_transform_goal(ModuleInfo, Graph,
+        list.map_foldl2(region_transform_goal(ModuleInfo, Graph,
             ResurRenamingProc, IteRenamingProc,
             ActualRegionArgProc, RegionInstructionProc,
             ResurRenamingAnnoProc, IteRenamingAnnoProc),
-            [Disj0 | Disjs0], Disjs, !NameToVar, !VarSet, !VarTypes),
+            [Disj0 | Disjs0], Disjs, !NameToVar, !VarTable),
         !:GoalExpr = disj(Disjs)
     ;
         !.GoalExpr = switch(Var, CanFail, Cases0),
-        list.map_foldl3(region_transform_case(ModuleInfo, Graph,
+        list.map_foldl2(region_transform_case(ModuleInfo, Graph,
             ResurRenamingProc, IteRenamingProc,
             ActualRegionArgProc, RegionInstructionProc,
             ResurRenamingAnnoProc, IteRenamingAnnoProc,
             hlds_goal(!.GoalExpr, !.GoalInfo)),
-            Cases0, Cases, !NameToVar, !VarSet, !VarTypes),
+            Cases0, Cases, !NameToVar, !VarTable),
         !:GoalExpr = switch(Var, CanFail, Cases)
     ;
         !.GoalExpr = negation(Goal0),
         region_transform_goal(ModuleInfo, Graph, ResurRenamingProc,
             IteRenamingProc, ActualRegionArgProc, RegionInstructionProc,
             ResurRenamingAnnoProc, IteRenamingAnnoProc, Goal0, Goal,
-            !NameToVar, !VarSet, !VarTypes),
+            !NameToVar, !VarTable),
         !:GoalExpr = negation(Goal)
     ;
         !.GoalExpr = scope(Reason0, Goal0),
@@ -555,22 +547,22 @@ region_transform_compound_goal(ModuleInfo, Graph,
         region_transform_goal(ModuleInfo, Graph, ResurRenamingProc,
             IteRenamingProc, ActualRegionArgProc, RegionInstructionProc,
             ResurRenamingAnnoProc, IteRenamingAnnoProc, Goal0, Goal,
-            !NameToVar, !VarSet, !VarTypes),
+            !NameToVar, !VarTable),
         !:GoalExpr = scope(Reason, Goal)
     ;
         !.GoalExpr = if_then_else(Vars, Cond0, Then0, Else0),
         region_transform_goal(ModuleInfo, Graph, ResurRenamingProc,
             IteRenamingProc, ActualRegionArgProc, RegionInstructionProc,
             ResurRenamingAnnoProc, IteRenamingAnnoProc, Cond0, Cond,
-            !NameToVar, !VarSet, !VarTypes),
+            !NameToVar, !VarTable),
         region_transform_goal(ModuleInfo, Graph, ResurRenamingProc,
             IteRenamingProc, ActualRegionArgProc, RegionInstructionProc,
             ResurRenamingAnnoProc, IteRenamingAnnoProc, Then0, Then,
-            !NameToVar, !VarSet, !VarTypes),
+            !NameToVar, !VarTable),
         region_transform_goal(ModuleInfo, Graph, ResurRenamingProc,
             IteRenamingProc, ActualRegionArgProc, RegionInstructionProc,
             ResurRenamingAnnoProc, IteRenamingAnnoProc, Else0, Else,
-            !NameToVar, !VarSet, !VarTypes),
+            !NameToVar, !VarTable),
         !:GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         ( !.GoalExpr = shorthand(_)
@@ -593,10 +585,10 @@ region_transform_compound_goal(ModuleInfo, Graph,
 :- pred annotate_constructions_unification(module_info::in, rpt_graph::in,
     rbmm_renaming::in, rbmm_renaming::in, unification::in, unification::out,
     name_to_prog_var::in, name_to_prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 annotate_constructions_unification(ModuleInfo, Graph, ResurRenaming,
-        IteRenaming, !Unification, !NameToVar, !VarSet, !VarTypes) :-
+        IteRenaming, !Unification, !NameToVar, !VarTable) :-
     !.Unification = construct(Var, ConsId, Args, ArgModes, _HowToConstruct0,
         IsUnique, SubInfo),
     rptg_get_node_by_variable(Graph, Var, Node),
@@ -606,14 +598,13 @@ annotate_constructions_unification(ModuleInfo, Graph, ResurRenaming,
     else
         Name = rptg_lookup_region_name(Graph, Node),
         region_name_to_var_with_both_renamings(Name, ResurRenaming,
-            IteRenaming, RegVar, !NameToVar, !VarSet, !VarTypes),
+            IteRenaming, RegVar, !NameToVar, !VarTable),
         HowToConstruct = construct_in_region(RegVar),
         !:Unification = construct(Var, ConsId, Args, ArgModes,
             HowToConstruct, IsUnique, SubInfo)
     ).
-
-annotate_constructions_unification(_, _, _, _, !Unification, !VarSet,
-        !VarTypes, !NameToVar) :-
+annotate_constructions_unification(_, _, _, _, !Unification,
+        !VarTable, !NameToVar) :-
     (
         ( !.Unification = deconstruct(_, _, _, _, _, _)
         ; !.Unification = assign(_, _)
@@ -640,14 +631,14 @@ annotate_constructions_unification(_, _, _, _, !Unification, !VarSet,
     rbmm_renaming_annotation_proc::in, rbmm_renaming_annotation_proc::in,
     hlds_goal::in, case::in, case::out,
     name_to_prog_var::in, name_to_prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 region_transform_case(ModuleInfo, Graph, ResurRenamingProc,
         IteRenamingProc, ActualRegionArgProc, RegionInstructionProc,
         ResurRenamingAnnoProc, IteRenamingAnnoProc, Switch,
         case(MainConsId, OtherConsIds, !.Goal),
         case(MainConsId, OtherConsIds, !:Goal),
-        !NameToVar, !VarSet, !VarTypes) :-
+        !NameToVar, !VarTable) :-
     expect(unify(OtherConsIds, []), $pred, "NYI: multi-cons-id cases"),
     ( if
         ( MainConsId = cons(_, 0, _)
@@ -665,7 +656,7 @@ region_transform_case(ModuleInfo, Graph, ResurRenamingProc,
 
         % Assignment unifications due to ite renaming.
         assignments_from_ite_renaming_anno(IteRenamingAnnoProc, ProgPoint,
-            !NameToVar, !VarSet, !VarTypes, [], IteRenamingAssignments),
+            !NameToVar, !VarTable, [], IteRenamingAssignments),
 
         % Region instructions before and after this program point.
         ( if
@@ -673,24 +664,24 @@ region_transform_case(ModuleInfo, Graph, ResurRenamingProc,
                 instrs_before_after(Before, After))
         then
             % Region instructions before this program point.
-            list.foldl4(
+            list.foldl3(
                 region_instruction_to_conj_before(ModuleInfo, Context,
                     ResurRenaming, IteRenaming),
-                Before, !NameToVar, !VarSet, !VarTypes,
+                Before, !NameToVar, !VarTable,
                 IteRenamingAssignments, Conjs1),
 
             % Region instructions after this program point.
-            list.foldl4(
+            list.foldl3(
                 region_instruction_to_conj(ModuleInfo, Context, ResurRenaming,
                     IteRenaming),
-                After, !NameToVar, !VarSet, !VarTypes, Conjs1, Conjs2)
+                After, !NameToVar, !VarTable, Conjs1, Conjs2)
         else
             Conjs2 = IteRenamingAssignments
         ),
 
         % Assignment unifications due to region resurrection renaming.
         assignments_from_resur_renaming_anno(ResurRenamingAnnoProc, ProgPoint,
-            IteRenaming, !NameToVar, !VarSet, !VarTypes, Conjs2, Conjs),
+            IteRenaming, !NameToVar, !VarTable, Conjs2, Conjs),
 
         RemovedGoal = hlds_goal(conj(plain_conj, Conjs), Info)
     else
@@ -700,7 +691,7 @@ region_transform_case(ModuleInfo, Graph, ResurRenamingProc,
     region_transform_goal(ModuleInfo, Graph, ResurRenamingProc,
         IteRenamingProc, ActualRegionArgProc, RegionInstructionProc,
         ResurRenamingAnnoProc, IteRenamingAnnoProc, !Goal, !NameToVar,
-        !VarSet, !VarTypes),
+        !VarTable),
     flatten_conj([RemovedGoal, !.Goal], FlatConjs),
     Switch = hlds_goal(_, ConjsInfo),
     !:Goal = hlds_goal(conj(plain_conj, FlatConjs), ConjsInfo).
@@ -724,29 +715,29 @@ find_renamings_at_prog_point(ResurRenamingProc, IteRenamingProc, ProgPoint,
 
 :- pred assignments_from_ite_renaming_anno(rbmm_renaming_annotation_proc::in,
     program_point::in, name_to_prog_var::in, name_to_prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    hlds_goals::in, hlds_goals::out) is det.
+    var_table::in, var_table::out,
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 assignments_from_ite_renaming_anno(IteRenamingAnnoProc, ProgPoint,
-        !NameToVar, !VarSet, !VarTypes, !IteRenamingAssignments) :-
+        !NameToVar, !VarTable, !IteRenamingAssignments) :-
     % Assignment unifications due to ite renaming.
     ( if map.search(IteRenamingAnnoProc, ProgPoint, IteRenamingAnnos) then
-        list.foldl4(ite_renaming_annotation_to_assignment, IteRenamingAnnos,
-            !NameToVar, !VarSet, !VarTypes, !IteRenamingAssignments)
+        list.foldl3(ite_renaming_annotation_to_assignment, IteRenamingAnnos,
+            !NameToVar, !VarTable, !IteRenamingAssignments)
     else
         true
     ).
 
 :- pred assignments_from_resur_renaming_anno(rbmm_renaming_annotation_proc::in,
     program_point::in, rbmm_renaming::in, name_to_prog_var::in,
-    name_to_prog_var::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, hlds_goals::in, hlds_goals::out) is det.
+    name_to_prog_var::out, var_table::in, var_table::out,
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 assignments_from_resur_renaming_anno(ResurRenamingAnnoProc, ProgPoint,
-        IteRenaming, !NameToVar, !VarSet, !VarTypes, !Conjs) :-
+        IteRenaming, !NameToVar, !VarTable, !Conjs) :-
     ( if map.search(ResurRenamingAnnoProc, ProgPoint, ResurRenamingAnnos) then
-        list.foldl4(resur_renaming_annotation_to_assignment(IteRenaming),
-            ResurRenamingAnnos, !NameToVar, !VarSet, !VarTypes, !Conjs)
+        list.foldl3(resur_renaming_annotation_to_assignment(IteRenaming),
+            ResurRenamingAnnos, !NameToVar, !VarTable, !Conjs)
     else
         true
     ).
@@ -759,25 +750,25 @@ assignments_from_resur_renaming_anno(ResurRenamingAnnoProc, ProgPoint,
     %
 :- pred node_to_var(rpt_graph::in, rptg_node::in,
     prog_var::out, name_to_prog_var::in, name_to_prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
-node_to_var(Graph, Node, RegVar, !NameToVar, !VarSet, !VarTypes) :-
+node_to_var(Graph, Node, RegVar, !NameToVar, !VarTable) :-
     RegName = rptg_lookup_region_name(Graph, Node),
-    region_name_to_var(RegName, RegVar, !NameToVar, !VarSet, !VarTypes).
+    region_name_to_var(RegName, RegVar, !NameToVar, !VarTable).
 
     % Return the program variable representing the region name.
     % Come up with a new one if none exists.
     %
 :- pred region_name_to_var(string::in, prog_var::out,
     name_to_prog_var::in, name_to_prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
-region_name_to_var(Name, RegVar, !NameToVar, !VarSet, !VarTypes) :-
+region_name_to_var(Name, RegVar, !NameToVar, !VarTable) :-
     ( if map.search(!.NameToVar, Name, RegVar0) then
         RegVar = RegVar0
     else
-        varset.new_named_var(Name, RegVar, !VarSet),
-        add_var_type(RegVar, region_type, !VarTypes),
+        Entry = vte(Name, region_type, is_not_dummy_type),
+        add_var_entry(Entry, RegVar, !VarTable),
         map.det_insert(Name, RegVar, !NameToVar)
     ).
 
@@ -787,13 +778,13 @@ region_name_to_var(Name, RegVar, !NameToVar, !VarSet, !VarTypes) :-
 :- pred node_to_var_with_both_renamings(rpt_graph::in, rbmm_renaming::in,
     rbmm_renaming::in, rptg_node::in, prog_var::out,
     name_to_prog_var::in, name_to_prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 node_to_var_with_both_renamings(Graph, ResurRenaming, IteRenaming,
-        Node, RegVar, !NameToVar, !VarSet, !VarTypes) :-
+        Node, RegVar, !NameToVar, !VarTable) :-
     RegName = rptg_lookup_region_name(Graph, Node),
     region_name_to_var_with_both_renamings(RegName, ResurRenaming, IteRenaming,
-        RegVar, !NameToVar, !VarSet, !VarTypes).
+        RegVar, !NameToVar, !VarTable).
 
     % Resurrection renaming will be applied first. If a renaming exists
     % for the name (i.e., the name will be changed to another name) then
@@ -804,10 +795,10 @@ node_to_var_with_both_renamings(Graph, ResurRenaming, IteRenaming,
 :- pred region_name_to_var_with_both_renamings(string::in,
     rbmm_renaming::in, rbmm_renaming::in, prog_var::out,
     name_to_prog_var::in, name_to_prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 region_name_to_var_with_both_renamings(Name0, ResurRenaming, IteRenaming,
-        RegVar, !NameToVar, !VarSet, !VarTypes) :-
+        RegVar, !NameToVar, !VarTable) :-
     ( if map.search(ResurRenaming, Name0, ResurNameList) then
         list.det_last(ResurNameList, Name)
     else if map.search(IteRenaming, Name0, IteNameList) then
@@ -815,7 +806,7 @@ region_name_to_var_with_both_renamings(Name0, ResurRenaming, IteRenaming,
     else
         Name = Name0
     ),
-    region_name_to_var(Name, RegVar, !NameToVar, !VarSet, !VarTypes).
+    region_name_to_var(Name, RegVar, !NameToVar, !VarTable).
 
     % This predicate is the same as the above except that if more than one
     % renaming exist we will use the first one. This is for use *only* when
@@ -825,10 +816,10 @@ region_name_to_var_with_both_renamings(Name0, ResurRenaming, IteRenaming,
 :- pred region_name_to_var_with_both_renamings_before(string::in,
     rbmm_renaming::in, rbmm_renaming::in, prog_var::out,
     name_to_prog_var::in, name_to_prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 region_name_to_var_with_both_renamings_before(Name0, ResurRenaming,
-        IteRenaming, RegVar, !NameToVar, !VarSet, !VarTypes) :-
+        IteRenaming, RegVar, !NameToVar, !VarTable) :-
     ( if map.search(ResurRenaming, Name0, ResurNameList) then
         Name = list.det_index0(ResurNameList, 0)
     else if map.search(IteRenaming, Name0, IteNameList) then
@@ -836,23 +827,23 @@ region_name_to_var_with_both_renamings_before(Name0, ResurRenaming,
     else
         Name = Name0
     ),
-    region_name_to_var(Name, RegVar, !NameToVar, !VarSet, !VarTypes).
+    region_name_to_var(Name, RegVar, !NameToVar, !VarTable).
 
     % The same as region_name_to_var, but the region name here is
     % subjected to resurrection renaming in advance.
     %
 :- pred region_name_to_var_with_renaming(string::in, rbmm_renaming::in,
     prog_var::out, name_to_prog_var::in, name_to_prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 region_name_to_var_with_renaming(Name0, ResurRenaming, RegVar,
-        !NameToVar, !VarSet, !VarTypes) :-
+        !NameToVar, !VarTable) :-
     ( if map.search(ResurRenaming, Name0, ResurNameList) then
         Name = list.det_last(ResurNameList)
     else
         Name = Name0
     ),
-    region_name_to_var(Name, RegVar, !NameToVar, !VarSet, !VarTypes).
+    region_name_to_var(Name, RegVar, !NameToVar, !VarTable).
 
     % The region name in a region instruction is subjected to renaming due
     % to if-then-else and region resurrection. This predicate turns such an
@@ -863,15 +854,15 @@ region_name_to_var_with_renaming(Name0, ResurRenaming, RegVar,
 :- pred region_instruction_to_conj(module_info::in, term.context::in,
     rbmm_renaming::in, rbmm_renaming::in, region_instr::in,
     name_to_prog_var::in, name_to_prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    hlds_goals::in, hlds_goals::out) is det.
+    var_table::in, var_table::out,
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 region_instruction_to_conj(ModuleInfo, Context, ResurRenaming, IteRenaming,
-        RegionInstruction, !NameToVar, !VarSet, !VarTypes, Conjs0, Conjs) :-
+        RegionInstruction, !NameToVar, !VarTable, Conjs0, Conjs) :-
     (
         RegionInstruction = create_region(RegionName),
         region_name_to_var_with_both_renamings(RegionName, ResurRenaming,
-            IteRenaming, RegionVar, !NameToVar, !VarSet, !VarTypes),
+            IteRenaming, RegionVar, !NameToVar, !VarTable),
         generate_plain_call(ModuleInfo, pf_predicate,
             mercury_region_builtin_module, create_region_pred_name,
             [], [RegionVar], instmap_delta_bind_no_var, only_mode,
@@ -879,7 +870,7 @@ region_instruction_to_conj(ModuleInfo, Context, ResurRenaming, IteRenaming,
     ;
         RegionInstruction = remove_region(RegionName),
         region_name_to_var_with_both_renamings(RegionName, ResurRenaming,
-            IteRenaming, RegionVar, !NameToVar, !VarSet, !VarTypes),
+            IteRenaming, RegionVar, !NameToVar, !VarTable),
         generate_plain_call(ModuleInfo, pf_predicate,
             mercury_region_builtin_module, remove_region_pred_name,
             [], [RegionVar], instmap_delta_bind_no_var, only_mode,
@@ -895,17 +886,16 @@ region_instruction_to_conj(ModuleInfo, Context, ResurRenaming, IteRenaming,
     %
 :- pred region_instruction_to_conj_before(module_info::in, term.context::in,
     rbmm_renaming::in, rbmm_renaming::in, region_instr::in,
-    name_to_prog_var::in, name_to_prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    hlds_goals::in, hlds_goals::out) is det.
+    name_to_prog_var::in, name_to_prog_var::out, var_table::in, var_table::out,
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 region_instruction_to_conj_before(ModuleInfo, Context, ResurRenaming,
-        IteRenaming, RegionInstruction, !NameToVar, !VarSet, !VarTypes,
+        IteRenaming, RegionInstruction, !NameToVar, !VarTable,
         Conjs0, Conjs) :-
     (
         RegionInstruction = create_region(RegionName),
         region_name_to_var_with_both_renamings(RegionName, ResurRenaming,
-            IteRenaming, RegionVar, !NameToVar, !VarSet, !VarTypes),
+            IteRenaming, RegionVar, !NameToVar, !VarTable),
         generate_plain_call(ModuleInfo, pf_predicate,
             mercury_region_builtin_module, create_region_pred_name,
             [], [RegionVar], instmap_delta_bind_no_var, only_mode,
@@ -913,8 +903,7 @@ region_instruction_to_conj_before(ModuleInfo, Context, ResurRenaming,
     ;
         RegionInstruction = remove_region(RegionName),
         region_name_to_var_with_both_renamings_before(RegionName,
-            ResurRenaming, IteRenaming, RegionVar, !NameToVar, !VarSet,
-            !VarTypes),
+            ResurRenaming, IteRenaming, RegionVar, !NameToVar, !VarTable),
         generate_plain_call(ModuleInfo, pf_predicate,
             mercury_region_builtin_module, remove_region_pred_name,
             [], [RegionVar], instmap_delta_bind_no_var, only_mode,
@@ -934,11 +923,11 @@ region_instruction_to_conj_before(ModuleInfo, Context, ResurRenaming,
     %
 :- pred resur_renaming_annotation_to_assignment(rbmm_renaming::in,
     region_instr::in, name_to_prog_var::in, name_to_prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    hlds_goals::in, hlds_goals::out) is det.
+    var_table::in, var_table::out,
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 resur_renaming_annotation_to_assignment(IteRenaming, Annotation,
-        !NameToVar, !VarSet, !VarTypes, Conjs0, Conjs) :-
+        !NameToVar, !VarTable, Conjs0, Conjs) :-
     (
         ( Annotation = create_region(_)
         ; Annotation = remove_region(_)
@@ -949,8 +938,8 @@ resur_renaming_annotation_to_assignment(IteRenaming, Annotation,
         % Only the left region needs to be renamed. Ite renaming does not
         % involve the region on the right side.
         region_name_to_var_with_renaming(Left, IteRenaming, LeftRegVar,
-            !NameToVar, !VarSet, !VarTypes),
-        region_name_to_var(Right, RightRegVar, !NameToVar, !VarSet, !VarTypes),
+            !NameToVar, !VarTable),
+        region_name_to_var(Right, RightRegVar, !NameToVar, !VarTable),
         make_assignment_goal(LeftRegVar, RightRegVar,
             "resurrection renaming annotation", AssignmentGoal),
         Conjs = Conjs0 ++ [AssignmentGoal]
@@ -962,11 +951,11 @@ resur_renaming_annotation_to_assignment(IteRenaming, Annotation,
     %
 :- pred ite_renaming_annotation_to_assignment(region_instr::in,
     name_to_prog_var::in, name_to_prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    hlds_goals::in, hlds_goals::out) is det.
+    var_table::in, var_table::out,
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 ite_renaming_annotation_to_assignment(Annotation, !NameToVar,
-        !VarSet, !VarTypes, Conjs0, Conjs) :-
+        !VarTable, Conjs0, Conjs) :-
     (
         ( Annotation = create_region(_)
         ; Annotation = remove_region(_)
@@ -974,8 +963,8 @@ ite_renaming_annotation_to_assignment(Annotation, !NameToVar,
         unexpected($pred, "annotation is not assignment")
     ;
         Annotation = rename_region(Right, Left),
-        region_name_to_var(Left, LeftRegVar, !NameToVar, !VarSet, !VarTypes),
-        region_name_to_var(Right, RightRegVar, !NameToVar, !VarSet, !VarTypes),
+        region_name_to_var(Left, LeftRegVar, !NameToVar, !VarTable),
+        region_name_to_var(Right, RightRegVar, !NameToVar, !VarTable),
         make_assignment_goal(LeftRegVar, RightRegVar,
             "ite renaming annotation", AssignmentGoal),
         Conjs = Conjs0 ++ [AssignmentGoal]

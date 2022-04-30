@@ -44,7 +44,7 @@
     % the alpha mapping is empty and the rpt graph contains all the nodes
     % corresponding to all the variables appear in the procedure.
     %
-:- func rpta_info_init(proc_info) = rpta_info.
+:- func rpta_info_init(module_info, proc_info) = rpta_info.
 
 :- pred rpta_info_equal(rpta_info::in, rpta_info::in) is semidet.
 
@@ -68,7 +68,7 @@
 
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module int.
@@ -86,19 +86,19 @@ rpta_info_table_search_rpta_info(PredProcId, Table) = RptaInfo :-
 rpta_info_table_set_rpta_info(PredProcId, RptaInfo, !Table) :-
     !Table ^ elem(PredProcId) := RptaInfo.
 
-rpta_info_init(ProcInfo) = RptaInfo :-
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-    vartypes_vars(VarTypes, Vars),
-    list.foldl2(add_node_from_var(VarTypes), Vars, 1, _Reg,
+rpta_info_init(ModuleInfo, ProcInfo) = RptaInfo :-
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    var_table_vars(VarTable, Vars),
+    list.foldl2(add_node_from_var(VarTable), Vars, 1, _Reg,
         rpt_graph_init, Graph),
     map.init(AlphaMapping),
     RptaInfo = rpta_info(Graph, AlphaMapping).
 
-:- pred add_node_from_var(vartypes::in, prog_var::in, int::in,
+:- pred add_node_from_var(var_table::in, prog_var::in, int::in,
     int::out, rpt_graph::in, rpt_graph::out) is det.
 
-add_node_from_var(VarTypes, Var, Reg0, Reg, !Graph) :-
-    lookup_var_type(VarTypes, Var, NodeType),
+add_node_from_var(VarTable, Var, Reg0, Reg, !Graph) :-
+    lookup_var_type(VarTable, Var, NodeType),
     set.init(Varset0),
     set.insert(Var, Varset0, Varset),
     Reg = Reg0 + 1,
