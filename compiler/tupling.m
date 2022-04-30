@@ -139,7 +139,6 @@
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 
-:- import_module array.
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module counter.
@@ -918,9 +917,8 @@ prepare_proc_for_counting(PredProcId, !ReverseGoalPathMapMap, !ModuleInfo) :-
         body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
         globals.lookup_bool_option(Globals,
             opt_no_return_calls, OptNoReturnCalls),
-        array.init(1, is_not_dummy_type, DummyDummyTypeArray),
         AllocData = alloc_data(!.ModuleInfo, !.ProcInfo, PredProcId,
-            TypeInfoLiveness, OptNoReturnCalls, DummyDummyTypeArray),
+            no_var_is_dummy, TypeInfoLiveness, OptNoReturnCalls),
         fill_goal_id_slots_in_proc(!.ModuleInfo, ContainingGoalMap, !ProcInfo),
         ReverseGoalPathMap = create_reverse_goal_path_map(ContainingGoalMap),
         map.det_insert(PredProcId, ReverseGoalPathMap,

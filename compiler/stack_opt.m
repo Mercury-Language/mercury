@@ -122,7 +122,6 @@
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 
-:- import_module array.
 :- import_module bool.
 :- import_module counter.
 :- import_module int.
@@ -203,9 +202,8 @@ stack_opt_cell(PredProcId, !ProcInfo, !ModuleInfo) :-
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
     globals.lookup_bool_option(Globals, opt_no_return_calls,
         OptNoReturnCalls),
-    array.init(1, is_not_dummy_type, DummyDummyTypeArray),
     AllocData = alloc_data(!.ModuleInfo, !.ProcInfo, PredProcId,
-        TypeInfoLiveness, OptNoReturnCalls, DummyDummyTypeArray),
+        no_var_is_dummy, TypeInfoLiveness, OptNoReturnCalls),
     fill_goal_id_slots_in_proc(!.ModuleInfo, _, !ProcInfo),
     proc_info_get_goal(!.ProcInfo, Goal2),
     OptStackAlloc0 = init_opt_stack_alloc,

@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: hlds_rtti.m.
 % Main authors: Mark Brown.
@@ -12,7 +12,7 @@
 % This module defines the part of the HLDS that keeps track of information
 % relating to RTTI.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.hlds_rtti.
 :- interface.
@@ -25,6 +25,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 :- import_module parse_tree.vartypes.
 
 :- import_module array.
@@ -32,7 +33,7 @@
 :- import_module bool.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type prog_var_name == string.
 
@@ -96,7 +97,7 @@
 :- pred proc_label_pred_proc_id(rtti_proc_label::in,
     pred_id::out, proc_id::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Types and predicates to store information about RTTI.
 %
@@ -324,14 +325,18 @@
     % for accurate garbage collection - live variables need to have
     % their typeinfos stay live too.
     %
-:- pred get_typeinfo_vars(set_of_progvar::in, vartypes::in, rtti_varmaps::in,
-    set_of_progvar::out) is det.
+:- pred get_typeinfo_vars(vartypes::in, rtti_varmaps::in,
+    set_of_progvar::in, set_of_progvar::out) is det.
+:- pred get_typeinfo_vars_vt(var_table::in, rtti_varmaps::in,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
-:- pred maybe_complete_with_typeinfo_vars(set_of_progvar::in,
-    bool::in, vartypes::in, rtti_varmaps::in, set_of_progvar::out) is det.
+:- pred maybe_complete_with_typeinfo_vars(vartypes::in, rtti_varmaps::in,
+    bool::in, set_of_progvar::in, set_of_progvar::out) is det.
+:- pred maybe_complete_with_typeinfo_vars_vt(var_table::in, rtti_varmaps::in,
+    bool::in, set_of_progvar::in, set_of_progvar::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -348,7 +353,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
     module_info_get_name(ModuleInfo, ThisModule),
@@ -397,7 +402,7 @@ proc_label_pred_proc_id(RttiProcLabel, PredId, ProcId) :-
     PredId = RttiProcLabel ^ rpl_pred_id,
     ProcId = RttiProcLabel ^ rpl_proc_id.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 type_info_locn_var(type_info(Var), Var).
 type_info_locn_var(typeclass_info(Var, _), Var).
@@ -867,57 +872,106 @@ rtti_varmaps_overlay(VarMapsA, VarMapsB, VarMaps) :-
 
     VarMaps = rtti_varmaps(TCImap, TImap, TypeMap, ConstraintMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-get_typeinfo_vars(Vars, VarTypes, RttiVarMaps, TypeInfoVars) :-
+get_typeinfo_vars(VarTypes, RttiVarMaps, Vars, TypeInfoVars) :-
     TVarMap = RttiVarMaps ^ rv_ti_varmap,
     VarList = set_of_var.to_sorted_list(Vars),
-    get_typeinfo_vars_acc(VarList, VarTypes, TVarMap,
+    get_typeinfo_vars_acc(VarTypes, TVarMap, VarList,
         set_of_var.init, TypeInfoVars).
 
     % Auxiliary predicate - traverses variables and builds a list of
     % variables that store typeinfos for these variables.
     %
-:- pred get_typeinfo_vars_acc(list(prog_var)::in, vartypes::in,
-    type_info_varmap::in, set_of_progvar::in, set_of_progvar::out) is det.
+:- pred get_typeinfo_vars_acc(vartypes::in, type_info_varmap::in,
+    list(prog_var)::in, set_of_progvar::in, set_of_progvar::out) is det.
 
-get_typeinfo_vars_acc([], _, _, !TypeInfoVars).
-get_typeinfo_vars_acc([Var | Vars], VarTypes, TVarMap, !TypeInfoVars) :-
+get_typeinfo_vars_acc(_, _, [], !TypeInfoVars).
+get_typeinfo_vars_acc(VarTypes, TVarMap, [Var | Vars], !TypeInfoVars) :-
     lookup_var_type(VarTypes, Var, Type),
     type_vars_in_type(Type, TypeVars),
     (
-        TypeVars = [],
+        TypeVars = []
         % Optimize common case,
-        get_typeinfo_vars_acc(Vars, VarTypes, TVarMap, !TypeInfoVars)
     ;
         TypeVars = [_ | _],
         % XXX It is possible there are some complications with higher order
         % pred types here -- if so, maybe treat them specially.
-
         % The type_info is either stored in a variable, or in a
         % typeclass_info. Either get the type_info variable or
         % the typeclass_info variable.
-        LookupVar = (pred(TVar::in, TVarVar::out) is det :-
-            map.lookup(TVarMap, TVar, Locn),
-            type_info_locn_var(Locn, TVarVar)
-        ),
+        LookupVar =
+            ( pred(TVar::in, TVarVar::out) is det :-
+                map.lookup(TVarMap, TVar, Locn),
+                type_info_locn_var(Locn, TVarVar)
+            ),
         list.map(LookupVar, TypeVars, TypeInfoVarsHead),
+        set_of_var.insert_list(TypeInfoVarsHead, !TypeInfoVars)
+    ),
+    get_typeinfo_vars_acc(VarTypes, TVarMap, Vars, !TypeInfoVars).
 
-        set_of_var.insert_list(TypeInfoVarsHead, !TypeInfoVars),
-        get_typeinfo_vars_acc(Vars, VarTypes, TVarMap, !TypeInfoVars)
-    ).
+%---------------------%
 
-maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness, VarTypes,
-        RttiVarMaps, Vars) :-
+get_typeinfo_vars_vt(VarTable, RttiVarMaps, Vars, TypeInfoVars) :-
+    TVarMap = RttiVarMaps ^ rv_ti_varmap,
+    VarList = set_of_var.to_sorted_list(Vars),
+    get_typeinfo_vars_acc_vt(VarTable, TVarMap, VarList,
+        set_of_var.init, TypeInfoVars).
+
+    % Auxiliary predicate - traverses variables and builds a list of
+    % variables that store typeinfos for these variables.
+    %
+:- pred get_typeinfo_vars_acc_vt(var_table::in, type_info_varmap::in,
+    list(prog_var)::in, set_of_progvar::in, set_of_progvar::out) is det.
+
+get_typeinfo_vars_acc_vt(_, _, [], !TypeInfoVars).
+get_typeinfo_vars_acc_vt(VarTable, TVarMap, [Var | Vars], !TypeInfoVars) :-
+    lookup_var_type(VarTable, Var, Type),
+    type_vars_in_type(Type, TypeVars),
+    (
+        TypeVars = []
+        % Optimize common case,
+    ;
+        TypeVars = [_ | _],
+        % XXX It is possible there are some complications with higher order
+        % pred types here -- if so, maybe treat them specially.
+        % The type_info is either stored in a variable, or in a
+        % typeclass_info. Either get the type_info variable or
+        % the typeclass_info variable.
+        LookupVar =
+            ( pred(TVar::in, TVarVar::out) is det :-
+                map.lookup(TVarMap, TVar, Locn),
+                type_info_locn_var(Locn, TVarVar)
+            ),
+        list.map(LookupVar, TypeVars, TypeInfoVarsHead),
+        set_of_var.insert_list(TypeInfoVarsHead, !TypeInfoVars)
+    ),
+    get_typeinfo_vars_acc_vt(VarTable, TVarMap, Vars, !TypeInfoVars).
+
+%---------------------%
+
+maybe_complete_with_typeinfo_vars(VarTypes, RttiVarMaps, TypeInfoLiveness,
+        Vars0, Vars) :-
     (
         TypeInfoLiveness = yes,
-        get_typeinfo_vars(Vars0, VarTypes, RttiVarMaps, TypeInfoVars),
+        get_typeinfo_vars(VarTypes, RttiVarMaps, Vars0, TypeInfoVars),
         set_of_var.union(Vars0, TypeInfoVars, Vars)
     ;
         TypeInfoLiveness = no,
         Vars = Vars0
     ).
 
-%-----------------------------------------------------------------------------%
+maybe_complete_with_typeinfo_vars_vt(VarTable, RttiVarMaps, TypeInfoLiveness,
+        Vars0, Vars) :-
+    (
+        TypeInfoLiveness = yes,
+        get_typeinfo_vars_vt(VarTable, RttiVarMaps, Vars0, TypeInfoVars),
+        set_of_var.union(Vars0, TypeInfoVars, Vars)
+    ;
+        TypeInfoLiveness = no,
+        Vars = Vars0
+    ).
+
+%---------------------------------------------------------------------------%
 :- end_module hlds.hlds_rtti.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

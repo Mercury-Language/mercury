@@ -26,13 +26,12 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
-:- import_module hlds.hlds_module.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -48,26 +47,23 @@
 
 :- type var_locn_info.
 
-    % init_var_locn_state(ModuleInfo, Arguments, Liveness, VarSet, VarTypes,
-    %   FloatRegType, StackSlots, FollowVars, VarLocnInfo):
+    % init_var_locn_state(VarTable, FloatRegType, StackSlots, FollowVars,
+    %   Liveness, Arguments, VarLocnInfo):
     %
     % Produces an initial state of the VarLocnInfo given
     % an association list of variables and lvalues. The initial
     % state places the given variables at their corresponding
     % locations, with the exception of variables which are not in
     % Liveness (this corresponds to input arguments that are not
-    % used in the body). The VarSet parameter contains a mapping from
-    % variables to names, which is used when code is generated
-    % to provide meaningful comments. VarTypes gives the types of
-    % of all the procedure's variables. FloatRegType gives the preferred
-    % register type for floats. StackSlots maps each variable
-    % to its stack slot, if it has one. FollowVars is the initial
-    % follow_vars set; such sets give guidance as to what lvals
-    % (if any) each variable will be needed in next.
+    % used in the body). FloatRegType gives the preferred register type
+    % for floats. StackSlots maps each variable to its stack slot,
+    % if it has one. FollowVars is the initial follow_vars set; such sets
+    % give guidance as to what lvals (if any) each variable will be
+    % needed in next.
     %
-:- pred init_var_locn_state(module_info::in, assoc_list(prog_var, lval)::in,
-    set_of_progvar::in, prog_varset::in, vartypes::in, reg_type::in,
-    stack_slots::in, abs_follow_vars::in, var_locn_info::out) is det.
+:- pred init_var_locn_state(var_table::in, reg_type::in, stack_slots::in,
+    abs_follow_vars::in, set_of_progvar::in, assoc_list(prog_var, lval)::in,
+    var_locn_info::out) is det.
 
     % reinit_var_locn_state(VarLocs, !VarLocnInfo):
     %
@@ -496,8 +492,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.exprn_aux.
 :- import_module parse_tree.builtin_lib_types.
@@ -510,7 +504,6 @@
 :- import_module string.
 :- import_module term.
 :- import_module uint.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 %
@@ -584,17 +577,12 @@
 
 :- type loc_var_map ==  map(lval, set_of_progvar).
 
-:- type dummy_map == map(prog_var, is_dummy_type).
-
 :- type var_locn_info
     --->    var_locn_info(
-                % The varset and vartypes from the proc_info.
-                % XXX These fields are redundant; they are also stored
+                % The var_table from the proc_info.
+                % XXX This field is redundant; it is also stored
                 % in the code_info.
-                vli_varset          :: prog_varset,
-                vli_vartypes        :: vartypes,
-
-                vli_dummy_map       :: dummy_map,
+                vli_var_table       :: var_table,
 
                 % The register type to use for float vars.
                 vli_float_reg_type  :: reg_type,
@@ -633,8 +621,8 @@
 
 %---------------------------------------------------------------------------%
 
-init_var_locn_state(ModuleInfo, VarLocs, Liveness, VarSet, VarTypes,
-        FloatRegType, StackSlots, FollowVars, VarLocnInfo) :-
+init_var_locn_state(VarTable, FloatRegType, StackSlots, FollowVars, Liveness,
+        VarLocs, VarLocnInfo) :-
     map.init(VarStateMap0),
     map.init(LocVarMap0),
     init_var_locn_state_loop(VarLocs, Liveness,
@@ -642,22 +630,9 @@ init_var_locn_state(ModuleInfo, VarLocs, Liveness, VarSet, VarTypes,
     FollowVars = abs_follow_vars(FollowVarMap, NextNonReservedR,
         NextNonReservedF),
     set.init(AcquiredRegs),
-    vartypes_to_sorted_assoc_list(VarTypes, VarsTypes),
-    build_dummy_list(ModuleInfo, VarsTypes, [], RevDummyAssocList),
-    map.from_rev_sorted_assoc_list(RevDummyAssocList, DummyMap),
-    VarLocnInfo = var_locn_info(VarSet, VarTypes, DummyMap, FloatRegType,
-        StackSlots, FollowVarMap, NextNonReservedR, NextNonReservedF,
+    VarLocnInfo = var_locn_info(VarTable, FloatRegType, StackSlots,
+        FollowVarMap, NextNonReservedR, NextNonReservedF,
         VarStateMap, LocVarMap, AcquiredRegs, 0, 0, []).
-
-:- pred build_dummy_list(module_info::in, assoc_list(prog_var, mer_type)::in,
-    assoc_list(prog_var, is_dummy_type)::in,
-    assoc_list(prog_var, is_dummy_type)::out) is det.
-
-build_dummy_list(_, [], !RevDummyAssocList).
-build_dummy_list(ModuleInfo, [Var - Type | VarTypes], !RevDummyAssocList) :-
-    IsDummy = is_type_a_dummy(ModuleInfo, Type),
-    !:RevDummyAssocList = [Var - IsDummy | !.RevDummyAssocList],
-    build_dummy_list(ModuleInfo, VarTypes, !RevDummyAssocList).
 
 :- pred init_var_locn_state_loop(assoc_list(prog_var, lval)::in,
     set_of_progvar::in, var_state_map::in, var_state_map::out,
@@ -686,11 +661,11 @@ reinit_var_locn_state(VarLocs, !VarLocnInfo) :-
     reinit_var_locn_state_loop(VarLocs,
         VarStateMap0, VarStateMap, LocVarMap0, LocVarMap),
     set.init(AcquiredRegs),
-    !.VarLocnInfo = var_locn_info(VarSet, VarTypes, DummyMap, FloatRegType,
-        StackSlots, FollowVarMap, NextNonReservedR, NextNonReservedF,
+    !.VarLocnInfo = var_locn_info(VarTable, FloatRegType, StackSlots,
+        FollowVarMap, NextNonReservedR, NextNonReservedF,
         _, _, _, _, _, _),
-    !:VarLocnInfo = var_locn_info(VarSet, VarTypes, DummyMap, FloatRegType,
-        StackSlots, FollowVarMap, NextNonReservedR, NextNonReservedF,
+    !:VarLocnInfo = var_locn_info(VarTable, FloatRegType, StackSlots,
+        FollowVarMap, NextNonReservedR, NextNonReservedF,
         VarStateMap, LocVarMap, AcquiredRegs, 0, 0, []).
 
 :- pred reinit_var_locn_state_loop(assoc_list(prog_var, lval)::in,
@@ -722,9 +697,7 @@ add_var_locn_state(Var, Lval, !VarStateMap, !LocVarMap) :-
 % Getter and setter predicates for var_locn_infos.
 %
 
-:- pred var_locn_get_varset(var_locn_info::in, prog_varset::out) is det.
-:- pred var_locn_get_vartypes(var_locn_info::in, vartypes::out) is det.
-:- pred var_locn_get_dummy_map(var_locn_info::in, dummy_map::out) is det.
+:- pred var_locn_get_var_table(var_locn_info::in, var_table::out) is det.
 :- pred var_locn_get_float_reg_type(var_locn_info::in, reg_type::out) is det.
 :- pred var_locn_get_var_state_map(var_locn_info::in, var_state_map::out)
     is det.
@@ -749,9 +722,7 @@ add_var_locn_state(Var, Lval, !VarStateMap, !LocVarMap) :-
 :- pred var_locn_set_exceptions(assoc_list(prog_var, lval)::in,
     var_locn_info::in, var_locn_info::out) is det.
 
-var_locn_get_varset(VI, VI ^ vli_varset).
-var_locn_get_vartypes(VI, VI ^ vli_vartypes).
-var_locn_get_dummy_map(VI, VI ^ vli_dummy_map).
+var_locn_get_var_table(VI, VI ^ vli_var_table).
 var_locn_get_float_reg_type(VI, VI ^ vli_float_reg_type).
 var_locn_get_stack_slots(VI, VI ^ vli_stack_slots).
 var_locn_get_follow_var_map(VI, VI ^ vli_follow_vars_map).
@@ -862,8 +833,9 @@ var_locn_assign_var_to_var(Var, OldVar, !VLI) :-
         make_var_depend_on_lvals_roots(Var, Lvals, LocVarMap0, LocVarMap),
         var_locn_set_loc_var_map(LocVarMap, !VLI)
     else
-        var_locn_get_dummy_map(!.VLI, DummyMap),
-        map.lookup(DummyMap, OldVar, OldVarIsDummy),
+        var_locn_get_var_table(!.VLI, VarTable),
+        lookup_var_entry(VarTable, OldVar, OldVarEntry),
+        OldVarEntry = vte(_N, _T, OldVarIsDummy),
         expect(unify(OldVarIsDummy, is_dummy_type), $pred,
             "assigning value of nondummy variable without a state")
     ).
@@ -1353,13 +1325,14 @@ assign_cell_arg(Rval0, Ptag, Base, Offset, Code, !VLI) :-
     (
         Rval0 = var(Var),
         materialize_if_var(Rval0, EvalCode, Rval, !VLI),
-        var_locn_get_dummy_map(!.VLI, DummyMap),
-        map.lookup(DummyMap, Var, IsDummy),
+        var_locn_get_var_table(!.VLI, VarTable),
+        lookup_var_entry(VarTable, Var, VarEntry),
+        VarEntry = vte(_N, _T, VarIsDummy),
         (
-            IsDummy = is_dummy_type,
+            VarIsDummy = is_dummy_type,
             AssignCode = empty
         ;
-            IsDummy = is_not_dummy_type,
+            VarIsDummy = is_not_dummy_type,
             add_additional_lval_for_var(Var, Target, !VLI),
             get_var_name(!.VLI, Var, VarName),
             Comment = "assigning from " ++ VarName,
@@ -1689,8 +1662,8 @@ reg_type_for_var(VLI, Var, RegType) :-
         RegType = reg_r
     ;
         FloatRegType = reg_f,
-        var_locn_get_vartypes(VLI, VarTypes),
-        lookup_var_type(VarTypes, Var, VarType),
+        var_locn_get_var_table(VLI, VarTable),
+        lookup_var_type(VarTable, Var, VarType),
         ( if VarType = float_type then
             RegType = reg_f
         else
@@ -1785,13 +1758,14 @@ actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
                     string.format("Placing %s (depth %d)",
                         [s(VarName), i(list.length(ForbiddenLvals))], Msg)
                 ),
-                var_locn_get_dummy_map(!.VLI, DummyMap),
-                map.lookup(DummyMap, Var, IsDummy),
+                var_locn_get_var_table(!.VLI, VarTable),
+                lookup_var_entry(VarTable, Var, VarEntry),
+                VarEntry = vte(_N, _T, VarIsDummy),
                 (
-                    IsDummy = is_dummy_type,
+                    VarIsDummy = is_dummy_type,
                     AssignCode = empty
                 ;
-                    IsDummy = is_not_dummy_type,
+                    VarIsDummy = is_not_dummy_type,
                     AssignCode = singleton(
                         llds_instr(assign(Target, Rval), Msg))
                 )
@@ -1799,12 +1773,13 @@ actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
             Code = FreeCode ++ EvalCode ++ AssignCode
         )
     else
-        var_locn_get_dummy_map(!.VLI, DummyMap),
-        map.lookup(DummyMap, Var, IsDummy),
+        var_locn_get_var_table(!.VLI, VarTable),
+        lookup_var_entry(VarTable, Var, VarEntry),
+        VarEntry = vte(_N, _T, VarIsDummy),
         (
-            IsDummy = is_dummy_type
+            VarIsDummy = is_dummy_type
         ;
-            IsDummy = is_not_dummy_type,
+            VarIsDummy = is_not_dummy_type,
             unexpected($pred, "placing nondummy var " ++
                 string.int_to_string(var_to_int(Var)) ++
                 " which has no state")
@@ -2390,23 +2365,22 @@ var_locn_save_cell_fields_2(ReuseLval, DepVar, SaveDepVarCode, !Regs, !VLI) :-
         materialize_var_general(DepVar, no, do_not_store_var, [],
             DepVarRval, EvalCode, !VLI)
     ),
-    var_locn_get_dummy_map(!.VLI, DummyMap),
-    map.lookup(DummyMap, DepVar, IsDummy),
+    var_locn_get_var_table(!.VLI, VarTable),
+    lookup_var_entry(VarTable, DepVar, DepVarEntry),
+    DepVarEntry = vte(_N, DepVarType, DepVarIsDummy),
     (
-        IsDummy = is_dummy_type,
+        DepVarIsDummy = is_dummy_type,
         AssignCode = empty
     ;
-        IsDummy = is_not_dummy_type,
+        DepVarIsDummy = is_not_dummy_type,
         ( if
             rval_depends_on_search_lval(DepVarRval,
                 specific_reg_or_stack(ReuseLval))
         then
-            var_locn_get_vartypes(!.VLI, VarTypes),
-            lookup_var_type(VarTypes, DepVar, DepVarType),
             reg_type_for_type(!.VLI, DepVarType, RegType),
             var_locn_acquire_reg(RegType, Target, !VLI),
             add_additional_lval_for_var(DepVar, Target, !VLI),
-            get_var_name(!.VLI, DepVar, DepVarName),
+            DepVarName = var_entry_name(DepVar, DepVarEntry),
             AssignCode = singleton(
                 llds_instr(assign(Target, DepVarRval),
                     "saving " ++ DepVarName)
@@ -2603,10 +2577,11 @@ var_locn_var_becomes_dead(Var, FirstTime, !VLI) :-
             var_locn_set_var_state_map(VarStateMap, !VLI)
         )
     else
-        var_locn_get_dummy_map(!.VLI, DummyMap),
-        map.lookup(DummyMap, Var, IsDummy),
+        var_locn_get_var_table(!.VLI, VarTable),
+        lookup_var_entry(VarTable, Var, VarEntry),
+        VarEntry = vte(_N, _T, VarIsDummy),
         ( if
-            ( IsDummy = is_dummy_type
+            ( VarIsDummy = is_dummy_type
             ; FirstTime = no
             )
         then
@@ -3056,8 +3031,8 @@ lval_depends_on_search_lval(Lval, SearchLval) :-
 :- pred get_var_name(var_locn_info::in, prog_var::in, string::out) is det.
 
 get_var_name(VLI, Var, Name) :-
-    var_locn_get_varset(VLI, VarSet),
-    varset.lookup_name(VarSet, Var, Name).
+    var_locn_get_var_table(VLI, VarTable),
+    Name = var_table_entry_name(VarTable, Var).
 
 %---------------------------------------------------------------------------%
 

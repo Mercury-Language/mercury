@@ -29,37 +29,25 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
-:- import_module array.
 :- import_module bool.
-:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
-:- pred build_dummy_type_array(module_info::in, vartypes::in,
-    array(is_dummy_type)::out, list(prog_var)::out) is det.
-
-%-----------------------------------------------------------------------------%
+:- type dummy_var_info
+    --->    no_var_is_dummy
+    ;       some_var_may_be_dummy(var_table).
 
 :- type alloc_data
     --->    alloc_data(
                 ad_module_info          ::  module_info,
                 ad_proc_info            ::  proc_info,
                 ad_pred_proc_id         ::  pred_proc_id,
+                ad_dummy_var_info       ::  dummy_var_info,
                 ad_typeinfo_liveness    ::  bool,
-                ad_opt_no_return_calls  ::  bool,
-
-                % We want to remove variables of dummy types from the live sets
-                % we generate. The array is indexed by variable number: each
-                % slot says whether the corresponding variable is of a dummy
-                % type or not.
-                %
-                % The array may itself be a dummy if the operations of the
-                % stack_alloc_info type class do not need it.
-                ad_dummy_var_array      ::  array(is_dummy_type)
+                ad_opt_no_return_calls  ::  bool
             ).
 
 :- typeclass stack_alloc_info(T) where [
@@ -83,8 +71,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_form.
@@ -92,50 +78,9 @@
 :- import_module hlds.instmap.
 :- import_module parse_tree.prog_data_foreign.
 
-:- import_module assoc_list.
-:- import_module enum.
-:- import_module int.
+:- import_module list.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
-
-%-----------------------------------------------------------------------------%
-
-build_dummy_type_array(ModuleInfo, VarTypes, DummyTypeArray, DummyVars) :-
-    vartypes_to_sorted_assoc_list(VarTypes, VarsTypes),
-    list.foldl(max_var_num, VarsTypes, 0, MaxVarNum),
-    % We want to index the array with variable numbers, which will be from
-    % 1 to MaxVarNum.
-    array.init(MaxVarNum + 1, is_not_dummy_type, DummyTypeArray0),
-    set_dummy_array_elements(ModuleInfo, VarsTypes,
-        DummyTypeArray0, DummyTypeArray, [], DummyVars).
-
-:- pred max_var_num(pair(prog_var, mer_type)::in, int::in, int::out) is det.
-
-max_var_num(Var - _Type, !MaxVarNum) :-
-    VarNum = to_int(Var),
-    int.max(VarNum, !MaxVarNum).
-
-:- pred set_dummy_array_elements(module_info::in,
-    assoc_list(prog_var, mer_type)::in,
-    array(is_dummy_type)::array_di, array(is_dummy_type)::array_uo,
-    list(prog_var)::in, list(prog_var)::out) is det.
-
-set_dummy_array_elements(_, [], !DummyTypeArray, !DummyVars).
-set_dummy_array_elements(ModuleInfo, [VarType | VarsTypes],
-        !DummyTypeArray, !DummyVars) :-
-    VarType = Var - Type,
-    IsDummyType = is_type_a_dummy(ModuleInfo, Type),
-    (
-        IsDummyType = is_dummy_type,
-        array.set(to_int(Var), IsDummyType, !DummyTypeArray),
-        !:DummyVars = [Var | !.DummyVars]
-    ;
-        IsDummyType = is_not_dummy_type
-        % This is the default; the array slot already has the right value.
-    ),
-    set_dummy_array_elements(ModuleInfo, VarsTypes,
-        !DummyTypeArray, !DummyVars).
 
 %-----------------------------------------------------------------------------%
 
@@ -475,10 +420,10 @@ build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             ; GenericCall = class_method(_, _, _, _)
             ; GenericCall = event_call(_)
             ),
-            ProcInfo = AllocData ^ ad_proc_info,
-            proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-            lookup_var_types(VarTypes, ArgVars, Types),
             ModuleInfo = AllocData ^ ad_module_info,
+            ProcInfo = AllocData ^ ad_proc_info,
+            proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+            lookup_var_types(VarTable, ArgVars, Types),
             arg_info.partition_generic_call_args(ModuleInfo, ArgVars,
                 Types, Modes, _InVars, OutVars, _UnusedVars),
             build_live_sets_in_call(set_to_bitset(OutVars),
@@ -490,9 +435,9 @@ build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         GoalExpr = GoalExpr0,
         ModuleInfo = AllocData ^ ad_module_info,
         CallerProcInfo = AllocData ^ ad_proc_info,
-        proc_info_get_varset_vartypes(CallerProcInfo, _VarSet, VarTypes),
+        proc_info_get_var_table(ModuleInfo, CallerProcInfo, VarTable),
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-        arg_info.partition_proc_call_args(ModuleInfo, ProcInfo, VarTypes,
+        arg_info.partition_proc_call_args_table(ModuleInfo, ProcInfo, VarTable,
             ArgVars, _InVars, OutVars, _UnusedVars),
         (
             Builtin = inline_builtin,
@@ -542,10 +487,10 @@ build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         GoalExpr = GoalExpr0,
         ModuleInfo = AllocData ^ ad_module_info,
         CallerProcInfo = AllocData ^ ad_proc_info,
-        proc_info_get_varset_vartypes(CallerProcInfo, _VarSet, VarTypes),
+        proc_info_get_var_table(ModuleInfo, CallerProcInfo, VarTable),
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
         ArgVars = list.map(foreign_arg_var, Args),
-        arg_info.partition_proc_call_args(ModuleInfo, ProcInfo, VarTypes,
+        arg_info.partition_proc_call_args_table(ModuleInfo, ProcInfo, VarTable,
             ArgVars, _InVars, OutVars, _UnusedVars),
         CodeModel = goal_info_get_code_model(GoalInfo0),
         ( if
@@ -594,9 +539,7 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
 
     % Might need to add more live variables with typeinfo liveness
     % calculation.
-
-    maybe_add_typeinfo_liveness(AllocData ^ ad_proc_info,
-        AllocData ^ ad_typeinfo_liveness, OutVars, ForwardVars0, ForwardVars),
+    maybe_add_typeinfo_liveness(AllocData, OutVars, ForwardVars0, ForwardVars),
 
     Detism = goal_info_get_determinism(GoalInfo0),
     ( if
@@ -768,16 +711,20 @@ build_live_sets_in_cases([Case0 | Cases0], [Case | Cases],
     % Make sure you get the output vars first, and the live vars second,
     % since this makes a significant difference to the output set of vars.
     %
-:- pred maybe_add_typeinfo_liveness(proc_info::in, bool::in,
-    set_of_progvar::in, set_of_progvar::in, set_of_progvar::out) is det.
+:- pred maybe_add_typeinfo_liveness(alloc_data::in, set_of_progvar::in,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
-maybe_add_typeinfo_liveness(ProcInfo, TypeInfoLiveness, OutVars, !LiveVars) :-
+maybe_add_typeinfo_liveness(AllocData, OutVars, !LiveVars) :-
+    TypeInfoLiveness = AllocData ^ ad_typeinfo_liveness,
     (
         TypeInfoLiveness = yes,
-        proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
+        ModuleInfo = AllocData ^ ad_module_info,
+        ProcInfo = AllocData ^ ad_proc_info,
+        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
         proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
-        get_typeinfo_vars(!.LiveVars, VarTypes, RttiVarMaps, TypeInfoVarsLive),
-        get_typeinfo_vars(OutVars, VarTypes, RttiVarMaps, TypeInfoVarsOut),
+        get_typeinfo_vars_vt(VarTable, RttiVarMaps, !.LiveVars,
+            TypeInfoVarsLive),
+        get_typeinfo_vars_vt(VarTable, RttiVarMaps, OutVars, TypeInfoVarsOut),
         set_of_var.union(!.LiveVars, TypeInfoVarsOut, !:LiveVars),
         set_of_var.union(!.LiveVars, TypeInfoVarsLive, !:LiveVars)
     ;

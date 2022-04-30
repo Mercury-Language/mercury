@@ -62,7 +62,7 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -84,7 +84,7 @@ allocate_store_maps(RunType, ModuleInfo, proc(PredId, _), !ProcInfo) :-
 
         find_final_follow_vars(!.ProcInfo, FollowVarsMap0, NextNonReservedR0,
             NextNonReservedF0),
-        find_follow_vars_in_goal(Goal0, Goal1, VarTypes, ModuleInfo,
+        find_follow_vars_in_goal(ModuleInfo, VarTable, Goal0, Goal1,
             FollowVarsMap0, FollowVarsMap, NextNonReservedR0, NextNonReservedR,
             NextNonReservedF0, NextNonReservedF),
         Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
@@ -111,7 +111,7 @@ allocate_store_maps(RunType, ModuleInfo, proc(PredId, _), !ProcInfo) :-
     build_input_arg_list(!.ProcInfo, InputArgLvals),
     LastLocns0 = initial_last_locns(InputArgLvals),
     proc_info_get_stack_slots(!.ProcInfo, StackSlots),
-    proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
     globals.lookup_bool_option(Globals, use_float_registers, FloatRegs),
     (
         FloatRegs = yes,
@@ -120,7 +120,7 @@ allocate_store_maps(RunType, ModuleInfo, proc(PredId, _), !ProcInfo) :-
         FloatRegs = no,
         FloatRegType = reg_r
     ),
-    StoreAllocInfo = store_alloc_info(StackSlots, VarTypes, FloatRegType),
+    StoreAllocInfo = store_alloc_info(StackSlots, VarTable, FloatRegType),
     store_alloc_in_goal(Goal2, Goal, Liveness0, _, LastLocns0, _,
         ResumeVars, StoreAllocInfo),
     proc_info_set_goal(Goal, !ProcInfo).
@@ -138,13 +138,13 @@ initial_last_locns([Var - Lval | VarLvals]) =
     --->    store_alloc_info(
                 % Maps each var to its stack slot (if it has one).
                 sai_stack_slots     :: stack_slots,
-                sai_vartypes        :: vartypes,
+                sai_var_table       :: var_table,
                 sai_float_reg       :: reg_type
             ).
 
-:- type where_stored    == set(lval).   % These lvals may contain var() rvals.
+:- type where_stored == set(lval).   % These lvals may contain var() rvals.
 
-:- type last_locns  == map(prog_var, where_stored).
+:- type last_locns == map(prog_var, where_stored).
 
 :- pred store_alloc_in_goal(hlds_goal::in, hlds_goal::out,
     set_of_progvar::in, set_of_progvar::out, last_locns::in, last_locns::out,
@@ -496,13 +496,13 @@ store_alloc_allocate_extras(StoreAllocInfo, [Var | Vars], !.N, !.SeenLocns,
     is det.
 
 reg_type_for_var(StoreAllocInfo, Var, RegType) :-
-    StoreAllocInfo = store_alloc_info(_, VarTypes, FloatRegType),
+    StoreAllocInfo = store_alloc_info(_, VarTable, FloatRegType),
     (
         FloatRegType = reg_r,
         RegType = reg_r
     ;
         FloatRegType = reg_f,
-        lookup_var_type(VarTypes, Var, VarType),
+        lookup_var_type(VarTable, Var, VarType),
         ( if VarType = float_type then
             RegType = reg_f
         else

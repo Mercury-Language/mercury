@@ -54,11 +54,10 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
-:- import_module array.
+:- import_module assoc_list.
 :- import_module bool.
-:- import_module enum.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -86,10 +85,9 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, ProcId), !ProcInfo) :-
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
     globals.lookup_bool_option(Globals, opt_no_return_calls,
         OptNoReturnCalls),
-    proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
-    build_dummy_type_array(ModuleInfo, VarTypes, DummyTypeArray, DummyVars),
+    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
     AllocData = alloc_data(ModuleInfo, !.ProcInfo, proc(PredId, ProcId),
-        TypeInfoLiveness, OptNoReturnCalls, DummyTypeArray),
+        some_var_may_be_dummy(VarTable), TypeInfoLiveness, OptNoReturnCalls),
     NondetLiveness0 = set_of_var.init,
     SimpleStackAlloc0 = stack_alloc(set.make_singleton_set(FailVars)),
     proc_info_get_goal(!.ProcInfo, Goal0),
@@ -115,9 +113,10 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, ProcId), !ProcInfo) :-
 
     CodeModel = proc_info_interface_code_model(!.ProcInfo),
     MainStack = code_model_to_main_stack(CodeModel),
-    allocate_stack_slots(Globals, VarTypes, MainStack, NumReservedSlots,
+    allocate_stack_slots(Globals, VarTable, MainStack, NumReservedSlots,
         MaybeReservedVarInfo, ColourList, StackSlots1),
-    allocate_dummy_stack_slots(MainStack, DummyVars, -1,
+    var_table_to_sorted_assoc_list(VarTable, VarTableAL),
+    allocate_stack_slots_for_dummy_vars(MainStack, VarTableAL, -1,
         StackSlots1, StackSlots),
     proc_info_set_stack_slots(StackSlots, !ProcInfo).
 
@@ -200,27 +199,32 @@ set_for_loop_control(AllocData, Set0, !StackAlloc) :-
     set_of_progvar::in, set_of_progvar::out) is det.
 
 filter_out_dummy_vars(AllocData, Vars, NonDummyVars) :-
-    DummyVarArray = AllocData ^ ad_dummy_var_array,
-    set_of_var.filter(var_is_not_dummy(DummyVarArray), Vars, NonDummyVars).
+    DummyVarInfo = AllocData ^ ad_dummy_var_info,
+    (
+        DummyVarInfo = no_var_is_dummy,
+        NonDummyVars = Vars
+    ;
+        DummyVarInfo = some_var_may_be_dummy(VarTable),
+        set_of_var.filter(var_is_not_dummy(VarTable), Vars, NonDummyVars)
+    ).
 
-:- pred var_is_not_dummy(array(is_dummy_type)::in, prog_var::in) is semidet.
+:- pred var_is_not_dummy(var_table::in, prog_var::in) is semidet.
 
-var_is_not_dummy(DummyVarArray, Var) :-
-    VarNum = to_int(Var),
-    array.lookup(DummyVarArray, VarNum, IsDummy),
-    IsDummy = is_not_dummy_type.
+var_is_not_dummy(VarTable, Var) :-
+    lookup_var_entry(VarTable, Var, VarEntry),
+    VarEntry ^ vte_is_dummy = is_not_dummy_type.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred allocate_stack_slots(globals::in, vartypes::in,
+:- pred allocate_stack_slots(globals::in, var_table::in,
     main_stack::in, int::in, maybe(pair(prog_var, int))::in,
     list(set_of_progvar)::in, stack_slots::out) is det.
 
-allocate_stack_slots(Globals, VarTypes, MainStack, NumReservedSlots,
+allocate_stack_slots(Globals, VarTable, MainStack, NumReservedSlots,
         MaybeReservedVarInfo, Colours, StackSlots) :-
     ( if float_width_on_stack(Globals, MainStack) = double_width then
-        MaybeDoubleWidthFloats = yes(VarTypes)
+        MaybeDoubleWidthFloats = yes(VarTable)
     else
         MaybeDoubleWidthFloats = no
     ),
@@ -230,7 +234,7 @@ allocate_stack_slots(Globals, VarTypes, MainStack, NumReservedSlots,
     allocate_stack_slots_to_colours(MainStack, MaybeDoubleWidthFloats,
         MaybeReservedVarInfo, Colours, FirstFreeSlot, map.init, StackSlots).
 
-:- pred allocate_stack_slots_to_colours(main_stack::in, maybe(vartypes)::in,
+:- pred allocate_stack_slots_to_colours(main_stack::in, maybe(var_table)::in,
     maybe(pair(prog_var, int))::in, list(set_of_progvar)::in,
     int::in, stack_slots::in, stack_slots::out) is det.
 
@@ -243,7 +247,7 @@ allocate_stack_slots_to_colours(MainStack, MaybeDoubleWidthFloats,
     allocate_stack_slots_to_colours(MainStack, MaybeDoubleWidthFloats,
         MaybeReservedVarInfo, LaterColours, !.FirstFreeSlot, !StackSlots).
 
-:- pred allocate_stack_slots_to_colour(main_stack::in, maybe(vartypes)::in,
+:- pred allocate_stack_slots_to_colour(main_stack::in, maybe(var_table)::in,
     maybe(pair(prog_var, int))::in, set_of_progvar::in,
     int::in, int::out, stack_slots::in, stack_slots::out) is det.
 
@@ -255,13 +259,13 @@ allocate_stack_slots_to_colour(MainStack, MaybeDoubleWidthFloats,
         allocate_next_stack_slot(MainStack, single_width,
             MaybeReservedVarInfo, ColourVars, !FirstFreeSlot, !StackSlots)
     ;
-        MaybeDoubleWidthFloats = yes(VarTypes),
+        MaybeDoubleWidthFloats = yes(VarTable),
         % XXX We do NOT currently allow single-width vars to overlap with
         % double-width vars, because the code generator does not understand
         % that clobbering one slot in a pair destroys any double_width values
         % in that slot pair, even if its officially-recorded slot number
         % is the number of the *other* slot.
-        set_of_var.divide(var_is_float(VarTypes), ColourVars,
+        set_of_var.divide(var_is_float(VarTable), ColourVars,
             DoubleWidthVars, SingleWidthVars),
         ( if set_of_var.is_non_empty(SingleWidthVars) then
             allocate_next_stack_slot(MainStack, single_width,
@@ -328,21 +332,31 @@ allocate_given_stack_slot(Slot, [Var | Vars], !StackSlots) :-
     % grades, due to our policy of extending variable lifetimes, more than
     % one io.state may be live at the same time.
     %
-:- pred allocate_dummy_stack_slots(main_stack::in, list(prog_var)::in,
+:- pred allocate_stack_slots_for_dummy_vars(main_stack::in,
+    assoc_list(prog_var, var_table_entry)::in,
     int::in, stack_slots::in, stack_slots::out) is det.
 
-allocate_dummy_stack_slots(_, [], _, !StackSlots).
-allocate_dummy_stack_slots(MainStack, [DummyVar | DummyVars],
+allocate_stack_slots_for_dummy_vars(_, [], _, !StackSlots).
+allocate_stack_slots_for_dummy_vars(MainStack, [Var - Entry | VarsEntries],
         N0, !StackSlots) :-
+    Entry = vte(_N, _T, IsDummy),
     (
-        MainStack = det_stack,
-        Locn = det_slot(N0, single_width)
+        IsDummy = is_not_dummy_type,
+        N1 = N0
     ;
-        MainStack = nondet_stack,
-        Locn = nondet_slot(N0)
+        IsDummy = is_dummy_type,
+        (
+            MainStack = det_stack,
+            Locn = det_slot(N0, single_width)
+        ;
+            MainStack = nondet_stack,
+            Locn = nondet_slot(N0)
+        ),
+        allocate_given_stack_slot(Locn, [Var], !StackSlots),
+        N1 = N0 - 1
     ),
-    allocate_given_stack_slot(Locn, [DummyVar], !StackSlots),
-    allocate_dummy_stack_slots(MainStack, DummyVars, N0 - 1, !StackSlots).
+    allocate_stack_slots_for_dummy_vars(MainStack, VarsEntries,
+        N1, !StackSlots).
 
 %-----------------------------------------------------------------------------%
 
@@ -362,10 +376,10 @@ float_width_on_stack(Globals, Stack) = FloatWidth :-
         FloatWidth = single_width
     ).
 
-:- pred var_is_float(vartypes::in, prog_var::in) is semidet.
+:- pred var_is_float(var_table::in, prog_var::in) is semidet.
 
-var_is_float(VarTypes, Var) :-
-    lookup_var_type(VarTypes, Var, float_type).
+var_is_float(VarTable, Var) :-
+    lookup_var_type(VarTable, Var, float_type).
 
 %-----------------------------------------------------------------------------%
 

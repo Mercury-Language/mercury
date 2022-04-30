@@ -227,8 +227,9 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module map.
@@ -512,7 +513,7 @@ expand_try_goal(InstMap, TryGoal, FinalGoal, !Info) :-
         GoalOutputVarsSet = GoalOutputVarsSet0
     ),
 
-    some [!ModuleInfo, !PredInfo, !ProcInfo, !VarTypes] (
+    some [!ModuleInfo, !PredInfo, !ProcInfo] (
         !.Info = trys_info(!:ModuleInfo, !:PredInfo, !:ProcInfo, _),
         expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1,
             ExcpHandling1, InstMapAfterGoal, GoalOutputVarsSet, FinalGoal,
@@ -529,11 +530,11 @@ expand_try_goal(InstMap, TryGoal, FinalGoal, !Info) :-
 expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
         InstMap, GoalOutputVarsSet, FinalGoal,
         !PredInfo, !ProcInfo, !ModuleInfo) :-
-    some [!VarTypes] (
+    some [!VarTable] (
         % Get the type of the output tuple.
-        proc_info_get_varset_vartypes(!.ProcInfo, VarSet, !:VarTypes),
+        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, !:VarTable),
         GoalOutputVars = set_of_var.to_sorted_list(GoalOutputVarsSet),
-        lookup_var_types(!.VarTypes, GoalOutputVars, GoalOutputVarTypes),
+        lookup_var_types(!.VarTable, GoalOutputVars, GoalOutputVarTypes),
         OutputTupleType = tuple_type(GoalOutputVarTypes, kind_star),
 
         % Fix the type of the result of the try call, now that we know what it
@@ -541,12 +542,16 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
         RealResultVarType = defined_type(
             qualified(mercury_exception_module, "exception_result"),
             [OutputTupleType], kind_star),
-        update_var_type(ResultVar, RealResultVarType, !VarTypes),
-        proc_info_set_varset_vartypes(VarSet, !.VarTypes, !ProcInfo)
+        lookup_var_entry(!.VarTable, ResultVar, ResultVarEntry0),
+        ResultVarEntry0 = vte(ResultVarName, _, _),
+        ResultVarEntry = vte(ResultVarName, RealResultVarType,
+            is_not_dummy_type),
+        update_var_entry(ResultVar, ResultVarEntry, !VarTable),
+        proc_info_set_var_table(!.VarTable, !ProcInfo)
     ),
 
-    make_try_lambda(Goal1, GoalOutputVarsSet, OutputTupleType, MaybeIO,
-        LambdaVar, AssignLambdaVar, !ProcInfo),
+    make_try_lambda(!.ModuleInfo, Goal1, GoalOutputVarsSet, OutputTupleType,
+        MaybeIO, LambdaVar, AssignLambdaVar, !ProcInfo),
 
     Goal1 = hlds_goal(_, GoalInfo1),
     GoalPurity = goal_info_get_purity(GoalInfo1),
@@ -798,11 +803,11 @@ bound_nonlocals_in_goal(ModuleInfo, InstMap, Goal, BoundNonLocals) :-
         var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstMapDelta),
         NonLocals).
 
-:- pred make_try_lambda(hlds_goal::in, set_of_progvar::in, mer_type::in,
-    maybe(try_io_state_vars)::in, prog_var::out, hlds_goal::out,
+:- pred make_try_lambda(module_info::in, hlds_goal::in, set_of_progvar::in,
+    mer_type::in, maybe(try_io_state_vars)::in, prog_var::out, hlds_goal::out,
     proc_info::in, proc_info::out) is det.
 
-make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
+make_try_lambda(ModuleInfo, Body0, OutputVarsSet, OutputTupleType, MaybeIO,
         LambdaVar, AssignLambdaVarGoal, !ProcInfo) :-
     Body0 = hlds_goal(_, BodyInfo0),
     NonLocals0 = goal_info_get_nonlocals(BodyInfo0),
@@ -833,11 +838,10 @@ make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
     conjoin_goals(Body0, MakeOutputTuple, LambdaBody0),
 
     % Rename away output variables in the lambda body.
-    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
-    clone_variables(set_of_var.to_sorted_list(OutputVarsSet),
-        VarSet0, VarTypes0, VarSet0, VarSet, VarTypes0, VarTypes,
-        map.init, Renaming),
-    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable0),
+    clone_variables_var_table(set_of_var.to_sorted_list(OutputVarsSet),
+        VarTable0, VarTable0, VarTable, map.init, Renaming),
+    proc_info_set_var_table(VarTable, !ProcInfo),
     rename_some_vars_in_goal(Renaming, LambdaBody0, LambdaBody),
 
     % Get the determinism of the lambda.

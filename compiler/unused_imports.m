@@ -64,7 +64,7 @@
 :- import_module parse_tree.prog_data_used_modules.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -724,7 +724,8 @@ pred_info_used_modules(ModuleInfo, PredId, PredInfo, !UsedModules) :-
             ExistConstraints, !UsedModules),
 
         pred_info_get_proc_table(PredInfo, ProcTable),
-        map.foldl(proc_info_used_modules(Visibility), ProcTable, !UsedModules),
+        map.foldl(proc_info_used_modules(ModuleInfo, Visibility),
+            ProcTable, !UsedModules),
 
         pred_info_get_clauses_info(PredInfo, ClausesInfo),
         clauses_info_used_modules(ClausesInfo, !UsedModules),
@@ -780,13 +781,14 @@ pred_info_used_modules(ModuleInfo, PredId, PredInfo, !UsedModules) :-
         )
     ).
 
-:- pred proc_info_used_modules(item_visibility::in, proc_id::in, proc_info::in,
-    used_modules::in, used_modules::out) is det.
+:- pred proc_info_used_modules(module_info::in, item_visibility::in,
+    proc_id::in, proc_info::in, used_modules::in, used_modules::out) is det.
 
-proc_info_used_modules(Visibility, _ProcId, ProcInfo, !UsedModules) :-
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
+proc_info_used_modules(ModuleInfo, Visibility, _ProcId, ProcInfo,
+        !UsedModules) :-
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     proc_info_get_headvars(ProcInfo, HeadVars),
-    lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
+    lookup_var_types(VarTable, HeadVars, HeadVarTypes),
     list.foldl(mer_type_used_modules(Visibility), HeadVarTypes, !UsedModules),
     % In some rare cases, the type of a variable can refer to a module
     % that is used nowhere else in the module, not even in the types of
@@ -804,7 +806,7 @@ proc_info_used_modules(Visibility, _ProcId, ProcInfo, !UsedModules) :-
     % in all the proc_infos in a pred_info should not be a problem,
     % given that the average number of proc_infos per pred_info typically
     % hovers in the 1.01-to-1.2 range.
-    foldl_var_types(mer_type_used_modules(visibility_private), VarTypes,
+    foldl_var_table(var_table_entry_used_modules(visibility_private), VarTable,
         !UsedModules),
 
     proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
@@ -963,6 +965,13 @@ cons_id_used_modules(Visibility, ConsId, !UsedModules) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+:- pred var_table_entry_used_modules(item_visibility::in, var_table_entry::in,
+    used_modules::in, used_modules::out) is det.
+
+var_table_entry_used_modules(Visibility, Entry, !UsedModules) :-
+    Entry = vte(_Name, Type, _IsDummy),
+    mer_type_used_modules(Visibility, Type, !UsedModules).
 
 :- pred mer_type_used_modules(item_visibility::in, mer_type::in,
     used_modules::in, used_modules::out) is det.
