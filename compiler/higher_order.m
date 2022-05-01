@@ -88,6 +88,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 :- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
@@ -527,10 +528,10 @@ ho_fixup_proc_info(MustRecompute, !.Goal, !Info) :-
             requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
             proc_info_get_goal(!.ProcInfo, !:Goal),
             proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap),
-            proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
+            proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
             proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
-            recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
-                VarTypes, InstVarSet, InstMap, !Goal, !ModuleInfo),
+            recompute_instmap_delta_vt(do_not_recompute_atomic_instmap_deltas,
+                VarTable, InstVarSet, InstMap, !Goal, !ModuleInfo),
             proc_info_set_goal(!.Goal, !ProcInfo),
             !Info ^ hoi_proc_info := !.ProcInfo,
             !Info ^ hoi_global_info ^ hogi_module_info := !.ModuleInfo
@@ -1412,8 +1413,8 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
         PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
         proc(PredId, ProcId) = PredProcId,
         map.contains(NewPredMap, PredProcId),
-        proc_info_get_varset_vartypes(ProcInfo0, _VarSet0, VarTypes0),
-        lookup_var_type(VarTypes0, LVar, LVarType),
+        proc_info_get_var_table(ModuleInfo, ProcInfo0, VarTable0),
+        lookup_var_type(VarTable0, LVar, LVarType),
         type_is_higher_order_details(LVarType, _, _, _, ArgTypes)
     then
         proc_info_create_vars_from_types(ArgTypes, UncurriedArgs,
@@ -1465,11 +1466,9 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
 
             % The dummy arguments can't be used anywhere.
             ProcInfo2 = !.Info ^ hoi_proc_info,
-            proc_info_get_varset_vartypes(ProcInfo2, VarSet2, VarTypes2),
-            varset.delete_vars(UncurriedArgs, VarSet2, VarSet),
-            delete_var_types(UncurriedArgs, VarTypes2, VarTypes),
-            proc_info_set_varset_vartypes(VarSet, VarTypes,
-                ProcInfo2, ProcInfo),
+            proc_info_get_var_table(ModuleInfo, ProcInfo2, VarTable2),
+            delete_var_entries(UncurriedArgs, VarTable2, VarTable),
+            proc_info_set_var_table(VarTable, ProcInfo2, ProcInfo),
             !Info ^ hoi_proc_info := ProcInfo,
 
             NewPredProcId = proc(NewPredId, NewProcId),
@@ -1527,16 +1526,15 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
         MaybeContext, GoalInfo, Result, !Info) :-
     ModuleInfo0 = !.Info ^ hoi_global_info ^ hogi_module_info,
     pred_info_get_status(CalleePredInfo, CalleeStatus),
-    proc_info_get_varset_vartypes(CalleeProcInfo,
-        _CalleeVarSet, CalleeVarTypes),
+    proc_info_get_var_table(ModuleInfo0, CalleeProcInfo, CalleeVarTable),
     proc_info_get_headvars(CalleeProcInfo, CalleeHeadVars),
-    lookup_var_types(CalleeVarTypes, CalleeHeadVars, CalleeArgTypes),
+    lookup_var_types(CalleeVarTable, CalleeHeadVars, CalleeArgTypes),
 
     CallerProcInfo0 = !.Info ^ hoi_proc_info,
-    proc_info_get_varset_vartypes(CallerProcInfo0, _VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo0, CallerProcInfo0, VarTable),
     proc_info_get_rtti_varmaps(CallerProcInfo0, RttiVarMaps),
     find_higher_order_args(ModuleInfo0, CalleeStatus, Args0,
-        CalleeArgTypes, VarTypes, RttiVarMaps, !.Info ^ hoi_known_var_map, 1,
+        CalleeArgTypes, VarTable, RttiVarMaps, !.Info ^ hoi_known_var_map, 1,
         [], HigherOrderArgs0),
 
     proc(CallerPredId, _) = !.Info ^ hoi_pred_proc_id,
@@ -1553,7 +1551,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
         ;
             !.Info ^ hoi_global_info ^ hogi_params ^ param_do_user_type_spec
                 = spec_types_user_guided,
-            lookup_var_types(VarTypes, Args0, ArgTypes),
+            lookup_var_types(VarTable, Args0, ArgTypes),
 
             % Check whether any typeclass constraints now match an instance.
             pred_info_get_class_context(CalleePredInfo, CalleeClassContext),
@@ -1616,7 +1614,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
     % a known value.
     %
 :- pred find_higher_order_args(module_info::in, pred_status::in,
-    list(prog_var)::in, list(mer_type)::in, vartypes::in,
+    list(prog_var)::in, list(mer_type)::in, var_table::in,
     rtti_varmaps::in, known_var_map::in, int::in, list(higher_order_arg)::in,
     list(higher_order_arg)::out) is det.
 
@@ -1624,7 +1622,7 @@ find_higher_order_args(_, _, [], _, _, _, _, _, !HOArgs).
 find_higher_order_args(_, _, [_ | _], [], _, _, _, _, _, _) :-
     unexpected($pred, "length mismatch").
 find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
-        [CalleeArgType | CalleeArgTypes], VarTypes, RttiVarMaps,
+        [CalleeArgType | CalleeArgTypes], VarTable, RttiVarMaps,
         KnownVarMap, ArgNo, !HOArgs) :-
     NextArg = ArgNo + 1,
     ( if
@@ -1652,7 +1650,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
     then
         % Find any known higher-order arguments in the list of curried
         % arguments.
-        lookup_var_types(VarTypes, CurriedArgs, CurriedArgTypes),
+        lookup_var_types(VarTable, CurriedArgs, CurriedArgTypes),
         list.map(rtti_varmaps_var_info(RttiVarMaps), CurriedArgs,
             CurriedArgRttiInfo),
         ( if ConsId = closure_cons(ShroudedPredProcId, _) then
@@ -1663,7 +1661,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
             CurriedCalleeArgTypes = CurriedArgTypes
         ),
         find_higher_order_args(ModuleInfo, CalleeStatus, CurriedArgs,
-            CurriedCalleeArgTypes, VarTypes, RttiVarMaps,
+            CurriedCalleeArgTypes, VarTable, RttiVarMaps,
             KnownVarMap, 1, [], HOCurriedArgs0),
         list.reverse(HOCurriedArgs0, HOCurriedArgs),
         list.length(CurriedArgs, NumArgs),
@@ -1686,7 +1684,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
         true
     ),
     find_higher_order_args(ModuleInfo, CalleeStatus, Args, CalleeArgTypes,
-        VarTypes, RttiVarMaps, KnownVarMap, NextArg, !HOArgs).
+        VarTable, RttiVarMaps, KnownVarMap, NextArg, !HOArgs).
 
     % Succeeds if the type substitution for a call makes any of the
     % class constraints match an instance which was not matched before.
@@ -1780,8 +1778,8 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
     get_extra_arguments(HigherOrderArgs, Args0, Args),
     compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars),
 
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-    lookup_var_types(VarTypes, Args0, CallArgTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    lookup_var_types(VarTable, Args0, CallArgTypes),
     pred_info_get_typevarset(PredInfo, TVarSet),
 
     Request = ho_request(Caller, proc(CalledPred, CalledProc), Args0,
@@ -1851,9 +1849,10 @@ compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars) :-
     % version (`goal_util.extra_nonlocal_typeinfos' is not used here
     % because the type variables are returned sorted by variable number,
     % which will vary between calls).
+    ModuleInfo = Info ^ hoi_global_info ^ hogi_module_info,
     ProcInfo = Info ^ hoi_proc_info,
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-    lookup_var_types(VarTypes, Args, ArgTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    lookup_var_types(VarTable, Args, ArgTypes),
     type_vars_in_types(ArgTypes, AllTVars),
     (
         AllTVars = [],
@@ -2200,9 +2199,9 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
             !Info ^ hoi_proc_info := ProcInfo,
 
             % Sanity check.
-            proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-            lookup_var_type(VarTypes, OutputVar, OutputVarType),
-            lookup_var_type(VarTypes, SelectedArg, SelectedArgType),
+            proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+            lookup_var_type(VarTable, OutputVar, OutputVarType),
+            lookup_var_type(VarTable, SelectedArg, SelectedArgType),
             ( if OutputVarType = SelectedArgType then
                 true
             else
@@ -2313,7 +2312,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
     ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
     ProcInfo0 = !.Info ^ hoi_proc_info,
     KnownVarMap = !.Info ^ hoi_known_var_map,
-    proc_info_get_varset_vartypes(ProcInfo0, _VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo0, VarTable),
     module_info_pred_info(ModuleInfo, CalledPred, CalledPredInfo),
     mercury_public_builtin_module = pred_info_module(CalledPredInfo),
     pred_info_module(CalledPredInfo) = mercury_public_builtin_module,
@@ -2321,7 +2320,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
     PredArity = pred_info_orig_arity(CalledPredInfo),
     special_pred_name_arity(SpecialId, PredName, _, PredArity),
     special_pred_get_type(SpecialId, Args, Var),
-    lookup_var_type(VarTypes, Var, SpecialPredType),
+    lookup_var_type(VarTable, Var, SpecialPredType),
     SpecialPredType \= type_variable(_, _),
 
     % Don't specialize tuple types -- the code to unify them only exists
@@ -3100,11 +3099,11 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
     pred_info_get_univ_quant_tvars(CallerPredInfo, CallerHeadParams),
 
     % Specialize the types of the called procedure as for inlining.
-    proc_info_get_varset_vartypes(!.NewProcInfo, VarSet0, VarTypes0),
+    proc_info_get_var_table(ModuleInfo, !.NewProcInfo, VarTable0),
     tvarset_merge_renaming(CallerTypeVarSet, TypeVarSet0, TypeVarSet,
         TypeRenaming),
     apply_variable_renaming_to_tvar_kind_map(TypeRenaming, KindMap0, KindMap),
-    apply_variable_renaming_to_vartypes(TypeRenaming, VarTypes0, VarTypes1),
+    apply_variable_renaming_to_var_table(TypeRenaming, VarTable0, VarTable1),
     apply_variable_renaming_to_type_list(TypeRenaming,
         OriginalArgTypes0, OriginalArgTypes1),
 
@@ -3122,10 +3121,10 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
             ExistQType = type_variable(ExistQVar, _)
         ), ExistQTypes),
 
-    apply_rec_subst_to_vartypes(TypeSubn, VarTypes1, VarTypes2),
+    apply_rec_subst_to_var_table(TypeSubn, VarTable1, VarTable2),
     apply_rec_subst_to_type_list(TypeSubn,
         OriginalArgTypes1, OriginalArgTypes),
-    proc_info_set_varset_vartypes(VarSet0, VarTypes2, !NewProcInfo),
+    proc_info_set_var_table(VarTable2, !NewProcInfo),
 
     % XXX kind inference: we assume vars have kind `star'.
     prog_type.var_list_to_type_list(map.init, ExtraTypeInfoTVars0,
@@ -3252,8 +3251,8 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
     proc_info_reset_imported_structure_sharing(!NewProcInfo),
     proc_info_reset_imported_structure_reuse(!NewProcInfo),
 
-    proc_info_get_varset_vartypes(!.NewProcInfo, VarSet7, VarTypes7),
-    lookup_var_types(VarTypes7, ExtraHeadVars, ExtraHeadVarTypes0),
+    proc_info_get_var_table(ModuleInfo, !.NewProcInfo, VarTable7),
+    lookup_var_types(VarTable7, ExtraHeadVars, ExtraHeadVarTypes0),
     remove_const_higher_order_args(1, OriginalArgTypes,
         HOArgs, ModifiedOriginalArgTypes),
     list.condense([ExtraTypeInfoTypes, ExtraHeadVarTypes0,
@@ -3261,13 +3260,13 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
     pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes, !NewPredInfo),
     pred_info_set_typevarset(TypeVarSet, !NewPredInfo),
 
-    % The types of the headvars in the vartypes map in the proc_info may be
+    % The types of the headvars in the var_table map in the proc_info may be
     % more specific than the argument types returned by pred_info_argtypes
     % if the procedure body binds some existentially quantified type variables.
     % The types of the extra arguments added by construct_higher_order_terms
     % use the substitution computed based on the result
     % pred_info_get_arg_types. We may need to apply a substitution
-    % to the types of the new variables in the vartypes in the proc_info.
+    % to the types of the new variables in the var_table in the proc_info.
     %
     % XXX We should apply this substitution to the variable types in any
     % callers of this predicate, which may introduce other opportunities
@@ -3277,16 +3276,16 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
         ExistQVars = []
     ;
         ExistQVars = [_ | _],
-        lookup_var_types(VarTypes7, HeadVars0, OriginalHeadTypes),
+        lookup_var_types(VarTable7, HeadVars0, OriginalHeadTypes),
         type_list_subsumes_det(OriginalArgTypes, OriginalHeadTypes,
             ExistentialSubn),
         apply_rec_subst_to_type_list(ExistentialSubn, ExtraHeadVarTypes0,
             ExtraHeadVarTypes),
         assoc_list.from_corresponding_lists(ExtraHeadVars,
             ExtraHeadVarTypes, ExtraHeadVarsAndTypes),
-        list.foldl(update_var_types, ExtraHeadVarsAndTypes,
-            VarTypes7, VarTypes8),
-        proc_info_set_varset_vartypes(VarSet7, VarTypes8, !NewProcInfo)
+        list.foldl(update_var_types(ModuleInfo), ExtraHeadVarsAndTypes,
+            VarTable7, VarTable8),
+        proc_info_set_var_table(VarTable8, !NewProcInfo)
     ),
 
     % Find the new class context.
@@ -3301,12 +3300,16 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
     NewProcs = map.singleton(NewProcId, !.NewProcInfo),
     pred_info_set_proc_table(NewProcs, !NewPredInfo).
 
-:- pred update_var_types(pair(prog_var, mer_type)::in,
-    vartypes::in, vartypes::out) is det.
+:- pred update_var_types(module_info::in, pair(prog_var, mer_type)::in,
+    var_table::in, var_table::out) is det.
 
-update_var_types(VarAndType, !VarTypes) :-
+update_var_types(ModuleInfo, VarAndType, !VarTable) :-
     VarAndType = Var - Type,
-    update_var_type(Var, Type, !VarTypes).
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+    lookup_var_entry(!.VarTable, Var, Entry0),
+    Entry0 = vte(Name, _, _),
+    Entry = vte(Name, Type, IsDummy),
+    update_var_entry(Var, Entry, !VarTable).
 
     % Take an original list of headvars and arg_modes and return these
     % with curried arguments added. The old higher-order arguments are
