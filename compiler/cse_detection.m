@@ -113,7 +113,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -124,7 +124,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -268,8 +267,7 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
 :- type cse_info
     --->    cse_info(
                 csei_module_info        :: module_info,
-                csei_varset             :: prog_varset,
-                csei_vartypes           :: vartypes,
+                csei_var_table          :: var_table,
                 csei_rtti_varmaps       :: rtti_varmaps,
                 csei_redo               :: bool,
                 csei_nopull_contexts    :: list(prog_context)
@@ -285,13 +283,12 @@ detect_cse_in_proc_pass(ModuleInfo, Redo, !ProcInfo) :-
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
-    proc_info_get_varset_vartypes(!.ProcInfo, Varset0, VarTypes0),
+    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     Redo0 = no,
-    CseInfo0 =
-        cse_info(ModuleInfo, Varset0, VarTypes0, RttiVarMaps0, Redo0, []),
+    CseInfo0 = cse_info(ModuleInfo, VarTable0, RttiVarMaps0, Redo0, []),
     detect_cse_in_goal(Goal0, Goal1, CseInfo0, CseInfo, InstMap0),
-    CseInfo = cse_info(_, _, _, _, Redo, CseNoPullContexts),
+    CseInfo = cse_info(_, _, _, Redo, CseNoPullContexts),
     proc_info_get_cse_nopull_contexts(!.ProcInfo, NoPullContexts0),
     NoPullContexts = CseNoPullContexts ++ NoPullContexts0,
     proc_info_set_cse_nopull_contexts(NoPullContexts, !ProcInfo),
@@ -300,16 +297,15 @@ detect_cse_in_proc_pass(ModuleInfo, Redo, !ProcInfo) :-
     ;
         Redo = yes,
         % ModuleInfo should not be changed by detect_cse_in_goal.
-        CseInfo =
-            cse_info(_ModuleInfo, VarSet1, VarTypes1, RttiVarMaps1, _, _),
+        CseInfo = cse_info(_, VarTable1, RttiVarMaps1, _, _),
 
         proc_info_get_headvars(!.ProcInfo, HeadVars),
-        implicitly_quantify_clause_body_general(
+        implicitly_quantify_clause_body_general_vt(
             ordinary_nonlocals_maybe_lambda, HeadVars, _Warnings, Goal1, Goal,
-            VarSet1, VarSet, VarTypes1, VarTypes, RttiVarMaps1, RttiVarMaps),
+            VarTable1, VarTable, RttiVarMaps1, RttiVarMaps),
 
         proc_info_set_goal(Goal, !ProcInfo),
-        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+        proc_info_set_var_table(VarTable, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo)
     ).
 
@@ -924,20 +920,21 @@ create_new_arg_var(OldArgVar, Context, UnifyContext, !CseInfo, !OldNewVars,
     % about a live variable named "S" or "Ss", when the names of those fields
     % at that point in the code are actually "A" and "As".
 
-    VarSet0 = !.CseInfo ^ csei_varset,
-    VarTypes0 = !.CseInfo ^ csei_vartypes,
-    lookup_var_type(VarTypes0, OldArgVar, Type),
+    VarTable0 = !.CseInfo ^ csei_var_table,
+    lookup_var_entry(VarTable0, OldArgVar, OldArgVarEntry),
+    OldArgVarEntry = vte(OldArgVarName, OldArgVarType, OldArgVarIsDummy),
     ModuleInfo = !.CseInfo ^ csei_module_info,
-    TypeCat = classify_type(ModuleInfo, Type),
+    TypeCat = classify_type(ModuleInfo, OldArgVarType),
     ( if
         TypeCat = ctor_cat_system(_),
-        varset.search_name(VarSet0, OldArgVar, OldName)
+        OldArgVarName \= ""
     then
-        varset.new_named_var(OldName, NewArgVar, VarSet0, VarSet)
+        NewArgVarName = OldArgVarName
     else
-        varset.new_var(NewArgVar, VarSet0, VarSet)
+        NewArgVarName = ""
     ),
-    add_var_type(NewArgVar, Type, VarTypes0, VarTypes),
+    NewArgVarEntry = vte(NewArgVarName, OldArgVarType, OldArgVarIsDummy),
+    add_var_entry(NewArgVarEntry, NewArgVar, VarTable0, VarTable),
     !:OldNewVars = [OldArgVar - NewArgVar | !.OldNewVars],
     UnifyContext = unify_context(MainCtxt, SubCtxt),
     % It is ok to create complicated unifications here, because we rerun
@@ -946,8 +943,7 @@ create_new_arg_var(OldArgVar, Context, UnifyContext, !CseInfo, !OldNewVars,
     % track of the inst of OldArgVar.
     create_pure_atomic_complicated_unification(OldArgVar, rhs_var(NewArgVar),
         Context, MainCtxt, SubCtxt, Goal),
-    !CseInfo ^ csei_varset := VarSet,
-    !CseInfo ^ csei_vartypes := VarTypes.
+    !CseInfo ^ csei_var_table := VarTable.
 
 %---------------------------------------------------------------------------%
 
@@ -1070,8 +1066,8 @@ maybe_update_existential_data_structures(UnifyGoal, FirstOldNew, LaterOldNew,
         UnifyGoal = hlds_goal(unify(_, _, _, UnifyInfo, _), _),
         UnifyInfo = deconstruct(Var, ConsId, _, _, _, _),
         ModuleInfo = !.CseInfo ^ csei_module_info,
-        VarTypes = !.CseInfo ^ csei_vartypes,
-        lookup_var_type(VarTypes, Var, Type),
+        VarTable = !.CseInfo ^ csei_var_table,
+        lookup_var_type(VarTable, Var, Type),
         cons_id_is_existq_cons(ModuleInfo, Type, ConsId)
     then
         update_existential_data_structures(FirstOldNew, LaterOldNew, !CseInfo)
@@ -1089,7 +1085,7 @@ update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
     map.from_assoc_list(LaterOldNew, LaterOldNewMap),
 
     RttiVarMaps0 = !.CseInfo ^ csei_rtti_varmaps,
-    VarTypes0 = !.CseInfo ^ csei_vartypes,
+    VarTable0 = !.CseInfo ^ csei_var_table,
 
     % Build a map for all locations in the rtti_varmaps that are changed
     % by the application of FirstOldNewMap. The keys of this map are the
@@ -1112,10 +1108,10 @@ update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
     map.from_assoc_list(OldNew, OldNewMap),
     apply_substitutions_to_rtti_varmaps(Renaming, map.init, OldNewMap,
         RttiVarMaps0, RttiVarMaps),
-    apply_variable_renaming_to_vartypes(Renaming, VarTypes0, VarTypes),
+    apply_variable_renaming_to_var_table(Renaming, VarTable0, VarTable),
 
     !CseInfo ^ csei_rtti_varmaps := RttiVarMaps,
-    !CseInfo ^ csei_vartypes := VarTypes.
+    !CseInfo ^ csei_var_table := VarTable.
 
 :- pred find_type_info_locn_tvar_map(rtti_varmaps::in,
     map(prog_var, prog_var)::in, tvar::in,

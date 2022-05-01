@@ -83,7 +83,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -209,18 +209,18 @@ detect_switches_in_proc(Info, !ProcInfo) :-
     % based on the modes of the head vars, and pass these to
     % `detect_switches_in_goal'.
     Info = switch_detect_info(ModuleInfo, AllowMulti),
-    proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
     Requant0 = do_not_need_to_requantify,
     BodyDeletedCallCallees0 = set.init,
     LocalInfo0 = local_switch_detect_info(ModuleInfo, AllowMulti, Requant0,
-        VarTypes, BodyDeletedCallCallees0),
+        VarTable, BodyDeletedCallCallees0),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
     detect_switches_in_goal(InstMap0, no, Goal0, Goal, LocalInfo0, LocalInfo),
     proc_info_set_goal(Goal, !ProcInfo),
     LocalInfo = local_switch_detect_info(_ModuleInfo, _AllowMulti, Requant,
-        _VarTypes, BodyDeletedCallCallees),
+        _VarTable, BodyDeletedCallCallees),
     (
         Requant = need_to_requantify,
         requantify_proc_general(ordinary_nonlocals_maybe_lambda, !ProcInfo)
@@ -239,7 +239,7 @@ detect_switches_in_proc(Info, !ProcInfo) :-
                 lsdi_module_info        :: module_info,
                 lsdi_allow_multi_arm    :: allow_multi_arm,
                 lsdi_requant            :: need_to_requantify,
-                lsdi_vartypes           :: vartypes,
+                lsdi_var_table          :: var_table,
                 lsdi_deleted_callees    :: set(pred_proc_id)
             ).
 
@@ -410,9 +410,9 @@ detect_switches_in_cases(_, _, [], [], !LocalInfo).
 detect_switches_in_cases(Var, InstMap0, [Case0 | Cases0], [Case | Cases],
         !LocalInfo) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    VarTypes = !.LocalInfo ^ lsdi_vartypes,
+    VarTable = !.LocalInfo ^ lsdi_var_table,
+    lookup_var_type(VarTable, Var, VarType),
     ModuleInfo0 = !.LocalInfo ^ lsdi_module_info,
-    lookup_var_type(VarTypes, Var, VarType),
     bind_var_to_functors(Var, VarType, MainConsId, OtherConsIds,
         InstMap0, InstMap1, ModuleInfo0, ModuleInfo),
     !LocalInfo ^ lsdi_module_info := ModuleInfo,
@@ -930,8 +930,8 @@ detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
         inst_is_bound(ModuleInfo, VarInst0),
         partition_disj(Disjuncts0, Var, GoalInfo, Left, Cases, !LocalInfo),
 
-        VarTypes = !.LocalInfo ^ lsdi_vartypes,
-        lookup_var_type(VarTypes, Var, VarType),
+        VarTable = !.LocalInfo ^ lsdi_var_table,
+        lookup_var_type(VarTable, Var, VarType),
         is_candidate_switch(ModuleInfo, MaybeRequiredVar,
             Var, VarType, VarInst0, Cases, Left, Candidate)
     then
