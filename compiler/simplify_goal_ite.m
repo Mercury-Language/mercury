@@ -56,7 +56,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.var_table.
-:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module list.
@@ -64,7 +63,6 @@
 :- import_module one_or_more.
 :- import_module require.
 :- import_module set.
-:- import_module varset.
 
 %----------------------------------------------------------------------------%
 
@@ -246,8 +244,8 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
     some [!ModuleInfo] (
         simplify_info_get_module_info(!.Info, !:ModuleInfo),
-        simplify_info_get_var_types(!.Info, VarTypes),
-        merge_instmap_deltas(vts_vartypes(VarTypes), NonLocals, InstMap0,
+        simplify_info_get_var_table(!.Info, VarTable),
+        merge_instmap_deltas(vts_var_table(VarTable), NonLocals, InstMap0,
             [CondThenDelta, ElseDelta], NewDelta, !ModuleInfo),
         simplify_info_set_module_info(!.ModuleInfo, !Info)
     ),
@@ -278,19 +276,20 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
         Common = Common0,
 
         simplify_info_get_module_info(!.Info, ModuleInfo),
-        warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond,
+        warn_switch_for_ite_cond(ModuleInfo, VarTable, Cond,
             cond_can_switch_uncommitted, CanSwitch),
         (
             CanSwitch = cond_can_switch_on(SwitchVar),
             Context = goal_info_get_context(CondInfo),
-            simplify_info_get_varset(!.Info, VarSet),
+            lookup_var_entry(VarTable, SwitchVar, SwitchVarEntry),
+            SwitchVarName = SwitchVarEntry ^ vte_name,
+            ( if SwitchVarName = "" then
+                OnPieces = []
+            else
+                OnPieces = [words("on"), quote(SwitchVarName)]
+            ),
             Pieces0 = [words("Warning: this if-then-else"),
                 words("could be replaced by a switch")],
-            ( if varset.search_name(VarSet, SwitchVar, SwitchVarName) then
-                OnPieces = [words("on"), quote(SwitchVarName)]
-            else
-                OnPieces = []
-            ),
             Pieces = Pieces0 ++ OnPieces ++ [suffix("."), nl],
             Spec = conditional_spec($pred, inform_ite_instead_of_switch, yes,
                 severity_informational, phase_simplify(report_in_any_mode),
@@ -328,10 +327,10 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
     ;       cond_can_switch_on(prog_var)
     ;       cond_cannot_switch.
 
-:- pred warn_switch_for_ite_cond(module_info::in, vartypes::in, hlds_goal::in,
+:- pred warn_switch_for_ite_cond(module_info::in, var_table::in, hlds_goal::in,
     cond_can_switch::in, cond_can_switch::out) is det.
 
-warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
+warn_switch_for_ite_cond(ModuleInfo, VarTable, Cond, !CondCanSwitch) :-
     Cond = hlds_goal(CondExpr, _CondInfo),
     (
         CondExpr = unify(_LHSVar, _RHS, _Mode, Unification, _UContext),
@@ -344,7 +343,7 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
         ;
             Unification = deconstruct(LHSVar, _ConsId, _Args, _ArgModes,
                 _CanFail, _CanCGC),
-            lookup_var_type(VarTypes, LHSVar, LHSVarType),
+            lookup_var_type(VarTable, LHSVar, LHSVarType),
             ( if type_to_type_defn_body(ModuleInfo, LHSVarType, TypeBody) then
                 CanSwitchOnType = can_switch_on_type(TypeBody),
                 (
@@ -377,13 +376,13 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
         )
     ;
         CondExpr = disj(Disjuncts),
-        list.foldl(warn_switch_for_ite_cond(ModuleInfo, VarTypes), Disjuncts,
+        list.foldl(warn_switch_for_ite_cond(ModuleInfo, VarTable), Disjuncts,
             !CondCanSwitch)
     ;
         CondExpr = negation(SubGoal),
         (
             !.CondCanSwitch = cond_can_switch_uncommitted,
-            warn_switch_for_ite_cond(ModuleInfo, VarTypes, SubGoal,
+            warn_switch_for_ite_cond(ModuleInfo, VarTable, SubGoal,
                 !CondCanSwitch)
         ;
             !.CondCanSwitch = cond_can_switch_on(_),

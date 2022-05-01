@@ -58,14 +58,12 @@
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
-:- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module cord.
 :- import_module map.
 :- import_module set.
 :- import_module string.
-:- import_module varset.
 
 simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, !Common, !Info) :-
@@ -117,10 +115,10 @@ simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
     trace [compile_time(flag("debug_simplify_conj")), io(!IO)] (
         simplify_info_get_module_info(!.Info, ModuleInfo),
         get_debug_output_stream(ModuleInfo, Stream, !IO),
-        simplify_info_get_varset(!.Info, VarSet),
+        simplify_info_get_var_table(!.Info, VarTable),
+        VarNameSrc = vns_var_table(VarTable),
         io.write_string(Stream, "\n------------------------\n", !IO),
         io.write_string(Stream, "\nBEFORE SIMPLIFY_GOAL_PLAIN_CONJ\n\n", !IO),
-        VarNameSrc = vns_varset(VarSet),
         list.foldl(dump_goal_nl(Stream, ModuleInfo, VarNameSrc), Goals0, !IO),
         io.write_string(Stream, "\nAFTER EXCESS ASSIGN\n\n", !IO),
         list.foldl(dump_goal_nl(Stream, ModuleInfo, VarNameSrc), Goals1, !IO),
@@ -463,15 +461,11 @@ excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
 
         renaming_transitive_closure(Subn1, Subn),
         rename_vars_in_goals(need_not_rename, Subn, Goals1, Goals),
-        map.keys(Subn0, RemovedVars),
+        map.sorted_keys(Subn0, RemovedVars),
 
-        simplify_info_get_varset(!.Info, VarSet0),
-        varset.delete_vars(RemovedVars, VarSet0, VarSet),
-        simplify_info_set_varset(VarSet, !Info),
-
-        simplify_info_get_var_types(!.Info, VarTypes0),
-        delete_var_types(RemovedVars, VarTypes0, VarTypes),
-        simplify_info_set_var_types(VarTypes, !Info),
+        simplify_info_get_var_table(!.Info, VarTable0),
+        delete_sorted_var_entries(RemovedVars, VarTable0, VarTable),
+        simplify_info_set_var_table(VarTable, !Info),
 
         simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
         apply_substitutions_to_rtti_varmaps(map.init, map.init, Subn,
@@ -509,12 +503,12 @@ goal_is_excess_assign(Info, ConjNonLocals, Goal0, !Subn) :-
     CanElimRight =
         ( if set_of_var.member(ConjNonLocals, RightVar) then no else yes ),
 
-    simplify_info_get_varset(Info, VarSet),
+    simplify_info_get_var_table(Info, VarTable),
     (
         CanElimLeft = yes,
         CanElimRight = yes,
         % If we have a choice, try to eliminate an unnamed variable.
-        ( if var_is_named(VarSet, LeftVar) then
+        ( if var_is_named(VarTable, LeftVar) then
             ElimVar = RightVar,
             ReplacementVar = LeftVar
         else
@@ -545,16 +539,18 @@ goal_is_excess_assign(Info, ConjNonLocals, Goal0, !Subn) :-
     not (
         eff_trace_level_needs_meaningful_var_names(EffTraceLevel) = yes,
         TraceOptimized = not_trace_optimized,
-        var_is_named(VarSet, ElimVar),
-        not var_is_named(VarSet, ReplacementVar)
+        var_is_named(VarTable, ElimVar),
+        not var_is_named(VarTable, ReplacementVar)
     ),
 
     map.det_insert(ElimVar, ReplacementVar, !Subn).
 
-:- pred var_is_named(prog_varset::in, prog_var::in) is semidet.
+:- pred var_is_named(var_table::in, prog_var::in) is semidet.
 
-var_is_named(VarSet, Var) :-
-    varset.search_name(VarSet, Var, Name),
+var_is_named(VarTable, Var) :-
+    lookup_var_entry(VarTable, Var, Entry),
+    Name = Entry ^ vte_name,
+    Name \= "",
     not (
         string.append("HeadVar__", Suffix, Name),
         string.to_int(Suffix, _)

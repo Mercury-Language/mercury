@@ -123,7 +123,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -143,7 +143,7 @@
 :- pred analyze_and_optimize_format_calls(module_info::in,
     maybe_generate_implicit_stream_warnings::in,
     hlds_goal::in, maybe(hlds_goal)::out, list(error_spec)::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -172,8 +172,8 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module counter.
@@ -185,7 +185,6 @@
 :- import_module string.
 :- import_module string.parse_util.
 :- import_module term.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -383,10 +382,11 @@ is_format_call_kind_and_vars(ModuleName, Name, Args, GoalInfo,
 %---------------------------------------------------------------------------%
 
 analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
-        Goal0, MaybeGoal, Specs, !VarSet, !VarTypes) :-
+        Goal0, MaybeGoal, Specs, !VarTable) :-
     map.init(ConjMaps0),
     counter.init(0, Counter0),
-    fill_goal_id_slots_in_proc_body(ModuleInfo, !.VarTypes, _, Goal0, Goal1),
+    fill_goal_id_slots_in_proc_body(ModuleInfo, vts_var_table(!.VarTable), _,
+        Goal0, Goal1),
 
     module_info_get_globals(ModuleInfo, Globals0),
     globals.set_option(dump_hlds_options, string("vxP"), Globals0, Globals),
@@ -394,7 +394,7 @@ analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
     trace [io(!IO), compiletime(flag("debug_format_call"))] (
         io.output_stream(Stream, !IO),
         io.write_string(Stream, "\n\nBEFORE TRANSFORM:\n", !IO),
-        write_goal(OutInfo, Stream, ModuleInfo, vns_varset(!.VarSet),
+        write_goal(OutInfo, Stream, ModuleInfo, vns_var_table(!.VarTable),
             print_name_and_num, 0, "\n", Goal1, !IO)
     ),
 
@@ -416,10 +416,10 @@ analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
     else
         ShouldOptFormatCalls = do_not_opt_format_calls
     ),
-    list.foldl4(
+    list.foldl3(
         check_format_call_site(ModuleInfo, GenImplicitStreamWarnings,
             ShouldOptFormatCalls, ConjMaps, PredMap),
-        FormatCallSites, map.init, GoalIdMap, [], Specs, !VarSet, !VarTypes),
+        FormatCallSites, map.init, GoalIdMap, [], Specs, !VarTable),
     ( if map.is_empty(GoalIdMap) then
         % We have not found anything to improve in Goal1.
         MaybeGoal = no
@@ -438,7 +438,7 @@ analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
         trace [io(!IO), compiletime(flag("debug_format_call"))] (
             io.output_stream(Stream, !IO),
             io.write_string(Stream, "\n\nAFTER TRANSFORM:\n", !IO),
-            write_goal(OutInfo, Stream, ModuleInfo, vns_varset(!.VarSet),
+            write_goal(OutInfo, Stream, ModuleInfo, vns_var_table(!.VarTable),
                 print_name_and_num, 0, "\n", Goal, !IO)
         ),
         MaybeGoal = yes(Goal)
@@ -449,11 +449,10 @@ analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
     conj_maps::in, conj_pred_map::in, format_call_site::in,
     fc_goal_id_map::in, fc_goal_id_map::out,
     list(error_spec)::in, list(error_spec)::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 check_format_call_site(ModuleInfo, ImplicitStreamWarnings, OptFormatCalls,
-        ConjMaps, PredMap, FormatCallSite, !GoalIdMap, !Specs,
-        !VarSet, !VarTypes) :-
+        ConjMaps, PredMap, FormatCallSite, !GoalIdMap, !Specs, !VarTable) :-
     FormatCallSite = format_call_site(GoalId, GoalInfo, StringVar, ValuesVar,
         CallKind, PredId, ModuleName, Name, Arity, Context, CurId),
     (
@@ -571,8 +570,7 @@ check_format_call_site(ModuleInfo, ImplicitStreamWarnings, OptFormatCalls,
                 ToDeleteVars =
                     FormatStringToDeleteVars ++ PolyTypeToDeleteVars,
                 create_replacement_goal(ModuleInfo, GoalId, CallKind,
-                    Specs, ToDeleteVars, ToDeleteGoals,
-                    !GoalIdMap, !VarSet, !VarTypes)
+                    Specs, ToDeleteVars, ToDeleteGoals, !GoalIdMap, !VarTable)
             )
         )
     else
@@ -1469,10 +1467,10 @@ opt_format_call_sites_in_switch([Case0 | Cases0], [Case | Cases], !GoalIdMap,
     format_call_kind::in, list(compiler_format_spec)::in,
     list(prog_var)::in, list(goal_id)::in,
     fc_goal_id_map::in, fc_goal_id_map::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 create_replacement_goal(ModuleInfo, GoalId, CallKind, Specs,
-        ToDeleteVars, ToDeleteGoals, !GoalIdMap, !VarSet, !VarTypes) :-
+        ToDeleteVars, ToDeleteGoals, !GoalIdMap, !VarTable) :-
     % Note that every predicate or function that this code generates calls to
     % must be listed in simplify_may_introduce_calls, in order to prevent
     % its definition from being thrown away by dead_pred_elim before execution
@@ -1480,7 +1478,7 @@ create_replacement_goal(ModuleInfo, GoalId, CallKind, Specs,
     (
         CallKind = kind_string_format(Context, ResultVar),
         create_string_format_replacement(ModuleInfo, Specs, Context,
-            ResultVar, ReplacementGoal, !VarSet, !VarTypes)
+            ResultVar, ReplacementGoal, !VarTable)
     ;
         (
             CallKind = kind_io_format_nostream(Context, IOInVar, IOOutVar),
@@ -1491,14 +1489,13 @@ create_replacement_goal(ModuleInfo, GoalId, CallKind, Specs,
             MaybeStreamVar = yes(StreamVar)
         ),
         create_io_format_replacement(ModuleInfo, Specs, Context,
-            MaybeStreamVar, IOInVar, IOOutVar, ReplacementGoal,
-            !VarSet, !VarTypes)
+            MaybeStreamVar, IOInVar, IOOutVar, ReplacementGoal, !VarTable)
     ;
         CallKind = kind_stream_string_writer(Context,
             TC_InfoVarForStream, StreamVar, StateInVar, StateOutVar),
         create_stream_string_writer_format_replacement(ModuleInfo, Specs,
             Context, TC_InfoVarForStream, StreamVar, StateInVar, StateOutVar,
-            ReplacementGoal, !VarSet, !VarTypes)
+            ReplacementGoal, !VarTable)
     ),
     FCOptGoalInfo = fc_opt_goal_info(ReplacementGoal,
         list.sort(ToDeleteVars), list.sort(ToDeleteGoals)),
@@ -1530,13 +1527,12 @@ create_replacement_goal(ModuleInfo, GoalId, CallKind, Specs,
     %
 :- pred create_string_format_replacement(module_info::in,
     list(compiler_format_spec)::in, prog_context::in, prog_var::in,
-    hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    hlds_goal::out, var_table::in, var_table::out) is det.
 
 create_string_format_replacement(ModuleInfo, Specs, Context, ResultVar,
-        ReplacementGoal, !VarSet, !VarTypes) :-
+        ReplacementGoal, !VarTable) :-
     replace_string_format(ModuleInfo, Specs, Context, yes(ResultVar),
-        ActualResultVar, Goals, ValueVars, !VarSet, !VarTypes),
+        ActualResultVar, Goals, ValueVars, !VarTable),
     ( if ActualResultVar = ResultVar then
         AllGoals = Goals
     else
@@ -1555,48 +1551,43 @@ create_string_format_replacement(ModuleInfo, Specs, Context, ResultVar,
 
 :- pred replace_string_format(module_info::in, list(compiler_format_spec)::in,
     prog_context::in, maybe(prog_var)::in, prog_var::out, list(hlds_goal)::out,
-    set_of_progvar::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    set_of_progvar::out, var_table::in, var_table::out) is det.
 
 replace_string_format(ModuleInfo, Specs, Context, MaybeResultVar, ResultVar,
-        Goals, !:ValueVars, !VarSet, !VarTypes) :-
+        Goals, !:ValueVars, !VarTable) :-
     set_of_var.init(!:ValueVars),
     (
         Specs = [],
-        make_result_var_if_needed(MaybeResultVar, ResultVar,
-            !VarSet, !VarTypes),
+        make_result_var_if_needed(MaybeResultVar, ResultVar, !VarTable),
         make_string_const_construction(Context, ResultVar, "", Goal),
         Goals = [Goal]
     ;
         Specs = [HeadSpec | TailSpecs],
         replace_string_format_nonempty(ModuleInfo,
             HeadSpec, TailSpecs, Context, MaybeResultVar, ResultVar, Goals,
-            !ValueVars, !VarSet, !VarTypes)
+            !ValueVars, !VarTable)
     ).
 
 :- pred replace_string_format_nonempty(module_info::in,
     compiler_format_spec::in, list(compiler_format_spec)::in,
     prog_context::in, maybe(prog_var)::in, prog_var::out, list(hlds_goal)::out,
     set_of_progvar::in, set_of_progvar::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 replace_string_format_nonempty(ModuleInfo, HeadSpec, TailSpecs,
-        Context, MaybeResultVar, ResultVar, Goals, !ValueVars,
-        !VarSet, !VarTypes) :-
+        Context, MaybeResultVar, ResultVar, Goals, !ValueVars, !VarTable) :-
     (
         TailSpecs = [],
         represent_spec(ModuleInfo, HeadSpec, MaybeResultVar,
-            ResultVar, Goals, _HeadSpecContext, !ValueVars, !VarSet, !VarTypes)
+            ResultVar, Goals, _HeadSpecContext, !ValueVars, !VarTable)
     ;
         TailSpecs = [FirstTailSpec | LaterTailSpecs],
         replace_string_format_nonempty(ModuleInfo,
             FirstTailSpec, LaterTailSpecs, Context,
-            no, TailSpecsVar, TailSpecsGoals,
-            !ValueVars, !VarSet, !VarTypes),
+            no, TailSpecsVar, TailSpecsGoals, !ValueVars, !VarTable),
         represent_spec(ModuleInfo, HeadSpec, no, HeadSpecVar, HeadSpecGoals,
-            _HeadSpecContext, !ValueVars, !VarSet, !VarTypes),
-        make_result_var_if_needed(MaybeResultVar, ResultVar,
-            !VarSet, !VarTypes),
+            _HeadSpecContext, !ValueVars, !VarTable),
+        make_result_var_if_needed(MaybeResultVar, ResultVar, !VarTable),
         generate_plain_call(ModuleInfo, pf_function,
             mercury_string_module, "++",
             [], [HeadSpecVar, TailSpecsVar, ResultVar],
@@ -1645,13 +1636,12 @@ replace_string_format_nonempty(ModuleInfo, HeadSpec, TailSpecs,
 :- pred create_io_format_replacement(module_info::in,
     list(compiler_format_spec)::in, prog_context::in,
     maybe(prog_var)::in, prog_var::in, prog_var::in, hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
-create_io_format_replacement(ModuleInfo, Specs, Context,
-        MaybeStreamVar, IOInVar, IOOutVar, ReplacementGoal,
-        !VarSet, !VarTypes) :-
+create_io_format_replacement(ModuleInfo, Specs, Context, MaybeStreamVar,
+        IOInVar, IOOutVar, ReplacementGoal, !VarTable) :-
     replace_io_format(ModuleInfo, Specs, MaybeStreamVar,
-        IOInVar, IOOutVar, Goals, ValueVars, !VarSet, !VarTypes),
+        IOInVar, IOOutVar, Goals, ValueVars, !VarTable),
 
     make_di_uo_instmap_delta(IOInVar, IOOutVar, InstMapDelta),
     set_of_var.insert_list([IOInVar, IOOutVar], ValueVars, NonLocals),
@@ -1661,11 +1651,10 @@ create_io_format_replacement(ModuleInfo, Specs, Context,
 
 :- pred replace_io_format(module_info::in, list(compiler_format_spec)::in,
     maybe(prog_var)::in, prog_var::in, prog_var::in, list(hlds_goal)::out,
-    set_of_progvar::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    set_of_progvar::out, var_table::in, var_table::out) is det.
 
 replace_io_format(ModuleInfo, Specs, MaybeStreamVar, IOInVar, IOOutVar,
-        Goals, !:ValueVars, !VarSet, !VarTypes) :-
+        Goals, !:ValueVars, !VarTable) :-
     set_of_var.init(!:ValueVars),
     (
         Specs = [],
@@ -1686,46 +1675,42 @@ replace_io_format(ModuleInfo, Specs, MaybeStreamVar, IOInVar, IOOutVar,
         Specs = [HeadSpec | TailSpecs],
         replace_io_format_nonempty(ModuleInfo, HeadSpec, TailSpecs,
             MaybeStreamVar, IOInVar, IOOutVar, Goals,
-            !ValueVars, !VarSet, !VarTypes)
+            !ValueVars, !VarTable)
     ).
 
 :- pred replace_io_format_nonempty(module_info::in,
     compiler_format_spec::in, list(compiler_format_spec)::in,
     maybe(prog_var)::in, prog_var::in, prog_var::in, list(hlds_goal)::out,
     set_of_progvar::in, set_of_progvar::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
-replace_io_format_nonempty(ModuleInfo, HeadSpec, TailSpecs,
-        MaybeStreamVar, IOInVar, IOOutVar, Goals,
-        !ValueVars, !VarSet, !VarTypes) :-
+replace_io_format_nonempty(ModuleInfo, HeadSpec, TailSpecs, MaybeStreamVar,
+        IOInVar, IOOutVar, Goals, !ValueVars, !VarTable) :-
     (
         TailSpecs = [],
-        replace_one_io_format(ModuleInfo, HeadSpec,
-            MaybeStreamVar, IOInVar, IOOutVar, Goals,
-            !ValueVars, !VarSet, !VarTypes)
+        replace_one_io_format(ModuleInfo, HeadSpec, MaybeStreamVar,
+            IOInVar, IOOutVar, Goals, !ValueVars, !VarTable)
     ;
         TailSpecs = [FirstTailSpec | LaterTailSpecs],
-        varset.new_var(IOMidVar, !VarSet),
-        add_var_type(IOMidVar, io_state_type, !VarTypes),
-        replace_one_io_format(ModuleInfo, HeadSpec,
-            MaybeStreamVar, IOInVar, IOMidVar, HeadSpecGoals,
-            !ValueVars, !VarSet, !VarTypes),
-        replace_io_format_nonempty(ModuleInfo,
-            FirstTailSpec, LaterTailSpecs,
+        IOMidVarEntry = vte("", io_state_type, is_dummy_type),
+        add_var_entry(IOMidVarEntry, IOMidVar, !VarTable),
+        replace_one_io_format(ModuleInfo, HeadSpec, MaybeStreamVar,
+            IOInVar, IOMidVar, HeadSpecGoals, !ValueVars, !VarTable),
+        replace_io_format_nonempty(ModuleInfo, FirstTailSpec, LaterTailSpecs,
             MaybeStreamVar, IOMidVar, IOOutVar, TailSpecsGoals,
-            !ValueVars, !VarSet, !VarTypes),
+            !ValueVars, !VarTable),
         Goals = HeadSpecGoals ++ TailSpecsGoals
     ).
 
 :- pred replace_one_io_format(module_info::in, compiler_format_spec::in,
     maybe(prog_var)::in, prog_var::in, prog_var::in, list(hlds_goal)::out,
     set_of_progvar::in, set_of_progvar::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 replace_one_io_format(ModuleInfo, Spec, MaybeStreamVar,
-        IOInVar, IOOutVar, Goals, !ValueVars, !VarSet, !VarTypes) :-
+        IOInVar, IOOutVar, Goals, !ValueVars, !VarTable) :-
     represent_spec(ModuleInfo, Spec, no, SpecVar, SpecGoals, SpecContext,
-        !ValueVars, !VarSet, !VarTypes),
+        !ValueVars, !VarTable),
     (
         MaybeStreamVar = yes(StreamVar),
         ArgVars = [StreamVar, SpecVar, IOInVar, IOOutVar]
@@ -1762,13 +1747,13 @@ replace_one_io_format(ModuleInfo, Spec, MaybeStreamVar,
 :- pred create_stream_string_writer_format_replacement(module_info::in,
     list(compiler_format_spec)::in, prog_context::in,
     prog_var::in, prog_var::in, prog_var::in, prog_var::in, hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 create_stream_string_writer_format_replacement(ModuleInfo, Specs, Context,
         TC_InfoVarForStream, StreamVar, StateInVar, StateOutVar,
-        ReplacementGoal, !VarSet, !VarTypes) :-
+        ReplacementGoal, !VarTable) :-
     replace_string_format(ModuleInfo, Specs, Context, no, ResultVar,
-        StringFormatGoals, ValueVars, !VarSet, !VarTypes),
+        StringFormatGoals, ValueVars, !VarTable),
     make_di_uo_instmap_delta(StateInVar, StateOutVar, InstMapDelta),
     generate_plain_call(ModuleInfo, pf_predicate, mercury_stream_module, "put",
         [TC_InfoVarForStream], [StreamVar, ResultVar, StateInVar, StateOutVar],
@@ -1787,26 +1772,23 @@ create_stream_string_writer_format_replacement(ModuleInfo, Specs, Context,
 :- pred represent_spec(module_info::in, compiler_format_spec::in,
     maybe(prog_var)::in, prog_var::out, list(hlds_goal)::out,
     prog_context::out, set_of_progvar::in, set_of_progvar::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
-        !ValueVars, !VarSet, !VarTypes) :-
+        !ValueVars, !VarTable) :-
     (
         Spec = compiler_const_string(Context, StringConstant),
-        make_result_var_if_needed(MaybeResultVar, ResultVar,
-            !VarSet, !VarTypes),
+        make_result_var_if_needed(MaybeResultVar, ResultVar, !VarTable),
         make_string_const_construction(Context, ResultVar, StringConstant,
             Goal),
         Goals = [Goal]
     ;
         Spec = compiler_spec_char(Context, Flags, MaybeWidth, ValueVar),
         set_of_var.insert(ValueVar, !ValueVars),
-        make_result_var_if_needed(MaybeResultVar, ResultVar,
-            !VarSet, !VarTypes),
-        build_flags_arg(Context, Flags, FlagsVar, FlagsGoals,
-            !VarSet, !VarTypes),
+        make_result_var_if_needed(MaybeResultVar, ResultVar, !VarTable),
+        build_flags_arg(Context, Flags, FlagsVar, FlagsGoals, !VarTable),
         maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars, WidthGoals,
-            !VarSet, !VarTypes),
+            !VarTable),
         generate_plain_call(ModuleInfo, pf_predicate,
             mercury_string_format_module,
             "format_char_component" ++ WidthSuffix,
@@ -1837,14 +1819,12 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
                 Goals = [AssignGoal]
             )
         else
-            make_result_var_if_needed(MaybeResultVar, ResultVar,
-                !VarSet, !VarTypes),
-            build_flags_arg(Context, Flags, FlagsVar, FlagsGoals,
-                !VarSet, !VarTypes),
+            make_result_var_if_needed(MaybeResultVar, ResultVar, !VarTable),
+            build_flags_arg(Context, Flags, FlagsVar, FlagsGoals, !VarTable),
             maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars,
-                WidthGoals, !VarSet, !VarTypes),
+                WidthGoals, !VarTable),
             maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
-                !VarSet, !VarTypes),
+                !VarTable),
             generate_plain_call(ModuleInfo, pf_predicate,
                 mercury_string_format_module,
                 "format_string_component" ++ WidthSuffix ++ PrecSuffix, [],
@@ -1866,41 +1846,39 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
                 FormatPredBase = "format_signed_int_component"
             ),
             cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
-                OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes)
+                OrigValueVar, ValueVar, ValueCastGoals, !VarTable)
         ;
             Spec = compiler_spec_unsigned_int(Context, Flags,
                 MaybeWidth, MaybePrec, Base, IntSize, OrigValueVar),
             % Format a signed int as unsigned int.
-            build_int_base_arg(Base, BaseVars, BaseGoals, !VarSet, !VarTypes),
+            build_int_base_arg(Base, BaseVars, BaseGoals, !VarTable),
             ( if IntSize = int_size_64 then
                 FormatPredBase = "format_unsigned_int64_component"
             else
                 FormatPredBase = "format_unsigned_int_component"
             ),
             cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
-                OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes)
+                OrigValueVar, ValueVar, ValueCastGoals, !VarTable)
         ;
             Spec = compiler_spec_uint(Context, Flags,
                 MaybeWidth, MaybePrec, Base, UIntSize, OrigValueVar),
             % Format an unsigned int as unsigned int.
-            build_int_base_arg(Base, BaseVars, BaseGoals, !VarSet, !VarTypes),
+            build_int_base_arg(Base, BaseVars, BaseGoals, !VarTable),
             ( if UIntSize = uint_size_64 then
                 FormatPredBase = "format_uint64_component"
             else
                 FormatPredBase = "format_uint_component"
             ),
             cast_uint_value_var_if_needed(ModuleInfo, Context, UIntSize,
-                OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes)
+                OrigValueVar, ValueVar, ValueCastGoals, !VarTable)
         ),
         set_of_var.insert(OrigValueVar, !ValueVars),
-        make_result_var_if_needed(MaybeResultVar, ResultVar,
-            !VarSet, !VarTypes),
-        build_flags_arg(Context, Flags, FlagsVar, FlagsGoals,
-            !VarSet, !VarTypes),
+        make_result_var_if_needed(MaybeResultVar, ResultVar, !VarTable),
+        build_flags_arg(Context, Flags, FlagsVar, FlagsGoals, !VarTable),
         maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars, WidthGoals,
-            !VarSet, !VarTypes),
+            !VarTable),
         maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
-            !VarSet, !VarTypes),
+            !VarTable),
         generate_plain_call(ModuleInfo, pf_predicate,
             mercury_string_format_module,
             FormatPredBase ++ WidthSuffix ++ PrecSuffix,
@@ -1914,15 +1892,13 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
         Spec = compiler_spec_float(Context, Flags,
             MaybeWidth, MaybePrec, Kind, ValueVar),
         set_of_var.insert(ValueVar, !ValueVars),
-        make_result_var_if_needed(MaybeResultVar, ResultVar,
-            !VarSet, !VarTypes),
-        build_flags_arg(Context, Flags, FlagsVar, FlagsGoals,
-            !VarSet, !VarTypes),
+        make_result_var_if_needed(MaybeResultVar, ResultVar, !VarTable),
+        build_flags_arg(Context, Flags, FlagsVar, FlagsGoals, !VarTable),
         maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars, WidthGoals,
-            !VarSet, !VarTypes),
+            !VarTable),
         maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
-            !VarSet, !VarTypes),
-        build_float_kind_arg(Kind, KindVar, KindGoal, !VarSet, !VarTypes),
+            !VarTable),
+        build_float_kind_arg(Kind, KindVar, KindGoal, !VarTable),
         generate_plain_call(ModuleInfo, pf_predicate,
             mercury_string_format_module,
             "format_float_component" ++ WidthSuffix ++ PrecSuffix,
@@ -1935,10 +1911,10 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
 
 :- pred cast_int_value_var_if_needed(module_info::in, prog_context::in,
     int_size::in, prog_var::in, prog_var::out, list(hlds_goal)::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
-        OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes) :-
+        OrigValueVar, ValueVar, ValueCastGoals, !VarTable) :-
     (
         ( IntSize = int_size_word
         ; IntSize = int_size_64
@@ -1950,8 +1926,8 @@ cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
         ; IntSize = int_size_16, Size = "16"
         ; IntSize = int_size_32, Size = "32"
         ),
-        varset.new_var(ValueVar, !VarSet),
-        add_var_type(ValueVar, int_type, !VarTypes),
+        ValueVarEntry = vte("", int_type, is_not_dummy_type),
+        add_var_entry(ValueVarEntry, ValueVar, !VarTable),
         generate_plain_call(ModuleInfo, pf_predicate,
             mercury_string_format_module,
             "format_cast_int" ++ Size ++ "_to_int",
@@ -1963,10 +1939,10 @@ cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
 
 :- pred cast_uint_value_var_if_needed(module_info::in, prog_context::in,
     uint_size::in, prog_var::in, prog_var::out, list(hlds_goal)::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 cast_uint_value_var_if_needed(ModuleInfo, Context, UIntSize,
-        OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes) :-
+        OrigValueVar, ValueVar, ValueCastGoals, !VarTable) :-
     (
         ( UIntSize = uint_size_word
         ; UIntSize = uint_size_64
@@ -1978,8 +1954,8 @@ cast_uint_value_var_if_needed(ModuleInfo, Context, UIntSize,
         ; UIntSize = uint_size_16, Size = "16"
         ; UIntSize = uint_size_32, Size = "32"
         ),
-        varset.new_var(ValueVar, !VarSet),
-        add_var_type(ValueVar, uint_type, !VarTypes),
+        ValueVarEntry = vte("", uint_type, is_not_dummy_type),
+        add_var_entry(ValueVarEntry, ValueVar, !VarTable),
         generate_plain_call(ModuleInfo, pf_predicate,
             mercury_string_format_module,
             "format_cast_uint" ++ Size ++ "_to_uint",
@@ -2004,17 +1980,11 @@ cast_uint_value_var_if_needed(ModuleInfo, Context, UIntSize,
     % structures.
     %
 :- pred build_flags_arg(prog_context::in, string_format_flags::in,
-    prog_var::out, list(hlds_goal)::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    prog_var::out, list(hlds_goal)::out, var_table::in, var_table::out) is det.
 
-build_flags_arg(Context, Flags, Var, Goals, !VarSet, !VarTypes) :-
+build_flags_arg(Context, Flags, Var, Goals, !VarTable) :-
     Flags = string_format_flags(FlagHash, FlagSpace, FlagZero,
         FlagMinus, FlagPlus),
-    varset.new_var(VarHash,  !VarSet),
-    varset.new_var(VarSpace, !VarSet),
-    varset.new_var(VarZero,  !VarSet),
-    varset.new_var(VarMinus, !VarSet),
-    varset.new_var(VarPlus,  !VarSet),
     ParseUtil = mercury_string_parse_util_module,
     TypeSymNameHash  = qualified(ParseUtil, "string_format_flag_hash"),
     TypeSymNameSpace = qualified(ParseUtil, "string_format_flag_space"),
@@ -2031,11 +2001,16 @@ build_flags_arg(Context, Flags, Var, Goals, !VarSet, !VarTypes) :-
     TypeZero  = defined_type(TypeSymNameZero,  [], kind_star),
     TypeMinus = defined_type(TypeSymNameMinus, [], kind_star),
     TypePlus  = defined_type(TypeSymNamePlus,  [], kind_star),
-    add_var_type(VarHash,  TypeHash,  !VarTypes),
-    add_var_type(VarSpace, TypeSpace, !VarTypes),
-    add_var_type(VarZero,  TypeZero,  !VarTypes),
-    add_var_type(VarMinus, TypeMinus, !VarTypes),
-    add_var_type(VarPlus,  TypePlus,  !VarTypes),
+    EntryHash  = vte("", TypeHash,  is_not_dummy_type),
+    EntrySpace = vte("", TypeSpace, is_not_dummy_type),
+    EntryZero  = vte("", TypeZero,  is_not_dummy_type),
+    EntryMinus = vte("", TypeMinus, is_not_dummy_type),
+    EntryPlus  = vte("", TypePlus,  is_not_dummy_type),
+    add_var_entry(EntryHash,  VarHash,  !VarTable),
+    add_var_entry(EntrySpace, VarSpace, !VarTable),
+    add_var_entry(EntryZero,  VarZero,  !VarTable),
+    add_var_entry(EntryMinus, VarMinus, !VarTable),
+    add_var_entry(EntryPlus,  VarPlus,  !VarTable),
     (
         FlagHash = flag_hash_clear,
         ConsNameHash = "flag_hash_clear"
@@ -2084,8 +2059,8 @@ build_flags_arg(Context, Flags, Var, Goals, !VarSet, !VarTypes) :-
 
     TypeNameCombine = qualified(ParseUtil, "string_format_flags"),
     TypeCombine = defined_type(TypeNameCombine, [], kind_star),
-    varset.new_var(Var, !VarSet),
-    add_var_type(Var, TypeCombine, !VarTypes),
+    CombineVarEntry = vte("", TypeCombine, is_not_dummy_type),
+    add_var_entry(CombineVarEntry, Var, !VarTable),
 
     TypeCtorCombine = type_ctor(TypeNameCombine, 0),
     ConsSymNameCombine = qualified(ParseUtil, "string_format_flags"),
@@ -2102,10 +2077,10 @@ build_flags_arg(Context, Flags, Var, Goals, !VarSet, !VarTypes) :-
     %
 :- pred maybe_build_width_arg(compiler_format_maybe_width::in,
     string::out, list(prog_var)::out, list(hlds_goal)::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 maybe_build_width_arg(MaybeWidth, PredNameSuffix, MaybeWidthVar,
-        MaybeWidthGoals, !VarSet, !VarTypes) :-
+        MaybeWidthGoals, !VarTable) :-
     (
         MaybeWidth = compiler_no_specified_width,
         PredNameSuffix = "_nowidth",
@@ -2114,8 +2089,8 @@ maybe_build_width_arg(MaybeWidth, PredNameSuffix, MaybeWidthVar,
     ;
         MaybeWidth = compiler_manifest_width(WidthInt),
         PredNameSuffix = "_width",
-        make_int_const_construction_alloc(WidthInt, no, WidthGoal, WidthVar,
-            !VarSet, !VarTypes),
+        make_int_const_construction_alloc_vt(WidthInt, "", WidthGoal, WidthVar,
+            !VarTable),
         MaybeWidthVar = [WidthVar],
         MaybeWidthGoals = [WidthGoal]
     ;
@@ -2132,10 +2107,10 @@ maybe_build_width_arg(MaybeWidth, PredNameSuffix, MaybeWidthVar,
     %
 :- pred maybe_build_prec_arg(compiler_format_maybe_prec::in,
     string::out, list(prog_var)::out, list(hlds_goal)::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 maybe_build_prec_arg(MaybePrec, PredNameSuffix, MaybePrecVar,
-        MaybePrecGoals, !VarSet, !VarTypes) :-
+        MaybePrecGoals, !VarTable) :-
     (
         MaybePrec = compiler_no_specified_prec,
         PredNameSuffix = "_noprec",
@@ -2144,8 +2119,8 @@ maybe_build_prec_arg(MaybePrec, PredNameSuffix, MaybePrecVar,
     ;
         MaybePrec = compiler_manifest_prec(PrecInt),
         PredNameSuffix = "_prec",
-        make_int_const_construction_alloc(PrecInt, no, PrecGoal, PrecVar,
-            !VarSet, !VarTypes),
+        make_int_const_construction_alloc_vt(PrecInt, "", PrecGoal, PrecVar,
+            !VarTable),
         MaybePrecVar = [PrecVar],
         MaybePrecGoals = [PrecGoal]
     ;
@@ -2157,9 +2132,9 @@ maybe_build_prec_arg(MaybePrec, PredNameSuffix, MaybePrecVar,
 
 :- pred build_int_base_arg(string_format_int_base::in,
     list(prog_var)::out, list(hlds_goal)::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
-build_int_base_arg(Base, [Var], [Goal], !VarSet, !VarTypes) :-
+build_int_base_arg(Base, [Var], [Goal], !VarTable) :-
     ParseUtil = mercury_string_parse_util_module,
     TypeName = qualified(ParseUtil, "string_format_int_base"),
     TypeCtor = type_ctor(TypeName, 0),
@@ -2181,14 +2156,13 @@ build_int_base_arg(Base, [Var], [Goal], !VarSet, !VarTypes) :-
         ConsName = "base_hex_p"
     ),
     ConsId = cons(qualified(ParseUtil, ConsName), 0, TypeCtor),
-    make_const_construction_alloc(ConsId, Type, no, Goal, Var,
-        !VarSet, !VarTypes).
+    make_const_construction_alloc_vt(ConsId, Type, is_not_dummy_type, "",
+        Goal, Var, !VarTable).
 
 :- pred build_float_kind_arg(string_format_float_kind::in,
-    prog_var::out, hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    prog_var::out, hlds_goal::out, var_table::in, var_table::out) is det.
 
-build_float_kind_arg(Kind, Var, Goal, !VarSet, !VarTypes) :-
+build_float_kind_arg(Kind, Var, Goal, !VarTable) :-
     ParseUtil = mercury_string_parse_util_module,
     TypeName = qualified(ParseUtil, "string_format_float_kind"),
     TypeCtor = type_ctor(TypeName, 0),
@@ -2213,19 +2187,19 @@ build_float_kind_arg(Kind, Var, Goal, !VarSet, !VarTypes) :-
         ConsName = "kind_g_flexible_uc"
     ),
     ConsId = cons(qualified(ParseUtil, ConsName), 0, TypeCtor),
-    make_const_construction_alloc(ConsId, Type, no, Goal, Var,
-        !VarSet, !VarTypes).
+    make_const_construction_alloc_vt(ConsId, Type, is_not_dummy_type, "",
+        Goal, Var, !VarTable).
 
 :- pred make_result_var_if_needed(maybe(prog_var)::in, prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
-make_result_var_if_needed(MaybeResultVar, ResultVar, !VarSet, !VarTypes) :-
+make_result_var_if_needed(MaybeResultVar, ResultVar, !VarTable) :-
     (
         MaybeResultVar = yes(ResultVar)
     ;
         MaybeResultVar = no,
-        varset.new_var(ResultVar, !VarSet),
-        add_var_type(ResultVar, string_type, !VarTypes)
+        Entry = vte("", string_type, is_not_dummy_type),
+        add_var_entry(Entry, ResultVar, !VarTable)
     ).
 
 :- pred make_di_uo_instmap_delta(prog_var::in, prog_var::in,

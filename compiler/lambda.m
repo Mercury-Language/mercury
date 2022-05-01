@@ -651,8 +651,7 @@ create_new_pred_for_lambda(RegWrapperProc, RHS0, OrigVars, ArgVars,
     predicate_table_insert(PredInfo, PredId, PredicateTable0, PredicateTable),
     module_info_set_predicate_table(PredicateTable, !ModuleInfo),
 
-    split_var_table(LambdaVarTable, _LambdaVarSet, LambdaVarTypes),
-    find_and_record_any_direct_arg_in_out_posns(PredId, ProcId, LambdaVarTypes,
+    find_and_record_any_direct_arg_in_out_posns(PredId, ProcId, LambdaVarTable,
         AllArgVars, AllArgModes, !ModuleInfo).
 
 :- pred constraint_contains_only_lambda_tvars(set(tvar)::in,
@@ -704,11 +703,10 @@ check_lambda_arg_type_and_mode(ModuleInfo, Type, Mode, X, X) :-
     % the equiv_types_hlds pass) iterate over the entries in these maps,
     % and if an entry is duplicated N times, they have to process it N times.
     % The task of this predicate is to eliminate unnecessary entries
-    % from the vartypes map, and this requires also eliminating them from
+    % from the var_table, and this requires also eliminating them from
     % the rtti_varmaps.
     %
-    % We could in theory restrict the varsets in the proc_info as well
-    % both the main prog_varset and the other varsets, e.g. the tvarset),
+    % We could in theory restrict the tvarset and the inst_varset as well,
     % but since we don't iterate over those sets, there is (as yet) no need
     % for this.
     %

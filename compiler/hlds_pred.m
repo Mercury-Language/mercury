@@ -2675,6 +2675,8 @@ marker_list_to_markers(Markers, MarkerSet) :-
 :- pred proc_info_set_var_table(var_table::in,
     proc_info::in, proc_info::out) is det.
 
+:- pred make_var_table(module_info::in, prog_varset::in, vartypes::in,
+    var_table::out) is det.
 :- pred split_var_table(var_table::in, prog_varset::out, vartypes::out) is det.
 
 :- pred proc_info_get_structure_sharing(proc_info::in,
@@ -3819,9 +3821,6 @@ proc_info_set_var_table(VarTable, !PI) :-
     proc_info_set_varset_vartypes(VarSet, VarTypes, !PI).
 
 %---------------------------------------------------------------------------%
-
-:- pred make_var_table(module_info::in, prog_varset::in, vartypes::in,
-    var_table::out) is det.
 
 make_var_table(ModuleInfo, VarSet, VarTypes, VarTable) :-
     vartypes_to_sorted_assoc_list(VarTypes, VarTypesAL),

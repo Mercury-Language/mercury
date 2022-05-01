@@ -1313,6 +1313,14 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
                     VarVectorKind = var_vector_promise_solutions
                 )
             ;
+                Reason = require_complete_switch(Var),
+                Vars = [Var],
+                VarVectorKind = var_vector_switch_complete
+            ;
+                Reason = require_switch_arms_detism(Var, _),
+                Vars = [Var],
+                VarVectorKind = var_vector_switch_arm_detism
+            ;
                 % These variables are introduced by the compiler and may
                 % only have a single, specific type.
                 Reason = loop_control(LCVar, LCSVar, _),
@@ -1325,11 +1333,9 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             ( Reason = disable_warnings(_, _)
             ; Reason = promise_purity(_)
             ; Reason = require_detism(_)
-            ; Reason = require_complete_switch(_)
-            ; Reason = require_switch_arms_detism(_, _)
+            ; Reason = from_ground_term(_, _)
             ; Reason = commit(_)
             ; Reason = barrier(_)
-            ; Reason = from_ground_term(_, _)
             ; Reason = trace_goal(_, _, _, _, _)
             )
         ),

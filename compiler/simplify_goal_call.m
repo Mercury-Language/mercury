@@ -96,7 +96,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.
 :- import_module transform_hlds.const_prop.
 
@@ -110,7 +110,6 @@
 :- import_module string.
 :- import_module term.
 :- import_module uint.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -169,11 +168,11 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
 
         PredName = pred_info_name(PredInfo),
         proc_id_to_int(ProcId, ModeNum),
-        simplify_info_get_var_types(!.Info, VarTypes),
+        simplify_info_get_var_table(!.Info, VarTable),
         ( if
             % Step 1.
             simplify_do_const_prop(!.Info),
-            const_prop.evaluate_call(Globals, VarTypes, InstMap0,
+            const_prop.evaluate_call(Globals, VarTable, InstMap0,
                 ModuleName, PredName, ModeNum, Args,
                 EvaluatedGoalExpr, GoalInfo0, EvaluatedGoalInfo)
         then
@@ -575,11 +574,11 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
 
         % Are the input arguments the same (or equivalent)?
         simplify_info_get_module_info(!.Info, ModuleInfo),
-        simplify_info_get_varset(!.Info, VarSet),
+        simplify_info_get_var_table(!.Info, VarTable),
         pred_info_get_var_name_remap(PredInfo, VarNameRemap),
         proc_info_get_headvars(ProcInfo, HeadVars),
         proc_info_get_argmodes(ProcInfo, ArgModes),
-        input_args_are_suspicious(ModuleInfo, Common, VarSet, VarNameRemap,
+        input_args_are_suspicious(ModuleInfo, Common, VarTable, VarNameRemap,
             HeadVars, ArgVars, ArgModes,
             all_inputs_eqv, AllInputsEqv,
             all_inputs_eqv_or_svar, AllInputsEqvOrSvar,
@@ -705,7 +704,7 @@ shut_up_suspicious_recursion_msg = Component :-
     % as VarNameRemap.
     %
 :- pred input_args_are_suspicious(module_info::in, common_info::in,
-    prog_varset::in, map(prog_var, string)::in,
+    var_table::in, map(prog_var, string)::in,
     list(prog_var)::in, list(prog_var)::in, list(mer_mode)::in,
     maybe_all_inputs_eqv::in, maybe_all_inputs_eqv::out,
     maybe_all_inputs_eqv_or_svar::in, maybe_all_inputs_eqv_or_svar::out,
@@ -714,7 +713,7 @@ shut_up_suspicious_recursion_msg = Component :-
 
 input_args_are_suspicious(_, _, _, _, [], [], _,
         !AllInputsEqv, !AllInputsEqvOrSvar, !HeadBaseNames, !ArgBaseNames).
-input_args_are_suspicious(ModuleInfo, CommonInfo, VarSet, VarNameRemap,
+input_args_are_suspicious(ModuleInfo, CommonInfo, VarTable, VarNameRemap,
         [HeadVar | HeadVars], [ArgVar | ArgVars], [Mode | Modes],
         !AllInputsEqv, !AllInputsEqvOrSvar, !HeadBaseNames, !ArgBaseNames) :-
     InitialInst = mode_get_initial_inst(ModuleInfo, Mode),
@@ -753,8 +752,10 @@ input_args_are_suspicious(ModuleInfo, CommonInfo, VarSet, VarNameRemap,
             % If either the argument or the head variable is unnamed, then
             % we have no reason to believe the recursive call is suspicious,
             % so we fail.
-            head_var_name(VarSet, VarNameRemap, HeadVar, HeadName),
-            varset.search_name(VarSet, ArgVar, ArgName),
+            head_var_name(VarTable, VarNameRemap, HeadVar, HeadName),
+            lookup_var_entry(VarTable, ArgVar, ArgVarEntry),
+            ArgName = ArgVarEntry ^ vte_name,
+            ArgName \= "",
             delete_any_numeric_suffix(HeadName, HeadBaseName),
             delete_any_numeric_suffix(ArgName, ArgBaseName),
             ( if HeadBaseName = ArgBaseName then
@@ -773,18 +774,20 @@ input_args_are_suspicious(ModuleInfo, CommonInfo, VarSet, VarNameRemap,
         % This is not an input argument.
         true
     ),
-    input_args_are_suspicious(ModuleInfo, CommonInfo, VarSet, VarNameRemap,
+    input_args_are_suspicious(ModuleInfo, CommonInfo, VarTable, VarNameRemap,
         HeadVars, ArgVars, Modes,
         !AllInputsEqv, !AllInputsEqvOrSvar, !HeadBaseNames, !ArgBaseNames).
 
-:- pred head_var_name(prog_varset::in, map(prog_var, string)::in,
+:- pred head_var_name(var_table::in, map(prog_var, string)::in,
     prog_var::in, string::out) is semidet.
 
-head_var_name(VarSet, VarNameRemap, Var, Name) :-
+head_var_name(VarTable, VarNameRemap, Var, Name) :-
     ( if map.search(VarNameRemap, Var, HeadName) then
         Name = HeadName
     else
-        varset.search_name(VarSet, Var, Name)
+        lookup_var_entry(VarTable, Var, Entry),
+        Name = Entry ^ vte_name,
+        Name \= ""
     ).
 
 :- pred delete_any_numeric_suffix(string::in, string::out) is det.
@@ -1065,14 +1068,10 @@ simplify_improve_library_call(InstMap0, ModuleName, PredName, ModeNum, Args,
 simplify_inline_builtin_inequality(TI, X, Y, Inequality, Invert, GoalInfo,
         ImprovedGoalExpr, InstMap0, !Info) :-
     % Construct the variable to hold the comparison result.
-    simplify_info_get_varset(!.Info, VarSet0),
-    varset.new_var(CmpRes, VarSet0, VarSet),
-    simplify_info_set_varset(VarSet, !Info),
-
-    % We have to add the type of CmpRes to the var_types.
-    simplify_info_get_var_types(!.Info, VarTypes0),
-    add_var_type(CmpRes, comparison_result_type, VarTypes0, VarTypes),
-    simplify_info_set_var_types(VarTypes, !Info),
+    simplify_info_get_var_table(!.Info, VarTable0),
+    CmpResEntry = vte("", comparison_result_type, is_not_dummy_type),
+    add_var_entry(CmpResEntry, CmpRes, VarTable0, VarTable),
+    simplify_info_set_var_table(VarTable, !Info),
 
     % Construct the call to compare/3.
     Context = hlds_goal.goal_info_get_context(GoalInfo),
@@ -1147,8 +1146,8 @@ simplify_improve_builtin_compare(_ModeNum, Args, Context,
 
     simplify_info_get_module_info(!.Info, ModuleInfo),
     list.reverse(Args, [Y, X, R | _]),
-    simplify_info_get_var_types(!.Info, VarTypes),
-    lookup_var_type(VarTypes, Y, Type),
+    simplify_info_get_var_table(!.Info, VarTable),
+    lookup_var_type(VarTable, Y, Type),
     type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type),
 
     require_det (
@@ -1350,12 +1349,12 @@ simplify_make_const(Type, ConstConsId, ConstVar, Goal, !Info) :-
     simplify_info::in, simplify_info::out) is det.
 
 simplify_make_var(Type, Var, !Info) :-
-    simplify_info_get_varset(!.Info, VarSet0),
-    simplify_info_get_var_types(!.Info, VarTypes0),
-    varset.new_var(Var, VarSet0, VarSet),
-    add_var_type(Var, Type, VarTypes0, VarTypes),
-    simplify_info_set_varset(VarSet, !Info),
-    simplify_info_set_var_types(VarTypes, !Info).
+    simplify_info_get_module_info(!.Info, ModuleInfo),
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+    Entry = vte("", Type, IsDummy),
+    simplify_info_get_var_table(!.Info, VarTable0),
+    add_var_entry(Entry, Var, VarTable0, VarTable),
+    simplify_info_set_var_table(VarTable, !Info).
 
 %---------------------%
 

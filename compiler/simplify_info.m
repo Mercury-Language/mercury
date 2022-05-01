@@ -31,7 +31,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module list.
@@ -149,8 +149,7 @@
     simplify_tasks::out) is det.
 :- pred simplify_info_get_module_info(simplify_info::in, module_info::out)
     is det.
-:- pred simplify_info_get_varset(simplify_info::in, prog_varset::out) is det.
-:- pred simplify_info_get_var_types(simplify_info::in, vartypes::out) is det.
+:- pred simplify_info_get_var_table(simplify_info::in, var_table::out) is det.
 :- pred simplify_info_get_rerun_quant_instmap_delta(simplify_info::in,
     maybe_rerun_quant_instmap_deltas::out) is det.
 :- pred simplify_info_get_rerun_det(simplify_info::in,
@@ -191,9 +190,7 @@
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_module_info(module_info::in,
     simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_varset(prog_varset::in,
-    simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_var_types(vartypes::in,
+:- pred simplify_info_set_var_table(var_table::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_rerun_quant_instmap_delta(
     simplify_info::in, simplify_info::out) is det.
@@ -284,19 +281,18 @@
 /* 2 */         simp_module_info            :: module_info,
 
                 % The variables of the procedure being simplified.
-/* 3 */         simp_varset                 :: prog_varset,
-/* 4 */         simp_vartypes               :: vartypes,
+/* 3 */         simp_var_table              :: var_table,
 
                 % Does the goal need requantification, and the recomputation
                 % of instmap_deltas?
-/* 5 */         simp_rerun_quant_instmap_delta
+/* 4 */         simp_rerun_quant_instmap_delta
                                         :: maybe_rerun_quant_instmap_deltas,
 
                 % Does determinism analysis need to be rerun?
-/* 6 */         simp_rerun_det              :: maybe_rerun_det,
+/* 5 */         simp_rerun_det              :: maybe_rerun_det,
 
-/* 7 */         simp_params                 :: simplify_info_params,
-/* 8 */         simp_sub_info               :: simplify_sub_info
+/* 6 */         simp_params                 :: simplify_info_params,
+/* 7 */         simp_sub_info               :: simplify_sub_info
             ).
 
 :- type simplify_info_params
@@ -321,9 +317,9 @@
     --->    simplify_sub_info(
                 % Information about the typeinfo and typeclass info vars
                 % for the type variables of the procedure being simplified.
-                % Logically, this field belongs next to simp_varset and
-                % simp_vartypes, but it is not used frequently enough
-                % to store at the top level of simplify_info.
+                % Logically, this field belongs next to simp_var_table,
+                % but it is not used frequently enough to store at the
+                % top level of simplify_info.
                 ssimp_rtti_varmaps          :: rtti_varmaps,
 
                 % The variables we have eliminated. Each list of vars consists
@@ -411,11 +407,11 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
 
     % SimplifyTasks
     % ModuleInfo
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     RerunQuant = do_not_rerun_quant_instmap_deltas,
     RerunDet = do_not_rerun_det,
 
-    Info = simplify_info(SimplifyTasks, ModuleInfo, VarSet, VarTypes,
+    Info = simplify_info(SimplifyTasks, ModuleInfo, VarTable,
         RerunQuant, RerunDet, Params, SubInfo).
 
 simplify_info_reinit(SimplifyTasks, !Info) :-
@@ -456,14 +452,14 @@ simplify_info_incr_cost_delta(Incr, !Info) :-
 
 simplify_info_apply_substitutions_and_duplicate(ToVar, FromVar, TSubst,
         !Info) :-
-    simplify_info_get_var_types(!.Info, VarTypes0),
+    simplify_info_get_var_table(!.Info, VarTable0),
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-    apply_rec_subst_to_vartypes(TSubst, VarTypes0, VarTypes),
+    apply_rec_subst_to_var_table(TSubst, VarTable0, VarTable),
     Renaming = map.singleton(ToVar, FromVar),
     apply_substitutions_to_rtti_varmaps(map.init, TSubst, Renaming,
         RttiVarMaps0, RttiVarMaps1),
     rtti_var_info_duplicate(FromVar, ToVar, RttiVarMaps1, RttiVarMaps),
-    simplify_info_set_var_types(VarTypes, !Info),
+    simplify_info_set_var_table(VarTable, !Info),
     simplify_info_set_rtti_varmaps(RttiVarMaps, !Info).
 
 %---------------------------------------------------------------------------%
@@ -472,10 +468,8 @@ simplify_info_get_simplify_tasks(Info, X) :-
     X = Info ^ simp_simplify_tasks.
 simplify_info_get_module_info(Info, X) :-
     X = Info ^ simp_module_info.
-simplify_info_get_varset(Info, X) :-
-    X = Info ^ simp_varset.
-simplify_info_get_var_types(Info, X) :-
-    X = Info ^ simp_vartypes.
+simplify_info_get_var_table(Info, X) :-
+    X = Info ^ simp_var_table.
 simplify_info_get_rerun_quant_instmap_delta(Info, X) :-
     X = Info ^ simp_rerun_quant_instmap_delta.
 simplify_info_get_rerun_det(Info, X) :-
@@ -524,17 +518,11 @@ simplify_info_set_module_info(X, !Info) :-
     else
         !Info ^ simp_module_info := X
     ).
-simplify_info_set_varset(X, !Info) :-
-    ( if private_builtin.pointer_equal(X, !.Info ^ simp_varset) then
+simplify_info_set_var_table(X, !Info) :-
+    ( if private_builtin.pointer_equal(X, !.Info ^ simp_var_table) then
         true
     else
-        !Info ^ simp_varset := X
-    ).
-simplify_info_set_var_types(X, !Info) :-
-    ( if private_builtin.pointer_equal(X, !.Info ^ simp_vartypes) then
-        true
-    else
-        !Info ^ simp_vartypes := X
+        !Info ^ simp_var_table := X
     ).
 simplify_info_set_rerun_quant_instmap_delta(!Info) :-
     X = rerun_quant_instmap_deltas,

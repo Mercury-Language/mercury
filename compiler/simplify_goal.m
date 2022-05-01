@@ -187,8 +187,8 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
         NonLocalVars = goal_info_get_nonlocals(GoalInfo0),
         simplify_info_get_module_info(!.Info, ModuleInfo),
-        simplify_info_get_var_types(!.Info, VarTypes),
-        instmap_delta_no_output_vars(ModuleInfo, VarTypes,
+        simplify_info_get_var_table(!.Info, VarTable),
+        instmap_delta_no_output_vars_vt(ModuleInfo, VarTable,
             InstMap0, InstMapDelta, NonLocalVars),
         ( Purity = purity_pure
         ; Purity = purity_semipure

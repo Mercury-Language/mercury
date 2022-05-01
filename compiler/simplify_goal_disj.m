@@ -71,7 +71,6 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
 simplify_goal_disj(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, Common0, Common, !Info) :-
@@ -100,8 +99,8 @@ simplify_goal_disj(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         else
             simplify_info_get_module_info(!.Info, ModuleInfo1),
             NonLocals = goal_info_get_nonlocals(GoalInfo0),
-            simplify_info_get_var_types(!.Info, VarTypes),
-            merge_instmap_deltas(vts_vartypes(VarTypes), NonLocals,
+            simplify_info_get_var_table(!.Info, VarTable),
+            merge_instmap_deltas(vts_var_table(VarTable), NonLocals,
                 InstMap0, InstMapDeltas, NewDelta, ModuleInfo1, ModuleInfo2),
             simplify_info_set_module_info(ModuleInfo2, !Info),
             goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo),
@@ -183,9 +182,9 @@ warn_about_any_problem_partial_vars(Innermost, GoalInfo, InstMap0,
                     [s(LambdaFileName), i(LambdaLineNum)], ProcStr)
             )
         ),
-        simplify_info_get_varset(!.Info, VarSet),
-        list.map(varset.lookup_name(VarSet), ProblemPartialVars,
-            ProblemPartialVarNames),
+        simplify_info_get_var_table(!.Info, VarTable),
+        ProblemPartialVarNames =
+            list.map(var_table_entry_name(VarTable), ProblemPartialVars),
         ProblemPartialVarPieces = list_to_pieces(ProblemPartialVarNames),
         Context = goal_info_get_context(GoalInfo),
         Pieces = [words("Warning: this disjunction further instantiates"),

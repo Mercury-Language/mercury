@@ -59,7 +59,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module list.
@@ -136,9 +136,9 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 unexpected($pred,
                     "from_ground_term_construct scope is not conjunction")
             ),
-            simplify_info_get_var_types(!.Info, VarTypes),
+            simplify_info_get_var_table(!.Info, VarTable),
             simplify_info_get_defined_where(!.Info, DefinedWhere),
-            simplify_construct_ground_terms(DefinedWhere, VarTypes, TermVar,
+            simplify_construct_ground_terms(DefinedWhere, VarTable, TermVar,
                 HeadConjunct, TailConjuncts, [], ElimVars,
                 map.init, VarArgMap, ConstStructDb0, ConstStructDb),
             module_info_set_const_struct_db(ConstStructDb,
@@ -280,13 +280,13 @@ disable_simplify_warning(Warning, !Tasks) :-
 
 :- type var_to_arg_map == map(prog_var, const_struct_arg).
 
-:- pred simplify_construct_ground_terms(defined_where::in, vartypes::in,
+:- pred simplify_construct_ground_terms(defined_where::in, var_table::in,
     prog_var::in, hlds_goal::in, list(hlds_goal)::in,
     list(prog_var)::in, list(prog_var)::out,
     var_to_arg_map::in, var_to_arg_map::out,
     const_struct_db::in, const_struct_db::out) is det.
 
-simplify_construct_ground_terms(DefinedWhere, VarTypes, TermVar,
+simplify_construct_ground_terms(DefinedWhere, VarTable, TermVar,
         Conjunct, Conjuncts, !ElimVars, !VarArgMap, !ConstStructDb) :-
     Conjunct = hlds_goal(GoalExpr, GoalInfo),
     ( if
@@ -299,7 +299,7 @@ simplify_construct_ground_terms(DefinedWhere, VarTypes, TermVar,
     else
         unexpected($pred, "not construction unification")
     ),
-    lookup_var_type(VarTypes, LHSVar, TermType),
+    lookup_var_type(VarTable, LHSVar, TermType),
     (
         RHSVars = [],
         Arg = csa_constant(ConsId, TermType)
@@ -320,7 +320,7 @@ simplify_construct_ground_terms(DefinedWhere, VarTypes, TermVar,
     ;
         Conjuncts = [HeadConjunct | TailConjuncts],
         !:ElimVars = [LHSVar | !.ElimVars],
-        simplify_construct_ground_terms(DefinedWhere, VarTypes, TermVar,
+        simplify_construct_ground_terms(DefinedWhere, VarTable, TermVar,
             HeadConjunct, TailConjuncts,
             !ElimVars, !VarArgMap, !ConstStructDb)
     ).

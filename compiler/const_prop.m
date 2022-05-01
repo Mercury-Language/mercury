@@ -26,7 +26,7 @@
 :- import_module libs.globals.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module list.
 
@@ -41,7 +41,7 @@
     % a goal that binds the output variables of the call to their statically
     % known values. If the attempt fails, fail.
     %
-:- pred evaluate_call(globals::in, vartypes::in, instmap::in,
+:- pred evaluate_call(globals::in, var_table::in, instmap::in,
     string::in, string::in, int::in, list(prog_var)::in,
     hlds_goal_expr::out, hlds_goal_info::in, hlds_goal_info::out) is semidet.
 
@@ -84,12 +84,12 @@
                 arg_inst    :: mer_inst
             ).
 
-evaluate_call(Globals, VarTypes, InstMap,
+evaluate_call(Globals, VarTable, InstMap,
         ModuleName, ProcName, ModeNum, Args, GoalExpr, !GoalInfo) :-
     LookupArgs =
         ( func(Var) = arg_hlds_info(Var, Type, Inst) :-
-            instmap_lookup_var(InstMap, Var, Inst),
-            lookup_var_type(VarTypes, Var, Type)
+            lookup_var_type(VarTable, Var, Type),
+            instmap_lookup_var(InstMap, Var, Inst)
         ),
     ArgHldsInfos = list.map(LookupArgs, Args),
     evaluate_call_2(Globals, ModuleName, ProcName, ModeNum, ArgHldsInfos,

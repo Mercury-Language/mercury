@@ -155,8 +155,8 @@ maybe_par_loop_control_proc(DepInfo, PredProcId, !ProcInfo, !ModuleInfo) :-
         proc_info_get_goal(!.ProcInfo, Body0),
 
         % Re-calculate goal ids.
-        proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
-        fill_goal_id_slots_in_proc_body(!.ModuleInfo, VarTypes,
+        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
+        fill_goal_id_slots_in_proc_body(!.ModuleInfo, vts_var_table(VarTable),
             ContainingGoalMap, Body0, Body),
         proc_info_set_goal(Body, !ProcInfo),
         goal_get_loop_control_par_conjs(Body, PredProcId,

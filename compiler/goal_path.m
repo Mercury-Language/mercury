@@ -26,7 +26,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 %-----------------------------------------------------------------------------%
 %
@@ -40,7 +40,7 @@
 :- pred fill_goal_id_slots_in_proc(module_info::in,
     containing_goal_map::out, proc_info::in, proc_info::out) is det.
 
-:- pred fill_goal_id_slots_in_proc_body(module_info::in, vartypes::in,
+:- pred fill_goal_id_slots_in_proc_body(module_info::in, var_type_source::in,
     containing_goal_map::out, hlds_goal::in, hlds_goal::out) is det.
 
     % Fill in the goal_ids for goals in the clauses_info.
@@ -82,19 +82,19 @@
 :- type slot_info
     --->    slot_info(
                 slot_info_module_info               :: module_info,
-                slot_info_vartypes                  :: vartypes
+                slot_info_var_type_src              :: var_type_source
             ).
 
 fill_goal_id_slots_in_proc(ModuleInfo, ContainingGoalMap, !ProcInfo) :-
     proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
     proc_info_get_goal(!.ProcInfo, Goal0),
-    fill_goal_id_slots_in_proc_body(ModuleInfo, VarTypes,
+    fill_goal_id_slots_in_proc_body(ModuleInfo, vts_vartypes(VarTypes),
         ContainingGoalMap, Goal0, Goal),
     proc_info_set_goal(Goal, !ProcInfo).
 
-fill_goal_id_slots_in_proc_body(ModuleInfo, VarTypes, ContainingGoalMap,
+fill_goal_id_slots_in_proc_body(ModuleInfo, VarTypeSrc, ContainingGoalMap,
         Goal0, Goal) :-
-    SlotInfo = slot_info(ModuleInfo, VarTypes),
+    SlotInfo = slot_info(ModuleInfo, VarTypeSrc),
     fill_goal_id_slots(SlotInfo, whole_body_goal, counter.init(0), _,
         [], ContainingGoalList, Goal0, Goal),
     map.from_rev_sorted_assoc_list(ContainingGoalList, ContainingGoalMap).
@@ -104,7 +104,7 @@ fill_goal_id_slots_in_clauses(ModuleInfo, ContainingGoalMap,
     clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers),
     get_clause_list_for_replacement(ClausesRep0, Clauses0),
     clauses_info_get_vartypes(ClausesInfo0, VarTypes),
-    SlotInfo = slot_info(ModuleInfo, VarTypes),
+    SlotInfo = slot_info(ModuleInfo, vts_vartypes(VarTypes)),
     % If there is exactly one clause, we could theoretically start the counter
     % at zero, assigning goal_id(0) to the whole clause, since it is also
     % the whole procedure body. However, all passes that care about the whole
@@ -192,9 +192,9 @@ fill_goal_id_slots(SlotInfo, ContainingGoal, !GoalNumCounter,
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        VarTypes = SlotInfo ^ slot_info_vartypes,
+        VarTypeSrc = SlotInfo ^ slot_info_var_type_src,
         ModuleInfo = SlotInfo ^ slot_info_module_info,
-        lookup_var_type(VarTypes, Var, Type),
+        lookup_var_type_in_source(VarTypeSrc, Var, Type),
         ( if switch_type_num_functors(ModuleInfo, Type, NumFunctors) then
             MaybeNumFunctors = known_num_functors_in_type(NumFunctors)
         else
@@ -329,7 +329,7 @@ fill_orelse_id_slots(SlotInfo, GoalId, LastOrElseNum, !GoalNumCounter,
 fill_goal_path_slots_in_proc(ModuleInfo, !Proc) :-
     proc_info_get_goal(!.Proc, Goal0),
     proc_info_get_varset_vartypes(!.Proc, _VarSet, VarTypes),
-    SlotInfo = slot_info(ModuleInfo, VarTypes),
+    SlotInfo = slot_info(ModuleInfo, vts_vartypes(VarTypes)),
     fill_goal_path_slots(rgp_nil, SlotInfo, Goal0, Goal),
     proc_info_set_goal(Goal, !Proc).
 
@@ -349,9 +349,9 @@ fill_goal_path_slots(RevGoalPath, SlotInfo, Goal0, Goal) :-
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        VarTypes = SlotInfo ^ slot_info_vartypes,
+        VarTypeSrc = SlotInfo ^ slot_info_var_type_src,
         ModuleInfo = SlotInfo ^ slot_info_module_info,
-        lookup_var_type(VarTypes, Var, Type),
+        lookup_var_type_in_source(VarTypeSrc, Var, Type),
         ( if switch_type_num_functors(ModuleInfo, Type, NumFunctors) then
             MaybeNumFunctors = known_num_functors_in_type(NumFunctors)
         else

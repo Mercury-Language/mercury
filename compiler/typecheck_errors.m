@@ -49,6 +49,8 @@
     ;       var_vector_cond_quant
     ;       var_vector_exist_quant
     ;       var_vector_promise_solutions
+    ;       var_vector_switch_complete
+    ;       var_vector_switch_arm_detism
     ;       var_vector_loop_control
     ;       var_vector_try_io
     ;       var_vector_atomic_output
@@ -2753,6 +2755,14 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
             Pieces = [words("in the"), invis_order_default_end(ArgNum),
                 nth_fixed(ArgNum),
                 words("variable of promise_solutions scope:"), nl]
+        ;
+            VarVectorKind = var_vector_switch_complete,
+            Pieces = [words("in the"),
+                words("variable of require_switch_complete scope:"), nl]
+        ;
+            VarVectorKind = var_vector_switch_arm_detism,
+            Pieces = [words("in the"),
+                words("variable of require_switch_arm_detism scope:"), nl]
         ;
             VarVectorKind = var_vector_loop_control,
             Pieces = [words("in the"), invis_order_default_end(ArgNum),

@@ -156,7 +156,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module list.
 
@@ -177,7 +177,7 @@
     % lambda.m, as also described above.
     %
 :- pred find_and_record_any_direct_arg_in_out_posns(pred_id::in, proc_id::in,
-    vartypes::in, list(prog_var)::in, list(mer_mode)::in,
+    var_table::in, list(prog_var)::in, list(mer_mode)::in,
     module_info::in, module_info::out) is det.
 
 %---------------------%
@@ -197,6 +197,7 @@
 :- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.recompute_instmap_deltas.
+:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_data.
@@ -221,7 +222,6 @@
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bimap.
@@ -280,7 +280,7 @@ find_and_record_any_direct_arg_in_out_posns(PredId, ProcId, VarTypes,
     % - the list of problem argument positions, whose modes do not contain the
     %   information we need to decide whether or not they need to be cloned.
     %
-:- pred find_direct_arg_in_out_posns(module_info::in, vartypes::in,
+:- pred find_direct_arg_in_out_posns(module_info::in, var_table::in,
     int::in, list(prog_var)::in, list(mer_mode)::in,
     list(int)::out, list(int)::out) is det.
 
@@ -308,7 +308,7 @@ find_direct_arg_in_out_posns(ModuleInfo, VarTypes, CurArgNum,
         ProblemPosns = [CurArgNum | TailProblemPosns]
     ).
 
-:- pred is_direct_arg_in_out_posn(module_info::in, vartypes::in,
+:- pred is_direct_arg_in_out_posn(module_info::in, var_table::in,
     prog_var::in, mer_mode::in, is_mode_daio::out) is det.
 
 is_direct_arg_in_out_posn(ModuleInfo, VarTypes, Var, Mode, IsDAIO) :-
@@ -723,9 +723,11 @@ make_direct_arg_in_out_clone(PredProcId, OoMInOutArgs, ProcInOut,
         InstGraphInfo, ArgModesMaps, PredVarNameRemap, Assertions,
         ObsoleteInFavourOf, InstanceMethodArgTypes),
     OoMInOutArgs = one_or_more(HeadArgPos, TailArgPosns),
+    make_var_table(!.ModuleInfo, VarSet, VarTypes, VarTable),
     clone_daio_pred_proc_args(!.ModuleInfo, 1, HeadArgPos, TailArgPosns,
         ArgTypes, HeadVars, Modes, CloneArgTypes, CloneHeadVars, CloneModes,
-        VarSet, CloneVarSet, VarTypes, CloneVarTypes),
+        VarTable, CloneVarTable),
+    split_var_table(CloneVarTable, CloneVarSet, CloneVarTypes),
     (
         DeclaredModes = maybe.no,
         CloneDeclaredModes = maybe.no
@@ -793,11 +795,10 @@ make_direct_arg_in_out_clone(PredProcId, OoMInOutArgs, ProcInOut,
     int::in, list(int)::in,
     list(mer_type)::in, list(prog_var)::in, list(mer_mode)::in,
     list(mer_type)::out, list(prog_var)::out, list(mer_mode)::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    var_table::in, var_table::out) is det.
 
 clone_daio_pred_proc_args(ModuleInfo, CurArgNum, HeadArgPosn, TailArgPosns,
-        Types, Vars, Modes, CloneTypes, CloneVars, CloneModes,
-        !VarSet, !VarTypes) :-
+        Types, Vars, Modes, CloneTypes, CloneVars, CloneModes, !VarTypes) :-
     ( if
         Types = [HeadType | TailTypes],
         Vars = [HeadVar | TailVars],
@@ -816,14 +817,14 @@ clone_daio_pred_proc_args(ModuleInfo, CurArgNum, HeadArgPosn, TailArgPosns,
             % (b) many utility routines that operate on that representation
             %     insist, quite rightly, on the number of headvars
             %     matching the number of argument types and modes.
-            ( if varset.search_name(!.VarSet, HeadVar, HeadVarName) then
-                varset.new_named_var(
-                    maybe_add_headvar_clone_suffix(HeadVarName), NewVar,
-                    !VarSet)
-            else
-                varset.new_var(NewVar, !VarSet)
-            ),
-            add_var_type(NewVar, HeadType, !VarTypes),
+            lookup_var_entry(!.VarTypes, HeadVar, HeadVarEntry),
+            HeadVarEntry = vte(HeadVarName, _HeadVarType, _HeadVarIsDummy),
+            NewVarName = maybe_add_headvar_clone_suffix(HeadVarName),
+            % Getting the type of NewVar from HeadVar's type in the argument
+            % list rather than from VarTable preserves old behavior.
+            NewVarIsDummy = is_type_a_dummy(ModuleInfo, HeadType),
+            NewVarEntry = vte(NewVarName, HeadType, NewVarIsDummy),
+            add_var_entry(NewVarEntry, NewVar, !VarTypes),
             daio_mode_to_mode_pair(ModuleInfo, HeadMode,
                 ClobberedHeadMode, CloneMode),
             (
@@ -836,8 +837,7 @@ clone_daio_pred_proc_args(ModuleInfo, CurArgNum, HeadArgPosn, TailArgPosns,
                 clone_daio_pred_proc_args(ModuleInfo, CurArgNum + 1,
                     HeadTailArgPosn, TailTailArgPosns,
                     TailTypes, TailVars, TailModes,
-                    TailCloneTypes, TailCloneVars, TailCloneModes,
-                    !VarSet, !VarTypes),
+                    TailCloneTypes, TailCloneVars, TailCloneModes, !VarTypes),
                 CloneTypes = [HeadType, HeadType | TailCloneTypes],
                 CloneVars = [HeadVar, NewVar | TailCloneVars],
                 CloneModes = [ClobberedHeadMode, CloneMode | TailCloneModes]
@@ -845,8 +845,7 @@ clone_daio_pred_proc_args(ModuleInfo, CurArgNum, HeadArgPosn, TailArgPosns,
         else
             clone_daio_pred_proc_args(ModuleInfo, CurArgNum + 1,
                 HeadArgPosn, TailArgPosns, TailTypes, TailVars, TailModes,
-                TailCloneTypes, TailCloneVars, TailCloneModes,
-                !VarSet, !VarTypes),
+                TailCloneTypes, TailCloneVars, TailCloneModes, !VarTypes),
             CloneTypes = [HeadType | TailCloneTypes],
             CloneVars = [HeadVar | TailCloneVars],
             CloneModes = [HeadMode | TailCloneModes]
@@ -996,24 +995,24 @@ transform_direct_arg_in_out_calls_in_proc(DirectArgProcMap,
                 "Direct arg in out transforming", PredId, ProcId, !IO)
         )
     ),
-    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
+    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
     proc_info_get_goal(!.ProcInfo, Goal0),
     module_info_get_name(!.ModuleInfo, ModuleName),
     trace [compile_time(flag("daio-debug")), io(!IO)] (
         get_debug_output_stream(Globals, ModuleName, Stream, !IO),
         io.format(Stream, "transforming proc(%d, %d)\n",
             [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))], !IO),
-        dump_goal_nl(Stream, !.ModuleInfo, vns_varset(VarSet0), Goal0, !IO)
+        dump_goal_nl(Stream, !.ModuleInfo, vns_var_table(VarTable0),
+            Goal0, !IO)
     ),
     bimap.init(VarMap0),
-    Info0 = daio_info(!.ModuleInfo, DirectArgProcInOutMap,
-        VarSet0, VarTypes0, []),
+    Info0 = daio_info(!.ModuleInfo, DirectArgProcInOutMap, VarTable0, []),
     proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
     expand_daio_in_goal(Goal0, Goal, InstMap0, VarMap0, VarMap, Info0, Info),
     PredProcId = proc(PredId, ProcId),
     proc_info_get_headvars(!.ProcInfo, HeadVars0),
-    Info = daio_info(_, _, VarSet, VarTypes, CloneForeignProcs),
-    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+    Info = daio_info(_, _, VarTable, CloneForeignProcs),
+    proc_info_set_var_table(VarTable, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo),
 
     ( if
@@ -1331,8 +1330,8 @@ clone_in_out_args_in_generic_call([_ | _], _, [], _, !VarMap, !Info) :-
 clone_in_out_args_in_generic_call([HeadVar0 | TailVars0], Vars,
         [HeadMode0 | TailModes0], Modes, !VarMap, !Info) :-
     ModuleInfo0 = !.Info ^ daio_module_info,
-    VarTypes0 = !.Info ^ daio_vartypes,
-    is_direct_arg_in_out_posn(ModuleInfo0, VarTypes0, HeadVar0, HeadMode0,
+    VarTable0 = !.Info ^ daio_var_table,
+    is_direct_arg_in_out_posn(ModuleInfo0, VarTable0, HeadVar0, HeadMode0,
         IsDAIO),
     (
         IsDAIO = mode_is_daio,
@@ -1471,7 +1470,8 @@ expand_daio_in_unify(GoalInfo0, GoalExpr0, GoalExpr, InstMap0,
         ModuleInfo = !.Info ^ daio_module_info,
         trace [compile_time(flag("daio-debug")), io(!IO)] (
             get_daio_debug_stream(!.Info, Stream, !IO),
-            dump_goal_nl(Stream, ModuleInfo, vns_varset(!.Info ^ daio_varset),
+            dump_goal_nl(Stream, ModuleInfo,
+                vns_var_table(!.Info ^ daio_var_table),
                 hlds_goal(GoalExpr0, GoalInfo0), !IO),
             io.flush_output(Stream, !IO)
         ),
@@ -1523,7 +1523,7 @@ expand_daio_in_unify(GoalInfo0, GoalExpr0, GoalExpr, InstMap0,
                 get_daio_debug_stream(!.Info, Stream, !IO),
                 io.write_string(Stream, "CopyGoal:\n", !IO),
                 dump_goal_nl(Stream, ModuleInfo,
-                    vns_varset(!.Info ^ daio_varset), CopyGoal, !IO),
+                    vns_var_table(!.Info ^ daio_var_table), CopyGoal, !IO),
                 io.flush_output(Stream, !IO)
             )
         else
@@ -1714,15 +1714,15 @@ expand_daio_in_branches(GoalInfo0, InstMap0, Arms0, Arms,
     bimap.det_from_assoc_list(MergedVarMapEntries, MergedVarMap),
     trace [compile_time(flag("daio-debug")), io(!IO)] (
         get_daio_debug_stream(!.Info, Stream, !IO),
-        VarSet = !.Info ^ daio_varset,
+        VarNameSrc = vns_var_table(!.Info ^ daio_var_table),
         io.format(Stream, "nonlocals: %s\n",
-            [s(mercury_vars_to_string(VarSet, print_name_and_num,
+            [s(mercury_vars_to_string_src(VarNameSrc, print_name_and_num,
                 set.to_sorted_list(NonLocalsSet)))], !IO),
         io.format(Stream, "varmap vars: %s\n",
-            [s(mercury_vars_to_string(VarSet, print_name_and_num,
+            [s(mercury_vars_to_string_src(VarNameSrc, print_name_and_num,
                 set.to_sorted_list(VarMapVars)))], !IO),
         io.format(Stream, "vars to merg: %s\n",
-            [s(mercury_vars_to_string(VarSet, print_name_and_num,
+            [s(mercury_vars_to_string_src(VarNameSrc, print_name_and_num,
                 set.to_sorted_list(VarsToMerge)))], !IO),
         dump_varmap(!.Info, Stream, "before branch", InitVarMap, !IO),
         dump_varmap(!.Info, Stream, "after branch", MergedVarMap, !IO)
@@ -1871,18 +1871,13 @@ project_arm(arm_varmap(Arm, _VarMap)) = Arm.
     daio_info::in, daio_info::out) is det.
 
 make_new_clone_var(OldVar, NewVar, !Info) :-
-    VarSet0 = !.Info ^ daio_varset,
-    VarTypes0 = !.Info ^ daio_vartypes,
-    ( if varset.search_name(VarSet0, OldVar, HeadVarName) then
-        varset.new_named_var(maybe_add_goal_clone_suffix(HeadVarName), NewVar,
-            VarSet0, VarSet)
-    else
-        varset.new_var(NewVar, VarSet0, VarSet)
-    ),
-    lookup_var_type(VarTypes0, OldVar, VarType),
-    add_var_type(NewVar, VarType, VarTypes0, VarTypes),
-    !Info ^ daio_varset := VarSet,
-    !Info ^ daio_vartypes := VarTypes.
+    VarTable0 = !.Info ^ daio_var_table,
+    lookup_var_entry(VarTable0, OldVar, OldVarEntry),
+    OldVarEntry = vte(OldVarName, OldVarType, OldVarIsDummy),
+    NewVarName = maybe_add_goal_clone_suffix(OldVarName),
+    NewVarEntry = vte(NewVarName, OldVarType, OldVarIsDummy),
+    add_var_entry(NewVarEntry, NewVar, VarTable0, VarTable),
+    !Info ^ daio_var_table := VarTable.
 
 %---------------------------------------------------------------------------%
 
@@ -1938,9 +1933,8 @@ transform_class_instance_proc(DirectArgProcInOutMap, PredProcId0, PredProcId) :-
                 daio_module_info            :: module_info,
                 daio_proc_map               :: direct_arg_proc_in_out_map,
 
-                % We update these two fields as we create new clone variables.
-                daio_varset                 :: prog_varset,
-                daio_vartypes               :: vartypes,
+                % We update this field as we create new clone variables.
+                daio_var_table              :: var_table,
 
                 % We update this field as we find call_foreign_proc goals
                 % whose procedure is in the daio_proc_map.
@@ -1969,9 +1963,12 @@ dump_varmap(Info, Stream, Desc, VarMap, !IO) :-
     pair(prog_var, prog_var)::in, io::di, io::uo) is det.
 
 dump_varmap_entry(Info, Stream, FromVar - ToVar, !IO) :-
-    VarSet = Info ^ daio_varset,
-    FromVarName = mercury_var_to_string(VarSet, print_name_and_num, FromVar),
-    ToVarName = mercury_var_to_string(VarSet, print_name_and_num, ToVar),
+    VarTable = Info ^ daio_var_table,
+    VarNameSrc = vns_var_table(VarTable),
+    FromVarName =
+        mercury_var_to_string_src(VarNameSrc, print_name_and_num, FromVar),
+    ToVarName =
+        mercury_var_to_string_src(VarNameSrc, print_name_and_num, ToVar),
     io.format(Stream, "\t%s -> %s\n", [s(FromVarName), s(ToVarName)], !IO).
 
 %---------------------------------------------------------------------------%
@@ -1990,11 +1987,21 @@ dump_varmap_entry(Info, Stream, FromVar - ToVar, !IO) :-
 
 :- func maybe_add_goal_clone_suffix(string) = string.
 
-maybe_add_goal_clone_suffix(VarName) = VarName.
+maybe_add_goal_clone_suffix(OldVarName) = CloneVarName :-
+    ( if OldVarName = "" then
+        CloneVarName = ""
+    else
+        CloneVarName = OldVarName   % ++ "_clone"
+    ).
 
 :- func maybe_add_headvar_clone_suffix(string) = string.
 
-maybe_add_headvar_clone_suffix(VarName) = VarName.
+maybe_add_headvar_clone_suffix(OldVarName) = CloneVarName :-
+    ( if OldVarName = "" then
+        CloneVarName = ""
+    else
+        CloneVarName = OldVarName   % ++ "_clone"
+    ).
 
 %---------------------------------------------------------------------------%
 

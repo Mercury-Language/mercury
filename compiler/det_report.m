@@ -30,6 +30,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 
 :- import_module list.
 
@@ -100,7 +101,7 @@
 
     % Describe the given list of failing contexts.
     %
-:- func failing_contexts_description(module_info, prog_varset,
+:- func failing_contexts_description(module_info, var_table,
     list(failing_context)) = list(error_msg).
 
     % Describe a call we have seen.
@@ -150,8 +151,6 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.var_table.
-:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -255,9 +254,9 @@ check_determinism_of_pred(PredProcId, !ModuleInfo, !Specs) :-
             ; Cmp = first_detism_incomparable
             ),
             proc_info_get_goal(ProcInfo, Goal),
-            proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
+            proc_info_get_var_table(!.ModuleInfo, ProcInfo, VarTable),
             proc_info_get_initial_instmap(!.ModuleInfo, ProcInfo, InstMap0),
-            det_info_init(!.ModuleInfo, PredProcId, VarSet, VarTypes,
+            det_info_init(!.ModuleInfo, PredProcId, VarTable,
                 pess_extra_vars_report, [], DetInfo0),
             det_diagnose_goal(Goal, InstMap0, DeclaredDetism, [],
                 DetInfo0, DetInfo, GoalMsgs),
@@ -359,9 +358,9 @@ make_reqscope_checks_if_needed(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         )
     then
         proc_info_get_goal(ProcInfo, Goal),
-        proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
+        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
         proc_info_get_initial_instmap(ModuleInfo, ProcInfo, InstMap0),
-        det_info_init(ModuleInfo, PredProcId, VarSet, VarTypes,
+        det_info_init(ModuleInfo, PredProcId, VarTable,
             pess_extra_vars_ignore, [], DetInfo0),
         reqscope_check_goal(Goal, InstMap0, InformIncompleteSwitches, no,
             [], DetInfo0, DetInfo),
@@ -715,8 +714,8 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         else
             Msgs1 = []
         ),
-        det_info_get_vartypes(!.DetInfo, VarTypes),
-        lookup_var_type(VarTypes, Var, VarType),
+        det_info_get_var_table(!.DetInfo, VarTable),
+        lookup_var_type(VarTable, Var, VarType),
         det_diagnose_switch_arms(Var, VarType, Cases, InstMap0,
             Desired, SwitchContexts, !DetInfo, Msgs2),
         Msgs = Msgs1 ++ Msgs2
@@ -1141,8 +1140,8 @@ reqscope_check_goal(Goal, InstMap0, IIS, MaybeReportedSwitch,
                     InstMap0, SwitchContexts, Var, Cases, Context, !DetInfo)
             )
         ),
-        det_info_get_vartypes(!.DetInfo, VarTypes),
-        lookup_var_type(VarTypes, Var, VarType),
+        det_info_get_var_table(!.DetInfo, VarTable),
+        lookup_var_type(VarTable, Var, VarType),
         reqscope_check_cases(Var, VarType, Cases, InstMap0,
             IIS, SwitchContexts, !DetInfo)
     ;
@@ -1250,8 +1249,8 @@ reqscope_check_scope(SwitchContexts, Reason, SubGoal, ScopeGoalInfo, InstMap0,
             is_scope_subgoal_a_sortof_switch(SubGoal,
                 _SwitchContext, SwitchVar, _CanFail, Cases)
         then
-            det_info_get_vartypes(!.DetInfo, VarTypes),
-            lookup_var_type(VarTypes, SwitchVar, SwitchVarType),
+            det_info_get_var_table(!.DetInfo, VarTable),
+            lookup_var_type(VarTable, SwitchVar, SwitchVarType),
             reqscope_check_goal_detism_for_cases(RequiredDetism,
                 SwitchVar, SwitchVarType, Cases, InstMap0, !DetInfo)
         else
@@ -1523,8 +1522,8 @@ reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap0,
             % won't tell the user *which* arm's determinism isn't right.
             % We have to use the context of the switch arm itself.
             Context = goal_info_get_context(GoalInfo),
-            det_info_get_varset(!.DetInfo, VarSet),
-            varset.lookup_name(VarSet, SwitchVar, SwitchVarName),
+            det_info_get_var_table(!.DetInfo, VarTable),
+            SwitchVarName = var_table_entry_name(VarTable, SwitchVar),
             MainConsIdStr = cons_id_and_arity_to_string(MainConsId),
             OtherConsIdStrs =
                 list.map(cons_id_and_arity_to_string, OtherConsIds),
@@ -1570,8 +1569,9 @@ reqscope_check_goal_detism_for_cases(RequiredDetism, Var, VarType,
 
 generate_error_not_switch_on_required_var(RequiredVar, ScopeWord,
         ScopeGoalInfo, !DetInfo) :-
-    det_info_get_varset(!.DetInfo, VarSet),
-    RequiredVarStr = mercury_var_to_name_only(VarSet, RequiredVar),
+    det_info_get_var_table(!.DetInfo, VarTable),
+    RequiredVarStr = mercury_var_to_string_src(vns_var_table(VarTable),
+        print_name_only, RequiredVar),
     Pieces = [words("Error: the goal inside the"),
         words(ScopeWord), fixed("[" ++ RequiredVarStr ++ "]"), words("scope"),
         words("is not a switch on"), quote(RequiredVarStr), suffix("."), nl],
@@ -1677,13 +1677,14 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
         Var, Cases, NestingPieces, VarStr, MaybeMissingInfo) :-
     det_diagnose_switch_context(DetInfo, SwitchContexts, NestingPieces),
 
-    det_info_get_varset(DetInfo, VarSet),
-    VarStr = mercury_var_to_name_only(VarSet, Var),
     det_info_get_module_info(DetInfo, ModuleInfo),
+    det_info_get_var_table(DetInfo, VarTable),
+    VarStr = mercury_var_to_string_src(vns_var_table(VarTable),
+        print_name_only, Var),
     instmap_lookup_var(InstMap0, Var, VarInst),
     ( if
-        det_info_get_vartypes(DetInfo, VarTypes),
-        lookup_var_type(VarTypes, Var, VarType),
+        det_info_get_var_table(DetInfo, VarTable),
+        lookup_var_type(VarTable, Var, VarType),
         type_to_ctor_det(VarType, VarTypeCtor),
         module_info_get_type_table(ModuleInfo, TypeTable),
         ( if
@@ -1859,7 +1860,7 @@ cons_id_list_to_pieces(ConsId1, ConsIds2Plus, EndCommaPieces) = Pieces :-
     % A switch arm is for one or more cons_ids. A switch match can record,
     % for one of these cons_ids, the variables on the right hand side of
     % the unification that told switch detection that this disjunction
-    % can succeed only the switched-on variable is bound to one of these
+    % can succeed only if the switched-on variable is bound to one of these
     % cons_ids. For example, in a switch on X, if the switch arm is
     % for the cons_id f/2, this means that the switch arm should have
     % a unification of the form X = f(A, B). Likewise, if the switch arm
@@ -1879,13 +1880,14 @@ cons_id_list_to_pieces(ConsId1, ConsIds2Plus, EndCommaPieces) = Pieces :-
 det_diagnose_switch_context(_, [], []).
 det_diagnose_switch_context(DetInfo, [SwitchContext | SwitchContexts],
         Pieces) :-
-    det_get_proc_info(DetInfo, ProcInfo),
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
+    det_info_get_var_table(DetInfo, VarTable),
+    VarNameSrc = vns_var_table(VarTable),
     SwitchContext = switch_context(Var, MainMatch, OtherMatches),
-    MainMatchStr = switch_match_to_string(VarSet, MainMatch),
-    OtherMatchStrs = list.map(switch_match_to_string(VarSet), OtherMatches),
+    MainMatchStr = switch_match_to_string(VarNameSrc, MainMatch),
+    OtherMatchStrs =
+        list.map(switch_match_to_string(VarNameSrc), OtherMatches),
     MatchsStr = string.join_list(", ", [MainMatchStr | OtherMatchStrs]),
-    VarStr = mercury_var_to_name_only(VarSet, Var),
+    VarStr = mercury_var_to_string_src(VarNameSrc, print_name_only, Var),
     InnerPieces = [words("Inside the case"), words(MatchsStr),
         words("of the switch on"), fixed(VarStr), suffix(":"), nl],
     det_diagnose_switch_context(DetInfo, SwitchContexts, OuterPieces),
@@ -1894,11 +1896,11 @@ det_diagnose_switch_context(DetInfo, [SwitchContext | SwitchContexts],
     % towards the inside.
     Pieces = OuterPieces ++ [lower_case_next_if_not_first] ++ InnerPieces.
 
-:- func switch_match_to_string(prog_varset, switch_match) = string.
+:- func switch_match_to_string(var_name_source, switch_match) = string.
 
-switch_match_to_string(VarSet, switch_match(ConsId, MaybeArgVars)) =
-    cons_id_and_vars_or_arity_to_string(vns_varset(VarSet),
-        do_not_qualify_cons_id, ConsId, MaybeArgVars).
+switch_match_to_string(VarNameSrc, switch_match(ConsId, MaybeArgVars)) =
+    cons_id_and_vars_or_arity_to_string(VarNameSrc, do_not_qualify_cons_id,
+        ConsId, MaybeArgVars).
 
 %---------------------------------------------------------------------------%
 
@@ -1968,12 +1970,11 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
     list(format_component)::out) is det.
 
 det_report_unify_context(!.First, Last, _Context, UnifyContext, DetInfo,
-        LHS, RHS, AllPieces) :-
+        LHSVar, RHS, AllPieces) :-
     unify_context_first_to_pieces(!First, UnifyContext, [],
         UnifyContextPieces),
-    det_get_proc_info(DetInfo, ProcInfo),
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
     det_info_get_module_info(DetInfo, ModuleInfo),
+    det_info_get_var_table(DetInfo, VarTable),
     (
         !.First = is_first,
         (
@@ -1993,27 +1994,33 @@ det_report_unify_context(!.First, Last, _Context, UnifyContext, DetInfo,
             StartWords = "in unification"
         )
     ),
-    ( if varset.search_name(VarSet, LHS, _) then
-        LHSVarName = mercury_var_to_name_only(VarSet, LHS),
+    VarNameSrc = vns_var_table(VarTable),
+    lookup_var_entry(VarTable, LHSVar, LHSVarEntry),
+    LHSVarRawName = LHSVarEntry ^ vte_name,
+    ( if LHSVarRawName = "" then
+        RHSStr = unify_rhs_to_string(ModuleInfo, VarNameSrc,
+            print_name_only, RHS),
+        Pieces = [words(StartWords), words("with"),
+            words(add_quotes(RHSStr))]
+    else
+        % LHSVarName may differ from LHSVarRawName; see
+        % mercury_convert_var_name for details.
+        LHSVarName = mercury_var_to_string_src(VarNameSrc, print_name_only,
+            LHSVar),
         ( if
-            RHS = rhs_var(RV),
-            not varset.search_name(VarSet, RV, _)
+            RHS = rhs_var(RHSVar),
+            lookup_var_entry(VarTable, RHSVar, RHSVarEntry),
+            RHSVarEntry ^ vte_name = ""
         then
             Pieces = [words(StartWords), words("with"),
                 words(add_quotes(LHSVarName))]
         else
-            RHSStr =
-                unify_rhs_to_string(ModuleInfo, vns_varset(VarSet),
-                    print_name_only, RHS),
+            RHSStr = unify_rhs_to_string(ModuleInfo, VarNameSrc,
+                print_name_only, RHS),
             Pieces = [words(StartWords), words("of"),
                 words(add_quotes(LHSVarName)), words("and"),
                 words(add_quotes(RHSStr))]
         )
-    else
-        RHSStr = unify_rhs_to_string(ModuleInfo, vns_varset(VarSet),
-            print_name_only, RHS),
-        Pieces = [words(StartWords), words("with"),
-            words(add_quotes(RHSStr))]
     ),
     AllPieces = UnifyContextPieces ++ Pieces.
 
@@ -2026,49 +2033,51 @@ promise_solutions_kind_str(equivalent_solution_sets)
 promise_solutions_kind_str(equivalent_solution_sets_arbitrary)
     = "arbitrary".
 
-failing_contexts_description(ModuleInfo, VarSet, FailingContexts) =
-    list.map(failing_context_description(ModuleInfo, VarSet), FailingContexts).
+failing_contexts_description(ModuleInfo, VarTable, FailingContexts) =
+    list.map(failing_context_description(ModuleInfo, VarTable),
+        FailingContexts).
 
-:- func failing_context_description(module_info, prog_varset,
+:- func failing_context_description(module_info, var_table,
     failing_context) = error_msg.
 
-failing_context_description(ModuleInfo, VarSet, FailingContext) = Msg :-
+failing_context_description(ModuleInfo, VarTable, FailingContext) = Msg :-
     FailingContext = failing_context(Context, FailingGoal),
+    VarNameSrc = vns_var_table(VarTable),
     (
         FailingGoal = incomplete_switch(Var),
-        VarStr = mercury_var_to_name_only(VarSet, Var),
+        VarStr = mercury_var_to_string_src(VarNameSrc, print_name_only, Var),
         Pieces = [words("The switch on"), fixed(VarStr),
-            words("is incomplete.")]
+            words("is incomplete."), nl]
     ;
         FailingGoal = fail_goal,
-        Pieces = [words("Fail goal can fail.")]
+        Pieces = [words("Fail goal can fail."), nl]
     ;
         FailingGoal = test_goal(Var1, Var2),
-        Var1Str = mercury_var_to_name_only(VarSet, Var1),
-        Var2Str = mercury_var_to_name_only(VarSet, Var2),
+        Var1Str = mercury_var_to_string_src(VarNameSrc, print_name_only, Var1),
+        Var2Str = mercury_var_to_string_src(VarNameSrc, print_name_only, Var2),
         Pieces = [words("Unification of"), fixed(Var1Str),
-            words("and"), fixed(Var2Str), words("can fail.")]
+            words("and"), fixed(Var2Str), words("can fail."), nl]
     ;
         FailingGoal = deconstruct_goal(Var, ConsId),
-        VarStr = mercury_var_to_name_only(VarSet, Var),
+        VarStr = mercury_var_to_string_src(VarNameSrc, print_name_only, Var),
         Pieces = [words("Unification of"), fixed(VarStr), words("with"),
-            qual_cons_id_and_maybe_arity(ConsId), words("can fail.")]
+            qual_cons_id_and_maybe_arity(ConsId), words("can fail."), nl]
     ;
         FailingGoal = call_goal(PredId, _ProcId),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         Name = pred_info_name(PredInfo),
-        Pieces = [words("Call to"), fixed(Name), words("can fail.")]
+        Pieces = [words("Call to"), fixed(Name), words("can fail."), nl]
     ;
         FailingGoal = generic_call_goal(GenericCall),
         hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
         GenericCallIdString = generic_call_id_to_string(GenericCallId),
         Pieces = [words(capitalize_first(GenericCallIdString)),
-            words("can fail.")]
+            words("can fail."), nl]
     ;
         FailingGoal = negated_goal,
-        Pieces = [words("Negated goal can fail.")]
+        Pieces = [words("Negated goal can fail."), nl]
     ),
-    Msg = simplest_msg(Context, Pieces ++ [nl]).
+    Msg = simplest_msg(Context, Pieces).
 
 %---------------------------------------------------------------------------%
 

@@ -177,7 +177,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.
 :- import_module transform_hlds.pd_cost.
 
@@ -598,8 +598,8 @@ common_optimise_construct(RHS0, UnifyMode0, Unification0, UnifyContext0,
                 map.det_insert(Var, csa_const_struct(ConstNum),
                     VarMap0, VarMap)
             else
-                simplify_info_get_var_types(!.Info, VarTypes),
-                lookup_var_type(VarTypes, Var, Type),
+                simplify_info_get_var_table(!.Info, VarTable),
+                lookup_var_type(VarTable, Var, Type),
                 map.det_insert(Var, csa_constant(ConsId, Type),
                     VarMap0, VarMap)
             ),
@@ -950,8 +950,8 @@ common_optimise_deconstruct(Var, ConsId, ArgVars, ArgModes, CanFail,
 :- func lookup_var_type_ctor(simplify_info, prog_var) = type_ctor.
 
 lookup_var_type_ctor(Info, Var) = TypeCtor :-
-    simplify_info_get_var_types(Info, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
+    simplify_info_get_var_table(Info, VarTable),
+    lookup_var_type(VarTable, Var, Type),
     % If we unify a variable with a function symbol, we *must* know
     % what the principal type constructor of its type is.
     type_to_ctor_det(Type, TypeCtor).
@@ -1084,7 +1084,7 @@ record_nonlocals_as_seen(GoalInfo, !CommonStruct) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-common_optimise_call(PredId, ProcId, Args, Purity, GoalInfo,
+common_optimise_call(PredId, ProcId, ArgVars, Purity, GoalInfo,
         GoalExpr0, MaybeAssignsGoalExpr, !Common, !Info) :-
     !.Common = common_info(MaybeCommonStruct0, ConstStruct),
     ( if
@@ -1092,36 +1092,36 @@ common_optimise_call(PredId, ProcId, Args, Purity, GoalInfo,
         Purity = purity_pure,
         Det = goal_info_get_determinism(GoalInfo),
         check_call_detism(Det),
-        simplify_info_get_var_types(!.Info, VarTypes),
         simplify_info_get_module_info(!.Info, ModuleInfo),
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+        simplify_info_get_var_table(!.Info, VarTable),
         proc_info_get_argmodes(ProcInfo, ArgModes),
-        partition_call_args(VarTypes, ModuleInfo, ArgModes, Args,
-            InputArgs, OutputArgs, OutputModes)
+        partition_call_args(ModuleInfo, VarTable, ArgModes, ArgVars,
+            InputArgVars, OutputArgVars, OutputModes)
     then
-        common_do_optimise_call(seen_call(PredId, ProcId), InputArgs,
-            OutputArgs, OutputModes, GoalInfo, GoalExpr0, MaybeAssignsGoalExpr,
-            CommonStruct0, CommonStruct, !Info),
+        common_do_optimise_call(seen_call(PredId, ProcId), InputArgVars,
+            OutputArgVars, OutputModes, GoalInfo, GoalExpr0,
+            MaybeAssignsGoalExpr, CommonStruct0, CommonStruct, !Info),
         !:Common = common_info(yes(CommonStruct), ConstStruct)
     else
         MaybeAssignsGoalExpr = no
     ).
 
-common_optimise_higher_order_call(Closure, Args, Modes, Det, Purity, GoalInfo,
-        GoalExpr0, MaybeAssignsGoalExpr, !Common, !Info) :-
+common_optimise_higher_order_call(ClosureVar, ArgVars, Modes, Det, Purity,
+        GoalInfo, GoalExpr0, MaybeAssignsGoalExpr, !Common, !Info) :-
     !.Common = common_info(MaybeCommonStruct0, ConstStruct),
     ( if
         MaybeCommonStruct0 = yes(CommonStruct0),
         Purity = purity_pure,
         check_call_detism(Det),
-        simplify_info_get_var_types(!.Info, VarTypes),
+        simplify_info_get_var_table(!.Info, VarTable),
         simplify_info_get_module_info(!.Info, ModuleInfo),
-        partition_call_args(VarTypes, ModuleInfo, Modes, Args,
-            InputArgs, OutputArgs, OutputModes)
+        partition_call_args(ModuleInfo, VarTable, Modes, ArgVars,
+            InputArgVars, OutputArgVars, OutputModes)
     then
-        common_do_optimise_call(higher_order_call, [Closure | InputArgs],
-            OutputArgs, OutputModes, GoalInfo, GoalExpr0, MaybeAssignsGoalExpr,
-            CommonStruct0, CommonStruct, !Info),
+        common_do_optimise_call(higher_order_call, [ClosureVar | InputArgVars],
+            OutputArgVars, OutputModes, GoalInfo, GoalExpr0,
+            MaybeAssignsGoalExpr, CommonStruct0, CommonStruct, !Info),
         !:Common = common_info(yes(CommonStruct), ConstStruct)
     else
         MaybeAssignsGoalExpr = no
@@ -1161,14 +1161,14 @@ common_do_optimise_call(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 AssignsGoalExpr = conj(plain_conj, AssignGoals)
             ),
             MaybeAssignsGoalExpr = yes(AssignsGoalExpr),
-            simplify_info_get_var_types(!.Info, VarTypes),
+            simplify_info_get_var_table(!.Info, VarTable),
             ( if
                 simplify_do_warn_duplicate_calls(!.Info),
                 % Don't warn for cases such as:
                 % set.init(Set1 : set(int)),
                 % set.init(Set2 : set(float)).
-                lookup_var_types(VarTypes, OutputArgs, OutputArgTypes1),
-                lookup_var_types(VarTypes, OutputArgs2, OutputArgTypes2),
+                lookup_var_types(VarTable, OutputArgs, OutputArgTypes1),
+                lookup_var_types(VarTable, OutputArgs2, OutputArgTypes2),
                 types_match_exactly_list(OutputArgTypes1, OutputArgTypes2)
             then
                 Context = goal_info_get_context(GoalInfo),
@@ -1226,7 +1226,7 @@ common_do_optimise_call(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
     % failing if any of the outputs have a unique component
     % or if any of the outputs contain any `any' insts.
     %
-:- pred partition_call_args(vartypes::in, module_info::in,
+:- pred partition_call_args(module_info::in, var_table::in,
     list(mer_mode)::in, list(prog_var)::in, list(prog_var)::out,
     list(prog_var)::out, list(mer_mode)::out) is semidet.
 
@@ -1235,12 +1235,12 @@ partition_call_args(_, _, [], [_ | _], _, _, _) :-
     unexpected($pred, "length mismatch (1)").
 partition_call_args(_, _, [_ | _], [], _, _, _) :-
     unexpected($pred, "length mismatch (2)").
-partition_call_args(VarTypes, ModuleInfo, [ArgMode | ArgModes],
+partition_call_args(ModuleInfo, VarTable, [ArgMode | ArgModes],
         [Arg | Args], InputArgs, OutputArgs, OutputModes) :-
-    partition_call_args(VarTypes, ModuleInfo, ArgModes, Args,
+    partition_call_args(ModuleInfo, VarTable, ArgModes, Args,
         InputArgs1, OutputArgs1, OutputModes1),
     mode_get_insts(ModuleInfo, ArgMode, InitialInst, FinalInst),
-    lookup_var_type(VarTypes, Arg, Type),
+    lookup_var_type(VarTable, Arg, Type),
     ( if inst_matches_binding(ModuleInfo, Type, InitialInst, FinalInst) then
         InputArgs = [Arg | InputArgs1],
         OutputArgs = OutputArgs1,
@@ -1381,8 +1381,8 @@ generate_assign_from_const_struct(Unification0, UnifyMode0, UnifyContext0,
     Unification0 =
         construct(Var, ConsId, _ArgVars, _ArgModes, _How, _Uniq, SubInfo),
 
-    simplify_info_get_var_types(!.Info, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
+    simplify_info_get_var_table(!.Info, VarTable),
+    lookup_var_type(VarTable, Var, Type),
     UnifyMode0 = unify_modes_li_lf_ri_rf(ToVarInit, ToVarFinal,
         _FromTermInit, _FromTermFinal),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
@@ -1431,9 +1431,9 @@ generate_assign_from_const_struct(Unification0, UnifyMode0, UnifyContext0,
 generate_assign(ToVar, FromVar, ToVarMode, OldGoalInfo, GoalExpr, GoalInfo,
         !CommonStruct, !Info) :-
     apply_induced_substitutions(ToVar, FromVar, !Info),
-    simplify_info_get_var_types(!.Info, VarTypes),
-    lookup_var_type(VarTypes, ToVar, ToVarType),
-    lookup_var_type(VarTypes, FromVar, FromVarType),
+    simplify_info_get_var_table(!.Info, VarTable),
+    lookup_var_type(VarTable, ToVar, ToVarType),
+    lookup_var_type(VarTable, FromVar, FromVarType),
 
     set_of_var.list_to_set([ToVar, FromVar], NonLocals),
     ToVarMode = from_to_insts(ToVarInit, ToVarFinal),
@@ -1509,7 +1509,7 @@ types_match_exactly_list([TypeA | TypesA], [TypeB | TypesB]) :-
 
     % Two existentially quantified type variables may become aliased if two
     % calls or two deconstructions are merged together. We detect this
-    % situation here and apply the appropriate tsubst to the vartypes and
+    % situation here and apply the appropriate tsubst to the var_table and
     % rtti_varmaps. This allows us to avoid an unsafe cast, and also may
     % allow more opportunities for simplification.
     %

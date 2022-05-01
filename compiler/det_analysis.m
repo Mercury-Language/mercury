@@ -160,7 +160,7 @@
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -351,8 +351,8 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     % Infer the determinism of the goal.
     proc_info_get_goal(ProcInfo0, Goal0),
     proc_info_get_initial_instmap(!.ModuleInfo, ProcInfo0, InstMap0),
-    proc_info_get_varset_vartypes(ProcInfo0, VarSet, VarTypes),
-    det_info_init(!.ModuleInfo, proc(PredId, ProcId), VarSet, VarTypes,
+    proc_info_get_var_table(!.ModuleInfo, ProcInfo0, VarTypes),
+    det_info_init(!.ModuleInfo, proc(PredId, ProcId), VarTypes,
         pess_extra_vars_report, !.Specs, DetInfo0),
     det_infer_goal(Goal0, Goal, InstMap0, SolnContext, [], no,
         InferDetism, _,  DetInfo0, DetInfo),
@@ -1062,8 +1062,8 @@ det_infer_switch_cases([Case0 | Cases0], [Case | Cases], Var, InstMap0,
     % that information here anyway, so we don't bother.
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     det_info_get_module_info(!.DetInfo, ModuleInfo0),
-    det_info_get_vartypes(!.DetInfo, VarTypes),
-    lookup_var_type(VarTypes, Var, VarType),
+    det_info_get_var_table(!.DetInfo, VarTable),
+    lookup_var_type(VarTable, Var, VarType),
     bind_var_to_functors(Var, VarType, MainConsId, OtherConsIds,
         InstMap0, InstMap1, ModuleInfo0, ModuleInfo),
     det_info_set_module_info(ModuleInfo, !DetInfo),
@@ -1129,8 +1129,7 @@ det_infer_call(PredId, ProcId0, ProcId, Args, GoalInfo, SolnContext,
             determinism_components(Detism, CanFail, at_most_many)
         else
             GoalContext = goal_info_get_context(GoalInfo),
-            det_get_proc_info(!.DetInfo, ProcInfo),
-            proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
+            det_info_get_var_table(!.DetInfo, VarTable),
             PredPieces = describe_one_pred_name(ModuleInfo,
                 should_module_qualify, PredId),
             FirstPieces = [words("Error: call to")] ++ PredPieces ++
@@ -1138,7 +1137,7 @@ det_infer_call(PredId, ProcId0, ProcId, Args, GoalInfo, SolnContext,
                 quote(mercury_det_to_string(Detism0)),
                 words("occurs in a context which requires all solutions."),
                 nl],
-            ContextMsgs = failing_contexts_description(ModuleInfo, VarSet,
+            ContextMsgs = failing_contexts_description(ModuleInfo, VarTable,
                 RightFailingContexts),
             Spec = error_spec($pred, severity_error, phase_detism_check,
                 [simplest_msg(GoalContext, FirstPieces) | ContextMsgs]),
@@ -1180,13 +1179,12 @@ det_infer_generic_call(GenericCall, CallDetism, GoalInfo,
     then
         % This error can only occur for higher-order calls.
         % Class method calls are only introduced by polymorphism.
-        det_get_proc_info(!.DetInfo, ProcInfo),
-        proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
+        det_info_get_var_table(!.DetInfo, VarTable),
         FirstPieces = [words("Error: higher-order call to predicate with"),
             words("determinism"), quote(mercury_det_to_string(CallDetism)),
             words("occurs in a context which requires all solutions."), nl],
         det_info_get_module_info(!.DetInfo, ModuleInfo),
-        ContextMsgs = failing_contexts_description(ModuleInfo, VarSet,
+        ContextMsgs = failing_contexts_description(ModuleInfo, VarTable,
             RightFailingContexts),
         Spec = error_spec($pred, severity_error, phase_detism_check,
             [simplest_msg(Context, FirstPieces) | ContextMsgs]),
@@ -1253,7 +1251,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
             SolnContext = all_solns
         then
             GoalContext = goal_info_get_context(GoalInfo),
-            proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
+            det_info_get_var_table(!.DetInfo, VarTable),
             WrongContextPredPieces = describe_one_pred_name(ModuleInfo,
                 should_module_qualify, PredId),
             WrongContextFirstPieces = [words("Error: call to")] ++
@@ -1262,7 +1260,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
                 quote(mercury_det_to_string(Detism0)),
                 words("occurs in a context which requires all solutions."),
                 nl],
-            ContextMsgs = failing_contexts_description(ModuleInfo, VarSet,
+            ContextMsgs = failing_contexts_description(ModuleInfo, VarTable,
                 RightFailingContexts),
             Spec = error_spec($pred, severity_error, phase_detism_check,
                 [simplest_msg(GoalContext, WrongContextFirstPieces) |
@@ -1631,8 +1629,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
     % Therefore cuts are handled in det_infer_goal.
     (
         Reason = promise_solutions(Vars, Kind),
-        det_get_proc_info(!.DetInfo, ProcInfo),
-        proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
+        det_info_get_var_table(!.DetInfo, VarTable),
+        VarNameSrc = vns_var_table(VarTable),
 
         Context = goal_info_get_context(GoalInfo),
         (
@@ -1688,7 +1686,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                     true
                 else
                     OverlapVarNames = list.map(
-                        mercury_var_to_name_only(VarSet),
+                        mercury_var_to_string_src(VarNameSrc, print_name_only),
                         set_of_var.to_sorted_list(OverlapVars)),
                     (
                         OverlapVarNames = [],
@@ -1731,8 +1729,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             var_is_any_in_instmap(ModuleInfo, InstMap0),
             NonLocalVars),
         BoundVars0 = set_of_var.union(GroundBoundVars, AnyBoundVars),
-        proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-        BoundVars = remove_typeinfo_vars_from_set_of_var(VarTypes, BoundVars0),
+        BoundVars =
+            remove_typeinfo_vars_from_set_of_var_vt(VarTable, BoundVars0),
 
         % Which vars were bound inside the scope but not listed
         % in the promise_equivalent_solution{s,_sets} or arbitrary scope?
@@ -1741,7 +1739,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         ( if set_of_var.is_empty(MissingVars) then
             true
         else
-            MissingVarNames = list.map(mercury_var_to_name_only(VarSet),
+            MissingVarNames = list.map(
+                mercury_var_to_string_src(VarNameSrc, print_name_only),
                 set_of_var.to_sorted_list(MissingVars)),
             MissingKindStr = promise_solutions_kind_str(Kind),
             (
@@ -1781,7 +1780,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         then
             true
         else
-            ExtraVarNames = list.map(mercury_var_to_name_only(VarSet),
+            ExtraVarNames = list.map(
+                mercury_var_to_string_src(VarNameSrc, print_name_only),
                 set_of_var.to_sorted_list(ExtraVars)),
             ExtraKindStr = promise_solutions_kind_str(Kind),
             (
@@ -1950,19 +1950,19 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
         % Check for unifications that attempt to examine the representation
         % of a type that does not have a single representation for each
         % abstract value.
-
         ExaminesRepresentation = yes,
-        det_get_proc_info(!.DetInfo, ProcInfo),
-        proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
-        lookup_var_type(VarTypes, Var, Type),
+        det_info_get_var_table(!.DetInfo, VarTable),
+        lookup_var_type(VarTable, Var, Type),
         det_type_has_user_defined_equality_pred(!.DetInfo, Type)
     then
+        VarNameSrc = vns_var_table(VarTable),
         (
             CanFail = can_fail,
             Context = goal_info_get_context(GoalInfo),
             (
                 GoalContext = ccuc_switch,
-                VarStr = mercury_var_to_name_only(VarSet, Var),
+                VarStr = mercury_var_to_string_src(VarNameSrc,
+                    print_name_only, Var),
                 Pieces0 = [words("In switch on variable"), quote(VarStr),
                     suffix(":"), nl]
             ;
@@ -2004,7 +2004,8 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                 Context = goal_info_get_context(GoalInfo),
                 (
                     GoalContext = ccuc_switch,
-                    VarStr = mercury_var_to_name_only(VarSet, Var),
+                    VarStr = mercury_var_to_string_src(VarNameSrc,
+                        print_name_only, Var),
                     Pieces0 = [words("In switch on variable"), quote(VarStr),
                         suffix(":"), nl]
                 ;
@@ -2037,8 +2038,8 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                     words("implicitly. (If that's really what you want,"),
                     words("you must do it explicitly.)")],
                 det_info_get_module_info(!.DetInfo, ModuleInfo),
-                ContextMsgs = failing_contexts_description(ModuleInfo, VarSet,
-                    FailingContextsA ++ FailingContextsB),
+                ContextMsgs = failing_contexts_description(ModuleInfo,
+                    VarTable, FailingContextsA ++ FailingContextsB),
                 Spec = error_spec($pred, severity_error, phase_detism_check,
                     [simple_msg(Context,
                         [always(Pieces0 ++ Pieces1),

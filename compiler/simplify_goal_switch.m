@@ -49,7 +49,6 @@
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
-:- import_module parse_tree.vartypes.
 :- import_module transform_hlds.
 :- import_module transform_hlds.pd_cost.
 
@@ -57,16 +56,15 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
-:- import_module varset.
 
 simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, Common0, Common, !Info) :-
     GoalExpr0 = switch(Var, SwitchCanFail0, Cases0),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
     instmap_lookup_var(InstMap0, Var, VarInst),
-    simplify_info_get_var_types(!.Info, VarTypes),
+    simplify_info_get_var_table(!.Info, VarTable),
     ( if inst_is_bound_to_functors(ModuleInfo0, VarInst, BoundInsts) then
-        lookup_var_type(VarTypes, Var, VarType),
+        lookup_var_type(VarTable, Var, VarType),
         type_to_ctor_det(VarType, VarTypeCtor),
         bound_insts_to_cons_ids(VarTypeCtor, BoundInsts, ConsIds),
         list.sort_and_remove_dups(ConsIds, SortedConsIds),
@@ -108,12 +106,12 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % existential type variables in the types of the constructor
             % arguments or their typeinfos.
 
-            lookup_var_type(VarTypes, Var, Type),
+            lookup_var_type(VarTable, Var, Type),
             simplify_info_get_module_info(!.Info, ModuleInfo1),
             ( if cons_id_is_existq_cons(ModuleInfo1, Type, MainConsId) then
                 GoalExpr = switch(Var, SwitchCanFail, Cases),
                 NonLocals = goal_info_get_nonlocals(GoalInfo0),
-                merge_instmap_deltas(vts_vartypes(VarTypes), NonLocals,
+                merge_instmap_deltas(vts_var_table(VarTable), NonLocals,
                     InstMap0, RevInstMapDeltas, NewDelta,
                     ModuleInfo1, ModuleInfo2),
                 simplify_info_set_module_info(ModuleInfo2, !Info),
@@ -167,7 +165,7 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         else
             simplify_info_get_module_info(!.Info, ModuleInfo1),
             NonLocals = goal_info_get_nonlocals(GoalInfo0),
-            merge_instmap_deltas(vts_vartypes(VarTypes), NonLocals,
+            merge_instmap_deltas(vts_var_table(VarTable), NonLocals,
                 InstMap0, RevInstMapDeltas, NewDelta,
                 ModuleInfo1, ModuleInfo2),
             simplify_info_set_module_info(ModuleInfo2, !Info),
@@ -218,8 +216,8 @@ simplify_switch_cases(Var, [Case0 | Cases0], !RevCases, !RevInstMapDeltas,
         !Info) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
-    simplify_info_get_var_types(!.Info, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
+    simplify_info_get_var_table(!.Info, VarTable),
+    lookup_var_type(VarTable, Var, Type),
     bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
         InstMap0, CaseInstMap0, ModuleInfo0, ModuleInfo1),
     simplify_info_set_module_info(ModuleInfo1, !Info),
@@ -271,15 +269,17 @@ simplify_switch_cases(Var, [Case0 | Cases0], !RevCases, !RevInstMapDeltas,
     hlds_goal::out, instmap::in, simplify_info::in, simplify_info::out) is det.
 
 create_test_unification(Var, ConsId, ConsArity, ExtraGoal, InstMap0, !Info) :-
-    simplify_info_get_varset(!.Info, VarSet0),
-    simplify_info_get_var_types(!.Info, VarTypes0),
-    varset.new_vars(ConsArity, ArgVars, VarSet0, VarSet),
-    lookup_var_type(VarTypes0, Var, VarType),
+    simplify_info_get_var_table(!.Info, VarTable0),
     simplify_info_get_module_info(!.Info, ModuleInfo),
+    lookup_var_type(VarTable0, Var, VarType),
     type_util.get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes),
-    vartypes_add_corresponding_lists(ArgVars, ArgTypes, VarTypes0, VarTypes),
-    simplify_info_set_varset(VarSet, !Info),
-    simplify_info_set_var_types(VarTypes, !Info),
+    MakeArgEntry =
+        ( pred(T::in, vte("", T, IsDummy)::out) is det :-
+            IsDummy = is_type_a_dummy(ModuleInfo, T)
+        ),
+    list.map(MakeArgEntry, ArgTypes, ArgEntries),
+    list.map_foldl(add_var_entry, ArgEntries, ArgVars, VarTable0, VarTable),
+    simplify_info_set_var_table(VarTable, !Info),
     instmap_lookup_var(InstMap0, Var, Inst0),
     ( if
         inst_expand(ModuleInfo, Inst0, Inst1),

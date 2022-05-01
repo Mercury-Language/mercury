@@ -118,9 +118,6 @@
 :- pred var_table_from_rev_sorted_assoc_list(
     assoc_list(prog_var, var_table_entry)::in, var_table::out) is det.
 
-:- pred var_table_add_corresponding_lists(list(prog_var)::in,
-    list(var_table_entry)::in, var_table::in, var_table::out) is det.
-
 :- pred delete_var_entry(prog_var::in,
     var_table::in, var_table::out) is det.
 :- pred delete_var_entries(list(prog_var)::in,
@@ -394,8 +391,8 @@ var_table_entries(VarTable, Entries) :-
 var_table_to_sorted_assoc_list(VarTable, AssocList) :-
     map.to_sorted_assoc_list(VarTable ^ vt_map, AssocList).
 
-var_table_from_corresponding_lists(Vars, Types, VarTable) :-
-    map.from_corresponding_lists(Vars, Types, VarTableMap),
+var_table_from_corresponding_lists(Vars, Entries, VarTable) :-
+    map.from_corresponding_lists(Vars, Entries, VarTableMap),
     var_table_map_to_var_table(VarTableMap, VarTable).
 
 var_table_from_sorted_assoc_list(AssocList, VarTable) :-
@@ -406,28 +403,22 @@ var_table_from_rev_sorted_assoc_list(RevAssocList, VarTable) :-
     map.from_rev_sorted_assoc_list(RevAssocList, VarTableMap),
     var_table_map_to_var_table(VarTableMap, VarTable).
 
-var_table_add_corresponding_lists(Vars, Entries, !VarTable) :-
-    !.VarTable = var_table(Counter, VarTableMap0),
-    map.det_insert_from_corresponding_lists(Vars, Entries,
-        VarTableMap0, VarTableMap),
-    !:VarTable = var_table(Counter, VarTableMap).
-
 %---------------------------------------------------------------------------%
 
 delete_var_entry(Var, !VarTable) :-
-    !.VarTable = var_table(Counter, VarTableMap0),
+    !.VarTable = var_table(_Counter, VarTableMap0),
     map.delete(Var, VarTableMap0, VarTableMap),
-    !:VarTable = var_table(Counter, VarTableMap).
+    var_table_map_to_var_table(VarTableMap, !:VarTable).
 
 delete_var_entries(Vars, !VarTable) :-
-    !.VarTable = var_table(Counter, VarTableMap0),
+    !.VarTable = var_table(_Counter, VarTableMap0),
     map.delete_list(Vars, VarTableMap0, VarTableMap),
-    !:VarTable = var_table(Counter, VarTableMap).
+    var_table_map_to_var_table(VarTableMap, !:VarTable).
 
 delete_sorted_var_entries(SortedVars, !VarTable) :-
-    !.VarTable = var_table(Counter, VarTableMap0),
+    !.VarTable = var_table(_Counter, VarTableMap0),
     map.delete_sorted_list(SortedVars, VarTableMap0, VarTableMap),
-    !:VarTable = var_table(Counter, VarTableMap).
+    var_table_map_to_var_table(VarTableMap, !:VarTable).
 
 %---------------------------------------------------------------------------%
 

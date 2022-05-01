@@ -97,7 +97,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.
 :- import_module transform_hlds.direct_arg_in_out.
 
@@ -179,10 +179,9 @@ simplify_goal_update_vars_in_proc(SimplifyTasks, !ModuleInfo,
 
     simplify_info_get_module_info(SimplifyInfo, !:ModuleInfo),
 
-    simplify_info_get_varset(SimplifyInfo, VarSet),
-    simplify_info_get_var_types(SimplifyInfo, VarTypes),
+    simplify_info_get_var_table(SimplifyInfo, VarTable),
     simplify_info_get_rtti_varmaps(SimplifyInfo, RttiVarMaps),
-    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+    proc_info_set_var_table(VarTable, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
 
     simplify_info_get_cost_delta(SimplifyInfo, CostDelta).
@@ -266,30 +265,34 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
         Info0, Info),
     proc_info_set_goal(Goal, !ProcInfo),
 
-    simplify_info_get_varset(Info, VarSet0),
-    simplify_info_get_var_types(Info, VarTypes0),
+    simplify_info_get_var_table(Info, VarTable0),
     simplify_info_get_rtti_varmaps(Info, RttiVarMaps),
     simplify_info_get_elim_vars(Info, ElimVarsLists0),
     % We sort the lists basically on the number of the first variable.
     list.sort(ElimVarsLists0, ElimVarsLists),
     list.condense(ElimVarsLists, ElimVars),
-    varset.delete_sorted_vars(ElimVars, VarSet0, VarSet1),
-    delete_sorted_var_types(ElimVars, VarTypes0, VarTypes),
+    delete_var_entries(ElimVars, VarTable0, VarTable1),
     simplify_info_get_module_info(Info, !:ModuleInfo),
     % We only eliminate vars that cannot occur in RttiVarMaps.
     ( if simplify_do_after_front_end(Info) then
         proc_info_get_var_name_remap(!.ProcInfo, VarNameRemap),
-        map.foldl(varset.name_var, VarNameRemap, VarSet1, VarSet),
+        RenameVar =
+            ( pred(V::in, N::in, VT0::in, VT::out) is det :-
+                lookup_var_entry(VT0, V, E0),
+                E = E0 ^ vte_name := N,
+                update_var_entry(V, E, VT0, VT)
+            ),
+        map.foldl(RenameVar, VarNameRemap, VarTable1, VarTable),
         proc_info_set_var_name_remap(map.init, !ProcInfo),
 
         proc_info_get_headvars(!.ProcInfo, HeadVars),
         proc_info_get_argmodes(!.ProcInfo, ArgModes),
-        find_and_record_any_direct_arg_in_out_posns(PredId, ProcId, VarTypes,
+        find_and_record_any_direct_arg_in_out_posns(PredId, ProcId, VarTable,
             HeadVars, ArgModes, !ModuleInfo)
     else
-        VarSet = VarSet0
+        VarTable = VarTable1
     ),
-    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+    proc_info_set_var_table(VarTable, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
 
     simplify_info_get_has_parallel_conj(Info, HasParallelConj),
@@ -346,8 +349,8 @@ simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
             TurnOffCommonStructByRequest = no
         )
     ),
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet0, VarTypes0),
-    vartypes_count(VarTypes0, NumVars),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable0),
+    var_table_count(VarTable0, NumVars),
     ( if
         ( TurnOffCommonStructByRequest = yes
         ; NumVars > turn_off_common_struct_threshold
@@ -408,13 +411,13 @@ simplify_proc_maybe_mark_modecheck_clauses(!ProcInfo) :-
 simplify_proc_analyze_and_format_calls(!ModuleInfo, ImplicitStreamWarnings,
         PredId, ProcId, FormatSpecs, !ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
+    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
     analyze_and_optimize_format_calls(!.ModuleInfo, ImplicitStreamWarnings,
-        Goal0, MaybeGoal, FormatSpecs, VarSet0, VarSet, VarTypes0, VarTypes),
+        Goal0, MaybeGoal, FormatSpecs, VarTable0, VarTable),
     (
         MaybeGoal = yes(Goal),
         proc_info_set_goal(Goal, !ProcInfo),
-        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+        proc_info_set_var_table(VarTable, !ProcInfo),
 
         % The goals we replace format calls with are created with the
         % correct nonlocals, but analyze_and_optimize_format_calls can
@@ -449,7 +452,7 @@ simplify_proc_analyze_and_format_calls(!ModuleInfo, ImplicitStreamWarnings,
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ;
         MaybeGoal = no
-        % There should not be any updates to the varset and the vartypes,
+        % There should not be any updates to the var_table,
         % but even if there are, throw them away, since they apply to a version
         % of the goal that we will not be using.
     ).
@@ -643,15 +646,14 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
     (
         RerunQuantDelta = rerun_quant_instmap_deltas,
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        some [!VarSet, !VarTypes, !RttiVarMaps, !ModuleInfo] (
-            simplify_info_get_varset(!.Info, !:VarSet),
-            simplify_info_get_var_types(!.Info, !:VarTypes),
+        some [!VarTable, !RttiVarMaps, !ModuleInfo] (
+            simplify_info_get_var_table(!.Info, !:VarTable),
             simplify_info_get_rtti_varmaps(!.Info, !:RttiVarMaps),
-            implicitly_quantify_goal_general(ordinary_nonlocals_maybe_lambda,
-                NonLocals, _, !Goal, !VarSet, !VarTypes, !RttiVarMaps),
+            implicitly_quantify_goal_general_vt(
+                ordinary_nonlocals_maybe_lambda, NonLocals, _,
+                !Goal, !VarTable, !RttiVarMaps),
 
-            simplify_info_set_varset(!.VarSet, !Info),
-            simplify_info_set_var_types(!.VarTypes, !Info),
+            simplify_info_set_var_table(!.VarTable, !Info),
             simplify_info_set_rtti_varmaps(!.RttiVarMaps, !Info),
 
             % Always recompute instmap_deltas for atomic goals - this is safer
@@ -659,8 +661,8 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
             % in the instmap_delta for a goal.
             simplify_info_get_module_info(!.Info, !:ModuleInfo),
             simplify_info_get_inst_varset(!.Info, InstVarSet),
-            recompute_instmap_delta(recompute_atomic_instmap_deltas,
-                !.VarTypes, InstVarSet, InstMap0, !Goal, !ModuleInfo),
+            recompute_instmap_delta_vt(recompute_atomic_instmap_deltas,
+                !.VarTable, InstVarSet, InstMap0, !Goal, !ModuleInfo),
             simplify_info_set_module_info(!.ModuleInfo, !Info)
         )
     ;
@@ -671,33 +673,32 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
     (
         RerunDet = rerun_det,
         Detism = goal_info_get_determinism(GoalInfo0),
-        some [!VarSet, !VarTypes, !RttiVarMaps, !ModuleInfo, !ProcInfo]
+        some [!VarTable, !RttiVarMaps, !ModuleInfo, !ProcInfo]
         (
             det_get_soln_context(Detism, SolnContext),
 
-            % Det_infer_goal looks up the proc_info in the module_info
-            % for the vartypes, so we have to put them back in the module_info.
+            % Det_infer_goal looks up the proc_info in the module_info for
+            % the var_table, so we have to put them back in the module_info.
             simplify_info_get_module_info(!.Info, !:ModuleInfo),
-            simplify_info_get_varset(!.Info, !:VarSet),
-            simplify_info_get_var_types(!.Info, !:VarTypes),
+            simplify_info_get_var_table(!.Info, !:VarTable),
             simplify_info_get_rtti_varmaps(!.Info, !:RttiVarMaps),
             simplify_info_get_pred_proc_id(!.Info, PredProcId),
             module_info_pred_proc_info(!.ModuleInfo, PredProcId,
                 PredInfo, !:ProcInfo),
-            proc_info_set_varset_vartypes(!.VarSet, !.VarTypes, !ProcInfo),
+            proc_info_set_var_table(!.VarTable, !ProcInfo),
             proc_info_set_rtti_varmaps(!.RttiVarMaps, !ProcInfo),
             module_info_set_pred_proc_info(PredProcId,
                 PredInfo, !.ProcInfo, !ModuleInfo),
             simplify_info_set_module_info(!.ModuleInfo, !Info),
 
-            det_info_init(!.ModuleInfo, PredProcId, !.VarSet, !.VarTypes,
+            det_info_init(!.ModuleInfo, PredProcId, !.VarTable,
                 pess_extra_vars_report, [], DetInfo0),
             det_infer_goal(!Goal, InstMap0, SolnContext, [], no,
                 _, _, DetInfo0, DetInfo),
             det_info_get_module_info(DetInfo, !:ModuleInfo),
-            det_info_get_vartypes(DetInfo, !:VarTypes),
+            det_info_get_var_table(DetInfo, !:VarTable),
             simplify_info_set_module_info(!.ModuleInfo, !Info),
-            simplify_info_set_var_types(!.VarTypes, !Info)
+            simplify_info_set_var_table(!.VarTable, !Info)
         )
     ;
         RerunDet = do_not_rerun_det

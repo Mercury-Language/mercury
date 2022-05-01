@@ -27,7 +27,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module list.
 
@@ -103,22 +103,18 @@
 :- pred det_lookup_pred_info_and_detism(det_info::in, pred_id::in, proc_id::in,
     pred_info::out, determinism::out) is det.
 
-:- pred det_get_proc_info(det_info::in, proc_info::out) is det.
-
 :- pred det_no_output_vars(det_info::in, instmap::in, instmap_delta::in,
     set_of_progvar::in) is semidet.
 
 :- pred det_info_add_error_spec(error_spec::in, det_info::in, det_info::out)
     is det.
 
-:- pred det_info_init(module_info::in, pred_proc_id::in,
-    prog_varset::in, vartypes::in, report_pess_extra_vars::in,
-    list(error_spec)::in, det_info::out) is det.
+:- pred det_info_init(module_info::in, pred_proc_id::in, var_table::in,
+    report_pess_extra_vars::in, list(error_spec)::in, det_info::out) is det.
 
 :- pred det_info_get_module_info(det_info::in, module_info::out) is det.
 :- pred det_info_get_pred_proc_id(det_info::in, pred_proc_id::out) is det.
-:- pred det_info_get_varset(det_info::in, prog_varset::out) is det.
-:- pred det_info_get_vartypes(det_info::in, vartypes::out) is det.
+:- pred det_info_get_var_table(det_info::in, var_table::out) is det.
 :- pred det_info_get_pess_extra_vars(det_info::in,
     report_pess_extra_vars::out) is det.
 :- pred det_info_get_has_format_call(det_info::in,
@@ -213,16 +209,11 @@ det_lookup_pred_info_and_detism(DetInfo, PredId, ModeId, PredInfo, Detism) :-
     map.lookup(ProcTable, ModeId, ProcInfo),
     proc_info_interface_determinism(ProcInfo, Detism).
 
-det_get_proc_info(DetInfo, ProcInfo) :-
-    det_info_get_module_info(DetInfo, ModuleInfo),
-    det_info_get_pred_proc_id(DetInfo, PredProcId),
-    module_info_proc_info(ModuleInfo, PredProcId, ProcInfo).
-
 det_no_output_vars(DetInfo, InstMap, InstMapDelta, Vars) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
-    det_info_get_vartypes(DetInfo, VarTypes),
-    instmap_delta_no_output_vars(ModuleInfo, VarTypes, InstMap, InstMapDelta,
-        Vars).
+    det_info_get_var_table(DetInfo, VarTable),
+    instmap_delta_no_output_vars_vt(ModuleInfo, VarTable, InstMap,
+        InstMapDelta, Vars).
 
 det_info_add_error_spec(Spec, !DetInfo) :-
     det_info_get_error_specs(!.DetInfo, Specs0),
@@ -238,8 +229,7 @@ det_info_add_error_spec(Spec, !DetInfo) :-
                 % The id of the proc currently processed.
                 di_pred_proc_id             :: pred_proc_id,
 
-                di_varset                   :: prog_varset,
-                di_vartypes                 :: vartypes,
+                di_var_table                :: var_table,
                 di_pess_extra_vars          :: report_pess_extra_vars,
                 di_has_format_call          :: contains_format_call,
                 di_has_req_scope            :: contains_require_scope,
@@ -247,9 +237,9 @@ det_info_add_error_spec(Spec, !DetInfo) :-
                 di_error_specs              :: list(error_spec)
             ).
 
-det_info_init(ModuleInfo, PredProcId, VarSet, VarTypes,
+det_info_init(ModuleInfo, PredProcId, VarTable,
         PessExtraVars, Specs, DetInfo) :-
-    DetInfo = det_info(ModuleInfo, PredProcId, VarSet, VarTypes,
+    DetInfo = det_info(ModuleInfo, PredProcId, VarTable,
         PessExtraVars, does_not_contain_format_call,
         does_not_contain_require_scope, does_not_contain_incomplete_switch,
         Specs).
@@ -258,10 +248,8 @@ det_info_get_module_info(DetInfo, X) :-
     X = DetInfo ^ di_module_info.
 det_info_get_pred_proc_id(DetInfo, X) :-
     X = DetInfo ^ di_pred_proc_id.
-det_info_get_varset(DetInfo, X) :-
-    X = DetInfo ^ di_varset.
-det_info_get_vartypes(DetInfo, X) :-
-    X = DetInfo ^ di_vartypes.
+det_info_get_var_table(DetInfo, X) :-
+    X = DetInfo ^ di_var_table.
 det_info_get_pess_extra_vars(DetInfo, X) :-
     X = DetInfo ^ di_pess_extra_vars.
 det_info_get_has_format_call(DetInfo, X) :-

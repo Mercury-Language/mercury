@@ -231,6 +231,8 @@
     %
 :- pred instmap_delta_no_output_vars(module_info::in, vartypes::in,
     instmap::in, instmap_delta::in, set_of_progvar::in) is semidet.
+:- pred instmap_delta_no_output_vars_vt(module_info::in, var_table::in,
+    instmap::in, instmap_delta::in, set_of_progvar::in) is semidet.
 
     % instmap_changed_vars(ModuleInfo, VarTypes, IMA, IMB, CV)
     %
@@ -793,6 +795,17 @@ instmap_delta_no_output_vars(ModuleInfo, VarTypes, InstMap0, InstMapDelta,
         set_of_var.all_true(Test, Vars)
     ).
 
+instmap_delta_no_output_vars_vt(ModuleInfo, VarTable, InstMap0, InstMapDelta,
+        Vars) :-
+    (
+        InstMapDelta = unreachable
+    ;
+        InstMapDelta = reachable(InstMapDeltaMap),
+        Test = var_is_not_output_vt(ModuleInfo, VarTable, InstMap0,
+            InstMapDeltaMap),
+        set_of_var.all_true(Test, Vars)
+    ).
+
 :- pred var_is_not_output(module_info::in, vartypes::in,
     instmap::in, instmapping::in, prog_var::in) is semidet.
 
@@ -815,6 +828,35 @@ var_is_not_output(ModuleInfo, VarTypes, InstMap0, InstMapDeltaMap, Var) :-
         % to allow the caller to specify what kinds of deviations from an exact
         % syntactic match are ok.
         lookup_var_type(VarTypes, Var, Type),
+        inst_matches_binding(ModuleInfo, Type, NewInst, OldInst)
+    else
+        % If the instmap delta doesn't contain the variable, it may still
+        % have been (partially) output, if its inst is (or contains) `any'.
+        not inst_contains_any(ModuleInfo, OldInst)
+    ).
+
+:- pred var_is_not_output_vt(module_info::in, var_table::in,
+    instmap::in, instmapping::in, prog_var::in) is semidet.
+
+var_is_not_output_vt(ModuleInfo, VarTable, InstMap0, InstMapDeltaMap, Var) :-
+    instmap_lookup_var(InstMap0, Var, OldInst),
+    ( if map.search(InstMapDeltaMap, Var, NewInst) then
+        % We use `inst_matches_binding' to check that the new inst has only
+        % added information or lost uniqueness, not bound anything.
+        % If the instmap delta contains the variable, the variable may still
+        % not be output, if the change is just an increase in information
+        % rather than an increase in instantiatedness.
+        %
+        % XXX Inlining can result in cases where OldInst (from procedure 1)
+        % can decide that Var must be bound to one set of function symbols,
+        % while NewInst (from a later unification inlined into procedure 1
+        % from procedure 2) can say that it is bound to a different,
+        % non-overlapping set of function symbols. In such cases,
+        % inst_matches_binding will fail, even though we want to succeed.
+        % The right fix for this would be to generalize inst_matches_binding,
+        % to allow the caller to specify what kinds of deviations from an exact
+        % syntactic match are ok.
+        lookup_var_type(VarTable, Var, Type),
         inst_matches_binding(ModuleInfo, Type, NewInst, OldInst)
     else
         % If the instmap delta doesn't contain the variable, it may still
