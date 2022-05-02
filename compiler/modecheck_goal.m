@@ -263,11 +263,11 @@ modecheck_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     mode_checkpoint(enter, CallString, !ModeInfo),
 
     mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
-        !ModeInfo), % ZZZ
+        !ModeInfo),
 
     mode_info_get_instmap(!.ModeInfo, InstMap0),
-    DeterminismKnown = no,  % ZZZ
-    modecheck_call_pred(PredId, DeterminismKnown, ProcId0, ProcId,
+    MaybeKnownDeterminism = no,
+    modecheck_call_pred(PredId, MaybeKnownDeterminism, ProcId0, ProcId,
         ArgVars0, ArgVars, GoalInfo0, ExtraGoals, !ModeInfo),
 
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),

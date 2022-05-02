@@ -933,8 +933,8 @@ mode_context_to_unify_context(ModeInfo, ModeContext, UnifyContext) :-
         ),
         UnifyContext = unify_context(umc_call(CallId, Arg), [])
     ;
-        ModeContext = mode_context_uninitialized,
-        unexpected($pred, "uninitialized context")
+        ModeContext = mode_context_not_call_or_unify,
+        unexpected($pred, "context not call or unify")
     ).
 
 %-----------------------------------------------------------------------------%

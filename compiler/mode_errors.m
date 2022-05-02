@@ -934,7 +934,7 @@ mode_error_no_matching_mode_to_spec(ModeInfo, InstMap, Vars, ProcInitialInsts)
         )
     ;
         ( ModeContext = mode_context_unify(_, _)
-        ; ModeContext = mode_context_uninitialized
+        ; ModeContext = mode_context_not_call_or_unify
         ),
         unexpected($pred, "invalid context")
     ),
@@ -2210,7 +2210,7 @@ mode_info_context_preamble(ModeInfo) = Pieces :-
 
 mode_context_to_pieces(ModeInfo, ModeContext, Markers) = Pieces :-
     (
-        ModeContext = mode_context_uninitialized,
+        ModeContext = mode_context_not_call_or_unify,
         Pieces = []
     ;
         ModeContext = mode_context_call(ModeCallId, ArgNum),

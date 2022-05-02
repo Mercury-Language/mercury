@@ -56,7 +56,7 @@
                 unify_context,  % original source of the unification
                 side            % LHS or RHS
             )
-    ;       mode_context_uninitialized.
+    ;       mode_context_not_call_or_unify.
 
     % Initialize a mode_context.
     %
@@ -426,7 +426,38 @@
                 % The mode errors found.
 /*  4 */        mi_errors                   :: list(mode_error_info),
 
-                % A description of where in the goal the error occurred.
+                % Almost all mode errors are diagnosed when mode analysis
+                % processes a unification or a call. To prepape for
+                % the possibility of an error, before mode analysis
+                % starts processing one side of a unification, it records
+                % the identity of the side and of the unification in the
+                % mode context, and likewise before it starts processing
+                % the Nth argument of a call, we record N and the identity
+                % of the call. If an error occurs, the code in mode_errors.m
+                % that constructs the error message will pick up this context
+                % from here.
+                %
+                % A few kinds of mode errors occur outside both unifications
+                % and calls, and when processing HLDS constructs in which
+                % such errors can occur, this field should contain
+                % "mode_context_not_call_or_unify".
+                %
+                % When not processing a HLDS construct that is guaranteed
+                % not to generate a mode error, the contents of this field
+                % does not matter; it may be anything.
+                %
+                % When an error is discovered by code that is specific
+                % to e.g. unifications, this field should not be needed;
+                % the code should know in which part of which construct
+                % it found the error. On the other hand, some errors
+                % are caught by predicates that help process many kinds
+                % of HLDS goals, and they need their caller to tell them
+                % e.g. where the insts they handle come from. The reason
+                % this field exists is probably because Fergus thought that
+                % it is easier to stuff this information into the mode_info,
+                % which those general-purpose predicates already got,
+                % than to pass them in separate arguments, even though
+                % the latter would be semantically cleaner.
 /*  5 */        mi_mode_context             :: mode_context,
 
                 % The line number of the subgoal we are currently checking.
@@ -473,6 +504,25 @@
                 % disjunction within the current predicate.)
                 msi_live_vars               :: bag(prog_var),
 
+                % This starts out as the inst_varset taken from the proc_info
+                % of the procedure we are doing mode analysis on. As we make
+                % calls, we add to it the renamed-apart inst variables from
+                % the proc_infos of the procedures we call.
+                %
+                % I (zs) don't know the reason why these additions are needed.
+                %
+                % XXX Actually, we add to it the renamed-apart inst variables
+                % from the proc_infos of every procedure we *have considered*
+                % calling, because if a called predicate has two or more modes,
+                % we add the insts from *all* the inst_varsets of those
+                % procedures. Interestingly, if we throw away the additions
+                % to the inst_varset in the mode_info after we have finished
+                % considering making the call to a particular procedure,
+                % a bootcheck completes with just one test case failure,
+                % and that failure consists of the compiler generating
+                % an error message for invalid/constrained_poly_insts2
+                % that replaces a constrained inst variable with the
+                % constraining inst.
                 msi_instvarset              :: inst_varset,
 
                 % A stack of pairs of sets of variables used to mode-check
@@ -572,7 +622,7 @@
 
 %---------------------------------------------------------------------------%
 
-mode_context_init(mode_context_uninitialized).
+mode_context_init(mode_context_not_call_or_unify).
 
 %---------------------------------------------------------------------------%
 
@@ -967,7 +1017,7 @@ mode_info_set_call_context(CallContext, !MI) :-
     ).
 
 mode_info_unset_call_context(!MI) :-
-    mode_info_set_mode_context(mode_context_uninitialized, !MI).
+    mode_info_set_mode_context(mode_context_not_call_or_unify, !MI).
 
 mode_info_set_call_arg_context(ArgNum, !ModeInfo) :-
     mode_info_get_mode_context(!.ModeInfo, ModeContext0),
@@ -981,8 +1031,8 @@ mode_info_set_call_arg_context(ArgNum, !ModeInfo) :-
         % for polymorphic complicated unifications are ground.
         % For that case, we don't care about the ArgNum.
     ;
-        ModeContext0 = mode_context_uninitialized,
-        unexpected($pred, "uninitialized")
+        ModeContext0 = mode_context_not_call_or_unify,
+        unexpected($pred, "not_call_or_unify")
     ).
 
 mode_info_need_to_requantify(!ModeInfo) :-

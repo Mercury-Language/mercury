@@ -241,7 +241,6 @@ region_transform_proc(RptaInfoTable, FormalRegionArgTable,
     ),
     map.lookup(RegionInstructionTable, PPId, RegionInstructionProc),
     NameToVar0 = map.init,
-    % ZZZ
     annotate_proc(!.ModuleInfo, PredInfo0, Graph, FormalRegionArgProc,
         ActualRegionArgProc, ResurRenamingProc, IteRenamingProc,
         RegionInstructionProc, ResurRenamingAnnoProc, IteRenamingAnnoProc,
