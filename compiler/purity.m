@@ -192,6 +192,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module map.
@@ -225,7 +226,7 @@ maybe_puritycheck_preds([PredId | PredIds], !ModuleInfo, !Specs) :-
             write_pred_progress_message(!.ModuleInfo,
                 "Purity-checking", PredId, !IO)
         ),
-        puritycheck_pred(PredId, PredInfo0, PredInfo, !.ModuleInfo, !Specs),
+        puritycheck_pred(!.ModuleInfo, PredId, PredInfo0, PredInfo, !Specs),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ),
     maybe_puritycheck_preds(PredIds, !ModuleInfo, !Specs).
@@ -249,10 +250,11 @@ maybe_puritycheck_preds([PredId | PredIds], !ModuleInfo, !Specs) :-
 % them, and in the translation from goal to hlds_goal, the attached purity is
 % turned into the appropriate feature in the hlds_goal_info.)
 
-:- pred puritycheck_pred(pred_id::in, pred_info::in, pred_info::out,
-    module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred puritycheck_pred(module_info::in, pred_id::in,
+    pred_info::in, pred_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
+puritycheck_pred(ModuleInfo, PredId, !PredInfo, !Specs) :-
     pred_info_get_purity(!.PredInfo, DeclaredPurity),
     pred_info_get_promised_purity(!.PredInfo, MaybePromisedPurity),
     some [!ClausesInfo] (
@@ -260,13 +262,14 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
         clauses_info_clauses(Clauses0, ItemNumbers, !ClausesInfo),
         clauses_info_get_vartypes(!.ClausesInfo, VarTypes0),
         clauses_info_get_varset(!.ClausesInfo, VarSet0),
+        make_var_table(ModuleInfo, VarSet0, VarTypes0, VarTable0),
         PurityInfo0 = purity_info(ModuleInfo, run_post_typecheck_tasks,
             do_not_need_to_requantify, have_not_converted_unify, !.PredInfo,
-            VarTypes0, VarSet0, []),
+            VarTable0, []),
         compute_purity_for_clauses(Clauses0, Clauses, !.PredInfo,
             purity_pure, ActualPurity, PurityInfo0, PurityInfo),
-        PurityInfo = purity_info(_, _, _, _, !:PredInfo,
-            VarTypes, VarSet, GoalSpecs),
+        PurityInfo = purity_info(_, _, _, _, !:PredInfo, VarTable, GoalSpecs),
+        split_var_table(VarTable, VarSet, VarTypes),
         clauses_info_set_vartypes(VarTypes, !ClausesInfo),
         clauses_info_set_varset(VarSet, !ClausesInfo),
         set_clause_list(Clauses, ClausesRep),
@@ -402,12 +405,14 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     map.lookup(Procs0, ProcId, ProcInfo0),
     proc_info_get_goal(ProcInfo0, Goal0),
     proc_info_get_varset_vartypes(ProcInfo0, VarSet0, VarTypes0),
+    make_var_table(ModuleInfo, VarSet0, VarTypes0, VarTable0),
     PurityInfo0 = purity_info(ModuleInfo, do_not_run_post_typecheck_tasks,
         do_not_need_to_requantify, have_not_converted_unify, !.PredInfo,
-        VarTypes0, VarSet0, []),
+        VarTable0, []),
     compute_goal_purity(Goal0, Goal, Bodypurity, _, PurityInfo0, PurityInfo),
     PurityInfo = purity_info(_, _, NeedToRequantify, _, !:PredInfo,
-        VarTypes, VarSet, _),
+        VarTable, _),
+    split_var_table(VarTable, VarSet, VarTypes),
     proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
     proc_info_set_varset_vartypes(VarSet, VarTypes, ProcInfo1, ProcInfo2),
     (
@@ -543,17 +548,14 @@ compute_purity_for_clause(Clause0, Clause, PredInfo, Purity, !Info) :-
         NeedToRequantify = need_to_requantify,
         pred_info_get_clauses_info(PredInfo, ClausesInfo),
         clauses_info_get_headvar_list(ClausesInfo, HeadVars),
-        VarTypes1 = !.Info ^ pi_vartypes,
-        VarSet1 = !.Info ^ pi_varset,
+        VarTable1 = !.Info ^ pi_var_table,
         % The RTTI varmaps here are just a dummy value, because the real ones
         % are not introduced until polymorphism.
         rtti_varmaps_init(EmptyRttiVarmaps),
-        implicitly_quantify_clause_body_general(
-            ordinary_nonlocals_maybe_lambda,
-            HeadVars, _Warnings, Goal1, Goal,
-            VarSet1, VarSet, VarTypes1, VarTypes, EmptyRttiVarmaps, _),
-        !Info ^ pi_vartypes := VarTypes,
-        !Info ^ pi_varset := VarSet
+        implicitly_quantify_clause_body_general_vt(
+            ordinary_nonlocals_maybe_lambda, HeadVars, _Warnings,
+            Goal1, Goal, VarTable1, VarTable, EmptyRttiVarmaps, _),
+        !Info ^ pi_var_table := VarTable
     ;
         NeedToRequantify = do_not_need_to_requantify,
         Goal = Goal1
@@ -921,13 +923,11 @@ compute_unify_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
             RunPostTypecheck = run_post_typecheck_tasks,
             ModuleInfo = !.Info ^ pi_module_info,
             PredInfo0 = !.Info ^ pi_pred_info,
-            VarTypes0 = !.Info ^ pi_vartypes,
-            VarSet0 = !.Info ^ pi_varset,
+            VarTable0 = !.Info ^ pi_var_table,
             resolve_unify_functor(ModuleInfo, LHSVar, ConsId, Args, Mode,
-                Unification, UnifyContext, GoalInfo, PredInfo0, PredInfo,
-                VarSet0, VarSet, VarTypes0, VarTypes, Goal1, IsPlainUnify),
-            !Info ^ pi_vartypes := VarTypes,
-            !Info ^ pi_varset := VarSet,
+                Unification, UnifyContext, GoalInfo, Goal1, IsPlainUnify,
+                VarTable0, VarTable, PredInfo0, PredInfo),
+            !Info ^ pi_var_table := VarTable,
             !Info ^ pi_pred_info := PredInfo,
             (
                 IsPlainUnify = is_plain_unify
@@ -969,8 +969,8 @@ compute_unify_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
 check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, Args, Specs) :-
     % If the unification involves a higher order RHS, check that
     % the purity of the ConsId matches the purity of the variable's type.
-    VarTypes = Info ^ pi_vartypes,
-    lookup_var_type(VarTypes, Var, TypeOfVar),
+    VarTable = Info ^ pi_var_table,
+    lookup_var_type(VarTable, Var, TypeOfVar),
     PredInfo = Info ^ pi_pred_info,
     pred_info_get_markers(PredInfo, CallerMarkers),
     Context = goal_info_get_context(GoalInfo),
@@ -982,7 +982,7 @@ check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, Args, Specs) :-
         pred_info_get_typevarset(PredInfo, TVarSet),
         pred_info_get_exist_quant_tvars(PredInfo, ExistQTVars),
         pred_info_get_external_type_params(PredInfo, ExternalTypeParams),
-        lookup_var_types(VarTypes, Args, ArgTypes0),
+        lookup_var_types(VarTable, Args, ArgTypes0),
         list.append(ArgTypes0, VarArgTypes, PredArgTypes),
         ModuleInfo = Info ^ pi_module_info,
         ( if
@@ -1188,11 +1188,10 @@ compute_goal_purity_in_fgt_ptc([Goal0 | Goals0], !RevMarkedSubGoals,
     ),
     ModuleInfo = !.Info ^ pi_module_info,
     PredInfo0 = !.Info ^ pi_pred_info,
-    VarTypes0 = !.Info ^ pi_vartypes,
-    VarSet0 = !.Info ^ pi_varset,
+    VarTable0 = !.Info ^ pi_var_table,
     resolve_unify_functor(ModuleInfo, XVar, ConsId, YVars, Mode,
-        Unification, UnifyContext, GoalInfo0, PredInfo0, PredInfo,
-        VarSet0, VarSet, VarTypes0, VarTypes, Goal1, IsPlainUnify),
+        Unification, UnifyContext, GoalInfo0, Goal1, IsPlainUnify,
+        VarTable0, VarTable, PredInfo0, PredInfo),
     Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
     (
         IsPlainUnify = is_plain_unify,
@@ -1203,8 +1202,7 @@ compute_goal_purity_in_fgt_ptc([Goal0 | Goals0], !RevMarkedSubGoals,
                 unexpected($pred, "is_plain_unify goal is not unify")
             ),
             expect(unify(PredInfo0, PredInfo), $pred, "PredInfo != PredInfo"),
-            expect(unify(VarSet0, VarSet), $pred, "VarSet != VarSet"),
-            expect(unify(VarTypes0, VarTypes), $pred, "VarTypes != VarTypes")
+            expect(unify(VarTable0, VarTable), $pred, "VarTable != VarTable")
         ),
         check_var_functor_unify_purity(!.Info, GoalInfo0, XVar, ConsId, YVars,
             UnifySpecs),
@@ -1221,8 +1219,7 @@ compute_goal_purity_in_fgt_ptc([Goal0 | Goals0], !RevMarkedSubGoals,
         % !Invariants is unchanged.
     ;
         IsPlainUnify = is_not_plain_unify,
-        !Info ^ pi_vartypes := VarTypes,
-        !Info ^ pi_varset := VarSet,
+        !Info ^ pi_var_table := VarTable,
         !Info ^ pi_pred_info := PredInfo,
         ( if GoalExpr1 = unify(_, _, _, _, _) then
             check_var_functor_unify_purity(!.Info, GoalInfo0,
@@ -1291,14 +1288,13 @@ compute_shorthand_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
         RunPostTypecheck = !.Info ^ pi_run_post_typecheck,
         (
             RunPostTypecheck = run_post_typecheck_tasks,
-            VarSet = !.Info ^ pi_varset,
-            VarTypes = !.Info ^ pi_vartypes,
+            VarTable = !.Info ^ pi_var_table,
             Outer = atomic_interface_vars(OuterDI, OuterUO),
             Context = goal_info_get_context(GoalInfo),
-            check_outer_var_type(Context, VarTypes, VarSet, OuterDI,
-                OuterDIType, OuterDITypeSpecs),
-            check_outer_var_type(Context, VarTypes, VarSet, OuterUO,
-                OuterUOType, OuterUOTypeSpecs),
+            check_outer_var_type(Context, VarTable,
+                OuterDI, OuterDIType, OuterDITypeSpecs),
+            check_outer_var_type(Context, VarTable,
+                OuterUO, OuterUOType, OuterUOTypeSpecs),
             ( if OuterDIType = OuterUOType then
                 OuterMismatchSpecs = []
             else
@@ -1360,11 +1356,12 @@ compute_shorthand_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
         unexpected($pred, "bi_implication")
     ).
 
-:- pred check_outer_var_type(prog_context::in, vartypes::in, prog_varset::in,
+:- pred check_outer_var_type(prog_context::in, var_table::in,
     prog_var::in, mer_type::out, list(error_spec)::out) is det.
 
-check_outer_var_type(Context, VarTypes, VarSet, Var, VarType, Specs) :-
-    lookup_var_type(VarTypes, Var, VarType),
+check_outer_var_type(Context, VarTable, Var, VarType, Specs) :-
+    lookup_var_entry(VarTable, Var, VarEntry),
+    VarType = VarEntry ^ vte_type,
     ( if
         ( VarType = io_state_type
         ; VarType = stm_atomic_type
@@ -1372,7 +1369,7 @@ check_outer_var_type(Context, VarTypes, VarSet, Var, VarType, Specs) :-
     then
         Specs = []
     else
-        Spec = bad_outer_var_type_error(Context, VarSet, Var),
+        Spec = bad_outer_var_type_error(Context, VarTable, Var),
         Specs = [Spec]
     ).
 
@@ -1598,12 +1595,12 @@ impure_parallel_conjunct_error(Context, Purity) = Spec :-
     Spec = simplest_spec($pred, severity_error, phase_purity_check,
         Context, Pieces).
 
-:- func bad_outer_var_type_error(prog_context, prog_varset, prog_var)
+:- func bad_outer_var_type_error(prog_context, var_table, prog_var)
     = error_spec.
 
-bad_outer_var_type_error(Context, VarSet, Var) = Spec :-
+bad_outer_var_type_error(Context, VarTable, Var) = Spec :-
     Pieces = [words("The type of outer variable"),
-        fixed(mercury_var_to_name_only(VarSet, Var)),
+        fixed(mercury_var_to_name_only_src(vns_var_table(VarTable), Var)),
         words("must be either io.state or stm_builtin.stm."), nl],
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, Pieces).
@@ -1635,8 +1632,7 @@ mismatched_outer_var_types(Context) = Spec :-
                 pi_requant              :: need_to_requantify,
                 pi_converted_unify      :: converted_unify,
                 pi_pred_info            :: pred_info,
-                pi_vartypes             :: vartypes,
-                pi_varset               :: prog_varset,
+                pi_var_table            :: var_table,
                 pi_messages             :: list(error_spec)
             ).
 
