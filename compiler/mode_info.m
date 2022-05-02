@@ -455,7 +455,7 @@
                 % e.g. where the insts they handle come from. The reason
                 % this field exists is probably because Fergus thought that
                 % it is easier to stuff this information into the mode_info,
-                % which those general-purpose predicates already got,
+                % which those general-purpose predicates have already got,
                 % than to pass them in separate arguments, even though
                 % the latter would be semantically cleaner.
 /*  5 */        mi_mode_context             :: mode_context,
