@@ -26,6 +26,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_rename.
+:- import_module parse_tree.var_table.
 
 :- import_module list.
 
@@ -66,14 +67,14 @@
 :- pred rename_vars_in_goal_mode(must_rename::in, prog_var_renaming::in,
     goal_mode::in, goal_mode::out) is det.
 
-    % dump_goal_mode(Prefix, VarSet, GoalMode) = Strs:
+    % dump_goal_mode(Prefix, VarTable, GoalMode) = Strs:
     %
     % Return a representation of the given GoalMode that is suitable
     % for use in a HLDS dump. Each Str in Strs should be the contents
     % of a line, including the final newline. Every line should start
     % with Prefix.
     %
-:- func dump_goal_mode(string, prog_varset, goal_mode) = list(string).
+:- func dump_goal_mode(string, var_table, goal_mode) = list(string).
 
 %-----------------------------------------------------------------------------%
 %
@@ -102,7 +103,6 @@
 :- import_module hlds.instmap.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
 
 :- import_module map.
 :- import_module require.
@@ -148,7 +148,7 @@ rename_vars_in_goal_mode(Must, Subn, !GoalMode) :-
         !:GoalMode = gm_reachable(Bound, BoundGrounded, BoundNonGrounded)
     ).
 
-dump_goal_mode(PrefixStr, VarSet, GoalMode) = !:DumpStrs :-
+dump_goal_mode(PrefixStr, VarTable, GoalMode) = !:DumpStrs :-
     (
         GoalMode = gm_unreachable,
         !:DumpStrs = [PrefixStr ++ "gm_unreachable\n"]
@@ -169,8 +169,8 @@ dump_goal_mode(PrefixStr, VarSet, GoalMode) = !:DumpStrs :-
             ;
                 BoundNonGroundedVars = [_ | _],
                 NonGroundedStr = PrefixStr ++ "bound but not grounded: " ++
-                    mercury_vars_to_string(VarSet, print_name_and_num,
-                        BoundNonGroundedVars) ++
+                    mercury_vars_to_string_src(vns_var_table(VarTable),
+                        print_name_and_num, BoundNonGroundedVars) ++
                     "\n",
                 !:DumpStrs = [NonGroundedStr]
             ),
@@ -179,8 +179,8 @@ dump_goal_mode(PrefixStr, VarSet, GoalMode) = !:DumpStrs :-
             ;
                 BoundGroundedVars = [_ | _],
                 GroundedStr = PrefixStr ++ "bound and grounded: " ++
-                    mercury_vars_to_string(VarSet, print_name_and_num,
-                        BoundGroundedVars) ++
+                    mercury_vars_to_string_src(vns_var_table(VarTable),
+                        print_name_and_num, BoundGroundedVars) ++
                     "\n",
                 !:DumpStrs = [GroundedStr | !.DumpStrs]
             )
@@ -214,20 +214,20 @@ compute_goal_modes_in_pred(ModuleInfo, ValidPredIds, PredId, !PredInfo) :-
 
 compute_goal_modes_in_proc(ModuleInfo, !ProcInfo) :-
     ( if proc_info_is_valid_mode(!.ProcInfo) then
-        proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
+        proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
         proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
         proc_info_get_goal(!.ProcInfo, Goal0),
-        compute_goal_modes_in_goal(ModuleInfo, VarTypes, InstMap0, _InstMap,
+        compute_goal_modes_in_goal(ModuleInfo, VarTable, InstMap0, _InstMap,
             Goal0, Goal),
         proc_info_set_goal(Goal, !ProcInfo)
     else
         true
     ).
 
-:- pred compute_goal_modes_in_goal(module_info::in, vartypes::in,
+:- pred compute_goal_modes_in_goal(module_info::in, var_table::in,
     instmap::in, instmap::out, hlds_goal::in, hlds_goal::out) is det.
 
-compute_goal_modes_in_goal(ModuleInfo, VarTypes, InstMap0, InstMap,
+compute_goal_modes_in_goal(ModuleInfo, VarTable, InstMap0, InstMap,
         Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
@@ -240,36 +240,36 @@ compute_goal_modes_in_goal(ModuleInfo, VarTypes, InstMap0, InstMap,
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = conj(ConjType, Conjuncts0),
-        compute_goal_modes_in_conj(ModuleInfo, VarTypes, InstMap0,
+        compute_goal_modes_in_conj(ModuleInfo, VarTable, InstMap0,
             Conjuncts0, Conjuncts),
         GoalExpr = conj(ConjType, Conjuncts)
     ;
         GoalExpr0 = disj(Disjuncts0),
-        compute_goal_modes_in_disj(ModuleInfo, VarTypes, InstMap0,
+        compute_goal_modes_in_disj(ModuleInfo, VarTable, InstMap0,
             Disjuncts0, Disjuncts),
         GoalExpr = disj(Disjuncts)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        compute_goal_modes_in_switch(ModuleInfo, VarTypes, InstMap0,
+        compute_goal_modes_in_switch(ModuleInfo, VarTable, InstMap0,
             Cases0, Cases),
         GoalExpr = switch(Var, CanFail, Cases)
     ;
         GoalExpr0 = if_then_else(Vars, CondGoal0, ThenGoal0, ElseGoal0),
-        compute_goal_modes_in_goal(ModuleInfo, VarTypes, InstMap0, InstMapCond,
+        compute_goal_modes_in_goal(ModuleInfo, VarTable, InstMap0, InstMapCond,
             CondGoal0, CondGoal),
-        compute_goal_modes_in_goal(ModuleInfo, VarTypes, InstMapCond, _,
+        compute_goal_modes_in_goal(ModuleInfo, VarTable, InstMapCond, _,
             ThenGoal0, ThenGoal),
-        compute_goal_modes_in_goal(ModuleInfo, VarTypes, InstMap0, _,
+        compute_goal_modes_in_goal(ModuleInfo, VarTable, InstMap0, _,
             ElseGoal0, ElseGoal),
         GoalExpr = if_then_else(Vars, CondGoal, ThenGoal, ElseGoal)
     ;
         GoalExpr0 = negation(SubGoal0),
-        compute_goal_modes_in_goal(ModuleInfo, VarTypes, InstMap0, _,
+        compute_goal_modes_in_goal(ModuleInfo, VarTable, InstMap0, _,
             SubGoal0, SubGoal),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        compute_goal_modes_in_goal(ModuleInfo, VarTypes, InstMap0, _,
+        compute_goal_modes_in_goal(ModuleInfo, VarTable, InstMap0, _,
             SubGoal0, SubGoal),
         GoalExpr = scope(Reason, SubGoal)
     ;
@@ -279,15 +279,15 @@ compute_goal_modes_in_goal(ModuleInfo, VarTypes, InstMap0, InstMap,
             unexpected($pred, "bi_implication")
         ;
             Shorthand0 = try_goal(MaybeIOVars, ResultVar, SubGoal0),
-            compute_goal_modes_in_goal(ModuleInfo, VarTypes, InstMap0, _,
+            compute_goal_modes_in_goal(ModuleInfo, VarTable, InstMap0, _,
                 SubGoal0, SubGoal),
             Shorthand = try_goal(MaybeIOVars, ResultVar, SubGoal)
         ;
             Shorthand0 = atomic_goal(AtomicGoalType, OuterVars, InnerVars,
                 OutputVars, MainGoal0, OrElseGoals0, OrElseInners),
-            compute_goal_modes_in_goal(ModuleInfo, VarTypes, InstMap0, _,
+            compute_goal_modes_in_goal(ModuleInfo, VarTable, InstMap0, _,
                 MainGoal0, MainGoal),
-            compute_goal_modes_in_disj(ModuleInfo, VarTypes, InstMap0,
+            compute_goal_modes_in_disj(ModuleInfo, VarTable, InstMap0,
                 OrElseGoals0, OrElseGoals),
             Shorthand = atomic_goal(AtomicGoalType, OuterVars, InnerVars,
                 OutputVars, MainGoal, OrElseGoals, OrElseInners)
@@ -295,52 +295,52 @@ compute_goal_modes_in_goal(ModuleInfo, VarTypes, InstMap0, InstMap,
         GoalExpr = shorthand(Shorthand)
     ),
     apply_instmap_delta(InstMapDelta, InstMap0, InstMap),
-    compute_goal_mode(ModuleInfo, VarTypes, InstMapDelta, InstMap0, InstMap,
+    compute_goal_mode(ModuleInfo, VarTable, InstMapDelta, InstMap0, InstMap,
         GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred compute_goal_modes_in_conj(module_info::in, vartypes::in,
+:- pred compute_goal_modes_in_conj(module_info::in, var_table::in,
     instmap::in, list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 compute_goal_modes_in_conj(_, _, _, [], []).
-compute_goal_modes_in_conj(ModuleInfo, VarTypes, !.InstMap,
+compute_goal_modes_in_conj(ModuleInfo, VarTable, !.InstMap,
         [Conjunct0 | Conjuncts0], [Conjunct | Conjuncts]) :-
-    compute_goal_modes_in_goal(ModuleInfo, VarTypes, !InstMap,
+    compute_goal_modes_in_goal(ModuleInfo, VarTable, !InstMap,
         Conjunct0, Conjunct),
-    compute_goal_modes_in_conj(ModuleInfo, VarTypes, !.InstMap,
+    compute_goal_modes_in_conj(ModuleInfo, VarTable, !.InstMap,
         Conjuncts0, Conjuncts).
 
-:- pred compute_goal_modes_in_disj(module_info::in, vartypes::in,
+:- pred compute_goal_modes_in_disj(module_info::in, var_table::in,
     instmap::in, list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 compute_goal_modes_in_disj(_, _, _, [], []).
-compute_goal_modes_in_disj(ModuleInfo, VarTypes, InstMap0,
+compute_goal_modes_in_disj(ModuleInfo, VarTable, InstMap0,
         [Disjunct0 | Disjuncts0], [Disjunct | Disjuncts]) :-
-    compute_goal_modes_in_goal(ModuleInfo, VarTypes, InstMap0, _InstMap,
+    compute_goal_modes_in_goal(ModuleInfo, VarTable, InstMap0, _InstMap,
         Disjunct0, Disjunct),
-    compute_goal_modes_in_disj(ModuleInfo, VarTypes, InstMap0,
+    compute_goal_modes_in_disj(ModuleInfo, VarTable, InstMap0,
         Disjuncts0, Disjuncts).
 
-:- pred compute_goal_modes_in_switch(module_info::in, vartypes::in,
+:- pred compute_goal_modes_in_switch(module_info::in, var_table::in,
     instmap::in, list(case)::in, list(case)::out) is det.
 
 compute_goal_modes_in_switch(_, _, _, [], []).
-compute_goal_modes_in_switch(ModuleInfo, VarTypes, InstMap0,
+compute_goal_modes_in_switch(ModuleInfo, VarTable, InstMap0,
         [Case0 | Cases0], [Case | Cases]) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    compute_goal_modes_in_goal(ModuleInfo, VarTypes, InstMap0, _InstMap,
+    compute_goal_modes_in_goal(ModuleInfo, VarTable, InstMap0, _InstMap,
         Goal0, Goal),
     Case = case(MainConsId, OtherConsIds, Goal),
-    compute_goal_modes_in_switch(ModuleInfo, VarTypes, InstMap0,
+    compute_goal_modes_in_switch(ModuleInfo, VarTable, InstMap0,
         Cases0, Cases).
 
 %-----------------------------------------------------------------------------%
 
-:- pred compute_goal_mode(module_info::in, vartypes::in,
+:- pred compute_goal_mode(module_info::in, var_table::in,
     instmap_delta::in, instmap::in, instmap::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
-compute_goal_mode(ModuleInfo, VarTypes, InstMapDelta, InstMap0, InstMap,
+compute_goal_mode(ModuleInfo, VarTable, InstMapDelta, InstMap0, InstMap,
         !GoalInfo) :-
     ( if instmap_delta_is_reachable(InstMapDelta) then
         instmap_delta_changed_vars(InstMapDelta, Vars),
@@ -348,7 +348,7 @@ compute_goal_mode(ModuleInfo, VarTypes, InstMapDelta, InstMap0, InstMap,
         BoundGroundedVars0 = set_of_var.init,
         BoundNonGroundedVars0 = set_of_var.init,
         list.foldl3(
-            record_var_if_bound(ModuleInfo, VarTypes, InstMap0, InstMap),
+            record_var_if_bound(ModuleInfo, VarTable, InstMap0, InstMap),
             set_of_var.to_sorted_list(Vars),
             BoundVars0, BoundVars,
             BoundGroundedVars0, BoundGroundedVars,
@@ -360,17 +360,17 @@ compute_goal_mode(ModuleInfo, VarTypes, InstMapDelta, InstMap0, InstMap,
     ),
     goal_info_set_goal_mode(GoalMode, !GoalInfo).
 
-:- pred record_var_if_bound(module_info::in, vartypes::in,
+:- pred record_var_if_bound(module_info::in, var_table::in,
     instmap::in, instmap::in, prog_var::in,
     set_of_progvar::in, set_of_progvar::out,
     set_of_progvar::in, set_of_progvar::out,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-record_var_if_bound(ModuleInfo, VarTypes, InstMap0, InstMap, Var,
+record_var_if_bound(ModuleInfo, VarTable, InstMap0, InstMap, Var,
         !BoundVars, !BoundGroundedVars, !BoundNonGroundedVars) :-
     instmap_lookup_var(InstMap0, Var, Inst0),
     instmap_lookup_var(InstMap, Var, Inst),
-    lookup_var_type(VarTypes, Var, Type),
+    lookup_var_type(VarTable, Var, Type),
     ( if inst_matches_final_typed(ModuleInfo, Type, Inst0, Inst) then
         true
     else
