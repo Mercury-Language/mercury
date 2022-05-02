@@ -97,7 +97,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module bag.
 :- import_module int.
@@ -208,8 +208,8 @@ select_changed_inst_vars([Var | Vars], DeltaInstMap, ModeInfo, ChangedVars) :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_instmap(ModeInfo, InstMap0),
     instmap_lookup_var(InstMap0, Var, Inst0),
-    mode_info_get_var_types(ModeInfo, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
+    mode_info_get_var_table(ModeInfo, VarTable),
+    lookup_var_type(VarTable, Var, Type),
     ( if
         instmap_delta_is_reachable(DeltaInstMap),
         instmap_delta_search_var(DeltaInstMap, Var, Inst),

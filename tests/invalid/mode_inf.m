@@ -15,4 +15,7 @@ p(X, Y) :-
 
 :- pred q(int, int).
 
-q(X, X).
+q(Z, Z).
+% Note that using the same variable names in q as in p can obscure
+% possible confusion in the compiler about which predicate's record
+% of variable names to use in the expected error message.

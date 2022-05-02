@@ -51,7 +51,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module int.
 :- import_module map.
@@ -86,9 +86,9 @@ modecheck_coerce(Args0, Args, Modes0, Modes, Det, ExtraGoals, !ModeInfo) :-
         mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
         mode_info_get_instmap(!.ModeInfo, InstMap),
         ( if instmap_is_reachable(InstMap) then
-            mode_info_get_var_types(!.ModeInfo, VarTypes),
-            lookup_var_type(VarTypes, X, TypeX),
-            lookup_var_type(VarTypes, Y, TypeY),
+            mode_info_get_var_table(!.ModeInfo, VarTable),
+            lookup_var_type(VarTable, X, TypeX),
+            lookup_var_type(VarTable, Y, TypeY),
             instmap_lookup_var(InstMap, X, InstX),
             instmap_lookup_var(InstMap, Y, InstY),
             ( if
@@ -192,12 +192,12 @@ modecheck_coerce_vars(ModuleInfo0, X, Y, TypeX, TypeY, InstX, InstY, Res,
     mode_info::in, mode_info::out) is det.
 
 create_fresh_var(VarType, Var, !ModeInfo) :-
-    mode_info_get_var_types(!.ModeInfo, VarTypes0),
-    mode_info_get_varset(!.ModeInfo, VarSet0),
-    varset.new_var(Var, VarSet0, VarSet),
-    add_var_type(Var, VarType, VarTypes0, VarTypes),
-    mode_info_set_varset(VarSet, !ModeInfo),
-    mode_info_set_var_types(VarTypes, !ModeInfo).
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+    VarIsDummy = is_type_a_dummy(ModuleInfo, VarType),
+    VarEntry = vte("", VarType, VarIsDummy),
+    mode_info_get_var_table(!.ModeInfo, VarTable0),
+    add_var_entry(VarEntry, Var, VarTable0, VarTable),
+    mode_info_set_var_table(VarTable, !ModeInfo).
 
 %---------------------------------------------------------------------------%
 

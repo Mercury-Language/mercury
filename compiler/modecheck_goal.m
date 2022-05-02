@@ -139,7 +139,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module bag.
 :- import_module list.
@@ -151,7 +151,6 @@
 :- import_module string.
 :- import_module term.
 :- import_module uint.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -264,10 +263,10 @@ modecheck_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     mode_checkpoint(enter, CallString, !ModeInfo),
 
     mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
-        !ModeInfo),
+        !ModeInfo), % ZZZ
 
     mode_info_get_instmap(!.ModeInfo, InstMap0),
-    DeterminismKnown = no,
+    DeterminismKnown = no,  % ZZZ
     modecheck_call_pred(PredId, DeterminismKnown, ProcId0, ProcId,
         ArgVars0, ArgVars, GoalInfo0, ExtraGoals, !ModeInfo),
 
@@ -305,8 +304,8 @@ modecheck_goal_generic_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
         GenericCall = higher_order(PredVar, _, PredOrFunc, _),
         modecheck_higher_order_call(PredOrFunc, PredVar,
             Args0, Args, Modes, Det, ExtraGoals, !ModeInfo),
-        GoalExpr1 = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
-            Det),
+        GoalExpr1 =
+            generic_call(GenericCall, Args, Modes, arg_reg_types_unset, Det),
         AllArgs0 = [PredVar | Args0],
         AllArgs = [PredVar | Args],
         handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, AllArgs0, AllArgs,
@@ -1113,13 +1112,11 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
 
 modecheck_goal_make_ground_term_unique(TermVar, SubGoal0, GoalInfo0, GoalExpr,
         !ModeInfo) :-
-    mode_info_get_var_types(!.ModeInfo, VarTypes0),
-    mode_info_get_varset(!.ModeInfo, VarSet0),
-    varset.new_var(CloneVar, VarSet0, VarSet),
-    lookup_var_type(VarTypes0, TermVar, TermVarType),
-    add_var_type(CloneVar, TermVarType, VarTypes0, VarTypes),
-    mode_info_set_varset(VarSet, !ModeInfo),
-    mode_info_set_var_types(VarTypes, !ModeInfo),
+    mode_info_get_var_table(!.ModeInfo, VarTable0),
+    lookup_var_entry(VarTable0, TermVar, TermVarEntry),
+    CloneVarEntry = TermVarEntry ^ vte_name := "",
+    add_var_entry(CloneVarEntry, CloneVar, VarTable0, VarTable),
+    mode_info_set_var_table(VarTable, !ModeInfo),
     Rename = map.singleton(TermVar, CloneVar),
     % By construction, TermVar can appear only in (a) SubGoal0's goal_info,
     % and (b) in the last conjunct in SubGoal0's goal_expr; it cannot appear
@@ -1153,6 +1150,7 @@ modecheck_goal_make_ground_term_unique(TermVar, SubGoal0, GoalInfo0, GoalExpr,
     mode_info_set_instmap(InstMap1, !ModeInfo),
 
     Context = goal_info_get_context(GoalInfo0),
+    TermVarType = TermVarEntry ^ vte_type,
     modecheck_make_type_info_var_for_type(TermVarType, Context, TypeInfoVar,
         TypeInfoGoals, !ModeInfo),
 
@@ -1182,13 +1180,12 @@ modecheck_make_type_info_var_for_type(Type, Context, TypeInfoVar,
     module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, PredInfo0,
         ProcInfo0),
 
-    % Create a poly_info for the current procedure. We have to set the varset
-    % and vartypes from the mode_info, not the proc_info, because new vars may
+    % Create a poly_info for the current procedure. We have to set the
+    % var_table from the mode_info, not the proc_info, because new vars may
     % have been introduced during mode analysis, e.g. when adding
     % unifications to handle implied modes.
-    mode_info_get_var_types(!.ModeInfo, VarTypes0),
-    mode_info_get_varset(!.ModeInfo, VarSet0),
-    proc_info_set_varset_vartypes(VarSet0, VarTypes0, ProcInfo0, ProcInfo1),
+    mode_info_get_var_table(!.ModeInfo, VarTable0),
+    proc_info_set_var_table(VarTable0, ProcInfo0, ProcInfo1),
 
     polymorphism_make_type_info_var_mi(Type, Context,
         TypeInfoVar, TypeInfoGoals, ModuleInfo0, ModuleInfo1,
@@ -1197,9 +1194,8 @@ modecheck_make_type_info_var_for_type(Type, Context, TypeInfoVar,
         ModuleInfo1, ModuleInfo),
 
     % Update the information in the mode_info.
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
-    mode_info_set_varset(VarSet, !ModeInfo),
-    mode_info_set_var_types(VarTypes, !ModeInfo),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    mode_info_set_var_table(VarTable, !ModeInfo),
     mode_info_set_module_info(ModuleInfo, !ModeInfo).
 
 :- pred modecheck_goal_from_ground_term_scope(prog_var::in,
@@ -1215,7 +1211,6 @@ modecheck_goal_from_ground_term_scope(TermVar, SubGoal0, GoalInfo0,
     % passes.
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     instmap_lookup_var(InstMap0, TermVar, TermVarInst),
-    mode_info_get_varset(!.ModeInfo, VarSet),
     modecheck_specializable_ground_term(SubGoal0, TermVar, TermVarInst,
         MaybeGroundTermMode),
     (
@@ -1225,7 +1220,7 @@ modecheck_goal_from_ground_term_scope(TermVar, SubGoal0, GoalInfo0,
             LiveTermVar = is_live,
             SubGoal0 = hlds_goal(_, SubGoalInfo0),
             modecheck_ground_term_construct(TermVar, RevConj0,
-                SubGoalInfo0, VarSet, SubGoal, !ModeInfo),
+                SubGoalInfo0, SubGoal, !ModeInfo),
             Kind = from_ground_term_construct,
             MaybeKindAndSubGoal = yes(Kind - SubGoal)
         ;
@@ -1325,13 +1320,13 @@ all_plain_construct_unifies([Goal | Goals]) :-
     all_plain_construct_unifies(Goals).
 
 :- pred modecheck_ground_term_construct(prog_var::in, list(hlds_goal)::in,
-    hlds_goal_info::in, prog_varset::in, hlds_goal::out,
+    hlds_goal_info::in, hlds_goal::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_ground_term_construct(TermVar, ConjGoals0, !.SubGoalInfo, VarSet,
+modecheck_ground_term_construct(TermVar, ConjGoals0, !.SubGoalInfo,
         SubGoal, !ModeInfo) :-
     map.init(LocalVarMap0),
-    modecheck_ground_term_construct_goal_loop(VarSet, ConjGoals0, ConjGoals,
+    modecheck_ground_term_construct_goal_loop(ConjGoals0, ConjGoals,
         LocalVarMap0, LocalVarMap),
     map.lookup(LocalVarMap, TermVar, TermVarInfo),
     TermVarInfo = construct_var_info(TermVarInst),
@@ -1352,13 +1347,13 @@ modecheck_ground_term_construct(TermVar, ConjGoals0, !.SubGoalInfo, VarSet,
 
 :- type construct_var_info_map == map(prog_var, construct_var_info).
 
-:- pred modecheck_ground_term_construct_goal_loop(prog_varset::in,
+:- pred modecheck_ground_term_construct_goal_loop(
     list(hlds_goal)::in, list(hlds_goal)::out,
     construct_var_info_map::in, construct_var_info_map::out) is det.
 
-modecheck_ground_term_construct_goal_loop(_, [], [], !LocalVarMap).
-modecheck_ground_term_construct_goal_loop(VarSet,
-        [Goal0 | Goals0], [Goal | Goals], !LocalVarMap) :-
+modecheck_ground_term_construct_goal_loop([], [], !LocalVarMap).
+modecheck_ground_term_construct_goal_loop([Goal0 | Goals0], [Goal | Goals],
+        !LocalVarMap) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     ( if
         GoalExpr0 = unify(LHSVar, RHS, _, _, UnifyContext),
@@ -1394,8 +1389,7 @@ modecheck_ground_term_construct_goal_loop(VarSet,
     else
         unexpected($pred, "not rhs_functor unify")
     ),
-    modecheck_ground_term_construct_goal_loop(VarSet, Goals0, Goals,
-        !LocalVarMap).
+    modecheck_ground_term_construct_goal_loop(Goals0, Goals, !LocalVarMap).
 
 :- pred modecheck_ground_term_construct_arg_loop(list(prog_var)::in,
     list(mer_inst)::out, list(unify_mode)::out,
@@ -1450,7 +1444,7 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo) :-
         % mode_info_lock_vars(var_lock_atomic_goal, OuterVars, !ModeInfo),
         modecheck_orelse_list(MultiModeErrorMap0, AtomicGoalList0,
             AtomicGoalList, InstMapList, !ModeInfo),
-        mode_info_get_var_types(!.ModeInfo, VarTypes),
+        mode_info_get_var_table(!.ModeInfo, VarTable),
         % mode_info_unlock_vars(var_lock_atomic_goal, OuterVars, !ModeInfo),
 
         MainGoal = list.det_head(AtomicGoalList),
@@ -1468,8 +1462,8 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo) :-
         % check here (also: types of variables must be known at this point).
 
         Outer = atomic_interface_vars(OuterDI, OuterUO),
-        lookup_var_type(VarTypes, OuterDI, OuterDIType),
-        lookup_var_type(VarTypes, OuterUO, OuterUOType),
+        lookup_var_type(VarTable, OuterDI, OuterDIType),
+        lookup_var_type(VarTable, OuterUO, OuterUOType),
         ( if
             ( OuterDIType = io_state_type
             ; OuterDIType = io_io_type
@@ -1488,8 +1482,8 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo) :-
         expect(unify(OuterDIType, OuterUOType), $pred,
             "atomic_goal: mismatched outer var type"),
         Inner = atomic_interface_vars(InnerDI, InnerUO),
-        lookup_var_type(VarTypes, InnerDI, InnerDIType),
-        lookup_var_type(VarTypes, InnerUO, InnerUOType),
+        lookup_var_type(VarTable, InnerDI, InnerDIType),
+        lookup_var_type(VarTable, InnerUO, InnerUOType),
         expect(unify(InnerDIType, stm_atomic_type), $pred,
             "atomic_goal: invalid inner var type"),
         expect(unify(InnerUOType, stm_atomic_type), $pred,

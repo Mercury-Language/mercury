@@ -104,6 +104,8 @@
 
 :- pred var_is_or_may_contain_solver_type(module_info::in, vartypes::in,
     prog_var::in) is semidet.
+:- pred var_is_or_may_contain_solver_type_vt(module_info::in, var_table::in,
+    prog_var::in) is semidet.
 
     % Succeed iff the principal type constructor for the given type is
     % declared a solver type, or if the type is a pred or func type.
@@ -677,6 +679,10 @@ ctor_definitely_has_no_user_defined_eq_pred(ModuleInfo, Ctor, !SeenTypes) :-
 
 var_is_or_may_contain_solver_type(ModuleInfo, VarTypes, Var) :-
     lookup_var_type(VarTypes, Var, VarType),
+    type_is_or_may_contain_solver_type(ModuleInfo, VarType).
+
+var_is_or_may_contain_solver_type_vt(ModuleInfo, VarTabke, Var) :-
+    lookup_var_type(VarTabke, Var, VarType),
     type_is_or_may_contain_solver_type(ModuleInfo, VarType).
 
 type_is_or_may_contain_solver_type(ModuleInfo, Type) :-

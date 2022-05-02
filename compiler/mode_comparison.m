@@ -98,7 +98,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.modecheck_util.
 :- import_module parse_tree.prog_detism.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module map.
@@ -227,8 +227,8 @@ compare_proc(ModeInfo, ProcId, OtherProcId, ArgVars, Procs, Compare) :-
     proc_info_get_argmodes(ProcInfo, ProcArgModes),
     proc_info_get_argmodes(OtherProcInfo, OtherProcArgModes),
     mode_info_get_module_info(ModeInfo, ModuleInfo),
-    mode_info_get_var_types(ModeInfo, VarTypes),
-    lookup_var_types(VarTypes, ArgVars, ArgTypes),
+    mode_info_get_var_table(ModeInfo, VarTable),
+    lookup_var_types(VarTable, ArgVars, ArgTypes),
     mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
     mode_list_get_initial_insts(ModuleInfo, OtherProcArgModes,
         OtherInitialInsts),

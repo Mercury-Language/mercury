@@ -74,7 +74,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module map.
@@ -86,9 +86,9 @@
 modecheck_call_pred(PredId, MaybeDetism, ProcId0, TheProcId,
         ArgVars0, ArgVars, _GoalInfo, ExtraGoals, !ModeInfo) :-
     mode_info_get_may_change_called_proc(!.ModeInfo, MayChangeCalledProc),
-    mode_info_get_pred_id_table(!.ModeInfo, PredIdTable),
+    mode_info_get_pred_id_table(!.ModeInfo, PredIdTable), % ZZZ
     map.lookup(PredIdTable, PredId, PredInfo),
-    pred_info_get_proc_table(PredInfo, Procs),
+    pred_info_get_proc_table(PredInfo, Procs),  % ZZZ ProcTable
     (
         MayChangeCalledProc = may_not_change_called_proc,
         ( if ProcId0 = invalid_proc_id then
@@ -222,7 +222,7 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
     mode_info_get_instvarset(!.ModeInfo, InstVarSet0),
     rename_apart_inst_vars(InstVarSet0, ProcInstVarSet, InstVarSet,
         ProcArgModes0, ProcArgModes),
-    mode_info_set_instvarset(InstVarSet, !ModeInfo),
+    mode_info_set_instvarset(InstVarSet, !ModeInfo),    % ZZZ undone where?
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     proc_info_arglives(ModuleInfo, ProcInfo, ProcArgLives0),
 
@@ -475,8 +475,8 @@ get_higher_order_inst_match(ModeInfo, ExpectedPredOrFunc, PredVar, PredVarInst,
             % Otherwise, if PredVar has a function type, assume the default
             % function mode.
             HOInstInfo = none_or_default_func,
-            mode_info_get_var_types(ModeInfo, VarTypes),
-            lookup_var_type(VarTypes, PredVar, Type0),
+            mode_info_get_var_table(ModeInfo, VarTable),
+            lookup_var_type(VarTable, PredVar, Type0),
             Type = strip_kind_annotation(Type0),
             ( if
                 Type = higher_order_type(TypePredOrFunc,

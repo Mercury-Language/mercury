@@ -46,6 +46,7 @@
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -103,10 +104,11 @@ mode_checkpoint(Port, Msg, !ModeInfo) :-
                     instmap_to_assoc_list(InstMap, NewInsts),
                     mode_info_get_last_checkpoint_insts(!.ModeInfo,
                         OldInstMap),
-                    mode_info_get_varset(!.ModeInfo, VarSet),
+                    mode_info_get_var_table(!.ModeInfo, VarTable),
                     mode_info_get_instvarset(!.ModeInfo, InstVarSet),
                     write_var_insts(DebugStream, NewInsts, OldInstMap,
-                        VarSet, InstVarSet, Verbose, Minimal, !IO)
+                        vns_var_table(VarTable), InstVarSet,
+                        Verbose, Minimal, !IO)
                 else
                     io.write_string(DebugStream, "\tUnreachable\n", !IO)
                 ),
@@ -130,12 +132,12 @@ mode_checkpoint(Port, Msg, !ModeInfo) :-
 
 :- pred write_var_insts(io.text_output_stream::in,
     assoc_list(prog_var, mer_inst)::in, instmap::in,
-    prog_varset::in, inst_varset::in, bool::in, bool::in,
+    var_name_source::in, inst_varset::in, bool::in, bool::in,
     io::di, io::uo) is det.
 
 write_var_insts(_, [], _, _, _, _, _, !IO).
 write_var_insts(Stream, [Var - Inst | VarInsts], OldInstMap,
-        VarSet, InstVarSet, Verbose, Minimal, !IO) :-
+        VarNameSrc, InstVarSet, Verbose, Minimal, !IO) :-
     instmap_lookup_var(OldInstMap, Var, OldInst),
     ( if
         (
@@ -147,14 +149,15 @@ write_var_insts(Stream, [Var - Inst | VarInsts], OldInstMap,
         (
             Verbose = yes,
             io.write_string(Stream, "\t", !IO),
-            mercury_output_var(VarSet, print_name_only, Var, Stream, !IO),
+            mercury_output_var_src(VarNameSrc, print_name_only, Var,
+                Stream, !IO),
             io.write_string(Stream, " :: unchanged", !IO)
         ;
             Verbose = no
         )
     else
         io.write_string(Stream, "\t", !IO),
-        mercury_output_var(VarSet, print_name_only, Var, Stream, !IO),
+        mercury_output_var_src(VarNameSrc, print_name_only, Var, Stream, !IO),
         (
             Minimal = yes,
             io.write_string(Stream, " :: changed\n", !IO)
@@ -165,7 +168,7 @@ write_var_insts(Stream, [Var - Inst | VarInsts], OldInstMap,
                 output_debug, do_not_incl_addr, InstVarSet, !IO)
         )
     ),
-    write_var_insts(Stream, VarInsts, OldInstMap, VarSet, InstVarSet,
+    write_var_insts(Stream, VarInsts, OldInstMap, VarNameSrc, InstVarSet,
         Verbose, Minimal, !IO).
 
     % In the usual case of a C backend, this predicate allows us to conclude

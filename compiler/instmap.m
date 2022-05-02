@@ -1207,8 +1207,8 @@ instmap_merge(NonLocals, ArmInstMaps, MergeContext, !ModeInfo) :-
         ReachableInstMappingList = [_ | _]
     then
         set_of_var.to_sorted_list(NonLocals, NonLocalsList),
-        mode_info_get_var_types(!.ModeInfo, VarTypes),
-        merge_insts_of_vars(NonLocalsList, ArmInstMaps, VarTypes,
+        mode_info_get_var_table(!.ModeInfo, VarTable),
+        merge_insts_of_vars(NonLocalsList, ArmInstMaps, VarTable,
             InstMapping0, InstMapping, ModuleInfo0, ModuleInfo, Errors),
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
         (
@@ -1262,15 +1262,15 @@ get_reachable_instmaps([ArmInstMap | ArmInstMaps], Reachables) :-
     % in InstMapList, return them in Errors.
     %
 :- pred merge_insts_of_vars(list(prog_var)::in, list(arm_instmap)::in,
-    vartypes::in, instmapping::in, instmapping::out,
+    var_table::in, instmapping::in, instmapping::out,
     module_info::in, module_info::out, list(merge_error)::out) is det.
 
 merge_insts_of_vars([], _, _, !InstMap, !ModuleInfo, []).
-merge_insts_of_vars([Var | Vars], ArmInstMaps, VarTypes, !InstMapping,
+merge_insts_of_vars([Var | Vars], ArmInstMaps, VarTable, !InstMapping,
         !ModuleInfo, !:ErrorList) :-
-    merge_insts_of_vars(Vars, ArmInstMaps, VarTypes, !InstMapping,
+    merge_insts_of_vars(Vars, ArmInstMaps, VarTable, !InstMapping,
         !ModuleInfo, !:ErrorList),
-    lookup_var_type(VarTypes, Var, VarType),
+    lookup_var_type(VarTable, Var, VarType),
     list.map(lookup_var_in_arm_instmap(Var), ArmInstMaps, VarInsts),
     det_head_tail(VarInsts, HeadVarInst, TailVarInsts), 
     insts_merge(VarType, HeadVarInst, TailVarInsts, MaybeInst, !ModuleInfo),

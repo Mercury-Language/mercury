@@ -31,7 +31,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bag.
@@ -179,8 +179,7 @@
     % Getters of the fields of mode_sub_info.
 :- pred mode_info_get_pred_id(mode_info::in, pred_id::out) is det.
 :- pred mode_info_get_proc_id(mode_info::in, proc_id::out) is det.
-:- pred mode_info_get_varset(mode_info::in, prog_varset::out) is det.
-:- pred mode_info_get_var_types(mode_info::in, vartypes::out) is det.
+:- pred mode_info_get_var_table(mode_info::in, var_table::out) is det.
 :- pred mode_info_get_debug_modes(mode_info::in, maybe(debug_flags)::out)
     is det.
 :- pred mode_info_get_locked_vars(mode_info::in, locked_vars::out) is det.
@@ -238,9 +237,7 @@
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_proc_id(proc_id::in,
     mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_varset(prog_varset::in,
-    mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_var_types(vartypes::in,
+:- pred mode_info_set_var_table(var_table::in,
     mode_info::in, mode_info::out) is det.
 % There is no mode_info_set_debug_modes; this field is read-only.
 :- pred mode_info_set_locked_vars(locked_vars::in,
@@ -457,11 +454,8 @@
                 % The mode which we are checking.
                 msi_proc_id                 :: proc_id,
 
-                % The variables in the current proc.
-                msi_varset                  :: prog_varset,
-
-                % The types of the variables.
-                msi_vartypes                :: vartypes,
+                % The names and types of the variables.
+                msi_var_table               :: var_table,
 
                 % Is mode debugging of this procedure enabled? If yes,
                 % is verbose mode debugging enabled, is minimal mode debugging
@@ -611,7 +605,7 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
     ),
 
     module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
 
     bag.from_sorted_list(set_of_var.to_sorted_list(LiveVars), LiveVarsBag),
@@ -630,7 +624,7 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
     InDuplForSwitch = not_in_dupl_for_switch,
     map.init(PredVarMultiModeMap),
 
-    ModeSubInfo = mode_sub_info(PredId, ProcId, VarSet, VarTypes,
+    ModeSubInfo = mode_sub_info(PredId, ProcId, VarTable,
         MaybeDebug, LockedVars, LiveVarsBag, InstVarSet, ParallelVars,
         LastCheckpointInstMap, InstMap0, HeadInstVars, Warnings,
         PredVarMultiModeMap,
@@ -681,10 +675,8 @@ mode_info_get_pred_id(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_pred_id.
 mode_info_get_proc_id(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_proc_id.
-mode_info_get_varset(MI, X) :-
-    X = MI ^ mi_sub_info ^ msi_varset.
-mode_info_get_var_types(MI, X) :-
-    X = MI ^ mi_sub_info ^ msi_vartypes.
+mode_info_get_var_table(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_var_table.
 mode_info_get_debug_modes(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_debug.
 mode_info_get_locked_vars(MI, X) :-
@@ -767,10 +759,8 @@ mode_info_set_pred_id(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_pred_id := X.
 mode_info_set_proc_id(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_proc_id := X.
-mode_info_set_varset(X, !MI) :-
-    !MI ^ mi_sub_info ^ msi_varset := X.
-mode_info_set_var_types(X, !MI) :-
-    !MI ^ mi_sub_info ^ msi_vartypes := X.
+mode_info_set_var_table(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_var_table := X.
 mode_info_set_locked_vars(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_locked_vars := X.
 mode_info_set_live_vars(X, !MI) :-
@@ -935,8 +925,8 @@ mode_info_get_modes(ModeInfo, Modes) :-
     module_info_get_mode_table(ModuleInfo, Modes).
 
 mode_info_get_types_of_vars(ModeInfo, Vars, TypesOfVars) :-
-    mode_info_get_var_types(ModeInfo, VarTypes),
-    lookup_var_types(VarTypes, Vars, TypesOfVars).
+    mode_info_get_var_table(ModeInfo, VarTable),
+    lookup_var_types(VarTable, Vars, TypesOfVars).
 
 %---------------------------------------------------------------------------%
 

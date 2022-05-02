@@ -310,9 +310,8 @@ unique_modecheck_goal_live_vars(LiveVars, Goal0, Goal, Errors, !PDInfo) :-
         PredInfo, ProcInfo1),
     pd_info_set_pred_info(PredInfo, !PDInfo),
     % Deconstruct the mode_info.
-    mode_info_get_varset(ModeInfo, VarSet),
-    mode_info_get_var_types(ModeInfo, VarTypes),
-    proc_info_set_varset_vartypes(VarSet, VarTypes, ProcInfo1, ProcInfo),
+    mode_info_get_var_table(ModeInfo, VarTable),
+    proc_info_set_var_table(VarTable, ProcInfo1, ProcInfo),
     pd_info_set_proc_info(ProcInfo, !PDInfo).
 
     % Work out which vars are live later in the computation based on
@@ -362,7 +361,7 @@ rerun_det_analysis(Goal0, Goal, !PDInfo) :-
     det_get_soln_context(Detism, SolnContext),
 
     % det_infer_goal looks up the proc_info in the module_info for the
-    % vartypes, so we'd better stick them back in the module_info.
+    % var_table, so we'd better stick them back in the module_info.
     pd_info_get_pred_proc_id(!.PDInfo, PredProcId),
     pd_info_get_pred_info(!.PDInfo, PredInfo),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),

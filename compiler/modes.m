@@ -172,7 +172,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bag.
@@ -936,13 +936,12 @@ do_modecheck_proc(WhatToCheck, MayChangeCalledProc,
         inst_lists_to_mode_list(ArgInitialInsts, ArgFinalInsts, ArgModes),
         mode_info_get_changed_flag(!.ModeInfo, !:Changed),
         mode_info_get_module_info(!.ModeInfo, !:ModuleInfo),
-        mode_info_get_varset(!.ModeInfo, VarSet),
-        % VarTypes may differ from VarTypes0, since mode checking can
+        % VarTable may differ from VarTable0, since mode checking can
         % add new variables (e.g. when handling calls in implied modes).
-        mode_info_get_var_types(!.ModeInfo, VarTypes),
+        mode_info_get_var_table(!.ModeInfo, VarTable),
         mode_info_get_need_to_requantify(!.ModeInfo, NeedToRequantify),
         proc_info_set_goal(Body, !ProcInfo),
-        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+        proc_info_set_var_table(VarTable, !ProcInfo),
         proc_info_set_argmodes(ArgModes, !ProcInfo),
         (
             NeedToRequantify = do_not_need_to_requantify
@@ -1026,9 +1025,9 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, IsUnifyPred,
             ClausesForm0 = clause_switch(SwitchVar0, CanFail0, Cases0)
         ),
         BodyNonLocals = goal_info_get_nonlocals(BodyGoalInfo0),
-        mode_info_get_var_types(!.ModeInfo, VarTypes0),
+        mode_info_get_var_table(!.ModeInfo, VarTable0),
         SolverNonLocals = list.filter(
-            var_is_or_may_contain_solver_type(ModuleInfo, VarTypes0),
+            var_is_or_may_contain_solver_type_vt(ModuleInfo, VarTable0),
             set_of_var.to_sorted_list(BodyNonLocals)),
         SolverNonLocals = []
     then
@@ -1434,9 +1433,9 @@ modecheck_final_insts_gmb(InferModes, GroundMatchesBound,
         Changed0 = no,
         mode_info_get_instmap(!.ModeInfo, InstMap)
     ),
-    mode_info_get_var_types(!.ModeInfo, VarTypes),
+    mode_info_get_var_table(!.ModeInfo, VarTable),
     instmap_lookup_vars(InstMap, HeadVars, VarFinalInsts0),
-    lookup_var_types(VarTypes, HeadVars, ArgTypes),
+    lookup_var_types(VarTable, HeadVars, ArgTypes),
     (
         InferModes = do_infer_modes,
         % Make sure we set the final insts of any variables which
@@ -1513,8 +1512,8 @@ check_final_insts(InferModes, GroundMatchesBound,
 check_final_inst(InferModes, GroundMatchesBound,
         Var, VarInst, ExpectedInst, ArgNum, !Changed, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    mode_info_get_var_types(!.ModeInfo, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
+    mode_info_get_var_table(!.ModeInfo, VarTable),
+    lookup_var_type(VarTable, Var, Type),
     ( if
         inst_matches_final_gmb(ModuleInfo, GroundMatchesBound, Type,
             VarInst, ExpectedInst)

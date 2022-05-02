@@ -212,7 +212,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module int.
@@ -222,7 +222,6 @@
 :- import_module set_tree234.
 :- import_module term.
 :- import_module unit.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -479,8 +478,8 @@ modecheck_var_has_inst_exact_match(Var, Inst0, !Subst, !ModeInfo) :-
     inst_apply_substitution(!.Subst, Inst0, Inst),
     mode_info_get_instmap(!.ModeInfo, InstMap),
     instmap_lookup_var(InstMap, Var, VarInst),
-    mode_info_get_var_types(!.ModeInfo, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
+    mode_info_get_var_table(!.ModeInfo, VarTable),
+    lookup_var_type(VarTable, Var, Type),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     ( if
         inst_matches_initial_no_implied_modes_sub(Type, VarInst, Inst,
@@ -510,8 +509,8 @@ modecheck_var_has_inst_no_exact_match(Var, Inst0, !Subst, !ModeInfo) :-
     inst_apply_substitution(!.Subst, Inst0, Inst),
     mode_info_get_instmap(!.ModeInfo, InstMap),
     instmap_lookup_var(InstMap, Var, VarInst),
-    mode_info_get_var_types(!.ModeInfo, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
+    mode_info_get_var_table(!.ModeInfo, VarTable),
+    lookup_var_type(VarTable, Var, Type),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     ( if
         inst_matches_initial_sub(Type, VarInst, Inst, ModuleInfo0, ModuleInfo,
@@ -594,9 +593,9 @@ modecheck_head_inst_var(HeadInstVars, InstVar, Subst, !Acc) :-
 get_var_inst(ModeInfo, Var, Inst) :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_instmap(ModeInfo, InstMap),
-    mode_info_get_var_types(ModeInfo, VarTypes),
+    mode_info_get_var_table(ModeInfo, VarTable),
     instmap_lookup_var(InstMap, Var, Inst0),
-    lookup_var_type(VarTypes, Var, Type),
+    lookup_var_type(VarTable, Var, Type),
     normalise_inst(ModuleInfo, Type, Inst0, Inst).
 
 %-----------------------------------------------------------------------------%
@@ -633,8 +632,8 @@ modecheck_set_var_inst(Var0, NewInst0, MaybeUInst, !ModeInfo) :-
             unexpected($pred, "unify_inst failed")
         ),
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
-        mode_info_get_var_types(!.ModeInfo, VarTypes),
-        lookup_var_type(VarTypes, Var0, Type),
+        mode_info_get_var_table(!.ModeInfo, VarTable),
+        lookup_var_type(VarTable, Var0, Type),
         ( if
             % If the top-level inst of the variable is not_reached,
             % then the instmap as a whole must be unreachable.
@@ -767,8 +766,8 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var,
     inst_expand(ModuleInfo0, InitialInst0, InitialInst),
     inst_expand(ModuleInfo0, VarInst0, VarInst1),
 
-    mode_info_get_var_types(!.ModeInfo, VarTypes0),
-    lookup_var_type(VarTypes0, Var0, VarType),
+    mode_info_get_var_table(!.ModeInfo, VarTable0),
+    lookup_var_type(VarTable0, Var0, VarType),
     ( if
         % If the initial inst of the variable matches_final the initial inst
         % specified in the pred's mode declaration, then it is not a call
@@ -813,11 +812,10 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var,
             % where the declared mode was free -> ...
 
             % Introduce a new variable.
-            mode_info_get_varset(!.ModeInfo, VarSet0),
-            varset.new_var(Var, VarSet0, VarSet),
-            add_var_type(Var, VarType, VarTypes0, VarTypes),
-            mode_info_set_varset(VarSet, !ModeInfo),
-            mode_info_set_var_types(VarTypes, !ModeInfo),
+            VarIsDummy = is_type_a_dummy(ModuleInfo0, VarType),
+            VarEntry = vte("", VarType, VarIsDummy),
+            add_var_entry(VarEntry, Var, VarTable0, VarTable),
+            mode_info_set_var_table(VarTable, !ModeInfo),
 
             % Construct the code to do the unification.
             create_var_var_unification(Var0, Var, VarType, !.ModeInfo,
@@ -871,8 +869,8 @@ modecheck_functor_test(Var, ConsId, !ModeInfo) :-
     % Figure out the arity of this constructor, _including_ any type-infos
     % or typeclass-infos inserted for existential data types.
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    mode_info_get_var_types(!.ModeInfo, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
+    mode_info_get_var_table(!.ModeInfo, VarTable),
+    lookup_var_type(VarTable, Var, Type),
     BoundInst = cons_id_to_bound_inst(ModuleInfo, Type, ConsId),
 
     % Record the fact that Var was bound to ConsId.
@@ -883,8 +881,8 @@ modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo) :-
     % Figure out the arity of this constructor, _including_ any type-infos
     % or typeclass-infos inserted for existential data types.
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    mode_info_get_var_types(!.ModeInfo, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
+    mode_info_get_var_table(!.ModeInfo, VarTable),
+    lookup_var_type(VarTable, Var, Type),
     BoundInsts = list.map(cons_id_to_bound_inst(ModuleInfo, Type),
         [MainConsId | OtherConsIds]),
 
