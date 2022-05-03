@@ -110,17 +110,14 @@ peek_at_q_solution(IntA0, IntA, IntB0, IntB) :-
 
 write_p_solution(Soln, !IO) :-
     Soln = p_soln(Float - Str, Int, T, Float2),
-    io.format("p soln %.2f - %5s, %d, %.2f, ",
-        [f(Float), s(Str), i(Int), f(Float2)], !IO),
-    io.write(T, !IO),
-    io.nl(!IO).
+    io.format("p soln %.2f - %5s, %d, %.2f, %s\n",
+        [f(Float), s(Str), i(Int), f(Float2), s(string.string(T))], !IO).
 
 :- pred write_q_solution(q_soln::in, io::di, io::uo) is det.
 
 write_q_solution(Soln, !IO) :-
     Soln = q_soln(Float - Str, IntA, TA, IntB, TB),
-    io.format("q soln %.2f - %5s, %d, ", [f(Float), s(Str), i(IntA)], !IO),
-    io.write(TA, !IO),
-    io.format(", %d, ", [i(IntB)], !IO),
-    io.write(TB, !IO),
-    io.nl(!IO).
+    TAStr = string.string(TA),
+    TBStr = string.string(TB),
+    io.format("q soln %.2f - %5s, %d, %s, %d, %s\n",
+        [f(Float), s(Str), i(IntA), s(TAStr), i(IntB), s(TBStr)], !IO).

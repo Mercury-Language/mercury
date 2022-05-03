@@ -51,7 +51,10 @@ write_foo(Foo, !IO) :-
     io.print(X, !IO),
     io.nl(!IO).
 
-:- type bar ---> a ; b ; c.
+:- type bar
+    --->    a
+    ;       b
+    ;       c.
 
 :- func f(bar::in) = (foo::oa) is det.
 f(Bar) = Foo :-

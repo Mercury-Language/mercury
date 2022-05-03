@@ -41,9 +41,9 @@ main(!IO) :-
 :- pred test(t::in, int::in, string::in, io::di, io::uo) is det.
 
 test(T, I, S, !IO) :-
-    ( p(T, I, S, X) ->
+    ( if p(T, I, S, X) then
         io.format("success: %d\n", [i(X)], !IO)
-    ;
+    else
         io.write_string("failure\n", !IO)
     ).
 
