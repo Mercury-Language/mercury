@@ -735,6 +735,15 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
                 ProcessOutputRedirected = string.format("%s < %s > %s 2>&1",
                     [s(ProcessOutput), s(TmpFile), s(ProcessedTmpFile)])
             ),
+            (
+                PrintCommand = yes,
+                io.format(ProgressStream,
+                    "%%s Invoking system command `%s'...\n",
+                        [s(ProcessOutputRedirected)], !IO),
+                io.flush_output(ProgressStream, !IO)
+            ;
+                PrintCommand = no
+            ),
             io.call_system.call_system_return_signal(ProcessOutputRedirected,
                 ProcessOutputResult, !IO),
             io.file.remove_file(TmpFile, _, !IO),
