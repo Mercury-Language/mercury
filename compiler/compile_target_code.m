@@ -284,7 +284,9 @@ do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC, C_File, O_File,
     get_maybe_filtercc_command(Globals, MaybeFilterCmd),
     invoke_system_command_maybe_filter_output(Globals, ProgressStream,
         ErrorStream, ErrorStream, cmd_verbose_commands,
-        Command, MaybeFilterCmd, Succeeded, !IO).
+        Command, MaybeFilterCmd, Succeeded, !IO),
+    globals.lookup_bool_option(Globals, statistics, Stats),
+    maybe_report_stats(ProgressStream, Stats, !IO).
 
 :- pred gather_c_compiler_flags(globals::in, pic::in, string::out) is det.
 
