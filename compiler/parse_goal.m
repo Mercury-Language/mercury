@@ -104,10 +104,10 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
     ( if
         % Check for builtins...
         Term = term.functor(term.atom(Name), Args, Context),
-        parse_non_call_goal(Name, Args, Context, ContextPieces, MaybeGoalPrime,
-            !VarSet)
+        string_goal_kind(Name, GoalKind)
     then
-        MaybeGoal = MaybeGoalPrime
+        parse_non_call_goal(GoalKind, Args, Context, ContextPieces,
+            MaybeGoal, !VarSet)
     else
         % It's not a builtin.
         Context = get_term_context(Term),
@@ -162,12 +162,6 @@ parse_some_vars_goal(Term, ContextPieces, MaybeVarsAndGoal, !VarSet) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred parse_non_call_goal(string::in, list(term)::in, term.context::in,
-    cord(format_component)::in, maybe2(goal, list(warning_spec))::out,
-    prog_varset::in, prog_varset::out) is semidet.
-
-parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
-        !VarSet) :-
     % We parse goals in non-DCG contexts here, while we parse goals
     % in DCG contexts in parse_non_call_dcg_goal in parse_dcg_goal.m.
     %
@@ -239,179 +233,354 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
     % occur very frequently, and we don't want to pay any extra cost
     % for parsing them.
 
+:- type goal_kind
+    --->    gk_impure
+    ;       gk_semipure
+    ;       gk_promise_impure
+    ;       gk_promise_semipure
+    ;       gk_promise_pure
+    ;       gk_disable_warning
+    ;       gk_disable_warnings
+    ;       gk_not
+    ;       gk_not_prolog
+    ;       gk_some
+    ;       gk_all
+    ;       gk_conj
+    ;       gk_par_conj
+    ;       gk_semicolon
+    ;       gk_else
+    ;       gk_if
+    ;       gk_then
+    ;       gk_catch
+    ;       gk_catch_any
+    ;       gk_imply_to_left
+    ;       gk_imply_to_right
+    ;       gk_imply_to_both
+    ;       gk_trace
+    ;       gk_atomic
+    ;       gk_promise_eqv_solns
+    ;       gk_promise_eqv_soln_sets
+    ;       gk_arbitrary
+    ;       gk_require_det
+    ;       gk_require_semidet
+    ;       gk_require_multi
+    ;       gk_require_nondet
+    ;       gk_require_cc_multi
+    ;       gk_require_cc_nondet
+    ;       gk_require_erroneous
+    ;       gk_require_failure
+    ;       gk_require_complete_switch
+    ;       gk_require_arms_det
+    ;       gk_require_arms_semidet
+    ;       gk_require_arms_multi
+    ;       gk_require_arms_nondet
+    ;       gk_require_arms_cc_multi
+    ;       gk_require_arms_cc_nondet
+    ;       gk_require_arms_erroneous
+    ;       gk_require_arms_failure
+    ;       gk_event
+    ;       gk_true
+    ;       gk_fail
+    ;       gk_equal.
+
+:- inst goal_kind_purity for goal_kind/0
+    --->    gk_impure
+    ;       gk_semipure.
+
+:- inst goal_kind_promise_purity for goal_kind/0
+    --->    gk_promise_impure
+    ;       gk_promise_semipure
+    ;       gk_promise_pure.
+
+:- inst goal_kind_disable_warning for goal_kind/0
+    --->    gk_disable_warning
+    ;       gk_disable_warnings.
+
+:- inst goal_kind_not for goal_kind/0
+    --->    gk_not
+    ;       gk_not_prolog.
+
+:- inst goal_kind_some_all for goal_kind/0
+    --->    gk_some
+    ;       gk_all.
+
+:- inst goal_kind_conj for goal_kind/0
+    --->    gk_conj.
+
+:- inst goal_kind_par_conj for goal_kind/0
+    --->    gk_par_conj.
+
+:- inst goal_kind_implication for goal_kind/0
+    --->    gk_imply_to_left
+    ;       gk_imply_to_right
+    ;       gk_imply_to_both.
+
+:- inst goal_kind_promise_eqv_soln for goal_kind/0
+    --->    gk_promise_eqv_solns
+    ;       gk_promise_eqv_soln_sets.
+
+:- inst goal_kind_require_detism for goal_kind/0
+    --->    gk_require_det
+    ;       gk_require_semidet
+    ;       gk_require_multi
+    ;       gk_require_nondet
+    ;       gk_require_cc_multi
+    ;       gk_require_cc_nondet
+    ;       gk_require_erroneous
+    ;       gk_require_failure.
+
+:- inst goal_kind_require_arm_detism for goal_kind/0
+    --->    gk_require_arms_det
+    ;       gk_require_arms_semidet
+    ;       gk_require_arms_multi
+    ;       gk_require_arms_nondet
+    ;       gk_require_arms_cc_multi
+    ;       gk_require_arms_cc_nondet
+    ;       gk_require_arms_erroneous
+    ;       gk_require_arms_failure.
+
+:- inst goal_kind_true_fail for goal_kind/0
+    --->    gk_true
+    ;       gk_fail.
+
+:- pred string_goal_kind(string, goal_kind).
+:- mode string_goal_kind(in, out) is semidet.
+:- mode string_goal_kind(out, in) is det.
+
+string_goal_kind(Functor, GoalKind) :-
+    ( Functor = "impure",               GoalKind = gk_impure
+    ; Functor = "semipure",             GoalKind = gk_semipure
+    ; Functor = "promise_pure",         GoalKind = gk_promise_pure
+    ; Functor = "promise_semipure",     GoalKind = gk_promise_semipure
+    ; Functor = "promise_impure",       GoalKind = gk_promise_impure
+    ; Functor = "disable_warning",      GoalKind = gk_disable_warning
+    ; Functor = "disable_warnings",     GoalKind = gk_disable_warnings
+    % Negation (NU-Prolog syntax).
+    ; Functor = "not",                  GoalKind = gk_not
+    % Negation (Prolog syntax).
+    ; Functor = "\\+",                  GoalKind = gk_not_prolog
+    ; Functor = "some",                 GoalKind = gk_some
+    ; Functor = "all",                  GoalKind = gk_all
+    ; Functor = ",",                    GoalKind = gk_conj
+    ; Functor = "&",                    GoalKind = gk_par_conj
+    ; Functor = ";",                    GoalKind = gk_semicolon
+    % If-then-else (NU-Prolog syntax).
+    ; Functor = "else",                 GoalKind = gk_else
+    % If-then-else (NU-Prolog syntax) with a missing "else".
+    ; Functor = "if",                   GoalKind = gk_if
+    ; Functor = "then",                 GoalKind = gk_then
+    ; Functor = "catch",                GoalKind = gk_catch
+    ; Functor = "catch_any",            GoalKind = gk_catch_any
+    ; Functor = "<=",                   GoalKind = gk_imply_to_left
+    ; Functor = "=>",                   GoalKind = gk_imply_to_right
+    ; Functor = "<=>",                  GoalKind = gk_imply_to_both
+    ; Functor = "trace",                GoalKind = gk_trace
+    ; Functor = "atomic",               GoalKind = gk_atomic
+    ; Functor = "promise_equivalent_solutions",
+                                        GoalKind = gk_promise_eqv_solns
+    ; Functor = "promise_equivalent_solution_sets",
+                                        GoalKind = gk_promise_eqv_soln_sets
+    ; Functor = "arbitrary",            GoalKind = gk_arbitrary
+    ; Functor = "require_det",          GoalKind = gk_require_det
+    ; Functor = "require_semidet",      GoalKind = gk_require_semidet
+    ; Functor = "require_multi",        GoalKind = gk_require_multi
+    ; Functor = "require_nondet",       GoalKind = gk_require_nondet
+    ; Functor = "require_cc_multi",     GoalKind = gk_require_cc_multi
+    ; Functor = "require_cc_nondet",    GoalKind = gk_require_cc_nondet
+    ; Functor = "require_erroneous",    GoalKind = gk_require_erroneous
+    ; Functor = "require_failure",      GoalKind = gk_require_failure
+    ; Functor = "require_complete_switch",
+                                        GoalKind = gk_require_complete_switch
+    ; Functor = "require_switch_arms_det",
+                                        GoalKind = gk_require_arms_det
+    ; Functor = "require_switch_arms_semidet",
+                                        GoalKind = gk_require_arms_semidet
+    ; Functor = "require_switch_arms_multi",
+                                        GoalKind = gk_require_arms_multi
+    ; Functor = "require_switch_arms_nondet",
+                                        GoalKind = gk_require_arms_nondet
+    ; Functor = "require_switch_arms_cc_multi",
+                                        GoalKind = gk_require_arms_cc_multi
+    ; Functor = "require_switch_arms_cc_nondet",
+                                        GoalKind = gk_require_arms_cc_nondet
+    ; Functor = "require_switch_arms_erroneous",
+                                        GoalKind = gk_require_arms_erroneous
+    ; Functor = "require_switch_arms_failure",
+                                        GoalKind = gk_require_arms_failure
+    ; Functor = "event",                GoalKind = gk_event
+    ; Functor = "true",                 GoalKind = gk_true
+    ; Functor = "fail",                 GoalKind = gk_fail
+    ; Functor = "=",                    GoalKind = gk_equal
+    ).
+
+:- pred parse_non_call_goal(goal_kind::in, list(term)::in, term.context::in,
+    cord(format_component)::in, maybe2(goal, list(warning_spec))::out,
+    prog_varset::in, prog_varset::out) is det.
+
+parse_non_call_goal(GoalKind, Args, Context, ContextPieces, MaybeGoal,
+        !VarSet) :-
     % XXX We should update ContextPieces at every call to parse a goal
     % component that is not itself a goal.
-
-    require_switch_arms_det [Functor]
     (
-        ( Functor = "impure"
-        ; Functor = "semipure"
+        ( GoalKind = gk_impure
+        ; GoalKind = gk_semipure
         ),
-        parse_goal_impure_semipure(Functor, Args, Context, ContextPieces,
+        parse_goal_impure_semipure(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ;
-        ( Functor = "promise_pure"
-        ; Functor = "promise_semipure"
-        ; Functor = "promise_impure"
+        ( GoalKind = gk_promise_pure
+        ; GoalKind = gk_promise_semipure
+        ; GoalKind = gk_promise_impure
         ),
-        parse_goal_promise_purity(Functor, Args, Context, ContextPieces,
+        parse_goal_promise_purity(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ;
-        ( Functor = "disable_warning"
-        ; Functor = "disable_warnings"
+        ( GoalKind = gk_disable_warning
+        ; GoalKind = gk_disable_warnings
         ),
-        parse_goal_disable_warnings(Functor, Args, Context, ContextPieces,
+        parse_goal_disable_warnings(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ;
-        ( Functor = "not"   % Negation (NU-Prolog syntax).
-        ; Functor = "\\+"   % Negation (Prolog syntax).
+        ( GoalKind = gk_not
+        ; GoalKind = gk_not_prolog
         ),
-        parse_goal_not(Functor, Args, Context, ContextPieces,
+        parse_goal_not(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ;
-        ( Functor = "some"
-        ; Functor = "all"
+        ( GoalKind = gk_some
+        ; GoalKind = gk_all
         ),
-        parse_goal_some_all(Functor, Args, Context, ContextPieces,
+        parse_goal_some_all(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ;
-        Functor = ",",
-        parse_goal_conj(Functor, Args, Context, ContextPieces,
+        GoalKind = gk_conj,
+        parse_goal_conj(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ;
-        Functor = "&",
-        parse_goal_conj(Functor, Args, Context, ContextPieces,
+        GoalKind = gk_par_conj,
+        parse_goal_conj(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ;
-        Functor = ";",
+        GoalKind = gk_semicolon,
         parse_goal_semicolon(Args, Context, ContextPieces, MaybeGoal, !VarSet)
     ;
-        Functor = "else",
+        GoalKind = gk_else,
         % If-then-else (NU-Prolog syntax).
         parse_goal_else(Args, Context, ContextPieces, MaybeGoal, !VarSet)
     ;
-        Functor = "if",
-        % If-then-else (NU-Prolog syntax) with a missing "else".
+        GoalKind = gk_if,
         parse_goal_if(Args, Context, ContextPieces, MaybeGoal, !VarSet)
     ;
-        Functor = "then",
+        GoalKind = gk_then,
         parse_goal_then(Args, Context, ContextPieces, MaybeGoal, !VarSet)
     ;
-        Functor = "catch",
+        GoalKind = gk_catch,
         parse_catch_then_try_term_args(Args, no, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ;
-        Functor = "catch_any",
+        GoalKind = gk_catch_any,
         parse_goal_catch_any(Args, Context, ContextPieces, MaybeGoal, !VarSet)
     ;
-        ( Functor = "<="
-        ; Functor = "=>"
-        ; Functor = "<=>"
+        ( GoalKind = gk_imply_to_left
+        ; GoalKind = gk_imply_to_right
+        ; GoalKind = gk_imply_to_both
         ),
-        parse_goal_implication(Functor, Args, Context, ContextPieces,
+        parse_goal_implication(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ;
-        Functor = "trace",
+        GoalKind = gk_trace,
         parse_goal_trace(Args, Context, ContextPieces, MaybeGoal, !VarSet)
     ;
-        Functor = "atomic",
+        GoalKind = gk_atomic,
         parse_goal_atomic(Args, Context, ContextPieces, MaybeGoal, !VarSet)
     ;
-        ( Functor = "promise_equivalent_solutions"
-        ; Functor = "promise_equivalent_solution_sets"
+        ( GoalKind = gk_promise_eqv_solns
+        ; GoalKind = gk_promise_eqv_soln_sets
         ),
-        parse_goal_promise_eqv_solns(Functor, Args, Context, ContextPieces,
+        parse_goal_promise_eqv_solns(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ;
-        Functor = "arbitrary",
+        GoalKind = gk_arbitrary,
         parse_goal_arbitrary(Args, Context, ContextPieces, MaybeGoal, !VarSet)
     ;
-        ( Functor = "require_det"
-        ; Functor = "require_semidet"
-        ; Functor = "require_multi"
-        ; Functor = "require_nondet"
-        ; Functor = "require_cc_multi"
-        ; Functor = "require_cc_nondet"
-        ; Functor = "require_erroneous"
-        ; Functor = "require_failure"
+        ( GoalKind = gk_require_det
+        ; GoalKind = gk_require_semidet
+        ; GoalKind = gk_require_multi
+        ; GoalKind = gk_require_nondet
+        ; GoalKind = gk_require_cc_multi
+        ; GoalKind = gk_require_cc_nondet
+        ; GoalKind = gk_require_erroneous
+        ; GoalKind = gk_require_failure
         ),
-        parse_goal_require_detism(Functor, Args, Context, ContextPieces,
+        parse_goal_require_detism(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ;
-        Functor = "require_complete_switch",
+        GoalKind = gk_require_complete_switch,
         parse_goal_require_complete_switch(Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ;
-        ( Functor = "require_switch_arms_det"
-        ; Functor = "require_switch_arms_semidet"
-        ; Functor = "require_switch_arms_multi"
-        ; Functor = "require_switch_arms_nondet"
-        ; Functor = "require_switch_arms_cc_multi"
-        ; Functor = "require_switch_arms_cc_nondet"
-        ; Functor = "require_switch_arms_erroneous"
-        ; Functor = "require_switch_arms_failure"
+        ( GoalKind = gk_require_arms_det
+        ; GoalKind = gk_require_arms_semidet
+        ; GoalKind = gk_require_arms_multi
+        ; GoalKind = gk_require_arms_nondet
+        ; GoalKind = gk_require_arms_cc_multi
+        ; GoalKind = gk_require_arms_cc_nondet
+        ; GoalKind = gk_require_arms_erroneous
+        ; GoalKind = gk_require_arms_failure
         ),
-        parse_goal_require_switch_arm_detism(Functor, Args,
+        parse_goal_require_switch_arm_detism(GoalKind, Args,
             Context, ContextPieces, MaybeGoal, !VarSet)
     ;
-        Functor = "event",
+        GoalKind = gk_event,
         parse_goal_event(Args, Context, ContextPieces, MaybeGoal, !VarSet)
     ;
-        ( Functor = "true"
-        ; Functor = "fail"
+        ( GoalKind = gk_true
+        ; GoalKind = gk_fail
         ),
-        parse_goal_true_fail(Functor, Args, Context, ContextPieces,
+        parse_goal_true_fail(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ;
-        Functor = "=",
-        parse_goal_equal(Functor, Args, Context, ContextPieces,
+        GoalKind = gk_equal,
+        parse_goal_equal(Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ).
 
 %---------------------%
 
-:- inst impure_or_semipure for string/0
-    --->    "impure"
-    ;       "semipure".
-
-:- pred parse_goal_impure_semipure(string::in(impure_or_semipure),
+:- pred parse_goal_impure_semipure(goal_kind::in(goal_kind_purity),
     list(term)::in, term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_impure_semipure/7)).
 
-parse_goal_impure_semipure(Functor, ArgTerms, Context, ContextPieces,
+parse_goal_impure_semipure(GoalKind, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
-    ( Functor = "impure",   Purity = purity_impure
-    ; Functor = "semipure", Purity = purity_semipure
+    ( GoalKind = gk_impure,   Purity = purity_impure
+    ; GoalKind = gk_semipure, Purity = purity_semipure
     ),
     ( if ArgTerms = [SubGoalTerm] then
         parse_goal(SubGoalTerm, ContextPieces, MaybeGoal0, !VarSet),
         apply_purity_marker_to_maybe_goal(SubGoalTerm, Purity,
             MaybeGoal0, MaybeGoal)
     else
+        string_goal_kind(Functor, GoalKind),
         Spec = should_have_one_goal_prefix(ContextPieces, Context, Functor),
         MaybeGoal = error2([Spec])
     ).
 
 %---------------------%
 
-:- inst promise_purity for string/0
-    --->    "promise_pure"
-    ;       "promise_semipure"
-    ;       "promise_impure".
-
-:- pred parse_goal_promise_purity(string::in(promise_purity),
+:- pred parse_goal_promise_purity(goal_kind::in(goal_kind_promise_purity),
     list(term)::in, term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_promise_purity/7)).
 
-parse_goal_promise_purity(Functor, ArgTerms, Context, ContextPieces,
+parse_goal_promise_purity(GoalKind, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
-    ( Functor = "promise_pure",     Purity = purity_pure
-    ; Functor = "promise_semipure", Purity = purity_semipure
-    ; Functor = "promise_impure",   Purity = purity_impure
+    ( GoalKind = gk_promise_pure,     Purity = purity_pure
+    ; GoalKind = gk_promise_semipure, Purity = purity_semipure
+    ; GoalKind = gk_promise_impure,   Purity = purity_impure
     ),
     ( if ArgTerms = [SubGoalTerm] then
         parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
@@ -424,20 +593,22 @@ parse_goal_promise_purity(Functor, ArgTerms, Context, ContextPieces,
             MaybeGoal = error2(Specs)
         )
     else
+        string_goal_kind(Functor, GoalKind),
         Spec = should_have_one_goal_prefix(ContextPieces, Context, Functor),
         MaybeGoal = error2([Spec])
     ).
 
 %---------------------%
 
-:- pred parse_goal_disable_warnings(string::in, list(term)::in,
-    term.context::in, cord(format_component)::in,
+:- pred parse_goal_disable_warnings(goal_kind::in(goal_kind_disable_warning),
+    list(term)::in, term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_disable_warnings/7)).
 
-parse_goal_disable_warnings(Functor, ArgTerms, Context, ContextPieces,
+parse_goal_disable_warnings(GoalKind, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
+    string_goal_kind(Functor, GoalKind),
     ( if ArgTerms = [WarningsTerm, SubGoalTerm] then
         varset.coerce(!.VarSet, GenericVarSet),
         parse_warnings(GenericVarSet, WarningsTerm, Functor,
@@ -503,13 +674,14 @@ parse_goal_disable_warnings(Functor, ArgTerms, Context, ContextPieces,
 
 %---------------------%
 
-:- pred parse_goal_not(string::in, list(term)::in,
+:- pred parse_goal_not(goal_kind::in(goal_kind_not), list(term)::in,
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_not/7)).
 
-parse_goal_not(Functor, ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
+parse_goal_not(GoalKind, ArgTerms, Context, ContextPieces, MaybeGoal,
+        !VarSet) :-
     ( if ArgTerms = [SubGoalTerm] then
         parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
         (
@@ -521,30 +693,29 @@ parse_goal_not(Functor, ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
             MaybeGoal = error2(Specs)
         )
     else
+        string_goal_kind(Functor, GoalKind),
         Spec = should_have_one_goal_prefix(ContextPieces, Context, Functor),
         MaybeGoal = error2([Spec])
     ).
 
 %---------------------%
 
-:- inst some_or_all for string/0
-    --->    "some"
-    ;       "all".
-
-:- pred parse_goal_some_all(string::in(some_or_all), list(term)::in,
-    term.context::in, cord(format_component)::in,
+:- pred parse_goal_some_all(goal_kind::in(goal_kind_some_all),
+    list(term)::in, term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_some_all/7)).
 
-parse_goal_some_all(Functor, ArgTerms, Context, ContextPieces,
+parse_goal_some_all(GoalKind, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
     (
+        GoalKind = gk_some,
         Functor = "some",
         QuantType = quant_some,
         VarsTailPieces = [lower_case_next_if_not_first,
             words("In first argument of"), quote("some"), suffix(":")]
     ;
+        GoalKind = gk_all,
         Functor = "all",
         QuantType = quant_all,
         VarsTailPieces = [lower_case_next_if_not_first,
@@ -592,25 +763,21 @@ parse_goal_some_all(Functor, ArgTerms, Context, ContextPieces,
 
 %---------------------%
 
-:- inst comma for string/0
-    --->    ",".
-
-:- inst ampersand for string/0
-    --->    "&".
-
     % Although we do almost exactly the same thing for "&" as for ",",
     % we handle them in separate modes, because "," is FAR more common
     % than "&", and keeping its processing efficient is important enough
     % to warrant a small amount of code target language code duplication.
     %
-:- pred parse_goal_conj(string, list(term),
+:- pred parse_goal_conj(goal_kind, list(term),
     term.context, cord(format_component),
     maybe2(goal, list(warning_spec)), prog_varset, prog_varset).
-:- mode parse_goal_conj(in(comma), in, in, in, out, in, out) is det.
-:- mode parse_goal_conj(in(ampersand), in, in, in, out, in, out) is det.
+:- mode parse_goal_conj(in(goal_kind_conj),
+    in, in, in, out, in, out) is det.
+:- mode parse_goal_conj(in(goal_kind_par_conj),
+    in, in, in, out, in, out) is det.
 :- pragma inline(pred(parse_goal_conj/7)).
 
-parse_goal_conj(Functor, ArgTerms, Context, ContextPieces,
+parse_goal_conj(GoalKind, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
     ( if ArgTerms = [SubGoalTermA, SubGoalTermB] then
         parse_goal(SubGoalTermA, ContextPieces, MaybeSubGoalA, !VarSet),
@@ -620,10 +787,10 @@ parse_goal_conj(Functor, ArgTerms, Context, ContextPieces,
             MaybeSubGoalB = ok2(SubGoalB, GoalWarningSpecsB)
         then
             (
-                Functor = ",",
+                GoalKind = gk_conj,
                 Goal = conj_expr(Context, SubGoalA, SubGoalB)
             ;
-                Functor = "&",
+                GoalKind = gk_par_conj,
                 Goal = par_conj_expr(Context, SubGoalA, SubGoalB)
             ),
             WarningSpecs = GoalWarningSpecsA ++ GoalWarningSpecsB,
@@ -634,6 +801,7 @@ parse_goal_conj(Functor, ArgTerms, Context, ContextPieces,
             MaybeGoal = error2(Specs)
         )
     else
+        string_goal_kind(Functor, GoalKind),
         Spec = should_have_two_goals_infix(ContextPieces, Context, Functor),
         MaybeGoal = error2([Spec])
     ).
@@ -913,18 +1081,13 @@ parse_goal_catch_any(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
 
 %---------------------%
 
-:- inst implication for string/0
-    --->    "<="
-    ;       "=>"
-    ;       "<=>".
-
-:- pred parse_goal_implication(string::in(implication), list(term)::in,
-    term.context::in, cord(format_component)::in,
+:- pred parse_goal_implication(goal_kind::in(goal_kind_implication),
+    list(term)::in, term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_implication/7)).
 
-parse_goal_implication(Functor, ArgTerms, Context, ContextPieces,
+parse_goal_implication(GoalKind, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
     ( if ArgTerms = [TermA, TermB] then
         parse_goal(TermA, ContextPieces, MaybeGoalA, !VarSet),
@@ -934,13 +1097,13 @@ parse_goal_implication(Functor, ArgTerms, Context, ContextPieces,
             MaybeGoalB = ok2(GoalB, GoalWarningSpecsB)
         then
             (
-                Functor = "<=",
+                GoalKind = gk_imply_to_left,
                 Goal = implies_expr(Context, GoalB, GoalA)
             ;
-                Functor = "=>",
+                GoalKind = gk_imply_to_right,
                 Goal = implies_expr(Context, GoalA, GoalB)
             ;
-                Functor = "<=>",
+                GoalKind = gk_imply_to_both,
                 Goal = equivalent_expr(Context, GoalA, GoalB)
             ),
             WarningSpecs = GoalWarningSpecsA ++ GoalWarningSpecsB,
@@ -951,6 +1114,7 @@ parse_goal_implication(Functor, ArgTerms, Context, ContextPieces,
             MaybeGoal = error2(Specs)
         )
     else
+        string_goal_kind(Functor, GoalKind),
         Spec = should_have_two_goals_infix(ContextPieces, Context,
             Functor),
         MaybeGoal = error2([Spec])
@@ -1034,17 +1198,14 @@ parse_goal_atomic(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
 
 %---------------------%
 
-:- inst promise_eqv_soln for string/0
-    --->    "promise_equivalent_solutions"
-    ;       "promise_equivalent_solution_sets".
-
-:- pred parse_goal_promise_eqv_solns(string::in(promise_eqv_soln),
+:- pred parse_goal_promise_eqv_solns(
+    goal_kind::in(goal_kind_promise_eqv_soln),
     list(term)::in, term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_promise_eqv_solns/7)).
 
-parse_goal_promise_eqv_solns(Functor, ArgTerms, Context, ContextPieces,
+parse_goal_promise_eqv_solns(GoalKind, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
     ( if ArgTerms = [VarsTerm, SubGoalTerm] then
         varset.coerce(!.VarSet, GenericVarSet),
@@ -1061,12 +1222,12 @@ parse_goal_promise_eqv_solns(Functor, ArgTerms, Context, ContextPieces,
             list.map(term.coerce_var, DotSVars0, DotSVars),
             list.map(term.coerce_var, ColonSVars0, ColonSVars),
             (
-                Functor = "promise_equivalent_solutions",
+                GoalKind = gk_promise_eqv_solns,
                 Goal = promise_equivalent_solutions_expr(Context, Vars,
                     StateVars, DotSVars, ColonSVars, SubGoal),
                 MaybeGoal = ok2(Goal, SubGoalWarningSpecs)
             ;
-                Functor = "promise_equivalent_solution_sets",
+                GoalKind = gk_promise_eqv_soln_sets,
                 Goal = promise_equivalent_solution_sets_expr(Context, Vars,
                     StateVars, DotSVars, ColonSVars, SubGoal),
                 MaybeGoal = ok2(Goal, SubGoalWarningSpecs)
@@ -1077,6 +1238,7 @@ parse_goal_promise_eqv_solns(Functor, ArgTerms, Context, ContextPieces,
             MaybeGoal = error2(Specs)
         )
     else
+        string_goal_kind(Functor, GoalKind),
         Spec = should_have_one_x_one_goal_prefix(ContextPieces, Context,
             "a list of variables", Functor),
         MaybeGoal = error2([Spec])
@@ -1121,32 +1283,22 @@ parse_goal_arbitrary(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
 
 %---------------------%
 
-:- inst require_detism for string/0
-    --->    "require_det"
-    ;       "require_semidet"
-    ;       "require_multi"
-    ;       "require_nondet"
-    ;       "require_cc_multi"
-    ;       "require_cc_nondet"
-    ;       "require_erroneous"
-    ;       "require_failure".
-
-:- pred parse_goal_require_detism(string::in(require_detism),
+:- pred parse_goal_require_detism(goal_kind::in(goal_kind_require_detism),
     list(term)::in, term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_require_detism/7)).
 
-parse_goal_require_detism(Functor, ArgTerms, Context, ContextPieces,
+parse_goal_require_detism(GoalKind, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
-    ( Functor = "require_det",          Detism = detism_det
-    ; Functor = "require_semidet",      Detism = detism_semi
-    ; Functor = "require_multi",        Detism = detism_multi
-    ; Functor = "require_nondet",       Detism = detism_non
-    ; Functor = "require_cc_multi",     Detism = detism_cc_multi
-    ; Functor = "require_cc_nondet",    Detism = detism_cc_non
-    ; Functor = "require_erroneous",    Detism = detism_erroneous
-    ; Functor = "require_failure",      Detism = detism_failure
+    ( GoalKind = gk_require_det,          Detism = detism_det
+    ; GoalKind = gk_require_semidet,      Detism = detism_semi
+    ; GoalKind = gk_require_multi,        Detism = detism_multi
+    ; GoalKind = gk_require_nondet,       Detism = detism_non
+    ; GoalKind = gk_require_cc_multi,     Detism = detism_cc_multi
+    ; GoalKind = gk_require_cc_nondet,    Detism = detism_cc_non
+    ; GoalKind = gk_require_erroneous,    Detism = detism_erroneous
+    ; GoalKind = gk_require_failure,      Detism = detism_failure
     ),
     ( if ArgTerms = [SubGoalTerm] then
         parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
@@ -1159,6 +1311,7 @@ parse_goal_require_detism(Functor, ArgTerms, Context, ContextPieces,
             MaybeGoal = error2(Specs)
         )
     else
+        string_goal_kind(Functor, GoalKind),
         Spec = should_have_one_goal_prefix(ContextPieces, Context,
             Functor),
         MaybeGoal = error2([Spec])
@@ -1206,32 +1359,47 @@ parse_goal_require_complete_switch(ArgTerms, Context, ContextPieces,
 
 %---------------------%
 
-:- inst switch_arm_detism for string/0
-    --->    "require_switch_arms_det"
-    ;       "require_switch_arms_semidet"
-    ;       "require_switch_arms_multi"
-    ;       "require_switch_arms_nondet"
-    ;       "require_switch_arms_cc_multi"
-    ;       "require_switch_arms_cc_nondet"
-    ;       "require_switch_arms_erroneous"
-    ;       "require_switch_arms_failure".
-
-:- pred parse_goal_require_switch_arm_detism(string::in(switch_arm_detism),
+:- pred parse_goal_require_switch_arm_detism(
+    goal_kind::in(goal_kind_require_arm_detism),
     list(term)::in, term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_require_switch_arm_detism/7)).
 
-parse_goal_require_switch_arm_detism(Functor, ArgTerms,
+parse_goal_require_switch_arm_detism(GoalKind, ArgTerms,
         Context, ContextPieces, MaybeGoal, !VarSet) :-
-    ( Functor = "require_switch_arms_det",          Detism = detism_det
-    ; Functor = "require_switch_arms_semidet",      Detism = detism_semi
-    ; Functor = "require_switch_arms_multi",        Detism = detism_multi
-    ; Functor = "require_switch_arms_nondet",       Detism = detism_non
-    ; Functor = "require_switch_arms_cc_multi",     Detism = detism_cc_multi
-    ; Functor = "require_switch_arms_cc_nondet",    Detism = detism_cc_non
-    ; Functor = "require_switch_arms_erroneous",    Detism = detism_erroneous
-    ; Functor = "require_switch_arms_failure",      Detism = detism_failure
+    (
+        GoalKind = gk_require_arms_det,
+        Detism = detism_det,
+        Functor = "require_switch_arms_det"
+    ;
+        GoalKind = gk_require_arms_semidet,
+        Detism = detism_semi,
+        Functor = "require_switch_arms_semidet"
+    ;
+        GoalKind = gk_require_arms_multi,
+        Detism = detism_multi,
+        Functor = "require_switch_arms_multi"
+    ;
+        GoalKind = gk_require_arms_nondet,
+        Detism = detism_non,
+        Functor = "require_switch_arms_nondet"
+    ;
+        GoalKind = gk_require_arms_cc_multi,
+        Detism = detism_cc_multi,
+        Functor = "require_switch_arms_cc_multi"
+    ;
+        GoalKind = gk_require_arms_cc_nondet,
+        Detism = detism_cc_non,
+        Functor = "require_switch_arms_cc_nondet"
+    ;
+        GoalKind = gk_require_arms_erroneous,
+        Detism = detism_erroneous,
+        Functor = "require_switch_arms_erroneous"
+    ;
+        GoalKind = gk_require_arms_failure,
+        Detism = detism_failure,
+        Functor = "require_switch_arms_failure"
     ),
     ( if ArgTerms = [VarsTerm, SubGoalTerm] then
         term.coerce(VarsTerm, ProgVarsTerm),
@@ -1336,23 +1504,19 @@ parse_goal_event(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
 
 %---------------------%
 
-:- inst true_fail for string/0
-    --->    "true"
-    ;       "fail".
-
-:- pred parse_goal_true_fail(string::in(true_fail), list(term)::in,
-    term.context::in, cord(format_component)::in,
+:- pred parse_goal_true_fail(goal_kind::in(goal_kind_true_fail),
+    list(term)::in, term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_true_fail/7)).
 
-parse_goal_true_fail(Functor, ArgTerms, Context, ContextPieces,
+parse_goal_true_fail(GoalKind, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
     (
-        Functor = "true",
+        GoalKind = gk_true,
         Goal = true_expr(Context)
     ;
-        Functor = "fail",
+        GoalKind = gk_fail,
         Goal = fail_expr(Context)
     ),
     (
@@ -1360,26 +1524,25 @@ parse_goal_true_fail(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal = ok2(Goal, [])
     ;
         ArgTerms = [_ | _],
+        string_goal_kind(Functor, GoalKind),
         Spec = should_have_no_args(ContextPieces, Context, Functor),
         MaybeGoal = error2([Spec])
     ).
 
 %---------------------%
 
-:- pred parse_goal_equal(string::in, list(term)::in,
-    term.context::in, cord(format_component)::in,
-    maybe2(goal, list(warning_spec))::out,
+:- pred parse_goal_equal(list(term)::in, term.context::in,
+    cord(format_component)::in, maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(pred(parse_goal_equal/7)).
+:- pragma inline(pred(parse_goal_equal/6)).
 
-parse_goal_equal(Functor, ArgTerms, Context, ContextPieces,
-        MaybeGoal, !VarSet) :-
+parse_goal_equal(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     ( if ArgTerms = [TermA0, TermB0] then
         term.coerce(TermA0, TermA),
         term.coerce(TermB0, TermB),
         MaybeGoal = ok2(unify_expr(Context, TermA, TermB, purity_pure), [])
     else
-        Spec = should_have_two_terms_infix(ContextPieces, Context, Functor),
+        Spec = should_have_two_terms_infix(ContextPieces, Context, "="),
         MaybeGoal = error2([Spec])
     ).
 

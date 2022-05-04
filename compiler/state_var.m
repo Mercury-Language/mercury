@@ -140,8 +140,8 @@
     % Make sure that all arms of a disjunction produce the same state variable
     % bindings, by adding unifiers as necessary.
     %
-:- pred svar_finish_disjunction(prog_context::in,
-    list(hlds_goal_svar_state)::in, list(hlds_goal)::out,
+:- pred svar_finish_disjunction(list(hlds_goal_svar_state)::in,
+    list(hlds_goal)::out,
     prog_varset::in, prog_varset::out, svar_state::in, svar_state::out,
     svar_store::in, svar_store::out) is det.
 
@@ -990,7 +990,7 @@ finish_svars_for_scope([SVar | SVars], StatusMapBeforeOutside,
 %   state var, it schedules the prog_var representing the final value in
 %   that arm to be renamed to the picked prog_var.
 
-svar_finish_disjunction(_Context, DisjStates, Disjs, !VarSet,
+svar_finish_disjunction(DisjStates, Disjs, !VarSet,
         StateBefore, StateAfter, !Store) :-
     StateBefore = svar_state(StatusMapBefore),
     ( if map.is_empty(StatusMapBefore) then

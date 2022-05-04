@@ -136,6 +136,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module one_or_more.
+:- import_module pretty_printer.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -884,6 +885,14 @@ parse_clause(MaybeModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
         MaybeClause) :-
     varset.coerce(VarSet0, ProgVarSet0),
     GoalContextPieces = cord.init,
+    trace [compile_time(flag("print_parse_goal_input")),
+        runtime(env("PRINT_PARSE_GOAL_INPUT")), io(!IO)]
+    (
+        io.stderr_stream(StdErr, !IO),
+        io.nl(StdErr, !IO),
+        write_doc(StdErr, pretty_printer.format(BodyTerm0), !IO),
+        io.nl(StdErr, !IO)
+    ),
     parse_goal(BodyTerm0, GoalContextPieces, MaybeBodyGoal,
         ProgVarSet0, ProgVarSet),
     varset.coerce(ProgVarSet, VarSet),
