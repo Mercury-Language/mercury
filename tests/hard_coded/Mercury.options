@@ -166,8 +166,7 @@ MLOBJS-target_mlobjs	=	target_mlobjs_c.o
 # tracking it down.
 MLFLAGS-mode_choice = --no-strip
 
-# We want to have at least one test case to test static linking; this is it.
-MLFLAGS-parse		=	--trace --static
+MLFLAGS-parse		=	--trace
 
 CFLAGS-no_refs_to_deleted_labels = -DMR_DEBUG_LABEL_NAMES
 
