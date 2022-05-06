@@ -2,8 +2,8 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% The .exp file is for XXX.
-% The .exp2 file is for asm_fast.gc bootchecks.
+% The .exp file is for asm_fast.gc bootchecks without optimization.
+% The .exp2 file is for asm_fast.gc bootchecks with -O5 --intermod-opt.
 %
 %---------------------------------------------------------------------------%
 
