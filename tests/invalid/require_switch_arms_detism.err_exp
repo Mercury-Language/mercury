@@ -4,9 +4,9 @@ require_switch_arms_detism.m:042:   acceptable in a `det' context, but the
 require_switch_arms_detism.m:042:   actual determinism of the arm for ":-" is
 require_switch_arms_detism.m:042:   `semidet'.
 require_switch_arms_detism.m:043:   Unification of `Args' and `list.[Arg1 |
-require_switch_arms_detism.m:043:   V_17]' can fail.
+require_switch_arms_detism.m:043:   V_9]' can fail.
 require_switch_arms_detism.m:043:   In argument 2 of functor `[|]/2':
-require_switch_arms_detism.m:043:   unification with `list.[Arg2 | V_18]' can
+require_switch_arms_detism.m:043:   unification with `list.[Arg2 | V_10]' can
 require_switch_arms_detism.m:043:   fail.
 require_switch_arms_detism.m:043:   In argument 2 of functor `[|]/2':
 require_switch_arms_detism.m:043:   in argument 2 of functor `[|]/2':
@@ -30,9 +30,9 @@ require_switch_arms_detism.m:050:   acceptable in a `det' context, but the
 require_switch_arms_detism.m:050:   actual determinism of the arm for "=" is
 require_switch_arms_detism.m:050:   `semidet'.
 require_switch_arms_detism.m:051:   Unification of `Args' and `list.[Arg1 |
-require_switch_arms_detism.m:051:   V_9]' can fail.
+require_switch_arms_detism.m:051:   V_17]' can fail.
 require_switch_arms_detism.m:051:   In argument 2 of functor `[|]/2':
-require_switch_arms_detism.m:051:   unification with `list.[Arg2 | V_10]' can
+require_switch_arms_detism.m:051:   unification with `list.[Arg2 | V_18]' can
 require_switch_arms_detism.m:051:   fail.
 require_switch_arms_detism.m:051:   In argument 2 of functor `[|]/2':
 require_switch_arms_detism.m:051:   in argument 2 of functor `[|]/2':

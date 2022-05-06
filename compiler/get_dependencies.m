@@ -692,12 +692,16 @@ acc_implicit_avail_needs_in_goal(Goal, !ImplicitAvailNeeds) :-
     ;
         ( Goal = conj_expr(_, SubGoalA, SubGoalB)
         ; Goal = par_conj_expr(_, SubGoalA, SubGoalB)
-        ; Goal = disj_expr(_, SubGoalA, SubGoalB)
         ; Goal = implies_expr(_, SubGoalA, SubGoalB)
         ; Goal = equivalent_expr(_, SubGoalA, SubGoalB)
         ),
         acc_implicit_avail_needs_in_goal(SubGoalA, !ImplicitAvailNeeds),
         acc_implicit_avail_needs_in_goal(SubGoalB, !ImplicitAvailNeeds)
+    ;
+        Goal = disj_expr(_, SubGoal1, SubGoal2, SubGoals),
+        acc_implicit_avail_needs_in_goal(SubGoal1, !ImplicitAvailNeeds),
+        acc_implicit_avail_needs_in_goal(SubGoal2, !ImplicitAvailNeeds),
+        acc_implicit_avail_needs_in_goals(SubGoals, !ImplicitAvailNeeds)
     ;
         ( Goal = not_expr(_, SubGoal)
         ; Goal = quant_expr(_, _, _, _Vars, SubGoal)

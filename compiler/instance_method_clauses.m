@@ -123,8 +123,8 @@ produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, ArgTypes,
 produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
         InstanceClause, TVarSet0, TVarSet, !ModuleInfo, !QualInfo,
         !ClausesInfo, !Specs) :-
-    InstanceClause = item_clause_info(ClausePredOrFunc, PredName, HeadTerms0,
-        ClauseVarSet, MaybeBodyGoal, _ClauseContext, _SeqNum),
+    InstanceClause = item_clause_info(ClausePredOrFunc, PredSymName,
+        HeadTerms0, ClauseVarSet, MaybeBodyGoal, _ClauseContext, _SeqNum),
     % XXX Can this ever fail? If yes, we should generate an error message
     % instead of aborting.
     expect(unify(PredOrFunc, ClausePredOrFunc), $pred, "PredOrFunc mismatch"),
@@ -152,14 +152,14 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
             % XXX STATUS
             InstanceStatus = instance_status(OldImportStatus),
             PredStatus = pred_status(OldImportStatus),
-            clauses_info_add_clause(all_modes, AllProcIds,
-                PredStatus, clause_not_for_promise, PredOrFunc, HeadTerms,
+            clauses_info_add_clause(all_modes, AllProcIds, PredStatus,
+                clause_not_for_promise, PredOrFunc, PredSymName, HeadTerms,
                 Context, item_no_seq_num, Warnings,
                 BodyGoal, Goal, ClauseVarSet, VarSet, TVarSet0, TVarSet,
                 !ClausesInfo, !ModuleInfo, !QualInfo, !Specs),
 
             PredFormArity = arg_list_arity(HeadTerms),
-            PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredName,
+            PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName,
                 PredFormArity),
             % Warn about singleton variables.
             warn_singletons(!.ModuleInfo, PFSymNameArity, VarSet, Goal,

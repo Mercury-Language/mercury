@@ -120,6 +120,7 @@
 :- import_module parse_tree.parse_mutable.
 :- import_module parse_tree.parse_pragma.
 :- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_tree_out_clause.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_type_defn.
 :- import_module parse_tree.parse_type_name.
@@ -952,6 +953,31 @@ parse_clause(MaybeModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
             ArgTerms = ArgTerms0
         ),
         list.map(term.coerce, ArgTerms, ProgArgTerms),
+        trace [compile_time(flag("print_parse_goal_output")),
+            runtime(env("PRINT_PARSE_GOAL_OUTPUT")), io(!IO)]
+        (
+            io.stderr_stream(StdErr, !IO),
+            ( if
+                unqualify_name(SymName) = "pred_you_want_to_debug"
+            then
+                (
+                    MaybeBodyGoal = ok2(Goal, _),
+                    io.nl(StdErr, !IO),
+                    io.format(StdErr, "parsed %s/%d:\n",
+                        [s(sym_name_to_string(SymName)),
+                        i(list.length(ProgArgTerms))], !IO),
+                    mercury_output_goal(StdErr, ProgVarSet, 0, Goal, !IO),
+                    io.nl(StdErr, !IO)
+                ;
+                    MaybeBodyGoal = error2(_),
+                    io.format(StdErr, "parsing %s/%d failed\n",
+                        [s(sym_name_to_string(SymName)),
+                        i(list.length(ProgArgTerms))], !IO)
+                )
+            else
+                true
+            )
+        ),
         ItemClause = item_clause_info(PredOrFunc, SymName, ProgArgTerms,
             ProgVarSet, MaybeBodyGoal, Context, SeqNum),
         MaybeClause = ok1(ItemClause)

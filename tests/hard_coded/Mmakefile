@@ -138,6 +138,7 @@ ORDINARY_PROGS = \
 	field_syntax \
 	finalise_decl \
 	finalize_to_bitmap \
+	flatten_disjunctions \
 	float_conv \
 	float_field \
 	float_ground_term \

@@ -267,10 +267,11 @@ rename_in_goal(OldVar, NewVar, Goal0, Goal) :-
         rename_in_goal(OldVar, NewVar, SubGoalB0, SubGoalB),
         Goal = par_conj_expr(Context, SubGoalA, SubGoalB)
     ;
-        Goal0 = disj_expr(Context, SubGoalA0, SubGoalB0),
+        Goal0 = disj_expr(Context, SubGoalA0, SubGoalB0, SubGoals0),
         rename_in_goal(OldVar, NewVar, SubGoalA0, SubGoalA),
         rename_in_goal(OldVar, NewVar, SubGoalB0, SubGoalB),
-        Goal = disj_expr(Context, SubGoalA, SubGoalB)
+        rename_in_goals(OldVar, NewVar, SubGoals0, SubGoals),
+        Goal = disj_expr(Context, SubGoalA, SubGoalB, SubGoals)
     ;
         Goal0 = not_expr(Context, SubGoal0),
         rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
@@ -368,7 +369,7 @@ rename_in_goal(OldVar, NewVar, Goal0, Goal) :-
             MaybeVars = yes(TransVars)
         ),
         rename_in_goal(OldVar, NewVar, MainGoal0, MainGoal),
-        list.map(rename_in_goal(OldVar, NewVar), OrElseGoal0, OrElseGoal),
+        rename_in_goals(OldVar, NewVar, OrElseGoal0, OrElseGoal),
         Goal = atomic_expr(Context, InVars, OutVars, MaybeVars,
             MainGoal, OrElseGoal)
     ;
@@ -431,6 +432,14 @@ rename_in_goal(OldVar, NewVar, Goal0, Goal) :-
         term.rename_var_in_term(OldVar, NewVar, TermB0, TermB),
         Goal = unify_expr(Context, TermA, TermB, Purity)
     ).
+
+:- pred rename_in_goals(prog_var::in, prog_var::in,
+    list(goal)::in, list(goal)::out) is det.
+
+rename_in_goals(_, _, [], []).
+rename_in_goals(OldVar, NewVar, [Goal0 | Goals0], [Goal | Goals]) :-
+    rename_in_goal(OldVar, NewVar, Goal0, Goal),
+    rename_in_goals(OldVar, NewVar, Goals0, Goals).
 
 :- pred rename_in_atomic_varlist(prog_var::in, prog_var::in,
     atomic_component_state::in, atomic_component_state::out) is det.

@@ -87,6 +87,7 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module solutions.
 :- import_module string.
 :- import_module unit.
@@ -103,23 +104,23 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
     % a predicate call.
     ( if
         % Check for builtins...
-        Term = term.functor(term.atom(Name), Args, Context),
+        Term = term.functor(term.atom(Name), ArgTerms, Context),
         string_goal_kind(Name, GoalKind)
     then
-        parse_non_call_goal(GoalKind, Args, Context, ContextPieces,
+        parse_non_call_goal(GoalKind, ArgTerms, Context, ContextPieces,
             MaybeGoal, !VarSet)
     else
         % It's not a builtin.
         Context = get_term_context(Term),
-        term.coerce(Term, ArgsTerm),
+        term.coerce(Term, ProgTerm),
         % Check for predicate calls.
-        ( if try_parse_sym_name_and_args(ArgsTerm, SymName, Args) then
-            Goal = call_expr(Context, SymName, Args, purity_pure)
+        ( if try_parse_sym_name_and_args(ProgTerm, SymName, ArgTerms) then
+            Goal = call_expr(Context, SymName, ArgTerms, purity_pure)
         else
             % A call to a free variable, or to a number or string.
             % Just translate it into a call to call/1 - the typechecker
             % will catch calls to numbers and strings.
-            Goal = call_expr(Context, unqualified("call"), [ArgsTerm],
+            Goal = call_expr(Context, unqualified("call"), [ProgTerm],
                 purity_pure)
         ),
         MaybeGoal = ok2(Goal, [])
@@ -843,19 +844,26 @@ parse_goal_semicolon(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
                 MaybeGoal = error2(Specs)
             )
         else
-            parse_goal(SubGoalTermA, ContextPieces, MaybeSubGoalA, !VarSet),
-            parse_goal(SubGoalTermB, ContextPieces, MaybeSubGoalB, !VarSet),
-            ( if
-                MaybeSubGoalA = ok2(SubGoalA, GoalWarningSpecsA),
-                MaybeSubGoalB = ok2(SubGoalB, GoalWarningSpecsB)
-            then
-                Goal = disj_expr(Context, SubGoalA, SubGoalB),
-                WarningSpecs = GoalWarningSpecsA ++ GoalWarningSpecsB,
+            parse_goal_disjunction(SubGoalTermA, SubGoalTermB, ContextPieces,
+                cord.init, DisjunctsCord, [], WarningSpecs, [], ErrorSpecs,
+                !VarSet),
+            (
+                ErrorSpecs = [],
+                Disjuncts = cord.list(DisjunctsCord),
+                (
+                    ( Disjuncts = []
+                    ; Disjuncts = [_]
+                    ),
+                    unexpected($pred, "less than two disjuncts")
+                ;
+                    Disjuncts = [Disjunct1, Disjunct2 | Disjuncts3plus]
+                ),
+                Goal = disj_expr(Context, Disjunct1, Disjunct2,
+                    Disjuncts3plus),
                 MaybeGoal = ok2(Goal, WarningSpecs)
-            else
-                Specs = get_any_errors_warnings2(MaybeSubGoalA) ++
-                    get_any_errors_warnings2(MaybeSubGoalB),
-                MaybeGoal = error2(Specs)
+            ;
+                ErrorSpecs = [_ | _],
+                MaybeGoal = error2(ErrorSpecs)
             )
         )
     else
@@ -867,6 +875,60 @@ parse_goal_semicolon(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
         % We do the same for ";" in parse_non_call_dcg_goal.
         Spec = should_have_two_goals_infix(ContextPieces, Context, ";"),
         MaybeGoal = error2([Spec])
+    ).
+
+:- pred parse_goal_disjunction(term::in, term::in, cord(format_component)::in,
+    cord(goal)::in, cord(goal)::out,
+    list(warning_spec)::in, list(warning_spec)::out,
+    list(error_spec)::in, list(error_spec)::out,
+    prog_varset::in, prog_varset::out) is det.
+% Don't inline this predicate, since it is recursive.
+
+parse_goal_disjunction(TermA, TermB, ContextPieces, !DisjunctsCord,
+        !Warnings, !Specs, !VarSet) :-
+    parse_goal(TermA, ContextPieces, MaybeGoalA, !VarSet),
+    (
+        MaybeGoalA = ok2(DisjunctA, WarningsA),
+        append_disjunct_to_cord(DisjunctA, !DisjunctsCord),
+        % The order of the warnings does not matter.
+        !:Warnings = WarningsA ++ !.Warnings
+    ;
+        MaybeGoalA = error2(SpecsA),
+        !:Specs = !.Specs ++ SpecsA
+    ),
+    ( if
+        TermB = term.functor(term.atom(";"), ArgTermsB, _Context),
+        ArgTermsB = [TermBA, TermBB],
+        not (
+            TermBA = term.functor(term.atom("->"), [_, _], _)
+        )
+    then
+        parse_goal_disjunction(TermBA, TermBB, ContextPieces, !DisjunctsCord,
+            !Warnings, !Specs, !VarSet)
+    else
+        parse_goal(TermB, ContextPieces, MaybeGoalB, !VarSet),
+        (
+            MaybeGoalB = ok2(DisjunctB, WarningsB),
+            cord.snoc(DisjunctB, !DisjunctsCord),
+            !:Warnings = !.Warnings ++ WarningsB
+        ;
+            MaybeGoalB = error2(SpecsB),
+            !:Specs = !.Specs ++ SpecsB
+        )
+    ).
+
+:- pred append_disjunct_to_cord(goal::in,
+    cord(goal)::in, cord(goal)::out) is det.
+
+append_disjunct_to_cord(Goal, !DisjunctsCord) :-
+    % We flatten disjunctions, for reasons explained in the comment
+    % at the top of tests/hard_coded/flatten_disjunctions.m.
+    ( if Goal = disj_expr(_Ctxt, Disjunct1, Disjunct2, Disjuncts3plus) then
+        append_disjunct_to_cord(Disjunct1, !DisjunctsCord),
+        append_disjunct_to_cord(Disjunct2, !DisjunctsCord),
+        list.foldl(append_disjunct_to_cord, Disjuncts3plus, !DisjunctsCord)
+    else
+        cord.snoc(Goal, !DisjunctsCord)
     ).
 
 %---------------------%
@@ -1632,7 +1694,7 @@ apply_purity_marker_to_maybe_goal(GoalTerm, Purity, MaybeGoal0, MaybeGoal) :-
             ( Goal0 = conj_expr(_, _, _)
             ; Goal0 = par_conj_expr(_, _, _)
             ; Goal0 = true_expr(_)
-            ; Goal0 = disj_expr(_, _, _)
+            ; Goal0 = disj_expr(_, _, _, _)
             ; Goal0 = fail_expr(_)
             ; Goal0 = quant_expr(_, _, _, _, _)
             ; Goal0 = promise_purity_expr(_, _, _)

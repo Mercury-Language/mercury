@@ -60,8 +60,11 @@
 :- import_module parse_tree.parse_vars.
 :- import_module parse_tree.prog_util.
 
+:- import_module assoc_list.
 :- import_module counter.
 :- import_module one_or_more.
+:- import_module pair.
+:- import_module require.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -498,47 +501,41 @@ parse_dcg_goal_semicolon(ArgTerms, Context, ContextPieces,
                 SubGoalTermB, Context, ContextPieces, MaybeGoal,
                 !VarSet, !Counter, !DCGVar)
         else
-            Var0 = !.DCGVar,
-            parse_dcg_goal(SubGoalTermA, ContextPieces, MaybeSubGoalA0,
-                !VarSet, !Counter, Var0, VarA),
-            parse_dcg_goal(SubGoalTermB, ContextPieces, MaybeSubGoalB0,
-                !VarSet, !Counter, Var0, VarB),
-            ( if
-                MaybeSubGoalA0 = ok2(SubGoalA0, GoalWarningSpecsA),
-                MaybeSubGoalB0 = ok2(SubGoalB0, GoalWarningSpecsB)
-            then
-                GoalWarningSpecs = GoalWarningSpecsA ++ GoalWarningSpecsB,
-                ( if VarA = Var0, VarB = Var0 then
-                    Var = Var0,
-                    Goal = disj_expr(Context, SubGoalA0, SubGoalB0)
-                else if VarA = Var0 then
-                    Var = VarB,
-                    Unify = unify_expr(Context,
-                        term.variable(Var, Context),
-                        term.variable(VarA, Context),
-                        purity_pure),
-                    append_to_disjunct(Unify, Context, SubGoalA0, SubGoalA),
-                    Goal = disj_expr(Context, SubGoalA, SubGoalB0)
-                else if VarB = Var0 then
-                    Var = VarA,
-                    Unify = unify_expr(Context,
-                        term.variable(Var, Context),
-                        term.variable(VarB, Context),
-                        purity_pure),
-                    append_to_disjunct(Unify, Context, SubGoalB0, SubGoalB),
-                    Goal = disj_expr(Context, SubGoalA0, SubGoalB)
-                else
-                    Var = VarB,
-                    prog_util.rename_in_goal(VarA, VarB, SubGoalA0, SubGoalA),
-                    Goal = disj_expr(Context, SubGoalA, SubGoalB0)
+            InitDCGVar = !.DCGVar,
+            parse_dcg_goal_disjunction(InitDCGVar, ContextPieces,
+                SubGoalTermA, SubGoalTermB, no, MaybeFirstDiffDCGVar,
+                cord.init, DisjunctsDCGVarsCord, [], Warnings, [], ErrorSpecs,
+                !VarSet, !Counter),
+            (
+                ErrorSpecs = [],
+                DisjunctsDCGVars = cord.list(DisjunctsDCGVarsCord),
+                (
+                    MaybeFirstDiffDCGVar = no,
+                    % !DCGVar is unchanged in all disjuncts, so it should stay
+                    % as InitDCGVar after the disjunction.
+                    assoc_list.keys(DisjunctsDCGVars, Disjuncts)
+                ;
+                    MaybeFirstDiffDCGVar = yes(FirstDiffDCGVar),
+                    !:DCGVar = FirstDiffDCGVar,
+                    bring_disjuncts_up_to(InitDCGVar, FirstDiffDCGVar, Context,
+                        DisjunctsDCGVars, [], RevDisjuncts),
+                    list.reverse(RevDisjuncts, Disjuncts)
                 ),
-                !:DCGVar = Var,
-                MaybeGoal = ok2(Goal, GoalWarningSpecs)
-            else
-                !:DCGVar = VarA,    % Dummy; the value shouldn't matter.
-                Specs = get_any_errors_warnings2(MaybeSubGoalA0) ++
-                    get_any_errors_warnings2(MaybeSubGoalB0),
-                MaybeGoal = error2(Specs)
+                (
+                    ( Disjuncts = []
+                    ; Disjuncts = [_]
+                    ),
+                    unexpected($pred, "less than two disjuncts")
+                ;
+                    Disjuncts = [Disjunct1, Disjunct2 | Disjuncts3plus]
+                ),
+                Goal = disj_expr(Context, Disjunct1, Disjunct2,
+                    Disjuncts3plus),
+                MaybeGoal = ok2(Goal, Warnings)
+            ;
+                ErrorSpecs = [_ | _],
+                % The final value of !DCGVar shouldn't matter.
+                MaybeGoal = error2(ErrorSpecs)
             )
         )
     else
@@ -551,6 +548,132 @@ parse_dcg_goal_semicolon(ArgTerms, Context, ContextPieces,
         Spec = should_have_two_goals_infix(ContextPieces, Context, ";"),
         MaybeGoal = error2([Spec])
     ).
+
+:- pred parse_dcg_goal_disjunction(prog_var::in, cord(format_component)::in,
+    term::in, term::in, maybe(prog_var)::in, maybe(prog_var)::out,
+    cord(pair(goal, prog_var))::in, cord(pair(goal, prog_var))::out,
+    list(warning_spec)::in, list(warning_spec)::out,
+    list(error_spec)::in, list(error_spec)::out,
+    prog_varset::in, prog_varset::out, counter::in, counter::out) is det.
+
+parse_dcg_goal_disjunction(DCGVar0, ContextPieces, TermA, TermB,
+        !MaybeFirstDiffDCGVar, !DisjunctsDCGVarsCord, !Warnings, !Specs,
+        !VarSet, !Counter) :-
+    parse_dcg_goal(TermA, ContextPieces, MaybeGoalA,
+        !VarSet, !Counter, DCGVar0, DCGVarA),
+    (
+        MaybeGoalA = ok2(DisjunctA, WarningsA),
+        maybe_record_non_initial_dcg_var(DCGVar0, DCGVarA,
+            !MaybeFirstDiffDCGVar), 
+        append_disjunct_dcg_var_to_cord(DCGVarA, DisjunctA,
+            !DisjunctsDCGVarsCord),
+        % The order of the warnings does not matter.
+        !:Warnings = WarningsA ++ !.Warnings
+    ;
+        MaybeGoalA = error2(SpecsA),
+        !:Specs = !.Specs ++ SpecsA
+    ),
+    ( if
+        TermB = term.functor(term.atom(";"), ArgTermsB, _Context),
+        ArgTermsB = [TermBA, TermBB],
+        not (
+            TermBA = term.functor(term.atom("->"), [_, _], _)
+        )
+    then
+        parse_dcg_goal_disjunction(DCGVar0, ContextPieces, TermBA, TermBB,
+            !MaybeFirstDiffDCGVar, !DisjunctsDCGVarsCord, !Warnings, !Specs,
+            !VarSet, !Counter)
+    else
+        parse_dcg_goal(TermB, ContextPieces, MaybeGoalB,
+            !VarSet, !Counter, DCGVar0, DCGVarB),
+        (
+            MaybeGoalB = ok2(DisjunctB, WarningsB),
+            maybe_record_non_initial_dcg_var(DCGVar0, DCGVarB, 
+                !MaybeFirstDiffDCGVar), 
+            append_disjunct_dcg_var_to_cord(DCGVarB, DisjunctB,
+                !DisjunctsDCGVarsCord),
+            !:Warnings = !.Warnings ++ WarningsB
+        ;
+            MaybeGoalB = error2(SpecsB),
+            !:Specs = !.Specs ++ SpecsB
+        )
+    ).
+
+    % maybe_record_non_initial_dcg_var(DCGVar0, DCGVarEndBranch,
+    %   !MaybeFirstDiffDCGVar):
+    %
+    % If the current branch updated the dcg variable from DCGVar0 to
+    % DCGVarEndBranch, *and* if it is the first branch to have done so,
+    % then record DCGVarEndBranch as !:MaybeFirstDiffDCGVar.
+    %
+:- pred maybe_record_non_initial_dcg_var(prog_var::in, prog_var::in,
+    maybe(prog_var)::in, maybe(prog_var)::out) is det.
+
+maybe_record_non_initial_dcg_var(DCGVar0, DCGVarEndBranch,
+        !MaybeFirstDiffDCGVar) :-
+    ( if DCGVar0 = DCGVarEndBranch then
+        true
+    else
+        (
+            !.MaybeFirstDiffDCGVar = yes(_)
+        ;
+            !.MaybeFirstDiffDCGVar = no,
+            !:MaybeFirstDiffDCGVar = yes(DCGVarEndBranch)
+        )
+    ).
+
+:- pred append_disjunct_dcg_var_to_cord(prog_var::in, goal::in,
+    cord(pair(goal, prog_var))::in, cord(pair(goal, prog_var))::out) is det.
+
+append_disjunct_dcg_var_to_cord(DCGVar, Goal, !DisjunctsDCGVarsCord) :-
+    % We flatten disjunctions, for reasons explained in the comment
+    % at the top of tests/hard_coded/flatten_disjunctions.m.
+    ( if Goal = disj_expr(_Ctxt, Disjunct1, Disjunct2, Disjuncts3plus) then
+        append_disjunct_dcg_var_to_cord(DCGVar, Disjunct1,
+            !DisjunctsDCGVarsCord),
+        append_disjunct_dcg_var_to_cord(DCGVar, Disjunct2,
+            !DisjunctsDCGVarsCord),
+        list.foldl(append_disjunct_dcg_var_to_cord(DCGVar), Disjuncts3plus,
+            !DisjunctsDCGVarsCord)
+    else
+        cord.snoc(Goal - DCGVar, !DisjunctsDCGVarsCord)
+    ).
+
+    % Given a disjunction in which the initial and final values of the
+    % DCG variable are InitDCGVar and FinalDCGVar respectively,
+    % ensure that all disjuncts end up with FinalDCGVar, whatever
+    % the updates (if any) were within each disjunct.
+    %
+:- pred bring_disjuncts_up_to(prog_var::in, prog_var::in, prog_context::in,
+    assoc_list(goal, prog_var)::in, list(goal)::in, list(goal)::out) is det.
+
+bring_disjuncts_up_to(_InitDCGVar, _FinalDCGVar, _Context, [], !Disjuncts).
+bring_disjuncts_up_to(InitDCGVar, FinalDCGVar, Context,
+        [RevDisjunctDCGVar | RevDisjunctsDCGVars], !Disjuncts) :-
+    bring_disjunct_up_to(InitDCGVar, FinalDCGVar, Context,
+        RevDisjunctDCGVar, !Disjuncts),
+    bring_disjuncts_up_to(InitDCGVar, FinalDCGVar, Context,
+        RevDisjunctsDCGVars, !Disjuncts).
+
+:- pred bring_disjunct_up_to(prog_var::in, prog_var::in, prog_context::in,
+    pair(goal, prog_var)::in, list(goal)::in, list(goal)::out) is det.
+
+bring_disjunct_up_to(InitDCGVar, FinalDCGVar, Context,
+        RevDisjunctDCGVar, !Disjuncts) :-
+    RevDisjunctDCGVar = Disjunct0 - DisjunctEndDCGVar,
+    ( if DisjunctEndDCGVar = FinalDCGVar then
+        Disjunct = Disjunct0
+    else if DisjunctEndDCGVar = InitDCGVar then
+        Unify = unify_expr(Context,
+            term.variable(FinalDCGVar, Context),
+            term.variable(InitDCGVar, Context),
+            purity_pure),
+        Disjunct = conj_expr(Context, Disjunct0, Unify)
+    else
+        prog_util.rename_in_goal(DisjunctEndDCGVar, FinalDCGVar,
+            Disjunct0, Disjunct)
+    ),
+    !:Disjuncts = [Disjunct | !.Disjuncts].
 
 %---------------------%
 
@@ -971,20 +1094,6 @@ new_dcg_var(!VarSet, !Counter, DCGVar) :-
     string.append("DCG_", StringN, VarName),
     varset.new_var(DCGVar, !VarSet),
     varset.name_var(DCGVar, VarName, !VarSet).
-
-:- pred append_to_disjunct(goal::in, prog_context::in, goal::in, goal::out)
-    is det.
-
-append_to_disjunct(AddedGoal, Context, Disjunct0, Disjunct) :-
-    ( if
-        Disjunct0 = disj_expr(Disjunct0Context, SubDisjunctA0, SubDisjunctB0)
-    then
-        append_to_disjunct(AddedGoal, Context, SubDisjunctA0, SubDisjunctA),
-        append_to_disjunct(AddedGoal, Context, SubDisjunctB0, SubDisjunctB),
-        Disjunct = disj_expr(Disjunct0Context, SubDisjunctA, SubDisjunctB)
-    else
-        Disjunct = conj_expr(Context, Disjunct0, AddedGoal)
-    ).
 
     % term_list_append_term(ListTerm, Term, Result):
     %

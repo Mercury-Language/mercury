@@ -2813,7 +2813,7 @@
     %
     % goal_true                  135352
     % goal_if_then_else          128052
-    % goal_disj                  116547
+    % goal_disj                  116547 when we had a disj_expr for each ";"
     % goal_not                     7080
     %
     % goal_fail                    5219
@@ -2869,8 +2869,8 @@
                 goal,           % Then
                 goal            % Else
             )
-    ;       disj_expr(prog_context, goal, goal)
-            % nonempty disjunction
+    ;       disj_expr(prog_context, goal, goal, list(goal))
+            % nonempty disjunction; will contain at least two goals.
 
     ;       not_expr(prog_context, goal)
 
@@ -3188,7 +3188,7 @@ get_goal_context(Goal) = Context :-
     ( Goal = conj_expr(Context, _, _)
     ; Goal = par_conj_expr(Context, _, _)
     ; Goal = true_expr(Context)
-    ; Goal = disj_expr(Context, _, _)
+    ; Goal = disj_expr(Context, _, _, _)
     ; Goal = fail_expr(Context)
     ; Goal = quant_expr(_, _, Context, _, _)
     ; Goal = promise_purity_expr(Context, _, _)

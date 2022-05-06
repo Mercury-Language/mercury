@@ -121,7 +121,7 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
             HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
-        Goal = disj_expr(_, _, _),
+        Goal = disj_expr(_, _, _, _),
         transform_parse_tree_goal_to_hlds_disj(LocKind, Goal, Renaming,
             HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
@@ -652,7 +652,7 @@ accumulate_par_conjuncts(LocKind, Goal, Renaming, !HLDSConjunctsCord,
 %----------------------------------------------------------------------------%
 
 :- inst goal_disj_expr for goal/0
-    --->    disj_expr(ground, ground, ground).
+    --->    disj_expr(ground, ground, ground, ground).
 
 :- pred transform_parse_tree_goal_to_hlds_disj(loc_kind::in,
     goal::in(goal_disj_expr), prog_var_renaming::in, hlds_goal::out,
@@ -664,53 +664,41 @@ accumulate_par_conjuncts(LocKind, Goal, Renaming, !HLDSConjunctsCord,
 
 transform_parse_tree_goal_to_hlds_disj(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    Goal = disj_expr(Context, SubGoalA, SubGoalB),
+    Goal = disj_expr(Context, Disjunct1, Disjunct2, Disjuncts3plus),
     SVarStateBefore = !.SVarState,
-    accumulate_disjuncts(LocKind, SubGoalB, Renaming, [], DisjunctsSVarStates1,
-        SVarStateBefore, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-    accumulate_disjuncts(LocKind, SubGoalA, Renaming,
-        DisjunctsSVarStates1, DisjunctsSVarStates,
-        SVarStateBefore, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
+    accumulate_disjunct(LocKind, Renaming, SVarStateBefore,
+        Disjunct1, [], RevDisjunctsSVarStates1,
+        !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
+    accumulate_disjunct(LocKind, Renaming, SVarStateBefore,
+        Disjunct2, RevDisjunctsSVarStates1, RevDisjunctsSVarStates2,
+        !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
+    list.foldl6(
+        accumulate_disjunct(LocKind, Renaming, SVarStateBefore),
+        Disjuncts3plus, RevDisjunctsSVarStates2, RevDisjunctsSVarStates,
+        !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
+    list.reverse(RevDisjunctsSVarStates, DisjunctsSVarStates),
     svar_finish_disjunction(DisjunctsSVarStates, Disjuncts,
         !VarSet, SVarStateBefore, SVarStateAfter, !SVarStore),
     !:SVarState = SVarStateAfter,
     goal_info_init(Context, GoalInfo),
     disj_list_to_goal(Disjuncts, GoalInfo, HLDSGoal).
 
-    % accumulate_disjuncts(LocKind, Goal, Renaming, Disj0, Disj, ...):
+    % accumulate_disjunct(LocKind, Renaming, Disj0, Disj, ...):
     %
-    % Goal is a tree of disjuncts. Flatten it into a list (applying Renaming),
-    % append Disj0, and return the result in Disj.
-    %
-:- pred accumulate_disjuncts(loc_kind::in, goal::in, prog_var_renaming::in,
+:- pred accumulate_disjunct(loc_kind::in, prog_var_renaming::in,
+    svar_state::in, goal::in,
     list(hlds_goal_svar_state)::in, list(hlds_goal_svar_state)::out,
-    svar_state::in, svar_store::in, svar_store::out,
-    prog_varset::in, prog_varset::out,
+    svar_store::in, svar_store::out, prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-accumulate_disjuncts(LocKind, Goal, Renaming, DisjStates0, DisjStates,
-        SVarStateBefore, !SVarStore, !VarSet,
-        !ModuleInfo, !QualInfo, !Specs) :-
-    ( if Goal = disj_expr(_Context, SubGoalA, SubGoalB) then
-        % We recurse on the *second* arm first, so that we will put the
-        % disjuncts from *that* arm at the front of DisjStates0, before
-        % putting the disjuncts from the first arm at the front of the
-        % resulting DisjStates1. This way, the overall result, DisjStates,
-        % will have the disjuncts and their svar_infos in the correct order.
-        accumulate_disjuncts(LocKind, SubGoalB, Renaming,
-            DisjStates0, DisjStates1, SVarStateBefore,
-            !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        accumulate_disjuncts(LocKind, SubGoalA, Renaming,
-            DisjStates1, DisjStates, SVarStateBefore,
-            !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs)
-    else
-        transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
-            SVarStateBefore, SVarStateAfterDisjunct,
-            !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        DisjState = hlds_goal_svar_state(HLDSGoal, SVarStateAfterDisjunct),
-        DisjStates = [DisjState | DisjStates0]
-    ).
+accumulate_disjunct(LocKind, Renaming, SVarStateBefore, Goal,
+        !RevDisjStates, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
+    transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
+        SVarStateBefore, SVarStateAfterDisjunct,
+        !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
+    DisjState = hlds_goal_svar_state(HLDSGoal, SVarStateAfterDisjunct),
+    !:RevDisjStates = [DisjState | !.RevDisjStates].
 
 %----------------------------------------------------------------------------%
 
@@ -1134,7 +1122,8 @@ transform_try_expr_without_io(LocKind, SubGoal, ThenGoal, MaybeElseGoal,
             CallMagicGoal,
             disj_expr(Context,
                 ResultIsSucceededDisjunctGoal,
-                ResultIsExceptionDisjunctGoal
+                ResultIsExceptionDisjunctGoal,
+                []
             )
         ),
     transform_parse_tree_goal_to_hlds(LocKind, CallMagicThenDisjunctionGoal,

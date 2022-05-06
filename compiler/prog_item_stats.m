@@ -377,10 +377,11 @@ gather_stats_in_goal(Goal, !GoalStats) :-
         Goal = true_expr(_),
         !GoalStats ^ goal_num_true := !.GoalStats ^ goal_num_true + 1
     ;
-        Goal = disj_expr(_, SubGoalA, SubGoalB),
+        Goal = disj_expr(_, SubGoal1, SubGoal2, SubGoals),
         !GoalStats ^ goal_num_disj := !.GoalStats ^ goal_num_disj + 1,
-        gather_stats_in_goal(SubGoalA, !GoalStats),
-        gather_stats_in_goal(SubGoalB, !GoalStats)
+        gather_stats_in_goal(SubGoal1, !GoalStats),
+        gather_stats_in_goal(SubGoal2, !GoalStats),
+        gather_stats_in_goals(SubGoals, !GoalStats)
     ;
         Goal = fail_expr(_),
         !GoalStats ^ goal_num_fail := !.GoalStats ^ goal_num_fail + 1

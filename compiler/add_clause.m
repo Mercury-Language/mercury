@@ -18,6 +18,7 @@
 :- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
@@ -37,7 +38,8 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred clauses_info_add_clause(clause_applicable_modes::in, list(proc_id)::in,
-    pred_status::in, clause_type::in, pred_or_func::in, list(prog_term)::in,
+    pred_status::in, clause_type::in,
+    pred_or_func::in, sym_name::in, list(prog_term)::in,
     prog_context::in, item_seq_num::in, list(quant_warning)::out,
     goal::in, hlds_goal::out,
     prog_varset::in, prog_varset::out, tvarset::in, tvarset::out,
@@ -72,10 +74,10 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.parse_inst_mode_name.
+:- import_module parse_tree.parse_tree_out_clause.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_util.
@@ -232,7 +234,7 @@ module_add_clause_2(PredStatus, ClauseType, PredId, PredOrFunc, PredSymName,
                     ProcIdsForThisClause, AllProcIds,
                     !ModuleInfo, !QualInfo, !Specs),
                 clauses_info_add_clause(ProcIdsForThisClause, AllProcIds,
-                    PredStatus, ClauseType, PredOrFunc, ArgTerms,
+                    PredStatus, ClauseType, PredOrFunc, PredSymName, ArgTerms,
                     Context, SeqNum, Warnings,
                     BodyGoal, Goal, ClauseVarSet, VarSet, TVarSet0, TVarSet,
                     Clauses0, Clauses, !ModuleInfo, !QualInfo, !Specs),
@@ -623,7 +625,7 @@ add_annotation(_,         ma_mixed, ma_mixed).
 %-----------------------------------------------------------------------------%
 
 clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
-        PredOrFunc, ArgTerms, Context, SeqNum, QuantWarnings,
+        PredOrFunc, PredSymName, ArgTerms, Context, SeqNum, QuantWarnings,
         BodyGoal, Goal, CVarSet, VarSet, TVarSet0, TVarSet,
         !ClausesInfo, !ModuleInfo, !QualInfo, !Specs) :-
     !.ClausesInfo = clauses_info(VarSet0, TVarNameMap0,
@@ -652,8 +654,8 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
     update_qual_info(TVarNameMap, TVarSet0, ExplicitVarTypes0,
         MaybeOptImported, !QualInfo),
     varset.merge_renaming(VarSet0, CVarSet, VarSet1, Renaming),
-    add_clause_transform(Renaming, HeadVars, ArgTerms, BodyGoal, Context,
-        PredOrFunc, ClauseType, Goal0, VarSet1, VarSet,
+    add_clause_transform(Renaming, PredOrFunc, PredSymName, HeadVars, ArgTerms,
+        Context, ClauseType, BodyGoal, Goal0, VarSet1, VarSet,
         QuantWarnings, StateVarWarnings, StateVarErrors,
         !ModuleInfo, !QualInfo, !Specs),
     qual_info_get_tvarset(!.QualInfo, TVarSet),
@@ -735,16 +737,16 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
     % ArgTerms0 has already had !S arguments replaced by
     % !.S, !:S argument pairs.
     %
-:- pred add_clause_transform(prog_var_renaming::in,
-    proc_arg_vector(prog_var)::in, list(prog_term)::in, goal::in,
-    prog_context::in, pred_or_func::in, clause_type::in,
-    hlds_goal::out, prog_varset::in, prog_varset::out,
+:- pred add_clause_transform(prog_var_renaming::in, pred_or_func::in,
+    sym_name::in, proc_arg_vector(prog_var)::in, list(prog_term)::in,
+    prog_context::in, clause_type::in, goal::in, hlds_goal::out,
+    prog_varset::in, prog_varset::out,
     list(quant_warning)::out, list(error_spec)::out, list(error_spec)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_clause_transform(Renaming, HeadVars, ArgTerms0, ParseTreeBodyGoal, Context,
-        PredOrFunc, ClauseType, Goal, !VarSet,
+add_clause_transform(Renaming, PredOrFunc, PredSymName, HeadVars, ArgTerms0,
+        Context, ClauseType, ParseTreeBodyGoal, Goal, !VarSet,
         QuantWarnings, StateVarWarnings, StateVarErrors,
         !ModuleInfo, !QualInfo, !Specs) :-
     some [!SInfo, !SVarState, !SVarStore] (
@@ -787,35 +789,43 @@ add_clause_transform(Renaming, HeadVars, ArgTerms0, ParseTreeBodyGoal, Context,
         transform_parse_tree_goal_to_hlds(loc_whole_goal, ParseTreeBodyGoal,
             Renaming, BodyGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
-
-        module_info_get_globals(!.ModuleInfo, Globals),
-        module_info_get_name(!.ModuleInfo, ModuleName),
-        trace [compiletime(flag("debug-statevar-lambda")), io(!IO)] (
-            get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
-            io.write_string(DebugStream, "\nCLAUSE HEAD\n", !IO),
-            io.write_string(DebugStream, "arg terms before:\n", !IO),
-            list.foldl(io.write_line(DebugStream), ArgTerms0, !IO),
-            io.write_string(DebugStream, "arg terms renamed:\n", !IO),
-            list.foldl(io.write_line(DebugStream), ArgTerms1, !IO),
-            io.write_string(DebugStream, "arg terms after:\n", !IO),
-            list.foldl(io.write_line(DebugStream), ArgTerms, !IO),
-            io.write_string(DebugStream, "head vars:\n", !IO),
-            io.write_line(DebugStream, HeadVarList, !IO),
-            io.write_string(DebugStream, "arg unifies:\n", !IO),
-            dump_goal_nl(DebugStream, !.ModuleInfo, vns_varset(!.VarSet),
-                HeadGoal, !IO),
-            io.write_string(DebugStream, "clause body:\n", !IO),
-            dump_goal_nl(DebugStream, !.ModuleInfo, vns_varset(!.VarSet),
-                BodyGoal, !IO),
-            map.to_assoc_list(FinalSVarMap, FinalSVarList),
-            io.write_string(DebugStream, "FinalSVarMap:\n", !IO),
-            io.write_line(DebugStream, FinalSVarList, !IO)
-        ),
-
         FinalSVarState = !.SVarState,
         svar_finish_clause_body(Globals, ModuleName, Context, FinalSVarMap,
             HeadGoal, BodyGoal, Goal0, InitialSVarState, FinalSVarState,
             !.SVarStore, StateVarWarnings, StateVarErrors),
+
+        module_info_get_globals(!.ModuleInfo, Globals),
+        module_info_get_name(!.ModuleInfo, ModuleName),
+        trace [compiletime(flag("debug-statevar-lambda")), io(!IO)] (
+            globals.lookup_string_option(Globals, experiment, Experiment),
+            PredName = unqualify_name(PredSymName),
+            ( if PredName = Experiment then
+                get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+                io.write_string(DebugStream, "\nCLAUSE HEAD\n", !IO),
+                io.write_string(DebugStream, "\narg terms before:\n", !IO),
+                list.foldl(io.write_line(DebugStream), ArgTerms0, !IO),
+                io.write_string(DebugStream, "\narg terms renamed:\n", !IO),
+                list.foldl(io.write_line(DebugStream), ArgTerms1, !IO),
+                io.write_string(DebugStream, "\narg terms after:\n", !IO),
+                list.foldl(io.write_line(DebugStream), ArgTerms, !IO),
+                io.write_string(DebugStream, "\nhead vars:\n", !IO),
+                io.write_line(DebugStream, HeadVarList, !IO),
+                io.write_string(DebugStream, "\narg unifies:\n", !IO),
+                dump_goal_nl(DebugStream, !.ModuleInfo, vns_varset(!.VarSet),
+                    HeadGoal, !IO),
+                io.write_string(DebugStream, "\nparse tree goal body:\n", !IO),
+                mercury_output_goal(DebugStream, !.VarSet, 0,
+                    ParseTreeBodyGoal, !IO),
+                io.write_string(DebugStream, "\nclause body:\n", !IO),
+                dump_goal_nl(DebugStream, !.ModuleInfo, vns_varset(!.VarSet),
+                    BodyGoal, !IO),
+                map.to_assoc_list(FinalSVarMap, FinalSVarList),
+                io.write_string(DebugStream, "\nFinalSVarMap:\n", !IO),
+                io.write_line(DebugStream, FinalSVarList, !IO)
+            else
+                true
+            )
+        ),
 
         qual_info_get_found_trace_goal(!.QualInfo, FoundTraceGoal),
         (

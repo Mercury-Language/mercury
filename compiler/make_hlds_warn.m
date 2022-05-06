@@ -770,9 +770,9 @@ check_promise_ex_goal(PromiseType, Goal, !Specs) :-
     then
         check_promise_ex_goal(PromiseType, SubGoal, !Specs)
     else if
-        Goal = disj_expr(_, _, _)
+        Goal = disj_expr(_, Disjunct1, Disjunct2, Disjuncts3plus)
     then
-        flatten_to_disj_list(Goal, DisjList),
+        DisjList = [Disjunct1, Disjunct2 | Disjuncts3plus],
         list.map(flatten_to_conj_list, DisjList, DisjConjList),
         check_promise_ex_disjunction(PromiseType, DisjConjList, !Specs)
     else if
@@ -786,20 +786,6 @@ check_promise_ex_goal(PromiseType, Goal, !Specs) :-
     else
         promise_ex_error(PromiseType, get_goal_context(Goal),
             "goal in declaration is not a disjunction", !Specs)
-    ).
-
-    % Turns the goal of a promise_ex declaration into a list of goals,
-    % where each goal is an arm of the disjunction.
-    %
-:- pred flatten_to_disj_list(goal::in, list(goal)::out) is det.
-
-flatten_to_disj_list(Goal, GoalList) :-
-    ( if Goal = disj_expr(_, GoalA, GoalB) then
-        flatten_to_disj_list(GoalA, GoalListA),
-        flatten_to_disj_list(GoalB, GoalListB),
-        GoalList = GoalListA ++ GoalListB
-    else
-        GoalList = [Goal]
     ).
 
     % Takes a goal representing an arm of a disjunction and turns it into

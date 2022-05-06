@@ -863,13 +863,20 @@ collect_used_modules_in_promise_goal(Goal, !UsedModuleNames, !FoundUnqual) :-
     (
         ( Goal = conj_expr(_, SubGoalA, SubGoalB)
         ; Goal = par_conj_expr(_, SubGoalA, SubGoalB)
-        ; Goal = disj_expr(_, SubGoalA, SubGoalB)
         ; Goal = implies_expr(_, SubGoalA, SubGoalB)
         ; Goal = equivalent_expr(_, SubGoalA, SubGoalB)
         ),
         collect_used_modules_in_promise_goal(SubGoalA,
             !UsedModuleNames, !FoundUnqual),
         collect_used_modules_in_promise_goal(SubGoalB,
+            !UsedModuleNames, !FoundUnqual)
+    ;
+        Goal = disj_expr(_, SubGoal1, SubGoal2, SubGoals),
+        collect_used_modules_in_promise_goal(SubGoal1,
+            !UsedModuleNames, !FoundUnqual),
+        collect_used_modules_in_promise_goal(SubGoal2,
+            !UsedModuleNames, !FoundUnqual),
+        collect_used_modules_in_promise_goals(SubGoals,
             !UsedModuleNames, !FoundUnqual)
     ;
         ( Goal = true_expr(_)
