@@ -182,6 +182,35 @@ Changes to the Mercury standard library
     - pred `set_globals/3`          (replacement: a mutable)
     - pred `update_globals/3`       (replacement: a mutable)
 
+    - pred `input_stream_foldl/5`
+           (replacement: `stream.input_stream_fold/6`)
+    - pred `input_stream_fold/6`
+           (replacement: `stream.input_stream_fold/6`)
+    - pred `input_stream_foldl_io/4`
+           (replacement: `stream.input_stream_fold_state/5`)
+    - pred `input_stream_foldl_io/5`
+           (replacement: `stream.input_stream_fold_state/5`)
+    - pred `input_stream_foldl2_io/5`
+           (replacement: `stream.input_stream_foldl_state/6`)
+    - pred `input_stream_foldl2_io/6`
+           (replacement: `stream.input_stream_fold_state/6`)
+    - pred `input_stream_foldl2_io_maybe_stop/5`
+           (replacement: `stream.input_stream_fold2_state_maybe_stop/6`)
+    - pred `binary_input_stream_foldl/5`)
+           (replacement: `stream.input_stream_fold/6`)
+    - pred `binary_input_stream_foldl/6`)
+           (replacement: `stream.input_stream_fold/6`)
+    - pred `binary_input_stream_foldl_io/4`
+           (replacement: `stream.input_stream_fold_state/5`)
+    - pred `binary_input_stream_foldl2_io/5`
+           (replacement: `stream.input_stream_fold2_state/6`)
+    - pred `binary_input_stream_foldl2_io/6`
+           (replacement: `stream.input_stream_fold2_state/6`)
+    - pred `binary_input_stream_foldl2_io_maybe_stop/5`
+           (replacement: `stream.input_stream_fold2_state_maybe_stop/6`)
+    - pred `binary_input_stream_foldl2_io_maybe_stop/6`
+           (replacement: `stream.input_stream_fold2_state_maybe_stop/6`)
+
 ### New `io.call_system` module
 
 * This new module has these predicates and functions:

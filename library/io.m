@@ -1358,6 +1358,7 @@
     di, uo) is det.
 :- mode input_stream_foldl((pred(in, in, out) is cc_multi), in, out,
     di, uo) is cc_multi.
+:- pragma obsolete(pred(input_stream_foldl/5), [stream.input_stream_fold/6]).
 
     % Applies the given closure to each character (code point) read from the
     % input stream in turn, until eof or error.
@@ -1368,6 +1369,7 @@
     in, out, di, uo) is det.
 :- mode input_stream_foldl(in, in(pred(in, in, out) is cc_multi),
     in, out, di, uo) is cc_multi.
+:- pragma obsolete(pred(input_stream_foldl/6), [stream.input_stream_fold/6]).
 
     % Applies the given closure to each character (code point) read from
     % the input stream in turn, until eof or error.
@@ -1377,6 +1379,8 @@
     is det.
 :- mode input_stream_foldl_io((pred(in, di, uo) is cc_multi), out, di, uo)
     is cc_multi.
+:- pragma obsolete(pred(input_stream_foldl_io/4),
+    [stream.input_stream_fold_state/5]).
 
     % Applies the given closure to each character (code point) read from the
     % input stream in turn, until eof or error.
@@ -1387,6 +1391,8 @@
     out, di, uo) is det.
 :- mode input_stream_foldl_io(in, in(pred(in, di, uo) is cc_multi),
     out, di, uo) is cc_multi.
+:- pragma obsolete(pred(input_stream_foldl_io/5),
+    [stream.input_stream_fold_state/5]).
 
     % Applies the given closure to each character (code point) read from
     % the input stream in turn, until eof or error.
@@ -1397,6 +1403,8 @@
     in, out, di, uo) is det.
 :- mode input_stream_foldl2_io((pred(in, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
+:- pragma obsolete(pred(input_stream_foldl2_io/5),
+    [stream.input_stream_fold_state/6]).
 
     % Applies the given closure to each character (code point) read from the
     % input stream in turn, until eof or error.
@@ -1410,6 +1418,8 @@
 :- mode input_stream_foldl2_io(in,
     in(pred(in, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
+:- pragma obsolete(pred(input_stream_foldl2_io/6),
+    [stream.input_stream_fold_state/6]).
 
     % Applies the given closure to each character (code point) read from the
     % input stream in turn, until eof or error, or the closure returns `no' as
@@ -1424,6 +1434,8 @@
 :- mode input_stream_foldl2_io_maybe_stop(
     (pred(in, out, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
+:- pragma obsolete(pred(input_stream_foldl2_io_maybe_stop/5),
+    [stream.input_stream_fold2_state_maybe_stop/6]).
 
     % Applies the given closure to each character (code point) read from the
     % input stream in turn, until eof or error, or the closure returns `no' as
@@ -1438,6 +1450,8 @@
 :- mode input_stream_foldl2_io_maybe_stop(in,
     (pred(in, out, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
+:- pragma obsolete(pred(input_stream_foldl2_io_maybe_stop/5),
+    [stream.input_stream_fold2_state_maybe_stop/6]).
 
 %---------------------%
 
@@ -1450,6 +1464,8 @@
     in, out, di, uo) is det.
 :- mode binary_input_stream_foldl((pred(in, in, out) is cc_multi),
     in, out, di, uo) is cc_multi.
+:- pragma obsolete(pred(binary_input_stream_foldl/5),
+    [stream.input_stream_fold/6]).
 
     % Applies the given closure to each byte read from the given binary
     % input stream in turn, until eof or error.
@@ -1460,6 +1476,8 @@
     in, out, di, uo) is det.
 :- mode binary_input_stream_foldl(in, in(pred(in, in, out) is cc_multi),
     in, out, di, uo) is cc_multi.
+:- pragma obsolete(pred(binary_input_stream_foldl/6),
+    [stream.input_stream_fold/6]).
 
     % Applies the given closure to each byte read from the current binary
     % input stream in turn, until eof or error.
@@ -1470,6 +1488,8 @@
     out, di, uo) is det.
 :- mode binary_input_stream_foldl_io((pred(in, di, uo) is cc_multi),
     out, di, uo) is cc_multi.
+:- pragma obsolete(pred(binary_input_stream_foldl_io/4),
+    [stream.input_stream_fold_state/6]).
 
     % Applies the given closure to each byte read from the given binary
     % input stream in turn, until eof or error.
@@ -1480,6 +1500,8 @@
     out, di, uo) is det.
 :- mode binary_input_stream_foldl_io(in, in(pred(in, di, uo) is cc_multi),
     out, di, uo) is cc_multi.
+:- pragma obsolete(pred(binary_input_stream_foldl_io/5),
+    [stream.input_stream_fold_state/6]).
 
     % Applies the given closure to each byte read from the current binary
     % input stream in turn, until eof or error.
@@ -1490,6 +1512,8 @@
     in(pred(in, in, out, di, uo) is det), in, out, di, uo) is det.
 :- mode binary_input_stream_foldl2_io(
     in(pred(in, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
+:- pragma obsolete(pred(binary_input_stream_foldl2_io/5),
+    [stream.input_stream_fold2_state/6]).
 
     % Applies the given closure to each byte read from the given binary
     % input stream in turn, until eof or error.
@@ -1500,6 +1524,8 @@
     (pred(in, in, out, di, uo) is det), in, out, di, uo) is det.
 :- mode binary_input_stream_foldl2_io(in,
     (pred(in, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
+:- pragma obsolete(pred(binary_input_stream_foldl2_io/6),
+    [stream.input_stream_fold2_state/6]).
 
     % Applies the given closure to each byte read from the current binary
     % input stream in turn, until eof or error, or the closure returns `no'
@@ -1511,6 +1537,8 @@
     (pred(in, out, in, out, di, uo) is det), in, out, di, uo) is det.
 :- mode binary_input_stream_foldl2_io_maybe_stop(
     (pred(in, out, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
+:- pragma obsolete(pred(binary_input_stream_foldl2_io_maybe_stop/5),
+    [stream.input_stream_fold2_state_maybe_stop/6]).
 
     % Applies the given closure to each byte read from the given binary input
     % stream in turn, until eof or error, or the closure returns `no' as its
@@ -1522,6 +1550,8 @@
     (pred(in, out, in, out, di, uo) is det), in, out, di, uo) is det.
 :- mode binary_input_stream_foldl2_io_maybe_stop(in,
     (pred(in, out, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
+:- pragma obsolete(pred(binary_input_stream_foldl2_io_maybe_stop/6),
+    [stream.input_stream_fold2_state_maybe_stop/6]).
 
 %---------------------------------------------------------------------------%
 %
