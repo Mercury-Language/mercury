@@ -2807,34 +2807,34 @@
     % During a bootcheck in august 2015, the frequencies of occurrence
     % of the various goal kinds were these:
     %
-    % goal_unify                1360701
-    % goal_conj                 1316066
-    % goal_call                 1263403
+    % goal_unify               1360701
+    % goal_conj                1316066 when we had a conj_expr for each ","
+    % goal_call                1263403
     %
-    % goal_true                  135352
-    % goal_if_then_else          128052
-    % goal_disj                  116547 when we had a disj_expr for each ";"
-    % goal_not                     7080
+    % goal_true                 135352
+    % goal_if_then_else         128052
+    % goal_disj                 116547 when we had a disj_expr for each ";"
+    % goal_not                    7080
     %
-    % goal_fail                    5219
-    % goal_pro_purity              1492
-    % goal_trace                   1356
-    % goal_pro_eqv_solns            913
-    % goal_some_state_vars          620 now goal_quant/some/state
-    % goal_some                     192 now goal_quant/some/ordinary
-    % goal_req_compl_switch         172
-    % goal_par_conj                 132
-    % goal_implies                  129
-    % goal_all                       78 now goal_quant/all/ordinary
-    % goal_req_detism                49
-    % goal_try                       35
-    % goal_equivalent                18
-    % goal_event                     17
-    % goal_req_arm_detism            14
-    % goal_pro_arbitrary             12
-    % goal_pro_eqv_soln_sets          8
-    % goal_atomic                     2
-    % goal_all_state_vars             0 now goal_quant/all/state
+    % goal_fail                   5219
+    % goal_pro_purity             1492
+    % goal_trace                  1356
+    % goal_pro_eqv_solns           913
+    % goal_some_state_vars         620 now goal_quant/some/state
+    % goal_some                    192 now goal_quant/some/ordinary
+    % goal_req_compl_switch        172
+    % goal_par_conj                132 when we had a par_conj_expr for each "&"
+    % goal_implies                 129
+    % goal_all                      78 now goal_quant/all/ordinary
+    % goal_req_detism               49
+    % goal_try                      35
+    % goal_equivalent               18
+    % goal_event                    17
+    % goal_req_arm_detism           14
+    % goal_pro_arbitrary            12
+    % goal_pro_eqv_soln_sets         8
+    % goal_atomic                    2
+    % goal_all_state_vars            0 now goal_quant/all/state
 
 :- type quant_type
     --->    quant_some
@@ -2855,8 +2855,26 @@
     --->    unify_expr(prog_context, prog_term, prog_term, purity)
     ;       call_expr(prog_context, sym_name, list(prog_term), purity)
 
-    ;       conj_expr(prog_context, goal, goal)
+    ;       conj_expr(prog_context, goal, list(goal))
             % nonempty plain conjunction
+            % NOTE: We could replace this with
+            %   conj_expr(prog_context, goal, goal, list(goal))
+            % to encode the invariant that
+            % - a conjunction has at least one conjunction operator, and
+            % - that operator has two argument goals.
+            % However, no part of the current compiler can exploit
+            % this extra information.
+            % NOTE: On the other hand, we could also replace this with
+            %   conj_expr(prog_context, list(goal))
+            % letting a conj_expr with an empty list of goals take over
+            % the role of true_expr. However, that would make the parse tree
+            % representation of plain conjunctions differ from the
+            % representation of parallel conjunctions. And the most
+            % frequent goal that does not now have its own primary tag
+            % on 64 bit machines, fail_expr, is infrequent enough that
+            % giving it its own primary tag would not materially improve
+            % performance, and even if it were frequent enough, it could be
+            % folded into disj_exprs in a similar way.
 
     ;       true_expr(prog_context)
             % empty conjunction
@@ -2879,7 +2897,7 @@
     ;       fail_expr(prog_context)
             % empty disjunction
 
-    ;       par_conj_expr(prog_context, goal, goal)
+    ;       par_conj_expr(prog_context, goal, list(goal))
             % nonempty parallel conjunction
 
     ;       quant_expr(

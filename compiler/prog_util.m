@@ -257,15 +257,15 @@ rename_in_goal(OldVar, NewVar, Goal0, Goal) :-
         ),
         Goal = Goal0
     ;
-        Goal0 = conj_expr(Context, SubGoalA0, SubGoalB0),
+        Goal0 = conj_expr(Context, SubGoalA0, SubGoalsB0),
         rename_in_goal(OldVar, NewVar, SubGoalA0, SubGoalA),
-        rename_in_goal(OldVar, NewVar, SubGoalB0, SubGoalB),
-        Goal = conj_expr(Context, SubGoalA, SubGoalB)
+        rename_in_goals(OldVar, NewVar, SubGoalsB0, SubGoalsB),
+        Goal = conj_expr(Context, SubGoalA, SubGoalsB)
     ;
-        Goal0 = par_conj_expr(Context, SubGoalA0, SubGoalB0),
+        Goal0 = par_conj_expr(Context, SubGoalA0, SubGoalsB0),
         rename_in_goal(OldVar, NewVar, SubGoalA0, SubGoalA),
-        rename_in_goal(OldVar, NewVar, SubGoalB0, SubGoalB),
-        Goal = par_conj_expr(Context, SubGoalA, SubGoalB)
+        rename_in_goals(OldVar, NewVar, SubGoalsB0, SubGoalsB),
+        Goal = par_conj_expr(Context, SubGoalA, SubGoalsB)
     ;
         Goal0 = disj_expr(Context, SubGoalA0, SubGoalB0, SubGoals0),
         rename_in_goal(OldVar, NewVar, SubGoalA0, SubGoalA),
@@ -739,13 +739,7 @@ get_new_tvars([TVar | TVars], VarSet, !TVarSet, !TVarNameMap, !TVarRenaming) :-
 
 goal_list_to_conj(Context, []) = true_expr(Context).
 goal_list_to_conj(Context, [Goal | Goals]) =
-    goal_list_to_conj_2(Context, Goal, Goals).
-
-:- func goal_list_to_conj_2(prog_context, goal, list(goal)) = goal.
-
-goal_list_to_conj_2(_, Goal, []) = Goal.
-goal_list_to_conj_2(Context, Goal0, [Goal1 | Goals]) =
-    conj_expr(Context, Goal0, goal_list_to_conj_2(Context, Goal1, Goals)).
+    conj_expr(Context, Goal, Goals).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.prog_util.

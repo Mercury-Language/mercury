@@ -501,18 +501,13 @@ mercury_output_goal(Stream, VarSet, Indent, Goal, !IO) :-
         mercury_output_newline(Indent, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
-        Goal = conj_expr(_, SubGoalA, SubGoalB),
-        mercury_output_goal(Stream, VarSet, Indent, SubGoalA, !IO),
-        io.write_string(Stream, ",", !IO),
-        mercury_output_newline(Indent, Stream, !IO),
-        mercury_output_goal(Stream, VarSet, Indent, SubGoalB, !IO)
+        Goal = conj_expr(_, SubGoalA, SubGoalsB),
+        mercury_output_conj(Stream, VarSet, Indent, SubGoalA, SubGoalsB, !IO)
     ;
-        Goal = par_conj_expr(_, SubGoalA, SubGoalB),
-        io.write_string(Stream, "(", !IO),
-        Indent1 = Indent + 1,
-        mercury_output_newline(Indent1, Stream, !IO),
-        mercury_output_goal(Stream, VarSet, Indent1, SubGoalA, !IO),
-        mercury_output_par_conj(Stream, VarSet, Indent, SubGoalB, !IO),
+        Goal = par_conj_expr(_, SubGoalA, SubGoalsB),
+        io.write_string(Stream, "(\n", !IO),
+        mercury_output_par_conj(Stream, VarSet, Indent,
+            SubGoalA, SubGoalsB, !IO),
         mercury_output_newline(Indent, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
@@ -640,19 +635,34 @@ mercury_output_disj(Stream, VarSet, Indent, [Disjunct | Disjuncts], !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_par_conj(io.text_output_stream::in, prog_varset::in,
-    int::in, goal::in, io::di, io::uo) is det.
+:- pred mercury_output_conj(io.text_output_stream::in, prog_varset::in,
+    int::in, goal::in, list(goal)::in, io::di, io::uo) is det.
 
-mercury_output_par_conj(Stream, VarSet, Indent, Goal, !IO) :-
-    mercury_output_newline(Indent, Stream, !IO),
-    io.write_string(Stream, "&", !IO),
+mercury_output_conj(Stream, VarSet, Indent, GoalA, GoalsB, !IO) :-
+    mercury_output_goal(Stream, VarSet, Indent, GoalA, !IO),
+    (
+        GoalsB = []
+    ;
+        GoalsB = [GoalB | GoalsC],
+        io.write_string(Stream, ",", !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        mercury_output_conj(Stream, VarSet, Indent, GoalB, GoalsC, !IO)
+    ).
+
+:- pred mercury_output_par_conj(io.text_output_stream::in, prog_varset::in,
+    int::in, goal::in, list(goal)::in, io::di, io::uo) is det.
+
+mercury_output_par_conj(Stream, VarSet, Indent, GoalA, GoalsB, !IO) :-
     Indent1 = Indent + 1,
-    mercury_output_newline(Indent1, Stream, !IO),
-    ( if Goal = par_conj_expr(_, SubGoalA, SubGoalB) then
-        mercury_output_goal(Stream, VarSet, Indent1, SubGoalA, !IO),
-        mercury_output_par_conj(Stream, VarSet, Indent, SubGoalB, !IO)
-    else
-        mercury_output_goal(Stream, VarSet, Indent1, Goal, !IO)
+    mercury_format_tabs(Indent1, Stream, !IO),
+    mercury_output_goal(Stream, VarSet, Indent1, GoalA, !IO),
+    (
+        GoalsB = []
+    ;
+        GoalsB = [GoalB | GoalsC],
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, "&\n", !IO),
+        mercury_output_par_conj(Stream, VarSet, Indent, GoalB, GoalsC, !IO)
     ).
 
 %---------------------------------------------------------------------------%

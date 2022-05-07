@@ -794,10 +794,10 @@ check_promise_ex_goal(PromiseType, Goal, !Specs) :-
 :- pred flatten_to_conj_list(goal::in, list(goal)::out) is det.
 
 flatten_to_conj_list(Goal, GoalList) :-
-    ( if Goal = conj_expr(_, GoalA, GoalB) then
-        flatten_to_conj_list(GoalA, GoalListA),
-        flatten_to_conj_list(GoalB, GoalListB),
-        GoalList = GoalListA ++ GoalListB
+    ( if Goal = conj_expr(_, ConjunctA, ConjunctsB) then
+        list.map(flatten_to_conj_list, [ConjunctA | ConjunctsB],
+            ConjunctGoalLists),
+        list.condense(ConjunctGoalLists, GoalList)
     else
         GoalList = [Goal]
     ).

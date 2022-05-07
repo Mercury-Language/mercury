@@ -364,15 +364,15 @@ gather_stats_in_goals([Goal | Goals], !GoalStats) :-
 
 gather_stats_in_goal(Goal, !GoalStats) :-
     (
-        Goal = conj_expr(_, SubGoalA, SubGoalB),
+        Goal = conj_expr(_, SubGoalA, SubGoalsB),
         !GoalStats ^ goal_num_conj := !.GoalStats ^ goal_num_conj + 1,
         gather_stats_in_goal(SubGoalA, !GoalStats),
-        gather_stats_in_goal(SubGoalB, !GoalStats)
+        gather_stats_in_goals(SubGoalsB, !GoalStats)
     ;
-        Goal = par_conj_expr(_, SubGoalA, SubGoalB),
+        Goal = par_conj_expr(_, SubGoalA, SubGoalsB),
         !GoalStats ^ goal_num_par_conj := !.GoalStats ^ goal_num_par_conj + 1,
         gather_stats_in_goal(SubGoalA, !GoalStats),
-        gather_stats_in_goal(SubGoalB, !GoalStats)
+        gather_stats_in_goals(SubGoalsB, !GoalStats)
     ;
         Goal = true_expr(_),
         !GoalStats ^ goal_num_true := !.GoalStats ^ goal_num_true + 1

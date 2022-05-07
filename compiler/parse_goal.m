@@ -455,10 +455,12 @@ parse_non_call_goal(GoalKind, Args, Context, ContextPieces, MaybeGoal,
             MaybeGoal, !VarSet)
     ;
         GoalKind = gk_conj,
+        % We select the in(gk_conj) mode of parse_goal_conj.
         parse_goal_conj(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ;
         GoalKind = gk_par_conj,
+        % We select the in(gk_par_conj) mode of parse_goal_conj.
         parse_goal_conj(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet)
     ;
@@ -780,31 +782,74 @@ parse_goal_some_all(GoalKind, ArgTerms, Context, ContextPieces,
 
 parse_goal_conj(GoalKind, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
+    string_goal_kind(Functor, GoalKind),
     ( if ArgTerms = [SubGoalTermA, SubGoalTermB] then
-        parse_goal(SubGoalTermA, ContextPieces, MaybeSubGoalA, !VarSet),
-        parse_goal(SubGoalTermB, ContextPieces, MaybeSubGoalB, !VarSet),
-        ( if
-            MaybeSubGoalA = ok2(SubGoalA, GoalWarningSpecsA),
-            MaybeSubGoalB = ok2(SubGoalB, GoalWarningSpecsB)
-        then
+        parse_goal_conjunction(Functor, SubGoalTermA, SubGoalTermB,
+            ContextPieces, cord.init, ConjunctsCord, [], WarningSpecs,
+            [], ErrorSpecs, !VarSet),
+        (
+            ErrorSpecs = [],
+            Conjuncts = cord.list(ConjunctsCord),
+            (
+                Conjuncts = [],
+                unexpected($pred, "no Conjuncts")
+            ;
+                Conjuncts = [Conjunct1 | Conjuncts2plus]
+            ),
             (
                 GoalKind = gk_conj,
-                Goal = conj_expr(Context, SubGoalA, SubGoalB)
+                Goal = conj_expr(Context, Conjunct1, Conjuncts2plus)
             ;
                 GoalKind = gk_par_conj,
-                Goal = par_conj_expr(Context, SubGoalA, SubGoalB)
+                Goal = par_conj_expr(Context, Conjunct1, Conjuncts2plus)
             ),
-            WarningSpecs = GoalWarningSpecsA ++ GoalWarningSpecsB,
             MaybeGoal = ok2(Goal, WarningSpecs)
-        else
-            Specs = get_any_errors_warnings2(MaybeSubGoalA) ++
-                get_any_errors_warnings2(MaybeSubGoalB),
-            MaybeGoal = error2(Specs)
+        ;
+            ErrorSpecs = [_ | _],
+            MaybeGoal = error2(ErrorSpecs)
         )
     else
-        string_goal_kind(Functor, GoalKind),
         Spec = should_have_two_goals_infix(ContextPieces, Context, Functor),
         MaybeGoal = error2([Spec])
+    ).
+
+:- pred parse_goal_conjunction(string::in, term::in, term::in,
+    cord(format_component)::in, cord(goal)::in, cord(goal)::out,
+    list(warning_spec)::in, list(warning_spec)::out,
+    list(error_spec)::in, list(error_spec)::out,
+    prog_varset::in, prog_varset::out) is det.
+% Don't inline this predicate, since it is recursive.
+
+parse_goal_conjunction(Functor, TermA, TermB, ContextPieces, !ConjunctsCord,
+        !Warnings, !Specs, !VarSet) :-
+    parse_goal(TermA, ContextPieces, MaybeGoalA, !VarSet),
+    (
+        MaybeGoalA = ok2(ConjunctA, WarningsA),
+        cord.snoc(ConjunctA, !ConjunctsCord),
+        !:Warnings = WarningsA ++ !.Warnings
+    ;
+        MaybeGoalA = error2(SpecsA),
+        !:Specs = !.Specs ++ SpecsA
+    ),
+    ( if
+        TermB = term.functor(term.atom(Functor), ArgTermsB, _Context),
+        ArgTermsB = [TermBA, TermBB],
+        not (
+            TermBA = term.functor(term.atom("->"), [_, _], _)
+        )
+    then
+        parse_goal_conjunction(Functor, TermBA, TermBB, ContextPieces,
+            !ConjunctsCord, !Warnings, !Specs, !VarSet)
+    else
+        parse_goal(TermB, ContextPieces, MaybeGoalB, !VarSet),
+        (
+            MaybeGoalB = ok2(ConjunctB, WarningsB),
+            cord.snoc(ConjunctB, !ConjunctsCord),
+            !:Warnings = !.Warnings ++ WarningsB
+        ;
+            MaybeGoalB = error2(SpecsB),
+            !:Specs = !.Specs ++ SpecsB
+        )
     ).
 
 %---------------------%

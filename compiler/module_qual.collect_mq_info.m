@@ -861,9 +861,15 @@ collect_mq_info_in_item_promise(InInt, ItemPromise, !Info) :-
 
 collect_used_modules_in_promise_goal(Goal, !UsedModuleNames, !FoundUnqual) :-
     (
-        ( Goal = conj_expr(_, SubGoalA, SubGoalB)
-        ; Goal = par_conj_expr(_, SubGoalA, SubGoalB)
-        ; Goal = implies_expr(_, SubGoalA, SubGoalB)
+        ( Goal = conj_expr(_, SubGoalA, SubGoalsB)
+        ; Goal = par_conj_expr(_, SubGoalA, SubGoalsB)
+        ),
+        collect_used_modules_in_promise_goal(SubGoalA,
+            !UsedModuleNames, !FoundUnqual),
+        collect_used_modules_in_promise_goals(SubGoalsB,
+            !UsedModuleNames, !FoundUnqual)
+    ;
+        ( Goal = implies_expr(_, SubGoalA, SubGoalB)
         ; Goal = equivalent_expr(_, SubGoalA, SubGoalB)
         ),
         collect_used_modules_in_promise_goal(SubGoalA,

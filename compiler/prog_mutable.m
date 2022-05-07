@@ -916,10 +916,10 @@ define_nonconstant_get_set_preds(ModuleName, TargetParams, MutableName,
             ImpureSetExpr = CallUnsafeSetExpr
         ;
             MaybeLockUnlockExprs = yes({CallLockExpr, CallUnlockExpr}),
-            ImpureGetExpr = conj_expr(Context, CallLockExpr,
-                conj_expr(Context, CallUnsafeGetExpr, CallUnlockExpr)),
-            ImpureSetExpr = conj_expr(Context, CallLockExpr,
-                conj_expr(Context, CallUnsafeSetExpr, CallUnlockExpr))
+            ImpureGetExpr = conj_expr(Context,
+                CallLockExpr, [CallUnsafeGetExpr, CallUnlockExpr]),
+            ImpureSetExpr = conj_expr(Context,
+                CallLockExpr, [CallUnsafeSetExpr, CallUnlockExpr])
         ),
         StdPredArgs = [variable(X, Context)],
         StdGetPredExpr = promise_purity_expr(Context, purity_semipure,
@@ -951,8 +951,8 @@ define_nonconstant_get_set_preds(ModuleName, TargetParams, MutableName,
         CopyIOExpr = unify_expr(Context,
             variable(IO0, Context), variable(IO, Context),
             purity_impure),
-        IOGetPredExpr = conj_expr(Context, ImpureGetExpr, CopyIOExpr),
-        IOSetPredExpr = conj_expr(Context, ImpureSetExpr, CopyIOExpr),
+        IOGetPredExpr = conj_expr(Context, ImpureGetExpr, [CopyIOExpr]),
+        IOSetPredExpr = conj_expr(Context, ImpureSetExpr, [CopyIOExpr]),
         PureIOGetPredExpr =
             promise_purity_expr(Context, purity_pure, IOGetPredExpr),
         PureIOSetPredExpr =
@@ -997,13 +997,13 @@ define_init_pred(ModuleName, Lang, ItemMutable, InitSetPredName,
 
     UnifyExpr = unify_expr(Context, VarX, InitTerm, purity_impure),
     CallSetExpr = call_expr(Context, InitSetPredName, [VarX], purity_impure),
-    UnifyCallSetExpr = conj_expr(Context, UnifyExpr, CallSetExpr),
+    UnifyCallSetExpr = conj_expr(Context, UnifyExpr, [CallSetExpr]),
     (
         MaybeCallPreInitExpr = no,
         InitPredExpr = UnifyCallSetExpr
     ;
         MaybeCallPreInitExpr = yes(CallPreInitExpr),
-        InitPredExpr = conj_expr(Context, CallPreInitExpr, UnifyCallSetExpr)
+        InitPredExpr = conj_expr(Context, CallPreInitExpr, [UnifyCallSetExpr])
     ),
     InitPredName = mutable_init_pred_name(ModuleName, MutableName),
     % See the comments for parse_mutable_decl_info for the reason

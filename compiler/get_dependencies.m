@@ -690,9 +690,13 @@ acc_implicit_avail_needs_in_goal(Goal, !ImplicitAvailNeeds) :-
         )
         % Cannot contain anything that requires implicit imports.
     ;
-        ( Goal = conj_expr(_, SubGoalA, SubGoalB)
-        ; Goal = par_conj_expr(_, SubGoalA, SubGoalB)
-        ; Goal = implies_expr(_, SubGoalA, SubGoalB)
+        ( Goal = conj_expr(_, SubGoalA, SubGoalsB)
+        ; Goal = par_conj_expr(_, SubGoalA, SubGoalsB)
+        ),
+        acc_implicit_avail_needs_in_goal(SubGoalA, !ImplicitAvailNeeds),
+        acc_implicit_avail_needs_in_goals(SubGoalsB, !ImplicitAvailNeeds)
+    ;
+        ( Goal = implies_expr(_, SubGoalA, SubGoalB)
         ; Goal = equivalent_expr(_, SubGoalA, SubGoalB)
         ),
         acc_implicit_avail_needs_in_goal(SubGoalA, !ImplicitAvailNeeds),

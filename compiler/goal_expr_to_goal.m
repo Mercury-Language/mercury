@@ -140,7 +140,7 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         % `P => Q' is defined as `not (P, not Q)'
         TransformedGoal =
             not_expr(Context,
-                conj_expr(Context, P, not_expr(Context, Q))),
+                conj_expr(Context, P, [not_expr(Context, Q)])),
         transform_parse_tree_goal_to_hlds(LocKind, TransformedGoal,
             Renaming, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
@@ -547,50 +547,17 @@ dcg_field_error_context_pieces(AccessType) = ContextPieces :-
 
 transform_parse_tree_goal_to_hlds_conj(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    Goal = conj_expr(Context, SubGoalA, SubGoalB),
-    accumulate_plain_conjuncts(LocKind, SubGoalA, Renaming,
-        cord.init, HLDSConjunctsCordA,
+    Goal = conj_expr(Context, ConjunctA, ConjunctsB),
+    accumulate_plain_or_par_conjunct(LocKind, plain_conj, Renaming,
+        ConjunctA, cord.init, HLDSConjunctsCordA,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-    accumulate_plain_conjuncts(LocKind, SubGoalB, Renaming,
-        HLDSConjunctsCordA, HLDSConjunctsCordAB,
+    list.foldl7(
+        accumulate_plain_or_par_conjunct(LocKind, plain_conj, Renaming),
+        ConjunctsB, HLDSConjunctsCordA, HLDSConjunctsCord,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-    HLDSConjuncts = cord.list(HLDSConjunctsCordAB),
+    HLDSConjuncts = cord.list(HLDSConjunctsCord),
     goal_info_init(Context, GoalInfo),
     conj_list_to_goal(HLDSConjuncts, GoalInfo, HLDSGoal).
-
-    % accumulate_plain_conjuncts(LocKind, Goal, Renaming, !HLDSConjunctsCord,
-    %   ...):
-    %
-    % Goal is a tree of conjuncts. Flatten it into a list (applying Renaming),
-    % and append the result to the end of !HLDSConjunctsCord.
-    %
-:- pred accumulate_plain_conjuncts(loc_kind::in, goal::in,
-    prog_var_renaming::in, cord(hlds_goal)::in, cord(hlds_goal)::out,
-    svar_state::in, svar_state::out, svar_store::in, svar_store::out,
-    prog_varset::in, prog_varset::out, module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-accumulate_plain_conjuncts(LocKind, Goal, Renaming, !HLDSConjunctsCord,
-        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    ( if Goal = conj_expr(_Context, SubGoalA, SubGoalB) then
-        accumulate_plain_conjuncts(LocKind, SubGoalA, Renaming,
-            !HLDSConjunctsCord, !SVarState, !SVarStore,
-            !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        accumulate_plain_conjuncts(LocKind, SubGoalB, Renaming,
-            !HLDSConjunctsCord, !SVarState, !SVarStore,
-            !VarSet, !ModuleInfo, !QualInfo, !Specs)
-    else
-        transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
-            !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        HLDSGoal = hlds_goal(HLDSGoalExpr, _),
-        ( if HLDSGoalExpr = conj(plain_conj, HLDSConjuncts) then
-            !:HLDSConjunctsCord = !.HLDSConjunctsCord ++
-                cord.from_list(HLDSConjuncts)
-        else
-            !:HLDSConjunctsCord = cord.snoc(!.HLDSConjunctsCord, HLDSGoal)
-        )
-    ).
 
 %----------------------------------------------------------------------------%
 
@@ -607,46 +574,44 @@ accumulate_plain_conjuncts(LocKind, Goal, Renaming, !HLDSConjunctsCord,
 
 transform_parse_tree_goal_to_hlds_par_conj(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    Goal = par_conj_expr(Context, SubGoalA, SubGoalB),
-    accumulate_par_conjuncts(LocKind, SubGoalA, Renaming,
-        cord.init, HLDSConjunctsCordA,
+    Goal = par_conj_expr(Context, ConjunctA, ConjunctsB),
+    accumulate_plain_or_par_conjunct(LocKind, parallel_conj, Renaming,
+        ConjunctA, cord.init, HLDSConjunctsCordA,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-    accumulate_par_conjuncts(LocKind, SubGoalB, Renaming,
-        HLDSConjunctsCordA, HLDSConjunctsCordAB,
+    list.foldl7(
+        accumulate_plain_or_par_conjunct(LocKind, parallel_conj, Renaming),
+        ConjunctsB, HLDSConjunctsCordA, HLDSConjunctsCord,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-    HLDSConjuncts = cord.list(HLDSConjunctsCordAB),
+    HLDSConjuncts = cord.list(HLDSConjunctsCord),
     goal_info_init(Context, GoalInfo),
     par_conj_list_to_goal(HLDSConjuncts, GoalInfo, HLDSGoal).
 
-    % accumulate_par_conjuncts does the same job as accumulate_plain_conjuncts
-    % but for parallel conjunctions.
+%----------------------------------------------------------------------------%
+
+    % accumulate_plain_or_par_conjunct(LocKind, PlainOrPar Renaming,
+    %   Goal, !HLDSConjunctsCord, ...):
     %
-:- pred accumulate_par_conjuncts(loc_kind::in, goal::in, prog_var_renaming::in,
-    cord(hlds_goal)::in, cord(hlds_goal)::out,
+    % Goal is a tree of conjuncts. Flatten it into a list (applying Renaming),
+    % and append the result to the end of !HLDSConjunctsCord.
+    %
+:- pred accumulate_plain_or_par_conjunct(loc_kind::in, conj_type::in,
+    prog_var_renaming::in, goal::in, cord(hlds_goal)::in, cord(hlds_goal)::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-accumulate_par_conjuncts(LocKind, Goal, Renaming, !HLDSConjunctsCord,
-        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    ( if Goal = par_conj_expr(_Context, SubGoalA, SubGoalB) then
-        accumulate_par_conjuncts(LocKind, SubGoalA, Renaming,
-            !HLDSConjunctsCord, !SVarState, !SVarStore, !VarSet,
-            !ModuleInfo, !QualInfo, !Specs),
-        accumulate_par_conjuncts(LocKind, SubGoalB, Renaming,
-            !HLDSConjunctsCord, !SVarState, !SVarStore, !VarSet,
-            !ModuleInfo, !QualInfo, !Specs)
+accumulate_plain_or_par_conjunct(LocKind, ConjType, Renaming,
+        Goal, !HLDSConjunctsCord, !SVarState, !SVarStore,
+        !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
+    transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
+        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
+    HLDSGoal = hlds_goal(HLDSGoalExpr, _),
+    ( if HLDSGoalExpr = conj(ConjType, HLDSConjuncts) then
+        !:HLDSConjunctsCord = !.HLDSConjunctsCord ++
+            cord.from_list(HLDSConjuncts)
     else
-        transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
-            !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        HLDSGoal = hlds_goal(HLDSGoalExpr, _),
-        ( if HLDSGoalExpr = conj(parallel_conj, HLDSConjuncts) then
-            !:HLDSConjunctsCord = !.HLDSConjunctsCord ++
-                cord.from_list(HLDSConjuncts)
-        else
-            !:HLDSConjunctsCord = cord.snoc(!.HLDSConjunctsCord, HLDSGoal)
-        )
+        cord.snoc(HLDSGoal, !HLDSConjunctsCord)
     ).
 
 %----------------------------------------------------------------------------%
@@ -979,7 +944,7 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
         functor(atom("!."), [variable(IOStateVarUnrenamed, Context)], Context),
         purity_pure),
     ScopedGoal = quant_expr(quant_some, quant_ordinary_vars, Context, [],
-        conj_expr(Context, IOUnify, Goal0)),
+        conj_expr(Context, IOUnify, [Goal0])),
     transform_parse_tree_goal_to_hlds(LocKind, ScopedGoal, Renaming,
         HLDSScopedGoal, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),
@@ -1105,12 +1070,12 @@ transform_try_expr_without_io(LocKind, SubGoal, ThenGoal, MaybeElseGoal,
             conj_expr(Context,
                 quant_expr(quant_some, quant_ordinary_vars, Context, [],
                     SubGoal),
-                quant_expr(quant_some, quant_ordinary_vars, Context, [],
-                    ThenGoal)
+                [quant_expr(quant_some, quant_ordinary_vars, Context, [],
+                    ThenGoal)]
             )
     ),
     ResultIsSucceededDisjunctGoal =
-        conj_expr(Context, ResultIsSucceededUnifyGoal, SucceededSubGoal),
+        conj_expr(Context, ResultIsSucceededUnifyGoal, [SucceededSubGoal]),
 
     % Build the disjunct for "TryResult = exception(Excp), ...".
     make_exception_handling_disjunct(ResultVarTerm, ExcpVarTerm,
@@ -1120,11 +1085,11 @@ transform_try_expr_without_io(LocKind, SubGoal, ThenGoal, MaybeElseGoal,
     CallMagicThenDisjunctionGoal =
         conj_expr(Context,
             CallMagicGoal,
-            disj_expr(Context,
+            [disj_expr(Context,
                 ResultIsSucceededDisjunctGoal,
                 ResultIsExceptionDisjunctGoal,
                 []
-            )
+            )]
         ),
     transform_parse_tree_goal_to_hlds(LocKind, CallMagicThenDisjunctionGoal,
         Renaming, HLDSCallMagicThenDisjunctionGoal, !SVarState, !SVarStore,
@@ -1146,7 +1111,7 @@ make_exception_handling_disjunct(ResultVarTerm, ExcpVarTerm, Catches,
         purity_pure),
     make_catch_ite_chain(ResultVarTerm, ExcpVarTerm, Catches, MaybeCatchAny,
         CatchChain),
-    Goal = conj_expr(Context, ResultIsExceptionUnify, CatchChain).
+    Goal = conj_expr(Context, ResultIsExceptionUnify, [CatchChain]).
 
 :- pred make_catch_ite_chain(prog_term::in, prog_term::in,
     list(catch_expr)::in, maybe(catch_any_expr)::in, goal::out) is det.
@@ -1173,7 +1138,7 @@ make_catch_ite_chain(ResultVarTerm, ExcpVarTerm, Catches, MaybeCatchAny,
                 variable(CatchAnyVar, Context),
                 exception_functor("exc_univ_value", ExcpVarTerm, Context),
                 purity_pure),
-            Goal = conj_expr(Context, GetUnivValue, CatchAnyGoal)
+            Goal = conj_expr(Context, GetUnivValue, [CatchAnyGoal])
         ;
             MaybeCatchAny = no,
             % Without a catch_any part, end the if-then-else chain

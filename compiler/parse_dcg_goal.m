@@ -452,32 +452,77 @@ parse_dcg_goal_some_all(Functor, ArgTerms, Context, ContextPieces,
 
 parse_dcg_goal_conj(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
-    ( if ArgTerms = [SubGoalTermA, SubGoalTermB] then
-        parse_dcg_goal(SubGoalTermA, ContextPieces, MaybeSubGoalA,
+    ( if ArgTerms = [TermA, TermB] then
+        parse_dcg_goal_conjunction(Functor, TermA, TermB, Context,
+            ContextPieces, cord.init, ConjunctsCord, [], Warnings, [], Errors,
             !VarSet, !Counter, !DCGVar),
-        parse_dcg_goal(SubGoalTermB, ContextPieces, MaybeSubGoalB,
-            !VarSet, !Counter, !DCGVar),
-        ( if
-            MaybeSubGoalA = ok2(SubGoalA, GoalWarningSpecsA),
-            MaybeSubGoalB = ok2(SubGoalB, GoalWarningSpecsB)
-        then
-            GoalWarningSpecs = GoalWarningSpecsA ++ GoalWarningSpecsB,
+        (
+            Errors = [],
+            Conjuncts = cord.list(ConjunctsCord),
+            (
+                Conjuncts = [],
+                unexpected($pred, "no Conjuncts")
+            ;
+                Conjuncts = [ConjunctA | ConjunctsB]
+            ),
             (
                 Functor = ",",
-                Goal = conj_expr(Context, SubGoalA, SubGoalB)
+                Goal = conj_expr(Context, ConjunctA, ConjunctsB)
             ;
                 Functor = "&",
-                Goal = par_conj_expr(Context, SubGoalA, SubGoalB)
+                Goal = par_conj_expr(Context, ConjunctA, ConjunctsB)
             ),
-            MaybeGoal = ok2(Goal, GoalWarningSpecs)
-        else
-            Specs = get_any_errors_warnings2(MaybeSubGoalA) ++
-                get_any_errors_warnings2(MaybeSubGoalB),
-            MaybeGoal = error2(Specs)
+            MaybeGoal = ok2(Goal, Warnings)
+        ;
+            Errors = [_ | _],
+            MaybeGoal = error2(Errors)
         )
     else
         Spec = should_have_two_goals_infix(ContextPieces, Context, Functor),
         MaybeGoal = error2([Spec])
+    ).
+
+:- pred parse_dcg_goal_conjunction(string, term, term,
+    prog_context, cord(format_component), cord(goal), cord(goal),
+    list(warning_spec), list(warning_spec),
+    list(error_spec), list(error_spec),
+    prog_varset, prog_varset, counter, counter, prog_var, prog_var).
+:- mode parse_dcg_goal_conjunction(in(comma), in, in, in, in,
+    in, out, in, out, in, out, in, out, in, out, in, out) is det.
+:- mode parse_dcg_goal_conjunction(in(ampersand), in, in, in, in,
+    in, out, in, out, in, out, in, out, in, out, in, out) is det.
+
+parse_dcg_goal_conjunction(Functor, TermA, TermB, Context,
+        ContextPieces, !ConjunctsCord, !Warnings, !Errors,
+        !VarSet, !Counter, !DCGVar) :-
+    parse_dcg_goal(TermA, ContextPieces, MaybeGoalA,
+        !VarSet, !Counter, !DCGVar),
+    (
+        MaybeGoalA = ok2(GoalA, WarningsA),
+        cord.snoc(GoalA, !ConjunctsCord),
+        !:Warnings = WarningsA ++ !.Warnings
+    ;
+        MaybeGoalA = error2(SpecsA),
+        !:Errors = SpecsA ++ !.Errors
+    ),
+    ( if
+        TermB = term.functor(term.atom(Functor), ArgTermsB, Context),
+        ArgTermsB = [TermBA, TermBB]
+    then
+        parse_dcg_goal_conjunction(Functor, TermBA, TermBB, Context,
+            ContextPieces, !ConjunctsCord, !Warnings, !Errors,
+            !VarSet, !Counter, !DCGVar)
+    else
+        parse_dcg_goal(TermB, ContextPieces, MaybeGoalB,
+            !VarSet, !Counter, !DCGVar),
+        (
+            MaybeGoalB = ok2(GoalB, WarningsB),
+            cord.snoc(GoalB, !ConjunctsCord),
+            !:Warnings = WarningsB ++ !.Warnings
+        ;
+            MaybeGoalB = error2(SpecsB),
+            !:Errors = SpecsB ++ !.Errors
+        )
     ).
 
 %---------------------%
@@ -564,7 +609,7 @@ parse_dcg_goal_disjunction(DCGVar0, ContextPieces, TermA, TermB,
     (
         MaybeGoalA = ok2(DisjunctA, WarningsA),
         maybe_record_non_initial_dcg_var(DCGVar0, DCGVarA,
-            !MaybeFirstDiffDCGVar), 
+            !MaybeFirstDiffDCGVar),
         append_disjunct_dcg_var_to_cord(DCGVarA, DisjunctA,
             !DisjunctsDCGVarsCord),
         % The order of the warnings does not matter.
@@ -588,8 +633,8 @@ parse_dcg_goal_disjunction(DCGVar0, ContextPieces, TermA, TermB,
             !VarSet, !Counter, DCGVar0, DCGVarB),
         (
             MaybeGoalB = ok2(DisjunctB, WarningsB),
-            maybe_record_non_initial_dcg_var(DCGVar0, DCGVarB, 
-                !MaybeFirstDiffDCGVar), 
+            maybe_record_non_initial_dcg_var(DCGVar0, DCGVarB,
+                !MaybeFirstDiffDCGVar),
             append_disjunct_dcg_var_to_cord(DCGVarB, DisjunctB,
                 !DisjunctsDCGVarsCord),
             !:Warnings = !.Warnings ++ WarningsB
@@ -668,7 +713,7 @@ bring_disjunct_up_to(InitDCGVar, FinalDCGVar, Context,
             term.variable(FinalDCGVar, Context),
             term.variable(InitDCGVar, Context),
             purity_pure),
-        Disjunct = conj_expr(Context, Disjunct0, Unify)
+        Disjunct = conj_expr(Context, Disjunct0, [Unify])
     else
         prog_util.rename_in_goal(DisjunctEndDCGVar, FinalDCGVar,
             Disjunct0, Disjunct)
@@ -1005,7 +1050,7 @@ parse_dcg_if_then(CondGoalTerm, ThenGoalTerm, Context, ContextPieces,
             Unify = unify_expr(Context,
                 term.variable(Var, Context), term.variable(Var2, Context),
                 purity_pure),
-            Then = conj_expr(Context, Then1, Unify),
+            Then = conj_expr(Context, Then1, [Unify]),
             MaybeThen = ok2(Then, ThenWarningSpecs)
         ;
             MaybeThen1 = error2(_),
@@ -1044,7 +1089,7 @@ parse_dcg_if_then_else(CondGoalTerm, ThenGoalTerm, ElseGoalTerm,
             Unify = unify_expr(Context,
                 term.variable(Var, Context), term.variable(VarThen, Context),
                 purity_pure),
-            Then = conj_expr(Context, Then1, Unify),
+            Then = conj_expr(Context, Then1, [Unify]),
             Else = Else1
         else if VarElse = Var0 then
             Var = VarThen,
@@ -1052,7 +1097,7 @@ parse_dcg_if_then_else(CondGoalTerm, ThenGoalTerm, ElseGoalTerm,
             Unify = unify_expr(Context,
                 term.variable(Var, Context), term.variable(VarElse, Context),
                 purity_pure),
-            Else = conj_expr(Context, Else1, Unify)
+            Else = conj_expr(Context, Else1, [Unify])
         else
             % We prefer to substitute the then part since it is likely to be
             % smaller than the else part, since the else part may have a deeply
