@@ -124,32 +124,30 @@ parse_dcg_goal(Term, ContextPieces, MaybeGoal, !VarSet, !Counter, !DCGVar) :-
     Context = get_term_context(Term),
     term.coerce(Term, ProgTerm),
     ( if
-        try_parse_sym_name_and_args(ProgTerm, SymName, ArgTerms0)
+         % Check for builtins...
+        Term = term.functor(term.atom(Functor), ArgTerms, Context),
+        string_dcg_goal_kind(Functor, GoalKind)
     then
-        % First check for the special cases:
-        ( if
-            SymName = unqualified(Functor),
-            list.map(term.coerce, ArgTerms0, ArgTerms1),
-            parse_non_call_dcg_goal(Functor, ArgTerms1, Context, ContextPieces,
-                MaybeGoalPrime, !VarSet, !Counter, !DCGVar)
-        then
-            MaybeGoal = MaybeGoalPrime
-        else
-            % It's the ordinary case of nonterminal. Turn the term into a call,
-            % and add the current and next DCG variables to the end of the
-            % argument list.
+        parse_non_call_dcg_goal(GoalKind, ArgTerms, Context, ContextPieces,
+            MaybeGoal, !VarSet, !Counter, !DCGVar)
+    else
+        % It is not a builtin.
+        ( if try_parse_sym_name_and_args(ProgTerm, SymName, ArgTerms0) then
+            % It is the ordinary case of a nonterminal. Turn the term
+            % into a call, and add the current and next DCG variables
+            % to the end of the argument list.
             make_dcg_call(SymName, ArgTerms0, Context, Goal,
                 !VarSet, !Counter, !DCGVar),
             MaybeGoal = ok2(Goal, [])
+        else
+            % A call to a free variable, or to a number or string.
+            % Just translate it into a call to call/3 - the typechecker
+            % will catch calls to numbers and strings.
+            SymName = unqualified("call"),
+            make_dcg_call(SymName, [ProgTerm], Context, Goal,
+                !VarSet, !Counter, !DCGVar),
+            MaybeGoal = ok2(Goal, [])
         )
-    else
-        % A call to a free variable, or to a number or string.
-        % Just translate it into a call to call/3 - the typechecker will catch
-        % calls to numbers and strings.
-        SymName = unqualified("call"),
-        make_dcg_call(SymName, [ProgTerm], Context, Goal,
-            !VarSet, !Counter, !DCGVar),
-        MaybeGoal = ok2(Goal, [])
     ).
 
 :- pred make_dcg_call(sym_name::in, list(prog_term)::in, prog_context::in,
@@ -165,6 +163,78 @@ make_dcg_call(SymName, ArgTerms0, Context, Goal, !VarSet, !Counter, !DCGVar) :-
         term.variable(OutVar, Context)],
     Goal = call_expr(Context, SymName, ArgTerms, purity_pure).
 
+%---------------------------------------------------------------------------%
+
+:- type dcg_goal_kind
+    --->    dgk_impure
+    ;       dgk_semipure
+    ;       dgk_promise_impure
+    ;       dgk_promise_semipure
+    ;       dgk_promise_pure
+    ;       dgk_not
+    ;       dgk_not_prolog
+    ;       dgk_some
+    ;       dgk_all
+    ;       dgk_conj
+    ;       dgk_par_conj
+    ;       dgk_semicolon
+    ;       dgk_else
+    ;       dgk_if
+    ;       dgk_braces
+    ;       dgk_nil
+    ;       dgk_cons
+    ;       dgk_equal
+    ;       dgk_colon_equal.
+
+:- inst dcg_goal_kind_purity for dcg_goal_kind/0
+    --->    dgk_impure
+    ;       dgk_semipure.
+
+:- inst dcg_goal_kind_promise_purity for dcg_goal_kind/0
+    --->    dgk_promise_impure
+    ;       dgk_promise_semipure
+    ;       dgk_promise_pure.
+
+:- inst dcg_goal_kind_not for dcg_goal_kind/0
+    --->    dgk_not
+    ;       dgk_not_prolog.
+
+:- inst dcg_goal_kind_some_all for dcg_goal_kind/0
+    --->    dgk_some
+    ;       dgk_all.
+
+:- inst dcg_goal_kind_conj for dcg_goal_kind/0
+    --->    dgk_conj.
+
+:- inst dcg_goal_kind_par_conj for dcg_goal_kind/0
+    --->    dgk_par_conj.
+
+:- pred string_dcg_goal_kind(string, dcg_goal_kind).
+:- mode string_dcg_goal_kind(in, out) is semidet.
+:- mode string_dcg_goal_kind(out, in) is det.
+
+string_dcg_goal_kind(Functor, GoalKind) :-
+    ( Functor = "impure",           GoalKind = dgk_impure
+    ; Functor = "semipure",         GoalKind = dgk_semipure
+    ; Functor = "promise_impure"  , GoalKind = dgk_promise_impure
+    ; Functor = "promise_semipure", GoalKind = dgk_promise_semipure
+    ; Functor = "promise_pure",     GoalKind = dgk_promise_pure
+    ; Functor = "not",              GoalKind = dgk_not
+    ; Functor = "\\+",              GoalKind = dgk_not_prolog
+    ; Functor = "some",             GoalKind = dgk_some
+    ; Functor = "all",              GoalKind = dgk_all
+    ; Functor = ",",                GoalKind = dgk_conj
+    ; Functor = "&",                GoalKind = dgk_par_conj
+    ; Functor = ";",                GoalKind = dgk_semicolon
+    ; Functor = "else",             GoalKind = dgk_else
+    ; Functor = "if",               GoalKind = dgk_if
+    ; Functor = "{}",               GoalKind = dgk_braces
+    ; Functor = "[]",               GoalKind = dgk_nil
+    ; Functor = "[|]",              GoalKind = dgk_cons
+    ; Functor = "=",                GoalKind = dgk_equal
+    ; Functor = ":=",               GoalKind = dgk_colon_equal
+    ).
+
     % parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, Goal,
     %   !VarSet, !Counter, !DCGVar):
     %
@@ -174,12 +244,13 @@ make_dcg_call(SymName, ArgTerms0, Context, Goal, !VarSet, !Counter, !DCGVar) :-
     % in error messages, debugging, etc.). We use !DCGVar to keep track of
     % the current DCG variable.
     %
-:- pred parse_non_call_dcg_goal(string::in, list(term)::in, prog_context::in,
-    cord(format_component)::in, maybe2(goal, list(warning_spec))::out,
+:- pred parse_non_call_dcg_goal(dcg_goal_kind::in, list(term)::in,
+    prog_context::in, cord(format_component)::in,
+    maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
-    prog_var::in, prog_var::out) is semidet.
+    prog_var::in, prog_var::out) is det.
 
-parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
+parse_non_call_dcg_goal(GoalKind, Args, Context, ContextPieces, MaybeGoal,
         !VarSet, !Counter, !DCGVar) :-
     % We parse goals in DCG contexts here, while we parse goals in non-DCG
     % contexts in parse_non_call_goal in parse_goal.m.
@@ -194,98 +265,92 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
     %
     % That comment also records why we don't want to factor out much of the
     % common code between these two predicates.
-
+    %
     % XXX We should update ContextPieces at every call to parse a goal
     % component that is not itself a goal.
-
-    require_switch_arms_det [Functor]
     (
-        ( Functor = "impure"
-        ; Functor = "semipure"
+        ( GoalKind = dgk_impure
+        ; GoalKind = dgk_semipure
         ),
-        parse_dcg_goal_impure_semipure(Functor, Args, Context, ContextPieces,
+        parse_dcg_goal_impure_semipure(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     ;
-        ( Functor = "promise_pure"
-        ; Functor = "promise_semipure"
-        ; Functor = "promise_impure"
+        ( GoalKind = dgk_promise_pure
+        ; GoalKind = dgk_promise_semipure
+        ; GoalKind = dgk_promise_impure
         ),
-        parse_dcg_goal_promise_purity(Functor, Args, Context, ContextPieces,
+        parse_dcg_goal_promise_purity(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     ;
-        ( Functor = "not"   % Negation (NU-Prolog syntax).
-        ; Functor = "\\+"   % Negation (Prolog syntax).
+        ( GoalKind = dgk_not
+        ; GoalKind = dgk_not_prolog
         ),
-        parse_dcg_goal_not(Functor, Args, Context, ContextPieces,
+        parse_dcg_goal_not(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     ;
-        ( Functor = "some"
-        ; Functor = "all"
+        ( GoalKind = dgk_some
+        ; GoalKind = dgk_all
         ),
         % Existential or universal quantification.
-        parse_dcg_goal_some_all(Functor, Args, Context, ContextPieces,
+        parse_dcg_goal_some_all(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     ;
-        Functor = ",",
-        parse_dcg_goal_conj(Functor, Args, Context, ContextPieces,
+        GoalKind = dgk_conj,
+        parse_dcg_goal_conj(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     ;
-        Functor = "&",
-        parse_dcg_goal_conj(Functor, Args, Context, ContextPieces,
+        GoalKind = dgk_par_conj,
+        parse_dcg_goal_conj(GoalKind, Args, Context, ContextPieces,
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     ;
-        Functor = ";",
+        GoalKind = dgk_semicolon,
         parse_dcg_goal_semicolon(Args, Context, ContextPieces,
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     ;
-        Functor = "else",
+        GoalKind = dgk_else,
         % If-then-else (NU-Prolog syntax).
         parse_dcg_goal_else(Args, Context, ContextPieces,
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     ;
-        Functor = "if",
+        GoalKind = dgk_if,
         % If-then (NU-Prolog syntax).
         parse_dcg_goal_if(Args, Context, ContextPieces,
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     ;
-        Functor = "{}",
+        GoalKind = dgk_braces,
         parse_dcg_goal_braces(Args, Context, ContextPieces,
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     ;
-        Functor = "[]",
+        GoalKind = dgk_nil,
         parse_dcg_goal_nil(Args, Context, ContextPieces,
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     ;
-        Functor = "[|]",
+        GoalKind = dgk_cons,
         parse_dcg_goal_cons(Args, Context, ContextPieces,
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     ;
-        Functor = "=",
+        GoalKind = dgk_equal,
         parse_dcg_goal_equal(Args, Context, ContextPieces,
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     ;
-        Functor = ":=",
+        GoalKind = dgk_colon_equal,
         parse_dcg_goal_colon_equal(Args, Context, ContextPieces,
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     ).
 
 %---------------------%
 
-:- inst impure_or_semipure for string/0
-    --->    "impure"
-    ;       "semipure".
-
-:- pred parse_dcg_goal_impure_semipure(string::in(impure_or_semipure),
+:- pred parse_dcg_goal_impure_semipure(dcg_goal_kind::in(dcg_goal_kind_purity),
     list(term)::in, prog_context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
 :- pragma inline(pred(parse_dcg_goal_impure_semipure/11)).
 
-parse_dcg_goal_impure_semipure(Functor, ArgTerms, Context, ContextPieces,
+parse_dcg_goal_impure_semipure(GoalKind, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
-    ( Functor = "impure",   Purity = purity_impure
-    ; Functor = "semipure", Purity = purity_semipure
+    ( GoalKind = dgk_impure,   Purity = purity_impure
+    ; GoalKind = dgk_semipure, Purity = purity_semipure
     ),
     ( if ArgTerms = [SubGoalTerm] then
         parse_dcg_goal(SubGoalTerm, ContextPieces, MaybeGoal0,
@@ -293,29 +358,26 @@ parse_dcg_goal_impure_semipure(Functor, ArgTerms, Context, ContextPieces,
         apply_purity_marker_to_maybe_goal(SubGoalTerm, Purity,
             MaybeGoal0, MaybeGoal)
     else
+        string_dcg_goal_kind(Functor, GoalKind),
         Spec = should_have_one_goal_prefix(ContextPieces, Context, Functor),
         MaybeGoal = error2([Spec])
     ).
 
 %---------------------%
 
-:- inst promise_purity for string/0
-    --->    "promise_pure"
-    ;       "promise_semipure"
-    ;       "promise_impure".
-
-:- pred parse_dcg_goal_promise_purity(string::in(promise_purity),
+:- pred parse_dcg_goal_promise_purity(
+    dcg_goal_kind::in(dcg_goal_kind_promise_purity),
     list(term)::in, prog_context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
 :- pragma inline(pred(parse_dcg_goal_promise_purity/11)).
 
-parse_dcg_goal_promise_purity(Functor, ArgTerms, Context, ContextPieces,
+parse_dcg_goal_promise_purity(GoalKind, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
-    ( Functor = "promise_pure",     PromisedPurity = purity_pure
-    ; Functor = "promise_semipure", PromisedPurity = purity_semipure
-    ; Functor = "promise_impure",   PromisedPurity = purity_impure
+    ( GoalKind = dgk_promise_pure,     PromisedPurity = purity_pure
+    ; GoalKind = dgk_promise_semipure, PromisedPurity = purity_semipure
+    ; GoalKind = dgk_promise_impure,   PromisedPurity = purity_impure
     ),
     ( if ArgTerms = [SubGoalTerm] then
         parse_dcg_goal(SubGoalTerm, ContextPieces, MaybeGoal0,
@@ -329,20 +391,21 @@ parse_dcg_goal_promise_purity(Functor, ArgTerms, Context, ContextPieces,
             MaybeGoal = error2(Specs)
         )
     else
+        string_dcg_goal_kind(Functor, GoalKind),
         Spec = should_have_one_goal_prefix(ContextPieces, Context, Functor),
         MaybeGoal = error2([Spec])
     ).
 
 %---------------------%
 
-:- pred parse_dcg_goal_not(string::in, list(term)::in,
-    prog_context::in, cord(format_component)::in,
+:- pred parse_dcg_goal_not(dcg_goal_kind::in(dcg_goal_kind_not),
+    list(term)::in, prog_context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
 :- pragma inline(pred(parse_dcg_goal_not/11)).
 
-parse_dcg_goal_not(Functor, ArgTerms, Context, ContextPieces,
+parse_dcg_goal_not(GoalKind, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
     ( if ArgTerms = [SubGoalTerm] then
         parse_dcg_goal(SubGoalTerm, ContextPieces, MaybeSubGoal,
@@ -356,6 +419,7 @@ parse_dcg_goal_not(Functor, ArgTerms, Context, ContextPieces,
             MaybeGoal = MaybeSubGoal
         )
     else
+        string_dcg_goal_kind(Functor, GoalKind),
         Spec = should_have_one_goal_prefix(ContextPieces, Context, Functor),
         MaybeGoal = error2([Spec])
     ).
@@ -366,22 +430,23 @@ parse_dcg_goal_not(Functor, ArgTerms, Context, ContextPieces,
     --->    "some"
     ;       "all".
 
-:- pred parse_dcg_goal_some_all(string::in(some_or_all), list(term)::in,
+:- pred parse_dcg_goal_some_all(dcg_goal_kind::in(dcg_goal_kind_some_all),
+    list(term)::in,
     prog_context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
 :- pragma inline(pred(parse_dcg_goal_some_all/11)).
 
-parse_dcg_goal_some_all(Functor, ArgTerms, Context, ContextPieces,
+parse_dcg_goal_some_all(GoalKind, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
     (
-        Functor = "some",
+        GoalKind = dgk_some,
         QuantType = quant_some,
         VarsTailPieces = [lower_case_next_if_not_first,
             words("In first argument of"), quote("some"), suffix(":")]
     ;
-        Functor = "all",
+        GoalKind = dgk_all,
         QuantType = quant_all,
         VarsTailPieces = [lower_case_next_if_not_first,
             words("In first argument of"), quote("all"), suffix(":")]
@@ -423,6 +488,7 @@ parse_dcg_goal_some_all(Functor, ArgTerms, Context, ContextPieces,
             MaybeGoal = error2(Specs)
         )
     else
+        string_dcg_goal_kind(Functor, GoalKind),
         Spec = should_have_one_x_one_goal_prefix(ContextPieces, Context,
             "a list of variables", Functor),
         MaybeGoal = error2([Spec])
@@ -430,28 +496,23 @@ parse_dcg_goal_some_all(Functor, ArgTerms, Context, ContextPieces,
 
 %---------------------%
 
-:- inst comma for string/0
-    --->    ",".
-
-:- inst ampersand for string/0
-    --->    "&".
-
     % Although we do almost exactly the same thing for "&" as for ",",
     % we handle them in separate modes, because "," is FAR more common
     % than "&", and keeping its processing efficient is important enough
     % to warrant a small amount of code target language code duplication.
     %
-:- pred parse_dcg_goal_conj(string, list(term),
+:- pred parse_dcg_goal_conj(dcg_goal_kind, list(term),
     prog_context, cord(format_component), maybe2(goal, list(warning_spec)),
     prog_varset, prog_varset, counter, counter, prog_var, prog_var).
-:- mode parse_dcg_goal_conj(in(comma), in, in, in, out,
+:- mode parse_dcg_goal_conj(in(dcg_goal_kind_conj), in, in, in, out,
     in, out, in, out, in, out) is det.
-:- mode parse_dcg_goal_conj(in(ampersand), in, in, in, out,
+:- mode parse_dcg_goal_conj(in(dcg_goal_kind_par_conj), in, in, in, out,
     in, out, in, out, in, out) is det.
 :- pragma inline(pred(parse_dcg_goal_conj/11)).
 
-parse_dcg_goal_conj(Functor, ArgTerms, Context, ContextPieces,
+parse_dcg_goal_conj(GoalKind, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
+    string_dcg_goal_kind(Functor, GoalKind),
     ( if ArgTerms = [TermA, TermB] then
         parse_dcg_goal_conjunction(Functor, TermA, TermB, Context,
             ContextPieces, cord.init, ConjunctsCord, [], Warnings, [], Errors,
@@ -466,10 +527,10 @@ parse_dcg_goal_conj(Functor, ArgTerms, Context, ContextPieces,
                 Conjuncts = [ConjunctA | ConjunctsB]
             ),
             (
-                Functor = ",",
+                GoalKind = dgk_conj,
                 Goal = conj_expr(Context, ConjunctA, ConjunctsB)
             ;
-                Functor = "&",
+                GoalKind = dgk_par_conj,
                 Goal = par_conj_expr(Context, ConjunctA, ConjunctsB)
             ),
             MaybeGoal = ok2(Goal, Warnings)
@@ -482,15 +543,13 @@ parse_dcg_goal_conj(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal = error2([Spec])
     ).
 
-:- pred parse_dcg_goal_conjunction(string, term, term,
-    prog_context, cord(format_component), cord(goal), cord(goal),
-    list(warning_spec), list(warning_spec),
-    list(error_spec), list(error_spec),
-    prog_varset, prog_varset, counter, counter, prog_var, prog_var).
-:- mode parse_dcg_goal_conjunction(in(comma), in, in, in, in,
-    in, out, in, out, in, out, in, out, in, out, in, out) is det.
-:- mode parse_dcg_goal_conjunction(in(ampersand), in, in, in, in,
-    in, out, in, out, in, out, in, out, in, out, in, out) is det.
+:- pred parse_dcg_goal_conjunction(string::in, term::in, term::in,
+    prog_context::in, cord(format_component)::in,
+    cord(goal)::in, cord(goal)::out,
+    list(warning_spec)::in, list(warning_spec)::out,
+    list(error_spec)::in, list(error_spec)::out,
+    prog_varset::in, prog_varset::out, counter::in, counter::out,
+    prog_var::in, prog_var::out) is det.
 
 parse_dcg_goal_conjunction(Functor, TermA, TermB, Context,
         ContextPieces, !ConjunctsCord, !Warnings, !Errors,
