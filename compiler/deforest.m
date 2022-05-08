@@ -512,10 +512,8 @@ propagate_conj_constraints([Goal0 | Goals0], NonLocals, RevGoals0, Goals,
         Constraints = [_ | _]
     then
         SymNameString = sym_name_to_string(SymName),
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, debug_pd, DebugPD),
         trace [io(!IO)] (
-            pd_debug_message(DebugPD,
+            pd_debug_message(!.PDInfo,
                 "propagating constraints into call to %s\n",
                 [s(SymNameString)], !IO)
         ),
@@ -665,15 +663,12 @@ potential_deforestation(Info1, Info2, DeforestBranches) :-
 handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
         Optimized, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
-
     pd_info_get_instmap(!.PDInfo, InstMap0),
     pd_info_get_created_versions(!.PDInfo, CreatedVersions0),
 
     pd_info_get_depth(!.PDInfo, Depth0),
     trace [io(!IO)] (
-        pd_debug_message(DebugPD,
+        pd_debug_message(!.PDInfo,
             "checking for deforestation at depth %i\n", [i(Depth0)], !IO)
     ),
 
@@ -710,7 +705,7 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
             PredName1 = predicate_name(ModuleInfo, PredId1),
             PredName2 = predicate_name(ModuleInfo, PredId2),
             trace [io(!IO)] (
-                pd_debug_message(DebugPD, "deforesting calls to %s and %s\n",
+                pd_debug_message(!.PDInfo, "deforesting calls to %s and %s\n",
                     [s(PredName1), s(PredName2)], !IO)
             ),
             call_call(ConjNonLocals, EarlierGoal, BetweenGoals,
@@ -738,7 +733,7 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
         then
             CurrPredName = predicate_name(ModuleInfo, PredId),
             trace [io(!IO)] (
-                pd_debug_message(DebugPD, "Pushing call to %s into goal\n",
+                pd_debug_message(!.PDInfo, "Pushing call to %s into goal\n",
                     [s(CurrPredName)], !IO)
             ),
             set.insert(proc(PredId, ProcId), Parents0, Parents),
@@ -756,7 +751,7 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
             goal_util.goal_is_branched(LaterGoalExpr)
         then
             trace [io(!IO)] (
-                pd_debug_message(DebugPD, "Pushing goal into goal\n", [], !IO)
+                pd_debug_message(!.PDInfo, "Pushing goal into goal\n", [], !IO)
             ),
             push_goal_into_goal(ConjNonLocals, DeforestBranches,
                 EarlierGoal, BetweenGoals, LaterGoal, Goal, !PDInfo),
@@ -769,7 +764,7 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
             Optimized0 = yes
         else
             trace [io(!IO)] (
-                pd_debug_message(DebugPD, "not optimizing\n", [], !IO)
+                pd_debug_message(!.PDInfo, "not optimizing\n", [], !IO)
             ),
             Goals = [],
             Optimized0 = no
@@ -813,7 +808,7 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
         pd_info_set_rerun_det(yes, !PDInfo)
     ),
     trace [io(!IO)] (
-        pd_debug_message(DebugPD,
+        pd_debug_message(!.PDInfo,
             "finished deforestation at depth %i\n", [i(Depth0)], !IO)
     ),
     pd_info_set_parents(Parents0, !PDInfo).
@@ -827,9 +822,6 @@ should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo) :-
     DeforestInfo = deforest_info(EarlierGoal, EarlierBranchInfo,
         BetweenGoals, LaterGoal, _, _),
     pd_info_get_useless_versions(!.PDInfo, UselessVersions),
-    pd_info_get_module_info(!.PDInfo, ModuleInfo0),
-    module_info_get_globals(ModuleInfo0, Globals),
-    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     ( if
         EarlierGoal = hlds_goal(plain_call(PredId1, ProcId1, _, _, _, _), _),
         LaterGoal = hlds_goal(plain_call(PredId2, ProcId2, _, _, _, _), _),
@@ -837,7 +829,7 @@ should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo) :-
             UselessVersions)
     then
         trace [compile_time(flag("debug_deforest")), io(!IO)] (
-            pd_debug_message(DebugPD,
+            pd_debug_message(!.PDInfo,
                 "version tried before, not worthwhile\n", [], !IO)
         ),
         ShouldTry = no
@@ -856,7 +848,7 @@ should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo) :-
         set_of_var.is_non_empty(UsedOpaqueVars)
     then
         trace [compile_time(flag("debug_deforest")), io(!IO)] (
-            pd_debug_message(DebugPD,
+            pd_debug_message(!.PDInfo,
                 "later goals depend on opaque vars\n", [], !IO)
         ),
         ShouldTry = no
@@ -892,7 +884,6 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     MaxDepth = OptTuple ^ ot_deforestation_depth_limit,
-    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     Depth = Depth0 + 1,
     pd_info_set_depth(Depth, !PDInfo),
     SizeLimit = OptTuple ^ ot_deforestation_size_threshold,
@@ -906,7 +897,7 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
         % The depth limit was exceeded. This should not occur too often in
         % practice - the depth limit is just a safety net.
         trace [compile_time(flag("debug_deforest")), io(!IO)] (
-            pd_debug_message(DebugPD,
+            pd_debug_message(!.PDInfo,
                 "\n\n*****Depth limit exceeded*****\n\n", [], !IO)
         ),
         ShouldTry = no
@@ -931,7 +922,7 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
         CalledGoalSize > SizeLimit
     then
         trace [io(!IO)] (
-            pd_debug_message(DebugPD, "goal too large\n", [], !IO)
+            pd_debug_message(!.PDInfo, "goal too large\n", [], !IO)
         ),
         ShouldTry = no
     else if
@@ -952,7 +943,7 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
             may_not_inline_purity_promised_pred)
     then
         trace [io(!IO)] (
-            pd_debug_message(DebugPD, "non-inlineable calls\n", [], !IO)
+            pd_debug_message(!.PDInfo, "non-inlineable calls\n", [], !IO)
         ),
         ShouldTry = no
     else if
@@ -963,7 +954,7 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
         not is_simple_goal_list(BetweenGoals)
     then
         trace [io(!IO)] (
-            pd_debug_message(DebugPD,
+            pd_debug_message(!.PDInfo,
                 "between goals not simple enough\n", [], !IO)
         ),
         ShouldTry = no
@@ -978,7 +969,7 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
         not goal_info_get_purity(ImpureGoalInfo) = purity_pure
     then
         trace [io(!IO)] (
-            pd_debug_message(DebugPD,
+            pd_debug_message(!.PDInfo,
                 "goal list contains impure goal(s)\n", [], !IO)
         ),
         ShouldTry = no
@@ -998,8 +989,9 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
             FullyStrict, EarlierGoal, OtherGoal)
     then
         trace [io(!IO)] (
-            pd_debug_message(DebugPD, "interleaving execution could change " ++
-                "termination behaviour\n", [], !IO)
+            pd_debug_message(!.PDInfo,
+                "interleaving execution could change termination behaviour\n",
+                [], !IO)
         ),
         ShouldTry = no
     else
@@ -1024,21 +1016,20 @@ is_improvement_worth_while(PDInfo, Optimized0, CostDelta0, SizeDelta0)
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     Factor = OptTuple ^ ot_deforestation_cost_factor,
-    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     ( if
         Optimized0 = yes,
         check_deforestation_improvement(Factor, Improvement, SizeDifference)
     then
         Optimized = yes,
         trace [io(!IO)] (
-            pd_debug_message(DebugPD,
+            pd_debug_message(PDInfo,
                 "Enough improvement: cost(%i) size(%i)\n",
                 [i(Improvement), i(SizeDifference)], !IO)
         )
     else
         Optimized = no,
         trace [io(!IO)] (
-            pd_debug_message(DebugPD,
+            pd_debug_message(PDInfo,
                 "Not enough improvement: cost(%i) size(%i)\n",
                 [i(Improvement), i(SizeDifference)], !IO)
         )
@@ -1140,7 +1131,7 @@ call_call_2(ConjNonLocals, EarlierGoal, BetweenGoals, MaybeLaterGoal,
         (
             CheckResult = ok(ProcPair, Size),
             trace [io(!IO)] (
-                pd_debug_message(DebugPD,
+                pd_debug_message(!.PDInfo,
                     "global termination check succeeded - " ++
                     "creating new version\n",
                     [], !IO)
@@ -1164,7 +1155,7 @@ call_call_2(ConjNonLocals, EarlierGoal, BetweenGoals, MaybeLaterGoal,
         ;
             CheckResult = loop,
             trace [io(!IO)] (
-                pd_debug_message(DebugPD,
+                pd_debug_message(!.PDInfo,
                     "global termination check failed\n", [], !IO)
             ),
             MaybeGoal = no
@@ -1189,7 +1180,6 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
     module_info_get_globals(ModuleInfo0, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     VarsThreshold = OptTuple ^ ot_deforestation_vars_threshold,
-    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     ( if
         EarlierGoal = hlds_goal(EarlierGoalExpr, _),
         EarlierGoalExpr = plain_call(PredId1, ProcId1, Args1, _, _, _),
@@ -1225,7 +1215,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
         pd_info_get_instmap(!.PDInfo, InstMap0),
         pd_info_get_proc_info(!.PDInfo, ProcInfo0),
         trace [io(!IO)] (
-            pd_debug_message(DebugPD, "unfolding first call\n", [], !IO)
+            pd_debug_message(!.PDInfo, "unfolding first call\n", [], !IO)
         ),
 
         unfold_call(no, no, PredId1, ProcId1, Args1, EarlierGoal, UnfoldedCall,
@@ -1246,7 +1236,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             % generalised away.
 
             trace [io(!IO)] (
-                pd_debug_message(DebugPD,
+                pd_debug_message(!.PDInfo,
                     "running modes on deforest goal\n", [], !IO)
             ),
             pd_util.unique_modecheck_goal(DeforestGoal0, DeforestGoal,
@@ -1277,7 +1267,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
 
             PredName = predicate_name(ModuleInfo, PredId),
             trace [io(!IO)] (
-                pd_debug_message(DebugPD,
+                pd_debug_message(!.PDInfo,
                     "\nCreated predicate %s\n", [s(PredName)], !IO)
             ),
             ( if
@@ -1318,7 +1308,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             MaybeCallGoal = yes(CallGoal)
         else
             trace [io(!IO)] (
-                pd_debug_message(DebugPD,
+                pd_debug_message(!.PDInfo,
                     "Generalisation produced mode errors\n", [], !IO)
             ),
             MaybeCallGoal = no
@@ -1331,7 +1321,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
         pd_info_set_instmap(InstMap0, !PDInfo)
     else
         trace [io(!IO)] (
-            pd_debug_message(DebugPD, "vars threshold exceeded\n", [], !IO)
+            pd_debug_message(!.PDInfo, "vars threshold exceeded\n", [], !IO)
         ),
         MaybeCallGoal = no
     ).
@@ -1453,10 +1443,8 @@ try_generalisation(EarlierGoal, BetweenGoals, MaybeLaterGoal,
         FoldGoal, ConjNonLocals, ProcPair, Size,
         CoveringPredProcId, MaybeGoal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     trace [io(!IO)] (
-        pd_debug_message(DebugPD, "trying generalisation\n", [], !IO)
+        pd_debug_message(!.PDInfo, "trying generalisation\n", [], !IO)
     ),
     pd_info_get_versions(!.PDInfo, VersionIndex),
     map.lookup(VersionIndex, CoveringPredProcId, Version),
@@ -1483,15 +1471,15 @@ try_generalisation(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             Renaming)
     then
         trace [io(!IO)] (
-            pd_debug_message(DebugPD, "matched with generalised version\n", [],
-                !IO)
+            pd_debug_message(!.PDInfo,
+                "matched with generalised version\n", [], !IO)
         ),
         do_generalisation(VersionArgVars, Renaming, VersionInstMap,
             EarlierGoal, BetweenGoals, MaybeLaterGoal, FoldGoal, ConjNonLocals,
             ProcPair, Size, CoveringPredProcId, MaybeGoal, !PDInfo)
     else
         trace [io(!IO)] (
-            pd_debug_message(DebugPD, "goals don't match\n", [], !IO)
+            pd_debug_message(!.PDInfo, "goals don't match\n", [], !IO)
         ),
         MaybeGoal = no
     ).
@@ -1507,10 +1495,8 @@ do_generalisation(VersionArgVars, Renaming, VersionInstMap, EarlierGoal,
         BetweenGoals, MaybeLaterGoal, FoldGoal, ConjNonLocals,
         ProcPair, Size, Generalised, MaybeGoal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     trace [io(!IO)] (
-        pd_debug_message(DebugPD, "goals match, trying MSG\n", [], !IO)
+        pd_debug_message(!.PDInfo, "goals match, trying MSG\n", [], !IO)
     ),
     pd_info_get_instmap(!.PDInfo, InstMap0),
     instmap_lookup_vars(VersionInstMap, VersionArgVars, VersionInsts),
@@ -1526,7 +1512,7 @@ do_generalisation(VersionArgVars, Renaming, VersionInstMap, EarlierGoal,
         NewInstSizes < VersionInstSizes
     then
         trace [io(!IO)] (
-            pd_debug_message(DebugPD, "MSG succeeded", [], !IO)
+            pd_debug_message(!.PDInfo, "MSG succeeded", [], !IO)
         ),
         pd_info_set_instmap(InstMap, !PDInfo),
         create_deforest_goal(EarlierGoal, BetweenGoals,
@@ -1534,7 +1520,7 @@ do_generalisation(VersionArgVars, Renaming, VersionInstMap, EarlierGoal,
             Size, yes(Generalised), MaybeGoal, !PDInfo)
     else
         trace [io(!IO)] (
-            pd_debug_message(DebugPD, "MSG failed\n", [], !IO)
+            pd_debug_message(!.PDInfo, "MSG failed\n", [], !IO)
         ),
         MaybeGoal = no
     ),
@@ -1708,9 +1694,8 @@ reorder_conj(DeforestInfo0, DeforestInfo,
         BeforeIrrelevant, AfterIrrelevant, PDInfo) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     trace [io(!IO)] (
-        pd_debug_message(DebugPD, "Reordering conjunction\n", [], !IO)
+        pd_debug_message(PDInfo, "Reordering conjunction\n", [], !IO)
     ),
     DeforestInfo0 = deforest_info(EarlierGoal, EarlierBranchInfo,
         BetweenGoals0, LaterGoal, LaterBranchInfo, DeforestBranches),
@@ -1939,7 +1924,6 @@ deforest_call(PredId, ProcId, Args, SymName, BuiltinState, Goal0, Goal,
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     SizeThreshold = OptTuple ^ ot_deforestation_size_threshold,
-    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     ( if
         % Check for extra information to the call.
         map.search(ProcArgInfos, proc(PredId, ProcId), ProcArgInfo),
@@ -1967,7 +1951,7 @@ deforest_call(PredId, ProcId, Args, SymName, BuiltinState, Goal0, Goal,
         )
     then
         trace [io(!IO)] (
-            pd_debug_message_context(DebugPD, Context,
+            pd_debug_message_context(!.PDInfo, Context,
                 "Found extra information for call to %s/%i\n",
                 [s(Name), i(Arity)], !IO)
         ),
@@ -1976,7 +1960,7 @@ deforest_call(PredId, ProcId, Args, SymName, BuiltinState, Goal0, Goal,
                 LocalTermInfo0, LocalTermInfo)
         then
             trace [io(!IO)] (
-                pd_debug_message(DebugPD,
+                pd_debug_message(!.PDInfo,
                     "Local termination check succeeded\n", [], !IO)
             ),
             pd_info_set_local_term_info(LocalTermInfo, !PDInfo),
@@ -1992,14 +1976,14 @@ deforest_call(PredId, ProcId, Args, SymName, BuiltinState, Goal0, Goal,
             pd_info_set_local_term_info(LocalTermInfo0, !PDInfo)
         else
             trace [io(!IO)] (
-                pd_debug_message(DebugPD,
+                pd_debug_message(!.PDInfo,
                     "Local termination check failed\n", [], !IO)
             ),
             Goal = hlds_goal(GoalExpr0, GoalInfo0)
         )
     else
         trace [io(!IO)] (
-            pd_debug_message_context(DebugPD, Context,
+            pd_debug_message_context(!.PDInfo, Context,
                 "No extra information for call to %s/%i\n",
                 [s(Name), i(Arity)], !IO)
         ),
@@ -2019,7 +2003,6 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
     proc_info_get_var_table(ModuleInfo, ProcInfo0, VarTable0),
     var_table_count(VarTable0, NumVars),
-    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     ( if
         % Check that we haven't already got too many variables.
         (
@@ -2076,7 +2059,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
 
         % Push the extra information from the call through the goal.
         trace [io(!IO)] (
-            pd_debug_message(DebugPD, "Running unique modes\n", [], !IO)
+            pd_debug_message(!.PDInfo, "Running unique modes\n", [], !IO)
         ),
         proc_info_arglives(ModuleInfo, CalledProcInfo, ArgLives),
         get_live_vars(Args, ArgLives, LiveVars0),
@@ -2096,7 +2079,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         ),
 
         trace [io(!IO)] (
-            pd_debug_message(DebugPD, "Running simplify\n", [], !IO)
+            pd_debug_message(!.PDInfo, "Running simplify\n", [], !IO)
         ),
         find_simplify_tasks(Globals, do_not_generate_warnings, SimplifyTasks),
         pd_util.pd_simplify_goal(SimplifyTasks, Goal3, Goal4, !PDInfo),
@@ -2123,7 +2106,8 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         then
             Goal = Goal4,
             trace [io(!IO)] (
-                pd_debug_message(DebugPD, "inlined: cost(%i) size(%i)\n",
+                pd_debug_message(!.PDInfo,
+                    "inlined: cost(%i) size(%i)\n",
                     [i(CostDelta), i(SizeDelta)], !IO)
             ),
             pd_info_incr_size_delta(SizeDelta, !PDInfo),
@@ -2145,7 +2129,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
             Optimized = yes
         else
             trace [io(!IO)] (
-                pd_debug_message(DebugPD,
+                pd_debug_message(!.PDInfo,
                     "not enough improvement - " ++
                     "not inlining: cost(%i) size(%i)\n",
                     [i(CostDelta), i(SizeDelta)], !IO)
@@ -2160,7 +2144,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         )
     else
         trace [io(!IO)] (
-            pd_debug_message(DebugPD,
+            pd_debug_message(!.PDInfo,
                 "too many variables - not inlining\n", [], !IO)
         ),
         Goal = Goal0,

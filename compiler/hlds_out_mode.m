@@ -20,6 +20,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module io.
@@ -27,10 +28,14 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred write_instmap(io.text_output_stream::in, prog_varset::in,
+:- func instmap_to_string(var_name_source, var_name_print, int, instmap)
+    = string.
+:- pred write_instmap(io.text_output_stream::in, var_name_source::in,
     var_name_print::in, int::in, instmap::in, io::di, io::uo) is det.
 
-:- pred write_var_inst_list(io.text_output_stream::in, prog_varset::in,
+:- func var_inst_list_to_string(var_name_source, var_name_print, int,
+    assoc_list(prog_var, mer_inst)) = string.
+:- pred write_var_inst_list(io.text_output_stream::in, var_name_source::in,
     var_name_print::in, int::in, assoc_list(prog_var, mer_inst)::in,
     io::di, io::uo) is det.
 
@@ -102,19 +107,48 @@
 
 %---------------------------------------------------------------------------%
 
-write_instmap(Stream, VarSet, VarNamePrint, Indent, InstMap, !IO) :-
+instmap_to_string(VarNameSrc, VarNamePrint, Indent, InstMap) = Str :-
+    ( if instmap_is_unreachable(InstMap) then
+        Str = "unreachable"
+    else
+        instmap_to_assoc_list(InstMap, AssocList),
+        Str = var_inst_list_to_string(VarNameSrc, VarNamePrint, Indent,
+            AssocList)
+    ).
+
+write_instmap(Stream, VarNameSrc, VarNamePrint, Indent, InstMap, !IO) :-
     ( if instmap_is_unreachable(InstMap) then
         io.write_string(Stream, "unreachable", !IO)
     else
         instmap_to_assoc_list(InstMap, AssocList),
-        write_var_inst_list(Stream, VarSet, VarNamePrint, Indent,
+        write_var_inst_list(Stream, VarNameSrc, VarNamePrint, Indent,
             AssocList, !IO)
     ).
 
+var_inst_list_to_string(_, _, _, []) = "".
+var_inst_list_to_string(VarNameSrc, VarNamePrint, Indent,
+        [Var - Inst | VarsInsts]) = Str :-
+    VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
+    varset.init(InstVarSet),
+    InstStr = mercury_inst_to_string(output_debug, InstVarSet, Inst),
+    string.format("%s -> %s", [s(VarStr), s(InstStr)], VarInstStr),
+    (
+        VarsInsts = [],
+        Str = VarInstStr
+    ;
+        VarsInsts = [_ | _],
+        VarsInstsStr = var_inst_list_to_string(VarNameSrc, VarNamePrint,
+            Indent, VarsInsts),
+        string.duplicate_char('\t', Indent, IndentStr),
+        Prefix= "%            ",
+        string.format("%s\n%s%s%s",
+            [s(VarInstStr), s(IndentStr), s(Prefix), s(VarsInstsStr)], Str)
+    ).
+
 write_var_inst_list(_, _, _, _, [], !IO).
-write_var_inst_list(Stream, VarSet, VarNamePrint, Indent,
+write_var_inst_list(Stream, VarNameSrc, VarNamePrint, Indent,
         [Var - Inst | VarsInsts], !IO) :-
-    mercury_output_var(VarSet, VarNamePrint, Var, Stream, !IO),
+    mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO),
     io.write_string(Stream, " -> ", !IO),
     varset.init(InstVarSet),
     mercury_output_inst(Stream, output_debug, InstVarSet, Inst, !IO),
@@ -124,7 +158,7 @@ write_var_inst_list(Stream, VarSet, VarNamePrint, Indent,
         VarsInsts = [_ | _],
         mercury_output_newline(Indent, Stream, !IO),
         io.write_string(Stream, "%            ", !IO),
-        write_var_inst_list(Stream, VarSet, VarNamePrint, Indent,
+        write_var_inst_list(Stream, VarNameSrc, VarNamePrint, Indent,
             VarsInsts, !IO)
     ).
 

@@ -178,6 +178,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
@@ -505,7 +506,9 @@ stm_create_actual_goal(Context, GoalType, InitInstmap, FinalInstmap,
     ;
         GoalType = nested_atomic_goal,
         trace [compiletime(flag("debug_stm")), io(!IO)] (
-            io.write_string("Creating nested atomic goal\n",!IO)
+            ModuleInfo = !.StmInfo ^ stm_info_module_info,
+            get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+            io.write_string(DebugStream, "Creating nested atomic goal\n",!IO)
         ),
         create_nested_goal(Context, InitInstmap, FinalInstmap,
             OuterDI, OuterUO, InnerDI, InnerUO, MainGoal, OrElseGoals,
@@ -791,11 +794,13 @@ create_nested_goal(Context, InitInstmap, FinalInstmap, OuterDI, OuterUO,
         AtomicGoalVarList1 = AtomicGoalVarList,
 
         trace [compiletime(flag("debug_stm")), io(!IO)] (
-            io.write_string("Local: " ++
+            ModuleInfo = !.StmInfo ^ stm_info_module_info,
+            get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+            io.write_string(DebugStream, "Local: " ++
                 string(AtomicGoalVars ^ vars_local) ++ "\n", !IO),
-            io.write_string("Inner: " ++
+            io.write_string(DebugStream, "Inner: " ++
                 string(AtomicGoalVars ^ vars_input) ++ "\n", !IO),
-            io.write_string("Outer: " ++
+            io.write_string(DebugStream, "Outer: " ++
                 string(AtomicGoalVars ^ vars_output) ++ "\n", !IO)
         ),
 
@@ -803,8 +808,8 @@ create_nested_goal(Context, InitInstmap, FinalInstmap, OuterDI, OuterUO,
         make_return_type(OutputTypes, ResultType),
         create_aux_variable_stm(ResultType, yes("res"), ResultVar, !StmInfo),
         CreateWrapperForEachGoal =
-            ( pred(ThisGoal::in, GoalVars::in, PPID::out, SInfo0::in,
-                    SInfo::out) is det :-
+            ( pred(ThisGoal::in, GoalVars::in, PPID::out,
+                    SInfo0::in, SInfo::out) is det :-
                 % These predicates should be plain predicates without code to
                 % validate logs.
                 create_simple_wrapper_pred(Context, GoalVars,

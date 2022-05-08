@@ -206,12 +206,12 @@ propagate_constraints(!Goal, !PDInfo) :-
     module_info_get_globals(ModuleInfo0, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     ConstraintProp = OptTuple ^ ot_prop_local_constraints,
-    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     (
         ConstraintProp = prop_local_constraints,
         Goal0 = !.Goal,
         trace [io(!IO)] (
-            pd_debug_message(DebugPD, "%% Propagating constraints\n", [], !IO),
+            pd_debug_message(!.PDInfo,
+                "%% Propagating constraints\n", [], !IO),
             pd_debug_output_goal(!.PDInfo, "before constraints\n", Goal0, !IO)
         ),
         pd_info_get_proc_info(!.PDInfo, ProcInfo0),
@@ -299,7 +299,9 @@ unique_modecheck_goal_live_vars(LiveVars, Goal0, Goal, Errors, !PDInfo) :-
         Debug = yes,
         trace [io(!IO)] (
             ErrorSpecs = list.map(mode_error_info_to_spec(ModeInfo), Errors),
-            write_error_specs(Globals, ErrorSpecs, !IO)
+            module_info_get_name(ModuleInfo, ModuleName),
+            get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+            write_error_specs(DebugStream, Globals, ErrorSpecs, !IO)
         )
     ;
         Debug = no
@@ -753,13 +755,14 @@ combine_vars(BranchNo, [ExtraVar | ExtraVars], !Vars) :-
 
 pd_requantify_goal(NonLocals, Goal0, Goal, !PDInfo) :-
     some [!ProcInfo] (
+        pd_info_get_module_info(!.PDInfo, ModuleInfo),
         pd_info_get_proc_info(!.PDInfo, !:ProcInfo),
-        proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTable0),
+        proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable0),
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
-        implicitly_quantify_goal_general(ordinary_nonlocals_no_lambda,
-            NonLocals, _, Goal0, Goal, VarSet0, VarSet,
-            VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
-        proc_info_set_varset_vartypes(VarSet, VarTable, !ProcInfo),
+        implicitly_quantify_goal_general_vt(ordinary_nonlocals_no_lambda,
+            NonLocals, _, Goal0, Goal, VarTable0, VarTable,
+            RttiVarMaps0, RttiVarMaps),
+        proc_info_set_var_table(VarTable, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
         pd_info_set_proc_info(!.ProcInfo, !PDInfo)
     ).
@@ -768,9 +771,9 @@ pd_recompute_instmap_delta(Goal0, Goal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTable),
+    proc_info_get_var_table(ModuleInfo0, ProcInfo, VarTable),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
-    recompute_instmap_delta(recompute_atomic_instmap_deltas,
+    recompute_instmap_delta_vt(recompute_atomic_instmap_deltas,
         VarTable, InstVarSet, InstMap, Goal0, Goal, ModuleInfo0, ModuleInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo).
 
