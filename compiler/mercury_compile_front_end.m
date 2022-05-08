@@ -120,6 +120,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.find_module.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_tree_out.

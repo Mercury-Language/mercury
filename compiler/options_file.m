@@ -132,6 +132,8 @@
 
 :- implementation.
 
+:- import_module parse_tree.find_module.
+
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module char.

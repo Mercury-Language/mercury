@@ -47,11 +47,11 @@
 
 :- import_module hlds.pred_table.
 :- import_module libs.
-:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.find_module.
 :- import_module transform_hlds.ctgc.
 :- import_module transform_hlds.ctgc.structure_reuse.
 :- import_module transform_hlds.ctgc.structure_reuse.analysis.

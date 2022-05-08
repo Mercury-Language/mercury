@@ -66,6 +66,7 @@
 :- import_module libs.compute_grade.
 :- import_module libs.file_util.
 :- import_module libs.options.
+:- import_module parse_tree.find_module.
 
 :- import_module bool.
 :- import_module dir.

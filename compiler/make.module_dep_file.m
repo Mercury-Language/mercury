@@ -57,6 +57,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.get_dependencies.
+:- import_module parse_tree.find_module.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_dep_info.
