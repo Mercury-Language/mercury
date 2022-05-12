@@ -108,15 +108,26 @@
 
 %---------------------------------------------------------------------------%
 
-    % Index 0 of the version_store contains the counter used to assign
-    % new version store mutvars. A mutvar is just an index into the
-    % version_store.
+    % Each mutvar contains an index into the version_array;
+    % its value is stored in the indicated slot in the version_array.
+    %
+    % We maintain a counter that, when allocated from, tells us the number
+    % of the next free slot in the array. This is what we use to allocate
+    % new mutvars. We store this counter at index 0 of the version_array,
+    % so all mutvars contain a strictly positive index.
+    %
+    % Whenever the version_array is about to run out of slots, we double
+    % its size. We never shrink the version_array.
+    %
+    % The slots in the version_array beyond the slot of belonging to
+    % the last allocated mutvar are not meaningful.
     %
 :- type version_store(S)
     --->    version_store(version_array(univ)).
 
 :- type mutvar(T, S)
     --->    mutvar(int).
+            % This integer must be strictly greater than zero.
 
 :- type some_version_store_type
     --->    some_version_store_type.
@@ -124,69 +135,81 @@
 %---------------------------------------------------------------------------%
 
 init = version_store(VA) `with_type` version_store(some_version_store_type) :-
-    % 256 is just a magic number. The version_store is resized by doubling
-    % if necessary when adding a new mutvar. Index 0 of the version_store
-    % holds a counter for allocating new mutvars.
-    VA = version_array.init(256, univ(counter.init(1) `with_type` counter)).
+    counter.init(1, Counter),
+    % Using 256 as the initial size of the array is a compromise between
+    % - wasting too much memory in small version_stores
+    %   (which would happen with larger initial sizes), and
+    % - requiring too many reallocations for large version stores
+    %   (which would happen with smaller initial sizes).
+    VA = version_array.init(256, univ(Counter)).
 
 %---------------------------------------------------------------------------%
 
-new_mutvar(X, Mutvar, VS0, VS) :-
-    new_cyclic_mutvar(func(_) = X, Mutvar, VS0, VS).
+new_mutvar(X, Mutvar, !VS) :-
+    new_cyclic_mutvar(func(_) = X, Mutvar, !VS).
 
 %---------------------------------------------------------------------------%
 
-new_cyclic_mutvar(F, Mutvar, VS0, VS) :-
-    Counter0 = VS0 ^ elem(mutvar(0)),
+new_cyclic_mutvar(F, Mutvar, !VS) :-
+    CounterMutvar = mutvar(0),
+    Counter0 = version_store.lookup(!.VS, CounterMutvar),
     counter.allocate(I, Counter0, Counter),
     Mutvar = mutvar(I),
-    Size0 = size(VS0),
+    Size0 = size(!.VS),
     ( if I >= Size0 then
-        VS1 = resize(VS0, Size0 + Size0)
+        resize(Size0 + Size0, !VS)
     else
-        VS1 = VS0
+        true
     ),
-    VS  = (( VS1 ^ elem(mutvar(0)) := Counter   )
-                 ^ elem(Mutvar   ) := F(Mutvar) ).
+    set_mutvar(CounterMutvar, Counter, !VS),
+    set_mutvar(Mutvar, F(Mutvar), !VS).
 
 :- func size(version_store(S)) = int.
 
 size(version_store(VA)) = size(VA).
 
-:- func resize(version_store(S), int) = version_store(S).
+:- pred resize(int::in, version_store(S)::in, version_store(S)::out) is det.
 
-resize(version_store(VA), N) = version_store(resize(VA, N, univ(unit))).
+resize(N, version_store(VA0), version_store(VA)) :-
+    version_array.resize(N, univ(unit), VA0, VA).
 
 %---------------------------------------------------------------------------%
 
 copy_mutvar(Mutvar0, Mutvar, VS0, VS) :-
-    X = VS0 ^ elem(Mutvar0),
-    new_mutvar(X, Mutvar, VS0, VS).
+    get_mutvar(Mutvar0, Value, VS0, _VS),
+    new_mutvar(Value, Mutvar, VS0, VS).
 
 %---------------------------------------------------------------------------%
 
-version_store(VA) ^ elem(mutvar(I)) = X :-
-    UnivX = lookup(VA, I),
-    det_univ_to_type(UnivX, X).
+VS ^ elem(Mutvar) = Value :-
+    version_store.get_mutvar(Mutvar, Value, VS, _VS).
 
-lookup(VS, Mutvar) = VS ^ elem(Mutvar).
+lookup(VS, Mutvar) = Value :-
+    version_store.get_mutvar(Mutvar, Value, VS, _VS).
 
-get_mutvar(Mutvar, VS ^ elem(Mutvar), VS, VS).
-
-%---------------------------------------------------------------------------%
-
-( version_store(VA) ^ elem(mutvar(I)) := X ) =
-    version_store(VA ^ elem(I) := univ(X)).
-
-set(VS, Mutvar, X) = ( VS ^ elem(Mutvar) := X ).
-
-set_mutvar(Mutvar, X, VS, VS ^ elem(Mutvar) := X).
+get_mutvar(mutvar(I), Value, VS, VS) :-
+    VS = version_store(VA),
+    UnivValue = version_array.lookup(VA, I),
+    det_univ_to_type(UnivValue, Value).
 
 %---------------------------------------------------------------------------%
 
-unsafe_rewind(version_store(VA)) = version_store(unsafe_rewind(VA)).
+VS0 ^ elem(Mutvar) := Value = VS :-
+    version_store.set_mutvar(Mutvar, Value, VS0, VS).
 
-unsafe_rewind(VS, unsafe_rewind(VS)).
+set(VS0, Mutvar, Value) = VS :-
+    version_store.set_mutvar(Mutvar, Value, VS0, VS).
+
+set_mutvar(mutvar(I), Value, version_store(VA0), version_store(VA)) :-
+    version_array.set(I, univ(Value), VA0, VA).
+
+%---------------------------------------------------------------------------%
+
+unsafe_rewind(VS0) = VS :-
+    version_store.unsafe_rewind(VS0, VS).
+
+unsafe_rewind(version_store(VA0), version_store(VA)) :-
+    version_array.unsafe_rewind(VA0, VA).
 
 %---------------------------------------------------------------------------%
 :- end_module version_store.

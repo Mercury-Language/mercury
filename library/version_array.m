@@ -551,15 +551,18 @@ to_list(VA) = list(VA).
 
 %---------------------------------------------------------------------------%
 
-foldl(F, VA, Acc) = do_foldl_func(F, VA, Acc, 0, size(VA)).
+foldl(F, VA, Acc0) = Acc :-
+    do_foldl_func(F, VA, 0, size(VA), Acc0, Acc).
 
-:- func do_foldl_func(func(T1, T2) = T2, version_array(T1), T2, int, int) = T2.
+:- pred do_foldl_func((func(T1, T2) = T2)::in,
+    version_array(T1)::in, int::in, int::in, T2::in, T2::out) is det.
 
-do_foldl_func(F, VA, Acc, Lo, Hi) =
+do_foldl_func(F, VA, Lo, Hi, !Acc) :-
     ( if Lo < Hi then
-        do_foldl_func(F, VA, F(lookup(VA, Lo), Acc), Lo + 1, Hi)
+        !:Acc = F(lookup(VA, Lo), !.Acc),
+        do_foldl_func(F, VA, Lo + 1, Hi, !Acc)
     else
-        Acc
+        true
     ).
 
 %---------------------------------------------------------------------------%
@@ -616,15 +619,18 @@ do_foldl2(P, VA, Lo, Hi, !Acc1, !Acc2) :-
 
 %---------------------------------------------------------------------------%
 
-foldr(F, VA, Acc) = do_foldr_func(F, VA, Acc, version_array.max(VA)).
+foldr(F, VA, Acc0) = Acc :-
+    do_foldr_func(F, VA, version_array.max(VA), Acc0, Acc).
 
-:- func do_foldr_func(func(T1, T2) = T2, version_array(T1), T2, int) = T2.
+:- pred do_foldr_func((func(T1, T2) = T2)::in, version_array(T1)::in,
+    int::in, T2::in, T2::out) is det.
 
-do_foldr_func(F, VA, Acc, Hi) =
+do_foldr_func(F, VA, Hi, !Acc) :-
     ( if 0 =< Hi then
-        do_foldr_func(F, VA, F(lookup(VA, Hi), Acc), Hi - 1)
+        !:Acc = F(lookup(VA, Hi), !.Acc),
+        do_foldr_func(F, VA, Hi - 1, !Acc)
     else
-        Acc
+        true
     ).
 
 %---------------------------------------------------------------------------%
@@ -689,7 +695,7 @@ all_true(Pred, VA) :-
 
 do_all_true(Pred, I, N, VA) :-
     ( if I < N then
-        Elem = VA ^ elem(I),
+        Elem = lookup(VA, I),
         Pred(Elem),
         do_all_true(Pred, I + 1, N, VA)
     else
@@ -704,7 +710,7 @@ all_false(Pred, VA) :-
 
 do_all_false(Pred, I, N, VA) :-
     ( if I < N then
-        Elem = VA ^ elem(I),
+        Elem = lookup(VA, I),
         not Pred(Elem),
         do_all_false(Pred, I + 1, N, VA)
     else
@@ -1356,8 +1362,8 @@ public interface ML_va {
 // An implementation of version arrays that is safe when used in multiple
 // threads.
 //
-// It just wraps the unsafe version is some synchronization logic so
-// that only one thread can be accessing the array at one instant.
+// It just wraps the unsafe version in some synchronization logic
+// so that only one thread can be accessing the array at one instant.
 [System.Serializable]
 public class ML_sva : ML_va {
     private ML_uva version_array;
@@ -1679,8 +1685,8 @@ public static class Lock implements java.io.Serializable {
 // An implementation of version arrays that is safe when used in multiple
 // threads.
 //
-// It just wraps the unsafe version is some synchronization logic so
-// that only one thread can be accessing the array at one instant.
+// It just wraps the unsafe version in some synchronization logic
+// so that only one thread can be accessing the array at one instant.
 public static class ML_sva implements ML_va, java.io.Serializable {
     private ML_uva version_array;
     private Lock lock;
