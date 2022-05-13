@@ -1580,7 +1580,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
                 % run, we don't know which otherwise-dead unify or compare
                 % predicates it will "bring back to life".
                 %
-                % Second, we don't want to delete even an never-called
+                % Second, we don't want to delete even a never-called
                 % unification or compare predicate while that predicate
                 % has a pointer to it from its type_ctor's type_ctor_info
                 % structure, and until this writing (2022 may 13), dead
