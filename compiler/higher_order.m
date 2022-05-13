@@ -132,6 +132,17 @@ specialize_higher_order(!ModuleInfo, !IO) :-
         module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, UserSpecPredIdSet, _, _),
 
+        globals.lookup_bool_option(Globals, debug_higher_order_specialization,
+            DebugSpec),
+        (
+            DebugSpec = no,
+            MaybeProgressStream = no
+        ;
+            DebugSpec = yes,
+            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+            MaybeProgressStream = yes(ProgressStream)
+        ),
+
         % Make sure the user requested specializations are processed first,
         % since we don't want to create more versions if one of these matches.
         % We need to process these even if specialization is not being
@@ -153,7 +164,7 @@ specialize_higher_order(!ModuleInfo, !IO) :-
                 := spec_types_user_guided,
             list.foldl(get_specialization_requests, UserSpecPredIds,
                 !GlobalInfo),
-            process_ho_spec_requests(!GlobalInfo, !IO)
+            process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO)
         ),
 
         ( if
@@ -166,7 +177,8 @@ specialize_higher_order(!ModuleInfo, !IO) :-
             % are generated.
             list.foldl(get_specialization_requests, NonUserSpecPredIds,
                 !GlobalInfo),
-            recursively_process_ho_spec_requests(!GlobalInfo, !IO)
+            recursively_process_ho_spec_requests(MaybeProgressStream,
+                !GlobalInfo, !IO)
         else
             true
         ),
@@ -181,13 +193,14 @@ specialize_higher_order(!ModuleInfo, !IO) :-
     % Process one lot of requests, returning requests for any
     % new specializations made possible by the first lot.
     %
-:- pred process_ho_spec_requests(higher_order_global_info::in,
-    higher_order_global_info::out, io::di, io::uo) is det.
+:- pred process_ho_spec_requests(maybe(io.text_output_stream)::in,
+    higher_order_global_info::in, higher_order_global_info::out,
+    io::di, io::uo) is det.
 
-process_ho_spec_requests(!GlobalInfo, !IO) :-
+process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
     Requests0 = set.to_sorted_list(!.GlobalInfo ^ hogi_requests),
     !GlobalInfo ^ hogi_requests := set.init,
-    list.foldl3(filter_request(!.GlobalInfo), Requests0,
+    list.foldl3(filter_request(MaybeProgressStream, !.GlobalInfo), Requests0,
         [], Requests, [], LoopRequests, !IO),
     (
         Requests = []
@@ -195,8 +208,8 @@ process_ho_spec_requests(!GlobalInfo, !IO) :-
         Requests = [_ | _],
         some [!PredProcsToFix] (
             set.init(!:PredProcsToFix),
-            maybe_create_new_preds(Requests, [], NewPredList, !PredProcsToFix,
-                !GlobalInfo, !IO),
+            maybe_create_new_preds(MaybeProgressStream, Requests,
+                [], NewPredList, !PredProcsToFix, !GlobalInfo, !IO),
             list.foldl(check_loop_request(!.GlobalInfo), LoopRequests,
                 !PredProcsToFix),
             set.to_sorted_list(!.PredProcsToFix, PredProcs)
@@ -217,15 +230,17 @@ process_ho_spec_requests(!GlobalInfo, !IO) :-
 
     % Process requests until there are no new requests to process.
     %
-:- pred recursively_process_ho_spec_requests(higher_order_global_info::in,
-    higher_order_global_info::out, io::di, io::uo) is det.
+:- pred recursively_process_ho_spec_requests(maybe(io.text_output_stream)::in,
+    higher_order_global_info::in, higher_order_global_info::out,
+    io::di, io::uo) is det.
 
-recursively_process_ho_spec_requests(!GlobalInfo, !IO) :-
+recursively_process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
     ( if set.is_empty(!.GlobalInfo ^ hogi_requests) then
         true
     else
-        process_ho_spec_requests(!GlobalInfo, !IO),
-        recursively_process_ho_spec_requests(!GlobalInfo, !IO)
+        process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO),
+        recursively_process_ho_spec_requests(MaybeProgressStream,
+            !GlobalInfo, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2688,29 +2703,26 @@ unwrap_no_tag_arg(OuterType, WrappedType, Context, Constructor, Arg,
     % examples involving recursively building up lambda expressions,
     % this can create ridiculous numbers of versions.
     %
-:- pred filter_request(higher_order_global_info::in, ho_request::in,
+:- pred filter_request(maybe(io.text_output_stream)::in,
+    higher_order_global_info::in, ho_request::in,
     list(ho_request)::in, list(ho_request)::out,
     list(ho_request)::in, list(ho_request)::out, io::di, io::uo) is det.
 
-filter_request(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
+filter_request(MaybeProgressStream, Info, Request,
+        !AcceptedRequests, !LoopRequests, !IO) :-
     ModuleInfo = Info ^ hogi_module_info,
     Request = ho_request(CallingPredProcId, CalledPredProcId, _, _, HOArgs,
         _, _, _, IsUserTypeSpec, Context),
     CalledPredProcId = proc(CalledPredId, _),
     module_info_pred_info(ModuleInfo, CalledPredId, PredInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredFormArity = pred_info_pred_form_arity(PredInfo),
     pred_info_get_arg_types(PredInfo, Types),
     ActualArity = arg_list_arity(Types),
     (
-        VeryVerbose = no,
         MaybeProgressStream = no
     ;
-        VeryVerbose = yes,
-        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
         MaybeProgressStream = yes(ProgressStream),
         write_request(ProgressStream, ModuleInfo, "Request for",
             qualified(PredModule, PredName), PredFormArity, ActualArity,
@@ -2778,14 +2790,16 @@ filter_request(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
         )
     ).
 
-:- pred maybe_create_new_preds(list(ho_request)::in, list(new_pred)::in,
-    list(new_pred)::out, set(pred_proc_id)::in, set(pred_proc_id)::out,
+:- pred maybe_create_new_preds(maybe(io.text_output_stream)::in,
+    list(ho_request)::in, list(new_pred)::in, list(new_pred)::out,
+    set(pred_proc_id)::in, set(pred_proc_id)::out,
     higher_order_global_info::in, higher_order_global_info::out,
     io::di, io::uo) is det.
 
-maybe_create_new_preds([], !NewPreds, !PredsToFix, !Info, !IO).
-maybe_create_new_preds([Request | Requests], !NewPreds, !PredsToFix,
-        !Info, !IO) :-
+maybe_create_new_preds(_, [],
+        !NewPreds, !PredsToFix, !Info, !IO).
+maybe_create_new_preds(MaybeProgressStream, [Request | Requests],
+        !NewPreds, !PredsToFix, !Info, !IO) :-
     Request = ho_request(CallingPredProcId, CalledPredProcId, _HOArgs,
         _CallArgs, _, _CallerArgTypes, _, _, _, _),
     set.insert(CallingPredProcId, !PredsToFix),
@@ -2801,10 +2815,11 @@ maybe_create_new_preds([Request | Requests], !NewPreds, !PredsToFix,
     then
         true
     else
-        create_new_pred(Request, NewPred, !Info, !IO),
+        create_new_pred(MaybeProgressStream, Request, NewPred, !Info, !IO),
         !:NewPreds = [NewPred | !.NewPreds]
     ),
-    maybe_create_new_preds(Requests, !NewPreds, !PredsToFix, !Info, !IO).
+    maybe_create_new_preds(MaybeProgressStream, Requests,
+        !NewPreds, !PredsToFix, !Info, !IO).
 
     % If we weren't allowed to create a specialized version because the
     % loop check failed, check whether the version was created for another
@@ -2831,11 +2846,11 @@ check_loop_request(Info, Request, !PredsToFix) :-
 
     % Here we create the pred_info for the new predicate.
     %
-:- pred create_new_pred(ho_request::in, new_pred::out,
-    higher_order_global_info::in, higher_order_global_info::out,
+:- pred create_new_pred(maybe(io.text_output_stream)::in, ho_request::in,
+    new_pred::out, higher_order_global_info::in, higher_order_global_info::out,
     io::di, io::uo) is det.
 
-create_new_pred(Request, NewPred, !Info, !IO) :-
+create_new_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
     Request = ho_request(Caller, CalledPredProc, CallArgs, ExtraTypeInfoTVars,
         HOArgs, ArgTypes, CallerTVarSet, TypeInfoLiveness,
         IsUserTypeSpec, Context),
@@ -2848,8 +2863,6 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     PredFormArity = pred_info_pred_form_arity(PredInfo0),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
     PredModuleName = pred_info_module(PredInfo0),
-    module_info_get_globals(ModuleInfo0, Globals),
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     pred_info_get_arg_types(PredInfo0, ArgTVarSet, ExistQVars, Types),
 
     (
@@ -2893,10 +2906,9 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     ),
 
     (
-        VeryVerbose = no
+        MaybeProgressStream = no
     ;
-        VeryVerbose = yes,
-        get_progress_output_stream(ModuleInfo0, ProgressStream, !IO),
+        MaybeProgressStream = yes(ProgressStream),
         ActualArity = arg_list_arity(Types),
         write_request(ProgressStream, ModuleInfo0, "Specializing",
             qualified(PredModuleName, Name0), PredFormArity, ActualArity,
@@ -3025,7 +3037,7 @@ output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, Indent,
             [s(sym_name_to_escaped_string(ClassSymName)), i(ClassArity)], !IO)
     else
         % XXX output the type.
-        io.write_string(OutputStream, "type_info/typeclass_info ", !IO)
+        io.write_string(OutputStream, "type_info/typeclass_info", !IO)
     ),
     io.format(OutputStream, " with %d curried arguments", [i(NumArgs)], !IO),
     (
