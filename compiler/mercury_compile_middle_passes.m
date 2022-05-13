@@ -1332,7 +1332,7 @@ maybe_impl_dependent_par_conjs(Verbose, Stats, !HLDS, !IO) :-
                 "% Dependent parallel conjunction transformation...\n", !IO),
             maybe_flush_output(Verbose, !IO),
             impl_dep_par_conjs_in_module(!HLDS),
-            dead_proc_elim(do_not_elim_opt_imported, !HLDS),
+            dead_proc_elim(do_not_elim_opt_imported, _, _, !HLDS),
             maybe_write_string(Verbose, "% done.\n", !IO),
             maybe_report_stats(Stats, !IO)
         )
@@ -1495,8 +1495,19 @@ maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO) :-
         OptDeadProcs = opt_dead_procs,
         maybe_write_string(Verbose, "% Eliminating dead procedures...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        dead_proc_elim(elim_opt_imported, !HLDS),
+        BeforeHLDS = !.HLDS,
+        dead_proc_elim(elim_opt_imported, NeededMap, ElimMap, !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
+        globals.lookup_bool_option(Globals, debug_dead_proc_elim,
+            DebugDeadProcElim),
+        (
+            DebugDeadProcElim = no
+        ;
+            DebugDeadProcElim = yes,
+            get_debug_output_stream(!.HLDS, DebugStream, !IO),
+            output_needed_map(DebugStream, BeforeHLDS, NeededMap, !IO),
+            output_elimination_msgs(DebugStream, BeforeHLDS, ElimMap, !IO)
+        ),
         maybe_report_stats(Stats, !IO)
     ;
         OptDeadProcs = do_not_opt_dead_procs

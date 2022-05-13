@@ -2920,7 +2920,9 @@ do_to_sorted_list(four(E0, E1, E2, T0, T1, T2, T3), L0, L) :-
 %---------------------------------------------------------------------------%
 
 count(ct(N, Tree)) = N :-
-    expect(unify(N, do_count(Tree)), $pred, "mismatch").
+    trace [compile_time(flag("verify_set_ctree234"))] (
+        expect(unify(N, do_count(Tree)), $pred, "mismatch")
+    ).
 
 :- func do_count(set_tree234(T)) = int.
 

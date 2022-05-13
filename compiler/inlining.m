@@ -562,8 +562,7 @@ mark_proc_to_be_inlined(ModuleInfo, PredProcId, !ShouldInlineProcs) :-
 should_proc_be_inlined(Params, ModuleInfo, PredProcId) :-
     module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
     proc_info_get_goal(ProcInfo, CalledGoal),
-    PredProcId = proc(PredId, ProcId),
-    Entity = entity_proc(PredId, ProcId),
+    Entity = entity_proc(PredProcId),
 
     % The heuristic represented by the following code could be improved.
     (
