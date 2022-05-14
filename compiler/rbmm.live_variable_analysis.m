@@ -34,8 +34,8 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
-:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 :- import_module transform_hlds.smm_common.
 
 :- import_module assoc_list.
@@ -47,7 +47,6 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 %
@@ -166,7 +165,8 @@ live_variable_analysis_exec_path([(LastProgPoint - Goal) | ProgPointGoals],
         !ProcLVBefore),
 
     % Collect void variables after this program point.
-    collect_void_vars(LastProgPoint, ProducedSet, ProcInfo, !ProcVoidVar),
+    collect_void_vars(ModuleInfo, LastProgPoint, ProducedSet, ProcInfo,
+        !ProcVoidVar),
 
     live_variable_analysis_exec_path(ProgPointGoals, Inputs, Outputs,
         ModuleInfo, ProcInfo, no, LVBeforeLastInThisExecPath, !ProcLVBefore,
@@ -190,7 +190,8 @@ live_variable_analysis_exec_path(
         !ProcLVBefore),
 
     % Collect void variables after this program point.
-    collect_void_vars(ProgPoint, ProducedSet, ProcInfo, !ProcVoidVar),
+    collect_void_vars(ModuleInfo, ProgPoint, ProducedSet, ProcInfo,
+        !ProcVoidVar),
 
     live_variable_analysis_exec_path([ProgPointGoal | ProgPointGoals],
         Inputs, Outputs, ModuleInfo, ProcInfo, no, LVBeforeInThisExecPath,
@@ -214,7 +215,8 @@ live_variable_analysis_exec_path([FirstProgPoint - Goal], Inputs, _Outputs,
 
     % Collect void vars after this program point.
     compute_useds_produceds(ModuleInfo, Goal, _UsedSet, ProducedSet),
-    collect_void_vars(FirstProgPoint, ProducedSet, ProcInfo, !ProcVoidVar).
+    collect_void_vars(ModuleInfo, FirstProgPoint, ProducedSet, ProcInfo,
+        !ProcVoidVar).
 
     % This predicate analyses execution paths with only one program point.
     % So it must be called in a context that matches that condition.
@@ -234,7 +236,8 @@ live_variable_analysis_singleton_exec_path([ProgPoint - Goal | _], Inputs,
 
     % Collect void vars after this program point.
     compute_useds_produceds(ModuleInfo, Goal, _UsedSet, ProducedSet),
-    collect_void_vars(ProgPoint, ProducedSet, ProcInfo, !ProcVoidVar).
+    collect_void_vars(ModuleInfo, ProgPoint, ProducedSet, ProcInfo,
+        !ProcVoidVar).
 live_variable_analysis_singleton_exec_path([], _, _, _, _,
         !ProcLVBefore, !ProcLVAfter, !ProcVoidVar) :-
     unexpected($pred, "empty list").
@@ -365,27 +368,29 @@ get_inputs_outputs_proc_call_2([FormalArg | FormalArgs],
     % I am considering those variables dead right after created in the live
     % variable and region analyses.
     %
-:- pred collect_void_vars(program_point::in, variable_set::in, proc_info::in,
+:- pred collect_void_vars(module_info::in, program_point::in,
+    variable_set::in, proc_info::in,
     pp_varset_table::in, pp_varset_table::out) is det.
 
-collect_void_vars(ProgPoint, ProducedSet, ProcInfo, !ProcVoidVar) :-
+collect_void_vars(ModuleInfo, ProgPoint, ProducedSet, ProcInfo,
+        !ProcVoidVar) :-
     ( if map.search(!.ProcVoidVar, ProgPoint, _DeadVars) then
         true
     else
-        proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
-        set.fold(void_var(VarSet), ProducedSet, set.init, VoidVars),
+        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        set.fold(void_var(VarTable), ProducedSet, set.init, VoidVars),
         map.set(ProgPoint, VoidVars, !ProcVoidVar)
     ).
 
     % To be used with the fold above: if Var is a void variable,
     % add it to VoidVars set.
     %
-:- pred void_var(prog_varset::in, prog_var::in,
+:- pred void_var(var_table::in, prog_var::in,
     variable_set::in, variable_set::out) is det.
 
-void_var(VarSet, Var, !VoidVars) :-
-    VarName = mercury_var_to_name_only(VarSet, Var),
-    ( if string.index(VarName, 0, '_') then
+void_var(VarTable, Var, !VoidVars) :-
+    lookup_var_entry(VarTable, Var, VarEntry),
+    ( if string.index(VarEntry ^ vte_name, 0, '_') then
         set.insert(Var, !VoidVars)
     else
         true

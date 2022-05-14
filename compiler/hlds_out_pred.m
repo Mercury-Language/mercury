@@ -168,10 +168,10 @@ write_pred(Info, Stream, Lang, ModuleInfo, PredId, PredInfo, !IO) :-
             list.foldl(write_obsolete_in_favour_of(Stream),
                 ObsoleteInFavourOf, !IO)
         ),
-        write_pred_types(Stream, VarSet, TVarSet, VarNamePrint,
-            RttiVarMaps, ProofMap, ConstraintMap, ExternalTypeParams,
-            VarTypes, !IO),
-        write_pred_proc_var_name_remap(Stream, VarSet, VarNameRemap, !IO),
+        write_pred_types(Stream, VarSet, TVarSet, VarNamePrint, RttiVarMaps,
+            ProofMap, ConstraintMap, ExternalTypeParams, VarTypes, !IO),
+        write_pred_proc_var_name_remap(Stream, vns_varset(VarSet),
+            VarNameRemap, !IO),
 
         get_clause_list_maybe_repeated(ClausesRep, Clauses),
         ( if
@@ -266,7 +266,7 @@ write_obsolete_in_favour_of(Stream, ObsoleteInFavourOf, !IO) :-
 
 write_pred_types(Stream, VarSet, TVarSet, VarNamePrint, RttiVarMaps,
         ProofMap, ConstraintMap, ExternalTypeParams, VarTypes, !IO) :-
-    write_rtti_varmaps(Stream, VarSet, TVarSet, VarNamePrint,
+    write_rtti_varmaps(Stream, vns_varset(VarSet), TVarSet, VarNamePrint,
         RttiVarMaps, !IO),
     ( if map.is_empty(ProofMap) then
         true
@@ -339,8 +339,19 @@ write_origin(Stream, ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
     % XXX CLEANUP Either a function version of this predicate should replace
     % pred_info_id_to_string in hlds_out_util.m, or vice versa.
     (
-        Origin = origin_special_pred(_, _),
-        io.write_string(Stream, "% special pred\n", !IO)
+        Origin = origin_special_pred(SpecialPredId, TypeCtor),
+        (
+            SpecialPredId = spec_pred_unify,
+            SpecialPredIdStr = "unify"
+        ;
+            SpecialPredId = spec_pred_compare,
+            SpecialPredIdStr = "compare"
+        ;
+            SpecialPredId = spec_pred_index,
+            SpecialPredIdStr = "index"
+        ),
+        io.format(Stream, "%% special %s pred for %s\n",
+            [s(SpecialPredIdStr), s(type_name_to_string(TypeCtor))], !IO)
     ;
         Origin = origin_instance_method(_, MethodConstraints),
         MethodConstraints = instance_method_constraints(ClassId,
@@ -574,7 +585,7 @@ write_clauses_loop(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc, VarSet,
             ClauseNum + 1, !IO)
     ).
 
-write_clause(Info, Stream, Lang, ModuleInfo,PredId, PredOrFunc, VarSet,
+write_clause(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc, VarSet,
         TypeQual, VarNamePrint, WriteWhichModes, Indent, HeadTerms,
         Clause, !IO) :-
     Clause = clause(ApplicableModes, Goal, ImplLang, Context,
@@ -636,7 +647,7 @@ write_clause(Info, Stream, Lang, ModuleInfo,PredId, PredOrFunc, VarSet,
             VarNamePrint, WriteWhichModes, PredId, PredOrFunc, SelectedProcIds,
             Context, HeadTerms, !IO)
     else
-        write_clause_head(Stream, ModuleInfo, VarSet, VarNamePrint,
+        write_clause_head(Stream, ModuleInfo, vns_varset(VarSet), VarNamePrint,
             PredId, PredOrFunc, HeadTerms, !IO)
     ),
     ( if Goal = hlds_goal(conj(plain_conj, []), _GoalInfo) then
@@ -696,8 +707,8 @@ write_annotated_clause_head(Stream, ModuleInfo, Lang,VarSet, VarNamePrint,
             AnnotatedPairs),
         AnnotatedHeadTerms = list.map(add_mode_qualifier(Lang, Context),
             AnnotatedPairs),
-        write_clause_head(Stream, ModuleInfo, VarSet, VarNamePrint, PredId,
-            PredOrFunc, AnnotatedHeadTerms, !IO)
+        write_clause_head(Stream, ModuleInfo, vns_varset(VarSet), VarNamePrint,
+            PredId, PredOrFunc, AnnotatedHeadTerms, !IO)
     else
         % This procedure, even though it existed in the past, has been
         % eliminated.
@@ -713,27 +724,27 @@ add_mode_qualifier(Lang, Context, HeadTerm - Mode) = AnnotatedTerm :-
         Context, AnnotatedTerm).
 
 :- pred write_clause_head(io.text_output_stream::in, module_info::in,
-    prog_varset::in, var_name_print::in, pred_id::in, pred_or_func::in,
+    var_name_source::in, var_name_print::in, pred_id::in, pred_or_func::in,
     list(prog_term)::in, io::di, io::uo) is det.
 
-write_clause_head(Stream, ModuleInfo, VarSet, VarNamePrint, PredId, PredOrFunc,
-        HeadTerms, !IO) :-
+write_clause_head(Stream, ModuleInfo, VarNameSrc, VarNamePrint, PredId,
+        PredOrFunc, HeadTerms, !IO) :-
     PredName = predicate_name(ModuleInfo, PredId),
     ModuleName = predicate_module(ModuleInfo, PredId),
     (
         PredOrFunc = pf_function,
         pred_args_to_func_args(HeadTerms, FuncArgs, RetVal),
         io.write_string(Stream,
-            qualified_functor_with_term_args_to_string(vns_varset(VarSet),
+            qualified_functor_with_term_args_to_string(VarNameSrc,
                 VarNamePrint, ModuleName, term.atom(PredName), FuncArgs),
             !IO),
         io.write_string(Stream, " = ", !IO),
-        mercury_output_term_nq(VarSet, VarNamePrint, next_to_graphic_token,
-            RetVal, Stream, !IO)
+        mercury_output_term_nq_src(VarNameSrc, VarNamePrint,
+            next_to_graphic_token, RetVal, Stream, !IO)
     ;
         PredOrFunc = pf_predicate,
         io.write_string(Stream,
-            qualified_functor_with_term_args_to_string(vns_varset(VarSet),
+            qualified_functor_with_term_args_to_string(VarNameSrc,
                 VarNamePrint, ModuleName, term.atom(PredName), HeadTerms),
             !IO)
     ).
@@ -763,7 +774,7 @@ write_proc(Info, Stream, VarNamePrint, ModuleInfo, PredId, PredInfo,
         ProcId, ProcInfo, !IO) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
     proc_info_get_can_process(ProcInfo, CanProcess),
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     proc_info_get_declared_determinism(ProcInfo, DeclaredDeterminism),
     proc_info_get_inferred_determinism(ProcInfo, InferredDeterminism),
     proc_info_get_headvars(ProcInfo, HeadVars),
@@ -807,25 +818,26 @@ write_proc(Info, Stream, VarNamePrint, ModuleInfo, PredId, PredInfo,
             [i(ProcIdInt), s(DetismStr)], !IO)
     ),
 
-    write_var_types(Stream, VarSet, TVarSet, VarNamePrint, VarTypes, !IO),
-    write_rtti_varmaps(Stream, VarSet, TVarSet, VarNamePrint,
+    write_var_types_vt(Stream, VarTable, TVarSet, VarNamePrint, !IO),
+    write_rtti_varmaps(Stream, vns_var_table(VarTable), TVarSet, VarNamePrint,
         RttiVarMaps, !IO),
 
     write_proc_flags(Stream, CanProcess, IsAddressTaken,
         HasParallelConj, HasUserEvent, !IO),
     io.write_string(Stream, "% cse_nopull_contexts: ", !IO),
     io.write_line(Stream, CseNoPullContexts, !IO),
-    write_proc_tabling_info(Stream, VarSet, TVarSet, VarNamePrint,
+    write_proc_tabling_info(Stream, VarTable, TVarSet, VarNamePrint,
         EvalMethod, MaybeProcTableIOInfo, MaybeCallTableTip, !IO),
-    write_proc_deep_profiling_info(Stream, VarSet, VarNamePrint,
+    write_proc_deep_profiling_info(Stream, VarTable, VarNamePrint,
         MaybeDeepProfileInfo, !IO),
     write_proc_termination_info(Stream, DumpOptions,
         MaybeArgSize, MaybeTermination, !IO),
-    write_proc_opt_info(Stream, DumpOptions, VarSet, TVarSet,
+    write_proc_opt_info(Stream, DumpOptions, VarTable, TVarSet,
         VarNamePrint, MaybeStructureSharing, MaybeStructureReuse,
         MaybeUntupleInfo, !IO),
     write_proc_deleted_callee_set(Stream, DeletedCallCalleeSet, !IO),
-    write_pred_proc_var_name_remap(Stream, VarSet, VarNameRemap, !IO),
+    write_pred_proc_var_name_remap(Stream, vns_var_table(VarTable),
+        VarNameRemap, !IO),
     write_eff_trace_level(Stream, ModuleInfo, PredInfo, ProcInfo, !IO),
 
     PredSymName = unqualified(predicate_name(ModuleInfo, PredId)),
@@ -844,7 +856,7 @@ write_proc(Info, Stream, VarNamePrint, ModuleInfo, PredId, PredInfo,
             PredSymName, FuncHeadModes, RetHeadMode,
             DeclaredDeterminism, !IO)
     ),
-    write_proc_arg_info(Stream, DumpOptions, VarSet, VarNamePrint,
+    write_proc_arg_info(Stream, DumpOptions, VarTable, VarNamePrint,
         MaybeArgLives, RegR_HeadVars, MaybeArgInfos, !IO),
     pred_info_get_status(PredInfo, PredStatus),
     ( if
@@ -854,16 +866,43 @@ write_proc(Info, Stream, VarNamePrint, ModuleInfo, PredId, PredInfo,
         true
     else
         proc_info_get_stack_slots(ProcInfo, StackSlots),
-        write_stack_slots(Stream, VarSet, VarNamePrint, StackSlots, !IO),
+        write_stack_slots(Stream, VarTable, VarNamePrint, StackSlots, !IO),
         term.var_list_to_term_list(HeadVars, HeadTerms),
-        write_clause_head(Stream, ModuleInfo, VarSet, VarNamePrint,
-            PredId, PredOrFunc, HeadTerms, !IO),
+        write_clause_head(Stream, ModuleInfo, vns_var_table(VarTable),
+            VarNamePrint, PredId, PredOrFunc, HeadTerms, !IO),
         io.write_string(Stream, " :-\n", !IO),
-        write_goal(Info, Stream, ModuleInfo, vns_varset(VarSet), VarNamePrint,
-            Indent1, ".\n", Goal, !IO)
+        write_goal(Info, Stream, ModuleInfo, vns_var_table(VarTable),
+            VarNamePrint, Indent1, ".\n", Goal, !IO)
     ).
 
 %---------------------------------------------------------------------------%
+
+:- pred write_var_types_vt(io.text_output_stream::in, var_table::in,
+    tvarset::in, var_name_print::in, io::di, io::uo) is det.
+
+write_var_types_vt(Stream, VarTable, TVarSet, VarNamePrint, !IO) :-
+    var_table_to_sorted_assoc_list(VarTable, VarTableAL),
+    io.write_string(Stream, "% variable types map ", !IO),
+    io.format(Stream, "(%d entries):\n", [i(list.length(VarTableAL))], !IO),
+    write_var_types_vt_loop(Stream, TVarSet, VarNamePrint, VarTableAL, !IO).
+
+:- pred write_var_types_vt_loop(io.text_output_stream::in, tvarset::in,
+    var_name_print::in, assoc_list(prog_var, var_table_entry)::in,
+    io::di, io::uo) is det.
+
+write_var_types_vt_loop(_, _, _, [], !IO).
+write_var_types_vt_loop(Stream, TypeVarSet, VarNamePrint,
+        [Var - Entry | VarsEntries], !IO) :-
+    Entry = vte(Name, Type, _IsDummy),
+    VarStr = mercury_var_raw_to_string(VarNamePrint, Var, Name),
+    term.var_to_int(Var, VarNum),
+    TypeStr = mercury_type_to_string(TypeVarSet, VarNamePrint, Type),
+    io.format(Stream, "%% %s (number %d): %s\n",
+        [s(VarStr), i(VarNum), s(TypeStr)], !IO),
+    write_var_types_vt_loop(Stream, TypeVarSet, VarNamePrint,
+        VarsEntries, !IO).
+
+%---------------------%
 
 :- pred write_var_types(io.text_output_stream::in,
     prog_varset::in, tvarset::in, var_name_print::in, vartypes::in,
@@ -895,35 +934,35 @@ write_var_types_loop(Stream, VarSet, TypeVarSet, VarNamePrint, VarTypes,
 
 %---------------------%
 
-:- pred write_rtti_varmaps(io.text_output_stream::in,
-    prog_varset::in, tvarset::in, var_name_print::in,
-    rtti_varmaps::in, io::di, io::uo) is det.
+:- pred write_rtti_varmaps(io.text_output_stream::in, var_name_source::in,
+    tvarset::in, var_name_print::in, rtti_varmaps::in, io::di, io::uo) is det.
 
-write_rtti_varmaps(Stream, VarSet, TVarSet, VarNamePrint, RttiVarMaps, !IO) :-
+write_rtti_varmaps(Stream, VarNameSrc, TVarSet, VarNamePrint,
+        RttiVarMaps, !IO) :-
     io.write_string(Stream, "% type_info varmap:\n", !IO),
     rtti_varmaps_tvars(RttiVarMaps, TypeVars),
     list.foldl(
-        write_type_info_locn(Stream, VarSet, TVarSet, VarNamePrint,
+        write_type_info_locn(Stream, VarNameSrc, TVarSet, VarNamePrint,
             RttiVarMaps),
         TypeVars, !IO),
     io.write_string(Stream, "% typeclass_info varmap:\n", !IO),
     rtti_varmaps_reusable_constraints(RttiVarMaps, Constraints),
     list.foldl(
-        write_typeclass_info_var(Stream, VarSet, TVarSet, VarNamePrint,
+        write_typeclass_info_var(Stream, VarNameSrc, TVarSet, VarNamePrint,
             RttiVarMaps),
         Constraints, !IO),
     io.write_string(Stream, "% rtti_var_info:\n", !IO),
     rtti_varmaps_rtti_prog_vars(RttiVarMaps, ProgVars),
     list.foldl(
-        write_rtti_var_info(Stream, VarSet, TVarSet, VarNamePrint,
+        write_rtti_var_info(Stream, VarNameSrc, TVarSet, VarNamePrint,
             RttiVarMaps),
         ProgVars, !IO).
 
-:- pred write_type_info_locn(io.text_output_stream::in,
-    prog_varset::in, tvarset::in, var_name_print::in, rtti_varmaps::in,
-    tvar::in, io::di, io::uo) is det.
+:- pred write_type_info_locn(io.text_output_stream::in, var_name_source::in,
+    tvarset::in, var_name_print::in, rtti_varmaps::in, tvar::in,
+    io::di, io::uo) is det.
 
-write_type_info_locn(Stream, VarSet, TVarSet, VarNamePrint, RttiVarMaps,
+write_type_info_locn(Stream, VarNameSrc, TVarSet, VarNamePrint, RttiVarMaps,
         TVar, !IO) :-
     TVarStr = mercury_var_to_string(TVarSet, VarNamePrint, TVar),
     term.var_to_int(TVar, TVarNum),
@@ -931,11 +970,11 @@ write_type_info_locn(Stream, VarSet, TVarSet, VarNamePrint, RttiVarMaps,
     rtti_lookup_type_info_locn(RttiVarMaps, TVar, Locn),
     (
         Locn = type_info(Var),
-        VarStr = mercury_var_to_string(VarSet, VarNamePrint, Var),
+        VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
         io.format(Stream, "type_info(%s)", [s(VarStr)], !IO)
     ;
         Locn = typeclass_info(Var, Index),
-        VarStr = mercury_var_to_string(VarSet, VarNamePrint, Var),
+        VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
         io.format(Stream, "typeclass_info(%s, %d)",
             [s(VarStr), i(Index)], !IO)
     ),
@@ -943,26 +982,26 @@ write_type_info_locn(Stream, VarSet, TVarSet, VarNamePrint, RttiVarMaps,
     io.format(Stream, " (number %d)\n", [i(VarNum)], !IO).
 
 :- pred write_typeclass_info_var(io.text_output_stream::in,
-    prog_varset::in, tvarset::in, var_name_print::in, rtti_varmaps::in,
+    var_name_source::in, tvarset::in, var_name_print::in, rtti_varmaps::in,
     prog_constraint::in, io::di, io::uo) is det.
 
-write_typeclass_info_var(Stream, VarSet, TVarSet, VarNamePrint, RttiVarMaps,
-        Constraint, !IO) :-
+write_typeclass_info_var(Stream, VarNameSrc, TVarSet, VarNamePrint,
+        RttiVarMaps, Constraint, !IO) :-
     io.write_string(Stream, "% ", !IO),
     mercury_output_constraint(TVarSet, VarNamePrint, Constraint, Stream, !IO),
     io.write_string(Stream, " -> ", !IO),
     rtti_lookup_typeclass_info_var(RttiVarMaps, Constraint, Var),
-    mercury_output_var(VarSet, VarNamePrint, Var, Stream, !IO),
+    mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO),
     io.nl(Stream, !IO).
 
-:- pred write_rtti_var_info(io.text_output_stream::in,
-    prog_varset::in, tvarset::in, var_name_print::in, rtti_varmaps::in,
-    prog_var::in, io::di, io::uo) is det.
+:- pred write_rtti_var_info(io.text_output_stream::in, var_name_source::in,
+    tvarset::in, var_name_print::in, rtti_varmaps::in, prog_var::in,
+    io::di, io::uo) is det.
 
-write_rtti_var_info(Stream, VarSet, TVarSet, VarNamePrint, RttiVarMaps,
+write_rtti_var_info(Stream, VarNameSrc, TVarSet, VarNamePrint, RttiVarMaps,
         Var, !IO) :-
     term.var_to_int(Var, VarNum),
-    VarStr = mercury_var_to_string(VarSet, VarNamePrint, Var),
+    VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
     io.format(Stream, "%% %s (number %d) -> ", [s(VarStr), i(VarNum)], !IO),
     rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo),
     (
@@ -1021,11 +1060,11 @@ write_proc_flags(Stream, CanProcess, IsAddressTaken, HasParallelConj,
 %---------------------%
 
 :- pred write_proc_tabling_info(io.text_output_stream::in,
-    prog_varset::in, tvarset::in, var_name_print::in, eval_method::in,
+    var_table::in, tvarset::in, var_name_print::in, eval_method::in,
     maybe(proc_table_io_info)::in, maybe(prog_var)::in,
     io::di, io::uo) is det.
 
-write_proc_tabling_info(Stream, VarSet, TVarSet, VarNamePrint,
+write_proc_tabling_info(Stream, VarTable, TVarSet, VarNamePrint,
         EvalMethod, MaybeProcTableIOInfo, MaybeCallTableTip, !IO) :-
     (
         EvalMethod = eval_normal
@@ -1043,7 +1082,8 @@ write_proc_tabling_info(Stream, VarSet, TVarSet, VarNamePrint,
     (
         MaybeCallTableTip = yes(CallTableTip),
         io.write_string(Stream, "% call table tip: ", !IO),
-        mercury_output_var(VarSet, VarNamePrint, CallTableTip, Stream, !IO),
+        mercury_output_var_src(vns_var_table(VarTable), VarNamePrint,
+            CallTableTip, Stream, !IO),
         io.write_string(Stream, "\n", !IO)
     ;
         MaybeCallTableTip = no
@@ -1105,10 +1145,10 @@ write_table_tvar_map_entry(Stream, TVarSet, TVar - Locn, !IO) :-
 %---------------------%
 
 :- pred write_proc_deep_profiling_info(io.text_output_stream::in,
-    prog_varset::in, var_name_print::in, maybe(deep_profile_proc_info)::in,
+    var_table::in, var_name_print::in, maybe(deep_profile_proc_info)::in,
     io::di, io::uo) is det.
 
-write_proc_deep_profiling_info(Stream, VarSet, VarNamePrint,
+write_proc_deep_profiling_info(Stream, VarTable, VarNamePrint,
         MaybeDeepProfileInfo, !IO) :-
     (
         MaybeDeepProfileInfo = yes(DeepProfileInfo),
@@ -1138,15 +1178,18 @@ write_proc_deep_profiling_info(Stream, VarSet, VarNamePrint,
             write_hlds_proc_static(Stream, ProcStatic, !IO),
             ExcpVars = hlds_deep_excp_vars(TopCSD, MiddleCSD,
                 MaybeOldOutermost),
+            VarNameSrc = vns_var_table(VarTable),
             io.write_string(Stream, "% deep layout info: ", !IO),
             io.write_string(Stream, "TopCSD is ", !IO),
-            mercury_output_var(VarSet, VarNamePrint, TopCSD, Stream, !IO),
+            mercury_output_var_src(VarNameSrc, VarNamePrint, TopCSD,
+                Stream, !IO),
             io.write_string(Stream, ", MiddleCSD is ", !IO),
-            mercury_output_var(VarSet, VarNamePrint, MiddleCSD, Stream, !IO),
+            mercury_output_var_src(VarNameSrc, VarNamePrint, MiddleCSD,
+                Stream, !IO),
             (
                 MaybeOldOutermost = yes(OldOutermost),
                 io.write_string(Stream, ", OldOutermost is ", !IO),
-                mercury_output_var(VarSet, VarNamePrint, OldOutermost,
+                mercury_output_var_src(VarNameSrc, VarNamePrint, OldOutermost,
                     Stream, !IO)
             ;
                 MaybeOldOutermost = no
@@ -1166,7 +1209,8 @@ write_hlds_proc_static(Stream, ProcStatic, !IO) :-
     ProcStatic = hlds_proc_static(FileName, LineNumber,
         InInterface, CallSiteStatics, CoveragePoints),
     io.format(Stream, "%% proc static filename: %s\n", [s(FileName)], !IO),
-    io.format(Stream, "%% proc static line number: %d\n", [i(LineNumber)], !IO),
+    io.format(Stream, "%% proc static line number: %d\n",
+        [i(LineNumber)], !IO),
     io.write_string(Stream, "% proc static is interface: ", !IO),
     io.write_line(Stream, InInterface, !IO),
     list.foldl2(write_hlds_ps_call_site(Stream),
@@ -1245,13 +1289,13 @@ write_proc_termination_info(Stream, DumpOptions,  MaybeArgSize,
 %---------------------%
 
 :- pred write_proc_opt_info(io.text_output_stream::in, string::in,
-    prog_varset::in, tvarset::in, var_name_print::in,
+    var_table::in, tvarset::in, var_name_print::in,
     maybe(structure_sharing_domain_and_status)::in,
     maybe(structure_reuse_domain_and_status)::in,
     maybe(untuple_proc_info)::in,
     io::di, io::uo) is det.
 
-write_proc_opt_info(Stream, DumpOptions, VarSet, TVarSet, VarNamePrint,
+write_proc_opt_info(Stream, DumpOptions, VarTable, TVarSet, VarNamePrint,
         MaybeStructureSharing, MaybeStructureReuse, MaybeUntupleInfo, !IO) :-
     ( if
         string.contains_char(DumpOptions, 'S'),
@@ -1260,7 +1304,8 @@ write_proc_opt_info(Stream, DumpOptions, VarSet, TVarSet, VarNamePrint,
         io.write_string(Stream, "% Structure sharing: \n", !IO),
         StructureSharing =
             structure_sharing_domain_and_status(SharingAs, _Status),
-        dump_structure_sharing_domain(Stream, VarSet, TVarSet, SharingAs, !IO)
+        dump_structure_sharing_domain(Stream, VarTable, TVarSet,
+            SharingAs, !IO)
     else
         true
     ),
@@ -1271,33 +1316,36 @@ write_proc_opt_info(Stream, DumpOptions, VarSet, TVarSet, VarNamePrint,
         io.write_string(Stream, "% Structure reuse: \n", !IO),
         StructureReuse =
             structure_reuse_domain_and_status(ReuseAs, _ReuseStatus),
-        dump_structure_reuse_domain(Stream, VarSet, TVarSet, ReuseAs, !IO)
+        dump_structure_reuse_domain(Stream, VarTable, TVarSet, ReuseAs, !IO)
     else
         true
     ),
     (
         MaybeUntupleInfo = yes(UntupleInfo),
-        write_untuple_info(Stream, VarSet, VarNamePrint, UntupleInfo, !IO)
+        write_untuple_info(Stream, VarTable, VarNamePrint, UntupleInfo, !IO)
     ;
         MaybeUntupleInfo = no
     ).
 
-:- pred write_untuple_info(io.text_output_stream::in, prog_varset::in,
+:- pred write_untuple_info(io.text_output_stream::in, var_table::in,
     var_name_print::in, untuple_proc_info::in, io::di, io::uo) is det.
 
-write_untuple_info(Stream, VarSet, VarNamePrint, UntupleInfo, !IO) :-
+write_untuple_info(Stream, VarTable, VarNamePrint, UntupleInfo, !IO) :-
     UntupleInfo = untuple_proc_info(UntupleMap),
     io.write_string(Stream, "% untuple:\n", !IO),
-    map.foldl(write_untuple_info_loop(Stream, VarSet, VarNamePrint),
+    map.foldl(write_untuple_info_loop(Stream, VarTable, VarNamePrint),
         UntupleMap, !IO).
 
-:- pred write_untuple_info_loop(io.text_output_stream::in, prog_varset::in,
+:- pred write_untuple_info_loop(io.text_output_stream::in, var_table::in,
     var_name_print::in, prog_var::in, prog_vars::in, io::di, io::uo) is det.
 
-write_untuple_info_loop(Stream, VarSet, VarNamePrint, OldVar, NewVars, !IO) :-
+write_untuple_info_loop(Stream, VarTable, VarNamePrint,
+        OldVar, NewVars, !IO) :-
+    VarNameSrc = vns_var_table(VarTable),
     io.format(Stream, "%%\t%s -> %s\n",
-        [s(mercury_var_to_string(VarSet, VarNamePrint, OldVar)),
-        s(mercury_vars_to_string(VarSet, VarNamePrint, NewVars))], !IO).
+        [s(mercury_var_to_string_src(VarNameSrc, VarNamePrint, OldVar)),
+        s(mercury_vars_to_string_src(VarNameSrc, VarNamePrint, NewVars))],
+        !IO).
 
 %---------------------%
 
@@ -1318,35 +1366,34 @@ write_proc_deleted_callee_set(Stream, DeletedCallCalleeSet, !IO) :-
 %---------------------%
 
 :- pred write_pred_proc_var_name_remap(io.text_output_stream::in,
-    prog_varset::in, map(prog_var, string)::in, io::di, io::uo) is det.
+    var_name_source::in, map(prog_var, string)::in, io::di, io::uo) is det.
 
-write_pred_proc_var_name_remap(Stream, VarSet, VarNameRemap, !IO) :-
+write_pred_proc_var_name_remap(Stream, VarNameSrc, VarNameRemap, !IO) :-
     map.to_assoc_list(VarNameRemap, VarNameRemapList),
     (
         VarNameRemapList = []
     ;
         VarNameRemapList = [VarNameRemapHead | VarNameRemapTail],
         io.write_string(Stream, "% var name remap: ", !IO),
-        write_var_name_remap(Stream, VarSet,
+        write_var_name_remap(Stream, VarNameSrc,
             VarNameRemapHead, VarNameRemapTail, !IO),
         io.nl(Stream, !IO)
     ).
 
-:- pred write_var_name_remap(io.text_output_stream::in, prog_varset::in,
+:- pred write_var_name_remap(io.text_output_stream::in, var_name_source::in,
     pair(prog_var, string)::in, list(pair(prog_var, string))::in,
     io::di, io::uo) is det.
 
-write_var_name_remap(Stream, VarSet, Head, Tail, !IO) :-
+write_var_name_remap(Stream, VarNameSrc, Head, Tail, !IO) :-
     Head = Var - NewName,
-    mercury_output_var(VarSet, print_name_and_num, Var, Stream, !IO),
-    io.write_string(Stream, " -> ", !IO),
-    io.write_string(Stream, NewName, !IO),
+    VarName = mercury_var_to_string_src(VarNameSrc, print_name_and_num, Var),
+    io.format(Stream, "%s -> %s", [s(VarName), s(NewName)], !IO),
     (
         Tail = []
     ;
         Tail = [TailHead | TailTail],
         io.write_string(Stream, ", ", !IO),
-        write_var_name_remap(Stream, VarSet, TailHead, TailTail, !IO)
+        write_var_name_remap(Stream, VarNameSrc, TailHead, TailTail, !IO)
     ).
 
 %---------------------%
@@ -1365,11 +1412,10 @@ write_eff_trace_level(Stream, ModuleInfo, PredInfo, ProcInfo, !IO) :-
 %---------------------%
 
 :- pred write_proc_arg_info(io.text_output_stream::in, string::in,
-    prog_varset::in, var_name_print::in,
-    maybe(list(is_live))::in, set_of_progvar::in, maybe(list(arg_info))::in,
-    io::di, io::uo) is det.
+    var_table::in, var_name_print::in, maybe(list(is_live))::in,
+    set_of_progvar::in, maybe(list(arg_info))::in, io::di, io::uo) is det.
 
-write_proc_arg_info(Stream, DumpOptions, VarSet, VarNamePrint,
+write_proc_arg_info(Stream, DumpOptions, VarTable, VarNamePrint,
         MaybeArgLives, RegR_HeadVars, MaybeArgInfos, !IO) :-
     (
         MaybeArgLives = yes(ArgLives),
@@ -1380,7 +1426,8 @@ write_proc_arg_info(Stream, DumpOptions, VarSet, VarNamePrint,
     ),
     ( if set_of_var.is_non_empty(RegR_HeadVars) then
         io.write_string(Stream, "% reg_r headvars: ", !IO),
-        write_out_list(mercury_output_var(VarSet, VarNamePrint),
+        write_out_list(
+            mercury_output_var_src(vns_var_table(VarTable), VarNamePrint),
             ", ", set_of_var.to_sorted_list(RegR_HeadVars), Stream, !IO),
         io.nl(Stream, !IO)
     else
@@ -1398,14 +1445,14 @@ write_proc_arg_info(Stream, DumpOptions, VarSet, VarNamePrint,
 
 %---------------------%
 
-:- pred write_stack_slots(io.text_output_stream::in, prog_varset::in,
+:- pred write_stack_slots(io.text_output_stream::in, var_table::in,
     var_name_print::in, stack_slots::in, io::di, io::uo) is det.
 
-write_stack_slots(Stream, VarSet, VarNamePrint, StackSlots, !IO) :-
+write_stack_slots(Stream, VarTable, VarNamePrint, StackSlots, !IO) :-
     map.to_assoc_list(StackSlots, VarSlotList0),
     VarSlotList = assoc_list.map_values_only(stack_slot_to_abs_locn,
         VarSlotList0),
-    write_var_to_abs_locns(Stream, vns_varset(VarSet), VarNamePrint,
+    write_var_to_abs_locns(Stream, vns_var_table(VarTable), VarNamePrint,
         0, VarSlotList, !IO).
 
 %---------------------------------------------------------------------------%

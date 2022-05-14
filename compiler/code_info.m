@@ -924,7 +924,7 @@ lookup_cheaper_tag_test(CI, Type) = CheaperTagTest :-
 
 filter_region_vars(CI, ForwardLiveVarsBeforeGoal) = RegionVars :-
     get_var_table(CI, VarTable),
-    RegionVars = set_of_var.filter(is_region_var_table(VarTable),
+    RegionVars = set_of_var.filter(is_region_var(VarTable),
         ForwardLiveVarsBeforeGoal).
 
 %---------------------------------------------------------------------------%

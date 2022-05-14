@@ -126,6 +126,7 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.var_table.
 
 :- import_module char.
 :- import_module list.
@@ -1456,7 +1457,7 @@ write_pragma_structure_sharing_info(Stream, Lang, SharingInfo, !IO) :-
     % write structure sharing information.
     io.write_string(Stream, ", ", !IO),
     prog_ctgc.print_interface_structure_sharing_domain(Stream,
-        VarSet, TVarSet, MaybeSharingAs, !IO),
+        vns_varset(VarSet), TVarSet, MaybeSharingAs, !IO),
     io.write_string(Stream, ").\n", !IO).
 
 %---------------------------------------------------------------------------%
@@ -1474,7 +1475,7 @@ write_pragma_structure_reuse_info(Stream, Lang, ReuseInfo, !IO) :-
     % write structure reuse information.
     io.write_string(Stream, ", ", !IO),
     prog_ctgc.print_interface_maybe_structure_reuse_domain(Stream,
-        VarSet, TVarSet, MaybeStructureReuseDomain, !IO),
+        vns_varset(VarSet), TVarSet, MaybeStructureReuseDomain, !IO),
     io.write_string(Stream, ").\n", !IO).
 
 %---------------------------------------------------------------------------%

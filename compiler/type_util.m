@@ -359,8 +359,7 @@
 
     % Succeed iff the given variable is of region_type.
     %
-:- pred is_region_var(vartypes::in, prog_var::in) is semidet.
-:- pred is_region_var_table(var_table::in, prog_var::in) is semidet.
+:- pred is_region_var(var_table::in, prog_var::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -1651,11 +1650,7 @@ type_not_stored_in_region(Type, ModuleInfo) :-
     ; type_is_var(Type)
     ).
 
-is_region_var(VarTypes, Var)  :-
-    lookup_var_type(VarTypes, Var, Type),
-    Type = region_type.
-
-is_region_var_table(VarTable, Var)  :-
+is_region_var(VarTable, Var)  :-
     lookup_var_entry(VarTable, Var, Entry),
     Entry ^ vte_type = region_type.
 

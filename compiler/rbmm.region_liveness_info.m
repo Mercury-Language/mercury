@@ -98,10 +98,10 @@
 
 find_input_output_args(ModuleInfo, CalleeProcInfo, Inputs, Outputs) :-
     proc_info_get_headvars(CalleeProcInfo, ArgVars),
-    proc_info_get_varset_vartypes(CalleeProcInfo, _VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, CalleeProcInfo, VarTable),
     proc_info_get_argmodes(CalleeProcInfo, ArgModes),
-    arg_info.compute_in_and_out_vars(ModuleInfo, VarTypes, ArgVars, ArgModes,
-        Inputs, Outputs).
+    arg_info.compute_in_and_out_vars_table(ModuleInfo, VarTable,
+        ArgVars, ArgModes, Inputs, Outputs).
 
 region_set_equal(RegionSet1, RegionSet2) :-
     set.equal(RegionSet1, RegionSet2).

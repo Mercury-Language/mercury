@@ -61,6 +61,13 @@
 :- pred mercury_format_var_src(var_name_source::in, var_name_print::in,
     prog_var::in, S::in, U::di, U::uo) is det <= output(S, U).
 
+:- func mercury_var_raw_to_string(var_name_print, prog_var, string) = string.
+:- pred mercury_format_var_raw(var_name_print::in, var(T)::in, string::in,
+    S::in, U::di, U::uo) is det <= output(S, U).
+
+:- pred mercury_format_var_num_only(var(T)::in,
+    S::in, U::di, U::uo) is det <= output(S, U).
+
     % Output a comma-separated list of variables.
     %
 :- pred mercury_output_vars(varset(T)::in, var_name_print::in,
@@ -226,32 +233,10 @@ mercury_var_to_string(VarSet, VarNamePrint, Var) = String :-
     mercury_format_var(VarSet, VarNamePrint, Var, unit, "", String).
 
 mercury_format_var(VarSet, VarNamePrint, Var, S, !U) :-
-    % Please keep in sync with mercury_format_var_src.
     ( if varset.search_name(VarSet, Var, Name) then
-        (
-            VarNamePrint = print_num_only,
-            term.var_to_int(Var, VarNum),
-            add_string("V_", S, !U),
-            add_int(VarNum, S, !U)
-        ;
-            ( VarNamePrint = print_name_only
-            ; VarNamePrint = print_name_and_num
-            ),
-            mercury_convert_var_name(Name, ConvertedName),
-            add_string(ConvertedName, S, !U),
-            (
-                VarNamePrint = print_name_only
-            ;
-                VarNamePrint = print_name_and_num,
-                term.var_to_int(Var, VarNum),
-                add_string("_", S, !U),
-                add_int(VarNum, S, !U)
-            )
-        )
+        mercury_format_var_raw(VarNamePrint, Var, Name, S, !U)
     else
-        term.var_to_int(Var, VarNum),
-        add_string("V_", S, !U),
-        add_int(VarNum, S, !U)
+        mercury_format_var_num_only(Var, S, !U)
     ).
 
 %---------------------%
@@ -263,13 +248,23 @@ mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var) = String :-
     mercury_format_var_src(VarNameSrc, VarNamePrint, Var, unit, "", String).
 
 mercury_format_var_src(VarNameSrc, VarNamePrint, Var, S, !U) :-
-    % Please keep in sync with mercury_format_var.
     ( if var_table.search_var_name_in_source(VarNameSrc, Var, Name) then
+        mercury_format_var_raw(VarNamePrint, Var, Name, S, !U)
+    else
+        mercury_format_var_num_only(Var, S, !U)
+    ).
+
+mercury_var_raw_to_string(VarNamePrint, Var, Name) = String :-
+    mercury_format_var_raw(VarNamePrint, Var, Name, unit, "", String).
+
+mercury_format_var_raw(VarNamePrint, Var, Name, S, !U) :-
+    ( if Name = "" then
+        % There is nothing else to print.
+        mercury_format_var_num_only(Var, S, !U)
+    else
         (
             VarNamePrint = print_num_only,
-            term.var_to_int(Var, VarNum),
-            add_string("V_", S, !U),
-            add_int(VarNum, S, !U)
+            mercury_format_var_num_only(Var, S, !U)
         ;
             ( VarNamePrint = print_name_only
             ; VarNamePrint = print_name_and_num
@@ -285,11 +280,12 @@ mercury_format_var_src(VarNameSrc, VarNamePrint, Var, S, !U) :-
                 add_int(VarNum, S, !U)
             )
         )
-    else
-        term.var_to_int(Var, VarNum),
-        add_string("V_", S, !U),
-        add_int(VarNum, S, !U)
     ).
+
+mercury_format_var_num_only(Var, S, !U) :-
+    term.var_to_int(Var, VarNum),
+    add_string("V_", S, !U),
+    add_int(VarNum, S, !U).
 
 %---------------------%
 
