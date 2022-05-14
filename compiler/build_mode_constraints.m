@@ -106,7 +106,7 @@
 :- pred add_mc_vars_for_scc_heads(module_info::in, list(pred_id)::in,
     mc_var_info::in, mc_var_info::out) is det.
 
-    % add_mc_vars_for_goal(PredId, ProgVarset, Goal, !VarInfo)
+    % add_mc_vars_for_goal(PredId, ProgVarSet, Goal, !VarInfo)
     %
     % For each nonlocal of Goal, makes sure a constraint variable exists
     % in VarInfo representing the proposition that the nonlocal is produced
@@ -175,11 +175,11 @@
     %
 :- func var_info_init = mc_var_info.
 
-    % rep_var_to_string(ProgVarset, ProgVar `in` PredId `at` GoalId)
+    % rep_var_to_string(ProgVarSet, ProgVar `in` PredId `at` GoalId)
     %
     % returns a string representation of the constraint variable with
     % the abstract representation given, in format "ProgVarName.GoalId" -
-    % the ProgVarset should have the ProgVarName in it for ProgVar,
+    % the ProgVarSet should have the ProgVarName in it for ProgVar,
     % and should therefore be taken from predicate PredId.
     %
 :- func rep_var_to_string(prog_varset, mc_rep_var) = (string).
@@ -193,10 +193,8 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
-:- import_module hlds.hlds_desc.
 
 :- import_module bool.
-:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
@@ -254,41 +252,41 @@ add_mc_vars_for_pred_head(ModuleInfo, PredId, !VarInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_headvar_list(ClausesInfo, HeadVars),
-    clauses_info_get_varset(ClausesInfo, ProgVarset),
-    list.foldl(add_mc_var_for_pred_head(ProgVarset, PredId), HeadVars,
+    clauses_info_get_varset(ClausesInfo, ProgVarSet),
+    list.foldl(add_mc_var_for_pred_head(ProgVarSet, PredId), HeadVars,
         !VarInfo).
 
-    % add_mc_var_for_pred_head(ProgVarset, PredId, ProgVar, !VarInfo)
+    % add_mc_var_for_pred_head(ProgVarSet, PredId, ProgVar, !VarInfo)
     %
     % For ProgVar, a head variable of predicate PredId, this predicate
     % adds to VarInfo the constraint variable for ProgVar `in` PredId
     % `at` []. In other words, it creates the constraint variable that
     % describes whether or not ProgVar is produced by a call to the
-    % predicate. ProgVarset should contain ProgVar, and a string name
+    % predicate. ProgVarSet should contain ProgVar, and a string name
     % for it.
     %
 :- pred add_mc_var_for_pred_head(prog_varset::in, pred_id::in, prog_var::in,
     mc_var_info::in, mc_var_info::out) is det.
 
-add_mc_var_for_pred_head(ProgVarset, PredId, HeadVar, !VarInfo) :-
-    prog_var_at_path(ProgVarset, PredId, HeadVar, goal_id(0), _, !VarInfo).
+add_mc_var_for_pred_head(ProgVarSet, PredId, HeadVar, !VarInfo) :-
+    prog_var_at_path(ProgVarSet, PredId, HeadVar, goal_id(0), _, !VarInfo).
 
 %-----------------------------------------------------------------------------%
 
-add_mc_vars_for_goal(PredId, ProgVarset, Goal, !VarInfo) :-
+add_mc_vars_for_goal(PredId, ProgVarSet, Goal, !VarInfo) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     Nonlocals = goal_info_get_nonlocals(GoalInfo),
     GoalId = goal_info_get_goal_id(GoalInfo),
 
     set_of_var.to_sorted_list(Nonlocals, NlsList),
-    prog_vars_at_path(ProgVarset, PredId, NlsList, GoalId, _, !VarInfo),
+    prog_vars_at_path(ProgVarSet, PredId, NlsList, GoalId, _, !VarInfo),
 
     % Switch on GoalExpr for recursion
     (
         GoalExpr = conj(ConjType, Goals),
         (
             ConjType = plain_conj,
-            list.foldl(add_mc_vars_for_goal(PredId, ProgVarset), Goals,
+            list.foldl(add_mc_vars_for_goal(PredId, ProgVarSet), Goals,
                 !VarInfo)
         ;
             ConjType = parallel_conj
@@ -297,20 +295,20 @@ add_mc_vars_for_goal(PredId, ProgVarset, Goal, !VarInfo) :-
     ;
         GoalExpr = switch(_, _, Cases),
         Goals = list.map(func(case(_, _, CaseGoal)) = CaseGoal, Cases),
-        list.foldl(add_mc_vars_for_goal(PredId, ProgVarset), Goals, !VarInfo)
+        list.foldl(add_mc_vars_for_goal(PredId, ProgVarSet), Goals, !VarInfo)
     ;
         GoalExpr = disj(Goals),
-        list.foldl(add_mc_vars_for_goal(PredId, ProgVarset), Goals, !VarInfo)
+        list.foldl(add_mc_vars_for_goal(PredId, ProgVarSet), Goals, !VarInfo)
     ;
         GoalExpr = negation(SubGoal),
-        add_mc_vars_for_goal(PredId, ProgVarset, SubGoal, !VarInfo)
+        add_mc_vars_for_goal(PredId, ProgVarSet, SubGoal, !VarInfo)
     ;
         GoalExpr = scope(_, SubGoal),
-        add_mc_vars_for_goal(PredId, ProgVarset, SubGoal, !VarInfo)
+        add_mc_vars_for_goal(PredId, ProgVarSet, SubGoal, !VarInfo)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
         Goals = [Cond, Then, Else],
-        list.foldl(add_mc_vars_for_goal(PredId, ProgVarset), Goals, !VarInfo)
+        list.foldl(add_mc_vars_for_goal(PredId, ProgVarSet), Goals, !VarInfo)
     ;
         GoalExpr = shorthand(ShortHand),
         (
@@ -339,7 +337,7 @@ add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
     clauses_info_get_headvars(ClausesInfo, HeadVars),
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
     get_clause_list_maybe_repeated(ClausesRep, Clauses),
-    clauses_info_get_varset(ClausesInfo, ProgVarset),
+    clauses_info_get_varset(ClausesInfo, ProgVarSet),
 
     (
         % If the clause list is empty, then there are no goals
@@ -356,17 +354,17 @@ add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
         % Though some may not be applicable, overall the wasted effort
         % should not be large.
         Goals = list.map(clause_body, Clauses),
-        list.foldl(add_mc_vars_for_goal(PredId, ProgVarset), Goals, !VarInfo),
+        list.foldl(add_mc_vars_for_goal(PredId, ProgVarSet), Goals, !VarInfo),
 
         % Temporarily form the disjunction implied by the goal path
         % annotations.
         MainGoal = disj(Goals),
         Nonlocals = set_of_var.list_to_set(proc_arg_vector_to_list(HeadVars)),
-        add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, MainGoal,
+        add_goal_expr_constraints(ModuleInfo, ProgVarSet, PredId, MainGoal,
             Context, goal_id(0), Nonlocals, !VarInfo, !Constraints)
     ).
 
-    % add_goal_constraints(ModuleInfo, ProgVarset, PredId, Goal,
+    % add_goal_constraints(ModuleInfo, ProgVarSet, PredId, Goal,
     %   !VarInfo, !Constraints)
     %
     % Adds goal constraints to Constraints to describe the producing and
@@ -379,20 +377,20 @@ add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
     hlds_goal::in, mc_var_info::in, mc_var_info::out, mode_constraints::in,
     mode_constraints::out) is det.
 
-add_goal_constraints(ModuleInfo, ProgVarset, PredId, Goal,
+add_goal_constraints(ModuleInfo, ProgVarSet, PredId, Goal,
         !VarInfo, !Constraints) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     Nonlocals = goal_info_get_nonlocals(GoalInfo),
     GoalId = goal_info_get_goal_id(GoalInfo),
     Context = goal_info_get_context(GoalInfo),
-    trace [compile_time(flag("goal_mode_constraints")), io(!IO)] (
-        GoalDesc = describe_goal(ModuleInfo, ProgVarset, Goal),
-        io.format("constraints for %s:\n", [s(GoalDesc)], !IO)
-    ),
-    add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
+%   trace [compile_time(flag("goal_mode_constraints")), io(!IO)] (
+%       GoalDesc = describe_goal(ModuleInfo, ProgVarSet, Goal),
+%       io.format("constraints for %s:\n", [s(GoalDesc)], !IO)
+%   ),
+    add_goal_expr_constraints(ModuleInfo, ProgVarSet, PredId, GoalExpr,
         Context, GoalId, Nonlocals, !VarInfo, !Constraints).
 
-    % add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
+    % add_goal_expr_constraints(ModuleInfo, ProgVarSet, PredId, GoalExpr,
     %   Context, GoalId, Nonlocals, !VarInfo, !Constraints)
     %
     % Adds goal constraints to Constraints to describe the producing and
@@ -402,7 +400,7 @@ add_goal_constraints(ModuleInfo, ProgVarset, PredId, Goal,
     % source file for the module described in ModuleInfo, and in the
     % body of predicate PredId respectively.
     % VarInfo is used to keep track of the meaning of any constraint
-    % variables used. ProgVarset should contain string names for
+    % variables used. ProgVarSet should contain string names for
     % all of the variables in Nonlocals.
     %
 :- pred add_goal_expr_constraints(module_info::in, prog_varset::in,
@@ -410,7 +408,7 @@ add_goal_constraints(ModuleInfo, ProgVarset, PredId, Goal,
     nonlocals::in, mc_var_info::in, mc_var_info::out,
     mode_constraints::in, mode_constraints::out) is det.
 
-add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
+add_goal_expr_constraints(ModuleInfo, ProgVarSet, PredId, GoalExpr,
         Context, GoalId, Nonlocals, !VarInfo, !Constraints) :-
     (
         GoalExpr = conj(ConjType, Goals),
@@ -421,13 +419,13 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
                     Nonlocals),
                 Goals, conj_constraints_info_init, ConjConstraintsInfo),
             VarMap = rep_var_map(!.VarInfo),
-            list.foldl2(add_goal_constraints(ModuleInfo, ProgVarset, PredId),
+            list.foldl2(add_goal_constraints(ModuleInfo, ProgVarSet, PredId),
                 Goals, !VarInfo, !Constraints),
             map.foldl(
                 add_local_var_conj_constraints(!.VarInfo ^ mc_varset, Context),
                 locals_positions(ConjConstraintsInfo), !Constraints),
             map.foldl2(
-                add_nonlocal_var_conj_constraints(ProgVarset, PredId,
+                add_nonlocal_var_conj_constraints(ProgVarSet, PredId,
                     Context, GoalId),
                 nonlocals_positions(ConjConstraintsInfo),
                 !VarInfo, !Constraints)
@@ -446,7 +444,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
             pred_info_get_clauses_info(CalleePredInfo, CalleeClausesInfo),
             clauses_info_get_headvar_list(CalleeClausesInfo, CalleeHeadVars),
             add_mode_infer_callee(CalleePredId, !Constraints),
-            add_call_headvar_constraints(ProgVarset, Context, GoalId,
+            add_call_headvar_constraints(ProgVarSet, Context, GoalId,
                 CallerPredId, Args, CalleePredId, CalleeHeadVars,
                 !VarInfo, !Constraints)
         else
@@ -455,7 +453,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
             map.values(CalleeProcTable, CalleeProcInfos),
             list.map(proc_info_get_argmodes, CalleeProcInfos,
                 CalleeArgModeDecls),
-            add_call_mode_decls_constraints(ModuleInfo, ProgVarset, Context,
+            add_call_mode_decls_constraints(ModuleInfo, ProgVarSet, Context,
                 CallerPredId, CalleeArgModeDecls, GoalId, Args, !VarInfo,
                 !Constraints)
         )
@@ -494,20 +492,20 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         unexpected($pred, "switch")
     ;
         GoalExpr = unify(LHSvar, RHS, _Mode, _Kind, _UnifyContext),
-        prog_var_at_path(ProgVarset, PredId, LHSvar, GoalId,
+        prog_var_at_path(ProgVarSet, PredId, LHSvar, GoalId,
             LHSvarProducedHere, !VarInfo),
         (
             RHS = rhs_var(RHSvar),
             % Goal: LHSvar = RHSvar
             % At most one of the left and right hand sides of a unification
             % is produced at the unification.
-            prog_var_at_path(ProgVarset, PredId, RHSvar, GoalId,
+            prog_var_at_path(ProgVarSet, PredId, RHSvar, GoalId,
                 RHSvarProducedHere, !VarInfo),
             not_both(!.VarInfo ^ mc_varset, Context,
                 LHSvarProducedHere, RHSvarProducedHere, !Constraints)
         ;
             RHS = rhs_functor(_Functor, _IsExistConstr, Args),
-            prog_vars_at_path(ProgVarset, PredId, Args, GoalId,
+            prog_vars_at_path(ProgVarSet, PredId, Args, GoalId,
                 ArgsProducedHere, !VarInfo),
             (
                 ArgsProducedHere = [OneArgProducedHere, _Two| _],
@@ -536,13 +534,13 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         )
     ;
         GoalExpr = disj(Goals),
-        nonlocals_at_path_and_subpaths(ProgVarset, PredId, GoalId,
+        nonlocals_at_path_and_subpaths(ProgVarSet, PredId, GoalId,
             DisjunctGoalIds, Nonlocals, NonlocalsHere, NonlocalsAtDisjuncts,
             !VarInfo),
         GoalInfos = list.map(get_hlds_goal_info, Goals),
         DisjunctGoalIds = list.map(goal_info_get_goal_id, GoalInfos),
 
-        list.foldl2(add_goal_constraints(ModuleInfo, ProgVarset, PredId),
+        list.foldl2(add_goal_constraints(ModuleInfo, ProgVarSet, PredId),
             Goals, !VarInfo, !Constraints),
 
         % A variable bound at any disjunct is bound for the disjunction
@@ -562,7 +560,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         set_of_var.fold(cons_prog_var_at_path(VarMap, PredId, NegatedGoalId),
             Nonlocals, NonlocalsAtId, NonlocalsConstraintVars),
 
-        add_goal_constraints(ModuleInfo, ProgVarset, PredId, Goal, !VarInfo,
+        add_goal_constraints(ModuleInfo, ProgVarSet, PredId, Goal, !VarInfo,
             !Constraints),
 
         % The variables non-local to the negation are not to be produced
@@ -580,9 +578,9 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         % - here we pair up equivalent mode constraint vars and
         % then constrain them to reflect this.
         NonlocalsList = set_of_var.to_sorted_list(Nonlocals),
-        prog_vars_at_path(ProgVarset, PredId, NonlocalsList, GoalId,
+        prog_vars_at_path(ProgVarSet, PredId, NonlocalsList, GoalId,
             NonlocalsHere, !VarInfo),
-        prog_vars_at_path(ProgVarset, PredId, NonlocalsList, SomeGoalId,
+        prog_vars_at_path(ProgVarSet, PredId, NonlocalsList, SomeGoalId,
             NonlocalsAtSubGoal, !VarInfo),
         EquivVarss = list.map_corresponding(
             func(NlAtId, NlAtSubId) = [NlAtId, NlAtSubId],
@@ -590,7 +588,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         list.foldl(equivalent(!.VarInfo ^ mc_varset, Context), EquivVarss,
             !Constraints),
 
-        add_goal_constraints(ModuleInfo, ProgVarset, PredId, Goal, !VarInfo,
+        add_goal_constraints(ModuleInfo, ProgVarSet, PredId, Goal, !VarInfo,
             !Constraints)
     ;
         GoalExpr = if_then_else(ExistVars, Cond, Then, Else),
@@ -601,13 +599,13 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         ThenId = goal_info_get_goal_id(ThenInfo),
         ElseId = goal_info_get_goal_id(ElseInfo),
 
-        prog_vars_at_path(ProgVarset, PredId, NonlocalsList, GoalId,
+        prog_vars_at_path(ProgVarSet, PredId, NonlocalsList, GoalId,
             NonlocalsHere, !VarInfo),
-        prog_vars_at_path(ProgVarset, PredId, NonlocalsList, CondId,
+        prog_vars_at_path(ProgVarSet, PredId, NonlocalsList, CondId,
             NonlocalsAtCond, !VarInfo),
-        prog_vars_at_path(ProgVarset, PredId, NonlocalsList, ThenId,
+        prog_vars_at_path(ProgVarSet, PredId, NonlocalsList, ThenId,
             NonlocalsAtThen, !VarInfo),
-        prog_vars_at_path(ProgVarset, PredId, NonlocalsList, ElseId,
+        prog_vars_at_path(ProgVarSet, PredId, NonlocalsList, ElseId,
             NonlocalsAtElse, !VarInfo),
         NonlocalsList = set_of_var.to_sorted_list(Nonlocals),
 
@@ -620,16 +618,16 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
             ExistVars, NonlocalToCond),
         list.filter(set_of_var.contains(ThenNonlocals),
             NonlocalToCond, LocalAndShared),
-        prog_vars_at_path(ProgVarset, PredId, LocalAndShared, CondId,
+        prog_vars_at_path(ProgVarSet, PredId, LocalAndShared, CondId,
             LocalAndSharedAtCond, !VarInfo),
-        prog_vars_at_path(ProgVarset, PredId, LocalAndShared, ThenId,
+        prog_vars_at_path(ProgVarSet, PredId, LocalAndShared, ThenId,
             LocalAndSharedAtThen, !VarInfo),
 
-        add_goal_constraints(ModuleInfo, ProgVarset, PredId, Cond, !VarInfo,
+        add_goal_constraints(ModuleInfo, ProgVarSet, PredId, Cond, !VarInfo,
             !Constraints),
-        add_goal_constraints(ModuleInfo, ProgVarset, PredId, Then, !VarInfo,
+        add_goal_constraints(ModuleInfo, ProgVarSet, PredId, Then, !VarInfo,
             !Constraints),
-        add_goal_constraints(ModuleInfo, ProgVarset, PredId, Else, !VarInfo,
+        add_goal_constraints(ModuleInfo, ProgVarSet, PredId, Else, !VarInfo,
             !Constraints),
 
         % If a variable is to be produced at this path,
@@ -664,7 +662,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
 
             % This pred should strip the disj(conj()) for the single
             % declaration.
-            add_call_mode_decls_constraints(ModuleInfo, ProgVarset, Context,
+            add_call_mode_decls_constraints(ModuleInfo, ProgVarSet, Context,
                 PredId, [Decl], GoalId, CallArgs, !VarInfo, !Constraints)
         else
             unexpected($pred, "no mode declaration for foreign proc")
@@ -716,10 +714,11 @@ mode_decls_constraints(ModuleInfo, VarMap, PredId, Decls, HeadVarsList,
 add_mode_decl_constraints(ModuleInfo, PredId, ProcId, Decl, Args,
         !VarInfo, !Constraints) :-
     module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
-    proc_info_get_varset_vartypes(ProcInfo, ProgVarset, _VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    split_var_table(VarTable, ProgVarSet, _VarTypes),
     proc_info_get_context(ProcInfo, Context),
 
-    prog_vars_at_path(ProgVarset, PredId, Args, goal_id(0), ArgsAtHead,
+    prog_vars_at_path(ProgVarSet, PredId, Args, goal_id(0), ArgsAtHead,
         !VarInfo),
 
     DeclConstraints = mode_decl_constraints(ModuleInfo, ArgsAtHead, Decl),
@@ -728,7 +727,7 @@ add_mode_decl_constraints(ModuleInfo, PredId, ProcId, Decl, Args,
         add_proc_specific_constraint(!.VarInfo ^ mc_varset, Context, ProcId),
         DeclConstraints, !Constraints).
 
-    % add_call_mode_decls_constraints(ModuleInfo, ProgVarset, Context,
+    % add_call_mode_decls_constraints(ModuleInfo, ProgVarSet, Context,
     %   CallingPred, Decls, GoalId, CallArgs, !VarInfo, !Constraints)
     %
     % Adds the following to the mode_constraints:
@@ -739,7 +738,7 @@ add_mode_decl_constraints(ModuleInfo, PredId, ProcId, Decl, Args,
     % Assumes CallArgs to be the program variables from CallingPred
     % that are to be used as arguments for the called predicate.
     % Uses and stores constraint variables in VarInfo, finding
-    % the string names for program variables in ProgVarset.
+    % the string names for program variables in ProgVarSet.
     %
     % Note that if Decls is an empty list, this is interpreted as
     % there being no modes for which the predicate can be executed
@@ -760,9 +759,9 @@ add_mode_decl_constraints(ModuleInfo, PredId, ProcId, Decl, Args,
     goal_id::in, args::in, mc_var_info::in, mc_var_info::out,
     mode_constraints::in, mode_constraints::out) is det.
 
-add_call_mode_decls_constraints(ModuleInfo, ProgVarset, CallContext,
+add_call_mode_decls_constraints(ModuleInfo, ProgVarSet, CallContext,
         CallingPred, Decls, GoalId, CallArgs, !VarInfo, !Constraints) :-
-    prog_vars_at_path(ProgVarset, CallingPred, CallArgs, GoalId,
+    prog_vars_at_path(ProgVarSet, CallingPred, CallArgs, GoalId,
         CallArgsHere, !VarInfo),
     ModeSpecificConstraints = list.condense(list.map(
         mode_decl_constraints(ModuleInfo, CallArgsHere),
@@ -775,7 +774,7 @@ add_call_mode_decls_constraints(ModuleInfo, ProgVarset, CallContext,
             mc_disj(ModeSpecificConstraints), !Constraints)
     ).
 
-    % add_call_headvar_constraints(ProgVarset, Context, GoalId, Caller,
+    % add_call_headvar_constraints(ProgVarSet, Context, GoalId, Caller,
     %   CallArgs, Callee, HeadVars, CallArgs, !VarInfo, !Constraints):
     %
     % Forms constraints that, when satisfied, mean any call arg will be
@@ -793,11 +792,11 @@ add_call_mode_decls_constraints(ModuleInfo, ProgVarset, CallContext,
     mc_var_info::in, mc_var_info::out, mode_constraints::in,
     mode_constraints::out) is det.
 
-add_call_headvar_constraints(ProgVarset, Context, GoalId, CallerPredId,
+add_call_headvar_constraints(ProgVarSet, Context, GoalId, CallerPredId,
         CallArgs, CalleePredId, CalleeHeadVars, !VarInfo, !Constraints) :-
-    prog_vars_at_path(ProgVarset, CalleePredId, CalleeHeadVars, goal_id(0),
+    prog_vars_at_path(ProgVarSet, CalleePredId, CalleeHeadVars, goal_id(0),
         HeadVarsAtHead, !VarInfo),
-    prog_vars_at_path(ProgVarset, CallerPredId, CallArgs, GoalId,
+    prog_vars_at_path(ProgVarSet, CallerPredId, CallArgs, GoalId,
         CallArgsHere, !VarInfo),
 
     % If the head var is produced by the body of the callee, then the
@@ -909,13 +908,13 @@ add_variable_to_conjunct_production_map(VarMap, PredId, GoalId, ProgVar,
     MCVar = lookup_prog_var_at_path(VarMap, PredId, GoalId, ProgVar),
     multi_map.set(ProgVar, MCVar, !ConjunctProductionMap).
 
-    % add_nonlocal_var_conj_constraints(ProgVarset, PredId, Context, GoalId,
+    % add_nonlocal_var_conj_constraints(ProgVarSet, PredId, Context, GoalId,
     %     ProgVar, ProgVarAtConjuncts, !VarInfo, !Constraints)
     %
     % Adds conjunction constraints concerning ProgVar, a variable
     % in predicate PredID, to Constraints. The conjunction should
     % exist at the position indicated by GoalId in the predicate,
-    % and have context Context in the source file. ProgVarset should
+    % and have context Context in the source file. ProgVarSet should
     % contain a string name for ProgVar.
     % ProgVar should be a variable in the nonlocal set of the conjunction,
     % and as such may be produced outside it. Therefore the constraints
@@ -929,14 +928,14 @@ add_variable_to_conjunct_production_map(VarMap, PredId, GoalId, ProgVar,
     mc_var_info::in, mc_var_info::out, mode_constraints::in,
     mode_constraints::out) is det.
 
-add_nonlocal_var_conj_constraints(ProgVarset, PredId, Context, GoalId,
+add_nonlocal_var_conj_constraints(ProgVarSet, PredId, Context, GoalId,
         ProgVar, ProgVarAtConjuncts, !VarInfo, !Constraints) :-
     equiv_disj(!.VarInfo ^ mc_varset, Context,
         ProgVarAtGoalId, ProgVarAtConjuncts, !Constraints),
     at_most_one(!.VarInfo ^ mc_varset, Context,
         ProgVarAtConjuncts, !Constraints),
 
-    prog_var_at_path(ProgVarset, PredId, ProgVar, GoalId, ProgVarAtGoalId,
+    prog_var_at_path(ProgVarSet, PredId, ProgVar, GoalId, ProgVarAtGoalId,
         !VarInfo).
 
     % add_local_var_conj_constraints(MCVarSet, Context, ProgVar, MCVars,
@@ -969,78 +968,78 @@ conj_constraints_info_init =
 
 %-----------------------------------------------------------------------------%
 
-    % prog_var_at_path(ProgVarset, PredId, ProgVar, GoalId, MCVar, !VarInfo)
+    % prog_var_at_path(ProgVarSet, PredId, ProgVar, GoalId, MCVar, !VarInfo)
     %
     % MCVar is the constraint variable corresponding to the proposition
     % that ProgVar is created at GoalId in predicate PredId,
     % it is created if necessary and stored in VarInfo (in which
-    % case we need a string name of ProgVar in ProgVarset).
+    % case we need a string name of ProgVar in ProgVarSet).
     %
 :- pred prog_var_at_path(prog_varset::in, pred_id::in, prog_var::in,
     goal_id::in, mc_var::out, mc_var_info::in, mc_var_info::out) is det.
 
-prog_var_at_path(ProgVarset, PredId, ProgVar, GoalId, MCVar, !VarInfo) :-
+prog_var_at_path(ProgVarSet, PredId, ProgVar, GoalId, MCVar, !VarInfo) :-
     !.VarInfo = mc_var_info(MCVarset0, VarMap0),
-    ensure_prog_var_at_path(ProgVarset, PredId, GoalId, ProgVar,
+    ensure_prog_var_at_path(ProgVarSet, PredId, GoalId, ProgVar,
         MCVarset0, MCVarset, VarMap0, VarMap),
     MCVar = lookup_prog_var_at_path(VarMap, PredId, GoalId, ProgVar),
     !:VarInfo = mc_var_info(MCVarset, VarMap).
 
-    % prog_var_at_paths(ProgVarset, PredId, ProgVar, GoalIds, MCVars,
+    % prog_var_at_paths(ProgVarSet, PredId, ProgVar, GoalIds, MCVars,
     %   !VarInfo)
     %
     % MCVars are the constraint variables corresponding to propositions
     % that ProgVar is created at GoalId in predicate PredId, for each
     % GoalId in GoalIds. The constraint variables are created if necessary
     % and stored in VarInfo (in which case we need a string name of ProgVar
-    % in ProgVarset).
+    % in ProgVarSet).
     %
 :- pred prog_var_at_paths(prog_varset::in, pred_id::in, prog_var::in,
     list(goal_id)::in, list(mc_var)::out, mc_var_info::in,
     mc_var_info::out) is det.
 
-prog_var_at_paths(ProgVarset, PredID, ProgVar, GoalIds, MCVars, !VarInfo) :-
-    list.map_foldl(prog_var_at_path(ProgVarset, PredID, ProgVar),
+prog_var_at_paths(ProgVarSet, PredID, ProgVar, GoalIds, MCVars, !VarInfo) :-
+    list.map_foldl(prog_var_at_path(ProgVarSet, PredID, ProgVar),
         GoalIds, MCVars, !VarInfo).
 
-    % prog_vars_at_path(ProgVarset, PredId, ProgVars, GoalId, MCVars,
+    % prog_vars_at_path(ProgVarSet, PredId, ProgVars, GoalId, MCVars,
     %   !VarInfo)
     %
     % MCVars are the constraint variables corresponding to propositions
     % that ProgVar is created at GoalId in predicate PredId, for each
     % ProgVar in ProgVars. They are created if necessary and stored in
     % VarInfo (in which case we will need a string name for ProgVar from
-    % ProgVarset).
+    % ProgVarSet).
     %
 :- pred prog_vars_at_path(prog_varset::in, pred_id::in, list(prog_var)::in,
     goal_id::in, list(mc_var)::out, mc_var_info::in, mc_var_info::out) is det.
 
-prog_vars_at_path(ProgVarset, PredId, ProgVars, GoalId, MCVars, !VarInfo) :-
+prog_vars_at_path(ProgVarSet, PredId, ProgVars, GoalId, MCVars, !VarInfo) :-
     list.map_foldl(
         ( pred(ProgVar::in, MCVar::out, !.VarInfo::in, !:VarInfo::out) is det :-
-            prog_var_at_path(ProgVarset, PredId, ProgVar, GoalId, MCVar,
+            prog_var_at_path(ProgVarSet, PredId, ProgVar, GoalId, MCVar,
                 !VarInfo)
         ), ProgVars, MCVars, !VarInfo).
 
-    % ensure_prog_var_at_path(ProgVarset, PredId, GoalId, ProgVar,
+    % ensure_prog_var_at_path(ProgVarSet, PredId, GoalId, ProgVar,
     %   !Varset, !VarMap)
     %
     % Adds, if necessary, to Varset and VarMap the constraint variable
     % and its abstract representation that represents the proposition
     % that ProgVar is produced at GoalId in PredId (in some mode of execution).
-    % ProgVarset should contain a string name for ProgVar.
+    % ProgVarSet should contain a string name for ProgVar.
     %
 :- pred ensure_prog_var_at_path(prog_varset::in, pred_id::in, goal_id::in,
     prog_var::in, mc_varset::in, mc_varset::out,
     mc_var_map::in, mc_var_map::out) is det.
 
-ensure_prog_var_at_path(ProgVarset, PredId, GoalId, ProgVar,
+ensure_prog_var_at_path(ProgVarSet, PredId, GoalId, ProgVar,
         !Varset, !VarMap) :-
     RepVar = (ProgVar `in` PredId) `at` GoalId,
     ( if bimap.search(!.VarMap, RepVar, _) then
         true
     else
-        MCVarName = rep_var_to_string(ProgVarset, RepVar),
+        MCVarName = rep_var_to_string(ProgVarSet, RepVar),
         varset.new_named_var(MCVarName, NewMCVar, !Varset),
         bimap.det_insert(RepVar, NewMCVar, !VarMap)
     ).
@@ -1068,7 +1067,7 @@ cons_prog_var_at_path(VarMap, PredId, GoalId, ProgVar, MCVars0, MCVars) :-
     MCVar = lookup_prog_var_at_path(VarMap, PredId, GoalId, ProgVar),
     MCVars = [MCVar | MCVars0].
 
-    % nonlocals_at_path_and_subpaths(ProgVarset, GoalId, SubIds,
+    % nonlocals_at_path_and_subpaths(ProgVarSet, GoalId, SubIds,
     %   Nonlocals, NonlocalsAtId, NonlocalsAtSubIds, !VarInfo)
     %
     % consults the VarInfo to find constraint variables associated with
@@ -1084,13 +1083,13 @@ cons_prog_var_at_path(VarMap, PredId, GoalId, ProgVar, MCVars0, MCVars) :-
     goal_id::in, list(goal_id)::in, nonlocals::in, list(mc_var)::out,
     list(list(mc_var))::out, mc_var_info::in, mc_var_info::out) is det.
 
-nonlocals_at_path_and_subpaths(ProgVarset, PredId, GoalId, SubIds,
+nonlocals_at_path_and_subpaths(ProgVarSet, PredId, GoalId, SubIds,
         Nonlocals, NonlocalsAtId, NonlocalsAtSubIds, !VarInfo) :-
-    prog_vars_at_path(ProgVarset, PredId, NonlocalsList, GoalId,
+    prog_vars_at_path(ProgVarSet, PredId, NonlocalsList, GoalId,
         NonlocalsAtId, !VarInfo),
     list.map_foldl(
         ( pred(Nl::in, NlAtSubIds::out, !.VInfo::in, !:VInfo::out) is det :-
-            prog_var_at_paths(ProgVarset, PredId, Nl, SubIds, NlAtSubIds,
+            prog_var_at_paths(ProgVarSet, PredId, Nl, SubIds, NlAtSubIds,
                 !VInfo)
         ), NonlocalsList, NonlocalsAtSubIds, !VarInfo),
     NonlocalsList = set_of_var.to_sorted_list(Nonlocals).
@@ -1099,10 +1098,10 @@ nonlocals_at_path_and_subpaths(ProgVarset, PredId, GoalId, SubIds,
 
 var_info_init = mc_var_info(varset.init, bimap.init).
 
-rep_var_to_string(ProgVarset, (ProgVar `in` _) `at` GoalId) = RepString :-
+rep_var_to_string(ProgVarSet, (ProgVar `in` _) `at` GoalId) = RepString :-
     GoalId = goal_id(GoalIdNum),
     GoalIdString = string.int_to_string(GoalIdNum),
-    varset.lookup_name(ProgVarset, ProgVar, ProgVarString),
+    varset.lookup_name(ProgVarSet, ProgVar, ProgVarString),
     RepString = ProgVarString ++ "." ++ GoalIdString.
 
 %-----------------------------------------------------------------------------%

@@ -27,27 +27,28 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
 
     % Return a short, less than one line description of the given goal,
-    % given the ModuleInfo and the varset of the procedure the goal is from.
+    % given the ModuleInfo and the var_table of the procedure the goal is from.
     %
-:- func describe_goal(module_info, prog_varset, hlds_goal) = string.
+:- func describe_goal(module_info, var_table, hlds_goal) = string.
 
     % If the list is empty, return the empty string; if the list contains
     % some variables, return the descriptions of those variables between
-    % parentheses. The varset should be the varset of the procedure the
+    % parentheses. The var_table should be the var_table of the procedure the
     % arguments are from.
     %
-:- func describe_args(prog_varset, list(prog_var)) = string.
+:- func describe_args(var_table, list(prog_var)) = string.
 
-    % Return a description of the given variable, given the varset of the
+    % Return a description of the given variable, given the var_table of the
     % procedure it is from.
     %
-:- func describe_var(prog_varset, prog_var) = string.
+:- func describe_var(var_table, prog_var) = string.
 
     % Return a description of the given procedure of the given predicate.
     %
@@ -68,60 +69,70 @@
 :- import_module string.
 :- import_module term.
 
-describe_goal(ModuleInfo, VarSet, Goal) = FullDesc :-
+describe_goal(ModuleInfo, VarTable, Goal) = FullDesc :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = unify(_, _, _, Unification, _),
         (
-            Unification = construct(Var, ConsId, Args, _, _, _, _),
-            Desc = describe_var(VarSet, Var) ++ " <= " ++
-                cons_id_and_arity_to_string(ConsId) ++
-                describe_args(VarSet, Args)
+            (
+                Unification = construct(Var, ConsId, Args, _, _, _, _),
+                OpStr = "<="
+            ;
+                Unification = deconstruct(Var, ConsId, Args, _, _, _),
+                OpStr = "=>"
+            ),
+            VarStr = describe_var(VarTable, Var),
+            ConsIdStr = cons_id_and_arity_to_string(ConsId),
+            ArgsStr = describe_args(VarTable, Args),
+            string.format("%s %s %s%s",
+                [s(VarStr), s(OpStr), s(ConsIdStr), s(ArgsStr)], Desc)
         ;
-            Unification = deconstruct(Var, ConsId, Args, _, _, _),
-            Desc = describe_var(VarSet, Var) ++ " => " ++
-                cons_id_and_arity_to_string(ConsId) ++
-                describe_args(VarSet, Args)
-        ;
-            Unification = assign(ToVar, FromVar),
-            Desc = describe_var(VarSet, ToVar) ++
-                " := " ++ describe_var(VarSet, FromVar)
-        ;
-            Unification = simple_test(VarA, VarB),
-            Desc = describe_var(VarSet, VarA) ++
-                " == " ++ describe_var(VarSet, VarB)
+            (
+                Unification = assign(VarA, VarB),
+                OpStr = ":="
+            ;
+                Unification = simple_test(VarA, VarB),
+                OpStr = "-="
+            ),
+            string.format("%s %s %s",
+                [s(describe_var(VarTable, VarA)), s(OpStr),
+                s(describe_var(VarTable, VarB))], Desc)
         ;
             Unification = complicated_unify(_, _, _),
             Desc = "complicated unify"
         )
     ;
         GoalExpr = plain_call(_, _, Args, _, _, SymName),
-        Desc = sym_name_to_string(SymName) ++ describe_args(VarSet, Args)
+        Desc = sym_name_to_string(SymName) ++ describe_args(VarTable, Args)
     ;
         GoalExpr = generic_call(GCall, Args, _, _, _),
+        ArgsStr = describe_args(VarTable, Args),
         (
             GCall = higher_order(Var, _, _, _),
-            Desc = describe_var(VarSet, Var) ++ describe_args(VarSet, Args)
+            string.format("%s%s",
+                [s(describe_var(VarTable, Var)), s(ArgsStr)], Desc)
         ;
-            GCall = class_method(Var, _, _, Method),
-            Desc = pf_sym_name_orig_arity_to_string(Method) ++
-                "[" ++ describe_var(VarSet, Var) ++ "]" ++
-                describe_args(VarSet, Args)
+            GCall = class_method(Var, _, _, MethodSNA),
+            string.format("%s[%s]%s",
+                [s(pf_sym_name_orig_arity_to_string(MethodSNA)),
+                s(describe_var(VarTable, Var)), s(ArgsStr)], Desc)
         ;
-            GCall = event_call(Event),
-            Desc = "event " ++ Event ++ describe_args(VarSet, Args)
+            GCall = event_call(EventName),
+            string.format("%s %s", [s(EventName), s(ArgsStr)], Desc)
         ;
             GCall = cast(CastType),
-            Desc = describe_cast(CastType) ++ " " ++
-                describe_args(VarSet, Args)
+            string.format("%s %s",
+                [s(describe_cast(CastType)), s(ArgsStr)], Desc)
         )
     ;
         GoalExpr = call_foreign_proc(_, PredId, _, Args, ExtraArgs, _, _),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         Name = pred_info_name(PredInfo),
-        Desc = "foreign " ++ Name ++
-            describe_args(VarSet, list.map(foreign_arg_var, Args)) ++
-            describe_args(VarSet, list.map(foreign_arg_var, ExtraArgs))
+        ArgVars = list.map(foreign_arg_var, Args),
+        ExtraVars = list.map(foreign_arg_var, ExtraArgs),
+        string.format("foreign %s%s%s",
+            [s(Name), s(describe_args(VarTable, ArgVars)),
+            s(describe_args(VarTable, ExtraVars))], Desc)
     ;
         GoalExpr = conj(_, _),
         Desc = "conj"
@@ -130,7 +141,7 @@ describe_goal(ModuleInfo, VarSet, Goal) = FullDesc :-
         Desc = "disj"
     ;
         GoalExpr = switch(Var, _, _),
-        Desc = "switch on " ++ describe_var(VarSet, Var)
+        Desc = "switch on " ++ describe_var(VarTable, Var)
     ;
         GoalExpr = negation(_),
         Desc = "negation"
@@ -187,21 +198,16 @@ describe_goal(ModuleInfo, VarSet, Goal) = FullDesc :-
 %---------------------------------------------------------------------------%
 
 describe_args(_, []) = "".
-describe_args(VarSet, [HeadVar | TailVars]) =
-    "(" ++
-    describe_var(VarSet, HeadVar) ++
-    string.append_list(list.map(describe_comma_var(VarSet), TailVars)) ++
-    ")".
-
-:- func describe_comma_var(prog_varset, prog_var) = string.
-
-describe_comma_var(VarSet, Var) =
-    ", " ++ mercury_var_to_string(VarSet, print_name_and_num, Var).
+describe_args(VarTable, Vars @ [_ | _]) = Str :-
+    VarStrs = list.map(describe_var(VarTable), Vars),
+    VarsStr = string.join_list(", ", VarStrs),
+    string.format("(%s)", [s(VarsStr)], Str).
 
 %---------------------------------------------------------------------------%
 
-describe_var(VarSet, Var) =
-    mercury_var_to_string(VarSet, print_name_and_num, Var).
+describe_var(VarTable, Var) =
+    mercury_var_to_string_src(vns_var_table(VarTable),
+        print_name_and_num, Var).
 
 %---------------------------------------------------------------------------%
 
