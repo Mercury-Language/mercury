@@ -370,7 +370,7 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
         implicitly_quantify_clause_body_general_vt(
             ordinary_nonlocals_no_lambda, HeadVars, _Warnings, Goal2, Goal3,
             VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
-        recompute_instmap_delta_vt(do_not_recompute_atomic_instmap_deltas,
+        recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
             VarTable, InstVarSet, InitInstMap, Goal3, Goal, !ModuleInfo),
         proc_info_set_goal(Goal, !ProcInfo),
         proc_info_set_var_table(VarTable, !ProcInfo),
@@ -473,7 +473,7 @@ can_eliminate_or_move(UnneededInfo, Goal, InitInstMap, FinalInstMap,
         WhereNeededMap, !:WhereInfo) :-
     ModuleInfo = UnneededInfo ^ uci_module_info,
     VarTable = UnneededInfo ^ uci_var_table,
-    instmap_changed_vars_vt(ModuleInfo, VarTable, InitInstMap, FinalInstMap,
+    instmap_changed_vars(ModuleInfo, VarTable, InitInstMap, FinalInstMap,
         ChangedVarSet),
     set_of_var.to_sorted_list(ChangedVarSet, ChangedVars),
     map.init(Empty),

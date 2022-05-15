@@ -672,7 +672,7 @@
 
 %---------------------%
 
-    % define_new_pred(SymName, Origin, TVarSet, InstVarSet, VarSet, VarTypes,
+    % define_new_pred(SymName, Origin, TVarSet, InstVarSet, VarTable,
     %   RttiVarMaps, ClassContext, InstMap0, VarNameRemap,
     %   Markers, IsAddressTaken, HasParallelConj, PredProcId,
     %   ArgVars, ExtraTiTcis, Goal0, CallGoal, !ModuleInfo):
@@ -683,13 +683,6 @@
     % which were added to the front of the argument list.
     %
 :- pred define_new_pred(sym_name::in, pred_origin::in,
-    tvarset::in, inst_varset::in, prog_varset::in, vartypes::in,
-    rtti_varmaps::in, prog_constraints::in, instmap::in,
-    map(prog_var, string)::in, pred_markers::in,
-    is_address_taken::in, has_parallel_conj::in, pred_proc_id::out,
-    list(prog_var)::in, list(prog_var)::out, hlds_goal::in, hlds_goal::out,
-    module_info::in, module_info::out) is det.
-:- pred define_new_pred_vt(sym_name::in, pred_origin::in,
     tvarset::in, inst_varset::in, var_table::in,
     rtti_varmaps::in, prog_constraints::in, instmap::in,
     map(prog_var, string)::in, pred_markers::in,
@@ -1430,7 +1423,7 @@ pred_create(ModuleName, PredName, Arity, PredOrFunc,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
 
 define_new_pred(PredSymName, Origin, TVarSet, InstVarSet,
-        VarSet0, VarTypes0, RttiVarMaps, ClassContext, InstMap0, VarNameRemap,
+        VarTable0, RttiVarMaps, ClassContext, InstMap0, VarNameRemap,
         Markers, IsAddressTaken, HasParallelConj, PredProcId,
         ArgVars0, ExtraTiTcis, Goal0, CallGoal, !ModuleInfo) :-
     Goal0 = hlds_goal(_GoalExpr, GoalInfo),
@@ -1452,8 +1445,8 @@ define_new_pred(PredSymName, Origin, TVarSet, InstVarSet,
     (
         TypeInfoLiveness = yes,
         NonLocals = goal_info_get_nonlocals(GoalInfo),
-        goal_util.extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps,
-            VarTypes0, ExistQVars, NonLocals, ExtraTiTcis0),
+        goal_util.extra_nonlocal_typeinfos_typeclass_infos_vt(RttiVarMaps,
+            VarTable0, ExistQVars, NonLocals, ExtraTiTcis0),
         set_of_var.delete_list(ArgVars0, ExtraTiTcis0, ExtraTiTcis1),
         set_of_var.to_sorted_list(ExtraTiTcis1, ExtraTiTcis),
         ArgVars = ExtraTiTcis ++ ArgVars0
@@ -1466,8 +1459,8 @@ define_new_pred(PredSymName, Origin, TVarSet, InstVarSet,
     Context = goal_info_get_context(GoalInfo),
     ItemNumber = item_no_seq_num,
     Detism = goal_info_get_determinism(GoalInfo),
-    compute_arg_types_modes(ArgVars, VarTypes0, InstMap0, InstMap,
-        ArgTypes, ArgModes),
+    compute_arg_types_modes(VarTable0, InstMap0, InstMap,
+        ArgVars, ArgTypes, ArgModes),
 
     (
         PredSymName = qualified(PredModuleName, PredName)
@@ -1481,8 +1474,7 @@ define_new_pred(PredSymName, Origin, TVarSet, InstVarSet,
     goal_util.goal_vars(Goal0, GoalVars0),
     set_of_var.insert_list(ArgVars, GoalVars0, GoalVars),
     GoalVarsSet = set_of_var.bitset_to_set(GoalVars),
-    varset.select(GoalVarsSet, VarSet0, VarSet),
-    vartypes_select(GoalVarsSet, VarTypes0, VarTypes),
+    var_table_select(GoalVarsSet, VarTable0, VarTable),
 
     % Approximate the termination information for the new procedure.
     ( if goal_cannot_loop(!.ModuleInfo, Goal0) then
@@ -1491,6 +1483,7 @@ define_new_pred(PredSymName, Origin, TVarSet, InstVarSet,
         TermInfo = no
     ),
 
+    split_var_table(VarTable, VarSet, VarTypes),
     MaybeDeclaredDetism = no,
     proc_info_create_with_declared_detism(Context, ItemNumber,
         VarSet, VarTypes, ArgVars, InstVarSet, ArgModes,
@@ -1514,28 +1507,18 @@ define_new_pred(PredSymName, Origin, TVarSet, InstVarSet,
     CallGoal = hlds_goal(CallGoalExpr, GoalInfo),
     PredProcId = proc(PredId, ProcId).
 
-define_new_pred_vt(PredSymName, Origin, TVarSet, InstVarSet,
-        VarTable0, RttiVarMaps, ClassContext, InstMap0, VarNameRemap,
-        Markers, IsAddressTaken, HasParallelConj, PredProcId,
-        ArgVars0, ExtraTiTcis, Goal0, CallGoal, !ModuleInfo) :-
-    split_var_table(VarTable0, VarSet0, VarTypes0),
-    define_new_pred(PredSymName, Origin, TVarSet, InstVarSet,
-        VarSet0, VarTypes0, RttiVarMaps, ClassContext, InstMap0, VarNameRemap,
-        Markers, IsAddressTaken, HasParallelConj, PredProcId,
-        ArgVars0, ExtraTiTcis, Goal0, CallGoal, !ModuleInfo).
+:- pred compute_arg_types_modes(var_table::in, instmap::in, instmap::in,
+    list(prog_var)::in, list(mer_type)::out, list(mer_mode)::out) is det.
 
-:- pred compute_arg_types_modes(list(prog_var)::in, vartypes::in,
-    instmap::in, instmap::in, list(mer_type)::out, list(mer_mode)::out) is det.
-
-compute_arg_types_modes([], _, _, _, [], []).
-compute_arg_types_modes([Var | Vars], VarTypes, InstMapInit, InstMapFinal,
-        [Type | Types], [Mode | Modes]) :-
-    lookup_var_type(VarTypes, Var, Type),
+compute_arg_types_modes(_, _, _, [], [], []).
+compute_arg_types_modes(VarTable, InstMapInit, InstMapFinal,
+        [Var | Vars], [Type | Types], [Mode | Modes]) :-
+    lookup_var_type(VarTable, Var, Type),
     instmap_lookup_var(InstMapInit, Var, InstInit),
     instmap_lookup_var(InstMapFinal, Var, InstFinal),
     Mode = from_to_mode(InstInit, InstFinal),
-    compute_arg_types_modes(Vars, VarTypes, InstMapInit, InstMapFinal,
-        Types, Modes).
+    compute_arg_types_modes(VarTable, InstMapInit, InstMapFinal,
+        Vars, Types, Modes).
 
 %---------------------------------------------------------------------------%
 

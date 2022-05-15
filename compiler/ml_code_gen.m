@@ -811,7 +811,7 @@ find_vars_to_declare(VarTable, GoalExpr, GoalInfo, VarsToDeclare) :-
         VarsToDeclare = VarsToDeclare0
     ;
         VarsToDeclare0 = [_, _ | _],
-        VarsToDeclare = put_typeinfo_vars_first_table(VarTable, VarsToDeclare0)
+        VarsToDeclare = put_typeinfo_vars_first(VarTable, VarsToDeclare0)
     ).
 
     % The task of this predicate is to help compute the set of MLDS variables

@@ -541,7 +541,7 @@ ho_fixup_proc_info(MustRecompute, !.Goal, !Info) :-
             proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap),
             proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
             proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
-            recompute_instmap_delta_vt(do_not_recompute_atomic_instmap_deltas,
+            recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
                 VarTable, InstVarSet, InstMap, !Goal, !ModuleInfo),
             proc_info_set_goal(!.Goal, !ProcInfo),
             !Info ^ hoi_proc_info := !.ProcInfo,

@@ -38,7 +38,6 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
-:- import_module parse_tree.vartypes.
 
 :- import_module list.
 :- import_module set.
@@ -102,9 +101,7 @@
 :- pred type_definitely_has_no_user_defined_equality_pred(module_info::in,
     mer_type::in) is semidet.
 
-:- pred var_is_or_may_contain_solver_type(module_info::in, vartypes::in,
-    prog_var::in) is semidet.
-:- pred var_is_or_may_contain_solver_type_vt(module_info::in, var_table::in,
+:- pred var_is_or_may_contain_solver_type(module_info::in, var_table::in,
     prog_var::in) is semidet.
 
     % Succeed iff the principal type constructor for the given type is
@@ -369,22 +366,15 @@
     % order of variables within each group being the same as in the
     % original list).
     %
-:- func put_typeinfo_vars_first(vartypes, list(prog_var)) = list(prog_var).
-:- func put_typeinfo_vars_first_table(var_table, list(prog_var))
-    = list(prog_var).
+:- func put_typeinfo_vars_first(var_table, list(prog_var)) = list(prog_var).
 
     % Given a list of variables, remove all the type_info-related
     % variables.
     %
-:- func remove_typeinfo_vars(vartypes, list(prog_var)) = list(prog_var).
-:- func remove_typeinfo_vars_vt(var_table, list(prog_var)) = list(prog_var).
-:- func remove_typeinfo_vars_from_set(vartypes, set(prog_var))
+:- func remove_typeinfo_vars(var_table, list(prog_var)) = list(prog_var).
+:- func remove_typeinfo_vars_from_set(var_table, set(prog_var))
     = set(prog_var).
-:- func remove_typeinfo_vars_from_set_vt(var_table, set(prog_var))
-    = set(prog_var).
-:- func remove_typeinfo_vars_from_set_of_var(vartypes, set_of_progvar)
-    = set_of_progvar.
-:- func remove_typeinfo_vars_from_set_of_var_vt(var_table, set_of_progvar)
+:- func remove_typeinfo_vars_from_set_of_var(var_table, set_of_progvar)
     = set_of_progvar.
 
 %-----------------------------------------------------------------------------%
@@ -676,11 +666,7 @@ ctor_definitely_has_no_user_defined_eq_pred(ModuleInfo, Ctor, !SeenTypes) :-
     list.foldl(type_definitely_has_no_user_defined_eq_pred_2(ModuleInfo),
         ArgTypes, !SeenTypes).
 
-var_is_or_may_contain_solver_type(ModuleInfo, VarTypes, Var) :-
-    lookup_var_type(VarTypes, Var, VarType),
-    type_is_or_may_contain_solver_type(ModuleInfo, VarType).
-
-var_is_or_may_contain_solver_type_vt(ModuleInfo, VarTabke, Var) :-
+var_is_or_may_contain_solver_type(ModuleInfo, VarTabke, Var) :-
     lookup_var_type(VarTabke, Var, VarType),
     type_is_or_may_contain_solver_type(ModuleInfo, VarType).
 
@@ -1656,73 +1642,38 @@ is_region_var(VarTable, Var)  :-
 
 %-----------------------------------------------------------------------------%
 
-put_typeinfo_vars_first(VarTypes, Vars0) = Vars :-
-    split_vars_typeinfo_no_typeinfo(VarTypes, Vars0,
+put_typeinfo_vars_first(VarTable, Vars0) = Vars :-
+    split_vars_typeinfo_no_typeinfo(VarTable, Vars0,
         TypeInfoVars, NonTypeInfoVars),
     Vars = TypeInfoVars ++ NonTypeInfoVars.
 
-put_typeinfo_vars_first_table(VarTable, Vars0) = Vars :-
-    split_vars_typeinfo_no_typeinfo_table(VarTable, Vars0,
-        TypeInfoVars, NonTypeInfoVars),
-    Vars = TypeInfoVars ++ NonTypeInfoVars.
-
-remove_typeinfo_vars(VarTypes, Vars) = NonTypeInfoVars :-
-    list.negated_filter(var_is_introduced_type_info_type(VarTypes),
+remove_typeinfo_vars(VarTable, Vars) = NonTypeInfoVars :-
+    list.negated_filter(var_is_introduced_type_info_type(VarTable),
         Vars, NonTypeInfoVars).
 
-remove_typeinfo_vars_vt(VarTable, Vars) = NonTypeInfoVars :-
-    list.negated_filter(var_is_introduced_type_info_type_table(VarTable),
-        Vars, NonTypeInfoVars).
-
-remove_typeinfo_vars_from_set(VarTypes, VarsSet0) = VarsSet :-
+remove_typeinfo_vars_from_set(VarTable, VarsSet0) = VarsSet :-
     VarsList0 = set.to_sorted_list(VarsSet0),
-    VarsList = remove_typeinfo_vars(VarTypes, VarsList0),
+    VarsList = remove_typeinfo_vars(VarTable, VarsList0),
     VarsSet = set.sorted_list_to_set(VarsList).
 
-remove_typeinfo_vars_from_set_vt(VarTable, VarsSet0) = VarsSet :-
-    VarsList0 = set.to_sorted_list(VarsSet0),
-    VarsList = remove_typeinfo_vars_vt(VarTable, VarsList0),
-    VarsSet = set.sorted_list_to_set(VarsList).
-
-remove_typeinfo_vars_from_set_of_var(VarTypes, VarsSet0) = VarsSet :-
+remove_typeinfo_vars_from_set_of_var(VarTable, VarsSet0) = VarsSet :-
     % XXX could be done more efficiently, operating directly on the set_of_var
     VarsList0 = set_of_var.to_sorted_list(VarsSet0),
-    VarsList = remove_typeinfo_vars(VarTypes, VarsList0),
+    VarsList = remove_typeinfo_vars(VarTable, VarsList0),
     VarsSet = set_of_var.sorted_list_to_set(VarsList).
 
-remove_typeinfo_vars_from_set_of_var_vt(VarTable, VarsSet0) = VarsSet :-
-    % XXX could be done more efficiently, operating directly on the set_of_var
-    VarsList0 = set_of_var.to_sorted_list(VarsSet0),
-    VarsList = remove_typeinfo_vars_vt(VarTable, VarsList0),
-    VarsSet = set_of_var.sorted_list_to_set(VarsList).
-
-:- pred split_vars_typeinfo_no_typeinfo(vartypes::in,
+:- pred split_vars_typeinfo_no_typeinfo(var_table::in,
     list(prog_var)::in, list(prog_var)::out, list(prog_var)::out) is det.
 
-split_vars_typeinfo_no_typeinfo(VarTypes, Vars,
+split_vars_typeinfo_no_typeinfo(VarTable, Vars,
         TypeInfoVars, NonTypeInfoVars) :-
-    list.filter(var_is_introduced_type_info_type(VarTypes),
+    list.filter(var_is_introduced_type_info_type(VarTable),
         Vars, TypeInfoVars, NonTypeInfoVars).
 
-:- pred split_vars_typeinfo_no_typeinfo_table(var_table::in,
-    list(prog_var)::in, list(prog_var)::out, list(prog_var)::out) is det.
-
-split_vars_typeinfo_no_typeinfo_table(VarTable, Vars,
-        TypeInfoVars, NonTypeInfoVars) :-
-    list.filter(var_is_introduced_type_info_type_table(VarTable),
-        Vars, TypeInfoVars, NonTypeInfoVars).
-
-:- pred var_is_introduced_type_info_type(vartypes::in, prog_var::in)
+:- pred var_is_introduced_type_info_type(var_table::in, prog_var::in)
     is semidet.
 
-var_is_introduced_type_info_type(VarTypes, Var) :-
-    lookup_var_type(VarTypes, Var, Type),
-    is_introduced_type_info_type(Type).
-
-:- pred var_is_introduced_type_info_type_table(var_table::in, prog_var::in)
-    is semidet.
-
-var_is_introduced_type_info_type_table(VarTable, Var) :-
+var_is_introduced_type_info_type(VarTable, Var) :-
     lookup_var_entry(VarTable, Var, Entry),
     Type = Entry ^ vte_type,
     is_introduced_type_info_type(Type).

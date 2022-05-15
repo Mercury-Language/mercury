@@ -53,7 +53,7 @@
 :- pred update_instmap_goal_info(hlds_goal_info::in,
     instmap::in, instmap::out) is det.
 
-    % create_renaming(OutputVars, InstMapDelta, !VarTypes, !VarSet,
+    % create_renaming(OutputVars, InstMapDelta, !VarTable,
     %   UnifyGoals, NewVars, Renaming):
     %
     % This predicate is intended for use in program transformations
@@ -61,14 +61,11 @@
     % ( if Goal' then UnifyGoals, ... else ...), where Goal' has its output
     % variables (OutputVars) replaced with new variables (NewVars),
     % with the mapping from OutputVars to NewVars being Renaming.
-    % VarTypes and VarSet are updated for the new variables. The final
-    % insts of NewVar are taken from the insts of the corresponding
-    % OutputVar in InstMapDelta (the initial inst is free).
+    % VarTable is updated for the new variables. The final insts of NewVar
+    % are taken from the insts of the corresponding OutputVar in InstMapDelta
+    % (the initial inst is free).
     %
 :- pred create_renaming(list(prog_var)::in, instmap_delta::in,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    list(hlds_goal)::out, list(prog_var)::out, prog_var_renaming::out) is det.
-:- pred create_renaming_vt(list(prog_var)::in, instmap_delta::in,
     var_table::in, var_table::out,
     list(hlds_goal)::out, list(prog_var)::out, prog_var_renaming::out) is det.
 
@@ -283,22 +280,26 @@
 :- pred goal_is_atomic(hlds_goal::in, goal_is_atomic::out) is det.
 
 %-----------------------------------------------------------------------------%
+%
+% NOTE: Neither switch_to_disjunction nor case_to_disjunct is currently used,
+% but they could be useful in the future.
+%
 
-    % Convert a switch back into a disjunction. This is needed
-    % for the magic set transformation.
+    % Convert a switch back into a disjunction. This used to be needed
+    % by the Aditi backend for the magic set transformation.
     % This aborts if any of the constructors are existentially typed.
     %
 :- pred switch_to_disjunction(prog_var::in, list(case)::in,
-    instmap::in, list(hlds_goal)::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, module_info::in, module_info::out) is det.
+    instmap::in, list(hlds_goal)::out, var_table::in, var_table::out,
+    module_info::in, module_info::out) is det.
 
     % Convert a case into a conjunction by adding a tag test
     % (deconstruction unification) to the case goal.
     % This aborts if the constructor is existentially typed.
     %
 :- pred case_to_disjunct(prog_var::in, hlds_goal::in, instmap::in,
-    cons_id::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, module_info::in, module_info::out) is det.
+    cons_id::in, hlds_goal::out, var_table::in, var_table::out,
+    module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -344,7 +345,7 @@
     --->    cannot_reorder_goals
     ;       can_reorder_goals.
 
-    % can_reorder_goals(VarTypeSrc, FullyStrict, InstmapBeforeGoal1, Goal1,
+    % can_reorder_goals(VarTable, FullyStrict, InstmapBeforeGoal1, Goal1,
     %   InstmapBeforeGoal2, Goal2, Result, !ModuleInfo).
     %
     % Result is `yes' if the goals can be reordered; no otherwise.
@@ -358,7 +359,7 @@
     % NOTE: new code should use this version as it supports the
     %       intermodule-analysis framework.
     %
-:- pred can_reorder_goals(var_type_source::in, bool::in, instmap::in,
+:- pred can_reorder_goals(var_table::in, bool::in, instmap::in,
     hlds_goal::in, instmap::in, hlds_goal::in, can_reorder_goals::out,
     module_info::in, module_info::out) is det.
 
@@ -522,67 +523,21 @@ update_instmap_goal_info(GoalInfo0, !InstMap) :-
     apply_instmap_delta(DeltaInstMap, !InstMap).
 
 %-----------------------------------------------------------------------------%
-%
-% Please keep in sync with create_renaming_vt.
-%
 
-create_renaming(OrigVars, InstMapDelta, !VarSet, !VarTypes, Unifies, NewVars,
+create_renaming(OrigVars, InstMapDelta, !VarTable, Unifies, NewVars,
         Renaming) :-
-    create_renaming_2(OrigVars, InstMapDelta, !VarSet, !VarTypes,
+    create_renaming_2(OrigVars, InstMapDelta, !VarTable,
         [], RevUnifies, [], RevNewVars, map.init, Renaming),
     list.reverse(RevNewVars, NewVars),
     list.reverse(RevUnifies, Unifies).
 
 :- pred create_renaming_2(list(prog_var)::in, instmap_delta::in,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    list(hlds_goal)::in, list(hlds_goal)::out,
-    list(prog_var)::in, list(prog_var)::out,
-    prog_var_renaming::in, prog_var_renaming::out) is det.
-
-create_renaming_2([], _, !VarSet, !VarTypes, !RevUnifies, !RevNewVars,
-        !Renaming).
-create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
-        !RevUnifies, !RevNewVars, !Renaming) :-
-    varset.new_var(NewVar, !VarSet),
-    lookup_var_type(!.VarTypes, OrigVar, Type),
-    add_var_type(NewVar, Type, !VarTypes),
-    instmap_delta_lookup_var(InstMapDelta, OrigVar, NewInst),
-    UnifyMode = unify_modes_li_lf_ri_rf(NewInst, NewInst, free, NewInst),
-    Unification = assign(OrigVar, NewVar),
-    UnifyContext = unify_context(umc_explicit, []),
-    GoalExpr = unify(OrigVar, rhs_var(NewVar), UnifyMode, Unification,
-        UnifyContext),
-    set_of_var.list_to_set([OrigVar, NewVar], NonLocals),
-    UnifyInstMapDelta = instmap_delta_from_assoc_list([OrigVar - NewInst]),
-    goal_info_init(NonLocals, UnifyInstMapDelta, detism_det, purity_pure,
-        term.context_init, GoalInfo),
-    Goal = hlds_goal(GoalExpr, GoalInfo),
-    !:RevUnifies = [Goal | !.RevUnifies],
-    map.det_insert(OrigVar, NewVar, !Renaming),
-    !:RevNewVars = [NewVar | !.RevNewVars],
-    create_renaming_2(OrigVars, InstMapDelta, !VarSet, !VarTypes,
-        !RevUnifies, !RevNewVars, !Renaming).
-
-%-----------------------------------------------------------------------------%
-%
-% Please keep in sync with create_renaming.
-%
-
-create_renaming_vt(OrigVars, InstMapDelta, !VarTable, Unifies, NewVars,
-        Renaming) :-
-    create_renaming_vt_2(OrigVars, InstMapDelta, !VarTable,
-        [], RevUnifies, [], RevNewVars, map.init, Renaming),
-    list.reverse(RevNewVars, NewVars),
-    list.reverse(RevUnifies, Unifies).
-
-:- pred create_renaming_vt_2(list(prog_var)::in, instmap_delta::in,
     var_table::in, var_table::out, list(hlds_goal)::in, list(hlds_goal)::out,
     list(prog_var)::in, list(prog_var)::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
-create_renaming_vt_2([], _, !VarTable, !RevUnifies, !RevNewVars,
-        !Renaming).
-create_renaming_vt_2([OrigVar | OrigVars], InstMapDelta, !VarTable,
+create_renaming_2([], _, !VarTable, !RevUnifies, !RevNewVars, !Renaming).
+create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarTable,
         !RevUnifies, !RevNewVars, !Renaming) :-
     lookup_var_entry(!.VarTable, OrigVar, OrigEntry),
     OrigEntry = vte(_, OrigType, OrigTypeIsDummy),
@@ -602,7 +557,7 @@ create_renaming_vt_2([OrigVar | OrigVars], InstMapDelta, !VarTable,
     !:RevUnifies = [Goal | !.RevUnifies],
     map.det_insert(OrigVar, NewVar, !Renaming),
     !:RevNewVars = [NewVar | !.RevNewVars],
-    create_renaming_vt_2(OrigVars, InstMapDelta, !VarTable,
+    create_renaming_2(OrigVars, InstMapDelta, !VarTable,
         !RevUnifies, !RevNewVars, !Renaming).
 
 %-----------------------------------------------------------------------------%
@@ -1795,25 +1750,30 @@ goal_is_atomic(Goal, GoalIsAtomic) :-
 
 %-----------------------------------------------------------------------------%
 
-switch_to_disjunction(_, [], _, [], !VarSet, !VarTypes, !ModuleInfo).
+switch_to_disjunction(_, [], _, [], !VarTable, !ModuleInfo).
 switch_to_disjunction(Var, [Case | Cases], InstMap, Goals,
-        !VarSet, !VarTypes, !ModuleInfo) :-
+        !VarTable, !ModuleInfo) :-
     Case = case(MainConsId, OtherConsIds, CaseGoal),
     case_to_disjunct(Var, CaseGoal, InstMap, MainConsId, MainDisjunctGoal,
-        !VarSet, !VarTypes, !ModuleInfo),
-    list.map_foldl3(case_to_disjunct(Var, CaseGoal, InstMap),
-        OtherConsIds, OtherDisjunctGoals, !VarSet, !VarTypes, !ModuleInfo),
-    switch_to_disjunction(Var, Cases, InstMap, CasesGoals, !VarSet, !VarTypes,
+        !VarTable, !ModuleInfo),
+    list.map_foldl2(case_to_disjunct(Var, CaseGoal, InstMap),
+        OtherConsIds, OtherDisjunctGoals, !VarTable, !ModuleInfo),
+    switch_to_disjunction(Var, Cases, InstMap, CasesGoals, !VarTable,
         !ModuleInfo),
     Goals = [MainDisjunctGoal | OtherDisjunctGoals] ++ CasesGoals.
 
-case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
-        !ModuleInfo) :-
+case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct,
+        !VarTable, !ModuleInfo) :-
     ConsArity = cons_id_arity(ConsId),
-    varset.new_vars(ConsArity, ArgVars, !VarSet),
-    lookup_var_type(!.VarTypes, Var, VarType),
+    lookup_var_type(!.VarTable, Var, VarType),
     type_util.get_cons_id_arg_types(!.ModuleInfo, VarType, ConsId, ArgTypes),
-    vartypes_add_corresponding_lists(ArgVars, ArgTypes, !VarTypes),
+    MakeArgEntry =
+        ( pred(T::in, vte("", T, IsDummy)::out) is det :-
+            IsDummy = is_type_a_dummy(!.ModuleInfo, T)
+        ),
+    list.map(MakeArgEntry, ArgTypes, ArgEntries),
+    list.map_foldl(add_var_entry, ArgEntries, ArgVars, !VarTable),
+
     instmap_lookup_var(InstMap, Var, Inst0),
     ( if
         inst_expand(!.ModuleInfo, Inst0, Inst1),
@@ -1938,17 +1898,17 @@ can_reorder_goals_old(ModuleInfo, VarTable, FullyStrict,
 
     % Don't reorder the goals if the later goal depends on the outputs
     % of the current goal.
-    not goal_depends_on_earlier_goal(ModuleInfo, vts_var_table(VarTable),
+    not goal_depends_on_earlier_goal(ModuleInfo, VarTable,
         LaterGoal, EarlierGoal, InstmapBeforeEarlierGoal),
 
     % Don't reorder the goals if the later goal changes the instantiatedness
     % of any of the non-locals of the earlier goal. This is necessary if the
     % later goal clobbers any of the non-locals of the earlier goal, and
     % avoids rerunning full mode analysis in other cases.
-    not goal_depends_on_earlier_goal(ModuleInfo, vts_var_table(VarTable),
+    not goal_depends_on_earlier_goal(ModuleInfo, VarTable,
         EarlierGoal, LaterGoal, InstmapBeforeLaterGoal).
 
-can_reorder_goals(VarTypeSrc, FullyStrict, InstmapBeforeEarlierGoal,
+can_reorder_goals(VarTable, FullyStrict, InstmapBeforeEarlierGoal,
         EarlierGoal, InstmapBeforeLaterGoal, LaterGoal, CanReorder,
         !ModuleInfo) :-
     % The logic here is mostly duplicated in can_reorder_goals_old above
@@ -1980,7 +1940,7 @@ can_reorder_goals(VarTypeSrc, FullyStrict, InstmapBeforeEarlierGoal,
                 % Don't reorder the goals if the later goal depends on the
                 % outputs of the current goal.
                 %
-                goal_depends_on_earlier_goal(!.ModuleInfo, VarTypeSrc,
+                goal_depends_on_earlier_goal(!.ModuleInfo, VarTable,
                     LaterGoal, EarlierGoal, InstmapBeforeEarlierGoal)
             then
                 CanReorder = cannot_reorder_goals
@@ -1991,7 +1951,7 @@ can_reorder_goals(VarTypeSrc, FullyStrict, InstmapBeforeEarlierGoal,
                 % the non-locals of the earlier goal, and avoids rerunning
                 % full mode analysis in other cases.
                 %
-                goal_depends_on_earlier_goal(!.ModuleInfo, VarTypeSrc,
+                goal_depends_on_earlier_goal(!.ModuleInfo, VarTable,
                     EarlierGoal, LaterGoal, InstmapBeforeLaterGoal)
             then
                 CanReorder = cannot_reorder_goals
@@ -2069,27 +2029,19 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
     %
     % This code does work on the alias branch.
     %
-:- pred goal_depends_on_earlier_goal(module_info::in, var_type_source::in,
+:- pred goal_depends_on_earlier_goal(module_info::in, var_table::in,
     hlds_goal::in, hlds_goal::in, instmap::in) is semidet.
 
-goal_depends_on_earlier_goal(ModuleInfo, VarTypeSrc,
+goal_depends_on_earlier_goal(ModuleInfo, VarTable,
         LaterGoal, EarlierGoal, InstMapBeforeEarlierGoal) :-
     LaterGoal = hlds_goal(_, LaterGoalInfo),
     EarlierGoal = hlds_goal(_, EarlierGoalInfo),
     EarlierInstMapDelta = goal_info_get_instmap_delta(EarlierGoalInfo),
     apply_instmap_delta(EarlierInstMapDelta,
         InstMapBeforeEarlierGoal, InstMapAfterEarlierGoal),
-    (
-        VarTypeSrc = vts_vartypes(VarTypes),
-        instmap_changed_vars(ModuleInfo, VarTypes,
-            InstMapBeforeEarlierGoal, InstMapAfterEarlierGoal,
-            EarlierChangedVars)
-    ;
-        VarTypeSrc = vts_var_table(VarTable),
-        instmap_changed_vars_vt(ModuleInfo, VarTable,
-            InstMapBeforeEarlierGoal, InstMapAfterEarlierGoal,
-            EarlierChangedVars)
-    ),
+    instmap_changed_vars(ModuleInfo, VarTable,
+        InstMapBeforeEarlierGoal, InstMapAfterEarlierGoal,
+        EarlierChangedVars),
     LaterGoalNonLocals = goal_info_get_nonlocals(LaterGoalInfo),
     set_of_var.intersect(EarlierChangedVars, LaterGoalNonLocals, Intersection),
     not set_of_var.is_empty(Intersection).

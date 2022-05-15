@@ -228,7 +228,7 @@ do_expand_lambdas_in_proc(!ProcInfo, !PredInfo, !ModuleInfo) :-
             ordinary_nonlocals_no_lambda, HeadVars, _Warnings,
             Goal1, Goal2, VarTable1, VarTable2, RttiVarMaps1, RttiVarMaps2),
         proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
-        recompute_instmap_delta_vt(recompute_atomic_instmap_deltas,
+        recompute_instmap_delta(recompute_atomic_instmap_deltas,
             VarTable2, InstVarSet0, InstMap0, Goal2, Goal, !ModuleInfo)
     ;
         MustRecomputeNonLocals = need_not_recompute_nonlocals,
@@ -558,7 +558,7 @@ create_new_pred_for_lambda(RegWrapperProc, RHS0, OrigVars, ArgVars,
     % work out the arguments, module name, predicate name, arity,
     % arg types, determinism, context, status, etc. for the new predicate.
 
-    ArgVars = put_typeinfo_vars_first_table(VarTable, ArgVars1),
+    ArgVars = put_typeinfo_vars_first(VarTable, ArgVars1),
     AllArgVars = ArgVars ++ LambdaVars,
 
     module_info_get_name(!.ModuleInfo, ModuleName),

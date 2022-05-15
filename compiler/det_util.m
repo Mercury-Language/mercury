@@ -212,7 +212,7 @@ det_lookup_pred_info_and_detism(DetInfo, PredId, ModeId, PredInfo, Detism) :-
 det_no_output_vars(DetInfo, InstMap, InstMapDelta, Vars) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
     det_info_get_var_table(DetInfo, VarTable),
-    instmap_delta_no_output_vars_vt(ModuleInfo, VarTable, InstMap,
+    instmap_delta_no_output_vars(ModuleInfo, VarTable, InstMap,
         InstMapDelta, Vars).
 
 det_info_add_error_spec(Spec, !DetInfo) :-

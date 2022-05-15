@@ -69,7 +69,7 @@ forward_use_information(ModuleInfo, !ProcInfo) :-
     set_of_var.init(DeadVars0),
 
     forward_use_in_goal(VarTable, Goal0, Goal,
-        remove_typeinfo_vars_from_set_of_var_vt(VarTable, InstantiatedVars0),
+        remove_typeinfo_vars_from_set_of_var(VarTable, InstantiatedVars0),
         _InstantiatedVars, DeadVars0, _DeadVars),
 
     proc_info_set_goal(Goal, !ProcInfo).
@@ -109,8 +109,8 @@ compute_instantiated_and_dead_vars(VarTable, Info, !Inst, !Dead) :-
     goal_info_get_post_deaths(Info, PostDeaths),
     goal_info_get_pre_deaths(Info, PreDeaths),
     !:Inst = set_of_var.union_list([
-        remove_typeinfo_vars_from_set_of_var_vt(VarTable, PreBirths),
-        remove_typeinfo_vars_from_set_of_var_vt(VarTable, PostBirths),
+        remove_typeinfo_vars_from_set_of_var(VarTable, PreBirths),
+        remove_typeinfo_vars_from_set_of_var(VarTable, PostBirths),
         !.Inst]),
     !:Dead = set_of_var.union_list([PreDeaths, PostDeaths, !.Dead]).
 

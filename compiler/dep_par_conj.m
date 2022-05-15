@@ -1385,7 +1385,7 @@ push_goal_into_conj(VarTable, InstMapBeforeGoal, Goal, InstMapBeforePivotGoal,
         [PivotGoal | Goals0], MaybeGoals, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     lookup_bool_option(Globals, fully_strict, FullyStrict),
-    can_reorder_goals(vts_var_table(VarTable), FullyStrict,
+    can_reorder_goals(VarTable, FullyStrict,
         InstMapBeforeGoal, Goal, InstMapBeforePivotGoal, PivotGoal,
         CanReorderGoals, !ModuleInfo),
     (

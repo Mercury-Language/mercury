@@ -373,7 +373,7 @@ ir_background_info_init(ModuleInfo, PPId, PredInfo, ProcInfo, SharingTable,
     % of head variables:
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
-    HeadVarsOfInterest = remove_typeinfo_vars_vt(VarTable, HeadVars),
+    HeadVarsOfInterest = remove_typeinfo_vars(VarTable, HeadVars),
 
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_int_option(Globals, structure_reuse_max_conditions,

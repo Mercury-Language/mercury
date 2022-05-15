@@ -777,7 +777,7 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
 
     Origin = origin_transformed(transform_loop_invariant(ProcNum),
         OrigOrigin, PredId),
-    hlds_pred.define_new_pred_vt(
+    hlds_pred.define_new_pred(
         AuxPredSymName, % in    - The name of the new aux proc.
         Origin,         % in    - The origin of this new predicate
         TVarSet,        % in    - ???

@@ -34,7 +34,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
-:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module list.
@@ -77,10 +76,7 @@
     % Divide the given list of arguments into those treated as inputs
     % by the calling convention and those treated as outputs.
     %
-:- pred compute_in_and_out_vars(module_info::in, vartypes::in,
-    list(prog_var)::in, list(mer_mode)::in,
-    list(prog_var)::out, list(prog_var)::out) is det.
-:- pred compute_in_and_out_vars_table(module_info::in, var_table::in,
+:- pred compute_in_and_out_vars(module_info::in, var_table::in,
     list(prog_var)::in, list(mer_mode)::in,
     list(prog_var)::out, list(prog_var)::out) is det.
 
@@ -89,11 +85,7 @@
     % Arguments are further divided those passed via regular registers
     % or via float registers.
     %
-:- pred compute_in_and_out_vars_sep_regs(module_info::in, vartypes::in,
-    list(prog_var)::in, list(mer_mode)::in, list(reg_type)::in,
-    list(prog_var)::out, list(prog_var)::out,
-    list(prog_var)::out, list(prog_var)::out) is det.
-:- pred compute_in_and_out_vars_sep_regs_table(module_info::in, var_table::in,
+:- pred compute_in_and_out_vars_sep_regs(module_info::in, var_table::in,
     list(prog_var)::in, list(mer_mode)::in, list(reg_type)::in,
     list(prog_var)::out, list(prog_var)::out,
     list(prog_var)::out, list(prog_var)::out) is det.
@@ -129,9 +121,6 @@
     % (in the caller) separately.
     %
 :- pred partition_proc_call_args(module_info::in, proc_info::in,
-    vartypes::in, list(prog_var)::in,
-    set(prog_var)::out, set(prog_var)::out, set(prog_var)::out) is det.
-:- pred partition_proc_call_args_table(module_info::in, proc_info::in,
     var_table::in, list(prog_var)::in,
     set(prog_var)::out, set(prog_var)::out, set(prog_var)::out) is det.
 
@@ -522,31 +511,10 @@ compute_in_and_out_vars(_, _, [], [_ | _], _, _) :-
     unexpected($pred, "length mismatch").
 compute_in_and_out_vars(_, _, [_ | _], [], _, _) :-
     unexpected($pred, "length mismatch").
-compute_in_and_out_vars(ModuleInfo, VarTypes, [Var | Vars], [Mode | Modes],
-        !:InVars, !:OutVars) :-
-    compute_in_and_out_vars(ModuleInfo, VarTypes, Vars, Modes,
-        !:InVars, !:OutVars),
-    lookup_var_type(VarTypes, Var, Type),
-    mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
-    (
-        TopFunctorMode = top_in,
-        !:InVars = [Var | !.InVars]
-    ;
-        ( TopFunctorMode = top_out
-        ; TopFunctorMode = top_unused
-        ),
-        !:OutVars = [Var | !.OutVars]
-    ).
-
-compute_in_and_out_vars_table(_, _, [], [], [], []).
-compute_in_and_out_vars_table(_, _, [], [_ | _], _, _) :-
-    unexpected($pred, "length mismatch").
-compute_in_and_out_vars_table(_, _, [_ | _], [], _, _) :-
-    unexpected($pred, "length mismatch").
-compute_in_and_out_vars_table(ModuleInfo, VarTable,
+compute_in_and_out_vars(ModuleInfo, VarTable,
         [Var | Vars], [Mode | Modes],
         !:InVars, !:OutVars) :-
-    compute_in_and_out_vars_table(ModuleInfo, VarTable, Vars, Modes,
+    compute_in_and_out_vars(ModuleInfo, VarTable, Vars, Modes,
         !:InVars, !:OutVars),
     lookup_var_entry(VarTable, Var, Entry),
     Type = Entry ^ vte_type,
@@ -563,11 +531,11 @@ compute_in_and_out_vars_table(ModuleInfo, VarTable,
 
 %---------------------------------------------------------------------------%
 
-compute_in_and_out_vars_sep_regs(ModuleInfo, VarTypes,
+compute_in_and_out_vars_sep_regs(ModuleInfo, VarTable,
         Vars, Modes, ArgRegTypes,
         !:InVarsR, !:InVarsF, !:OutVarsR, !:OutVarsF) :-
     ( if
-        compute_in_and_out_vars_sep_regs_2(ModuleInfo, VarTypes,
+        compute_in_and_out_vars_sep_regs_2(ModuleInfo, VarTable,
             Vars, Modes, ArgRegTypes,
             !:InVarsR, !:InVarsF, !:OutVarsR, !:OutVarsF)
     then
@@ -576,66 +544,16 @@ compute_in_and_out_vars_sep_regs(ModuleInfo, VarTypes,
         unexpected($pred, "length mismatch")
     ).
 
-:- pred compute_in_and_out_vars_sep_regs_2(module_info::in, vartypes::in,
-    list(prog_var)::in, list(mer_mode)::in, list(reg_type)::in,
-    list(prog_var)::out, list(prog_var)::out,
-    list(prog_var)::out, list(prog_var)::out) is semidet.
-
-compute_in_and_out_vars_sep_regs_2(_, _, [], [], [], [], [], [], []).
-compute_in_and_out_vars_sep_regs_2(ModuleInfo, VarTypes,
-        [Var | Vars], [Mode | Modes], [RegType | RegTypes],
-        !:InVarsR, !:InVarsF, !:OutVarsR, !:OutVarsF) :-
-    compute_in_and_out_vars_sep_regs_2(ModuleInfo, VarTypes,
-        Vars, Modes, RegTypes, !:InVarsR, !:InVarsF, !:OutVarsR, !:OutVarsF),
-    require_det (
-        lookup_var_type(VarTypes, Var, Type),
-        mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
-        (
-            TopFunctorMode = top_in,
-            (
-                RegType = reg_r,
-                !:InVarsR = [Var | !.InVarsR]
-            ;
-                RegType = reg_f,
-                !:InVarsF = [Var | !.InVarsF]
-            )
-        ;
-            ( TopFunctorMode = top_out
-            ; TopFunctorMode = top_unused
-            ),
-            (
-                RegType = reg_r,
-                !:OutVarsR = [Var | !.OutVarsR]
-            ;
-                RegType = reg_f,
-                !:OutVarsF = [Var | !.OutVarsF]
-            )
-        )
-    ).
-
-compute_in_and_out_vars_sep_regs_table(ModuleInfo, VarTable,
-        Vars, Modes, ArgRegTypes,
-        !:InVarsR, !:InVarsF, !:OutVarsR, !:OutVarsF) :-
-    ( if
-        compute_in_and_out_vars_sep_regs_table_2(ModuleInfo, VarTable,
-            Vars, Modes, ArgRegTypes,
-            !:InVarsR, !:InVarsF, !:OutVarsR, !:OutVarsF)
-    then
-        true
-    else
-        unexpected($pred, "length mismatch")
-    ).
-
-:- pred compute_in_and_out_vars_sep_regs_table_2(module_info::in,
+:- pred compute_in_and_out_vars_sep_regs_2(module_info::in,
     var_table::in, list(prog_var)::in, list(mer_mode)::in, list(reg_type)::in,
     list(prog_var)::out, list(prog_var)::out,
     list(prog_var)::out, list(prog_var)::out) is semidet.
 
-compute_in_and_out_vars_sep_regs_table_2(_, _, [], [], [], [], [], [], []).
-compute_in_and_out_vars_sep_regs_table_2(ModuleInfo, VarTable,
+compute_in_and_out_vars_sep_regs_2(_, _, [], [], [], [], [], [], []).
+compute_in_and_out_vars_sep_regs_2(ModuleInfo, VarTable,
         [Var | Vars], [Mode | Modes], [RegType | RegTypes],
         !:InVarsR, !:InVarsF, !:OutVarsR, !:OutVarsF) :-
-    compute_in_and_out_vars_sep_regs_table_2(ModuleInfo, VarTable,
+    compute_in_and_out_vars_sep_regs_2(ModuleInfo, VarTable,
         Vars, Modes, RegTypes, !:InVarsR, !:InVarsF, !:OutVarsR, !:OutVarsF),
     require_det (
         lookup_var_entry(VarTable, Var, Entry),
@@ -695,14 +613,7 @@ partition_proc_args(ModuleInfo, ProcInfo, Inputs, Outputs, Unuseds) :-
     do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         Inputs, Outputs, Unuseds).
 
-partition_proc_call_args(ModuleInfo, ProcInfo, VarTypes, Vars,
-        Inputs, Outputs, Unuseds) :-
-    proc_info_get_argmodes(ProcInfo, Modes),
-    lookup_var_types(VarTypes, Vars, Types),
-    do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
-        Inputs, Outputs, Unuseds).
-
-partition_proc_call_args_table(ModuleInfo, ProcInfo, VarTable, Vars,
+partition_proc_call_args(ModuleInfo, ProcInfo, VarTable, Vars,
         Inputs, Outputs, Unuseds) :-
     proc_info_get_argmodes(ProcInfo, Modes),
     lookup_var_types(VarTable, Vars, Types),

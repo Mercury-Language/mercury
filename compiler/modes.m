@@ -1027,7 +1027,7 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, IsUnifyPred,
         BodyNonLocals = goal_info_get_nonlocals(BodyGoalInfo0),
         mode_info_get_var_table(!.ModeInfo, VarTable0),
         SolverNonLocals = list.filter(
-            var_is_or_may_contain_solver_type_vt(ModuleInfo, VarTable0),
+            var_is_or_may_contain_solver_type(ModuleInfo, VarTable0),
             set_of_var.to_sorted_list(BodyNonLocals)),
         SolverNonLocals = []
     then

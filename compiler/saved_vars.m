@@ -95,7 +95,7 @@ saved_vars_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
         VarTable1, VarTable, RttiVarMaps1, RttiVarMaps),
     proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
     proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
-    recompute_instmap_delta_vt(do_not_recompute_atomic_instmap_deltas,
+    recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
         VarTable, InstVarSet, InstMap0, Goal2, Goal, !ModuleInfo),
 
     trace [io(!IO), compile_time(flag("debug_saved_vars"))] (

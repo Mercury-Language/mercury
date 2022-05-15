@@ -964,7 +964,7 @@ create_new_loop_goal(OrigGoal, Statistics, PredId, ProcId,
     ;
         CodeModel = model_semi,
         InstMapDelta = goal_info_get_instmap_delta(OrigGoalInfo),
-        create_renaming_vt(OutputVars, InstMapDelta, !VarTable,
+        create_renaming(OutputVars, InstMapDelta, !VarTable,
             Unifies, NewVars, Renaming),
         rename_some_vars_in_goal(Renaming, OrigGoal, RenamedOrigGoal),
 
@@ -1201,7 +1201,7 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
         ]
     ;
         CodeModel = model_semi,
-        create_renaming_vt(OutputVars, OrigInstMapDelta, !VarTable,
+        create_renaming(OutputVars, OrigInstMapDelta, !VarTable,
             Unifies, NewVars, Renaming),
         rename_some_vars_in_goal(Renaming, OrigGoal, RenamedOrigGoal),
 

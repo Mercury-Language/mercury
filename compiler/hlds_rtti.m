@@ -26,7 +26,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
-:- import_module parse_tree.vartypes.
 
 :- import_module array.
 :- import_module assoc_list.
@@ -325,14 +324,10 @@
     % for accurate garbage collection - live variables need to have
     % their typeinfos stay live too.
     %
-:- pred get_typeinfo_vars(vartypes::in, rtti_varmaps::in,
-    set_of_progvar::in, set_of_progvar::out) is det.
-:- pred get_typeinfo_vars_vt(var_table::in, rtti_varmaps::in,
+:- pred get_typeinfo_vars(var_table::in, rtti_varmaps::in,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-:- pred maybe_complete_with_typeinfo_vars(vartypes::in, rtti_varmaps::in,
-    bool::in, set_of_progvar::in, set_of_progvar::out) is det.
-:- pred maybe_complete_with_typeinfo_vars_vt(var_table::in, rtti_varmaps::in,
+:- pred maybe_complete_with_typeinfo_vars(var_table::in, rtti_varmaps::in,
     bool::in, set_of_progvar::in, set_of_progvar::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -873,58 +868,20 @@ rtti_varmaps_overlay(VarMapsA, VarMapsB, VarMaps) :-
 
 %---------------------------------------------------------------------------%
 
-get_typeinfo_vars(VarTypes, RttiVarMaps, Vars, TypeInfoVars) :-
+get_typeinfo_vars(VarTable, RttiVarMaps, Vars, TypeInfoVars) :-
     TVarMap = RttiVarMaps ^ rv_ti_varmap,
     VarList = set_of_var.to_sorted_list(Vars),
-    get_typeinfo_vars_acc(VarTypes, TVarMap, VarList,
+    get_typeinfo_vars_acc(VarTable, TVarMap, VarList,
         set_of_var.init, TypeInfoVars).
 
     % Auxiliary predicate - traverses variables and builds a list of
     % variables that store typeinfos for these variables.
     %
-:- pred get_typeinfo_vars_acc(vartypes::in, type_info_varmap::in,
+:- pred get_typeinfo_vars_acc(var_table::in, type_info_varmap::in,
     list(prog_var)::in, set_of_progvar::in, set_of_progvar::out) is det.
 
 get_typeinfo_vars_acc(_, _, [], !TypeInfoVars).
-get_typeinfo_vars_acc(VarTypes, TVarMap, [Var | Vars], !TypeInfoVars) :-
-    lookup_var_type(VarTypes, Var, Type),
-    type_vars_in_type(Type, TypeVars),
-    (
-        TypeVars = []
-        % Optimize common case,
-    ;
-        TypeVars = [_ | _],
-        % XXX It is possible there are some complications with higher order
-        % pred types here -- if so, maybe treat them specially.
-        % The type_info is either stored in a variable, or in a
-        % typeclass_info. Either get the type_info variable or
-        % the typeclass_info variable.
-        LookupVar =
-            ( pred(TVar::in, TVarVar::out) is det :-
-                map.lookup(TVarMap, TVar, Locn),
-                type_info_locn_var(Locn, TVarVar)
-            ),
-        list.map(LookupVar, TypeVars, TypeInfoVarsHead),
-        set_of_var.insert_list(TypeInfoVarsHead, !TypeInfoVars)
-    ),
-    get_typeinfo_vars_acc(VarTypes, TVarMap, Vars, !TypeInfoVars).
-
-%---------------------%
-
-get_typeinfo_vars_vt(VarTable, RttiVarMaps, Vars, TypeInfoVars) :-
-    TVarMap = RttiVarMaps ^ rv_ti_varmap,
-    VarList = set_of_var.to_sorted_list(Vars),
-    get_typeinfo_vars_acc_vt(VarTable, TVarMap, VarList,
-        set_of_var.init, TypeInfoVars).
-
-    % Auxiliary predicate - traverses variables and builds a list of
-    % variables that store typeinfos for these variables.
-    %
-:- pred get_typeinfo_vars_acc_vt(var_table::in, type_info_varmap::in,
-    list(prog_var)::in, set_of_progvar::in, set_of_progvar::out) is det.
-
-get_typeinfo_vars_acc_vt(_, _, [], !TypeInfoVars).
-get_typeinfo_vars_acc_vt(VarTable, TVarMap, [Var | Vars], !TypeInfoVars) :-
+get_typeinfo_vars_acc(VarTable, TVarMap, [Var | Vars], !TypeInfoVars) :-
     lookup_var_type(VarTable, Var, Type),
     type_vars_in_type(Type, TypeVars),
     (
@@ -945,26 +902,15 @@ get_typeinfo_vars_acc_vt(VarTable, TVarMap, [Var | Vars], !TypeInfoVars) :-
         list.map(LookupVar, TypeVars, TypeInfoVarsHead),
         set_of_var.insert_list(TypeInfoVarsHead, !TypeInfoVars)
     ),
-    get_typeinfo_vars_acc_vt(VarTable, TVarMap, Vars, !TypeInfoVars).
+    get_typeinfo_vars_acc(VarTable, TVarMap, Vars, !TypeInfoVars).
 
 %---------------------%
 
-maybe_complete_with_typeinfo_vars(VarTypes, RttiVarMaps, TypeInfoLiveness,
+maybe_complete_with_typeinfo_vars(VarTable, RttiVarMaps, TypeInfoLiveness,
         Vars0, Vars) :-
     (
         TypeInfoLiveness = yes,
-        get_typeinfo_vars(VarTypes, RttiVarMaps, Vars0, TypeInfoVars),
-        set_of_var.union(Vars0, TypeInfoVars, Vars)
-    ;
-        TypeInfoLiveness = no,
-        Vars = Vars0
-    ).
-
-maybe_complete_with_typeinfo_vars_vt(VarTable, RttiVarMaps, TypeInfoLiveness,
-        Vars0, Vars) :-
-    (
-        TypeInfoLiveness = yes,
-        get_typeinfo_vars_vt(VarTable, RttiVarMaps, Vars0, TypeInfoVars),
+        get_typeinfo_vars(VarTable, RttiVarMaps, Vars0, TypeInfoVars),
         set_of_var.union(Vars0, TypeInfoVars, Vars)
     ;
         TypeInfoLiveness = no,

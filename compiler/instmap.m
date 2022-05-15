@@ -33,7 +33,6 @@
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
-:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module io.
@@ -229,12 +228,10 @@
     % is true if none of the vars in Vars can become more instantiated
     % when InstMapDelta is applied to InstMap.
     %
-:- pred instmap_delta_no_output_vars(module_info::in, vartypes::in,
-    instmap::in, instmap_delta::in, set_of_progvar::in) is semidet.
-:- pred instmap_delta_no_output_vars_vt(module_info::in, var_table::in,
+:- pred instmap_delta_no_output_vars(module_info::in, var_table::in,
     instmap::in, instmap_delta::in, set_of_progvar::in) is semidet.
 
-    % instmap_changed_vars(ModuleInfo, VarTypes, IMA, IMB, CV)
+    % instmap_changed_vars(ModuleInfo, VarTypes, IMA, IMB, CV):
     %
     % Given an earlier instmap, IMA, and a later instmap, IMB, determine
     % what variables, CV, have had their instantiatedness information changed.
@@ -242,9 +239,7 @@
     % This predicate is meant to be equivalent to instmap_delta_changed_vars,
     % where the instmap_delta is simply the one to take IMA to IMB.
     %
-:- pred instmap_changed_vars(module_info::in, vartypes::in,
-    instmap::in, instmap::in, set_of_progvar::out) is det.
-:- pred instmap_changed_vars_vt(module_info::in, var_table::in,
+:- pred instmap_changed_vars(module_info::in, var_table::in,
     instmap::in, instmap::in, set_of_progvar::out) is det.
 
     % Return the set of variables whose instantiations have changed
@@ -784,61 +779,21 @@ instmap_bound_vars_2(ModuleInfo, Var, Inst, !BoundVars) :-
         true
     ).
 
-instmap_delta_no_output_vars(ModuleInfo, VarTypes, InstMap0, InstMapDelta,
+instmap_delta_no_output_vars(ModuleInfo, VarTable, InstMap0, InstMapDelta,
         Vars) :-
     (
         InstMapDelta = unreachable
     ;
         InstMapDelta = reachable(InstMapDeltaMap),
-        Test = var_is_not_output(ModuleInfo, VarTypes, InstMap0,
+        Test = var_is_not_output(ModuleInfo, VarTable, InstMap0,
             InstMapDeltaMap),
         set_of_var.all_true(Test, Vars)
     ).
 
-instmap_delta_no_output_vars_vt(ModuleInfo, VarTable, InstMap0, InstMapDelta,
-        Vars) :-
-    (
-        InstMapDelta = unreachable
-    ;
-        InstMapDelta = reachable(InstMapDeltaMap),
-        Test = var_is_not_output_vt(ModuleInfo, VarTable, InstMap0,
-            InstMapDeltaMap),
-        set_of_var.all_true(Test, Vars)
-    ).
-
-:- pred var_is_not_output(module_info::in, vartypes::in,
+:- pred var_is_not_output(module_info::in, var_table::in,
     instmap::in, instmapping::in, prog_var::in) is semidet.
 
-var_is_not_output(ModuleInfo, VarTypes, InstMap0, InstMapDeltaMap, Var) :-
-    instmap_lookup_var(InstMap0, Var, OldInst),
-    ( if map.search(InstMapDeltaMap, Var, NewInst) then
-        % We use `inst_matches_binding' to check that the new inst has only
-        % added information or lost uniqueness, not bound anything.
-        % If the instmap delta contains the variable, the variable may still
-        % not be output, if the change is just an increase in information
-        % rather than an increase in instantiatedness.
-        %
-        % XXX Inlining can result in cases where OldInst (from procedure 1)
-        % can decide that Var must be bound to one set of function symbols,
-        % while NewInst (from a later unification inlined into procedure 1
-        % from procedure 2) can say that it is bound to a different,
-        % non-overlapping set of function symbols. In such cases,
-        % inst_matches_binding will fail, even though we want to succeed.
-        % The right fix for this would be to generalize inst_matches_binding,
-        % to allow the caller to specify what kinds of deviations from an exact
-        % syntactic match are ok.
-        lookup_var_type(VarTypes, Var, Type),
-        inst_matches_binding(ModuleInfo, Type, NewInst, OldInst)
-    else
-        % If the instmap delta doesn't contain the variable, it may still
-        % have been (partially) output, if its inst is (or contains) `any'.
-        not inst_contains_any(ModuleInfo, OldInst)
-    ).
-
-:- pred var_is_not_output_vt(module_info::in, var_table::in,
-    instmap::in, instmapping::in, prog_var::in) is semidet.
-
-var_is_not_output_vt(ModuleInfo, VarTable, InstMap0, InstMapDeltaMap, Var) :-
+var_is_not_output(ModuleInfo, VarTable, InstMap0, InstMapDeltaMap, Var) :-
     instmap_lookup_var(InstMap0, Var, OldInst),
     ( if map.search(InstMapDeltaMap, Var, NewInst) then
         % We use `inst_matches_binding' to check that the new inst has only
@@ -866,47 +821,20 @@ var_is_not_output_vt(ModuleInfo, VarTable, InstMap0, InstMapDeltaMap, Var) :-
 
 %---------------------%
 
-instmap_changed_vars(ModuleInfo, VarTypes, InstMapA, InstMapB, ChangedVars) :-
+instmap_changed_vars(ModuleInfo, VarTable, InstMapA, InstMapB, ChangedVars) :-
     instmap_vars_list(InstMapB, VarsB),
-    instmap_changed_vars_loop(ModuleInfo, VarTypes, VarsB,
+    instmap_changed_vars_loop(ModuleInfo, VarTable, VarsB,
         InstMapA, InstMapB, ChangedVars).
 
-:- pred instmap_changed_vars_loop(module_info::in, vartypes::in,
+:- pred instmap_changed_vars_loop(module_info::in, var_table::in,
     prog_vars::in, instmap::in, instmap::in, set_of_progvar::out) is det.
 
-instmap_changed_vars_loop(_ModuleInfo, _VarTypes, [],
+instmap_changed_vars_loop(_ModuleInfo, _VarTable, [],
         _InstMapA, _InstMapB, ChangedVars) :-
     set_of_var.init(ChangedVars).
-instmap_changed_vars_loop(ModuleInfo, VarTypes, [VarB | VarBs],
+instmap_changed_vars_loop(ModuleInfo, VarTable, [VarB | VarBs],
         InstMapA, InstMapB, ChangedVars) :-
-    instmap_changed_vars_loop(ModuleInfo, VarTypes, VarBs,
-        InstMapA, InstMapB, ChangedVars0),
-    instmap_lookup_var(InstMapA, VarB, InitialInst),
-    instmap_lookup_var(InstMapB, VarB, FinalInst),
-    lookup_var_type(VarTypes, VarB, Type),
-    ( if
-        inst_matches_final_typed(ModuleInfo, Type, InitialInst, FinalInst)
-    then
-        ChangedVars = ChangedVars0
-    else
-        set_of_var.insert(VarB, ChangedVars0, ChangedVars)
-    ).
-
-instmap_changed_vars_vt(ModuleInfo, VarTable, InstMapA, InstMapB,
-        ChangedVars) :-
-    instmap_vars_list(InstMapB, VarsB),
-    instmap_changed_vars_vt_loop(ModuleInfo, VarTable, VarsB,
-        InstMapA, InstMapB, ChangedVars).
-
-:- pred instmap_changed_vars_vt_loop(module_info::in, var_table::in,
-    prog_vars::in, instmap::in, instmap::in, set_of_progvar::out) is det.
-
-instmap_changed_vars_vt_loop(_ModuleInfo, _VarTable, [],
-        _InstMapA, _InstMapB, ChangedVars) :-
-    set_of_var.init(ChangedVars).
-instmap_changed_vars_vt_loop(ModuleInfo, VarTable, [VarB | VarBs],
-        InstMapA, InstMapB, ChangedVars) :-
-    instmap_changed_vars_vt_loop(ModuleInfo, VarTable, VarBs,
+    instmap_changed_vars_loop(ModuleInfo, VarTable, VarBs,
         InstMapA, InstMapB, ChangedVars0),
     instmap_lookup_var(InstMapA, VarB, InitialInst),
     instmap_lookup_var(InstMapB, VarB, FinalInst),

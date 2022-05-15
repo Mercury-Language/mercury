@@ -810,7 +810,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
         AuxPredSymName),
 
     Origin = origin_transformed(transform_tuple(ProcNum), OrigOrigin, PredId),
-    hlds_pred.define_new_pred_vt(
+    hlds_pred.define_new_pred(
         AuxPredSymName,         % in
         Origin,                 % in
         TVarSet,                % in
@@ -1099,7 +1099,7 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
         proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
         arg_info.generic_call_arg_reg_types(ModuleInfo, GenericCall,
             ArgVars, MaybeArgRegs, ArgRegTypes),
-        arg_info.compute_in_and_out_vars_sep_regs_table(ModuleInfo, VarTable,
+        arg_info.compute_in_and_out_vars_sep_regs(ModuleInfo, VarTable,
             ArgVars, ArgModes, ArgRegTypes,
             InputArgsR, InputArgsF, OutputArgsR, OutputArgsF),
         InputArgs = InputArgsR ++ InputArgsF,
@@ -1137,7 +1137,7 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
         ExtraVars = list.map(foreign_arg_var, ExtraArgs),
         CallingProcInfo = CountInfo ^ ci_proc_info,
         proc_info_get_var_table(ModuleInfo, CallingProcInfo, VarTable),
-        arg_info.partition_proc_call_args_table(ModuleInfo, ProcInfo, VarTable,
+        arg_info.partition_proc_call_args(ModuleInfo, ProcInfo, VarTable,
             ArgVars, InputArgVarSet, OutputArgVarSet, _),
         set.to_sorted_list(InputArgVarSet, InputArgVars),
         list.append(InputArgVars, ExtraVars, InputVars),
@@ -1236,7 +1236,7 @@ count_load_stores_in_call_to_tupled(GoalExpr, GoalInfo, CountInfo,
         _, CalleeProcInfo),
     CallingProcInfo = CountInfo ^ ci_proc_info,
     proc_info_get_var_table(ModuleInfo, CallingProcInfo, VarTable),
-    arg_info.partition_proc_call_args_table(ModuleInfo, CalleeProcInfo,
+    arg_info.partition_proc_call_args(ModuleInfo, CalleeProcInfo,
         VarTable, ArgVars, InputArgs0, Outputs, _),
     ( if
         % If the caller is a tupled procedure, and every field variable
@@ -1289,7 +1289,7 @@ count_load_stores_in_call_to_not_tupled(GoalExpr, GoalInfo, CountInfo,
         _PredInfo, CalleeProcInfo),
     ProcInfo = CountInfo ^ ci_proc_info,
     proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
-    arg_info.partition_proc_call_args_table(ModuleInfo, CalleeProcInfo,
+    arg_info.partition_proc_call_args(ModuleInfo, CalleeProcInfo,
         VarTable, ArgVars, InputArgs, OutputArgs, _),
     set.to_sorted_list(InputArgs, Inputs),
     set.to_sorted_list(OutputArgs, Outputs),

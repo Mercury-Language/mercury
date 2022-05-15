@@ -1803,8 +1803,8 @@ initial_liveness(ModuleInfo, PredInfo, ProcInfo, !:Liveness) :-
     NonLocals0 = goal_info_get_code_gen_nonlocals(GoalInfo),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeinfoLiveness),
-    maybe_complete_with_typeinfo_vars_vt(VarTable, RttiVarMaps,
-        TypeinfoLiveness, NonLocals0, NonLocals),
+    maybe_complete_with_typeinfo_vars(VarTable, RttiVarMaps, TypeinfoLiveness,
+        NonLocals0, NonLocals),
     set_of_var.intersect(!.Liveness, NonLocals, !:Liveness).
 
 :- pred initial_liveness_loop(module_info::in, var_table::in,
@@ -1842,7 +1842,7 @@ initial_deadness(ModuleInfo, ProcInfo, LiveInfo, Deadness) :-
     % to these.
     proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
-    maybe_complete_with_typeinfo_vars_vt(VarTable, RttiVarMaps,
+    maybe_complete_with_typeinfo_vars(VarTable, RttiVarMaps,
         LiveInfo ^ li_typeinfo_liveness, set_to_bitset(Deadness0), Deadness).
 
 %-----------------------------------------------------------------------------%
@@ -1916,7 +1916,7 @@ get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
     set_of_progvar::in, set_of_progvar::out) is det.
 
 maybe_complete_with_typeinfos(LiveInfo, Vars0, Vars) :-
-    maybe_complete_with_typeinfo_vars_vt(LiveInfo ^ li_var_table,
+    maybe_complete_with_typeinfo_vars(LiveInfo ^ li_var_table,
         LiveInfo ^ li_rtti_varmaps, LiveInfo ^ li_typeinfo_liveness,
         Vars0, Vars).
 

@@ -3441,7 +3441,7 @@ compute_forward_live_var_saves(CI, CLD, OutArgs, VarLocs) :-
     get_var_table(CI, VarTable),
     get_proc_info(CI, ProcInfo),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
-    maybe_complete_with_typeinfo_vars_vt(VarTable, RttiVarMaps,
+    maybe_complete_with_typeinfo_vars(VarTable, RttiVarMaps,
         TypeInfoLiveness, Vars0, Vars1),
     set_of_var.difference(Vars1, OutArgs, Vars),
     Variables = set_of_var.to_sorted_list(Vars),

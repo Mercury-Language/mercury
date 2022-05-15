@@ -451,11 +451,10 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
 
     Origin =
         origin_transformed(transform_untuple(ProcNum), OrigOrigin, PredId),
-    hlds_pred.define_new_pred_vt(AuxPredSymName, Origin,
-        TVarSet, InstVarSet, VarTable, RttiVarMaps, ClassContext,
-        InitialAuxInstMap, VarNameRemap, Markers, address_is_not_taken,
-        HasParallelConj, AuxPredProcId, AuxHeadVars, _ExtraArgs, Goal,
-        CallAux, !ModuleInfo),
+    hlds_pred.define_new_pred(AuxPredSymName, Origin, TVarSet, InstVarSet,
+        VarTable, RttiVarMaps, ClassContext, InitialAuxInstMap, VarNameRemap,
+        Markers, address_is_not_taken, HasParallelConj,
+        AuxPredProcId, AuxHeadVars, _ExtraArgs, Goal, CallAux, !ModuleInfo),
     AuxPredProcId = proc(AuxPredId, AuxProcId),
 
     module_info_pred_proc_info(!.ModuleInfo, AuxPredId, AuxProcId,

@@ -640,7 +640,7 @@ identify_out_and_out_prime(ModuleInfo, VarTable, InitialInstMap, GoalId,
         goal_list_instmap_delta(Rest, InstMapDelta),
         apply_instmap_delta(InstMapDelta, InstMapBeforeRest, InstMapAfterRest),
 
-        instmap_changed_vars_vt(ModuleInfo, VarTable,
+        instmap_changed_vars(ModuleInfo, VarTable,
             InstMapBeforeRest, InstMapAfterRest, ChangedVars),
 
         assoc_list.from_corresponding_lists(HeadVars, Args, HeadArg0),
@@ -1409,8 +1409,8 @@ accu_related(ModuleInfo, VarTable, GoalStore, Var, Related) :-
             Goal = hlds_goal(_GoalExpr, GoalInfo),
             InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
             apply_instmap_delta(InstMapDelta, InstMap0, InstMap),
-            instmap_changed_vars_vt(ModuleInfo, VarTable,
-                InstMap0, InstMap, ChangedVars),
+            instmap_changed_vars(ModuleInfo, VarTable, InstMap0, InstMap,
+                ChangedVars),
             set_of_var.is_singleton(ChangedVars, Var)
         ), Ids),
     (

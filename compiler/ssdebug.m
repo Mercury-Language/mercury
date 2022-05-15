@@ -1045,7 +1045,7 @@ get_output_args(ModuleInfo, HeadVars, ArgModes, OutputVars) :-
 rename_outputs(OutputVars, !Goal, UnifyGoal, Renaming, !VarTable) :-
     GoalInfo0 = get_hlds_goal_info(!.Goal),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
-    create_renaming_vt(OutputVars, InstMapDelta, !VarTable,
+    create_renaming(OutputVars, InstMapDelta, !VarTable,
         UnifyGoals, _NewVars, Renaming),
     goal_info_init(UnifyGoalInfo0),
     goal_info_set_determinism(detism_det, UnifyGoalInfo0, UnifyGoalInfo),

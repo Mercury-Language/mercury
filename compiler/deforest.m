@@ -237,7 +237,7 @@ deforest_proc_deltas(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo) :-
             proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
             proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
             proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
-            recompute_instmap_delta_vt(recompute_atomic_instmap_deltas,
+            recompute_instmap_delta(recompute_atomic_instmap_deltas,
                 VarTable, InstVarSet, InstMap0, !Goal, !ModuleInfo),
             pd_info_set_module_info(!.ModuleInfo, !PDInfo),
             pd_info_get_pred_info(!.PDInfo, !:PredInfo),

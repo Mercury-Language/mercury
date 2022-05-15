@@ -1729,8 +1729,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             var_is_any_in_instmap(ModuleInfo, InstMap0),
             NonLocalVars),
         BoundVars0 = set_of_var.union(GroundBoundVars, AnyBoundVars),
-        BoundVars =
-            remove_typeinfo_vars_from_set_of_var_vt(VarTable, BoundVars0),
+        BoundVars = remove_typeinfo_vars_from_set_of_var(VarTable, BoundVars0),
 
         % Which vars were bound inside the scope but not listed
         % in the promise_equivalent_solution{s,_sets} or arbitrary scope?

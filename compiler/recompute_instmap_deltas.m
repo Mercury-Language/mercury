@@ -27,7 +27,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
-:- import_module parse_tree.vartypes.
 
 %---------------------------------------------------------------------------%
 
@@ -50,9 +49,6 @@
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 :- pred recompute_instmap_delta(recompute_atomic_instmap_deltas::in,
-    vartypes::in, inst_varset::in, instmap::in, hlds_goal::in, hlds_goal::out,
-    module_info::in, module_info::out) is det.
-:- pred recompute_instmap_delta_vt(recompute_atomic_instmap_deltas::in,
     var_table::in, inst_varset::in, instmap::in, hlds_goal::in, hlds_goal::out,
     module_info::in, module_info::out) is det.
 
@@ -90,18 +86,11 @@ recompute_instmap_delta_proc(RecomputeAtomic, !ProcInfo, !ModuleInfo) :-
     proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
-    recompute_instmap_delta_vt(RecomputeAtomic, VarTable, InstVarSet, InstMap0,
+    recompute_instmap_delta(RecomputeAtomic, VarTable, InstVarSet, InstMap0,
         Goal0, Goal, !ModuleInfo),
     proc_info_set_goal(Goal, !ProcInfo).
 
-recompute_instmap_delta(RecomputeAtomic, VarTypes, InstVarSet, InstMap0,
-        Goal0, Goal, ModuleInfo0, ModuleInfo) :-
-    Params = recompute_params(RecomputeAtomic, vts_vartypes(VarTypes)),
-    RI0 = recompute_info(ModuleInfo0, InstVarSet),
-    recompute_instmap_delta_1(Params, InstMap0, _, Goal0, Goal, RI0, RI),
-    ModuleInfo = RI ^ ri_module_info.
-
-recompute_instmap_delta_vt(RecomputeAtomic, VarTable, InstVarSet, InstMap0,
+recompute_instmap_delta(RecomputeAtomic, VarTable, InstVarSet, InstMap0,
         Goal0, Goal, ModuleInfo0, ModuleInfo) :-
     Params = recompute_params(RecomputeAtomic, vts_var_table(VarTable)),
     RI0 = recompute_info(ModuleInfo0, InstVarSet),

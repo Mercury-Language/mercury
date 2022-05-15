@@ -551,7 +551,7 @@ insert_reg_wrappers_proc_2(!ProcInfo, !PredInfo, !ModuleInfo, !Specs) :-
 
     % We recomputed instmap deltas for atomic goals during the second phase,
     % so we only need to recompute instmap deltas for compound goals now.
-    recompute_instmap_delta_vt(do_not_recompute_atomic_instmap_deltas,
+    recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
         VarTable, InstVarSet0, InstMap0, Goal2, Goal, !ModuleInfo),
 
     % Set the new values of the fields in proc_info and pred_info.
@@ -738,7 +738,7 @@ do_recompute_atomic_instmap_delta(Goal0, Goal, InstMap, !Info) :-
     lambda_info_get_var_table(!.Info, VarTable),
     lambda_info_get_inst_varset(!.Info, InstVarSet),
     lambda_info_get_module_info(!.Info, ModuleInfo0),
-    recompute_instmap_delta_vt(recompute_atomic_instmap_deltas, VarTable,
+    recompute_instmap_delta(recompute_atomic_instmap_deltas, VarTable,
         InstVarSet, InstMap, Goal0, Goal, ModuleInfo0, ModuleInfo),
     lambda_info_set_module_info(ModuleInfo, !Info).
 

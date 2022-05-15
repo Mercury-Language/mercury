@@ -98,8 +98,8 @@ backward_use_in_goal_2(VarTable, Info0, !Expr, !LBU) :-
             goal_info_get_pre_births(Info0, PreBirths),
             goal_info_get_post_births(Info0, PostBirths),
             !:LBU = set_of_var.union_list([goal_info_get_lfu(Info0),
-                remove_typeinfo_vars_from_set_of_var_vt(VarTable, PreBirths),
-                remove_typeinfo_vars_from_set_of_var_vt(VarTable, PostBirths),
+                remove_typeinfo_vars_from_set_of_var(VarTable, PreBirths),
+                remove_typeinfo_vars_from_set_of_var(VarTable, PostBirths),
                 !.LBU])
         else
             true
@@ -181,7 +181,7 @@ get_backtrack_vars(VarTable, Info) = Vars :-
     goal_info_get_resume_point(Info, ResPoint),
     (
         ResPoint = resume_point(ResVars, _),
-        Vars = remove_typeinfo_vars_from_set_of_var_vt(VarTable, ResVars)
+        Vars = remove_typeinfo_vars_from_set_of_var(VarTable, ResVars)
     ;
         ResPoint = no_resume_point,
         Vars = set_of_var.init

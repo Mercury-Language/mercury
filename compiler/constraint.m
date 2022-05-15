@@ -325,7 +325,7 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTable, InstMap0,
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
 
     apply_instmap_delta(InstMapDelta, InstMap0, InstMap),
-    instmap_changed_vars_vt(ModuleInfo, VarTable, InstMap0, InstMap,
+    instmap_changed_vars(ModuleInfo, VarTable, InstMap0, InstMap,
         ChangedVars0),
 
     instmap_vars_list(InstMap, InstMapVars),
