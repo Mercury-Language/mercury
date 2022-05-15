@@ -86,9 +86,9 @@
             ).
 
 fill_goal_id_slots_in_proc(ModuleInfo, ContainingGoalMap, !ProcInfo) :-
-    proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
     proc_info_get_goal(!.ProcInfo, Goal0),
-    fill_goal_id_slots_in_proc_body(ModuleInfo, vts_vartypes(VarTypes),
+    fill_goal_id_slots_in_proc_body(ModuleInfo, vts_var_table(VarTable),
         ContainingGoalMap, Goal0, Goal),
     proc_info_set_goal(Goal, !ProcInfo).
 
@@ -326,12 +326,12 @@ fill_orelse_id_slots(SlotInfo, GoalId, LastOrElseNum, !GoalNumCounter,
 
 %-----------------------------------------------------------------------------%
 
-fill_goal_path_slots_in_proc(ModuleInfo, !Proc) :-
-    proc_info_get_goal(!.Proc, Goal0),
-    proc_info_get_varset_vartypes(!.Proc, _VarSet, VarTypes),
-    SlotInfo = slot_info(ModuleInfo, vts_vartypes(VarTypes)),
+fill_goal_path_slots_in_proc(ModuleInfo, !ProcInfo) :-
+    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
+    SlotInfo = slot_info(ModuleInfo, vts_var_table(VarTable)),
+    proc_info_get_goal(!.ProcInfo, Goal0),
     fill_goal_path_slots(rgp_nil, SlotInfo, Goal0, Goal),
-    proc_info_set_goal(Goal, !Proc).
+    proc_info_set_goal(Goal, !ProcInfo).
 
 :- pred fill_goal_path_slots(reverse_goal_path::in, slot_info::in,
     hlds_goal::in, hlds_goal::out) is det.

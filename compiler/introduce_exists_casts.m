@@ -39,6 +39,7 @@
 :- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.mode_test.
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
@@ -48,7 +49,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module int.
@@ -57,7 +58,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -124,7 +124,7 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     OrigArity = pred_info_orig_arity(PredInfo),
     NumExtraHeadVars = list.length(ArgTypes) - OrigArity,
 
-    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
+    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable0),
     proc_info_get_headvars(!.ProcInfo, HeadVars0),
     proc_info_get_goal(!.ProcInfo, Body0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
@@ -150,8 +150,8 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     % and for which the type is statically bound inside the procedure.
     % Subn represents which existential types are bound.
     introduce_exists_casts_for_head(ModuleInfo, Subn, OrigArgTypes,
-        OrigArgModes, OrigHeadVars1, OrigHeadVars, VarSet0, VarSet1,
-        VarTypes0, VarTypes1, [], ExistsCastHeadGoals),
+        OrigArgModes, OrigHeadVars1, OrigHeadVars, VarTable0, VarTable1,
+        [], ExistsCastHeadGoals),
 
     % Add exists_casts for any existential type_infos or typeclass_infos.
     % We determine which of these are existential by looking at the mode.
@@ -160,7 +160,7 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     assoc_list.from_corresponding_lists(ExtraArgModes, ExtraHeadVars1,
         ExtraModesAndVars),
     introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints,
-        ExtraModesAndVars, ExtraHeadVars, VarSet1, VarSet, VarTypes1, VarTypes,
+        ExtraModesAndVars, ExtraHeadVars, VarTable1, VarTable,
         RttiVarMaps0, RttiVarMaps, [], ExistsCastExtraGoals),
 
     Body0 = hlds_goal(_, GoalInfo0),
@@ -170,17 +170,15 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     NonLocals = set_of_var.list_to_set(HeadVars),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     Body = hlds_goal(conj(plain_conj, Goals), GoalInfo),
-    proc_info_set_body(VarSet, VarTypes, HeadVars, Body, RttiVarMaps,
-        !ProcInfo).
+    proc_info_set_body_vt(VarTable, HeadVars, Body, RttiVarMaps, !ProcInfo).
 
 :- pred introduce_exists_casts_for_head(module_info::in, tsubst::in,
     list(mer_type)::in, list(mer_mode)::in, list(prog_var)::in,
-    list(prog_var)::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, list(hlds_goal)::in, list(hlds_goal)::out)
-    is det.
+    list(prog_var)::out, var_table::in, var_table::out,
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 introduce_exists_casts_for_head(ModuleInfo, Subn, ArgTypes, ArgModes,
-        !HeadVars, !VarSet, !VarTypes, !ExtraGoals) :-
+        !HeadVars, !VarTable, !ExtraGoals) :-
     ( if
         ArgTypes = [],
         ArgModes = [],
@@ -193,10 +191,9 @@ introduce_exists_casts_for_head(ModuleInfo, Subn, ArgTypes, ArgModes,
         !.HeadVars = [HeadVar0 | HeadVarsRest0]
     then
         introduce_exists_casts_for_head(ModuleInfo, Subn, ArgTypesRest,
-            ArgModesRest, HeadVarsRest0, HeadVarsRest, !VarSet, !VarTypes,
-            !ExtraGoals),
+            ArgModesRest, HeadVarsRest0, HeadVarsRest, !VarTable, !ExtraGoals),
         introduce_exists_casts_for_arg(ModuleInfo, Subn, ArgType, ArgMode,
-            HeadVar0, HeadVar, !VarSet, !VarTypes, !ExtraGoals),
+            HeadVar0, HeadVar, !VarTable, !ExtraGoals),
         !:HeadVars = [HeadVar | HeadVarsRest]
     else
         unexpected($pred, "length mismatch")
@@ -204,22 +201,21 @@ introduce_exists_casts_for_head(ModuleInfo, Subn, ArgTypes, ArgModes,
 
 :- pred introduce_exists_casts_for_arg(module_info::in, tsubst::in,
     mer_type::in, mer_mode::in, prog_var::in, prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    var_table::in, var_table::out,
     list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 introduce_exists_casts_for_arg(ModuleInfo, Subn, ExternalType, ArgMode,
-        HeadVar0, HeadVar, !VarSet, !VarTypes, !ExtraGoals) :-
+        HeadVar0, HeadVar, !VarTable, !ExtraGoals) :-
     apply_rec_subst_to_type(Subn, ExternalType, InternalType),
     % Add an exists_cast for the head variable if its type
     % inside the procedure is different from its type at the interface.
     ( if InternalType = ExternalType then
         HeadVar = HeadVar0
     else
-        term.context_init(Context),
-        update_var_type(HeadVar0, InternalType, !VarTypes),
-        make_new_exist_cast_var(HeadVar0, HeadVar, !VarSet),
-        add_var_type(HeadVar, ExternalType, !VarTypes),
+        make_new_exist_cast_var(ModuleInfo, HeadVar0, InternalType,
+            ExternalType, HeadVar, !VarTable),
         mode_get_insts(ModuleInfo, ArgMode, _, Inst),
+        term.context_init(Context),
         generate_cast_with_insts(exists_cast, HeadVar0, HeadVar, Inst, Inst,
             Context, ExtraGoal),
         !:ExtraGoals = [ExtraGoal | !.ExtraGoals]
@@ -227,30 +223,27 @@ introduce_exists_casts_for_arg(ModuleInfo, Subn, ExternalType, ArgMode,
 
 :- pred introduce_exists_casts_extra(module_info::in, tsubst::in,
     list(prog_constraint)::in, assoc_list(mer_mode, prog_var)::in,
-    list(prog_var)::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, rtti_varmaps::in,  rtti_varmaps::out,
+    list(prog_var)::out, var_table::in, var_table::out,
+    rtti_varmaps::in, rtti_varmaps::out,
     list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
-introduce_exists_casts_extra(_, _, ExistConstraints, [], [], !VarSet,
-        !VarTypes, !RttiVarMaps, !ExtraGoals) :-
+introduce_exists_casts_extra(_, _, ExistConstraints, [], [],
+        !VarTable, !RttiVarMaps, !ExtraGoals) :-
     (
         ExistConstraints = []
     ;
         ExistConstraints = [_ | _],
         unexpected($pred, "length mismatch")
     ).
-
 introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
-        [ModeAndVar | ModesAndVars], [Var | Vars], !VarSet, !VarTypes,
+        [ModeAndVar | ModesAndVars], [Var | Vars], !VarTable,
         !RttiVarMaps, !ExtraGoals) :-
     ModeAndVar = ArgMode - Var0,
     ( if mode_is_output(ModuleInfo, ArgMode) then
         % Create the exists_cast goal.
 
+        clone_new_exist_cast_var(Var0, Var, !VarTable),
         term.context_init(Context),
-        make_new_exist_cast_var(Var0, Var, !VarSet),
-        lookup_var_type(!.VarTypes, Var0, VarType),
-        add_var_type(Var, VarType, !VarTypes),
         generate_cast(exists_cast, Var0, Var, Context, ExtraGoal),
         !:ExtraGoals = [ExtraGoal | !.ExtraGoals],
 
@@ -297,7 +290,7 @@ introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
         ExistConstraints = ExistConstraints0
     ),
     introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints,
-        ModesAndVars, Vars, !VarSet, !VarTypes, !RttiVarMaps, !ExtraGoals).
+        ModesAndVars, Vars, !VarTable, !RttiVarMaps, !ExtraGoals).
 
 :- pred maybe_add_type_info_locns(list(mer_type)::in, prog_var::in, int::in,
     rtti_varmaps::in, rtti_varmaps::out) is det.
@@ -315,14 +308,30 @@ maybe_add_type_info_locns([ArgType | ArgTypes], Var, Num, !RttiVarMaps) :-
     ),
     maybe_add_type_info_locns(ArgTypes, Var, Num + 1, !RttiVarMaps).
 
-:- pred make_new_exist_cast_var(prog_var::in, prog_var::out,
-    prog_varset::in, prog_varset::out) is det.
+:- pred make_new_exist_cast_var(module_info::in, prog_var::in, mer_type::in,
+    mer_type::in, prog_var::out, var_table::in, var_table::out) is det.
 
-make_new_exist_cast_var(InternalVar, ExternalVar, !VarSet) :-
-    varset.new_var(ExternalVar, !VarSet),
-    varset.lookup_name(!.VarSet, InternalVar, InternalName),
-    string.append("ExistQ", InternalName, ExternalName),
-    varset.name_var(ExternalVar, ExternalName, !VarSet).
+make_new_exist_cast_var(ModuleInfo, InternalVar, InternalType, ExternalType,
+        ExternalVar, !VarTable) :-
+    InternalTypeIsDummy = is_type_a_dummy(ModuleInfo, InternalType),
+    ExternalTypeIsDummy = is_type_a_dummy(ModuleInfo, ExternalType),
+    lookup_var_entry(!.VarTable, InternalVar, InternalVarEntry0),
+    InternalVarEntry0 = vte(InternalName, _, _),
+    InternalVarEntry = vte(InternalName, InternalType, InternalTypeIsDummy),
+    ExternalName = "ExistQ" ++ InternalName,
+    ExternalVarEntry = vte(ExternalName, ExternalType, ExternalTypeIsDummy),
+    update_var_entry(InternalVar, InternalVarEntry, !VarTable),
+    add_var_entry(ExternalVarEntry, ExternalVar, !VarTable).
+
+:- pred clone_new_exist_cast_var(prog_var::in, prog_var::out,
+    var_table::in, var_table::out) is det.
+
+clone_new_exist_cast_var(OldVar, CloneVar, !VarTable) :-
+    lookup_var_entry(!.VarTable, OldVar, OldVarEntry),
+    OldVarEntry = vte(OldName, OldType, OldTypeIsDummy),
+    CloneName = "ExistQ" ++ OldName,
+    CloneVarEntry = vte(CloneName, OldType, OldTypeIsDummy),
+    add_var_entry(CloneVarEntry, CloneVar, !VarTable).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.introduce_exists_casts.
