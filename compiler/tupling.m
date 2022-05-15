@@ -1040,7 +1040,7 @@ count_load_stores_in_proc(CountInfo, Loads, Stores) :-
     CountState0 = count_state(InitialLiveness, set_of_var.init, 0.0, 0.0),
     proc_info_get_goal(ProcInfo, Goal),
     count_load_stores_in_goal(Goal, CountInfo, CountState0, CountState1),
-    arg_info.partition_proc_args(ProcInfo, ModuleInfo, _, OutputArgs, _),
+    arg_info.partition_proc_args(ModuleInfo, ProcInfo, _, OutputArgs, _),
     cls_require_in_regs(CountInfo, set.to_sorted_list(OutputArgs),
         CountState1, CountState),
     CountState = count_state(_, _, Loads, Stores).
@@ -1579,7 +1579,7 @@ add_branch_costs(BranchState, Weight, !CountState) :-
 build_interval_info(ModuleInfo, ProcInfo, IntervalInfo) :-
     proc_info_get_goal(ProcInfo, Goal),
     proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
-    arg_info.partition_proc_args(ProcInfo, ModuleInfo,
+    arg_info.partition_proc_args(ModuleInfo, ProcInfo,
         _InputArgs, OutputArgs, _UnusedArgs),
     Counter0 = counter.init(1),
     counter.allocate(CurInterval, Counter0, Counter),

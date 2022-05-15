@@ -2160,7 +2160,7 @@ clone_pred_info(OrigPredId, OrigProcId, PredInfo0, HeadVars,
 clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
     pred_info_proc_info(PredInfo, ProcId, ProcInfo),
     proc_info_get_context(ProcInfo, ProcContext),
-    proc_info_get_varset_vartypes(ProcInfo, ProcVarSet, ProcVarTypes),
+    proc_info_get_var_table(!.ModuleInfo, ProcInfo, ProcVarTable),
     proc_info_get_headvars(ProcInfo, ProcHeadVars),
     proc_info_get_inst_varset(ProcInfo, ProcInstVarSet),
     proc_info_get_argmodes(ProcInfo, ProcHeadModes),
@@ -2170,8 +2170,7 @@ clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
     proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
     proc_info_get_var_name_remap(ProcInfo, VarNameRemap),
     SeqNum = item_no_seq_num,
-    proc_info_create(ProcContext, SeqNum,
-        ProcVarSet, ProcVarTypes, ProcHeadVars,
+    proc_info_create_vt(ProcContext, SeqNum, ProcVarTable, ProcHeadVars,
         ProcInstVarSet, ProcHeadModes, detism_decl_none, ProcDetism, ProcGoal,
         ProcRttiVarMaps, address_is_not_taken, HasParallelConj, VarNameRemap,
         NewProcInfo),
@@ -4051,6 +4050,9 @@ make_generator_c_attributes = Attrs :-
 :- func dummy_type_var = mer_type.
 
 dummy_type_var = Type :-
+    % XXX This code looks like it will generate type variables that
+    % will collide with actual type variables of the current procedure,
+    % if it has any.
     varset.init(DummyTVarSet0),
     varset.new_var(DummyTVar, DummyTVarSet0, _),
     Type = type_variable(DummyTVar, kind_star).

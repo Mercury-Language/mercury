@@ -105,7 +105,8 @@ produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, ArgTypes,
     ;
         % Handle the arbitrary clauses syntax.
         InstanceProcDefn = instance_proc_def_clauses(InstanceClauses),
-        clauses_info_init(PredOrFunc, PredFormArity,
+        % XXX CIT_TYPES: should be cit_types(ArgTypes)
+        clauses_info_init(PredOrFunc, cit_no_types(PredFormArity),
             init_clause_item_numbers_comp_gen, ClausesInfo0),
         list.foldl5(
             produce_instance_method_clause(PredOrFunc, Context,

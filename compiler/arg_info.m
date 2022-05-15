@@ -119,7 +119,7 @@
     % on the arg_info annotations of the arguments, which means that this
     % predicate should only be called after the arg_info pass has been run.
     %
-:- pred partition_proc_args(proc_info::in, module_info::in,
+:- pred partition_proc_args(module_info::in, proc_info::in,
     set(prog_var)::out, set(prog_var)::out, set(prog_var)::out) is det.
 
     % Like partition_proc_args, but partitions the actual
@@ -687,11 +687,11 @@ partition_args([Var - ArgInfo | VarsArgInfos], !:Ins, !:Outs, !:Unuseds) :-
 
 %---------------------------------------------------------------------------%
 
-partition_proc_args(ProcInfo, ModuleInfo, Inputs, Outputs, Unuseds) :-
+partition_proc_args(ModuleInfo, ProcInfo, Inputs, Outputs, Unuseds) :-
     proc_info_get_headvars(ProcInfo, Vars),
     proc_info_get_argmodes(ProcInfo, Modes),
-    proc_info_get_varset_vartypes(ProcInfo, _VarSet, VarTypes),
-    lookup_var_types(VarTypes, Vars, Types),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    lookup_var_types(VarTable, Vars, Types),
     do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         Inputs, Outputs, Unuseds).
 

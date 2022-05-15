@@ -88,7 +88,29 @@
                 cli_had_syntax_errors       :: maybe_clause_syntax_errors
         ).
 
-:- pred clauses_info_init(pred_or_func::in, pred_form_arity::in,
+:- type clause_init_types
+    --->    cit_no_types(pred_form_arity).
+    % ;     cit_types(list(mer_type)).
+    % XXX CIT_TYPES
+    % The cit_types alternative is intended to allow code that calls
+    % clauses_info_init to record the types of the arguments of the
+    % predicate or function whose implementation the clauses are to form.
+    % This has historically not been done, and the typechecker (for now)
+    % depends on this behavior, specifically in the case of predicates
+    % whose type signature includes existentially quantified typed variables.
+    %
+    % Some places in the compiler that could exploit this possibility
+    % are marked with "XXX CIT_TYPES".
+    %
+    % Eventually, we should replace the cli_varset, cli_explicit_vartypes,
+    % and cli_vartypes fields with a single field containing a var_table,
+    % in which every every variable that has an explicit type has that type,
+    % and every other variable has a special type meaning "this type
+    % has not been set yet". We should be able to use the void type
+    % for this, but we will need to ensure that the compiler does not accept
+    % any occurrence of this type in Mercury source code.
+
+:- pred clauses_info_init(pred_or_func::in, clause_init_types::in,
     clause_item_numbers::in, clauses_info::out) is det.
 
 :- pred clauses_info_init_for_assertion(prog_vars::in, clauses_info::out)
@@ -358,12 +380,29 @@
 
 %-----------------------------------------------------------------------------%
 
-clauses_info_init(PredOrFunc, PredFormArity, ItemNumbers, ClausesInfo) :-
+clauses_info_init(PredOrFunc, InitTypes, ItemNumbers, ClausesInfo) :-
     varset.init(VarSet0),
-    PredFormArity = pred_form_arity(PredFormArityInt),
-    make_n_fresh_vars("HeadVar__", PredFormArityInt, HeadVars,
-        VarSet0, VarSet),
-    init_vartypes(VarTypes),
+    init_vartypes(VarTypes0),
+    (
+        InitTypes = cit_no_types(PredFormArity),
+        PredFormArity = pred_form_arity(PredFormArityInt),
+        make_n_fresh_vars("HeadVar__", PredFormArityInt, HeadVars,
+            VarSet0, VarSet),
+        VarTypes = VarTypes0
+% XXX CIT_TYPES
+%   ;
+%       InitTypes = cit_types(ArgTypes),
+%       AddArg =
+%           ( pred(T::in, V::out, CurN::in, NextN::out,
+%                   VS0::in, VS::out, VT0::in, VT::out) is det :-
+%               Name = "HeadVar__" ++ string.int_to_string(CurN),
+%               varset.new_named_var(Name, V, VS0, VS),
+%               add_var_type(V, T, VT0, VT),
+%               NextN = CurN + 1
+%           ),
+%       list.map_foldl3(AddArg, ArgTypes, HeadVars,
+%           1, _, VarSet0, VarSet, VarTypes0, VarTypes)
+    ),
     map.init(TVarNameMap),
     HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
     set_clause_list([], ClausesRep),

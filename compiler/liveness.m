@@ -1836,7 +1836,7 @@ initial_liveness_loop(ModuleInfo, VarTable, [Var | Vars], [Mode | Modes],
 
 initial_deadness(ModuleInfo, ProcInfo, LiveInfo, Deadness) :-
     % The output arguments are all in the initial deadness.
-    arg_info.partition_proc_args(ProcInfo, ModuleInfo, _, Deadness0, _),
+    arg_info.partition_proc_args(ModuleInfo, ProcInfo, _, Deadness0, _),
 
     % If doing typeinfo liveness, the corresponding typeinfos need to be added
     % to these.

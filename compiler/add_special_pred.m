@@ -277,7 +277,8 @@ add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor, TypeStatus,
     PredArity = get_special_pred_id_arity(SpecialPredId),
     PredFormArity = pred_form_arity(PredArity),
     % All current special_preds are predicates.
-    clauses_info_init(pf_predicate, PredFormArity,
+    % XXX CIT_TYPES: should be cit_types(ArgTypes)
+    clauses_info_init(pf_predicate, cit_no_types(PredFormArity),
         init_clause_item_numbers_comp_gen, ClausesInfo0),
     Origin = origin_special_pred(SpecialPredId, TypeCtor),
     adjust_special_pred_status(SpecialPredId, TypeStatus, PredStatus),
