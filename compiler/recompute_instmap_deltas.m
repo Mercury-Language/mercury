@@ -87,10 +87,10 @@
 
 recompute_instmap_delta_proc(RecomputeAtomic, !ProcInfo, !ModuleInfo) :-
     proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
-    proc_info_get_varset_vartypes(!.ProcInfo, _VarSet, VarTypes),
+    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
-    recompute_instmap_delta(RecomputeAtomic, VarTypes, InstVarSet, InstMap0,
+    recompute_instmap_delta_vt(RecomputeAtomic, VarTable, InstVarSet, InstMap0,
         Goal0, Goal, !ModuleInfo),
     proc_info_set_goal(Goal, !ProcInfo).
 

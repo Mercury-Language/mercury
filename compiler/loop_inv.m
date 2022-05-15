@@ -749,7 +749,7 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
 
     proc_info_get_goal(ProcInfo, Goal @ hlds_goal(_GoalExpr, GoalInfo)),
     pred_info_get_typevarset(PredInfo, TVarSet),
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
+    proc_info_get_var_table(ModuleInfo0, ProcInfo, VarTable),
     pred_info_get_class_context(PredInfo, ClassContext),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
@@ -777,13 +777,12 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
 
     Origin = origin_transformed(transform_loop_invariant(ProcNum),
         OrigOrigin, PredId),
-    hlds_pred.define_new_pred(
+    hlds_pred.define_new_pred_vt(
         AuxPredSymName, % in    - The name of the new aux proc.
         Origin,         % in    - The origin of this new predicate
         TVarSet,        % in    - ???
         InstVarSet,     % in    - ???
-        VarSet,         % in    - ???
-        VarTypes,       % in    - The var -> type mapping for the new aux proc.
+        VarTable,       % in    - The var -> type mapping for the new aux proc.
         RttiVarMaps,    % in    - type_info and typeclass_info locations.
         ClassContext,   % in    - Typeclass constraints on the new aux proc.
         InitialAuxInstMap, % in - The initial instmap for the new aux proc.
@@ -941,11 +940,11 @@ gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, Replacement, Body0,
     % Put the new procedure body into the module_info.
     PredProcId = proc(PredId, ProcId),
 
-    proc_info_get_varset_vartypes(ProcInfo0, VarSet, VarTypes),
+    proc_info_get_var_table(!.ModuleInfo, ProcInfo0, VarTable),
     proc_info_get_headvars(ProcInfo0, HeadVars),
     proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps),
 
-    proc_info_set_body(VarSet, VarTypes, HeadVars, Body,
+    proc_info_set_body_vt(VarTable, HeadVars, Body,
         RttiVarMaps, ProcInfo0, ProcInfo1),
 
     requantify_proc_general(ordinary_nonlocals_no_lambda,

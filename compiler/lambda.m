@@ -750,20 +750,7 @@ find_used_vars_in_goal(Goal, !VarUses) :-
             ; Unif = complicated_unify(_, _, _)
             )
         ),
-        (
-            RHS = rhs_var(RHSVar),
-            mark_var_as_used(RHSVar, !VarUses)
-        ;
-            RHS = rhs_functor(_, _, ArgVars),
-            mark_vars_as_used(ArgVars, !VarUses)
-        ;
-            RHS = rhs_lambda_goal(_, _, _, _, NonLocals, ArgVarsModes,
-                _, LambdaGoal),
-            assoc_list.keys(ArgVarsModes, ArgVars),
-            mark_vars_as_used(NonLocals, !VarUses),
-            mark_vars_as_used(ArgVars, !VarUses),
-            find_used_vars_in_goal(LambdaGoal, !VarUses)
-        )
+        find_used_vars_in_unify_rhs(RHS, !VarUses)
     ;
         GoalExpr = generic_call(GenericCall, ArgVars, _, _, _),
         (
@@ -779,8 +766,16 @@ find_used_vars_in_goal(Goal, !VarUses) :-
         ),
         mark_vars_as_used(ArgVars, !VarUses)
     ;
-        GoalExpr = plain_call(_, _, ArgVars, _, _, _),
-        mark_vars_as_used(ArgVars, !VarUses)
+        GoalExpr = plain_call(_, _, ArgVars, _, MaybeCallUnifyContext, _),
+        mark_vars_as_used(ArgVars, !VarUses),
+        (
+            MaybeCallUnifyContext = no
+        ;
+            MaybeCallUnifyContext = yes(CallUnifyContext),
+            CallUnifyContext = call_unify_context(Var, RHS, _UC),
+            mark_var_as_used(Var, !VarUses),
+            find_used_vars_in_unify_rhs(RHS, !VarUses)
+        )
     ;
         ( GoalExpr = conj(_, Goals)
         ; GoalExpr = disj(Goals)
@@ -883,6 +878,25 @@ find_used_vars_in_cases([Case | Cases], !VarUses) :-
     Case = case(_, _, Goal),
     find_used_vars_in_goal(Goal, !VarUses),
     find_used_vars_in_cases(Cases, !VarUses).
+
+:- pred find_used_vars_in_unify_rhs(unify_rhs::in,
+    array(bool)::array_di, array(bool)::array_uo) is det.
+
+find_used_vars_in_unify_rhs(RHS, !VarUses) :-
+    (
+        RHS = rhs_var(RHSVar),
+        mark_var_as_used(RHSVar, !VarUses)
+    ;
+        RHS = rhs_functor(_, _, ArgVars),
+        mark_vars_as_used(ArgVars, !VarUses)
+    ;
+        RHS = rhs_lambda_goal(_, _, _, _, NonLocals, ArgVarsModes,
+            _, LambdaGoal),
+        assoc_list.keys(ArgVarsModes, ArgVars),
+        mark_vars_as_used(NonLocals, !VarUses),
+        mark_vars_as_used(ArgVars, !VarUses),
+        find_used_vars_in_goal(LambdaGoal, !VarUses)
+    ).
 
 :- pred mark_var_as_used(prog_var::in,
     array(bool)::array_di, array(bool)::array_uo) is det.

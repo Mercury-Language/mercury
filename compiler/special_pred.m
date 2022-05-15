@@ -390,9 +390,9 @@ compiler_generated_rtti_for_builtins(ModuleInfo) :-
 get_special_proc(ModuleInfo, TypeCtor, SpecialPredId,
         PredName, PredId, ProcId) :-
     TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
-    get_category_name(TypeCategory) = MaybeCategoryName,
+    get_ctor_cat_builtin_type_name(TypeCategory) = MaybeBuiltinTypeName,
     (
-        MaybeCategoryName = no,
+        MaybeBuiltinTypeName = no,
         module_info_get_special_pred_maps(ModuleInfo, SpecialPredMaps),
         search_special_pred_maps(SpecialPredMaps, SpecialPredId, TypeCtor,
             PredId),
@@ -403,9 +403,9 @@ get_special_proc(ModuleInfo, TypeCtor, SpecialPredId,
         special_pred_mode_num(SpecialPredId, ProcInt),
         proc_id_to_int(ProcId, ProcInt)
     ;
-        MaybeCategoryName = yes(CategoryName),
+        MaybeBuiltinTypeName = yes(BuiltinTypeName),
         special_pred_name_arity(SpecialPredId, SpecialName, _, Arity),
-        Name = "builtin_" ++ SpecialName ++ "_" ++ CategoryName,
+        Name = "builtin_" ++ SpecialName ++ "_" ++ BuiltinTypeName,
         % None of the special preds are in fact functions, so for them,
         % user arity and pred form arity are the same.
         UserArity = user_arity(Arity),
@@ -427,9 +427,9 @@ get_special_proc_det(ModuleInfo, TypeCtor, SpecialPredId, PredName,
         unexpected($pred, "get_special_proc failed")
     ).
 
-:- func get_category_name(type_ctor_category) = maybe(string).
+:- func get_ctor_cat_builtin_type_name(type_ctor_category) = maybe(string).
 
-get_category_name(CtorCat) = MaybeName :-
+get_ctor_cat_builtin_type_name(CtorCat) = MaybeName :-
     (
         CtorCat = ctor_cat_builtin(cat_builtin_int(int_type_int)),
         MaybeName = yes("int")

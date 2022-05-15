@@ -41,6 +41,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module int.
@@ -50,7 +51,6 @@
 :- import_module set_tree234.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -98,9 +98,9 @@ write_proc_stats_for_proc(OutStream, Msg, ModuleInfo,
     Stats0 = init_proc_stats,
     accumulate_proc_stats_in_goal(Goal, UsedVars0, UsedVars, Stats0, Stats),
 
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     do_write_proc_stats(OutStream, Msg, Name, PredId, ProcId, Stats,
-        UsedVars, VarSet, !IO).
+        UsedVars, VarTable, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -414,11 +414,11 @@ write_proc_stat_components(OutStream, Msg, Name, PredId, ProcId, Stats, !IO) :-
 
 :- pred do_write_proc_stats(io.output_stream::in,
     string::in, string::in, pred_id::in, proc_id::in,
-    proc_stats::in, set_tree234(prog_var)::in, prog_varset::in,
+    proc_stats::in, set_tree234(prog_var)::in, var_table::in,
     io::di, io::uo) is det.
 
 do_write_proc_stats(OutStream, Msg, Name, PredId, ProcId,
-        Stats, UsedVars, VarSet, !IO) :-
+        Stats, UsedVars, VarTable, !IO) :-
     PredIdInt = pred_id_to_int(PredId),
     ProcIdInt = proc_id_to_int(ProcId),
     io.format(OutStream, "PROC %d %d %s\n",
@@ -427,10 +427,10 @@ do_write_proc_stats(OutStream, Msg, Name, PredId, ProcId,
     write_proc_stat_components(OutStream, Msg, Name, PredId, ProcId, Stats,
         !IO),
 
-    varset.new_var(Var, VarSet, _UpdatedVarSet),
-    term.var_to_int(Var, VarInt),
+    var_table_count(VarTable, VarTableCount),
     NumUsedVars = set_tree234.count(UsedVars),
-    io.format(OutStream, "VARS %d %d\n", [i(VarInt), i(NumUsedVars)], !IO).
+    io.format(OutStream, "VARS %d %d\n",
+        [i(VarTableCount), i(NumUsedVars)], !IO).
 
 :- pred output_proc_stat_component(io.output_stream::in,
     string::in, string::in, pred_id::in, proc_id::in,

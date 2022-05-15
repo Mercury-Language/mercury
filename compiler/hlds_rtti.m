@@ -351,7 +351,6 @@
 :- import_module set_tree234.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -363,7 +362,7 @@ make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
     pred_info_get_arg_types(PredInfo, ArgTypes),
-    proc_info_get_varset_vartypes(ProcInfo, ProcVarSet, _ProcVarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, ProcVarTable),
     proc_info_get_headvars(ProcInfo, ProcHeadVars),
     proc_info_get_argmodes(ProcInfo, ProcModes),
     proc_info_interface_determinism(ProcInfo, ProcDetism),
@@ -378,7 +377,7 @@ make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
     pred_info_get_origin(PredInfo, Origin),
     ProcHeadVarsWithNames = list.map(
         ( func(Var) = Var - Name :-
-            Name = varset.lookup_name(ProcVarSet, Var)
+            Name = var_table_entry_name(ProcVarTable, Var)
         ), ProcHeadVars),
     ( if
         (

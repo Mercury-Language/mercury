@@ -2789,14 +2789,15 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
         rename_var_list(Must, Subn, Args0, Args),
         Expr = generic_call(GenericCall, Args, Modes, MaybeArgRegs, Det)
     ;
-        Expr0 = plain_call(PredId, ProcId, Args0, Builtin, Context, Sym),
+        Expr0 = plain_call(PredId, ProcId, Args0, Builtin, CallUC0, Sym),
+        rename_var_in_call_unify_context(Must, Subn, CallUC0, CallUC),
         rename_var_list(Must, Subn, Args0, Args),
-        Expr = plain_call(PredId, ProcId, Args, Builtin, Context, Sym)
+        Expr = plain_call(PredId, ProcId, Args, Builtin, CallUC, Sym)
     ;
         Expr0 = unify(LHS0, RHS0, Mode, Unify0, Context),
         rename_var(Must, Subn, LHS0, LHS),
-        rename_unify_rhs(Must, Subn, RHS0, RHS),
-        rename_unify(Must, Subn, Unify0, Unify),
+        rename_var_in_unify_rhs(Must, Subn, RHS0, RHS),
+        rename_var_in_unify(Must, Subn, Unify0, Unify),
         Expr = unify(LHS, RHS, Mode, Unify, Context)
     ;
         Expr0 = call_foreign_proc(Attrs, PredId, ProcId, Args0, Extra0,
@@ -2854,10 +2855,10 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
         Expr = shorthand(Shorthand)
     ).
 
-:- pred rename_unify_rhs(must_rename::in, prog_var_renaming::in,
+:- pred rename_var_in_unify_rhs(must_rename::in, prog_var_renaming::in,
     unify_rhs::in, unify_rhs::out) is det.
 
-rename_unify_rhs(Must, Subn, RHS0, RHS) :-
+rename_var_in_unify_rhs(Must, Subn, RHS0, RHS) :-
     (
         RHS0 = rhs_var(Var0),
         rename_var(Must, Subn, Var0, Var),
@@ -2876,6 +2877,25 @@ rename_unify_rhs(Must, Subn, RHS0, RHS) :-
         rename_vars_in_goal(Must, Subn, Goal0, Goal),
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             NonLocals, VarsModes, Det, Goal)
+    ).
+
+:- pred rename_var_in_call_unify_context(must_rename::in,
+    prog_var_renaming::in,
+    maybe(call_unify_context)::in, maybe(call_unify_context)::out) is det.
+
+rename_var_in_call_unify_context(Must, Subn,
+        MaybeCallUnifyContext0, MaybeCallUnifyContext) :-
+    (
+        MaybeCallUnifyContext0 = no,
+        MaybeCallUnifyContext = no
+    ;
+        MaybeCallUnifyContext0 = yes(CallUnifyContext0),
+        CallUnifyContext0 = call_unify_context(LHSVar0, RHS0, UnifyContext),
+        rename_var(Must, Subn, LHSVar0, LHSVar),
+        rename_var_in_unify_rhs(Must, Subn, RHS0, RHS),
+        % The unify_context contains no variables.
+        CallUnifyContext = call_unify_context(LHSVar, RHS, UnifyContext),
+        MaybeCallUnifyContext = yes(CallUnifyContext)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3142,8 +3162,8 @@ incremental_rename_vars_in_goal_expr(Subn, SubnUpdates, Expr0, Expr) :-
     ;
         Expr0 = unify(LHS0, RHS0, Mode, Unify0, Context),
         rename_var(need_not_rename, Subn, LHS0, LHS),
-        incremental_rename_unify_rhs(Subn, SubnUpdates, RHS0, RHS),
-        rename_unify(need_not_rename, Subn, Unify0, Unify),
+        incremental_rename_var_in_unify_rhs(Subn, SubnUpdates, RHS0, RHS),
+        rename_var_in_unify(need_not_rename, Subn, Unify0, Unify),
         Expr = unify(LHS, RHS, Mode, Unify, Context)
     ;
         Expr0 = call_foreign_proc(Attrs, PredId, ProcId, Args0, Extra0,
@@ -3207,10 +3227,10 @@ incremental_rename_vars_in_goal_expr(Subn, SubnUpdates, Expr0, Expr) :-
         Expr = shorthand(Shorthand)
     ).
 
-:- pred incremental_rename_unify_rhs(prog_var_renaming::in,
+:- pred incremental_rename_var_in_unify_rhs(prog_var_renaming::in,
     incremental_rename_map::in, unify_rhs::in, unify_rhs::out) is det.
 
-incremental_rename_unify_rhs(Subn, SubnUpdates, RHS0, RHS) :-
+incremental_rename_var_in_unify_rhs(Subn, SubnUpdates, RHS0, RHS) :-
     (
         RHS0 = rhs_var(Var0),
         rename_var(need_not_rename, Subn, Var0, Var),
@@ -3252,10 +3272,10 @@ rename_arg(Must, Subn, Arg0, Arg) :-
     rename_var(Must, Subn, Var0, Var),
     Arg = foreign_arg(Var, B, C, D).
 
-:- pred rename_unify(must_rename::in, prog_var_renaming::in,
+:- pred rename_var_in_unify(must_rename::in, prog_var_renaming::in,
     unification::in, unification::out) is det.
 
-rename_unify(Must, Subn, Unify0, Unify) :-
+rename_var_in_unify(Must, Subn, Unify0, Unify) :-
     (
         Unify0 = construct(Var0, ConsId, Vars0, Modes, How0, Uniq, SubInfo0),
         rename_var(Must, Subn, Var0, Var),

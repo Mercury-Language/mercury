@@ -509,7 +509,7 @@ search_var_name_in_source(VarNameSrc, Var, Name) :-
         varset.search_name(VarSet, Var, Name)
     ;
         VarNameSrc = vns_var_table(VarTable),
-        var_table.lookup_var_entry(VarTable, Var, Entry),
+        var_table.search_var_entry(VarTable, Var, Entry),
         Name = Entry ^ vte_name,
         Name \= ""
     ).
