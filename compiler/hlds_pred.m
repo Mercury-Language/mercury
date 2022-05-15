@@ -73,6 +73,7 @@
 :- import_module hlds.hlds_data.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
@@ -2422,6 +2423,9 @@ marker_list_to_markers(Markers, MarkerSet) :-
 :- pred proc_info_set_body(prog_varset::in, vartypes::in,
     list(prog_var)::in, hlds_goal::in, rtti_varmaps::in,
     proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_body_vt(var_table::in,
+    list(prog_var)::in, hlds_goal::in, rtti_varmaps::in,
+    proc_info::in, proc_info::out) is det.
 
 :- type can_process
     --->    cannot_process_yet
@@ -3628,6 +3632,14 @@ proc_info_set_body(VarSet, VarTypes, HeadVars, Goal, RttiVarMaps, !ProcInfo) :-
     !ProcInfo ^ proc_body := Goal,
     !ProcInfo ^ proc_rtti_varmaps := RttiVarMaps.
 
+proc_info_set_body_vt(VarTable, HeadVars, Goal, RttiVarMaps, !ProcInfo) :-
+    split_var_table(VarTable, VarSet, VarTypes),
+    !ProcInfo ^ proc_prog_varset := VarSet,
+    !ProcInfo ^ proc_var_types := VarTypes,
+    !ProcInfo ^ proc_head_vars := HeadVars,
+    !ProcInfo ^ proc_body := Goal,
+    !ProcInfo ^ proc_rtti_varmaps := RttiVarMaps.
+
 proc_info_get_headvars(PI, X) :-
     X = PI ^ proc_head_vars.
 proc_info_get_goal(PI, X) :-
@@ -3824,35 +3836,92 @@ proc_info_set_var_table(VarTable, !PI) :-
 
 make_var_table(ModuleInfo, VarSet, VarTypes, VarTable) :-
     vartypes_to_sorted_assoc_list(VarTypes, VarTypesAL),
-    make_var_table_loop(ModuleInfo, VarSet, VarTypesAL, [], RevVarTableAL),
-    map.from_rev_sorted_assoc_list(RevVarTableAL, VarTableMap),
+    make_var_table_loop(ModuleInfo, VarSet, 1, VarTypesAL,
+        [], RevVarTableAL0),
     (
-        RevVarTableAL = [],
-        NextAllocVarNum = 1
+        RevVarTableAL0 = [],
+        LastAllocVarNum0 = 0
     ;
-        RevVarTableAL = [Var - _ | _],
-        NextAllocVarNum = var_to_int(Var) + 1
+        RevVarTableAL0 = [Var - _ | _],
+        LastAllocVarNum0 = var_to_int(Var)
     ),
-    counter.init(NextAllocVarNum, Counter),
+    MaxVarInVarSet = varset.max_var(VarSet),
+    MaxVarNumInVarSet = var_to_int(MaxVarInVarSet),
+    ( if MaxVarNumInVarSet > LastAllocVarNum0 then
+        LastAllocVarNum = MaxVarNumInVarSet,
+        extend_var_table_loop(VarSet, LastAllocVarNum0 + 1, LastAllocVarNum,
+            RevVarTableAL0, RevVarTableAL)
+    else
+        LastAllocVarNum = LastAllocVarNum0,
+        RevVarTableAL = RevVarTableAL0
+    ),
+    counter.init(LastAllocVarNum + 1, Counter),
+    map.from_rev_sorted_assoc_list(RevVarTableAL, VarTableMap),
     construct_var_table(Counter, VarTableMap, VarTable).
 
-:- pred make_var_table_loop(module_info::in, prog_varset::in,
+:- pred make_var_table_loop(module_info::in, prog_varset::in, int::in,
     assoc_list(prog_var, mer_type)::in,
     assoc_list(prog_var, var_table_entry)::in,
     assoc_list(prog_var, var_table_entry)::out) is det.
 
-make_var_table_loop(_, _, [], !RevVarTableAL).
-make_var_table_loop(ModuleInfo, VarSet, [Var - Type | VarsTypes],
+make_var_table_loop(_, _, _, [], !RevVarTableAL).
+make_var_table_loop(ModuleInfo, VarSet, CurVarNum, [Var - Type | VarsTypes0],
         !RevVarTableAL) :-
+    VarNum = term.var_to_int(Var),
+    ( if CurVarNum = VarNum then
+        ( if varset.search_name(VarSet, Var, NamePrime) then
+            Name = NamePrime
+        else
+            Name = ""
+        ),
+        IsDummy = is_type_a_dummy(ModuleInfo, Type),
+        Entry = vte(Name, Type, IsDummy),
+        !:RevVarTableAL = [Var - Entry | !.RevVarTableAL],
+        VarsTypes = VarsTypes0
+    else if CurVarNum < VarNum then
+        record_untyped_var(VarSet, CurVarNum, !RevVarTableAL),
+        % We did not Process Var in this iteration.
+        VarsTypes = [Var - Type | VarsTypes0]
+    else
+        unexpected($pred, "CurVarNum > VarNum")
+    ),
+    make_var_table_loop(ModuleInfo, VarSet, CurVarNum + 1,
+        VarsTypes, !RevVarTableAL).
+
+:- pred extend_var_table_loop(prog_varset::in, int::in, int::in,
+    assoc_list(prog_var, var_table_entry)::in,
+    assoc_list(prog_var, var_table_entry)::out) is det.
+
+extend_var_table_loop(VarSet, CurVarNum, MaxVarNum, !RevVarTableAL) :-
+    ( if CurVarNum =< MaxVarNum then
+        record_untyped_var(VarSet, CurVarNum, !RevVarTableAL),
+        extend_var_table_loop(VarSet, CurVarNum + 1, MaxVarNum, !RevVarTableAL)
+    else
+        true
+    ).
+
+    % Record a variable number that was allocated in the varset,
+    % but whose type was not recorded.
+    %
+    % Before we started using var_tables, a lookup of such a variable
+    % would succeed in the varset but fail in the vartypes.
+    %
+    % The var_table we are constructing will have valid info for the name,
+    % but dummy info for the type.
+    %
+:- pred record_untyped_var(prog_varset::in, int::in,
+    assoc_list(prog_var, var_table_entry)::in,
+    assoc_list(prog_var, var_table_entry)::out) is det.
+
+record_untyped_var(VarSet, VarNum, !RevVarTableAL) :-
+    Var = force_construct_var(VarNum),
     ( if varset.search_name(VarSet, Var, NamePrime) then
         Name = NamePrime
     else
         Name = ""
     ),
-    IsDummy = is_type_a_dummy(ModuleInfo, Type),
-    Entry = vte(Name, Type, IsDummy),
-    !:RevVarTableAL = [Var - Entry | !.RevVarTableAL],
-    make_var_table_loop(ModuleInfo, VarSet, VarsTypes, !RevVarTableAL).
+    VarEntry = vte(Name, void_type, is_dummy_type),
+    !:RevVarTableAL = [Var - VarEntry | !.RevVarTableAL].
 
 %---------------------------------------------------------------------------%
 

@@ -192,20 +192,17 @@
 
     % Lookup the type of a variable.
     %
-:- pred ml_variable_type_direct(ml_gen_info::in, prog_var::in, mer_type::out) is det.
+:- pred ml_variable_type_direct(ml_gen_info::in, prog_var::in,
+    mer_type::out) is det.
 
     % Generate the MLDS variable names for a list of variables.
     %
 :- func ml_gen_local_var_names(var_table::in, list(prog_var)::in)
     = (list(mlds_local_var_name)::out(list_skel(lvn_prog_var))) is det.
-:- func ml_gen_local_var_names_from_varset(prog_varset::in, list(prog_var)::in)
-    = (list(mlds_local_var_name)::out(list_skel(lvn_prog_var))) is det.
 
     % Generate the MLDS variable name for a variable.
     %
 :- func ml_gen_local_var_name(prog_var::in, var_table_entry::in)
-    = (mlds_local_var_name::out(lvn_prog_var)) is det.
-:- func ml_gen_local_var_name_from_varset(prog_varset::in, prog_var::in)
     = (mlds_local_var_name::out(lvn_prog_var)) is det.
 
     % Generate a declaration for an MLDS variable, given its HLDS type.
@@ -971,23 +968,8 @@ ml_gen_local_var_names(VarTable, [Var | Vars])
     MLDSVarName = ml_gen_local_var_name(Var, VarEntry),
     MLDSVarNames = ml_gen_local_var_names(VarTable, Vars).
 
-ml_gen_local_var_names_from_varset(_, []) = [].
-ml_gen_local_var_names_from_varset(VarSet, [Var | Vars])
-        = [MLDSVarName | MLDSVarNames] :-
-    MLDSVarName = ml_gen_local_var_name_from_varset(VarSet, Var),
-    MLDSVarNames = ml_gen_local_var_names_from_varset(VarSet, Vars).
-
 ml_gen_local_var_name(Var, Entry) = MLDSVarName :-
     VarName = Entry ^ vte_name,
-    term.var_to_int(Var, VarNumber),
-    MLDSVarName = lvn_prog_var(VarName, VarNumber).
-
-ml_gen_local_var_name_from_varset(VarSet, Var) = MLDSVarName :-
-    ( if varset.search_name(VarSet, Var, VarNamePrime) then
-        VarName = VarNamePrime
-    else
-        VarName = ""
-    ),
     term.var_to_int(Var, VarNumber),
     MLDSVarName = lvn_prog_var(VarName, VarNumber).
 

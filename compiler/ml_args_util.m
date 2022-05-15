@@ -27,6 +27,7 @@
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -134,7 +135,7 @@
     list(var_mvar_type_mode)::out, mlds_func_params::out) is det.
 
     % ml_gen_tscc_arg_params(ModuleInfo, PredOrFunc, CodeModel, Context,
-    %     ProcIdInTscc, VarSet, Vars, Types, Modes, ArgTuples, !OutArgNames,
+    %     ProcIdInTscc, VarTable, Vars, Types, Modes, ArgTuples, !OutArgNames,
     %     TsccInArgs, FuncParams, ReturnRvalsTypes, OutVarsTypes,
     %     OwnLocalVarDefns, TsccInLocalVarDefns, TsccOutLocalVarDefns,
     %     CopyTsccInToOwnStmts, CopyOwnToTsccOutStmts,
@@ -144,7 +145,7 @@
     % description, see notes/mlds_tail_recursion.html.
     %
     % The inputs of this predicate describe a procedure in a TSCC
-    % (PredOrFunc, CodeModel, Context, ProcIdInTscc, VarSet) and its argument
+    % (PredOrFunc, CodeModel, Context, ProcIdInTscc, VarTable) and its argument
     % list (Vars, Types, and Modes). The outputs return information about the
     % arguments in a more conveniently packaged form (ArgTuples), as well as
     % the information the code generator needs to generate parameter passing
@@ -271,7 +272,7 @@
     % CopyOutValThroughPtrStmts contains this code.
     %
 :- pred ml_gen_tscc_arg_params(module_info::in, pred_or_func::in,
-    code_model::in, prog_context::in, proc_id_in_tscc::in, prog_varset::in,
+    code_model::in, prog_context::in, proc_id_in_tscc::in, var_table::in,
     list(prog_var)::in, list(mer_type)::in, list(mer_mode)::in,
     list(var_mvar_type_mode)::out,
     map(int, string)::in, map(int, string)::out,
@@ -346,14 +347,12 @@
 :- import_module ml_backend.ml_code_util.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.var_table.
 
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module term.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 %
@@ -429,18 +428,19 @@ get_raw_data_for_proc_params(ModuleInfo, PredProcId, PredInfo,
     module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     CodeModel = proc_info_interface_code_model(ProcInfo),
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     proc_info_get_headvars(ProcInfo, HeadVars),
     pred_info_get_arg_types(PredInfo, HeadTypes),
     proc_info_get_argmodes(ProcInfo, HeadModes),
-    package_vars_types_modes(ModuleInfo, VarSet,
+    package_vars_types_modes(ModuleInfo, VarTable,
         HeadVars, HeadTypes, HeadModes, ArgTuples).
 
-:- pred package_vars_types_modes(module_info::in, prog_varset::in,
+:- pred package_vars_types_modes(module_info::in, var_table::in,
     list(prog_var)::in, list(mer_type)::in, list(mer_mode)::in,
     list(var_mvar_type_mode)::out) is det.
 
-package_vars_types_modes(ModuleInfo, VarSet, Vars, Types, Modes, ArgTuples) :-
+package_vars_types_modes(ModuleInfo, VarTable, Vars, Types, Modes,
+        ArgTuples) :-
     ( if
         Vars = [],
         Types = [],
@@ -452,11 +452,12 @@ package_vars_types_modes(ModuleInfo, VarSet, Vars, Types, Modes, ArgTuples) :-
         Types = [HeadType | TailTypes],
         Modes = [HeadMode | TailModes]
     then
-        package_vars_types_modes(ModuleInfo, VarSet,
+        package_vars_types_modes(ModuleInfo, VarTable,
             TailVars, TailTypes, TailModes, TailArgTuples),
         mode_to_top_functor_mode(ModuleInfo, HeadMode, HeadType,
             HeadTopFunctorMode),
-        HeadMLDSVarName = ml_gen_local_var_name_from_varset(VarSet, HeadVar),
+        lookup_var_entry(VarTable, HeadVar, HeadVarEntry),
+        HeadMLDSVarName = ml_gen_local_var_name(HeadVar, HeadVarEntry),
         HeadArgTuple = var_mvar_type_mode(HeadVar, HeadMLDSVarName, HeadType,
             HeadTopFunctorMode),
         ArgTuples = [HeadArgTuple | TailArgTuples]
@@ -772,7 +773,7 @@ ml_gen_arg_decl(Var, Type, MLDS_ArgType, FuncArg, !MaybeInfo) :-
 %---------------------%
 
 ml_gen_tscc_arg_params(ModuleInfo, PredOrFunc, CodeModel, Context,
-        ProcIdInTscc, VarSet, Vars, Types, Modes, ArgTuples, !OutArgNames,
+        ProcIdInTscc, VarTable, Vars, Types, Modes, ArgTuples, !OutArgNames,
         TsccInArgs, FuncParams, ReturnRvalsTypes, OutVarsTypes,
         OwnLocalVarDefns, TsccInLocalVarDefns, TsccOutLocalVarDefns,
         CopyTsccInToOwnStmts, CopyOwnToTsccOutStmts,
@@ -780,7 +781,7 @@ ml_gen_tscc_arg_params(ModuleInfo, PredOrFunc, CodeModel, Context,
     module_info_get_globals(ModuleInfo, Globals),
     CopyOut = get_copy_out_option(Globals, CodeModel),
     CopyOutWhen = compute_when_to_copy_out(CopyOut, CodeModel, PredOrFunc),
-    package_vars_types_modes(ModuleInfo, VarSet, Vars, Types, Modes,
+    package_vars_types_modes(ModuleInfo, VarTable, Vars, Types, Modes,
         ArgTuples),
     NextInArgNum0 = 1,
     NextOutArgNum0 = 1,

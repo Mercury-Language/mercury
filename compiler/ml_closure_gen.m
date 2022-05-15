@@ -699,10 +699,9 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     proc_info_get_headvars(ProcInfo, ProcHeadVars),
     proc_info_get_argmodes(ProcInfo, ProcArgModes),
     CodeModel = proc_info_interface_code_model(ProcInfo),
-    proc_info_get_varset_vartypes(ProcInfo, ProcVarSet, _ProcVarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, ProcVarTable),
     ProcArity = list.length(ProcHeadVars),
-    ProcHeadVarNames =
-        ml_gen_local_var_names_from_varset(ProcVarSet, ProcHeadVars),
+    ProcHeadVarNames = ml_gen_local_var_names(ProcVarTable, ProcHeadVars),
 
     % Allocate some fresh type variables to use as the Mercury types
     % of the boxed arguments.

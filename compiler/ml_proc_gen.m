@@ -1184,7 +1184,7 @@ compute_initial_tail_rec_map_for_mutual(ModuleInfo,
     module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
     pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
     CodeModel = proc_info_interface_code_model(ProcInfo),
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, _VarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     proc_info_get_headvars(ProcInfo, HeadVars),
     pred_info_get_arg_types(PredInfo, HeadTypes),
     proc_info_get_argmodes(ProcInfo, HeadModes),
@@ -1194,7 +1194,7 @@ compute_initial_tail_rec_map_for_mutual(ModuleInfo,
     ProcContext = goal_info_get_context(GoalInfo),
 
     ml_gen_tscc_arg_params(ModuleInfo, PredOrFunc, CodeModel,
-        ProcContext, IdInTscc, VarSet, HeadVars, HeadTypes, HeadModes,
+        ProcContext, IdInTscc, VarTable, HeadVars, HeadTypes, HeadModes,
         ArgTuples, !OutArgNames,
         TsccInArgs, FuncParams, ReturnRvalsTypes, OutVarsTypes,
         OwnLocalVarDefns, TsccInLocalVarDefns, TsccValueLocalVarDefns,
@@ -1802,11 +1802,8 @@ ml_gen_convert_headvars([ArgTuple | ArgTuples], CopiedOutputVars, Context,
 
 ml_gen_local_var_defns_for_copied_output_vars(Info, Context, ArgTuples,
         CopiedOutputVars, OutputVarLocalDefns, !Info) :-
-    % This would generate all the local variables at the top of
-    % the function:
-    %   ml_gen_all_local_var_decls(Goal,
-    %       VarSet, VarTypes, HeadVars, MLDS_LocalVars, !Info)
-    % But instead we now generate them locally for each goal.
+    % We could generate all the local variables at the top of the function.
+    % But instead, we now generate them locally for each goal.
     % We just declare the `succeeded' var here, plus locals
     % for any output arguments that are returned by value
     % (e.g. if --nondet-copy-out is enabled, or for det function
