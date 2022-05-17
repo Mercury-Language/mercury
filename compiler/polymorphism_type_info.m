@@ -90,7 +90,6 @@
 :- import_module hlds.hlds_rtti.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.vartypes.
 :- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
@@ -165,7 +164,7 @@
 
     % init_const_type_ctor_info_var(Type, TypeCtor,
     %   TypeCtorInfoVar, TypeCtorConsId, TypeCtorInfoGoal,
-    %   !VarSet, !VarTypes, !RttiVarMaps):
+    %   !VarTable, !RttiVarMaps):
     %
     % Create the unification (returned as TypeCtorInfoGoal) that binds a
     % new variable (returned as TypeCtorInfoVar) to the type_ctor_info
@@ -183,13 +182,6 @@
     %
 :- pred init_const_type_ctor_info_var(mer_type::in, type_ctor::in,
     prog_var::out, cons_id::out, hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    rtti_varmaps::in, rtti_varmaps::out) is det.
-:- pred init_const_type_ctor_info_var_db(mer_type::in, type_ctor::in,
-    prog_var::out, cons_id::out, hlds_goal::out,
-    var_db::in, var_db::out, rtti_varmaps::in, rtti_varmaps::out) is det.
-:- pred init_const_type_ctor_info_var_vt(mer_type::in, type_ctor::in,
-    prog_var::out, cons_id::out, hlds_goal::out,
     var_table::in, var_table::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
 %---------------------%
@@ -200,12 +192,6 @@
 
 :- pred new_type_info_var(mer_type::in, type_info_kind::in,
     prog_var::out, poly_info::in, poly_info::out) is det.
-:- pred new_type_info_var_raw(mer_type::in, type_info_kind::in,
-    prog_var::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
-:- pred new_type_info_var_db(mer_type::in, type_info_kind::in,
-    prog_var::out, var_db::in, var_db::out,
-    rtti_varmaps::in, rtti_varmaps::out) is det.
 :- pred new_type_info_var_vt(mer_type::in, type_info_kind::in,
     prog_var::out,
     var_table::in, var_table::out, rtti_varmaps::in, rtti_varmaps::out) is det.
@@ -214,10 +200,7 @@
 
 :- pred poly_get_type_info_locn(tvar::in, type_info_locn::out,
     poly_info::in, poly_info::out) is det.
-:- pred poly_get_type_info_locn_raw_db(tvar_kind_map::in,
-    tvar::in, type_info_locn::out,
-    var_db::in, var_db::out, rtti_varmaps::in, rtti_varmaps::out) is det.
-:- pred poly_get_type_info_locn_raw_vt(tvar_kind_map::in,
+:- pred poly_get_type_info_locn_raw(tvar_kind_map::in,
     tvar::in, type_info_locn::out,
     var_table::in, var_table::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
@@ -229,7 +212,7 @@
 
     % gen_extract_type_info(ModuleInfo, TypeVar, Kind,
     %   TypeClassInfoVar, IndexIntOrVar, Context, Goals, TypeInfoVar,
-    %   !VarSet, !VarTypes, !RttiVarMaps):
+    %   !VarTable, !RttiVarMaps):
     %
     % Generate code to extract a type_info variable from a given slot of a
     % typeclass_info variable, by calling type_info_from_typeclass_info from
@@ -242,15 +225,6 @@
     % The context of these goals will be Context.
     %
 :- pred gen_extract_type_info(module_info::in, tvar::in, kind::in,
-    prog_var::in, int_or_var::in, prog_context::in,
-    list(hlds_goal)::out, prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    rtti_varmaps::in, rtti_varmaps::out) is det.
-:- pred gen_extract_type_info_db(module_info::in, tvar::in, kind::in,
-    prog_var::in, int_or_var::in, prog_context::in,
-    list(hlds_goal)::out, prog_var::out,
-    var_db::in, var_db::out, rtti_varmaps::in, rtti_varmaps::out) is det.
-:- pred gen_extract_type_info_vt(module_info::in, tvar::in, kind::in,
     prog_var::in, int_or_var::in, prog_context::in,
     list(hlds_goal)::out, prog_var::out,
     var_table::in, var_table::out, rtti_varmaps::in, rtti_varmaps::out) is det.
@@ -287,7 +261,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -306,7 +279,6 @@ polymorphism_make_type_info_vars(Types, Context, Vars, ExtraGoals, !Info) :-
     poly_info::in, poly_info::out) is det.
 
 polymorphism_do_make_type_info_var(Type, Context, VarMCA, ExtraGoals, !Info) :-
-    % ZZZ
     ( if type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs) then
         % This occurs for code where a predicate calls a polymorphic predicate
         % with a type whose type constructor is of variable arity. The
@@ -387,7 +359,6 @@ polymorphism_make_type_info_vars_mi(Types, Context, Vars, ExtraGoals,
 
 polymorphism_make_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         Context, TypeInfoVarMCA, ExtraGoals, !Info) :-
-    % ZZZ
     poly_info_get_type_info_var_map(!.Info, TypeInfoVarMap0),
     ( if
         map.search(TypeInfoVarMap0, TypeCtor, TypeCtorVarMap0),
@@ -425,7 +396,6 @@ polymorphism_make_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
 
 polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         Context, Var, MCA, ExtraGoals, !Info) :-
-    % ZZZ
     get_var_maps_snapshot("polymorphism_construct_type_info",
         InitialVarMapsSnapshot, !Info),
 
@@ -457,17 +427,17 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         TypeCtorVar = OldTypeCtorVar,
         TypeCtorGoals = []
     else
-        poly_info_get_var_db(!.Info, VarDb0),
+        poly_info_get_var_table(!.Info, VarTable0),
         poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-        new_type_info_var_db(Type, type_ctor_info, TypeCtorVar,
-            VarDb0, VarDb1, RttiVarMaps0, RttiVarMaps1),
+        new_type_info_var_vt(Type, type_ctor_info, TypeCtorVar,
+            VarTable0, VarTable1, RttiVarMaps0, RttiVarMaps1),
         init_const_type_ctor_info_var_from_cons_id(TypeCtorConsId, TypeCtorVar,
             TypeCtorGoal),
         TypeCtorGoals = [TypeCtorGoal],
         map.det_insert(TypeCtorConsIdConstArg, TypeCtorVar,
             ConstStructVarMap0, ConstStructVarMap1),
         poly_info_set_const_struct_var_map(ConstStructVarMap1, !Info),
-        poly_info_set_var_db_rtti(VarDb1, RttiVarMaps1, !Info)
+        poly_info_set_var_table_rtti(VarTable1, RttiVarMaps1, !Info)
     ),
 
     polymorphism_maybe_construct_second_type_info_cell(Type, TypeCtor,
@@ -750,22 +720,6 @@ init_type_info_var(Type, ArgVars, TypeInfoVar, TypeInfoGoal, !RttiVarMaps) :-
     TypeInfoGoal = hlds_goal(Unify, GoalInfo).
 
 init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
-        ConsId, TypeCtorInfoGoal, !VarSet, !VarTypes, !RttiVarMaps) :-
-    ConsId = type_ctor_info_cons_id(TypeCtor),
-    new_type_info_var_raw(Type, type_ctor_info, TypeCtorInfoVar,
-        !VarSet, !VarTypes, !RttiVarMaps),
-    init_const_type_ctor_info_var_from_cons_id(ConsId, TypeCtorInfoVar,
-        TypeCtorInfoGoal).
-
-init_const_type_ctor_info_var_db(Type, TypeCtor, TypeCtorInfoVar,
-        ConsId, TypeCtorInfoGoal, !VarDb, !RttiVarMaps) :-
-    ConsId = type_ctor_info_cons_id(TypeCtor),
-    new_type_info_var_db(Type, type_ctor_info, TypeCtorInfoVar,
-        !VarDb, !RttiVarMaps),
-    init_const_type_ctor_info_var_from_cons_id(ConsId, TypeCtorInfoVar,
-        TypeCtorInfoGoal).
-
-init_const_type_ctor_info_var_vt(Type, TypeCtor, TypeCtorInfoVar,
         ConsId, TypeCtorInfoGoal, !VarTable, !RttiVarMaps) :-
     ConsId = type_ctor_info_cons_id(TypeCtor),
     new_type_info_var_vt(Type, type_ctor_info, TypeCtorInfoVar,
@@ -798,43 +752,11 @@ init_const_type_ctor_info_var_from_cons_id(ConsId, TypeCtorInfoVar,
 %---------------------%
 
 new_type_info_var(Type, Kind, Var, !Info) :-
-    poly_info_get_var_db(!.Info, VarDb0),
+    poly_info_get_var_table(!.Info, VarTable0),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-    new_type_info_var_db(Type, Kind, Var, VarDb0, VarDb,
+    new_type_info_var_vt(Type, Kind, Var, VarTable0, VarTable,
         RttiVarMaps0, RttiVarMaps),
-    poly_info_set_var_db_rtti(VarDb, RttiVarMaps, !Info).
-
-new_type_info_var_raw(Type, Kind, Var, !VarSet, !VarTypes, !RttiVarMaps) :-
-    (
-        Kind = type_info,
-        Prefix = "TypeInfo",
-        add_prefix_number_var_entry_to_var_set_vartypes(Prefix, type_info_type,
-            is_not_dummy_type, Var, !VarSet, !VarTypes),
-        rtti_det_insert_type_info_type(Var, Type, !RttiVarMaps)
-    ;
-        Kind = type_ctor_info,
-        Prefix = "TypeCtorInfo",
-        add_prefix_number_var_entry_to_var_set_vartypes(Prefix, type_info_type,
-            is_not_dummy_type, Var, !VarSet, !VarTypes)
-        % XXX Perhaps we should record the variables holding
-        % type_ctor_infos in the rtti_varmaps somewhere.
-    ).
-
-new_type_info_var_db(Type, Kind, Var, !VarDb, !RttiVarMaps) :-
-    (
-        Kind = type_info,
-        Prefix = "TypeInfo",
-        add_prefix_number_var_entry_to_var_db(Prefix, type_info_type,
-            is_not_dummy_type, Var, !VarDb),
-        rtti_det_insert_type_info_type(Var, Type, !RttiVarMaps)
-    ;
-        Kind = type_ctor_info,
-        Prefix = "TypeCtorInfo",
-        add_prefix_number_var_entry_to_var_db(Prefix, type_info_type,
-            is_not_dummy_type, Var, !VarDb)
-        % XXX Perhaps we should record the variables holding
-        % type_ctor_infos in the rtti_varmaps somewhere.
-    ).
+    poly_info_set_var_table_rtti(VarTable, RttiVarMaps, !Info).
 
 new_type_info_var_vt(Type, Kind, Var, !VarTable, !RttiVarMaps) :-
     (
@@ -886,57 +808,25 @@ poly_get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
         poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
     ).
 
-poly_get_type_info_locn_raw_db(TVarKindMap, TypeVar, TypeInfoLocn,
-        !VarDb, !RttiVarMaps) :-
-    % If we have already allocated a location for this type_info, then all
-    % we need to do is to extract the type_info variable from its location.
-    ( if rtti_search_type_info_locn(!.RttiVarMaps, TypeVar, TypeInfoLocn0) then
-        TypeInfoLocn = TypeInfoLocn0
-    else
-        poly_make_type_info_locn_db(TVarKindMap, TypeVar, TypeInfoLocn,
-            !VarDb, !RttiVarMaps)
-    ).
-
-poly_get_type_info_locn_raw_vt(TVarKindMap, TypeVar, TypeInfoLocn,
+poly_get_type_info_locn_raw(TVarKindMap, TypeVar, TypeInfoLocn,
         !VarTable, !RttiVarMaps) :-
     % If we have already allocated a location for this type_info, then all
     % we need to do is to extract the type_info variable from its location.
     ( if rtti_search_type_info_locn(!.RttiVarMaps, TypeVar, TypeInfoLocn0) then
         TypeInfoLocn = TypeInfoLocn0
     else
-        poly_make_type_info_locn_raw_vt(TVarKindMap, TypeVar, TypeInfoLocn,
+        poly_make_type_info_locn_raw(TVarKindMap, TypeVar, TypeInfoLocn,
             !VarTable, !RttiVarMaps)
     ).
 
     % Create a new type_info variable, and set the location for the given
-    %   type variable to be that type_info variable.
+    % type variable to be that type_info variable.
     %
-:- pred poly_make_type_info_locn_db(tvar_kind_map::in,
-    tvar::in, type_info_locn::out, var_db::in, var_db::out,
-    rtti_varmaps::in, rtti_varmaps::out) is det.
-
-poly_make_type_info_locn_db(TVarKindMap, TypeVar, TypeInfoLocn,
-        !VarDb, !RttiVarMaps) :-
-    % This is wrong if the type variable is one of the existentially
-    % quantified variables of a called predicate and the variable occurs
-    % in an existential typeclass constraint. In that case the type_info
-    % will be stored in the typeclass_info variable produced by the
-    % predicate, not in a type_info variable. maybe_extract_type_info
-    % will fix this up when the typeclass_info is created.
-    get_tvar_kind(TVarKindMap, TypeVar, Kind),
-    Type = type_variable(TypeVar, Kind),
-    new_type_info_var_db(Type, type_info, Var, !VarDb, !RttiVarMaps),
-    TypeInfoLocn = type_info(Var),
-    rtti_det_insert_type_info_locn(TypeVar, TypeInfoLocn, !RttiVarMaps).
-
-    % Create a new type_info variable, and set the location for the given
-    %   type variable to be that type_info variable.
-    %
-:- pred poly_make_type_info_locn_raw_vt(tvar_kind_map::in,
+:- pred poly_make_type_info_locn_raw(tvar_kind_map::in,
     tvar::in, type_info_locn::out, var_table::in, var_table::out,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
-poly_make_type_info_locn_raw_vt(TVarKindMap, TypeVar, TypeInfoLocn,
+poly_make_type_info_locn_raw(TVarKindMap, TypeVar, TypeInfoLocn,
         !VarTable, !RttiVarMaps) :-
     % This is wrong if the type variable is one of the existentially
     % quantified variables of a called predicate and the variable occurs
@@ -973,68 +863,11 @@ get_type_info_from_locn(TypeVar, TypeInfoLocn, Context, Var, ExtraGoals,
     ).
 
 gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
-        IndexIntOrVar, Context, Goals, TypeInfoVar,
-        !VarSet, !VarTypes, !RttiVarMaps) :-
+        IndexIntOrVar, Context, Goals, TypeInfoVar, !VarTable, !RttiVarMaps) :-
     (
         IndexIntOrVar = iov_int(Index),
         % We cannot call get_poly_const since we don't have a poly_info.
-        make_int_const_construction_alloc(Index, yes("TypeInfoIndex"),
-            IndexGoal, IndexVar, !VarSet, !VarTypes),
-        IndexGoals = [IndexGoal]
-    ;
-        IndexIntOrVar = iov_var(IndexVar),
-        IndexGoals = []
-    ),
-    Type = type_variable(TypeVar, Kind),
-    new_type_info_var_raw(Type, type_info, TypeInfoVar,
-        !VarSet, !VarTypes, !RttiVarMaps),
-    generate_plain_call(ModuleInfo, pf_predicate,
-        mercury_private_builtin_module, "type_info_from_typeclass_info",
-        [], [TypeClassInfoVar, IndexVar, TypeInfoVar],
-        instmap_delta_bind_var(TypeInfoVar), only_mode,
-        detism_det, purity_pure, [], Context, CallGoal),
-    Goals = IndexGoals ++ [CallGoal].
-
-gen_extract_type_info_db(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
-        IndexIntOrVar, Context, Goals, TypeInfoVar,
-        !VarDb, !RttiVarMaps) :-
-    (
-        IndexIntOrVar = iov_int(Index),
-        % We cannot call get_poly_const since we don't have a poly_info.
-        (
-            !.VarDb = var_db_varset_vartypes(VarSetVarTypes0),
-            VarSetVarTypes0 = prog_var_set_types(VarSet0, VarTypes0),
-            make_int_const_construction_alloc(Index, yes("TypeInfoIndex"),
-                IndexGoal, IndexVar, VarSet0, VarSet, VarTypes0, VarTypes),
-            VarSetVarTypes = prog_var_set_types(VarSet, VarTypes),
-            !:VarDb = var_db_varset_vartypes(VarSetVarTypes)
-        ;
-            !.VarDb = var_db_var_table(VarTable0),
-            make_int_const_construction_alloc_vt(Index, "TypeInfoIndex",
-                IndexGoal, IndexVar, VarTable0, VarTable),
-            !:VarDb = var_db_var_table(VarTable)
-        ),
-        IndexGoals = [IndexGoal]
-    ;
-        IndexIntOrVar = iov_var(IndexVar),
-        IndexGoals = []
-    ),
-    Type = type_variable(TypeVar, Kind),
-    new_type_info_var_db(Type, type_info, TypeInfoVar, !VarDb, !RttiVarMaps),
-    generate_plain_call(ModuleInfo, pf_predicate,
-        mercury_private_builtin_module, "type_info_from_typeclass_info",
-        [], [TypeClassInfoVar, IndexVar, TypeInfoVar],
-        instmap_delta_bind_var(TypeInfoVar), only_mode,
-        detism_det, purity_pure, [], Context, CallGoal),
-    Goals = IndexGoals ++ [CallGoal].
-
-gen_extract_type_info_vt(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
-        IndexIntOrVar, Context, Goals, TypeInfoVar,
-        !VarTable, !RttiVarMaps) :-
-    (
-        IndexIntOrVar = iov_int(Index),
-        % We cannot call get_poly_const since we don't have a poly_info.
-        make_int_const_construction_alloc_vt(Index, "TypeInfoIndex",
+        make_int_const_construction_alloc(Index, "TypeInfoIndex",
             IndexGoal, IndexVar, !VarTable),
         IndexGoals = [IndexGoal]
     ;
@@ -1054,17 +887,17 @@ gen_extract_type_info_vt(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
 polymorphism_extract_type_info(TypeVar, TypeClassInfoVar, Index, Context,
         Goals, TypeInfoVar, !Info) :-
     get_poly_const(Index, IndexVar, IndexGoals, !Info),
-    poly_info_get_var_db(!.Info, VarDb0),
+    poly_info_get_var_table(!.Info, VarTable0),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     poly_info_get_module_info(!.Info, ModuleInfo),
     poly_info_get_tvar_kind_map(!.Info, TVarKindMap),
     get_tvar_kind(TVarKindMap, TypeVar, Kind),
     IndexIntOrVar = iov_var(IndexVar),
-    gen_extract_type_info_db(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
+    gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
         IndexIntOrVar, Context, ExtractGoals, TypeInfoVar,
-        VarDb0, VarDb, RttiVarMaps0, RttiVarMaps),
+        VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
     Goals = IndexGoals ++ ExtractGoals,
-    poly_info_set_var_db_rtti(VarDb, RttiVarMaps, !Info).
+    poly_info_set_var_table_rtti(VarTable, RttiVarMaps, !Info).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.polymorphism_type_info.

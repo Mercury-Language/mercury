@@ -74,6 +74,9 @@
 :- pred update_var_entry(prog_var::in, var_table_entry::in,
     var_table::in, var_table::out) is det.
 
+:- pred update_var_name(prog_var::in, string::in,
+    var_table::in, var_table::out) is det.
+
 :- pred search_insert_var_entry(prog_var::in, var_table_entry::in,
     maybe(var_table_entry)::out, var_table::in, var_table::out) is det.
 
@@ -282,6 +285,13 @@ add_prefix_number_var_entry(Prefix, Type, IsDummy, Var, !VarTable) :-
 
 update_var_entry(Var, Entry, !VarTable) :-
     !.VarTable = var_table(Counter, VarTableMap0),
+    map.det_update(Var, Entry, VarTableMap0, VarTableMap),
+    !:VarTable = var_table(Counter, VarTableMap).
+
+update_var_name(Var, Name, !VarTable) :-
+    !.VarTable = var_table(Counter, VarTableMap0),
+    map.lookup(VarTableMap0, Var, Entry0),
+    Entry = Entry0 ^ vte_name := Name,
     map.det_update(Var, Entry, VarTableMap0, VarTableMap),
     !:VarTable = var_table(Counter, VarTableMap).
 
@@ -599,11 +609,7 @@ set_var_name_in_db(Var, Name, !VarDb) :-
         !:VarDb = var_db_varset_vartypes(VarSetVarTypes)
     ;
         !.VarDb = var_db_var_table(VarTable0),
-        VarTable0 = var_table(Counter, VarTableMap0),
-        map.lookup(VarTableMap0, Var, Entry0),
-        Entry = Entry0 ^ vte_name := Name,
-        map.det_update(Var, Entry, VarTableMap0, VarTableMap),
-        VarTable = var_table(Counter, VarTableMap),
+        update_var_name(Var, Name, VarTable0, VarTable),
         !:VarDb = var_db_var_table(VarTable)
     ).
 

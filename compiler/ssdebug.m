@@ -494,9 +494,9 @@ insert_context_update_call(ModuleInfo, Goal0, Goal, !VarTable) :-
     Context = goal_info_get_context(GoalInfo),
     Context = term.context(FileName, LineNumber),
 
-    make_string_const_construction_alloc_vt(FileName, "FileName",
+    make_string_const_construction_alloc(FileName, "FileName",
         MakeFileName, FileNameVar, !VarTable),
-    make_int_const_construction_alloc_vt(LineNumber, "LineNumber",
+    make_int_const_construction_alloc(LineNumber, "LineNumber",
         MakeLineNumber, LineNumberVar, !VarTable),
 
     ArgVars = [FileNameVar, LineNumberVar],
@@ -1222,10 +1222,10 @@ make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar, !VarTable) :-
     ModuleName = sym_name_to_string(SymModuleName),
     PredName = pred_info_name(OrigPredInfo),
 
-    make_string_const_construction_alloc_vt(ModuleName, "ModuleName",
+    make_string_const_construction_alloc(ModuleName, "ModuleName",
         ConstructModuleName, ModuleNameVar, !VarTable),
 
-    make_string_const_construction_alloc_vt(PredName, "PredName",
+    make_string_const_construction_alloc(PredName, "PredName",
         ConstructPredName, PredNameVar, !VarTable),
 
     SSDBModule = mercury_ssdb_builtin_module,
@@ -1254,7 +1254,7 @@ make_level_construction(SSTraceLevel, Goal, LevelVar, !VarTable) :-
         SSTraceLevel = ssdb_deep,
         ConsId = deep_cons_id
     ),
-    make_const_construction_alloc_vt(ConsId, ssdb_tracing_level_type,
+    make_const_construction_alloc(ConsId, ssdb_tracing_level_type,
         is_not_dummy_type,"Level", Goal, LevelVar, !VarTable).
 
     % Succeed if all the given argument modes are fully input or fully output.
@@ -1378,9 +1378,9 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
     VarValueTypeCtor = type_ctor(qualified(SSDBModule, "var_value"), 0),
     construct_type(VarValueTypeCtor, [], VarValueType),
     VarName = var_table_entry_name(!.VarTable, VarToInspect),
-    make_string_const_construction_alloc_vt(VarName, "VarName",
+    make_string_const_construction_alloc(VarName, "VarName",
         ConstructVarName, VarNameVar, !VarTable),
-    make_int_const_construction_alloc_vt(VarPos, "VarPos",
+    make_int_const_construction_alloc(VarPos, "VarPos",
         ConstructVarPos, VarPosVar, !VarTable),
 
     VarValueTypeIsDummy = is_type_a_dummy(!.ModuleInfo, VarValueType),

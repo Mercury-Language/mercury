@@ -256,16 +256,9 @@ modecheck_unification_functor(X, ConsId, IsExistConstruction, ArgVars0,
         mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
         mode_info_get_context(!.ModeInfo, Context),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        VarDb0 = var_db_var_table(VarTable0),
         convert_pred_to_lambda_goal(ModuleInfo0, Purity, EvalMethod, X,
             PredId, ProcId, ArgVars0, PredArgTypes, UnifyContext, GoalInfo0,
-            Context, MaybeRHS0, VarDb0, VarDb),
-        (
-            VarDb = var_db_varset_vartypes(_),
-            unexpected($pred, "var_db_varset_vartypes")
-        ;
-            VarDb = var_db_var_table(VarTable)
-        ),
+            Context, MaybeRHS0, VarTable0, VarTable),
         mode_info_set_var_table(VarTable, !ModeInfo),
 
         (

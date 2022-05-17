@@ -536,7 +536,7 @@ create_new_pred_for_lambda(RegWrapperProc, RHS0, OrigVars, ArgVars,
     ExistQVars = [],
     LambdaGoalNonLocals = goal_info_get_nonlocals(LambdaGoalInfo),
     set_of_var.insert_list(LambdaVars, LambdaGoalNonLocals, LambdaNonLocals),
-    extra_nonlocal_typeinfos_typeclass_infos_vt(RttiVarMaps, VarTable,
+    extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps, VarTable,
         ExistQVars, LambdaNonLocals, ExtraTiTcis),
 
     set_of_var.delete_list(LambdaVars, LambdaGoalNonLocals, NonLocals1),

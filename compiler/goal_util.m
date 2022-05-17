@@ -167,9 +167,6 @@
     % variable.
     %
 :- pred extra_nonlocal_typeinfos_typeclass_infos(rtti_varmaps::in,
-    vartypes::in, existq_tvars::in,
-    set_of_progvar::in, set_of_progvar::out) is det.
-:- pred extra_nonlocal_typeinfos_typeclass_infos_vt(rtti_varmaps::in,
     var_table::in, existq_tvars::in,
     set_of_progvar::in, set_of_progvar::out) is det.
 
@@ -889,16 +886,7 @@ attach_features_to_goal_expr(Features, InFromGroundTerm,
 
 %-----------------------------------------------------------------------------%
 
-extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps, VarTypes, ExistQVars,
-        NonLocals, NonLocalTiTciVars) :-
-    % Find all non-local type vars. That is, type vars that are existentially
-    % quantified or type vars that appear in the type of a non-local prog_var.
-    set_of_var.to_sorted_list(NonLocals, NonLocalsList),
-    lookup_var_types(VarTypes, NonLocalsList, NonLocalsTypes),
-    do_extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps, NonLocalsTypes,
-        ExistQVars, NonLocalTiTciVars).
-
-extra_nonlocal_typeinfos_typeclass_infos_vt(RttiVarMaps, VarTable, ExistQVars,
+extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps, VarTable, ExistQVars,
         NonLocals, NonLocalTiTciVars) :-
     % Find all non-local type vars. That is, type vars that are existentially
     % quantified or type vars that appear in the type of a non-local prog_var.

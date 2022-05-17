@@ -38,7 +38,7 @@
     purity::in, lambda_eval_method::in,
     prog_var::in, pred_id::in, proc_id::in, list(prog_var)::in,
     list(mer_type)::in, unify_context::in, hlds_goal_info::in, context::in,
-    maybe1(unify_rhs)::out, var_db::in, var_db::out) is det.
+    maybe1(unify_rhs)::out, var_table::in, var_table::out) is det.
 
     % fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, Functor0, Functor)
     %
@@ -75,9 +75,9 @@
 
 convert_pred_to_lambda_goal(ModuleInfo0, Purity, EvalMethod, X0,
         PredId, ProcId, ArgVars0, PredArgTypes, UnifyContext, GoalInfo0,
-        Context, MaybeRHS, !VarDb) :-
+        Context, MaybeRHS, !VarTable) :-
     % Create the new lambda-quantified variables.
-    create_fresh_vars(ModuleInfo0, PredArgTypes, LambdaVars, !VarDb),
+    create_fresh_vars(ModuleInfo0, PredArgTypes, LambdaVars, !VarTable),
     Args = ArgVars0 ++ LambdaVars,
 
     % Build up the hlds_goal_expr for the call that will form the lambda goal.
@@ -131,14 +131,14 @@ convert_pred_to_lambda_goal(ModuleInfo0, Purity, EvalMethod, X0,
     ).
 
 :- pred create_fresh_vars(module_info::in, list(mer_type)::in,
-    list(prog_var)::out, var_db::in, var_db::out) is det.
+    list(prog_var)::out, var_table::in, var_table::out) is det.
 
-create_fresh_vars(_, [], [], !VarDb).
-create_fresh_vars(ModuleInfo, [Type | Types], [Var | Vars], !VarDb) :-
+create_fresh_vars(_, [], [], !VarTable).
+create_fresh_vars(ModuleInfo, [Type | Types], [Var | Vars], !VarTable) :-
     IsDummy = is_type_a_dummy(ModuleInfo, Type),
     Entry = vte("", Type, IsDummy),
-    add_entry_to_var_db(Entry, Var, !VarDb),
-    create_fresh_vars(ModuleInfo, Types, Vars, !VarDb).
+    add_var_entry(Entry, Var, !VarTable),
+    create_fresh_vars(ModuleInfo, Types, Vars, !VarTable).
 
 fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, RHS0, MaybeRHS) :-
     RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,

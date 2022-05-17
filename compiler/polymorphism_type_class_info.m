@@ -952,7 +952,7 @@ is_unseen_or_in_type_info_tvar(RttiVarMaps, TypeVar) :-
     prog_var::out, mer_type::out, poly_info::in, poly_info::out) is det.
 
 new_typeclass_info_var(Constraint, VarKind, Var, VarType, !Info) :-
-    poly_info_get_var_db(!.Info, VarDb0),
+    poly_info_get_var_table(!.Info, VarTable0),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
 
     Constraint = constraint(ClassName, _),
@@ -968,10 +968,10 @@ new_typeclass_info_var(Constraint, VarKind, Var, VarType, !Info) :-
     ),
     VarType = typeclass_info_type,
     VarEntry = vte(VarName, VarType, is_not_dummy_type),
-    add_entry_to_var_db(VarEntry, Var, VarDb0, VarDb),
+    add_var_entry(VarEntry, Var, VarTable0, VarTable),
     rtti_det_insert_typeclass_info_var(Constraint, Var,
         RttiVarMaps0, RttiVarMaps),
-    poly_info_set_var_db_rtti(VarDb, RttiVarMaps, !Info).
+    poly_info_set_var_table_rtti(VarTable, RttiVarMaps, !Info).
 
 %---------------------------------------------------------------------------%
 

@@ -426,14 +426,8 @@ polymorphism_process_clause_info(ModuleInfo0, PredInfo0, !ClausesInfo, !:Info,
         Clauses0, Clauses, !Info),
 
     % Set the new values of the fields in clauses_info.
-    poly_info_get_var_db(!.Info, VarDb),
-    (
-        VarDb = var_db_varset_vartypes(VarSetVarTypes),
-        VarSetVarTypes = prog_var_set_types(VarSet,VarTypes)
-    ;
-        VarDb = var_db_var_table(VarTable),
-        split_var_table(VarTable, VarSet, VarTypes)
-    ),
+    poly_info_get_var_table(!.Info, VarTable),
+    split_var_table(VarTable, VarSet, VarTypes),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps),
     set_clause_list(Clauses, ClausesRep),
     % The ExplicitVarTypes is only used while adding the clauses.
@@ -749,9 +743,9 @@ make_head_vars([TypeVar | TypeVars], TypeVarSet, TypeInfoVars, !Info) :-
     new_type_info_var(Type, type_info, Var, !Info),
     ( if varset.search_name(TypeVarSet, TypeVar, TypeVarName) then
         VarName = "TypeInfo_for_" ++ TypeVarName,
-        poly_info_get_var_db(!.Info, VarDb0),
-        set_var_name_in_db(Var, VarName, VarDb0, VarDb),
-        poly_info_set_var_db(VarDb, !Info)
+        poly_info_get_var_table(!.Info, VarTable0),
+        update_var_name(Var, VarName, VarTable0, VarTable),
+        poly_info_set_var_table(VarTable, !Info)
     else
         true
     ),
@@ -775,7 +769,7 @@ var_as_type_info_locn(Var, type_info(Var)).
 
 produce_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
         TypeInfoHeadVars, ExistTypeClassInfoHeadVars, Goal0, Goal, !Info) :-
-    poly_info_get_var_db(!.Info, VarDb0),
+    poly_info_get_var_table(!.Info, VarTable0),
     poly_info_get_constraint_map(!.Info, ConstraintMap),
     pred_info_get_arg_types(PredInfo, ArgTypes),
     pred_info_get_tvar_kind_map(PredInfo, KindMap),
@@ -803,7 +797,7 @@ produce_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
     % Figure out the bindings for any unconstrained existentially quantified
     % type variables in the head.
 
-    var_db_count(VarDb0, NumVarsInDb0),
+    var_table_count(VarTable0, NumVarsInDb0),
     ( if
         NumVarsInDb0 = 0
     then
@@ -811,7 +805,7 @@ produce_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
         map.init(PredToActualTypeSubst)
     else if
         HeadVarList = proc_arg_vector_to_list(HeadVars),
-        lookup_var_types_in_db(VarDb0, HeadVarList, ActualArgTypes),
+        lookup_var_types(VarTable0, HeadVarList, ActualArgTypes),
         type_list_subsumes(ArgTypes, ActualArgTypes, ArgTypeSubst)
     then
         PredToActualTypeSubst = ArgTypeSubst
@@ -1138,12 +1132,12 @@ polymorphism_process_fgti_goals([Goal0 | Goals0], !ConstructOrderMarkedGoals,
     (
         Changed = no,
         trace [compiletime(flag("polymorphism_fgt_sanity_tests"))] (
-            poly_info_get_var_db(OldInfo, VarDbBefore),
-            MaxVarBefore = var_db_count(VarDbBefore),
+            poly_info_get_var_table(OldInfo, VarTableBefore),
+            MaxVarBefore = var_table_count(VarTableBefore),
             poly_info_get_num_reuses(OldInfo, NumReusesBefore),
 
-            poly_info_get_var_db(!.Info, VarDbAfter),
-            MaxVarAfter = var_db_count(VarDbAfter),
+            poly_info_get_var_table(!.Info, VarTableAfter),
+            MaxVarAfter = var_table_count(VarTableAfter),
             poly_info_get_num_reuses(!.Info, NumReusesAfter),
 
             expect(unify(MaxVarBefore, MaxVarAfter), $pred,
@@ -1186,8 +1180,8 @@ polymorphism_process_unify(LHSVar, RHS0, Mode, Unification0, UnifyContext,
         % in a field in the unification, which quantification.m uses when
         % requantifying things.
 
-        poly_info_get_var_db(!.Info, VarDb),
-        lookup_var_type_in_db(VarDb, LHSVar, Type),
+        poly_info_get_var_table(!.Info, VarTable),
+        lookup_var_type(VarTable, LHSVar, Type),
         unification_typeinfos(Type, Unification0, Unification,
             GoalInfo0, GoalInfo, _Changed, !Info),
         Goal = hlds_goal(unify(LHSVar, RHS0, Mode, Unification, UnifyContext),
@@ -1305,8 +1299,8 @@ add_unification_typeinfos(TypeInfoLocns, !Unification, !GoalInfo) :-
 polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         UnifyContext, GoalInfo0, Goal, Changed, !Info) :-
     poly_info_get_module_info(!.Info, ModuleInfo0),
-    poly_info_get_var_db(!.Info, VarDb0),
-    lookup_var_type_in_db(VarDb0, X0, TypeOfX),
+    poly_info_get_var_table(!.Info, VarTable0),
+    lookup_var_type(VarTable0, X0, TypeOfX),
     list.length(ArgVars0, Arity),
 
     % We replace any unifications with higher order pred constants
@@ -1363,8 +1357,8 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         Context = goal_info_get_context(GoalInfo0),
         convert_pred_to_lambda_goal(ModuleInfo0, Purity, EvalMethod, X0,
             PredId, ProcId, ArgVars0, CalleeArgTypes, UnifyContext,
-            GoalInfo1, Context, MaybeRHS0, VarDb0, VarDb),
-        poly_info_set_var_db(VarDb, !Info),
+            GoalInfo1, Context, MaybeRHS0, VarTable0, VarTable),
+        poly_info_set_var_table(VarTable, !Info),
         (
             MaybeRHS0 = ok1(RHS0),
             % Process the unification in its new form.
@@ -1405,7 +1399,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         % Add extra arguments to the unification for the
         % type_info and/or type_class_info variables.
 
-        lookup_var_types_in_db(VarDb0, ArgVars0, ActualArgTypes),
+        lookup_var_types(VarTable0, ArgVars0, ActualArgTypes),
         polymorphism_process_existq_unify_functor(ConsDefn,
             IsExistConstr, ActualArgTypes, TypeOfX, GoalInfo0,
             ExtraVars, ExtraGoals, !Info),
@@ -1738,7 +1732,7 @@ polymorphism_process_cases([Case0 | Cases0], [Case | Cases], InitialSnapshot,
 
 polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         ExtraVars, ExtraGoals, !Info) :-
-    poly_info_get_var_db(!.Info, VarDb),
+    poly_info_get_var_table(!.Info, VarTable),
     poly_info_get_typevarset(!.Info, TypeVarSet0),
     poly_info_get_module_info(!.Info, ModuleInfo),
 
@@ -1751,7 +1745,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
     pred_info_get_tvar_kind_map(PredInfo, PredKindMap),
     pred_info_get_class_context(PredInfo, PredClassContext),
 
-    % VarDb, TypeVarSet* etc come from the caller.
+    % VarTable, TypeVarSet* etc come from the caller.
     % PredTypeVarSet, PredArgTypes, PredExistQVars, etc come
     % directly from the callee.
     % ParentArgTypes, ParentExistQVars etc come from a version
@@ -1827,7 +1821,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
             ParentUnconstrainedUnivTVars, ParentUnconstrainedExistTVars),
 
         % Calculate the "parent to actual" binding.
-        lookup_var_types_in_db(VarDb, ArgVars0, ActualArgTypes),
+        lookup_var_types(VarTable, ArgVars0, ActualArgTypes),
         type_list_subsumes_det(ParentArgTypes, ActualArgTypes,
             ParentToActualTypeSubst),
 
@@ -1913,8 +1907,8 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
     % document me better
     %
     poly_info_get_typevarset(!.Info, TVarSet0),
-    poly_info_get_var_db(!.Info, VarDb0),
-    lookup_var_types_in_db(VarDb0, CallArgs0, ActualArgTypes0),
+    poly_info_get_var_table(!.Info, VarTable0),
+    lookup_var_types(VarTable0, CallArgs0, ActualArgTypes0),
     pred_info_get_arg_types(CalleePredInfo, PredTVarSet, _PredExistQVars,
         PredArgTypes),
     proc_info_get_headvars(CalleeProcInfo, CalleeHeadVars),
@@ -2016,27 +2010,13 @@ fixup_quantification(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
     then
         Goal = Goal0
     else
-        poly_info_get_var_db(!.Info, VarDb0),
+        poly_info_get_var_table(!.Info, VarTable0),
         poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
         OutsideVars = proc_arg_vector_to_set(HeadVars),
-        (
-            VarDb0 = var_db_varset_vartypes(VarSetTypes0),
-            VarSetTypes0 = prog_var_set_types(VarSet0, VarTypes0),
-            implicitly_quantify_goal_general(ordinary_nonlocals_maybe_lambda,
-                set_to_bitset(OutsideVars), _Warnings, Goal0, Goal,
-                VarSet0, VarSet, VarTypes0, VarTypes,
-                RttiVarMaps0, RttiVarMaps),
-            VarSetTypes = prog_var_set_types(VarSet, VarTypes),
-            VarDb = var_db_varset_vartypes(VarSetTypes)
-        ;
-            VarDb0 = var_db_var_table(VarTable0),
-            implicitly_quantify_goal_general_vt(
-                ordinary_nonlocals_maybe_lambda,
-                set_to_bitset(OutsideVars), _Warnings, Goal0, Goal,
-                VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
-            VarDb = var_db_var_table(VarTable)
-        ),
-        poly_info_set_var_db_rtti(VarDb, RttiVarMaps, !Info)
+        implicitly_quantify_goal_general_vt(ordinary_nonlocals_maybe_lambda,
+            set_to_bitset(OutsideVars), _Warnings, Goal0, Goal,
+            VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
+        poly_info_set_var_table_rtti(VarTable, RttiVarMaps, !Info)
     ).
 
     % If the lambda goal we are processing is polymorphically typed, we may
@@ -2071,25 +2051,18 @@ fixup_lambda_quantification(LambdaNonLocals0, ArgVars, ExistQVars, !Goal,
         set_of_var.init(LambdaTiTciVars),
         set_of_var.init(AllTiTciGoalVars)
     else
-        poly_info_get_var_db(!.Info, VarDb0),
+        poly_info_get_var_table(!.Info, VarTable0),
         !.Goal = hlds_goal(_, GoalInfo0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
         set_of_var.insert_list(LambdaNonLocals0, NonLocals, BothNonLocals),
         set_of_var.insert_list(ArgVars, BothNonLocals, NonLocalsWithArgVars),
-        (
-            VarDb0 = var_db_varset_vartypes(prog_var_set_types(_, VarTypes0)),
-            goal_util.extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps0,
-                VarTypes0, ExistQVars, NonLocalsWithArgVars, LambdaTiTciVars)
-        ;
-            VarDb0 = var_db_var_table(VarTable0),
-            goal_util.extra_nonlocal_typeinfos_typeclass_infos_vt(RttiVarMaps0,
-                VarTable0, ExistQVars, NonLocalsWithArgVars, LambdaTiTciVars)
-        ),
+        goal_util.extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps0,
+            VarTable0, ExistQVars, NonLocalsWithArgVars, LambdaTiTciVars),
 
         goal_vars(!.Goal, GoalVars),
         IsTiOrTci =
             ( pred(Var::in) is semidet :-
-                lookup_var_type_in_db(VarDb0, Var, VarType),
+                lookup_var_type(VarTable0, Var, VarType),
                 ( VarType = type_info_type
                 ; VarType = typeclass_info_type
                 )
@@ -2115,24 +2088,10 @@ fixup_lambda_quantification(LambdaNonLocals0, ArgVars, ExistQVars, !Goal,
         poly_info_set_must_requantify(!Info),
         set_of_var.union(NonLocalsWithArgVars, AllTiTciGoalVars,
             PossibleOutsideVars),
-        (
-            VarDb0 = var_db_varset_vartypes(VarSetVarTypes1),
-            VarSetVarTypes1 = prog_var_set_types(VarSet1, VarTypes1),
-            implicitly_quantify_goal_general(ordinary_nonlocals_maybe_lambda,
-                PossibleOutsideVars, _Warnings, !Goal,
-                VarSet1, VarSet, VarTypes1, VarTypes,
-                RttiVarMaps0, RttiVarMaps),
-            VarSetVarTypes = prog_var_set_types(VarSet, VarTypes),
-            VarDb = var_db_varset_vartypes(VarSetVarTypes)
-        ;
-            VarDb0 = var_db_var_table(VarTable1),
-            implicitly_quantify_goal_general_vt(
-                ordinary_nonlocals_maybe_lambda,
-                PossibleOutsideVars, _Warnings, !Goal,
-                VarTable1, VarTable, RttiVarMaps0, RttiVarMaps),
-            VarDb = var_db_var_table(VarTable)
-        ),
-        poly_info_set_var_db_rtti(VarDb, RttiVarMaps, !Info)
+        implicitly_quantify_goal_general_vt(ordinary_nonlocals_maybe_lambda,
+            PossibleOutsideVars, _Warnings, !Goal,
+            VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
+        poly_info_set_var_table_rtti(VarTable, RttiVarMaps, !Info)
     ).
 
 %---------------------------------------------------------------------------%

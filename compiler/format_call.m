@@ -2089,7 +2089,7 @@ maybe_build_width_arg(MaybeWidth, PredNameSuffix, MaybeWidthVar,
     ;
         MaybeWidth = compiler_manifest_width(WidthInt),
         PredNameSuffix = "_width",
-        make_int_const_construction_alloc_vt(WidthInt, "", WidthGoal, WidthVar,
+        make_int_const_construction_alloc(WidthInt, "", WidthGoal, WidthVar,
             !VarTable),
         MaybeWidthVar = [WidthVar],
         MaybeWidthGoals = [WidthGoal]
@@ -2119,7 +2119,7 @@ maybe_build_prec_arg(MaybePrec, PredNameSuffix, MaybePrecVar,
     ;
         MaybePrec = compiler_manifest_prec(PrecInt),
         PredNameSuffix = "_prec",
-        make_int_const_construction_alloc_vt(PrecInt, "", PrecGoal, PrecVar,
+        make_int_const_construction_alloc(PrecInt, "", PrecGoal, PrecVar,
             !VarTable),
         MaybePrecVar = [PrecVar],
         MaybePrecGoals = [PrecGoal]
@@ -2156,7 +2156,7 @@ build_int_base_arg(Base, [Var], [Goal], !VarTable) :-
         ConsName = "base_hex_p"
     ),
     ConsId = cons(qualified(ParseUtil, ConsName), 0, TypeCtor),
-    make_const_construction_alloc_vt(ConsId, Type, is_not_dummy_type, "",
+    make_const_construction_alloc(ConsId, Type, is_not_dummy_type, "",
         Goal, Var, !VarTable).
 
 :- pred build_float_kind_arg(string_format_float_kind::in,
@@ -2187,7 +2187,7 @@ build_float_kind_arg(Kind, Var, Goal, !VarTable) :-
         ConsName = "kind_g_flexible_uc"
     ),
     ConsId = cons(qualified(ParseUtil, ConsName), 0, TypeCtor),
-    make_const_construction_alloc_vt(ConsId, Type, is_not_dummy_type, "",
+    make_const_construction_alloc(ConsId, Type, is_not_dummy_type, "",
         Goal, Var, !VarTable).
 
 :- pred make_result_var_if_needed(maybe(prog_var)::in, prog_var::out,

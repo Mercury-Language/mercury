@@ -1445,7 +1445,7 @@ define_new_pred(PredSymName, Origin, TVarSet, InstVarSet,
     (
         TypeInfoLiveness = yes,
         NonLocals = goal_info_get_nonlocals(GoalInfo),
-        goal_util.extra_nonlocal_typeinfos_typeclass_infos_vt(RttiVarMaps,
+        goal_util.extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps,
             VarTable0, ExistQVars, NonLocals, ExtraTiTcis0),
         set_of_var.delete_list(ArgVars0, ExtraTiTcis0, ExtraTiTcis1),
         set_of_var.to_sorted_list(ExtraTiTcis1, ExtraTiTcis),
