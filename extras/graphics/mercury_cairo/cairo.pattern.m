@@ -267,7 +267,7 @@ add_color_stop_rgba(Pattern, Offset, R, G, B, A, !IO) :-
     cairo_pattern_t     *raw_pattern;
 
     raw_pattern = cairo_pattern_create_rgb(R, G, B);
-    Pattern = MR_GC_NEW(MCAIRO_pattern);
+    Pattern = MR_GC_NEW_ATTRIB(MCAIRO_pattern, MR_ALLOC_ID);
     Pattern->mcairo_raw_pattern = raw_pattern;
         MR_GC_register_finalizer(Pattern, MCAIRO_finalize_pattern, 0);
 ").
@@ -280,7 +280,7 @@ add_color_stop_rgba(Pattern, Offset, R, G, B, A, !IO) :-
     cairo_pattern_t     *raw_pattern;
 
     raw_pattern = cairo_pattern_create_rgba(R, G, B, A);
-    Pattern = MR_GC_NEW(MCAIRO_pattern);
+    Pattern = MR_GC_NEW_ATTRIB(MCAIRO_pattern, MR_ALLOC_ID);
     Pattern->mcairo_raw_pattern = raw_pattern;
         MR_GC_register_finalizer(Pattern, MCAIRO_finalize_pattern, 0);
 ").
@@ -292,7 +292,7 @@ add_color_stop_rgba(Pattern, Offset, R, G, B, A, !IO) :-
     cairo_pattern_t     *raw_pattern;
     raw_pattern = cairo_pattern_create_for_surface(
         ((MCAIRO_surface *)Surface)->mcairo_raw_surface);
-    Pattern = MR_GC_NEW(MCAIRO_pattern);
+    Pattern = MR_GC_NEW_ATTRIB(MCAIRO_pattern, MR_ALLOC_ID);
     Pattern->mcairo_raw_pattern = raw_pattern;
         MR_GC_register_finalizer(Pattern, MCAIRO_finalize_pattern, 0);
 ").
@@ -305,7 +305,7 @@ add_color_stop_rgba(Pattern, Offset, R, G, B, A, !IO) :-
     cairo_pattern_t     *raw_pattern;
 
     raw_pattern = cairo_pattern_create_linear(X0, Y0, X1, Y1);
-    Pattern = MR_GC_NEW(MCAIRO_pattern);
+    Pattern = MR_GC_NEW_ATTRIB(MCAIRO_pattern, MR_ALLOC_ID);
     Pattern->mcairo_raw_pattern = raw_pattern;
         MR_GC_register_finalizer(Pattern, MCAIRO_finalize_pattern, 0);
 ").
@@ -321,7 +321,7 @@ add_color_stop_rgba(Pattern, Offset, R, G, B, A, !IO) :-
     raw_pattern = cairo_pattern_create_radial(Cx0, Cy0, Radius0,
         Cx1, Cy1, Radius1);
 
-    Pattern = MR_GC_NEW(MCAIRO_pattern);
+    Pattern = MR_GC_NEW_ATTRIB(MCAIRO_pattern, MR_ALLOC_ID);
     Pattern->mcairo_raw_pattern = raw_pattern;
         MR_GC_register_finalizer(Pattern, MCAIRO_finalize_pattern, 0);
 ").
@@ -366,7 +366,7 @@ add_color_stop_rgba(Pattern, Offset, R, G, B, A, !IO) :-
     get_matrix(Pattern::in, Matrix::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-    Matrix = MR_GC_NEW(cairo_matrix_t);
+    Matrix = MR_GC_NEW_ATTRIB(cairo_matrix_t, MR_ALLOC_ID);
     cairo_pattern_get_matrix(Pattern->mcairo_raw_pattern, Matrix);
 ").
 

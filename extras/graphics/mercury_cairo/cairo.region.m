@@ -157,7 +157,7 @@
     cairo_region_t  *raw_region;
 
     raw_region = cairo_region_create();
-    Region = MR_GC_NEW(MCAIRO_region);
+    Region = MR_GC_NEW_ATTRIB(MCAIRO_region, MR_ALLOC_ID);
     Region->mcairo_raw_region = raw_region;
     MR_GC_register_finalizer(Region, MCAIRO_finalize_region, 0);
 ").
@@ -183,7 +183,7 @@ create_rectangle(Rectangle, Region, !IO) :-
     rect.height = H;
 
     raw_region = cairo_region_create_rectangle(&rect);
-    Region = MR_GC_NEW(MCAIRO_region);
+    Region = MR_GC_NEW_ATTRIB(MCAIRO_region, MR_ALLOC_ID);
     Region->mcairo_raw_region = raw_region;
     MR_GC_register_finalizer(Region, MCAIRO_finalize_region, 0);
 ").
@@ -194,7 +194,7 @@ create_rectangle(Rectangle, Region, !IO) :-
 "
     cairo_region_t  *raw_copy;
     raw_copy = cairo_region_copy(Orig->mcairo_raw_region);
-    Copy = MR_GC_NEW(MCAIRO_region);
+    Copy = MR_GC_NEW_ATTRIB(MCAIRO_region, MR_ALLOC_ID);
     Copy->mcairo_raw_region = raw_copy;
     MR_GC_register_finalizer(Copy, MCAIRO_finalize_region, 0);
 ").

@@ -140,7 +140,7 @@
     cairo_font_options_t    *raw_font_options;
 
     raw_font_options = cairo_font_options_create();
-    FntOpts = MR_GC_NEW(MCAIRO_font_options);
+    FntOpts = MR_GC_NEW_ATTRIB(MCAIRO_font_options, MR_ALLOC_ID);
     FntOpts->mcairo_raw_font_options = raw_font_options;
     MR_GC_register_finalizer(FntOpts, MCAIRO_finalize_font_options, 0);
 ").
@@ -152,7 +152,7 @@
     cairo_font_options_t    *raw_copy;
 
     raw_copy = cairo_font_options_copy(Orig->mcairo_raw_font_options);
-    Copy = MR_GC_NEW(MCAIRO_font_options);
+    Copy = MR_GC_NEW_ATTRIB(MCAIRO_font_options, MR_ALLOC_ID);
     Copy->mcairo_raw_font_options = raw_copy;
     MR_GC_register_finalizer(Copy, MCAIRO_finalize_font_options, 0);
 ").

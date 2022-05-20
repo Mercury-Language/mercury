@@ -128,7 +128,7 @@
     cairo_surface_get_font_options(
         ((MCAIRO_surface *)Surface)->mcairo_raw_surface,
         raw_font_options);
-    FntOpts = MR_GC_NEW(MCAIRO_font_options);
+    FntOpts = MR_GC_NEW_ATTRIB(MCAIRO_font_options, MR_ALLOC_ID);
     FntOpts->mcairo_raw_font_options = raw_font_options;
     MR_GC_register_finalizer(FntOpts, MCAIRO_finalize_font_options, 0);
 ").

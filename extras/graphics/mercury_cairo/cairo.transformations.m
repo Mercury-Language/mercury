@@ -138,7 +138,7 @@
     get_matrix(Ctxt::in, Matrix::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-    Matrix = MR_GC_NEW(cairo_matrix_t);
+    Matrix = MR_GC_NEW_ATTRIB(cairo_matrix_t, MR_ALLOC_ID);
     cairo_get_matrix(Ctxt->mcairo_raw_context, Matrix);
 ").
 

@@ -165,7 +165,7 @@ create_surface(FileName, Width, Height, Surface, !IO) :-
     Status = cairo_surface_status(raw_surface);
 
     if (Status == CAIRO_STATUS_SUCCESS) {
-        Surface = MR_GC_NEW(MCAIRO_surface);
+        Surface = MR_GC_NEW_ATTRIB(MCAIRO_surface, MR_ALLOC_ID);
         Surface->mcairo_raw_surface = raw_surface;
         MR_GC_register_finalizer(Surface, MCAIRO_finalize_surface, 0);
     } else {

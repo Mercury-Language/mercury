@@ -876,7 +876,7 @@ create_context(Surface, Context, !IO) :-
 
     raw_context = cairo_create(
         ((MCAIRO_surface *)Surface)->mcairo_raw_surface);
-    Context = MR_GC_NEW(MCAIRO_context);
+    Context = MR_GC_NEW_ATTRIB(MCAIRO_context, MR_ALLOC_ID);
     Context->mcairo_raw_context = raw_context;
     /*
     ** We fill the cached font face in later.
@@ -915,7 +915,7 @@ create_context(Surface, Context, !IO) :-
     ** its reference count.
     */
     raw_surface = cairo_surface_reference(raw_surface);
-    wrapped_surface = MR_GC_NEW(MCAIRO_surface);
+    wrapped_surface = MR_GC_NEW_ATTRIB(MCAIRO_surface, MR_ALLOC_ID);
     wrapped_surface->mcairo_raw_surface = raw_surface;
     MR_GC_register_finalizer(wrapped_surface, MCAIRO_finalize_surface, 0);
     Target = (MR_Word) wrapped_surface;
@@ -942,7 +942,7 @@ create_context(Surface, Context, !IO) :-
     cairo_pattern_t *new_pattern;
 
     new_pattern = cairo_pop_group(Ctxt->mcairo_raw_context);
-    Pattern = MR_GC_NEW(MCAIRO_pattern);
+    Pattern = MR_GC_NEW_ATTRIB(MCAIRO_pattern, MR_ALLOC_ID);
     Pattern->mcairo_raw_pattern = new_pattern;
     MR_GC_register_finalizer(Pattern, MCAIRO_finalize_pattern, 0);
 ").
@@ -968,7 +968,7 @@ create_context(Surface, Context, !IO) :-
     ** its reference count.
     */
     raw_surface = cairo_surface_reference(raw_surface);
-    wrapped_surface = MR_GC_NEW(MCAIRO_surface);
+    wrapped_surface = MR_GC_NEW_ATTRIB(MCAIRO_surface, MR_ALLOC_ID);
     wrapped_surface->mcairo_raw_surface = raw_surface;
     MR_GC_register_finalizer(wrapped_surface, MCAIRO_finalize_surface, 0);
     Target = (MR_Word) wrapped_surface;
@@ -1021,7 +1021,7 @@ create_context(Surface, Context, !IO) :-
     ** it we need to increment the reference count here.
     */
     raw_pattern = cairo_pattern_reference(raw_pattern);
-    Pattern = MR_GC_NEW(MCAIRO_pattern);
+    Pattern = MR_GC_NEW_ATTRIB(MCAIRO_pattern, MR_ALLOC_ID);
     Pattern->mcairo_raw_pattern = raw_pattern;
     MR_GC_register_finalizer(Pattern, MCAIRO_finalize_pattern, 0);
 ").
@@ -1100,11 +1100,14 @@ set_dash(Context, Dashes, OffSet, !IO) :-
         IsValid::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
+    MR_Word ptr;
     double  *dashes;
     double  dash;
     size_t  i = 0;
 
-    dashes = MR_GC_malloc(sizeof(double) * NumDashes);
+    MR_incr_hp_atomic_msg(ptr, MR_bytes_to_words(sizeof(double) * NumDashes),
+        MR_ALLOC_ID, ""dash_array"");
+    dashes = (double *) ptr;
 
     while (!MR_list_is_empty(Dashes)) {
         dash = MR_word_to_float(MR_list_head(Dashes));

@@ -119,7 +119,7 @@
 "
     cairo_matrix_t  *new_matrix;
 
-    new_matrix = MR_GC_NEW(cairo_matrix_t);
+    new_matrix = MR_GC_NEW_ATTRIB(cairo_matrix_t, MR_ALLOC_ID);
     cairo_matrix_init(new_matrix, Xx, Yx, Xy, Yy, X0, Y0);
     Matrix = new_matrix;
 ").
@@ -130,7 +130,7 @@
 "
     cairo_matrix_t  *new_matrix;
 
-    new_matrix = MR_GC_NEW(cairo_matrix_t);
+    new_matrix = MR_GC_NEW_ATTRIB(cairo_matrix_t, MR_ALLOC_ID);
     cairo_matrix_init_identity(new_matrix);
     Matrix = new_matrix;
 ").
@@ -141,7 +141,7 @@
 "
     cairo_matrix_t  *new_matrix;
 
-    new_matrix = MR_GC_NEW(cairo_matrix_t);
+    new_matrix = MR_GC_NEW_ATTRIB(cairo_matrix_t, MR_ALLOC_ID);
     cairo_matrix_init_translate(new_matrix, Tx, Ty);
     Matrix = new_matrix;
 ").
@@ -152,7 +152,7 @@
 "
     cairo_matrix_t  *new_matrix;
 
-    new_matrix = MR_GC_NEW(cairo_matrix_t);
+    new_matrix = MR_GC_NEW_ATTRIB(cairo_matrix_t, MR_ALLOC_ID);
     cairo_matrix_init_scale(new_matrix, Sx, Sy);
     Matrix = new_matrix;
 ").
@@ -163,7 +163,7 @@
 "
     cairo_matrix_t  *new_matrix;
 
-    new_matrix = MR_GC_NEW(cairo_matrix_t);
+    new_matrix = MR_GC_NEW_ATTRIB(cairo_matrix_t, MR_ALLOC_ID);
     cairo_matrix_init_rotate(new_matrix, Radians);
     Matrix = new_matrix;
 ").

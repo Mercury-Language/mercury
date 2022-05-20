@@ -188,7 +188,7 @@ select_font_face(Context, Family, Slant, Weight, !IO) :-
 "
     cairo_matrix_t  *font_matrix;
 
-    font_matrix = MR_GC_NEW(cairo_matrix_t);
+    font_matrix = MR_GC_NEW_ATTRIB(cairo_matrix_t, MR_ALLOC_ID);
     cairo_get_font_matrix(Ctxt->mcairo_raw_context, font_matrix);
     Matrix = font_matrix;
 ").
@@ -229,7 +229,7 @@ show_glyphs(Ctxt, Glyphs, !IO) :-
     cairo_font_options_t    *raw_font_options;
     raw_font_options = cairo_font_options_create();
     cairo_get_font_options(Ctxt->mcairo_raw_context, raw_font_options);
-    FntOpts = MR_GC_NEW(MCAIRO_font_options);
+    FntOpts = MR_GC_NEW_ATTRIB(MCAIRO_font_options, MR_ALLOC_ID);
     FntOpts->mcairo_raw_font_options = raw_font_options;
     MR_GC_register_finalizer(FntOpts, MCAIRO_finalize_font_options, 0);
 ").
@@ -343,7 +343,7 @@ text_extents(Context, String, Extents, !IO) :-
     cairo_font_face_t   *raw_font_face;
 
     raw_font_face = cairo_toy_font_face_create(Family, Slant, Weight);
-    FontFace = MR_GC_NEW(MCAIRO_font_face);
+    FontFace = MR_GC_NEW_ATTRIB(MCAIRO_font_face, MR_ALLOC_ID);
     FontFace->mcairo_raw_font_face = raw_font_face;
     MR_GC_register_finalizer(FontFace, MCAIRO_finalize_font_face, 0);
 ").

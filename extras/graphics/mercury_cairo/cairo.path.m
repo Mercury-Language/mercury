@@ -178,7 +178,7 @@
     cairo_path_t    *raw_path;
 
     raw_path = cairo_copy_path(Ctxt->mcairo_raw_context);
-    Path = MR_GC_NEW(MCAIRO_path);
+    Path = MR_GC_NEW_ATTRIB(MCAIRO_path, MR_ALLOC_ID);
     Path->mcairo_raw_path = raw_path;
     MR_GC_register_finalizer(Path, MCAIRO_finalize_path, 0);
 ").
@@ -190,7 +190,7 @@
     cairo_path_t    *raw_path;
 
     raw_path = cairo_copy_path_flat(Ctxt->mcairo_raw_context);
-    Path = MR_GC_NEW(MCAIRO_path);
+    Path = MR_GC_NEW_ATTRIB(MCAIRO_path, MR_ALLOC_ID);
     Path->mcairo_raw_path = raw_path;
     MR_GC_register_finalizer(Path, MCAIRO_finalize_path, 0);
 ").

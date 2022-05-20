@@ -79,7 +79,7 @@ image_surface_create_from_png(FileName, Surface, !IO) :-
     cairo_surface_t *raw_image;
 
     raw_image = cairo_image_surface_create_from_png(FileName);
-    Surface = MR_GC_NEW(MCAIRO_surface);
+    Surface = MR_GC_NEW_ATTRIB(MCAIRO_surface, MR_ALLOC_ID);
     Surface->mcairo_raw_surface = raw_image;
     MR_GC_register_finalizer(Surface, MCAIRO_finalize_surface, 0);
 ").
