@@ -593,7 +593,7 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
     (
         PrintCommand = yes,
         io.format(ProgressStream,
-            "%%s Invoking system command `%s'...\n", [s(Command)], !IO),
+            "%% Invoking system command `%s'...\n", [s(Command)], !IO),
         io.flush_output(ProgressStream, !IO)
     ;
         PrintCommand = no
