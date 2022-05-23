@@ -738,7 +738,7 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
             (
                 PrintCommand = yes,
                 io.format(ProgressStream,
-                    "%%s Invoking system command `%s'...\n",
+                    "%% Invoking system command `%s'...\n",
                         [s(ProcessOutputRedirected)], !IO),
                 io.flush_output(ProgressStream, !IO)
             ;
@@ -760,9 +760,8 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
                 )
             ;
                 ProcessOutputResult = ok(signalled(ProcessOutputSignal)),
-                % Make sure the current process gets the signal. Some
-                % systems (e.g. Linux) ignore SIGINT during a call to
-                % system().
+                % Make sure the current process gets the signal. Some systems
+                % (e.g. Linux) ignore SIGINT during a call to system().
                 raise_signal(ProcessOutputSignal, !IO),
                 report_error(ErrorStream,
                     "system command received signal "
