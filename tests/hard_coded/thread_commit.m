@@ -85,7 +85,7 @@ build_tree(Height, Tree, !Acc) :-
 
 all_odd(Tree) :-
     % This may perform a commit.
-    all [X] (
+    all [Leaf] (
         leaf(Leaf, Tree)
     =>
         not(int.even(Leaf))
