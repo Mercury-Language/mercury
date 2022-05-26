@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1999-2006, 2011 The University of Melbourne.
-// Copyright (C) 2014, 2015-2016, 2018 The Mercury team.
+// Copyright (C) 2014, 2015-2016, 2018, 2022 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury.h - This file defines the macros, types, etc. that
@@ -75,12 +75,25 @@
 // The jmp_buf type used by MR_builtin_setjmp()
 // to save the stack context when implementing commits.
 
-#ifdef MR_GNUC
-  // For GCC, we use `__builtin_setjmp' and `__builtin_longjmp'.
-  // These are documented (in gcc/builtins.c in the GCC source code)
-  // as taking for their parameter a pointer to an array of five words.
+#if (MR_GNUC > 2 || (MR_GNUC == 2 && __GNUC_MINOR__ >= 8))
+  // There is an issue with using __builtin_setjmp and __builtin_longjmp on
+  // Linux/aarch64. When a thread commits using __builtin_longjmp, we get an
+  // assertion failure or a segmentation fault. The problem appears to have
+  // been fixed in some version between gcc 8.3.0 and gcc 10.2.
+  #if defined(__aarch64__) && (MR_GNUC < 10)
+    // Don't define MR_USE_GCC_BUILTIN_SETJMP_LONGJMP.
+  #elif defined(MR_DARWIN_SETJMP_WORKAROUND)
+    // Don't define MR_USE_GCC_BUILTIN_SETJMP_LONGJMP.
+  #else
+    #define MR_USE_GCC_BUILTIN_SETJMP_LONGJMP
+  #endif
+#endif
 
-  typedef void *MR_builtin_jmp_buf[5];
+#ifdef MR_USE_GCC_BUILTIN_SETJMP_LONGJMP
+  // The jump buffer for GCC `__builtin_setjmp' and `__builtin_longjmp'
+  // functions is documented to be an array of five intptr_t's
+  // (GCC manual section 6.5 Nonlocal gotos).
+  typedef intptr_t MR_builtin_jmp_buf[5];
 #else
   // Otherwise we use the standard jmp_buf type.
   typedef jmp_buf MR_builtin_jmp_buf;
@@ -141,14 +154,11 @@ extern  MR_Word mercury__private_builtin__dummy_var;
 //  2. The call to __builtin_longjmp() must not be in the same
 //      function as the call to __builtin_setjmp().
 
-#if (MR_GNUC > 2 || (MR_GNUC == 2 && __GNUC_MINOR__ >= 8))
-  #ifndef MR_DARWIN_SETJMP_WORKAROUND
-    #define MR_builtin_setjmp(buf)  __builtin_setjmp((buf))
-    #define MR_builtin_longjmp(buf, val)    __builtin_longjmp((buf), (val))
-  #endif
-#endif
-#ifndef MR_builtin_setjmp
-  #define MR_builtin_setjmp(buf)    setjmp((buf))
+#ifdef MR_USE_GCC_BUILTIN_SETJMP_LONGJMP
+  #define MR_builtin_setjmp(buf)        __builtin_setjmp((buf))
+  #define MR_builtin_longjmp(buf, val)  __builtin_longjmp((buf), (val))
+#else
+  #define MR_builtin_setjmp(buf)        setjmp((buf))
   #define MR_builtin_longjmp(buf, val)  longjmp((buf), (val))
 #endif
 

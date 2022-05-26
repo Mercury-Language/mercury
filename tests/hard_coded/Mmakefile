@@ -442,6 +442,7 @@ ORDINARY_PROGS = \
 	test_semaphore \
 	test_tree_bitset \
 	test_yield \
+	thread_commit \
 	thread_sbrk \
 	tim_qual1 \
 	time_test \
