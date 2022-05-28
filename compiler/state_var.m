@@ -714,11 +714,11 @@ svar_finish_clause_body(Globals, ModuleName, Context, FinalMap,
         % subject to singleton warnings.
         %
         % We don't actually *want* to generate warnings about the assignments
-        % to STATE_VARIABLE_S_7, because the problem not in those assignments
-        % or in the if-then-else arms that contain them. Instead, it is
-        % in the condition, However, with this version of the code,
-        % the occurrence of STATE_VARIABLE_S_6 in the condition is *not*
-        % a singleton.
+        % to STATE_VARIABLE_S_7, because the problem is not in those
+        % assignments or in the if-then-else arms that contain them.
+        % Instead, it is in the condition. However, with this version
+        % of the code, the occurrence of STATE_VARIABLE_S_6 in the condition
+        % is *not* a singleton.
         %
         % To allow us to generate a warning about !:S in the condition,
         % we delete all copy unifications inserted by the state variable
