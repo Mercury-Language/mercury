@@ -853,30 +853,40 @@ builtin_type_ctors_with_no_hlds_type_defn =
     ].
 
 is_type_ctor_a_builtin_dummy(TypeCtor) = IsBuiltinDummy :-
-    % Please keep this code in sync with classify_type_ctor_if_special.
+    % Please keep the set of type_ctors for which we return
+    % is_builtin_dummy_type_ctor in sync with classify_type_ctor_if_special.
     TypeCtor = type_ctor(CtorSymName, TypeArity),
-    ( if
+    (
         CtorSymName = qualified(ModuleName, TypeName),
-        ModuleName = mercury_io_module,
-        TypeName = "state",
-        TypeArity = 0
-    then
-        IsBuiltinDummy = is_builtin_dummy_type_ctor
-    else if
-        CtorSymName = qualified(ModuleName, TypeName),
-        ModuleName = mercury_std_lib_module_name(unqualified("store")),
-        TypeName = "store",
-        TypeArity = 1
-    then
-        IsBuiltinDummy = is_builtin_dummy_type_ctor
-    else if
-        CtorSymName = qualified(ModuleName, TypeName),
-        ModuleName = mercury_private_builtin_module,
-        TypeName = "store_at_ref_type",
-        TypeArity = 1
-    then
-        IsBuiltinDummy = is_builtin_non_dummy_type_ctor
-    else
+        ( if 
+            (
+                TypeName = "state",
+                TypeArity = 0,
+                ModuleName = mercury_io_module
+            ;
+                TypeName = "store",
+                TypeArity = 1,
+                ModuleName = mercury_std_lib_module_name(unqualified("store"))
+            )
+        then
+            IsBuiltinDummy = is_builtin_dummy_type_ctor
+        else if
+            (
+                TypeName = "store_at_ref_type",
+                TypeArity = 1,
+                ModuleName = mercury_private_builtin_module
+            ;
+                TypeName = "comparison_result",
+                TypeArity = 0,
+                ModuleName = mercury_public_builtin_module
+            )
+        then
+            IsBuiltinDummy = is_builtin_non_dummy_type_ctor
+        else
+            IsBuiltinDummy = is_not_builtin_dummy_type_ctor
+        )
+    ;
+        CtorSymName = unqualified(_TypeName),
         IsBuiltinDummy = is_not_builtin_dummy_type_ctor
     ).
 
