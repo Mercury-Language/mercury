@@ -244,17 +244,18 @@ check_instance_declaration_types(!ModuleInfo, !Specs) :-
 
 check_instance_declaration_types_for_class(ModuleInfo, ClassId,
         InstanceDefns, !Specs) :-
-    list.foldl(
-        check_instance_declaration_types_for_instance(ModuleInfo, ClassId),
-        InstanceDefns, !Specs).
+    list.map(
+        is_instance_type_vector_valid(ModuleInfo, ClassId),
+        InstanceDefns, InstanceSpecLists),
+    list.condense(InstanceSpecLists, ClassInstanceSpecs),
+    !:Specs = ClassInstanceSpecs ++ !.Specs.
 
-:- pred check_instance_declaration_types_for_instance(module_info::in,
-    class_id::in, hlds_instance_defn::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred is_instance_type_vector_valid(module_info::in,
+    class_id::in, hlds_instance_defn::in, list(error_spec)::out) is det.
 
-check_instance_declaration_types_for_instance(ModuleInfo,
-        ClassId, InstanceDefn, !Specs) :-
+is_instance_type_vector_valid(ModuleInfo, ClassId, InstanceDefn, !:Specs) :-
     OriginalTypes = InstanceDefn ^ instdefn_orig_types,
+    !:Specs = [],
     list.foldl2(is_valid_instance_orig_type(ModuleInfo, ClassId, InstanceDefn),
         OriginalTypes, 1, _, !Specs),
     Types = InstanceDefn ^ instdefn_types,
@@ -353,7 +354,7 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
             TypeCtor =
                 type_ctor(unqualified("{}"), list.length(ArgTypes)),
             Spec = badly_formed_instance_type_msg(ClassId, InstanceDefn,
-                N, TypeCtor, NonTVarArgs),
+                TypeCtor, N, NonTVarArgs),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -382,7 +383,7 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
             NonTVarArgs = [_ | _],
             TypeCtor = type_ctor(TypeName, list.length(ArgTypes)),
             Spec = badly_formed_instance_type_msg(ClassId, InstanceDefn,
-                N, TypeCtor, NonTVarArgs),
+                TypeCtor, N, NonTVarArgs),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -410,10 +411,10 @@ find_non_type_variables([ArgType | ArgTypes], ArgNum, NonTVarArgs) :-
         NonTVarArgs = [ArgNum - ArgType | TailNonTVarArgs]
     ).
 
-:- func badly_formed_instance_type_msg(class_id, hlds_instance_defn, int,
-    type_ctor, assoc_list(int, mer_type)) = error_spec.
+:- func badly_formed_instance_type_msg(class_id, hlds_instance_defn,
+    type_ctor, int, assoc_list(int, mer_type)) = error_spec.
 
-badly_formed_instance_type_msg(ClassId, InstanceDefn, N, TypeCtor,
+badly_formed_instance_type_msg(ClassId, InstanceDefn, TypeCtor, N,
         NonTVarArgs) = Spec :-
     TVarSet = InstanceDefn ^ instdefn_tvarset,
     NonTVarArgPieceLists =
@@ -742,7 +743,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
     PredFormArity = pred_info_pred_form_arity(PredInfo),
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     pred_info_get_proc_table(PredInfo, ProcTable),
-    list.map(
+    GetModesAndDetism = 
         ( pred(TheProcId::in, ModesAndDetism::out) is det :-
             map.lookup(ProcTable, TheProcId, ProcInfo),
             proc_info_get_argmodes(ProcInfo, Modes),
@@ -752,7 +753,8 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
             proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
             proc_info_get_inst_varset(ProcInfo, InstVarSet),
             ModesAndDetism = modes_and_detism(Modes, InstVarSet, MaybeDetism)
-        ), ClassProcProcIds, ArgModes),
+        ),
+    list.map(GetModesAndDetism, ClassProcProcIds, ArgModes),
 
     InstanceDefn0 = hlds_instance_defn(_, InstanceTypes, _, InstanceStatus,
         _, _, _, _, _, _, _),
@@ -1711,12 +1713,13 @@ report_local_vs_nonlocal_clash(ClassId, LocalInstance, NonLocalInstance,
 check_for_cyclic_classes(!ModuleInfo, !Specs) :-
     module_info_get_class_table(!.ModuleInfo, ClassTable0),
     ClassIds = map.keys(ClassTable0),
-    list.foldl3(find_cycles([]), ClassIds, ClassTable0, ClassTable,
-        set.init, _, [], Cycles),
+    list.foldl3(find_cycles(class_path([])), ClassIds,
+        ClassTable0, ClassTable, set.init, _, [], Cycles),
     !:Specs = list.map(report_cyclic_classes(ClassTable), Cycles) ++ !.Specs,
     module_info_set_class_table(ClassTable, !ModuleInfo).
 
-:- type class_path == list(class_id).
+:- type class_path
+    --->    class_path(list(class_id)).
 
     % find_cycles(Path, ClassId, !ClassTable, !Visited, !Cycles)
     %
@@ -1734,18 +1737,18 @@ find_cycles(Path, ClassId, !ClassTable, !Visited, !Cycles) :-
 
     % As above, but also return this class's parameters and ancestor list.
     %
-:- pred find_cycles_2(class_path::in, class_id::in, list(tvar)::out,
-    list(prog_constraint)::out, class_table::in, class_table::out,
-    set(class_id)::in, set(class_id)::out,
+:- pred find_cycles_2(class_path::in, class_id::in,
+    list(tvar)::out, list(prog_constraint)::out,
+    class_table::in, class_table::out, set(class_id)::in, set(class_id)::out,
     list(class_path)::in, list(class_path)::out) is det.
 
-find_cycles_2(Path, ClassId, Params, Ancestors, !ClassTable, !Visited,
-        !Cycles) :-
+find_cycles_2(Path0, ClassId, ClassParamTVars, Ancestors,
+        !ClassTable, !Visited, !Cycles) :-
     ClassDefn0 = map.lookup(!.ClassTable, ClassId),
-    Params = ClassDefn0 ^ classdefn_vars,
+    ClassParamTVars = ClassDefn0 ^ classdefn_vars,
     Kinds = ClassDefn0 ^ classdefn_kinds,
     ( if set.member(ClassId, !.Visited) then
-        ( if find_cycle(ClassId, Path, [ClassId], Cycle) then
+        ( if find_cycle(ClassId, Path0, class_path([ClassId]), Cycle) then
             !:Cycles = [Cycle | !.Cycles]
         else
             true
@@ -1762,11 +1765,13 @@ find_cycles_2(Path, ClassId, Params, Ancestors, !ClassTable, !Visited,
         ;
             FunDeps = [_ | _],
             ClassId = class_id(ClassName, _),
-            prog_type.var_list_to_type_list(Kinds, Params, Args),
-            Ancestors0 = [constraint(ClassName, Args)]
+            prog_type.var_list_to_type_list(Kinds, ClassParamTVars, ArgTypes),
+            Ancestors0 = [constraint(ClassName, ArgTypes)]
         ),
         Superclasses = ClassDefn0 ^ classdefn_supers,
-        list.foldl4(find_cycles_3([ClassId | Path]), Superclasses,
+        Path0 = class_path(PathClassIds),
+        Path1 = class_path([ClassId | PathClassIds]),
+        list.foldl4(find_cycles_3(Path1), Superclasses,
             !ClassTable, !Visited, !Cycles, Ancestors0, Ancestors),
         ClassDefn = ClassDefn0 ^ classdefn_fundep_ancestors := Ancestors,
         map.det_update(ClassId, ClassDefn, !ClassTable)
@@ -1784,18 +1789,18 @@ find_cycles_2(Path, ClassId, Params, Ancestors, !ClassTable, !Visited,
     list(prog_constraint)::in, list(prog_constraint)::out) is det.
 
 find_cycles_3(Path, Constraint, !ClassTable, !Visited, !Cycles, !Ancestors) :-
-    Constraint = constraint(Name, Args),
-    list.length(Args, Arity),
-    ClassId = class_id(Name, Arity),
-    find_cycles_2(Path, ClassId, Params, NewAncestors0, !ClassTable,
+    Constraint = constraint(ClassName, ArgTypes),
+    list.length(ArgTypes, Arity),
+    ClassId = class_id(ClassName, Arity),
+    find_cycles_2(Path, ClassId, ClassParamTVars, NewAncestors0, !ClassTable,
         !Visited, !Cycles),
-    map.from_corresponding_lists(Params, Args, Binding),
+    map.from_corresponding_lists(ClassParamTVars, ArgTypes, Binding),
     apply_subst_to_prog_constraint_list(Binding, NewAncestors0, NewAncestors),
-    list.append(NewAncestors, !Ancestors).
+    !:Ancestors = NewAncestors ++ !.Ancestors.
 
-    % find_cycle(ClassId, PathRemaining, PathSoFar, Cycle):
+    % find_cycle(ClassId, PathRemaining0, PathSoFar, Cycle):
     %
-    % Check if ClassId is present in PathRemaining, and if so then make
+    % Check if ClassId is present in PathRemaining0, and if so, then make
     % a cycle out of the front part of the path up to the point where
     % the ClassId is found. The part of the path checked so far is
     % accumulated in PathSoFar.
@@ -1803,32 +1808,39 @@ find_cycles_3(Path, Constraint, !ClassTable, !Visited, !Cycles, !Ancestors) :-
 :- pred find_cycle(class_id::in, class_path::in, class_path::in,
     class_path::out) is semidet.
 
-find_cycle(ClassId, [Head | Tail], Path0, Cycle) :-
-    Path = [Head | Path0],
+find_cycle(ClassId, PathRemaining0, PathSoFar0, Cycle) :-
+    PathRemaining0 = class_path([Head | Tail]),
+    PathSoFar0 = class_path(PathSoFarClassIds0),
+    PathSoFar1 = class_path([Head | PathSoFarClassIds0]),
     ( if ClassId = Head then
-        Cycle = Path
+        Cycle = PathSoFar1
     else
-        find_cycle(ClassId, Tail, Path, Cycle)
+        PathRemaining1 = class_path(Tail),
+        find_cycle(ClassId, PathRemaining1, PathSoFar1, Cycle)
     ).
 
     % The error message for cyclic classes is intended to look like this:
     %
     %   module.m:NNN: Error: cyclic superclass relation detected:
-    %   module.m:NNN:   `foo/N' <= `bar/N' <= `baz/N' <= `foo/N'
+    %   module.m:NNN:   `foo/N'
+    %   module.m:NNN:    <= `bar/N'
+    %   module.m:NNN:    <= `baz/N'
+    %   module.m:NNN:    <= `foo/N'
     %
 :- func report_cyclic_classes(class_table, class_path) = error_spec.
 
 report_cyclic_classes(ClassTable, ClassPath) = Spec :-
+    ClassPath = class_path(ClassPathClassIds),
     (
-        ClassPath = [],
+        ClassPathClassIds = [],
         unexpected($pred, "empty cycle found.")
     ;
-        ClassPath = [ClassId | Tail],
-        Context = map.lookup(ClassTable, ClassId) ^ classdefn_context,
+        ClassPathClassIds = [HeadClassId | TailClassIds],
+        Context = map.lookup(ClassTable, HeadClassId) ^ classdefn_context,
         StartPieces =
             [words("Error: cyclic superclass relation detected:"), nl,
-            qual_class_id(ClassId), nl],
-        list.foldl(add_path_element, Tail, cord.init, LaterLinesCord),
+            qual_class_id(HeadClassId), nl],
+        list.foldl(add_path_element, TailClassIds, cord.init, LaterLinesCord),
         Pieces = StartPieces ++ cord.list(LaterLinesCord),
         Spec = simplest_spec($pred, severity_error, phase_type_check,
             Context, Pieces)
