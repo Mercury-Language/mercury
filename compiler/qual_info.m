@@ -44,14 +44,14 @@
     maybe_opt_imported::in, qual_info::in, qual_info::out) is det.
 
 :- pred qual_info_get_tvarset(qual_info::in, tvarset::out) is det.
-:- pred qual_info_get_var_types(qual_info::in, vartypes::out) is det.
+:- pred qual_info_get_explicit_var_types(qual_info::in, vartypes::out) is det.
 :- pred qual_info_get_mq_info(qual_info::in, mq_info::out) is det.
 :- pred qual_info_get_maybe_opt_imported(qual_info::in,
     maybe_opt_imported::out) is det.
 :- pred qual_info_get_found_syntax_error(qual_info::in, bool::out) is det.
 :- pred qual_info_get_found_trace_goal(qual_info::in, bool::out) is det.
 
-:- pred qual_info_set_var_types(vartypes::in,
+:- pred qual_info_set_explicit_var_types(vartypes::in,
     qual_info::in, qual_info::out) is det.
 :- pred qual_info_set_mq_info(mq_info::in,
     qual_info::in, qual_info::out) is det.
@@ -133,7 +133,7 @@
                 % argument types indexed by name.
                 qual_tvar_name_map      :: tvar_name_map,
 
-                qual_vartypes           :: vartypes,
+                qual_explicit_vartypes  :: vartypes,
 
                 % Module qualification info.
                 qual_mq_info            :: mq_info,
@@ -168,8 +168,8 @@ update_qual_info(TVarNameMap, TVarSet, VarTypes, MaybeOptImported,
 
 qual_info_get_tvarset(Info, X) :-
     X = Info ^ qual_tvarset.
-qual_info_get_var_types(Info, X) :-
-    X = Info ^ qual_vartypes.
+qual_info_get_explicit_var_types(Info, X) :-
+    X = Info ^ qual_explicit_vartypes.
 qual_info_get_mq_info(Info, X) :-
     X = Info ^ qual_mq_info.
 qual_info_get_maybe_opt_imported(Info, X) :-
@@ -179,8 +179,8 @@ qual_info_get_found_syntax_error(Info, X) :-
 qual_info_get_found_trace_goal(Info, X) :-
     X = Info ^ qual_found_trace_goal.
 
-qual_info_set_var_types(X, !Info) :-
-    !Info ^ qual_vartypes := X.
+qual_info_set_explicit_var_types(X, !Info) :-
+    !Info ^ qual_explicit_vartypes := X.
 qual_info_set_mq_info(X, !Info) :-
     !Info ^ qual_mq_info := X.
 qual_info_set_found_syntax_error(X, !Info) :-

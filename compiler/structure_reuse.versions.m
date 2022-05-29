@@ -177,8 +177,8 @@ maybe_create_full_reuse_proc_copy(PPId, NewPPId, !ModuleInfo, !ReuseTable) :-
 create_fresh_pred_proc_info_copy(PPId, NoClobberArgNums, NewPPId,
         !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, ProcInfo0),
-    create_fresh_pred_proc_info_copy_2(PPId, PredInfo0, ProcInfo0,
-        NoClobberArgNums, ReusePredInfo, ReuseProcId),
+    create_fresh_pred_proc_info_copy_2(!.ModuleInfo, PPId,
+        PredInfo0, ProcInfo0, NoClobberArgNums, ReusePredInfo, ReuseProcId),
 
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     predicate_table_insert(ReusePredInfo, ReusePredId, PredTable0, PredTable),
@@ -190,11 +190,11 @@ create_fresh_pred_proc_info_copy(PPId, NoClobberArgNums, NewPPId,
     set.insert(ReusePredId, ReusePreds0, ReusePreds),
     module_info_set_structure_reuse_preds(ReusePreds, !ModuleInfo).
 
-:- pred create_fresh_pred_proc_info_copy_2(pred_proc_id::in, 
+:- pred create_fresh_pred_proc_info_copy_2(module_info::in, pred_proc_id::in, 
     pred_info::in, proc_info::in, no_clobber_args::in,
     pred_info::out, proc_id::out) is det.
 
-create_fresh_pred_proc_info_copy_2(PredProcId, PredInfo, ProcInfo,
+create_fresh_pred_proc_info_copy_2(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         NoClobberArgNums, ReusePredInfo, ReuseProcId) :-
     PredProcId = proc(PredId, ProcId),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -226,8 +226,8 @@ create_fresh_pred_proc_info_copy_2(PredProcId, PredInfo, ProcInfo,
     GoalType = goal_not_for_promise(np_goal_type_none),
     % Shouldn't we use the *current* module's name, even if it is not
     % the same as PredModuleName?
-    pred_info_create(PredOrFunc, PredModuleName, ReusePredName, ProgContext,
-        NewPredOrigin, PredStatus, PredMarkers, MerTypes, TVarset,
+    pred_info_create(ModuleInfo, PredOrFunc, PredModuleName, ReusePredName,
+        ProgContext, NewPredOrigin, PredStatus, PredMarkers, MerTypes, TVarset,
         ExistQTVars, ProgConstraints, AssertIds, VarNameRemap, GoalType,
         ProcInfo, ReuseProcId, ReusePredInfo).
 

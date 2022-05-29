@@ -617,17 +617,17 @@
     prog_constraints::in, constraint_proof_map::in, constraint_map::in,
     clauses_info::in, map(prog_var, string)::in, pred_info::out) is det.
 
-    % pred_info_create(PredOrFunc, ModuleName, PredName, Context, Origin,
-    %   Status, Markers, ArgTypes, TypeVarSet, ExistQVars,
-    %   ClassContext, Assertions, VarNameRemap, ProcInfo, ProcId,
-    %   PredInfo)
+    % pred_info_create(ModuleInfo, PredOrFunc, ModuleName, PredName,
+    %   Context, Origin, Status, Markers, ArgTypes, TypeVarSet, ExistQVars,
+    %   ClassContext, Assertions, VarNameRemap, ProcInfo, ProcId, PredInfo)
     %
     % Return a pred_info whose fields are filled in from the information
     % (direct and indirect) in the arguments, and from defaults. The given
     % proc_info becomes the only procedure of the predicate (currently)
     % and its proc_id is returned as the second last argument.
     %
-:- pred pred_info_create(pred_or_func::in, module_name::in, string::in,
+:- pred pred_info_create(module_info::in,
+    pred_or_func::in, module_name::in, string::in,
     prog_context::in, pred_origin::in, pred_status::in, pred_markers::in,
     list(mer_type)::in, tvarset::in, existq_tvars::in, prog_constraints::in,
     set(assert_id)::in, map(prog_var, string)::in, goal_type::in,
@@ -1332,9 +1332,10 @@ pred_info_init(PredOrFunc, PredModuleName, PredName, PredFormArity, Context,
         PredOrFunc, Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
 
-pred_info_create(PredOrFunc, PredModuleName, PredName, Context, Origin, Status,
-        Markers, ArgTypes, TypeVarSet, ExistQVars, ClassContext,
-        Assertions, VarNameRemap, GoalType, ProcInfo, ProcId, PredInfo) :-
+pred_info_create(ModuleInfo, PredOrFunc, PredModuleName, PredName,
+        Context, Origin, Status, Markers, ArgTypes, TypeVarSet,
+        ExistQVars, ClassContext, Assertions, VarNameRemap, GoalType,
+        ProcInfo, ProcId, PredInfo) :-
     % argument Context
     CurUserDecl = maybe.no,
     % argument GoalType
@@ -1360,7 +1361,10 @@ pred_info_create(PredOrFunc, PredModuleName, PredName, Context, Origin, Status,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
         VarNameRemap, Assertions, ObsoleteInFavourOf, InstanceMethodArgTypes),
 
-    proc_info_get_varset_vartypes(ProcInfo, VarSet, VarTypes),
+    % The VarSet and ExplicitVarTypes fields are not needed after typechecking.
+    varset.init(VarSet),
+    init_vartypes(ExplicitVarTypes),
+    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     map.init(TVarNameMap),
     proc_info_get_headvars(ProcInfo, HeadVars),
     HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
@@ -1368,8 +1372,8 @@ pred_info_create(PredOrFunc, PredModuleName, PredName, Context, Origin, Status,
     ClausesRep = init_clauses_rep,
     ItemNumbers = init_clause_item_numbers_user,
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
-    ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
-        HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
+    ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, VarTable, RttiVarMaps,
+        TVarNameMap, HeadVarVec, ClausesRep, ItemNumbers,
         no_foreign_lang_clauses, no_clause_syntax_errors),
 
     % argument PredModuleName
@@ -1493,8 +1497,8 @@ define_new_pred(PredSymName, Origin, TVarSet, InstVarSet,
 
     set.init(Assertions),
     GoalType = goal_not_for_promise(np_goal_type_none),
-    pred_info_create(pf_predicate, PredModuleName, PredName, Context, Origin,
-        PredStatus, Markers, ArgTypes, TVarSet, ExistQVars,
+    pred_info_create(!.ModuleInfo, pf_predicate, PredModuleName, PredName,
+        Context, Origin, PredStatus, Markers, ArgTypes, TVarSet, ExistQVars,
         ClassContext, Assertions, VarNameRemap, GoalType, ProcInfo,
         ProcId, PredInfo),
 
@@ -2665,6 +2669,12 @@ marker_list_to_markers(Markers, MarkerSet) :-
 :- pred make_var_table(module_info::in, prog_varset::in, vartypes::in,
     var_table::out) is det.
 :- pred split_var_table(var_table::in, prog_varset::out, vartypes::out) is det.
+
+:- pred vars_types_to_var_table(module_info::in, prog_varset::in,
+    assoc_list(prog_var, mer_type)::in, var_table::out) is det.
+
+:- pred corresponding_vars_types_to_var_table(module_info::in, prog_varset::in,
+    list(prog_var)::in, list(mer_type)::in, var_table::out) is det.
 
 :- pred proc_info_get_structure_sharing(proc_info::in,
     maybe(structure_sharing_domain_and_status)::out) is det.
@@ -3942,6 +3952,63 @@ split_var_table_loop([Var - Entry | VarsEntries],
         !:RevVarNames = [Var - Name | !.RevVarNames]
     ),
     split_var_table_loop(VarsEntries, !RevVarTypes, !RevVarNames).
+
+%---------------------------------------------------------------------------%
+
+vars_types_to_var_table(ModuleInfo, VarSet, VarsTypes, VarTable) :-
+    vars_types_to_vars_entries(ModuleInfo, VarSet, VarsTypes, [], VarsEntries),
+    list.sort(VarsEntries, SortedVarsEntries),
+    var_table_from_sorted_assoc_list(SortedVarsEntries, VarTable).
+
+:- pred vars_types_to_vars_entries(module_info::in, prog_varset::in,
+    assoc_list(prog_var, mer_type)::in,
+    assoc_list(prog_var, var_table_entry)::in,
+    assoc_list(prog_var, var_table_entry)::out) is det.
+
+vars_types_to_vars_entries(_, _, [], !VarsEntries).
+vars_types_to_vars_entries(ModuleInfo, VarSet, [Var - Type | VarsTypes],
+        !VarsEntries) :-
+    ( if varset.search_name(VarSet, Var, Name0) then
+        Name = Name0
+    else
+        Name = ""
+    ),
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+    Entry = vte(Name, Type, IsDummy),
+    !:VarsEntries = [Var - Entry | !.VarsEntries],
+    vars_types_to_vars_entries(ModuleInfo, VarSet, VarsTypes, !VarsEntries).
+
+%---------------------------------------------------------------------------%
+
+corresponding_vars_types_to_var_table(ModuleInfo, VarSet, Vars, Types,
+        VarTable) :-
+    corresponding_vars_types_to_vars_entries(ModuleInfo, VarSet, Vars, Types,
+        [], VarsEntries),
+    list.sort(VarsEntries, SortedVarsEntries),
+    var_table_from_sorted_assoc_list(SortedVarsEntries, VarTable).
+
+:- pred corresponding_vars_types_to_vars_entries(module_info::in,
+    prog_varset::in, list(prog_var)::in, list(mer_type)::in,
+    assoc_list(prog_var, var_table_entry)::in,
+    assoc_list(prog_var, var_table_entry)::out) is det.
+
+corresponding_vars_types_to_vars_entries(_, _, [], [], !VarsEntries).
+corresponding_vars_types_to_vars_entries(_, _, [], [_ | _], !VarsEntries) :-
+    unexpected($pred, "length mismatch").
+corresponding_vars_types_to_vars_entries(_, _, [_ | _], [], !VarsEntries) :-
+    unexpected($pred, "length mismatch").
+corresponding_vars_types_to_vars_entries(ModuleInfo, VarSet,
+        [Var | Vars], [Type | Types], !VarsEntries) :-
+    ( if varset.search_name(VarSet, Var, Name0) then
+        Name = Name0
+    else
+        Name = ""
+    ),
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+    Entry = vte(Name, Type, IsDummy),
+    !:VarsEntries = [Var - Entry | !.VarsEntries],
+    corresponding_vars_types_to_vars_entries(ModuleInfo, VarSet, Vars, Types,
+        !VarsEntries).
 
 %---------------------------------------------------------------------------%
 

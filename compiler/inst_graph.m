@@ -20,6 +20,7 @@
 
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 
 :- import_module io.
 :- import_module list.
@@ -160,25 +161,28 @@
 
     % Values of this type are intended to contain all the info related
     % to inst_graphs for a predicate that needs to be stored in the pred_info.
-:- type inst_graph_info.
+:- type inst_graph_info
+    --->    inst_graph_info(
+                % Inst graph derived from the mode declarations,
+                % if there are any. If there are no mode declarations
+                % for the pred, this is the same as the
+                % implementation_inst_graph.
+                interface_inst_graph        :: inst_graph,
+
+                % Vars that appear in the head of the mode declaration
+                % constraint.
+                interface_vars              :: list(prog_var),
+
+                % Table of the variables used for interface_inst_graph.
+                interface_var_table         :: var_table,
+
+                % Inst graph derived from the body of the predicate.
+                implementation_inst_graph   :: inst_graph
+            ).
 
     % Create an empty inst_graph_info.
     %
 :- func inst_graph_info_init = inst_graph_info.
-
-:- func interface_inst_graph(inst_graph_info) = inst_graph.
-:- func 'interface_inst_graph :='(inst_graph_info, inst_graph) =
-    inst_graph_info.
-
-:- func interface_vars(inst_graph_info) = list(prog_var).
-:- func 'interface_vars :='(inst_graph_info, list(prog_var)) = inst_graph_info.
-
-:- func interface_varset(inst_graph_info) = prog_varset.
-:- func 'interface_varset :='(inst_graph_info, prog_varset) = inst_graph_info.
-
-:- func implementation_inst_graph(inst_graph_info) = inst_graph.
-:- func 'implementation_inst_graph :='(inst_graph_info, inst_graph) =
-    inst_graph_info.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -434,28 +438,10 @@ dump_var(VarSet, Var, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type inst_graph_info
-    --->    inst_graph_info(
-                % Inst graph derived from the mode declarations,
-                % if there are any. If there are no mode declarations
-                % for the pred, this is the same as the
-                % implementation_inst_graph.
-                interface_inst_graph    :: inst_graph,
-
-                % Vars that appear in the head of the mode declaration
-                % constraint.
-                interface_vars          :: list(prog_var),
-
-                % Varset used for interface_inst_graph.
-                interface_varset        :: prog_varset,
-
-                % Inst graph derived from the body of the predicate.
-                implementation_inst_graph :: inst_graph
-            ).
-
-inst_graph_info_init = inst_graph_info(InstGraph, [], VarSet, InstGraph) :-
-    varset.init(VarSet),
-    map.init(InstGraph).
+inst_graph_info_init = Info :-
+    init_var_table(VarTable),
+    map.init(InstGraph),
+    Info = inst_graph_info(InstGraph, [], VarTable, InstGraph).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.inst_graph.

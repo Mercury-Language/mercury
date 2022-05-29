@@ -297,9 +297,7 @@
 %---------------------------------------------------------------------------%
 
 init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
-    clauses_info_get_varset(ClausesInfo, VarSet),
-    clauses_info_get_vartypes(ClausesInfo, VarTypes),
-    make_var_table(ModuleInfo, VarSet, VarTypes, VarTable),
+    clauses_info_get_var_table(ClausesInfo, VarTable),
     pred_info_get_typevarset(PredInfo, TypeVarSet),
     pred_info_get_tvar_kind_map(PredInfo, TypeVarKinds),
     pred_info_get_constraint_proof_map(PredInfo, ProofMap),

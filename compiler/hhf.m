@@ -52,14 +52,13 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module list.
 :- import_module map.
 :- import_module require.
 :- import_module solutions.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -70,14 +69,14 @@ convert_pred_to_hhf(Simple, PredId, !ModuleInfo, !IO) :-
         % PredInfo2 = PredInfo0
         pred_info_get_clauses_info(PredInfo0, ClausesInfo),
         clauses_info_get_headvar_list(ClausesInfo, HeadVars),
-        clauses_info_get_varset(ClausesInfo, VarSet),
+        clauses_info_get_var_table(ClausesInfo, VarTable),
         some [!IG] (
             pred_info_get_inst_graph_info(PredInfo0, !:IG),
             inst_graph.init(HeadVars, InstGraph),
             !IG ^ implementation_inst_graph := InstGraph,
             !IG ^ interface_inst_graph := InstGraph,
             !IG ^ interface_vars := HeadVars,
-            !IG ^ interface_varset := VarSet,
+            !IG ^ interface_var_table := VarTable,
             pred_info_set_inst_graph_info(!.IG, PredInfo0, PredInfo2)
         )
     else
@@ -94,7 +93,7 @@ convert_pred_to_hhf(Simple, PredId, !ModuleInfo, !IO) :-
 
             % AAA only for non-imported preds with no mode decls.
             clauses_info_get_headvar_list(ClausesInfo, HeadVars),
-            clauses_info_get_varset(ClausesInfo, VarSet),
+            clauses_info_get_var_table(ClausesInfo, VarTable),
             !IG ^ interface_inst_graph := ImplementationInstGraph,
             solutions(
                 (pred(V::out) is nondet :-
@@ -103,7 +102,7 @@ convert_pred_to_hhf(Simple, PredId, !ModuleInfo, !IO) :-
                     V0, V)
                 ), InterfaceVars),
             !IG ^ interface_vars := InterfaceVars,
-            !IG ^ interface_varset := VarSet,
+            !IG ^ interface_var_table := VarTable,
 
             pred_info_set_inst_graph_info(!.IG, PredInfo1, PredInfo2)
         )
@@ -140,11 +139,10 @@ convert_pred_to_hhf(Simple, PredId, !ModuleInfo, !IO) :-
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 convert_clauses_info_to_hhf(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
-    clauses_info_get_varset(!.ClausesInfo, VarSet0),
-    clauses_info_get_vartypes(!.ClausesInfo, VarTypes0),
-    vartypes_vars(VarTypes0, Vars0),
+    clauses_info_get_var_table(!.ClausesInfo, VarTable0),
+    var_table_vars(VarTable0, Vars0),
     inst_graph.init(Vars0, InstGraph0),
-    Info0 = hhf_info(InstGraph0, VarSet0, VarTypes0),
+    Info0 = hhf_info(ModuleInfo, InstGraph0, VarTable0),
 
     clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
     clauses_info_clauses(Clauses0, ItemNumbers, !ClausesInfo),
@@ -164,14 +162,14 @@ convert_clauses_info_to_hhf(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
     set_clause_list(Clauses, ClausesRep),
     clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
 
-    complete_inst_graph(ModuleInfo, Info1, Info),
+    complete_inst_graph(Info1, Info),
     % XXX Comment out the above line for incomplete, quick checking.
     % Info = Info1,
 
-    Info = hhf_info(InstGraph1, VarSet, VarTypes),
+    Info = hhf_info(_, InstGraph1, VarTable),
     (
         Simple = yes,
-        vartypes_vars(VarTypes, Vars),
+        var_table_vars(VarTable, Vars),
         inst_graph.init(Vars, InstGraph)
     ;
         Simple = no,
@@ -183,14 +181,13 @@ convert_clauses_info_to_hhf(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
     % varset.vars(VarSet1, Vars1),
     % varset.ensure_unique_names(Vars1, "_", VarSet1, VarSet),
 
-    clauses_info_set_varset(VarSet, !ClausesInfo),
-    clauses_info_set_vartypes(VarTypes, !ClausesInfo).
+    clauses_info_set_var_table(VarTable, !ClausesInfo).
 
 :- type hhf_info
     --->    hhf_info(
-                hhfi_inst_graph :: inst_graph,
-                hhfi_varset     :: prog_varset,
-                hhfi_vartypes   :: vartypes
+                hhfi_module_info    :: module_info,
+                hhfi_inst_graph     :: inst_graph,
+                hhfi_var_table      :: var_table
             ).
 
 :- pred convert_clause_to_hhf(list(prog_var)::in, clause::in, clause::out,
@@ -202,16 +199,8 @@ convert_clause_to_hhf(_HeadVars, Clause0, Clause, !HI) :-
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
     convert_goal_to_hhf(NonLocals, Goal0, Goal, !HI),
     Clause = Clause0 ^ clause_body := Goal.
-
     % XXX We probably need to requantify, but doing so stuffs up the
     % inst_graph.
-    %
-    % VarSet1 = !.HI ^ hhfi_varset,
-    % VarTypes1 = !.HI ^ hhfi_vartypes,
-    % implicitly_quantify_clause_body(HeadVars, Goal1, VarSet1, VarTypes1,
-    %     Goal, VarSet, VarTypes, _Warnings),
-    % !HI ^ hhfi_varset := VarSet,
-    % !HI ^ hhfi_vartypes := VarTypes.
 
 :- pred convert_goal_to_hhf(set_of_progvar::in, hlds_goal::in, hlds_goal::out,
     hhf_info::in, hhf_info::out) is det.
@@ -368,15 +357,13 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
             set_of_var.member(NonLocals, A)
         )
     then
-        VarSet0 = !.HI ^ hhfi_varset,
-        VarTypes0 = !.HI ^ hhfi_vartypes,
-        varset.new_var(V, VarSet0, VarSet),
-        lookup_var_type(VarTypes0, A, Type),
-        add_var_type(V, Type, VarTypes0, VarTypes),
+        VarTable0 = !.HI ^ hhfi_var_table,
+        lookup_var_entry(VarTable0, A, EntryA),
+        EntryV = EntryA ^ vte_name := "",
+        add_var_entry(EntryV, V, VarTable0, VarTable),
         map.init(Empty),
         map.det_insert(V, node(Empty, top_level), InstGraph0, InstGraph),
-        !HI ^ hhfi_varset := VarSet,
-        !HI ^ hhfi_vartypes := VarTypes,
+        !HI ^ hhfi_var_table := VarTable,
         !HI ^ hhfi_inst_graph := InstGraph,
         GINonlocals0 = goal_info_get_nonlocals(GI0),
         set_of_var.insert(V, GINonlocals0, GINonlocals),
@@ -387,21 +374,21 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
         Goals = Goals0
     ).
 
-:- pred complete_inst_graph(module_info::in, hhf_info::in, hhf_info::out)
-    is det.
+:- pred complete_inst_graph(hhf_info::in, hhf_info::out) is det.
 
-complete_inst_graph(ModuleInfo, !HI) :-
+complete_inst_graph(!HI) :-
     InstGraph0 = !.HI ^ hhfi_inst_graph,
     map.keys(InstGraph0, Vars),
-    list.foldl(complete_inst_graph_node(ModuleInfo, Vars), Vars, !HI).
+    list.foldl(complete_inst_graph_node(Vars), Vars, !HI).
 
-:- pred complete_inst_graph_node(module_info::in, list(prog_var)::in,
+:- pred complete_inst_graph_node(list(prog_var)::in,
     prog_var::in, hhf_info::in, hhf_info::out) is det.
 
-complete_inst_graph_node(ModuleInfo, BaseVars, Var, !HI) :-
-    VarTypes0 = !.HI ^ hhfi_vartypes,
+complete_inst_graph_node(BaseVars, Var, !HI) :-
+    ModuleInfo = !.HI ^ hhfi_module_info,
+    VarTable0 = !.HI ^ hhfi_var_table,
+    lookup_var_type(VarTable0, Var, Type),
     ( if
-        search_var_type(VarTypes0, Var, Type),
         type_constructors(ModuleInfo, Type, Constructors),
         type_to_ctor(Type, TypeCtor)
     then
@@ -413,19 +400,17 @@ complete_inst_graph_node(ModuleInfo, BaseVars, Var, !HI) :-
             TypeCtorSymName = qualified(TypeCtorModuleName, _)
         ),
         list.foldl(
-            maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeCtor,
-                TypeCtorModuleName),
+            maybe_add_cons_id(Var, BaseVars, TypeCtor, TypeCtorModuleName),
             Constructors, !HI)
     else
         true
     ).
 
-:- pred maybe_add_cons_id(prog_var::in, module_info::in, list(prog_var)::in,
+:- pred maybe_add_cons_id(prog_var::in, list(prog_var)::in,
     type_ctor::in, module_name::in, constructor::in,
     hhf_info::in, hhf_info::out) is det.
 
-maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeCtor, TypeCtorModuleName,
-        Ctor, !HI) :-
+maybe_add_cons_id(Var, BaseVars, TypeCtor, TypeCtorModuleName, Ctor, !HI) :-
     Ctor = ctor(_, _, Name, Args, Arity, _),
     SymName = qualified(TypeCtorModuleName, unqualify_name(Name)),
     ConsId = cons(SymName, Arity, TypeCtor),
@@ -433,49 +418,46 @@ maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeCtor, TypeCtorModuleName,
     ( if map.contains(Functors0, ConsId) then
         true
     else
-        list.map_foldl(add_cons_id(Var, ModuleInfo, BaseVars), Args, NewVars,
-            !HI),
+        list.map_foldl(add_cons_id(Var, BaseVars), Args, NewVars, !HI),
         map.det_insert(ConsId, NewVars, Functors0, Functors),
         !HI ^ hhfi_inst_graph :=
             map.det_update(!.HI ^ hhfi_inst_graph, Var,
                 node(Functors, MaybeParent))
     ).
 
-:- pred add_cons_id(prog_var::in, module_info::in, list(prog_var)::in,
-    constructor_arg::in, prog_var::out, hhf_info::in, hhf_info::out)
-    is det.
+:- pred add_cons_id(prog_var::in, list(prog_var)::in,
+    constructor_arg::in, prog_var::out, hhf_info::in, hhf_info::out) is det.
 
-add_cons_id(Var, ModuleInfo, BaseVars, Arg, NewVar, !HI) :-
+add_cons_id(Var, BaseVars, Arg, NewVar, !HI) :-
     ArgType = Arg ^ arg_type,
-    !.HI = hhf_info(InstGraph0, VarSet0, VarTypes0),
+    !.HI = hhf_info(ModuleInfo, InstGraph0, VarTable0),
     ( if
-        find_var_with_type(Var, ArgType, InstGraph0, VarTypes0,
+        find_var_with_type(Var, ArgType, InstGraph0, VarTable0,
             BaseVars, NewVar0)
     then
         NewVar = NewVar0
     else
-        varset.new_var(NewVar, VarSet0, VarSet),
-        add_var_type(NewVar, ArgType, VarTypes0, VarTypes),
+        IsDummy = is_type_a_dummy(ModuleInfo, ArgType),
+        NewVarEntry = vte("", ArgType, IsDummy),
+        add_var_entry(NewVarEntry, NewVar, VarTable0, VarTable),
         map.init(Empty),
         map.det_insert(NewVar, node(Empty, parent(Var)),
             InstGraph0, InstGraph),
-        !:HI = hhf_info(InstGraph, VarSet, VarTypes),
-        complete_inst_graph_node(ModuleInfo, BaseVars, NewVar, !HI)
+        !:HI = hhf_info(ModuleInfo, InstGraph, VarTable),
+        complete_inst_graph_node(BaseVars, NewVar, !HI)
     ).
 
 :- pred find_var_with_type(prog_var::in, mer_type::in, inst_graph::in,
-    vartypes::in, list(prog_var)::in, prog_var::out) is semidet.
+    var_table::in, list(prog_var)::in, prog_var::out) is semidet.
 
-find_var_with_type(Var0, Type, InstGraph, VarTypes, BaseVars, Var) :-
-    ( if
-        search_var_type(VarTypes, Var0, Type0),
-        same_type(Type0, Type)
-    then
+find_var_with_type(Var0, Type, InstGraph, VarTable, BaseVars, Var) :-
+    lookup_var_type(VarTable, Var0, Type0),
+    ( if same_type(Type0, Type) then
         Var = Var0
     else
         map.lookup(InstGraph, Var0, node(_, parent(Var1))),
         \+ Var1 `list.member` BaseVars,
-        find_var_with_type(Var1, Type, InstGraph, VarTypes, BaseVars, Var)
+        find_var_with_type(Var1, Type, InstGraph, VarTable, BaseVars, Var)
     ).
 
 :- pred same_type(mer_type::in, mer_type::in) is semidet.

@@ -54,9 +54,9 @@
 % To keep purity/impurity consistent, it is required that every impure
 % predicate/function be declared so. A predicate is impure if:
 %
-%   1.  It is declared impure, or
-%   2a. It is not promised pure, and
-%   2b. It calls some impure predicates or functions.
+%   1.  It is declared impure, OR
+%   2.  It calls some impure predicates or functions,
+%       AND it is not promised to be pure.
 %
 % A predicate or function is declared impure by preceding the `pred' or
 % `func' in its declaration with `impure'. It is promised to be pure with a
@@ -191,7 +191,6 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
 :- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
@@ -260,18 +259,14 @@ puritycheck_pred(ModuleInfo, PredId, !PredInfo, !Specs) :-
     some [!ClausesInfo] (
         pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
         clauses_info_clauses(Clauses0, ItemNumbers, !ClausesInfo),
-        clauses_info_get_vartypes(!.ClausesInfo, VarTypes0),
-        clauses_info_get_varset(!.ClausesInfo, VarSet0),
-        make_var_table(ModuleInfo, VarSet0, VarTypes0, VarTable0),
+        clauses_info_get_var_table(!.ClausesInfo, VarTable0),
         PurityInfo0 = purity_info(ModuleInfo, run_post_typecheck_tasks,
             do_not_need_to_requantify, have_not_converted_unify, !.PredInfo,
             VarTable0, []),
         compute_purity_for_clauses(Clauses0, Clauses, !.PredInfo,
             purity_pure, ActualPurity, PurityInfo0, PurityInfo),
         PurityInfo = purity_info(_, _, _, _, !:PredInfo, VarTable, GoalSpecs),
-        split_var_table(VarTable, VarSet, VarTypes),
-        clauses_info_set_vartypes(VarTypes, !ClausesInfo),
-        clauses_info_set_varset(VarSet, !ClausesInfo),
+        clauses_info_set_var_table(VarTable, !ClausesInfo),
         set_clause_list(Clauses, ClausesRep),
         clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
         pred_info_set_clauses_info(!.ClausesInfo, !PredInfo)
@@ -808,8 +803,8 @@ finally_resolve_pred_overloading(ModuleInfo, CallerPredInfo,
         pred_info_get_external_type_params(CallerPredInfo, ExternalTypeParams),
         pred_info_get_markers(CallerPredInfo, Markers),
         pred_info_get_clauses_info(CallerPredInfo, ClausesInfo),
-        clauses_info_get_vartypes(ClausesInfo, VarTypes),
-        lookup_var_types(VarTypes, Args0, ArgTypes),
+        clauses_info_get_var_table(ClausesInfo, VarTable),
+        lookup_var_types(VarTable, Args0, ArgTypes),
         resolve_pred_overloading(ModuleInfo, Markers, TVarSet, ExistQVars,
             ArgTypes, ExternalTypeParams, Context, PredName0, PredName, PredId)
     else

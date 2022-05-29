@@ -199,7 +199,6 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.vartypes.
 :- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
@@ -281,14 +280,14 @@ fixup_pred_polymorphism(PredId, !ExistsCastPredIds, !ModuleInfo) :-
 
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
-    clauses_info_get_vartypes(ClausesInfo0, VarTypes0),
+    clauses_info_get_var_table(ClausesInfo0, VarTable0),
     clauses_info_get_headvars(ClausesInfo0, HeadVars),
 
     pred_info_get_arg_types(PredInfo0, TypeVarSet, ExistQVars, ArgTypes0),
     proc_arg_vector_partition_poly_args(HeadVars, ExtraHeadVarList,
         OldHeadVarList),
 
-    lookup_var_types(VarTypes0, ExtraHeadVarList, ExtraArgTypes),
+    lookup_var_types(VarTable0, ExtraHeadVarList, ExtraArgTypes),
     ArgTypes = ExtraArgTypes ++ ArgTypes0,
     pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes,
         PredInfo0, PredInfo1),
@@ -302,7 +301,7 @@ fixup_pred_polymorphism(PredId, !ExistsCastPredIds, !ModuleInfo) :-
     ( if
         ExistQVars = [_ | _],
         % This can fail for unification procedures of equivalence types.
-        lookup_var_types(VarTypes0, OldHeadVarList, OldHeadVarTypes),
+        lookup_var_types(VarTable0, OldHeadVarList, OldHeadVarTypes),
         type_list_subsumes(ArgTypes0, OldHeadVarTypes, Subn),
         not map.is_empty(Subn)
     then
@@ -410,9 +409,9 @@ polymorphism_process_pred(PredId, SafeToContinue, !Specs, !ModuleInfo) :-
 polymorphism_process_clause_info(ModuleInfo0, PredInfo0, !ClausesInfo, !:Info,
         ExtraArgModes) :-
     init_poly_info(ModuleInfo0, PredInfo0, !.ClausesInfo, !:Info),
-    !.ClausesInfo = clauses_info(_VarSet, TVarNameMap, _ExplicitVarTypes,
-        _VarTypes, HeadVars0, ClausesRep0, ItemNumbers,
-        _RttiVarMaps, HaveForeignClauses, HadSyntaxErrors),
+    !.ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
+        _VarTable, _RttiVarMaps, TVarNameMap, HeadVars0, ClausesRep0,
+        ItemNumbers, HaveForeignClauses, HadSyntaxErrors),
 
     setup_headvars(PredInfo0, HeadVars0, HeadVars,
         ExtraArgModes, UnconstrainedTVars,
@@ -427,14 +426,13 @@ polymorphism_process_clause_info(ModuleInfo0, PredInfo0, !ClausesInfo, !:Info,
 
     % Set the new values of the fields in clauses_info.
     poly_info_get_var_table(!.Info, VarTable),
-    split_var_table(VarTable, VarSet, VarTypes),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps),
     set_clause_list(Clauses, ClausesRep),
-    % The ExplicitVarTypes is only used while adding the clauses.
-    init_vartypes(ExplicitVarTypes),
-    !:ClausesInfo = clauses_info(VarSet, TVarNameMap, ExplicitVarTypes,
-        VarTypes, HeadVars, ClausesRep, ItemNumbers,
-        RttiVarMaps, HaveForeignClauses, HadSyntaxErrors).
+    % The VarSet and ExplicitVarTypes fields are used
+    % only while adding the clauses and doing typechecking.
+    !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
+        VarTable, RttiVarMaps, TVarNameMap, HeadVars, ClausesRep,
+        ItemNumbers, HaveForeignClauses, HadSyntaxErrors).
 
 :- pred polymorphism_process_clause(pred_info::in,
     proc_arg_vector(prog_var)::in, proc_arg_vector(prog_var)::in,

@@ -40,6 +40,7 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 :- import_module parse_tree.vartypes.
 :- import_module recompilation.
 
@@ -170,14 +171,7 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeArgModes, Context,
             PredFormArity = pred_form_arity(PredFormArityInt),
             make_n_fresh_vars("HeadVar__", PredFormArityInt, ArgVars,
                 ArgVarSet0, ArgVarSet),
-            % XXX We could use explicit type qualifications here for the
-            % argument types, but explicit type qualification doesn't work
-            % correctly with type inference due to a bug somewhere in
-            % typecheck.m -- the explicitly declared types are not kept in
-            % sync with the predicate's tvarset after the first pass of
-            % type checking.
-            % map.from_corresponding_lists(ArgVars, Types, VarTypes0)
-            init_vartypes(VarTypes0),
+
             goal_info_init(GoalInfo0),
             set_of_var.list_to_set(ArgVars, NonLocals),
             goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
@@ -192,14 +186,23 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeArgModes, Context,
                 GoalInfo, Goal),
             Clause = clause(selected_modes(ProcIds), Goal, impl_lang_mercury,
                 Context, []),
+            % XXX We could use explicit type qualifications here for the
+            % argument types, but explicit type qualification doesn't work
+            % correctly with type inference due to a bug somewhere in
+            % typecheck.m -- the explicitly declared types are not kept in
+            % sync with the predicate's tvarset after the first pass of
+            % type checking.
+            % map.from_corresponding_lists(ArgVars, Types, ExplicitVarTypes0)
+            init_vartypes(ExplicitVarTypes),
+            init_var_table(VarTable),
+            rtti_varmaps_init(RttiVarMaps),
             map.init(TVarNameMap),
             ArgsVec = proc_arg_vector_init(PredOrFunc, ArgVars),
             set_clause_list([Clause], ClausesRep),
             ItemNumbers = init_clause_item_numbers_comp_gen,
-            rtti_varmaps_init(RttiVarMaps),
-            Clauses = clauses_info(ArgVarSet, TVarNameMap,
-                VarTypes0, VarTypes0, ArgsVec, ClausesRep, ItemNumbers,
-                RttiVarMaps, no_foreign_lang_clauses, no_clause_syntax_errors),
+            Clauses = clauses_info(ArgVarSet, ExplicitVarTypes,
+                VarTable, RttiVarMaps, TVarNameMap, ArgsVec, ClausesRep,
+                ItemNumbers, no_foreign_lang_clauses, no_clause_syntax_errors),
             pred_info_get_markers(PredInfo0, Markers0),
             add_marker(marker_calls_are_fully_qualified, Markers0, Markers),
             map.init(Proofs),

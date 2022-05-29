@@ -68,8 +68,8 @@
     % Make sure the vartypes field in the clauses_info is valid for imported
     % predicates. (Non-imported predicates should already have it set up.)
     %
-:- pred setup_vartypes_in_clauses_for_imported_pred(pred_info::in,
-    pred_info::out) is det.
+:- pred setup_var_table_in_clauses_for_imported_pred(module_info::in,
+    pred_info::in, pred_info::out) is det.
 
     % Propagate type information into the argument modes of all
     % the procedures of the given predicate.
@@ -114,7 +114,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -154,8 +154,23 @@ post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId, !PredInfo,
             ; pred_info_is_pseudo_imported(!.PredInfo)
             )
         then
-            setup_vartypes_in_clauses_for_imported_pred(!PredInfo)
+            setup_var_table_in_clauses_for_imported_pred(ModuleInfo, !PredInfo)
         else
+            % Emptying out the varset tells hlds_out_pred.m that the
+            % clauses_info has been through typechecking, and that
+            % the authoritative source for information about variables' names
+            % is now the var_table field, not the varset field.
+            % This is because all the compiler passes after typechecking
+            % that create new variables add them to the var_table field,
+            % not to the varset field.
+            %
+            % setup_var_table_in_clauses_for_imported_pred does the same
+            % in the then branch of this if-then-else.
+            pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
+            varset.init(EmptyVarSet),
+            clauses_info_set_varset(EmptyVarSet, ClausesInfo0, ClausesInfo),
+            pred_info_set_clauses_info(ClausesInfo, !PredInfo),
+
             find_unproven_body_constraints(ModuleInfo, PredId, !.PredInfo,
                 !NumBadErrors, !NoTypeErrorSpecs),
             find_unresolved_types_in_pred(ModuleInfo, PredId, !PredInfo,
@@ -418,25 +433,24 @@ find_unresolved_types_in_pred(ModuleInfo, PredId, !PredInfo,
         !NoTypeErrorSpecs) :-
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
     pred_info_get_external_type_params(!.PredInfo, ExternalTypeParams),
-    clauses_info_get_varset(ClausesInfo0, VarSet),
-    clauses_info_get_vartypes(ClausesInfo0, VarTypesMap0),
-    vartypes_to_sorted_assoc_list(VarTypesMap0, VarTypesList),
+    clauses_info_get_var_table(ClausesInfo0, VarTable0),
+    var_table_to_sorted_assoc_list(VarTable0, VarsEntries),
     set.init(BindToVoidTVars0),
-    find_unresolved_types_in_vars(VarTypesList, ExternalTypeParams,
-        [], UnresolvedVarsTypes, BindToVoidTVars0, BindToVoidTVars),
+    find_unresolved_types_in_vars(VarsEntries, ExternalTypeParams,
+        [], UnresolvedVarsEntries, BindToVoidTVars0, BindToVoidTVars),
     (
-        UnresolvedVarsTypes = []
+        UnresolvedVarsEntries = []
     ;
-        UnresolvedVarsTypes = [_ | _],
+        UnresolvedVarsEntries = [_ | _],
         report_unresolved_type_warning(ModuleInfo, PredId, !.PredInfo,
-            VarSet, UnresolvedVarsTypes, !NoTypeErrorSpecs),
+            UnresolvedVarsEntries, !NoTypeErrorSpecs),
 
         % Bind all the type variables in `BindToVoidTVars' to `void' ...
         pred_info_get_constraint_proof_map(!.PredInfo, ProofMap0),
         pred_info_get_constraint_map(!.PredInfo, ConstraintMap0),
-        bind_type_vars_to_void(BindToVoidTVars, VarTypesMap0, VarTypesMap,
+        bind_type_vars_to_void(BindToVoidTVars, VarTable0, VarTable,
             ProofMap0, ProofMap, ConstraintMap0, ConstraintMap),
-        clauses_info_set_vartypes(VarTypesMap, ClausesInfo0, ClausesInfo),
+        clauses_info_set_var_table(VarTable, ClausesInfo0, ClausesInfo),
         pred_info_set_clauses_info(ClausesInfo, !PredInfo),
         pred_info_set_constraint_proof_map(ProofMap, !PredInfo),
         pred_info_set_constraint_map(ConstraintMap, !PredInfo)
@@ -446,57 +460,61 @@ find_unresolved_types_in_pred(ModuleInfo, PredId, !PredInfo,
     % Doug Auclair's training_cars program). The code below prevents stack
     % overflows in grades that do not permit tail recursion.
     %
-:- pred find_unresolved_types_in_vars(assoc_list(prog_var, mer_type)::in,
-    list(tvar)::in,
-    assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out,
+:- pred find_unresolved_types_in_vars(
+    assoc_list(prog_var, var_table_entry)::in, list(tvar)::in,
+    assoc_list(prog_var, var_table_entry)::in,
+    assoc_list(prog_var, var_table_entry)::out,
     set(tvar)::in, set(tvar)::out) is det.
 
-find_unresolved_types_in_vars(VarTypes, ExternalTypeParams,
-        !UnresolvedVarsTypes, !BindToVoidTVars) :-
-    find_unresolved_types_in_vars_inner(VarTypes, ExternalTypeParams, 1000,
-        LeftOverVarTypes, !UnresolvedVarsTypes, !BindToVoidTVars),
+find_unresolved_types_in_vars(VarsEntries, ExternalTypeParams,
+        !UnresolvedVarsEntries, !BindToVoidTVars) :-
+    find_unresolved_types_in_vars_inner(VarsEntries, ExternalTypeParams, 1000,
+        LeftOverVarsEntries, !UnresolvedVarsEntries, !BindToVoidTVars),
     (
-        LeftOverVarTypes = []
+        LeftOverVarsEntries = []
     ;
-        LeftOverVarTypes = [_ | _],
-        find_unresolved_types_in_vars(LeftOverVarTypes, ExternalTypeParams,
-            !UnresolvedVarsTypes, !BindToVoidTVars)
+        LeftOverVarsEntries = [_ | _],
+        find_unresolved_types_in_vars(LeftOverVarsEntries, ExternalTypeParams,
+            !UnresolvedVarsEntries, !BindToVoidTVars)
     ).
 
-:- pred find_unresolved_types_in_vars_inner(assoc_list(prog_var, mer_type)::in,
-    list(tvar)::in, int::in, assoc_list(prog_var, mer_type)::out,
-    assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out,
+:- pred find_unresolved_types_in_vars_inner(
+    assoc_list(prog_var, var_table_entry)::in,
+    list(tvar)::in, int::in, assoc_list(prog_var, var_table_entry)::out,
+    assoc_list(prog_var, var_table_entry)::in,
+    assoc_list(prog_var, var_table_entry)::out,
     set(tvar)::in, set(tvar)::out) is det.
 
 find_unresolved_types_in_vars_inner([], _, _, [],
-        !UnresolvedVarsTypes, !BindToVoidTVars).
-find_unresolved_types_in_vars_inner([Var - Type | VarTypes],
-        ExternalTypeParams, VarsToDo, LeftOverVarTypes,
-        !UnresolvedVarsTypes, !BindToVoidTVars) :-
+        !UnresolvedVarsEntries, !BindToVoidTVars).
+find_unresolved_types_in_vars_inner([Var - Entry | VarsEntries],
+        ExternalTypeParams, VarsToDo, LeftOverVarsEntries,
+        !UnresolvedVarsEntries, !BindToVoidTVars) :-
     ( if VarsToDo < 0 then
-        LeftOverVarTypes = [Var - Type | VarTypes]
+        LeftOverVarsEntries = [Var - Entry | VarsEntries]
     else
+        Type = Entry ^ vte_type,
         type_vars_in_type(Type, TVars),
         set.list_to_set(TVars, TVarsSet0),
         set.delete_list(ExternalTypeParams, TVarsSet0, TVarsSet1),
         ( if set.is_empty(TVarsSet1) then
             true
         else
-            !:UnresolvedVarsTypes = [Var - Type | !.UnresolvedVarsTypes],
+            !:UnresolvedVarsEntries = [Var - Entry | !.UnresolvedVarsEntries],
             set.union(TVarsSet1, !BindToVoidTVars)
         ),
-        find_unresolved_types_in_vars_inner(VarTypes, ExternalTypeParams,
-            VarsToDo - 1, LeftOverVarTypes,
-            !UnresolvedVarsTypes, !BindToVoidTVars)
+        find_unresolved_types_in_vars_inner(VarsEntries, ExternalTypeParams,
+            VarsToDo - 1, LeftOverVarsEntries,
+            !UnresolvedVarsEntries, !BindToVoidTVars)
     ).
 
     % Bind all the type variables in `UnboundTypeVarsSet' to the type `void'.
     %
-:- pred bind_type_vars_to_void(set(tvar)::in, vartypes::in, vartypes::out,
+:- pred bind_type_vars_to_void(set(tvar)::in, var_table::in, var_table::out,
     constraint_proof_map::in, constraint_proof_map::out,
     constraint_map::in, constraint_map::out) is det.
 
-bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypes, !ProofMap,
+bind_type_vars_to_void(UnboundTypeVarsSet, !VarTable, !ProofMap,
         !ConstraintMap) :-
     % Create a substitution that maps all of the unbound type variables
     % to `void'.
@@ -507,7 +525,7 @@ bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypes, !ProofMap,
     set.fold(MapToVoid, UnboundTypeVarsSet, map.init, VoidSubst),
 
     % Then apply the substitution we just created to the various maps.
-    apply_subst_to_vartypes(VoidSubst, !VarTypes),
+    apply_subst_to_var_table(VoidSubst, !VarTable),
     apply_subst_to_constraint_proof_map(VoidSubst, !ProofMap),
     apply_subst_to_constraint_map(VoidSubst, !ConstraintMap).
 
@@ -516,10 +534,10 @@ bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypes, !ProofMap,
     % Report a warning: uninstantiated type parameter.
     %
 :- pred report_unresolved_type_warning(module_info::in, pred_id::in,
-    pred_info::in, prog_varset::in, assoc_list(prog_var, mer_type)::in,
+    pred_info::in, assoc_list(prog_var, var_table_entry)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarSet, Errs,
+report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
         !Specs) :-
     pred_info_get_typevarset(PredInfo, TypeVarSet),
     pred_info_get_context(PredInfo, Context),
@@ -527,16 +545,16 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarSet, Errs,
     PredIdPieces =
         describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId),
     VarTypePieceLists =
-        list.map(var_and_type_to_pieces(VarSet, TypeVarSet), Errs),
+        list.map(var_and_type_to_pieces(TypeVarSet), VarsEntries),
     list.condense(VarTypePieceLists, VarTypePieces),
     MainPieces = [words("In")] ++ PredIdPieces ++ [suffix(":"), nl,
         words("warning: unresolved polymorphism."), nl,
-        words(choose_number(Errs,
+        words(choose_number(VarsEntries,
             "The variable with an unbound type was:",
             "The variables with unbound types were:")), nl_indent_delta(1)] ++
         VarTypePieces ++
         [nl_indent_delta(-1), words("The unbound type"),
-        words(choose_number(Errs, "variable", "variables")),
+        words(choose_number(VarsEntries, "variable", "variables")),
         words("will be implicitly bound to the builtin type"),
         quote("void"), suffix("."), nl],
     VerbosePieces = [words("The body of the clause contains a call"),
@@ -547,19 +565,21 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarSet, Errs,
         % XXX improve error message
         words("(I ought to tell you which call caused the problem,"),
         words("but I'm afraid you'll have to work it out yourself."),
-        words("My apologies.)")],
+        words("My apologies.)"), nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
     Spec = conditional_spec($pred, warn_unresolved_polymorphism, yes,
         severity_warning, phase_type_check, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-:- func var_and_type_to_pieces(prog_varset, tvarset,
-    pair(prog_var, mer_type)) = list(format_component).
+:- func var_and_type_to_pieces(tvarset, pair(prog_var, var_table_entry))
+    = list(format_component).
 
-var_and_type_to_pieces(VarSet, TVarSet, Var - Type) =
-    [words(mercury_var_to_string(VarSet, print_name_only, Var)), suffix(":"),
-    words(mercury_type_to_string(TVarSet, print_name_only, Type)), nl].
+var_and_type_to_pieces(TVarSet, Var - Entry) = Pieces :-
+    Entry = vte(Name, Type, _IsDummy),
+    VarStr = mercury_var_raw_to_string(print_name_only, Var, Name),
+    TypeStr = mercury_type_to_string(TVarSet, print_name_only, Type),
+    Pieces = [words(VarStr), suffix(":"), words(TypeStr), nl].
 
 %---------------------------------------------------------------------------%
 
@@ -597,19 +617,25 @@ check_type_of_main(PredInfo, !Specs) :-
 
 %---------------------------------------------------------------------------%
 
-setup_vartypes_in_clauses_for_imported_pred(!PredInfo) :-
-    % Make sure the vartypes field in the clauses_info is valid for imported
+setup_var_table_in_clauses_for_imported_pred(ModuleInfo, !PredInfo) :-
+    % Make sure the var_table field in the clauses_info is valid for imported
     % predicates. Unification and comparison procedures have their clauses
     % generated automatically, and the code that creates the clauses also
-    % fills in the clauses' vartypes.
+    % fills in the clauses' var_table.
+    % NOTE The code that creates the clauses and fills in the var_table
+    % is executed lazily, on demand.
     ( if pred_info_is_pseudo_imported(!.PredInfo) then
         true
     else
         pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
+        clauses_info_get_varset(ClausesInfo0, VarSet),
         clauses_info_get_headvar_list(ClausesInfo0, HeadVars),
         pred_info_get_arg_types(!.PredInfo, ArgTypes),
-        vartypes_from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
-        clauses_info_set_vartypes(VarTypes, ClausesInfo0, ClausesInfo),
+        corresponding_vars_types_to_var_table(ModuleInfo, VarSet,
+            HeadVars, ArgTypes, VarTable),
+        clauses_info_set_var_table(VarTable, ClausesInfo0, ClausesInfo1),
+        varset.init(EmptyVarSet),
+        clauses_info_set_varset(EmptyVarSet, ClausesInfo1, ClausesInfo),
         pred_info_set_clauses_info(ClausesInfo, !PredInfo)
     ).
 
@@ -640,9 +666,9 @@ propagate_checked_types_into_pred_modes(ModuleInfo, ErrorProcIds,
             FoundSyntaxError = no_clause_syntax_errors,
             clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNums),
             get_clause_list_for_replacement(ClausesRep0, Clauses0),
-            VarTypes = ClausesInfo0 ^ cli_vartypes,
+            VarTable = ClausesInfo0 ^ cli_var_table,
             propagate_checked_types_into_lambda_modes_in_clauses(ModuleInfo,
-                VarTypes, Clauses0, Clauses, !Specs),
+                VarTable, Clauses0, Clauses, !Specs),
             set_clause_list(Clauses, ClausesRep),
             clauses_info_set_clauses_rep(ClausesRep, ItemNums,
                 ClausesInfo0, ClausesInfo),
@@ -707,28 +733,28 @@ propagate_checked_types_into_proc_modes(ModuleInfo, PredInfo, ProcId,
 %---------------------%
 
 :- pred propagate_checked_types_into_lambda_modes_in_clauses(module_info::in,
-    vartypes::in, list(clause)::in, list(clause)::out,
+    var_table::in, list(clause)::in, list(clause)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 propagate_checked_types_into_lambda_modes_in_clauses(_, _, [], [], !Specs).
-propagate_checked_types_into_lambda_modes_in_clauses(ModuleInfo, VarTypes,
+propagate_checked_types_into_lambda_modes_in_clauses(ModuleInfo, VarTable,
         [Clause0 | Clauses0], [Clause | Clauses], !Specs) :-
-    propagate_checked_types_into_lambda_modes_in_clause(ModuleInfo, VarTypes,
+    propagate_checked_types_into_lambda_modes_in_clause(ModuleInfo, VarTable,
         Clause0, Clause, !Specs),
-    propagate_checked_types_into_lambda_modes_in_clauses(ModuleInfo, VarTypes,
+    propagate_checked_types_into_lambda_modes_in_clauses(ModuleInfo, VarTable,
         Clauses0, Clauses, !Specs).
 
 :- pred propagate_checked_types_into_lambda_modes_in_clause(module_info::in,
-    vartypes::in, clause::in, clause::out,
+    var_table::in, clause::in, clause::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-propagate_checked_types_into_lambda_modes_in_clause(ModuleInfo, VarTypes,
+propagate_checked_types_into_lambda_modes_in_clause(ModuleInfo, VarTable,
         Clause0, Clause, !Specs) :-
     Lang = Clause0 ^ clause_lang,
     (
         Lang = impl_lang_mercury,
         Goal0 = Clause0 ^ clause_body,
-        propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+        propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTable,
             Goal0, Goal, !Specs),
         Clause = Clause0 ^ clause_body := Goal
     ;
@@ -737,11 +763,11 @@ propagate_checked_types_into_lambda_modes_in_clause(ModuleInfo, VarTypes,
     ).
 
 :- pred propagate_checked_types_into_lambda_modes_in_goal(module_info::in,
-    vartypes::in, hlds_goal::in, hlds_goal::out,
+    var_table::in, hlds_goal::in, hlds_goal::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-        VarTypes, Goal0, Goal, !Specs) :-
+propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTable,
+        Goal0, Goal, !Specs) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(LHS0, RHS0, UnifyMode0, Unification0, UniContext0),
@@ -757,9 +783,9 @@ propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
             Context = goal_info_get_context(GoalInfo0),
             Args = ta_lambda(PorF0, NumArgs, Context),
             propagate_checked_types_into_var_modes(ModuleInfo,
-                VarTypes, Args, 1, ArgVarsModes0, ArgVarsModes, !Specs),
+                VarTable, Args, 1, ArgVarsModes0, ArgVarsModes, !Specs),
             propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-                VarTypes, LambdaGoal0, LambdaGoal, !Specs),
+                VarTable, LambdaGoal0, LambdaGoal, !Specs),
             RHS = rhs_lambda_goal(Purity0, HOGroundness0, PorF0, EvalMethod0,
                 ClosureVars0, ArgVarsModes, Detism0, LambdaGoal),
             GoalExpr = unify(LHS0, RHS, UnifyMode0, Unification0, UniContext0),
@@ -774,41 +800,41 @@ propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
     ;
         GoalExpr0 = conj(ConjType, Conjuncts0),
         propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo,
-            VarTypes, Conjuncts0, Conjuncts, !Specs),
+            VarTable, Conjuncts0, Conjuncts, !Specs),
         GoalExpr = conj(ConjType, Conjuncts),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Disjuncts0),
         propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo,
-            VarTypes, Disjuncts0, Disjuncts, !Specs),
+            VarTable, Disjuncts0, Disjuncts, !Specs),
         GoalExpr = disj(Disjuncts),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(Var0, CanFail0, Cases0),
         propagate_checked_types_into_lambda_modes_in_cases(ModuleInfo,
-            VarTypes, Cases0, Cases, !Specs),
+            VarTable, Cases0, Cases, !Specs),
         GoalExpr = switch(Var0, CanFail0, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars0, Cond0, Then0, Else0),
         propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-            VarTypes, Cond0, Cond, !Specs),
+            VarTable, Cond0, Cond, !Specs),
         propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-            VarTypes, Then0, Then, !Specs),
+            VarTable, Then0, Then, !Specs),
         propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-            VarTypes, Else0, Else, !Specs),
+            VarTable, Else0, Else, !Specs),
         GoalExpr = if_then_else(Vars0, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(SubGoal0),
         propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-            VarTypes, SubGoal0, SubGoal, !Specs),
+            VarTable, SubGoal0, SubGoal, !Specs),
         GoalExpr = negation(SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
         propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-            VarTypes, SubGoal0, SubGoal, !Specs),
+            VarTable, SubGoal0, SubGoal, !Specs),
         GoalExpr = scope(Reason0, SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -816,23 +842,23 @@ propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
         (
             ShortHand0 = bi_implication(GoalA0, GoalB0),
             propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-                VarTypes, GoalA0, GoalA, !Specs),
+                VarTable, GoalA0, GoalA, !Specs),
             propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-                VarTypes, GoalB0, GoalB, !Specs),
+                VarTable, GoalB0, GoalB, !Specs),
             ShortHand = bi_implication(GoalA, GoalB)
         ;
             ShortHand0 = atomic_goal(AtomicGoalType0, OuterVars0, InnerVars0,
                 OutputVars0, MainGoal0, OrElseGoals0, OrElseInners0),
             propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-                VarTypes, MainGoal0, MainGoal, !Specs),
+                VarTable, MainGoal0, MainGoal, !Specs),
             propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo,
-                VarTypes, OrElseGoals0, OrElseGoals, !Specs),
+                VarTable, OrElseGoals0, OrElseGoals, !Specs),
             ShortHand = atomic_goal(AtomicGoalType0, OuterVars0, InnerVars0,
                 OutputVars0, MainGoal, OrElseGoals, OrElseInners0)
         ;
             ShortHand0 = try_goal(MaybeIOVars0, ResultVars0, SubGoal0),
             propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-                VarTypes, SubGoal0, SubGoal, !Specs),
+                VarTable, SubGoal0, SubGoal, !Specs),
             ShortHand = try_goal(MaybeIOVars0, ResultVars0, SubGoal)
         ),
         GoalExpr = shorthand(ShortHand),
@@ -840,46 +866,46 @@ propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
     ).
 
 :- pred propagate_checked_types_into_lambda_modes_in_goals(module_info::in,
-    vartypes::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    var_table::in, list(hlds_goal)::in, list(hlds_goal)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 propagate_checked_types_into_lambda_modes_in_goals(_, _, [], [], !Specs).
-propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo, VarTypes,
+propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo, VarTable,
         [Goal0 | Goals0], [Goal | Goals], !Specs) :-
-    propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+    propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTable,
         Goal0, Goal, !Specs),
-    propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo, VarTypes,
+    propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo, VarTable,
         Goals0, Goals, !Specs).
 
 :- pred propagate_checked_types_into_lambda_modes_in_cases(module_info::in,
-    vartypes::in, list(case)::in, list(case)::out,
+    var_table::in, list(case)::in, list(case)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 propagate_checked_types_into_lambda_modes_in_cases(_, _, [], [], !Specs).
-propagate_checked_types_into_lambda_modes_in_cases(ModuleInfo, VarTypes,
+propagate_checked_types_into_lambda_modes_in_cases(ModuleInfo, VarTable,
         [Case0 | Cases0], [Case | Cases], !Specs) :-
     Case0 = case(MainConsId0, OtherConsIds0, Goal0),
-    propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTypes,
+    propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTable,
         Goal0, Goal, !Specs),
     Case = case(MainConsId0, OtherConsIds0, Goal),
-    propagate_checked_types_into_lambda_modes_in_cases(ModuleInfo, VarTypes,
+    propagate_checked_types_into_lambda_modes_in_cases(ModuleInfo, VarTable,
         Cases0, Cases, !Specs).
 
 %---------------------%
 
-:- pred propagate_checked_types_into_var_modes(module_info::in, vartypes::in,
+:- pred propagate_checked_types_into_var_modes(module_info::in, var_table::in,
     tprop_args::in, int::in,
     assoc_list(prog_var, mer_mode)::in, assoc_list(prog_var, mer_mode)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 propagate_checked_types_into_var_modes(_, _, _, _, [], [], !Specs).
-propagate_checked_types_into_var_modes(ModuleInfo, VarTypes, Args, ArgNum,
+propagate_checked_types_into_var_modes(ModuleInfo, VarTable, Args, ArgNum,
         [Var - Mode0 | VarsModes0], [Var - Mode | VarsModes], !Specs) :-
-    lookup_var_type(VarTypes, Var, Type),
+    lookup_var_type(VarTable, Var, Type),
     Context = tprop_arg_list_slot(Args, ArgNum),
     propagate_checked_type_into_mode(ModuleInfo, Context,
         Type, Mode0, Mode, !Specs),
-    propagate_checked_types_into_var_modes(ModuleInfo, VarTypes,
+    propagate_checked_types_into_var_modes(ModuleInfo, VarTable,
         Args, ArgNum + 1, VarsModes0, VarsModes, !Specs).
 
 %---------------------------------------------------------------------------%

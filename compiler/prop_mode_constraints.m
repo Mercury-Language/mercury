@@ -234,8 +234,8 @@ ensure_unique_arguments(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers),
-    clauses_info_get_varset(ClausesInfo0, VarSet0),
-    clauses_info_get_vartypes(ClausesInfo0, VarTypes0),
+    clauses_info_get_var_table(ClausesInfo0, VarTable0),
+    split_var_table(VarTable0, VarSet0, VarTypes0),
     clauses_info_get_headvars(ClausesInfo0, HeadVars),
 
     SeenSoFar = set_of_var.list_to_set(proc_arg_vector_to_list(HeadVars)),
@@ -249,8 +249,8 @@ ensure_unique_arguments(PredId, !ModuleInfo) :-
     set_clause_list(Clauses, ClausesRep),
     some [!ClausesInfo] (
         !:ClausesInfo = ClausesInfo0,
-        clauses_info_set_varset(VarSet, !ClausesInfo),
-        clauses_info_set_vartypes(VarTypes, !ClausesInfo),
+        make_var_table(!.ModuleInfo, VarSet, VarTypes, VarTable),
+        clauses_info_set_var_table(VarTable, !ClausesInfo),
         clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
         pred_info_set_clauses_info(!.ClausesInfo, PredInfo0, PredInfo)
     ),

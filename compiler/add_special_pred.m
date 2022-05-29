@@ -277,9 +277,12 @@ add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor, TypeStatus,
     PredArity = get_special_pred_id_arity(SpecialPredId),
     PredFormArity = pred_form_arity(PredArity),
     % All current special_preds are predicates.
-    % XXX CIT_TYPES: should be cit_types(ArgTypes)
-    clauses_info_init(pf_predicate, cit_no_types(PredFormArity),
+    clauses_info_init(pf_predicate, cit_types(ArgTypes),
         init_clause_item_numbers_comp_gen, ClausesInfo0),
+    clauses_info_get_varset(ClausesInfo0, VarSet0),
+    clauses_info_get_explicit_vartypes(ClausesInfo0, VarTypes0),
+    make_var_table(!.ModuleInfo, VarSet0, VarTypes0, VarTable),
+    clauses_info_set_var_table(VarTable, ClausesInfo0, ClausesInfo),
     Origin = origin_special_pred(SpecialPredId, TypeCtor),
     adjust_special_pred_status(SpecialPredId, TypeStatus, PredStatus),
     MaybeCurUserDecl = maybe.no,
@@ -297,7 +300,7 @@ add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor, TypeStatus,
     pred_info_init(pf_predicate, ModuleName, PredName, PredFormArity, Context,
         Origin, PredStatus, MaybeCurUserDecl, GoalType, Markers, ArgTypes,
         TVarSet, ExistQVars, ClassContext, Proofs, ConstraintMap,
-        ClausesInfo0, VarNameRemap, PredInfo0),
+        ClausesInfo, VarNameRemap, PredInfo0),
     SeqNum = item_no_seq_num,
     varset.init(InstVarSet),
     ArgLives = no,
@@ -439,7 +442,8 @@ add_lazily_generated_special_pred(SpecialId, Item, TVarSet, Type, TypeCtor,
         PredInfo1 = PredInfo0
     ;
         Item = declaration_only,
-        setup_vartypes_in_clauses_for_imported_pred(PredInfo0, PredInfo1)
+        setup_var_table_in_clauses_for_imported_pred(!.ModuleInfo,
+            PredInfo0, PredInfo1)
     ),
     propagate_checked_types_into_pred_modes(!.ModuleInfo, ErrorProcs,
         _InstForTypeSpecs, PredInfo1, PredInfo),

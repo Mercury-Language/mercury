@@ -25,11 +25,13 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 :- import_module parse_tree.vartypes.
 
 :- import_module bool.
 :- import_module list.
 :- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -51,21 +53,92 @@
     %
 :- type clauses_info
     --->    clauses_info(
-                % The varset describing the clauses.
+                % The varset describing the clauses seen so far.
+                % Each new clause has its own varset merged into this one,
+                % with the variables in the clause being renamed accordingly.
+                %
+                % The typechecker uses this varset as the source of information
+                % about variable names for use in any error messages
+                % it generates, and when it is done, it merges the variable
+                % names from this field with the variable types it infers,
+                % and records the result in the cli_var_table field.
+                % All compiler passes after typechecking should use that field
+                % as the source of information about both the names and the
+                % types of the predicate's variables.
+                %
+                % There is one part of the compiler, the part that creates
+                % HLDS dumps, that both
+                % - needs both variable name and type information, and
+                % - is invoked both before and after typechecking.
+                % Before typechecking, it should use the cli_varset and
+                % cli_explicit_vartypes fields, while after typechecking,
+                % it should use the cli_var_table field, so it needs a way
+                % to distinguish these two situations.
+                %
+                % Passing that code a before/after typechecking flag would
+                % work, but would prevent doing typechecking lazily, on demand,
+                % after the main typechecking pass is done, in the case of
+                % opt-imported predicates for which, at the time of the main
+                % typechecking pass, the compiler does not know whether they
+                % are used or not.
+                %
+                % We could add an extra field here just to steer
+                % hlds_out_pred.m one way or the other, but this would increase
+                % memory use.
+                %
+                % Instead, we tell hlds_out_pred.m to use the cli_var_table
+                % field by having the post-typecheck pass reset the
+                % cli_varset field to empty. (In the rare case of a predicate
+                % that has no variables at all, it does not matter where
+                % hlds_out_pred.m gets the names of the variables from.)
+                % The typechecking pass itself cannot easily do this,
+                % because in the presence of type inference and its iteration
+                % to a fixpoint,
+                %
+                % 1 when we finish typechecking a predicate, we don't know
+                %   whether we will need to typecheck the predicate again,
+                %   so there is no *obviously last* typecheck of a predicate
+                %   after which the reset can be done; and
+                %
+                % 2 we cannot do the reset after the first typecheck of a
+                %   predicate (or equivalently, after all typechecks
+                %   of a predicate) because we print any error messages
+                %   only from the last typecheck, and we don't want any
+                %   variable names in those error messages to be looked up
+                %   in a varset that an earlier iteration has already reset.
+                %
+                % The obvious "first pass that is guaranteed to be after
+                % all typechecking iterations" is the post-typecheck pass.
                 cli_varset                  :: prog_varset,
-
-                % Map from variable name to type variable for the type
-                % variables occurring in the argument types. This is used
-                % to process explicit qualifications.
-                cli_tvar_name_map           :: tvar_name_map,
 
                 % This partial map holds the types specified by any explicit
                 % type qualifiers in the clauses.
                 cli_explicit_vartypes       :: vartypes,
 
-                % This map contains the types of all the variables, as inferred
-                % by typecheck.m.
-                cli_vartypes                :: vartypes,
+                % This map contains the types of all the variables,
+                % as inferred by the typechecker.
+                %
+                % Some predicates, such as predicates implementing builtins,
+                % *don't* get typechecked, since they are supposed to be
+                % *created* type correct. For such predicates, this field
+                % should be filled in with the types of the head variables
+                % when the clauses_info is created, to allow unused_imports.m
+                % to look up the types of those variables.
+                %
+                % XXX Since this field is never set to a meaningful value
+                % during parsing, it should be stored in the pred_infos.
+                cli_var_table               :: var_table,
+
+                % This field is filled in by the polymorphism pass.
+                %
+                % XXX Since this field is never set to a meaningful value
+                % during parsing, it should be stored in the pred_infos.
+                cli_rtti_varmaps            :: rtti_varmaps,
+
+                % Map from variable name to type variable for the type
+                % variables occurring in the argument types. This is used
+                % to process explicit qualifications.
+                cli_tvar_name_map           :: tvar_name_map,
 
                 % The head variables.
                 cli_headvars                :: proc_arg_vector(prog_var),
@@ -75,9 +148,6 @@
 
                 % Information about where the clauses came fro.
                 cli_item_numbers            :: clause_item_numbers,
-
-                % This field is computed by polymorphism.m.
-                cli_rtti_varmaps            :: rtti_varmaps,
 
                 % Does this predicate/function have foreign language clauses?
                 cli_have_foreign_clauses    :: maybe_foreign_lang_clauses,
@@ -89,26 +159,18 @@
         ).
 
 :- type clause_init_types
-    --->    cit_no_types(pred_form_arity).
-    % ;     cit_types(list(mer_type)).
-    % XXX CIT_TYPES
-    % The cit_types alternative is intended to allow code that calls
-    % clauses_info_init to record the types of the arguments of the
-    % predicate or function whose implementation the clauses are to form.
-    % This has historically not been done, and the typechecker (for now)
-    % depends on this behavior, specifically in the case of predicates
-    % whose type signature includes existentially quantified typed variables.
-    %
-    % Some places in the compiler that could exploit this possibility
-    % are marked with "XXX CIT_TYPES".
-    %
-    % Eventually, we should replace the cli_varset, cli_explicit_vartypes,
-    % and cli_vartypes fields with a single field containing a var_table,
-    % in which every every variable that has an explicit type has that type,
-    % and every other variable has a special type meaning "this type
-    % has not been set yet". We should be able to use the void type
-    % for this, but we will need to ensure that the compiler does not accept
-    % any occurrence of this type in Mercury source code.
+    --->    cit_no_types(pred_form_arity)
+    ;       cit_types(list(mer_type)).
+            % The cit_types alternative is intended to allow code that calls
+            % clauses_info_init to record the types of the arguments of the
+            % predicate or function whose implementation the clauses are
+            % to form. This has historically not been done, and the
+            % typechecker (for now) depends on this behavior, specifically
+            % in the case of predicates whose type signature includes
+            % existentially quantified typed variables.
+            %
+            % Some places in the compiler that could exploit this possibility
+            % are marked with "XXX CIT_TYPES".
 
 :- pred clauses_info_init(pred_or_func::in, clause_init_types::in,
     clause_item_numbers::in, clauses_info::out) is det.
@@ -117,17 +179,17 @@
     is det.
 
 :- pred clauses_info_get_varset(clauses_info::in, prog_varset::out) is det.
-:- pred clauses_info_get_tvar_name_map(clauses_info::in, tvar_name_map::out)
-    is det.
 :- pred clauses_info_get_explicit_vartypes(clauses_info::in, vartypes::out)
     is det.
-:- pred clauses_info_get_vartypes(clauses_info::in, vartypes::out) is det.
+:- pred clauses_info_get_var_table(clauses_info::in, var_table::out) is det.
+:- pred clauses_info_get_rtti_varmaps(clauses_info::in, rtti_varmaps::out)
+    is det.
+:- pred clauses_info_get_tvar_name_map(clauses_info::in, tvar_name_map::out)
+    is det.
 :- pred clauses_info_get_headvars(clauses_info::in,
     proc_arg_vector(prog_var)::out) is det.
 :- pred clauses_info_get_clauses_rep(clauses_info::in, clauses_rep::out,
     clause_item_numbers::out) is det.
-:- pred clauses_info_get_rtti_varmaps(clauses_info::in, rtti_varmaps::out)
-    is det.
 :- pred clauses_info_get_have_foreign_clauses(clauses_info::in,
     maybe_foreign_lang_clauses::out) is det.
 :- pred clauses_info_get_had_syntax_errors(clauses_info::in,
@@ -135,17 +197,17 @@
 
 :- pred clauses_info_set_varset(prog_varset::in,
     clauses_info::in, clauses_info::out) is det.
-:- pred clauses_info_set_tvar_name_map(tvar_name_map::in,
-    clauses_info::in, clauses_info::out) is det.
 :- pred clauses_info_set_explicit_vartypes(vartypes::in,
     clauses_info::in, clauses_info::out) is det.
-:- pred clauses_info_set_vartypes(vartypes::in,
+:- pred clauses_info_set_var_table(var_table::in,
+    clauses_info::in, clauses_info::out) is det.
+:- pred clauses_info_set_rtti_varmaps(rtti_varmaps::in,
+    clauses_info::in, clauses_info::out) is det.
+:- pred clauses_info_set_tvar_name_map(tvar_name_map::in,
     clauses_info::in, clauses_info::out) is det.
 :- pred clauses_info_set_headvars(proc_arg_vector(prog_var)::in,
     clauses_info::in, clauses_info::out) is det.
 :- pred clauses_info_set_clauses_rep(clauses_rep::in, clause_item_numbers::in,
-    clauses_info::in, clauses_info::out) is det.
-:- pred clauses_info_set_rtti_varmaps(rtti_varmaps::in,
     clauses_info::in, clauses_info::out) is det.
 :- pred clauses_info_set_have_foreign_clauses(maybe_foreign_lang_clauses::in,
     clauses_info::in, clauses_info::out) is det.
@@ -364,7 +426,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module require.
-:- import_module varset.
+:- import_module string.
 
 :- type clause_item_numbers
     --->    user_clauses(
@@ -382,74 +444,75 @@
 
 clauses_info_init(PredOrFunc, InitTypes, ItemNumbers, ClausesInfo) :-
     varset.init(VarSet0),
-    init_vartypes(VarTypes0),
+    init_vartypes(ExplicitVarTypes0),
     (
         InitTypes = cit_no_types(PredFormArity),
         PredFormArity = pred_form_arity(PredFormArityInt),
         make_n_fresh_vars("HeadVar__", PredFormArityInt, HeadVars,
             VarSet0, VarSet),
-        VarTypes = VarTypes0
-% XXX CIT_TYPES
-%   ;
-%       InitTypes = cit_types(ArgTypes),
-%       AddArg =
-%           ( pred(T::in, V::out, CurN::in, NextN::out,
-%                   VS0::in, VS::out, VT0::in, VT::out) is det :-
-%               Name = "HeadVar__" ++ string.int_to_string(CurN),
-%               varset.new_named_var(Name, V, VS0, VS),
-%               add_var_type(V, T, VT0, VT),
-%               NextN = CurN + 1
-%           ),
-%       list.map_foldl3(AddArg, ArgTypes, HeadVars,
-%           1, _, VarSet0, VarSet, VarTypes0, VarTypes)
+        ExplicitVarTypes = ExplicitVarTypes0
+    ;
+        InitTypes = cit_types(ArgTypes),
+        AddArg =
+            ( pred(T::in, V::out, CurN::in, NextN::out,
+                    VS0::in, VS::out, VT0::in, VT::out) is det :-
+                Name = "HeadVar__" ++ string.int_to_string(CurN),
+                varset.new_named_var(Name, V, VS0, VS),
+                add_var_type(V, T, VT0, VT),
+                NextN = CurN + 1
+            ),
+        list.map_foldl3(AddArg, ArgTypes, HeadVars,
+            1, _, VarSet0, VarSet, ExplicitVarTypes0, ExplicitVarTypes)
     ),
+    init_var_table(VarTable),
+    rtti_varmaps_init(RttiVarMaps),
     map.init(TVarNameMap),
     HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
     set_clause_list([], ClausesRep),
-    rtti_varmaps_init(RttiVarMaps),
-    ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
-        HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
-        no_foreign_lang_clauses, no_clause_syntax_errors).
+    ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
+        VarTable, RttiVarMaps, TVarNameMap, HeadVarVec, ClausesRep,
+        ItemNumbers, no_foreign_lang_clauses, no_clause_syntax_errors).
 
 clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
     varset.init(VarSet),
-    init_vartypes(VarTypes),
+    init_vartypes(ExplicitVarTypes),
+    init_var_table(VarTable),
+    rtti_varmaps_init(RttiVarMaps),
     map.init(TVarNameMap),
     % Procedures introduced for assertions are always predicates, never
     % functions.
     HeadVarVec = proc_arg_vector_init(pf_predicate, HeadVars),
     set_clause_list([], ClausesRep),
     ItemNumbers = init_clause_item_numbers_comp_gen,
-    rtti_varmaps_init(RttiVarMaps),
-    ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
-        HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
-        no_foreign_lang_clauses, no_clause_syntax_errors).
+    ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
+        VarTable, RttiVarMaps, TVarNameMap, HeadVarVec, ClausesRep,
+        ItemNumbers, no_foreign_lang_clauses, no_clause_syntax_errors).
 
 clauses_info_get_varset(CI, CI ^ cli_varset).
-clauses_info_get_tvar_name_map(CI, CI ^ cli_tvar_name_map).
 clauses_info_get_explicit_vartypes(CI, CI ^ cli_explicit_vartypes).
-clauses_info_get_vartypes(CI, CI ^ cli_vartypes).
+clauses_info_get_var_table(CI, CI ^ cli_var_table).
+clauses_info_get_rtti_varmaps(CI, CI ^ cli_rtti_varmaps).
+clauses_info_get_tvar_name_map(CI, CI ^ cli_tvar_name_map).
 clauses_info_get_headvars(CI, CI ^ cli_headvars).
 clauses_info_get_clauses_rep(CI, CI ^ cli_rep, CI ^ cli_item_numbers).
-clauses_info_get_rtti_varmaps(CI, CI ^ cli_rtti_varmaps).
 clauses_info_get_have_foreign_clauses(CI, CI ^ cli_have_foreign_clauses).
 clauses_info_get_had_syntax_errors(CI, CI ^ cli_had_syntax_errors).
 
 clauses_info_set_varset(X, !CI) :-
     !CI ^ cli_varset := X.
-clauses_info_set_tvar_name_map(X, !CI) :-
-    !CI ^ cli_tvar_name_map := X.
 clauses_info_set_explicit_vartypes(X, !CI) :-
     !CI ^ cli_explicit_vartypes := X.
-clauses_info_set_vartypes(X, !CI) :-
-    !CI ^ cli_vartypes := X.
+clauses_info_set_var_table(X, !CI) :-
+    !CI ^ cli_var_table := X.
+clauses_info_set_rtti_varmaps(X, !CI) :-
+    !CI ^ cli_rtti_varmaps := X.
+clauses_info_set_tvar_name_map(X, !CI) :-
+    !CI ^ cli_tvar_name_map := X.
 clauses_info_set_headvars(X, !CI) :-
     !CI ^ cli_headvars := X.
 clauses_info_set_clauses_rep(X, Y, !CI) :-
     !CI ^ cli_rep := X,
     !CI ^ cli_item_numbers := Y.
-clauses_info_set_rtti_varmaps(X, !CI) :-
-    !CI ^ cli_rtti_varmaps := X.
 clauses_info_set_have_foreign_clauses(X, !CI) :-
     !CI ^ cli_have_foreign_clauses := X.
 clauses_info_set_had_syntax_errors(X, !CI) :-

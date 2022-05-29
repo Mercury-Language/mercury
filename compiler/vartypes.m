@@ -95,10 +95,6 @@
 :- type prog_var_set_types
     --->    prog_var_set_types(prog_varset, vartypes).
 
-:- type maybe_vartypes
-    --->    varset_vartypes(tvarset, vartypes)
-    ;       no_varset_vartypes.
-
 %---------------------------------------------------------------------------%
 
 :- implementation.

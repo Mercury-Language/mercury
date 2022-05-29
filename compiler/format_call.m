@@ -385,8 +385,7 @@ analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
         Goal0, MaybeGoal, Specs, !VarTable) :-
     map.init(ConjMaps0),
     counter.init(0, Counter0),
-    fill_goal_id_slots_in_proc_body(ModuleInfo, vts_var_table(!.VarTable), _,
-        Goal0, Goal1),
+    fill_goal_id_slots_in_proc_body(ModuleInfo, !.VarTable, _, Goal0, Goal1),
 
     module_info_get_globals(ModuleInfo, Globals0),
     globals.set_option(dump_hlds_options, string("vxP"), Globals0, Globals),

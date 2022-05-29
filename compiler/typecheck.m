@@ -111,6 +111,7 @@
 :- import_module check_hlds.typecheck_msgs.
 :- import_module check_hlds.typeclasses.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
@@ -141,6 +142,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.var_table.
 :- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
@@ -355,9 +357,10 @@ is_pred_created_type_correct(ModuleInfo, !PredInfo) :-
         (
             % Most compiler-generated unify and compare predicates are created
             % already type-correct, so there is no need to typecheck them.
-            % The exceptions are predicates that call a user-defined equality
-            % or comparison predicate, and unify and compare predicates for
-            % existentially typed data types.
+            % The exceptions are unify and compare predicates that either
+            %
+            % - call a user-defined predicate, or
+            % - involve existentially quantified type variables.
             is_unify_index_or_compare_pred(!.PredInfo),
             not special_pred_needs_typecheck(!.PredInfo, ModuleInfo)
         ;
@@ -403,7 +406,9 @@ is_pred_created_type_correct(ModuleInfo, !PredInfo) :-
     %
     % The two tasks are done together because they are complementary:
     % the first handles only empty clause lists, the second handles
-    % only nonempty clause lists.
+    % only nonempty clause lists. Instead of two separate traversals,
+    % one to handle stubs and one to handle non-contiguous clauses,
+    % this predicate enables one traversal to do both tasks.
     %
 :- pred handle_stubs_and_non_contiguous_clauses(module_info::in, pred_id::in,
     pred_info::in, pred_info::out, maybe_clause_syntax_errors::in,
@@ -411,13 +416,13 @@ is_pred_created_type_correct(ModuleInfo, !PredInfo) :-
 
 handle_stubs_and_non_contiguous_clauses(ModuleInfo, PredId, !PredInfo,
         FoundSyntaxError, !:Specs, MaybeNeedTypecheck) :-
-    module_info_get_globals(ModuleInfo, Globals),
     pred_info_get_markers(!.PredInfo, Markers0),
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
     clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers0),
     clause_list_is_empty(ClausesRep0) = ClausesRep0IsEmpty,
     (
         ClausesRep0IsEmpty = yes,
+        module_info_get_globals(ModuleInfo, Globals),
         % There are no clauses, so there can be no clause non-contiguity
         % errors.
         ( if
@@ -426,12 +431,12 @@ handle_stubs_and_non_contiguous_clauses(ModuleInfo, PredId, !PredInfo,
         then
             !:Specs =
                 maybe_report_no_clauses_stub(ModuleInfo, PredId, !.PredInfo),
-            generate_stub_clause(ModuleInfo, PredId, !PredInfo)
+            generate_and_add_stub_clause(ModuleInfo, PredId, !PredInfo)
         else if
             check_marker(Markers0, marker_builtin_stub)
         then
             !:Specs = [],
-            generate_stub_clause(ModuleInfo, PredId, !PredInfo)
+            generate_and_add_stub_clause(ModuleInfo, PredId, !PredInfo)
         else
             !:Specs = []
         )
@@ -461,7 +466,12 @@ handle_stubs_and_non_contiguous_clauses(ModuleInfo, PredId, !PredInfo,
             pred_info_get_arg_types(!.PredInfo, _ArgTypeVarSet, _ExistQVars,
                 ArgTypes),
             vartypes_from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
-            clauses_info_set_vartypes(VarTypes, ClausesInfo1, ClausesInfo),
+            clauses_info_get_varset(ClausesInfo1, VarSet),
+            corresponding_vars_types_to_var_table(ModuleInfo, VarSet,
+                HeadVars, ArgTypes, VarTable),
+            clauses_info_set_explicit_vartypes(VarTypes,
+                ClausesInfo1, ClausesInfo2),
+            clauses_info_set_var_table(VarTable, ClausesInfo2, ClausesInfo),
             pred_info_set_clauses_info(ClausesInfo, !PredInfo),
             % We also need to set the external_type_params field
             % to indicate that all the existentially quantified tvars
@@ -579,11 +589,14 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, NextIteration) :-
         typecheck_check_for_unsatisfied_coercions(!.TypeAssignSet, !Info),
         type_assign_set_get_final_info(!.TypeAssignSet,
             !.ExternalTypeParams, ExistQVars0, ExplicitVarTypes0, TypeVarSet,
-            !:ExternalTypeParams, InferredVarTypes0, InferredTypeConstraints0,
+            !:ExternalTypeParams, InferredVarTypes, InferredTypeConstraints0,
             ConstraintProofMap, ConstraintMap,
             TVarRenaming, ExistTypeRenaming),
-        vartypes_optimize(InferredVarTypes0, InferredVarTypes),
-        clauses_info_set_vartypes(InferredVarTypes, !ClausesInfo),
+        vartypes_to_sorted_assoc_list(InferredVarTypes, VarsTypes),
+        vars_types_to_var_table(ModuleInfo, ClauseVarSet, VarsTypes,
+            VarTable0),
+        var_table_optimize(VarTable0, VarTable),
+        clauses_info_set_var_table(VarTable, !ClausesInfo),
 
         % Apply substitutions to the explicit vartypes.
         (
@@ -764,44 +777,54 @@ check_mention_existq_var(Context, TypeVarSet, Impl, TVar, !ExistQVarNum,
     % depending on whether the predicate is part of
     % the Mercury standard library or not.
     %
-:- pred generate_stub_clause(module_info::in, pred_id::in,
+:- pred generate_and_add_stub_clause(module_info::in, pred_id::in,
     pred_info::in, pred_info::out) is det.
 
-generate_stub_clause(ModuleInfo, PredId, !PredInfo) :-
+generate_and_add_stub_clause(ModuleInfo, PredId, !PredInfo) :-
     some [!ClausesInfo] (
         pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
-        clauses_info_get_varset(!.ClausesInfo, VarSet0),
+        !.ClausesInfo = clauses_info(VarSet0, _VarTypes,
+            _VarTable, RttiVarMaps, TVarNameMap, ArgVec,
+            _ClausesRep, _ItemNumbers, _ForeignClauses, _SyntaxErrors),
         PredPieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
             PredId),
         PredName = error_pieces_to_string(PredPieces),
-        generate_stub_clause_2(PredName, !PredInfo, ModuleInfo, StubClause,
-            VarSet0, VarSet),
+        HeadVars = proc_arg_vector_to_list(ArgVec),
+        pred_info_get_arg_types(!.PredInfo, ArgTypes),
+        vartypes_from_corresponding_lists(HeadVars, ArgTypes, VarTypes1),
+        generate_stub_clause(ModuleInfo, !.PredInfo, PredName, StubClause,
+            VarSet0, VarSet, VarTypes1, VarTypes),
+        make_var_table(ModuleInfo, VarSet, VarTypes, VarTable),
         set_clause_list([StubClause], ClausesRep),
         ItemNumbers = init_clause_item_numbers_comp_gen,
-        clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
-        clauses_info_set_varset(VarSet, !ClausesInfo),
-        pred_info_set_clauses_info(!.ClausesInfo, !PredInfo)
+        !:ClausesInfo = clauses_info(VarSet, VarTypes, VarTable, RttiVarMaps,
+            TVarNameMap, ArgVec, ClausesRep, ItemNumbers,
+            no_foreign_lang_clauses, no_clause_syntax_errors),
+        pred_info_set_clauses_info(!.ClausesInfo, !PredInfo),
+
+        % Mark the predicate as a stub, i.e. record that it originally
+        % had no clauses.
+        pred_info_get_markers(!.PredInfo, Markers0),
+        add_marker(marker_stub, Markers0, Markers),
+        pred_info_set_markers(Markers, !PredInfo)
     ).
 
-:- pred generate_stub_clause_2(string::in, pred_info::in, pred_info::out,
-    module_info::in, clause::out, prog_varset::in, prog_varset::out) is det.
+:- pred generate_stub_clause(module_info::in, pred_info::in,
+    string::in, clause::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-generate_stub_clause_2(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
-    % Mark the predicate as a stub, i.e. record that it originally
-    % had no clauses.
-    pred_info_get_markers(!.PredInfo, Markers0),
-    add_marker(marker_stub, Markers0, Markers),
-    pred_info_set_markers(Markers, !PredInfo),
-
+generate_stub_clause(ModuleInfo, PredInfo, PredName, StubClause,
+        !VarSet, !VarTypes) :-
     % Generate `PredName = "<PredName>"'.
-    pred_info_get_context(!.PredInfo, Context),
     varset.new_named_var("PredName", PredNameVar, !VarSet),
+    add_var_type(PredNameVar, string_type, !VarTypes),
+    pred_info_get_context(PredInfo, Context),
     make_string_const_construction(Context, PredNameVar, PredName, UnifyGoal),
 
     % Generate `private_builtin.no_clauses(PredName)'
     % or `private_builtin.sorry(PredName)'
-    ModuleName = pred_info_module(!.PredInfo),
-    ( if mercury_std_library_module_name(ModuleName) then
+    PredModuleName = pred_info_module(PredInfo),
+    ( if mercury_std_library_module_name(PredModuleName) then
         CalleeName = "sorry"
     else
         CalleeName = "no_clauses"
@@ -1043,8 +1066,7 @@ typecheck_clause_list(HeadVars, ArgTypes, [Clause0 | Clauses0],
     typecheck_info::in, typecheck_info::out) is det.
 
 typecheck_clause(HeadVars, ArgTypes, !Clause, !TypeAssignSet, !Info) :-
-    Body0 = !.Clause ^ clause_body,
-    Context = !.Clause ^ clause_context,
+    !.Clause = clause(_, Body0, _, Context, _),
 
     % Typecheck the clause - first the head unification, and then the body.
     ArgVectorKind = arg_vector_clause_head,
@@ -1981,8 +2003,8 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
 typecheck_vars_have_types(ArgVectorKind, Context, Vars, Types,
         !TypeAssignSet, !Info) :-
     typecheck_vars_have_types_in_arg_vector(!.Info, Context, ArgVectorKind, 1,
-        Vars, Types, !TypeAssignSet, [], Specs, yes([]),
-        MaybeArgVectorTypeErrors),
+        Vars, Types, !TypeAssignSet,
+        [], Specs, yes([]), MaybeArgVectorTypeErrors),
     ( if
         MaybeArgVectorTypeErrors = yes(ArgVectorTypeErrors),
         ArgVectorTypeErrors = [_, _ | _]

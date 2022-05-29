@@ -58,12 +58,12 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -122,11 +122,10 @@ copy_clauses_to_maybe_imported_proc_in_proc_info(PredInfo, ClausesInfo,
         % just pass the headvar vector directly to the proc_info.
         clauses_info_get_headvars(ClausesInfo, HeadVars),
         HeadVarList = proc_arg_vector_to_list(HeadVars),
-        clauses_info_get_varset(ClausesInfo, VarSet),
-        clauses_info_get_vartypes(ClausesInfo, VarTypes),
+        clauses_info_get_var_table(ClausesInfo, VarTable),
         clauses_info_get_rtti_varmaps(ClausesInfo, RttiVarMaps),
         proc_info_set_headvars(HeadVarList, !ProcInfo),
-        proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+        proc_info_set_var_table(VarTable, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo)
     else
         copy_clauses_to_proc_in_proc_info(PredInfo, ProcId, !ProcInfo)
@@ -160,8 +159,8 @@ copy_pred_clauses_to_nonmethod_procs_in_pred_id_table(PredId, !PredIdTable) :-
 
 copy_clauses_to_proc_in_proc_info(PredInfo, ProcId, !ProcInfo) :-
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
-    ClausesInfo = clauses_info(VarSet0, _, _, VarTypes, HeadVars, ClausesRep0,
-        _ItemNumbers, RttiInfo, _HaveForeignClauses, _HadSyntaxError),
+    ClausesInfo = clauses_info(_, _, VarTable0, RttiVarMaps, _, HeadVars,
+        ClausesRep0, _ItemNumbers, _HaveForeignClauses, _HadSyntaxError),
     % The "replacement" is the replacement of the pred_info's clauses_rep
     % with the goal in the proc_info; the clauses_rep won't be needed again.
     get_clause_list_for_replacement(ClausesRep0, Clauses),
@@ -183,7 +182,7 @@ copy_clauses_to_proc_in_proc_info(PredInfo, ProcId, !ProcInfo) :-
                 MaybeTraceRuntimeCond, _),
             % Use the original variable names for the headvars of foreign_proc
             % clauses, not the introduced `HeadVar__n' names.
-            list.foldl(set_arg_names, Args, VarSet0, VarSet),
+            list.foldl(set_arg_names, Args, VarTable0, VarTable),
             expect(unify(ExtraArgs, []), $pred, "extra_args"),
             expect(unify(MaybeTraceRuntimeCond, no), $pred,
                 "trace runtime cond")
@@ -199,7 +198,7 @@ copy_clauses_to_proc_in_proc_info(PredInfo, ProcId, !ProcInfo) :-
             ; SingleExpr = scope(_, _)
             ; SingleExpr = shorthand(_)
             ),
-            VarSet = VarSet0
+            VarTable = VarTable0
         ),
         Goal = SingleGoal
     ;
@@ -215,7 +214,7 @@ copy_clauses_to_proc_in_proc_info(PredInfo, ProcId, !ProcInfo) :-
             proc_info_get_context(!.ProcInfo, Context)
         ),
 
-        VarSet = VarSet0,
+        VarTable = VarTable0,
 
         % Convert the list of clauses into a disjunction,
         % and construct a goal_info for the disjunction.
@@ -241,8 +240,7 @@ copy_clauses_to_proc_in_proc_info(PredInfo, ProcId, !ProcInfo) :-
     % XXX ARGVEC - when the proc_info is converted to use proc_arg_vectors
     % we should just pass the headvar vector in directly.
     HeadVarList = proc_arg_vector_to_list(HeadVars),
-    proc_info_set_body(VarSet, VarTypes, HeadVarList, Goal, RttiInfo,
-        !ProcInfo).
+    proc_info_set_body_vt(VarTable, HeadVarList, Goal, RttiVarMaps, !ProcInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -349,15 +347,15 @@ get_clause_disjuncts_and_warnings([Clause | Clauses], Disjuncts, Warnings) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred set_arg_names(foreign_arg::in, prog_varset::in, prog_varset::out)
+:- pred set_arg_names(foreign_arg::in, var_table::in, var_table::out)
     is det.
 
-set_arg_names(Arg, !Vars) :-
+set_arg_names(Arg, !VarTable) :-
     Var = foreign_arg_var(Arg),
     MaybeNameMode = foreign_arg_maybe_name_mode(Arg),
     (
         MaybeNameMode = yes(foreign_arg_name_mode(Name, _)),
-        varset.name_var(Var, Name, !Vars)
+        update_var_name(Var, Name, !VarTable)
     ;
         MaybeNameMode = no
     ).

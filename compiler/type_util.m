@@ -846,6 +846,9 @@ is_type_a_dummy_loop(TypeTable, Type, CoveredTypes) = IsDummy :-
             IsBuiltinDummy = is_builtin_dummy_type_ctor,
             IsDummy = is_dummy_type
         ;
+            IsBuiltinDummy = is_builtin_non_dummy_type_ctor,
+            IsDummy = is_not_dummy_type
+        ;
             IsBuiltinDummy = is_not_builtin_dummy_type_ctor,
             % This can fail for some builtin type constructors such as func,
             % pred, and tuple, none of which are dummy types.

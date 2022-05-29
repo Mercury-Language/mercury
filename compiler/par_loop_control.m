@@ -156,7 +156,7 @@ maybe_par_loop_control_proc(DepInfo, PredProcId, !ProcInfo, !ModuleInfo) :-
 
         % Re-calculate goal ids.
         proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
-        fill_goal_id_slots_in_proc_body(!.ModuleInfo, vts_var_table(VarTable),
+        fill_goal_id_slots_in_proc_body(!.ModuleInfo, VarTable,
             ContainingGoalMap, Body0, Body),
         proc_info_set_goal(Body, !ProcInfo),
         goal_get_loop_control_par_conjs(Body, PredProcId,
@@ -611,8 +611,9 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         % Construct the pred info structure. We initially construct it with
         % the old proc info which will be replaced below.
         GoalType = goal_not_for_promise(np_goal_type_none),
-        pred_info_create(PredOrFunc, ModuleName, TransformedName, Context,
-            Origin, pred_status(status_local), Markers, ArgTypes0, TypeVarSet,
+        pred_info_create(!.ModuleInfo, PredOrFunc,
+            ModuleName, TransformedName, Context, Origin,
+            pred_status(status_local), Markers, ArgTypes0, TypeVarSet,
             ExistQVars, ClassConstraints, set.init, map.init, GoalType,
             OldProcInfo, ProcId, !:PredInfo),
 

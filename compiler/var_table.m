@@ -42,6 +42,10 @@
                 vte_is_dummy    :: is_dummy_type
             ).
 
+:- type type_qual
+    --->    no_tvarset_var_table
+    ;       tvarset_var_table(tvarset, var_table).
+
     % These predicates are exported for use by hlds_pred.m. No other module
     % should call them.
     %
@@ -84,6 +88,14 @@
 
 :- pred search_var_entry(var_table::in, prog_var::in,
     var_table_entry::out) is semidet.
+
+    % Return the given variable's name, provided that
+    %
+    % - it has an entry in the specified var_table, and
+    % - the name in that entry is not the empty string.
+    %
+:- pred search_var_name(var_table::in, prog_var::in,
+    string::out) is semidet.
 
 :- func lookup_var_entry_func(var_table, prog_var) = var_table_entry.
 :- pred lookup_var_entry(var_table::in, prog_var::in,
@@ -309,6 +321,11 @@ is_in_var_table(VarTable, Var) :-
 search_var_entry(VarTable, Var, Entry) :-
     map.search(VarTable ^ vt_map, Var, Entry).
 
+search_var_name(VarTable, Var, Name) :-
+    map.search(VarTable ^ vt_map, Var, Entry),
+    Name = Entry ^ vte_name,
+    Name \= "".
+
 lookup_var_entry_func(VarTable, Var) = Entry :-
     lookup_var_entry(VarTable, Var, Entry).
 
@@ -519,9 +536,7 @@ search_var_name_in_source(VarNameSrc, Var, Name) :-
         varset.search_name(VarSet, Var, Name)
     ;
         VarNameSrc = vns_var_table(VarTable),
-        var_table.search_var_entry(VarTable, Var, Entry),
-        Name = Entry ^ vte_name,
-        Name \= ""
+        var_table.search_var_name(VarTable, Var, Name)
     ).
 
 lookup_var_name_in_source(VarNameSrc, Var, Name) :-

@@ -240,6 +240,7 @@
 
 :- type is_builtin_dummy_type_ctor
     --->    is_builtin_dummy_type_ctor
+    ;       is_builtin_non_dummy_type_ctor
     ;       is_not_builtin_dummy_type_ctor.
 
     % is_builtin_dummy_type_ctor(type_ctor):
@@ -868,6 +869,13 @@ is_type_ctor_a_builtin_dummy(TypeCtor) = IsBuiltinDummy :-
         TypeArity = 1
     then
         IsBuiltinDummy = is_builtin_dummy_type_ctor
+    else if
+        CtorSymName = qualified(ModuleName, TypeName),
+        ModuleName = mercury_private_builtin_module,
+        TypeName = "store_at_ref_type",
+        TypeArity = 1
+    then
+        IsBuiltinDummy = is_builtin_non_dummy_type_ctor
     else
         IsBuiltinDummy = is_not_builtin_dummy_type_ctor
     ).

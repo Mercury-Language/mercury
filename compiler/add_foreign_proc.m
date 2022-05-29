@@ -68,14 +68,12 @@
 %-----------------------------------------------------------------------------%
 
 add_pragma_foreign_procs([], !ModuleInfo, !Specs).
-add_pragma_foreign_procs([ImsSubList | ImsSubLists],
-        !ModuleInfo, !Specs) :-
+add_pragma_foreign_procs([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
     ImsSubList = ims_sub_list(ItemMercuryStatus, PragmaFPInfos),
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
     list.foldl2(add_pragma_foreign_proc(PredStatus), PragmaFPInfos,
         !ModuleInfo, !Specs),
-    add_pragma_foreign_procs(ImsSubLists,
-        !ModuleInfo, !Specs).
+    add_pragma_foreign_procs(ImsSubLists, !ModuleInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 
@@ -115,8 +113,8 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
         PredOrFunc, PredModuleName, PredName, PredFormArity, PredIds),
     (
         PredIds = [],
-        add_implicit_pred_decl_report_error(PredOrFunc, PredModuleName, PredName,
-            PredFormArity, PredStatus, is_not_a_class_method,
+        add_implicit_pred_decl_report_error(PredOrFunc, PredModuleName,
+            PredName, PredFormArity, PredStatus, is_not_a_class_method,
             Context, origin_user(PredSymName),
             [pragma_decl("foreign_proc"), words("declaration")],
             PredId, !ModuleInfo, !Specs)
@@ -333,9 +331,9 @@ clauses_info_do_add_pragma_foreign_proc(PredOrFunc, PredModuleName, PredName,
         Purity, Attributes0, Markers, Context, PragmaImpl,
         !ClausesInfo, !ModuleInfo, !Specs) :-
     % Our caller should have already added this foreign_proc to ItemNumbers.
-    !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes, TVarNameMap,
-        InferredVarTypes, HeadVars, ClausesRep0, ItemNumbers,
-        RttiVarMaps, _HasForeignClauses, HadSyntaxError),
+    !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes,
+        VarTable, RttiVarMaps, TVarNameMap, HeadVars, ClausesRep0,
+        ItemNumbers, _HasForeignClauses, HadSyntaxError),
 
     get_clause_list_for_replacement(ClausesRep0, Clauses0),
 
@@ -373,7 +371,6 @@ clauses_info_do_add_pragma_foreign_proc(PredOrFunc, PredModuleName, PredName,
             ArgPair = Var - Occurrences,
             Occurrences > 1
         ), ArgVarBagAssocList, MultiplyOccurringArgVars),
-
     (
         MultiplyOccurringArgVars = [_ | _],
         user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
@@ -402,7 +399,7 @@ clauses_info_do_add_pragma_foreign_proc(PredOrFunc, PredModuleName, PredName,
     ;
         MultiplyOccurringArgVars = [],
         % Build the foreign_proc.
-
+        %
         % Check that the purity of a predicate/function declaration agrees
         % with the (promised) purity of the foreign proc. We do not perform
         % this check if there is a promise_{pure,semipure} pragma for the
@@ -440,7 +437,6 @@ clauses_info_do_add_pragma_foreign_proc(PredOrFunc, PredModuleName, PredName,
             Overridden = overridden_by_old_foreign_proc
         ;
             Overridden = not_overridden_by_old_foreign_proc,
-
             % Put the purity in the goal_info in case this foreign code is
             % inlined.
             goal_info_init_context_purity(Context, Purity, GoalInfo),
@@ -457,20 +453,21 @@ clauses_info_do_add_pragma_foreign_proc(PredOrFunc, PredModuleName, PredName,
             GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
                 ForeignArgs, ExtraArgs, MaybeTraceRuntimeCond, PragmaImpl),
             HldsGoal0 = hlds_goal(GoalExpr, GoalInfo),
-            init_vartypes(EmptyVarTypes),
+            % Foreign_procs cannot contain explicit variable type annotations.
+            init_vartypes(EmptyExplicitVarTypes),
             rtti_varmaps_init(EmptyRttiVarmaps),
             implicitly_quantify_clause_body_general(
                 ordinary_nonlocals_maybe_lambda, HeadVarList, _Warnings,
-                HldsGoal0, HldsGoal, VarSet0, VarSet, EmptyVarTypes, _,
-                EmptyRttiVarmaps, _),
+                HldsGoal0, HldsGoal, VarSet0, VarSet,
+                EmptyExplicitVarTypes, _, EmptyRttiVarmaps, _),
             Clause = clause(selected_modes([ProcId]), HldsGoal,
                 impl_lang_foreign(NewLang), Context, []),
             Clauses = [Clause | Clauses1],
             set_clause_list(Clauses, ClausesRep),
             HasForeignClauses = some_foreign_lang_clauses,
-            !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
-                InferredVarTypes, HeadVars, ClausesRep, ItemNumbers,
-                RttiVarMaps, HasForeignClauses, HadSyntaxError)
+            !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
+                VarTable, RttiVarMaps, TVarNameMap, HeadVars, ClausesRep,
+                ItemNumbers, HasForeignClauses, HadSyntaxError)
         )
     ).
 

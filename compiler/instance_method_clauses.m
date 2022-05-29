@@ -54,6 +54,7 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 :- import_module parse_tree.vartypes.
 
 :- import_module map.
@@ -94,14 +95,17 @@ produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, ArgTypes,
         IntroducedClause = clause(all_modes, IntroducedGoal, impl_lang_mercury,
             Context, []),
 
+        vartypes_from_corresponding_lists(HeadVars, ArgTypes,
+            ExplicitVarTypes),
+        init_var_table(VarTable),
+        rtti_varmaps_init(RttiVarMaps),
         map.init(TVarNameMap),
-        vartypes_from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
         HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
         set_clause_list([IntroducedClause], ClausesRep),
-        rtti_varmaps_init(RttiVarMaps),
-        ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
-            HeadVarVec, ClausesRep, init_clause_item_numbers_comp_gen,
-            RttiVarMaps, no_foreign_lang_clauses, no_clause_syntax_errors)
+        ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
+            VarTable, RttiVarMaps, TVarNameMap, HeadVarVec, ClausesRep,
+            init_clause_item_numbers_comp_gen,
+            no_foreign_lang_clauses, no_clause_syntax_errors)
     ;
         % Handle the arbitrary clauses syntax.
         InstanceProcDefn = instance_proc_def_clauses(InstanceClauses),

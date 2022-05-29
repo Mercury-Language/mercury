@@ -33,6 +33,6 @@ illtyped_compare.m:022:       illtyped_compare.bar.
 illtyped_compare.m:022:   The partial type assignment was:
 illtyped_compare.m:022:     HeadVar__1_1: illtyped_compare.bar_rep
 illtyped_compare.m:022:     HeadVar__2_2: illtyped_compare.bar_rep
-illtyped_compare.m:022:     V_3: comparison_result
+illtyped_compare.m:022:     Result_3: comparison_result
 illtyped_compare.m:022:     CastX_4: int
 illtyped_compare.m:022:     CastY_5: int

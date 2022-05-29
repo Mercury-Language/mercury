@@ -112,6 +112,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 :- import_module parse_tree.vartypes.
 
 :- import_module bool.
@@ -399,7 +400,7 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual, PredOrFunc,
         ( if pred_info_is_builtin(PredInfo0) then
             module_info_get_globals(!.ModuleInfo, Globals),
             globals.get_target(Globals, CompilationTarget),
-            add_builtin(PredId, Types, CompilationTarget,
+            add_builtin(!.ModuleInfo, CompilationTarget, PredId, Types,
                 PredInfo0, PredInfo),
             predicate_table_get_pred_id_table(PredTable1, PredIdTable1),
             map.det_update(PredId, PredInfo, PredIdTable1, PredIdTable),
@@ -519,11 +520,11 @@ report_any_unqualified_type(PredSymName, Context, Type, !Specs) :-
     %
     % A few builtins are treated specially.
     %
-:- pred add_builtin(pred_id::in, list(mer_type)::in, compilation_target::in,
-    pred_info::in, pred_info::out) is det.
+:- pred add_builtin(module_info::in, compilation_target::in,
+    pred_id::in, list(mer_type)::in, pred_info::in, pred_info::out) is det.
 
-add_builtin(PredId, HeadTypes0, CompilationTarget, !PredInfo) :-
-    Module = pred_info_module(!.PredInfo),
+add_builtin(ModuleInfo, CompilationTarget, PredId, HeadTypes0, !PredInfo) :-
+    ModuleName = pred_info_module(!.PredInfo),
     Name = pred_info_name(!.PredInfo),
     pred_info_get_context(!.PredInfo, Context),
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
@@ -537,13 +538,13 @@ add_builtin(PredId, HeadTypes0, CompilationTarget, !PredInfo) :-
     NonLocals = set_of_var.list_to_set(HeadVars0),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
     ( if
-        Module = mercury_private_builtin_module,
+        ModuleName = mercury_private_builtin_module,
         (
             ( Name = "builtin_compound_eq"
             ; Name = "builtin_compound_lt"
             )
         ;
-            % These predicates are incompatible with some backends.
+            % This predicate is incompatible with some backends.
             Name = "store_at_ref_impure",
             require_complete_switch [CompilationTarget]
             (
@@ -566,10 +567,10 @@ add_builtin(PredId, HeadTypes0, CompilationTarget, !PredInfo) :-
         Stub = yes
     else if
         (
-            Module = mercury_private_builtin_module,
+            ModuleName = mercury_private_builtin_module,
             Name = "trace_get_io_state"
         ;
-            Module = mercury_io_module,
+            ModuleName = mercury_io_module,
             Name = "unsafe_get_io_state"
         )
     then
@@ -605,10 +606,10 @@ add_builtin(PredId, HeadTypes0, CompilationTarget, !PredInfo) :-
         Stub = no
     else if
         (
-            Module = mercury_private_builtin_module,
+            ModuleName = mercury_private_builtin_module,
             Name = "trace_set_io_state"
         ;
-            Module = mercury_io_module,
+            ModuleName = mercury_io_module,
             Name = "unsafe_set_io_state"
         )
     then
@@ -622,8 +623,8 @@ add_builtin(PredId, HeadTypes0, CompilationTarget, !PredInfo) :-
         VarSet = VarSet0,
         Stub = no
     else
-        % Construct the pseudo-recursive call to Module.Name(HeadVars).
-        SymName = qualified(Module, Name),
+        % Construct the pseudo-recursive call to ModuleName.Name(HeadVars).
+        SymName = qualified(ModuleName, Name),
         % Mode checking will figure out the mode.
         ModeId = invalid_proc_id,
         MaybeUnifyContext = no,
@@ -651,12 +652,15 @@ add_builtin(PredId, HeadTypes0, CompilationTarget, !PredInfo) :-
 
     % Put the clause we just built (if any) into the pred_info,
     % annotated with the appropriate types.
-    vartypes_from_corresponding_lists(HeadVars, HeadTypes, VarTypes),
-    map.init(TVarNameMap),
+    vartypes_from_corresponding_lists(HeadVars, HeadTypes, ExplicitVarTypes),
+    corresponding_vars_types_to_var_table(ModuleInfo, VarSet,
+        HeadVars, HeadTypes, VarTable),
     rtti_varmaps_init(RttiVarMaps),
-    ClausesInfo = clauses_info(VarSet, TVarNameMap, VarTypes, VarTypes,
-        ProcArgVector, ClausesRep, init_clause_item_numbers_comp_gen,
-        RttiVarMaps, no_foreign_lang_clauses, no_clause_syntax_errors),
+    map.init(TVarNameMap),
+    ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
+        VarTable, RttiVarMaps, TVarNameMap, ProcArgVector, ClausesRep,
+        init_clause_item_numbers_comp_gen,
+        no_foreign_lang_clauses, no_clause_syntax_errors),
     pred_info_set_clauses_info(ClausesInfo, !PredInfo),
 
     % It is pointless but harmless to inline these clauses. The main purpose

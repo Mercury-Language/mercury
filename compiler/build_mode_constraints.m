@@ -252,7 +252,10 @@ add_mc_vars_for_pred_head(ModuleInfo, PredId, !VarInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_headvar_list(ClausesInfo, HeadVars),
-    clauses_info_get_varset(ClausesInfo, ProgVarSet),
+    % XXX If this code is ever actually used, it should be updated
+    % to use VarTable instead of ProgVarSet.
+    clauses_info_get_var_table(ClausesInfo, VarTable),
+    split_var_table(VarTable, ProgVarSet, _VarTypes),
     list.foldl(add_mc_var_for_pred_head(ProgVarSet, PredId), HeadVars,
         !VarInfo).
 
@@ -337,7 +340,10 @@ add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
     clauses_info_get_headvars(ClausesInfo, HeadVars),
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
     get_clause_list_maybe_repeated(ClausesRep, Clauses),
-    clauses_info_get_varset(ClausesInfo, ProgVarSet),
+    % XXX If this code is ever actually used, it should be updated
+    % to use VarTable instead of ProgVarSet.
+    clauses_info_get_var_table(ClausesInfo, VarTable),
+    split_var_table(VarTable, ProgVarSet, _VarTypes),
 
     (
         % If the clause list is empty, then there are no goals

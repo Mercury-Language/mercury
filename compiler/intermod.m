@@ -1656,7 +1656,7 @@ intermod_gather_insts(ModuleInfo, InstDefns) :-
 
 intermod_gather_inst(ModuleName, InstCtor, InstDefn, !InstDefnsCord) :-
     InstCtor = inst_ctor(SymName, _Arity),
-    InstDefn = hlds_inst_defn(Varset, Args, Inst, IFTC, Context, InstStatus),
+    InstDefn = hlds_inst_defn(VarSet, Args, Inst, IFTC, Context, InstStatus),
     ( if
         SymName = qualified(ModuleName, _),
         inst_status_to_write(InstStatus) = yes
@@ -1673,7 +1673,7 @@ intermod_gather_inst(ModuleName, InstCtor, InstDefn, !InstDefnsCord) :-
             MaybeForTypeCtor = no
         ),
         ItemInstDefn = item_inst_defn_info(SymName, Args, MaybeForTypeCtor,
-            nonabstract_inst_defn(Inst), Varset, Context, item_no_seq_num),
+            nonabstract_inst_defn(Inst), VarSet, Context, item_no_seq_num),
         cord.snoc(ItemInstDefn, !InstDefnsCord)
     else
         true
@@ -1698,7 +1698,7 @@ intermod_gather_modes(ModuleInfo, ModeDefns) :-
 
 intermod_gather_mode(ModuleName, ModeCtor, ModeDefn, !ModeDefnsCord) :-
     ModeCtor = mode_ctor(SymName, _Arity),
-    ModeDefn = hlds_mode_defn(Varset, Args, hlds_mode_body(Mode), Context,
+    ModeDefn = hlds_mode_defn(VarSet, Args, hlds_mode_body(Mode), Context,
         ModeStatus),
     ( if
         SymName = qualified(ModuleName, _),
@@ -1706,7 +1706,7 @@ intermod_gather_mode(ModuleName, ModeCtor, ModeDefn, !ModeDefnsCord) :-
     then
         MaybeAbstractModeDefn = nonabstract_mode_defn(eqv_mode(Mode)),
         ItemModeDefn = item_mode_defn_info(SymName, Args,
-            MaybeAbstractModeDefn, Varset, Context, item_no_seq_num),
+            MaybeAbstractModeDefn, VarSet, Context, item_no_seq_num),
         cord.snoc(ItemModeDefn, !ModeDefnsCord)
     else
         true
@@ -1917,9 +1917,9 @@ intermod_gather_pred_valid_modes(PredOrFunc, PredSymName,
             unexpected($pred, "attempt to write undeclared mode")
         ),
         MaybeWithInst = maybe.no,
-        varset.init(InstVarset),
+        varset.init(InstVarSet),
         HeadModeDecl = item_mode_decl_info(PredSymName, yes(PredOrFunc),
-            ArgModes, MaybeWithInst, yes(Detism), InstVarset,
+            ArgModes, MaybeWithInst, yes(Detism), InstVarSet,
             term.dummy_context_init, item_no_seq_num),
         ModeDecls = [HeadModeDecl | TailModeDecls]
     else
@@ -2065,10 +2065,9 @@ intermod_write_pred_defn(OutInfo, Stream, ModuleInfo, OrderPredInfo,
     % The type specialization pragmas for exported preds should
     % already be in the interface file.
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
-    clauses_info_get_varset(ClausesInfo, VarSet),
+    clauses_info_get_var_table(ClausesInfo, VarTable),
     clauses_info_get_headvar_list(ClausesInfo, HeadVars),
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
-    clauses_info_get_vartypes(ClausesInfo, VarTypes),
     get_clause_list_maybe_repeated(ClausesRep, Clauses),
 
     pred_info_get_goal_type(PredInfo, GoalType),
@@ -2076,7 +2075,7 @@ intermod_write_pred_defn(OutInfo, Stream, ModuleInfo, OrderPredInfo,
         GoalType = goal_for_promise(PromiseType),
         (
             Clauses = [Clause],
-            write_promise(OutInfo, Stream, ModuleInfo, VarSet,
+            write_promise(OutInfo, Stream, ModuleInfo, VarTable,
                 PromiseType, HeadVars, Clause, !IO)
         ;
             ( Clauses = []
@@ -2086,24 +2085,24 @@ intermod_write_pred_defn(OutInfo, Stream, ModuleInfo, OrderPredInfo,
         )
     ;
         GoalType = goal_not_for_promise(_),
-        pred_info_get_typevarset(PredInfo, TypeVarset),
-        TypeQual = varset_vartypes(TypeVarset, VarTypes),
+        pred_info_get_typevarset(PredInfo, TypeVarSet),
+        TypeQual = tvarset_var_table(TypeVarSet, VarTable),
         list.foldl(
             intermod_write_clause(OutInfo, Stream, ModuleInfo, PredId,
-                PredSymName, PredOrFunc, VarSet, TypeQual, HeadVars),
+                PredSymName, PredOrFunc, VarTable, TypeQual, HeadVars),
             Clauses, !IO)
     ).
 
 :- pred write_promise(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, prog_varset::in, promise_type::in, list(prog_var)::in,
+    module_info::in, var_table::in, promise_type::in, list(prog_var)::in,
     clause::in, io::di, io::uo) is det.
 
-write_promise(Info, Stream, ModuleInfo, VarSet, PromiseType, HeadVars,
+write_promise(Info, Stream, ModuleInfo, VarTable, PromiseType, HeadVars,
         Clause, !IO) :-
     % Please *either* keep this code in sync with mercury_output_item_promise
     % in parse_tree_out.m, *or* rewrite it to forward the work to that
     % predicate.
-    HeadVarStrs = list.map(varset.lookup_name(VarSet), HeadVars),
+    HeadVarStrs = list.map(var_table_entry_name(VarTable), HeadVars),
     HeadVarsStr = string.join_list(", ", HeadVarStrs),
     % Print initial formatting differently for assertions.
     (
@@ -2118,16 +2117,16 @@ write_promise(Info, Stream, ModuleInfo, VarSet, PromiseType, HeadVars,
             [s(HeadVarsStr), s(promise_to_string(PromiseType))], !IO)
     ),
     Goal = Clause ^ clause_body,
-    do_write_goal(Info, Stream, ModuleInfo, vns_varset(VarSet),
-        no_varset_vartypes, print_name_only, 1, "\n).\n", Goal, !IO).
+    do_write_goal(Info, Stream, ModuleInfo, vns_var_table(VarTable),
+        no_tvarset_var_table, print_name_only, 1, "\n).\n", Goal, !IO).
 
 :- pred intermod_write_clause(hlds_out_info::in, io.text_output_stream::in,
     module_info::in, pred_id::in, sym_name::in, pred_or_func::in,
-    prog_varset::in, maybe_vartypes::in, list(prog_var)::in, clause::in,
+    var_table::in, type_qual::in, list(prog_var)::in, clause::in,
     io::di, io::uo) is det.
 
 intermod_write_clause(OutInfo, Stream, ModuleInfo, PredId, SymName, PredOrFunc,
-        VarSet, TypeQual, HeadVars, Clause0, !IO) :-
+        VarTable, TypeQual, HeadVars, Clause0, !IO) :-
     Clause0 = clause(ApplicableProcIds, Goal, ImplLang, _, _),
     (
         ImplLang = impl_lang_mercury,
@@ -2147,9 +2146,11 @@ intermod_write_clause(OutInfo, Stream, ModuleInfo, PredId, SymName, PredOrFunc,
         % in such an order, both by the code that reads in terms and the
         % code that converts parse tree goals into HLDS goals, so this is
         % not likely to be necessary, while its cost may be non-negligible.
+        init_var_table(EmptyVarTable),
         write_clause(OutInfo, Stream, output_mercury, ModuleInfo,
-            PredId, PredOrFunc, varset.init, TypeQual, print_name_and_num,
-            write_declared_modes, 1, ClauseHeadVars, Clause, !IO)
+            PredId, PredOrFunc, vns_var_table(EmptyVarTable), TypeQual,
+            print_name_and_num, write_declared_modes, 1, ClauseHeadVars,
+            Clause, !IO)
     ;
         ImplLang = impl_lang_foreign(_),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -2179,7 +2180,7 @@ intermod_write_clause(OutInfo, Stream, ModuleInfo, PredId, SymName, PredOrFunc,
                 ApplicableProcIds = selected_modes(ProcIds),
                 list.foldl(
                     intermod_write_foreign_clause(Stream, Procs, PredOrFunc,
-                        PragmaCode, Attributes, Args, VarSet, SymName),
+                        VarTable, PragmaCode, Attributes, Args, SymName),
                     ProcIds, !IO)
             ;
                 ( ApplicableProcIds = unify_in_in_modes
@@ -2306,22 +2307,23 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
         RevGoals1, Goals, !HeadVarMap).
 
 :- pred intermod_write_foreign_clause(io.text_output_stream::in,
-    proc_table::in, pred_or_func::in,
+    proc_table::in, pred_or_func::in, var_table::in,
     pragma_foreign_proc_impl::in, pragma_foreign_proc_attributes::in,
-    list(foreign_arg)::in, prog_varset::in, sym_name::in, proc_id::in,
+    list(foreign_arg)::in, sym_name::in, proc_id::in,
     io::di, io::uo) is det.
 
-intermod_write_foreign_clause(Stream, Procs, PredOrFunc, PragmaImpl,
-        Attributes, Args, ProgVarset0, SymName, ProcId, !IO) :-
+intermod_write_foreign_clause(Stream, Procs, PredOrFunc, VarTable0, PragmaImpl,
+        Attributes, Args, SymName, ProcId, !IO) :-
     map.lookup(Procs, ProcId, ProcInfo),
     proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
     (
         MaybeArgModes = yes(ArgModes),
-        get_pragma_foreign_code_vars(Args, ArgModes,
-            ProgVarset0, ProgVarset, PragmaVars),
-        proc_info_get_inst_varset(ProcInfo, InstVarset),
+        get_pragma_foreign_code_vars(Args, ArgModes, PragmaVars,
+            VarTable0, VarTable),
+        proc_info_get_inst_varset(ProcInfo, InstVarSet),
+        split_var_table(VarTable, ProgVarSet, _VarTypes),
         FPInfo = pragma_info_foreign_proc(Attributes, SymName,
-            PredOrFunc, PragmaVars, ProgVarset, InstVarset, PragmaImpl),
+            PredOrFunc, PragmaVars, ProgVarSet, InstVarSet, PragmaImpl),
         mercury_output_pragma_foreign_proc(Stream, output_mercury, FPInfo, !IO)
     ;
         MaybeArgModes = no,
@@ -2329,9 +2331,9 @@ intermod_write_foreign_clause(Stream, Procs, PredOrFunc, PragmaImpl,
     ).
 
 :- pred get_pragma_foreign_code_vars(list(foreign_arg)::in, list(mer_mode)::in,
-    prog_varset::in, prog_varset::out, list(pragma_var)::out) is det.
+    list(pragma_var)::out, var_table::in, var_table::out) is det.
 
-get_pragma_foreign_code_vars(Args, Modes, !VarSet, PragmaVars) :-
+get_pragma_foreign_code_vars(Args, Modes, PragmaVars, !VarTable) :-
     (
         Args = [Arg | ArgsTail],
         Modes = [Mode | ModesTail],
@@ -2343,9 +2345,9 @@ get_pragma_foreign_code_vars(Args, Modes, !VarSet, PragmaVars) :-
             MaybeNameAndMode = yes(foreign_arg_name_mode(Name, _Mode2))
         ),
         PragmaVar = pragma_var(Var, Name, Mode, bp_native_if_possible),
-        varset.name_var(Var, Name, !VarSet),
-        get_pragma_foreign_code_vars(ArgsTail, ModesTail, !VarSet,
-            PragmaVarsTail),
+        update_var_name(Var, Name, !VarTable),
+        get_pragma_foreign_code_vars(ArgsTail, ModesTail, PragmaVarsTail,
+            !VarTable),
         PragmaVars = [PragmaVar | PragmaVarsTail]
     ;
         Args = [],

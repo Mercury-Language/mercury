@@ -1468,8 +1468,8 @@ accu_stage3(RecCallId, Accs, VarTable, C, CS, Substs,
         TopLevel, OrigPredId, OrigPredInfo, !OrigProcInfo, !ModuleInfo) :-
     acc_proc_info(Accs, VarTable, Substs, !.OrigProcInfo,
         AccTypes, AccProcInfo),
-    acc_pred_info(AccTypes, Out, AccProcInfo, OrigPredId, OrigPredInfo,
-        AccProcId, AccPredInfo),
+    acc_pred_info(!.ModuleInfo, AccTypes, Out, AccProcInfo,
+        OrigPredId, OrigPredInfo, AccProcId, AccPredInfo),
     AccName = unqualified(pred_info_name(AccPredInfo)),
 
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
@@ -1540,11 +1540,12 @@ acc_proc_info(Accs0, VarTable, Substs, OrigProcInfo, AccTypes, AccProcInfo) :-
 
     % Construct the pred_info for the introduced predicate.
     %
-:- pred acc_pred_info(list(mer_type)::in, list(prog_var)::in, proc_info::in,
-    pred_id::in, pred_info::in, proc_id::out, pred_info::out) is det.
+:- pred acc_pred_info(module_info::in, list(mer_type)::in, list(prog_var)::in,
+    proc_info::in, pred_id::in, pred_info::in,
+    proc_id::out, pred_info::out) is det.
 
-acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
-        NewProcId, NewPredInfo) :-
+acc_pred_info(ModuleInfo, NewTypes, OutVars, NewProcInfo,
+        OrigPredId, OrigPredInfo, NewProcId, NewPredInfo) :-
     % PredInfo stuff that must change.
     pred_info_get_arg_types(OrigPredInfo, TypeVarSet, ExistQVars, Types0),
 
@@ -1572,10 +1573,10 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
     Origin = origin_transformed(transform_accumulator(OutVarNums),
         OldOrigin, OrigPredId),
     GoalType = goal_not_for_promise(np_goal_type_none),
-    pred_info_create(PredOrFunc, ModuleName, TransformedName, PredContext,
-        Origin, pred_status(status_local), Markers, Types, TypeVarSet,
-        ExistQVars, ClassContext, Assertions, VarNameRemap, GoalType,
-        NewProcInfo, NewProcId, NewPredInfo).
+    pred_info_create(ModuleInfo, PredOrFunc, ModuleName, TransformedName,
+        PredContext, Origin, pred_status(status_local), Markers, Types,
+        TypeVarSet, ExistQVars, ClassContext, Assertions, VarNameRemap,
+        GoalType, NewProcInfo, NewProcId, NewPredInfo).
 
 %---------------------------------------------------------------------------%
 

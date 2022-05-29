@@ -304,7 +304,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 
 typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
     some [!Preds, !PredInfo, !ClausesInfo, !Clauses, !Goals, !PredEnv,
-        !TCInfo, !Vartypes]
+        !TCInfo, !VarTypes]
     (
         % Find the clause list in the predicate definition.
         !:PredEnv = !.Environment ^ tce_pred_env,
@@ -313,7 +313,10 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
         pred_info_get_typevarset(!.PredInfo, TVarSet),
         pred_info_get_context(!.PredInfo, Context),
         pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
-        clauses_info_get_varset(!.ClausesInfo, ProgVarSet),
+        % XXX If this code is ever actually used, it should be updated
+        % to use VarTable instead of VarTypes.
+        clauses_info_get_var_table(!.ClausesInfo, VarTable0),
+        split_var_table(VarTable0, ProgVarSet, _VarTypes),
 
         trace [compile_time(flag("type_error_diagnosis")), io(!IO)]
         (
@@ -367,15 +370,16 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
                 ForwardGoalPathMap),
             !Goals, PredErrors),
         create_vartypes_map(Context, ProgVarSet, !.TCInfo ^ tconstr_tvarset,
-            !.TCInfo ^ tconstr_var_map, DomainMap, ReplacementMap, !:Vartypes,
+            !.TCInfo ^ tconstr_var_map, DomainMap, ReplacementMap, !:VarTypes,
             VarTypeErrors),
         list.map_corresponding(set_clause_body, !.Goals, !Clauses),
         list.condense([VarTypeErrors | PredErrors], NewErrors),
         list.foldl(add_message_to_spec, NewErrors, !TCInfo),
         set_clause_list(!.Clauses, ClausesRep),
         clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
-        list.foldl(add_unused_prog_var(!.TCInfo), HeadVars, !Vartypes),
-        clauses_info_set_vartypes(!.Vartypes, !ClausesInfo),
+        list.foldl(add_unused_prog_var(!.TCInfo), HeadVars, !VarTypes),
+        make_var_table(!.HLDS, ProgVarSet, !.VarTypes, VarTable),
+        clauses_info_set_var_table(VarTable, !ClausesInfo),
         pred_info_set_clauses_info(!.ClausesInfo, !PredInfo),
         pred_info_set_typevarset(!.TCInfo ^ tconstr_tvarset, !PredInfo),
         map.det_update(PredId, !.PredInfo, !Preds),
@@ -467,12 +471,12 @@ has_one_disjunct(tconstr_conj(C), C).
     vartypes::out, list(error_msg)::out) is det.
 
 create_vartypes_map(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
-        ReplacementMap, Vartypes, Errors) :-
+        ReplacementMap, VarTypes, Errors) :-
     bimap.ordinates(VarMap, ProgVars),
     list.map2(find_variable_type(Context, ProgVarSet, TVarSet, VarMap,
         DomainMap, ReplacementMap), ProgVars, Types, MaybeErrors),
     list.filter_map(maybe_is_yes, MaybeErrors, Errors),
-    vartypes_from_corresponding_lists(ProgVars, Types, Vartypes).
+    vartypes_from_corresponding_lists(ProgVars, Types, VarTypes).
 
     % If a variable has a domain consisting of one type, gives it that type.
     % Otherwise, assign it to a type consisting of the type variable assigned
@@ -1980,12 +1984,12 @@ to_singleton_type_domain(Type) = tdomain_singleton(Type).
 :- pred add_unused_prog_var(type_constraint_info::in, prog_var::in,
     vartypes::in, vartypes::out) is det.
 
-add_unused_prog_var(TCInfo, Var, !Vartypes) :-
-    ( if is_in_vartypes(!.Vartypes, Var) then
+add_unused_prog_var(TCInfo, Var, !VarTypes) :-
+    ( if is_in_vartypes(!.VarTypes, Var) then
         true
     else
         bimap.lookup(TCInfo ^ tconstr_var_map, Var, TVar),
-        add_var_type(Var, tvar_to_type(TVar), !Vartypes)
+        add_var_type(Var, tvar_to_type(TVar), !VarTypes)
     ).
 
 :- pred get_constraints_from_conj(conj_type_constraint::in,

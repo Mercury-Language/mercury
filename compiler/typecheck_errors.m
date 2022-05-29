@@ -466,7 +466,7 @@ report_apply_instead_of_pred = Components :-
         words("use"), quote("NewFunc = my_apply(OldFunc, X)"),
         words("where"), quote("my_apply"), words("is defined"),
         words("with the appropriate arity, e.g."),
-        quote("my_apply(Func, X, Y) :- apply(Func, X, Y).")],
+        quote("my_apply(Func, X, Y) :- apply(Func, X, Y)."), nl],
     VerboseComponent = verbose_only(verbose_always, VerbosePieces),
     Components = [MainComponent, VerboseComponent].
 
@@ -476,8 +476,7 @@ report_apply_instead_of_pred = Components :-
 
 report_error_func_instead_of_pred(Context) = Msg :-
     Pieces = [words("(There is a *function* with that name, however."), nl,
-        words("Perhaps you forgot to add"), quote(" = ..."),
-        suffix("?)"), nl],
+        words("Perhaps you forgot to add"), quote(" = ..."), suffix("?)"), nl],
     Msg = simplest_msg(Context, Pieces).
 
 %---------------------%
@@ -709,7 +708,8 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
                     [suffix("."), nl]),
             FirstPieces = StartPieces ++ PredIdPieces,
             LaterPieces = [words("The predicate symbol"),
-                qual_sym_name_arity(SNA), words("is also overloaded here.")]
+                qual_sym_name_arity(SNA), words("is also overloaded here."),
+                nl]
         ;
             Symbol = overloaded_func(ConsId, Sources0),
             list.sort(Sources0, Sources),
@@ -725,7 +725,7 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
             FirstPieces = StartPieces ++ SourcePieces,
             LaterPieces = [words("The function symbol"),
                 qual_cons_id_and_maybe_arity(ConsId),
-                words("is also overloaded here.")]
+                words("is also overloaded here."), nl]
         ),
         FirstMsg = simplest_msg(FirstContext, FirstPieces),
         LaterMsgs = list.map(context_to_error_msg(LaterPieces), LaterContexts),
@@ -782,7 +782,7 @@ report_error_unify_var_var(Info, ClauseContext, UnifyContext, Context,
         [quote(mercury_var_to_name_only(VarSet, Y))] ++
         type_of_var_to_pieces(InstVarSet, TypeAssignSet,
             [suffix(".")], Y) ++ [nl],
-    type_assign_set_msg_to_verbose_component(Info, TypeAssignSet, VarSet,
+    type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
         VerboseComponent),
     Msg = simple_msg(Context,
         [always(ContextPieces), always(MainPieces), VerboseComponent]),
@@ -818,39 +818,37 @@ report_error_lambda_var(Info, ClauseContext, UnifyContext, Context,
         type_of_var_to_pieces(InstVarSet, TypeAssignSet, [suffix(",")], Var) ++
         [nl],
 
-    LambdaExprStr = "lambda expression has type",
-    Pieces4a = [words(LambdaExprStr)],
     (
         PredOrFunc = pf_predicate,
         (
             ArgVars = [],
-            Pieces4b = [words("pred")]
+            LambdaTypePieces = [words("pred")]
         ;
             ArgVars = [_ | _],
             list.length(ArgVars, NumArgVars),
             list.duplicate(NumArgVars - 1, ", _", Strings),
             JoinedString = string.join_list("", Strings),
-            Pieces4b = [words("pred(_" ++ JoinedString ++ ")")]
+            LambdaTypePieces = [words("pred(_" ++ JoinedString ++ ")")]
         )
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(ArgVars, FuncArgVars, _),
         (
             FuncArgVars = [],
-            Pieces4b = [words("func = _")]
+            LambdaTypePieces = [words("func = _")]
         ;
             FuncArgVars = [_ | _],
             list.length(FuncArgVars, NumArgVars),
             list.duplicate(NumArgVars - 1, ", _", Strings),
             JoinedString = string.join_list("", Strings),
-            Pieces4b = [words("func(_" ++ JoinedString ++ ") = _")]
+            LambdaTypePieces = [words("func(_" ++ JoinedString ++ ") = _")]
         )
     ),
-    Pieces4c = [suffix("."), nl],
-    Pieces4 = Pieces4a ++ Pieces4b ++ Pieces4c,
+    Pieces4 = [words("lambda expression has type") | LambdaTypePieces] ++
+        [suffix("."), nl],
     MainPieces = Pieces1 ++ Pieces2 ++ Pieces3 ++ Pieces4,
 
-    type_assign_set_msg_to_verbose_component(Info, TypeAssignSet, VarSet,
+    type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
         VerboseComponent),
     Msg = simple_msg(Context,
         [always(ContextPieces), always(MainPieces), VerboseComponent]),
@@ -890,7 +888,7 @@ report_error_functor_type(Info, UnifyContext, Context,
         NoSuffixIntegerPieces = []
     ),
 
-    type_assign_set_msg_to_verbose_component(Info, TypeAssignSet, VarSet,
+    type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
         VerboseComponent),
     AlwaysPieces = ContextPieces ++ MainPieces ++ NoSuffixIntegerPieces,
     Msg = simple_msg(Context, [always(AlwaysPieces), VerboseComponent]),
@@ -920,7 +918,8 @@ report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
         list.all_same(ConsArgTypesSet),
         ConsArgTypesSet = [ConsArgTypes | _]
     then
-        assoc_list.from_corresponding_lists(ArgVars, ConsArgTypes, ArgExpTypes),
+        assoc_list.from_corresponding_lists(ArgVars, ConsArgTypes,
+            ArgExpTypes),
         TypeAssigns = list.map(get_caller_arg_assign, ArgsTypeAssignSet),
         find_mismatched_args(do_not_add_quotes, InstVarSet, TypeAssigns,
             1, ArgExpTypes,
@@ -936,14 +935,14 @@ report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
             RevNoSubsumeMismatches = [_ | _],
             list.reverse(RevNoSubsumeMismatches, NoSubsumeMismatches),
             MaybeNumMismatches = yes(list.length(NoSubsumeMismatches)),
-            ErrorPieces = mismatched_args_to_pieces(NoSubsumeMismatches, yes,
-                VarSet, Functor)
+            ErrorPieces = mismatched_args_to_pieces(VarSet, Functor, yes,
+                NoSubsumeMismatches)
         ;
             RevNoSubsumeMismatches = [],
             list.reverse(RevSubsumesMismatches, SubsumesMismatches),
             MaybeNumMismatches = yes(list.length(SubsumesMismatches)),
-            ErrorPieces = mismatched_args_to_pieces(SubsumesMismatches, yes,
-                VarSet, Functor)
+            ErrorPieces = mismatched_args_to_pieces(VarSet, Functor, yes,
+                SubsumesMismatches)
         ),
         VerboseComponents = []
     else
@@ -986,8 +985,8 @@ report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
                     [suffix("."), nl], HeadArgVar, TailArgVars)
         ),
         ErrorPieces = ResultTypePieces ++ AllTypesPieces,
-        type_assign_set_msg_to_verbose_component(Info, TypeAssignSet, VarSet,
-            VerboseComponent),
+        type_assign_set_msg_to_verbose_component(Info, VarSet,
+            TypeAssignSet, VerboseComponent),
         VerboseComponents = [VerboseComponent]
     ),
     (
@@ -1162,11 +1161,11 @@ all_no_subsume_mismatches([Mismatch | Mismatches]) :-
     Mismatch ^ mismatch_subsumes = actual_does_not_subsume_expected,
     all_no_subsume_mismatches(Mismatches).
 
-:- func mismatched_args_to_pieces(list(mismatch_info), bool, prog_varset,
-    cons_id) = list(format_component).
+:- func mismatched_args_to_pieces(prog_varset, cons_id, bool,
+    list(mismatch_info)) = list(format_component).
 
-mismatched_args_to_pieces([], _, _, _) = [].
-mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
+mismatched_args_to_pieces(_, _, _, []) = [].
+mismatched_args_to_pieces(VarSet, Functor, First, [Mismatch | Mismatches])
         = Pieces :-
     Mismatch = mismatch_info(ArgNum, Var,
         HeadTypeMismatch, TailTypeMismatches),
@@ -1241,7 +1240,7 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
     ;
         Mismatches = [_ | _],
         FollowingMismatchPieces =
-            mismatched_args_to_pieces(Mismatches, no, VarSet, Functor)
+            mismatched_args_to_pieces(VarSet, Functor, no, Mismatches)
     ),
     Pieces = ThisMismatchPieces ++ FollowingMismatchPieces.
 
@@ -1396,7 +1395,7 @@ report_error_var(Info, GoalContext, Context, Var, Type, TypeAssignSet)
         NoSuffixIntegerPieces = []
     ),
 
-    type_assign_set_msg_to_verbose_component(Info, TypeAssignSet, VarSet,
+    type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
         VerboseComponent),
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(GoalContextPieces),
@@ -1425,7 +1424,7 @@ report_arg_vector_type_errors(Info, ClauseContext, Context, ArgVectorKind,
     arg_vector_type_errors_to_pieces(VarSet, ArgVectorTypeErrors,
         HeadArgVectorTypeErrors, TailArgVectorTypeErrors,
         ArgErrorPieces),
-    type_assign_set_msg_to_verbose_component(Info, TypeAssignSet, VarSet,
+    type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
         VerboseComponent),
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(ArgVectorKindPieces),
@@ -1568,7 +1567,7 @@ report_error_var_either_type(Info, ClauseContext, GoalContext, Context,
             [nl_indent_delta(-1), fixed("}."), nl]
     ),
 
-    type_assign_set_msg_to_verbose_component(Info, TypeAssignSet, VarSet,
+    type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
         VerboseComponent),
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ GoalContextPieces),
@@ -1609,8 +1608,8 @@ report_error_arg_var(Info, ClauseContext, GoalContext, Context, Var,
             [nl_indent_delta(-1), fixed("}."), nl]
     ),
 
-    arg_type_assign_set_msg_to_verbose_component(Info, ArgTypeAssignSet, VarSet,
-        VerboseComponent),
+    arg_type_assign_set_msg_to_verbose_component(Info, VarSet,
+        ArgTypeAssignSet, VerboseComponent),
     Msg = simple_msg(Context,
         [always(InClauseForPieces ++ GoalContextPieces),
         always(Pieces1 ++ Pieces2), VerboseComponent]),
@@ -2074,7 +2073,7 @@ constraints_to_pieces(TypeAssign, Pieces, !NumUnsatisfied) :-
     retrieve_prog_constraint_list(UnprovenConstraints,
         UnprovenProgConstraints0),
 
-    type_assign_get_typevarset(TypeAssign, VarSet),
+    type_assign_get_typevarset(TypeAssign, TVarSet),
     type_assign_get_type_bindings(TypeAssign, Bindings),
     apply_rec_subst_to_prog_constraint_list(Bindings,
         UnprovenProgConstraints0, UnprovenProgConstraints1),
@@ -2082,7 +2081,7 @@ constraints_to_pieces(TypeAssign, Pieces, !NumUnsatisfied) :-
         UnprovenProgConstraints),
     !:NumUnsatisfied = !.NumUnsatisfied + list.length(UnprovenProgConstraints),
     UnprovenProgConstraintStrings =
-        list.map(mercury_constraint_to_string(VarSet),
+        list.map(mercury_constraint_to_string(TVarSet),
             UnprovenProgConstraints),
     UnprovenProgConstraintsPieces =
         list.map(wrap_quote, UnprovenProgConstraintStrings),
@@ -2282,10 +2281,10 @@ cons_type_list_to_pieces(InstVarSet, [ConsDefn | ConsDefns], Functor, Arity)
     % pieces of information, it is intended to be used only with
     % --verbose-errors.
     %
-:- func type_assign_set_msg_to_pieces(type_assign_set, prog_varset)
+:- func type_assign_set_msg_to_pieces(prog_varset, type_assign_set)
     = list(format_component).
 
-type_assign_set_msg_to_pieces(TypeAssignSet, VarSet) = Pieces :-
+type_assign_set_msg_to_pieces(VarSet, TypeAssignSet) = Pieces :-
     ( if TypeAssignSet = [_] then
         FirstWords = "The partial type assignment was:",
         MaybeSeq = no
@@ -2294,8 +2293,8 @@ type_assign_set_msg_to_pieces(TypeAssignSet, VarSet) = Pieces :-
         MaybeSeq = yes(1)
     ),
     list.sort(TypeAssignSet, SortedTypeAssignSet),
-    LaterPieces = type_assign_set_to_pieces(SortedTypeAssignSet,
-        MaybeSeq, VarSet),
+    LaterPieces = type_assign_set_to_pieces(VarSet, SortedTypeAssignSet,
+        MaybeSeq),
     Pieces = [words(FirstWords), nl_indent_delta(1) | LaterPieces] ++
         [nl_indent_delta(-1)].
 
@@ -2306,10 +2305,10 @@ type_assign_set_msg_to_pieces(TypeAssignSet, VarSet) = Pieces :-
     % pieces of information, it is intended to be used only with
     % --verbose-errors.
     %
-:- func args_type_assign_set_msg_to_pieces(args_type_assign_set, prog_varset)
-    = list(format_component).
+:- func args_type_assign_set_msg_to_pieces(prog_varset,
+    args_type_assign_set) = list(format_component).
 
-args_type_assign_set_msg_to_pieces(ArgTypeAssignSet, VarSet) = Pieces :-
+args_type_assign_set_msg_to_pieces(VarSet, ArgTypeAssignSet) = Pieces :-
     ( if ArgTypeAssignSet = [_] then
         FirstWords = "The partial type assignment was:",
         MaybeSeq = no
@@ -2318,8 +2317,8 @@ args_type_assign_set_msg_to_pieces(ArgTypeAssignSet, VarSet) = Pieces :-
         MaybeSeq = yes(1)
     ),
     list.sort(ArgTypeAssignSet, SortedArgTypeAssignSet),
-    LaterPieces = args_type_assign_set_to_pieces(SortedArgTypeAssignSet,
-        MaybeSeq, VarSet),
+    LaterPieces = args_type_assign_set_to_pieces(VarSet,
+        SortedArgTypeAssignSet, MaybeSeq),
     Pieces = [words(FirstWords), nl_indent_delta(1) | LaterPieces] ++
         [nl_indent_delta(-1)].
 
@@ -2404,33 +2403,34 @@ bound_type_to_pieces(VarNamePrint, AddQuotes, TVarSet, InstVarSet,
 
 %---------------------------------------------------------------------------%
 
-:- func type_assign_set_to_pieces(type_assign_set, maybe(int), prog_varset)
-    = list(format_component).
+:- func type_assign_set_to_pieces(prog_varset, type_assign_set,
+    maybe(int)) = list(format_component).
 
-type_assign_set_to_pieces([], _, _) = [].
-type_assign_set_to_pieces([TypeAssign | TypeAssigns], MaybeSeq, VarSet) =
-    type_assign_to_pieces(TypeAssign, MaybeSeq, VarSet) ++
-    type_assign_set_to_pieces(TypeAssigns, inc_maybe_seq(MaybeSeq), VarSet).
+type_assign_set_to_pieces(_, [], _) = [].
+type_assign_set_to_pieces(VarSet, [TypeAssign | TypeAssigns], MaybeSeq) =
+    type_assign_to_pieces(VarSet, TypeAssign, MaybeSeq) ++
+    type_assign_set_to_pieces(VarSet, TypeAssigns,
+        inc_maybe_seq(MaybeSeq)).
 
-:- func args_type_assign_set_to_pieces(args_type_assign_set, maybe(int),
-    prog_varset) = list(format_component).
+:- func args_type_assign_set_to_pieces(prog_varset, args_type_assign_set,
+    maybe(int)) = list(format_component).
 
-args_type_assign_set_to_pieces([], _, _) = [].
-args_type_assign_set_to_pieces([ArgTypeAssign | ArgTypeAssigns], MaybeSeq,
-        VarSet) = Pieces :-
+args_type_assign_set_to_pieces(_, [], _) = [].
+args_type_assign_set_to_pieces(VarSet, [ArgTypeAssign | ArgTypeAssigns],
+        MaybeSeq) = Pieces :-
     % XXX Why does this simply pick the TypeAssign part of the ArgTypeAssign,
     % instead of invoking convert_args_type_assign?
     ArgTypeAssign = args_type_assign(TypeAssign, _ArgTypes, _Cnstrs),
-    Pieces = type_assign_to_pieces(TypeAssign, MaybeSeq, VarSet) ++
-        args_type_assign_set_to_pieces(ArgTypeAssigns, inc_maybe_seq(MaybeSeq),
-            VarSet).
+    Pieces = type_assign_to_pieces(VarSet, TypeAssign, MaybeSeq) ++
+        args_type_assign_set_to_pieces(VarSet, ArgTypeAssigns,
+            inc_maybe_seq(MaybeSeq)).
 
 %---------------------%
 
-:- func type_assign_to_pieces(type_assign, maybe(int), prog_varset)
+:- func type_assign_to_pieces(prog_varset, type_assign, maybe(int))
     = list(format_component).
 
-type_assign_to_pieces(TypeAssign, MaybeSeq, VarSet) = Pieces :-
+type_assign_to_pieces(VarSet, TypeAssign, MaybeSeq) = Pieces :-
     (
         MaybeSeq = yes(N),
         SeqPieces0 = [words("Type assignment"), int_fixed(N), suffix(":"), nl],
@@ -2458,16 +2458,16 @@ type_assign_to_pieces(TypeAssign, MaybeSeq, VarSet) = Pieces :-
             mercury_vars_to_string(TypeVarSet, varnums, ExternalTypeParams),
         HeadPieces = [words("some [" ++ VarsStr ++ "]"), nl]
     ),
-    TypePieces = type_assign_types_to_pieces(Vars, VarSet, VarTypes,
-        TypeBindings, TypeVarSet, no),
+    TypePieces = type_assign_types_to_pieces(VarSet, VarTypes, TypeVarSet,
+        TypeBindings, no, Vars),
     ConstraintPieces = type_assign_hlds_constraints_to_pieces(Constraints,
         TypeBindings, TypeVarSet),
     Pieces = SeqPieces ++ HeadPieces ++ TypePieces ++ ConstraintPieces ++ [nl].
 
-:- func type_assign_types_to_pieces(list(prog_var), prog_varset,
-    vartypes, tsubst, tvarset, bool) = list(format_component).
+:- func type_assign_types_to_pieces(prog_varset, vartypes, tvarset,
+    tsubst, bool, list(prog_var)) = list(format_component).
 
-type_assign_types_to_pieces([], _, _, _, _, FoundOne) = Pieces :-
+type_assign_types_to_pieces(_, _, _, _, FoundOne, []) = Pieces :-
     (
         FoundOne = no,
         Pieces = [words("(No variables were assigned a type)")]
@@ -2475,8 +2475,8 @@ type_assign_types_to_pieces([], _, _, _, _, FoundOne) = Pieces :-
         FoundOne = yes,
         Pieces = []
     ).
-type_assign_types_to_pieces([Var | Vars], VarSet, VarTypes, TypeBindings,
-        TypeVarSet, FoundOne) = Pieces :-
+type_assign_types_to_pieces(VarSet, VarTypes, TypeVarSet, TypeBindings,
+        FoundOne, [Var | Vars]) = Pieces :-
     ( if search_var_type(VarTypes, Var, Type) then
         (
             FoundOne = yes,
@@ -2488,12 +2488,12 @@ type_assign_types_to_pieces([Var | Vars], VarSet, VarTypes, TypeBindings,
         VarStr = mercury_var_to_string(VarSet, varnums, Var),
         TypeStr = type_with_bindings_to_string(Type, TypeVarSet, TypeBindings),
         AssignPieces = [fixed(VarStr), suffix(":"), words(TypeStr)],
-        TailPieces = type_assign_types_to_pieces(Vars, VarSet, VarTypes,
-            TypeBindings, TypeVarSet, yes),
+        TailPieces = type_assign_types_to_pieces(VarSet, VarTypes,
+            TypeVarSet, TypeBindings, yes, Vars),
         Pieces = PrefixPieces ++ AssignPieces ++ TailPieces
     else
-        Pieces = type_assign_types_to_pieces(Vars, VarSet, VarTypes,
-            TypeBindings, TypeVarSet, FoundOne)
+        Pieces = type_assign_types_to_pieces(VarSet, VarTypes,
+            TypeVarSet, TypeBindings, FoundOne, Vars)
     ).
 
 :- func type_with_bindings_to_string(mer_type, tvarset, tsubst) = string.
@@ -3090,41 +3090,23 @@ nosuffix_integer_pieces = Pieces :-
         words("if they are unsigned."), nl].
 
 %---------------------------------------------------------------------------%
-%
-% Converting a type assign set to a part of an error_spec can take
-% a *very* long time if the type assign set is very big, which it can be
-% in large predicates with many ambiguously typed variables.
-% Yet in the common case, the result of the conversion is needed
-% only if the verbose_errors is set. These predicates ensure that we incur
-% the cost of the conversion only when its output is actually needed.
-%
-% We *always* include a verbose_only component in the result to ensure that
-% the compiler output includes the line
-%   For more information, recompile with `-E'.
-% at the end.
-%
 
 :- pred type_assign_set_msg_to_verbose_component(typecheck_info::in,
-    type_assign_set::in, prog_varset::in, error_msg_component::out) is det.
+    prog_varset::in, type_assign_set::in, error_msg_component::out) is det.
 
-type_assign_set_msg_to_verbose_component(Info, TypeAssignSet, VarSet,
+type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
         VerboseComponent) :-
-    typecheck_info_get_verbose_errors(Info, VerboseErrors),
-    (
-        VerboseErrors = no,
-        VerbosePieces = []
-    ;
-        VerboseErrors = yes,
-        VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet)
-    ),
-    VerboseComponent = verbose_only(verbose_always, VerbosePieces).
-
-:- pred arg_type_assign_set_msg_to_verbose_component(typecheck_info::in,
-    args_type_assign_set::in, prog_varset::in, error_msg_component::out)
-    is det.
-
-arg_type_assign_set_msg_to_verbose_component(Info, ArgTypeAssignSet, VarSet,
-        VerboseComponent) :-
+    % Converting a type assign set to a part of an error_spec can take
+    % a *very* long time if the type assign set is very big, which it can be
+    % in large predicates with many ambiguously typed variables.
+    % Yet in the common case, the result of the conversion is needed
+    % only if the verbose_errors is set. These predicates ensure that we incur
+    % the cost of the conversion only when its output is actually needed.
+    %
+    % We *always* include a verbose_only component in the result to ensure that
+    % the compiler output includes the line
+    %   For more information, recompile with `-E'.
+    % at the end.
     typecheck_info_get_verbose_errors(Info, VerboseErrors),
     (
         VerboseErrors = no,
@@ -3132,7 +3114,24 @@ arg_type_assign_set_msg_to_verbose_component(Info, ArgTypeAssignSet, VarSet,
     ;
         VerboseErrors = yes,
         VerbosePieces =
-            args_type_assign_set_msg_to_pieces(ArgTypeAssignSet, VarSet)
+            type_assign_set_msg_to_pieces(VarSet, TypeAssignSet)
+    ),
+    VerboseComponent = verbose_only(verbose_always, VerbosePieces).
+
+:- pred arg_type_assign_set_msg_to_verbose_component(typecheck_info::in,
+    prog_varset::in, args_type_assign_set::in, error_msg_component::out)
+    is det.
+
+arg_type_assign_set_msg_to_verbose_component(Info, VarSet,
+        ArgTypeAssignSet, VerboseComponent) :-
+    typecheck_info_get_verbose_errors(Info, VerboseErrors),
+    (
+        VerboseErrors = no,
+        VerbosePieces = []
+    ;
+        VerboseErrors = yes,
+        VerbosePieces =
+            args_type_assign_set_msg_to_pieces(VarSet,  ArgTypeAssignSet)
     ),
     VerboseComponent = verbose_only(verbose_always, VerbosePieces).
 
@@ -3148,6 +3147,10 @@ get_inst_varset(ClauseContext, InstVarSet) :-
     % from the varset of the clause itself. I am not even sure whether
     % this matters, since I don't know whether ho_inst_infos can ever
     % be filled in before the end of typechecking.
+    %
+    % XXX Note that replacing the code below with "varset.init(InstVarSet)"
+    % has no effect on a bootcheck, so it seems that the answer to the
+    % question above is "no".
     ProgVarSet = ClauseContext ^ tecc_varset,
     varset.coerce(ProgVarSet, InstVarSet).
 

@@ -42,7 +42,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.vartypes.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module require.
@@ -274,8 +274,8 @@ check_in_interface_promise_unify_rhs(ModuleInfo, PredInfo, Var, RHS, Context,
     ;
         RHS = rhs_functor(ConsId, _, _),
         pred_info_get_clauses_info(PredInfo, ClausesInfo),
-        clauses_info_get_vartypes(ClausesInfo, VarTypes),
-        lookup_var_type(VarTypes, Var, Type),
+        clauses_info_get_var_table(ClausesInfo, VarTable),
+        lookup_var_type(VarTable, Var, Type),
         type_to_ctor_det(Type, TypeCtor),
         module_info_get_type_table(ModuleInfo, TypeTable),
         lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),

@@ -57,7 +57,6 @@
 :- import_module hlds.add_special_pred.
 :- import_module hlds.const_struct.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
@@ -89,7 +88,6 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
-:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -2848,13 +2846,12 @@ check_loop_request(Info, Request, !PredsToFix) :-
     io::di, io::uo) is det.
 
 create_new_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
-    Request = ho_request(Caller, CalledPredProc, CallArgsTypes,
+    Request = ho_request(CallerPPId, CalleePPId, CallArgsTypes,
         ExtraTypeInfoTVars, HOArgs, CallerTVarSet, TypeInfoLiveness,
         IsUserTypeSpec, Context),
-    Caller = proc(CallerPredId, CallerProcId),
+    CallerPPId = proc(CallerPredId, CallerProcId),
     ModuleInfo0 = !.Info ^ hogi_module_info,
-    module_info_pred_proc_info(ModuleInfo0, CalledPredProc,
-        PredInfo0, ProcInfo0),
+    module_info_pred_proc_info(ModuleInfo0, CalleePPId, PredInfo0, ProcInfo0),
 
     Name0 = pred_info_name(PredInfo0),
     PredFormArity = pred_info_pred_form_arity(PredInfo0),
@@ -2885,10 +2882,9 @@ create_new_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
         OriginTransform =
             transform_higher_order_type_specialization(CallerProcNum),
         NewProcId = CallerProcId,
-        % For exported predicates the type specialization must
-        % be exported.
-        % For opt_imported predicates we only want to keep this
-        % version if we do some other useful specialization on it.
+        % For exported predicates, the type specialization must be exported.
+        % For opt_imported predicates, we only want to keep this version
+        % if we do some other useful specialization on it.
         pred_info_get_status(PredInfo0, PredStatus)
     ;
         IsUserTypeSpec = no,
@@ -2918,28 +2914,18 @@ create_new_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
     pred_info_get_goal_type(PredInfo0, GoalType),
     pred_info_get_class_context(PredInfo0, ClassContext),
     pred_info_get_var_name_remap(PredInfo0, VarNameRemap),
-    varset.init(EmptyVarSet),
-    init_vartypes(EmptyVarTypes),
-    % XXX CIT_TYPES
-    % We should use the VarTypes constructed here instead of EmptyVarTypes
-    % in the construction of ClausesInfo below.
-    % list.sort(CallArgsTypes, SortedCallArgsTypes),
-    % vartypes_from_sorted_assoc_list(SortedCallArgsTypes, VarTypes),
-    map.init(EmptyTVarNameMap),
-    map.init(EmptyProofs),
-    map.init(EmptyConstraintMap),
 
-    % This isn't looked at after here, and just clutters up HLDS dumps
-    % if it's filled in.
-    set_clause_list([], ClausesRep),
-    EmptyHeadVars = proc_arg_vector_init(pf_predicate, []),
+    InitTypes = cit_no_types(pred_form_arity(list.length(CallArgsTypes))),
     ItemNumbers = init_clause_item_numbers_comp_gen,
-    rtti_varmaps_init(EmptyRttiVarMaps),
-    ClausesInfo = clauses_info(EmptyVarSet, EmptyTVarNameMap,
-        EmptyVarTypes, EmptyVarTypes, EmptyHeadVars, ClausesRep, ItemNumbers,
-        EmptyRttiVarMaps, no_foreign_lang_clauses, no_clause_syntax_errors),
+    clauses_info_init(pf_predicate, InitTypes, ItemNumbers, ClausesInfo0),
+    varset.init(EmptyVarSet),
+    vars_types_to_var_table(ModuleInfo0, EmptyVarSet, CallArgsTypes, VarTable),
+    clauses_info_set_var_table(VarTable, ClausesInfo0, ClausesInfo),
+
     Origin = origin_transformed(OriginTransform, OrigOrigin, CallerPredId),
     CurUserDecl = maybe.no,
+    map.init(EmptyProofs),
+    map.init(EmptyConstraintMap),
     pred_info_init(PredOrFunc, PredModuleName, SpecName, PredFormArity,
         Context, Origin, PredStatus, CurUserDecl, GoalType, MarkerList, Types,
         ArgTVarSet, ExistQVars, ClassContext, EmptyProofs, EmptyConstraintMap,
@@ -2953,11 +2939,11 @@ create_new_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
     !Info ^ hogi_module_info := ModuleInfo1,
 
     SpecSymName = qualified(PredModuleName, SpecName),
-    NewPred = new_pred(proc(NewPredId, NewProcId), CalledPredProc, Caller,
+    NewPred = new_pred(proc(NewPredId, NewProcId), CalleePPId, CallerPPId,
         SpecSymName, HOArgs, CallArgsTypes, ExtraTypeInfoTVars, CallerTVarSet,
         TypeInfoLiveness, IsUserTypeSpec),
 
-    higher_order_add_new_pred(CalledPredProc, NewPred, !Info),
+    higher_order_add_new_pred(CalleePPId, NewPred, !Info),
 
     create_new_proc(NewPred, ProcInfo0, NewPredInfo1, NewPredInfo, !Info),
     ModuleInfo2 = !.Info ^ hogi_module_info,
@@ -2967,14 +2953,14 @@ create_new_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
 :- pred higher_order_add_new_pred(pred_proc_id::in, new_pred::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
-higher_order_add_new_pred(CalledPredProcId, NewPred, !Info) :-
+higher_order_add_new_pred(CalleePPId, NewPred, !Info) :-
     NewPredMap0 = !.Info ^ hogi_new_pred_map,
-    ( if map.search(NewPredMap0, CalledPredProcId, SpecVersions0) then
+    ( if map.search(NewPredMap0, CalleePPId, SpecVersions0) then
         set.insert(NewPred, SpecVersions0, SpecVersions),
-        map.det_update(CalledPredProcId, SpecVersions, NewPredMap0, NewPredMap)
+        map.det_update(CalleePPId, SpecVersions, NewPredMap0, NewPredMap)
     else
         SpecVersions = set.make_singleton_set(NewPred),
-        map.det_insert(CalledPredProcId, SpecVersions, NewPredMap0, NewPredMap)
+        map.det_insert(CalleePPId, SpecVersions, NewPredMap0, NewPredMap)
     ),
     !Info ^ hogi_new_pred_map := NewPredMap.
 

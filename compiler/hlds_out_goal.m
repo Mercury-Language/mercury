@@ -32,7 +32,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
-:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module io.
@@ -67,11 +66,11 @@
     module_info::in, var_name_source::in, var_name_print::in, int::in,
     string::in, hlds_goal::in, io::di, io::uo) is det.
 
-    % TypeQual is yes(TVarset, VarTypes) if all constructors should be
-    % module qualified.
+    % TypeQual is tvarset_var_table(TVarset, VarTable)
+    % if all constructors should be module qualified.
     %
 :- pred do_write_goal(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, string::in, hlds_goal::in,
     io::di, io::uo) is det.
 
@@ -83,7 +82,7 @@
     % but may also contain other characters before that.
     %
 :- pred write_goal_list(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, string::in, list(hlds_goal)::in,
     io::di, io::uo) is det.
 
@@ -171,7 +170,7 @@ dump_goal(Stream, ModuleInfo, VarNameSrc, Goal, !IO) :-
     VarNamePrint = print_name_and_num,
     Indent = 0,
     Follow = "",
-    TypeQual = no_varset_vartypes,
+    TypeQual = no_tvarset_var_table,
     do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         Indent, Follow, Goal, !IO).
 
@@ -182,7 +181,7 @@ dump_goal_nl(Stream, ModuleInfo, VarNameSrc, Goal, !IO) :-
 write_goal(Info, Stream, ModuleInfo, VarNameSrc, VarNamePrint, Indent, Follow,
         Goal, !IO) :-
     % Do not type qualify everything.
-    do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, no_varset_vartypes,
+    do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, no_tvarset_var_table,
         VarNamePrint, Indent, Follow, Goal, !IO).
 
 write_goal_nl(Info, Stream, ModuleInfo, VarNameSrc, VarNamePrint,
@@ -857,7 +856,7 @@ is_conditional_to_string(IsConditional) = Str :-
 %
 
 :- pred write_goal_expr(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, string::in, hlds_goal_expr::in,
     io::di, io::uo) is det.
 
@@ -920,7 +919,7 @@ write_goal_expr(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
     % Write out a unification.
     %
 :- pred write_goal_unify(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, string::in,
     hlds_goal_expr::in(goal_expr_unify), io::di, io::uo) is det.
 
@@ -932,11 +931,11 @@ write_goal_unify(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
     mercury_output_var_src(VarNameSrc, VarNamePrint, LHS, Stream, !IO),
     io.write_string(Stream, " = ", !IO),
     (
-        TypeQual = varset_vartypes(_, VarTypes),
-        lookup_var_type(VarTypes, LHS, UniType),
+        TypeQual = tvarset_var_table(_, VarTable),
+        lookup_var_type(VarTable, LHS, UniType),
         VarType = yes(UniType)
     ;
-        TypeQual = no_varset_vartypes,
+        TypeQual = no_tvarset_var_table,
         VarType = no
     ),
     % XXX Fake the inst varset.
@@ -976,10 +975,10 @@ write_goal_unify(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
 write_unify_rhs(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet, VarNamePrint,
         Indent, RHS, !IO) :-
     write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
-        no_varset_vartypes, VarNamePrint, Indent, no, RHS, !IO).
+        no_tvarset_var_table, VarNamePrint, Indent, no, RHS, !IO).
 
 :- pred write_unify_rhs_2(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, inst_varset::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, inst_varset::in, type_qual::in,
     var_name_print::in, int::in, maybe(mer_type)::in, unify_rhs::in,
     io::di, io::uo) is det.
 
@@ -1005,7 +1004,7 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet, TypeQual,
             !IO),
         ( if
             MaybeType = yes(Type),
-            TypeQual = varset_vartypes(TVarSet, _)
+            TypeQual = tvarset_var_table(TVarSet, _)
         then
             io.write_string(Stream, " : ", !IO),
             mercury_output_type(TVarSet, VarNamePrint, Type, Stream, !IO)
@@ -1077,7 +1076,7 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet, TypeQual,
         ),
         ( if
             MaybeType = yes(Type),
-            TypeQual = varset_vartypes(TVarSet, _)
+            TypeQual = tvarset_var_table(TVarSet, _)
         then
             io.write_string(Stream, " : ", !IO),
             mercury_output_type(TVarSet, VarNamePrint, Type, Stream, !IO)
@@ -1338,7 +1337,7 @@ write_arg_modes(Stream, InstVarSet, Indent, ArgNum,
 %
 
 :- pred write_goal_plain_call(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, string::in,
     hlds_goal_expr::in(goal_expr_plain_call), io::di, io::uo) is det.
 
@@ -1404,11 +1403,11 @@ write_goal_plain_call(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         (
             MaybeUnifyContext = yes(CallUnifyContext),
             (
-                TypeQual = varset_vartypes(_, VarTypes),
-                lookup_var_type(VarTypes, Var, UniType),
+                TypeQual = tvarset_var_table(_, VarTable),
+                lookup_var_type(VarTable, Var, UniType),
                 VarType = yes(UniType)
             ;
-                TypeQual = no_varset_vartypes,
+                TypeQual = no_tvarset_var_table,
                 VarType = no
             ),
             CallUnifyContext = call_unify_context(Var, RHS, _UnifyContext),
@@ -1449,7 +1448,7 @@ sym_name_and_args_to_string(VarNameSrc, VarNamePrint, PredName, ArgVars)
 %
 
 :- pred write_goal_generic_call(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, string::in,
     hlds_goal_expr::in(goal_expr_generic_call), io::di, io::uo) is det.
 
@@ -1639,7 +1638,7 @@ write_cast_as_pred_or_func(CastType) = PredOrFunc :-
 %
 
 :- pred write_goal_foreign_proc(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, string::in,
     hlds_goal_expr::in(goal_expr_foreign_proc), io::di, io::uo) is det.
 
@@ -1736,7 +1735,7 @@ write_foreign_args(Stream, VarNameSrc, TVarSet, InstVarSet,
 %
 
 :- pred write_goal_conj(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, string::in,
     hlds_goal_expr::in(goal_expr_conj), io::di, io::uo) is det.
 
@@ -1787,7 +1786,7 @@ write_goal_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
     ).
 
 :- pred write_conj(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, string::in, string::in,
     hlds_goal::in, list(hlds_goal)::in, io::di, io::uo) is det.
 
@@ -1822,7 +1821,7 @@ write_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
 %
 
 :- pred write_goal_disj(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, string::in,
     hlds_goal_expr::in(goal_expr_disj), io::di, io::uo) is det.
 
@@ -1852,7 +1851,7 @@ write_goal_disj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
 %
 
 :- pred write_goal_switch(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, string::in,
     hlds_goal_expr::in(goal_expr_switch), io::di, io::uo) is det.
 
@@ -1881,7 +1880,7 @@ write_goal_switch(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
     io.write_string(Stream, Follow, !IO).
 
 :- pred write_cases(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, prog_var::in, list(case)::in,
     io::di, io::uo) is det.
 
@@ -1900,7 +1899,7 @@ write_cases(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
     ).
 
 :- pred write_case(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, prog_var::in, case::in,
     io::di, io::uo) is det.
 
@@ -1949,7 +1948,7 @@ case_comment(VarName, MainConsName, OtherConsNames) = Comment :-
 %
 
 :- pred write_goal_negation(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, string::in, hlds_goal_expr::in(goal_expr_neg),
     io::di, io::uo) is det.
 
@@ -1970,7 +1969,7 @@ write_goal_negation(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
 %
 
 :- pred write_goal_if_then_else(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, string::in, hlds_goal_expr::in(goal_expr_ite),
     io::di, io::uo) is det.
 
@@ -2024,7 +2023,7 @@ write_some(Stream, VarNameSrc, Vars, !IO) :-
 %
 
 :- pred write_goal_scope(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, string::in,
     hlds_goal_expr::in(goal_expr_scope), io::di, io::uo) is det.
 
@@ -2340,7 +2339,7 @@ maybe_add_comma_newline(Stream, AddCommaNewline, !IO) :-
 %
 
 :- pred write_goal_shorthand(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, maybe_vartypes::in,
+    module_info::in, var_name_source::in, type_qual::in,
     var_name_print::in, int::in, string::in,
     hlds_goal_expr::in(goal_expr_shorthand), io::di, io::uo) is det.
 
