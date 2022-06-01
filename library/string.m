@@ -247,8 +247,9 @@
 
     % duplicate_char(Char, Count, String):
     %
-    % Construct a string consisting of `Count' occurrences of `Char'
-    % code points in sequence.
+    % Construct a string consisting of Count occurrences of Char code points
+    % in sequence, returning the empty string if Count is less than or equal
+    % to zero.
     %
 :- func duplicate_char(char::in, int::in) = (string::uo) is det.
 :- pred duplicate_char(char::in, int::in, string::uo) is det.
