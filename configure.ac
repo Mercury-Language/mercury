@@ -2409,6 +2409,17 @@ case "$ac_cv_c_compiler_gnu" in yes)
             # -ftree-dominator-opts.
             CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS $CFLAGS_FOR_NO_TREE_DOMINATOR_OPTS"
             CFLAGS_FOR_REGS="-fomit-frame-pointer"
+            # GCC labels do not work correctly on aarch64 when generating PIC
+            # with GCC 9+.
+            case $C_COMPILER_TYPE in
+                gcc_3_*|gcc_4_*|gcc_5_*|gcc_6_*|gcc_7_*|gcc_8_*)
+                    ;;
+                gcc_*)
+                    MERCURY_MSG("gcc labels do not work with PIC on aarch64")
+                    mercury_cv_asm_labels=no
+                    mercury_cv_gcc_labels=no
+                    ;;
+            esac
             ;;
     esac
     ;;
