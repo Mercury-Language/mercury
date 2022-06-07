@@ -5,7 +5,7 @@
 % "Feel free to use this code or parts of it any way you want."
 %
 % Some portions are Copyright (C) 1999-2007,2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2021 The Mercury team.
+% Copyright (C) 2014-2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %

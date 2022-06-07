@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2009 The University of Melbourne.
 % Copyright (C) 2013-2016 Opturion Pty Ltd.
-% Copyright (C) 2017-2018 The Mercury team.
+% Copyright (C) 2017-2019, 2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
