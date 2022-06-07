@@ -430,6 +430,7 @@ ORDINARY_PROGS = \
 	test_char_digits \
 	test_cord \
 	test_cord2 \
+	test_cord3 \
 	test_imported_no_tag \
 	test_infinity \
 	test_int_hash \

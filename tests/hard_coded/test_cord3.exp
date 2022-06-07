@@ -1,0 +1,11 @@
+Empty is empty.
+Singleton1 is not empty.
+Singleton2 is not empty.
+NonSingleton1 is not empty.
+NonSingleton2 is not empty.
+
+Empty is not a singleton.
+Singleton1 is a singleton with element 1.
+Singleton2 is a singleton with element 2.
+NonSingleton1 is not a singleton.
+NonSingleton2 is not a singleton.

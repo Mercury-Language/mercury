@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2011 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2018, 2021-2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -57,6 +57,10 @@
     % list(singleton(X)) = [X]
     %
 :- func singleton(T) = cord(T).
+
+    % is_singleton(C, X) <=> list(C) = [X].
+    %
+:- pred is_singleton(cord(T)::in, T::out) is semidet.
 
     % list(from_list(Xs)) = Xs
     % An O(1) operation.
@@ -251,6 +255,42 @@
 :- mode foldr_pred(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
 :- mode foldr_pred(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
+    % foldr2(P, C, !AccA, !AccB):
+    %
+    % Equivalent to list.foldr2(P, list(C), !AccA, !AccB), but faster.
+    %
+:- pred foldr2(pred(T, A, A, B, B), cord(T), A, A, B, B).
+:- mode foldr2(in(pred(in, in, out, in, out) is det), in, in, out,
+    in, out) is det.
+:- mode foldr2(in(pred(in, in, out, mdi, muo) is det), in, in, out,
+    mdi, muo) is det.
+:- mode foldr2(in(pred(in, in, out, di, uo) is det), in, in, out,
+    di, uo) is det.
+:- mode foldr2(in(pred(in, in, out, in, out) is semidet), in, in, out,
+    in, out) is semidet.
+:- mode foldr2(in(pred(in, in, out, mdi, muo) is semidet), in, in, out,
+    mdi, muo) is semidet.
+:- mode foldr2(in(pred(in, in, out, di, uo) is semidet), in, in, out,
+    di, uo) is semidet.
+
+    % foldr3(P, C, !AccA, !AccB,! AccC):
+    %
+    % Equivalent to list.foldr3(P, list(C), !AccA, !AccB, !AccC), but faster.
+    %
+:- pred foldr3(pred(T, A, A, B, B, C, C), cord(T), A, A, B, B, C, C).
+:- mode foldr3(in(pred(in, in, out, in, out, in, out) is det), in,
+    in, out, in, out, in, out) is det.
+:- mode foldr3(in(pred(in, in, out, in, out, mdi, muo) is det), in,
+    in, out, in, out, mdi, muo) is det.
+:- mode foldr3(in(pred(in, in, out, in, out, di, uo) is det), in,
+    in, out, in, out, di, uo) is det.
+:- mode foldr3(in(pred(in, in, out, in, out, in, out) is semidet), in,
+    in, out, in, out, in, out) is semidet.
+:- mode foldr3(in(pred(in, in, out, in, out, mdi, muo) is semidet), in,
+    in, out, in, out, mdi, muo) is semidet.
+:- mode foldr3(in(pred(in, in, out, in, out, di, uo) is semidet), in,
+    in, out, in, out, di, uo) is semidet.
+
     % map_foldl(P, CA, CB, !Acc):
     %
     % This predicate calls P on each element of the input cord, working
@@ -326,6 +366,13 @@ is_empty(empty_cord).
 %---------------------------------------------------------------------------%
 
 singleton(X) = nonempty_cord(unit_node(X)).
+
+is_singleton(C, X) :-
+    (
+        C = nonempty_cord(unit_node(X))
+    ;
+        C = nonempty_cord(list_node(X, []))
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -931,6 +978,78 @@ foldr_node_pred(P, C, Cs, !Acc) :-
     ).
 foldr_node_pred(P, branch_node(A, B), Cs, !Acc) :-
     foldr_node_pred(P, B, [A | Cs], !Acc).
+
+foldr2(_P, empty_cord, !Acc1, !Acc2).
+foldr2(P, nonempty_cord(N), !Acc1, !Acc2) :-
+    foldr2_node(P, N, [], !Acc1, !Acc2).
+
+:- pred foldr2_node(pred(T, A, A, B, B), cord_node(T), list(cord_node(T)),
+    A, A, B, B).
+:- mode foldr2_node(in(pred(in, in, out, in, out) is det), in, in,
+    in, out, in, out) is det.
+:- mode foldr2_node(in(pred(in, in, out, mdi, muo) is det), in, in,
+    in, out, mdi, muo) is det.
+:- mode foldr2_node(in(pred(in, in, out, di, uo) is det), in, in,
+    in, out, di, uo) is det.
+:- mode foldr2_node(in(pred(in, in, out, in, out) is semidet), in, in,
+    in, out, in, out) is semidet.
+:- mode foldr2_node(in(pred(in, in, out, mdi, muo) is semidet), in, in,
+    in, out, mdi, muo) is semidet.
+:- mode foldr2_node(in(pred(in, in, out, di, uo) is semidet), in, in,
+    in, out, di, uo) is semidet.
+
+foldr2_node(P, C, Cs, !Acc1, !Acc2) :-
+    (
+        C = unit_node(X),
+        P(X, !Acc1, !Acc2)
+    ;
+        C = list_node(H, T),
+        list.foldr2(P, [H | T], !Acc1, !Acc2)
+    ),
+    (
+        Cs = []
+    ;
+        Cs = [Y | Ys],
+        foldr2_node(P, Y, Ys, !Acc1, !Acc2)
+    ).
+foldr2_node(P, branch_node(A, B), Cs, !Acc1, !Acc2) :-
+    foldr2_node(P, B, [A | Cs], !Acc1, !Acc2).
+
+foldr3(_P, empty_cord, !Acc1, !Acc2, !Acc3).
+foldr3(P, nonempty_cord(N), !Acc1, !Acc2, !Acc3) :-
+    foldr3_node(P, N, [], !Acc1, !Acc2, !Acc3).
+
+:- pred foldr3_node(pred(T, A, A, B, B, C, C), cord_node(T),
+    list(cord_node(T)), A, A, B, B, C, C).
+:- mode foldr3_node(in(pred(in, in, out, in, out, in, out) is det), in,
+    in, in, out, in, out, in, out) is det.
+:- mode foldr3_node(in(pred(in, in, out, in, out, mdi, muo) is det), in,
+    in, in, out, in, out, mdi, muo) is det.
+:- mode foldr3_node(in(pred(in, in, out, in, out, di, uo) is det), in,
+    in, in, out, in, out, di, uo) is det.
+:- mode foldr3_node(in(pred(in, in, out, in, out, in, out) is semidet), in,
+    in, in, out, in, out, in, out) is semidet.
+:- mode foldr3_node(in(pred(in, in, out, in, out, mdi, muo) is semidet), in,
+    in, in, out, in, out, mdi, muo) is semidet.
+:- mode foldr3_node(in(pred(in, in, out, in, out, di, uo) is semidet), in,
+    in, in, out, in, out, di, uo) is semidet.
+
+foldr3_node(P, C, Cs, !Acc1, !Acc2, !Acc3) :-
+    (
+        C = unit_node(X),
+        P(X, !Acc1, !Acc2, !Acc3)
+    ;
+        C = list_node(H, T),
+        list.foldr3(P, [H | T], !Acc1, !Acc2, !Acc3)
+    ),
+    (
+        Cs = []
+    ;
+        Cs = [Y | Ys],
+        foldr3_node(P, Y, Ys, !Acc1, !Acc2, !Acc3)
+    ).
+foldr3_node(P, branch_node(A, B), Cs, !Acc1, !Acc2, !Acc3) :-
+    foldr3_node(P, B, [A | Cs], !Acc1, !Acc2, !Acc3).
 
 %---------------------------------------------------------------------------%
 

@@ -62,6 +62,14 @@ Changes to the Mercury standard library
     - func `promise_only_solution/1`
     - pred `promise_only_solution_io/4`
 
+### Changes to the `cord` module
+
+* The following predicates have been added:
+
+    - pred `foldr2/6`
+    - pred `foldr3/8`
+    - pred `is_singleton/2`
+
 ### Changes to the `diet` module
 
 * The following obsolete predicate has been removed:
