@@ -2116,7 +2116,7 @@ then
 
         # Tell the executables for the tests where the stage 2 library lives.
         # XXX this only works for Mono; MS .NET doesn't have an equivalent of
-        # the MONO_PATH environment variable. (To support MS .NETm we may just
+        # the MONO_PATH environment variable. (To support MS .NET we may just
         # have to copy the library DLL into any test directory that creates
         # executables.)
         if test "${grade}" = "csharp"
