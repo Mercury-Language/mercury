@@ -81,7 +81,7 @@
 
 :- implementation.
 
-:- import_module string, list, exception, int, array, bool.
+:- import_module string, list, exception, int, array, bool, prolog.
 :- import_module attrs.
 
 
@@ -98,15 +98,15 @@ write_optimized_files(BaseName, Str, Attrss, Exts, Num) -->
 
     { file_names(BaseName, Num, SMLNG, Done) },
 
-    io__tell(SMLNG, Res1),
+    prolog__tell(SMLNG, Res1),
     ( if { Res1 = error(_) } then { throw(Res1) } ),
     write_optimized(Str, Attrss, Exts, Num),
-    io__told,
+    prolog__told,
 
-    io__tell(Done, Res2),
+    prolog__tell(Done, Res2),
     ( if { Res2 = error(_) } then { throw(Res2) } ),
     io__write_string("\n"),
-    io__told.
+    prolog__told.
 
 
 

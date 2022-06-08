@@ -15,7 +15,7 @@
 
 :- interface.
 
-:- import_module io, list, array, char.
+:- import_module io, list, array, char, prolog.
 :- import_module attrs.
 
 
@@ -313,23 +313,23 @@ read_smlng(FirstFile, FirstDone, Str, Attrss, Extents) -->
         %
     write_tokens_to_file(FirstFile, Toks),
 
-    io__tell(FirstDone, Result),
+    prolog__tell(FirstDone, Result),
     ( if { Result = error(_) } then { throw(Result) } ),
     io__write_string("\n"),
-    io__told.
-    
+    prolog__told.
+
 %------------------------------------------------------------------------------%
-    
+
     % Write out a sequence of tokens.
     %
 :- pred write_tokens_to_file(string, tokens, io__state, io__state).
 :- mode write_tokens_to_file(in, in, di, uo) is det.
 
 write_tokens_to_file(File, Toks) -->
-    io__tell(File, Result),
+    prolog__tell(File, Result),
     ( if { Result = error(_) } then { throw(Result) } ),
     write_tokens(Toks),
-    io__told.
+    prolog__told.
 
 
 

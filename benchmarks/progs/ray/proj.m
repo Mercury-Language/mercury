@@ -11,6 +11,7 @@
 :- implementation.
 
 :- import_module list, int, float, char, string, require, gfx, scene, vec3, ray, std_util, ppm, debug.
+:- import_module prolog.
 
 % processed program arguments
 :- type argtable --->
@@ -44,7 +45,7 @@ main -->
     % { dump_scene(Scene) },
     get_image_size(Background, X, Y),
     % { dump("got size\n", []) },
-    io__tell("OUT.ppm", _),
+    prolog__tell("OUT.ppm", _),
     ppm_write_header(X, Y),
     % { dump("written header\n", []) },
     generate_image(0, X, 0, Y, ArgTable, Scene).

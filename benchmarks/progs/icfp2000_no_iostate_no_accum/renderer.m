@@ -1,7 +1,7 @@
 :- module renderer.
 :- interface.
 :- import_module eval, space_partition, trans, vector, tree.
-:- import_module list, io, maybe, pair. 
+:- import_module list, io, maybe, pair.
 
 :- type render_params
     ---> render_params(
@@ -33,7 +33,7 @@
 :- import_module precompute_lights.
 :- import_module map, array, exception, require, math.
 :- import_module int, float, std_util, string.
-:- import_module cord.
+:- import_module cord, prolog.
 
 do_rendering(State, !IO) :-
     RenderCommands = State ^ s_render_commands,

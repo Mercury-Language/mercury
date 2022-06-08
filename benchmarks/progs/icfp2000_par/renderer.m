@@ -55,6 +55,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module math.
+:- import_module prolog.
 :- import_module require.
 :- import_module string.
 
@@ -67,7 +68,7 @@ render(Params1, !IO) :-
     % It would be slightly more efficient to just output the values
     % as we go along.
 
-    io.tell(FileName, Result, !IO),
+    tell(FileName, Result, !IO),
     (
         Result = ok,
         output_stream(Stream, !IO),
@@ -95,7 +96,7 @@ render(Params1, !IO) :-
         gettimeofday(T0, !IO),
         render_rows_par(Params2, Wid, Ht, !IO),
         gettimeofday(T1, !IO),
-        io.told(!IO),
+        told(!IO),
 
         get_time_filename(TimeFileName, !IO),
         ( TimeFileName = "" ->

@@ -27,6 +27,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module std_util.
+:- import_module prolog.
 :- import_module unit.
 
 main(!IO) :-
@@ -48,7 +49,7 @@ main(!IO) :-
             % Take input from stdin.
         ;
             NonOptionArgs = [FileName],
-            io.see(FileName, SeeResult, !IO),
+            prolog.see(FileName, SeeResult, !IO),
             (
                 SeeResult = ok
             ;

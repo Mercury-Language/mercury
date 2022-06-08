@@ -1,7 +1,7 @@
 :- module renderer.
 :- interface.
 :- import_module eval, space_partition, trans, vector, tree.
-:- import_module list, io, maybe, pair. 
+:- import_module list, io, maybe, pair.
 
 :- type render_params
 	---> render_params(
@@ -31,7 +31,7 @@
 :- import_module transform_object, gml, op.
 :- import_module precompute_lights.
 :- import_module map, array, exception, require, math.
-:- import_module int, float, std_util, string.
+:- import_module int, float, std_util, string, prolog.
 
 render(Params1) -->
 	{ Wid = Params1 ^ wid },

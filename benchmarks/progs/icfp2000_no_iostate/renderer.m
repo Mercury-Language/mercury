@@ -1,7 +1,7 @@
 :- module renderer.
 :- interface.
 :- import_module eval, space_partition, trans, vector, tree.
-:- import_module list, io, maybe, pair. 
+:- import_module list, io, maybe, pair, prolog.
 
 :- type render_params
 	---> render_params(

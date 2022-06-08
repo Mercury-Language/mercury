@@ -22,7 +22,7 @@
 :- implementation.
 
 :- import_module string, char, float, int, array, list, assoc_list.
-:- import_module require, math, std_util, map.
+:- import_module require, math, std_util, map, prolog.
 :- import_module debug, table, split_line, off, vec3, mat3.
 
 % object with normal vectors for vertices and faces
@@ -60,7 +60,7 @@ get_scene(Filename, Scene) -->
         ->
             { true }
         ;
-            io__see(Filename, Result),
+            prolog__see(Filename, Result),
                 (
                     { Result = error(ErrorCode) },
                     { io__error_message(ErrorCode, ErrorString) },
@@ -75,7 +75,7 @@ get_scene(Filename, Scene) -->
         ->
             { true }
         ;
-            io__seen
+            prolog__seen
         )
     ).
 

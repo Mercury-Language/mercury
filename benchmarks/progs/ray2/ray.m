@@ -215,7 +215,7 @@ loop_1(F, N, Y, YEnd, !IO) :-
 :- pred write_row(row::in, io::di, io::uo) is det.
 
 write_row(Row, !IO) :-
-    io.write_bitmap(Row, !IO).
+    bitmap.write_bitmap(Row, !IO).
 
 /* list(int)
 write_row([], !IO).
