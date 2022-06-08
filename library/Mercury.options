@@ -85,4 +85,3 @@ MCFLAGS-lazy                    += --no-warn-non-term-special-preds
 
 # Keep all modules' contents in a consistent order, except these (for now).
 MCFLAGS-bt_array                += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-robdd                   += --no-warn-inconsistent-pred-order-clauses

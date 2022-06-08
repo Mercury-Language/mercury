@@ -59,21 +59,31 @@
 :- import_module sparse_bitset.
 :- import_module term.
 
+%---------------------------------------------------------------------------%
+
 :- type robdd(T).
 :- type robdd == robdd(generic).
 
-:- type vars(T) == sparse_bitset(var(T)). % XXX experiment with different reps.
+%---------------------------------------------------------------------------%
+
+    % NOTE_TO_IMPLEMENTORS Experimenting with different reps may be worthwhile.
+:- type vars(T) == sparse_bitset(var(T)).
 
 :- func empty_vars_set = vars(T).
+
+%---------------------------------------------------------------------------%
+%
+% Constructing ROBDDs.
+%
 
     % Constants.
     %
 :- func one = robdd(T).
 :- func zero = robdd(T).
 
-    % If-then-else.
+    % var(X) is the ROBDD that is true iff X is true.
     %
-:- func ite(robdd(T), robdd(T), robdd(T)) = robdd(T).
+:- func var(var(T)) = robdd(T).
 
 % The functions *, +, =<, =:=, =\= and ~ correspond to the names
 % used in the SICStus clp(B) library.
@@ -102,15 +112,16 @@
     %
 :- func (~ robdd(T)) = robdd(T).
 
-%---------------------------------------------------------------------------%
-
-    % var(X) is the ROBDD that is true iff X is true.
+    % If-then-else.
     %
-:- func var(var(T)) = robdd(T).
+:- func ite(robdd(T), robdd(T), robdd(T)) = robdd(T).
 
+%---------------------------------------------------------------------------%
+%
 % The following functions operate on individual variables and are
 % more efficient than the more generic versions above that take
 % ROBDDs as input.
+%
 
     % not_var(V) = ~ var(V).
     %
@@ -158,6 +169,9 @@
 :- func var_restrict_false(var(T), robdd(T)) = robdd(T).
 
 %---------------------------------------------------------------------------%
+%
+% Entailment tests.
+%
 
     % X `entails` Y:
     %
@@ -310,6 +324,35 @@
 %   %
 % :- func cnf(robdd(T)) = list(list(literal(T))).
 
+%---------------------------------------------------------------------------%
+
+    % Apply the variable substitution to the ROBDD.
+    %
+:- func rename_vars(func(var(T)) = var(T), robdd(T)) = robdd(T).
+
+    % Succeed iff ROBDD = one or ROBDD = zero.
+    %
+:- pred is_terminal(robdd(T)::in) is semidet.
+
+    % Succeed iff the var is constrained by the ROBDD.
+    %
+:- pred var_is_constrained(robdd(T)::in, var(T)::in) is semidet.
+
+    % Succeed iff all the vars in the set are constrained by the ROBDD.
+    %
+:- pred vars_are_constrained(robdd(T)::in, vars(T)::in) is semidet.
+
+    % Return the number of nodes and the depth of the ROBDD.
+    %
+:- pred size(robdd(T)::in, int::out, int::out) is det.
+
+    % Return the number of nodes, the depth of the ROBDD and
+    % the variables it contains.
+    %
+:- pred size(robdd(T)::in, int::out, int::out, list(var(T))::out) is det.
+
+%---------------------------------------------------------------------------%
+
     % Print out the ROBDD in disjunctive normal form. either to the
     % current output stream, or to the specified output stream.
     %
@@ -340,31 +383,6 @@
 :- pred robdd_to_dot_stream(io.text_output_stream::in, robdd(T)::in,
     var_to_string(T)::in, io::di, io::uo) is det.
 
-    % Apply the variable substitution to the ROBDD.
-    %
-:- func rename_vars(func(var(T)) = var(T), robdd(T)) = robdd(T).
-
-    % Succeed iff ROBDD = one or ROBDD = zero.
-    %
-:- pred is_terminal(robdd(T)::in) is semidet.
-
-    % Output the number of nodes and the depth of the ROBDD.
-    %
-:- pred size(robdd(T)::in, int::out, int::out) is det.
-
-    % Output the number of nodes, the depth of the ROBDD and the
-    % variables it contains.
-    %
-:- pred size(robdd(T)::in, int::out, int::out, list(var(T))::out) is det.
-
-    % Succeed iff the var is constrained by the ROBDD.
-    %
-:- pred var_is_constrained(robdd(T)::in, var(T)::in) is semidet.
-
-    % Succeed iff all the vars in the set are constrained by the ROBDD.
-    %
-:- pred vars_are_constrained(robdd(T)::in, vars(T)::in) is semidet.
-
 %---------------------------------------------------------------------------%
 
     % labelling(Vars, ROBDD, TrueVars, FalseVars):
@@ -376,10 +394,11 @@
     % of variables assigned the value 1) and FalseVars (set of
     % variables assigned the value 0).
     %
-    % XXX should try using sparse_bitset here.
-    %
+    % NOTE_TO_IMPLEMENTORS should try using sparse_bitset here.
 :- pred labelling(vars(T)::in, robdd(T)::in, vars(T)::out, vars(T)::out)
     is nondet.
+
+%---------------------------------------------------------------------------%
 
     % minimal_model(Vars, ROBDD, TrueVars, FalseVars):
     %
@@ -390,8 +409,7 @@
     % of variables assigned the value 1) and FalseVars (set of
     % variables assigned the value 0).
     %
-    % XXX should try using sparse_bitset here.
-    %
+    % NOTE_TO_IMPLEMENTORS should try using sparse_bitset here.
 :- pred minimal_model(vars(T)::in, robdd(T)::in, vars(T)::out, vars(T)::out)
     is nondet.
 
@@ -426,10 +444,8 @@
     --->    robdd(int).
 
 % :- type robdd(T) ---> robdd(c_pointer).
-% Can't use a c_pointer since we want to memo ROBDD operations and
-% pragma memo does not support c_pointers.
-
-empty_vars_set = sparse_bitset.init.
+% Can't use a c_pointer since we want to memo ROBDD operations
+% and pragma memo does not support c_pointers.
 
 :- pragma foreign_decl("C", local, "
 #define MR_ROBDD_CLEAR_CACHES
@@ -449,385 +465,54 @@ typedef   MR_Word MR_ROBDD_NODE_TYPE;
 #include ""bryant.c""
 ").
 
-:- pragma no_inline(func(one/0)).
+% make_node(Var, Then, Else):
+%
+% The make_node() function. WARNING!! If you use this function,
+% you are responsible for making sure that the ROBDD invariant holds,
+% i.e. that all the variables in both the Then and Else subgraphs are > Var.
+
+:- func make_node(var(T), robdd(T), robdd(T)) = robdd(T).
+:- pragma no_inline(func(make_node/3)).
 :- pragma foreign_proc("C",
-    one = (F::out),
+    make_node(Var::in, Then::in, Else::in) = (Node::out),
     [will_not_call_mercury, promise_pure],
 "
-    F = (MR_ROBDD_NODE_TYPE) MR_ROBDD_trueVar();
+    Node = (MR_ROBDD_NODE_TYPE) MR_ROBDD_make_node((int) Var,
+        (MR_ROBDD_node *) Then, (MR_ROBDD_node *) Else);
 ").
 
-:- pragma no_inline(func(zero/0)).
+% Access to the struct members.
+% WARNING! These functions are unsafe. You must not call these functions
+% on the terminal robdds (i.e. `zero' and `one').
+:- func value(robdd(T)) = var(T).
+:- func tr(robdd(T)) = robdd(T).
+:- func fa(robdd(T)) = robdd(T).
+
+:- pragma no_inline(func(value/1)).
 :- pragma foreign_proc("C",
-    zero = (F::out),
+    value(F::in) = (Value::out),
     [will_not_call_mercury, promise_pure],
 "
-    F = (MR_ROBDD_NODE_TYPE) MR_ROBDD_falseVar();
+    Value = (MR_ROBDD_NODE_TYPE) ((MR_ROBDD_node *) F)->value;
 ").
 
-:- pragma no_inline(func(var/1)).
+:- pragma no_inline(func(tr/1)).
 :- pragma foreign_proc("C",
-    var(V::in) = (F::out),
+    tr(F::in) = (Tr::out),
     [will_not_call_mercury, promise_pure],
 "
-    F = (MR_ROBDD_NODE_TYPE) MR_ROBDD_variableRep(V);
+    Tr = (MR_ROBDD_NODE_TYPE) ((MR_ROBDD_node *) F)->tr;
 ").
 
-:- pragma no_inline(func(ite/3)).
+:- pragma no_inline(func(fa/1)).
 :- pragma foreign_proc("C",
-    ite(F::in, G::in, H::in) = (ITE::out),
+    fa(F::in) = (Fa::out),
     [will_not_call_mercury, promise_pure],
 "
-    ITE = (MR_ROBDD_NODE_TYPE) MR_ROBDD_ite((MR_ROBDD_node *) F,
-        (MR_ROBDD_node *) G, (MR_ROBDD_node *) H);
+    Fa = (MR_ROBDD_NODE_TYPE) ((MR_ROBDD_node *) F)->fa;
 ").
 
-:- pragma no_inline(func(ite_var/3)).
-:- pragma foreign_proc("C",
-    ite_var(V::in, G::in, H::in) = (ITE::out),
-    [will_not_call_mercury, promise_pure],
-"
-    ITE = (MR_ROBDD_NODE_TYPE) MR_ROBDD_ite_var(V, (MR_ROBDD_node *) G,
-        (MR_ROBDD_node *) H);
-").
-
-:- pragma promise_pure(func('*'/2)).
-X * Y = R :-
-    R = glb(X, Y),
-
-    % XXX debugging code.
-    % ( if R = zero then
-    ( if (X = zero ; Y = zero) then
-        impure report_zero_constraint
-    else
-        true
-    ).
-
-:- func glb(robdd(T), robdd(T)) = robdd(T).
-:- pragma foreign_proc("C",
-    glb(X::in, Y::in) = (F::out),
-    [will_not_call_mercury, promise_pure],
-"
-    F = (MR_ROBDD_NODE_TYPE) MR_ROBDD_glb((MR_ROBDD_node *) X,
-        (MR_ROBDD_node *) Y);
-").
-
-% XXX
-:- impure pred report_zero_constraint is det.
-:- pragma foreign_proc("C",
-    report_zero_constraint,
-    [will_not_call_mercury],
-"
-    fprintf(stderr, ""Zero constraint!!!\\n"");
-").
-
-:- pragma no_inline(func((+)/2)).
-:- pragma foreign_proc("C",
-    (X::in) + (Y::in) = (F::out),
-    [will_not_call_mercury, promise_pure],
-"
-    F = (MR_ROBDD_NODE_TYPE) MR_ROBDD_lub((MR_ROBDD_node *) X,
-        (MR_ROBDD_node *) Y);
-").
-
-:- pragma no_inline(func((=<)/2)).
-:- pragma foreign_proc("C",
-    ((X::in) =< (Y::in)) = (F::out),
-    [will_not_call_mercury, promise_pure],
-"
-    F = (MR_ROBDD_NODE_TYPE) MR_ROBDD_implies((MR_ROBDD_node *) X,
-        (MR_ROBDD_node *) Y);
-").
-
-(F =:= G) = ite(F, G, ~G).
-
-(F =\= G) = ite(F, ~G, G).
-
-(~F) = ite(F, zero, one).
-
-:- pragma no_inline(pred(entails/2)).
-:- pragma foreign_proc("C",
-    entails(X::in, Y::in),
-    [will_not_call_mercury, promise_pure],
-"
-    SUCCESS_INDICATOR = (MR_ROBDD_ite_constant((MR_ROBDD_node *) X,
-        (MR_ROBDD_node *) Y, MR_ROBDD_one) == MR_ROBDD_one);
-").
-
-:- pragma no_inline(pred(var_entailed/2)).
-:- pragma foreign_proc("C",
-    var_entailed(F::in, V::in),
-    [will_not_call_mercury, promise_pure],
-"
-    SUCCESS_INDICATOR = MR_ROBDD_var_entailed((MR_ROBDD_node *) F,
-        (int) V);
-").
-
-% :- pragma memo(vars_entailed/1).
-
-vars_entailed(R) =
-    ( if R = one then
-        some_vars(empty_vars_set)
-    else if R = zero then
-        all_vars
-    else
-        ( if R ^ fa = zero then
-            (vars_entailed(R ^ tr) `intersection` vars_entailed(R ^ fa))
-                `insert` R ^ value
-        else
-            vars_entailed(R ^ tr) `intersection` vars_entailed(R ^ fa)
-        )
-    ).
-
-% :- pragma memo(vars_disentailed/1).
-
-vars_disentailed(R) =
-    ( if R = one then
-        some_vars(empty_vars_set)
-    else if R = zero then
-        all_vars
-    else
-        ( if R ^ tr = zero then
-            (vars_disentailed(R ^ tr) `intersection`
-                vars_disentailed(R ^ fa)) `insert` R ^ value
-        else
-            vars_disentailed(R ^ tr) `intersection`
-                vars_disentailed(R ^ fa)
-        )
-    ).
-
-% :- pragma memo(definite_vars/3).
-
-definite_vars(R, T, F) :-
-    ( if R = one then
-        T = some_vars(empty_vars_set),
-        F = some_vars(empty_vars_set)
-    else if R = zero then
-        T = all_vars,
-        F = all_vars
-    else
-        definite_vars(R ^ tr, T_tr, F_tr),
-        definite_vars(R ^ fa, T_fa, F_fa),
-        T0 = T_tr `intersection` T_fa,
-        F0 = F_tr `intersection` F_fa,
-        ( if R ^ fa = zero then
-            T = T0 `insert` R ^ value,
-            F = F0
-        else if R ^ tr = zero then
-            T = T0,
-            F = F0 `insert` R ^ value
-        else
-            T = T0,
-            F = F0
-        )
-    ).
-
-equivalent_vars(R) = rev_map(equivalent_vars_2(R)).
-
-:- type leader_to_eqvclass(T) ---> leader_to_eqvclass(map(var(T), vars(T))).
-
-:- func equivalent_vars_2(robdd(T)) =
-    entailment_result(leader_to_eqvclass(T)).
-
-% :- pragma memo(equivalent_vars_2/1).
-
-equivalent_vars_2(R) = EQ :-
-    ( if R = one then
-        EQ = some_vars(leader_to_eqvclass(map.init))
-    else if R = zero then
-        EQ = all_vars
-    else
-        EQVars = vars_entailed(R ^ tr) `intersection`
-                vars_disentailed(R ^ fa),
-        EQ0 = equivalent_vars_2(R ^ tr) `intersection`
-                equivalent_vars_2(R ^ fa),
-        (
-            EQVars = all_vars,
-            error("equivalent_vars: unexpected result")
-            % If this condition occurs it means the ROBDD
-            % invariants have been violated somewhere since
-            % both branches of R must have been zero.
-        ;
-            EQVars = some_vars(Vars),
-            ( if is_empty(Vars) then
-                EQ = EQ0
-            else
-                (
-                    EQ0 = all_vars,
-                    error("equivalent_vars: unexpected result")
-                    % If this condition occurs it means
-                    % the ROBDD invariants have been
-                    % violated somewhere since both
-                    % branches of R must have been zero.
-                ;
-                    EQ0 = some_vars(
-                        leader_to_eqvclass(M0)),
-                    map.det_insert(R ^ value, Vars,
-                        M0, M),
-                    EQ = some_vars(leader_to_eqvclass(M))
-                )
-            )
-        )
-    ).
-
-:- func rev_map(entailment_result(leader_to_eqvclass(T))) =
-    equivalent_result(T).
-
-rev_map(all_vars) = all_vars.
-rev_map(some_vars(leader_to_eqvclass(EQ0))) = some_vars(equiv_vars(EQ)) :-
-    map.foldl2(
-        ( pred(V::in, Vs::in, Seen0::in, Seen::out, in, out) is det -->
-            ( if { Seen0 `contains` V } then
-                { Seen = Seen0 }
-            else
-                ^ elem(V) := V,
-                sparse_bitset.foldl((pred(Ve::in, in, out) is det -->
-                    ^ elem(Ve) := V
-                    ), Vs),
-                { Seen = Seen0 `sparse_bitset.union` Vs }
-            )
-        ), EQ0, sparse_bitset.init, _, map.init, EQ).
-
-extract_implications(R) = implication_result_to_imp_vars(implications_2(R)).
-
-:- type implication_result(T)
-    --->    implication_result(
-                imp_res(T), %  K ->  V
-                imp_res(T), % ~K -> ~V
-                imp_res(T), %  K -> ~V
-                imp_res(T)  % ~K ->  V
-            ).
-
-:- type imp_res(T) == entailment_result(imp_res_2(T)).
-:- type imp_res_2(T)
-    --->    imps(map(var(T), vars_entailed_result(T))).
-
-:- func implications_2(robdd(T)) = implication_result(T).
-% :- pragma memo(implications_2/1).
-
-implications_2(R) = implication_result(Imps, RevImps, DisImps, RevDisImps) :-
-    ( if R = one then
-        Imps = some_vars(imps(map.init)),
-        RevImps = Imps,
-        DisImps = Imps,
-        RevDisImps = Imps
-    else if R = zero then
-        Imps = all_vars,
-        RevImps = Imps,
-        DisImps = Imps,
-        RevDisImps = Imps
-    else
-        TTVars = vars_entailed(R ^ tr),
-        FFVars = vars_disentailed(R ^ fa),
-        TFVars = vars_disentailed(R ^ tr),
-        FTVars = vars_entailed(R ^ fa),
-
-        implications_2(R ^ tr) =
-            implication_result(Imps0, RevImps0, DisImps0, RevDisImps0),
-        implications_2(R ^ fa) =
-            implication_result(Imps1, RevImps1, DisImps1, RevDisImps1),
-
-        Imps2 = merge_imp_res(TTVars, FTVars, Imps0, Imps1),
-        RevImps2 = merge_imp_res(TFVars, FFVars, RevImps0, RevImps1),
-        DisImps2 = merge_imp_res(TFVars, FFVars, DisImps0, DisImps1),
-        RevDisImps2 = merge_imp_res(TTVars, FTVars, RevDisImps0, RevDisImps1),
-
-        % Imps2 = Imps0 `intersection` Imps1,
-        % RevImps2 = RevImps0 `intersection` RevImps1,
-        % DisImps2 = DisImps0 `intersection` DisImps1,
-        % RevDisImps2 = RevDisImps0 `intersection` RevDisImps1,
-
-        Imps = Imps2 ^ elem(R ^ value) := TTVars,
-        RevImps = RevImps2 ^ elem(R ^ value) := FFVars,
-        DisImps = DisImps2 ^ elem(R ^ value) := TFVars,
-        RevDisImps = RevDisImps2 ^ elem(R ^ value) := FTVars
-    ).
-
-:- func merge_imp_res(vars_entailed_result(T), vars_entailed_result(T),
-    imp_res(T), imp_res(T)) = imp_res(T).
-
-merge_imp_res(_, _, all_vars, all_vars) = all_vars.
-merge_imp_res(_, _, some_vars(Imps), all_vars) = some_vars(Imps).
-merge_imp_res(_, _, all_vars, some_vars(Imps)) = some_vars(Imps).
-merge_imp_res(TVars, FVars, some_vars(ImpsA), some_vars(ImpsB)) =
-    some_vars(merge_imp_res_2(TVars, FVars, ImpsA, ImpsB)).
-
-:- func merge_imp_res_2(vars_entailed_result(T), vars_entailed_result(T),
-    imp_res_2(T), imp_res_2(T)) = imp_res_2(T).
-
-merge_imp_res_2(EntailedVarsA, EntailedVarsB, imps(ImpsA), imps(ImpsB)) =
-        imps(Imps) :-
-    KeysA = map.sorted_keys(ImpsA),
-    KeysB = map.sorted_keys(ImpsB),
-    Keys = list.merge_and_remove_dups(KeysA, KeysB),
-    Imps = list.foldl((func(V, M) = M ^ elem(V) := VsA `intersection` VsB :-
-            VsA = ( if VsA0 = ImpsA ^ elem(V) then VsA0 else EntailedVarsA ),
-            VsB = ( if VsB0 = ImpsB ^ elem(V) then VsB0 else EntailedVarsB )
-        ), Keys, map.init).
-
-:- func implication_result_to_imp_vars(implication_result(T)) = imp_vars(T).
-
-implication_result_to_imp_vars(ImpRes) = ImpVars :-
-    ImpRes = implication_result(I0, RI0, DI0, RDI0),
-    I = imp_res_to_imp_map(I0),
-    RI = imp_res_to_imp_map(RI0),
-    DI = imp_res_to_imp_map(DI0),
-    RDI = imp_res_to_imp_map(RDI0),
-    ImpVars = imp_vars(I, RI, DI, RDI).
-
-:- func imp_res_to_imp_map(imp_res(T)) = imp_map(T).
-
-imp_res_to_imp_map(all_vars) = map.init.
-imp_res_to_imp_map(some_vars(imps(IRMap))) =
-    map.foldl(func(V, MaybeVs, M) =
-        ( if
-            MaybeVs = some_vars(Vs),
-            is_non_empty(Vs)
-        then
-            M ^ elem(V) := Vs
-        else
-            M
-        ), IRMap, init).
-
-remove_implications(ImpRes, R0) = R :-
-    remove_implications_2(ImpRes, sparse_bitset.init, sparse_bitset.init,
-        R0, R, map.init, _).
-
-:- pred remove_implications_2(imp_vars(T)::in, vars(T)::in,
-    vars(T)::in, robdd(T)::in, robdd(T)::out,
-    robdd_cache(T)::in, robdd_cache(T)::out) is det.
-
-remove_implications_2(ImpRes, True, False, R0, R) -->
-    ( if { is_terminal(R0) } then
-        { R = R0 }
-    else if { True `contains` R0 ^ value } then
-        remove_implications_2(ImpRes, True, False, R0 ^ tr, R)
-    else if { False `contains` R0 ^ value } then
-        remove_implications_2(ImpRes, True, False, R0 ^ fa, R)
-    else if R1 =^ elem(R0) then
-        { R = R1 }
-    else
-        { TrueT = True `union` ImpRes ^ imps ^ get(R0 ^ value) },
-        { FalseT = False `union` ImpRes ^ dis_imps ^ get(R0 ^ value) },
-        remove_implications_2(ImpRes, TrueT, FalseT, R0 ^ tr, RT),
-
-        { TrueF = True `union` ImpRes ^ rev_dis_imps ^ get(R0 ^ value)},
-        { FalseF = False `union` ImpRes ^ rev_imps ^ get(R0 ^ value) },
-        remove_implications_2(ImpRes, TrueF, FalseF, R0 ^ fa, RF),
-
-        { R = make_node(R0 ^ value, RT, RF) },
-        ^ elem(R0) := R
-    ).
-
-:- func get(var(T), imp_map(T)) = vars(T).
-
-get(K, IM) =
-    ( if Vs = IM ^ elem(K) then
-        % In case Vs doesn't already contain K
-        Vs `insert` K
-    else
-        init
-    ).
+%---------------------------------------------------------------------------%
 
 :- typeclass intersectable(T) where [
     func T `intersection` T = T
@@ -864,182 +549,115 @@ get(K, IM) =
         imps(map.intersect(intersection, MapA, MapB))
 ].
 
-:- func 'elem :='(var(T), imp_res(T), vars_entailed_result(T)) = imp_res(T).
+%---------------------------------------------------------------------------%
 
-'elem :='(_, all_vars, _) = all_vars.
-'elem :='(V, some_vars(imps(M0)), Vs) = some_vars(imps(M0 ^ elem(V) := Vs)).
+empty_vars_set = sparse_bitset.init.
 
-:- func vars_entailed_result(T) `insert` var(T) = vars_entailed_result(T).
+%---------------------------------------------------------------------------%
 
-all_vars `insert` _ = all_vars.
-some_vars(Vs) `insert` V = some_vars(Vs `insert` V).
-
-% Access to the struct members.
-% WARNING! These functions are unsafe. You must not call these functions
-% on the terminal robdds (i.e. `zero' and `one').
-:- func value(robdd(T)) = var(T).
-:- func tr(robdd(T)) = robdd(T).
-:- func fa(robdd(T)) = robdd(T).
-
-:- pragma no_inline(func(value/1)).
+:- pragma no_inline(func(one/0)).
 :- pragma foreign_proc("C",
-    value(F::in) = (Value::out),
+    one = (F::out),
     [will_not_call_mercury, promise_pure],
 "
-    Value = (MR_ROBDD_NODE_TYPE) ((MR_ROBDD_node *) F)->value;
+    F = (MR_ROBDD_NODE_TYPE) MR_ROBDD_trueVar();
 ").
 
-:- pragma no_inline(func(tr/1)).
+:- pragma no_inline(func(zero/0)).
 :- pragma foreign_proc("C",
-    tr(F::in) = (Tr::out),
+    zero = (F::out),
     [will_not_call_mercury, promise_pure],
 "
-    Tr = (MR_ROBDD_NODE_TYPE) ((MR_ROBDD_node *) F)->tr;
+    F = (MR_ROBDD_NODE_TYPE) MR_ROBDD_falseVar();
 ").
 
-:- pragma no_inline(func(fa/1)).
+:- pragma no_inline(func(var/1)).
 :- pragma foreign_proc("C",
-    fa(F::in) = (Fa::out),
+    var(V::in) = (F::out),
     [will_not_call_mercury, promise_pure],
 "
-    Fa = (MR_ROBDD_NODE_TYPE) ((MR_ROBDD_node *) F)->fa;
+    F = (MR_ROBDD_NODE_TYPE) MR_ROBDD_variableRep(V);
 ").
 
 %---------------------------------------------------------------------------%
 
-% :- pragma memo(dnf/1).
+:- pragma promise_pure(func('*'/2)).
+X * Y = R :-
+    R = glb(X, Y),
 
-dnf(R) =
-    ( if R = zero then
-        []
-    else if R = one then
-        [[]]
+    % XXX debugging code.
+    % ( if R = zero then
+    ( if (X = zero ; Y = zero) then
+        impure report_zero_constraint
     else
-        list.map(func(L) = [pos(R ^ value) | L], dnf(R ^ tr)) ++
-        list.map(func(L) = [neg(R ^ value) | L], dnf(R ^ fa))
-    ).
-
-% cnf(R) =
-%   ( if R = zero then
-%       [[]]
-%   else if R = one then
-%       []
-%   else
-%       [pos(R ^ value) | cnf(R ^ tr)] `merge_cnf`
-%       [neg(R ^ value) | cnf(R ^ fa)]
-%   ).
-%
-% :- func merge_cnf(list(list(literal(T))), list(list(literal(T)))) =
-%       list(list(literal(T))).
-%
-% merge_cnf(As, Bs) =
-%   ( As = [] ->
-%       Bs
-%   ; Bs = [] ->
-%       As
-%   ; if As = [[]] ->
-%       As
-%   ; Bs = [[]] % XXX check
-%   ;
-%       foldl(func(A, Cs0) =
-%           foldl(func(B, Cs1) = [A ++ B | Cs1], Bs, Cs0),
-%           As, [])
-%   ).
-
-% :- pragma foreign_proc("C",
-%   print_robdd(F::in, IO0::di, IO::uo),
-%   [will_not_call_mercury],
-% "
-%   printOut((MR_ROBDD_node *) F);
-%   update_io(IO0, IO);
-% ").
-
-print_robdd(F, !IO) :-
-    io.output_stream(Stream, !IO),
-    print_robdd(Stream, F, !IO).
-
-print_robdd(Stream, F, !IO) :-
-    ( if F = one then
-        io.write_string(Stream, "TRUE\n", !IO)
-    else if F = zero then
-        io.write_string(Stream, "FALSE\n", !IO)
-    else
-        init(Trues),
-        init(Falses),
-        print_robdd_2(Stream, F, Trues, Falses, !IO)
-    ).
-
-:- pred print_robdd_2(io.text_output_stream::in, robdd(T)::in,
-    set_unordlist(var(T))::in, set_unordlist(var(T))::in,
-    io::di, io::uo) is det.
-
-print_robdd_2(Stream, F, Trues, Falses, !IO) :-
-    ( if F = one then
-        All = to_sorted_list(Trues `union` Falses),
-        io.write_string(Stream, "(", !IO),
-        list.foldl(
-            ( pred(Var::in, IO0::di, IO::uo) is det :-
-                ( if Var `set_unordlist.member` Trues then
-                    C = ' '
-                else
-                    C = ('~')
-                ),
-                term.var_to_int(Var, N),
-                io.format(Stream, " %c%02d", [c(C), i(N)], IO0, IO)
-            ), All, !IO),
-        io.write_string(Stream, ")\n", !IO)
-    else if F = zero then
-        % Don't do anything for zero terminal.
         true
-    else
-        print_robdd_2(Stream, F ^ tr, Trues `insert` F ^ value, Falses, !IO),
-        print_robdd_2(Stream, F ^ fa, Trues, Falses `insert` F ^ value, !IO)
     ).
 
-:- pragma no_inline(func(restrict/2)).
+:- pragma no_inline(func((+)/2)).
 :- pragma foreign_proc("C",
-    restrict(V::in, F::in) = (R::out),
+    (X::in) + (Y::in) = (F::out),
     [will_not_call_mercury, promise_pure],
 "
-    R = (MR_ROBDD_NODE_TYPE) MR_ROBDD_restrict(V, (MR_ROBDD_node *) F);
+    F = (MR_ROBDD_NODE_TYPE) MR_ROBDD_lub((MR_ROBDD_node *) X,
+        (MR_ROBDD_node *) Y);
 ").
 
-:- pragma no_inline(func(restrict_threshold/2)).
+:- pragma no_inline(func((=<)/2)).
 :- pragma foreign_proc("C",
-    restrict_threshold(V::in, F::in) = (R::out),
+    ((X::in) =< (Y::in)) = (F::out),
     [will_not_call_mercury, promise_pure],
 "
-    R = (MR_ROBDD_NODE_TYPE) MR_ROBDD_restrictThresh(V,
-        (MR_ROBDD_node *) F);
+    F = (MR_ROBDD_NODE_TYPE) MR_ROBDD_implies((MR_ROBDD_node *) X,
+        (MR_ROBDD_node *) Y);
 ").
 
-% :- pragma memo(rename_vars/2).
+(F =:= G) = ite(F, G, ~G).
 
-rename_vars(Subst, F) =
-    ( if is_terminal(F) then
-        F
-    else
-        ite(var(Subst(F ^ value)),
-            rename_vars(Subst, F ^ tr),
-            rename_vars(Subst, F ^ fa))
-    ).
+(F =\= G) = ite(F, ~G, G).
 
-% make_node(Var, Then, Else).
-% The make_node() function. WARNING!! If you use this function you are
-% responsible for making sure that the ROBDD invariant holds that all the
-% variables in both the Then and Else sub graphs are > Var.
+(~F) = ite(F, zero, one).
 
-:- func make_node(var(T), robdd(T), robdd(T)) = robdd(T).
-:- pragma no_inline(func(make_node/3)).
+:- pragma no_inline(func(ite/3)).
 :- pragma foreign_proc("C",
-    make_node(Var::in, Then::in, Else::in) = (Node::out),
+    ite(F::in, G::in, H::in) = (ITE::out),
     [will_not_call_mercury, promise_pure],
 "
-    Node = (MR_ROBDD_NODE_TYPE) MR_ROBDD_make_node((int) Var,
-        (MR_ROBDD_node *) Then, (MR_ROBDD_node *) Else);
+    ITE = (MR_ROBDD_NODE_TYPE) MR_ROBDD_ite((MR_ROBDD_node *) F,
+        (MR_ROBDD_node *) G, (MR_ROBDD_node *) H);
 ").
+
+%---------------------%
+
+:- func glb(robdd(T), robdd(T)) = robdd(T).
+:- pragma foreign_proc("C",
+    glb(X::in, Y::in) = (F::out),
+    [will_not_call_mercury, promise_pure],
+"
+    F = (MR_ROBDD_NODE_TYPE) MR_ROBDD_glb((MR_ROBDD_node *) X,
+        (MR_ROBDD_node *) Y);
+").
+
+% XXX
+:- impure pred report_zero_constraint is det.
+:- pragma foreign_proc("C",
+    report_zero_constraint,
+    [will_not_call_mercury],
+"
+    fprintf(stderr, ""Zero constraint!!!\\n"");
+").
+
+%---------------------------------------------------------------------------%
 
 not_var(V) = make_node(V, zero, one).
+
+:- pragma no_inline(func(ite_var/3)).
+:- pragma foreign_proc("C",
+    ite_var(V::in, G::in, H::in) = (ITE::out),
+    [will_not_call_mercury, promise_pure],
+"
+    ITE = (MR_ROBDD_NODE_TYPE) MR_ROBDD_ite_var(V, (MR_ROBDD_node *) G,
+        (MR_ROBDD_node *) H);
+").
 
 eq_vars(VarA, VarB) = F :-
     compare(R, VarA, VarB),
@@ -1140,6 +758,340 @@ var_restrict_false(V, F0) = F :-
         )
     ).
 
+%---------------------------------------------------------------------------%
+
+:- pragma no_inline(pred(entails/2)).
+:- pragma foreign_proc("C",
+    entails(X::in, Y::in),
+    [will_not_call_mercury, promise_pure],
+"
+    SUCCESS_INDICATOR = (MR_ROBDD_ite_constant((MR_ROBDD_node *) X,
+        (MR_ROBDD_node *) Y, MR_ROBDD_one) == MR_ROBDD_one);
+").
+
+:- pragma no_inline(pred(var_entailed/2)).
+:- pragma foreign_proc("C",
+    var_entailed(F::in, V::in),
+    [will_not_call_mercury, promise_pure],
+"
+    SUCCESS_INDICATOR = MR_ROBDD_var_entailed((MR_ROBDD_node *) F,
+        (int) V);
+").
+
+% :- pragma memo(vars_entailed/1).
+
+vars_entailed(R) =
+    ( if R = one then
+        some_vars(empty_vars_set)
+    else if R = zero then
+        all_vars
+    else
+        ( if R ^ fa = zero then
+            (vars_entailed(R ^ tr) `intersection` vars_entailed(R ^ fa))
+                `insert` R ^ value
+        else
+            vars_entailed(R ^ tr) `intersection` vars_entailed(R ^ fa)
+        )
+    ).
+
+% :- pragma memo(vars_disentailed/1).
+
+vars_disentailed(R) =
+    ( if R = one then
+        some_vars(empty_vars_set)
+    else if R = zero then
+        all_vars
+    else
+        ( if R ^ tr = zero then
+            (vars_disentailed(R ^ tr) `intersection`
+                vars_disentailed(R ^ fa)) `insert` R ^ value
+        else
+            vars_disentailed(R ^ tr) `intersection`
+                vars_disentailed(R ^ fa)
+        )
+    ).
+
+% :- pragma memo(definite_vars/3).
+
+definite_vars(R, T, F) :-
+    ( if R = one then
+        T = some_vars(empty_vars_set),
+        F = some_vars(empty_vars_set)
+    else if R = zero then
+        T = all_vars,
+        F = all_vars
+    else
+        definite_vars(R ^ tr, T_tr, F_tr),
+        definite_vars(R ^ fa, T_fa, F_fa),
+        T0 = T_tr `intersection` T_fa,
+        F0 = F_tr `intersection` F_fa,
+        ( if R ^ fa = zero then
+            T = T0 `insert` R ^ value,
+            F = F0
+        else if R ^ tr = zero then
+            T = T0,
+            F = F0 `insert` R ^ value
+        else
+            T = T0,
+            F = F0
+        )
+    ).
+
+:- func insert(vars_entailed_result(T), var(T)) = vars_entailed_result(T).
+
+insert(all_vars, _) = all_vars.
+insert(some_vars(Vs), V) = some_vars(Vs `insert` V).
+
+%---------------------------------------------------------------------------%
+
+equivalent_vars(R) = rev_map(equivalent_vars_2(R)).
+
+:- type leader_to_eqvclass(T)
+    --->    leader_to_eqvclass(map(var(T), vars(T))).
+
+:- func equivalent_vars_2(robdd(T)) =
+    entailment_result(leader_to_eqvclass(T)).
+
+% :- pragma memo(equivalent_vars_2/1).
+
+equivalent_vars_2(R) = EQ :-
+    ( if R = one then
+        EQ = some_vars(leader_to_eqvclass(map.init))
+    else if R = zero then
+        EQ = all_vars
+    else
+        EQVars = vars_entailed(R ^ tr) `intersection`
+                vars_disentailed(R ^ fa),
+        EQ0 = equivalent_vars_2(R ^ tr) `intersection`
+                equivalent_vars_2(R ^ fa),
+        (
+            EQVars = all_vars,
+            error("equivalent_vars: unexpected result")
+            % If this condition occurs it means the ROBDD
+            % invariants have been violated somewhere since
+            % both branches of R must have been zero.
+        ;
+            EQVars = some_vars(Vars),
+            ( if is_empty(Vars) then
+                EQ = EQ0
+            else
+                (
+                    EQ0 = all_vars,
+                    error("equivalent_vars: unexpected result")
+                    % If this condition occurs it means
+                    % the ROBDD invariants have been
+                    % violated somewhere since both
+                    % branches of R must have been zero.
+                ;
+                    EQ0 = some_vars(
+                        leader_to_eqvclass(M0)),
+                    map.det_insert(R ^ value, Vars,
+                        M0, M),
+                    EQ = some_vars(leader_to_eqvclass(M))
+                )
+            )
+        )
+    ).
+
+:- func rev_map(entailment_result(leader_to_eqvclass(T))) =
+    equivalent_result(T).
+
+rev_map(all_vars) = all_vars.
+rev_map(some_vars(leader_to_eqvclass(EQ0))) = some_vars(equiv_vars(EQ)) :-
+    map.foldl2(
+        ( pred(V::in, Vs::in, Seen0::in, Seen::out, in, out) is det -->
+            ( if { Seen0 `contains` V } then
+                { Seen = Seen0 }
+            else
+                ^ elem(V) := V,
+                sparse_bitset.foldl((pred(Ve::in, in, out) is det -->
+                    ^ elem(Ve) := V
+                    ), Vs),
+                { Seen = Seen0 `sparse_bitset.union` Vs }
+            )
+        ), EQ0, sparse_bitset.init, _, map.init, EQ).
+
+%---------------------------------------------------------------------------%
+
+extract_implications(R) = implication_result_to_imp_vars(implications_2(R)).
+
+:- type implication_result(T)
+    --->    implication_result(
+                imp_res(T), %  K ->  V
+                imp_res(T), % ~K -> ~V
+                imp_res(T), %  K -> ~V
+                imp_res(T)  % ~K ->  V
+            ).
+
+:- type imp_res(T) == entailment_result(imp_res_2(T)).
+:- type imp_res_2(T)
+    --->    imps(map(var(T), vars_entailed_result(T))).
+
+:- func implications_2(robdd(T)) = implication_result(T).
+% :- pragma memo(implications_2/1).
+
+implications_2(R) = implication_result(Imps, RevImps, DisImps, RevDisImps) :-
+    ( if R = one then
+        Imps = some_vars(imps(map.init)),
+        RevImps = Imps,
+        DisImps = Imps,
+        RevDisImps = Imps
+    else if R = zero then
+        Imps = all_vars,
+        RevImps = Imps,
+        DisImps = Imps,
+        RevDisImps = Imps
+    else
+        TTVars = vars_entailed(R ^ tr),
+        FFVars = vars_disentailed(R ^ fa),
+        TFVars = vars_disentailed(R ^ tr),
+        FTVars = vars_entailed(R ^ fa),
+
+        implications_2(R ^ tr) =
+            implication_result(Imps0, RevImps0, DisImps0, RevDisImps0),
+        implications_2(R ^ fa) =
+            implication_result(Imps1, RevImps1, DisImps1, RevDisImps1),
+
+        Imps2 = merge_imp_res(TTVars, FTVars, Imps0, Imps1),
+        RevImps2 = merge_imp_res(TFVars, FFVars, RevImps0, RevImps1),
+        DisImps2 = merge_imp_res(TFVars, FFVars, DisImps0, DisImps1),
+        RevDisImps2 = merge_imp_res(TTVars, FTVars, RevDisImps0, RevDisImps1),
+
+        % Imps2 = Imps0 `intersection` Imps1,
+        % RevImps2 = RevImps0 `intersection` RevImps1,
+        % DisImps2 = DisImps0 `intersection` DisImps1,
+        % RevDisImps2 = RevDisImps0 `intersection` RevDisImps1,
+
+        Imps = Imps2 ^ elem(R ^ value) := TTVars,
+        RevImps = RevImps2 ^ elem(R ^ value) := FFVars,
+        DisImps = DisImps2 ^ elem(R ^ value) := TFVars,
+        RevDisImps = RevDisImps2 ^ elem(R ^ value) := FTVars
+    ).
+
+:- func merge_imp_res(vars_entailed_result(T), vars_entailed_result(T),
+    imp_res(T), imp_res(T)) = imp_res(T).
+
+merge_imp_res(_, _, all_vars, all_vars) = all_vars.
+merge_imp_res(_, _, some_vars(Imps), all_vars) = some_vars(Imps).
+merge_imp_res(_, _, all_vars, some_vars(Imps)) = some_vars(Imps).
+merge_imp_res(TVars, FVars, some_vars(ImpsA), some_vars(ImpsB)) =
+    some_vars(merge_imp_res_2(TVars, FVars, ImpsA, ImpsB)).
+
+:- func merge_imp_res_2(vars_entailed_result(T), vars_entailed_result(T),
+    imp_res_2(T), imp_res_2(T)) = imp_res_2(T).
+
+merge_imp_res_2(EntailedVarsA, EntailedVarsB, imps(ImpsA), imps(ImpsB)) =
+        imps(Imps) :-
+    KeysA = map.sorted_keys(ImpsA),
+    KeysB = map.sorted_keys(ImpsB),
+    Keys = list.merge_and_remove_dups(KeysA, KeysB),
+    Imps = list.foldl(
+        ( func(V, M) = M ^ elem(V) := VsA `intersection` VsB :-
+            VsA = ( if VsA0 = ImpsA ^ elem(V) then VsA0 else EntailedVarsA ),
+            VsB = ( if VsB0 = ImpsB ^ elem(V) then VsB0 else EntailedVarsB )
+        ), Keys, map.init).
+
+:- func implication_result_to_imp_vars(implication_result(T)) = imp_vars(T).
+
+implication_result_to_imp_vars(ImpRes) = ImpVars :-
+    ImpRes = implication_result(I0, RI0, DI0, RDI0),
+    I = imp_res_to_imp_map(I0),
+    RI = imp_res_to_imp_map(RI0),
+    DI = imp_res_to_imp_map(DI0),
+    RDI = imp_res_to_imp_map(RDI0),
+    ImpVars = imp_vars(I, RI, DI, RDI).
+
+:- func imp_res_to_imp_map(imp_res(T)) = imp_map(T).
+
+imp_res_to_imp_map(all_vars) = map.init.
+imp_res_to_imp_map(some_vars(imps(IRMap))) =
+    map.foldl(func(V, MaybeVs, M) =
+        ( if
+            MaybeVs = some_vars(Vs),
+            is_non_empty(Vs)
+        then
+            M ^ elem(V) := Vs
+        else
+            M
+        ), IRMap, init).
+
+:- func 'elem :='(var(T), imp_res(T), vars_entailed_result(T)) = imp_res(T).
+
+'elem :='(_, all_vars, _) = all_vars.
+'elem :='(V, some_vars(imps(M0)), Vs) = some_vars(imps(M0 ^ elem(V) := Vs)).
+
+%---------------------------------------------------------------------------%
+
+:- pragma no_inline(func(restrict/2)).
+:- pragma foreign_proc("C",
+    restrict(V::in, F::in) = (R::out),
+    [will_not_call_mercury, promise_pure],
+"
+    R = (MR_ROBDD_NODE_TYPE) MR_ROBDD_restrict(V, (MR_ROBDD_node *) F);
+").
+
+:- pragma no_inline(func(restrict_threshold/2)).
+:- pragma foreign_proc("C",
+    restrict_threshold(V::in, F::in) = (R::out),
+    [will_not_call_mercury, promise_pure],
+"
+    R = (MR_ROBDD_NODE_TYPE) MR_ROBDD_restrictThresh(V,
+        (MR_ROBDD_node *) F);
+").
+
+restrict_filter(P, F0) =
+    restrict_filter(P, (pred(_::in) is semidet :- true), F0).
+
+restrict_filter(P, D, F0) = F :-
+    filter_2(P, D, F0, F, map.init, _, map.init, _).
+
+:- type robdd_cache(T) == map(robdd(T), robdd(T)).
+:- type var_cache(T) == map(var(T), bool).
+
+:- pred filter_2(pred(var(T))::in(pred(in) is semidet),
+    pred(var(T))::in(pred(in) is semidet),
+    robdd(T)::in, robdd(T)::out,
+    var_cache(T)::in, var_cache(T)::out,
+    robdd_cache(T)::in, robdd_cache(T)::out) is det.
+
+filter_2(P, D, F0, F, SeenVars0, SeenVars, SeenNodes0, SeenNodes) :-
+    ( if is_terminal(F0) then
+        F = F0,
+        SeenVars = SeenVars0,
+        SeenNodes = SeenNodes0
+    else if not D(F0 ^ value) then
+        F = F0,
+        SeenVars = SeenVars0,
+        SeenNodes = SeenNodes0
+    else if map.search(SeenNodes0, F0, F1) then
+        F = F1,
+        SeenVars = SeenVars0,
+        SeenNodes = SeenNodes0
+    else
+        filter_2(P, D, F0 ^ tr, Ftrue, SeenVars0, SeenVars1, SeenNodes0,
+            SeenNodes1),
+        filter_2(P, D, F0 ^ fa, Ffalse, SeenVars1, SeenVars2, SeenNodes1,
+            SeenNodes2),
+        V = F0 ^ value,
+        ( if map.search(SeenVars0, V, SeenF) then
+            SeenVars = SeenVars2,
+            (
+                SeenF = yes,
+                F = make_node(V, Ftrue, Ffalse)
+            ;
+                SeenF = no,
+                F = Ftrue + Ffalse
+            )
+        else if P(V) then
+            F = make_node(V, Ftrue, Ffalse),
+            map.det_insert(V, yes, SeenVars2, SeenVars)
+        else
+            F = Ftrue + Ffalse,
+            map.det_insert(V, no, SeenVars2, SeenVars)
+        ),
+        map.det_insert(F0, F, SeenNodes2, SeenNodes)
+    ).
+
 restrict_true_false_vars(TrueVars, FalseVars, R0) = R :-
 % The following code may be useful during debugging, but it is commented out
 % since it should not be needed otherwise.
@@ -1181,58 +1133,6 @@ restrict_true_false_vars_2(TrueVars0, FalseVars0, R0, R, Seen0, Seen) :-
             R = make_node(R0 ^ value, R_tr, R_fa)
         ),
         Seen = det_insert(Seen2, R0, R)
-    ).
-
-restrict_filter(P, F0) =
-    restrict_filter(P, (pred(_::in) is semidet :- true), F0).
-
-restrict_filter(P, D, F0) = F :-
-    filter_2(P, D, F0, F, map.init, _, map.init, _).
-
-:- type robdd_cache(T) == map(robdd(T), robdd(T)).
-:- type var_cache(T) == map(var(T), bool).
-
-:- pred filter_2(pred(var(T)), pred(var(T)), robdd(T), robdd(T),
-    var_cache(T), var_cache(T), robdd_cache(T), robdd_cache(T)).
-:- mode filter_2(pred(in) is semidet, pred(in) is semidet, in, out, in, out,
-    in, out) is det.
-
-filter_2(P, D, F0, F, SeenVars0, SeenVars, SeenNodes0, SeenNodes) :-
-    ( if is_terminal(F0) then
-        F = F0,
-        SeenVars = SeenVars0,
-        SeenNodes = SeenNodes0
-    else if not D(F0 ^ value) then
-        F = F0,
-        SeenVars = SeenVars0,
-        SeenNodes = SeenNodes0
-    else if map.search(SeenNodes0, F0, F1) then
-        F = F1,
-        SeenVars = SeenVars0,
-        SeenNodes = SeenNodes0
-    else
-        filter_2(P, D, F0 ^ tr, Ftrue, SeenVars0, SeenVars1, SeenNodes0,
-            SeenNodes1),
-        filter_2(P, D, F0 ^ fa, Ffalse, SeenVars1, SeenVars2, SeenNodes1,
-            SeenNodes2),
-        V = F0 ^ value,
-        ( if map.search(SeenVars0, V, SeenF) then
-            SeenVars = SeenVars2,
-            (
-                SeenF = yes,
-                F = make_node(V, Ftrue, Ffalse)
-            ;
-                SeenF = no,
-                F = Ftrue + Ffalse
-            )
-        else if P(V) then
-            F = make_node(V, Ftrue, Ffalse),
-            map.det_insert(V, yes, SeenVars2, SeenVars)
-        else
-            F = Ftrue + Ffalse,
-            map.det_insert(V, no, SeenVars2, SeenVars)
-        ),
-        map.det_insert(F0, F, SeenNodes2, SeenNodes)
     ).
 
 squeeze_equiv(equiv_vars(LeaderMap), R0) =
@@ -1338,8 +1238,6 @@ add_equivalences_2([Var - LeaderVar | Vs], Trues, R0, R, !Cache) :-
         !:Cache = !.Cache ^ elem(R0) := R
     ).
 
-%---------------------------------------------------------------------------%
-
 % XXX this could be made much more efficient by doing something similar
 % to what we do in add_equivalences.
 
@@ -1351,14 +1249,114 @@ add_implications(ImpVars, R) = R ^
     ImpVars = imp_vars(Imps, RevImps, DisImps, RevDisImps).
 
 :- func add_implications_2(func(var(T)) = robdd(T), func(var(T)) = robdd(T),
-        imp_map(T), robdd(T)) = robdd(T).
+    imp_map(T), robdd(T)) = robdd(T).
 
 add_implications_2(FA, FB, IM, R0) =
     map.foldl(func(VA, Vs, R1) =
         foldl(func(VB, R2) = R2 * (FA(VA) + FB(VB)), Vs, R1),
         IM, R0).
 
+remove_implications(ImpRes, R0) = R :-
+    remove_implications_2(ImpRes, sparse_bitset.init, sparse_bitset.init,
+        R0, R, map.init, _).
+
+:- pred remove_implications_2(imp_vars(T)::in, vars(T)::in,
+    vars(T)::in, robdd(T)::in, robdd(T)::out,
+    robdd_cache(T)::in, robdd_cache(T)::out) is det.
+
+remove_implications_2(ImpRes, True, False, R0, R) -->
+    ( if { is_terminal(R0) } then
+        { R = R0 }
+    else if { True `contains` R0 ^ value } then
+        remove_implications_2(ImpRes, True, False, R0 ^ tr, R)
+    else if { False `contains` R0 ^ value } then
+        remove_implications_2(ImpRes, True, False, R0 ^ fa, R)
+    else if R1 =^ elem(R0) then
+        { R = R1 }
+    else
+        { TrueT = True `union` ImpRes ^ imps ^ get(R0 ^ value) },
+        { FalseT = False `union` ImpRes ^ dis_imps ^ get(R0 ^ value) },
+        remove_implications_2(ImpRes, TrueT, FalseT, R0 ^ tr, RT),
+
+        { TrueF = True `union` ImpRes ^ rev_dis_imps ^ get(R0 ^ value)},
+        { FalseF = False `union` ImpRes ^ rev_imps ^ get(R0 ^ value) },
+        remove_implications_2(ImpRes, TrueF, FalseF, R0 ^ fa, RF),
+
+        { R = make_node(R0 ^ value, RT, RF) },
+        ^ elem(R0) := R
+    ).
+
+:- func get(var(T), imp_map(T)) = vars(T).
+
+get(K, IM) =
+    ( if Vs = IM ^ elem(K) then
+        % In case Vs doesn't already contain K
+        Vs `insert` K
+    else
+        init
+    ).
+
 %---------------------------------------------------------------------------%
+
+% :- pragma memo(dnf/1).
+
+dnf(R) =
+    ( if R = zero then
+        []
+    else if R = one then
+        [[]]
+    else
+        list.map(func(L) = [pos(R ^ value) | L], dnf(R ^ tr)) ++
+        list.map(func(L) = [neg(R ^ value) | L], dnf(R ^ fa))
+    ).
+
+% cnf(R) =
+%   ( if R = zero then
+%       [[]]
+%   else if R = one then
+%       []
+%   else
+%       [pos(R ^ value) | cnf(R ^ tr)] `merge_cnf`
+%       [neg(R ^ value) | cnf(R ^ fa)]
+%   ).
+%
+% :- func merge_cnf(list(list(literal(T))), list(list(literal(T)))) =
+%       list(list(literal(T))).
+%
+% merge_cnf(As, Bs) =
+%   ( As = [] ->
+%       Bs
+%   ; Bs = [] ->
+%       As
+%   ; if As = [[]] ->
+%       As
+%   ; Bs = [[]] % XXX check
+%   ;
+%       foldl(func(A, Cs0) =
+%           foldl(func(B, Cs1) = [A ++ B | Cs1], Bs, Cs0),
+%           As, [])
+%   ).
+
+% :- pragma foreign_proc("C",
+%   print_robdd(F::in, IO0::di, IO::uo),
+%   [will_not_call_mercury],
+% "
+%   printOut((MR_ROBDD_node *) F);
+%   update_io(IO0, IO);
+% ").
+
+%---------------------------------------------------------------------------%
+
+% :- pragma memo(rename_vars/2).
+
+rename_vars(Subst, F) =
+    ( if is_terminal(F) then
+        F
+    else
+        ite(var(Subst(F ^ value)),
+            rename_vars(Subst, F ^ tr),
+            rename_vars(Subst, F ^ fa))
+    ).
 
 :- pragma no_inline(pred(is_terminal/1)).
 :- pragma foreign_proc("C",
@@ -1367,33 +1365,6 @@ add_implications_2(FA, FB, IM, R0) =
 "
     SUCCESS_INDICATOR = MR_ROBDD_IS_TERMINAL(F);
 ").
-
-size(F, Nodes, Depth) :-
-    size(F, Nodes, Depth, _).
-
-size(F, Nodes, Depth, Vars) :-
-    size_2(F, 0, Nodes, 0, Depth, 0, set_bbbtree.init, Seen),
-    Vars = sort_and_remove_dups(list.map(value, to_sorted_list(Seen))).
-
-    % XXX should see if sparse_bitset is more efficient than set_bbbtree.
-:- pred size_2(robdd(T)::in, int::in, int::out, int::in, int::out, int::in,
-        set_bbbtree(robdd(T))::in, set_bbbtree(robdd(T))::out) is det.
-
-size_2(F, Nodes0, Nodes, Depth0, Depth, Val0, Seen0, Seen) :-
-    ( if is_terminal(F) then
-        Nodes = Nodes0, Depth = Depth0, Seen = Seen0
-    else if term.var_to_int(F ^ value) =< Val0 then
-        error("robdd invariant broken (possible loop)")
-    else if F `member` Seen0 then
-        Nodes = Nodes0, Depth = Depth0, Seen = Seen0
-    else
-        Val = term.var_to_int(F ^ value),
-        size_2(F ^ tr, Nodes0+1, Nodes1, Depth0, Depth1, Val, Seen0, Seen1),
-        size_2(F ^ fa, Nodes1, Nodes, Depth0, Depth2, Val, Seen1, Seen2),
-        max(Depth1, Depth2, Max),
-        Depth = Max + 1,
-        Seen = Seen2 `insert` F
-    ).
 
 var_is_constrained(F, V) :-
     ( if is_terminal(F) then
@@ -1433,6 +1404,79 @@ vars_are_constrained_2(F, Vs) :-
         ; vars_are_constrained_2(F ^ fa, Vs2)
         )
     ).
+
+size(F, Nodes, Depth) :-
+    size(F, Nodes, Depth, _).
+
+size(F, Nodes, Depth, Vars) :-
+    size_2(F, 0, Nodes, 0, Depth, 0, set_bbbtree.init, Seen),
+    Vars = sort_and_remove_dups(list.map(value, to_sorted_list(Seen))).
+
+    % XXX should see if sparse_bitset is more efficient than set_bbbtree.
+:- pred size_2(robdd(T)::in, int::in, int::out, int::in, int::out, int::in,
+    set_bbbtree(robdd(T))::in, set_bbbtree(robdd(T))::out) is det.
+
+size_2(F, Nodes0, Nodes, Depth0, Depth, Val0, Seen0, Seen) :-
+    ( if is_terminal(F) then
+        Nodes = Nodes0, Depth = Depth0, Seen = Seen0
+    else if term.var_to_int(F ^ value) =< Val0 then
+        error("robdd invariant broken (possible loop)")
+    else if F `member` Seen0 then
+        Nodes = Nodes0, Depth = Depth0, Seen = Seen0
+    else
+        Val = term.var_to_int(F ^ value),
+        size_2(F ^ tr, Nodes0+1, Nodes1, Depth0, Depth1, Val, Seen0, Seen1),
+        size_2(F ^ fa, Nodes1, Nodes, Depth0, Depth2, Val, Seen1, Seen2),
+        max(Depth1, Depth2, Max),
+        Depth = Max + 1,
+        Seen = Seen2 `insert` F
+    ).
+
+%---------------------------------------------------------------------------%
+
+print_robdd(F, !IO) :-
+    io.output_stream(Stream, !IO),
+    print_robdd(Stream, F, !IO).
+
+print_robdd(Stream, F, !IO) :-
+    ( if F = one then
+        io.write_string(Stream, "TRUE\n", !IO)
+    else if F = zero then
+        io.write_string(Stream, "FALSE\n", !IO)
+    else
+        init(Trues),
+        init(Falses),
+        print_robdd_2(Stream, F, Trues, Falses, !IO)
+    ).
+
+:- pred print_robdd_2(io.text_output_stream::in, robdd(T)::in,
+    set_unordlist(var(T))::in, set_unordlist(var(T))::in,
+    io::di, io::uo) is det.
+
+print_robdd_2(Stream, F, Trues, Falses, !IO) :-
+    ( if F = one then
+        All = to_sorted_list(Trues `union` Falses),
+        io.write_string(Stream, "(", !IO),
+        list.foldl(
+            ( pred(Var::in, IO0::di, IO::uo) is det :-
+                ( if Var `set_unordlist.member` Trues then
+                    C = ' '
+                else
+                    C = ('~')
+                ),
+                term.var_to_int(Var, N),
+                io.format(Stream, " %c%02d", [c(C), i(N)], IO0, IO)
+            ), All, !IO),
+        io.write_string(Stream, ")\n", !IO)
+    else if F = zero then
+        % Don't do anything for zero terminal.
+        true
+    else
+        print_robdd_2(Stream, F ^ tr, Trues `insert` F ^ value, Falses, !IO),
+        print_robdd_2(Stream, F ^ fa, Trues, Falses `insert` F ^ value, !IO)
+    ).
+
+%---------------------%
 
 robdd_to_dot(Robdd, VarToString, Filename, !IO) :-
     io.open_output(Filename, Result, !IO),
@@ -1549,6 +1593,8 @@ write_edge(Stream, R0, R1, Arc, !IO) :-
             s(node_name(R1)), s(if Arc = yes then "t" else "f")], !IO)
     ).
 
+%---------------------------------------------------------------------------%
+
 labelling(Vars, R, TrueVars, FalseVars) :-
     labelling_2(to_sorted_list(Vars), R, empty_vars_set, TrueVars,
         empty_vars_set, FalseVars).
@@ -1565,6 +1611,8 @@ labelling_2([V | Vs], R0, TrueVars0, TrueVars, FalseVars0, FalseVars) :-
     R = var_restrict_true(V, R0),
     R \= zero,
     labelling_2(Vs, R, TrueVars0 `insert` V, TrueVars, FalseVars0, FalseVars).
+
+%---------------------------------------------------------------------------%
 
 minimal_model(Vars, R, TrueVars, FalseVars) :-
     ( if is_empty(Vars) then
