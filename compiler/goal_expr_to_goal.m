@@ -269,7 +269,7 @@ transform_parse_tree_goal_to_hlds_unify(LocKind, Goal, Renaming, HLDSGoal,
     else if TermB = functor(atom("!"), [variable(StateVarB, _)], _) then
         report_svar_unify_error(Context, StateVarB,
             !VarSet, !SVarState, !Specs),
-        HLDSGoal = true_goal
+        HLDSGoal = true_goal_with_context(Context)
     else
         unravel_unification(TermA, TermB, Context, umc_explicit, [],
             Purity, HLDSGoal, !SVarState, !SVarStore, !VarSet,
@@ -329,7 +329,7 @@ transform_parse_tree_goal_to_hlds_call(LocKind, Goal, Renaming, HLDSGoal,
         % check for a DCG field access goal:
         % get: Field =^ field
         % set: ^ field := Field
-        ( SymName = unqualified(Operator) ),
+        SymName = unqualified(Operator),
         ( Operator = "=^", AccessType = get
         ; Operator = ":=", AccessType = set
         )
@@ -648,8 +648,6 @@ transform_parse_tree_goal_to_hlds_disj(LocKind, Goal, Renaming, HLDSGoal,
     goal_info_init(Context, GoalInfo),
     disj_list_to_goal(Disjuncts, GoalInfo, HLDSGoal).
 
-    % accumulate_disjunct(LocKind, Renaming, Disj0, Disj, ...):
-    %
 :- pred accumulate_disjunct(loc_kind::in, prog_var_renaming::in,
     svar_state::in, goal::in,
     list(hlds_goal_svar_state)::in, list(hlds_goal_svar_state)::out,
@@ -853,10 +851,9 @@ transform_parse_tree_goal_to_hlds_try(LocKind, Goal, Renaming, HLDSGoal,
                 !VarSet, !ModuleInfo, !QualInfo, !Specs)
         ;
             MaybeElse0 = yes(_),
-            Pieces = [words("Error: a"), quote("try"),
-                words("goal with an"), quote("io"),
-                words("parameter cannot have an"), quote("else"),
-                words("part."), nl],
+            Pieces = [words("Error: a"), quote("try"), words("goal"),
+                words("with an"), quote("io"), words("parameter"),
+                words("cannot have an"), quote("else"), words("part."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs],
