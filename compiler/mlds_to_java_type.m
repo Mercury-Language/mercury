@@ -187,7 +187,7 @@ type_to_string_for_java(Info, MLDS_Type, String, ArrayDims) :-
             String = "/* Array */ java.lang.Object",
             ArrayDims = []
         else
-            % For primitive element types we use arrays of the primitive type.
+            % For primitive element types, we use arrays of the primitive type.
             % For non-primitive element types, we just use
             % `java.lang.Object []'. We used to use more specific types,
             % but then to create an array of the right type we need to use
