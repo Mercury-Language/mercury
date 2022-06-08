@@ -33,37 +33,84 @@
 :- type bt_array(T).
 
 %---------------------------------------------------------------------------%
-
-    % make_empty_array(Low, Array) is true iff Array is a
-    % bt_array of size zero starting at index Low.
-    %
-:- pred make_empty_array(int::in, bt_array(T)::out) is det.
-:- func make_empty_array(int) = bt_array(T).
+%
+% Creating arrays.
+%
 
     % init(Low, High, Init, Array) is true iff Array is a
     % bt_array with bounds from Low to High whose elements each equal Init.
     %
-:- pred init(int::in, int::in, T::in, bt_array(T)::out) is det.
 :- func init(int, int, T) = bt_array(T).
+:- pred init(int::in, int::in, T::in, bt_array(T)::out) is det.
+
+    % make_empty_array(Low, Array) is true iff Array is a
+    % bt_array of size zero starting at index Low.
+    %
+:- func make_empty_array(int) = bt_array(T).
+:- pred make_empty_array(int::in, bt_array(T)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Reading array element,
+%
+
+    % lookup returns the Nth element of a bt_array.
+    % It is an error if the index is out of bounds.
+    %
+:- func lookup(bt_array(T), int) = T.
+:- pred lookup(bt_array(T)::in, int::in, T::out) is det.
+
+    % semidet_lookup is like lookup except that it fails if the index is out of
+    % bounds.
+    %
+:- pred semidet_lookup(bt_array(T)::in, int::in, T::out) is semidet.
+
+    % Field selection for arrays.
+    % Array ^ elem(Index) = lookup(Array, Index).
+    %
+:- func elem(int, bt_array(T)) = T.
+
+%---------------------------------------------------------------------------%
+%
+% Writing array element,
+%
+
+    % set sets the nth element of a bt_array, and returns the resulting
+    % bt_array. It is an error if the index is out of bounds.
+    %
+:- func set(bt_array(T), int, T) = bt_array(T).
+:- pred set(bt_array(T)::in, int::in, T::in, bt_array(T)::out) is det.
+
+    % set sets the nth element of a bt_array, and returns the
+    % resulting bt_array (good opportunity for destructive update ;-).
+    % It fails if the index is out of bounds.
+    %
+:- pred semidet_set(bt_array(T)::in, int::in, T::in, bt_array(T)::out)
+    is semidet.
+
+    % Field update for arrays.
+    % (Array ^ elem(Index) := Value) = set(Array, Index, Value).
+    %
+:- func 'elem :='(int, bt_array(T), T) = bt_array(T).
 
 %---------------------------------------------------------------------------%
 
     % Returns the lower bound of the array.
     %
-:- pred min(bt_array(_T)::in, int::out) is det.
 :- func min(bt_array(_T)) = int.
+:- pred min(bt_array(_T)::in, int::out) is det.
 
     % Returns the upper bound of the array.
     % Returns lower bound - 1 for an empty array.
     %
-:- pred max(bt_array(_T)::in, int::out) is det.
 :- func max(bt_array(_T)) = int.
+:- pred max(bt_array(_T)::in, int::out) is det.
 
     % Returns the length of the array,
     % i.e. upper bound - lower bound + 1.
     %
-:- pred size(bt_array(_T)::in, int::out) is det.
 :- func size(bt_array(_T)) = int.
+:- pred size(bt_array(_T)::in, int::out) is det.
 
     % bounds(Array, Min, Max) returns the lower and upper bounds of a bt_array.
     % The upper bound will be the lower bound - 1 for an empty array.
@@ -76,30 +123,9 @@
 :- pred in_bounds(bt_array(_T)::in, int::in) is semidet.
 
 %---------------------------------------------------------------------------%
-
-    % lookup returns the Nth element of a bt_array.
-    % It is an error if the index is out of bounds.
-    %
-:- pred lookup(bt_array(T)::in, int::in, T::out) is det.
-:- func lookup(bt_array(T), int) = T.
-
-    % semidet_lookup is like lookup except that it fails if the index is out of
-    % bounds.
-    %
-:- pred semidet_lookup(bt_array(T)::in, int::in, T::out) is semidet.
-
-    % set sets the nth element of a bt_array, and returns the resulting
-    % bt_array. It is an error if the index is out of bounds.
-    %
-:- pred set(bt_array(T)::in, int::in, T::in, bt_array(T)::out) is det.
-:- func set(bt_array(T), int, T) = bt_array(T).
-
-    % set sets the nth element of a bt_array, and returns the
-    % resulting bt_array (good opportunity for destructive update ;-).
-    % It fails if the index is out of bounds.
-    %
-:- pred semidet_set(bt_array(T)::in, int::in, T::in, bt_array(T)::out)
-    is semidet.
+%
+% Resizing arrays,
+%
 
     % `resize(BtArray0, Lo, Hi, Item, BtArray)' is true if BtArray
     % is a bt_array created by expanding or shrinking BtArray0 to fit the
@@ -112,9 +138,9 @@
     % in size between the two bt_arrays. If this is not the case, it may take
     % time proportional to the larger of the two bt_arrays.
     %
+:- func resize(bt_array(T), int, int, T) = bt_array(T).
 :- pred resize(bt_array(T)::in, int::in, int::in, T::in,
     bt_array(T)::out) is det.
-:- func resize(bt_array(T), int, int, T) = bt_array(T).
 
     % shrink(BtArray0, Lo, Hi, Item, BtArray) is true if BtArray
     % is a bt_array created by shrinking BtArray0 to fit the bounds (Lo, Hi).
@@ -127,32 +153,39 @@
     % in size between the two bt_arrays. If this is not the case, it may take
     % time proportional to the larger of the two bt_arrays.
     %
+:- func shrink(bt_array(T), int, int) = bt_array(T).
 :- pred shrink(bt_array(T)::in, int::in, int::in, bt_array(T)::out)
     is det.
-:- func shrink(bt_array(T), int, int) = bt_array(T).
+
+%---------------------------------------------------------------------------%
+%
+% Conversions between bt_arrays and lists.
+%
 
     % from_list(Low, List, BtArray) takes a list (of possibly zero
     % length), and returns a bt_array containing % those elements in the same
     % order that they occurred in the list. The lower bound of the new array
     % is Low.
     %
-:- pred from_list(int::in, list(T)::in, bt_array(T)::out) is det.
 :- func from_list(int, list(T)) = bt_array(T).
+:- pred from_list(int::in, list(T)::in, bt_array(T)::out) is det.
 
     % to_list takes a bt_array and returns a list containing
     % the elements of the bt_array in the same order that they occurred
     % in the bt_array.
     %
-:- pred to_list(bt_array(T)::in, list(T)::out) is det.
 :- func to_list(bt_array(T)) = list(T).
+:- pred to_list(bt_array(T)::in, list(T)::out) is det.
 
     % fetch_items takes a bt_array and a lower and upper index,
     % and places those items in the bt_array between these indices into a list.
     % It is an error if either index is out of bounds.
     %
+:- func fetch_items(bt_array(T), int, int) = list(T).
 :- pred fetch_items(bt_array(T)::in, int::in, int::in, list(T)::out)
     is det.
-:- func fetch_items(bt_array(T), int, int) = list(T).
+
+%---------------------------------------------------------------------------%
 
     % bsearch takes a bt_array, an element to be matched and a
     % comparison predicate and returns the position of the first occurrence
@@ -163,16 +196,7 @@
 :- pred bsearch(bt_array(T)::in, T::in,
     comparison_pred(T)::in(comparison_pred), int::out) is semidet.
 
-    % Field selection for arrays.
-    % Array ^ elem(Index) = lookup(Array, Index).
-    %
-:- func elem(int, bt_array(T)) = T.
-
-    % Field update for arrays.
-    % (Array ^ elem(Index) := Value) = set(Array, Index, Value).
-    %
-:- func 'elem :='(int, bt_array(T), T) = bt_array(T).
-
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -182,15 +206,18 @@
 
 :- type bt_array(T)
     --->    bt_array(int, int, ra_list(T)).
+            % The lower bound, the upper bound, and the elements.
+            %
+            % The ra_list (short for random-access list) type is defined
+            % at the bottom of this module.
+
+:- pred actual_position(int::in, int::in, int::in, int::out) is det.
+:- pragma inline(pred(actual_position/4)).
+
+actual_position(Low, High, Index, Pos) :-
+    Pos = High - Low - Index.
 
 %---------------------------------------------------------------------------%
-
-make_empty_array(N) = BTA :-
-    make_empty_array(N, BTA).
-
-make_empty_array(Low, bt_array(Low, High, ListOut)) :-
-    High = Low - 1,
-    ra_list_nil(ListOut).
 
 init(N1, N2, T) = BTA :-
     init(N1, N2, T, BTA).
@@ -210,6 +237,53 @@ add_elements(ElemsToAdd, Item, RaList0, RaList) :-
         ElemsToAdd1 = ElemsToAdd - 1,
         add_elements(ElemsToAdd1, Item, RaList1, RaList)
     ).
+
+make_empty_array(N) = BTA :-
+    make_empty_array(N, BTA).
+
+make_empty_array(Low, bt_array(Low, High, ListOut)) :-
+    High = Low - 1,
+    ra_list_nil(ListOut).
+
+%---------------------------------------------------------------------------%
+
+lookup(BTA, N) = T :-
+    lookup(BTA, N, T).
+
+lookup(bt_array(Low, High, RaList), Index, Item) :-
+    actual_position(Low, High, Index, Pos),
+    ( if ra_list_lookup(Pos, RaList, Item0) then
+        Item = Item0
+    else
+        unexpected($pred, "array subscript out of bounds")
+    ).
+
+semidet_lookup(bt_array(Low, High, RaList), Index, Item) :-
+    actual_position(Low, High, Index, Pos),
+    ra_list_lookup(Pos, RaList, Item).
+
+elem(Index, Array) = lookup(Array, Index).
+
+%---------------------------------------------------------------------------%
+
+set(BT1A, N, T) = BTA2 :-
+    set(BT1A, N, T, BTA2).
+
+set(BtArray0, Index, Item, BtArray) :-
+    ( if semidet_set(BtArray0, Index, Item, BtArray1) then
+        BtArray = BtArray1
+    else
+        unexpected($pred, "index out of bounds")
+    ).
+
+semidet_set(BtArray0, Index, Item, BtArray) :-
+    BtArray0 = bt_array(Low, High, RaList0),
+    actual_position(Low, High, Index, Pos),
+    ra_list_update(RaList0, Pos, Item, RaList),
+    BtArray = bt_array(Low, High, RaList).
+
+'elem :='(Index, Array0, Value) = Array :-
+    set(Array0, Index, Value, Array).
 
 %---------------------------------------------------------------------------%
 
@@ -233,50 +307,6 @@ bounds(bt_array(Low, High, _), Low, High).
 
 in_bounds(bt_array(Low, High, _), Index) :-
     Low =< Index, Index =< High.
-
-%---------------------------------------------------------------------------%
-
-:- pred actual_position(int::in, int::in, int::in, int::out) is det.
-:- pragma inline(pred(actual_position/4)).
-
-actual_position(Low, High, Index, Pos) :-
-    Pos = High - Low - Index.
-
-elem(Index, Array) = lookup(Array, Index).
-
-lookup(BTA, N) = T :-
-    lookup(BTA, N, T).
-
-lookup(bt_array(Low, High, RaList), Index, Item) :-
-    actual_position(Low, High, Index, Pos),
-    ( if ra_list_lookup(Pos, RaList, Item0) then
-        Item = Item0
-    else
-        unexpected($pred, "array subscript out of bounds")
-    ).
-
-semidet_lookup(bt_array(Low, High, RaList), Index, Item) :-
-    actual_position(Low, High, Index, Pos),
-    ra_list_lookup(Pos, RaList, Item).
-
-%---------------------------------------------------------------------------%
-
-'elem :='(Index, Array, Value) = set(Array, Index, Value).
-
-set(BT1A, N, T) = BTA2 :-
-    set(BT1A, N, T, BTA2).
-
-set(BtArray0, Index, Item, BtArray) :-
-    ( if semidet_set(BtArray0, Index, Item, BtArray1) then
-        BtArray = BtArray1
-    else
-        unexpected($pred, "index out of bounds")
-    ).
-
-semidet_set(bt_array(Low, High, RaListIn), Index, Item,
-        bt_array(Low, High, RaListOut)) :-
-    actual_position(Low, High, Index, Pos),
-    ra_list_update(RaListIn, Pos, Item, RaListOut).
 
 %---------------------------------------------------------------------------%
 
@@ -342,6 +372,17 @@ shrink(Array0, L, H, Array) :-
         insert_items(Array1, L1, Items, Array)
     ).
 
+%---------------------%
+
+:- pred insert_items(bt_array(T)::in, int::in, list(T)::in, bt_array(T)::out)
+    is det.
+
+insert_items(Array, _N, [], Array).
+insert_items(Array0, N, [Head|Tail], Array) :-
+    set(Array0, N, Head, Array1),
+    N1 = N + 1,
+    insert_items(Array1, N1, Tail, Array).
+
 %---------------------------------------------------------------------------%
 
 from_list(N, Xs) = BTA :-
@@ -361,18 +402,7 @@ reverse_into_ra_list([X | Xs], RaList0, RaList) :-
     ra_list_cons(X, RaList0, RaList1),
     reverse_into_ra_list(Xs, RaList1, RaList).
 
-%---------------------------------------------------------------------------%
-
-:- pred insert_items(bt_array(T)::in, int::in, list(T)::in, bt_array(T)::out)
-    is det.
-
-insert_items(Array, _N, [], Array).
-insert_items(Array0, N, [Head|Tail], Array) :-
-    set(Array0, N, Head, Array1),
-    N1 = N + 1,
-    insert_items(Array1, N1, Tail, Array).
-
-%---------------------------------------------------------------------------%
+%---------------------%
 
 to_list(BTA) = Xs :-
     to_list(BTA, Xs).
@@ -389,7 +419,7 @@ reverse_from_ra_list(RaList0, Xs0, Xs) :-
         Xs0 = Xs
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 fetch_items(BTA, N1, N2) = Xs :-
     fetch_items(BTA, N1, N2, Xs).
