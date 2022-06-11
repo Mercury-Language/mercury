@@ -21,7 +21,6 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    array.sort_fix_2014,
     unsorted_aggregate(generate, test, !IO),
     io.write_string("done.\n", !IO).
 

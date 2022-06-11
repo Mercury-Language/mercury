@@ -152,6 +152,7 @@
 :- import_module random.sfc32.
 :- import_module random.sfc64.
 :- import_module random.system_rng.
+:- import_module ra_list.
 :- import_module ranges.
 :- import_module rational.
 :- import_module rbtree.
@@ -330,6 +331,7 @@ stdlib_module_doc_undoc("profiling_builtin",            undoc).
 stdlib_module_doc_undoc("prolog",                       doc).
 stdlib_module_doc_undoc("psqueue",                      doc).
 stdlib_module_doc_undoc("queue",                        doc).
+stdlib_module_doc_undoc("ra_list",                      doc).
 stdlib_module_doc_undoc("random",                       doc).
 stdlib_module_doc_undoc("random.sfc16",                 doc).
 stdlib_module_doc_undoc("random.sfc32",                 doc).

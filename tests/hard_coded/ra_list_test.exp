@@ -1,0 +1,120 @@
+[1.0]
+head: 1.0
+tail: []
+at index0 0: 1.0
+at index0 1: _
+at index0 2: _
+at index0 3: _
+at index0 4: _
+at index0 7: _
+at index0 8: _
+at index0 9: _
+at index0 14: _
+at index0 15: _
+at index0 16: _
+drop 0: [1.0]
+drop 1: []
+drop 2: failed
+drop 5: failed
+drop 9: failed
+
+[2.0, 1.0]
+head: 2.0
+tail: [1.0]
+at index0 0: 2.0
+at index0 1: 1.0
+at index0 2: _
+at index0 3: _
+at index0 4: _
+at index0 7: _
+at index0 8: _
+at index0 9: _
+at index0 14: _
+at index0 15: _
+at index0 16: _
+drop 0: [2.0, 1.0]
+drop 1: [1.0]
+drop 2: []
+drop 5: failed
+drop 9: failed
+
+[3.0, 2.0, 1.0]
+head: 3.0
+tail: [2.0, 1.0]
+at index0 0: 3.0
+at index0 1: 2.0
+at index0 2: 1.0
+at index0 3: _
+at index0 4: _
+at index0 7: _
+at index0 8: _
+at index0 9: _
+at index0 14: _
+at index0 15: _
+at index0 16: _
+drop 0: [3.0, 2.0, 1.0]
+drop 1: [2.0, 1.0]
+drop 2: [1.0]
+drop 5: failed
+drop 9: failed
+
+[4.0, 3.0, 2.0, 1.0]
+head: 4.0
+tail: [3.0, 2.0, 1.0]
+at index0 0: 4.0
+at index0 1: 3.0
+at index0 2: 2.0
+at index0 3: 1.0
+at index0 4: _
+at index0 7: _
+at index0 8: _
+at index0 9: _
+at index0 14: _
+at index0 15: _
+at index0 16: _
+drop 0: [4.0, 3.0, 2.0, 1.0]
+drop 1: [3.0, 2.0, 1.0]
+drop 2: [2.0, 1.0]
+drop 5: failed
+drop 9: failed
+
+[4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
+head: 4.0
+tail: [3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
+at index0 0: 4.0
+at index0 1: 3.0
+at index0 2: 2.0
+at index0 3: 1.0
+at index0 4: 4.0
+at index0 7: 1.0
+at index0 8: _
+at index0 9: _
+at index0 14: _
+at index0 15: _
+at index0 16: _
+drop 0: [4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
+drop 1: [3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
+drop 2: [2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
+drop 5: [3.0, 2.0, 1.0]
+drop 9: failed
+
+[4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
+head: 4.0
+tail: [3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
+at index0 0: 4.0
+at index0 1: 3.0
+at index0 2: 2.0
+at index0 3: 1.0
+at index0 4: 4.0
+at index0 7: 1.0
+at index0 8: 4.0
+at index0 9: 3.0
+at index0 14: 2.0
+at index0 15: 1.0
+at index0 16: _
+drop 0: [4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
+drop 1: [3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
+drop 2: [2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
+drop 5: [3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
+drop 9: [3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
+

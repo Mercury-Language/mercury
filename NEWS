@@ -19,10 +19,13 @@ Changes to the Mercury standard library
 
 ### Changes to the `array` module
 
-* The following predicate has been removed:
+* The following predicates have been removed:
 
     - pred `random_permutation/4`
       (replacement: `random.shuffle_array/4` or `random.shuffle_array/5`)
+
+    - pred `sort_fix_2014/0`
+      (no replacement needed)
 
 ### Changes to the `benchmarking` module
 
@@ -276,6 +279,10 @@ Changes to the Mercury standard library
 * The following predicates have been added:
 
     - pred `sorted_keys_match/2`
+
+### New `ra_list` module
+
+* This new module contains operations on random access lists.
 
 ### Changes to the `random` module
 

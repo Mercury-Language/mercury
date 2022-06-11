@@ -51,7 +51,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Reading array element,
+% Reading array elements.
 %
 
     % lookup returns the Nth element of a bt_array.
@@ -72,7 +72,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Writing array element,
+% Writing array elements.
 %
 
     % set sets the nth element of a bt_array, and returns the resulting
@@ -124,7 +124,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Resizing arrays,
+% Resizing arrays.
 %
 
     % `resize(BtArray0, Lo, Hi, Item, BtArray)' is true if BtArray
@@ -202,6 +202,7 @@
 :- implementation.
 
 :- import_module int.
+:- import_module ra_list.
 :- import_module require.
 
 :- type bt_array(T)
@@ -222,10 +223,10 @@ actual_position(Low, High, Index, Pos) :-
 init(N1, N2, T) = BTA :-
     init(N1, N2, T, BTA).
 
-init(Low, High, Item, bt_array(Low, High, ListOut)) :-
-    ra_list_nil(ListIn),
+init(Low, High, Item, bt_array(Low, High, List)) :-
+    ra_list.init(List0),
     ElemsToAdd = High - Low + 1,
-    add_elements(ElemsToAdd, Item, ListIn, ListOut).
+    add_elements(ElemsToAdd, Item, List0, List).
 
 :- pred add_elements(int::in, T::in, ra_list(T)::in, ra_list(T)::out) is det.
 
@@ -233,7 +234,7 @@ add_elements(ElemsToAdd, Item, RaList0, RaList) :-
     ( if ElemsToAdd =< 0 then
         RaList0 = RaList
     else
-        ra_list_cons(Item, RaList0, RaList1),
+        ra_list.cons(Item, RaList0, RaList1),
         ElemsToAdd1 = ElemsToAdd - 1,
         add_elements(ElemsToAdd1, Item, RaList1, RaList)
     ).
@@ -241,9 +242,9 @@ add_elements(ElemsToAdd, Item, RaList0, RaList) :-
 make_empty_array(N) = BTA :-
     make_empty_array(N, BTA).
 
-make_empty_array(Low, bt_array(Low, High, ListOut)) :-
+make_empty_array(Low, bt_array(Low, High, List)) :-
     High = Low - 1,
-    ra_list_nil(ListOut).
+    ra_list.init(List).
 
 %---------------------------------------------------------------------------%
 
@@ -252,7 +253,7 @@ lookup(BTA, N) = T :-
 
 lookup(bt_array(Low, High, RaList), Index, Item) :-
     actual_position(Low, High, Index, Pos),
-    ( if ra_list_lookup(Pos, RaList, Item0) then
+    ( if ra_list.index0(RaList, Pos, Item0) then
         Item = Item0
     else
         unexpected($pred, "array subscript out of bounds")
@@ -260,7 +261,7 @@ lookup(bt_array(Low, High, RaList), Index, Item) :-
 
 semidet_lookup(bt_array(Low, High, RaList), Index, Item) :-
     actual_position(Low, High, Index, Pos),
-    ra_list_lookup(Pos, RaList, Item).
+    ra_list.index0(RaList, Pos, Item).
 
 elem(Index, Array) = lookup(Array, Index).
 
@@ -279,7 +280,7 @@ set(BtArray0, Index, Item, BtArray) :-
 semidet_set(BtArray0, Index, Item, BtArray) :-
     BtArray0 = bt_array(Low, High, RaList0),
     actual_position(Low, High, Index, Pos),
-    ra_list_update(RaList0, Pos, Item, RaList),
+    ra_list.update(Pos, Item, RaList0, RaList),
     BtArray = bt_array(Low, High, RaList).
 
 'elem :='(Index, Array0, Value) = Array :-
@@ -321,7 +322,7 @@ resize(Array0, L, H, Item, Array) :-
 
         ( if H < H0 then
             SizeDiff = H0 - H,
-            ( if ra_list_drop(SizeDiff, RaList0, RaList1) then
+            ( if ra_list.drop(SizeDiff, RaList0, RaList1) then
                 RaList = RaList1
             else
                 unexpected($pred, "can't resize to a less-than-empty array")
@@ -353,14 +354,14 @@ shrink(Array0, L, H, Array) :-
         % Optimise the common case where the lower bounds are the same.
 
         SizeDiff = H0 - H,
-        ( if ra_list_drop(SizeDiff, RaList0, RaList1) then
+        ( if ra_list.drop(SizeDiff, RaList0, RaList1) then
             RaList = RaList1
         else
             unexpected($pred, "can't resize to a less-than-empty array")
         ),
         Array = bt_array(L, H, RaList)
     else
-        ( if ra_list_head(RaList0, Item0) then
+        ( if ra_list.head(RaList0, Item0) then
             Item = Item0
         else
             unexpected($pred, "can't shrink an empty array")
@@ -391,7 +392,7 @@ from_list(N, Xs) = BTA :-
 from_list(Low, List, bt_array(Low, High, RaList)) :-
     list.length(List, Len),
     High = Low + Len - 1,
-    ra_list_nil(RaList0),
+    init(RaList0),
     reverse_into_ra_list(List, RaList0, RaList).
 
 :- pred reverse_into_ra_list(list(T)::in,
@@ -399,7 +400,7 @@ from_list(Low, List, bt_array(Low, High, RaList)) :-
 
 reverse_into_ra_list([], RaList, RaList).
 reverse_into_ra_list([X | Xs], RaList0, RaList) :-
-    ra_list_cons(X, RaList0, RaList1),
+    cons(X, RaList0, RaList1),
     reverse_into_ra_list(Xs, RaList1, RaList).
 
 %---------------------%
@@ -413,7 +414,7 @@ to_list(bt_array(_, _, RaList), List) :-
 :- pred reverse_from_ra_list(ra_list(T)::in, list(T)::in, list(T)::out) is det.
 
 reverse_from_ra_list(RaList0, Xs0, Xs) :-
-    ( if ra_list_head_tail(RaList0, X, RaList1) then
+    ( if head_tail(RaList0, X, RaList1) then
         reverse_from_ra_list(RaList1, [X | Xs0], Xs)
     else
         Xs0 = Xs
@@ -431,7 +432,7 @@ fetch_items(bt_array(ALow, AHigh, RaList0), Low, High, List) :-
         List = []
     else if
         actual_position(ALow, AHigh, High, Drop),
-        ra_list_drop(Drop, RaList0, RaList),
+        ra_list.drop(Drop, RaList0, RaList),
         Take = High - Low + 1,
         reverse_from_ra_list_count(Take, RaList, [], List0)
     then
@@ -445,7 +446,7 @@ fetch_items(bt_array(ALow, AHigh, RaList0), Low, High, List) :-
 
 reverse_from_ra_list_count(I, RaList0, Xs0, Xs) :-
     ( if
-        ra_list_head_tail(RaList0, X, RaList1),
+        ra_list.head_tail(RaList0, X, RaList1),
         I >= 0
     then
         I1 = I - 1,
@@ -498,203 +499,6 @@ bsearch_loop(A, Lo, Hi, SearchX, Compare, I) :-
             Comp = (>),
             bsearch_loop(A, Lo, Mid - 1, SearchX, Compare, I)
         )
-    ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-% This is a perfect application for submodules, but Mercury didn't have them
-% when this was written. :-(
-
-% The heart of the implementation of bt_array is a `random access list'
-% or ra_list for short. It is very similar to a list data type, and
-% it supports O(1) head/tail/cons operations, but O(log n) lookup and
-% update. The representation is a list of perfectly balanced binary trees.
-%
-% For more details on the implementation:
-%
-%   Chris Okasaki, "Purely Functional Random-Access Lists"
-%   Functional Programming Languages and Computer Architecture,
-%   June 1995, pp 86-95.
-
-% :- module ra_list.
-% :- interface.
-
-% :- type ra_list(T).
-
-:- pred ra_list_nil(ra_list(T)::uo) is det.
-
-:- pred ra_list_cons(T::in, ra_list(T)::in, ra_list(T)::out) is det.
-
-:- pred ra_list_head(ra_list(T)::in, T::out) is semidet.
-
-:- pred ra_list_tail(ra_list(T)::in, ra_list(T)::out) is semidet.
-
-:- pred ra_list_head_tail(ra_list(T)::in, T::out, ra_list(T)::out) is semidet.
-
-%---------------------------------------------------------------------------%
-
-:- pred ra_list_lookup(int::in, ra_list(T)::in, T::out) is semidet.
-
-:- pred ra_list_update(ra_list(T)::in, int::in, T::in, ra_list(T)::out)
-    is semidet.
-
-%---------------------------------------------------------------------------%
-
-:- pred ra_list_drop(int::in, ra_list(T)::in, ra_list(T)::out) is semidet.
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-% :- implementation.
-
-:- type ra_list(T)
-    --->    nil
-    ;       cons(int, ra_list_bintree(T), ra_list(T)).
-
-:- type ra_list_bintree(T)
-    --->    leaf(T)
-    ;       node(T, ra_list_bintree(T), ra_list_bintree(T)).
-
-%---------------------------------------------------------------------------%
-
-:- pragma inline(pred(ra_list_nil/1)).
-
-ra_list_nil(nil).
-
-:- pragma inline(pred(ra_list_cons/3)).
-
-ra_list_cons(X, List0, List) :-
-    ( if
-        List0 = cons(Size1, T1, cons(Size2, T2, Rest)),
-        Size1 = Size2
-    then
-        NewSize = 1 + Size1 + Size2,
-        List = cons(NewSize, node(X, T1, T2), Rest)
-    else
-        List = cons(1, leaf(X), List0)
-    ).
-
-:- pragma inline(pred(ra_list_head/2)).
-
-ra_list_head(cons(_, leaf(X), _), X).
-ra_list_head(cons(_, node(X, _, _), _), X).
-
-:- pragma inline(pred(ra_list_tail/2)).
-
-ra_list_tail(cons(_, leaf(_), Tail), Tail).
-ra_list_tail(cons(Size, node(_, T1, T2), Rest), Tail) :-
-    Size2 = Size // 2,
-    Tail = cons(Size2, T1, cons(Size2, T2, Rest)).
-
-:- pragma inline(pred(ra_list_head_tail/3)).
-
-ra_list_head_tail(cons(_, leaf(X), Tail), X, Tail).
-ra_list_head_tail(cons(Size, node(X, T1, T2), Rest), X, Tail) :-
-    Size2 = Size // 2,
-    Tail = cons(Size2, T1, cons(Size2, T2, Rest)).
-
-%---------------------------------------------------------------------------%
-
-:- pragma inline(pred(ra_list_lookup/3)).
-
-ra_list_lookup(I, List, X) :-
-    I >= 0,
-    ra_list_lookup_2(I, List, X).
-
-:- pred ra_list_lookup_2(int::in, ra_list(T)::in, T::out) is semidet.
-
-ra_list_lookup_2(I, cons(Size, T, Rest), X) :-
-    ( if I < Size then
-        ra_list_bintree_lookup(Size, T, I, X)
-    else
-        NewI = I - Size,
-        ra_list_lookup_2(NewI, Rest, X)
-    ).
-
-:- pred ra_list_bintree_lookup(int::in, ra_list_bintree(T)::in, int::in,
-    T::out) is semidet.
-
-ra_list_bintree_lookup(_, leaf(X), 0, X).
-ra_list_bintree_lookup(Size, node(X0, T1, T2), I, X) :-
-    ( if I = 0 then
-        X0 = X
-    else
-        Size2 = Size // 2,
-        ( if I =< Size2 then
-            NewI = I - 1,
-            ra_list_bintree_lookup(Size2, T1, NewI, X)
-        else
-            NewI = I - 1 - Size2,
-            ra_list_bintree_lookup(Size2, T2, NewI, X)
-        )
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pragma inline(pred(ra_list_update/4)).
-
-ra_list_update(List0, I, X, List) :-
-    I >= 0,
-    ra_list_update_2(List0, I, X, List).
-
-:- pred ra_list_update_2(ra_list(T)::in, int::in, T::in, ra_list(T)::out)
-    is semidet.
-
-ra_list_update_2(cons(Size, T0, Rest), I, X, List) :-
-    ( if I < Size then
-        ra_list_bintree_update(Size, T0, I, X, T),
-        List = cons(Size, T, Rest)
-    else
-        NewI = I - Size,
-        ra_list_update_2(Rest, NewI, X, List0),
-        List = cons(Size, T0, List0)
-    ).
-
-:- pred ra_list_bintree_update(int::in, ra_list_bintree(T)::in, int::in, T::in,
-    ra_list_bintree(T)::out) is semidet.
-
-ra_list_bintree_update(_, leaf(_), 0, X, leaf(X)).
-ra_list_bintree_update(Size, node(X0, T1, T2), I, X, T) :-
-    ( if I = 0 then
-        T = node(X, T1, T2)
-    else
-        Size2 = Size // 2,
-        ( if I =< Size2 then
-            NewI = I - 1,
-            ra_list_bintree_update(Size2, T1, NewI, X, T0),
-            T = node(X0, T0, T2)
-        else
-            NewI = I - 1 - Size2,
-            ra_list_bintree_update(Size2, T2, NewI, X, T0),
-            T = node(X0, T1, T0)
-        )
-    ).
-
-%---------------------------------------------------------------------------%
-
-ra_list_drop(N, As, Bs) :-
-    ( if N > 0 then
-        As = cons(Size, _, Cs),
-        ( if Size < N then
-            N1 = N - Size,
-            ra_list_drop(N1, Cs, Bs)
-        else
-            ra_list_slow_drop(N, As, Bs)
-        )
-    else
-        As = Bs
-    ).
-
-:- pred ra_list_slow_drop(int::in, ra_list(T)::in, ra_list(T)::out) is semidet.
-
-ra_list_slow_drop(N, As, Bs) :-
-    ( if N > 0 then
-        N1 = N - 1,
-        ra_list_tail(As, Cs),
-        ra_list_slow_drop(N1, Cs, Bs)
-    else
-        As = Bs
     ).
 
 %---------------------------------------------------------------------------%

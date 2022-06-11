@@ -82,6 +82,3 @@ MCFLAGS-thread.semaphore        += --no-local-thread-engine-base
 # Work around a warning for termination analysis of the user defined equality
 # and comparison code for lazy values.
 MCFLAGS-lazy                    += --no-warn-non-term-special-preds
-
-# Keep all modules' contents in a consistent order, except these (for now).
-MCFLAGS-bt_array                += --no-warn-inconsistent-pred-order-clauses

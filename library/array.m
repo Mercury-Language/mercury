@@ -530,11 +530,6 @@
     %
 :- func sort(array(T)::array_di) = (array(T)::array_uo) is det.
 
-    % array.sort was previously buggy. This symbol provides a way to ensure
-    % that you are using the fixed version.
-    %
-:- pred array.sort_fix_2014 is det.
-
 %---------------------------------------------------------------------------%
 %
 % Searching arrays.
@@ -2526,10 +2521,6 @@ fetch_items(Array, Low, High, List) :-
 :- pragma type_spec(func(array.sort/1), T = string).
 
 sort(A) = samsort_subarray(A, array.min(A), array.max(A)).
-
-:- pragma no_inline(pred(array.sort_fix_2014/0)).
-
-sort_fix_2014.
 
     % SAMsort (smooth applicative merge) invented by R.A. O'Keefe.
     %
