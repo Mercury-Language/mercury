@@ -6,6 +6,13 @@ This is a bug-fix release.
 * [Mantis bug #558]. We have fixed a bug that was causing some of the
   manual pages to sometimes build incorrectly.
 
+* [Mantis bug #560]. We have disabled the use of the asm_fast grades on Aarch64
+  when using GCC 9+ due to incompatibilities with position-independent code.
+
+* We have fixed a bug that was causing assertion failures or segmentation
+  violations in the Mercury runtime on Aarch64 systems with versions of
+  GCC before 10.
+
 NEWS for Mercury 22.01.1
 ========================
 
