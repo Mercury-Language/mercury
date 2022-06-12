@@ -1600,14 +1600,10 @@ write_dtd_entries(_, _, _, [], _, _, _, _, !State).
 write_dtd_entries(Stream, MakeElement, TypeDesc, [Element | Elements],
         MaybeFunctorList, MaybeArityList, ArgTypeListList, AttributeListList,
         !State) :-
-    MaybeFunctor = list.det_head(MaybeFunctorList),
-    MaybeFunctors = list.det_tail(MaybeFunctorList),
-    MaybeArity = list.det_head(MaybeArityList),
-    MaybeArities = list.det_tail(MaybeArityList),
-    ArgTypeList = list.det_head(ArgTypeListList),
-    ArgTypeLists = list.det_tail(ArgTypeListList),
-    AttributeList = list.det_head(AttributeListList),
-    AttributeLists = list.det_tail(AttributeListList),
+    list.det_head_tail(MaybeFunctorList, MaybeFunctor, MaybeFunctors),
+    list.det_head_tail(MaybeArityList, MaybeArity, MaybeArities),
+    list.det_head_tail(ArgTypeListList, ArgTypeList, ArgTypeLists),
+    list.det_head_tail(AttributeListList, AttributeList, AttributeLists),
 
     put(Stream, "<!ELEMENT ", !State),
     put(Stream, Element, !State),

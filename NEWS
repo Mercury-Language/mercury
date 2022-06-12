@@ -71,6 +71,7 @@ Changes to the Mercury standard library
 
     - pred `foldr2/6`
     - pred `foldr3/8`
+    - pred `head/2`
     - pred `is_singleton/2`
 
 ### Changes to the `diet` module
@@ -269,6 +270,11 @@ Changes to the Mercury standard library
     - pred `chunk_foldl3/9`
     - pred `chunk_foldl4/11`
     - pred `gap_foldl/5`
+    - pred `head/2`
+    - pred `tail/2`
+    - pred `det_head/2`
+    - pred `det_tail/2`
+    - pred `is_singleton/2`
     - pred `last_gap_foldl/6`
     - func `take_while_not/2`
     - pred `take_while_not/3`

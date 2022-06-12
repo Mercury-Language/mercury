@@ -1,6 +1,7 @@
 [1.0]
 head: 1.0
 tail: []
+length: 1
 at index0 0: 1.0
 at index0 1: _
 at index0 2: _
@@ -21,6 +22,7 @@ drop 9: failed
 [2.0, 1.0]
 head: 2.0
 tail: [1.0]
+length: 2
 at index0 0: 2.0
 at index0 1: 1.0
 at index0 2: _
@@ -41,6 +43,7 @@ drop 9: failed
 [3.0, 2.0, 1.0]
 head: 3.0
 tail: [2.0, 1.0]
+length: 3
 at index0 0: 3.0
 at index0 1: 2.0
 at index0 2: 1.0
@@ -61,6 +64,7 @@ drop 9: failed
 [4.0, 3.0, 2.0, 1.0]
 head: 4.0
 tail: [3.0, 2.0, 1.0]
+length: 4
 at index0 0: 4.0
 at index0 1: 3.0
 at index0 2: 2.0
@@ -81,6 +85,7 @@ drop 9: failed
 [4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
 head: 4.0
 tail: [3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
+length: 8
 at index0 0: 4.0
 at index0 1: 3.0
 at index0 2: 2.0
@@ -101,6 +106,7 @@ drop 9: failed
 [4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
 head: 4.0
 tail: [3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
+length: 16
 at index0 0: 4.0
 at index0 1: 3.0
 at index0 2: 2.0
@@ -118,3 +124,85 @@ drop 2: [2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
 drop 5: [3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
 drop 9: [3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 1.0]
 
+foldl (should be 10 to 1):
+"<ten>"
+"<nine>"
+"<eight>"
+"<seven>"
+"<six>"
+"<five>"
+"<four>"
+"<three>"
+"<two>"
+"<one>"
+
+foldr (should be 1 to 10):
+"<one><two><three><four><five><six><seven><eight><nine><ten>"
+
+construction 1
+cons(1, leaf("one"), nil)
+cons(1, leaf("one"), nil)
+
+construction 2
+cons(1, leaf("one"), nil)
+cons(1, leaf("one"), cons(1, leaf("two"), nil))
+
+construction 3
+cons(3, node("one", leaf("two"), leaf("three")), nil)
+cons(3, node("one", leaf("two"), leaf("three")), nil)
+
+construction 4
+cons(1, leaf("one"), cons(3, node("two", leaf("three"), leaf("four")), nil))
+cons(1, leaf("one"), cons(3, node("two", leaf("three"), leaf("four")), nil))
+
+construction 5
+cons(1, leaf("one"), cons(3, node("three", leaf("four"), leaf("five")), nil))
+cons(1, leaf("one"), cons(1, leaf("two"), cons(3, node("three", leaf("four"), leaf("five")), nil)))
+
+construction 6
+cons(3, node("one", leaf("two"), leaf("three")), nil)
+cons(3, node("one", leaf("two"), leaf("three")), cons(3, node("four", leaf("five"), leaf("six")), nil))
+
+construction 7
+cons(7, node("one", node("two", leaf("three"), leaf("four")), node("five", leaf("six"), leaf("seven"))), nil)
+cons(7, node("one", node("two", leaf("three"), leaf("four")), node("five", leaf("six"), leaf("seven"))), nil)
+
+construction 8
+cons(1, leaf("one"), cons(7, node("two", node("three", leaf("four"), leaf("five")), node("six", leaf("seven"), leaf("eight"))), nil))
+cons(1, leaf("one"), cons(7, node("two", node("three", leaf("four"), leaf("five")), node("six", leaf("seven"), leaf("eight"))), nil))
+
+construction 9
+cons(1, leaf("one"), cons(7, node("three", node("four", leaf("five"), leaf("six")), node("seven", leaf("eight"), leaf("nine"))), nil))
+cons(1, leaf("one"), cons(1, leaf("two"), cons(7, node("three", node("four", leaf("five"), leaf("six")), node("seven", leaf("eight"), leaf("nine"))), nil)))
+
+construction 10
+cons(3, node("one", leaf("two"), leaf("three")), cons(7, node("four", node("five", leaf("six"), leaf("seven")), node("eight", leaf("nine"), leaf("ten"))), nil))
+cons(3, node("one", leaf("two"), leaf("three")), cons(7, node("four", node("five", leaf("six"), leaf("seven")), node("eight", leaf("nine"), leaf("ten"))), nil))
+
+construction 11
+cons(1, leaf("one"), cons(3, node("two", leaf("three"), leaf("four")), cons(7, node("five", node("six", leaf("seven"), leaf("eight")), node("nine", leaf("ten"), leaf("eleven"))), nil)))
+cons(1, leaf("one"), cons(3, node("two", leaf("three"), leaf("four")), cons(7, node("five", node("six", leaf("seven"), leaf("eight")), node("nine", leaf("ten"), leaf("eleven"))), nil)))
+
+construction 12
+cons(1, leaf("one"), cons(3, node("three", leaf("four"), leaf("five")), cons(7, node("six", node("seven", leaf("eight"), leaf("nine")), node("ten", leaf("eleven"), leaf("twelve"))), nil)))
+cons(1, leaf("one"), cons(1, leaf("two"), cons(3, node("three", leaf("four"), leaf("five")), cons(7, node("six", node("seven", leaf("eight"), leaf("nine")), node("ten", leaf("eleven"), leaf("twelve"))), nil))))
+
+construction 13
+cons(3, node("one", leaf("two"), leaf("three")), cons(7, node("seven", node("eight", leaf("nine"), leaf("ten")), node("eleven", leaf("twelve"), leaf("thirteen"))), nil))
+cons(3, node("one", leaf("two"), leaf("three")), cons(3, node("four", leaf("five"), leaf("six")), cons(7, node("seven", node("eight", leaf("nine"), leaf("ten")), node("eleven", leaf("twelve"), leaf("thirteen"))), nil)))
+
+construction 14
+cons(7, node("one", node("two", leaf("three"), leaf("four")), node("five", leaf("six"), leaf("seven"))), nil)
+cons(7, node("one", node("two", leaf("three"), leaf("four")), node("five", leaf("six"), leaf("seven"))), cons(7, node("eight", node("nine", leaf("ten"), leaf("eleven")), node("twelve", leaf("thirteen"), leaf("fourteen"))), nil))
+
+construction 15
+cons(15, node("one", node("two", node("three", leaf("four"), leaf("five")), node("six", leaf("seven"), leaf("eight"))), node("nine", node("ten", leaf("eleven"), leaf("twelve")), node("thirteen", leaf("fourteen"), leaf("fifteen")))), nil)
+cons(15, node("one", node("two", node("three", leaf("four"), leaf("five")), node("six", leaf("seven"), leaf("eight"))), node("nine", node("ten", leaf("eleven"), leaf("twelve")), node("thirteen", leaf("fourteen"), leaf("fifteen")))), nil)
+
+construction 16
+cons(1, leaf("one"), cons(15, node("two", node("three", node("four", leaf("five"), leaf("six")), node("seven", leaf("eight"), leaf("nine"))), node("ten", node("eleven", leaf("twelve"), leaf("thirteen")), node("fourteen", leaf("fifteen"), leaf("sixteen")))), nil))
+cons(1, leaf("one"), cons(15, node("two", node("three", node("four", leaf("five"), leaf("six")), node("seven", leaf("eight"), leaf("nine"))), node("ten", node("eleven", leaf("twelve"), leaf("thirteen")), node("fourteen", leaf("fifteen"), leaf("sixteen")))), nil))
+
+construction 17
+cons(1, leaf("one"), cons(15, node("three", node("four", node("five", leaf("six"), leaf("seven")), node("eight", leaf("nine"), leaf("ten"))), node("eleven", node("twelve", leaf("thirteen"), leaf("fourteen")), node("fifteen", leaf("sixteen"), leaf("seventeen")))), nil))
+cons(1, leaf("one"), cons(1, leaf("two"), cons(15, node("three", node("four", node("five", leaf("six"), leaf("seven")), node("eight", leaf("nine"), leaf("ten"))), node("eleven", node("twelve", leaf("thirteen"), leaf("fourteen")), node("fifteen", leaf("sixteen"), leaf("seventeen")))), nil)))

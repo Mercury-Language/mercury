@@ -143,9 +143,12 @@
     %
 :- pred split_last(cord(T)::in, cord(T)::out, T::out) is semidet.
 
-    %     get_first(C0, X)  =>  some [C]: list(C0) = [X] ++ C.
-    % not get_first(C0, _)  =>  C0 = empty
+    %     head(C0, X)  =>  some [C]: list(C0) = [X] ++ C.
+    % not head(C0, _)  =>  C0 = empty
     %
+    % get_first is a synonym for head.
+    %
+:- pred head(cord(T)::in, T::out) is semidet.
 :- pred get_first(cord(T)::in, T::out) is semidet.
 
     %     get_last(C0, X)  =>  some [C]: list(C0) = C ++ [X].
@@ -596,6 +599,9 @@ split_list_last(Prev, [H | T], AllButLast, Last) :-
     AllButLast = [Prev | AllButLast0].
 
 %---------------------------------------------------------------------------%
+
+head(nonempty_cord(N), Head) :-
+    get_first_node(N, Head).
 
 get_first(nonempty_cord(N), Head) :-
     get_first_node(N, Head).

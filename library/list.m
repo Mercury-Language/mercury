@@ -57,21 +57,33 @@
 
 :- pred is_not_empty(list(T)::in) is semidet.
 
+:- pred is_singleton(list(T)::in, T::out) is semidet.
+
 %---------------------------------------------------------------------------%
 
+    % head(List) returns the head of List (i.e. its first element),
+    % failing if List is empty.
+    %
 :- func head(list(T)) = T is semidet.
+:- pred head(list(T)::in, T::out) is semidet.
 
     % det_head(List) returns the first element of List,
     % calling error/1 if List is empty.
     %
 :- func det_head(list(T)) = T.
+:- pred det_head(list(T)::in, T::out) is det.
 
+    % tail(List) returns the tail of List (i.e. all its elements
+    % except the first), failing if List is empty.
+    %
 :- func tail(list(T)) = list(T) is semidet.
+:- pred tail(list(T)::in, list(T)::out) is semidet.
 
     % det_tail(List) returns the tail of List,
     % calling error/1 if List is empty.
     %
 :- func det_tail(list(T)) = list(T).
+:- pred det_tail(list(T)::in, list(T)::out) is det.
 
     % det_head_tail(List, Head, Tail) returns the head and the tail of List,
     % calling error/1 if List is empty.
@@ -899,10 +911,10 @@
 
 %---------------------------------------------------------------------------%
 
-    % map(T, L) = M:
-    % map(T, L, M):
+    % map(F, L) = M:
+    % map(P, L, M):
     %
-    % Apply the closure T to transform the elements of L
+    % Apply the function F or the predicate P to transform the elements of L
     % into the elements of M.
     %
 :- func map(func(X) = Y, list(X)) = list(Y).
@@ -914,8 +926,10 @@
 :- mode map(pred(in, out) is nondet, in, out) is nondet.
 :- mode map(pred(in, in) is semidet, in, in) is semidet.
 
-    % map2(T, L, M1, M2) uses the closure T
-    % to transform the elements of L into the elements of M1 and M2.
+    % map2(P, L, M1, M2):
+    %
+    % Apply the predicate P to transform the elements of L
+    % into the elements of M1 and M2.
     %
 :- pred map2(pred(A, B, C), list(A), list(B), list(C)).
 :- mode map2(pred(in, out, out) is det, in, out, out) is det.
@@ -1093,13 +1107,13 @@
     % foldl(Func, List, Start) = End:
     % foldl(Pred, List, Start, End):
     %
-    % Calls Pred on each element of List, working left-to-right.
-    % Each call to Pred will have a pair of arguments that represent
+    % Calls Func or Pred on each element of List, working left-to-right.
+    % Each call to Func or Pred will have a pair of arguments that represent
     % respectively the current and the next value of a piece of state.
     % (Such current-next argument pairs are usually called an accumulator,
-    % because the usual use case is that the successive calls to Pred
+    % because the usual use case is that the successive calls to Func or Pred
     % accumulate pieces of information.) The initial value of the accumulator
-    % is Start, each call to Pred updates it to the next value, and
+    % is Start, each call to Func or Pred updates it to the next value, and
     % foldl returns its final value as End.
     %
 :- func foldl(func(L, A) = A, list(L), A) = A.
@@ -1486,15 +1500,15 @@
 %---------------------%
 
     % foldr(Func, List, Start) = End:
-    % foldr(Func, List, Start, End):
+    % foldr(Pred, List, Start, End):
     %
-    % Calls Pred on each element of List, working right-to-left.
-    % Each call to Pred will have a pair of arguments that represent
+    % Calls Func or Pred on each element of List, working right-to-left.
+    % Each call to Func or Pred will have a pair of arguments that represent
     % respectively the current and the next value of a piece of state.
     % (Such current-next argument pairs are usually called an accumulator,
-    % because the usual use case is that the successive calls to Pred
+    % because the usual use case is that the successive calls to Func or Pred
     % accumulate pieces of information.) The initial value of the accumulator
-    % is Start, each call to Pred updates it to the next value, and
+    % is Start, each call to Func or Pred updates it to the next value, and
     % foldl returns its final value as End.
     %
 :- func foldr(func(L, A) = A, list(L), A) = A.
@@ -2288,19 +2302,33 @@ is_empty([]).
 
 is_not_empty([_ | _]).
 
+is_singleton([X], X).
+
 %---------------------------------------------------------------------------%
 
 head([H | _]) = H.
+
+head([H | _], H).
 
 det_head([]) = _ :-
     unexpected($pred, "empty list").
 det_head([H | _]) = H.
 
+det_head([], _) :-
+    unexpected($pred, "empty list").
+det_head([H | _], H).
+
 tail([_ | T]) = T.
+
+tail([_ | T], T).
 
 det_tail([]) = _ :-
     unexpected($pred, "empty list").
 det_tail([_ | T]) = T.
+
+det_tail([], _) :-
+    unexpected($pred, "empty list").
+det_tail([_ | T], T).
 
 det_head_tail([], _, _) :-
     unexpected($pred, "empty list").
@@ -3537,9 +3565,10 @@ filter_map_corresponding3(P, As, Bs, Cs, Rs) :-
 
 %---------------------------------------------------------------------------%
 
-foldl(F, Xs, A) = B :-
-    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    list.foldl(P, Xs, A, B).
+foldl(_, [], !.A) = !:A.
+foldl(F, [H | T], !.A) = !:A :-
+    !:A = F(H, !.A),
+    !:A = list.foldl(F, T, !.A).
 
 foldl(_, [], !A).
 foldl(P, [H | T], !A) :-
@@ -3738,9 +3767,10 @@ chunk_foldl4_inner(Left, P, List @ [H | T], LeftOver, !A, !B, !C, !D) :-
 
 %---------------------------------------------------------------------------%
 
-foldr(F, Xs, A) = B :-
-    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    list.foldr(P, Xs, A, B).
+foldr(_, [], !.A) = !:A .
+foldr(F, [H | T], !.A) = !:A :-
+    !:A = list.foldr(F, T, !.A),
+    !:A = F(H, !.A).
 
 foldr(_, [], !A).
 foldr(P, [H | T], !A) :-
