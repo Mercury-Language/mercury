@@ -101,19 +101,13 @@ read_and_print_message_from_stdin(OptionTable, !IO) :-
         )
     ;
         WordWrap = yes,
-        stream.get(Stdin, Result, !IO),
+        io.read_file_as_string(Stdin, Result, !IO),
         (
-            (
-                Result = ok(TextFile),
-                TextFile = text_file(Message)
-            ;
-                Result = eof,
-                Message = ""
-            ),
+            Result = ok(Message),
             Lines = wrap_message(OptionTable, Message),
             print_cow_and_message(OptionTable, Lines, !IO)
         ;
-            Result = error(IO_Error),
+            Result = error(_, IO_Error),
             print_io_error(IO_Error, !IO)
         )
     ).
