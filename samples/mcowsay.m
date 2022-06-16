@@ -206,14 +206,10 @@ acc_line_width(Line, !MaxWidth) :-
 
 print_message_bubble(Action, MaxLineWidth, Lines, !IO) :-
     io.print_line(top_bubble_border(MaxLineWidth), !IO),
-    ( if cord.is_singleton(Lines, FirstLine) then
-        (
-            Action = speaking,
-            io.format("< %s >\n", [s(FirstLine)], !IO)
-        ;
-            Action = thinking,
-            io.format("( %s )\n", [s(FirstLine)], !IO)
-        )
+    ( if cord.is_empty(Lines) then
+        print_single_line_bubble(Action, "", !IO)
+    else if cord.is_singleton(Lines, FirstLine) then
+        print_single_line_bubble(Action, FirstLine, !IO)
     else
         NumLines = cord.length(Lines),
         (
@@ -227,6 +223,18 @@ print_message_bubble(Action, MaxLineWidth, Lines, !IO) :-
         )
     ),
     io.print_line(bottom_bubble_border(MaxLineWidth), !IO).
+
+:- pred print_single_line_bubble(cow_action::in, string::in,
+    io::di, io::uo) is det.
+
+print_single_line_bubble(Action, Line, !IO) :-
+    (
+        Action = speaking,
+        io.format("< %s >\n", [s(Line)], !IO)
+    ;
+        Action = thinking,
+        io.format("( %s )\n", [s(Line)], !IO)
+    ).
 
 :- pred print_speech_bubble_line(int::in, int::in, string::in,
     int::in, int::out, io::di, io::uo) is det.
