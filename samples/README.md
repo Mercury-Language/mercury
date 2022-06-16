@@ -37,6 +37,9 @@ This directory contains some example Mercury programs.
 * [beer.m](beer.m) -- A small program that prints the lyrics of the song
   "99 Bottle of Beer".
 
+* [mcowsay.m](mcowsay.m) -- A Mercury version of the `cowsay` program. It prints
+  an ASCII art picture of a cow together with a user-supplied message.
+
 * [Mmakefile](Mmakefile) -- The file used by `mmake`, the Mercury Make program,
   to build the programs in this directory.
 

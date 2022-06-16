@@ -10,8 +10,19 @@
 # To build these programs, first install the Mercury compiler,
 # type `mmake depend', and then type `mmake'.
 
-PROGS=	hello beer cat calculator calculator2 sort eliza ultra_sub e \
-	interpreter expand_terms
+PROGS = \
+	beer		\
+	calculator	\
+	calculator2	\
+	cat		\
+	eliza		\
+	e		\
+	expand_terms	\
+	hello		\
+	interpreter	\
+	mcowsay		\
+	sort		\
+	ultra_sub
 
 DEPENDS=$(PROGS:%=%.depend)
 
