@@ -14,6 +14,11 @@ This is a bug-fix release.
   violations in the Mercury runtime on AArch64 systems with versions of
   GCC before 10.
 
+* [Github issue #102]. We have disabled the use of the GCC option
+  `-Warray-bounds` for GCC version 12 and onwards. This is due to GCC
+  emitting spurious warnings when that option is enabled.  (The use of
+  that option was already disabled for GCC versions 9-11.)
+
 NEWS for Mercury 22.01.1
 ========================
 

@@ -5,7 +5,7 @@
 # @configure_input@
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-2007, 2010-2012 The University of Melbourne.
-# Copyright (C) 2013-2020 The Mercury team.
+# Copyright (C) 2013-2020, 2022 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -569,14 +569,16 @@ case "${FULLARCH}" in
         esac
         ;;
 esac
-
-# gcc versions 9, 10 and 11 replace calls to strcmp and related functions with
+# gcc versions 9-12 replace calls to strcmp and related functions with
 # specialised code when some of the arguments are string constants.
 # The above versions of gcc emit spurious warnings about the code they
 # introduce when -Warray-bounds is enabled.
+# We currently disable the warning for all versions of GCC > 8 since
+# the problem is not known to have been fixed in any later version (as of
+# 2022-06-18).
 # 
 case "${C_COMPILER_TYPE}" in
-    gcc_9_*|gcc_10_*|gcc_11_*)
+    gcc_9_*|gcc_1[0-9]_*)
         CHECK_OPTS="${CHECK_OPTS} -Wno-array-bounds"
     ;;
 esac
