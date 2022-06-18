@@ -242,7 +242,7 @@ then
     case "$host" in *apple*darwin*)
         $CC -v 2>&1 | grep Apple | {
             read apple llvm version versionnum rest
-            case $versionnum in 11.0.[012])
+            case $versionnum in 11.0.[[012]])
                AC_MSG_WARN(
 [
 **** Note that this version of Xcode 11 has bugs that prevent Mercury programs
