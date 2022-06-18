@@ -4382,7 +4382,7 @@ case "$mercury_cv_cc_type" in
         # See scripts/mgnuc.in for an explanation of why we set
         # -Wno-array-bounds here.
         case "$C_COMPILER_TYPE" in
-            gcc_9_*|gcc_1[0-9]_*)
+            gcc_9_*|gcc_1[[0-9]]_*)
                 CFLAGS_FOR_WARNINGS="$CFLAGS_FOR_WARNINGS -Wno-array-bounds"
             ;;
         esac
