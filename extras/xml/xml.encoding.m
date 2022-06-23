@@ -17,16 +17,15 @@
 
 %---------------------------------------------------------------------------%
 
-:- type ascii7 ---> ascii7.
+:- type ascii7
+    --->    ascii7.
+:- type latin1
+    --->    latin1.
+:- type utf8
+    --->    utf8.
 
 :- instance encoding(ascii7).
-
-:- type latin1 ---> latin1.
-
 :- instance encoding(latin1).
-
-:- type utf8 ---> utf8.
-
 :- instance encoding(utf8).
 
 %---------------------------------------------------------------------------%
@@ -58,19 +57,20 @@ decode_ascii7(_, U) -->
 :- pred encode_ascii7(ascii7::in, list(unicode)::in, string::out) is det.
 
 encode_ascii7(_, Us, Str) :-
-    unicodesToAscii7(Us, Cs, []),
+    unicodes_to_ascii7(Us, Cs, []),
     string.from_char_list(Cs, Str).
 
-:- pred unicodesToAscii7(list(unicode)::in, list(char)::out, list(char)::in)
+:- pred unicodes_to_ascii7(list(unicode)::in, list(char)::out, list(char)::in)
     is det.
 
-unicodesToAscii7([]) --> [].
-unicodesToAscii7([U | Us]) -->
+unicodes_to_ascii7([]) --> [].
+unicodes_to_ascii7([U | Us]) -->
     ( if { U > 0x00, U < 0x80, char.to_int(C, U) } then
         [C],
-        unicodesToAscii7(Us)
+        unicodes_to_ascii7(Us)
     else
-        { format("unicodesToAscii7: couldn't convert U-%x to 7bit ascii",
+        { string.format(
+            "unicodes_to_ascii7: couldn't convert U-%x to 7bit ascii",
             [i(U)], Msg) },
         { error(Msg) }
     ).
@@ -89,19 +89,19 @@ decode_latin1(_, U) -->
 :- pred encode_latin1(latin1::in, list(unicode)::in, string::out) is det.
 
 encode_latin1(_, Us, Str) :-
-    unicodesToLatin1(Us, Cs, []),
+    unicodes_to_latin1(Us, Cs, []),
     string.from_char_list(Cs, Str).
 
-:- pred unicodesToLatin1(list(unicode)::in, list(char)::out, list(char)::in)
+:- pred unicodes_to_latin1(list(unicode)::in, list(char)::out, list(char)::in)
     is det.
 
-unicodesToLatin1([]) --> [].
-unicodesToLatin1([U | Us]) -->
+unicodes_to_latin1([]) --> [].
+unicodes_to_latin1([U | Us]) -->
     ( if { char.to_int(C, U) } then
         [C],
-        unicodesToLatin1(Us)
+        unicodes_to_latin1(Us)
     else
-        { format("unicodesToLatin1: couldn't convert U-%x to Latin-1",
+        { string.format("unicodes_to_latin1: couldn't convert U-%x to Latin-1",
             [i(U)], Msg) },
         { error(Msg) }
     ).
@@ -145,14 +145,14 @@ decode_utf8(_, U) -->
 :- pred encode_utf8(utf8::in, list(unicode)::in, string::out) is det.
 
 encode_utf8(_, Us, Str) :-
-    unicodesToUTF8(Us, Cs, []),
+    unicodes_to_utf8(Us, Cs, []),
     string.from_char_list(Cs, Str).
 
-:- pred unicodesToUTF8(list(unicode)::in, list(char)::out, list(char)::in)
+:- pred unicodes_to_utf8(list(unicode)::in, list(char)::out, list(char)::in)
     is det.
 
-unicodesToUTF8([]) --> [].
-unicodesToUTF8([U | Us]) -->
+unicodes_to_utf8([]) --> [].
+unicodes_to_utf8([U | Us]) -->
     (if
         { U > 0x00, U =< 0x7F },
         { char.to_int(C, U) }
@@ -219,18 +219,17 @@ unicodesToUTF8([U | Us]) -->
     then
         [C0, C1, C2, C3, C4, C5]
     else
-        { format("unicodesToUTF8: couldn't convert U-%x to UTF-8",
+        { string.format("unicodes_to_utf8: couldn't convert U-%x to UTF-8",
             [i(U)], Msg) },
         { error(Msg) }
     ),
-    unicodesToUTF8(Us).
+    unicodes_to_utf8(Us).
 
 :- func [unicode | entity] = entity.
 :- mode [out | out] = in is semidet.
 
 [U | E] = E0 :-
-    E0 ^ curr < E0 ^ leng,
+    E0 ^ curr < E0 ^ size,
     string.unsafe_index(E0 ^ text, E0 ^ curr, C),
     char.to_int(C, U),
-    E = E0 ^ curr := (E0^curr + 1).
-
+    E = E0 ^ curr := (E0 ^ curr + 1).

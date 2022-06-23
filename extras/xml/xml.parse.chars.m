@@ -14,23 +14,17 @@
 :- import_module parsing.
 :- import_module unicode.
 
-:- pred letter(pstate(_), pstate(unicode)).
-:- mode letter(in, out) is det.
+:- pred letter(pstate(_)::in, pstate(unicode)::out) is det.
 
-:- pred baseChar(pstate(T1), pstate(unicode)).
-:- mode baseChar(pdi, puo) is det.
+:- pred base_char(pstate(T1)::pdi, pstate(unicode)::puo) is det.
 
-:- pred ideographic(pstate(T1), pstate(unicode)).
-:- mode ideographic(pdi, puo) is det.
+:- pred ideographic(pstate(T1)::pdi, pstate(unicode)::puo) is det.
 
-:- pred combiningChar(pstate(T1), pstate(unicode)).
-:- mode combiningChar(pdi, puo) is det.
+:- pred combining_char(pstate(T1)::pdi, pstate(unicode)::puo) is det.
 
-:- pred digit(pstate(_), pstate(unicode)).
-:- mode digit(in, out) is det.
+:- pred digit(pstate(_)::pdi, pstate(unicode)::puo) is det.
 
-:- pred extender(pstate(T1), pstate(unicode)).
-:- mode extender(pdi, puo) is det.
+:- pred extender(pstate(T1)::pdi, pstate(unicode)::puo) is det.
 
 :- implementation.
 
@@ -47,7 +41,7 @@
 %   [84]  Letter ::= BaseChar | Ideographic
 
 letter -->
-    baseChar or ideographic.
+    base_char or ideographic.
 
 %   [85]  BaseChar ::= [#x0041-#x005A] | [#x0061-#x007A] | [#x00C0-#x00D6]
 %   | [#x00D8-#x00F6] | [#x00F8-#x00FF] | [#x0100-#x0131]
@@ -105,9 +99,10 @@ letter -->
 %   | [#x212A-#x212B] | #x212E | [#x2180-#x2182] | [#x3041-#x3094]
 %   | [#x30A1-#x30FA] | [#x3105-#x312C] | [#xAC00-#xD7A3]
 
-:- type nil ---> nil.
+:- type nil
+    --->    nil.
 
-baseChar -->
+base_char -->
     return(nil),
     (0x0041-0x005A) or (0x0061-0x007A) or (0x00C0-0x00D6)
     or (0x00D8-0x00F6) or (0x00F8-0x00FF) or (0x0100-0x0131)
@@ -205,7 +200,7 @@ ideographic -->
 %   | [#x0FB1-#x0FB7] | #x0FB9 | [#x20D0-#x20DC] | #x20E1
 %   | [#x302A-#x302F] | #x3099 | #x309A
 
-combiningChar -->
+combining_char -->
     return(nil),
     (0x0300-0x0345) or (0x0360-0x0361)
     or (0x0483-0x0486) or (0x0591-0x05A1) or (0x05A3-0x05B9)
@@ -260,4 +255,3 @@ extender -->
     or lit1(0x0640) or lit1(0x0e46)
     or lit1(0x0ec6) or lit1(0x3005) or (0x3031-0x3035) or (0x309d-0x309e)
     or (0x30fc-0x30fe).
-

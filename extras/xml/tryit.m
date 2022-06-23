@@ -25,6 +25,8 @@
 :- import_module parsing.
 :- import_module xml.
 :- import_module xml.cat.
+:- import_module xml.doc.
+:- import_module xml.dtd.
 :- import_module xml.encoding.
 :- import_module xml.parse.
 :- import_module xml.ns.
@@ -35,95 +37,99 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module prolog.
+:- import_module pretty_printer.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
     io.command_line_arguments(Args, !IO),
-    main(Args, !IO).
+    process_cmd_line_args(Args, !IO).
 
-:- pred main(list(string)::in, io::di, io::uo) is det.
+:- pred process_cmd_line_args(list(string)::in, io::di, io::uo) is det.
 
-main([], !IO).
-main([File | Files], !IO) :-
-    prolog.see(File, Res0, !IO),
-    ( if Res0 = ok then
-        io.read_file_as_string(TextResult, !IO),
+process_cmd_line_args([], !IO).
+process_cmd_line_args([File | Files], !IO) :-
+    io.read_named_file_as_string(File, ReadResult, !IO),
+    (
+        ReadResult = ok(Text),
+        process_arg_text(Text, ArgResult, !IO),
         (
-            TextResult = error(_, TextErr),
-            io.stderr_stream(StdErr0, !IO),
-            io.format(StdErr0, "error reading file `%s': %s\n",
-                [s(File), s(io.error_message(TextErr))], !IO)
+            ArgResult = ok({DTD, Doc}),
+            io.stdout_stream(StdOut, !IO),
+            ns_translate(Doc, NsDoc),
+            pretty_printer.write_doc(StdOut, format(DTD), !IO),
+            io.nl(StdOut, !IO),
+            io.nl(StdOut, !IO),
+            pretty_printer.write_doc(StdOut, format(NsDoc), !IO),
+            io.nl(StdOut, !IO)
         ;
-            TextResult = ok(Text),
-            pstate(mkEntity(Text), mkEncoding(utf8), init, !IO),
-            io((pred(Dirs0::out, !.IO::di, !:IO::uo) is det :-
-                io.environment.get_environment_var("XML_DIRS", MStr, !IO),
-                (
-                    MStr = no,
-                    Str = "."
-                ;
-                    MStr = yes(Str)
-                ),
-                split((':'), Str, Dirs0)
-            ), Dirs, !IO),
-            set(gDirs, dirs(Dirs), !IO),
-            io((pred(Cat0::out, !.IO::di, !:IO::uo) is det :-
-                load("catalog", Dirs, Res1, !IO),
-                (
-                    Res1 = ok(Cat0)
-                ;
-                    Res1 = error(Err0),
-                    io.stderr_stream(StdErr0, !IO),
-                    io.format(StdErr0, "error reading catalog: %s\n", [s(Err0)],
-                        !IO),
-                    init(Catalog0),
-                    Cat0 = catalog(Catalog0)
-                )
-            ), Cat, !IO),
-            set(gCatalog, Cat, !IO),
-            map.from_assoc_list([
-                "ASCII"   - mkEncoding(ascii7),
-                "ascii"   - mkEncoding(ascii7),
-                "Latin-1" - mkEncoding(latin1),
-                "Latin1"  - mkEncoding(latin1),
-                "UTF-8"   - mkEncoding(utf8),
-                "utf-8"   - mkEncoding(utf8)
-            ], Encodings),
-            set(gEncodings, encodings(Encodings), !IO),
-            document(!IO),
-            finish(Res, !IO),
-            (
-                Res = ok((DTD, Doc)),
-                nsTranslate(Doc, NsDoc),
-                New = cat.ok((DTD, NsDoc)),
-                io.write_line(New, !IO)
-                % If you do not want to turn the doc to namespace aware, change
-                % the above three lines to write_line(Res).
-            ;
-                Res = error(Err),
-                io.stderr_stream(StdErr, !IO),
-                io.format(StdErr, "%s: %s\n", [s(File), s(Err)], !IO),
-                io.write_line(Res, !IO)
-            )
+            ArgResult = error(Err),
+            io.stderr_stream(StdErr, !IO),
+            io.format(StdErr, "%s: %s\n", [s(File), s(Err)], !IO),
+            io.write_line(StdErr, ArgResult, !IO)
         )
-    else
-        true
+    ;
+        ReadResult = error(ReadErr),
+        io.stderr_stream(StdErr0, !IO),
+        io.format(StdErr0, "error reading file `%s': %s\n",
+            [s(File), s(io.error_message(ReadErr))], !IO)
     ),
-    main(Files, !IO).
+    process_cmd_line_args(Files, !IO).
 
-:- pred split(char, string, list(string)).
-:- mode split(in, in, out) is det.
+:- pred process_arg_text(string::in,
+    parse({xml.dtd.dtd, xml.doc.document})::out, io::di, io::uo) is det.
+
+process_arg_text(Text, Result, !IO) :-
+    some [!PState] (
+        pstate(make_entity(Text), make_encoding(utf8), init, !.IO, !:PState),
+        io((pred(Dirs0::out, !.IO::di, !:IO::uo) is det :-
+            io.environment.get_environment_var("XML_DIRS", MStr, !IO),
+            (
+                MStr = no,
+                Str = "."
+            ;
+                MStr = yes(Str)
+            ),
+            split((':'), Str, Dirs0)
+        ), Dirs, !PState),
+        set_global(gDirs, dirs(Dirs), !PState),
+        io((pred(Cat0::out, !.IO::di, !:IO::uo) is det :-
+            load_catalog("catalog", Dirs, Res1, !IO),
+            (
+                Res1 = catalog_ok(Cat0)
+            ;
+                Res1 = catalog_error(Err0),
+                io.stderr_stream(StdErr0, !IO),
+                io.format(StdErr0, "error reading catalog: %s\n",
+                    [s(Err0)], !IO),
+                init(Catalog0),
+                Cat0 = catalog(Catalog0)
+            )
+        ), Cat, !PState),
+        set_global(gCatalog, Cat, !PState),
+        map.from_assoc_list([
+            "ASCII"   - make_encoding(ascii7),
+            "ascii"   - make_encoding(ascii7),
+            "Latin-1" - make_encoding(latin1),
+            "Latin1"  - make_encoding(latin1),
+            "UTF-8"   - make_encoding(utf8),
+            "utf-8"   - make_encoding(utf8)
+        ], Encodings),
+        set_global(gEncodings, encodings(Encodings), !PState),
+        parse_document(!PState),
+        finish(Result, !.PState, !:IO)
+    ).
+
+:- pred split(char::in, string::in, list(string)::out) is det.
 
 split(C, Str0, Strs) :-
     string.to_char_list(Str0, Chars),
     split1(C, [], Strs0, Chars, _),
-    reverse(Strs0, Strs).
+    list.reverse(Strs0, Strs).
 
-:- pred split1(char, list(string), list(string), list(char), list(char)).
-:- mode split1(in, in, out, in, out) is det.
+:- pred split1(char::in, list(string)::in, list(string)::out,
+    list(char)::in, list(char)::out) is det.
 
 split1(_C, Strs, Strs, [], []).
 split1(C, Strs0, Strs) -->
@@ -138,8 +144,8 @@ split1(C, Strs0, Strs) -->
     ),
     split1(C, Strs1, Strs).
 
-:- pred split2(char, list(char), list(char), list(char), list(char)).
-:- mode split2(in, in, out, in, out) is det.
+:- pred split2(char::in, list(char)::in, list(char)::out,
+    list(char)::in, list(char)::out) is det.
 
 split2(_C, Cs, Cs, [], []).
 split2(C, Cs0, Cs) -->
@@ -149,4 +155,3 @@ split2(C, Cs0, Cs) -->
     else
         split2(C, [C0 | Cs0], Cs)
     ).
-

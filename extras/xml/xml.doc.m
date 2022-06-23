@@ -21,10 +21,10 @@
 
 :- type document
     --->    doc(
-                prestuff  :: list(ref(content)),
-                root      :: ref(content),
-                poststuff :: list(ref(content)),
-                content   :: array(content)
+                prestuff        :: list(ref(content)),
+                root            :: ref(content),
+                poststuff       :: list(ref(content)),
+                content         :: array(content)
             ).
 
 :- type content
@@ -33,31 +33,31 @@
     ;       comment(string)
     ;       data(string).
 
-:- type contentStore
+:- type content_store
     --->    content(
-                eNext :: ref(content),
-                eMap  :: map(ref(content), content)
+                e_next          :: ref(content),
+                e_map           :: map(ref(content), content)
             ).
 
 :- type element
     --->    element(
-                eName    :: string,
-                eAttrs   :: list(attribute),
-                eContent :: list(ref(content))
+                elt_name        :: string,
+                elt_attrs       :: list(attribute),
+                elt_content     :: list(ref(content))
             ).
 
 :- type attribute
     --->    attribute(
-                aName  :: string,
-                aValue :: string
+                attr_name       :: string,
+                attr_value      :: string
             ).
 
 :- type ref(T) == int.
 
-:- func ref(contentStore, ref(content)) = content.
+:- func ref(content_store, ref(content)) = content.
 
 :- pred add(content::in, ref(content)::out,
-    contentStore::in, contentStore::out) is det.
+    content_store::in, content_store::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -69,11 +69,12 @@
 %---------------------------------------------------------------------------%
 
 ref(Elems, Ref) = Elem :-
-    lookup(Elems ^ eMap, Ref, Elem).
+    map.lookup(Elems ^ e_map, Ref, Elem).
 
-add(Elem, Ref, Elems0, Elems) :-
-    Ref = Elems0 ^ eNext,
-    Elems1 = Elems0 ^ eNext := Ref + 1,
-    map.set(Ref, Elem, Elems1 ^ eMap, Map),
-    Elems = Elems1 ^ eMap := Map.
+add(Elem, Ref, !Elems) :-
+    Ref = !.Elems ^ e_next,
+    !Elems ^ e_next := Ref + 1,
 
+    Map0 = !.Elems ^ e_map,
+    map.set(Ref, Elem, Map0, Map),
+    !Elems ^ e_map := Map.

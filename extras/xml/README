@@ -1,41 +1,39 @@
-
 This directory contains an XML parsing library.
 
 The parser is implemented using higher order parsing combinators.
-It follows the grammar in the XML 1.0 recommendation (see
-http://www.w3c.org for more on the recommendation). Unfortunately
-this means that it isn't quite conformant because the english text
-of the recommendation contradicts the given grammar in a number of
-places, some of which I have fixed, and some I will fix when I know
-how to.
+It follows the grammar in the XML 1.0 recommendation (see http://www.w3c.org
+for more on the recommendation). Unfortunately this means that it isn't quite
+conformant because the english text of the recommendation contradicts
+the given grammar in a number of places, some of which I have fixed,
+and some of which I haven't.
 
-The parser includes external parsed entities, but doesn't deal very
-well with non-parsed external entities very well yet (due to some
-of the afore-mentioned contradictions in the recommendation). It
-is non-validating at this stage, but it does parse the DTD and
-expand entity and parameter-entity references.
+The parser includes external parsed entities, but doesn't deal very well
+with non-parsed external entities very well yet (due to some of the
+aforementioned contradictions in the recommendation). It is non-validating,
+but it does parse the DTD and expand entity and parameter-entity references.
 
 The files in this directory are:
-	README		this file.
 
-	xml.m		a wrapper module
-	xml.cat.m	implements catalog file parsing
-	xml.doc.m	defines the types for representing documents
-	xml.dtd.m	defines the types for representing DTDs
-	xml.encoding.m	implements algorithms used for manipulating
-			different encoding mechanisms (eg ASCII, UTF-8)
-	xml.parse.m	the main parser
-	xml.parse.chars.m a piece of the parser which is split off for
-			compile time performance
+README              This file.
 
-	unicode.m	defines a bunch of functions that return the
-			unicode number for various ascii characters
-	parsing.m	defines the parsing combinators used by the
-			parser
+xml.m               A wrapper module.
+xml.cat.m           Implements catalog file parsing.
+xml.doc.m           Defines the types for representing documents.
+xml.dtd.m           Defines the types for representing DTDs.
+xml.encoding.m      Implements algorithms used for manipulating
+                    different encoding mechanisms (eg ASCII, UTF-8).
+xml.parse.m         The main parser.
+xml.parse.chars.m   A piece of the parser which is split off for
+                    compile time performance.
 
-	tryit.m		a sample driver program which parses documents
-			and prints any error messages
-	Mmakefile	a control file for mmake to build the sample program
+unicode.m           Defines a bunch of functions that return the
+                    unicode number for various ascii characters.
+parsing.m           Defines the parsing combinators used by the parser.
 
-	samples		a directory including instructions on how to run the
-			XML parser and some sample files 
+tryit.m             A sample driver program which parses documents
+                    and prints any error messages.
+
+Mmakefile           A control file for mmake to build the sample program.
+
+samples             A directory including instructions on how to run the
+                    XML parser and some sample files.

@@ -1,0 +1,43 @@
+dtd("NEWSARTICLE", 
+  map([
+    ("ARTICLE" -> 
+      element("ARTICLE", 
+        map([("DATE" -> attribute("DATE", attr_cdata, required))]), 
+        children(
+          children_reps(
+            seq(
+              [children_reps(element("TITLE"), one), 
+               children_reps(element("BODY"), one)]), one)))), 
+    ("BODY" -> element("BODY", map([]), mixed(mixed([])))), 
+    ("NEWSARTICLES" -> 
+      element("NEWSARTICLES", map([]), 
+        children(
+          children_reps(
+            alt([children_reps(element("ARTICLE"), one_or_more)]), one)))), 
+    ("TITLE" -> element("TITLE", map([]), mixed(mixed([]))))]), 
+  map([("amp" -> entity_internal("&#38;")), 
+    ("apos" -> entity_internal("&#34;")), ("gt" -> entity_internal("&#62;")), 
+    ("lt" -> entity_internal("&#60;")), 
+    ("quot" -> entity_internal("&#39;"))]), map([]))
+
+ns_doc([], 20, [], 
+  array([data("\n"), data("\n    "), data("Events and Reports"), 
+    ns_element(ns_element(q_name("TITLE", ""), [], [3], [])), data("\n    "), 
+    data(
+      "Two new sections have been added to the web site. The events section will give information about events Mercury has been involved in -- we start this section with a page on Mercury coming 4th (of 38 teams) in the ICFP 2000 programming contest. The reports section contains regular reports from the developers, such as minutes from Mercury meetings. Both are available from the sidebar menu."), 
+    ns_element(ns_element(q_name("BODY", ""), [], [6], [])), data("\n"), 
+    ns_element(
+      ns_element(q_name("ARTICLE", ""), 
+        [ns_attribute(q_name("DATE", ""), "10/05/00")], [2, 4, 5, 7, 8], 
+        [])), data("\n"), data("\n    "), data("Two new papers"), 
+    ns_element(ns_element(q_name("TITLE", ""), [], [12], [])), 
+    data("\n    "), 
+    data(
+      "Two new papers on Mercury are now available from our papers page. One describes a binding-time analysis for higher order code, while the other describes an analysis for detecting whether a memory cell is availble for reuse."), 
+    ns_element(ns_element(q_name("BODY", ""), [], [15], [])), data("\n"), 
+    ns_element(
+      ns_element(q_name("ARTICLE", ""), 
+        [ns_attribute(q_name("DATE", ""), "10/04/00")], [11, 13, 14, 16, 17], 
+        [])), data("\n"), 
+    ns_element(
+      ns_element(q_name("NEWSARTICLE", ""), [], [1, 9, 10, 18, 19], []))]))

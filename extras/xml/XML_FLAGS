@@ -1,0 +1,12 @@
+--halt-at-warn
+--warn-dead-preds
+--warn-implicit-stream-calls
+--warn-inconsistent-pred-order-clauses
+--warn-insts-with-functors-without-type
+--warn-known-bad-format-calls
+--warn-non-contiguous-clauses
+--warn-non-contiguous-foreign-procs
+--warn-potentially-ambiguous-pragma
+--warn-suspicious-foreign-code
+--warn-unknown-format-calls
+--warn-unused-imports

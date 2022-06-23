@@ -1,0 +1,4 @@
+MCFLAGS-xml.cat         += --no-warn-implicit-stream-calls
+MCFLAGS-xml.parse       += --no-warn-implicit-stream-calls
+
+MCFLAGS-xml.parse       += --no-halt-at-warn

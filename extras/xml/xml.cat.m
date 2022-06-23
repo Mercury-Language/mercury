@@ -13,29 +13,29 @@
 :- module xml.cat.
 :- interface.
 
-:- import_module xml.dtd.
+
 :- import_module io.
+:- import_module list.
+:- import_module map.
 
 :- type catalog
-    --->    catalog(publicId -> systemId).
+    --->    catalog(map(public_id, system_id)).
 
-:- type dirs == [path].
+:- type dirs == list(path).
 
-:- type publicId == string.
-
-:- type systemId == string.
-
+:- type public_id == string.
+:- type system_id == string.
 :- type path == string.
 
-:- type catRes(T)
-    --->    ok(T)
-    ;       error(string).
+:- type catalog_result(T)
+    --->    catalog_ok(T)
+    ;       catalog_error(string).
 
-:- pred load(string::in, dirs::in, catRes(catalog)::out, io::di, io::uo)
-    is det.
+:- pred load_catalog(string::in, dirs::in, catalog_result(catalog)::out,
+    io::di, io::uo) is det.
 
-:- pred find(string::in, dirs::in, catRes(string)::out, io::di, io::uo)
-    is det.
+:- pred find_catalog(string::in, dirs::in, catalog_result(string)::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -44,102 +44,103 @@
 
 :- import_module char.
 :- import_module int.
-:- import_module list.
-:- import_module map.
 :- import_module prolog.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
 
 :- type entry
-    --->    dtd(publicId, systemId)
+    --->    dtd(public_id, system_id)
     ;       none.
 
-load(Name, Dirs, Res, !IO) :-
-    find(Name, Dirs, Res0, !IO),
+load_catalog(Name, Dirs, Res, !IO) :-
+    find_catalog(Name, Dirs, Res0, !IO),
     (
-        Res0 = ok(Path),
+        Res0 = catalog_ok(Path),
         read_file(Res1, !IO),
         (
             Res1 = ok(CatChars),
-            lines(1, CatLines0, CatChars, _),
+            gather_catalog_lines(1, CatLines0, CatChars, _),
             decomment(CatLines0, CatLines),
-            parse(Entries, Errors, CatLines),
-            init(Cat0),
-            foldl(addEntry, Entries, catalog(Cat0), Cat),
-            Res = ok(Cat),
-            list.foldl((pred(Msg::in, !.IO::di, !:IO::uo) is det :-
-                io.stderr_stream(StdErr, !IO),
-                io.format(StdErr, "%s: %s\n", [s(Path), s(Msg)], !IO)
-            ), Errors, !IO)
+            parse(CatLines, Entries, Errors),
+            Cat0 = catalog(map.init),
+            list.foldl(add_entry, Entries, Cat0, Cat),
+            Res = catalog_ok(Cat),
+            list.foldl(
+                ( pred(Msg::in, !.IO::di, !:IO::uo) is det :-
+                    io.stderr_stream(StdErr, !IO),
+                    io.format(StdErr, "%s: %s\n", [s(Path), s(Msg)], !IO)
+                ), Errors, !IO)
         ;
             Res1 = error(_, Err),
             io.error_message(Err, Msg),
-            Res = error(Msg)
+            Res = catalog_error(Msg)
         )
     ;
-        Res0 = error(Msg),
-        Res = error(Msg)
+        Res0 = catalog_error(Msg),
+        Res = catalog_error(Msg)
     ).
 
-find(Name, [], error(Err), !IO) :-
+find_catalog(Name, [], catalog_error(Err), !IO) :-
     string.format("`%s' not found", [s(Name)], Err).
-find(Name, [Dir | Dirs], Res, !IO) :-
+find_catalog(Name, [Dir | Dirs], Res, !IO) :-
     append_list([Dir, "/", Name], Path),
     prolog.see(Path, Res0, !IO),
     ( if Res0 = ok then
-        Res = ok(Path)
+        Res = catalog_ok(Path)
     else
-        find(Name, Dirs, Res, !IO)
+        find_catalog(Name, Dirs, Res, !IO)
     ).
 
-:- type (A, B) ---> (A, B).
+:- type catalog_line
+    --->    catalog_line(
+                line_number :: int,
+                line_chars  :: list(char)
+            ).
 
-:- pred lines(int::in, [(int, [char])]::out, [char]::in, [char]::out) is det.
+:- pred gather_catalog_lines(int::in, list(catalog_line)::out,
+    list(char)::in, list(char)::out) is det.
 
-lines(_N, [], [], []).
-lines(N, [Line | Lines]) -->
+gather_catalog_lines(_N, [], [], []).
+gather_catalog_lines(N, [Line | Lines]) -->
     =([_ | _]),
-    line(N, Line),
-    lines(N + 1, Lines).
+    gather_catalog_line(N, Line),
+    gather_catalog_lines(N + 1, Lines).
 
-:- pred line(int::in, (int, [char])::out, [char]::in, [char]::out) is det.
+:- pred gather_catalog_line(int::in, catalog_line::out,
+    list(char)::in, list(char)::out) is det.
 
-line(N, (N, Cs)) -->
-    untilDiscard('\n', Cs).
+gather_catalog_line(LineNumber, catalog_line(LineNumber, Cs)) -->
+    collect_until('\n', Cs).
 
-:- pred decomment([(int, [char])]::in, [(int, [char])]::out) is det.
+:- pred decomment(list(catalog_line)::in, list(catalog_line)::out) is det.
 
 decomment(Lines0, Lines) :-
-    map((pred(Line0::in, Line::out) is det :-
-        Line0 = (N, Cs0),
-        Line = (N, Cs),
-        untilDiscard('#', Cs, Cs0, _)
-    ), Lines0, Lines).
+    list.map(
+        ( pred(Line0::in, Line::out) is det :-
+            Line0 = catalog_line(N, Cs0),
+            Line = catalog_line(N, Cs),
+            collect_until('#', Cs, Cs0, _)
+        ), Lines0, Lines).
 
-:- pred parse([entry]::out, [string]::out, [(int, [char])]::in) is det.
+:- pred parse(list(catalog_line)::in,
+    list(entry)::out, list(string)::out) is det.
 
 parse([], [], []).
-parse(Entries, Errors, [Line | Lines]) :-
-    Line = (N, Cs),
-    ( if parseEntry(Entry, Cs, _) then
-        Entries = [Entry | Entries0],
-        parse(Entries0, Errors, Lines)
+parse([Line | Lines], Entries, Errors) :-
+    Line = catalog_line(N, Cs),
+    ( if parse_entry(Entry, Cs, _) then
+        parse(Lines, Entries0, Errors),
+        Entries = [Entry | Entries0]
     else
         string.format("%d: syntax error", [i(N)], Msg),
-        Errors = [Msg | Errors0],
-        parse(Entries, Errors0, Lines)
+        parse(Lines, Entries, Errors0),
+        Errors = [Msg | Errors0]
     ).
 
-:- pred addEntry(entry::in, catalog::in, catalog::out) is det.
+:- pred parse_entry(entry::out, list(char)::in, list(char)::out) is semidet.
 
-addEntry(none, Cat, Cat).
-addEntry(dtd(PublicId, SystemId), catalog(Cat0), catalog(Cat)) :-
-    map.det_insert(PublicId, SystemId, Cat0, Cat).
-
-:- pred parseEntry(entry::out, [char]::in, [char]::out) is semidet.
-
-parseEntry(Entry) -->
+parse_entry(Entry) -->
     ws,
     ( if
         ['P','U','B','L','I','C'], ws, string(PublicId), ws, string(SystemId)
@@ -151,7 +152,13 @@ parseEntry(Entry) -->
         { fail }
     ).
 
-:- pred ws([char]::in, [char]::out) is det.
+:- pred add_entry(entry::in, catalog::in, catalog::out) is det.
+
+add_entry(none, Cat, Cat).
+add_entry(dtd(PublicId, SystemId), catalog(Cat0), catalog(Cat)) :-
+    map.det_insert(PublicId, SystemId, Cat0, Cat).
+
+:- pred ws(list(char)::in, list(char)::out) is det.
 
 ws -->
     ( if [C], { char.is_whitespace(C) } then
@@ -160,21 +167,23 @@ ws -->
         []
     ).
 
-:- pred string(string::out, [char]::in, [char]::out) is semidet.
+:- pred string(string::out, list(char)::in, list(char)::out) is semidet.
 
 string(Str) -->
-    ['"'], untilDiscard('"', Cs),
+    ['"'],
+    collect_until('"', Cs),
     { string.from_char_list(Cs, Str) }.
 
-:- pred untilDiscard(char::in, [char]::out, [char]::in, [char]::out) is det.
+:- pred collect_until(char::in, list(char)::out,
+    list(char)::in, list(char)::out) is det.
 
-untilDiscard(_C, [], [], []).
-untilDiscard(C, Cs) -->
+collect_until(_C, [], [], []).
+collect_until(C, Cs) -->
     =([_ | _]),
     [C0],
     ( if { C = C0 } then
         { Cs = [] }
     else
-        { Cs = [C0|Cs0] },
-        untilDiscard(C, Cs0)
+        collect_until(C, Cs0),
+        { Cs = [C0 | Cs0] }
     ).

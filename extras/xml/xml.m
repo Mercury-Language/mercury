@@ -7,6 +7,7 @@
 % Main author: conway@cs.mu.oz.au.
 %
 %---------------------------------------------------------------------------%
+
 :- module xml.
 
 :- interface.
@@ -17,4 +18,3 @@
 :- include_module xml.encoding.
 :- include_module xml.parse.
 :- include_module xml.ns.
-
