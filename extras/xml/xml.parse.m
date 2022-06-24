@@ -398,11 +398,11 @@ parse_document -->
     set_global(gPEntities, p_entities(init)),
     set_global(gElements, elements(init)),
     set_global(gAttributes, attributes(init)),
-    (prolog         then (pred({DTD, PreMisc}::in, pdi, puo) is det -->
+    (prolog         `next` (pred({DTD, PreMisc}::in, pdi, puo) is det -->
     (
         set_global(gDTD, DTD),
-        (element          then (pred(Root::in, pdi, puo) is det -->
-        star(misc)        then (pred(PostMisc0::in, pdi, puo) is det -->
+        (element          `next` (pred(Root::in, pdi, puo) is det -->
+        star(misc)        `next` (pred(PostMisc0::in, pdi, puo) is det -->
         get_global(gContent, Content),
         { filter_opt(PostMisc0, PostMisc) },
         { Doc = doc(PreMisc, Root, PostMisc, array(values(Content^e_map))) },
@@ -475,7 +475,7 @@ init_dtd(Root, DTD) :-
 :- pred char(pstate(_)::pdi, pstate(unicode)::puo) is det.
 
 char -->
-    tok                 then (pred(C::in, pdi, puo) is det -->
+    tok                 `next` (pred(C::in, pdi, puo) is det -->
     ( if
         {
             C = 0x09
@@ -521,7 +521,7 @@ ws -->
 :- pred ws0(pstate(_)::pdi, pstate(unicode)::puo) is det.
 
 ws0 -->
-    tok                 then (pred(C::in, pdi, puo) is det -->
+    tok                 `next` (pred(C::in, pdi, puo) is det -->
     ( if
         {
             C = 0x20
@@ -570,7 +570,7 @@ ws0 -->
 :- pred name_char(pstate(_)::in, pstate(unicode)::out) is det.
 
 name_char -->
-    letter or digit or lit1('.') or lit1('-') or lit1('_') or lit1(':') or
+    letter or digit or mchr('.') or mchr('-') or mchr('_') or mchr(':') or
     combining_char or extender.
 
 %   [5]  Name ::= (Letter | '_' | ':') (NameChar)*
@@ -578,8 +578,8 @@ name_char -->
 :- pred name(pstate(_)::in, pstate(name)::out) is det.
 
 name -->
-    letter or lit1('_') or lit1(':')    then (pred(C::in, pdi, puo) is det -->
-    star(name_char)                     then (pred(Cs::in, pdi, puo) is det -->
+    (letter or mchr('_') or mchr(':')) `next` (pred(C::in, pdi, puo) is det -->
+    star(name_char)                   `next` (pred(Cs::in, pdi, puo) is det -->
     make_string([C | Cs], Name),
     return(Name)
     )).
@@ -589,8 +589,8 @@ name -->
 :- pred names(pstate(_)::pdi, pstate(list(name))::puo) is det.
 
 names -->
-    name                            then (pred(Name::in, pdi, puo) is det -->
-    star(second(ws and name))       then (pred(Names0::in, pdi, puo) is det -->
+    name                        `next` (pred(Name::in, pdi, puo) is det -->
+    star(second(ws and name))   `next` (pred(Names0::in, pdi, puo) is det -->
     { Names = [Name | Names0] },
     return(Names)
     )).
@@ -600,7 +600,7 @@ names -->
 :- pred nm_token(pstate(_)::pdi, pstate(name)::puo) is det.
 
 nm_token -->
-    plus(name_char)                 then (pred(Cs::in, pdi, puo) is det -->
+    plus(name_char)                 `next` (pred(Cs::in, pdi, puo) is det -->
     make_string(Cs, Name),
     return(Name)
     ).
@@ -610,8 +610,8 @@ nm_token -->
 :- pred nm_tokens(pstate(_)::pdi, pstate(list(name))::puo) is det.
 
 nm_tokens -->
-    nm_token                        then (pred(Name::in, pdi, puo) is det -->
-    star(second(ws and nm_token))   then (pred(Names::in, pdi, puo) is det -->
+    nm_token                      `next` (pred(Name::in, pdi, puo) is det -->
+    star(second(ws and nm_token)) `next` (pred(Names::in, pdi, puo) is det -->
     return([Name | Names])
     )).
 
@@ -628,9 +628,9 @@ nm_tokens -->
 :- pred entity_value(pstate(_)::pdi, pstate(string)::puo) is det.
 
 entity_value -->
-    quote               then (pred(Q::in, pdi, puo) is det -->
-    entity_value1(Q)    then (pred(Chars::in, pdi, puo) is det -->
-    quote               then (pred(EndQ::in, pdi, puo) is det -->
+    quote               `next` (pred(Q::in, pdi, puo) is det -->
+    entity_value1(Q)    `next` (pred(Chars::in, pdi, puo) is det -->
+    quote               `next` (pred(EndQ::in, pdi, puo) is det -->
     ( if { Q = EndQ } then
         make_string(Chars, Val),
         return(Val)
@@ -644,7 +644,7 @@ entity_value -->
 entity_value1(Q) -->
     star(list(char_ref) or list(except([('%'), Q])) or
     pe_reference(star(char)))
-                        then (pred(Css::in, pdi, puo) is det -->
+                        `next` (pred(Css::in, pdi, puo) is det -->
     { list.condense(Css, Cs) },
     return(Cs)
     ).
@@ -655,9 +655,9 @@ entity_value1(Q) -->
 :- pred attr_value(pstate(_)::pdi, pstate(string)::puo) is det.
 
 attr_value -->
-    quote               then (pred(Q::in, pdi, puo) is det -->
-    attr_value1(Q)      then (pred(Chars::in, pdi, puo) is det -->
-    quote               then (pred(EndQ::in, pdi, puo) is det -->
+    quote               `next` (pred(Q::in, pdi, puo) is det -->
+    attr_value1(Q)      `next` (pred(Chars::in, pdi, puo) is det -->
+    quote               `next` (pred(EndQ::in, pdi, puo) is det -->
     ( if { Q = EndQ } then
         make_string(Chars, Val),
         return(Val)
@@ -671,7 +671,7 @@ attr_value -->
 attr_value1(Q) -->
     star(list(char_ref) or list(except([('&'), ('<'), Q])) or
          entity_ref(star(char)))
-                        then (pred(Css::in, pdi, puo) is det -->
+                        `next` (pred(Css::in, pdi, puo) is det -->
     { condense(Css, Cs) },
     return(Cs)
     ).
@@ -680,7 +680,7 @@ attr_value1(Q) -->
 
 attr_value2 -->
     star(list(char_ref) or entity_ref(attr_value2) or list(char))
-                        then (pred(Css::in, pdi, puo) is det -->
+                        `next` (pred(Css::in, pdi, puo) is det -->
     { condense(Css, Cs) },
     return(Cs)
     ).
@@ -690,9 +690,9 @@ attr_value2 -->
 :- pred system_literal(pstate(_)::pdi, pstate(string)::puo) is det.
 
 system_literal -->
-    quote                   then (pred(Q::in, pdi, puo) is det -->
-    star(except([Q]))       then (pred(Chars::in, pdi, puo) is det -->
-    quote                   then (pred(EndQ::in, pdi, puo) is det -->
+    quote                   `next` (pred(Q::in, pdi, puo) is det -->
+    star(except([Q]))       `next` (pred(Chars::in, pdi, puo) is det -->
+    quote                   `next` (pred(EndQ::in, pdi, puo) is det -->
     ( if { Q = EndQ } then
         make_string(Chars, Val),
         return(Val)
@@ -705,9 +705,9 @@ system_literal -->
 :- pred pub_id_literal(pstate(_)::pdi, pstate(string)::puo) is det.
 
 pub_id_literal -->
-    quote                   then (pred(Q::in, pdi, puo) is det -->
-    star(pub_id_char(Q))    then (pred(Chars::in, pdi, puo) is det -->
-    quote                   then (pred(EndQ::in, pdi, puo) is det -->
+    quote                   `next` (pred(Q::in, pdi, puo) is det -->
+    star(pub_id_char(Q))    `next` (pred(Chars::in, pdi, puo) is det -->
+    quote                   `next` (pred(EndQ::in, pdi, puo) is det -->
     ( if { Q = EndQ } then
         make_string(Chars, Val),
         return(Val)
@@ -721,7 +721,7 @@ pub_id_literal -->
 :- pred pub_id_char(unicode::in, pstate(_)::pdi, pstate(unicode)::puo) is det.
 
 pub_id_char(Q) -->
-    tok                 then (pred(C::in, pdi, puo) is det -->
+    tok                 `next` (pred(C::in, pdi, puo) is det -->
     ( if
         { C \= Q },
         {
@@ -784,7 +784,7 @@ pub_id_char(Q) -->
 
 char_data -->
     plus(except([('<'), ('&')]) or char_ref)
-                        then (pred(Chars::in, pdi, puo) is det -->
+                        `next` (pred(Chars::in, pdi, puo) is det -->
     make_string(Chars, Data),
     add(data(Data), Ref),
     return(Ref)
@@ -806,9 +806,9 @@ char_data -->
 :- pred comment(pstate(_)::pdi, pstate(ref(doc.content))::puo) is det.
 
 comment -->
-    lit("<!--")         then (pred(_::in, pdi, puo) is det -->
-    upto(char, lit("-->"))
-                        then (pred(and_then(Cs, _)::in, pdi, puo) is det -->
+    mstr("<!--")        `next` (pred(_::in, pdi, puo) is det -->
+    upto(char, mstr("-->"))
+                        `next` (pred(next(Cs, _)::in, pdi, puo) is det -->
     make_string(Cs, Comment),
     add(comment(Comment), Ref),
     return(Ref)
@@ -829,11 +829,11 @@ comment -->
 :- pred pi(pstate(_)::pdi, pstate(ref(doc.content))::puo) is det.
 
 pi -->
-    lit("<?")                   then (pred(_::in, pdi, puo) is det -->
-    pi_target                   then (pred(Target::in, pdi, puo) is det -->
-    opt(ws and upto(char, lit("?>")))
-                                then (pred(MD::in, pdi, puo) is det -->
-    ( if { MD = yes(and_then(_, and_then(Chars, _))) } then
+    mstr("<?")                  `next` (pred(_::in, pdi, puo) is det -->
+    pi_target                   `next` (pred(Target::in, pdi, puo) is det -->
+    opt(ws and upto(char, mstr("?>")))
+                                `next` (pred(MD::in, pdi, puo) is det -->
+    ( if { MD = yes(next(_, next(Chars, _))) } then
         make_string(Chars, Data)
     else
         { Data = "" }
@@ -847,7 +847,7 @@ pi -->
 :- pred pi_target(pstate(_)::pdi, pstate(name)::puo) is det.
 
 pi_target -->
-    name                then (pred(Target::in, pdi, puo) is det -->
+    name                `next` (pred(Target::in, pdi, puo) is det -->
     ( if { Target = "XML" ; Target = "xml" } then
         record_failure("(x|X)(m|M)(l|L) is not a valid pi target")
     else
@@ -878,9 +878,9 @@ pi_target -->
 :- pred cd_sect(pstate(_)::pdi, pstate(ref(doc.content))::puo) is det.
 
 cd_sect -->
-    lit("<![CDATA[")    then (pred(_::in, pdi, puo) is det -->
-    upto(char, lit("]]>", unit))
-                        then (pred(and_then(Cs, _)::in, pdi, puo) is det -->
+    mstr("<![CDATA[")   `next` (pred(_::in, pdi, puo) is det -->
+    upto(char, mstr_return("]]>", unit))
+                        `next` (pred(next(Cs, _)::in, pdi, puo) is det -->
     make_string(Cs, Data),
     add(data(Data), Ref),
     return(Ref)
@@ -940,12 +940,12 @@ cd_sect -->
     is det.
 
 prolog -->
-    opt(xml_decl)           then (pred(_::in, pdi, puo) is det -->
-    star(misc)              then (pred(Misc0::in, pdi, puo) is det -->
+    opt(xml_decl)           `next` (pred(_::in, pdi, puo) is det -->
+    star(misc)              `next` (pred(Misc0::in, pdi, puo) is det -->
     opt(doctype_decl and star(misc))
-                            then (pred(MStuff::in, pdi, puo) is det -->
+                            `next` (pred(MStuff::in, pdi, puo) is det -->
     {
-        MStuff = yes(and_then(DTD, Misc1)),
+        MStuff = yes(next(DTD, Misc1)),
         list.append(Misc0, Misc1, Misc2),
         filter_opt(Misc2, Misc)
     ;
@@ -964,12 +964,12 @@ prolog -->
 :- pred xml_decl(pstate(_)::in, pstate(unit)::out) is det.
 
 xml_decl -->
-    lit("<?xml")            then (pred(_::in, pdi, puo) is det -->
-    version_info            then (pred(_::in, pdi, puo) is det -->
-    opt(encoding_decl)      then (pred(MEnc::in, pdi, puo) is det -->
-    opt(sd_decl)            then (pred(_::in, pdi, puo) is det -->
-    opt(ws)                 then (pred(_::in, pdi, puo) is det -->
-    lit("?>")               then (pred(_::in, pdi, puo) is det -->
+    mstr("<?xml")           `next` (pred(_::in, pdi, puo) is det -->
+    version_info            `next` (pred(_::in, pdi, puo) is det -->
+    opt(encoding_decl)      `next` (pred(MEnc::in, pdi, puo) is det -->
+    opt(sd_decl)            `next` (pred(_::in, pdi, puo) is det -->
+    opt(ws)                 `next` (pred(_::in, pdi, puo) is det -->
+    mstr("?>")              `next` (pred(_::in, pdi, puo) is det -->
     (
         { MEnc = yes(EncName) },
         get_global(gEncodings, encodings(Encodings)),
@@ -990,12 +990,12 @@ xml_decl -->
 :- pred version_info(pstate(_)::pdi, pstate(unit)::puo) is det.
 
 version_info -->
-    ws                  then (pred(_::in, pdi, puo) is det -->
-    lit("version")      then (pred(_::in, pdi, puo) is det -->
-    eq                  then (pred(_::in, pdi, puo) is det -->
-    quote               then (pred(Q::in, pdi, puo) is det -->
-    version_num         then (pred(_::in, pdi, puo) is det -->
-    quote               then (pred(EndQ::in, pdi, puo) is det -->
+    ws                  `next` (pred(_::in, pdi, puo) is det -->
+    mstr("version")     `next` (pred(_::in, pdi, puo) is det -->
+    eq                  `next` (pred(_::in, pdi, puo) is det -->
+    quote               `next` (pred(Q::in, pdi, puo) is det -->
+    version_num         `next` (pred(_::in, pdi, puo) is det -->
+    quote               `next` (pred(EndQ::in, pdi, puo) is det -->
     ( if { Q = EndQ } then
         return_unit
     else
@@ -1007,9 +1007,9 @@ version_info -->
 :- pred eq(pstate(_)::pdi, pstate(unit)::puo) is det.
 
 eq -->
-    opt(ws)             then (pred(_::in, pdi, puo) is det -->
-    lit1('=')           then (pred(_::in, pdi, puo) is det -->
-    opt(ws)             then (pred(_::in, pdi, puo) is det -->
+    opt(ws)             `next` (pred(_::in, pdi, puo) is det -->
+    mchr('=')           `next` (pred(_::in, pdi, puo) is det -->
+    opt(ws)             `next` (pred(_::in, pdi, puo) is det -->
     return_unit
     ))).
 
@@ -1023,7 +1023,7 @@ version_num -->
 :- pred version_num_char(pstate(_)::pdi, pstate(unicode)::puo) is det.
 
 version_num_char -->
-    tok                 then (pred(C::in, pdi, puo) is det -->
+    tok                 `next` (pred(C::in, pdi, puo) is det -->
     ( if
         {
             C >= a, C =< z
@@ -1046,7 +1046,7 @@ version_num_char -->
 :- pred misc(pstate(_)::pdi, pstate(opt(ref(doc.content)))::puo) is det.
 
 misc -->
-    opt(comment or pi)          then (pred(MContent::in, pdi, puo) is det -->
+    opt(comment or pi)          `next` (pred(MContent::in, pdi, puo) is det -->
     (
         { MContent = yes(_) },
         return(MContent)
@@ -1089,18 +1089,19 @@ filter_opt([M0 | Ms0], Ms) :-
 :- pred doctype_decl(pstate(_)::in, pstate(dtd)::out) is det.
 
 doctype_decl -->
-    (lit("<!DOCTYPE")           then (pred(_::in, pdi, puo) is det -->
-    ws                          then (pred(_::in, pdi, puo) is det -->
-    name                        then (pred(Root::in, pdi, puo) is det -->
-    opt(second(ws and external_id)) then (pred(MExId::in, pdi, puo) is det -->
-    opt(ws)                     then (pred(_::in, pdi, puo) is det -->
-    opt(lit1(('['), unit) and
+    (mstr("<!DOCTYPE")          `next` (pred(_::in, pdi, puo) is det -->
+    ws                          `next` (pred(_::in, pdi, puo) is det -->
+    name                        `next` (pred(Root::in, pdi, puo) is det -->
+    opt(second(ws and external_id))
+                                `next` (pred(MExId::in, pdi, puo) is det -->
+    opt(ws)                     `next` (pred(_::in, pdi, puo) is det -->
+    opt(mchr_return(('['), unit) and
       parse_internal_subset and
-      (lit1((']'), unit) and opt(ws)))
-                                then (pred(_::in, pdi, puo) is det -->
-    lit1(('>'))                 then (pred(_::in, pdi, puo) is det -->
+      (mchr_return((']'), unit) and opt(ws)))
+                                `next` (pred(_::in, pdi, puo) is det -->
+    mchr(('>'))                 `next` (pred(_::in, pdi, puo) is det -->
     call_opt(MExId, parse_ext_subset, return_unit)
-                                then (pred(_::in, pdi, puo) is det -->
+                                `next` (pred(_::in, pdi, puo) is det -->
     get_global(gEntities, entities(Entities)),
     get_global(gPEntities, p_entities(PEntities)),
     get_global(gElements, elements(Elements)),
@@ -1114,7 +1115,7 @@ parse_internal_subset -->
         no(markup_decl) or
         no(ws) or
         no(pe_reference(parse_internal_subset)))
-                                then (pred(_::in, pdi, puo) is det -->
+                                `next` (pred(_::in, pdi, puo) is det -->
     return_unit
     ).
 
@@ -1123,9 +1124,9 @@ parse_internal_subset -->
 
 parse_ext_subset(ExId) -->
     get_entity(entity_external(ExId))
-                                then (pred(Entity::in, pdi, puo) is det -->
+                                `next` (pred(Entity::in, pdi, puo) is det -->
     parse_entity(ext_subset, make_entity(Entity))
-                                then (pred(_::in, pdi, puo) is det -->
+                                `next` (pred(_::in, pdi, puo) is det -->
     return_unit
     )).
 
@@ -1136,12 +1137,12 @@ parse_ext_subset(ExId) -->
 :- pred markup_decl(pstate(_)::in, pstate(unit)::out) is det.
 
 markup_decl -->
-    no(element_decl) or
+    (no(element_decl) or
     no(attr_list_decl) or
     no(entity_decl) or
     no(pi) or
-    no(comment)
-                                then (pred(_::in, pdi, puo) is det -->
+    no(comment))
+                                `next` (pred(_::in, pdi, puo) is det -->
     return_unit
     ).
 
@@ -1184,8 +1185,8 @@ markup_decl -->
 
 ext_subset -->
     get_encoding(Enc),
-    (opt(text_decl)          then (pred(_::in, pdi, puo) is det -->
-    ext_subset_decl          then (pred(_::in, pdi, puo) is det -->
+    (opt(text_decl)          `next` (pred(_::in, pdi, puo) is det -->
+    ext_subset_decl          `next` (pred(_::in, pdi, puo) is det -->
     return_unit
     ))),
     set_encoding(Enc).
@@ -1201,7 +1202,7 @@ ext_subset_decl -->
         no(conditional_section) or
         no(pe_reference(ext_subset_decl)) or
         no(ws))
-                    then (pred(_::in, pdi, puo) is det -->
+                    `next` (pred(_::in, pdi, puo) is det -->
     return_unit
     ).
 
@@ -1248,12 +1249,12 @@ ext_subset_decl -->
 :- pred sd_decl(pstate(_)::in, pstate(unit)::out) is det.
 
 sd_decl -->
-    ws                          then (pred(_::in, pdi, puo) is det -->
-    lit("standalone")           then (pred(_::in, pdi, puo) is det -->
-    eq                          then (pred(_::in, pdi, puo) is det -->
-    quote                       then (pred(Q::in, pdi, puo) is det -->
-    (lit("yes") or lit("no"))   then (pred(_::in, pdi, puo) is det -->
-    quote                       then (pred(EndQ::in, pdi, puo) is det -->
+    ws                          `next` (pred(_::in, pdi, puo) is det -->
+    mstr("standalone")          `next` (pred(_::in, pdi, puo) is det -->
+    eq                          `next` (pred(_::in, pdi, puo) is det -->
+    quote                       `next` (pred(Q::in, pdi, puo) is det -->
+    (mstr("yes") or mstr("no")) `next` (pred(_::in, pdi, puo) is det -->
+    quote                       `next` (pred(EndQ::in, pdi, puo) is det -->
     ( if { Q = EndQ } then
         return_unit
     else
@@ -1366,47 +1367,46 @@ sd_decl -->
 :- pred language_id(pstate(_)::in, pstate(unit)::out) is det.
 
 language_id -->
-    langcode            then (pred(_::in, pdi, puo) is det -->
-    star(lit1('-') and subcode) then (pred(_::in, pdi, puo) is det -->
+    lang_code           `next` (pred(_::in, pdi, puo) is det -->
+    star(mchr('-') and subcode) `next` (pred(_::in, pdi, puo) is det -->
     return_unit
     )).
 
 %   [34]  Langcode ::= ISO639code |  IanaCode |  UserCode
 
-:- pred langcode(pstate(_)::in, pstate(unit)::out) is det.
+:- pred lang_code(pstate(_)::in, pstate(unit)::out) is det.
 
-langcode -->
-    (x(iso639code) or x(iana_code) or x(user_code))
-                        then (pred(_::in, pdi, puo) is det -->
+lang_code -->
+    (is_a(iso639_code) or is_a(iana_code) or is_a(user_code))
+                        `next` (pred(_::in, pdi, puo) is det -->
     return_unit
     ).
 
 %   [35]  ISO639code ::= ([a-z] | [A-Z]) ([a-z] | [A-Z])
 
-:- pred iso639code(pstate(_)::in, pstate(and_then(unicode, unicode))::out)
-    is det.
+:- pred iso639_code(pstate(_)::in, pstate(next(unicode, unicode))::out) is det.
 
-iso639code -->
+iso639_code -->
     (range(a, z) or range('A', 'Z')) and (range(a, z) or range('A', 'Z')).
 
 %   [36]  IanaCode ::= ('i' | 'I') '-' ([a-z] | [A-Z])+
 
 :- pred iana_code(pstate(_)::in,
-    pstate(and_then(unicode, and_then(unicode, list(unicode))))::out) is det.
+    pstate(next(unicode, next(unicode, list(unicode))))::out) is det.
 
 iana_code -->
-    (lit1('i') or lit1('I')) and
-    lit1('-') and
+    (mchr('i') or mchr('I')) and
+    mchr('-') and
     plus(range(a, z) or range('A', 'Z')).
 
 %   [37]  UserCode ::= ('x' | 'X') '-' ([a-z] | [A-Z])+
 
 :- pred user_code(pstate(_)::in,
-    pstate(and_then(unicode, and_then(unicode, list(unicode))))::out) is det.
+    pstate(next(unicode, next(unicode, list(unicode))))::out) is det.
 
 user_code -->
-    (lit1('x') or lit1('X')) and
-    lit1('-') and
+    (mchr('x') or mchr('X')) and
+    mchr('-') and
     plus(range(a, z) or range('A', 'Z')).
 
 %   [38]  Subcode ::= ([a-z] | [A-Z])+
@@ -1489,9 +1489,9 @@ element -->
 :- pred nonempty_element(pstate(_)::in, pstate(ref(doc.content))::out) is det.
 
 nonempty_element -->
-    s_tag           then (pred({Name, Attrs}::in, pdi, puo) is det -->
-    content         then (pred(Content::in, pdi, puo) is det -->
-    e_tag           then (pred(EndName::in, pdi, puo) is det -->
+    s_tag           `next` (pred({Name, Attrs}::in, pdi, puo) is det -->
+    content         `next` (pred(Content::in, pdi, puo) is det -->
+    e_tag           `next` (pred(EndName::in, pdi, puo) is det -->
     ( if { Name = EndName } then
         { Element = element(Name, Attrs, Content) },
         add(element(Element), Ref),
@@ -1539,11 +1539,11 @@ nonempty_element -->
     is det.
 
 s_tag -->
-    lit1('<')                   then (pred(_::in, pdi, puo) is det -->
-    name                        then (pred(Name::in, pdi, puo) is det -->
-    star(second(ws and attribute)) then (pred(Attrs::in, pdi, puo) is det -->
-    opt(ws)                     then (pred(_::in, pdi, puo) is det -->
-    lit1('>')                   then (pred(_::in, pdi, puo) is det -->
+    mchr('<')                   `next` (pred(_::in, pdi, puo) is det -->
+    name                        `next` (pred(Name::in, pdi, puo) is det -->
+    star(second(ws and attribute)) `next` (pred(Attrs::in, pdi, puo) is det -->
+    opt(ws)                     `next` (pred(_::in, pdi, puo) is det -->
+    mchr('>')                   `next` (pred(_::in, pdi, puo) is det -->
     return({Name, Attrs})
     ))))).
 
@@ -1554,9 +1554,9 @@ s_tag -->
 :- pred attribute(pstate(_)::pdi, pstate(doc.attribute)::puo) is det.
 
 attribute -->
-    name                    then (pred(Name::in, pdi, puo) is det -->
-    eq                      then (pred(_::in, pdi, puo) is det -->
-    attr_value              then (pred(Value::in, pdi, puo) is det -->
+    name                    `next` (pred(Name::in, pdi, puo) is det -->
+    eq                      `next` (pred(_::in, pdi, puo) is det -->
+    attr_value              `next` (pred(Value::in, pdi, puo) is det -->
     return(attribute(Name, Value))
     ))).
 
@@ -1597,10 +1597,10 @@ attribute -->
 :- pred e_tag(pstate(_)::pdi, pstate(name)::puo) is det.
 
 e_tag -->
-    lit("</")               then (pred(_::in, pdi, puo) is det -->
-    name                    then (pred(Name::in, pdi, puo) is det -->
-    opt(ws)                 then (pred(_::in, pdi, puo) is det -->
-    lit1('>')               then (pred(_::in, pdi, puo) is det -->
+    mstr("</")              `next` (pred(_::in, pdi, puo) is det -->
+    name                    `next` (pred(Name::in, pdi, puo) is det -->
+    opt(ws)                 `next` (pred(_::in, pdi, puo) is det -->
+    mchr('>')               `next` (pred(_::in, pdi, puo) is det -->
     return(Name)
     )))).
 
@@ -1621,7 +1621,7 @@ content -->
     star(list(element) or list(char_data) or
     list(cd_sect) or list(pi) or
     list(comment) or entity_ref(content))
-                        then (pred(Css::in, pdi, puo) is det -->
+                        `next` (pred(Css::in, pdi, puo) is det -->
     { condense(Css, Cs) },
     return(Cs)
     ).
@@ -1637,11 +1637,11 @@ content -->
 :- pred empty_elem_tag(pstate(_)::pdi, pstate(ref(doc.content))::puo) is det.
 
 empty_elem_tag -->
-    lit1('<')                   then (pred(_::in, pdi, puo) is det -->
-    name                        then (pred(Name::in, pdi, puo) is det -->
-    star(second(ws and attribute)) then (pred(Attrs::in, pdi, puo) is det -->
-    opt(ws)                     then (pred(_::in, pdi, puo) is det -->
-    lit("/>")                   then (pred(_::in, pdi, puo) is det -->
+    mchr('<')                   `next` (pred(_::in, pdi, puo) is det -->
+    name                        `next` (pred(Name::in, pdi, puo) is det -->
+    star(second(ws and attribute)) `next` (pred(Attrs::in, pdi, puo) is det -->
+    opt(ws)                     `next` (pred(_::in, pdi, puo) is det -->
+    mstr("/>")                  `next` (pred(_::in, pdi, puo) is det -->
     { Element = element(Name, Attrs, []) },
     add(element(Element), Ref),
     return(Ref)
@@ -1679,13 +1679,13 @@ empty_elem_tag -->
 :- pred element_decl(pstate(_)::pdi, pstate(unit)::puo) is det.
 
 element_decl -->
-    lit("<!ELEMENT")            then (pred(_::in, pdi, puo) is det -->
-    ws                          then (pred(_::in, pdi, puo) is det -->
-    pe(name)                    then (pred(Name::in, pdi, puo) is det -->
-    ws                          then (pred(_::in, pdi, puo) is det -->
-    pe(context_dpec)            then (pred(Content::in, pdi, puo) is det -->
-    opt(ws)                     then (pred(_::in, pdi, puo) is det -->
-    lit1('>')                   then (pred(_::in, pdi, puo) is det -->
+    mstr("<!ELEMENT")           `next` (pred(_::in, pdi, puo) is det -->
+    ws                          `next` (pred(_::in, pdi, puo) is det -->
+    pe(name)                    `next` (pred(Name::in, pdi, puo) is det -->
+    ws                          `next` (pred(_::in, pdi, puo) is det -->
+    pe(context_dpec)            `next` (pred(Content::in, pdi, puo) is det -->
+    opt(ws)                     `next` (pred(_::in, pdi, puo) is det -->
+    mchr('>')                   `next` (pred(_::in, pdi, puo) is det -->
     { init(EmptyAttrs) },
     { Element = element(Name, EmptyAttrs, Content) },
     get_global(gElements, elements(Elements0)),
@@ -1699,7 +1699,8 @@ element_decl -->
 :- pred context_dpec(pstate(_)::pdi, pstate(dtd.content)::puo) is det.
 
 context_dpec -->
-    lit("EMPTY", empty) or lit("ANY", any) or mixed or children.
+    mstr_return("EMPTY", empty) or mstr_return("ANY", any) or
+    mixed or children.
 
 %   where the Name gives the element type being declared.
 %
@@ -1730,8 +1731,8 @@ context_dpec -->
 :- pred children(pstate(_)::in, pstate(dtd.content)::out) is det.
 
 children -->
-    (choice or seq)         then (pred(Children::in, pdi, puo) is det -->
-    multiplicity            then (pred(Mult::in, pdi, puo) is det -->
+    (choice or seq)         `next` (pred(Children::in, pdi, puo) is det -->
+    multiplicity            `next` (pred(Mult::in, pdi, puo) is det -->
     { Content = children(children_reps(Children, Mult)) },
     return(Content)
     )).
@@ -1740,9 +1741,9 @@ children -->
 
 multiplicity -->
     opt_default(
-        lit1(('?'), zero_or_one) or
-            lit1(('*'), zero_or_more) or
-            lit1(('+'), one_or_more),
+        mchr_return(('?'), zero_or_one) or
+            mchr_return(('*'), zero_or_more) or
+            mchr_return(('+'), one_or_more),
         one).
 
 %   [48]  cp ::= (Name | choice | seq) ('?' | '*' | '+')?
@@ -1751,7 +1752,7 @@ multiplicity -->
 
 cp -->
     ((wrap(name, name_to_child) or choice or seq) and multiplicity)
-                then (pred(and_then(Kid, Mult)::in, pdi, puo) is det -->
+                `next` (pred(next(Kid, Mult)::in, pdi, puo) is det -->
     { CP = children_reps(Kid, Mult) },
     return(CP)
     ).
@@ -1766,13 +1767,13 @@ name_to_child(Name, element(Name)).
 :- pred choice(pstate(_)::in, pstate(children)::out) is det.
 
 choice -->
-    lit1('(')           then (pred(_::in, pdi, puo) is det -->
-    opt(ws)             then (pred(_::in, pdi, puo) is det -->
-    pe(cp)              then (pred(Child::in, pdi, puo) is det -->
-    star(second((opt(ws) and lit1('|') and opt(ws)) and pe(cp)))
-                        then (pred(Children0::in, pdi, puo) is det -->
-    opt(ws)             then (pred(_::in, pdi, puo) is det -->
-    lit1(')')           then (pred(_::in, pdi, puo) is det -->
+    mchr('(')           `next` (pred(_::in, pdi, puo) is det -->
+    opt(ws)             `next` (pred(_::in, pdi, puo) is det -->
+    pe(cp)              `next` (pred(Child::in, pdi, puo) is det -->
+    star(second((opt(ws) and mchr('|') and opt(ws)) and pe(cp)))
+                        `next` (pred(Children0::in, pdi, puo) is det -->
+    opt(ws)             `next` (pred(_::in, pdi, puo) is det -->
+    mchr(')')           `next` (pred(_::in, pdi, puo) is det -->
     { Children = alt([Child | Children0]) },
     return(Children)
     )))))).
@@ -1783,13 +1784,13 @@ choice -->
 :- pred seq(pstate(_)::in, pstate(children)::out) is det.
 
 seq -->
-    lit1('(')           then (pred(_::in, pdi, puo) is det -->
-    opt(ws)             then (pred(_::in, pdi, puo) is det -->
-    pe(cp)              then (pred(Child::in, pdi, puo) is det -->
-    star(second((opt(ws) and lit1(',') and opt(ws)) and pe(cp)))
-                        then (pred(Children0::in, pdi, puo) is det -->
-    opt(ws)             then (pred(_::in, pdi, puo) is det -->
-    lit1(')')           then (pred(_::in, pdi, puo) is det -->
+    mchr('(')           `next` (pred(_::in, pdi, puo) is det -->
+    opt(ws)             `next` (pred(_::in, pdi, puo) is det -->
+    pe(cp)              `next` (pred(Child::in, pdi, puo) is det -->
+    star(second((opt(ws) and mchr(',') and opt(ws)) and pe(cp)))
+                        `next` (pred(Children0::in, pdi, puo) is det -->
+    opt(ws)             `next` (pred(_::in, pdi, puo) is det -->
+    mchr(')')           `next` (pred(_::in, pdi, puo) is det -->
     { Children = seq([Child | Children0]) },
     return(Children)
     )))))).
@@ -1851,13 +1852,13 @@ mixed -->
 :- pred mixed1(pstate(_)::in, pstate(dtd.content)::out) is det.
 
 mixed1 -->
-    lit1('(')               then (pred(_::in, pdi, puo) is det -->
-    opt(ws)                 then (pred(_::in, pdi, puo) is det -->
-    lit("#PCDATA")          then (pred(_::in, pdi, puo) is det -->
-    star(second((opt(ws) and lit1('|') and opt(ws)) and name))
-                            then (pred(Names::in, pdi, puo) is det -->
-    opt(ws)                 then (pred(_::in, pdi, puo) is det -->
-    lit(")*")               then (pred(_::in, pdi, puo) is det -->
+    mchr('(')               `next` (pred(_::in, pdi, puo) is det -->
+    opt(ws)                 `next` (pred(_::in, pdi, puo) is det -->
+    mstr("#PCDATA")         `next` (pred(_::in, pdi, puo) is det -->
+    star(second((opt(ws) and mchr('|') and opt(ws)) and name))
+                            `next` (pred(Names::in, pdi, puo) is det -->
+    opt(ws)                 `next` (pred(_::in, pdi, puo) is det -->
+    mstr(")*")              `next` (pred(_::in, pdi, puo) is det -->
     { Content = mixed(mixed(Names)) },
     return(Content)
     )))))).
@@ -1865,8 +1866,8 @@ mixed1 -->
 :- pred mixed2(pstate(_)::in, pstate(dtd.content)::out) is det.
 
 mixed2 -->
-    lit1('(') and opt(ws) and lit("#PCDATA") and opt(ws) and lit1(')')
-                            then (pred(_::in, pdi, puo) is det -->
+    (mchr('(') and opt(ws) and mstr("#PCDATA") and opt(ws) and mchr(')'))
+                            `next` (pred(_::in, pdi, puo) is det -->
     return(mixed(mixed([])))
     ).
 
@@ -1904,12 +1905,12 @@ mixed2 -->
 :- pred attr_list_decl(pstate(_)::in, pstate(unit)::out) is det.
 
 attr_list_decl -->
-    lit("<!ATTLIST")        then (pred(_::in, pdi, puo) is det -->
-    ws                      then (pred(_::in, pdi, puo) is det -->
-    pe(name)                then (pred(Name::in, pdi, puo) is det -->
-    pe(star(attr_defn))     then (pred(AttrsList::in, pdi, puo) is det -->
-    opt(ws)                 then (pred(_::in, pdi, puo) is det -->
-    lit1('>')               then (pred(_::in, pdi, puo) is det -->
+    mstr("<!ATTLIST")       `next` (pred(_::in, pdi, puo) is det -->
+    ws                      `next` (pred(_::in, pdi, puo) is det -->
+    pe(name)                `next` (pred(Name::in, pdi, puo) is det -->
+    pe(star(attr_defn))     `next` (pred(AttrsList::in, pdi, puo) is det -->
+    opt(ws)                 `next` (pred(_::in, pdi, puo) is det -->
+    mchr('>')               `next` (pred(_::in, pdi, puo) is det -->
     { init(Attrs0) },
     ( if
         { foldl((pred(Attr::in, Attrs1::in, Attrs2::out) is semidet :-
@@ -1938,12 +1939,12 @@ attr_list_decl -->
 :- pred attr_defn(pstate(_)::in, pstate(dtd.attribute)::out) is det.
 
 attr_defn -->
-    ws                      then (pred(_::in, pdi, puo) is det -->
-    pe(name)                then (pred(Name::in, pdi, puo) is det -->
-    ws                      then (pred(_::in, pdi, puo) is det -->
-    pe(attr_type)           then (pred(Type::in, pdi, puo) is det -->
-    ws                      then (pred(_::in, pdi, puo) is det -->
-    pe(default_decl)        then (pred(Default::in, pdi, puo) is det -->
+    ws                      `next` (pred(_::in, pdi, puo) is det -->
+    pe(name)                `next` (pred(Name::in, pdi, puo) is det -->
+    ws                      `next` (pred(_::in, pdi, puo) is det -->
+    pe(attr_type)           `next` (pred(Type::in, pdi, puo) is det -->
+    ws                      `next` (pred(_::in, pdi, puo) is det -->
+    pe(default_decl)        `next` (pred(Default::in, pdi, puo) is det -->
     return(attribute(Name, Type, Default))
     )))))).
 
@@ -1985,7 +1986,7 @@ attr_type -->
 :- pred string_type(pstate(_)::in, pstate(attr_type)::out) is det.
 
 string_type -->
-    lit("CDATA")            then (pred(_::in, pdi, puo) is det -->
+    mstr("CDATA")           `next` (pred(_::in, pdi, puo) is det -->
     return(attr_cdata)
     ).
 
@@ -2004,10 +2005,13 @@ string_type -->
 tokenized_type -->
     % Because or/4 commits to the first match, the ordering here
     % is significant because IDREFS matches IDREF matches ID, etc.
-    lit("IDREFS", attr_id_refs) or lit("IDREF", attr_id_ref) or
-    lit("ID", attr_id) or lit("ENTITY", attr_entity)
-    or lit("ENTITIES", attr_entities) or
-    lit("NMTOKENS", attr_nm_tokens) or lit("NMTOKEN", attr_nm_token).
+    mstr_return("IDREFS", attr_id_refs) or
+    mstr_return("IDREF", attr_id_ref) or
+    mstr_return("ID", attr_id) or
+    mstr_return("ENTITY", attr_entity) or
+    mstr_return("ENTITIES", attr_entities) or
+    mstr_return("NMTOKENS", attr_nm_tokens) or
+    mstr_return("NMTOKEN", attr_nm_token).
 
 %   Validity Constraint: ID
 %   Values of type ID must match the Name production. A name must not
@@ -2052,16 +2056,16 @@ enumerated_type -->
 :- pred notation_type(pstate(_)::pdi, pstate(attr_type)::puo) is det.
 
 notation_type -->
-    lit("NOTATION")         then (pred(_::in, pdi, puo) is det -->
-    ws                      then (pred(_::in, pdi, puo) is det -->
-    lit1('(')               then (pred(_::in, pdi, puo) is det -->
-    opt(ws)                 then (pred(_::in, pdi, puo) is det -->
-    nm_token                then (pred(Token::in, pdi, puo) is det -->
-    star(second((opt(ws) and lit1('|') and opt(ws)) and nm_token))
-                            then (pred(Tokens::in, pdi, puo) is det -->
+    mstr("NOTATION")        `next` (pred(_::in, pdi, puo) is det -->
+    ws                      `next` (pred(_::in, pdi, puo) is det -->
+    mchr('(')               `next` (pred(_::in, pdi, puo) is det -->
+    opt(ws)                 `next` (pred(_::in, pdi, puo) is det -->
+    nm_token                `next` (pred(Token::in, pdi, puo) is det -->
+    star(second((opt(ws) and mchr('|') and opt(ws)) and nm_token))
+                            `next` (pred(Tokens::in, pdi, puo) is det -->
 
-    opt(ws)                 then (pred(_::in, pdi, puo) is det -->
-    lit1(')')               then (pred(_::in, pdi, puo) is det -->
+    opt(ws)                 `next` (pred(_::in, pdi, puo) is det -->
+    mchr(')')               `next` (pred(_::in, pdi, puo) is det -->
     { Type = attr_notation([Token | Tokens]) },
     return(Type)
     )))))))).
@@ -2072,13 +2076,13 @@ notation_type -->
 :- pred enumeration(pstate(_)::in, pstate(attr_type)::out) is det.
 
 enumeration -->
-    lit1('(')               then (pred(_::in, pdi, puo) is det -->
-    opt(ws)                 then (pred(_::in, pdi, puo) is det -->
-    nm_token                then (pred(Token::in, pdi, puo) is det -->
-    star(second((opt(ws) and lit1('|') and opt(ws)) and nm_token))
-                            then (pred(Tokens::in, pdi, puo) is det -->
-    opt(ws)                 then (pred(_::in, pdi, puo) is det -->
-    lit1(')')               then (pred(_::in, pdi, puo) is det -->
+    mchr('(')               `next` (pred(_::in, pdi, puo) is det -->
+    opt(ws)                 `next` (pred(_::in, pdi, puo) is det -->
+    nm_token                `next` (pred(Token::in, pdi, puo) is det -->
+    star(second((opt(ws) and mchr('|') and opt(ws)) and nm_token))
+                            `next` (pred(Tokens::in, pdi, puo) is det -->
+    opt(ws)                 `next` (pred(_::in, pdi, puo) is det -->
+    mchr(')')               `next` (pred(_::in, pdi, puo) is det -->
     { Type = attr_notation([Token | Tokens]) },
     return(Type)
     )))))).
@@ -2115,9 +2119,10 @@ enumeration -->
 :- pred default_decl(pstate(_)::in, pstate(default)::out) is det.
 
 default_decl -->
-    lit("#REQUIRED", required) or
-    lit("#IMPLIED", implied) or
-    wrap(second((lit("#FIXED", unit) and ws) and attr_value), wrap_fixed) or
+    mstr_return("#REQUIRED", required) or
+    mstr_return("#IMPLIED", implied) or
+    wrap(second((mstr_return("#FIXED", unit) and ws) and attr_value),
+        wrap_fixed) or
     wrap(attr_value, wrap_default).
 
 :- pred wrap_fixed(string::in, default::out) is det.
@@ -2204,13 +2209,13 @@ conditional_section -->
 :- pred include_section(pstate(_)::in, pstate(unit)::out) is det.
 
 include_section -->
-    lit("<![")              then (pred(_::in, pdi, puo) is det -->
-    opt(ws)                 then (pred(_::in, pdi, puo) is det -->
-    lit("INCLUDE")          then (pred(_::in, pdi, puo) is det -->
-    opt(ws)                 then (pred(_::in, pdi, puo) is det -->
-    lit1('[')               then (pred(_::in, pdi, puo) is det -->
-    ext_subset_decl           then (pred(_::in, pdi, puo) is det -->
-    lit("]]>")              then (pred(_::in, pdi, puo) is det -->
+    mstr("<![")             `next` (pred(_::in, pdi, puo) is det -->
+    opt(ws)                 `next` (pred(_::in, pdi, puo) is det -->
+    mstr("INCLUDE")         `next` (pred(_::in, pdi, puo) is det -->
+    opt(ws)                 `next` (pred(_::in, pdi, puo) is det -->
+    mchr('[')               `next` (pred(_::in, pdi, puo) is det -->
+    ext_subset_decl         `next` (pred(_::in, pdi, puo) is det -->
+    mstr("]]>")             `next` (pred(_::in, pdi, puo) is det -->
     return_unit
     ))))))).
 
@@ -2220,12 +2225,12 @@ include_section -->
 :- pred ignore_section(pstate(_)::pdi, pstate(unit)::puo) is det.
 
 ignore_section -->
-    lit("<![")              then (pred(_::in, pdi, puo) is det -->
-    opt(ws)                 then (pred(_::in, pdi, puo) is det -->
-    lit("IGNORE")           then (pred(_::in, pdi, puo) is det -->
-    opt(ws)                 then (pred(_::in, pdi, puo) is det -->
-    lit1('[')               then (pred(_::in, pdi, puo) is det -->
-    star(ignore_section_contents) then (pred(_::in, pdi, puo) is det -->
+    mstr("<![")             `next` (pred(_::in, pdi, puo) is det -->
+    opt(ws)                 `next` (pred(_::in, pdi, puo) is det -->
+    mstr("IGNORE")          `next` (pred(_::in, pdi, puo) is det -->
+    opt(ws)                 `next` (pred(_::in, pdi, puo) is det -->
+    mchr('[')               `next` (pred(_::in, pdi, puo) is det -->
+    star(ignore_section_contents) `next` (pred(_::in, pdi, puo) is det -->
     return_unit
     )))))).
 
@@ -2236,10 +2241,10 @@ ignore_section -->
 :- pred ignore_section_contents(pstate(_)::pdi, pstate(unit)::puo) is det.
 
 ignore_section_contents -->
-    ignore              then (pred(Ign::in, pdi, puo) is det -->
+    ignore              `next` (pred(Ign::in, pdi, puo) is det -->
     ( if { Ign = "<![" } then
-        (star(ignore_section_contents and lit("]]>") and ignore)
-                        then (pred(_::in, pdi, puo) is det -->
+        (star(ignore_section_contents and mstr("]]>") and ignore)
+                        `next` (pred(_::in, pdi, puo) is det -->
             return_unit
         ))
     else % { Ign = "]]>" } ->
@@ -2251,9 +2256,9 @@ ignore_section_contents -->
 :- pred ignore(pstate(_)::pdi, pstate(string)::puo) is det.
 
 ignore -->
-    upto(char, lit("<![") or lit("]]>"))
-                        then (pred(P::in, pdi, puo) is det -->
-    { P = and_then(_Ign, Terminal) },
+    upto(char, mstr("<![") or mstr("]]>"))
+                        `next` (pred(P::in, pdi, puo) is det -->
+    { P = next(_Ign, Terminal) },
     return(Terminal)
     ).
 
@@ -2335,17 +2340,18 @@ ignore -->
 :- pred char_ref(pstate(_)::pdi, pstate(unicode)::puo) is det.
 
 char_ref -->
-    (lit("&#x") and
-    plus(range('a', 'f') or range('A', 'F') or range('0', '9')) and
-    lit1(';')
-            then (pred(and_then(_, and_then(Hs, _))::in, pdi, puo) is det -->
-    { hex_digits_to_number(Hs, 0, UniCode) },
-    return(UniCode)
+    (
+        (mstr("&#x") and plus(range('a', 'f') or
+        range('A', 'F') or range('0', '9')) and mchr(';')
+        )
+            `next` (pred(next(_, next(Hs, _))::in, pdi, puo) is det -->
+        { hex_digits_to_number(Hs, 0, UniCode) },
+        return(UniCode)
     )) or
-    (lit("&#") and plus(range('0', '9')) and lit1(';')
-            then (pred(and_then(_, and_then(Ds, _))::in, pdi, puo) is det -->
-    { decimal_digits_to_number(Ds, 0, UniCode) },
-    return(UniCode)
+    ((mstr("&#") and plus(range('0', '9')) and mchr(';'))
+            `next` (pred(next(_, next(Ds, _))::in, pdi, puo) is det -->
+        { decimal_digits_to_number(Ds, 0, UniCode) },
+        return(UniCode)
     )).
 
 :- pred decimal_digits_to_number(list(unicode)::in, int::in, int::out) is det.
@@ -2403,8 +2409,8 @@ hex_digits_to_number([D | Ds], U0, U) :-
     pstate(T1)::pdi, pstate(T2)::puo) is det.
 
 entity_ref(Parser) -->
-    null                    then (pred(X::in, pdi, puo) is det -->
-    entity_ref              then (pred(Entity::in, pdi, puo) is det -->
+    null                    `next` (pred(X::in, pdi, puo) is det -->
+    entity_ref              `next` (pred(Entity::in, pdi, puo) is det -->
     return(X),
     parse_entity(Parser, make_entity(Entity))
     )).
@@ -2412,12 +2418,12 @@ entity_ref(Parser) -->
 :- pred entity_ref(pstate(_)::pdi, pstate(dtd.entity)::puo) is det.
 
 entity_ref -->
-    lit1('&')               then (pred(_::in, pdi, puo) is det -->
-    name                    then (pred(Name::in, pdi, puo) is det -->
-    lit1(';')               then (pred(_::in, pdi, puo) is det -->
+    mchr('&')               `next` (pred(_::in, pdi, puo) is det -->
+    name                    `next` (pred(Name::in, pdi, puo) is det -->
+    mchr(';')               `next` (pred(_::in, pdi, puo) is det -->
     get_global(gEntities, entities(Entities)),
     ( if { map.search(Entities, Name, EntityDef) } then
-        (get_entity(EntityDef)   then (pred(Entity::in, pdi, puo) is det -->
+        (get_entity(EntityDef)   `next` (pred(Entity::in, pdi, puo) is det -->
         return(Entity)
         ))
     else
@@ -2434,8 +2440,8 @@ entity_ref -->
     pstate(T1)::pdi, pstate(T2)::puo) is det.
 
 pe_reference(Parser) -->
-    null                    then (pred(X::in, pdi, puo) is det -->
-    pe_reference            then (pred(Entity::in, pdi, puo) is det -->
+    null                    `next` (pred(X::in, pdi, puo) is det -->
+    pe_reference            `next` (pred(Entity::in, pdi, puo) is det -->
     return(X),
     parse_entity(Parser, make_entity(Entity))
     )).
@@ -2443,12 +2449,12 @@ pe_reference(Parser) -->
 :- pred pe_reference(pstate(_)::pdi, pstate(dtd.entity)::puo) is det.
 
 pe_reference -->
-    lit1('%')               then (pred(_::in, pdi, puo) is det -->
-    name                    then (pred(Name::in, pdi, puo) is det -->
-    lit1(';')               then (pred(_::in, pdi, puo) is det -->
+    mchr('%')               `next` (pred(_::in, pdi, puo) is det -->
+    name                    `next` (pred(Name::in, pdi, puo) is det -->
+    mchr(';')               `next` (pred(_::in, pdi, puo) is det -->
     get_global(gPEntities, p_entities(PEntities)),
     ( if { map.search(PEntities, Name, EntityDef) } then
-        (get_entity(EntityDef)   then (pred(Entity::in, pdi, puo) is det -->
+        (get_entity(EntityDef)   `next` (pred(Entity::in, pdi, puo) is det -->
         return(Entity)
         ))
     else
@@ -2525,13 +2531,13 @@ entity_decl -->
 :- pred ge_decl(pstate(_)::pdi, pstate(unit)::puo) is det.
 
 ge_decl -->
-    lit("<!ENTITY")         then (pred(_::in, pdi, puo) is det -->
-    ws                      then (pred(_::in, pdi, puo) is det -->
-    pe(name)                then (pred(Name::in, pdi, puo) is det -->
-    ws                      then (pred(_::in, pdi, puo) is det -->
-    pe(entity_def)          then (pred(Value::in, pdi, puo) is det -->
-    opt(ws)                 then (pred(_::in, pdi, puo) is det -->
-    lit1('>')               then (pred(_::in, pdi, puo) is det -->
+    mstr("<!ENTITY")        `next` (pred(_::in, pdi, puo) is det -->
+    ws                      `next` (pred(_::in, pdi, puo) is det -->
+    pe(name)                `next` (pred(Name::in, pdi, puo) is det -->
+    ws                      `next` (pred(_::in, pdi, puo) is det -->
+    pe(entity_def)          `next` (pred(Value::in, pdi, puo) is det -->
+    opt(ws)                 `next` (pred(_::in, pdi, puo) is det -->
+    mchr('>')               `next` (pred(_::in, pdi, puo) is det -->
     get_global(gEntities, entities(Entities0)),
     ( if { contains(Entities0, Name) } then
         { string.format("Multiple declarations of entity `%s'",
@@ -2550,15 +2556,15 @@ ge_decl -->
 :- pred pe_decl(pstate(_)::pdi, pstate(unit)::puo) is det.
 
 pe_decl -->
-    lit("<!ENTITY")         then (pred(_::in, pdi, puo) is det -->
-    ws                      then (pred(_::in, pdi, puo) is det -->
-    lit1('%')               then (pred(_::in, pdi, puo) is det -->
-    ws                      then (pred(_::in, pdi, puo) is det -->
-    pe(name)                then (pred(Name::in, pdi, puo) is det -->
-    ws                      then (pred(_::in, pdi, puo) is det -->
-    pe(pe_def)              then (pred(Value::in, pdi, puo) is det -->
-    opt(ws)                 then (pred(_::in, pdi, puo) is det -->
-    lit1('>')               then (pred(_::in, pdi, puo) is det -->
+    mstr("<!ENTITY")        `next` (pred(_::in, pdi, puo) is det -->
+    ws                      `next` (pred(_::in, pdi, puo) is det -->
+    mchr('%')               `next` (pred(_::in, pdi, puo) is det -->
+    ws                      `next` (pred(_::in, pdi, puo) is det -->
+    pe(name)                `next` (pred(Name::in, pdi, puo) is det -->
+    ws                      `next` (pred(_::in, pdi, puo) is det -->
+    pe(pe_def)              `next` (pred(Value::in, pdi, puo) is det -->
+    opt(ws)                 `next` (pred(_::in, pdi, puo) is det -->
+    mchr('>')               `next` (pred(_::in, pdi, puo) is det -->
     get_global(gPEntities, p_entities(PEntities0)),
     ( if { map.contains(PEntities0, Name) } then
         { string.format("Multiple declarations of parameter entity `%s'",
@@ -2578,11 +2584,11 @@ pe_decl -->
 
 entity_def -->
     % XXX x(entity_value) or (external_id and opt(n_data_decl)).
-    (entity_value           then (pred(Entity::in, pdi, puo) is det -->
+    (entity_value           `next` (pred(Entity::in, pdi, puo) is det -->
         return(entity_internal(Entity))
     )) or (
-    external_id             then (pred(ExtId::in, pdi, puo) is det -->
-    opt(n_data_decl)        then (pred(_::in, pdi, puo) is det -->
+    external_id             `next` (pred(ExtId::in, pdi, puo) is det -->
+    opt(n_data_decl)        `next` (pred(_::in, pdi, puo) is det -->
     return(entity_external(ExtId))
     ))).
 
@@ -2630,10 +2636,10 @@ pe_def -->
 
 external_id -->
     wrap(
-        second((lit("SYSTEM", unit) and ws) and system_literal),
+        second((mstr_return("SYSTEM", unit) and ws) and system_literal),
         wrap_system) or
     wrap(
-        second((lit("PUBLIC", unit) and ws) and pub_id_literal) and
+        second((mstr_return("PUBLIC", unit) and ws) and pub_id_literal) and
             second(ws and system_literal),
         wrap_public).
 
@@ -2641,19 +2647,19 @@ external_id -->
 
 wrap_system(System, system(System)).
 
-:- pred wrap_public(and_then(string, string)::in, external_id::out) is det.
+:- pred wrap_public(next(string, string)::in, external_id::out) is det.
 
-wrap_public(and_then(Public, System), public(Public, System)).
+wrap_public(next(Public, System), public(Public, System)).
 
 %   [76]  NDataDecl ::= S 'NDATA' S Name [ VC: Notation Declared ]
 
 :- pred n_data_decl(pstate(_)::in, pstate(name)::out) is det.
 
 n_data_decl -->
-    ws                      then (pred(_::in, pdi, puo) is det -->
-    lit("NDATA")            then (pred(_::in, pdi, puo) is det -->
-    ws                      then (pred(_::in, pdi, puo) is det -->
-    name                    then (pred(Name::in, pdi, puo) is det -->
+    ws                      `next` (pred(_::in, pdi, puo) is det -->
+    mstr("NDATA")           `next` (pred(_::in, pdi, puo) is det -->
+    ws                      `next` (pred(_::in, pdi, puo) is det -->
+    name                    `next` (pred(Name::in, pdi, puo) is det -->
     return(Name)
     )))).
 
@@ -2715,11 +2721,11 @@ n_data_decl -->
 :- pred text_decl(pstate(_)::in, pstate(unit)::out) is det.
 
 text_decl -->
-    lit("<?xml")                then (pred(_::in, pdi, puo) is det -->
-    opt(version_info)           then (pred(_::in, pdi, puo) is det -->
-    encoding_decl               then (pred(EncName::in, pdi, puo) is det -->
-    opt(ws)                     then (pred(_::in, pdi, puo) is det -->
-    lit("?>")                   then (pred(_::in, pdi, puo) is det -->
+    mstr("<?xml")               `next` (pred(_::in, pdi, puo) is det -->
+    opt(version_info)           `next` (pred(_::in, pdi, puo) is det -->
+    encoding_decl               `next` (pred(EncName::in, pdi, puo) is det -->
+    opt(ws)                     `next` (pred(_::in, pdi, puo) is det -->
+    mstr("?>")                  `next` (pred(_::in, pdi, puo) is det -->
     get_global(gEncodings, encodings(Encodings)),
     ( if { map.search(Encodings, EncName, Enc) } then
         set_encoding(Enc),
@@ -2755,8 +2761,8 @@ ext_parsed_ent -->
 :- pred ext_pe(pstate(_)::in, pstate(unit)::out) is det.
 
 ext_pe -->
-    opt(text_decl)              then (pred(_::in, pdi, puo) is det -->
-    ext_subset_decl             then (pred(_::in, pdi, puo) is det -->
+    opt(text_decl)              `next` (pred(_::in, pdi, puo) is det -->
+    ext_subset_decl             `next` (pred(_::in, pdi, puo) is det -->
     return_unit
     )).
 
@@ -2797,12 +2803,12 @@ ext_pe -->
 :- pred encoding_decl(pstate(_)::pdi, pstate(string)::puo) is det.
 
 encoding_decl -->
-    ws                      then (pred(_::in, pdi, puo) is det -->
-    lit("encoding")         then (pred(_::in, pdi, puo) is det -->
-    eq                      then (pred(_::in, pdi, puo) is det -->
-    quote                   then (pred(Q::in, pdi, puo) is det -->
-    encoding_name           then (pred(Name::in, pdi, puo) is det -->
-    quote                   then (pred(EndQ::in, pdi, puo) is det -->
+    ws                      `next` (pred(_::in, pdi, puo) is det -->
+    mstr("encoding")        `next` (pred(_::in, pdi, puo) is det -->
+    eq                      `next` (pred(_::in, pdi, puo) is det -->
+    quote                   `next` (pred(Q::in, pdi, puo) is det -->
+    encoding_name           `next` (pred(Name::in, pdi, puo) is det -->
+    quote                   `next` (pred(EndQ::in, pdi, puo) is det -->
     ( if { Q = EndQ } then
         return(Name)
     else
@@ -2816,10 +2822,10 @@ encoding_decl -->
 
 encoding_name -->
     (range('A', 'Z') or range('a', 'z'))
-                        then (pred(C::in, pdi, puo) is det -->
+                        `next` (pred(C::in, pdi, puo) is det -->
     star(range('A', 'Z') or range('a', 'z') or range('0', '9') or
-         lit1('.') or lit1('_') or lit1('-'))
-                        then (pred(Cs::in, pdi, puo) is det -->
+         mchr('.') or mchr('_') or mchr('-'))
+                        `next` (pred(Cs::in, pdi, puo) is det -->
     make_string([C | Cs], EncName),
     return(EncName)
     )).
@@ -3080,13 +3086,13 @@ encoding_name -->
 :- pred notation_decl(pstate(_)::in, pstate(unit)::out) is det.
 
 notation_decl -->
-    lit("<!NOTATION")           then (pred(_::in, pdi, puo) is det -->
-    ws                          then (pred(_::in, pdi, puo) is det -->
-    name                        then (pred(_::in, pdi, puo) is det -->
-    ws                          then (pred(_::in, pdi, puo) is det -->
-    (external_id or public_id)  then (pred(_::in, pdi, puo) is det -->
-    opt(ws)                     then (pred(_::in, pdi, puo) is det -->
-    lit1('>')                   then (pred(_::in, pdi, puo) is det -->
+    mstr("<!NOTATION")          `next` (pred(_::in, pdi, puo) is det -->
+    ws                          `next` (pred(_::in, pdi, puo) is det -->
+    name                        `next` (pred(_::in, pdi, puo) is det -->
+    ws                          `next` (pred(_::in, pdi, puo) is det -->
+    (external_id or public_id)  `next` (pred(_::in, pdi, puo) is det -->
+    opt(ws)                     `next` (pred(_::in, pdi, puo) is det -->
+    mchr('>')                   `next` (pred(_::in, pdi, puo) is det -->
     return_unit
     ))))))).
 
@@ -3095,9 +3101,9 @@ notation_decl -->
 :- pred public_id(pstate(_)::in, pstate(external_id)::out) is det.
 
 public_id -->
-    lit("PUBLIC")               then (pred(_::in, pdi, puo) is det -->
-    ws                          then (pred(_::in, pdi, puo) is det -->
-    pub_id_literal              then (pred(Lit::in, pdi, puo) is det -->
+    mstr("PUBLIC")              `next` (pred(_::in, pdi, puo) is det -->
+    ws                          `next` (pred(_::in, pdi, puo) is det -->
+    pub_id_literal              `next` (pred(Lit::in, pdi, puo) is det -->
     return(public(Lit, ""))
     ))).
 

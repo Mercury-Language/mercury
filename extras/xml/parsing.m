@@ -121,13 +121,17 @@
 
 :- pred get_encoding(encoding::out, pstate(T1)::pdi, pstate(T1)::puo) is det.
 
-:- pred lit(string::in, T2::in, pstate(T1)::pdi, pstate(T2)::puo) is det.
+    % Match a string.
+    %
+:- pred mstr(string::in, pstate(T1)::pdi, pstate(string)::puo) is det.
+:- pred mstr_return(string::in, T2::in,
+    pstate(T1)::pdi, pstate(T2)::puo) is det.
 
-:- pred lit(string::in, pstate(T1)::pdi, pstate(string)::puo) is det.
-
-:- pred lit1(unicode::in, T2::in, pstate(T1)::pdi, pstate(T2)::puo) is det.
-
-:- pred lit1(unicode::in, pstate(T1)::pdi, pstate(unicode)::puo) is det.
+    % Match a character.
+    %
+:- pred mchr(unicode::in, pstate(T1)::pdi, pstate(unicode)::puo) is det.
+:- pred mchr_return(unicode::in, T2::in,
+    pstate(T1)::pdi, pstate(T2)::puo) is det.
 
 :- pred quote(pstate(T1)::pdi, pstate(unicode)::puo) is det.
 
@@ -140,8 +144,8 @@
 :- pred make_string(list(unicode)::in, string::out,
     pstate(T2)::pdi, pstate(T2)::puo) is det.
 
-:- type and_then(A, B)
-    --->    and_then(A, B).
+:- type next(A, B)
+    --->    next(A, B).
 
 :- type opt(T)
     --->    no
@@ -151,12 +155,12 @@
 :- inst parser == (pred(pdi, puo) is det).
 
 :- pred and(parser(T1, T2)::in(parser), parser(T2, T3)::in(parser),
-    pstate(T1)::pdi, pstate(and_then(T2, T3))::puo) is det.
+    pstate(T1)::pdi, pstate(next(T2, T3))::puo) is det.
 
 :- pred or(parser(T1, T2)::in(parser), parser(T1, T2)::in(parser),
     pstate(T1)::pdi, pstate(T2)::puo) is det.
 
-:- pred then(parser(W, T)::in(parser),
+:- pred next(parser(W, T)::in(parser),
     pred(T, pstate(T), pstate(U))::in(pred(in, pdi, puo) is det),
     pstate(W)::pdi, pstate(U)::puo) is det.
 
@@ -178,7 +182,7 @@
     pstate(T1)::pdi, pstate(opt(T2))::puo) is det.
 
 :- pred upto(parser(T1, T2)::in(parser), parser(T1, T3)::in(parser),
-    pstate(T1)::pdi, pstate(and_then(list(T2), T3))::puo) is det.
+    pstate(T1)::pdi, pstate(next(list(T2), T3))::puo) is det.
 
 :- pred range(unicode::in, unicode::in,
     pstate(T1)::pdi, pstate(unicode)::puo) is det.
@@ -190,13 +194,13 @@
     pred(T2, T3)::in(pred(in, out) is det),
     pstate(T1)::pdi, pstate(T3)::puo) is det.
 
-:- pred x(parser(T1, T2)::in(parser),
+:- pred is_a(parser(T1, T2)::in(parser),
     pstate(T1)::pdi, pstate(unit)::puo) is det.
 
-:- pred first(parser(S, and_then(T, U))::in(parser),
+:- pred first(parser(S, next(T, U))::in(parser),
     pstate(S)::pdi, pstate(T)::puo) is det.
 
-:- pred second(parser(S, and_then(T, U))::in(parser),
+:- pred second(parser(S, next(T, U))::in(parser),
     pstate(S)::pdi, pstate(U)::puo) is det.
 
 :- pred except(list(unicode)::in,
@@ -433,49 +437,51 @@ get_status(PS ^ status, PS, PS).
 
 set_status(S, PS, PS ^ status := S).
 
-lit(Str, Thing) -->
+mstr(Str) -->
     { string.to_char_list(Str, Chars) },
-    (lit2(Chars)            then (pred(_::in, pdi, puo) is det -->
-    return(Thing)
-    )).
-
-lit(Str) -->
-    { string.to_char_list(Str, Chars) },
-    (lit2(Chars)            then (pred(_::in, pdi, puo) is det -->
+    (mchrs(Chars)            `next` (pred(_::in, pdi, puo) is det -->
     return(Str)
     )).
 
-lit1(U, R) -->
-    tok                 then (pred(C::in, pdi, puo) is det -->
-    ( if { U = C } then
-        return(R)
-    else
-        record_failure("character didn't match")
+mstr_return(Str, Return) -->
+    { string.to_char_list(Str, Chars) },
+    (mchrs(Chars)            `next` (pred(_::in, pdi, puo) is det -->
+    return(Return)
     )).
 
-lit1(U) -->
-    tok                 then (pred(C::in, pdi, puo) is det -->
+mchr(U) -->
+    tok                 `next` (pred(C::in, pdi, puo) is det -->
     ( if { U = C } then
         return(U)
     else
         record_failure("character didn't match")
     )).
 
-:- pred lit2(list(char)::in, pstate(_)::pdi, pstate(unit)::puo) is det.
+mchr_return(U, Return) -->
+    tok                 `next` (pred(C::in, pdi, puo) is det -->
+    ( if { U = C } then
+        return(Return)
+    else
+        record_failure("character didn't match")
+    )).
 
-lit2([]) -->
+    % Match the given list of characters.
+    %
+:- pred mchrs(list(char)::in, pstate(_)::pdi, pstate(unit)::puo) is det.
+
+mchrs([]) -->
     return(unit).
-lit2([C | Is]) -->
+mchrs([C | Is]) -->
     { char.to_int(C, I) },
-    (tok                then (pred(I0::in, pdi, puo) is det -->
+    (tok                `next` (pred(I0::in, pdi, puo) is det -->
     ( if { I = I0 } then
-        lit2(Is)
+        mchrs(Is)
     else
         record_failure("literal failed to match")
     ))).
 
 quote -->
-    tok                 then (pred(Q::in, pdi, puo) is det -->
+    tok                 `next` (pred(Q::in, pdi, puo) is det -->
     ( if
         {
             Q = ('''')
@@ -503,9 +509,9 @@ make_string(UniCodes, String, PS, PS) :-
     encode(Enc, UniCodes, String).
 
 (A and B) -->
-    actuate(A)              then (pred(X::in, pdi, puo) is det -->
-    actuate(B)              then (pred(Y::in, pdi, puo) is det -->
-    return(and_then(X, Y))
+    actuate(A)              `next` (pred(X::in, pdi, puo) is det -->
+    actuate(B)              `next` (pred(Y::in, pdi, puo) is det -->
+    return(next(X, Y))
     )).
 
 (A or B) -->
@@ -514,7 +520,7 @@ make_string(UniCodes, String, PS, PS) :-
         (pred(_::in, pdi, puo) is det --> call(B)),
         record_error).
 
-then(P, T) -->
+next(P, T) -->
     actuate(P),
     get_status(Status1),
     (
@@ -556,7 +562,7 @@ star(P, Xs0) -->
 
 plus(P) -->
     get_status(Status0),
-    (actuate(P)            then (pred(X::in, pdi, puo) is det -->
+    (actuate(P)            `next` (pred(X::in, pdi, puo) is det -->
     set_status(Status0),
     star(P, [X])
     )).
@@ -590,18 +596,18 @@ upto(Rep, Fin) -->
     upto(Rep, Fin, []).
 
 :- pred upto(parser(T1, T2)::in(parser), parser(T1, T3)::in(parser),
-    list(T2)::in, pstate(T1)::pdi, pstate(and_then(list(T2), T3))::puo) is det.
+    list(T2)::in, pstate(T1)::pdi, pstate(next(list(T2), T3))::puo) is det.
 
 upto(Rep, Fin, Rs0) -->
     get_status(Status0),
     try_parse(Fin,
         ( pred(F::in, pdi, puo) is det -->
             { list.reverse(Rs0, Rs) },
-            return(and_then(Rs, F))
+            return(next(Rs, F))
         ),
         ( pred(_::in, pdi, puo) is det -->
             set_status(Status0),
-            (Rep            then (pred(R::in, pdi, puo) is det -->
+            (Rep            `next` (pred(R::in, pdi, puo) is det -->
             set_status(Status0),
             upto(Rep, Fin, [R | Rs0])
         ))),
@@ -609,7 +615,7 @@ upto(Rep, Fin, Rs0) -->
     ).
 
 range(F, L) -->
-    tok                 then (pred(C::in, pdi, puo) is det -->
+    tok                 `next` (pred(C::in, pdi, puo) is det -->
     ( if { F =< C, C =< L } then
         return(C)
     else
@@ -620,28 +626,28 @@ range(F, L) -->
     range(F, L).
 
 wrap(P, Q) -->
-    P                   then (pred(X::in, pdi, puo) is det -->
+    P                   `next` (pred(X::in, pdi, puo) is det -->
     { call(Q, X, W) },
     return(W)
     ).
 
-x(P) -->
-    P                   then (pred(_::in, pdi, puo) is det -->
+is_a(P) -->
+    P                   `next` (pred(_::in, pdi, puo) is det -->
     return(unit)
     ).
 
 first(P) -->
-    P                   then (pred(and_then(T, _)::in, pdi, puo) is det -->
+    P                   `next` (pred(next(T, _)::in, pdi, puo) is det -->
     return(T)
     ).
 
 second(P) -->
-    P                   then (pred(and_then(_, T)::in, pdi, puo) is det -->
+    P                   `next` (pred(next(_, T)::in, pdi, puo) is det -->
     return(T)
     ).
 
 except(Exclusions) -->
-    tok                 then (pred(C::in, pdi, puo) is det -->
+    tok                 `next` (pred(C::in, pdi, puo) is det -->
     ( if { list.member(C, Exclusions) } then
         record_failure("excluded character")
     else
@@ -649,17 +655,17 @@ except(Exclusions) -->
     )).
 
 no(Parser) -->
-    Parser              then (pred(_::in, pdi, puo) is det -->
+    Parser              `next` (pred(_::in, pdi, puo) is det -->
     return(no)
     ).
 
 yes(Parser) -->
-    Parser              then (pred(X::in, pdi, puo) is det -->
+    Parser              `next` (pred(X::in, pdi, puo) is det -->
     return(yes(X))
     ).
 
 filter(Parser) -->
-    Parser              then (pred(Xs0::in, pdi, puo) is det -->
+    Parser              `next` (pred(Xs0::in, pdi, puo) is det -->
     { filter1(Xs0, Xs) },
     return(Xs)
     ).
@@ -682,7 +688,7 @@ return_no(_, no).
 return_yes(T, yes(T)).
 
 list(P) -->
-    P                   then (pred(X::in, pdi, puo) is det -->
+    P                   `next` (pred(X::in, pdi, puo) is det -->
     return([X])
     ).
 
