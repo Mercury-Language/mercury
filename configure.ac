@@ -2425,6 +2425,18 @@ case "$ac_cv_c_compiler_gnu" in yes)
     ;;
 esac
 
+# GCC's basic block vectorizer produces code that is not compatible with
+# non-local gotos for GCC 11 and 12. We disable that optimisation for now.
+# (See Github issue #103 and Mantis issue #561.)
+case "$host" in x86_64*)
+    case $C_COMPILER_TYPE in
+        gcc_1[[1-9]]_*)
+            CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fno-tree-slp-vectorize"
+            ;;
+    esac
+    ;;
+esac
+
 # Determine if $CFLAGS_FOR_NO_REORDER_FUNCTIONS is needed.
 case "$C_COMPILER_TYPE" in
     # Check if the option is not required, and otherwise include the option.
