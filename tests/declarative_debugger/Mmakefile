@@ -481,7 +481,8 @@ typed_unify.out: typed_unify typed_unify.inp
 
 propositional.out: propositional propositional.inp
 	$(MDB_STD) ./propositional < propositional.inp > \
-	propositional.out 2>&1 || { grep . $@ /dev/null; exit 1; }
+		propositional.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 queens.out: queens queens.inp
 	$(MDB) ./queens < queens.inp > queens.out 2>&1 \

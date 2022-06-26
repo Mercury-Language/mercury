@@ -460,9 +460,38 @@ trusted(ProcLayout, Oracle) :-
         (
             bimap.search(Trusted, trusted_standard_library, _),
             (
-                Module = qualified(_, ModuleNameStr)
-            ;
                 Module = unqualified(ModuleNameStr)
+            ;
+                Module = qualified(ParentModule, SubModuleNameStr),
+                (
+                    ParentModule = unqualified(ParentModuleNameStr),
+                    ModuleNameStr = ParentModuleNameStr ++ "." ++
+                        SubModuleNameStr
+                ;
+                    ParentModule = qualified(GrandParentModule,
+                        ParentModuleNameStr),
+                    (
+                        GrandParentModule =
+                            unqualified(GrandParentModuleNameStr),
+                        ModuleNameStr = GrandParentModuleNameStr ++ "." ++
+                            ParentModuleNameStr ++ "." ++ SubModuleNameStr
+                    ;
+                        GrandParentModule = qualified(_, _),
+                        fail
+                        % Aborting would be preferable if the user is a Mercury
+                        % developer, because it would alert us to the need
+                        % to update this code. However, for ordinary users,
+                        % that would be a hard violation of the law of least
+                        % astonishment. The result of simply failing here
+                        % will be that predicates in the modules affected
+                        % will be treated as if they were not trusted. That is
+                        % also a violation of that same law, but at least
+                        % it lets the user proceed with his/her immediate task.
+                        %
+                        % unexpected($pred,
+                        %     "unexpectedly deeply nested stdlib module name")
+                    )
+                )
             ),
             mercury_std_library_module(ModuleNameStr)
         ;
@@ -562,9 +591,12 @@ oracle_kb_init(oracle_kb(G, C, X)) :-
 :- pred get_kb_exceptions_map(oracle_kb::in,
     map(init_decl_atom, known_exceptions)::out) is det.
 
-get_kb_ground_map(KB, KB ^ kb_ground_map).
-get_kb_complete_map(KB, KB ^ kb_complete_map).
-get_kb_exceptions_map(KB, KB ^ kb_exceptions_map).
+get_kb_ground_map(KB, X) :-
+    X = KB ^ kb_ground_map.
+get_kb_complete_map(KB, X) :-
+    X = KB ^ kb_complete_map.
+get_kb_exceptions_map(KB, X) :-
+    X = KB ^ kb_exceptions_map.
 
 :- pred set_kb_ground_map(map(final_decl_atom, decl_truth)::in,
     oracle_kb::in, oracle_kb::out) is det.
@@ -573,9 +605,12 @@ get_kb_exceptions_map(KB, KB ^ kb_exceptions_map).
 :- pred set_kb_exceptions_map(map(init_decl_atom, known_exceptions)::in,
     oracle_kb::in, oracle_kb::out) is det.
 
-set_kb_ground_map(M, KB, KB ^ kb_ground_map := M).
-set_kb_complete_map(M, KB, KB ^ kb_complete_map := M).
-set_kb_exceptions_map(M, KB, KB ^ kb_exceptions_map := M).
+set_kb_ground_map(M, !KB) :-
+    !KB ^ kb_ground_map := M.
+set_kb_complete_map(M, !KB) :-
+    !KB ^ kb_complete_map := M.
+set_kb_exceptions_map(M, !KB) :-
+    !KB ^ kb_exceptions_map := M.
 
 %---------------------------------------------------------------------------%
 

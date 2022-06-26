@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred all_solutions.main/2-0 (det) all_solutions.m:16
+       1:      1  1 CALL pred all_solutions.main/2-0 (det) all_solutions.m:26
 mdb> echo on
 Command echo enabled.
 mdb> context none
@@ -7,16 +7,19 @@ mdb> register --quiet
 mdb> break hello
  0: + stop  interface pred all_solutions.hello/1-0 (multi)
 mdb> continue
-       2:      2  2 CALL pred all_solutions.hello/1-0 (multi)
+       3:      3  3 CALL pred all_solutions.hello/1-0 (multi)
 mdb> stack
    0       pred all_solutions.hello/1-0 (multi)
-reached label with no stack layout info.
+   1       pred solutions.builtin_aggregate/4-0 (cc_multi)
+   2       pred solutions.builtin_solutions/2-0 (cc_multi)
+   3       pred solutions.solutions/2-0 (det)
+   4       pred all_solutions.main/2-0 (det)
 mdb> retry 1
-reached label with no stack layout info
+Cannot perform retry because information about the input arguments is not available.
 mdb> retry 2
-reached label with no stack layout info
+Cannot perform retry because information about the input arguments is not available.
 mdb> retry 3
-reached label with no stack layout info
+       2:      2  2 CALL pred solutions.solutions/2-0 (det)
 mdb> continue -n -S
 Hello again, world
 Hello, world

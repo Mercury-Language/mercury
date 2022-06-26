@@ -257,6 +257,10 @@
 mercury_std_library_module(ModuleName) :-
     stdlib_module_doc_undoc(ModuleName, _).
 
+% NOTE If you ever add any module name here that contains more than two dots,
+% i.e. it represents the submodule of a submodule of a submodule, then
+% you will need to update the code of the "trusted" predicate in
+% browse/declarative_oracle.m to handle such names.
 stdlib_module_doc_undoc("array",                        doc).
 stdlib_module_doc_undoc("array2d",                      doc).
 stdlib_module_doc_undoc("assoc_list",                   doc).

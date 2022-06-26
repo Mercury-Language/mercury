@@ -42,14 +42,19 @@ mdb> vars
         5 B (arg 1)
         6 D (arg 2)
         7 HeadVar__3
-        8 L
+        8 BmN
+        9 L
+       10 N
+       11 NmB
 mdb> print *
        test_failed (attr 0)   	"N - B"
        arg_b (attr 1, B)      	1
        arg_d (attr 2, N)      	2
        arg_list (attr 3, HeadVar__3)	[2, 3, 4, 5]
        D (arg 2)              	1
+       BmN                    	-1
        L                      	[3, 4, 5]
+       NmB                    	1
 mdb> print !arg_b
        arg_b (attr 1, B)      	1
 mdb> user
