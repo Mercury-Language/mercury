@@ -46,7 +46,7 @@ Is this a bug? y
 mdb> untrust 1
 mdb> untrust 2
 mdb> trusted
-Trusted Objects:
+Trusted objects:
 0: the Mercury standard library
 mdb> break a
  0: + stop  interface pred skip.a/2-0 (det)

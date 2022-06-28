@@ -870,10 +870,11 @@ diagnoser_require_supertree(require_supertree(Event, SeqNo), Event, SeqNo).
     mdb.declarative_debugger.add_trusted_module(in, in, out),
     "MR_DD_decl_add_trusted_module").
 
-add_trusted_module(ModuleName, Diagnoser0, Diagnoser) :-
+add_trusted_module(ModuleName, !Diagnoser) :-
     SymModuleName = string_to_sym_name(ModuleName),
-    add_trusted_module(SymModuleName, Diagnoser0 ^ oracle_state, Oracle),
-    Diagnoser = Diagnoser0 ^ oracle_state := Oracle.
+    Oracle0 = !.Diagnoser ^ oracle_state,
+    add_trusted_module(SymModuleName, Oracle0, Oracle),
+    !Diagnoser ^ oracle_state := Oracle.
 
     % Adds a trusted predicate/function to the given diagnoser.
     %
@@ -935,43 +936,44 @@ get_trusted_list(Diagnoser, MDBCommandFormat, List) :-
     diagnoser_response(R)::out, diagnoser_state(R)::in,
     diagnoser_state(R)::out, io::di, io::uo) is det.
 
-handle_diagnoser_exception(internal_error(Loc, Msg), Response, !Diagnoser,
-        !IO) :-
-    io.stderr_stream(StdErr, !IO),
-    io.write_string(StdErr, "An internal error has occurred; " ++
-        "diagnosis will be aborted. Debugging\n" ++
-        "message follows:\n" ++ Loc ++ ": " ++ Msg ++ "\n" ++
-        "Please report bugs via the Mercury bug tracking system at\n" ++
-        "<https://bugs.mercurylang.org> or via e-mail to " ++
-        "bugs@mercurylang.org.\n", !IO),
-    % Reset the analyser, in case it was left in an inconsistent state.
-    reset_analyser(!.Diagnoser ^ analyser_state, Analyser),
-    !Diagnoser ^ analyser_state := Analyser,
-    Response = no_bug_found.
-
-handle_diagnoser_exception(io_error(Loc, Msg), Response, !Diagnoser, !IO) :-
-    io.stderr_stream(StdErr, !IO),
-    io.write_string(StdErr, "I/O error: " ++ Loc ++ ": " ++ Msg ++ ".\n" ++
-        "Diagnosis will be aborted.\n", !IO),
-    % Reset the analyser, in case it was left in an inconsistent state.
-    reset_analyser(!.Diagnoser ^ analyser_state, Analyser),
-    !Diagnoser ^ analyser_state := Analyser,
-    Response = no_bug_found.
-
-handle_diagnoser_exception(unimplemented_feature(Feature), Response,
-        !Diagnoser, !IO) :-
-    OutputStream =
-        get_oracle_user_output_stream(!.Diagnoser ^ oracle_state),
-    io.write_string(OutputStream,
-        "Sorry, the diagnosis cannot continue " ++
-        "because it requires support for the following: \n" ++
-        Feature ++ ".\n" ++
-        "The debugger is a work in progress, and this is not " ++
-        "supported in the\ncurrent version.\n", !IO),
-    % Reset the analyser, in case it was left in an inconsistent state.
-    reset_analyser(!.Diagnoser ^ analyser_state, Analyser),
-    !Diagnoser ^ analyser_state := Analyser,
-    Response = no_bug_found.
+handle_diagnoser_exception(DiagnoserException, Response, !Diagnoser, !IO) :-
+    (
+        DiagnoserException = internal_error(Loc, Msg),
+        io.stderr_stream(StdErr, !IO),
+        io.write_string(StdErr, "An internal error has occurred; " ++
+            "diagnosis will be aborted. Debugging\n" ++
+            "message follows:\n" ++ Loc ++ ": " ++ Msg ++ "\n" ++
+            "Please report bugs via the Mercury bug tracking system at\n" ++
+            "<https://bugs.mercurylang.org> or via e-mail to " ++
+            "bugs@mercurylang.org.\n", !IO),
+        % Reset the analyser, in case it was left in an inconsistent state.
+        reset_analyser(!.Diagnoser ^ analyser_state, Analyser),
+        !Diagnoser ^ analyser_state := Analyser,
+        Response = no_bug_found
+    ;
+        DiagnoserException = io_error(Loc, Msg),
+        io.stderr_stream(StdErr, !IO),
+        io.write_string(StdErr, "I/O error: " ++ Loc ++ ": " ++ Msg ++ ".\n" ++
+            "Diagnosis will be aborted.\n", !IO),
+        % Reset the analyser, in case it was left in an inconsistent state.
+        reset_analyser(!.Diagnoser ^ analyser_state, Analyser),
+        !Diagnoser ^ analyser_state := Analyser,
+        Response = no_bug_found
+    ;
+        DiagnoserException = unimplemented_feature(Feature),
+        OutputStream =
+            get_oracle_user_output_stream(!.Diagnoser ^ oracle_state),
+        io.write_string(OutputStream,
+            "Sorry, the diagnosis cannot continue " ++
+            "because it requires support for the following: \n" ++
+            Feature ++ ".\n" ++
+            "The debugger is a work in progress, and this is not " ++
+            "supported in the\ncurrent version.\n", !IO),
+        % Reset the analyser, in case it was left in an inconsistent state.
+        reset_analyser(!.Diagnoser ^ analyser_state, Analyser),
+        !Diagnoser ^ analyser_state := Analyser,
+        Response = no_bug_found
+    ).
 
 %---------------------------------------------------------------------------%
 

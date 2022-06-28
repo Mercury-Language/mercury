@@ -5,7 +5,7 @@ Command echo enabled.
 mdb> trust trust_1.
 Trusting pred trust_1.w_cmp/3
 mdb> trusted
-Trusted Objects:
+Trusted objects:
 1: predicate trust_1.w_cmp/3
 mdb> untrust 1
 mdb> trusted
@@ -20,13 +20,13 @@ Ambiguous predicate or function specification. The matches are:
 Which predicate or function do you want to trust (0-1 or *)? 0
 Trusting pred trust.main/2
 mdb> trusted
-Trusted Objects:
+Trusted objects:
 2: module trust_2
 3: predicate trust.main/2
 mdb> trust trust_2
 Trusting module trust_2
 mdb> trusted
-Trusted Objects:
+Trusted objects:
 2: module trust_2
 3: predicate trust.main/2
 mdb> untrust 2
@@ -41,14 +41,14 @@ Trusting the Mercury standard library
 mdb> trust standard library
 Trusting the Mercury standard library
 mdb> trusted
-Trusted Objects:
+Trusted objects:
 3: predicate trust.main/2
 4: module trust_1
 5: predicate trust_2.concat/3
 6: the Mercury standard library
 mdb> untrust 3
 mdb> trusted
-Trusted Objects:
+Trusted objects:
 4: module trust_1
 5: predicate trust_2.concat/3
 6: the Mercury standard library

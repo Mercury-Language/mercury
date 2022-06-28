@@ -70,20 +70,20 @@
     browser_info.browser_persistent_state::in, help_system::in,
     oracle_state::out) is det.
 
-    % Add a module to the set of modules trusted by the oracle
+    % Trust all the modules in the Mercury standard library.
     %
-:- pred add_trusted_module(module_name::in, oracle_state::in,
-    oracle_state::out) is det.
+:- pred trust_standard_library(oracle_state::in, oracle_state::out) is det.
+
+    % Add a module to the set of modules trusted by the oracle.
+    %
+:- pred add_trusted_module(module_name::in,
+    oracle_state::in, oracle_state::out) is det.
 
     % Add a predicate/function to the set of predicates/functions trusted
     % by the oracle.
     %
-:- pred add_trusted_pred_or_func(proc_layout::in, oracle_state::in,
-    oracle_state::out) is det.
-
-    % Trust all the modules in the Mercury standard library.
-    %
-:- pred trust_standard_library(oracle_state::in, oracle_state::out) is det.
+:- pred add_trusted_pred_or_func(proc_layout::in,
+    oracle_state::in, oracle_state::out) is det.
 
     % remove_trusted(Id, !Oracle):
     %
@@ -96,9 +96,12 @@
     % get_trusted_list(Oracle, MDBCommandFormat, String):
     %
     % Return a string listing the trusted objects.
-    % If MDBCommandFormat is true then returns the list so that it can be run
-    % as a series of mdb `trust' commands. Otherwise returns them in a format
-    % suitable for display only.
+    %
+    % If MDBCommandFormat is true, then return the list in the form of
+    % a series of mdb `trust' commands, which can be executed.
+    %
+    % If MDBCommandFormat is false, then return the list in a format
+    % that is suitable for display to the user.
     %
 :- pred get_trusted_list(oracle_state::in, bool::in, string::out) is det.
 
@@ -185,6 +188,7 @@
 :- import_module map.
 :- import_module pair.
 :- import_module set.
+:- import_module solutions.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -209,29 +213,43 @@ oracle_response_undoable(oracle_response_change_search(_)).
                 % User interface.
                 user_state          :: user_state,
 
-                % Modules and predicates/functions trusted by the oracle.
-                % The second argument is an id used to identify an object
-                % to remove.
-                trusted             :: bimap(trusted_object, int),
+                % The set of trusted "objects" (the Mercury standard library,
+                % modules, predicates, and/or functions) trusted by the oracle.
+                % We map each to an integer as an id, and vice versa, in order
+                % to allow the user to untrust an object by giving its id,
+                % instead of having to give e.g. a module name again.
+                %
+                % This field is only used to implement the user interface,
+                % i.e. the command to add, list and delete trusted objects.
+                % The actual test whether a procedure is trusted is done
+                % using the module_trust_map field below, which is optimized
+                % for that task.
+                trusted_object_map  :: bimap(trusted_object, int),
 
                 % Counter to allocate ids to trusted objects.
-                trusted_id_counter  :: counter
+                trusted_id_counter  :: counter,
+
+                % Maps each module to an indication whether
+                %
+                % - the entirety of the module is trusted, and if so,
+                %   whether this trust came about
+                %
+                %   - because this module is part of the Mercury standard
+                %     library, and the user trusted the standard library, or
+                %   - because the user trusted this module explicitly, and
+                %
+                % - which predicates and functions in the module were
+                %   trusted individually by the user.
+                %
+                % This field must be kept in sync with the trusted object map.
+                module_trust_map    :: module_trust_map
             ).
 
-oracle_state_init(InStr, OutStr, Browser, HelpSystem, Oracle) :-
-    oracle_kb_init(Current),
-    oracle_kb_init(Old),
-    user_state_init(InStr, OutStr, Browser, HelpSystem, User),
-    % Trust the standard library by default.
-    bimap.set(trusted_standard_library, 0, bimap.init, Trusted),
-    counter.init(1, Counter),
-    Oracle = oracle(Current, Old, User, Trusted, Counter).
-
-%---------------------------------------------------------------------------%
-
 :- type trusted_object
-    --->    trusted_module(module_name)
-            % all predicates/functions in a module
+    --->    trusted_standard_library
+
+    ;       trusted_module(module_name)
+            % Trust all predicates/functions in the named module.
 
     ;       trusted_predicate(
                 module_name,
@@ -243,17 +261,63 @@ oracle_state_init(InStr, OutStr, Browser, HelpSystem, Oracle) :-
                 module_name,
                 string,     % function name
                 int         % arity including return value
-            )
+            ).
 
-    ;       trusted_standard_library.
+:- type module_trust_map == map(module_name, module_trust_info).
+
+:- type is_trusted
+    --->    is_not_trusted
+    ;       is_trusted.
+
+:- type module_trust_info
+    --->    module_trust_info(
+                is_trusted_stdlib   :: is_trusted,
+                is_trusted_module   :: is_trusted,
+                trusted_preds       :: map(string, set(int)),
+                trusted_funcs       :: map(string, set(int))
+            ).
+
+%---------------------------------------------------------------------------%
+
+oracle_state_init(InStr, OutStr, Browser, HelpSystem, Oracle) :-
+    oracle_kb_init(Current),
+    oracle_kb_init(Old),
+    user_state_init(InStr, OutStr, Browser, HelpSystem, User),
+    counter.init(0, Counter0),
+    Oracle0 = oracle(Current, Old, User, bimap.init, Counter0, map.init),
+    % Trust the standard library by default.
+    trust_standard_library(Oracle0, Oracle).
+
+%---------------------------------------------------------------------------%
+
+trust_standard_library(!Oracle) :-
+    Counter0 = !.Oracle ^ trusted_id_counter,
+    counter.allocate(Id, Counter0, Counter),
+    Trusted0 = !.Oracle ^ trusted_object_map,
+    ( if bimap.insert(trusted_standard_library, Id, Trusted0, Trusted) then
+        !Oracle ^ trusted_object_map := Trusted,
+        !Oracle ^ trusted_id_counter := Counter,
+
+        ModuleTrustMap0 = !.Oracle ^ module_trust_map,
+        list.foldl(add_to_module_trust_map(trust_module_as_stdlib),
+            stdlib_modules, ModuleTrustMap0, ModuleTrustMap),
+        !Oracle ^ module_trust_map := ModuleTrustMap
+    else
+        true
+    ).
 
 add_trusted_module(ModuleName, !Oracle) :-
     Counter0 = !.Oracle ^ trusted_id_counter,
     counter.allocate(Id, Counter0, Counter),
-    Trusted0 = !.Oracle ^ trusted,
+    Trusted0 = !.Oracle ^ trusted_object_map,
     ( if bimap.insert(trusted_module(ModuleName), Id, Trusted0, Trusted) then
-        !Oracle ^ trusted := Trusted,
-        !Oracle ^ trusted_id_counter := Counter
+        !Oracle ^ trusted_object_map := Trusted,
+        !Oracle ^ trusted_id_counter := Counter,
+
+        ModuleTrustMap0 = !.Oracle ^ module_trust_map,
+        add_to_module_trust_map(trust_module_on_its_own, ModuleName,
+            ModuleTrustMap0, ModuleTrustMap),
+        !Oracle ^ module_trust_map := ModuleTrustMap
     else
         true
     ).
@@ -269,84 +333,239 @@ add_trusted_pred_or_func(ProcLayout, !Oracle) :-
         ProcLabel = special_proc_label(ModuleName, _, _, Name, Arity, _),
         PredOrFunc = pf_predicate
     ),
-    Trusted0 = !.Oracle ^ trusted,
+    Trusted0 = !.Oracle ^ trusted_object_map,
     ( if
         (
             PredOrFunc = pf_predicate,
-            bimap.insert(trusted_predicate(ModuleName, Name, Arity), Id,
-                Trusted0, Trusted)
+            TrustedObject = trusted_predicate(ModuleName, Name, Arity)
         ;
             PredOrFunc = pf_function,
-            bimap.insert(trusted_function(ModuleName, Name, Arity), Id,
-                Trusted0, Trusted)
-        )
+            TrustedObject = trusted_function(ModuleName, Name, Arity)
+        ),
+        bimap.insert(TrustedObject, Id, Trusted0, Trusted)
     then
-        !Oracle ^ trusted := Trusted,
-        !Oracle ^ trusted_id_counter := Counter
-    else
-        true
-    ).
-
-trust_standard_library(!Oracle) :-
-    Counter0 = !.Oracle ^ trusted_id_counter,
-    counter.allocate(Id, Counter0, Counter),
-    Trusted0 = !.Oracle ^ trusted,
-    ( if bimap.insert(trusted_standard_library, Id, Trusted0, Trusted) then
+        !Oracle ^ trusted_object_map := Trusted,
         !Oracle ^ trusted_id_counter := Counter,
-        !Oracle ^ trusted := Trusted
+
+        ModuleTrustMap0 = !.Oracle ^ module_trust_map,
+        ( if map.search(ModuleTrustMap0, ModuleName, ModuleTrustInfo0) then
+            ModuleTrustInfo1 = ModuleTrustInfo0
+        else
+            ModuleTrustInfo1 = module_trust_info(is_not_trusted, is_not_trusted,
+                map.init, map.init)
+        ),
+        (
+            PredOrFunc = pf_predicate,
+            PredMap1 = ModuleTrustInfo1 ^ trusted_preds,
+            add_trusted_arity(Name, Arity, PredMap1, PredMap),
+            ModuleTrustInfo = ModuleTrustInfo1 ^ trusted_preds := PredMap
+        ;
+            PredOrFunc = pf_function,
+            FuncMap1 = ModuleTrustInfo1 ^ trusted_funcs,
+            add_trusted_arity(Name, Arity, FuncMap1, FuncMap),
+            ModuleTrustInfo = ModuleTrustInfo1 ^ trusted_funcs := FuncMap
+        ),
+        map.set(ModuleName, ModuleTrustInfo,
+            ModuleTrustMap0, ModuleTrustMap),
+        !Oracle ^ module_trust_map := ModuleTrustMap
     else
         true
     ).
 
 remove_trusted(Id, !Oracle) :-
-    bimap.search(!.Oracle ^ trusted, _, Id),
-    Trusted0 = !.Oracle ^ trusted,
+    Trusted0 = !.Oracle ^ trusted_object_map,
+    bimap.search(Trusted0, OldTrustedObject, Id),
     bimap.delete_value(Id, Trusted0, Trusted),
-    !Oracle ^ trusted := Trusted.
+    !Oracle ^ trusted_object_map := Trusted,
 
-get_trusted_list(Oracle, yes, CommandsStr) :-
-    TrustedObjects = bimap.ordinates(Oracle ^ trusted),
-    TrustedCmdStrs = list.map(format_trust_command, TrustedObjects),
-    CommandsStr = string.append_list(TrustedCmdStrs).
-get_trusted_list(Oracle, no, DisplayStr) :-
-    IdToObjectMap = bimap.reverse_map(Oracle ^ trusted),
-    DisplayStrs = list.map(format_trust_display,
-        map.to_assoc_list(IdToObjectMap)),
+    ModuleTrustMap0 = !.Oracle ^ module_trust_map,
     (
-        DisplayStrs = [],
-        DisplayStr =
-            "There are no trusted modules, predicates or functions.\n"
+        OldTrustedObject = trusted_standard_library,
+        list.foldl(remove_from_module_trust_map(trust_module_as_stdlib),
+            stdlib_modules, ModuleTrustMap0, ModuleTrustMap)
     ;
-        DisplayStrs = [_ | _],
-        DisplayStr = string.append_list(["Trusted Objects:\n" |  DisplayStrs])
+        OldTrustedObject = trusted_module(ModuleName),
+        remove_from_module_trust_map(trust_module_on_its_own, ModuleName,
+            ModuleTrustMap0, ModuleTrustMap)
+    ;
+        ( OldTrustedObject = trusted_predicate(ModuleName, Name, Arity)
+        ; OldTrustedObject = trusted_function(ModuleName, Name, Arity)
+        ),
+        map.lookup(ModuleTrustMap0, ModuleName, ModuleTrustInfo0),
+        ModuleTrustInfo0 = module_trust_info(TrustedStdLib0, TrustedOnItsOwn0,
+            PredMap0, FuncMap0),
+        (
+            OldTrustedObject = trusted_predicate(_, _, _),
+            remove_trusted_arity(Name, Arity, PredMap0, PredMap),
+            FuncMap = FuncMap0
+        ;
+            OldTrustedObject = trusted_function(_, _, _),
+            remove_trusted_arity(Name, Arity, FuncMap0, FuncMap),
+            PredMap = PredMap0
+        ),
+        ModuleTrustInfo = module_trust_info(TrustedStdLib0, TrustedOnItsOwn0,
+            PredMap, FuncMap),
+        ( if
+            TrustedStdLib0 = is_not_trusted,
+            TrustedOnItsOwn0 = is_not_trusted,
+            map.is_empty(PredMap),
+            map.is_empty(FuncMap)
+        then
+            map.delete(ModuleName, ModuleTrustMap0, ModuleTrustMap)
+        else
+            map.det_update(ModuleName, ModuleTrustInfo,
+                ModuleTrustMap0, ModuleTrustMap)
+        )
+    ),
+    !Oracle ^ module_trust_map := ModuleTrustMap.
+
+%---------------------------------------------------------------------------%
+
+:- type trust_module_as
+    --->    trust_module_as_stdlib
+    ;       trust_module_on_its_own.
+
+:- pred add_to_module_trust_map(trust_module_as::in, module_name::in,
+    module_trust_map::in, module_trust_map::out) is det.
+
+add_to_module_trust_map(TrustModuleAs, ModuleName, !ModuleTrustMap) :-
+    ( if map.search(!.ModuleTrustMap, ModuleName, ModuleTrustInfo0) then
+        (
+            TrustModuleAs = trust_module_as_stdlib,
+            ModuleTrustInfo = ModuleTrustInfo0 ^ is_trusted_stdlib :=
+                is_trusted
+        ;
+            TrustModuleAs = trust_module_on_its_own,
+            ModuleTrustInfo = ModuleTrustInfo0 ^ is_trusted_module :=
+                is_trusted
+        ),
+        map.det_update(ModuleName, ModuleTrustInfo, !ModuleTrustMap)
+    else
+        (
+            TrustModuleAs = trust_module_as_stdlib,
+            TrustStdLib = is_trusted,
+            TrustOnItsOwn = is_not_trusted
+        ;
+            TrustModuleAs = trust_module_on_its_own,
+            TrustStdLib = is_not_trusted,
+            TrustOnItsOwn = is_trusted
+        ),
+        ModuleTrustInfo = module_trust_info(TrustStdLib, TrustOnItsOwn,
+            map.init, map.init),
+        map.det_insert(ModuleName, ModuleTrustInfo, !ModuleTrustMap)
     ).
 
-:- func format_trust_command(trusted_object) = string.
+:- pred remove_from_module_trust_map(trust_module_as::in, module_name::in,
+    module_trust_map::in, module_trust_map::out) is det.
 
-format_trust_command(TrustedObject) = CmdStr :-
+remove_from_module_trust_map(TrustModuleAs, ModuleName, !ModuleTrustMap) :-
+    map.lookup(!.ModuleTrustMap, ModuleName, ModuleTrustInfo0),
     (
+        TrustModuleAs = trust_module_as_stdlib,
+        ModuleTrustInfo = ModuleTrustInfo0 ^ is_trusted_stdlib :=
+            is_not_trusted
+    ;
+        TrustModuleAs = trust_module_on_its_own,
+        ModuleTrustInfo = ModuleTrustInfo0 ^ is_trusted_module :=
+            is_not_trusted
+    ),
+    ModuleTrustInfo = module_trust_info(TrustedStdLib, TrustedOnItsOwn,
+        PredMap, FuncMap),
+    ( if
+        TrustedStdLib = is_not_trusted,
+        TrustedOnItsOwn = is_not_trusted,
+        map.is_empty(PredMap),
+        map.is_empty(FuncMap)
+    then
+        map.delete(ModuleName, !ModuleTrustMap)
+    else
+        map.det_update(ModuleName, ModuleTrustInfo, !ModuleTrustMap)
+    ).
+
+:- pred add_trusted_arity(string::in, int::in,
+    map(string, set(int))::in, map(string, set(int))::out) is det.
+
+add_trusted_arity(Name, Arity, !TrustedArityMap) :-
+    ( if map.search(!.TrustedArityMap, Name, TrustedArities0) then
+        set.insert(Arity, TrustedArities0, TrustedArities),
+        map.det_update(Name, TrustedArities, !TrustedArityMap)
+    else
+        set.singleton_set(Arity, TrustedArities),
+        map.det_insert(Name, TrustedArities, !TrustedArityMap)
+    ).
+
+:- pred remove_trusted_arity(string::in, int::in,
+    map(string, set(int))::in, map(string, set(int))::out) is det.
+
+remove_trusted_arity(Name, Arity, !TrustedArityMap) :-
+    map.lookup(!.TrustedArityMap, Name, TrustedArities0),
+    set.det_remove(Arity, TrustedArities0, TrustedArities),
+    ( if set.is_empty(TrustedArities) then
+        map.delete(Name, !TrustedArityMap)
+    else
+        map.det_update(Name, TrustedArities, !TrustedArityMap)
+    ).
+
+:- func stdlib_modules = list(module_name).
+
+stdlib_modules = StdLibModuleNames :-
+    GetStdLibModuleNames =
+        ( pred(ModuleName::out) is multi :-
+            stdlib_module_doc_undoc(ModuleNameStr, _),
+            ModuleName = string_to_sym_name(ModuleNameStr)
+        ),
+    solutions.solutions(GetStdLibModuleNames, StdLibModuleNames).
+
+%---------------------------------------------------------------------------%
+
+get_trusted_list(Oracle, MDBCommandFormat, Str) :-
+    IdToObjectMap = bimap.reverse_map(Oracle ^ trusted_object_map),
+    IdObjectPairs = map.to_assoc_list(IdToObjectMap),
+    (
+        MDBCommandFormat = yes,
+        TrustCmdStrs = list.map(format_trust_command, IdObjectPairs),
+        Str = string.append_list(TrustCmdStrs)
+    ;
+        MDBCommandFormat = no,
+        DisplayStrs = list.map(format_trust_display, IdObjectPairs),
+        (
+            DisplayStrs = [],
+            Str = "There are no trusted modules, predicates or functions.\n"
+        ;
+            DisplayStrs = [_ | _],
+            Str = string.append_list(["Trusted objects:\n" | DisplayStrs])
+        )
+    ).
+
+:- func format_trust_command(pair(int, trusted_object)) = string.
+
+format_trust_command(_Id - TrustedObject) = CmdStr :-
+    (
+        TrustedObject = trusted_standard_library,
+        CmdStr = "trust std lib\n"
+    ;
         TrustedObject = trusted_module(ModuleName),
         ModuleNameStr = sym_name_to_string(ModuleName),
-        CmdStr = "trust " ++ ModuleNameStr ++ "\n"
+        string.format("trust %s\n", [s(ModuleNameStr)], CmdStr)
     ;
         TrustedObject = trusted_predicate(ModuleName, Name, Arity),
         ModuleNameStr = sym_name_to_string(ModuleName),
-        CmdStr = "trust pred*" ++ ModuleNameStr ++ "."
-            ++ Name ++ "/" ++ int_to_string(Arity) ++ "\n"
+        string.format("trust pred*%s.%s/%d\n",
+            [s(ModuleNameStr), s(Name), i(Arity)], CmdStr)
     ;
         TrustedObject = trusted_function(ModuleName, Name, Arity),
         ModuleNameStr = sym_name_to_string(ModuleName),
-        CmdStr = "trust func*" ++ ModuleNameStr ++ "."
-            ++ Name ++ "/" ++ int_to_string(Arity - 1) ++ "\n"
-    ;
-        TrustedObject = trusted_standard_library,
-        CmdStr = "trust std lib\n"
+        string.format("trust func*%s.%s/%d\n",
+            [s(ModuleNameStr), s(Name), i(Arity - 1)], CmdStr)
     ).
 
 :- func format_trust_display(pair(int, trusted_object)) = string.
 
 format_trust_display(Id - TrustedObject) = Display :-
     (
+        TrustedObject = trusted_standard_library,
+        CmdDisplay = "the Mercury standard library"
+    ;
         TrustedObject = trusted_module(ModuleName),
         ModuleNameStr = sym_name_to_string(ModuleName),
         CmdDisplay = "module " ++ ModuleNameStr
@@ -360,11 +579,8 @@ format_trust_display(Id - TrustedObject) = Display :-
         ModuleNameStr = sym_name_to_string(ModuleName),
         CmdDisplay = "function " ++ ModuleNameStr ++ "."
             ++ Name ++ "/" ++ int_to_string(Arity - 1)
-    ;
-        TrustedObject = trusted_standard_library,
-        CmdDisplay = "the Mercury standard library"
     ),
-    Display = int_to_string(Id) ++ ": " ++ CmdDisplay ++ "\n".
+    string.format("%d: %s\n", [i(Id), s(CmdDisplay)], Display).
 
 %---------------------------------------------------------------------------%
 
@@ -440,7 +656,7 @@ query_oracle_user(UserQuestion, OracleResponse, !Oracle, !IO) :-
 
 answer_known(Oracle, Question, Answer) :-
     Atom = get_decl_question_atom(Question),
-    ( if trusted(Atom ^ proc_layout, Oracle) then
+    ( if proc_is_trusted(Oracle, Atom ^ proc_layout) then
         % We tell the analyser that this node does not contain a bug,
         % however its children may still contain bugs, since trusted procs
         % may call untrusted procs. One example is when an untrusted closure
@@ -450,58 +666,30 @@ answer_known(Oracle, Question, Answer) :-
         query_oracle_kb(Oracle ^ kb_current, Question, Answer)
     ).
 
-:- pred trusted(proc_layout::in, oracle_state::in) is semidet.
+:- pred proc_is_trusted(oracle_state::in, proc_layout::in) is semidet.
 
-trusted(ProcLayout, Oracle) :-
-    Trusted = Oracle ^ trusted,
+proc_is_trusted(Oracle, ProcLayout) :-
+    ModuleTrustMap = Oracle ^ module_trust_map,
     ProcLabel = get_proc_label_from_layout(ProcLayout),
     (
         ProcLabel = ordinary_proc_label(Module, PredOrFunc, _, Name, Arity, _),
+        % If the search fails, the procedure is not trusted.
+        map.search(ModuleTrustMap, Module, ModuleTrustInfo),
+        ModuleTrustInfo = module_trust_info(TrustedAsStdLib, TrustedAsModule,
+            PredMap, FuncMap),
         (
-            bimap.search(Trusted, trusted_standard_library, _),
+            TrustedAsStdLib = is_trusted
+        ;
+            TrustedAsModule = is_trusted
+        ;
             (
-                Module = unqualified(ModuleNameStr)
+                PredOrFunc = pf_predicate,
+                map.search(PredMap, Name, TrustedArities)
             ;
-                Module = qualified(ParentModule, SubModuleNameStr),
-                (
-                    ParentModule = unqualified(ParentModuleNameStr),
-                    ModuleNameStr = ParentModuleNameStr ++ "." ++
-                        SubModuleNameStr
-                ;
-                    ParentModule = qualified(GrandParentModule,
-                        ParentModuleNameStr),
-                    (
-                        GrandParentModule =
-                            unqualified(GrandParentModuleNameStr),
-                        ModuleNameStr = GrandParentModuleNameStr ++ "." ++
-                            ParentModuleNameStr ++ "." ++ SubModuleNameStr
-                    ;
-                        GrandParentModule = qualified(_, _),
-                        fail
-                        % Aborting would be preferable if the user is a Mercury
-                        % developer, because it would alert us to the need
-                        % to update this code. However, for ordinary users,
-                        % that would be a hard violation of the law of least
-                        % astonishment. The result of simply failing here
-                        % will be that predicates in the modules affected
-                        % will be treated as if they were not trusted. That is
-                        % also a violation of that same law, but at least
-                        % it lets the user proceed with his/her immediate task.
-                        %
-                        % unexpected($pred,
-                        %     "unexpectedly deeply nested stdlib module name")
-                    )
-                )
+                PredOrFunc = pf_function,
+                map.search(FuncMap, Name, TrustedArities)
             ),
-            mercury_std_library_module(ModuleNameStr)
-        ;
-            bimap.search(Trusted, trusted_module(Module), _)
-        ;
-            PredOrFunc = pf_predicate,
-            bimap.search(Trusted, trusted_predicate(Module, Name, Arity), _)
-        ;
-            PredOrFunc = pf_function,
-            bimap.search(Trusted, trusted_function(Module, Name, Arity), _)
+            set.contains(TrustedArities, Arity)
         )
     ;
         ProcLabel = special_proc_label(_, _, _, _, _, _)
