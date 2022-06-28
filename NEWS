@@ -413,6 +413,15 @@ Changes to the extras distribution
 
 * We have deleted the `old_term_parser` library.
 
+NEWS for Mercury 22.01.3
+========================
+
+This is a bug-fix release.
+
+* [Github issue #103]. We have disabled the use of some GCC optimizations
+  that were causing segmentation faults in code compiled in the `asm_fast`
+  grades with GCC versions 11 and 12 on x86_64 systems.
+
 NEWS for Mercury 22.01.2
 ========================
 
