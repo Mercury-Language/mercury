@@ -3681,8 +3681,8 @@ write_cc(Stream, X, !IO) :-
     stream.string_writer.write(Stream, include_details_cc, X, !IO).
 
 write_line(X, !IO) :-
-    io.write(X, !IO),
-    io.nl(!IO).
+    output_stream(Stream, !IO),
+    write_line(Stream, X, !IO).
 
 write_line(Stream, X, !IO) :-
     io.write(Stream, X, !IO),
@@ -3693,8 +3693,8 @@ write_line(Stream, NonCanon, X, !IO) :-
     io.nl(Stream, !IO).
 
 write_line_cc(X, !IO) :-
-    io.write_cc(X, !IO),
-    io.nl(!IO).
+    output_stream(Stream, !IO),
+    write_line_cc(Stream, X, !IO).
 
 write_line_cc(Stream, X, !IO) :-
     io.write_cc(Stream, X, !IO),
