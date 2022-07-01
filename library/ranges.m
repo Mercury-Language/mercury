@@ -24,7 +24,7 @@
 %---------------------------------------------------------------------------%
 
     % Range lists represent sets of integers. Each contiguous block
-    % of integers in the set is stored as an range which specifies
+    % of integers in the set is stored as a range which specifies
     % the bounds of the block, and these ranges are kept in a list-like
     % structure.
     %
