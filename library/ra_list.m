@@ -43,7 +43,7 @@
     %
 :- func singleton(T) = ra_list(T).
 
-    % Return an random access list with the given head and tail.
+    % Return a random access list with the given head and tail.
     %
 :- pred cons(T::in, ra_list(T)::in, ra_list(T)::out) is det.
 
