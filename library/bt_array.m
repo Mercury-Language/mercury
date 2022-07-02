@@ -10,7 +10,7 @@
 % Main author: bromage.
 % Stability: medium-low
 %
-% This file contains a set of predicates for generating an manipulating a
+% This file contains a set of predicates for generating and manipulating a
 % bt_array data structure. This implementation allows O(log n) access and
 % update time, and does not require the bt_array to be unique. If you need
 % O(1) access/update time, use the array datatype instead. (`bt_array' is
