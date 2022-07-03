@@ -15,7 +15,7 @@
 % deterministic.
 %
 % This is useful when we only want to consider the representation of a term
-% and don't care about it's actual value.
+% and don't care about its actual value.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

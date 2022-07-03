@@ -174,19 +174,20 @@
     % external_request.
     %
 :- type external_request
-    ---> external_request(string).
+    --->    external_request(string).
 
-:- pred read_command(io.text_input_stream::in, io.text_output_stream::in,
-    string::in, command::out, io::di, io::uo) is det.
-
-:- pred read_command_external(io.text_input_stream::in, command::out,
+:- pred read_browser_command(io.text_input_stream::in,
+    io.text_output_stream::in, string::in, command::out,
     io::di, io::uo) is det.
 
-    % parse(Words, Command):
+:- pred read_browser_command_external(io.text_input_stream::in, command::out,
+    io::di, io::uo) is det.
+
+    % parse_browser_command_words(Words, Command):
     %
     % Command is the command give by the list of strings Words.
     %
-:- pred parse(list(string)::in, command::out) is semidet.
+:- pred parse_browser_command_words(list(string)::in, command::out) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -212,21 +213,21 @@
     ;       token_arg(string)
     ;       token_unknown(char).
 
-read_command(MdbIn, MdbOut, Prompt, Command, !IO) :-
+read_browser_command(MdbIn, MdbOut, Prompt, Command, !IO) :-
     util.trace_get_command(MdbIn, MdbOut, Prompt, Line, !IO),
     string.words_separator(char.is_whitespace, Line) = Words,
-    ( if parse(Words, CommandPrime) then
+    ( if parse_browser_command_words(Words, CommandPrime) then
         Command = CommandPrime
     else
         Command = cmd_unknown
     ).
 
-read_command_external(InputStream, Command, !IO) :-
+read_browser_command_external(InputStream, Command, !IO) :-
     io.read(InputStream, Result, !IO),
     (
         Result = ok(external_request(StringToParse)),
         string.words_separator(char.is_whitespace, StringToParse) = Words,
-        ( if parse(Words, CommandPrime) then
+        ( if parse_browser_command_words(Words, CommandPrime) then
             Command = CommandPrime
         else
             Command = cmd_unknown
@@ -239,13 +240,15 @@ read_command_external(InputStream, Command, !IO) :-
         Command = cmd_unknown
     ).
 
+%---------------------------------------------------------------------------%
+
 :- pred lexer_words(list(string)::in, list(token)::out) is det.
 
 lexer_words([], []).
 lexer_words([Word | Words], Tokens) :-
     lexer_word(Word, WordTokens),
     lexer_words(Words, WordsTokens),
-    list.append(WordTokens, WordsTokens, Tokens).
+    Tokens = WordTokens ++ WordsTokens.
 
 :- pred lexer_word(string::in, list(token)::out) is det.
 
@@ -256,45 +259,42 @@ lexer_word(Word, Tokens) :-
 :- pred lexer_word_chars(list(char)::in, list(token)::out) is det.
 
 lexer_word_chars([], []).
-lexer_word_chars([C | Cs], Toks) :-
+lexer_word_chars([C | Cs], Tokens) :-
     ( if C = ('.') then
-        lexer_dots(Cs, Toks)
-    else if C = ('/') then
-        Toks = [token_slash | Toks2],
-        lexer_word_chars(Cs, Toks2)
-    else if C = ('?') then
-        Toks = [token_question | Toks2],
-        lexer_word_chars(Cs, Toks2)
-    else if C = ('^') then
-        Toks = [token_up | Toks2],
-        lexer_word_chars(Cs, Toks2)
-    else if C = ('<') then
-        Toks = [token_lessthan | Toks2],
-        lexer_word_chars(Cs, Toks2)
+        lexer_dots(Cs, Tokens)
+    else if
+        ( C = ('/'), Token = token_slash
+        ; C = ('?'), Token = token_question
+        ; C = ('^'), Token = token_up
+        ; C = ('<'), Token = token_lessthan
+        )
+    then
+        lexer_word_chars(Cs, TailTokens),
+        Tokens = [Token | TailTokens]
     else if C = ('-'), Cs = [H | T] then
-        lexer_arg([H | T], Toks)
+        lexer_arg([H | T], Tokens)
     else if char.is_digit(C) then
         dig_to_int(C, N),
-        lexer_num(N, Cs, Toks)
+        lexer_num(N, Cs, Tokens)
     else if char.is_alpha_or_underscore(C) then
-        lexer_name(C, Cs, Toks)
+        lexer_name(C, Cs, Tokens)
     else if char.is_whitespace(C) then
-        lexer_word_chars(Cs, Toks)
+        lexer_word_chars(Cs, Tokens)
     else
-        Toks = [token_unknown(C) | Toks2],
-        lexer_word_chars(Cs, Toks2)
+        lexer_word_chars(Cs, TailTokens),
+        Tokens = [token_unknown(C) | TailTokens]
     ).
 
 :- pred lexer_dots(list(char)::in, list(token)::out) is det.
 
 lexer_dots([], []).
-lexer_dots([C | Cs], Toks) :-
+lexer_dots([C | Cs], Tokens) :-
     ( if C = ('.') then
-        lexer_word_chars(Cs, Toks2),
-        Toks = [token_dot_dot | Toks2]
+        lexer_word_chars(Cs, TailTokens),
+        Tokens = [token_dot_dot | TailTokens]
     else
-        lexer_word_chars([C | Cs], Toks2),
-        Toks = [token_dot | Toks2]
+        lexer_word_chars([C | Cs], TailTokens),
+        Tokens = [token_dot | TailTokens]
     ).
 
 :- pred dig_to_int(char::in, int::out) is det.
@@ -306,41 +306,41 @@ dig_to_int(C, N) :-
 
 :- pred lexer_arg(list(char)::in(non_empty_list), list(token)::out) is det.
 
-lexer_arg([Head | Tail], Toks) :-
+lexer_arg([Head | Tail], Tokens) :-
     ( if Head = ('-') then
         string.from_char_list(Tail, ArgName)
     else
         string.from_char_list([Head | Tail], ArgName)
     ),
-    Toks = [token_arg(ArgName)].
+    Tokens = [token_arg(ArgName)].
 
 :- pred lexer_num(int::in, list(char)::in, list(token)::out) is det.
 
-lexer_num(N, Cs, Toks) :-
-    list.take_while(char.is_digit, Cs, Digits, Rest),
+lexer_num(N, Cs, Tokens) :-
+    list.take_while(char.is_digit, Cs, Digits, TailCs),
     digits_to_int_acc(N, Digits, Num),
-    Toks = [token_num(Num) | Toks2],
-    lexer_word_chars(Rest, Toks2).
+    lexer_word_chars(TailCs, TailTokens),
+    Tokens = [token_num(Num) | TailTokens].
 
 :- pred digits_to_int_acc(int::in, list(char)::in, int::out) is det.
 
 digits_to_int_acc(Acc, [], Acc).
 digits_to_int_acc(Acc, [C | Cs], Num) :-
-    dig_to_int(C, D),
-    Acc2 = 10 * Acc + D,
-    digits_to_int_acc(Acc2, Cs, Num).
+    dig_to_int(C, Digit),
+    NextAcc = 10 * Acc + Digit,
+    digits_to_int_acc(NextAcc, Cs, Num).
 
 :- pred lexer_name(char::in, list(char)::in, list(token)::out) is det.
 
-lexer_name(C, Cs, Toks) :-
-    list.take_while(char.is_alnum_or_underscore, Cs, Letters, Rest),
-    string.from_char_list([C | Letters], Name),
-    lexer_word_chars(Rest, Toks2),
-    Toks = [token_name(Name) | Toks2].
+lexer_name(C, Cs, Tokens) :-
+    list.take_while(char.is_alnum_or_underscore, Cs, LetterCs, TailCs),
+    string.from_char_list([C | LetterCs], Name),
+    lexer_word_chars(TailCs, TailTokens),
+    Tokens = [token_name(Name) | TailTokens].
 
 %---------------------------------------------------------------------------%
 
-parse(Words, Command) :-
+parse_browser_command_words(Words, Command) :-
     (
         Words = [],
         Command = cmd_empty
@@ -357,31 +357,31 @@ parse(Words, Command) :-
             % make sense to parse the command line as words.
             MaybeArgWords = no
         ),
-        list.append(CmdTokens, ArgTokens, AllTokens),
+        AllTokens = CmdTokens ++ ArgTokens,
         (
             AllTokens = [],
             Command = cmd_empty
         ;
             AllTokens = [FirstToken | LaterTokens],
-            parse_cmd(FirstToken, LaterTokens, MaybeArgWords, Command)
+            parse_browser_command_tokens(FirstToken, LaterTokens,
+                MaybeArgWords, Command)
         )
     ).
 
-:- pred parse_cmd(token::in, list(token)::in, maybe(list(string))::in,
-    command::out) is semidet.
+:- pred parse_browser_command_tokens(token::in, list(token)::in,
+    maybe(list(string))::in, command::out) is semidet.
 
-parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
+parse_browser_command_tokens(CmdToken, ArgTokens, MaybeArgWords, Command) :-
     % Please keep the code recognizing commands in the same order
     % as the definition of the command type.
 
     % If you add more commands, please update the documentation printed
     % by the help predicate in browse.m.
-    ( if
+    (
         ( CmdToken = token_name("print")
         ; CmdToken = token_name("p")
         ; CmdToken = token_name("ls")
-        )
-    then
+        ),
         (
             MaybeArgWords = no,
             MaybeMaybeOptionTable = no,
@@ -406,25 +406,23 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
             MaybePath = yes(Path)
         ),
         Command = cmd_print(MaybeMaybeOptionTable, MaybePath)
-    else if
+    ;
         ( CmdToken = token_name("display")
         ; CmdToken = token_name("d")
-        )
-    then
+        ),
         ArgTokens = [],
         Command = cmd_display
-    else if
+    ;
         ( CmdToken = token_name("write")
         ; CmdToken = token_name("w")
-        )
-    then
+        ),
         ArgTokens = [],
         Command = cmd_write
-    else if
+    ;
         ( CmdToken = token_name("memory_addr")
-        ; CmdToken = token_name("addr")         % "m" and "a" are both taken.
-        )
-    then
+        ; CmdToken = token_name("addr")
+        ),
+        % The abbreviations "m" and "a" are both taken.
         (
             ArgTokens = [],
             MaybePath = no
@@ -434,19 +432,17 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
             MaybePath = yes(Path)
         ),
         Command = cmd_memory_addr(MaybePath)
-    else if
-        CmdToken = token_name("cdr")
-    then
+    ;
+        CmdToken = token_name("cdr"),
         ArgTokens = [token_num(Repetitions) | TokenPath],
         list.duplicate(Repetitions, TokenPath, DupTokenPath),
         list.condense(DupTokenPath, RepeatedTokenPath),
         parse_path(RepeatedTokenPath, RepeatedPath),
         Command = cmd_cd_path(RepeatedPath)
-    else if
+    ;
         ( CmdToken = token_name("cd")
         ; CmdToken = token_up
-        )
-    then
+        ),
         (
             ArgTokens = [_ | _],
             parse_path(ArgTokens, Path),
@@ -455,12 +451,11 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
             ArgTokens = [],
             Command = cmd_cd_no_path
         )
-    else if
-        CmdToken = token_name("pwd")
-    then
+    ;
+        CmdToken = token_name("pwd"),
         ArgTokens = [],
         Command = cmd_pwd
-    else if
+    ;
         (
             CmdToken = token_name("track"),
             AssertInvalid = no_assert_invalid
@@ -473,8 +468,7 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
         ;
             CmdToken = token_name("m"),
             AssertInvalid = assert_invalid
-        )
-    then
+        ),
         (
             ArgTokens = [],
             HowTrack = track_fast,
@@ -502,9 +496,8 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
             )
         ),
         Command = cmd_track(HowTrack, AssertInvalid, MaybePath)
-    else if
-        CmdToken = token_name("mode")
-    then
+    ;
+        CmdToken = token_name("mode"),
         (
             ArgTokens = [_ | _],
             parse_path(ArgTokens, Path),
@@ -513,9 +506,8 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
             ArgTokens = [],
             Command = cmd_mode_query_no_path
         )
-    else if
-        CmdToken = token_name("format")
-    then
+    ;
+        CmdToken = token_name("format"),
         (
             ArgTokens = [],
             FormatCmd = print_params
@@ -533,7 +525,7 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
             FormatCmd = format(MaybeOptionTable, Setting)
         ),
         Command = cmd_param(FormatCmd)
-    else if
+    ;
         (
             CmdToken = token_name("depth"),
             ParamCmd = param_depth
@@ -546,8 +538,7 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
         ;
             CmdToken = token_name("lines"),
             ParamCmd = param_lines
-        )
-    then
+        ),
         (
             ArgTokens = [],
             FormatCmd = print_params
@@ -567,9 +558,8 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
             FormatCmd = format_param(MaybeOptionTable, Setting)
         ),
         Command = cmd_param(FormatCmd)
-    else if
-        CmdToken = token_lessthan
-    then
+    ;
+        CmdToken = token_lessthan,
         ArgTokens = [token_num(Depth)],
         OptionOps = option_ops_multi(short_format_param_cmd_option,
             long_format_param_cmd_option, format_param_cmd_option_defaults),
@@ -577,30 +567,24 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
         MaybeOptionTable = convert_to_maybe_option_table(MaybeOptionTable0),
         FormatCmd = format_param(MaybeOptionTable, setting_depth(Depth)),
         Command = cmd_param(FormatCmd)
-    else if
-        CmdToken = token_name("num_io_actions")
-    then
+    ;
+        CmdToken = token_name("num_io_actions"),
         ArgTokens = [token_num(N)],
         Command = cmd_param(num_io_actions(N))
-    else if
-        CmdToken = token_name("params")
-    then
+    ;
+        CmdToken = token_name("params"),
         Command = cmd_param(print_params)
-    else if
+    ;
         ( CmdToken = token_name("help")
         ; CmdToken = token_name("h")
         ; CmdToken = token_question
-        )
-    then
+        ),
         ArgTokens = [],
         Command = cmd_help
-    else if
-        CmdToken = token_name("quit")
-    then
+    ;
+        CmdToken = token_name("quit"),
         ArgTokens = [],
         Command = cmd_quit
-    else
-        fail
     ).
 
 :- pred param_cmd_to_setting(format_param_cmd::in, int::in, setting::out)
@@ -656,36 +640,40 @@ parse_up_down_dirs([Token | Tokens], Dirs) :-
 
 parse_format([Token], Setting) :-
     Token = token_name(TokenName),
-    ( if TokenName = "flat" then
+    (
+        TokenName = "flat",
         Setting = setting_format(flat)
-    else if TokenName = "raw_pretty" then
+    ;
+        TokenName = "raw_pretty",
         Setting = setting_format(raw_pretty)
-    else if TokenName = "verbose" then
+    ;
+        TokenName = "verbose",
         Setting = setting_format(verbose)
-    else if TokenName = "pretty" then
+    ;
+        TokenName = "pretty",
         Setting = setting_format(pretty)
-    else
-        fail
     ).
 
 :- pred parse_format_param(list(token)::in, setting::out) is semidet.
 
 parse_format_param([Token | Tokens], Setting) :-
     Token = token_name(TokenName),
-    ( if TokenName = "depth" then
+    (
+        TokenName = "depth",
         Tokens = [token_num(Depth)],
         Setting = setting_depth(Depth)
-    else if TokenName = "size" then
+    ;
+        TokenName = "size",
         Tokens = [token_num(Size)],
         Setting = setting_size(Size)
-    else if TokenName = "width" then
+    ;
+        TokenName = "width",
         Tokens = [token_num(X)],
         Setting = setting_width(X)
-    else if TokenName = "lines" then
+    ;
+        TokenName = "lines",
         Tokens = [token_num(Y)],
         Setting = setting_lines(Y)
-    else
-        fail
     ).
 
 %---------------------------------------------------------------------------%

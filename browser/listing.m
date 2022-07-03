@@ -60,11 +60,11 @@
     %
 :- pred pop_list_path(search_path::in, search_path::out) is det.
 
-    % list_file(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine,
-    %   Path, !IO):
+    % list_file(OutStreamC, ErrorStreamC, FileName, FirstLine, LastLine,
+    %   MarkLine, Path, !IO):
     %
-    % Print, on OutStrm, the lines from FileName with numbers in the range
-    % FirstLine.. LastLine (the first line is numbered 1). We mark the line
+    % Print, on OutStreamC, the lines from FileName with numbers in the range
+    % FirstLine..LastLine (the first line is numbered 1). We mark the line
     % numbered MarkLine with a chevron; we indent all other lines
     % appropriately.
     %
@@ -73,21 +73,27 @@
     % search path stack in turn until a match is found. If no match is found,
     % we print an error message.
     %
-    % We report any errors on ErrStrm.
+    % We report any errors on ErrorStreamC.
     %
 :- pred list_file(c_file_ptr::in, c_file_ptr::in, file_name::in, line_no::in,
     line_no::in, line_no::in, search_path::in, io::di, io::uo) is det.
 
     % As above, but implemented without foreign code. This is used by the
-    % source-to-source debugger which does not enable debugging in standard
-    % library so does not suffer the problem of excessive stack usage.
+    % source-to-source debugger, which does not enable debugging in the
+    % standard library, so does not suffer the problem of excessive
+    % stack usage.
     %
-:- pred list_file_portable(io.output_stream::in, io.output_stream::in,
-    file_name::in, line_no::in, line_no::in, line_no::in, search_path::in,
+    % XXX Stack usage should not be a problem if we implemented this predicate
+    % using either read_named_file_as_line, or read_file_as_string and
+    % split_into_lines.
+    %
+:- pred list_file_portable(io.text_output_stream::in,
+    io.text_output_stream::in, file_name::in,
+    line_no::in, line_no::in, line_no::in, search_path::in,
     io::di, io::uo) is det.
 
-    % list_file_with_command(OutStrm, ErrStrm, FileName, FirstLine, LastLine,
-    %   MarkLine, Path, !IO):
+    % list_file_with_command(OutStreamC, ErrorStreamC, FileName,
+    %   FirstLine, LastLine, MarkLine, Path, !IO):
     %
     % Like list_file, but invokes an external command to print the source
     % listing. The command is passed the four arguments:
@@ -173,20 +179,20 @@ pop_list_path([_ | Path], Path).
 
 %---------------------------------------------------------------------------%
 
-list_file(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Path,
-        !IO) :-
+list_file(OutStreamC, ErrorStreamC, FileName, FirstLine, LastLine, MarkLine,
+        Path, !IO) :-
     ( if dir.path_name_is_absolute(FileName) then
         io.open_input(FileName, Result0, !IO),
         (
             Result0 = ok(InStream),
-            InStrm = mercury_stream_to_c_file_ptr(InStream),
-            print_lines_in_range_c(InStrm, OutStrm, 1, FirstLine, LastLine,
-                MarkLine, !IO),
+            InStreamC = mercury_stream_to_c_file_ptr(InStream),
+            print_lines_in_range_c(InStreamC, OutStreamC,
+                1, FirstLine, LastLine, MarkLine, !IO),
             io.close_input(InStream, !IO)
         ;
             Result0 = error(Error),
             ErrorMsg = io.error_message(Error),
-            write_to_c_file(ErrStrm,
+            write_to_c_file(ErrorStreamC,
                 string.format("mdb: cannot open file %s: %s\n",
                     [s(FileName), s(ErrorMsg)]), !IO)
         )
@@ -194,74 +200,69 @@ list_file(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Path,
         find_and_open_file([dir.this_directory | Path], FileName, Result, !IO),
         (
             Result = yes(InStream),
-            InStrm = mercury_stream_to_c_file_ptr(InStream),
-            print_lines_in_range_c(InStrm, OutStrm, 1, FirstLine, LastLine,
-                MarkLine, !IO),
+            InStreamC = mercury_stream_to_c_file_ptr(InStream),
+            print_lines_in_range_c(InStreamC, OutStreamC,
+                1, FirstLine, LastLine, MarkLine, !IO),
             io.close_input(InStream, !IO)
         ;
             Result = no,
-            write_to_c_file(ErrStrm,
-                string.format("mdb: cannot find file %s\n",
-                    [s(FileName)]), !IO)
+            string.format("mdb: cannot find file %s\n", [s(FileName)], Msg),
+            write_to_c_file(ErrorStreamC, Msg, !IO)
         )
     ).
 
-:- func mercury_stream_to_c_file_ptr(io.input_stream) = c_file_ptr.
+:- func mercury_stream_to_c_file_ptr(io.text_input_stream) = c_file_ptr.
 
 :- pragma foreign_proc("C",
-    mercury_stream_to_c_file_ptr(InStream::in) = (InStrm::out),
+    mercury_stream_to_c_file_ptr(InStream::in) = (InStreamC::out),
     [promise_pure, thread_safe, will_not_call_mercury],
 "
-    InStrm = MR_file(*(MR_unwrap_input_stream(InStream)));
+    InStreamC = MR_file(*(MR_unwrap_input_stream(InStream)));
 ").
 
 :- pred write_to_c_file(c_file_ptr::in, string::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    write_to_c_file(ErrStrm::in, Str::in, _IO0::di, _IO::uo),
+    write_to_c_file(ErrorStreamC::in, Str::in, _IO0::di, _IO::uo),
     [promise_pure, thread_safe, will_not_call_mercury],
 "
-    fputs(Str, (FILE *)ErrStrm);
+    fputs(Str, (FILE *) ErrorStreamC);
 ").
 
 %---------------------------------------------------------------------------%
 
-list_file_portable(OutStrm, ErrStrm, FileName, FirstLine, LastLine,
+list_file_portable(OutStream, ErrorStream, FileName, FirstLine, LastLine,
         MarkLine, Path, !IO) :-
     ( if dir.path_name_is_absolute(FileName) then
         io.open_input(FileName, Result0, !IO),
         (
-            Result0 = ok(InStrm),
-            print_lines_in_range_m(InStrm, OutStrm, 1, FirstLine, LastLine,
-                MarkLine, !IO),
-            io.close_input(InStrm, !IO)
+            Result0 = ok(InStream),
+            print_lines_in_range_m(InStream, OutStream,
+                1, FirstLine, LastLine, MarkLine, !IO),
+            io.close_input(InStream, !IO)
         ;
             Result0 = error(Error),
             ErrorMsg = io.error_message(Error),
-            io.write_string(ErrStrm, "mdb: cannot open file ", !IO),
-            io.write_string(ErrStrm, FileName, !IO),
-            io.write_string(ErrStrm, ": ", !IO),
-            io.write_string(ErrStrm, ErrorMsg, !IO),
-            io.write_string(ErrStrm, "\n", !IO)
+            io.format(ErrorStream, "mdb: cannot open file %s: %s\n",
+                [s(FileName), s(ErrorMsg)], !IO)
         )
     else
         find_and_open_file([dir.this_directory | Path], FileName, Result, !IO),
         (
-            Result = yes(InStrm),
-            print_lines_in_range_m(InStrm, OutStrm, 1, FirstLine, LastLine,
-                MarkLine, !IO),
-            io.close_input(InStrm, !IO)
+            Result = yes(InStream),
+            print_lines_in_range_m(InStream, OutStream,
+                1, FirstLine, LastLine, MarkLine, !IO),
+            io.close_input(InStream, !IO)
         ;
             Result = no,
-            io.write_string(ErrStrm, "mdb: cannot find file ", !IO),
-            io.write_string(ErrStrm, FileName, !IO),
-            io.write_string(ErrStrm, "\n", !IO)
+            io.format(ErrorStream, "mdb: cannot find file %s\n",
+                [s(FileName)], !IO)
         )
     ).
 
 %---------------------------------------------------------------------------%
 
-list_file_with_command(OutStrm, ErrStrm, Command, FileName, FirstLine,
+list_file_with_command(OutStream, ErrorStream, Command, FileName, FirstLine,
         LastLine, MarkLine, Path, !IO) :-
     LineArgs = [string.from_int(FirstLine), string.from_int(LastLine),
         string.from_int(MarkLine)],
@@ -273,17 +274,17 @@ list_file_with_command(OutStrm, ErrStrm, Command, FileName, FirstLine,
     (
         FindResult = yes(FoundFileName),
         execute_command_with_redirects(Command, [FoundFileName | LineArgs],
-            OutStrm, ErrStrm, CallResult, !IO),
+            OutStream, ErrorStream, CallResult, !IO),
         (
             CallResult = ok
         ;
             CallResult = error(Error),
-            write_to_c_file(ErrStrm,
+            write_to_c_file(ErrorStream,
                 string.format("mdb: %s: %s\n", [s(Command), s(Error)]), !IO)
         )
     ;
         FindResult = no,
-        write_to_c_file(ErrStrm,
+        write_to_c_file(ErrorStream,
             string.format("mdb: cannot find file %s\n", [s(FileName)]), !IO)
     ).
 
@@ -294,7 +295,7 @@ list_file_with_command(OutStrm, ErrStrm, Command, FileName, FirstLine,
     % (including the path component) and input stream handle.
     %
 :- pred find_and_open_file(search_path::in, file_name::in,
-    maybe(io.input_stream)::out, io::di, io::uo) is det.
+    maybe(io.text_input_stream)::out, io::di, io::uo) is det.
 
 find_and_open_file([], _, no, !IO).
 find_and_open_file([Dir | Path], FileName, Result, !IO) :-
@@ -342,11 +343,11 @@ find_file([Dir | Path], FileName0, Result, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-    % print_lines_in_range(InStrm, OutStrm, ThisLine, FirstLine, LastLine,
-    %   MarkLine, !IO):
+    % print_lines_in_range(InStreamC, OutStreamC,
+    %   ThisLine, FirstLine, LastLine, MarkLine, !IO):
     %
-    % Print the lines numbered FirstLine to LastLine from InStrm
-    % on OutStrm (the current line number is taken as ThisLine).
+    % Print the lines numbered FirstLine to LastLine from InStreamC
+    % on OutStreamC (the current line number is taken as ThisLine).
     % Each line is printed indented with "  ", except for the line
     % numbered MarkLine, if it occurs in the range FirstLine .. LastLine,
     % which is indented with "> ".
@@ -355,28 +356,28 @@ find_file([Dir | Path], FileName0, Result, !IO) :-
     line_no::in, line_no::in, line_no::in, line_no::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    print_lines_in_range_c(InStrm::in, OutStrm::in, ThisLine::in,
+    print_lines_in_range_c(InStreamC::in, OutStreamC::in, ThisLine::in,
         FirstLine::in, LastLine::in, MarkLine::in, _IO0::di, _IO::uo),
     [promise_pure, thread_safe, will_not_call_mercury],
 "
     if (FirstLine <= ThisLine && ThisLine <= LastLine) {
         const char *s = (ThisLine == MarkLine) ? \"> \" : \"  \";
-        fputs(s, (FILE *)OutStrm);
+        fputs(s, (FILE *) OutStreamC);
     }
-    while(ThisLine <= LastLine) {
-        int c = fgetc((FILE *)InStrm);
+    while (ThisLine <= LastLine) {
+        int c = fgetc((FILE *) InStreamC);
         if (c == EOF) {
-            fputc('\\n', (FILE *)OutStrm);
+            fputc('\\n', (FILE *) OutStreamC);
             break;
         }
         if (FirstLine <= ThisLine) {
-            fputc(c, (FILE *)OutStrm);
+            fputc(c, (FILE *) OutStreamC);
         }
         if (c == '\\n') {
             ThisLine++;
             if (FirstLine <= ThisLine && ThisLine <= LastLine)  {
                 const char *s = (ThisLine == MarkLine) ? \"> \" : \"  \";
-                fputs(s, (FILE *)OutStrm);
+                fputs(s, (FILE *) OutStreamC);
             }
         }
     }
@@ -384,33 +385,32 @@ find_file([Dir | Path], FileName0, Result, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred print_lines_in_range_m(io.input_stream::in, io.output_stream::in,
+:- pred print_lines_in_range_m(io.text_input_stream::in,
+    io.text_output_stream::in,
     line_no::in, line_no::in, line_no::in, line_no::in, io::di, io::uo) is det.
 
-print_lines_in_range_m(InStrm, OutStrm, ThisLine, FirstLine, LastLine,
+print_lines_in_range_m(InStream, OutStream, ThisLine, FirstLine, LastLine,
         MarkLine, !IO) :-
-    io.read_line_as_string(InStrm, Res, !IO),
+    io.read_line_as_string(InStream, Res, !IO),
     (
         Res = ok(Line),
         ( if FirstLine =< ThisLine, ThisLine =< LastLine then
             ( if ThisLine = MarkLine then
-                io.write_string(OutStrm, "> ", !IO)
+                io.write_string(OutStream, "> ", !IO)
             else
-                io.write_string(OutStrm, "  ", !IO)
+                io.write_string(OutStream, "  ", !IO)
             ),
-            io.write_string(OutStrm, Line, !IO)
+            io.write_string(OutStream, Line, !IO)
         else
             true
         ),
-        print_lines_in_range_m(InStrm, OutStrm, ThisLine + 1, FirstLine,
+        print_lines_in_range_m(InStream, OutStream, ThisLine + 1, FirstLine,
             LastLine, MarkLine, !IO)
     ;
         Res = eof
     ;
         Res = error(Error),
-        io.write_string(OutStrm, "Error: ", !IO),
-        io.write_string(OutStrm, io.error_message(Error), !IO),
-        io.write_string(OutStrm, "\n", !IO)
+        io.format(OutStream, "Error: %s\n", [s(io.error_message(Error))], !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -418,12 +418,13 @@ print_lines_in_range_m(InStrm, OutStrm, ThisLine, FirstLine, LastLine,
 :- pred execute_command_with_redirects(string::in, list(string)::in,
     c_file_ptr::in, c_file_ptr::in, maybe_error::out, io::di, io::uo) is det.
 
-execute_command_with_redirects(Prog, Args, OutStrm, ErrStrm, Result, !IO) :-
-    do_posix_spawnp(Prog, length(Args), Args, OutStrm, ErrStrm, Status, Error0,
-        !IO),
+execute_command_with_redirects(Prog, Args, OutStreamC, ErrorStreamC,
+        Result, !IO) :-
+    do_posix_spawnp(Prog, length(Args), Args, OutStreamC, ErrorStreamC, Status,
+        Error0, !IO),
     ( if Status = -1 then
-        io.make_err_msg(Error0, "error invoking system command: ", Message,
-            !IO),
+        io.make_err_msg(Error0, "error invoking system command: ",
+            Message, !IO),
         Result = error(Message)
     else if Status = -2 then
         Result = error("posix_spawn not supported on this platform")
@@ -450,15 +451,16 @@ execute_command_with_redirects(Prog, Args, OutStrm, ErrStrm, Result, !IO) :-
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    do_posix_spawnp(Prog::in, NumArgs::in, Args::in, OutStrm::in, ErrStrm::in,
-        Status::out, Error::out, _IO0::di, _IO::uo),
+    do_posix_spawnp(Prog::in, NumArgs::in, Args::in,
+        OutStreamC::in, ErrorStreamC::in, Status::out, Error::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
     int error;
 
     Status = do_posix_spawnp(Prog, NumArgs, Args,
-        fileno(OutStrm), fileno(ErrStrm), &error);
+        fileno(OutStreamC), fileno(ErrorStreamC), &error);
     if (Status == -1) {
         Error = error;
     } else {

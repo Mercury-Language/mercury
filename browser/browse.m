@@ -332,10 +332,11 @@ browse_common(InputStream, Debugger, MaybeFormat, MaybeModeFunc, Object,
 browse_main_loop(InputStream, Debugger, !Info, !IO) :-
     (
         Debugger = debugger_internal(OutputStream),
-        parse.read_command(InputStream, OutputStream, prompt, Command, !IO)
+        parse.read_browser_command(InputStream, OutputStream, prompt,
+            Command, !IO)
     ;
         Debugger = debugger_external(OutputStream),
-        parse.read_command_external(InputStream, Command, !IO)
+        parse.read_browser_command_external(InputStream, Command, !IO)
     ),
     run_command(Debugger, Command, Quit, !Info, !IO),
     (

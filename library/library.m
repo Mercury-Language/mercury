@@ -216,10 +216,10 @@
 :- import_module test_bitset.
 
 % library.version must be implemented using pragma foreign_proc,
-% so we can get at the MR_VERSION and MR_FULLARCH configuration
-% parameters.  We can't just generate library.m from library.m.in
-% at configuration time, because that would cause bootstrapping problems --
-% we might not have a Mercury compiler around to compile library.m with.
+% so we can get at the MR_VERSION and MR_FULLARCH configuration parameters.
+% We can't just generate library.m from library.m.in at configuration time,
+% because that would cause bootstrapping problems: we might not have
+% a working Mercury compiler to compile library.m with.
 
 :- pragma no_inline(pred(library.version/2)).
 
@@ -230,8 +230,8 @@
     MR_ConstString version_string = MR_VERSION;
     MR_ConstString fullarch_string = MR_FULLARCH;
 
-    // Cast away const needed here, because Mercury declares Version
-    // with type MR_String rather than MR_ConstString.
+    // We need to cast away const here, because Mercury declares Version
+    // and Fullarch to have type MR_String, not MR_ConstString.
     Version = (MR_String) (MR_Word) version_string;
     Fullarch = (MR_String) (MR_Word) fullarch_string;
 ").

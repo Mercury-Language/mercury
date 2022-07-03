@@ -24,14 +24,14 @@
 
     % Get user input via the same method used by the internal debugger.
     %
-:- pred trace_getline(io.input_stream::in, io.output_stream::in,
+:- pred trace_getline(io.text_input_stream::in, io.text_output_stream::in,
     string::in, io.result(string)::out, io::di, io::uo) is det.
 
     % trace_get_command is similar to trace_getline except that
     % it breaks lines into semicolon separated commands, and
     % replaces EOF with the command 'quit'.
     %
-:- pred trace_get_command(io.input_stream::in, io.output_stream::in,
+:- pred trace_get_command(io.text_input_stream::in, io.text_output_stream::in,
     string::in, string::out, io::di, io::uo) is det.
 
 :- pred zip_with(pred(T1, T2, T3)::in(pred(in, in, out) is det),
@@ -57,8 +57,8 @@ trace_getline(MdbIn, MdbOut, Prompt, Result, !IO) :-
         Result = ok(Line)
     ).
 
-:- pred call_trace_getline(input_stream::in, output_stream::in, string::in,
-    string::out, int::out, io.state::di, io.state::uo) is det.
+:- pred call_trace_getline(io.text_input_stream::in, io.text_output_stream::in,
+    string::in, string::out, int::out, io::di, io::uo) is det.
 
 :- pragma foreign_decl("C", "
     #include ""mercury_wrapper.h""

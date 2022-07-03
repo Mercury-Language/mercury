@@ -146,13 +146,8 @@
 
     % Returns the state of the term browser.
     %
-:- func get_browser_state(oracle_state)
+:- func get_oracle_browser_state(oracle_state)
     = browser_info.browser_persistent_state.
-
-    % Sets the state of the term browser.
-    %
-:- pred set_browser_state(browser_info.browser_persistent_state::in,
-    oracle_state::in, oracle_state::out) is det.
 
     % Return the output stream used for interacting with the user.
     %
@@ -161,6 +156,11 @@
     % Return the input stream used for interacting with the user.
     %
 :- func get_oracle_user_input_stream(oracle_state) = io.input_stream.
+
+    % Sets the state of the term browser.
+    %
+:- pred set_oracle_browser_state(browser_info.browser_persistent_state::in,
+    oracle_state::in, oracle_state::out) is det.
 
     % Set the testing flag of the user_state in the given oracle.
     %
@@ -966,18 +966,19 @@ remove_atom_from_ground_map(FinalAtom, ProcLayout, !Map) :-
 
 %---------------------------------------------------------------------------%
 
-get_browser_state(Oracle) =
-    mdb.declarative_user.get_browser_state(Oracle ^ user_state).
-
-set_browser_state(Browser, !Oracle) :-
-    declarative_user.set_browser_state(Browser, !.Oracle ^ user_state, User),
-    !Oracle ^ user_state := User.
+get_oracle_browser_state(Oracle) =
+    mdb.declarative_user.get_user_browser_state(Oracle ^ user_state).
 
 get_oracle_user_output_stream(Oracle) =
     declarative_user.get_user_output_stream(Oracle ^ user_state).
 
 get_oracle_user_input_stream(Oracle) =
     declarative_user.get_user_input_stream(Oracle ^ user_state).
+
+set_oracle_browser_state(Browser, !Oracle) :-
+    User0 = !.Oracle ^ user_state,
+    declarative_user.set_user_browser_state(Browser, User0, User),
+    !Oracle ^ user_state := User.
 
 set_oracle_testing_flag(Testing, !Oracle) :-
     User0 = !.Oracle ^ user_state,

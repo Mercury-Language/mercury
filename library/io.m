@@ -3928,22 +3928,23 @@ read_file(Result, !IO) :-
     read_file(Stream, Result, !IO).
 
 read_file(Stream, Result, !IO) :-
-    read_file_2(Stream, [], Result, !IO).
+    read_file_chars_acc(Stream, [], Result, !IO).
 
-:- pred read_file_2(input_stream::in, list(char)::in,
+:- pred read_file_chars_acc(input_stream::in, list(char)::in,
     maybe_partial_res(list(char))::out, io::di, io::uo) is det.
 
-read_file_2(Stream, Chars0, Result, !IO) :-
+read_file_chars_acc(Stream, RevChars0, Result, !IO) :-
     read_char(Stream, Result0, !IO),
     (
         Result0 = eof,
-        Result = ok(list.reverse(Chars0))
+        Result = ok(list.reverse(RevChars0))
     ;
-        Result0 = error(Err),
-        Result = error(list.reverse(Chars0), Err)
+        Result0 = error(Error),
+        Result = error(list.reverse(RevChars0), Error)
     ;
         Result0 = ok(Char),
-        read_file_2(Stream, [Char | Chars0], Result, !IO)
+        RevChars = [Char | RevChars0],
+        read_file_chars_acc(Stream, RevChars, Result, !IO)
     ).
 
 %---------------------%

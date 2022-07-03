@@ -11,12 +11,17 @@
 %
 % A module to invoke interactive queries using dynamic linking.
 %
-% This module reads in a query, writes out Mercury code for it to the file
-% `mdb_query.m', invokes the Mercury compiler mmc to compile that file to
-% `libmdb_query.{so,dylib}', dynamically loads in the object code for the
-% module `mdb_query' from the file `libmdb_query.{so,dylib}', looks up the
-% address of the procedure query/2 in that module, calls that procedure, and
-% then cleans up the generated files.
+% This module
+%
+% - reads in a query,
+% - writes out Mercury code for it to the file `mdb_query.m',
+% - invokes the Mercury compiler mmc to compile that file to
+%   `libmdb_query.{so,dylib}',
+% - dynamically loads in the object code for the module `mdb_query'
+%   from the file `libmdb_query.{so,dylib}',
+% - looks up the address of the procedure query/2 in that module,
+% - calls that procedure, and then
+% - cleans up the generated files.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -149,8 +154,8 @@ query_3(Env, ReadTerm, !IO) :-
             io.nl(Env ^ qe_outstream, !IO)
         ;
             Cmd = qc_options(NewOptions),
-            print(Env ^ qe_outstream, "Compilation options: ", !IO),
-            print(Env ^ qe_outstream, NewOptions, !IO),
+            io.print(Env ^ qe_outstream, "Compilation options: ", !IO),
+            io.print(Env ^ qe_outstream, NewOptions, !IO),
             io.nl(Env ^ qe_outstream, !IO),
             Env1 = Env ^ qe_options := NewOptions,
             query_2(Env1, !IO)
@@ -274,10 +279,10 @@ parse_query_command(Term, Cmd) :-
 :- pred term_to_list(term::in, list(string)::out) is semidet.
 
 term_to_list(term.functor(term.atom("[]"), [], _), []).
-term_to_list(term.functor(term.atom("[|]"),
-        [term.functor(term.atom(Module), [], _C1), Rest], _C2),
-        [Module | Modules]) :-
-    term_to_list(Rest, Modules).
+term_to_list(term.functor(term.atom("[|]"), [HeadTerm, TailTerms], _),
+        [HeadModule | TailModules]) :-
+    HeadTerm = term.functor(term.atom(HeadModule), [], _),
+    term_to_list(TailTerms, TailModules).
 
 :- pred run_query(query_env::in, term::in, varset::in, io::di, io::uo)
     is cc_multi.

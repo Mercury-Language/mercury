@@ -8,8 +8,8 @@
 % File: mer_browser.m
 % Main author: stayl
 %
-% This file is only present so that the browser library is
-% generated with the correct name.
+% This file is only present so that the browser library is generated
+% with the correct name.
 %---------------------------------------------------------------------------%
 
 :- module mer_browser.

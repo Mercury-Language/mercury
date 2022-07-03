@@ -409,9 +409,9 @@ pop_diagnoser(!Diagnoser) :-
     !Diagnoser ^ oracle_state := Oracle.
 
 diagnosis(Store, AnalysisType, Response, !Diagnoser, !Browser, !IO) :-
-    mdb.declarative_oracle.set_browser_state(!.Browser, !.Diagnoser ^
-        oracle_state, Oracle),
-    !Diagnoser ^ oracle_state := Oracle,
+    Oracle0 = !.Diagnoser ^ oracle_state,
+    set_oracle_browser_state(!.Browser, Oracle0, Oracle1),
+    !Diagnoser ^ oracle_state := Oracle1,
     try_io(diagnosis_2(Store, AnalysisType, !.Diagnoser), Result, !IO),
     (
         Result = succeeded({Response, !:Diagnoser})
@@ -424,8 +424,8 @@ diagnosis(Store, AnalysisType, Response, !Diagnoser, !Browser, !IO) :-
             rethrow(Result)
         )
     ),
-    !:Browser = mdb.declarative_oracle.get_browser_state(
-        !.Diagnoser ^ oracle_state).
+    Oracle = !.Diagnoser ^ oracle_state,
+    !:Browser = get_oracle_browser_state(Oracle).
 
 :- pred diagnosis_2(S::in, analysis_type(edt_node(R))::in,
     diagnoser_state(R)::in,
@@ -433,8 +433,9 @@ diagnosis(Store, AnalysisType, Response, !Diagnoser, !Browser, !IO) :-
     io::di, io::uo) is cc_multi <= annotated_trace(S, R).
 
 diagnosis_2(Store, AnalysisType, Diagnoser0, {Response, Diagnoser}, !IO) :-
+    Oracle0 = Diagnoser0 ^ oracle_state,
     Analyser0 = Diagnoser0 ^ analyser_state,
-    start_or_resume_analysis(wrap(Store), Diagnoser0 ^ oracle_state,
+    start_or_resume_analysis(wrap(Store), Oracle0,
         AnalysisType, AnalyserResponse, Analyser0, Analyser),
     Diagnoser1 = Diagnoser0 ^ analyser_state := Analyser,
     debug_analyser_state(Analyser, MaybeOrigin),
@@ -568,13 +569,14 @@ read_search_supertree_response(Diagnoser, Response, !IO) :-
     diagnoser_state(R)::out, io::di, io::uo) is cc_multi
     <= annotated_trace(S, R).
 
-handle_oracle_response(Store, OracleResponse, DiagnoserResponse, !Diagnoser,
-        !IO) :-
+handle_oracle_response(Store, OracleResponse, DiagnoserResponse,
+        !Diagnoser, !IO) :-
     (
         OracleResponse = oracle_response_answer(Answer),
+        Oracle0 = !.Diagnoser ^ oracle_state,
         Analyser0 = !.Diagnoser ^ analyser_state,
-        continue_analysis(wrap(Store), !.Diagnoser ^ oracle_state, Answer,
-            AnalyserResponse, Analyser0, Analyser),
+        continue_analysis(wrap(Store), Oracle0, Answer, AnalyserResponse,
+            Analyser0, Analyser),
         !Diagnoser ^ analyser_state := Analyser,
         debug_analyser_state(Analyser, MaybeOrigin),
         handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
@@ -594,10 +596,10 @@ handle_oracle_response(Store, OracleResponse, DiagnoserResponse, !Diagnoser,
             DiagnoserResponse, !Diagnoser, !IO)
     ;
         OracleResponse = oracle_response_change_search(Mode),
+        Oracle0 = !.Diagnoser ^ oracle_state,
         Analyser0 = !.Diagnoser ^ analyser_state,
-        Oracle = !.Diagnoser ^ oracle_state,
-        change_search_mode(wrap(Store), Oracle, Mode, Analyser0, Analyser,
-            AnalyserResponse),
+        change_search_mode(wrap(Store), Oracle0, Mode, AnalyserResponse,
+            Analyser0, Analyser),
         !Diagnoser ^ analyser_state := Analyser,
         debug_analyser_state(Analyser, MaybeOrigin),
         handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
@@ -611,16 +613,16 @@ handle_oracle_response(Store, OracleResponse, DiagnoserResponse, !Diagnoser,
                 get_oracle_user_output_stream(!.Diagnoser ^ oracle_state),
             io.write_string(OutputStream, "Undo stack empty.\n", !IO)
         ),
+        Analyser0 = !.Diagnoser ^ analyser_state,
         ( if
-            reask_last_question(wrap(Store), !.Diagnoser ^ analyser_state,
-                AnalyserResponse0)
+            reask_last_question(wrap(Store), Analyser0, AnalyserResponse0)
         then
             AnalyserResponse = AnalyserResponse0
         else
             throw(internal_error("handle_oracle_response",
                 "no last question when got undo request"))
         ),
-        debug_analyser_state(!.Diagnoser ^ analyser_state, MaybeOrigin),
+        debug_analyser_state(Analyser0, MaybeOrigin),
         handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
             DiagnoserResponse, !Diagnoser, !IO)
     ;
@@ -736,8 +738,8 @@ set_diagnoser_to_not_testing(!Diagnoser) :-
 
 set_fallback_search_mode(Store, SearchMode, !Diagnoser) :-
     Analyser0 = !.Diagnoser ^ analyser_state,
-    mdb.declarative_analyser.set_fallback_search_mode(wrap(Store),
-        SearchMode, Analyser0, Analyser),
+    set_analyser_fallback_search_mode(wrap(Store), SearchMode,
+        Analyser0, Analyser),
     !Diagnoser ^ analyser_state := Analyser.
 
 :- pred reset_knowledge_base(
@@ -887,7 +889,8 @@ add_trusted_module(ModuleName, !Diagnoser) :-
     "MR_DD_decl_add_trusted_pred_or_func").
 
 add_trusted_pred_or_func(ProcLayout, !Diagnoser) :-
-    add_trusted_pred_or_func(ProcLayout, !.Diagnoser ^ oracle_state, Oracle),
+    Oracle0 = !.Diagnoser ^ oracle_state,
+    add_trusted_pred_or_func(ProcLayout, Oracle0, Oracle),
     !Diagnoser ^ oracle_state := Oracle.
 
 :- pred trust_standard_library(diagnoser_state(trace_node_id)::in,
@@ -898,8 +901,8 @@ add_trusted_pred_or_func(ProcLayout, !Diagnoser) :-
     "MR_DD_decl_trust_standard_library").
 
 trust_standard_library(!Diagnoser) :-
-    declarative_oracle.trust_standard_library(!.Diagnoser ^ oracle_state,
-        Oracle),
+    Oracle0 = !.Diagnoser ^ oracle_state,
+    declarative_oracle.trust_standard_library(Oracle0, Oracle),
     !Diagnoser ^ oracle_state := Oracle.
 
 :- pred remove_trusted(int::in, diagnoser_state(trace_node_id)::in,
@@ -910,7 +913,8 @@ trust_standard_library(!Diagnoser) :-
     "MR_DD_decl_remove_trusted").
 
 remove_trusted(N, !Diagnoser) :-
-    remove_trusted(N, !.Diagnoser ^ oracle_state, Oracle),
+    Oracle0 = !.Diagnoser ^ oracle_state,
+    remove_trusted(N, Oracle0, Oracle),
     !Diagnoser ^ oracle_state := Oracle.
 
     % get_trusted_list(Diagnoser, MDBCommandFormat, String):
@@ -1002,11 +1006,10 @@ write_origin(Stream, wrap(Store), Origin, !IO) :-
         ProcLayout = get_proc_layout_from_label_layout(ExitNode ^ exit_label),
         ProcLabel = get_proc_label_from_layout(ProcLayout),
         ProcName = get_proc_name(ProcLabel),
-        io.format(Stream, "output(%s, ", [s(ProcName)], !IO),
-        io.write(Stream, ArgPos, !IO),
-        io.write_string(Stream, ", ", !IO),
-        io.write(Stream, TermPath, !IO),
-        io.write_string(Stream, ")", !IO)
+        ArgPosStr = string.string(ArgPos),
+        TermPathStr = string.string(TermPath),
+        io.format(Stream, "output(%s, %s, %s)",
+            [s(ProcName), s(ArgPosStr), s(TermPathStr)], !IO)
     else
         io.write(Stream, Origin, !IO)
     ).

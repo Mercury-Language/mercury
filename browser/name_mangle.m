@@ -21,6 +21,11 @@
 % values of that type should be carefully isolated so that it can be
 % easily changed if the representation of `mercury_proc' changes.
 %
+% XXX We should move all name mangling code from both the compiler and
+% browser directories to a new module in the mdbcomp directory, since that
+% could be used by *both* the compiler and the browser, eliminating the need
+% for double maintenance.
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -81,15 +86,17 @@ proc_name_mangle(MercuryProc) =
         llds_proc_name_mangle(MercuryProc)
     ).
 
-% NOTE:  most of the code below is very similar to the code in
-% compiler/llds_out.m. Any changes there may require changes here and vice
-% versa.
-
 %---------------------------------------------------------------------------%
 
 :- func llds_proc_name_mangle(mercury_proc) = string.
 
 llds_proc_name_mangle(MercuryProc) = LabelName :-
+    % NOTE:  Most of the code below is very similar to the code in
+    % compiler/llds_out.m. Any changes there may require changes here,
+    % and vice versa.
+    %
+    % XXX: All code has been moved out of llds_out.m in 2009, so this comment
+    % has suffered bit rot.
     MercuryProc = mercury_proc(PredOrFunc, Module, Name0, Arity, ModeNum),
     sym_name_mangle(Module, ModuleName),
     ( if
@@ -120,10 +127,10 @@ llds_proc_name_mangle(MercuryProc) = LabelName :-
     ),
     string.append("mercury__", LabelName3, LabelName4),
     ( if use_asm_labels then
-        % On OS X dlsym will insert the leading underscore for us.
-        % XXX this has been the behaviour of dlsym on OS X since at least
-        % version 10.6, but according to the man page some older versions
-        % didn't do that.
+        % On OS X, dlsym will insert the leading underscore for us.
+        % XXX This has been the behaviour of dlsym on OS X since at least
+        % version 10.6, but according to the man page, some older versions
+        % did not do that.
         EntryPrefix = ( if system_is_osx then "entry_" else "_entry_" ),
         string.append(EntryPrefix, LabelName4, LabelName)
     else
@@ -132,12 +139,15 @@ llds_proc_name_mangle(MercuryProc) = LabelName :-
 
 %---------------------------------------------------------------------------%
 
-% NOTE: the following code needs to be kept in sync with the predicates
-% mlds_pred_label_to_string and mlds_output_pred_label in compiler/mlds_to_c.m.
-
 :- func mlds_proc_name_mangle(mercury_proc) = string.
 
 mlds_proc_name_mangle(MercuryProc) = LabelName :-
+    % NOTE: the following code needs to be kept in sync with the predicates
+    % mlds_pred_label_to_string and mlds_output_pred_label in
+    % compiler/mlds_to_c.m.
+    %
+    % XXX: mlds_to_c.m has been split up in 2018, so this comment
+    % has suffered bit rot.
     MercuryProc = mercury_proc(PredOrFunc, Module, Name0, Arity, ModeNum),
     sym_name_mangle(Module, ModuleName),
     ( if

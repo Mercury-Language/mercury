@@ -980,8 +980,6 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
                 ArgPos, ChainStart)
         else
             throw(internal_error($pred, "unbound exception term"))
-
-
         )
     ).
 
@@ -1046,7 +1044,6 @@ step_left_to_call(Store, NodeId, ParentCallNode) :-
         % and COND events separately, since step_left_in_contour/2
         % will throw an exception if it reaches the boundary of a
         % negated context.
-
         ( if Node = node_neg(NegPrec, _, _) then
             PrevNodeId = NegPrec
         else if Node = node_cond(CondPrec, _, _) then
@@ -1638,22 +1635,12 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
                 Origin)
         )
     ;
-        AtomicGoal = unify_assign_rep(ToVar, FromVar),
-        % We handle assigns the same as we handle unsafe casts.
+        ( AtomicGoal = unify_assign_rep(ToVar, FromVar)
+        ; AtomicGoal = cast_rep(ToVar, FromVar)
+        ),
         ( if list.member(Var0, BoundVars) then
-            decl_require(unify(Var0, ToVar), "traverse_primitives",
-                "bad assign"),
-            traverse_primitives(Prims, FromVar, TermPath0, Store, ProcDefnRep,
-                Origin)
-        else
-            traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
-                Origin)
-        )
-    ;
-        AtomicGoal = cast_rep(ToVar, FromVar),
-        % We handle casts the same as we handle assigns.
-        ( if list.member(Var0, BoundVars) then
-            decl_require(unify(Var0, ToVar), $pred, "bad unsafe_cast"),
+            decl_require(unify(Var0, ToVar), $pred,
+                "bad assign or unsafe_cast"),
             traverse_primitives(Prims, FromVar, TermPath0, Store, ProcDefnRep,
                 Origin)
         else

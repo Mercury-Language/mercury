@@ -75,7 +75,7 @@
     % Make the given search mode the fallback search mode
     % and the current search mode for the analyser.
     %
-:- pred set_fallback_search_mode(S::in, search_mode::in,
+:- pred set_analyser_fallback_search_mode(S::in, search_mode::in,
     analyser_state(T)::in, analyser_state(T)::out)
     is det <= mercury_edt(S, T).
 
@@ -114,8 +114,8 @@
     % next question using the new search mode.
     %
 :- pred change_search_mode(S::in, oracle_state::in, user_search_mode::in,
-    analyser_state(T)::in, analyser_state(T)::out,
-    analyser_response(T)::out) is det <= mercury_edt(S, T).
+    analyser_response(T)::out,
+    analyser_state(T)::in, analyser_state(T)::out) is det <= mercury_edt(S, T).
 
     % Revise the current analysis. This is done when a bug determined
     % by the analyser has been overruled by the oracle.
@@ -344,15 +344,15 @@ reset_analyser(!Analyser) :-
     FallBack = !.Analyser ^ fallback_search_mode,
     !:Analyser = analyser(empty_search_space, no, FallBack, FallBack, no, no).
 
-set_fallback_search_mode(Store, FallBackSearchMode, !Analyser) :-
+set_analyser_fallback_search_mode(Store, FallBackSearchMode, !Analyser) :-
     !Analyser ^ fallback_search_mode := FallBackSearchMode,
     !Analyser ^ search_mode := FallBackSearchMode,
     !Analyser ^ last_search_question := no,
     (
         FallBackSearchMode = analyser_divide_and_query(Weighting),
         SearchSpace0 = !.Analyser ^ search_space,
-        update_weighting_heuristic(Store, Weighting, SearchSpace0,
-            SearchSpace),
+        update_weighting_heuristic(Store, Weighting,
+            SearchSpace0, SearchSpace),
         !Analyser ^ search_space := SearchSpace
     ;
         FallBackSearchMode = analyser_follow_subterm_end(_, _, _, _, _)
@@ -442,28 +442,29 @@ continue_analysis(Store, Oracle, Answer, Response, !Analyser) :-
     ),
     decide_analyser_response(Store, Oracle, Response, !Analyser).
 
-change_search_mode(Store, Oracle, UserMode, !Analyser, Response) :-
+change_search_mode(Store, Oracle, UserMode, Response, !Analyser) :-
     (
-        UserMode = user_top_down,
-        set_fallback_search_mode(Store, analyser_top_down, !Analyser)
-    ;
-        UserMode = user_divide_and_query,
-        set_fallback_search_mode(Store,
-            analyser_divide_and_query(number_of_events), !Analyser)
-    ;
-        UserMode = user_suspicion_divide_and_query,
-        set_fallback_search_mode(Store, analyser_divide_and_query(suspicion),
-            !Analyser)
+        (
+            UserMode = user_top_down,
+            SearchMode = analyser_top_down
+        ;
+            UserMode = user_divide_and_query,
+            SearchMode = analyser_divide_and_query(number_of_events)
+        ;
+            UserMode = user_suspicion_divide_and_query,
+            SearchMode = analyser_divide_and_query(suspicion)
+        ),
+        set_analyser_fallback_search_mode(Store, SearchMode, !Analyser)
     ;
         UserMode = user_binary,
+        LastSearchQuestion = !.Analyser ^ last_search_question,
         (
-            !.Analyser ^ last_search_question =
-                yes(suspect_and_reason(SuspectId, _)),
+            LastSearchQuestion = yes(suspect_and_reason(SuspectId, _)),
             setup_binary_search(!.Analyser ^ search_space, SuspectId,
                 SearchMode),
             !Analyser ^ search_mode := SearchMode
         ;
-            !.Analyser ^ last_search_question = no,
+            LastSearchQuestion = no,
             throw(internal_error("change_search_mode",
                 "binary mode requested, but no last question"))
         )
@@ -540,10 +541,9 @@ revise_analysis(Store, Response, !Analyser) :-
         Response = analyser_response_revise(Question),
         revise_root(Store, SearchSpace0, SearchSpace),
         !Analyser ^ search_space := SearchSpace,
-        !Analyser ^ last_search_question :=
-            yes(suspect_and_reason(RootId, ques_reason_revise)),
-        !Analyser ^ search_mode :=
-            !.Analyser ^ fallback_search_mode
+        SuspectAndReason = suspect_and_reason(RootId, ques_reason_revise),
+        !Analyser ^ last_search_question := yes(SuspectAndReason),
+        !Analyser ^ search_mode := !.Analyser ^ fallback_search_mode
     else
         % There must be a root, since a bug was found (and is now
         % being revised).

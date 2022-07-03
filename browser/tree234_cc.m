@@ -23,9 +23,9 @@
 % A flow on effect is that most of the det predicates are now cc_multi,
 % since this is the determinism of compare_representation. Even predicates
 % that used to be semidet are now cc_multi, since they need to be called
-% just after calls to other committed choice procedures which means that
-% they are not allowed to fail. They return all outputs in a maybe type,
-% which indicates success or failure.
+% just after calls to other committed choice procedures, which means that
+% they are not allowed to fail. They return all their outputs in value of
+% a maybe type, which indicates success or failure.
 %
 % See library/map.m for documentation of the predicates.
 %
@@ -462,7 +462,7 @@ delete(Tin, K, Tout) :-
 
     % When deleting an item from a tree, the height of the tree may be
     % reduced by one. The last argument says whether this has occurred.
-
+    %
 :- pred delete_2(tree234_cc(K, V)::in, K::in, tree234_cc(K, V)::out, bool::out)
     is cc_multi.
 
@@ -725,7 +725,7 @@ delete_2(Tin, K, Tout, RH) :-
 
     % The algorithm we use similar to delete, except that we
     % always go down the left subtree.
-
+    %
 :- pred remove_smallest(tree234_cc(K, V)::in,
     maybe({K, V, tree234_cc(K, V), bool})::out) is cc_multi.
 
@@ -826,28 +826,28 @@ remove_smallest(Tin, Result) :-
     % neighboring subtrees, do so, and return the resulting tree with RH
     % set to no. Otherwise, return a balanced tree whose height is reduced
     % by one, with RH set to yes to indicate the reduced height.
-
+    %
 :- pred fix_2node_t0(K::in, V::in, tree234_cc(K, V)::in, tree234_cc(K, V)::in,
     tree234_cc(K, V)::out, bool::out) is det.
 
 fix_2node_t0(K0, V0, T0, T1, Tout, RH) :-
     (
-        % steal T1's leftmost subtree and combine it with T0
+        % Steal T1's leftmost subtree and combine it with T0.
         T1 = four(K10, V10, K11, V11, K12, V12, T10, T11, T12, T13),
         NewT1 = three(K11, V11, K12, V12, T11, T12, T13),
         Node = two(K0, V0, T0, T10),
         Tout = two(K10, V10, Node, NewT1),
         RH = no
     ;
-        % steal T1's leftmost subtree and combine it with T0
+        % Steal T1's leftmost subtree and combine it with T0.
         T1 = three(K10, V10, K11, V11, T10, T11, T12),
         NewT1 = two(K11, V11, T11, T12),
         Node = two(K0, V0, T0, T10),
         Tout = two(K10, V10, Node, NewT1),
         RH = no
     ;
-        % move T0 one level down and combine it with the subtrees of T1
-        % this reduces the depth of the tree
+        % Move T0 one level down and combine it with the subtrees of T1.
+        % This reduces the depth of the tree.
         T1 = two(K10, V10, T10, T11),
         Tout = three(K0, V0, K10, V10, T0, T10, T11),
         RH = yes
@@ -863,22 +863,22 @@ fix_2node_t0(K0, V0, T0, T1, Tout, RH) :-
 
 fix_2node_t1(K0, V0, T0, T1, Tout, RH) :-
     (
-        % steal T0's leftmost subtree and combine it with T1
+        % Steal T0's leftmost subtree and combine it with T1.
         T0 = four(K00, V00, K01, V01, K02, V02, T00, T01, T02, T03),
         NewT0 = three(K00, V00, K01, V01, T00, T01, T02),
         Node = two(K0, V0, T03, T1),
         Tout = two(K02, V02, NewT0, Node),
         RH = no
     ;
-        % steal T0's leftmost subtree and combine it with T1
+        % Steal T0's leftmost subtree and combine it with T1.
         T0 = three(K00, V00, K01, V01, T00, T01, T02),
         NewT0 = two(K00, V00, T00, T01),
         Node = two(K0, V0, T02, T1),
         Tout = two(K01, V01, NewT0, Node),
         RH = no
     ;
-        % move T1 one level down and combine it with the subtrees of T0
-        % this reduces the depth of the tree
+        % Move T1 one level down and combine it with the subtrees of T0.
+        % This reduces the depth of the tree.
         T0 = two(K00, V00, T00, T01),
         Tout = three(K00, V00, K0, V0, T00, T01, T1),
         RH = yes
@@ -895,21 +895,21 @@ fix_2node_t1(K0, V0, T0, T1, Tout, RH) :-
 
 fix_3node_t0(K0, V0, K1, V1, T0, T1, T2, Tout, RH) :-
     (
-        % steal T1's leftmost subtree and combine it with T0
+        % Steal T1's leftmost subtree and combine it with T0.
         T1 = four(K10, V10, K11, V11, K12, V12, T10, T11, T12, T13),
         NewT1 = three(K11, V11, K12, V12, T11, T12, T13),
         Node = two(K0, V0, T0, T10),
         Tout = three(K10, V10, K1, V1, Node, NewT1, T2),
         RH = no
     ;
-        % steal T1's leftmost subtree and combine it with T0
+        % Steal T1's leftmost subtree and combine it with T0.
         T1 = three(K10, V10, K11, V11, T10, T11, T12),
         NewT1 = two(K11, V11, T11, T12),
         Node = two(K0, V0, T0, T10),
         Tout = three(K10, V10, K1, V1, Node, NewT1, T2),
         RH = no
     ;
-        % move T0 one level down to become the leftmost subtree of T1
+        % Move T0 one level down to become the leftmost subtree of T1.
         T1 = two(K10, V10, T10, T11),
         NewT1 = three(K0, V0, K10, V10, T0, T10, T11),
         Tout = two(K1, V1, NewT1, T2),
@@ -928,21 +928,21 @@ fix_3node_t0(K0, V0, K1, V1, T0, T1, T2, Tout, RH) :-
 
 fix_3node_t1(K0, V0, K1, V1, T0, T1, T2, Tout, RH) :-
     (
-        % steal T0's rightmost subtree and combine it with T1
+        % Steal T0's rightmost subtree and combine it with T1.
         T0 = four(K00, V00, K01, V01, K02, V02, T00, T01, T02, T03),
         NewT0 = three(K00, V00, K01, V01, T00, T01, T02),
         Node = two(K0, V0, T03, T1),
         Tout = three(K02, V02, K1, V1, NewT0, Node, T2),
         RH = no
     ;
-        % steal T0's rightmost subtree and combine it with T1
+        % Steal T0's rightmost subtree and combine it with T1.
         T0 = three(K00, V00, K01, V01, T00, T01, T02),
         NewT0 = two(K00, V00, T00, T01),
         Node = two(K0, V0, T02, T1),
         Tout = three(K01, V01, K1, V1, NewT0, Node, T2),
         RH = no
     ;
-        % move T1 one level down to become the rightmost subtree of T0
+        % Move T1 one level down to become the rightmost subtree of T0.
         T0 = two(K00, V00, T00, T01),
         NewT0 = three(K00, V00, K0, V0, T00, T01, T1),
         Tout = two(K1, V1, NewT0, T2),
@@ -961,21 +961,21 @@ fix_3node_t1(K0, V0, K1, V1, T0, T1, T2, Tout, RH) :-
 
 fix_3node_t2(K0, V0, K1, V1, T0, T1, T2, Tout, RH) :-
     (
-        % steal T1's rightmost subtree and combine it with T2
+        % Steal T1's rightmost subtree and combine it with T2.
         T1 = four(K10, V10, K11, V11, K12, V12, T10, T11, T12, T13),
         NewT1 = three(K10, V10, K11, V11, T10, T11, T12),
         Node = two(K1, V1, T13, T2),
         Tout = three(K0, V0, K12, V12, T0, NewT1, Node),
         RH = no
     ;
-        % steal T1's rightmost subtree and combine it with T2
+        % Steal T1's rightmost subtree and combine it with T2.
         T1 = three(K10, V10, K11, V11, T10, T11, T12),
         NewT1 = two(K10, V10, T10, T11),
         Node = two(K1, V1, T12, T2),
         Tout = three(K0, V0, K11, V11, T0, NewT1, Node),
         RH = no
     ;
-        % move T2 one level down to become the rightmost subtree of T1
+        % Move T2 one level down to become the rightmost subtree of T1.
         T1 = two(K10, V10, T10, T11),
         NewT1 = three(K10, V10, K1, V1, T10, T11, T2),
         Tout = two(K0, V0, T0, NewT1),
@@ -994,21 +994,21 @@ fix_3node_t2(K0, V0, K1, V1, T0, T1, T2, Tout, RH) :-
 
 fix_4node_t0(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
     (
-        % steal T1's leftmost subtree and combine it with T0
+        % Steal T1's leftmost subtree and combine it with T0.
         T1 = four(K10, V10, K11, V11, K12, V12, T10, T11, T12, T13),
         NewT1 = three(K11, V11, K12, V12, T11, T12, T13),
         Node = two(K0, V0, T0, T10),
         Tout = four(K10, V10, K1, V1, K2, V2, Node, NewT1, T2, T3),
         RH = no
     ;
-        % steal T1's leftmost subtree and combine it with T0
+        % Steal T1's leftmost subtree and combine it with T0.
         T1 = three(K10, V10, K11, V11, T10, T11, T12),
         NewT1 = two(K11, V11, T11, T12),
         Node = two(K0, V0, T0, T10),
         Tout = four(K10, V10, K1, V1, K2, V2, Node, NewT1, T2, T3),
         RH = no
     ;
-        % move T0 one level down to become the leftmost subtree of T1
+        % Move T0 one level down to become the leftmost subtree of T1.
         T1 = two(K10, V10, T10, T11),
         NewT1 = three(K0, V0, K10, V10, T0, T10, T11),
         Tout = three(K1, V1, K2, V2, NewT1, T2, T3),
@@ -1027,21 +1027,21 @@ fix_4node_t0(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
 
 fix_4node_t1(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
     (
-        % steal T2's leftmost subtree and combine it with T1
+        % Steal T2's leftmost subtree and combine it with T1.
         T2 = four(K20, V20, K21, V21, K22, V22, T20, T21, T22, T23),
         NewT2 = three(K21, V21, K22, V22, T21, T22, T23),
         Node = two(K1, V1, T1, T20),
         Tout = four(K0, V0, K20, V20, K2, V2, T0, Node, NewT2, T3),
         RH = no
     ;
-        % steal T2's leftmost subtree and combine it with T1
+        % Steal T2's leftmost subtree and combine it with T1.
         T2 = three(K20, V20, K21, V21, T20, T21, T22),
         NewT2 = two(K21, V21, T21, T22),
         Node = two(K1, V1, T1, T20),
         Tout = four(K0, V0, K20, V20, K2, V2, T0, Node, NewT2, T3),
         RH = no
     ;
-        % move T1 one level down to become the leftmost subtree of T2
+        % Move T1 one level down to become the leftmost subtree of T2.
         T2 = two(K20, V20, T20, T21),
         NewT2 = three(K1, V1, K20, V20, T1, T20, T21),
         Tout = three(K0, V0, K2, V2, T0, NewT2, T3),
@@ -1060,21 +1060,21 @@ fix_4node_t1(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
 
 fix_4node_t2(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
     (
-        % steal T3's leftmost subtree and combine it with T2
+        % Steal T3's leftmost subtree and combine it with T2.
         T3 = four(K30, V30, K31, V31, K32, V32, T30, T31, T32, T33),
         NewT3 = three(K31, V31, K32, V32, T31, T32, T33),
         Node = two(K2, V2, T2, T30),
         Tout = four(K0, V0, K1, V1, K30, V30, T0, T1, Node, NewT3),
         RH = no
     ;
-        % steal T3's leftmost subtree and combine it with T2
+        % Steal T3's leftmost subtree and combine it with T2.
         T3 = three(K30, V30, K31, V31, T30, T31, T32),
         NewT3 = two(K31, V31, T31, T32),
         Node = two(K2, V2, T2, T30),
         Tout = four(K0, V0, K1, V1, K30, V30, T0, T1, Node, NewT3),
         RH = no
     ;
-        % move T2 one level down to become the leftmost subtree of T3
+        % Move T2 one level down to become the leftmost subtree of T3.
         T3 = two(K30, V30, T30, T31),
         NewT3 = three(K2, V2, K30, V30, T2, T30, T31),
         Tout = three(K0, V0, K1, V1, T0, T1, NewT3),
@@ -1093,21 +1093,21 @@ fix_4node_t2(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
 
 fix_4node_t3(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
     (
-        % steal T2's rightmost subtree and combine it with T3
+        % Steal T2's rightmost subtree and combine it with T3.
         T2 = four(K20, V20, K21, V21, K22, V22, T20, T21, T22, T23),
         NewT2 = three(K20, V20, K21, V21, T20, T21, T22),
         Node = two(K2, V2, T23, T3),
         Tout = four(K0, V0, K1, V1, K22, V22, T0, T1, NewT2, Node),
         RH = no
     ;
-        % steal T2's rightmost subtree and combine it with T3
+        % Steal T2's rightmost subtree and combine it with T3.
         T2 = three(K20, V20, K21, V21, T20, T21, T22),
         NewT2 = two(K20, V20, T20, T21),
         Node = two(K2, V2, T22, T3),
         Tout = four(K0, V0, K1, V1, K21, V21, T0, T1, NewT2, Node),
         RH = no
     ;
-        % move T3 one level down to become the rightmost subtree of T2
+        % Move T3 one level down to become the rightmost subtree of T2.
         T2 = two(K20, V20, T20, T21),
         NewT2 = three(K20, V20, K2, V2, T20, T21, T3),
         Tout = three(K0, V0, K1, V1, T0, T1, NewT2),
