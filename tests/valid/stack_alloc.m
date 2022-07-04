@@ -3,10 +3,13 @@
 %---------------------------------------------------------------------------%
 
 :- module stack_alloc.
-
 :- interface.
 
-:- pred p is semidet.
+:- type nat
+    --->    zero
+    ;       s(nat).
+
+:- pred p(nat::in) is semidet.
 
 :- implementation.
 
@@ -16,17 +19,17 @@
 :- pragma external_pred(in/1).
 :- pragma external_pred(out/1).
 
-p :-
+p(s(N)) :-
     (
         out(X),
         out(Y),
-        p,
+        p(N),
         in(X),
         in(Y)
     ;
         out(A),
         out(B),
-        p,
+        p(N),
         in(A),
         in(B)
     ).

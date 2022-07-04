@@ -26,10 +26,13 @@
 :- implementation.
 
 :- pred q(list(T)::list_skel >> list_skel /* my_input_list_skel */).
+:- pred q2(list(T)::my_input_list_skel).
 :- pred r(list(T)::my_output_list_skel).
 
 q(_X) :-
     q([]).
+q2(_X) :-
+    q2([]).
 r(X) :-
     r(X).
 

@@ -2,6 +2,10 @@
 # some regression tests only failed with particular options enabled
 # (please keep these lists sorted)
 
+# We need to include DEFNS_FOR_TESTS here so that mmc --make can
+# see the definitions it contains.
+include ../DEFNS_FOR_TESTS
+
 # When compiling using the installed libraries, setting GRADEFLAGS may
 # may cause mgnuc to look for the `.mih' files for a non-installed grade.
 # test_mercury runs the tests using the installed libraries, so GRADEFLAGS
@@ -75,6 +79,7 @@ MCFLAGS-livevals_seq		= -O5 --opt-space
 MCFLAGS-livevars_shallow	= --no-intermodule-optimization --grade none --trace shallow
 MCFLAGS-livevars_shallow2	= --no-intermodule-optimization --grade none --trace shallow
 MCFLAGS-lco_term		= --optimize-constructor-last-call
+CFLAGS-loop_in_disj             = $(CFLAGS_FOR_NO_INFINITE_RECURSION)
 MCFLAGS-loop_inv_bug		= --common-struct --loop-invariants
 MCFLAGS-mark_static_bug		= --lookup-switch-size 1
 MCFLAGS-mc_bag			= --prop-mode-constraints
@@ -84,6 +89,8 @@ MCFLAGS-mc_hhf_nonlocals_bug	= --prop-mode-constraints
 MCFLAGS-mc_implied_modes	= --prop-mode-constraints
 MCFLAGS-middle_rec_labels	= --middle-rec
 MCFLAGS-mode_selection		= --no-warn-det-decls-too-lax
+MCFLAGS-mode_syntax             = --no-warn-det-decls-too-lax --no-warn-simple-code --no-warn-unresolved-polymorphism
+CFLAGS-mode_syntax              = $(CFLAGS_FOR_NO_INFINITE_RECURSION)
 MCFLAGS-mostly_uniq_mode_inf	= --infer-all
 MCFLAGS-mostly_uniq_neg		= --no-warn-singleton-vars
 MCFLAGS-mpj6			= --infer-all
@@ -97,6 +104,7 @@ MCFLAGS-par_dupelim		= --optimize-dups
 MCFLAGS-par_saved_const		= -O3 --optimize-saved-vars-const
 MCFLAGS-pred_with_no_modes	= --infer-all
 MCFLAGS-quantifier_warning	= --halt-at-warn
+CFLAGS-recursive_no_tag_type    = $(CFLAGS_FOR_NO_INFINITE_RECURSION)
 MCFLAGS-require_tailrec_1	= -O0 --optimise-tailcalls --warn-non-tail-recursion self
 MCFLAGS-require_tailrec_2	= -O0 --optimise-tailcalls --no-warn-non-tail-recursion
 MCFLAGS-require_tailrec_3	= -O0 --optimise-tailcalls --warn-non-tail-recursion self-and-mutual
