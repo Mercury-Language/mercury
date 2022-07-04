@@ -1025,7 +1025,8 @@ MR_generate_proc_name_from_layout(const MR_ProcLayout *proc_layout,
         *is_func_ptr = MR_BOOL_NO;
     } else {
         *proc_name_ptr = proc_layout->MR_sle_proc_id.MR_proc_user.MR_user_name;
-        *arity_ptr = proc_layout->MR_sle_proc_id. MR_proc_user.MR_user_arity;
+        *arity_ptr = proc_layout->MR_sle_proc_id.
+            MR_proc_user.MR_user_pred_form_arity;
         if (proc_layout->MR_sle_user.MR_user_pred_or_func == MR_FUNCTION) {
             *is_func_ptr = MR_BOOL_YES;
         } else {
@@ -1049,7 +1050,7 @@ MR_proc_id_arity_addedargs_predfunc(const MR_ProcLayout *proc, int *arity_ptr,
         *arity_ptr = proc->MR_sle_num_head_vars - *num_added_args_ptr;
         *pred_or_func_ptr = MR_PREDICATE;
     } else {
-        *arity_ptr = proc->MR_sle_user.MR_user_arity;
+        *arity_ptr = proc->MR_sle_user.MR_user_pred_form_arity;
         *num_added_args_ptr = proc->MR_sle_num_head_vars - *arity_ptr;
         *pred_or_func_ptr = proc->MR_sle_user.MR_user_pred_or_func;
     }

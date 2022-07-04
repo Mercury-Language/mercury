@@ -688,9 +688,51 @@ MR_compare_functor_by_name(const void *ptr1, const void *ptr2)
     return MR_functor_compare_type_arity(*addr1, *addr2);
 }
 
+static MR_bool
+proc_name_is_interesting(MR_bool print_typespec_of, 
+    const MR_ProcLayout *proc)
+{
+    if (strstr(proc->MR_sle_user.MR_user_name, "TypeSpecOf__") != NULL) {
+        // This procedure was created by type specialization.
+        // Any ambiguity involving this name comes from the original names
+        // *before* type specialization, so we consider it interesting
+        // only if the user specifically asks for it.
+        return print_typespec_of;
+    } else {
+        return MR_TRUE;
+    }
+}
+
+static MR_bool
+procs_are_pred_and_func(FILE *fp, const MR_ProcLayout **procs,
+    int num_distinct, int pred_proc_num, int func_proc_num)
+{
+    if (num_distinct == 2 &&
+        (pred_proc_num >= 0) && (func_proc_num >= 0))
+    {
+        // There are two procedures with the same name,
+        // one predicate and one function. Are they in the same module,
+        // and do they have the same pred-form arity?
+        if (
+            MR_proc_same_module_name(procs[pred_proc_num],
+                procs[func_proc_num]) &&
+            (procs[pred_proc_num]->MR_sle_user.MR_user_pred_form_arity ==
+                procs[func_proc_num]->MR_sle_user.MR_user_pred_form_arity))
+        {
+            return MR_TRUE;
+        } else {
+            return MR_FALSE;
+        }
+    } else {
+        return MR_FALSE;
+    }
+}
+
 void
 MR_print_ambiguities(FILE *fp, MR_bool print_procs, MR_bool print_types,
-    MR_bool print_functors, char **arena_module_names, int arena_num_modules)
+    MR_bool print_functors, MR_bool print_typespec_of,
+    MR_bool print_pred_and_func,
+    char **arena_module_names, int arena_num_modules)
 {
     unsigned                    module_num;
     int                         proc_num;
@@ -717,7 +759,6 @@ MR_print_ambiguities(FILE *fp, MR_bool print_procs, MR_bool print_types,
     MR_EnumFunctorDesc          **enum_functors;
     MR_DuFunctorDesc            **du_functors;
     MR_NotagFunctorDesc         *notag_functor;
-    int                         num_distinct;
     int                         num_ambiguous;
     int                         num_ambiguous_total;
     int                         num_ambiguous_max;
@@ -784,9 +825,23 @@ MR_print_ambiguities(FILE *fp, MR_bool print_procs, MR_bool print_types,
                 end_proc_num++;
             }
 
-            if (end_proc_num > proc_num + 1) {
+            if ((end_proc_num > proc_num + 1) &&
+                proc_name_is_interesting(print_typespec_of, procs[proc_num]))
+            {
+                int num_distinct;
+                int func_proc_num = -1;
+                int pred_proc_num = -1;
+
                 report[proc_num] = MR_TRUE;
                 num_distinct = 1;
+
+                if (procs[proc_num]->MR_sle_user.MR_user_pred_or_func ==
+                    MR_PREDICATE)
+                {
+                    pred_proc_num = proc_num;
+                } else {
+                    func_proc_num = proc_num;
+                }
 
                 for (i = proc_num + 1; i < end_proc_num; i++) {
                     if (MR_proc_same_name_module_pf_arity(procs[i-1],
@@ -796,10 +851,22 @@ MR_print_ambiguities(FILE *fp, MR_bool print_procs, MR_bool print_types,
                     } else {
                         report[i] = MR_TRUE;
                         num_distinct++;
+                        if (procs[i]->MR_sle_user.MR_user_pred_or_func ==
+                            MR_PREDICATE)
+                        {
+                            pred_proc_num = i;
+                        } else {
+                            func_proc_num = i;
+                        }
                     }
                 }
 
-                if (num_distinct > 1) {
+                if ((num_distinct > 1) &&
+                    (print_pred_and_func
+                        ? MR_TRUE
+                        : !procs_are_pred_and_func(fp, procs, num_distinct,
+                            pred_proc_num, func_proc_num)))
+                {
                     num_ambiguous++;
                     num_ambiguous_total += (end_proc_num - proc_num);
                     if ((end_proc_num - proc_num) > num_ambiguous_max) {
@@ -1026,7 +1093,7 @@ MR_print_ambiguities(FILE *fp, MR_bool print_procs, MR_bool print_types,
         MR_compare_functor_by_name);
 
     if (print_functors) {
-        fprintf(fp, "Ambiguous function symbols:\n");
+        fprintf(fp, "Ambiguous function symbol names:\n");
         num_ambiguous = 0;
         num_ambiguous_total = 0;
         num_ambiguous_max = 0;

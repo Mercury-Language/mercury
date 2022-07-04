@@ -228,7 +228,7 @@ MR_trace_proc_layout_is_builtin_catch(const MR_ProcLayout *layout)
             user = &layout->MR_sle_user;
             if (MR_streq(user->MR_user_decl_module, "exception") &&
                 MR_streq(user->MR_user_name, "builtin_catch") &&
-                (user->MR_user_arity == 3))
+                (user->MR_user_pred_form_arity == 3))
             {
                 return MR_TRUE;
             }

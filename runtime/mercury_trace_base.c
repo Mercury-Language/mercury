@@ -533,7 +533,8 @@ MR_trace_write_label_exec_counts_for_file(FILE *fp,
 
                 fputc(' ', fp);
                 MR_trace_write_quoted_atom(fp, id->MR_user_name);
-                fprintf(fp, " %d %d\n", id->MR_user_arity, id->MR_user_mode);
+                fprintf(fp, " %d %d\n",
+                    id->MR_user_pred_form_arity, id->MR_user_mode);
             }
 
             port = label->MR_sll_port;

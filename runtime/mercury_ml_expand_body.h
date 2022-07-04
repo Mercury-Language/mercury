@@ -1275,7 +1275,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
 #ifdef  EXPAND_FUNCTOR_FIELD
         proc_id = &closure_layout->MR_closure_id->MR_closure_proc_id;
-        if (proc_id->MR_proc_user.MR_user_arity < 0) {
+        if (proc_id->MR_proc_user.MR_user_pred_form_arity < 0) {
             name = "dynlink_proc";  // XXX
         } else if (MR_PROC_ID_IS_UCI(*proc_id)) {
             name = proc_id->MR_proc_uci.MR_uci_pred_name;

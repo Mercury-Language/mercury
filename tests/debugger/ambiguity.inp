@@ -1,4 +1,7 @@
 echo on
 register --quiet
 ambiguity ambiguity
+ambiguity -p ambiguity_helper
+ambiguity -pb ambiguity_helper
+ambiguity -pbs ambiguity_helper
 continue

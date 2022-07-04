@@ -336,7 +336,7 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
     DeclModule = (MR_String) (MR_Integer) proc_id->MR_user_decl_module;
     DefModule  = (MR_String) (MR_Integer) proc_id->MR_user_def_module;
     PredName   = (MR_String) (MR_Integer) proc_id->MR_user_name;
-    Arity      = proc_id->MR_user_arity;
+    Arity      = proc_id->MR_user_pred_form_arity;
     ModeNum    = proc_id->MR_user_mode;
 ").
 
@@ -544,8 +544,8 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
                 selected_proc_id->MR_user_decl_module)
             && MR_streq(proc_id->MR_user_name,
                 selected_proc_id->MR_user_name)
-            && (proc_id->MR_user_arity ==
-                selected_proc_id->MR_user_arity))
+            && (proc_id->MR_user_pred_form_arity ==
+                selected_proc_id->MR_user_pred_form_arity))
             {
                 match = MR_TRUE;
             } else {

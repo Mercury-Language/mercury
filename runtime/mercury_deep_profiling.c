@@ -892,7 +892,7 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
                 procid->MR_proc_user.MR_user_decl_module,
                 procid->MR_proc_user.MR_user_def_module,
                 procid->MR_proc_user.MR_user_name,
-                procid->MR_proc_user.MR_user_arity,
+                procid->MR_proc_user.MR_user_pred_form_arity,
                 procid->MR_proc_user.MR_user_mode);
         }
 
@@ -959,7 +959,7 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
                 procid->MR_proc_user.MR_user_decl_module,
                 procid->MR_proc_user.MR_user_def_module,
                 procid->MR_proc_user.MR_user_name,
-                procid->MR_proc_user.MR_user_arity,
+                procid->MR_proc_user.MR_user_pred_form_arity,
                 procid->MR_proc_user.MR_user_mode);
         }
 
@@ -1097,7 +1097,7 @@ MR_write_out_str_proc_label(FILE *deep_fp, const MR_ProcId *procid)
                 procid->MR_proc_user.MR_user_decl_module,
                 procid->MR_proc_user.MR_user_def_module,
                 procid->MR_proc_user.MR_user_name,
-                procid->MR_proc_user.MR_user_arity,
+                procid->MR_proc_user.MR_user_pred_form_arity,
                 procid->MR_proc_user.MR_user_mode);
         }
 #endif
@@ -1111,7 +1111,7 @@ MR_write_out_str_proc_label(FILE *deep_fp, const MR_ProcId *procid)
         MR_write_string(deep_fp, procid->MR_proc_user.MR_user_decl_module);
         MR_write_string(deep_fp, procid->MR_proc_user.MR_user_def_module);
         MR_write_string(deep_fp, procid->MR_proc_user.MR_user_name);
-        MR_write_num(deep_fp, procid->MR_proc_user.MR_user_arity);
+        MR_write_num(deep_fp, procid->MR_proc_user.MR_user_pred_form_arity);
         MR_write_num(deep_fp, procid->MR_proc_user.MR_user_mode);
     }
 }
@@ -1872,7 +1872,7 @@ MR_unwritten_pl_handler(FILE *fp, const void *pl)
             procid->MR_proc_user.MR_user_decl_module,
             procid->MR_proc_user.MR_user_def_module,
             procid->MR_proc_user.MR_user_name,
-            procid->MR_proc_user.MR_user_arity,
+            procid->MR_proc_user.MR_user_pred_form_arity,
             procid->MR_proc_user.MR_user_mode);
     }
 }

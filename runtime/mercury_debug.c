@@ -1095,7 +1095,7 @@ MR_print_deep_prof_var(FILE *fp, const char *name, MR_CallSiteDynamic *csd)
                 fprintf(fp, "  %s.%s/%d-%d\n  ",
                     proc_id->MR_proc_user.MR_user_decl_module,
                     proc_id->MR_proc_user.MR_user_name,
-                    proc_id->MR_proc_user.MR_user_arity,
+                    proc_id->MR_proc_user.MR_user_pred_form_arity,
                     proc_id->MR_proc_user.MR_user_mode);
             }
 

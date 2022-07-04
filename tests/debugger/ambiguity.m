@@ -12,6 +12,14 @@
 
 :- implementation.
 
+:- import_module ambiguity_helper.
+
+:- import_module float.
+:- import_module int.
+:- import_module list.
+
+%---------------------%
+
 :- type t
     --->    t1
     ;       t2.
@@ -25,16 +33,26 @@
     --->    u1
     ;       u2(T).
 
+%---------------------%
+
 main(!IO) :-
-    io.write(p(2.5), !IO),
-    io.nl(!IO),
-    io.write(p(1, t1), !IO),
-    io.nl(!IO),
-    io.write(p(0, 1, u2(42)), !IO),
-    io.nl(!IO),
+    io.write_line(p(2.5), !IO),
+    io.write_line(p(1, t1), !IO),
+    io.write_line(p(0, 1, u2(42)), !IO),
     p(1, X),
-    io.write(X, !IO),
-    io.nl(!IO).
+    io.write_line(X, !IO),
+
+    ListA = [1, 2],
+    ListB = [3.0, 4.0, 5.0],
+    get_length_sum(ListA, SumA, LenA),
+    get_length_sum_via_acc(ListB, _SumB, LenB),
+    add_int(SumA, add_int(LenA, LenB), TotalInt),
+    io.write_line(TotalInt, !IO),
+
+    add_float(3.3, add_float(4.4, 5.5), TotalFloat),
+    io.write_line(TotalFloat, !IO).
+
+%---------------------%
 
 :- func p(float) = float.
 

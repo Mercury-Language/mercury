@@ -4768,7 +4768,7 @@ the list will include the procedures of
 compiler generated unify, compare, index and initialization predicates.
 Normally, the list includes the procedures of only user defined predicates.
 @sp 1
-@item ambiguity [-o @var{filename}] [-ptf] [@var{modulename} @dots{}]
+@item ambiguity [-o @var{filename}] [-ptfbs] [@var{modulename} @dots{}]
 @kindex ambiguity (mdb command)
 Print ambiguous procedure, type constructor and/or function symbol names.
 A procedure name is ambiguous
@@ -4794,14 +4794,46 @@ If the @samp{-o} or @samp{--outputfile} option is given,
 the output goes to the file named as the argument of the option;
 otherwise, it goes to standard output.
 @sp 1
-If one or more of the @samp{-p}, @samp{-t}, @samp{-f} options
-or their long equivalents, @samp{--types}, or @samp{--functors},
+If given one or more of the @samp{-p}, @samp{-t} and @samp{-f} options,
+or their long equivalents
+@samp{--procedures}, @samp{--types}, and @samp{--functors},
 this command prints ambiguities only for the indicated kinds of constructs.
-The default is to print all ambiguities.
+The default is to print ambiguities for all these three kinds of constructs.
+@sp 1
+This command does not normally report
+two kinds of ambiguities among procedures.
+@sp 1
+First, this command does not usually report
+operations that have both function and predicate forms,
+with the predicate version having a (usually output) argument
+in place of the function's return value.
+An example is @code{list.length} being both a function with arity one
+and a predicate with arity two.
+The reason for not reporting this by default is that
+this is usually an @emph{intended} ambiguity,
+and this command is usually used to find @emph{unintended} ambiguities,
+so that they can be eliminated by renaming.
+However, users can ask for these ambiguities to be printed
+by specifying either the option @samp{-b},
+or its long form @samp{--both-pred-and-func}.
+@sp 1
+Second, this command does not usually report
+ambiguities involving procedures that were created by the compiler
+as a type specialized version of another procedure.
+The reason for not reporting this by default is that
+ambiguities among the names of type specialized procedures
+cannot arise without ambiguities among
+the names of the original, not-yet-type-specialized procedures,
+and eliminating the ambiguities among the original names
+will perforce eliminate the ambiguities among the specialized names as well.
+However, users can ask for these ambiguities to be printed
+by specifying either the option @samp{-s},
+or its long form @samp{--typespec}.
 @sp 1
 @item trail_details
 @kindex trail_details (mdb command)
-Prints out low-level details of the state of the trail.
+In grades that specify trailing,
+prints out low-level details of the state of the trail.
 In other grades, it reports an error.
 @end table
 

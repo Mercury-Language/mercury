@@ -1621,7 +1621,7 @@ MR_maybe_record_call_table(const MR_ProcLayout *level_layout,
                 user = &level_layout->MR_sle_user;
                 if (MR_streq(user->MR_user_decl_module, "exception") &&
                     MR_streq(user->MR_user_name, "builtin_catch") &&
-                    (user->MR_user_arity == 3))
+                    (user->MR_user_pred_form_arity == 3))
                 {
                     // builtin_catch doesn't fill in the MR_sle_exec_trace
                     // field, but we know its evaluation method, so we return.

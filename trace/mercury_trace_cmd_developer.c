@@ -234,7 +234,8 @@ static  MR_bool     MR_trace_options_all_procedures(MR_bool *separate,
                         int *word_count);
 static  MR_bool     MR_trace_options_ambiguity(const char **outfile,
                         MR_bool *print_procs, MR_bool *print_types,
-                        MR_bool *print_functors, char ***words,
+                        MR_bool *print_functors, MR_bool *print_typespec_of,
+                        MR_bool *print_pred_and_func, char ***words,
                         int *word_count);
 
 ////////////////////////////////////////////////////////////////////////////
@@ -1271,6 +1272,8 @@ MR_trace_cmd_ambiguity(char **words, int word_count,
     MR_bool         print_procs;
     MR_bool         print_types;
     MR_bool         print_functors;
+    MR_bool         print_typespec_of;
+    MR_bool         print_pred_and_func;
     FILE            *fp;
     char            errbuf[MR_STRERROR_BUF_SIZE];
 
@@ -1278,8 +1281,11 @@ MR_trace_cmd_ambiguity(char **words, int word_count,
     print_procs = MR_FALSE;
     print_types = MR_FALSE;
     print_functors = MR_FALSE;
+    print_typespec_of = MR_FALSE;
+    print_pred_and_func = MR_FALSE;
     if (! MR_trace_options_ambiguity(&filename, &print_procs, &print_types,
-        &print_functors, &words, &word_count))
+        &print_functors, &print_typespec_of, &print_pred_and_func,
+        &words, &word_count))
     {
         // The usage message has already been printed.
         ;
@@ -1310,7 +1316,7 @@ MR_trace_cmd_ambiguity(char **words, int word_count,
         // ambiguities.
 
         MR_print_ambiguities(fp, print_procs, print_types, print_functors,
-            &words[1], word_count - 1);
+            print_typespec_of, print_pred_and_func, &words[1], word_count - 1);
 
         if (filename != NULL) {
             fprintf(MR_mdb_out, "mdb: wrote report to `%s'.\n", filename);
@@ -2228,22 +2234,24 @@ MR_trace_options_all_procedures(MR_bool *separate, MR_bool *uci, char **module,
 
 static struct MR_option MR_trace_ambiguity_opts[] =
 {
-    { "outputfile", MR_required_argument,   NULL,   'o' },
-    { "procedures", MR_no_argument,         NULL,   'p' },
-    { "types",      MR_no_argument,         NULL,   't' },
-    { "functors",   MR_no_argument,         NULL,   'f' },
-    { NULL,         MR_no_argument,         NULL,   0   }
+    { "outputfile",         MR_required_argument,   NULL,   'o' },
+    { "procedures",         MR_no_argument,         NULL,   'p' },
+    { "types",              MR_no_argument,         NULL,   't' },
+    { "functors",           MR_no_argument,         NULL,   'f' },
+    { "typespec",           MR_no_argument,         NULL,   's' },
+    { "both-pred-and-func", MR_no_argument,         NULL,   'b' },
+    { NULL,                 MR_no_argument,         NULL,   0   }
 };
 
 static MR_bool
 MR_trace_options_ambiguity(const char **outfile, MR_bool *print_procs,
-    MR_bool *print_types, MR_bool *print_functors, char ***words,
-    int *word_count)
+    MR_bool *print_types, MR_bool *print_functors, MR_bool *print_typespec_of,
+    MR_bool *print_pred_and_func, char ***words, int *word_count)
 {
     int c;
 
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "o:ptf",
+    while ((c = MR_getopt_long(*word_count, *words, "o:ptfsb",
         MR_trace_ambiguity_opts, NULL)) != EOF)
     {
         switch (c) {
@@ -2262,6 +2270,14 @@ MR_trace_options_ambiguity(const char **outfile, MR_bool *print_procs,
 
             case 'f':
                 *print_functors = MR_TRUE;
+                break;
+
+            case 's':
+                *print_typespec_of = MR_TRUE;
+                break;
+
+            case 'b':
+                *print_pred_and_func = MR_TRUE;
                 break;
 
             default:

@@ -113,12 +113,19 @@ extern  void        MR_dump_module_procs(FILE *fp, const char *name);
 // function, type or (constructor) function symbol with that name is defined
 // with more than one arity or in more than one module.
 //
+// Print ambiguities involving type-specialized procedures only if the
+// print_typespec_of parameter is set. Print ambiguities between the predicate
+// and the function form of an operation (such as function list.length/1
+// and predicate list.length/2) only if the print_pred_and_func parameter
+// is set.
+//
 // If num_modules is positive, then the search for ambiguities should consider
 // only predicates, functions, types and function symbols in the modules whose
 // names appear in module_names[0] .. module_names[num_modules-1].
 
 extern  void        MR_print_ambiguities(FILE *fp, MR_bool print_procs,
                         MR_bool print_types, MR_bool print_functors,
+                        MR_bool print_typespec_of, MR_bool print_pred_and_func,
                         char **module_names, int num_modules);
 
 // A procedure specification has several components, the meaning of which

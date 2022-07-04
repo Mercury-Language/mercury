@@ -52,7 +52,11 @@ struct MR_UserProcId_Struct {
     MR_ConstString      MR_user_decl_module;
     MR_ConstString      MR_user_def_module;
     MR_ConstString      MR_user_name;
-    MR_int_least16_t    MR_user_arity;
+    // The arity stored in this field is what the compiler calls
+    // a pred_form_arity, i.e. an arity that includes the return value
+    // for functions. It does not include non-user-visible arguments, such as
+    // any type_info and/or typeclass_info arguments added by polymorphism.
+    MR_int_least16_t    MR_user_pred_form_arity;
     MR_int_least16_t    MR_user_mode;
 };
 

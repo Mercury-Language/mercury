@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred ambiguity.main/2-0 (det) ambiguity.m:28
+      E1:     C1 CALL pred ambiguity.main/2-0 (det) ambiguity.m:38
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -19,7 +19,7 @@ ambiguity.t/1
 
 Total: 1 names used 2 times, maximum 2, average: 2.00
 
-Ambiguous function symbols:
+Ambiguous function symbol names:
 
 t1/0 ambiguity.t/0
 t1/1 ambiguity.t2/0
@@ -30,8 +30,52 @@ u1/1 ambiguity.t2/0
 
 Total: 2 names used 5 times, maximum 3, average: 2.50
 
+mdb> ambiguity -p ambiguity_helper
+Ambiguous procedure names:
+
+pred ambiguity_helper.get_length_sum/3
+pred ambiguity_helper.get_length_sum/5
+
+Total: 1 names used 2 times, maximum 2, average: 2.00
+
+mdb> ambiguity -pb ambiguity_helper
+Ambiguous procedure names:
+
+pred ambiguity_helper.add_float/3
+func ambiguity_helper.add_float/2
+
+pred ambiguity_helper.add_int/3
+func ambiguity_helper.add_int/2
+
+pred ambiguity_helper.get_length_sum/3
+pred ambiguity_helper.get_length_sum/5
+
+Total: 3 names used 6 times, maximum 2, average: 2.00
+
+mdb> ambiguity -pbs ambiguity_helper
+Ambiguous procedure names:
+
+pred ambiguity_helper.TypeSpecOf__pred__get_length_sum__[T = float]_0_1/3
+pred ambiguity_helper.TypeSpecOf__pred__get_length_sum__[T = float]_0_1/5
+
+pred ambiguity_helper.TypeSpecOf__pred__get_length_sum__[T = int]_0_1/3
+pred ambiguity_helper.TypeSpecOf__pred__get_length_sum__[T = int]_0_1/5
+
+pred ambiguity_helper.add_float/3
+func ambiguity_helper.add_float/2
+
+pred ambiguity_helper.add_int/3
+func ambiguity_helper.add_int/2
+
+pred ambiguity_helper.get_length_sum/3
+pred ambiguity_helper.get_length_sum/5
+
+Total: 5 names used 10 times, maximum 2, average: 2.00
+
 mdb> continue
 2.5
 t1
 u2(42)
 1
+8
+13.2

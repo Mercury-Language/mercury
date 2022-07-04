@@ -931,7 +931,7 @@ MR_make_closure(MR_Code *proc_addr)
         "unknown";
     closure_id->MR_closure_proc_id.MR_proc_user.MR_user_def_module = "unknown";
     closure_id->MR_closure_proc_id.MR_proc_user.MR_user_name = "unknown";
-    closure_id->MR_closure_proc_id.MR_proc_user.MR_user_arity = -1;
+    closure_id->MR_closure_proc_id.MR_proc_user.MR_user_pred_form_arity = -1;
     closure_id->MR_closure_proc_id.MR_proc_user.MR_user_mode = -1;
     closure_id->MR_closure_module_name = "dl";
     closure_id->MR_closure_file_name = __FILE__;

@@ -1143,7 +1143,7 @@ typedef struct MR_ProcLayout_Traversal_Struct {
 
 // Adjust the arity of functions for printing.
 #define MR_sle_user_adjusted_arity(entry)                                   \
-    ((entry)->MR_sle_user.MR_user_arity -                                   \
+    ((entry)->MR_sle_user.MR_user_pred_form_arity -                         \
         (((entry)->MR_sle_user.MR_user_pred_or_func == MR_FUNCTION) ? 1 : 0))
 
 #define MR_MAX_VARNAME_SIZE 160
