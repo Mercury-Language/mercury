@@ -6,7 +6,11 @@
 
 :- interface.
 
-:- pred definite_vars(robdd(T)::in, vars_entailed_result(T)::out,
+:- type nat
+    --->    zero
+    ;       s(nat).
+
+:- pred definite_vars(nat::in, robdd(T)::in, vars_entailed_result(T)::out,
     vars_entailed_result(T)::out) is det.
 
 :- type robdd(T).
@@ -35,8 +39,9 @@
 :- type robdd(T)
     --->    robdd(int).
 
-definite_vars(R, T, F) :-
-    definite_vars(id(R), T_tr, F_tr),
+definite_vars(zero, _, all_vars, all_vars).
+definite_vars(s(N), R, T, F) :-
+    definite_vars(N, id(R), T_tr, F_tr),
     T = T_tr `intersection` T_tr,
     F = F_tr `intersection` F_tr.
 

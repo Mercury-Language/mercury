@@ -226,7 +226,6 @@ OTHER_PROGS = \
 	require_tailrec_2 \
 	require_tailrec_3 \
 	required_var \
-	same_length_2 \
 	semidet_disj \
 	shape_type \
 	simplify_bug \

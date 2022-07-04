@@ -966,6 +966,7 @@ then
     CFLAGS_FOR_NO_MOVE_LOOP_INVARIANTS=
     CFLAGS_FOR_NO_REORDER_FUNCTIONS=""
     CFLAGS_FOR_NO_TREE_DOMINATOR_OPTS=
+    CFLAGS_FOR_NO_INFINITE_RECURSION=
 
 else
 
@@ -1044,8 +1045,22 @@ EOF
     fi
 
     rm -f conftest*
+
+    # We need to disable the infinite recursion warning in GCC 12 and later
+    # when running some of the tests in tests/valid. The tests will fail
+    # otherwise since we also enable -Werror.
+    case "$C_COMPILER_TYPE" in
+        gcc_1[[2-9]]_*)
+            CFLAGS_FOR_NO_INFINITE_RECURSION="-Wno-infinite-recursion"
+            ;;
+        *)
+            CFLAGS_FOR_NO_INFINITE_RECURSION=
+            ;;
+    esac
+
 fi
 AC_SUBST(CFLAGS_FOR_ERRMSG_FILTER)
+AC_SUBST(CFLAGS_FOR_NO_INFINITE_RECURSION)
 
 #-----------------------------------------------------------------------------#
 # Make sure we search /usr/local/include and /usr/local/lib for
