@@ -46,10 +46,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred parse_implicitly_qualified_name_and_arity(module_name::in, term(T)::in,
-    sym_name::out, arity::out) is semidet.
-
-:- pred parse_unqualified_name_and_arity(term(T)::in,
+:- pred parse_sym_name_and_arity(term(T)::in,
     sym_name::out, arity::out) is semidet.
 
 :- pred parse_pred_or_func_name_and_arity(term(T)::in,
@@ -206,14 +203,7 @@
 
 %---------------------------------------------------------------------------%
 
-parse_implicitly_qualified_name_and_arity(DefaultModuleName,
-        Term, SymName, Arity) :-
-    Term = term.functor(term.atom("/"), [PredNameTerm, ArityTerm], _),
-    try_parse_sym_name_and_no_args(PredNameTerm, SymName0),
-    try_to_implicitly_qualify_sym_name(DefaultModuleName, SymName0, SymName),
-    decimal_term_to_int(ArityTerm, Arity).
-
-parse_unqualified_name_and_arity(Term, SymName, Arity) :-
+parse_sym_name_and_arity(Term, SymName, Arity) :-
     Term = term.functor(term.atom("/"), [PredNameTerm, ArityTerm], _),
     try_parse_sym_name_and_no_args(PredNameTerm, SymName),
     decimal_term_to_int(ArityTerm, Arity).
@@ -225,7 +215,7 @@ parse_pred_or_func_name_and_arity(PorFPredAndArityTerm,
     ; PredOrFuncStr = "func", PredOrFunc = pf_function
     ),
     ArgTerms = [ArgTerm],
-    parse_unqualified_name_and_arity(ArgTerm, SymName, Arity).
+    parse_sym_name_and_arity(ArgTerm, SymName, Arity).
 
 %---------------------------------------------------------------------------%
 
@@ -281,11 +271,17 @@ parse_pred_pf_name_arity(ModuleName, PragmaName, VarSet,
         ( Functor = "pred", PorF = pf_predicate
         ; Functor = "func", PorF = pf_function
         ),
-        parse_implicitly_qualified_name_and_arity(ModuleName, SubTerm,
-            SymName, Arity)
+        parse_sym_name_and_arity(SubTerm, SymName0, Arity)
     then
-        PredSpec = pred_pf_name_arity(PorF, SymName, user_arity(Arity)),
-        MaybePredSpec = ok1(PredSpec)
+        implicitly_qualify_sym_name(ModuleName, Term, SymName0, MaybeSymName),
+        (
+            MaybeSymName = ok1(SymName),
+            PredSpec = pred_pf_name_arity(PorF, SymName, user_arity(Arity)),
+            MaybePredSpec = ok1(PredSpec)
+        ;
+            MaybeSymName = error1(Specs),
+            MaybePredSpec = error1(Specs)
+        )
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error in"),
@@ -301,8 +297,17 @@ parse_pred_pf_name_arity(ModuleName, PragmaName, VarSet,
 
 parse_pred_pfu_name_arity(ModuleName, PragmaName, VarSet,
         Term, MaybePredSpec) :-
-    ( if is_term_symname_arity_maybe_pf(ModuleName, Term, PredSpec) then
-        MaybePredSpec = ok1(PredSpec)
+    ( if is_term_symname_arity_maybe_pf(Term, PredSpec0) then
+        PredSpec0 = pred_pfu_name_arity(PFU, SymName0, Arity),
+        implicitly_qualify_sym_name(ModuleName, Term, SymName0, MaybeSymName),
+        (
+            MaybeSymName = ok1(SymName),
+            PredSpec = pred_pfu_name_arity(PFU, SymName, Arity),
+            MaybePredSpec = ok1(PredSpec)
+        ;
+            MaybeSymName = error1(Specs),
+            MaybePredSpec = error1(Specs)
+        )
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error in"),
@@ -319,22 +324,27 @@ parse_pred_pfu_name_arity(ModuleName, PragmaName, VarSet,
 
 parse_pred_pfu_name_arity_maybe_modes(ModuleName, ContextPieces, VarSet,
         Term, MaybePredOrProcSpec) :-
-    ( if
-        is_term_symname_arity_maybe_pf(ModuleName, Term, PredSpec)
-    then
-        PredSpec = pred_pfu_name_arity(PFU, SymName, Arity),
+    ( if is_term_symname_arity_maybe_pf(Term, PredSpec0) then
+        PredSpec0 = pred_pfu_name_arity(PFU, SymName0, Arity),
+        implicitly_qualify_sym_name(ModuleName, Term, SymName0, MaybeSymName),
         (
-            PFU = pfu_unknown,
-            PFUMM = pfumm_unknown(Arity)
+            MaybeSymName = ok1(SymName),
+            (
+                PFU = pfu_unknown,
+                PFUMM = pfumm_unknown(Arity)
+            ;
+                PFU = pfu_predicate,
+                PFUMM = pfumm_predicate(moa_arity(Arity))
+            ;
+                PFU = pfu_function,
+                PFUMM = pfumm_function(moa_arity(Arity))
+            ),
+            PredOrProcSpec = pred_or_proc_pfumm_name(PFUMM, SymName),
+            MaybePredOrProcSpec = ok1(PredOrProcSpec)
         ;
-            PFU = pfu_predicate,
-            PFUMM = pfumm_predicate(moa_arity(Arity))
-        ;
-            PFU = pfu_function,
-            PFUMM = pfumm_function(moa_arity(Arity))
-        ),
-        PredOrProcSpec = pred_or_proc_pfumm_name(PFUMM, SymName),
-        MaybePredOrProcSpec = ok1(PredOrProcSpec)
+            MaybeSymName = error1(Specs),
+            MaybePredOrProcSpec = error1(Specs)
+        )
     else
         parse_pred_or_func_and_arg_modes(yes(ModuleName), ContextPieces,
             VarSet, Term, MaybePredAndModes),
@@ -380,22 +390,20 @@ parse_pred_pfu_name_arity_maybe_modes(ModuleName, ContextPieces, VarSet,
         )
     ).
 
-:- pred is_term_symname_arity_maybe_pf(module_name::in, term::in,
-    pred_pfu_name_arity::out) is semidet.
+:- pred is_term_symname_arity_maybe_pf(term::in, pred_pfu_name_arity::out)
+    is semidet.
 
-is_term_symname_arity_maybe_pf(ModuleName, Term, PredSpec) :-
+is_term_symname_arity_maybe_pf(Term, PredSpec) :-
     ( if
         Term = term.functor(term.atom(Functor), [SubTerm], _),
         ( Functor = "pred", PFU = pfu_predicate
         ; Functor = "func", PFU = pfu_function
         ),
-        parse_implicitly_qualified_name_and_arity(ModuleName, SubTerm,
-            SymName, Arity)
+        parse_sym_name_and_arity(SubTerm, SymName, Arity)
     then
         PredSpec = pred_pfu_name_arity(PFU, SymName, user_arity(Arity))
     else if
-        parse_implicitly_qualified_name_and_arity(ModuleName, Term,
-            SymName, Arity)
+        parse_sym_name_and_arity(Term, SymName, Arity)
     then
         PredSpec = pred_pfu_name_arity(pfu_unknown, SymName, user_arity(Arity))
     else

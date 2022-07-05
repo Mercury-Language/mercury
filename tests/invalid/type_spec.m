@@ -31,6 +31,8 @@
 
 :- pragma type_spec(type_spec2/1, (U = int, U = list(int))).
 
+:- pragma type_spec(pred(bad_module_name.type_spec1/1), U = float).
+
 :- implementation.
 
 :- type the_type(T, U)

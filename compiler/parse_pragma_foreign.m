@@ -1656,7 +1656,7 @@ parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
     term::in, maybe1(type_ctor)::out) is det.
 
 parse_type_ctor_name_arity(ContextPieces, VarSet, TypeTerm, MaybeTypeCtor) :-
-    ( if parse_unqualified_name_and_arity(TypeTerm, SymName, Arity) then
+    ( if parse_sym_name_and_arity(TypeTerm, SymName, Arity) then
         MaybeTypeCtor = ok1(type_ctor(SymName, Arity))
     else
         TypeTermStr = describe_error_term(VarSet, TypeTerm),

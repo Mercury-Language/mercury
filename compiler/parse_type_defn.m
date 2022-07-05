@@ -941,7 +941,7 @@ parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm, BodyTerm,
         AttrName = "type_is_abstract_subtype"
     then
         ( if Args = [Arg] then
-            ( if parse_unqualified_name_and_arity(Arg, SymName, Arity) then
+            ( if parse_sym_name_and_arity(Arg, SymName, Arity) then
                 TypeCtor = type_ctor(SymName, Arity),
                 TypeDefn0 = parse_tree_abstract_type(
                     abstract_subtype(TypeCtor)),
@@ -1388,11 +1388,15 @@ parse_where_direct_arg_is(ModuleName, VarSet, Term) = MaybeDirectArgCtors :-
     maybe1(sym_name_arity)::out) is det.
 
 parse_direct_arg_functor(ModuleName, VarSet, Term, MaybeFunctor) :-
-    ( if
-        parse_implicitly_qualified_name_and_arity(ModuleName, Term,
-            Name, Arity)
-    then
-        MaybeFunctor = ok1(sym_name_arity(Name, Arity))
+    ( if parse_sym_name_and_arity(Term, SymName0, Arity) then
+        implicitly_qualify_sym_name(ModuleName, Term, SymName0, MaybeSymName),
+        (
+            MaybeSymName = ok1(SymName),
+            MaybeFunctor = ok1(sym_name_arity(SymName, Arity))
+        ;
+            MaybeSymName = error1(Specs),
+            MaybeFunctor = error1(Specs)
+        )
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected functor name/arity for"),

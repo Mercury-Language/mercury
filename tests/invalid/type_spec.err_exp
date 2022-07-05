@@ -24,4 +24,6 @@ type_spec.m:030:   substitution.
 type_spec.m:032: In `:- pragma type_spec' declaration for predicate
 type_spec.m:032:   `type_spec.type_spec2'/1:
 type_spec.m:032:   error: variable `U' has multiple replacement types.
+type_spec.m:034: Error: the module qualifier in `bad_module_name.type_spec1'
+type_spec.m:034:   does not match the preceding `:- module' declaration.
 For more information, recompile with `-E'.

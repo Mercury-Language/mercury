@@ -992,7 +992,7 @@ parse_used_item_set(Term, !UsedItems, !Errors) :-
 parse_simple_item(Term, !Set, !Errors) :-
     ( if
         Term = term.functor(term.atom("-"), [NameArityTerm, MatchesTerm], _),
-        parse_unqualified_name_and_arity(NameArityTerm, SymName, Arity)
+        parse_sym_name_and_arity(NameArityTerm, SymName, Arity)
     then
         Name = unqualify_name(SymName),
         conjunction_to_list(MatchesTerm, MatchTermList),
@@ -1143,7 +1143,7 @@ parse_resolved_functor(Term, !RevCtors, !Errors) :-
             Atom = "ctor",
             ( if
                 ArgTerms = [NameArityTerm],
-                parse_unqualified_name_and_arity(NameArityTerm,
+                parse_sym_name_and_arity(NameArityTerm,
                     TypeName, TypeArity)
             then
                 TypeCtor = type_ctor(TypeName, TypeArity),
@@ -1157,9 +1157,9 @@ parse_resolved_functor(Term, !RevCtors, !Errors) :-
             Atom = "field",
             ( if
                 ArgTerms = [TypeNameArityTerm, ConsNameArityTerm],
-                parse_unqualified_name_and_arity(TypeNameArityTerm,
+                parse_sym_name_and_arity(TypeNameArityTerm,
                     TypeName, TypeArity),
-                parse_unqualified_name_and_arity(ConsNameArityTerm,
+                parse_sym_name_and_arity(ConsNameArityTerm,
                     ConsName, ConsArity)
             then
                 TypeCtor = type_ctor(TypeName, TypeArity),
@@ -1278,7 +1278,7 @@ read_and_parse_used_classes(UsedFileName, UsedFileString, MaxOffset,
     cord(used_file_error)::in, cord(used_file_error)::out) is det.
 
 parse_name_and_arity_item_add_to_set(Term, !UsedClasses, !Errors) :-
-    ( if parse_unqualified_name_and_arity(Term, ClassName, ClassArity) then
+    ( if parse_sym_name_and_arity(Term, ClassName, ClassArity) then
         UsedClass = recomp_item_name(ClassName, ClassArity),
         set.insert(UsedClass, !UsedClasses)
     else

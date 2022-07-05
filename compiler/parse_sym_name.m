@@ -165,7 +165,7 @@ parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs) :-
                 ModuleTermStr = describe_error_term(GenericVarSet, ModuleTerm),
                 Pieces = cord.list(ContextPieces) ++
                     [lower_case_next_if_not_first,
-                    words("Error: module name expected before '.'"),
+                    words("Error: expected module name before '.'"),
                     words("in qualified symbol name, got"),
                     words(ModuleTermStr), suffix("."), nl],
                 Spec = simplest_spec($pred, severity_error,
@@ -176,7 +176,7 @@ parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs) :-
             varset.coerce(VarSet, GenericVarSet),
             TermStr = describe_error_term(GenericVarSet, Term),
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error: identifier expected after '.'"),
+                words("Error: expected identifier after '.'"),
                 words("in qualified symbol name, got"),
                 words(TermStr), suffix("."), nl],
             Spec = simplest_spec($pred, severity_error,
@@ -367,9 +367,9 @@ implicitly_qualify_sym_name_and_args(DefaultModuleName, Term, SymName0, Args,
     then
         MaybeSymNameAndArgs = ok2(SymName, Args)
     else
-        Pieces = [words("Error: module qualifier in definition"),
-            words("does not match preceding"), decl("module"),
-            words("declaration."), nl],
+        Pieces = [words("Error: the module qualifier in"),
+            qual_sym_name(SymName0), words("does not match"),
+            words("the preceding"), decl("module"), words("declaration."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),
         MaybeSymNameAndArgs = error2([Spec])
@@ -382,9 +382,9 @@ implicitly_qualify_sym_name(DefaultModuleName, Term, SymName0, MaybeSymName) :-
     then
         MaybeSymName = ok1(SymName)
     else
-        Pieces = [words("Error: module qualifier in definition"),
-            words("does not match preceding"), decl("module"),
-            words("declaration."), nl],
+        Pieces = [words("Error: the module qualifier in"),
+            qual_sym_name(SymName0), words("does not match"),
+            words("the preceding"), decl("module"), words("declaration."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),
         MaybeSymName = error1([Spec])

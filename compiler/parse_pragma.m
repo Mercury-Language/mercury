@@ -672,7 +672,7 @@ parse_pragma_obsolete_in_favour_of(Term, VarSet, MaybeObsoleteInFavourOf) :-
 parse_pragma_obsolete_in_favour_of_snas(_ArgNum, [], _VarSet, ok1([])).
 parse_pragma_obsolete_in_favour_of_snas(ArgNum, [Term | Terms], VarSet,
         MaybeSNAs) :-
-    ( if parse_unqualified_name_and_arity(Term, SymName, Arity) then
+    ( if parse_sym_name_and_arity(Term, SymName, Arity) then
         MaybeHeadSNA = ok1(sym_name_arity(SymName, Arity))
     else
         Pieces = [words("In the"), nth_fixed(ArgNum),
@@ -936,11 +936,16 @@ parse_oisu_pragma(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             OtherTerms = [DestructorsTerm],
             MaybeDestructorsTerm = yes(DestructorsTerm)
         ),
-        ( if
-            parse_implicitly_qualified_name_and_arity(ModuleName, TypeCtorTerm,
-                Name, Arity)
-        then
-            MaybeTypeCtor = ok1(type_ctor(Name, Arity))
+        ( if parse_sym_name_and_arity(TypeCtorTerm, SymName0, Arity) then
+            implicitly_qualify_sym_name(ModuleName, TypeCtorTerm,
+                SymName0, MaybeSymName),
+            (
+                MaybeSymName = ok1(SymName),
+                MaybeTypeCtor = ok1(type_ctor(SymName, Arity))
+            ;
+                MaybeSymName = error1(SymNameSpecs),
+                MaybeTypeCtor = error1(SymNameSpecs)
+            )
         else
             TypeCtorTermStr = describe_error_term(VarSet, TypeCtorTerm),
             Pieces = [words("In the first argument of"),

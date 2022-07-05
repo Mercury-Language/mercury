@@ -1,6 +1,6 @@
 bad_include.m:017: Error: symbol name expected at 42.
 bad_include.m:018: Error: symbol name expected at f([1, 2, 3]).
-bad_include.m:019: Error: module qualifier in definition does not match
-bad_include.m:019:   preceding `:- module' declaration.
-bad_include.m:020: Error: module qualifier in definition does not match
-bad_include.m:020:   preceding `:- module' declaration.
+bad_include.m:019: Error: the module qualifier in `bad_include.sub1.sub2' does
+bad_include.m:019:   not match the preceding `:- module' declaration.
+bad_include.m:020: Error: the module qualifier in `other_module.sub3' does not
+bad_include.m:020:   match the preceding `:- module' declaration.

@@ -220,7 +220,7 @@ parse_type_repn_eqv_to(VarSet, RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
 parse_type_repn_subtype_of(RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
     (
         RepnArgs = [RepnArg],
-        ( if parse_unqualified_name_and_arity(RepnArg, SymName, Arity) then
+        ( if parse_sym_name_and_arity(RepnArg, SymName, Arity) then
             SuperTypeCtor = type_ctor(SymName, Arity),
             MaybeRepn = ok1(tcrepn_is_subtype_of(SuperTypeCtor))
         else
