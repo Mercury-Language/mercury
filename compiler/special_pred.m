@@ -89,8 +89,8 @@
 
     % XXX Document me, and the relationship to the /2 pred just above.
     %
-:- pred special_pred_is_generated_lazily(module_info::in, type_ctor::in,
-    hlds_type_body::in, type_status::in) is semidet.
+:- pred special_pred_is_generated_lazily_for_defn(module_info::in,
+    type_ctor::in, hlds_type_body::in, type_status::in) is semidet.
 
     % A compiler-generated predicate only needs type checking if
     % (a) it is a user-defined equality pred, or
@@ -254,7 +254,8 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor) :-
         special_pred_is_generated_lazily_2(ModuleInfo, TypeBody, TypeStatus)
     ).
 
-special_pred_is_generated_lazily(ModuleInfo, TypeCtor, TypeBody, TypeStatus) :-
+special_pred_is_generated_lazily_for_defn(ModuleInfo, TypeCtor,
+        TypeBody, TypeStatus) :-
     % We don't want special preds for solver types to be generated lazily
     % because we have to insert calls to their initialisation preds during
     % mode analysis and we therefore require the appropriate names to

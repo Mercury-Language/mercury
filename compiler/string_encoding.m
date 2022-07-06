@@ -23,11 +23,11 @@
 
 :- func target_string_encoding(compilation_target) = string_encoding.
 
-:- pred to_code_unit_list(string_encoding::in, string::in, list(int)::out)
-    is det.
+:- pred to_code_unit_list_in_encoding(string_encoding::in, string::in,
+    list(int)::out) is det.
 
-:- pred from_code_unit_list(string_encoding::in, list(int)::in, string::out)
-    is semidet.
+:- pred from_code_unit_list_in_encoding(string_encoding::in, list(int)::in,
+    string::out) is semidet.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -52,7 +52,8 @@ target_string_encoding(Target) = Encoding :-
         Encoding = utf16
     ).
 
-to_code_unit_list(Encoding, String, CodeUnits) :-
+to_code_unit_list_in_encoding(Encoding, String, CodeUnits) :-
+    require_complete_switch [Encoding]
     (
         Encoding = utf8,
         string.to_utf8_code_unit_list(String, CodeUnits)
@@ -61,7 +62,7 @@ to_code_unit_list(Encoding, String, CodeUnits) :-
         string.to_utf16_code_unit_list(String, CodeUnits)
     ).
 
-from_code_unit_list(Encoding, CodeUnits, String) :-
+from_code_unit_list_in_encoding(Encoding, CodeUnits, String) :-
     require_complete_switch [Encoding]
     (
         Encoding = utf8,

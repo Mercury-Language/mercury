@@ -57,7 +57,7 @@ eliminate_duplicate_procs(IdProcs, Procs, !DupProcMap) :-
     ;
         IdProcs = [Id1 - Proc1 | IdProcsTail],
         IdProcsTail = [_ | _],
-        standardize_proc(Proc1, StdProc1, !.DupProcMap),
+        apply_dup_proc_map_in_proc(Proc1, StdProc1, !.DupProcMap),
         eliminate_dup_procs([Id1 - StdProc1], IdProcsTail, FinalIdProcsTail,
             !DupProcMap),
         assoc_list.values(FinalIdProcsTail, FinalProcsTail),
@@ -84,7 +84,7 @@ eliminate_dup_procs(ModelStdProcs0, [Id - Proc0 | IdProcs0],
         ModelStdProcs = ModelStdProcs0
     else
         Proc = Proc0,
-        standardize_proc(Proc0, StdProc0, !.DupProcMap),
+        apply_dup_proc_map_in_proc(Proc0, StdProc0, !.DupProcMap),
         % Since the number of procedures per predicate is tiny,
         % the quadratic behavior here is not a problem.
         list.append(ModelStdProcs0, [Id - StdProc0], ModelStdProcs)
@@ -98,7 +98,7 @@ eliminate_dup_procs(ModelStdProcs0, [Id - Proc0 | IdProcs0],
 find_matching_model_proc([ModelId - ModelStdProc | ModelIdProcs], Id, Proc,
         DupProcMap, MatchingId) :-
     map.det_insert(Id, ModelId, DupProcMap, AugDupProcMap),
-    standardize_proc(Proc, StdProc, AugDupProcMap),
+    apply_dup_proc_map_in_proc(Proc, StdProc, AugDupProcMap),
     StdInstrs = StdProc ^ cproc_code,
     ModelStdInstrs = ModelStdProc ^ cproc_code,
     ( if StdInstrs = ModelStdInstrs then
@@ -151,43 +151,44 @@ disallowed_instr(llds_instr(Instr, _)) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred standardize_proc(c_procedure::in, c_procedure::out,
+:- pred apply_dup_proc_map_in_proc(c_procedure::in, c_procedure::out,
     map(proc_label, proc_label)::in) is det.
 
-standardize_proc(CProc, StdCProc, DupProcMap) :-
+apply_dup_proc_map_in_proc(CProc, StdCProc, DupProcMap) :-
     Instrs = CProc ^ cproc_code,
-    standardize_instrs(Instrs, StdInstrs, DupProcMap),
+    apply_dup_proc_map_in_instrs(Instrs, StdInstrs, DupProcMap),
     StdCProc = CProc ^ cproc_code := StdInstrs.
 
-:- pred standardize_instrs(list(instruction)::in, list(instruction)::out,
+:- pred apply_dup_proc_map_in_instrs(
+    list(instruction)::in, list(instruction)::out,
     map(proc_label, proc_label)::in) is det.
 
-standardize_instrs([], [], _).
-standardize_instrs([llds_instr(Instr, _) | Instrs],
+apply_dup_proc_map_in_instrs([], [], _).
+apply_dup_proc_map_in_instrs([llds_instr(Instr, _) | Instrs],
         [llds_instr(StdInstr, "") | StdInstrs], DupProcMap) :-
-    standardize_instr(Instr, StdInstr, DupProcMap),
-    standardize_instrs(Instrs, StdInstrs, DupProcMap).
+    apply_dup_proc_map_in_instr(Instr, StdInstr, DupProcMap),
+    apply_dup_proc_map_in_instrs(Instrs, StdInstrs, DupProcMap).
 
-:- pred standardize_instr(instr::in, instr::out,
+:- pred apply_dup_proc_map_in_instr(instr::in, instr::out,
     map(proc_label, proc_label)::in) is det.
 
-standardize_instr(Instr, StdInstr, DupProcMap) :-
+apply_dup_proc_map_in_instr(Instr, StdInstr, DupProcMap) :-
     (
         Instr = block(NumIntTemps, NumFloatTemps, Instrs),
-        standardize_instrs(Instrs, StdInstrs, DupProcMap),
+        apply_dup_proc_map_in_instrs(Instrs, StdInstrs, DupProcMap),
         StdInstr = block(NumIntTemps, NumFloatTemps, StdInstrs)
     ;
         Instr = assign(Lval, Rval),
-        standardize_rval(Rval, StdRval, DupProcMap),
+        apply_dup_proc_map_in_rval(Rval, StdRval, DupProcMap),
         StdInstr = assign(Lval, StdRval)
     ;
         Instr = keep_assign(Lval, Rval),
-        standardize_rval(Rval, StdRval, DupProcMap),
+        apply_dup_proc_map_in_rval(Rval, StdRval, DupProcMap),
         StdInstr = keep_assign(Lval, StdRval)
     ;
         Instr = llcall(Target, Cont, LiveInfo, Context, GoalPath, Model),
-        standardize_code_addr(Target, StdTarget, DupProcMap),
-        standardize_code_addr(Cont, StdCont, DupProcMap),
+        apply_dup_proc_map_in_code_addr(Target, StdTarget, DupProcMap),
+        apply_dup_proc_map_in_code_addr(Cont, StdCont, DupProcMap),
         StdInstr = llcall(StdTarget, StdCont, LiveInfo, Context, GoalPath,
             Model)
     ;
@@ -199,36 +200,36 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
             FrameInfo = ordinary_frame(_, NumSlots),
             StdFrameInfo = ordinary_frame("", NumSlots)
         ),
-        standardize_maybe_code_addr(MaybeCodeAddr, MaybeStdCodeAddr,
+        apply_dup_proc_map_in_maybe_code_addr(MaybeCodeAddr, MaybeStdCodeAddr,
             DupProcMap),
         StdInstr = mkframe(StdFrameInfo, MaybeStdCodeAddr)
     ;
         Instr = label(Label),
-        standardize_label(Label, StdLabel, DupProcMap),
+        apply_dup_proc_map_in_label(Label, StdLabel, DupProcMap),
         StdInstr = label(StdLabel)
     ;
         Instr = goto(Target),
-        standardize_code_addr(Target, StdTarget, DupProcMap),
+        apply_dup_proc_map_in_code_addr(Target, StdTarget, DupProcMap),
         StdInstr = goto(StdTarget)
     ;
         Instr = computed_goto(Rval, Targets),
-        standardize_maybe_labels(Targets, StdTargets, DupProcMap),
+        apply_dup_proc_map_in_maybe_labels(Targets, StdTargets, DupProcMap),
         StdInstr = computed_goto(Rval, StdTargets)
     ;
         Instr = if_val(Rval, Target),
-        standardize_rval(Rval, StdRval, DupProcMap),
-        standardize_code_addr(Target, StdTarget, DupProcMap),
+        apply_dup_proc_map_in_rval(Rval, StdRval, DupProcMap),
+        apply_dup_proc_map_in_code_addr(Target, StdTarget, DupProcMap),
         StdInstr = if_val(StdRval, StdTarget)
     ;
         Instr = incr_sp(NumSlots, _, Kind),
         StdInstr = incr_sp(NumSlots, "", Kind)
     ;
         Instr = fork_new_child(Lval, Child),
-        standardize_label(Child, StdChild, DupProcMap),
+        apply_dup_proc_map_in_label(Child, StdChild, DupProcMap),
         StdInstr = fork_new_child(Lval, StdChild)
     ;
         Instr = join_and_continue(Lval, Label),
-        standardize_label(Label, StdLabel, DupProcMap),
+        apply_dup_proc_map_in_label(Label, StdLabel, DupProcMap),
         StdInstr = join_and_continue(Lval, StdLabel)
     ;
         % The labels occurring in foreign_proc_code instructions
@@ -237,19 +238,19 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
         StdInstr = Instr
     ;
         Instr = lc_wait_free_slot(Rval, Lval, Label),
-        standardize_rval(Rval, StdRval, DupProcMap),
-        standardize_label(Label, StdLabel, DupProcMap),
+        apply_dup_proc_map_in_rval(Rval, StdRval, DupProcMap),
+        apply_dup_proc_map_in_label(Label, StdLabel, DupProcMap),
         StdInstr = lc_wait_free_slot(StdRval, Lval, StdLabel)
     ;
         Instr = lc_spawn_off(LCRval, LCSRval, Label),
-        standardize_rval(LCRval, StdLCRval, DupProcMap),
-        standardize_rval(LCSRval, StdLCSRval, DupProcMap),
-        standardize_label(Label, StdLabel, DupProcMap),
+        apply_dup_proc_map_in_rval(LCRval, StdLCRval, DupProcMap),
+        apply_dup_proc_map_in_rval(LCSRval, StdLCSRval, DupProcMap),
+        apply_dup_proc_map_in_label(Label, StdLabel, DupProcMap),
         StdInstr = lc_spawn_off(StdLCRval, StdLCSRval, StdLabel)
     ;
         Instr = lc_join_and_terminate(LCRval, LCSRval),
-        standardize_rval(LCRval, StdLCRval, DupProcMap),
-        standardize_rval(LCSRval, StdLCSRval, DupProcMap),
+        apply_dup_proc_map_in_rval(LCRval, StdLCRval, DupProcMap),
+        apply_dup_proc_map_in_rval(LCSRval, StdLCSRval, DupProcMap),
         StdInstr = lc_join_and_terminate(StdLCRval, StdLCSRval)
     ;
         % These instructions have no labels inside them, or anything else
@@ -283,10 +284,10 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
 
     % Compute the standard form of a proc_label.
     %
-:- pred standardize_proc_label(proc_label::in, proc_label::out,
+:- pred apply_dup_proc_map_in_proc_label(proc_label::in, proc_label::out,
     map(proc_label, proc_label)::in) is det.
 
-standardize_proc_label(ProcLabel, StdProcLabel, DupProcMap) :-
+apply_dup_proc_map_in_proc_label(ProcLabel, StdProcLabel, DupProcMap) :-
     ( if map.search(DupProcMap, ProcLabel, FoundProcLabel) then
         StdProcLabel = FoundProcLabel
     else
@@ -295,51 +296,52 @@ standardize_proc_label(ProcLabel, StdProcLabel, DupProcMap) :-
 
     % Compute the standard form of a label.
     %
-:- pred standardize_label(label::in, label::out,
+:- pred apply_dup_proc_map_in_label(label::in, label::out,
     map(proc_label, proc_label)::in) is det.
 
-standardize_label(Label, StdLabel, DupProcMap) :-
+apply_dup_proc_map_in_label(Label, StdLabel, DupProcMap) :-
     (
         Label = internal_label(Num, ProcLabel),
-        standardize_proc_label(ProcLabel, StdProcLabel, DupProcMap),
+        apply_dup_proc_map_in_proc_label(ProcLabel, StdProcLabel, DupProcMap),
         StdLabel = internal_label(Num, StdProcLabel)
     ;
         Label = entry_label(Type, ProcLabel),
-        standardize_proc_label(ProcLabel, StdProcLabel, DupProcMap),
+        apply_dup_proc_map_in_proc_label(ProcLabel, StdProcLabel, DupProcMap),
         StdLabel = entry_label(Type, StdProcLabel)
     ).
 
     % Compute the standard form of a list(label).
     %
-:- pred standardize_maybe_labels(list(maybe(label))::in,
+:- pred apply_dup_proc_map_in_maybe_labels(list(maybe(label))::in,
     list(maybe(label))::out, map(proc_label, proc_label)::in) is det.
 
-standardize_maybe_labels([], [], _DupProcMap).
-standardize_maybe_labels([MaybeLabel | MaybeLabels],
+apply_dup_proc_map_in_maybe_labels([], [], _DupProcMap).
+apply_dup_proc_map_in_maybe_labels([MaybeLabel | MaybeLabels],
         [StdMaybeLabel | StdMaybeLabels], DupProcMap) :-
     (
         MaybeLabel = yes(Label),
-        standardize_label(Label, StdLabel, DupProcMap),
+        apply_dup_proc_map_in_label(Label, StdLabel, DupProcMap),
         StdMaybeLabel = yes(StdLabel)
     ;
         MaybeLabel = no,
         StdMaybeLabel = no
     ),
-    standardize_maybe_labels(MaybeLabels, StdMaybeLabels, DupProcMap).
+    apply_dup_proc_map_in_maybe_labels(MaybeLabels, StdMaybeLabels,
+        DupProcMap).
 
     % Compute the standard form of a code_addr.
     %
-:- pred standardize_code_addr(code_addr::in, code_addr::out,
+:- pred apply_dup_proc_map_in_code_addr(code_addr::in, code_addr::out,
     map(proc_label, proc_label)::in) is det.
 
-standardize_code_addr(CodeAddr, StdCodeAddr, DupProcMap) :-
+apply_dup_proc_map_in_code_addr(CodeAddr, StdCodeAddr, DupProcMap) :-
     (
         CodeAddr = code_label(Label),
-        standardize_label(Label, StdLabel, DupProcMap),
+        apply_dup_proc_map_in_label(Label, StdLabel, DupProcMap),
         StdCodeAddr = code_label(StdLabel)
     ;
         CodeAddr = code_imported_proc(ProcLabel),
-        standardize_proc_label(ProcLabel, StdProcLabel, DupProcMap),
+        apply_dup_proc_map_in_proc_label(ProcLabel, StdProcLabel, DupProcMap),
         StdCodeAddr = code_imported_proc(StdProcLabel)
     ;
         ( CodeAddr = code_succip
@@ -357,25 +359,26 @@ standardize_code_addr(CodeAddr, StdCodeAddr, DupProcMap) :-
 
     % Compute the standard form of a maybe(code_addr).
     %
-:- pred standardize_maybe_code_addr(maybe(code_addr)::in,
+:- pred apply_dup_proc_map_in_maybe_code_addr(maybe(code_addr)::in,
     maybe(code_addr)::out, map(proc_label, proc_label)::in) is det.
 
-standardize_maybe_code_addr(MaybeCodeAddr, MaybeStdCodeAddr, DupProcMap) :-
+apply_dup_proc_map_in_maybe_code_addr(MaybeCodeAddr, MaybeStdCodeAddr,
+        DupProcMap) :-
     (
         MaybeCodeAddr = no,
         MaybeStdCodeAddr = no
     ;
         MaybeCodeAddr = yes(CodeAddr),
-        standardize_code_addr(CodeAddr, StdCodeAddr, DupProcMap),
+        apply_dup_proc_map_in_code_addr(CodeAddr, StdCodeAddr, DupProcMap),
         MaybeStdCodeAddr = yes(StdCodeAddr)
     ).
 
     % Compute the standard form of an rval.
     %
-:- pred standardize_rval(rval::in, rval::out, map(proc_label, proc_label)::in)
-    is det.
+:- pred apply_dup_proc_map_in_rval(rval::in, rval::out,
+    map(proc_label, proc_label)::in) is det.
 
-standardize_rval(Rval, StdRval, DupProcMap) :-
+apply_dup_proc_map_in_rval(Rval, StdRval, DupProcMap) :-
     (
         ( Rval = lval(_)
         ; Rval = mkword(_, _)
@@ -388,29 +391,29 @@ standardize_rval(Rval, StdRval, DupProcMap) :-
         unexpected($pred, "var")
     ;
         Rval = const(Const),
-        standardize_rval_const(Const, StdConst, DupProcMap),
+        apply_dup_proc_map_in_rval_const(Const, StdConst, DupProcMap),
         StdRval = const(StdConst)
     ;
         Rval = cast(Type, RvalL),
-        standardize_rval(RvalL, StdRvalL, DupProcMap),
+        apply_dup_proc_map_in_rval(RvalL, StdRvalL, DupProcMap),
         StdRval = cast(Type, StdRvalL)
     ;
         Rval = unop(Unop, RvalL),
-        standardize_rval(RvalL, StdRvalL, DupProcMap),
+        apply_dup_proc_map_in_rval(RvalL, StdRvalL, DupProcMap),
         StdRval = unop(Unop, StdRvalL)
     ;
         Rval = binop(Binop, RvalL, RvalR),
-        standardize_rval(RvalL, StdRvalL, DupProcMap),
-        standardize_rval(RvalR, StdRvalR, DupProcMap),
+        apply_dup_proc_map_in_rval(RvalL, StdRvalL, DupProcMap),
+        apply_dup_proc_map_in_rval(RvalR, StdRvalR, DupProcMap),
         StdRval = binop(Binop, StdRvalL, StdRvalR)
     ).
 
     % Compute the standard form of an rval constant.
     %
-:- pred standardize_rval_const(rval_const::in, rval_const::out,
+:- pred apply_dup_proc_map_in_rval_const(rval_const::in, rval_const::out,
     map(proc_label, proc_label)::in) is det.
 
-standardize_rval_const(Const, StdConst, DupProcMap) :-
+apply_dup_proc_map_in_rval_const(Const, StdConst, DupProcMap) :-
     (
         ( Const = llconst_true
         ; Const = llconst_false
@@ -433,7 +436,7 @@ standardize_rval_const(Const, StdConst, DupProcMap) :-
         StdConst = Const
     ;
         Const = llconst_code_addr(CodeAddr),
-        standardize_code_addr(CodeAddr, StdCodeAddr, DupProcMap),
+        apply_dup_proc_map_in_code_addr(CodeAddr, StdCodeAddr, DupProcMap),
         StdConst = llconst_code_addr(StdCodeAddr)
     ).
 

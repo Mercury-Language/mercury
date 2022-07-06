@@ -125,8 +125,8 @@ add_special_pred_decl_defns_for_type_maybe_lazily(TypeCtor, TypeDefn,
     get_type_defn_body(TypeDefn, TypeBody),
     get_type_defn_status(TypeDefn, TypeStatus),
     ( if
-        special_pred_is_generated_lazily(!.ModuleInfo, TypeCtor, TypeBody,
-            TypeStatus)
+        special_pred_is_generated_lazily_for_defn(!.ModuleInfo, TypeCtor,
+            TypeBody, TypeStatus)
     then
         true
     else
@@ -474,8 +474,8 @@ collect_type_defn(ModuleInfo, TypeCtor, Type, TVarSet, TypeBody, Context) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
 
     expect(
-        special_pred_is_generated_lazily(ModuleInfo, TypeCtor, TypeBody,
-            TypeStatus),
+        special_pred_is_generated_lazily_for_defn(ModuleInfo, TypeCtor,
+            TypeBody, TypeStatus),
         $pred, "not generated lazily"),
     prog_type.var_list_to_type_list(KindMap, TypeParams, TypeArgs),
     construct_type(TypeCtor, TypeArgs, Type).

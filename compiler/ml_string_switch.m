@@ -493,7 +493,7 @@ create_trie(Encoding, TaggedCases, MaxCaseNum, TopTrieNode) :-
     ;
         StrsCaseIds = [HeadStrCaseId | TailStrCaseIds],
         HeadStrCaseId = HeadStr - HeadCaseId,
-        to_code_unit_list(Encoding, HeadStr, HeadStrCodeUnits),
+        to_code_unit_list_in_encoding(Encoding, HeadStr, HeadStrCodeUnits),
         TopTrieNode1 = trie_leaf([], HeadStrCodeUnits, HeadCaseId),
         insert_cases_into_trie(Encoding, TailStrCaseIds, TopTrieNode1,
             TopTrieNode)
@@ -505,7 +505,7 @@ create_trie(Encoding, TaggedCases, MaxCaseNum, TopTrieNode) :-
 insert_cases_into_trie(_Encoding, [], !TrieNode).
 insert_cases_into_trie(Encoding, [Case | Cases], !TrieNode) :-
     Case = Str - CaseId,
-    to_code_unit_list(Encoding, Str, StrCodeUnits),
+    to_code_unit_list_in_encoding(Encoding, Str, StrCodeUnits),
     insert_case_into_trie_node([], StrCodeUnits, CaseId, !TrieNode),
     insert_cases_into_trie(Encoding, Cases, !TrieNode).
 
@@ -612,7 +612,9 @@ convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval, Context,
         list.length(RevMatchedCodeUnits, NumRevMatchedCodeUnits),
         expect(unify(NumRevMatchedCodeUnits, NumMatched), $pred,
             "NumRevMatchedCodeUnits != NumMatched"),
-        ( if from_code_unit_list(Encoding, AllCodeUnits, String) then
+        ( if
+            from_code_unit_list_in_encoding(Encoding, AllCodeUnits, String)
+        then
             StringRval = ml_const(mlconst_string(String))
         else
             unexpected($pred, "code units cannot be turned back into string")

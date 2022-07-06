@@ -185,7 +185,6 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
 
-:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module require.
@@ -222,33 +221,40 @@ user_arity_pred_form_arity(pf_function, user_arity(A - 1), pred_form_arity(A)).
 %---------------------------------------------------------------------------%
 
 split_types_and_modes(TypesAndModes, Types, MaybeModes) :-
-    split_types_and_modes_2(TypesAndModes, yes, Types, Modes, Result),
-    (
-        Result = yes,
-        MaybeModes = yes(Modes)
-    ;
-        Result = no,
-        MaybeModes = no
-    ).
-
-:- pred split_types_and_modes_2(list(type_and_mode)::in, bool::in,
-    list(mer_type)::out, list(mer_mode)::out, bool::out) is det.
-
-    % T = type, M = mode, TM = combined type and mode
-split_types_and_modes_2([], Result, [], [], Result).
-split_types_and_modes_2([TM | TMs], Result0, [T | Ts], [M | Ms], Result) :-
-    split_type_and_mode(TM, Result0, T, M, Result1),
-    split_types_and_modes_2(TMs, Result1, Ts, Ms, Result).
-
+    split_types_and_modes_loop(TypesAndModes, Types, Modes,
+        no_missing_modes, MaybeMissingModes),
     % If a pred declaration specifies modes for some but not all of the
     % arguments, then the modes are ignored - should this be an error instead?
     % trd: this should never happen because the parser will detect these cases.
-    %
-:- pred split_type_and_mode(type_and_mode::in, bool::in,
-    mer_type::out, mer_mode::out, bool::out) is det.
+    (
+        MaybeMissingModes = no_missing_modes,
+        MaybeModes = yes(Modes)
+    ;
+        MaybeMissingModes = some_missing_modes,
+        MaybeModes = no
+    ).
 
-split_type_and_mode(type_only(T), _, T, from_to_mode(free, free), no).
-split_type_and_mode(type_and_mode(T, M), R, T, M, R).
+:- type maybe_missing_modes
+    --->    no_missing_modes
+    ;       some_missing_modes.
+
+:- pred split_types_and_modes_loop(list(type_and_mode)::in,
+    list(mer_type)::out, list(mer_mode)::out,
+    maybe_missing_modes::in, maybe_missing_modes::out) is det.
+
+    % T = type, M = mode, TM = combined type and mode
+split_types_and_modes_loop([], [], [], !MaybeMissingModes).
+split_types_and_modes_loop([TM | TMs], [T | Ts], [M | Ms],
+        !MaybeMissingModes) :-
+    (
+        TM = type_only(T),
+        % This value of M will be ignored by split_types_and_modes.
+        M = from_to_mode(free, free),
+        !:MaybeMissingModes = some_missing_modes
+    ;
+        TM = type_and_mode(T, M)
+    ),
+    split_types_and_modes_loop(TMs, Ts, Ms, !MaybeMissingModes).
 
 split_type_and_mode(type_only(T), T, no).
 split_type_and_mode(type_and_mode(T, M), T, yes(M)).

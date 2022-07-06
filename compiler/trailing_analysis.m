@@ -341,7 +341,7 @@ check_goal_for_trail_mods(SCC, VarTable, Goal, Result, MaybeAnalysisStatus,
             set.member(CallPPId, SCC)
         then
             lookup_var_types(VarTable, CallArgs, Types),
-            TrailingStatus = trail_check_types(!.ModuleInfo, Types),
+            TrailingStatus = types_trailing_status(!.ModuleInfo, Types),
             Result = TrailingStatus,
             MaybeAnalysisStatus = yes(optimal)
         else if
@@ -717,7 +717,7 @@ trail_check_call_2(ModuleInfo, VarTable, PPId, Args, MaybeResult) :-
 
 trail_check_vars(ModuleInfo, VarTable, Vars) = Result :-
     lookup_var_types(VarTable, Vars, Types),
-    Result = trail_check_types(ModuleInfo, Types).
+    Result = types_trailing_status(ModuleInfo, Types).
 
 %----------------------------------------------------------------------------%
 %
@@ -751,23 +751,23 @@ trail_check_vars(ModuleInfo, VarTable, Vars) = Result :-
 
     % Return the collective trailing status of a list of types.
     %
-:- func trail_check_types(module_info, list(mer_type)) = trailing_status.
+:- func types_trailing_status(module_info, list(mer_type)) = trailing_status.
 
-trail_check_types(ModuleInfo, Types) = Status :-
-    list.foldl(trail_check_type(ModuleInfo), Types,
+types_trailing_status(ModuleInfo, Types) = Status :-
+    list.foldl(acc_type_trailing_status(ModuleInfo), Types,
         trail_will_not_modify, Status).
 
-:- pred trail_check_type(module_info::in, mer_type::in, trailing_status::in,
-    trailing_status::out) is det.
+:- pred acc_type_trailing_status(module_info::in, mer_type::in,
+    trailing_status::in, trailing_status::out) is det.
 
-trail_check_type(ModuleInfo, Type, !Status) :-
-    combine_trailing_status(trail_check_type(ModuleInfo, Type), !Status).
+acc_type_trailing_status(ModuleInfo, Type, !Status) :-
+    combine_trailing_status(type_trailing_status(ModuleInfo, Type), !Status).
 
     % Return the trailing status of an individual type.
     %
-:- func trail_check_type(module_info, mer_type) = trailing_status.
+:- func type_trailing_status(module_info, mer_type) = trailing_status.
 
-trail_check_type(ModuleInfo, Type) = Status :-
+type_trailing_status(ModuleInfo, Type) = Status :-
     ( if
         ( type_is_solver_type(ModuleInfo, Type)
         ; type_is_existq_type(ModuleInfo, Type)
@@ -778,13 +778,14 @@ trail_check_type(ModuleInfo, Type) = Status :-
         Status = trail_may_modify
     else
         TypeCtorCategory = classify_type(ModuleInfo, Type),
-        Status = trail_check_type_2(ModuleInfo, Type, TypeCtorCategory)
+        Status = type_and_cat_trailing_status(ModuleInfo, Type,
+            TypeCtorCategory)
     ).
 
-:- func trail_check_type_2(module_info, mer_type, type_ctor_category)
+:- func type_and_cat_trailing_status(module_info, mer_type, type_ctor_category)
     = trailing_status.
 
-trail_check_type_2(ModuleInfo, Type, TypeCtorCat) = Status :-
+type_and_cat_trailing_status(ModuleInfo, Type, TypeCtorCat) = Status :-
     (
         ( TypeCtorCat = ctor_cat_builtin(_)
         ; TypeCtorCat = ctor_cat_higher_order
@@ -815,7 +816,7 @@ trail_check_type_2(ModuleInfo, Type, TypeCtorCat) = Status :-
             % termination analysis as well, so we'll wait until that is done.
             Status = trail_may_modify
         else
-            Status = trail_check_types(ModuleInfo, Args)
+            Status = types_trailing_status(ModuleInfo, Args)
         )
     ).
 
