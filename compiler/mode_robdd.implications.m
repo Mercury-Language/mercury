@@ -105,9 +105,9 @@ restrict_threshold(Threshold, ImpVars) =
 
 restrict_threshold_2(_Threshold, [], IM) = IM.
 restrict_threshold_2(Threshold, [V - Vs | AL], IM) =
-    ( compare((>), V, Threshold) ->
+    ( if compare((>), V, Threshold) then
         IM
-    ;
+    else
         restrict_threshold_2(Threshold, AL,
             IM ^ entry(V) := remove_gt(Vs, Threshold))
     ).
@@ -119,43 +119,44 @@ filter(P, ImpVars) = apply_to_imp_maps(filter_imp_map(P), ImpVars).
 
 filter_imp_map(P, IM) =
     map.foldl(func(V, Vs, M) =
-        ( P(V) ->
+        ( if P(V) then
             M ^ entry(V) := filter(P, Vs)
-        ;
+        else
             M `delete` V
         ),
         IM, IM).
 
 neq_vars(A, B, ImpVars) =
-    ImpVars ^ add_clause({neg(A), neg(B)}) ^ add_clause({pos(A), pos(B)}).
+    ImpVars ^ add_robdd_clause({neg(A), neg(B)}) ^
+        add_robdd_clause({pos(A), pos(B)}).
 
 imp_vars(A, B, ImpVars) =
-    ImpVars ^ add_clause({neg(A), pos(B)}).
+    ImpVars ^ add_robdd_clause({neg(A), pos(B)}).
 
 at_most_one_of(Vars0, ImpVars) =
-    ( remove_least(Var, Vars0, Vars) ->
+    ( if remove_least(Var, Vars0, Vars) then
         ImpVars ^ foldl(not_both(Var), Vars) ^ at_most_one_of(Vars)
-    ;
+    else
         ImpVars
     ).
 
 not_both(A, B, ImpVars) =
-    ImpVars ^ add_clause({neg(A), neg(B)}).
+    ImpVars ^ add_robdd_clause({neg(A), neg(B)}).
 
 either(A, B, ImpVars) =
-    ImpVars ^ add_clause({pos(A), pos(B)}).
+    ImpVars ^ add_robdd_clause({pos(A), pos(B)}).
 
 normalise_true_false_implication_vars(Changed, TrueVars0, TrueVars,
         FalseVars0, FalseVars, ImpVars0, ImpVars) :-
-    (
+    ( if
         is_empty(TrueVars0),
         is_empty(FalseVars0)
-    ->
+    then
         TrueVars = TrueVars0,
         FalseVars = FalseVars0,
         ImpVars = ImpVars0,
         Changed = no
-    ;
+    else
         ImpVars0 = imp_vars(Imps0, RevImps0, DisImps0, RevDisImps0),
         normalise_true_false_imp_map(no, Changed0, TrueVars0, TrueVars1,
             FalseVars0, FalseVars1, Imps0, Imps),
@@ -177,8 +178,7 @@ normalise_true_false_implication_vars(Changed, TrueVars0, TrueVars,
 
         ImpVars6 = imp_vars(Imps, RevImps, DisImps, RevDisImps),
         Changed = (Changed0 or Changed1 or Changed2 or Changed3 or
-                Changed4 or Changed5 or Changed6 or Changed7),
-
+            Changed4 or Changed5 or Changed6 or Changed7),
         (
             Changed = yes,
             normalise_true_false_implication_vars(_, TrueVars6, TrueVars,
@@ -199,42 +199,42 @@ normalise_true_false_imp_map(IsDisImp, Changed, TrueVars0, TrueVars,
         FalseVars0, FalseVars, ImpMap0, ImpMap) :-
     {TrueVars, FalseVars, ImpMap, Changed} = map.foldl(
         ( func(V, Vs, {Ts0, Fs0, IMs0, C0}) = {Ts, Fs, IMs, C} :-
-            (
-                ( IsDisImp = yes -> Fs0 ; Ts0 ) `contains` V
-            ->
+            ( if
+                ( if IsDisImp = yes then Fs0 else Ts0 ) `contains` V
+            then
                 Ts = Ts0 `union` Vs,
                 Fs = Fs0,
                 IMs = IMs0 `delete` V,
                 C = yes
-            ;
-                ( IsDisImp = yes -> Ts0 ; Fs0 ) `contains` V
-            ->
+            else if
+                ( if IsDisImp = yes then Ts0 else Fs0 ) `contains` V
+            then
                 Ts = Ts0,
                 Fs = Fs0,
                 IMs = IMs0 `delete` V,
                 C = yes
-            ;
+            else if
                 FVs = Fs0 `intersect` Vs,
                 is_non_empty(FVs)
-            ->
-                Ts = ( IsDisImp = yes -> Ts0 `insert` V ; Ts0 ),
-                Fs = ( IsDisImp = yes -> Fs0 ; Fs0 `insert` V ),
+            then
+                Ts = ( if IsDisImp = yes then Ts0 `insert` V else Ts0 ),
+                Fs = ( if IsDisImp = yes then Fs0 else Fs0 `insert` V ),
                 IMs = IMs0 `delete` V,
                 C = yes
-            ;
+            else if
                 TVs = Ts0 `intersect` Vs,
                 is_non_empty(TVs)
-            ->
+            then
                 Ts = Ts0,
                 Fs = Fs0,
                 UTVs = Vs `difference` TVs,
-                ( is_empty(UTVs) ->
+                ( if is_empty(UTVs) then
                     IMs = IMs0 `delete` V
-                ;
+                else
                     IMs = IMs0 ^ elem(V) := UTVs
                 ),
                 C = yes
-            ;
+            else
                 Ts = Ts0,
                 Fs = Fs0,
                 IMs = IMs0,
@@ -249,10 +249,10 @@ normalise_true_false_imp_map(IsDisImp, Changed, TrueVars0, TrueVars,
 
 normalise_pairs(Extract, Imps, DisImps, Changed, FalseVars0, FalseVars) :-
     Intersect = Imps `intersect` DisImps,
-    ( is_empty(Intersect) ->
+    ( if is_empty(Intersect) then
         Changed = no,
         FalseVars = FalseVars0
-    ;
+    else
         Changed = yes,
         (
             Extract = keys,
@@ -286,7 +286,7 @@ propagate_equivalences_into_implications(EQVars, Changed, ImpVars0, ImpVars) :-
 
 propagate_equivalences_into_implications_2(EQVars, Changed, ImpMap0, ImpMap) :-
     {ImpMap, Changed} = map.foldl((func(V, Vs0, {IM, C}) =
-        { IM ^ entry(V) := Vs, ( Vs = Vs0 -> C ; yes ) } :-
+        { IM ^ entry(V) := Vs, ( if Vs = Vs0 then C else yes ) } :-
         Vs = filter(vars_are_not_equivalent(EQVars, V), Vs0)
         ), ImpMap0, {init, no}).
 
@@ -310,23 +310,23 @@ propagate_implications_into_equivalences(Changed, EQVars0, EQVars,
         ImpVars0, ImpVars) :-
     ImpVars0 = imp_vars(Imps0, RevImps0, DisImps, RevDisImps),
 
-    ( ( is_empty(Imps0) ; is_empty(RevImps0) ) ->
+    ( if ( is_empty(Imps0) ; is_empty(RevImps0) ) then
         Changed = no,
         EQVars = EQVars0,
         ImpVars = ImpVars0
-    ;
+    else
         {Changed, EQVars, Imps, RevImps} = foldl(
         ( func(V, IVs, {C0, E0, I0, R0}) = {C, E, I, R} :-
-            (
+            ( if
                 RVs = R0 ^ elem(V),
                 EVs = IVs `intersect` RVs,
                 is_non_empty(EVs)
-            ->
+            then
                 C = yes,
                 E = add_equalities(EVs `insert` V, E0),
                 I = I0 ^ entry(V) := IVs `difference` RVs,
                 R = R0 ^ entry(V) := RVs `difference` IVs
-            ;
+            else
                 C = C0, E = E0, I = I0, R = R0
             )
         ), Imps0, {no, EQVars0, Imps0, RevImps0}),
@@ -349,7 +349,7 @@ extract_implication_vars_from_robdd(Changed, Robdd0, Robdd,
         robdd_to_dot(Robdd, VarToString, "extract_impl_after.dot", !IO)
     ),
 
-    Changed = ( Robdd = Robdd0, empty(ImpVars1) -> no ; yes ).
+    Changed = ( if Robdd = Robdd0, empty(ImpVars1) then no else yes ).
 
 %------------------------------------------------------------------------%
 
@@ -363,27 +363,27 @@ add_equalities_to_imp_vars(EQVars, ImpVars) =
 :- func entry(var(T), imp_map(T)) = vars(T).
 
 entry(V, M) =
-    ( Vs = M ^ elem(V) ->
+    ( if Vs = M ^ elem(V) then
         Vs
-    ;
+    else
         init
     ).
 
 :- func 'entry :='(var(T), imp_map(T), vars(T)) = imp_map(T).
 
 'entry :='(V, M, Vs) =
-    ( is_empty(Vs) ->
+    ( if is_empty(Vs) then
         M `delete` V
-    ;
+    else
         M ^ elem(V) := Vs
     ).
 
 :- func 'new_relation :='(var(T), imp_map(T), var(T)) = imp_map(T).
 
 'new_relation :='(VA, M, VB) =
-    ( Vs = M ^ elem(VA) ->
+    ( if Vs = M ^ elem(VA) then
         M ^ elem(VA) := Vs `insert` VB
-    ;
+    else
         M ^ elem(VA) := make_singleton_set(VB)
     ).
 
@@ -391,10 +391,10 @@ entry(V, M) =
         is semidet.
 
 'maybe_new_relation :='(VA, M0, VB) = M :-
-    ( Vs = M0 ^ elem(VA) ->
+    ( if Vs = M0 ^ elem(VA) then
         \+ ( Vs `contains` VB ),
         M = M0 ^ elem(VA) := Vs `insert` VB
-    ;
+    else
         M = M0 ^ elem(VA) := make_singleton_set(VB)
     ).
 
@@ -430,13 +430,13 @@ IMA `intersect` IMB = remove_empty_sets(intersect(intersect, IMA, IMB)).
 :- func imp_map(T) `imp_map_difference` imp_map(T) = imp_map(T).
 
 IMA `imp_map_difference` IMB =
-    ( is_empty(IMA) ->
+    ( if is_empty(IMA) then
         IMA
-    ;
+    else
         map.foldl(func(V, VsB, M) =
-            ( VsA = M ^ elem(V) ->
+            ( if VsA = M ^ elem(V) then
                 M ^ entry(V) := VsA `difference` VsB
-            ;
+            else
                 M
             ),
             IMB, IMA)
@@ -446,9 +446,9 @@ IMA `imp_map_difference` IMB =
 
 remove_empty_sets(IM) =
     map.foldl(func(V, Vs, M) =
-        ( is_empty(Vs) ->
+        ( if is_empty(Vs) then
             M `delete` V
-        ;
+        else
             M
         ),
         IM, IM).
@@ -457,9 +457,9 @@ remove_empty_sets(IM) =
 
 delete_var_from_imp_map(Var, IM0) =
     map.foldl(func(V, Vs, M) =
-        ( Vs `contains` Var ->
+        ( if Vs `contains` Var then
             M ^ entry(V) := Vs `delete` Var
-        ;
+        else
             M
         ),
         IM1, IM1) :-
@@ -501,36 +501,37 @@ mkneg(V) = neg(V).
 
 :- type bin_clause(T) == { literal(T), literal(T) }.
 
-:- func add_clause(bin_clause(T), imp_vars(T)) = imp_vars(T).
+:- func add_robdd_clause(bin_clause(T), imp_vars(T)) = imp_vars(T).
 
-add_clause(Clause, ImpVars) =
-    add_clauses([Clause], ImpVars).
+add_robdd_clause(Clause, ImpVars) =
+    add_robdd_clauses([Clause], ImpVars).
 
-:- func add_clauses(list(bin_clause(T)), imp_vars(T)) = imp_vars(T).
+:- func add_robdd_clauses(list(bin_clause(T)), imp_vars(T)) = imp_vars(T).
 
-add_clauses([], ImpVars) = ImpVars.
-add_clauses([Clause | Clauses], ImpVars0) = ImpVars :-
-    ( ImpVars1 = add_clause_2(Clause, ImpVars0) ->
+add_robdd_clauses([], ImpVars) = ImpVars.
+add_robdd_clauses([Clause | Clauses], ImpVars0) = ImpVars :-
+    ( if ImpVars1 = add_robdd_clause_2(Clause, ImpVars0) then
         Resolvents = get_resolvents(Clause, ImpVars1),
-        ImpVars = add_clauses(Resolvents ++ Clauses, ImpVars1)
-    ;
-        ImpVars = add_clauses(Clauses, ImpVars0)
+        ImpVars = add_robdd_clauses(Resolvents ++ Clauses, ImpVars1)
+    else
+        ImpVars = add_robdd_clauses(Clauses, ImpVars0)
     ).
 
     % Add a new clause to the imp_vars. Fail if the clause is already present.
     %
-:- func add_clause_2(bin_clause(T), imp_vars(T)) = imp_vars(T) is semidet.
+:- func add_robdd_clause_2(bin_clause(T), imp_vars(T)) = imp_vars(T)
+    is semidet.
 
-add_clause_2({neg(VA), pos(VB)}, ImpVars) =
+add_robdd_clause_2({neg(VA), pos(VB)}, ImpVars) =
     (ImpVars ^ imps     ^ maybe_new_relation(VA) := VB)
          ^ rev_imps ^ maybe_new_relation(VB) := VA.
-add_clause_2({pos(VA), neg(VB)}, ImpVars) =
+add_robdd_clause_2({pos(VA), neg(VB)}, ImpVars) =
     (ImpVars ^ rev_imps ^ maybe_new_relation(VA) := VB)
          ^ imps     ^ maybe_new_relation(VB) := VA.
-add_clause_2({neg(VA), neg(VB)}, ImpVars) =
+add_robdd_clause_2({neg(VA), neg(VB)}, ImpVars) =
     (ImpVars ^ dis_imps ^ maybe_new_relation(VA) := VB)
          ^ dis_imps ^ maybe_new_relation(VB) := VA.
-add_clause_2({pos(VA), pos(VB)}, ImpVars) =
+add_robdd_clause_2({pos(VA), pos(VB)}, ImpVars) =
     (ImpVars ^ rev_dis_imps ^ maybe_new_relation(VA) := VB)
          ^ rev_dis_imps ^ maybe_new_relation(VB) := VA.
 
@@ -568,7 +569,7 @@ get_literals(LitA, ImpVars) =
 add_imp_map_clauses(MkLitA, MkLitB, IM, ImpVars) =
     map.foldl(func(VarA, Vars, IVs0) =
         foldl(func(VarB, IVs1) =
-            add_clause({MkLitA(VarA), MkLitB(VarB)}, IVs1),
+            add_robdd_clause({MkLitA(VarA), MkLitB(VarB)}, IVs1),
             Vars, IVs0),
         IM, ImpVars).
 

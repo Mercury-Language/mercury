@@ -1077,7 +1077,7 @@ allocate_sizevars(HeadProgVars, Goal, SizeVarMap, !SizeVarset) :-
 fill_var_to_sizevar_map(Goal, !SizeVarset, SizeVarMap) :-
     ProgVarsInGoal = free_goal_vars(Goal),
     ProgVars = set_of_var.to_sorted_list(ProgVarsInGoal),
-    make_size_var_map(ProgVars, !SizeVarset, SizeVarMap).
+    make_size_var_map_alloc_from(ProgVars, !SizeVarset, SizeVarMap).
 
     % Fix the map in case some variables that are present only
     % in the head of a procedure were missed.

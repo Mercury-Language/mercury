@@ -1499,7 +1499,7 @@ detect_resume_points_in_goal(LiveInfo, ResumeVars0, Goal0, Goal, !Liveness) :-
         % By minimizing the number of labels we use, we also minimize
         % the amount of data movement code we emit between such labels.
         ( if
-            cannot_stack_flush(Cond1),
+            goal_cannot_stack_flush(Cond1),
             CodeModel = goal_info_get_code_model(GoalInfo0),
             CodeModel \= model_non
         then
@@ -1544,7 +1544,7 @@ detect_resume_points_in_goal(LiveInfo, ResumeVars0, Goal0, Goal, !Liveness) :-
         % Figure out which entry labels we need at the resumption point.
         % By minimizing the number of labels we use, we also minimize
         % the amount of data movement code we emit between such labels.
-        ( if cannot_stack_flush(SubGoal1) then
+        ( if goal_cannot_stack_flush(SubGoal1) then
             ResumeLocs = resume_locs_orig_only
         else if cannot_fail_before_stack_flush(SubGoal1) then
             ResumeLocs = resume_locs_stack_only
@@ -1692,7 +1692,7 @@ detect_resume_points_in_non_last_disjunct(LiveInfo, ResumeVars0,
     % the amount of data movement code we emit between such labels.
     ( if
         MayUseOrigOnly = yes,
-        cannot_stack_flush(Goal1)
+        goal_cannot_stack_flush(Goal1)
     then
         ResumeLocs = resume_locs_orig_only
     else if

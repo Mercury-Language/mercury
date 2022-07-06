@@ -476,13 +476,13 @@ clause_list_is_deforestable(PredId, Clauses)  :-
 :- pred goal_contains_one_branched_goal(list(hlds_goal)::in) is semidet.
 
 goal_contains_one_branched_goal(GoalList) :-
-    goal_contains_one_branched_goal(GoalList, no).
+    goal_contains_one_branched_goal_acc(GoalList, no).
 
-:- pred goal_contains_one_branched_goal(list(hlds_goal)::in, bool::in)
+:- pred goal_contains_one_branched_goal_acc(list(hlds_goal)::in, bool::in)
     is semidet.
 
-goal_contains_one_branched_goal([], yes).
-goal_contains_one_branched_goal([Goal | Goals], FoundBranch0) :-
+goal_contains_one_branched_goal_acc([], yes).
+goal_contains_one_branched_goal_acc([Goal | Goals], FoundBranch0) :-
     Goal = hlds_goal(GoalExpr, _),
     (
         goal_is_branched(GoalExpr),
@@ -492,7 +492,7 @@ goal_contains_one_branched_goal([Goal | Goals], FoundBranch0) :-
         goal_expr_has_subgoals(GoalExpr) = does_not_have_subgoals,
         FoundBranch = FoundBranch0
     ),
-    goal_contains_one_branched_goal(Goals, FoundBranch).
+    goal_contains_one_branched_goal_acc(Goals, FoundBranch).
 
     % Go over the goal of an exported proc looking for proc decls, types,
     % insts and modes that we need to write to the optfile.

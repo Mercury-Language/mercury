@@ -1481,7 +1481,7 @@ define_new_pred(PredSymName, Origin, TVarSet, InstVarSet,
     var_table_select(GoalVarsSet, VarTable0, VarTable),
 
     % Approximate the termination information for the new procedure.
-    ( if goal_cannot_loop(!.ModuleInfo, Goal0) then
+    ( if goal_cannot_loop_term_info(!.ModuleInfo, Goal0) then
         TermInfo = yes(cannot_loop(unit))
     else
         TermInfo = no

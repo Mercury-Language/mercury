@@ -2362,17 +2362,17 @@ unify_rhs_vars_no_lambda(NonLocalsToRecompute, RHS, MaybeSetArgs, !Set) :-
     list(prog_var)::in, list(prog_var)::out) is det.
 
 get_updated_fields(SetArgs, Args, ArgsToSet) :-
-    get_updated_fields(SetArgs, Args, [], ArgsToSet).
+    get_updated_fields_acc(SetArgs, Args, [], ArgsToSet).
 
-:- pred get_updated_fields(list(needs_update)::in,
+:- pred get_updated_fields_acc(list(needs_update)::in,
     list(prog_var)::in, list(prog_var)::in, list(prog_var)::out) is det.
 
-get_updated_fields([], [], !ArgsToSet).
-get_updated_fields([], [_|_], _, _) :-
+get_updated_fields_acc([], [], !ArgsToSet).
+get_updated_fields_acc([], [_|_], _, _) :-
     unexpected($pred, "mismatched lists").
-get_updated_fields([_|_], [], _, _) :-
+get_updated_fields_acc([_|_], [], _, _) :-
     unexpected($pred, "mismatched lists").
-get_updated_fields([SetArg | SetArgs], [Arg | Args], !ArgsToSet) :-
+get_updated_fields_acc([SetArg | SetArgs], [Arg | Args], !ArgsToSet) :-
     (
         SetArg = needs_update,
         !:ArgsToSet = [Arg | !.ArgsToSet]
@@ -2380,7 +2380,7 @@ get_updated_fields([SetArg | SetArgs], [Arg | Args], !ArgsToSet) :-
         SetArg = does_not_need_update,
         !:ArgsToSet = !.ArgsToSet
     ),
-    get_updated_fields(SetArgs, Args, !ArgsToSet).
+    get_updated_fields_acc(SetArgs, Args, !ArgsToSet).
 
 %---------------------------------------------------------------------------%
 

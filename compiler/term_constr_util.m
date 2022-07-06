@@ -72,7 +72,7 @@
     % Allocate the size_vars from the provided size_varset.
     % Return a map between prog_vars and size_vars.
     %
-:- pred make_size_var_map(list(prog_var)::in,
+:- pred make_size_var_map_alloc_from(list(prog_var)::in,
     size_varset::in, size_varset::out, size_var_map::out) is det.
 
     % Takes a list of prog_vars and outputs the corresponding
@@ -260,16 +260,18 @@ get_abstract_proc(ModuleInfo, PPId) = AbstractProc :-
 %-----------------------------------------------------------------------------%
 
 make_size_var_map(ProgVars, SizeVarSet, SizeVarMap) :-
-    make_size_var_map(ProgVars, varset.init, SizeVarSet, SizeVarMap).
+    make_size_var_map_alloc_from(ProgVars, varset.init, SizeVarSet,
+        SizeVarMap).
 
-make_size_var_map(ProgVars, !SizeVarSet, SizeVarMap) :-
-    list.foldl2(make_size_var_map_2, ProgVars,
+make_size_var_map_alloc_from(ProgVars, !SizeVarSet, SizeVarMap) :-
+    list.foldl2(make_size_var_for_var, ProgVars,
         map.init, SizeVarMap, !SizeVarSet).
 
-:- pred make_size_var_map_2(prog_var::in, size_var_map::in, size_var_map::out,
+:- pred make_size_var_for_var(prog_var::in,
+    size_var_map::in, size_var_map::out,
     size_varset::in, size_varset::out) is det.
 
-make_size_var_map_2(ProgVar, !SizeVarMap, !SizeVarSet) :-
+make_size_var_for_var(ProgVar, !SizeVarMap, !SizeVarSet) :-
     varset.new_var(SizeVar, !SizeVarSet),
     map.set(ProgVar, SizeVar, !SizeVarMap).
 

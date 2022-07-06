@@ -1442,7 +1442,7 @@ get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId, ArgTypes) :-
     ( if type_to_ctor_and_args(VarType, TypeCtor, TypeArgs) then
         ( if
             % The argument types of a tuple cons_id are the arguments
-            % of the tuple type.
+            % of the tuple type constructor.
             type_ctor_is_tuple(TypeCtor)
         then
             ArgTypes = TypeArgs

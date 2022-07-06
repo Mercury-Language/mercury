@@ -282,7 +282,8 @@ complexity_process_proc(NumProcs, ProcNum, FullName, PredId,
     generate_new_var(!.ModuleInfo, IsActiveVarName, is_active_type,
         is_not_dummy_type, IsActiveVar, !ProcInfo),
 
-    classify_args(!.ModuleInfo, VarTable, HeadVars, ArgModes, VarInfos),
+    classify_complexity_args(!.ModuleInfo, VarTable, HeadVars, ArgModes,
+        VarInfos),
     allocate_slot_numbers_cl(VarInfos, 0, NumberedProfiledVars),
     list.length(NumberedProfiledVars, NumProfiledVars),
     generate_slot_goals(ProcNum, NumberedProfiledVars, NumProfiledVars,
@@ -519,18 +520,18 @@ complexity_generate_call_foreign_proc(PredName, Detism, Args, ExtraArgs,
 
 %-----------------------------------------------------------------------------%
 
-:- pred classify_args(module_info::in, var_table::in,
+:- pred classify_complexity_args(module_info::in, var_table::in,
     list(prog_var)::in, list(mer_mode)::in,
     assoc_list(prog_var, complexity_arg_info)::out) is det.
 
-classify_args(_, _, [], [], []).
-classify_args(_, _, [_ | _], [], _) :-
+classify_complexity_args(_, _, [], [], []).
+classify_complexity_args(_, _, [_ | _], [], _) :-
     unexpected($pred, "lists not same length").
-classify_args(_, _, [], [_ | _], _) :-
+classify_complexity_args(_, _, [], [_ | _], _) :-
     unexpected($pred, "lists not same length").
-classify_args(ModuleInfo, VarTable, [Var | Vars], [Mode | Modes],
+classify_complexity_args(ModuleInfo, VarTable, [Var | Vars], [Mode | Modes],
         [Var - complexity_arg_info(MaybeName, Kind) | VarInfos]) :-
-    classify_args(ModuleInfo, VarTable, Vars, Modes, VarInfos),
+    classify_complexity_args(ModuleInfo, VarTable, Vars, Modes, VarInfos),
     lookup_var_entry(VarTable, Var, Entry),
     Entry = vte(Name, VarType, IsDummy),
     ( if Name = "" then

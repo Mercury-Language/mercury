@@ -518,7 +518,7 @@ propagate_conj_constraints([Goal0 | Goals0], NonLocals, RevGoals0, Goals,
                 [s(SymNameString)], !IO)
         ),
 
-        get_sub_conj_nonlocals(NonLocals, RevGoals0, [],
+        do_get_sub_conj_nonlocals(NonLocals, RevGoals0, [],
             Goal0, Constraints, no, [], Goals1, ConjNonLocals),
         call_call(ConjNonLocals, Goal0, Constraints, no, MaybeGoal, !PDInfo),
         (
@@ -1648,23 +1648,24 @@ get_sub_conj_nonlocals(NonLocals0, DeforestInfo,
     DeforestInfo = deforest_info(EarlierGoal, _, BetweenGoals, LaterGoal,
         _, _),
     assoc_list.keys(AfterGoals0, AfterGoals),
-    get_sub_conj_nonlocals(NonLocals0, RevBeforeGoals,
+    do_get_sub_conj_nonlocals(NonLocals0, RevBeforeGoals,
         BeforeIrrelevant, EarlierGoal, BetweenGoals, yes(LaterGoal),
         AfterIrrelevant, AfterGoals, SubConjNonLocals).
 
-:- pred get_sub_conj_nonlocals(set_of_progvar::in,
+:- pred do_get_sub_conj_nonlocals(set_of_progvar::in,
     list(hlds_goal)::in, list(hlds_goal)::in, hlds_goal::in,
     list(hlds_goal)::in, maybe(hlds_goal)::in, list(hlds_goal)::in,
     list(hlds_goal)::in, set_of_progvar::out) is det.
 
-get_sub_conj_nonlocals(!.NonLocals, RevBeforeGoals, BeforeIrrelevant,
+do_get_sub_conj_nonlocals(!.NonLocals, RevBeforeGoals, BeforeIrrelevant,
         EarlierGoal, BetweenGoals, MaybeLaterGoal,
         AfterIrrelevant, AfterGoals, !:SubConjNonLocals) :-
-    AddGoalNonLocals = (pred(Goal::in, Vars0::in, Vars::out) is det :-
-        Goal = hlds_goal(_, GoalInfo),
-        GoalNonLocals = goal_info_get_nonlocals(GoalInfo),
-        set_of_var.union(GoalNonLocals, Vars0, Vars)
-    ),
+    AddGoalNonLocals =
+        ( pred(Goal::in, Vars0::in, Vars::out) is det :-
+            Goal = hlds_goal(_, GoalInfo),
+            GoalNonLocals = goal_info_get_nonlocals(GoalInfo),
+            set_of_var.union(GoalNonLocals, Vars0, Vars)
+        ),
     list.foldl(AddGoalNonLocals, RevBeforeGoals, !NonLocals),
     list.foldl(AddGoalNonLocals, BeforeIrrelevant, !NonLocals),
     list.foldl(AddGoalNonLocals, AfterIrrelevant, !NonLocals),

@@ -283,7 +283,7 @@ modecheck_coerce_make_inst(ModuleInfo, TVarSet, LiveX, RevTermPath0,
             ( if is_user_inst(InstNameX) then
                 % If TypeX =< TypeY then an inst valid for TypeX must be
                 % valid for TypeY.
-                ( if check_is_subtype(ModuleInfo, TVarSet, TypeX, TypeY) then
+                ( if is_subtype(ModuleInfo, TVarSet, TypeX, TypeY) then
                     InstY = defined_inst(InstNameX),
                     Res = ok(InstY)
                 else
@@ -720,7 +720,7 @@ modecheck_coerce_from_ground_make_inst(ModuleInfo, TVarSet, LiveX, UniqX,
         UniqY = uniqueness_for_coerce_result(LiveX, UniqX),
         InstY = ground(UniqY, none_or_default_func),
         MaybeInstY = ok(InstY)
-    else if check_is_subtype(ModuleInfo, TVarSet, TypeX, TypeY) then
+    else if is_subtype(ModuleInfo, TVarSet, TypeX, TypeY) then
         set.init(SeenTypes0),
         modecheck_coerce_from_ground_make_inst_for_subtype(ModuleInfo, TVarSet,
             LiveX, UniqX, SeenTypes0, TypeX, TypeY, InstY),
@@ -869,10 +869,10 @@ get_ctor_arg_types_do_subst(ModuleInfo, Type, ConsId, CtorArgTypes) :-
     --->    compare_equal
     ;       compare_equal_lt.
 
-:- pred check_is_subtype(module_info::in, tvarset::in,
+:- pred is_subtype(module_info::in, tvarset::in,
     mer_type::in, mer_type::in) is semidet.
 
-check_is_subtype(ModuleInfo, TVarSet, TypeA, TypeB) :-
+is_subtype(ModuleInfo, TVarSet, TypeA, TypeB) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     compare_types(TypeTable, TVarSet, compare_equal_lt, TypeA, TypeB).
 

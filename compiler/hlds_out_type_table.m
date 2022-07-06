@@ -32,6 +32,7 @@
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_tree_out_type_repn.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 
@@ -369,21 +370,6 @@ foreign_type_assertions_to_simple_string(ForeignTypeAssertions) = String :-
     Assertions = set.to_sorted_list(AssertionSet),
     AssertionStrs = list.map(foreign_type_assertion_to_string, Assertions),
     String = "[" ++ string.join_list(", ", AssertionStrs) ++ "]".
-
-:- func foreign_type_assertion_to_string(foreign_type_assertion)
-    = string.
-
-foreign_type_assertion_to_string(Assertion) = String :-
-    (
-        Assertion = foreign_type_can_pass_as_mercury_type,
-        String = "pass_as_mercury"
-    ;
-        Assertion = foreign_type_word_aligned_pointer,
-        String = "word_aligned_ptr"
-    ;
-        Assertion = foreign_type_stable,
-        String = "stable"
-    ).
 
 :- pred accumulate_ctor_repns(one_or_more(constructor_repn)::in,
     list(constructor_repn)::in, list(constructor_repn)::out) is det.

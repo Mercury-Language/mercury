@@ -1973,7 +1973,7 @@ reordering_maintains_termination_old(ModuleInfo, FullyStrict,
     % this could worsen the termination properties of the program.
     (
         EarlierCanFail = can_fail,
-        goal_cannot_loop_or_throw(ModuleInfo, LaterGoal)
+        goal_cannot_loop_or_throw_term_info(ModuleInfo, LaterGoal)
     ;
         EarlierCanFail = cannot_fail
     ).
@@ -1990,7 +1990,8 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
 
     % If --fully-strict was specified, don't convert (can_loop, can_fail) into
     % (can_fail, can_loop).
-    goal_can_loop_or_throw(EarlierGoal, EarlierCanLoopOrThrow, !ModuleInfo),
+    goal_can_loop_or_throw_imaf(EarlierGoal, EarlierCanLoopOrThrow,
+        !ModuleInfo),
     ( if
         FullyStrict = yes,
         EarlierCanLoopOrThrow = can_loop_or_throw,
@@ -2000,7 +2001,8 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
     else
         % Don't convert (can_fail, can_loop) into (can_loop, can_fail), since
         % this could worsen the termination properties of the program.
-        goal_can_loop_or_throw(LaterGoal, LaterCanLoopOrThrow, !ModuleInfo),
+        goal_can_loop_or_throw_imaf(LaterGoal, LaterCanLoopOrThrow,
+            !ModuleInfo),
         ( if
             EarlierCanFail = can_fail,
             LaterCanLoopOrThrow = can_loop_or_throw

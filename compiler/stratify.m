@@ -99,9 +99,9 @@ check_module_for_stratification(!ModuleInfo, Specs) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred get_pred_id(pred_proc_id::in, pred_id::out) is det.
+:- pred stratify_get_pred_id(pred_proc_id::in, pred_id::out) is det.
 
-get_pred_id(proc(PredId, _), PredId).
+stratify_get_pred_id(proc(PredId, _), PredId).
 
     % Check the first order SCCs for stratification.
     %
@@ -112,7 +112,7 @@ get_pred_id(proc(PredId, _), PredId).
 first_order_check_sccs([], _, _, _, !Specs).
 first_order_check_sccs([HeadSCC | TailSCCs], MustBeStratifiedPreds, Warn,
         ModuleInfo, !Specs) :-
-    set.map(get_pred_id, HeadSCC, HeadSCCPreds),
+    set.map(stratify_get_pred_id, HeadSCC, HeadSCCPreds),
     set.intersect(HeadSCCPreds, MustBeStratifiedPreds,
         MustBeStratifiedPredsInScc),
     ( if
@@ -479,7 +479,7 @@ higher_order_check_cases([Case | Goals], Negated, WholeScc, ThisPredProcId,
 :- pragma consider_used(pred(gen_conservative_graph/4)).
 
 gen_conservative_graph(ModuleInfo, !DepGraph, HOInfo) :-
-    get_call_info(ModuleInfo, ProcCalls, HOInfo0, CallsHO),
+    stratify_get_call_info(ModuleInfo, ProcCalls, HOInfo0, CallsHO),
     map.keys(ProcCalls, Callers),
     iterate_solution(Callers, ProcCalls, CallsHO, HOInfo0, HOInfo),
     map.to_assoc_list(HOInfo, HOInfoL),
@@ -490,10 +490,10 @@ gen_conservative_graph(ModuleInfo, !DepGraph, HOInfo) :-
     % This pred also returns a set of all non imported procedures that
     % make a higher order call.
     %
-:- pred get_call_info(module_info::in, call_map::out,
+:- pred stratify_get_call_info(module_info::in, call_map::out,
     ho_map::out, set(pred_proc_id)::out) is det.
 
-get_call_info(ModuleInfo, !:ProcCalls, !:HOInfo, !:CallsHO) :-
+stratify_get_call_info(ModuleInfo, !:ProcCalls, !:HOInfo, !:CallsHO) :-
     map.init(!:ProcCalls),
     map.init(!:HOInfo),
     set.init(!:CallsHO),
@@ -772,7 +772,7 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
             RHS = rhs_lambda_goal(_Purity, _Groundness, _PredOrFunc,
                 _EvalMethod, _NonLocals, _ArgVarsModes, _Determinism,
                 LambdaGoal),
-            get_called_procs(LambdaGoal, [], CalledProcs),
+            stratify_get_called_procs(LambdaGoal, [], CalledProcs),
             set.insert_list(CalledProcs, !HasAT)
         ;
             RHS = rhs_var(_)
@@ -885,10 +885,10 @@ stratify_analyze_cases([Case | Goals], !Calls, !HasAT, !CallsHO) :-
     % including calls in unification lambda functions and pred_proc_id's
     % in constructs.
     %
-:- pred get_called_procs(hlds_goal::in,
+:- pred stratify_get_called_procs(hlds_goal::in,
     list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
-get_called_procs(Goal, !Calls) :-
+stratify_get_called_procs(Goal, !Calls) :-
     Goal = hlds_goal(GoalExpr, _),
     (
         GoalExpr = unify(_Var, RHS, _Mode, Unification, _Context),
@@ -900,7 +900,7 @@ get_called_procs(Goal, !Calls) :-
             RHS = rhs_lambda_goal(_Purity, _Groundness, _PredOrFunc,
                 _EvalMethod, _NonLocals, _ArgVarsModes, _Determinism,
                 LambdaGoal),
-            get_called_procs(LambdaGoal, !Calls)
+            stratify_get_called_procs(LambdaGoal, !Calls)
         ;
             RHS = rhs_var(_)
         ;
@@ -942,18 +942,18 @@ get_called_procs(Goal, !Calls) :-
         ( GoalExpr = conj(_ConjType, Goals)
         ; GoalExpr = disj(Goals)
         ),
-        get_called_procs_goals(Goals, !Calls)
+        stratify_get_called_procs_goals(Goals, !Calls)
     ;
         GoalExpr = switch(_Var, _Fail, Cases),
-        get_called_procs_cases(Cases, !Calls)
+        stratify_get_called_procs_cases(Cases, !Calls)
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
-        get_called_procs(Cond, !Calls),
-        get_called_procs(Then, !Calls),
-        get_called_procs(Else, !Calls)
+        stratify_get_called_procs(Cond, !Calls),
+        stratify_get_called_procs(Then, !Calls),
+        stratify_get_called_procs(Else, !Calls)
     ;
         GoalExpr = negation(SubGoal),
-        get_called_procs(SubGoal, !Calls)
+        stratify_get_called_procs(SubGoal, !Calls)
     ;
         GoalExpr = scope(Reason, SubGoal),
         ( if
@@ -965,17 +965,17 @@ get_called_procs(Goal, !Calls) :-
             % The code in these scopes does not make calls.
             true
         else
-            get_called_procs(SubGoal, !Calls)
+            stratify_get_called_procs(SubGoal, !Calls)
         )
     ;
         GoalExpr = shorthand(ShortHand),
         (
             ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
-            get_called_procs(MainGoal, !Calls),
-            get_called_procs_goals(OrElseGoals, !Calls)
+            stratify_get_called_procs(MainGoal, !Calls),
+            stratify_get_called_procs_goals(OrElseGoals, !Calls)
         ;
             ShortHand = try_goal(_, _, SubGoal),
-            get_called_procs(SubGoal, !Calls)
+            stratify_get_called_procs(SubGoal, !Calls)
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
@@ -983,22 +983,22 @@ get_called_procs(Goal, !Calls) :-
         )
     ).
 
-:- pred get_called_procs_goals(list(hlds_goal)::in,
+:- pred stratify_get_called_procs_goals(list(hlds_goal)::in,
     list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
-get_called_procs_goals([], !Calls).
-get_called_procs_goals([Goal | Goals], !Calls) :-
-    get_called_procs(Goal, !Calls),
-    get_called_procs_goals(Goals, !Calls).
+stratify_get_called_procs_goals([], !Calls).
+stratify_get_called_procs_goals([Goal | Goals], !Calls) :-
+    stratify_get_called_procs(Goal, !Calls),
+    stratify_get_called_procs_goals(Goals, !Calls).
 
-:- pred get_called_procs_cases(list(case)::in,
+:- pred stratify_get_called_procs_cases(list(case)::in,
     list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
-get_called_procs_cases([], !Calls).
-get_called_procs_cases([Case | Cases], !Calls) :-
+stratify_get_called_procs_cases([], !Calls).
+stratify_get_called_procs_cases([Case | Cases], !Calls) :-
     Case = case(_, _, Goal),
-    get_called_procs(Goal, !Calls),
-    get_called_procs_cases(Cases, !Calls).
+    stratify_get_called_procs(Goal, !Calls),
+    stratify_get_called_procs_cases(Cases, !Calls).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

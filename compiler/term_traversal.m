@@ -222,7 +222,7 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
             params_get_var_table(Params, VarTable),
             some_var_is_higher_order(VarTable, Args)
         then
-            add_error(Params, Context, horder_args(PPId, CallPPId), !Info)
+            add_term_error(Params, Context, horder_args(PPId, CallPPId), !Info)
         else
             true
         ),
@@ -262,7 +262,8 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
         then
             error_if_intersect(OutVars, Context, pragma_foreign_code, !Info)
         else
-            add_error(Params, Context, does_not_term_pragma(CallPredId), !Info)
+            add_term_error(Params, Context, does_not_term_pragma(CallPredId),
+                !Info)
         )
     ;
         GoalExpr = generic_call(Details, Args, ArgModes, _, _),
@@ -292,10 +293,10 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
                     NonTerminating = [_ | _],
                     % XXX We should tell the user what the
                     % non-terminating closures are.
-                    add_error(Params, Context, horder_call, !Info)
+                    add_term_error(Params, Context, horder_call, !Info)
                 )
             else
-                add_error(Params, Context, horder_call, !Info)
+                add_term_error(Params, Context, horder_call, !Info)
             )
         ;
             Details = class_method(_, _, _, _),
@@ -303,7 +304,7 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
             % than this, since we know that the method being called must
             % come from one of the instance declarations, and we could
             % potentially (globally) analyse these.
-            add_error(Params, Context, method_call, !Info)
+            add_term_error(Params, Context, method_call, !Info)
         ;
             Details = event_call(_)
         ;
@@ -433,11 +434,11 @@ add_path(Path, Info0, Info) :-
         Info = term_traversal_ok(Paths, CanLoop)
     ).
 
-:- pred add_error(term_traversal_params::in,
+:- pred add_term_error(term_traversal_params::in,
     prog_context::in, term_error_kind::in,
     term_traversal_info::in, term_traversal_info::out) is det.
 
-add_error(Params, Context, ErrorKind, Info0, Info) :-
+add_term_error(Params, Context, ErrorKind, Info0, Info) :-
     (
         Info0 = term_traversal_error(Errors0, CanLoop),
         Errors1 = [term_error(Context, ErrorKind) | Errors0],

@@ -318,15 +318,15 @@ simplify_coeffs(Coeffs0, Coeffs) :-
     AddCoeff =
         ( pred(Pair::in, Map0::in, Map::out) is det :-
             Pair = Var - Coeff,
-            add_var(Var, Coeff, Map0, Map)
+            add_var_with_coeff(Var, Coeff, Map0, Map)
         ),
     list.foldl(AddCoeff, Coeffs0, CoeffMap0, CoeffMap),
     map.to_assoc_list(CoeffMap, Coeffs).
 
-:- pred add_var(var::in, float::in,
+:- pred add_var_with_coeff(var::in, float::in,
     map(var, float)::in, map(var, float)::out) is det.
 
-add_var(Var, Coeff, !Map) :-
+add_var_with_coeff(Var, Coeff, !Map) :-
     ( if map.search(!.Map, Var, Acc0) then
         Acc1 = Acc0
     else

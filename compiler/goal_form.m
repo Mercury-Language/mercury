@@ -63,7 +63,8 @@
 
 %-----------------------------------------------------------------------------%
 %
-% These versions use information from the intermodule-analysis framework.
+% These versions use information from the intermodule-analysis framework,
+% which is they have the "_imaf" suffix.
 %
 
 % XXX Eventually we will only use these versions and the others can be
@@ -77,14 +78,14 @@
     % and I/O state need to be threaded through in case analysis files need to
     % be read and in case IMDGs need to be updated.
     %
-:- pred goal_can_throw(hlds_goal::in, goal_throw_status::out,
+:- pred goal_can_throw_imaf(hlds_goal::in, goal_throw_status::out,
     module_info::in, module_info::out) is det.
 
     % Return `can_loop_or_throw' if the goal may loop forever or throw an
     % exception and return `cannot_loop_or_throw' otherwise.
     %
-:- pred goal_can_loop_or_throw(hlds_goal::in, goal_loop_or_throw_status::out,
-    module_info::in, module_info::out) is det.
+:- pred goal_can_loop_or_throw_imaf(hlds_goal::in,
+    goal_loop_or_throw_status::out, module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -95,27 +96,29 @@
 
     % Succeeds if the goal cannot loop forever.
     %
-:- pred goal_cannot_loop(module_info::in, hlds_goal::in) is semidet.
+:- pred goal_cannot_loop_term_info(module_info::in, hlds_goal::in) is semidet.
 
     % Succeeds if the goal can loop forever.
     %
-:- pred goal_can_loop(module_info::in, hlds_goal::in) is semidet.
+:- pred goal_can_loop_term_info(module_info::in, hlds_goal::in) is semidet.
 
     % Succeeds if the goal cannot throw an exception.
     %
-:- pred goal_cannot_throw(module_info::in, hlds_goal::in) is semidet.
+:- pred goal_cannot_throw_term_info(module_info::in, hlds_goal::in) is semidet.
 
     % Succeeds if the goal can throw an exception.
     %
-:- pred goal_can_throw(module_info::in, hlds_goal::in) is semidet.
+:- pred goal_can_throw_term_info(module_info::in, hlds_goal::in) is semidet.
 
     % Succeeds if the goal cannot loop forever or throw an exception.
     %
-:- pred goal_cannot_loop_or_throw(module_info::in, hlds_goal::in) is semidet.
+:- pred goal_cannot_loop_or_throw_term_info(module_info::in, hlds_goal::in)
+    is semidet.
 
     % Succeeds if the goal can loop forever or throw an exception.
     %
-:- pred goal_can_loop_or_throw(module_info::in, hlds_goal::in) is semidet.
+:- pred goal_can_loop_or_throw_term_info(module_info::in, hlds_goal::in)
+    is semidet.
 
 % These versions do not use the results of the termination or exception
 % analyses.
@@ -141,7 +144,7 @@
     % such as construction of boxed constants.
     %
 :- pred goal_may_allocate_heap(hlds_goal::in) is semidet.
-:- pred goal_list_may_allocate_heap(hlds_goals::in) is semidet.
+:- pred goals_may_allocate_heap(list(hlds_goal)::in) is semidet.
 
     % Succeed if execution of the given goal cannot encounter a context
     % that causes any variable to be flushed to its stack slot. If such a goal
@@ -150,7 +153,7 @@
     % for the resume point is the one with the resume variables in their
     % original locations.
     %
-:- pred cannot_stack_flush(hlds_goal::in) is semidet.
+:- pred goal_cannot_stack_flush(hlds_goal::in) is semidet.
 
     % Succeed if the given goal cannot fail before encountering a
     % context that forces all variables to be flushed to their stack slots.
@@ -291,18 +294,18 @@ only_constant_goals([Goal | Goals], !ToAssignVars) :-
 % intermodule-analysis framework.
 %
 
-goal_can_throw(hlds_goal(GoalExpr, GoalInfo), Result, !ModuleInfo) :-
+goal_can_throw_imaf(hlds_goal(GoalExpr, GoalInfo), Result, !ModuleInfo) :-
     Determinism = goal_info_get_determinism(GoalInfo),
     ( if Determinism = detism_erroneous then
         Result = can_throw
     else
-        goal_can_throw_2(GoalExpr, GoalInfo, Result, !ModuleInfo)
+        do_goal_can_throw_imaf(GoalExpr, GoalInfo, Result, !ModuleInfo)
     ).
 
-:- pred goal_can_throw_2(hlds_goal_expr::in, hlds_goal_info::in,
+:- pred do_goal_can_throw_imaf(hlds_goal_expr::in, hlds_goal_info::in,
     goal_throw_status::out, module_info::in, module_info::out) is det.
 
-goal_can_throw_2(GoalExpr, _GoalInfo, Result, !ModuleInfo) :-
+do_goal_can_throw_imaf(GoalExpr, _GoalInfo, Result, !ModuleInfo) :-
     (
         (
             GoalExpr = conj(_, Goals)
@@ -312,7 +315,7 @@ goal_can_throw_2(GoalExpr, _GoalInfo, Result, !ModuleInfo) :-
             GoalExpr = if_then_else(_, CondGoal, ThenGoal, ElseGoal),
             Goals = [CondGoal, ThenGoal, ElseGoal]
         ),
-        goals_can_throw(Goals, Result, !ModuleInfo)
+        goals_can_throw_imaf(Goals, Result, !ModuleInfo)
     ;
         GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
         lookup_exception_analysis_result(proc(PredId, ProcId), Status,
@@ -332,7 +335,7 @@ goal_can_throw_2(GoalExpr, _GoalInfo, Result, !ModuleInfo) :-
         Result = can_throw
     ;
         GoalExpr = switch(_, _, Cases),
-        cases_can_throw(Cases, Result, !ModuleInfo)
+        cases_can_throw_imaf(Cases, Result, !ModuleInfo)
     ;
         GoalExpr = unify(_, _, _, Uni, _),
         % Complicated unifies are _non_builtin_
@@ -349,7 +352,7 @@ goal_can_throw_2(GoalExpr, _GoalInfo, Result, !ModuleInfo) :-
         )
     ;
         GoalExpr = negation(SubGoal),
-        goal_can_throw(SubGoal, Result, !ModuleInfo)
+        goal_can_throw_imaf(SubGoal, Result, !ModuleInfo)
     ;
         GoalExpr = scope(Reason, SubGoal),
         ( if
@@ -362,7 +365,7 @@ goal_can_throw_2(GoalExpr, _GoalInfo, Result, !ModuleInfo) :-
             % unifications.
             Result = cannot_throw
         else
-            goal_can_throw(SubGoal, Result, !ModuleInfo)
+            goal_can_throw_imaf(SubGoal, Result, !ModuleInfo)
         )
     ;
         GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
@@ -383,7 +386,7 @@ goal_can_throw_2(GoalExpr, _GoalInfo, Result, !ModuleInfo) :-
         GoalExpr = shorthand(ShortHand),
         (
             ShortHand = bi_implication(GoalA, GoalB),
-            goals_can_throw([GoalA, GoalB], Result, !ModuleInfo)
+            goals_can_throw_imaf([GoalA, GoalB], Result, !ModuleInfo)
         ;
             ShortHand = atomic_goal(_, _, _, _, _, _, _),
             % Atomic goals currently throw an exception to signal a rollback so
@@ -396,40 +399,40 @@ goal_can_throw_2(GoalExpr, _GoalInfo, Result, !ModuleInfo) :-
         )
     ).
 
-:- pred goals_can_throw(hlds_goals::in, goal_throw_status::out,
+:- pred goals_can_throw_imaf(list(hlds_goal)::in, goal_throw_status::out,
     module_info::in, module_info::out) is det.
 
-goals_can_throw([], cannot_throw, !ModuleInfo).
-goals_can_throw([Goal | Goals], Result, !ModuleInfo) :-
-    goal_can_throw(Goal, Result0, !ModuleInfo),
+goals_can_throw_imaf([], cannot_throw, !ModuleInfo).
+goals_can_throw_imaf([Goal | Goals], Result, !ModuleInfo) :-
+    goal_can_throw_imaf(Goal, Result0, !ModuleInfo),
     (
         Result0 = cannot_throw,
-        goals_can_throw(Goals, Result, !ModuleInfo)
+        goals_can_throw_imaf(Goals, Result, !ModuleInfo)
     ;
         Result0 = can_throw,
         Result  = can_throw
     ).
 
-:- pred cases_can_throw(list(case)::in, goal_throw_status::out,
+:- pred cases_can_throw_imaf(list(case)::in, goal_throw_status::out,
     module_info::in, module_info::out) is det.
 
-cases_can_throw([], cannot_throw, !ModuleInfo).
-cases_can_throw([Case | Cases], Result, !ModuleInfo) :-
+cases_can_throw_imaf([], cannot_throw, !ModuleInfo).
+cases_can_throw_imaf([Case | Cases], Result, !ModuleInfo) :-
     Case = case(_, _, Goal),
-    goal_can_throw(Goal, Result0, !ModuleInfo),
+    goal_can_throw_imaf(Goal, Result0, !ModuleInfo),
     (
         Result0 = cannot_throw,
-        cases_can_throw(Cases, Result, !ModuleInfo)
+        cases_can_throw_imaf(Cases, Result, !ModuleInfo)
     ;
         Result0 = can_throw,
         Result  = can_throw
     ).
 
-goal_can_loop_or_throw(Goal, Result, !ModuleInfo) :-
+goal_can_loop_or_throw_imaf(Goal, Result, !ModuleInfo) :-
     % XXX This will need to change after the termination analyses are converted
     % to use the intermodule-analysis framework.
-    ( if goal_cannot_loop(!.ModuleInfo, Goal) then
-        goal_can_throw(Goal, ThrowResult, !ModuleInfo),
+    ( if goal_cannot_loop_term_info(!.ModuleInfo, Goal) then
+        goal_can_throw_imaf(Goal, ThrowResult, !ModuleInfo),
         (
             ThrowResult = can_throw,
             Result = can_loop_or_throw
@@ -443,24 +446,24 @@ goal_can_loop_or_throw(Goal, Result, !ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-goal_cannot_loop(ModuleInfo, Goal) :-
+goal_cannot_loop_term_info(ModuleInfo, Goal) :-
     goal_can_loop_func(yes(ModuleInfo), Goal) = no.
 
-goal_can_loop(ModuleInfo, Goal) :-
+goal_can_loop_term_info(ModuleInfo, Goal) :-
     goal_can_loop_func(yes(ModuleInfo), Goal) = yes.
 
-goal_cannot_throw(ModuleInfo, Goal) :-
+goal_cannot_throw_term_info(ModuleInfo, Goal) :-
     goal_can_throw_func(yes(ModuleInfo), Goal) = no.
 
-goal_can_throw(ModuleInfo, Goal) :-
+goal_can_throw_term_info(ModuleInfo, Goal) :-
     goal_can_throw_func(yes(ModuleInfo), Goal) = yes.
 
-goal_cannot_loop_or_throw(ModuleInfo, Goal) :-
+goal_cannot_loop_or_throw_term_info(ModuleInfo, Goal) :-
     goal_can_loop_func(yes(ModuleInfo), Goal) = no,
     goal_can_throw_func(yes(ModuleInfo), Goal) = no.
 
-goal_can_loop_or_throw(ModuleInfo, Goal) :-
-    not goal_cannot_loop_or_throw(ModuleInfo, Goal).
+goal_can_loop_or_throw_term_info(ModuleInfo, Goal) :-
+    not goal_cannot_loop_or_throw_term_info(ModuleInfo, Goal).
 
 goal_cannot_loop_or_throw(Goal) :-
     goal_can_loop_func(no, Goal) = no,
@@ -532,7 +535,7 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
         )
     ;
         GoalExpr = conj(plain_conj, Goals),
-        CanLoop = goal_list_can_loop(MaybeModuleInfo, Goals)
+        CanLoop = goals_can_loop(MaybeModuleInfo, Goals)
     ;
         GoalExpr = conj(parallel_conj, _Goals),
         % In theory, parallel conjunctions can get into deadlocks, which are
@@ -541,7 +544,7 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
         CanLoop = yes
     ;
         GoalExpr = disj(Goals),
-        CanLoop = goal_list_can_loop(MaybeModuleInfo, Goals)
+        CanLoop = goals_can_loop(MaybeModuleInfo, Goals)
     ;
         GoalExpr = switch(_Var, _CanFail, Cases),
         CanLoop = case_list_can_loop(MaybeModuleInfo, Cases)
@@ -576,7 +579,7 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
         (
             ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             MainGoalCanLoop = goal_can_loop_func(MaybeModuleInfo, MainGoal),
-            OrElseCanLoop = goal_list_can_loop(MaybeModuleInfo, OrElseGoals),
+            OrElseCanLoop = goals_can_loop(MaybeModuleInfo, OrElseGoals),
             CanLoop = MainGoalCanLoop `or` OrElseCanLoop
         ;
             ShortHand = try_goal(_, _, SubGoal),
@@ -587,14 +590,14 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
         )
     ).
 
-:- func goal_list_can_loop(maybe(module_info), list(hlds_goal)) = bool.
+:- func goals_can_loop(maybe(module_info), list(hlds_goal)) = bool.
 
-goal_list_can_loop(_, []) = no.
-goal_list_can_loop(MaybeModuleInfo, [Goal | Goals]) =
+goals_can_loop(_, []) = no.
+goals_can_loop(MaybeModuleInfo, [Goal | Goals]) =
     ( if goal_can_loop_func(MaybeModuleInfo, Goal) = yes then
         yes
     else
-        goal_list_can_loop(MaybeModuleInfo, Goals)
+        goals_can_loop(MaybeModuleInfo, Goals)
     ).
 
 :- func case_list_can_loop(maybe(module_info), list(case)) = bool.
@@ -676,7 +679,7 @@ goal_expr_can_throw(MaybeModuleInfo, GoalExpr) = CanThrow :-
         ( GoalExpr = conj(_ConjType, Goals)
         ; GoalExpr = disj(Goals)
         ),
-        CanThrow = goal_list_can_throw(MaybeModuleInfo, Goals)
+        CanThrow = goals_can_throw(MaybeModuleInfo, Goals)
     ;
         GoalExpr = switch(_Var, _CanFail, Cases),
         CanThrow = case_list_can_throw(MaybeModuleInfo, Cases)
@@ -720,14 +723,14 @@ goal_expr_can_throw(MaybeModuleInfo, GoalExpr) = CanThrow :-
         )
     ).
 
-:- func goal_list_can_throw(maybe(module_info), list(hlds_goal)) = bool.
+:- func goals_can_throw(maybe(module_info), list(hlds_goal)) = bool.
 
-goal_list_can_throw(_, []) = no.
-goal_list_can_throw(MaybeModuleInfo, [Goal | Goals]) =
+goals_can_throw(_, []) = no.
+goals_can_throw(MaybeModuleInfo, [Goal | Goals]) =
     ( if goal_can_throw_func(MaybeModuleInfo, Goal) = yes then
         yes
     else
-        goal_list_can_throw(MaybeModuleInfo, Goals)
+        goals_can_throw(MaybeModuleInfo, Goals)
     ).
 
 :- func case_list_can_throw(maybe(module_info), list(case)) = bool.
@@ -800,19 +803,15 @@ goal_is_flat_list([Goal | Goals]) = IsFlat :-
 %-----------------------------------------------------------------------------%
 
 goal_may_allocate_heap(Goal) :-
-    goal_may_allocate_heap(Goal, yes).
+    may_goal_allocate_heap(Goal, yes).
 
-goal_list_may_allocate_heap(Goals) :-
-    goal_list_may_allocate_heap(Goals, yes).
+goals_may_allocate_heap(Goals) :-
+    may_goals_allocate_heap(Goals, yes).
 
-:- pred goal_may_allocate_heap(hlds_goal::in, bool::out) is det.
+:- pred may_goal_allocate_heap(hlds_goal::in, bool::out) is det.
 
-goal_may_allocate_heap(hlds_goal(GoalExpr, _GoalInfo), May) :-
-    goal_may_allocate_heap_2(GoalExpr, May).
-
-:- pred goal_may_allocate_heap_2(hlds_goal_expr::in, bool::out) is det.
-
-goal_may_allocate_heap_2(GoalExpr, May) :-
+may_goal_allocate_heap(Goal, May) :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = unify(_, _, _, Unification, _),
         ( if
@@ -850,26 +849,26 @@ goal_may_allocate_heap_2(GoalExpr, May) :-
             May = yes
         ;
             ConjType = plain_conj,
-            goal_list_may_allocate_heap(Goals, May)
+            may_goals_allocate_heap(Goals, May)
         )
     ;
         GoalExpr = disj(Goals),
-        goal_list_may_allocate_heap(Goals, May)
+        may_goals_allocate_heap(Goals, May)
     ;
         GoalExpr = switch(_Var, _CanFail, Cases),
-        cases_may_allocate_heap(Cases, May)
+        may_cases_allocate_heap(Cases, May)
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
-        ( if goal_may_allocate_heap(Cond, yes) then
+        ( if may_goal_allocate_heap(Cond, yes) then
             May = yes
-        else if goal_may_allocate_heap(Then, yes) then
+        else if may_goal_allocate_heap(Then, yes) then
             May = yes
         else
-            goal_may_allocate_heap(Else, May)
+            may_goal_allocate_heap(Else, May)
         )
     ;
         GoalExpr = negation(SubGoal),
-        goal_may_allocate_heap(SubGoal, May)
+        may_goal_allocate_heap(SubGoal, May)
     ;
         GoalExpr = scope(Reason, SubGoal),
         ( if
@@ -885,7 +884,7 @@ goal_may_allocate_heap_2(GoalExpr, May) :-
             % Deconstruct scopes do not construct new ground terms.
             May = yes
         else
-            goal_may_allocate_heap(SubGoal, May)
+            may_goal_allocate_heap(SubGoal, May)
         )
     ;
         GoalExpr = shorthand(ShortHand),
@@ -896,66 +895,71 @@ goal_may_allocate_heap_2(GoalExpr, May) :-
             May = yes
         ;
             ShortHand = bi_implication(GoalA, GoalB),
-            ( if goal_may_allocate_heap(GoalA, yes) then
+            ( if may_goal_allocate_heap(GoalA, yes) then
                 May = yes
             else
-                goal_may_allocate_heap(GoalB, May)
+                may_goal_allocate_heap(GoalB, May)
             )
         )
     ).
 
-:- pred goal_list_may_allocate_heap(list(hlds_goal)::in, bool::out) is det.
+:- pred may_goals_allocate_heap(list(hlds_goal)::in, bool::out) is det.
 
-goal_list_may_allocate_heap([], no).
-goal_list_may_allocate_heap([Goal | Goals], May) :-
-    ( if goal_may_allocate_heap(Goal, yes) then
+may_goals_allocate_heap([], no).
+may_goals_allocate_heap([Goal | Goals], May) :-
+    ( if may_goal_allocate_heap(Goal, yes) then
         May = yes
     else
-        goal_list_may_allocate_heap(Goals, May)
+        may_goals_allocate_heap(Goals, May)
     ).
 
-:- pred cases_may_allocate_heap(list(case)::in, bool::out) is det.
+:- pred may_cases_allocate_heap(list(case)::in, bool::out) is det.
 
-cases_may_allocate_heap([], no).
-cases_may_allocate_heap([case(_, _, Goal) | Cases], May) :-
-    ( if goal_may_allocate_heap(Goal, yes) then
+may_cases_allocate_heap([], no).
+may_cases_allocate_heap([case(_, _, Goal) | Cases], May) :-
+    ( if may_goal_allocate_heap(Goal, yes) then
         May = yes
     else
-        cases_may_allocate_heap(Cases, May)
+        may_cases_allocate_heap(Cases, May)
     ).
 
 %-----------------------------------------------------------------------------%
 
-cannot_stack_flush(hlds_goal(GoalExpr, _)) :-
-    cannot_stack_flush_2(GoalExpr).
+goal_cannot_stack_flush(Goal) :-
+    Goal = hlds_goal(GoalExpr, _),
+    (
+        GoalExpr = unify(_, _, _, Unify, _),
+        Unify \= complicated_unify(_, _, _)
+    ;
+        GoalExpr = plain_call(_, _, _, BuiltinState, _, _),
+        BuiltinState = inline_builtin
+    ;
+        GoalExpr = conj(ConjType, Goals),
+        ConjType = plain_conj,
+        goals_cannot_stack_flush(Goals)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        cases_cannot_stack_flush(Cases)
+    ;
+        GoalExpr = negation(SubGoal),
+        SubGoal = hlds_goal(SubGoalExpr, _),
+        SubGoalExpr = unify(_, _, _, Unify, _),
+        Unify \= complicated_unify(_, _, _)
+    ).
 
-:- pred cannot_stack_flush_2(hlds_goal_expr::in) is semidet.
+:- pred goals_cannot_stack_flush(list(hlds_goal)::in) is semidet.
 
-cannot_stack_flush_2(unify(_, _, _, Unify, _)) :-
-    Unify \= complicated_unify(_, _, _).
-cannot_stack_flush_2(plain_call(_, _, _, BuiltinState, _, _)) :-
-    BuiltinState = inline_builtin.
-cannot_stack_flush_2(conj(ConjType, Goals)) :-
-    ConjType = plain_conj,
-    cannot_stack_flush_goals(Goals).
-cannot_stack_flush_2(switch(_, _, Cases)) :-
-    cannot_stack_flush_cases(Cases).
-cannot_stack_flush_2(negation(hlds_goal(unify(_, _, _, Unify, _), _))) :-
-    Unify \= complicated_unify(_, _, _).
+goals_cannot_stack_flush([]).
+goals_cannot_stack_flush([Goal | Goals]) :-
+    goal_cannot_stack_flush(Goal),
+    goals_cannot_stack_flush(Goals).
 
-:- pred cannot_stack_flush_goals(list(hlds_goal)::in) is semidet.
+:- pred cases_cannot_stack_flush(list(case)::in) is semidet.
 
-cannot_stack_flush_goals([]).
-cannot_stack_flush_goals([Goal | Goals]) :-
-    cannot_stack_flush(Goal),
-    cannot_stack_flush_goals(Goals).
-
-:- pred cannot_stack_flush_cases(list(case)::in) is semidet.
-
-cannot_stack_flush_cases([]).
-cannot_stack_flush_cases([case(_, _, Goal) | Cases]) :-
-    cannot_stack_flush(Goal),
-    cannot_stack_flush_cases(Cases).
+cases_cannot_stack_flush([]).
+cases_cannot_stack_flush([case(_, _, Goal) | Cases]) :-
+    goal_cannot_stack_flush(Goal),
+    cases_cannot_stack_flush(Cases).
 
 %-----------------------------------------------------------------------------%
 
@@ -1145,10 +1149,10 @@ goal_has_foreign(Goal) = HasForeign :-
         HasForeign = no
     ;
         GoalExpr = conj(_, Goals),
-        HasForeign = goal_list_has_foreign(Goals)
+        HasForeign = goals_has_foreign(Goals)
     ;
         GoalExpr = disj(Goals),
-        HasForeign = goal_list_has_foreign(Goals)
+        HasForeign = goals_has_foreign(Goals)
     ;
         GoalExpr = switch(_, _, Cases),
         HasForeign = case_list_has_foreign(Cases)
@@ -1197,14 +1201,14 @@ goal_has_foreign(Goal) = HasForeign :-
         )
     ).
 
-:- func goal_list_has_foreign(list(hlds_goal)) = bool.
+:- func goals_has_foreign(list(hlds_goal)) = bool.
 
-goal_list_has_foreign([]) = no.
-goal_list_has_foreign([Goal | Goals]) = HasForeign :-
+goals_has_foreign([]) = no.
+goals_has_foreign([Goal | Goals]) = HasForeign :-
     ( if goal_has_foreign(Goal) = yes then
         HasForeign = yes
     else
-        HasForeign = goal_list_has_foreign(Goals)
+        HasForeign = goals_has_foreign(Goals)
     ).
 
 :- func case_list_has_foreign(list(case)) = bool.

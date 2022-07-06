@@ -119,7 +119,7 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
     ),
     Detism = goal_info_get_determinism(GoalInfo0),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
-    goal_can_loop_or_throw(Goal0, Goal0CanLoopOrThrow,
+    goal_can_loop_or_throw_imaf(Goal0, Goal0CanLoopOrThrow,
         ModuleInfo0, ModuleInfo),
     simplify_info_set_module_info(ModuleInfo, !Info),
     Purity = goal_info_get_purity(GoalInfo0),

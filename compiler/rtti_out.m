@@ -1071,8 +1071,9 @@ output_notag_functor_defn(Info, Stream, RttiTypeCtor, NotagFunctor,
     ),
     io.write_string(Stream, ",\n\t", !IO),
     % MR_notag_functor_subtype
-    io.write_string(Stream,
-        functor_subtype_info_to_string(FunctorSubtypeInfo), !IO),
+    functor_subtype_info_to_string(FunctorSubtypeInfo, _,
+        FunctorSubtypeInfoStr),
+    io.write_string(Stream, FunctorSubtypeInfoStr, !IO),
     io.write_string(Stream, "\n};\n", !IO).
 
 :- pred output_du_functor_defn(llds_out_info::in,
@@ -1213,23 +1214,13 @@ output_du_functor_defn(Info, Stream, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
     ),
     io.write_string(Stream, ",\n\t", !IO),
     % MR_du_functor_subtype
-    io.write_string(Stream,
-        functor_subtype_info_to_string(FunctorSubtypeInfo), !IO),
+    functor_subtype_info_to_string(FunctorSubtypeInfo, _,
+        FunctorSubtypeInfoStr),
+    io.write_string(Stream, FunctorSubtypeInfoStr, !IO),
     io.write_string(Stream, ",\n\t", !IO),
     % MR_du_functor_num_sectag_bits
     io.write_uint8(Stream, NumSectagBits, !IO),
     io.write_string(Stream, "\n};\n", !IO).
-
-:- func functor_subtype_info_to_string(functor_subtype_info) = string.
-
-functor_subtype_info_to_string(FunctorSubtypeInfo) = Str :-
-    (
-        FunctorSubtypeInfo = functor_subtype_none,
-        Str = "MR_FUNCTOR_SUBTYPE_NONE"
-    ;
-        FunctorSubtypeInfo = functor_subtype_exists,
-        Str = "MR_FUNCTOR_SUBTYPE_EXISTS"
-    ).
 
 %-----------------------------------------------------------------------------%
 

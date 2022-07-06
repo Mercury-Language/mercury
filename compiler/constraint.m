@@ -443,7 +443,7 @@ annotate_conj_constraints(ModuleInfo, [Conjunct | RevConjuncts0], Constraints0,
     Goal = hlds_goal(GoalExpr, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     CI_ModuleInfo0 = !.Info ^ constr_module_info,
-    goal_can_loop_or_throw(Goal, GoalCanLoopOrThrow,
+    goal_can_loop_or_throw_imaf(Goal, GoalCanLoopOrThrow,
         CI_ModuleInfo0, CI_ModuleInfo),
     !Info ^ constr_module_info := CI_ModuleInfo,
     ( if
@@ -517,7 +517,7 @@ annotate_conj_constraints(ModuleInfo, [Conjunct | RevConjuncts0], Constraints0,
     else if
         % Don't move goals which can fail before a goal which can loop
         % or throw an exception if `--fully-strict' is set.
-        not goal_cannot_loop_or_throw(ModuleInfo, Goal),
+        not goal_cannot_loop_or_throw_term_info(ModuleInfo, Goal),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, fully_strict, yes)
     then

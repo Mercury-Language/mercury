@@ -181,7 +181,7 @@ process_special_pred_for_type(ModuleInfo, SpecialPredId, TypeCtor, TypeDefn,
         % special preds is always set to terminates. Instead, we check if the
         % body of the generated wrapper predicate terminates.
 
-        ( if goal_cannot_loop(ModuleInfo, BodyGoal) then
+        ( if goal_cannot_loop_term_info(ModuleInfo, BodyGoal) then
             true
         else
             get_type_defn_context(TypeDefn, Context),
