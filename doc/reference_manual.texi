@@ -6346,7 +6346,7 @@ may be any Mercury expression with type @var{vartype} and inst @var{varinst}
 subject to the above restrictions.
 It may be impure or semipure.
 
-The following @var{attributes} must be supported:
+The following @var{attributes} are supported:
 
 @table @asis
 
