@@ -408,6 +408,12 @@ Changes to the Mercury compiler
 * The deprecated option `--trail-segments` has been deleted and the grade
   component `trseg` is no longer accepted as a synonym for `tr`.
 
+Portability improvements
+------------------------
+
+* We have updated the script `tools/configure_cross` to support
+  cross-compiling using clang.
+
 Changes to the extras distribution
 ----------------------------------
 

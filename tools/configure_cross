@@ -2,7 +2,7 @@
 # vim: ft=sh ts=4 sw=4 et
 #---------------------------------------------------------------------------#
 # Copyright (C) 2012 The University of Melbourne.
-# Copyright (C) 2014, 2018, 2021 The Mercury team.
+# Copyright (C) 2014, 2018, 2021-2022 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -40,13 +40,22 @@ then
     exit 1
 fi
 
-hostcc=${hostcc:-"${host}-gcc"}
-
-if command -v "$hostcc" >/dev/null
+hostcc=${hostcc:-${CC:-}}
+if test -z "$hostcc"
 then
-    true
+    # If no C compiler is specified, then assume we want to use a gcc
+    # cross-compiler.
+    hostcc="${host}-gcc"
+fi
+
+if $hostcc -v 2>&1 | grep -q '^clang version '
+then
+    cc_type=clang
+elif $hostcc -v 2>&1 | grep -q '^gcc version '
+then
+    cc_type=gcc
 else
-    echo "You need $hostcc in your PATH."
+    echo "You need to specify a C compiler."
     exit 1
 fi
 
@@ -70,8 +79,8 @@ then
 fi
 
 # Set values which would otherwise be determined with AC_TRY_RUN.
-case $host in
-    i686-*-mingw32* | x86_64-*-mingw32*)
+case "$cc_type:$host" in
+    gcc:i686-*-mingw32* | gcc:x86_64-*-mingw32*)
         # Taken from the config.cache file after running configure -C in msys.
         mercury_cv_cc_type=gcc
         mercury_cv_siginfo_t=no
@@ -86,7 +95,7 @@ case $host in
         mercury_cv_gcc_model_reg=yes
         mercury_cv_cannot_use_structure_assignment=yes
         ;;
-    aarch64-linux-gnu | aarch64-linux-musl)
+    gcc:aarch64-linux-gnu | gcc:aarch64-linux-musl)
         # Taken from the config.cache file after running configure -C
         # - in a Debian 10 arm64 environment (for glibc)
         # - in a Alpine Linux aarch64 environment (for musl)
@@ -102,6 +111,22 @@ case $host in
         mercury_cv_gcc_model_fast=yes
         mercury_cv_gcc_model_reg=yes
         mercury_cv_cannot_use_structure_assignment=no
+        ;;
+    clang:x86_64-*freebsd*)
+        # Taken from the config.cache file after running configure -C in
+        # FreeBSD 13.0 x86-64.
+        mercury_cv_cc_type=clang
+        mercury_cv_siginfo_t=yes
+        mercury_cv_pc_access=no
+        mercury_cv_is_bigender=no
+        mercury_cv_is_littleender=yes
+        mercury_cv_normal_system_retval=yes
+        mercury_cv_can_do_pending_io=yes
+        mercury_cv_gcc_labels=no
+        mercury_cv_asm_labels=no
+        mercury_cv_gcc_model_fast=no
+        mercury_cv_gcc_model_reg=no
+        mercury_cv_cannot_use_structure_assignment=yes
         ;;
     *)
         echo "unknown host: $host" >&2
