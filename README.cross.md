@@ -1,6 +1,5 @@
------------------------------------------------------------------------------
-
-COMPILING MERCURY WITH A CROSS-COMPILER
+Compiling Mercury with a cross-compiler
+=======================================
 
 You can build the Mercury system with a C cross-compiler so that the Mercury
 installation will run on a different platform from your host system.
@@ -15,14 +14,15 @@ system and running it there, you can augment the cross-compiled installation
 with files from a native Mercury installation, allowing you to cross-compile
 Mercury programs for the target system on the host system.
 
-NOTE: At one stage, there were problems with the 'asm_fast*' grade on
-Windows 64-bit. The 'none*' and 'reg*' grades did appear to work correctly.
-This has not been checked recently. We suggest using the 'hlc' grades for
+NOTE: At one stage, there were problems with the `asm_fast*` grade on
+Windows 64-bit. The `none*` and `reg*` grades did appear to work correctly.
+This has not been checked recently. We suggest using the `hlc` grades for
 production usage.
 
 -----------------------------------------------------------------------------
 
-INSTRUCTIONS
+Instructions
+============
 
  1. Install Mercury for the host system as usual.
 
@@ -70,7 +70,8 @@ INSTRUCTIONS
 
 -----------------------------------------------------------------------------
 
-ADAPTING THE MERCURY INSTALLATION FOR USE ON THE HOST SYSTEM
+Adapting the Mercury installation for use on the host system
+============================================================
 
 To use the cross-compiled Mercury installation on the host system,
 you need to copy executables from a native Mercury installation's `bin`

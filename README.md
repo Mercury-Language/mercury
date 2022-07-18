@@ -54,7 +54,7 @@ Specific information is contained in individual README files:
         [Cygwin](README.Cygwin))
 
   * Other platform information
-      * [Cross compilation](README.cross)
+      * [Cross compilation](README.cross.md)
       * [Docker](README.Docker)
       * [x86](README.x86)
 

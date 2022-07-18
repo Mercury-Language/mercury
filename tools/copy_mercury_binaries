@@ -7,7 +7,7 @@
 #---------------------------------------------------------------------------#
 #
 # This script copies the binaries from one Mercury installation to another.
-# Please see README.cross for details.
+# Please see README.cross.md for details.
 #
 #---------------------------------------------------------------------------#
 

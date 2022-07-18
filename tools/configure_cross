@@ -8,7 +8,7 @@
 #---------------------------------------------------------------------------#
 #
 # This script prepares the Mercury source tree for building with a
-# C cross-compiler. Please see README.cross for details.
+# C cross-compiler. Please see README.cross.md for details.
 #
 #---------------------------------------------------------------------------#
 
