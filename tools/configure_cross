@@ -79,7 +79,8 @@ then
     exit 3
 fi
 
-# Set values which would otherwise be determined with AC_TRY_RUN.
+# Set configuration values that can only be determined by AC_TRY_RUN when
+# running ./configure on the the host platform.
 case "$cc_type:$host" in
     gcc:i686-*-mingw32* | gcc:x86_64-*-mingw32*)
         # Taken from the config.cache file after running configure -C in msys.
@@ -113,9 +114,11 @@ case "$cc_type:$host" in
         mercury_cv_gcc_model_reg=yes
         mercury_cv_cannot_use_structure_assignment=no
         ;;
-    clang:x86_64-*freebsd*)
-        # Taken from the config.cache file after running configure -C in
-        # FreeBSD 13.0 x86-64.
+    clang:x86_64-*freebsd* | clang:x86_64-*darwin* | clang:aarch64-*darwin*)
+        # Taken from the config.cache file after running configure -C
+        # - in a FreeBSD 13.0 x86-64 environment
+        # - in a macOS 10.14 x86-64 environment
+        # - in a macOS 12.4 aarch64 environment
         mercury_cv_cc_type=clang
         mercury_cv_siginfo_t=yes
         mercury_cv_pc_access=no
