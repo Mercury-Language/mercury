@@ -1261,7 +1261,7 @@ make_new_pred_info(_ModuleInfo, UnusedArgs, PredStatus, proc(PredId, ProcId),
     % constraints.
     map.init(Proofs),
     map.init(ConstraintMap),
-    OriginTransform = transform_unused_argument_elimination(UnusedArgs),
+    OriginTransform = transform_unused_args(ProcId, UnusedArgs),
     Origin = origin_transformed(OriginTransform, OrigOrigin, PredId),
     CurUserDecl = maybe.no,
     pred_info_init(PredOrFunc, PredModuleName, TransformedName, PredFormArity,
@@ -1826,7 +1826,7 @@ gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
             % Don't warn for a loop-invariant hoisting-generated procedure.
             pred_info_get_origin(PredInfo, Origin),
             not (
-                Origin = origin_transformed(transform_loop_invariant(_), _, _)
+                Origin = origin_transformed(transform_loop_inv(_, _, _), _, _)
             ),
 
             % XXX We don't currently generate pragmas for the automatically

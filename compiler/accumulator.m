@@ -1561,16 +1561,16 @@ acc_pred_info(ModuleInfo, NewTypes, OutVars, NewProcInfo,
     set.init(Assertions),
 
     proc_info_get_context(NewProcInfo, Context),
-    term.context_line(Context, Line),
+    term.context_line(Context, LineNum),
     Counter = 0,
 
     Types = NewTypes ++ Types0,
 
-    Transform = tn_accumulator(PredOrFunc, lnc(Line, Counter)),
+    Transform = tn_accumulator(PredOrFunc, lnc(LineNum, Counter)),
     make_transformed_pred_name(Name, Transform, TransformedName),
 
     OutVarNums = list.map(term.var_to_int, OutVars),
-    Origin = origin_transformed(transform_accumulator(OutVarNums),
+    Origin = origin_transformed(transform_accumulator(LineNum, OutVarNums),
         OldOrigin, OrigPredId),
     GoalType = goal_not_for_promise(np_goal_type_none),
     pred_info_create(ModuleInfo, PredOrFunc, ModuleName, TransformedName,

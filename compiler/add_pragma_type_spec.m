@@ -216,8 +216,8 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeArgModes, Context,
 
             pred_info_get_origin(PredInfo0, OrigOrigin),
             SubstDesc = list.map(subst_desc, Subst),
-            Origin = origin_transformed(
-                transform_type_specialization(SubstDesc), OrigOrigin, PredId),
+            Origin = origin_transformed(transform_type_spec(SubstDesc),
+                OrigOrigin, PredId),
             MaybeCurUserDecl = maybe.no,
             GoalType = goal_not_for_promise(np_goal_type_none),
             pred_info_get_var_name_remap(PredInfo0, VarNameRemap),

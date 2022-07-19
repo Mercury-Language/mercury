@@ -606,6 +606,9 @@
 :- pred module_info_next_atomic_count(prog_context::in, int::out,
     module_info::in, module_info::out) is det.
 
+:- pred module_info_next_loop_inv_count(prog_context::in, int::out,
+    module_info::in, module_info::out) is det.
+
 %---------------------%
 
 :- pred module_add_avail_module_name(module_name::in,
@@ -867,6 +870,14 @@
                 % the same file.
                 mri_atomics_per_context         :: map(prog_context, counter),
 
+                % How many loop invariant optimizations we have done at
+                % different contexts in the module. This is used to provide
+                % a uniquely identify the predicates that we create
+                % using the loop invariant optimization, in the rare case
+                % that one line contains the definition of more than one
+                % predicate.
+                mri_loop_invs_per_context       :: map(prog_context, counter),
+
                 % The add_item_avails predicate in make_hlds_passes.m fills
                 % this field with information about all the import- and
                 % use_module declarations both in the module being compiled,
@@ -1089,6 +1100,7 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
     map.init(TablingStructMap),
     map.init(LambdasPerContext),
     map.init(AtomicsPerContext),
+    map.init(LoopInvsPerContext),
 
     % XXX ITEM_LIST Given that we start with an aug_compilation_unit,
     % shouldn't the work of finding implicit dependencies have already
@@ -1158,6 +1170,7 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
         TablingStructMap,
         LambdasPerContext,
         AtomicsPerContext,
+        LoopInvsPerContext,
         AvailModuleMap,
         IndirectlyImportedModules,
         UsedModules,
@@ -1236,6 +1249,8 @@ module_info_optimize(!ModuleInfo) :-
     map(prog_context, counter)::out) is det.
 :- pred module_info_get_atomics_per_context(module_info::in,
     map(prog_context, counter)::out) is det.
+:- pred module_info_get_loop_invs_per_context(module_info::in,
+    map(prog_context, counter)::out) is det.
 :- pred module_info_get_indirectly_imported_module_names(module_info::in,
     set(module_name)::out) is det.
 
@@ -1244,6 +1259,8 @@ module_info_optimize(!ModuleInfo) :-
 :- pred module_info_set_lambdas_per_context(map(prog_context, counter)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_atomics_per_context(map(prog_context, counter)::in,
+    module_info::in, module_info::out) is det.
+:- pred module_info_set_loop_invs_per_context(map(prog_context, counter)::in,
     module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -1331,6 +1348,8 @@ module_info_get_lambdas_per_context(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_lambdas_per_context.
 module_info_get_atomics_per_context(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_atomics_per_context.
+module_info_get_loop_invs_per_context(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_loop_invs_per_context.
 module_info_get_avail_module_map(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_avail_module_map.
 module_info_get_indirectly_imported_module_names(MI, X) :-
@@ -1463,6 +1482,8 @@ module_info_set_lambdas_per_context(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_lambdas_per_context := X.
 module_info_set_atomics_per_context(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_atomics_per_context := X.
+module_info_set_loop_invs_per_context(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_loop_invs_per_context := X.
 module_info_set_used_modules(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_used_modules := X.
 module_info_set_ancestor_avail_modules(X, !MI) :-
@@ -1673,6 +1694,21 @@ module_info_next_atomic_count(Context, Count, !MI) :-
         map.det_update(Context, Counter, ContextCounter0, ContextCounter)
     ),
     module_info_set_atomics_per_context(ContextCounter, !MI).
+
+module_info_next_loop_inv_count(Context, Count, !MI) :-
+    module_info_get_loop_invs_per_context(!.MI, ContextCounter0),
+    ( if
+        map.insert(Context, counter.init(2),
+            ContextCounter0, FoundContextCounter)
+    then
+        Count = 1,
+        ContextCounter = FoundContextCounter
+    else
+        map.lookup(ContextCounter0, Context, Counter0),
+        counter.allocate(Count, Counter0, Counter),
+        map.det_update(Context, Counter, ContextCounter0, ContextCounter)
+    ),
+    module_info_set_loop_invs_per_context(ContextCounter, !MI).
 
 %---------------------%
 

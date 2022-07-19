@@ -505,15 +505,15 @@ setup_headvars(PredInfo, !HeadVars, ExtraArgModes,
         ( Origin = origin_special_pred(_, _)
         ; Origin = origin_class_method(_, _)
         ; Origin = origin_transformed(_, _, _)
-        ; Origin = origin_created(_)
+        ; Origin = origin_deforestation(_, _)
         ; Origin = origin_assertion(_, _)
         ; Origin = origin_lambda(_, _, _)
-        ; Origin = origin_solver_type(_, _, _)
+        ; Origin = origin_solver_repn(_, _)
         ; Origin = origin_tabling(_, _)
         ; Origin = origin_mutable(_, _, _)
         ; Origin = origin_initialise
         ; Origin = origin_finalise
-        ; Origin = origin_user(_)
+        ; Origin = origin_user(_, _, _)
         ),
         pred_info_get_class_context(PredInfo, ClassContext),
         InstanceTVars = [],

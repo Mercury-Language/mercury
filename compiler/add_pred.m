@@ -151,7 +151,7 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
         MaybePredProcId = no
     else
         split_types_and_modes(ArgTypesAndModes, ArgTypes, MaybeArgModes0),
-        list.length(ArgTypes, PredFormArity),
+        list.length(ArgTypes, PredFormArityInt),
         ( if
             PredOrFunc = pf_predicate,
             MaybeArgModes0 = yes(ArgModes0),
@@ -168,9 +168,9 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
             MaybeArgModes0 = no,
             MaybeDetism = yes(_)
         then
-            adjust_func_arity(pf_function, FuncArity, PredFormArity),
+            adjust_func_arity(pf_function, FuncArityInt, PredFormArityInt),
             in_mode(InMode),
-            list.duplicate(FuncArity, InMode, InModes),
+            list.duplicate(FuncArityInt, InMode, InModes),
             out_mode(OutMode),
             MaybeArgModes = yes(InModes ++ [OutMode])
         else
@@ -179,7 +179,10 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
         ( MaybeArgModes = no,     PredmodeDecl = no_predmode_decl
         ; MaybeArgModes = yes(_), PredmodeDecl = predmode_decl
         ),
-        record_pred_origin(PredSymName, Origin, PredOrigin, Markers),
+        user_arity_pred_form_arity(PredOrFunc, UserArity,
+            pred_form_arity(PredFormArityInt)),
+        record_pred_origin(PredOrFunc, PredSymName, UserArity, Origin,
+            PredOrigin, Markers),
         add_new_pred(PredOrigin, Context, SeqNum, PredStatus, NeedQual,
             PredOrFunc, PredModuleName, PredName, TypeVarSet, ExistQVars,
             ArgTypes, Constraints, PredmodeDecl, Purity, Markers, Succeeded,
@@ -217,10 +220,11 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
         )
     ).
 
-:- pred record_pred_origin(sym_name::in, item_maybe_attrs::in,
-    pred_origin::out, pred_markers::out) is det.
+:- pred record_pred_origin(pred_or_func::in, sym_name::in, user_arity::in,
+    item_maybe_attrs::in, pred_origin::out, pred_markers::out) is det.
 
-record_pred_origin(PredSymName, Origin, PredOrigin, Markers) :-
+record_pred_origin(PredOrFunc, PredSymName, UserArity, Origin,
+        PredOrigin, Markers) :-
     % If this predicate was added as a result of the mutable
     % transformation, then mark this predicate as a mutable access pred.
     % We do this so that we can tell optimizations, like inlining,
@@ -242,10 +246,9 @@ record_pred_origin(PredSymName, Origin, PredOrigin, Markers) :-
             PredOrigin = origin_class_method(ClassId, MethodId),
             add_marker(marker_class_method, Markers0, Markers)
         ;
-            CompilerOrigin = compiler_origin_solver_type(TypeCtorName,
-                TypeCtorArity, SolverPredKind),
-            PredOrigin = origin_solver_type(TypeCtorName,
-                TypeCtorArity, SolverPredKind),
+            CompilerOrigin = compiler_origin_solver_repn(TypeCtor,
+                SolverPredKind),
+            PredOrigin = origin_solver_repn(TypeCtor, SolverPredKind),
             Markers = Markers0
         ;
             CompilerOrigin = compiler_origin_mutable(ModuleName, MutableName,
@@ -261,7 +264,7 @@ record_pred_origin(PredSymName, Origin, PredOrigin, Markers) :-
         )
     ;
         Origin = item_origin_user,
-        PredOrigin = origin_user(PredSymName),
+        PredOrigin = origin_user(PredOrFunc, PredSymName, UserArity),
         Markers = Markers0
     ).
 
@@ -745,9 +748,11 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
         ( if PredIds = [PredIdPrime] then
             PredId = PredIdPrime
         else
+            user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+            Origin = origin_user(PredOrFunc, PredSymName, UserArity),
             add_implicit_pred_decl_report_error(PredOrFunc,
                 PredModuleName, PredName, PredFormArity, PredStatus,
-                IsClassMethod, Context, origin_user(PredSymName),
+                IsClassMethod, Context, Origin,
                 [decl("mode"), words("declaration")], PredId,
                 !ModuleInfo, !Specs)
         ),

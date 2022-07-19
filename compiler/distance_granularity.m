@@ -23,91 +23,75 @@
 % To see how the distance granularity transformation works, consider
 % this parallel version of the double recursive fibonacci predicate:
 %
-% :- pred fibonacci(int::in, int::out) is det.
+% :- pred fib(int::in, int::out) is det.
 %
-% fibonacci(X, Y) :-
+% fib(X, Y) :-
 %     ( if X = 0 then
 %         Y = 0
+%     else if X = 1 then
+%         Y = 1
+%     else if X > 1 then
+%         J = X - 1,
+%         K = X - 2,
+%         (
+%             fib(J, Jout)
+%         &
+%             fib(K, Kout)
+%         ),
+%         Y = Jout + Kout
 %     else
-%         ( if X = 1 then
-%             Y = 1
-%         else
-%             ( if X > 1 then
-%                 J = X - 1,
-%                 K = X - 2,
-%                 (
-%                     fibonacci(J, Jout)
-%                 &
-%                     fibonacci(K, Kout)
-%                 ),
-%                 Y = Jout + Kout
-%             else
-%                 error("fibonacci: wrong value")
-%             )
-%         )
+%         error("fib: wrong value")
 %     ).
 %
 % Assuming that the distance metric specified during compilation is 10,
 % this module creates this specialized version of the above predicate:
 %
-% :- pred DistanceGranularityFor__pred__fibonacci__10(int::in, int::out,
+% :- pred DistanceGranularityFor__pred__fib__10(int::in, int::out,
 %     int::in) is det.
 %
-% DistanceGranularityFor__pred__fibonacci__10(X, Y, Distance) :-
+% DistanceGranularityFor__pred__fib__10(X, Y, Distance) :-
 %     ( if X = 0 then
 %         Y = 0
-%     else
-%         ( if X = 1 then
-%             Y = 1
-%         else
-%             ( if X > 1 then
-%                 J = X - 1,
-%                 K = X - 2,
-%                 ( if Distance = 0 then
-%                     (
-%                         DistanceGranularityFor__pred__fibonacci__10(J, Jout,
-%                             10)
-%                     &
-%                         DistanceGranularityFor__pred__fibonacci__10(K, Kout,
-%                             10)
-%                     )
-%                 else
-%                     DistanceGranularityFor__pred__fibonacci__10(J, Jout,
-%                         Distance - 1),
-%                     DistanceGranularityFor__pred__fibonacci__10(K, Kout,
-%                         Distance - 1)
-%                 ),
-%                 Y = Jout + Kout
-%             else
-%                 error("fibonacci: wrong value")
+%     else if X = 1 then
+%         Y = 1
+%     else if X > 1 then
+%         J = X - 1,
+%         K = X - 2,
+%         ( if Distance = 0 then
+%             (
+%                 DistanceGranularityFor__pred__fib__10(J, Jout, 10)
+%             &
+%                 DistanceGranularityFor__pred__fib__10(K, Kout, 10)
 %             )
-%         )
+%         else
+%             DistanceGranularityFor__pred__fib__10(J, Jout, Distance - 1),
+%             DistanceGranularityFor__pred__fib__10(K, Kout, Distance - 1)
+%         ),
+%         Y = Jout + Kout
+%     else
+%         error("fib: wrong value")
 %     ).
 %
 % After which, the original version becomes:
 %
-% :- pred fibonacci(int::in, int::out) is det.
+% :- pred fib(int::in, int::out) is det.
 %
-% fibonacci(X, Y) :-
+% fib(X, Y) :-
 %     ( if X = 0 then
 %         Y = 0
+%     else if X = 1 then
+%         Y = 1
+%     else if X > 1 then
+%         J = X - 1,
+%         K = X - 2,
+%         (
+%             DistanceGranularityFor__pred__fib__10(J, Jout, 10)
+%         &
+%             DistanceGranularityFor__pred__fib__10(K, Kout, 10)
+%         ),
+%         Y = Jout + Kout
 %     else
-%         ( if X = 1 then
-%             Y = 1
-%         else
-%             ( if X > 1 then
-%                 J = X - 1,
-%                 K = X - 2,
-%                 (
-%                     DistanceGranularityFor__pred__fibonacci__10(J, Jout, 10)
-%                 &
-%                     DistanceGranularityFor__pred__fibonacci__10(K, Kout, 10)
-%                 ),
-%                 Y = Jout + Kout
-%             else
-%                 error("fibonacci: wrong value")
-%             )
-%         )
+%         error("fib: wrong value")
 %     ).
 %
 % The second part of the transformation makes the granularity control
@@ -191,7 +175,7 @@ control_distance_granularity(!ModuleInfo, Distance) :-
 
 apply_dg_to_preds([], _Distance, !ModuleInfo).
 apply_dg_to_preds([PredId | PredIds], Distance, !ModuleInfo) :-
-    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     % We need to know what the pred_id will be for the specified predicate
     % before we actually clone it (this avoids doing one more pass to update
     % the pred_id in the recursive plain calls).
@@ -200,52 +184,57 @@ apply_dg_to_preds([PredId | PredIds], Distance, !ModuleInfo) :-
 
     % Create the new sym_name for the recursive plain calls.
     module_info_get_name(!.ModuleInfo, ModuleName),
-    PredName0 = pred_info_name(PredInfo),
+    PredName0 = pred_info_name(PredInfo0),
     % XXX *Always* passing pf_predicate here seems to be a bug.
     Transform = tn_par_distance_granularity(pf_predicate, Distance),
     make_transformed_pred_name(PredName0, Transform, ClonePredName),
     ClonePredSymName = qualified(ModuleName, ClonePredName),
 
-    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
-    apply_dg_to_procs(PredId, ProcIds, Distance, ClonePredId, ClonePredSymName,
-        PredInfo, PredInfoClone0, no, Specialized, !ModuleInfo),
-    (
-        Specialized = yes,
-        % The predicate has been specialized as it contains recursive calls.
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo0),
+    some [!ClonePredInfo] (
+        !:ClonePredInfo = PredInfo0,
+        apply_dg_to_procs(PredId, ProcIds, Distance, ClonePredId,
+            ClonePredSymName, no, Specialized, !ClonePredInfo, !ModuleInfo),
+        (
+            Specialized = yes,
+            % The predicate has been specialized, as it contains
+            % recursive calls.
 
-        pred_info_set_module_name(ModuleName, PredInfoClone0, PredInfoClone1),
-        pred_info_set_name(ClonePredName, PredInfoClone1, PredInfoClone2),
+            pred_info_set_module_name(ModuleName, !ClonePredInfo),
+            pred_info_set_name(ClonePredName, !ClonePredInfo),
 
-        % If the original predicate was a function then the specialized version
-        % is a predicate.
-        pred_info_set_is_pred_or_func(pf_predicate,
-            PredInfoClone2, PredInfoClone3),
+            % Even if the original predicate was a function, the specialized
+            % version is a predicate.
+            pred_info_set_is_pred_or_func(pf_predicate,
+                !ClonePredInfo),
 
-        % The arity and the argument types of the specialized predicate must be
-        % modified.
-        Arity = pred_info_orig_arity(PredInfoClone3),
-        pred_info_set_orig_arity(Arity + 1, PredInfoClone3, PredInfoClone4),
-        pred_info_get_arg_types(PredInfoClone4, ArgTypes0),
-        list.append(ArgTypes0, [int_type], ArgTypes),
-        pred_info_get_typevarset(PredInfoClone4, Tvarset),
-        pred_info_get_exist_quant_tvars(PredInfoClone4, ExistqTvars),
-        pred_info_set_arg_types(Tvarset, ExistqTvars, ArgTypes,
-            PredInfoClone4, PredInfoClone),
+            % The arity and the argument types of the specialized predicate
+            % must be modified.
+            Arity = pred_info_orig_arity(!.ClonePredInfo),
+            pred_info_set_orig_arity(Arity + 1, !ClonePredInfo),
+            pred_info_get_typevarset(!.ClonePredInfo, TypeVarSet),
+            pred_info_get_exist_quant_tvars(!.ClonePredInfo, ExistQTypeVars),
+            pred_info_get_arg_types(!.ClonePredInfo, ArgTypes0),
+            ArgTypes = ArgTypes0 ++ [int_type],
+            pred_info_set_arg_types(TypeVarSet, ExistQTypeVars, ArgTypes,
+                !ClonePredInfo),
 
-        % Add the specialized predicate to the predicate table.
-        module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-        predicate_table_insert(PredInfoClone, InsertedPredId,
-            PredicateTable0, PredicateTable1),
-        expect(unify(ClonePredId, InsertedPredId), $pred,
-            "ClonePredId != InsertedPredId"),
-        module_info_set_predicate_table(PredicateTable1, !ModuleInfo),
+            % Add the specialized predicate to the predicate table.
+            module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
+            predicate_table_insert(!.ClonePredInfo, InsertedPredId,
+                PredicateTable0, PredicateTable1),
+            expect(unify(ClonePredId, InsertedPredId), $pred,
+                "ClonePredId != InsertedPredId"),
+            module_info_set_predicate_table(PredicateTable1, !ModuleInfo),
 
-        update_original_predicate_procs(PredId, ProcIds, Distance, ClonePredId,
-            ClonePredSymName, PredInfo, PredInfoUpdated, !ModuleInfo),
-        module_info_set_pred_info(PredId, PredInfoUpdated, !ModuleInfo)
-    ;
-        Specialized = no
-        % The predicate has not been specialized.
+            update_original_predicate_procs(PredId, ProcIds, Distance,
+                ClonePredId, ClonePredSymName, PredInfo0, PredInfo,
+                !ModuleInfo),
+            module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
+        ;
+            Specialized = no
+            % The predicate has not been specialized.
+        )
     ),
     apply_dg_to_preds(PredIds, Distance, !ModuleInfo).
 
@@ -255,45 +244,48 @@ apply_dg_to_preds([PredId | PredIds], Distance, !ModuleInfo) :-
     % SymNameSpecialized is the sym_name of the predicate to be specialized.
     %
 :- pred apply_dg_to_procs(pred_id::in, list(proc_id)::in, int::in,
-    pred_id::in, sym_name::in, pred_info::in, pred_info::out,
-    bool::in, bool::out, module_info::in, module_info::out) is det.
+    pred_id::in, sym_name::in, bool::in, bool::out,
+    pred_info::in, pred_info::out, module_info::in, module_info::out) is det.
 
-apply_dg_to_procs(_PredId, [], _Distance, _PredIdSpecialized,
-        _SymNameSpecialized, !PredInfo, !Specialized, !ModuleInfo).
-apply_dg_to_procs(PredId, [ProcId | ProcIds], Distance, PredIdSpecialized,
-        SymNameSpecialized, !PredInfo, !Specialized, !ModuleInfo) :-
-    module_info_proc_info(!.ModuleInfo, PredId, ProcId, ProcInfo0),
-    proc_info_get_has_parallel_conj(ProcInfo0, HasParallelConj),
-    (
-        HasParallelConj = has_parallel_conj,
-        % The procedure contains parallel conjunction(s).
-
-        proc_info_get_goal(ProcInfo0, Body),
-        apply_dg_to_goal(Body, BodyClone, PredId, ProcId, PredIdSpecialized,
-            SymNameSpecialized, ProcInfo0, ProcInfo1, !ModuleInfo,
-            Distance, no, no, MaybeGranularityVar, _),
+apply_dg_to_procs(_PredId, [], _Distance, _ClonePredId, _ClonePredSymName,
+        !Specialized, !PredInfo, !ModuleInfo).
+apply_dg_to_procs(PredId, [ProcId | ProcIds], Distance,
+        ClonePredId, ClonePredSymName, !Specialized, !PredInfo, !ModuleInfo) :-
+    some [!ProcInfo] (
+        module_info_proc_info(!.ModuleInfo, PredId, ProcId, !:ProcInfo),
+        proc_info_get_has_parallel_conj(!.ProcInfo, HasParallelConj),
         (
-            MaybeGranularityVar = yes(_),
-            % The granularity variable has been created while the procedure was
-            % processed. That means that the predicate must be specialized.
-            !:Specialized = yes,
-            proc_info_set_goal(BodyClone, ProcInfo1, ProcInfo2),
-            requantify_proc_general(ordinary_nonlocals_no_lambda,
-                ProcInfo2, ProcInfo3),
-            recompute_instmap_delta_proc(
-                do_not_recompute_atomic_instmap_deltas, ProcInfo3, ProcInfo,
-                !ModuleInfo),
-            pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo)
+            HasParallelConj = has_parallel_conj,
+            % The procedure contains parallel conjunction(s).
+
+            proc_info_get_goal(!.ProcInfo, Body),
+            apply_dg_to_goal(Body, BodyClone, PredId, ProcId,
+                ClonePredId, ClonePredSymName, !ProcInfo, !ModuleInfo,
+                Distance, no, no, MaybeGranularityVar, _),
+            (
+                MaybeGranularityVar = yes(_),
+                % The granularity variable has been created while the
+                % procedure was processed. That means that the predicate
+                % must be specialized.
+                !:Specialized = yes,
+                proc_info_set_goal(BodyClone, !ProcInfo),
+                requantify_proc_general(ordinary_nonlocals_no_lambda,
+                    !ProcInfo),
+                recompute_instmap_delta_proc(
+                    do_not_recompute_atomic_instmap_deltas,
+                    !ProcInfo, !ModuleInfo),
+                pred_info_set_proc_info(ProcId, !.ProcInfo, !PredInfo)
+            ;
+                MaybeGranularityVar = no
+            )
         ;
-            MaybeGranularityVar = no
+            HasParallelConj = has_no_parallel_conj
+            % No need to apply the distance granularity transformation to this
+            % procedure as it does not contain any parallel conjunctions.
         )
-    ;
-        HasParallelConj = has_no_parallel_conj
-        % No need to apply the distance granularity transformation to this
-        % procedure as it does not contain any parallel conjunctions.
     ),
-    apply_dg_to_procs(PredId, ProcIds, Distance, PredIdSpecialized,
-        SymNameSpecialized, !PredInfo, !Specialized, !ModuleInfo).
+    apply_dg_to_procs(PredId, ProcIds, Distance, ClonePredId, ClonePredSymName,
+        !Specialized, !PredInfo, !ModuleInfo).
 
     % Apply the distance granularity transformation to a goal.
     % CallerPredId and CallerProcId are those of the original predicate.

@@ -457,69 +457,170 @@
 :- pred marker_name(pred_marker::in, string::out) is det.
 
 :- type pred_transformation
-    --->    transform_higher_order_specialization(
+    --->    transform_higher_order_spec(
                 % Sequence number among the higher order specializations
                 % of the original predicate.
                 int
             )
-    ;       transform_higher_order_type_specialization(
-                % The procedure number of the original procedure.
-                int
+    ;       transform_higher_order_type_spec(
+                % The proc id of the original procedure.
+                proc_id
             )
-    ;       transform_type_specialization(
+    ;       transform_type_spec(
                 % The substitution from type variables (represented by
                 % the integers) to types (represented by the terms).
                 assoc_list(int, mer_type)
             )
-    ;       transform_unused_argument_elimination(
+    ;       transform_unused_args(
+                % The proc id of the original procedure.
+                proc_id,
+
                 % The list of eliminated argument numbers.
                 list(int)
             )
     ;       transform_accumulator(
+                % The line number from the context of the original
+                % procedure's code.
+                int,
+
                 % The list of the numbers of the variables in the original
                 % predicate interface that have been converted to accumulators.
                 list(int)
             )
-    ;       transform_loop_invariant(
-                % The procedure number of the original procedure.
+    ;       transform_loop_inv(
+                % The proc id of the original procedure.
+                proc_id,
+
+                % The line number from the context of the original
+                % procedure's code.
+                int,
+
+                % A per-context-unique sequence number for this particular
+                % loop invariant transformation. (It will be 1 unless there
+                % is more than one such transformation at its context, in
+                % which case they will have sequence numbers 1, 2 etc.)
                 int
             )
     ;       transform_tuple(
-                % The procedure number of the original procedure.
+                % The proc id of the original procedure.
+                proc_id,
+
+                % The line number from the context of the original
+                % procedure's code.
+                int,
+
+                % A unique-in-the-module sequence number for this particular
+                % tuple transformation.
                 int
             )
     ;       transform_untuple(
-                % The procedure number of the original procedure.
+                % The proc id of the original procedure.
+                proc_id,
+
+                % The line number from the context of the original
+                % procedure's code.
+                int,
+
+                % A unique-in-the-module sequence number for this particular
+                % untuple transformation.
                 int
             )
-    ;       transform_dependent_parallel_conjunction
-    ;       transform_parallel_loop_control
-    ;       transform_return_via_ptr(
+    ;       transform_distance_granularity(
+                % The distance parameter of the transformation.
+                int
+            )
+    ;       transform_dep_par_conj(
                 % The id of the procedure this predicate is derived from.
                 proc_id,
+
+                % The arguments in these positions are inside futures.
+                list(int)
+            )
+    ;       transform_par_loop_ctrl(
+                % The id of the procedure this predicate is derived from.
+                proc_id
+            )
+    ;       transform_lcmc(
+                % The id of the procedure this predicate is derived from.
+                proc_id,
+
+                % A unique-for-the-procedure sequence number for
+                % this particular lcmc transformation.
+                int,
+
                 % The arguments in these positions are returned via pointer.
                 list(int)
             )
     ;       transform_table_generator
     ;       transform_stm_expansion
-    ;       transform_dnf(
-                % This predicate was originally part of a predicate
-                % transformed into disjunctive normal form; this integer
-                % gives the part number.
-                int
-            )
     ;       transform_structure_reuse
-    ;       transform_source_to_source_debug
+    ;       transform_io_tabling
+    ;       transform_ssdebug
     ;       transform_direct_arg_in_out.
 
-:- type pred_creation
-    --->    created_by_deforestation
-    ;       created_by_io_tabling.
-            % I/O tabling will create a new predicate if the predicate
-            % to be I/O tabled must not be inlined.
+    % We should be able to use this type as a structured representation
+    % of a name, to implement *structural* name mangling/unmangling, i.e.
+    % to solve the problem of how to represent the structure of a predicate's
+    % origins in a string, for inclusion in target language code and
+    % eventually in executables, in a way that allows the structure
+    % to be unambiguously recovered later. This is distinct from *lexical*
+    % mangling/unmangling, which ensures that the string is acceptable
+    % to the target language compiler as (usually) an identifier, which
+    % requires mapping any characters that may not appear in identifiers
+    % to characters that may appear there.
+    %
+    % The idea is that we should generate the names of the procedures
+    % we output to target language source code *and* in the RTTI program
+    % representations we generate for the debugger and the profilers
+    % from the pred_origin field of the pred_info, not the name field.
+    % The reason for this is that the mangling process can be considerably
+    % simpler if it has access to a *structured* representation of all the
+    % info that the target language name must include. Our old (and still
+    % current) approach of encoding this info in a single string effectively
+    % forced piecemeal development of the predicate name mangling scheme,
+    % by requiring the developer who added a new kind of pred_origin to
+    % pick its string representation *without* access to the string
+    % representation of all the *other* pred origins, since those were
+    % scattered throughout the rest of the compiler. This is why our current
+    % undemangle algorithm does not have a convincing correctness argument,
+    % which means that it is quite likely that in the presence of
+    % unfortunately (or maliciously) chosen names for the base predicates,
+    % it can generate incorrect output.
+    %
+    % On the other hand, an algorithm for converting a pred_origin
+    % into a mangled target language name would have all the code
+    % implementing the naming scheme in one place, which would
+    %
+    % - allow us to design and implement a simpler and more consistent
+    %   naming scheme than the current one, and
+    %
+    % - allow us to develop the mangling algorithm using that scheme
+    %   to be developed hand-in-hand with the corresponding updated unmangling
+    %   algorithm, which *should* allow a correctness argument for the
+    %   proposition that unmangle(mangle(PredOrigin) is always PredOrigin.
+    %
+    % The strings we use to represent the names and parameters of
+    % program transformations and of compiler components that create
+    % procedures should never include characters or substrings that
+    % need to be lexically mangled, but they may include user provided names
+    % (of predicates, functions, types classes, mutables etc) that
+    % may require lexical mangling. Unlike our old approach, the  new approach
+    % should allow this lexical mangling to be done just on the user-provided
+    % parts of the string, without requiring the *whole* string to be
+    % lexically mangled. And we can simply forego the lexical mangling
+    % in situatins in which it is not required, e.g. in HLDS dumps.
+    %
+    % Parts of the compiler that would be affected by a switch to the
+    % name mangling approach outlined above are marked with
+    % "XXX PREDNAME_MANGLE".
 
 :- type pred_origin
-    --->    origin_special_pred(special_pred_id, type_ctor)
+    --->    origin_user(pred_or_func, sym_name, user_arity)
+            % The predicate is a normal user-written predicate or function.
+            % The first argument says which, the second and third arguments
+            % give its name and arity.
+
+    ;       origin_special_pred(special_pred_id, type_ctor)
             % If the predicate is a unify, compare or index predicate,
             % specify which one, and for which type constructor.
 
@@ -532,17 +633,18 @@
     ;       origin_class_method(class_id, pf_sym_name_arity)
             % The predicate is a class method implementation.
 
-    ;       origin_transformed(pred_transformation, pred_origin, pred_id)
-            % The predicate is a transformed version of another predicate,
-            % whose origin and identity are given by the second and third
-            % arguments.
-
-    ;       origin_created(pred_creation)
-            % The predicate was created by the named compiler pass,
-            % but there is no recorded information available on what original
-            % predicate it was created came from.
-            % XXX This should be fixed, and all origin_created origins
-            % should be replaced with an origin_transformed origin,
+    ;       origin_deforestation(int, int)
+            % The predicate was created by deforestation from two or more
+            % goals, so that it would be incorrect to record it being
+            % a transformed version of any one of them.
+            %
+            % The first integer gives the line number of one of the goals,
+            % and the second is a deforestation action sequence number,
+            % which will be different in different predicates created by
+            % deforestation. (We don't record the filename part of the context,
+            % because it will be the source file containing the module
+            % except in the *extremely* rare cases where the module contains
+            % a #line directive.
 
     ;       origin_assertion(string, int)
             % The predicate represents an assertion.
@@ -553,7 +655,7 @@
             % filename/line number pair, and a sequence number used to
             % distinguish multiple lambdas on the same line.
 
-    ;       origin_solver_type(sym_name, arity, solver_type_pred_kind)
+    ;       origin_solver_repn(type_ctor, solver_type_pred_kind)
             % The predicate is a representation change predicate
             % either to or from either ground or any, as indicated by
             % the solver_type_pred_kind, for the type constructor given by
@@ -577,9 +679,10 @@
     ;       origin_finalise
             % The predicate implements a standalone finalise declaration.
 
-    ;       origin_user(sym_name).
-            % The predicate is a normal user-written predicate;
-            % the string is its name.
+    ;       origin_transformed(pred_transformation, pred_origin, pred_id).
+            % The predicate is a transformed version of another predicate,
+            % whose origin and identity are given by the second and third
+            % arguments.
 
 :- type need_to_requantify
     --->    need_to_requantify

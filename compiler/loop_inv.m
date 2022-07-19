@@ -235,7 +235,7 @@ hoist_loop_invariants(PredProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
         % Create the pred for the aux proc. This is initially a copy of the
         % in proc with the head vars extended with the list of computed
         % inv vars. The body is adjusted appropriately in the next step.
-        create_aux_pred(PredProcId, HeadVars, ComputedInvVars,
+        create_loop_inv_aux_pred(PredProcId, HeadVars, ComputedInvVars,
             InitialAuxInstMap, AuxPredProcId, Replacement,
             AuxPredInfo, AuxProcInfo, !ModuleInfo),
 
@@ -732,24 +732,24 @@ compute_initial_aux_instmap(Gs, IM) = list.foldl(ApplyGoalInstMap, Gs, IM) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred create_aux_pred(pred_proc_id::in,
+:- pred create_loop_inv_aux_pred(pred_proc_id::in,
     list(prog_var)::in, list(prog_var)::in, instmap::in, pred_proc_id::out,
     hlds_goal::out, pred_info::out, proc_info::out,
     module_info::in, module_info::out) is det.
 
-create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
+create_loop_inv_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
         InitialAuxInstMap, AuxPredProcId, ReplacementGoal,
-        AuxPredInfo, AuxProcInfo, ModuleInfo0, ModuleInfo) :-
+        AuxPredInfo, AuxProcInfo, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
 
     AuxHeadVars = HeadVars ++ ComputedInvArgs,
 
-    module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
+    module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         PredInfo, ProcInfo),
 
     proc_info_get_goal(ProcInfo, Goal @ hlds_goal(_GoalExpr, GoalInfo)),
     pred_info_get_typevarset(PredInfo, TVarSet),
-    proc_info_get_var_table(ModuleInfo0, ProcInfo, VarTable),
+    proc_info_get_var_table(!.ModuleInfo, ProcInfo, VarTable),
     pred_info_get_class_context(PredInfo, ClassContext),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
@@ -762,20 +762,14 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Context = goal_info_get_context(GoalInfo),
-    term.context_line(Context, Line),
-    ( if Line = 0 then
-        % Use the predicate number to distinguish between similarly named
-        % generated predicates, e.g. special predicates.
-        Counter = pred_id_to_int(PredId)
-    else
-        Counter = 1
-    ),
+    term.context_line(Context, LineNum),
+    module_info_next_loop_inv_count(Context, SeqNum, !ModuleInfo),
     ProcNum = proc_id_to_int(ProcId),
-    Transform = tn_loop_inv(PredOrFunc, ProcNum, lnc(Line, Counter)),
+    Transform = tn_loop_inv(PredOrFunc, ProcNum, lnc(LineNum, SeqNum)),
     make_transformed_pred_sym_name(PredModule, PredName, Transform,
         AuxPredSymName),
 
-    Origin = origin_transformed(transform_loop_invariant(ProcNum),
+    Origin = origin_transformed(transform_loop_inv(ProcId, LineNum, SeqNum),
         OrigOrigin, PredId),
     hlds_pred.define_new_pred(
         AuxPredSymName, % in    - The name of the new aux proc.
@@ -797,8 +791,7 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
                         %           liveness purposes.
         Goal,           % in    - The goal for the new aux proc.
         ReplacementGoal,% out   - How we can call the new aux proc.
-        ModuleInfo0,
-        ModuleInfo
+        !ModuleInfo
     ),
 
     % Note on ReplacementGoal:
@@ -807,7 +800,7 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
     %   over the entire goal after we've transformed it.
 
     AuxPredProcId = proc(AuxPredId, AuxProcId),
-    module_info_pred_proc_info(ModuleInfo, AuxPredId, AuxProcId, AuxPredInfo,
+    module_info_pred_proc_info(!.ModuleInfo, AuxPredId, AuxProcId, AuxPredInfo,
         AuxProcInfo).
 
 %-----------------------------------------------------------------------------%

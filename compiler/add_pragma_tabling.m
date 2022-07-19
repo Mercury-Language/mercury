@@ -102,12 +102,13 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
             PredOrFunc, PredModuleName, PredName, PredFormArity, PredIds0),
         (
             PredIds0 = [],
+            Origin = origin_user(PredOrFunc, PredSymName, UserArity),
             TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
             DescPieces = [pragma_decl(TabledMethodStr), words("declaration")],
             add_implicit_pred_decl_report_error(PredOrFunc,
                 PredModuleName, PredName, PredFormArity, PredStatus,
-                is_not_a_class_method, Context, origin_user(PredSymName),
-                DescPieces, PredId, !ModuleInfo, !Specs),
+                is_not_a_class_method, Context, Origin, DescPieces,
+                PredId, !ModuleInfo, !Specs),
             PredIds = [PredId]
         ;
             PredIds0 = [_ | _],
@@ -123,14 +124,15 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
             PredModuleName, PredName, UserArity, PredIds0),
         (
             PredIds0 = [],
-            DescPieces = [pragma_decl(TabledMethodStr), words("declaration")],
             % XXX The pragma does not say whether the user intends to table
             % a predicate or a function, so adding a predicate here is
             % only a guess.
+            Origin = origin_user(pf_predicate, PredSymName, UserArity),
+            DescPieces = [pragma_decl(TabledMethodStr), words("declaration")],
             user_arity_pred_form_arity(pf_predicate, UserArity, PredFormArity),
             add_implicit_pred_decl_report_error(pf_predicate,
                 PredModuleName, PredName, PredFormArity, PredStatus,
-                is_not_a_class_method, Context, origin_user(PredSymName),
+                is_not_a_class_method, Context, Origin,
                 DescPieces, PredId, !ModuleInfo, !Specs),
             PredIds = [PredId]
         ;

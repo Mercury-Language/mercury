@@ -194,6 +194,7 @@
 :- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -307,12 +308,8 @@ perform_pred_purity_checks(ModuleInfo, PredId, PredInfo,
         % in warning about compiler generated predicates.
         ( if
             ActualPurity = PromisedPurity,
-            pred_info_get_origin(PredInfo, Origin),
-            not (
-                Origin = origin_transformed(_, _, _)
-            ;
-                Origin = origin_created(_)
-            )
+            pred_info_get_origin(PredInfo, PredOrigin),
+            warn_about_purity_for(PredOrigin) = yes
         then
             UnnecessaryPromiseSpec = warn_unnecessary_purity_promise(
                 ModuleInfo, PredInfo, PredId, PromisedPurity),
@@ -392,6 +389,30 @@ compare_purity(purity_semipure, purity_impure) = (>).
 compare_purity(purity_impure, purity_pure) = (<).
 compare_purity(purity_impure, purity_semipure) = (<).
 compare_purity(purity_impure, purity_impure) = (=).
+
+:- func warn_about_purity_for(pred_origin) = bool.
+
+warn_about_purity_for(PredOrigin) = Warn :-
+    (
+        ( PredOrigin = origin_user(_, _, _)
+        ; PredOrigin = origin_instance_method(_, _)
+        ; PredOrigin = origin_class_method(_, _)
+        ),
+        Warn = yes
+    ;
+        ( PredOrigin = origin_special_pred(_, _)
+        ; PredOrigin = origin_deforestation(_, _)
+        ; PredOrigin = origin_assertion(_, _)
+        ; PredOrigin = origin_lambda(_, _, _)
+        ; PredOrigin = origin_solver_repn(_, _)
+        ; PredOrigin = origin_tabling(_, _)
+        ; PredOrigin = origin_mutable(_, _, _)
+        ; PredOrigin = origin_initialise
+        ; PredOrigin = origin_finalise
+        ; PredOrigin = origin_transformed(_, _, _)
+        ),
+        Warn = no
+    ).
 
 %-----------------------------------------------------------------------------%
 

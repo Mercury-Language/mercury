@@ -1379,25 +1379,22 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
 %
 % The transformed code would be:
 %
-% p(A, B, S0, S) :-
+% p'(A, B, S0, S) :-
 %   ( if
-%           % Get the global I/O table, the global I/O
-%           % counter, and the starting point for tabling
-%           % I/O actions, if we are in the tabled range.
+%       % Get the global I/O table, the global I/O counter,
+%       % and the starting point for tabling I/O actions,
+%       % if we are in the tabled range.
 %       table_io_in_range(T0, Counter, Start)
 %   then
-%           % Look up the input arguments.
-%       impure table_lookup_insert_start_int(T0, Counter,
-%           Start, T),
-%       ( if
-%           semipure table_io_has_occurred(T)
-%       then
+%       % Look up the input arguments.
+%       impure table_lookup_insert_start_int(T0, Counter, Start, T),
+%       ( if semipure table_io_has_occurred(T) then
 %           semipure table_memo_get_answer_block(T, Block),
 %           impure table_restore_string_answer(Block, 0, B),
 %           table_io_copy_io_state(S0, S)
 %       else
 %           <original code>
-%               % Save the answers in the table.
+%           % Save the answers in the table.
 %           impure table_io_create_answer_block(T, 1, Block),
 %           impure table_save_string_answer(Block, 0, B)
 %       )
@@ -1456,7 +1453,7 @@ create_new_io_goal(OrigGoal, TableIoEntryKind, Unitize, TableIoStates,
         % that uses labels. The original goal would otherwise be duplicated
         % by the transformation, resulting in duplicate label errors from
         % the C compiler.
-        clone_proc_and_create_call(PredInfo, ProcId, CallExpr,
+        clone_proc_and_create_call(PredId, PredInfo, ProcId, CallExpr,
             ModuleInfo0, ModuleInfo),
         NewGoal = hlds_goal(CallExpr, OrigGoalInfo),
         !TableInfo ^ table_module_info := ModuleInfo
@@ -2148,16 +2145,17 @@ clone_pred_info(OrigPredId, OrigProcId, PredInfo0, HeadVars,
     module_info_set_predicate_table(PredTable, ModuleInfo0, ModuleInfo),
     !TableInfo ^ table_module_info := ModuleInfo.
 
-    % clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo).
+    % clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo):
+    %
     % This predicate creates a new procedure with the same body as the
     % procedure with ProcId in PredInfo. It then creates a call goal
-    % expression which calls the new procedure with its formal arguments as the
+    % which calls the new procedure with its formal arguments as the
     % actual arguments.
     %
-:- pred clone_proc_and_create_call(pred_info::in, proc_id::in,
+:- pred clone_proc_and_create_call(pred_id::in, pred_info::in, proc_id::in,
     hlds_goal_expr::out, module_info::in, module_info::out) is det.
 
-clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
+clone_proc_and_create_call(PredId, PredInfo, ProcId, CallExpr, !ModuleInfo) :-
     pred_info_proc_info(PredInfo, ProcId, ProcInfo),
     proc_info_get_context(ProcInfo, ProcContext),
     proc_info_get_var_table(!.ModuleInfo, ProcInfo, ProcVarTable),
@@ -2179,6 +2177,8 @@ clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Transform = tn_io_tabling(PredOrFunc),
     make_transformed_pred_name(OrigPredName, Transform, NewPredName),
+    pred_info_get_origin(PredInfo, OrigOrigin),
+    Origin = origin_transformed(transform_io_tabling, OrigOrigin, PredId),
     pred_info_get_context(PredInfo, PredContext),
     pred_info_get_arg_types(PredInfo, PredArgTypes),
     pred_info_get_typevarset(PredInfo, PredTypeVarSet),
@@ -2188,10 +2188,10 @@ clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_goal_type(PredInfo, GoalType),
     pred_info_create(!.ModuleInfo, PredOrFunc, ModuleName, NewPredName,
-        PredContext, origin_created(created_by_io_tabling),
-        pred_status(status_local), Markers, PredArgTypes, PredTypeVarSet,
-        PredExistQVars, PredClassContext, PredAssertions, VarNameRemap,
-        GoalType, NewProcInfo, NewProcId, NewPredInfo),
+        PredContext, Origin, pred_status(status_local), Markers,
+        PredArgTypes, PredTypeVarSet, PredExistQVars, PredClassContext,
+        PredAssertions, VarNameRemap, GoalType,
+        NewProcInfo, NewProcId, NewPredInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     predicate_table_insert(NewPredInfo, NewPredId,
         PredicateTable0, PredicateTable),

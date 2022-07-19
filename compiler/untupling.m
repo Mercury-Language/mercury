@@ -202,7 +202,7 @@ expand_args_in_pred(PredId, !ModuleInfo, !TransformMap, !Counter) :-
         pred_info_get_exist_quant_tvars(PredInfo, []),
         pred_info_get_external_type_params(PredInfo, []),
         pred_info_get_class_context(PredInfo, constraints([], [])),
-        pred_info_get_origin(PredInfo, origin_user(_)),
+        pred_info_get_origin(PredInfo, origin_user(_, _, _)),
         pred_info_get_arg_types(PredInfo, TypeVarSet, ExistQVars, ArgTypes),
         varset.is_empty(TypeVarSet),
         ExistQVars = [],
@@ -259,9 +259,9 @@ expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap, !Counter) :-
         recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
             !ProcInfo, !ModuleInfo),
 
-        counter.allocate(Num, !Counter),
-        create_aux_pred(PredId, ProcId, PredInfo0, !.ProcInfo, Num,
-            AuxPredId, AuxProcId, CallAux,
+        counter.allocate(SeqNum, !Counter),
+        create_untupling_aux_pred(PredId, ProcId, PredInfo0, !.ProcInfo,
+            SeqNum, AuxPredId, AuxProcId, CallAux,
             AuxPredInfo, AuxProcInfo0, !ModuleInfo),
         proc_info_set_maybe_untuple_info(
             yes(untuple_proc_info(UntupleMap)),
@@ -417,13 +417,13 @@ build_untuple_map([OldVar | OldVars], [NewVars | NewVarss], !UntupleMap) :-
     % can be used as a template for constructing calls to the newly
     % created procedure.
     %
-    % See also create_aux_pred in loop_inv.m.
+    % See also create_loop_inv_aux_pred in loop_inv.m.
     %
-:- pred create_aux_pred(pred_id::in, proc_id::in, pred_info::in,
+:- pred create_untupling_aux_pred(pred_id::in, proc_id::in, pred_info::in,
     proc_info::in, int::in, pred_id::out, proc_id::out, hlds_goal::out,
     pred_info::out, proc_info::out, module_info::in, module_info::out) is det.
 
-create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
+create_untupling_aux_pred(PredId, ProcId, PredInfo, ProcInfo, SeqNum,
         AuxPredId, AuxProcId, CallAux, AuxPredInfo, AuxProcInfo,
         !ModuleInfo) :-
     proc_info_get_headvars(ProcInfo, AuxHeadVars),
@@ -444,13 +444,13 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     proc_id_to_int(ProcId, ProcNum),
     Context = goal_info_get_context(GoalInfo),
-    term.context_line(Context, Line),
-    Transform = tn_untupling(PredOrFunc, ProcNum, lnc(Line, Counter)),
+    term.context_line(Context, LineNum),
+    Transform = tn_untupling(PredOrFunc, ProcNum, lnc(LineNum, SeqNum)),
     make_transformed_pred_sym_name(PredModule, PredName, Transform,
         AuxPredSymName),
 
-    Origin =
-        origin_transformed(transform_untuple(ProcNum), OrigOrigin, PredId),
+    OriginTransform = transform_untuple(ProcId, LineNum, SeqNum),
+    Origin = origin_transformed(OriginTransform, OrigOrigin, PredId),
     hlds_pred.define_new_pred(AuxPredSymName, Origin, TVarSet, InstVarSet,
         VarTable, RttiVarMaps, ClassContext, InitialAuxInstMap, VarNameRemap,
         Markers, address_is_not_taken, HasParallelConj,

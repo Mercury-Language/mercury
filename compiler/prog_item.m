@@ -1214,10 +1214,9 @@
                 cm_class_id                     :: class_id,
                 cm_method                       :: pf_sym_name_arity
             )
-    ;       compiler_origin_solver_type(
-                cost_type_ctor_name             :: sym_name,
-                cost_type_ctor_arity            :: arity,
-                cost_aux_pred_kind              :: solver_type_pred_kind
+    ;       compiler_origin_solver_repn(
+                cosr_type_ctor                  :: type_ctor,
+                cosr_aux_pred_kind              :: solver_type_pred_kind
             )
     ;       compiler_origin_mutable(
                 com_module_name                 :: module_name,

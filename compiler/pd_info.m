@@ -410,7 +410,7 @@ pd_info_incr_size_delta(Delta1, !PDInfo) :-
     % Create a new predicate for the input goal, returning a goal
     % which calls the new predicate.
     %
-:- pred pd_info_define_new_pred(pred_origin::in, hlds_goal::in,
+:- pred pd_info_define_new_pred(hlds_goal::in,
     pred_proc_id::out, hlds_goal::out, pd_info::in, pd_info::out) is det.
 
     % Add a version to the table.
@@ -645,21 +645,22 @@ pd_info_check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
 
 %---------------------------------------------------------------------------%
 
-pd_info_define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
+pd_info_define_new_pred(Goal, PredProcId, CallGoal, !PDInfo) :-
     pd_info_get_instmap(!.PDInfo, InstMap),
     Goal = hlds_goal(_, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     set_of_var.to_sorted_list(NonLocals, Args),
     pd_info_get_counter(!.PDInfo, Counter0),
-    counter.allocate(Count, Counter0, Counter),
+    counter.allocate(SeqNum, Counter0, Counter),
     pd_info_set_counter(Counter, !PDInfo),
     pd_info_get_pred_info(!.PDInfo, PredInfo),
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Context = goal_info_get_context(GoalInfo),
-    term.context_line(Context, Line),
+    term.context_line(Context, LineNum),
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
-    Transform = tn_deforestation(pf_predicate, lnc(Line, Count)),
+    Origin = origin_deforestation(LineNum, SeqNum),
+    Transform = tn_deforestation(pf_predicate, lnc(LineNum, SeqNum)),
     make_transformed_pred_sym_name(PredModule, PredName, Transform,
         NewPredSymName),
 

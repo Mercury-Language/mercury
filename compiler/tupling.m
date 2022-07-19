@@ -697,7 +697,7 @@ add_transformed_proc(PredProcId, tupling(_, FieldVars, _),
         recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
             !ProcInfo, !ModuleInfo),
         counter.allocate(Num, !Counter),
-        create_aux_pred(PredId, ProcId, PredInfo, !.ProcInfo, Num,
+        create_tupling_aux_pred(PredId, ProcId, PredInfo, !.ProcInfo, Num,
             AuxPredProcId, CallAux, !ModuleInfo),
 
         % Add an entry to the transform map for the new procedure.
@@ -780,11 +780,11 @@ insert_proc_start_deconstruction(Insert, Goal0, Goal, !VarTable, VarRename) :-
     %
     % See also create_aux_pred in loop_inv.m.
     %
-:- pred create_aux_pred(pred_id::in, proc_id::in, pred_info::in,
+:- pred create_tupling_aux_pred(pred_id::in, proc_id::in, pred_info::in,
     proc_info::in, int::in, pred_proc_id::out, hlds_goal::out,
     module_info::in, module_info::out) is det.
 
-create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
+create_tupling_aux_pred(PredId, ProcId, PredInfo, ProcInfo, SeqNum,
         AuxPredProcId, CallAux, !ModuleInfo) :-
     proc_info_get_headvars(ProcInfo, AuxHeadVars),
     proc_info_get_goal(ProcInfo, Goal @ hlds_goal(_GoalExpr, GoalInfo)),
@@ -804,12 +804,13 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     ProcNum = proc_id_to_int(ProcId), 
     Context = goal_info_get_context(GoalInfo),
-    term.context_line(Context, Line),
-    Transform = tn_tupling(PredOrFunc, ProcNum, lnc(Line, Counter)),
+    term.context_line(Context, LineNum),
+    Transform = tn_tupling(PredOrFunc, ProcNum, lnc(LineNum, SeqNum)),
     make_transformed_pred_sym_name(PredModule, PredName, Transform,
         AuxPredSymName),
 
-    Origin = origin_transformed(transform_tuple(ProcNum), OrigOrigin, PredId),
+    Origin = origin_transformed(transform_tuple(ProcId, LineNum, SeqNum),
+        OrigOrigin, PredId),
     hlds_pred.define_new_pred(
         AuxPredSymName,         % in
         Origin,                 % in
@@ -1727,9 +1728,7 @@ fix_calls_in_proc(TransformMap, proc(PredId, ProcId), !ModuleInfo) :-
         % linking problems that occurred when such predicates in the
         % library were made to call tupled procedures.
         pred_info_get_origin(PredInfo, Origin),
-        ( if
-            Origin = origin_transformed(transform_type_specialization(_), _, _)
-        then
+        ( if Origin = origin_transformed(transform_type_spec(_), _, _) then
             true
         else
             proc_info_get_goal(!.ProcInfo, Goal0),

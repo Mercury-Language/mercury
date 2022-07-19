@@ -2307,8 +2307,8 @@ make_new_spec_parallel_pred_info(FutureArgs, PredStatus, PPId, !PredInfo) :-
     % constraints.
     map.init(EmptyProofs),
     map.init(EmptyConstraintMap),
-    Origin = origin_transformed(transform_dependent_parallel_conjunction,
-        OrigOrigin, PredId),
+    OriginTransform = transform_dep_par_conj(ProcId, FutureArgs),
+    Origin = origin_transformed(OriginTransform, OrigOrigin, PredId),
     CurUserDecl = maybe.no,
     pred_info_init(PredOrFunc, PredModule, TransformedName, PredFormArity,
         Context, Origin, PredStatus, CurUserDecl, GoalType, Markers, ArgTypes,

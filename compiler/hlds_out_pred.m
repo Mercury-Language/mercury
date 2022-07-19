@@ -344,6 +344,8 @@ write_constraint_id(Stream, ConstraintId, !IO) :-
     tvarset::in, var_name_print::in, pred_origin::in, io::di, io::uo) is det.
 
 write_origin(Stream, ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
+    % XXX PREDNAME_MANGLE
+    %
     % XXX CLEANUP Either a function version of this predicate should replace
     % pred_info_id_to_string in hlds_out_util.m, or vice versa.
     (
@@ -404,17 +406,15 @@ write_origin(Stream, ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
         io.write_string(Stream, "% transformation: ", !IO),
         io.write_line(Stream, Transformation, !IO)
     ;
-        Origin = origin_created(Creation),
-        io.write_string(Stream, "% created: ", !IO),
-        io.write_line(Stream, Creation, !IO)
+        Origin = origin_deforestation(LineNum, SeqNum),
+        io.format(Stream, "%% deforestation: line %d, seqnum %d\n",
+            [i(LineNum), i(SeqNum)], !IO)
     ;
         Origin = origin_assertion(_, _),
         io.write_string(Stream, "% assertion\n", !IO)
     ;
-        Origin = origin_solver_type(TypeCtorSymName, TypeCtorArity,
-            SolverAuxPredKind),
-        TypeCtorStr = sym_name_arity_to_string(
-            sym_name_arity(TypeCtorSymName, TypeCtorArity)),
+        Origin = origin_solver_repn(TypeCtor, SolverAuxPredKind),
+        TypeCtorStr = type_ctor_to_string(TypeCtor),
         (
             SolverAuxPredKind = solver_type_to_ground_pred,
             SolverAuxPredKindStr = "to ground conversion predicate"
@@ -494,7 +494,7 @@ write_origin(Stream, ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
         io.write_string(Stream, "% finalise\n", !IO)
     ;
         ( Origin = origin_lambda(_, _, _)
-        ; Origin = origin_user(_)
+        ; Origin = origin_user(_, _, _)
         )
     ).
 

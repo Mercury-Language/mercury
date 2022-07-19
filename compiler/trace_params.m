@@ -336,9 +336,8 @@ eff_trace_level_for_proc(ModuleInfo, PredInfo, ProcInfo, TraceLevel)
                 EffTraceLevel = eff_none
             )
         ;
-            Origin = origin_created(PredCreation),
-            (
-                PredCreation = created_by_io_tabling,
+            Origin = origin_transformed(Transform, _, _),
+            ( if Transform = transform_io_tabling then
                 % Predicates called by a predicate that is I/O tabled
                 % should not be traced. If such a predicate were allowed
                 % to generate events, then the event numbers of events
@@ -346,23 +345,22 @@ eff_trace_level_for_proc(ModuleInfo, PredInfo, ProcInfo, TraceLevel)
                 % the first and subsequent (idempotent) executions
                 % of the same I/O action.
                 EffTraceLevel = eff_none
-            ;
-                PredCreation = created_by_deforestation,
+            else
                 EffTraceLevel = usual_eff_trace_level_for_proc(ModuleInfo,
                     PredInfo, ProcInfo, TraceLevel)
             )
         ;
-            ( Origin = origin_instance_method(_, _)
+            ( Origin = origin_user(_, _, _)
+            ; Origin = origin_instance_method(_, _)
             ; Origin = origin_class_method(_, _)
-            ; Origin = origin_transformed(_, _, _)
+            ; Origin = origin_deforestation(_, _)
             ; Origin = origin_assertion(_, _)
             ; Origin = origin_lambda(_, _, _)
-            ; Origin = origin_solver_type(_, _, _)
+            ; Origin = origin_solver_repn(_, _)
             ; Origin = origin_tabling(_, _)
             ; Origin = origin_mutable(_, _, _)
             ; Origin = origin_initialise
             ; Origin = origin_finalise
-            ; Origin = origin_user(_)
             ),
             EffTraceLevel = usual_eff_trace_level_for_proc(ModuleInfo,
                 PredInfo, ProcInfo, TraceLevel)

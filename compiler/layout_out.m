@@ -2519,6 +2519,7 @@ output_proc_id(Stream, ProcLabel, Origin, !IO) :-
         io.write_string(Stream, "\n", !IO)
     ).
 
+    % XXX PREDNAME_MANGLE
 :- func origin_name(pred_origin, string) = string.
 
 origin_name(Origin, Name0) = Name :-
@@ -2541,8 +2542,8 @@ origin_name(Origin, Name0) = Name :-
     ;
         Origin = origin_special_pred(_SpecialPredId, _TypeCtor),
         Name = Name0
-        % We can't use the following code until we have adapted the
-        % code in the runtime and trace directories to handle the names
+        % We can't use the following code until we have adapted the code
+        % in the runtime and trace directories to handle the names
         % of special preds the same way as we do user-defined names.
 %       (
 %           SpecialPredId = unify,
@@ -2561,53 +2562,62 @@ origin_name(Origin, Name0) = Name :-
     ;
         Origin = origin_transformed(Transform, OldOrigin, _),
         OldName = origin_name(OldOrigin, ""),
-        ( if OldName = "" then
+        ( if
+            ( OldName = ""
+            ; Transform = transform_io_tabling      % preserves old behavior
+            )
+        then
             Name = Name0
         else
             Name = OldName ++ "_" ++ pred_transform_name(Transform)
         )
     ;
-        ( Origin = origin_instance_method(_, _)
+        ( Origin = origin_user(_, _, _)
+        ; Origin = origin_instance_method(_, _)
         ; Origin = origin_class_method(_, _)
-        ; Origin = origin_created(_)
+        ; Origin = origin_deforestation(_, _)
         ; Origin = origin_assertion(_, _)
-        ; Origin = origin_solver_type(_, _, _)
+        ; Origin = origin_solver_repn(_, _)
         ; Origin = origin_tabling(_, _)
         ; Origin = origin_mutable(_, _, _)
         ; Origin = origin_initialise
         ; Origin = origin_finalise
-        ; Origin = origin_user(_)
         ),
         Name = Name0
     ).
 
+    % XXX PREDNAME_MANGLE
+    %
 :- func pred_transform_name(pred_transformation) = string.
 
-pred_transform_name(transform_higher_order_specialization(Seq)) =
+pred_transform_name(transform_higher_order_spec(Seq)) =
     "ho" ++ int_to_string(Seq).
-pred_transform_name(transform_higher_order_type_specialization(Proc)) =
-    "hoproc" ++ int_to_string(Proc).
-pred_transform_name(transform_type_specialization(Substs)) =
+pred_transform_name(transform_higher_order_type_spec(ProcId)) =
+    "hoproc" ++ int_to_string(proc_id_to_int(ProcId)).
+pred_transform_name(transform_type_spec(Substs)) =
     string.join_list("_", list.map(subst_to_name, Substs)).
-pred_transform_name(transform_unused_argument_elimination(Posns)) =
+pred_transform_name(transform_unused_args(_ProcId, Posns)) =
     "ua_" ++ string.join_list("_", list.map(int_to_string, Posns)).
-pred_transform_name(transform_accumulator(Posns)) = "acc_" ++
+pred_transform_name(transform_accumulator(_LineNum, Posns)) = "acc_" ++
     string.join_list("_", list.map(int_to_string, Posns)).
-pred_transform_name(transform_loop_invariant(Proc)) =
-    "inv_" ++ int_to_string(Proc).
-pred_transform_name(transform_tuple(Proc)) = "tup_" ++ int_to_string(Proc).
-pred_transform_name(transform_untuple(Proc)) = "untup_" ++ int_to_string(Proc).
-pred_transform_name(transform_dependent_parallel_conjunction) =
-    "dep_par_conj_".
-pred_transform_name(transform_parallel_loop_control) = "par_lc".
-pred_transform_name(transform_return_via_ptr(ProcId, ArgPos)) =
+pred_transform_name(transform_loop_inv(ProcId, _LineNum, _SeqNum)) =
+    "inv_" ++ int_to_string(proc_id_to_int(ProcId)).
+pred_transform_name(transform_tuple(ProcId, _LineNum, _SeqNum)) =
+    "tup_" ++ int_to_string(proc_id_to_int(ProcId)).
+pred_transform_name(transform_untuple(ProcId, _LineNum, _SeqNum)) =
+    "untup_" ++ int_to_string(proc_id_to_int(ProcId)).
+pred_transform_name(transform_distance_granularity(Distance)) =
+    "distance_granularity_" ++ int_to_string(Distance).
+pred_transform_name(transform_dep_par_conj(_, _)) = "dep_par_conj_".
+pred_transform_name(transform_par_loop_ctrl(_)) = "par_lc".
+pred_transform_name(transform_lcmc(ProcId, _SeqNum, ArgPos)) =
     "retptr_" ++ int_to_string(proc_id_to_int(ProcId)) ++ "_args"
         ++ ints_to_string(ArgPos).
 pred_transform_name(transform_table_generator) = "table_gen".
 pred_transform_name(transform_stm_expansion) = "stm_expansion".
-pred_transform_name(transform_dnf(N)) = "dnf_" ++ int_to_string(N).
 pred_transform_name(transform_structure_reuse) = "structure_reuse".
-pred_transform_name(transform_source_to_source_debug) = "ssdebug".
+pred_transform_name(transform_io_tabling) = "io_tabling".
+pred_transform_name(transform_ssdebug) = "ssdebug".
 pred_transform_name(transform_direct_arg_in_out) = "daio".
 
 :- func ints_to_string(list(int)) = string.

@@ -1296,18 +1296,18 @@ ok_to_inline_language(lang_csharp, target_csharp).
 
 origin_involves_daio(Origin, InvolvesDAIO) :-
     (
-        ( Origin = origin_special_pred(_SpecialPredId, _TypeCtor)
+        ( Origin = origin_user(_PorF, _SymName, _Arity)
+        ; Origin = origin_special_pred(_SpecialPredId, _TypeCtor)
         ; Origin = origin_instance_method(_SymName, _Constraints)
         ; Origin = origin_class_method(_ClassId, _PFSymNameArity)
-        ; Origin = origin_created(_Creation)
+        ; Origin = origin_deforestation(_, _)
         ; Origin = origin_assertion(_, _)
-        ; Origin = origin_lambda(_FileNam, _LineNum, _Seq)
-        ; Origin = origin_solver_type(_SymName, _Arity, _PredKind)
+        ; Origin = origin_lambda(_FileName, _LineNum, _Seq)
+        ; Origin = origin_solver_repn(_TypeCtor, _PredKind)
         ; Origin = origin_tabling(_PFSymNameArity, _PredKind)
         ; Origin = origin_mutable(_ModuleName, _MutableName, _PredKind)
         ; Origin = origin_initialise
         ; Origin = origin_finalise
-        ; Origin = origin_user(_SymName)
         ),
         InvolvesDAIO = does_not_involve_daio
     ;
@@ -1328,22 +1328,23 @@ origin_involves_daio(Origin, InvolvesDAIO) :-
 
 origin_transformation_involves_daio(Transform, InvolvesDAIO) :-
     (
-        ( Transform = transform_higher_order_specialization(_)
-        ; Transform = transform_higher_order_type_specialization(_)
-        ; Transform = transform_type_specialization(_)
-        ; Transform = transform_unused_argument_elimination(_)
-        ; Transform = transform_accumulator(_)
-        ; Transform = transform_loop_invariant(_)
-        ; Transform = transform_tuple(_)
-        ; Transform = transform_untuple(_)
-        ; Transform = transform_dependent_parallel_conjunction
-        ; Transform = transform_parallel_loop_control
-        ; Transform = transform_return_via_ptr(_, _)
+        ( Transform = transform_higher_order_spec(_)
+        ; Transform = transform_higher_order_type_spec(_)
+        ; Transform = transform_type_spec(_)
+        ; Transform = transform_unused_args(_, _)
+        ; Transform = transform_accumulator(_, _)
+        ; Transform = transform_loop_inv(_, _, _)
+        ; Transform = transform_tuple(_, _, _)
+        ; Transform = transform_untuple(_, _, _)
+        ; Transform = transform_distance_granularity(_)
+        ; Transform = transform_dep_par_conj(_, _)
+        ; Transform = transform_par_loop_ctrl(_)
+        ; Transform = transform_lcmc(_, _, _)
         ; Transform = transform_table_generator
         ; Transform = transform_stm_expansion
-        ; Transform = transform_dnf(_)
+        ; Transform = transform_io_tabling
         ; Transform = transform_structure_reuse
-        ; Transform = transform_source_to_source_debug
+        ; Transform = transform_ssdebug
         ),
         InvolvesDAIO = does_not_involve_daio
     ;

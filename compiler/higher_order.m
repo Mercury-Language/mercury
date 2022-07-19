@@ -2879,8 +2879,7 @@ create_new_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
         Transform = tn_higher_order_type_spec(PredOrFunc, CallerProcNum,
             higher_order_arg_order_version),
         make_transformed_pred_name(CallerPredName0, Transform, SpecName),
-        OriginTransform =
-            transform_higher_order_type_specialization(CallerProcNum),
+        OriginTransform = transform_higher_order_type_spec(CallerProcId),
         NewProcId = CallerProcId,
         % For exported predicates, the type specialization must be exported.
         % For opt_imported predicates, we only want to keep this version
@@ -2889,12 +2888,12 @@ create_new_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
     ;
         IsUserTypeSpec = no,
         NewProcId = hlds_pred.initial_proc_id,
-        IdCounter0 = !.Info ^ hogi_next_id,
-        counter.allocate(Id, IdCounter0, IdCounter),
-        !Info ^ hogi_next_id := IdCounter,
-        Transform = tn_higher_order(PredOrFunc, Id),
+        SeqNumCounter0 = !.Info ^ hogi_next_id,
+        counter.allocate(SeqNum, SeqNumCounter0, SeqNumCounter),
+        !Info ^ hogi_next_id := SeqNumCounter,
+        Transform = tn_higher_order(PredOrFunc, SeqNum),
         make_transformed_pred_name(Name0, Transform, SpecName),
-        OriginTransform = transform_higher_order_specialization(Id),
+        OriginTransform = transform_higher_order_spec(SeqNum),
         PredStatus = pred_status(status_local)
     ),
 

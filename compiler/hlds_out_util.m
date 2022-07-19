@@ -257,6 +257,8 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
     ).
 
 pred_info_id_to_string(PredInfo) = Str :-
+    % XXX PREDNAME_MANGLE
+    %
     % XXX CLEANUP Either this function should replace write_origin in
     % hlds_out_pred.m, or vice versa.
     Module = pred_info_module(PredInfo),
@@ -319,31 +321,29 @@ pred_info_id_to_string(PredInfo) = Str :-
             Str = "table reset predicate for " ++ BasePredIdStr
         )
     ;
-        Origin = origin_solver_type(TypeCtorSymName, TypeCtorArity,
-            SolverAuxPredKind),
-        TypeStr = sym_name_arity_to_string(
-            sym_name_arity(TypeCtorSymName, TypeCtorArity)),
+        Origin = origin_solver_repn(TypeCtor, SolverAuxPredKind),
+        TypeCtorStr = type_ctor_to_string(TypeCtor),
         (
             SolverAuxPredKind = solver_type_to_ground_pred,
-            Str = "to ground representation predicate for " ++ TypeStr
+            Str = "to ground representation predicate for " ++ TypeCtorStr
         ;
             SolverAuxPredKind = solver_type_to_any_pred,
-            Str = "to any representation predicate for " ++ TypeStr
+            Str = "to any representation predicate for " ++ TypeCtorStr
         ;
             SolverAuxPredKind = solver_type_from_ground_pred,
-            Str = "from ground representation predicate for " ++ TypeStr
+            Str = "from ground representation predicate for " ++ TypeCtorStr
         ;
             SolverAuxPredKind = solver_type_from_any_pred,
-            Str = "from any representation predicate for " ++ TypeStr
+            Str = "from any representation predicate for " ++ TypeCtorStr
         )
     ;
         ( Origin = origin_transformed(_, _, _)
-        ; Origin = origin_created(_)
+        ; Origin = origin_deforestation(_, _)
         ; Origin = origin_mutable(_, _, _)
         ; Origin = origin_lambda(_, _, _)
         ; Origin = origin_initialise
         ; Origin = origin_finalise
-        ; Origin = origin_user(_)
+        ; Origin = origin_user(_, _, _)
         ),
         SymName = qualified(Module, Name),
         Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName,

@@ -154,9 +154,12 @@ module_add_clause(PredStatus, ClauseType, ClauseInfo,
                 unexpected($pred, "clause for undeclared promise")
             ;
                 ClauseType = clause_not_for_promise,
+                user_arity_pred_form_arity(PredOrFunc, UserArity,
+                    PredFormArity),
+                Origin = origin_user(PredOrFunc, PredSymName, UserArity),
                 add_implicit_pred_decl_report_error(PredOrFunc,
                     PredModuleName, PredName, PredFormArity, PredStatus,
-                    is_not_a_class_method, Context, origin_user(PredSymName),
+                    is_not_a_class_method, Context, Origin,
                     [words("clause")], PredId, !ModuleInfo, !Specs)
             ),
             module_add_clause_2(PredStatus, ClauseType, PredId,

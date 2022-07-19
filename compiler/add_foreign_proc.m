@@ -113,9 +113,11 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
         PredOrFunc, PredModuleName, PredName, PredFormArity, PredIds),
     (
         PredIds = [],
+        user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+        Origin = origin_user(PredOrFunc, PredSymName, UserArity),
         add_implicit_pred_decl_report_error(PredOrFunc, PredModuleName,
             PredName, PredFormArity, PredStatus, is_not_a_class_method,
-            Context, origin_user(PredSymName),
+            Context, Origin,
             [pragma_decl("foreign_proc"), words("declaration")],
             PredId, !ModuleInfo, !Specs)
     ;
