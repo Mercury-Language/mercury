@@ -3188,6 +3188,8 @@ long_option("mantis-bug-529-2021-02-25",
                                     compiler_sufficiently_recent).
 long_option("subtype-opt-2022-02-19",
                                     compiler_sufficiently_recent).
+long_option("typespec-pragma-2022-07-20",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("experiment1",          experiment1).
 long_option("experiment2",          experiment2).

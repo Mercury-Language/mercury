@@ -64,6 +64,7 @@
 :- import_module check_hlds.recompute_instmap_deltas.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
@@ -74,7 +75,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.pred_name.
 :- import_module transform_hlds.ctgc.structure_reuse.analysis.
 
 :- import_module bimap.

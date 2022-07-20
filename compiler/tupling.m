@@ -114,6 +114,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_goal.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_name.
 :- import_module hlds.quantification.
 :- import_module libs.
 :- import_module libs.compiler_util.
@@ -132,7 +133,6 @@
 :- import_module mdbcomp.trace_counts.
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
-:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.

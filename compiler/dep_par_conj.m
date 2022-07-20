@@ -140,6 +140,7 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
@@ -155,7 +156,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.parse_tree_out_info.
-:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_mode.

@@ -35,6 +35,7 @@
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.add_foreign_proc.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.options.
@@ -48,7 +49,6 @@
 :- import_module ml_backend.mlds_to_c_name.     % XXX undesirable dependency
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.maybe_error.
-:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.

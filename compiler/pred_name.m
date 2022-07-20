@@ -24,12 +24,13 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.pred_name.
+:- module hlds.pred_name.
 :- interface.
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 
@@ -514,5 +515,5 @@ ints_to_string(Ints) = Str :-
     string.format("[%s]", [s(IntsStr)], Str).
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.pred_name.
+:- end_module hlds.pred_name.
 %---------------------------------------------------------------------------%

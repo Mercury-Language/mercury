@@ -2553,13 +2553,47 @@
                 % The existing predicate name.
                 tspec_pred_name         :: sym_name,
 
-                % The name of the specialized predicate.
-                tspec_new_name          :: sym_name,
+                % The name of the module from whose (source or interface) file
+                % we read the type_spec pragma. This will always name
+                % the module that contain the pragma, because we never put
+                % a type_spec pragma into any interface file other than
+                % an interface file of the module containing the pragma.
+                tspec_module_name       :: module_name,
 
                 % The type substitution (using the variable names
                 % from the pred declaration).
                 tspec_tsubst            :: type_subst,
 
+                % The varset of the term containing the pragma, coerced
+                % to being a tvarset (since no part of the pragma except
+                % the type substitution may contain variables).
+                %
+                % All variables in this tvarset have to have explicit names.
+                % If the original pragma contains anonymous variables, the
+                % code constructing this pragma_info_type_spec will give
+                % those variable names.
+                %
+                % The reason for this requirement is that the process
+                % of writing out an anonymous variable and reading it back in
+                % will produce a non-anonymous variable. Since the names
+                % (if any) of the variables in tspec_tsubst are an input
+                % to the code that constructs the name of the type-specialized
+                % predicate, we would get a discrepancy between the predicate
+                % name constructed by compiler invocations that know the
+                % variable as unnamed (this will be the invocation that
+                % compiles the module containing the type_spec pragma,
+                % which constructs the code of the type specialized predicate),
+                % and compiler invocations that know that variable as named
+                % (this will be all the invocations that read the original
+                % module's .int file, which will be constructing many of
+                % the *calls* to the type specialized predicate). The result
+                % will be calls to the type specialized predicate that refer
+                % to it by the wrong name, leading to link errors.
+                %
+                % By giving all anonymous variables in the type_spec pragma
+                % in the original source file as soon as we have parsed it,
+                % and then always using the resulting names, we avoid this
+                % problem.
                 tspec_tvarset           :: tvarset,
 
                 % The equivalence types used.

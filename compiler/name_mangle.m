@@ -83,8 +83,9 @@
 
 :- implementation.
 
+:- import_module hlds.
+:- import_module hlds.pred_name.
 :- import_module parse_tree.
-:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 

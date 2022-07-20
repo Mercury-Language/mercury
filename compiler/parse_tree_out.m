@@ -820,7 +820,7 @@ mercury_output_parse_tree_plain_opt(Info, Stream, ParseTree, !IO) :-
     list.foldl(mercury_output_item_pred_marker(Stream),
         list.map(project_pragma_type, PredMarkers), !IO),
     list.foldl(
-        mercury_output_pragma_type_spec(Stream, VarNamePrintPredDecl, Lang),
+        mercury_output_pragma_type_spec(Stream, Lang),
         list.map(project_pragma_type, TypeSpecs), !IO),
     list.foldl(mercury_output_item_clause(Info, Stream), Clauses, !IO),
     list.foldl(mercury_output_pragma_foreign_proc(Stream, Lang),

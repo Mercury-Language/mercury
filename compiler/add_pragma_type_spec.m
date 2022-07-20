@@ -29,6 +29,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds_error.
+:- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.optimization_options.
@@ -119,14 +120,13 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
 
 add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeArgModes, Context,
         PredId, !ModuleInfo, !QualInfo, !Specs) :-
-    TSInfo0 = pragma_info_type_spec(_PFUMM, SymName, SpecSymName, Subst,
+    TSInfo0 = pragma_info_type_spec(PFUMM0, SymName, SpecModuleName, Subst,
         TVarSet0, ExpandedItems),
-    (
-        SpecSymName = qualified(SpecModuleName, SpecName)
-    ;
-        SpecSymName = unqualified(_),
-        unexpected($pred, "unqualified SpecSymName")
-    ),
+    UnqualName = unqualify_name(SymName),
+    pfumm_to_maybe_pf_arity_maybe_modes(PFUMM0, MaybePredOrFunc0,
+        _Arity, _MaybeModes),
+    Transform = tn_pragma_type_spec(MaybePredOrFunc0, TVarSet0, Subst),
+    make_transformed_pred_name(UnqualName, Transform, SpecName),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     handle_pragma_type_spec_subst(Context, Subst, PredInfo0,
         TVarSet0, TVarSet, Types, ExistQVars, ClassContext, SubstOk,
@@ -265,7 +265,7 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeArgModes, Context,
                 PredOrFunc = pf_function,
                 PFUMM = pfumm_function(ModesOrArity)
             ),
-            TSInfo = pragma_info_type_spec(PFUMM, SymName, SpecSymName,
+            TSInfo = pragma_info_type_spec(PFUMM, SymName, SpecModuleName,
                 map.to_assoc_list(RenamedSubst), TVarSet, ExpandedItems),
             multi_map.set(PredId, TSInfo, PragmaMap0, PragmaMap),
             TypeSpecInfo = type_spec_info(ProcsToSpec, ForceVersions, SpecMap,

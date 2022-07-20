@@ -1885,7 +1885,7 @@ intermod_write_pred_decl(MercInfo, Stream, ModuleInfo, OrderPredInfo,
     list.foldl(mercury_output_item_pred_marker(Stream),
         PredMarkerPragmas, !IO),
     Lang = output_mercury,
-    list.foldl(mercury_output_pragma_type_spec(Stream, VarNamePrint, Lang),
+    list.foldl(mercury_output_pragma_type_spec(Stream, Lang),
         TypeSpecPragmas, !IO),
 
     cord.snoc(PredDecl, !PredDeclsCord),

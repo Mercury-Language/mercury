@@ -121,9 +121,9 @@
 :- import_module check_hlds.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.modecheck_util.
+:- import_module hlds.pred_name.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.pred_name.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 :- import_module transform_hlds.pd_debug.

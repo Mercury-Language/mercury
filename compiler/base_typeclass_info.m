@@ -46,9 +46,9 @@
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.pred_name.
 :- import_module hlds.status.
 :- import_module parse_tree.
-:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.

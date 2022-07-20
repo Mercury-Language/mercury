@@ -155,12 +155,12 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.pred_name.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
-:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.

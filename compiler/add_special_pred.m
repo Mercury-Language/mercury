@@ -100,10 +100,10 @@
 :- import_module check_hlds.unify_proc.
 :- import_module hlds.add_pred.
 :- import_module hlds.hlds_clauses.
+:- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 

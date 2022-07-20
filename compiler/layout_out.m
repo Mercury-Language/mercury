@@ -191,6 +191,7 @@
 :- import_module backend_libs.name_mangle.
 :- import_module backend_libs.proc_label.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.pred_name.
 :- import_module libs.
 :- import_module libs.trace_params.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
@@ -200,7 +201,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_info.
-:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_event.
 :- import_module parse_tree.prog_data_pragma.

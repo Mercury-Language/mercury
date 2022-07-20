@@ -52,11 +52,11 @@
 :- import_module parse_tree.parse_type_defn.
 :- import_module parse_tree.parse_type_name.
 :- import_module parse_tree.parse_util.
-:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_item.
 
 :- import_module cord.
+:- import_module counter.
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
@@ -1034,84 +1034,42 @@ parse_oisu_preds_term(ModuleName, VarSet, ArgNum, ExpectedFunctor, Term,
     list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
+parse_pragma_type_spec(ModuleName, VarSet0, ErrorTerm, PragmaTerms,
         Context, SeqNum, MaybeIOM) :-
     ( if
-        (
-            PragmaTerms = [PredAndModesTerm, TypeSubnTerm],
-            MaybeSpecSymNameTerm = no
-        ;
-            PragmaTerms = [PredAndModesTerm, TypeSubnTerm, SpecSymNameTerm0],
-            MaybeSpecSymNameTerm = yes(SpecSymNameTerm0)
+        ( PragmaTerms = [PredAndModesTerm, TypeSubnTerm]
+        ; PragmaTerms = [PredAndModesTerm, TypeSubnTerm, _]
         )
     then
         ArityOrModesContextPieces = cord.from_list(
             [words("In the first argument"), pragma_decl("type_spec"),
             words("declaration:"), nl]),
         parse_pred_pfu_name_arity_maybe_modes(ModuleName,
-            ArityOrModesContextPieces, VarSet, PredAndModesTerm,
+            ArityOrModesContextPieces, VarSet0, PredAndModesTerm,
             MaybePredOrProcSpec),
         (
-            MaybeSpecSymNameTerm = no,
-            MaybeSpecSymName = no,
-            SpecSymNameSpecs = []
-        ;
-            MaybeSpecSymNameTerm = yes(SpecSymNameTerm),
-            ( if
-                % This form of the pragma should not appear in source files.
-                SpecSymNameTerm = term.functor(_, _, SpecContext),
-                term.context_file(SpecContext, FileName),
-                not string.remove_suffix(FileName, ".m", _),
-
-                try_parse_sym_name_and_no_args(SpecSymNameTerm,
-                    SpecializedSymName0),
-                try_to_implicitly_qualify_sym_name(ModuleName,
-                    SpecializedSymName0, SpecializedSymName)
-            then
-                MaybeSpecSymName = yes(SpecializedSymName),
-                SpecSymNameSpecs = []
-            else
-                MaybeSpecSymName = no,
-                SpecSymNamePieces = [words("Malformed third argument of"),
-                    pragma_decl("type_spec"), words("declaration."), nl,
-                    words("This represents an internal error in the"),
-                    words("Mercury compiler that generated this file."), nl],
-                SpecSymNameSpec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree,
-                    get_term_context(SpecSymNameTerm), SpecSymNamePieces),
-                SpecSymNameSpecs = [SpecSymNameSpec]
-            )
-        ),
-        ( if
             MaybePredOrProcSpec = ok1(PredOrProcSpec),
-            SpecSymNameSpecs = []
-        then
             PredOrProcSpec = pred_or_proc_pfumm_name(PFUMM, PredName),
-            conjunction_to_list(TypeSubnTerm, TypeSubnTerms),
 
-            % The varset is actually a tvarset.
-            varset.coerce(VarSet, TVarSet),
+            % Give any anonymous variables in TypeSubnTerm names that
+            % do not conflict with the names of any named variables,
+            % nor, due to the use of sequence numbers, with each other.
+            acc_var_names_in_term(VarSet0, TypeSubnTerm,
+                set.init, NamedVarNames),
+            name_unnamed_vars_in_term(NamedVarNames, TypeSubnTerm,
+                counter.init(1), _, VarSet0, VarSet),
+            conjunction_to_list(TypeSubnTerm, TypeSubnTerms),
             ( if list.map(parse_type_spec_pair, TypeSubnTerms, TypeSubns) then
-                (
-                    MaybeSpecSymName = yes(SpecSymName)
-                ;
-                    MaybeSpecSymName = no,
-                    UnqualName = unqualify_name(PredName),
-                    pfumm_to_maybe_pf_arity_maybe_modes(PFUMM, MaybePredOrFunc,
-                        _Arity, _MaybeModes),
-                    Transform = tn_pragma_type_spec(MaybePredOrFunc,
-                        TVarSet, TypeSubns),
-                    make_transformed_pred_sym_name(ModuleName, UnqualName,
-                        Transform, SpecSymName)
-                ),
+                % The varset is actually a tvarset.
+                varset.coerce(VarSet, TVarSet),
                 TypeSpecInfo = pragma_info_type_spec(PFUMM, PredName,
-                    SpecSymName, TypeSubns, TVarSet, set.init),
+                    ModuleName, TypeSubns, TVarSet, set.init),
                 Pragma = decl_pragma_type_spec(TypeSpecInfo),
                 ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
                 Item = item_decl_pragma(ItemPragma),
                 MaybeIOM = ok1(iom_item(Item))
             else
-                TypeSubnTermStr = describe_error_term(VarSet, TypeSubnTerm),
+                TypeSubnTermStr = describe_error_term(VarSet0, TypeSubnTerm),
                 Pieces = [words("In the second argument of"),
                     pragma_decl("type_spec"), words("declaration:"), nl,
                     words("error: expected a type substitution, got"),
@@ -1121,13 +1079,14 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                     phase_term_to_parse_tree, TypeSubnContext, Pieces),
                 MaybeIOM = error1([Spec])
             )
-        else
-            Specs = get_any_errors1(MaybePredOrProcSpec) ++ SpecSymNameSpecs,
+        ;
+            MaybePredOrProcSpec = error1(Specs),
             MaybeIOM = error1(Specs)
         )
     else
+        % XXX We allow three as a bootstrapping measure.
         Pieces = [words("Error: a"), pragma_decl("type_spec"),
-            words("declaration must have two or three arguments."), nl],
+            words("declaration must have two arguments."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
@@ -1136,13 +1095,78 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
 :- pred parse_type_spec_pair(term::in, pair(tvar, mer_type)::out) is semidet.
 
 parse_type_spec_pair(Term, TypeSpec) :-
-    Term = term.functor(term.atom("="), [TypeVarTerm, SpecTypeTerm0], _),
+    Term = term.functor(term.atom("="), [TypeVarTerm, SpecTypeTerm], _),
     TypeVarTerm = term.variable(TypeVar0, _),
     term.coerce_var(TypeVar0, TypeVar),
     % XXX We should call parse_type instead.
     maybe_parse_type(no_allow_ho_inst_info(wnhii_pragma_type_spec),
-        SpecTypeTerm0, SpecType),
+        SpecTypeTerm, SpecType),
     TypeSpec = TypeVar - SpecType.
+
+%---------------------%
+
+:- pred acc_var_names_in_term(varset::in, term::in,
+    set(string)::in, set(string)::out) is det.
+
+acc_var_names_in_term(VarSet, Term, !VarNames) :-
+    (
+        Term = term.variable(Var, _Context),
+        ( if varset.search_name(VarSet, Var, VarName) then
+            set.insert(VarName, !VarNames)
+        else
+            true
+        )
+    ;
+        Term = term.functor(_Functor, ArgTerms, _Context),
+        acc_var_names_in_terms(VarSet, ArgTerms, !VarNames)
+    ).
+
+:- pred acc_var_names_in_terms(varset::in, list(term)::in,
+    set(string)::in, set(string)::out) is det.
+
+acc_var_names_in_terms(_, [], !VarNames).
+acc_var_names_in_terms(VarSet, [Term | Terms], !VarNames) :-
+    acc_var_names_in_term(VarSet, Term, !VarNames),
+    acc_var_names_in_terms(VarSet, Terms, !VarNames).
+
+%---------------------%
+
+:- pred name_unnamed_vars_in_term(set(string)::in, term::in,
+    counter::in, counter::out, varset::in, varset::out) is det.
+
+name_unnamed_vars_in_term(NamedVarNames, Term, !Counter, !VarSet) :-
+    (
+        Term = term.variable(Var, _Context),
+        ( if varset.search_name(!.VarSet, Var, _VarName) then
+            true
+        else
+            name_anonymous_variable(NamedVarNames, Var, !Counter, !VarSet)
+        )
+    ;
+        Term = term.functor(_Functor, ArgTerms, _Context),
+        name_unnamed_vars_in_terms(NamedVarNames, ArgTerms, !Counter, !VarSet)
+    ).
+
+:- pred name_unnamed_vars_in_terms(set(string)::in, list(term)::in,
+    counter::in, counter::out, varset::in, varset::out) is det.
+
+name_unnamed_vars_in_terms(_, [], !Counter, !VarSet).
+name_unnamed_vars_in_terms(NamedVarNames, [Term | Terms], !Counter, !VarSet) :-
+    name_unnamed_vars_in_term(NamedVarNames, Term, !Counter, !VarSet),
+    name_unnamed_vars_in_terms(NamedVarNames, Terms, !Counter, !VarSet).
+
+:- pred name_anonymous_variable(set(string)::in, var::in,
+    counter::in, counter::out, varset::in, varset::out) is det.
+
+name_anonymous_variable(NamedVarNames, AnonVar, !Counter, !VarSet) :-
+    counter.allocate(SeqNum, !Counter),
+    VarName = "Anon" ++ int_to_string(SeqNum),
+    ( if set.contains(NamedVarNames, VarName) then
+        % VarName is in use; try again with the updated counter.
+        name_anonymous_variable(NamedVarNames, AnonVar, !Counter, !VarSet)
+    else
+        varset.name_var(AnonVar, VarName, !VarSet)
+    ).
 
 %---------------------------------------------------------------------------%
 %

@@ -370,11 +370,11 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.
 :- import_module hlds.hlds_llds.
+:- import_module hlds.pred_name.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.exprn_aux.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 

@@ -127,6 +127,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.instance_method_clauses.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
 :- import_module libs.
@@ -138,7 +139,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.

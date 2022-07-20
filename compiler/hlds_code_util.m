@@ -64,11 +64,11 @@
 :- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module hlds.pred_name.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_mode.
 
 :- import_module char.

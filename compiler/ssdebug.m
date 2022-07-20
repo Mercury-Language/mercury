@@ -220,6 +220,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
@@ -230,7 +231,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_rename.

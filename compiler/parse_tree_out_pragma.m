@@ -58,8 +58,7 @@
     pragma_info_foreign_proc) = string.
 
 :- pred mercury_output_pragma_type_spec(io.text_output_stream::in,
-    var_name_print::in, output_lang::in, pragma_info_type_spec::in,
-    io::di, io::uo) is det.
+    output_lang::in, pragma_info_type_spec::in, io::di, io::uo) is det.
 
 :- pred mercury_output_pragma_unused_args(io.text_output_stream::in,
     pragma_info_unused_args::in, io::di, io::uo) is det.
@@ -153,9 +152,7 @@ mercury_output_item_decl_pragma(Info, Stream, ItemDeclPragma, !IO) :-
         mercury_output_pragma_obsolete_proc(Stream, Lang, ObsoleteProcInfo, !IO)
     ;
         Pragma = decl_pragma_type_spec(TypeSpecInfo),
-        VarNamePrint = print_name_only,
-        mercury_output_pragma_type_spec(Stream, VarNamePrint, Lang,
-            TypeSpecInfo, !IO)
+        mercury_output_pragma_type_spec(Stream, Lang, TypeSpecInfo, !IO)
     ;
         Pragma = decl_pragma_oisu(OISUInfo),
         mercury_output_pragma_oisu(Stream, OISUInfo, !IO)
@@ -921,10 +918,9 @@ backend_to_string(Backend) = Str :-
 % Output a type_spec pragma.
 %
 
-mercury_output_pragma_type_spec(Stream, VarNamePrint, Lang, TypeSpecInfo,
-        !IO) :-
-    TypeSpecInfo = pragma_info_type_spec(PFUMM, PredName, SpecName,
-        Subst, VarSet, _),
+mercury_output_pragma_type_spec(Stream, Lang, TypeSpecInfo, !IO) :-
+    TypeSpecInfo = pragma_info_type_spec(PFUMM, PredName, _SpecModuleName,
+        TypeSubst, VarSet, _),
     io.write_string(Stream, ":- pragma type_spec(", !IO),
     (
         (
@@ -949,12 +945,15 @@ mercury_output_pragma_type_spec(Stream, VarNamePrint, Lang, TypeSpecInfo,
         mercury_format_pred_name_arity(PredName, PredArity, Stream, !IO)
     ),
     io.write_string(Stream, ", (", !IO),
-    write_out_list(mercury_output_type_subst(VarSet, VarNamePrint),
-        ", ", Subst, Stream, !IO),
-    io.write_string(Stream, "), ", !IO),
-    mercury_output_bracketed_sym_name_ngt(not_next_to_graphic_token, SpecName,
-        Stream, !IO),
-    io.write_string(Stream, ").\n", !IO).
+    % The code that parses type_spec pragmas ensures that all types variables
+    % in the substitution are named. Therefore there is no reason to print
+    % variable numbers. In fact, printing variable numbers would be a bug,
+    % since any code reading the pragma we are now writing out would mistake
+    % the variable number as part of the variable *name*. See the long comment
+    % on the tspec_tvarset field of the pragma in prog_item.m.
+    write_out_list(mercury_output_type_subst(VarSet, print_name_only),
+        ", ", TypeSubst, Stream, !IO),
+    io.write_string(Stream, ")).\n", !IO).
 
 :- pred mercury_output_type_subst(tvarset::in, var_name_print::in,
     pair(tvar, mer_type)::in, io.text_output_stream::in,

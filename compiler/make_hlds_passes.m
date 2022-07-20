@@ -71,6 +71,7 @@
 :- import_module hlds.make_hlds.add_type.
 :- import_module hlds.make_hlds.make_hlds_passes.make_hlds_separate_items.
 :- import_module hlds.make_hlds.make_hlds_warn.
+:- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
@@ -80,7 +81,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.maybe_error.
-:- import_module parse_tree.pred_name.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_item_stats.
 :- import_module parse_tree.prog_mode.
