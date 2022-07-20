@@ -1715,23 +1715,16 @@ read_term_to_iom_result(ModuleName, FileName, ReadTermResult, ReadIOMResult,
         ReadIOMResult = read_iom_parse_term_error(Spec)
     ;
         ReadTermResult = term(VarSet, Term),
-        term_to_iom_result(ModuleName, VarSet, Term, ReadIOMResult,
-            !SeqNumCounter)
-    ).
-
-:- pred term_to_iom_result(module_name::in, varset::in, term::in,
-    read_iom_result::out, counter::in, counter::out) is det.
-
-term_to_iom_result(ModuleName, VarSet, Term, ReadIOMResult, !SeqNumCounter) :-
-    counter.allocate(SeqNum, !SeqNumCounter),
-    parse_item_or_marker(ModuleName, VarSet, Term, item_seq_num(SeqNum),
-        MaybeItemOrMarker),
-    (
-        MaybeItemOrMarker = ok1(ItemOrMarker),
-        ReadIOMResult = read_iom_ok(VarSet, Term, ItemOrMarker)
-    ;
-        MaybeItemOrMarker = error1(Specs),
-        ReadIOMResult = read_iom_parse_item_errors(VarSet, Term, Specs)
+        counter.allocate(SeqNum, !SeqNumCounter),
+        parse_item_or_marker(ModuleName, VarSet, Term, item_seq_num(SeqNum),
+            MaybeItemOrMarker),
+        (
+            MaybeItemOrMarker = ok1(ItemOrMarker),
+            ReadIOMResult = read_iom_ok(VarSet, Term, ItemOrMarker)
+        ;
+            MaybeItemOrMarker = error1(Specs),
+            ReadIOMResult = read_iom_parse_item_errors(VarSet, Term, Specs)
+        )
     ).
 
 %---------------------------------------------------------------------------%
