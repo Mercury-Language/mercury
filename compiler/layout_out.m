@@ -210,6 +210,7 @@
 :- import_module char.
 :- import_module int.
 :- import_module map.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -2595,7 +2596,8 @@ pred_transform_name(transform_higher_order_spec(Seq)) =
 pred_transform_name(transform_higher_order_type_spec(ProcId)) =
     "hoproc" ++ int_to_string(proc_id_to_int(ProcId)).
 pred_transform_name(transform_type_spec(Substs)) =
-    string.join_list("_", list.map(subst_to_name, Substs)).
+    string.join_list("_", list.map(subst_to_name,
+        one_or_more_to_list(Substs))).
 pred_transform_name(transform_unused_args(_ProcId, Posns)) =
     "ua_" ++ string.join_list("_", list.map(int_to_string, Posns)).
 pred_transform_name(transform_accumulator(_LineNum, Posns)) = "acc_" ++

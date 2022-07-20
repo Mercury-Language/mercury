@@ -59,6 +59,7 @@
 :- import_module counter.
 :- import_module int.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
@@ -1058,10 +1059,15 @@ parse_pragma_type_spec(ModuleName, VarSet0, ErrorTerm, PragmaTerms,
                 set.init, NamedVarNames),
             name_unnamed_vars_in_term(NamedVarNames, TypeSubnTerm,
                 counter.init(1), _, VarSet0, VarSet),
-            conjunction_to_list(TypeSubnTerm, TypeSubnTerms),
-            ( if list.map(parse_type_spec_pair, TypeSubnTerms, TypeSubns) then
+            conjunction_to_one_or_more(TypeSubnTerm, TypeSubnTerms),
+            TypeSubnTerms = one_or_more(HeadSubnTerm, TailSubnTerms),
+            ( if
+                parse_type_spec_pair(HeadSubnTerm, HeadTypeSubn),
+                list.map(parse_type_spec_pair, TailSubnTerms, TailTypeSubns)
+            then
                 % The varset is actually a tvarset.
                 varset.coerce(VarSet, TVarSet),
+                TypeSubns = one_or_more(HeadTypeSubn, TailTypeSubns),
                 TypeSpecInfo = pragma_info_type_spec(PFUMM, PredName,
                     ModuleName, TypeSubns, TVarSet, set.init),
                 Pragma = decl_pragma_type_spec(TypeSpecInfo),

@@ -236,6 +236,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module string.
 :- import_module term.
@@ -489,7 +490,8 @@ uci_pred_name(SpecialPred, type_ctor(SymName, Arity)) = Name :-
 :- func type_subst_to_string(tvarset, type_subst) = string.
 
 type_subst_to_string(VarSet, TypeSubst) = Str :-
-    TVarStrs = list.map(type_var_subst_to_string(VarSet), TypeSubst),
+    TVarStrs = list.map(type_var_subst_to_string(VarSet),
+        one_or_more_to_list(TypeSubst)),
     % XXX The use of , and [] here *requires* mangling the names
     % we construct.
     TVarsStr = string.join_list(", ", TVarStrs),

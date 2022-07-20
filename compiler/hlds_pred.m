@@ -56,6 +56,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module set.
 
@@ -469,7 +470,7 @@
     ;       transform_type_spec(
                 % The substitution from type variables (represented by
                 % the integers) to types (represented by the terms).
-                assoc_list(int, mer_type)
+                one_or_more(pair(int, mer_type))
             )
     ;       transform_unused_args(
                 % The proc id of the original procedure.

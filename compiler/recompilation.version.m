@@ -99,6 +99,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -1239,8 +1240,10 @@ is_item_changed(Item1, Item2, Changed) :-
                 TypeSpecInfo2 = pragma_info_type_spec(PFUMM, Name, SpecName,
                     TypeSubst2, TVarSet2, _)
             then
-                assoc_list.keys_and_values(TypeSubst1, TVars1, Types1),
-                assoc_list.keys_and_values(TypeSubst2, TVars2, Types2),
+                assoc_list.keys_and_values(one_or_more_to_list(TypeSubst1),
+                    TVars1, Types1),
+                assoc_list.keys_and_values(one_or_more_to_list(TypeSubst2),
+                    TVars2, Types2),
                 % XXX kind inference:
                 % we assume vars have kind `star'.
                 KindMap = map.init,

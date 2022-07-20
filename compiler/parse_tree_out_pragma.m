@@ -129,6 +129,7 @@
 
 :- import_module char.
 :- import_module list.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -944,16 +945,28 @@ mercury_output_pragma_type_spec(Stream, Lang, TypeSpecInfo, !IO) :-
         PFUMM = pfumm_unknown(PredArity),
         mercury_format_pred_name_arity(PredName, PredArity, Stream, !IO)
     ),
-    io.write_string(Stream, ", (", !IO),
+    io.write_string(Stream, ", ", !IO),
     % The code that parses type_spec pragmas ensures that all types variables
     % in the substitution are named. Therefore there is no reason to print
     % variable numbers. In fact, printing variable numbers would be a bug,
     % since any code reading the pragma we are now writing out would mistake
     % the variable number as part of the variable *name*. See the long comment
     % on the tspec_tvarset field of the pragma in prog_item.m.
-    write_out_list(mercury_output_type_subst(VarSet, print_name_only),
-        ", ", TypeSubst, Stream, !IO),
-    io.write_string(Stream, ")).\n", !IO).
+    TypeSubst = one_or_more(HeadTypeSubst, TailTypeSubsts),
+    (
+        TailTypeSubsts = [],
+        % In the common case of there being only type substitution,
+        % do not put unnecessary parentheses around it.
+        mercury_output_type_subst(VarSet, print_name_only,
+            HeadTypeSubst, Stream, !IO)
+    ;
+        TailTypeSubsts = [_ | _],
+        io.write_string(Stream, "(", !IO),
+        write_out_list(mercury_output_type_subst(VarSet, print_name_only),
+            ", ", [HeadTypeSubst | TailTypeSubsts], Stream, !IO),
+        io.write_string(Stream, ")", !IO)
+    ),
+    io.write_string(Stream, ").\n", !IO).
 
 :- pred mercury_output_type_subst(tvarset::in, var_name_print::in,
     pair(tvar, mer_type)::in, io.text_output_stream::in,

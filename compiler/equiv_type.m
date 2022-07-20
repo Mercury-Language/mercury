@@ -1465,8 +1465,11 @@ replace_in_pragma_info_type_spec(ModuleName, MaybeRecord,
     else
         ExpandedItems0 = eqv_expand_info(ModuleName, ItemIds0)
     ),
-    replace_in_subst(MaybeRecord, TypeEqvMap, Subst0, Subst,
+    Subst0 = one_or_more(HeadSubst0, TailSubsts0),
+    replace_in_subst(MaybeRecord, TypeEqvMap,
+        HeadSubst0, HeadSubst, TailSubsts0, TailSubsts,
         TVarSet0, TVarSet, ExpandedItems0, ExpandedItems, !UsedModules),
+    Subst = one_or_more(HeadSubst, TailSubsts),
     (
         ExpandedItems = no_eqv_expand_info,
         ItemIds = ItemIds0
@@ -2227,18 +2230,28 @@ replace_in_class_decl(MaybeRecord, TypeEqvMap, InstEqvMap, Decl0, Decl,
 %---------------------------------------------------------------------------%
 
 :- pred replace_in_subst(maybe_record_sym_name_use::in, type_eqv_map::in,
+    pair(tvar, mer_type)::in, pair(tvar, mer_type)::out,
     assoc_list(tvar, mer_type)::in, assoc_list(tvar, mer_type)::out,
     tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_subst(_MaybeRecord, _TypeEqvMap, [], [], !TVarSet, !EquivTypeInfo,
-        !UsedModules).
-replace_in_subst(MaybeRecord, TypeEqvMap, [Var - Type0 | Subst0],
-        [Var - Type | Subst], !TVarSet, !EquivTypeInfo, !UsedModules) :-
+replace_in_subst(MaybeRecord, TypeEqvMap,
+        HeadVar - HeadType0, HeadVar - HeadType,
+        TailVarsTypes0, TailVarsTypes,
+        !TVarSet, !EquivTypeInfo, !UsedModules) :-
     replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
-        Type0, Type, _, !TVarSet, !EquivTypeInfo, !UsedModules),
-    replace_in_subst(MaybeRecord, TypeEqvMap, Subst0, Subst, !TVarSet,
-        !EquivTypeInfo, !UsedModules).
+        HeadType0, HeadType, _, !TVarSet, !EquivTypeInfo, !UsedModules),
+    (
+        TailVarsTypes0 = [],
+        TailVarsTypes = []
+    ;
+        TailVarsTypes0 = [HeadTailVarType0 | TailTailVarsTypes0],
+        replace_in_subst(MaybeRecord, TypeEqvMap,
+            HeadTailVarType0, HeadTailVarType,
+            TailTailVarsTypes0, TailTailVarsTypes,
+            !TVarSet, !EquivTypeInfo, !UsedModules),
+        TailVarsTypes = [HeadTailVarType | TailTailVarsTypes]
+    ).
 
 %---------------------------------------------------------------------------%
 

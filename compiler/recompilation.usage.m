@@ -818,7 +818,7 @@ find_items_used_by_type_spec(TypeSpecInfo, !Info) :-
     ;
         PFUMM = pfumm_unknown(_Arity)
     ),
-    assoc_list.values(Subst, SubstTypes),
+    assoc_list.values(one_or_more_to_list(Subst), SubstTypes),
     find_items_used_by_types(SubstTypes, !Info).
 
 :- pred find_items_used_by_functors(simple_item_set::in,

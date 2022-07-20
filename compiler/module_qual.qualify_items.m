@@ -1583,8 +1583,10 @@ qualify_decl_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
             PFUMM0 = pfumm_unknown(_Arity),
             PFUMM = PFUMM0
         ),
-        qualify_type_spec_subst(InInt, ErrorContext, Subst0, Subst,
-            !Info, !Specs),
+        Subst0 = one_or_more(HeadSubst0, TailSubsts0),
+        qualify_type_spec_subst(InInt, ErrorContext,
+            HeadSubst0, HeadSubst, TailSubsts0, TailSubsts, !Info, !Specs),
+        Subst = one_or_more(HeadSubst, TailSubsts),
         TypeSpecInfo = pragma_info_type_spec(PFUMM, PredName, SpecPredName,
             Subst, TVarSet, Items),
         Pragma = decl_pragma_type_spec(TypeSpecInfo)
@@ -1764,17 +1766,27 @@ qualify_pragma_var(InInt, ErrorContext, PragmaVar0, PragmaVar,
     PragmaVar = pragma_var(Var, Name, Mode, Box).
 
 :- pred qualify_type_spec_subst(mq_in_interface::in, mq_error_context::in,
+    pair(tvar, mer_type)::in, pair(tvar, mer_type)::out,
     assoc_list(tvar, mer_type)::in, assoc_list(tvar, mer_type)::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_type_spec_subst(_InInt, _ErrorContext, [], [], !Info, !Specs).
 qualify_type_spec_subst(InInt, ErrorContext,
-        [Var - Type0 |  Subst0], [Var - Type | Subst], !Info, !Specs) :-
+        HeadSubst0, HeadSubst, TailSubsts0, TailSubsts, !Info, !Specs) :-
+    HeadSubst0 = Var - Type0,
     % XXX We could pass a more specific error context.
     qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
-    qualify_type_spec_subst(InInt, ErrorContext, Subst0, Subst,
-        !Info, !Specs).
+    HeadSubst = Var - Type,
+    (
+        TailSubsts0 = [],
+        TailSubsts = []
+    ;
+        TailSubsts0 = [HeadTailSubst0 | TailTailSubsts0],
+        qualify_type_spec_subst(InInt, ErrorContext,
+            HeadTailSubst0, HeadTailSubst, TailTailSubsts0, TailTailSubsts,
+            !Info, !Specs),
+        TailSubsts = [HeadTailSubst | TailTailSubsts]
+    ).
 
 :- pred qualify_user_sharing(mq_in_interface::in, mq_error_context::in,
     user_annotated_sharing::in, user_annotated_sharing::out,

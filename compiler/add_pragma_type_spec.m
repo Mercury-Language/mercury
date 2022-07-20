@@ -49,8 +49,8 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
+:- import_module one_or_more.
 :- import_module pair.
-:- import_module require.
 :- import_module set.
 :- import_module varset.
 
@@ -128,19 +128,19 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeArgModes, Context,
     Transform = tn_pragma_type_spec(MaybePredOrFunc0, TVarSet0, Subst),
     make_transformed_pred_name(UnqualName, Transform, SpecName),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-    handle_pragma_type_spec_subst(Context, Subst, PredInfo0,
-        TVarSet0, TVarSet, Types, ExistQVars, ClassContext, SubstOk,
-        !ModuleInfo, !Specs),
+    handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0,
+        MaybeSubstResult, !ModuleInfo),
     (
-        SubstOk = yes(RenamedSubst),
-        pred_info_get_proc_table(PredInfo0, Procs0),
+        MaybeSubstResult = ok5(TVarSet, Types, ExistQVars, ClassContext,
+            RenamedSubst),
+        pred_info_get_proc_table(PredInfo0, ProcTable0),
         handle_pragma_type_spec_modes(PredId, PredInfo0, TVarSet0,
-            MaybeArgModes, Context, MaybeProcIds, Procs0, Procs1,
+            MaybeArgModes, Context, MaybeProcIds, ProcTable0, ProcTable1,
             !ModuleInfo, !Specs),
         % Remove any imported structure sharing and reuse information for the
         % original procedure as they won't be (directly) applicable.
         map.map_values_only(reset_imported_structure_sharing_reuse,
-            Procs1, Procs),
+            ProcTable1, ProcTable),
         module_info_get_globals(!.ModuleInfo, Globals),
         globals.get_opt_tuple(Globals, OptTuple),
         DoTypeSpec = OptTuple ^ ot_spec_types_user_guided,
@@ -215,7 +215,7 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeArgModes, Context,
             ),
 
             pred_info_get_origin(PredInfo0, OrigOrigin),
-            SubstDesc = list.map(subst_desc, Subst),
+            SubstDesc = one_or_more.map(subst_desc, Subst),
             Origin = origin_transformed(transform_type_spec(SubstDesc),
                 OrigOrigin, PredId),
             MaybeCurUserDecl = maybe.no,
@@ -225,7 +225,7 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeArgModes, Context,
                 Context, Origin, PredStatus, MaybeCurUserDecl, GoalType,
                 Markers, Types, TVarSet, ExistQVars, ClassContext, Proofs,
                 ConstraintMap, Clauses, VarNameRemap, NewPredInfo0),
-            pred_info_set_proc_table(Procs, NewPredInfo0, NewPredInfo),
+            pred_info_set_proc_table(ProcTable, NewPredInfo0, NewPredInfo),
             module_info_get_predicate_table(!.ModuleInfo, PredTable0),
             predicate_table_insert(NewPredInfo, NewPredId,
                 PredTable0, PredTable),
@@ -266,7 +266,7 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeArgModes, Context,
                 PFUMM = pfumm_function(ModesOrArity)
             ),
             TSInfo = pragma_info_type_spec(PFUMM, SymName, SpecModuleName,
-                map.to_assoc_list(RenamedSubst), TVarSet, ExpandedItems),
+                RenamedSubst, TVarSet, ExpandedItems),
             multi_map.set(PredId, TSInfo, PragmaMap0, PragmaMap),
             TypeSpecInfo = type_spec_info(ProcsToSpec, ForceVersions, SpecMap,
                 PragmaMap),
@@ -289,7 +289,8 @@ add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeArgModes, Context,
             true
         )
     ;
-        SubstOk = no
+        MaybeSubstResult = error5(SubstSpecs),
+        !:Specs = SubstSpecs ++ !.Specs
     ).
 
 :- func subst_desc(pair(tvar, mer_type)) = pair(int, mer_type).
@@ -306,122 +307,95 @@ subst_desc(TVar - Type) = var_to_int(TVar) - Type.
     % of the current implementation, so it only results in a warning.
     %
 :- pred handle_pragma_type_spec_subst(prog_context::in,
-    assoc_list(tvar, mer_type)::in, pred_info::in, tvarset::in, tvarset::out,
-    list(mer_type)::out, existq_tvars::out, prog_constraints::out,
-    maybe(tsubst)::out, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    type_subst::in, pred_info::in, tvarset::in,
+    maybe5(tvarset, list(mer_type), existq_tvars, prog_constraints,
+        type_subst)::out,
+    module_info::in, module_info::out) is det.
 
-handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
-        Types, ExistQVars, ClassContext, SubstOk, !ModuleInfo, !Specs) :-
-    assoc_list.keys(Subst, VarsToSub),
+handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0,
+        MaybeSubstResult, !ModuleInfo) :-
+    SubstList = one_or_more_to_list(Subst),
+    assoc_list.keys(SubstList, VarsToSub),
+    find_duplicate_list_elements(VarsToSub, MultiSubstVars0),
     (
-        Subst = [],
-        unexpected($pred, "empty substitution")
+        MultiSubstVars0 = [_ | _],
+        list.sort_and_remove_dups(MultiSubstVars0, MultiSubstVars),
+        report_multiple_subst_vars(PredInfo0, Context, TVarSet0,
+            MultiSubstVars, Spec),
+        MaybeSubstResult = error5([Spec])
     ;
-        Subst = [_ | _],
-        find_duplicate_list_elements(VarsToSub, MultiSubstVars0),
+        MultiSubstVars0 = [],
+        pred_info_get_typevarset(PredInfo0, CalledTVarSet),
+        varset.create_name_var_map(CalledTVarSet, NameVarIndex0),
+        list.filter(
+            ( pred(Var::in) is semidet :-
+                varset.lookup_name(TVarSet0, Var, VarName),
+                not map.contains(NameVarIndex0, VarName)
+            ), VarsToSub, UnknownVarsToSub),
         (
-            MultiSubstVars0 = [_ | _],
-            list.sort_and_remove_dups(MultiSubstVars0, MultiSubstVars),
-            report_multiple_subst_vars(PredInfo0, Context, TVarSet0,
-                MultiSubstVars, !Specs),
-            ExistQVars = [],
-            Types = [],
-            ClassContext = constraints([], []),
-            varset.init(TVarSet),
-            SubstOk = no
-        ;
-            MultiSubstVars0 = [],
-            pred_info_get_typevarset(PredInfo0, CalledTVarSet),
-            varset.create_name_var_map(CalledTVarSet, NameVarIndex0),
-            list.filter(
-                ( pred(Var::in) is semidet :-
-                    varset.lookup_name(TVarSet0, Var, VarName),
-                    not map.contains(NameVarIndex0, VarName)
-                ), VarsToSub, UnknownVarsToSub),
+            UnknownVarsToSub = [],
+            % Check that the substitution is not recursive.
+            set.list_to_set(VarsToSub, VarsToSubSet),
+
+            assoc_list.values(SubstList, SubstTypes0),
+            type_vars_in_types(SubstTypes0, TVarsInSubstTypes0),
+            set.list_to_set(TVarsInSubstTypes0, TVarsInSubstTypes),
+
+            set.intersect(TVarsInSubstTypes, VarsToSubSet, RecSubstTVars0),
+            set.to_sorted_list(RecSubstTVars0, RecSubstTVars),
+
             (
-                UnknownVarsToSub = [],
-                % Check that the substitution is not recursive.
-                set.list_to_set(VarsToSub, VarsToSubSet),
+                RecSubstTVars = [],
+                map.init(TVarRenaming0),
+                list.append(VarsToSub, TVarsInSubstTypes0, VarsToReplace),
 
-                assoc_list.values(Subst, SubstTypes0),
-                type_vars_in_types(SubstTypes0, TVarsInSubstTypes0),
-                set.list_to_set(TVarsInSubstTypes0, TVarsInSubstTypes),
+                get_new_tvars(VarsToReplace, TVarSet0, CalledTVarSet,
+                    TVarSet, NameVarIndex0, _, TVarRenaming0, TVarRenaming),
 
-                set.intersect(TVarsInSubstTypes, VarsToSubSet, RecSubstTVars0),
-                set.to_sorted_list(RecSubstTVars0, RecSubstTVars),
-
+                % Check that none of the existentially quantified variables
+                % were substituted.
+                map.apply_to_list(VarsToSub, TVarRenaming, RenamedVarsToSub),
+                pred_info_get_exist_quant_tvars(PredInfo0, ExistQVars),
+                list.filter(
+                    ( pred(RenamedVar::in) is semidet :-
+                        list.member(RenamedVar, ExistQVars)
+                    ), RenamedVarsToSub, SubExistQVars),
                 (
-                    RecSubstTVars = [],
-                    map.init(TVarRenaming0),
-                    list.append(VarsToSub, TVarsInSubstTypes0, VarsToReplace),
+                    SubExistQVars = [],
+                    apply_variable_renaming_to_type_list(TVarRenaming,
+                        SubstTypes0, SubstTypes),
+                    assoc_list.from_corresponding_lists(RenamedVarsToSub,
+                        SubstTypes, SubAL),
+                    map.from_assoc_list(SubAL, TypeSubst),
 
-                    get_new_tvars(VarsToReplace, TVarSet0, CalledTVarSet,
-                        TVarSet, NameVarIndex0, _,
-                        TVarRenaming0, TVarRenaming),
-
-                    % Check that none of the existentially quantified variables
-                    % were substituted.
-                    map.apply_to_list(VarsToSub, TVarRenaming,
-                        RenamedVarsToSub),
-                    pred_info_get_exist_quant_tvars(PredInfo0, ExistQVars),
-                    list.filter(
-                        ( pred(RenamedVar::in) is semidet :-
-                            list.member(RenamedVar, ExistQVars)
-                        ), RenamedVarsToSub, SubExistQVars),
-                    (
-                        SubExistQVars = [],
-                        map.init(TypeSubst0),
-                        apply_variable_renaming_to_type_list(TVarRenaming,
-                            SubstTypes0, SubstTypes),
-                        assoc_list.from_corresponding_lists(RenamedVarsToSub,
-                            SubstTypes, SubAL),
-                        list.foldl(map_set_from_pair, SubAL,
-                            TypeSubst0, TypeSubst),
-
-                        % Apply the substitution.
-                        pred_info_get_arg_types(PredInfo0, Types0),
-                        pred_info_get_class_context(PredInfo0, ClassContext0),
-                        apply_rec_subst_to_type_list(TypeSubst, Types0, Types),
-                        apply_rec_subst_to_prog_constraints(TypeSubst,
-                            ClassContext0, ClassContext),
-                        SubstOk = yes(TypeSubst)
-                    ;
-                        SubExistQVars = [_ | _],
-                        report_subst_existq_tvars(PredInfo0, Context,
-                            SubExistQVars, !Specs),
-                        Types = [],
-                        ClassContext = constraints([], []),
-                        SubstOk = no
-                    )
+                    % Apply the substitution.
+                    pred_info_get_arg_types(PredInfo0, Types0),
+                    pred_info_get_class_context(PredInfo0, ClassContext0),
+                    apply_rec_subst_to_type_list(TypeSubst, Types0, Types),
+                    apply_rec_subst_to_prog_constraints(TypeSubst,
+                        ClassContext0, ClassContext),
+                    det_list_to_one_or_more(SubAL, RenamedSubst),
+                    MaybeSubstResult = ok5(TVarSet, Types, ExistQVars,
+                        ClassContext, RenamedSubst)
                 ;
-                    RecSubstTVars = [_ | _],
-                    report_recursive_subst(PredInfo0, Context, TVarSet0,
-                        RecSubstTVars, !Specs),
-                    ExistQVars = [],
-                    Types = [],
-                    ClassContext = constraints([], []),
-                    varset.init(TVarSet),
-                    SubstOk = no
+                    SubExistQVars = [_ | _],
+                    report_subst_existq_tvars(PredInfo0, Context,
+                        SubExistQVars, Spec),
+                    MaybeSubstResult = error5([Spec])
                 )
             ;
-                UnknownVarsToSub = [_ | _],
-                report_unknown_vars_to_subst(PredInfo0, Context, TVarSet0,
-                    UnknownVarsToSub, !Specs),
-                ExistQVars = [],
-                Types = [],
-                ClassContext = constraints([], []),
-                varset.init(TVarSet),
-                SubstOk = no
+                RecSubstTVars = [_ | _],
+                report_recursive_subst(PredInfo0, Context, TVarSet0,
+                    RecSubstTVars, Spec),
+                MaybeSubstResult = error5([Spec])
             )
+        ;
+            UnknownVarsToSub = [_ | _],
+            report_unknown_vars_to_subst(PredInfo0, Context, TVarSet0,
+                UnknownVarsToSub, Spec),
+            MaybeSubstResult = error5([Spec])
         )
     ).
-
-:- pred map_set_from_pair(pair(K, V)::in, map(K, V)::in, map(K, V)::out)
-    is det.
-
-map_set_from_pair(K - V, !Map) :-
-    map.set(K, V, !Map).
 
 :- pred find_duplicate_list_elements(list(T)::in, list(T)::out) is det.
 
@@ -435,50 +409,43 @@ find_duplicate_list_elements([H | T], DupVars) :-
     ).
 
 :- pred report_subst_existq_tvars(pred_info::in, prog_context::in,
-    list(tvar)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(tvar)::in, error_spec::out) is det.
 
-report_subst_existq_tvars(PredInfo, Context, SubExistQVars, !Specs) :-
+report_subst_existq_tvars(PredInfo, Context, SubExistQVars, Spec) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
     Pieces = pragma_type_spec_to_pieces(PredInfo) ++
         [words("error: the substitution includes"),
         words("the existentially quantified type")] ++
         report_variables(SubExistQVars, TVarSet) ++ [suffix(".")],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
-    !:Specs = [Spec | !.Specs].
+        Context, Pieces).
 
 :- pred report_recursive_subst(pred_info::in, prog_context::in, tvarset::in,
-    list(tvar)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(tvar)::in, error_spec::out) is det.
 
-report_recursive_subst(PredInfo, Context, TVarSet, RecursiveVars, !Specs) :-
+report_recursive_subst(PredInfo, Context, TVarSet, RecursiveVars, Spec) :-
     Pieces = pragma_type_spec_to_pieces(PredInfo) ++
         [words("error:")] ++ report_variables(RecursiveVars, TVarSet) ++
         [words(choose_number(RecursiveVars, "occurs", "occur")),
         words("on both sides of the substitution.")],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
-    !:Specs = [Spec | !.Specs].
+        Context, Pieces).
 
 :- pred report_multiple_subst_vars(pred_info::in, prog_context::in,
-    tvarset::in, list(tvar)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    tvarset::in, list(tvar)::in, error_spec::out) is det.
 
-report_multiple_subst_vars(PredInfo, Context, TVarSet, MultiSubstVars,
-        !Specs) :-
+report_multiple_subst_vars(PredInfo, Context, TVarSet, MultiSubstVars, Spec) :-
     Pieces = pragma_type_spec_to_pieces(PredInfo) ++
         [words("error:")] ++ report_variables(MultiSubstVars, TVarSet) ++
         [words(choose_number(MultiSubstVars, "has", "have")),
         words("multiple replacement types.")],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
-    !:Specs = [Spec | !.Specs].
+        Context, Pieces).
 
 :- pred report_unknown_vars_to_subst(pred_info::in, prog_context::in,
-    tvarset::in, list(tvar)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    tvarset::in, list(tvar)::in, error_spec::out) is det.
 
-report_unknown_vars_to_subst(PredInfo, Context, TVarSet, UnknownVars,
-        !Specs) :-
+report_unknown_vars_to_subst(PredInfo, Context, TVarSet, UnknownVars, Spec) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     (
         PredOrFunc = pf_predicate,
@@ -492,8 +459,7 @@ report_unknown_vars_to_subst(PredInfo, Context, TVarSet, UnknownVars,
         [words(choose_number(UnknownVars, "does not", "do not")),
         words("occur in the"), decl(Decl), words("declaration.")],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
-    !:Specs = [Spec | !.Specs].
+        Context, Pieces).
 
 :- func pragma_type_spec_to_pieces(pred_info) = list(format_component).
 

@@ -20,10 +20,10 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module set.
 :- import_module unit.
@@ -446,7 +446,7 @@ tabled_eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     % Elsewhere in the compiler we generally use the `tsubst' type
     % which is a map rather than an assoc_list.
     %
-:- type type_subst == assoc_list(tvar, mer_type).
+:- type type_subst == one_or_more(pair(tvar, mer_type)).
 
 %---------------------------------------------------------------------------%
 %
