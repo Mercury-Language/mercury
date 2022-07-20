@@ -48,7 +48,8 @@ then
     hostcc="${host}-gcc"
 fi
 
-if $hostcc -v 2>&1 | grep -q '^clang version '
+# On Debian, clang -v may report "Debian clang version".
+if $hostcc -v 2>&1 | grep -q 'clang version '
 then
     cc_type=clang
 elif $hostcc -v 2>&1 | grep -q '^gcc version '
