@@ -50,6 +50,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
+:- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.

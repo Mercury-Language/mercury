@@ -187,6 +187,7 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.make_goal.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_name.
 :- import_module hlds.quantification.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.

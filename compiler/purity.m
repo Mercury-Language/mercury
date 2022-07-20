@@ -178,6 +178,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module mdbcomp.

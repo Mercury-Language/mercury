@@ -148,6 +148,7 @@
 
 :- implementation.
 
+:- import_module hlds.pred_name.
 :- import_module hlds.status.
 
 :- import_module char.

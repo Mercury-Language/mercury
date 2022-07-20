@@ -199,7 +199,6 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_event.
@@ -210,12 +209,10 @@
 :- import_module char.
 :- import_module int.
 :- import_module map.
-:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -2484,7 +2481,7 @@ output_proc_id(Stream, ProcLabel, Origin, !IO) :-
     (
         ProcLabel = ordinary_proc_label(DefiningModule, PredOrFunc,
             DeclaringModule, PredName0, Arity, ModeNum),
-        PredName = origin_name(Origin, PredName0),
+        PredName = layout_origin_name(Origin, PredName0),
         io.write_string(Stream, mr_pred_or_func_to_string(PredOrFunc), !IO),
         io.write_string(Stream, ",\n", !IO),
         quote_and_write_string(Stream,
@@ -2504,7 +2501,7 @@ output_proc_id(Stream, ProcLabel, Origin, !IO) :-
             TypeModule, TypeName, TypeArity, ModeNum),
         TypeCtor = type_ctor(qualified(TypeModule, TypeName), TypeArity),
         PredName0 = uci_pred_name(SpecialPredId, TypeCtor),
-        PredName = origin_name(Origin, PredName0),
+        PredName = layout_origin_name(Origin, PredName0),
         quote_and_write_string(Stream, TypeName, !IO),
         io.write_string(Stream, ",\n", !IO),
         quote_and_write_string(Stream, sym_name_to_string(TypeModule), !IO),
@@ -2519,119 +2516,6 @@ output_proc_id(Stream, ProcLabel, Origin, !IO) :-
         io.write_int(Stream, ModeNum, !IO),
         io.write_string(Stream, "\n", !IO)
     ).
-
-    % XXX PREDNAME_MANGLE
-:- func origin_name(pred_origin, string) = string.
-
-origin_name(Origin, Name0) = Name :-
-    (
-        Origin = origin_lambda(FileName0, LineNum, SeqNo),
-        ( if string.append("IntroducedFrom", _, Name0) then
-            string.replace_all(FileName0, ".", "_", FileName),
-            ( if SeqNo > 1 then
-                string.format("lambda%d_%s_%d",
-                    [i(SeqNo), s(FileName), i(LineNum)], Name)
-            else
-                string.format("lambda_%s_%d", [s(FileName), i(LineNum)], Name)
-            )
-        else
-            % If the lambda pred has a meaningful name, use it.
-            % This happens when the lambda is a partial application
-            % that happens to supply zero arguments.
-            Name = Name0
-        )
-    ;
-        Origin = origin_special_pred(_SpecialPredId, _TypeCtor),
-        Name = Name0
-        % We can't use the following code until we have adapted the code
-        % in the runtime and trace directories to handle the names
-        % of special preds the same way as we do user-defined names.
-%       (
-%           SpecialPredId = unify,
-%           SpecialName = "unify"
-%       ;
-%           SpecialPredId = compare,
-%           SpecialName = "compare"
-%       ;
-%           SpecialPredId = index,
-%           SpecialName = "index"
-%       ),
-%       TypeCtor = TypeSymName - TypeArity,
-%       TypeName = sym_name_to_string(TypeSymName),
-%       string.format("%s_for_%s_%d",
-%           [s(SpecialName), s(TypeName), i(TypeArity)], Name)
-    ;
-        Origin = origin_transformed(Transform, OldOrigin, _),
-        OldName = origin_name(OldOrigin, ""),
-        ( if
-            ( OldName = ""
-            ; Transform = transform_io_tabling      % preserves old behavior
-            )
-        then
-            Name = Name0
-        else
-            Name = OldName ++ "_" ++ pred_transform_name(Transform)
-        )
-    ;
-        ( Origin = origin_user(_, _, _)
-        ; Origin = origin_instance_method(_, _)
-        ; Origin = origin_class_method(_, _)
-        ; Origin = origin_deforestation(_, _)
-        ; Origin = origin_assertion(_, _)
-        ; Origin = origin_solver_repn(_, _)
-        ; Origin = origin_tabling(_, _)
-        ; Origin = origin_mutable(_, _, _)
-        ; Origin = origin_initialise
-        ; Origin = origin_finalise
-        ),
-        Name = Name0
-    ).
-
-    % XXX PREDNAME_MANGLE
-    %
-:- func pred_transform_name(pred_transformation) = string.
-
-pred_transform_name(transform_higher_order_spec(Seq)) =
-    "ho" ++ int_to_string(Seq).
-pred_transform_name(transform_higher_order_type_spec(ProcId)) =
-    "hoproc" ++ int_to_string(proc_id_to_int(ProcId)).
-pred_transform_name(transform_type_spec(Substs)) =
-    string.join_list("_", list.map(subst_to_name,
-        one_or_more_to_list(Substs))).
-pred_transform_name(transform_unused_args(_ProcId, Posns)) =
-    "ua_" ++ string.join_list("_", list.map(int_to_string, Posns)).
-pred_transform_name(transform_accumulator(_LineNum, Posns)) = "acc_" ++
-    string.join_list("_", list.map(int_to_string, Posns)).
-pred_transform_name(transform_loop_inv(ProcId, _LineNum, _SeqNum)) =
-    "inv_" ++ int_to_string(proc_id_to_int(ProcId)).
-pred_transform_name(transform_tuple(ProcId, _LineNum, _SeqNum)) =
-    "tup_" ++ int_to_string(proc_id_to_int(ProcId)).
-pred_transform_name(transform_untuple(ProcId, _LineNum, _SeqNum)) =
-    "untup_" ++ int_to_string(proc_id_to_int(ProcId)).
-pred_transform_name(transform_distance_granularity(Distance)) =
-    "distance_granularity_" ++ int_to_string(Distance).
-pred_transform_name(transform_dep_par_conj(_, _)) = "dep_par_conj_".
-pred_transform_name(transform_par_loop_ctrl(_)) = "par_lc".
-pred_transform_name(transform_lcmc(ProcId, _SeqNum, ArgPos)) =
-    "retptr_" ++ int_to_string(proc_id_to_int(ProcId)) ++ "_args"
-        ++ ints_to_string(ArgPos).
-pred_transform_name(transform_table_generator) = "table_gen".
-pred_transform_name(transform_stm_expansion) = "stm_expansion".
-pred_transform_name(transform_structure_reuse) = "structure_reuse".
-pred_transform_name(transform_io_tabling) = "io_tabling".
-pred_transform_name(transform_ssdebug) = "ssdebug".
-pred_transform_name(transform_direct_arg_in_out) = "daio".
-
-:- func ints_to_string(list(int)) = string.
-
-ints_to_string([]) = "".
-ints_to_string([N | Ns]) = "_" ++ int_to_string(N) ++ ints_to_string(Ns).
-
-:- func subst_to_name(pair(int, mer_type)) = string.
-
-subst_to_name(TVar - Type) = Str :-
-    TypeStr = mercury_type_to_string(varset.init, print_name_only, Type),
-    Str = string.format("%d/%s", [i(TVar), s(TypeStr)]).
 
 %-----------------------------------------------------------------------------%
 

@@ -19,6 +19,7 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.pred_name.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -100,26 +101,6 @@
 %
 % Types and predicates to store information about RTTI.
 %
-
-    % Describes the class constraints on an instance method implementation.
-    % This information is used by polymorphism.m to ensure that the
-    % type_info and typeclass_info arguments are added in the order in
-    % which they will be passed in by do_call_class_method.
-    %
-:- type instance_method_constraints
-    --->    instance_method_constraints(
-                class_id,
-
-                % The types in the head of the instance declaration.
-                list(mer_type),
-
-                % The universal constraints on the instance declaration.
-                list(prog_constraint),
-
-                % The constraints on the method's type declaration in the
-                % `:- typeclass' declaration.
-                prog_constraints
-            ).
 
     %  A type_info_locn specifies how to access a type_info.
     %

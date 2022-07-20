@@ -55,6 +55,7 @@
 
 :- import_module analysis.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_name.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.file_util.

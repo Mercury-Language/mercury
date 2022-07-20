@@ -79,6 +79,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.pred_name.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.dependency_graph.

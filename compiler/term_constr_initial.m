@@ -54,6 +54,7 @@
 :- implementation.
 
 :- import_module hlds.hlds_pred.
+:- import_module hlds.pred_name.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.lp_rational.

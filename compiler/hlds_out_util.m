@@ -72,11 +72,6 @@
     %
 :- func pred_id_to_string(module_info, pred_id) = string.
 
-    % Do the same job as pred_id_to_string, but don't look up the pred_info
-    % in the module_info; get it directly from the caller.
-    %
-:- func pred_info_id_to_string(pred_info) = string.
-
     % Do the same job as pred_id_to_string, only for a procedure.
     %
 :- func pred_proc_id_to_string(module_info, pred_proc_id) = string.
@@ -215,8 +210,7 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_rtti.
-:- import_module hlds.special_pred.
+:- import_module hlds.pred_name.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
@@ -224,7 +218,6 @@
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.prog_item.  % undesirable dependency
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_util.
 
 :- import_module int.
 :- import_module map.
@@ -254,100 +247,6 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
         % The predicate has been deleted, so we print what we can.
         pred_id_to_int(PredId, PredIdInt),
         Str = "deleted predicate " ++ int_to_string(PredIdInt)
-    ).
-
-pred_info_id_to_string(PredInfo) = Str :-
-    % XXX PREDNAME_MANGLE
-    %
-    % XXX CLEANUP Either this function should replace write_origin in
-    % hlds_out_pred.m, or vice versa.
-    Module = pred_info_module(PredInfo),
-    Name = pred_info_name(PredInfo),
-    PredFormArity = pred_info_pred_form_arity(PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    pred_info_get_origin(PredInfo, Origin),
-    (
-        Origin = origin_special_pred(SpecialId, TypeCtor),
-        special_pred_description(SpecialId, Descr),
-        TypeCtor = type_ctor(_TypeSymName, TypeArity),
-        ( if TypeArity = 0 then
-            ForStr = " for type "
-        else
-            ForStr = " for type constructor "
-        ),
-        Str = Descr ++ ForStr ++ type_name_to_string(TypeCtor)
-    ;
-        Origin = origin_instance_method(MethodName, MethodConstraints),
-        MethodConstraints = instance_method_constraints(ClassId,
-            InstanceTypes, _, _),
-        MethodStr = pf_sym_name_orig_arity_to_string(PredOrFunc, MethodName,
-            PredFormArity),
-        ClassId = class_id(ClassName, _),
-        ClassStr = sym_name_to_string(ClassName),
-        TypeStrs = mercury_type_list_to_string(varset.init, InstanceTypes),
-        string.format("instance method %s for `%s(%s)'",
-            [s(MethodStr), s(ClassStr), s(TypeStrs)], Str)
-    ;
-        Origin = origin_class_method(ClassId, MethodId),
-        ClassId = class_id(ClassSymName, ClassArity),
-        MethodId = pf_sym_name_arity(MethodPredOrFunc,
-            MethodSymName, MethodPredFormArity),
-        user_arity_pred_form_arity(MethodPredOrFunc,
-            MethodUserArity, MethodPredFormArity),
-        MethodUserArity = user_arity(MethodUserArityInt),
-        string.format("class method %s %s/%d for %s/%d",
-            [s(pred_or_func_to_string(MethodPredOrFunc)),
-            s(sym_name_to_string(MethodSymName)), i(MethodUserArityInt),
-            s(sym_name_to_string(ClassSymName)), i(ClassArity)], Str)
-    ;
-        Origin = origin_assertion(FileName, LineNumber),
-        ( if pred_info_is_promise(PredInfo, PromiseType) then
-            Str = string.format("`%s' declaration (%s:%d)",
-                [s(prog_out.promise_to_string(PromiseType)),
-                s(FileName), i(LineNumber)])
-        else
-            SymName = qualified(Module, Name),
-            Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName,
-                PredFormArity)
-        )
-    ;
-        Origin = origin_tabling(BasePredId, TablingAuxPredKind),
-        BasePredIdStr = pf_sym_name_orig_arity_to_string(BasePredId),
-        (
-            TablingAuxPredKind = tabling_aux_pred_stats,
-            Str = "table statistics predicate for " ++ BasePredIdStr
-        ;
-            TablingAuxPredKind = tabling_aux_pred_reset,
-            Str = "table reset predicate for " ++ BasePredIdStr
-        )
-    ;
-        Origin = origin_solver_repn(TypeCtor, SolverAuxPredKind),
-        TypeCtorStr = type_ctor_to_string(TypeCtor),
-        (
-            SolverAuxPredKind = solver_type_to_ground_pred,
-            Str = "to ground representation predicate for " ++ TypeCtorStr
-        ;
-            SolverAuxPredKind = solver_type_to_any_pred,
-            Str = "to any representation predicate for " ++ TypeCtorStr
-        ;
-            SolverAuxPredKind = solver_type_from_ground_pred,
-            Str = "from ground representation predicate for " ++ TypeCtorStr
-        ;
-            SolverAuxPredKind = solver_type_from_any_pred,
-            Str = "from any representation predicate for " ++ TypeCtorStr
-        )
-    ;
-        ( Origin = origin_transformed(_, _, _)
-        ; Origin = origin_deforestation(_, _)
-        ; Origin = origin_mutable(_, _, _)
-        ; Origin = origin_lambda(_, _, _)
-        ; Origin = origin_initialise
-        ; Origin = origin_finalise
-        ; Origin = origin_user(_, _, _)
-        ),
-        SymName = qualified(Module, Name),
-        Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName,
-            PredFormArity)
     ).
 
 pred_proc_id_to_string(ModuleInfo, proc(PredId, ProcId)) =

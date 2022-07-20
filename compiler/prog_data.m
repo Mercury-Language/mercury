@@ -1128,10 +1128,11 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 
 :- type prog_constraints
     --->    constraints(
+                % Universally quantified constraints.
                 univ_constraints    :: list(prog_constraint),
-                                    % Universally quantified constraints.
+
+                % Existentially quantified constraints.
                 exist_constraints   :: list(prog_constraint)
-                                    % Existentially quantified constraints.
             ).
 
     % A functional dependency on the variables in the head of a class

@@ -124,7 +124,6 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.instance_method_clauses.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.

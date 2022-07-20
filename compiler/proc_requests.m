@@ -111,6 +111,7 @@
 :- import_module hlds.add_special_pred.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
+:- import_module hlds.pred_name.
 :- import_module hlds.special_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.

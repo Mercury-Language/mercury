@@ -40,6 +40,7 @@
 :- import_module check_hlds.mode_test.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.pred_name.
 :- import_module hlds.status.
 :- import_module parse_tree.prog_type.
 

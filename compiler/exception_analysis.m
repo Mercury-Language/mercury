@@ -126,6 +126,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.pred_name.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.

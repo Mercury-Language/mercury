@@ -70,6 +70,7 @@
 :- import_module hlds.make_hlds_error.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pre_quantification.
+:- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.

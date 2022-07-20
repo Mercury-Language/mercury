@@ -156,6 +156,7 @@
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.mark_tail_calls.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_name.
 :- import_module hlds.quantification.
 :- import_module libs.
 :- import_module libs.dependency_graph.
