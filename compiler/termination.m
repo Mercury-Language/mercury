@@ -683,12 +683,16 @@ term_preprocess_pred(BelieveCheckTerm, PredId, !ModuleInfo) :-
 
 set_compiler_gen_terminates(ModuleInfo, PredInfo, ProcIds, PredId,
         !ProcTable) :-
+    % XXX This code looks to be a near-identical copy of the predicate
+    % of the same name in term_constr_initial.m.
     ( if
         pred_info_is_builtin(PredInfo)
     then
         set_builtin_terminates(ProcIds, PredId, PredInfo, ModuleInfo,
             !ProcTable)
     else if
+        % XXX The origin test should be the only one needed;
+        % we should pay no attention to the name.
         ( if
             ModuleName = pred_info_module(PredInfo),
             Name = pred_info_name(PredInfo),
@@ -699,7 +703,7 @@ set_compiler_gen_terminates(ModuleInfo, PredInfo, ProcIds, PredId,
             SpecialPredId = SpecPredId0
         else
             pred_info_get_origin(PredInfo, Origin),
-            Origin = origin_special_pred(SpecialPredId, _)
+            Origin = origin_compiler(made_for_uci(SpecialPredId, _))
         )
     then
         set_generated_terminates(ProcIds, SpecialPredId, !ProcTable)

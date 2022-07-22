@@ -361,12 +361,16 @@ process_builtin_procs(BelieveCheckTerm, ModuleInfo, PredId, !PredInfo) :-
 
 set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
         !ProcTable) :-
+    % XXX This code looks to be a near-identical copy of the predicate
+    % of the same name in termination.m.
     ( if
         hlds_pred.pred_info_is_builtin(PredInfo)
     then
         set_builtin_terminates(ProcIds, PredId, PredInfo, ModuleInfo,
             !ProcTable)
     else if
+        % XXX The origin test should be the only one needed;
+        % we should pay no attention to the name.
         ( if
             Name  = pred_info_name(PredInfo),
             Arity = pred_info_orig_arity(PredInfo),
@@ -377,7 +381,7 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
             SpecialPredId = SpecialPredId0
         else
             pred_info_get_origin(PredInfo, PredOrigin),
-            PredOrigin = origin_special_pred(SpecialPredId, _)
+            PredOrigin = origin_compiler(made_for_uci(SpecialPredId, _))
         )
     then
         set_generated_terminates(ModuleInfo, SpecialPredId, ProcIds,

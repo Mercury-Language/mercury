@@ -363,7 +363,7 @@ is_pred_created_type_correct(ModuleInfo, !PredInfo) :-
             % - call a user-defined predicate, or
             % - involve existentially quantified type variables.
             is_unify_index_or_compare_pred(!.PredInfo),
-            not special_pred_needs_typecheck(!.PredInfo, ModuleInfo)
+            not special_pred_needs_typecheck(ModuleInfo, !.PredInfo)
         ;
             % Most predicates for builtins are also created already
             % type-correct. The exceptions still need to have their stub
@@ -844,7 +844,10 @@ generate_stub_clause(ModuleInfo, PredInfo, PredName, StubClause,
     pred_origin::in, pred_origin::out) is det.
 
 rename_instance_method_constraints(Renaming, Origin0, Origin) :-
-    ( if Origin0 = origin_instance_method(MethodName, Constraints0) then
+    ( if
+        Origin0 = origin_user(OriginUser0),
+        OriginUser0 = user_made_instance_method(MethodName, Constraints0)
+    then
         Constraints0 = instance_method_constraints(ClassId, InstanceTypes0,
             InstanceConstraints0, ClassMethodClassContext0),
         apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
@@ -855,7 +858,8 @@ rename_instance_method_constraints(Renaming, Origin0, Origin) :-
             ClassMethodClassContext0, ClassMethodClassContext),
         Constraints = instance_method_constraints(ClassId,
             InstanceTypes, InstanceConstraints, ClassMethodClassContext),
-        Origin = origin_instance_method(MethodName, Constraints)
+        OriginUser = user_made_instance_method(MethodName, Constraints),
+        Origin = origin_user(OriginUser)
     else
         Origin = Origin0
     ).
@@ -998,14 +1002,14 @@ identical_up_to_renaming(TypesList1, TypesList2) :-
     % In case (b), we need to typecheck it to fill in the external_type_params
     % field in the pred_info.
     %
-:- pred special_pred_needs_typecheck(pred_info::in, module_info::in)
+:- pred special_pred_needs_typecheck(module_info::in, pred_info::in)
     is semidet.
 
-special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
+special_pred_needs_typecheck(ModuleInfo, PredInfo) :-
     % Check if the predicate is a compiler-generated special
     % predicate, and if so, for which type.
     pred_info_get_origin(PredInfo, Origin),
-    Origin = origin_special_pred(SpecialPredId, TypeCtor),
+    Origin = origin_compiler(made_for_uci(SpecialPredId, TypeCtor)),
 
     % Check that the special pred isn't one of the builtin types which don't
     % have a hlds_type_defn.

@@ -2711,7 +2711,7 @@ opt_export_preds_in_pred_id_table([PredId | PredIds], !PredIdTable) :-
         ToWrite = yes,
         ( if
             pred_info_get_origin(PredInfo0, Origin),
-            Origin = origin_special_pred(spec_pred_unify, _)
+            Origin = origin_compiler(made_for_uci(spec_pred_unify, _))
         then
             PredStatus = pred_status(status_pseudo_exported)
         else if

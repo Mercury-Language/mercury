@@ -638,13 +638,13 @@ create_new_pred_for_lambda(RegWrapperProc, RHS0, OrigVars, ArgVars,
         ),
         ProcInfo = !.ProcInfo
     ),
+    Origin = origin_user(user_made_lambda(OrigFile, OrigLine, LambdaCount)),
     set.init(Assertions),
     GoalType = goal_not_for_promise(np_goal_type_none),
     pred_info_create(!.ModuleInfo, PredOrFunc, ModuleName, TransformedName,
-        LambdaContext, origin_lambda(OrigFile, OrigLine, LambdaCount),
-        pred_status(status_local), LambdaMarkers, ArgTypes, TVarSet,
-        ExistQVars, Constraints, Assertions, VarNameRemap, GoalType,
-        ProcInfo, ProcId, PredInfo),
+        LambdaContext, Origin, pred_status(status_local), LambdaMarkers,
+        ArgTypes, TVarSet, ExistQVars, Constraints, Assertions, VarNameRemap,
+        GoalType, ProcInfo, ProcId, PredInfo),
 
     % Save the new predicate in the predicate table.
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),

@@ -221,8 +221,8 @@ create_fresh_pred_proc_info_copy_2(ModuleInfo, PredProcId, PredInfo, ProcInfo,
     pred_info_get_class_context(PredInfo, ProgConstraints),
     pred_info_get_assertions(PredInfo, AssertIds),
     pred_info_get_var_name_remap(PredInfo, VarNameRemap),
-    NewPredOrigin = origin_transformed(transform_structure_reuse, PredOrigin,
-        PredId),
+    NewPredOrigin = origin_pred_transform(pred_transform_structure_reuse,
+        PredOrigin, PredId),
     GoalType = goal_not_for_promise(np_goal_type_none),
     % Shouldn't we use the *current* module's name, even if it is not
     % the same as PredModuleName?

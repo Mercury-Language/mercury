@@ -1455,7 +1455,7 @@ maybe_report_missing_pred_inst(PredInfo, VarTable, Var, Context,
         ),
         % Ignore special predicates.
         pred_info_get_origin(PredInfo, Origin),
-        Origin \= origin_special_pred(_, _)
+        Origin \= origin_compiler(made_for_uci(_, _))
     then
         Spec = report_missing_higher_order_inst(PredInfo, VarTable, Var,
             Context),

@@ -93,7 +93,7 @@ direct_reuse_process_pred(SharingTable, PredId, !ModuleInfo, !ReuseTable) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     ( if
         pred_info_get_origin(PredInfo0, Origin),
-        Origin = origin_special_pred(_, _)
+        Origin = origin_compiler(made_for_uci(_, _))
     then
         % We can't analyse compiler generated special predicates.
         true

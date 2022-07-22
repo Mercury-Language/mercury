@@ -895,7 +895,7 @@ do_modecheck_proc(WhatToCheck, MayChangeCalledProc,
             ErrorAndWarningSpecs = []
         ;
             InferModes = do_not_infer_modes,
-            ( if Origin = origin_mutable(_, _, _) then
+            ( if Origin = origin_compiler(made_for_mutable(_, _, _)) then
                 % The only mode error that may occur in the automatically
                 % generated auxiliary predicates for a mutable is an
                 % invalid inst occurring in a mode, and we report a specific

@@ -474,7 +474,7 @@ check_goal_for_exceptions_plain_call(SCC, VarTable, CallPredId, CallProcId,
             special_pred_name_arity(SpecialPredId, Name, _, Arity)
         ;
             pred_info_get_origin(CallPredInfo, Origin),
-            Origin = origin_special_pred(SpecialPredId, _),
+            Origin = origin_compiler(made_for_uci(SpecialPredId, _)),
             ( SpecialPredId = spec_pred_compare
             ; SpecialPredId = spec_pred_unify
             )

@@ -1755,7 +1755,7 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
         pred_status_is_exported(pred_status(ExternalImportStatus)) = yes
     ;
         pred_info_get_origin(PredInfo, Origin),
-        Origin = origin_special_pred(SpecialPredId, TypeCtor),
+        Origin = origin_compiler(made_for_uci(SpecialPredId, TypeCtor)),
         module_info_get_type_table(ModuleInfo, TypeTable),
         % If the search fails, then TypeCtor must be a builtin type
         % constructor, such as the tuple constructor.
@@ -4384,11 +4384,11 @@ pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
 
 is_unify_pred(PredInfo) :-
     pred_info_get_origin(PredInfo, Origin),
-    Origin = origin_special_pred(spec_pred_unify, _TypeCtor).
+    Origin = origin_compiler(made_for_uci(spec_pred_unify, _TypeCtor)).
 
 is_unify_index_or_compare_pred(PredInfo) :-
     pred_info_get_origin(PredInfo, Origin),
-    Origin = origin_special_pred(_SpecialPredId, _TypeCtor).
+    Origin = origin_compiler(made_for_uci(_SpecialPredId, _TypeCtor)).
 
 pred_info_is_builtin(PredInfo) :-
     ModuleName = pred_info_module(PredInfo),

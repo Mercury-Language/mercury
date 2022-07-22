@@ -594,8 +594,8 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
     % and hence to link errors.
     pred_info_get_context(OldPredInfo, Context),
     pred_info_get_origin(OldPredInfo, OldOrigin),
-    Origin = origin_transformed(transform_par_loop_ctrl(OldProcId),
-        OldOrigin, OldPredId),
+    Origin = origin_proc_transform(proc_transform_par_loop_ctrl, OldOrigin,
+        OldPredId, OldProcId),
     some [!Markers] (
         init_markers(!:Markers),
         add_marker(marker_is_impure, !Markers),

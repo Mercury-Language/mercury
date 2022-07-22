@@ -164,6 +164,8 @@ describe_one_pred_name(ModuleInfo, ShouldModuleQualify, PredId) = Pieces :-
 describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
     % NOTE The code of this predicate duplicates the functionality of
     % hlds_out.write_pred_id. Changes here should be made there as well.
+    %
+    % XXX This predicate should subcontract its work to pred_name.m.
     PredName = pred_info_name(PredInfo),
     ModuleName = pred_info_module(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
@@ -171,7 +173,7 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
     adjust_func_arity(PredOrFunc, OrigArity, Arity),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_origin(PredInfo, Origin),
-    ( if Origin = origin_special_pred(SpecialId, TypeCtor) then
+    ( if Origin = origin_compiler(made_for_uci(SpecialId, TypeCtor)) then
         special_pred_description(SpecialId, Descr),
         TypeCtor = type_ctor(TypeSymName0, TypeArity),
         (

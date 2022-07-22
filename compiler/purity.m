@@ -393,24 +393,25 @@ compare_purity(purity_impure, purity_impure) = (=).
 
 :- func warn_about_purity_for(pred_origin) = bool.
 
-warn_about_purity_for(PredOrigin) = Warn :-
+warn_about_purity_for(Origin) = Warn :-
     (
-        ( PredOrigin = origin_user(_, _, _)
-        ; PredOrigin = origin_instance_method(_, _)
-        ; PredOrigin = origin_class_method(_, _)
-        ),
-        Warn = yes
+        Origin = origin_user(OriginUser),
+        (
+            ( OriginUser = user_made_pred(_, _, _)
+            ; OriginUser = user_made_instance_method(_, _)
+            ; OriginUser = user_made_class_method(_, _)
+            ),
+            Warn = yes
+        ;
+            ( OriginUser = user_made_lambda(_, _, _)
+            ; OriginUser = user_made_assertion(_, _)
+            ),
+            Warn = no
+        )
     ;
-        ( PredOrigin = origin_special_pred(_, _)
-        ; PredOrigin = origin_deforestation(_, _)
-        ; PredOrigin = origin_assertion(_, _)
-        ; PredOrigin = origin_lambda(_, _, _)
-        ; PredOrigin = origin_solver_repn(_, _)
-        ; PredOrigin = origin_tabling(_, _)
-        ; PredOrigin = origin_mutable(_, _, _)
-        ; PredOrigin = origin_initialise
-        ; PredOrigin = origin_finalise
-        ; PredOrigin = origin_transformed(_, _, _)
+        ( Origin = origin_compiler(_)
+        ; Origin = origin_pred_transform(_, _, _)
+        ; Origin = origin_proc_transform(_, _, _, _)
         ),
         Warn = no
     ).

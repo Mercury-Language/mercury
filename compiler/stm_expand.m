@@ -2481,8 +2481,8 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes, CloneKind,
     make_transformed_pred_name(OrigPredName, Transform, NewPredName),
 
     pred_info_get_origin(PredInfo, OrigPredOrigin),
-    NewPredOrigin = origin_transformed(transform_stm_expansion,
-        OrigPredOrigin, PredId),
+    NewPredOrigin = origin_proc_transform(proc_transform_stm_expansion,
+        OrigPredOrigin, PredId, ProcId),
 
     pred_info_get_typevarset(PredInfo, PredTypeVarSet),
     pred_info_get_exist_quant_tvars(PredInfo, PredExistQVars),

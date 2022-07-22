@@ -273,7 +273,7 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         % this fact.
         pred_info_get_origin(!.PredInfo, Origin),
         ( if
-            Origin = origin_special_pred(spec_pred_unify, _TypeCtor),
+            Origin = origin_compiler(made_for_uci(spec_pred_unify, _TypeCtor)),
             all [ArgMode] (
                 list.member(ArgMode, ArgModes)
             =>

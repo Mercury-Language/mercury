@@ -95,12 +95,12 @@
     --->    tn_higher_order(pred_or_func, int)
             % The higher order specialization specifies only a counter.
 
-    ;       tn_higher_order_type_spec(pred_or_func, int, int)
+    ;       tn_user_type_spec(pred_or_func, pred_id, proc_id, int)
             % The predicate calling make_transformed_pred_sym_name with this
             % transform should pass us *not* the name of the predicate
             % being transformed, but the name of the predicate *calling it*
-            % at the call site being optimized. The second argument here
-            % is the proc_id of this caller predicate. The third argument
+            % at the call site being optimized. The second and third arguments
+            % give the pred_id and proc_id of this caller. The last argument
             % is the version number of the higher order transformation
             % algorithm.
             %
@@ -306,25 +306,50 @@
     % in situatins in which it is not required, e.g. in HLDS dumps.
 
 :- type pred_origin
-    --->    origin_user(pred_or_func, sym_name, user_arity)
+    --->    origin_user(user_made)
+    ;       origin_compiler(compiler_made)
+    ;       origin_pred_transform(pred_transform, pred_origin, pred_id)
+            % The predicate is a transformed version of another predicate,
+            % whose origin and identity are given by the second and third
+            % arguments.
+    ;       origin_proc_transform(proc_transform, pred_origin,
+                pred_id, proc_id).
+            % The predicate is a transformed version of one procedure of
+            % another predicate. The origin of that predicate is given
+            % by the second argument, and the identity of the procedure
+            % are given by the third and fourth arguments.
+
+:- type user_made
+    --->    user_made_pred(pred_or_func, sym_name, user_arity)
             % The predicate is a normal user-written predicate or function.
             % The first argument says which, the second and third arguments
             % give its name and arity.
 
-    ;       origin_special_pred(special_pred_id, type_ctor)
-            % If the predicate is a unify, compare or index predicate,
-            % specify which one, and for which type constructor.
+    ;       user_made_lambda(string, int, int)
+            % The predicate is a higher-order manifest constant.
+            % The first two arguments specify its location in the source,
+            % as a filename/line number pair, and the third argument is
+            % a sequence number used to distinguish multiple lambdas
+            % on the same line.
 
-    ;       origin_instance_method(sym_name, instance_method_constraints)
+    ;       user_made_class_method(class_id, pf_sym_name_arity)
+            % The predicate is a class method implementation.
+
+    ;       user_made_instance_method(sym_name, instance_method_constraints)
             % The predicate is a class method implementation. Record
             % the method name and extra information about the class
             % context to allow polymorphism.m to correctly set up the
             % extra type_info and typeclass_info arguments.
 
-    ;       origin_class_method(class_id, pf_sym_name_arity)
-            % The predicate is a class method implementation.
+    ;       user_made_assertion(string, int).
+            % The predicate represents an assertion.
 
-    ;       origin_deforestation(int, int)
+:- type compiler_made
+    --->    made_for_uci(special_pred_id, type_ctor)
+            % If the predicate is a unify, compare or index predicate,
+            % specify which one, and for which type constructor.
+
+    ;       made_for_deforestation(int, int)
             % The predicate was created by deforestation from two or more
             % goals, so that it would be incorrect to record it being
             % a transformed version of any one of them.
@@ -337,67 +362,66 @@
             % except in the *extremely* rare cases where the module contains
             % a #line directive.
 
-    ;       origin_assertion(string, int)
-            % The predicate represents an assertion.
-
-    ;       origin_lambda(string, int, int)
-            % The predicate is a higher-order manifest constant.
-            % The arguments specify its location in the source, as a
-            % filename/line number pair, and a sequence number used to
-            % distinguish multiple lambdas on the same line.
-
-    ;       origin_solver_repn(type_ctor, solver_type_pred_kind)
+    ;       made_for_solver_repn(type_ctor, solver_type_pred_kind)
             % The predicate is a representation change predicate
             % either to or from either ground or any, as indicated by
             % the solver_type_pred_kind, for the type constructor given by
             % the sym_name and arity.
 
-    ;       origin_tabling(pf_sym_name_arity, tabling_aux_pred_kind)
+    ;       made_for_tabling(pf_sym_name_arity, tabling_aux_pred_kind)
             % The predicate is an auxiliary predicate of the indicated kind
             % for the tabled predicate identified by the pf_sym_name_arity.
 
-    ;       origin_mutable(module_name, string, mutable_pred_kind)
+    ;       made_for_mutable(module_name, string, mutable_pred_kind)
             % The predicate is a predicate that operates on the mutable
             % with the given name in the given module. The last argument
             % says whether the predicate is an init, pre_init, get, set,
             % lock, or unlock predicate on that mutable.
 
-    ;       origin_initialise
+    ;       made_for_initialise
             % The predicate implements a standalone initialise declaration
             % (standalone means that it is NOT created to initialise
             % a mutable).
 
-    ;       origin_finalise
+    ;       made_for_finalise.
             % The predicate implements a standalone finalise declaration.
 
-    ;       origin_transformed(pred_transformation, pred_origin, pred_id).
-            % The predicate is a transformed version of another predicate,
-            % whose origin and identity are given by the second and third
-            % arguments.
-
-:- type pred_transformation
-    --->    transform_higher_order_spec(
-                % Sequence number among the higher order specializations
-                % of the original predicate.
-                int
-            )
-    ;       transform_higher_order_type_spec(
-                % The proc id of the original procedure.
-                proc_id
-            )
-    ;       transform_type_spec(
+:- type pred_transform
+    --->    pred_transform_type_spec(
                 % The substitution from type variables (represented by
                 % the integers) to types (represented by the terms).
                 one_or_more(pair(int, mer_type))
             )
-    ;       transform_unused_args(
-                % The proc id of the original procedure.
-                proc_id,
-
-                % The list of eliminated argument numbers.
-                list(int)
+    ;       pred_transform_distance_granularity(
+                % The distance parameter of the transformation.
+                int
             )
-    ;       transform_accumulator(
+    ;       pred_transform_table_generator
+    ;       pred_transform_ssdebug
+    ;       pred_transform_structure_reuse.
+            % pred_transform_structure_reuse should probably be
+            % proc_transform_structure_reuse, but until structure reuse
+            % work reliably, it does not matter.
+
+:- type proc_transform
+    --->    proc_transform_user_type_spec(
+                % User-directed type specialization.
+                %
+                % The pred and proc ids of the caller which caused
+                % this new predicate to be created by the compiler.
+                % XXX Why is this relevant?
+                pred_id,
+                proc_id
+            )
+    ;       proc_transform_higher_order_spec(
+                % Non-user-directed type specialization.
+                %
+                % Sequence number among the higher order specializations
+                % of the original predicate.
+                % XXX Shouldn't this be "of the module"?
+                int
+            )
+    ;       proc_transform_accumulator(
                 % The line number from the context of the original
                 % procedure's code.
                 int,
@@ -406,10 +430,11 @@
                 % predicate interface that have been converted to accumulators.
                 list(int)
             )
-    ;       transform_loop_inv(
-                % The proc id of the original procedure.
-                proc_id,
-
+    ;       proc_transform_unused_args(
+                % The list of eliminated argument numbers.
+                list(int)
+            )
+    ;       proc_transform_loop_inv(
                 % The line number from the context of the original
                 % procedure's code.
                 int,
@@ -420,10 +445,7 @@
                 % which case they will have sequence numbers 1, 2 etc.)
                 int
             )
-    ;       transform_tuple(
-                % The proc id of the original procedure.
-                proc_id,
-
+    ;       proc_transform_tuple(
                 % The line number from the context of the original
                 % procedure's code.
                 int,
@@ -432,10 +454,7 @@
                 % tuple transformation.
                 int
             )
-    ;       transform_untuple(
-                % The proc id of the original procedure.
-                proc_id,
-
+    ;       proc_transform_untuple(
                 % The line number from the context of the original
                 % procedure's code.
                 int,
@@ -444,25 +463,12 @@
                 % untuple transformation.
                 int
             )
-    ;       transform_distance_granularity(
-                % The distance parameter of the transformation.
-                int
-            )
-    ;       transform_dep_par_conj(
-                % The id of the procedure this predicate is derived from.
-                proc_id,
-
+    ;       proc_transform_dep_par_conj(
                 % The arguments in these positions are inside futures.
                 list(int)
             )
-    ;       transform_par_loop_ctrl(
-                % The id of the procedure this predicate is derived from.
-                proc_id
-            )
-    ;       transform_lcmc(
-                % The id of the procedure this predicate is derived from.
-                proc_id,
-
+    ;       proc_transform_par_loop_ctrl
+    ;       proc_transform_lcmc(
                 % A unique-for-the-procedure sequence number for
                 % this particular lcmc transformation.
                 int,
@@ -470,12 +476,9 @@
                 % The arguments in these positions are returned via pointer.
                 list(int)
             )
-    ;       transform_table_generator
-    ;       transform_stm_expansion
-    ;       transform_structure_reuse
-    ;       transform_io_tabling
-    ;       transform_ssdebug
-    ;       transform_direct_arg_in_out.
+    ;       proc_transform_stm_expansion
+    ;       proc_transform_io_tabling
+    ;       proc_transform_direct_arg_in_out.
 
     % Describes the class constraints on an instance method implementation.
     % This information is used by polymorphism.m to ensure that the
@@ -570,15 +573,18 @@ make_transformed_pred_name(OrigName, Transform, TransformedName) :-
         % naming scheme at all.
         string.format("%s__ho%d", [s(OrigName), i(Counter)], TransformedName)
     ;
-        Transform = tn_higher_order_type_spec(_PredOrFunc, ProcNum, Version),
-        % As documented above, for this transform, OrigName and ProcNum
+        Transform = tn_user_type_spec(_PredOrFunc, _PredId, ProcId, Version),
+        ProcNum = proc_id_to_int(ProcId),
+        % As documented above, for this transform, OrigName and ProcId
         % both belong the caller at the call site being optimized, *not*
-        % the procedure being transformed. _PredOrFunc belongs to the
-        % predicate being transformed, but it is ignored ...
-        % XXX Ignoring _PredOrFunc seems to me to be a bug.
+        % the procedure being transformed, which looks very weird.
+        % It would probably also be a bug, if the name actually mattered.
+        % Note that _PredOrFunc belongs to the predicate being transformed,
+        % but it is ignored ...
+        % XXX Ignoring _PredOrFunc seems to me (zs) to be a bug.
+        % XXX As is separating OrigName from the suffix with only a single '_'.
         % XXX The string we construct here does not fit into our current
         % naming scheme at all.
-        % XXX As is separating OrigName from the suffix with only a single '_'.
         string.format("%s_%d_%d", [s(OrigName), i(ProcNum), i(Version)],
             TransformedName)
     ;
@@ -806,83 +812,101 @@ pred_info_id_to_string(PredInfo) = Str :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_origin(PredInfo, Origin),
     (
-        Origin = origin_special_pred(SpecialId, TypeCtor),
-        special_pred_description(SpecialId, Descr),
-        TypeCtor = type_ctor(_TypeSymName, TypeArity),
-        ( if TypeArity = 0 then
-            ForStr = " for type "
-        else
-            ForStr = " for type constructor "
-        ),
-        Str = Descr ++ ForStr ++ type_name_to_string(TypeCtor)
+        Origin = origin_user(OriginUser),
+        (
+            ( OriginUser = user_made_pred(_, _, _)
+            ; OriginUser = user_made_lambda(_, _, _)
+            ),
+            SymName = qualified(Module, Name),
+            Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName,
+                PredFormArity)
+        ;
+            OriginUser = user_made_class_method(ClassId, MethodId),
+            ClassId = class_id(ClassSymName, ClassArity),
+            MethodId = pf_sym_name_arity(MethodPredOrFunc,
+                MethodSymName, MethodPredFormArity),
+            user_arity_pred_form_arity(MethodPredOrFunc,
+                MethodUserArity, MethodPredFormArity),
+            MethodUserArity = user_arity(MethodUserArityInt),
+            string.format("class method %s %s/%d for %s/%d",
+                [s(pred_or_func_to_string(MethodPredOrFunc)),
+                s(sym_name_to_string(MethodSymName)), i(MethodUserArityInt),
+                s(sym_name_to_string(ClassSymName)), i(ClassArity)], Str)
+        ;
+            OriginUser =
+                user_made_instance_method(MethodName, MethodConstraints),
+            MethodConstraints = instance_method_constraints(ClassId,
+                InstanceTypes, _, _),
+            MethodStr = pf_sym_name_orig_arity_to_string(PredOrFunc, MethodName,
+                PredFormArity),
+            ClassId = class_id(ClassName, _),
+            ClassStr = sym_name_to_string(ClassName),
+            TypeStrs = mercury_type_list_to_string(varset.init, InstanceTypes),
+            string.format("instance method %s for `%s(%s)'",
+                [s(MethodStr), s(ClassStr), s(TypeStrs)], Str)
+        ;
+            OriginUser = user_made_assertion(FileName, LineNumber),
+            ( if pred_info_is_promise(PredInfo, PromiseType) then
+                Str = string.format("`%s' declaration (%s:%d)",
+                    [s(prog_out.promise_to_string(PromiseType)),
+                    s(FileName), i(LineNumber)])
+            else
+                SymName = qualified(Module, Name),
+                Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName,
+                    PredFormArity)
+            )
+        )
     ;
-        Origin = origin_instance_method(MethodName, MethodConstraints),
-        MethodConstraints = instance_method_constraints(ClassId,
-            InstanceTypes, _, _),
-        MethodStr = pf_sym_name_orig_arity_to_string(PredOrFunc, MethodName,
-            PredFormArity),
-        ClassId = class_id(ClassName, _),
-        ClassStr = sym_name_to_string(ClassName),
-        TypeStrs = mercury_type_list_to_string(varset.init, InstanceTypes),
-        string.format("instance method %s for `%s(%s)'",
-            [s(MethodStr), s(ClassStr), s(TypeStrs)], Str)
-    ;
-        Origin = origin_class_method(ClassId, MethodId),
-        ClassId = class_id(ClassSymName, ClassArity),
-        MethodId = pf_sym_name_arity(MethodPredOrFunc,
-            MethodSymName, MethodPredFormArity),
-        user_arity_pred_form_arity(MethodPredOrFunc,
-            MethodUserArity, MethodPredFormArity),
-        MethodUserArity = user_arity(MethodUserArityInt),
-        string.format("class method %s %s/%d for %s/%d",
-            [s(pred_or_func_to_string(MethodPredOrFunc)),
-            s(sym_name_to_string(MethodSymName)), i(MethodUserArityInt),
-            s(sym_name_to_string(ClassSymName)), i(ClassArity)], Str)
-    ;
-        Origin = origin_assertion(FileName, LineNumber),
-        ( if pred_info_is_promise(PredInfo, PromiseType) then
-            Str = string.format("`%s' declaration (%s:%d)",
-                [s(prog_out.promise_to_string(PromiseType)),
-                s(FileName), i(LineNumber)])
-        else
+        Origin = origin_compiler(OriginCompiler),
+        (
+            OriginCompiler = made_for_uci(SpecialId, TypeCtor),
+            special_pred_description(SpecialId, Descr),
+            TypeCtor = type_ctor(_TypeSymName, TypeArity),
+            ( if TypeArity = 0 then
+                ForStr = " for type "
+            else
+                ForStr = " for type constructor "
+            ),
+            Str = Descr ++ ForStr ++ type_name_to_string(TypeCtor)
+        ;
+            OriginCompiler = made_for_tabling(BasePredId, TablingAuxPredKind),
+            BasePredIdStr = pf_sym_name_orig_arity_to_string(BasePredId),
+            (
+                TablingAuxPredKind = tabling_aux_pred_stats,
+                Str = "table statistics predicate for " ++ BasePredIdStr
+            ;
+                TablingAuxPredKind = tabling_aux_pred_reset,
+                Str = "table reset predicate for " ++ BasePredIdStr
+            )
+        ;
+            OriginCompiler = made_for_solver_repn(TypeCtor, SolverAuxPredKind),
+            TypeCtorStr = type_ctor_to_string(TypeCtor),
+            (
+                SolverAuxPredKind = solver_type_to_ground_pred,
+                Str = "to ground representation predicate for " ++ TypeCtorStr
+            ;
+                SolverAuxPredKind = solver_type_to_any_pred,
+                Str = "to any representation predicate for " ++ TypeCtorStr
+            ;
+                SolverAuxPredKind = solver_type_from_ground_pred,
+                Str = "from ground representation predicate for " ++ TypeCtorStr
+            ;
+                SolverAuxPredKind = solver_type_from_any_pred,
+                Str = "from any representation predicate for " ++ TypeCtorStr
+            )
+        ;
+            ( OriginCompiler = made_for_deforestation(_, _)
+            ; OriginCompiler = made_for_mutable(_, _, _)
+            ; OriginCompiler = made_for_initialise
+            ; OriginCompiler = made_for_finalise
+            ),
             SymName = qualified(Module, Name),
             Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName,
                 PredFormArity)
         )
     ;
-        Origin = origin_tabling(BasePredId, TablingAuxPredKind),
-        BasePredIdStr = pf_sym_name_orig_arity_to_string(BasePredId),
-        (
-            TablingAuxPredKind = tabling_aux_pred_stats,
-            Str = "table statistics predicate for " ++ BasePredIdStr
-        ;
-            TablingAuxPredKind = tabling_aux_pred_reset,
-            Str = "table reset predicate for " ++ BasePredIdStr
-        )
-    ;
-        Origin = origin_solver_repn(TypeCtor, SolverAuxPredKind),
-        TypeCtorStr = type_ctor_to_string(TypeCtor),
-        (
-            SolverAuxPredKind = solver_type_to_ground_pred,
-            Str = "to ground representation predicate for " ++ TypeCtorStr
-        ;
-            SolverAuxPredKind = solver_type_to_any_pred,
-            Str = "to any representation predicate for " ++ TypeCtorStr
-        ;
-            SolverAuxPredKind = solver_type_from_ground_pred,
-            Str = "from ground representation predicate for " ++ TypeCtorStr
-        ;
-            SolverAuxPredKind = solver_type_from_any_pred,
-            Str = "from any representation predicate for " ++ TypeCtorStr
-        )
-    ;
-        ( Origin = origin_transformed(_, _, _)
-        ; Origin = origin_deforestation(_, _)
-        ; Origin = origin_mutable(_, _, _)
-        ; Origin = origin_lambda(_, _, _)
-        ; Origin = origin_initialise
-        ; Origin = origin_finalise
-        ; Origin = origin_user(_, _, _)
+        ( Origin = origin_pred_transform(_, _, _)
+        ; Origin = origin_proc_transform(_, _, _, _)
         ),
         SymName = qualified(Module, Name),
         Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName,
@@ -893,53 +917,151 @@ pred_info_id_to_string(PredInfo) = Str :-
 
 write_origin(Stream, ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
     (
-        Origin = origin_special_pred(SpecialPredId, TypeCtor),
+        Origin = origin_user(OriginUser),
         (
-            SpecialPredId = spec_pred_unify,
-            SpecialPredIdStr = "unify"
+            ( OriginUser = user_made_pred(_, _, _)
+            ; OriginUser = user_made_lambda(_, _, _)
+            )
         ;
-            SpecialPredId = spec_pred_compare,
-            SpecialPredIdStr = "compare"
+            OriginUser = user_made_class_method(ClassId, MethodId),
+            ClassId = class_id(ClassSymName, ClassArity),
+            MethodId = pf_sym_name_arity(MethodPredOrFunc,
+                MethodSymName, MethodPredFormArity),
+            user_arity_pred_form_arity(MethodPredOrFunc,
+                MethodUserArity, MethodPredFormArity),
+            MethodUserArity = user_arity(MethodUserArityInt),
+            io.format(Stream, "%% class method %s %s/%d for %s/%d\n",
+                [s(pred_or_func_to_string(MethodPredOrFunc)),
+                s(sym_name_to_string(MethodSymName)), i(MethodUserArityInt),
+                s(sym_name_to_string(ClassSymName)), i(ClassArity)], !IO)
         ;
-            SpecialPredId = spec_pred_index,
-            SpecialPredIdStr = "index"
-        ),
-        io.format(Stream, "%% special %s pred for %s\n",
-            [s(SpecialPredIdStr), s(type_name_to_string(TypeCtor))], !IO)
+            OriginUser = user_made_instance_method(_, MethodConstraints),
+            MethodConstraints = instance_method_constraints(ClassId,
+                InstanceTypes, InstanceConstraints, ClassMethodConstraints),
+            io.write_string(Stream, "% instance method\n", !IO),
+            ClassId = class_id(ClassName, _),
+            io.write_string(Stream,
+                "% class name and instance type vector:\n", !IO),
+            io.write_string(Stream, "%   ", !IO),
+            mercury_output_constraint(TVarSet, VarNamePrint,
+                constraint(ClassName, InstanceTypes), Stream, !IO),
+            io.nl(Stream, !IO),
+            write_origin_constraints(Stream, "instance constraints",
+                TVarSet, VarNamePrint, InstanceConstraints, !IO),
+            ClassMethodConstraints = constraints(MethodUnivConstraints,
+                MethodExistConstraints),
+            write_origin_constraints(Stream, "method universal constraints",
+                TVarSet, VarNamePrint, MethodUnivConstraints, !IO),
+            write_origin_constraints(Stream, "method existential constraints",
+                TVarSet, VarNamePrint, MethodExistConstraints, !IO)
+        ;
+            OriginUser = user_made_assertion(_, _),
+            io.write_string(Stream, "% assertion\n", !IO)
+        )
     ;
-        Origin = origin_instance_method(_, MethodConstraints),
-        MethodConstraints = instance_method_constraints(ClassId,
-            InstanceTypes, InstanceConstraints, ClassMethodConstraints),
-        io.write_string(Stream, "% instance method\n", !IO),
-        ClassId = class_id(ClassName, _),
-        io.write_string(Stream,
-            "% class name and instance type vector:\n", !IO),
-        io.write_string(Stream, "%   ", !IO),
-        mercury_output_constraint(TVarSet, VarNamePrint,
-            constraint(ClassName, InstanceTypes), Stream, !IO),
-        io.nl(Stream, !IO),
-        write_origin_constraints(Stream, "instance constraints",
-            TVarSet, VarNamePrint, InstanceConstraints, !IO),
-        ClassMethodConstraints = constraints(MethodUnivConstraints,
-            MethodExistConstraints),
-        write_origin_constraints(Stream, "method universal constraints",
-            TVarSet, VarNamePrint, MethodUnivConstraints, !IO),
-        write_origin_constraints(Stream, "method existential constraints",
-            TVarSet, VarNamePrint, MethodExistConstraints, !IO)
+        Origin = origin_compiler(OriginCompiler),
+        (
+            OriginCompiler = made_for_uci(SpecialPredId, TypeCtor),
+            (
+                SpecialPredId = spec_pred_unify,
+                SpecialPredIdStr = "unify"
+            ;
+                SpecialPredId = spec_pred_compare,
+                SpecialPredIdStr = "compare"
+            ;
+                SpecialPredId = spec_pred_index,
+                SpecialPredIdStr = "index"
+            ),
+            io.format(Stream, "%% special %s pred for %s\n",
+                [s(SpecialPredIdStr), s(type_name_to_string(TypeCtor))], !IO)
+        ;
+            OriginCompiler = made_for_deforestation(LineNum, SeqNum),
+            io.format(Stream, "%% deforestation: line %d, seqnum %d\n",
+                [i(LineNum), i(SeqNum)], !IO)
+        ;
+            OriginCompiler = made_for_solver_repn(TypeCtor, SolverAuxPredKind),
+            TypeCtorStr = type_ctor_to_string(TypeCtor),
+            (
+                SolverAuxPredKind = solver_type_to_ground_pred,
+                SolverAuxPredKindStr = "to ground conversion predicate"
+            ;
+                SolverAuxPredKind = solver_type_to_any_pred,
+                SolverAuxPredKindStr = "to any conversion predicate"
+            ;
+                SolverAuxPredKind = solver_type_from_ground_pred,
+                SolverAuxPredKindStr = "from ground conversion predicate"
+            ;
+                SolverAuxPredKind = solver_type_from_any_pred,
+                SolverAuxPredKindStr = "from any conversion predicate"
+            ),
+            io.format(Stream, "%% %s for %s\n",
+                [s(SolverAuxPredKindStr), s(TypeCtorStr)], !IO)
+        ;
+            OriginCompiler = made_for_tabling(BasePredCallId,
+                TablingAuxPredKind),
+            BasePredStr = pf_sym_name_orig_arity_to_string(BasePredCallId),
+            (
+                TablingAuxPredKind = tabling_aux_pred_stats,
+                TablingAuxPredKindStr = "table statistics predicate"
+            ;
+                TablingAuxPredKind = tabling_aux_pred_reset,
+                TablingAuxPredKindStr = "table reset predicate"
+            ),
+            io.format(Stream, "%% %s for %s\n",
+                [s(TablingAuxPredKindStr), s(BasePredStr)], !IO)
+        ;
+            OriginCompiler = made_for_mutable(MutableModuleName, MutableName,
+                MutablePredKind),
+            MutableModuleNameStr = sym_name_to_string(MutableModuleName),
+            (
+                MutablePredKind = mutable_pred_std_get,
+                MutablePredKindStr = "std get predicate"
+            ;
+                MutablePredKind = mutable_pred_std_set,
+                MutablePredKindStr = "std set predicate"
+            ;
+                MutablePredKind = mutable_pred_io_get,
+                MutablePredKindStr = "io get predicate"
+            ;
+                MutablePredKind = mutable_pred_io_set,
+                MutablePredKindStr = "io set predicate"
+            ;
+                MutablePredKind = mutable_pred_unsafe_get,
+                MutablePredKindStr = "unsafe get predicate"
+            ;
+                MutablePredKind = mutable_pred_unsafe_set,
+                MutablePredKindStr = "unsafe set predicate"
+            ;
+                MutablePredKind = mutable_pred_constant_get,
+                MutablePredKindStr = "constant get predicate"
+            ;
+                MutablePredKind = mutable_pred_constant_secret_set,
+                MutablePredKindStr = "constant secret set predicate"
+            ;
+                MutablePredKind = mutable_pred_lock,
+                MutablePredKindStr = "lock predicate"
+            ;
+                MutablePredKind = mutable_pred_unlock,
+                MutablePredKindStr = "unlock predicate"
+            ;
+                MutablePredKind = mutable_pred_pre_init,
+                MutablePredKindStr = "preinit predicate"
+            ;
+                MutablePredKind = mutable_pred_init,
+                MutablePredKindStr = "init predicate"
+            ),
+            io.format(Stream, "%% %s for mutable %s in module %s\n",
+                [s(MutablePredKindStr), s(MutableName),
+                s(MutableModuleNameStr)], !IO)
+        ;
+            OriginCompiler = made_for_initialise,
+            io.write_string(Stream, "% initialise\n", !IO)
+        ;
+            OriginCompiler = made_for_finalise,
+            io.write_string(Stream, "% finalise\n", !IO)
+        )
     ;
-        Origin = origin_class_method(ClassId, MethodId),
-        ClassId = class_id(ClassSymName, ClassArity),
-        MethodId = pf_sym_name_arity(MethodPredOrFunc,
-            MethodSymName, MethodPredFormArity),
-        user_arity_pred_form_arity(MethodPredOrFunc,
-            MethodUserArity, MethodPredFormArity),
-        MethodUserArity = user_arity(MethodUserArityInt),
-        io.format(Stream, "%% class method %s %s/%d for %s/%d\n",
-            [s(pred_or_func_to_string(MethodPredOrFunc)),
-            s(sym_name_to_string(MethodSymName)), i(MethodUserArityInt),
-            s(sym_name_to_string(ClassSymName)), i(ClassArity)], !IO)
-    ;
-        Origin = origin_transformed(Transformation, _, OrigPredId),
+        Origin = origin_pred_transform(PredTransform, _, OrigPredId),
         OrigPredIdNum = pred_id_to_int(OrigPredId),
         module_info_pred_info(ModuleInfo, OrigPredId, OrigPredInfo),
         io.format(Stream, "%% transformed from pred id %d\n",
@@ -947,99 +1069,20 @@ write_origin(Stream, ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
         io.write_string(Stream, "% ", !IO),
         io.write_string(Stream, pred_info_id_to_string(OrigPredInfo), !IO),
         io.nl(Stream, !IO),
-        io.write_string(Stream, "% transformation: ", !IO),
-        io.write_line(Stream, Transformation, !IO)
+        io.write_string(Stream, "% pred transformation: ", !IO),
+        io.write_line(Stream, PredTransform, !IO)
     ;
-        Origin = origin_deforestation(LineNum, SeqNum),
-        io.format(Stream, "%% deforestation: line %d, seqnum %d\n",
-            [i(LineNum), i(SeqNum)], !IO)
-    ;
-        Origin = origin_assertion(_, _),
-        io.write_string(Stream, "% assertion\n", !IO)
-    ;
-        Origin = origin_solver_repn(TypeCtor, SolverAuxPredKind),
-        TypeCtorStr = type_ctor_to_string(TypeCtor),
-        (
-            SolverAuxPredKind = solver_type_to_ground_pred,
-            SolverAuxPredKindStr = "to ground conversion predicate"
-        ;
-            SolverAuxPredKind = solver_type_to_any_pred,
-            SolverAuxPredKindStr = "to any conversion predicate"
-        ;
-            SolverAuxPredKind = solver_type_from_ground_pred,
-            SolverAuxPredKindStr = "from ground conversion predicate"
-        ;
-            SolverAuxPredKind = solver_type_from_any_pred,
-            SolverAuxPredKindStr = "from any conversion predicate"
-        ),
-        io.format(Stream, "%% %s for %s\n",
-            [s(SolverAuxPredKindStr), s(TypeCtorStr)], !IO)
-    ;
-        Origin = origin_tabling(BasePredCallId, TablingAuxPredKind),
-        BasePredStr = pf_sym_name_orig_arity_to_string(BasePredCallId),
-        (
-            TablingAuxPredKind = tabling_aux_pred_stats,
-            TablingAuxPredKindStr = "table statistics predicate"
-        ;
-            TablingAuxPredKind = tabling_aux_pred_reset,
-            TablingAuxPredKindStr = "table reset predicate"
-        ),
-        io.format(Stream, "%% %s for %s\n",
-            [s(TablingAuxPredKindStr), s(BasePredStr)], !IO)
-    ;
-        Origin = origin_mutable(MutableModuleName, MutableName,
-            MutablePredKind),
-        MutableModuleNameStr = sym_name_to_string(MutableModuleName),
-        (
-            MutablePredKind = mutable_pred_std_get,
-            MutablePredKindStr = "std get predicate"
-        ;
-            MutablePredKind = mutable_pred_std_set,
-            MutablePredKindStr = "std set predicate"
-        ;
-            MutablePredKind = mutable_pred_io_get,
-            MutablePredKindStr = "io get predicate"
-        ;
-            MutablePredKind = mutable_pred_io_set,
-            MutablePredKindStr = "io set predicate"
-        ;
-            MutablePredKind = mutable_pred_unsafe_get,
-            MutablePredKindStr = "unsafe get predicate"
-        ;
-            MutablePredKind = mutable_pred_unsafe_set,
-            MutablePredKindStr = "unsafe set predicate"
-        ;
-            MutablePredKind = mutable_pred_constant_get,
-            MutablePredKindStr = "constant get predicate"
-        ;
-            MutablePredKind = mutable_pred_constant_secret_set,
-            MutablePredKindStr = "constant secret set predicate"
-        ;
-            MutablePredKind = mutable_pred_lock,
-            MutablePredKindStr = "lock predicate"
-        ;
-            MutablePredKind = mutable_pred_unlock,
-            MutablePredKindStr = "unlock predicate"
-        ;
-            MutablePredKind = mutable_pred_pre_init,
-            MutablePredKindStr = "preinit predicate"
-        ;
-            MutablePredKind = mutable_pred_init,
-            MutablePredKindStr = "init predicate"
-        ),
-        io.format(Stream, "%% %s for mutable %s in module %s\n",
-            [s(MutablePredKindStr), s(MutableName),
-            s(MutableModuleNameStr)], !IO)
-    ;
-        Origin = origin_initialise,
-        io.write_string(Stream, "% initialise\n", !IO)
-    ;
-        Origin = origin_finalise,
-        io.write_string(Stream, "% finalise\n", !IO)
-    ;
-        ( Origin = origin_lambda(_, _, _)
-        ; Origin = origin_user(_, _, _)
-        )
+        Origin = origin_proc_transform(ProcTransform, _,
+            OrigPredId, OrigProcId),
+        OrigPredIdNum = pred_id_to_int(OrigPredId),
+        OrigProcIdNum = proc_id_to_int(OrigProcId),
+        module_info_pred_info(ModuleInfo, OrigPredId, OrigPredInfo),
+        io.format(Stream, "%% transformed from pred id %d, proc id %d\n",
+            [i(OrigPredIdNum), i(OrigProcIdNum)], !IO),
+        io.format(Stream, "%% %s\n",
+            [s(pred_info_id_to_string(OrigPredInfo))], !IO),
+        io.write_string(Stream, "% proc transformation: ", !IO),
+        io.write_line(Stream, ProcTransform, !IO)
     ).
 
 :- pred write_origin_constraints(io.text_output_stream::in, string::in,
@@ -1071,100 +1114,155 @@ write_origin_constraint(Stream, TVarSet, VarNamePrint, Constraint, !IO) :-
 
 layout_origin_name(Origin, Name0) = Name :-
     (
-        Origin = origin_lambda(FileName0, LineNum, SeqNo),
-        ( if string.append("IntroducedFrom", _, Name0) then
-            string.replace_all(FileName0, ".", "_", FileName),
-            ( if SeqNo > 1 then
-                string.format("lambda%d_%s_%d",
-                    [i(SeqNo), s(FileName), i(LineNum)], Name)
+        Origin = origin_user(OriginUser),
+        (
+            ( OriginUser = user_made_pred(_, _, _)
+            ; OriginUser = user_made_class_method(_, _)
+            ; OriginUser = user_made_instance_method(_, _)
+            ; OriginUser = user_made_assertion(_, _)
+            ),
+            Name = Name0
+        ;
+            OriginUser = user_made_lambda(FileName0, LineNum, SeqNo),
+            ( if string.append("IntroducedFrom", _, Name0) then
+                string.replace_all(FileName0, ".", "_", FileName),
+                ( if SeqNo > 1 then
+                    string.format("lambda%d_%s_%d",
+                        [i(SeqNo), s(FileName), i(LineNum)], Name)
+                else
+                    string.format("lambda_%s_%d",
+                        [s(FileName), i(LineNum)], Name)
+                )
             else
-                string.format("lambda_%s_%d", [s(FileName), i(LineNum)], Name)
+                % If the lambda pred has a meaningful name, use it.
+                % This happens when the lambda is a partial application
+                % that happens to supply zero arguments.
+                Name = Name0
             )
-        else
-            % If the lambda pred has a meaningful name, use it.
-            % This happens when the lambda is a partial application
-            % that happens to supply zero arguments.
+        )
+    ;
+        Origin = origin_compiler(OriginCompiler),
+        (
+            OriginCompiler = made_for_uci(_SpecialPredId, _TypeCtor),
+            Name = Name0
+            % We can't use the following code until we have adapted the code
+            % in the runtime and trace directories to handle the names
+            % of special preds the same way as we do user-defined names.
+%           (
+%               SpecialPredId = unify,
+%               SpecialName = "unify"
+%           ;
+%               SpecialPredId = compare,
+%               SpecialName = "compare"
+%           ;
+%               SpecialPredId = index,
+%               SpecialName = "index"
+%           ),
+%           TypeCtor = TypeSymName - TypeArity,
+%           TypeName = sym_name_to_string(TypeSymName),
+%           string.format("%s_for_%s_%d",
+%               [s(SpecialName), s(TypeName), i(TypeArity)], Name)
+        ;
+            ( OriginCompiler = made_for_deforestation(_, _)
+            ; OriginCompiler = made_for_solver_repn(_, _)
+            ; OriginCompiler = made_for_tabling(_, _)
+            ; OriginCompiler = made_for_mutable(_, _, _)
+            ; OriginCompiler = made_for_initialise
+            ; OriginCompiler = made_for_finalise
+            ),
             Name = Name0
         )
     ;
-        Origin = origin_special_pred(_SpecialPredId, _TypeCtor),
-        Name = Name0
-        % We can't use the following code until we have adapted the code
-        % in the runtime and trace directories to handle the names
-        % of special preds the same way as we do user-defined names.
-%       (
-%           SpecialPredId = unify,
-%           SpecialName = "unify"
-%       ;
-%           SpecialPredId = compare,
-%           SpecialName = "compare"
-%       ;
-%           SpecialPredId = index,
-%           SpecialName = "index"
-%       ),
-%       TypeCtor = TypeSymName - TypeArity,
-%       TypeName = sym_name_to_string(TypeSymName),
-%       string.format("%s_for_%s_%d",
-%           [s(SpecialName), s(TypeName), i(TypeArity)], Name)
+        Origin = origin_pred_transform(PredTransform, OldOrigin, _),
+        OldName = layout_origin_name(OldOrigin, ""),
+        ( if OldName = "" then
+            Name = Name0
+        else
+            Name = OldName ++ "_" ++ layout_pred_transform_name(PredTransform)
+        )
     ;
-        Origin = origin_transformed(Transform, OldOrigin, _),
+        Origin = origin_proc_transform(ProcTransform, OldOrigin, _, ProcId),
         OldName = layout_origin_name(OldOrigin, ""),
         ( if
+            % for io_tabling, this preserves old behavior
             ( OldName = ""
-            ; Transform = transform_io_tabling      % preserves old behavior
+            ; ProcTransform = proc_transform_io_tabling
             )
         then
             Name = Name0
         else
-            Name = OldName ++ "_" ++ layout_pred_transform_name(Transform)
+            Name = OldName ++ "_" ++
+                layout_proc_transform_name(ProcTransform, ProcId)
         )
-    ;
-        ( Origin = origin_user(_, _, _)
-        ; Origin = origin_instance_method(_, _)
-        ; Origin = origin_class_method(_, _)
-        ; Origin = origin_deforestation(_, _)
-        ; Origin = origin_assertion(_, _)
-        ; Origin = origin_solver_repn(_, _)
-        ; Origin = origin_tabling(_, _)
-        ; Origin = origin_mutable(_, _, _)
-        ; Origin = origin_initialise
-        ; Origin = origin_finalise
-        ),
-        Name = Name0
     ).
 
-:- func layout_pred_transform_name(pred_transformation) = string.
+:- func layout_pred_transform_name(pred_transform) = string.
 
-layout_pred_transform_name(transform_higher_order_spec(Seq)) =
-    "ho" ++ int_to_string(Seq).
-layout_pred_transform_name(transform_higher_order_type_spec(ProcId)) =
-    "hoproc" ++ int_to_string(proc_id_to_int(ProcId)).
-layout_pred_transform_name(transform_type_spec(Substs)) =
-    string.join_list("_", list.map(subst_to_name,
-        one_or_more_to_list(Substs))).
-layout_pred_transform_name(transform_unused_args(_ProcId, Posns)) =
-    "ua_" ++ string.join_list("_", list.map(int_to_string, Posns)).
-layout_pred_transform_name(transform_accumulator(_LineNum, Posns)) = "acc_" ++
-    string.join_list("_", list.map(int_to_string, Posns)).
-layout_pred_transform_name(transform_loop_inv(ProcId, _LineNum, _SeqNum)) =
-    "inv_" ++ int_to_string(proc_id_to_int(ProcId)).
-layout_pred_transform_name(transform_tuple(ProcId, _LineNum, _SeqNum)) =
-    "tup_" ++ int_to_string(proc_id_to_int(ProcId)).
-layout_pred_transform_name(transform_untuple(ProcId, _LineNum, _SeqNum)) =
-    "untup_" ++ int_to_string(proc_id_to_int(ProcId)).
-layout_pred_transform_name(transform_distance_granularity(Distance)) =
-    "distance_granularity_" ++ int_to_string(Distance).
-layout_pred_transform_name(transform_dep_par_conj(_, _)) = "dep_par_conj_".
-layout_pred_transform_name(transform_par_loop_ctrl(_)) = "par_lc".
-layout_pred_transform_name(transform_lcmc(ProcId, _SeqNum, ArgPos)) =
-    "retptr_" ++ int_to_string(proc_id_to_int(ProcId)) ++ "_args"
-        ++ underscore_ints_to_string(ArgPos).
-layout_pred_transform_name(transform_table_generator) = "table_gen".
-layout_pred_transform_name(transform_stm_expansion) = "stm_expansion".
-layout_pred_transform_name(transform_structure_reuse) = "structure_reuse".
-layout_pred_transform_name(transform_io_tabling) = "io_tabling".
-layout_pred_transform_name(transform_ssdebug) = "ssdebug".
-layout_pred_transform_name(transform_direct_arg_in_out) = "daio".
+layout_pred_transform_name(PredTransform) = Name :-
+    (
+        PredTransform = pred_transform_type_spec(Substs),
+        Name = string.join_list("_", list.map(subst_to_name,
+            one_or_more_to_list(Substs)))
+    ;
+        PredTransform = pred_transform_distance_granularity(Distance),
+        Name = "distance_granularity_" ++ int_to_string(Distance)
+    ;
+        PredTransform = pred_transform_table_generator,
+        Name = "table_gen"
+    ;
+        PredTransform = pred_transform_structure_reuse,
+        Name = "structure_reuse"
+    ;
+        PredTransform = pred_transform_ssdebug,
+        Name = "ssdebug"
+    ).
+
+:- func layout_proc_transform_name(proc_transform, proc_id) = string.
+
+layout_proc_transform_name(ProcTransform, ProcId) = Name :-
+    (
+        ProcTransform = proc_transform_user_type_spec(_CallerPredId,
+            CallerProcId),
+        % XXX Why is the *caller's* proc_id relevant?
+        Name = "hoproc" ++ int_to_string(proc_id_to_int(CallerProcId))
+    ;
+        ProcTransform = proc_transform_higher_order_spec(SeqNum),
+        Name = "ho" ++ int_to_string(SeqNum)
+    ;
+        ProcTransform = proc_transform_unused_args(Posns),
+        Name = "ua_" ++ string.join_list("_", list.map(int_to_string, Posns))
+    ;
+        ProcTransform = proc_transform_accumulator(_LineNum, Posns),
+        Name = "acc_" ++ string.join_list("_", list.map(int_to_string, Posns))
+    ;
+        ProcTransform = proc_transform_loop_inv(_LineNum, _SeqNum),
+        Name = "inv_" ++ int_to_string(proc_id_to_int(ProcId))
+    ;
+        ProcTransform = proc_transform_tuple(_LineNum, _SeqNum),
+        Name = "tup_" ++ int_to_string(proc_id_to_int(ProcId))
+    ;
+        ProcTransform = proc_transform_untuple(_LineNum, _SeqNum),
+        Name = "untup_" ++ int_to_string(proc_id_to_int(ProcId))
+    ;
+        ProcTransform = proc_transform_dep_par_conj(_),
+        Name = "dep_par_conj_"
+    ;
+        ProcTransform = proc_transform_par_loop_ctrl,
+        Name = "par_lc"
+    ;
+        ProcTransform = proc_transform_lcmc(_SeqNum, ArgPos),
+        Name = "retptr_" ++ int_to_string(proc_id_to_int(ProcId)) ++
+            "_args" ++ underscore_ints_to_string(ArgPos)
+    ;
+        ProcTransform = proc_transform_stm_expansion,
+        Name = "stm_expansion"
+    ;
+        ProcTransform = proc_transform_io_tabling,
+        Name = "io_tabling"
+    ;
+        ProcTransform = proc_transform_direct_arg_in_out,
+        Name = "daio"
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

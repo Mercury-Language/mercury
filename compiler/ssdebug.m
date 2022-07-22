@@ -457,7 +457,7 @@ create_proxy_pred(PredId, !.PredInfo, NewPredId, !ModuleInfo) :-
     % Set the predicate origin so that the later pass can find the name of
     % the original predicate.
     pred_info_get_origin(!.PredInfo, Origin),
-    NewOrigin = origin_transformed(transform_ssdebug, Origin, PredId),
+    NewOrigin = origin_pred_transform(pred_transform_ssdebug, Origin, PredId),
     pred_info_set_origin(NewOrigin, !PredInfo),
 
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
@@ -1208,7 +1208,9 @@ make_handle_event(ModuleInfo, ProcName, ArgVars, HandleEventGoal) :-
 
 make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar, !VarTable) :-
     pred_info_get_origin(PredInfo, Origin),
-    ( if Origin = origin_transformed(transform_ssdebug, _, OrigPredId) then
+    ( if
+        Origin = origin_pred_transform(pred_transform_ssdebug, _, OrigPredId)
+    then
         % This predicate is a proxy for a standard library predicate.
         module_info_pred_info(ModuleInfo, OrigPredId, OrigPredInfo)
     else

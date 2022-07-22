@@ -314,31 +314,8 @@ eff_trace_level_for_proc(ModuleInfo, PredInfo, ProcInfo, TraceLevel)
     else
         pred_info_get_origin(PredInfo, Origin),
         (
-            Origin = origin_special_pred(SpecialPred, _),
-            % Unify and compare predicates can be called from the generic
-            % unify and compare predicates in builtin.m, so they can be called
-            % from outside this module even if they don't have their address
-            % taken.
-            %
-            % Index predicates can never be called from anywhere except
-            % the compare predicate.
-            %
-            % Initialise predicates invoke user-provided code. Whether that
-            % code has debugging enabled or not, there is no point in
-            % generating events in the initialise predicate itself.
-            (
-                SpecialPred = spec_pred_unify,
-                EffTraceLevel = eff_shallow
-            ;
-                SpecialPred = spec_pred_compare,
-                EffTraceLevel = eff_shallow
-            ;
-                SpecialPred = spec_pred_index,
-                EffTraceLevel = eff_none
-            )
-        ;
-            Origin = origin_transformed(Transform, _, _),
-            ( if Transform = transform_io_tabling then
+            Origin = origin_proc_transform(ProcTransform, _, _, _),
+            ( if ProcTransform = proc_transform_io_tabling then
                 % Predicates called by a predicate that is I/O tabled
                 % should not be traced. If such a predicate were allowed
                 % to generate events, then the event numbers of events
@@ -351,17 +328,31 @@ eff_trace_level_for_proc(ModuleInfo, PredInfo, ProcInfo, TraceLevel)
                     PredInfo, ProcInfo, TraceLevel)
             )
         ;
-            ( Origin = origin_user(_, _, _)
-            ; Origin = origin_instance_method(_, _)
-            ; Origin = origin_class_method(_, _)
-            ; Origin = origin_deforestation(_, _)
-            ; Origin = origin_assertion(_, _)
-            ; Origin = origin_lambda(_, _, _)
-            ; Origin = origin_solver_repn(_, _)
-            ; Origin = origin_tabling(_, _)
-            ; Origin = origin_mutable(_, _, _)
-            ; Origin = origin_initialise
-            ; Origin = origin_finalise
+            Origin = origin_compiler(OriginCompiler),
+            ( if OriginCompiler = made_for_uci(SpecialPred, _) then
+                % Unify and compare predicates can be called from the generic
+                % unify and compare predicates in builtin.m, so they can be
+                % called from outside this module even if they don't have
+                % their address taken.
+                %
+                % Index predicates can never be called from anywhere except
+                % the compare predicate.
+                (
+                    ( SpecialPred = spec_pred_unify
+                    ; SpecialPred = spec_pred_compare
+                    ),
+                    EffTraceLevel = eff_shallow
+                ;
+                    SpecialPred = spec_pred_index,
+                    EffTraceLevel = eff_none
+                )
+            else
+                EffTraceLevel = usual_eff_trace_level_for_proc(ModuleInfo,
+                    PredInfo, ProcInfo, TraceLevel)
+            )
+        ;
+            ( Origin = origin_user(_)
+            ; Origin = origin_pred_transform(_, _, _)
             ),
             EffTraceLevel = usual_eff_trace_level_for_proc(ModuleInfo,
                 PredInfo, ProcInfo, TraceLevel)

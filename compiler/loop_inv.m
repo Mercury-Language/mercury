@@ -769,8 +769,8 @@ create_loop_inv_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
     make_transformed_pred_sym_name(PredModule, PredName, Transform,
         AuxPredSymName),
 
-    Origin = origin_transformed(transform_loop_inv(ProcId, LineNum, SeqNum),
-        OrigOrigin, PredId),
+    Origin = origin_proc_transform(proc_transform_loop_inv(LineNum, SeqNum),
+        OrigOrigin, PredId, ProcId),
     hlds_pred.define_new_pred(
         AuxPredSymName, % in    - The name of the new aux proc.
         Origin,         % in    - The origin of this new predicate

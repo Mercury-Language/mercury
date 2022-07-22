@@ -687,7 +687,10 @@ dead_proc_examine_proc(ModuleInfo, AnalyzeDeletedCalls, PredProcId,
             true
         ),
         pred_info_get_origin(PredInfo, Origin),
-        ( if Origin = origin_mutable(ModuleName, MutableName, PredKind) then
+        ( if
+            Origin = origin_compiler(
+                made_for_mutable(ModuleName, MutableName, PredKind))
+        then
             % XXX Why do we record this, when we do not ever delete
             % unused mutables?
             MutableEntity = entity_mutable(ModuleName, MutableName, PredKind),
@@ -1271,7 +1274,8 @@ dead_proc_maybe_warn_proc(ModuleInfo, Needed, PredId, PredInfo,
             )
         ;
             pred_info_get_origin(PredInfo, Origin),
-            Origin = origin_mutable(MutableModuleName, MutableName, PredKind),
+            Origin = origin_compiler(made_for_mutable(MutableModuleName,
+                MutableName, PredKind)),
             suppress_unused_mutable_access_pred(PredKind, SuppressPredKinds),
             some [SuppressPredKind] (
                 list.member(SuppressPredKind, SuppressPredKinds),

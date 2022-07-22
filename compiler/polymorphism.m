@@ -495,27 +495,16 @@ setup_headvars(PredInfo, !HeadVars, ExtraArgModes,
         ExistHeadTypeClassInfoVars, !Info) :-
     pred_info_get_origin(PredInfo, Origin),
     ExtraArgModes0 = poly_arg_vector_init : poly_arg_vector(mer_mode),
-    (
-        Origin = origin_instance_method(_, InstanceMethodConstraints),
+    ( if
+        Origin = origin_user(OriginUser),
+        OriginUser = user_made_instance_method(_, InstanceMethodConstraints)
+    then
         setup_headvars_instance_method(PredInfo,
             InstanceMethodConstraints, !HeadVars,
             UnconstrainedTVars, ExtraHeadTypeInfoVars,
             ExistHeadTypeClassInfoVars,
             ExtraArgModes0, ExtraArgModes, !Info)
-    ;
-        ( Origin = origin_special_pred(_, _)
-        ; Origin = origin_class_method(_, _)
-        ; Origin = origin_transformed(_, _, _)
-        ; Origin = origin_deforestation(_, _)
-        ; Origin = origin_assertion(_, _)
-        ; Origin = origin_lambda(_, _, _)
-        ; Origin = origin_solver_repn(_, _)
-        ; Origin = origin_tabling(_, _)
-        ; Origin = origin_mutable(_, _, _)
-        ; Origin = origin_initialise
-        ; Origin = origin_finalise
-        ; Origin = origin_user(_, _, _)
-        ),
+    else
         pred_info_get_class_context(PredInfo, ClassContext),
         InstanceTVars = [],
         InstanceUnconstrainedTVars = [],

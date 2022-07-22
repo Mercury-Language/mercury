@@ -634,7 +634,7 @@ compare_in_name_order(PredIdA - PredInfoA, PredIdB - PredInfoB, Result) :-
 add_spec_preds_to_map(DumpSpecPredTypeNames, PredIdInfo, !SpecPredMap) :-
     PredIdInfo = _PredId - PredInfo,
     pred_info_get_origin(PredInfo, Origin),
-    ( if Origin = origin_special_pred(SpecialPredId, TypeCtor) then
+    ( if Origin = origin_compiler(made_for_uci(SpecialPredId, TypeCtor)) then
         (
             DumpSpecPredTypeNames = [],
             map.det_insert({TypeCtor, SpecialPredId}, PredIdInfo, !SpecPredMap)

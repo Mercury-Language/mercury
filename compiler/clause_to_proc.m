@@ -256,7 +256,9 @@ select_matching_clauses(PredInfo, ProcId, Clauses, MatchingClauses) :-
     % it processes to the *front* of the list of so-far-detected-to-be-matching
     % clauses, which computes the list of matching clauses in reverse.
     RevMatchingClauses0 = [],
-    ( if Origin = origin_special_pred(spec_pred_unify, _TypeCtor) then
+    ( if
+        Origin = origin_compiler(made_for_uci(spec_pred_unify, _TypeCtor))
+    then
         ( if hlds_pred.in_in_unification_proc_id(ProcId) then
             MaybeInInMode = in_in_mode
         else

@@ -950,7 +950,8 @@ should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
 
         % Don't write out info for reuse versions of procedures.
         pred_info_get_origin(PredInfo, PredOrigin),
-        PredOrigin \= origin_transformed(transform_structure_reuse, _, _),
+        PredOrigin \=
+            origin_pred_transform(pred_transform_structure_reuse, _, _),
 
         (
             WhatFor = for_analysis_framework

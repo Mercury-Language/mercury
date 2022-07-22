@@ -287,7 +287,7 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
         var_table_count(VarTable, NumVars),
         NumVars =< DelayDeathMaxVars,
         pred_info_get_origin(PredInfo, Origin),
-        Origin \= origin_special_pred(_, _)
+        Origin \= origin_compiler(made_for_uci(_, _))
     then
         delay_death_proc_body(GoalAfterDeadness, GoalAfterDelayDeath,
             VarTable, Liveness0),

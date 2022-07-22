@@ -168,7 +168,7 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
             ConsTag = deep_profiling_proc_layout_tag(PredId, ProcId),
             RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
             Origin = RttiProcLabel ^ rpl_pred_info_origin,
-            ( if Origin = origin_special_pred(_, _) then
+            ( if Origin = origin_compiler(made_for_uci(_, _)) then
                 UserOrUCI = uci
             else
                 UserOrUCI = user

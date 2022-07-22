@@ -387,8 +387,9 @@ maybe_setup_pred_args(PredId, !VarUsage, !PredProcList, !OptProcs,
             % but since class and instance methods cannot be recursive,
             % there would be no point.
             pred_info_get_origin(PredInfo, Origin),
-            ( Origin = origin_class_method(_, _)
-            ; Origin = origin_instance_method(_, _)
+            Origin = origin_user(OriginUser),
+            ( OriginUser = user_made_class_method(_, _)
+            ; OriginUser = user_made_instance_method(_, _)
             )
         )
     then
@@ -1224,7 +1225,7 @@ make_new_pred_info(_ModuleInfo, UnusedArgs, PredStatus, proc(PredId, ProcId),
     then
         ( if
             % Fix up special pred names.
-            OrigOrigin = origin_special_pred(_SpecialId, TypeCtor)
+            OrigOrigin = origin_compiler(made_for_uci(_SpecialId, TypeCtor))
         then
             type_ctor_module_name_arity(TypeCtor, TypeModule, TypeName,
                 TypeArity),
@@ -1261,8 +1262,8 @@ make_new_pred_info(_ModuleInfo, UnusedArgs, PredStatus, proc(PredId, ProcId),
     % constraints.
     map.init(Proofs),
     map.init(ConstraintMap),
-    OriginTransform = transform_unused_args(ProcId, UnusedArgs),
-    Origin = origin_transformed(OriginTransform, OrigOrigin, PredId),
+    ProcTransform = proc_transform_unused_args(UnusedArgs),
+    Origin = origin_proc_transform(ProcTransform, OrigOrigin, PredId, ProcId),
     CurUserDecl = maybe.no,
     pred_info_init(PredOrFunc, PredModuleName, TransformedName, PredFormArity,
         Context, Origin, PredStatus, CurUserDecl, GoalType, Markers, ArgTypes,
@@ -1826,7 +1827,8 @@ gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
             % Don't warn for a loop-invariant hoisting-generated procedure.
             pred_info_get_origin(PredInfo, Origin),
             not (
-                Origin = origin_transformed(transform_loop_inv(_, _, _), _, _)
+                Origin = origin_proc_transform(proc_transform_loop_inv(_, _),
+                    _, _, _)
             ),
 
             % XXX We don't currently generate pragmas for the automatically

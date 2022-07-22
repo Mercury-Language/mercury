@@ -283,7 +283,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
     % Check if the predicate is a compiler-generated special predicate,
     % and if so, for which type.
     pred_info_get_origin(PredInfo, Origin),
-    Origin = origin_special_pred(SpecialPredId, TypeCtor),
+    Origin = origin_compiler(made_for_uci(SpecialPredId, TypeCtor)),
 
     % Check that the special pred isn't one of the builtin types which don't
     % have a hlds_type_defn.

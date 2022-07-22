@@ -218,7 +218,7 @@ gather_local_pred_names(ModuleName, [PredDefn | PredDefns],
     pred_info_get_origin(PredInfo, Origin),
     ( if
         PredModuleName = ModuleName,
-        Origin = origin_user(_, _, _)
+        Origin = origin_user(user_made_pred(_, _, _))
     then
         pred_info_get_name(PredInfo, PredName),
         PredArity = pred_info_orig_arity(PredInfo),
@@ -382,7 +382,7 @@ gather_pred_line_counts(ModuleName, PredInfo, !PredLineCounts) :-
     pred_info_get_origin(PredInfo, Origin),
     ( if
         PredModuleName = ModuleName,
-        Origin = origin_user(_, _, _)
+        Origin = origin_user(user_made_pred(_, _, _))
     then
         pred_info_get_clauses_info(PredInfo, ClausesInfo),
         clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),

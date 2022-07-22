@@ -183,7 +183,7 @@ apply_deep_prof_tail_rec_transform_to_proc(PredProcId, !ModuleInfo) :-
         % guarantee that a unification or comparison procedure is alone
         % in its SCC unless it cannot call builtin.unify and builtin.compare.
         (
-            Origin = origin_special_pred(_, _)
+            Origin = origin_compiler(made_for_uci(_, _))
         =>
             goal_contains_builtin_unify_or_compare(Goal) = no
         )

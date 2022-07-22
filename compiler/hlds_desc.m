@@ -218,13 +218,14 @@ describe_proc_from_id(ModuleInfo, PredProcId) = ProcDesc :-
     ProcDesc = describe_proc(PredInfo, ProcId).
 
 describe_proc(PredInfo, ProcId) = ProcDesc :-
+    % XXX This function should subcontract its work to pred_name.m.
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity0 = pred_info_orig_arity(PredInfo),
     adjust_func_arity(PredOrFunc, Arity, Arity0),
     pred_info_get_origin(PredInfo, Origin),
-    ( if Origin = origin_special_pred(SpecialId, TypeCtor) then
+    ( if Origin = origin_compiler(made_for_uci(SpecialId, TypeCtor)) then
         FullPredName = string.format("%s_for_%s",
             [s(get_special_pred_id_generic_name(SpecialId)),
             s(arg_type_ctor_name_to_string(TypeCtor))])

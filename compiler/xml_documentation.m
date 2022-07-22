@@ -535,7 +535,7 @@ pred_documentation(C, _PredId, PredInfo, !Xml) :-
 
     ( if
         pred_status_defined_in_this_module(PredStatus) = yes,
-        Origin = origin_user(_, _, _),
+        Origin = origin_user(user_made_pred(_, _, _)),
         not check_marker(Markers, marker_class_method)
     then
         Xml = predicate_documentation(C, PredInfo),

@@ -132,8 +132,8 @@
 % The only real difficulty in this new transformation is identifying the
 % initialize/1 and base/1 goals from the original base case.
 %
-% Note that if the recursive clause contains multiple calls to p, the
-% transformation attempts to move each recursive call to the end
+% Note that if the recursive clause contains multiple calls to p,
+% the transformation attempts to move each recursive call to the end
 % until one succeeds. This makes the order of independent recursive
 % calls in the body irrelevant.
 %
@@ -378,9 +378,9 @@ should_attempt_accu_transform(!ModuleInfo, PredId, ProcId, PredInfo,
     identify_recursive_calls(PredId, ProcId, C, RecCallIds),
     list.length(Rec, M),
 
-    should_attempt_accu_transform_2(!ModuleInfo, PredId, PredInfo, !ProcInfo,
-        HeadVars, InitialInstMap, TopLevel, FullyStrict, DoLCMC,
-        RecCallIds, C, M, Rec, Warnings).
+    should_attempt_accu_transform_2(!ModuleInfo, PredId, ProcId,
+        PredInfo, !ProcInfo, HeadVars, InitialInstMap, TopLevel, FullyStrict,
+        DoLCMC, RecCallIds, C, M, Rec, Warnings).
 
     % should_attempt_accu_transform_2 takes a list of locations of the
     % recursive calls, and attempts to introduce accumulator into each of the
@@ -394,15 +394,15 @@ should_attempt_accu_transform(!ModuleInfo, PredId, ProcId, PredInfo,
     %   list.append(OutB, OutA, Out)
     %
 :- pred should_attempt_accu_transform_2(module_info::in, module_info::out,
-    pred_id::in, pred_info::in, proc_info::in, proc_info::out,
+    pred_id::in, proc_id::in, pred_info::in, proc_info::in, proc_info::out,
     list(prog_var)::in, instmap::in, top_level::in, bool::in,
     maybe_opt_lcmc_accumulator::in,
     list(accu_goal_id)::in, accu_goal_store::in, int::in, list(hlds_goal)::in,
     list(accu_warning)::out) is semidet.
 
-should_attempt_accu_transform_2(!ModuleInfo, PredId, PredInfo, !ProcInfo,
-        HeadVars, InitialInstMap, TopLevel, FullyStrict, DoLCMC,
-        [Id | Ids], C, M, Rec, Warnings) :-
+should_attempt_accu_transform_2(!ModuleInfo, PredId, ProcId,
+        PredInfo, !ProcInfo, HeadVars, InitialInstMap, TopLevel, FullyStrict,
+        DoLCMC, [Id | Ids], C, M, Rec, Warnings) :-
     proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
     identify_out_and_out_prime(!.ModuleInfo, VarTable0, InitialInstMap,
         Id, Rec, HeadVars, Out, OutPrime, HeadToCallSubst, CallToHeadSubst),
@@ -413,11 +413,11 @@ should_attempt_accu_transform_2(!ModuleInfo, PredId, PredInfo, !ProcInfo,
             VarTable, Accs, BaseCase, BasePairs, Substs, CS, WarningsPrime),
         accu_stage3(Id, Accs, VarTable, C, CS, Substs,
             HeadToCallSubst, CallToHeadSubst, BaseCase, BasePairs, Sets, Out,
-            TopLevel, PredId, PredInfo, !ProcInfo, !ModuleInfo)
+            TopLevel, PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo)
     then
         Warnings = WarningsPrime
     else
-        should_attempt_accu_transform_2(!ModuleInfo, PredId, PredInfo,
+        should_attempt_accu_transform_2(!ModuleInfo, PredId, ProcId, PredInfo,
             !ProcInfo, HeadVars, InitialInstMap, TopLevel, FullyStrict, DoLCMC,
             Ids, C, M, Rec, Warnings)
     ).
@@ -1460,16 +1460,17 @@ lookup_call(GoalStore, Id, stored_goal(Call, InstMap)) :-
     var_table::in, accu_goal_store::in, accu_goal_store::in,
     accu_substs::in, accu_subst::in, accu_subst::in,
     accu_base::in, list(pair(prog_var))::in, accu_sets::in,
-    list(prog_var)::in, top_level::in, pred_id::in, pred_info::in,
+    list(prog_var)::in, top_level::in, pred_id::in, proc_id::in, pred_info::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 accu_stage3(RecCallId, Accs, VarTable, C, CS, Substs,
         HeadToCallSubst, CallToHeadSubst, BaseCase, BasePairs, Sets, Out,
-        TopLevel, OrigPredId, OrigPredInfo, !OrigProcInfo, !ModuleInfo) :-
+        TopLevel, OrigPredId, OrigProcId, OrigPredInfo,
+        !OrigProcInfo, !ModuleInfo) :-
     acc_proc_info(Accs, VarTable, Substs, !.OrigProcInfo,
         AccTypes, AccProcInfo),
     acc_pred_info(!.ModuleInfo, AccTypes, Out, AccProcInfo,
-        OrigPredId, OrigPredInfo, AccProcId, AccPredInfo),
+        OrigPredId, OrigPredInfo, OrigProcId, AccProcId, AccPredInfo),
     AccName = unqualified(pred_info_name(AccPredInfo)),
 
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
@@ -1541,11 +1542,11 @@ acc_proc_info(Accs0, VarTable, Substs, OrigProcInfo, AccTypes, AccProcInfo) :-
     % Construct the pred_info for the introduced predicate.
     %
 :- pred acc_pred_info(module_info::in, list(mer_type)::in, list(prog_var)::in,
-    proc_info::in, pred_id::in, pred_info::in,
+    proc_info::in, pred_id::in, pred_info::in, proc_id::in,
     proc_id::out, pred_info::out) is det.
 
 acc_pred_info(ModuleInfo, NewTypes, OutVars, NewProcInfo,
-        OrigPredId, OrigPredInfo, NewProcId, NewPredInfo) :-
+        OrigPredId, OrigPredInfo, OrigProcId, NewProcId, NewPredInfo) :-
     % PredInfo stuff that must change.
     pred_info_get_arg_types(OrigPredInfo, TypeVarSet, ExistQVars, Types0),
 
@@ -1570,8 +1571,9 @@ acc_pred_info(ModuleInfo, NewTypes, OutVars, NewProcInfo,
     make_transformed_pred_name(Name, Transform, TransformedName),
 
     OutVarNums = list.map(term.var_to_int, OutVars),
-    Origin = origin_transformed(transform_accumulator(LineNum, OutVarNums),
-        OldOrigin, OrigPredId),
+    ProcTransform = proc_transform_accumulator(LineNum, OutVarNums),
+    Origin = origin_proc_transform(ProcTransform, OldOrigin,
+        OrigPredId, OrigProcId),
     GoalType = goal_not_for_promise(np_goal_type_none),
     pred_info_create(ModuleInfo, PredOrFunc, ModuleName, TransformedName,
         PredContext, Origin, pred_status(status_local), Markers, Types,

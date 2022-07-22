@@ -809,8 +809,8 @@ create_tupling_aux_pred(PredId, ProcId, PredInfo, ProcInfo, SeqNum,
     make_transformed_pred_sym_name(PredModule, PredName, Transform,
         AuxPredSymName),
 
-    Origin = origin_transformed(transform_tuple(ProcId, LineNum, SeqNum),
-        OrigOrigin, PredId),
+    Origin = origin_proc_transform(proc_transform_tuple(LineNum, SeqNum),
+        OrigOrigin, PredId, ProcId),
     hlds_pred.define_new_pred(
         AuxPredSymName,         % in
         Origin,                 % in
@@ -1728,7 +1728,9 @@ fix_calls_in_proc(TransformMap, proc(PredId, ProcId), !ModuleInfo) :-
         % linking problems that occurred when such predicates in the
         % library were made to call tupled procedures.
         pred_info_get_origin(PredInfo, Origin),
-        ( if Origin = origin_transformed(transform_type_spec(_), _, _) then
+        ( if
+            Origin = origin_pred_transform(pred_transform_type_spec(_), _, _)
+        then
             true
         else
             proc_info_get_goal(!.ProcInfo, Goal0),

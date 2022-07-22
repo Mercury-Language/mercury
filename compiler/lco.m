@@ -1200,9 +1200,9 @@ ensure_variant_exists(PredId, ProcId, AddrOutArgs, VariantPredProcId,
 
             pred_info_get_origin(PredInfo, Origin0),
             AddrOutArgNums = list.map(va_pos, AddrOutArgs),
-            OriginTransform = transform_lcmc(ProcId, VariantNumber,
-                AddrOutArgNums),
-            Origin = origin_transformed(OriginTransform, Origin0, PredId),
+            ProcTransform = proc_transform_lcmc(VariantNumber, AddrOutArgNums),
+            Origin = origin_proc_transform(ProcTransform, Origin0,
+                PredId, ProcId),
             pred_info_set_origin(Origin, !VariantPredInfo),
 
             % We throw away any other procs in the variant predicate, because

@@ -2181,7 +2181,9 @@ mode_info_context_preamble(ModeInfo) = Pieces :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         PredInfo, ProcInfo),
     pred_info_get_origin(PredInfo, PredOrigin),
-    ( if PredOrigin = origin_instance_method(MethodName, _) then
+    ( if
+        PredOrigin = origin_user(user_made_instance_method(MethodName, _))
+    then
         Name0 = unqualify_name(MethodName),
         ExtraMethodPieces = [words("type class method implementation for")]
     else
@@ -2235,27 +2237,36 @@ mode_context_to_pieces(ModeInfo, ModeContext, Markers) = Pieces :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-should_report_mode_warning_for_pred_origin(origin_special_pred(_, _)) = no.
-should_report_mode_warning_for_pred_origin(origin_instance_method(_, _)) = no.
-should_report_mode_warning_for_pred_origin(origin_class_method(_, _)) = no.
-should_report_mode_warning_for_pred_origin(origin_transformed(_, _, _)) = no.
-should_report_mode_warning_for_pred_origin(origin_deforestation(_, _)) = no.
-should_report_mode_warning_for_pred_origin(origin_assertion(_, _)) = no.
-should_report_mode_warning_for_pred_origin(origin_lambda(_, _, _)) = yes.
-should_report_mode_warning_for_pred_origin(origin_solver_repn(_, _)) = no.
-should_report_mode_warning_for_pred_origin(origin_tabling(_, _)) = no.
-should_report_mode_warning_for_pred_origin(origin_mutable(_, _, _)) = no.
-should_report_mode_warning_for_pred_origin(origin_initialise) = no.
-should_report_mode_warning_for_pred_origin(origin_finalise) = no.
-should_report_mode_warning_for_pred_origin(origin_user(_, _, _)) = yes.
+should_report_mode_warning_for_pred_origin(Origin) = Report :-
+    (
+        Origin = origin_user(OriginUser),
+        (
+            ( OriginUser = user_made_pred(_, _, _)
+            ; OriginUser = user_made_lambda(_, _, _)
+            ),
+            Report = yes
+        ;
+            ( OriginUser = user_made_class_method(_, _)
+            ; OriginUser = user_made_instance_method(_, _)
+            ; OriginUser = user_made_assertion(_, _)
+            ),
+            Report = no
+        )
+    ;
+        ( Origin = origin_compiler(_)
+        ; Origin = origin_pred_transform(_, _, _)
+        ; Origin = origin_proc_transform(_, _, _, _)
+        ),
+        Report = no
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 mode_decl_to_string(Lang, ProcId, PredInfo) = String :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    Name0 = pred_info_name(PredInfo),
-    Name = unqualified(Name0),
+    Name = pred_info_name(PredInfo),
+    SymName = unqualified(Name),
     pred_info_get_proc_table(PredInfo, Procs),
     map.lookup(Procs, ProcId, ProcInfo),
     proc_info_declared_argmodes(ProcInfo, Modes0),
@@ -2263,7 +2274,7 @@ mode_decl_to_string(Lang, ProcId, PredInfo) = String :-
     varset.init(InstVarSet),
     strip_builtin_qualifiers_from_mode_list(Modes0, Modes),
     String = mercury_mode_subdecl_to_string(Lang, PredOrFunc,
-        InstVarSet, Name, Modes, MaybeDet).
+        InstVarSet, SymName, Modes, MaybeDet).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.mode_errors.

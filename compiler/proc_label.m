@@ -83,7 +83,7 @@ make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 
 do_make_proc_label(PredOrFunc, ThisModule, PredModule, PredName, PredArity,
         ProcId, PredIsImported, Origin) = ProcLabel :-
-    ( if Origin = origin_special_pred(SpecialPred, TypeCtor) then
+    ( if Origin = origin_compiler(made_for_uci(SpecialPred, TypeCtor)) then
         ( if
             % All type_ctors other than tuples here should be module qualified,
             % since builtin types are handled separately in polymorphism.m.

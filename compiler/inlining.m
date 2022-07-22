@@ -1297,24 +1297,17 @@ ok_to_inline_language(lang_csharp, target_csharp).
 
 origin_involves_daio(Origin, InvolvesDAIO) :-
     (
-        ( Origin = origin_user(_PorF, _SymName, _Arity)
-        ; Origin = origin_special_pred(_SpecialPredId, _TypeCtor)
-        ; Origin = origin_instance_method(_SymName, _Constraints)
-        ; Origin = origin_class_method(_ClassId, _PFSymNameArity)
-        ; Origin = origin_deforestation(_, _)
-        ; Origin = origin_assertion(_, _)
-        ; Origin = origin_lambda(_FileName, _LineNum, _Seq)
-        ; Origin = origin_solver_repn(_TypeCtor, _PredKind)
-        ; Origin = origin_tabling(_PFSymNameArity, _PredKind)
-        ; Origin = origin_mutable(_ModuleName, _MutableName, _PredKind)
-        ; Origin = origin_initialise
-        ; Origin = origin_finalise
+        ( Origin = origin_user(_)
+        ; Origin = origin_compiler(_)
         ),
         InvolvesDAIO = does_not_involve_daio
     ;
-        Origin = origin_transformed(Transform, SubOrigin, _PredId),
+        Origin = origin_pred_transform(_Transform, SubOrigin, _PredId),
+        origin_involves_daio(SubOrigin, InvolvesDAIO)
+    ;
+        Origin = origin_proc_transform(Transform, SubOrigin, _PredId, _ProcId),
         ( if
-            ( origin_transformation_involves_daio(Transform, does_involve_daio)
+            ( origin_proc_transform_involves_daio(Transform, does_involve_daio)
             ; origin_involves_daio(SubOrigin, does_involve_daio)
             )
         then
@@ -1324,32 +1317,27 @@ origin_involves_daio(Origin, InvolvesDAIO) :-
         )
     ).
 
-:- pred origin_transformation_involves_daio(pred_transformation::in,
+:- pred origin_proc_transform_involves_daio(proc_transform::in,
     maybe_involves_daio::out) is det.
 
-origin_transformation_involves_daio(Transform, InvolvesDAIO) :-
+origin_proc_transform_involves_daio(Transform, InvolvesDAIO) :-
     (
-        ( Transform = transform_higher_order_spec(_)
-        ; Transform = transform_higher_order_type_spec(_)
-        ; Transform = transform_type_spec(_)
-        ; Transform = transform_unused_args(_, _)
-        ; Transform = transform_accumulator(_, _)
-        ; Transform = transform_loop_inv(_, _, _)
-        ; Transform = transform_tuple(_, _, _)
-        ; Transform = transform_untuple(_, _, _)
-        ; Transform = transform_distance_granularity(_)
-        ; Transform = transform_dep_par_conj(_, _)
-        ; Transform = transform_par_loop_ctrl(_)
-        ; Transform = transform_lcmc(_, _, _)
-        ; Transform = transform_table_generator
-        ; Transform = transform_stm_expansion
-        ; Transform = transform_io_tabling
-        ; Transform = transform_structure_reuse
-        ; Transform = transform_ssdebug
+        ( Transform = proc_transform_user_type_spec(_, _)
+        ; Transform = proc_transform_higher_order_spec(_)
+        ; Transform = proc_transform_unused_args(_)
+        ; Transform = proc_transform_accumulator(_, _)
+        ; Transform = proc_transform_loop_inv(_, _)
+        ; Transform = proc_transform_tuple(_, _)
+        ; Transform = proc_transform_untuple(_, _)
+        ; Transform = proc_transform_dep_par_conj(_)
+        ; Transform = proc_transform_par_loop_ctrl
+        ; Transform = proc_transform_lcmc(_, _)
+        ; Transform = proc_transform_io_tabling
+        ; Transform = proc_transform_stm_expansion
         ),
         InvolvesDAIO = does_not_involve_daio
     ;
-        Transform = transform_direct_arg_in_out,
+        Transform = proc_transform_direct_arg_in_out,
         InvolvesDAIO = does_involve_daio
     ).
 

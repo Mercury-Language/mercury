@@ -1010,7 +1010,8 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
     % order.
     MethodConstraints = instance_method_constraints(ClassId,
         InstanceTypes, InstanceConstraints, ClassMethodClassContext),
-    PredOrigin = origin_instance_method(MethodName, MethodConstraints),
+    PredOrigin = origin_user(
+        user_made_instance_method(MethodName, MethodConstraints)),
     map.init(VarNameRemap),
     % XXX STATUS
     InstanceStatus = instance_status(OldImportStatus),

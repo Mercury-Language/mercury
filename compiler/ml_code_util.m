@@ -772,7 +772,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
         _HeadVarsWithNames, _TopFunctorModes, Detism,
         PredIsImported, _PredIsPseudoImported,
         Origin, _ProcIsExported, _ProcIsImported),
-    ( if Origin = origin_special_pred(SpecialPred, TypeCtor) then
+    ( if Origin = origin_compiler(made_for_uci(SpecialPred, TypeCtor)) then
         ( if
             % All type_ctors other than tuples here should be module qualified,
             % since builtin types are handled separately in polymorphism.m.

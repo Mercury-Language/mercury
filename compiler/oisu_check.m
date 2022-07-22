@@ -166,7 +166,7 @@ check_local_oisu_pred(ModuleInfo, KindMap, OISUTypeCtors, Pair0, Pair,
             )
         else
             pred_info_get_origin(PredInfo0, Origin),
-            ( if Origin = origin_special_pred(_, _) then
+            ( if Origin = origin_compiler(made_for_uci(_, _)) then
                 true
             else
                 pred_info_get_arg_types(PredInfo0, ArgTypes),

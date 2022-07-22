@@ -206,7 +206,7 @@ process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
         Requests = [_ | _],
         some [!PredProcsToFix] (
             set.init(!:PredProcsToFix),
-            maybe_create_new_preds(MaybeProgressStream, Requests,
+            maybe_create_new_ho_spec_preds(MaybeProgressStream, Requests,
                 [], NewPredList, !PredProcsToFix, !GlobalInfo, !IO),
             list.foldl(check_loop_request(!.GlobalInfo), LoopRequests,
                 !PredProcsToFix),
@@ -312,11 +312,15 @@ recursively_process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
                 rq_typeinfo_liveness    :: bool,
 
                 % Is this a user-requested specialization?
-                rq_user_req_spec        :: bool,
+                rq_request_kind         :: ho_request_kind,
 
                 % Context of the call which caused the request to be generated.
                 rq_call_context         :: context
             ).
+
+:- type ho_request_kind
+    --->    non_user_type_spec
+    ;       user_type_spec.
 
     % Stores cons_id, index in argument vector, number of curried arguments
     % of a higher order argument, higher-order curried arguments with known
@@ -453,7 +457,7 @@ recursively_process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
                 np_typeinfo_liveness    :: bool,
 
                 % Is this a user-specified type specialization?
-                np_is_user_spec         :: bool
+                np_is_user_spec         :: ho_request_kind
             ).
 
     % Returned by ho_traverse_proc_body.
@@ -1549,14 +1553,18 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
     proc(CallerPredId, _) = !.Info ^ hoi_pred_proc_id,
     module_info_get_type_spec_info(ModuleInfo0, TypeSpecInfo),
     TypeSpecInfo = type_spec_info(_, ForceVersions, _, _),
-    set.is_member(CallerPredId, ForceVersions, IsUserSpecProc),
+    ( if set.contains(ForceVersions, CallerPredId) then
+        RequestKind = user_type_spec
+    else
+        RequestKind = non_user_type_spec
+    ),
     ( if
         (
             HigherOrderArgs0 = [_ | _]
         ;
             % We should create these even if there is no specialization
             % to avoid link errors.
-            IsUserSpecProc = yes
+            RequestKind = user_type_spec
         ;
             !.Info ^ hoi_global_info ^ hogi_params ^ param_do_user_type_spec
                 = spec_types_user_guided,
@@ -1579,7 +1587,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
         list.reverse(HigherOrderArgs0, HigherOrderArgs),
         Context = goal_info_get_context(GoalInfo),
         find_matching_version(!.Info, CalledPred, CalledProc, Args0,
-            Context, HigherOrderArgs, IsUserSpecProc, FindResult),
+            Context, HigherOrderArgs, RequestKind, FindResult),
         (
             FindResult = find_result_match(match(Match, _, Args1,
                 ExtraTypeInfoTypes)),
@@ -1761,10 +1769,10 @@ type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
     %
 :- pred find_matching_version(higher_order_info::in,
     pred_id::in, proc_id::in, list(prog_var)::in, prog_context::in,
-    list(higher_order_arg)::in, bool::in, find_result::out) is det.
+    list(higher_order_arg)::in, ho_request_kind::in, find_result::out) is det.
 
 find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
-        HigherOrderArgs, IsUserSpecProc, Result) :-
+        HigherOrderArgs, RequestKind, Result) :-
     % Args0 is the original list of arguments.
     % Args is the original list of arguments with the curried arguments
     % of known higher-order arguments added.
@@ -1795,7 +1803,7 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
     pred_info_get_typevarset(PredInfo, TVarSet),
 
     Request = ho_request(Caller, proc(CalledPred, CalledProc), ArgsTypes0,
-        ExtraTypeInfoTVars, HigherOrderArgs, TVarSet, yes, IsUserSpecProc,
+        ExtraTypeInfoTVars, HigherOrderArgs, TVarSet, yes, RequestKind,
         Context),
 
     % Check to see if any of the specialized versions of the called pred
@@ -1813,7 +1821,7 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
         UserTypeSpec = Params ^ param_do_user_type_spec,
         (
             UserTypeSpec = spec_types_user_guided,
-            IsUserSpecProc = yes
+            RequestKind = user_type_spec
         ;
             module_info_pred_info(ModuleInfo, CalledPred, CalledPredInfo),
             not pred_info_is_imported(CalledPredInfo),
@@ -2707,7 +2715,7 @@ filter_request(MaybeProgressStream, Info, Request,
         !AcceptedRequests, !LoopRequests, !IO) :-
     ModuleInfo = Info ^ hogi_module_info,
     Request = ho_request(CallingPredProcId, CalledPredProcId, _, _, HOArgs,
-        _, _, IsUserTypeSpec, Context),
+        _, _, RequestKind, Context),
     CalledPredProcId = proc(CalledPredId, _),
     module_info_pred_info(ModuleInfo, CalledPredId, PredInfo),
     PredModule = pred_info_module(PredInfo),
@@ -2724,13 +2732,13 @@ filter_request(MaybeProgressStream, Info, Request,
             no, HOArgs, Context, !IO)
     ),
     (
-        IsUserTypeSpec = yes,
+        RequestKind = user_type_spec,
         % Ignore the size limit for user specified specializations.
         maybe_write_string_to_stream(MaybeProgressStream,
             "%    request specialized (user-requested specialization)\n", !IO),
         list.cons(Request, !AcceptedRequests)
     ;
-        IsUserTypeSpec = no,
+        RequestKind = non_user_type_spec,
         ( if map.search(Info ^ hogi_goal_sizes, CalledPredId, GoalSize0) then
             GoalSize = GoalSize0
         else
@@ -2785,15 +2793,15 @@ filter_request(MaybeProgressStream, Info, Request,
         )
     ).
 
-:- pred maybe_create_new_preds(maybe(io.text_output_stream)::in,
+:- pred maybe_create_new_ho_spec_preds(maybe(io.text_output_stream)::in,
     list(ho_request)::in, list(new_pred)::in, list(new_pred)::out,
     set(pred_proc_id)::in, set(pred_proc_id)::out,
     higher_order_global_info::in, higher_order_global_info::out,
     io::di, io::uo) is det.
 
-maybe_create_new_preds(_, [],
+maybe_create_new_ho_spec_preds(_, [],
         !NewPreds, !PredsToFix, !Info, !IO).
-maybe_create_new_preds(MaybeProgressStream, [Request | Requests],
+maybe_create_new_ho_spec_preds(MaybeProgressStream, [Request | Requests],
         !NewPreds, !PredsToFix, !Info, !IO) :-
     Request = ho_request(CallingPredProcId, CalledPredProcId,
         _, _, _, _, _, _, _),
@@ -2810,10 +2818,11 @@ maybe_create_new_preds(MaybeProgressStream, [Request | Requests],
     then
         true
     else
-        create_new_pred(MaybeProgressStream, Request, NewPred, !Info, !IO),
+        create_new_ho_spec_pred(MaybeProgressStream, Request, NewPred,
+            !Info, !IO),
         !:NewPreds = [NewPred | !.NewPreds]
     ),
-    maybe_create_new_preds(MaybeProgressStream, Requests,
+    maybe_create_new_ho_spec_preds(MaybeProgressStream, Requests,
         !NewPreds, !PredsToFix, !Info, !IO).
 
     % If we weren't allowed to create a specialized version because the
@@ -2841,14 +2850,15 @@ check_loop_request(Info, Request, !PredsToFix) :-
 
     % Here we create the pred_info for the new predicate.
     %
-:- pred create_new_pred(maybe(io.text_output_stream)::in, ho_request::in,
-    new_pred::out, higher_order_global_info::in, higher_order_global_info::out,
+:- pred create_new_ho_spec_pred(maybe(io.text_output_stream)::in,
+    ho_request::in, new_pred::out,
+    higher_order_global_info::in, higher_order_global_info::out,
     io::di, io::uo) is det.
 
-create_new_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
+create_new_ho_spec_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
     Request = ho_request(CallerPPId, CalleePPId, CallArgsTypes,
         ExtraTypeInfoTVars, HOArgs, CallerTVarSet, TypeInfoLiveness,
-        IsUserTypeSpec, Context),
+        RequestKind, Context),
     CallerPPId = proc(CallerPredId, CallerProcId),
     ModuleInfo0 = !.Info ^ hogi_module_info,
     module_info_pred_proc_info(ModuleInfo0, CalleePPId, PredInfo0, ProcInfo0),
@@ -2860,7 +2870,7 @@ create_new_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
     pred_info_get_arg_types(PredInfo0, ArgTVarSet, ExistQVars, Types),
 
     (
-        IsUserTypeSpec = yes,
+        RequestKind = user_type_spec,
         % If this is a user-guided type specialisation, the new name comes from
         % the name and mode number of the requesting predicate. The mode number
         % is included because we want to avoid the creation of more than one
@@ -2870,30 +2880,30 @@ create_new_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
         % predicate names lead to duplicate global variable names and hence to
         % link errors.
         CallerPredName0 = predicate_name(ModuleInfo0, CallerPredId),
-        proc_id_to_int(CallerProcId, CallerProcNum),
 
         % The higher_order_arg_order_version part is to avoid segmentation
         % faults or other errors when the order or number of extra arguments
         % changes. If the user does not recompile all affected code, the
         % program will not link.
-        Transform = tn_higher_order_type_spec(PredOrFunc, CallerProcNum,
+        Transform = tn_user_type_spec(PredOrFunc, CallerPredId, CallerProcId,
             higher_order_arg_order_version),
         make_transformed_pred_name(CallerPredName0, Transform, SpecName),
-        OriginTransform = transform_higher_order_type_spec(CallerProcId),
+        ProcTransform =
+            proc_transform_user_type_spec(CallerPredId, CallerProcId),
         NewProcId = CallerProcId,
         % For exported predicates, the type specialization must be exported.
         % For opt_imported predicates, we only want to keep this version
         % if we do some other useful specialization on it.
         pred_info_get_status(PredInfo0, PredStatus)
     ;
-        IsUserTypeSpec = no,
+        RequestKind = non_user_type_spec,
         NewProcId = hlds_pred.initial_proc_id,
         SeqNumCounter0 = !.Info ^ hogi_next_id,
         counter.allocate(SeqNum, SeqNumCounter0, SeqNumCounter),
         !Info ^ hogi_next_id := SeqNumCounter,
         Transform = tn_higher_order(PredOrFunc, SeqNum),
         make_transformed_pred_name(Name0, Transform, SpecName),
-        OriginTransform = transform_higher_order_spec(SeqNum),
+        ProcTransform = proc_transform_higher_order_spec(SeqNum),
         PredStatus = pred_status(status_local)
     ),
 
@@ -2921,7 +2931,9 @@ create_new_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
     vars_types_to_var_table(ModuleInfo0, EmptyVarSet, CallArgsTypes, VarTable),
     clauses_info_set_var_table(VarTable, ClausesInfo0, ClausesInfo),
 
-    Origin = origin_transformed(OriginTransform, OrigOrigin, CallerPredId),
+    CalleePPId = proc(CalleePredId, CalleeProcId),
+    Origin = origin_proc_transform(ProcTransform, OrigOrigin,
+        CalleePredId, CalleeProcId),
     CurUserDecl = maybe.no,
     map.init(EmptyProofs),
     map.init(EmptyConstraintMap),
@@ -2940,7 +2952,7 @@ create_new_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
     SpecSymName = qualified(PredModuleName, SpecName),
     NewPred = new_pred(proc(NewPredId, NewProcId), CalleePPId, CallerPPId,
         SpecSymName, HOArgs, CallArgsTypes, ExtraTypeInfoTVars, CallerTVarSet,
-        TypeInfoLiveness, IsUserTypeSpec),
+        TypeInfoLiveness, RequestKind),
 
     higher_order_add_new_pred(CalleePPId, NewPred, !Info),
 

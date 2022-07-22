@@ -924,7 +924,7 @@ check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !Specs) :-
         % called, but the polymorphic unify needs to be able to call
         % the semidet mode.)
         pred_info_get_origin(!.PredInfo, Origin),
-        Origin = origin_special_pred(spec_pred_unify, _)
+        Origin = origin_compiler(made_for_uci(spec_pred_unify, _))
     then
         true
     else

@@ -659,7 +659,7 @@ pd_info_define_new_pred(Goal, PredProcId, CallGoal, !PDInfo) :-
     Context = goal_info_get_context(GoalInfo),
     term.context_line(Context, LineNum),
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
-    Origin = origin_deforestation(LineNum, SeqNum),
+    Origin = origin_compiler(made_for_deforestation(LineNum, SeqNum)),
     Transform = tn_deforestation(pf_predicate, lnc(LineNum, SeqNum)),
     make_transformed_pred_sym_name(PredModule, PredName, Transform,
         NewPredSymName),
