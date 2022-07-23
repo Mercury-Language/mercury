@@ -2081,7 +2081,7 @@ constraints_to_pieces(TypeAssign, Pieces, !NumUnsatisfied) :-
         UnprovenProgConstraints),
     !:NumUnsatisfied = !.NumUnsatisfied + list.length(UnprovenProgConstraints),
     UnprovenProgConstraintStrings =
-        list.map(mercury_constraint_to_string(TVarSet),
+        list.map(mercury_constraint_to_string(TVarSet, print_name_only),
             UnprovenProgConstraints),
     UnprovenProgConstraintsPieces =
         list.map(wrap_quote, UnprovenProgConstraintStrings),
@@ -2533,7 +2533,8 @@ type_assign_constraints_to_pieces_list(Operator, [Constraint | Constraints],
     apply_rec_subst_to_constraint(TypeBindings, Constraint, BoundConstraint),
     retrieve_prog_constraint(BoundConstraint, ProgConstraint),
     ThisPieces = [fixed(Prefix ++
-        mercury_constraint_to_string(TypeVarSet, ProgConstraint))],
+        mercury_constraint_to_string(TypeVarSet, print_name_only,
+            ProgConstraint))],
     TailPieceLists = type_assign_constraints_to_pieces_list(Operator,
         Constraints, TypeBindings, TypeVarSet, yes).
 

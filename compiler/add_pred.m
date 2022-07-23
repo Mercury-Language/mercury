@@ -232,17 +232,14 @@ record_pred_origin(PredOrFunc, PredSymName, UserArity, Origin,
     % to treat it specially.
     init_markers(Markers0),
     (
+        Origin = item_origin_user,
+        PredOrigin = origin_user(
+            user_made_pred(PredOrFunc, PredSymName, UserArity)),
+        Markers = Markers0
+    ;
         Origin = item_origin_compiler(CompilerAttrs),
         CompilerAttrs = item_compiler_attributes(CompilerOrigin),
         (
-            CompilerOrigin = compiler_origin_initialise,
-            PredOrigin = origin_compiler(made_for_initialise),
-            Markers = Markers0
-        ;
-            CompilerOrigin = compiler_origin_finalise,
-            PredOrigin = origin_compiler(made_for_finalise),
-            Markers = Markers0
-        ;
             CompilerOrigin = compiler_origin_class_method(ClassId, MethodId),
             PredOrigin =
                 origin_user(user_made_class_method(ClassId, MethodId)),
@@ -254,23 +251,26 @@ record_pred_origin(PredOrFunc, PredSymName, UserArity, Origin,
                 made_for_solver_repn(TypeCtor, SolverPredKind)),
             Markers = Markers0
         ;
+            CompilerOrigin = compiler_origin_tabling(PFSymNameArity,
+                TablingPredKind),
+            PredOrigin = origin_compiler(made_for_tabling(PFSymNameArity,
+                TablingPredKind)),
+            Markers = Markers0
+        ;
             CompilerOrigin = compiler_origin_mutable(ModuleName, MutableName,
                 MutablePredKind),
             PredOrigin = origin_compiler(
                 made_for_mutable(ModuleName, MutableName, MutablePredKind)),
             add_marker(marker_mutable_access_pred, Markers0, Markers)
         ;
-            CompilerOrigin = compiler_origin_tabling(PFSymNameArity,
-                TablingPredKind),
-            PredOrigin = origin_compiler(made_for_tabling(PFSymNameArity,
-                TablingPredKind)),
+            CompilerOrigin = compiler_origin_initialise,
+            PredOrigin = origin_compiler(made_for_initialise),
+            Markers = Markers0
+        ;
+            CompilerOrigin = compiler_origin_finalise,
+            PredOrigin = origin_compiler(made_for_finalise),
             Markers = Markers0
         )
-    ;
-        Origin = item_origin_user,
-        PredOrigin = origin_user(
-            user_made_pred(PredOrFunc, PredSymName, UserArity)),
-        Markers = Markers0
     ).
 
 :- pred check_for_modeless_predmode_decl(pred_status::in, pred_or_func::in,

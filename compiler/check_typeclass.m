@@ -923,7 +923,7 @@ get_matching_instance_defns(instance_body_concrete(InstanceMethods),
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
+produce_auxiliary_procs(ClassId, ClassVars, MethodSymName, Markers0,
         InstanceTypes0, InstanceConstraints0, InstanceVarSet,
         InstanceModuleName, InstancePredDefn, Context, PredId, InstanceProcIds,
         CheckInfo0, !ModuleInfo, !QualInfo, !Specs) :-
@@ -1010,8 +1010,10 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
     % order.
     MethodConstraints = instance_method_constraints(ClassId,
         InstanceTypes, InstanceConstraints, ClassMethodClassContext),
+    MethodPFSymNameArity = pred_pf_name_arity(PredOrFunc, MethodSymName,
+        UserArity),
     PredOrigin = origin_user(
-        user_made_instance_method(MethodName, MethodConstraints)),
+        user_made_instance_method(MethodPFSymNameArity, MethodConstraints)),
     map.init(VarNameRemap),
     % XXX STATUS
     InstanceStatus = instance_status(OldImportStatus),
@@ -1141,7 +1143,7 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
 constraint_list_to_string(_, [], "").
 constraint_list_to_string(VarSet, [C | Cs], String) :-
     retrieve_prog_constraint(C, P),
-    PString = mercury_constraint_to_string(VarSet, P),
+    PString = mercury_constraint_to_string(VarSet, print_name_only, P),
     constraint_list_to_comma_strings(VarSet, Cs, TailStrings),
     Strings = ["`", PString, "'" | TailStrings],
     String = string.append_list(Strings).
@@ -1152,7 +1154,7 @@ constraint_list_to_string(VarSet, [C | Cs], String) :-
 constraint_list_to_comma_strings(_VarSet, [], []).
 constraint_list_to_comma_strings(VarSet, [C | Cs], Strings) :-
     retrieve_prog_constraint(C, P),
-    PString = mercury_constraint_to_string(VarSet, P),
+    PString = mercury_constraint_to_string(VarSet, print_name_only, P),
     constraint_list_to_comma_strings(VarSet, Cs, TailStrings),
     Strings = [", `", PString, "'" | TailStrings].
 

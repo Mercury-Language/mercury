@@ -846,7 +846,7 @@ generate_stub_clause(ModuleInfo, PredInfo, PredName, StubClause,
 rename_instance_method_constraints(Renaming, Origin0, Origin) :-
     ( if
         Origin0 = origin_user(OriginUser0),
-        OriginUser0 = user_made_instance_method(MethodName, Constraints0)
+        OriginUser0 = user_made_instance_method(PFSymNameArity, Constraints0)
     then
         Constraints0 = instance_method_constraints(ClassId, InstanceTypes0,
             InstanceConstraints0, ClassMethodClassContext0),
@@ -858,7 +858,7 @@ rename_instance_method_constraints(Renaming, Origin0, Origin) :-
             ClassMethodClassContext0, ClassMethodClassContext),
         Constraints = instance_method_constraints(ClassId,
             InstanceTypes, InstanceConstraints, ClassMethodClassContext),
-        OriginUser = user_made_instance_method(MethodName, Constraints),
+        OriginUser = user_made_instance_method(PFSymNameArity, Constraints),
         Origin = origin_user(OriginUser)
     else
         Origin = Origin0

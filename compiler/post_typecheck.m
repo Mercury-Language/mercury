@@ -305,7 +305,8 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
     = list(format_component).
 
 constraint_to_error_piece(TVarset, Constraint) =
-    [quote(mercury_constraint_to_string(TVarset, Constraint))].
+    [quote(mercury_constraint_to_string(TVarset, print_name_only,
+        Constraint))].
 
     % A prog_constraint cannot contain context information (see the comment on
     % the type definition). However, a constraint_id happens to contain a

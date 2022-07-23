@@ -1212,7 +1212,7 @@
     ;       compiler_origin_finalise
     ;       compiler_origin_class_method(
                 cm_class_id                     :: class_id,
-                cm_method                       :: pf_sym_name_arity
+                cm_method                       :: pred_pf_name_arity
             )
     ;       compiler_origin_solver_repn(
                 cosr_type_ctor                  :: type_ctor,

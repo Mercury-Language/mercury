@@ -198,7 +198,8 @@ write_pred(Info, Stream, Lang, ModuleInfo, PredId, PredInfo, !IO) :-
         ),
 
         pred_info_get_origin(PredInfo, Origin),
-        write_origin(Stream, ModuleInfo, TVarSet, VarNamePrint, Origin, !IO),
+        OriginStr = dump_origin(TVarSet, VarNamePrint, Origin),
+        io.write_string(Stream, OriginStr, !IO),
         PrintedPred = yes
     else
         PrintedPred = no

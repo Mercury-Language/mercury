@@ -131,7 +131,8 @@
 
 :- pred mercury_output_constraint(tvarset::in, var_name_print::in,
     prog_constraint::in, io.text_output_stream::in, io::di, io::uo) is det.
-:- func mercury_constraint_to_string(tvarset, prog_constraint) = string.
+:- func mercury_constraint_to_string(tvarset, var_name_print, prog_constraint)
+    = string.
 :- pred mercury_format_constraint(tvarset::in, var_name_print::in,
     prog_constraint::in, S::in, U::di, U::uo) is det <= output(S, U).
 
@@ -495,8 +496,8 @@ mercury_output_constraint(TypeVarSet, VarNamePrint, Constraint, Stream, !IO) :-
     mercury_format_constraint(TypeVarSet, VarNamePrint,
         Constraint, Stream, !IO).
 
-mercury_constraint_to_string(TypeVarSet, Constraint) = String :-
-    mercury_format_constraint(TypeVarSet, print_name_only, Constraint,
+mercury_constraint_to_string(TypeVarSet, VarNamePrint, Constraint) = String :-
+    mercury_format_constraint(TypeVarSet, VarNamePrint, Constraint,
         unit, "", String).
 
 mercury_format_constraint(TypeVarSet, VarNamePrint, Constraint, S, !U) :-

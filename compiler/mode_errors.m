@@ -2182,23 +2182,25 @@ mode_info_context_preamble(ModeInfo) = Pieces :-
         PredInfo, ProcInfo),
     pred_info_get_origin(PredInfo, PredOrigin),
     ( if
-        PredOrigin = origin_user(user_made_instance_method(MethodName, _))
+        PredOrigin = origin_user(OriginUser),
+        OriginUser = user_made_instance_method(PFMethodSymNameArity, _),
+        PFMethodSymNameArity = pred_pf_name_arity(_, MethodSymName, _)
     then
-        Name0 = unqualify_name(MethodName),
+        Name = unqualify_name(MethodSymName),
         ExtraMethodPieces = [words("type class method implementation for")]
     else
-        Name0 = pred_info_name(PredInfo),
+        Name = pred_info_name(PredInfo),
         ExtraMethodPieces = []
     ),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     mode_info_get_instvarset(ModeInfo, InstVarSet),
-    Name = unqualified(Name0),
+    SymName = unqualified(Name),
     pred_info_get_markers(PredInfo, PredMarkers),
     proc_info_declared_argmodes(ProcInfo, Modes0),
     strip_builtin_qualifiers_from_mode_list(Modes0, Modes),
     MaybeDet = no,
     ModeSubDeclStr = mercury_mode_subdecl_to_string(output_debug, PredOrFunc,
-        InstVarSet, Name, Modes, MaybeDet),
+        InstVarSet, SymName, Modes, MaybeDet),
     mode_info_get_mode_context(ModeInfo, ModeContext),
     ModeContextPieces =
         mode_context_to_pieces(ModeInfo, ModeContext, PredMarkers),
