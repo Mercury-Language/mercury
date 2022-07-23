@@ -345,11 +345,19 @@ for further details.)
 When targeting Java,
 @samp{mmc} will package up all of the class files for the executable
 into a Java archive (JAR) named @file{@var{filename}.jar}.
-If you are using the Windows command line interpreter @samp{cmd.exe},
-@samp{mmc} will generate a batch file called @file{@var{filename}.bat}
-that invokes the program using the Java interpreter.
-Otherwise, it will generate a shell script called @file{@var{filename}}
-that also invokes the program using the Java interpreter.
+It will also generate a launcher that invokes the program using the Java
+interpreter.
+If you are using the Windows command line interpreter @samp{cmd.exe}, this
+launcher will be a batch file called @file{@var{filename}.bat}.
+Otherwise, the launcher will be a shell script called @file{@var{filename}}.
+Java runtime flags can be set using @samp{mmc}'s @samp{--java-runtime-flags} or
+@samp{--java-runtime-flag} options.
+Such Java runtime flags will be included in the generated launcher shell script
+or batch file.
+You may override any runtime flags set at (Mercury) compile time by setting the
+variable @var{MERCURY_JAVA_OPTIONS} in the environment.
+Classpath settings made using @samp{mmc}'s @samp{--java-classpath} option will
+also be included in the generated launcher shell script or batch file.
 
 If you use Mmake or @samp{mmc --make},
 then you do not need to understand the details
@@ -9950,8 +9958,12 @@ Specify which Java interpreter to use.  The default is @samp{java}.
 @sp 1
 @item --java-flags @var{options}
 @itemx --java-flag @var{option}
+@itemx --javac-flags @var{options}
+@itemx --javac-flag @var{option}
 @findex --java-flags
 @findex --java-flag
+@findex --javac-flags
+@findex --javac-flags
 @cindex Java compiler options
 Specify options to be passed to the Java compiler.
 @samp{--java-flag} should be used for single words which need
@@ -9962,7 +9974,7 @@ to be quoted when passed to the shell.
 @findex --java-classpath
 @cindex classpath
 @cindex Directories
-Set the classpath for the Java compiler.
+Set the classpath for the Java compiler and interpreter.
 
 @sp 1
 @item --java-object-file-extension @var{extension}
@@ -9970,6 +9982,16 @@ Set the classpath for the Java compiler.
 @cindex File extensions
 Specify an extension for Java object (bytecode) files.  By default this
 is @samp{.class}.
+
+@sp 1
+@item --java-runtime-flags @var{options}
+@itemx --java-runtime-flag @var{option}
+@findex --java-runtime-flags
+@findex --java-runtime
+@cindex Java runtime options
+Specify options to be passed to the Java interpreter.
+@samp{--java-runtime-flag} should be used for single words which need
+to be quoted when passed to the shell.
 
 @sp 1
 @item --csharp-compiler @var{compiler-name}

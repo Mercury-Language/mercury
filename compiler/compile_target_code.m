@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
+% Copyright (C) 2013-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -871,7 +872,8 @@ compile_java_files(Globals, ProgressStream, ErrorStream,
     ),
 
     globals.lookup_string_option(Globals, java_compiler, JavaCompiler),
-    globals.lookup_accumulating_option(Globals, java_flags, JavaFlagsList),
+    globals.lookup_accumulating_option(Globals, java_compiler_flags,
+        JavaFlagsList),
     globals.lookup_bool_option(Globals, restricted_command_line,
         RestrictedCommandLine),
     (

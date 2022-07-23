@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2021 The Mercury team.
+% Copyright (C) 2013-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -962,10 +962,12 @@
     % Java
     ;       java_compiler
     ;       java_interpreter
-    ;       java_flags
-    ;       quoted_java_flag
+    ;       java_compiler_flags
+    ;       quoted_java_compiler_flag
     ;       java_classpath
     ;       java_object_file_extension
+    ;       java_runtime_flags
+    ;       quoted_java_runtime_flag
 
     % C#
     ;       csharp_compiler
@@ -1898,10 +1900,12 @@ optdef(oc_target_comp, csharp_compiler_type,            string("mono")).
     % Java
 optdef(oc_target_comp, java_compiler,                   string("javac")).
 optdef(oc_target_comp, java_interpreter,                string("java")).
-optdef(oc_target_comp, java_flags,                      accumulating([])).
-optdef(oc_target_comp, quoted_java_flag,                string_special).
+optdef(oc_target_comp, java_compiler_flags,             accumulating([])).
+optdef(oc_target_comp, quoted_java_compiler_flag,       string_special).
 optdef(oc_target_comp, java_classpath,                  accumulating([])).
 optdef(oc_target_comp, java_object_file_extension,      string(".class")).
+optdef(oc_target_comp, java_runtime_flags,              accumulating([])).
+optdef(oc_target_comp, quoted_java_runtime_flag,        string_special).
 
     % C#
 optdef(oc_target_comp, csharp_compiler,                 string("csc")).
@@ -2950,14 +2954,18 @@ long_option("csharp-compiler-type", csharp_compiler_type).
 long_option("java-compiler",        java_compiler).
 long_option("javac",                java_compiler).
 long_option("java-interpreter",     java_interpreter).
-long_option("java-flags",           java_flags).
-long_option("java-flag",            quoted_java_flag).
+long_option("javac-flags",          java_compiler_flags).
+long_option("javac-flag",           quoted_java_compiler_flag).
+long_option("java-flags",           java_compiler_flags).
+long_option("java-flag",            quoted_java_compiler_flag).
 % XXX we should consider the relationship between java_debug and target_debug
 % more carefully. Perhaps target_debug could imply Java debug if the target
 % is Java. However for the moment they are just synonyms.
 long_option("java-debug",           target_debug).
 long_option("java-classpath",       java_classpath).
 long_option("java-object-file-extension", java_object_file_extension).
+long_option("java-runtime-flags",   java_runtime_flags).
+long_option("java-runtime-flag",    quoted_java_runtime_flag).
 
 long_option("csharp-compiler",      csharp_compiler).
 long_option("csharp-flags",         csharp_flags).
@@ -3432,9 +3440,13 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = string(Flag),
             handle_quoted_flag(msvc_flags, Flag, !OptionTable)
         ;
-            Option = quoted_java_flag,
+            Option = quoted_java_compiler_flag,
             SpecialData = string(Flag),
-            handle_quoted_flag(java_flags, Flag, !OptionTable)
+            handle_quoted_flag(java_compiler_flags, Flag, !OptionTable)
+        ;
+            Option = quoted_java_runtime_flag,
+            SpecialData = string(Flag),
+            handle_quoted_flag(java_runtime_flags, Flag, !OptionTable)
         ;
             Option = quoted_csharp_flag,
             SpecialData = string(Flag),
@@ -6384,17 +6396,23 @@ options_help_target_code_compilation(Stream, !IO) :-
         "\tSpecify which Java interpreter to use.",
         "\tThe default is `java'",
 
+        "--javac-flags <options>, --javac-flag <option>",
         "--java-flags <options>, --java-flag <option>",
         "\tSpecify options to be passed to the Java compiler.",
-        "\t`--java-flag' should be used for single words which need",
-        "\tto be quoted when passed to the shell.",
+        "\t`--java-flag' or `--javac-flag' should be used for single words",
+        "\twhich need to be quoted when passed to the shell.",
 
         "--java-classpath <path>",
-        "\tSet the classpath for the Java compiler.",
+        "\tSet the classpath for the Java compiler and interpreter.",
 
         "--java-object-file-extension <ext>",
         "\tSpecify an extension for Java object (bytecode) files",
         "\tBy default this is `.class'.",
+
+        "--java-runtime-flags <options>, java-runtime-flag <option>",
+        "\tSpecify options to be passed to the Java interpreter.",
+        "\t`--java-runtime-flag' should be used for single words which need",
+        "\tto be quoted when passed to the shell.",
 
         "--csharp-compiler <csc>",
         "\tSpecify the name of the C# Compiler. The default is `csc'.",
