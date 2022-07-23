@@ -531,16 +531,19 @@ typedef   MR_Word MR_ROBDD_NODE_TYPE;
 
 :- instance intersectable(leader_to_eqvclass(T)) where [
     ( leader_to_eqvclass(MapA) `intersection` leader_to_eqvclass(MapB) =
-        leader_to_eqvclass(map.foldl((func(V, VsA, M) =
-            ( if Vs = VsA `intersect` (MapB ^ elem(V)) then
-                ( if is_empty(Vs) then
-                    M
-                else
-                    M ^ elem(V) := Vs
-                )
-            else
-                M
-            )), MapA, map.init))
+        leader_to_eqvclass(
+            map.foldl(
+                ( func(V, VsA, M) =
+                    ( if Vs = VsA `intersect` (MapB ^ elem(V)) then
+                        ( if is_empty(Vs) then
+                            M
+                        else
+                            M ^ elem(V) := Vs
+                        )
+                    else
+                        M
+                    )
+                ), MapA, map.init))
     )
 ].
 
@@ -710,7 +713,7 @@ at_most_one_of(Vars) = at_most_one_of_2(Vars, one, one).
 
 at_most_one_of_2(Vars, OneOf0, NoneOf0) = R :-
     list.foldl2(
-        (pred(V::in, One0::in, One::out, None0::in, None::out) is det :-
+        ( pred(V::in, One0::in, One::out, None0::in, None::out) is det :-
             None = make_node(V, zero, None0),
             One = make_node(V, None0, One0)
         ), list.reverse(to_sorted_list(Vars)),
@@ -861,9 +864,9 @@ equivalent_vars_2(R) = EQ :-
         EQ = all_vars
     else
         EQVars = vars_entailed(R ^ tr) `intersection`
-                vars_disentailed(R ^ fa),
+            vars_disentailed(R ^ fa),
         EQ0 = equivalent_vars_2(R ^ tr) `intersection`
-                equivalent_vars_2(R ^ fa),
+            equivalent_vars_2(R ^ fa),
         (
             EQVars = all_vars,
             error("equivalent_vars: unexpected result")
@@ -883,10 +886,8 @@ equivalent_vars_2(R) = EQ :-
                     % violated somewhere since both
                     % branches of R must have been zero.
                 ;
-                    EQ0 = some_vars(
-                        leader_to_eqvclass(M0)),
-                    map.det_insert(R ^ value, Vars,
-                        M0, M),
+                    EQ0 = some_vars(leader_to_eqvclass(M0)),
+                    map.det_insert(R ^ value, Vars, M0, M),
                     EQ = some_vars(leader_to_eqvclass(M))
                 )
             )
@@ -904,8 +905,9 @@ rev_map(some_vars(leader_to_eqvclass(EQ0))) = some_vars(equiv_vars(EQ)) :-
                 { Seen = Seen0 }
             else
                 ^ elem(V) := V,
-                sparse_bitset.foldl((pred(Ve::in, in, out) is det -->
-                    ^ elem(Ve) := V
+                sparse_bitset.foldl(
+                    ( pred(Ve::in, in, out) is det -->
+                        ^ elem(Ve) := V
                     ), Vs),
                 { Seen = Seen0 `sparse_bitset.union` Vs }
             )
@@ -1005,14 +1007,16 @@ implication_result_to_imp_vars(ImpRes) = ImpVars :-
 
 imp_res_to_imp_map(all_vars) = map.init.
 imp_res_to_imp_map(some_vars(imps(IRMap))) =
-    map.foldl(func(V, MaybeVs, M) =
-        ( if
-            MaybeVs = some_vars(Vs),
-            is_non_empty(Vs)
-        then
-            M ^ elem(V) := Vs
-        else
-            M
+    map.foldl(
+        ( func(V, MaybeVs, M) =
+            ( if
+                MaybeVs = some_vars(Vs),
+                is_non_empty(Vs)
+            then
+                M ^ elem(V) := Vs
+            else
+                M
+            )
         ), IRMap, init).
 
 :- func 'elem :='(var(T), imp_res(T), vars_entailed_result(T)) = imp_res(T).
@@ -1068,10 +1072,10 @@ filter_2(P, D, F0, F, SeenVars0, SeenVars, SeenNodes0, SeenNodes) :-
         SeenVars = SeenVars0,
         SeenNodes = SeenNodes0
     else
-        filter_2(P, D, F0 ^ tr, Ftrue, SeenVars0, SeenVars1, SeenNodes0,
-            SeenNodes1),
-        filter_2(P, D, F0 ^ fa, Ffalse, SeenVars1, SeenVars2, SeenNodes1,
-            SeenNodes2),
+        filter_2(P, D, F0 ^ tr, Ftrue, SeenVars0, SeenVars1,
+            SeenNodes0, SeenNodes1),
+        filter_2(P, D, F0 ^ fa, Ffalse, SeenVars1, SeenVars2,
+            SeenNodes1, SeenNodes2),
         V = F0 ^ value,
         ( if map.search(SeenVars0, V, SeenF) then
             SeenVars = SeenVars2,
@@ -1098,8 +1102,7 @@ restrict_true_false_vars(TrueVars, FalseVars, R0) = R :-
 %   size(R0, _Nodes, _Depth), % XXX
 %   P = (pred(V::in, di, uo) is det --> io.write_int(var_to_int(V))), % XXX
 %   unsafe_perform_io(robdd_to_dot(R0, P, "rtf.dot")), % XXX
-    restrict_true_false_vars_2(TrueVars, FalseVars, R0, R,
-        init, _).
+    restrict_true_false_vars_2(TrueVars, FalseVars, R0, R, init, _).
 
 :- pred restrict_true_false_vars_2(vars(T)::in, vars(T)::in,
     robdd(T)::in, robdd(T)::out,
@@ -1189,10 +1192,10 @@ add_equivalences_2([Var - LeaderVar | Vs], Trues, R0, R, !Cache) :-
         R = make_equiv_2([Var - LeaderVar | Vs], Trues),
         !:Cache = !.Cache ^ elem(R0) := R
     else if compare((<), R0 ^ value, Var) then
-        add_equivalences_2([Var - LeaderVar | Vs], Trues,
-            R0 ^ tr, Rtr, !Cache),
-        add_equivalences_2([Var - LeaderVar | Vs], Trues,
-            R0 ^ fa, Rfa, !Cache),
+        add_equivalences_2([Var - LeaderVar | Vs], Trues, R0 ^ tr, Rtr,
+            !Cache),
+        add_equivalences_2([Var - LeaderVar | Vs], Trues, R0 ^ fa, Rfa,
+            !Cache),
         % This step can make R exponentially bigger than R0.
         R = make_node(R0 ^ value, Rtr, Rfa),
         !:Cache = !.Cache ^ elem(R0) := R
@@ -1241,12 +1244,13 @@ add_equivalences_2([Var - LeaderVar | Vs], Trues, R0, R, !Cache) :-
 % XXX this could be made much more efficient by doing something similar
 % to what we do in add_equivalences.
 
-add_implications(ImpVars, R) = R ^
+add_implications(ImpVars, R0) = R :-
+    ImpVars = imp_vars(Imps, RevImps, DisImps, RevDisImps),
+    R = R0 ^
         add_implications_2(not_var, var, Imps) ^
         add_implications_2(var, not_var, RevImps) ^
         add_implications_2(not_var, not_var, DisImps) ^
-        add_implications_2(var, var, RevDisImps) :-
-    ImpVars = imp_vars(Imps, RevImps, DisImps, RevDisImps).
+        add_implications_2(var, var, RevDisImps).
 
 :- func add_implications_2(func(var(T)) = robdd(T), func(var(T)) = robdd(T),
     imp_map(T), robdd(T)) = robdd(T).
@@ -1596,21 +1600,23 @@ write_edge(Stream, R0, R1, Arc, !IO) :-
 %---------------------------------------------------------------------------%
 
 labelling(Vars, R, TrueVars, FalseVars) :-
-    labelling_2(to_sorted_list(Vars), R, empty_vars_set, TrueVars,
-        empty_vars_set, FalseVars).
+    labelling_loop(to_sorted_list(Vars), R,
+        empty_vars_set, TrueVars, empty_vars_set, FalseVars).
 
-:- pred labelling_2(list(var(T))::in, robdd(T)::in, vars(T)::in,
-    vars(T)::out, vars(T)::in, vars(T)::out) is nondet.
+:- pred labelling_loop(list(var(T))::in, robdd(T)::in,
+    vars(T)::in, vars(T)::out, vars(T)::in, vars(T)::out) is nondet.
 
-labelling_2([], _, TrueVars, TrueVars, FalseVars, FalseVars).
-labelling_2([V | Vs], R0, TrueVars0, TrueVars, FalseVars0, FalseVars) :-
+labelling_loop([], _, !TrueVars, !FalseVars).
+labelling_loop([V | Vs], R0, !TrueVars, !FalseVars) :-
     R = var_restrict_false(V, R0),
     R \= zero,
-    labelling_2(Vs, R, TrueVars0, TrueVars, FalseVars0 `insert` V, FalseVars).
-labelling_2([V | Vs], R0, TrueVars0, TrueVars, FalseVars0, FalseVars) :-
+    !:FalseVars = !.FalseVars `insert` V,
+    labelling_loop(Vs, R, !TrueVars, !FalseVars).
+labelling_loop([V | Vs], R0, !TrueVars, !FalseVars) :-
     R = var_restrict_true(V, R0),
     R \= zero,
-    labelling_2(Vs, R, TrueVars0 `insert` V, TrueVars, FalseVars0, FalseVars).
+    !:TrueVars = !.TrueVars `insert` V,
+    labelling_loop(Vs, R, !TrueVars, !FalseVars).
 
 %---------------------------------------------------------------------------%
 
@@ -1619,8 +1625,8 @@ minimal_model(Vars, R, TrueVars, FalseVars) :-
         TrueVars = empty_vars_set,
         FalseVars = empty_vars_set
     else
-        minimal_model_2(to_sorted_list(Vars), R, empty_vars_set,
-            TrueVars0, empty_vars_set, FalseVars0),
+        minimal_model_2(to_sorted_list(Vars), R,
+            empty_vars_set, TrueVars0, empty_vars_set, FalseVars0),
         (
             TrueVars = TrueVars0,
             FalseVars = FalseVars0
@@ -1630,21 +1636,20 @@ minimal_model(Vars, R, TrueVars, FalseVars) :-
         )
     ).
 
-:- pred minimal_model_2(list(var(T))::in, robdd(T)::in, vars(T)::in,
-    vars(T)::out, vars(T)::in, vars(T)::out) is semidet.
+:- pred minimal_model_2(list(var(T))::in, robdd(T)::in,
+    vars(T)::in, vars(T)::out, vars(T)::in, vars(T)::out) is semidet.
 
-minimal_model_2([], _, TrueVars, TrueVars, FalseVars, FalseVars).
-minimal_model_2([V | Vs], R0, TrueVars0, TrueVars, FalseVars0, FalseVars) :-
+minimal_model_2([], _, !TrueVars, !FalseVars).
+minimal_model_2([V | Vs], R0, !TrueVars, !FalseVars) :-
     R1 = var_restrict_false(V, R0),
     ( if R1 = zero then
         R2 = var_restrict_true(V, R0),
         R2 \= zero,
-        minimal_model_2(Vs, R2, TrueVars0 `insert` V, TrueVars,
-            FalseVars0, FalseVars)
+        !:TrueVars = !.TrueVars `insert` V
     else
-        minimal_model_2(Vs, R1, TrueVars0, TrueVars,
-            FalseVars0 `insert` V, FalseVars)
-    ).
+        !:FalseVars = !.FalseVars `insert` V
+    ),
+    minimal_model_2(Vs, R1, !TrueVars, !FalseVars).
 
 %---------------------------------------------------------------------------%
 
