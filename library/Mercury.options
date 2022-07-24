@@ -10,13 +10,13 @@
 # $(TYPE_SPEC_FLAGS) flags to make sure all calls to the builtin comparison
 # routines are inlined.
 TYPE_SPEC_FLAGS = --inline-vars-threshold 10000
-MCFLAGS-list += $(TYPE_SPEC_FLAGS)
-MCFLAGS-map += $(TYPE_SPEC_FLAGS)
-MCFLAGS-tree234 += $(TYPE_SPEC_FLAGS)
-MCFLAGS-set += $(TYPE_SPEC_FLAGS)
-MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
+MCFLAGS-list                    += $(TYPE_SPEC_FLAGS)
+MCFLAGS-map                     += $(TYPE_SPEC_FLAGS)
+MCFLAGS-tree234                 += $(TYPE_SPEC_FLAGS)
+MCFLAGS-set                     += $(TYPE_SPEC_FLAGS)
+MCFLAGS-set_ordlist             += $(TYPE_SPEC_FLAGS)
 
-MCFLAGS-lexer += --optimize-constructor-last-call
+MCFLAGS-lexer                   += --optimize-constructor-last-call
 
 MCFLAGS-sparse_bitset   += --use-atomic-cells --optimize-constant-propagation
 MCFLAGS-tree_bitset     += --use-atomic-cells --optimize-constant-propagation
@@ -73,8 +73,8 @@ MCFLAGS-uint64                  += --no-warn-unused-imports
 # In parallel, low level C grades that don't reserve a machine register for
 # the engine base (i.e. don't use gcc global registers) don't generate code
 # that assumes we cache the engine base address into a local variable
-# MR_local_thread_engine_base.  This module contains handwritten code
-# that jumps about a bit and maintaining MR_local_thread_engine_base in all
+# MR_local_thread_engine_base. This module contains handwritten code
+# that jumps about a bit, and maintaining MR_local_thread_engine_base in all
 # the right places is tricky (i.e. I gave up).
 MCFLAGS-thread                  += --no-local-thread-engine-base
 MCFLAGS-thread.semaphore        += --no-local-thread-engine-base
