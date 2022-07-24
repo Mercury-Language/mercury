@@ -10,7 +10,7 @@
 % Main authors: aet, Dan Hazel <odin@svrc.uq.edu.au>.
 % Stability: high.
 %
-% This modules defines an arbitrary precision integer type (named "integer")
+% This module defines an arbitrary precision integer type (named "integer")
 % and basic arithmetic operations on it.
 %
 % The builtin Mercury type "int" is implemented as machine integers,

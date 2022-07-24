@@ -13,7 +13,7 @@
 % or psqueue for short, combines in a single ADT the functionality of both
 % a map and a priority queue.
 %
-% Psqueues map from priorities to keys and back. This modules provide functions
+% Psqueues map from priorities to keys and back. This module provide functions
 % and predicates to lookup the priority of a key, to insert and to remove
 % priority-key pairs, to adjust the priority of a given key, and to retrieve
 % the priority/key pair with the highest conceptual priority. However,

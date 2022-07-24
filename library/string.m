@@ -10,7 +10,7 @@
 % Main authors: fjh, petdr, wangp.
 % Stability: medium to high.
 %
-% This modules provides basic string handling facilities.
+% This module provides basic string handling facilities.
 %
 % Mercury strings are Unicode strings. They use either the UTF-8 or UTF-16
 % encoding, depending on the target language.
