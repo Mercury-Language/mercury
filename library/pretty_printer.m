@@ -405,7 +405,7 @@ put_doc(Stream, Canonicalize, FMap, Params, Doc, !IO) :-
     % Assumes that Docs is the output of expand.
     %
 :- pred do_put_doc(Stream, noncanon_handling, formatter_map, int,
-    docs, int, int, indent_stack, indent_stack, int, int,
+    list(doc), int, int, indent_stack, indent_stack, int, int,
     func_symbol_limit, func_symbol_limit,
     ops.priority, ops.priority, State, State)
     <= stream.writer(Stream, string, State).
@@ -423,11 +423,10 @@ do_put_doc(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
     else
         (
             % Output strings directly.
-            %
             Doc = str(String),
             stream.put(Stream, String, !IO),
-            !:RemainingWidth = !.RemainingWidth -
-                string.count_codepoints(String),
+            StrWidth = string.count_codepoints(String),
+            !:RemainingWidth = !.RemainingWidth - StrWidth,
             Docs = Docs0
         ;
             Doc = nl,
@@ -465,13 +464,11 @@ do_put_doc(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
             Docs = [Doc1 | Docs0]
         ;
             % Indents.
-            %
             Doc = pp_internal(indent(Indent)),
             !:Indents = indent_nonempty(!.Indents, Indent),
             Docs = Docs0
         ;
             % Outdents.
-            %
             Doc = pp_internal(outdent),
             (
                 !.Indents = indent_empty,
@@ -482,10 +479,9 @@ do_put_doc(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
             Docs = Docs0
         ;
             % Open groups: if the current group (and what follows up to the
-            % next nl) fits on the remainder of the current line then print
+            % next nl) fits on the remainder of the current line, then print
             % it that way; otherwise we have to recognise the nls in the
             % group.
-            %
             Doc = pp_internal(open_group),
             OpenGroups = 1,
             CurrentRemainingWidth = !.RemainingWidth,
@@ -499,7 +495,6 @@ do_put_doc(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
             )
         ;
             % Close groups.
-            %
             Doc = pp_internal(close_group),
             Docs = Docs0
         ;
@@ -518,7 +513,7 @@ do_put_doc(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
 %---------------------%
 
 :- pred output_current_group(Stream::in, int::in, indent_stack::in, int::in,
-    docs::in, docs::out, int::in, int::out, int::in, int::out,
+    list(doc)::in, list(doc)::out, int::in, int::out, int::in, int::out,
     State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
 output_current_group(_Stream, _LineWidth, _Indents, _OpenGroups,
@@ -558,16 +553,19 @@ output_current_group(Stream, LineWidth, Indents, OpenGroups,
 
     % expand_docs(Canonicalize, Docs0, Docs, G, !L, !P, !R) expands out any
     % doc(_), pp_univ(_), format_list(_, _), and pp_term(_) constructors in
-    % Docs0 into Docs, until either Docs0 has been completely expanded, or a nl
-    % is encountered, or the remaining space on the current line has been
-    % accounted for.
+    % Docs0 into Docs, until
+    %
+    % - either Docs0 has been completely expanded,
+    % - or a nl is encountered,
+    % - or the remaining space on the current line has been accounted for.
+    %
     % G is used to track nested groups.
     % !L tracks the limits after accounting for expansion.
-    % !L tracks the operator priority after accounting for expansion.
+    % !P tracks the operator priority after accounting for expansion.
     % !R tracks the remaining line width after accounting for expansion.
     %
-:- pred expand_docs(noncanon_handling, formatter_map, docs, docs, int,
-    func_symbol_limit, func_symbol_limit,
+:- pred expand_docs(noncanon_handling, formatter_map, list(doc), list(doc),
+    int, func_symbol_limit, func_symbol_limit,
     ops.priority, ops.priority, int, int).
 :- mode expand_docs(in(canonicalize), in, in, out, in, in, out,
     in, out, in, out) is det.
@@ -593,8 +591,8 @@ expand_docs(Canonicalize, FMap, [Doc | Docs0], Docs, OpenGroups,
     else
         (
             Doc = str(String),
-            !:RemainingWidth = !.RemainingWidth -
-                string.count_codepoints(String),
+            StrWidth = string.count_codepoints(String),
+            !:RemainingWidth = !.RemainingWidth - StrWidth,
             Docs = [Doc | Docs1],
             expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups,
                 !Limit, !Pri, !RemainingWidth)
@@ -785,18 +783,6 @@ expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
     decrement_limit(!Limit),
     set_func_symbol_limit_correctly(!.Limit, Doc0, Doc).
 
-:- pred expand_format_susp(((func) = doc)::in, doc::out,
-    func_symbol_limit::in, func_symbol_limit::out) is det.
-
-expand_format_susp(Susp, Doc, !Limit) :-
-    ( if limit_overrun(!.Limit) then
-        Doc = ellipsis
-    else
-        decrement_limit(!Limit),
-        Doc0 = apply(Susp),
-        set_func_symbol_limit_correctly(!.Limit, Doc0, Doc)
-    ).
-
     % Expand a name and list of univs into docs corresponding to Mercury
     % operator syntax.
     %
@@ -824,8 +810,8 @@ expand_format_op(Op, [Arg], CurrentPri, Docs) :-
     ).
 expand_format_op(Op, [ArgA, ArgB], CurrentPri, Docs) :-
     ( if
-        ops.lookup_infix_op(ops.init_mercury_op_table, Op, OpPri, AssocA,
-            AssocB)
+        ops.lookup_infix_op(ops.init_mercury_op_table, Op, OpPri,
+            AssocA, AssocB)
     then
         Doc =
             group([
@@ -860,6 +846,18 @@ expand_format_op(Op, [ArgA, ArgB], CurrentPri, Docs) :-
                 ])
             ]),
         Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
+    ).
+
+:- pred expand_format_susp(((func) = doc)::in, doc::out,
+    func_symbol_limit::in, func_symbol_limit::out) is det.
+
+expand_format_susp(Susp, Doc, !Limit) :-
+    ( if limit_overrun(!.Limit) then
+        Doc = ellipsis
+    else
+        decrement_limit(!Limit),
+        Doc0 = apply(Susp),
+        set_func_symbol_limit_correctly(!.Limit, Doc0, Doc)
     ).
 
 %---------------------%
