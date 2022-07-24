@@ -353,38 +353,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % Print out the ROBDD in disjunctive normal form. either to the
-    % current output stream, or to the specified output stream.
-    %
-:- pred print_robdd(robdd(T)::in,
-    io::di, io::uo) is det.
-:- pred print_robdd(io.text_output_stream::in, robdd(T)::in,
-    io::di, io::uo) is det.
-
-:- type var_to_string(T) == (func(var(T)) = string).
-
-    % robdd_to_dot(ROBDD, WriteVar, FileName, !IO):
-    %
-    % Output the ROBDD in a format that can be processed by the
-    % graph-drawing program `dot' to the specified filename.
-    %
-:- pred robdd_to_dot(robdd(T)::in,
-    var_to_string(T)::in, string::in, io::di, io::uo) is det.
-
-    % robdd_to_dot(ROBDD, WriteVar, !IO):
-    % robdd_to_dot_stream(Stream, ROBDD, WriteVar, !IO):
-    %
-    % Output the ROBDD in a format that can be processed by the
-    % graph-drawing program `dot', either to the current output stream,
-    % or to the specified output stream.
-    %
-:- pred robdd_to_dot(robdd(T)::in,
-    var_to_string(T)::in, io::di, io::uo) is det.
-:- pred robdd_to_dot_stream(io.text_output_stream::in, robdd(T)::in,
-    var_to_string(T)::in, io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-
     % labelling(Vars, ROBDD, TrueVars, FalseVars):
     %
     % Takes a set of Vars and an ROBDD and returns a value assignment
@@ -424,6 +392,38 @@
 :- pred clear_caches(io::di, io::uo) is det.
 
 :- impure pred clear_caches is det.
+
+%---------------------------------------------------------------------------%
+
+    % Print out the ROBDD in disjunctive normal form. either to the
+    % current output stream, or to the specified output stream.
+    %
+:- pred print_robdd(robdd(T)::in,
+    io::di, io::uo) is det.
+:- pred print_robdd(io.text_output_stream::in, robdd(T)::in,
+    io::di, io::uo) is det.
+
+:- type var_to_string(T) == (func(var(T)) = string).
+
+    % robdd_to_dot(ROBDD, WriteVar, FileName, !IO):
+    %
+    % Output the ROBDD in a format that can be processed by the
+    % graph-drawing program `dot' to the specified filename.
+    %
+:- pred robdd_to_dot(robdd(T)::in,
+    var_to_string(T)::in, string::in, io::di, io::uo) is det.
+
+    % robdd_to_dot(ROBDD, WriteVar, !IO):
+    % robdd_to_dot_stream(Stream, ROBDD, WriteVar, !IO):
+    %
+    % Output the ROBDD in a format that can be processed by the
+    % graph-drawing program `dot', either to the current output stream,
+    % or to the specified output stream.
+    %
+:- pred robdd_to_dot(robdd(T)::in,
+    var_to_string(T)::in, io::di, io::uo) is det.
+:- pred robdd_to_dot_stream(io.text_output_stream::in, robdd(T)::in,
+    var_to_string(T)::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1438,6 +1438,74 @@ size_2(F, Nodes0, Nodes, Depth0, Depth, Val0, Seen0, Seen) :-
 
 %---------------------------------------------------------------------------%
 
+labelling(Vars, R, TrueVars, FalseVars) :-
+    labelling_loop(to_sorted_list(Vars), R,
+        empty_vars_set, TrueVars, empty_vars_set, FalseVars).
+
+:- pred labelling_loop(list(var(T))::in, robdd(T)::in,
+    vars(T)::in, vars(T)::out, vars(T)::in, vars(T)::out) is nondet.
+
+labelling_loop([], _, !TrueVars, !FalseVars).
+labelling_loop([V | Vs], R0, !TrueVars, !FalseVars) :-
+    R = var_restrict_false(V, R0),
+    R \= zero,
+    !:FalseVars = !.FalseVars `insert` V,
+    labelling_loop(Vs, R, !TrueVars, !FalseVars).
+labelling_loop([V | Vs], R0, !TrueVars, !FalseVars) :-
+    R = var_restrict_true(V, R0),
+    R \= zero,
+    !:TrueVars = !.TrueVars `insert` V,
+    labelling_loop(Vs, R, !TrueVars, !FalseVars).
+
+%---------------------------------------------------------------------------%
+
+minimal_model(Vars, R, TrueVars, FalseVars) :-
+    ( if is_empty(Vars) then
+        TrueVars = empty_vars_set,
+        FalseVars = empty_vars_set
+    else
+        minimal_model_2(to_sorted_list(Vars), R,
+            empty_vars_set, TrueVars0, empty_vars_set, FalseVars0),
+        (
+            TrueVars = TrueVars0,
+            FalseVars = FalseVars0
+        ;
+            minimal_model(Vars, R * (~conj_vars(TrueVars0)),
+                TrueVars, FalseVars)
+        )
+    ).
+
+:- pred minimal_model_2(list(var(T))::in, robdd(T)::in,
+    vars(T)::in, vars(T)::out, vars(T)::in, vars(T)::out) is semidet.
+
+minimal_model_2([], _, !TrueVars, !FalseVars).
+minimal_model_2([V | Vs], R0, !TrueVars, !FalseVars) :-
+    R1 = var_restrict_false(V, R0),
+    ( if R1 = zero then
+        R2 = var_restrict_true(V, R0),
+        R2 \= zero,
+        !:TrueVars = !.TrueVars `insert` V
+    else
+        !:FalseVars = !.FalseVars `insert` V
+    ),
+    minimal_model_2(Vs, R1, !TrueVars, !FalseVars).
+
+%---------------------------------------------------------------------------%
+
+:- pragma promise_pure(pred(clear_caches/2)).
+clear_caches(!IO) :-
+    impure clear_caches.
+
+:- pragma no_inline(pred(clear_caches/0)).
+:- pragma foreign_proc("C",
+    clear_caches,
+    [will_not_call_mercury],
+"
+    MR_ROBDD_init_caches();
+").
+
+%---------------------------------------------------------------------------%
+
 print_robdd(F, !IO) :-
     io.output_stream(Stream, !IO),
     print_robdd(Stream, F, !IO).
@@ -1596,74 +1664,6 @@ write_edge(Stream, R0, R1, Arc, !IO) :-
             [s(node_name(R0)), s(if Arc = yes then "f0" else "f2"),
             s(node_name(R1)), s(if Arc = yes then "t" else "f")], !IO)
     ).
-
-%---------------------------------------------------------------------------%
-
-labelling(Vars, R, TrueVars, FalseVars) :-
-    labelling_loop(to_sorted_list(Vars), R,
-        empty_vars_set, TrueVars, empty_vars_set, FalseVars).
-
-:- pred labelling_loop(list(var(T))::in, robdd(T)::in,
-    vars(T)::in, vars(T)::out, vars(T)::in, vars(T)::out) is nondet.
-
-labelling_loop([], _, !TrueVars, !FalseVars).
-labelling_loop([V | Vs], R0, !TrueVars, !FalseVars) :-
-    R = var_restrict_false(V, R0),
-    R \= zero,
-    !:FalseVars = !.FalseVars `insert` V,
-    labelling_loop(Vs, R, !TrueVars, !FalseVars).
-labelling_loop([V | Vs], R0, !TrueVars, !FalseVars) :-
-    R = var_restrict_true(V, R0),
-    R \= zero,
-    !:TrueVars = !.TrueVars `insert` V,
-    labelling_loop(Vs, R, !TrueVars, !FalseVars).
-
-%---------------------------------------------------------------------------%
-
-minimal_model(Vars, R, TrueVars, FalseVars) :-
-    ( if is_empty(Vars) then
-        TrueVars = empty_vars_set,
-        FalseVars = empty_vars_set
-    else
-        minimal_model_2(to_sorted_list(Vars), R,
-            empty_vars_set, TrueVars0, empty_vars_set, FalseVars0),
-        (
-            TrueVars = TrueVars0,
-            FalseVars = FalseVars0
-        ;
-            minimal_model(Vars, R * (~conj_vars(TrueVars0)),
-                TrueVars, FalseVars)
-        )
-    ).
-
-:- pred minimal_model_2(list(var(T))::in, robdd(T)::in,
-    vars(T)::in, vars(T)::out, vars(T)::in, vars(T)::out) is semidet.
-
-minimal_model_2([], _, !TrueVars, !FalseVars).
-minimal_model_2([V | Vs], R0, !TrueVars, !FalseVars) :-
-    R1 = var_restrict_false(V, R0),
-    ( if R1 = zero then
-        R2 = var_restrict_true(V, R0),
-        R2 \= zero,
-        !:TrueVars = !.TrueVars `insert` V
-    else
-        !:FalseVars = !.FalseVars `insert` V
-    ),
-    minimal_model_2(Vs, R1, !TrueVars, !FalseVars).
-
-%---------------------------------------------------------------------------%
-
-:- pragma promise_pure(pred(clear_caches/2)).
-clear_caches(!IO) :-
-    impure clear_caches.
-
-:- pragma no_inline(pred(clear_caches/0)).
-:- pragma foreign_proc("C",
-    clear_caches,
-    [will_not_call_mercury],
-"
-    MR_ROBDD_init_caches();
-").
 
 %---------------------------------------------------------------------------%
 :- end_module robdd.
