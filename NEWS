@@ -353,6 +353,12 @@ Changes to the Mercury standard library
 
    - pred `empty/1`
 
+### Changes to the `string` module
+
+* The following predicate has been added:
+
+   - pred `contains_match/2`
+
 ### Changes to the `tree_bitset` module
 
 * The following obsolete predicates has been removed:

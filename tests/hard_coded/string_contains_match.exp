@@ -1,0 +1,9 @@
+contains_match(is_whitespace, "") ==> false.
+contains_match(is_whitespace, "abc") ==> false.
+contains_match(is_whitespace, " abc") ==> true.
+contains_match(is_whitespace, "a bc") ==> true.
+contains_match(is_whitespace, "abc ") ==> true.
+contains_match(is_whitespace, "μῆνιν ἄειδε θεὰ Πηληϊάδεω Ἀχιλῆος") ==> true.
+contains_match(is_chess_piece, "♜    ♞   ♝   ♛   ♚   ♝   ♞   ♜") ==> true.
+contains_match(is_chess_piece, "abc♜ def") ==> true.
+contains_match(is_chess_piece, "no chess pieces here!") ==> false.

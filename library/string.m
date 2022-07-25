@@ -578,6 +578,14 @@
     %
 :- pred all_match(pred(char)::in(pred(in) is semidet), string::in) is semidet.
 
+    % contains_match(TestPred, String):
+    %
+    % True iff String contains at least one code point that satisfies
+    % TestPred.
+    %
+:- pred contains_match(pred(char)::in(pred(in) is semidet), string::in)
+    is semidet.
+
     % contains_char(String, Char):
     %
     % Succeed if the code point Char occurs in String.
@@ -3288,6 +3296,25 @@ all_match_loop(P, String, Cur) :-
         all_match_loop(P, String, Next)
     else
         true
+    ).
+
+%---------------------%
+
+contains_match(P, String) :-
+    contains_match_loop(P, String, 0).
+
+:- pred contains_match_loop(pred(char)::in(pred(in) is semidet), string::in,
+    int::in) is semidet.
+
+contains_match_loop(P, String, Cur) :-
+    unsafe_index_next_repl(String, Cur, Next, Char, MaybeReplaced),
+    ( if
+        MaybeReplaced = not_replaced,
+        P(Char)
+    then
+        true
+    else
+        contains_match_loop(P, String, Next)
     ).
 
 %---------------------%

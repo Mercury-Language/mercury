@@ -4108,7 +4108,7 @@ quote_arg(Arg0) = Arg :-
     % test whether we are using a Unix or Windows shell.
     ( if dir.use_windows_paths then
         ( if
-            ( string_contains_whitespace(Arg0)
+            ( string.contains_match(char.is_whitespace, Arg0)
             ; Arg0 = ""
             )
         then
@@ -4139,15 +4139,6 @@ quote_arg(Arg0) = Arg :-
                 Arg = string.from_char_list(ArgList)
             )
         )
-    ).
-
-:- pred string_contains_whitespace(string::in) is semidet.
-
-string_contains_whitespace(Str) :-
-    Chars = string.to_char_list(Str),
-    some [Char] (
-        list.member(Char, Chars),
-        char.is_whitespace(Char)
     ).
 
 :- func quote_arg_unix(list(char)) = list(char).
