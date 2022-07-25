@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2003, 2005, 2008-2009 The University of Melbourne.
+% Copyright (C) 2015, 2017, 2019-2022 The Mercury team
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -44,6 +45,7 @@
 
 % OS interfaces not provided by the standard library.
 :- include_module process_util.
+:- include_module shell_util.
 :- include_module timestamp.
 
 % Constraint machinery for the termination analysers.

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
 % Copyright (C) 2008-2011 The University of Melbourne.
-% Copyright (C) 2013-2015, 2018 The Mercury team.
+% Copyright (C) 2013-2015, 2018, 2020-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -132,6 +132,7 @@
 
 :- import_module libs.compute_grade.
 :- import_module libs.options.
+:- import_module libs.shell_util.
 
 :- import_module benchmarking.
 :- import_module dir.
@@ -291,7 +292,7 @@ get_install_name_option(Globals, OutputFileName, InstallNameOpt) :-
         InstallNamePath = InstallNamePath0
     ),
     InstallNameOpt = InstallNameFlag ++
-        quote_arg(InstallNamePath) / OutputFileName.
+        quote_shell_cmd_arg(InstallNamePath) / OutputFileName.
 
 %---------------------------------------------------------------------------%
 
@@ -356,7 +357,7 @@ make_install_file_command(Globals, FileName, InstallDir) = Command :-
         FileInstallCmd = install_cmd_cp,
         InstallCmd = "cp"
     ),
-    Command = string.join_list("   ", list.map(quote_arg,
+    Command = string.join_list("   ", list.map(quote_shell_cmd_arg,
         [InstallCmd, FileName, InstallDir])).
 
 make_install_dir_command(Globals, SourceDirName, InstallDir) = Command :-
@@ -368,7 +369,7 @@ make_install_dir_command(Globals, SourceDirName, InstallDir) = Command :-
         InstallCmd = "cp",
         InstallCmdDirOpt = "-R"
     ),
-    Command = string.join_list("   ", list.map(quote_arg,
+    Command = string.join_list("   ", list.map(quote_shell_cmd_arg,
         [InstallCmd, InstallCmdDirOpt, SourceDirName, InstallDir])).
 
 %---------------------------------------------------------------------------%

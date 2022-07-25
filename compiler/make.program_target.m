@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
+% Copyright (C) 2013-2017, 2019-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -63,6 +64,7 @@
 :- import_module libs.handle_options.
 :- import_module libs.options.
 :- import_module libs.process_util.
+:- import_module libs.shell_util.
 :- import_module libs.timestamp.
 :- import_module make.build.
 :- import_module make.dependencies.
@@ -2005,9 +2007,9 @@ generate_archive_index(Globals, FileName, InstallDir, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, ranlib_flags, RanLibFlags),
     % XXX What is the point of using more than one space?
     Command = string.join_list("    ", [
-        quote_arg(RanLibCommand),
+        quote_shell_cmd_arg(RanLibCommand),
         RanLibFlags,
-        quote_arg(InstallDir / FileName)
+        quote_shell_cmd_arg(InstallDir / FileName)
     ]),
     invoke_system_command(Globals, ProgressStream, ErrorStream, OutputStream,
         cmd_verbose, Command, Succeeded, !IO).

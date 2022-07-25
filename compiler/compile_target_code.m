@@ -236,6 +236,7 @@
 :- import_module libs.compute_grade.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
+:- import_module libs.shell_util.
 :- import_module libs.trace_params.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.find_module.
@@ -281,8 +282,8 @@ do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC, C_File, O_File,
     string.append_list([
         CC, " ",
         AllCFlags,
-        " -c ", quote_arg(C_File), " ",
-        NameObjectFile, quote_arg(O_File)], Command),
+        " -c ", quote_shell_cmd_arg(C_File), " ",
+        NameObjectFile, quote_shell_cmd_arg(O_File)], Command),
     get_maybe_filtercc_command(Globals, MaybeFilterCmd),
     invoke_system_command_maybe_filter_output(Globals, ProgressStream,
         ErrorStream, ErrorStream, cmd_verbose_commands,
@@ -812,7 +813,8 @@ gather_c_include_dir_flags(Globals, InclOpt) :-
     globals.lookup_accumulating_option(Globals, c_include_directory,
         C_Incl_Dirs),
     InclOpt = string.append_list(list.condense(list.map(
-        (func(C_INCL) = ["-I", quote_arg(C_INCL), " "]), C_Incl_Dirs))).
+        (func(C_INCL) = ["-I", quote_shell_cmd_arg(C_INCL), " "]),
+        C_Incl_Dirs))).
 
 %-----------------------------------------------------------------------------%
 
@@ -908,7 +910,7 @@ compile_java_files(Globals, ProgressStream, ErrorStream,
         InclOpt = ""
     else
         InclOpt = string.append_list([
-            "-classpath ", quote_arg(ClassPath), " "])
+            "-classpath ", quote_shell_cmd_arg(ClassPath), " "])
     ),
 
     globals.lookup_bool_option(Globals, target_debug, Target_Debug),
@@ -1386,7 +1388,7 @@ make_init_target_file(Globals, ProgressStream, ErrorStream, MkInit,
         " ", NoMainOpt,
         " ", ExperimentalComplexityOpt,
         " ", RuntimeFlags,
-        " -o ", quote_arg(TmpInitTargetFileName),
+        " -o ", quote_shell_cmd_arg(TmpInitTargetFileName),
         " ", InitFileDirs
     ]),
 
@@ -1917,7 +1919,7 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
                 LTOOpts, " ",
                 TraceOpts, " ",
                 ReserveStackSizeOpt, " ",
-                OutputOpt, quote_arg(OutputFileName), " ",
+                OutputOpt, quote_shell_cmd_arg(OutputFileName), " ",
                 Objects, " ",
                 LinkOptSep, " ",
                 LinkLibraryDirectories, " ",
@@ -1956,7 +1958,7 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
             then
                 string.format("%s %s %s",
                     [s(StripExeCommand), s(StripExeFlags),
-                    s(quote_arg(OutputFileName))], StripCmd),
+                    s(quote_shell_cmd_arg(OutputFileName))], StripCmd),
                 invoke_system_command_maybe_filter_output(Globals,
                     ProgressStream, ErrorStream, ErrorStream,
                     cmd_verbose_commands, StripCmd, no, Succeeded, !IO)
@@ -2177,7 +2179,7 @@ link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibOtherExt, Name,
     ),
     StaticLibName = LibPrefix ++ Name ++
         other_extension_to_string(LibOtherExt),
-    StaticArg = quote_arg(StdLibDir/"lib"/GradeDir/StaticLibName),
+    StaticArg = quote_shell_cmd_arg(StdLibDir/"lib"/GradeDir/StaticLibName),
     make_link_lib(Globals, TargetType, Name, SharedArg).
 
     % Pass either `-llib' or `PREFIX/lib/GRADE/liblib.a', depending on
@@ -2221,14 +2223,14 @@ make_link_lib(Globals, TargetType, LibName, LinkOpt) :-
         ),
         globals.lookup_string_option(Globals, LinkLibFlag, LinkLibOpt),
         globals.lookup_string_option(Globals, LinkLibSuffix, Suffix),
-        LinkOpt = quote_arg(LinkLibOpt ++ LibName ++ Suffix)
+        LinkOpt = quote_shell_cmd_arg(LinkLibOpt ++ LibName ++ Suffix)
     ;
         ( TargetType = csharp_executable
         ; TargetType = csharp_library
         ),
         LinkLibOpt = "-r:",
         Suffix = ".dll",
-        LinkOpt = quote_arg(LinkLibOpt ++ LibName ++ Suffix)
+        LinkOpt = quote_shell_cmd_arg(LinkLibOpt ++ LibName ++ Suffix)
     ;
         ( TargetType = static_library
         ; TargetType = java_executable
@@ -2257,7 +2259,7 @@ get_runtime_library_path_opts(Globals, LinkTargetType,
     then
         globals.lookup_accumulating_option(Globals,
             runtime_link_library_directories, RpathDirs0),
-        RpathDirs = list.map(quote_arg, RpathDirs0),
+        RpathDirs = list.map(quote_shell_cmd_arg, RpathDirs0),
         (
             RpathDirs = [],
             RpathOpts = ""
@@ -3032,8 +3034,8 @@ join_string_list([String | Strings], Prefix, Suffix, Separator, Result) :-
     string::in, string::out) is det.
 
 join_quoted_string_list(Strings, Prefix, Suffix, Separator, Result) :-
-    join_string_list(map(quote_arg, Strings), Prefix, Suffix, Separator,
-        Result).
+    join_string_list(map(quote_shell_cmd_arg, Strings), Prefix, Suffix,
+        Separator, Result).
 
     % join_module_list(Globals, ModuleNames, Extension, Result, !IO):
     %
@@ -3062,7 +3064,7 @@ make_all_module_command(Command0, MainModule, AllModules, Command, !IO) :-
         [MainModule | list.delete_all(AllModules, MainModule)],
         ModuleNameStrings, !IO),
     Command = string.join_list(" ",
-        list.map(quote_arg, [Command0 | ModuleNameStrings])).
+        list.map(quote_shell_cmd_arg, [Command0 | ModuleNameStrings])).
 
 %-----------------------------------------------------------------------------%
 
@@ -3232,7 +3234,7 @@ make_standalone_int_body(Globals, ProgressStream, ErrorStream,
         " ", TraceOpt,
         " ", ExperimentalComplexityOpt,
         " ", RuntimeFlags,
-        " -o ", quote_arg(CFileName),
+        " -o ", quote_shell_cmd_arg(CFileName),
         " ", InitFileDirs,
         " -s "
     ]),

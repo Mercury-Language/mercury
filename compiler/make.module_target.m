@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
+% Copyright (C) 2013-2017, 2019-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -88,6 +89,7 @@
 :- import_module analysis.
 :- import_module libs.options.
 :- import_module libs.process_util.
+:- import_module libs.shell_util.
 :- import_module libs.timestamp.
 :- import_module make.build.
 :- import_module make.deps_set.
@@ -511,7 +513,7 @@ build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
             Verbose = yes,
             AllArgs = AllOptionArgs ++ [ModuleArg],
             % XXX Don't write the default options.
-            AllArgStrs = list.map(quote_arg, AllArgs),
+            AllArgStrs = list.map(quote_shell_cmd_arg, AllArgs),
             AllArgsStr = string.join_list(" ", AllArgStrs),
             io.format("Invoking self `mmc %s'\n", [s(AllArgsStr)], !IO)
         ;
@@ -727,7 +729,7 @@ invoke_mmc(Globals, ProgressStream, ErrorStream,
         MercuryCompiler = ProgName
     ),
 
-    QuotedArgs = list.map(quote_arg, Args),
+    QuotedArgs = list.map(quote_shell_cmd_arg, Args),
 
     % Some operating systems (e.g. Windows) have shells with ludicrously
     % short limits on the length of command lines, so we need to write the
@@ -750,8 +752,9 @@ invoke_mmc(Globals, ProgressStream, ErrorStream,
             [s(string.join_list(" ", QuotedArgs))], !IO),
         io.close_output(ArgFileStream, !IO),
 
-        Command = string.format("%s --arg-file %s",
-            [s(quote_arg(MercuryCompiler)), s(quote_arg(ArgFileName))]),
+        Command = string.format("%s --arg-file %s", [
+            s(quote_shell_cmd_arg(MercuryCompiler)),
+            s(quote_shell_cmd_arg(ArgFileName))]),
 
         % We have already written the command.
         CommandVerbosity = cmd_verbose,
