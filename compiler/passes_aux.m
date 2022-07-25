@@ -393,7 +393,7 @@ write_pred_progress_message(ModuleInfo, Message, PredId, !IO) :-
         VeryVerbose = yes,
         module_info_get_name(ModuleInfo, ModuleName),
         globals.get_progress_output_stream(Globals, ModuleName, Stream, !IO),
-        PredStr = pred_id_to_string(ModuleInfo, PredId),
+        PredStr = pred_id_to_user_string(ModuleInfo, PredId),
         io.format(Stream, "%% %s %s\n", [s(Message), s(PredStr)], !IO),
         io.flush_output(Stream, !IO)
     ;
@@ -410,7 +410,7 @@ write_proc_progress_message(ModuleInfo, Message, PredId, ProcId, !IO) :-
         VeryVerbose = yes,
         module_info_get_name(ModuleInfo, ModuleName),
         globals.get_progress_output_stream(Globals, ModuleName, Stream, !IO),
-        ProcStr = pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId),
+        ProcStr = pred_proc_id_pair_to_user_string(ModuleInfo, PredId, ProcId),
         io.format(Stream, "%% %s %s\n", [s(Message), s(ProcStr)], !IO),
         io.flush_output(Stream, !IO)
     ;

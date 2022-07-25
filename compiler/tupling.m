@@ -265,7 +265,7 @@ maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
-            SccStrSet = set.map(pred_proc_id_to_string(!.ModuleInfo), SCC),
+            SccStrSet = set.map(pred_proc_id_to_dev_string(!.ModuleInfo), SCC),
             SccStrs = set.to_sorted_list(SccStrSet),
             SccStr = string.join_list(", ", SccStrs),
             % XXX Here and in other trace goals, the output we generate

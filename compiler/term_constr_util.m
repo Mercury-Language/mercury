@@ -450,12 +450,12 @@ maybe_write_scc_procs(Stream, ModuleInfo, SCC, !IO) :-
 
 write_scc_procs_loop(_, _, [], !IO).
 write_scc_procs_loop(Stream, ModuleInfo, [PPId | PPIds], !IO) :-
-    PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+    PPIdStr = pred_proc_id_to_dev_string(ModuleInfo, PPId),
     io.format(Stream, "\t%s\n", [s(PPIdStr)], !IO),
     write_scc_procs_loop(Stream, ModuleInfo, PPIds, !IO).
 
 maybe_write_proc_name(Stream, ModuleInfo, Prefix, PPId, !IO) :-
-    PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+    PPIdStr = pred_proc_id_to_dev_string(ModuleInfo, PPId),
     io.format(Stream, "%s%s\n", [s(Prefix), s(PPIdStr)], !IO).
 
 write_size_vars(Stream, VarSet, Vars, !IO) :-

@@ -276,7 +276,7 @@ generate_code_for_pred(ModuleInfo, ConstStructMap, VeryVerbose, Statistics,
             trace [io(!IO)] (
                 get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
                 io.format(ProgressStream, "%% Generating code for %s\n",
-                    [s(pred_id_to_string(ModuleInfo, PredId))], !IO)
+                    [s(pred_id_to_user_string(ModuleInfo, PredId))], !IO)
             ),
             (
                 TailProcIds = [],
@@ -317,7 +317,8 @@ generate_code_for_procs(ModuleInfo, ConstStructMap, PredId, PredInfo,
             get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
             ProcIdInt = proc_id_to_int(ProcId),
             io.format(ProgressStream, "%% Generating code for %s proc %d\n",
-                [s(pred_id_to_string(ModuleInfo, PredId)), i(ProcIdInt)], !IO)
+                [s(pred_id_to_user_string(ModuleInfo, PredId)), i(ProcIdInt)],
+                !IO)
         )
     ;
         PrintProcProgress = no

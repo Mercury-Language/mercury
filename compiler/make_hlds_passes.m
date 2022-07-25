@@ -955,7 +955,8 @@ add_promise(PredStatus, PromiseInfo, !ModuleInfo, !QualInfo, !Specs) :-
     HeadVars = UnivVars,
     PredFormArity = arg_list_arity(HeadVars),
     clauses_info_init_for_assertion(HeadVars, ClausesInfo),
-    PredOrigin = origin_user(user_made_assertion(FileName, LineNumber)),
+    PredOrigin = origin_user(
+        user_made_assertion(PromiseType, FileName, LineNumber)),
     add_implicit_pred_decl(pf_predicate, PromiseModuleName, PromisePredName,
         PredFormArity, PredStatus, Context, PredOrigin, GoalType, ClausesInfo,
         _PredId, !ModuleInfo),

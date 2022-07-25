@@ -435,7 +435,7 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
         PredId, PredInfo, ArgTerms, ApplProcIds, AllProcIds,
         !ModuleInfo, !QualInfo, !Specs) :-
     AllProcIds = pred_info_all_procids(PredInfo),
-    PredIdStr = pred_id_to_string(!.ModuleInfo, PredId),
+    PredIdStr = pred_id_to_user_string(!.ModuleInfo, PredId),
     ContextPieces = cord.from_list([words("In the head of a clause for"),
         fixed(PredIdStr), suffix(":"), nl]),
     get_mode_annotations(VarSet, ContextPieces, 1, MaybeAnnotatedArgTerms,

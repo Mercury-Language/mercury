@@ -674,7 +674,7 @@ dump_abstract_proc(Stream, ModuleInfo, Indent, Proc, !IO) :-
     Body = Proc ^ ap_body,
     SizeVarSet = Proc ^ ap_size_varset,
     AbstractPPId = real(PPId),
-    PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+    PPIdStr = pred_proc_id_to_dev_string(ModuleInfo, PPId),
     HeadVarSizeStrs = list.map(size_var_to_string(SizeVarSet), HeadVars),
     HeadVarSizesStr = string.join_list(", ", HeadVarSizeStrs),
     indent_line(Stream, Indent, !IO),
@@ -745,7 +745,7 @@ dump_abstract_goal(Stream, ModuleInfo, VarSet, Indent, AbstractGoal, !IO) :-
     ;
         AbstractGoal = term_call(PPId0, _, CallVars, _, _, _, CallPoly),
         PPId0 = real(PPId),
-        PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+        PPIdStr = pred_proc_id_to_dev_string(ModuleInfo, PPId),
         CallVarNamesStr = var_names_to_string(VarSet, CallVars),
         indent_line(Stream, Indent, !IO),
         io.format(Stream, "call: %s : [%s]\n",

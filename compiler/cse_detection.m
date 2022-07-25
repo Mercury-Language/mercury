@@ -166,7 +166,7 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
             get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             io.format(ProgressStream,
                 "%% Detecting common deconstructions for %s\n",
-                [s(pred_id_to_string(!.ModuleInfo, PredId))], !IO)
+                [s(pred_id_to_user_string(!.ModuleInfo, PredId))], !IO)
         )
     ;
         VeryVerbose = no
@@ -197,7 +197,7 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
                 get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
                 io.format(ProgressStream,
                     "%% Repeating mode check for %s\n",
-                    [s(pred_id_to_string(!.ModuleInfo, PredId))], !IO)
+                    [s(pred_id_to_user_string(!.ModuleInfo, PredId))], !IO)
             )
         ;
             VeryVerbose = no
@@ -229,7 +229,7 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
                 get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
                 io.format(ProgressStream,
                     "%% Repeating switch detection for %s\n",
-                    [s(pred_id_to_string(!.ModuleInfo, PredId))], !IO)
+                    [s(pred_id_to_user_string(!.ModuleInfo, PredId))], !IO)
             )
         ;
             VeryVerbose = no
@@ -254,7 +254,7 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
                 get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
                 io.format(ProgressStream,
                     "%% Repeating common deconstruction detection for %s\n",
-                    [s(pred_id_to_string(!.ModuleInfo, PredId))], !IO)
+                    [s(pred_id_to_user_string(!.ModuleInfo, PredId))], !IO)
             )
         ;
             VeryVerbose = no

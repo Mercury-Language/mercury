@@ -282,7 +282,7 @@ llds_backend_pass_by_preds_do_one_pred(!HLDS, ConstStructMap, SCCMap, PredId,
         (
             Verbose = yes,
             trace [io(!IO)] (
-                PredStr = pred_id_to_string(!.HLDS, PredId),
+                PredStr = pred_id_to_user_string(!.HLDS, PredId),
                 io.format("%% Generating code for %s\n", [s(PredStr)], !IO),
                 maybe_flush_output(Verbose, !IO)
             )

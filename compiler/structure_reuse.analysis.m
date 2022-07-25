@@ -1061,7 +1061,8 @@ structure_reuse_answer_harsher_than_in_analysis_registry(ModuleInfo,
                 io(!IO)
             ] (
                 get_debug_output_stream(ModuleInfo, DebugStream, !IO),
-                ReusePPIdStr = pred_proc_id_to_string(ModuleInfo, ReusePPId),
+                ReusePPIdStr =
+                    pred_proc_id_to_dev_string(ModuleInfo, ReusePPId),
                 io.format(DebugStream,
                     "Structure reuse answer for %s\n" ++
                     "has harsher conditions than listed in analysis file.\n",
@@ -1110,7 +1111,7 @@ remove_useless_reuse_proc(ModuleInfo, VeryVerbose, ReuseAsMap, _, PPId,
             VeryVerbose = yes,
             trace [io(!IO)] (
                 get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
-                PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+                PPIdStr = pred_proc_id_to_dev_string(ModuleInfo, PPId),
                 io.format(ProgressStream, "%% Removing useless reuse %s\n",
                     [s(PPIdStr)], !IO)
             )

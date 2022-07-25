@@ -205,7 +205,7 @@ term_constr_build_abstract_scc(Options, SCCWithEntryPoints, Errors,
 term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
         !SizeVarset, !AbstractInfo) :-
     trace [io(!DebugIO), compiletime(flag("term_constr_build"))] (
-        PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+        PPIdStr = pred_proc_id_to_dev_string(ModuleInfo, PPId),
         get_debug_output_stream(ModuleInfo, DebugStream, !DebugIO),
         io.format(DebugStream,
             "Building procedure: %s\n", [s(PPIdStr)], !DebugIO),

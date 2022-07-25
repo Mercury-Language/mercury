@@ -681,7 +681,7 @@ write_cycle(_, _, [], !IO).
 write_cycle(Stream, ModuleInfo, [Proc | Procs], !IO) :-
     Proc = real(PredProcId),
     io.format(Stream, "\t- %s\n",
-        [s(pred_proc_id_to_string(ModuleInfo, PredProcId))], !IO),
+        [s(pred_proc_id_to_dev_string(ModuleInfo, PredProcId))], !IO),
     write_cycle(Stream, ModuleInfo, Procs, !IO).
 
 :- pred write_edge(io.text_output_stream::in, module_info::in,
@@ -691,13 +691,13 @@ write_edge(Stream, ModuleInfo, SizeVarSet, Edge, !IO) :-
     Edge ^ tcge_caller = real(PredProcId),
     Edge ^ tcge_callee = real(CallPredProcId),
     io.format(Stream, "Edge is:\n\tHead: %s : ",
-        [s(pred_proc_id_to_string(ModuleInfo, PredProcId))], !IO),
+        [s(pred_proc_id_to_dev_string(ModuleInfo, PredProcId))], !IO),
     write_size_vars(Stream, SizeVarSet, Edge ^ tcge_head_args, !IO),
     io.write_string(Stream, " :- \n", !IO),
     io.write_string(Stream, "\tConstraints are:  \n", !IO),
     write_polyhedron(Stream, SizeVarSet, Edge ^ tcge_label, !IO),
     io.format(Stream, "\n\tCall is:  %s : ",
-        [s(pred_proc_id_to_string(ModuleInfo, CallPredProcId))], !IO),
+        [s(pred_proc_id_to_dev_string(ModuleInfo, CallPredProcId))], !IO),
     write_size_vars(Stream, SizeVarSet, Edge ^ tcge_call_args, !IO),
     io.write_string(Stream, " :- \n\n", !IO).
 

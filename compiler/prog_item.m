@@ -1224,7 +1224,7 @@
                 com_aux_pred_kind               :: mutable_pred_kind
             )
     ;       compiler_origin_tabling(
-                cot_pred_spec                   :: pf_sym_name_arity,
+                cot_pred_spec                   :: pred_pf_name_arity,
                 cot_aux_pred_kind               :: tabling_aux_pred_kind
             ).
 

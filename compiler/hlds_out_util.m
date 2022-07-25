@@ -63,19 +63,64 @@
 
 %---------------------------------------------------------------------------%
 
-    % pred_id_to_string returns a string such as
-    %       predicate `foo.bar/3'
-    % or    function `foo.myfoo/5'
-    % except in some special cases where the predicate name is mangled
-    % and we can print a more meaningful identification of the predicate
-    % in question.
+    % pred_id_to_user_string returns a string that is suitable to identify
+    % a predicate to a user
     %
-:- func pred_id_to_string(module_info, pred_id) = string.
+    % - in progress messages,
+    % - in error messages, and
+    % - as the expansion of $pred.
+    %
+    % For user written predicates, the result will look like this:
+    %
+    %       predicate `foo.bar'/3
+    %       function `foo.myfoo'/5
+    %
+    % For predicates created by the compiler, the result be a description
+    % such as
+    %
+    %       unification predicate for `map'/2
+    %
+    % For predicates that are the transformed version of another predicate,
+    % the result will identify the original predicate at the start of the
+    % transformation chain (which may contain more than one transformation)
+    % and will say that a transformation happened, but will not say
+    % how many transformations happened, or what the transformations were,
+    % because
+    %
+    % - such details are not needed in progress messages, and
+    % - they *should* not be needed for error messages, since we should
+    %   not be reporting any errors for transformed predicates at all.
+    %
+    % The versions that also specify a proc_id do the same job, only
+    % they also append the procedure's mode number.
+    %
+:- func pred_id_to_user_string(module_info, pred_id) = string.
+:- func pred_proc_id_to_user_string(module_info, pred_proc_id) = string.
+:- func pred_proc_id_pair_to_user_string(module_info, pred_id, proc_id)
+    = string.
 
-    % Do the same job as pred_id_to_string, only for a procedure.
+    % pred_id_to_dev_string returns a string that is suitable to identify
+    % a predicate to a developer
     %
-:- func pred_proc_id_to_string(module_info, pred_proc_id) = string.
-:- func pred_proc_id_pair_to_string(module_info, pred_id, proc_id) = string.
+    % - in HLDS dumps (the parts other than the full pred provenance),
+    % - in compiler output intended to debug the compiler itself, and
+    % - in progress messages intended to help make sense of such output.
+    %
+    % The output will differ from pred_id_to_user_string in two main ways:
+    %
+    % - it will contain no quotes, because the unbalanced `' quote style
+    %   we usually use screws up syntax highlighting in HLDS dumps, and
+    %
+    % - it will contain a description of each transformation applied to
+    %   the base predicate.
+    %
+    % The versions that also specify a proc_id do the same job, only
+    % they also append the procedure's mode number.
+    %
+:- func pred_id_to_dev_string(module_info, pred_id) = string.
+:- func pred_proc_id_to_dev_string(module_info, pred_proc_id) = string.
+:- func pred_proc_id_pair_to_dev_string(module_info, pred_id, proc_id)
+    = string.
 
 %---------------------------------------------------------------------------%
 
@@ -239,22 +284,42 @@ init_hlds_out_info(Globals, Lang) = Info :-
 % Write out the ids of predicates and procedures.
 %
 
-pred_id_to_string(ModuleInfo, PredId) = Str :-
+pred_id_to_user_string(ModuleInfo, PredId) = Str :-
     module_info_get_pred_id_table(ModuleInfo, PredIdTable),
     ( if map.search(PredIdTable, PredId, PredInfo) then
-        Str = pred_info_id_to_string(PredInfo)
+        pred_info_get_origin(PredInfo, PredOrigin),
+        Str = pred_origin_to_user_string(PredOrigin)
     else
         % The predicate has been deleted, so we print what we can.
         pred_id_to_int(PredId, PredIdInt),
         Str = "deleted predicate " ++ int_to_string(PredIdInt)
     ).
 
-pred_proc_id_to_string(ModuleInfo, proc(PredId, ProcId)) =
-    pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId).
+pred_proc_id_to_user_string(ModuleInfo, proc(PredId, ProcId)) =
+    pred_proc_id_pair_to_user_string(ModuleInfo, PredId, ProcId).
 
-pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId) = Str :-
+pred_proc_id_pair_to_user_string(ModuleInfo, PredId, ProcId) = Str :-
     proc_id_to_int(ProcId, ModeNum),
-    Str = pred_id_to_string(ModuleInfo, PredId)
+    Str = pred_id_to_user_string(ModuleInfo, PredId)
+        ++ " mode " ++ int_to_string(ModeNum).
+
+pred_id_to_dev_string(ModuleInfo, PredId) = Str :-
+    module_info_get_pred_id_table(ModuleInfo, PredIdTable),
+    ( if map.search(PredIdTable, PredId, PredInfo) then
+        pred_info_get_origin(PredInfo, PredOrigin),
+        Str = pred_origin_to_user_string(PredOrigin)
+    else
+        % The predicate has been deleted, so we print what we can.
+        pred_id_to_int(PredId, PredIdInt),
+        Str = "deleted predicate " ++ int_to_string(PredIdInt)
+    ).
+
+pred_proc_id_to_dev_string(ModuleInfo, proc(PredId, ProcId)) =
+    pred_proc_id_pair_to_dev_string(ModuleInfo, PredId, ProcId).
+
+pred_proc_id_pair_to_dev_string(ModuleInfo, PredId, ProcId) = Str :-
+    proc_id_to_int(ProcId, ModeNum),
+    Str = pred_id_to_dev_string(ModuleInfo, PredId)
         ++ " mode " ++ int_to_string(ModeNum).
 
 %---------------------------------------------------------------------------%
@@ -657,21 +722,21 @@ functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         proc_id_to_int(ProcId, ProcIdInt),
         Str = "tabling_info_const("
-            ++ pred_id_to_string(ModuleInfo, PredId)
+            ++ pred_id_to_dev_string(ModuleInfo, PredId)
             ++ ", " ++ int_to_string(ProcIdInt) ++ ")"
     ;
         ConsId = table_io_entry_desc(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         proc_id_to_int(ProcId, ProcIdInt),
         Str = "table_io_entry_desc("
-            ++ pred_id_to_string(ModuleInfo, PredId)
+            ++ pred_id_to_dev_string(ModuleInfo, PredId)
             ++ " (mode " ++ int_to_string(ProcIdInt) ++ "))"
     ;
         ConsId = deep_profiling_proc_layout(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         proc_id_to_int(ProcId, ProcIdInt),
         Str = "deep_profiling_proc_layout("
-            ++ pred_id_to_string(ModuleInfo, PredId)
+            ++ pred_id_to_dev_string(ModuleInfo, PredId)
             ++ " (mode " ++ int_to_string(ProcIdInt) ++ "))"
     ).
 

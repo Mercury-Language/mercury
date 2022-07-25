@@ -275,7 +275,7 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
         trace [io(!IO)] (
             io.stderr_stream(StdErr, !IO),
             ProcStr =
-                pred_proc_id_pair_to_string(!.ModuleInfo, PredId, ProcId),
+                pred_proc_id_pair_to_dev_string(!.ModuleInfo, PredId, ProcId),
             io.format(StdErr, "%% Indirect reuse analysis (run %d) %s\n",
                 [i(Run), s(ProcStr)], !IO)
         )
@@ -1043,7 +1043,7 @@ maybe_write_verify_indirect_reuse_reason(Stream, BaseInfo, CalleePPId,
         Context = goal_info_get_context(GoalInfo),
         proc_info_get_var_table(ModuleInfo, BaseInfo ^ irb_proc_info,
             VarTable),
-        CalleeStr = pred_proc_id_to_string(ModuleInfo, CalleePPId),
+        CalleeStr = pred_proc_id_to_dev_string(ModuleInfo, CalleePPId),
         context_to_string(Context, ContextStr),
         io.format(Stream, "\tcall to %s\n\tfrom %s\n",
             [s(CalleeStr), s(ContextStr)], !IO),

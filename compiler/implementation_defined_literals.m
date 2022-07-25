@@ -223,7 +223,7 @@ make_impl_defined_literal(Var, IDCKind, Context, Info, Goal) :-
         make_string_const_construction(Context, Var, Str, Goal)
     ;
         IDCKind = idc_pred,
-        Str = pred_id_to_string(ModuleInfo, PredId),
+        Str = pred_id_to_user_string(ModuleInfo, PredId),
         make_string_const_construction(Context, Var, Str, Goal)
     ;
         IDCKind = idc_grade,

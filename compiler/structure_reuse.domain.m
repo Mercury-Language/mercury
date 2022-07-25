@@ -982,7 +982,7 @@ reuse_as_table_dump(Stream, ModuleInfo, Table, !IO) :-
 
 dump_entries(Stream, ModuleInfo, PPId,
         reuse_as_and_status(ReuseAs, _Status), !IO) :-
-    PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+    PPIdStr = pred_proc_id_to_dev_string(ModuleInfo, PPId),
     io.format(Stream, "%% %s\t--> %s\n",
         [s(PPIdStr), s(reuse_as_short_description(ReuseAs))], !IO).
 

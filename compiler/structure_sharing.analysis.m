@@ -402,9 +402,9 @@ analyse_scc(ModuleInfo, SCC, !SharingTable, !DepProcs) :-
         % We update the sharing table otherwise procedures which call it will
         % not be able to find a result, and therefore conclude that the
         % analysis is suboptimal.
-        ProcsStrings = list.map(pred_proc_id_to_string(ModuleInfo), SCCProcs),
-        ProcsString = string.join_list(", ", ProcsStrings),
-        Msg = "SCC cannot be analysed: " ++ ProcsString,
+        ProcsStrs = list.map(pred_proc_id_to_dev_string(ModuleInfo), SCCProcs),
+        ProcsStr = string.join_list(", ", ProcsStrs),
+        Msg = "SCC cannot be analysed: " ++ ProcsStr,
         SharingAs = sharing_as_top_sharing(top_cannot_improve(Msg)),
         SharingAndStatus = sharing_as_and_status(SharingAs, optimal),
         set.foldl(
@@ -1193,12 +1193,12 @@ write_top_feedback(Stream, ModuleInfo, Reason, !IO) :-
     (
         Reason = top_failed_lookup(ShroudedPPId),
         PPId = unshroud_pred_proc_id(ShroudedPPId),
-        PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+        PPIdStr = pred_proc_id_to_dev_string(ModuleInfo, PPId),
         io.format(Stream, "failed_lookup: %s\n", [s(PPIdStr)], !IO)
     ;
         Reason = top_from_lookup(ShroudedPPId),
         PPId = unshroud_pred_proc_id(ShroudedPPId),
-        PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+        PPIdStr = pred_proc_id_to_dev_string(ModuleInfo, PPId),
         io.format(Stream, "from_lookup: %s\n", [s(PPIdStr)], !IO)
     ;
         Reason = top_cannot_improve(String),

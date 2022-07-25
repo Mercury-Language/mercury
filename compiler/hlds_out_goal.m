@@ -1648,12 +1648,7 @@ write_goal_foreign_proc(_Info, Stream, ModuleInfo, VarNameSrc, _TypeQual,
         Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
     ForeignLang = get_foreign_language(Attributes),
     ForeignLangStr = foreign_language_string(ForeignLang),
-    PredStr0 = pred_id_to_string(ModuleInfo, PredId),
-    % When you look at HLDS dumps with vim, the unbalanced quote characters
-    % that pred_id_to_string puts around predicate names screws up
-    % syntax highlighting.
-    string.replace_all(PredStr0, "`", "", PredStr1),
-    string.replace_all(PredStr1, "'", "", PredStr),
+    PredStr = pred_id_to_dev_string(ModuleInfo, PredId),
     pred_id_to_int(PredId, PredIdInt),
     proc_id_to_int(ProcId, ProcIdInt),
 

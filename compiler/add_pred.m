@@ -183,7 +183,7 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
         user_arity_pred_form_arity(PredOrFunc, UserArity,
             pred_form_arity(PredFormArityInt)),
         record_pred_origin(PredOrFunc, PredSymName, UserArity, Origin,
-            PredOrigin, Markers),
+            Context, PredOrigin, Markers),
         add_new_pred(PredOrigin, Context, SeqNum, PredStatus, NeedQual,
             PredOrFunc, PredModuleName, PredName, TypeVarSet, ExistQVars,
             ArgTypes, Constraints, PredmodeDecl, Purity, Markers, Succeeded,
@@ -222,9 +222,10 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
     ).
 
 :- pred record_pred_origin(pred_or_func::in, sym_name::in, user_arity::in,
-    item_maybe_attrs::in, pred_origin::out, pred_markers::out) is det.
+    item_maybe_attrs::in, prog_context::in,
+    pred_origin::out, pred_markers::out) is det.
 
-record_pred_origin(PredOrFunc, PredSymName, UserArity, Origin,
+record_pred_origin(PredOrFunc, PredSymName, UserArity, Origin, Context,
         PredOrigin, Markers) :-
     % If this predicate was added as a result of the mutable
     % transformation, then mark this predicate as a mutable access pred.
@@ -264,11 +265,13 @@ record_pred_origin(PredOrFunc, PredSymName, UserArity, Origin,
             add_marker(marker_mutable_access_pred, Markers0, Markers)
         ;
             CompilerOrigin = compiler_origin_initialise,
-            PredOrigin = origin_compiler(made_for_initialise),
+            Context = context(File, Line),
+            PredOrigin = origin_compiler(made_for_initialise(File, Line)),
             Markers = Markers0
         ;
             CompilerOrigin = compiler_origin_finalise,
-            PredOrigin = origin_compiler(made_for_finalise),
+            Context = context(File, Line),
+            PredOrigin = origin_compiler(made_for_finalise(File, Line)),
             Markers = Markers0
         )
     ).
@@ -981,7 +984,7 @@ add_implicit_pred_decl(PredOrFunc, PredModuleName, PredName, PredFormArity,
         module_info_set_predicate_table(PredicateTable, !ModuleInfo)
     ;
         PredIds = [_ | _],
-        ( if PredOrigin = origin_user(user_made_assertion(_, _)) then
+        ( if PredOrigin = origin_user(user_made_assertion(_, _, _)) then
             % We add promises to the HLDS *after* we add all user predicate
             % declarations.
             PredSymName = qualified(PredModuleName, PredName),

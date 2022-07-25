@@ -171,7 +171,7 @@ term_iterate_over_abstract_proc(ModuleInfo, Options, Iteration, Proc,
         DebugTerm = yes,
         trace [io(!IO)] (
             get_debug_output_stream(ModuleInfo, DebugStream, !IO),
-            PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+            PPIdStr = pred_proc_id_to_dev_string(ModuleInfo, PPId),
             io.write(DebugStream, PPId, !IO),
             io.format(DebugStream, ": %s ", [s(PPIdStr)], !IO),
             write_size_vars(DebugStream, SizeVarSet, HeadVars, !IO),

@@ -387,7 +387,7 @@ write_table_structs(Stream, ModuleInfo, TableStructMap, !IO) :-
 
 write_table_struct_info(Stream, ModuleInfo, PredProcId - TableStructInfo,
         !IO) :-
-    PredProcIdStr = pred_proc_id_to_string(ModuleInfo, PredProcId),
+    PredProcIdStr = pred_proc_id_to_dev_string(ModuleInfo, PredProcId),
     io.format(Stream, "\n%% table struct info for %s\n",
         [s(PredProcIdStr)], !IO),
     TableStructInfo = table_struct_info(ProcTableStructInfo, Attributes),

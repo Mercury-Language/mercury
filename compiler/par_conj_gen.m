@@ -671,7 +671,7 @@ create_static_conj_id(GoalInfo, SlotNum, !CI) :-
     get_pred_id(!.CI, PredId),
     get_proc_id(!.CI, ProcId),
     get_module_info(!.CI, ModuleInfo),
-    ProcString = pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId),
+    ProcString = pred_proc_id_pair_to_dev_string(ModuleInfo, PredId, ProcId),
 
     get_containing_goal_map(!.CI, ContainingGoalMap),
     GoalId = goal_info_get_goal_id(GoalInfo),

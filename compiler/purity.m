@@ -404,7 +404,7 @@ warn_about_purity_for(Origin) = Warn :-
             Warn = yes
         ;
             ( OriginUser = user_made_lambda(_, _, _)
-            ; OriginUser = user_made_assertion(_, _)
+            ; OriginUser = user_made_assertion(_, _, _)
             ),
             Warn = no
         )

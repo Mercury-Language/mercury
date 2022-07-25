@@ -2250,7 +2250,7 @@ should_report_mode_warning_for_pred_origin(Origin) = Report :-
         ;
             ( OriginUser = user_made_class_method(_, _)
             ; OriginUser = user_made_instance_method(_, _)
-            ; OriginUser = user_made_assertion(_, _)
+            ; OriginUser = user_made_assertion(_, _, _)
             ),
             Report = no
         )

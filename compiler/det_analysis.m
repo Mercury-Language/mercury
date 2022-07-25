@@ -275,8 +275,8 @@ determinism_inference_one_pass([proc(PredId, ProcId) | PredProcs], Debug,
         trace [io(!IO)] (
             get_debug_output_stream(!.ModuleInfo,  DebugStream, !IO),
             NewDetismStr = mercury_det_to_string(NewDetism),
-            ProcStr =
-                pred_proc_id_pair_to_string(!.ModuleInfo, PredId, ProcId),
+            ProcStr = pred_proc_id_pair_to_user_string(!.ModuleInfo,
+                PredId, ProcId),
             io.format(DebugStream, "%% Inferred %s detism %s for %s\n",
                 [s(ChangeStr), s(NewDetismStr), s(ProcStr)], !IO)
         )

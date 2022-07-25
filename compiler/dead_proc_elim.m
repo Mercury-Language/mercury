@@ -1904,7 +1904,7 @@ output_elimination_msgs(Stream, ModuleInfo, ElimMap, !IO) :-
 acc_pred_elimination_msg(ModuleInfo, PredId - ElimWhat, !Msgs) :-
     (
         ElimWhat = elim_whole_pred(ElimHow),
-        PredStr = pred_id_to_string(ModuleInfo, PredId),
+        PredStr = pred_id_to_user_string(ModuleInfo, PredId),
         (
             ElimHow = elim_deleted_proc,
             string.format("%% Eliminated dead %s\n", [s(PredStr)], Msg)
@@ -1923,7 +1923,7 @@ acc_pred_elimination_msg(ModuleInfo, PredId - ElimWhat, !Msgs) :-
     list(string)::in, list(string)::out) is det.
 
 acc_proc_elimination_msg(ModuleInfo, PredId, ProcId, !Msgs) :-
-    ProcStr = pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId),
+    ProcStr = pred_proc_id_pair_to_user_string(ModuleInfo, PredId, ProcId),
     string.format("%% Eliminated dead %s\n", [s(ProcStr)], Msg),
     !:Msgs = [Msg | !.Msgs].
 

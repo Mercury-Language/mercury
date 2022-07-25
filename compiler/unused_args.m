@@ -2088,7 +2088,7 @@ write_var_usage_map(Stream, ModuleInfo, VarUsageMap, !IO) :-
     pair(pred_proc_id, var_dep)::in, io::di, io::uo) is det.
 
 write_var_usage(Stream, ModuleInfo, PredProcId - VarDepMap, !IO) :-
-    PredProcIdStr = pred_proc_id_to_string(ModuleInfo, PredProcId),
+    PredProcIdStr = pred_proc_id_to_dev_string(ModuleInfo, PredProcId),
     io.format(Stream, "\n%s:\n", [s(PredProcIdStr)], !IO),
     map.to_assoc_list(VarDepMap, VarDepList),
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
@@ -2142,7 +2142,7 @@ write_usage_info(Stream, ModuleInfo, VarTable, Var - UsageInfo,
 
 write_arg_var_in_proc(Stream, ModuleInfo, ArgVarInProc, !IO) :-
     ArgVarInProc = arg_var_in_proc(PredProcId, Var),
-    PredProcIdStr = pred_proc_id_to_string(ModuleInfo, PredProcId),
+    PredProcIdStr = pred_proc_id_to_dev_string(ModuleInfo, PredProcId),
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
     proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
     VarStr = mercury_var_to_string_src(vns_var_table(VarTable),

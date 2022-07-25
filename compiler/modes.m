@@ -1196,7 +1196,7 @@ queued_proc_progress_message(ModuleInfo, PredProcId, HowToCheckGoal, !IO) :-
         VeryVerbose = yes,
         module_info_get_name(ModuleInfo, ModuleName),
         get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
-        ProcStr = pred_proc_id_to_string(ModuleInfo, PredProcId),
+        ProcStr = pred_proc_id_to_user_string(ModuleInfo, PredProcId),
         (
             HowToCheckGoal = check_modes,
             io.format(ProgressStream, "%% Mode-analysing %s\n",

@@ -340,8 +340,9 @@
             % class context to allow polymorphism.m to correctly set up
             % the extra type_info and typeclass_info arguments.
 
-    ;       user_made_assertion(string, int).
-            % The predicate represents an assertion.
+    ;       user_made_assertion(promise_type, string, int).
+            % The predicate represents an assertion of the given promise_type
+            % at the given filename and line number.
 
 :- type compiler_made
     --->    made_for_uci(special_pred_id, type_ctor)
@@ -367,7 +368,7 @@
             % the solver_type_pred_kind, for the type constructor given by
             % the sym_name and arity.
 
-    ;       made_for_tabling(pf_sym_name_arity, tabling_aux_pred_kind)
+    ;       made_for_tabling(pred_pf_name_arity, tabling_aux_pred_kind)
             % The predicate is an auxiliary predicate of the indicated kind
             % for the tabled predicate identified by the pf_sym_name_arity.
 
@@ -377,13 +378,16 @@
             % says whether the predicate is an init, pre_init, get, set,
             % lock, or unlock predicate on that mutable.
 
-    ;       made_for_initialise
+    ;       made_for_initialise(string, int)
             % The predicate implements a standalone initialise declaration
             % (standalone means that it is NOT created to initialise
-            % a mutable).
+            % a mutable). The arguments specify the declaration's context
+            % as a filename and line number.
 
-    ;       made_for_finalise.
+    ;       made_for_finalise(string, int).
             % The predicate implements a standalone finalise declaration.
+            % The arguments specify the declaration's context as a
+            % filename and line number.
 
 :- type pred_transform
     --->    pred_transform_type_spec(
@@ -510,22 +514,58 @@
 % they are not necessarily consistent about.
 %
 
-    % pred_info_id_to_string returns a string such as
-    %       predicate `foo.bar/3'
-    % or    function `foo.myfoo/5'
-    % except in some special cases where the predicate name is mangled
-    % and we can print a more meaningful identification of the predicate
-    % in question.
+    % pred_origin_to_user_string returns a string that is suitable to identify
+    % a predicate to a user
     %
-    % Moved here from hlds_util.m. Its output is used to identify predicates
-    % in
+    % - in progress messages,
+    % - in error messages, and
+    % - as the expansion of $pred.
     %
-    % - expansions of $pred,
-    % - compiler progress messages,
-    % - error messages, and
-    % - in parts of HLDS dumps other than the predicate's own entry.
+    % For user written predicates, the result will look like this:
     %
-:- func pred_info_id_to_string(pred_info) = string.
+    %       predicate `foo.bar'/3
+    %       function `foo.myfoo'/5
+    %
+    % For predicates created by the compiler, the result be a description
+    % such as
+    %
+    %       unification predicate for `map'/2
+    %
+    % For predicates that are the transformed version of another predicate,
+    % the result will identify the original predicate at the start of the
+    % transformation chain (which may contain more than one transformation)
+    % and will say that a transformation happened, but will not say
+    % how many transformations happened, or what the transformations were,
+    % because
+    %
+    % - such details are not needed in progress messages, and
+    % - they *should* not be needed for error messages, since we should
+    %   not be reporting any errors for transformed predicates at all.
+    %
+    % The versions that also specify a proc_id do the same job, only
+    % they also append the procedure's mode number.
+    %
+:- func pred_origin_to_user_string(pred_origin) = string.
+
+    % pred_origin_to_dev_string returns a string that is suitable to identify
+    % a predicate to a developer
+    %
+    % - in HLDS dumps (the parts other than the full pred provenance),
+    % - in compiler output intended to debug the compiler itself, and
+    % - in progress messages intended to help make sense of such output.
+    %
+    % The output will differ from pred_id_to_user_string in two main ways:
+    %
+    % - it will contain no quotes, because the unbalanced `' quote style
+    %   we usually use screws up syntax highlighting in HLDS dumps, and
+    %
+    % - it will contain a description of each transformation applied to
+    %   the base predicate.
+    %
+    % The versions that also specify a proc_id do the same job, only
+    % they also append the procedure's mode number.
+    %
+:- func pred_origin_to_dev_string(pred_origin) = string.
 
     % Write out a predicate's origin in a format suitable to describe
     % a predicate's origin in that predicate's entry in HLDS dumps.
@@ -802,344 +842,251 @@ uci_pred_name(SpecialPred, type_ctor(SymName, Arity)) = Name :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-pred_info_id_to_string(PredInfo) = Str :-
-    Module = pred_info_module(PredInfo),
-    Name = pred_info_name(PredInfo),
-    PredFormArity = pred_info_pred_form_arity(PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    pred_info_get_origin(PredInfo, Origin),
+pred_origin_to_user_string(Origin) = Str :-
     (
         Origin = origin_user(OriginUser),
+        Str = origin_user_to_user_dev_string(user, OriginUser)
+    ;
+        Origin = origin_compiler(OriginCompiler),
+        Str = origin_compiler_to_user_dev_string(user, OriginCompiler)
+    ;
+        ( Origin = origin_pred_transform(_, SubOrigin, _)
+        ; Origin = origin_proc_transform(_, SubOrigin, _, _)
+        ),
+        BaseOrigin = get_base_origin(SubOrigin),
+        BaseOriginStr = pred_origin_to_user_string(BaseOrigin),
+        string.format("a compiler-transformed version of %s",
+            [s(BaseOriginStr)], Str)
+    ).
+
+pred_origin_to_dev_string(Origin) = Str :-
+    (
+        Origin = origin_user(OriginUser),
+        Str = origin_user_to_user_dev_string(dev, OriginUser)
+    ;
+        Origin = origin_compiler(OriginCompiler),
+        Str = origin_compiler_to_user_dev_string(dev, OriginCompiler)
+    ;
         (
-            ( OriginUser = user_made_pred(_, _, _)
-            ; OriginUser = user_made_lambda(_, _, _)
-            ),
-            SymName = qualified(Module, Name),
-            Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName,
-                PredFormArity)
+            Origin = origin_pred_transform(PredTransform, SubOrigin, _),
+            TransformStr = pred_transform_to_dev_string(PredTransform)
         ;
-            OriginUser = user_made_class_method(ClassId, MethodId),
-            MethodIdStr = pf_sym_name_user_arity_to_string(MethodId),
-            ClassId = class_id(ClassSymName, ClassArity),
-            ClassNameStr = sym_name_to_string(ClassSymName),
-            string.format("class method %s for %s/%d",
-                [s(MethodIdStr), s(ClassNameStr), i(ClassArity)], Str)
+            Origin = origin_proc_transform(ProcTransform, SubOrigin, _, _),
+            TransformStr = proc_transform_to_dev_string(ProcTransform)
+        ),
+        SubOriginStr = pred_origin_to_dev_string(SubOrigin),
+        string.format("%s transformed by %s",
+            [s(SubOriginStr), s(TransformStr)], Str)
+    ).
+
+:- type user_or_dev
+    --->    user
+    ;       dev.
+
+:- inst user for user_or_dev/0
+    --->    user.
+:- inst dev for user_or_dev/0
+    --->    dev.
+
+:- func origin_user_to_user_dev_string(user_or_dev, user_made) = string.
+:- mode origin_user_to_user_dev_string(in(user), in) = out is det.
+:- mode origin_user_to_user_dev_string(in(dev), in) = out is det.
+
+origin_user_to_user_dev_string(UserOrDev, OriginUser) = Str :-
+    (
+        OriginUser = user_made_pred(PredOrFunc, SymName, UserArity),
+        UserArity = user_arity(UserArityInt),
+        (
+            UserOrDev = user,
+            Str = pf_sym_name_user_arity_to_string(PredOrFunc,
+                SymName, UserArityInt)
         ;
-            OriginUser = user_made_instance_method(MethodId,
-                MethodConstraints),
-            MethodIdStr = pf_sym_name_user_arity_to_string(MethodId),
-            MethodConstraints = instance_method_constraints(ClassId,
-                InstanceTypes, _, _),
-            ClassId = class_id(ClassName, _),
-            ClassStr = sym_name_to_string(ClassName),
-            TypeStrs = mercury_type_list_to_string(varset.init, InstanceTypes),
+            UserOrDev = dev,
+            Str = pf_sym_name_user_arity_to_unquoted_string(PredOrFunc,
+                SymName, UserArityInt)
+        )
+    ;
+        OriginUser = user_made_lambda(FileName, LineNumber, SeqNum),
+        string.format("lambda expression #%d at %s/%d",
+            [i(SeqNum), s(FileName), i(LineNumber)], Str)
+    ;
+        OriginUser = user_made_class_method(ClassId, MethodId),
+        (
+            UserOrDev = user,
+            MethodIdStr = pf_sym_name_user_arity_to_string(MethodId)
+        ;
+            UserOrDev = dev,
+            MethodIdStr = pf_sym_name_user_arity_to_unquoted_string(MethodId)
+        ),
+        ClassId = class_id(ClassSymName, ClassArity),
+        ClassNameStr = sym_name_to_string(ClassSymName),
+        string.format("class method %s for %s/%d",
+            [s(MethodIdStr), s(ClassNameStr), i(ClassArity)], Str)
+    ;
+        OriginUser = user_made_instance_method(MethodId,
+            MethodConstraints),
+        (
+            UserOrDev = user,
+            MethodIdStr = pf_sym_name_user_arity_to_string(MethodId)
+        ;
+            UserOrDev = dev,
+            MethodIdStr = pf_sym_name_user_arity_to_unquoted_string(MethodId)
+        ),
+        MethodConstraints = instance_method_constraints(ClassId,
+            InstanceTypes, _, _),
+        ClassId = class_id(ClassName, _),
+        ClassStr = sym_name_to_string(ClassName),
+        TypeStrs = mercury_type_list_to_string(varset.init, InstanceTypes),
+        (
+            UserOrDev = user,
             string.format("instance method %s for `%s(%s)'",
                 [s(MethodIdStr), s(ClassStr), s(TypeStrs)], Str)
         ;
-            OriginUser = user_made_assertion(FileName, LineNumber),
-            ( if pred_info_is_promise(PredInfo, PromiseType) then
-                Str = string.format("`%s' declaration (%s:%d)",
-                    [s(prog_out.promise_to_string(PromiseType)),
-                    s(FileName), i(LineNumber)])
-            else
-                SymName = qualified(Module, Name),
-                Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName,
-                    PredFormArity)
-            )
+            UserOrDev = dev,
+            string.format("instance method %s for %s(%s)",
+                [s(MethodIdStr), s(ClassStr), s(TypeStrs)], Str)
         )
     ;
-        Origin = origin_compiler(OriginCompiler),
-        (
-            OriginCompiler = made_for_uci(SpecialId, TypeCtor),
-            special_pred_description(SpecialId, Descr),
-            TypeCtor = type_ctor(_TypeSymName, TypeArity),
-            ( if TypeArity = 0 then
-                ForStr = " for type "
-            else
-                ForStr = " for type constructor "
-            ),
-            Str = Descr ++ ForStr ++ type_name_to_string(TypeCtor)
-        ;
-            OriginCompiler = made_for_tabling(BasePredId, TablingAuxPredKind),
-            BasePredIdStr = pf_sym_name_orig_arity_to_string(BasePredId),
-            (
-                TablingAuxPredKind = tabling_aux_pred_stats,
-                Str = "table statistics predicate for " ++ BasePredIdStr
-            ;
-                TablingAuxPredKind = tabling_aux_pred_reset,
-                Str = "table reset predicate for " ++ BasePredIdStr
-            )
-        ;
-            OriginCompiler = made_for_solver_repn(TypeCtor, SolverAuxPredKind),
-            TypeCtorStr = type_ctor_to_string(TypeCtor),
-            (
-                SolverAuxPredKind = solver_type_to_ground_pred,
-                Str = "to ground representation predicate for " ++ TypeCtorStr
-            ;
-                SolverAuxPredKind = solver_type_to_any_pred,
-                Str = "to any representation predicate for " ++ TypeCtorStr
-            ;
-                SolverAuxPredKind = solver_type_from_ground_pred,
-                Str = "from ground representation predicate for " ++ TypeCtorStr
-            ;
-                SolverAuxPredKind = solver_type_from_any_pred,
-                Str = "from any representation predicate for " ++ TypeCtorStr
-            )
-        ;
-            ( OriginCompiler = made_for_deforestation(_, _)
-            ; OriginCompiler = made_for_mutable(_, _, _)
-            ; OriginCompiler = made_for_initialise
-            ; OriginCompiler = made_for_finalise
-            ),
-            SymName = qualified(Module, Name),
-            Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName,
-                PredFormArity)
-        )
-    ;
-        ( Origin = origin_pred_transform(_, _, _)
-        ; Origin = origin_proc_transform(_, _, _, _)
-        ),
-        SymName = qualified(Module, Name),
-        Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName,
-            PredFormArity)
+        OriginUser = user_made_assertion(PromiseType, FileName, LineNumber),
+        PromiseTypeStr = prog_out.promise_to_string(PromiseType),
+        string.format("%s declaration at %s:%d",
+            [s(PromiseTypeStr), s(FileName), i(LineNumber)], Str)
     ).
 
-%---------------------------------------------------------------------------%
+:- func origin_compiler_to_user_dev_string(user_or_dev, compiler_made)
+    = string.
+:- mode origin_compiler_to_user_dev_string(in(user), in) = out is det.
+:- mode origin_compiler_to_user_dev_string(in(dev), in) = out is det.
 
-dump_origin(TVarSet, VarNamePrint, Origin) = Str :-
-    Str = dump_origin(TVarSet, VarNamePrint, "% Origin:", Origin).
-
-:- func dump_origin(tvarset, var_name_print, string, pred_origin) = string.
-
-dump_origin(TVarSet, VarNamePrint, Prefix, Origin) = Str :-
+origin_compiler_to_user_dev_string(UserOrDev, OriginCompiler) = Str :-
     (
-        Origin = origin_user(OriginUser),
-        (
-            OriginUser = user_made_pred(PredOrFunc, SymName, UserArity),
-            UserArity = user_arity(UserArityInt),
-            string.format("%s user defined %s %s/%d\n",
-                [s(Prefix), s(pred_or_func_to_string(PredOrFunc)),
-                s(sym_name_to_string(SymName)), i(UserArityInt)], Str)
-        ;
-            OriginUser = user_made_lambda(FileName, LineNumber, SeqNum),
-            string.format("%s lambda expression file %s, line %d, seqnum %d\n",
-                [s(Prefix), s(FileName), i(LineNumber), i(SeqNum)], Str)
-        ;
-            OriginUser = user_made_class_method(ClassId, MethodId),
-            ClassId = class_id(ClassSymName, ClassArity),
-            MethodId = pred_pf_name_arity(MethodPredOrFunc,
-                MethodSymName, MethodUserArity),
-            MethodUserArity = user_arity(MethodUserArityInt),
-            string.format("%s class method %s %s/%d for %s/%d\n",
-                [s(Prefix), s(pred_or_func_to_string(MethodPredOrFunc)),
-                s(sym_name_to_string(MethodSymName)), i(MethodUserArityInt),
-                s(sym_name_to_string(ClassSymName)), i(ClassArity)], Str)
-        ;
-            OriginUser = user_made_instance_method(MethodId,
-                MethodConstraints),
-            MethodId = pred_pf_name_arity(MethodPredOrFunc,
-                MethodSymName, MethodUserArity),
-            MethodUserArity = user_arity(MethodUserArityInt),
-            MethodConstraints = instance_method_constraints(ClassId,
-                InstanceTypes, InstanceConstraints, ClassMethodConstraints),
-            ClassId = class_id(ClassSymName, ClassArity),
-            ClassConstraint = constraint(ClassSymName, InstanceTypes),
-            string.format("%s instance method %s %s/%d for class %s/%d\n",
-                [s(Prefix), s(pred_or_func_to_str(MethodPredOrFunc)),
-                s(sym_name_to_string(MethodSymName)), i(MethodUserArityInt),
-                s(sym_name_to_string(ClassSymName)), i(ClassArity)], Line1),
-            Line2 = "% instance type vector:\n",
-            Line3 = mercury_constraint_to_string(TVarSet, VarNamePrint,
-                ClassConstraint),
-            Lines4 = dump_origin_constraints("instance constraints",
-                TVarSet, VarNamePrint, InstanceConstraints),
-            ClassMethodConstraints = constraints(MethodUnivConstraints,
-                MethodExistConstraints),
-            Lines5 = dump_origin_constraints("method universal constraints",
-                TVarSet, VarNamePrint, MethodUnivConstraints),
-            Lines6 = dump_origin_constraints("method existential constraints",
-                TVarSet, VarNamePrint, MethodExistConstraints),
-            Str = Line1 ++ Line2 ++ Line3 ++ Lines4 ++ Lines5 ++ Lines6
-        ;
-            OriginUser = user_made_assertion(FileName, LineNumber),
-            string.format("%s assertion at file %s, line %d\n",
-                [s(Prefix), s(FileName), i(LineNumber)], Str)
+        OriginCompiler = made_for_uci(SpecialId, TypeCtor),
+        special_pred_description(SpecialId, PredDescr),
+        TypeCtor = type_ctor(TypeSymName, TypeArity),
+        ( if TypeArity = 0 then
+            string.format("%s for type %s",
+                [s(PredDescr), s(sym_name_to_string(TypeSymName))], Str)
+        else
+            string.format("%s for type constructor %s/%d",
+                [s(PredDescr), s(sym_name_to_string(TypeSymName)),
+                i(TypeArity)], Str)
         )
     ;
-        Origin = origin_compiler(OriginCompiler),
+        OriginCompiler = made_for_tabling(BasePredId, TablingAuxPredKind),
         (
-            OriginCompiler = made_for_uci(SpecialPredId, TypeCtor),
-            (
-                SpecialPredId = spec_pred_unify,
-                SpecialPredIdStr = "unify"
-            ;
-                SpecialPredId = spec_pred_compare,
-                SpecialPredIdStr = "compare"
-            ;
-                SpecialPredId = spec_pred_index,
-                SpecialPredIdStr = "index"
-            ),
-            string.format("%s %s pred for %s\n",
-                [s(Prefix), s(SpecialPredIdStr),
-                s(type_name_to_string(TypeCtor))], Str)
+            UserOrDev = user,
+            BasePredIdStr = pf_sym_name_user_arity_to_string(BasePredId)
         ;
-            OriginCompiler = made_for_deforestation(LineNum, SeqNum),
-            string.format("%s deforestation: line %d, seqnum %d\n",
-                [s(Prefix), i(LineNum), i(SeqNum)], Str)
-        ;
-            OriginCompiler = made_for_solver_repn(TypeCtor, SolverAuxPredKind),
-            TypeCtorStr = type_ctor_to_string(TypeCtor),
-            (
-                SolverAuxPredKind = solver_type_to_ground_pred,
-                SolverAuxPredKindStr = "to ground conversion predicate"
-            ;
-                SolverAuxPredKind = solver_type_to_any_pred,
-                SolverAuxPredKindStr = "to any conversion predicate"
-            ;
-                SolverAuxPredKind = solver_type_from_ground_pred,
-                SolverAuxPredKindStr = "from ground conversion predicate"
-            ;
-                SolverAuxPredKind = solver_type_from_any_pred,
-                SolverAuxPredKindStr = "from any conversion predicate"
-            ),
-            string.format("%s %s for %s\n",
-                [s(Prefix), s(SolverAuxPredKindStr), s(TypeCtorStr)], Str)
-        ;
-            OriginCompiler = made_for_tabling(BasePredCallId,
-                TablingAuxPredKind),
-            BasePredStr = pf_sym_name_orig_arity_to_string(BasePredCallId),
-            (
-                TablingAuxPredKind = tabling_aux_pred_stats,
-                TablingAuxPredKindStr = "table statistics predicate"
-            ;
-                TablingAuxPredKind = tabling_aux_pred_reset,
-                TablingAuxPredKindStr = "table reset predicate"
-            ),
-            string.format("%s %s for %s\n",
-                [s(Prefix), s(TablingAuxPredKindStr), s(BasePredStr)], Str)
-        ;
-            OriginCompiler = made_for_mutable(MutableModuleName, MutableName,
-                MutablePredKind),
-            MutableModuleNameStr = sym_name_to_string(MutableModuleName),
-            (
-                MutablePredKind = mutable_pred_std_get,
-                MutablePredKindStr = "std get predicate"
-            ;
-                MutablePredKind = mutable_pred_std_set,
-                MutablePredKindStr = "std set predicate"
-            ;
-                MutablePredKind = mutable_pred_io_get,
-                MutablePredKindStr = "io get predicate"
-            ;
-                MutablePredKind = mutable_pred_io_set,
-                MutablePredKindStr = "io set predicate"
-            ;
-                MutablePredKind = mutable_pred_unsafe_get,
-                MutablePredKindStr = "unsafe get predicate"
-            ;
-                MutablePredKind = mutable_pred_unsafe_set,
-                MutablePredKindStr = "unsafe set predicate"
-            ;
-                MutablePredKind = mutable_pred_constant_get,
-                MutablePredKindStr = "constant get predicate"
-            ;
-                MutablePredKind = mutable_pred_constant_secret_set,
-                MutablePredKindStr = "constant secret set predicate"
-            ;
-                MutablePredKind = mutable_pred_lock,
-                MutablePredKindStr = "lock predicate"
-            ;
-                MutablePredKind = mutable_pred_unlock,
-                MutablePredKindStr = "unlock predicate"
-            ;
-                MutablePredKind = mutable_pred_pre_init,
-                MutablePredKindStr = "preinit predicate"
-            ;
-                MutablePredKind = mutable_pred_init,
-                MutablePredKindStr = "init predicate"
-            ),
-            string.format("%s %s for mutable %s in module %s\n",
-                [s(Prefix), s(MutablePredKindStr), s(MutableName),
-                s(MutableModuleNameStr)], Str)
-        ;
-            OriginCompiler = made_for_initialise,
-            string.format("%s initialise predicate\n", [s(Prefix)], Str)
-        ;
-            OriginCompiler = made_for_finalise,
-            string.format("%s finalise predicate\n", [s(Prefix)], Str)
-        )
-    ;
-        ( Origin = origin_pred_transform(_, _, _)
-        ; Origin = origin_proc_transform(_, _, _, _)
+            UserOrDev = dev,
+            BasePredIdStr =
+                pf_sym_name_user_arity_to_unquoted_string(BasePredId)
         ),
-        dump_transformed_origin(TVarSet, VarNamePrint, Origin, _, Strs),
-        string.append_list(Strs, Str)
+        (
+            TablingAuxPredKind = tabling_aux_pred_stats,
+            Str = "table statistics predicate for " ++ BasePredIdStr
+        ;
+            TablingAuxPredKind = tabling_aux_pred_reset,
+            Str = "table reset predicate for " ++ BasePredIdStr
+        )
+    ;
+        OriginCompiler = made_for_solver_repn(TypeCtor, SolverAuxPredKind),
+        TypeCtorStr = type_ctor_to_string(TypeCtor),
+        (
+            SolverAuxPredKind = solver_type_to_ground_pred,
+            Str = "to ground representation predicate for " ++ TypeCtorStr
+        ;
+            SolverAuxPredKind = solver_type_to_any_pred,
+            Str = "to any representation predicate for " ++ TypeCtorStr
+        ;
+            SolverAuxPredKind = solver_type_from_ground_pred,
+            Str = "from ground representation predicate for " ++ TypeCtorStr
+        ;
+            SolverAuxPredKind = solver_type_from_any_pred,
+            Str = "from any representation predicate for " ++ TypeCtorStr
+        )
+    ;
+        OriginCompiler = made_for_deforestation(LineNumber, SeqNum),
+        string.format("deforestation-created predicate #%d near line %d",
+            [i(SeqNum), i(LineNumber)], Str)
+    ;
+        OriginCompiler = made_for_mutable(_ModuleName, Name, MutablePredKind),
+        MutablePredKindStr = mutable_kind_to_user_dev_string(MutablePredKind),
+        string.format("%s for mutable %s",
+            [s(MutablePredKindStr), s(Name)], Str)
+    ;
+        OriginCompiler = made_for_initialise(FileName, LineNumber),
+        string.format("initialise declaration at %s:%d",
+            [s(FileName), i(LineNumber)], Str)
+    ;
+        OriginCompiler = made_for_finalise(FileName, LineNumber),
+        string.format("finalise declaration at %s:%d",
+            [s(FileName), i(LineNumber)], Str)
     ).
 
-:- pred dump_transformed_origin(tvarset::in, var_name_print::in,
-    pred_origin::in, int::out, list(string)::out) is det.
+:- func mutable_kind_to_user_dev_string(mutable_pred_kind) = string.
 
-dump_transformed_origin(TVarSet, VarNamePrint, Origin,
-        TransformsPrinted, Strs) :-
+mutable_kind_to_user_dev_string(MutablePredKind) = MutablePredKindStr :-
+    (
+        MutablePredKind = mutable_pred_std_get,
+        MutablePredKindStr = "std get predicate"
+    ;
+        MutablePredKind = mutable_pred_std_set,
+        MutablePredKindStr = "std set predicate"
+    ;
+        MutablePredKind = mutable_pred_io_get,
+        MutablePredKindStr = "io get predicate"
+    ;
+        MutablePredKind = mutable_pred_io_set,
+        MutablePredKindStr = "io set predicate"
+    ;
+        MutablePredKind = mutable_pred_unsafe_get,
+        MutablePredKindStr = "unsafe get predicate"
+    ;
+        MutablePredKind = mutable_pred_unsafe_set,
+        MutablePredKindStr = "unsafe set predicate"
+    ;
+        MutablePredKind = mutable_pred_constant_get,
+        MutablePredKindStr = "constant get predicate"
+    ;
+        MutablePredKind = mutable_pred_constant_secret_set,
+        MutablePredKindStr = "constant secret set predicate"
+    ;
+        MutablePredKind = mutable_pred_lock,
+        MutablePredKindStr = "lock predicate"
+    ;
+        MutablePredKind = mutable_pred_unlock,
+        MutablePredKindStr = "unlock predicate"
+    ;
+        MutablePredKind = mutable_pred_pre_init,
+        MutablePredKindStr = "preinit predicate"
+    ;
+        MutablePredKind = mutable_pred_init,
+        MutablePredKindStr = "init predicate"
+    ).
+
+:- inst base_pred_origin for pred_origin/0
+    --->    origin_user(ground)
+    ;       origin_compiler(ground).
+
+:- func get_base_origin(pred_origin) = pred_origin.
+:- mode get_base_origin(in) = out(base_pred_origin) is det.
+
+get_base_origin(Origin) = BaseOrigin :-
     (
         ( Origin = origin_user(_)
         ; Origin = origin_compiler(_)
         ),
-        TransformsPrinted = 0,
-        Prefix = "% Origin base:",
-        OriginStr = dump_origin(TVarSet, VarNamePrint, Prefix, Origin),
-        Strs = [OriginStr]
+        BaseOrigin = Origin
     ;
-        Origin = origin_pred_transform(PredTransform, SubOrigin, PredId),
-        dump_transformed_origin(TVarSet, VarNamePrint, SubOrigin,
-            SubTransformsPrinted, SubStrs),
-        TransformsPrinted = SubTransformsPrinted + 1,
-        PredIdInt = pred_id_to_int(PredId),
-        TransformStr = dump_pred_transform(PredTransform),
-        string.format("%% Transform %d on pred %d:\n%%  %s\n",
-            [i(TransformsPrinted), i(PredIdInt), s(TransformStr)], MainStr),
-        Strs = SubStrs ++ [MainStr]
-    ;
-        Origin = origin_proc_transform(ProcTransform, SubOrigin,
-            PredId, ProcId),
-        dump_transformed_origin(TVarSet, VarNamePrint, SubOrigin,
-            SubTransformsPrinted, SubStrs),
-        TransformsPrinted = SubTransformsPrinted + 1,
-        PredIdInt = pred_id_to_int(PredId),
-        ProcIdInt = proc_id_to_int(ProcId),
-        TransformStr = dump_proc_transform(ProcTransform),
-        string.format("%% Transform %d on pred %d, proc %d:\n%%  %s\n",
-            [i(TransformsPrinted), i(PredIdInt), i(ProcIdInt),
-            s(TransformStr)], MainStr),
-        Strs = SubStrs ++ [MainStr]
+        ( Origin = origin_pred_transform(_, SubOrigin, _)
+        ; Origin = origin_proc_transform(_, SubOrigin, _, _)
+        ),
+        BaseOrigin = get_base_origin(SubOrigin)
     ).
 
-:- func dump_origin_constraints(string, tvarset, var_name_print,
-    list(prog_constraint)) = string.
+:- func pred_transform_to_dev_string(pred_transform) = string.
 
-dump_origin_constraints(Msg, TVarSet, VarNamePrint, Constraints) = Str :-
-    (
-        Constraints = [],
-        string.format("%% %s: none\n", [s(Msg)], Str)
-    ;
-        Constraints = [_ | _],
-        string.format("%% %s:\n", [s(Msg)], HeaderLine),
-        ConstraintLines = list.map(
-            dump_origin_constraint(TVarSet, VarNamePrint),
-            Constraints),
-        string.append_list([HeaderLine | ConstraintLines], Str)
-    ).
-
-:- func dump_origin_constraint(tvarset, var_name_print, prog_constraint)
-    = string.
-
-dump_origin_constraint(TVarSet, VarNamePrint, Constraint) = Str :-
-    Str = string.format("%%       %s\n",
-        [s(mercury_constraint_to_string(TVarSet, VarNamePrint, Constraint))]).
-
-:- func dump_pred_transform(pred_transform) = string.
-
-dump_pred_transform(PredTransform) = Str :-
+pred_transform_to_dev_string(PredTransform) = Str :-
     (
         PredTransform = pred_transform_type_spec(Substs),
         SubstStrs = list.map(dump_subst, one_or_more_to_list(Substs)),
@@ -1161,9 +1108,9 @@ dump_pred_transform(PredTransform) = Str :-
             [s(pred_or_func_to_full_str(PredOrFunc))], Str)
     ).
 
-:- func dump_proc_transform(proc_transform) = string.
+:- func proc_transform_to_dev_string(proc_transform) = string.
 
-dump_proc_transform(ProcTransform) = Str :-
+proc_transform_to_dev_string(ProcTransform) = Str :-
     (
         ProcTransform = proc_transform_user_type_spec(CallerPredId,
             CallerProcId),
@@ -1223,6 +1170,209 @@ dump_proc_transform(ProcTransform) = Str :-
 
 %---------------------------------------------------------------------------%
 
+dump_origin(TVarSet, VarNamePrint, Origin) = Str :-
+    Str = dump_origin(TVarSet, VarNamePrint, "% Origin:", Origin).
+
+:- func dump_origin(tvarset, var_name_print, string, pred_origin) = string.
+
+dump_origin(TVarSet, VarNamePrint, Prefix, Origin) = Str :-
+    (
+        Origin = origin_user(OriginUser),
+        (
+            OriginUser = user_made_pred(PredOrFunc, SymName, UserArity),
+            UserArity = user_arity(UserArityInt),
+            string.format("%s user defined %s %s/%d\n",
+                [s(Prefix), s(pred_or_func_to_string(PredOrFunc)),
+                s(sym_name_to_string(SymName)), i(UserArityInt)], Str)
+        ;
+            OriginUser = user_made_lambda(FileName, LineNumber, SeqNum),
+            string.format("%s lambda expression file %s, line %d, seqnum %d\n",
+                [s(Prefix), s(FileName), i(LineNumber), i(SeqNum)], Str)
+        ;
+            OriginUser = user_made_class_method(ClassId, MethodId),
+            ClassId = class_id(ClassSymName, ClassArity),
+            MethodId = pred_pf_name_arity(MethodPredOrFunc,
+                MethodSymName, MethodUserArity),
+            MethodUserArity = user_arity(MethodUserArityInt),
+            string.format("%s class method %s %s/%d for %s/%d\n",
+                [s(Prefix), s(pred_or_func_to_string(MethodPredOrFunc)),
+                s(sym_name_to_string(MethodSymName)), i(MethodUserArityInt),
+                s(sym_name_to_string(ClassSymName)), i(ClassArity)], Str)
+        ;
+            OriginUser = user_made_instance_method(MethodId,
+                MethodConstraints),
+            MethodId = pred_pf_name_arity(MethodPredOrFunc,
+                MethodSymName, MethodUserArity),
+            MethodUserArity = user_arity(MethodUserArityInt),
+            MethodConstraints = instance_method_constraints(ClassId,
+                InstanceTypes, InstanceConstraints, ClassMethodConstraints),
+            ClassId = class_id(ClassSymName, ClassArity),
+            ClassConstraint = constraint(ClassSymName, InstanceTypes),
+            string.format("%s instance method %s %s/%d for class %s/%d\n",
+                [s(Prefix), s(pred_or_func_to_str(MethodPredOrFunc)),
+                s(sym_name_to_string(MethodSymName)), i(MethodUserArityInt),
+                s(sym_name_to_string(ClassSymName)), i(ClassArity)], Line1),
+            Line2 = "% instance type vector:\n",
+            Line3 = mercury_constraint_to_string(TVarSet, VarNamePrint,
+                ClassConstraint),
+            Lines4 = dump_origin_constraints("instance constraints",
+                TVarSet, VarNamePrint, InstanceConstraints),
+            ClassMethodConstraints = constraints(MethodUnivConstraints,
+                MethodExistConstraints),
+            Lines5 = dump_origin_constraints("method universal constraints",
+                TVarSet, VarNamePrint, MethodUnivConstraints),
+            Lines6 = dump_origin_constraints("method existential constraints",
+                TVarSet, VarNamePrint, MethodExistConstraints),
+            Str = Line1 ++ Line2 ++ Line3 ++ Lines4 ++ Lines5 ++ Lines6
+        ;
+            OriginUser = user_made_assertion(PromiseType,
+                FileName, LineNumber),
+            PromiseTypeStr = prog_out.promise_to_string(PromiseType),
+            string.format("%s %s declaration at %s:%d",
+                [s(Prefix), s(PromiseTypeStr), s(FileName), i(LineNumber)],
+                Str)
+        )
+    ;
+        Origin = origin_compiler(OriginCompiler),
+        (
+            OriginCompiler = made_for_uci(SpecialPredId, TypeCtor),
+            (
+                SpecialPredId = spec_pred_unify,
+                SpecialPredIdStr = "unify"
+            ;
+                SpecialPredId = spec_pred_compare,
+                SpecialPredIdStr = "compare"
+            ;
+                SpecialPredId = spec_pred_index,
+                SpecialPredIdStr = "index"
+            ),
+            string.format("%s %s pred for %s\n",
+                [s(Prefix), s(SpecialPredIdStr),
+                s(type_name_to_string(TypeCtor))], Str)
+        ;
+            OriginCompiler = made_for_deforestation(LineNum, SeqNum),
+            string.format("%s deforestation: line %d, seqnum %d\n",
+                [s(Prefix), i(LineNum), i(SeqNum)], Str)
+        ;
+            OriginCompiler = made_for_solver_repn(TypeCtor, SolverAuxPredKind),
+            TypeCtorStr = type_ctor_to_string(TypeCtor),
+            (
+                SolverAuxPredKind = solver_type_to_ground_pred,
+                SolverAuxPredKindStr = "to ground conversion predicate"
+            ;
+                SolverAuxPredKind = solver_type_to_any_pred,
+                SolverAuxPredKindStr = "to any conversion predicate"
+            ;
+                SolverAuxPredKind = solver_type_from_ground_pred,
+                SolverAuxPredKindStr = "from ground conversion predicate"
+            ;
+                SolverAuxPredKind = solver_type_from_any_pred,
+                SolverAuxPredKindStr = "from any conversion predicate"
+            ),
+            string.format("%s %s for %s\n",
+                [s(Prefix), s(SolverAuxPredKindStr), s(TypeCtorStr)], Str)
+        ;
+            OriginCompiler = made_for_tabling(BasePredCallId,
+                TablingAuxPredKind),
+            BasePredStr = pf_sym_name_user_arity_to_string(BasePredCallId),
+            (
+                TablingAuxPredKind = tabling_aux_pred_stats,
+                TablingAuxPredKindStr = "table statistics predicate"
+            ;
+                TablingAuxPredKind = tabling_aux_pred_reset,
+                TablingAuxPredKindStr = "table reset predicate"
+            ),
+            string.format("%s %s for %s\n",
+                [s(Prefix), s(TablingAuxPredKindStr), s(BasePredStr)], Str)
+        ;
+            OriginCompiler = made_for_mutable(MutableModuleName, MutableName,
+                MutablePredKind),
+            MutableModuleNameStr = sym_name_to_string(MutableModuleName),
+            MutablePredKindStr =
+                mutable_kind_to_user_dev_string(MutablePredKind),
+            string.format("%s %s for mutable %s in module %s\n",
+                [s(Prefix), s(MutablePredKindStr), s(MutableName),
+                s(MutableModuleNameStr)], Str)
+        ;
+            OriginCompiler = made_for_initialise(FileName, LineNumber),
+            string.format("%s initialise predicate, file %s, line %d\n",
+                [s(Prefix), s(FileName), i(LineNumber)], Str)
+        ;
+            OriginCompiler = made_for_finalise(FileName, LineNumber),
+            string.format("%s finalise predicate, file %s, line %d\n",
+                [s(Prefix), s(FileName), i(LineNumber)], Str)
+        )
+    ;
+        ( Origin = origin_pred_transform(_, _, _)
+        ; Origin = origin_proc_transform(_, _, _, _)
+        ),
+        dump_transformed_origin(TVarSet, VarNamePrint, Origin, _, Strs),
+        string.append_list(Strs, Str)
+    ).
+
+:- pred dump_transformed_origin(tvarset::in, var_name_print::in,
+    pred_origin::in, int::out, list(string)::out) is det.
+
+dump_transformed_origin(TVarSet, VarNamePrint, Origin,
+        TransformsPrinted, Strs) :-
+    (
+        ( Origin = origin_user(_)
+        ; Origin = origin_compiler(_)
+        ),
+        TransformsPrinted = 0,
+        Prefix = "% Origin base:",
+        OriginStr = dump_origin(TVarSet, VarNamePrint, Prefix, Origin),
+        Strs = [OriginStr]
+    ;
+        Origin = origin_pred_transform(PredTransform, SubOrigin, PredId),
+        dump_transformed_origin(TVarSet, VarNamePrint, SubOrigin,
+            SubTransformsPrinted, SubStrs),
+        TransformsPrinted = SubTransformsPrinted + 1,
+        PredIdInt = pred_id_to_int(PredId),
+        TransformStr = pred_transform_to_dev_string(PredTransform),
+        string.format("%% Transform %d on pred %d:\n%%  %s\n",
+            [i(TransformsPrinted), i(PredIdInt), s(TransformStr)], MainStr),
+        Strs = SubStrs ++ [MainStr]
+    ;
+        Origin = origin_proc_transform(ProcTransform, SubOrigin,
+            PredId, ProcId),
+        dump_transformed_origin(TVarSet, VarNamePrint, SubOrigin,
+            SubTransformsPrinted, SubStrs),
+        TransformsPrinted = SubTransformsPrinted + 1,
+        PredIdInt = pred_id_to_int(PredId),
+        ProcIdInt = proc_id_to_int(ProcId),
+        TransformStr = proc_transform_to_dev_string(ProcTransform),
+        string.format("%% Transform %d on pred %d, proc %d:\n%%  %s\n",
+            [i(TransformsPrinted), i(PredIdInt), i(ProcIdInt),
+            s(TransformStr)], MainStr),
+        Strs = SubStrs ++ [MainStr]
+    ).
+
+:- func dump_origin_constraints(string, tvarset, var_name_print,
+    list(prog_constraint)) = string.
+
+dump_origin_constraints(Msg, TVarSet, VarNamePrint, Constraints) = Str :-
+    (
+        Constraints = [],
+        string.format("%% %s: none\n", [s(Msg)], Str)
+    ;
+        Constraints = [_ | _],
+        string.format("%% %s:\n", [s(Msg)], HeaderLine),
+        ConstraintLines = list.map(
+            dump_origin_constraint(TVarSet, VarNamePrint),
+            Constraints),
+        string.append_list([HeaderLine | ConstraintLines], Str)
+    ).
+
+:- func dump_origin_constraint(tvarset, var_name_print, prog_constraint)
+    = string.
+
+dump_origin_constraint(TVarSet, VarNamePrint, Constraint) = Str :-
+    Str = string.format("%%       %s\n",
+        [s(mercury_constraint_to_string(TVarSet, VarNamePrint, Constraint))]).
+
+%---------------------------------------------------------------------------%
+
 layout_origin_name(Origin, Name0) = Name :-
     (
         Origin = origin_user(OriginUser),
@@ -1230,7 +1380,7 @@ layout_origin_name(Origin, Name0) = Name :-
             ( OriginUser = user_made_pred(_, _, _)
             ; OriginUser = user_made_class_method(_, _)
             ; OriginUser = user_made_instance_method(_, _)
-            ; OriginUser = user_made_assertion(_, _)
+            ; OriginUser = user_made_assertion(_, _, _)
             ),
             Name = Name0
         ;
@@ -1278,8 +1428,8 @@ layout_origin_name(Origin, Name0) = Name :-
             ; OriginCompiler = made_for_solver_repn(_, _)
             ; OriginCompiler = made_for_tabling(_, _)
             ; OriginCompiler = made_for_mutable(_, _, _)
-            ; OriginCompiler = made_for_initialise
-            ; OriginCompiler = made_for_finalise
+            ; OriginCompiler = made_for_initialise(_, _)
+            ; OriginCompiler = made_for_finalise(_, _)
             ),
             Name = Name0
         )

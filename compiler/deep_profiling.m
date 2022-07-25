@@ -616,7 +616,8 @@ deep_prof_maybe_transform_proc(ModuleInfo, PredId, ProcId, !ProcTable) :-
         trace [io(!IO)] (
             module_info_get_globals(ModuleInfo, Globals),
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-            ProcName = pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId),
+            ProcName = pred_proc_id_pair_to_user_string(ModuleInfo,
+                PredId, ProcId),
             get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
             maybe_write_string(ProgressStream, VeryVerbose,
                 string.format("%% Deep profiling: %s\n", [s(ProcName)]), !IO)

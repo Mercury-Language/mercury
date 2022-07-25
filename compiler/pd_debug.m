@@ -182,7 +182,7 @@ pd_debug_output_version(Stream, ModuleInfo, PredProcId, Version,
     write_goal_nl(OutInfo, Stream, ModuleInfo, VarNameSrc,
         print_name_and_num, 1, "\n", Goal, !IO),
     set.to_sorted_list(Parents, ParentsList),
-    ParentStrs = list.map(pred_proc_id_to_string(ModuleInfo), ParentsList),
+    ParentStrs = list.map(pred_proc_id_to_dev_string(ModuleInfo), ParentsList),
     ParentsStr = string.join_list(", ", ParentStrs),
     io.format(Stream, "Parents: %s\n", [s(ParentsStr)], !IO),
     % XXX Neither of our callers specify WriteUnfoldedGoal = yes.
@@ -231,7 +231,8 @@ pd_debug_write_pred_proc_id_list(PDInfo, PredProcIds, !IO) :-
         module_info_get_name(ModuleInfo, ModuleName),
         get_debug_output_stream(Globals, ModuleName, Stream, !IO),
 
-        ProcStrs = list.map(pred_proc_id_to_string(ModuleInfo), PredProcIds),
+        ProcStrs =
+            list.map(pred_proc_id_to_dev_string(ModuleInfo), PredProcIds),
         ProcsStr = string.join_list(", ", ProcStrs),
         io.write_string(Stream, ProcsStr, !IO),
         io.flush_output(Stream, !IO)
