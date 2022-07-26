@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2019 The Mercury Team
+% Copyright (C) 2014-2019, 2021-2022 The Mercury Team
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -13,7 +13,7 @@
 % or psqueue for short, combines in a single ADT the functionality of both
 % a map and a priority queue.
 %
-% Psqueues map from priorities to keys and back. This module provide functions
+% Psqueues map from priorities to keys and back. This module provides functions
 % and predicates to lookup the priority of a key, to insert and to remove
 % priority-key pairs, to adjust the priority of a given key, and to retrieve
 % the priority/key pair with the highest conceptual priority. However,
