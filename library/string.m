@@ -249,7 +249,9 @@
     %
     % Construct a string consisting of Count occurrences of Char code points
     % in sequence, returning the empty string if Count is less than or equal
-    % to zero.
+    % to zero. Throws an exception if Char is a null character or code point
+    % that cannot be encoded in a string (namely, surrogate code points cannot
+    % be encoded in UTF-8 strings).
     %
 :- func duplicate_char(char::in, int::in) = (string::uo) is det.
 :- pred duplicate_char(char::in, int::in, string::uo) is det.
@@ -332,12 +334,16 @@
 
     % index_next_repl(String, Index, NextIndex, Char, MaybeReplaced):
     %
-    % Like index_next/4 but `MaybeReplaced' is `replaced_code_unit(CodeUnit)'
-    % iff `Char' is the Unicode REPLACEMENT CHARACTER (U+FFFD) but `String'
-    % does NOT contain an encoding of U+FFFD beginning at `Index';
-    % `CodeUnit' is the code unit at `Index'.
-    % (`MaybeReplaced' is always `not_replaced' when strings are UTF-16
-    % encoded.)
+    % Like index_next/4 but also returns MaybeReplaced on success.
+    % When Char is not U+FFFD, then MaybeReplaced is always `not_replaced'.
+    % When Char is U+FFFD (the Unicode replacement character), then there are
+    % two cases:
+    %
+    % - If there is a U+FFFD code point encoded in String at
+    %   [Index, NextIndex) then MaybeReplaced is `not_replaced'.
+    %
+    % - Otherwise, MaybeReplaced is `replaced_code_unit(CodeUnit)' where
+    %   CodeUnit is the code unit in String at Index.
     %
 :- pred index_next_repl(string::in, int::in, int::out, char::uo,
     maybe_replaced::out) is semidet.
@@ -381,12 +387,16 @@
 
     % prev_index_repl(String, Index, PrevIndex, Char, MaybeReplaced):
     %
-    % Like prev_index/4 but `MaybeReplaced' is `replaced_code_unit(CodeUnit)'
-    % iff `Char' is the Unicode REPLACEMENT CHARACTER (U+FFFD) but `String'
-    % does NOT contain an encoding of U+FFFD ending at `Index - 1';
-    % `CodeUnit' is the code unit at `Index - 1'.
-    % (`MaybeReplaced' is always `not_replaced' when strings are UTF-16
-    % encoded.)
+    % Like prev_index/4 but also returns MaybeReplaced on success.
+    % When Char is not U+FFFD, then MaybeReplaced is always `not_replaced'.
+    % When Char is U+FFFD (the Unicode replacement character), then there are
+    % two cases:
+    %
+    % - If there is a U+FFFD code point encoded in String at
+    %   [PrevIndex, Index) then MaybeReplaced is `not_replaced'.
+    %
+    % - Otherwise, MaybeReplaced is `replaced_code_unit(CodeUnit)' where
+    %   CodeUnit is the code unit in String at Index - 1.
     %
 :- pred prev_index_repl(string::in, int::in, int::out, char::uo,
     maybe_replaced::out) is semidet.
@@ -606,14 +616,16 @@
 
     % all_match(TestPred, String):
     %
-    % True iff `String' is empty or contains only code points that satisfy
-    % `TestPred'.
+    % True iff all code points in String satisfy TestPred, and String contains
+    % no ill-formed code unit sequences.
     %
 :- pred all_match(pred(char)::in(pred(in) is semidet), string::in) is semidet.
 
     % contains_char(String, Char):
     %
-    % Succeed if the code point `Char' occurs in `String'.
+    % Succeed if the code point Char occurs in String.
+    % Any ill-formed code unit sequences within String are ignored
+    % as they will not contain Char.
     %
 :- pred contains_char(string::in, char::in) is semidet.
 
@@ -2447,7 +2459,7 @@ unsafe_index(S, N) = C :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    Ch = Str[Index];
+    Ch = (unsigned char) Str[Index];
     if (!MR_is_ascii(Ch)) {
         int width;
         Ch = MR_utf8_get_mb(Str, Index, &width);
@@ -2519,7 +2531,7 @@ unsafe_index_next_repl(Str, Index, NextIndex, Ch, MaybeReplaced) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    Ch = Str[Index];
+    Ch = (unsigned char) Str[Index];
     ReplacedCodeUnit = -1;
     if (MR_is_ascii(Ch)) {
         NextIndex = Index + 1;
@@ -2529,7 +2541,7 @@ unsafe_index_next_repl(Str, Index, NextIndex, Ch, MaybeReplaced) :-
         Ch = MR_utf8_get_next_mb(Str, &NextIndex);
         if (Ch < 0) {
             Ch = 0xfffd;
-            ReplacedCodeUnit = Str[Index];
+            ReplacedCodeUnit = (unsigned char) Str[Index];
             NextIndex = Index + 1;
         }
         SUCCESS_INDICATOR = MR_TRUE;
@@ -2620,7 +2632,7 @@ unsafe_prev_index_repl(Str, Index, PrevIndex, Ch, MaybeReplaced) :-
         SUCCESS_INDICATOR = MR_FALSE;
     } else {
         PrevIndex = Index - 1;
-        Ch = Str[PrevIndex];
+        Ch = (unsigned char) Str[PrevIndex];
         if (! MR_is_ascii(Ch)) {
             Ch = MR_utf8_prev_get(Str, &PrevIndex);
             // XXX MR_utf8_prev_get currently just scans backwards to find a
@@ -2628,7 +2640,7 @@ unsafe_prev_index_repl(Str, Index, PrevIndex, Ch, MaybeReplaced) :-
             // unaccounted for.
             if (Ch < 0 || PrevIndex + MR_utf8_width(Ch) != Index) {
                 Ch = 0xfffd;
-                ReplacedCodeUnit = Str[Index - 1];
+                ReplacedCodeUnit = (unsigned char) Str[Index - 1];
                 PrevIndex = Index - 1;
             }
         }
@@ -3348,7 +3360,8 @@ all_match(P, String) :-
     int::in) is semidet.
 
 all_match_loop(P, String, Cur) :-
-    ( if unsafe_index_next_repl(String, Cur, Next, Char, not_replaced) then
+    ( if unsafe_index_next_repl(String, Cur, Next, Char, MaybeReplaced) then
+        MaybeReplaced = not_replaced,
         P(Char),
         all_match_loop(P, String, Next)
     else
@@ -3400,8 +3413,11 @@ contains_char(String, Char) :-
 :- pred contains_char_loop(string::in, char::in, int::in) is semidet.
 
 contains_char_loop(Str, Char, I) :-
-    unsafe_index_next_repl(Str, I, J, IndexChar, not_replaced),
-    ( if IndexChar = Char then
+    unsafe_index_next_repl(Str, I, J, IndexChar, MaybeReplaced),
+    ( if
+        MaybeReplaced = not_replaced,
+        IndexChar = Char
+    then
         true
     else
         contains_char_loop(Str, Char, J)

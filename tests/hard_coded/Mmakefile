@@ -79,7 +79,6 @@ ORDINARY_PROGS = \
 	construct_test \
 	construct_test_exist \
 	contains_char \
-	contains_char_2 \
 	contravariance_bug \
 	contravariance_poly \
 	curry \
@@ -372,6 +371,7 @@ ORDINARY_PROGS = \
 	stream_test \
 	string_alignment \
 	string_alignment_bug \
+	string_all_match \
 	string_append_iii \
 	string_append_ioi \
 	string_append_ooi \
@@ -384,6 +384,7 @@ ORDINARY_PROGS = \
 	string_codepoint \
 	string_codepoint_offset_ilseq \
 	string_compare_substrings \
+	string_contains_char \
 	string_count_codepoints_ilseq \
 	string_first_char \
 	string_fold_ilseq \

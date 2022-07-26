@@ -1,0 +1,6 @@
+all_match(is_alpha, "") ==> true.
+all_match(is_alpha, "abc") ==> true.
+all_match(is_alpha, "abc123") ==> false.
+all_match(is_chess_piece, "♜♞♝♛♚♝♞♜") ==> true.
+all_match(is_chess_piece, "♜♞♝♛K♝♞♜") ==> false.
+all_match(is_alpha, "abc?def") ==> false.
