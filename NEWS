@@ -359,14 +359,6 @@ Changes to the Mercury standard library
 
    - pred `contains_match/2`
 
-### Changes to the `tree_bitset` module
-
-* The following obsolete predicates has been removed:
-
-   - pred `empty/1`
-
-### Changes to the `string` module
-
 * The following obsolete modes have been removed from the following predicates:
 
    - pred `to_char_list(uo, in)`
@@ -393,6 +385,12 @@ Changes to the Mercury standard library
 * The following predicates have been added:
 
     - pred `sorted_keys_match/2`
+
+### Changes to the `tree_bitset` module
+
+* The following obsolete predicates has been removed:
+
+   - pred `empty/1`
 
 ### Changes to the `version_hash_table` module
 
