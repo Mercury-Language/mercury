@@ -236,23 +236,23 @@ add_decl_pragma(ItemMercuryStatus, ItemPragmaInfo,
         add_pragma_oisu(OISUInfo, ItemMercuryStatus, Context,
             !ModuleInfo, !Specs)
     ;
-        Pragma = decl_pragma_terminates(PredNameArity),
+        Pragma = decl_pragma_terminates(PFUNameArity),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        add_pred_marker("terminates", PredNameArity, PredStatus, Context,
-            marker_terminates,
+        add_pred_marker(PFUNameArity, PredStatus, Context,
+            "terminates", marker_terminates,
             [marker_check_termination, marker_does_not_terminate],
             !ModuleInfo, !Specs)
     ;
-        Pragma = decl_pragma_does_not_terminate(PredNameArity),
+        Pragma = decl_pragma_does_not_terminate(PFUNameArity),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        add_pred_marker("does_not_terminate", PredNameArity, PredStatus,
-            Context, marker_does_not_terminate,
+        add_pred_marker(PFUNameArity, PredStatus, Context,
+            "does_not_terminate", marker_does_not_terminate,
             [marker_check_termination, marker_terminates], !ModuleInfo, !Specs)
     ;
-        Pragma = decl_pragma_check_termination(PredNameArity),
+        Pragma = decl_pragma_check_termination(PFUNameArity),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        add_pred_marker("check_termination", PredNameArity, PredStatus,
-            Context, marker_check_termination,
+        add_pred_marker(PFUNameArity, PredStatus, Context,
+            "check_termination", marker_check_termination,
             [marker_terminates, marker_does_not_terminate],
             !ModuleInfo, !Specs)
     ;
@@ -610,9 +610,8 @@ add_pragma_termination2_info(Term2Info, Context, !ModuleInfo, !Specs) :-
         MaybePragmaSuccessArgSizeInfo, MaybePragmaFailureArgSizeInfo,
         MaybePragmaTerminationInfo),
     PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
-    list.length(Modes, PredFormArityInt),
-    user_arity_pred_form_arity(PredOrFunc, UserArity,
-        pred_form_arity(PredFormArityInt)),
+    PredFormArity = arg_list_arity(Modes),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     % XXX lfh_ignore:
     % This happens in `.trans_opt' files sometimes, so just ignore it.
     look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
@@ -770,39 +769,41 @@ add_impl_pragma(ItemMercuryStatus, ItemPragmaInfo, !RevPragmaTabled,
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
         % Note that mode_check_inline conflicts with inline because
         % it implies no_inline.
-        add_pred_marker("inline", PredSymNameArity, PredStatus, Context,
-            marker_user_marked_inline,
+        add_pred_marker(PredSymNameArity, PredStatus, Context,
+            "inline", marker_user_marked_inline,
             [marker_user_marked_no_inline, marker_mode_check_clauses],
             !ModuleInfo, !Specs)
     ;
         Pragma = impl_pragma_no_inline(PredSymNameArity),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        add_pred_marker("no_inline", PredSymNameArity, PredStatus, Context,
-            marker_user_marked_no_inline, [marker_user_marked_inline],
-            !ModuleInfo, !Specs)
+        add_pred_marker(PredSymNameArity, PredStatus, Context,
+            "no_inline", marker_user_marked_no_inline,
+            [marker_user_marked_inline], !ModuleInfo, !Specs)
     ;
         Pragma = impl_pragma_consider_used(PredSymNameArity),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        add_pred_marker("consider_used", PredSymNameArity, PredStatus, Context,
-            marker_consider_used, [], !ModuleInfo, !Specs)
+        add_pred_marker(PredSymNameArity, PredStatus, Context,
+            "consider_used", marker_consider_used, [], !ModuleInfo, !Specs)
     ;
         Pragma = impl_pragma_mode_check_clauses(PredNameArity),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        add_pred_marker("mode_check_clauses", PredNameArity, PredStatus,
-            Context, marker_mode_check_clauses, [], !ModuleInfo, !Specs),
+        add_pred_marker(PredNameArity, PredStatus, Context,
+            "mode_check_clauses", marker_mode_check_clauses, [],
+            !ModuleInfo, !Specs),
         % Allowing the predicate to be inlined could lead to code generator
         % aborts. This is because the caller that inlines this predicate may
         % then push other code into the disjunction or switch's branches,
         % which would invalidate the instmap_deltas that the mode_check_clauses
         % marker prevents the recomputation of.
-        add_pred_marker("mode_check_clauses", PredNameArity, PredStatus,
-            Context, marker_user_marked_no_inline, [marker_user_marked_inline],
-            !ModuleInfo, !Specs)
+        add_pred_marker(PredNameArity, PredStatus, Context,
+            "mode_check_clauses", marker_user_marked_no_inline,
+            [marker_user_marked_inline], !ModuleInfo, !Specs)
     ;
         Pragma = impl_pragma_no_detism_warning(PredNameArity),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        add_pred_marker("no_determinism_warning", PredNameArity, PredStatus,
-            Context, marker_no_detism_warning, [], !ModuleInfo, !Specs)
+        add_pred_marker(PredNameArity, PredStatus, Context,
+            "no_determinism_warning", marker_no_detism_warning, [],
+            !ModuleInfo, !Specs)
     ;
         Pragma = impl_pragma_require_tail_rec(TailrecWarningPragma),
         add_pragma_require_tail_rec(TailrecWarningPragma, Context,
@@ -810,19 +811,20 @@ add_impl_pragma(ItemMercuryStatus, ItemPragmaInfo, !RevPragmaTabled,
     ;
         Pragma = impl_pragma_promise_pure(PredNameArity),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        add_pred_marker("promise_pure", PredNameArity, PredStatus,
-            Context, marker_promised_pure, [], !ModuleInfo, !Specs)
+        add_pred_marker(PredNameArity, PredStatus, Context,
+            "promise_pure", marker_promised_pure, [], !ModuleInfo, !Specs)
     ;
         Pragma = impl_pragma_promise_semipure(PredNameArity),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        add_pred_marker("promise_semipure", PredNameArity, PredStatus,
-            Context, marker_promised_semipure, [], !ModuleInfo, !Specs)
+        add_pred_marker(PredNameArity, PredStatus, Context,
+            "promise_semipure", marker_promised_semipure, [],
+            !ModuleInfo, !Specs)
     ;
         Pragma = impl_pragma_promise_eqv_clauses(PredNameArity),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        add_pred_marker("promise_equivalent_clauses", PredNameArity,
-            PredStatus, Context, marker_promised_equivalent_clauses, [],
-            !ModuleInfo, !Specs)
+        add_pred_marker(PredNameArity, PredStatus, Context,
+            "promise_equivalent_clauses", marker_promised_equivalent_clauses,
+            [], !ModuleInfo, !Specs)
     ;
         Pragma = impl_pragma_require_feature_set(RFSInfo),
         RFSInfo = pragma_info_require_feature_set(FeatureSet),
@@ -1173,8 +1175,8 @@ add_fact_table_proc(PredOrFunc, SymName, UserArity, PredStatus, ProcTable,
     ; PredOrFunc = pf_function, PFU = pfu_function
     ),
     PredSpec = pred_pfu_name_arity(PFU, SymName, UserArity),
-    add_pred_marker("fact_table", PredSpec, PredStatus, Context,
-        marker_user_marked_no_inline, [], !ModuleInfo, !Specs).
+    add_pred_marker(PredSpec, PredStatus, Context,
+        "fact_table", marker_user_marked_no_inline, [], !ModuleInfo, !Specs).
 
 %---------------------%
 
@@ -1586,21 +1588,21 @@ add_gen_pragma_mm_tabling(ItemPragmaInfo, !ModuleInfo, !Specs) :-
 %
 %---------------------------------------------------------------------------%
 
-    % add_pred_marker(PragmaName, PredNameArity, Status, Context,
-    %   Marker, ConflictMarkers, !ModuleInfo, !Specs):
+    % add_pred_marker(PredSymNameArity, Status, Context, PragmaName, Marker,
+    %   ConflictMarkers, !ModuleInfo, !Specs):
     %
     % Adds Marker to the marker list of the pred(s) with the given
     % PredNameArity, updating the ModuleInfo. If the named pred does not exist,
     % or the pred(s) already has/have a marker in ConflictMarkers,
     % report an error.
     %
-:- pred add_pred_marker(string::in, pred_pfu_name_arity::in,
-    pred_status::in, prog_context::in, pred_marker::in, list(pred_marker)::in,
+:- pred add_pred_marker(pred_pfu_name_arity::in, pred_status::in,
+    prog_context::in, string::in, pred_marker::in, list(pred_marker)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pred_marker(PragmaName, PredSymNameArity, Status, Context,
-        Marker, ConflictMarkers, !ModuleInfo, !Specs) :-
+add_pred_marker(PredSymNameArity, Status, Context, PragmaName, Marker,
+        ConflictMarkers, !ModuleInfo, !Specs) :-
     ( if marker_must_be_exported(Marker) then
         MustBeExported = yes
     else
