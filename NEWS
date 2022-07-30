@@ -355,15 +355,6 @@ Changes to the Mercury standard library
 
 ### Changes to the `string` module
 
-* We have fixed and clarified the behaviour of the following predicates when
-  called on a string containing ill-formed code unit sequences:
-
-   - pred `all_match/2`
-   - pred `index_next_repl/5`
-   - pred `unsafe_index_next_repl/5`
-   - pred `prev_index_repl/5`
-   - pred `unsafe_prev_index_repl/5`
-
 * The following predicate has been added:
 
    - pred `contains_match/2`
@@ -439,6 +430,21 @@ Changes to the extras distribution
 ----------------------------------
 
 * We have deleted the `old_term_parser` library.
+
+NEWS for Mercury 22.01.4
+========================
+
+This is a bug-fix release.
+
+* We have fixed and clarified the behaviour of the following `string`
+  module predicates when called on a string containing ill-formed code
+  unit sequences:
+
+   - pred `all_match/2`
+   - pred `index_next_repl/5`
+   - pred `unsafe_index_next_repl/5`
+   - pred `prev_index_repl/5`
+   - pred `unsafe_prev_index_repl/5`
 
 NEWS for Mercury 22.01.3
 ========================
