@@ -335,9 +335,10 @@
 
     ;       user_made_instance_method(pred_pf_name_arity,
                 instance_method_constraints)
-            % The predicate is a class method implementation. Record
-            % the method name and arity, and extra information about the
-            % class context to allow polymorphism.m to correctly set up
+            % The predicate is a class method implementation for the class
+            % whose class_id is in the instance_method_constraints.
+            % Record the method name and arity, and extra information about
+            % the class context to allow polymorphism.m to correctly set up
             % the extra type_info and typeclass_info arguments.
 
     ;       user_made_assertion(promise_type, string, int).
@@ -578,6 +579,22 @@
     % profiler. Moved here from layout_out.m.
     %
 :- func layout_origin_name(pred_origin, string) = string.
+
+    % Return a representation of the pred_origin as a string that
+    %
+    % - can be put into layout structures in an executable,
+    %   after any quote characters in it are escaped, and
+    %
+    % - can be used by debuggers and profilers to recover a representation
+    %   of the original pred_origin that is sufficient both to uniquely
+    %   identify the predicate, and to give information its origin
+    %   that is sufficient for the purposes of the debugger or profiler.
+    %
+    % The string should be parseable from the front, meaning that
+    % at no point should you have to go to the end of either the whole string,
+    % or of a part of it, and scan backwards.
+    %
+:- func layout_origin_name_new(pred_origin) = string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1384,12 +1401,12 @@ layout_origin_name(Origin, Name0) = Name :-
             ),
             Name = Name0
         ;
-            OriginUser = user_made_lambda(FileName0, LineNum, SeqNo),
+            OriginUser = user_made_lambda(FileName0, LineNum, SeqNum),
             ( if string.append("IntroducedFrom", _, Name0) then
                 string.replace_all(FileName0, ".", "_", FileName),
-                ( if SeqNo > 1 then
+                ( if SeqNum > 1 then
                     string.format("lambda%d_%s_%d",
-                        [i(SeqNo), s(FileName), i(LineNum)], Name)
+                        [i(SeqNum), s(FileName), i(LineNum)], Name)
                 else
                     string.format("lambda_%s_%d",
                         [s(FileName), i(LineNum)], Name)
@@ -1525,6 +1542,305 @@ layout_proc_transform_name(ProcTransform, ProcId) = Name :-
     ).
 
 %---------------------------------------------------------------------------%
+
+layout_origin_name_new(Origin) = Str :-
+    % The structure of the pred_origin will be indicated by occurrences
+    % of the string "mrtq". The initial "mrt" stands for "Mercury runtime",
+    % and the "q" is there to reduce the need for stuffing (see below).
+    %
+    % Each pred and proc transform starts with "mrtq_", and any string
+    % we get from the user will have its end indicated by "_mrtq_".
+    % To make this work, those user-provided strings will be "mrtq-stuffed",
+    % which means that all occurrences of "mrtq" in them replaced by "mrtqq".
+    % This prevents "mrtq_" from occurring in the stuffed strings.
+    % Debuggers and profilers will have to "unstuff" these user-provided parts
+    % of the stuffed strings once they have parsed the relevant part of
+    % the string.
+    %
+    % Likewise, the parts of the predicate origins that deal with types
+    % will have the structure of those types indicated by occurrences of "txq",
+    % where the "t" stands for "type" and the "xq" is there to reduce the need
+    % for "txq-stuffing".
+    %
+    % NOTE To make this code suitable for generating names for the functions/
+    % methods that implement the predicates whose origins we are processing,
+    % all the user-provided strings we handle would have to be converted
+    % (in a reversible way) to use only characters that the target language
+    % allows in identifiers. This means letters, numbers and underscores.
+    % The way we construct Str, we guarantee that it starts with one of
+    % "pred_", "func_" or "mrtq_", which guarantees that we don't fall foul
+    % of limitations about what characters can *start* an identifier
+    % in our target languages.
+    (
+        Origin = origin_user(OriginUser),
+        (
+            OriginUser = user_made_pred(PorF, SymName, UserArity),
+            PorFStr = pred_or_func_to_str(PorF),
+            StuffedNameStr = mrtq_stuff_sym_name(SymName),
+            UserArity = user_arity(UserArityInt),
+            % NOTE We could add an "mrtq_" prefix to Str. This should
+            % not be needed in layout structures, but when we use
+            % a generalized version of this code to generate target language
+            % identifiers, having *all* procedure names start with "mrtq_"
+            % could in theory allow us to stop adding a "mercury_" prefix
+            % to those names. Unfortunately, this is not practical, because
+            % the handwritten code of the runtime system uses the "mercury_"
+            % prefix, and any switchover to using a "mrtq_" prefix instead
+            % would require this code to be changed, or the callers of
+            % predicates defined in the runtime would have to replace
+            % the "mrtq_" prefix constructed here with "mercury_".
+            % Neither is easy to do.
+            string.format("%s_%s_mrtq_%d",
+                [s(PorFStr), s(StuffedNameStr), i(UserArityInt)], Str)
+        ;
+            OriginUser = user_made_class_method(ClassId, PFSymNameArity),
+            ClassId = class_id(ClassSymName, ClassArity),
+            StuffedClassNameStr = mrtq_stuff_sym_name(ClassSymName),
+            PFSymNameArity = pred_pf_name_arity(PorF, MethodSymName,
+                MethodUserArity),
+            PorFStr = pred_or_func_to_str(PorF),
+            StuffedMethodNameStr = mrtq_stuff_sym_name(MethodSymName),
+            MethodUserArity = user_arity(MethodUserArityInt),
+            string.format("mrtq_class_%s_mrtq_%d_%s_%s_mrtq_%d",
+                [s(StuffedClassNameStr), i(ClassArity),
+                s(PorFStr), s(StuffedMethodNameStr), i(MethodUserArityInt)],
+                Str)
+        ;
+            OriginUser = user_made_instance_method(PFSymNameArity,
+                MethodConstraints),
+            PFSymNameArity = pred_pf_name_arity(PorF, MethodSymName,
+                MethodUserArity),
+            PorFStr = pred_or_func_to_str(PorF),
+            StuffedMethodNameStr = mrtq_stuff_sym_name(MethodSymName),
+            MethodUserArity = user_arity(MethodUserArityInt),
+            MethodConstraints = instance_method_constraints(ClassId,
+                InstanceTypes, _, _),
+            ClassId = class_id(ClassSymName, ClassArity),
+            StuffedClassNameStr = mrtq_stuff_sym_name(ClassSymName),
+            InstanceTypeStrs = list.map(type_to_txq_mrtq_stuffed_string,
+                InstanceTypes),
+            MoreInstanceTypeStrs = list.map((func(S) = "_mrtq_m_" ++ S),
+                InstanceTypeStrs),
+            MoreInstanceTypesStr = string.append_list(MoreInstanceTypeStrs),
+            string.format("mrtq_instance_%s_mrtq_%d_%s_%s_mrtq_%d_%s_mrtq",
+                [s(StuffedClassNameStr), i(ClassArity),
+                s(PorFStr), s(StuffedMethodNameStr), i(MethodUserArityInt),
+                s(MoreInstanceTypesStr)], Str)
+        ;
+            OriginUser = user_made_assertion(PromiseType, FileName0, LineNum),
+            (
+                PromiseType = promise_type_true,
+                PromiseStr = "assert"
+            ;
+                PromiseType = promise_type_exclusive,
+                PromiseStr = "excl"
+            ;
+                PromiseType = promise_type_exhaustive,
+                PromiseStr = "exh"
+            ;
+                PromiseType = promise_type_exclusive_exhaustive,
+                PromiseStr = "exclexh"
+            ),
+            string.replace_all(FileName0, ".", "_", FileName1),
+            FileName = mrtq_stuff(FileName1),
+            string.format("mrtq_%s_%s_mrtq_%d",
+                [s(PromiseStr), s(FileName), i(LineNum)], Str)
+        ;
+            OriginUser = user_made_lambda(FileName0, LineNum, SeqNum),
+            string.replace_all(FileName0, ".", "_", FileName1),
+            FileName = mrtq_stuff(FileName1),
+            string.format("mrtq_lambda_%d_%s_mrtq_%d",
+                [i(SeqNum), s(FileName), i(LineNum)], Str)
+        )
+    ;
+        Origin = origin_compiler(OriginCompiler),
+        (
+            OriginCompiler = made_for_uci(Kind, TypeCtor),
+            ( Kind = spec_pred_unify,   UciName = "uni"
+            ; Kind = spec_pred_compare, UciName = "cmp"
+            ; Kind = spec_pred_index,   UciName = "idx"
+            ),
+            TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+            TypeCtorStr = sym_name_to_string(TypeCtorSymName),
+            StuffedTypeCtorStr = mrtq_stuff(TypeCtorStr),
+            string.format("mrtq_%s_%s_%d",
+                [s(UciName), s(StuffedTypeCtorStr), i(TypeCtorArity)], Str)
+        ;
+            OriginCompiler = made_for_deforestation(LineNum, SeqNum),
+            string.format("mrtq_deforst_%d_%d", [i(LineNum), i(SeqNum)], Str)
+        ;
+            OriginCompiler = made_for_solver_repn(TypeCtor, PredKind),
+            TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+            TypeCtorStr = sym_name_to_string(TypeCtorSymName),
+            StuffedTypeCtorStr = mrtq_stuff(TypeCtorStr),
+            (
+                PredKind = solver_type_to_ground_pred,
+                PredKindStr = "tognd"
+            ;
+                PredKind = solver_type_to_any_pred,
+                PredKindStr = "toany"
+            ;
+                PredKind = solver_type_from_ground_pred,
+                PredKindStr = "fromgnd"
+            ;
+                PredKind = solver_type_from_any_pred,
+                PredKindStr = "fromany"
+            ),
+            string.format("mrtq_solver_%s_%s_mrtq_%d",
+                [s(PredKindStr), s(StuffedTypeCtorStr), i(TypeCtorArity)], Str)
+        ;
+            OriginCompiler = made_for_tabling(PFSymNameArity, Kind),
+            PFSymNameArity = pred_pf_name_arity(PorF, SymName, UserArity),
+            PorFStr = pred_or_func_to_str(PorF),
+            StuffedNameStr = mrtq_stuff_sym_name(SymName),
+            UserArity = user_arity(UserArityInt),
+            ( Kind = tabling_aux_pred_stats, KindStr = "stats"
+            ; Kind = tabling_aux_pred_reset, KindStr = "reset"
+            ),
+            string.format("mrtq_table_%s_%s_%s_mrtq_%d",
+                [s(KindStr), s(PorFStr), s(StuffedNameStr), i(UserArityInt)],
+                Str)
+        ;
+            OriginCompiler = made_for_mutable(_ModuleName, MutableName,
+                Kind),
+            StuffedNameStr = mrtq_stuff(MutableName),
+            ( Kind = mutable_pred_std_get,              KindStr = "get"
+            ; Kind = mutable_pred_std_set,              KindStr = "set"
+            ; Kind = mutable_pred_io_get,               KindStr = "ioget"
+            ; Kind = mutable_pred_io_set,               KindStr = "ioset"
+            ; Kind = mutable_pred_unsafe_get,           KindStr = "uget"
+            ; Kind = mutable_pred_unsafe_set,           KindStr = "uset"
+            ; Kind = mutable_pred_constant_get,         KindStr = "cget"
+            ; Kind = mutable_pred_constant_secret_set,  KindStr = "cset"
+            ; Kind = mutable_pred_lock,                 KindStr = "lock"
+            ; Kind = mutable_pred_unlock,               KindStr = "unlock"
+            ; Kind = mutable_pred_pre_init,             KindStr = "preinit"
+            ; Kind = mutable_pred_init,                 KindStr = "init"
+            ),
+            string.format("mrtq_mutable_%s_%s",
+                [s(KindStr), s(StuffedNameStr)], Str)
+        ;
+            (
+                OriginCompiler = made_for_initialise(FileName0, LineNum),
+                KindStr = "initialise"
+            ;
+                OriginCompiler = made_for_finalise(FileName0, LineNum),
+                KindStr = "finalise"
+            ),
+            string.replace_all(FileName0, ".", "_", FileName1),
+            FileName = mrtq_stuff(FileName1),
+            string.format("mrtq_%s_%s_mrtq_%d",
+                [s(KindStr), s(FileName), i(LineNum)], Str)
+        )
+    ;
+        Origin = origin_pred_transform(PredTransform, OldOrigin, _),
+        OldStr = layout_origin_name_new(OldOrigin),
+        PredTransformStr = layout_pred_transform_name_new(PredTransform),
+        % "pts" and "pte" stand for "pred transform start/end".
+        string.format("%s_mrtq_pts_%s_mrtq_pte",
+            [s(OldStr), s(PredTransformStr)], Str)
+    ;
+        Origin = origin_proc_transform(ProcTransform, OldOrigin, _, ProcId),
+        OldStr = layout_origin_name_new(OldOrigin),
+        ProcTransformStr =
+            layout_proc_transform_name_new(ProcTransform, ProcId),
+        % "pmts" and "pmte" stand for "pred mode transform start/end".
+        string.format("%s_mrtq_pmts_%s_mrtq_pmte",
+            [s(OldStr), s(ProcTransformStr)], Str)
+    ).
+
+    % Return a representation of the pred_transform. The result string
+    % will not start or end with an underscore, and will not contain
+    % the string "mrtq_".
+    %
+:- func layout_pred_transform_name_new(pred_transform) = string.
+
+layout_pred_transform_name_new(PredTransform) = Str :-
+    (
+        PredTransform = pred_transform_type_spec(Substs),
+        SubstList = one_or_more_to_list(Substs),
+        SubstStrs = list.map(subst_to_mrtq_stuffed_string, SubstList),
+        SubstsStr = string.join_list("_txq_s_", SubstStrs),
+        string.format("typespec_%s", [s(SubstsStr)], Str)
+    ;
+        PredTransform = pred_transform_distance_granularity(Distance),
+        string.format("distgran_%d", [i(Distance)], Str)
+    ;
+        PredTransform = pred_transform_table_generator,
+        Str = "tablegen"
+    ;
+        PredTransform = pred_transform_structure_reuse,
+        Str = "structreuse"
+    ;
+        PredTransform = pred_transform_ssdebug(_),
+        Str = "ssdb"
+    ).
+
+    % Return a representation of the proc_transform. The result string
+    % will not start or end with an underscore, and will not contain
+    % the string "mrtq_".
+    %
+:- func layout_proc_transform_name_new(proc_transform, proc_id) = string.
+
+layout_proc_transform_name_new(ProcTransform, ProcId) = Str :-
+    ProcIdInt = proc_id_to_int(ProcId),
+    (
+        ProcTransform = proc_transform_user_type_spec(_CallerPredId,
+            _CallerProcId),
+        % XXX This seems to be inadequate, because a predicate or function
+        % may have more than one type_spec pragma for it with different type
+        % substitutions, and this does not distinguish between them.
+        % When constructing names using tn_user_type_spec, we include the
+        % proc_id, but this does not address the issue.
+        Str = "usertypespec"
+    ;
+        ProcTransform = proc_transform_higher_order_spec(SeqNum),
+        string.format("ho_%d", [i(SeqNum)], Str)
+    ;
+        ProcTransform = proc_transform_unused_args(ArgPosns),
+        % Since ArgPosns may not be empty, "ua" will be followed
+        % by the underscore before the first argument position number.
+        string.format("ua%s", [s(underscore_ints_to_string(ArgPosns))], Str)
+    ;
+        ProcTransform = proc_transform_accumulator(_LineNum, ArgPosns),
+        % Since ArgPosns may not be empty, "acc" will be followed
+        % by the underscore before the first argument position number.
+        string.format("acc%s", [s(underscore_ints_to_string(ArgPosns))], Str)
+    ;
+        ProcTransform = proc_transform_loop_inv(LineNum, SeqNum),
+        string.format("loopinv_%d_%d_%d",
+            [i(ProcIdInt), i(LineNum), i(SeqNum)], Str)
+    ;
+        ProcTransform = proc_transform_tuple(LineNum, SeqNum),
+        string.format("tup_%d_%d_%d",
+            [i(ProcIdInt), i(LineNum), i(SeqNum)], Str)
+    ;
+        ProcTransform = proc_transform_untuple(LineNum, SeqNum),
+        string.format("untup_%d_%d_%d",
+            [i(ProcIdInt), i(LineNum), i(SeqNum)], Str)
+    ;
+        ProcTransform = proc_transform_dep_par_conj(ArgPosns),
+        string.format("depparconj%s",
+            [s(underscore_ints_to_string(ArgPosns))], Str)
+    ;
+        ProcTransform = proc_transform_par_loop_ctrl,
+        Str = "parlc"
+    ;
+        ProcTransform = proc_transform_lcmc(_SeqNum, ArgPosns),
+        string.format("lcmc %d%s",
+            [i(ProcIdInt), s(underscore_ints_to_string(ArgPosns))], Str)
+    ;
+        ProcTransform = proc_transform_stm_expansion,
+        Str = "stm"
+    ;
+        ProcTransform = proc_transform_io_tabling,
+        Str = "iotabling"
+    ;
+        ProcTransform = proc_transform_direct_arg_in_out,
+        Str = "daio"
+    ).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- func type_subst_to_string(tvarset, type_subst) = string.
@@ -1557,6 +1873,67 @@ subst_to_name(TVar - Type) = Str :-
     TypeStr = mercury_type_to_string(varset.init, print_name_only, Type),
     Str = string.format("%d/%s", [i(TVar), s(TypeStr)]).
 
+:- func subst_to_mrtq_stuffed_string(pair(int, mer_type)) = string.
+
+subst_to_mrtq_stuffed_string(TVar - Type) = Str :-
+    TypeStr = type_to_txq_mrtq_stuffed_string(Type),
+    string.format("_%d_%s_txq_sub", [i(TVar), s(TypeStr)], Str).
+
+    % txq_X:
+    %
+    %   X = k:          type is kinded variable (reserved; not yet used)
+    %   X = v:          type is type variable
+    %   X = b:          type is builtin type
+    %   X = d:          type is defined type
+    %   X = t:          type is tuple type
+    %   X = a:          type is apply_n type
+    %   X = h:          type is higher order type
+    %
+    %   X = n:          end of name of type constructor
+    %   X = m:          (at least) one more type in argument type list
+    %   X = e:          end of argument type list
+    %
+:- func type_to_txq_mrtq_stuffed_string(mer_type) = string.
+
+type_to_txq_mrtq_stuffed_string(Type) = Str :-
+    (
+        Type = kinded_type(SubType, _Kind),
+        Str = type_to_txq_mrtq_stuffed_string(SubType)
+    ;
+        Type = type_variable(TVar, _),
+        string.format("txq_v_%d", [i(var_to_int(TVar))], Str)
+    ;
+        Type = builtin_type(BuiltinType),
+        builtin_type_to_string(BuiltinType, BuiltinTypeStr),
+        string.format("txq_b_%s", [s(BuiltinTypeStr)], Str)
+    ;
+        (
+            Type = defined_type(TypeCtorSymName, ArgTypes, _),
+            StuffedTypeCtorStr = txq_mrtq_stuff_sym_name(TypeCtorSymName),
+            string.format("txq_d_%s_txq_n", [s(StuffedTypeCtorStr)], StartStr)
+        ;
+            Type = tuple_type(ArgTypes, _),
+            StartStr = "txq_t"
+        ;
+            Type = apply_n_type(TVar, ArgTypes, _),
+            string.format("txq_a_%d", [i(var_to_int(TVar))], StartStr)
+        ;
+            Type = higher_order_type(PorF, ArgTypes, _HOInst, Purity, _Eval),
+            ( PorF = pf_predicate, PorFStr = "p"
+            ; PorF = pf_function,  PorFStr = "f"
+            ),
+            ( Purity = purity_pure,     PurityStr = "p"
+            ; Purity = purity_semipure, PurityStr = "s"
+            ; Purity = purity_impure,   PurityStr = "i"
+            ),
+            string.format("txq_h_%s%s", [s(PorFStr), s(PurityStr)], StartStr)
+        ),
+        ArgTypeStrs = list.map(type_to_txq_mrtq_stuffed_string, ArgTypes),
+        MoreArgTypeStrs = list.map((func(S) = "_txq_m_" ++ S), ArgTypeStrs),
+        MoreArgTypesStr = string.append_list(MoreArgTypeStrs),
+        string.format("%s_%s_txq_e", [s(StartStr), s(MoreArgTypesStr)], Str)
+    ).
+
 %---------------------------------------------------------------------------%
 
 :- func underscore_ints_to_string(list(int)) = string.
@@ -1573,6 +1950,41 @@ bracketed_ints_to_string(Ints) = Str :-
     % we construct.
     IntsStr = string.join_list(", ", IntStrs),
     string.format("[%s]", [s(IntsStr)], Str).
+
+%---------------------------------------------------------------------------%
+
+:- func mrtq_stuff_sym_name(sym_name) = string.
+
+mrtq_stuff_sym_name(SymName) = StuffedStr :- 
+    NameStr = sym_name_to_string(SymName),
+    StuffedStr = mrtq_stuff(NameStr).
+
+:- func txq_mrtq_stuff_sym_name(sym_name) = string.
+
+txq_mrtq_stuff_sym_name(SymName) = StuffedStr :- 
+    NameStr = sym_name_to_string(SymName),
+    StuffedStr = txq_mrtq_stuff(NameStr).
+
+:- func mrtq_stuff(string) = string.
+
+mrtq_stuff(Str) = StuffedStr :-
+    ( if sub_string_search(Str, "mrtq", _StartIndex) then
+        Pieces = split_at_string(Str, "mrtq"),
+        StuffedStr = string.join_list("mrtqq", Pieces)
+    else
+        StuffedStr = Str
+    ).
+
+:- func txq_mrtq_stuff(string) = string.
+
+txq_mrtq_stuff(Str) = DoubleStuffedStr :-
+    ( if sub_string_search(Str, "txq", _StartIndex) then
+        Pieces = split_at_string(Str, "txq"),
+        StuffedStr = string.join_list("txqq", Pieces)
+    else
+        StuffedStr = Str
+    ),
+    DoubleStuffedStr = mrtq_stuff(StuffedStr).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.pred_name.
