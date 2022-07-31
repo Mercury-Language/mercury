@@ -81,13 +81,11 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
         predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
             PredOrFunc, SymName, PredFormArity, PredIds),
         predicate_table_lookup_pf_sym(PredTable, is_fully_qualified,
-            PredOrFunc, SymName, AllArityPredIds),
-        UserArity = user_arity(UserArityInt)
+            PredOrFunc, SymName, AllArityPredIds)
     ;
         PFUMM = pfumm_unknown(UserArity),
         maybe_warn_about_pfumm_unknown(!.ModuleInfo, "type_spec",
             PFUMM, SymName, Context, !Specs),
-        UserArity = user_arity(UserArityInt),
         MaybePredOrFunc = no,
         MaybeModes = no,
         predicate_table_lookup_sym_arity(PredTable, is_fully_qualified,
@@ -100,10 +98,8 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
         module_info_get_pred_id_table(!.ModuleInfo, PredIdTable),
         find_user_arities_other_than(PredIdTable, AllArityPredIds, UserArity,
             OtherUserArities),
-        OtherUserArityInts =
-            list.map(project_user_arity_int, OtherUserArities),
         report_undefined_pred_or_func_error(MaybePredOrFunc, SymName,
-            UserArityInt, OtherUserArityInts, Context,
+            UserArity, OtherUserArities, Context,
             [pragma_decl("type_spec"), words("declaration")], !Specs)
     ;
         PredIds = [_ | _],

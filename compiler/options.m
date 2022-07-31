@@ -233,6 +233,7 @@
     ;       warn_unneeded_mode_specific_clause
     ;       warn_suspected_occurs_check_failure
     ;       warn_potentially_ambiguous_pragma
+    ;       warn_ambiguous_pragma
     ;       warn_stdlib_shadowing
     ;       inform_inferred
     ;       inform_inferred_types
@@ -1303,6 +1304,7 @@ optdef(oc_warn, warn_state_var_shadowing,               bool(yes)).
 optdef(oc_warn, warn_unneeded_mode_specific_clause,     bool(yes)).
 optdef(oc_warn, warn_suspected_occurs_check_failure,    bool(yes)).
 optdef(oc_warn, warn_potentially_ambiguous_pragma,      bool(no)).
+optdef(oc_warn, warn_ambiguous_pragma,                  bool(yes)).
 optdef(oc_warn, warn_stdlib_shadowing,                  bool(yes)).
 optdef(oc_warn, inform_inferred,                        bool_special).
 optdef(oc_warn, inform_inferred_types,                  bool(yes)).
@@ -2212,8 +2214,9 @@ long_option("warn-potentially-ambiguous-pragma",
                                         warn_potentially_ambiguous_pragma).
 long_option("warn-potentially-ambiguous-pragmas",
                                         warn_potentially_ambiguous_pragma).
-long_option("warn-stdlib-shadowing",
-                                        warn_stdlib_shadowing).
+long_option("warn-ambiguous-pragma",    warn_ambiguous_pragma).
+long_option("warn-ambiguous-pragmas",   warn_ambiguous_pragma).
+long_option("warn-stdlib-shadowing",    warn_stdlib_shadowing).
 long_option("inform-inferred",          inform_inferred).
 long_option("inform-inferred-types",    inform_inferred_types).
 long_option("inform-inferred-modes",    inform_inferred_modes).
@@ -4035,6 +4038,7 @@ non_style_warning_options = [
     warn_non_term_special_preds,
     warn_suspected_occurs_check_failure,
     warn_potentially_ambiguous_pragma,
+    warn_ambiguous_pragma,
     inform_inferred_types
 ].
 
@@ -4361,6 +4365,10 @@ options_help_warning(Stream, !IO) :-
         "--warn-potentially-ambiguous-pragma",
         "\tGenerate warnings for pragmas that do not specify whether they are",
         "\tfor a predicate or a function.",
+        "--no-warn-ambiguous-pragma",
+        "\tDo not generate warnings for pragmas that do not specify whether",
+        "\tthey are for a predicate or a function, even when there is both",
+        "\ta predicate and a function with the given name and arity.",
         "--no-warn-stdlib-shadowing",
         "\tDo not generate warnings for module names that either duplicate",
         "\tthe name of a module in the Mercury standard library, or contain",

@@ -316,15 +316,20 @@
             % pragma(inline). Mutually exclusive with
             % marker_user_marked_no_inline.
 
+    ;       marker_heuristic_inline
+            % The compiler (meaning probably inlining.m) requests that this
+            % predicate be inlined. Does not override
+            % marker_user_marked_no_inline.
+
     ;       marker_user_marked_no_inline
             % The user requests that this be predicate should not be inlined.
             % Used for pragma(no_inline). Mutually exclusive with
             % marker_user_marked_inline.
 
-    ;       marker_heuristic_inline
-            % The compiler (meaning probably inlining.m) requests that this
-            % predicate be inlined. Does not override
-            % marker_user_marked_no_inline.
+    ;       marker_mmc_marked_no_inline
+            % The compiler requests that this be predicate should not be
+            % inlined. Used for pragma(mode_check_clauses). Mutually exclusive
+            % with marker_user_marked_inline.
 
     ;       marker_consider_used
             % The user has requested that this predicate be considered used
@@ -922,9 +927,10 @@ marker_name(marker_builtin_stub, "builtin_stub").
 marker_name(marker_infer_type, "infer_type").
 marker_name(marker_infer_modes, "infer_modes").
 marker_name(marker_user_marked_inline, "inline").
+marker_name(marker_heuristic_inline, "heuristic_inline").
 marker_name(marker_no_pred_decl, "no_pred_decl").
 marker_name(marker_user_marked_no_inline, "no_inline").
-marker_name(marker_heuristic_inline, "heuristic_inline").
+marker_name(marker_mmc_marked_no_inline, "mmc_no_inline").
 marker_name(marker_consider_used, "consider_used").
 marker_name(marker_no_detism_warning, "no_determinism_warning").
 marker_name(marker_class_method, "class_method").
@@ -1843,15 +1849,15 @@ pred_info_update_goal_type(NPGoalType1, !PredInfo) :-
 
 pred_info_requested_inlining(PredInfo0) :-
     pred_info_get_markers(PredInfo0, Markers),
-    (
-        check_marker(Markers, marker_user_marked_inline)
-    ;
-        check_marker(Markers, marker_heuristic_inline)
+    ( check_marker(Markers, marker_user_marked_inline)
+    ; check_marker(Markers, marker_heuristic_inline)
     ).
 
 pred_info_requested_no_inlining(PredInfo0) :-
     pred_info_get_markers(PredInfo0, Markers),
-    check_marker(Markers, marker_user_marked_no_inline).
+    ( check_marker(Markers, marker_user_marked_no_inline)
+    ; check_marker(Markers, marker_mmc_marked_no_inline)
+    ).
 
 pred_info_get_purity(PredInfo0, Purity) :-
     pred_info_get_markers(PredInfo0, Markers),

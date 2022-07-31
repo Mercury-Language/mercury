@@ -1,8 +1,10 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% This is a copy of inline_conflict.m that is compiled with different options.
+%---------------------------------------------------------------------------%
 
-:- module inline_conflict.
+:- module inline_conflict_warn.
 
 :- interface.
 

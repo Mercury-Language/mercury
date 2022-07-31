@@ -391,6 +391,7 @@ may_opt_export_pred(PredId, PredInfo, TypeSpecForcePreds) :-
 
     % Don't export non-inlinable predicates.
     not check_marker(Markers, marker_user_marked_no_inline),
+    not check_marker(Markers, marker_mmc_marked_no_inline),
 
     % Don't export tabled predicates, since they are not inlinable.
     pred_info_get_proc_table(PredInfo, ProcTable),
@@ -1959,6 +1960,7 @@ intermod_gather_pred_marker_pragmas_loop(PredOrFunc, PredSymName, UserArity,
         ; Marker = marker_no_pred_decl
         ; Marker = marker_no_detism_warning
         ; Marker = marker_heuristic_inline
+        ; Marker = marker_mmc_marked_no_inline
         ; Marker = marker_consider_used
         ; Marker = marker_calls_are_fully_qualified
         ; Marker = marker_mutable_access_pred

@@ -1,0 +1,5 @@
+inline_conflict_warn.m:021: Error: `:- pragma no_inline' declaration conflicts
+inline_conflict_warn.m:021:   with previous inline pragma for `bar'/2.
+inline_conflict_warn.m:028: In `:- pragma inline' declaration for `baz'/2:
+inline_conflict_warn.m:028:   warning: ambiguous name could refer to either a
+inline_conflict_warn.m:028:   predicate or a function.

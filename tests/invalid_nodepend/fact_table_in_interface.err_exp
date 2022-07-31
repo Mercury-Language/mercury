@@ -16,6 +16,7 @@ fact_table_in_interface.m:022: Error: `:- pragma fact_table' declaration in
 fact_table_in_interface.m:022:   module interface.
 fact_table_in_interface.m:023: Error: `:- pragma fact_table' declaration in
 fact_table_in_interface.m:023:   module interface.
-fact_table_in_interface.m:023: In `pragma fact_table' for
-fact_table_in_interface.m:023:   `fact_table_in_interface.baz'/2:
-fact_table_in_interface.m:023:   error: ambiguous predicate/function name.
+fact_table_in_interface.m:023: In `:- pragma fact_table' declaration for
+fact_table_in_interface.m:023:   `baz'/2:
+fact_table_in_interface.m:023:   error: ambiguous name could refer to either a
+fact_table_in_interface.m:023:   predicate or a function.

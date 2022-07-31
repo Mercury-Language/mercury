@@ -47,7 +47,7 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred report_undefined_pred_or_func_error(maybe(pred_or_func)::in,
-    sym_name::in, arity::in, list(arity)::in, prog_context::in,
+    sym_name::in, user_arity::in, list(user_arity)::in, prog_context::in,
     list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -125,8 +125,8 @@ report_multiply_defined(EntityKind, SymName, UserArity, Context, OrigContext,
         [SecondDeclMsg, FirstDeclMsg | ExtraMsgs]),
     !:Specs = [Spec | !.Specs].
 
-report_undefined_pred_or_func_error(MaybePorF, SymName, Arity, OtherArities,
-        Context, DescPieces, !Specs) :-
+report_undefined_pred_or_func_error(MaybePorF, SymName,
+        UserArity, OtherUserArities, Context, DescPieces, !Specs) :-
     (
         MaybePorF = no,
         SNAPrefixPieces = [],
@@ -140,17 +140,20 @@ report_undefined_pred_or_func_error(MaybePorF, SymName, Arity, OtherArities,
         SNAPrefixPieces = [words("function")],
         PredOrFuncPieces = [decl("func")]
     ),
-    SNA = sym_name_arity(SymName, Arity),
+    UserArity = user_arity(UserArityInt),
+    SNA = sym_name_arity(SymName, UserArityInt),
     MainPieces = [words("Error:") | DescPieces] ++
         [words("for")] ++ SNAPrefixPieces ++ [unqual_sym_name_arity(SNA),
         words("without corresponding")] ++ PredOrFuncPieces ++
         [words("declaration."), nl],
     (
-        OtherArities = [],
+        OtherUserArities = [],
         OtherArityPieces = []
     ;
-        OtherArities = [_ | _],
-        list.map(string.int_to_string, OtherArities, OtherArityStrs),
+        OtherUserArities = [_ | _],
+        OtherUserArityInts =
+            list.map(project_user_arity_int, OtherUserArities),
+        list.map(string.int_to_string, OtherUserArityInts, OtherArityStrs),
         OtherArityPieces = [unqual_sym_name(SymName), words("does exist with"),
             words(choose_number(OtherArityStrs, "arity", "arities"))] ++
             list_to_pieces(OtherArityStrs) ++

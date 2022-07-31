@@ -7001,6 +7001,13 @@ Generate warnings for pragmas that do not specify
 whether they are for a predicate or a function.
 
 @sp 1
+@item --warn-ambiguous-pragma
+@findex --warn-ambiguous-pragma
+Generate warnings for pragmas that do not specify
+whether they are for a predicate or a function,
+when there is both a predicate and a function with the given name and arity.
+
+@sp 1
 @item --no-inform-inferred
 @findex --no-inform-inferred
 Do not generate messages about inferred types or modes.

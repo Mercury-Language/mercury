@@ -11534,33 +11534,36 @@ with implementation-dependent semantics
                                 @samp{#@var{line}} directives provide support
                                 for preprocessors and other tools that
                                 generate Mercury code.
+* Old pragma syntax::           Old and obsolete syntax for some pragmas.
 @end menu
 
 @node Inlining
 @section Inlining
 
-A declaration of the form
+Declarations of these forms
 
 @example
-:- pragma inline(@var{Name}/@var{Arity}).
+:- pragma inline(pred(@var{Name}/@var{Arity})).
+:- pragma inline(func(@var{Name}/@var{Arity})).
 @end example
 
 @noindent
-is a hint to the compiler that
-all calls to the predicate(s) or function(s)
+are a hint to the compiler that
+all calls to the predicate or function
 with name @var{Name} and arity @var{Arity} should be inlined.
 
 The current Mercury implementation is smart enough
 to inline simple predicates even without this hint.
 
-A declaration of the form
+Declarations of these forms
 
 @example
-:- pragma no_inline(@var{Name}/@var{Arity}).
+:- pragma no_inline(pred(@var{Name}/@var{Arity})).
+:- pragma no_inline(func(@var{Name}/@var{Arity})).
 @end example
 
 @noindent
-ensures the compiler will not inline this predicate.
+tell the compiler not to inline the named predicate or function.
 This may be used simply for performance concerns
 (inlining can cause unwanted code bloat in some cases)
 or to prevent possibly dangerous inlining when using low-level C code.
@@ -11587,28 +11590,25 @@ for a specific set of argument types.
 A declaration of the form
 
 @example
-:- pragma type_spec(@var{Name}/@var{Arity}, @var{Subst}).
-:- pragma type_spec(@var{Name}(@var{Modes}), @var{Subst}).
+:- pragma type_spec(pred(@var{Name}/@var{Arity}), @var{Subst}).
+:- pragma type_spec(func(@var{Name}/@var{Arity}), @var{Subst}).
 @end example
 
 @noindent
-suggests to the compiler that
-a specialized version of predicate(s) or function(s)
-with name @var{Name} and arity @var{Arity}
-should be created
+suggests to the compiler that it should create a specialized version
+of the predicate or function with name @var{Name} and arity @var{Arity}
 with the type substitution given by @var{Subst} applied to the argument types.
-The second form of the declaration only suggests
-specialization of the specified mode of the predicate or function.
-
 The substitution is written as a conjunction of bindings
 of the form @w{@samp{@var{TypeVar} = @var{Type}}},
 for example @w{@samp{K = int}} or @w{@samp{(K = int, V = list(int))}}.
+(The conjunction must have parentheses around it
+if it contains two or more bindings.)
 
-The declarations
+For example, the declarations
 
 @example
 :- pred map.lookup(map(K, V), K, V).
-:- pragma type_spec(map.lookup/3, K = int).
+:- pragma type_spec(pred(map.lookup/3), K = int).
 @end example
 
 @noindent
@@ -11618,6 +11618,19 @@ a version of @samp{map.lookup/3} should be created for integer keys.
 Implementations are free to ignore @samp{pragma type_spec} declarations.
 Implementations are also free to perform type specialization
 even in the absence of any @samp{pragma type_spec} declarations.
+
+The pragma also has a form that suggests specialization
+of only one mode of the predicate or function, instead of all of them:
+
+@example
+:- pragma type_spec(@var{Name}(@var{m1}, ... @var{mn}), @var{Subst}).
+:- pragma type_spec(@var{Name}(@var{m1}, ... @var{mn}) = @var{mr}, @var{Subst}).
+@end example
+
+where @var{m1} etc are the modes of the arguments.
+If the @samp{= @var{mr}} part is present,
+it gives the mode of the function result;
+if it is absent, this indicates that @var{Name} is a predicate.
 
 @node When to use type specialization
 @subsection When to use type specialization
@@ -11655,18 +11668,21 @@ user-requested type specializations are ignored.
 Declarations of the forms
 
 @example
-:- pragma obsolete(@var{Name}/@var{Arity}).
-:- pragma obsolete(@var{Name}/@var{Arity},
+:- pragma obsolete(pred(@var{Name}/@var{Arity})).
+:- pragma obsolete(func(@var{Name}/@var{Arity})).
+:- pragma obsolete(pred(@var{Name}/@var{Arity}),
+    [@var{ReplName1}/@var{ReplArity1}, ..., @var{ReplNameN}/@var{ReplArityN}]).
+:- pragma obsolete(func(@var{Name}/@var{Arity}),
     [@var{ReplName1}/@var{ReplArity1}, ..., @var{ReplNameN}/@var{ReplArityN}]).
 @end example
 
 @noindent
-declare that the predicate(s) or function(s)
-with name @var{Name} and arity @var{Arity} are ``obsolete'':
+declare that the predicate or function
+with name @var{Name} and arity @var{Arity} is ``obsolete'':
 they instruct the compiler to issue a warning
-whenever the named predicate(s) and/or function(s) are used.
-The second form tells the compiler to suggest the use
-of one of the listed possible replacements.
+whenever the named predicate or function is used.
+The forms with a second argument tell the compiler
+to suggest the use of one of the listed possible replacements.
 
 Declarations of the forms
 
@@ -11692,8 +11708,8 @@ If a library developer changes
 the interface of a library predicate or procedure,
 they should leave its old version in the library,
 but mark it as obsolete using one of these declarations,
-and document how library users should modify their code
-to suit the new interface.
+and, if possible, use the suggested replacements to steer users
+to their replacements (either partial or total) in the new interface.
 The users of the library will then get a warning if they use obsolete features,
 and can consult the library documentation to determine how to fix their code.
 Eventually, when the library developer
@@ -11703,16 +11719,17 @@ they can remove the old version entirely.
 @node No determinism warnings
 @section No determinism warnings
 
-A declaration of the form
+Declarations of the forms
 
 @example
-:- pragma no_determinism_warning(@var{Name}/@var{Arity}).
+:- pragma no_determinism_warning(pred(@var{Name}/@var{Arity})).
+:- pragma no_determinism_warning(func(@var{Name}/@var{Arity})).
 @end example
 
 @noindent
-tells the compiler not to generate any warnings
-that the determinism declarations of procedures of the predicate or function
-with name @var{Name} and arity @var{Arity} are not as tight as they could be.
+tell the compiler not to generate any warnings
+about the determinism declarations of procedures of the predicate or function
+with name @var{Name} and arity @var{Arity} not being as tight as they could be.
 
 @samp{pragma no_determinism_warning} declarations are intended for use
 in situations in which the code of a predicate has one determinism,
@@ -11731,17 +11748,18 @@ unless the programmer specifies this pragma for them.
 @node No dead predicate warnings
 @section No dead predicate warnings
 
-A declaration of the form
+Declarations of the forms
 
 @example
-:- pragma consider_used(@var{Name}/@var{Arity}).
+:- pragma consider_used(pred(@var{Name}/@var{Arity})).
+:- pragma consider_used(func(@var{Name}/@var{Arity})).
 @end example
 
 @noindent
 tells the compiler to consider the predicate or function
 with name @var{Name} and arity @var{Arity} to be used,
 and not generate any dead procedure/predicate/function warnings
-either for the named predicate,
+either for the named predicate or function,
 @emph{or} for the other predicates and functions that it calls,
 either directly or indirectly.
 
@@ -11797,6 +11815,42 @@ to reset the source file name and line number
 to point back to the generated file for the automatically generated text,
 as in the above example.
 
+@node Old pragma syntax
+@section Old pragma syntax
+
+Many of the pragmas above specify the identity of a predicate or a function
+as the entity to which the pragma applies.
+Their documentation shows these pragmas to have this syntax:
+@example
+:- pragma @var{pragma_name}(pred(@var{Name}/@var{Arity})).
+:- pragma @var{pragma_name}(func(@var{Name}/@var{Arity})).
+@end example
+
+New code should use this syntax.
+However, old versions of the Mercury compiler
+supported only a simpler version of this syntax, like this:
+@example
+:- pragma @var{pragma_name}(@var{Name}/@var{Arity}).
+@end example
+
+Since this syntax does not specify
+whether the pragma is supposed to apply to a predicate or to a function,
+it is ambiguous in the event that the program contains
+both a predicate and a function with the given name and arity.
+
+For backwards compatibility, the Mercury compiler still supports this syntax,
+but it will now generate a warning when the program contains
+both a predicate and a function with the given name and arity.
+It can also be asked to generate a warning for all pragmas
+that should specify whether they apply to a predicate or to a function
+but do not do so.
+
+A later version of Mercury will deprecate this syntax,
+and a still later version will stop supporting it.
+
+@c which each apply their hint to both a predicate @var{Name}/@var{Arity}
+@c and a function @var{Name}/@var{Arity} if both exist.
+
 @node Implementation-dependent extensions
 @chapter Implementation-dependent extensions
 
@@ -11829,14 +11883,15 @@ the following extensions to the Mercury language:
 Large tables of facts can be compiled using a different algorithm
 that is more efficient and can produce more efficient code.
 
-A declaration of the form
+Declarations of the forms
 
 @example
-:- pragma fact_table(@var{Name}/@var{Arity}, @var{FileName}).
+:- pragma fact_table(pred(@var{Name}/@var{Arity}), @var{FileName}).
+:- pragma fact_table(func(@var{Name}/@var{Arity}), @var{FileName}).
 @end example
 
 @noindent
-tells the compiler that the predicate or function
+tell the compiler that the predicate or function
 with name @var{Name} and arity @var{Arity}
 is defined by a set of facts in an external file @var{FileName}.
 Defining large tables of facts in this way allows the compiler
@@ -12061,23 +12116,26 @@ and only in grades that explicitly support it.
 The syntax for each of these declarations is
 
 @example
-:- pragma memo(@var{Name}/@var{Arity}).
-:- pragma memo(@var{Name}/@var{Arity}, [@var{list of tabling attributes}]).
-:- pragma loop_check(@var{Name}/@var{Arity}).
-:- pragma loop_check(@var{Name}/@var{Arity}, [@var{list of tabling attributes}]).
-:- pragma minimal_model(@var{Name}/@var{Arity}).
-:- pragma minimal_model(@var{Name}/@var{Arity}, [@var{list of tabling attributes}]).
+:- pragma memo(pred(@var{Name}/@var{Arity})).
+:- pragma memo(pred(@var{Name}/@var{Arity}), [@var{list of tabling attributes}]).
+:- pragma loop_check(pred(@var{Name}/@var{Arity})).
+:- pragma loop_check(pred(@var{Name}/@var{Arity}), [@var{list of tabling attributes}]).
+:- pragma minimal_model(pred(@var{Name}/@var{Arity})).
+:- pragma minimal_model(pred(@var{Name}/@var{Arity}), [@var{list of tabling attributes}]).
 @end example
 
 @noindent
-where @var{Name}/@var{Arity} specifies
-the predicate or function to which the declaration applies.
-The declaration applies to all modes of the predicate and/or function named.
+and the corresponding versions in which
+@samp{pred} is replaced with @samp{func}.
+The @samp{pred(@var{Name}/@var{Arity})} or @samp{func(@var{Name}/@var{Arity})}
+part specifies the predicate or function to which the declaration applies.
 At most one of these declarations may be specified
 for any given predicate or function.
 
-Programmers can also request the application of tabling
-only to one particular mode of a predicate or function,
+Pragmas using the above syntax specify
+a declaration that applies to all the modes of a predicate or function.
+Programmers can request the application of tabling
+to only one particular mode of a predicate or function,
 via declarations such as these:
 
 @example
@@ -12089,6 +12147,14 @@ via declarations such as these:
 :- pragma minimal_model(@var{Name}(in, in, out, out), [@var{list of tabling attributes}]).
 @end example
 
+All the above example pragmas are for predicates.
+For functions, the first argument of the pragma would include
+the mode of the function result as well, like this:
+
+@example
+:- pragma memo(@var{Name}(in, in) = out, [@var{list of tabling attributes}]).
+@end example
+
 Because all variants of tabling record the values of input arguments,
 and all except @samp{loop_check} also record the values of output arguments,
 you cannot apply any of these pragmas to procedures
@@ -12096,7 +12162,7 @@ whose arguments' modes include any unique component.
 
 Tabled evaluation of a predicate or function
 that has an argument whose type is a foreign type
-will result in a run-time error
+will result in a run-time error,
 unless the foreign type is one for which
 the @samp{can_pass_as_mercury_type} and @samp{stable} assertions
 have been made (@pxref{Using foreign types from Mercury}).
@@ -12219,10 +12285,11 @@ to decide what exception to throw.)
 @c @samp{hidden_arg_value} is assumed if neither is present.
 
 If the tabled predicate or function has only one mode,
-then this declaration can also be specified without giving the argument modes:
+then a declaration like this can also be specified
+without giving the argument modes:
 
 @example
-:- pragma memo(@var{Name}/@var{Arity}, [allow_reset, statistics,
+:- pragma memo(pred(@var{Name}/@var{Arity}), [allow_reset, statistics,
         specified([value, addr, promise_implied, output])]).
 @end example
 
@@ -12359,7 +12426,8 @@ The following declarations can be used to inform the compiler
 of the termination properties of a predicate or function.
 
 @example
-:- pragma terminates(@var{Name}/@var{Arity}).
+:- pragma terminates(pred(@var{Name}/@var{Arity})).
+:- pragma terminates(func(@var{Name}/@var{Arity})).
 @end example
 
 This declaration may be used to inform the compiler
@@ -12372,65 +12440,24 @@ This declaration affects not only the predicate specified
 but also any other predicates that are mutually recursive with it.
 
 @example
-:- pragma does_not_terminate(@var{Name}/@var{Arity}).
+:- pragma does_not_terminate(pred(@var{Name}/@var{Arity})).
+:- pragma does_not_terminate(func(@var{Name}/@var{Arity})).
 @end example
 
 This declaration may be used to inform the compiler
-that this predicate may not terminate.
-This declaration affects not only the predicate specified
-but also any other predicates that are mutually recursive with it.
+that this predicate or function may not terminate.
+This declaration affects not only the predicate or function specified
+but also any other predicates and/or functions
+that are mutually recursive with it.
 
 @example
-:- pragma check_termination(@var{Name}/@var{Arity}).
+:- pragma check_termination(pred(@var{Name}/@var{Arity})).
+:- pragma check_termination(func(@var{Name}/@var{Arity})).
 @end example
 
-This pragma forces the compiler to prove termination of this predicate.
-If it cannot prove the termination of the specified predicate or function,
-then the compiler will quit with an error message.
-
-@c XXX The `reserved tag' pragma is not documented because it is intended to
-@c     be used with `any' insts, which are themselves not yet documented.
-@c     Also, it is a quite low-level facility, and very
-@c     implementation-specific...
-@c
-@c @node Reserved tag
-@c @section Reserved tag
-@c
-@c The Melbourne Mercury implementation includes some fairly
-@c low-level support for implementing Herbrand constraint solvers
-@c (i.e.@: Prolog-style logic variables).
-@c
-@c In particular, you can use the @samp{reserve_tag} pragma
-@c to tell the compiler to reserve a tag in the data representation
-@c for a type.  The intent is for this tag to be used to represent
-@c unbound variables with inst @samp{any}.
-@c
-@c The @samp{reserve_tag} pragma declaration has the following form:
-@c @example
-@c :- pragma reserve_tag(@var{type-name} / @var{type-arity}).
-@c @end example
-@c
-@c The @var{type-name} and @var{type-arity} must specify the name
-@c and arity of a discriminated union type defined in the same module,
-@c and the @samp{reserve_tag} pragma must occur in the same section
-@c (interface or implementation) of the module as the type definition.
-@c
-@c The effect of this declaration is that values whose primary
-@c tag is zero are reserved for use in representing unbound variables.
-@c Note that to actually create an unbound variable, you need to
-@c use the foreign language interface code, and the code will probably
-@c need to be aware of the Mercury compiler's data representation.
-@c
-@c The @samp{reserve_tag} pragma has the same effect to the
-@c @samp{--reserve-tag} compiler option (which is documented
-@c in the Mercury user's guide),
-@c except that the pragma applies just to the specified type,
-@c whereas the compiler option applies to discriminated union types
-@c in the program.
-@c
-@c Note that neither the @samp{reserve_tag} pragma nor the @samp{--reserve-tag}
-@c compiler option will have any useful effect if the @samp{--high-level-data}
-@c option is used (e.g.@: for the .NET or Java back-ends).
+This pragma tells the compiler
+that it should try to prove the termination of this predicate or function,
+and if it fails, then it should quit with an error message.
 
 @c XXX TO DO!
 @c @node Compile-time garbage collection
@@ -12458,6 +12485,7 @@ then the compiler will quit with an error message.
 @c warnings or errors for predicates and functions that contain recursive
 @c calls which are not @emph{tail} recursive.
 @c
+@c XXX add pred() and func() wrappers
 @c @example
 @c :- pragma require_tail_recursion(@var{Name}/@var{Arity}, @var{Options}).
 @c :- pragma require_tail_recursion(@var{Name}(@var{Modes}), @var{Options}).

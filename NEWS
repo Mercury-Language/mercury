@@ -409,11 +409,17 @@ Changes to the Mercury compiler
 * We have fixed a bug where `--warn-unused-imports` did not warn about
   unused modules that are also imported by an ancestor of the current module.
 
+* We have added a new option `--warn-ambiguous-pragmas`
+  that tells the compiler to generate warnings for pragmas that specify
+  a name/arity pair, when there is both a predicate and a function
+  with that name and arity, and the pragma does not specify which one
+  it is for.
+
 * The deprecated option `--trail-segments` has been deleted and the grade
   component `trseg` is no longer accepted as a synonym for `tr`.
 
 * `--javac-flags` is now accepted as a synonym for `--java-flags`. Similarly
-  `--javac-flag` is now accepted as synonym for `--java-flags`.
+  `--javac-flag` is now accepted as a synonym for `--java-flags`.
 
 * The new options `--java-runtime-flags` and `--java-runtime-flags` can be
   used to set flags for the Java interpreter in the launcher shell scripts or
@@ -1080,7 +1086,7 @@ Changes to the Mercury language
   If the module in which this pragma occurs contains both
   a function `init/1` and a predicate `init/1`, then this pragma
   is ambiguous. Traditionally, the Mercury compiler applied such
-  ambiguous pragma to both the function and the predicate.
+  ambiguous pragmas to both the function and the predicate.
   The programmers who wished the pragma to apply to only one of them
   had to rename the other.
 
