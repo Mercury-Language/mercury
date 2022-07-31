@@ -916,8 +916,8 @@
     % substrings of String (in first to last order) that are delimited
     % by code points matched by SepP. For example,
     %
-    % split_at_separator(char.is_whitespace, " a cat  sat on the  mat")
-    %   = ["", "a", "cat", "", "sat", "on", "the", "", "mat"]
+    % split_at_separator(char.is_whitespace, " the cat  sat on the  mat")
+    %   = ["", "the", "cat", "", "sat", "on", "the", "", "mat"]
     %
     % Note the difference to words_separator.
     %
@@ -932,7 +932,7 @@
     % split_at_string(Separator, String) returns the list of substrings
     % of String that are delimited by Separator. For example,
     %
-    % split_at_string("|||", "|||fld2|||fld3") = ["", "fld2", [fld3"]
+    % split_at_string("|||", "|||fld2|||fld3") = ["", "fld2", "fld3"]
     %
     % Always the first match of Separator is used to break the String, for
     % example: split_at_string("aa", "xaaayaaaz") = ["x", "ay", "az"]
