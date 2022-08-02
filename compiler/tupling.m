@@ -1729,7 +1729,8 @@ fix_calls_in_proc(TransformMap, proc(PredId, ProcId), !ModuleInfo) :-
         % library were made to call tupled procedures.
         pred_info_get_origin(PredInfo, Origin),
         ( if
-            Origin = origin_pred_transform(pred_transform_type_spec(_), _, _)
+            Origin = origin_pred_transform(PredTransform, _, _),
+            PredTransform = pred_transform_pragma_type_spec(_)
         then
             true
         else

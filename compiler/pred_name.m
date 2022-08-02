@@ -391,9 +391,10 @@
             % filename and line number.
 
 :- type pred_transform
-    --->    pred_transform_type_spec(
-                % The substitution from type variables (represented by
-                % the integers) to types (represented by the terms).
+    --->    pred_transform_pragma_type_spec(
+                % The predicate was created in response to a type_spec
+                % pragma containing this substitution from type variables
+                % (represented by the integers) to types.
                 one_or_more(pair(int, mer_type))
             )
     ;       pred_transform_distance_granularity(
@@ -1105,7 +1106,7 @@ get_base_origin(Origin) = BaseOrigin :-
 
 pred_transform_to_dev_string(PredTransform) = Str :-
     (
-        PredTransform = pred_transform_type_spec(Substs),
+        PredTransform = pred_transform_pragma_type_spec(Substs),
         SubstStrs = list.map(dump_subst, one_or_more_to_list(Substs)),
         SubstsStr = string.join_list(", ", SubstStrs),
         string.format("type specialization %s", [s(SubstsStr)], Str)
@@ -1478,7 +1479,7 @@ layout_origin_name(Origin, Name0) = Name :-
 
 layout_pred_transform_name(PredTransform) = Name :-
     (
-        PredTransform = pred_transform_type_spec(Substs),
+        PredTransform = pred_transform_pragma_type_spec(Substs),
         Name = string.join_list("_", list.map(subst_to_name,
             one_or_more_to_list(Substs)))
     ;
@@ -1757,7 +1758,7 @@ layout_origin_name_new(Origin) = Str :-
 
 layout_pred_transform_name_new(PredTransform) = Str :-
     (
-        PredTransform = pred_transform_type_spec(Substs),
+        PredTransform = pred_transform_pragma_type_spec(Substs),
         SubstList = one_or_more_to_list(Substs),
         SubstStrs = list.map(subst_to_mrtq_stuffed_string, SubstList),
         SubstsStr = string.join_list("_txq_s_", SubstStrs),
