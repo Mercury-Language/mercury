@@ -283,22 +283,26 @@ method_ptr_type_to_string(Info, ArgTypes, RetTypes) = String :-
 
 mercury_type_to_string_for_csharp(Info, Type, CtorCat, String, ArrayDims) :-
     (
-        CtorCat = ctor_cat_builtin(cat_builtin_char),
-        % C# `char' not large enough for code points so we must use `int'.
-        String = "int",
-        ArrayDims = []
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_int(IntType)),
-        String = int_type_to_csharp_type(IntType),
-        ArrayDims = []
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_string),
-        String = "string",
-        ArrayDims = []
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_float),
-        String = "double",
-        ArrayDims = []
+        CtorCat = ctor_cat_builtin(BuiltinCat),
+        (
+            BuiltinCat = cat_builtin_int(IntType),
+            String = int_type_to_csharp_type(IntType),
+            ArrayDims = []
+        ;
+            BuiltinCat = cat_builtin_float,
+            String = "double",
+            ArrayDims = []
+        ;
+            BuiltinCat = cat_builtin_char,
+            % A C# `char' is not large enough to store a code point,
+            % so we must use `int'.
+            String = "int",
+            ArrayDims = []
+        ;
+            BuiltinCat = cat_builtin_string,
+            String = "string",
+            ArrayDims = []
+        )
     ;
         CtorCat = ctor_cat_void,
         String = "builtin.Void_0",
@@ -487,6 +491,7 @@ hand_defined_type_for_csharp(Type, CtorCat, SubstituteName, ArrayDims) :-
     require_complete_switch [CtorCat]
     (
         CtorCat = ctor_cat_system(CtorCatSystem),
+        require_complete_switch [CtorCatSystem]
         (
             CtorCatSystem = cat_system_type_info,
             SubstituteName = "runtime.TypeInfo_Struct",

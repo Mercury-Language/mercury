@@ -960,6 +960,7 @@
                 % to type_ctor_category except for disallowing builtins,
                 % and maybe type variables (see above). However, that would
                 % require us to duplicate a nontrivial amount of code.
+                % XXX This has not been true since Peter implemented subtypes.
                 type_ctor_category
             )
 
@@ -2658,6 +2659,11 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
                 MLDSType = mercury_type_ctor_defn_to_mlds_type(ModuleInfo,
                     Type, TypeCtor, TypeDefn)
             else
+                % classify_type_ctor will check to see whether calling
+                % classify_type_ctor_if_special will succeed on TypeCtor.
+                % It should, because if it doesn't, then it will proceed
+                % to look up TypeCtor in TypeTable, and since the condition
+                % aboye failed, that lookup will throw an exception.
                 CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
                 MLDSType = type_and_category_to_mlds_type(Type, CtorCat)
             )

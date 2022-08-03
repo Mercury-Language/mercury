@@ -1341,8 +1341,9 @@ type_constructors(ModuleInfo, Type, Constructors) :-
             Constructors)
     ).
 
-    % Substitute the actual values of the type parameters in list of
-    % constructors, for a particular instance of a polymorphic type.
+    % Substitute the actual values of the type parameters (for a
+    % particular instance of a polymorphic type) in the given list
+    % of constructors.
     %
 :- pred substitute_type_args(list(type_param)::in, list(mer_type)::in,
     list(constructor)::in, list(constructor)::out) is det.
@@ -1365,8 +1366,8 @@ substitute_type_args_ctors(Subst, [Ctor0 | Ctors0], [Ctor | Ctors]) :-
     % Note: the parser ensures that the existentially quantified variables,
     % if any, are distinct from the parameters, and that the (existential)
     % constraints can only contain existentially quantified variables,
-    % so there's no need to worry about applying the substitution to ExistQVars
-    % or Constraints.
+    % so there is no need to worry about applying the substitution
+    % to ExistQVars or Constraints.
     Ctor0 = ctor(Ordinal, MaybeExistConstraints, Name, Args0, Arity, Ctxt),
     substitute_type_args_ctor_args(Subst, Args0, Args),
     Ctor = ctor(Ordinal, MaybeExistConstraints, Name, Args, Arity, Ctxt),
