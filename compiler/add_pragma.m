@@ -1785,7 +1785,7 @@ get_matching_pred_ids(ModuleInfo, Pragma, RequireOneMatch, PragmaAllowsModes,
                         unqual_sym_name_arity(SNA), suffix(":"), nl,
                         words("warning: ambiguous name could refer to"),
                         words("either a predicate or a function."), nl],
-                    ActualSpec = simplest_spec($pred, severity_error,
+                    ActualSpec = simplest_spec($pred, severity_warning,
                         phase_parse_tree_to_hlds, Context, ActualPieces),
                     % There is no point in printing WarnSpecs warning about
                     % *possible* ambiguity when ActualSpec reports a warning
