@@ -179,7 +179,7 @@ mkdir $TMPDIR/deep_profiler || exit 1
 touch $TMPDIR/deep_profiler/DEEP_FLAGS.in || exit 1
 mkdir $TMPDIR/tests || exit 1
 touch $TMPDIR/tests/TESTS_FLAGS.in || exit 1
-touch $TMPDIR/tsets/DEFNS_FOR_TESTS.in || exit 1
+touch $TMPDIR/tests/DEFNS_FOR_TESTS.in || exit 1
 mkdir $TMPDIR/mfilterjavac || exit 1
 touch $TMPDIR/mfilterjavac/MFILTERJAVAC_FLAGS.in || exit 1
 
