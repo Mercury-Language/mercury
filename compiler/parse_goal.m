@@ -833,10 +833,7 @@ parse_goal_conjunction(Functor, TermA, TermB, ContextPieces, !ConjunctsCord,
     ),
     ( if
         TermB = term.functor(term.atom(Functor), ArgTermsB, _Context),
-        ArgTermsB = [TermBA, TermBB],
-        not (
-            TermBA = term.functor(term.atom("->"), [_, _], _)
-        )
+        ArgTermsB = [TermBA, TermBB]
     then
         parse_goal_conjunction(Functor, TermBA, TermBB, ContextPieces,
             !ConjunctsCord, !Warnings, !Specs, !VarSet)
