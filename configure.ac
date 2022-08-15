@@ -1168,18 +1168,20 @@ else
     ARFLAGS="cr"
     AR_LIBFILE_OPT=""
 
-    LD_STRIP_FLAG="-s"
-    STRIP_EXE=""
-    STRIP_EXE_SHARED_FLAGS=""
-    STRIP_EXE_STATIC_FLAGS=""
-
-    # The `-s' linker option is deprecated on Darwin 9+ and has no effect other
-    # than causing the linker to emit a warning. Call the strip tool directly.
     case "$host" in
         *apple*darwin*)
+            # The `-s' linker option is deprecated on Darwin 9+ and has no
+            # effect other than causing the linker to emit a warning. Call the
+            # strip tool directly.
             LD_STRIP_FLAG=""
-            STRIP_EXE="strip"
+            AC_CHECK_TOOL([STRIP_EXE], [strip], [strip])
             STRIP_EXE_SHARED_FLAGS="-x"
+            STRIP_EXE_STATIC_FLAGS=""
+            ;;
+        *)
+            LD_STRIP_FLAG="-s"
+            STRIP_EXE=""
+            STRIP_EXE_SHARED_FLAGS=""
             STRIP_EXE_STATIC_FLAGS=""
             ;;
     esac
