@@ -69,50 +69,51 @@
     var_table::in, var_table::out,
     list(hlds_goal)::out, list(prog_var)::out, prog_var_renaming::out) is det.
 
-    % clone_variable(OldVar, OldVarSet, OldVarTypes,
-    %   !VarSet, !VarTypes, !Renaming, CloneVar):
+    % clone_variable(OldVar, OldVarTable, !VarTable, !Renaming, CloneVar):
     %
     % clone_variable typically takes an old variable OldVar, and creates a
-    % clone of it, adding the clone variable to !VarSet and !VarType, and
-    % adding a mapping from the old variable to its clone in !Renaming.
-    % The name and type of the clone are taken from OldVarSet and OldVarTypes.
+    % clone of it, adding the clone variable to !VarTable, and adding
+    % a mapping from the old variable to its clone to !Renaming.
+    % The name and type of the clone are taken from OldVarTable.
     % However, if OldVar already has a clone, as shown by it already being a
     % key in !.Renaming, clone_variable does nothing. Either way, the identity
     % of the clone variable is returned in CloneVar.
     %
-    % (This interface will not easily admit uniqueness in the varset and
-    % vartypes arguments; such is the sacrifice for generality.)
+    % (This interface will not easily admit uniqueness in the var_table
+    % arguments; such is the sacrifice for generality.)
     %
-:- pred clone_variable(prog_var::in, prog_varset::in, vartypes::in,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    prog_var_renaming::in, prog_var_renaming::out, prog_var::out) is det.
-
-    % clone_variable_var_table(OldVar, !VarTable, !Renaming, CloneVar):
-    %
-    % A version of clone_variable using var_tables.
-    %
-:- pred clone_variable_var_table(prog_var::in, var_table::in,
+:- pred clone_variable(prog_var::in, var_table::in,
     var_table::in, var_table::out,
     prog_var_renaming::in, prog_var_renaming::out, prog_var::out) is det.
 
-    % clone_variables(OldVars, OldVarSet, OldVarTypes,
-    %   !VarSet, !VarTypes, !Renaming):
+    % clone_variable_vs(OldVar, OldVarSet, OldVarTypes,
+    %   !VarSet, !VarTypes, !Renaming, CloneVar):
+    %
+    % A version of clone_variable using varsets and vartypes.
+    %
+:- pred clone_variable_vs(prog_var::in, prog_varset::in, vartypes::in,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    prog_var_renaming::in, prog_var_renaming::out, prog_var::out) is det.
+
+    % clone_variables(OldVars, OldVarTable, !VarTable, !Renaming):
     %
     % Invoke clone_variable on each variable in OldVars.
     %
     % The caller can find the identity of the clone of each variable in OldVars
     % by looking it up in !:Renaming.
     %
-:- pred clone_variables(list(prog_var)::in, prog_varset::in, vartypes::in,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    %
+:- pred clone_variables(list(prog_var)::in,
+    var_table::in, var_table::in, var_table::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
-    % clone_variables_var_table(OldVars, !VarTable, !Renaming):
+    % clone_variables_vs(OldVars, OldVarSet, OldVarTypes,
+    %   !VarSet, !VarTypes, !Renaming):
     %
-    % A version of clone_variables using var_tables.
+    % A version of clone_variables using varsets and vartypes.
     %
-:- pred clone_variables_var_table(list(prog_var)::in,
-    var_table::in, var_table::in, var_table::out,
+:- pred clone_variables_vs(list(prog_var)::in, prog_varset::in, vartypes::in,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
     % Return all the variables in the goal or goal expression.
@@ -559,7 +560,16 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarTable,
 
 %-----------------------------------------------------------------------------%
 
-clone_variable(Var, OldVarNames, OldVarTypes, !VarSet, !VarTypes, !Renaming,
+clone_variable(Var, OldVarTable, !VarTable, !Renaming, CloneVar) :-
+    ( if map.search(!.Renaming, Var, CloneVarPrime) then
+        CloneVar = CloneVarPrime
+    else
+        lookup_var_entry(OldVarTable, Var, Entry),
+        add_var_entry(Entry, CloneVar, !VarTable),
+        map.det_insert(Var, CloneVar, !Renaming)
+    ).
+
+clone_variable_vs(Var, OldVarNames, OldVarTypes, !VarSet, !VarTypes, !Renaming,
         CloneVar) :-
     ( if map.search(!.Renaming, Var, CloneVarPrime) then
         CloneVar = CloneVarPrime
@@ -579,27 +589,18 @@ clone_variable(Var, OldVarNames, OldVarTypes, !VarSet, !VarTypes, !Renaming,
         )
     ).
 
-clone_variable_var_table(Var, OldVarTable, !VarTable, !Renaming, CloneVar) :-
-    ( if map.search(!.Renaming, Var, CloneVarPrime) then
-        CloneVar = CloneVarPrime
-    else
-        lookup_var_entry(OldVarTable, Var, Entry),
-        add_var_entry(Entry, CloneVar, !VarTable),
-        map.det_insert(Var, CloneVar, !Renaming)
-    ).
+clone_variables([], _, !VarTable, !Renaming).
+clone_variables([Var | Vars], OldVarTable, !VarTable, !Renaming) :-
+    clone_variable(Var, OldVarTable, !VarTable, !Renaming, _Clone),
+    clone_variables(Vars, OldVarTable, !VarTable, !Renaming).
 
-clone_variables([], _, _, !VarSet, !VarTypes, !Renaming).
-clone_variables([Var | Vars], OldVarNames, OldVarTypes, !VarSet, !VarTypes,
+clone_variables_vs([], _, _, !VarSet, !VarTypes, !Renaming).
+clone_variables_vs([Var | Vars], OldVarNames, OldVarTypes, !VarSet, !VarTypes,
         !Renaming) :-
-    clone_variable(Var, OldVarNames, OldVarTypes, !VarSet, !VarTypes,
+    clone_variable_vs(Var, OldVarNames, OldVarTypes, !VarSet, !VarTypes,
         !Renaming, _CloneVar),
-    clone_variables(Vars, OldVarNames, OldVarTypes, !VarSet, !VarTypes,
+    clone_variables_vs(Vars, OldVarNames, OldVarTypes, !VarSet, !VarTypes,
         !Renaming).
-
-clone_variables_var_table([], _, !VarTable, !Renaming).
-clone_variables_var_table([Var | Vars], OldVarTable, !VarTable, !Renaming) :-
-    clone_variable_var_table(Var, OldVarTable, !VarTable, !Renaming, _Clone),
-    clone_variables_var_table(Vars, OldVarTable, !VarTable, !Renaming).
 
 %-----------------------------------------------------------------------------%
 

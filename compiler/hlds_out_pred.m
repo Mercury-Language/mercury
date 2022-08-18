@@ -644,7 +644,7 @@ write_proc(Info, Stream, VarNamePrint, ModuleInfo, PredId, PredInfo,
             [i(ProcIdInt), s(DetismStr)], !IO)
     ),
 
-    write_var_types_vt(Stream, VarTable, TVarSet, VarNamePrint, !IO),
+    write_var_types(Stream, VarNamePrint, TVarSet, VarTable, !IO),
     write_rtti_varmaps(Stream, VarNamePrint, TVarSet, VarTable,
         RttiVarMaps, !IO),
 
@@ -702,33 +702,6 @@ write_proc(Info, Stream, VarNamePrint, ModuleInfo, PredId, PredInfo,
     ).
 
 %---------------------------------------------------------------------------%
-
-:- pred write_var_types_vt(io.text_output_stream::in, var_table::in,
-    tvarset::in, var_name_print::in, io::di, io::uo) is det.
-
-write_var_types_vt(Stream, VarTable, TVarSet, VarNamePrint, !IO) :-
-    var_table_to_sorted_assoc_list(VarTable, VarTableAL),
-    io.write_string(Stream, "% variable types map ", !IO),
-    io.format(Stream, "(%d entries):\n", [i(list.length(VarTableAL))], !IO),
-    write_var_types_vt_loop(Stream, TVarSet, VarNamePrint, VarTableAL, !IO).
-
-:- pred write_var_types_vt_loop(io.text_output_stream::in, tvarset::in,
-    var_name_print::in, assoc_list(prog_var, var_table_entry)::in,
-    io::di, io::uo) is det.
-
-write_var_types_vt_loop(_, _, _, [], !IO).
-write_var_types_vt_loop(Stream, TypeVarSet, VarNamePrint,
-        [Var - Entry | VarsEntries], !IO) :-
-    Entry = vte(Name, Type, _IsDummy),
-    VarStr = mercury_var_raw_to_string(VarNamePrint, Var, Name),
-    term.var_to_int(Var, VarNum),
-    TypeStr = mercury_type_to_string(TypeVarSet, VarNamePrint, Type),
-    io.format(Stream, "%% %s (number %d): %s\n",
-        [s(VarStr), i(VarNum), s(TypeStr)], !IO),
-    write_var_types_vt_loop(Stream, TypeVarSet, VarNamePrint,
-        VarsEntries, !IO).
-
-%---------------------%
 
 :- pred write_var_types(io.text_output_stream::in, var_name_print::in,
     tvarset::in, var_table::in, io::di, io::uo) is det.

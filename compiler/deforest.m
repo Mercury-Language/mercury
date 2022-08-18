@@ -1586,7 +1586,7 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgVars,
         _, FirstProcInfo),
     proc_info_get_var_table(FirstProcInfo, FirstVersionVarTable),
 
-    clone_variables_var_table(FirstVersionVars, FirstVersionVarTable,
+    clone_variables(FirstVersionVars, FirstVersionVarTable,
         !VarTable, FirstRenaming0, FirstRenaming),
     must_rename_vars_in_goal(FirstRenaming,
         FirstVersionGoal, RenamedFirstVersionGoal),

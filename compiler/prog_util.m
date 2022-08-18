@@ -22,7 +22,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
-:- import_module parse_tree.var_table.
 
 :- import_module integer.
 :- import_module list.
@@ -135,16 +134,13 @@
 
 %---------------------------------------------------------------------------%
 
-    % make_n_fresh_vars(Name, N, VarSet0, Vars, VarSet):
-    %   `Vars' is a list of `N' fresh variables allocated from
-    %   `VarSet0'.  The variables will be named "<Name>1", "<Name>2",
-    %   "<Name>3", and so on, where <Name> is the value of `Name'.
-    %   `VarSet' is the resulting varset.
+    % make_n_fresh_vars(Name, N, Vars, !VarSet):
+    %
+    % Allocate N fresh vars from !VarSet, and return them as Vars.
+    % The variables will be named "<Name>1", "<Name>2", "<Name>3", and so on.
     %
 :- pred make_n_fresh_vars(string::in, int::in, list(var(T))::out,
     varset(T)::in, varset(T)::out) is det.
-:- pred make_n_fresh_vars_vt(string::in, int::in, list(prog_var)::out,
-    var_table::in, var_table::out) is det.
 
     % Given the list of predicate arguments for a predicate that
     % is really a function, split that list into the function arguments
@@ -182,8 +178,6 @@
 :- implementation.
 
 :- import_module mdbcomp.builtin_modules.
-:- import_module parse_tree.builtin_lib_types.
-:- import_module parse_tree.prog_type.
 
 :- import_module int.
 :- import_module map.
@@ -698,25 +692,6 @@ make_n_fresh_vars_loop(BaseName, Cur, Max, Vars, !VarSet) :-
         VarName = BaseName ++ string.int_to_string(Cur),
         varset.new_named_var(VarName, HeadVar, !VarSet),
         make_n_fresh_vars_loop(BaseName, Cur + 1, Max, TailVars, !VarSet),
-        Vars = [HeadVar | TailVars]
-    ).
-
-%---------------------%
-
-make_n_fresh_vars_vt(BaseName, N, Vars, !VarTable) :-
-    make_n_fresh_vars_vt_loop(BaseName, 1, N, Vars, !VarTable).
-
-:- pred make_n_fresh_vars_vt_loop(string::in, int::in, int::in,
-    list(prog_var)::out, var_table::in, var_table::out) is det.
-
-make_n_fresh_vars_vt_loop(BaseName, Cur, Max, Vars, !VarTable) :-
-    ( if Cur > Max then
-        Vars = []
-    else
-        VarName = BaseName ++ string.int_to_string(Cur),
-        VarEntry = vte(VarName, void_type, is_dummy_type),
-        add_var_entry(VarEntry, HeadVar, !VarTable),
-        make_n_fresh_vars_vt_loop(BaseName, Cur + 1, Max, TailVars, !VarTable),
         Vars = [HeadVar | TailVars]
     ).
 

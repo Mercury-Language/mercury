@@ -190,10 +190,9 @@
     --->    type_info
     ;       type_ctor_info.
 
-:- pred new_type_info_var(mer_type::in, type_info_kind::in,
-    prog_var::out, poly_info::in, poly_info::out) is det.
-:- pred new_type_info_var_vt(mer_type::in, type_info_kind::in,
-    prog_var::out,
+:- pred new_type_info_var(mer_type::in, type_info_kind::in, prog_var::out,
+    poly_info::in, poly_info::out) is det.
+:- pred new_type_info_var_vt(mer_type::in, type_info_kind::in, prog_var::out,
     var_table::in, var_table::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
 %---------------------%

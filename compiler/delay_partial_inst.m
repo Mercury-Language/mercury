@@ -513,7 +513,7 @@ delay_partial_inst_in_partial_construct(GoalInfo0, Unify, Goal,
 
 create_canonical_variables(OrigVars, CanonVars, !DelayInfo) :-
     VarTable0 = !.DelayInfo ^ dpi_var_table,
-    clone_variables_var_table(OrigVars, VarTable0, VarTable0, VarTable,
+    clone_variables(OrigVars, VarTable0, VarTable0, VarTable,
         map.init, Renaming),
     rename_var_list(must_rename, Renaming, OrigVars, CanonVars),
     !DelayInfo ^ dpi_var_table := VarTable.

@@ -2432,13 +2432,13 @@ rename_vars_apart(NonLocalsToRecompute, RenameSet, RenameMap, !Goal, !Info) :-
         (
             VarDb0 = var_db_varset_vartypes(VarSetTypes0),
             VarSetTypes0 = prog_var_set_types(VarSet0, VarTypes0),
-            clone_variables(RenameList, VarSet0, VarTypes0,
+            clone_variables_vs(RenameList, VarSet0, VarTypes0,
                 VarSet0, VarSet, VarTypes0, VarTypes, RenameMap0, RenameMap),
             VarSetTypes = prog_var_set_types(VarSet, VarTypes),
             VarDb = var_db_varset_vartypes(VarSetTypes)
         ;
             VarDb0 = var_db_var_table(VarTable0),
-            clone_variables_var_table(RenameList, VarTable0,
+            clone_variables(RenameList, VarTable0,
                 VarTable0, VarTable, RenameMap0, RenameMap),
             VarDb = var_db_var_table(VarTable)
         ),

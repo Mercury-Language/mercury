@@ -1087,7 +1087,7 @@ rename_goal(HeadVars, ArgVars, VarTable0, CalleeVarTable, VarTable,
         Renaming, CalledGoal, Goal) :-
     map.from_corresponding_lists(HeadVars, ArgVars, Renaming0),
     var_table_vars(CalleeVarTable, CalleeListOfVars),
-    clone_variables_var_table(CalleeListOfVars, CalleeVarTable,
+    clone_variables(CalleeListOfVars, CalleeVarTable,
         VarTable0, VarTable, Renaming0, Renaming),
     must_rename_vars_in_goal(Renaming, CalledGoal, Goal).
 

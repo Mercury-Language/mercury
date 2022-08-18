@@ -839,7 +839,7 @@ make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
 
     % Rename away output variables in the lambda body.
     proc_info_get_var_table(!.ProcInfo, VarTable0),
-    clone_variables_var_table(set_of_var.to_sorted_list(OutputVarsSet),
+    clone_variables(set_of_var.to_sorted_list(OutputVarsSet),
         VarTable0, VarTable0, VarTable, map.init, Renaming),
     proc_info_set_var_table(VarTable, !ProcInfo),
     rename_some_vars_in_goal(Renaming, LambdaBody0, LambdaBody),
