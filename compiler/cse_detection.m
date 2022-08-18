@@ -280,10 +280,9 @@ detect_cse_in_proc_pass(ModuleInfo, Redo, !ProcInfo) :-
     % To process each ProcInfo, we get the goal, initialize the instmap
     % based on the modes of the head vars, and pass these to
     % `detect_cse_in_goal'.
-
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
-    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     Redo0 = no,
     CseInfo0 = cse_info(ModuleInfo, VarTable0, RttiVarMaps0, Redo0, []),

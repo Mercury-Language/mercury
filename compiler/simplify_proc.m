@@ -349,7 +349,7 @@ simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
             TurnOffCommonStructByRequest = no
         )
     ),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable0),
+    proc_info_get_var_table(ProcInfo, VarTable0),
     var_table_count(VarTable0, NumVars),
     ( if
         ( TurnOffCommonStructByRequest = yes
@@ -411,7 +411,7 @@ simplify_proc_maybe_mark_modecheck_clauses(!ProcInfo) :-
 simplify_proc_analyze_and_format_calls(!ModuleInfo, ImplicitStreamWarnings,
         PredId, ProcId, FormatSpecs, !ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     analyze_and_optimize_format_calls(!.ModuleInfo, ImplicitStreamWarnings,
         Goal0, MaybeGoal, FormatSpecs, VarTable0, VarTable),
     (

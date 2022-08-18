@@ -1039,9 +1039,7 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodSymName, Markers0,
             % Before the simplification pass, HasParallelConj
             % is not meaningful.
             HasParallelConj = has_no_parallel_conj,
-            % XXX ARITY Should pass PredFormArity, not PredFormArityInt.
-            PredFormArity = pred_form_arity(PredFormArityInt),
-            add_new_proc(Context, ItemNumber, PredFormArityInt,
+            add_new_proc(!.ModuleInfo, Context, ItemNumber,
                 InstVarSet, Modes, yes(Modes), no, detism_decl_implicit,
                 MaybeDet, address_is_taken, HasParallelConj,
                 OldPredInfo, NewPredInfo, NewProcId)

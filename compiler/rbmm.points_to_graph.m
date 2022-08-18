@@ -667,7 +667,7 @@ rptg_reach_from_a_variable(Graph, HLDS, ProcInfo, X, !Reach_X) :-
     rptg_get_node_by_variable(Graph, X, N_X),
     Node_Selector = pair(N_X, []),
 
-    proc_info_get_var_table(HLDS, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     lookup_var_type(VarTable, X, TypeX),
 
     % Find regions reached from X.

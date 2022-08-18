@@ -1194,7 +1194,7 @@ modecheck_make_type_info_var_for_type(Type, Context, TypeInfoVar,
         ModuleInfo1, ModuleInfo),
 
     % Update the information in the mode_info.
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     mode_info_set_var_table(VarTable, !ModeInfo),
     mode_info_set_module_info(ModuleInfo, !ModeInfo).
 

@@ -235,7 +235,7 @@ deforest_proc_deltas(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo) :-
             requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
             proc_info_get_goal(!.ProcInfo, !:Goal),
             proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
-            proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
+            proc_info_get_var_table(!.ProcInfo, VarTable),
             proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
             recompute_instmap_delta(recompute_atomic_instmap_deltas,
                 VarTable, InstVarSet, InstMap0, !Goal, !ModuleInfo),
@@ -1281,7 +1281,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             pd_info_get_parent_versions(!.PDInfo, Parents0),
 
             pd_info_get_proc_info(!.PDInfo, ProcInfo1),
-            proc_info_get_var_table(ModuleInfo, ProcInfo1, VarTable),
+            proc_info_get_var_table(ProcInfo1, VarTable),
             lookup_var_types(VarTable, NonLocalsList, ArgTypes),
             VersionInfo = version_info(FoldGoal, CalledPreds, NonLocalsList,
                 ArgTypes, InstMap0, 0, 0, Parents0, MaybeGeneralised),
@@ -1347,7 +1347,7 @@ create_call_goal(proc(PredId, ProcId), VersionInfo, Renaming, TypeSubn, Goal,
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
     pd_info_get_pred_info(!.PDInfo, PredInfo0),
 
-    proc_info_get_var_table(ModuleInfo, ProcInfo0, VarTable0),
+    proc_info_get_var_table(ProcInfo0, VarTable0),
     pred_info_get_typevarset(PredInfo0, TVarSet0),
 
     % Rename the argument types using the current pred's tvarset.
@@ -1452,7 +1452,7 @@ try_generalisation(EarlierGoal, BetweenGoals, MaybeLaterGoal,
         VersionArgTypes, VersionInstMap, _, _, _, _),
     pd_info_get_versions(!.PDInfo, Versions),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     ( if
         pd_util.goals_match(ModuleInfo, VersionGoal, VersionArgVars,
             VersionArgTypes, FoldGoal, vts_var_table(VarTable), Renaming, _)
@@ -1584,8 +1584,7 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgVars,
 
     module_info_pred_proc_info(ModuleInfo, FirstPredId, FirstProcId,
         _, FirstProcInfo),
-    proc_info_get_var_table(ModuleInfo, FirstProcInfo,
-        FirstVersionVarTable),
+    proc_info_get_var_table(FirstProcInfo, FirstVersionVarTable),
 
     clone_variables_var_table(FirstVersionVars, FirstVersionVarTable,
         !VarTable, FirstRenaming0, FirstRenaming),
@@ -2002,7 +2001,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
     globals.get_opt_tuple(Globals, OptTuple),
     VarsThreshold = OptTuple ^ ot_deforestation_vars_threshold,
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
-    proc_info_get_var_table(ModuleInfo, ProcInfo0, VarTable0),
+    proc_info_get_var_table(ProcInfo0, VarTable0),
     var_table_count(VarTable0, NumVars),
     ( if
         % Check that we haven't already got too many variables.

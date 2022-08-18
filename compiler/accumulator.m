@@ -281,7 +281,7 @@ accu_transform_proc(proc(PredId, ProcId), PredInfo, !ProcInfo, !ModuleInfo,
                 [option_is_set(warn_accumulator_swaps, yes,
                     [always(InPieces)])]),
 
-            proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
+            proc_info_get_var_table(!.ProcInfo, VarTable),
             generate_warnings(!.ModuleInfo, VarTable, Warnings, WarnMsgs),
             (
                 Warnings = [_],
@@ -403,7 +403,7 @@ should_attempt_accu_transform(!ModuleInfo, PredId, ProcId, PredInfo,
 should_attempt_accu_transform_2(!ModuleInfo, PredId, ProcId,
         PredInfo, !ProcInfo, HeadVars, InitialInstMap, TopLevel, FullyStrict,
         DoLCMC, [Id | Ids], C, M, Rec, Warnings) :-
-    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     identify_out_and_out_prime(!.ModuleInfo, VarTable0, InitialInstMap,
         Id, Rec, HeadVars, Out, OutPrime, HeadToCallSubst, CallToHeadSubst),
     ( if
@@ -1149,10 +1149,8 @@ accu_stage2(ModuleInfo, ProcInfo0, GoalId, GoalStore, Sets, OutPrime, Out,
         set_of_var.init, AfterNonLocals),
     InitAccs = set_of_var.intersect(BeforeNonLocals, AfterNonLocals),
 
-    proc_info_get_var_table(ModuleInfo, ProcInfo0, !:VarTable),
-
-    accu_substs_init(set_of_var.to_sorted_list(InitAccs), !VarTable,
-        !:Substs),
+    proc_info_get_var_table(ProcInfo0, !:VarTable),
+    accu_substs_init(set_of_var.to_sorted_list(InitAccs), !VarTable, !:Substs),
 
     set_of_var.list_to_set(OutPrime, OutPrimeSet),
     accu_process_assoc_set(ModuleInfo, GoalStore, set.to_sorted_list(Assoc),
@@ -1161,7 +1159,6 @@ accu_stage2(ModuleInfo, ProcInfo0, GoalId, GoalStore, Sets, OutPrime, Out,
     accu_process_update_set(ModuleInfo, GoalStore, set.to_sorted_list(Update),
         OutPrimeSet, !Substs, !VarTable, UpdateOut, UpdateAccOut,
         BasePairs),
-
     Accs = set_of_var.to_sorted_list(InitAccs) ++ UpdateAccOut,
 
     accu_divide_base_case(ModuleInfo, !.VarTable, GoalStore, UpdateOut, Out,
@@ -1469,8 +1466,8 @@ accu_stage3(RecCallId, Accs, VarTable, C, CS, Substs,
         !OrigProcInfo, !ModuleInfo) :-
     acc_proc_info(Accs, VarTable, Substs, !.OrigProcInfo,
         AccTypes, AccProcInfo),
-    acc_pred_info(!.ModuleInfo, AccTypes, Out, AccProcInfo,
-        OrigPredId, OrigPredInfo, OrigProcId, AccProcId, AccPredInfo),
+    acc_pred_info(AccTypes, Out, AccProcInfo, OrigPredId, OrigPredInfo,
+        OrigProcId, AccProcId, AccPredInfo),
     AccName = unqualified(pred_info_name(AccPredInfo)),
 
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
@@ -1533,7 +1530,7 @@ acc_proc_info(Accs0, VarTable, Substs, OrigProcInfo, AccTypes, AccProcInfo) :-
     lookup_var_types(VarTable, Accs, AccTypes),
 
     SeqNum = item_no_seq_num,
-    proc_info_create_vt(Context, SeqNum, VarTable, HeadVars,
+    proc_info_create(Context, SeqNum, VarTable, HeadVars,
         InstVarSet, HeadModes, detism_decl_none, Detism, Goal, RttiVarMaps,
         IsAddressTaken, HasParallelConj, VarNameRemap, AccProcInfo).
 
@@ -1541,11 +1538,11 @@ acc_proc_info(Accs0, VarTable, Substs, OrigProcInfo, AccTypes, AccProcInfo) :-
 
     % Construct the pred_info for the introduced predicate.
     %
-:- pred acc_pred_info(module_info::in, list(mer_type)::in, list(prog_var)::in,
+:- pred acc_pred_info(list(mer_type)::in, list(prog_var)::in,
     proc_info::in, pred_id::in, pred_info::in, proc_id::in,
     proc_id::out, pred_info::out) is det.
 
-acc_pred_info(ModuleInfo, NewTypes, OutVars, NewProcInfo,
+acc_pred_info(NewTypes, OutVars, NewProcInfo,
         OrigPredId, OrigPredInfo, OrigProcId, NewProcId, NewPredInfo) :-
     % PredInfo stuff that must change.
     pred_info_get_arg_types(OrigPredInfo, TypeVarSet, ExistQVars, Types0),
@@ -1575,7 +1572,7 @@ acc_pred_info(ModuleInfo, NewTypes, OutVars, NewProcInfo,
     Origin = origin_proc_transform(ProcTransform, OldOrigin,
         OrigPredId, OrigProcId),
     GoalType = goal_not_for_promise(np_goal_type_none),
-    pred_info_create(ModuleInfo, PredOrFunc, ModuleName, TransformedName,
+    pred_info_create(PredOrFunc, ModuleName, TransformedName,
         PredContext, Origin, pred_status(status_local), Markers, Types,
         TypeVarSet, ExistQVars, ClassContext, Assertions, VarNameRemap,
         GoalType, NewProcInfo, NewProcId, NewPredInfo).

@@ -720,7 +720,7 @@ mode_decls_constraints(ModuleInfo, VarMap, PredId, Decls, HeadVarsList,
 add_mode_decl_constraints(ModuleInfo, PredId, ProcId, Decl, Args,
         !VarInfo, !Constraints) :-
     module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     split_var_table(VarTable, ProgVarSet, _VarTypes),
     proc_info_get_context(ProcInfo, Context),
 

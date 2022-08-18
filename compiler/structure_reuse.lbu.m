@@ -29,11 +29,9 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
-:- pred backward_use_information(module_info::in,
-    proc_info::in, proc_info::out) is det.
+:- pred backward_use_information(proc_info::in, proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -54,9 +52,9 @@
 
 %-----------------------------------------------------------------------------%
 
-backward_use_information(ModuleInfo, !ProcInfo):-
+backward_use_information(!ProcInfo):-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
+    proc_info_get_var_table(!.ProcInfo, VarTable),
 
     % Before the first goal, the set of variables in LBU is empty.
     LBU0 = set_of_var.init,

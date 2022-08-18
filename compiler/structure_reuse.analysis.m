@@ -754,8 +754,8 @@ save_reuse_in_module_info(PPId, ReuseAs_Status, !ModuleInfo) :-
     proc_info::in, proc_info::out) is det.
 
 annotate_in_use_information(ModuleInfo, !ProcInfo) :-
-    forward_use_information(ModuleInfo, !ProcInfo),
-    backward_use_information(ModuleInfo, !ProcInfo),
+    forward_use_information(!ProcInfo),
+    backward_use_information(!ProcInfo),
     fill_goal_path_slots_in_proc(ModuleInfo, !ProcInfo).
 
 %---------------------------------------------------------------------------%
@@ -857,7 +857,7 @@ analysis_name = "structure_reuse".
             Answer2 = structure_reuse_answer_conditional(_, _, _),
             FuncInfo = structure_reuse_func_info(ModuleInfo, ProcInfo),
             proc_info_get_headvars(ProcInfo, HeadVars),
-            proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+            proc_info_get_var_table(ProcInfo, VarTable),
             lookup_var_types(VarTable, HeadVars, HeadVarTypes),
             structure_reuse_answer_to_domain(HeadVarTypes, ProcInfo, Answer1,
                 Reuse1),
@@ -878,7 +878,7 @@ analysis_name = "structure_reuse".
             Answer2 = structure_reuse_answer_conditional(_, _, _),
             FuncInfo = structure_reuse_func_info(ModuleInfo, ProcInfo),
             proc_info_get_headvars(ProcInfo, HeadVars),
-            proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+            proc_info_get_var_table(ProcInfo, VarTable),
             lookup_var_types(VarTable, HeadVars, HeadVarTypes),
             structure_reuse_answer_to_domain(HeadVarTypes, ProcInfo, Answer1,
                 Reuse1),
@@ -996,7 +996,7 @@ reuse_as_to_structure_reuse_answer(ModuleInfo, PPId, ReuseAs, Answer) :-
         Reuse = has_conditional_reuse(Conditions),
         module_info_proc_info(ModuleInfo, PPId, ProcInfo),
         proc_info_get_headvars(ProcInfo, HeadVars),
-        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        proc_info_get_var_table(ProcInfo, VarTable),
         lookup_var_types(VarTable, HeadVars, HeadVarTypes),
         Answer = structure_reuse_answer_conditional(HeadVars, HeadVarTypes,
             Conditions)

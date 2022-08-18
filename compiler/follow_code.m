@@ -66,7 +66,7 @@
 
 move_follow_code_in_proc(_PredProcId, !ProcInfo, !ModuleInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     move_follow_code_in_goal(Goal0, Goal1, RttiVarMaps0, no, Changed),
     (

@@ -307,7 +307,7 @@ add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor, TypeStatus,
     % Should not be any inst vars here so it is ok to use a fresh inst_varset.
     % Before the simplification pass, HasParallelConj is not meaningful.
     HasParallelConj = has_no_parallel_conj,
-    add_new_proc(Context, SeqNum, PredArity,
+    add_new_proc(!.ModuleInfo, Context, SeqNum,
         InstVarSet, ArgModes, yes(ArgModes), ArgLives,
         detism_decl_implicit, yes(Det), address_is_not_taken,
         HasParallelConj, PredInfo0, PredInfo, _ProcId),

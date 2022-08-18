@@ -86,7 +86,7 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, ProcId), !ProcInfo) :-
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
     globals.lookup_bool_option(Globals, opt_no_return_calls,
         OptNoReturnCalls),
-    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
+    proc_info_get_var_table(!.ProcInfo, VarTable),
     AllocData = alloc_data(ModuleInfo, !.ProcInfo, proc(PredId, ProcId),
         some_var_may_be_dummy(VarTable), TypeInfoLiveness, OptNoReturnCalls),
     NondetLiveness0 = set_of_var.init,

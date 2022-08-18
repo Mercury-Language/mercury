@@ -220,7 +220,7 @@ find_arg_sizes_pred(ModuleInfo, PassInfo, PPId, OutputSupplierMap0, Result,
     pred_info_get_context(PredInfo, Context),
     proc_info_get_headvars(ProcInfo, Args),
     proc_info_get_argmodes(ProcInfo, ArgModes),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     proc_info_get_goal(ProcInfo, Goal0),
     % The pretest code we add for compiler-generated unification and comparison
     % predicates uses type casts. It uses them in a way that is guaranteed
@@ -299,7 +299,7 @@ update_output_suppliers([Arg | Args], ActiveVars,
 check_proc_non_term_calls(ModuleInfo, PPId, !Errors) :-
     module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
     proc_info_get_goal(ProcInfo, Goal),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     check_goal_non_term_calls(ModuleInfo, PPId, VarTable, Goal, !Errors).
 
 :- pred check_goal_non_term_calls(module_info::in, pred_proc_id::in,

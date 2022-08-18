@@ -408,7 +408,7 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
     module_info_set_pred_proc_info(PredProcId, PredInfo, ProcInfo,
         ModuleInfo1, ModuleInfo),
     % Save the new information back in the ml_gen_info.
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     ml_gen_info_set_module_info(ModuleInfo, !Info),
     ml_gen_info_set_var_table(VarTable, !Info).
 

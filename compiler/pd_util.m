@@ -216,7 +216,7 @@ propagate_constraints(!Goal, !PDInfo) :-
         ),
         pd_info_get_proc_info(!.PDInfo, ProcInfo0),
         pd_info_get_instmap(!.PDInfo, InstMap),
-        proc_info_get_var_table(ModuleInfo0, ProcInfo0, VarTable0),
+        proc_info_get_var_table(ProcInfo0, VarTable0),
         constraint_info_init(ModuleInfo0, VarTable0, InstMap, CInfo0),
         Goal0 = hlds_goal(_, GoalInfo0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
@@ -371,7 +371,7 @@ rerun_det_analysis(Goal0, Goal, !PDInfo) :-
     module_info_set_pred_proc_info(PredProcId, PredInfo, ProcInfo,
         ModuleInfo0, ModuleInfo1),
 
-    proc_info_get_var_table(ModuleInfo1, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     det_info_init(ModuleInfo1, PredProcId, VarTable,
         pess_extra_vars_ignore, [], DetInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap),
@@ -393,7 +393,7 @@ rerun_det_analysis(Goal0, Goal, !PDInfo) :-
 
 get_branch_vars_proc(PredProcId, ProcInfo, !ModuleInfo, !ArgInfo) :-
     proc_info_get_goal(ProcInfo, Goal),
-    proc_info_get_var_table(!.ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     instmap.init_reachable(InstMap0),
     map.init(Vars0),
     set_of_var.init(LeftVars0),
@@ -485,7 +485,7 @@ get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
     pd_info_get_instmap(!.PDInfo, InstMap0),
     pd_info_get_proc_arg_info(!.PDInfo, ProcArgInfo),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
-    proc_info_get_var_table(ModuleInfo0, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     set_of_var.init(LeftVars0),
     map.init(Vars0),
     ( if
@@ -755,9 +755,8 @@ combine_vars(BranchNo, [ExtraVar | ExtraVars], !Vars) :-
 
 pd_requantify_goal(NonLocals, Goal0, Goal, !PDInfo) :-
     some [!ProcInfo] (
-        pd_info_get_module_info(!.PDInfo, ModuleInfo),
         pd_info_get_proc_info(!.PDInfo, !:ProcInfo),
-        proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable0),
+        proc_info_get_var_table(!.ProcInfo, VarTable0),
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
         implicitly_quantify_goal_general_vt(ordinary_nonlocals_no_lambda,
             NonLocals, _, Goal0, Goal, VarTable0, VarTable,
@@ -771,7 +770,7 @@ pd_recompute_instmap_delta(Goal0, Goal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
-    proc_info_get_var_table(ModuleInfo0, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     recompute_instmap_delta(recompute_atomic_instmap_deltas,
         VarTable, InstVarSet, InstMap, Goal0, Goal, ModuleInfo0, ModuleInfo),

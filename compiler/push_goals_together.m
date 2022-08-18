@@ -91,7 +91,7 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     module_info_get_name(!.ModuleInfo, ModuleName),
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     PushInfo = push_info(Globals, ModuleName, RttiVarMaps0),
     OutInfo = init_hlds_out_info(Globals, output_debug),

@@ -541,7 +541,7 @@ ho_fixup_proc_info(MustRecompute, !.Goal, !Info) :-
             requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
             proc_info_get_goal(!.ProcInfo, !:Goal),
             proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap),
-            proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
+            proc_info_get_var_table(!.ProcInfo, VarTable),
             proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
             recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
                 VarTable, InstVarSet, InstMap, !Goal, !ModuleInfo),
@@ -1288,24 +1288,26 @@ get_typeclass_info_args(ModuleInfo, TypeClassInfoVar, PredName, MakeResultType,
     lookup_builtin_pred_proc_id(ModuleInfo, mercury_private_builtin_module,
         PredName, pf_predicate, user_arity(3), only_mode, ExtractArgPredId,
         ExtractArgProcId),
-    get_typeclass_info_args_loop(TypeClassInfoVar,
+    get_typeclass_info_args_loop(ModuleInfo, TypeClassInfoVar,
         ExtractArgPredId, ExtractArgProcId,
         qualified(mercury_private_builtin_module, PredName),
         MakeResultType, Args, Index, Goals, Vars, !ProcInfo).
 
-:- pred get_typeclass_info_args_loop(prog_var::in, pred_id::in, proc_id::in,
-    sym_name::in, (func(T) = mer_type)::in,
+:- pred get_typeclass_info_args_loop(module_info::in, prog_var::in,
+    pred_id::in, proc_id::in, sym_name::in, (func(T) = mer_type)::in,
     list(T)::in, int::in, list(hlds_goal)::out,
     list(prog_var)::out, proc_info::in, proc_info::out) is det.
 
-get_typeclass_info_args_loop(_, _, _, _, _, [], _, [], [], !ProcInfo).
-get_typeclass_info_args_loop(TypeClassInfoVar, PredId, ProcId, SymName,
-        MakeResultType, [Arg | Args], Index, [IndexGoal, CallGoal | Goals],
-        [ResultVar | Vars], !ProcInfo) :-
+get_typeclass_info_args_loop(_, _, _, _, _, _, [], _, [], [], !ProcInfo).
+get_typeclass_info_args_loop(ModuleInfo, TypeClassInfoVar, PredId, ProcId,
+        SymName, MakeResultType, [Arg | Args], Index,
+        [IndexGoal, CallGoal | Goals], [ResultVar | Vars], !ProcInfo) :-
     ResultType = MakeResultType(Arg),
-    proc_info_create_var_from_type(ResultType, no, ResultVar, !ProcInfo),
+    IsDummy = is_type_a_dummy(ModuleInfo, ResultType),
+    proc_info_create_var_from_type("", ResultType, IsDummy,
+        ResultVar, !ProcInfo),
     MaybeContext = no,
-    make_int_const_construction_alloc_in_proc(Index, no, IndexGoal, IndexVar,
+    make_int_const_construction_alloc_in_proc(Index, "", IndexGoal, IndexVar,
         !ProcInfo),
     CallArgs = [TypeClassInfoVar, IndexVar, ResultVar],
 
@@ -1317,8 +1319,8 @@ get_typeclass_info_args_loop(TypeClassInfoVar, PredId, ProcId, SymName,
     CallGoalExpr = plain_call(PredId, ProcId, CallArgs, not_builtin,
         MaybeContext, SymName),
     CallGoal = hlds_goal(CallGoalExpr, GoalInfo),
-    get_typeclass_info_args_loop(TypeClassInfoVar, PredId, ProcId, SymName,
-        MakeResultType, Args, Index + 1, Goals, Vars, !ProcInfo).
+    get_typeclass_info_args_loop(ModuleInfo, TypeClassInfoVar, PredId, ProcId,
+        SymName, MakeResultType, Args, Index + 1, Goals, Vars, !ProcInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -1426,11 +1428,11 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
         PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
         proc(PredId, ProcId) = PredProcId,
         map.contains(NewPredMap, PredProcId),
-        proc_info_get_var_table(ModuleInfo, ProcInfo0, VarTable0),
+        proc_info_get_var_table(ProcInfo0, VarTable0),
         lookup_var_type(VarTable0, LVar, LVarType),
         type_is_higher_order_details(LVarType, _, _, _, ArgTypes)
     then
-        proc_info_create_vars_from_types(ArgTypes, UncurriedArgs,
+        proc_info_create_vars_from_types(ModuleInfo, ArgTypes, UncurriedArgs,
             ProcInfo0, ProcInfo1),
         Args1 = Args0 ++ UncurriedArgs,
         !Info ^ hoi_proc_info := ProcInfo1,
@@ -1479,7 +1481,7 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
 
             % The dummy arguments can't be used anywhere.
             ProcInfo2 = !.Info ^ hoi_proc_info,
-            proc_info_get_var_table(ModuleInfo, ProcInfo2, VarTable2),
+            proc_info_get_var_table(ProcInfo2, VarTable2),
             delete_var_entries(UncurriedArgs, VarTable2, VarTable),
             proc_info_set_var_table(VarTable, ProcInfo2, ProcInfo),
             !Info ^ hoi_proc_info := ProcInfo,
@@ -1539,12 +1541,12 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
         MaybeContext, GoalInfo, Result, !Info) :-
     ModuleInfo0 = !.Info ^ hoi_global_info ^ hogi_module_info,
     pred_info_get_status(CalleePredInfo, CalleeStatus),
-    proc_info_get_var_table(ModuleInfo0, CalleeProcInfo, CalleeVarTable),
+    proc_info_get_var_table(CalleeProcInfo, CalleeVarTable),
     proc_info_get_headvars(CalleeProcInfo, CalleeHeadVars),
     lookup_var_types(CalleeVarTable, CalleeHeadVars, CalleeArgTypes),
 
     CallerProcInfo0 = !.Info ^ hoi_proc_info,
-    proc_info_get_var_table(ModuleInfo0, CallerProcInfo0, VarTable),
+    proc_info_get_var_table(CallerProcInfo0, VarTable),
     proc_info_get_rtti_varmaps(CallerProcInfo0, RttiVarMaps),
     find_higher_order_args(ModuleInfo0, CalleeStatus, Args0,
         CalleeArgTypes, VarTable, RttiVarMaps, !.Info ^ hoi_known_var_map, 1,
@@ -1794,7 +1796,7 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
     get_extra_arguments(HigherOrderArgs, Args0, Args),
     compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars),
 
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     PairWithType =
         ( pred(V::in, (V - T)::out) is det :-
             lookup_var_type(VarTable, V, T)
@@ -1869,9 +1871,8 @@ compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars) :-
     % version (`goal_util.extra_nonlocal_typeinfos' is not used here
     % because the type variables are returned sorted by variable number,
     % which will vary between calls).
-    ModuleInfo = Info ^ hoi_global_info ^ hogi_module_info,
     ProcInfo = Info ^ hoi_proc_info,
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     lookup_var_types(VarTable, Args, ArgTypes),
     type_vars_in_types(ArgTypes, AllTVars),
     (
@@ -2221,7 +2222,7 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
             !Info ^ hoi_proc_info := ProcInfo,
 
             % Sanity check.
-            proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+            proc_info_get_var_table(ProcInfo, VarTable),
             lookup_var_type(VarTable, OutputVar, OutputVarType),
             lookup_var_type(VarTable, SelectedArg, SelectedArgType),
             ( if OutputVarType = SelectedArgType then
@@ -2334,7 +2335,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
     ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
     ProcInfo0 = !.Info ^ hoi_proc_info,
     KnownVarMap = !.Info ^ hoi_known_var_map,
-    proc_info_get_var_table(ModuleInfo, ProcInfo0, VarTable),
+    proc_info_get_var_table(ProcInfo0, VarTable),
     module_info_pred_info(ModuleInfo, CalledPred, CalledPredInfo),
     mercury_public_builtin_module = pred_info_module(CalledPredInfo),
     pred_info_module(CalledPredInfo) = mercury_public_builtin_module,
@@ -2418,9 +2419,10 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
             % would need to be extracted first.
             type_is_atomic(ModuleInfo, WrappedType)
         then
+            WrappedTypeIsDummy = is_type_a_dummy(ModuleInfo, WrappedType),
             specialize_unify_or_compare_pred_for_no_tag(Type, WrappedType,
-                Constructor, MaybeResult, Arg1, Arg2, MaybeContext,
-                OrigGoalInfo, Goal, !Info)
+                WrappedTypeIsDummy, Constructor, MaybeResult, Arg1, Arg2,
+                MaybeContext, OrigGoalInfo, Goal, !Info)
         else
             maybe_call_type_specific_unify_or_compare(Type, SpecialId,
                 TypeInfoArgs, SpecialPredArgs, MaybeContext, Goal, !Info)
@@ -2499,10 +2501,10 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
         ;
             NeedIntCast = yes,
             Context = goal_info_get_context(OrigGoalInfo),
-            generate_unsafe_type_cast(Context, CompareType, Arg1, CastArg1,
-                CastGoal1, ProcInfo0, ProcInfo1),
-            generate_unsafe_type_cast(Context, CompareType, Arg2, CastArg2,
-                CastGoal2, ProcInfo1, ProcInfo),
+            generate_unsafe_type_cast(Context, CompareType, is_not_dummy_type,
+                Arg1, CastArg1, CastGoal1, ProcInfo0, ProcInfo1),
+            generate_unsafe_type_cast(Context, CompareType, is_not_dummy_type,
+                Arg2, CastArg2, CastGoal2, ProcInfo1, ProcInfo),
             NewCallArgs = [ComparisonResult, CastArg1, CastArg2],
             Call = plain_call(SpecialPredId, SpecialProcId, NewCallArgs,
                 not_builtin, MaybeContext, SymName),
@@ -2518,20 +2520,21 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
     ).
 
 :- pred specialize_unify_or_compare_pred_for_no_tag(mer_type::in, mer_type::in,
-    sym_name::in, maybe(prog_var)::in, prog_var::in, prog_var::in,
-    maybe(call_unify_context)::in, hlds_goal_info::in, hlds_goal_expr::out,
+    is_dummy_type::in, sym_name::in, maybe(prog_var)::in,
+    prog_var::in, prog_var::in, maybe(call_unify_context)::in,
+    hlds_goal_info::in, hlds_goal_expr::out,
     higher_order_info::in, higher_order_info::out) is det.
 
 specialize_unify_or_compare_pred_for_no_tag(OuterType, WrappedType,
-        Constructor, MaybeResult, Arg1, Arg2, MaybeContext, OrigGoalInfo,
-        GoalExpr, !Info) :-
+        WrappedTypeIsDummy, Constructor, MaybeResult, Arg1, Arg2,
+        MaybeContext, OrigGoalInfo, GoalExpr, !Info) :-
     ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
     ProcInfo0 = !.Info ^ hoi_proc_info,
     Context = goal_info_get_context(OrigGoalInfo),
-    unwrap_no_tag_arg(OuterType, WrappedType, Context, Constructor, Arg1,
-        UnwrappedArg1, ExtractGoal1, ProcInfo0, ProcInfo1),
-    unwrap_no_tag_arg(OuterType, WrappedType, Context, Constructor, Arg2,
-        UnwrappedArg2, ExtractGoal2, ProcInfo1, ProcInfo2),
+    unwrap_no_tag_arg(OuterType, WrappedType, WrappedTypeIsDummy, Context,
+        Constructor, Arg1, UnwrappedArg1, ExtractGoal1, ProcInfo0, ProcInfo1),
+    unwrap_no_tag_arg(OuterType, WrappedType, WrappedTypeIsDummy, Context,
+        Constructor, Arg2, UnwrappedArg2, ExtractGoal2, ProcInfo1, ProcInfo2),
     set_of_var.list_to_set([UnwrappedArg1, UnwrappedArg2], NonLocals0),
     (
         MaybeResult = no,
@@ -2571,9 +2574,9 @@ specialize_unify_or_compare_pred_for_no_tag(OuterType, WrappedType,
             !Info ^ hoi_proc_info := ProcInfo2
         ;
             NeedIntCast = yes,
-            generate_unsafe_type_cast(Context, CompareType,
+            generate_unsafe_type_cast(Context, CompareType, is_not_dummy_type,
                 UnwrappedArg1, CastArg1, CastGoal1, ProcInfo2, ProcInfo3),
-            generate_unsafe_type_cast(Context, CompareType,
+            generate_unsafe_type_cast(Context, CompareType, is_not_dummy_type,
                 UnwrappedArg2, CastArg2, CastGoal2, ProcInfo3, ProcInfo4),
             NewCallArgs = [ComparisonResult, CastArg1, CastArg2],
             SpecialGoal = plain_call(SpecialPredId, SpecialProcId, NewCallArgs,
@@ -2662,20 +2665,22 @@ find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
     ).
 
 :- pred generate_unsafe_type_cast(prog_context::in,
-    mer_type::in, prog_var::in, prog_var::out, hlds_goal::out,
-    proc_info::in, proc_info::out) is det.
+    mer_type::in, is_dummy_type::in, prog_var::in, prog_var::out,
+    hlds_goal::out, proc_info::in, proc_info::out) is det.
 
-generate_unsafe_type_cast(Context, ToType, Arg, CastArg, Goal, !ProcInfo) :-
-    proc_info_create_var_from_type(ToType, no, CastArg, !ProcInfo),
+generate_unsafe_type_cast(Context, ToType, IsDummy, Arg, CastArg, Goal,
+        !ProcInfo) :-
+    proc_info_create_var_from_type("", ToType, IsDummy, CastArg, !ProcInfo),
     generate_cast(unsafe_type_cast, Arg, CastArg, Context, Goal).
 
-:- pred unwrap_no_tag_arg(mer_type::in, mer_type::in, prog_context::in,
-    sym_name::in, prog_var::in, prog_var::out, hlds_goal::out,
-    proc_info::in, proc_info::out) is det.
+:- pred unwrap_no_tag_arg(mer_type::in, mer_type::in, is_dummy_type::in,
+    prog_context::in, sym_name::in, prog_var::in, prog_var::out,
+    hlds_goal::out, proc_info::in, proc_info::out) is det.
 
-unwrap_no_tag_arg(OuterType, WrappedType, Context, Constructor, Arg,
+unwrap_no_tag_arg(OuterType, WrappedType, IsDummy, Context, Constructor, Arg,
         UnwrappedArg, Goal, !ProcInfo) :-
-    proc_info_create_var_from_type(WrappedType, no, UnwrappedArg, !ProcInfo),
+    proc_info_create_var_from_type("", WrappedType, IsDummy,
+        UnwrappedArg, !ProcInfo),
     type_to_ctor_det(OuterType, OuterTypeCtor),
     ConsId = cons(Constructor, 1, OuterTypeCtor),
     Ground = ground(shared, none_or_default_func),
@@ -3110,7 +3115,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
     pred_info_get_univ_quant_tvars(CallerPredInfo, CallerHeadParams),
 
     % Specialize the types of the called procedure as for inlining.
-    proc_info_get_var_table(ModuleInfo, !.NewProcInfo, VarTable0),
+    proc_info_get_var_table(!.NewProcInfo, VarTable0),
     tvarset_merge_renaming(CallerTypeVarSet, TypeVarSet0, TypeVarSet,
         TypeRenaming),
     apply_variable_renaming_to_tvar_kind_map(TypeRenaming, KindMap0, KindMap),
@@ -3133,7 +3138,8 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
             ExistQType = type_variable(ExistQVar, _)
         ), ExistQTypes, ExistQVars),
 
-    apply_rec_subst_to_var_table(TypeSubn, VarTable1, VarTable2),
+    apply_rec_subst_to_var_table(is_type_a_dummy(ModuleInfo), TypeSubn,
+        VarTable1, VarTable2),
     apply_rec_subst_to_type_list(TypeSubn,
         OriginalArgTypes1, OriginalArgTypes),
     proc_info_set_var_table(VarTable2, !NewProcInfo),
@@ -3172,8 +3178,8 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
     % Add in the extra typeinfo vars.
     ExtraTypeInfoTypes =
         list.map(build_type_info_type, ExtraTypeInfoTVarTypes),
-    proc_info_create_vars_from_types(ExtraTypeInfoTypes, ExtraTypeInfoVars,
-        !NewProcInfo),
+    proc_info_create_vars_from_types(ModuleInfo, ExtraTypeInfoTypes,
+        ExtraTypeInfoVars, !NewProcInfo),
 
     % Add any extra type-infos or typeclass-infos we've added
     % to the typeinfo_varmap and typeclass_info_varmap.
@@ -3263,7 +3269,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
     proc_info_reset_imported_structure_sharing(!NewProcInfo),
     proc_info_reset_imported_structure_reuse(!NewProcInfo),
 
-    proc_info_get_var_table(ModuleInfo, !.NewProcInfo, VarTable7),
+    proc_info_get_var_table(!.NewProcInfo, VarTable7),
     lookup_var_types(VarTable7, ExtraHeadVars, ExtraHeadVarTypes0),
     remove_const_higher_order_args(1, OriginalArgTypes,
         HOArgs, ModifiedOriginalArgTypes),
@@ -3374,8 +3380,8 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
         list.duplicate(NumArgs, InMode, CurriedArgModes1)
     ),
 
-    proc_info_create_vars_from_types(CurriedArgTypes, CurriedHeadVars1,
-        !ProcInfo),
+    proc_info_create_vars_from_types(ModuleInfo, CurriedArgTypes,
+        CurriedHeadVars1, !ProcInfo),
 
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     list.foldl_corresponding(add_rtti_info, CurriedHeadVars1,

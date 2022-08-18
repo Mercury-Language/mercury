@@ -37,8 +37,20 @@
 :- type var_table_map == map(prog_var, var_table_entry).
 :- type var_table_entry
     --->    vte(
+                % The name of the variable, if it has one. If it does not
+                % (i.e. if the variable is unnamed), this field will contain
+                % the empty string.
                 vte_name        :: string,
+
+                % The type of the variable. With one exception, this field
+                % is meaningful only after typechecking. The exception is
+                % for variables that have an occurrence that has
+                % an explicit type qualification in the source code.
                 vte_type        :: mer_type,
+
+                % Whether the type of the variable is a dummy type or not.
+                % This field is filled in during the post-typecheck pass;
+                % until then, its contents are not meaningful.
                 vte_is_dummy    :: is_dummy_type
             ).
 
@@ -143,10 +155,14 @@
 :- pred apply_variable_renaming_to_var_table(tvar_renaming::in,
     var_table::in, var_table::out) is det.
 
-:- pred apply_subst_to_var_table(tsubst::in,
-    var_table::in, var_table::out) is det.
+:- pred apply_subst_to_var_table((func(mer_type) = is_dummy_type)::in,
+    tsubst::in, var_table::in, var_table::out) is det.
 
-:- pred apply_rec_subst_to_var_table(tsubst::in,
+:- pred apply_rec_subst_to_var_table((func(mer_type) = is_dummy_type)::in,
+    tsubst::in, var_table::in, var_table::out) is det.
+
+:- pred transform_var_table(
+    pred(var_table_entry, var_table_entry)::in(pred(in, out) is det),
     var_table::in, var_table::out) is det.
 
 :- pred transform_foldl_var_table(
@@ -463,42 +479,40 @@ apply_variable_renaming_to_type_in_vte(Renaming, Entry0, Entry) :-
 
 %---------------------%
 
-apply_subst_to_var_table(Subst, !VarTable) :-
-    transform_var_table(apply_subst_to_type_in_vte(Subst), !VarTable).
+apply_subst_to_var_table(IsDummyFunc, Subst, !VarTable) :-
+    transform_var_table(apply_subst_to_type_in_vte(IsDummyFunc, Subst),
+        !VarTable).
 
-:- pred apply_subst_to_type_in_vte(tsubst::in,
-    var_table_entry::in, var_table_entry::out) is det.
+:- pred apply_subst_to_type_in_vte((func(mer_type) = is_dummy_type)::in,
+    tsubst::in, var_table_entry::in, var_table_entry::out) is det.
 
-apply_subst_to_type_in_vte(Subst, Entry0, Entry) :-
-    Type0 = Entry0 ^ vte_type,
+apply_subst_to_type_in_vte(IsDummyFunc, Subst, Entry0, Entry) :-
+    Entry0 = vte(Name, Type0, _IsDummy),
     apply_subst_to_type(Subst, Type0, Type),
-    Entry = Entry0 ^ vte_type := Type.
+    IsDummy = IsDummyFunc(Type),
+    Entry = vte(Name, Type, IsDummy).
 
 %---------------------%
 
-apply_rec_subst_to_var_table(Subst, !VarTable) :-
-    transform_var_table(apply_rec_subst_to_type_in_vte(Subst), !VarTable).
+apply_rec_subst_to_var_table(IsDummyFunc, Subst, !VarTable) :-
+    transform_var_table(apply_rec_subst_to_type_in_vte(IsDummyFunc, Subst),
+        !VarTable).
 
-:- pred apply_rec_subst_to_type_in_vte(tsubst::in,
-    var_table_entry::in, var_table_entry::out) is det.
+:- pred apply_rec_subst_to_type_in_vte((func(mer_type) = is_dummy_type)::in,
+    tsubst::in, var_table_entry::in, var_table_entry::out) is det.
 
-apply_rec_subst_to_type_in_vte(Subst, Entry0, Entry) :-
-    Type0 = Entry0 ^ vte_type,
+apply_rec_subst_to_type_in_vte(IsDummyFunc, Subst, Entry0, Entry) :-
+    Entry0 = vte(Name, Type0, _IsDummy),
     apply_rec_subst_to_type(Subst, Type0, Type),
-    Entry = Entry0 ^ vte_type := Type.
+    IsDummy = IsDummyFunc(Type),
+    Entry = vte(Name, Type, IsDummy).
 
-%---------------------%
-
-:- pred transform_var_table(
-    pred(var_table_entry, var_table_entry)::in(pred(in, out) is det),
-    var_table::in, var_table::out) is det.
+%---------------------------------------------------------------------------%
 
 transform_var_table(Transform, !VarTable) :-
     !.VarTable = var_table(Counter, VarTableMap0),
     map.map_values_only(Transform, VarTableMap0, VarTableMap),
     !:VarTable = var_table(Counter, VarTableMap).
-
-%---------------------------------------------------------------------------%
 
 transform_foldl_var_table(Transform, !VarTable, !Acc) :-
     !.VarTable = var_table(Counter, VarTableMap0),
@@ -638,6 +652,64 @@ var_db_count(VarDb, Count) :-
         VarDb = var_db_var_table(VarTable),
         var_table_count(VarTable, Count)
     ).
+
+%---------------------------------------------------------------------------%
+%
+% This code is not currently used, but may be useful later.
+% 
+%     % Given a var_table in which some variables have no name, but some
+%     % other variables may have the same name, return an updated var_table
+%     % in which every variable has a unique name.
+%     % If necessary, names will have suffixes added on the end;
+%     % the string argument gives the suffix to use.
+%     %
+% :- pred ensure_unique_names(string::in, var_table::in, var_table::out) is det.
+% 
+% ensure_unique_names(Suffix, !VarTable) :-
+%     !.VarTable = var_table(Counter, VarTableMap0),
+%     map.to_sorted_assoc_list(VarTableMap0, VarTableMapAL0),
+%     ensure_unique_names_loop(Suffix, set.init, VarTableMapAL0,
+%         [], RevVarsEntries),
+%     map.from_rev_sorted_assoc_list(RevVarsEntries, VarTableMap),
+%     !:VarTable = var_table(Counter, VarTableMap).
+% 
+% :- pred ensure_unique_names_loop(string::in, set(string)::in,
+%     assoc_list(prog_var, var_table_entry)::in,
+%     assoc_list(prog_var, var_table_entry)::in,
+%     assoc_list(prog_var, var_table_entry)::out) is det.
+% 
+% ensure_unique_names_loop(_, _, [], !RevVarsEntries).
+% ensure_unique_names_loop(Suffix, !.UsedNames, [Var - Entry0 | VarsEntries],
+%         !RevVarsEntries) :-
+%     Entry0 = vte(OldName, Type, IsDummy),
+%     ( if OldName = "" then
+%         term.var_to_int(Var, VarNum),
+%         TrialName = "Var_" ++ string.int_to_string(VarNum)
+%     else
+%         ( if set.member(OldName, !.UsedNames) then
+%             term.var_to_int(Var, VarNum),
+%             TrialName = OldName ++ "_" ++ string.int_to_string(VarNum)
+%         else
+%             TrialName = OldName
+%         )
+%     ),
+%     append_suffix_until_unique(TrialName, Suffix, !.UsedNames, FinalName),
+%     set.insert(FinalName, !UsedNames),
+%     Entry = vte(FinalName, Type, IsDummy),
+%     !:RevVarsEntries = [Var - Entry | !.RevVarsEntries],
+%     ensure_unique_names_loop(Suffix, !.UsedNames, VarsEntries,
+%         !RevVarsEntries).
+% 
+% :- pred append_suffix_until_unique(string::in, string::in, set(string)::in,
+%     string::out) is det.
+% 
+% append_suffix_until_unique(Trial0, Suffix, UsedNames, Final) :-
+%     ( if set.member(Trial0, UsedNames) then
+%         string.append(Trial0, Suffix, Trial1),
+%         append_suffix_until_unique(Trial1, Suffix, UsedNames, Final)
+%     else
+%         Final = Trial0
+%     ).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.var_table.

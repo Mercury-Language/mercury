@@ -859,7 +859,7 @@ maybe_add_default_mode(PredDecl, !ModuleInfo) :-
             (
                 PredIds = [_ | _],
                 predicate_table_get_pred_id_table(PredTable0, PredIdTable0),
-                maybe_add_default_func_modes(PredIds,
+                maybe_add_default_func_modes(!.ModuleInfo, PredIds,
                     PredIdTable0, PredIdTable),
                 predicate_table_set_pred_id_table(PredIdTable,
                     PredTable0, PredTable),

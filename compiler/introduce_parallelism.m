@@ -267,7 +267,7 @@ parallelise_proc(CPCProc, PredInfo, !ProcInfo,
     proc_info_get_goal(!.ProcInfo, Goal0),
     Context = goal_info_get_context(Goal0 ^ hg_info),
     term.context_file(Context, FileName),
-    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
+    proc_info_get_var_table(!.ProcInfo, VarTable),
     % VarNumRep is not used by goal_to_goal_rep, var_num_1_byte
     % is an arbitrary value. XXX zs: I don't think this is true.
     VarNumRep = var_num_1_byte,

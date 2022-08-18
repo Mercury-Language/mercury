@@ -338,7 +338,7 @@ make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
     pred_info_get_arg_types(PredInfo, ArgTypes),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, ProcVarTable),
+    proc_info_get_var_table(ProcInfo, ProcVarTable),
     proc_info_get_headvars(ProcInfo, ProcHeadVars),
     proc_info_get_argmodes(ProcInfo, ProcModes),
     proc_info_interface_determinism(ProcInfo, ProcDetism),

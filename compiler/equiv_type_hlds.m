@@ -655,7 +655,7 @@ replace_in_proc(TypeEqvMap, !ProcInfo, !ModuleInfo, !PredInfo, !Cache) :-
             MaybeDeclModes0 = no
         ),
 
-        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
+        proc_info_get_var_table(!.ProcInfo, VarTable0),
         transform_foldl_var_table(
             hlds_replace_in_var_table_entry(!.ModuleInfo, TypeEqvMap),
             VarTable0, VarTable, !TVarSet),
@@ -1620,7 +1620,7 @@ replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
         ModuleInfo0 = !.Info ^ ethri_module_info,
         ProcInfo0 = !.Info ^ ethri_proc_info,
         module_info_get_type_table(ModuleInfo0, TypeTable),
-        proc_info_get_var_table(ModuleInfo0, ProcInfo0, VarTable),
+        proc_info_get_var_table(ProcInfo0, VarTable),
         proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps),
         lookup_var_type(VarTable, Var, VarType),
         TypeCtorCat = classify_type(ModuleInfo0, VarType),

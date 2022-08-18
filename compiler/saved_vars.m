@@ -80,7 +80,7 @@ saved_vars_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     init_slot_info(VarTable0, RttiVarMaps0, TypeInfoLiveness, SlotInfo0),
 

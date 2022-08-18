@@ -216,7 +216,7 @@ module_add_clause_2(PredStatus, ClauseType, PredId, PredOrFunc, PredSymName,
             PredOrFunc, PredSymName, PredFormArity, Context, !PredSpecs),
         maybe_add_error_for_builtin(!.ModuleInfo, !.PredInfo,
             Context, !PredSpecs),
-        maybe_add_default_func_mode(!PredInfo, _),
+        maybe_add_default_func_mode(!.ModuleInfo, !PredInfo, _),
         (
             !.PredSpecs = [_ | _ ],
             !:Specs = !.PredSpecs ++

@@ -1329,11 +1329,10 @@ apply_varset_to_preds(ProgVar, !NewPredVarTable, !OldPredVarTable,
 
 move_variables_to_new_pred(AtomicGoal0, AtomicGoal, AtomicGoalVars,
         InnerDI, InnerUO, !NewPredInfo, !StmInfo) :-
-    ModuleInfo = !.StmInfo ^ stm_info_module_info,
     NewProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
     OldProcInfo0 = !.StmInfo ^ stm_info_proc_info,
-    proc_info_get_var_table(ModuleInfo, NewProcInfo0, NewPredVarTable0),
-    proc_info_get_var_table(ModuleInfo, OldProcInfo0, OldPredVarTable0),
+    proc_info_get_var_table(NewProcInfo0, NewPredVarTable0),
+    proc_info_get_var_table(OldProcInfo0, OldPredVarTable0),
     AtomicGoalVars = stm_goal_vars(_, LocalVars, _, OrigInnerDI, OrigInnerUO),
     LocalVarList = set_of_var.to_sorted_list(LocalVars),
 
@@ -2132,7 +2131,7 @@ rename_var_in_wrapper_pred(Name, ResultVar0, ResultType, ResultVar,
         !NewPredInfo, !Goal) :-
     ModuleInfo = !.NewPredInfo ^ new_pred_module_info,
     NewProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
-    proc_info_get_var_table(ModuleInfo, NewProcInfo0, NewPredVarTable0),
+    proc_info_get_var_table(NewProcInfo0, NewPredVarTable0),
     proc_info_get_headvars(NewProcInfo0, NewHeadVars0),
     delete_var_entry(ResultVar0, NewPredVarTable0, NewPredVarTable1),
 
@@ -2175,15 +2174,17 @@ rename_var_in_wrapper_pred(Name, ResultVar0, ResultType, ResultVar,
     stm_info::in, stm_info::out) is det.
 
 create_aux_variable_stm(Type, MaybeName0, Var, !StmInfo) :-
-    ProcInfo0 = !.StmInfo ^ stm_info_proc_info,
     (
         MaybeName0 = no,
-        MaybeName0 = MaybeName
+        Name = ""
     ;
-        MaybeName0 = yes(Name),
-        MaybeName = yes(Name ++ "_Aux_STM")
+        MaybeName0 = yes(Name0),
+        string.format("%s_Aux_STM", [s(Name0)], Name)
     ),
-    proc_info_create_var_from_type(Type, MaybeName, Var, ProcInfo0, ProcInfo),
+    IsDummy = is_type_a_dummy(!.StmInfo ^ stm_info_module_info, Type),
+    ProcInfo0 = !.StmInfo ^ stm_info_proc_info,
+    proc_info_create_var_from_type(Name, Type, IsDummy, Var,
+        ProcInfo0, ProcInfo),
     !StmInfo ^ stm_info_proc_info := ProcInfo.
 
     % Creates an auxiliary variable with a specific type
@@ -2192,16 +2193,18 @@ create_aux_variable_stm(Type, MaybeName0, Var, !StmInfo) :-
     stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
 create_aux_variable(Type, MaybeName0, Var, !NewPredInfo) :-
-    ProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
-    Cnt0 = !.NewPredInfo ^ new_pred_var_cnt,
     (
         MaybeName0 = no,
-        MaybeName0 = MaybeName
+        Name = ""
     ;
-        MaybeName0 = yes(Name),
-        MaybeName = yes(Name ++ "_Aux_" ++ string(Cnt0))
+        MaybeName0 = yes(Name0),
+        string.format("%s_Aux_%d", [s(Name0), i(Cnt0)], Name)
     ),
-    proc_info_create_var_from_type(Type, MaybeName, Var, ProcInfo0, ProcInfo),
+    IsDummy = is_type_a_dummy(!.NewPredInfo ^ new_pred_module_info, Type),
+    ProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
+    Cnt0 = !.NewPredInfo ^ new_pred_var_cnt,
+    proc_info_create_var_from_type(Name, Type, IsDummy, Var,
+        ProcInfo0, ProcInfo),
     Cnt = Cnt0 + 1,
     !NewPredInfo ^ new_pred_proc_info := ProcInfo,
     !NewPredInfo ^ new_pred_var_cnt := Cnt.
@@ -2454,7 +2457,7 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes, CloneKind,
 
     pred_info_proc_info(PredInfo, ProcId, ProcInfo),
     proc_info_get_context(ProcInfo, ProcContext),
-    proc_info_get_var_table(ModuleInfo0, ProcInfo, ProcVarTable),
+    proc_info_get_var_table(ProcInfo, ProcVarTable),
     proc_info_get_inst_varset(ProcInfo, ProcInstVarSet),
     (
         MaybeDetism = yes(ProcDetism)
@@ -2467,7 +2470,7 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes, CloneKind,
     proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
     proc_info_get_var_name_remap(ProcInfo, VarNameRemap),
     SeqNum = item_no_seq_num,
-    proc_info_create_vt(ProcContext, SeqNum, ProcVarTable, ProcHeadVars,
+    proc_info_create(ProcContext, SeqNum, ProcVarTable, ProcHeadVars,
         ProcInstVarSet, ProcHeadModes, detism_decl_none, ProcDetism,
         ProcGoal, ProcRttiVarMaps, address_is_not_taken, HasParallelConj,
         VarNameRemap, NewProcInfo),
@@ -2490,7 +2493,7 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes, CloneKind,
     pred_info_get_assertions(PredInfo, PredAssertions),
     pred_info_get_markers(PredInfo, Markers),
     GoalType = goal_not_for_promise(np_goal_type_none),
-    pred_info_create(ModuleInfo0, PredOrFunc, ModuleName, NewPredName,
+    pred_info_create(PredOrFunc, ModuleName, NewPredName,
         PredContext, NewPredOrigin, pred_status(status_local), Markers,
         PredArgTypes, PredTypeVarSet, PredExistQVars, PredClassContext,
         PredAssertions, VarNameRemap, GoalType, NewProcInfo, NewProcId,
@@ -2580,11 +2583,10 @@ run_quantification_over_pred(!NewPredInfo) :-
     stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
 new_pred_set_goal(Goal, !NewPredInfo) :-
-    ModuleInfo = !.NewPredInfo ^ new_pred_module_info,
     ProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
     goal_vars(Goal, GoalVars),
     GoalVarsSet = set_of_var.bitset_to_set(GoalVars),
-    proc_info_get_var_table(ModuleInfo, ProcInfo0, ProcVarTable0),
+    proc_info_get_var_table(ProcInfo0, ProcVarTable0),
 
     var_table_select(GoalVarsSet, ProcVarTable0, ProcVarTable),
 
@@ -2614,7 +2616,6 @@ get_pred_proc_id(NewPredInfo0, PredProcId) :-
 get_input_output_varlist(StmGoalVars, Input, Output) :-
     InputSet = StmGoalVars ^ vars_input,
     OutputSet = StmGoalVars ^ vars_output,
-
     Input = set_of_var.to_sorted_list(InputSet),
     Output = set_of_var.to_sorted_list(OutputSet).
 
@@ -2625,11 +2626,9 @@ get_input_output_varlist(StmGoalVars, Input, Output) :-
     list(mer_type)::out, list(mer_type)::out) is det.
 
 get_input_output_types(StmGoalVars, StmInfo, InputTypes, OutputTypes) :-
-    ModuleInfo = StmInfo ^ stm_info_module_info,
     ProcInfo0 = StmInfo ^ stm_info_proc_info,
-    proc_info_get_var_table(ModuleInfo, ProcInfo0, VarTable),
+    proc_info_get_var_table(ProcInfo0, VarTable),
     get_input_output_varlist(StmGoalVars, InputVars, OutputVars),
-
     lookup_var_types(VarTable, InputVars, InputTypes),
     lookup_var_types(VarTable, OutputVars, OutputTypes).
 

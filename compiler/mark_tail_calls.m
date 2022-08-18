@@ -537,7 +537,7 @@ do_mark_tail_rec_calls_in_proc(Params, ModuleInfo, SCC, PredId, ProcId,
             proc_info_get_goal(!.ProcInfo, Goal0),
             proc_info_get_argmodes(!.ProcInfo, Modes),
             proc_info_get_headvars(!.ProcInfo, HeadVars),
-            proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
+            proc_info_get_var_table(!.ProcInfo, VarTable),
             find_output_args(ModuleInfo, Types, Modes, HeadVars, Outputs),
 
             Info0 = mark_tail_rec_calls_info(ModuleInfo, PredInfo,

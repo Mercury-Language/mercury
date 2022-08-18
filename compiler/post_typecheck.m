@@ -150,6 +150,14 @@ post_typecheck_finish_preds(!ModuleInfo, NumBadErrors,
 post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId, !PredInfo,
         !NumBadErrors, !AlwaysSpecs, !NoTypeErrorSpecs) :-
     ( if set_tree234.contains(ValidPredIdSet, PredId) then
+        % Regardless of the path we take when processing a valid predicate,
+        % we need to ensure that we fill in the vte_is_dummy field in all
+        % the entries in the predicate's var_table with valid information,
+        % to replace the placeholder values put there earlier.
+        %
+        % In the then-part of this if-then-else, that is done by
+        % setup_var_table_in_clauses_for_imported_pred. In the else-part,
+        % it is done by find_unresolved_types_fill_in_is_dummy_in_pred.
         ( if
             ( pred_info_is_imported(!.PredInfo)
             ; pred_info_is_pseudo_imported(!.PredInfo)
@@ -174,8 +182,8 @@ post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId, !PredInfo,
 
             find_unproven_body_constraints(ModuleInfo, PredId, !.PredInfo,
                 !NumBadErrors, !NoTypeErrorSpecs),
-            find_unresolved_types_in_pred(ModuleInfo, PredId, !PredInfo,
-                !NoTypeErrorSpecs),
+            find_unresolved_types_fill_in_is_dummy_in_pred(ModuleInfo, PredId,
+                !PredInfo, !NoTypeErrorSpecs),
             check_type_of_main(!.PredInfo, !AlwaysSpecs)
         ),
         propagate_checked_types_into_pred_modes(ModuleInfo, ErrorProcs,
@@ -426,22 +434,30 @@ describe_constrained_goal(ModuleInfo, Goal) = Pieces :-
     % other than those that occur in the types of head variables, and that
     % there are no unsatisfied type class constraints.
     %
-:- pred find_unresolved_types_in_pred(module_info::in, pred_id::in,
-    pred_info::in, pred_info::out,
+    % Also, fill in the vte_is_dummy field in all the entries in predicate's
+    % var_table. We do this by flattening the old var table to VarsEntries0,
+    % filling in those slots in VarsEntries0 to yield RevVarsEntries, and then
+    % constructing the updated var table from RevVarsEntries.
+    %
+:- pred find_unresolved_types_fill_in_is_dummy_in_pred(module_info::in,
+    pred_id::in, pred_info::in, pred_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(pred(find_unresolved_types_in_pred/6)).
+:- pragma inline(pred(find_unresolved_types_fill_in_is_dummy_in_pred/6)).
 
-find_unresolved_types_in_pred(ModuleInfo, PredId, !PredInfo,
+find_unresolved_types_fill_in_is_dummy_in_pred(ModuleInfo, PredId, !PredInfo,
         !NoTypeErrorSpecs) :-
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
     pred_info_get_external_type_params(!.PredInfo, ExternalTypeParams),
     clauses_info_get_var_table(ClausesInfo0, VarTable0),
-    var_table_to_sorted_assoc_list(VarTable0, VarsEntries),
+    var_table_to_sorted_assoc_list(VarTable0, VarsEntries0),
     set.init(BindToVoidTVars0),
-    find_unresolved_types_in_vars(VarsEntries, ExternalTypeParams,
-        [], UnresolvedVarsEntries, BindToVoidTVars0, BindToVoidTVars),
+    find_unresolved_types_fill_in_is_dummy(ModuleInfo, ExternalTypeParams,
+        VarsEntries0, [], RevVarsEntries, [], UnresolvedVarsEntries,
+        BindToVoidTVars0, BindToVoidTVars),
+    var_table_from_rev_sorted_assoc_list(RevVarsEntries, VarTable1),
     (
-        UnresolvedVarsEntries = []
+        UnresolvedVarsEntries = [],
+        VarTable = VarTable1
     ;
         UnresolvedVarsEntries = [_ | _],
         report_unresolved_type_warning(ModuleInfo, PredId, !.PredInfo,
@@ -450,51 +466,61 @@ find_unresolved_types_in_pred(ModuleInfo, PredId, !PredInfo,
         % Bind all the type variables in `BindToVoidTVars' to `void' ...
         pred_info_get_constraint_proof_map(!.PredInfo, ProofMap0),
         pred_info_get_constraint_map(!.PredInfo, ConstraintMap0),
-        bind_type_vars_to_void(BindToVoidTVars, VarTable0, VarTable,
+        bind_type_vars_to_void(BindToVoidTVars, VarTable1, VarTable,
             ProofMap0, ProofMap, ConstraintMap0, ConstraintMap),
-        clauses_info_set_var_table(VarTable, ClausesInfo0, ClausesInfo),
-        pred_info_set_clauses_info(ClausesInfo, !PredInfo),
         pred_info_set_constraint_proof_map(ProofMap, !PredInfo),
         pred_info_set_constraint_map(ConstraintMap, !PredInfo)
-    ).
+    ),
+    clauses_info_set_var_table(VarTable, ClausesInfo0, ClausesInfo),
+    pred_info_set_clauses_info(ClausesInfo, !PredInfo).
 
     % The number of variables can be huge here (hundred of thousands for
     % Doug Auclair's training_cars program). The code below prevents stack
     % overflows in grades that do not permit tail recursion.
     %
-:- pred find_unresolved_types_in_vars(
-    assoc_list(prog_var, var_table_entry)::in, list(tvar)::in,
+:- pred find_unresolved_types_fill_in_is_dummy(module_info::in, list(tvar)::in,
+    assoc_list(prog_var, var_table_entry)::in,
+    assoc_list(prog_var, var_table_entry)::in,
+    assoc_list(prog_var, var_table_entry)::out,
     assoc_list(prog_var, var_table_entry)::in,
     assoc_list(prog_var, var_table_entry)::out,
     set(tvar)::in, set(tvar)::out) is det.
 
-find_unresolved_types_in_vars(VarsEntries, ExternalTypeParams,
-        !UnresolvedVarsEntries, !BindToVoidTVars) :-
-    find_unresolved_types_in_vars_inner(VarsEntries, ExternalTypeParams, 1000,
-        LeftOverVarsEntries, !UnresolvedVarsEntries, !BindToVoidTVars),
+find_unresolved_types_fill_in_is_dummy(ModuleInfo, ExternalTypeParams,
+        VarsEntries0,
+        !RevVarsEntries, !UnresolvedVarsEntries, !BindToVoidTVars) :-
+    find_unresolved_types_fill_in_is_dummy_inner(ModuleInfo,
+        ExternalTypeParams, 1000, VarsEntries0, LeftOverVarsEntries0,
+        !RevVarsEntries, !UnresolvedVarsEntries, !BindToVoidTVars),
     (
-        LeftOverVarsEntries = []
+        LeftOverVarsEntries0 = []
     ;
-        LeftOverVarsEntries = [_ | _],
-        find_unresolved_types_in_vars(LeftOverVarsEntries, ExternalTypeParams,
-            !UnresolvedVarsEntries, !BindToVoidTVars)
+        LeftOverVarsEntries0 = [_ | _],
+        find_unresolved_types_fill_in_is_dummy(ModuleInfo, ExternalTypeParams,
+            LeftOverVarsEntries0,
+            !RevVarsEntries, !UnresolvedVarsEntries, !BindToVoidTVars)
     ).
 
-:- pred find_unresolved_types_in_vars_inner(
+:- pred find_unresolved_types_fill_in_is_dummy_inner(module_info::in,
+    list(tvar)::in, int::in,
     assoc_list(prog_var, var_table_entry)::in,
-    list(tvar)::in, int::in, assoc_list(prog_var, var_table_entry)::out,
+    assoc_list(prog_var, var_table_entry)::out,
+    assoc_list(prog_var, var_table_entry)::in,
+    assoc_list(prog_var, var_table_entry)::out,
     assoc_list(prog_var, var_table_entry)::in,
     assoc_list(prog_var, var_table_entry)::out,
     set(tvar)::in, set(tvar)::out) is det.
 
-find_unresolved_types_in_vars_inner([], _, _, [],
-        !UnresolvedVarsEntries, !BindToVoidTVars).
-find_unresolved_types_in_vars_inner([Var - Entry | VarsEntries],
-        ExternalTypeParams, VarsToDo, LeftOverVarsEntries,
-        !UnresolvedVarsEntries, !BindToVoidTVars) :-
+find_unresolved_types_fill_in_is_dummy_inner(_, _, _, [], [],
+        !RevVarsEntries, !UnresolvedVarsEntries, !BindToVoidTVars).
+find_unresolved_types_fill_in_is_dummy_inner(ModuleInfo, ExternalTypeParams,
+        VarsToDo, [Var - Entry0 | VarsEntries0], LeftOverVarsEntries0,
+        !RevVarsEntries, !UnresolvedVarsEntries, !BindToVoidTVars) :-
     ( if VarsToDo < 0 then
-        LeftOverVarsEntries = [Var - Entry | VarsEntries]
+        LeftOverVarsEntries0 = [Var - Entry0 | VarsEntries0]
     else
+        fill_in_is_dummy_slot(ModuleInfo, Entry0, Entry),
+        !:RevVarsEntries = [Var - Entry | !.RevVarsEntries],
         Type = Entry ^ vte_type,
         type_vars_in_type(Type, TVars),
         set.list_to_set(TVars, TVarsSet0),
@@ -505,9 +531,10 @@ find_unresolved_types_in_vars_inner([Var - Entry | VarsEntries],
             !:UnresolvedVarsEntries = [Var - Entry | !.UnresolvedVarsEntries],
             set.union(TVarsSet1, !BindToVoidTVars)
         ),
-        find_unresolved_types_in_vars_inner(VarsEntries, ExternalTypeParams,
-            VarsToDo - 1, LeftOverVarsEntries,
-            !UnresolvedVarsEntries, !BindToVoidTVars)
+        find_unresolved_types_fill_in_is_dummy_inner(ModuleInfo,
+            ExternalTypeParams, VarsToDo - 1,
+            VarsEntries0, LeftOverVarsEntries0,
+            !RevVarsEntries, !UnresolvedVarsEntries, !BindToVoidTVars)
     ).
 
     % Bind all the type variables in `UnboundTypeVarsSet' to the type `void'.
@@ -527,9 +554,29 @@ bind_type_vars_to_void(UnboundTypeVarsSet, !VarTable, !ProofMap,
     set.fold(MapToVoid, UnboundTypeVarsSet, map.init, VoidSubst),
 
     % Then apply the substitution we just created to the various maps.
-    apply_subst_to_var_table(VoidSubst, !VarTable),
+    IsDummyFunc = (func(_Type) = is_dummy_type),
+    apply_subst_to_var_table(IsDummyFunc, VoidSubst, !VarTable),
     apply_subst_to_constraint_proof_map(VoidSubst, !ProofMap),
     apply_subst_to_constraint_map(VoidSubst, !ConstraintMap).
+
+%---------------------%
+
+:- pred fill_in_is_dummy_slot(module_info::in,
+    var_table_entry::in, var_table_entry::out) is det.
+:- pragma inline(pred(fill_in_is_dummy_slot/3)).
+
+fill_in_is_dummy_slot(ModuleInfo, !Entry) :-
+    !.Entry = vte(Name, Type, _OldIsDummy),
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+    % We always allocate a new entry. We put is_dummy_type in the third slot
+    % of var_table_entries before typecheck, before this authoritative filling
+    % in of that slot, to make any bugs caused by *not* doing this filling-in
+    % more visible. They would be more visible because in most programs,
+    % most types are not dummy types. But this fact also means that if we
+    % tested whether IsDummy = _OldIsDummy, and allocated a new memory cell
+    % for a new entry if that test failed, we would lose more time in doing
+    % the test than we saved by not doing the allocation if the test succeeded.
+    !:Entry = vte(Name, Type, IsDummy).
 
 %---------------------%
 
@@ -626,20 +673,24 @@ setup_var_table_in_clauses_for_imported_pred(ModuleInfo, !PredInfo) :-
     % fills in the clauses' var_table.
     % NOTE The code that creates the clauses and fills in the var_table
     % is executed lazily, on demand.
+    pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
     ( if pred_info_is_pseudo_imported(!.PredInfo) then
-        true
+        clauses_info_get_var_table(ClausesInfo0, VarTable0),
+        transform_var_table(fill_in_is_dummy_slot(ModuleInfo),
+            VarTable0, VarTable),
+        clauses_info_set_var_table(VarTable, ClausesInfo0, ClausesInfo)
     else
-        pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
         clauses_info_get_varset(ClausesInfo0, VarSet),
         clauses_info_get_headvar_list(ClausesInfo0, HeadVars),
         pred_info_get_arg_types(!.PredInfo, ArgTypes),
+        % This call fills in all the vte_is_dummy fields in VarTable.
         corresponding_vars_types_to_var_table(ModuleInfo, VarSet,
             HeadVars, ArgTypes, VarTable),
         clauses_info_set_var_table(VarTable, ClausesInfo0, ClausesInfo1),
         varset.init(EmptyVarSet),
-        clauses_info_set_varset(EmptyVarSet, ClausesInfo1, ClausesInfo),
-        pred_info_set_clauses_info(ClausesInfo, !PredInfo)
-    ).
+        clauses_info_set_varset(EmptyVarSet, ClausesInfo1, ClausesInfo)
+    ),
+    pred_info_set_clauses_info(ClausesInfo, !PredInfo).
 
 %---------------------------------------------------------------------------%
 

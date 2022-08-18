@@ -966,7 +966,7 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredProcId, ProcInfo,
         AuxVarCounter, CondVarCounter, PackedWordCounter, ConvVarCounter,
         TailRecInfo),
 
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     HighLevelData = mlds_target_high_level_data(Target),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_gc_method(Globals, GC),

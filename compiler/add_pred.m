@@ -51,7 +51,7 @@
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_new_proc(prog_context::in, item_seq_num::in, arity::in,
+:- pred add_new_proc(module_info::in, prog_context::in, item_seq_num::in,
     inst_varset::in, list(mer_mode)::in,
     maybe(list(mer_mode))::in, maybe(list(is_live))::in,
     detism_decl::in, maybe(determinism)::in,
@@ -693,12 +693,12 @@ add_builtin(ModuleInfo, CompilationTarget, PredId, HeadTypes0, !PredInfo) :-
 
 %---------------------------------------------------------------------------%
 
-add_new_proc(Context, SeqNum, Arity, InstVarSet, ArgModes,
+add_new_proc(ModuleInfo, Context, SeqNum, InstVarSet, ArgModes,
         MaybeDeclaredArgModes, MaybeArgLives, DetismDecl, MaybeDetism,
         IsAddressTaken, HasParallelConj, !PredInfo, ProcId) :-
     pred_info_get_arg_types(!.PredInfo, ArgTypes),
     pred_info_get_var_name_remap(!.PredInfo, VarNameRemap),
-    proc_info_init(Context, SeqNum, Arity, ArgTypes,
+    proc_info_init(ModuleInfo, Context, SeqNum, ArgTypes,
         MaybeDeclaredArgModes, ArgModes, MaybeArgLives,
         DetismDecl, MaybeDetism, IsAddressTaken, HasParallelConj,
         VarNameRemap, ProcInfo0),
@@ -768,8 +768,9 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable1),
         predicate_table_get_pred_id_table(PredicateTable1, PredIdTable0),
         map.lookup(PredIdTable0, PredId, PredInfo0),
-        module_do_add_mode(PartOfPredmode, IsClassMethod, ItemMercuryStatus,
-            ItemModeDecl, PredInfo0, PredInfo, ProcId, !Specs),
+        module_do_add_mode(!.ModuleInfo, PartOfPredmode, IsClassMethod,
+            ItemMercuryStatus, ItemModeDecl, PredInfo0, PredInfo, ProcId,
+            !Specs),
         map.det_update(PredId, PredInfo, PredIdTable0, PredIdTable),
         predicate_table_set_pred_id_table(PredIdTable,
             PredicateTable1, PredicateTable),
@@ -777,12 +778,12 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
         PredProcId = proc(PredId, ProcId)
     ).
 
-:- pred module_do_add_mode(part_of_predmode::in, maybe_class_method::in,
-    item_mercury_status::in, item_mode_decl_info::in,
+:- pred module_do_add_mode(module_info::in, part_of_predmode::in,
+    maybe_class_method::in, item_mercury_status::in, item_mode_decl_info::in,
     pred_info::in, pred_info::out, proc_id::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_do_add_mode(PartOfPredmode, IsClassMethod, ItemMercuryStatus,
+module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod, ItemMercuryStatus,
         ItemModeDecl, !PredInfo, ProcId, !Specs) :-
     PredName = pred_info_name(!.PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
@@ -872,8 +873,7 @@ module_do_add_mode(PartOfPredmode, IsClassMethod, ItemMercuryStatus,
     ArgLives = no,
     % Before the simplification pass, HasParallelConj is not meaningful.
     HasParallelConj = has_no_parallel_conj,
-    PredFormArity = pred_form_arity(PredFormArityInt),
-    add_new_proc(Context, SeqNum, PredFormArityInt, InstVarSet,
+    add_new_proc(ModuleInfo, Context, SeqNum, InstVarSet,
         Modes, yes(Modes), ArgLives, DetismDecl, MaybeDetism,
         address_is_not_taken, HasParallelConj, !PredInfo, ProcId).
 

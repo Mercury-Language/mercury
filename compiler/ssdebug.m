@@ -293,7 +293,7 @@ ssdebug_first_pass_in_proc(PredId, ProcId, !ProxyMap, !ModuleInfo) :-
     some [!ProcInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId, PredInfo,
             !:ProcInfo),
-        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
+        proc_info_get_var_table(!.ProcInfo, VarTable0),
         proc_info_get_goal(!.ProcInfo, Goal0),
         ssdebug_first_pass_in_goal(Goal0, Goal, VarTable0, VarTable,
             !ProxyMap, !ModuleInfo),
@@ -601,7 +601,7 @@ ssdebug_process_proc_det(SSTraceLevel, PredId, ProcId,
     some [!PredInfo, !VarTable] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
-        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, !:VarTable),
+        proc_info_get_var_table(!.ProcInfo, !:VarTable),
         get_stripped_headvars(!.PredInfo, !.ProcInfo, FullHeadVars, HeadVars,
             ArgModes),
 
@@ -692,7 +692,7 @@ ssdebug_process_proc_semi(SSTraceLevel, PredId, ProcId,
     some [!PredInfo, !VarTable] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
-        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, !:VarTable),
+        proc_info_get_var_table(!.ProcInfo, !:VarTable),
         get_stripped_headvars(!.PredInfo, !.ProcInfo, FullHeadVars, HeadVars,
             ArgModes),
 
@@ -818,7 +818,7 @@ ssdebug_process_proc_nondet(SSTraceLevel, PredId, ProcId,
     some [!PredInfo, !VarTable] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
-        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, !:VarTable),
+        proc_info_get_var_table(!.ProcInfo, !:VarTable),
         get_stripped_headvars(!.PredInfo, !.ProcInfo, FullHeadVars, HeadVars,
             _ArgModes),
 
@@ -913,7 +913,7 @@ ssdebug_process_proc_failure(SSTraceLevel, PredId, ProcId,
     some [!PredInfo, !VarTable] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
-        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, !:VarTable),
+        proc_info_get_var_table(!.ProcInfo, !:VarTable),
         get_stripped_headvars(!.PredInfo, !.ProcInfo, FullHeadVars, HeadVars,
             _ArgModes),
 
@@ -978,7 +978,7 @@ ssdebug_process_proc_erroneous(SSTraceLevel, PredId, ProcId,
     some [!PredInfo, !VarTable] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
-        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, !:VarTable),
+        proc_info_get_var_table(!.ProcInfo, !:VarTable),
         get_stripped_headvars(!.PredInfo, !.ProcInfo, _FullHeadVars, HeadVars,
             _ArgModes),
 
@@ -1406,7 +1406,7 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         polymorphism_make_type_info_var_mi(MerType, Context,
             TypeInfoVar, TypeInfoGoals0, !ModuleInfo, !PredInfo, !ProcInfo),
 
-        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, !:VarTable),
+        proc_info_get_var_table(!.ProcInfo, !:VarTable),
         % Constructor of the variable's description.
         ConsId = cons(qualified(SSDBModule, "bound_head_var"), 3,
             VarValueTypeCtor),

@@ -142,13 +142,13 @@
 
 requantify_proc_general(NonLocalsToRecompute, !ProcInfo) :-
     proc_info_get_headvars(!.ProcInfo, HeadVars),
-    proc_info_get_varset_vartypes(!.ProcInfo, VarSet0, VarTypes0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarmaps0),
-    implicitly_quantify_clause_body_general(NonLocalsToRecompute, HeadVars, _,
-        Goal0, Goal, VarSet0, VarSet, VarTypes0, VarTypes,
+    implicitly_quantify_clause_body_general_vt(NonLocalsToRecompute,
+        HeadVars, _, Goal0, Goal, VarTable0, VarTable,
         RttiVarmaps0, RttiVarmaps),
-    proc_info_set_varset_vartypes(VarSet, VarTypes, !ProcInfo),
+    proc_info_set_var_table(VarTable, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarmaps, !ProcInfo).
 

@@ -155,7 +155,7 @@ maybe_par_loop_control_proc(DepInfo, PredProcId, !ProcInfo, !ModuleInfo) :-
         proc_info_get_goal(!.ProcInfo, Body0),
 
         % Re-calculate goal ids.
-        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
+        proc_info_get_var_table(!.ProcInfo, VarTable),
         fill_goal_id_slots_in_proc_body(!.ModuleInfo, VarTable,
             ContainingGoalMap, Body0, Body),
         proc_info_set_goal(Body, !ProcInfo),
@@ -611,9 +611,8 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         % Construct the pred info structure. We initially construct it with
         % the old proc info which will be replaced below.
         GoalType = goal_not_for_promise(np_goal_type_none),
-        pred_info_create(!.ModuleInfo, PredOrFunc,
-            ModuleName, TransformedName, Context, Origin,
-            pred_status(status_local), Markers, ArgTypes0, TypeVarSet,
+        pred_info_create(PredOrFunc, ModuleName, TransformedName, Context,
+            Origin, pred_status(status_local), Markers, ArgTypes0, TypeVarSet,
             ExistQVars, ClassConstraints, set.init, map.init, GoalType,
             OldProcInfo, ProcId, !:PredInfo),
 
@@ -630,7 +629,7 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         % in the body.
         proc_info_get_argmodes(OldProcInfo, ArgModes0),
         proc_info_get_headvars(OldProcInfo, HeadVars0),
-        proc_info_get_var_table(!.ModuleInfo, OldProcInfo, !:VarTable),
+        proc_info_get_var_table(OldProcInfo, !:VarTable),
         proc_info_get_goal(OldProcInfo, !:Body),
 
         LCVarEntry = vte("LC", loop_control_var_type, is_not_dummy_type),
@@ -662,7 +661,7 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         proc_info_get_inst_varset(OldProcInfo, InstVarSet),
         proc_info_get_rtti_varmaps(OldProcInfo, RttiVarMaps),
         proc_info_get_inferred_determinism(OldProcInfo, Detism),
-        proc_info_create_vt(Context, SeqNum, !.VarTable, HeadVars,
+        proc_info_create(Context, SeqNum, !.VarTable, HeadVars,
             InstVarSet, ArgModes, detism_decl_none, Detism, !.Body,
             RttiVarMaps, address_is_not_taken, has_parallel_conj, map.init,
             ProcInfo),
@@ -1356,7 +1355,7 @@ update_outer_proc(PredProcId, InnerPredProcId, InnerPredName, ModuleInfo,
     some [!VarTable] (
         % Re-build the variables in the procedure with smaller sets.
         init_var_table(!:VarTable),
-        proc_info_get_var_table(ModuleInfo, !.ProcInfo, OldVarTable),
+        proc_info_get_var_table(!.ProcInfo, OldVarTable),
         list.foldl2_corresponding(add_old_var_to_sets(ModuleInfo, OldVarTable),
             HeadVars0, HeadVarTypes, !VarTable, map.init, Remap),
         list.map(map.lookup(Remap), HeadVars0, HeadVars),

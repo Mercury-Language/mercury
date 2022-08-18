@@ -350,12 +350,12 @@ livedata_add_liveness(ModuleInfo, ProcInfo, LuData, LocalSharing, LiveData0)
     ( if sharing_as_is_top(LocalSharing) then
         LiveData = livedata_init_as_top
     else if sharing_as_is_bottom(LocalSharing) then
-        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        proc_info_get_var_table(ProcInfo, VarTable),
         LiveData = livedata_least_upper_bound(ModuleInfo, VarTable,
             LiveData0, livedata_init_from_datastructs(LuData))
     else
         % most general case: normal sharing.
-        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        proc_info_get_var_table(ProcInfo, VarTable),
         ExtendLuData = extend_datastructs(ModuleInfo, ProcInfo,
             LocalSharing, LuData),
         LuLiveData = livedata_init_from_datastructs(ExtendLuData),

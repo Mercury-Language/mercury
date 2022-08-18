@@ -98,7 +98,7 @@ write_proc_stats_for_proc(OutStream, Msg, ModuleInfo,
     Stats0 = init_proc_stats,
     accumulate_proc_stats_in_goal(Goal, UsedVars0, UsedVars, Stats0, Stats),
 
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     do_write_proc_stats(OutStream, Msg, Name, PredId, ProcId, Stats,
         UsedVars, VarTable, !IO).
 

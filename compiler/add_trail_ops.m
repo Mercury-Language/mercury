@@ -118,7 +118,7 @@
 
 add_trail_ops(OptTrailUsage, GenerateInline, ModuleInfo0, !ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_var_table(ModuleInfo0, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     TrailOpsInfo0 = trail_ops_info(ModuleInfo0, OptTrailUsage, GenerateInline,
         VarTable0),
     goal_add_trail_ops(Goal0, Goal, TrailOpsInfo0, TrailOpsInfo),

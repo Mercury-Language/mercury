@@ -3534,7 +3534,6 @@ generate_input_var_vn([InputArgLoc | InputArgLocs], !Vals) :-
 
 generate_return_live_lvalues(CI, CLD, OutputArgLocs, ReturnInstMap,
         OkToDeleteAny, LiveLvalues) :-
-    get_module_info(CI, ModuleInfo),
     get_globals(CI, Globals),
     get_proc_info(CI, ProcInfo),
     get_eff_trace_level(CI, EffTraceLevel),
@@ -3543,8 +3542,8 @@ generate_return_live_lvalues(CI, CLD, OutputArgLocs, ReturnInstMap,
     get_var_table(CI, VarTable),
     list.filter(var_has_non_dummy_type(VarTable), Vars0, Vars),
     get_active_temps_data(CI, CLD, Temps),
-    cont_info_generate_return_live_lvalues(ModuleInfo, Globals, ProcInfo,
-        EffTraceLevel, OutputArgLocs, ReturnInstMap, Vars, VarLocs, Temps,
+    cont_info_generate_return_live_lvalues(Globals, ProcInfo, EffTraceLevel,
+        OutputArgLocs, ReturnInstMap, Vars, VarLocs, Temps,
         OkToDeleteAny, LiveLvalues).
 
 :- pred var_has_non_dummy_type(var_table::in, prog_var::in) is semidet.
@@ -3564,8 +3563,7 @@ maybe_generate_resume_layout(Label, ResumeMap, !CI, CLD) :-
         get_active_temps_data(!.CI, CLD, Temps),
         get_instmap(CLD, InstMap),
         get_proc_info(!.CI, ProcInfo),
-        get_module_info(!.CI, ModuleInfo),
-        continuation_info.generate_resume_layout(ModuleInfo, ProcInfo, InstMap,
+        continuation_info.generate_resume_layout(ProcInfo, InstMap,
             ResumeMap, Temps, Layout),
         add_resume_layout_for_label(Label, Layout, !CI)
     ;

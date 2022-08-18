@@ -398,7 +398,7 @@ set_generated_terminates(ModuleInfo, SpecialPredId, [ProcId | ProcIds],
         !ProcTable) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     proc_info_get_headvars(ProcInfo0, HeadVars),
-    proc_info_get_var_table(ModuleInfo, ProcInfo0, VarTable),
+    proc_info_get_var_table(ProcInfo0, VarTable),
     special_pred_id_to_termination(SpecialPredId, HeadVars, ModuleInfo,
         VarTable, ArgSize, Termination, VarMap, HeadSizeVars),
     some [!Term2Info] (

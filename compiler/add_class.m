@@ -439,7 +439,8 @@ handle_no_mode_decl(PredOrFuncInfo, !PredProcIds, !ModuleInfo, !Specs) :-
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
         (
             PorF = pf_function,
-            maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId),
+            maybe_add_default_func_mode(!.ModuleInfo, PredInfo0, PredInfo,
+                MaybeProcId),
             (
                 MaybeProcId = no
             ;

@@ -25,7 +25,6 @@
 
 :- import_module char.
 :- import_module list.
-:- import_module maybe.
 
     % Return the HLDS equivalent of `true'.
     %
@@ -98,19 +97,19 @@
     prog_var::in, cons_id::in, hlds_goal::out) is det.
 
 :- pred make_int_const_construction_alloc_in_proc(int::in,
-    maybe(string)::in, hlds_goal::out, prog_var::out,
+    string::in, hlds_goal::out, prog_var::out,
     proc_info::in, proc_info::out) is det.
 :- pred make_string_const_construction_alloc_in_proc(string::in,
-    maybe(string)::in, hlds_goal::out, prog_var::out,
+    string::in, hlds_goal::out, prog_var::out,
     proc_info::in, proc_info::out) is det.
 :- pred make_float_const_construction_alloc_in_proc(float::in,
-    maybe(string)::in, hlds_goal::out, prog_var::out,
+    string::in, hlds_goal::out, prog_var::out,
     proc_info::in, proc_info::out) is det.
 :- pred make_char_const_construction_alloc_in_proc(char::in,
-    maybe(string)::in, hlds_goal::out, prog_var::out,
+    string::in, hlds_goal::out, prog_var::out,
     proc_info::in, proc_info::out) is det.
 :- pred make_const_construction_alloc_in_proc(cons_id::in, mer_type::in,
-    maybe(string)::in, hlds_goal::out, prog_var::out,
+    is_dummy_type::in, string::in, hlds_goal::out, prog_var::out,
     proc_info::in, proc_info::out) is det.
 
 :- pred make_int_const_construction_alloc(int::in, string::in,
@@ -276,29 +275,33 @@ make_const_construction(Context, Var, ConsId, Goal) :-
 
 %---------------------------------------------------------------------------%
 
-make_int_const_construction_alloc_in_proc(Int, MaybeName, Goal, Var,
+make_int_const_construction_alloc_in_proc(Int, Name, Goal, Var,
         !ProcInfo) :-
-    proc_info_create_var_from_type(int_type, MaybeName, Var, !ProcInfo),
+    proc_info_create_var_from_type(Name, int_type, is_not_dummy_type,
+        Var, !ProcInfo),
     make_int_const_construction(term.context_init, Var, Int, Goal).
 
-make_string_const_construction_alloc_in_proc(String, MaybeName, Goal, Var,
+make_string_const_construction_alloc_in_proc(String, Name, Goal, Var,
         !ProcInfo) :-
-    proc_info_create_var_from_type(string_type, MaybeName, Var, !ProcInfo),
+    proc_info_create_var_from_type(Name, string_type, is_not_dummy_type,
+        Var, !ProcInfo),
     make_string_const_construction(term.context_init, Var, String, Goal).
 
-make_float_const_construction_alloc_in_proc(Float, MaybeName, Goal, Var,
+make_float_const_construction_alloc_in_proc(Float, Name, Goal, Var,
         !ProcInfo) :-
-    proc_info_create_var_from_type(float_type, MaybeName, Var, !ProcInfo),
+    proc_info_create_var_from_type(Name, float_type, is_not_dummy_type,
+        Var, !ProcInfo),
     make_float_const_construction(term.context_init, Var, Float, Goal).
 
-make_char_const_construction_alloc_in_proc(Char, MaybeName, Goal, Var,
+make_char_const_construction_alloc_in_proc(Char, Name, Goal, Var,
         !ProcInfo) :-
-    proc_info_create_var_from_type(char_type, MaybeName, Var, !ProcInfo),
+    proc_info_create_var_from_type(Name, char_type, is_not_dummy_type, Var,
+        !ProcInfo),
     make_char_const_construction(term.context_init, Var, Char, Goal).
 
-make_const_construction_alloc_in_proc(ConsId, Type, MaybeName, Goal, Var,
+make_const_construction_alloc_in_proc(ConsId, Type, IsDummy, Name, Goal, Var,
         !ProcInfo) :-
-    proc_info_create_var_from_type(Type, MaybeName, Var, !ProcInfo),
+    proc_info_create_var_from_type(Name, Type, IsDummy, Var, !ProcInfo),
     make_const_construction(term.context_init, Var, ConsId, Goal).
 
 %---------------------------------------------------------------------------%

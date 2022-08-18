@@ -724,8 +724,7 @@ pred_info_used_modules(ModuleInfo, PredId, PredInfo, !UsedModules) :-
             ExistConstraints, !UsedModules),
 
         pred_info_get_proc_table(PredInfo, ProcTable),
-        map.foldl(proc_info_used_modules(ModuleInfo, Visibility),
-            ProcTable, !UsedModules),
+        map.foldl(proc_info_used_modules(Visibility), ProcTable, !UsedModules),
 
         pred_info_get_clauses_info(PredInfo, ClausesInfo),
         clauses_info_used_modules(ClausesInfo, !UsedModules),
@@ -781,12 +780,11 @@ pred_info_used_modules(ModuleInfo, PredId, PredInfo, !UsedModules) :-
         )
     ).
 
-:- pred proc_info_used_modules(module_info::in, item_visibility::in,
+:- pred proc_info_used_modules(item_visibility::in,
     proc_id::in, proc_info::in, used_modules::in, used_modules::out) is det.
 
-proc_info_used_modules(ModuleInfo, Visibility, _ProcId, ProcInfo,
-        !UsedModules) :-
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+proc_info_used_modules(Visibility, _ProcId, ProcInfo, !UsedModules) :-
+    proc_info_get_var_table(ProcInfo, VarTable),
     proc_info_get_headvars(ProcInfo, HeadVars),
     lookup_var_types(VarTable, HeadVars, HeadVarTypes),
     list.foldl(mer_type_used_modules(Visibility), HeadVarTypes, !UsedModules),

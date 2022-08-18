@@ -157,6 +157,11 @@
     %
     % A subtype is only a dummy type if its base type is a dummy type.
     %
+    % This function returns valid data only when invoked after the pass
+    % that fills in the type representation field in every entry in the
+    % type table. Until then, the return value will be correct only
+    % by accident.
+    %
     % NOTE: changes here may require changes to
     % `non_sub_du_constructor_list_represents_dummy_type'.
     %
@@ -859,30 +864,73 @@ is_type_a_dummy_loop(TypeTable, Type, CoveredTypes) = IsDummy :-
                     TypeBodyDu = type_body_du(_, _, _, MaybeTypeRepn, _),
                     (
                         MaybeTypeRepn = no,
-                        unexpected($pred, "MaybeTypeRepn = no")
-                    ;
-                        MaybeTypeRepn = yes(TypeRepn)
-                    ),
-                    DuTypeKind = TypeRepn ^ dur_kind,
-                    (
-                        DuTypeKind = du_type_kind_direct_dummy,
+                        % Code setting up var_table entries invokes
+                        % our caller, is_type_a_dummy, to decide whether
+                        % the type is a dummy. Some of that code is invoked
+                        % *before* the pass that decides each type's
+                        % representation has been run. This is why,
+                        % when invoked at such times, we cannot just
+                        % throw an exception here.
+                        %
+                        % There are two cases: either (a) our caller calls us
+                        % to fill in the vte_is_dummy field, or (b) it calls us
+                        % for some other purpose.
+                        %
+                        % Case (a) is ok, because
+                        %
+                        % - no part of the compiler pays attention to
+                        %   the vte_is_dummy field until *after* the
+                        %   post-typecheck pass, and
+                        %
+                        % - the post-typecheck pass, which is run after
+                        %   type representations have been decided, replaces
+                        %   all the old, possibly-inaccurate values in all
+                        %   those fields in all predicates' var_tables
+                        %   with accurate values.
+                        %
+                        % Case (b) is ok because until (a) became a concern,
+                        % this arm of the switch contained code to throw
+                        % an exception, but that code has (to the best of
+                        % my knowledge) never been executed.
+                        %
+                        % The value we return here won't be looked at,
+                        % so in one sense, what we return does not matter.
+                        % We return is_dummy_type because if, due to a bug,
+                        % some compiler pass *does* pay attention to the
+                        % returned value, returning is_dummy_type is
+                        % much less likely to lead to *silent* error.
+                        %
+                        % XXX We could get extra insurance by looking up
+                        % a flag (stored either in a flag in the module_info,
+                        % or in a mutable) that says whether type
+                        % representations *should* have been filled in
+                        % by now, and throw an exception if we get here
+                        % even though the representation *should* have been
+                        % filled in.
                         IsDummy = is_dummy_type
                     ;
-                        ( DuTypeKind = du_type_kind_mercury_enum
-                        ; DuTypeKind = du_type_kind_foreign_enum(_)
-                        ; DuTypeKind = du_type_kind_general
-                        ),
-                        IsDummy = is_not_dummy_type
-                    ;
-                        DuTypeKind = du_type_kind_notag(_, SingleArgTypeInDefn,
-                            _),
-                        get_type_defn_tparams(TypeDefn, TypeParams),
-                        map.from_corresponding_lists(TypeParams, ArgTypes,
-                            Subst),
-                        apply_subst_to_type(Subst, SingleArgTypeInDefn,
-                            SingleArgType),
-                        IsDummy = is_type_a_dummy_loop(TypeTable,
-                            SingleArgType, [Type | CoveredTypes])
+                        MaybeTypeRepn = yes(TypeRepn),
+                        DuTypeKind = TypeRepn ^ dur_kind,
+                        (
+                            DuTypeKind = du_type_kind_direct_dummy,
+                            IsDummy = is_dummy_type
+                        ;
+                            ( DuTypeKind = du_type_kind_mercury_enum
+                            ; DuTypeKind = du_type_kind_foreign_enum(_)
+                            ; DuTypeKind = du_type_kind_general
+                            ),
+                            IsDummy = is_not_dummy_type
+                        ;
+                            DuTypeKind = du_type_kind_notag(_,
+                                SingleArgTypeInDefn, _),
+                            get_type_defn_tparams(TypeDefn, TypeParams),
+                            map.from_corresponding_lists(TypeParams, ArgTypes,
+                                Subst),
+                            apply_subst_to_type(Subst, SingleArgTypeInDefn,
+                                SingleArgType),
+                            IsDummy = is_type_a_dummy_loop(TypeTable,
+                                SingleArgType, [Type | CoveredTypes])
+                        )
                     )
                 ;
                     TypeBody = hlds_abstract_type(AbstractDetails),

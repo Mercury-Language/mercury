@@ -241,7 +241,7 @@ copy_clauses_to_proc_in_proc_info(PredInfo, ProcId, !ProcInfo) :-
     % XXX ARGVEC - when the proc_info is converted to use proc_arg_vectors
     % we should just pass the headvar vector in directly.
     HeadVarList = proc_arg_vector_to_list(HeadVars),
-    proc_info_set_body_vt(VarTable, HeadVarList, Goal, RttiVarMaps, !ProcInfo).
+    proc_info_set_body(VarTable, HeadVarList, Goal, RttiVarMaps, !ProcInfo).
 
 %-----------------------------------------------------------------------------%
 

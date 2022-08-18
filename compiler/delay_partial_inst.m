@@ -228,7 +228,7 @@ delay_partial_inst_proc(ModuleInfo, PredId, ProcTable, ProcId,
     ),
     some [!ProcInfo] (
         map.lookup(ProcTable, ProcId, !:ProcInfo),
-        proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable0),
+        proc_info_get_var_table(!.ProcInfo, VarTable0),
         proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
         proc_info_get_goal(!.ProcInfo, Goal0),
 

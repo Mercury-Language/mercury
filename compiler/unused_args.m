@@ -555,7 +555,7 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcIds, !OptProcs,
         then
             true
         else
-            proc_info_get_var_table(!.ModuleInfo, ProcInfo, VarTable),
+            proc_info_get_var_table(ProcInfo, VarTable),
             var_table_vars(VarTable, Vars),
             initialise_vardep(Vars, !VarDep),
             setup_output_args(!.ModuleInfo, ProcInfo, !VarDep),
@@ -1161,7 +1161,7 @@ unused_args_create_new_pred(UnusedArgInfo, OrigPredProcId,
         map.det_insert(OrigPredProcId, OrigToNew, !ProcCallInfo),
 
         % Add a forwarding predicate with the original interface.
-        create_call_goal(!.ModuleInfo, UnusedArgs, NewPredId, ProcId,
+        create_call_goal(UnusedArgs, NewPredId, ProcId,
             PredModuleName, NewPredName, OrigProcInfo, ForwardingProcInfo),
         module_info_set_pred_proc_info(OrigPredId, ProcId, OrigPredInfo,
             ForwardingProcInfo, !ModuleInfo),
@@ -1190,7 +1190,7 @@ make_intermod_proc(PredId, NewPredId, ProcId, NewPredName,
     make_new_pred_info(!.ModuleInfo, UnusedArgs2, pred_status(status_exported),
         proc(PredId, ProcId), OrigPredInfo, ExtraPredInfo0),
     PredModuleName = pred_info_module(OrigPredInfo),
-    create_call_goal(!.ModuleInfo, UnusedArgs, NewPredId, ProcId,
+    create_call_goal(UnusedArgs, NewPredId, ProcId,
         PredModuleName, NewPredName, OrigProcInfo, ExtraProc0),
 
     proc_info_get_headvars(OrigProcInfo, HeadVars0),
@@ -1274,11 +1274,11 @@ make_new_pred_info(_ModuleInfo, UnusedArgs, PredStatus, proc(PredId, ProcId),
     % Replace the goal in the procedure with one to call the given
     % pred_id and proc_id.
     %
-:- pred create_call_goal(module_info::in, list(int)::in,
+:- pred create_call_goal(list(int)::in,
     pred_id::in, proc_id::in, module_name::in, string::in,
     proc_info::in, proc_info::out) is det.
 
-create_call_goal(ModuleInfo, UnusedArgs, NewPredId, NewProcId,
+create_call_goal(UnusedArgs, NewPredId, NewProcId,
         PredModuleName, PredName, !OldProc) :-
     proc_info_get_headvars(!.OldProc, HeadVars),
     proc_info_get_goal(!.OldProc, Goal0),
@@ -1291,7 +1291,7 @@ create_call_goal(ModuleInfo, UnusedArgs, NewPredId, NewProcId,
     proc_info_interface_determinism(!.OldProc, Determinism),
     goal_info_set_determinism(Determinism, GoalInfo0, GoalInfo1),
 
-    proc_info_get_var_table(ModuleInfo, !.OldProc, VarTable0),
+    proc_info_get_var_table(!.OldProc, VarTable0),
     set.list_to_set(HeadVars, NonLocals),
     lookup_var_entries(VarTable0, HeadVars, HeadVarEntries),
     var_table_from_corresponding_lists(HeadVars, HeadVarEntries, VarTable1),
@@ -1430,7 +1430,7 @@ do_unused_args_fixup_proc(VarUsage, OldPredProcId, ProcCallInfo,
     map.keys(UsageInfos, UnusedVars),
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         PredInfo0, ProcInfo0),
-    proc_info_get_var_table(!.ModuleInfo, ProcInfo0, VarTable0),
+    proc_info_get_var_table(ProcInfo0, VarTable0),
     proc_info_get_headvars(ProcInfo0, HeadVars0),
     proc_info_get_argmodes(ProcInfo0, ArgModes0),
     proc_info_get_goal(ProcInfo0, Goal0),
@@ -2092,7 +2092,7 @@ write_var_usage(Stream, ModuleInfo, PredProcId - VarDepMap, !IO) :-
     io.format(Stream, "\n%s:\n", [s(PredProcIdStr)], !IO),
     map.to_assoc_list(VarDepMap, VarDepList),
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     list.foldl2(write_usage_info(Stream, ModuleInfo, VarTable), VarDepList,
         [], RevNoDependVars, !IO),
     list.reverse(RevNoDependVars, NoDependVars),
@@ -2144,7 +2144,7 @@ write_arg_var_in_proc(Stream, ModuleInfo, ArgVarInProc, !IO) :-
     ArgVarInProc = arg_var_in_proc(PredProcId, Var),
     PredProcIdStr = pred_proc_id_to_dev_string(ModuleInfo, PredProcId),
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     VarStr = mercury_var_to_string_src(vns_var_table(VarTable),
         print_name_and_num, Var),
     io.format(Stream, "%s: %s\n", [s(PredProcIdStr), s(VarStr)], !IO).

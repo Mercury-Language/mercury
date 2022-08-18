@@ -667,7 +667,7 @@ make_deep_original_body(ModuleInfo, ProcInfo, DeepOriginalBody) :-
     proc_info_get_goal(ProcInfo, Body),
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_initial_instmap(ModuleInfo, ProcInfo, Instmap),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
     (
         MaybeDetism = yes(Detism)
@@ -707,7 +707,7 @@ deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
 
     module_info_get_globals(ModuleInfo, Globals),
     some [!VarTable, !DeepInfo, !Goal] (
-        proc_info_get_var_table(ModuleInfo, !.ProcInfo, !:VarTable),
+        proc_info_get_var_table(!.ProcInfo, !:VarTable),
         proc_info_get_goal(!.ProcInfo, !:Goal),
         !.Goal = hlds_goal(_, GoalInfo0),
 
@@ -808,7 +808,7 @@ deep_prof_transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     Goal0 = hlds_goal(_, GoalInfo0),
-    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     generate_var_c_ptr("MiddleCSD", MiddleCSD, VarTable0, VarTable1),
 
     Context = goal_info_get_context(GoalInfo0),

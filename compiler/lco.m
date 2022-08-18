@@ -404,7 +404,7 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
         io.write_line(DebugStream, CurProc, !IO),
         io.flush_output(DebugStream, !IO)
     ),
-    proc_info_get_var_table(!.ModuleInfo, ProcInfo0, VarTable0),
+    proc_info_get_var_table(ProcInfo0, VarTable0),
     proc_info_get_headvars(ProcInfo0, HeadVars),
     proc_info_get_argmodes(ProcInfo0, ArgModes),
     arg_info.compute_in_and_out_vars(!.ModuleInfo, VarTable0,
@@ -671,7 +671,7 @@ potentially_transformable_recursive_call(Info, ConstInfo, Goal, OutArgs) :-
 
     ModuleInfo = Info ^ lco_module_info,
     ProcInfo = ConstInfo ^ lci_cur_proc_proc,
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
 
     module_info_proc_info(ModuleInfo, PredId, ProcId, CalleeProcInfo),
     proc_info_get_argmodes(CalleeProcInfo, CalleeArgModes),
@@ -798,7 +798,7 @@ acceptable_construct_unification(ConstInfo, DelayForVars, Goal,
         bag.insert_list(ConstructArgVars, !UnifyInputVars),
         trace [compiletime(flag("lco")), io(!IO)] (
             ProcInfo = ConstInfo ^ lci_cur_proc_proc,
-            proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+            proc_info_get_var_table(ProcInfo, VarTable),
             VarNameSrc = vns_var_table(VarTable),
             ConstructedVarStr =
                 mercury_var_to_string_src(VarNameSrc, print_name_and_num,
@@ -922,7 +922,7 @@ transform_call_and_unifies(CallGoal, CallOutArgVars, UnifyGoals,
         ensure_variant_exists(PredId, ProcId, VariantArgs,
             VariantPredProcId, VariantSymName, !Info)
     then
-        proc_info_get_var_table(ModuleInfo, CurProcInfo, CurProcVarTable),
+        proc_info_get_var_table(CurProcInfo, CurProcVarTable),
         module_info_proc_info(ModuleInfo, PredId, ProcId, CalleeProcInfo),
         proc_info_get_argmodes(CalleeProcInfo, CalleeModes),
         update_call_args(ModuleInfo, CurProcVarTable, CalleeModes, ArgVars,
@@ -1410,7 +1410,7 @@ update_variant_pred_info(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
         VariantProcInfo, !ModuleInfo),
 
     proc_info_get_headvars(VariantProcInfo, HeadVars),
-    proc_info_get_var_table(!.ModuleInfo, VariantProcInfo, VarTable),
+    proc_info_get_var_table(VariantProcInfo, VarTable),
     lookup_var_types(VarTable, HeadVars, ArgTypes),
 
     some [!VariantPredInfo] (
@@ -1436,7 +1436,7 @@ update_variant_pred_info(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
 lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
         !:VariantProcInfo, !ModuleInfo) :-
     !:VariantProcInfo = ProcInfo,
-    proc_info_get_var_table(!.ModuleInfo, ProcInfo, VarTable0),
+    proc_info_get_var_table(ProcInfo, VarTable0),
     proc_info_get_headvars(ProcInfo, HeadVars0),
     proc_info_get_argmodes(ProcInfo, ArgModes0),
     make_addr_vars(!.ModuleInfo, 1, HeadVars0, HeadVars, ArgModes0, ArgModes,
@@ -1831,7 +1831,7 @@ lco_transform_variant_plain_call(ModuleInfo, Transforms, VariantMap, VarToAddr,
         CallPredProcId = proc(CallPredId, CallProcId),
         module_info_proc_info(ModuleInfo, CallPredId, CallProcId,
             CalleeProcInfo),
-        proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
+        proc_info_get_var_table(!.ProcInfo, VarTable),
         proc_info_get_argmodes(CalleeProcInfo, CalleeArgModes),
         ( if
             multi_map.search(VariantMap, CallPredProcId, ExistingVariantIds),
@@ -1952,7 +1952,7 @@ make_store_goal(ModuleInfo, InstMap, GroundVar - StoreTarget, Goal,
         % High-level data.
         MaybeFieldId = yes(field_id(AddrVarType, ConsId, ArgNum)),
         get_cons_id_arg_types(ModuleInfo, AddrVarType, ConsId, ArgTypes),
-        make_unification_args(GroundVar, ArgNum, 1, ArgTypes,
+        make_unification_args(ModuleInfo, GroundVar, ArgNum, 1, ArgTypes,
             ArgVars, ArgModes, !ProcInfo),
 
         RHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars),
@@ -1976,11 +1976,11 @@ make_store_goal(ModuleInfo, InstMap, GroundVar - StoreTarget, Goal,
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ).
 
-:- pred make_unification_args(prog_var::in, int::in, int::in,
+:- pred make_unification_args(module_info::in, prog_var::in, int::in, int::in,
     list(mer_type)::in, list(prog_var)::out, list(unify_mode)::out,
     proc_info::in, proc_info::out) is det.
 
-make_unification_args(GroundVar, TargetArgNum, CurArgNum, ArgTypes,
+make_unification_args(ModuleInfo, GroundVar, TargetArgNum, CurArgNum, ArgTypes,
         ArgVars, ArgModes, !ProcInfo) :-
     (
         ArgTypes = [],
@@ -1988,26 +1988,29 @@ make_unification_args(GroundVar, TargetArgNum, CurArgNum, ArgTypes,
         ArgModes = []
     ;
         ArgTypes = [ArgType | ArgTypesTail],
-        make_unification_args(GroundVar, TargetArgNum, CurArgNum + 1,
-            ArgTypesTail, ArgVarsTail, ArgModesTail, !ProcInfo),
-        make_unification_arg(GroundVar, TargetArgNum, CurArgNum,
-            ArgType, Var, ArgMode, !ProcInfo),
+        make_unification_args(ModuleInfo, GroundVar, TargetArgNum,
+            CurArgNum + 1, ArgTypesTail, ArgVarsTail, ArgModesTail, !ProcInfo),
+        make_unification_arg(ModuleInfo, GroundVar, TargetArgNum,
+            CurArgNum, ArgType, Var, ArgMode, !ProcInfo),
         ArgVars = [Var | ArgVarsTail],
         ArgModes = [ArgMode | ArgModesTail]
     ).
 
-:- pred make_unification_arg(prog_var::in, int::in, int::in, mer_type::in,
-    prog_var::out, unify_mode::out, proc_info::in, proc_info::out) is det.
+:- pred make_unification_arg(module_info::in, prog_var::in, int::in, int::in,
+    mer_type::in, prog_var::out, unify_mode::out,
+    proc_info::in, proc_info::out) is det.
 
-make_unification_arg(GroundVar, TargetArgNum, CurArgNum, ArgType,
-        Var, UnifyMode, !ProcInfo) :-
+make_unification_arg(ModuleInfo, GroundVar, TargetArgNum, CurArgNum,
+        ArgType, Var, UnifyMode, !ProcInfo) :-
     ( if CurArgNum = TargetArgNum then
         Var = GroundVar,
         UnifyMode = unify_modes_li_lf_ri_rf(free_inst, ground_inst,
             ground_inst, ground_inst)
     else
         % Bind other arguments to fresh variables.
-        proc_info_create_var_from_type(ArgType, no, Var, !ProcInfo),
+        ArgTypeIsDummy = is_type_a_dummy(ModuleInfo, ArgType),
+        proc_info_create_var_from_type("", ArgType, ArgTypeIsDummy,
+            Var, !ProcInfo),
         UnifyMode = unify_modes_li_lf_ri_rf(ground_inst, ground_inst,
             free_inst, ground_inst)
     ).

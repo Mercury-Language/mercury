@@ -256,7 +256,7 @@ init_opt_stack_alloc = opt_stack_alloc(set_of_var.init).
 optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
         PredIdInt) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     OptAlloc = opt_stack_alloc(ParConjOwnSlot),
     arg_info.partition_proc_args(ModuleInfo, !.ProcInfo,
         InputArgs, OutputArgs, UnusedArgs),
@@ -1047,7 +1047,7 @@ maybe_write_progress_message(ModuleInfo, ProcInfo, PredIdInt, DebugStackOpt,
         Message, !IO) :-
     ( if DebugStackOpt = PredIdInt then
         proc_info_get_goal(ProcInfo, Goal),
-        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        proc_info_get_var_table(ProcInfo, VarTable),
         module_info_get_globals(ModuleInfo, Globals),
         io.output_stream(Stream, !IO),
         io.write_string(Stream, Message, !IO),

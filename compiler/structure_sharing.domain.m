@@ -467,7 +467,7 @@ sharing_as_comb(ModuleInfo, ProcInfo, NewSharing, OldSharing) =
 
 add_unify_sharing(ModuleInfo, ProcInfo, Unification, GoalInfo, OldSharing)
         = NewSharing :-
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     UnifSharing = sharing_from_unification(ModuleInfo, ProcInfo, VarTable,
         Unification, GoalInfo),
     ResultSharing = sharing_as_comb(ModuleInfo, ProcInfo,
@@ -560,7 +560,7 @@ number_args(Args, NumberedArgs) :-
     sharing_set::in, sharing_set::out) is det.
 
 add_var_arg_sharing(ModuleInfo, ProcInfo, Var, ConsId, N - Arg, !Sharing) :-
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     ( if var_needs_sharing_analysis(ModuleInfo, VarTable, Arg) then
         Data1 = datastruct_init_with_pos(Var, ConsId, N),
         Data2 = datastruct_init(Arg),
@@ -643,7 +643,7 @@ add_foreign_proc_sharing(ModuleInfo, PredInfo, ProcInfo, ForeignPPId,
         Attributes, ForeignPPId, GoalContext),
 
     ActualVars = list.map(foreign_arg_var, Args),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     lookup_var_types(VarTable, ActualVars, ActualTypes),
     pred_info_get_typevarset(PredInfo, CallerTypeVarSet),
     pred_info_get_external_type_params(PredInfo, CallerExternalTypeParams),
@@ -784,7 +784,7 @@ extend_datastruct(ModuleInfo, ProcInfo, SharingAs, Datastruct)
 
 extend_datastructs(ModuleInfo, ProcInfo, SharingAs, Datastructs)
         = ExtendedDatastructs :-
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     DataLists = list.map(extend_datastruct(ModuleInfo, ProcInfo,
         SharingAs), Datastructs),
     ExtendedDatastructs = list.foldl(
@@ -862,7 +862,7 @@ lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable,
     lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, FormalSharing,
         _Status, _IsPredicted),
 
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     lookup_var_types(VarTable, ActualVars, ActualTypes),
 
     pred_info_get_typevarset(PredInfo, CallerTypeVarSet),
@@ -954,7 +954,7 @@ bottom_sharing_is_safe_approximation(ModuleInfo, PredInfo, ProcInfo) :-
     ;
         proc_info_get_headvars(ProcInfo, HeadVars),
         proc_info_get_argmodes(ProcInfo, Modes),
-        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        proc_info_get_var_table(ProcInfo, VarTable),
         lookup_var_types(VarTable, HeadVars, Types),
         bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes, Types)
     ).
@@ -1219,7 +1219,7 @@ sharing_set_extend_datastruct(ModuleInfo, ProcInfo, Datastruct, SharingSet)
     ( if map.search(SharingMap, Var, SelectorSet) then
         % The type of the variable is needed to be able to compare
         % datastructures.
-        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        proc_info_get_var_table(ProcInfo, VarTable),
         lookup_var_type(VarTable, Var, VarType),
         Datastructures = selector_sharing_set_extend_datastruct(ModuleInfo,
             VarTable, VarType, Selector, SelectorSet)
@@ -1267,7 +1267,7 @@ from_sharing_pair_list(SharingPairs) = SharingSet :-
 new_entry(ModuleInfo, ProcInfo, SharingPair0, !SharingSet) :-
     SharingPair0 = DataX0 - DataY0,
     % Normalize the sharing pair before doing anything.
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     DataX = normalize_datastruct(ModuleInfo, VarTable, DataX0),
     DataY = normalize_datastruct(ModuleInfo, VarTable, DataY0),
     SharingPair = DataX - DataY,
@@ -1418,7 +1418,7 @@ sharing_set_altclos_2(ModuleInfo, ProcInfo, NewSharingSet, OldSharingSet)
     map.select(NewMap, CommonVarsSet, NewMap1),
     map.select(OldMap, CommonVarsSet, OldMap1),
 
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     % for each common var V, compute the sharing pairs A-B, such that
     % \exists X where var(X) = V, and X-A \in NewSharingSet, and X-B \in
     % OldSharingSet.
@@ -1515,7 +1515,7 @@ sharing_set_subsumes_sharing_pair(ModuleInfo, ProcInfo, SharingSet,
         check_normalized(ModuleInfo, Type2, Sel2)
     ),
 
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     lookup_var_type(VarTable, Var1, Type1),
     lookup_var_type(VarTable, Var2, Type2),
 

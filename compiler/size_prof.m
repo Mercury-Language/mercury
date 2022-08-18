@@ -236,7 +236,7 @@ size_prof_process_proc(Transform, proc(PredId, ProcId), !ProcInfo,
     simplify_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo, !ProcInfo),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     % The with_types are needed to avoid a combinatorial explosion

@@ -782,7 +782,7 @@ gather_pragma_structure_sharing_for_proc(ModuleInfo, OrderPredInfo,
         proc_info_get_structure_sharing(ProcInfo, MaybeSharingStatus),
         MaybeSharingStatus = yes(SharingStatus)
     then
-        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        proc_info_get_var_table(ProcInfo, VarTable),
         split_var_table(VarTable, VarSet, _VarTypes),
         pred_info_get_typevarset(PredInfo, TypeVarSet),
         ModuleName = pred_info_module(PredInfo),
@@ -833,7 +833,7 @@ gather_pragma_structure_reuse_for_proc(ModuleInfo, OrderPredInfo,
         proc_info_get_structure_reuse(ProcInfo, MaybeStructureReuseDomain),
         MaybeStructureReuseDomain = yes(StructureReuseDomain)
     then
-        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        proc_info_get_var_table(ProcInfo, VarTable),
         split_var_table(VarTable, VarSet, _VarTypes),
         pred_info_get_typevarset(PredInfo, TypeVarSet),
         ModuleName = pred_info_module(PredInfo),

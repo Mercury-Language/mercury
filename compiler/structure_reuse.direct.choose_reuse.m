@@ -167,7 +167,7 @@ determine_reuse(ModuleInfo, ProcInfo, DeadCellTable, !Goal, ReuseAs) :-
     background_info.
 
 background_info_init(Strategy, ModuleInfo, ProcInfo) = Background :-
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     Background = background(Strategy, ModuleInfo, ProcInfo, VarTable).
 
 %---------------------------------------------------------------------------%

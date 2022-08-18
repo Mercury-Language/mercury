@@ -422,7 +422,7 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     pred_info_get_proc_table(!.PredInfo, Procs0),
     map.lookup(Procs0, ProcId, ProcInfo0),
     proc_info_get_goal(ProcInfo0, Goal0),
-    proc_info_get_var_table(ModuleInfo, ProcInfo0, VarTable0),
+    proc_info_get_var_table(ProcInfo0, VarTable0),
     PurityInfo0 = purity_info(ModuleInfo, do_not_run_post_typecheck_tasks,
         do_not_need_to_requantify, have_not_converted_unify, !.PredInfo,
         VarTable0, []),

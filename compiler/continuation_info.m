@@ -381,15 +381,15 @@
 
     % Generate the layout information we need for the return point of a call.
     %
-:- pred cont_info_generate_return_live_lvalues(module_info::in, globals::in,
-    proc_info::in, eff_trace_level::in, assoc_list(prog_var, arg_loc)::in,
+:- pred cont_info_generate_return_live_lvalues(globals::in, proc_info::in,
+    eff_trace_level::in, assoc_list(prog_var, arg_loc)::in,
     instmap::in, list(prog_var)::in, map(prog_var, set(lval))::in,
     assoc_list(lval, slot_contents)::in, bool::in, list(liveinfo)::out) is det.
 
     % Generate the layout information we need for a resumption point,
     % a label where forward execution can restart after backtracking.
     %
-:- pred generate_resume_layout(module_info::in, proc_info::in, instmap::in,
+:- pred generate_resume_layout(proc_info::in, instmap::in,
     map(prog_var, set(lval))::in, assoc_list(lval, slot_contents)::in,
     layout_label_info::out) is det.
 
@@ -602,7 +602,7 @@ some_arg_is_higher_order(PredInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-cont_info_generate_return_live_lvalues(ModuleInfo, Globals, ProcInfo,
+cont_info_generate_return_live_lvalues(Globals, ProcInfo,
         EffTraceLevel, OutputArgLocs, ReturnInstMap, Vars, VarLocs, Temps,
         OkToDeleteAny, LiveLvalues) :-
     globals.want_return_var_layouts(Globals, EffTraceLevel,
@@ -610,7 +610,7 @@ cont_info_generate_return_live_lvalues(ModuleInfo, Globals, ProcInfo,
     proc_info_get_stack_slots(ProcInfo, StackSlots),
     find_return_var_lvals(StackSlots, OkToDeleteAny, OutputArgLocs,
         Vars, VarLvals),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     generate_var_live_lvalues(VarTable, RttiVarMaps, WantReturnVarLayout,
         ReturnInstMap, VarLocs, VarLvals, VarLiveLvalues),
@@ -678,11 +678,10 @@ generate_var_live_lvalues(VarTable, RttiVarMaps, WantReturnVarLayout,
 
 %---------------------------------------------------------------------------%
 
-generate_resume_layout(ModuleInfo, ProcInfo, InstMap, ResumeMap, Temps,
-        Layout) :-
+generate_resume_layout(ProcInfo, InstMap, ResumeMap, Temps, Layout) :-
     map.to_assoc_list(ResumeMap, ResumeList),
     set.init(TVars0),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     generate_resume_layout_for_vars(VarTable, InstMap, ResumeList,
         [], VarInfos, TVars0, TVars),
@@ -792,7 +791,7 @@ generate_closure_layout(ModuleInfo, PredId, ProcId, ClosureLayout) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, use_float_registers, UseFloatRegs),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_arg_info(ProcInfo, ArgInfos),

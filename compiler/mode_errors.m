@@ -1700,7 +1700,7 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
         % we are modechecking now.
         module_info_proc_info(ModuleInfo, CalleePredId, CalleeProcId,
             CalleeProcInfo),
-        proc_info_get_var_table(ModuleInfo, CalleeProcInfo, CalleeVarTable),
+        proc_info_get_var_table(CalleeProcInfo, CalleeVarTable),
         mode_info_set_var_table(CalleeVarTable, !ModeInfo),
         CalleeModeErrorSpec0 = mode_error_to_spec(!.ModeInfo, CalleeModeError),
         module_info_get_globals(ModuleInfo, Globals),

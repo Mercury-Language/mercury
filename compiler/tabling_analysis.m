@@ -293,7 +293,7 @@ check_proc_for_mm_tabling(SCC, PPId, !Results, !ModuleInfo) :-
         ; EvalMethod = eval_tabled(tabled_io(_, _))
         ),
         proc_info_get_goal(ProcInfo, Body),
-        proc_info_get_var_table(!.ModuleInfo, ProcInfo, VarTable),
+        proc_info_get_var_table(ProcInfo, VarTable),
         check_goal_for_mm_tabling(SCC, VarTable, Body, Result,
             MaybeAnalysisStatus, !ModuleInfo)
     ),
@@ -571,7 +571,7 @@ mm_tabling_annotate_proc(PPId, !ModuleInfo) :-
     some [!ProcInfo, !Body] (
         module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, !:ProcInfo),
         proc_info_get_goal(!.ProcInfo, !:Body),
-        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
+        proc_info_get_var_table(!.ProcInfo, VarTable),
         mm_tabling_annotate_goal(VarTable, !Body, _Status, !ModuleInfo),
         proc_info_set_goal(!.Body, !ProcInfo),
         module_info_set_pred_proc_info(PPId, PredInfo, !.ProcInfo, !ModuleInfo)

@@ -86,7 +86,7 @@
             ).
 
 fill_goal_id_slots_in_proc(ModuleInfo, ContainingGoalMap, !ProcInfo) :-
-    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
+    proc_info_get_var_table(!.ProcInfo, VarTable),
     proc_info_get_goal(!.ProcInfo, Goal0),
     fill_goal_id_slots_in_proc_body(ModuleInfo, VarTable, ContainingGoalMap,
         Goal0, Goal),
@@ -327,7 +327,7 @@ fill_orelse_id_slots(SlotInfo, GoalId, LastOrElseNum, !GoalNumCounter,
 %-----------------------------------------------------------------------------%
 
 fill_goal_path_slots_in_proc(ModuleInfo, !ProcInfo) :-
-    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
+    proc_info_get_var_table(!.ProcInfo, VarTable),
     SlotInfo = slot_info(ModuleInfo, VarTable),
     proc_info_get_goal(!.ProcInfo, Goal0),
     fill_goal_path_slots(rgp_nil, SlotInfo, Goal0, Goal),

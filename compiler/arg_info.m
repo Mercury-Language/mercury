@@ -608,7 +608,7 @@ partition_args([Var - ArgInfo | VarsArgInfos], !:Ins, !:Outs, !:Unuseds) :-
 partition_proc_args(ModuleInfo, ProcInfo, Inputs, Outputs, Unuseds) :-
     proc_info_get_headvars(ProcInfo, Vars),
     proc_info_get_argmodes(ProcInfo, Modes),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     lookup_var_types(VarTable, Vars, Types),
     do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         Inputs, Outputs, Unuseds).

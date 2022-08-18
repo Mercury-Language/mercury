@@ -152,6 +152,7 @@
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.purity.
 :- import_module check_hlds.recompute_instmap_deltas.
+:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.mark_tail_calls.
@@ -700,7 +701,7 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
         pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
 
         proc_info_get_goal(!.ProcInfo, Goal0),
-        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTypes0),
+        proc_info_get_var_table(!.ProcInfo, VarTypes0),
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
 
         InlineInfo0 = inline_info(!.ModuleInfo, VarThresh, HighLevelCode,
@@ -909,7 +910,7 @@ inlining_in_call(GoalExpr0, GoalInfo0, Goal, !Info) :-
             var_table_count(VarTable0, NumVarsInVarTable),
 
             % We need to find out how many variables the Callee has.
-            proc_info_get_var_table(ModuleInfo, ProcInfo, CalleeVarTable),
+            proc_info_get_var_table(ProcInfo, CalleeVarTable),
             var_table_count(CalleeVarTable, NumVarsInCallee),
             TotalNumVars = NumVarsInVarTable + NumVarsInCallee,
             TotalNumVars =< VarThresh
@@ -1014,7 +1015,7 @@ do_inline_call(ModuleInfo, ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
 
     pred_info_get_typevarset(PredInfo, CalleeTypeVarSet),
     proc_info_get_headvars(ProcInfo, HeadVars),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, CalleeVarTable0),
+    proc_info_get_var_table(ProcInfo, CalleeVarTable0),
     proc_info_get_rtti_varmaps(ProcInfo, CalleeRttiVarMaps0),
 
     % Substitute the appropriate types into the type mapping of the called
@@ -1055,7 +1056,8 @@ do_inline_call(ModuleInfo, ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
         ExternalTypeParams, CalleeExistQVars, TypeSubn),
 
     % Update types in the callee.
-    apply_rec_subst_to_var_table(TypeSubn, CalleeVarTable1, CalleeVarTable),
+    apply_rec_subst_to_var_table(is_type_a_dummy(ModuleInfo), TypeSubn,
+        CalleeVarTable1, CalleeVarTable),
     % Handle the common case of non-existentially typed preds specially,
     % since we can do things more efficiently in that case.
     (
@@ -1064,7 +1066,8 @@ do_inline_call(ModuleInfo, ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
     ;
         CalleeExistQVars = [_ | _],
         % Update types in the caller.
-        apply_rec_subst_to_var_table(TypeSubn, VarTable0, VarTable1)
+        apply_rec_subst_to_var_table(is_type_a_dummy(ModuleInfo), TypeSubn,
+            VarTable0, VarTable1)
     ),
 
     % Now rename apart the variables in the called goal.

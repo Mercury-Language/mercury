@@ -9,6 +9,7 @@
 :- module hlds.default_func_mode.
 :- interface.
 
+:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
 
@@ -21,11 +22,11 @@
     % a default mode of `:- mode foo(in, in, ..., in) = out is det.'
     % for functions that don't have an explicit mode declaration.
     %
-:- pred maybe_add_default_func_modes(list(pred_id)::in,
+:- pred maybe_add_default_func_modes(module_info::in, list(pred_id)::in,
     pred_id_table::in, pred_id_table::out) is det.
 
-:- pred maybe_add_default_func_mode(pred_info::in, pred_info::out,
-    maybe(proc_id)::out) is det.
+:- pred maybe_add_default_func_mode(module_info::in,
+    pred_info::in, pred_info::out, maybe(proc_id)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -46,20 +47,20 @@
 
 %-----------------------------------------------------------------------------%
 
-maybe_add_default_func_modes([], !PredTable).
-maybe_add_default_func_modes([PredId | PredIds], !PredTable) :-
+maybe_add_default_func_modes(_, [], !PredTable).
+maybe_add_default_func_modes(ModuleInfo, [PredId | PredIds], !PredTable) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
-    maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeNewProcId),
+    maybe_add_default_func_mode(ModuleInfo, PredInfo0, PredInfo,
+        MaybeNewProcId),
     (
         MaybeNewProcId = no
     ;
         MaybeNewProcId = yes(_),
         map.det_update(PredId, PredInfo, !PredTable)
     ),
+    maybe_add_default_func_modes(ModuleInfo, PredIds, !PredTable).
 
-    maybe_add_default_func_modes(PredIds, !PredTable).
-
-maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
+maybe_add_default_func_mode(ModuleInfo, PredInfo0, PredInfo, MaybeProcId) :-
     pred_info_get_proc_table(PredInfo0, Procs0),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
     ( if
@@ -89,7 +90,7 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
         varset.init(InstVarSet),
         % Before the simplification pass, HasParallelConj is not meaningful.
         HasParallelConj = has_no_parallel_conj,
-        add_new_proc(Context, SeqNum, PredArity,
+        add_new_proc(ModuleInfo, Context, SeqNum,
             InstVarSet, PredArgModes, yes(PredArgModes),
             MaybePredArgLives, detism_decl_implicit, yes(Determinism),
             address_is_not_taken, HasParallelConj,

@@ -108,7 +108,7 @@ intra_proc_rpta_proc(ModuleInfo, PredId, ProcId, !InfoTable) :-
         true
     else
         module_info_proc_info(ModuleInfo, PPId, ProcInfo),
-        RptaInfo0 = rpta_info_init(ModuleInfo, ProcInfo),
+        RptaInfo0 = rpta_info_init(ProcInfo),
         proc_info_get_goal(ProcInfo, Goal),
         intra_analyse_goal(Goal, RptaInfo0, RptaInfo),
         rpta_info_table_set_rpta_info(PPId, RptaInfo, !InfoTable)

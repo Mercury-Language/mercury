@@ -23,15 +23,13 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.set_of_var.
 
 %-----------------------------------------------------------------------------%
 
-:- pred forward_use_information(module_info::in,
-    proc_info::in, proc_info::out) is det.
+:- pred forward_use_information(proc_info::in, proc_info::out) is det.
 
     % add_vars_to_lfu(Vars, !ProcInfo).
     %
@@ -58,8 +56,8 @@
 
 %-----------------------------------------------------------------------------%
 
-forward_use_information(ModuleInfo, !ProcInfo) :-
-    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
+forward_use_information(!ProcInfo) :-
+    proc_info_get_var_table(!.ProcInfo, VarTable),
     proc_info_get_goal(!.ProcInfo, Goal0),
 
     % Set of variables initially instantiated.

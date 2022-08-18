@@ -83,7 +83,7 @@
 
 add_heap_ops(ModuleInfo0, !ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_var_table(ModuleInfo0, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     TrailOpsInfo0 = heap_ops_info(ModuleInfo0, VarTable0),
     goal_add_heap_ops(Goal0, Goal, TrailOpsInfo0, TrailOpsInfo),
     TrailOpsInfo = heap_ops_info(_, VarTable),

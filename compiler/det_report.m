@@ -255,7 +255,7 @@ check_determinism_of_pred(PredProcId, !ModuleInfo, !Specs) :-
             ; Cmp = first_detism_incomparable
             ),
             proc_info_get_goal(ProcInfo, Goal),
-            proc_info_get_var_table(!.ModuleInfo, ProcInfo, VarTable),
+            proc_info_get_var_table(ProcInfo, VarTable),
             proc_info_get_initial_instmap(!.ModuleInfo, ProcInfo, InstMap0),
             det_info_init(!.ModuleInfo, PredProcId, VarTable,
                 pess_extra_vars_report, [], DetInfo0),
@@ -359,7 +359,7 @@ make_reqscope_checks_if_needed(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         )
     then
         proc_info_get_goal(ProcInfo, Goal),
-        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        proc_info_get_var_table(ProcInfo, VarTable),
         proc_info_get_initial_instmap(ModuleInfo, ProcInfo, InstMap0),
         det_info_init(ModuleInfo, PredProcId, VarTable,
             pess_extra_vars_ignore, [], DetInfo0),

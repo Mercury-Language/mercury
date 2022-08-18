@@ -245,6 +245,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.type_util.
 :- import_module hlds.status.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -407,7 +408,7 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
 
     % SimplifyTasks
     % ModuleInfo
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     RerunQuant = do_not_rerun_quant_instmap_deltas,
     RerunDet = do_not_rerun_det,
 
@@ -452,9 +453,11 @@ simplify_info_incr_cost_delta(Incr, !Info) :-
 
 simplify_info_apply_substitutions_and_duplicate(ToVar, FromVar, TSubst,
         !Info) :-
+    simplify_info_get_module_info(!.Info, ModuleInfo),
     simplify_info_get_var_table(!.Info, VarTable0),
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-    apply_rec_subst_to_var_table(TSubst, VarTable0, VarTable),
+    apply_rec_subst_to_var_table(is_type_a_dummy(ModuleInfo), TSubst,
+        VarTable0, VarTable),
     Renaming = map.singleton(ToVar, FromVar),
     apply_substitutions_to_rtti_varmaps(map.init, TSubst, Renaming,
         RttiVarMaps0, RttiVarMaps1),

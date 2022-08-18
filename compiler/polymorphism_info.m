@@ -327,7 +327,7 @@ create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
     pred_info_get_tvar_kind_map(PredInfo, TypeVarKinds),
     pred_info_get_constraint_proof_map(PredInfo, ProofMap),
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     map.init(TypeInfoVarMap),
     map.init(TypeClassInfoMap),

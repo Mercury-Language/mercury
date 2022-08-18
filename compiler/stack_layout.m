@@ -1203,8 +1203,8 @@ encode_exec_trace_flags(ModuleInfo, VarTable, HeadVars, ArgModes, !:Flags) :-
     % look for the reference to this function.
     !:Flags = 0,
     ( if
-        proc_info_has_io_state_pair_from_details(ModuleInfo,
-            vts_var_table(VarTable), HeadVars, ArgModes, _, _)
+        proc_info_has_io_state_pair_from_details(ModuleInfo, VarTable,
+            HeadVars, ArgModes, _, _)
     then
         !:Flags = !.Flags + 1
     else

@@ -214,7 +214,7 @@ term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
 
     module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, ProcInfo),
     pred_info_get_context(PredInfo, Context),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     proc_info_get_headvars(ProcInfo, HeadProgVars),
     proc_info_get_argmodes(ProcInfo, ArgModes0),
     proc_info_get_goal(ProcInfo, Goal0),

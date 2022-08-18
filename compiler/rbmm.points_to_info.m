@@ -19,7 +19,6 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.smm_common.
@@ -45,7 +44,7 @@
     % the alpha mapping is empty and the rpt graph contains all the nodes
     % corresponding to all the variables appear in the procedure.
     %
-:- func rpta_info_init(module_info, proc_info) = rpta_info.
+:- func rpta_info_init(proc_info) = rpta_info.
 
 :- pred rpta_info_equal(rpta_info::in, rpta_info::in) is semidet.
 
@@ -87,8 +86,8 @@ rpta_info_table_search_rpta_info(PredProcId, Table) = RptaInfo :-
 rpta_info_table_set_rpta_info(PredProcId, RptaInfo, !Table) :-
     !Table ^ elem(PredProcId) := RptaInfo.
 
-rpta_info_init(ModuleInfo, ProcInfo) = RptaInfo :-
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+rpta_info_init(ProcInfo) = RptaInfo :-
+    proc_info_get_var_table(ProcInfo, VarTable),
     var_table_vars(VarTable, Vars),
     list.foldl2(add_node_from_var(VarTable), Vars, 1, _Reg,
         rpt_graph_init, Graph),

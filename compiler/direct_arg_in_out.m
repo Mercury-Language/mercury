@@ -702,7 +702,7 @@ make_direct_arg_in_out_clone(PredProcId, OoMInOutArgs, ProcInOut,
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ),
 
-    proc_prepare_to_clone(ProcInfo, HeadVars, Goal, VarSet, VarTypes,
+    proc_prepare_to_clone(ProcInfo, HeadVars, Goal, VarTable,
         RttiVarMaps, InstVarSet, DeclaredModes, Modes, _MaybeArgLives,
         MaybeDeclaredDetism, Detism, EvalMethod, _ModeErrors,
         MainContext, ItemNumber, CanProcess, _MaybeHeadModesConstr,
@@ -724,11 +724,9 @@ make_direct_arg_in_out_clone(PredProcId, OoMInOutArgs, ProcInOut,
         InstGraphInfo, ArgModesMaps, PredVarNameRemap, Assertions,
         ObsoleteInFavourOf, InstanceMethodArgTypes),
     OoMInOutArgs = one_or_more(HeadArgPos, TailArgPosns),
-    make_var_table(!.ModuleInfo, VarSet, VarTypes, VarTable),
     clone_daio_pred_proc_args(!.ModuleInfo, 1, HeadArgPos, TailArgPosns,
         ArgTypes, HeadVars, Modes, CloneArgTypes, CloneHeadVars, CloneModes,
         VarTable, CloneVarTable),
-    split_var_table(CloneVarTable, CloneVarSet, CloneVarTypes),
     (
         DeclaredModes = maybe.no,
         CloneDeclaredModes = maybe.no
@@ -742,7 +740,7 @@ make_direct_arg_in_out_clone(PredProcId, OoMInOutArgs, ProcInOut,
     CloneDetismDecl = detism_decl_none,
     CloneCseNopullContexts = [],            % All users of this field have run.
     CloneStateVarWarnings = [],             % All users of this field have run.
-    proc_create(CloneHeadVars, Goal, CloneVarSet, CloneVarTypes,
+    proc_create(CloneHeadVars, Goal, CloneVarTable,
         RttiVarMaps, InstVarSet, CloneDeclaredModes, CloneModes,
         CloneMaybeArgLives, MaybeDeclaredDetism, Detism, EvalMethod,
         CloneModeErrors, MainContext, ItemNumber, CanProcess,
@@ -996,7 +994,7 @@ transform_direct_arg_in_out_calls_in_proc(DirectArgProcMap,
                 "Direct arg in out transforming", PredId, ProcId, !IO)
         )
     ),
-    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     proc_info_get_goal(!.ProcInfo, Goal0),
     module_info_get_name(!.ModuleInfo, ModuleName),
     trace [compile_time(flag("daio-debug")), io(!IO)] (

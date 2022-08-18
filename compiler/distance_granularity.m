@@ -146,6 +146,7 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
@@ -419,8 +420,8 @@ apply_dg_to_plain_call(!GoalExpr, CallerPredId, PredIdSpecialized,
         ;
             !.MaybeGranularityVar = no,
             % Add the variable Granularity to ProcInfo.
-            proc_info_create_var_from_type(int_type, no, GranularityVar,
-                !ProcInfo),
+            proc_info_create_var_from_type("", int_type, is_not_dummy_type,
+                GranularityVar, !ProcInfo),
             !:MaybeGranularityVar = yes(GranularityVar),
 
             % XXX Check if the int module is imported (that is why
@@ -491,7 +492,8 @@ apply_dg_to_conj([Goal0 | Goals], !GoalsAcc, CallerPredId, CallerProcId,
 create_if_then_else_goal(GoalsInConj, ConjInfo, MaybeGranularityVar,
         PredIdSpecialized, CallerProcId, Distance, IfThenElseGoal, !ProcInfo,
         ModuleInfo) :-
-    proc_info_create_var_from_type(int_type, no, Var, !ProcInfo),
+    proc_info_create_var_from_type("", int_type, is_not_dummy_type, Var,
+        !ProcInfo),
     make_int_const_construction(term.context_init, Var, 0, UnifyGoal),
     (
         MaybeGranularityVar = yes(GranularityVar),
@@ -564,8 +566,8 @@ apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     % That is a recursive plain call.
 
                     % Create granularity variable containing value Distance.
-                    proc_info_create_var_from_type(int_type, no,
-                        Var, !ProcInfo),
+                    proc_info_create_var_from_type("", int_type,
+                        is_not_dummy_type, Var, !ProcInfo),
                     make_int_const_construction(term.context_init,
                         Var, Distance, UnifyGoal),
 
@@ -677,15 +679,15 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     % That is a recursive plain call.
 
                     % Create an int variable containing the value 1.
-                    proc_info_create_var_from_type(int_type, no,
-                        Var, !ProcInfo),
+                    proc_info_create_var_from_type("", int_type,
+                        is_not_dummy_type, Var, !ProcInfo),
                     make_int_const_construction(term.context_init,
                         Var, 1, UnifyGoal),
 
                     % Create a variable which will contain the decremented
                     % granularity distance.
-                    proc_info_create_var_from_type(int_type, no,
-                        VarResult, !ProcInfo),
+                    proc_info_create_var_from_type("", int_type,
+                        is_not_dummy_type, VarResult, !ProcInfo),
 
                     % Decrement GranularityVar before the call.
                     lookup_builtin_pred_proc_id(ModuleInfo,
@@ -956,7 +958,8 @@ update_original_predicate_plain_call(!Goal, CallerPredId, CallerProcId,
 
         % Create the int variable which will be used as the last argument of
         % the call.
-        proc_info_create_var_from_type(int_type, no, Var, !ProcInfo),
+        proc_info_create_var_from_type("", int_type, is_not_dummy_type, Var,
+            !ProcInfo),
         make_int_const_construction(term.context_init,
             Var, Distance, UnifyGoal),
         list.append(CallArgs0, [Var], CallArgs),

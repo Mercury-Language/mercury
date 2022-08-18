@@ -98,7 +98,7 @@
 
 find_input_output_args(ModuleInfo, CalleeProcInfo, Inputs, Outputs) :-
     proc_info_get_headvars(CalleeProcInfo, ArgVars),
-    proc_info_get_var_table(ModuleInfo, CalleeProcInfo, VarTable),
+    proc_info_get_var_table(CalleeProcInfo, VarTable),
     proc_info_get_argmodes(CalleeProcInfo, ArgModes),
     arg_info.compute_in_and_out_vars(ModuleInfo, VarTable,
         ArgVars, ArgModes, Inputs, Outputs).

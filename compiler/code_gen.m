@@ -86,7 +86,7 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
     get_proc_info(!.CI, ProcInfo),
     trace [compiletime(flag("codegen_goal")), io(!IO)] (
         code_info.get_module_info(!.CI, ModuleInfo),
-        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        proc_info_get_var_table(ProcInfo, VarTable),
         GoalDesc = describe_goal(ModuleInfo, VarTable, Goal),
 
         ( if should_trace_code_gen(!.CI) then
@@ -189,7 +189,7 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
     ),
     trace [compiletime(flag("codegen_goal")), io(!IO)] (
         code_info.get_module_info(!.CI, ModuleInfo),
-        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        proc_info_get_var_table(ProcInfo, VarTable),
         GoalDesc = describe_goal(ModuleInfo, VarTable, Goal),
 
         ( if should_trace_code_gen(!.CI) then

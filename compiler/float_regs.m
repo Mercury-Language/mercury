@@ -518,7 +518,7 @@ insert_reg_wrappers_proc_2(!ProcInfo, !PredInfo, !ModuleInfo, !Specs) :-
     % Grab the appropriate fields from the pred_info and proc_info.
     pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
     proc_info_get_headvars(!.ProcInfo, HeadVars),
-    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),

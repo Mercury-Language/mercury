@@ -124,7 +124,7 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     OrigArity = pred_info_orig_arity(PredInfo),
     NumExtraHeadVars = list.length(ArgTypes) - OrigArity,
 
-    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     proc_info_get_headvars(!.ProcInfo, HeadVars0),
     proc_info_get_goal(!.ProcInfo, Body0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
@@ -170,7 +170,7 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     NonLocals = set_of_var.list_to_set(HeadVars),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     Body = hlds_goal(conj(plain_conj, Goals), GoalInfo),
-    proc_info_set_body_vt(VarTable, HeadVars, Body, RttiVarMaps, !ProcInfo).
+    proc_info_set_body(VarTable, HeadVars, Body, RttiVarMaps, !ProcInfo).
 
 :- pred introduce_exists_casts_for_head(module_info::in, tsubst::in,
     list(mer_type)::in, list(mer_mode)::in, list(prog_var)::in,

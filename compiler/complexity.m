@@ -266,7 +266,7 @@ complexity_process_proc(NumProcs, ProcNum, FullName, PredId,
     determinism_to_code_model(Detism, CodeModel),
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
-    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable),
+    proc_info_get_var_table(!.ProcInfo, VarTable),
     proc_info_get_goal(!.ProcInfo, OrigGoal),
     Context = goal_info_get_context(OrigGoalInfo),
     % Even if the original goal doesn't use all of the headvars, the code
@@ -279,8 +279,8 @@ complexity_process_proc(NumProcs, ProcNum, FullName, PredId,
     goal_info_set_purity(purity_impure, OrigGoalInfo, ImpureOrigGoalInfo),
 
     IsActiveVarName = "IsActive",
-    generate_new_var(!.ModuleInfo, IsActiveVarName, is_active_type,
-        is_not_dummy_type, IsActiveVar, !ProcInfo),
+    generate_new_var(IsActiveVarName, is_active_type, is_not_dummy_type,
+        IsActiveVar, !ProcInfo),
 
     classify_complexity_args(!.ModuleInfo, VarTable, HeadVars, ArgModes,
         VarInfos),
@@ -417,7 +417,7 @@ complexity_process_proc(NumProcs, ProcNum, FullName, PredId,
 generate_slot_goals(ProcNum, NumberedVars, NumProfiledVars, Context, PredId,
         !ProcInfo, !ModuleInfo, SlotVar, SlotVarName, Goals) :-
     SlotVarName = slot_var_name,
-    generate_new_var(!.ModuleInfo, SlotVarName, int_type, is_not_dummy_type,
+    generate_new_var(SlotVarName, int_type, is_not_dummy_type,
         SlotVar, !ProcInfo),
     ProcVarName = "proc",
     generate_size_goals(NumberedVars, Context, NumProfiledVars,
@@ -463,7 +463,7 @@ generate_size_goal(ArgVar, VarSeqNum, Context, NumProfiledVars, ProcVarName,
         SlotVarName, PredId, !ProcInfo, !ModuleInfo, Goals,
         ForeignArgs, CodeStr) :-
     % XXX We should pass around !VarTables, not !ProcInfos.
-    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable1),
+    proc_info_get_var_table(!.ProcInfo, VarTable1),
     lookup_var_type(VarTable1, ArgVar, VarType),
     MacroName = "MR_complexity_fill_size_slot",
     % XXX This call is overkill; we can get a new type_info var
@@ -471,7 +471,7 @@ generate_size_goal(ArgVar, VarSeqNum, Context, NumProfiledVars, ProcVarName,
     make_type_info_var(VarType, Context, PredId, !ProcInfo, !ModuleInfo,
         TypeInfoVar, Goals),
     % Since we just created TypeInfoVar, it isn't in VarTypes1.
-    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable2),
+    proc_info_get_var_table(!.ProcInfo, VarTable2),
     lookup_var_type(VarTable2, TypeInfoVar, TypeInfoType),
     ArgName = "arg" ++ int_to_string(VarSeqNum),
     TypeInfoArgName = "input_typeinfo" ++ int_to_string(VarSeqNum),
@@ -492,12 +492,12 @@ generate_size_goal(ArgVar, VarSeqNum, Context, NumProfiledVars, ProcVarName,
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_new_var(module_info::in, string::in, mer_type::in,
-    is_dummy_type::in, prog_var::out, proc_info::in, proc_info::out) is det.
+:- pred generate_new_var(string::in, mer_type::in, is_dummy_type::in,
+    prog_var::out, proc_info::in, proc_info::out) is det.
 
-generate_new_var(ModuleInfo, Name, Type, IsDummy, Var, !ProcInfo) :-
+generate_new_var(Name, Type, IsDummy, Var, !ProcInfo) :-
     Entry = vte(Name, Type, IsDummy),
-    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     add_var_entry(Entry, Var, VarTable0, VarTable),
     proc_info_set_var_table(VarTable, !ProcInfo).
 

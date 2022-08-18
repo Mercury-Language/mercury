@@ -378,7 +378,7 @@ prove_termination_in_scc_pass(ModuleInfo, PassInfo, FixDir, [PPId | PPIds],
     % to terminate, but our analysis is not (yet) able to find this out for
     % itself. We therefore analyse only the non-pretest parts of such goals.
     Goal = maybe_strip_equality_pretest(Goal0),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     map.init(EmptyMap),
     PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
     init_term_traversal_params(FunctorInfo, PPId, Context, VarTable,

@@ -600,7 +600,7 @@ write_proc(Info, Stream, VarNamePrint, ModuleInfo, PredId, PredInfo,
         ProcId, ProcInfo, !IO) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
     proc_info_get_can_process(ProcInfo, CanProcess),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     proc_info_get_declared_determinism(ProcInfo, DeclaredDeterminism),
     proc_info_get_inferred_determinism(ProcInfo, InferredDeterminism),
     proc_info_get_headvars(ProcInfo, HeadVars),

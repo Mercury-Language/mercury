@@ -532,7 +532,7 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
         !PredInfo, !ProcInfo, !ModuleInfo) :-
     some [!VarTable] (
         % Get the type of the output tuple.
-        proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, !:VarTable),
+        proc_info_get_var_table(!.ProcInfo, !:VarTable),
         GoalOutputVars = set_of_var.to_sorted_list(GoalOutputVarsSet),
         lookup_var_types(!.VarTable, GoalOutputVars, GoalOutputVarTypes),
         OutputTupleType = tuple_type(GoalOutputVarTypes, kind_star),
@@ -550,7 +550,7 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
         proc_info_set_var_table(!.VarTable, !ProcInfo)
     ),
 
-    make_try_lambda(!.ModuleInfo, Goal1, GoalOutputVarsSet, OutputTupleType,
+    make_try_lambda(Goal1, GoalOutputVarsSet, OutputTupleType,
         MaybeIO, LambdaVar, AssignLambdaVar, !ProcInfo),
 
     Goal1 = hlds_goal(_, GoalInfo1),
@@ -580,8 +580,8 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
         % renaming in this case because GoalFinalIOVar might not even occur in
         % the Then part; then renaming would lead to a mode error.
 
-        proc_info_create_var_from_type(io_state_type, yes("TryIOOutput"),
-            TryIOOutputVar, !ProcInfo),
+        proc_info_create_var_from_type("TryIOOutput", io_state_type,
+            is_dummy_type, TryIOOutputVar, !ProcInfo),
         make_try_call("try_io", LambdaVar, ResultVar,
             [GoalInitialIOVar, TryIOOutputVar], OutputTupleType, GoalPurity,
             GoalContext, CallTryGoal, !PredInfo, !ProcInfo, !ModuleInfo),
@@ -606,10 +606,10 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
     goal_info_init(GoalInfo),
 
     % The `succeeded' case.
-    proc_info_create_var_from_type(OutputTupleType, yes("TmpOutputTuple"),
-        TmpTupleVar, !ProcInfo),
-    proc_info_create_var_from_type(OutputTupleType, yes("OutputTuple"),
-        TupleVar, !ProcInfo),
+    proc_info_create_var_from_type("TmpOutputTuple", OutputTupleType,
+        is_not_dummy_type, TmpTupleVar, !ProcInfo),
+    proc_info_create_var_from_type("OutputTuple", OutputTupleType,
+        is_not_dummy_type, TupleVar, !ProcInfo),
     deconstruct_functor(ResultVar, exception_succeeded_functor, [TmpTupleVar],
         DeconstructSucceeded),
     instmap_lookup_vars(InstMap, GoalOutputVars, TupleArgInsts),
@@ -803,18 +803,18 @@ bound_nonlocals_in_goal(ModuleInfo, InstMap, Goal, BoundNonLocals) :-
         var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstMapDelta),
         NonLocals).
 
-:- pred make_try_lambda(module_info::in, hlds_goal::in, set_of_progvar::in,
+:- pred make_try_lambda(hlds_goal::in, set_of_progvar::in,
     mer_type::in, maybe(try_io_state_vars)::in, prog_var::out, hlds_goal::out,
     proc_info::in, proc_info::out) is det.
 
-make_try_lambda(ModuleInfo, Body0, OutputVarsSet, OutputTupleType, MaybeIO,
+make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
         LambdaVar, AssignLambdaVarGoal, !ProcInfo) :-
     Body0 = hlds_goal(_, BodyInfo0),
     NonLocals0 = goal_info_get_nonlocals(BodyInfo0),
     set_of_var.difference(NonLocals0, OutputVarsSet, NonLocals1),
 
-    proc_info_create_var_from_type(OutputTupleType, yes("OutputTuple"),
-        OutputTupleVar, !ProcInfo),
+    proc_info_create_var_from_type("OutputTuple", OutputTupleType,
+        is_not_dummy_type, OutputTupleVar, !ProcInfo),
     (
         MaybeIO = yes(try_io_state_vars(IOVarInitial, IOVarFinal)),
         LambdaParamsModes = [OutputTupleVar - out_mode,
@@ -829,8 +829,8 @@ make_try_lambda(ModuleInfo, Body0, OutputVarsSet, OutputTupleType, MaybeIO,
     ),
     LambdaType = higher_order_type(pf_predicate, LambdaParamTypes,
         none_or_default_func, purity_pure, lambda_normal),
-    proc_info_create_var_from_type(LambdaType, yes("TryLambda"), LambdaVar,
-        !ProcInfo),
+    proc_info_create_var_from_type("TryLambda", LambdaType,
+        is_not_dummy_type, LambdaVar, !ProcInfo),
 
     % Add the construction of OutputTuple to the body.
     construct_tuple(OutputTupleVar, set_of_var.to_sorted_list(OutputVarsSet),
@@ -838,7 +838,7 @@ make_try_lambda(ModuleInfo, Body0, OutputVarsSet, OutputTupleType, MaybeIO,
     conjoin_goals(Body0, MakeOutputTuple, LambdaBody0),
 
     % Rename away output variables in the lambda body.
-    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     clone_variables_var_table(set_of_var.to_sorted_list(OutputVarsSet),
         VarTable0, VarTable0, VarTable, map.init, Renaming),
     proc_info_set_var_table(VarTable, !ProcInfo),

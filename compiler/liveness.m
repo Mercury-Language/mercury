@@ -235,7 +235,7 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
     pred_id_to_int(PredId, PredIdInt),
 
     proc_info_get_goal(!.ProcInfo, GoalBeforeQuant),
-    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTableBeforeQuant),
+    proc_info_get_var_table(!.ProcInfo, VarTableBeforeQuant),
 
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nbefore requantify",
@@ -245,7 +245,7 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
     requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
 
     proc_info_get_goal(!.ProcInfo, GoalAfterQuant),
-    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
+    proc_info_get_var_table(!.ProcInfo, VarTable),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
@@ -1789,7 +1789,7 @@ require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
 initial_liveness(ModuleInfo, PredInfo, ProcInfo, !:Liveness) :-
     proc_info_get_headvars(ProcInfo, Vars),
     proc_info_get_argmodes(ProcInfo, Modes),
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     !:Liveness = set_of_var.init,
     initial_liveness_loop(ModuleInfo, VarTable, Vars, Modes, !Liveness),
 
@@ -1841,7 +1841,7 @@ initial_deadness(ModuleInfo, ProcInfo, LiveInfo, Deadness) :-
 
     % If doing typeinfo liveness, the corresponding typeinfos need to be added
     % to these.
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     maybe_complete_with_typeinfo_vars(VarTable, RttiVarMaps,
         LiveInfo ^ li_typeinfo_liveness, set_to_bitset(Deadness0), Deadness).

@@ -295,7 +295,7 @@ make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
             TypeInfoVars, TypeInfoGoals, ModuleInfo0, ModuleInfo1,
             !PredInfo, !ProcInfo),
 
-        proc_info_get_var_table(ModuleInfo1, !.ProcInfo, VarTable),
+        proc_info_get_var_table(!.ProcInfo, VarTable),
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps),
         simplify_info_set_var_table(VarTable, !Info),
         simplify_info_set_rtti_varmaps(RttiVarMaps, !Info),

@@ -749,7 +749,7 @@ create_loop_inv_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
 
     proc_info_get_goal(ProcInfo, Goal @ hlds_goal(_GoalExpr, GoalInfo)),
     pred_info_get_typevarset(PredInfo, TVarSet),
-    proc_info_get_var_table(!.ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     pred_info_get_class_context(PredInfo, ClassContext),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
@@ -932,19 +932,15 @@ gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, Replacement, Body0,
 
     % Put the new procedure body into the module_info.
     PredProcId = proc(PredId, ProcId),
-
-    proc_info_get_var_table(!.ModuleInfo, ProcInfo0, VarTable),
+    proc_info_get_var_table(ProcInfo0, VarTable),
     proc_info_get_headvars(ProcInfo0, HeadVars),
     proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps),
-
-    proc_info_set_body_vt(VarTable, HeadVars, Body,
-        RttiVarMaps, ProcInfo0, ProcInfo1),
-
+    proc_info_set_body(VarTable, HeadVars, Body, RttiVarMaps,
+        ProcInfo0, ProcInfo1),
     requantify_proc_general(ordinary_nonlocals_no_lambda,
         ProcInfo1, ProcInfo2),
     recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
         ProcInfo2, ProcInfo, !ModuleInfo),
-
     module_info_set_pred_proc_info(PredId, ProcId,
         PredInfo0, ProcInfo, !ModuleInfo).
 

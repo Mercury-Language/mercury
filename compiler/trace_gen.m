@@ -346,7 +346,7 @@ get_trace_maybe_tail_rec_info(TraceInfo, TraceInfo ^ ti_tail_rec_info).
 %-----------------------------------------------------------------------------%
 
 trace_fail_vars(ModuleInfo, ProcInfo, FailVars) :-
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_argmodes(ProcInfo, Modes),
     mode_list_get_final_insts(ModuleInfo, Modes, FinalInsts),

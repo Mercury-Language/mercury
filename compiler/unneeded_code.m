@@ -236,17 +236,16 @@ unneeded_process_proc_msg(PredProcId, !ProcInfo, !ModuleInfo) :-
     % then the transformation will not be as effective as it could be.
     % Therefore we preprocess the procedure body to ensure that the nonlocals
     % sets are accurate reflections of the true needs of goals.
-    unneeded_pre_process_proc(!.ModuleInfo, !ProcInfo),
+    unneeded_pre_process_proc(!ProcInfo),
     PredProcId = proc(PredId, _),
     unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, 1, _Successful).
 
-:- pred unneeded_pre_process_proc(module_info::in,
-    proc_info::in, proc_info::out) is det.
+:- pred unneeded_pre_process_proc(proc_info::in, proc_info::out) is det.
 
-unneeded_pre_process_proc(ModuleInfo, !ProcInfo) :-
+unneeded_pre_process_proc(!ProcInfo) :-
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     implicitly_quantify_clause_body_general_vt(ordinary_nonlocals_no_lambda,
         HeadVars, _Warnings, Goal0, Goal,
@@ -303,7 +302,7 @@ unneeded_pre_process_proc(ModuleInfo, !ProcInfo) :-
 unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
     fill_goal_id_slots_in_proc(!.ModuleInfo, ContainingGoalMap, !ProcInfo),
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_var_table(!.ModuleInfo, !.ProcInfo, VarTable0),
+    proc_info_get_var_table(!.ProcInfo, VarTable0),
     proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InitInstMap),
     Goal0 = hlds_goal(_, GoalInfo0),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),

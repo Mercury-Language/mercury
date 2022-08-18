@@ -209,7 +209,7 @@ detect_switches_in_proc(Info, !ProcInfo) :-
     % based on the modes of the head vars, and pass these to
     % `detect_switches_in_goal'.
     Info = switch_detect_info(ModuleInfo, AllowMulti),
-    proc_info_get_var_table(ModuleInfo, !.ProcInfo, VarTable),
+    proc_info_get_var_table(!.ProcInfo, VarTable),
     Requant0 = do_not_need_to_requantify,
     BodyDeletedCallCallees0 = set.init,
     LocalInfo0 = local_switch_detect_info(ModuleInfo, AllowMulti, Requant0,

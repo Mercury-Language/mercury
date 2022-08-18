@@ -151,7 +151,7 @@ insert_unknown(Var, !ClosureInfo) :-
 closure_analyse_proc(Debug, PPId, !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo0),
     proc_info_get_headvars(ProcInfo0, HeadVars),
-    proc_info_get_var_table(!.ModuleInfo, ProcInfo0, VarTable),
+    proc_info_get_var_table(ProcInfo0, VarTable),
     proc_info_get_argmodes(ProcInfo0, ArgModes),
     ClosureInfo0 = closure_info_init(!.ModuleInfo, VarTable, HeadVars,
         ArgModes),

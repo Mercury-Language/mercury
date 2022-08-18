@@ -246,11 +246,10 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         % Create a new proc_info for this procedure.
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         SeqNum = item_no_seq_num,
-        list.length(ArgModes, Arity),
         DeclaredArgModes = no,
         % Before the simplification pass, HasParallelConj is not meaningful.
         HasParallelConj = has_no_parallel_conj,
-        add_new_proc(Context, SeqNum, Arity,
+        add_new_proc(!.ModuleInfo, Context, SeqNum,
             InstVarSet, ArgModes, DeclaredArgModes, ArgLives,
             detism_decl_implicit, MaybeDet, address_is_not_taken,
             HasParallelConj, !PredInfo, ProcId),

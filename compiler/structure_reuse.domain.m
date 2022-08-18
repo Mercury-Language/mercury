@@ -418,7 +418,7 @@ reuse_condition_subsumed_by(ModuleInfo, ProcInfo, Cond1, Cond2) :-
         %
         set.subset(Nodes1, Nodes2),
 
-        proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+        proc_info_get_var_table(ProcInfo, VarTable),
         datastructs_subsumed_by_list(ModuleInfo, VarTable,
             LocalUse1, LocalUse2),
         sharing_as_is_subsumed_by(ModuleInfo, ProcInfo,
@@ -772,7 +772,7 @@ aliases_between_reuse_nodes(ModuleInfo, ProcInfo, SharingAs, Conditions,
 
 aliases_between_reuse_nodes_2(ModuleInfo, ProcInfo, SharingAs, Node,
         OtherNodes, AliasedNodes) :-
-    proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+    proc_info_get_var_table(ProcInfo, VarTable),
     SharingNodes0 = extend_datastruct(ModuleInfo, ProcInfo, SharingAs, Node),
     list.delete(SharingNodes0, Node, SharingNodes),
 
@@ -845,7 +845,7 @@ reuse_condition_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs,
                 SharingAs),
             UpdatedLiveData = livedata_add_liveness(ModuleInfo, ProcInfo,
                 InUseNodes, NewSharing, LiveData),
-            proc_info_get_var_table(ModuleInfo, ProcInfo, VarTable),
+            proc_info_get_var_table(ProcInfo, VarTable),
             nodes_are_not_live(ModuleInfo, VarTable, DeadNodes,
                 UpdatedLiveData, NotLiveResult),
             (
