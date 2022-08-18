@@ -23,13 +23,13 @@
 %
 % There are four sorts of types:
 %
-% 1 discriminated unions:
+% 1 Discriminated union types, such as
 %   :- type tree(T) ---> nil ; t(tree(T), T, tree(T)).
 %
-% 2 equivalence types (treated identically, ie, same name. Any number of types
-%   can be equivalent; the *canonical* one is the one which is not defined
-%   using ==):
+% 2 Equivalence types, such as
 %   :- type real == float.
+%   Any number of types can be equivalent; the *canonical* one is the one
+%   which is not defined using "==".
 %
 %   Currently references to equivalence types are expanded in a separate pass
 %   by mercury_compile_front_end.m. It would be better to avoid expanding them
@@ -37,18 +37,19 @@
 %   types) because this would give better error messages. However, this is
 %   not a high priority.
 %
-% 3 higher-order predicate and function types
+% 3 Higher-order predicate and function types
 %   pred, pred(T), pred(T1, T2), pred(T1, T2, T3), ...
 %   func(T1) = T2, func(T1, T2) = T3, ...
 %
-% 4 builtin types
-%   character, int, float, string; These types have special syntax
-%   for constants. There may be other types (list(T), unit, univ, etc.)
-%   provided by the system, but they can just be part of the standard library.
+% 4 Builtin types, such as
+%   character, int, float, string.
+%   These types have special syntax for constants. There may be other types
+%   (list(T), unit, univ, etc.) provided by the system, but they can just be
+%   part of the standard library.
 %
 % Each exported predicate must have a `:- pred' declaration specifying the
 % types of the arguments for that predicate. For predicates that are
-% local to a module, we infer the types.
+% local to a module, we can infer the types.
 %
 %---------------------------------------------------------------------------%
 %
