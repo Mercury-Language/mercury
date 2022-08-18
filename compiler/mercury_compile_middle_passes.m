@@ -621,7 +621,7 @@ expand_stm_goals(Verbose, Stats, !HLDS, !IO) :-
 expand_equiv_types_hlds(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Fully expanding equivalence types...", !IO),
     maybe_flush_output(Verbose, !IO),
-    equiv_type_hlds.replace_in_hlds(!HLDS),
+    replace_equiv_types_in_hlds(!HLDS),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 

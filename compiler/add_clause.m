@@ -847,8 +847,7 @@ add_clause_transform(Renaming, PredOrFunc, PredSymName, ArgVector, ArgTerms0,
         rtti_varmaps_init(EmptyRttiVarmaps),
         % XXX It should be possible to exploit the fact that lambda expressions
         % are not yet recognized as such inside from_ground_term scopes.
-        implicitly_quantify_clause_body_general(
-            ordinary_nonlocals_maybe_lambda,
+        implicitly_quantify_clause_body_general_vs(ord_nl_maybe_lambda,
             HeadVars, QuantWarnings, Goal1, Goal,
             !VarSet, VarTypes0, VarTypes, EmptyRttiVarmaps, _),
         qual_info_set_explicit_var_types(VarTypes, !QualInfo)

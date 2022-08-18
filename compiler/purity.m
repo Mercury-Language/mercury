@@ -433,8 +433,7 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     proc_info_set_var_table(VarTable, ProcInfo1, ProcInfo2),
     (
         NeedToRequantify = need_to_requantify,
-        requantify_proc_general(ordinary_nonlocals_maybe_lambda,
-            ProcInfo2, ProcInfo)
+        requantify_proc_general(ord_nl_maybe_lambda, ProcInfo2, ProcInfo)
     ;
         NeedToRequantify = do_not_need_to_requantify,
         ProcInfo = ProcInfo2
@@ -568,9 +567,9 @@ compute_purity_for_clause(Clause0, Clause, PredInfo, Purity, !Info) :-
         % The RTTI varmaps here are just a dummy value, because the real ones
         % are not introduced until polymorphism.
         rtti_varmaps_init(EmptyRttiVarmaps),
-        implicitly_quantify_clause_body_general_vt(
-            ordinary_nonlocals_maybe_lambda, HeadVars, _Warnings,
-            Goal1, Goal, VarTable1, VarTable, EmptyRttiVarmaps, _),
+        implicitly_quantify_clause_body_general(ord_nl_maybe_lambda,
+            HeadVars, _Warnings, Goal1, Goal,
+            VarTable1, VarTable, EmptyRttiVarmaps, _),
         !Info ^ pi_var_table := VarTable
     ;
         NeedToRequantify = do_not_need_to_requantify,

@@ -830,11 +830,8 @@ gen_aux_proc(InvGoals, PredProcId, AuxPredProcId, Replacement, Body,
     % Put the new proc body and instmap into the module_info.
     AuxPredProcId = proc(AuxPredId, AuxProcId),
     hlds_pred.proc_info_set_goal(AuxBody, !AuxProcInfo),
-
-    requantify_proc_general(ordinary_nonlocals_no_lambda, !AuxProcInfo),
-    recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
-        !AuxProcInfo, !ModuleInfo),
-
+    requantify_proc_general(ord_nl_no_lambda, !AuxProcInfo),
+    recompute_instmap_delta_proc(no_recomp_atomics, !AuxProcInfo, !ModuleInfo),
     module_info_set_pred_proc_info(AuxPredId, AuxProcId,
         AuxPredInfo, !.AuxProcInfo, !ModuleInfo).
 
@@ -937,9 +934,8 @@ gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, Replacement, Body0,
     proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps),
     proc_info_set_body(VarTable, HeadVars, Body, RttiVarMaps,
         ProcInfo0, ProcInfo1),
-    requantify_proc_general(ordinary_nonlocals_no_lambda,
-        ProcInfo1, ProcInfo2),
-    recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
+    requantify_proc_general(ord_nl_no_lambda, ProcInfo1, ProcInfo2),
+    recompute_instmap_delta_proc(no_recomp_atomics,
         ProcInfo2, ProcInfo, !ModuleInfo),
     module_info_set_pred_proc_info(PredId, ProcId,
         PredInfo0, ProcInfo, !ModuleInfo).

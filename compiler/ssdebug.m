@@ -480,9 +480,8 @@ create_proxy_proc(PredId, ProcId, !PredInfo, !ModuleInfo) :-
         goal_info_set_determinism(Detism, GoalInfo0, GoalInfo),
         Goal = hlds_goal(CallExpr, GoalInfo),
         proc_info_set_goal(Goal, !ProcInfo),
-        requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
-        recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
-            !ProcInfo, !ModuleInfo),
+        requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
+        recompute_instmap_delta_proc(recomp_atomics, !ProcInfo, !ModuleInfo),
         pred_info_set_proc_info(ProcId, !.ProcInfo, !PredInfo)
     ).
 
@@ -1160,8 +1159,8 @@ commit_goal_changes(ConjGoals, PredId, ProcId, !.PredInfo, VarTable,
 
     proc_info_set_var_table(VarTable, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo),
-    requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
-    recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
+    requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
+    recompute_instmap_delta_proc(recomp_atomics,
         !ProcInfo, !ModuleInfo),
     pred_info_set_proc_info(ProcId, !.ProcInfo, !PredInfo),
     repuritycheck_proc(!.ModuleInfo, proc(PredId, ProcId), !PredInfo),

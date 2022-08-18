@@ -224,11 +224,11 @@ do_expand_lambdas_in_proc(!ProcInfo, !PredInfo, !ModuleInfo) :-
     % Check if we need to requantify.
     (
         MustRecomputeNonLocals = must_recompute_nonlocals,
-        implicitly_quantify_clause_body_general_vt(
-            ordinary_nonlocals_no_lambda, HeadVars, _Warnings,
-            Goal1, Goal2, VarTable1, VarTable2, RttiVarMaps1, RttiVarMaps2),
+        implicitly_quantify_clause_body_general(ord_nl_no_lambda,
+            HeadVars, _Warnings, Goal1, Goal2,
+            VarTable1, VarTable2, RttiVarMaps1, RttiVarMaps2),
         proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
-        recompute_instmap_delta(recompute_atomic_instmap_deltas,
+        recompute_instmap_delta(recomp_atomics,
             VarTable2, InstVarSet0, InstMap0, Goal2, Goal, !ModuleInfo)
     ;
         MustRecomputeNonLocals = need_not_recompute_nonlocals,
@@ -625,8 +625,7 @@ create_new_pred_for_lambda(RegWrapperProc, RHS0, OrigVars, ArgVars,
         % that we just created.
         (
             MustRecomputeNonLocals0 = must_recompute_nonlocals,
-            requantify_proc_general(ordinary_nonlocals_maybe_lambda,
-                !ProcInfo)
+            requantify_proc_general(ord_nl_maybe_lambda, !ProcInfo)
         ;
             MustRecomputeNonLocals0 = need_not_recompute_nonlocals
         ),

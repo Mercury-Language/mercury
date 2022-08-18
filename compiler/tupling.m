@@ -693,8 +693,7 @@ add_transformed_proc(PredProcId, tupling(_, FieldVars, _),
         % Make a transformed version of the procedure and add it to
         % the module.
         make_transformed_proc(InsertMap, CellVar, FieldVars, !ProcInfo),
-        recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
-            !ProcInfo, !ModuleInfo),
+        recompute_instmap_delta_proc(recomp_atomics, !ProcInfo, !ModuleInfo),
         counter.allocate(Num, !Counter),
         create_tupling_aux_pred(PredId, ProcId, PredInfo, !.ProcInfo, Num,
             AuxPredProcId, CallAux, !ModuleInfo),
@@ -753,7 +752,7 @@ make_transformed_proc(InsertMap, CellVar, FieldVarsList, !ProcInfo) :-
         Goal3, Goal),
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_var_table(VarTable, !ProcInfo),
-    requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo).
+    requantify_proc_general(ord_nl_no_lambda, !ProcInfo).
 
 :- pred insert_proc_start_deconstruction(insert_spec::in,
     hlds_goal::in, hlds_goal::out, var_table::in, var_table::out,
@@ -1740,8 +1739,8 @@ fix_calls_in_proc(TransformMap, proc(PredId, ProcId), !ModuleInfo) :-
             proc_info_set_goal(Goal, !ProcInfo),
             proc_info_set_var_table(VarTable, !ProcInfo),
             proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
-            requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
-            recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
+            requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
+            recompute_instmap_delta_proc(recomp_atomics,
                 !ProcInfo, !ModuleInfo),
             module_info_set_pred_proc_info(PredId, ProcId,
                 PredInfo, !.ProcInfo, !ModuleInfo)
@@ -1788,7 +1787,7 @@ fix_calls_in_goal(TransformMap, Goal0, Goal, !VarTable, !RttiVarMaps) :-
             ),
             conj_list_to_goal([ConstructGoal, CallGoal], GoalInfo0, Goal1),
             RequantifyVars = set_of_var.list_to_set([CellVar | Args0]),
-            implicitly_quantify_goal_general_vt(ordinary_nonlocals_no_lambda,
+            implicitly_quantify_goal_general(ord_nl_no_lambda,
                 RequantifyVars, _, Goal1, Goal, !VarTable, !RttiVarMaps)
         else
             Goal = hlds_goal(GoalExpr0, GoalInfo0)

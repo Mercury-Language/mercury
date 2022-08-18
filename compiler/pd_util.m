@@ -758,9 +758,8 @@ pd_requantify_goal(NonLocals, Goal0, Goal, !PDInfo) :-
         pd_info_get_proc_info(!.PDInfo, !:ProcInfo),
         proc_info_get_var_table(!.ProcInfo, VarTable0),
         proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
-        implicitly_quantify_goal_general_vt(ordinary_nonlocals_no_lambda,
-            NonLocals, _, Goal0, Goal, VarTable0, VarTable,
-            RttiVarMaps0, RttiVarMaps),
+        implicitly_quantify_goal_general(ord_nl_no_lambda, NonLocals, _,
+            Goal0, Goal, VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
         proc_info_set_var_table(VarTable, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
         pd_info_set_proc_info(!.ProcInfo, !PDInfo)
@@ -772,8 +771,8 @@ pd_recompute_instmap_delta(Goal0, Goal, !PDInfo) :-
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
     proc_info_get_var_table(ProcInfo, VarTable),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
-    recompute_instmap_delta(recompute_atomic_instmap_deltas,
-        VarTable, InstVarSet, InstMap, Goal0, Goal, ModuleInfo0, ModuleInfo),
+    recompute_instmap_delta(recomp_atomics, VarTable, InstVarSet,
+        InstMap, Goal0, Goal, ModuleInfo0, ModuleInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo).
 
 %---------------------------------------------------------------------------%

@@ -296,9 +296,8 @@ stm_process_proc_2(!ProcInfo, PredId, ProcId, !PredInfo, !ModuleInfo) :-
 
     (
         RecalcInfo = yes,
-        requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
-        recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
-            !ProcInfo, !ModuleInfo)
+        requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
+        recompute_instmap_delta_proc(recomp_atomics, !ProcInfo, !ModuleInfo)
     ;
         RecalcInfo = no
     ).
@@ -2570,9 +2569,8 @@ update_new_pred_info(StmInfo, !NewPredInfo) :-
 run_quantification_over_pred(!NewPredInfo) :-
     ProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
     ModuleInfo0 = !.NewPredInfo ^ new_pred_module_info,
-    requantify_proc_general(ordinary_nonlocals_no_lambda,
-        ProcInfo0, ProcInfo1),
-    recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
+    requantify_proc_general(ord_nl_no_lambda, ProcInfo0, ProcInfo1),
+    recompute_instmap_delta_proc(recomp_atomics,
         ProcInfo1, ProcInfo, ModuleInfo0, ModuleInfo),
     !NewPredInfo ^ new_pred_module_info := ModuleInfo,
     !NewPredInfo ^ new_pred_proc_info := ProcInfo.

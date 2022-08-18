@@ -26,7 +26,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred replace_in_hlds(module_info::in, module_info::out) is det.
+:- pred replace_equiv_types_in_hlds(module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -70,7 +70,7 @@
 
 %-----------------------------------------------------------------------------%
 
-replace_in_hlds(!ModuleInfo) :-
+replace_equiv_types_in_hlds(!ModuleInfo) :-
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
     foldl2_over_type_ctor_defns(add_type_to_eqv_map, TypeTable0,
         map.init, TypeEqvMap, set.init, EqvExportTypes),
@@ -688,9 +688,9 @@ replace_in_proc(TypeEqvMap, !ProcInfo, !ModuleInfo, !PredInfo, !Cache) :-
         ),
         (
             Recompute = yes,
-            requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
-            recompute_instmap_delta_proc(
-                do_not_recompute_atomic_instmap_deltas, !ProcInfo, !ModuleInfo)
+            requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
+            recompute_instmap_delta_proc(no_recomp_atomics,
+                !ProcInfo, !ModuleInfo)
         ;
             Recompute = no
         ),

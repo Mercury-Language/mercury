@@ -260,9 +260,8 @@ correct_nonlocals_in_pred(PredId, !ModuleInfo) :-
 
 correct_nonlocals_in_clause_body(Headvars, !Goals, !VarSet, !VarTypes,
         !RttiVarMaps) :-
-    implicitly_quantify_clause_body_general(ordinary_nonlocals_maybe_lambda,
-        Headvars, Warnings, !Goals, !VarSet,
-        !VarTypes, !RttiVarMaps),
+    implicitly_quantify_clause_body_general_vs(ord_nl_maybe_lambda,
+        Headvars, Warnings, !Goals, !VarSet, !VarTypes, !RttiVarMaps),
     (
         Warnings = []
     ;

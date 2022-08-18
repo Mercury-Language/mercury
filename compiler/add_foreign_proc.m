@@ -460,9 +460,8 @@ clauses_info_do_add_pragma_foreign_proc(PredOrFunc, PredModuleName, PredName,
             % Foreign_procs cannot contain explicit variable type annotations.
             init_vartypes(EmptyExplicitVarTypes),
             rtti_varmaps_init(EmptyRttiVarmaps),
-            implicitly_quantify_clause_body_general(
-                ordinary_nonlocals_maybe_lambda, HeadVarList, _Warnings,
-                HldsGoal0, HldsGoal, VarSet0, VarSet,
+            implicitly_quantify_clause_body_general_vs(ord_nl_maybe_lambda,
+                HeadVarList, _Warnings, HldsGoal0, HldsGoal, VarSet0, VarSet,
                 EmptyExplicitVarTypes, _, EmptyRttiVarmaps, _),
             Clause = clause(selected_modes([ProcId]), HldsGoal,
                 impl_lang_foreign(NewLang), Context, []),

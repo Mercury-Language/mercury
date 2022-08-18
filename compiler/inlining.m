@@ -737,8 +737,8 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
             % corresponding caller variables, this will tell the simplification
             % pass we invoke before code generation that the goal(s) that
             % generate those caller variables can be optimized away.
-            requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
-            recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
+            requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
+            recompute_instmap_delta_proc(recomp_atomics,
                 !ProcInfo, !ModuleInfo)
         ;
             DidInlining = we_have_not_inlined

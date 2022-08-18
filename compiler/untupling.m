@@ -256,9 +256,8 @@ expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap, !Counter) :-
         proc_info_set_argmodes(ArgModes, !ProcInfo),
         proc_info_set_goal(Goal, !ProcInfo),
         proc_info_set_var_table(VarTable, !ProcInfo),
-        requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
-        recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
-            !ProcInfo, !ModuleInfo),
+        requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
+        recompute_instmap_delta_proc(recomp_atomics, !ProcInfo, !ModuleInfo),
 
         counter.allocate(SeqNum, !Counter),
         create_untupling_aux_pred(PredId, ProcId, PredInfo0, !.ProcInfo,
@@ -502,8 +501,8 @@ fix_calls_in_proc(TransformMap, PredId, ProcId, !ModuleInfo) :-
         else
             proc_info_set_goal(Goal, !ProcInfo),
             proc_info_set_var_table(VarTable, !ProcInfo),
-            requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
-            recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
+            requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
+            recompute_instmap_delta_proc(recomp_atomics,
                 !ProcInfo, !ModuleInfo),
             module_info_set_pred_proc_info(PredId, ProcId,
                 PredInfo, !.ProcInfo, !ModuleInfo)

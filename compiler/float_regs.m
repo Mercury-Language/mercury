@@ -540,8 +540,8 @@ insert_reg_wrappers_proc_2(!ProcInfo, !PredInfo, !ModuleInfo, !Specs) :-
     % Check if we need to requantify.
     (
         MustRecomputeNonLocals = must_recompute_nonlocals,
-        implicitly_quantify_clause_body_general_vt(
-            ordinary_nonlocals_no_lambda, HeadVars, _Warnings, Goal1, Goal2,
+        implicitly_quantify_clause_body_general(ord_nl_no_lambda,
+            HeadVars, _Warnings, Goal1, Goal2,
             VarTable1, VarTable, RttiVarMaps1, RttiVarMaps)
     ;
         MustRecomputeNonLocals = need_not_recompute_nonlocals,
@@ -552,8 +552,8 @@ insert_reg_wrappers_proc_2(!ProcInfo, !PredInfo, !ModuleInfo, !Specs) :-
 
     % We recomputed instmap deltas for atomic goals during the second phase,
     % so we only need to recompute instmap deltas for compound goals now.
-    recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
-        VarTable, InstVarSet0, InstMap0, Goal2, Goal, !ModuleInfo),
+    recompute_instmap_delta(no_recomp_atomics, VarTable, InstVarSet0,
+        InstMap0, Goal2, Goal, !ModuleInfo),
 
     % Set the new values of the fields in proc_info and pred_info.
     proc_info_set_goal(Goal, !ProcInfo),
@@ -739,7 +739,7 @@ do_recompute_atomic_instmap_delta(Goal0, Goal, InstMap, !Info) :-
     lambda_info_get_var_table(!.Info, VarTable),
     lambda_info_get_inst_varset(!.Info, InstVarSet),
     lambda_info_get_module_info(!.Info, ModuleInfo0),
-    recompute_instmap_delta(recompute_atomic_instmap_deltas, VarTable,
+    recompute_instmap_delta(recomp_atomics, VarTable,
         InstVarSet, InstMap, Goal0, Goal, ModuleInfo0, ModuleInfo),
     lambda_info_set_module_info(ModuleInfo, !Info).
 

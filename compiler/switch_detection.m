@@ -223,7 +223,7 @@ detect_switches_in_proc(Info, !ProcInfo) :-
         _VarTable, BodyDeletedCallCallees),
     (
         Requant = need_to_requantify,
-        requantify_proc_general(ordinary_nonlocals_maybe_lambda, !ProcInfo)
+        requantify_proc_general(ord_nl_maybe_lambda, !ProcInfo)
     ;
         Requant = do_not_need_to_requantify
     ),

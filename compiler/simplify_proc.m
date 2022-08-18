@@ -429,8 +429,8 @@ simplify_proc_analyze_and_format_calls(!ModuleInfo, ImplicitStreamWarnings,
         % the nonlocal fields of the original scopes. And since
         % instmap_deltas are restricted to the goal's nonlocals,
         % they need to be recomputed as well.
-        requantify_proc_general(ordinary_nonlocals_maybe_lambda, !ProcInfo),
-        recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
+        requantify_proc_general(ord_nl_maybe_lambda, !ProcInfo),
+        recompute_instmap_delta_proc(no_recomp_atomics,
             !ProcInfo, !ModuleInfo),
 
         % Put the new proc_info back into !ModuleInfo, since some of the
@@ -649,8 +649,7 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
         some [!VarTable, !RttiVarMaps, !ModuleInfo] (
             simplify_info_get_var_table(!.Info, !:VarTable),
             simplify_info_get_rtti_varmaps(!.Info, !:RttiVarMaps),
-            implicitly_quantify_goal_general_vt(
-                ordinary_nonlocals_maybe_lambda, NonLocals, _,
+            implicitly_quantify_goal_general(ord_nl_maybe_lambda, NonLocals, _,
                 !Goal, !VarTable, !RttiVarMaps),
 
             simplify_info_set_var_table(!.VarTable, !Info),
@@ -661,8 +660,8 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
             % in the instmap_delta for a goal.
             simplify_info_get_module_info(!.Info, !:ModuleInfo),
             simplify_info_get_inst_varset(!.Info, InstVarSet),
-            recompute_instmap_delta(recompute_atomic_instmap_deltas,
-                !.VarTable, InstVarSet, InstMap0, !Goal, !ModuleInfo),
+            recompute_instmap_delta(recomp_atomics, !.VarTable, InstVarSet,
+                InstMap0, !Goal, !ModuleInfo),
             simplify_info_set_module_info(!.ModuleInfo, !Info)
         )
     ;

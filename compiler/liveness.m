@@ -242,7 +242,7 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
             DebugLiveness, PredIdInt, VarTableBeforeQuant,
             GoalBeforeQuant, !IO)
     ),
-    requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
+    requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
 
     proc_info_get_goal(!.ProcInfo, GoalAfterQuant),
     proc_info_get_var_table(!.ProcInfo, VarTable),

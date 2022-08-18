@@ -30,9 +30,9 @@
 
 %---------------------------------------------------------------------------%
 
-:- type recompute_atomic_instmap_deltas
-    --->    recompute_atomic_instmap_deltas
-    ;       do_not_recompute_atomic_instmap_deltas.
+:- type recomp_atomics
+    --->    recomp_atomics
+    ;       no_recomp_atomics.
 
     % Use the instmap deltas for all the atomic subgoals to recompute
     % the instmap deltas for all the non-atomic subgoals of a goal.
@@ -45,10 +45,10 @@
     % we have to recompute the instmap deltas of atomic goals because
     % some outputs of calls and deconstructions may have become non-local.)
     %
-:- pred recompute_instmap_delta_proc(recompute_atomic_instmap_deltas::in,
+:- pred recompute_instmap_delta_proc(recomp_atomics::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
-:- pred recompute_instmap_delta(recompute_atomic_instmap_deltas::in,
+:- pred recompute_instmap_delta(recomp_atomics::in,
     var_table::in, inst_varset::in, instmap::in, hlds_goal::in, hlds_goal::out,
     module_info::in, module_info::out) is det.
 
@@ -101,7 +101,7 @@ recompute_instmap_delta(RecomputeAtomic, VarTable, InstVarSet, InstMap0,
 
 :- type recompute_params
     --->    recompute_params(
-                recompute_atomic_instmap_deltas,
+                recomp_atomics,
                 var_type_source
             ).
 
@@ -198,10 +198,10 @@ recompute_instmap_delta_1(Params, InstMap0, InstMapDelta, Goal0, Goal, !RI) :-
         GoalExpr0 = generic_call(_Details, Vars, Modes, _, Detism),
         Params = recompute_params(RecomputeAtomic, _),
         (
-            RecomputeAtomic = do_not_recompute_atomic_instmap_deltas,
+            RecomputeAtomic = no_recomp_atomics,
             InstMapDelta1 = goal_info_get_instmap_delta(GoalInfo0)
         ;
-            RecomputeAtomic = recompute_atomic_instmap_deltas,
+            RecomputeAtomic = recomp_atomics,
             ( if determinism_components(Detism, _, at_most_zero) then
                 instmap_delta_init_unreachable(InstMapDelta1)
             else
@@ -215,10 +215,10 @@ recompute_instmap_delta_1(Params, InstMap0, InstMapDelta, Goal0, Goal, !RI) :-
         GoalExpr0 = plain_call(PredId, ProcId, ArgVars, _BI, _UC, _Name),
         Params = recompute_params(RecomputeAtomic, _),
         (
-            RecomputeAtomic = do_not_recompute_atomic_instmap_deltas,
+            RecomputeAtomic = no_recomp_atomics,
             InstMapDelta1 = goal_info_get_instmap_delta(GoalInfo0)
         ;
-            RecomputeAtomic = recompute_atomic_instmap_deltas,
+            RecomputeAtomic = recomp_atomics,
             recompute_instmap_delta_call(Params, PredId, ProcId, ArgVars,
                 InstMap0, InstMapDelta1, !RI)
         ),
@@ -243,11 +243,11 @@ recompute_instmap_delta_1(Params, InstMap0, InstMapDelta, Goal0, Goal, !RI) :-
         ),
         Params = recompute_params(RecomputeAtomic, _),
         (
-            RecomputeAtomic = do_not_recompute_atomic_instmap_deltas,
+            RecomputeAtomic = no_recomp_atomics,
             UniMode = UniMode0,
             InstMapDelta1 = goal_info_get_instmap_delta(GoalInfo0)
         ;
-            RecomputeAtomic = recompute_atomic_instmap_deltas,
+            RecomputeAtomic = recomp_atomics,
             recompute_instmap_delta_unify(Uni, UniMode0, UniMode,
                 GoalInfo0, InstMap0, InstMapDelta1, !RI)
         ),
@@ -257,10 +257,10 @@ recompute_instmap_delta_1(Params, InstMap0, InstMapDelta, Goal0, Goal, !RI) :-
             _MTRC, _Impl),
         Params = recompute_params(RecomputeAtomic, _),
         (
-            RecomputeAtomic = do_not_recompute_atomic_instmap_deltas,
+            RecomputeAtomic = no_recomp_atomics,
             InstMapDelta1 = goal_info_get_instmap_delta(GoalInfo0)
         ;
-            RecomputeAtomic = recompute_atomic_instmap_deltas,
+            RecomputeAtomic = recomp_atomics,
             ArgVars = list.map(foreign_arg_var, Args),
             recompute_instmap_delta_call(Params, PredId, ProcId, ArgVars,
                 InstMap0, InstMapDelta0, !RI),

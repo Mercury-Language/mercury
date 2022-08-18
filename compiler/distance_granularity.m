@@ -270,10 +270,9 @@ apply_dg_to_procs(PredId, [ProcId | ProcIds], Distance,
                 % must be specialized.
                 !:Specialized = yes,
                 proc_info_set_goal(BodyClone, !ProcInfo),
-                requantify_proc_general(ordinary_nonlocals_no_lambda,
-                    !ProcInfo),
+                requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
                 recompute_instmap_delta_proc(
-                    do_not_recompute_atomic_instmap_deltas,
+                    no_recomp_atomics,
                     !ProcInfo, !ModuleInfo),
                 pred_info_set_proc_info(ProcId, !.ProcInfo, !PredInfo)
             ;
@@ -830,21 +829,21 @@ apply_dg_to_switch([Case | Cases], !CasesAcc, CallerPredId, CallerProcId,
     int::in, pred_id::in, sym_name::in, pred_info::in, pred_info::out,
     module_info::in, module_info::out) is det.
 
-update_original_predicate_procs(_PredId, [], _Distance, _PredIdSpecialized,
-        _SymNameSpecialized, !PredInfo, !ModuleInfo).
+update_original_predicate_procs(_PredId, [], _Distance,
+        _PredIdSpecialized, _SymNameSpecialized, !PredInfo, !ModuleInfo).
 update_original_predicate_procs(PredId, [ProcId | ProcIds], Distance,
-        PredIdSpecialized, SymNameSpecialized, !PredInfo,
-        !ModuleInfo) :-
-    module_info_proc_info(!.ModuleInfo, proc(PredId, ProcId), ProcInfo0),
-    proc_info_get_goal(ProcInfo0, Body0),
-    update_original_predicate_goal(Body0, Body, PredId, ProcId,
-        PredIdSpecialized, SymNameSpecialized, ProcInfo0, ProcInfo1, Distance),
-    proc_info_set_goal(Body, ProcInfo1, ProcInfo2),
-    requantify_proc_general(ordinary_nonlocals_no_lambda,
-        ProcInfo2, ProcInfo3),
-    recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
-        ProcInfo3, ProcInfo, !ModuleInfo),
-    pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo),
+        PredIdSpecialized, SymNameSpecialized, !PredInfo, !ModuleInfo) :-
+    some [!ProcInfo] (
+        module_info_proc_info(!.ModuleInfo, proc(PredId, ProcId), !:ProcInfo),
+        proc_info_get_goal(!.ProcInfo, Body0),
+        update_original_predicate_goal(Body0, Body, PredId, ProcId,
+            PredIdSpecialized, SymNameSpecialized, !ProcInfo, Distance),
+        proc_info_set_goal(Body, !ProcInfo),
+        requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
+        recompute_instmap_delta_proc(no_recomp_atomics,
+            !ProcInfo, !ModuleInfo),
+        pred_info_set_proc_info(ProcId, !.ProcInfo, !PredInfo)
+    ),
     update_original_predicate_procs(PredId, ProcIds, Distance,
         PredIdSpecialized, SymNameSpecialized, !PredInfo, !ModuleInfo).
 

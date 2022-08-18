@@ -1052,8 +1052,8 @@ transform_direct_arg_in_out_calls_in_proc(DirectArgProcMap,
         maybe_add_foreign_proc_error(!.ModuleInfo, DirectArgProcMap,
             DirectArgProcInOutMap),
         CloneForeignProcs, !Specs),
-    requantify_proc_general(ordinary_nonlocals_maybe_lambda, !ProcInfo),
-    recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
+    requantify_proc_general(ord_nl_maybe_lambda, !ProcInfo),
+    recompute_instmap_delta_proc(recomp_atomics,
         !ProcInfo, !ModuleInfo).
 
     % The purpose of this predicate is described in the long comment

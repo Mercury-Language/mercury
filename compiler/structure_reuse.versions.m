@@ -311,9 +311,8 @@ apply_reuse_in_proc(ConvertPotentialReuse, ReuseTable, PPId, !ModuleInfo) :-
             % construction unification in which its space is reused, so we
             % requantify.  Then we recompute instmap deltas with the updated
             % non-local sets.
-            requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
-            recompute_instmap_delta_proc(
-                do_not_recompute_atomic_instmap_deltas,
+            requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
+            recompute_instmap_delta_proc(no_recomp_atomics,
                 !ProcInfo, !ModuleInfo),
             module_info_set_pred_proc_info(PPId, PredInfo0, !.ProcInfo,
                 !ModuleInfo)

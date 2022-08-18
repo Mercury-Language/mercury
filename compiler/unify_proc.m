@@ -2723,7 +2723,7 @@ get_pretest_equality_cast_type(Info) = CastType :-
 quantify_clause_body(ApplModes, HeadVars, Goal0, Context, Clause, !Info) :-
     info_get_var_table(!.Info, VarTable0),
     info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-    implicitly_quantify_clause_body_general_vt(ordinary_nonlocals_maybe_lambda,
+    implicitly_quantify_clause_body_general(ord_nl_maybe_lambda,
         HeadVars, _Warnings, Goal0, Goal,
         VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
     info_set_var_table(VarTable, !Info),

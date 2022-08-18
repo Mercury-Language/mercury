@@ -242,22 +242,19 @@ delay_partial_inst_proc(ModuleInfo, PredId, ProcTable, ProcId,
             Changed = yes,
             proc_info_set_goal(Goal, !ProcInfo),
             proc_info_set_var_table(VarTable, !ProcInfo),
-            requantify_proc_general(ordinary_nonlocals_maybe_lambda,
-                !ProcInfo),
+            requantify_proc_general(ord_nl_maybe_lambda, !ProcInfo),
             !:ChangedProcs = [ProcId - !.ProcInfo | !.ChangedProcs],
 
             trace [compiletime(flag("debug_delay_partial_inst")), io(!IO)] (
                 io.output_stream(Stream, !IO),
                 io.write_string(Stream,
                     "predicate body BEFORE delay_partial_inst:\n", !IO),
-                dump_goal(Stream, ModuleInfo, vns_var_table(VarTable0),
+                dump_goal_nl(Stream, ModuleInfo, vns_var_table(VarTable0),
                     Goal0, !IO),
-                io.nl(Stream, !IO),
                 io.write_string(Stream,
                     "predicate body AFTER delay_partial_inst:\n", !IO),
-                dump_goal(Stream, ModuleInfo, vns_var_table(VarTable),
-                    Goal, !IO),
-                io.nl(Stream, !IO)
+                dump_goal_nl(Stream, ModuleInfo, vns_var_table(VarTable),
+                    Goal, !IO)
             )
         ;
             Changed = no

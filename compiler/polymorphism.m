@@ -2001,7 +2001,7 @@ fixup_quantification(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
         poly_info_get_var_table(!.Info, VarTable0),
         poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
         OutsideVars = proc_arg_vector_to_set(HeadVars),
-        implicitly_quantify_goal_general_vt(ordinary_nonlocals_maybe_lambda,
+        implicitly_quantify_goal_general(ord_nl_maybe_lambda,
             set_to_bitset(OutsideVars), _Warnings, Goal0, Goal,
             VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
         poly_info_set_var_table_rtti(VarTable, RttiVarMaps, !Info)
@@ -2076,7 +2076,7 @@ fixup_lambda_quantification(LambdaNonLocals0, ArgVars, ExistQVars, !Goal,
         poly_info_set_must_requantify(!Info),
         set_of_var.union(NonLocalsWithArgVars, AllTiTciGoalVars,
             PossibleOutsideVars),
-        implicitly_quantify_goal_general_vt(ordinary_nonlocals_maybe_lambda,
+        implicitly_quantify_goal_general(ord_nl_maybe_lambda,
             PossibleOutsideVars, _Warnings, !Goal,
             VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
         poly_info_set_var_table_rtti(VarTable, RttiVarMaps, !Info)

@@ -191,7 +191,7 @@ ml_find_and_requantify_procs_for_code_gen([PredIdInfo0 | PredIdInfos0],
 
 requantify_codegen_proc(ProcId, !ProcTable) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
-    requantify_proc_general(ordinary_nonlocals_no_lambda, ProcInfo0, ProcInfo),
+    requantify_proc_general(ord_nl_no_lambda, ProcInfo0, ProcInfo),
     map.det_update(ProcId, ProcInfo, !ProcTable).
 
 :- type maybe_tail_call_opt_in_code_gen

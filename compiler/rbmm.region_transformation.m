@@ -246,7 +246,7 @@ region_transform_proc(RptaInfoTable, FormalRegionArgTable,
         RegionInstructionProc, ResurRenamingAnnoProc, IteRenamingAnnoProc,
         VarTable0, HeadVars0, ActualArgModes0, Goal0, NameToVar0, NameToVar,
         ProcInfo1, ProcInfo2),
-    requantify_proc_general(ordinary_nonlocals_no_lambda, ProcInfo2, ProcInfo),
+    requantify_proc_general(ord_nl_no_lambda, ProcInfo2, ProcInfo),
     module_info_set_pred_proc_info(PPId, PredInfo0, ProcInfo, !ModuleInfo),
     map.det_insert(PPId, NameToVar, !NameToVarTable).
 
@@ -1008,8 +1008,8 @@ update_instmap_delta_pred(PredId, !ModuleInfo) :-
 update_instmap_delta_proc(PredId, ProcId, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo0),
-    recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
-        ProcInfo0, ProcInfo, !ModuleInfo),
+    recompute_instmap_delta_proc(recomp_atomics, ProcInfo0, ProcInfo,
+        !ModuleInfo),
     module_info_set_pred_proc_info(PPId, PredInfo, ProcInfo, !ModuleInfo).
 
 %---------------------------------------------------------------------------%

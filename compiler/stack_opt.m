@@ -229,14 +229,13 @@ stack_opt_cell(PredProcId, !ProcInfo, !ModuleInfo) :-
                 PredIdInt, DebugStackOpt,
                 "\nafter stack opt transformation", !IO)
         ),
-        requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
+        requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
         trace [io(!IO)] (
             maybe_write_progress_message(!.ModuleInfo, !.ProcInfo,
                 PredIdInt, DebugStackOpt,
                 "\nafter stack opt requantify", !IO)
         ),
-        recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
-            !ProcInfo, !ModuleInfo),
+        recompute_instmap_delta_proc(recomp_atomics, !ProcInfo, !ModuleInfo),
         trace [io(!IO)] (
             maybe_write_progress_message(!.ModuleInfo, !.ProcInfo,
                 PredIdInt, DebugStackOpt,

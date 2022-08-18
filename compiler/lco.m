@@ -453,8 +453,8 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
             proc_info_set_goal(Goal, !ProcInfo),
             % See the comment in transform_call_and_unifies for why these
             % are needed.
-            requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
-            recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
+            requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
+            recompute_instmap_delta_proc(recomp_atomics,
                 !ProcInfo, !ModuleInfo),
             map.det_insert(CurProc, !.ProcInfo, !CurSCCUpdates)
         )
@@ -1468,7 +1468,7 @@ lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
     ),
     proc_info_set_goal(Goal, !VariantProcInfo),
     % We changed the scopes of the headvars we now return via pointers.
-    requantify_proc_general(ordinary_nonlocals_no_lambda, !VariantProcInfo),
+    requantify_proc_general(ord_nl_no_lambda, !VariantProcInfo),
 
     % The high-level data transformation requires instmap deltas
     % to be recomputed.
@@ -1480,7 +1480,7 @@ lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
         ( Target = target_java
         ; Target = target_csharp
         ),
-        recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
+        recompute_instmap_delta_proc(no_recomp_atomics,
             !VariantProcInfo, !ModuleInfo)
     ).
 

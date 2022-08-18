@@ -130,13 +130,13 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
         % renamings will be needed.
 
         proc_info_get_headvars(!.ProcInfo, HeadVars),
-        implicitly_quantify_clause_body_general_vt(
-            ordinary_nonlocals_no_lambda, HeadVars, _Warnings, Goal1, Goal2,
+        implicitly_quantify_clause_body_general(ord_nl_no_lambda,
+            HeadVars, _Warnings, Goal1, Goal2,
             VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
         proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
         proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
-        recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
-            VarTable, InstVarSet, InstMap0, Goal2, Goal, !ModuleInfo),
+        recompute_instmap_delta(no_recomp_atomics, VarTable, InstVarSet,
+            InstMap0, Goal2, Goal, !ModuleInfo),
         proc_info_set_goal(Goal, !ProcInfo),
         proc_info_set_var_table(VarTable, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
