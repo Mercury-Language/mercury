@@ -28,8 +28,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % The functor_info type contains information about how the weight of a
-    % term is calculated.
+    % The functor_info type contains information about how the weight
+    % of a term is calculated.
     %
 :- type functor_info.
 
@@ -42,7 +42,7 @@
     % of that functor whose sizes should be counted towards the size of the
     % whole term.
     %
-    % NOTE: the list of arguments and the list of modes must be the same
+    % NOTE: the list of arguments and the list of modes must have the same
     % length. They must also *not* contain any typeinfo related arguments as
     % this may cause an exception to be thrown when using the
     % `--num-data-elems' norm. (This is because the weight table does not
@@ -91,7 +91,7 @@
 % We use semilinear norms (denoted by ||) to compute the sizes of terms.
 % These have the form
 %
-% | f(t1, ... tn) | = weight(f) + sum of | ti |
+% |f(t1, ... tn)| = weight(f) + sum of |ti|
 % where i is an element of a set I, and I is a subset of {1, ... n}
 %
 % We currently support four kinds of semilinear norms.
@@ -122,9 +122,10 @@
 %
 % Given a type definition such as
 %
-% :- type t(Tk) --->    f1(a11, ... a1n1)   where n1 is the arity of f1
-%       ;   ...
-%       ;   fm(am1, ... amnm)   where nm is the arity of fm
+% :- type t(Tk)
+%   --->    f1(a11, ... a1n1)   where n1 is the arity of f1
+%   ;       ...
+%   ;       fm(am1, ... amnm)   where nm is the arity of fm
 %
 % we check, for each aij, whether its type is recursive (i.e. it is t with
 % type variable arguments that are a permutation of Tk). The weight info
@@ -136,7 +137,8 @@
 
 :- type weight_table == map(pair(type_ctor, cons_id), weight_info).
 
-:- type weight_info ---> weight(int, list(bool)).
+:- type weight_info
+    --->    weight(int, list(bool)).
 
 :- pred find_weights(module_info::in, weight_table::out) is det.
 
