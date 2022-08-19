@@ -161,6 +161,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 
 :- import_module assoc_list.

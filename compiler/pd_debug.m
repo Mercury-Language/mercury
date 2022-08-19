@@ -69,6 +69,7 @@
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 
 :- import_module bool.
@@ -171,14 +172,13 @@ pd_debug_output_version(Stream, ModuleInfo, PredProcId, Version,
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_get_var_table(ProcInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
     instmap_restrict(NonLocals, InstMap, InstMap1),
-    ArgsStr = mercury_vars_to_string_src(VarNameSrc, print_name_and_num, Args),
-    InstMap1Str = instmap_to_string(VarNameSrc, print_name_and_num, 1,
-        InstMap1),
+    ArgsStr = mercury_vars_to_string(VarTable, print_name_and_num, Args),
+    InstMap1Str = instmap_to_string(VarTable, print_name_and_num, 1, InstMap1),
     io.format(Stream, " args: %s\n%s\n", [s(ArgsStr), s(InstMap1Str)], !IO),
     module_info_get_globals(ModuleInfo, Globals),
     OutInfo = init_hlds_out_info(Globals, output_debug),
+    VarNameSrc = vns_var_table(VarTable),
     write_goal_nl(OutInfo, Stream, ModuleInfo, VarNameSrc,
         print_name_and_num, 1, "\n", Goal, !IO),
     set.to_sorted_list(Parents, ParentsList),
@@ -212,8 +212,8 @@ pd_debug_write_instmap(PDInfo, !IO) :-
         pd_info_get_proc_info(PDInfo, ProcInfo),
         proc_info_get_var_table(ProcInfo, VarTable),
         pd_info_get_instmap(PDInfo, InstMap),
-        InstMapStr = instmap_to_string(vns_var_table(VarTable),
-            print_name_and_num, 1, InstMap),
+        InstMapStr = instmap_to_string(VarTable, print_name_and_num,
+            1, InstMap),
         io.write_string(Stream, InstMapStr, !IO),
         io.flush_output(Stream, !IO)
     ).
@@ -259,8 +259,8 @@ pd_debug_output_goal(PDInfo, Msg, Goal, !IO) :-
         instmap_restrict(Vars, InstMap, VarsInstMap),
 
         OutInfo = init_hlds_out_info(Globals, output_debug),
-        InstmapStr = instmap_to_string(vns_var_table(VarTable),
-            print_name_and_num, 1, VarsInstMap),
+        InstmapStr = instmap_to_string(VarTable, print_name_and_num,
+            1, VarsInstMap),
         io.format(Stream, "%s%s\n", [s(InstmapStr), s(Msg)], !IO),
         write_goal_nl(OutInfo, Stream, ModuleInfo, vns_var_table(VarTable),
             print_name_and_num, 1, "\n", Goal, !IO),

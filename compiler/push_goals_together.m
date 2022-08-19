@@ -67,7 +67,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.var_table.
+:- import_module parse_tree.var_db.
 
 :- import_module assoc_list.
 :- import_module int.

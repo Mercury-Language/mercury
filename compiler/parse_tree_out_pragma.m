@@ -125,7 +125,7 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.var_table.
+:- import_module parse_tree.var_db.
 
 :- import_module char.
 :- import_module list.
@@ -806,8 +806,8 @@ user_annotated_sharing_to_string(VarSet, Sharing, MaybeTypes) = String :-
 sharing_pair_to_string(VarSet, TypeVarSet, DataA - DataB) = Str :-
     DataA = selected_cel(VarA, SelectorA),
     DataB = selected_cel(VarB, SelectorB),
-    VarStrA = mercury_var_to_string(VarSet, print_name_only, VarA),
-    VarStrB = mercury_var_to_string(VarSet, print_name_only, VarB),
+    VarStrA = mercury_var_to_string_vs(VarSet, print_name_only, VarA),
+    VarStrB = mercury_var_to_string_vs(VarSet, print_name_only, VarB),
     SelectorStrA = selector_to_string(TypeVarSet, SelectorA),
     SelectorStrB = selector_to_string(TypeVarSet, SelectorB),
     StrA = "cel(" ++ VarStrA ++ ", [" ++ SelectorStrA ++ "])",
@@ -973,7 +973,7 @@ mercury_output_pragma_type_spec(Stream, Lang, TypeSpecInfo, !IO) :-
     io::di, io::uo) is det.
 
 mercury_output_type_subst(VarSet, VarNamePrint, Var - Type, Stream, !IO) :-
-    mercury_output_var(VarSet, VarNamePrint, Var, Stream, !IO),
+    mercury_output_var_vs(VarSet, VarNamePrint, Var, Stream, !IO),
     io.write_string(Stream, " = ", !IO),
     mercury_output_type(VarSet, VarNamePrint, Type, Stream, !IO).
 
@@ -1508,7 +1508,7 @@ write_vars_and_types(Stream, VarSet, TypeVarSet, HeadVars, HeadVarTypes,
     ;
         HeadVars = [_ | _],
         io.write_string(Stream, "vars(", !IO),
-        mercury_output_vars(VarSet, print_name_only, HeadVars, Stream, !IO),
+        mercury_output_vars_vs(VarSet, print_name_only, HeadVars, Stream, !IO),
         io.write_string(Stream, "), ", !IO),
 
         io.write_string(Stream, "types(", !IO),

@@ -121,12 +121,12 @@ quant_warning_to_spec(PredCallId, VarSet, Warning) = Spec :-
     ;
         Vars = [Var],
         Pieces2 = [words("warning: variable"),
-            quote(mercury_var_to_name_only(VarSet, Var)),
+            quote(mercury_var_to_name_only_vs(VarSet, Var)),
             words("has overlapping scopes."), nl]
     ;
         Vars = [_, _ | _],
         Pieces2 = [words("warning: variables"),
-            quote(mercury_vars_to_name_only(VarSet, Vars)),
+            quote(mercury_vars_to_name_only_vs(VarSet, Vars)),
             words("each have overlapping scopes."), nl]
     ),
     Spec = conditional_spec($pred, warn_overlapping_scopes, yes,
@@ -492,7 +492,7 @@ generate_variable_warning(SingleMulti, Context, CallId, VarSet, Vars, Spec) :-
     ),
     Preamble = [words("In clause for"),
         unqual_pf_sym_name_orig_arity(CallId), suffix(":"), nl],
-    VarStrs0 = list.map(mercury_var_to_name_only(VarSet), Vars),
+    VarStrs0 = list.map(mercury_var_to_name_only_vs(VarSet), Vars),
     list.sort_and_remove_dups(VarStrs0, VarStrs),
     VarsStr = "`" ++ string.join_list(", ", VarStrs) ++ "'",
     % We want VarsPiece to be breakable into two or more lines

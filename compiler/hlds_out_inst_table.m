@@ -298,7 +298,7 @@ write_uniq_live_real(Stream, Uniq, Live, Real, !IO) :-
 write_inst_name_nl(Lang, InstName, Stream, !IO) :-
     InstNameTerm = inst_name_to_term(Lang, InstName),
     varset.init(VarSet),
-    mercury_output_term(VarSet, print_name_only, InstNameTerm, Stream, !IO),
+    mercury_output_term_vs(VarSet, print_name_only, InstNameTerm, Stream, !IO),
     io.nl(Stream, !IO).
 
 :- pred write_inst(io.text_output_stream::in, output_lang::in, mer_inst::in,
@@ -307,7 +307,7 @@ write_inst_name_nl(Lang, InstName, Stream, !IO) :-
 write_inst(Stream, Lang, Inst, !IO) :-
     InstTerm = inst_to_term(Lang, Inst),
     varset.init(VarSet),
-    mercury_output_term(VarSet, print_name_only, InstTerm, Stream, !IO).
+    mercury_output_term_vs(VarSet, print_name_only, InstTerm, Stream, !IO).
 
 %---------------------------------------------------------------------------%
 %

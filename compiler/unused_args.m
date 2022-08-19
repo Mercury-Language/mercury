@@ -2099,8 +2099,8 @@ write_var_usage(Stream, ModuleInfo, PredProcId - VarDepMap, !IO) :-
         NoDependVars = []
     ;
         NoDependVars = [_ | _],
-        NoDependVarsStr = mercury_vars_to_string_src(vns_var_table(VarTable),
-            print_name_and_num, NoDependVars),
+        NoDependVarsStr =
+            mercury_vars_to_string(VarTable, print_name_and_num, NoDependVars),
         io.format(Stream, "nodepend vars: %s\n", [s(NoDependVarsStr)], !IO)
     ).
 
@@ -2116,15 +2116,14 @@ write_usage_info(Stream, ModuleInfo, VarTable, Var - UsageInfo,
     ( if VarList = [], ArgList = [] then
         !:RevNoDependVars = [Var | !.RevNoDependVars]
     else
-        VarStr = mercury_var_to_string_src(vns_var_table(VarTable),
-            print_name_and_num, Var),
+        VarStr = mercury_var_to_string(VarTable, print_name_and_num, Var),
         io.format(Stream, "dependencies of %s:\n", [s(VarStr)], !IO),
         (
             VarList = []
         ;
             VarList = [_ | _],
-            VarListStr = mercury_vars_to_string_src(vns_var_table(VarTable),
-                print_name_and_num, VarList),
+            VarListStr =
+                mercury_vars_to_string(VarTable, print_name_and_num, VarList),
             io.format(Stream, "on variables: %s\n", [s(VarListStr)], !IO)
         ),
         (
@@ -2144,8 +2143,7 @@ write_arg_var_in_proc(Stream, ModuleInfo, ArgVarInProc, !IO) :-
     PredProcIdStr = pred_proc_id_to_dev_string(ModuleInfo, PredProcId),
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
     proc_info_get_var_table(ProcInfo, VarTable),
-    VarStr = mercury_var_to_string_src(vns_var_table(VarTable),
-        print_name_and_num, Var),
+    VarStr = mercury_var_to_string(VarTable, print_name_and_num, Var),
     io.format(Stream, "%s: %s\n", [s(PredProcIdStr), s(VarStr)], !IO).
 
 %-----------------------------------------------------------------------------%

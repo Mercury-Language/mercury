@@ -514,7 +514,7 @@ find_variable_type(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
                 MaybeMsg = no  % This error is handled elsewhere.
             else
                 Type = DefaultType,
-                VarName = mercury_var_to_name_only(ProgVarSet, Var),
+                VarName = mercury_var_to_name_only_vs(ProgVarSet, Var),
                 list.map(type_to_debug_string(TVarSet),
                     set.to_sorted_list(Types), TypeStrings),
                 TypesString = string.join_list(" or ", TypeStrings),
@@ -2106,10 +2106,10 @@ diagnose_unsatisfiability_error(TCInfo, Context, ProgVarSet, TypeVar, Msg) :-
         MinUnsatPieces, ErrorLocations0),
     list.condense(ErrorLocations0, ErrorLocations),
     ( if bimap.reverse_search(VarMap, ProgVar, TypeVar) then
-        VarName = mercury_var_to_name_only(ProgVarSet, ProgVar),
+        VarName = mercury_var_to_name_only_vs(ProgVarSet, ProgVar),
         VarKind = "program"
     else
-        VarName = mercury_var_to_name_only(TVarSet, TypeVar),
+        VarName = mercury_var_to_name_only_vs(TVarSet, TypeVar),
         VarKind = "type"
     ),
     Pieces = [words("Conflicting type assignments for the"),
@@ -2305,7 +2305,7 @@ print_constraint_solution(TCInfo, ProgVarSet, DomainMap, !IO) :-
 
 print_prog_var_domain(TVarSet, ProgVarSet, ProgVar, Domain, !IO) :-
     type_domain_to_string(TVarSet, Domain, DomainName),
-    VarName = mercury_var_to_name_only(ProgVarSet, ProgVar),
+    VarName = mercury_var_to_name_only_vs(ProgVarSet, ProgVar),
     io.print("  " ++ VarName ++ " -> {" ++ DomainName ++ "}\n", !IO).
 
 :- pred print_type_domain(tvarset::in, pair(tvar, type_domain)::in,
@@ -2313,7 +2313,7 @@ print_prog_var_domain(TVarSet, ProgVarSet, ProgVar, Domain, !IO) :-
 
 print_type_domain(TVarSet, TVar - Domain, !IO) :-
     type_domain_to_string(TVarSet, Domain, DomainName),
-    TVarName = mercury_var_to_string(TVarSet, print_name_and_num, TVar),
+    TVarName = mercury_var_to_string_vs(TVarSet, print_name_and_num, TVar),
     io.print("  " ++ TVarName ++ " -> {" ++ DomainName ++ "}\n", !IO).
 
 :- pred type_domain_to_string(tvarset::in, type_domain::in, string::out)
@@ -2349,8 +2349,8 @@ print_pred_constraint(TCInfo, ProgVarSet, !IO) :-
 
 print_var_constraints(ConstraintMap, VarConstraints, TVarSet, ProgVarSet,
         Var - TVar, !IO) :-
-    VarName = mercury_var_to_string(ProgVarSet, print_name_and_num, Var),
-    TVarName = mercury_var_to_string(TVarSet, print_name_and_num, TVar),
+    VarName = mercury_var_to_string_vs(ProgVarSet, print_name_and_num, Var),
+    TVarName = mercury_var_to_string_vs(TVarSet, print_name_and_num, TVar),
     io.print(VarName ++ " -> " ++ TVarName ++ "\n", !IO),
     ( if map.search(VarConstraints, TVar, ConstraintIds0) then
         ConstraintIds = ConstraintIds0
@@ -2420,7 +2420,7 @@ conj_constraint_to_string(Indent, TVarSet, Constraint, String) :-
     simple_type_constraint::in, string::out) is det.
 
 simple_constraint_to_string(Indent, TVarSet, stconstr(TVar, Type), String) :-
-    VarName = mercury_var_to_string(TVarSet, print_name_and_num, TVar),
+    VarName = mercury_var_to_string_vs(TVarSet, print_name_and_num, TVar),
     type_to_debug_string(TVarSet, Type, TypeName),
     String = duplicate_char(' ', Indent) ++
         "( " ++ VarName ++ " :: " ++ TypeName ++ ")".

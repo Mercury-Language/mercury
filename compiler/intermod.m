@@ -146,6 +146,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 :- import_module parse_tree.vartypes.
 :- import_module transform_hlds.inlining.

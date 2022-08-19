@@ -1455,7 +1455,7 @@ try_generalisation(EarlierGoal, BetweenGoals, MaybeLaterGoal,
     proc_info_get_var_table(ProcInfo, VarTable),
     ( if
         pd_util.goals_match(ModuleInfo, VersionGoal, VersionArgVars,
-            VersionArgTypes, FoldGoal, vts_var_table(VarTable), Renaming, _)
+            VersionArgTypes, FoldGoal, VarTable, Renaming, _)
     then
         do_generalisation(VersionArgVars, Renaming, VersionInstMap,
             EarlierGoal, BetweenGoals, MaybeLaterGoal, FoldGoal, ConjNonLocals,
@@ -1608,7 +1608,7 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgVars,
         NonGeneralisedArgVars, NonGeneralisedArgTypes,_,_,_,_,_),
     pd_util.goals_match(ModuleInfo, NonGeneralisedGoal,
         NonGeneralisedArgVars, NonGeneralisedArgTypes,
-        RenamedFirstVersionGoal, vts_var_table(!.VarTable),
+        RenamedFirstVersionGoal, !.VarTable,
         GeneralRenaming, TypeRenaming),
 
     module_info_pred_info(ModuleInfo, NonGeneralisedPredId,
@@ -1628,7 +1628,7 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgVars,
 
     % Check whether the entire conjunction matches.
     pd_util.goals_match(ModuleInfo, VersionGoal, VersionArgVars,
-        VersionArgTypes, GoalToMatch, vts_var_table(!.VarTable), Renaming, _).
+        VersionArgTypes, GoalToMatch, !.VarTable, Renaming, _).
 
 %-----------------------------------------------------------------------------%
 

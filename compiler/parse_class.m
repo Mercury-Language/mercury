@@ -222,10 +222,10 @@ parse_constrained_class(ModuleName, VarSet, NameTerm, ConstraintsTerm,
                 NotInParams = [_ | _],
                 ClassTVarSet = ItemTypeClass0 ^ tc_varset,
                 ConstraintNotInParamsStrs = list.map(
-                    mercury_var_to_name_only(ClassTVarSet),
+                    mercury_var_to_name_only_vs(ClassTVarSet),
                     ConstraintNotInParams),
                 FunDepNotInParamsStrs = list.map(
-                    mercury_var_to_name_only(ClassTVarSet),
+                    mercury_var_to_name_only_vs(ClassTVarSet),
                     FunDepNotInParams),
                 ConstraintNotInParamsPieces =
                     list_to_pieces(ConstraintNotInParamsStrs),
@@ -597,7 +597,7 @@ check_tvars_in_instance_constraint(ItemInstanceInfo, NameTerm, MaybeSpec) :-
         list.filter(set.contains(TypesVars), TVars, _BoundTVars, UnboundTVars),
         UnboundTVars = [_ | _]
     then
-        UnboundTVarStrs = list.map(mercury_var_to_name_only(TVarSet),
+        UnboundTVarStrs = list.map(mercury_var_to_name_only_vs(TVarSet),
             UnboundTVars),
         UnboundTVarPieces = list_to_pieces(UnboundTVarStrs),
         ( if list.length(UnboundTVars) = 1 then

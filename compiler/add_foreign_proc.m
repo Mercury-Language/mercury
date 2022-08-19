@@ -386,14 +386,14 @@ clauses_info_do_add_pragma_foreign_proc(PredOrFunc, PredModuleName, PredName,
             qual_pf_sym_name_user_arity(PFSymNameArity), suffix(":"), nl],
         (
             MultiplyOccurringArgVars = [MultiplyOccurringArgVar],
-            BadVarStr =
-                mercury_var_to_name_only(PVarSet, MultiplyOccurringArgVar),
+            BadVarStr = mercury_var_to_name_only_vs(PVarSet,
+                MultiplyOccurringArgVar),
             Pieces2 = [words("error: variable"), quote(BadVarStr),
                 words("occurs multiple times in the argument list."), nl]
         ;
             MultiplyOccurringArgVars = [_, _ | _],
-            BadVarsStr =
-                mercury_vars_to_name_only(PVarSet, MultiplyOccurringArgVars),
+            BadVarsStr = mercury_vars_to_name_only_vs(PVarSet,
+                MultiplyOccurringArgVars),
             Pieces2 = [words("error: variables"), quote(BadVarsStr),
                 words("occur multiple times in the argument list."), nl]
         ),

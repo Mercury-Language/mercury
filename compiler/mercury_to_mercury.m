@@ -213,10 +213,9 @@ mercury_format_type(TypeVarSet, VarNamePrint, Type, S, !U) :-
     % for this is that we have to be very careful about handling operators
     % and precedence properly, and it is better to have the code to manage
     % that in one place, rather than duplicated here.
-    %
     unparse_type(Type, Term),
     VarSet = varset.coerce(TypeVarSet),
-    mercury_format_term(VarSet, VarNamePrint, Term, S, !U).
+    mercury_format_term_vs(VarSet, VarNamePrint, Term, S, !U).
 
 %---------------------------------------------------------------------------%
 
@@ -251,7 +250,7 @@ mercury_format_quantifier(TypeVarSet, VarNamePrint, ExistQVars, S, !U) :-
     ;
         ExistQVars = [_ | _],
         add_string("some [", S, !U),
-        mercury_format_vars(TypeVarSet, VarNamePrint, ExistQVars, S, !U),
+        mercury_format_vars_vs(TypeVarSet, VarNamePrint, ExistQVars, S, !U),
         add_string("] ", S, !U)
     ).
 
@@ -266,7 +265,7 @@ mercury_output_state_vars(VarSet, VarNamePrint, StateVars, Stream, !IO) :-
 
 mercury_output_state_var(VarSet, VarNamePrint, Var, Stream, !IO) :-
     io.write_string(Stream, "!", !IO),
-    mercury_output_var(VarSet, VarNamePrint, Var, Stream, !IO).
+    mercury_output_var_vs(VarSet, VarNamePrint, Var, Stream, !IO).
 
 %---------------------------------------------------------------------------%
 

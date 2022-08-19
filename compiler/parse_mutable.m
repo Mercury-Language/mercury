@@ -349,7 +349,7 @@ parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
             MaybeMutAttrs = error1(Specs)
         )
     else
-        MutAttrsStr = mercury_term_to_string(VarSet, print_name_only,
+        MutAttrsStr = mercury_term_to_string_vs(VarSet, print_name_only,
             MutAttrsTerm),
         Pieces = [words("In fifth argument of"),
             decl("mutable"), words("declaration:"),
@@ -382,8 +382,10 @@ record_mutable_attributes(VarSet, [Term - Attr | TermAttrs], !LangMap,
         Attr = mutable_attr_foreign_name(ForeignName),
         ForeignName = foreign_name(Lang, Name),
         ( if map.search(!.LangMap, Lang, Term0 - _Name0) then
-            TermStr0 = mercury_term_to_string(VarSet, print_name_only, Term0),
-            TermStr = mercury_term_to_string(VarSet, print_name_only, Term),
+            TermStr0 =
+                mercury_term_to_string_vs(VarSet, print_name_only, Term0),
+            TermStr =
+                mercury_term_to_string_vs(VarSet, print_name_only, Term),
             Pieces = [words("Error: attributes"), quote(TermStr0),
                 words("and"), quote(TermStr), words("conflict."), nl],
             Spec = simplest_spec($pred, severity_error,
@@ -470,7 +472,7 @@ check_attribute_fit(VarSet, OnlyLangMap, MaybeTrailed, MaybeConst, MaybeIO,
                 ;
                     MaybeTrailed = no,
                     % Local is wrong, but will not be used due to !:Specs.
-                    LocalTermStr = mercury_term_to_string(VarSet,
+                    LocalTermStr = mercury_term_to_string_vs(VarSet,
                         print_name_only, LocalTerm),
                     Pieces = [words("Error: attribute"), quote(LocalTermStr),
                         words("conflicts with the default,"),
@@ -546,12 +548,12 @@ default_mutable_attributes =
 
 report_repeated_or_conflicting_attributes(VarSet, Term0, Attr0, Term, Attr,
         !Specs) :-
-    TermStr = mercury_term_to_string(VarSet, print_name_only, Term),
+    TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),
     ( if Attr0 = Attr then
         Pieces = [words("Error: attribute"), quote(TermStr),
             words("is repeated."), nl]
     else
-        TermStr0 = mercury_term_to_string(VarSet, print_name_only, Term0),
+        TermStr0 = mercury_term_to_string_vs(VarSet, print_name_only, Term0),
         Pieces = [words("Error: attributes"), quote(TermStr0),
             words("and"), quote(TermStr), words("conflict."), nl]
     ),
@@ -563,8 +565,8 @@ report_repeated_or_conflicting_attributes(VarSet, Term0, Attr0, Term, Attr,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_conflicting_attributes(VarSet, Term0, Term, !Specs) :-
-    TermStr0 = mercury_term_to_string(VarSet, print_name_only, Term0),
-    TermStr = mercury_term_to_string(VarSet, print_name_only, Term),
+    TermStr0 = mercury_term_to_string_vs(VarSet, print_name_only, Term0),
+    TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),
     Pieces = [words("Error: attributes"), quote(TermStr0),
         words("and"), quote(TermStr), words("conflict."), nl],
     Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,

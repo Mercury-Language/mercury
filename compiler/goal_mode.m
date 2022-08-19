@@ -168,20 +168,20 @@ dump_goal_mode(PrefixStr, VarTable, GoalMode) = !:DumpStrs :-
                 !:DumpStrs = []
             ;
                 BoundNonGroundedVars = [_ | _],
-                NonGroundedStr = PrefixStr ++ "bound but not grounded: " ++
-                    mercury_vars_to_string_src(vns_var_table(VarTable),
-                        print_name_and_num, BoundNonGroundedVars) ++
-                    "\n",
+                NGVarsStr = mercury_vars_to_string(VarTable,
+                    print_name_and_num, BoundNonGroundedVars),
+                string.format("%sbound but not grounded:%s\n",
+                    [s(PrefixStr), s(NGVarsStr)], NonGroundedStr),
                 !:DumpStrs = [NonGroundedStr]
             ),
             (
                 BoundGroundedVars = []
             ;
                 BoundGroundedVars = [_ | _],
-                GroundedStr = PrefixStr ++ "bound and grounded: " ++
-                    mercury_vars_to_string_src(vns_var_table(VarTable),
-                        print_name_and_num, BoundGroundedVars) ++
-                    "\n",
+                GVarsStr = mercury_vars_to_string(VarTable,
+                    print_name_and_num, BoundNonGroundedVars),
+                string.format("%sbound and grounded:%s\n",
+                    [s(PrefixStr), s(GVarsStr)], GroundedStr),
                 !:DumpStrs = [GroundedStr | !.DumpStrs]
             )
         )

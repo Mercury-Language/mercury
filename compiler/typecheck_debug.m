@@ -109,7 +109,7 @@ write_type_assign(Stream, TypeAssign, VarSet, !IO) :-
     ;
         ExternalTypeParams = [_ | _],
         io.write_string(Stream, "some [", !IO),
-        mercury_output_vars(TypeVarSet, debug_varnums, ExternalTypeParams,
+        mercury_output_vars_vs(TypeVarSet, debug_varnums, ExternalTypeParams,
             Stream, !IO),
         io.write_string(Stream, "]\n\t", !IO)
     ),
@@ -139,7 +139,7 @@ write_type_assign_types(Stream, VarSet, TypeVarSet, VarTypes, TypeBindings,
         ;
             FoundOne = no
         ),
-        mercury_output_var(VarSet, debug_varnums, Var, Stream, !IO),
+        mercury_output_var_vs(VarSet, debug_varnums, Var, Stream, !IO),
         io.write_string(Stream, ": ", !IO),
         write_type_with_bindings(Stream, TypeVarSet, TypeBindings, Type, !IO),
         write_type_assign_types(Stream, VarSet, TypeVarSet, VarTypes,

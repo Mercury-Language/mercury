@@ -78,7 +78,7 @@ write_class_defn(Info, Stream, ClassId - ClassDefn, !IO) :-
     ),
 
     io.write_string(Stream, "% Vars: ", !IO),
-    mercury_output_vars(VarSet, VarNamePrint, Vars, Stream, !IO),
+    mercury_output_vars_vs(VarSet, VarNamePrint, Vars, Stream, !IO),
     io.nl(Stream, !IO),
 
     io.write_string(Stream, "% Functional dependencies: ", !IO),

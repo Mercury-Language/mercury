@@ -71,7 +71,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.var_table.
+:- import_module parse_tree.var_db.
 
 :- import_module assoc_list.
 :- import_module bool.

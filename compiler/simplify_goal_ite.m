@@ -245,7 +245,7 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
     some [!ModuleInfo] (
         simplify_info_get_module_info(!.Info, !:ModuleInfo),
         simplify_info_get_var_table(!.Info, VarTable),
-        merge_instmap_deltas(vts_var_table(VarTable), NonLocals, InstMap0,
+        merge_instmap_deltas(VarTable, NonLocals, InstMap0,
             [CondThenDelta, ElseDelta], NewDelta, !ModuleInfo),
         simplify_info_set_module_info(!.ModuleInfo, !Info)
     ),

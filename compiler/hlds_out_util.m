@@ -29,6 +29,7 @@
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
@@ -203,8 +204,8 @@
     --->    qualify_cons_id
     ;       do_not_qualify_cons_id.
 
-:- func cons_id_and_vars_or_arity_to_string(var_name_source,
-    maybe_qualify_cons_id, cons_id, maybe(list(prog_var))) = string.
+:- func cons_id_and_vars_or_arity_to_string(var_table, maybe_qualify_cons_id,
+    cons_id, maybe(list(prog_var))) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -215,8 +216,7 @@
 %---------------------------------------------------------------------------%
 
     % Return a string representing a list of variables and their
-    % corresponding modes (e.g. for a lambda expressions). The varsets
-    % give the context.
+    % corresponding modes (e.g. for a lambda expressions).
     %
 :- func var_modes_to_string(output_lang, var_name_source, inst_varset,
     var_name_print, assoc_list(prog_var, mer_mode)) = string.
@@ -642,8 +642,8 @@ functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
                 Module, term.atom(Name), ArgVars)
         ;
             SymName = unqualified(Name),
-            Str = functor_to_string_maybe_needs_quotes(VarNameSrc, VarNamePrint,
-                next_to_graphic_token, term.atom(Name), ArgVars)
+            Str = functor_to_string_maybe_needs_quotes(VarNameSrc,
+                VarNamePrint, next_to_graphic_token, term.atom(Name), ArgVars)
         )
     ;
         ConsId = tuple_cons(_),
@@ -713,8 +713,8 @@ functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
         Str = "typeclass_info_const(" ++ int_to_string(TCIConstNum) ++ ")"
     ;
         ConsId = ground_term_const(ConstNum, SubConsId),
-        SubStr = functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
-            SubConsId, []),
+        SubStr = functor_cons_id_to_string(ModuleInfo, VarNameSrc,
+            VarNamePrint, SubConsId, []),
         Str = "ground_term_const(" ++ int_to_string(ConstNum) ++ ", " ++
             SubStr ++ ")"
     ;
@@ -740,7 +740,7 @@ functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
             ++ " (mode " ++ int_to_string(ProcIdInt) ++ "))"
     ).
 
-cons_id_and_vars_or_arity_to_string(VarNameSrc, Qual, ConsId, MaybeArgVars)
+cons_id_and_vars_or_arity_to_string(VarTable, Qual, ConsId, MaybeArgVars)
         = String :-
     (
         ConsId = cons(SymName0, Arity, _TypeCtor),
@@ -777,7 +777,7 @@ cons_id_and_vars_or_arity_to_string(VarNameSrc, Qual, ConsId, MaybeArgVars)
                 String = SymNameString ++ "/" ++ string.int_to_string(Arity)
             ;
                 ArgVars = [_ | _],
-                ArgStr = mercury_vars_to_name_only_src(VarNameSrc, ArgVars),
+                ArgStr = mercury_vars_to_name_only(VarTable, ArgVars),
                 String = SymNameString ++ "(" ++ ArgStr ++ ")"
             )
         )
@@ -793,7 +793,7 @@ cons_id_and_vars_or_arity_to_string(VarNameSrc, Qual, ConsId, MaybeArgVars)
                 String = "{}/" ++ string.int_to_string(Arity)
             ;
                 ArgVars = [_ | _],
-                ArgStr = mercury_vars_to_name_only_src(VarNameSrc, ArgVars),
+                ArgStr = mercury_vars_to_name_only(VarTable, ArgVars),
                 String = "{" ++ ArgStr ++ "}"
             )
         )
@@ -912,8 +912,8 @@ var_modes_to_string(Lang, VarNameSrc, InstVarSet, VarNamePrint, VarModes)
     Str = string.join_list(", ", Strs).
 
 var_mode_to_string(Lang, VarNameSrc, InstVarSet, VarNamePrint, Var - Mode) =
-    mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var)
-        ++ "::" ++ mercury_mode_to_string(Lang, InstVarSet, Mode).
+    mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var) ++ "::" ++
+        mercury_mode_to_string(Lang, InstVarSet, Mode).
 
 %---------------------------------------------------------------------------%
 %

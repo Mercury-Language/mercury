@@ -208,6 +208,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
@@ -1773,10 +1774,9 @@ require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
         VarTable = LiveInfo ^ li_var_table,
         FirstVars = set_of_var.to_sorted_list(LivenessFirst),
         RestVars  = set_of_var.to_sorted_list(LivenessRest),
-        VarNameSrc = vns_var_table(VarTable),
-        FirstNames = mercury_vars_to_string_src(VarNameSrc,
+        FirstNames = mercury_vars_to_string(VarTable,
             print_name_and_num, FirstVars),
-        RestNames = mercury_vars_to_string_src(VarNameSrc,
+        RestNames = mercury_vars_to_string(VarTable,
             print_name_and_num, RestVars),
         Msg = "branches of " ++ GoalType ++ " disagree on liveness\n" ++
             "First: " ++ FirstNames ++ "\n" ++ "Rest:  " ++ RestNames ++ "\n",

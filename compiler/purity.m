@@ -1615,7 +1615,7 @@ impure_parallel_conjunct_error(Context, Purity) = Spec :-
 
 bad_outer_var_type_error(Context, VarTable, Var) = Spec :-
     Pieces = [words("The type of outer variable"),
-        fixed(mercury_var_to_name_only_src(vns_var_table(VarTable), Var)),
+        fixed(mercury_var_to_name_only(VarTable, Var)),
         words("must be either io.state or stm_builtin.stm."), nl],
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, Pieces).

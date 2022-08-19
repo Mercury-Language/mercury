@@ -1511,7 +1511,7 @@ common_instmap_delta(InstMap0, NonLocals, InstMaps, CommonDelta, !Info) :-
         InstMapDeltas = [_ | _],
         lambda_info_get_var_table(!.Info, VarTable),
         lambda_info_get_module_info(!.Info, ModuleInfo0),
-        merge_instmap_deltas(vts_var_table(VarTable), NonLocals, InstMap0,
+        merge_instmap_deltas(VarTable, NonLocals, InstMap0,
             InstMapDeltas, CommonDelta, ModuleInfo0, ModuleInfo),
         lambda_info_set_module_info(ModuleInfo, !Info)
     ).

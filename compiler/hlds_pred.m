@@ -2657,7 +2657,7 @@ marker_list_to_markers(Markers, MarkerSet) :-
     int::out, int::out) is semidet.
 
 :- pred proc_info_has_higher_order_arg_from_details(module_info::in,
-    var_type_source::in, list(prog_var)::in) is semidet.
+    var_table::in, list(prog_var)::in) is semidet.
 
     % Given a procedure table and the id of a procedure in that table,
     % return a procedure id to be attached to a clone of that procedure.
@@ -4187,13 +4187,13 @@ proc_info_has_io_state_pair_2(ModuleInfo, VarTable, ArgNum,
     proc_info_has_io_state_pair_2(ModuleInfo, VarTable, ArgNum + 1,
         VarModes, !MaybeIn, !MaybeOut).
 
-proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTypeSrc,
+proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTable,
         [HeadVar | HeadVars]) :-
     (
-        lookup_var_type_in_source(VarTypeSrc, HeadVar, VarType),
+        lookup_var_type(VarTable, HeadVar, VarType),
         type_is_higher_order(VarType)
     ;
-        proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTypeSrc,
+        proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTable,
             HeadVars)
     ).
 

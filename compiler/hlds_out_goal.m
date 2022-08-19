@@ -31,6 +31,7 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
@@ -110,8 +111,8 @@
     % The module_info and the varset give the context of the rhs. The boolean
     % says whether variables should have their numbers appended to them.
     %
-:- func unify_rhs_to_string(module_info, var_name_source, var_name_print,
-    unify_rhs) = string.
+:- func unify_rhs_to_string(module_info, var_table, var_name_print, unify_rhs)
+    = string.
 
 %---------------------------------------------------------------------------%
 
@@ -1100,10 +1101,10 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet, TypeQual,
         )
     ).
 
-unify_rhs_to_string(ModuleInfo, VarNameSrc, VarNamePrint, RHS) = Str :-
+unify_rhs_to_string(ModuleInfo, VarTable, VarNamePrint, RHS) = Str :-
     (
         RHS = rhs_var(Var),
-        Str = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var)
+        Str = mercury_var_to_string(VarTable, VarNamePrint, Var)
     ;
         RHS = rhs_functor(ConsId0, IsExistConstruct, ArgVars),
         ( if
@@ -1115,8 +1116,8 @@ unify_rhs_to_string(ModuleInfo, VarNameSrc, VarNamePrint, RHS) = Str :-
         else
             ConsId = ConsId0
         ),
-        Str = functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
-            ConsId, ArgVars)
+        Str = functor_cons_id_to_string(ModuleInfo, vns_var_table(VarTable),
+            VarNamePrint, ConsId, ArgVars)
     ;
         RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _),
         Str = "lambda goal"

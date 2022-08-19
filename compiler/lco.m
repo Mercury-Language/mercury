@@ -207,6 +207,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
@@ -799,14 +800,12 @@ acceptable_construct_unification(ConstInfo, DelayForVars, Goal,
         trace [compiletime(flag("lco")), io(!IO)] (
             ProcInfo = ConstInfo ^ lci_cur_proc_proc,
             proc_info_get_var_table(ProcInfo, VarTable),
-            VarNameSrc = vns_var_table(VarTable),
-            ConstructedVarStr =
-                mercury_var_to_string_src(VarNameSrc, print_name_and_num,
-                    ConstructedVar),
+            ConstructedVarStr = mercury_var_to_string(VarTable,
+                print_name_and_num, ConstructedVar),
             ConsIdStr = mercury_cons_id_to_string(output_debug,
                 does_not_need_brackets, ConsId),
             ConstructArgVarStrs = list.map(
-                mercury_var_to_string_src(VarNameSrc, print_name_and_num),
+                mercury_var_to_string(VarTable, print_name_and_num),
                 ConstructArgVars),
             ConstructArgVarsStr = string.join_list(", ", ConstructArgVarStrs),
             get_debug_output_stream(ModuleInfo, DebugStream, !IO),

@@ -655,7 +655,7 @@ goal_warning_to_string(Warning) = Str :-
 type_to_debug_string(TVarSet, Type, Name) :-
     (
         Type = type_variable(TVar,_),
-        Name = mercury_var_to_string(TVarSet, print_name_and_num, TVar)
+        Name = mercury_var_to_string_vs(TVarSet, print_name_and_num, TVar)
     ;
         Type = defined_type(SymName, Subtypes, _),
         list.map(type_to_debug_string(TVarSet), Subtypes, SubtypeNames),

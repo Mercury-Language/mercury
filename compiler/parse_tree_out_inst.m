@@ -176,7 +176,7 @@ mercury_format_inst(Lang, InstVarSet, Inst, S, !U) :-
         )
     ;
         Inst = inst_var(Var),
-        mercury_format_var(InstVarSet, print_name_only, Var, S, !U)
+        mercury_format_var_vs(InstVarSet, print_name_only, Var, S, !U)
     ;
         Inst = constrained_inst_vars(Vars, CInst),
         mercury_format_constrained_inst_vars(Lang, InstVarSet, Vars, CInst,
@@ -343,7 +343,7 @@ mercury_format_inst_name(Lang, InstVarSet, InstName, S, !U) :-
 mercury_format_constrained_inst_vars(Lang, InstVarSet, !.Vars, Inst, S, !U) :-
     ( if set.remove_least(Var, !Vars) then
         add_string("(", S, !U),
-        mercury_format_var(InstVarSet, print_name_only, Var, S, !U),
+        mercury_format_var_vs(InstVarSet, print_name_only, Var, S, !U),
         add_string(" =< ", S, !U),
         mercury_format_constrained_inst_vars(Lang, InstVarSet, !.Vars, Inst,
             S, !U),

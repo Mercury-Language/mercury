@@ -598,7 +598,7 @@ pd_info_goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
         OldArgTypes, NewGoal, NewInstMap, NewVarTable, PredProcId,
         Version, MaybeVersion) :-
     pd_util.goals_match(ModuleInfo, OldGoal, OldArgs, OldArgTypes,
-        NewGoal, vts_var_table(NewVarTable), OldNewRenaming, TypeRenaming),
+        NewGoal, NewVarTable, OldNewRenaming, TypeRenaming),
     OldGoal = hlds_goal(_, OldGoalInfo),
     OldNonLocals0 = goal_info_get_nonlocals(OldGoalInfo),
     set_of_var.to_sorted_list(OldNonLocals0, OldNonLocalsList),

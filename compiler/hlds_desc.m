@@ -207,8 +207,7 @@ describe_args(VarTable, Vars @ [_ | _]) = Str :-
 %---------------------------------------------------------------------------%
 
 describe_var(VarTable, Var) =
-    mercury_var_to_string_src(vns_var_table(VarTable),
-        print_name_and_num, Var).
+    mercury_var_to_string(VarTable, print_name_and_num, Var).
 
 %---------------------------------------------------------------------------%
 

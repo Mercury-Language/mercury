@@ -125,7 +125,7 @@ mercury_output_pred_clause(Stream, VarSet, PredName, Args, Body, !IO) :-
     (
         Args = [HeadArg | TailArgs],
         io.write_string(Stream, "(", !IO),
-        mercury_format_comma_separated_terms(VarSet, print_name_only,
+        mercury_format_comma_separated_terms_vs(VarSet, print_name_only,
             HeadArg, TailArgs, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
@@ -148,7 +148,7 @@ mercury_output_func_clause(Stream, VarSet, PredName, Args, Result,
     (
         Args = [HeadArg | TailArgs],
         io.write_string(Stream, "(", !IO),
-        mercury_format_comma_separated_terms(VarSet, print_name_only,
+        mercury_format_comma_separated_terms_vs(VarSet, print_name_only,
             HeadArg, TailArgs, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
@@ -156,10 +156,10 @@ mercury_output_func_clause(Stream, VarSet, PredName, Args, Result,
     ),
     io.write_string(Stream, " = ", !IO),
     ( if Body = true_expr(_) then
-        mercury_format_term_nq(VarSet, print_name_only, next_to_graphic_token,
-            Result, Stream, !IO)
+        mercury_format_term_nq_vs(VarSet, print_name_only,
+            next_to_graphic_token, Result, Stream, !IO)
     else
-        mercury_format_term(VarSet, print_name_only, Result, Stream, !IO),
+        mercury_format_term_vs(VarSet, print_name_only, Result, Stream, !IO),
         io.write_string(Stream, " :-\n\t", !IO),
         mercury_output_goal(Stream, VarSet, 1, Body, !IO)
     ).
@@ -214,7 +214,8 @@ mercury_output_goal(Stream, VarSet, Indent, Goal, !IO) :-
             io.write_string(Stream, "[", !IO),
             (
                 QuantVarsKind = quant_ordinary_vars,
-                mercury_output_vars(VarSet, print_name_only, Vars, Stream, !IO)
+                mercury_output_vars_vs(VarSet, print_name_only, Vars,
+                    Stream, !IO)
             ;
                 QuantVarsKind = quant_state_vars,
                 mercury_output_state_vars(VarSet, print_name_only, Vars,
@@ -357,23 +358,27 @@ mercury_output_goal(Stream, VarSet, Indent, Goal, !IO) :-
         (
             Outer = atomic_state_var(OVar),
             io.write_string(Stream, "!", !IO),
-            mercury_output_var(VarSet, print_name_only, OVar, Stream, !IO)
+            mercury_output_var_vs(VarSet, print_name_only, OVar, Stream, !IO)
         ;
             Outer = atomic_var_pair(OuterDI, OuterUO),
-            mercury_output_var(VarSet, print_name_only, OuterDI, Stream, !IO),
+            mercury_output_var_vs(VarSet, print_name_only, OuterDI,
+                Stream, !IO),
             io.write_string(Stream, ", ", !IO),
-            mercury_output_var(VarSet, print_name_only, OuterUO, Stream, !IO)
+            mercury_output_var_vs(VarSet, print_name_only, OuterUO,
+                Stream, !IO)
         ),
         io.write_string(Stream, "), inner(", !IO),
         (
             Inner = atomic_state_var(IVar),
             io.write_string(Stream, "!", !IO),
-            mercury_output_var(VarSet, print_name_only, IVar, Stream, !IO)
+            mercury_output_var_vs(VarSet, print_name_only, IVar, Stream, !IO)
         ;
             Inner = atomic_var_pair(InnerDI, InnerUO),
-            mercury_output_var(VarSet, print_name_only, InnerDI, Stream, !IO),
+            mercury_output_var_vs(VarSet, print_name_only, InnerDI,
+                Stream, !IO),
             io.write_string(Stream, ", ", !IO),
-            mercury_output_var(VarSet, print_name_only, InnerUO, Stream, !IO)
+            mercury_output_var_vs(VarSet, print_name_only, InnerUO,
+                Stream, !IO)
         ),
         io.write_string(Stream, ")] (", !IO),
 
@@ -412,7 +417,7 @@ mercury_output_goal(Stream, VarSet, Indent, Goal, !IO) :-
                 MaybeIO = yes(IOStateVar),
                 mercury_output_comma_if_needed(Stream, !.NeedComma, !IO),
                 io.write_string(Stream, "io(!", !IO),
-                mercury_output_var(VarSet, print_name_only, IOStateVar,
+                mercury_output_var_vs(VarSet, print_name_only, IOStateVar,
                     Stream, !IO),
                 io.write_string(Stream, ")", !IO),
                 !:NeedComma = yes
@@ -436,7 +441,7 @@ mercury_output_goal(Stream, VarSet, Indent, Goal, !IO) :-
         (
             MaybeIO = yes(IOStateVar),
             io.write_string(Stream, "io(!", !IO),
-            mercury_output_var(VarSet, print_name_only, IOStateVar,
+            mercury_output_var_vs(VarSet, print_name_only, IOStateVar,
                 Stream, !IO),
             io.write_string(Stream, ")", !IO)
         ;
@@ -465,7 +470,7 @@ mercury_output_goal(Stream, VarSet, Indent, Goal, !IO) :-
         (
             MaybeCatchAny = yes(catch_any_expr(CatchAnyVar, CatchAnyGoal)),
             io.write_string(Stream, "catch_any ", !IO),
-            mercury_output_var(VarSet, print_name_only, CatchAnyVar,
+            mercury_output_var_vs(VarSet, print_name_only, CatchAnyVar,
                 Stream, !IO),
             io.write_string(Stream, " ->", !IO),
             mercury_output_newline(Indent1, Stream, !IO),
@@ -531,10 +536,10 @@ mercury_output_goal(Stream, VarSet, Indent, Goal, !IO) :-
     ;
         Goal = unify_expr(_, TermA, TermB, Purity),
         add_purity_prefix(Purity, Stream, !IO),
-        mercury_output_term(VarSet, print_name_only, TermA, Stream, !IO),
+        mercury_output_term_vs(VarSet, print_name_only, TermA, Stream, !IO),
         io.write_string(Stream, " = ", !IO),
-        mercury_output_term_nq(VarSet, print_name_only, next_to_graphic_token,
-            TermB, Stream, !IO)
+        mercury_output_term_nq_vs(VarSet, print_name_only,
+            next_to_graphic_token, TermB, Stream, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -589,11 +594,11 @@ mercury_output_connected_goal(Stream, VarSet, Indent, Goal, !IO) :-
 mercury_output_plain_or_dot_var(Stream, VarSet, VarNamePrint, PODVar, !IO) :-
     (
         PODVar = podv_plain(Var),
-        mercury_output_var(VarSet, VarNamePrint, Var, Stream, !IO)
+        mercury_output_var_vs(VarSet, VarNamePrint, Var, Stream, !IO)
     ;
         PODVar = podv_dot(Var),
         io.write_string(Stream, "!.", !IO),
-        mercury_output_var(VarSet, VarNamePrint, Var, Stream, !IO)
+        mercury_output_var_vs(VarSet, VarNamePrint, Var, Stream, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -609,14 +614,14 @@ mercury_output_call(Stream, VarSet, SymName, Term, !IO) :-
         io.write_string(Stream, ".", !IO),
         term.context_init(Context0),
         SubTerm = term.functor(term.atom(PredName), Term, Context0),
-        mercury_output_term_nq(VarSet, print_name_only, next_to_graphic_token,
-            SubTerm, Stream, !IO)
+        mercury_output_term_nq_vs(VarSet, print_name_only,
+            next_to_graphic_token, SubTerm, Stream, !IO)
     ;
         SymName = unqualified(PredName),
         term.context_init(Context0),
         SubTerm = term.functor(term.atom(PredName), Term, Context0),
-        mercury_output_term_nq(VarSet, print_name_only, next_to_graphic_token,
-            SubTerm, Stream, !IO)
+        mercury_output_term_nq_vs(VarSet, print_name_only,
+            next_to_graphic_token, SubTerm, Stream, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -700,7 +705,7 @@ mercury_output_some(Stream, VarSet, Vars, StateVars, !IO) :-
         )
     then
         io.write_string(Stream, " some [", !IO),
-        mercury_output_vars(VarSet, print_name_only, Vars, Stream, !IO),
+        mercury_output_vars_vs(VarSet, print_name_only, Vars, Stream, !IO),
         ( if
             Vars = [_ | _],
             StateVars = [_ | _]
@@ -738,7 +743,7 @@ mercury_output_promise_eqv_solutions_goal(Stream, VarSet, Indent,
     else
         io.write_string(Stream, Keyword, !IO),
         io.write_string(Stream, " [", !IO),
-        mercury_output_vars(VarSet, print_name_only, Vars, Stream, !IO),
+        mercury_output_vars_vs(VarSet, print_name_only, Vars, Stream, !IO),
         ( if
             Vars = [_ | _],
             StateVars = [_ | _]
@@ -787,10 +792,10 @@ mercury_output_promise_eqv_solutions_goal(Stream, VarSet, Indent,
     io::di, io::uo) is det.
 
 mercury_output_state_vars_using_prefix(_, _, _, _, [], !IO).
-mercury_output_state_vars_using_prefix(Stream, VarSet, VarNamePrint, BangPrefix,
-        [SVar | SVars], !IO) :-
+mercury_output_state_vars_using_prefix(Stream, VarSet, VarNamePrint,
+        BangPrefix, [SVar | SVars], !IO) :-
     io.write_string(Stream, BangPrefix, !IO),
-    mercury_format_var(VarSet, VarNamePrint, SVar, Stream, !IO),
+    mercury_format_var_vs(VarSet, VarNamePrint, SVar, Stream, !IO),
     (
         SVars = [_ | _],
         io.write_string(Stream, ", ", !IO),
@@ -871,7 +876,7 @@ mercury_output_trace_runtime(trace_envvar(EnvVarName), Stream, !IO) :-
 mercury_output_trace_mutable_var(Stream, VarSet, VarNamePrint, MutableVar,
         !IO) :-
     MutableVar = trace_mutable_var(MutableName, StateVar),
-    StateVarStr = mercury_var_to_string(VarSet, VarNamePrint, StateVar),
+    StateVarStr = mercury_var_to_string_vs(VarSet, VarNamePrint, StateVar),
     io.format(Stream, "state(%s, %s)",
         [s(MutableName), s(StateVarStr)], !IO).
 
@@ -893,7 +898,7 @@ mercury_output_trace_mutable_var_and_comma(Stream, VarSet, VarNamePrint,
 
 mercury_output_catch(Stream, VarSet, Indent, catch_expr(Pattern, Goal), !IO) :-
     io.write_string(Stream, "catch ", !IO),
-    mercury_output_term(VarSet, print_name_only, Pattern, Stream, !IO),
+    mercury_output_term_vs(VarSet, print_name_only, Pattern, Stream, !IO),
     io.write_string(Stream, " ->", !IO),
     mercury_output_newline(Indent + 1, Stream, !IO),
     mercury_output_goal(Stream, VarSet, Indent + 1, Goal, !IO),

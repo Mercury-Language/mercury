@@ -714,6 +714,13 @@ New code should use var_table.m, if possible.
 <li>
 var_table.m defines the data structure that maps each variable
 to its name, type, and an indication of whether that type is a dummy type.
+<li>
+Some modules need to provide functionality
+both to modules that use var_tables
+and other modules that use varsets, vartypes, or both.
+var_db.m defines operations that can provide information
+about variables' names and/or types
+that can operate either on top var_tables, or its alternatives.
 </ul>
 
 Some modules implement a pass that decides

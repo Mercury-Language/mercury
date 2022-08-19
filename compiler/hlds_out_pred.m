@@ -24,6 +24,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 
 :- import_module io.
@@ -297,7 +298,7 @@ write_pred_types(Stream, VarNamePrint, TVarSet, VarTable, RttiVarMaps,
         ExternalTypeParams = [_ | _],
         io.write_string(Stream, "% external_type_params:\n", !IO),
         io.write_string(Stream, "% ", !IO),
-        mercury_output_vars(TVarSet, VarNamePrint, ExternalTypeParams,
+        mercury_output_vars_vs(TVarSet, VarNamePrint, ExternalTypeParams,
             Stream, !IO),
         io.write_string(Stream, "\n", !IO)
     ),
@@ -766,7 +767,7 @@ write_rtti_varmaps(Stream, VarNamePrint, TVarSet, VarTable,
 
 write_type_info_locn(Stream, VarNamePrint, TVarSet, VarTable, RttiVarMaps,
         TVar, !IO) :-
-    TVarStr = mercury_var_to_string(TVarSet, VarNamePrint, TVar),
+    TVarStr = mercury_var_to_string_vs(TVarSet, VarNamePrint, TVar),
     term.var_to_int(TVar, TVarNum),
     io.format(Stream, "%% %s(number %d) -> ", [s(TVarStr), i(TVarNum)], !IO),
     rtti_lookup_type_info_locn(RttiVarMaps, TVar, Locn),
@@ -936,7 +937,7 @@ write_table_arg_info(Stream, TVarSet, ArgInfo, !IO) :-
     pair(tvar, table_locn)::in, io::di, io::uo) is det.
 
 write_table_tvar_map_entry(Stream, TVarSet, TVar - Locn, !IO) :-
-    TVarStr = mercury_var_to_string(TVarSet, print_name_and_num, TVar),
+    TVarStr = mercury_var_to_string_vs(TVarSet, print_name_and_num, TVar),
     io.format(Stream, "%% typeinfo for %s -> ", [s(TVarStr)], !IO),
     (
         Locn = table_locn_direct(N),

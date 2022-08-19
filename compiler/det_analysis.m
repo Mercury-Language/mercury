@@ -1630,8 +1630,6 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
     (
         Reason = promise_solutions(Vars, Kind),
         det_info_get_var_table(!.DetInfo, VarTable),
-        VarNameSrc = vns_var_table(VarTable),
-
         Context = goal_info_get_context(GoalInfo),
         (
             Kind = equivalent_solutions,
@@ -1686,7 +1684,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                     true
                 else
                     OverlapVarNames = list.map(
-                        mercury_var_to_string_src(VarNameSrc, print_name_only),
+                        mercury_var_to_string(VarTable, print_name_only),
                         set_of_var.to_sorted_list(OverlapVars)),
                     (
                         OverlapVarNames = [],
@@ -1739,7 +1737,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             true
         else
             MissingVarNames = list.map(
-                mercury_var_to_string_src(VarNameSrc, print_name_only),
+                mercury_var_to_string(VarTable, print_name_only),
                 set_of_var.to_sorted_list(MissingVars)),
             MissingKindStr = promise_solutions_kind_str(Kind),
             (
@@ -1780,7 +1778,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             true
         else
             ExtraVarNames = list.map(
-                mercury_var_to_string_src(VarNameSrc, print_name_only),
+                mercury_var_to_string(VarTable, print_name_only),
                 set_of_var.to_sorted_list(ExtraVars)),
             ExtraKindStr = promise_solutions_kind_str(Kind),
             (
@@ -1954,14 +1952,12 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
         lookup_var_type(VarTable, Var, Type),
         det_type_has_user_defined_equality_pred(!.DetInfo, Type)
     then
-        VarNameSrc = vns_var_table(VarTable),
         (
             CanFail = can_fail,
             Context = goal_info_get_context(GoalInfo),
             (
                 GoalContext = ccuc_switch,
-                VarStr = mercury_var_to_string_src(VarNameSrc,
-                    print_name_only, Var),
+                VarStr = mercury_var_to_string(VarTable, print_name_only, Var),
                 Pieces0 = [words("In switch on variable"), quote(VarStr),
                     suffix(":"), nl]
             ;
@@ -2003,7 +1999,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                 Context = goal_info_get_context(GoalInfo),
                 (
                     GoalContext = ccuc_switch,
-                    VarStr = mercury_var_to_string_src(VarNameSrc,
+                    VarStr = mercury_var_to_string(VarTable,
                         print_name_only, Var),
                     Pieces0 = [words("In switch on variable"), quote(VarStr),
                         suffix(":"), nl]

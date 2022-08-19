@@ -338,24 +338,24 @@
 
 %---------------------------------------------------------------------------%
 
-    % merge_instmap_delta(VarTypeSrc, NonLocals, InitialInstMap,
+    % merge_instmap_delta(VarTable, NonLocals, InitialInstMap,
     %   InstMapDeltaA, InstMapDeltaB, InstMapDeltaAB, !ModuleInfo):
     %
     % Merge the instmap_deltas of different branches of an if-then-else,
     % disjunction or switch.
     %
-:- pred merge_instmap_delta(var_type_source::in, set_of_progvar::in,
+:- pred merge_instmap_delta(var_table::in, set_of_progvar::in,
     instmap::in, instmap_delta::in, instmap_delta::in, instmap_delta::out,
     module_info::in, module_info::out) is det.
 
-    % merge_instmap_deltas(VarTypeSrc, NonLocals, InitialInstMap,
+    % merge_instmap_deltas(VarTable, NonLocals, InitialInstMap,
     %   InstMapDeltas, MergedInstMapDelta, !ModuleInfo):
     %
     % Takes a list of instmap deltas from the branches of a disjunction
     % or switch, and merges them. Should be used in situations where the
     % bindings are known to be compatible.
     %
-:- pred merge_instmap_deltas(var_type_source::in, set_of_progvar::in,
+:- pred merge_instmap_deltas(var_table::in, set_of_progvar::in,
     instmap::in, list(instmap_delta)::in, instmap_delta::out,
     module_info::in, module_info::out) is det.
 
@@ -1227,7 +1227,7 @@ arm_instmap_project_context(ArmErrorInfo, Context) :-
 
 %---------------------------------------------------------------------------%
 
-merge_instmap_delta(VarTypeSrc, NonLocals, InstMap0,
+merge_instmap_delta(VarTable, NonLocals, InstMap0,
         InstMapDeltaA, InstMapDeltaB, InstMapDelta, !ModuleInfo) :-
     (
         InstMap0 = unreachable,
@@ -1248,18 +1248,18 @@ merge_instmap_delta(VarTypeSrc, NonLocals, InstMap0,
                 InstMapDelta = InstMapDeltaA
             ;
                 InstMapDeltaB = reachable(InstMappingB),
-                merge_instmapping_delta(VarTypeSrc, NonLocals, InstMapping0,
+                merge_instmapping_delta(VarTable, NonLocals, InstMapping0,
                     InstMappingA, InstMappingB, InstMapping, !ModuleInfo),
                 InstMapDelta = reachable(InstMapping)
             )
         )
     ).
 
-:- pred merge_instmapping_delta(var_type_source::in, set_of_progvar::in,
+:- pred merge_instmapping_delta(var_table::in, set_of_progvar::in,
     instmapping::in, instmapping::in, instmapping::in, instmapping::out,
     module_info::in, module_info::out) is det.
 
-merge_instmapping_delta(VarTypeSrc, NonLocals, InstMapping0,
+merge_instmapping_delta(VarTable, NonLocals, InstMapping0,
         InstMappingA, InstMappingB, InstMapping, !ModuleInfo) :-
     map.keys(InstMappingA, VarsInA),
     map.keys(InstMappingB, VarsInB),
@@ -1268,21 +1268,21 @@ merge_instmapping_delta(VarTypeSrc, NonLocals, InstMapping0,
     set_of_var.union(SetOfVarsInA, SetOfVarsInB, SetOfVars0),
     set_of_var.intersect(SetOfVars0, NonLocals, SetOfVars),
     set_of_var.to_sorted_list(SetOfVars, ListOfVars),
-    merge_instmapping_delta_vars(VarTypeSrc, ListOfVars, InstMapping0,
+    merge_instmapping_delta_vars(VarTable, ListOfVars, InstMapping0,
         InstMappingA, InstMappingB, map.init, InstMapping, !ModuleInfo).
 
-:- pred merge_instmapping_delta_vars(var_type_source::in, list(prog_var)::in,
+:- pred merge_instmapping_delta_vars(var_table::in, list(prog_var)::in,
     instmapping::in, instmapping::in, instmapping::in,
     instmapping::in, instmapping::out,
     module_info::in, module_info::out) is det.
 
 merge_instmapping_delta_vars(_, [], _, _, _, !InstMapping, !ModuleInfo).
-merge_instmapping_delta_vars(VarTypeSrc, [Var | Vars], InstMap,
+merge_instmapping_delta_vars(VarTable, [Var | Vars], InstMap,
         InstMappingA, InstMappingB, !InstMapping, !ModuleInfo) :-
-    lookup_var_type_in_source(VarTypeSrc, Var, VarType),
+    lookup_var_type(VarTable, Var, VarType),
     merge_instmapping_delta_var(Var, VarType, InstMap,
         InstMappingA, InstMappingB, !InstMapping, !ModuleInfo),
-    merge_instmapping_delta_vars(VarTypeSrc, Vars, InstMap,
+    merge_instmapping_delta_vars(VarTable, Vars, InstMap,
         InstMappingA, InstMappingB, !InstMapping, !ModuleInfo).
 
 :- pred merge_instmapping_delta_var(prog_var::in, mer_type::in,
@@ -1328,7 +1328,7 @@ merge_instmapping_delta_var(Var, VarType, InstMapping0,
 
 %---------------------------------------------------------------------------%
 
-merge_instmap_deltas(VarTypeSrc, NonLocals, InstMap0, Deltas,
+merge_instmap_deltas(VarTable, NonLocals, InstMap0, Deltas,
         MergedDelta, !ModuleInfo) :-
     (
         InstMap0 = unreachable,
@@ -1365,19 +1365,19 @@ merge_instmap_deltas(VarTypeSrc, NonLocals, InstMap0, Deltas,
             MergedDelta = Delta1
         ;
             Deltas = [Delta1, Delta2],
-            merge_instmap_delta(VarTypeSrc, NonLocals, InstMap0,
+            merge_instmap_delta(VarTable, NonLocals, InstMap0,
                 Delta1, Delta2, Delta12, !ModuleInfo),
             MergedDelta = Delta12
         ;
             Deltas = [Delta1, Delta2, Delta3],
-            merge_instmap_delta(VarTypeSrc, NonLocals, InstMap0,
+            merge_instmap_delta(VarTable, NonLocals, InstMap0,
                 Delta1, Delta2, Delta12, !ModuleInfo),
-            merge_instmap_delta(VarTypeSrc, NonLocals, InstMap0,
+            merge_instmap_delta(VarTable, NonLocals, InstMap0,
                 Delta12, Delta3, Delta123, !ModuleInfo),
             MergedDelta = Delta123
         ;
             Deltas = [_, _, _, _ | _],
-            prepare_for_merge_instmap_deltas(VarTypeSrc, NonLocals, Deltas,
+            prepare_for_merge_instmap_deltas(VarTable, NonLocals, Deltas,
                 VarsTypes, ReachableInstMappings),
             (
                 ReachableInstMappings = [],
@@ -1391,17 +1391,17 @@ merge_instmap_deltas(VarTypeSrc, NonLocals, InstMap0, Deltas,
         )
     ).
 
-:- pred prepare_for_merge_instmap_deltas(var_type_source::in,
+:- pred prepare_for_merge_instmap_deltas(var_table::in,
     set_of_progvar::in, list(instmap_delta)::in,
     assoc_list(prog_var, mer_type)::out, list(instmapping)::out) is det.
 
-prepare_for_merge_instmap_deltas(VarTypeSrc, NonLocals, InstMapDeltas,
+prepare_for_merge_instmap_deltas(VarTable, NonLocals, InstMapDeltas,
         ListOfVarsTypes, InstMappings) :-
     prepare_for_merge_instmap_deltas_loop(InstMapDeltas,
         set_of_var.init, InstMappingsVars, [], InstMappings),
     set_of_var.intersect(InstMappingsVars, NonLocals, SetOfVars),
     set_of_var.to_sorted_list(SetOfVars, ListOfVars),
-    pair_vars_with_their_types(VarTypeSrc, ListOfVars, ListOfVarsTypes).
+    pair_vars_with_their_types(VarTable, ListOfVars, ListOfVarsTypes).
 
 :- pred prepare_for_merge_instmap_deltas_loop(list(instmap_delta)::in,
     set_of_progvar::in, set_of_progvar::out,
@@ -1421,14 +1421,13 @@ prepare_for_merge_instmap_deltas_loop([InstMapDelta | InstMapDeltas],
     ),
     prepare_for_merge_instmap_deltas_loop(InstMapDeltas, !Vars, !InstMappings).
 
-:- pred pair_vars_with_their_types(var_type_source::in, list(prog_var)::in,
+:- pred pair_vars_with_their_types(var_table::in, list(prog_var)::in,
     assoc_list(prog_var, mer_type)::out) is det.
 
 pair_vars_with_their_types(_, [], []).
-pair_vars_with_their_types(VarTypeSrc, [Var | Vars],
-        [Var - Type | VarsTypes]) :-
-    lookup_var_type_in_source(VarTypeSrc, Var, Type),
-    pair_vars_with_their_types(VarTypeSrc, Vars, VarsTypes).
+pair_vars_with_their_types(VarTable, [Var | Vars], [Var - Type | VarsTypes]) :-
+    lookup_var_type(VarTable, Var, Type),
+    pair_vars_with_their_types(VarTable, Vars, VarsTypes).
 
 :- pred merge_instmap_deltas_fixpoint(assoc_list(prog_var, mer_type)::in,
     instmapping::in, list(instmapping)::in, instmapping::out,

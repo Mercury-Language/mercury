@@ -106,9 +106,8 @@ mode_checkpoint(Port, Msg, !ModeInfo) :-
                         OldInstMap),
                     mode_info_get_var_table(!.ModeInfo, VarTable),
                     mode_info_get_instvarset(!.ModeInfo, InstVarSet),
-                    write_var_insts(DebugStream, NewInsts, OldInstMap,
-                        vns_var_table(VarTable), InstVarSet,
-                        Verbose, Minimal, !IO)
+                    write_var_insts(DebugStream, VarTable, InstVarSet,
+                        OldInstMap, Verbose, Minimal, NewInsts, !IO)
                 else
                     io.write_string(DebugStream, "\tUnreachable\n", !IO)
                 ),
@@ -131,13 +130,13 @@ mode_checkpoint(Port, Msg, !ModeInfo) :-
     ).
 
 :- pred write_var_insts(io.text_output_stream::in,
-    assoc_list(prog_var, mer_inst)::in, instmap::in,
-    var_name_source::in, inst_varset::in, bool::in, bool::in,
+    var_table::in, inst_varset::in, instmap::in, bool::in, bool::in,
+    assoc_list(prog_var, mer_inst)::in,
     io::di, io::uo) is det.
 
-write_var_insts(_, [], _, _, _, _, _, !IO).
-write_var_insts(Stream, [Var - Inst | VarInsts], OldInstMap,
-        VarNameSrc, InstVarSet, Verbose, Minimal, !IO) :-
+write_var_insts(_, _, _, _, _, _, [], !IO).
+write_var_insts(Stream, VarTable, InstVarSet, OldInstMap, Verbose, Minimal,
+        [Var - Inst | VarInsts], !IO) :-
     instmap_lookup_var(OldInstMap, Var, OldInst),
     ( if
         (
@@ -149,15 +148,14 @@ write_var_insts(Stream, [Var - Inst | VarInsts], OldInstMap,
         (
             Verbose = yes,
             io.write_string(Stream, "\t", !IO),
-            mercury_output_var_src(VarNameSrc, print_name_only, Var,
-                Stream, !IO),
+            mercury_output_var(VarTable, print_name_only, Var, Stream, !IO),
             io.write_string(Stream, " :: unchanged", !IO)
         ;
             Verbose = no
         )
     else
         io.write_string(Stream, "\t", !IO),
-        mercury_output_var_src(VarNameSrc, print_name_only, Var, Stream, !IO),
+        mercury_output_var(VarTable, print_name_only, Var, Stream, !IO),
         (
             Minimal = yes,
             io.write_string(Stream, " :: changed\n", !IO)
@@ -168,8 +166,8 @@ write_var_insts(Stream, [Var - Inst | VarInsts], OldInstMap,
                 output_debug, do_not_incl_addr, InstVarSet, !IO)
         )
     ),
-    write_var_insts(Stream, VarInsts, OldInstMap, VarNameSrc, InstVarSet,
-        Verbose, Minimal, !IO).
+    write_var_insts(Stream, VarTable, InstVarSet, OldInstMap, Verbose, Minimal,
+        VarInsts, !IO).
 
     % In the usual case of a C backend, this predicate allows us to conclude
     % that two insts are identical without traversing them. Since the terms

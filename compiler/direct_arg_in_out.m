@@ -223,6 +223,7 @@
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_db.
 
 :- import_module assoc_list.
 :- import_module bimap.
@@ -1713,15 +1714,15 @@ expand_daio_in_branches(GoalInfo0, InstMap0, Arms0, Arms,
     bimap.det_from_assoc_list(MergedVarMapEntries, MergedVarMap),
     trace [compile_time(flag("daio-debug")), io(!IO)] (
         get_daio_debug_stream(!.Info, Stream, !IO),
-        VarNameSrc = vns_var_table(!.Info ^ daio_var_table),
+        VarTable = !.Info ^ daio_var_table,
         io.format(Stream, "nonlocals: %s\n",
-            [s(mercury_vars_to_string_src(VarNameSrc, print_name_and_num,
+            [s(mercury_vars_to_string(VarTable, print_name_and_num,
                 set.to_sorted_list(NonLocalsSet)))], !IO),
         io.format(Stream, "varmap vars: %s\n",
-            [s(mercury_vars_to_string_src(VarNameSrc, print_name_and_num,
+            [s(mercury_vars_to_string(VarTable, print_name_and_num,
                 set.to_sorted_list(VarMapVars)))], !IO),
         io.format(Stream, "vars to merg: %s\n",
-            [s(mercury_vars_to_string_src(VarNameSrc, print_name_and_num,
+            [s(mercury_vars_to_string(VarTable, print_name_and_num,
                 set.to_sorted_list(VarsToMerge)))], !IO),
         dump_varmap(!.Info, Stream, "before branch", InitVarMap, !IO),
         dump_varmap(!.Info, Stream, "after branch", MergedVarMap, !IO)
@@ -1963,11 +1964,8 @@ dump_varmap(Info, Stream, Desc, VarMap, !IO) :-
 
 dump_varmap_entry(Info, Stream, FromVar - ToVar, !IO) :-
     VarTable = Info ^ daio_var_table,
-    VarNameSrc = vns_var_table(VarTable),
-    FromVarName =
-        mercury_var_to_string_src(VarNameSrc, print_name_and_num, FromVar),
-    ToVarName =
-        mercury_var_to_string_src(VarNameSrc, print_name_and_num, ToVar),
+    FromVarName = mercury_var_to_string(VarTable, print_name_and_num, FromVar),
+    ToVarName = mercury_var_to_string(VarTable, print_name_and_num, ToVar),
     io.format(Stream, "\t%s -> %s\n", [s(FromVarName), s(ToVarName)], !IO).
 
 %---------------------------------------------------------------------------%

@@ -111,9 +111,8 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             ( if cons_id_is_existq_cons(ModuleInfo1, Type, MainConsId) then
                 GoalExpr = switch(Var, SwitchCanFail, Cases),
                 NonLocals = goal_info_get_nonlocals(GoalInfo0),
-                merge_instmap_deltas(vts_var_table(VarTable), NonLocals,
-                    InstMap0, RevInstMapDeltas, NewDelta,
-                    ModuleInfo1, ModuleInfo2),
+                merge_instmap_deltas(VarTable, NonLocals, InstMap0,
+                    RevInstMapDeltas, NewDelta, ModuleInfo1, ModuleInfo2),
                 simplify_info_set_module_info(ModuleInfo2, !Info),
                 goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo)
             else
@@ -165,9 +164,8 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         else
             simplify_info_get_module_info(!.Info, ModuleInfo1),
             NonLocals = goal_info_get_nonlocals(GoalInfo0),
-            merge_instmap_deltas(vts_var_table(VarTable), NonLocals,
-                InstMap0, RevInstMapDeltas, NewDelta,
-                ModuleInfo1, ModuleInfo2),
+            merge_instmap_deltas(VarTable, NonLocals, InstMap0,
+                RevInstMapDeltas, NewDelta, ModuleInfo1, ModuleInfo2),
             simplify_info_set_module_info(ModuleInfo2, !Info),
             goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo)
         )

@@ -76,7 +76,7 @@ mercury_output_item_type_repn(Info, Stream, ItemTypeRepn, !IO) :-
     Args = list.map((func(V) = term.variable(V, Context)), TypeParams),
     construct_qualified_term_with_context(TypeCtorSymName, Args, Context,
         TypeTerm),
-    mercury_output_term_nq(TVarSet, print_num_only, next_to_graphic_token,
+    mercury_output_term_nq_vs(TVarSet, print_num_only, next_to_graphic_token,
         TypeTerm, Stream, !IO),
     io.write_string(Stream, ",", !IO),
     (

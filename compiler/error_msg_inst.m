@@ -225,12 +225,12 @@ inst_to_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
     ;
         Inst = inst_var(Var),
         InstVarSet = Info ^ imi_inst_varset,
-        Name = mercury_var_to_string(InstVarSet, print_name_only, Var),
+        Name = mercury_var_to_string_vs(InstVarSet, print_name_only, Var),
         Pieces = [fixed(Name) | Suffix]
     ;
         Inst = constrained_inst_vars(Vars, SubInst),
         InstVarSet = Info ^ imi_inst_varset,
-        Names = mercury_vars_to_string(InstVarSet, print_name_only,
+        Names = mercury_vars_to_string_vs(InstVarSet, print_name_only,
             set.to_sorted_list(Vars)),
         inst_to_pieces(Info, !Expansions, SubInst, [], SubInstPieces),
         Pieces = [fixed("("), words(Names), fixed("=<") | SubInstPieces] ++
@@ -297,12 +297,12 @@ inst_to_inline_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
     ;
         Inst = inst_var(Var),
         InstVarSet = Info ^ imi_inst_varset,
-        mercury_format_var(InstVarSet, print_name_only, Var, unit, "", Name),
+        Name = mercury_var_to_string_vs(InstVarSet, print_name_only, Var),
         Pieces = [fixed(Name) | Suffix]
     ;
         Inst = constrained_inst_vars(Vars, SubInst),
         InstVarSet = Info ^ imi_inst_varset,
-        Names = mercury_vars_to_string(InstVarSet, print_name_only,
+        Names = mercury_vars_to_string_vs(InstVarSet, print_name_only,
             set.to_sorted_list(Vars)),
         inst_to_inline_pieces(Info, !Expansions, SubInst, [], SubInstPieces),
         Pieces = [fixed("("), words(Names), fixed("=<") | SubInstPieces] ++

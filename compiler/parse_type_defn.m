@@ -594,7 +594,7 @@ check_supertype_vars(Params, VarSet, SuperType, Context, !Specs) :-
     ;
         FreeVars = [_ | _],
         varset.coerce(VarSet, GenericVarSet),
-        FreeVarsStr = mercury_vars_to_name_only(GenericVarSet, FreeVars),
+        FreeVarsStr = mercury_vars_to_name_only_vs(GenericVarSet, FreeVars),
         Pieces = [words("Error: free type"),
             words(choose_number(FreeVars, "parameter", "parameters")),
             words(FreeVarsStr),
@@ -635,7 +635,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         % There should be no duplicate names to remove.
         varset.coerce(VarSet, GenericVarSet),
         NotExistQOrParamVarsStr =
-            mercury_vars_to_name_only(GenericVarSet, NotExistQOrParamVars),
+            mercury_vars_to_name_only_vs(GenericVarSet, NotExistQOrParamVars),
         Pieces = [words("Error: free type"),
             words(choose_number(NotExistQOrParamVars,
                 "parameter", "parameters")),
@@ -658,7 +658,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         set.to_sorted_list(ExistQParamsSet, ExistQParams),
         varset.coerce(VarSet, GenericVarSet),
         ExistQParamVarsStrs =
-            list.map(mercury_var_to_name_only(GenericVarSet), ExistQParams),
+            list.map(mercury_var_to_name_only_vs(GenericVarSet), ExistQParams),
         Pieces = [words("Error:"),
             words(choose_number(ExistQParams,
                 "type variable", "type variables"))] ++
@@ -694,7 +694,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         % There should be no duplicate names to remove.
         varset.coerce(VarSet, GenericVarSet),
         NotOccursExistQVarStrs =
-            list.map(mercury_var_to_name_only(GenericVarSet),
+            list.map(mercury_var_to_name_only_vs(GenericVarSet),
             NotOccursExistQVars),
         Pieces = [words("Error: the existentially quantified"),
             words(choose_number(NotOccursExistQVars,
@@ -722,7 +722,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
     then
         varset.coerce(VarSet, GenericVarSet),
         NotExistQArgTypeStrs = list.map(
-            mercury_var_to_name_only(GenericVarSet), NotExistQArgTypes),
+            mercury_var_to_name_only_vs(GenericVarSet), NotExistQArgTypes),
         Pieces = [words("Error: the"),
             words(choose_number(NotExistQArgTypes,
                 "type variable", "type variables"))]
@@ -1650,7 +1650,7 @@ parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
                     ;
                         DupParamVars = [_ | _],
                         DupParamVarNames = list.map(
-                            mercury_var_to_name_only(VarSet), DupParamVars),
+                            mercury_var_to_name_only_vs(VarSet), DupParamVars),
                         Params = choose_number(DupParamVars,
                             "the parameter", "the parameters"),
                         IsOrAre = is_or_are(DupParamVars),
@@ -1742,7 +1742,7 @@ check_no_free_body_vars(TVarSet, ParamTVars, BodyType, BodyContext, Specs) :-
         Specs = []
     ;
         OnlyBodyTVars = [_ | _],
-        OnlyBodyTVarNames = list.map(mercury_var_to_name_only(TVarSet),
+        OnlyBodyTVarNames = list.map(mercury_var_to_name_only_vs(TVarSet),
             OnlyBodyTVars),
         VarWord = choose_number(OnlyBodyTVars,
             "the type variable", "the type variables"),

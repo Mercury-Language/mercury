@@ -70,6 +70,7 @@
 
 % Utility data structures.
 :- include_module set_of_var.
+:- include_module var_db.
 :- include_module var_table.
 :- include_module vartypes.
 

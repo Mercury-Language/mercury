@@ -2041,7 +2041,7 @@ check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
 
 report_coverage_error(ClassId, InstanceDefn, Vars) = Spec :-
     TVarSet = InstanceDefn ^ instdefn_tvarset,
-    VarsStrs = list.map(mercury_var_to_name_only(TVarSet), Vars),
+    VarsStrs = list.map(mercury_var_to_name_only_vs(TVarSet), Vars),
     Pieces = [words("In instance for typeclass"),
         unqual_class_id(ClassId), suffix(":"), nl,
         words("functional dependency not satisfied:"),
@@ -2068,8 +2068,8 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
     FunDep = fundep(Domain, Range),
     DomainParams = restrict_list_elements(Domain, Params),
     RangeParams = restrict_list_elements(Range, Params),
-    Domains = mercury_vars_to_name_only(TVarSet, DomainParams),
-    Ranges = mercury_vars_to_name_only(TVarSet, RangeParams),
+    Domains = mercury_vars_to_name_only_vs(TVarSet, DomainParams),
+    Ranges = mercury_vars_to_name_only_vs(TVarSet, RangeParams),
 
     PiecesA = [words("Inconsistent instance declaration for typeclass"),
         qual_class_id(ClassId), words("with functional dependency"),
@@ -2327,7 +2327,7 @@ report_unbound_tvars_in_pred_context(Vars, PredInfo) = Spec :-
     Arity = arg_list_arity(ArgTypes),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 
-    VarsStrs = list.map(mercury_var_to_name_only(TVarSet), Vars),
+    VarsStrs = list.map(mercury_var_to_name_only_vs(TVarSet), Vars),
 
     PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
     Pieces0 = [words("In declaration for"),
@@ -2357,7 +2357,7 @@ report_unbound_tvars_in_pred_context(Vars, PredInfo) = Spec :-
 report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn) = Spec :-
     get_type_defn_context(TypeDefn, Context),
     get_type_defn_tvarset(TypeDefn, TVarSet),
-    VarsStrs = list.map(mercury_var_to_name_only(TVarSet), Vars),
+    VarsStrs = list.map(mercury_var_to_name_only_vs(TVarSet), Vars),
 
     Pieces = [words("In declaration for type"), qual_type_ctor(TypeCtor),
         suffix(":"), nl,
@@ -2540,7 +2540,7 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars) = Spec :-
         [suffix(":"), nl],
     TypeVariables = [words("type variable"),
         suffix(choose_number(TVars, "", "s"))],
-    TVarsStrs = list.map(mercury_var_to_name_only(TVarSet), TVars),
+    TVarsStrs = list.map(mercury_var_to_name_only_vs(TVarSet), TVars),
     TVarsPart = list_to_quoted_pieces(TVarsStrs),
     Are = words(choose_number(TVars, "is", "are")),
     (

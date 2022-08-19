@@ -127,7 +127,7 @@
 :- pred inst_list_size(module_info::in, list(mer_inst)::in, int::out) is det.
 
     % goals_match(ModuleInfo, OldGoal, OldArgVars, OldArgTypes,
-    %   NewGoal, NewVarTypeSrc, OldToNewVarRenaming, OldToNewTypeSubst):
+    %   NewGoal, NewVarTable, OldToNewVarRenaming, OldToNewTypeSubst):
     %
     % Check the shape of the goals, and return a mapping from variables
     % in the old goal to variables in the new and a substitution to apply
@@ -136,7 +136,7 @@
     % only attempts to optimize those types of conjunctions.
     %
 :- pred goals_match(module_info::in, hlds_goal::in, list(prog_var)::in,
-    list(mer_type)::in, hlds_goal::in, var_type_source::in,
+    list(mer_type)::in, hlds_goal::in, var_table::in,
     map(prog_var, prog_var)::out, tsubst::out) is semidet.
 
     % pd_can_reorder_goals(ModuleInfo, FullyStrict, Goal1, Goal2).
@@ -1001,7 +1001,7 @@ inst_list_size(ModuleInfo, Expansions, [Inst | Insts], !Size) :-
 %---------------------------------------------------------------------------%
 
 goals_match(_ModuleInfo, OldGoal, OldArgVars, OldArgTypes,
-        NewGoal, NewVarTypeSrc, OldNewRenaming, TypeSubn) :-
+        NewGoal, NewVarTable, OldNewRenaming, TypeSubn) :-
     goal_to_conj_list(OldGoal, OldConjuncts),
     goal_to_conj_list(NewGoal, NewConjuncts),
     map.init(OldNewRenaming0),
@@ -1018,7 +1018,7 @@ goals_match(_ModuleInfo, OldGoal, OldArgVars, OldArgTypes,
     % Check that argument types of NewGoal are subsumed by those of OldGoal.
     collect_matching_arg_types(OldNewRenaming, OldArgVars, OldArgTypes,
         [], MatchingArgTypes),
-    lookup_var_types_in_source(NewVarTypeSrc, NewArgVars, NewArgTypes),
+    lookup_var_types(NewVarTable, NewArgVars, NewArgTypes),
     type_list_subsumes(MatchingArgTypes, NewArgTypes, TypeSubn).
 
 :- pred collect_matching_arg_types(map(prog_var, prog_var)::in,

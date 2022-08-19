@@ -367,7 +367,7 @@ check_inst_mode_defn_args(DefnKind, VarSet, HeadTermContext,
                 IsAreWord = choose_number(DupArgVars,
                     "is", "are"),
                 DupVarNames =
-                    list.map(mercury_var_to_name_only(VarSet), DupArgVars),
+                    list.map(mercury_var_to_name_only_vs(VarSet), DupArgVars),
                 RepeatPieces = [words("Error: inst"), words(ParamWord)] ++
                     list_to_quoted_pieces(DupVarNames) ++
                     [words(IsAreWord), words("repeated on left hand side of"),
@@ -392,7 +392,7 @@ check_inst_mode_defn_args(DefnKind, VarSet, HeadTermContext,
                 FreeVars = [_ | _]
             then
                 FreeVarNames =
-                    list.map(mercury_var_to_name_only(VarSet), FreeVars),
+                    list.map(mercury_var_to_name_only_vs(VarSet), FreeVars),
                 FreePieces = [words("Error: free inst"),
                     words(choose_number(FreeVars,
                         "parameter", "parameters"))] ++

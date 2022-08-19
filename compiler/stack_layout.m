@@ -1211,8 +1211,8 @@ encode_exec_trace_flags(ModuleInfo, VarTable, HeadVars, ArgModes, !:Flags) :-
         true
     ),
     ( if
-        proc_info_has_higher_order_arg_from_details(ModuleInfo,
-            vts_var_table(VarTable), HeadVars)
+        proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTable,
+            HeadVars)
     then
         !:Flags = !.Flags + 2
     else

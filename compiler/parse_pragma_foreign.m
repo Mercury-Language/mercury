@@ -279,8 +279,8 @@ parse_foreign_type_assertions(ContextPieces, VarSet, Term,
             ( if set.insert_new(HeadAssertion, !Assertions) then
                 true
             else
-                HeadTermStr = mercury_term_to_string(VarSet, print_name_only,
-                    HeadTerm),
+                HeadTermStr = mercury_term_to_string_vs(VarSet,
+                    print_name_only, HeadTerm),
                 Pieces = cord.list(ContextPieces) ++
                     [lower_case_next_if_not_first, words("Error:"),
                     words("foreign type assertion"), quote(HeadTermStr),
@@ -291,7 +291,7 @@ parse_foreign_type_assertions(ContextPieces, VarSet, Term,
                 !:Specs = [Spec | !.Specs]
             )
         else
-            TermStr = mercury_term_to_string(VarSet, print_name_only, Term),
+            TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),
             Pieces = cord.list(ContextPieces) ++
                 [lower_case_next_if_not_first,
                 words("Error: expected a foreign type assertion,"),
@@ -303,7 +303,7 @@ parse_foreign_type_assertions(ContextPieces, VarSet, Term,
         parse_foreign_type_assertions(ContextPieces, VarSet, TailTerm,
             !Assertions, !Specs)
     else
-        TermStr = mercury_term_to_string(VarSet, print_name_only, Term),
+        TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),
         Pieces = cord.list(ContextPieces) ++
             [lower_case_next_if_not_first,
             words("Error: expected a list of foreign type assertions,"),
@@ -815,7 +815,7 @@ parse_pragma_foreign_proc_attributes_list(ContextPieces, VarSet,
                 MaybeAttrs = error1(TailSpecs)
             )
         else
-            HeadTermStr = mercury_limited_term_to_string(VarSet,
+            HeadTermStr = mercury_limited_term_to_string_vs(VarSet,
                 print_name_only, 80, HeadTerm),
             HeadPieces = cord.list(ContextPieces) ++
                 [lower_case_next_if_not_first,
@@ -829,7 +829,7 @@ parse_pragma_foreign_proc_attributes_list(ContextPieces, VarSet,
             MaybeAttrs = error1([HeadSpec | get_any_errors1(MaybeTailAttrs)])
         )
     else
-        TermStr = mercury_limited_term_to_string(VarSet, print_name_only,
+        TermStr = mercury_limited_term_to_string_vs(VarSet, print_name_only,
             80, Term),
         TermPieces = cord.list(ContextPieces) ++
             [lower_case_next_if_not_first,

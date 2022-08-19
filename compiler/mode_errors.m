@@ -384,6 +384,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 
 :- import_module int.
@@ -541,15 +542,14 @@ mode_error_unify_var_var_to_spec(ModeInfo, X, Y, InstX, InstY) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
     Pieces = [words("mode error in unification of"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, X)), words("and"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, Y)), suffix("."), nl,
+        quote(mercury_var_to_name_only(VarTable, X)), words("and"),
+        quote(mercury_var_to_name_only(VarTable, Y)), suffix("."), nl,
         words("Variable"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, X)) |
+        quote(mercury_var_to_name_only(VarTable, X)) |
         has_instantiatedness(ModeInfo, InstX, ",")] ++
         [words("variable"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, Y)) |
+        quote(mercury_var_to_name_only(VarTable, Y)) |
         has_instantiatedness(ModeInfo, InstY, ".")],
     Spec = simplest_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
@@ -563,10 +563,9 @@ mode_error_unify_var_poly_to_spec(ModeInfo, Var, VarInst) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
     MainPieces = [words("in polymorphically-typed unification:"), nl,
         words("mode error: variable"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, Var)) |
+        quote(mercury_var_to_name_only(VarTable, Var)) |
         has_instantiatedness(ModeInfo, VarInst, ",")] ++
         [words("expected instantiatedness was"), quote("ground"),
         words("or"), quote("any"), suffix("."), nl],
@@ -592,16 +591,15 @@ mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, Args,
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
     mode_info_get_module_info(ModeInfo, ModuleInfo),
-    VarNameSrc = vns_var_table(VarTable),
     FunctorConsIdStr = functor_cons_id_to_string(ModuleInfo,
-        VarNameSrc, print_name_only, ConsId, Args),
+        vns_var_table(VarTable), print_name_only, ConsId, Args),
     ConsIdStr = mercury_cons_id_to_string(output_mercury,
         does_not_need_brackets, ConsId),
     FakeTermInst = defined_inst(user_inst(unqualified(ConsIdStr), ArgInsts)),
     Pieces = [words("mode error in unification of"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, X)),
+        quote(mercury_var_to_name_only(VarTable, X)),
         words("and"), words_quote(FunctorConsIdStr), suffix("."), nl,
-        words("Variable"), quote(mercury_var_to_name_only_src(VarNameSrc, X)) |
+        words("Variable"), quote(mercury_var_to_name_only(VarTable, X)) |
         has_instantiatedness(ModeInfo, InstX, ",")] ++
         [words("term"), words_quote(FunctorConsIdStr) |
         has_instantiatedness(ModeInfo, FakeTermInst, ".")],
@@ -617,11 +615,10 @@ mode_error_unify_var_lambda_to_spec(ModeInfo, X, InstX, InstY) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
     Pieces = [words("mode error in unification of"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, X)),
+        quote(mercury_var_to_name_only(VarTable, X)),
         words("and lambda expression."), nl,
-        words("Variable"), quote(mercury_var_to_name_only_src(VarNameSrc, X)) |
+        words("Variable"), quote(mercury_var_to_name_only(VarTable, X)) |
         has_instantiatedness(ModeInfo, InstX, ",")] ++
         [words("lambda expression") |
         has_instantiatedness(ModeInfo, InstY, ".")],
@@ -647,9 +644,8 @@ mode_error_unify_var_multimode_pf_to_spec(ModeInfo, X, PredMultiModeError)
     QualifiedName = qualified(PredModule, PredName),
     Arity = pred_info_orig_arity(PredInfo),
     adjust_func_arity(PredOrFunc, FuncArity, Arity),
-    VarNameSrc = vns_var_table(VarTable),
     StartPieces = [words("mode error in unification of"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, X)),
+        quote(mercury_var_to_name_only(VarTable, X)),
         words("and higher-order term based on multi-moded"),
         p_or_f(PredOrFunc),
         qual_sym_name_arity(sym_name_arity(QualifiedName, FuncArity)),
@@ -719,9 +715,8 @@ mode_error_non_ground_non_local_lambda_var_to_spec(ModeInfo, Var, VarInst)
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
     Pieces = [words("mode error: variable"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, Var)) |
+        quote(mercury_var_to_name_only(VarTable, Var)) |
         has_instantiatedness(ModeInfo, VarInst, ",")] ++
         [words("expected instantiatedness for non-local variables"),
         words("of lambda goals is"), quote("ground"), suffix("."), nl],
@@ -740,26 +735,25 @@ mode_error_higher_order_unify_to_spec(ModeInfo, LHSVar, RHS, Type, PredOrFunc)
     mode_info_get_var_table(ModeInfo, VarTable),
     mode_info_get_instvarset(ModeInfo, InstVarSet),
     mode_info_get_module_info(ModeInfo, ModuleInfo),
-    VarNameSrc = vns_var_table(VarTable),
     (
         RHS = error_at_var(Y),
-        RHSStr = mercury_var_to_name_only_src(VarNameSrc, Y)
+        RHSStr = mercury_var_to_name_only(VarTable, Y)
     ;
         RHS = error_at_functor(ConsId, ArgVars),
-        RHSStr = functor_cons_id_to_string(ModuleInfo, VarNameSrc,
+        RHSStr = functor_cons_id_to_string(ModuleInfo, vns_var_table(VarTable),
             print_name_only, ConsId, ArgVars)
     ;
         RHS = error_at_lambda(ArgVars, ArgFromToInsts),
         ArgModes = list.map(from_to_insts_to_mode, ArgFromToInsts),
         assoc_list.from_corresponding_lists(ArgVars, ArgModes, ArgVarsModes),
         RHSStr = "lambda(["
-            ++ var_modes_to_string(output_debug, VarNameSrc,
+            ++ var_modes_to_string(output_debug, vns_var_table(VarTable),
                 InstVarSet, print_name_only, ArgVarsModes)
             ++ "] ... )"
     ),
     varset.init(TypeVarSet),
     MainPieces = [words("In unification of"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, LHSVar)),
+        quote(mercury_var_to_name_only(VarTable, LHSVar)),
         words("with"), quote(RHSStr), suffix(":"), nl,
         words("mode error: attempt at higher-order unification."), nl,
         words("Cannot unify two terms of type"),
@@ -793,9 +787,8 @@ mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo, Var,
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
     MainPieces = [words("mode error: variable"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, Var)) |
+        quote(mercury_var_to_name_only(VarTable, Var)) |
         has_inst_expected_inst_was(ModeInfo, VarInst, ExpectedInst)],
     MainMsgs = [simplest_msg(Context, Preamble ++ MainPieces)],
     Phase = phase_mode_check(report_in_any_mode),
@@ -869,10 +862,9 @@ mode_error_clobbered_var_is_live_to_spec(ModeInfo, Var) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
     Pieces = [words("unique-mode error: the called procedure"),
         words("would clobber its argument, but variable"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, Var)),
+        quote(mercury_var_to_name_only(VarTable, Var)),
         words("is still live."), nl],
     Spec = simplest_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
@@ -1006,20 +998,19 @@ arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, InstMap, Vars)
         Vars = [HeadVar | TailVars],
         instmap_lookup_vars(InstMap, Vars, Insts),
         mode_info_get_var_table(ModeInfo, VarTable),
-        VarNameSrc = vns_var_table(VarTable),
         (
             PredOrFunc = pf_predicate,
             (
                 TailVars = [],
                 Pieces = ArgPieces ++
-                    [quote(mercury_var_to_name_only_src(VarNameSrc, HeadVar)),
+                    [quote(mercury_var_to_name_only(VarTable, HeadVar)),
                     words("has the following inst:"), nl_indent_delta(1)] ++
                     inst_list_to_sep_lines(ModeInfo, Insts)
                 % inst_list_to_sep_lines does nl_indent_delta(-1).
             ;
                 TailVars = [_ | _],
                 Pieces = ArgPieces ++ [suffix("s"),
-                    quote(mercury_vars_to_name_only_src(VarNameSrc, Vars)),
+                    quote(mercury_vars_to_name_only(VarTable, Vars)),
                     words("have the following insts:"), nl_indent_delta(1)] ++
                     inst_list_to_sep_lines(ModeInfo, Insts)
                 % inst_list_to_sep_lines does nl_indent_delta(-1).
@@ -1030,7 +1021,7 @@ arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, InstMap, Vars)
             (
                 ArgVars = [],
                 Pieces = [words("the return value"),
-                    quote(mercury_var_to_name_only_src(VarNameSrc, ReturnVar)),
+                    quote(mercury_var_to_name_only(VarTable, ReturnVar)),
                     words("has the following inst:"), nl_indent_delta(1)] ++
                     inst_list_to_sep_lines(ModeInfo, Insts)
                 % inst_list_to_sep_lines does nl_indent_delta(-1).
@@ -1043,9 +1034,9 @@ arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, InstMap, Vars)
                     SuffixPieces = [suffix("s")]
                 ),
                 Pieces = ArgPieces ++ SuffixPieces ++
-                    [quote(mercury_vars_to_name_only_src(VarNameSrc, ArgVars)),
+                    [quote(mercury_vars_to_name_only(VarTable, ArgVars)),
                     words("and the return value"),
-                    quote(mercury_var_to_name_only_src(VarNameSrc, ReturnVar)),
+                    quote(mercury_var_to_name_only(VarTable, ReturnVar)),
                     words("have the following insts:"), nl_indent_delta(1)] ++
                     inst_list_to_sep_lines(ModeInfo, Insts)
                 % inst_list_to_sep_lines does nl_indent_delta(-1).
@@ -1143,9 +1134,8 @@ report_any_never_matching_args(ModeInfo, ArgNumMatchedProcs, NumExtra,
             HOPieces = []
         ),
         mode_info_get_var_table(ModeInfo, VarTable),
-        VarNameSrc = vns_var_table(VarTable),
         BadArgPieces = ArgNumPieces ++
-            [quote(mercury_var_to_name_only_src(VarNameSrc, Var)),
+            [quote(mercury_var_to_name_only(VarTable, Var)),
             words("has inst")] ++
             report_inst(ModeInfo, quote_short_inst, [suffix(",")],
                 [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
@@ -1165,8 +1155,7 @@ mode_error_bad_higher_order_inst_to_spec(ModeInfo, PredVar, PredVarInst,
     PreamblePieces = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
-    PredVarName = mercury_var_to_name_only_src(VarNameSrc, PredVar),
+    PredVarName = mercury_var_to_name_only(VarTable, PredVar),
     ExpPFStr = pred_or_func_to_full_str(ExpectedPredOrFunc),
     ExpectedUserArity = user_arity(ExpUserArityInt),
     % Don't let the specification of the expected arity be broken up,
@@ -1350,8 +1339,7 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
         DebugModes = yes,
         set_of_var.to_sorted_list(Vars, VarList),
         mode_info_get_var_table(!.ModeInfo, VarTable),
-        VarNameSrc = vns_var_table(VarTable),
-        VarNames = mercury_vars_to_name_only_src(VarNameSrc, VarList),
+        VarNames = mercury_vars_to_name_only(VarTable, VarList),
         Pieces1 = [words("Floundered goal, waiting on {"),
             words(VarNames), words("}:"), nl],
         Msg1 = simplest_msg(Context, Pieces1),
@@ -1538,7 +1526,6 @@ mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst)
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
     (
         Reason = var_lock_negation,
         ReasonStr = "attempt to bind a non-local variable inside a negation."
@@ -1565,7 +1552,7 @@ mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst)
     ),
     MainPieces = [words("scope error:"), words(ReasonStr), nl,
         words("Variable"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, Var)) |
+        quote(mercury_var_to_name_only(VarTable, Var)) |
         has_inst_expected_inst_was(ModeInfo, VarInst, Inst)],
     (
         Reason = var_lock_negation,
@@ -1619,7 +1606,6 @@ mode_error_unexpected_final_inst_to_spec(ModeInfo, ArgNum, Var,
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
     (
         Reason = too_instantiated,
         Problem = "became too instantiated."
@@ -1634,7 +1620,7 @@ mode_error_unexpected_final_inst_to_spec(ModeInfo, ArgNum, Var,
     Pieces = [words("mode error: argument"), fixed(int_to_string(ArgNum)),
         words(Problem), nl,
         words("Final instantiatedness of"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, Var)), words("was") |
+        quote(mercury_var_to_name_only(VarTable, Var)), words("was") |
         report_inst(ModeInfo, quote_short_inst, [suffix(","), nl],
             [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
             ActualInst)] ++
@@ -1656,19 +1642,18 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_info_get_context(!.ModeInfo, Context),
     mode_info_get_var_table(!.ModeInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
     (
         Vars = [],
         unexpected($pred, "Vars = []")
     ;
         Vars = [Var],
         MainPieces = [words("mode error: argument"),
-            quote(mercury_var_to_name_only_src(VarNameSrc, Var)),
+            quote(mercury_var_to_name_only(VarTable, Var)),
             words("has the following inst:"), nl_indent_delta(1)]
     ;
         Vars = [_, _ | _],
         MainPieces = [words("mode error: arguments"),
-            quote(mercury_vars_to_name_only_src(VarNameSrc, Vars)),
+            quote(mercury_vars_to_name_only(VarTable, Vars)),
             words("have the following insts:"), nl_indent_delta(1)]
     ),
     NoMatchPieces = inst_list_to_sep_lines(!.ModeInfo, Insts) ++
@@ -1754,7 +1739,6 @@ mode_error_cannot_create_implied_mode_to_spec(ModeInfo, Reason, Var, VarInst,
     ( if OpMode = opm_top_args(opma_augment(opmau_generate_code(_))) then
         Preamble = mode_info_context_preamble(ModeInfo),
         mode_info_get_var_table(ModeInfo, VarTable),
-        VarNameSrc = vns_var_table(VarTable),
         (
             Reason = cannot_init_any,
             ReasonPieces = [words("initializing a solver variable")]
@@ -1766,7 +1750,7 @@ mode_error_cannot_create_implied_mode_to_spec(ModeInfo, Reason, Var, VarInst,
             words("cannot implement implied modes that require")] ++
             ReasonPieces ++ [suffix("."), nl,
             words("Variable"),
-            quote(mercury_var_to_name_only_src(VarNameSrc, Var)) |
+            quote(mercury_var_to_name_only(VarTable, Var)) |
             has_inst_expected_inst_was(ModeInfo, VarInst,
                 NonImpliedInitialInst)],
         Spec = simplest_spec($pred, severity_error, Phase, Context,
@@ -1786,19 +1770,18 @@ purity_error_should_be_in_promise_purity_scope_to_spec(NegCtxtDesc,
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
     (
         NegCtxtDesc = if_then_else,
         Pieces = [words("purity error: if-then-else should be inside"),
             words("a promise_purity scope because non-local variable"),
-            quote(mercury_var_to_name_only_src(VarNameSrc, Var)),
+            quote(mercury_var_to_name_only(VarTable, Var)),
             words("has inst"), quote("any"),
             words("and appears in the condition."), nl]
     ;
         NegCtxtDesc = negation,
         Pieces = [words("purity error: negation should be inside"),
             words("a promise_purity scope because non-local variable"),
-            quote(mercury_var_to_name_only_src(VarNameSrc, Var)),
+            quote(mercury_var_to_name_only(VarTable, Var)),
             words("has inst"), quote("any"),
             words("and appears in the body."), nl]
     ),
@@ -1814,12 +1797,11 @@ purity_error_lambda_should_be_any_to_spec(ModeInfo, OoMVars) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
     Vars = one_or_more_to_list(OoMVars),
     Pieces = [words("purity error: lambda is"), quote("ground"),
         words("but contains the following non-local variables"),
         words("whose insts contain"), quote("any"), suffix(":"),
-        words(mercury_vars_to_name_only_src(VarNameSrc, Vars)),
+        words(mercury_vars_to_name_only(VarTable, Vars)),
         suffix("."), nl],
     Always = always(Preamble ++ Pieces),
     VerboseOnly = verbose_only(verbose_once, [words("Predicate expressions"),
@@ -1849,8 +1831,7 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
     MergeError = merge_error(Var, ContextsInsts0),
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_var_table(ModeInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
-    VarNamePiece = quote(mercury_var_to_name_only_src(VarNameSrc, Var)),
+    VarNamePiece = quote(mercury_var_to_name_only(VarTable, Var)),
     list.sort(ContextsInsts0, ContextsInsts),
     count_ground_insts(ModuleInfo, ContextsInsts,
         0, NumGroundInsts, 0, NumAllInsts),
@@ -2112,14 +2093,13 @@ mode_warning_cannot_succeed_var_var(ModeInfo, X, Y, InstX, InstY) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
     Pieces = [words("warning: unification of"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, X)),
-        words("and"), quote(mercury_var_to_name_only_src(VarNameSrc, Y)),
+        quote(mercury_var_to_name_only(VarTable, X)),
+        words("and"), quote(mercury_var_to_name_only(VarTable, Y)),
         words("cannot succeed."), nl,
-        quote(mercury_var_to_name_only_src(VarNameSrc, X)) |
+        quote(mercury_var_to_name_only(VarTable, X)) |
         has_instantiatedness(ModeInfo, InstX, ",")] ++
-        [quote(mercury_var_to_name_only_src(VarNameSrc, Y)) |
+        [quote(mercury_var_to_name_only(VarTable, Y)) |
         has_instantiatedness(ModeInfo, InstY, ".")],
     Spec = simplest_spec($pred, severity_warning,
         phase_mode_check(report_only_if_in_all_modes),
@@ -2134,13 +2114,12 @@ mode_warning_cannot_succeed_var_functor(ModeInfo, X, InstX, ConsId) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
     ConsIdStr = mercury_cons_id_to_string(output_mercury,
         does_not_need_brackets, ConsId),
     Pieces = [words("warning: unification of"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, X)), words("and"),
+        quote(mercury_var_to_name_only(VarTable, X)), words("and"),
         words(ConsIdStr), words("cannot succeed."), nl,
-        quote(mercury_var_to_name_only_src(VarNameSrc, X)) |
+        quote(mercury_var_to_name_only(VarTable, X)) |
         has_instantiatedness(ModeInfo, InstX, ".")],
     Spec = simplest_spec($pred, severity_warning,
         phase_mode_check(report_only_if_in_all_modes),
@@ -2155,13 +2134,12 @@ mode_warning_cannot_succeed_ground_occur_check(ModeInfo, X, ConsId) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
     ConsIdStr = mercury_cons_id_to_string(output_mercury,
         does_not_need_brackets, ConsId),
     Pieces = [words("warning: unification of"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, X)), words("and"),
+        quote(mercury_var_to_name_only(VarTable, X)), words("and"),
         words(ConsIdStr), words("cannot succeed, because"),
-        quote(mercury_var_to_name_only_src(VarNameSrc, X)),
+        quote(mercury_var_to_name_only(VarTable, X)),
         words("cannot be equal to a term containing itself."), nl],
     Spec = simplest_spec($pred, severity_warning,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).

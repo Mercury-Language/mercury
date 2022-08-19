@@ -200,7 +200,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.var_table.
+:- import_module parse_tree.var_db.
 :- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
@@ -773,13 +773,13 @@ report_error_unify_var_var(Info, ClauseContext, UnifyContext, Context,
     VarSet = ClauseContext ^ tecc_varset,
     get_inst_varset(ClauseContext, InstVarSet),
     MainPieces = [words("type error in unification of variable"),
-        quote(mercury_var_to_name_only(VarSet, X)), nl,
+        quote(mercury_var_to_name_only_vs(VarSet, X)), nl,
         words("and variable"),
-        quote(mercury_var_to_name_only(VarSet, Y)), suffix("."), nl,
-        quote(mercury_var_to_name_only(VarSet, X))] ++
+        quote(mercury_var_to_name_only_vs(VarSet, Y)), suffix("."), nl,
+        quote(mercury_var_to_name_only_vs(VarSet, X))] ++
         type_of_var_to_pieces(InstVarSet, TypeAssignSet,
             [suffix(",")], X) ++ [nl] ++
-        [quote(mercury_var_to_name_only(VarSet, Y))] ++
+        [quote(mercury_var_to_name_only_vs(VarSet, Y))] ++
         type_of_var_to_pieces(InstVarSet, TypeAssignSet,
             [suffix(".")], Y) ++ [nl],
     type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
@@ -802,15 +802,15 @@ report_error_lambda_var(Info, ClauseContext, UnifyContext, Context,
     (
         PredOrFunc = pf_predicate,
         Pieces2 = [words("and"), prefix("pred("),
-            words(mercury_vars_to_name_only(VarSet, ArgVars)),
+            words(mercury_vars_to_name_only_vs(VarSet, ArgVars)),
             suffix(")"), words(":- ...':"), nl]
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(ArgVars, FuncArgs, RetVar),
         Pieces2 = [words("and"), prefix("func("),
-            words(mercury_vars_to_name_only(VarSet, FuncArgs)),
+            words(mercury_vars_to_name_only_vs(VarSet, FuncArgs)),
             suffix(")"), fixed("="),
-            words(mercury_var_to_name_only(VarSet, RetVar)),
+            words(mercury_var_to_name_only_vs(VarSet, RetVar)),
             words(":- ...':"), nl]
     ),
 
@@ -1192,7 +1192,7 @@ mismatched_args_to_pieces(VarSet, Functor, First, [Mismatch | Mismatches])
     ),
     ( if varset.search_name(VarSet, Var, _) then
         VarNamePieces = [prefix("("),
-            words(mercury_var_to_name_only(VarSet, Var)),
+            words(mercury_var_to_name_only_vs(VarSet, Var)),
             suffix(")")]
     else
         VarNamePieces = []
@@ -1502,7 +1502,7 @@ find_expecteds_matching_actual(VarSet, SearchActualPieces,
         ( if varset.search_name(VarSet, Var, _) then
             HeadMismatchPieces = [words("argument"), int_fixed(ArgNum),
                 suffix(","), words("which is variable"),
-                quote(mercury_var_to_name_only(VarSet, Var))]
+                quote(mercury_var_to_name_only_vs(VarSet, Var))]
         else
             HeadMismatchPieces = [words("argument"), int_fixed(ArgNum)]
         ),
@@ -1922,11 +1922,11 @@ report_cons_error(Context, ConsError) = Msgs :-
             unexpected($pred, "no type variables")
         ;
             TVars = [TVar],
-            TVarsStr = mercury_var_to_name_only(TVarSet, TVar),
+            TVarsStr = mercury_var_to_name_only_vs(TVarSet, TVar),
             Pieces2 = [words("variable"), quote(TVarsStr), words("occurs")]
         ;
             TVars = [_, _ | _],
-            TVarsStr = mercury_vars_to_name_only(TVarSet, TVars),
+            TVarsStr = mercury_vars_to_name_only_vs(TVarSet, TVars),
             Pieces2 = [words("variables"), quote(TVarsStr), words("occur")]
         ),
         Pieces3 = [words("in the types of field"), unqual_sym_name(FieldName),
@@ -2025,7 +2025,7 @@ ambiguity_error_possibilities_to_pieces(AddQuotes, VarSet, InstVarSet,
             PiecesT2 = UnnamedPiecesT2
         ),
         HeadPieces =
-            [words(mercury_var_to_name_only(VarSet, Var)), suffix(":")] ++
+            [words(mercury_var_to_name_only_vs(VarSet, Var)), suffix(":")] ++
             [nl_indent_delta(1)] ++ PiecesT1 ++ [nl_indent_delta(-1)] ++
             [words("or")] ++
             [nl_indent_delta(1)] ++ PiecesT2 ++ [nl_indent_delta(-1)]
@@ -2148,7 +2148,7 @@ types_of_vars_to_pieces(VarSet, InstVarSet, TypeAssignSet, FinalPieces,
 argument_name_to_pieces(VarSet, Var) = Pieces :-
     ( if varset.search_name(VarSet, Var, _) then
         Pieces = [words("variable"),
-            quote(mercury_var_to_name_only(VarSet, Var))]
+            quote(mercury_var_to_name_only_vs(VarSet, Var))]
     else
         Pieces = [words("argument")]
     ).
@@ -2455,7 +2455,7 @@ type_assign_to_pieces(VarSet, TypeAssign, MaybeSeq) = Pieces :-
     ;
         ExternalTypeParams = [_ | _],
         VarsStr =
-            mercury_vars_to_string(TypeVarSet, varnums, ExternalTypeParams),
+            mercury_vars_to_string_vs(TypeVarSet, varnums, ExternalTypeParams),
         HeadPieces = [words("some [" ++ VarsStr ++ "]"), nl]
     ),
     TypePieces = type_assign_types_to_pieces(VarSet, VarTypes, TypeVarSet,
@@ -2485,7 +2485,7 @@ type_assign_types_to_pieces(VarSet, VarTypes, TypeVarSet, TypeBindings,
             FoundOne = no,
             PrefixPieces = []
         ),
-        VarStr = mercury_var_to_string(VarSet, varnums, Var),
+        VarStr = mercury_var_to_string_vs(VarSet, varnums, Var),
         TypeStr = type_with_bindings_to_string(Type, TypeVarSet, TypeBindings),
         AssignPieces = [fixed(VarStr), suffix(":"), words(TypeStr)],
         TailPieces = type_assign_types_to_pieces(VarSet, VarTypes,

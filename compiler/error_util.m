@@ -820,7 +820,8 @@ type_to_pieces(TVarSet, InstVarSet, VarNamePrint, MaybeAddQuotes,
                 EndQuotePieces, Type)
     ;
         ExistQVars = [_ | _],
-        ExistQVarStrs = list.map(mercury_var_to_string(TVarSet, VarNamePrint),
+        ExistQVarStrs = list.map(
+            mercury_var_to_string_vs(TVarSet, VarNamePrint),
             ExistQVars),
         ExistPieces = strict_list_to_pieces(ExistQVarStrs),
         ExistListPieces = [prefix("[")] ++ ExistPieces ++ [suffix("]")],
@@ -876,7 +877,7 @@ type_pieces(TVarSet, InstVarSet, VarNamePrint, SuffixPieces, Type) = Pieces :-
             SuffixPieces, SubType)
     ;
         Type = type_variable(TVar, _),
-        TVarStr = mercury_var_to_string(TVarSet, VarNamePrint, TVar),
+        TVarStr = mercury_var_to_string_vs(TVarSet, VarNamePrint, TVar),
         Pieces = [fixed(TVarStr) | SuffixPieces]
     ;
         Type = builtin_type(BuiltinType),
@@ -902,7 +903,7 @@ type_pieces(TVarSet, InstVarSet, VarNamePrint, SuffixPieces, Type) = Pieces :-
             Type = apply_n_type(TVar, ArgTypes, _),
             % XXX None of the test cases cover the output we generate
             % for apply_n_type, so I (zs) don't know whether this is ok.
-            TVarStr = mercury_var_to_string(TVarSet, VarNamePrint, TVar),
+            TVarStr = mercury_var_to_string_vs(TVarSet, VarNamePrint, TVar),
             Const = TVarStr,
             NonConstStart = TVarStr ++ "(",
             NonConstEnd = ")"
@@ -1072,9 +1073,9 @@ type_and_mode_to_pieces(TVarSet, InstVarSet, Type - Mode) = Pieces :-
     TypePieces = type_pieces(TVarSet, InstVarSet, print_name_only, [], Type),
     ModeTerm0 = mode_to_term(output_mercury, Mode),
     term.coerce(ModeTerm0, ModeTerm),
-    ModePiece =
-        words(mercury_term_to_string(InstVarSet, print_name_only, ModeTerm)),
-    Pieces = TypePieces ++ [fixed("::"), ModePiece].
+    ModeTermStr =
+        mercury_term_to_string_vs(InstVarSet, print_name_only, ModeTerm),
+    Pieces = TypePieces ++ [fixed("::"), words(ModeTermStr)].
 
 :- pred quote_pieces(maybe_add_quotes::in,
     list(format_component)::out, list(format_component)::out) is det.

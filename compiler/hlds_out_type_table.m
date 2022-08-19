@@ -122,7 +122,8 @@ write_type_params(Stream, TVarSet, TypeParams, !IO) :-
     ;
         TypeParams = [HeadParam | TailParams],
         io.write_string(Stream, "(", !IO),
-        mercury_output_var(TVarSet, print_name_only, HeadParam, Stream, !IO),
+        mercury_output_var_vs(TVarSet, print_name_only, HeadParam,
+            Stream, !IO),
         write_comma_type_params_loop(Stream, TVarSet, TailParams, !IO),
         io.write_string(Stream, ")", !IO)
     ).
@@ -133,7 +134,7 @@ write_type_params(Stream, TVarSet, TypeParams, !IO) :-
 write_comma_type_params_loop(_Stream, _TVarSet, [], !IO).
 write_comma_type_params_loop(Stream, TVarSet, [Param | Params], !IO) :-
     io.write_string(Stream, ", ", !IO),
-    mercury_output_var(TVarSet, print_name_only, Param, Stream, !IO),
+    mercury_output_var_vs(TVarSet, print_name_only, Param, Stream, !IO),
     write_comma_type_params_loop(Stream, TVarSet, Params, !IO).
 
 :- pred write_type_body(hlds_out_info::in, io.text_output_stream::in,

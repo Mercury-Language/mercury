@@ -165,7 +165,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.var_table.
+:- import_module parse_tree.var_db.
 
 :- import_module bool.
 :- import_module cord.
@@ -2034,7 +2034,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
         InconsistentVars = [_ | _],
         varset.coerce(!.VarSet, InstVarSet),
         InconsistentVarStrs = list.map(
-            mercury_var_to_string(InstVarSet, print_name_only),
+            mercury_var_to_string_vs(InstVarSet, print_name_only),
             InconsistentVars),
         InconsistentVarPieces =
             [words("Error: the constraints on the inst"),

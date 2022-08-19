@@ -1653,11 +1653,11 @@ compare_old_new_notag_type_ctor(Stream, OldNoTagTypeTable, NewNoTagTypeTable,
             true
         else
             varset.init(DummyVarSetA),
-            OldParamStrs =
-                list.map(mercury_var_to_string(DummyVarSetA, print_num_only),
+            OldParamStrs = list.map(
+                mercury_var_to_string_vs(DummyVarSetA, print_num_only),
                 OldParams),
-            NewParamStrs =
-                list.map(mercury_var_to_string(DummyVarSetA, print_num_only),
+            NewParamStrs = list.map(
+                mercury_var_to_string_vs(DummyVarSetA, print_num_only),
                 NewParams),
             OldParamsStr = string.join_list(", ", OldParamStrs),
             NewParamsStr = string.join_list(", ", NewParamStrs),

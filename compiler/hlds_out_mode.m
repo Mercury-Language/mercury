@@ -22,22 +22,12 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
 
-:- import_module assoc_list.
 :- import_module io.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
 
-:- func instmap_to_string(var_name_source, var_name_print, int, instmap)
-    = string.
-:- pred write_instmap(io.text_output_stream::in, var_name_source::in,
-    var_name_print::in, int::in, instmap::in, io::di, io::uo) is det.
-
-:- func var_inst_list_to_string(var_name_source, var_name_print, int,
-    assoc_list(prog_var, mer_inst)) = string.
-:- pred write_var_inst_list(io.text_output_stream::in, var_name_source::in,
-    var_name_print::in, int::in, assoc_list(prog_var, mer_inst)::in,
-    io::di, io::uo) is det.
+:- func instmap_to_string(var_table, var_name_print, int, instmap) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -97,6 +87,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_to_term.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module pair.
@@ -107,28 +98,22 @@
 
 %---------------------------------------------------------------------------%
 
-instmap_to_string(VarNameSrc, VarNamePrint, Indent, InstMap) = Str :-
+instmap_to_string(VarTable, VarNamePrint, Indent, InstMap) = Str :-
     ( if instmap_is_unreachable(InstMap) then
         Str = "unreachable"
     else
         instmap_to_assoc_list(InstMap, AssocList),
-        Str = var_inst_list_to_string(VarNameSrc, VarNamePrint, Indent,
+        Str = var_inst_list_to_string(VarTable, VarNamePrint, Indent,
             AssocList)
     ).
 
-write_instmap(Stream, VarNameSrc, VarNamePrint, Indent, InstMap, !IO) :-
-    ( if instmap_is_unreachable(InstMap) then
-        io.write_string(Stream, "unreachable", !IO)
-    else
-        instmap_to_assoc_list(InstMap, AssocList),
-        write_var_inst_list(Stream, VarNameSrc, VarNamePrint, Indent,
-            AssocList, !IO)
-    ).
+:- func var_inst_list_to_string(var_table, var_name_print, int,
+    assoc_list(prog_var, mer_inst)) = string.
 
 var_inst_list_to_string(_, _, _, []) = "".
-var_inst_list_to_string(VarNameSrc, VarNamePrint, Indent,
+var_inst_list_to_string(VarTable, VarNamePrint, Indent,
         [Var - Inst | VarsInsts]) = Str :-
-    VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
+    VarStr = mercury_var_to_string(VarTable, VarNamePrint, Var),
     varset.init(InstVarSet),
     InstStr = mercury_inst_to_string(output_debug, InstVarSet, Inst),
     string.format("%s -> %s", [s(VarStr), s(InstStr)], VarInstStr),
@@ -137,29 +122,12 @@ var_inst_list_to_string(VarNameSrc, VarNamePrint, Indent,
         Str = VarInstStr
     ;
         VarsInsts = [_ | _],
-        VarsInstsStr = var_inst_list_to_string(VarNameSrc, VarNamePrint,
+        VarsInstsStr = var_inst_list_to_string(VarTable, VarNamePrint,
             Indent, VarsInsts),
         string.duplicate_char('\t', Indent, IndentStr),
         Prefix= "%            ",
         string.format("%s\n%s%s%s",
             [s(VarInstStr), s(IndentStr), s(Prefix), s(VarsInstsStr)], Str)
-    ).
-
-write_var_inst_list(_, _, _, _, [], !IO).
-write_var_inst_list(Stream, VarNameSrc, VarNamePrint, Indent,
-        [Var - Inst | VarsInsts], !IO) :-
-    mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO),
-    io.write_string(Stream, " -> ", !IO),
-    varset.init(InstVarSet),
-    mercury_output_inst(Stream, output_debug, InstVarSet, Inst, !IO),
-    (
-        VarsInsts = []
-    ;
-        VarsInsts = [_ | _],
-        mercury_output_newline(Indent, Stream, !IO),
-        io.write_string(Stream, "%            ", !IO),
-        write_var_inst_list(Stream, VarNameSrc, VarNamePrint, Indent,
-            VarsInsts, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -250,7 +218,7 @@ mercury_format_structured_inst(Suffix, Inst, Indent, Lang, InclAddr,
             Lang = output_debug,
             InstResultsTerm =
                 inst_test_results_to_term(term.context_init, InstResults),
-            InstResultsStr = mercury_term_to_string(varset.init,
+            InstResultsStr = mercury_term_to_string_vs(varset.init,
                 print_num_only, InstResultsTerm),
             mercury_format_tabs(Indent + 1, S, !U),
             add_string(InstResultsStr, S, !U),
@@ -288,7 +256,7 @@ mercury_format_structured_inst(Suffix, Inst, Indent, Lang, InclAddr,
         add_string(Suffix, S, !U)
     ;
         Inst = inst_var(Var),
-        mercury_format_var(InstVarSet, print_name_only, Var, S, !U),
+        mercury_format_var_vs(InstVarSet, print_name_only, Var, S, !U),
         add_string(Suffix, S, !U)
     ;
         Inst = constrained_inst_vars(Vars, ConstrainedInst),

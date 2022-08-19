@@ -1571,8 +1571,8 @@ reqscope_check_goal_detism_for_cases(RequiredDetism, Var, VarType,
 generate_error_not_switch_on_required_var(RequiredVar, ScopeWord,
         ScopeGoalInfo, !DetInfo) :-
     det_info_get_var_table(!.DetInfo, VarTable),
-    RequiredVarStr = mercury_var_to_string_src(vns_var_table(VarTable),
-        print_name_only, RequiredVar),
+    RequiredVarStr =
+        mercury_var_to_string(VarTable, print_name_only, RequiredVar),
     Pieces = [words("Error: the goal inside the"),
         words(ScopeWord), fixed("[" ++ RequiredVarStr ++ "]"), words("scope"),
         words("is not a switch on"), quote(RequiredVarStr), suffix("."), nl],
@@ -1680,8 +1680,7 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
 
     det_info_get_module_info(DetInfo, ModuleInfo),
     det_info_get_var_table(DetInfo, VarTable),
-    VarStr = mercury_var_to_string_src(vns_var_table(VarTable),
-        print_name_only, Var),
+    VarStr = mercury_var_to_string(VarTable, print_name_only, Var),
     instmap_lookup_var(InstMap0, Var, VarInst),
     ( if
         det_info_get_var_table(DetInfo, VarTable),
@@ -1882,13 +1881,12 @@ det_diagnose_switch_context(_, [], []).
 det_diagnose_switch_context(DetInfo, [SwitchContext | SwitchContexts],
         Pieces) :-
     det_info_get_var_table(DetInfo, VarTable),
-    VarNameSrc = vns_var_table(VarTable),
     SwitchContext = switch_context(Var, MainMatch, OtherMatches),
-    MainMatchStr = switch_match_to_string(VarNameSrc, MainMatch),
+    MainMatchStr = switch_match_to_string(VarTable, MainMatch),
     OtherMatchStrs =
-        list.map(switch_match_to_string(VarNameSrc), OtherMatches),
+        list.map(switch_match_to_string(VarTable), OtherMatches),
     MatchsStr = string.join_list(", ", [MainMatchStr | OtherMatchStrs]),
-    VarStr = mercury_var_to_string_src(VarNameSrc, print_name_only, Var),
+    VarStr = mercury_var_to_string(VarTable, print_name_only, Var),
     InnerPieces = [words("Inside the case"), words(MatchsStr),
         words("of the switch on"), fixed(VarStr), suffix(":"), nl],
     det_diagnose_switch_context(DetInfo, SwitchContexts, OuterPieces),
@@ -1897,10 +1895,10 @@ det_diagnose_switch_context(DetInfo, [SwitchContext | SwitchContexts],
     % towards the inside.
     Pieces = OuterPieces ++ [lower_case_next_if_not_first] ++ InnerPieces.
 
-:- func switch_match_to_string(var_name_source, switch_match) = string.
+:- func switch_match_to_string(var_table, switch_match) = string.
 
-switch_match_to_string(VarNameSrc, switch_match(ConsId, MaybeArgVars)) =
-    cons_id_and_vars_or_arity_to_string(VarNameSrc, do_not_qualify_cons_id,
+switch_match_to_string(VarTable, switch_match(ConsId, MaybeArgVars)) =
+    cons_id_and_vars_or_arity_to_string(VarTable, do_not_qualify_cons_id,
         ConsId, MaybeArgVars).
 
 %---------------------------------------------------------------------------%
@@ -1995,18 +1993,17 @@ det_report_unify_context(!.First, Last, _Context, UnifyContext, DetInfo,
             StartWords = "in unification"
         )
     ),
-    VarNameSrc = vns_var_table(VarTable),
     lookup_var_entry(VarTable, LHSVar, LHSVarEntry),
     LHSVarRawName = LHSVarEntry ^ vte_name,
     ( if LHSVarRawName = "" then
-        RHSStr = unify_rhs_to_string(ModuleInfo, VarNameSrc,
+        RHSStr = unify_rhs_to_string(ModuleInfo, VarTable,
             print_name_only, RHS),
         Pieces = [words(StartWords), words("with"),
             words(add_quotes(RHSStr))]
     else
         % LHSVarName may differ from LHSVarRawName; see
         % mercury_convert_var_name for details.
-        LHSVarName = mercury_var_to_string_src(VarNameSrc, print_name_only,
+        LHSVarName = mercury_var_to_string(VarTable, print_name_only,
             LHSVar),
         ( if
             RHS = rhs_var(RHSVar),
@@ -2016,7 +2013,7 @@ det_report_unify_context(!.First, Last, _Context, UnifyContext, DetInfo,
             Pieces = [words(StartWords), words("with"),
                 words(add_quotes(LHSVarName))]
         else
-            RHSStr = unify_rhs_to_string(ModuleInfo, VarNameSrc,
+            RHSStr = unify_rhs_to_string(ModuleInfo, VarTable,
                 print_name_only, RHS),
             Pieces = [words(StartWords), words("of"),
                 words(add_quotes(LHSVarName)), words("and"),
@@ -2043,10 +2040,9 @@ failing_contexts_description(ModuleInfo, VarTable, FailingContexts) =
 
 failing_context_description(ModuleInfo, VarTable, FailingContext) = Msg :-
     FailingContext = failing_context(Context, FailingGoal),
-    VarNameSrc = vns_var_table(VarTable),
     (
         FailingGoal = incomplete_switch(Var),
-        VarStr = mercury_var_to_string_src(VarNameSrc, print_name_only, Var),
+        VarStr = mercury_var_to_string(VarTable, print_name_only, Var),
         Pieces = [words("The switch on"), fixed(VarStr),
             words("is incomplete."), nl]
     ;
@@ -2054,13 +2050,13 @@ failing_context_description(ModuleInfo, VarTable, FailingContext) = Msg :-
         Pieces = [words("Fail goal can fail."), nl]
     ;
         FailingGoal = test_goal(Var1, Var2),
-        Var1Str = mercury_var_to_string_src(VarNameSrc, print_name_only, Var1),
-        Var2Str = mercury_var_to_string_src(VarNameSrc, print_name_only, Var2),
+        Var1Str = mercury_var_to_string(VarTable, print_name_only, Var1),
+        Var2Str = mercury_var_to_string(VarTable, print_name_only, Var2),
         Pieces = [words("Unification of"), fixed(Var1Str),
             words("and"), fixed(Var2Str), words("can fail."), nl]
     ;
         FailingGoal = deconstruct_goal(Var, ConsId),
-        VarStr = mercury_var_to_string_src(VarNameSrc, print_name_only, Var),
+        VarStr = mercury_var_to_string(VarTable, print_name_only, Var),
         Pieces = [words("Unification of"), fixed(VarStr), words("with"),
             qual_cons_id_and_maybe_arity(ConsId), words("can fail."), nl]
     ;

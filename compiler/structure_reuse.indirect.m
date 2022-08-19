@@ -1070,8 +1070,7 @@ verify_indirect_reuse_reason_to_string(VarTable, Reason) = Str :-
         Str = string.string(Reason)
     ;
         Reason = reuse_is_unsafe(Vars),
-        VarsStr = mercury_vars_to_string_src(vns_var_table(VarTable),
-            print_name_and_num, Vars),
+        VarsStr = mercury_vars_to_string(VarTable, print_name_and_num, Vars),
         string.format("reuse_is_unsafe(%s)\n", [s(VarsStr)], Str)
     ).
 

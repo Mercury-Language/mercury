@@ -1126,7 +1126,7 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
             DetailsAbstract = abstract_solver_type,
             io.write_string(Stream, ":- solver type ", !IO)
         ),
-        mercury_output_term_nq(TypeVarSet, print_name_only,
+        mercury_output_term_nq_vs(TypeVarSet, print_name_only,
             next_to_graphic_token, TypeTerm, Stream, !IO),
         (
             DetailsAbstract = abstract_type_fits_in_n_bits(NumBits),
@@ -1154,7 +1154,7 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
         TypeDefn = parse_tree_eqv_type(DetailsEqv),
         DetailsEqv = type_details_eqv(EqvType),
         io.write_string(Stream, ":- type ", !IO),
-        mercury_output_term(TypeVarSet, print_name_only, TypeTerm,
+        mercury_output_term_vs(TypeVarSet, print_name_only, TypeTerm,
             Stream, !IO),
         io.write_string(Stream, " == ", !IO),
         mercury_output_type(TypeVarSet, print_name_only, EqvType, Stream, !IO),
@@ -1163,7 +1163,7 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
         TypeDefn = parse_tree_du_type(DetailsDu),
         DetailsDu = type_details_du(OoMCtors, MaybeCanonical, MaybeDirectArgs),
         io.write_string(Stream, ":- type ", !IO),
-        mercury_output_term(TypeVarSet, print_name_only, TypeTerm,
+        mercury_output_term_vs(TypeVarSet, print_name_only, TypeTerm,
             Stream, !IO),
         OoMCtors = one_or_more(HeadCtor, TailCtors),
         mercury_output_ctors(TypeVarSet, yes, HeadCtor, TailCtors,
@@ -1175,7 +1175,7 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
         TypeDefn = parse_tree_sub_type(DetailsDu),
         DetailsDu = type_details_sub(SuperType, OoMCtors),
         io.write_string(Stream, ":- type ", !IO),
-        mercury_output_term(TypeVarSet, print_name_only, TypeTerm,
+        mercury_output_term_vs(TypeVarSet, print_name_only, TypeTerm,
             Stream, !IO),
         io.write_string(Stream, " =< ", !IO),
         mercury_output_type(TypeVarSet, print_name_only, SuperType,
@@ -1189,7 +1189,7 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
         DetailsSolver =
             type_details_solver(SolverTypeDetails, MaybeCanonical),
         io.write_string(Stream, ":- solver type ", !IO),
-        mercury_output_term(TypeVarSet, print_name_only, TypeTerm,
+        mercury_output_term_vs(TypeVarSet, print_name_only, TypeTerm,
             Stream, !IO),
         mercury_output_where_attributes(Info, TypeVarSet,
             yes(SolverTypeDetails), MaybeCanonical, no, Stream, !IO),
@@ -1209,7 +1209,7 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
             ForeignType = csharp(_),
             io.write_string(Stream, "csharp, ", !IO)
         ),
-        mercury_output_term(TypeVarSet, print_name_only, TypeTerm,
+        mercury_output_term_vs(TypeVarSet, print_name_only, TypeTerm,
             Stream, !IO),
         io.write_string(Stream, ", \"", !IO),
         (
@@ -1523,7 +1523,7 @@ mercury_output_item_inst_defn(Info, Stream, ItemInstDefn, !IO) :-
     (
         MaybeAbstractInstDefn = abstract_inst_defn,
         io.write_string(Stream, ":- abstract_inst((", !IO),
-        mercury_output_term(InstVarSet, print_name_only, InstTerm,
+        mercury_output_term_vs(InstVarSet, print_name_only, InstTerm,
             Stream, !IO),
         io.write_string(Stream, ")).\n", !IO)
     ;
@@ -1545,14 +1545,14 @@ mercury_output_item_inst_defn(Info, Stream, ItemInstDefn, !IO) :-
             ;
                 ArgTerms = [HeadArgTerm | TailArgTerms],
                 io.write_string(Stream, "(", !IO),
-                mercury_format_comma_separated_terms(InstVarSet,
+                mercury_format_comma_separated_terms_vs(InstVarSet,
                     print_name_only, HeadArgTerm, TailArgTerms, Stream, !IO),
                 io.write_string(Stream, ")", !IO)
             )
         else
             % No it isn't, so print the extra parentheses.
             io.write_string(Stream, ":- inst (", !IO),
-            mercury_output_term(InstVarSet, print_name_only, InstTerm,
+            mercury_output_term_vs(InstVarSet, print_name_only, InstTerm,
                 Stream, !IO),
             io.write_string(Stream, ")", !IO)
         ),
@@ -1700,7 +1700,7 @@ mercury_format_mode_defn(Lang, InstVarSet, Context, Name, Args,
 mercury_format_mode_defn_head(InstVarSet, Context, Name, Args, S, !U) :-
     ArgTerms = list.map(func(V) = variable(V, Context), Args),
     construct_qualified_term_with_context(Name, ArgTerms, Context, ModeTerm),
-    mercury_format_term(InstVarSet, print_name_only, ModeTerm, S, !U).
+    mercury_format_term_vs(InstVarSet, print_name_only, ModeTerm, S, !U).
 
 %---------------------------------------------------------------------------%
 
@@ -1972,10 +1972,10 @@ mercury_format_fundeps_and_prog_constraint_list(VarSet, VarNamePrint,
 mercury_format_fundep(TypeVarSet, VarNamePrint, fundep(Domain, Range),
         S, !U) :-
     add_string("(", S, !U),
-    add_list(mercury_format_var(TypeVarSet, VarNamePrint), ", ", Domain,
+    add_list(mercury_format_var_vs(TypeVarSet, VarNamePrint), ", ", Domain,
         S, !U),
     add_string(" -> ", S, !U),
-    add_list(mercury_format_var(TypeVarSet, VarNamePrint), ", ", Range,
+    add_list(mercury_format_var_vs(TypeVarSet, VarNamePrint), ", ", Range,
         S, !U),
     add_string(")", S, !U).
 
@@ -2155,7 +2155,7 @@ mercury_output_item_mutable(Info, Stream, ItemMutable, !IO) :-
 
     % See the comments for read_mutable_decl for the reason we _must_ use
     % MutVarSet here.
-    mercury_output_term(MutVarSet, print_name_only, InitTerm, Stream, !IO),
+    mercury_output_term_vs(MutVarSet, print_name_only, InitTerm, Stream, !IO),
     io.write_string(Stream, ", ", !IO),
     Lang = get_output_lang(Info),
     mercury_output_inst(Stream, Lang, varset.init, Inst, !IO),

@@ -183,7 +183,7 @@ parse_decl_term_item_or_marker(ModuleName, VarSet, DeclTerm,
 :- func decl_is_not_an_atom(varset, term) = error_spec.
 
 decl_is_not_an_atom(VarSet, Term) = Spec :-
-    TermStr = mercury_term_to_string(VarSet, print_name_only, Term),
+    TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),
     Context = get_term_context(Term),
     Pieces = [words("Error:"), quote(TermStr),
         words("is not a valid declaration."), nl],
