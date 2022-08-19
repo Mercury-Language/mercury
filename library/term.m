@@ -88,8 +88,8 @@
 :- type generic
     --->    generic.
 
-:- type term ==  term(generic).
-:- type var  ==  var(generic).
+:- type term == term(generic).
+:- type var  == var(generic).
 
 %---------------------------------------------------------------------------%
 %
@@ -140,46 +140,31 @@
 
 %---------------------------------------------------------------------------%
 
+:- pred decimal_term_to_int(term(T)::in, int::out) is semidet.
+% XXX NOTE_TO_IMPLEMENTORS Why no versions for sized and/or unsigned ints?
+
 :- pred term_to_int(term(T)::in, int::out) is semidet.
-
 :- pred term_to_int8(term(T)::in, int8::out) is semidet.
-
 :- pred term_to_int16(term(T)::in, int16::out) is semidet.
-
 :- pred term_to_int32(term(T)::in, int32::out) is semidet.
-
 :- pred term_to_int64(term(T)::in, int64::out) is semidet.
 
 :- pred term_to_uint(term(T)::in, uint::out) is semidet.
-
 :- pred term_to_uint8(term(T)::in, uint8::out) is semidet.
-
 :- pred term_to_uint16(term(T)::in, uint16::out) is semidet.
-
 :- pred term_to_uint32(term(T)::in, uint32::out) is semidet.
-
 :- pred term_to_uint64(term(T)::in, uint64::out) is semidet.
 
-:- pred decimal_term_to_int(term(T)::in, int::out) is semidet.
-
 :- func int_to_decimal_term(int, context) = term(T).
-
 :- func int8_to_decimal_term(int8, context) = term(T).
-
 :- func int16_to_decimal_term(int16, context) = term(T).
-
 :- func int32_to_decimal_term(int32, context) = term(T).
-
 :- func int64_to_decimal_term(int64, context) = term(T).
 
 :- func uint_to_decimal_term(uint, context) = term(T).
-
 :- func uint8_to_decimal_term(uint8, context) = term(T).
-
 :- func uint16_to_decimal_term(uint16, context) = term(T).
-
 :- func uint32_to_decimal_term(uint32, context) = term(T).
-
 :- func uint64_to_decimal_term(uint64, context) = term(T).
 
 %---------------------------------------------------------------------------%
@@ -579,6 +564,13 @@ var_to_int(var(VarNum), VarNum).
 
 %---------------------------------------------------------------------------%
 
+decimal_term_to_int(Term, Int) :-
+    Term = functor(Const, [], _Context),
+    Const = integer(base_10, Integer, signed, size_word),
+    integer.to_int(Integer, Int).
+
+%---------------------%
+
 term_to_int(Term, Int) :-
     Term = functor(Const, [], _Context),
     Const = integer(_Base, Integer, signed, size_word),
@@ -603,6 +595,8 @@ term_to_int64(Term, Int64) :-
     Term = functor(Const, [], _Context),
     Const = integer(_Base, Integer, signed, size_64_bit),
     integer.to_int64(Integer, Int64).
+
+%---------------------%
 
 term_to_uint(Term, UInt) :-
     Term = functor(Const, [], _Context),
@@ -629,10 +623,7 @@ term_to_uint64(Term, UInt64) :-
     Const = integer(_Base, Integer, unsigned, size_64_bit),
     integer.to_uint64(Integer, UInt64).
 
-decimal_term_to_int(Term, Int) :-
-    Term = functor(Const, [], _Context),
-    Const = integer(base_10, Integer, signed, size_word),
-    integer.to_int(Integer, Int).
+%---------------------%
 
 int_to_decimal_term(Int, Context) = Term :-
     Const = integer(base_10, integer(Int), signed, size_word),
@@ -657,6 +648,8 @@ int64_to_decimal_term(Int64, Context) = Term :-
     Const = integer(base_10, integer.from_int64(Int64), signed,
         size_64_bit),
     Term = functor(Const, [], Context).
+
+%---------------------%
 
 uint_to_decimal_term(UInt, Context) = Term :-
     Const = integer(base_10, integer.from_uint(UInt), unsigned, size_word),
@@ -746,7 +739,7 @@ unify_term(TermX, TermY, !Subst) :-
         TermX = functor(NameX, ArgTermsX, _),
         TermY = functor(NameY, ArgTermsY, _),
         NameX = NameY,
-        % ZZZ We could pretest whether the lengths of the argument lists match.
+        % We could pretest whether the lengths of the argument lists match.
         unify_term_list(ArgTermsX, ArgTermsY, !Subst)
     ).
 
