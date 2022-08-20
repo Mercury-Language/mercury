@@ -178,6 +178,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module term_vars.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -2162,7 +2163,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
                 pred_args_to_func_args(ArgTerms, QuantifiedArgTerms,
                     _ReturnValTerm)
             ),
-            term.vars_list(QuantifiedArgTerms, QuantifiedVars0),
+            term_vars.vars_in_terms(QuantifiedArgTerms, QuantifiedVars0),
             list.sort_and_remove_dups(QuantifiedVars0, QuantifiedVars),
 
             goal_info_init(Context, GoalInfo),

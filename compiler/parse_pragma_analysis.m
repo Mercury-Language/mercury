@@ -80,6 +80,8 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module maybe.
+:- import_module term_int.
+:- import_module term_vars.
 :- import_module unit.
 
 %---------------------------------------------------------------------------%
@@ -476,7 +478,7 @@ parse_lp_term(VarSet, Term, MaybeLpTerm) :-
     ( if
         Term = term.functor(term.atom("term"), [VarIdTerm, CoeffTerm], _)
     then
-        ( if decimal_term_to_int(VarIdTerm, VarId0) then
+        ( if term_int.decimal_term_to_int(VarIdTerm, VarId0) then
             MaybeVarId = ok1(VarId0)
         else
             VarIdTermStr = describe_error_term(VarSet, VarIdTerm),
@@ -513,8 +515,8 @@ parse_lp_term(VarSet, Term, MaybeLpTerm) :-
 parse_rational(VarSet, Term, MaybeRational) :-
     ( if
         Term = term.functor(term.atom("r"), [NumerTerm, DenomTerm], _),
-        decimal_term_to_int(NumerTerm, Numer),
-        decimal_term_to_int(DenomTerm, Denom)
+        term_int.decimal_term_to_int(NumerTerm, Numer),
+        term_int.decimal_term_to_int(DenomTerm, Denom)
     then
         Rational = rat.rat(Numer, Denom),
         MaybeRational = ok1(Rational)
@@ -542,8 +544,8 @@ parse_pragma_structure_sharing(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         MaybeNameAndModes = ok3(PredName, PredOrFunc, Modes),
 
         % Parse the head variables:
-        HeadVarsTerm = term.functor(term.atom("vars"), ListHVTerm, _),
-        term.vars_list(ListHVTerm, HeadVarsGeneric),
+        HeadVarsTerm = term.functor(term.atom("vars"), ListHVTerms, _),
+        term_vars.vars_in_terms(ListHVTerms, HeadVarsGeneric),
         list.map(term.coerce_var, HeadVarsGeneric, HeadVars),
 
         % Parse the types:
@@ -596,8 +598,8 @@ parse_pragma_structure_reuse(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         MaybeNameAndModes = ok3(PredName, PredOrFunc, Modes),
 
         % Parse the head variables:
-        HeadVarsTerm = term.functor(term.atom("vars"), ListHVTerm, _),
-        term.vars_list(ListHVTerm, HeadVarsGeneric),
+        HeadVarsTerm = term.functor(term.atom("vars"), ListHVTerms, _),
+        term_vars.vars_in_terms(ListHVTerms, HeadVarsGeneric),
         list.map(term.coerce_var, HeadVarsGeneric, HeadVars),
 
         % Parse the types:

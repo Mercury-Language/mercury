@@ -100,6 +100,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module term_subst.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -387,7 +388,7 @@ set_dump_opts_for_clauses(Info, ClausesInfo) :-
 write_clauses(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc, VarNameSrc,
         TypeQual, VarNamePrint, HeadVarsVector, Clauses, !IO) :-
     HeadVars = proc_arg_vector_to_list(HeadVarsVector),
-    term.var_list_to_term_list(HeadVars, HeadTerms),
+    term_subst.var_list_to_term_list(HeadVars, HeadTerms),
     write_clauses_loop(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc,
         VarNameSrc, TypeQual, VarNamePrint, HeadTerms, 1, Clauses, !IO).
 
@@ -694,7 +695,7 @@ write_proc(Info, Stream, VarNamePrint, ModuleInfo, PredId, PredInfo,
     else
         proc_info_get_stack_slots(ProcInfo, StackSlots),
         write_stack_slots(Stream, VarTable, VarNamePrint, StackSlots, !IO),
-        term.var_list_to_term_list(HeadVars, HeadTerms),
+        term_subst.var_list_to_term_list(HeadVars, HeadTerms),
         write_clause_head(Stream, ModuleInfo, vns_var_table(VarTable),
             VarNamePrint, PredId, PredOrFunc, HeadTerms, !IO),
         io.write_string(Stream, " :-\n", !IO),

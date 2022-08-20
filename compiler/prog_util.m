@@ -183,6 +183,8 @@
 :- import_module map.
 :- import_module require.
 :- import_module string.
+:- import_module term_int.
+:- import_module term_subst.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -425,16 +427,16 @@ rename_in_goal(OldVar, NewVar, Goal0, Goal) :-
             Cond, Then, Else)
     ;
         Goal0 = event_expr(Context, Name, Terms0),
-        term.rename_var_in_terms(OldVar, NewVar, Terms0, Terms),
+        term_subst.rename_var_in_terms(OldVar, NewVar, Terms0, Terms),
         Goal = event_expr(Context, Name, Terms)
     ;
         Goal0 = call_expr(Context, SymName, Terms0, Purity),
-        term.rename_var_in_terms(OldVar, NewVar, Terms0, Terms),
+        term_subst.rename_var_in_terms(OldVar, NewVar, Terms0, Terms),
         Goal = call_expr(Context, SymName, Terms, Purity)
     ;
         Goal0 = unify_expr(Context, TermA0, TermB0, Purity),
-        term.rename_var_in_term(OldVar, NewVar, TermA0, TermA),
-        term.rename_var_in_term(OldVar, NewVar, TermB0, TermB),
+        term_subst.rename_var_in_term(OldVar, NewVar, TermA0, TermA),
+        term_subst.rename_var_in_term(OldVar, NewVar, TermB0, TermB),
         Goal = unify_expr(Context, TermA, TermB, Purity)
     ).
 
@@ -519,7 +521,7 @@ rename_in_maybe_var(OldVar, NewVar, MaybeVar0, MaybeVar) :-
 
 rename_in_catch_expr(OldVar, NewVar, Catch0, Catch) :-
     Catch0 = catch_expr(Term0, Goal0),
-    term.rename_var_in_term(OldVar, NewVar, Term0, Term),
+    term_subst.rename_var_in_term(OldVar, NewVar, Term0, Term),
     rename_in_goal(OldVar, NewVar, Goal0, Goal),
     Catch = catch_expr(Term, Goal).
 
@@ -528,34 +530,34 @@ rename_in_catch_expr(OldVar, NewVar, Catch0, Catch) :-
 cons_id_and_args_to_term(some_int_const(IntConst), [], Term) :-
     (
         IntConst = int_const(Int),
-        Term = int_to_decimal_term(Int, term.context_init)
+        Term = term_int.int_to_decimal_term(Int, term.context_init)
     ;
         IntConst = int8_const(Int8),
-        Term = int8_to_decimal_term(Int8, term.context_init)
+        Term = term_int.int8_to_decimal_term(Int8, term.context_init)
     ;
         IntConst = int16_const(Int16),
-        Term = int16_to_decimal_term(Int16, term.context_init)
+        Term = term_int.int16_to_decimal_term(Int16, term.context_init)
     ;
         IntConst = int32_const(Int32),
-        Term = int32_to_decimal_term(Int32, term.context_init)
+        Term = term_int.int32_to_decimal_term(Int32, term.context_init)
     ;
         IntConst = int64_const(Int64),
-        Term = int64_to_decimal_term(Int64, term.context_init)
+        Term = term_int.int64_to_decimal_term(Int64, term.context_init)
     ;
         IntConst = uint_const(UInt),
-        Term = uint_to_decimal_term(UInt, term.context_init)
+        Term = term_int.uint_to_decimal_term(UInt, term.context_init)
     ;
         IntConst = uint8_const(UInt8),
-        Term = uint8_to_decimal_term(UInt8, term.context_init)
+        Term = term_int.uint8_to_decimal_term(UInt8, term.context_init)
     ;
         IntConst = uint16_const(UInt16),
-        Term = uint16_to_decimal_term(UInt16, term.context_init)
+        Term = term_int.uint16_to_decimal_term(UInt16, term.context_init)
     ;
         IntConst = uint32_const(UInt32),
-        Term = uint32_to_decimal_term(UInt32, term.context_init)
+        Term = term_int.uint32_to_decimal_term(UInt32, term.context_init)
     ;
         IntConst = uint64_const(UInt64),
-        Term = uint64_to_decimal_term(UInt64, term.context_init)
+        Term = term_int.uint64_to_decimal_term(UInt64, term.context_init)
     ).
 cons_id_and_args_to_term(float_const(Float), [], Term) :-
     Term = term.functor(term.float(Float), [], term.context_init).

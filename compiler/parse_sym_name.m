@@ -147,6 +147,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 
 :- import_module int.
+:- import_module term_int.
 
 parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs) :-
     ( if
@@ -484,7 +485,7 @@ parse_implicitly_qualified_symbol_name(DefaultModuleName, VarSet, Term,
 
 parse_symbol_name_specifier(VarSet, Term, MaybeSymNameSpecifier) :-
     ( if Term = term.functor(term.atom("/"), [NameTerm, ArityTerm], _) then
-        ( if decimal_term_to_int(ArityTerm, Arity) then
+        ( if term_int.decimal_term_to_int(ArityTerm, Arity) then
             ( if Arity >= 0 then
                 parse_symbol_name(VarSet, NameTerm, MaybeName),
                 (

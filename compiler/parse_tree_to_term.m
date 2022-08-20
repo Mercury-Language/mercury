@@ -52,6 +52,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module term_int.
 
 %---------------------------------------------------------------------------%
 
@@ -468,7 +469,7 @@ inst_result_contains_inst_names_to_term(Context, ContainsInstNames) = Term :-
         % Inst names can be pretty big, so we print only a count.
         % If necessary, we can later modify this code to actually print them.
         set.count(InstNameSet, NumInstNames),
-        CountTerm = int_to_decimal_term(NumInstNames, Context),
+        CountTerm = term_int.int_to_decimal_term(NumInstNames, Context),
         Term = term.functor(term.atom("contains_inst_names_known"),
             [CountTerm], Context)
     ).
@@ -703,14 +704,14 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         expect(unify(ArgTerms, []), $pred, "type_info_const arity != 0"),
         term.context_init(Context),
         FunctorName = "type_info_const",
-        Arg = int_to_decimal_term(TIConstNum, Context),
+        Arg = term_int.int_to_decimal_term(TIConstNum, Context),
         Term = term.functor(term.string(FunctorName), [Arg], Context)
     ;
         ConsId = typeclass_info_const(TCIConstNum),
         expect(unify(ArgTerms, []), $pred, "typeclass_info_const arity != 0"),
         term.context_init(Context),
         FunctorName = "typeclass_info_const",
-        Arg = int_to_decimal_term(TCIConstNum, Context),
+        Arg = term_int.int_to_decimal_term(TCIConstNum, Context),
         Term = term.functor(term.string(FunctorName), [Arg], Context)
     ;
         ConsId = ground_term_const(TCIConstNum, SubConsId),
@@ -718,7 +719,7 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         cons_id_and_args_to_term_full(SubConsId, [], SubArg),
         term.context_init(Context),
         FunctorName = "ground_term_const",
-        NumArg = int_to_decimal_term(TCIConstNum, Context),
+        NumArg = term_int.int_to_decimal_term(TCIConstNum, Context),
         Term = term.functor(term.string(FunctorName), [NumArg, SubArg],
             Context)
     ;
@@ -741,34 +742,34 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
 int_const_to_decimal_term(IntConst, Context) = Term :-
     (
         IntConst = int_const(Int),
-        Term = int_to_decimal_term(Int, Context)
+        Term = term_int.int_to_decimal_term(Int, Context)
     ;
         IntConst = int8_const(Int8),
-        Term = int8_to_decimal_term(Int8, Context)
+        Term = term_int.int8_to_decimal_term(Int8, Context)
     ;
         IntConst = int16_const(Int16),
-        Term = int16_to_decimal_term(Int16, Context)
+        Term = term_int.int16_to_decimal_term(Int16, Context)
     ;
         IntConst = int32_const(Int32),
-        Term = int32_to_decimal_term(Int32, Context)
+        Term = term_int.int32_to_decimal_term(Int32, Context)
     ;
         IntConst = int64_const(Int64),
-        Term = int64_to_decimal_term(Int64, Context)
+        Term = term_int.int64_to_decimal_term(Int64, Context)
     ;
         IntConst = uint_const(UInt),
-        Term = uint_to_decimal_term(UInt, Context)
+        Term = term_int.uint_to_decimal_term(UInt, Context)
     ;
         IntConst = uint8_const(UInt8),
-        Term = uint8_to_decimal_term(UInt8, Context)
+        Term = term_int.uint8_to_decimal_term(UInt8, Context)
     ;
         IntConst = uint16_const(UInt16),
-        Term = uint16_to_decimal_term(UInt16, Context)
+        Term = term_int.uint16_to_decimal_term(UInt16, Context)
     ;
         IntConst = uint32_const(UInt32),
-        Term = uint32_to_decimal_term(UInt32, Context)
+        Term = term_int.uint32_to_decimal_term(UInt32, Context)
     ;
         IntConst = uint64_const(UInt64),
-        Term = uint64_to_decimal_term(UInt64, Context)
+        Term = term_int.uint64_to_decimal_term(UInt64, Context)
     ).
 
 :- func det_to_term(prog_context, determinism) = prog_term.

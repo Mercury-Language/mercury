@@ -65,6 +65,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
+:- import_module term_vars.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------e
@@ -270,7 +271,7 @@ parse_mutable_name(NameTerm, MaybeName) :-
 :- pred parse_mutable_type(varset::in, term::in, maybe1(mer_type)::out) is det.
 
 parse_mutable_type(VarSet, TypeTerm, MaybeType) :-
-    ( if term.contains_var(TypeTerm, _) then
+    ( if term_vars.term_contains_var(TypeTerm, _) then
         TypeTermStr = describe_error_term(VarSet, TypeTerm),
         Pieces = [words("Error: the type in a"), decl("mutable"),
             words("declaration may not contain variables, but"),
@@ -290,7 +291,7 @@ parse_mutable_inst(VarSet, InstTerm, MaybeInst) :-
     % XXX We should check whether the *inst* contains variables, not whether
     % the *term* does, but (a) inst_contains_inst_var is in inst_match.m,
     % not in inst_util.m, and (b) it is not exported.
-    ( if term.contains_var(InstTerm, _) then
+    ( if term_vars.term_contains_var(InstTerm, _) then
         InstTermStr = describe_error_term(VarSet, InstTerm),
         Pieces = [words("Error: the inst in a"), decl("mutable"),
             words("declaration cannot contain variables:"),

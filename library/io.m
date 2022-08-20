@@ -2297,6 +2297,7 @@
 :- import_module stream.string_writer.
 :- import_module term.
 :- import_module term_conversion.
+:- import_module term_subst.
 :- import_module type_desc.
 :- import_module uint8.
 :- import_module uint16.
@@ -3553,7 +3554,7 @@ process_read_term(PredId, ReadResult, LineNumber, Result) :-
         ( if term_to_type(Term, Type) then
             Result = ok(Type)
         else
-            ( if term.is_ground(Term) then
+            ( if term_subst.term_is_ground(Term) then
                 Msg = "the term read did not have the right type"
             else
                 Msg = "the term read was not a ground term"

@@ -159,6 +159,7 @@
 :- import_module set_tree234.
 :- import_module string.
 :- import_module term.
+:- import_module term_subst.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -702,7 +703,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, NextIteration) :-
                     check_existq_clause(TypeVarSet0, ExistQVars0),
                     Clauses, !Info),
 
-                apply_renaming_in_vars(ExistTypeRenaming,
+                term_subst.apply_renaming_in_vars(ExistTypeRenaming,
                     ExistQVars0, ExistQVars1),
                 apply_variable_renaming_to_type_list(ExistTypeRenaming,
                     ArgTypes0, ArgTypes1),
@@ -713,7 +714,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, NextIteration) :-
             ),
 
             % Rename them all to match the new typevarset.
-            apply_renaming_in_vars(TVarRenaming,
+            term_subst.apply_renaming_in_vars(TVarRenaming,
                 ExistQVars1, ExistQVars),
             apply_variable_renaming_to_type_list(TVarRenaming, ArgTypes1,
                 RenamedOldArgTypes),

@@ -90,6 +90,7 @@
 :- import_module one_or_more.
 :- import_module require.
 :- import_module set.
+:- import_module term_int.
 :- import_module uint32.
 :- import_module unit.
 
@@ -918,7 +919,7 @@ parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm, BodyTerm,
         )
     then
         ( if Args = [Arg] then
-            ( if decimal_term_to_int(Arg, NumBits) then
+            ( if term_int.decimal_term_to_int(Arg, NumBits) then
                 TypeDefn0 = parse_tree_abstract_type(
                     abstract_type_fits_in_n_bits(NumBits)),
                 MaybeTypeDefn = ok1(TypeDefn0)

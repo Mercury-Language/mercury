@@ -167,6 +167,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module term_subst.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -2237,7 +2238,7 @@ strip_headvar_unifications(HeadVars, Clause0, HeadTerms, Clause) :-
         conj_list_to_goal(Goals, GoalInfo0, Goal),
         Clause = Clause0 ^ clause_body := Goal
     else
-        term.var_list_to_term_list(HeadVars, HeadTerms),
+        term_subst.var_list_to_term_list(HeadVars, HeadTerms),
         Clause = Clause0
     ).
 
@@ -2276,7 +2277,7 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
                 RHSTerm = term.functor(term.string(String), [], Context)
             ;
                 ConsId = cons(SymName, _, _),
-                term.var_list_to_term_list(Args, ArgTerms),
+                term_subst.var_list_to_term_list(Args, ArgTerms),
                 construct_qualified_term(SymName, ArgTerms, RHSTerm)
             ;
                 ( ConsId = base_typeclass_info_const(_, _, _, _)

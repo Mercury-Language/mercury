@@ -201,6 +201,8 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module term_int.
+:- import_module term_vars.
 
 %-----------------------------------------------------------------------------%
 %
@@ -218,14 +220,14 @@ parse_unit_selector(Term) = UnitSelector :-
         then
             ( if
                 try_parse_sym_name_and_no_args(ConsTerm, ConsIdName),
-                decimal_term_to_int(ArityTerm, Arity),
-                decimal_term_to_int(PosTerm, Pos)
+                term_int.decimal_term_to_int(ArityTerm, Arity),
+                term_int.decimal_term_to_int(PosTerm, Pos)
             then
                 ConsId = cons(ConsIdName, Arity, cons_id_dummy_type_ctor),
                 UnitSelector = termsel(ConsId, Pos)
             else if
                 % XXX UINT, presuambly we need to handle uints here too.
-                decimal_term_to_int(ConsTerm, Int)
+                term_int.decimal_term_to_int(ConsTerm, Int)
             then
                 ConsId = some_int_const(int_const(Int)),
                 UnitSelector = termsel(ConsId, 0)
@@ -449,7 +451,7 @@ parse_user_annotated_sharing(!.Varset, Term, UserSharing) :-
             TypesTerm = term.functor(term.atom("yes"), ListTypeTerms, _),
             maybe_parse_types(no_allow_ho_inst_info(wnhii_user_struct_sharing),
                 ListTypeTerms, Types),
-            term.vars_list(ListTypeTerms, TypeVars),
+            term_vars.vars_in_terms(ListTypeTerms, TypeVars),
             varset.select(set.list_to_set(TypeVars), !Varset),
             MaybeUserTypes = yes(user_type_info(Types,
                 varset.coerce(!.Varset)))

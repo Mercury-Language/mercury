@@ -128,6 +128,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module term_int.
 :- import_module term_io.
 :- import_module type_desc.
 :- import_module univ.
@@ -415,7 +416,7 @@ parse_result_entry(Compiler, Term, !Results) :-
     then
         ( if
             VersionNumber = analysis_version_number(_ : Call, _ : Answer),
-            decimal_term_to_int(VersionNumberTerm, VersionNumber)
+            term_int.decimal_term_to_int(VersionNumberTerm, VersionNumber)
         then
             Result = 'new some_analysis_result'(CallPattern, AnswerPattern,
                 Status),
@@ -514,7 +515,7 @@ parse_request_entry(Compiler, Term, !Requests) :-
     then
         ( if
             VersionNumber = analysis_version_number(_ : Call, _ : Answer),
-            decimal_term_to_int(VersionNumberTerm, VersionNumber)
+            term_int.decimal_term_to_int(VersionNumberTerm, VersionNumber)
         then
             Result = 'new analysis_request'(CallPattern, CallerModule),
             ( if map.search(!.Requests, AnalysisName, AnalysisRequests0) then
@@ -562,7 +563,7 @@ write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
         io.close_input(InputStream, !IO),
         ( if
             VersionResult = term(_, NumberTerm),
-            decimal_term_to_int(NumberTerm, version_number)
+            term_int.decimal_term_to_int(NumberTerm, version_number)
         then
             io.open_append(AnalysisFileName, AppendResult, !IO),
             (
@@ -641,7 +642,7 @@ parse_imdg_arc(Compiler, Term, !Arcs) :-
     then
         ( if
             VersionNumber = analysis_version_number(_ : Call, _ : Answer),
-            decimal_term_to_int(VersionNumberTerm, VersionNumber)
+            term_int.decimal_term_to_int(VersionNumberTerm, VersionNumber)
         then
             Arc = 'new imdg_arc'(CallPattern, DependentModule),
             ( if map.search(!.Arcs, AnalysisName, AnalysisArcs0) then
@@ -712,8 +713,8 @@ parse_func_id(Term, FuncId) :-
         PredOrFunc = pf_function
     ),
     NameTerm = term.functor(term.atom(Name), [], _),
-    decimal_term_to_int(ArityTerm, Arity),
-    decimal_term_to_int(ProcTerm, ProcIdInt),
+    term_int.decimal_term_to_int(ArityTerm, Arity),
+    term_int.decimal_term_to_int(ProcTerm, ProcIdInt),
     proc_id_to_int(ProcId, ProcIdInt),
     FuncId = func_id(PredOrFunc, Name, pred_form_arity(Arity), ProcId).
 
@@ -796,7 +797,7 @@ check_analysis_file_version_number(Stream, !IO) :-
     mercury_term_parser.read_term(Stream, TermResult : read_term, !IO),
     ( if
         TermResult  = term(_, NumberTerm),
-        decimal_term_to_int(NumberTerm, version_number)
+        term_int.decimal_term_to_int(NumberTerm, version_number)
     then
         true
     else

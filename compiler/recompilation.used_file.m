@@ -224,6 +224,7 @@
 :- import_module mercury_term_lexer.
 :- import_module mercury_term_parser.
 :- import_module string.
+:- import_module term_int.
 :- import_module unit.
 
 %---------------------------------------------------------------------------%
@@ -757,8 +758,8 @@ read_and_parse_used_file_version_number(UsedFileName, UsedFileString,
             % We could initially accept both formats when reading in,
             % while generating the new format only.
             Term = term.functor(term.atom(","), [SubTerm1, SubTerm2], _),
-            decimal_term_to_int(SubTerm1, used_file_version_number),
-            decimal_term_to_int(SubTerm2,
+            term_int.decimal_term_to_int(SubTerm1, used_file_version_number),
+            term_int.decimal_term_to_int(SubTerm2,
                 module_item_version_numbers_version_number)
         then
             ParseTerm = used_file_ok(unit)
@@ -1129,7 +1130,7 @@ parse_resolved_functor(Term, !RevCtors, !Errors) :-
             ( if
                 ArgTerms = [ModuleTerm, ArityTerm],
                 try_parse_sym_name_and_no_args(ModuleTerm, ModuleName),
-                decimal_term_to_int(ArityTerm, Arity)
+                term_int.decimal_term_to_int(ArityTerm, Arity)
             then
                 InvPredId = invalid_pred_id,
                 Ctor = resolved_functor_pred_or_func(InvPredId, PredOrFunc,
@@ -1215,7 +1216,7 @@ parse_resolved_item_arity_matches(ParseMatches, Term,
         !RevArityMatchMaps, !Errors) :-
     ( if
         Term = term.functor(term.atom("-"), [ArityTerm, MatchesTerm], _),
-        decimal_term_to_int(ArityTerm, Arity0),
+        term_int.decimal_term_to_int(ArityTerm, Arity0),
         conjunction_to_list(MatchesTerm, MatchTermList)
     then
         Arity = Arity0,

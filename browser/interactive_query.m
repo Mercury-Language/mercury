@@ -83,6 +83,7 @@
 :- import_module string.
 :- import_module term.
 :- import_module term_io.
+:- import_module term_vars.
 :- import_module type_desc.
 :- import_module varset.
 
@@ -384,7 +385,7 @@ run_query(Env, Goal, Varset, !IO) :-
 
 make_program(Env, Goal, Varset, Program) :-
     QueryType = Env ^ qe_query_type,
-    term.vars(Goal, Vars0),
+    term_vars.vars_in_term(Goal, Vars0),
     list.remove_dups(Vars0, Vars1),
     list.filter_map(varset.search_name(Varset), Vars1, Vars),
     list.filter(map.contains(Env ^ qe_bindings), Vars, Inputs, Outputs0),

@@ -78,6 +78,8 @@
 :- import_module one_or_more.
 :- import_module require.
 :- import_module set.
+:- import_module term_int.
+:- import_module term_subst.
 
 %---------------------------------------------------------------------------%
 
@@ -356,7 +358,7 @@ parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
             ;
                 TermVars = [_ | _],
                 ( if
-                    term.term_list_to_var_list(TermVars, Vars),
+                    term_subst.term_list_to_var_list(TermVars, Vars),
                     list.sort_and_remove_dups(TermVars, SortedTermVars),
                     list.length(SortedTermVars, NumSortedTermVars),
                     list.length(TermVars, NumTermVars),
@@ -651,7 +653,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
         then
             ( if
                 try_parse_sym_name_and_no_args(PredNameTerm, PredSymName),
-                decimal_term_to_int(ArityTerm, ArityInt),
+                term_int.decimal_term_to_int(ArityTerm, ArityInt),
                 try_parse_sym_name_and_no_args(InstanceMethodTerm,
                     InstanceMethodName)
             then
@@ -677,7 +679,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
         then
             ( if
                 try_parse_sym_name_and_no_args(FuncNameTerm, FuncSymName),
-                decimal_term_to_int(ArityTerm, ArityInt),
+                term_int.decimal_term_to_int(ArityTerm, ArityInt),
                 try_parse_sym_name_and_no_args(InstanceMethodTerm,
                     InstanceMethodName)
             then
@@ -996,7 +998,7 @@ parse_fundep(Term, Result) :-
 parse_fundep_2(TypesTerm0, TypeVars) :-
     TypesTerm = term.coerce(TypesTerm0),
     conjunction_to_list(TypesTerm, TypeTerms),
-    term.term_list_to_var_list(TypeTerms, TypeVars).
+    term_subst.term_list_to_var_list(TypeTerms, TypeVars).
 
 :- pred constraint_is_not_simple(prog_constraint::in) is semidet.
 

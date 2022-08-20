@@ -63,6 +63,10 @@
 :- import_module cord.
 :- import_module maybe.
 :- import_module set.
+:- import_module term_subst.
+:- import_module term_vars.
+
+%-----------------------------------------------------------------------------e
 
 parse_inst_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
         MaybeIOM) :-
@@ -349,7 +353,7 @@ check_user_mode_name(SymName, Context, NameSpecs) :-
 check_inst_mode_defn_args(DefnKind, VarSet, HeadTermContext,
         ArgTerms, MaybeBodyTerm, MaybeArgVars) :-
     % Check that all the head arguments are variables.
-    ( if term.term_list_to_var_list(ArgTerms, ArgVars) then
+    ( if term_subst.term_list_to_var_list(ArgTerms, ArgVars) then
         some [!Specs] (
             !:Specs = [],
 
@@ -383,7 +387,7 @@ check_inst_mode_defn_args(DefnKind, VarSet, HeadTermContext,
             % The common case is BodyVars = []; fail fast in that case.
             ( if
                 MaybeBodyTerm = yes(BodyTerm),
-                term.vars(BodyTerm, BodyVars),
+                term_vars.vars_in_term(BodyTerm, BodyVars),
                 BodyVars = [_ | _],
                 set.list_to_set(BodyVars, BodyVarsSet),
                 set.list_to_set(ArgVars, ArgVarsSet),

@@ -268,6 +268,7 @@
 :- import_module map.
 :- import_module string.
 :- import_module term_io.
+:- import_module term_subst.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -611,7 +612,7 @@ functor_to_string(VarNameSrc, VarNamePrint, Functor, ArgVars)  =
 functor_to_string_maybe_needs_quotes(VarNameSrc, VarNamePrint,
         NextToGraphicToken, Functor, ArgVars) = Str :-
     term.context_init(Context),
-    term.var_list_to_term_list(ArgVars, ArgTerms),
+    term_subst.var_list_to_term_list(ArgVars, ArgTerms),
     Term = term.functor(Functor, ArgTerms, Context),
     Str = mercury_term_nq_to_string_src(VarNameSrc, VarNamePrint,
         NextToGraphicToken, Term).

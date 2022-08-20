@@ -199,6 +199,7 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module string.
+:- import_module term_int.
 :- import_module term_io.
 
 %---------------------------------------------------------------------------%
@@ -206,7 +207,7 @@
 parse_sym_name_and_arity(Term, SymName, Arity) :-
     Term = term.functor(term.atom("/"), [PredNameTerm, ArityTerm], _),
     try_parse_sym_name_and_no_args(PredNameTerm, SymName),
-    decimal_term_to_int(ArityTerm, Arity).
+    term_int.decimal_term_to_int(ArityTerm, Arity).
 
 parse_pred_or_func_name_and_arity(PorFPredAndArityTerm,
         PredOrFunc, SymName, Arity) :-
@@ -756,7 +757,7 @@ parse_integer_const(Context, Base, Integer, IntTypeDesc, IntSuffixStr,
 %---------------------------------------------------------------------------%
 
 parse_decimal_int(ContextPieces, VarSet, Term, MaybeInt) :-
-    ( if decimal_term_to_int(Term, Int) then
+    ( if term_int.decimal_term_to_int(Term, Int) then
         MaybeInt = ok1(Int)
     else
         TermStr = describe_error_term(VarSet, Term),

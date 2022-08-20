@@ -327,6 +327,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module term_subst.
 
 :- type varset(T)
     --->    varset(
@@ -780,11 +781,11 @@ fast_merge_renaming_without_names_loop(CurVarNumB, NumAllocatedB,
 
 merge(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
     varset.merge_renaming(VarSetA, VarSetB, VarSet, Renaming),
-    term.apply_renaming_in_terms(Renaming, TermList0, TermList).
+    term_subst.apply_renaming_in_terms(Renaming, TermList0, TermList).
 
 merge_without_names(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
     varset.merge_renaming_without_names(VarSetA, VarSetB, VarSet, Renaming),
-    term.apply_renaming_in_terms(Renaming, TermList0, TermList).
+    term_subst.apply_renaming_in_terms(Renaming, TermList0, TermList).
 
 %---------------------------------------------------------------------------%
 

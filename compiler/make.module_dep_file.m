@@ -81,6 +81,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module term_int.
 :- import_module term_io.
 
 %---------------------------------------------------------------------------%
@@ -688,7 +689,7 @@ atom_term(Term, Atom, Args) :-
 :- pred version_number_term(term::in, module_dep_file_version::out) is semidet.
 
 version_number_term(Term, Version) :-
-    decimal_term_to_int(Term, Int),
+    term_int.decimal_term_to_int(Term, Int),
     version_number(Version, Int).
 
 :- pred string_term(term::in, string::out) is semidet.

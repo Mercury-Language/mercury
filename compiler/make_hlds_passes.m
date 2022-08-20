@@ -95,6 +95,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module term.
+:- import_module term_subst.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -961,7 +962,7 @@ add_promise(PredStatus, PromiseInfo, !ModuleInfo, !QualInfo, !Specs) :-
         PredFormArity, PredStatus, Context, PredOrigin, GoalType, ClausesInfo,
         _PredId, !ModuleInfo),
 
-    term.var_list_to_term_list(HeadVars, HeadVarTerms),
+    term_subst.var_list_to_term_list(HeadVars, HeadVarTerms),
     ClauseInfo = item_clause_info(pf_predicate, PromisePredSymName,
         HeadVarTerms, VarSet, ok2(Goal, []), Context, SeqNum),
     module_add_clause(PredStatus, ClauseType, ClauseInfo,

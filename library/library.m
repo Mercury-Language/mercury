@@ -179,6 +179,10 @@
 :- import_module table_statistics.
 :- import_module term.
 :- import_module term_conversion.
+:- import_module term_int.
+:- import_module term_subst.
+:- import_module term_unify.
+:- import_module term_vars.
 :- import_module term_io.
 :- import_module term_to_xml.
 :- import_module thread.
@@ -373,6 +377,10 @@ stdlib_module_doc_undoc("table_builtin",                undoc).
 stdlib_module_doc_undoc("table_statistics",             doc).
 stdlib_module_doc_undoc("term",                         doc).
 stdlib_module_doc_undoc("term_conversion",              doc).
+stdlib_module_doc_undoc("term_int",                     doc).
+stdlib_module_doc_undoc("term_subst",                   doc).
+stdlib_module_doc_undoc("term_unify",                   doc).
+stdlib_module_doc_undoc("term_vars",                    doc).
 stdlib_module_doc_undoc("term_io",                      doc).
 stdlib_module_doc_undoc("term_size_prof_builtin",       undoc).
 stdlib_module_doc_undoc("term_to_xml",                  doc).

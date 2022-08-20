@@ -367,6 +367,134 @@ Changes to the Mercury standard library
    - pred `prefix(in, out)`
    - pred `suffix(in, out)`
 
+### Changes to the `term` module
+
+* The following predicates have been marked obsolete:
+
+    - pred `generic_term/1`
+            (replacement: `with_type` annotations on expressions)
+
+    - pred `decimal_term_to_int/2`
+            (replacement: `term_int.decimal_term_to_int/2`)
+    - pred `term_to_int/2`
+            (replacement: `term_int.term_to_int/2`)
+    - pred `term_to_int8/2`
+            (replacement: `term_int.term_to_int8/2`)
+    - pred `term_to_int16/2`
+            (replacement: `term_int.term_to_int16/2`)
+    - pred `term_to_int32/2`
+            (replacement: `term_int.term_to_in32t/2`)
+    - pred `term_to_int64/2`
+            (replacement: `term_int.term_to_int64/2`)
+    - pred `term_to_uint/2`
+            (replacement: `term_int.term_to_uint/2`)
+    - pred `term_to_uint8/2`
+            (replacement: `term_int.term_to_uint8/2`)
+    - pred `term_to_uint16/2`
+            (replacement: `term_int.term_to_uint16/2`)
+    - pred `term_to_uint32/2`
+            (replacement: `term_int.term_to_uin32t/2`)
+    - pred `term_to_uint64/2`
+            (replacement: `term_int.term_to_uint64/2`)
+    - func `int_to_decimal_term/2`
+            (replacement: `term_int.int_to_decimal_term/2`)
+    - func `int8_to_decimal_term/2`
+            (replacement: `term_int.int8_to_decimal_term/2`)
+    - func `int16_to_decimal_term/2`
+            (replacement: `term_int.int16_to_decimal_term/2`)
+    - func `int32_to_decimal_term/2`
+            (replacement: `term_int.int32_to_decimal_term/2`)
+    - func `int64_to_decimal_term/2`
+            (replacement: `term_int.int64_to_decimal_term/2`)
+    - func `uint_to_decimal_term/2`
+            (replacement: `term_int.uint_to_decimal_term/2`)
+    - func `uint8_to_decimal_term/2`
+            (replacement: `term_int.uint8_to_decimal_term/2`)
+    - func `uint16_to_decimal_term/2`
+            (replacement: `term_int.uint16_to_decimal_term/2`)
+    - func `uint32_to_decimal_term/2`
+            (replacement: `term_int.uint32_to_decimal_term/2`)
+    - func `uint64_to_decimal_term/2`
+            (replacement: `term_int.uint64_to_decimal_term/2`)
+
+    - pred `occurs/3`
+            (replacement: `term_subst.var_occurs_in_subst_term/2`)
+    - pred `occurs_list/3`
+            (replacement: `term_subst.var_occurs_in_subst_terms/2`)
+    - pred `is_ground/1`
+            (replacement: `term_subst.term_is_ground/1`)
+    - pred `is_ground_in_bindings/2`
+            (replacement: `term_subst.term_is_ground_in_bindings/2`)
+    - pred `rename_var_in_term/4`
+            (replacement: `term_subst.rename_var_in_term/4`)
+    - pred `rename_var_in_terms/4`
+            (replacement: `term_subst.rename_var_in_terms/4`)
+    - pred `apply_renaming_in_var/3`
+            (replacement: `term_subst.apply_renaming_in_var/3`)
+    - pred `apply_renaming_in_vars/3`
+            (replacement: `term_subst.apply_renaming_in_vars/3`)
+    - pred `apply_renaming_in_term/3`
+            (replacement: `term_subst.apply_renaming_in_term/3`)
+    - pred `apply_renaming_in_terms/3`
+            (replacement: `term_subst.apply_renaming_in_terms/3`)
+    - pred `substitute_var_in_term/4`
+            (replacement: `term_subst.substitute_var_in_term/4`)
+    - pred `substitute_var_in_terms/4`
+            (replacement: `term_subst.substitute_var_in_terms/4`)
+    - pred `substitute_corresponding_in_term/3`
+            (replacement: `term_subst.substitute_corresponding_in_term/3`)
+    - pred `substitute_corresponding_in_terms/3`
+            (replacement: `term_subst.substitute_corresponding_in_terms/3`)
+    - pred `apply_substitution_in_term/3`
+            (replacement: `term_subst.apply_substitution_in_term/3`)
+    - pred `apply_substitution_in_terms/3`
+            (replacement: `term_subst.apply_substitution_in_terms/3`)
+    - pred `apply_rec_substitution_in_term/3`
+            (replacement: `term_subst.apply_rec_substitution_in_term/3`)
+    - pred `apply_rec_substitution_in_terms/3`
+            (replacement: `term_subst.apply_rec_substitution_in_terms/3`)
+    - func `term_list_to_var_list/2`
+            (replacement: `term_subst.term_list_to_var_list/1`)
+    - pred `term_list_to_var_list/2`
+            (replacement: `term_subst.term_list_to_var_list/2`)
+    - func `var_list_to_term_list/2`
+            (replacement: `term_subst.var_list_to_term_list/1`)
+    - pred `var_list_to_term_list/2`
+            (replacement: `term_subst.var_list_to_term_list/2`)
+
+    - pred `unify_term/4`
+            (replacement: `term_unify.unify_terms/4`)
+    - pred `unify_term_list/4`
+            (replacement: `term_unify.unify_term_lists/4`)
+    - pred `unify_term_dont_bind/5`
+            (replacement: `term_unify.unify_terms_dont_bind/5`)
+    - pred `unify_term_list_dont_bind/5`
+            (replacement: `term_unify.unify_term_lists_dont_bind/5`)
+    - pred `list_subsumes/3`
+            (replacement: `term_unify.first_term_list_subsumes_second/3`)
+
+    - func `vars/1`
+            (replacement: `term_vars.vars_in_term/1`)
+    - pred `vars/2`
+            (replacement: `term_vars.vars_in_term/2`)
+    - func `vars_2/2`
+            (replacement: `term_vars.vars_in_term_acc/3`)
+    - pred `vars_2/3`
+            (replacement: `term_vars.vars_in_term_acc/3`)
+    - func `vars_list/1`
+            (replacement: `term_vars.vars_in_terms/1`)
+    - pred `vars_list/2`
+            (replacement: `term_vars.vars_in_terms/2`)
+    - pred `contains_var/2`
+            (replacement: `term_vars.term_contains_var/2`)
+    - pred `contains_var_list/2`
+            (replacement: `term_vars.terms_contain_var/2`)
+
+### New `term_int` module
+
+* This new module contains predicates that recognize terms that contain
+  integers, and functions that construct such terms.
+
 ### Changes to the `term_io` module
 
 * The following predicates have been removed:
@@ -379,6 +507,20 @@ Changes to the Mercury standard library
             (replacement: `mercury_term_parser.read_term_with_op_table/4`)
     - pred `read_term_with_op_table/5`
             (replacement: `mercury_term_parser.read_term_with_op_table/5`)
+
+### New `term_subst` module
+
+* This new module contains predicates that perform substitutions
+  of various kinds on terms.
+
+### New `term_unify` module
+
+* This new module contains predicates that perform unifications.
+
+### New `term_vars` module
+
+* This new module contains predicates and functions that find
+  variables in terms.
 
 ### Changes to the `tree234` module
 

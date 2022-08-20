@@ -141,6 +141,8 @@
 :- import_module map.
 :- import_module set_tree234.
 :- import_module term.
+:- import_module term_subst.
+:- import_module term_unify.
 
 %-----------------------------------------------------------------------------%
 
@@ -187,14 +189,14 @@ delete_unreachable_cases_acc([Case0 | Cases0], PossibleConsIdSet,
 interpret_unify(LHSVar, RHS, !Subst) :-
     (
         RHS = rhs_var(RHSVar),
-        unify_term(
+        unify_terms(
             variable(LHSVar, context_init),
             variable(RHSVar, context_init), !Subst)
     ;
         RHS = rhs_functor(ConsId, _, RHSArgVars),
-        term.var_list_to_term_list(RHSArgVars, RHSArgTerms),
+        term_subst.var_list_to_term_list(RHSArgVars, RHSArgTerms),
         cons_id_and_args_to_term(ConsId, RHSArgTerms, RHSTerm),
-        unify_term(variable(LHSVar, context_init), RHSTerm, !Subst)
+        unify_terms(variable(LHSVar, context_init), RHSTerm, !Subst)
     ;
         RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _)
         % For ease of implementation, we just ignore unifications

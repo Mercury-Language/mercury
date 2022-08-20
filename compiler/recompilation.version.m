@@ -103,6 +103,9 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module term_int.
+:- import_module term_subst.
+:- import_module term_unify.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -1507,8 +1510,8 @@ pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, MaybeWithInst1,
     % inst_varset, then check that they are identical.
     varset.merge_renaming(VarSet1, VarSet2, _, InstRenaming),
 
-    % Treat modes as terms here to use term.list_subsumes, which does just
-    % what we want here.
+    % Treat modes as terms here to use first_term_list_subsumes_second,
+    % which does just what we want here.
     ModeTerms1 = list.map(mode_to_term(output_mercury), Modes1),
     ModeTerms2 = list.map(mode_to_term(output_mercury), Modes2),
     (
@@ -1527,10 +1530,10 @@ pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, MaybeWithInst1,
         AllModeTerms2 = ModeTerms2
     ),
 
-    term.apply_renaming_in_terms(InstRenaming,
+    term_subst.apply_renaming_in_terms(InstRenaming,
         AllModeTerms2, SubstAllModeTerms2),
-    term.list_subsumes(AllModeTerms1, SubstAllModeTerms2, _),
-    term.list_subsumes(SubstAllModeTerms2, AllModeTerms1, _).
+    first_term_list_subsumes_second(AllModeTerms1, SubstAllModeTerms2, _),
+    first_term_list_subsumes_second(SubstAllModeTerms2, AllModeTerms1, _).
 
     % Combined typeclass method type and mode declarations are split as for
     % ordinary predicate declarations, so the varsets won't necessarily match
@@ -1785,7 +1788,7 @@ parse_key_version_number(ParseName, Term, Result) :-
         ItemNameArityTerm = term.functor(term.atom("/"),
             [NameTerm, ArityTerm], _),
         ParseName(NameTerm, Name),
-        decimal_term_to_int(ArityTerm, Arity),
+        term_int.decimal_term_to_int(ArityTerm, Arity),
         parse_version_number_term(VersionNumberTerm, VersionNumber)
     then
         Result = ok1(name_arity(Name, Arity) - VersionNumber)
@@ -1807,7 +1810,7 @@ parse_item_version_number(ParseName, Term, Result) :-
         ItemNameArityTerm = term.functor(term.atom("/"),
             [NameTerm, ArityTerm], _),
         ParseName(NameTerm, SymName),
-        decimal_term_to_int(ArityTerm, Arity),
+        term_int.decimal_term_to_int(ArityTerm, Arity),
         parse_version_number_term(VersionNumberTerm, VersionNumber)
     then
         Result = ok1(recomp_item_name(SymName, Arity) - VersionNumber)

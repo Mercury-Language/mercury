@@ -139,6 +139,7 @@
 :- import_module one_or_more.
 :- import_module pretty_printer.
 :- import_module string.
+:- import_module term_int.
 
 %---------------------------------------------------------------------------%
 
@@ -819,9 +820,9 @@ parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms, IsInClass, Context,
 parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
         Context, _SeqNum, MaybeIOM) :-
     (
-        ArgTerms = [VersionNumberTerm, ModuleNameTerm, VersionNumbersTerm],
-        ( if decimal_term_to_int(VersionNumberTerm, VersionNumber) then
-            ( if VersionNumber = module_item_version_numbers_version_number then
+        ArgTerms = [VNTerm, ModuleNameTerm, VersionNumbersTerm],
+        ( if term_int.decimal_term_to_int(VNTerm, VN) then
+            ( if VN = module_item_version_numbers_version_number then
                 ( if
                     try_parse_symbol_name(ModuleNameTerm, ModuleName)
                 then
