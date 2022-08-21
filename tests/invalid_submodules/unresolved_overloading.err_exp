@@ -1,8 +1,14 @@
-unresolved_overloading.m:025: Error: unresolved predicate overloading, matched
-unresolved_overloading.m:025:   predicate
-unresolved_overloading.m:025:   `unresolved_overloading.sub.loud_and_annoying'/3
-unresolved_overloading.m:025:   and predicate
-unresolved_overloading.m:025:   `unresolved_overloading.loud_and_annoying'/3.
-unresolved_overloading.m:025:   You need to use an explicit module qualifier.
-Uncaught Mercury exception:
-Software Error: predicate `hlds.pred_table.find_matching_pred_id'/10: Unexpected: unresolvable predicate overloading
+unresolved_overloading.m:026: Error: unresolved predicate overloading.
+unresolved_overloading.m:026:   The matches are
+unresolved_overloading.m:026:     predicate
+unresolved_overloading.m:026:     `unresolved_overloading.sub.loud_and_annoying'/3,
+unresolved_overloading.m:026:     and
+unresolved_overloading.m:026:     predicate
+unresolved_overloading.m:026:     `unresolved_overloading.loud_and_annoying'/3.
+unresolved_overloading.m:026:   You need to use an explicit module qualifier to
+unresolved_overloading.m:026:   select the one you intend to refer to.
+unresolved_overloading.m:026:   Proceeding on the assumption that the intended
+unresolved_overloading.m:026:   match is the first. If this assumption is
+unresolved_overloading.m:026:   incorrect, other error messages may be reported
+unresolved_overloading.m:026:   for this predicate or function solely because
+unresolved_overloading.m:026:   of this wrong assumption.

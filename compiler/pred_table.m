@@ -24,6 +24,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
 
@@ -308,7 +309,7 @@
 :- pred resolve_pred_overloading(module_info::in, pred_markers::in,
     tvarset::in, existq_tvars::in, list(mer_type)::in,
     external_type_params::in, prog_context::in,
-    sym_name::in, sym_name::out, pred_id::out) is det.
+    sym_name::in, sym_name::out, pred_id::out, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -327,8 +328,8 @@
 :- pred find_matching_pred_id(module_info::in, list(pred_id)::in,
     tvarset::in, existq_tvars::in, list(mer_type)::in,
     external_type_params::in,
-    maybe(constraint_search)::in(maybe(constraint_search)),
-    prog_context::in, pred_id::out, sym_name::out) is semidet.
+    maybe(constraint_search)::in(maybe(constraint_search)), prog_context::in,
+    pred_id::out, sym_name::out, list(error_spec)::out) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -338,7 +339,7 @@
 :- pred get_pred_id_by_types(is_fully_qualified::in, sym_name::in,
     pred_or_func::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
     external_type_params::in, module_info::in, prog_context::in,
-    pred_id::out) is semidet.
+    pred_id::out, list(error_spec)::out) is semidet.
 
     % Get the pred_id and proc_id matching a higher-order term with
     % the given argument types, aborting with an error if none is found.
@@ -346,7 +347,7 @@
 :- pred get_pred_id_and_proc_id_by_types(is_fully_qualified::in, sym_name::in,
     pred_or_func::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
     external_type_params::in, module_info::in, prog_context::in,
-    pred_id::out, proc_id::out) is det.
+    pred_id::out, proc_id::out, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -373,15 +374,14 @@
 
 :- implementation.
 
-:- import_module libs.
-:- import_module libs.globals.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module multi_map.
+:- import_module pair.
 :- import_module require.
 :- import_module string.
 
@@ -1147,22 +1147,25 @@ add_pred_ids_to_list_if_name_matches(Name, KeyMN, UserArityMap, !PredIds) :-
 %---------------------------------------------------------------------------%
 
 resolve_pred_overloading(ModuleInfo, CallerMarkers, TVarSet, ExistQTVars,
-        ArgTypes, ExternalTypeParams, Context, PredName0, PredName, PredId) :-
+        ArgTypes, ExternalTypeParams, Context, PredSymName0, PredSymName,
+        PredId, Specs) :-
     % Note: calls to preds declared in `.opt' files should always be
     % module qualified, so they should not be considered
     % when resolving overloading.
     module_info_get_predicate_table(ModuleInfo, PredTable),
     IsFullyQualified = calls_are_fully_qualified(CallerMarkers),
     predicate_table_lookup_pred_sym(PredTable, IsFullyQualified,
-        PredName0, PredIds),
+        PredSymName0, PredIds),
     % Check if there any of the candidate pred_ids have argument/return types
     % which subsume the actual argument/return types of this function call.
     ( if
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-            ArgTypes, ExternalTypeParams, no, Context, PredId1, PredName1)
+            ArgTypes, ExternalTypeParams, no, Context, PredIdPrime,
+            PredSymNamePrime, SpecsPrime)
     then
-        PredId = PredId1,
-        PredName = PredName1
+        PredId = PredIdPrime,
+        PredSymName = PredSymNamePrime,
+        Specs = SpecsPrime
     else
         % If there is no matching predicate for this call, then this predicate
         % must have a type error which should have been caught by typechecking.
@@ -1171,9 +1174,71 @@ resolve_pred_overloading(ModuleInfo, CallerMarkers, TVarSet, ExistQTVars,
 
 %---------------------------------------------------------------------------%
 
-find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
+find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
         ArgTypes, ExternalTypeParams, MaybeConstraintSearch, Context,
-        ThePredId, PredName) :-
+        ThePredId, ThePredSymName, Specs) :-
+    find_matching_pred_ids(ModuleInfo, TVarSet, ExistQTVars,
+        ArgTypes, ExternalTypeParams, MaybeConstraintSearch, Context,
+        PredIds, MatchingPredIdsInfos),
+    (
+        MatchingPredIdsInfos = [],
+        fail
+    ;
+        MatchingPredIdsInfos =
+            [ThePredId - ThePredInfo | TailMatchingPredIdsInfos],
+        % We have found a matching predicate.
+        pred_info_get_sym_name(ThePredInfo, ThePredSymName),
+        % Was there was more than one matching predicate/function?
+        (
+            TailMatchingPredIdsInfos = [],
+            Specs = []
+        ;
+            TailMatchingPredIdsInfos = [_ | _],
+            GetPredDesc =
+                ( func(_ - PI) = Piece :-
+                    pred_info_get_pf_sym_name_arity(PI, PFSNA),
+                    Piece = qual_pf_sym_name_orig_arity(PFSNA)
+                ),
+            PredDescPieces = list.map(GetPredDesc, MatchingPredIdsInfos),
+            intersperse_list_last([suffix(","), nl],
+                [suffix(","), words("and"), nl], PredDescPieces,
+                PredDescSepPieces),
+            Pieces = [words("Error: unresolved predicate overloading."), nl,
+                words("The matches are"), nl_indent_delta(1)] ++
+                PredDescSepPieces ++ [suffix("."), nl_indent_delta(-1),
+                words("You need to use an explicit module qualifier"),
+                words("to select the one you intend to refer to."), nl,
+                words("Proceeding on the assumption that"),
+                words("the intended match is the first."),
+                words("If this assumption is incorrect, other error messages"),
+                words("may be reported for this predicate or function"),
+                words("solely because of this wrong assumption."), nl],
+            % In the frequent case (for us, at least) where the ambiguity
+            % is caused by moving a predicate from one module of the standard
+            % library to another but leaving a forwarding predicate behind,
+            % the choices will be equivalent, and there will be *no* avalanche
+            % errors caused by our assumption. However, it is better to warn
+            % about avalanche errors that won't happen than to not warn
+            % about avalanche errors that *do* happen.
+            Spec = simplest_spec($pred, severity_error, phase_type_check,
+                Context, Pieces),
+            Specs = [Spec]
+        )
+    ).
+
+:- pred find_matching_pred_ids(module_info::in,
+    tvarset::in, existq_tvars::in, list(mer_type)::in,
+    external_type_params::in,
+    maybe(constraint_search)::in(maybe(constraint_search)), prog_context::in,
+    list(pred_id)::in, assoc_list(pred_id, pred_info)::out) is det.
+
+find_matching_pred_ids(_, _, _, _, _, _, _, [], []).
+find_matching_pred_ids(ModuleInfo, TVarSet, ExistQTVars, ArgTypes,
+        ExternalTypeParams, MaybeConstraintSearch, Context,
+        [PredId | PredIds], MatchingPredIdsInfos) :-
+    find_matching_pred_ids(ModuleInfo, TVarSet, ExistQTVars, ArgTypes,
+        ExternalTypeParams, MaybeConstraintSearch, Context,
+        PredIds, TailMatchingPredIdsInfos),
     ( if
         % Lookup the argument types of the candidate predicate
         % (or the argument types + return type of the candidate function).
@@ -1196,42 +1261,9 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
             univ_constraints_match(ProvenConstraints, UnivConstraints)
         )
     then
-        % We have found a matching predicate.
-        % Was there was more than one matching predicate/function?
-        PName = pred_info_name(PredInfo),
-        Module = pred_info_module(PredInfo),
-        PredName = qualified(Module, PName),
-        ( if
-            find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-                ArgTypes, ExternalTypeParams, MaybeConstraintSearch, Context,
-                OtherPredId, _OtherPredName)
-        then
-            module_info_pred_info(ModuleInfo, OtherPredId, OtherPredInfo),
-            pred_info_get_pf_sym_name_arity(PredInfo, PredCallId),
-            pred_info_get_pf_sym_name_arity(OtherPredInfo, OtherPredCallId),
-            % XXX This is not very nice.
-            trace [io(!IO)] (
-                module_info_get_globals(ModuleInfo, Globals),
-                Pieces = [words("Error: unresolved predicate overloading,"),
-                    words("matched"), qual_pf_sym_name_orig_arity(PredCallId),
-                    words("and"),
-                    qual_pf_sym_name_orig_arity(OtherPredCallId), suffix("."),
-                    words("You need to use an explicit module qualifier."),
-                    nl],
-                Spec = simplest_spec($pred, severity_error, phase_type_check,
-                    Context, Pieces),
-                module_info_get_name(ModuleInfo, ModuleName),
-                get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-                write_error_spec(ErrorStream, Globals, Spec, !IO)
-            ),
-            unexpected($pred, "unresolvable predicate overloading")
-        else
-            ThePredId = PredId
-        )
+        MatchingPredIdsInfos = [PredId - PredInfo | TailMatchingPredIdsInfos]
     else
-        find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-            ArgTypes, ExternalTypeParams, MaybeConstraintSearch, Context,
-            ThePredId, PredName)
+        MatchingPredIdsInfos = TailMatchingPredIdsInfos
     ).
 
     % Check that the universal constraints proven in the caller match the
@@ -1259,7 +1291,7 @@ univ_constraints_match([ProvenConstraint | ProvenConstraints],
 
 get_pred_id_by_types(IsFullyQualified, SymName, PredOrFunc, TVarSet,
         ExistQTVars, ArgTypes, ExternalTypeParams, ModuleInfo, Context,
-        PredId) :-
+        PredId, Specs) :-
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     PredFormArity = arg_list_arity(ArgTypes),
     predicate_table_lookup_pf_sym_arity(PredicateTable, IsFullyQualified,
@@ -1267,9 +1299,11 @@ get_pred_id_by_types(IsFullyQualified, SymName, PredOrFunc, TVarSet,
     ( if
         % Resolve overloading using the argument types.
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-            ArgTypes, ExternalTypeParams, no, Context, PredId0, _PredName)
+            ArgTypes, ExternalTypeParams, no, Context, PredIdPrime,
+            _PredSymName, SpecsPrime)
     then
-        PredId = PredId0
+        PredId = PredIdPrime,
+        Specs = SpecsPrime
     else
         % Undefined/invalid pred or func.
         fail
@@ -1277,13 +1311,14 @@ get_pred_id_by_types(IsFullyQualified, SymName, PredOrFunc, TVarSet,
 
 get_pred_id_and_proc_id_by_types(IsFullyQualified, SymName, PredOrFunc,
         TVarSet, ExistQTVars, ArgTypes, ExternalTypeParams, ModuleInfo,
-        Context, PredId, ProcId) :-
+        Context, PredId, ProcId, Specs) :-
     ( if
         get_pred_id_by_types(IsFullyQualified, SymName, PredOrFunc, TVarSet,
             ExistQTVars, ArgTypes, ExternalTypeParams, ModuleInfo, Context,
-            PredId0)
+            PredIdPrime, SpecsPrime)
     then
-        PredId = PredId0
+        PredId = PredIdPrime,
+        Specs = SpecsPrime
     else
         % Undefined/invalid pred or func. The type-checker should ensure
         % that this never happens.

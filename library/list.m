@@ -585,6 +585,40 @@
     %
 :- pred det_split_last(list(T)::in, list(T)::out, T::out) is det.
 
+    % intersperse(Sep, List, ListWithSep):
+    %
+    % Insert Sep between each pair of elements in List, and return
+    % the result as ListWithSep.
+    %
+    % For example, intersperse("and", ["jan", "feb", "mar"], ListWithSep)
+    % will bind ListWithSep to ["jan", "and", "feb", "and", "mar"].
+    %
+:- pred intersperse(T::in, list(T)::in, list(T)::out) is det.
+
+    % intersperse_list(Seps, List, ListWithSeps):
+    %
+    % Insert Seps between each pair of elements in List, and return
+    % the result as ListWithSeps.
+    %
+    % For example, intersperse_list(["and", "then"], ["jan", "feb", "mar"],
+    % ListWithSeps) will bind ListWithSeps to
+    % ["jan", "and", "then", "feb", "and", "then", "mar"].
+    %
+:- pred intersperse_list(list(T)::in, list(T)::in, list(T)::out) is det.
+
+    % intersperse_list_last(NonLastSeps, LastSeps, List, ListWithSeps):
+    %
+    % Insert NonLastSeps between each pair of elements in List except
+    % the last pair, insert LastSeps between the last pair of elements,
+    % and return the result as ListWithSeps.
+    %
+    % For example, intersperse_list_last(["and", "then"], ["and", "finally"],
+    % ["jan", "feb", "mar"], ListWithSeps) will bind ListWithSeps to
+    % ["jan", "and", "then", "feb", "and", "finaly", "mar"].
+    %
+:- pred intersperse_list_last(list(T)::in, list(T)::in, list(T)::in,
+    list(T)::out) is det.
+
 %---------------------%
 
     % take(N, List, Start):
@@ -3024,6 +3058,62 @@ det_split_last_loop(H, T, AllButLast, Last) :-
         T = [TH | TT],
         list.det_split_last_loop(TH, TT, AllButLastTail, Last),
         AllButLast = [H | AllButLastTail]
+    ).
+
+intersperse(_Sep, [], []).
+intersperse(Sep, [Head | Tail], ListWithSep) :-
+    intersperse_loop(Sep, Head, Tail, ListWithSep).
+
+:- pred intersperse_loop(T::in, T::in, list(T)::in, list(T)::out) is det.
+
+intersperse_loop(Sep, Head, Tail, ListWithSep) :-
+    (
+        Tail = [],
+        ListWithSep = [Head]
+    ;
+        Tail = [HeadTail | TailTail],
+        intersperse_loop(Sep, HeadTail, TailTail, TailListWithSep),
+        ListWithSep = [Head, Sep | TailListWithSep]
+    ).
+
+intersperse_list(_Seps, [], []).
+intersperse_list(Seps, [Head | Tail], ListWithSeps) :-
+    intersperse_list_loop(Seps, Head, Tail, ListWithSeps).
+
+:- pred intersperse_list_loop(list(T)::in, T::in, list(T)::in, list(T)::out)
+    is det.
+
+intersperse_list_loop(Seps, Head, Tail, ListWithSeps) :-
+    (
+        Tail = [],
+        ListWithSeps = [Head]
+    ;
+        Tail = [HeadTail | TailTail],
+        intersperse_list_loop(Seps, HeadTail, TailTail, TailListWithSeps),
+        ListWithSeps = [Head | Seps] ++ TailListWithSeps
+    ).
+
+intersperse_list_last(_NonLastSeps, _LastSeps, [], []).
+intersperse_list_last(_NonLastSeps, _LastSeps, [Elt1], ListWithSeps) :-
+    ListWithSeps = [Elt1].
+intersperse_list_last(NonLastSeps, LastSeps, [Elt1, Elt2 | Elt3plus],
+        ListWithSeps) :-
+    intersperse_list_last_loop(NonLastSeps, LastSeps, Elt1, Elt2, Elt3plus,
+        ListWithSeps).
+
+:- pred intersperse_list_last_loop(list(T)::in, list(T)::in,
+    T::in, T::in, list(T)::in, list(T)::out) is det.
+
+intersperse_list_last_loop(NonLastSeps, LastSeps, Elt1, Elt2, Elt3plus,
+        ListWithSeps) :-
+    (
+        Elt3plus = [],
+        ListWithSeps = [Elt1 | LastSeps] ++ [Elt2]
+    ;
+        Elt3plus = [Elt3 | Elt4plus],
+        intersperse_list_last_loop(NonLastSeps, LastSeps, Elt2, Elt3, Elt4plus,
+            TailListWithSeps),
+        ListWithSeps = [Elt1 | NonLastSeps] ++ TailListWithSeps
     ).
 
 %---------------------------------------------------------------------------%

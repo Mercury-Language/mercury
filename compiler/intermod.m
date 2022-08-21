@@ -1009,7 +1009,9 @@ qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
         resolve_pred_overloading(ModuleInfo, Markers, MethodCallTVarSet,
             MethodCallExistQTVars, MethodCallArgTypes,
             MethodCallExternalTypeParams, MethodContext,
-            InstanceMethodName0, InstanceMethodName, PredId),
+            InstanceMethodName0, InstanceMethodName, PredId, _ResolveSpecs),
+        % Any errors in _ResolveSpecs will be reported when a later compiler
+        % invocation attempts to generate target language code for this module.
         PredIds = [PredId | PredIds0],
         InstanceMethodDefn = instance_proc_def_name(InstanceMethodName)
     ;
@@ -1082,7 +1084,9 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
         find_matching_pred_id(ModuleInfo, PredIds, MethodCallTVarSet,
             MethodCallExistQTVars, MethodCallArgTypes,
             MethodCallExternalTypeParams, no, MethodContext,
-            PredId, InstanceMethodFuncName)
+            PredId, InstanceMethodFuncName, _ResolveSpecs)
+        % Any errors in _ResolveSpecs will be reported when a later compiler
+        % invocation attempts to generate target language code for this module.
     then
         TypeCtors = [],
         MaybePredId = yes(PredId),
@@ -1301,7 +1305,10 @@ resolve_user_special_pred_overloading(ModuleInfo, SpecialId,
     add_marker(marker_calls_are_fully_qualified, Markers0, Markers),
     pred_info_get_context(SpecialPredInfo, Context),
     resolve_pred_overloading(ModuleInfo, Markers, TVarSet, ExistQVars,
-        ArgTypes, ExternalTypeParams, Context, Pred0, Pred, UserEqPredId),
+        ArgTypes, ExternalTypeParams, Context, Pred0, Pred, UserEqPredId,
+        _ResolveSpecs),
+    % Any errors in _ResolveSpecs will be reported when a later compiler
+    % invocation attempts to generate target language code for this module.
     intermod_add_pred(UserEqPredId, _, !IntermodInfo).
 
 :- pred should_opt_export_type_defn(module_name::in, type_ctor::in,

@@ -782,7 +782,9 @@ compute_plain_call_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
     (
         RunPostTypecheck = run_post_typecheck_tasks,
         finally_resolve_pred_overloading(ModuleInfo, PredInfo,
-            PredId0, SymName0, ArgVars, CallContext, PredId, SymName),
+            PredId0, SymName0, ArgVars, CallContext, PredId, SymName,
+            ResolveSpecs),
+        purity_info_add_messages(ResolveSpecs, !Info),
         ( if
             % Convert any calls to private_builtin.unsafe_type_cast
             % into unsafe_type_cast generic calls.
@@ -812,13 +814,12 @@ compute_plain_call_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
     %
 :- pred finally_resolve_pred_overloading(module_info::in, pred_info::in,
     pred_id::in, sym_name::in, list(prog_var)::in, prog_context::in,
-    pred_id::out, sym_name::out) is det.
+    pred_id::out, sym_name::out, list(error_spec)::out) is det.
 
 finally_resolve_pred_overloading(ModuleInfo, CallerPredInfo,
-        PredId0, PredName0, Args0, Context, PredId, PredName) :-
+        PredId0, PredSymName0, Args0, Context, PredId, PredSymName, Specs) :-
     % In the case of a call to an overloaded predicate, typecheck.m
     % does not figure out the correct pred_id. We must do that here.
-
     ( if PredId0 = invalid_pred_id then
         pred_info_get_typevarset(CallerPredInfo, TVarSet),
         pred_info_get_exist_quant_tvars(CallerPredInfo, ExistQVars),
@@ -828,13 +829,13 @@ finally_resolve_pred_overloading(ModuleInfo, CallerPredInfo,
         clauses_info_get_var_table(ClausesInfo, VarTable),
         lookup_var_types(VarTable, Args0, ArgTypes),
         resolve_pred_overloading(ModuleInfo, Markers, TVarSet, ExistQVars,
-            ArgTypes, ExternalTypeParams, Context, PredName0, PredName, PredId)
+            ArgTypes, ExternalTypeParams, Context, PredSymName0, PredSymName,
+            PredId, Specs)
     else
         PredId = PredId0,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        PredModule = pred_info_module(PredInfo),
-        PredBaseName = pred_info_name(PredInfo),
-        PredName = qualified(PredModule, PredBaseName)
+        pred_info_get_sym_name(PredInfo, PredSymName),
+        Specs = []
     ).
 
     % Perform purity checking of the actual and declared purity,
@@ -941,7 +942,8 @@ compute_unify_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
             VarTable0 = !.Info ^ pi_var_table,
             resolve_unify_functor(ModuleInfo, LHSVar, ConsId, Args, Mode,
                 Unification, UnifyContext, GoalInfo, Goal1, IsPlainUnify,
-                VarTable0, VarTable, PredInfo0, PredInfo),
+                ResolveSpecs, VarTable0, VarTable, PredInfo0, PredInfo),
+            purity_info_add_messages(ResolveSpecs, !Info),
             !Info ^ pi_var_table := VarTable,
             !Info ^ pi_pred_info := PredInfo,
             (
@@ -1003,12 +1005,14 @@ check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, Args, Specs) :-
         ( if
             get_pred_id_by_types(calls_are_fully_qualified(CallerMarkers),
                 PName, PredOrFunc, TVarSet, ExistQTVars, PredArgTypes,
-                ExternalTypeParams, ModuleInfo, Context, CalleePredId)
+                ExternalTypeParams, ModuleInfo, Context, CalleePredId,
+                GetCalleeSpecs)
         then
             module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
             pred_info_get_purity(CalleePredInfo, CalleePurity),
             check_closure_purity(GoalInfo, TypePurity, CalleePurity,
-                ClosureSpecs)
+                ClosurePuritySpecs),
+            ClosureSpecs = GetCalleeSpecs ++ ClosurePuritySpecs
         else
             % If we can't find the type of the function, it is because
             % typecheck couldn't give it one. Typechecking gives an error
@@ -1206,7 +1210,8 @@ compute_goal_purity_in_fgt_ptc([Goal0 | Goals0], !RevMarkedSubGoals,
     VarTable0 = !.Info ^ pi_var_table,
     resolve_unify_functor(ModuleInfo, XVar, ConsId, YVars, Mode,
         Unification, UnifyContext, GoalInfo0, Goal1, IsPlainUnify,
-        VarTable0, VarTable, PredInfo0, PredInfo),
+        ResolveSpecs, VarTable0, VarTable, PredInfo0, PredInfo),
+    purity_info_add_messages(ResolveSpecs, !Info),
     Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
     (
         IsPlainUnify = is_plain_unify,

@@ -43,6 +43,7 @@
 :- pred resolve_unify_functor(module_info::in, prog_var::in, cons_id::in,
     list(prog_var)::in, unify_mode::in, unification::in, unify_context::in,
     hlds_goal_info::in, hlds_goal::out, is_plain_unify::out,
+    list(error_spec)::out,
     var_table::in, var_table::out, pred_info::in, pred_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -76,7 +77,7 @@
 %---------------------------------------------------------------------------%
 
 resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
-        Unification0, UnifyContext, GoalInfo0, Goal, IsPlainUnify,
+        Unification0, UnifyContext, GoalInfo0, Goal, IsPlainUnify, Specs,
         !VarTable, !PredInfo) :-
     lookup_var_type(!.VarTable, X0, TypeOfX),
     list.length(ArgVars0, Arity),
@@ -106,7 +107,8 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
         HOCall = generic_call(Generic, ArgVars, Modes,
             arg_reg_types_unset, Det),
         Goal = hlds_goal(HOCall, GoalInfo0),
-        IsPlainUnify = is_not_plain_unify
+        IsPlainUnify = is_not_plain_unify,
+        Specs = []
     else if
         % Is the function symbol a user-defined function, rather than
         % a functor which represents a data constructor?
@@ -153,7 +155,7 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
         Context = goal_info_get_context(GoalInfo0),
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
             ArgTypes, ExternalTypeParams, yes(ConstraintSearch), Context,
-            PredId, QualifiedFuncName)
+            PredId, QualifiedFuncName, SpecsPrime)
     then
         % Convert function calls in unifications into plain calls:
         % replace `X = f(A, B, C)' with `f(A, B, C, X)'.
@@ -165,7 +167,8 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
         FuncCall = plain_call(PredId, ProcId, ArgVars, not_builtin,
             yes(FuncCallUnifyContext), QualifiedFuncName),
         Goal = hlds_goal(FuncCall, GoalInfo0),
-        IsPlainUnify = is_not_plain_unify
+        IsPlainUnify = is_not_plain_unify,
+        Specs = SpecsPrime
     else if
         % Is the function symbol a higher-order predicate or function constant?
         ConsId0 = cons(Name, _, _),
@@ -187,7 +190,7 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
         Context = goal_info_get_context(GoalInfo0),
         get_pred_id_by_types(calls_are_fully_qualified(Markers), Name,
             PredOrFunc, TVarSet, ExistQVars, AllArgTypes, ExternalTypeParams,
-            ModuleInfo, Context, PredId)
+            ModuleInfo, Context, PredId, SpecsPrime)
     then
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         ProcIds = pred_info_all_procids(PredInfo),
@@ -221,7 +224,8 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
             Spec = simplest_spec($pred, severity_error, phase_type_check,
                 Context, Pieces),
             IsPlainUnify = is_unknown_ref(Spec)
-        )
+        ),
+        Specs = SpecsPrime
     else if
         % Is it a call to an automatically generated field access function.
         % This test must come after the tests for function calls and
@@ -247,7 +251,8 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
     then
         finish_field_access_function(ModuleInfo, AccessType, FieldName,
             UnifyContext, X0, ArgVars0, GoalInfo0, Goal, !VarTable, !PredInfo),
-        IsPlainUnify = is_not_plain_unify
+        IsPlainUnify = is_not_plain_unify,
+        Specs = []
     else
         % Module qualify ordinary construction/deconstruction unifications.
         type_to_ctor_det(TypeOfX, TypeCtorOfX),
@@ -284,7 +289,8 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
         RHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars0),
         GoalExpr = unify(X0, RHS, Mode0, Unification0, UnifyContext),
         Goal = hlds_goal(GoalExpr, GoalInfo0),
-        IsPlainUnify = is_plain_unify
+        IsPlainUnify = is_plain_unify,
+        Specs = []
     ).
 
 %---------------------------------------------------------------------------%

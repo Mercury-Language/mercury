@@ -2,8 +2,9 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% Test that the compiler gives a half decent error message when it's unable to
-% resolve predicate overloading in this module.
+% Test that the compiler gives a half decent error message when it is
+% unable to resolve predicate overloading in this module.
+%
 
 :- module unresolved_overloading.
 :- interface.
