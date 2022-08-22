@@ -614,7 +614,7 @@
     %
     % For example, intersperse_list_last(["and", "then"], ["and", "finally"],
     % ["jan", "feb", "mar"], ListWithSeps) will bind ListWithSeps to
-    % ["jan", "and", "then", "feb", "and", "finaly", "mar"].
+    % ["jan", "and", "then", "feb", "and", "finally", "mar"].
     %
 :- pred intersperse_list_last(list(T)::in, list(T)::in, list(T)::in,
     list(T)::out) is det.
