@@ -161,6 +161,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module term_int.
 :- import_module term_subst.
 :- import_module varset.
@@ -1511,7 +1512,7 @@ write_goal_generic_call(Info, Stream, _ModuleInfo, VarNameSrc, _TypeQual,
         else
             true
         ),
-        term.context_init(Context),
+        Context = dummy_context,
         Functor = term.atom("class_method_call"),
         TCInfoTerm = term.variable(TCInfoVar, Context),
         MethodNumTerm = term_int.int_to_decimal_term(MethodNum, Context),
@@ -1532,10 +1533,9 @@ write_goal_generic_call(Info, Stream, _ModuleInfo, VarNameSrc, _TypeQual,
         ),
         write_indent(Stream, Indent, !IO),
         io.write_string(Stream, "event ", !IO),
-        term.context_init(Context),
         Functor = term.atom(EventName),
         term_subst.var_list_to_term_list(ArgVars, ArgTerms),
-        Term = term.functor(Functor, ArgTerms, Context),
+        Term = term.functor(Functor, ArgTerms, dummy_context),
         mercury_output_term_src(VarNameSrc, VarNamePrint, Term, Stream, !IO),
         io.write_string(Stream, Follow, !IO)
     ;
@@ -1575,8 +1575,7 @@ write_goal_generic_call(Info, Stream, _ModuleInfo, VarNameSrc, _TypeQual,
             PredOrFunc = pf_predicate,
             Functor = term.atom(CastTypeString),
             term_subst.var_list_to_term_list(ArgVars, ArgTerms),
-            term.context_init(Context),
-            Term = term.functor(Functor, ArgTerms, Context),
+            Term = term.functor(Functor, ArgTerms, dummy_context),
             write_indent(Stream, Indent, !IO),
             mercury_output_term_src(VarNameSrc, VarNamePrint, Term,
                 Stream, !IO)

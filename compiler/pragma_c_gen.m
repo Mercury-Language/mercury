@@ -91,7 +91,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -759,7 +759,7 @@ make_alloc_id_hash_define(C_Code, MaybeContext,
             MaybeContext = yes(Context)
         ;
             MaybeContext = no,
-            Context = term.context_init
+            Context = dummy_context
         ),
         add_alloc_site_info(Context, "unknown", 0, AllocId, !CI),
         AllocIdHashDefine = [

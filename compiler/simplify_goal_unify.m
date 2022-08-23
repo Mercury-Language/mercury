@@ -59,7 +59,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
-:- import_module term.
+:- import_module term_context.
 :- import_module uint.
 
 simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
@@ -290,8 +290,7 @@ make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
         proc_info_set_rtti_varmaps(RttiVarMaps0, !ProcInfo),
 
         % Generate the code that creates the type_infos.
-        term.context_init(Context),
-        polymorphism_make_type_info_vars_mi(Types, Context,
+        polymorphism_make_type_info_vars_mi(Types, dummy_context,
             TypeInfoVars, TypeInfoGoals, ModuleInfo0, ModuleInfo1,
             !PredInfo, !ProcInfo),
 

@@ -71,7 +71,7 @@
     %
     % Reads a term from the current input stream, or from Stream.
     % The string is the filename to use for the stream; this is used
-    % in constructing the term.contexts in the read term.
+    % in constructing the term_contexts in the read term.
     % This interface is used to support the `:- pragma source_file' directive.
     %
 :- pred read_term_filename(string::in,
@@ -159,6 +159,7 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -665,7 +666,7 @@ parse_backquoted_operator(MaybeQualifier, OpName, VariableTerms,
     ).
 
 :- pred parse_backquoted_operator_qualifier(
-    maybe(term(T))::in, maybe(term(T))::out, term.context::in, string::in,
+    maybe(term(T))::in, maybe(term(T))::out, term_context::in, string::in,
     string::out, token_list::in, token_list::out,
     parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det
     <= op_table(Ops).
@@ -928,7 +929,7 @@ conjunction_to_list(Term, ArgTerms) :-
         ArgTerms = [Term]
     ).
 
-:- pred parse_special_atom(string::in, term.context::in,
+:- pred parse_special_atom(string::in, term_context::in,
     parse_result(term(T))::out, token_list::in, token_list::out,
     parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det
     <= op_table(Ops).
@@ -1142,11 +1143,11 @@ check_priority(x, MaxPriority, Priority) :-
     Priority < MaxPriority.
 
 :- pred parser_get_term_context(parser_state(Ops, T)::in, token_context::in,
-    term.context::out) is det.
+    term_context::out) is det.
 
 parser_get_term_context(ParserState, TokenContext, TermContext) :-
     FileName = parser_state_get_stream_name(ParserState),
-    term.context_init(FileName, TokenContext, TermContext).
+    TermContext = term_context.context_init(FileName, TokenContext).
 
 %---------------------------------------------------------------------------%
 

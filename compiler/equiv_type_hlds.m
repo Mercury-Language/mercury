@@ -65,7 +65,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -1649,9 +1649,8 @@ replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
                 ),
                 unexpected($pred, "info not found")
             ),
-            polymorphism_make_type_info_var_mi(TypeInfoType,
-                term.context_init, TypeInfoVar, Goals0,
-                ModuleInfo0, ModuleInfo,
+            polymorphism_make_type_info_var_mi(TypeInfoType, dummy_context,
+                TypeInfoVar, Goals0, ModuleInfo0, ModuleInfo,
                 PredInfo1, PredInfo, ProcInfo0, ProcInfo),
             pred_info_get_typevarset(PredInfo, TVarSet),
             !Info ^ ethri_module_info := ModuleInfo,

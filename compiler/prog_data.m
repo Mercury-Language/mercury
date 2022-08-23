@@ -34,6 +34,7 @@
 :- import_module one_or_more.
 :- import_module set.
 :- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -1853,7 +1854,7 @@ best_purity(purity_impure, purity_impure) = purity_impure.
     ;       print_name_and_num
     ;       print_num_only.
 
-:- type prog_context == term.context.
+:- type prog_context == term_context.
 
 :- type trace_expr(Base)
     --->    trace_base(Base)

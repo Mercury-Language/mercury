@@ -167,6 +167,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module term_subst.
 :- import_module varset.
 
@@ -1347,7 +1348,7 @@ write_opt_file_initial(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
         get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
         some_type_needs_to_be_written(TypeCtorsDefns, no)
     then
-        ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, term.context_init,
+        ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, dummy_context,
             map.init, set.init, [], [], [], [], [], [], [], [], [], [], [], [],
             [], [], [], [], [], [], [], [], [])
     else
@@ -1395,7 +1396,7 @@ write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
             % instead), which is why we specify a dummy context.
             % However, these contexts are used only when the .opt file
             % is read in, not when it is being generated.
-            one_or_more_map.add(MN, term.dummy_context_init, UM0, UM)
+            one_or_more_map.add(MN, dummy_context, UM0, UM)
         ),
     list.foldl(AddToUseMap, UsedModuleNames, one_or_more_map.init, UseMap),
 
@@ -1491,7 +1492,7 @@ write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
     Promises = [],
 
     module_info_get_name(ModuleInfo, ModuleName),
-    ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, term.context_init,
+    ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, dummy_context,
         UseMap, FIMSpecsSet, TypeDefns, ForeignEnums,
         InstDefns, ModeDefns, TypeClasses, Instances,
         PredDecls, ModeDecls, Clauses, ForeignProcs, Promises,
@@ -1931,7 +1932,7 @@ intermod_gather_pred_valid_modes(PredOrFunc, PredSymName,
         varset.init(InstVarSet),
         HeadModeDecl = item_mode_decl_info(PredSymName, yes(PredOrFunc),
             ArgModes, MaybeWithInst, yes(Detism), InstVarSet,
-            term.dummy_context_init, item_no_seq_num),
+            dummy_context, item_no_seq_num),
         ModeDecls = [HeadModeDecl | TailModeDecls]
     else
         ModeDecls = TailModeDecls
@@ -2262,7 +2263,7 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
     ( if
         Goal = hlds_goal(unify(LHSVar, RHS, _, _, _), _),
         list.member(LHSVar, HeadVars),
-        term.context_init(Context),
+        Context = dummy_context,
         (
             RHS = rhs_var(RHSVar),
             RHSTerm = term.variable(RHSVar, Context)

@@ -210,15 +210,15 @@
 :- import_module list.
 :- import_module require.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module term_io.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 context_to_string(Context, ContextMessage) :-
-    term.context_file(Context, FileName),
-    term.context_line(Context, LineNumber),
+    FileName = term_context.context_file(Context),
+    LineNumber = term_context.context_line(Context),
     ( if FileName = "" then
         ContextMessage = ""
     else

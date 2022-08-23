@@ -129,7 +129,7 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module set_tree234.
-:- import_module term.
+:- import_module term_context.
 
 %----------------------------------------------------------------------------%
 
@@ -172,8 +172,8 @@ init_llds_out_info(ModuleName, SourceFileName, Globals,
 output_set_line_num(Stream, OutputLineNumbers, Context, !IO) :-
     (
         OutputLineNumbers = yes,
-        term.context_file(Context, File),
-        term.context_line(Context, Line),
+        File = term_context.context_file(Context),
+        Line = term_context.context_line(Context),
         c_util.always_set_line_num(Stream, File, Line, !IO)
     ;
         OutputLineNumbers = no

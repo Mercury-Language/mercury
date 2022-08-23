@@ -103,7 +103,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
 
 output_c_mlds(MLDS, Globals, TargetOrDump, Suffix, Succeeded, !IO) :-
     % We output the source file before we output the header.

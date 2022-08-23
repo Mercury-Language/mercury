@@ -63,7 +63,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -85,7 +85,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         CtorDefns = []
     ;
         CodeAddrs = [_, _ | _],
-        Context = term.context_init,
+        Context = dummy_context,
         IntType = mlds_builtin_type_int(int_type_int),
 
         % Create the member variable.
@@ -145,7 +145,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
     TypeParams = [],
 
     % Put it all together.
-    ClassContext = term.context_init,
+    ClassContext = dummy_context,
     ClassFlags = mlds_class_decl_flags(class_private, sealed, const),
     ClassDefn = mlds_class_defn(ClassName, 0, ClassContext, ClassFlags,
         mlds_class, ClassImports, ClassInherits, ClassImplements,
@@ -175,7 +175,7 @@ generate_call_method(Arity, CodeAddrs, MethodDefn) :-
     list.map(generate_call_statement_for_addr(InputArgs), CodeAddrs,
         CodeAddrStmts),
 
-    Context = term.context_init,
+    Context = dummy_context,
 
     % If there is more than one original method, then we need to switch
     % on the fvn_ptr_num member variable.
@@ -268,7 +268,7 @@ generate_call_statement_for_addr(InputArgs, CodeAddr, Stmt) :-
     ),
     ReturnLval = ml_local_var(ReturnVarName, ReturnVarType),
 
-    Context = term.context_init,
+    Context = dummy_context,
     GCStmt = gc_no_stmt,  % The Java back-end does its own GC.
     ReturnVarDefn = mlds_local_var_defn(ReturnVarName, Context,
         ReturnVarType, no_initializer, GCStmt),

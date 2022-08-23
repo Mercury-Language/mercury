@@ -96,6 +96,7 @@
 :- import_module set.
 :- import_module set_tree234.
 :- import_module term.
+:- import_module term_context.
 :- import_module term_subst.
 :- import_module unit.
 
@@ -1366,11 +1367,11 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst,
             % on either Var or on a variable aliased to Var.
             UnifyInfo0 = deconstruct(UnifyVar, _ConsId, _, _, _, _),
             term_subst.apply_rec_substitution_in_term(!.Subst,
-                term.variable(Var, term.context_init),
-                term.variable(SubstVar, term.context_init)),
+                term.variable(Var, dummy_context),
+                term.variable(SubstVar, dummy_context)),
             term_subst.apply_rec_substitution_in_term(!.Subst,
-                term.variable(UnifyVar, term.context_init),
-                term.variable(SubstUnifyVar, term.context_init)),
+                term.variable(UnifyVar, dummy_context),
+                term.variable(SubstUnifyVar, dummy_context)),
             SubstVar = SubstUnifyVar
         then
             ProcessUnify(Var, Goal0, Goals, !Result, !Info),

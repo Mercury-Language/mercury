@@ -114,6 +114,7 @@
 :- import_module integer.
 :- import_module require.
 :- import_module string.
+:- import_module term_context.
 :- import_module term_int.
 :- import_module term_subst.
 :- import_module version_array.
@@ -440,7 +441,7 @@ univ_to_term(Univ) = Term :-
     univ_to_term(Univ, Term).
 
 univ_to_term(Univ, Term) :-
-    context_init(Context),
+    Context = term_context.dummy_context,
     Type = univ_type(Univ),
     ( if construct.num_functors(Type) = _ then
         deconstruct(univ_value(Univ), canonicalize, FunctorString,

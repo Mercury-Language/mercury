@@ -90,6 +90,7 @@
 :- import_module one_or_more.
 :- import_module require.
 :- import_module set.
+:- import_module term_context.
 :- import_module term_int.
 :- import_module uint32.
 :- import_module unit.
@@ -196,7 +197,7 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         parse_type_defn_head(ContextPieces, ModuleName, VarSet, HeadTerm,
             MaybeTypeCtorAndArgs),
         MaybeSuperType0 = ok1(not_a_subtype),
-        SuperTypeContext = term.dummy_context_init
+        SuperTypeContext = dummy_context
     ),
     du_type_rhs_ctors_and_where_terms(BodyTerm, CtorsTerm, MaybeWhereTerm),
     parse_maybe_exist_quant_constructors(ModuleName, VarSet, CtorsTerm,

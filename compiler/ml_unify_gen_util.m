@@ -225,7 +225,7 @@
 :- import_module int.
 :- import_module pair.
 :- import_module require.
-:- import_module term.
+:- import_module term_context.
 :- import_module uint.
 :- import_module uint8.
 :- import_module varset.
@@ -318,7 +318,7 @@ allocate_consecutive_full_word_ctor_arg_repns_boxed(CurOffset,
         [Var | Vars], [VarArgRepn | VarArgRepns]) :-
     Type = ml_make_boxed_type,
     ArgPosWidth = apw_full(arg_only_offset(CurOffset), cell_offset(CurOffset)),
-    ArgRepn = ctor_arg_repn(no, Type, ArgPosWidth, term.context_init),
+    ArgRepn = ctor_arg_repn(no, Type, ArgPosWidth, dummy_context),
     VarArgRepn = Var - ArgRepn,
     allocate_consecutive_full_word_ctor_arg_repns_boxed(CurOffset + 1,
         Vars, VarArgRepns).
@@ -332,7 +332,7 @@ allocate_consecutive_full_word_ctor_arg_repns_lookup(Info, CurOffset,
         [Var | Vars], [VarArgRepn | VarArgRepns]) :-
     ml_variable_type_direct(Info, Var, Type),
     ArgPosWidth = apw_full(arg_only_offset(CurOffset), cell_offset(CurOffset)),
-    ArgRepn = ctor_arg_repn(no, Type, ArgPosWidth, term.context_init),
+    ArgRepn = ctor_arg_repn(no, Type, ArgPosWidth, dummy_context),
     VarArgRepn = Var - ArgRepn,
     allocate_consecutive_full_word_ctor_arg_repns_lookup(Info, CurOffset + 1,
         Vars, VarArgRepns).

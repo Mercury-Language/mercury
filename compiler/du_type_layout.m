@@ -139,7 +139,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module uint.
 :- import_module uint32.
 :- import_module uint8.
@@ -1907,8 +1907,9 @@ decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
         DirectArgPieces = [words("Error:"), qual_type_ctor(TypeCtor),
             words("has both a"), pragma_decl("foreign_enum"),
             words("declaration and a direct_arg specification."), nl],
+        % XXX Should have a non-dummy context.
         DirectArgSpec = simplest_spec($pred, severity_error, phase_type_check,
-            term.context_init, DirectArgPieces),
+            dummy_context, DirectArgPieces),
         !:Specs = [DirectArgSpec | !.Specs]
     else
         true
@@ -1920,8 +1921,9 @@ decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
         NonEnumArgPieces = [words("Error:"), qual_type_ctor(TypeCtor),
             words("has a"), pragma_decl("foreign_enum"), words("declaration,"),
             words("but it has function symbols whose arity is not zero."), nl],
+        % XXX Should have the foreign_enum's context.
         NonEnumArgSpec = simplest_spec($pred, severity_error, phase_type_check,
-            term.context_init, NonEnumArgPieces),
+            dummy_context, NonEnumArgPieces),
         !:Specs = [NonEnumArgSpec | !.Specs]
     ),
     list.map_foldl(add_repn_to_foreign_enum_ctor(TypeCtor, ForeignEnumTagMap),
@@ -1999,7 +2001,7 @@ decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
             qual_type_ctor(TypeCtor), words("have arity zero,"),
             words("yet it has a direct_arg specification."), nl],
         Spec = simplest_spec($pred, severity_error, phase_type_check,
-            term.context_init, Pieces),
+            dummy_context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -2075,7 +2077,7 @@ decide_simple_type_notag(_ModuleInfo, Params, TypeCtor, TypeDefn0, BodyDu0,
             words("is a no_tag type,"),
             words("yet it has a direct_arg specification."), nl],
         Spec = simplest_spec($pred, severity_error, phase_type_check,
-            term.context_init, Pieces),
+            dummy_context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -2156,7 +2158,7 @@ add_foreign_if_word_aligned_ptr(ModuleInfo, Params, TypeCtor,
             words("has a foreign language representation on this backend,"),
             words("but it also has a direct_arg specification."), nl],
         DirectArgSpec = simplest_spec($pred, severity_error, phase_type_check,
-            term.context_init, DirectArgPieces),
+            dummy_context, DirectArgPieces),
         !:Specs = [DirectArgSpec | !.Specs]
     else
         true

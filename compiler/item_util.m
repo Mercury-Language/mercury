@@ -320,7 +320,7 @@
 :- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
-:- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -872,7 +872,7 @@ import_and_or_use_map_to_item_avails_acc(IncludeImplicit,
     list(item_avail)::out, list(item_avail)::out) is det.
 
 get_implicit_avails(ModuleName, Implicit, IntAvails, ImpAvails) :-
-    term.context_init("implicit", -1, Context),
+    Context = term_context.context_init("implicit", -1),
     SN = item_no_seq_num,
     (
         Implicit = implicit_int_import,
@@ -1020,7 +1020,7 @@ import_and_or_use_map_to_module_name_contexts_acc(ModuleName, ImportAndOrUse,
         )
     ;
         ImportAndOrUse = implicit_avail(Implicit, MaybeExplicit),
-        term.context_init("implicit", -1, ImplicitContext),
+        ImplicitContext = term_context.context_init("implicit", -1),
         (
             MaybeExplicit = no,
             (
@@ -1174,19 +1174,19 @@ fim_item_to_spec(FIM) = FIMSpec :-
 
 fim_spec_to_item(FIMSpec) = FIM :-
     FIMSpec = fim_spec(Lang, ModuleName),
-    FIM = item_fim(Lang, ModuleName, term.dummy_context_init, item_no_seq_num).
+    FIM = item_fim(Lang, ModuleName, dummy_context, item_no_seq_num).
 
 fim_module_lang_to_spec(ModuleName, Lang) = fim_spec(Lang, ModuleName).
 
 fim_module_lang_to_item(ModuleName, Lang) =
-    item_fim(Lang, ModuleName, term.dummy_context_init, item_no_seq_num).
+    item_fim(Lang, ModuleName, dummy_context, item_no_seq_num).
 
 add_implicit_fim_for_module(ModuleName, Lang, !Map) :-
     FIMSpec = fim_spec(Lang, ModuleName),
     ( if map.search(!.Map, FIMSpec, _) then
         true
     else
-        map.det_insert(FIMSpec, term.dummy_context_init, !Map)
+        map.det_insert(FIMSpec, dummy_context, !Map)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1604,23 +1604,21 @@ maybe_to_list(yes(X)) = [X].
 %---------------------------------------------------------------------------%
 
 wrap_include(ModuleName) = Include :-
-    Include = item_include(ModuleName, term.context_init, item_no_seq_num).
+    Include = item_include(ModuleName, dummy_context, item_no_seq_num).
 
 wrap_import_avail(ModuleName) = Avail :-
-    ImportInfo = avail_import_info(ModuleName, term.context_init,
-        item_no_seq_num),
+    ImportInfo = avail_import_info(ModuleName, dummy_context, item_no_seq_num),
     Avail = avail_import(ImportInfo).
 
 wrap_use_avail(ModuleName) = Avail :-
-    UseInfo = avail_use_info(ModuleName, term.context_init, item_no_seq_num),
+    UseInfo = avail_use_info(ModuleName, dummy_context, item_no_seq_num),
     Avail = avail_use(UseInfo).
 
 wrap_import(ModuleName) = ImportInfo :-
-    ImportInfo = avail_import_info(ModuleName, term.context_init,
-        item_no_seq_num).
+    ImportInfo = avail_import_info(ModuleName, dummy_context, item_no_seq_num).
 
 wrap_use(ModuleName) = UseInfo :-
-    UseInfo = avail_use_info(ModuleName, term.context_init, item_no_seq_num).
+    UseInfo = avail_use_info(ModuleName, dummy_context, item_no_seq_num).
 
 wrap_avail_import(AvailImportInfo) = avail_import(AvailImportInfo).
 wrap_avail_use(AvailUseInfo) = avail_use(AvailUseInfo).
@@ -1742,7 +1740,7 @@ wrap_marker_pragma_item(X) = Item :-
     ).
 
 wrap_dummy_pragma_item(T) =
-    item_pragma_info(T, term.context_init, item_no_seq_num).
+    item_pragma_info(T, dummy_context, item_no_seq_num).
 
 %---------------------------------------------------------------------------%
 

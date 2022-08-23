@@ -71,7 +71,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -321,11 +321,11 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
 
         trace [compile_time(flag("type_error_diagnosis")), io(!IO)]
         (
-            LineNumber = string.int_to_string(term.context_line(Context)),
-            FileName = term.context_file(Context),
-            PredNumber = int_to_string(pred_id_to_int(PredId)),
-            io.write_string("=== Predicate " ++ PredNumber ++ " [" ++
-                FileName ++ ": " ++ LineNumber ++ "] ===\n", !IO)
+            PredNumber = pred_id_to_int(PredId),
+            FileName = term_context.context_file(Context),
+            LineNumber = term_context.context_line(Context),
+            io.format("=== Predicate %d [%s: %d] ===\n",
+                [i(PredNumber), s(FileName), i(LineNumber)], !IO)
         ),
 
         % Create a set of constraints on the types of the head variables.
@@ -433,17 +433,16 @@ apply_pred_data_to_goal(ForwardGoalPathMap, GoalId - PredId, !Goal) :-
 
 set_goal_pred_id(PredId, Goal0, MaybeGoal) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
-    ( if GoalExpr0 = plain_call(_, _, _, _, _, _) then
+    ( if GoalExpr0 = plain_call(_, _, _, _, _, CallSymName) then
         trace [compile_time(flag("type_error_diagnosis")), io(!IO)]
         (
             Context = goal_info_get_context(GoalInfo),
-            LineNumber = term.context_line(Context),
-            FileName = term.context_file(Context),
-            PredName = sym_name_to_string(GoalExpr0 ^ call_sym_name),
-            io.format("  Predicate %s PredName (%s:%d) has id %d\n",
-                [s(PredName), s(FileName), i(LineNumber),
-                    i(pred_id_to_int(PredId))],
-                !IO)
+            PredName = sym_name_to_string(CallSymName),
+            FileName = term_context.context_file(Context),
+            LineNumber = term_context.context_line(Context),
+            PredIdInt = pred_id_to_int(PredId),
+            io.format("  Predicate %s (%s:%d) has id %d\n",
+                [s(PredName), s(FileName), i(LineNumber), i(PredIdInt)], !IO)
         ),
         GoalExpr = GoalExpr0 ^ call_pred_id := PredId,
         Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -2073,8 +2072,8 @@ ambig_pred_error_message(PredEnv, (_ - PredId), Component) :-
     Name = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
     pred_info_get_context(PredInfo, Context),
-    LineNumber = term.context_line(Context),
-    FileName = term.context_file(Context),
+    LineNumber = term_context.context_line(Context),
+    FileName = term_context.context_file(Context),
     Pieces = [fixed(Name), suffix("/"), suffix(int_to_string(Arity)),
         prefix("("), words(FileName), suffix(": "), int_fixed(LineNumber),
         suffix(")"), nl],
@@ -2192,8 +2191,8 @@ add_message_to_spec(ErrMsg, !TCInfo) :-
 :- pred bracket_context_to_string(prog_context::in, string::out) is det.
 
 bracket_context_to_string(Context, String) :-
-    FileName = term.context_file(Context),
-    LineNumber = string.int_to_string(term.context_line(Context)),
+    FileName = term_context.context_file(Context),
+    LineNumber = string.int_to_string(term_context.context_line(Context)),
     String = "[" ++ FileName ++ ": " ++ LineNumber ++ "]".
 
 :- pred conj_constraint_get_context(conj_type_constraint::in,
@@ -2386,16 +2385,16 @@ constraint_to_string(Indent, TVarSet, ConstraintMap, ConstraintId, String) :-
     conj_type_constraint::in, string::out) is det.
 
 conj_constraint_to_string(Indent, TVarSet, Constraint, String) :-
-    Constraint = ctconstr(SimpleConstraints, _,  Context, _, PredId),
+    Constraint = ctconstr(SimpleConstraints, _,  Context, _, MaybePredId),
     IndentString = duplicate_char(' ', Indent),
-    LineNumber = string.int_to_string(term.context_line(Context)),
-    FileName = term.context_file(Context),
+    FileName = term_context.context_file(Context),
+    LineNumber = string.int_to_string(term_context.context_line(Context)),
     (
-        PredId = yes(Id),
+        MaybePredId = yes(MaybeId),
         PredString = " (calling predicate " ++
-            int_to_string(pred_id_to_int(Id)) ++ ")"
+            int_to_string(pred_id_to_int(MaybeId)) ++ ")"
     ;
-        PredId = no,
+        MaybePredId = no,
         PredString = ""
     ),
     ContextString = IndentString ++ "[" ++ FileName ++ ": " ++ LineNumber

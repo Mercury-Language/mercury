@@ -119,7 +119,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %-----------------------------------------------------------------------------%
 
@@ -803,8 +803,8 @@ output_foreign_literal_or_include(Stream, MaybeSetLineNumbers,
         Res, !IO) :-
     (
         LiteralOrInclude = floi_literal(Code),
-        term.context_file(Context, File),
-        term.context_line(Context, Line),
+        File = term_context.context_file(Context),
+        Line = term_context.context_line(Context),
         c_util.maybe_set_line_num(Stream, MaybeSetLineNumbers, File, Line,
             !IO),
         io.write_string(Stream, Code, !IO),
@@ -958,8 +958,8 @@ output_exported_c_enum(Stream, MaybeSetLineNumbers, MaybeThisFileName,
     list.foldl(foreign_const_name_and_tag(NameMapping),
         CtorRepns, cord.init, ForeignNamesAndTagsCord),
     ForeignNamesAndTags = cord.list(ForeignNamesAndTagsCord),
-    term.context_file(Context, File),
-    term.context_line(Context, Line),
+    File = term_context.context_file(Context),
+    Line = term_context.context_line(Context),
     c_util.maybe_set_line_num(Stream, MaybeSetLineNumbers, File, Line, !IO),
     output_exported_enum_constname_tags(Stream, ForeignNamesAndTags, !IO),
     c_util.maybe_reset_line_num(Stream, MaybeSetLineNumbers,

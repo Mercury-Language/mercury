@@ -176,7 +176,7 @@
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -3115,7 +3115,7 @@ allocate_future(ModuleInfo, SharedVar, Goals, !VarTable,
     PredName = new_future_pred_name,
     Features = [],
     InstMapDelta = instmap_delta_bind_var(FutureVar),
-    Context = term.context_init,
+    Context = dummy_context,
     ShouldInline = should_inline_par_builtin_calls(ModuleInfo),
     (
         ShouldInline = do_not_inline_par_builtins,
@@ -3220,7 +3220,7 @@ make_wait_or_get(ModuleInfo, VarTable, FutureVar, ConsumedVar, WaitOrGetPred,
     ),
     Features = [],
     InstMapDelta = instmap_delta_bind_var(ConsumedVar),
-    Context = term.context_init,
+    Context = dummy_context,
     ShouldInline = should_inline_par_builtin_calls(ModuleInfo),
     (
         ShouldInline = do_not_inline_par_builtins,
@@ -3256,7 +3256,7 @@ make_signal_goal(ModuleInfo, VarTable, FutureMap, ProducedVar, SignalGoal) :-
     PredName = signal_future_pred_name,
     Features = [],
     InstMapDelta = instmap_delta_bind_no_var,
-    Context = term.context_init,
+    Context = dummy_context,
     ShouldInline = should_inline_par_builtin_calls(ModuleInfo),
     (
         ShouldInline = do_not_inline_par_builtins,

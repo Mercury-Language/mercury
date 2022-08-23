@@ -319,6 +319,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -1232,7 +1233,7 @@ make_copy_goal(FromVar, ToVar, CopyGoal) :-
     % make_copy_goal.
 
     create_pure_atomic_complicated_unification(ToVar, rhs_var(FromVar),
-        term.context_init, umc_implicit("state variable"), [], CopyGoal0),
+        dummy_context, umc_implicit("state variable"), [], CopyGoal0),
     goal_add_features([feature_dont_warn_singleton, feature_state_var_copy],
         CopyGoal0, CopyGoal).
 

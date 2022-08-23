@@ -237,7 +237,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %-----------------------------------------------------------------------------%
 
@@ -587,7 +587,7 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
             GoalContext, CallTryGoal, !PredInfo, !ProcInfo, !ModuleInfo),
 
         create_pure_atomic_complicated_unification(GoalFinalIOVar,
-            rhs_var(TryIOOutputVar), term.context_init,
+            rhs_var(TryIOOutputVar), dummy_context,
             umc_implicit("try_expand"), [], UnifyThenInitialIOVar),
         conjoin_goals(UnifyThenInitialIOVar, Then1, Then),
 
@@ -854,7 +854,7 @@ make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
         set_of_var.to_sorted_list(NonLocals), LambdaParamsModes,
         LambdaDetism, LambdaBody),
     create_pure_atomic_complicated_unification(LambdaVar, RHS,
-        term.context_init, umc_implicit("try_expand"), [],
+        dummy_context, umc_implicit("try_expand"), [],
         AssignLambdaVarGoal0),
     goal_add_feature(feature_lambda_from_try,
         AssignLambdaVarGoal0, AssignLambdaVarGoal).
@@ -917,7 +917,7 @@ make_unreachable_call(ModuleInfo, Goal) :-
     generate_plain_call(ModuleInfo, pf_predicate,
         mercury_exception_module, "unreachable",
         [], [], instmap_delta_bind_no_var, only_mode,
-        detism_erroneous, purity_pure, [], term.context_init, Goal).
+        detism_erroneous, purity_pure, [], dummy_context, Goal).
 
 :- pred make_output_tuple_inst_cast(prog_var::in, prog_var::in,
     list(mer_inst)::in, hlds_goal::out) is det.
@@ -934,10 +934,10 @@ make_output_tuple_inst_cast(TmpTupleVar, TupleVar, TupleArgInsts,
             bound_functor(tuple_cons(TupleArity), TupleArgInsts)
         ]),
         generate_cast_with_insts(unsafe_type_inst_cast, TmpTupleVar, TupleVar,
-            ground_inst, TupleInst, term.context_init, CastOrUnify)
+            ground_inst, TupleInst, dummy_context, CastOrUnify)
     else
         create_pure_atomic_complicated_unification(TupleVar,
-            rhs_var(TmpTupleVar), term.context_init,
+            rhs_var(TmpTupleVar), dummy_context,
             umc_implicit("try_expand"), [], CastOrUnify)
     ).
 

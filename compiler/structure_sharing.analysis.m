@@ -103,6 +103,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module term_conversion.
 
 %---------------------------------------------------------------------------%
@@ -966,7 +967,7 @@ analysis_name = "structure_sharing".
 
 :- instance to_term(structure_sharing_call) where [
     ( to_term(structure_sharing_call) = Term :-
-        Term = term.functor(atom("any"), [], context_init)
+        Term = term.functor(atom("any"), [], dummy_context)
     ),
     ( from_term(Term, structure_sharing_call) :-
         Term = term.functor(atom("any"), [], _)
@@ -1031,17 +1032,17 @@ analysis_name = "structure_sharing".
 sharing_answer_to_term(Answer) = Term :-
     (
         Answer = structure_sharing_answer_bottom,
-        Term = term.functor(atom("b"), [], context_init)
+        Term = term.functor(atom("b"), [], dummy_context)
     ;
         Answer = structure_sharing_answer_top,
-        Term = term.functor(atom("t"), [], context_init)
+        Term = term.functor(atom("t"), [], dummy_context)
     ;
         Answer = structure_sharing_answer_real(HeadVars, Types, SharingPairs),
         type_to_term(HeadVars, HeadVarsTerm),
         type_to_term(Types, TypesTerm),
         type_to_term(SharingPairs, SharingPairsTerm),
         Term = term.functor(atom("sharing"),
-            [HeadVarsTerm, TypesTerm, SharingPairsTerm], context_init)
+            [HeadVarsTerm, TypesTerm, SharingPairsTerm], dummy_context)
     ).
 
 :- pred sharing_answer_from_term(term::in, structure_sharing_answer::out)

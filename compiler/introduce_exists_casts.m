@@ -57,7 +57,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %-----------------------------------------------------------------------------%
 
@@ -215,9 +215,8 @@ introduce_exists_casts_for_arg(ModuleInfo, Subn, ExternalType, ArgMode,
         make_new_exist_cast_var(ModuleInfo, HeadVar0, InternalType,
             ExternalType, HeadVar, !VarTable),
         mode_get_insts(ModuleInfo, ArgMode, _, Inst),
-        term.context_init(Context),
         generate_cast_with_insts(exists_cast, HeadVar0, HeadVar, Inst, Inst,
-            Context, ExtraGoal),
+            dummy_context, ExtraGoal),
         !:ExtraGoals = [ExtraGoal | !.ExtraGoals]
     ).
 
@@ -243,8 +242,7 @@ introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
         % Create the exists_cast goal.
 
         clone_new_exist_cast_var(Var0, Var, !VarTable),
-        term.context_init(Context),
-        generate_cast(exists_cast, Var0, Var, Context, ExtraGoal),
+        generate_cast(exists_cast, Var0, Var, dummy_context, ExtraGoal),
         !:ExtraGoals = [ExtraGoal | !.ExtraGoals],
 
         % Update the rtti_varmaps. The old variable needs to have the

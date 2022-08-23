@@ -267,6 +267,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module string.
+:- import_module term_context.
 :- import_module term_io.
 :- import_module term_subst.
 :- import_module varset.
@@ -460,8 +461,8 @@ start_in_message_to_pieces(First, !Pieces) :-
 %---------------------------------------------------------------------------%
 
 maybe_output_context_comment(Stream, Indent, Suffix, Context, !IO) :-
-    term.context_file(Context, FileName),
-    term.context_line(Context, LineNumber),
+    FileName = term_context.context_file(Context),
+    LineNumber = term_context.context_line(Context),
     ( if FileName = "" then
         true
     else
@@ -471,8 +472,8 @@ maybe_output_context_comment(Stream, Indent, Suffix, Context, !IO) :-
     ).
 
 context_to_brief_string(Context) = Str :-
-    term.context_file(Context, FileName),
-    term.context_line(Context, LineNumber),
+    FileName = term_context.context_file(Context),
+    LineNumber = term_context.context_line(Context),
     ( if FileName = "" then
         Str = "dummy context"
     else
@@ -611,9 +612,8 @@ functor_to_string(VarNameSrc, VarNamePrint, Functor, ArgVars)  =
 
 functor_to_string_maybe_needs_quotes(VarNameSrc, VarNamePrint,
         NextToGraphicToken, Functor, ArgVars) = Str :-
-    term.context_init(Context),
     term_subst.var_list_to_term_list(ArgVars, ArgTerms),
-    Term = term.functor(Functor, ArgTerms, Context),
+    Term = term.functor(Functor, ArgTerms, dummy_context),
     Str = mercury_term_nq_to_string_src(VarNameSrc, VarNamePrint,
         NextToGraphicToken, Term).
 
@@ -627,8 +627,7 @@ qualified_functor_to_string(VarNameSrc, VarNamePrint, ModuleName, Functor,
 qualified_functor_with_term_args_to_string(VarNameSrc, VarNamePrint,
         ModuleName, Functor, ArgTerms) = Str :-
     ModuleNameStr = mercury_bracketed_sym_name_to_string(ModuleName),
-    term.context_init(Context),
-    Term = term.functor(Functor, ArgTerms, Context),
+    Term = term.functor(Functor, ArgTerms, dummy_context),
     TermStr = mercury_term_nq_to_string_src(VarNameSrc, VarNamePrint,
         next_to_graphic_token, Term),
     Str = ModuleNameStr ++ "." ++ TermStr.

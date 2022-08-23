@@ -106,7 +106,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -843,9 +843,9 @@ make_decl_guards(ModuleName, StartGuard, EndGuard) :-
     Start = "#ifndef " ++ Define ++ "\n#define " ++ Define ++ "\n",
     End = "\n#endif",
     StartGuard = foreign_decl_code(lang_c, foreign_decl_is_exported,
-        floi_literal(Start), term.context_init),
+        floi_literal(Start), dummy_context),
     EndGuard = foreign_decl_code(lang_c, foreign_decl_is_exported,
-        floi_literal(End), term.context_init).
+        floi_literal(End), dummy_context).
 
 :- pred make_foreign_import_header_code(globals::in, fim_spec::in,
     foreign_decl_code::out, io::di, io::uo) is det.
@@ -858,7 +858,7 @@ make_foreign_import_header_code(Globals, FIMSpec, Include, !IO) :-
             ext_other(other_ext(".mh")), ModuleName, HeaderFileName, !IO),
         IncludeString = "#include """ ++ HeaderFileName ++ """\n",
         Include = foreign_decl_code(lang_c, foreign_decl_is_exported,
-            floi_literal(IncludeString), term.context_init)
+            floi_literal(IncludeString), dummy_context)
     ;
         Lang = lang_csharp,
         sorry($pred, ":- import_module not yet implemented: " ++

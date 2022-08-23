@@ -225,7 +225,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 
-:- import_module term.
+:- import_module term_context.
 
 %-----------------------------------------------------------------------------%
 
@@ -343,7 +343,7 @@ typecheck_info_init(ModuleInfo, PredId, PredInfo, ClauseVarSet, Status,
         has_no_rhs_lambda, DebugInfo),
     ClauseNum = 0,
     ClauseContext = type_error_clause_context(ModuleInfo, PredId,
-        PredMarkers, ClauseNum, term.context_init, ClauseVarSet),
+        PredMarkers, ClauseNum, dummy_context, ClauseVarSet),
     map.init(OverloadedSymbolMap),
     globals.lookup_int_option(Globals, typecheck_ambiguity_error_limit,
         AmbiguityErrorLimit),

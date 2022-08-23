@@ -115,7 +115,7 @@
 :- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
-:- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -517,8 +517,7 @@ collect_type_defn_for_tuple(TypeCtor, Type, TVarSet, TypeBody, Context) :-
         MaybeCanonical, yes(Repn), IsForeign),
     TypeBody = hlds_du_type(TypeBodyDu),
     construct_type(TypeCtor, TupleArgTypes, Type),
-
-    term.context_init(Context).
+    Context = dummy_context.
 
 :- pred make_tuple_args_and_repns(prog_context::in, list(mer_type)::in,
     list(constructor_arg)::out, list(constructor_arg_repn)::out) is det.

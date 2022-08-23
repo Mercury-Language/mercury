@@ -77,7 +77,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -530,15 +530,12 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
         not goal_info_has_feature(GoalInfo, feature_will_not_call_mm_tabled)
     then
         Context = goal_info_get_context(GoalInfo),
-        term.context_file(Context, File),
-        term.context_line(Context, Line),
-        ( if
-            File \= "",
-            Line > 0
-        then
-            CtxtStr = "\"" ++ File ++ ":" ++ int_to_string(Line) ++ "\""
-        else
+        ( if is_dummy_context(Context) then
             CtxtStr = "NULL"
+        else
+            File = term_context.context_file(Context),
+            Line = term_context.context_line(Context),
+            CtxtStr = "\"" ++ File ++ ":" ++ int_to_string(Line) ++ "\""
         ),
 
         PNegCondComponents = [

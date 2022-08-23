@@ -127,7 +127,7 @@
 :- import_module mercury_term_parser.
 :- import_module require.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module term_int.
 :- import_module term_io.
 :- import_module type_desc.
@@ -1044,7 +1044,7 @@ unpickle_analysis_result(Compiler, Unpicklers, Handle, _Type, Univ, !State) :-
 ].
 :- instance to_term(dummy_answer) where [
     ( to_term(dummy_answer) = Term :-
-        Term = term.functor(atom("dummy"), [], context_init)
+        Term = term.functor(atom("dummy"), [], dummy_context)
     ),
     ( from_term(Term, dummy_answer) :-
         Term = term.functor(atom("dummy"), [], _)

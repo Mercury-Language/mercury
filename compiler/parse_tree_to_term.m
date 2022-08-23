@@ -52,6 +52,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module term_context.
 :- import_module term_int.
 
 %---------------------------------------------------------------------------%
@@ -64,7 +65,7 @@ make_atom(Context, Name) =
 %---------------------------------------------------------------------------%
 
 unparse_type(Type, Term) :-
-    Context = term.context_init,
+    Context = dummy_context,
     (
         Type = type_variable(TVar, _),
         Var = term.coerce_var(TVar),
@@ -126,11 +127,10 @@ unparse_type_list(Types, Terms) :-
 :- pred unparse_qualified_term(sym_name::in, list(term)::in, term::out) is det.
 
 unparse_qualified_term(unqualified(Name), Args, Term) :-
-    Context = term.context_init,
-    Term = term.functor(term.atom(Name), Args, Context).
+    Term = term.functor(term.atom(Name), Args, dummy_context).
 unparse_qualified_term(qualified(Qualifier, Name), Args, Term) :-
-    Context = term.context_init,
     unparse_qualified_term(Qualifier, [], QualTerm),
+    Context = dummy_context,
     Term0 = term.functor(term.atom(Name), Args, Context),
     Term = term.functor(term.atom("."), [QualTerm, Term0], Context).
 
@@ -143,7 +143,7 @@ combine_type_and_mode_terms([], [_ | _], _) :-
 combine_type_and_mode_terms([_ | _], [], _) :-
     unexpected($pred, "argument length mismatch").
 combine_type_and_mode_terms([Type | Types], [Mode | Modes], [Term | Terms]) :-
-    Term = term.functor(term.atom("::"), [Type, Mode], term.context_init),
+    Term = term.functor(term.atom("::"), [Type, Mode], dummy_context),
     combine_type_and_mode_terms(Types, Modes, Terms).
 
 :- pred maybe_add_lambda_eval_method(lambda_eval_method::in, term::in,
@@ -155,17 +155,15 @@ maybe_add_lambda_eval_method(lambda_normal, Term, Term).
 
 maybe_add_purity_annotation(purity_pure, Term, Term).
 maybe_add_purity_annotation(purity_semipure, Term0, Term) :-
-    Context = term.context_init,
-    Term = term.functor(term.atom("semipure"), [Term0], Context).
+    Term = term.functor(term.atom("semipure"), [Term0], dummy_context).
 maybe_add_purity_annotation(purity_impure, Term0, Term) :-
-    Context = term.context_init,
-    Term = term.functor(term.atom("impure"), [Term0], Context).
+    Term = term.functor(term.atom("impure"), [Term0], dummy_context).
 
 :- pred maybe_add_detism(ho_inst_info::in, term::in, term::out) is det.
 
 maybe_add_detism(none_or_default_func, Term, Term).
 maybe_add_detism(higher_order(pred_inst_info(_, _, _, Detism)), Term0, Term) :-
-    Context = term.context_init,
+    Context = dummy_context,
     DetismTerm0 = det_to_term(Context, Detism),
     term.coerce(DetismTerm0, DetismTerm),
     Term = term.functor(term.atom("is"), [Term0, DetismTerm], Context).
@@ -181,7 +179,7 @@ unparse_mode_list([Mode | Modes], [Term | Terms]) :-
     unparse_mode_list(Modes, Terms).
 
 mode_to_term(Lang, Mode) =
-    mode_to_term_with_context(Lang, term.context_init, Mode).
+    mode_to_term_with_context(Lang, dummy_context, Mode).
 
 mode_to_term_with_context(Lang, Context, Mode) = Term :-
     (
@@ -207,7 +205,7 @@ mode_to_term_with_context(Lang, Context, Mode) = Term :-
     ).
 
 inst_to_term(Lang, Inst) =
-    inst_to_term_with_context(Lang, term.context_init, Inst).
+    inst_to_term_with_context(Lang, dummy_context, Inst).
 
 :- func inst_to_term_with_context(output_lang, prog_context, mer_inst)
     = prog_term.
@@ -257,12 +255,12 @@ inst_to_term_with_context(Lang, Context, Inst) = Term :-
         )
     ;
         Inst = inst_var(Var),
-        Term = term.coerce(term.variable(Var, context_init))
+        Term = term.coerce(term.variable(Var, dummy_context))
     ;
         Inst = constrained_inst_vars(Vars, SubInst),
         Term = set.fold(func(Var, VarTerm) =
                 term.functor(term.atom("=<"),
-                    [term.coerce(term.variable(Var, context_init)), VarTerm],
+                    [term.coerce(term.variable(Var, dummy_context)), VarTerm],
                     Context),
             Vars, inst_to_term_with_context(Lang, Context, SubInst))
     ;
@@ -280,7 +278,7 @@ inst_to_term_with_context(Lang, Context, Inst) = Term :-
 %---------------------------------------------------------------------------%
 
 inst_name_to_term(Lang, InstName) =
-    inst_name_to_term_with_context(Lang, term.context_init, InstName).
+    inst_name_to_term_with_context(Lang, dummy_context, InstName).
 
 :- func inst_name_to_term_with_context(output_lang, prog_context, inst_name)
     = prog_term.
@@ -641,6 +639,7 @@ bound_insts_to_term_2(Lang, Context, BoundInst, BoundInsts) = Term :-
     prog_term::out) is det.
 
 cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
+    Context = dummy_context,
     (
         ConsId = cons(SymName, _Arity, _TypeCtor),
         construct_qualified_term(SymName, ArgTerms, Term)
@@ -650,20 +649,16 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         construct_qualified_term(SymName, ArgTerms, Term)
     ;
         ConsId = closure_cons(_, _),
-        term.context_init(Context),
         FunctorName = "closure_cons",
         Term = term.functor(term.string(FunctorName), [], Context)
     ;
         ConsId = some_int_const(IntConst),
-        term.context_init(Context),
         Term = int_const_to_decimal_term(IntConst, Context)
     ;
         ConsId = float_const(Float),
-        term.context_init(Context),
         Term = term.functor(term.float(Float), [], Context)
     ;
         ConsId = string_const(String),
-        term.context_init(Context),
         Term = term.functor(term.string(String), [], Context)
     ;
         ConsId = char_const(Char),
@@ -671,45 +666,38 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         construct_qualified_term(SymName, [], Term)
     ;
         ConsId = impl_defined_const(IDCKind),
-        term.context_init(Context),
         FunctorName = "ImplDefinedConst: " ++
             impl_defined_const_kind_to_str(IDCKind),
         Term = term.functor(term.string(FunctorName), [], Context)
     ;
         ConsId = type_ctor_info_const(ModuleName, TypeCtorName, Arity),
-        term.context_init(Context),
         string.format("TypeCtorInfo for %s.%s/%d",
             [s(sym_name_to_string(ModuleName)), s(TypeCtorName), i(Arity)],
             FunctorName),
         Term = term.functor(term.string(FunctorName), [], Context)
     ;
         ConsId = base_typeclass_info_const(_, _, _, _),
-        term.context_init(Context),
         FunctorName = "base_typeclass_info_const",
         Term = term.functor(term.string(FunctorName), [], Context)
     ;
         ConsId = type_info_cell_constructor(TypeCtor),
         TypeCtor = type_ctor(TypeCtorName, Arity),
-        term.context_init(Context),
         string.format("type_info_cell_constructor for %s/%d",
             [s(sym_name_to_string(TypeCtorName)), i(Arity)], FunctorName),
         Term = term.functor(term.string(FunctorName), [], Context)
     ;
         ConsId = typeclass_info_cell_constructor,
-        term.context_init(Context),
         FunctorName = "typeclass_info_cell_constructor",
         Term = term.functor(term.string(FunctorName), [], Context)
     ;
         ConsId = type_info_const(TIConstNum),
         expect(unify(ArgTerms, []), $pred, "type_info_const arity != 0"),
-        term.context_init(Context),
         FunctorName = "type_info_const",
         Arg = term_int.int_to_decimal_term(TIConstNum, Context),
         Term = term.functor(term.string(FunctorName), [Arg], Context)
     ;
         ConsId = typeclass_info_const(TCIConstNum),
         expect(unify(ArgTerms, []), $pred, "typeclass_info_const arity != 0"),
-        term.context_init(Context),
         FunctorName = "typeclass_info_const",
         Arg = term_int.int_to_decimal_term(TCIConstNum, Context),
         Term = term.functor(term.string(FunctorName), [Arg], Context)
@@ -717,24 +705,20 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         ConsId = ground_term_const(TCIConstNum, SubConsId),
         expect(unify(ArgTerms, []), $pred, "ground_term_const arity != 0"),
         cons_id_and_args_to_term_full(SubConsId, [], SubArg),
-        term.context_init(Context),
         FunctorName = "ground_term_const",
         NumArg = term_int.int_to_decimal_term(TCIConstNum, Context),
         Term = term.functor(term.string(FunctorName), [NumArg, SubArg],
             Context)
     ;
         ConsId = tabling_info_const(_),
-        term.context_init(Context),
         FunctorName = "tabling_info_const",
         Term = term.functor(term.string(FunctorName), [], Context)
     ;
         ConsId = table_io_entry_desc(_),
-        term.context_init(Context),
         FunctorName = "table_io_entry_desc",
         Term = term.functor(term.string(FunctorName), [], Context)
     ;
         ConsId = deep_profiling_proc_layout(_),
-        term.context_init(Context),
         FunctorName = "deep_profiling_proc_layout",
         Term = term.functor(term.string(FunctorName), [], Context)
     ).

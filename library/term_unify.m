@@ -80,6 +80,7 @@
 
 :- implementation.
 
+:- import_module term_context.
 :- import_module term_subst.
 :- import_module term_vars.
 
@@ -255,7 +256,7 @@ unify_terms_bound_var(X, BoundY, DontBindVars, !Subst) :-
             true
         else
             not list.member(X, DontBindVars),
-            map.det_insert(X, variable(BoundY, context_init), !Subst)
+            map.det_insert(X, variable(BoundY, dummy_context), !Subst)
         )
     ).
 

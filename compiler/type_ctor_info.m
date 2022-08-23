@@ -99,7 +99,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module uint.
 :- import_module uint16.
 :- import_module uint32.
@@ -232,9 +232,9 @@ builtin_type_defn = TypeDefn :-
     TypeBody = hlds_abstract_type(abstract_type_general),
     TypeStatus = type_status(status_local),
     NeedQual = may_be_unqualified,
-    term.context_init(Context),
     create_hlds_type_defn(TVarSet, Params, Kinds, TypeBody, no,
-        TypeStatus, NeedQual, type_defn_no_prev_errors, Context, TypeDefn).
+        TypeStatus, NeedQual, type_defn_no_prev_errors,
+        term_context.dummy_context, TypeDefn).
 
 :- pred gen_type_ctor_gen_info( module_info::in, type_ctor::in,
     module_name::in, string::in, int::in, hlds_type_defn::in,

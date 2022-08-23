@@ -242,7 +242,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
-:- import_module term.
+:- import_module term_context.
 
 %-----------------------------------------------------------------------------%
 
@@ -491,7 +491,7 @@ create_proxy_proc(PredId, ProcId, !PredInfo, !ModuleInfo) :-
 insert_context_update_call(ModuleInfo, Goal0, Goal, !VarTable) :-
     Goal0 = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
-    Context = term.context(FileName, LineNumber),
+    Context = context(FileName, LineNumber),
 
     make_string_const_construction_alloc(FileName, "FileName",
         MakeFileName, FileNameVar, !VarTable),
@@ -1192,7 +1192,7 @@ impure_backtrack_goal_info(Detism) = GoalInfo :-
 make_handle_event(ModuleInfo, ProcName, ArgVars, HandleEventGoal) :-
     SSDBModule = mercury_ssdb_builtin_module,
     Features = [],
-    Context = term.context_init,
+    Context = dummy_context,
     generate_plain_call(ModuleInfo, pf_predicate, SSDBModule, ProcName,
         [], ArgVars, instmap_delta_bind_no_var, only_mode, detism_det,
         purity_impure, Features, Context, HandleEventGoal).
@@ -1400,7 +1400,7 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         % some[T] bound_head_var(string, int, T) ---->
         %   some[T] bound_head_var(type_of_T, string, int, T)
 
-        term.context_init(Context),
+        Context = dummy_context,
         lookup_var_type(!.VarTable, VarToInspect, MerType),
         polymorphism_make_type_info_var_mi(MerType, Context,
             TypeInfoVar, TypeInfoGoals0, !ModuleInfo, !PredInfo, !ProcInfo),

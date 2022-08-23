@@ -224,6 +224,7 @@
 :- import_module mercury_term_lexer.
 :- import_module mercury_term_parser.
 :- import_module string.
+:- import_module term_context.
 :- import_module term_int.
 :- import_module unit.
 

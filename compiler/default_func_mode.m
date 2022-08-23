@@ -42,7 +42,6 @@
 
 :- import_module int.
 :- import_module map.
-:- import_module term.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

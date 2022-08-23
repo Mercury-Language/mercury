@@ -23,6 +23,7 @@
 :- import_module integer.
 :- import_module list.
 :- import_module map.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 %
@@ -43,11 +44,11 @@
     --->    functor(
                 const,
                 list(term(T)),
-                term.context
+                term_context
             )
     ;       variable(
                 var(T),
-                term.context
+                term_context
             ).
 
 :- type var(T).
@@ -167,10 +168,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % NOTE_TO_IMPLEMENTORS: This type should get its own module.
-:- type term.context
-    --->    context(string, int).
-            % file name, line number.
+:- type term.context == term_context.term_context.
 
     % Return the context of a term.
     %
@@ -180,25 +178,36 @@
     % a term.
     %
 :- func context_init(string, int) = context.
+:- pragma obsolete(func(context_init/2), [term_context.context_init/2]).
 :- pred context_init(string::in, int::in, context::out) is det.
+:- pragma obsolete(pred(context_init/3), [term_context.context_init/2]).
 
     % Return a dummy term context.
     %
 :- func dummy_context_init = context.
+:- pragma obsolete(func(dummy_context_init/0), [term_context.dummy_context/0]).
 :- func context_init = context.
+:- pragma obsolete(func(context_init/0), [term_context.dummy_context/0]).
 :- pred context_init(context::out) is det.
+:- pragma obsolete(pred(context_init/1), [term_context.dummy_context/0]).
 
 :- pred is_dummy_context(context::in) is semidet.
-
-    % Given a term context, return the source line number.
-    %
-:- func context_line(context) = int.
-:- pred context_line(context::in, int::out) is det.
+:- pragma obsolete(pred(is_dummy_context/1),
+    [term_context.is_dummy_context/1]).
 
     % Given a term context, return the source file.
     %
 :- func context_file(context) = string.
+:- pragma obsolete(func(context_file/1), [term_context.context_file/1]).
 :- pred context_file(context::in, string::out) is det.
+:- pragma obsolete(pred(context_file/2), [term_context.context_file/1]).
+
+    % Given a term context, return the source line number.
+    %
+:- func context_line(context) = int.
+:- pragma obsolete(func(context_line/1), [term_context.context_line/1]).
+:- pred context_line(context::in, int::out) is det.
+:- pragma obsolete(pred(context_line/2), [term_context.context_line/1]).
 
 %---------------------------------------------------------------------------%
 
@@ -690,21 +699,30 @@ get_term_context(Term) = Context :-
     ; Term = variable(_, Context)
     ).
 
-context_init(File, LineNumber) = context(File, LineNumber).
-context_init(File, LineNumber, context(File, LineNumber)).
+context_init(FileName, LineNumber) = Context :-
+    Context = term_context.context_init(FileName, LineNumber).
+context_init(FileName, LineNumber, Context) :-
+    Context = term_context.context_init(FileName, LineNumber).
 
-dummy_context_init = context("", 0).
-context_init = dummy_context_init.
-context_init(dummy_context_init).
+dummy_context_init = Context :-
+    Context = term_context.dummy_context.
+context_init = Context :-
+    Context = term_context.dummy_context.
+context_init(Context) :-
+    Context = term_context.dummy_context.
 
 is_dummy_context(Context) :-
-    Context = dummy_context_init.
+    term_context.is_dummy_context(Context).
 
-context_line(context(_, LineNumber)) = LineNumber.
-context_line(context(_, LineNumber), LineNumber).
+context_file(Context) = FileName :-
+    FileName = term_context.context_file(Context).
+context_file(Context, FileName) :-
+    FileName = term_context.context_file(Context).
 
-context_file(context(FileName, _)) = FileName.
-context_file(context(FileName, _), FileName).
+context_line(Context) = LineNumber :-
+    LineNumber = term_context.context_line(Context).
+context_line(Context, LineNumber) :-
+    LineNumber = term_context.context_line(Context).
 
 %---------------------------------------------------------------------------%
 

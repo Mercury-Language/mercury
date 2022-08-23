@@ -141,6 +141,7 @@
 :- import_module map.
 :- import_module set_tree234.
 :- import_module term.
+:- import_module term_context.
 :- import_module term_subst.
 :- import_module term_unify.
 
@@ -190,13 +191,13 @@ interpret_unify(LHSVar, RHS, !Subst) :-
     (
         RHS = rhs_var(RHSVar),
         unify_terms(
-            variable(LHSVar, context_init),
-            variable(RHSVar, context_init), !Subst)
+            variable(LHSVar, dummy_context),
+            variable(RHSVar, dummy_context), !Subst)
     ;
         RHS = rhs_functor(ConsId, _, RHSArgVars),
         term_subst.var_list_to_term_list(RHSArgVars, RHSArgTerms),
         cons_id_and_args_to_term(ConsId, RHSArgTerms, RHSTerm),
-        unify_terms(variable(LHSVar, context_init), RHSTerm, !Subst)
+        unify_terms(variable(LHSVar, dummy_context), RHSTerm, !Subst)
     ;
         RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _)
         % For ease of implementation, we just ignore unifications

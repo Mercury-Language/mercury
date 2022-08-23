@@ -183,6 +183,7 @@
 :- import_module map.
 :- import_module require.
 :- import_module string.
+:- import_module term_context.
 :- import_module term_int.
 :- import_module term_subst.
 
@@ -190,7 +191,7 @@
 %---------------------------------------------------------------------------%
 
 construct_qualified_term(SymName, ArgTerms, Term) :-
-    term.context_init(Context),
+    Context = dummy_context,
     construct_qualified_term_with_context(SymName, ArgTerms, Context, Term).
 
 construct_qualified_term_with_context(SymName, ArgTerms, Context, Term) :-
@@ -530,42 +531,42 @@ rename_in_catch_expr(OldVar, NewVar, Catch0, Catch) :-
 cons_id_and_args_to_term(some_int_const(IntConst), [], Term) :-
     (
         IntConst = int_const(Int),
-        Term = term_int.int_to_decimal_term(Int, term.context_init)
+        Term = term_int.int_to_decimal_term(Int, dummy_context)
     ;
         IntConst = int8_const(Int8),
-        Term = term_int.int8_to_decimal_term(Int8, term.context_init)
+        Term = term_int.int8_to_decimal_term(Int8, dummy_context)
     ;
         IntConst = int16_const(Int16),
-        Term = term_int.int16_to_decimal_term(Int16, term.context_init)
+        Term = term_int.int16_to_decimal_term(Int16, dummy_context)
     ;
         IntConst = int32_const(Int32),
-        Term = term_int.int32_to_decimal_term(Int32, term.context_init)
+        Term = term_int.int32_to_decimal_term(Int32, dummy_context)
     ;
         IntConst = int64_const(Int64),
-        Term = term_int.int64_to_decimal_term(Int64, term.context_init)
+        Term = term_int.int64_to_decimal_term(Int64, dummy_context)
     ;
         IntConst = uint_const(UInt),
-        Term = term_int.uint_to_decimal_term(UInt, term.context_init)
+        Term = term_int.uint_to_decimal_term(UInt, dummy_context)
     ;
         IntConst = uint8_const(UInt8),
-        Term = term_int.uint8_to_decimal_term(UInt8, term.context_init)
+        Term = term_int.uint8_to_decimal_term(UInt8, dummy_context)
     ;
         IntConst = uint16_const(UInt16),
-        Term = term_int.uint16_to_decimal_term(UInt16, term.context_init)
+        Term = term_int.uint16_to_decimal_term(UInt16, dummy_context)
     ;
         IntConst = uint32_const(UInt32),
-        Term = term_int.uint32_to_decimal_term(UInt32, term.context_init)
+        Term = term_int.uint32_to_decimal_term(UInt32, dummy_context)
     ;
         IntConst = uint64_const(UInt64),
-        Term = term_int.uint64_to_decimal_term(UInt64, term.context_init)
+        Term = term_int.uint64_to_decimal_term(UInt64, dummy_context)
     ).
 cons_id_and_args_to_term(float_const(Float), [], Term) :-
-    Term = term.functor(term.float(Float), [], term.context_init).
+    Term = term.functor(term.float(Float), [], dummy_context).
 cons_id_and_args_to_term(char_const(Char), [], Term) :-
     SymName = unqualified(string.from_char(Char)),
     construct_qualified_term(SymName, [], Term).
 cons_id_and_args_to_term(string_const(String), [], Term) :-
-    Term = term.functor(term.string(String), [], term.context_init).
+    Term = term.functor(term.string(String), [], dummy_context).
 cons_id_and_args_to_term(tuple_cons(_Arity), Args, Term) :-
     SymName = unqualified("{}"),
     construct_qualified_term(SymName, Args, Term).

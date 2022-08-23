@@ -112,7 +112,7 @@
 :- import_module require.
 :- import_module std_util.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
@@ -243,7 +243,7 @@ represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTable, VarNumMap,
         !StringTable, !TypeTable, ProcRepBytes) :-
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
-    term.context_file(Context, FileName),
+    FileName = term_context.context_file(Context),
     represent_var_table_as_bytecode(IncludeVarNameTable, IncludeVarTypes,
         VarTable, VarNumMap, VarNumRep, VarNameTableBytes,
         !StringTable, !TypeTable),
@@ -848,13 +848,13 @@ filter_input_args(Info, [Mode | Modes], [Var | Vars],
 goal_info_to_atomic_goal_rep_fields(GoalInfo, Instmap0, Info, FileName, LineNo,
         BoundVars) :-
     Context = goal_info_get_context(GoalInfo),
-    term.context_file(Context, FileName0),
+    FileName0 = term_context.context_file(Context),
     ( if FileName0 = Info ^ pri_filename then
         FileName = ""
     else
         FileName = FileName0
     ),
-    term.context_line(Context, LineNo),
+    LineNo = term_context.context_line(Context),
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap_delta_changed_vars(InstmapDelta, ChangedVarsSet),
     set_of_var.to_sorted_list(ChangedVarsSet, ChangedVars),

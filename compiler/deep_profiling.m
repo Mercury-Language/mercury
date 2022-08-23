@@ -101,7 +101,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %-----------------------------------------------------------------------------%
 
@@ -716,8 +716,8 @@ deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
         generate_var_c_ptr("ProcStaticLayout", ProcStaticVar, !VarTable),
 
         proc_info_get_context(!.ProcInfo, Context),
-        FileName = term.context_file(Context),
-        LineNumber = term.context_line(Context),
+        FileName = term_context.context_file(Context),
+        LineNumber = term_context.context_line(Context),
 
         proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepProfInfo),
         extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo),
@@ -812,7 +812,7 @@ deep_prof_transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     generate_var_c_ptr("MiddleCSD", MiddleCSD, VarTable0, VarTable1),
 
     Context = goal_info_get_context(GoalInfo0),
-    FileName = term.context_file(Context),
+    FileName = term_context.context_file(Context),
 
     proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepProfInfo),
     extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo),
@@ -1270,8 +1270,8 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
     !DeepInfo ^ deep_site_num_counter := SiteNumCounter,
 
     Context = goal_info_get_context(GoalInfo0),
-    FileName0 = term.context_file(Context),
-    LineNumber = term.context_line(Context),
+    FileName0 = term_context.context_file(Context),
+    LineNumber = term_context.context_line(Context),
     compress_filename(!.DeepInfo, FileName0, FileName),
     CallKind = classify_call(ModuleInfo, GoalExpr0),
     (
@@ -1573,8 +1573,8 @@ deep_prof_wrap_foreign_code(Goal0, Goal, !DeepInfo) :-
         [SiteNumVar], [], PrepareGoal),
 
     Context = goal_info_get_context(GoalInfo0),
-    LineNumber = term.context_line(Context),
-    FileName0 = term.context_file(Context),
+    FileName0 = term_context.context_file(Context),
+    LineNumber = term_context.context_line(Context),
     compress_filename(!.DeepInfo, FileName0, FileName),
     CallSite = callback(FileName, LineNumber, GoalPath),
 

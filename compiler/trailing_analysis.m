@@ -112,6 +112,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 
 %----------------------------------------------------------------------------%
 %
@@ -1088,7 +1089,7 @@ trailing_status_more_precise_than(trail_conditional, trail_may_modify).
 
 trailing_analysis_answer_to_term(trailing_analysis_answer(Status)) = Term :-
     trailing_status_to_string(Status, String),
-    Term = term.functor(atom(String), [], context_init).
+    Term = term.functor(atom(String), [], dummy_context).
 
 :- pred trailing_analysis_answer_from_term(term::in,
     trailing_analysis_answer::out) is semidet.

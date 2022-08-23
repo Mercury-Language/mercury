@@ -213,6 +213,7 @@
 :- implementation.
 
 :- import_module require.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -427,7 +428,7 @@ var_list_to_term_list(Vs) = Ts :-
     term_subst.var_list_to_term_list(Vs, Ts).
 
 var_list_to_term_list([], []).
-var_list_to_term_list([Var | Vars], [variable(Var, context_init) | Terms]) :-
+var_list_to_term_list([Var | Vars], [variable(Var, dummy_context) | Terms]) :-
     term_subst.var_list_to_term_list(Vars, Terms).
 
 %---------------------------------------------------------------------------%

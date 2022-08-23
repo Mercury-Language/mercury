@@ -65,7 +65,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module uint.
 :- import_module uint16.
 :- import_module uint32.
@@ -1306,7 +1306,7 @@ make_construction_goal_expr(Arg, ConsId, GoalExpr) :-
     % We ignore the generic goal info returned by make_const_construction;
     % our caller will construct a goal_info that is specialized to the
     % call being replaced.
-    make_const_construction(term.context_init, Arg ^ arg_var, ConsId, Goal),
+    make_const_construction(dummy_context, Arg ^ arg_var, ConsId, Goal),
     Goal = hlds_goal(GoalExpr, _).
 
 %---------------------------------------------------------------------------%

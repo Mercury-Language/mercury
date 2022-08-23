@@ -353,6 +353,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 %
@@ -759,9 +760,8 @@ ml_gen_arg_decls(ModuleInfo, CopyOutWhen, WhatParams, [HeadTuple | TailTuples],
 ml_gen_arg_decl(Var, Type, MLDS_ArgType, FuncArg, !MaybeInfo) :-
     (
         !.MaybeInfo = yes(Info0),
-        % XXX We should fill in this Context properly.
-        term.context_init(Context),
-        ml_gen_gc_statement(Var, Type, Context, GCStmt, Info0, Info),
+        % XXX We should fill in the context properly.
+        ml_gen_gc_statement(Var, Type, dummy_context, GCStmt, Info0, Info),
         !:MaybeInfo = yes(Info)
     ;
         !.MaybeInfo = no,

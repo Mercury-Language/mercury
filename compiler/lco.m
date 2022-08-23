@@ -224,7 +224,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -1946,7 +1946,7 @@ make_store_goal(ModuleInfo, InstMap, GroundVar - StoreTarget, Goal,
         generate_plain_call(ModuleInfo, pf_predicate,
             mercury_private_builtin_module, "store_at_ref_impure",
             [], [AddrVar, GroundVar], instmap_delta_bind_vars([]), only_mode,
-            detism_det, purity_impure, [], term.context_init, Goal)
+            detism_det, purity_impure, [], dummy_context, Goal)
     ;
         % High-level data.
         MaybeFieldId = yes(field_id(AddrVarType, ConsId, ArgNum)),

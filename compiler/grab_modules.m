@@ -158,7 +158,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1367,13 +1367,13 @@ append_one_or_more(A, B, AB) :-
     ;       abstract_section.
 
 :- type include_context
-    --->    include_context(maybe_abstract_section, term.context).
+    --->    include_context(maybe_abstract_section, term_context).
 
 :- type module_inclusion_map ==
     map(module_name, one_or_more(include_context)).
 
 :- type import_or_use_context
-    --->    import_or_use_context(import_or_use, term.context).
+    --->    import_or_use_context(import_or_use, term_context).
 
 :- type module_import_or_use_map ==
     map(module_name, one_or_more(import_or_use_context)).
@@ -1809,7 +1809,7 @@ recomp_avails_acc([Avail | Avails], !ImportUseMap) :-
                 mai_modules         :: set(module_name),
                 mai_max_depth       :: parent_or_ancestor,
                 mai_import_use      :: import_and_or_use,
-                mai_least_context   :: term.context
+                mai_least_context   :: term_context
             ).
 
 :- type missing_ancestor_map == map(module_name, missing_ancestor_info).
@@ -1906,7 +1906,7 @@ find_any_missing_ancestor_imports(CurrentModule, ParentOrAncestor,
 
 :- pred update_iu_and_least_context(import_or_use_context::in,
     import_and_or_use::in, import_and_or_use::out,
-    term.context::in, term.context::out) is det.
+    term_context::in, term_context::out) is det.
 
 update_iu_and_least_context(IoUC, !ImportAndOrUse, !LeastContext) :-
     IoUC = import_or_use_context(ImportOrUse, Context),
@@ -2041,7 +2041,7 @@ report_any_missing_includes_for_imports(ReadModules, SeenIncludes, InclMap,
     %
 :- pred report_any_missing_includes(set(module_name)::in,
     seen_includes::in, module_inclusion_map::in,
-    module_name::in, list(term.context)::in,
+    module_name::in, list(term_context)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_any_missing_includes(ReadModules, SeenIncludes, InclMap,
@@ -2092,7 +2092,7 @@ report_any_missing_includes(ReadModules, SeenIncludes, InclMap,
         % For modules without parent modules, accessibility is moot.
     ).
 
-:- pred report_abstract_include(module_name::in, string::in, term.context::in,
+:- pred report_abstract_include(module_name::in, string::in, term_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_abstract_include(ParentModule, SubModule, Context, !Specs) :-
@@ -2105,7 +2105,7 @@ report_abstract_include(ParentModule, SubModule, Context, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 :- pred report_missing_include(seen_includes::in, module_name::in, string::in,
-    term.context::in, list(error_spec)::in, list(error_spec)::out) is det.
+    term_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 report_missing_include(SeenIncludes, ParentModule, SubModule, Context,
         !Specs) :-
@@ -2129,7 +2129,7 @@ is_non_abstract_include(IncludeContext) :-
     IncludeContext = include_context(MaybeAbstractInclude, _Context),
     MaybeAbstractInclude = non_abstract_section.
 
-:- func project_out_import_or_use(import_or_use_context) = term.context.
+:- func project_out_import_or_use(import_or_use_context) = term_context.
 
 project_out_import_or_use(import_or_use_context(_, Context)) = Context.
 

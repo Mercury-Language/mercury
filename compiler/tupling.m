@@ -153,7 +153,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module unit.
 :- import_module varset.
 
@@ -801,7 +801,7 @@ create_tupling_aux_pred(PredId, ProcId, PredInfo, ProcInfo, SeqNum,
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     ProcNum = proc_id_to_int(ProcId), 
     Context = goal_info_get_context(GoalInfo),
-    term.context_line(Context, LineNum),
+    LineNum = term_context.context_line(Context),
     Transform = tn_tupling(PredOrFunc, ProcNum, lnc(LineNum, SeqNum)),
     make_transformed_pred_sym_name(PredModule, PredName, Transform,
         AuxPredSymName),

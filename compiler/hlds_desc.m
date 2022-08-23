@@ -68,7 +68,7 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 describe_goal(ModuleInfo, VarTable, Goal) = FullDesc :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -193,7 +193,7 @@ describe_goal(ModuleInfo, VarTable, Goal) = FullDesc :-
         Desc = "shorthand"
     ),
     Context = goal_info_get_context(GoalInfo),
-    Line = term.context_line(Context),
+    Line = term_context.context_line(Context),
     FullDesc = Desc ++ "@" ++ int_to_string(Line).
 
 %---------------------------------------------------------------------------%

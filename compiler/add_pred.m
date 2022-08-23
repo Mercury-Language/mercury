@@ -120,7 +120,7 @@
 :- import_module map.
 :- import_module require.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%

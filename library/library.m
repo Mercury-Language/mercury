@@ -178,6 +178,7 @@
 :- import_module string.parse_util.
 :- import_module table_statistics.
 :- import_module term.
+:- import_module term_context.
 :- import_module term_conversion.
 :- import_module term_int.
 :- import_module term_subst.
@@ -376,6 +377,7 @@ stdlib_module_doc_undoc("string.to_string",             undoc).
 stdlib_module_doc_undoc("table_builtin",                undoc).
 stdlib_module_doc_undoc("table_statistics",             doc).
 stdlib_module_doc_undoc("term",                         doc).
+stdlib_module_doc_undoc("term_context",                 doc).
 stdlib_module_doc_undoc("term_conversion",              doc).
 stdlib_module_doc_undoc("term_int",                     doc).
 stdlib_module_doc_undoc("term_subst",                   doc).

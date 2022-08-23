@@ -80,7 +80,7 @@
 :- import_module one_or_more.
 :- import_module require.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 %
@@ -110,7 +110,7 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
             Body = hlds_abstract_type(_)
         ;
             Body = hlds_du_type(_),
-            string.suffix(term.context_file(Context), ".int2")
+            string.suffix(term_context.context_file(Context), ".int2")
             % If the type definition comes from a .int2 file then we must
             % treat it as abstract. The constructors may only be used
             % by the mode system for comparing `bound' insts to `ground'.
@@ -215,8 +215,8 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
     get_type_defn_context(OldDefn, OldContext),
     get_type_defn_status(OldDefn, OldStatus),
     ( if
-        string.suffix(term.context_file(OldContext), ".m"),
-        string.suffix(term.context_file(NewContext), ".m")
+        string.suffix(term_context.context_file(OldContext), ".m"),
+        string.suffix(term_context.context_file(NewContext), ".m")
     then
         % The flattening of source item blocks by modules.m puts
         % all items in a given section together. Since the original
@@ -763,8 +763,8 @@ check_for_inconsistent_solver_nosolver_type(TypeCtor, OldDefn, NewBody,
                 OldDeclOrDefn = "declaration"
             else
                 % We add some declarations OUT of their order in the source.
-                OldContext = term.context(OldFileName, OldLineNumber),
-                NewContext = term.context(NewFileName, NewLineNumber),
+                OldContext = term_context.context(OldFileName, OldLineNumber),
+                NewContext = term_context.context(NewFileName, NewLineNumber),
                 ( if
                     % Did we do so in this case?
                     OldFileName = NewFileName,

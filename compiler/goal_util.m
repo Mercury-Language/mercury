@@ -41,7 +41,7 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module set.
-:- import_module term.
+:- import_module term_context.
 
 %-----------------------------------------------------------------------------%
 
@@ -410,7 +410,7 @@
 :- pred generate_plain_call(module_info::in, pred_or_func::in,
     module_name::in, string::in, list(prog_var)::in, list(prog_var)::in,
     instmap_delta::in, mode_no::in, determinism::in, purity::in,
-    list(goal_feature)::in, term.context::in, hlds_goal::out) is det.
+    list(goal_feature)::in, term_context::in, hlds_goal::out) is det.
 
     % generate_call_foreign_proc(ModuleInfo, PredOrFunc, ModuleName, ProcName,
     %   TIArgs, Args, ExtraArgs, InstMapDelta, ModeNo, Detism, Purity,
@@ -429,7 +429,7 @@
     list(foreign_arg)::in, instmap_delta::in, mode_no::in,
     determinism::in, purity::in, list(goal_feature)::in,
     pragma_foreign_proc_attributes::in, maybe(trace_expr(trace_runtime))::in,
-    string::in, term.context::in, hlds_goal::out) is det.
+    string::in, term_context::in, hlds_goal::out) is det.
 
     % Generate a cast goal. The input and output insts are just ground.
     %
@@ -550,7 +550,7 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarTable,
     set_of_var.list_to_set([OrigVar, NewVar], NonLocals),
     UnifyInstMapDelta = instmap_delta_from_assoc_list([OrigVar - NewInst]),
     goal_info_init(NonLocals, UnifyInstMapDelta, detism_det, purity_pure,
-        term.context_init, GoalInfo),
+        dummy_context, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo),
     !:RevUnifies = [Goal | !.RevUnifies],
     map.det_insert(OrigVar, NewVar, !Renaming),

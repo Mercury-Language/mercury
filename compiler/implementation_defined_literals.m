@@ -45,6 +45,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module term.
+:- import_module term_context.
 
 :- type subst_literals_info
     --->    subst_literals_info(
@@ -208,7 +209,7 @@ subst_literals_in_case(Info, Case0, Case) :-
     term.context::in, subst_literals_info::in, hlds_goal::out) is det.
 
 make_impl_defined_literal(Var, IDCKind, Context, Info, Goal) :-
-    Context = term.context(File, Line),
+    Context = term_context.context(File, Line),
     Info = subst_literals_info(ModuleInfo, PredInfo, PredId),
     (
         IDCKind = idc_file,

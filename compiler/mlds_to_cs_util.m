@@ -84,9 +84,8 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 
-:- import_module int.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -107,14 +106,11 @@ init_csharp_out_info(ModuleInfo, SourceFileName, CodeAddrs) = Info :-
 cs_output_context(Stream, OutputLineNumbers, Context, !IO) :-
     (
         OutputLineNumbers = yes,
-        Context = term.context(File, Line),
-        ( if
-            Line > 0,
-            File \= ""
-        then
-            io.format(Stream, "#line %d ""%s""\n", [i(Line), s(File)], !IO)
-        else
+        ( if is_dummy_context(Context) then
             true
+        else
+            Context = term_context.context(File, Line),
+            io.format(Stream, "#line %d ""%s""\n", [i(Line), s(File)], !IO)
         )
     ;
         OutputLineNumbers = no

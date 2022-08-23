@@ -131,6 +131,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module term_conversion.
 :- import_module varset.
 
@@ -212,7 +213,7 @@ analysis_name = "unused_args".
 
 :- instance to_term(unused_args_call) where [
     ( to_term(unused_args_call) = Term :-
-        Term = term.functor(atom("any"), [], context_init)
+        Term = term.functor(atom("any"), [], dummy_context)
     ),
     ( from_term(Term, unused_args_call) :-
         Term = term.functor(atom("any"), [], _)

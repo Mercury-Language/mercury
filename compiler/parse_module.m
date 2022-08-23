@@ -205,6 +205,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 :- type missing_section_start_warning
@@ -408,11 +409,11 @@ report_module_has_unexpected_name(FileName, ExpectedName, ExpectationContexts,
         ActualName, MaybeActualContext, Spec) :-
     ( if
         MaybeActualContext = yes(ActualContext),
-        not is_dummy_context(ActualContext)
+        not term_context.is_dummy_context(ActualContext)
     then
         MaybeContext = MaybeActualContext
     else
-        MaybeContext = no
+        MaybeContext = maybe.no
     ),
     MainPieces = [words("Error: file"), quote(FileName),
         words("contains the wrong module."),
@@ -421,7 +422,7 @@ report_module_has_unexpected_name(FileName, ExpectedName, ExpectationContexts,
     MainMsg = error_msg(MaybeContext, always_treat_as_first, 0,
         [always(MainPieces)]),
     list.sort_and_remove_dups(ExpectationContexts, SortedExpectationContexts0),
-    list.delete_all(SortedExpectationContexts0, term.context_init,
+    list.delete_all(SortedExpectationContexts0, dummy_context,
         SortedExpectationContexts),
     list.map(expectation_context_to_msg, SortedExpectationContexts, SubMsgs),
     % We make the warning conditional on the warn_wrong_module_name option.
@@ -1011,7 +1012,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
             Context, !.MissingStartSectionWarning, _MissingStartSectionWarning,
             !Errors),
         SectionKind = ms_implementation,
-        SectionContext = term.context_init,
+        SectionContext = dummy_context,
         ItemSeqInitLookAhead = lookahead(ReadIOMResult),
         read_item_sequence(FileString, FileStringLen, CurModuleName,
             ItemSeqInitLookAhead, ItemSeqFinalLookAhead,
@@ -1134,7 +1135,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
                     % The following code is duplicated in the case for
                     % read_iom_parse_item_errors above.
                     SectionKind = ms_implementation,
-                    SectionContext = term.context_init
+                    SectionContext = dummy_context
                 ),
                 ItemSeqInitLookAhead = lookahead(ReadIOMResult)
             ),
@@ -1244,7 +1245,7 @@ read_parse_tree_src_submodule(FileString, FileStringLen, ContainingModules,
         add_nonfatal_error(rme_no_section_decl_at_start, [NoSectionSpec],
             !Errors),
         SectionKind = ms_interface,
-        SectionContext = term.context_init
+        SectionContext = dummy_context
     ),
     NestedContainingModules = [StartModuleName | ContainingModules],
     NestedMaybePrevSection = no,
@@ -1502,9 +1503,9 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
         ( MaybeFirstIOM = read_iom_eof
         ; MaybeFirstIOM = read_iom_parse_term_error(_)
         ),
-        term.context_init(!.SourceFileName, 1, FirstContext),
+        FirstContext = term_context.context_init(!.SourceFileName, 1),
         ModuleDeclPresent = no_module_decl_present(no_lookahead,
-            term.context_init, report_missing_module_start(FirstContext))
+            dummy_context, report_missing_module_start(FirstContext))
         % XXX ITEM_LIST Should report "stop processing".
     ).
 
@@ -1707,7 +1708,7 @@ read_term_to_iom_result(ModuleName, FileName, ReadTermResult, ReadIOMResult,
         ReadIOMResult = read_iom_eof
     ;
         ReadTermResult = error(ErrorMsg, LineNumber),
-        Context = term.context_init(FileName, LineNumber),
+        Context = term_context.context_init(FileName, LineNumber),
         % XXX Do we need to add an "Error:" prefix?
         Pieces = [words(ErrorMsg), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,

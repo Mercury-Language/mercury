@@ -759,6 +759,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -2081,8 +2082,8 @@ do_write_error_pieces_params(Stream, TreatAsFirst, MaybeContext, FixedIndent,
     % indent
     (
         MaybeContext = yes(Context),
-        term.context_file(Context, FileName),
-        term.context_line(Context, LineNumber),
+        FileName = term_context.context_file(Context),
+        LineNumber = term_context.context_line(Context),
         ( if
             (
                 map.search(LimitErrorContextsMap, FileName, LineNumberRanges),

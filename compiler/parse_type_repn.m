@@ -52,6 +52,7 @@
 :- import_module one_or_more.
 :- import_module require.
 :- import_module set.
+:- import_module term_context.
 :- import_module uint.
 :- import_module uint8.
 
@@ -415,7 +416,7 @@ parse_type_repn_du_notag(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
         % have to insist on ArgTerm2 being present.
         (
             ArgTerms = [ArgTerm1, ArgTerm3],
-            ArgTerm2 = term.functor(atom("void"), [], dummy_context_init)
+            ArgTerm2 = term.functor(atom("void"), [], dummy_context)
         ;
             ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3]
         ),

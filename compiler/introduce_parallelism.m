@@ -68,7 +68,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %-----------------------------------------------------------------------------%
 
@@ -266,7 +266,7 @@ parallelise_proc(CPCProc, PredInfo, !ProcInfo,
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     Context = goal_info_get_context(Goal0 ^ hg_info),
-    term.context_file(Context, FileName),
+    FileName = term_context.context_file(Context),
     proc_info_get_var_table(!.ProcInfo, VarTable),
     % VarNumRep is not used by goal_to_goal_rep, var_num_1_byte
     % is an arbitrary value. XXX zs: I don't think this is true.

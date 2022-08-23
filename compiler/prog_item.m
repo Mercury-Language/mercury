@@ -176,9 +176,9 @@
 % We use cords of items instead of lists of items where we may need to add
 % items to an already-existing partial parse tree.
 %
-% The contexts of module declarations below may be term.dummy_context_init
+% The contexts of module declarations below may be term.dummy_context
 % if the actual context isn't known, but if the recorded context is
-% not term.dummy_context_init, then it is valid.
+% not term.dummy_context, then it is valid.
 
 :- type parse_tree_src
     --->    parse_tree_src(

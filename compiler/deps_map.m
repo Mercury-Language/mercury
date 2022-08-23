@@ -100,7 +100,7 @@
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module set.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -134,7 +134,7 @@ generate_deps_map(Globals, Search, ModuleName, !DepsMap, !Specs, !IO) :-
     % with that name exists.
     %
 :- type expectation_contexts_map == map(module_name, expectation_contexts).
-:- type expectation_contexts == list(term.context).
+:- type expectation_contexts == list(term_context).
 
 :- pred generate_deps_map_loop(globals::in, maybe_search::in,
     expectation_contexts_map::in, deps_map::in, deps_map::out,
@@ -252,7 +252,7 @@ add_avail_module_with_context(ModuleName, MaybeImplicit, !Modules) :-
         MaybeImplicit = implicit_avail(_, MaybeSectionImportUse),
         (
             MaybeSectionImportUse = no,
-            add_module_name_and_context(term.dummy_context_init, ModuleName,
+            add_module_name_and_context(dummy_context, ModuleName,
                 !Modules)
         ;
             MaybeSectionImportUse = yes(SectionImportUse),
@@ -261,14 +261,14 @@ add_avail_module_with_context(ModuleName, MaybeImplicit, !Modules) :-
         )
     ).
 
-:- pred add_fim_module_with_context(fim_spec::in, term.context::in,
+:- pred add_fim_module_with_context(fim_spec::in, term_context::in,
     expectation_contexts_map::in, expectation_contexts_map::out) is det.
 
 add_fim_module_with_context(FIMSpec, Context, !Modules) :-
     FIMSpec = fim_spec(_Lang, ModuleName),
     add_module_name_and_context(Context, ModuleName, !Modules).
 
-:- pred add_module_name_and_context(term.context::in, module_name::in,
+:- pred add_module_name_and_context(term_context::in, module_name::in,
     expectation_contexts_map::in, expectation_contexts_map::out) is det.
 
 add_module_name_and_context(Context, ModuleName, !Modules) :-
@@ -377,8 +377,7 @@ read_dependencies(Globals, Search, ModuleName, ExpectationContexts,
         %   module :-( However, these dependencies should not drag into
         %   the deps_map any module that other, nondummy modules' dependencies
         %   wouldn't drag in anyway.
-        ParseTreeSrc = parse_tree_src(ModuleName, term.dummy_context_init,
-            cord.init)
+        ParseTreeSrc = parse_tree_src(ModuleName, dummy_context, cord.init)
     ),
     parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
         ParseTreeSrc, ReadModuleErrors, Specs, BurdenedModules),

@@ -111,7 +111,7 @@
 :- import_module ml_backend.ml_util.
 
 :- import_module maybe.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -153,8 +153,8 @@ c_output_stmt_context(Stream, OutputLineNumbers, Stmt, !IO) :-
     (
         OutputLineNumbers = yes,
         Context = get_mlds_stmt_context(Stmt),
-        term.context_file(Context, FileName),
-        term.context_line(Context, LineNumber),
+        FileName = term_context.context_file(Context),
+        LineNumber = term_context.context_line(Context),
         c_util.always_set_line_num(Stream, FileName, LineNumber, !IO)
     ;
         OutputLineNumbers = no
@@ -163,8 +163,8 @@ c_output_stmt_context(Stream, OutputLineNumbers, Stmt, !IO) :-
 c_output_context(Stream, OutputLineNumbers, Context, !IO) :-
     (
         OutputLineNumbers = yes,
-        term.context_file(Context, FileName),
-        term.context_line(Context, LineNumber),
+        FileName = term_context.context_file(Context),
+        LineNumber = term_context.context_line(Context),
         c_util.always_set_line_num(Stream, FileName, LineNumber, !IO)
     ;
         OutputLineNumbers = no

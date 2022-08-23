@@ -213,6 +213,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -1594,8 +1595,8 @@ mercury_output_item_inst_defn(Info, Stream, ItemInstDefn, !IO) :-
     is semidet.
 
 is_builtin_inst_name(InstVarSet, unqualified(Name), Args0) :-
-    Args1 = list.map(func(V) = variable(coerce_var(V), context_init), Args0),
-    Term = term.functor(term.atom(Name), Args1, term.context_init),
+    Args1 = list.map(func(V) = variable(coerce_var(V), dummy_context), Args0),
+    Term = term.functor(term.atom(Name), Args1, dummy_context),
     varset.coerce(InstVarSet, VarSet),
     ContextPieces = cord.init,  % Dummy; not used.
     parse_inst(no_allow_constrained_inst_var(wnciv_inst_defn_lhs), VarSet,

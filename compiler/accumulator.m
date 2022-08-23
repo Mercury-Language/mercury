@@ -204,6 +204,7 @@
 :- import_module solutions.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -1559,7 +1560,7 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo,
     set.init(Assertions),
 
     proc_info_get_context(NewProcInfo, Context),
-    term.context_line(Context, LineNum),
+    LineNum = term_context.context_line(Context),
     Counter = 0,
 
     Types = NewTypes ++ Types0,

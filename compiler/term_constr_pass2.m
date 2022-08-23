@@ -71,7 +71,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -481,7 +481,7 @@ prove_termination(Cycles, AbstractSCC, SizeVarSet, Result) :-
     else
         % NOTE: The context here will never be used, in any case
         % it is not clear what it should be.
-        Error = term2_error(term.context_init, cond_not_satisfied),
+        Error = term2_error(dummy_context, cond_not_satisfied),
         Result = can_loop([Error])
     ).
 

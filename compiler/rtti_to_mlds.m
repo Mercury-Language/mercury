@@ -83,7 +83,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module term.
+:- import_module term_context.
 :- import_module uint.
 :- import_module uint16.
 :- import_module uint32.
@@ -129,7 +129,7 @@ rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, !GlobalData) :-
     %
     % XXX The rtti_data ought to include a prog_context (the context of the
     % corresponding type or instance definition).
-    term.context_init(Context),
+    Context = dummy_context,
 
     % Generate the declaration flags.
     Exported = rtti_id_is_exported(RttiId),
@@ -1657,7 +1657,7 @@ gen_wrapper_func_and_initializer(ModuleInfo, Target, NumExtra, RttiProcId,
         ml_gen_info_bump_counters(!Info),
 
         % Now we can safely go ahead and generate the wrapper function.
-        term.context_init(Context),
+        Context = dummy_context,
         ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumExtra, Context,
             WrapperFuncRval, WrapperFuncType, !Info),
         ml_gen_info_get_closure_wrapper_defns(!.Info, ClosureWrapperDefns),

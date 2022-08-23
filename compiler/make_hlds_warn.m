@@ -98,7 +98,7 @@
 :- import_module char.
 :- import_module require.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -160,7 +160,7 @@ warn_singletons(ModuleInfo, PredCallId, VarSet, Body, !Specs) :-
     % be singletons, but aren't.
 
     Info0 = warn_info(ModuleInfo, PredCallId, VarSet,
-        [], set_of_var.init, set_of_var.init, context_init),
+        [], set_of_var.init, set_of_var.init, dummy_context),
     QuantVars = set_of_var.init,
     warn_singletons_in_goal(Body, QuantVars, Info0, Info),
     Info = warn_info(_ModuleInfo, _PredCallId, _VarSet,

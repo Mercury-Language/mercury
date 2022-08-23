@@ -177,7 +177,7 @@
 :- import_module set.
 :- import_module set_tree234.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module uint.
 :- import_module uint8.
 :- import_module varset.
@@ -265,7 +265,7 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
             EqvDefn = item_type_defn_info(TypeCtorSymName, TypeParams,
                 type_details_eqv(EqvType), TVarSet, _Context, _SeqNum),
             EqvRepnItem = item_type_repn_info(TypeCtorSymName, TypeParams,
-                EqvType, TVarSet, term.dummy_context_init, item_no_seq_num),
+                EqvType, TVarSet, dummy_context, item_no_seq_num),
             map.det_insert(TypeCtor, EqvRepnItem, !EqvRepnMap)
         ;
             StdDefn = std_mer_type_subtype(SubStatus, SubDefn),
@@ -282,8 +282,7 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
             DetailsSub = type_details_sub(SuperType, _),
             type_to_ctor_det(SuperType, SuperTypeCtor),
             SubtypeRepnItem = item_type_repn_info(TypeCtorSymName, TypeParams,
-                SuperTypeCtor, TVarSet, term.dummy_context_init,
-                item_no_seq_num),
+                SuperTypeCtor, TVarSet, dummy_context, item_no_seq_num),
             map.det_insert(TypeCtor, SubtypeRepnItem, !SubtypeMap)
         ;
             StdDefn = std_mer_type_du_all_plain_constants(DuStatus, DuDefn,
@@ -527,8 +526,7 @@ add_eqv_repn_item(TypeCtor, EqvRepnItem, !RepnMap) :-
     EqvRepnItem = item_type_repn_info(TypeCtorSymName, TypeParams,
         EqvType, TVarSet, _Context, _SeqNum),
     RepnItem = item_type_repn_info(TypeCtorSymName, TypeParams,
-        tcrepn_is_eqv_to(EqvType), TVarSet, term.dummy_context_init,
-        item_no_seq_num),
+        tcrepn_is_eqv_to(EqvType), TVarSet, dummy_context, item_no_seq_num),
     map.det_insert(TypeCtor, RepnItem, !RepnMap).
 
 %------------------%
@@ -553,7 +551,7 @@ add_subtype_repn_item(TypeCtor, SubtypeRepnItem, !RepnMap) :-
         SuperTypeCtor, TVarSet, _Context, _SeqNum),
     RepnItem = item_type_repn_info(TypeCtorSymName, TypeParams,
         tcrepn_is_subtype_of(SuperTypeCtor), TVarSet,
-        term.dummy_context_init, item_no_seq_num),
+        dummy_context, item_no_seq_num),
     map.det_insert(TypeCtor, RepnItem, !RepnMap).
 
 %------------------%
@@ -587,7 +585,7 @@ add_simple_du_repn_item(TypeCtor, SimpleDuRepn, !RepnMap) :-
     ),
     TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
     Item = item_type_repn_info(TypeCtorSymName, TypeParams,
-        tcrepn_du(DuRepn), TVarSet, term.context_init, item_no_seq_num),
+        tcrepn_du(DuRepn), TVarSet, dummy_context, item_no_seq_num),
     map.det_insert(TypeCtor, Item, !RepnMap).
 
 %------------------%
@@ -601,7 +599,7 @@ maybe_add_word_aligned_repn_item(ExportedTypes, TypeCtor, !RepnMap) :-
         varset.init(TVarSet0),
         varset.new_vars(TypeCtorArity, TypeParams, TVarSet0, TVarSet),
         Item = item_type_repn_info(TypeCtorSymName, TypeParams,
-            tcrepn_is_word_aligned_ptr, TVarSet, term.context_init,
+            tcrepn_is_word_aligned_ptr, TVarSet, dummy_context,
             item_no_seq_num),
         map.det_insert(TypeCtor, Item, !RepnMap)
     else
@@ -734,7 +732,7 @@ record_type_repn_in_parse_tree_int3(ModuleName, TypeCtor0, ItemTypeRepnInfo,
         expect(unify(TypeCtor, RepnTypeCtor), $pred,
             "TypeCtor != RepnTypeCtor"),
         EqvRepnItem = item_type_repn_info(TypeCtorSymName, TypeParams,
-            EqvType, TVarSet, term.dummy_context_init, item_no_seq_num),
+            EqvType, TVarSet, dummy_context, item_no_seq_num),
         map.det_insert(TypeCtor, EqvRepnItem, !EqvRepnMap)
     ;
         RepnInfo = tcrepn_is_subtype_of(SuperType),
@@ -744,7 +742,7 @@ record_type_repn_in_parse_tree_int3(ModuleName, TypeCtor0, ItemTypeRepnInfo,
         expect(unify(TypeCtor, RepnTypeCtor), $pred,
             "TypeCtor != RepnTypeCtor"),
         SubtypeRepnItem = item_type_repn_info(TypeCtorSymName, TypeParams,
-            SuperType, TVarSet, term.dummy_context_init, item_no_seq_num),
+            SuperType, TVarSet, dummy_context, item_no_seq_num),
         map.det_insert(TypeCtor, SubtypeRepnItem, !SubtypeMap)
     ;
         RepnInfo = tcrepn_foreign(_),
@@ -810,7 +808,7 @@ decide_all_type_repns_stage_2(BaseParams, EqvRepnMap, EqvMap, SubtypeMap,
                 _, TVarSet, _Context, _SeqNum),
             RepnInfo = item_type_repn_info(TypeCtorSymName, TypeParams,
                 tcrepn_foreign(RepnCJCs), TVarSet,
-                term.dummy_context_init, item_no_seq_num),
+                dummy_context, item_no_seq_num),
             map.det_insert(TypeCtor, RepnInfo, !Int1RepnMap)
         )
     ).
@@ -898,8 +896,7 @@ decide_type_repns_stage_2_du_gen_only_functor(BaseParams, SimpleDuMap,
         DuRepn = dur_gen_only_functor(OnlyFunctorRepn),
         TypeCtor = type_ctor(TypeCtorSymName, _Arity),
         RepnInfo = item_type_repn_info(TypeCtorSymName, TypeParams,
-            tcrepn_du(DuRepn), TVarSet, term.dummy_context_init,
-            item_no_seq_num),
+            tcrepn_du(DuRepn), TVarSet, dummy_context, item_no_seq_num),
         map.det_insert(TypeCtor, RepnInfo, !Int1RepnMap)
     ).
 
@@ -1012,7 +1009,7 @@ decide_type_repns_stage_2_du_gen_more_functors(BaseParams,
     DuRepn = dur_gen_more_functors(MoreFunctorsRepn),
     TypeCtor = type_ctor(TypeCtorSymName, _Arity),
     RepnInfo = item_type_repn_info(TypeCtorSymName, TypeParams,
-        tcrepn_du(DuRepn), TVarSet, term.dummy_context_init, item_no_seq_num),
+        tcrepn_du(DuRepn), TVarSet, dummy_context, item_no_seq_num),
     map.det_insert(TypeCtor, RepnInfo, !Int1RepnMap).
 
 :- pred decide_gen_du_functors(platform_params::in, set_tree234(type_ctor)::in,

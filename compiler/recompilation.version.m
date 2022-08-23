@@ -103,6 +103,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module term_context.
 :- import_module term_int.
 :- import_module term_subst.
 :- import_module term_unify.
@@ -776,8 +777,7 @@ split_class_method_types_and_modes(Decl0) = Decls :-
                 MaybePredOrFunc = yes(PredOrFunc)
             ),
             ModeInfo = class_mode_info(SymName, MaybePredOrFunc,
-                Modes, WithInst, MaybeDetism,
-                InstVarSet, term.context_init),
+                Modes, WithInst, MaybeDetism, InstVarSet, dummy_context),
             ModeDecl = class_decl_mode(ModeInfo),
             ModeDecls = [ModeDecl]
         else
@@ -787,7 +787,7 @@ split_class_method_types_and_modes(Decl0) = Decls :-
         varset.init(EmptyInstVarSet),
         PredOrFuncInfo = class_pred_or_func_info(SymName, PredOrFunc,
             TypesWithoutModes, WithType, no, no, TypeVarSet, EmptyInstVarSet,
-            ExistQVars, Purity, Constraints, term.context_init),
+            ExistQVars, Purity, Constraints, dummy_context),
         PredOrFuncDecl = class_decl_pred_or_func(PredOrFuncInfo),
         Decls = [PredOrFuncDecl | ModeDecls]
     ;
@@ -795,7 +795,7 @@ split_class_method_types_and_modes(Decl0) = Decls :-
         ModeInfo0 = class_mode_info(SymName, MaybePredOrFunc,
             Modes, WithInst, MaybeDetism, InstVarSet, _Context),
         ModeInfo = class_mode_info(SymName, MaybePredOrFunc,
-            Modes, WithInst, MaybeDetism, InstVarSet, term.context_init),
+            Modes, WithInst, MaybeDetism, InstVarSet, dummy_context),
         Decl = class_decl_mode(ModeInfo),
         Decls = [Decl]
     ).

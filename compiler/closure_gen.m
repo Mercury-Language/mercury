@@ -67,7 +67,7 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -245,8 +245,8 @@ generate_closure_from_scratch(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         ClosureInfo),
     module_info_get_name(ModuleInfo, ModuleName),
     Context = goal_info_get_context(GoalInfo),
-    term.context_file(Context, FileName),
-    term.context_line(Context, LineNumber),
+    FileName = term_context.context_file(Context),
+    LineNumber = term_context.context_line(Context),
     goal_id(GoalIdNum) = goal_info_get_goal_id(GoalInfo),
     GoalIdStr = string.int_to_string(GoalIdNum),
     get_proc_label(!.CI, CallerProcLabel),

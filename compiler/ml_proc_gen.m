@@ -72,7 +72,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1918,7 +1918,7 @@ does_case_contain_nested_func_defn(Case, !ContainsNestedFuncs) :-
 :- pragma consider_used(pred(describe_pred_proc_ids/5)).
 
 describe_pred_proc_ids(ModuleInfo, Msg, PredProcIds, !StartCommentStmts) :-
-    MsgStmt = ml_stmt_atomic(comment(Msg), term.context_init),
+    MsgStmt = ml_stmt_atomic(comment(Msg), dummy_context),
     DescStmts = list.map(pred_proc_id_desc(ModuleInfo),
         set.to_sorted_list(PredProcIds)),
     !:StartCommentStmts = !.StartCommentStmts ++ [MsgStmt | DescStmts].
@@ -1927,7 +1927,7 @@ describe_pred_proc_ids(ModuleInfo, Msg, PredProcIds, !StartCommentStmts) :-
 
 pred_proc_id_desc(ModuleInfo, PredProcId) = DescStmt :-
     Comment = "  " ++ describe_proc_from_id(ModuleInfo, PredProcId),
-    DescStmt = ml_stmt_atomic(comment(Comment), term.context_init).
+    DescStmt = ml_stmt_atomic(comment(Comment), dummy_context).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_proc_gen.

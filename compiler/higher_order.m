@@ -100,7 +100,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -315,7 +315,7 @@ recursively_process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
                 rq_request_kind         :: ho_request_kind,
 
                 % Context of the call which caused the request to be generated.
-                rq_call_context         :: context
+                rq_call_context         :: prog_context
             ).
 
 :- type ho_request_kind
@@ -1920,8 +1920,7 @@ construct_extra_type_infos(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
     ModuleInfo0 = !.Info ^ hoi_global_info ^ hogi_module_info,
     PredInfo0 = !.Info ^ hoi_pred_info,
     ProcInfo0 = !.Info ^ hoi_proc_info,
-    term.context_init(Context),
-    polymorphism_make_type_info_vars_mi(Types, Context,
+    polymorphism_make_type_info_vars_mi(Types, dummy_context,
         TypeInfoVars, TypeInfoGoals, ModuleInfo0, ModuleInfo,
         PredInfo0, PredInfo, ProcInfo0, ProcInfo),
     !Info ^ hoi_pred_info := PredInfo,
@@ -2467,7 +2466,7 @@ specialize_unify_or_compare_pred_for_dummy(MaybeResult, GoalExpr, !Info) :-
         Builtin = mercury_public_builtin_module,
         TypeCtor = type_ctor(qualified(Builtin, "comparison_result"), 0),
         Eq = cons(qualified(mercury_public_builtin_module, "="), 0, TypeCtor),
-        make_const_construction(term.context_init, ComparisonResult, Eq, Goal),
+        make_const_construction(dummy_context, ComparisonResult, Eq, Goal),
         Goal = hlds_goal(GoalExpr, _)
     ).
 

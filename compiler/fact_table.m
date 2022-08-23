@@ -169,6 +169,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -855,7 +856,7 @@ read_in_and_compile_facts(FileStream, FileName, MaybeProgressStream,
         Result0 = eof
     ;
         Result0 = error(Message, LineNum),
-        term.context_init(FileName, LineNum, Context),
+        Context = context(FileName, LineNum),
         add_error_context_and_pieces(Context, [words(Message)], !Specs)
     ;
         Result0 = term(VarSet, Term),
@@ -900,7 +901,7 @@ check_fact_term(FileStream, FileName, MaybeProgressStream, FactTableSize,
     (
         Term = term.variable(_, _),
         io.get_line_number(FileStream, LineNum, !IO),
-        Context = term.context(FileName, LineNum),
+        Context = context(FileName, LineNum),
         Pieces = [words("Error: term is not a fact."), nl],
         add_error_context_and_pieces(Context, Pieces, [], Specs)
     ;
@@ -941,7 +942,7 @@ check_fact_term(FileStream, FileName, MaybeProgressStream, FactTableSize,
 
 :- pred check_fact_term_args(maybe(io.text_output_stream)::in, int::in,
     pred_info::in, int::in, list(fact_arg_info)::in,
-    int::in, prog_varset::in, list(prog_term)::in, context::in,
+    int::in, prog_varset::in, list(prog_term)::in, prog_context::in,
     list(proc_stream)::in, maybe(pair(io.text_output_stream, string))::in,
     list(error_spec)::out, io::di, io::uo) is det.
 
@@ -3853,7 +3854,7 @@ add_call_system_error(Cmd, ErrorCode, !Specs, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred add_file_open_error(maybe(context)::in, string::in, string::in,
+:- pred add_file_open_error(maybe(prog_context)::in, string::in, string::in,
     io.error::in, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 

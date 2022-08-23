@@ -493,6 +493,32 @@ Changes to the Mercury standard library
     - pred `contains_var_list/2`
             (replacement: `term_vars.terms_contain_var/2`)
 
+    - func `context_init/2`
+            (replacement: `term_context.context_init/2`)
+    - pred `context_init/3`
+            (replacement: `term_context.context_init/2`)
+    - func `context_init/0`
+            (replacement: `term_context.dummy_context/0`)
+    - pred `context_init/1`
+            (replacement: `term_context.dummy_context/0`)
+    - func `dummy_context_init/0`
+            (replacement: `term_context.dummy_context/0`)
+    - pred `is_dummy_context/1`
+            (replacement: `term_context.is_dummy_context/1`)
+    - func `context_file/1`
+            (replacement: `term_context.context_file/1`)
+    - pred `context_file/2`
+            (replacement: `term_context.context_file/1`)
+    - func `context_line/1`
+            (replacement: `term_context.context_line/1`)
+    - pred `context_line/2`
+            (replacement: `term_context.context_line/1`)
+
+### New `term_context` module
+
+* This new module defines the term_context type, and contains predicates
+  and functions that operate on that type.
+
 ### New `term_int` module
 
 * This new module contains predicates that recognize terms that contain

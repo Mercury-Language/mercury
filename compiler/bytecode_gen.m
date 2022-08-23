@@ -79,7 +79,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module uint.
 :- import_module uint8.
 
@@ -203,7 +203,7 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
 gen_goal(hlds_goal(GoalExpr, GoalInfo), !ByteInfo, Code) :-
     gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, GoalCode),
     Context = goal_info_get_context(GoalInfo),
-    term.context_line(Context, Line),
+    Line = term_context.context_line(Context),
     Code = cord.singleton(byte_context(Line)) ++ GoalCode.
 
 :- pred gen_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,

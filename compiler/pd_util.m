@@ -188,7 +188,9 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module term.
+:- import_module term_context.
+
+%---------------------------------------------------------------------------%
 
 goal_get_calls(Goal0, CalledPreds) :-
     goal_to_conj_list(Goal0, Conjuncts),
@@ -276,7 +278,7 @@ unique_modecheck_goal_live_vars(LiveVars, Goal0, Goal, Errors, !PDInfo) :-
     PredProcId = proc(PredId, ProcId),
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap0),
-    term.context_init(Context),
+    Context = dummy_context,
     pd_info_get_pred_info(!.PDInfo, PredInfo0),
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
     pd_info_get_head_inst_vars(!.PDInfo, HeadInstVars),

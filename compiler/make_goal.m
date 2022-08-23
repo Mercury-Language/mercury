@@ -153,7 +153,7 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module require.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -216,9 +216,8 @@ make_complicated_unify_assign(Var1, Var2, Goal) :-
     ( if Var1 = Var2 then
         Goal = true_goal
     else
-        term.context_init(Context),
         create_pure_atomic_complicated_unification(Var1, rhs_var(Var2),
-            Context, umc_explicit, [], Goal)
+            dummy_context, umc_explicit, [], Goal)
     ).
 
 %---------------------------------------------------------------------------%
@@ -279,30 +278,30 @@ make_int_const_construction_alloc_in_proc(Int, Name, Goal, Var,
         !ProcInfo) :-
     proc_info_create_var_from_type(Name, int_type, is_not_dummy_type,
         Var, !ProcInfo),
-    make_int_const_construction(term.context_init, Var, Int, Goal).
+    make_int_const_construction(dummy_context, Var, Int, Goal).
 
 make_string_const_construction_alloc_in_proc(String, Name, Goal, Var,
         !ProcInfo) :-
     proc_info_create_var_from_type(Name, string_type, is_not_dummy_type,
         Var, !ProcInfo),
-    make_string_const_construction(term.context_init, Var, String, Goal).
+    make_string_const_construction(dummy_context, Var, String, Goal).
 
 make_float_const_construction_alloc_in_proc(Float, Name, Goal, Var,
         !ProcInfo) :-
     proc_info_create_var_from_type(Name, float_type, is_not_dummy_type,
         Var, !ProcInfo),
-    make_float_const_construction(term.context_init, Var, Float, Goal).
+    make_float_const_construction(dummy_context, Var, Float, Goal).
 
 make_char_const_construction_alloc_in_proc(Char, Name, Goal, Var,
         !ProcInfo) :-
     proc_info_create_var_from_type(Name, char_type, is_not_dummy_type, Var,
         !ProcInfo),
-    make_char_const_construction(term.context_init, Var, Char, Goal).
+    make_char_const_construction(dummy_context, Var, Char, Goal).
 
 make_const_construction_alloc_in_proc(ConsId, Type, IsDummy, Name, Goal, Var,
         !ProcInfo) :-
     proc_info_create_var_from_type(Name, Type, IsDummy, Var, !ProcInfo),
-    make_const_construction(term.context_init, Var, ConsId, Goal).
+    make_const_construction(dummy_context, Var, ConsId, Goal).
 
 %---------------------------------------------------------------------------%
 
@@ -310,31 +309,31 @@ make_int_const_construction_alloc(Int, Name, Goal, Var,
         !VarTable) :-
     Entry = vte(Name, int_type, is_not_dummy_type),
     add_var_entry(Entry, Var, !VarTable),
-    make_int_const_construction(term.context_init, Var, Int, Goal).
+    make_int_const_construction(dummy_context, Var, Int, Goal).
 
 make_string_const_construction_alloc(String, Name, Goal, Var,
         !VarTable) :-
     Entry = vte(Name, string_type, is_not_dummy_type),
     add_var_entry(Entry, Var, !VarTable),
-    make_string_const_construction(term.context_init, Var, String, Goal).
+    make_string_const_construction(dummy_context, Var, String, Goal).
 
 make_float_const_construction_alloc(Float, Name, Goal, Var,
         !VarTable) :-
     Entry = vte(Name, float_type, is_not_dummy_type),
     add_var_entry(Entry, Var, !VarTable),
-    make_float_const_construction(term.context_init, Var, Float, Goal).
+    make_float_const_construction(dummy_context, Var, Float, Goal).
 
 make_char_const_construction_alloc(Char, Name, Goal, Var,
         !VarTable) :-
     Entry = vte(Name, char_type, is_not_dummy_type),
     add_var_entry(Entry, Var, !VarTable),
-    make_char_const_construction(term.context_init, Var, Char, Goal).
+    make_char_const_construction(dummy_context, Var, Char, Goal).
 
 make_const_construction_alloc(ConsId, Type, IsDummyType, Name, Goal, Var,
         !VarTable) :-
     Entry = vte(Name, Type, IsDummyType),
     add_var_entry(Entry, Var, !VarTable),
-    make_const_construction(term.context_init, Var, ConsId, Goal).
+    make_const_construction(dummy_context, Var, ConsId, Goal).
 
 %---------------------------------------------------------------------------%
 

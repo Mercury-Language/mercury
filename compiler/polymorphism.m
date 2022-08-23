@@ -211,7 +211,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -1950,7 +1950,7 @@ polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
         ActualTypeInfoTypes),
 
     % Construct goals to make the required type_infos.
-    Ctxt = term.context_init,
+    Ctxt = term_context.dummy_context,
     polymorphism_do_make_type_info_vars(ActualTypeInfoTypes, Ctxt,
         ExtraArgsConstArgs, ExtraGoals, !Info),
     assoc_list.keys(ExtraArgsConstArgs, ExtraArgs),

@@ -141,7 +141,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module term.
+:- import_module term_context.
 
 %-----------------------------------------------------------------------------%
 
@@ -762,7 +762,7 @@ create_loop_inv_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Context = goal_info_get_context(GoalInfo),
-    term.context_line(Context, LineNum),
+    LineNum = term_context.context_line(Context),
     module_info_next_loop_inv_count(Context, SeqNum, !ModuleInfo),
     ProcNum = proc_id_to_int(ProcId),
     Transform = tn_loop_inv(PredOrFunc, ProcNum, lnc(LineNum, SeqNum)),

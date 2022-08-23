@@ -103,7 +103,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -324,7 +324,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
             mercury_private_builtin_module, "superclass_from_typeclass_info",
             [], [SubClassVar, IndexVar, TypeClassInfoVar],
             instmap_delta_bind_no_var, only_mode, detism_det, purity_pure, [],
-            term.context_init, SuperClassGoal),
+            term_context.dummy_context, SuperClassGoal),
         Goals = SubClassVarGoals ++ IndexGoals ++ [SuperClassGoal],
         MaybeTCIConstArg = no,
 
@@ -794,7 +794,7 @@ get_arg_superclass_vars(ClassDefn, InstanceTypes, SuperClassProofMap,
 make_typeclass_infos_for_superclasses([], _, [], [], !Info).
 make_typeclass_infos_for_superclasses([Constraint | Constraints], ExistQVars,
         [TypeClassInfoVarMCA | TypeClassInfoVarsMCAs], Goals, !Info) :-
-    term.context_init(Context),
+    Context = term_context.dummy_context,
     make_typeclass_info_var(Constraint, [], ExistQVars, Context,
         TypeClassInfoVarMCA, HeadGoals, !Info),
     make_typeclass_infos_for_superclasses(Constraints, ExistQVars,

@@ -90,6 +90,7 @@ string.builder.m
 string.m
 table_statistics.m
 term.m
+term_context.m
 term_conversion.m
 term_int.m
 term_subst.m

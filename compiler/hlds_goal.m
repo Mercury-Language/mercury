@@ -39,7 +39,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module set.
-:- import_module term.
+:- import_module term_context.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1781,7 +1781,7 @@
 :- pred goal_info_set_mdprof_inst(goal_is_mdprof_inst::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
-:- pred goal_set_context(term.context::in, hlds_goal::in, hlds_goal::out)
+:- pred goal_set_context(term_context::in, hlds_goal::in, hlds_goal::out)
     is det.
 
 :- pred goal_add_feature(goal_feature::in,
@@ -2121,12 +2121,11 @@ goal_info_init(GoalInfo) :-
     Detism = detism_erroneous,
     instmap_delta_init_unreachable(InstMapDelta),
     NonLocals = set_of_var.init,
-    term.context_init(Context),
     set.init(Features),
     GoalId = goal_id(-1),
     GoalInfo = goal_info(Detism, purity_pure, InstMapDelta, NonLocals,
         Features, GoalId, no_code_gen_info,
-        hlds_goal_extra_info_init(Context)).
+        hlds_goal_extra_info_init(dummy_context)).
 
 :- pragma inline(pred(goal_info_init/2)).
 
@@ -2142,11 +2141,10 @@ goal_info_init(Context, GoalInfo) :-
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo) :-
     set.init(Features),
-    term.context_init(Context),
     GoalId = goal_id(-1),
     GoalInfo = goal_info(Detism, Purity, InstMapDelta, NonLocals,
         Features, GoalId, no_code_gen_info,
-        hlds_goal_extra_info_init(Context)).
+        hlds_goal_extra_info_init(dummy_context)).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, GoalInfo) :-
     set.init(Features),
@@ -2165,7 +2163,7 @@ goal_info_init_context_purity(Context, Purity, GoalInfo) :-
         Features, GoalId, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
 
-:- func hlds_goal_extra_info_init(term.context) = hlds_goal_extra_info.
+:- func hlds_goal_extra_info_init(term_context) = hlds_goal_extra_info.
 
 hlds_goal_extra_info_init(Context) = ExtraInfo :-
     HO_Values = map.init,

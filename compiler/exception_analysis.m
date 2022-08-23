@@ -150,6 +150,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module term.
+:- import_module term_context.
 
 %----------------------------------------------------------------------------%
 %
@@ -1110,7 +1111,7 @@ exception_status_more_precise_than(StatusA, StatusB) :-
 excp_answer_to_term(Answer) = Term :-
     Answer = exception_analysis_answer(Status),
     exception_status_to_string(Status, String),
-    Term = term.functor(atom(String), [], context_init).
+    Term = term.functor(atom(String), [], dummy_context).
 
 :- pred excp_answer_from_term(term::in, exception_analysis_answer::out)
     is semidet.

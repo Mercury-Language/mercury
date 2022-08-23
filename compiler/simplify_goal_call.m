@@ -108,7 +108,7 @@
 :- import_module pair.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module uint.
 
 %---------------------------------------------------------------------------%
@@ -1560,7 +1560,7 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
                 mercury_exception_module, "throw",
                 [], [ExceptionVar], instmap_delta_bind_no_var, only_mode,
                 detism_erroneous, purity_pure, [],
-                term.dummy_context_init, ThrowGoal),
+                term_context.dummy_context, ThrowGoal),
             goal_info_init(set_of_var.init, instmap_delta_bind_no_var,
                 detism_erroneous, purity_pure, Context, ThrowConjGoalInfo), 
             conj_list_to_goal([ErrorMsgStrGoal, WrapErrorMsgGoal, ThrowGoal],

@@ -212,7 +212,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %-----------------------------------------------------------------------------%
 
@@ -1747,8 +1747,8 @@ output_alloc_sites_array(Info, Stream, AllocSites, !IO) :-
 
 output_alloc_site_slot(_Info, Stream, AllocSite, !Slot, !IO) :-
     AllocSite = alloc_site_info(ProcLabel, Context, TypeMsg, Words),
-    term.context_file(Context, FileName),
-    term.context_line(Context, LineNumber),
+    FileName = term_context.context_file(Context),
+    LineNumber = term_context.context_line(Context),
     io.write_string(Stream, "\t{ ", !IO),
     io.write_string(Stream,
         proc_label_to_c_string(add_label_prefix, ProcLabel), !IO),

@@ -162,6 +162,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -564,8 +565,8 @@ create_new_pred_for_lambda(RegWrapperProc, RHS0, OrigVars, ArgVars,
     module_info_get_name(!.ModuleInfo, ModuleName),
     OrigPredName = pred_info_name(OrigPredInfo),
     OrigContext = goal_info_get_context(LambdaGoalInfo),
-    term.context_file(OrigContext, OrigFile),
-    term.context_line(OrigContext, OrigLine),
+    OrigFile = term_context.context_file(OrigContext),
+    OrigLine = term_context.context_line(OrigContext),
     module_info_next_lambda_count(OrigContext, LambdaCount, !ModuleInfo),
     Transform = tn_lambda(PredOrFunc, lnc(OrigLine, LambdaCount)),
     make_transformed_pred_name(OrigPredName, Transform, TransformedName),

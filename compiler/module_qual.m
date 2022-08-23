@@ -255,7 +255,6 @@
 :- import_module one_or_more.
 :- import_module pair.
 :- import_module set.
-:- import_module term.
 
 %---------------------------------------------------------------------------%
 

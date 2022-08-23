@@ -110,6 +110,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 
 %----------------------------------------------------------------------------%
 %
@@ -847,7 +848,7 @@ mm_tabling_status_more_precise_than(mm_tabled_conditional,
 mm_tabling_analysis_answer_to_term(Answer) = Term :-
     Answer = mm_tabling_analysis_answer(Status),
     mm_tabling_status_to_string(Status, String),
-    Term = term.functor(atom(String), [], context_init).
+    Term = term.functor(atom(String), [], dummy_context).
 
 :- pred mm_tabling_analysis_answer_from_term(term::in,
     mm_tabling_analysis_answer::out) is semidet.

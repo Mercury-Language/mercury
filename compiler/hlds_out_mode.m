@@ -92,7 +92,7 @@
 :- import_module int.
 :- import_module pair.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module unit.
 :- import_module varset.
 
@@ -217,7 +217,7 @@ mercury_format_structured_inst(Suffix, Inst, Indent, Lang, InclAddr,
         ;
             Lang = output_debug,
             InstResultsTerm =
-                inst_test_results_to_term(term.context_init, InstResults),
+                inst_test_results_to_term(dummy_context, InstResults),
             InstResultsStr = mercury_term_to_string_vs(varset.init,
                 print_num_only, InstResultsTerm),
             mercury_format_tabs(Indent + 1, S, !U),

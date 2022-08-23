@@ -79,7 +79,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
     % Currently, we convert the event specification file into a Mercury term
@@ -120,7 +120,7 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
             Pieces = [words(TermReadMsg), nl],
             ErrorSpec = simplest_spec($pred, severity_error,
                 phase_term_to_parse_tree,
-                term.context(TermFileName, LineNumber), Pieces),
+                term_context.context(TermFileName, LineNumber), Pieces),
             ErrorSpecs = [ErrorSpec]
         ),
         io.close_input(TermStream, !IO),
@@ -388,7 +388,7 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
             quote(EventName), suffix("."), nl],
         CircErrorSpec = simplest_spec($pred, severity_error,
             phase_term_to_parse_tree,
-            term.context(FileName, EventLineNumber), Pieces),
+            term_context.context(FileName, EventLineNumber), Pieces),
         !:ErrorSpecs = [CircErrorSpec | !.ErrorSpecs],
         SynthAttrNumOrder = []
     ),
@@ -400,10 +400,12 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
         Pieces1 = [words("Duplicate event specification for event"),
             quote(EventName), suffix("."), nl],
         Pieces2 = [words("The previous event specification is here."), nl],
+        EventContext = term_context.context(FileName, EventLineNumber),
+        OldContext = term_context.context(FileName, OldLineNumber),
         DuplErrorSpec = error_spec($pred, severity_error,
             phase_term_to_parse_tree,
-            [simplest_msg(term.context(FileName, EventLineNumber), Pieces1),
-            simplest_msg(term.context(FileName, OldLineNumber), Pieces2)]),
+            [simplest_msg(EventContext, Pieces1),
+            simplest_msg(OldContext, Pieces2)]),
         !:ErrorSpecs = [DuplErrorSpec | !.ErrorSpecs]
     else
         map.det_insert(EventName, EventSpec, !EventSpecMap)
@@ -481,7 +483,7 @@ build_plain_type_map(EventName, FileName, EventLineNumber,
             quote(AttrName), suffix("."), nl],
         ErrorSpec = simplest_spec($pred, severity_error,
             phase_term_to_parse_tree,
-            term.context(FileName, EventLineNumber), Pieces),
+            term_context.context(FileName, EventLineNumber), Pieces),
         !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
     ),
     (
@@ -552,7 +554,7 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
                             % AttrTypeMap already contains the correct info.
                             true
                         else
-                            FuncAttrLineNumber =
+                            FuncAttrLine =
                                 FuncAttrInfo ^ attr_info_linenumber,
                             % XXX Maybe we should give the types themselves.
                             Pieces = [words("Attribute"), quote(FuncAttrName),
@@ -560,7 +562,7 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
                                 words("by synthesized attributes."), nl],
                             ErrorSpec = simplest_spec($pred, severity_error,
                                 phase_term_to_parse_tree,
-                                term.context(FileName, FuncAttrLineNumber),
+                                term_context.context(FileName, FuncAttrLine),
                                 Pieces),
                             !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
                         )
@@ -575,7 +577,8 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
                         quote(FuncAttrName), suffix("."), nl],
                     ErrorSpec = simplest_spec($pred, severity_error,
                         phase_term_to_parse_tree,
-                        term.context(FileName, AttrLineNumber), Pieces),
+                        term_context.context(FileName, AttrLineNumber),
+                        Pieces),
                     !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
                 )
             else
@@ -609,7 +612,7 @@ record_arg_dependencies(EventName, FileName, AttrLineNumber, KeyMap,
             words("in its synthesis."), nl],
         ErrorSpec = simplest_spec($pred, severity_error,
             phase_term_to_parse_tree,
-            term.context(FileName, AttrLineNumber), Pieces),
+            term_context.context(FileName, AttrLineNumber), Pieces),
         !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
     ),
     record_arg_dependencies(EventName, FileName, AttrLineNumber, KeyMap,
@@ -669,7 +672,7 @@ convert_terms_to_attrs(EventName, FileName, AttrNameMap,
                 quote(AttrName), suffix("."), nl],
             ErrorSpec = simplest_spec($pred, severity_error,
                 phase_term_to_parse_tree,
-                term.context(FileName, AttrLineNumber), Pieces),
+                term_context.context(FileName, AttrLineNumber), Pieces),
             !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
         )
     ),

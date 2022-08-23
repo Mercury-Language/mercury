@@ -131,7 +131,7 @@
 
 :- import_module int.
 :- import_module require.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -657,7 +657,7 @@ pd_info_define_new_pred(Goal, PredProcId, CallGoal, !PDInfo) :-
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Context = goal_info_get_context(GoalInfo),
-    term.context_line(Context, LineNum),
+    LineNum = term_context.context_line(Context),
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     Origin = origin_compiler(made_for_deforestation(LineNum, SeqNum)),
     Transform = tn_deforestation(pf_predicate, lnc(LineNum, SeqNum)),

@@ -90,7 +90,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -344,8 +344,8 @@ mlds_output_alloc_site_defn(_Opts, Stream, Indent, MLDS_ModuleName,
         _AllocId - AllocData, !IO) :-
     AllocData = ml_alloc_site_data(FuncName, Context, Type, Size),
     QualFuncName = qual_function_name(MLDS_ModuleName, FuncName),
-    term.context_file(Context, FileName),
-    term.context_line(Context, LineNumber),
+    FileName = term_context.context_file(Context),
+    LineNumber = term_context.context_line(Context),
     output_n_indents(Stream, Indent, !IO),
     io.write_string(Stream, "{ ", !IO),
     mlds_output_fully_qualified_function_name(Stream, QualFuncName, !IO),

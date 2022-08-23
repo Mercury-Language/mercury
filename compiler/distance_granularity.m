@@ -155,7 +155,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module term.
+:- import_module term_context.
 
 %-----------------------------------------------------------------------------%
 %
@@ -493,7 +493,7 @@ create_if_then_else_goal(GoalsInConj, ConjInfo, MaybeGranularityVar,
         ModuleInfo) :-
     proc_info_create_var_from_type("", int_type, is_not_dummy_type, Var,
         !ProcInfo),
-    make_int_const_construction(term.context_init, Var, 0, UnifyGoal),
+    make_int_const_construction(dummy_context, Var, 0, UnifyGoal),
     (
         MaybeGranularityVar = yes(GranularityVar),
         % Create the condition.
@@ -567,7 +567,7 @@ apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     % Create granularity variable containing value Distance.
                     proc_info_create_var_from_type("", int_type,
                         is_not_dummy_type, Var, !ProcInfo),
-                    make_int_const_construction(term.context_init,
+                    make_int_const_construction(dummy_context,
                         Var, Distance, UnifyGoal),
 
                     % Use that variable as the last argument of the call.
@@ -680,7 +680,7 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     % Create an int variable containing the value 1.
                     proc_info_create_var_from_type("", int_type,
                         is_not_dummy_type, Var, !ProcInfo),
-                    make_int_const_construction(term.context_init,
+                    make_int_const_construction(dummy_context,
                         Var, 1, UnifyGoal),
 
                     % Create a variable which will contain the decremented
@@ -959,8 +959,7 @@ update_original_predicate_plain_call(!Goal, CallerPredId, CallerProcId,
         % the call.
         proc_info_create_var_from_type("", int_type, is_not_dummy_type, Var,
             !ProcInfo),
-        make_int_const_construction(term.context_init,
-            Var, Distance, UnifyGoal),
+        make_int_const_construction(dummy_context, Var, Distance, UnifyGoal),
         list.append(CallArgs0, [Var], CallArgs),
 
         % If the original predicate is a function then the specialized

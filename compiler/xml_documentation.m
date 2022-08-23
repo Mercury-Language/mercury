@@ -60,7 +60,7 @@
 :- import_module one_or_more.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module term_to_xml.
 :- import_module varset.
 

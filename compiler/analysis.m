@@ -331,6 +331,7 @@
 
 :- import_module map.
 :- import_module require.
+:- import_module term_context.
 :- import_module type_desc.
 :- import_module univ.
 
@@ -450,7 +451,7 @@
 ].
 :- instance to_term(any_call) where [
     ( to_term(any_call) = Term :-
-        Term = term.functor(atom("any"), [], context_init)
+        Term = term.functor(atom("any"), [], dummy_context)
     ),
     ( from_term(Term, any_call) :-
         Term = term.functor(atom("any"), [], _)

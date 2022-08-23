@@ -135,6 +135,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -521,14 +522,14 @@ update_label_table(InternalLabelInfo, !LabelTables) :-
         true
     ).
 
-:- pred update_label_table_2(label_vars::in, int::in, context::in,
+:- pred update_label_table_2(label_vars::in, int::in, prog_context::in,
     is_label_return::in,
     map(string, file_label_table)::in, map(string, file_label_table)::out)
     is det.
 
 update_label_table_2(LabelVars, Slot, Context, IsReturn, !LabelTables) :-
-    term.context_file(Context, File),
-    term.context_line(Context, Line),
+    File = term_context.context_file(Context),
+    Line = term_context.context_line(Context),
     ( if map.search(!.LabelTables, File, LabelTable0) then
         LabelLayout = layout_slot(label_layout_array(LabelVars), Slot),
         ( if map.search(LabelTable0, Line, LineInfo0) then
@@ -572,8 +573,8 @@ find_valid_return_context([TargetContext | TargetContexts],
 :- pred context_is_valid(prog_context::in) is semidet.
 
 context_is_valid(Context) :-
-    term.context_file(Context, File),
-    term.context_line(Context, Line),
+    File = term_context.context_file(Context),
+    Line = term_context.context_line(Context),
     File \= "",
     Line > 0.
 

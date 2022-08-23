@@ -205,7 +205,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -234,7 +234,7 @@
                 new_pred_proc_id         :: proc_id,
                 new_pred_pred_info       :: pred_info,
                 new_pred_proc_info       :: proc_info,
-                new_pred_context         :: term.context,
+                new_pred_context         :: prog_context,
                 new_pred_var_cnt         :: int
             ).
 
@@ -2255,7 +2255,7 @@ create_var_test(VarLHS, VarRHS, UnifyMode, Goal, !NewPredInfo) :-
     hlds_goal::out, stm_info::in, stm_info::out) is det.
 
 create_var_unify_stm(VarLHS, VarRHS, UnifyMode, Goal, !StmInfo) :-
-    Context = term.context("--temp-context--", 999),
+    Context = context("--temp-context--", 999),
     ModuleInfo = !.StmInfo ^ stm_info_module_info,
 
     UnifyType = assign(VarLHS, VarRHS),

@@ -462,7 +462,7 @@
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module require.
-:- import_module term.
+:- import_module term_context.
 
 %-----------------------------------------------------------------------------%
 
@@ -1372,7 +1372,7 @@ type_constructors(ModuleInfo, Type, Constructors) :-
     ( if type_ctor_is_tuple(TypeCtor) then
         % Tuples are never existentially typed.
         MaybeExistConstraints = no_exist_constraints,
-        Context = term.context_init,
+        Context = dummy_context,
         CtorArgs = list.map(
             (func(ArgType) = ctor_arg(no, ArgType, Context)),
             TypeArgs),

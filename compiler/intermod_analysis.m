@@ -172,7 +172,7 @@
 :- import_module pair.
 :- import_module std_util.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 :- import_module unit.
 :- import_module varset.
 
@@ -248,7 +248,7 @@ write_trans_opt_file(Stream, ModuleInfo, ParseTreeTransOpt, !IO) :-
     write_analysis_pragmas(Stream, TermInfos, TermInfos2, Exceptions,
         TrailingInfos, MMTablingInfos, SharingInfos, ReuseInfos, !IO),
 
-    ParseTreeTransOpt = parse_tree_trans_opt(ModuleName, term.context_init,
+    ParseTreeTransOpt = parse_tree_trans_opt(ModuleName, dummy_context,
         list.map(wrap_dummy_pragma_item, TermInfos),
         list.map(wrap_dummy_pragma_item, TermInfos2),
         list.map(wrap_dummy_pragma_item, Exceptions),

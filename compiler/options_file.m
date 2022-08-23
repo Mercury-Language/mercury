@@ -146,7 +146,7 @@
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -292,7 +292,7 @@ read_args_file(OptionsFile, MaybeMCFlags, Specs, UndefSpecs, !IO) :-
                 file_name,
 
                 % The context of that include directive.
-                term.context,
+                term_context,
 
                 % The "provenance" of the file that contains that include
                 % directive.
@@ -303,7 +303,7 @@ read_args_file(OptionsFile, MaybeMCFlags, Specs, UndefSpecs, !IO) :-
     % finds the full pathname of a possibly-searched-for options file for us.
 :- type pre_incl_stack
     --->    pre_stack_base
-    ;       pre_stack_nested(term.context, incl_stack).
+    ;       pre_stack_nested(term_context, incl_stack).
 
 :- pred read_options_file_params(search_info::in,
     pre_incl_stack::in, is_options_file_optional::in,
@@ -495,7 +495,7 @@ check_include_for_infinite_recursion(PreStack0, PathName, Result) :-
     ).
 
 :- pred pathname_occurs_in_incl_stack(incl_stack::in, file_name::in,
-    term.context::in, error_spec::out) is semidet.
+    term_context::in, error_spec::out) is semidet.
 
 pathname_occurs_in_incl_stack(InclStack0, PathName, Context, Spec) :-
     (
@@ -536,8 +536,8 @@ pathname_occurs_in_incl_stack(InclStack0, PathName, Context, Spec) :-
     ).
 
 :- pred pathname_occurs_in_incl_stack_2(incl_stack::in, file_name::in,
-    assoc_list(file_name, term.context)::in,
-    assoc_list(file_name, term.context)::out) is semidet.
+    assoc_list(file_name, term_context)::in,
+    assoc_list(file_name, term_context)::out) is semidet.
 
 pathname_occurs_in_incl_stack_2(InclStack0, PathName, !TopDownIncludes) :-
     (
@@ -554,7 +554,7 @@ pathname_occurs_in_incl_stack_2(InclStack0, PathName, !TopDownIncludes) :-
         )
     ).
 
-:- func include_context_msg(pair(file_name, term.context)) = error_msg.
+:- func include_context_msg(pair(file_name, term_context)) = error_msg.
 
 include_context_msg(FileName - Context) = Msg :-
     Pieces = [words("The include directive for"), quote(FileName),
@@ -611,7 +611,7 @@ read_options_lines(SearchInfo, InclStack0, InStream, FileName, LineNumber0,
                         split_into_words(IncludedFilesChars),
                     (
                         MaybeIncludedFileNames = ok(IncludedFileNames),
-                        Context = term.context(FileName, LineNumber0),
+                        Context = term_context.context(FileName, LineNumber0),
                         PreStack1 = pre_stack_nested(Context, InclStack0),
                         list.foldl5(
                             read_options_file_params(SearchInfo,
@@ -705,7 +705,7 @@ read_options_line_loop(InStream, FileName, !LineNumber, !.RevChars,
                     !.RevChars, Result, !IO)
             ;
                 CharResult2 = eof,
-                Context = term.context(FileName, !.LineNumber),
+                Context = term_context.context(FileName, !.LineNumber),
                 Pieces = [words("Error: attempt to escape end-of-file."), nl],
                 Spec = simplest_spec($pred, severity_error, phase_read_files,
                     Context, Pieces),
@@ -743,7 +743,7 @@ read_options_line_loop(InStream, FileName, !LineNumber, !.RevChars,
 :- func io_error_to_parse_error(file_name, int, io.error) = error_spec.
 
 io_error_to_parse_error(FileName, LineNumber, Error) = Spec :-
-    Context = term.context(FileName, LineNumber),
+    Context = term_context.context(FileName, LineNumber),
     Msg = io.error_message(Error),
     Pieces = [words("I/O error:"), words(Msg), suffix("."), nl],
     Spec = simplest_spec($pred, severity_error, phase_read_files,
@@ -752,7 +752,7 @@ io_error_to_parse_error(FileName, LineNumber, Error) = Spec :-
 :- func report_split_error(file_name, int, string) = error_spec.
 
 report_split_error(FileName, LineNumber, Msg) = Spec :-
-    Context = term.context_init(FileName, LineNumber),
+    Context = term_context.context_init(FileName, LineNumber),
     Pieces = [words("Error:"), words(Msg), suffix("."), nl],
     Spec = simplest_spec($pred, severity_error, phase_read_files,
         Context, Pieces).
@@ -841,7 +841,7 @@ parse_options_line(FileName, LineNumber, Line0, MaybeOptionsFileLine) :-
                 MaybeOptionsFileLine = ofl_ok(
                     ofl_var_defn(SetOrAdd, VarName, VarValue))
             else
-                Context = term.context(FileName, LineNumber),
+                Context = term_context.context(FileName, LineNumber),
                 Pieces = [words("expected"), quote("="), suffix(","),
                     quote(":="), words("or"), quote("+="),
                     words("after"), quote(VarName), suffix("."), nl],
@@ -866,7 +866,7 @@ parse_variable_name(FileName, LineNumber, Chars0, Chars, MaybeVarName) :-
         list.take_while(isnt(char.is_whitespace), Chars, FirstWordChars),
         Pieces = [words("expected variable name before"),
             quote(string.from_char_list(FirstWordChars)), suffix("."), nl],
-        Context = term.context(FileName, LineNumber),
+        Context = term_context.context(FileName, LineNumber),
         Spec = simplest_spec($pred, severity_error, phase_read_files,
             Context, Pieces),
         MaybeVarName = ovos_spec(Spec)
@@ -1204,7 +1204,7 @@ expand_any_var_references_loop(Variables, FileName, LineNumber,
 
 report_unterminated_variable_reference(FileName, LineNumber, RevChars)
         = Spec :-
-    Context = term.context_init(FileName, LineNumber),
+    Context = term_context.context_init(FileName, LineNumber),
     Pieces = [words("Error: unterminated reference to a variable after"),
         quote(string.from_rev_char_list(RevChars)), suffix("."), nl],
     Spec = simplest_spec($pred, severity_error, phase_read_files,
@@ -1223,7 +1223,7 @@ report_any_undefined_variables(FileName, LineNumber, UndefVarNamesSet,
         ; UndefVarNames = [_, _ | _], VarVars = "variables", IsAre = "are"
         ),
         UndefVarNamesPieces = list_to_quoted_pieces(UndefVarNames),
-        Context = term.context_init(FileName, LineNumber),
+        Context = term_context.context_init(FileName, LineNumber),
         Pieces = [words("Warning:"), words(VarVars) | UndefVarNamesPieces] ++
             [words(IsAre), words("undefined."), nl],
         Spec = simplest_spec($pred, severity_warning, phase_read_files,

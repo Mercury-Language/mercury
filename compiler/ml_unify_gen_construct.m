@@ -111,7 +111,7 @@
 :- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
-:- import_module term.
+:- import_module term_context.
 :- import_module uint.
 :- import_module uint16.
 :- import_module uint8.
@@ -1734,7 +1734,7 @@ ml_gen_const_static_compound(Info, ConstNum, VarType, MLDS_Type,
 
     ModuleInfo = Info ^ mcsi_module_info,
     construct_static_ground_term(ModuleInfo, Target, HighLevelData,
-        term.context_init, VarType, MLDS_Type, yes(ConsId),
+        dummy_context, VarType, MLDS_Type, yes(ConsId),
         UsesBaseClass, Ptag, TagwordRvals, NonTagwordRvalsTypesWidths,
         GroundTerm, !GlobalData),
     map.det_insert(ConstNum, GroundTerm, !ConstStructMap).
@@ -1807,7 +1807,7 @@ ml_gen_const_struct_arg(Info, ConstStructMap, ConstArg, ArgPosWidth,
         ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval0)
     ),
     ArgWidth = arg_pos_width_to_width_only(ArgPosWidth),
-    ml_gen_box_const_rval(ModuleInfo, term.context_init, MLDS_Type,
+    ml_gen_box_const_rval(ModuleInfo, dummy_context, MLDS_Type,
         ArgWidth, Rval0, Rval, !GlobalData),
     RvalTypeWidth = rval_type_and_width(Rval, MLDS_Type, ArgPosWidth).
 

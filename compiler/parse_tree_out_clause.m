@@ -66,6 +66,7 @@
 :- import_module maybe.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module term_io.
 :- import_module varset.
 
@@ -112,7 +113,7 @@ get_clause_body_goal(MaybeBodyGoal, BodyGoal) :-
     ;
         MaybeBodyGoal = error2(_),
         PredName = unqualified("there_was_a_syntax_error"),
-        BodyGoal = call_expr(term.context_init, PredName, [], purity_pure)
+        BodyGoal = call_expr(dummy_context, PredName, [], purity_pure)
     ).
 
 %---------------------------------------------------------------------------%
@@ -612,14 +613,12 @@ mercury_output_call(Stream, VarSet, SymName, Term, !IO) :-
         mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
             ModuleName, Stream, !IO),
         io.write_string(Stream, ".", !IO),
-        term.context_init(Context0),
-        SubTerm = term.functor(term.atom(PredName), Term, Context0),
+        SubTerm = term.functor(term.atom(PredName), Term, dummy_context),
         mercury_output_term_nq_vs(VarSet, print_name_only,
             next_to_graphic_token, SubTerm, Stream, !IO)
     ;
         SymName = unqualified(PredName),
-        term.context_init(Context0),
-        SubTerm = term.functor(term.atom(PredName), Term, Context0),
+        SubTerm = term.functor(term.atom(PredName), Term, dummy_context),
         mercury_output_term_nq_vs(VarSet, print_name_only,
             next_to_graphic_token, SubTerm, Stream, !IO)
     ).

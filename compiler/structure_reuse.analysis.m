@@ -131,6 +131,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module term_conversion.
 
 %---------------------------------------------------------------------------%
@@ -902,10 +903,10 @@ analysis_name = "structure_reuse".
 reuse_answer_to_term(Answer) = Term :-
     (
         Answer = structure_reuse_answer_no_reuse,
-        Term = term.functor(atom("no_reuse"), [], term.context_init)
+        Term = term.functor(atom("no_reuse"), [], dummy_context)
     ;
         Answer = structure_reuse_answer_unconditional,
-        Term = term.functor(atom("uncond"), [], term.context_init)
+        Term = term.functor(atom("uncond"), [], dummy_context)
     ;
         Answer = structure_reuse_answer_conditional(HeadVars, Types,
             Conditions),
@@ -913,7 +914,7 @@ reuse_answer_to_term(Answer) = Term :-
         type_to_term(Types, TypesTerm),
         type_to_term(Conditions, ConditionsTerm),
         Term = term.functor(atom("cond"),
-            [HeadVarsTerm, TypesTerm, ConditionsTerm], term.context_init)
+            [HeadVarsTerm, TypesTerm, ConditionsTerm], dummy_context)
     ).
 
 :- pred reuse_answer_from_term(term::in, structure_reuse_answer::out)

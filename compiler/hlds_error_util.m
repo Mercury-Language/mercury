@@ -153,7 +153,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %-----------------------------------------------------------------------------%
 
@@ -280,8 +280,8 @@ describe_one_call_site(ModuleInfo, ShouldModuleQualify, PPId - Context)
         = Pieces :-
     ProcNamePieces = describe_one_proc_name(ModuleInfo, ShouldModuleQualify,
         PPId),
-    term.context_file(Context, FileName),
-    term.context_line(Context, LineNumber),
+    FileName = term_context.context_file(Context),
+    LineNumber = term_context.context_line(Context),
     string.int_to_string(LineNumber, LineNumberStr),
     Pieces = ProcNamePieces ++
         [words("at"), fixed(FileName ++ ":" ++ LineNumberStr)].

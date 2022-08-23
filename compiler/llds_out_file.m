@@ -112,7 +112,7 @@
 :- import_module set.
 :- import_module set_tree234.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %----------------------------------------------------------------------------%
 

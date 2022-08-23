@@ -104,7 +104,7 @@
 :- import_module char.
 :- import_module int.
 :- import_module string.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -129,15 +129,15 @@ get_debug_class_init(Info) = DebugClassInit :-
 
 %---------------------------------------------------------------------------%
 
-:- mutable(last_context, prog_context, context_init, ground,
+:- mutable(last_context, prog_context, dummy_context, ground,
     [untrailed, attach_to_io_state]).
 
 output_context_for_java(Stream, OutputLineNumbers, Marker, ProgContext, !IO) :-
     (
         OutputLineNumbers = yes,
         get_last_context(LastContext, !IO),
-        term.context_file(ProgContext, File),
-        term.context_line(ProgContext, Line),
+        File = term_context.context_file(ProgContext),
+        Line = term_context.context_line(ProgContext),
         ( if
             % It is safe to ignore marker comments when the comment isn't
             % useful. All other marker types must be emitted in all cases.

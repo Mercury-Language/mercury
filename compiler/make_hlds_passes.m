@@ -94,7 +94,7 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
-:- import_module term.
+:- import_module term_context.
 :- import_module term_subst.
 :- import_module varset.
 
@@ -588,7 +588,6 @@ parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
 
 add_builtin_type_ctor_special_preds_in_builtin_module(TypeCtor, !ModuleInfo) :-
     varset.init(TVarSet),
-    term.context_init(Context),
     % These predicates are local only in the public builtin module,
     % but we *get here* only if we are compiling the public builtin module.
     TypeStatus = type_status(status_local),
@@ -603,7 +602,7 @@ add_builtin_type_ctor_special_preds_in_builtin_module(TypeCtor, !ModuleInfo) :-
     % (since we need to put references to the type's unify and compare
     % predicates into that structure.)
     add_special_pred_decl_defns_for_type_eagerly(TVarSet,
-        Type, TypeCtor, Body, TypeStatus, Context, !ModuleInfo).
+        Type, TypeCtor, Body, TypeStatus, dummy_context, !ModuleInfo).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -942,8 +941,8 @@ add_promise(PredStatus, PromiseInfo, !ModuleInfo, !QualInfo, !Specs) :-
     GoalType = goal_for_promise(PromiseType),
     ClauseType = clause_for_promise(PromiseType),
 
-    term.context_file(Context, FileName),
-    term.context_line(Context, LineNumber),
+    FileName = term_context.context_file(Context),
+    LineNumber = term_context.context_line(Context),
     PromisePredName = promise_pred_name(PromiseType, FileName, LineNumber),
     module_info_get_name(!.ModuleInfo, ModuleName),
     PromiseModuleName = ModuleName,
