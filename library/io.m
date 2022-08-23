@@ -130,7 +130,21 @@
     ;       eof
     ;       error(string, int). % error message, line number
 
-:- type io.error.   % Use error_message to decode it.
+    % A value indicating an error.
+    % This may or may not have an associated io.system_error value.
+    %
+:- type io.error.
+
+    % A system-dependent error value.
+    % For C backends, this is either an errno value (e.g. ENOENT)
+    % or a Windows system error code (e.g. ERROR_FILE_NOT_FOUND).
+    % For the Java and C# backends, this is an exception object.
+    %
+:- type system_error.
+:- pragma foreign_type(c, system_error, "MR_Integer",
+    [can_pass_as_mercury_type]).
+:- pragma foreign_type("C#", system_error, "System.Exception").
+:- pragma foreign_type(java, system_error, "java.lang.Exception").
 
     % whence denotes the base for a seek operation.
     %   set - seek relative to the start of the file
@@ -2044,14 +2058,58 @@
 % Interpreting I/O error messages.
 %
 
-    % Construct an error code including the specified error message.
+    % Construct an error value with the specified error message.
+    % The error value will not have an associated system error.
     %
 :- func make_io_error(string) = io.error.
 
-    % Look up the error message corresponding to a particular error code.
+    % Return an error message for the error value.
     %
 :- func error_message(io.error) = string.
 :- pred error_message(io.error::in, string::out) is det.
+
+    % get_system_error(Error, SystemError):
+    %
+    % Succeeds iff SystemError is a system error associated with Error.
+    %
+:- pred get_system_error(io.error::in, io.system_error::out) is semidet.
+
+    % As above, but only succeeds if the system error is an errno value.
+    %
+:- pred get_errno_error(io.error::in, io.system_error::out) is semidet.
+
+    % As above, but only succeeds if the system error is a Windows error code.
+    %
+:- pred get_windows_error(io.error::in, io.system_error::out) is semidet.
+
+    % As above, but only if the system error is a C# or Java exception object.
+    %
+:- pred get_exception_object_error(io.error::in, io.system_error::out)
+    is semidet.
+
+    % get_system_error_name(Error, ErrorName):
+    %
+    % Succeeds if Error has an associated system error, otherwise fails.
+    % On success, ErrorName is a name for that system error as follows.
+    %
+    % For C backends, a system error is usually an errno value. If the errno
+    % value is recognised by the Mercury system, then ErrorName will be the
+    % name for that errno value as defined in <errno.h>, e.g. "ENOENT".
+    % Otherwise, ErrorName will be "errno N" where N is a decimal number.
+    %
+    % For C backends on Windows, a system error may instead be a Windows system
+    % error code. If the error code is recognised by the Mercury system, then
+    % ErrorName will be the name for that error code in the Windows API,
+    % e.g. "ERROR_FILE_NOT_FOUND". Otherwise, ErrorName will be
+    % "System error 0xN" where 0xN is a hexadecimal number.
+    %
+    % For the C# backend, ErrorName will be the fully qualified class name
+    % of an exception object, e.g. "System.IO.FileNotFoundException".
+    %
+    % For the Java backend, ErrorName will be the fully qualified class name
+    % of an exception object, e.g. "java.io.FileNotFoundException".
+    %
+:- pred get_system_error_name(io.error::in, string::out) is semidet.
 
 %---------------------------------------------------------------------------%
 %
@@ -2169,17 +2227,6 @@
     %
 :- pred have_dotnet is semidet.
 
-    % A system-dependent error indication.
-    % For C, this is 0 for success or the value of errno.
-    % (In a few cases, we pass a Win32 error as a system_error.)
-    % For Java, this is null for success or an exception object.
-    % For C#, this is null for success or an exception object.
-    %
-:- type system_error.
-:- pragma foreign_type(c, system_error, "MR_Integer").
-:- pragma foreign_type("C#", system_error, "System.Exception").
-:- pragma foreign_type(java, system_error, "java.lang.Exception").
-
     % Return a unique identifier for the given file (after following
     % symlinks in FileName).
     % XXX On Cygwin sometimes two files will have the same file_id.
@@ -2220,8 +2267,6 @@
 
     % is_error(Error, MessagePrefix, MaybeIOError, !IO):
     % Returns `yes(IOError)' if Error indicates an error (not success).
-    % IOError contains an error message obtained by looking up the message
-    % for the given errno value and prepending MessagePrefix.
     %
 :- pred is_error(system_error::in, string::in, maybe(io.error)::out,
     io::di, io::uo) is det.
@@ -2232,22 +2277,18 @@
 :- pred is_maybe_win32_error(system_error::in, string::in,
     maybe(io.error)::out, io::di, io::uo) is det.
 
-    % make_err_msg(Error, MessagePrefix, Message, !IO):
-    % Message is an error message obtained by looking up the message for the
-    % given errno value and prepending MessagePrefix.
+    % Make an io.error from a system error and message prefix.
+    % On Windows, the system error is assumed to be a errno value.
     %
-:- pred make_err_msg(system_error::in, string::in, string::out,
-    io::di, io::uo) is det.
+:- pred make_io_error_from_system_error(io.system_error::in, string::in,
+    io.error::out, io::di, io::uo) is det.
 
-    % make_maybe_win32_err_msg(Error, MessagePrefix, Message, !IO):
+    % Make an io.error from a system error and message prefix.
+    % On Windows, the system error is assumed to be a Windows system error
+    % code obtained by calling GetLastError().
     %
-    % Message is an error message obtained by looking up the error message
-    % for Error and prepending MessagePrefix.
-    % On Win32 systems, Error is obtained by calling GetLastError.
-    % On other systems Error is obtained by reading errno.
-    %
-:- pred make_maybe_win32_err_msg(system_error::in, string::in, string::out,
-    io::di, io::uo) is det.
+:- pred make_io_error_from_maybe_win32_error(io.system_error::in, string::in,
+    io.error::out, io::di, io::uo) is det.
 
     % For use by bitmap.m, and other standard library modules
     % that want to do I/O.
@@ -2712,7 +2753,7 @@ putback_char(input_stream(Stream), Character, !IO) :-
         Ok = yes
     ;
         Ok = no,
-        throw(io_error("failed to put back character"))
+        throw(io_error_string("failed to put back character"))
     ).
 
 %---------------------%
@@ -2778,7 +2819,7 @@ putback_int8(binary_input_stream(Stream), Int8, !IO) :-
         Ok = yes
     ;
         Ok = no,
-        throw(io_error("failed to put back int8"))
+        throw(io_error_string("failed to put back int8"))
     ).
 
 %---------------------%
@@ -2793,7 +2834,7 @@ putback_uint8(binary_input_stream(Stream), UInt8, !IO) :-
         Ok = yes
     ;
         Ok = no,
-        throw(io_error("failed to put back uint8"))
+        throw(io_error_string("failed to put back uint8"))
     ).
 
 %---------------------%
@@ -3443,8 +3484,8 @@ read_line(Stream, Result, !IO) :-
         Result = eof
     ;
         ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
+        make_io_error_from_system_error(Error, "read failed: ", IOError, !IO),
+        Result = error(IOError)
     ).
 
 read_line_as_string(Result, !IO) :-
@@ -3461,11 +3502,11 @@ read_line_as_string(input_stream(Stream), Result, !IO) :-
         Result = eof
     ;
         Res = rlas_null_char,
-        Result = error(io_error("null character in input"))
+        Result = error(io_error_string("null character in input"))
     ;
         Res = rlas_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
+        make_io_error_from_system_error(Error, "read failed: ", IOError, !IO),
+        Result = error(IOError)
     ).
 
 ignore_whitespace(Result, !IO) :-
@@ -3601,18 +3642,19 @@ read_binary_from_text_input_stream(Stream, Result, !IO) :-
             ( if NewLineChar = '\n' then
                 Result = ok(T)
             else
-                Result = error(io_error("io.read_binary: missing newline"))
+                Result = error(io_error_string("io.read_binary: missing newline"))
             )
         ;
             NewLineRes = eof,
-            Result = error(io_error("io.read_binary: missing newline"))
+            Result = error(io_error_string("io.read_binary: missing newline"))
         )
     ;
         ReadResult = eof,
         Result = eof
     ;
+        % XXX ERROR: would need to change read_result(T) to return io.error
         ReadResult = error(ErrorMsg, _Line),
-        Result = error(io_error(ErrorMsg))
+        Result = error(io_error_string(ErrorMsg))
     ).
 
 %---------------------------------------------------------------------------%
@@ -3964,7 +4006,7 @@ read_file_as_string(input_stream(Stream), Result, !IO) :-
         MaybeIOError = no,
         (
             NullCharError = yes,
-            Result = error("", io_error("null character in input"))
+            Result = error("", io_error_string("null character in input"))
         ;
             NullCharError = no,
             Result = ok(String)
@@ -3985,7 +4027,7 @@ read_file_as_string_and_num_code_units(input_stream(Stream), Result, !IO) :-
         MaybeIOError = no,
         (
             NullCharError = yes,
-            Result = error2("", 0, io_error("null character in input"))
+            Result = error2("", 0, io_error_string("null character in input"))
         ;
             NullCharError = no,
             Result = ok2(String, NumCUs)
@@ -4847,19 +4889,122 @@ report_tabling_statistics(!IO) :-
 % Interpreting I/O error messages.
 %
 
-    % This definition is subject to change.
-    % Note that we use `io_error' rather than `io.error' because io.print,
-    % which may be called to print out the uncaught exception if there is
-    % no exception handler, does not print out the module name.
 :- type io.error
-    --->    io_error(string).
+    --->    io_error_string(string)
+    ;       io_error_errno(string, system_error)
+    ;       io_error_win32(string, system_error)
+    ;       io_error_exception_object(string, system_error).
 
-make_io_error(Error) = io_error(Error).
+make_io_error(Error) = io_error_string(Error).
 
 error_message(Error) = Msg :-
-    io.error_message(Error, Msg).
+    error_message(Error, Msg).
 
-error_message(io_error(Error), Error).
+error_message(Error, Msg) :-
+    ( Error = io_error_string(Msg)
+    ; Error = io_error_errno(Msg, _)
+    ; Error = io_error_win32(Msg, _)
+    ; Error = io_error_exception_object(Msg, _)
+    ).
+
+%---------------------%
+
+get_system_error(Error, SystemError) :-
+    require_complete_switch [Error]
+    ( Error = io_error_string(_), fail
+    ; Error = io_error_errno(_, SystemError)
+    ; Error = io_error_win32(_, SystemError)
+    ; Error = io_error_exception_object(_, SystemError)
+    ).
+
+get_errno_error(Error, Errno) :-
+    Error = io_error_errno(_, Errno).
+
+get_windows_error(Error, ErrorCode) :-
+    Error = io_error_win32(_, ErrorCode).
+
+get_exception_object_error(Error, Exception) :-
+    Error = io_error_exception_object(_, Exception).
+
+%---------------------%
+
+get_system_error_name(Error, Name) :-
+    require_complete_switch [Error]
+    (
+        Error = io_error_string(_),
+        fail
+    ;
+        Error = io_error_errno(_, Errno),
+        system_error_errno_name(Errno, Name)
+    ;
+        Error = io_error_win32(_, ErrorCode),
+        system_error_win32_error_name(ErrorCode, Name)
+    ;
+        Error = io_error_exception_object(_, Exception),
+        system_error_exception_name(Exception, Name)
+    ).
+
+%---------------------%
+
+:- pred system_error_errno_name(io.system_error::in, string::out) is det.
+
+:- pragma foreign_proc("C",
+    system_error_errno_name(Errno::in, Name::out),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
+"
+    const char *str = MR_errno_name(Errno);
+    if (str != NULL) {
+        Name = (MR_String) str;
+    } else {
+        Name = MR_make_string(MR_ALLOC_ID, ""errno %d"", Errno);
+    }
+").
+
+system_error_errno_name(_, _) :-
+    error("io.system_error_errno_name: inapplicable back-end").
+
+%---------------------%
+
+:- pred system_error_win32_error_name(io.system_error::in, string::out) is det.
+
+:- pragma foreign_proc("C",
+    system_error_win32_error_name(ErrorCode::in, Name::out),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
+"
+#ifdef MR_WIN32
+    const char *str = MR_win32_error_name(ErrorCode);
+    if (str != NULL) {
+        Name = (MR_String) str;
+    } else {
+        Name = MR_make_string(MR_ALLOC_ID, ""System error 0x%X"", ErrorCode);
+    }
+#else
+    MR_fatal_error(""io.system_error_win32_error_name: not on Windows"");
+#endif
+").
+
+system_error_win32_error_name(_, _) :-
+    error("io.system_error_win32_error_name: inapplicable back-end").
+
+%---------------------%
+
+:- pred system_error_exception_name(io.system_error::in, string::out) is det.
+
+:- pragma foreign_proc("C#",
+    system_error_exception_name(Exception::in, Name::out),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
+"
+    Name = Exception.GetType().FullName;
+").
+:- pragma foreign_proc("Java",
+    system_error_exception_name(Exception::in, Name::out),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
+"
+    Name = Exception.getClass().getName();
+").
+
+system_error_exception_name(_, _) :-
+    error("io.system_error_exception_name: inapplicable back-end").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -5576,8 +5721,8 @@ interpret_result_code0(ResultCode, Error, Result, !IO) :-
         Result = eof
     ;
         ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
+        make_io_error_from_system_error(Error, "read failed: ", IOError, !IO),
+        Result = error(IOError)
     ).
 
 :- pred interpret_result_code1(result_code::in, system_error::in,
@@ -5593,8 +5738,8 @@ interpret_result_code1(ResultCode, Error, Value, Result, !IO) :-
         Result = eof
     ;
         ResultCode = result_code_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
+        make_io_error_from_system_error(Error, "read failed: ", IOError, !IO),
+        Result = error(IOError)
     ).
 
 %---------------------%
@@ -5630,9 +5775,48 @@ interpret_maybe_incomplete_result_code(ResultCode, Error, IncompleteBytes,
         Result = incomplete(IncompleteBytes)
     ;
         ResultCode = mirc_error,
-        make_err_msg(Error, "read failed: ", Msg, !IO),
-        Result = error(io_error(Msg))
+        make_io_error_from_system_error(Error, "read failed: ", IOError, !IO),
+        Result = error(IOError)
     ).
+
+%---------------------%
+
+:- type system_error_style
+    --->    syserr_errno
+    ;       syserr_errno_or_win32
+    ;       syserr_exception_object.
+
+:- pragma foreign_export_enum("C", system_error_style/0,
+    [prefix("ML_"), uppercase]).
+:- pragma foreign_export_enum("C#", system_error_style/0,
+    [prefix("ML_"), uppercase]).
+:- pragma foreign_export_enum("Java", system_error_style/0,
+    [prefix("ML_"), uppercase]).
+
+:- func native_system_error_style = system_error_style.
+
+:- pragma foreign_proc("C",
+    native_system_error_style = (SysErrStyle::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+#ifdef MR_WIN32
+    SysErrStyle = ML_SYSERR_ERRNO_OR_WIN32;
+#else
+    SysErrStyle = ML_SYSERR_ERRNO;
+#endif
+").
+:- pragma foreign_proc("C#",
+    native_system_error_style = (SysErrStyle::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SysErrStyle = io.ML_SYSERR_EXCEPTION_OBJECT;
+").
+:- pragma foreign_proc("Java",
+    native_system_error_style = (SysErrStyle::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SysErrStyle = jmercury.io.ML_SYSERR_EXCEPTION_OBJECT;
+").
 
 %---------------------%
 
@@ -5687,8 +5871,7 @@ is_error(Error, Prefix, MaybeError, !IO) :-
     ( if is_success(Error) then
         MaybeError = no
     else
-        make_err_msg(Error, Prefix, Message, !IO),
-        IOError = io_error(Message),
+        make_io_error_from_system_error(Error, Prefix, IOError, !IO),
         MaybeError = yes(IOError)
     ).
 
@@ -5696,67 +5879,49 @@ is_maybe_win32_error(Error, Prefix, MaybeError, !IO) :-
     ( if is_success(Error) then
         MaybeError = no
     else
-        make_maybe_win32_err_msg(Error, Prefix, Message, !IO),
-        IOError = io_error(Message),
+        make_io_error_from_maybe_win32_error(Error, Prefix, IOError, !IO),
         MaybeError = yes(IOError)
     ).
 
-:- pragma foreign_proc("C",
-    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness, no_sharing, tabled_for_io],
-"
-    ML_make_err_msg(Error, Msg0, MR_ALLOC_ID, Msg);
-").
-
-:- pragma foreign_proc("C#",
-    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Msg = System.String.Concat(Msg0, Error.Message);
-").
-
-:- pragma foreign_proc("Java",
-    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    if (Error.getMessage() != null) {
-        Msg = Msg0 + Error.getMessage();
-    } else {
-        Msg = Msg0;
-    }
-").
-
-make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
-    ( if have_win32 then
-        make_win32_err_msg(Error, Msg0, Msg, !IO)
-    else
-        make_err_msg(Error, Msg0, Msg, !IO)
+make_io_error_from_system_error(Error, Prefix, IOError, !IO) :-
+    SysErrStyle = native_system_error_style,
+    (
+        ( SysErrStyle = syserr_errno
+        ; SysErrStyle = syserr_errno_or_win32
+        ),
+        make_errno_message(Error, Prefix, Msg, !IO),
+        IOError = io_error_errno(Msg, Error)
+    ;
+        SysErrStyle = syserr_exception_object,
+        get_exception_object_message(Error, Msg0, !IO),
+        ( if Prefix = "" then
+            Msg = Msg0
+        else
+            Msg = Prefix ++ Msg0
+        ),
+        IOError = io_error_exception_object(Msg, Error)
     ).
 
-:- pred make_win32_err_msg(system_error::in, string::in, string::out,
-    io::di, io::uo) is det.
-
-make_win32_err_msg(_, _, "", !IO) :-
-    ( if semidet_succeed then
-        error("io.make_win32_err_msg called for non Win32 back-end")
-    else
-        true
+make_io_error_from_maybe_win32_error(Error, Prefix, IOError, !IO) :-
+    SysErrStyle = native_system_error_style,
+    (
+        SysErrStyle = syserr_errno,
+        make_errno_message(Error, Prefix, Msg, !IO),
+        IOError = io_error_errno(Msg, Error)
+    ;
+        SysErrStyle = syserr_errno_or_win32,
+        make_win32_error_message(Error, Prefix, Msg, !IO),
+        IOError = io_error_win32(Msg, Error)
+    ;
+        SysErrStyle = syserr_exception_object,
+        get_exception_object_message(Error, Msg0, !IO),
+        ( if Prefix = "" then
+            Msg = Msg0
+        else
+            Msg = Prefix ++ Msg0
+        ),
+        IOError = io_error_exception_object(Msg, Error)
     ).
-
-    % Is FormatMessage thread-safe?
-    %
-:- pragma foreign_proc("C",
-    make_win32_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, does_not_affect_liveness,
-        no_sharing, tabled_for_io],
-"
-#ifdef MR_WIN32
-    ML_make_win32_err_msg(Error, Msg0, MR_ALLOC_ID, Msg);
-#else
-    MR_fatal_error(""io.make_win32_err_msg called on non-Windows platform"");
-#endif
-").
 
 :- pred throw_on_error(system_error::in, string::in, io::di, io::uo) is det.
 
@@ -5779,6 +5944,118 @@ throw_on_close_error(Error, !IO) :-
 
 %---------------------------------------------------------------------------%
 
+    % This requires the I/O state because the strerror/strerror_r functions
+    % depend on the current locale.
+    %
+:- pred make_errno_message(io.system_error::in, string::in, string::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    make_errno_message(Errno::in, Prefix::in, Msg::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
+"
+    char        errbuf[MR_STRERROR_BUF_SIZE];
+    const char  *errmsg;
+    size_t      errmsg_len;
+    size_t      prefix_len;
+
+    prefix_len = strlen(Prefix);
+    errmsg = MR_strerror(Errno, errbuf, sizeof(errbuf));
+    errmsg_len = strlen(errmsg);
+    MR_allocate_aligned_string_msg(Msg, prefix_len + errmsg_len, MR_ALLOC_ID);
+    MR_memcpy(Msg, Prefix, prefix_len);
+    MR_memcpy(Msg + prefix_len, errmsg, errmsg_len + 1); // include NUL
+").
+
+make_errno_message(_, _, _, !IO) :-
+    error("io.make_errno_message: inapplicable back-end").
+
+%---------------------%
+
+    % This requires the I/O state because the FormatMessage call depends
+    % on the current locale.
+    %
+    % XXX is FormatMessage thread-safe? Nothing suggests that it is not.
+    %
+:- pred make_win32_error_message(io.system_error::in, string::in, string::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    make_win32_error_message(ErrorCode::in, Prefix::in, Msg::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
+"
+#ifdef MR_WIN32
+    char    *errmsg;
+    size_t  errmsg_len;
+    size_t  prefix_len;
+
+    if (FormatMessage(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER
+            | FORMAT_MESSAGE_FROM_SYSTEM
+            | FORMAT_MESSAGE_IGNORE_INSERTS,
+            NULL,
+            ErrorCode,
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            (LPTSTR) &errmsg,
+            0,
+            NULL) > 0)
+    {
+        // Remove trailing CR LF sequence.
+        char *cr = strchr(errmsg, '\\r');
+        if (cr != NULL) {
+            *cr = '\\0';
+            errmsg_len = (size_t) (cr - errmsg);
+        } else {
+            errmsg_len = strlen(errmsg);
+        }
+        prefix_len = strlen(Prefix);
+        MR_allocate_aligned_string_msg(Msg, prefix_len + errmsg_len,
+            MR_ALLOC_ID);
+        MR_memcpy(Msg, Prefix, prefix_len);
+        MR_memcpy(Msg + prefix_len, errmsg, errmsg_len + 1); // include NUL
+        LocalFree(errmsg);
+    } else {
+        Msg = MR_make_string(MR_ALLOC_ID, ""%sSystem error 0x%X"",
+            Prefix, ErrorCode);
+    }
+#else
+    MR_fatal_error(""io.make_win32_error_message: not on Windows"");
+#endif
+").
+
+make_win32_error_message(_, _, _, !IO) :-
+    error("io.make_win32_error_message: inapplicable back-end").
+
+%---------------------%
+
+    % This requires the I/O state because the exception message may be
+    % localised (at least for C#).
+    %
+:- pred get_exception_object_message(io.system_error::in, string::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C#",
+    get_exception_object_message(Exception::in, Msg::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
+"
+    Msg = Exception.Message;
+").
+:- pragma foreign_proc("Java",
+    get_exception_object_message(Exception::in, Msg::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
+"
+    Msg = Exception.getMessage();
+    if (Msg == null) {
+        Msg = ""null"";
+    }
+").
+
+get_exception_object_message(_, _, !IO) :-
+    error("io.get_exception_object_message: inapplicable back-end").
+
+%---------------------------------------------------------------------------%
+
 :- pragma foreign_decl("C", "
 #ifdef MR_HAVE_UNISTD_H
     #include <unistd.h>
@@ -5793,11 +6070,13 @@ throw_on_close_error(Error, !IO) :-
 #include ""mercury_init.h""
 #include ""mercury_wrapper.h""
 #include ""mercury_type_info.h""
+#include ""mercury_errno_name.h""
 #include ""mercury_file.h""
 #include ""mercury_heap.h""
 #include ""mercury_misc.h""
 #include ""mercury_runtime_util.h""
 #include ""mercury_report_stats.h""
+#include ""mercury_windows_error_name.h""
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -5831,74 +6110,6 @@ void                    mercury_init_io(void);
     char                *ML_wide_to_utf8(const wchar_t *ws,
                             MR_AllocSiteInfoPtr alloc_id);
 #endif
-
-// ML_make_err_msg(errnum, msg, alloc_id, error_msg):
-// Append msg and a message for errnum to give error_msg.
-//
-// WARNING: this must only be called when the `hp' register is valid.
-// That means it must only be called from procedures declared
-// `[will_not_call_mercury, promise_pure]'.
-//
-// This is defined as a macro rather than a C function to avoid worrying
-// about the `hp' register being invalidated by the function call.
-
-#define ML_make_err_msg(errnum, msg, alloc_id, error_msg)                   \\
-    do {                                                                    \\
-        char    errbuf[MR_STRERROR_BUF_SIZE];                               \\
-        const char *errno_msg;                                              \\
-        size_t  total_len;                                                  \\
-                                                                            \\
-        errno_msg = MR_strerror(errnum, errbuf, sizeof(errbuf));            \\
-        total_len = strlen(msg) + strlen(errno_msg);                        \\
-        MR_allocate_aligned_string_msg((error_msg), total_len, (alloc_id)); \\
-        strcpy((error_msg), msg);                                           \\
-        strcat((error_msg), errno_msg);                                     \\
-    } while(0)
-
-// ML_make_win32_err_msg(error, msg, alloc_id, error_msg):
-// Append msg and the string returned by the Win32 API function
-// FormatMessage() for the last error to give error_msg.
-//
-// WARNING: this must only be called when the `hp' register is valid.
-// That means it must only be called from foreign_procs with the
-// will_not_call_mercury attribute.
-//
-// This is defined as a macro rather than a C function
-// to avoid worrying about the `hp' register being
-// invalidated by the function call.
-
-#ifdef MR_WIN32
-
-#define ML_make_win32_err_msg(error, msg, alloc_id, error_msg)              \\
-    do {                                                                    \\
-        size_t total_len;                                                   \\
-        LPVOID  err_buf;                                                    \\
-        MR_bool free_err_buf = MR_TRUE;                                     \\
-                                                                            \\
-        if (!FormatMessage(                                                 \\
-            FORMAT_MESSAGE_ALLOCATE_BUFFER                                  \\
-            | FORMAT_MESSAGE_FROM_SYSTEM                                    \\
-            | FORMAT_MESSAGE_IGNORE_INSERTS,                                \\
-            NULL,                                                           \\
-            error,                                                          \\
-            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),                      \\
-            (LPTSTR) &err_buf,                                              \\
-            0,                                                              \\
-            NULL))                                                          \\
-        {                                                                   \\
-            free_err_buf = MR_FALSE;                                        \\
-            err_buf = (LPVOID) ""could not retrieve error message"";        \\
-        }                                                                   \\
-        total_len = strlen(msg) + strlen((char *) err_buf);                 \\
-        MR_allocate_aligned_string_msg((error_msg), total_len, (alloc_id)); \\
-        strcpy((error_msg), msg);                                           \\
-        strcat((error_msg), (char *) err_buf);                              \\
-        if (free_err_buf) {                                                 \\
-            LocalFree(err_buf);                                             \\
-        }                                                                   \\
-    } while(0)
-
-#endif // !MR_WIN32
 ").
 
 :- pragma foreign_code("C", "

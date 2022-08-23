@@ -346,7 +346,7 @@ read_binary_file_as_bitmap_2(Stream, Result, !IO) :-
             int.bits_per_int = 32,
             RemainingSizeInt64 > int64.from_int(int.max_int)
         then
-            Result = error(io_error("io.read_binary_file_as_bitmap: " ++
+            Result = error(io_error_string("io.read_binary_file_as_bitmap: " ++
                 "file size exceeds maximum buffer size"))
         else
             RemainingSize = int64.cast_to_int(RemainingSizeInt64),
@@ -362,7 +362,7 @@ read_binary_file_as_bitmap_2(Stream, Result, !IO) :-
                         ( if BytesRead = RemainingSize then
                             Result = ok(!.BM)
                         else
-                            Result = error(io_error(
+                            Result = error(io_error_string(
                                 "io.read_binary_file_as_bitmap: " ++
                                 "incorrect file size"))
                         )

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2007, 2010-2011 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018, 2020 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2020, 2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -423,9 +423,9 @@ execute_command_with_redirects(Prog, Args, OutStreamC, ErrorStreamC,
     do_posix_spawnp(Prog, length(Args), Args, OutStreamC, ErrorStreamC, Status,
         Error0, !IO),
     ( if Status = -1 then
-        io.make_err_msg(Error0, "error invoking system command: ",
-            Message, !IO),
-        Result = error(Message)
+        io.make_io_error_from_system_error(Error0,
+            "error invoking system command: ", IOError, !IO),
+        Result = error(io.error_message(IOError))
     else if Status = -2 then
         Result = error("posix_spawn not supported on this platform")
     else

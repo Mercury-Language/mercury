@@ -88,11 +88,11 @@ set_environment_var(Var, Value, Res, !IO) :-
             else
                 string.format("Could not set environment variable `%s'",
                     [s(Var)], Message),
-                Res = error(io_error(Message))
+                Res = error(io_error_string(Message))
             )
         else
             Message = "Cannot set environment variables on this platform",
-            Res = error(io_error(Message))
+            Res = error(io_error_string(Message))
         )
     ).
 

@@ -1053,18 +1053,18 @@ make_directory_or_check_exists(DirName, Result, !IO) :-
         ( if TypeResult = ok(directory) then
             check_dir_accessibility(DirName, Result, !IO)
         else
-            make_maybe_win32_err_msg(MaybeWin32Error,
-                "cannot create directory: ", Message, !IO),
-            Result = error(make_io_error(Message))
+            make_io_error_from_maybe_win32_error(MaybeWin32Error,
+                "cannot create directory: ", IOError, !IO),
+            Result = error(IOError)
         )
     ;
         MakeDirStatus = dir_exists,
         check_dir_accessibility(DirName, Result, !IO)
     ;
         MakeDirStatus = error,
-        make_maybe_win32_err_msg(MaybeWin32Error,
-            "cannot create directory: ", Message, !IO),
-        Result = error(make_io_error(Message))
+        make_io_error_from_maybe_win32_error(MaybeWin32Error,
+            "cannot create directory: ", IOError, !IO),
+        Result = error(IOError)
     ).
 
 :- pred check_dir_accessibility(string::in, io.res::out, io::di, io::uo)
@@ -1139,6 +1139,7 @@ make_directory_including_parents(DirName, Result, !IO) :-
         // CreateDirectory() doesn't fail if a file with the same name as the
         // directory being created already exists.
         if (System.IO.File.Exists(DirName)) {
+            // XXX ERROR: use more specific exception class
             Error =
                 new System.Exception(""a file with that name already exists"");
             CheckAccess = mr_bool.NO;
@@ -1164,6 +1165,7 @@ make_directory_including_parents(DirName, Result, !IO) :-
     try {
         java.io.File dir = new java.io.File(DirName);
         if (dir.isFile()) {
+            // XXX ERROR: use more specific exception class
             Error = new java.lang.RuntimeException(
                 ""a file with that name already exists"");
             CheckAccess = bool.NO;
@@ -1174,6 +1176,7 @@ make_directory_including_parents(DirName, Result, !IO) :-
             Error = null;
             CheckAccess = bool.NO;
         } else {
+            // XXX ERROR: use more specific exception class
             Error = new java.lang.RuntimeException(""make_directory failed"");
             CheckAccess = bool.NO;
         }
@@ -1195,9 +1198,9 @@ make_single_directory(DirName, Result, !IO) :-
         ; Status = dir_exists
         ; Status = error
         ),
-        make_maybe_win32_err_msg(MaybeWin32Error, "cannot create directory: ",
-            Message, !IO),
-        Result = error(make_io_error(Message))
+        make_io_error_from_maybe_win32_error(MaybeWin32Error,
+            "cannot create directory: ", IOError, !IO),
+        Result = error(IOError)
     ).
 
 :- type make_single_directory_status
@@ -1259,6 +1262,7 @@ make_single_directory(DirName, Result, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
+        // XXX ERROR: use more specific exception class
         // DirectoryInfo.Create doesn't fail if a file with the same name as
         // the directory being created already exists.
         if (System.IO.File.Exists(DirName)) {
@@ -1306,6 +1310,7 @@ make_single_directory(DirName, Result, !IO) :-
         java.io.File parent = newDir.getParentFile();
 
         // Are these first two checks just to produce better error messages?
+        // XXX ERROR: use more specific exception classes
         if (parent == null) {
             Status = dir.ML_MAKE_SINGLE_DIRECTORY_ERROR;
             Error = new java.io.IOException(""can't create root directory"");
@@ -1751,6 +1756,7 @@ open_2(DirName, DirPattern, Result, !IO) :-
 "
     try {
         java.io.File file = new java.io.File(DirName);
+        // XXX ERROR: use more specific exception classes
         if (file.isDirectory()) {
             String[] list = file.list();
             if (list != null) {
@@ -1807,6 +1813,7 @@ check_dir_readable(DirName, Result, !IO) :-
             ),
             % XXX The top level caller may not be dir.foldl2.
             % XXX The message is too verbose for use in a full file_error.
+            % XXX ERROR: can we use a system error?
             IOError = make_io_error("pathname is not a directory"),
             % XXX Should file_check_accessibility be something else?
             Error = file_error(DirName, file_check_accessibility, IOError),

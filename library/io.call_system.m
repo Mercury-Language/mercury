@@ -61,7 +61,7 @@ call_system(Command, Result, !IO) :-
         Result0 = ok(signalled(Signal)),
         string.int_to_string(Signal, SignalStr),
         ErrMsg = "system command killed by signal number " ++ SignalStr,
-        Result = error(io_error(ErrMsg))
+        Result = error(io_error_string(ErrMsg))
     ;
         Result0 = error(Error),
         Result = error(Error)
@@ -319,7 +319,8 @@ decode_system_command_exit_code(Code0) = Status :-
             Status = ok(signalled(Signal))
         ;
             Signalled = no,
-            Status = error(io_error("unknown result code from system command"))
+            Error = io_error_string("unknown result code from system command"),
+            Status = error(Error)
         )
     ).
 

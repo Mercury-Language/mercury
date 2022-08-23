@@ -249,6 +249,8 @@ remove_file(FileName, Result, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
+        // System.IO.File.Delete() does not throw an exception
+        // if the file does not exist.
         if (System.IO.File.Exists(FileName)) {
             System.IO.File.Delete(FileName);
             Error = null;
@@ -275,6 +277,7 @@ remove_file(FileName, Result, !IO) :-
         if (file.delete()) {
             Error = null;
         } else {
+            // XXX ERROR: use FileNotFoundException?
             Error = new java.io.IOException(""remove_file failed"");
         }
     } catch (java.lang.Exception e) {
@@ -381,6 +384,7 @@ rename_file(OldFileName, NewFileName, Result, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
+        // XXX ERROR: do we really need to check for existence first?
         if (System.IO.File.Exists(OldFileName)) {
             System.IO.File.Move(OldFileName, NewFileName);
             Error = null;
@@ -405,13 +409,16 @@ rename_file(OldFileName, NewFileName, Result, !IO) :-
     try {
         java.io.File file = new java.io.File(OldFileName);
 
+        // XXX ERROR: do we really need to check for existence first?
         if (file.exists()) {
             if (file.renameTo(new java.io.File(NewFileName))) {
                 Error = null;
             } else {
+                // XXX ERROR: use FileNotFoundException?
                 Error = new java.io.IOException(""rename_file failed"");
             }
         } else {
+            // XXX ERROR: use FileNotFoundException?
             Error = new java.io.IOException(""No such file or directory"");
         }
     } catch (java.lang.Exception e) {
@@ -687,6 +694,7 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
         if (ok) {
             Error = null;
         } else {
+            // XXX ERROR: use this the correct exception?
             Error = new java.io.FileNotFoundException(""Permission denied"");
         }
     }
@@ -853,6 +861,7 @@ check_directory_accessibility_dotnet(_, _, _, Error, !IO) :-
             if ((attrs & System.IO.FileAttributes.ReadOnly) ==
                 System.IO.FileAttributes.ReadOnly)
             {
+                // XXX ERROR: use more specific exception class
                 Error = new System.Exception(""file is read-only"");
             }
         }
@@ -1069,6 +1078,8 @@ file_type(FollowSymLinks, FileName, Result, !IO) :-
     // The Java implementation can distinguish between regular files and
     // directories, and for everything else it just returns unknown.
 
+    // Java 7 java.nio.file.Files.readAttributes() can do better.
+
     FileType = jmercury.io__file.ML_FILE_TYPE_UNKNOWN;
     Error = null;
 
@@ -1140,6 +1151,7 @@ file_modification_time(File, Result, !IO) :-
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
+        // XXX ERROR: do we really need to check for file existence first?
         if (System.IO.File.Exists(FileName)) {
             System.DateTime t = System.IO.File.GetLastWriteTime(FileName);
             Time = time.ML_construct_time_t(t);
@@ -1160,6 +1172,9 @@ file_modification_time(File, Result, !IO) :-
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
+    // Java 7 java.nio.file.Files.readAttributes() presumably can
+    // distinguish a modtime of 0 from file not found or I/O error.
+
     try {
         long modtime = (new java.io.File(FileName)).lastModified();
         if (modtime == 0) {
@@ -1314,6 +1329,7 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
             Error = null;
         } else {
             FileName = """";
+            // XXX ERROR: more specific class name?
             Error = new java.io.IOException(""Could not create file"");
         }
     } catch (IOException e) {
@@ -1413,6 +1429,7 @@ make_temp_directory(Dir, Prefix, Suffix, Result, !IO) :-
                 }
                 else
                 {
+                    // XXX ERROR: more specific class?
                     Error = new System.Exception(string.Format(
                         ""Creating directory {0} failed with: {1:X}"",
                         DirName, errorNo));
@@ -1421,6 +1438,7 @@ make_temp_directory(Dir, Prefix, Suffix, Result, !IO) :-
 #endif
 
             default:
+                // XXX ERROR: more specific class?
                 Error = new System.Exception(
                     ""Changing folder permissions is not supported for: "" +
                     Environment.OSVersion);
@@ -1454,6 +1472,7 @@ make_temp_directory(Dir, Prefix, Suffix, Result, !IO) :-
         Error = null;
     } else {
         DirName = """";
+        // XXX ERROR: more specific class?
         Error = new java.io.IOException(""Couldn't create directory"");
     }
 ").

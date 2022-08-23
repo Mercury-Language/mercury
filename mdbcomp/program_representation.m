@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2011 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2022 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1084,8 +1084,9 @@ new_procrep_id_string = "Mercury deep profiler procrep version 6\n".
 read_file_as_bytecode(FileName, Result, !IO) :-
     read_file_as_bytecode_2(FileName, ByteCode, Size, Error, !IO),
     ( if Size < 0 then
-        io.make_err_msg(Error, "opening " ++ FileName ++ ": ", Msg, !IO),
-        Result = error(io.make_io_error(Msg))
+        io.make_io_error_from_system_error(Error,
+            "opening " ++ FileName ++ ": ", IOError, !IO),
+        Result = error(IOError)
     else
         Result = ok(bytecode(ByteCode, Size))
     ).
