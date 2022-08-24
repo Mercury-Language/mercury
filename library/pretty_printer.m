@@ -67,7 +67,7 @@
     ;       hard_nl
             % Always outputs a newline, followed by indentation.
 
-    ;       docs(docs)
+    ;       docs(list(doc))
             % An embedded sequence of docs.
 
     ;       format_univ(univ)
@@ -113,13 +113,13 @@
     % Append IndentString to the current indentation while printing Docs.
     % Indentation is printed after each newline that is output.
     %
-:- func indent(string, docs) = doc.
+:- func indent(string, list(doc)) = doc.
 
     % indent(Docs) = indent("  ", Docs).
     %
     % A convenient abbreviation.
     %
-:- func indent(docs) = doc.
+:- func indent(list(doc)) = doc.
 
     % group(Docs):
     %
@@ -137,8 +137,8 @@
 :- func format(T) = doc.
 
     % format_arg(Doc) has the effect of formatting any term in Doc as though
-    % it were an argument in a Mercury term by enclosing it in parentheses if
-    % necessary.
+    % it were an argument in a Mercury term, by enclosing it in parentheses
+    % if necessary.
     %
 :- func format_arg(doc) = doc.
 
@@ -146,6 +146,14 @@
 %
 % Functions for converting docs to strings and writing them out to streams.
 %
+
+    % write_as_doc(X, !IO):
+    % write_as_doc(FileStream, X, !IO):
+    %
+    % Convert X to a doc, and then call write_doc on the result.
+    %
+:- pred write_as_doc(doc::in, io::di, io::uo) is det.
+:- pred write_as_doc(io.output_stream::in, doc::in, io::di, io::uo) is det.
 
     % write_doc(Doc, !IO):
     % write_doc(FileStream, Doc, !IO):
@@ -181,7 +189,7 @@
     % The second argument is the list of argument type_descs for
     % the type of the first argument.
     %
-:- type formatter == ( func(univ, list(type_desc)) = doc ).
+:- type formatter == (func(univ, list(type_desc)) = doc).
 
     % A formatter_map maps types to pps. Types are identified by module name,
     % type name, and type arity.
@@ -194,7 +202,7 @@
 
     % set_formatter(ModuleName, TypeName, TypeArity, Formatter, !FMap):
     %
-    % Update !FMap to use Formatter to format the type
+    % Update !FMap to use Formatter to format values whose type is
     % ModuleName.TypeName/TypeArity.
     %
 :- pred set_formatter(string::in, string::in, int::in, formatter::in,
@@ -314,10 +322,10 @@
     ;       close_group
             % Mark the end of a group.
 
-    ;       indent(string)
+    ;       add_indent(string)
             % Extend the current indentation.
 
-    ;       outdent
+    ;       remove_indent
             % Restore indentation to before the last indent/1.
 
     ;       set_op_priority(ops.priority)
@@ -349,7 +357,11 @@ count_indent_codepoints(indent_nonempty(IndentStack, Indent)) =
 %---------------------------------------------------------------------------%
 
 indent(Indent, Docs) =
-    docs([pp_internal(indent(Indent)), docs(Docs), pp_internal(outdent)]).
+    docs([
+        pp_internal(add_indent(Indent)),
+        docs(Docs),
+        pp_internal(remove_indent)
+    ]).
 
 indent(Docs) =
     indent("  ", Docs).
@@ -370,6 +382,19 @@ format_arg(Doc) =
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+
+:- pragma foreign_export("C", write_as_doc(in, di, uo),
+    "ML_write_as_doc").
+:- pragma foreign_export("C", write_as_doc(in, in, di, uo),
+    "ML_write_as_doc_to_stream").
+
+write_as_doc(X, !IO) :-
+    Doc = format(X),
+    write_doc(io.stdout_stream, Doc, !IO).
+
+write_as_doc(Stream, X, !IO) :-
+    Doc = format(X),
+    write_doc(Stream, Doc, !IO).
 
 write_doc(Doc, !IO) :-
     write_doc(io.stdout_stream, Doc, !IO).
@@ -416,20 +441,20 @@ put_doc(Stream, Canonicalize, FMap, Params, Doc, !IO) :-
 
 do_put_doc(_Stream, _Canonicalize, _FMap, _LineWidth, [],
         !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO).
-do_put_doc(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
+do_put_doc(Stream, Canonicalize, FMap, LineWidth, [Doc0 | Docs0],
         !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO) :-
     ( if !.RemainingLines =< 0 then
         stream.put(Stream, "...", !IO)
     else
         (
             % Output strings directly.
-            Doc = str(String),
+            Doc0 = str(String),
             stream.put(Stream, String, !IO),
             StrWidth = string.count_codepoints(String),
             !:RemainingWidth = !.RemainingWidth - StrWidth,
             Docs = Docs0
         ;
-            Doc = nl,
+            Doc0 = nl,
             IndentWidth = count_indent_codepoints(!.Indents),
             ( if !.RemainingWidth < LineWidth - IndentWidth then
                 format_nl(Stream, LineWidth, !.Indents, !:RemainingWidth,
@@ -439,72 +464,72 @@ do_put_doc(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
             ),
             Docs = Docs0
         ;
-            Doc = hard_nl,
+            Doc0 = hard_nl,
             format_nl(Stream, LineWidth, !.Indents, !:RemainingWidth,
                 !RemainingLines, !IO),
             Docs = Docs0
         ;
-            Doc = docs(Docs1),
+            Doc0 = docs(Docs1),
             Docs = list.(Docs1 ++ Docs0)
         ;
-            Doc = format_univ(Univ),
-            expand_pp(Canonicalize, FMap, Univ, Doc1, !Limit, !.Pri),
-            Docs = [Doc1 | Docs0]
-        ;
-            Doc = format_list(Univs, Sep),
-            expand_format_list(Univs, Sep, Doc1, !Limit),
-            Docs = [Doc1 | Docs0]
-        ;
-            Doc = format_term(Name, Univs),
-            expand_format_term(Name, Univs, Doc1, !Limit, !.Pri),
-            Docs = [Doc1 | Docs0]
-        ;
-            Doc = format_susp(Susp),
-            expand_format_susp(Susp, Doc1, !Limit),
-            Docs = [Doc1 | Docs0]
-        ;
-            % Indents.
-            Doc = pp_internal(indent(Indent)),
-            !:Indents = indent_nonempty(!.Indents, Indent),
-            Docs = Docs0
-        ;
-            % Outdents.
-            Doc = pp_internal(outdent),
             (
-                !.Indents = indent_empty,
-                unexpected($pred, "cannot pop empty indent stack")
+                Doc0 = format_univ(Univ),
+                expand_format_univ(Canonicalize, FMap, Univ, Doc1,
+                    !Limit, !.Pri)
             ;
-                !.Indents = indent_nonempty(!:Indents, _PoppedIndent)
+                Doc0 = format_list(Univs, Sep),
+                expand_format_list(Univs, Sep, Doc1, !Limit)
+            ;
+                Doc0 = format_term(Name, Univs),
+                expand_format_term(Name, Univs, Doc1, !Limit, !.Pri)
+            ;
+                Doc0 = format_susp(Susp),
+                expand_format_susp(Susp, Doc1, !Limit)
             ),
-            Docs = Docs0
+            Docs = [Doc1 | Docs0]
         ;
-            % Open groups: if the current group (and what follows up to the
-            % next nl) fits on the remainder of the current line, then print
-            % it that way; otherwise we have to recognise the nls in the
-            % group.
-            Doc = pp_internal(open_group),
-            OpenGroups = 1,
-            CurrentRemainingWidth = !.RemainingWidth,
-            expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups,
-                !Limit, !Pri, CurrentRemainingWidth, RemainingWidthAfterGroup),
-            ( if RemainingWidthAfterGroup >= 0 then
-                output_current_group(Stream, LineWidth, !.Indents, OpenGroups,
-                    Docs1, Docs, !RemainingWidth, !RemainingLines, !IO)
-            else
-                Docs = Docs1
+            Doc0 = pp_internal(Internal),
+            (
+                % Open groups: if the current group (and what follows,
+                % up to the next nl) fits on the remainder of the current line,
+                % then print it that way; otherwise we have to recognise
+                % the nls in the group.
+                Internal = open_group,
+                OpenGroups = 1,
+                CurrentRemainingWidth = !.RemainingWidth,
+                expand_docs(Canonicalize, FMap, Docs0, Docs1,
+                    OpenGroups, !Limit, !Pri,
+                    CurrentRemainingWidth, RemainingWidthAfterGroup),
+                ( if RemainingWidthAfterGroup >= 0 then
+                    output_current_group(Stream, LineWidth, !.Indents,
+                        Docs1, Docs, OpenGroups,
+                        !RemainingWidth, !RemainingLines, !IO)
+                else
+                    Docs = Docs1
+                )
+            ;
+                (
+                    Internal = close_group
+                ;
+                    Internal = add_indent(Indent),
+                    !:Indents = indent_nonempty(!.Indents, Indent)
+                ;
+                    Internal = remove_indent,
+                    (
+                        !.Indents = indent_empty,
+                        unexpected($pred, "cannot pop empty indent stack")
+                    ;
+                        !.Indents = indent_nonempty(!:Indents, _PoppedIndent)
+                    )
+                ;
+                    Internal = set_limit(Limit),
+                    !:Limit = Limit
+                ;
+                    Internal = set_op_priority(Pri),
+                    !:Pri = Pri
+                ),
+                Docs = Docs0
             )
-        ;
-            % Close groups.
-            Doc = pp_internal(close_group),
-            Docs = Docs0
-        ;
-            Doc = pp_internal(set_limit(Lim)),
-            !:Limit = Lim,
-            Docs = Docs0
-        ;
-            Doc = pp_internal(set_op_priority(NewPri)),
-            !:Pri = NewPri,
-            Docs = Docs0
         ),
         do_put_doc(Stream, Canonicalize, FMap, LineWidth, Docs,
             !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO)
@@ -512,73 +537,101 @@ do_put_doc(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
 
 %---------------------%
 
-:- pred output_current_group(Stream::in, int::in, indent_stack::in, int::in,
-    list(doc)::in, list(doc)::out, int::in, int::out, int::in, int::out,
-    State::di, State::uo) is det <= stream.writer(Stream, string, State).
+:- pred output_current_group(Stream::in, int::in, indent_stack::in,
+    list(doc)::in, list(doc)::out, int::in, int::in, int::out,
+    int::in, int::out, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 
-output_current_group(_Stream, _LineWidth, _Indents, _OpenGroups,
-        [], [], !RemainingWidth, !RemainingLines, !IO).
-output_current_group(Stream, LineWidth, Indents, OpenGroups,
-        [Doc | Docs0], Docs, !RemainingWidth, !RemainingLines, !IO) :-
-    ( if Doc = str(String) then
+output_current_group(_Stream, _LineWidth, _Indents, [], [],
+        _OpenGroups, !RemainingWidth, !RemainingLines, !IO).
+output_current_group(Stream, LineWidth, Indents, [Doc0 | Docs0], Docs,
+        !.OpenGroups, !RemainingWidth, !RemainingLines, !IO) :-
+    (
+        Doc0 = str(String),
         stream.put(Stream, String, !IO),
-        !:RemainingWidth = !.RemainingWidth - string.count_codepoints(String),
-        output_current_group(Stream, LineWidth, Indents, OpenGroups,
-            Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
-    else if Doc = hard_nl then
+        StrWidth = string.count_codepoints(String),
+        !:RemainingWidth = !.RemainingWidth - StrWidth,
+        output_current_group(Stream, LineWidth, Indents, Docs0, Docs,
+            !.OpenGroups, !RemainingWidth, !RemainingLines, !IO)
+    ;
+        Doc0 = hard_nl,
         format_nl(Stream, LineWidth, Indents, !:RemainingWidth,
             !RemainingLines, !IO),
         ( if !.RemainingLines =< 0 then
             Docs = Docs0
         else
-            output_current_group(Stream, LineWidth, Indents, OpenGroups,
-                Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
+            output_current_group(Stream, LineWidth, Indents, Docs0, Docs,
+                !.OpenGroups, !RemainingWidth, !RemainingLines, !IO)
         )
-    else if Doc = pp_internal(open_group) then
-        output_current_group(Stream, LineWidth, Indents, OpenGroups + 1,
-            Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
-    else if Doc = pp_internal(close_group) then
-        ( if OpenGroups = 1 then
-            Docs = Docs0
-        else
-            output_current_group(Stream, LineWidth, Indents, OpenGroups - 1,
-                Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
+    ;
+        Doc0 = pp_internal(Internal),
+        (
+            Internal = open_group,
+            !:OpenGroups = !.OpenGroups + 1,
+            output_current_group(Stream, LineWidth, Indents, Docs0, Docs,
+                !.OpenGroups, !RemainingWidth, !RemainingLines, !IO)
+        ;
+            Internal = close_group,
+            ( if !.OpenGroups = 1 then
+                Docs = Docs0
+            else
+                !:OpenGroups = !.OpenGroups - 1,
+                output_current_group(Stream, LineWidth, Indents, Docs0, Docs,
+                    !.OpenGroups, !RemainingWidth, !RemainingLines, !IO)
+            )
+        ;
+            ( Internal = add_indent(_)
+            ; Internal = remove_indent
+            ; Internal = set_op_priority(_)
+            ; Internal = set_limit(_)
+            ),
+            output_current_group(Stream, LineWidth, Indents, Docs0, Docs,
+                !.OpenGroups, !RemainingWidth, !RemainingLines, !IO)
         )
-    else
-        output_current_group(Stream, LineWidth, Indents, OpenGroups,
-            Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
+    ;
+        ( Doc0 = nl
+        ; Doc0 = docs(_)
+        ; Doc0 = format_univ(_)
+        ; Doc0 = format_list(_, _)
+        ; Doc0 = format_term(_, _)
+        ; Doc0 = format_susp(_)
+        ),
+        output_current_group(Stream, LineWidth, Indents, Docs0, Docs,
+            !.OpenGroups, !RemainingWidth, !RemainingLines, !IO)
     ).
 
 %---------------------%
 
-    % expand_docs(Canonicalize, Docs0, Docs, G, !L, !P, !R) expands out any
-    % doc(_), pp_univ(_), format_list(_, _), and pp_term(_) constructors in
-    % Docs0 into Docs, until
+    % expand_docs(Canonicalize, Docs0, Docs, !.OpenGroups, !Limit, !Pri,
+    %   !RemainingWidth)
     %
-    % - either Docs0 has been completely expanded,
-    % - or a nl is encountered,
-    % - or the remaining space on the current line has been accounted for.
+    % expands out any doc(_), pp_univ(_), format_list(_, _), and pp_term(_)
+    % constructors in Docs0 into Docs, until either
     %
-    % G is used to track nested groups.
-    % !L tracks the limits after accounting for expansion.
-    % !P tracks the operator priority after accounting for expansion.
-    % !R tracks the remaining line width after accounting for expansion.
+    % - Docs0 has been completely expanded, or
+    % - a nl is encountered, or
+    % - the remaining space on the current line has been accounted for.
     %
-:- pred expand_docs(noncanon_handling, formatter_map, list(doc), list(doc),
-    int, func_symbol_limit, func_symbol_limit,
+    % !.OpenGroups is used to track nested groups.
+    % !Limit tracks the limits after accounting for expansion.
+    % !Pri tracks the operator priority after accounting for expansion.
+    % !RemainingWidth tracks the remaining line width after accounting for
+    % expansion.
+    %
+:- pred expand_docs(noncanon_handling, formatter_map,
+    list(doc), list(doc), int, func_symbol_limit, func_symbol_limit,
     ops.priority, ops.priority, int, int).
-:- mode expand_docs(in(canonicalize), in, in, out, in, in, out,
-    in, out, in, out) is det.
-:- mode expand_docs(in(include_details_cc), in, in, out, in, in, out,
-    in, out, in, out) is cc_multi.
+:- mode expand_docs(in(canonicalize), in,
+    in, out, in, in, out, in, out, in, out) is det.
+:- mode expand_docs(in(include_details_cc), in,
+    in, out, in, in, out, in, out, in, out) is cc_multi.
 
-expand_docs(_Canonicalize, _FMap, [], [], _OpenGroups,
-        !Limit, !Pri, !RemainingWidth).
-expand_docs(Canonicalize, FMap, [Doc | Docs0], Docs, OpenGroups,
-        !Limit, !Pri, !RemainingWidth) :-
+expand_docs(_, _, [], [], _OpenGroups, !Limit, !Pri, !RemainingWidth).
+expand_docs(Canonicalize, FMap, Docs0 @ [HeadDoc0 | TailDocs0], Docs,
+        !.OpenGroups, !Limit, !Pri, !RemainingWidth) :-
     ( if
         (
-            OpenGroups =< 0, ( Doc = nl ; Doc = hard_nl )
+            !.OpenGroups =< 0, ( HeadDoc0 = nl ; HeadDoc0 = hard_nl )
             % We have found the first nl after the close of the current
             % open group.
         ;
@@ -587,82 +640,82 @@ expand_docs(Canonicalize, FMap, [Doc | Docs0], Docs, OpenGroups,
             % group will not fit.
         )
     then
-        Docs = [Doc | Docs0]
+        Docs = Docs0
     else
         (
-            Doc = str(String),
+            HeadDoc0 = str(String),
             StrWidth = string.count_codepoints(String),
             !:RemainingWidth = !.RemainingWidth - StrWidth,
-            Docs = [Doc | Docs1],
-            expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups,
-                !Limit, !Pri, !RemainingWidth)
+            expand_docs(Canonicalize, FMap, TailDocs0, TailDocs, !.OpenGroups,
+                !Limit, !Pri, !RemainingWidth),
+            Docs = [HeadDoc0 | TailDocs]
         ;
-            ( Doc = nl
-            ; Doc = hard_nl
+            ( HeadDoc0 = nl
+            ; HeadDoc0 = hard_nl
             ),
-            ( if OpenGroups =< 0 then
-                Docs = [Doc | Docs0]
+            ( if !.OpenGroups =< 0 then
+                Docs = Docs0
             else
-                Docs = [Doc | Docs1],
-                expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups,
-                    !Limit, !Pri, !RemainingWidth)
+                expand_docs(Canonicalize, FMap, TailDocs0, TailDocs,
+                    !.OpenGroups, !Limit, !Pri, !RemainingWidth),
+                Docs = [HeadDoc0 | TailDocs]
             )
         ;
-            Doc = docs(Docs1),
-            expand_docs(Canonicalize, FMap, list.(Docs1 ++ Docs0), Docs,
-                OpenGroups, !Limit, !Pri, !RemainingWidth)
-        ;
-            Doc = format_univ(Univ),
-            expand_pp(Canonicalize, FMap, Univ, Doc1, !Limit, !.Pri),
-            expand_docs(Canonicalize, FMap, [Doc1 | Docs0], Docs, OpenGroups,
+            HeadDoc0 = docs(HeadDocs0),
+            Docs1 = list.(HeadDocs0 ++ TailDocs0),
+            expand_docs(Canonicalize, FMap, Docs1, Docs, !.OpenGroups,
                 !Limit, !Pri, !RemainingWidth)
         ;
-            Doc = format_list(Univs, Sep),
-            expand_format_list(Univs, Sep, Doc1, !Limit),
-            expand_docs(Canonicalize, FMap, [Doc1 | Docs0], Docs, OpenGroups,
+            (
+                HeadDoc0 = format_univ(HeadUniv),
+                expand_format_univ(Canonicalize, FMap, HeadUniv, HeadDoc1,
+                    !Limit, !.Pri)
+            ;
+                HeadDoc0 = format_list(HeadUnivs, Sep),
+                expand_format_list(HeadUnivs, Sep, HeadDoc1, !Limit)
+            ;
+                HeadDoc0 = format_term(Name, HeadUnivs),
+                expand_format_term(Name, HeadUnivs, HeadDoc1, !Limit, !.Pri)
+            ;
+                HeadDoc0 = format_susp(HeadSusp),
+                expand_format_susp(HeadSusp, HeadDoc1, !Limit)
+            ),
+            Docs1 = [HeadDoc1 | TailDocs0],
+            expand_docs(Canonicalize, FMap, Docs1, Docs, !.OpenGroups,
                 !Limit, !Pri, !RemainingWidth)
         ;
-            Doc = format_term(Name, Univs),
-            expand_format_term(Name, Univs, Doc1, !Limit, !.Pri),
-            expand_docs(Canonicalize, FMap, [Doc1 | Docs0], Docs, OpenGroups,
-                !Limit, !Pri, !RemainingWidth)
-        ;
-            Doc = format_susp(Susp),
-            expand_format_susp(Susp, Doc1, !Limit),
-            expand_docs(Canonicalize, FMap, [Doc1 | Docs0], Docs, OpenGroups,
-                !Limit, !Pri, !RemainingWidth)
-        ;
-            Doc = pp_internal(indent(_)),
-            Docs = [Doc | Docs1],
-            expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups,
-                !Limit, !Pri, !RemainingWidth)
-        ;
-            Doc = pp_internal(outdent),
-            Docs = [Doc | Docs1],
-            expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups,
-                !Limit, !Pri, !RemainingWidth)
-        ;
-            Doc = pp_internal(open_group),
-            Docs = [Doc | Docs1],
-            OpenGroups1 = OpenGroups + ( if OpenGroups > 0 then 1 else 0 ),
-            expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups1,
-                !Limit, !Pri, !RemainingWidth)
-        ;
-            Doc = pp_internal(close_group),
-            Docs = [Doc | Docs1],
-            OpenGroups1 = OpenGroups - ( if OpenGroups > 0 then 1 else 0 ),
-            expand_docs(Canonicalize, FMap, Docs0, Docs1, OpenGroups1,
-                !Limit, !Pri, !RemainingWidth)
-        ;
-            Doc = pp_internal(set_limit(Lim)),
-            !:Limit = Lim,
-            expand_docs(Canonicalize, FMap, Docs0, Docs, OpenGroups,
-                !Limit, !Pri, !RemainingWidth)
-        ;
-            Doc = pp_internal(set_op_priority(NewPri)),
-            !:Pri = NewPri,
-            expand_docs(Canonicalize, FMap, Docs0, Docs, OpenGroups,
-                !Limit, !Pri, !RemainingWidth)
+            HeadDoc0 = pp_internal(Internal),
+            (
+                (
+                    Internal = add_indent(_)
+                ;
+                    Internal = remove_indent
+                ;
+                    Internal = open_group,
+                    % XXX This is probably a bug, because if !.OpenGroups = 0,
+                    % then it will *stay* at 0 even *after* this opening
+                    % of a group.
+                    !:OpenGroups = !.OpenGroups +
+                        ( if !.OpenGroups > 0 then 1 else 0 )
+                ;
+                    Internal = close_group,
+                    !:OpenGroups = !.OpenGroups -
+                        ( if !.OpenGroups > 0 then 1 else 0 )
+                ),
+                expand_docs(Canonicalize, FMap, TailDocs0, TailDocs,
+                    !.OpenGroups, !Limit, !Pri, !RemainingWidth),
+                Docs = [HeadDoc0 | TailDocs]
+            ;
+                (
+                    Internal = set_limit(Limit),
+                    !:Limit = Limit
+                ;
+                    Internal = set_op_priority(Pri),
+                    !:Pri = Pri
+                ),
+                expand_docs(Canonicalize, FMap, TailDocs0, Docs, !.OpenGroups,
+                    !Limit, !Pri, !RemainingWidth)
+            )
         )
     ).
 
@@ -696,14 +749,14 @@ output_indentation(Stream, indent_nonempty(IndentStack, Indent),
     % that succeeds, otherwise use the generic pretty- printer. If the
     % pretty-printer limit has been exhausted, then generate only "...".
     %
-:- pred expand_pp(noncanon_handling, formatter_map, univ, doc,
+:- pred expand_format_univ(noncanon_handling, formatter_map, univ, doc,
     func_symbol_limit, func_symbol_limit, ops.priority).
-:- mode expand_pp(in(canonicalize), in, in, out, in, out, in)
+:- mode expand_format_univ(in(canonicalize), in, in, out, in, out, in)
     is det.
-:- mode expand_pp(in(include_details_cc), in, in, out, in, out, in)
+:- mode expand_format_univ(in(include_details_cc), in, in, out, in, out, in)
     is cc_multi.
 
-expand_pp(Canonicalize, FMap, Univ, Doc, !Limit, CurrentPri) :-
+expand_format_univ(Canonicalize, FMap, Univ, Doc, !Limit, CurrentPri) :-
     ( if
         limit_overrun(!.Limit)
     then
@@ -783,71 +836,6 @@ expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
     decrement_limit(!Limit),
     set_func_symbol_limit_correctly(!.Limit, Doc0, Doc).
 
-    % Expand a name and list of univs into docs corresponding to Mercury
-    % operator syntax.
-    %
-:- pred expand_format_op(string::in, list(univ)::in, ops.priority::in,
-    doc::out) is semidet.
-
-expand_format_op(Op, [Arg], CurrentPri, Docs) :-
-    ( if ops.lookup_prefix_op(ops.init_mercury_op_table, Op, OpPri, Assoc) then
-        Doc =
-            group([
-                str(Op),
-                pp_internal(set_op_priority(adjust_priority(OpPri, Assoc))),
-                format_univ(Arg)
-            ]),
-        Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
-    else
-        ops.lookup_postfix_op(ops.init_mercury_op_table, Op, OpPri, Assoc),
-        Doc =
-            group([
-                pp_internal(set_op_priority(adjust_priority(OpPri, Assoc))),
-                format_univ(Arg),
-                str(Op)
-            ]),
-        Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
-    ).
-expand_format_op(Op, [ArgA, ArgB], CurrentPri, Docs) :-
-    ( if
-        ops.lookup_infix_op(ops.init_mercury_op_table, Op, OpPri,
-            AssocA, AssocB)
-    then
-        Doc =
-            group([
-                pp_internal(set_op_priority(adjust_priority(OpPri, AssocA))),
-                format_univ(ArgA),
-                ( if Op = "." then
-                    str(Op)
-                else
-                    docs([str(" "), str(Op), str(" ")])
-                ),
-                indent([
-                    nl,
-                    pp_internal(set_op_priority(adjust_priority(OpPri,
-                        AssocB))),
-                    format_univ(ArgB)
-                ])
-            ]),
-        Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
-    else
-        ops.lookup_binary_prefix_op(ops.init_mercury_op_table, Op, OpPri,
-            AssocA, AssocB),
-        Doc =
-            group([
-                str(Op), str(" "),
-                pp_internal(set_op_priority(adjust_priority(OpPri, AssocA))),
-                format_univ(ArgA),
-                str(" "),
-                indent([
-                    pp_internal(set_op_priority(adjust_priority(OpPri,
-                        AssocB))),
-                    format_univ(ArgB)
-                ])
-            ]),
-        Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
-    ).
-
 :- pred expand_format_susp(((func) = doc)::in, doc::out,
     func_symbol_limit::in, func_symbol_limit::out) is det.
 
@@ -858,6 +846,86 @@ expand_format_susp(Susp, Doc, !Limit) :-
         decrement_limit(!Limit),
         Doc0 = apply(Susp),
         set_func_symbol_limit_correctly(!.Limit, Doc0, Doc)
+    ).
+
+    % Expand a function symbol name and list of univs representing its
+    % arguments into docs corresponding to Mercury operator syntax.
+    %
+:- pred expand_format_op(string::in, list(univ)::in, ops.priority::in,
+    doc::out) is semidet.
+
+expand_format_op(Op, Args, CurrentPri, Docs) :-
+    (
+        Args = [Arg],
+        ( if
+            ops.lookup_prefix_op(ops.init_mercury_op_table, Op, OpPri, Assoc)
+        then
+            Doc =
+                group([
+                    str(Op),
+                    pp_internal(set_op_priority(adjust_priority(OpPri, Assoc))),
+                    format_univ(Arg)
+                ]),
+            Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
+        else if
+            ops.lookup_postfix_op(ops.init_mercury_op_table, Op, OpPri, Assoc)
+        then
+            Doc =
+                group([
+                    pp_internal(set_op_priority(adjust_priority(OpPri, Assoc))),
+                    format_univ(Arg),
+                    str(Op)
+                ]),
+            Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
+        else
+            fail
+        )
+    ;
+        Args = [ArgA, ArgB],
+        ( if
+            ops.lookup_infix_op(ops.init_mercury_op_table, Op, OpPri,
+                AssocA, AssocB)
+        then
+            OpPriA = adjust_priority(OpPri, AssocA),
+            OpPriB = adjust_priority(OpPri, AssocB),
+            Doc =
+                group([
+                    pp_internal(set_op_priority(OpPriA)),
+                    format_univ(ArgA),
+                    ( if Op = "." then
+                        str(Op)
+                    else
+                        docs([str(" "), str(Op), str(" ")])
+                    ),
+                    indent([
+                        nl,
+                        pp_internal(set_op_priority(OpPriB)),
+                        format_univ(ArgB)
+                    ])
+                ]),
+            Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
+        else if
+            ops.lookup_binary_prefix_op(ops.init_mercury_op_table, Op, OpPri,
+                AssocA, AssocB)
+        then
+            OpPriA = adjust_priority(OpPri, AssocA),
+            OpPriB = adjust_priority(OpPri, AssocB),
+            Doc =
+                group([
+                    str(Op),
+                    str(" "),
+                    pp_internal(set_op_priority(OpPriA)),
+                    format_univ(ArgA),
+                    str(" "),
+                    indent([
+                        pp_internal(set_op_priority(OpPriB)),
+                        format_univ(ArgB)
+                    ])
+                ]),
+            Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
+        else
+            fail
+        )
     ).
 
 %---------------------%

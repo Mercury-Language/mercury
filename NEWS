@@ -289,6 +289,13 @@ Changes to the Mercury standard library
 
     - pred `sorted_keys_match/2`
 
+### Changes to the `pretty_printer` module
+
+* The following predicates have been added:
+
+    - pred `write_as_doc/3`
+    - pred `write_as_doc/4`
+
 ### New `ra_list` module
 
 * This new module contains operations on random access lists.
