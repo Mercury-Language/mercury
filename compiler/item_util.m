@@ -626,8 +626,7 @@ record_imp_use(ModuleName, Context, !ImportUseMap, !Specs) :-
                 ),
                 OldPieces =
                     [decl("use_module"), words("declaration"),
-                    words("for the same module in the interface section."),
-                    nl]
+                    words("for the same module in the interface section."), nl]
             ),
             DupPieces = [words("Warning: this"), decl("use_module"),
                 words("declaration for module"), qual_sym_name(ModuleName),
@@ -683,7 +682,7 @@ warn_if_import_for_ancestor(ModuleName, AncestorName,
         Context = section_import_or_use_first_context(ImportOrUse),
         MainPieces = [words("Module"), qual_sym_name(ModuleName),
             words("imports its own ancestor, module"),
-            qual_sym_name(AncestorName), words("."), nl],
+            qual_sym_name(AncestorName), suffix("."), nl],
         VerbosePieces = [words("Every submodule"),
             words("implicitly imports its ancestors."),
             words("There is no need to explicitly import them."), nl],
