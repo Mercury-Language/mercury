@@ -581,6 +581,22 @@ Changes to the Mercury standard library
     - pred `string_hash/2`
     - pred `uint_hash/2`
 
+Changes to the Mercury language
+-------------------------------
+
+* You can now disable another kind of warning with a disable_warning scope.
+  Code such as
+
+    disable_warning [unknown_format_calls] (
+        ...
+    )
+
+  will disable warnings about any calls in the scope to string.format,
+  io.format and/or stream.string_writer.format for which the compiler
+  cannot tell whether there are any mismatches between the format string
+  and the supplied values, even if the module is compiled with
+  --warn-unknown-format-calls.
+
 Changes to the Mercury compiler
 -------------------------------
 

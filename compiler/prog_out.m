@@ -648,6 +648,9 @@ goal_warning_to_string(Warning) = Str :-
     ;
         Warning = goal_warning_no_solution_disjunct,
         Str = "no_solution_disjunct"
+    ;
+        Warning = goal_warning_unknown_format_calls,
+        Str = "unknown_format_calls"
     ).
 
 %-----------------------------------------------------------------------------%

@@ -1953,6 +1953,9 @@ parse_warning(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
         ;
             WarningFunctor = "no_solution_disjunct",
             Warning = goal_warning_no_solution_disjunct
+        ;
+            WarningFunctor = "unknown_format_calls",
+            Warning = goal_warning_unknown_format_calls
         )
     then
         Warnings = [Warning],

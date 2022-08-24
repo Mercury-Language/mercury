@@ -6919,9 +6919,10 @@ The later mismatches may be avalanche errors caused by earlier mismatches.
 @sp 1
 @item --warn-unknown-format-calls
 @findex --warn-unknown-format-calls
-Warn about calls to string.format or io.format for which
-the compiler cannot tell whether there are any mismatches between
-the format string and the supplied values.
+Warn about calls to
+@code{string.format}, @code{io.format} or @code{stream.string_writer.format}
+for which the compiler cannot tell whether there are any mismatches
+between the format string and the supplied values.
 
 @sp 1
 @item --no-warn-obsolete

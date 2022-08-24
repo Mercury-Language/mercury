@@ -201,8 +201,13 @@
                 fcs_called_pred_name        :: string,
                 fcs_called_pred_arity       :: arity,
                 fcs_call_context            :: prog_context,
-                fcs_containing_conj         :: conj_id
+                fcs_containing_conj         :: conj_id,
+                fcs_warn_unknown_format     :: maybe_warn_unknown_format
             ).
+
+:- type maybe_warn_unknown_format
+    --->    do_not_warn_unknown_format
+    ;       warn_unknown_format.
 
 %---------------------------------------------------------------------------%
 
@@ -398,7 +403,17 @@ analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
             print_name_and_num, 0, "\n", Goal1, !IO)
     ),
 
-    format_call_traverse_goal(ModuleInfo, Goal1, _, [], FormatCallSites,
+    globals.lookup_bool_option(Globals, warn_unknown_format_calls,
+        WarnUnknownFormatBool),
+    (
+        WarnUnknownFormatBool = no,
+        WarnUnknownFormat = do_not_warn_unknown_format
+    ;
+        WarnUnknownFormatBool = yes,
+        WarnUnknownFormat = warn_unknown_format
+    ),
+    Params = format_call_traverse_params(ModuleInfo, WarnUnknownFormat),
+    format_call_traverse_goal(Params, Goal1, _, [], FormatCallSites,
         Counter0, _Counter, ConjMaps0, ConjMaps, map.init, PredMap,
         set_of_var.init, _),
     globals.get_opt_tuple(Globals, OptTuple),
@@ -454,7 +469,8 @@ analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
 check_format_call_site(ModuleInfo, ImplicitStreamWarnings, OptFormatCalls,
         ConjMaps, PredMap, FormatCallSite, !GoalIdMap, !Specs, !VarTable) :-
     FormatCallSite = format_call_site(GoalId, GoalInfo, StringVar, ValuesVar,
-        CallKind, PredId, ModuleName, Name, Arity, Context, CurId),
+        CallKind, PredId, ModuleName, Name, Arity, Context, CurId,
+        WarnUnknownFormat),
     (
         ImplicitStreamWarnings = do_not_generate_implicit_stream_warnings
     ;
@@ -479,12 +495,10 @@ check_format_call_site(ModuleInfo, ImplicitStreamWarnings, OptFormatCalls,
         FormatStringResult = follow_string_result(_, _, _)
     ;
         FormatStringResult = no_follow_string_result,
-        globals.lookup_bool_option(Globals, warn_unknown_format_calls,
-            WarnUnknownFormatCallsA),
         (
-            WarnUnknownFormatCallsA = no
+            WarnUnknownFormat = do_not_warn_unknown_format
         ;
-            WarnUnknownFormatCallsA = yes,
+            WarnUnknownFormat = warn_unknown_format,
             UnknownFormatPieces = [words("Unknown format string in call to"),
                 qual_sym_name_arity(sym_name_arity(SymName, Arity)),
                 suffix("."), nl],
@@ -507,12 +521,10 @@ check_format_call_site(ModuleInfo, ImplicitStreamWarnings, OptFormatCalls,
         MaybePolyTypesInfo = yes({AbstractPolyTypes0, PolyTypesToDeleteVars0})
     else
         MaybePolyTypesInfo = no,
-        globals.lookup_bool_option(Globals, warn_unknown_format_calls,
-            WarnUnknownFormatCallsB),
         (
-            WarnUnknownFormatCallsB = no
+            WarnUnknownFormat = do_not_warn_unknown_format
         ;
-            WarnUnknownFormatCallsB = yes,
+            WarnUnknownFormat = warn_unknown_format,
             UnknownFormatValuesPieces =
                 [words("Unknown format values in call to"),
                 qual_sym_name_arity(sym_name_arity(SymName, Arity)),
@@ -750,81 +762,122 @@ follow_poly_type(ConjMaps, PredMap, CurId, PolytypeVar,
 
 %---------------------------------------------------------------------------%
 
-:- pred format_call_traverse_goal(module_info::in, hlds_goal::in, conj_id::out,
+:- type format_call_traverse_params
+    --->    format_call_traverse_params(
+                module_info,
+                maybe_warn_unknown_format
+            ).
+
+:- pred format_call_traverse_goal(format_call_traverse_params::in,
+    hlds_goal::in, conj_id::out,
     list(format_call_site)::in, list(format_call_site)::out,
     counter::in, counter::out, conj_maps::in, conj_maps::out,
     conj_pred_map::in, conj_pred_map::out,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-format_call_traverse_goal(ModuleInfo, Goal, CurId, !FormatCallSites, !Counter,
+format_call_traverse_goal(Params, Goal, CurId, !FormatCallSites, !Counter,
         !ConjMaps, !PredMap, !RelevantVars) :-
     alloc_id(CurId, !Counter),
     goal_to_conj_list(Goal, GoalConj),
-    format_call_traverse_conj(ModuleInfo, GoalConj, CurId, !FormatCallSites,
+    format_call_traverse_conj(Params, GoalConj, CurId, !FormatCallSites,
         !Counter, !ConjMaps, !PredMap, !RelevantVars).
 
-:- pred format_call_traverse_conj(module_info::in, list(hlds_goal)::in,
-    conj_id::in, list(format_call_site)::in, list(format_call_site)::out,
+:- pred format_call_traverse_conj(format_call_traverse_params::in,
+    list(hlds_goal)::in, conj_id::in,
+    list(format_call_site)::in, list(format_call_site)::out,
     counter::in, counter::out, conj_maps::in, conj_maps::out,
     conj_pred_map::in, conj_pred_map::out,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-format_call_traverse_conj(_ModuleInfo, [], _CurId, !FormatCallSites,
+format_call_traverse_conj(_, [], _CurId, !FormatCallSites,
         !Counter, !ConjMaps, !PredMap, !RelevantVars).
-format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
+format_call_traverse_conj(Params, [Goal | Goals], CurId, !FormatCallSites,
         !Counter, !ConjMaps, !PredMap, !RelevantVars) :-
-    format_call_traverse_conj(ModuleInfo, Goals, CurId, !FormatCallSites,
+    format_call_traverse_conj(Params, Goals, CurId, !FormatCallSites,
         !Counter, !ConjMaps, !PredMap, !RelevantVars),
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = conj(_, Conjuncts),
-        format_call_traverse_conj(ModuleInfo, Conjuncts, CurId,
+        format_call_traverse_conj(Params, Conjuncts, CurId,
             !FormatCallSites, !Counter, !ConjMaps, !PredMap, !RelevantVars)
     ;
         GoalExpr = disj(Disjuncts),
-        format_call_traverse_disj(ModuleInfo, Disjuncts, CurId,
+        format_call_traverse_disj(Params, Disjuncts, CurId,
             !FormatCallSites, !Counter, !ConjMaps, !PredMap, !RelevantVars)
     ;
         GoalExpr = switch(_, _, Cases),
         Disjuncts = list.map(project_case_goal, Cases),
-        format_call_traverse_disj(ModuleInfo, Disjuncts, CurId,
+        format_call_traverse_disj(Params, Disjuncts, CurId,
             !FormatCallSites, !Counter, !ConjMaps, !PredMap, !RelevantVars)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
 
-        format_call_traverse_goal(ModuleInfo, Else, ElseId, !FormatCallSites,
+        format_call_traverse_goal(Params, Else, ElseId, !FormatCallSites,
             !Counter, !ConjMaps, !PredMap, !RelevantVars),
         map.det_insert(ElseId, CurId, !PredMap),
 
         alloc_id(CondThenId, !Counter),
         goal_to_conj_list(Then, ThenConj),
         goal_to_conj_list(Cond, CondConj),
-        format_call_traverse_conj(ModuleInfo, CondConj ++ ThenConj, CondThenId,
+        format_call_traverse_conj(Params, CondConj ++ ThenConj, CondThenId,
             !FormatCallSites, !Counter, !ConjMaps, !PredMap, !RelevantVars),
         map.det_insert(CondThenId, CurId, !PredMap)
     ;
         GoalExpr = negation(SubGoal),
-        format_call_traverse_goal(ModuleInfo, SubGoal, SubGoalId,
+        format_call_traverse_goal(Params, SubGoal, SubGoalId,
             !FormatCallSites, !Counter, !ConjMaps, !PredMap, !RelevantVars),
         map.det_insert(SubGoalId, CurId, !PredMap)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( if
-            Reason = from_ground_term(TermVar, from_ground_term_construct),
-            % These scopes cannot build the format string (since that is
-            % either a single constant, or the result of an operation on
-            % strings, neither of which are things for which we build fgt
-            % scopes. It can build the term to print, but that will happen
-            % only in degenerate cases. However, we do have some degenerate
-            % cases in the test suite.
-            not set_of_var.member(!.RelevantVars, TermVar)
-        then
-            % It is ok not to traverse the subgoal. The scope cannot contain
-            % any calls, and the unifications it does contain are apparently
-            % not of interest to any later format call.
-            true
-        else
-            format_call_traverse_conj(ModuleInfo, [SubGoal], CurId,
+        (
+            Reason = from_ground_term(TermVar, FromGroundTermKind),
+            ( if
+                FromGroundTermKind = from_ground_term_construct,
+                % These scopes cannot build the format string (since that is
+                % either a single constant, or the result of an operation on
+                % strings, neither of which are things for which we build fgt
+                % scopes). However, it can build the term to print. That will
+                % happen only in degenerate cases, but we do have some
+                % degenerate cases in the test suite.
+                not set_of_var.member(!.RelevantVars, TermVar)
+            then
+                % It is ok not to traverse the subgoal. The scope cannot
+                % contain any calls, and the unifications it does contain
+                % are apparently not of interest to any later format call.
+                true
+            else
+                format_call_traverse_conj(Params, [SubGoal], CurId,
+                    !FormatCallSites, !Counter, !ConjMaps, !PredMap,
+                    !RelevantVars)
+            )
+        ;
+            Reason = disable_warnings(HeadWarning, TailWarnings),
+            Warnings = [HeadWarning | TailWarnings],
+            ( if list.member(goal_warning_unknown_format_calls, Warnings) then
+                Params = format_call_traverse_params(ModuleInfo, _),
+                NewParams = format_call_traverse_params(ModuleInfo,
+                    do_not_warn_unknown_format),
+                format_call_traverse_conj(NewParams, [SubGoal], CurId,
+                    !FormatCallSites, !Counter, !ConjMaps, !PredMap,
+                    !RelevantVars)
+            else
+                format_call_traverse_conj(Params, [SubGoal], CurId,
+                    !FormatCallSites, !Counter, !ConjMaps, !PredMap,
+                    !RelevantVars)
+            )
+        ;
+            ( Reason = exist_quant(_)
+            ; Reason = promise_solutions(_, _)
+            ; Reason = promise_purity(_)
+            ; Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
+            ; Reason = require_switch_arms_detism(_, _)
+            ; Reason = commit(_)
+            ; Reason = barrier(_)
+            ; Reason = trace_goal(_, _, _, _, _)
+            ; Reason = loop_control(_, _, _)
+            ),
+            format_call_traverse_conj(Params, [SubGoal], CurId,
                 !FormatCallSites, !Counter, !ConjMaps, !PredMap, !RelevantVars)
         )
     ;
@@ -833,6 +886,7 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;
         GoalExpr = plain_call(PredId, _ProcId, ArgVars, _, _, _),
+        Params = format_call_traverse_params(ModuleInfo, WarnUnknownFormat),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         ModuleName = pred_info_module(PredInfo),
         Name = pred_info_name(PredInfo),
@@ -845,7 +899,7 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
             Context = goal_info_get_context(GoalInfo),
             FormatCallSite = format_call_site(GoalId, GoalInfo,
                 StringVar, ValuesVar, Kind, PredId,
-                ModuleName, Name, Arity, Context, CurId),
+                ModuleName, Name, Arity, Context, CurId, WarnUnknownFormat),
             !:FormatCallSites = [FormatCallSite | !.FormatCallSites],
             set_of_var.insert_list([StringVar, ValuesVar], !RelevantVars)
         else if
@@ -888,7 +942,7 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
             RHS = rhs_lambda_goal(_Purity, _HOGroundness, _PredFunc,
                 _EvalMethod, _LambdaNonLocals, _LambdaArgVarsModes,
                 _LambdaDetism, LambdaGoal),
-            format_call_traverse_goal(ModuleInfo, LambdaGoal, LambdaGoalId,
+            format_call_traverse_goal(Params, LambdaGoal, LambdaGoalId,
                 !FormatCallSites, !Counter, !ConjMaps, !PredMap,
                 !RelevantVars),
             map.det_insert(LambdaGoalId, CurId, !PredMap)
@@ -901,12 +955,12 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
         GoalExpr = shorthand(ShortHand),
         (
             ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
-            format_call_traverse_disj(ModuleInfo, [MainGoal | OrElseGoals],
+            format_call_traverse_disj(Params, [MainGoal | OrElseGoals],
                 CurId, !FormatCallSites, !Counter, !ConjMaps, !PredMap,
                 !RelevantVars)
         ;
             ShortHand = try_goal(_, _, SubGoal),
-            format_call_traverse_goal(ModuleInfo, SubGoal, SubGoalId,
+            format_call_traverse_goal(Params, SubGoal, SubGoalId,
                 !FormatCallSites, !Counter, !ConjMaps, !PredMap,
                 !RelevantVars),
             map.det_insert(SubGoalId, CurId, !PredMap)
@@ -1045,33 +1099,35 @@ format_call_traverse_unify(Unification, GoalInfo, CurId, !ConjMaps, !PredMap,
 
 project_case_goal(case(_, _, Goal)) = Goal.
 
-:- pred format_call_traverse_disj(module_info::in, list(hlds_goal)::in,
-    conj_id::in, list(format_call_site)::in, list(format_call_site)::out,
+:- pred format_call_traverse_disj(format_call_traverse_params::in,
+    list(hlds_goal)::in, conj_id::in,
+    list(format_call_site)::in, list(format_call_site)::out,
     counter::in, counter::out, conj_maps::in, conj_maps::out,
     conj_pred_map::in, conj_pred_map::out,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-format_call_traverse_disj(ModuleInfo, Disjuncts, CurId, !FormatCallSites,
+format_call_traverse_disj(Params, Disjuncts, CurId, !FormatCallSites,
         !Counter, !ConjMaps, !PredMap, !RelevantVars) :-
-    format_call_traverse_disj_arms(ModuleInfo, Disjuncts, CurId,
+    format_call_traverse_disj_arms(Params, Disjuncts, CurId,
         !FormatCallSites, !Counter, !ConjMaps, !PredMap, DisjRelevantVarSets),
     DisjRelevantVars = set_of_var.union_list(DisjRelevantVarSets),
     set_of_var.union(DisjRelevantVars, !RelevantVars).
 
-:- pred format_call_traverse_disj_arms(module_info::in, list(hlds_goal)::in,
-    conj_id::in, list(format_call_site)::in, list(format_call_site)::out,
+:- pred format_call_traverse_disj_arms(format_call_traverse_params::in,
+    list(hlds_goal)::in, conj_id::in,
+    list(format_call_site)::in, list(format_call_site)::out,
     counter::in, counter::out, conj_maps::in, conj_maps::out,
     conj_pred_map::in, conj_pred_map::out, list(set_of_progvar)::out) is det.
 
 format_call_traverse_disj_arms(_, [], _,
         !FormatCallSites, !Counter, !ConjMaps, !PredMap, []).
-format_call_traverse_disj_arms(ModuleInfo, [Goal | Goals], ContainingId,
+format_call_traverse_disj_arms(Params, [Goal | Goals], ContainingId,
         !FormatCallSites, !Counter, !ConjMaps, !PredMap, GoalRelevantVars) :-
-    format_call_traverse_goal(ModuleInfo, Goal, DisjId,
+    format_call_traverse_goal(Params, Goal, DisjId,
         !FormatCallSites, !Counter, !ConjMaps, !PredMap,
         set_of_var.init, HeadRelevantVars),
     map.det_insert(DisjId, ContainingId, !PredMap),
-    format_call_traverse_disj_arms(ModuleInfo, Goals, ContainingId,
+    format_call_traverse_disj_arms(Params, Goals, ContainingId,
         !FormatCallSites, !Counter, !ConjMaps, !PredMap, TailRelevantVars),
     GoalRelevantVars = [HeadRelevantVars | TailRelevantVars].
 

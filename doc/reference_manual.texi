@@ -1106,6 +1106,11 @@ where the disjunct in question is a switch arm in another mode.
 (The difference is that a disjunct that cannot succeed has no meaningful use,
 but a switch arm that cannot succeed does have one:
 a switch may need that arm to make it complete.)
+@item @code{unknown_format_calls}
+Disable the generation of warnings about calls to
+@code{string.format}, @code{io.format} or @code{stream.string_writer.format}
+for which the compiler cannot tell whether there are any mismatches
+between the format string and the supplied values.
 @end table
 
 The keyword starting this scope may be written

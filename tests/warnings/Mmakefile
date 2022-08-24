@@ -25,6 +25,7 @@ ERRORCHECK_PROGS = \
 	bug412 \
 	bug477 \
 	det_infer_warning \
+	disabled_warning \
 	double_underscore \
 	duplicate_call \
 	duplicate_const \
