@@ -84,8 +84,18 @@
     %
     % Check whether the current process can perform the operations given
     % in AccessTypes on FileName.
-    % XXX When using the .NET CLI, this predicate will sometimes report
-    % that a directory is writable when in fact it is not.
+    %
+    % The C# implementation is limited:
+    %
+    % - The "execute" access check passes for a regular file if we can read
+    %   from the file, and have unrestricted permissions to execute unmanaged
+    %   code.
+    %
+    % - The "write" access check passes for a directory if the directory does
+    %   not have the ReadOnly attribute, which does not necessarily mean we can
+    %   write to it.
+    %
+    % - The "execute" access check is ignored for directories.
     %
 :- pred check_file_accessibility(string::in, list(access_type)::in,
     io.res::out, io::di, io::uo) is det.
@@ -154,11 +164,11 @@
     %
 :- pred make_temp_directory(io.res(string)::out, io::di, io::uo) is det.
 
-    % make_temp_directory(Dir, Prefix, Suffix, Result, !IO) creates an empty
-    % directory whose name is different from the name of any existing
+    % make_temp_directory(ParentDirName, Prefix, Suffix, Result, !IO) creates
+    % an empty directory whose name is different from the name of any existing
     % directory. The new directory will reside in the existing directory
-    % specified by Dir and will have a prefix using up to the first 5
-    % characters of Prefix and a Suffix. Result returns the name of the
+    % specified by ParentDirName and will have a prefix using up to the
+    % first 5 characters of Prefix and a Suffix. Result returns the name of the
     % new directory. It is the responsibility of the program to delete the
     % directory when it is no longer needed.
     %
@@ -251,10 +261,13 @@ remove_file(FileName, Result, !IO) :-
     try {
         // System.IO.File.Delete() does not throw an exception
         // if the file does not exist.
+        // XXX This won't delete an empty directory unlike the C and Java
+        // implementations.
         if (System.IO.File.Exists(FileName)) {
             System.IO.File.Delete(FileName);
             Error = null;
         } else {
+            // This is a bit misleading if FileName names a directory.
             Error = new System.IO.FileNotFoundException();
         }
     }
@@ -277,8 +290,7 @@ remove_file(FileName, Result, !IO) :-
         if (file.delete()) {
             Error = null;
         } else {
-            // XXX ERROR: use FileNotFoundException?
-            Error = new java.io.IOException(""remove_file failed"");
+            Error = new java.io.IOException(""Error deleting file"");
         }
     } catch (java.lang.Exception e) {
         Error = e;
@@ -384,15 +396,12 @@ rename_file(OldFileName, NewFileName, Result, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
-        // XXX ERROR: do we really need to check for existence first?
-        if (System.IO.File.Exists(OldFileName)) {
-            System.IO.File.Move(OldFileName, NewFileName);
-            Error = null;
-        } else {
-            Error = new System.IO.FileNotFoundException();
-        }
-    }
-    catch (System.Exception e) {
+        // XXX This won't clobber NewFileName, unlike the C and Java
+        // implementations.
+        // XXX This won't rename a directory.
+        System.IO.File.Move(OldFileName, NewFileName);
+        Error = null;
+    } catch (System.Exception e) {
         Error = e;
     }
 ").
@@ -407,19 +416,20 @@ rename_file(OldFileName, NewFileName, Result, !IO) :-
     // about failure to rename.
 
     try {
-        java.io.File file = new java.io.File(OldFileName);
+        java.io.File old_file = new java.io.File(OldFileName);
+        java.io.File new_file = new java.io.File(NewFileName);
 
-        // XXX ERROR: do we really need to check for existence first?
-        if (file.exists()) {
-            if (file.renameTo(new java.io.File(NewFileName))) {
-                Error = null;
-            } else {
-                // XXX ERROR: use FileNotFoundException?
-                Error = new java.io.IOException(""rename_file failed"");
-            }
+        // This first test just improves the error message in a common case.
+        if (!old_file.exists()) {
+            // java.io.FileNotFoundException is documented as being thrown when
+            // failing to open a file but I don't see any reason we cannot use
+            // it in this case. (nio also defines a NoSuchFileException class.)
+            Error = new java.io.FileNotFoundException(
+                ""No such file or directory"");
+        } else if (old_file.renameTo(new_file)) {
+            Error = null;
         } else {
-            // XXX ERROR: use FileNotFoundException?
-            Error = new java.io.IOException(""No such file or directory"");
+            Error = new java.io.IOException(""Error renaming file"");
         }
     } catch (java.lang.Exception e) {
         Error = e;
@@ -587,22 +597,18 @@ read_symlink(FileName, Result, !IO) :-
 %---------------------%
 
 check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
-    ( if have_dotnet then
-        check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO)
-    else
-        CheckRead = pred_to_bool(contains(AccessTypes, read)),
-        CheckWrite = pred_to_bool(contains(AccessTypes, write)),
-        CheckExecute = pred_to_bool(contains(AccessTypes, execute)),
-        check_file_accessibility_2(FileName, CheckRead, CheckWrite,
-            CheckExecute, Error, !IO),
-        is_error(Error, "file not accessible: ", MaybeIOError, !IO),
-        (
-            MaybeIOError = yes(IOError),
-            Result = error(IOError)
-        ;
-            MaybeIOError = no,
-            Result = ok
-        )
+    CheckRead = pred_to_bool(contains(AccessTypes, read)),
+    CheckWrite = pred_to_bool(contains(AccessTypes, write)),
+    CheckExecute = pred_to_bool(contains(AccessTypes, execute)),
+    check_file_accessibility_2(FileName, CheckRead, CheckWrite,
+        CheckExecute, Error, !IO),
+    is_error(Error, "file not accessible: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IOError),
+        Result = error(IOError)
+    ;
+        MaybeIOError = no,
+        Result = ok
     ).
 
 :- pred check_file_accessibility_2(string::in, bool::in, bool::in, bool::in,
@@ -675,27 +681,34 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
-    java.io.File file = new java.io.File(FileName);
     try {
-        boolean ok = true;
+        java.io.File file = new java.io.File(FileName);
 
-        if (CheckRead == bool.YES) {
-            ok = file.canRead();
-        }
-
-        if (ok && CheckWrite == bool.YES) {
-            ok = file.canWrite();
-        }
-
-        if (ok && CheckExecute == bool.YES) {
-            ok = file.canExecute();
-        }
-
-        if (ok) {
-            Error = null;
+        // This first test just improves the error message in a common case.
+        if (!file.exists()) {
+            // java.io.FileNotFoundException is documented as being thrown when
+            // failing to open a file but I don't see any reason we cannot use
+            // it in this case. (nio also defines a NoSuchFileException class.)
+            Error = new java.io.FileNotFoundException(
+                ""No such file or directory"");
         } else {
-            // XXX ERROR: use this the correct exception?
-            Error = new java.io.FileNotFoundException(""Permission denied"");
+            boolean ok = true;
+
+            if (CheckRead == bool.YES) {
+                ok = file.canRead();
+            }
+            if (ok && CheckWrite == bool.YES) {
+                ok = file.canWrite();
+            }
+            if (ok && CheckExecute == bool.YES) {
+                ok = file.canExecute();
+            }
+
+            if (ok) {
+                Error = null;
+            } else {
+                Error = new java.io.IOException(""Permission denied"");
+            }
         }
     }
     catch (java.lang.Exception e) {
@@ -703,170 +716,95 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
     }
 ").
 
-    % XXX why not write this as check_file_accessibility_2?
-    %
-:- pred check_file_accessibility_dotnet(string::in, list(access_type)::in,
-    io.res::out, io::di, io::uo) is det.
-
-check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
-    % The .NET CLI doesn't provide an equivalent of access(), so we have to
-    % try to open the file to see if it is accessible.
-
-    CheckRead0 = pred_to_bool(list.contains(AccessTypes, read)),
-    CheckWrite = pred_to_bool(list.contains(AccessTypes, write)),
-    CheckExec = pred_to_bool(list.contains(AccessTypes, execute)),
-    % We need to be able to read a file to execute it.
-    CheckRead = bool.or(CheckRead0, CheckExec),
-
-    io.file.file_type(yes, FileName, FileTypeRes, !IO),
-    (
-        FileTypeRes = ok(FileType),
-        ( if FileType = directory then
-            check_directory_accessibility_dotnet(FileName,
-                CheckRead, CheckWrite, Error, !IO),
-            is_error(Error, "file not accessible: ", MaybeIOError, !IO),
-            (
-                MaybeIOError = yes(IOError),
-                Result = error(IOError)
-            ;
-                MaybeIOError = no,
-                Result = ok
-            )
-        else
-            (
-                CheckRead = yes,
-                open_input(FileName, InputRes, !IO),
-                (
-                    InputRes = ok(InputStream),
-                    io.close_input(InputStream, !IO),
-                    CheckReadRes = ok
-                ;
-                    InputRes = error(InputError),
-                    CheckReadRes = error(InputError)
-                )
-            ;
-                CheckRead = no,
-                CheckReadRes = ok
-            ),
-            ( if
-                CheckReadRes = ok,
-                CheckWrite = yes
-            then
-                open_append(FileName, OutputRes, !IO),
-                (
-                    OutputRes = ok(OutputStream),
-                    io.close_output(OutputStream, !IO),
-                    CheckWriteRes = ok
-                ;
-                    OutputRes = error(OutputError),
-                    CheckWriteRes = error(OutputError)
-                )
-            else
-                CheckWriteRes = CheckReadRes
-            ),
-            ( if
-                CheckWriteRes = ok,
-                % Unix programs need to check whether the execute bit is set
-                % for the directory, but we can't actually execute the
-                % directory.
-                CheckExec = yes
-            then
-                have_dotnet_exec_permission(Error, !IO),
-                is_error(Error, "file not accessible: ", MaybeIOError, !IO),
-                (
-                    MaybeIOError = yes(IOError),
-                    Result = error(IOError)
-                ;
-                    MaybeIOError = no,
-                    Result = ok
-                )
-            else
-                Result = CheckWriteRes
-            )
-        )
-    ;
-        FileTypeRes = error(FileTypeError),
-        Result = error(FileTypeError)
-    ).
-
-:- pred have_dotnet_exec_permission(system_error::out, io::di, io::uo) is det.
-
-have_dotnet_exec_permission(Error, !IO) :-
-    % Avoid determinism warnings.
-    ( if semidet_succeed then
-        error("io.have_dotnet_exec_permission invoked " ++
-            "for non-.NET CLI backend")
-    else
-        % Never reached.
-        Error = no_error
-    ).
-
 :- pragma foreign_proc("C#",
-    have_dotnet_exec_permission(Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    check_file_accessibility_2(FileName::in, CheckRead::in, CheckWrite::in,
+        CheckExecute::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
 "
     try {
-        // We need unrestricted permissions to execute unmanaged code.
-        (new System.Security.Permissions.SecurityPermission(
-            System.Security.Permissions.SecurityPermissionFlag.
-            AllFlags)).Demand();
+        if (System.IO.Directory.Exists(FileName)) {
+            ML_dotnet_check_dir_accessibility(FileName,
+                CheckRead == mr_bool.YES,
+                CheckWrite == mr_bool.YES,
+                CheckExecute == mr_bool.YES);
+        } else {
+            ML_dotnet_check_nondir_accessibility(FileName,
+                CheckRead == mr_bool.YES,
+                CheckWrite == mr_bool.YES,
+                CheckExecute == mr_bool.YES);
+        }
         Error = null;
     } catch (System.Exception e) {
         Error = e;
     }
 ").
 
-:- pred check_directory_accessibility_dotnet(string::in, bool::in, bool::in,
-    system_error::out, io::di, io::uo) is det.
-
-check_directory_accessibility_dotnet(_, _, _, Error, !IO) :-
-    % Avoid determinism warnings.
-    ( if semidet_succeed then
-        error("io.check_directory_accessibility_dotnet called " ++
-            "for non-.NET CLI backend")
-    else
-        % Never reached.
-        Error = no_error
-    ).
-
-:- pragma foreign_proc("C#",
-    check_directory_accessibility_dotnet(FileName::in, CheckRead::in,
-        CheckWrite::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    try {
-        Error = null;
-        if (CheckRead == mr_bool.YES) {
-            // XXX This is less efficient than I would like.
-            // Unfortunately the .NET CLI has no function
-            // corresponding to access() or opendir().
-            System.IO.Directory.GetFileSystemEntries(FileName);
+:- pragma foreign_code("C#", "
+    static void
+    ML_dotnet_check_dir_accessibility(String path,
+        bool checkRead, bool checkWrite, bool checkExecute)
+    {
+        if (checkRead) {
+            System.IO.Directory.EnumerateFileSystemEntries(path);
         }
-        if (CheckWrite == mr_bool.YES) {
-            // This will fail if the .NET CLI security regime
-            // we're operating under doesn't allow writing
-            // to the file. Even if this succeeds, the file
-            // system may disallow write access.
-            System.IO.Directory.SetLastAccessTime(FileName,
-                System.DateTime.Now);
 
-            // XXX This isn't quite right. Just because the directory
-            // isn't read-only doesn't mean we have permission to write to it.
-            // The only way to test whether a directory is writable is to
-            // write a file to it. The ideal way to do that would be
-            // io.make_temp, but currently the C# backend version of that
-            // ignores the directory passed to it.
+        if (checkWrite) {
+            // XXX This isn't quite right. Just because the directory isn't
+            // read-only doesn't mean we have permission to write to it.
+            // The only way to test whether a directory is writable is to write
+            // a file to it, which is ugly and also changes the last modified
+            // timestamp on the directory.
             System.IO.FileAttributes attrs =
-                System.IO.File.GetAttributes(FileName);
+                System.IO.File.GetAttributes(path);
             if ((attrs & System.IO.FileAttributes.ReadOnly) ==
                 System.IO.FileAttributes.ReadOnly)
             {
-                // XXX ERROR: use more specific exception class
-                Error = new System.Exception(""file is read-only"");
+                throw new System.IO.IOException(
+                    ""Directory has ReadOnly attribute"");
             }
         }
-    } catch (System.Exception e) {
-        Error = e;
+
+        if (checkExecute) {
+            // We do not know what to do here.
+        }
+    }
+
+    static void
+    ML_dotnet_check_nondir_accessibility(String path,
+        bool checkRead, bool checkWrite, bool checkExecute)
+    {
+        // We need to be able to read a file to execute it.
+        // This behaves differently from the other backends, though.
+        if (checkExecute) {
+            checkRead = true;
+        }
+
+        if (checkRead || checkWrite) {
+            System.IO.FileAccess file_access;
+            if (checkRead && checkWrite) {
+                file_access = System.IO.FileAccess.ReadWrite;
+            } else if (checkRead) {
+                file_access = System.IO.FileAccess.Read;
+            } else {
+                file_access = System.IO.FileAccess.Write;
+            }
+            // Throws an exception if we do not have permission.
+            System.IO.FileStream fs = System.IO.File.Open(path,
+                System.IO.FileMode.Open, file_access);
+            fs.Close();
+        } else {
+            if (!System.IO.File.Exists(path)) {
+                throw new System.IO.FileNotFoundException();
+            }
+        }
+
+        if (checkExecute) {
+            // We need unrestricted permissions to execute unmanaged code.
+            (new System.Security.Permissions.SecurityPermission(
+                System.Security.Permissions.SecurityPermissionFlag.
+                AllFlags)).Demand();
+        }
     }
 ").
 
@@ -1151,8 +1089,13 @@ file_modification_time(File, Result, !IO) :-
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
-        // XXX ERROR: do we really need to check for file existence first?
-        if (System.IO.File.Exists(FileName)) {
+        // We test for existence first because if the file or directory does
+        // not exist, GetLastWriteTime() returns '12:00 midnight, January 1,
+        // 1601 A.D. UTC adjusted to local time'. What kind of interface is
+        // that?
+        if (System.IO.File.Exists(FileName) ||
+            System.IO.Directory.Exists(FileName))
+        {
             System.DateTime t = System.IO.File.GetLastWriteTime(FileName);
             Time = time.ML_construct_time_t(t);
             Error = null;
@@ -1176,7 +1119,8 @@ file_modification_time(File, Result, !IO) :-
     // distinguish a modtime of 0 from file not found or I/O error.
 
     try {
-        long modtime = (new java.io.File(FileName)).lastModified();
+        java.io.File file = new java.io.File(FileName);
+        long modtime = file.lastModified();
         if (modtime == 0) {
             Error = new java.io.FileNotFoundException(
                 ""File not found or I/O error"");
@@ -1224,7 +1168,7 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
     string::out, system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    do_make_temp(Dir::in, Prefix::in, Suffix::in, Sep::in, FileName::out,
+    do_make_temp(DirName::in, Prefix::in, Suffix::in, Sep::in, FileName::out,
         Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure,
         not_thread_safe, % due to ML_io_tempnam_counter
@@ -1236,7 +1180,7 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
     // We cannot append Suffix because the last six chars in the argument
     // to mkstemp() must be XXXXXX.
     FileName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX"",
-        Dir, Sep, Prefix);
+        DirName, Sep, Prefix);
     fd = mkstemp(FileName);
     if (fd == -1) {
         Error = errno;
@@ -1251,8 +1195,8 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
         }
     }
 #else
-    // Constructs a temporary name by concatenating Dir, `/', the first 5 chars
-    // of Prefix, six hex digits, and Suffix. The six digit hex number is
+    // Constructs a temporary name by concatenating DirName, `/', the first 5
+    // chars of Prefix, six hex digits, and Suffix. The six digit hex number is
     // generated by starting with the pid of this process. Uses
     // `open(..., O_CREATE | O_EXCL, ...)' to create the file, checking that
     // there was no existing file with that name.
@@ -1266,7 +1210,7 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
     num_tries = 0;
     do {
         FileName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5s%06lX%s"",
-            Dir, Sep, Prefix, ML_io_tempnam_counter & 0xffffffL, Suffix);
+            DirName, Sep, Prefix, ML_io_tempnam_counter & 0xffffffL, Suffix);
         flags = O_WRONLY | O_CREAT | O_EXCL;
         do {
             #ifdef MR_WIN32
@@ -1295,8 +1239,8 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    do_make_temp(_Dir::in, _Prefix::in, _Suffix::in, _Sep::in, FileName::out,
-        Error::out, _IO0::di, _IO::uo),
+    do_make_temp(_DirName::in, _Prefix::in, _Suffix::in, _Sep::in,
+        FileName::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
@@ -1309,30 +1253,32 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    do_make_temp(Dir::in, Prefix::in, Suffix::in, _Sep::in, FileName::out,
+    do_make_temp(DirName::in, Prefix::in, Suffix::in, _Sep::in, FileName::out,
         Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
+    // Java 7 java.nio.file.Files.createTempFile() would allow us
+    // to set the file mode.
+
+    if (Prefix.length() > 5) {
+        // The documentation for io.make_temp says that we should only use
+        // the first five characters of Prefix.
+        Prefix = Prefix.substring(0, 5);
+    }
+
     try {
-        File    new_file;
-
-        if (Prefix.length() > 5) {
-            // The documentation for io.make_temp says that we should only use
-            // the first five characters of Prefix.
-            Prefix = Prefix.substring(0, 5);
-        }
-
-        new_file = new File(new File(Dir), makeTempName(Prefix, Suffix));
+        File new_file = new File(DirName, makeTempName(Prefix, Suffix));
         if (new_file.createNewFile()) {
             FileName = new_file.getAbsolutePath();
             Error = null;
         } else {
             FileName = """";
-            // XXX ERROR: more specific class name?
-            Error = new java.io.IOException(""Could not create file"");
+            // Any other errors should be be reported by createNewFile() by
+            // throwing an exception.
+            Error = new java.io.IOException(""File already exists"");
         }
-    } catch (IOException e) {
+    } catch (java.lang.Exception e) {
         FileName = """";
         Error = e;
     }
@@ -1341,11 +1287,11 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
 %---------------------%
 
 make_temp_directory(Result, !IO) :-
-    io.file.get_temp_directory(Dir, !IO),
-    io.file.make_temp_directory(Dir, "mtmp", "", Result, !IO).
+    io.file.get_temp_directory(ParentDirName, !IO),
+    io.file.make_temp_directory(ParentDirName, "mtmp", "", Result, !IO).
 
-make_temp_directory(Dir, Prefix, Suffix, Result, !IO) :-
-    do_make_temp_directory(Dir, Prefix, Suffix,
+make_temp_directory(ParentDirName, Prefix, Suffix, Result, !IO) :-
+    do_make_temp_directory(ParentDirName, Prefix, Suffix,
         char_to_string(dir.directory_separator), DirName, Error, !IO),
     is_error(Error, "error creating temporary directory: ", MaybeIOError, !IO),
     (
@@ -1360,7 +1306,7 @@ make_temp_directory(Dir, Prefix, Suffix, Result, !IO) :-
     string::out, system_error::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    do_make_temp_directory(Dir::in, Prefix::in, Suffix::in, Sep::in,
+    do_make_temp_directory(ParentDirName::in, Prefix::in, Suffix::in, Sep::in,
         DirName::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         does_not_affect_liveness],
@@ -1372,7 +1318,7 @@ make_temp_directory(Dir, Prefix, Suffix, Result, !IO) :-
     // to mkdtemp() must be XXXXXX.
 
     DirName = MR_make_string(MR_ALLOC_ID, ""%s%s%.5sXXXXXX"",
-        Dir, Sep, Prefix);
+        ParentDirName, Sep, Prefix);
     DirName = mkdtemp(DirName);
     if (DirName == NULL) {
         Error = errno;
@@ -1386,21 +1332,19 @@ make_temp_directory(Dir, Prefix, Suffix, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    do_make_temp_directory(Dir::in, _Prefix::in, _Suffix::in, _Sep::in,
-        DirName::out, Error::out, _IO0::di, _IO::uo),
+    do_make_temp_directory(ParentDirName::in, _Prefix::in, _Suffix::in,
+        _Sep::in, DirName::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
-"{
-    try
-    {
-        DirName = Path.Combine(Dir, Path.GetRandomFileName());
+"
+    try {
+        DirName = Path.Combine(ParentDirName, Path.GetRandomFileName());
 
-        switch (Environment.OSVersion.Platform)
-        {
+        switch (Environment.OSVersion.Platform) {
             case PlatformID.Win32NT:
                 // obtain the owner of the temporary directory
                 IdentityReference tempInfo =
-                    new DirectoryInfo(Dir)
+                    new DirectoryInfo(ParentDirName)
                         .GetAccessControl(AccessControlSections.Owner)
                         .GetOwner(typeof(SecurityIdentifier));
 
@@ -1418,62 +1362,55 @@ make_temp_directory(Dir, Prefix, Suffix, Result, !IO) :-
                 Directory.CreateDirectory(DirName, security);
                 Error = null;
                 break;
-
 #if __MonoCS__
             case PlatformID.Unix:
             case (PlatformID)6: // MacOSX:
-                int errorNo = ML_sys_mkdir(DirName, 0x7 << 6);
-                if (errorNo == 0)
-                {
+                int rc = ML_sys_mkdir(DirName, 0x7 << 6);
+                if (rc == 0) {
                     Error = null;
-                }
-                else
-                {
-                    // XXX ERROR: more specific class?
-                    Error = new System.Exception(string.Format(
-                        ""Creating directory {0} failed with: {1:X}"",
-                        DirName, errorNo));
+                } else {
+                    // The actual error would need to be retrieved from errno.
+                    Error = new System.IO.IOException(
+                        ""Error creating directory"");
                 }
                 break;
 #endif
-
             default:
-                // XXX ERROR: more specific class?
-                Error = new System.Exception(
+                Error = new System.NotImplementedException(
                     ""Changing folder permissions is not supported for: "" +
                     Environment.OSVersion);
                 break;
         }
-    }
-    catch (System.Exception e)
-    {
+    } catch (System.Exception e) {
         DirName = string.Empty;
         Error = e;
     }
-}").
+").
 
 :- pragma foreign_proc("Java",
-    do_make_temp_directory(Dir::in, Prefix::in, Suffix::in, _Sep::in,
+    do_make_temp_directory(ParentDirName::in, Prefix::in, Suffix::in, _Sep::in,
         DirName::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
-    File    new_dir;
-
     if (Prefix.length() > 5) {
         // The documentation for io.make_temp says that we should only use
         // the first five characters of Prefix.
         Prefix = Prefix.substring(0, 5);
     }
 
-    new_dir = new File(new File(Dir), makeTempName(Prefix, Suffix));
-    if (new_dir.mkdir()) {
-        DirName = new_dir.getAbsolutePath();
-        Error = null;
-    } else {
+    try {
+        File new_dir = new File(ParentDirName, makeTempName(Prefix, Suffix));
+        if (new_dir.mkdir()) {
+            DirName = new_dir.getAbsolutePath();
+            Error = null;
+        } else {
+            DirName = """";
+            Error = new java.io.IOException(""Error creating directory"");
+        }
+    } catch (java.lang.Exception e) {
         DirName = """";
-        // XXX ERROR: more specific class?
-        Error = new java.io.IOException(""Couldn't create directory"");
+        Error = e;
     }
 ").
 
