@@ -1,4 +1,4 @@
-Cross-compilng Mercury with GCC or clang
+Cross-compiling Mercury with GCC or clang
 ========================================
 
 You can cross-compile the Mercury system with GCC or with clang so that the
@@ -83,7 +83,7 @@ Instructions for clang
  1. Install Mercury for the host system as usual using clang.
 
  2. Obtain a "sysroot" file system for your target system, that is,
-    a logical root directory in which compiler will search for headers and
+    a logical root directory in which the compiler will search for headers and
     libraries.
 
     For FreeBSD, you can copy these directories from a running system:
