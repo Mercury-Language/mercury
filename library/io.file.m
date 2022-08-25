@@ -44,9 +44,9 @@
 
     % rename_file(OldFileName, NewFileName, Result, !IO).
     %
-    % Attempts to rename the file OldFileName as NewFileName, binding
-    % Result to ok/0 if it succeeds, or error/1 if it fails. If OldFileName
-    % names a file that is currently open, the behaviour is
+    % Attempts to rename the file or directory OldFileName as NewFileName,
+    % binding Result to ok/0 if it succeeds, or error/1 if it fails.
+    % If OldFileName names a file that is currently open, the behaviour is
     % implementation-dependent. If NewFileName names a file that already
     % exists the behaviour is also implementation-dependent; on some systems,
     % the file previously named NewFileName will be deleted and replaced
@@ -396,10 +396,14 @@ rename_file(OldFileName, NewFileName, Result, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
-        // XXX This won't clobber NewFileName, unlike the C and Java
-        // implementations.
-        // XXX This won't rename a directory.
-        System.IO.File.Move(OldFileName, NewFileName);
+        if (System.IO.Directory.Exists(OldFileName)) {
+            System.IO.Directory.Move(OldFileName, NewFileName);
+        } else {
+            // XXX This won't clobber NewFileName.
+            // .NET Core 3.0 and later versions support a overload of the
+            // Move() method with an overwrite parameter.
+            System.IO.File.Move(OldFileName, NewFileName);
+        }
         Error = null;
     } catch (System.Exception e) {
         Error = e;

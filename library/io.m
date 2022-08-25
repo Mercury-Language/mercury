@@ -1640,9 +1640,9 @@
 
     % rename_file(OldFileName, NewFileName, Result, !IO).
     %
-    % Attempts to rename the file OldFileName as NewFileName, binding
-    % Result to ok/0 if it succeeds, or error/1 if it fails. If OldFileName
-    % names a file that is currently open, the behaviour is
+    % Attempts to rename the file or directory OldFileName as NewFileName,
+    % binding Result to ok/0 if it succeeds, or error/1 if it fails.
+    % If OldFileName names a file that is currently open, the behaviour is
     % implementation-dependent. If NewFileName names a file that already
     % exists the behaviour is also implementation-dependent; on some systems,
     % the file previously named NewFileName will be deleted and replaced
