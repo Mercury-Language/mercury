@@ -1133,21 +1133,14 @@ make_directory_including_parents(DirName, Result, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
-        // System.IO.Directory.CreateDirectory() creates all directories and
-        // subdirectories in the specified path unless they already exist.
-
-        // CreateDirectory() doesn't fail if a file with the same name as the
-        // directory being created already exists.
-        if (System.IO.File.Exists(DirName)) {
-            // XXX ERROR: use more specific exception class
-            Error =
-                new System.Exception(""a file with that name already exists"");
-            CheckAccess = mr_bool.NO;
-        } else if (System.IO.Directory.Exists(DirName)) {
+        System.IO.DirectoryInfo di = new System.IO.DirectoryInfo(DirName);
+        // DirectoryInfo.Create() does nothing if the directory already exists,
+        // so we check explicitly. There is a race here.
+        if (di.Exists) {
             Error = null;
             CheckAccess = mr_bool.YES;
         } else {
-            System.IO.Directory.CreateDirectory(DirName);
+            di.Create();
             Error = null;
             CheckAccess = mr_bool.NO;
         }
@@ -1164,10 +1157,11 @@ make_directory_including_parents(DirName, Result, !IO) :-
 "
     try {
         java.io.File dir = new java.io.File(DirName);
+        // We should switch to java.nio.file.Files.createDirectories()
+        // to remove these additional checks.
         if (dir.isFile()) {
-            // XXX ERROR: use more specific exception class
-            Error = new java.lang.RuntimeException(
-                ""a file with that name already exists"");
+            Error = new java.io.IOException(
+                ""A file with that name already exists"");
             CheckAccess = bool.NO;
         } else if (dir.isDirectory()) {
             Error = null;
@@ -1176,8 +1170,7 @@ make_directory_including_parents(DirName, Result, !IO) :-
             Error = null;
             CheckAccess = bool.NO;
         } else {
-            // XXX ERROR: use more specific exception class
-            Error = new java.lang.RuntimeException(""make_directory failed"");
+            Error = new java.io.IOException(""Failed to create directory"");
             CheckAccess = bool.NO;
         }
     } catch (java.lang.Exception e) {
@@ -1262,33 +1255,22 @@ make_single_directory(DirName, Result, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {
-        // XXX ERROR: use more specific exception class
-        // DirectoryInfo.Create doesn't fail if a file with the same name as
-        // the directory being created already exists.
-        if (System.IO.File.Exists(DirName)) {
-            Status = dir.ML_MAKE_SINGLE_DIRECTORY_ERROR;
-            Error = new System.Exception(
-                ""a file with that name already exists"");
+        System.IO.DirectoryInfo di = new System.IO.DirectoryInfo(DirName);
+        // DirectoryInfo.Create() does nothing if the directory already exists,
+        // so we check explicitly. There is a race here.
+        if (di.Exists) {
+            Status = dir.ML_MAKE_SINGLE_DIRECTORY_DIR_EXISTS;
+            Error =
+                new System.IO.IOException(""Directory already exists."");
         } else {
-            System.IO.DirectoryInfo info =
-                new System.IO.DirectoryInfo(DirName);
-            System.IO.DirectoryInfo parent_info = info.Parent;
-
-            // Not sure why we need these first two tests.
-            if (parent_info == null) {
+            System.IO.DirectoryInfo parent = di.Parent;
+            // This check just improves the error message.
+            if (parent != null && !parent.Exists) {
                 Status = dir.ML_MAKE_SINGLE_DIRECTORY_ERROR;
-                Error = new System.Exception(""can't create root directory"");
-            } else if (!info.Parent.Exists) {
-                Status = dir.ML_MAKE_SINGLE_DIRECTORY_ERROR;
-                Error =
-                    new System.Exception(""parent directory does not exist"");
-            } else if (info.Exists) {
-                // DirectoryInfo.Create does nothing if the directory already
-                // exists, so we check explicitly. There is a race here.
-                Status = dir.ML_MAKE_SINGLE_DIRECTORY_DIR_EXISTS;
-                Error = new System.Exception(""directory already exists"");
+                Error = new System.IO.IOException(
+                    ""Parent directory does not exist."");
             } else {
-                info.Create();
+                di.Create();
                 Status = dir.ML_MAKE_SINGLE_DIRECTORY_OK;
                 Error = null;
             }
@@ -1307,27 +1289,23 @@ make_single_directory(DirName, Result, !IO) :-
 "
     try {
         java.io.File newDir = new java.io.File(DirName);
-        java.io.File parent = newDir.getParentFile();
-
-        // Are these first two checks just to produce better error messages?
-        // XXX ERROR: use more specific exception classes
-        if (parent == null) {
-            Status = dir.ML_MAKE_SINGLE_DIRECTORY_ERROR;
-            Error = new java.io.IOException(""can't create root directory"");
-        } else if (!parent.exists()) {
-            Status = dir.ML_MAKE_SINGLE_DIRECTORY_ERROR;
-            Error =
-                new java.io.IOException(""parent directory does not exist"");
-        } else if (newDir.isDirectory()) {
-            Status = dir.ML_MAKE_SINGLE_DIRECTORY_DIR_EXISTS;
-            Error = new java.io.IOException(""directory already exists"");
+        // We should switch to java.nio.file.Files.createDirectory().
+        if (newDir.exists()) {
+            Status = dir.ML_MAKE_SINGLE_DIRECTORY_NAME_EXISTS;
+            Error = new java.io.IOException(""File already exists"");
         } else {
-            if (newDir.mkdir()) {
+            java.io.File parent = newDir.getParentFile();
+            if (parent != null && !parent.exists()) {
+               Status = dir.ML_MAKE_SINGLE_DIRECTORY_ERROR;
+               Error = new java.io.IOException(
+                   ""Parent directory does not exist"");
+            } else if (newDir.mkdir()) {
                 Status = dir.ML_MAKE_SINGLE_DIRECTORY_OK;
                 Error = null;
             } else {
                 Status = dir.ML_MAKE_SINGLE_DIRECTORY_ERROR;
-                Error = new java.io.IOException(""mkdir failed"");
+                Error = new java.io.IOException(
+                    ""Failed to create directory"");
             }
         }
     } catch (java.lang.Exception e) {
@@ -1756,7 +1734,6 @@ open_2(DirName, DirPattern, Result, !IO) :-
 "
     try {
         java.io.File file = new java.io.File(DirName);
-        // XXX ERROR: use more specific exception classes
         if (file.isDirectory()) {
             String[] list = file.list();
             if (list != null) {
@@ -1769,7 +1746,8 @@ open_2(DirName, DirPattern, Result, !IO) :-
             }
         } else if (!file.exists()) {
             DirStream = null;
-            Error = new java.io.IOException(""No such file or directory"");
+            Error = new java.io.FileNotFoundException(
+                ""No such file or directory"");
         } else {
             DirStream = null;
             Error = new java.io.IOException(""Not a directory"");
