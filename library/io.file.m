@@ -28,6 +28,10 @@
     % fails. If FileName names a file that is currently open, the behaviour
     % is implementation-dependent.
     %
+    % If FileName names a directory, the behavior is currently
+    % implementation-dependent. On most platforms, an empty directory will be
+    % deleted.
+    %
 :- pred remove_file(string::in, io.res::out, io::di, io::uo) is det.
 
     % remove_file_recursively(FileName, Result, !IO) attempts to remove
@@ -243,6 +247,7 @@ remove_file(FileName, Result, !IO) :-
 "
     int rc;
 #ifdef MR_WIN32
+    // XXX _wremove will not delete an empty directory; _wrmdir does that.
     rc = _wremove(ML_utf8_to_wide(FileName));
 #else
     rc = remove(FileName);
@@ -261,13 +266,13 @@ remove_file(FileName, Result, !IO) :-
     try {
         // System.IO.File.Delete() does not throw an exception
         // if the file does not exist.
-        // XXX This won't delete an empty directory unlike the C and Java
-        // implementations.
         if (System.IO.File.Exists(FileName)) {
             System.IO.File.Delete(FileName);
             Error = null;
+        } else if (System.IO.Directory.Exists(FileName)) {
+            System.IO.Directory.Delete(FileName);
+            Error = null;
         } else {
-            // This is a bit misleading if FileName names a directory.
             Error = new System.IO.FileNotFoundException();
         }
     }

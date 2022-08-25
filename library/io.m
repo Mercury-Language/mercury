@@ -1621,6 +1621,10 @@
     % fails. If FileName names a file that is currently open, the behaviour
     % is implementation-dependent.
     %
+    % If FileName names a directory, the behavior is currently
+    % implementation-dependent. On most platforms, an empty directory will be
+    % deleted.
+    %
 :- pred remove_file(string::in, io.res::out, io::di, io::uo) is det.
 :- pragma obsolete(pred(remove_file/4), [io.file.remove_file/4]).
 
