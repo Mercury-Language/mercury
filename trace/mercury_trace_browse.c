@@ -83,6 +83,7 @@ MR_trace_save_term(const char *filename, MR_Word browser_term)
 
     MR_trace_browse_ensure_init();
 
+    // cast away const
     mercury_filename = (MR_String) (MR_Integer) filename;
     mercury_format = (MR_String) (MR_Integer) "default";
     MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
@@ -98,6 +99,7 @@ MR_trace_save_term_xml(const char *filename, MR_Word browser_term)
     MercuryFile mdb_out;
     MR_String   mercury_filename;
 
+    // cast away const
     mercury_filename = (MR_String) (MR_Integer) filename;
 
     MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
@@ -106,6 +108,25 @@ MR_trace_save_term_xml(const char *filename, MR_Word browser_term)
             mercury_filename, browser_term);
     );
 }
+
+void
+MR_trace_save_term_doc(const char *filename, MR_Word browser_term)
+{
+    MercuryFile mdb_out;
+    MR_String   mercury_filename;
+
+    MR_trace_browse_ensure_init();
+
+    // cast away const
+    mercury_filename = (MR_String) (MR_Integer) filename;
+
+    MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
+    MR_TRACE_CALL_MERCURY(
+        ML_BROWSE_save_term_to_file_doc(MR_wrap_output_stream(&mdb_out),
+            mercury_filename, browser_term);
+    );
+}
+
 void
 MR_trace_save_and_invoke_web_browser(MR_Word browser_term)
 {

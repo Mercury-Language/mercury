@@ -49,6 +49,8 @@ break list_data
 continue
 finish
 dump Data browser_test.save.2
+dump -x Data browser_test.save.3
+dump -p Data browser_test.save.4
 break a_func
 continue
 finish

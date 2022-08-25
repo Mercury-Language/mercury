@@ -34,6 +34,8 @@ extern  void        MR_trace_save_term(const char *filename,
                         MR_Word browser_term);
 extern  void        MR_trace_save_term_xml(const char *filename,
                         MR_Word browser_term);
+extern  void        MR_trace_save_term_doc(const char *filename,
+                        MR_Word browser_term);
 
 // The constants defined by the following enums must correspond with the
 // values in the representation of browse_caller_type and portray_format in

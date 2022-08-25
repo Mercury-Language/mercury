@@ -147,13 +147,14 @@
 % Functions for converting docs to strings and writing them out to streams.
 %
 
-    % write_as_doc(X, !IO):
-    % write_as_doc(FileStream, X, !IO):
+    % write_doc_formatted(X, !IO):
+    % write_doc_formatted(FileStream, X, !IO):
     %
-    % Convert X to a doc, and then call write_doc on the result.
+    % Convert X to a doc using the format function, and then
+    % call write_doc on the result.
     %
-:- pred write_as_doc(doc::in, io::di, io::uo) is det.
-:- pred write_as_doc(io.output_stream::in, doc::in, io::di, io::uo) is det.
+:- pred write_doc_formatted(T::in, io::di, io::uo) is det.
+:- pred write_doc_formatted(io.output_stream::in, T::in, io::di, io::uo) is det.
 
     % write_doc(Doc, !IO):
     % write_doc(FileStream, Doc, !IO):
@@ -383,16 +384,16 @@ format_arg(Doc) =
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_export("C", write_as_doc(in, di, uo),
-    "ML_write_as_doc").
-:- pragma foreign_export("C", write_as_doc(in, in, di, uo),
-    "ML_write_as_doc_to_stream").
+:- pragma foreign_export("C", write_doc_formatted(in, di, uo),
+    "ML_write_doc_formatted").
+:- pragma foreign_export("C", write_doc_formatted(in, in, di, uo),
+    "ML_write_doc_formatted_to_stream").
 
-write_as_doc(X, !IO) :-
+write_doc_formatted(X, !IO) :-
     Doc = format(X),
     write_doc(io.stdout_stream, Doc, !IO).
 
-write_as_doc(Stream, X, !IO) :-
+write_doc_formatted(Stream, X, !IO) :-
     Doc = format(X),
     write_doc(Stream, Doc, !IO).
 

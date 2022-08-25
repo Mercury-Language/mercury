@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred browser_test.main/2-0 (det) browser_test.m:20
+      E1:     C1 CALL pred browser_test.main/2-0 (det) browser_test.m:23
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -6,9 +6,9 @@ mdb> list_context_lines 10
 mdb> break big_data
  0: + stop  interface pred browser_test.big_data/1-0 (det)
 mdb> continue
-      E2:     C2 CALL pred browser_test.big_data/1-0 (det) browser_test.m:41 (browser_test.m:24)
+      E2:     C2 CALL pred browser_test.big_data/1-0 (det) browser_test.m:41 (browser_test.m:26)
 mdb> finish
-      E3:     C2 EXIT pred browser_test.big_data/1-0 (det) browser_test.m:41 (browser_test.m:24)
+      E3:     C2 EXIT pred browser_test.big_data/1-0 (det) browser_test.m:41 (browser_test.m:26)
 mdb> delete *
  0: E stop  interface pred browser_test.big_data/1-0 (det)
 mdb> dump -q 1 browser_test.save.1
@@ -120,16 +120,20 @@ mdb> print Data/1/2
 mdb> print 1^1^2^3
 mdb: at 1^2^ the path 3 does not exist in variable 1.
 mdb> retry
-      E2:     C2 CALL pred browser_test.big_data/1-0 (det) browser_test.m:41 (browser_test.m:24)
+      E2:     C2 CALL pred browser_test.big_data/1-0 (det) browser_test.m:41 (browser_test.m:26)
 mdb> break list_data
  0: + stop  interface pred browser_test.list_data/1-0 (det)
 mdb> continue
 big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big(small, 5, small)), 6, small)).
-      E4:     C3 CALL pred browser_test.list_data/1-0 (det) browser_test.m:70 (browser_test.m:27)
+      E4:     C3 CALL pred browser_test.list_data/1-0 (det) browser_test.m:70 (browser_test.m:29)
 mdb> finish
-      E5:     C3 EXIT pred browser_test.list_data/1-0 (det) browser_test.m:70 (browser_test.m:27)
+      E5:     C3 EXIT pred browser_test.list_data/1-0 (det) browser_test.m:70 (browser_test.m:29)
 mdb> dump Data browser_test.save.2
 Dumped Data to browser_test.save.2
+mdb> dump -x Data browser_test.save.3
+Dumped Data to browser_test.save.3
+mdb> dump -p Data browser_test.save.4
+Dumped Data to browser_test.save.4
 mdb> break a_func
  1: + stop  interface func browser_test.a_func/1-0 (det)
 mdb> continue
@@ -188,6 +192,43 @@ seq(
  5
 )
 
+browser_test.save.3:
+<?xml version="1.0"?>
+<seq functor="seq" type="browser_test.big" arity="3">
+	<Int type="int">1</Int>
+	<List functor="[|]" type="list.list(browser_test.big)" arity="2">
+		<big functor="big" type="browser_test.big" arity="3">
+			<big functor="big" type="browser_test.big" arity="3">
+				<small functor="small" type="browser_test.big" arity="0" />
+				<Int type="int">1</Int>
+				<small functor="small" type="browser_test.big" arity="0" />
+			</big>
+			<Int type="int">2</Int>
+			<small functor="small" type="browser_test.big" arity="0" />
+		</big>
+		<List functor="[|]" type="list.list(browser_test.big)" arity="2">
+			<small functor="small" type="browser_test.big" arity="0" />
+			<List functor="[|]" type="list.list(browser_test.big)" arity="2">
+				<big functor="big" type="browser_test.big" arity="3">
+					<small functor="small" type="browser_test.big" arity="0" />
+					<Int type="int">4</Int>
+					<big functor="big" type="browser_test.big" arity="3">
+						<small functor="small" type="browser_test.big" arity="0" />
+						<Int type="int">5</Int>
+						<small functor="small" type="browser_test.big" arity="0" />
+					</big>
+				</big>
+				<Nil functor="[]" type="list.list(browser_test.big)" arity="0" />
+			</List>
+		</List>
+	</List>
+	<Int type="int">5</Int>
+</seq>
+
+browser_test.save.4:
+seq(1, 
+  [big(big(small, 1, small), 2, small), small, 
+   big(small, 4, big(small, 5, small))], 5)
       E6:     C4 CALL func browser_test.a_func/1-0 (det) browser_test.m:116 (browser_test.m:35)
 mdb> finish
       E7:     C4 EXIT func browser_test.a_func/1-0 (det) browser_test.m:116 (browser_test.m:35)

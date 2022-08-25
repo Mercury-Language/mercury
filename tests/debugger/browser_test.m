@@ -1,6 +1,9 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% The .exp file is for ???.
+% The .exp2 file is for ???.
+% The .exp3 file is for asm_fast.gc and asm_fast.gc.debug.
 
 :- module browser_test.
 :- interface.
@@ -19,22 +22,19 @@
 
 main(!IO) :-
     % In case we have these files lying around.
-    io.file.remove_file("browser_test.save.1", _, !IO),
-    io.file.remove_file("browser_test.save.2", _, !IO),
+    remove_dump_files(!IO),
     big_data(Data),
     io.print(Data, !IO),
     io.write_string(".\n", !IO),
     list_data(List),
     io.print(List, !IO),
     io.write_string(".\n", !IO),
-    print_file("browser_test.save.1", !IO),
-    print_file("browser_test.save.2", !IO),
+    print_dump_files(!IO),
     % Clean up after the test.
-    io.file.remove_file("browser_test.save.1", _, !IO),
-    io.file.remove_file("browser_test.save.2", _, !IO),
+    remove_dump_files(!IO),
     a_func(Data) = Data2,
-    write(Data2, !IO),
-    nl(!IO).
+    io.write(Data2, !IO),
+    io.nl(!IO).
 
 :- pred big_data(big::out) is det.
 
@@ -115,3 +115,19 @@ print_file(FileName, !IO) :-
 
 a_func(_) = Big :-
     big_data(Big).
+
+:- pred remove_dump_files(io::di, io::uo) is det.
+
+remove_dump_files(!IO) :-
+    io.file.remove_file("browser_test.save.1", _, !IO),
+    io.file.remove_file("browser_test.save.2", _, !IO),
+    io.file.remove_file("browser_test.save.3", _, !IO),
+    io.file.remove_file("browser_test.save.4", _, !IO).
+
+:- pred print_dump_files(io::di, io::uo) is det.
+
+print_dump_files(!IO) :-
+    print_file("browser_test.save.1", !IO),
+    print_file("browser_test.save.2", !IO),
+    print_file("browser_test.save.3", !IO),
+    print_file("browser_test.save.4", !IO).

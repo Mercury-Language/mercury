@@ -82,7 +82,7 @@ static  MR_bool     MR_trace_options_view(const char **window_cmd,
 static  MR_bool     MR_trace_options_diff(MR_Unsigned *start,
                         MR_Unsigned *max, char ***words, int *word_count);
 static  MR_bool     MR_trace_options_dump(MR_bool *quiet, MR_bool *xml,
-                        char ***words, int *word_count);
+                        MR_bool *prettyprint, char ***words, int *word_count);
 
 ////////////////////////////////////////////////////////////////////////////
 
@@ -790,15 +790,18 @@ MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_Word         browser_term;
-    const char      *problem = NULL;
+    const char      *value_problem = NULL;
     MR_bool         quiet = MR_FALSE;
     MR_bool         xml = MR_FALSE;
+    MR_bool         prettyprint = MR_FALSE;
 
     // Set this to NULL to avoid uninitialization warnings.
 
     browser_term = (MR_Word) NULL;
 
-    if (! MR_trace_options_dump(&quiet, &xml, &words, &word_count)) {
+    if (! MR_trace_options_dump(&quiet, &xml, &prettyprint,
+        &words, &word_count))
+    {
         // The usage message has already been printed.
         ;
     } else if (word_count != 3) {
@@ -809,7 +812,6 @@ MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
             MR_Word     arg_list;
             MR_bool     is_func;
 
-            problem = NULL;
             MR_convert_goal_to_synthetic_term(&name, &arg_list, &is_func);
             browser_term = MR_synthetic_to_browser_term(name, arg_list,
                 is_func);
@@ -818,7 +820,7 @@ MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
             exception = MR_trace_get_exception_value();
             if (exception == (MR_Word) NULL) {
-                problem = "missing exception value";
+                value_problem = "missing exception value";
             } else {
                 browser_term = MR_univ_to_browser_term(exception);
             }
@@ -829,7 +831,7 @@ MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
             entry = event_info->MR_event_sll->MR_sll_entry;
 
             if (entry->MR_sle_body_bytes == NULL) {
-                problem = "current procedure has no body bytecodes";
+                value_problem = "current procedure has no body bytecodes";
             } else {
                 MR_TRACE_CALL_MERCURY(
                     MR_MDBCOMP_trace_read_proc_defn_rep(
@@ -847,19 +849,28 @@ MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
             const char  *name;
 
             MR_convert_arg_to_var_spec(words[1], &var_spec);
-            problem = MR_lookup_unambiguous_var_spec(var_spec,
+            value_problem = MR_lookup_unambiguous_var_spec(var_spec,
                 &type_info, &value, &name);
-            if (problem == NULL) {
+            if (value_problem == NULL) {
                 browser_term = MR_type_value_to_browser_term(type_info, value);
             }
         }
 
-        if (problem != NULL) {
+        if (value_problem != NULL) {
             fflush(MR_mdb_out);
-            fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+            fprintf(MR_mdb_err, "mdb: %s.\n", value_problem);
         } else {
+            if (xml && prettyprint) {
+                fflush(MR_mdb_out);
+                fprintf(MR_mdb_err,
+                    "mdb: the -p and -x options of the \"dump\" command "
+                    "are mutually exclusive; ignoring -p.\n");
+            }
+
             if (xml) {
                 MR_trace_save_term_xml(words[2], browser_term);
+            } else if (prettyprint) {
+                MR_trace_save_term_doc(words[2], browser_term);
             } else {
                 MR_trace_save_term(words[2], browser_term);
             }
@@ -1603,22 +1614,27 @@ MR_trace_options_diff(MR_Unsigned *start, MR_Unsigned *max,
 
 static struct MR_option MR_trace_dump_opts[] =
 {
-    { "quiet",      MR_no_argument,     NULL,   'q' },
-    { "xml",        MR_no_argument,     NULL,   'x' },
-    { NULL,         MR_no_argument,     NULL,   0   }
+    { "quiet",          MR_no_argument,     NULL,   'q' },
+    { "xml",            MR_no_argument,     NULL,   'x' },
+    { "prettyprint",    MR_no_argument,     NULL,   'p' },
+    { NULL,             MR_no_argument,     NULL,   0   }
 };
 
 static MR_bool
-MR_trace_options_dump(MR_bool *quiet, MR_bool *xml,
+MR_trace_options_dump(MR_bool *quiet, MR_bool *xml, MR_bool *prettyprint,
     char ***words, int *word_count)
 {
     int c;
 
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "qx",
+    while ((c = MR_getopt_long(*word_count, *words, "pqx",
         MR_trace_dump_opts, NULL)) != EOF)
     {
         switch (c) {
+
+            case 'p':
+                *prettyprint = MR_TRUE;
+                break;
 
             case 'q':
                 *quiet = MR_TRUE;

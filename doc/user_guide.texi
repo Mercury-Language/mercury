@@ -3401,36 +3401,43 @@ specifies how many of the initial differences to skip.
 The option @samp{-m} (or @samp{--max}), if present,
 specifies how many differences to print.
 @sp 1
-@item dump [-qx] goal @var{filename}
+@item dump [-pqx] goal @var{filename}
 @kindex dump (mdb command)
 Writes the goal of the current call in its present state of instantiation
 to the specified file,
 and outputs a message announcing this fact
 unless the option @samp{-q} (or @samp{--quiet}) was given.
-The option @samp{-x} (or @samp{--xml}) causes the output to be in XML.
+The option @samp{-p} (or @samp{--prettyprint}) causes the goal to be output
+in a pretty-printed form.
+The option @samp{-x} (or @samp{--xml}) causes the goal to be output
+in XML format.
 @sp 1
-@item dump [-qx] exception @var{filename}
+@item dump [-pqx] exception @var{filename}
 Writes the value of the exception at an EXCP port to the specified file,
 and outputs a message announcing this fact
 unless the option @samp{-q} (or @samp{--quiet}) was given.
 Reports an error if the current event does not refer to such a port.
+The option @samp{-p} (or @samp{--prettyprint}) causes the exception value
+to be output in a pretty-printed form.
 The option @samp{-x} (or @samp{--xml}) causes the output to be in XML.
 @sp 1
-@item dump [-qx] @var{name} @var{filename}
-@itemx dump [-qx] @var{num} @var{filename}
+@item dump [-pqx] @var{name} @var{filename}
+@itemx dump [-pqx] @var{num} @var{filename}
 Writes the value of the variable in the current environment
 with the given ordinal number or with the given name to the specified file,
 and outputs a message announcing this fact
 unless the option @samp{-q} (or @samp{--quiet}) was given.
+The option @samp{-p} (or @samp{--prettyprint}) causes the variable's value
+to be output in a pretty-printed form.
 The option @samp{-x} (or @samp{--xml}) causes the output to be in XML.
 @sp 1
 @item open @var{term}
 Save @var{term} to a temporary file and open the file in an editor.
-The environment variable @env{EDITOR} is consulted to determine what editor to
-use.
-If this environment variable is not set then @samp{vi} is used.
-@var{term} may be any term that can be saved to a file with the
-@samp{save_to_file} command.
+The name of the editor to be used is taken from
+the environment variable @env{EDITOR} if this is set;
+if it is not set, then the editor will be @samp{vi}.
+@var{term} may be any term
+that can be saved to a file with the @samp{save_to_file} command.
 @sp 1
 @item grep @var{pattern} @var{term}
 Saves the given term to a temporary file

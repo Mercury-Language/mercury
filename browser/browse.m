@@ -135,13 +135,22 @@
 :- pred save_term_to_file(io.output_stream::in, string::in, string::in,
     browser_term::in, io::di, io::uo) is cc_multi.
 
-    % save_term_to_file_xml(FileName, BrowserTerm, Out, !IO):
+    % save_term_to_file_xml(OutputStream, FileName, BrowserTerm, !IO):
     %
     % Save BrowserTerm to FileName as an XML document. If there is an error,
-    % print an error message to Out.
+    % print an error message to OutputStream.
     %
 :- pred save_term_to_file_xml(io.output_stream::in, string::in,
     browser_term::in, io::di, io::uo) is cc_multi.
+
+    % save_term_to_file_doc(OutputStream, FileName, BrowserTerm, !IO):
+    %
+    % Save BrowserTerm to FileName as a document prettyprinted by the
+    % pretty_printer module in the Mercury standard library. If there is
+    % an error, print an error message to OutputStream.
+    %
+:- pred save_term_to_file_doc(io.output_stream::in, string::in,
+    browser_term::in, io::di, io::uo) is det.
 
     % Save BrowserTerm in an HTML file and launch the web browser specified
     % by the web_browser_cmd field in the browser_persistent_state.
@@ -226,9 +235,10 @@
 
 :- pragma foreign_export("C", save_term_to_file(in, in, in, in, di, uo),
     "ML_BROWSE_save_term_to_file").
-
 :- pragma foreign_export("C", save_term_to_file_xml(in, in, in, di, uo),
     "ML_BROWSE_save_term_to_file_xml").
+:- pragma foreign_export("C", save_term_to_file_doc(in, in, in, di, uo),
+    "ML_BROWSE_save_term_to_file_doc").
 
 :- pragma foreign_export("C",
     save_and_browse_browser_term_web(in, in, in, in, di, uo),
@@ -1302,31 +1312,31 @@ save_term_to_file(OutputStream, FileName, _Format, BrowserTerm, !IO) :-
         io.format(OutputStream, "%s\n", [s(FileName)], !TIO),
         io.write_line(OutputStream, BrowserTerm, !TIO)
     ),
-    io.open_output(FileName, FileStreamRes, !IO),
+    io.open_output(FileName, FileStreamResult, !IO),
     (
-        FileStreamRes = ok(FileStream),
+        FileStreamResult = ok(FileStream),
         (
             BrowserTerm = plain_term(Term),
             save_univ(FileStream, 0, Term, !IO),
             io.nl(FileStream, !IO)
         ;
-            BrowserTerm = synthetic_term(Functor, Args, MaybeRes),
+            BrowserTerm = synthetic_term(Functor, ArgUnivs, MaybeResultUniv),
             io.write_string(FileStream, Functor, !IO),
             io.write_string(FileStream, "(\n", !IO),
-            save_args(FileStream, 1, Args, !IO),
+            save_args(FileStream, 1, ArgUnivs, !IO),
             io.write_string(FileStream, "\n)\n", !IO),
             (
-                MaybeRes = no
+                MaybeResultUniv = no
             ;
-                MaybeRes = yes(Result),
+                MaybeResultUniv = yes(ResultUniv),
                 io.write_string(FileStream, "=\n", !IO),
-                save_univ(FileStream, 1, Result, !IO),
+                save_univ(FileStream, 1, ResultUniv, !IO),
                 io.write_string(FileStream, "\n", !IO)
             )
         ),
         io.close_output(FileStream, !IO)
     ;
-        FileStreamRes = error(Error),
+        FileStreamResult = error(Error),
         io.error_message(Error, Msg),
         io.write_string(OutputStream, Msg, !IO)
     ).
@@ -1345,44 +1355,64 @@ save_term_to_file(OutputStream, FileName, _Format, BrowserTerm, !IO) :-
             ).
 
 save_term_to_file_xml(OutputStream, FileName, BrowserTerm, !IO) :-
-    maybe_save_term_to_file_xml(FileName, BrowserTerm, Result, !IO),
+    io.open_output(FileName, FileStreamResult, !IO),
     (
-        Result = ok(_)
+        FileStreamResult = ok(FileStream),
+        % Note that the three calls to write_xml_doc_general_cc cannot be
+        % replaced by one call, because the type of the second arguments
+        % is different in each of the three calls.
+        (
+            BrowserTerm = plain_term(Univ),
+            Term = univ_value(Univ),
+            term_to_xml.write_xml_doc_general_cc(FileStream, Term,
+                simple, no_stylesheet,  no_dtd, _, !IO)
+        ;
+            BrowserTerm = synthetic_term(Functor, ArgUnivs, MaybeResultUniv),
+            (
+                MaybeResultUniv = no,
+                PredicateTerm = predicate(Functor, ArgUnivs),
+                term_to_xml.write_xml_doc_general_cc(FileStream, PredicateTerm,
+                    simple, no_stylesheet, no_dtd, _, !IO)
+            ;
+                MaybeResultUniv = yes(ResultUniv),
+                FunctionTerm = function(Functor, ArgUnivs, ResultUniv),
+                term_to_xml.write_xml_doc_general_cc(FileStream, FunctionTerm,
+                    simple, no_stylesheet, no_dtd, _, !IO)
+            )
+        ),
+        io.close_output(FileStream, !IO)
     ;
-        Result = error(Error),
+        FileStreamResult = error(Error),
         io.error_message(Error, Msg),
         io.format(OutputStream, "%s\n", [s(Msg)], !IO)
     ).
 
-:- pred maybe_save_term_to_file_xml(string::in, browser_term::in,
-    io.res(io.output_stream)::out, io::di, io::uo) is cc_multi.
-
-maybe_save_term_to_file_xml(FileName, BrowserTerm, FileStreamRes, !IO) :-
-    io.open_output(FileName, FileStreamRes, !IO),
+save_term_to_file_doc(OutputStream, FileName, BrowserTerm, !IO) :-
+    io.open_output(FileName, FileStreamResult, !IO),
     (
-        FileStreamRes = ok(OutputStream),
+        FileStreamResult = ok(FileStream),
         (
             BrowserTerm = plain_term(Univ),
             Term = univ_value(Univ),
-            term_to_xml.write_xml_doc_general_cc(OutputStream, Term, simple,
-                no_stylesheet,  no_dtd, _, !IO)
+            Doc = pretty_printer.format(Term)
         ;
-            BrowserTerm = synthetic_term(Functor, Args, MaybeRes),
+            BrowserTerm = synthetic_term(Functor, ArgUnivs, MaybeResultUniv),
             (
-                MaybeRes = no,
-                PredicateTerm = predicate(Functor, Args),
-                term_to_xml.write_xml_doc_general_cc(OutputStream,
-                    PredicateTerm, simple, no_stylesheet, no_dtd, _, !IO)
+                MaybeResultUniv = no,
+                PredicateTerm = predicate(Functor, ArgUnivs),
+                Doc = pretty_printer.format(PredicateTerm)
             ;
-                MaybeRes = yes(Result),
-                FunctionTerm = function(Functor, Args, Result),
-                term_to_xml.write_xml_doc_general_cc(OutputStream,
-                    FunctionTerm, simple, no_stylesheet, no_dtd, _, !IO)
+                MaybeResultUniv = yes(ResultUniv),
+                FunctionTerm = function(Functor, ArgUnivs, ResultUniv),
+                Doc = pretty_printer.format(FunctionTerm)
             )
         ),
-        io.close_output(OutputStream, !IO)
+        pretty_printer.write_doc(FileStream, Doc, !IO),
+        io.close_output(FileStream, !IO)
     ;
-        FileStreamRes = error(_)
+        FileStreamResult = error(Error),
+        io.error_message(Error, Msg),
+        io.format(OutputStream, "%s\n", [s(Msg)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
