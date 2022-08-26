@@ -20,7 +20,6 @@
 :- interface.
 
 :- import_module list.
-:- import_module map.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -212,6 +211,7 @@
 
 :- implementation.
 
+:- import_module map.
 :- import_module require.
 :- import_module term_context.
 
