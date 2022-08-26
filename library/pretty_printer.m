@@ -414,12 +414,12 @@ put_doc(Stream, Canonicalize, FMap, Params, Doc, !IO) :-
     Params = pp_params(LineWidth, MaxLines, Limit),
     RemainingWidth = LineWidth,
     Indents = indent_empty,
-    do_put_doc(Stream, Canonicalize, FMap, LineWidth, [Doc],
+    do_put_docs(Stream, Canonicalize, FMap, LineWidth, [Doc],
         RemainingWidth, _, Indents, _, MaxLines, _, Limit, _, Pri, _, !IO).
 
 %---------------------------------------------------------------------------%
 
-    % do_put_doc(FMap, LineWidth, Docs, !RemainingWidth, !Indents,
+    % do_put_docs(FMap, LineWidth, Docs, !RemainingWidth, !Indents,
     %   !RemainingLines, !Limit, !Pri, !IO):
     %
     % Format Docs to fit on LineWidth chars per line,
@@ -430,32 +430,32 @@ put_doc(Stream, Canonicalize, FMap, Params, Doc, !IO) :-
     % - tracking current operator priority !Pri.
     % Assumes that Docs is the output of expand.
     %
-:- pred do_put_doc(Stream, noncanon_handling, formatter_map, int,
+:- pred do_put_docs(Stream, noncanon_handling, formatter_map, int,
     list(doc), int, int, indent_stack, indent_stack, int, int,
     func_symbol_limit, func_symbol_limit,
     ops.priority, ops.priority, State, State)
     <= stream.writer(Stream, string, State).
-:- mode do_put_doc(in, in(canonicalize), in, in, in,
+:- mode do_put_docs(in, in(canonicalize), in, in, in,
     in, out, in, out, in, out, in, out, in, out, di, uo) is det.
-:- mode do_put_doc(in, in(include_details_cc), in, in, in,
+:- mode do_put_docs(in, in(include_details_cc), in, in, in,
     in, out, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
 
-do_put_doc(_Stream, _Canonicalize, _FMap, _LineWidth, [],
+do_put_docs(_Stream, _Canonicalize, _FMap, _LineWidth, [],
         !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO).
-do_put_doc(Stream, Canonicalize, FMap, LineWidth, [Doc0 | Docs0],
+do_put_docs(Stream, Canonicalize, FMap, LineWidth, [HeadDoc0 | TailDocs0],
         !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO) :-
     ( if !.RemainingLines =< 0 then
         stream.put(Stream, "...", !IO)
     else
         (
             % Output strings directly.
-            Doc0 = str(String),
+            HeadDoc0 = str(String),
             stream.put(Stream, String, !IO),
             StrWidth = string.count_codepoints(String),
             !:RemainingWidth = !.RemainingWidth - StrWidth,
-            Docs = Docs0
+            Docs = TailDocs0
         ;
-            Doc0 = nl,
+            HeadDoc0 = nl,
             IndentWidth = count_indent_codepoints(!.Indents),
             ( if !.RemainingWidth < LineWidth - IndentWidth then
                 format_nl(Stream, LineWidth, !.Indents, !:RemainingWidth,
@@ -463,47 +463,47 @@ do_put_doc(Stream, Canonicalize, FMap, LineWidth, [Doc0 | Docs0],
             else
                 true
             ),
-            Docs = Docs0
+            Docs = TailDocs0
         ;
-            Doc0 = hard_nl,
+            HeadDoc0 = hard_nl,
             format_nl(Stream, LineWidth, !.Indents, !:RemainingWidth,
                 !RemainingLines, !IO),
-            Docs = Docs0
+            Docs = TailDocs0
         ;
-            Doc0 = docs(Docs1),
-            Docs = list.(Docs1 ++ Docs0)
+            HeadDoc0 = docs(HeadDocs0),
+            Docs = list.(HeadDocs0 ++ TailDocs0)
         ;
             (
-                Doc0 = format_univ(Univ),
-                expand_format_univ(Canonicalize, FMap, Univ, Doc1,
+                HeadDoc0 = format_univ(Univ),
+                expand_format_univ(Canonicalize, FMap, Univ, HeadDoc1,
                     !Limit, !.Pri)
             ;
-                Doc0 = format_list(Univs, Sep),
-                expand_format_list(Univs, Sep, Doc1, !Limit)
+                HeadDoc0 = format_list(Univs, Sep),
+                expand_format_list(Univs, Sep, HeadDoc1, !Limit)
             ;
-                Doc0 = format_term(Name, Univs),
-                expand_format_term(Name, Univs, Doc1, !Limit, !.Pri)
+                HeadDoc0 = format_term(Name, Univs),
+                expand_format_term(Name, Univs, HeadDoc1, !Limit, !.Pri)
             ;
-                Doc0 = format_susp(Susp),
-                expand_format_susp(Susp, Doc1, !Limit)
+                HeadDoc0 = format_susp(Susp),
+                expand_format_susp(Susp, HeadDoc1, !Limit)
             ),
-            Docs = [Doc1 | Docs0]
+            Docs = [HeadDoc1 | TailDocs0]
         ;
-            Doc0 = pp_internal(Internal),
+            HeadDoc0 = pp_internal(Internal),
             (
                 % Open groups: if the current group (and what follows,
                 % up to the next nl) fits on the remainder of the current line,
                 % then print it that way; otherwise we have to recognise
                 % the nls in the group.
                 Internal = open_group,
-                OpenGroups = 1,
+                OpenGroups1 = 1,
                 CurrentRemainingWidth = !.RemainingWidth,
-                expand_docs(Canonicalize, FMap, Docs0, Docs1,
-                    OpenGroups, !Limit, !Pri,
+                expand_docs_to_line_end(Canonicalize, FMap, TailDocs0, Docs1,
+                    OpenGroups1, !Limit, !Pri,
                     CurrentRemainingWidth, RemainingWidthAfterGroup),
                 ( if RemainingWidthAfterGroup >= 0 then
                     output_current_group(Stream, LineWidth, !.Indents,
-                        Docs1, Docs, OpenGroups,
+                        Docs1, Docs, OpenGroups1,
                         !RemainingWidth, !RemainingLines, !IO)
                 else
                     Docs = Docs1
@@ -529,56 +529,59 @@ do_put_doc(Stream, Canonicalize, FMap, LineWidth, [Doc0 | Docs0],
                     Internal = set_op_priority(Pri),
                     !:Pri = Pri
                 ),
-                Docs = Docs0
+                Docs = TailDocs0
             )
         ),
-        do_put_doc(Stream, Canonicalize, FMap, LineWidth, Docs,
+        do_put_docs(Stream, Canonicalize, FMap, LineWidth, Docs,
             !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO)
     ).
 
 %---------------------%
 
+:- type open_groups == int.
+
 :- pred output_current_group(Stream::in, int::in, indent_stack::in,
-    list(doc)::in, list(doc)::out, int::in, int::in, int::out,
+    list(doc)::in, list(doc)::out, open_groups::in, int::in, int::out,
     int::in, int::out, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
 
 output_current_group(_Stream, _LineWidth, _Indents, [], [],
         _OpenGroups, !RemainingWidth, !RemainingLines, !IO).
-output_current_group(Stream, LineWidth, Indents, [Doc0 | Docs0], Docs,
+output_current_group(Stream, LineWidth, Indents, [HeadDoc0 | TailDocs0], Docs,
         !.OpenGroups, !RemainingWidth, !RemainingLines, !IO) :-
     (
-        Doc0 = str(String),
+        HeadDoc0 = str(String),
         stream.put(Stream, String, !IO),
         StrWidth = string.count_codepoints(String),
         !:RemainingWidth = !.RemainingWidth - StrWidth,
-        output_current_group(Stream, LineWidth, Indents, Docs0, Docs,
+        output_current_group(Stream, LineWidth, Indents, TailDocs0, Docs,
             !.OpenGroups, !RemainingWidth, !RemainingLines, !IO)
     ;
-        Doc0 = hard_nl,
+        HeadDoc0 = hard_nl,
         format_nl(Stream, LineWidth, Indents, !:RemainingWidth,
             !RemainingLines, !IO),
         ( if !.RemainingLines =< 0 then
-            Docs = Docs0
+            Docs = TailDocs0
         else
-            output_current_group(Stream, LineWidth, Indents, Docs0, Docs,
+            output_current_group(Stream, LineWidth, Indents, TailDocs0, Docs,
                 !.OpenGroups, !RemainingWidth, !RemainingLines, !IO)
         )
     ;
-        Doc0 = pp_internal(Internal),
+        HeadDoc0 = pp_internal(Internal),
         (
             Internal = open_group,
             !:OpenGroups = !.OpenGroups + 1,
-            output_current_group(Stream, LineWidth, Indents, Docs0, Docs,
+            output_current_group(Stream, LineWidth, Indents, TailDocs0, Docs,
                 !.OpenGroups, !RemainingWidth, !RemainingLines, !IO)
         ;
             Internal = close_group,
             ( if !.OpenGroups = 1 then
-                Docs = Docs0
+                Docs = TailDocs0
             else
                 !:OpenGroups = !.OpenGroups - 1,
-                output_current_group(Stream, LineWidth, Indents, Docs0, Docs,
-                    !.OpenGroups, !RemainingWidth, !RemainingLines, !IO)
+                output_current_group(Stream, LineWidth, Indents,
+                    TailDocs0, Docs, !.OpenGroups,
+                    !RemainingWidth, !RemainingLines, !IO)
             )
         ;
             ( Internal = add_indent(_)
@@ -586,25 +589,25 @@ output_current_group(Stream, LineWidth, Indents, [Doc0 | Docs0], Docs,
             ; Internal = set_op_priority(_)
             ; Internal = set_limit(_)
             ),
-            output_current_group(Stream, LineWidth, Indents, Docs0, Docs,
+            output_current_group(Stream, LineWidth, Indents, TailDocs0, Docs,
                 !.OpenGroups, !RemainingWidth, !RemainingLines, !IO)
         )
     ;
-        ( Doc0 = nl
-        ; Doc0 = docs(_)
-        ; Doc0 = format_univ(_)
-        ; Doc0 = format_list(_, _)
-        ; Doc0 = format_term(_, _)
-        ; Doc0 = format_susp(_)
+        ( HeadDoc0 = nl
+        ; HeadDoc0 = docs(_)
+        ; HeadDoc0 = format_univ(_)
+        ; HeadDoc0 = format_list(_, _)
+        ; HeadDoc0 = format_term(_, _)
+        ; HeadDoc0 = format_susp(_)
         ),
-        output_current_group(Stream, LineWidth, Indents, Docs0, Docs,
+        output_current_group(Stream, LineWidth, Indents, TailDocs0, Docs,
             !.OpenGroups, !RemainingWidth, !RemainingLines, !IO)
     ).
 
 %---------------------%
 
-    % expand_docs(Canonicalize, Docs0, Docs, !.OpenGroups, !Limit, !Pri,
-    %   !RemainingWidth)
+    % expand_docs_to_line_end(Canonicalize, Docs0, Docs,
+    %   !.OpenGroups, !Limit, !Pri, !RemainingWidth)
     %
     % expands out any doc(_), pp_univ(_), format_list(_, _), and pp_term(_)
     % constructors in Docs0 into Docs, until either
@@ -619,16 +622,18 @@ output_current_group(Stream, LineWidth, Indents, [Doc0 | Docs0], Docs,
     % !RemainingWidth tracks the remaining line width after accounting for
     % expansion.
     %
-:- pred expand_docs(noncanon_handling, formatter_map,
-    list(doc), list(doc), int, func_symbol_limit, func_symbol_limit,
+:- pred expand_docs_to_line_end(noncanon_handling, formatter_map,
+    list(doc), list(doc), open_groups, func_symbol_limit, func_symbol_limit,
     ops.priority, ops.priority, int, int).
-:- mode expand_docs(in(canonicalize), in,
+:- mode expand_docs_to_line_end(in(canonicalize), in,
     in, out, in, in, out, in, out, in, out) is det.
-:- mode expand_docs(in(include_details_cc), in,
+:- mode expand_docs_to_line_end(in(include_details_cc), in,
     in, out, in, in, out, in, out, in, out) is cc_multi.
 
-expand_docs(_, _, [], [], _OpenGroups, !Limit, !Pri, !RemainingWidth).
-expand_docs(Canonicalize, FMap, Docs0 @ [HeadDoc0 | TailDocs0], Docs,
+expand_docs_to_line_end(_, _, [], [], _OpenGroups,
+        !Limit, !Pri, !RemainingWidth).
+expand_docs_to_line_end(Canonicalize, FMap,
+        Docs0 @ [HeadDoc0 | TailDocs0], Docs,
         !.OpenGroups, !Limit, !Pri, !RemainingWidth) :-
     ( if
         (
@@ -647,8 +652,8 @@ expand_docs(Canonicalize, FMap, Docs0 @ [HeadDoc0 | TailDocs0], Docs,
             HeadDoc0 = str(String),
             StrWidth = string.count_codepoints(String),
             !:RemainingWidth = !.RemainingWidth - StrWidth,
-            expand_docs(Canonicalize, FMap, TailDocs0, TailDocs, !.OpenGroups,
-                !Limit, !Pri, !RemainingWidth),
+            expand_docs_to_line_end(Canonicalize, FMap, TailDocs0, TailDocs,
+                !.OpenGroups, !Limit, !Pri, !RemainingWidth),
             Docs = [HeadDoc0 | TailDocs]
         ;
             ( HeadDoc0 = nl
@@ -657,15 +662,16 @@ expand_docs(Canonicalize, FMap, Docs0 @ [HeadDoc0 | TailDocs0], Docs,
             ( if !.OpenGroups =< 0 then
                 Docs = Docs0
             else
-                expand_docs(Canonicalize, FMap, TailDocs0, TailDocs,
+                expand_docs_to_line_end(Canonicalize, FMap,
+                    TailDocs0, TailDocs,
                     !.OpenGroups, !Limit, !Pri, !RemainingWidth),
                 Docs = [HeadDoc0 | TailDocs]
             )
         ;
             HeadDoc0 = docs(HeadDocs0),
             Docs1 = list.(HeadDocs0 ++ TailDocs0),
-            expand_docs(Canonicalize, FMap, Docs1, Docs, !.OpenGroups,
-                !Limit, !Pri, !RemainingWidth)
+            expand_docs_to_line_end(Canonicalize, FMap, Docs1, Docs,
+                !.OpenGroups, !Limit, !Pri, !RemainingWidth)
         ;
             (
                 HeadDoc0 = format_univ(HeadUniv),
@@ -682,8 +688,8 @@ expand_docs(Canonicalize, FMap, Docs0 @ [HeadDoc0 | TailDocs0], Docs,
                 expand_format_susp(HeadSusp, HeadDoc1, !Limit)
             ),
             Docs1 = [HeadDoc1 | TailDocs0],
-            expand_docs(Canonicalize, FMap, Docs1, Docs, !.OpenGroups,
-                !Limit, !Pri, !RemainingWidth)
+            expand_docs_to_line_end(Canonicalize, FMap, Docs1, Docs,
+                !.OpenGroups, !Limit, !Pri, !RemainingWidth)
         ;
             HeadDoc0 = pp_internal(Internal),
             (
@@ -703,7 +709,8 @@ expand_docs(Canonicalize, FMap, Docs0 @ [HeadDoc0 | TailDocs0], Docs,
                     !:OpenGroups = !.OpenGroups -
                         ( if !.OpenGroups > 0 then 1 else 0 )
                 ),
-                expand_docs(Canonicalize, FMap, TailDocs0, TailDocs,
+                expand_docs_to_line_end(Canonicalize, FMap,
+                    TailDocs0, TailDocs,
                     !.OpenGroups, !Limit, !Pri, !RemainingWidth),
                 Docs = [HeadDoc0 | TailDocs]
             ;
@@ -714,8 +721,8 @@ expand_docs(Canonicalize, FMap, Docs0 @ [HeadDoc0 | TailDocs0], Docs,
                     Internal = set_op_priority(Pri),
                     !:Pri = Pri
                 ),
-                expand_docs(Canonicalize, FMap, TailDocs0, Docs, !.OpenGroups,
-                    !Limit, !Pri, !RemainingWidth)
+                expand_docs_to_line_end(Canonicalize, FMap, TailDocs0, Docs,
+                    !.OpenGroups, !Limit, !Pri, !RemainingWidth)
             )
         )
     ).
@@ -855,43 +862,57 @@ expand_format_susp(Susp, Doc, !Limit) :-
 :- pred expand_format_op(string::in, list(univ)::in, ops.priority::in,
     doc::out) is semidet.
 
-expand_format_op(Op, Args, CurrentPri, Docs) :-
+expand_format_op(Op, Args, EnclosingPriority, Doc) :-
+    % XXX With one exception, all the set_op_priority pp_internals are
+    % created here. They are intended set the priority of one argument,
+    % which in this case is equivalent to setting the priority from
+    % the occurence of the set_op_priority until either the next
+    % set_op_priority, or until the next close_group. The fact that
+    % the predicates above do NOT reset the priority when they get to
+    % a close_group seems to me to be a bug -zs.
+    %
+    % The one exception is the format_arg function, which appears
+    % to have the same bug, but in an even worse form, since it does not
+    % wrap an open_group/close_group pair around the argument.
     (
-        Args = [Arg],
+        Args = [ArgA],
         ( if
-            ops.lookup_prefix_op(ops.init_mercury_op_table, Op, OpPri, Assoc)
+            ops.lookup_prefix_op(ops.init_mercury_op_table, Op, Pri, AssocA)
         then
-            Doc =
+            OpPriority = Pri,
+            adjust_priority_for_assoc(OpPriority, AssocA, PriorityArgA),
+            Doc0 =
                 group([
                     str(Op),
-                    pp_internal(set_op_priority(adjust_priority(OpPri, Assoc))),
-                    format_univ(Arg)
-                ]),
-            Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
+                    pp_internal(set_op_priority(PriorityArgA)),
+                    format_univ(ArgA)
+                ])
         else if
-            ops.lookup_postfix_op(ops.init_mercury_op_table, Op, OpPri, Assoc)
+            ops.lookup_postfix_op(ops.init_mercury_op_table, Op, Pri, AssocA)
         then
-            Doc =
+            OpPriority = Pri,
+            adjust_priority_for_assoc(OpPriority, AssocA, PriorityArgA),
+            Doc0 =
                 group([
-                    pp_internal(set_op_priority(adjust_priority(OpPri, Assoc))),
-                    format_univ(Arg),
+                    pp_internal(set_op_priority(PriorityArgA)),
+                    format_univ(ArgA),
                     str(Op)
-                ]),
-            Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
+                ])
         else
             fail
         )
     ;
         Args = [ArgA, ArgB],
         ( if
-            ops.lookup_infix_op(ops.init_mercury_op_table, Op, OpPri,
+            ops.lookup_infix_op(ops.init_mercury_op_table, Op, Pri,
                 AssocA, AssocB)
         then
-            OpPriA = adjust_priority(OpPri, AssocA),
-            OpPriB = adjust_priority(OpPri, AssocB),
-            Doc =
+            OpPriority = Pri,
+            adjust_priority_for_assoc(OpPriority, AssocA, PriorityArgA),
+            adjust_priority_for_assoc(OpPriority, AssocB, PriorityArgB),
+            Doc0 =
                 group([
-                    pp_internal(set_op_priority(OpPriA)),
+                    pp_internal(set_op_priority(PriorityArgA)),
                     format_univ(ArgA),
                     ( if Op = "." then
                         str(Op)
@@ -900,52 +921,41 @@ expand_format_op(Op, Args, CurrentPri, Docs) :-
                     ),
                     indent([
                         nl,
-                        pp_internal(set_op_priority(OpPriB)),
+                        pp_internal(set_op_priority(PriorityArgB)),
                         format_univ(ArgB)
                     ])
-                ]),
-            Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
+                ])
         else if
-            ops.lookup_binary_prefix_op(ops.init_mercury_op_table, Op, OpPri,
+            ops.lookup_binary_prefix_op(ops.init_mercury_op_table, Op, Pri,
                 AssocA, AssocB)
         then
-            OpPriA = adjust_priority(OpPri, AssocA),
-            OpPriB = adjust_priority(OpPri, AssocB),
-            Doc =
+            OpPriority = Pri,
+            adjust_priority_for_assoc(OpPriority, AssocA, PriorityArgA),
+            adjust_priority_for_assoc(OpPriority, AssocB, PriorityArgB),
+            Doc0 =
                 group([
                     str(Op),
                     str(" "),
-                    pp_internal(set_op_priority(OpPriA)),
+                    pp_internal(set_op_priority(PriorityArgA)),
                     format_univ(ArgA),
                     str(" "),
                     indent([
-                        pp_internal(set_op_priority(OpPriB)),
+                        pp_internal(set_op_priority(PriorityArgB)),
                         format_univ(ArgB)
                     ])
-                ]),
-            Docs = add_parens_if_needed(OpPri, CurrentPri, Doc)
+                ])
         else
             fail
         )
+    ),
+    % Add parentheses around a doc if required by operator priority.
+    ( if OpPriority > EnclosingPriority then
+        Doc = docs([str("("), Doc0, str(")")])
+    else
+        Doc = Doc0
     ).
 
 %---------------------%
-
-    % Add parentheses around a doc if required by operator priority.
-    %
-:- func add_parens_if_needed(ops.priority, ops.priority, doc) = doc.
-
-add_parens_if_needed(OpPriority, EnclosingPriority, Doc) =
-    ( if OpPriority > EnclosingPriority then
-        docs([str("("), Doc, str(")")])
-    else
-        Doc
-    ).
-
-:- func adjust_priority(ops.priority, ops.assoc) = ops.priority.
-
-adjust_priority(Priority, Assoc) = AdjustedPriority :-
-    ops.adjust_priority_for_assoc(Priority, Assoc, AdjustedPriority).
 
 :- func ellipsis = doc.
 
